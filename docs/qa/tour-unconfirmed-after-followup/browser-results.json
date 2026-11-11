@@ -1,0 +1,101 @@
+{
+  "expectedSha": "7e7a93597788770bb467f5e6d8a09d0d77ebb762",
+  "before": {
+    "id": "555060cd-a188-4e2a-ae42-f0da64396e50",
+    "status": "confirmed",
+    "confirmed_at": "2026-10-16T03:13:51.193123+00:00",
+    "confirmation_source": "prospect_link",
+    "scheduled_at": "2026-10-18T19:00:00+00:00",
+    "lead_id": "5d33fcbe-e6c7-4163-9b5e-29db3389efca",
+    "venue_id": "05f16a15-1752-4855-8a3b-aad5c593d8d9",
+    "is_archived": false,
+    "updated_at": "2026-10-16T03:13:51.193123+00:00"
+  },
+  "servingFromLink": "7e7a93597788770bb467f5e6d8a09d0d77ebb762",
+  "servingImage": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:7e7a93597788770bb467f5e6d8a09d0d77ebb762",
+  "after": {
+    "id": "555060cd-a188-4e2a-ae42-f0da64396e50",
+    "status": "confirmed",
+    "confirmed_at": "2026-10-16T03:13:51.193123+00:00",
+    "confirmation_source": "prospect_link",
+    "scheduled_at": "2026-10-18T19:00:00+00:00",
+    "lead_id": "5d33fcbe-e6c7-4163-9b5e-29db3389efca",
+    "venue_id": "05f16a15-1752-4855-8a3b-aad5c593d8d9",
+    "is_archived": false,
+    "updated_at": "2026-10-16T03:13:51.193123+00:00"
+  },
+  "hybridScan": [],
+  "checks": [
+    {
+      "name": "pre_db_confirmed",
+      "pass": true,
+      "detail": "{\"id\":\"555060cd-a188-4e2a-ae42-f0da64396e50\",\"status\":\"confirmed\",\"confirmed_at\":\"2026-10-16T03:13:51.193123+00:00\",\"confirmation_source\":\"prospect_link\",\"scheduled_at\":\"2026-10-18T19:00:00+00:00\",\"lead_id\":\"5d33fcbe-e6c7-4163-9b5e-29db3389efca\",\"venue_id\":\"05f16a15-1752-4855-8a3b-aad5c593d8d9\",\"is_archived\":false,\"updated_at\":\"2026-10-16T03:13:51.193123+00:00\"}"
+    },
+    {
+      "name": "serving_commit",
+      "pass": true,
+      "detail": "link=7e7a93597788770bb467f5e6d8a09d0d77ebb762 image=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:7e7a93597788770bb467f5e6d8a09d0d77ebb762"
+    },
+    {
+      "name": "ui_shows_confirmed_before",
+      "pass": true,
+      "detail": "badge text"
+    },
+    {
+      "name": "ui_shows_bindi",
+      "pass": true,
+      "detail": "lead name"
+    },
+    {
+      "name": "ui_shows_follow_up",
+      "pass": true,
+      "detail": "follow-up retained"
+    },
+    {
+      "name": "manual_tour_edit_hidden",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "followup_save_toast",
+      "pass": true,
+      "detail": "toast count=1"
+    },
+    {
+      "name": "ui_shows_confirmed_after",
+      "pass": true,
+      "detail": "badge after reload"
+    },
+    {
+      "name": "ui_not_unconfirmed_after",
+      "pass": true,
+      "detail": "no unconfirmed in tour region"
+    },
+    {
+      "name": "db_still_confirmed",
+      "pass": true,
+      "detail": "status=confirmed"
+    },
+    {
+      "name": "db_confirmed_at_preserved",
+      "pass": true,
+      "detail": "before=2026-10-16T03:13:51.193123+00:00 after=2026-10-16T03:13:51.193123+00:00"
+    },
+    {
+      "name": "db_source_preserved",
+      "pass": true,
+      "detail": "prospect_link"
+    },
+    {
+      "name": "db_slot_unchanged",
+      "pass": true,
+      "detail": "before=2026-10-18T19:00:00+00:00 after=2026-10-18T19:00:00+00:00"
+    },
+    {
+      "name": "hybrid_scan_empty",
+      "pass": true,
+      "detail": "count=0"
+    }
+  ],
+  "observedAt": "2026-10-16T03:30:01.204Z"
+}

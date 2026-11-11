@@ -1,0 +1,201 @@
+{
+  "pass": true,
+  "image": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:20a5d08c39d26efaef2fe098d3b42cf3e6c5000a",
+  "digest": "sha256:9d1ef2ca21208c6977951e349acdfebd4cc7d6dd5e5af5c201a91e568c84c53b",
+  "expectedSha": "20a5d08c39d26efaef2fe098d3b42cf3e6c5000a",
+  "templateId": "d73d9734-98d9-46a0-b54b-dccadb036150",
+  "beforeSnapshot": {
+    "sectionCount": 5,
+    "groupCount": 7,
+    "optionCount": 5,
+    "lineCount": 2,
+    "optionIds": [
+      "4bf926c2-fd3a-44e6-9ea8-eb8ce67ab6c9",
+      "5b59b659-9bcd-4c96-82bc-f1334d62df8f",
+      "c629b92b-132e-4d00-bc96-0e315df55f89",
+      "e4794273-22a0-43de-ae2c-345e64b94801",
+      "e5673c82-3332-4ead-89fc-e13373080978"
+    ],
+    "offeringLinks": [],
+    "sections": [
+      {
+        "id": "a335dd2e-d11d-46db-931e-f99474766fc4",
+        "name": "Ceremony"
+      },
+      {
+        "id": "a2f36af6-3434-4dd6-9094-a75ef907712c",
+        "name": "Catering"
+      },
+      {
+        "id": "4a119c18-ecdd-4746-a387-2dcba74498fc",
+        "name": "Bar and beverages"
+      },
+      {
+        "id": "e3ef13fb-9a7d-4f2e-b4d2-84327612044f",
+        "name": "Rentals"
+      },
+      {
+        "id": "dcdfb5f2-d068-4f6b-aca5-ba13de0cc1ee",
+        "name": "Services"
+      }
+    ],
+    "groups": [
+      {
+        "id": "dfd30bd7-bbc4-49f1-aca1-a00a35a5edd1",
+        "name": "Ceremony enhancements",
+        "section_id": "a335dd2e-d11d-46db-931e-f99474766fc4",
+        "depends_on_option_ids": [],
+        "selection_mode": "multi",
+        "min_select": 0
+      },
+      {
+        "id": "fa1636a6-a392-40d7-b3cb-a48cfcaec3e7",
+        "name": "Dinner service",
+        "section_id": "a2f36af6-3434-4dd6-9094-a75ef907712c",
+        "depends_on_option_ids": [],
+        "selection_mode": "single",
+        "min_select": 1
+      },
+      {
+        "id": "6cef4198-ae9c-48d1-abd6-4db051a2ed57",
+        "name": "Bar package",
+        "section_id": "4a119c18-ecdd-4746-a387-2dcba74498fc",
+        "depends_on_option_ids": [],
+        "selection_mode": "single",
+        "min_select": 0
+      },
+      {
+        "id": "8bad2c52-32dd-4882-b6ce-1119c56883a0",
+        "name": "Optional rentals",
+        "section_id": "e3ef13fb-9a7d-4f2e-b4d2-84327612044f",
+        "depends_on_option_ids": [],
+        "selection_mode": "multi",
+        "min_select": 0
+      },
+      {
+        "id": "7a0eb11a-d4b7-43fd-b780-9045867af4ef",
+        "name": "Plated dinner details",
+        "section_id": "a2f36af6-3434-4dd6-9094-a75ef907712c",
+        "depends_on_option_ids": [
+          "4bf926c2-fd3a-44e6-9ea8-eb8ce67ab6c9"
+        ],
+        "selection_mode": "single",
+        "min_select": 0
+      },
+      {
+        "id": "2f6a3767-a0cd-4d3a-9f53-eb435f10065f",
+        "name": "Buffet dinner details",
+        "section_id": "a2f36af6-3434-4dd6-9094-a75ef907712c",
+        "depends_on_option_ids": [
+          "c629b92b-132e-4d00-bc96-0e315df55f89"
+        ],
+        "selection_mode": "single",
+        "min_select": 0
+      },
+      {
+        "id": "5df33a80-a410-4c3e-b48f-76a3afd884af",
+        "name": "Beer & Wine details",
+        "section_id": "4a119c18-ecdd-4746-a387-2dcba74498fc",
+        "depends_on_option_ids": [
+          "e4794273-22a0-43de-ae2c-345e64b94801"
+        ],
+        "selection_mode": "single",
+        "min_select": 0
+      }
+    ]
+  },
+  "after": {
+    "sections": [
+      {
+        "id": "a335dd2e-d11d-46db-931e-f99474766fc4",
+        "name": "Ceremony"
+      },
+      {
+        "id": "a2f36af6-3434-4dd6-9094-a75ef907712c",
+        "name": "Catering"
+      },
+      {
+        "id": "4a119c18-ecdd-4746-a387-2dcba74498fc",
+        "name": "Bar and beverages"
+      },
+      {
+        "id": "e3ef13fb-9a7d-4f2e-b4d2-84327612044f",
+        "name": "Rentals"
+      },
+      {
+        "id": "dcdfb5f2-d068-4f6b-aca5-ba13de0cc1ee",
+        "name": "Services"
+      }
+    ],
+    "optionCount": 5,
+    "groupCount": 7
+  },
+  "checks": [
+    {
+      "name": "serving-sha",
+      "pass": true,
+      "detail": "expected=20a5d08c39d26efaef2fe098d3b42cf3e6c5000a ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:20a5d08c39d26efaef2fe098d3b42cf3e6c5000a"
+    },
+    {
+      "name": "serving-digest",
+      "pass": true,
+      "detail": "sha256:9d1ef2ca21208c6977951e349acdfebd4cc7d6dd5e5af5c201a91e568c84c53b"
+    },
+    {
+      "name": "fixture-existing-template",
+      "pass": true,
+      "detail": "{\"templateId\":\"d73d9734-98d9-46a0-b54b-dccadb036150\",\"beforeSnapshot\":{\"sectionCount\":5,\"groupCount\":7,\"optionCount\":5}}"
+    },
+    {
+      "name": "ui-guided-wizard",
+      "pass": true,
+      "detail": "eo-guided-setup-wizard"
+    },
+    {
+      "name": "ui-categories-step-reachable",
+      "pass": true,
+      "detail": "categories=1"
+    },
+    {
+      "name": "ui-category-cards",
+      "pass": true,
+      "detail": "catering card"
+    },
+    {
+      "name": "ui-patterns-step",
+      "pass": true,
+      "detail": "patterns=1"
+    },
+    {
+      "name": "ui-review-or-preview",
+      "pass": true,
+      "detail": "review=1 preview=0"
+    },
+    {
+      "name": "ui-client-preview",
+      "pass": true,
+      "detail": "1"
+    },
+    {
+      "name": "ui-reload-wizard",
+      "pass": true,
+      "detail": "wizard after reload"
+    },
+    {
+      "name": "persisted-options-preserved",
+      "pass": true,
+      "detail": "{\"before\":5,\"after\":5}"
+    },
+    {
+      "name": "persisted-offering-ids-preserved",
+      "pass": true,
+      "detail": "links=0"
+    },
+    {
+      "name": "persisted-groups-preserved",
+      "pass": true,
+      "detail": "before=7 after=7"
+    }
+  ],
+  "at": "2026-10-25T23:51:03.202Z"
+}

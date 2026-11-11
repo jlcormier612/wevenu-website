@@ -86,11 +86,11 @@ export function validateTimelineEntry(n: NormalizedTimelineEntry): string | null
 }
 
 function parseAudiences(raw: string | null | undefined): TimelineAudience[] {
-  if (!raw?.trim()) return ["venue"];
+  if (!raw?.trim()) return ["client"];
   const parts = raw.split(/[,|;]/).map((p) => p.trim().toLowerCase()).filter(Boolean);
-  const allowed: TimelineAudience[] = ["venue", "client", "wedding_party", "vendors"];
+  const allowed: TimelineAudience[] = ["client", "vendors"];
   const next = parts.filter((p): p is TimelineAudience => (allowed as string[]).includes(p));
-  return next.length ? next : ["venue"];
+  return next.length ? next : ["client"];
 }
 
 async function findExistingEntry(

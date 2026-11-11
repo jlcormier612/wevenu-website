@@ -205,6 +205,8 @@ export type OperationalSeatingPlan = SeatingData & {
 /**
  * The venue's operational read for one floor plan — venue-authenticated.
  * Private Until Committed: latest submission unless actively delegated.
+ * Live unconvertedPlusOnes overlay is applied inside get_operational_seating_plan
+ * (SECURITY DEFINER) — venue RLS cannot read couple_guests directly.
  */
 export async function getOperationalSeatingPlan(
   eventId: string,

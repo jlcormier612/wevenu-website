@@ -1,0 +1,19 @@
+PASS serving_sha — expected=2bee773f1dcda7f0f5d8bee3795f8eabc08f4f81 ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:0edc09b087b649a2062d7c2fa3d01d847db471a5 descendant tip=0edc09b087b649a2062d7c2fa3d01d847db471a5 contains ancestor=2bee773f1dcda7f0f5d8bee3795f8eabc08f4f81
+PASS back_link_present — count=1
+PASS back_link_href — href=/library
+PASS desktop_back_above_reports — {"linkTop":110.5,"reportsTop":165.75,"linkText":"Templates","reportsText":"Reports"}
+PASS desktop_reports_heading — Templates Reports How your business is doing — bookings, revenue, sales, and events. Overview Sales Bookings Revenue Events Saved Saved Reports Reports you've saved so you can q
+PASS desktop_tabs_present — tabs
+PASS desktop_saved_heading — saved heading
+PASS overview_no_templates_back — count=0
+PASS sales_no_templates_back — count=0
+PASS click_returns_to_library — https://app.sandbox.hellotocheers.com/library
+PASS library_page_content — Templates Reusable things you create once and use again — templates you apply to events, plus catalogs and assets those templates pull from. APPLYABLE TEMPLATES Templates are reusable starting points. Create one here,
+PASS narrow_back_present — 390px
+PASS narrow_back_above_reports — {"linkTop":76.5,"reportsTop":131.75,"linkText":"Templates","reportsText":"Reports"}
+PASS narrow_reports_heading — Templates Reports How your business is doing — bookings, revenue, sales, and events. Overview Sales Bookings Revenue Events Saved Saved Reports Reports you've saved so you can q
+PASS narrow_tabs_present — tabs
+PASS narrow_saved_heading — saved heading
+PASS no_horizontal_overflow — overflow=false
+PASS tab_overview_works — https://app.sandbox.hellotocheers.com/reporting
+VERDICT=GREEN

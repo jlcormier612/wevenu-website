@@ -1,0 +1,86 @@
+{
+  "at": "2026-10-16T00:43:37.615Z",
+  "apply": true,
+  "count": 6,
+  "orphans": [
+    {
+      "id": "992ceb00-4a91-4438-85c7-876b1f20b5cf",
+      "venue_id": "a415ac52-cd74-42a6-8df7-7a8f6e71d080",
+      "lead_id": null,
+      "status": "scheduled",
+      "scheduled_at": "2026-10-04T20:30:00+00:00",
+      "contact_email": "tour-lifecycle-e2e-1790807465270@hellotocheers-test.invalid",
+      "contact_name": "TourGate E2E1790807465270",
+      "confirm_token": "6db85a20-dd88-4491-ad56-853f1781e36c",
+      "is_archived": true,
+      "confirmed_at": null,
+      "confirmation_source": "manual"
+    },
+    {
+      "id": "ece47223-1fb7-40c6-82ef-2e954564823b",
+      "venue_id": "a415ac52-cd74-42a6-8df7-7a8f6e71d080",
+      "lead_id": null,
+      "status": "scheduled",
+      "scheduled_at": "2026-10-06T13:00:00+00:00",
+      "contact_email": "phase2.publicbook@hellotocheers-test.invalid",
+      "contact_name": "Phase2Public BookProof",
+      "confirm_token": "7c7d4128-d280-4ce0-bb89-84d0f0204462",
+      "is_archived": true,
+      "confirmed_at": null,
+      "confirmation_source": null
+    },
+    {
+      "id": "61063e85-de74-4402-b617-ccfa0f224d05",
+      "venue_id": "a415ac52-cd74-42a6-8df7-7a8f6e71d080",
+      "lead_id": null,
+      "status": "scheduled",
+      "scheduled_at": "2027-04-14T14:23:00+00:00",
+      "contact_email": "global-delete-qa-proof@example.test",
+      "contact_name": "GLOBAL-DELETE-QA VisibilityProof",
+      "confirm_token": "9290b790-1b81-43eb-8b9d-f068c875e48e",
+      "is_archived": true,
+      "confirmed_at": null,
+      "confirmation_source": null
+    },
+    {
+      "id": "fa5148a2-ee8c-4954-b937-c8626cfb91a4",
+      "venue_id": "a415ac52-cd74-42a6-8df7-7a8f6e71d080",
+      "lead_id": null,
+      "status": "scheduled",
+      "scheduled_at": "2027-11-03T15:30:00+00:00",
+      "contact_email": "brand-rt-59a9e6af@hellotocheers.test",
+      "contact_name": "Runtime Brand",
+      "confirm_token": "696358c2-863d-411c-86f0-83ca3cbb2f28",
+      "is_archived": true,
+      "confirmed_at": null,
+      "confirmation_source": null
+    },
+    {
+      "id": "fc300a53-984b-4c61-91d3-93ab923f2111",
+      "venue_id": "a415ac52-cd74-42a6-8df7-7a8f6e71d080",
+      "lead_id": null,
+      "status": "scheduled",
+      "scheduled_at": "2026-10-07T18:27:30+00:00",
+      "contact_email": "tour-brand-proof-75ac653f@hellotocheers.test",
+      "contact_name": "Brand Proof",
+      "confirm_token": "6a785ccd-56f2-4529-a4d0-3c66888580ae",
+      "is_archived": true,
+      "confirmed_at": null,
+      "confirmation_source": null
+    },
+    {
+      "id": "bd020bf3-fb5f-4e8e-bcab-e35ce60b259d",
+      "venue_id": "05f16a15-1752-4855-8a3b-aad5c593d8d9",
+      "lead_id": null,
+      "status": "confirmed",
+      "scheduled_at": "2026-10-18T14:30:00+00:00",
+      "contact_email": "jlcormier612@gmail.com",
+      "contact_name": "Gina Palo",
+      "confirm_token": "6d3ef405-703e-42e9-aa5e-d3fd9ecba078",
+      "is_archived": true,
+      "confirmed_at": "2026-10-16T00:26:57.840556+00:00",
+      "confirmation_source": "prospect_link"
+    }
+  ],
+  "intended": "UPDATE status=cancelled; cancel pending task_reminders; no emails"
+}

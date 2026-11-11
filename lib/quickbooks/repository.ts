@@ -8,7 +8,9 @@
  * Never let the token-bearing shape leave lib/quickbooks/.
  */
 import { createClient } from "@/integrations/supabase/server";
+import { openQuickBooksToken, sealQuickBooksToken } from "@/lib/quickbooks/token-crypto";
 import type { QuickBooksConnection, QuickBooksConnectionStatus } from "@/lib/quickbooks/types";
+import { classifyClaim } from "@/lib/quickbooks/queue-recovery";
 
 type DbClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -21,6 +23,8 @@ type ConnectionRow = {
   last_health_check_at: string | null; last_health_check_ok: boolean | null;
   last_error: string | null; last_error_at: string | null;
   default_item_quickbooks_id: string | null;
+  default_income_account_quickbooks_id: string | null;
+  default_income_account_name: string | null;
   company_name: string | null;
   connected_at: string; disconnected_at: string | null;
 };
@@ -34,6 +38,7 @@ export type ConnectionWithTokens = {
   refreshTokenExpiresAt: string;
   status: QuickBooksConnectionStatus;
   defaultItemQuickBooksId: string | null;
+  defaultIncomeAccountQuickBooksId: string | null;
 };
 
 function mapConnection(r: ConnectionRow): QuickBooksConnection {
@@ -43,6 +48,8 @@ function mapConnection(r: ConnectionRow): QuickBooksConnection {
     lastHealthCheckAt: r.last_health_check_at, lastHealthCheckOk: r.last_health_check_ok,
     lastError: r.last_error, lastErrorAt: r.last_error_at,
     companyName: r.company_name,
+    defaultIncomeAccountQuickBooksId: r.default_income_account_quickbooks_id,
+    defaultIncomeAccountName: r.default_income_account_name,
     connectedAt: r.connected_at, disconnectedAt: r.disconnected_at,
   };
 }
@@ -50,9 +57,12 @@ function mapConnection(r: ConnectionRow): QuickBooksConnection {
 function mapConnectionWithTokens(r: ConnectionRow): ConnectionWithTokens {
   return {
     venueId: r.venue_id, realmId: r.realm_id,
-    accessToken: r.access_token, accessTokenExpiresAt: r.access_token_expires_at,
-    refreshToken: r.refresh_token, refreshTokenExpiresAt: r.refresh_token_expires_at,
+    accessToken: openQuickBooksToken(r.access_token),
+    accessTokenExpiresAt: r.access_token_expires_at,
+    refreshToken: openQuickBooksToken(r.refresh_token),
+    refreshTokenExpiresAt: r.refresh_token_expires_at,
     status: r.status, defaultItemQuickBooksId: r.default_item_quickbooks_id,
+    defaultIncomeAccountQuickBooksId: r.default_income_account_quickbooks_id,
   };
 }
 
@@ -80,9 +90,9 @@ export async function upsertConnection(
     {
       venue_id: venueId,
       realm_id: input.realmId,
-      access_token: input.accessToken,
+      access_token: sealQuickBooksToken(input.accessToken),
       access_token_expires_at: input.accessTokenExpiresAt,
-      refresh_token: input.refreshToken,
+      refresh_token: sealQuickBooksToken(input.refreshToken),
       refresh_token_expires_at: input.refreshTokenExpiresAt,
       environment: input.environment,
       company_name: input.companyName ?? null,
@@ -98,9 +108,9 @@ export async function upsertConnection(
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function updateTokens(client: any, venueId: string, input: { accessToken: string; accessTokenExpiresAt: string; refreshToken: string; refreshTokenExpiresAt: string }): Promise<void> {
   const { error } = await client.from("quickbooks_connections").update({
-    access_token: input.accessToken,
+    access_token: sealQuickBooksToken(input.accessToken),
     access_token_expires_at: input.accessTokenExpiresAt,
-    refresh_token: input.refreshToken,
+    refresh_token: sealQuickBooksToken(input.refreshToken),
     refresh_token_expires_at: input.refreshTokenExpiresAt,
     status: "connected",
   }).eq("venue_id", venueId);
@@ -132,7 +142,13 @@ export async function recordHealthCheck(client: any, venueId: string, ok: boolea
     last_health_check_at: new Date().toISOString(),
     last_health_check_ok: ok,
   };
-  if (!ok && error) {
+  if (ok) {
+    // Successful Intuit sync clears any prior failure text so Settings never
+    // shows a stale "Waiting on Customer sync." (or similar) after a later
+    // customer/invoice push succeeded.
+    patch.last_error = null;
+    patch.last_error_at = null;
+  } else if (error) {
     patch.last_error = error;
     patch.last_error_at = new Date().toISOString();
   }
@@ -143,6 +159,25 @@ export async function recordHealthCheck(client: any, venueId: string, ok: boolea
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function setDefaultItemId(client: any, venueId: string, itemId: string): Promise<void> {
   const { error } = await client.from("quickbooks_connections").update({ default_item_quickbooks_id: itemId }).eq("venue_id", venueId);
+  if (error) throw error;
+}
+
+/**
+ * Records the venue's explicit income-account choice. Scoped to the one
+ * connection row for this venue — a venue can never write another venue's
+ * selection. Writes only the two account columns, so an in-flight sync's
+ * token or item state is never disturbed by a settings change.
+ */
+export async function setDefaultIncomeAccount(
+  client: DbClient, venueId: string, account: { id: string; name: string },
+): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("quickbooks_connections") as any)
+    .update({
+      default_income_account_quickbooks_id: account.id,
+      default_income_account_name: account.name,
+    })
+    .eq("venue_id", venueId);
   if (error) throw error;
 }
 
@@ -223,12 +258,23 @@ export async function resetQueueItemForRetry(client: any, entityType: string, en
   return !error;
 }
 
+/**
+ * Due work, restricted to venues that can actually sync. Filtering here rather
+ * than after the claim is what stops a disconnected venue's backlog being
+ * claimed and released on every tick — the churn that stranded rows in
+ * 'processing' when a sweep died between the two writes.
+ *
+ * venueIds is required so the caller cannot accidentally fall back to an
+ * unfiltered sweep; an empty list legitimately means "nothing can sync".
+ */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function getDueBatch(client: any, limit = 50): Promise<SyncQueueRow[]> {
+export async function getDueBatch(client: any, limit = 50, venueIds: string[]): Promise<SyncQueueRow[]> {
+  if (venueIds.length === 0) return [];
   const { data, error } = await client
     .from("quickbooks_sync_queue")
     .select("*")
     .in("status", ["pending", "failed_retrying"])
+    .in("venue_id", venueIds)
     .lte("next_attempt_at", new Date().toISOString())
     .order("next_attempt_at", { ascending: true })
     .limit(limit);
@@ -236,12 +282,129 @@ export async function getDueBatch(client: any, limit = 50): Promise<SyncQueueRow
   return (data ?? []) as SyncQueueRow[];
 }
 
+/** Venues whose queue is eligible this tick. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function getConnectedVenueIds(client: any): Promise<string[]> {
+  const { data, error } = await client
+    .from("quickbooks_connections")
+    .select("venue_id")
+    .eq("status", "connected");
+  if (error) throw error;
+  return ((data ?? []) as { venue_id: string }[]).map((r) => r.venue_id);
+}
+
+/**
+ * Marks the point past which an Intuit call may have happened. Set in its own
+ * write immediately before dispatch so that, within one claim, a null
+ * last_attempted_at proves no external call was made.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function markDispatchStarted(client: any, id: string): Promise<void> {
+  const { error } = await client
+    .from("quickbooks_sync_queue")
+    .update({ last_attempted_at: new Date().toISOString() })
+    .eq("id", id);
+  if (error) throw error;
+}
+
+export type ClaimRecoveryResult = { reclaimed: number; needsReview: number };
+
+type ProcessingClaimRow = { id: string; updated_at: string | null; last_attempted_at: string | null };
+
+/**
+ * Returns abandoned pre-dispatch claims to the queue and counts the stale
+ * claims that are not safe to replay automatically.
+ *
+ * Only rows with no dispatch marker are touched, so this cannot cause a second
+ * Intuit write. attempt_count is deliberately left alone: nothing was
+ * attempted, so nothing should count toward the dead-letter ceiling.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function reclaimAbandonedClaims(client: any, leaseMs: number): Promise<ClaimRecoveryResult> {
+  const { data, error } = await client
+    .from("quickbooks_sync_queue")
+    .select("id, updated_at, last_attempted_at")
+    .eq("status", "processing");
+  if (error) throw error;
+
+  // classifyClaim is the single definition of what counts as abandoned, so the
+  // tested rule and the executed rule cannot drift apart.
+  const nowMs = Date.now();
+  const reclaimable: string[] = [];
+  let needsReview = 0;
+  for (const row of (data ?? []) as ProcessingClaimRow[]) {
+    const verdict = classifyClaim({
+      updatedAt: row.updated_at,
+      lastAttemptedAt: row.last_attempted_at,
+      nowMs,
+      leaseMs,
+    });
+    if (verdict === "reclaimable") reclaimable.push(row.id);
+    else if (verdict === "needs_review") needsReview++;
+  }
+
+  if (reclaimable.length === 0) return { reclaimed: 0, needsReview };
+
+  const { data: reclaimedRows, error: updateError } = await client
+    .from("quickbooks_sync_queue")
+    .update({ status: "pending", next_attempt_at: new Date().toISOString() })
+    .in("id", reclaimable)
+    // Re-asserted at write time: a row that was dispatched or resolved between
+    // the read above and this update must not be reclaimed.
+    .eq("status", "processing")
+    .is("last_attempted_at", null)
+    .select("id");
+  if (updateError) throw updateError;
+
+  return { reclaimed: (reclaimedRows ?? []).length, needsReview };
+}
+
+export type QueueSnapshot = {
+  /** Due work for venues that cannot sync yet. Retained, never discarded. */
+  deferredNoConnection: number;
+  /** Age of the oldest item that is due and whose venue can sync, in ms. */
+  oldestEligiblePendingAgeMs: number | null;
+};
+
+/** Counts and ages only — no venue, entity or customer data. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function getQueueSnapshot(client: any, connectedVenueIds: string[]): Promise<QueueSnapshot> {
+  const nowIso = new Date().toISOString();
+  const { data, error } = await client
+    .from("quickbooks_sync_queue")
+    .select("venue_id, created_at")
+    .in("status", ["pending", "failed_retrying"])
+    .lte("next_attempt_at", nowIso);
+  if (error) throw error;
+
+  const connected = new Set(connectedVenueIds);
+  let deferredNoConnection = 0;
+  let oldestEligible: number | null = null;
+
+  for (const row of (data ?? []) as { venue_id: string; created_at: string }[]) {
+    if (!connected.has(row.venue_id)) {
+      deferredNoConnection++;
+      continue;
+    }
+    const createdMs = Date.parse(row.created_at);
+    if (Number.isNaN(createdMs)) continue;
+    if (oldestEligible === null || createdMs < oldestEligible) oldestEligible = createdMs;
+  }
+
+  return {
+    deferredNoConnection,
+    oldestEligiblePendingAgeMs: oldestEligible === null ? null : Date.now() - oldestEligible,
+  };
+}
+
 /** Atomically claims one row — returns true iff this call actually won the claim (guards against a second, overlapping processor invocation). */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function claimQueueItem(client: any, id: string): Promise<boolean> {
   const { data, error } = await client
     .from("quickbooks_sync_queue")
-    .update({ status: "processing" })
+    // Cleared so the dispatch marker describes this claim, not a prior attempt.
+    // last_error_at still carries when the previous attempt failed.
+    .update({ status: "processing", last_attempted_at: null })
     .in("status", ["pending", "failed_retrying"])
     .eq("id", id)
     .select("id");
@@ -269,6 +432,20 @@ export async function markQueueDeadLetter(client: any, id: string, attemptCount:
   const { error: dbError } = await client.from("quickbooks_sync_queue").update({
     status: "dead_letter", attempt_count: attemptCount,
     last_error: error, last_error_at: new Date().toISOString(), last_attempted_at: new Date().toISOString(),
+  }).eq("id", id);
+  if (dbError) throw dbError;
+}
+
+/**
+ * Records a write whose outcome Intuit never confirmed. Status deliberately
+ * stays 'processing' and attempt_count is untouched: the dispatch marker is
+ * already set, so the existing lease logic surfaces this as needs_review
+ * rather than ever replaying it automatically.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function markQueueUncertain(client: any, id: string, error: string): Promise<void> {
+  const { error: dbError } = await client.from("quickbooks_sync_queue").update({
+    last_error: error, last_error_at: new Date().toISOString(),
   }).eq("id", id);
   if (dbError) throw dbError;
 }

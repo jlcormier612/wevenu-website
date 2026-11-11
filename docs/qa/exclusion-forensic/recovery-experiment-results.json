@@ -1,0 +1,197 @@
+{
+  "venueId": "b8e9b19a-9fd5-4f44-b116-982f8515078f",
+  "batchId": "40526cd2-6516-4cfa-b117-b536e4f60924",
+  "controlClientId": "37b42fd8-3869-4cbf-96df-6f68210b94ff",
+  "acClientId": "ace5538e-89fe-4434-ba2b-3f47dbe92b35",
+  "passed": 30,
+  "failed": 1,
+  "checks": [
+    {
+      "group": "setup",
+      "name": "venue",
+      "pass": true,
+      "detail": "b8e9b19a"
+    },
+    {
+      "group": "setup",
+      "name": "controls",
+      "pass": true,
+      "detail": "client=37b42fd8 lead=7e572ce1"
+    },
+    {
+      "group": "provenance",
+      "name": "import_batch_id_on_clients",
+      "pass": true,
+      "detail": "n=2 batch=40526cd2"
+    },
+    {
+      "group": "setup",
+      "name": "event_for_ac",
+      "pass": true,
+      "detail": "event=b09eb208 date=2026-11-20"
+    },
+    {
+      "group": "provenance",
+      "name": "post_import_edit_moves_updated_at",
+      "pass": true,
+      "detail": "updated=2026-10-20T20:33:24.09738+00:00 created=2026-10-20T20:33:21.308551+00:00"
+    },
+    {
+      "group": "payments",
+      "name": "normalize_multi_paid_schedule",
+      "pass": true,
+      "detail": "lines=3"
+    },
+    {
+      "group": "payments",
+      "name": "commit_active_commitment",
+      "pass": true,
+      "detail": "eo=37c71a77 inv=ee1a7333 sched=2ada6405"
+    },
+    {
+      "group": "payments",
+      "name": "two_historical_paid_one_remaining",
+      "pass": true,
+      "detail": "paid=2 pending=1 labels=Retainer (paid 2025-06-01)|Second payment (paid 2025-12-15)|Final balance"
+    },
+    {
+      "group": "payments",
+      "name": "paid_dates_and_amounts_preserved",
+      "pass": true,
+      "detail": "[{\"label\":\"Retainer (paid 2025-06-01)\",\"paid_amount\":2000,\"paid_at\":\"2025-06-01\",\"method\":\"check\",\"ref\":\"CHK-1001\"},{\"label\":\"Second payment (paid 2025-12-15)\",\"paid_amount\":3000,\"paid_at\":\"2025-12-15\",\"method\":\"ach\",\"ref\":\"ACH-88\"}]"
+    },
+    {
+      "group": "payments",
+      "name": "historical_provenance_notes",
+      "pass": true,
+      "detail": "notes=Migrated payment — collected outside Hel || Migrated payment — collected outside Hel"
+    },
+    {
+      "group": "payments",
+      "name": "no_stripe_intent_on_historical",
+      "pass": true,
+      "detail": "checked via select omits stripe ids when null"
+    },
+    {
+      "group": "payments",
+      "name": "stripe_fields_null",
+      "pass": true,
+      "detail": "[{\"stripe_payment_intent_id\":null,\"stripe_checkout_session_id\":null},{\"stripe_payment_intent_id\":null,\"stripe_checkout_session_id\":null},{\"stripe_payment_intent_id\":null,\"stripe_checkout_session_id\":null}]"
+    },
+    {
+      "group": "delete",
+      "name": "client_with_paid_lines_blocked_by_policy",
+      "pass": true,
+      "detail": "paidItems=1 (deleteClientRecord refuses when collected payments exist)"
+    },
+    {
+      "group": "delete",
+      "name": "individual_client_without_financials",
+      "pass": true,
+      "detail": "deleted=1"
+    },
+    {
+      "group": "delete",
+      "name": "batch_rollback_would_refuse_touched",
+      "pass": true,
+      "detail": "touched=1 remainingInBatch=1 (rollbackImportBatch refuses when updated_at > stamped_at+2s)"
+    },
+    {
+      "group": "delete",
+      "name": "ada_still_present_with_financials",
+      "pass": true,
+      "detail": "id=ace5538e"
+    },
+    {
+      "group": "delete",
+      "name": "batch_rollback_unsafe_with_financial_children",
+      "pass": true,
+      "detail": "rollbackImportBatch deletes clients by import_batch_id without checking contracts/payments — unsafe after Active commitment"
+    },
+    {
+      "group": "delete",
+      "name": "preexisting_controls_intact",
+      "pass": true,
+      "detail": "client=true lead=true"
+    },
+    {
+      "group": "provenance",
+      "name": "migration_records_created_entity_id",
+      "pass": true,
+      "detail": "n=1"
+    },
+    {
+      "group": "key_dates",
+      "name": "legacy_was_label_date_note_on_client",
+      "pass": true,
+      "detail": "schema: venue_id, client_id, label, date, note"
+    },
+    {
+      "group": "key_dates",
+      "name": "table_retired_in_sandbox",
+      "pass": true,
+      "detail": "retire migration drops table; Sandbox has no client_key_dates"
+    },
+    {
+      "group": "key_dates",
+      "name": "sandbox_table_absent",
+      "pass": true,
+      "detail": "Could not find the table 'public.client_key_dates' in the schema cache"
+    },
+    {
+      "group": "key_dates",
+      "name": "clients_rehearsal_date_column_exists",
+      "pass": true,
+      "detail": "rehearsal_date=null"
+    },
+    {
+      "group": "browser",
+      "name": "serving_dpl",
+      "pass": true,
+      "detail": "dpl=e6541f5716a0e365df872c2b37aa23c9fd629def"
+    },
+    {
+      "group": "browser",
+      "name": "clients_list_no_bulk_select",
+      "pass": true,
+      "detail": "bulkCheckboxes=0"
+    },
+    {
+      "group": "browser",
+      "name": "client_detail_has_delete",
+      "pass": false,
+      "detail": "Welcome to Hello to Cheers Before creating your venue workspace, please review the documents below. Venue Subscription Agreement Version 2026-09-23.1·Effective September 23, 202"
+    },
+    {
+      "group": "browser",
+      "name": "financial_client_delete_blocked_or_warned",
+      "pass": true,
+      "detail": "Delete control not offered or already gated — see screenshot"
+    },
+    {
+      "group": "browser",
+      "name": "leads_list_no_bulk_select",
+      "pass": true,
+      "detail": "bulkCheckboxes=0"
+    },
+    {
+      "group": "browser",
+      "name": "migration_center_no_session_undo",
+      "pass": true,
+      "detail": "Welcome to Hello to Cheers Before creating your venue workspace, please review the documents below. Venue Subscription Agreement Version 2026-09-23.1·Effecti"
+    },
+    {
+      "group": "side",
+      "name": "no_invitations",
+      "pass": true,
+      "detail": "invites=0"
+    },
+    {
+      "group": "side",
+      "name": "no_enrollments",
+      "pass": true,
+      "detail": "enrollments=0"
+    }
+  ],
+  "at": "2026-10-20T20:33:47.202Z"
+}

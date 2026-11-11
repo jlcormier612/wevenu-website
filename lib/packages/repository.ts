@@ -6,9 +6,15 @@ type DbClient = Awaited<ReturnType<typeof createClient>>;
 type PkgRow = {
   id: string; venue_id: string; name: string; description: string | null;
   base_price: number | string | null; category: string | null; is_active: boolean;
-  sort_order: number; source_master_key: string | null; created_at: string; updated_at: string;
+  sort_order: number; source_master_key: string | null;
+  offer_role?: string | null;
+  eligible_event_types?: string[] | null;
+  min_guest_count?: number | null;
+  max_guest_count?: number | null;
+  eligible_space_ids?: string[] | null;
+  created_at: string; updated_at: string;
 };
-type ItemRow = { id: string; package_id: string; venue_id: string; description: string; quantity: number; unit: string | null; sort_order: number; created_at: string; };
+type ItemRow = { id: string; package_id: string; venue_id: string; description: string; quantity: number; unit: string | null; offering_id?: string | null; per_guest?: boolean | null; sort_order: number; created_at: string; };
 
 const map = (r: PkgRow): Package => ({
   id: r.id,
@@ -20,12 +26,18 @@ const map = (r: PkgRow): Package => ({
   isActive: r.is_active,
   sortOrder: r.sort_order,
   sourceMasterKey: r.source_master_key ?? null,
+  offerRole: r.offer_role === "addon" ? "addon" : "primary",
+  eligibleEventTypes: r.eligible_event_types ?? null,
+  minGuestCount: r.min_guest_count ?? null,
+  maxGuestCount: r.max_guest_count ?? null,
+  eligibleSpaceIds: r.eligible_space_ids ?? null,
   createdAt: r.created_at,
   updatedAt: r.updated_at,
 });
 const mapItem = (r: ItemRow): PackageItem => ({
   id: r.id, packageId: r.package_id, venueId: r.venue_id, description: r.description,
-  quantity: Number(r.quantity), unit: r.unit, sortOrder: r.sort_order, createdAt: r.created_at,
+  quantity: Number(r.quantity), unit: r.unit, offeringId: r.offering_id ?? null, perGuest: r.per_guest === true,
+  sortOrder: r.sort_order, createdAt: r.created_at,
 });
 
 function resolveBasePrice(raw: string): number | null {
@@ -77,10 +89,41 @@ export async function insertPackageItem(client: DbClient, venueId: string, packa
   const { data: existing } = await client.from("package_items").select("sort_order").eq("package_id", packageId).order("sort_order", { ascending: false }).limit(1);
   const sortOrder = ((existing?.[0] as { sort_order: number } | undefined)?.sort_order ?? -1) + 1;
   const { data, error } = await client.from("package_items")
-    .insert({ package_id: packageId, venue_id: venueId, description: input.description.trim(), quantity: parseFloat(input.quantity) || 1, unit: input.unit.trim() || null, sort_order: sortOrder })
+    .insert({
+      package_id: packageId, venue_id: venueId, description: input.description.trim(),
+      quantity: parseFloat(input.quantity) || 1, unit: input.unit.trim() || null, sort_order: sortOrder,
+      ...(input.offeringId ? { offering_id: input.offeringId } : {}),
+      ...(input.perGuest ? { per_guest: true } : {}),
+    })
     .select().single<ItemRow>();
   if (error) throw error;
   return mapItem(data);
+}
+
+export async function setPackageItemOffering(
+  client: DbClient, venueId: string, itemId: string, offeringId: string | null,
+): Promise<PackageItem | null> {
+  const { data, error } = await client.from("package_items")
+    .update({ offering_id: offeringId })
+    .eq("id", itemId)
+    .eq("venue_id", venueId)
+    .select()
+    .maybeSingle<ItemRow>();
+  if (error) throw error;
+  return data ? mapItem(data) : null;
+}
+
+export async function setPackageItemQuantity(
+  client: DbClient, venueId: string, itemId: string, quantity: number, perGuest: boolean,
+): Promise<PackageItem | null> {
+  const { data, error } = await client.from("package_items")
+    .update({ quantity, per_guest: perGuest })
+    .eq("id", itemId)
+    .eq("venue_id", venueId)
+    .select()
+    .maybeSingle<ItemRow>();
+  if (error) throw error;
+  return data ? mapItem(data) : null;
 }
 
 export async function deletePackageItem(client: DbClient, venueId: string, itemId: string): Promise<{ ok: true } | { ok: false; message: string }> {
@@ -92,9 +135,10 @@ export async function deletePackageItem(client: DbClient, venueId: string, itemI
 
 /** Migration Center (Hospitality Success Platform §2.1) — ports Leads' dedup shape to Packages: active packages, matched by name (case-insensitive). */
 export async function findActiveDuplicatePackage(client: DbClient, venueId: string, name: string): Promise<{ id: string } | null> {
-  const { data } = await client.from("packages").select("id")
+  const { data, error } = await client.from("packages").select("id")
     .eq("venue_id", venueId).eq("is_active", true).ilike("name", name.trim())
     .limit(1).maybeSingle<{ id: string }>();
+  if (error) throw error;
   return data ?? null;
 }
 
@@ -168,6 +212,8 @@ export async function duplicatePackage(client: DbClient, venueId: string, source
       source.items.map((item) => ({
         package_id: data.id, venue_id: venueId, description: item.description,
         quantity: item.quantity, unit: item.unit, sort_order: item.sortOrder,
+        offering_id: item.offeringId,
+        per_guest: item.perGuest === true,
       })),
     );
     if (itemsError) throw itemsError;

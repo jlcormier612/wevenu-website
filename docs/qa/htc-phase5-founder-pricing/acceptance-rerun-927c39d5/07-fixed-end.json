@@ -1,0 +1,66 @@
+{
+  "ok": true,
+  "arrangement": {
+    "id": "cf7df5fb-9896-4046-88bf-abd8a9535506",
+    "venueId": "9336a6cb-6a49-4a38-82bc-ff3b2361e8a3",
+    "stripeSubscriptionId": "sub_1UZw74ErUqJH7nkta71f0YMw",
+    "stripeCustomerId": "cus_Vb8Ng5wqMg59Z5",
+    "kind": "fixed_rate",
+    "percentOff": null,
+    "amountOffCents": null,
+    "fixedRateCents": 14900,
+    "frozenListAmountCents": null,
+    "planScope": "all",
+    "planKeyAtCreate": "starter",
+    "survivesTierChange": true,
+    "preventsTierUpgrade": false,
+    "protectsBaseRate": false,
+    "effectiveAt": "2026-11-09T23:53:36+00:00",
+    "expiresAt": null,
+    "durationBillingCycles": null,
+    "cyclesConsumed": 0,
+    "status": "ended",
+    "reason": "Phase 5 final rerun fixed",
+    "internalNotes": null,
+    "customerFacingLabel": "Special pricing",
+    "createdByUserId": null,
+    "createdByEmail": "jennifer@hellotocheers.com",
+    "endedByEmail": "jennifer@hellotocheers.com",
+    "endedAt": "2026-11-09T23:53:39.726+00:00",
+    "endReason": "Phase 5 final fixed cleanup",
+    "stripeCouponId": null,
+    "stripePriceId": "price_1Ua1xCErUqJH7nkt661ug3Zp",
+    "reconciliationStatus": "pending",
+    "expectedRecurringAmountCents": 14900,
+    "lastReconcileError": null,
+    "lastReconciledAt": "2026-11-09T23:53:38.563+00:00",
+    "supersedesArrangementId": null,
+    "supersededByArrangementId": null,
+    "relatedTierHoldId": null,
+    "idempotencyKey": "p5-final-fixed-1794268416",
+    "audit": [
+      {
+        "at": "2026-11-09T23:53:37.662Z",
+        "by": "jennifer@hellotocheers.com",
+        "kind": "fixed_rate",
+        "action": "created",
+        "status": "active"
+      },
+      {
+        "at": "2026-11-09T23:53:38.563Z",
+        "error": null,
+        "action": "reconciled",
+        "deferred": false
+      },
+      {
+        "at": "2026-11-09T23:53:39.726Z",
+        "by": "jennifer@hellotocheers.com",
+        "action": "ended",
+        "reason": "Phase 5 final fixed cleanup"
+      }
+    ],
+    "metadata": {},
+    "createdAt": "2026-11-09T23:53:37.683059+00:00",
+    "updatedAt": "2026-11-09T23:53:39.779+00:00"
+  }
+}

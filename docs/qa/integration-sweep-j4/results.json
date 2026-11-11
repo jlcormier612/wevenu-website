@@ -1,0 +1,77 @@
+{
+  "journey": "4_tour",
+  "status": "GREEN_PENDING_RUNTIME_PROOF_OF_TZ_FIX",
+  "observed_at": "2026-09-22T23:34:21Z",
+  "runtime_before_fix": {
+    "taskDefinition": "htc-sandbox-venue-app:348",
+    "imageTag": "a39d37f8f93878c853d00f9413b9e1aeff76225d",
+    "imageDigest": "sha256:d0fe0f8a94a51a685a1431c627362cb6c13c9a60aac54c4fc26984c94ba6c7a5"
+  },
+  "fixture": {
+    "venue": "Jen's Fancy Venue",
+    "venue_id": "a415ac52-cd74-42a6-8df7-7a8f6e71d080",
+    "venue_timezone": "America/New_York",
+    "lead_id": "9ca3196f-3100-436f-921a-075ee3b7857d",
+    "relationship_id": "d8289c67-3136-4f96-ad53-be74d52af59c",
+    "email": "sweep.j1.20260922t2015@hellotocheers.test",
+    "appointment_id": "0068ef45-02ac-4bee-9730-9080abae32a6",
+    "confirm_token": "2e85816d-4f1e-41ba-8a7e-21ef9f0751ce",
+    "conversation_id": "c5ca9812-8b02-4852-bf9c-203e6b3f2f2b"
+  },
+  "checks": {
+    "A_schedule_once": {
+      "ok": true,
+      "selected_slot_venue_local": "2026-09-27 02:45 PM America/New_York",
+      "scheduled_at_utc": "2026-09-27T18:45:00+00:00",
+      "appointment_count": 1
+    },
+    "B_confirmation_preview": {
+      "ok": true,
+      "who": "sweep.j1.20260922t2015@hellotocheers.test",
+      "channel": "Email",
+      "what": "Tour confirmed — Sunday, September 27, 2026 at Jen's Fancy Venue",
+      "email_body_time": "2:45 PM"
+    },
+    "C_send_confirmation": {
+      "ok": true,
+      "message_id": "11e453ac-e573-4fab-b23d-d06f6515c628",
+      "provider_id": "01a0cb74-7408-74ac-bf8e-2ef02687438f",
+      "status": "accepted",
+      "ui_label": "Sent",
+      "mailbox_inbox": "UNPROVEN (.test address)"
+    },
+    "D_reschedule": {
+      "ok": true,
+      "same_appointment_id": true,
+      "new_scheduled_at_utc": "2026-09-28T14:45:00+00:00",
+      "new_venue_local": "2026-09-28 10:45 AM America/New_York",
+      "update_email_message_id": "23995d05-34c0-4ab8-8476-10106eb3bb89",
+      "update_provider_id": "01a0cb77-1169-718b-9485-8d818a744b4a",
+      "appointment_count_after": 1
+    },
+    "E_confirmation_request": {
+      "ok": true,
+      "preview_matches_send": true,
+      "secure_link": "https://app.sandbox.hellotocheers.com/confirm/2e85816d-4f1e-41ba-8a7e-21ef9f0751ce",
+      "request_message_id": "a709acb1-59a5-4eee-93fd-2cf9dffb1fff",
+      "request_provider_id": "01a0cb77-c71c-74e2-834c-601fc36bbeee",
+      "client_confirm_page_time": "10:45 AM",
+      "status_after_confirm": "confirmed",
+      "confirmation_source": "prospect_link",
+      "confirmed_at": "2026-09-22T23:34:21.54093+00:00"
+    }
+  },
+  "defects": [
+    {
+      "id": "J4-D1",
+      "title": "Lead Overview / Tours list showed browser-local tour time instead of venue timezone",
+      "first_observed": "Journey 4 — after schedule; Overview showed 3:45 PM / 11:45 AM while venue America/New_York was 2:45 PM / 10:45 AM",
+      "expected": "Staff surfaces show venue-local wall clock (same as emails and /confirm)",
+      "actual": "Bare toLocaleTimeString used browser timezone (ADT/UTC-3 → +1h)",
+      "root_cause": "components/leads/tour-panel.tsx AppointmentRow and components/tours/tour-list.tsx TourRow formatted scheduledAt without timeZone",
+      "fix": "Use formatVenueLocalTourDisplay (+ utcToVenueLocalParts on Tours list date block); thread venue.timezone from Lead/Tours pages",
+      "tests": "lib/venue/timezone.test.ts — lead TourPanel and Tours list render venue-local times",
+      "status": "FIXED_AWAITING_SANDBOX_DEPLOY_PROOF"
+    }
+  ]
+}

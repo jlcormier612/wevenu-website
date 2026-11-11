@@ -1,0 +1,32 @@
+{
+  "app": "http://127.0.0.1:3000",
+  "venueId": "46817d4e-f95b-4fc0-acd4-1574ec201276",
+  "venueName": "Stage3 Starter Venue 1794006913091",
+  "shots": [
+    "/Users/jensmac/Developer/wevenu-website/docs/qa/stage3-platform-starter/screenshots/02-library-home.png",
+    "/Users/jensmac/Developer/wevenu-website/docs/qa/stage3-platform-starter/screenshots/01-library-playbooks.png",
+    "/Users/jensmac/Developer/wevenu-website/docs/qa/stage3-platform-starter/screenshots/03-setup-profiles.png",
+    "/Users/jensmac/Developer/wevenu-website/docs/qa/stage3-platform-starter/screenshots/04-setup-hub.png",
+    "/Users/jensmac/Developer/wevenu-website/docs/qa/stage3-platform-starter/screenshots/05-automations.png"
+  ],
+  "playbookText": {
+    "hasWeddingClient": true,
+    "hasWeddingVenue": true,
+    "hasCorporate": true,
+    "hasSocial": true
+  },
+  "setupProfilesText": {
+    "hasStandard": true,
+    "usedForWeddings": true,
+    "mentionsVenueDefaultAssignment": false
+  },
+  "setupHubText": {
+    "hasClientExperience": true,
+    "mentionsSetupProfiles": true
+  },
+  "automationsText": {
+    "hasNewInquiry": true,
+    "pausedMentions": 4
+  },
+  "ok": true
+}

@@ -13,7 +13,13 @@ export type LibrarySaveStatusValue =
   | "saved"
   | "error";
 
-export function useLibrarySaveStatus(resetMs = 2500) {
+/**
+ * Autosave status for Library editors.
+ * Default: durable "saved" — does not fade back to blank idle (Product Lock /
+ * Templates methodology). Pass resetMs > 0 only for surfaces that intentionally
+ * blink "Saved just now".
+ */
+export function useLibrarySaveStatus(resetMs = 0) {
   const [status, setStatus] = React.useState<LibrarySaveStatusValue>("idle");
   const timer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -39,7 +45,9 @@ export function useLibrarySaveStatus(resetMs = 2500) {
   const markSaved = React.useCallback(() => {
     clearTimer();
     setStatus("saved");
-    timer.current = setTimeout(() => setStatus("idle"), resetMs);
+    if (resetMs > 0) {
+      timer.current = setTimeout(() => setStatus("idle"), resetMs);
+    }
   }, [clearTimer, resetMs]);
 
   const markError = React.useCallback(() => {
@@ -62,7 +70,7 @@ export function LibrarySaveStatus({
 }: {
   status: LibrarySaveStatusValue;
   className?: string;
-  /** autosave shows Saved/Saving; explicit also shows Unsaved changes */
+  /** autosave shows Saving / All changes saved; explicit also shows Unsaved changes */
   model?: "autosave" | "explicit";
 }) {
   if (status === "idle") return null;
@@ -79,7 +87,7 @@ export function LibrarySaveStatus({
     content = (
       <>
         <Check className="h-3.5 w-3.5" />
-        {model === "explicit" ? LIBRARY_LABELS.saved : LIBRARY_LABELS.savedJustNow}
+        {model === "explicit" ? LIBRARY_LABELS.saved : LIBRARY_LABELS.allChangesSaved}
       </>
     );
   } else if (status === "error") {
@@ -87,7 +95,7 @@ export function LibrarySaveStatus({
   } else if (status === "dirty" && model === "explicit") {
     content = <span>Unsaved changes</span>;
   } else if (status === "dirty" && model === "autosave") {
-    content = <span>Saving…</span>;
+    content = <span>{LIBRARY_LABELS.saving}</span>;
   }
 
   if (!content) return null;
@@ -101,8 +109,22 @@ export function LibrarySaveStatus({
         className,
       )}
       aria-live="polite"
+      data-testid="library-save-status"
+      data-status={status}
     >
       {content}
+    </p>
+  );
+}
+
+/** Shared teaching line for autosave Template / Library editors. */
+export function LibraryAutosaveHint({ className }: { className?: string }) {
+  return (
+    <p
+      className={cn("text-xs text-muted-foreground", className)}
+      data-testid="library-autosave-hint"
+    >
+      {LIBRARY_LABELS.autosaveTeaching}
     </p>
   );
 }

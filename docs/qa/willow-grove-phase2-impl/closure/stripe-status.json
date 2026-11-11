@@ -1,0 +1,28 @@
+{
+  "venue": {
+    "stripe_account_id": null,
+    "stripe_charges_enabled": false,
+    "stripe_onboarding_status": "not_started",
+    "accepted_methods": [
+      "card"
+    ],
+    "prefsOnline": true
+  },
+  "env": {
+    "STRIPE_CLIENT_ID": false,
+    "STRIPE_SECRET_KEY": false,
+    "STRIPE_SECRET_KEY_TEST_PREFIX": false,
+    "STRIPE_WEBHOOK_SECRET": false
+  },
+  "connectUrlPresent": false,
+  "connectUrlHost": null,
+  "connectErr": null,
+  "supportedPath": [
+    "Staff → Settings → Integrations → Online Payment Collection → Connect with Stripe",
+    "OAuth uses STRIPE_CLIENT_ID → /api/stripe/callback stores stripe_account_id + onboarding_status=connected",
+    "Charges enabled when Stripe account capabilities ready (webhook stripe-connect)",
+    "Client pays via portal/invoice checkout with test card 4242… only after charges_enabled"
+  ],
+  "boundary": "Connecting requires an authorized Stripe Connect OAuth login to a TEST Stripe account owned/controlled for Sandbox. This agent cannot complete that external authorization without interactive Stripe dashboard consent. Do not fabricate connected status.",
+  "classification": "outstanding_demo_dependency_external_auth"
+}

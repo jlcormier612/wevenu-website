@@ -26,6 +26,8 @@ export function computeSetupGapObservations(checklist: ActivationChecklistItem[]
   return topGaps.map((item) => {
     const copy = GAP_COPY[item.key];
     const ctaLabel = copy?.ctaLabel ?? "Take me there";
+    // One CTA only — actionLabel navigates; do not also attach recommendation
+    // (that rendered a duplicate "View clients" chip in LuvWidget).
     return {
       id: `setup-gap-${item.key}`,
       kind: "recommendation",
@@ -33,8 +35,7 @@ export function computeSetupGapObservations(checklist: ActivationChecklistItem[]
       message: copy?.title ?? item.label,
       detail: copy?.description ?? item.label,
       link: item.href,
-      actionLabel: `${ctaLabel} →`,
-      recommendation: { label: ctaLabel, link: item.href, type: "navigate" },
+      actionLabel: ctaLabel,
     };
   });
 }

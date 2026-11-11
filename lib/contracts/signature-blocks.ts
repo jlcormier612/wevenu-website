@@ -50,6 +50,70 @@ export function applyRequiredSignerSignatureBlocks(
   return content;
 }
 
+/** Format a signed_at ISO timestamp as a readable date for signature blocks. */
+export function formatSignatureDate(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const day = iso.slice(0, 10);
+  const [y, m, d] = day.split("-").map(Number);
+  if (!y || !m || !d) return day;
+  return new Date(y, m - 1, d).toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+export type SignatureEvidence = {
+  signerType: "venue" | "client";
+  signerName: string | null;
+  signedAt: string | null;
+  isRequired?: boolean;
+};
+
+/**
+ * Render-time only: fill blank Signature/Date lines from contract_signers evidence.
+ * Does NOT mutate stored content or content hashes — presentation for Fully Executed
+ * artifacts (detail, PDF, portal). Unsigned / incomplete signers keep blank lines.
+ */
+export function fillCompletedSignatureBlocks(
+  content: string,
+  signers: SignatureEvidence[],
+): string {
+  let next = content;
+
+  const clients = signers.filter(
+    (s) => s.signerType === "client" && s.signedAt && (s.isRequired !== false),
+  );
+  for (const s of clients) {
+    const name = (s.signerName ?? "").trim();
+    if (!name) continue;
+    const signedLabel = formatSignatureDate(s.signedAt);
+    // Match Client block for this signer (blank signature/date lines).
+    const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const block = new RegExp(
+      `(Client\\n${escaped}\\n\\n)Signature: _{8,}\\nDate: _{8,}`,
+    );
+    next = next.replace(
+      block,
+      `$1Signature: ${name} (electronically signed)\nDate: ${signedLabel}`,
+    );
+  }
+
+  const venue = signers.find((s) => s.signerType === "venue" && s.signedAt);
+  if (venue) {
+    const name = (venue.signerName ?? "").trim() || "Authorized Representative";
+    const signedLabel = formatSignatureDate(venue.signedAt);
+    // Fill blank Authorized Representative / Signature lines under Venue.
+    // Date may already contain a merge date or underscores — always replace with signed date.
+    next = next.replace(
+      /(Venue\n[^\n]+\n\n)Authorized Representative: _{4,}(\n)Signature: _{8,}(\n)Date: [^\n]+/,
+      `$1Authorized Representative: ${name}$2Signature: ${name} (electronically signed)$3Date: ${signedLabel}`,
+    );
+  }
+
+  return next;
+}
+
 export type ClientSigningParty = {
   id: string;
   name: string;
@@ -60,6 +124,9 @@ export type ClientSigningParty = {
 /**
  * Pure lifecycle helper — one client signing event cannot complete another
  * signer's requirement. Used by tests; the database RPC is the system of record.
+ *
+ * `allRequiredClientsSigned` is NOT Fully Executed — venue countersignature
+ * is still required under client-first signing.
  */
 export function recordRequiredClientSignature(
   parties: ClientSigningParty[],
@@ -67,12 +134,14 @@ export function recordRequiredClientSignature(
   opts: { signedAt: string; contentHash: string },
 ): {
   parties: ClientSigningParty[];
+  /** @deprecated Alias for allRequiredClientsSigned — does NOT mean Fully Executed. */
   fullyExecuted: boolean;
+  allRequiredClientsSigned: boolean;
   hashMismatch: boolean;
 } {
   const acting = parties.find((p) => p.id === actingSignerId);
   if (!acting || acting.signedAt) {
-    return { parties, fullyExecuted: false, hashMismatch: false };
+    return { parties, fullyExecuted: false, allRequiredClientsSigned: false, hashMismatch: false };
   }
 
   const next = parties.map((p) =>
@@ -84,28 +153,29 @@ export function recordRequiredClientSignature(
   const allSigned = next.every((p) => p.signedAt);
   const hashes = next.map((p) => p.contentHash).filter((h): h is string => Boolean(h));
   const hashMismatch = allSigned && new Set(hashes).size > 1;
+  const allRequiredClientsSigned = allSigned && !hashMismatch;
   return {
     parties: next,
-    fullyExecuted: allSigned && !hashMismatch,
+    fullyExecuted: allRequiredClientsSigned,
+    allRequiredClientsSigned,
     hashMismatch,
   };
 }
 
 /**
- * Reopen-for-editing is retired once the venue has signed.
- * Content is immutable after venue signature; use Create New Version for revisions.
- * (Kept as an explicit guard so any leftover callers fail closed.)
+ * Reopen-for-editing is retired once any signature exists (client-first).
+ * Content is immutable after client or venue signature; use Create New Version.
  */
 export function canReopenContractForEditing(opts: {
   status: string;
   venueSigned: boolean;
   clientSigners: { signedAt: string | null }[];
 }): { ok: true } | { ok: false; message: string } {
-  if (opts.venueSigned || opts.clientSigners.some((s) => s.signedAt)) {
+  if (opts.clientSigners.some((s) => s.signedAt) || opts.venueSigned || opts.status === "signed") {
     return {
       ok: false,
       message:
-        "This contract cannot be reopened for editing after the venue has signed. Content is immutable — use Create New Version to start a new draft.",
+        "This contract cannot be reopened for editing after a signature. Content is immutable — use Create New Version to start a new draft.",
     };
   }
   if (opts.status !== "sent") {
@@ -114,14 +184,13 @@ export function canReopenContractForEditing(opts: {
   return {
     ok: false,
     message:
-      "This contract cannot be reopened for editing after the venue has signed. Content is immutable — use Create New Version to start a new draft.",
+      "This contract cannot be reopened for editing. Content is immutable — use Create New Version to start a new draft.",
   };
 }
 
 /**
- * Create New Version once venue signature locks content
- * (released / partial / fully signed / finalized).
- * Product name for the existing clone engine — not a second mechanism.
+ * Create New Version once a client has signed or the contract is fully executed
+ * (preserves signed history; revised draft must re-enter review/signing).
  */
 export function canCreateNewVersionFromContract(opts: {
   venueSigned: boolean;
@@ -136,12 +205,12 @@ export function canCreateNewVersionFromContract(opts: {
         "Externally executed agreements cannot start a new Hello to Cheers signing version. Attach a revised signed file as a document instead.",
     };
   }
-  if (opts.venueSigned || opts.anyClientSigned || opts.status === "signed") {
+  if (opts.anyClientSigned || opts.venueSigned || opts.status === "signed") {
     return { ok: true };
   }
   return {
     ok: false,
-    message: "Create New Version is available after the venue has signed (content is then immutable).",
+    message: "Create New Version is available after the client has signed (so the signed version is preserved).",
   };
 }
 

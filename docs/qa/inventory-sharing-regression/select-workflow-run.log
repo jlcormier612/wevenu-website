@@ -1,0 +1,87 @@
+PASS [deploy] serving_sha — expected=89fd85e9587138825cf4212fea9f4119fc794385 ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:89fd85e9587138825cf4212fea9f4119fc794385
+PASS [usability] share_disabled_when_nothing_selectable — disabled=true reason=true
+PASS [usability] dance_select_control_present — toggle
+PASS [usability] share_enabled_after_ui_select_no_db_fallback — disabled=false toggle=Selectable
+PASS [persisted] dance_select_persists_client_selectable — {"id":"f1c2c39c-df1c-4e36-a475-618e2fc4ea8c","client_selectable":true,"max_quantity":1}
+PASS [usability] row_shows_selectable_state — Selectable
+PASS [persisted] reload_keeps_select_and_share_enabled — shareEnabled=true db={"client_selectable":true}
+PASS [persisted] both_additional_items_selectable — [{"id":"53bb640e-c404-406d-a086-9ce904b1b1cc","name":"DJ / Band Table","client_selectable":true},{"id":"f1c2c39c-df1c-4e36-a475-618e2fc4ea8c","name":"Dance Floor","client_selectable":true}]
+PASS [persisted] share_sets_collaboration_select — {"collaboration_mode":"select","status":"shared"}
+PASS [persisted] share_creates_or_uses_non_financial_session — {"access_token":"c67b6ff292258ba2be535bc964af8b9150540c8f8ef82297eec876f6adc56351","access_level":"couple","label":"Couple","created_at":"2026-10-29T00:35:24.108729+00:00"}
+PASS [portal] couple_link_is_inventory_not_invoice — title=Ursula & Brian — Meadowbrook Valley Venue body=Ursula & Brian
+
+·
+
+Meadowbrook Valley Venue
+
+Oct 5, 2028
+
+Export my data
+9
+🏠
+Home
+✅
+Tasks
+3
+🕒
+Timeline
+📁
+Docs
+🗺️
+Floor Plan
+🪑
+Inventory
+1
+💳
+Payments
+💬
+Messages
+9+
+🏛️
+Guide
+🤝
+Vendors
+Your inventory choices
+
+View the items your venue has listed for your event, including package-included items and available add-ons.
+
+Save a draft anytime. Submit when you’re ready — your venue will review bef
+PASS [portal] couple_selection_persisted_or_portal_usable — {"danceSubmitted":{"client_draft_quantity":1,"client_submitted_quantity":1,"client_selectable":true},"invStatus":{"status":"submitted","collaboration_mode":"select"}}
+PASS [persisted] share_to_view_sets_view_mode — {"collaboration_mode":"view","status":"shared"}
+PASS [security] bad_token_no_inventory_leak — 💗
+
+This link has expired or is no longer active.
+
+Please contact your venue coordinator for an updated link to your wedding workspace.
+PASS [usability] mobile_390_select_share_controls — Meadowbrook Valley Venue
+J
+Delete
+Bookings
+UB
+Ursula Meadows & Brian Valley
+View original lead
+Booked
+Cancel event
+Edit event
+Day-of Sheet
+
+October 5, 2028
+
+Thursd
+GREEN — 16 pass / 0 fail
+it schedule
+
+Day-of schedule
+
+4:00 PM – 10:00 PM
+
+Guests
+
+150 guests
+
+THURSDAY, OCT 5, 2028
+
+Cocktail Hour
+
+4:
+PASS [usability] disabled_reason_matches_eligibility_rule — reason visible when none selectable

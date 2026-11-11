@@ -34,23 +34,28 @@ export function computePlanningReadiness(readinessByKind: { client: EventReadine
   const venue = readinessByKind.venue;
   const totalRequired = (client?.totalRequired ?? 0) + (venue?.totalRequired ?? 0);
   const completedRequired = (client?.completedRequired ?? 0) + (venue?.completedRequired ?? 0);
+  const waivedRequired = (client?.waivedRequired ?? 0) + (venue?.waivedRequired ?? 0);
+  const satisfiedRequired = completedRequired + waivedRequired;
   const blockedCount = (client?.blockedCount ?? 0) + (venue?.blockedCount ?? 0);
   const overdueCount = (client?.overdueCount ?? 0) + (venue?.overdueCount ?? 0);
 
   let status: ReadinessStatus;
   if (totalRequired === 0) status = "not_started";
   else if (overdueCount > 0 || blockedCount > 0) status = "needs_attention";
-  else if (completedRequired >= totalRequired) status = "complete";
+  else if (satisfiedRequired >= totalRequired) status = "complete";
   else status = "waiting";
 
   const flags = [overdueCount > 0 ? `${overdueCount} overdue` : null, blockedCount > 0 ? `${blockedCount} blocked` : null].filter(Boolean);
+  const progress = waivedRequired > 0
+    ? `${completedRequired} completed · ${waivedRequired} waived of ${totalRequired} required`
+    : `${completedRequired} of ${totalRequired} required completed`;
   const detail = totalRequired === 0
     ? "No required tasks yet."
-    : `${completedRequired} of ${totalRequired} required tasks done${flags.length ? ` · ${flags.join(", ")}` : ""}`;
+    : `${progress}${flags.length ? ` · ${flags.join(", ")}` : ""}`;
 
   return {
     key: "planning", label: "Planning", status, detail,
-    metric: totalRequired > 0 ? `${completedRequired}/${totalRequired}` : undefined,
+    metric: totalRequired > 0 ? `${satisfiedRequired}/${totalRequired}` : undefined,
     nav: { kind: "tab", tab: "playbook" },
   };
 }
@@ -216,7 +221,11 @@ export function computePaymentsReadiness(
   scheduleLines?: { status: string; dueDate?: string | null; amount?: number }[] | null,
 ): ReadinessSection {
   const today = new Date().toISOString().slice(0, 10);
-  const totalBalanceDue = invoices.reduce((sum, inv) => sum + inv.balanceDue, 0);
+  // Void invoices are not collectible. Draft invoices are not issued —
+  // their due_date must never manufacture "invoice overdue" attention.
+  const activeInvoices = invoices.filter((inv) => inv.status !== "void");
+  const issuedInvoices = activeInvoices.filter((inv) => inv.status !== "draft");
+  const totalBalanceDue = activeInvoices.reduce((sum, inv) => sum + inv.balanceDue, 0);
 
   if (scheduleLines != null) {
     const open = scheduleLines.filter((l) =>
@@ -234,12 +243,12 @@ export function computePaymentsReadiness(
     );
 
     let status: ReadinessStatus;
-    if (invoices.length === 0 && scheduleLines.length === 0) status = "not_started";
+    if (activeInvoices.length === 0 && scheduleLines.length === 0) status = "not_started";
     else if (overdueLines.length > 0) status = "needs_attention";
     else if (open.length === 0 && totalBalanceDue === 0) status = "complete";
     else status = "waiting";
 
-    const detail = invoices.length === 0 && scheduleLines.length === 0
+    const detail = activeInvoices.length === 0 && scheduleLines.length === 0
       ? "No invoice yet."
       : overdueLines.length > 0
         ? `${overdueLines.length} payment${overdueLines.length === 1 ? "" : "s"} overdue.`
@@ -252,15 +261,17 @@ export function computePaymentsReadiness(
     return { key: "payments", label: "Payments", status, detail, nav: { kind: "tab", tab: "invoice" } };
   }
 
-  const overdue = invoices.filter((inv) => inv.balanceDue > 0 && inv.dueDate != null && inv.dueDate < today).length;
+  const overdue = issuedInvoices.filter(
+    (inv) => inv.balanceDue > 0 && inv.dueDate != null && inv.dueDate < today,
+  ).length;
 
   let status: ReadinessStatus;
-  if (invoices.length === 0) status = "not_started";
+  if (activeInvoices.length === 0) status = "not_started";
   else if (overdue > 0) status = "needs_attention";
   else if (totalBalanceDue === 0) status = "complete";
   else status = "waiting";
 
-  const detail = invoices.length === 0
+  const detail = activeInvoices.length === 0
     ? "No invoice yet."
     : overdue > 0
       ? `${overdue} invoice${overdue === 1 ? "" : "s"} overdue.`

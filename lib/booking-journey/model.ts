@@ -1,19 +1,24 @@
 /**
  * Booking Journey — derived presentation model.
  * Stages are projected from underlying records; not a manually editable status enum.
+ *
+ * Booked is NOT derived here. Canonical Booked = bookClient → events.booked_at.
  */
 
 import type { CommercialSelection } from "@/lib/commercial-selections/types";
-import { remainingAmount, SELECTION_STATUS_LABEL } from "@/lib/commercial-selections/constants";
+import { remainingAmount } from "@/lib/commercial-selections/constants";
+import { proposalBrand, type ProposalBrand } from "@/lib/booking-journey/proposal-view";
 import { formatCurrency } from "@/lib/invoices/constants";
 import type { ContractStatus } from "@/lib/contracts/types";
 import type { PaymentItemStatus, PaymentObligationKind } from "@/lib/payments/types";
+import type { CommercialProposalStatus } from "@/lib/commercial-proposals/types";
 import {
+  collectsInitialPayment,
   DEFAULT_COMMERCIAL_BOOKING_PREFS,
   type VenueCommercialBookingPrefs,
 } from "@/lib/booking-journey/venue-prefs";
 
-export type JourneyStageKey = "package" | "agreement" | "deposit" | "booked" | "planning";
+export type JourneyStageKey = "package" | "agreement" | "deposit" | "ready" | "planning";
 
 export type JourneyStageState = "complete" | "current" | "upcoming";
 
@@ -21,6 +26,15 @@ export type JourneyStage = {
   key: JourneyStageKey;
   label: string;
   state: JourneyStageState;
+};
+
+/** Minimal L1 proposal surface for journey facts (actual commercial_proposals row). */
+export type JourneyProposal = {
+  id: string;
+  status: CommercialProposalStatus;
+  offeredAt: string | null;
+  acceptToken: string | null;
+  selectionId: string | null;
 };
 
 export type BookingJourneyModel = {
@@ -34,17 +48,31 @@ export type BookingJourneyModel = {
   secondaryHref?: string | null;
   secondaryAction?: string | null;
   selection: CommercialSelection | null;
-  isCommerciallyBooked: boolean;
+  /** Actual L1 commercial_proposals row when present — never a fake from Path B L2. */
+  proposal: JourneyProposal | null;
+  contract: JourneyContract | null;
+  /**
+   * Agreement (+ optional deposit setup) complete for commercial workflow UI.
+   * NOT Booked. Booked is only bookClient / events.booked_at.
+   */
+  commercialReady: boolean;
   packageSummary: string | null;
   depositSummary: string | null;
   remainingSummary: string | null;
   prefs: VenueCommercialBookingPrefs;
   paymentLines: JourneyPaymentLine[];
+  /** Existing payment-request send signal — presentation only on the overview. */
+  paymentRequestSent: boolean;
+  brand: ProposalBrand;
+  venueName: string | null;
 };
 
 export type JourneyContract = {
   id: string;
   status: ContractStatus;
+  venueSigned?: boolean;
+  requiredClientTotal?: number;
+  requiredClientSigned?: number;
 };
 
 export type JourneyPaymentLine = {
@@ -53,7 +81,9 @@ export type JourneyPaymentLine = {
   obligationKind: PaymentObligationKind | null;
   status: PaymentItemStatus;
   amount: number;
+  paidAmount?: number | null;
   dueDate?: string | null;
+  label?: string | null;
 };
 
 export type JourneyInputs = {
@@ -61,22 +91,28 @@ export type JourneyInputs = {
   clientId?: string | null;
   eventId?: string | null;
   selection: CommercialSelection | null;
-  /** Best contract for this client (prefer signed > sent > draft). */
+  proposal?: JourneyProposal | null;
   contract: JourneyContract | null;
-  /** Payment lines on schedules for this client/event. */
   paymentLines: JourneyPaymentLine[];
-  /** True when a portal invitation has been sent. */
+  paymentRequestSent?: boolean;
   portalInvited: boolean;
-  /** True when a planning playbook has been applied or released. */
   planningStarted: boolean;
-  /** Venue commercial booking preferences (defaults applied when omitted). */
   prefs?: VenueCommercialBookingPrefs | null;
+  brand?: ProposalBrand | null;
+  venueName?: string | null;
 };
 
-function agreementComplete(selection: CommercialSelection | null, contract: JourneyContract | null): boolean {
-  if (selection?.status === "accepted") return true;
-  if (contract?.status === "signed") return true;
-  return false;
+/**
+ * Agreement is complete when the contract is fully executed.
+ * Proposal approval / package acceptance is not a signed contract
+ * and is not Booked. agreementMethod only chooses how the journey starts.
+ */
+function agreementComplete(
+  _selection: CommercialSelection | null,
+  contract: JourneyContract | null,
+  _prefs?: VenueCommercialBookingPrefs | null,
+): boolean {
+  return contract?.status === "signed";
 }
 
 function depositPaid(lines: JourneyPaymentLine[]): boolean {
@@ -92,8 +128,8 @@ function findDepositLine(lines: JourneyPaymentLine[]): JourneyPaymentLine | null
 }
 
 /**
- * Initial payment condition for commercial Booked.
- * Respects venue prefs and zero-deposit commitments.
+ * Initial payment condition for commercial workflow progress (not Booked).
+ * Respects venue payment defaults and zero-deposit commitments.
  */
 export function initialPaymentSatisfied(input: {
   selection: CommercialSelection | null;
@@ -101,7 +137,7 @@ export function initialPaymentSatisfied(input: {
   prefs?: VenueCommercialBookingPrefs | null;
 }): boolean {
   const prefs = input.prefs ?? DEFAULT_COMMERCIAL_BOOKING_PREFS;
-  if (!prefs.initialPaymentRequired) return true;
+  if (!collectsInitialPayment(prefs)) return true;
 
   const hasUnpaidDeposit = input.paymentLines.some(
     (l) => l.obligationKind === "deposit" && l.status !== "cancelled" && l.status !== "paid",
@@ -109,10 +145,8 @@ export function initialPaymentSatisfied(input: {
   if (hasUnpaidDeposit) return false;
   if (depositPaid(input.paymentLines)) return true;
 
-  // Commitment explicitly requires $0 deposit — nothing to collect.
   if (input.selection != null && input.selection.depositAmount <= 0) return true;
 
-  // Payment required but deposit not paid (and either not set up, or selection unknown).
   return false;
 }
 
@@ -132,6 +166,79 @@ function paymentsHref(input: JourneyInputs, selection: CommercialSelection | nul
   return base;
 }
 
+/**
+ * Venue-authored package path: Create contract without client proposal acceptance.
+ * Covers (1) never offered a proposal, and (2) Continue manually → withdrawn proposal.
+ * Outstanding sent/selected proposals must be withdrawn first. Couple-selected
+ * packages (proposal_id set) use the accepted/approved path instead.
+ */
+export function isVenueManualTakeover(input: {
+  proposal?: JourneyProposal | null;
+  selection: CommercialSelection | null;
+  contract: JourneyContract | null;
+}): boolean {
+  const status = input.proposal?.status;
+  if (status === "sent" || status === "selected") return false;
+  if (!input.selection || input.selection.status === "superseded") return false;
+  if (input.selection.proposalId) return false;
+  // Couple-accepted packages keep the acceptance branch (copy + gating).
+  if (input.selection.status === "accepted") return false;
+  if (input.contract) return false;
+  return true;
+}
+
+/**
+ * Create contract is available once a package/proposal is resolved
+ * and no contract exists. agreementMethod does not hide this step.
+ * Payment, invoice, deposit, and Booked are not required.
+ */
+export function canCreateContract(input: {
+  selection: CommercialSelection | null;
+  proposal?: JourneyProposal | null;
+  contract: JourneyContract | null;
+  prefs?: VenueCommercialBookingPrefs | null;
+}): boolean {
+  const selection = input.selection;
+  if (!selection || selection.status === "superseded") return false;
+  if (input.contract) return false;
+  const method = (input.prefs ?? DEFAULT_COMMERCIAL_BOOKING_PREFS).agreementMethod;
+  return (
+    input.proposal?.status === "approved"
+    || selection.status === "accepted"
+    || isVenueManualTakeover({
+      proposal: input.proposal ?? null,
+      selection,
+      contract: input.contract,
+    })
+    || method === "contract"
+    || method === "either"
+  );
+}
+
+/**
+ * Direct editor URL when the commercial customer already exists.
+ * A native link survives a click that never enters the React handler.
+ * Returns null when a client must still be created by prepareCreateContractAction.
+ */
+export function contractEditorHref(input: {
+  selectionId: string;
+  clientId?: string | null;
+  eventId?: string | null;
+  leadId?: string | null;
+}): string | null {
+  const clientId = input.clientId?.trim() ?? "";
+  const selectionId = input.selectionId.trim();
+  if (!clientId || !selectionId) return null;
+  const params = new URLSearchParams();
+  params.set("selectionId", selectionId);
+  params.set("clientId", clientId);
+  const eventId = input.eventId?.trim();
+  const leadId = input.leadId?.trim();
+  if (eventId) params.set("eventId", eventId);
+  if (leadId) params.set("leadId", leadId);
+  return `/contracts/new?${params.toString()}`;
+}
+
 function contractNewHref(input: JourneyInputs, selection: CommercialSelection): string {
   const params = new URLSearchParams();
   params.set("selectionId", selection.id);
@@ -141,27 +248,15 @@ function contractNewHref(input: JourneyInputs, selection: CommercialSelection): 
   return `/contracts/new?${params.toString()}`;
 }
 
-function stageLabels(
-  processOrder: VenueCommercialBookingPrefs["processOrder"],
-  initialPaymentRequired: boolean,
-): {
+function stageLabels(collectPayment: boolean): {
   key: JourneyStageKey;
   label: string;
 }[] {
-  if (!initialPaymentRequired) {
+  if (!collectPayment) {
     return [
       { key: "package", label: "Package" },
       { key: "agreement", label: "Agreement" },
-      { key: "booked", label: "Booked" },
-      { key: "planning", label: "Planning" },
-    ];
-  }
-  if (processOrder === "deposit_first") {
-    return [
-      { key: "package", label: "Package" },
-      { key: "deposit", label: "Deposit" },
-      { key: "agreement", label: "Agreement" },
-      { key: "booked", label: "Booked" },
+      { key: "ready", label: "Next steps" },
       { key: "planning", label: "Planning" },
     ];
   }
@@ -169,23 +264,23 @@ function stageLabels(
     { key: "package", label: "Package" },
     { key: "agreement", label: "Agreement" },
     { key: "deposit", label: "Deposit" },
-    { key: "booked", label: "Booked" },
+    { key: "ready", label: "Next steps" },
     { key: "planning", label: "Planning" },
   ];
 }
 
 /**
- * Venue-facing commercial Booked = agreement executed + initial payment satisfied
- * (per venue prefs). Independent of sales_stage / lifecycle / reporting labels.
+ * Commercial workflow steps complete (agreement + deposit if collecting).
+ * Informational only — NEVER means the relationship is Booked.
  */
-export function isCommerciallyBooked(input: {
+export function commercialStepsComplete(input: {
   selection: CommercialSelection | null;
   contract: JourneyContract | null;
   paymentLines: JourneyPaymentLine[];
   prefs?: VenueCommercialBookingPrefs | null;
 }): boolean {
   return (
-    agreementComplete(input.selection, input.contract)
+    agreementComplete(input.selection, input.contract, input.prefs)
     && initialPaymentSatisfied({
       selection: input.selection,
       paymentLines: input.paymentLines,
@@ -196,48 +291,47 @@ export function isCommerciallyBooked(input: {
 
 export function buildBookingJourney(input: JourneyInputs): BookingJourneyModel {
   const prefs = input.prefs ?? DEFAULT_COMMERCIAL_BOOKING_PREFS;
+  const brand = input.brand ?? proposalBrand({});
   const selection = input.selection && input.selection.status !== "superseded" ? input.selection : null;
+  const proposal = input.proposal ?? null;
   const hasPackage = !!selection;
-  const agreementDone = agreementComplete(selection, input.contract);
+  // Withdrawn and replaced proposals stay on the record but do not block Path B.
+  const hasProposal = !!proposal && proposal.status !== "withdrawn" && proposal.status !== "superseded";
+  const collectPayment = collectsInitialPayment(prefs);
+  const agreementDone = agreementComplete(selection, input.contract, prefs);
   const paymentDone = initialPaymentSatisfied({
     selection,
     paymentLines: input.paymentLines,
     prefs,
   });
-  const commerciallyBooked = agreementDone && paymentDone;
-  const planningDone = commerciallyBooked && input.planningStarted;
-  const depositFirst = prefs.processOrder === "deposit_first";
+  const ready = agreementDone && paymentDone;
+  const planningDone = ready && input.planningStarted;
   const depositLine = findDepositLine(input.paymentLines);
-  const needsPaymentSetup = prefs.initialPaymentRequired
+  const needsPaymentSetup = collectPayment
     && (selection?.depositAmount ?? 0) > 0
     && !depositExists(input.paymentLines);
 
   let currentKey: JourneyStageKey = "package";
-  if (!hasPackage) {
+  if (!hasPackage && !hasProposal) {
     currentKey = "package";
-  } else if (depositFirst) {
-    if (!paymentDone) currentKey = "deposit";
-    else if (!agreementDone) currentKey = "agreement";
-    else if (!planningDone) currentKey = "booked";
-    else currentKey = "planning";
   } else if (!agreementDone) {
     currentKey = "agreement";
   } else if (!paymentDone) {
     currentKey = "deposit";
   } else if (!planningDone) {
-    currentKey = "booked";
+    currentKey = "ready";
   } else {
     currentKey = "planning";
   }
 
-  const labels = stageLabels(prefs.processOrder, prefs.initialPaymentRequired);
+  const labels = stageLabels(collectPayment);
   const stages: JourneyStage[] = labels.map(({ key, label }) => {
     let state: JourneyStageState = "upcoming";
     const complete =
-      (key === "package" && hasPackage)
+      (key === "package" && (hasPackage || hasProposal))
       || (key === "agreement" && agreementDone)
       || (key === "deposit" && paymentDone)
-      || (key === "booked" && commerciallyBooked)
+      || (key === "ready" && ready)
       || (key === "planning" && planningDone);
     if (complete && key !== currentKey) state = "complete";
     else if (key === currentKey) state = "current";
@@ -249,7 +343,7 @@ export function buildBookingJourney(input: JourneyInputs): BookingJourneyModel {
     ? remainingAmount(selection.totalAmount, selection.depositAmount)
     : null;
 
-  let direction = "Choose what they bought.";
+  let direction = "Choose how to sell this booking.";
   let primaryLabel = "Select package";
   let primaryHref: string | null = null;
   let primaryAction: string | null = "select_package";
@@ -260,16 +354,40 @@ export function buildBookingJourney(input: JourneyInputs): BookingJourneyModel {
   const allowOffer = prefs.agreementMethod === "offer" || prefs.agreementMethod === "either";
   const allowContract = prefs.agreementMethod === "contract" || prefs.agreementMethod === "either";
 
-  if (!hasPackage) {
-    direction = "Choose what they bought.";
+  if (!hasPackage && proposal?.status === "withdrawn") {
+    direction = "You continued manually. Select the package to keep booking.";
     primaryLabel = "Select package";
     primaryAction = "select_package";
+    if (allowOffer) {
+      secondaryLabel = "Create proposal";
+      secondaryAction = "create_proposal";
+    }
+  } else if (!hasPackage && !hasProposal) {
+    if (prefs.agreementMethod === "offer") {
+      direction = "Create a proposal so the couple can choose between options.";
+      primaryLabel = "Create proposal";
+      primaryAction = "create_proposal";
+    } else if (prefs.agreementMethod === "contract") {
+      direction = "Select the package — you already know what they're buying.";
+      primaryLabel = "Select package";
+      primaryAction = "select_package";
+    } else {
+      direction = "Create a proposal so the couple can choose, or select the package yourself.";
+      primaryLabel = "Create proposal";
+      primaryAction = "create_proposal";
+      secondaryLabel = "Select package";
+      secondaryAction = "select_package";
+    }
+  } else if (hasProposal && !hasPackage && !agreementDone) {
+    direction = proposal!.status === "sent" || proposal!.status === "selected"
+      ? "Proposal sent — waiting for the couple to choose and approve."
+      : "Proposal draft — preview and send when ready.";
+    primaryLabel = proposal!.acceptToken ? "Copy proposal link" : "Open proposal";
+    primaryAction = proposal!.acceptToken ? "copy_proposal_link" : "create_proposal";
   } else if (currentKey === "deposit" && !paymentDone) {
     if (depositExists(input.paymentLines) && depositLine?.status !== "paid") {
       const amt = selection!.depositAmount;
-      direction = `Waiting for the ${formatCurrency(amt)} deposit. They are not Booked until it is paid${
-        agreementDone ? "" : " and the agreement is complete"
-      }. ${formatCurrency(remaining!)} will remain.`;
+      direction = `Waiting for the ${formatCurrency(amt)} deposit. Payment does not mark them Booked — you do that when you're ready. ${formatCurrency(remaining!)} will remain.`;
       primaryLabel = "Open invoice";
       primaryHref = selection?.invoiceId
         ? `/invoices/${selection.invoiceId}`
@@ -281,78 +399,111 @@ export function buildBookingJourney(input: JourneyInputs): BookingJourneyModel {
       }
     } else if (needsPaymentSetup || !depositExists(input.paymentLines)) {
       const depositAmt = selection!.depositAmount;
-      if (depositFirst && !agreementDone) {
-        direction = `Collect the ${formatCurrency(depositAmt)} deposit for ${selection!.name} — ${formatCurrency(selection!.totalAmount)}. Agreement comes next.`;
-      } else {
-        const agreementLine = selection?.status === "accepted"
-          ? `They accepted the proposal. Collect the ${formatCurrency(depositAmt)} deposit to confirm the booking.`
-          : `The agreement is complete for ${selection!.name} — ${formatCurrency(selection!.totalAmount)}. Collect the ${formatCurrency(depositAmt)} deposit to confirm the booking.`;
-        direction = `${agreementLine} ${formatCurrency(remaining!)} will remain on the payment plan.`;
-      }
+      direction = `The agreement is complete for ${selection!.name} — ${formatCurrency(selection!.totalAmount)}. Collect the ${formatCurrency(depositAmt)} deposit. ${formatCurrency(remaining!)} will remain on the payment plan.`;
       primaryLabel = "Set up payments";
       primaryHref = paymentsHref(input, selection);
       primaryAction = "setup_payments";
     }
   } else if (currentKey === "agreement" && !agreementDone) {
-    if (input.contract?.status === "sent") {
-      direction = "Contract sent — waiting for their signature.";
-      if (prefs.initialPaymentRequired && !paymentDone) {
-        direction += " Collect the deposit after they sign to confirm the booking.";
+    if (isVenueManualTakeover({ proposal, selection, contract: input.contract })) {
+      direction = "You selected the package internally. Create a contract to continue.";
+      primaryLabel = "Create contract";
+      primaryAction = "create_contract";
+      primaryHref = contractNewHref(input, selection!);
+      if (allowOffer) {
+        secondaryLabel = "Start a new proposal";
+        secondaryAction = "create_proposal";
+      }
+    } else if (input.contract?.status === "sent") {
+      direction = "Contract sent to the client — waiting for their signature. The venue signs after the client.";
+      if (collectPayment && !paymentDone) {
+        direction += " Collect the deposit after they sign.";
       }
       primaryLabel = "Open contract";
       primaryHref = `/contracts/${input.contract.id}`;
       primaryAction = null;
     } else if (input.contract?.status === "draft") {
-      direction = "Create and send the contract. Sign as the venue, then release it to the couple.";
+      direction = "Contract is a draft. It has not been sent. Open it to preview, then send to the client.";
       primaryLabel = "Open contract";
       primaryHref = `/contracts/${input.contract.id}`;
       primaryAction = null;
+    } else if (
+      selection
+      && canCreateContract({ selection, proposal, contract: input.contract, prefs })
+      && (selection.status === "accepted" || proposal?.status === "approved")
+    ) {
+      direction = "Create a contract to continue. Accepting a package does not execute the contract.";
+      primaryLabel = "Create contract";
+      primaryAction = "create_contract";
+      primaryHref = contractNewHref(input, selection);
     } else if (selection!.status === "offered") {
-      direction = "Proposal sent — waiting for them to accept.";
-      if (prefs.initialPaymentRequired && !paymentDone) {
-        direction += " After they accept, collect the deposit to confirm the booking.";
+      const isL1 = Boolean(selection!.proposalId);
+      direction = isL1
+        ? "Proposal share link created — not emailed. Waiting for them to choose and approve."
+        : "Share link created — not emailed. Waiting for them to review and accept.";
+      if (collectPayment && !paymentDone) {
+        direction += " After they accept, collect the deposit.";
       }
-      primaryLabel = "Remind couple";
-      primaryAction = "remind_offer";
+      primaryLabel = "Copy share link";
+      primaryAction = "copy_share_link";
       secondaryLabel = "Mark accepted";
       secondaryAction = "mark_accepted";
     } else {
+      // Direct L2 selection without L1: share link / contract — not "proposal" language.
+      const shareLabel = selection!.proposalId ? "Create share link" : "Create share link";
       if (allowOffer && allowContract) {
-        direction = depositFirst && paymentDone
-          ? "Deposit is in. Send a proposal or create a contract to finish the agreement."
-          : "Send a proposal so they can accept this package, or create a contract from this package.";
-        primaryLabel = "Send proposal";
+        direction = "Create a share link so they can review and accept, or create a contract from this package.";
+        primaryLabel = shareLabel;
         primaryAction = "send_offer";
         secondaryLabel = "Create contract";
         secondaryAction = "create_contract";
         secondaryHref = contractNewHref(input, selection!);
       } else if (allowContract) {
-        direction = depositFirst && paymentDone
-          ? "Deposit is in. Create and send the contract to finish the agreement."
-          : "Create a contract from this package. After they sign, you'll finish booking.";
+        direction = "Create a contract from this package. After they sign, finish booking when you're ready.";
         primaryLabel = "Create contract";
         primaryAction = "create_contract";
         primaryHref = contractNewHref(input, selection!);
       } else {
-        direction = depositFirst && paymentDone
-          ? "Deposit is in. Send a proposal so they can accept this package."
-          : "Send a proposal so they can accept this package.";
-        primaryLabel = "Send proposal";
+        direction = "Create a share link so they can review and accept this package. Creating the link does not email it.";
+        primaryLabel = shareLabel;
         primaryAction = "send_offer";
       }
-      if (!prefs.initialPaymentRequired) {
-        direction += " No deposit is required to book.";
+      if (!collectPayment) {
+        direction += " No initial payment is collected by default.";
       }
     }
   } else if (!planningDone) {
-    const paidNote = prefs.initialPaymentRequired && (selection?.depositAmount ?? 0) > 0
-      ? `${formatCurrency(selection!.depositAmount)} paid. `
+    // Amount paid must come from recorded payment lines — never treat a scheduled
+    // deposit allocation as paid (commercial-ready can precede any cash received).
+    const recordedPaid = input.paymentLines
+      .filter((line) => line.status !== "cancelled")
+      .reduce((sum, line) => {
+        if (
+          line.status === "paid"
+          || line.status === "partially_paid"
+          || line.status === "partially_refunded"
+          || line.status === "refunded"
+        ) {
+          return sum + (line.paidAmount ?? (line.status === "paid" ? line.amount : 0));
+        }
+        return sum;
+      }, 0);
+    const balanceRemaining = selection
+      ? Math.max(0, selection.totalAmount - recordedPaid)
+      : remaining;
+    let paidNote = "";
+    if (collectPayment) {
+      if (recordedPaid > 0) {
+        paidNote = `${formatCurrency(recordedPaid)} paid. `;
+      } else if ((selection?.depositAmount ?? 0) > 0) {
+        paidNote = `Deposit ${formatCurrency(selection!.depositAmount)} scheduled — not paid until a payment is recorded. `;
+      }
+    }
+    const remainNote = collectPayment && balanceRemaining != null
+      ? `${formatCurrency(balanceRemaining)} remains on the payment plan. `
       : "";
-    const remainNote = prefs.initialPaymentRequired && remaining != null
-      ? `${formatCurrency(remaining)} remains on the payment plan. `
-      : "";
-    direction = `They're Booked. ${paidNote}${remainNote}Invite them to the portal and start planning when you're ready — optional if they won't use planning.`;
-    primaryLabel = input.portalInvited ? "Start planning" : "Invite to portal";
+    direction = `Commercial steps are ready. ${paidNote}${remainNote}Mark them Booked when you're ready, then invite them to the portal and start planning — optional if they won't use planning.`;
+    primaryLabel = input.portalInvited ? "Start planning" : "Invite client";
     primaryHref = input.clientId
       ? input.portalInvited
         ? (input.eventId ? `/events/${input.eventId}` : `/clients/${input.clientId}`)
@@ -379,21 +530,22 @@ export function buildBookingJourney(input: JourneyInputs): BookingJourneyModel {
     secondaryHref,
     secondaryAction,
     selection,
-    isCommerciallyBooked: commerciallyBooked,
+    proposal,
+    contract: input.contract,
+    commercialReady: ready,
     packageSummary: selection
       ? `${selection.name} · ${formatCurrency(selection.totalAmount)}`
       : null,
-    depositSummary: prefs.initialPaymentRequired && selection
+    depositSummary: collectPayment && selection
       ? formatCurrency(selection.depositAmount)
       : null,
-    remainingSummary: prefs.initialPaymentRequired && remaining != null
+    remainingSummary: collectPayment && remaining != null
       ? formatCurrency(remaining)
       : null,
     prefs,
     paymentLines: input.paymentLines,
+    paymentRequestSent: input.paymentRequestSent === true,
+    brand,
+    venueName: input.venueName ?? null,
   };
-}
-
-export function selectionStatusLabel(status: string): string {
-  return SELECTION_STATUS_LABEL[status] ?? status;
 }

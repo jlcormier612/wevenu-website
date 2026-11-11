@@ -4,17 +4,32 @@
  * Presentation polish only — totals come from the canonical invoice / payment system.
  */
 
-import { formatCurrency, invoiceStatusLabel, lineItemTypeLabel } from "@/lib/invoices/constants";
+import { formatCurrency, invoiceStatusLabel, lineItemTypeLabel, taxableAmountBeforeTax } from "@/lib/invoices/constants";
+import { formatPhoneDisplay } from "@/lib/sms/phone";
 import type { AmountDueNowResult } from "@/lib/invoices/amount-due-now";
+import {
+  customerFacingPaymentInstructions,
+  customerFacingVenueDisplayName,
+  customerFacingVenueNote,
+  isSystemBookingCommitmentNote,
+} from "@/lib/invoices/customer-facing-notes";
 import type { InvoiceWithLineItems } from "@/lib/invoices/types";
 import { paymentMilestoneDescription } from "@/lib/payments/starters";
 import type { PaymentObligationKind } from "@/lib/payments/types";
-import { resolvePrintBrandColors } from "@/lib/collateral/print-brand";
+import { resolvePrintBrandInk } from "@/lib/collateral/print-brand";
 import type { Venue } from "@/lib/venue/types";
 
 export type InvoicePrintMilestone = {
   label: string;
   obligationKind: PaymentObligationKind | null;
+};
+
+export type InvoicePrintScheduleLine = {
+  label: string;
+  amount: number;
+  dueDate: string | null;
+  status: string;
+  obligationKind?: PaymentObligationKind | null;
 };
 
 export function InvoicePrintDocument({
@@ -24,6 +39,9 @@ export function InvoicePrintDocument({
   amountDueNow = null,
   paidToDateOverride = null,
   cancelledPlanAmount = 0,
+  scheduleLines = null,
+  paymentInstructions = null,
+  venuePaymentInstructions = null,
 }: {
   invoice: InvoiceWithLineItems;
   venue: Venue;
@@ -33,6 +51,12 @@ export function InvoicePrintDocument({
   /** Net retained collections when a linked schedule exists (refund-aware). */
   paidToDateOverride?: number | null;
   cancelledPlanAmount?: number;
+  /** Complete payment plan — every installment, amount, due date, status. */
+  scheduleLines?: InvoicePrintScheduleLine[] | null;
+  /** Per-schedule / invoice override instructions. */
+  paymentInstructions?: string | null;
+  /** Venue Payment Collection Preferences — client-facing instructions. */
+  venuePaymentInstructions?: string | null;
 }) {
   // Prefer branding frozen at send time; pre-existing sent invoices without a
   // snapshot fall back to live venue branding (documented — no silent backfill).
@@ -45,10 +69,14 @@ export function InvoicePrintDocument({
         neutralColor: snap.neutralColor,
       }
     : venue;
-  const brand = resolvePrintBrandColors(brandSource);
+  const brand = resolvePrintBrandInk(brandSource);
   const primaryColor = brand.primary;
-  const accentColor = brand.accent;
+  const secondaryColor = brand.secondaryOnWhite;
+  const accentOnNeutral = brand.accentOnNeutral;
+  const accentOnWhite = brand.accentOnWhite;
   const neutralColor = brand.neutral;
+  const onPrimary = brand.onPrimary;
+  const mutedOnNeutral = brand.mutedOnNeutral;
   const hasDiscount = invoice.discountAmount > 0;
   const hasTax = invoice.taxAmount > 0;
   const paidToDate = paidToDateOverride != null
@@ -61,7 +89,8 @@ export function InvoicePrintDocument({
   const logoUrl = snap?.logoUrl ?? venue.logoUrl;
   const displayName = snap?.name ?? venue.name;
   const email = snap?.email ?? venue.email;
-  const phone = snap?.phone ?? venue.phone;
+  const phoneRaw = snap?.phone ?? venue.phone;
+  const phone = phoneRaw ? formatPhoneDisplay(phoneRaw) : phoneRaw;
   const website = snap?.website ?? venue.website;
 
   const addressParts = snap
@@ -78,13 +107,29 @@ export function InvoicePrintDocument({
         venue.country !== "United States" ? venue.country : null,
       ].filter(Boolean);
 
-  const defaultNotes = `Thank you for choosing ${venueDisplayName} for your celebration. If you have any questions about this invoice, please contact our team.`;
-  const notes = invoice.notes?.trim() || defaultNotes;
+  // Guided setup writes `${package} — booking commitment` into invoice.notes for
+  // internal recovery — that is system metadata, not payment instructions or a
+  // venue-authored customer note. Never present it twice (or at all) as either.
+  const resolvedPaymentInstructions = customerFacingPaymentInstructions({
+    scheduleNotes: isSystemBookingCommitmentNote(paymentInstructions)
+      ? null
+      : paymentInstructions,
+    invoiceNotes: invoice.notes,
+    venuePaymentInstructions,
+  });
+  const venueAuthoredNote = customerFacingVenueNote({
+    invoiceNotes: invoice.notes,
+    paymentInstructions: resolvedPaymentInstructions,
+  });
+  const notesFromVenueName = customerFacingVenueDisplayName({
+    name: snap?.name ?? venue.name,
+    businessName: snap?.businessName ?? venue.businessName,
+  });
 
   return (
     <div className="min-h-screen bg-white font-sans text-black print:text-black">
       {/* ── Header ─────────────────────────────────────────────────────── */}
-      <div style={{ backgroundColor: primaryColor }} className="px-12 py-8">
+      <div style={{ backgroundColor: primaryColor, color: onPrimary }} className="px-12 py-8">
         <div className="flex items-start justify-between gap-6">
           <div className="flex items-center gap-4">
             {logoUrl && (
@@ -93,12 +138,12 @@ export function InvoicePrintDocument({
                 className="h-12 w-12 rounded-lg object-contain"
                 style={{ background: "rgba(255,255,255,0.15)" }} />
             )}
-            <div className="text-white">
-              <p className="text-xs font-semibold uppercase tracking-widest opacity-70">Invoice</p>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest opacity-70">Invoice & Payment Plan</p>
               <p className="mt-0.5 text-2xl font-bold">{displayName}</p>
             </div>
           </div>
-          <div className="text-right text-white">
+          <div className="text-right">
             <p className="text-2xl font-bold tracking-wide">{invoice.invoiceNumber}</p>
             <p className="text-sm opacity-70 mt-1">{invoiceStatusLabel(invoice.status)}</p>
           </div>
@@ -108,26 +153,38 @@ export function InvoicePrintDocument({
       {/* ── Amount Due Now ─────────────────────────────────────────────── */}
       {showDueNowHero && (
         <div className="border-b border-gray-200 px-12 py-6" style={{ background: neutralColor }}>
-          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">Amount Due Now</p>
-          <p className="text-3xl font-bold" style={{ color: accentColor }}>{formatCurrency(dueNowAmount)}</p>
+          <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: mutedOnNeutral }}>Amount Due Now</p>
+          <p className="text-3xl font-bold" style={{ color: accentOnNeutral }} data-testid="invoice-print-financial-hero-amount">{formatCurrency(dueNowAmount)}</p>
           {amountDueNow?.kind === "next_installment" && amountDueNow.dueDate && (
-            <p className="text-sm text-gray-600 mt-1">
+            <p className="text-sm mt-1" style={{ color: mutedOnNeutral }}>
               Due {new Date(amountDueNow.dueDate + "T12:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
             </p>
           )}
           {milestone && (
-            <p className="text-sm text-gray-600 mt-2 max-w-xl">
-              <span className="font-medium text-gray-800">{milestone.label}. </span>
+            <p className="text-sm mt-2 max-w-xl" style={{ color: mutedOnNeutral }}>
+              <span className="font-medium" style={{ color: accentOnNeutral }}>{milestone.label}. </span>
               {paymentMilestoneDescription(milestone.obligationKind, milestone.label)}
             </p>
           )}
         </div>
       )}
-      {!showDueNowHero && invoice.balanceDue > 0 && (
+      {!showDueNowHero && amountDueNow?.kind === "scheduled_future" && (
         <div className="border-b border-gray-200 px-12 py-6" style={{ background: neutralColor }}>
-          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">Balance Remaining</p>
-          <p className="text-3xl font-bold" style={{ color: accentColor }}>{formatCurrency(invoice.balanceDue)}</p>
-          <p className="text-sm text-gray-600 mt-1">
+          <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: mutedOnNeutral }}>Next payment</p>
+          <p className="text-3xl font-bold" style={{ color: accentOnNeutral }} data-testid="invoice-print-financial-hero-amount">{formatCurrency(amountDueNow.amount)}</p>
+          <p className="text-sm mt-1" style={{ color: mutedOnNeutral }}>
+            Not due yet
+            {amountDueNow.dueDate
+              ? ` · ${new Date(amountDueNow.dueDate + "T12:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}`
+              : ""}
+          </p>
+        </div>
+      )}
+      {!showDueNowHero && amountDueNow?.kind !== "scheduled_future" && invoice.balanceDue > 0 && (
+        <div className="border-b border-gray-200 px-12 py-6" style={{ background: neutralColor }}>
+          <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: mutedOnNeutral }}>Balance Remaining</p>
+          <p className="text-3xl font-bold" style={{ color: accentOnNeutral }} data-testid="invoice-print-financial-hero-amount">{formatCurrency(invoice.balanceDue)}</p>
+          <p className="text-sm mt-1" style={{ color: mutedOnNeutral }}>
             {amountDueNow?.kind === "balance_only" && amountDueNow.reason === "no_schedule"
               ? "No payment schedule yet — the next installment due is not determined."
               : "No open installment on the payment schedule."}
@@ -170,7 +227,7 @@ export function InvoicePrintDocument({
 
       {/* ── Line items ─────────────────────────────────────────────────── */}
       <div className="px-12 py-8">
-        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-3">Charges</p>
+        <p className="text-xs font-semibold uppercase tracking-wide mb-3" style={{ color: secondaryColor }}>Charges</p>
         <table className="w-full text-sm border-collapse">
           <thead>
             <tr className="border-b-2 border-gray-300">
@@ -211,6 +268,12 @@ export function InvoicePrintDocument({
             )}
             {hasTax && (
               <div className="flex justify-between text-gray-700">
+                <span>Taxable amount</span>
+                <span>{formatCurrency(taxableAmountBeforeTax(invoice.subtotal, invoice.discountAmount))}</span>
+              </div>
+            )}
+            {hasTax && (
+              <div className="flex justify-between text-gray-700">
                 <span>Tax</span>
                 <span>{formatCurrency(invoice.taxAmount)}</span>
               </div>
@@ -233,13 +296,18 @@ export function InvoicePrintDocument({
               <span>Balance Remaining</span>
               <span>{formatCurrency(invoice.balanceDue)}</span>
             </div>
-            <div className={`flex justify-between font-semibold pt-1 ${dueNowAmount != null && dueNowAmount > 0 ? "" : invoice.balanceDue <= 0 ? "text-green-700" : ""}`}
-              style={dueNowAmount != null && dueNowAmount > 0 ? { color: accentColor } : undefined}>
-              <span>{dueNowAmount != null ? "Amount Due Now" : invoice.balanceDue > 0 ? "Outstanding" : "Amount Due Now"}</span>
+            <div
+              className={`flex justify-between font-semibold pt-1 ${dueNowAmount != null && dueNowAmount > 0 ? "" : invoice.balanceDue <= 0 ? "text-green-700" : ""}`}
+              style={dueNowAmount != null && dueNowAmount > 0 ? { color: accentOnWhite } : undefined}
+              data-testid="invoice-print-totals-amount-due-now"
+            >
+              <span>{dueNowAmount != null ? "Amount Due Now" : amountDueNow?.kind === "scheduled_future" ? "Amount Due Now" : invoice.balanceDue > 0 ? "Outstanding" : "Amount Due Now"}</span>
               <span>
                 {dueNowAmount != null && dueNowAmount > 0
                   ? formatCurrency(dueNowAmount)
-                  : invoice.balanceDue <= 0
+                  : amountDueNow?.kind === "scheduled_future"
+                    ? "None due now"
+                    : invoice.balanceDue <= 0
                     ? "Paid in Full"
                     : formatCurrency(invoice.balanceDue)}
               </span>
@@ -248,13 +316,67 @@ export function InvoicePrintDocument({
         </div>
       </div>
 
-      {/* ── Notes ──────────────────────────────────────────────────────── */}
-      <div className="border-t border-gray-200 px-12 py-6">
-        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">
-          Notes from {venueDisplayName}
-        </p>
-        <p className="text-sm text-gray-700 whitespace-pre-line">{notes}</p>
-      </div>
+      {/* ── Complete payment plan ───────────────────────────────────────── */}
+      {scheduleLines && scheduleLines.length > 0 && (
+        <div className="border-t border-gray-200 px-12 py-8">
+          <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: secondaryColor }}>
+            Payment Plan
+          </p>
+          <p className="text-sm text-gray-600 mb-4">
+            Total commitment {formatCurrency(invoice.total)}
+            {paidToDate > 0 ? ` · Paid to date ${formatCurrency(paidToDate)}` : ""}
+            {invoice.balanceDue > 0 ? ` · Balance remaining ${formatCurrency(invoice.balanceDue)}` : ""}
+          </p>
+          <table className="w-full text-sm border-collapse">
+            <thead>
+              <tr className="border-b-2 border-gray-300">
+                <th className="pb-2 text-left font-semibold text-gray-700">Installment</th>
+                <th className="pb-2 text-left font-semibold text-gray-700">Due</th>
+                <th className="pb-2 text-left font-semibold text-gray-700">Status</th>
+                <th className="pb-2 text-right font-semibold text-gray-700">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              {scheduleLines.map((line, i) => (
+                <tr key={`${line.label}-${i}-${line.dueDate ?? ""}`} className="border-b border-gray-100">
+                  <td className="py-2.5 text-gray-900">{line.label}</td>
+                  <td className="py-2.5 text-gray-700">
+                    {line.dueDate
+                      ? new Date(line.dueDate + "T12:00:00").toLocaleDateString("en-US", {
+                          month: "long",
+                          day: "numeric",
+                          year: "numeric",
+                        })
+                      : "—"}
+                  </td>
+                  <td className="py-2.5 text-gray-600 capitalize">{line.status.replace(/_/g, " ")}</td>
+                  <td className="py-2.5 text-right font-medium text-gray-900">{formatCurrency(line.amount)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {resolvedPaymentInstructions && (
+            <div className="mt-4 rounded-md border border-gray-200 bg-gray-50 px-4 py-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">
+                Payment instructions
+              </p>
+              <p className="text-sm text-gray-700 whitespace-pre-line">
+                {resolvedPaymentInstructions}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Notes — only genuine venue-authored content ─────────────── */}
+      {venueAuthoredNote && (
+        <div className="border-t border-gray-200 px-12 py-6">
+          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">
+            Notes from {notesFromVenueName}
+          </p>
+          <p className="text-sm text-gray-700 whitespace-pre-line">{venueAuthoredNote}</p>
+        </div>
+      )}
 
       {/* ── Venue contact footer ────────────────────────────────────────── */}
       <div className="border-t border-gray-200 px-12 py-6 mt-4">

@@ -21,8 +21,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { createClient } from "@/integrations/supabase/client";
 import { DISPLAY_SHAPES, DISPLAY_SHAPE_LABELS } from "@/components/floor-plan/floor-plan-shapes";
+import {
+  removeCatalogImage,
+  uploadCatalogImage,
+} from "@/lib/catalog-images/upload-client";
+import { inventoryItemImageBasePath } from "@/lib/catalog-images/types";
+import { validateCatalogImageFile } from "@/lib/catalog-images/validate";
 import type { InventoryCategory, InventoryItem, InventoryShape } from "@/lib/inventory/types";
 
 const NO_CATEGORY = "__none__";
@@ -51,6 +56,7 @@ export function InventoryItemForm({
   const [color, setColor] = React.useState(item?.color ?? "");
   const [printableName, setPrintableName] = React.useState(item?.printableName ?? "");
   const [availableForFloorPlans, setAvailableForFloorPlans] = React.useState(item?.availableForFloorPlans ?? false);
+  const [countsAsSeats, setCountsAsSeats] = React.useState(item?.countsAsSeats ?? false);
   const [file, setFile] = React.useState<File | null>(null);
   const [pending, setPending] = React.useState(false);
 
@@ -65,11 +71,17 @@ export function InventoryItemForm({
     color: item?.color ?? "",
     printableName: item?.printableName ?? "",
     availableForFloorPlans: item?.availableForFloorPlans ?? false,
+    countsAsSeats: item?.countsAsSeats ?? false,
   }));
   const dirty = JSON.stringify({
-    name, categoryId, quantityAvailable, width, length, height, shape, color, printableName, availableForFloorPlans,
+    name, categoryId, quantityAvailable, width, length, height, shape, color, printableName, availableForFloorPlans, countsAsSeats,
   }) !== baseline || !!file;
   const { confirmLeave } = useLibraryUnsavedGuard(dirty);
+
+  function handleCategoryChange(next: string) {
+    setCategoryId(next);
+    if (categories.find((c) => c.id === next)?.name.trim().toLowerCase() === "chairs") setCountsAsSeats(true);
+  }
 
   async function handleAddCategory() {
     const proposed = window.prompt("New category name");
@@ -86,16 +98,35 @@ export function InventoryItemForm({
 
   async function uploadImage(itemId: string) {
     if (!file) return;
+    const validated = validateCatalogImageFile(file);
+    if (!validated.ok) {
+      toast.error(validated.message);
+      return;
+    }
     try {
-      const supabase = createClient();
-      const ext = file.name.split(".").pop() ?? "jpg";
-      const path = `${venueId}/${itemId}/image.${ext}`;
-      const { error: uploadError } = await supabase.storage.from("inventory").upload(path, file, { upsert: true, contentType: file.type });
-      if (uploadError) throw uploadError;
-      const { data: { publicUrl } } = supabase.storage.from("inventory").getPublicUrl(path);
+      const publicUrl = await uploadCatalogImage({
+        basePath: inventoryItemImageBasePath(venueId, itemId),
+        file,
+      });
       await updateItemImageAction(itemId, publicUrl);
     } catch {
       toast.error("Item saved, but the photo upload failed — you can try again from this page.");
+    }
+  }
+
+  async function clearImage() {
+    if (!item?.id) return;
+    setPending(true);
+    try {
+      await removeCatalogImage(inventoryItemImageBasePath(venueId, item.id));
+      const result = await updateItemImageAction(item.id, null);
+      if (!result.ok) throw new Error(result.message ?? "Could not remove photo.");
+      toast.success("Photo removed.");
+      router.refresh();
+    } catch {
+      toast.error("Could not remove the photo.");
+    } finally {
+      setPending(false);
     }
   }
 
@@ -114,6 +145,7 @@ export function InventoryItemForm({
         color: color.trim() || null,
         printableName: printableName.trim() || null,
         availableForFloorPlans,
+        countsAsSeats,
       };
 
       let itemId: string;
@@ -143,7 +175,7 @@ export function InventoryItemForm({
       <div className="space-y-1.5">
         <Label className="text-xs">Category <span className="font-normal text-muted-foreground">(optional)</span></Label>
         <div className="flex items-center gap-2">
-          <Select value={categoryId} onValueChange={setCategoryId} items={[{ value: NO_CATEGORY, label: "No category" }, ...categories.map((c) => ({ value: c.id, label: c.name }))]}>
+          <Select value={categoryId} onValueChange={handleCategoryChange} items={[{ value: NO_CATEGORY, label: "No category" }, ...categories.map((c) => ({ value: c.id, label: c.name }))]}>
             <SelectTrigger className="h-9 flex-1 text-sm"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value={NO_CATEGORY}>No category</SelectItem>
@@ -206,14 +238,31 @@ export function InventoryItemForm({
           <img src={item.imageUrl} alt="" className="h-20 w-20 rounded-lg border border-border bg-muted/40 object-contain" />
         )}
         <input
-          type="file" accept="image/*" onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/gif"
+          onChange={(e) => setFile(e.target.files?.[0] ?? null)}
           className="block w-full text-sm text-muted-foreground file:mr-3 file:rounded-md file:border-0 file:bg-muted file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-foreground"
         />
+        {item?.imageUrl ? (
+          <Button type="button" variant="ghost" size="sm" disabled={pending} onClick={() => void clearImage()}>
+            Remove photo
+          </Button>
+        ) : null}
       </div>
 
       <div className="flex items-center gap-2">
         <Switch checked={availableForFloorPlans} onCheckedChange={setAvailableForFloorPlans} />
         <Label className="text-xs cursor-pointer">Available for use in Floor Plans</Label>
+      </div>
+
+      <div className="space-y-1">
+        <div className="flex items-center gap-2">
+          <Switch checked={countsAsSeats} onCheckedChange={setCountsAsSeats} data-testid="inventory-counts-as-seats" />
+          <Label className="text-xs cursor-pointer">Counts as seats</Label>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          For chairs. Floor plans compare this item with the seats at tables plus any chairs placed one by one.
+        </p>
       </div>
 
       <div className="flex items-center justify-end gap-2 pt-2">

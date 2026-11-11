@@ -10,8 +10,8 @@ export function validateMessageTemplateInput(input: MessageTemplateInput): Messa
   const hasEmail = !!input.emailBody.trim();
   const hasSms = !!input.smsBody.trim();
   if (!hasEmail && !hasSms) {
-    errors.emailBody = "Add content for Email, SMS, or both.";
-    errors.smsBody = "Add content for Email, SMS, or both.";
+    errors.emailBody = "Add content for Email, Text, or both.";
+    errors.smsBody = "Add content for Email, Text, or both.";
   }
   if (hasEmail && !input.emailSubject.trim()) {
     errors.emailSubject = "An email needs a subject line.";

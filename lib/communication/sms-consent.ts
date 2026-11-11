@@ -8,6 +8,14 @@ export const SMS_INQUIRY_CONSENT_LANGUAGE_VERSION = "htc_sms_inquiry_v2" as cons
 
 export const SMS_PERMISSION_SOURCE_INQUIRY_FORM = "inquiry_form" as const;
 export const SMS_PERMISSION_SOURCE_TOUR_FORM = "tour_form" as const;
+/** Venue asked the contact to reply START — status stays not_opted_in until they do. */
+export const SMS_PERMISSION_SOURCE_CONSENT_REQUEST = "sms_consent_request" as const;
+/** Affirmative opt-in completed via email consent request page (not by opening the email). */
+export const SMS_PERMISSION_SOURCE_EMAIL_CONSENT = "email_sms_consent" as const;
+/** Venue emailed an SMS permission request — status stays not_opted_in until they opt in on the page. */
+export const SMS_PERMISSION_SOURCE_EMAIL_CONSENT_REQUEST = "email_sms_consent_request" as const;
+export const SMS_CONSENT_REQUEST_LANGUAGE_VERSION = "htc_sms_consent_request_v1" as const;
+export const SMS_EMAIL_CONSENT_LANGUAGE_VERSION = "htc_sms_email_consent_v1" as const;
 
 /** Venue-facing short labels for communication_permissions.status. */
 export function smsPermissionDisplayLabel(
@@ -32,6 +40,12 @@ export function smsPermissionSourceLabel(source: string | null | undefined): str
       return "Text permission provided through website inquiry";
     case SMS_PERMISSION_SOURCE_TOUR_FORM:
       return "Text permission provided through tour booking";
+    case SMS_PERMISSION_SOURCE_CONSENT_REQUEST:
+      return "Text permission requested — waiting for them to reply START";
+    case SMS_PERMISSION_SOURCE_EMAIL_CONSENT_REQUEST:
+      return "Text permission requested by email — waiting for them to opt in";
+    case SMS_PERMISSION_SOURCE_EMAIL_CONSENT:
+      return "Text permission provided through email opt-in";
     case "twilio_stop":
     case "sms_keyword_stop":
       return "Customer opted out via text message";
@@ -54,9 +68,37 @@ export function buildInquirySmsConsentText(venueName: string): string {
   );
 }
 
+/**
+ * Outbound solicitation SMS when a venue requests text permission from a
+ * contact who has not opted in yet. Does not grant permission by itself —
+ * the contact must reply START (or use the public form checkbox).
+ */
+export function buildSmsConsentRequestText(venueName: string): string {
+  const name = venueName.trim() || "this venue";
+  return (
+    `${name} would like to text you about your inquiry, tour, or event. ` +
+    `Reply START to agree to receive texts. Message and data rates may apply. ` +
+    `Reply STOP to opt out. Reply HELP for help.`
+  );
+}
+
 /** Shown next to the SMS checkbox so reviewers/end users see voluntary consent. */
 export const INQUIRY_SMS_CONSENT_OPTIONAL_HINT =
   "Optional — you can submit your inquiry or book your tour without agreeing to text messages. Providing a phone number alone does not authorize texts." as const;
+
+/**
+ * Public disclosure already published on the SMS opt-in evidence page.
+ * The inquiry and tour forms use these sentences; do not paraphrase them.
+ */
+export const SMS_PUBLIC_CONSENT_DISCLOSURES = [
+  "Phone number entry alone is not SMS consent.",
+  "Choosing “Text message” as a preferred contact method is not SMS consent.",
+  "Accepting Privacy Policy or End User Terms is not SMS consent.",
+  "SMS consent is not required to inquire, book a tour, or use Hello to Cheers.",
+  "Message frequency varies with the inquiry, tour, and event planning — occasional relationship messages, not a fixed daily volume.",
+  "Message and data rates may apply.",
+  "Reply STOP to opt out; reply START to opt back in; reply HELP for help.",
+] as const;
 
 export type InquiryCommunicationSettings = {
   askPreferences: boolean;
@@ -114,19 +156,19 @@ export function preferredChannelLabel(channel: PreferredCommunicationChannel): s
 }
 
 /**
- * Effective public-form settings: SMS preference option and SMS permission
- * request are unavailable when the venue cannot yet offer SMS (no sender /
- * not in pending_compliance or ready). Outbound send readiness is separate.
+ * Effective public-form settings. Text and the optional SMS permission
+ * checkbox follow the venue's form settings. A missing sending number does
+ * not hide them: outbound SMS stays blocked until the venue is send-ready
+ * and the person is opted_in.
  */
 export function effectivePublicCommunicationSettings(
   settings: InquiryCommunicationSettings,
-  smsConsentOfferAvailable: boolean,
 ): InquiryCommunicationSettings & {
   showPreferences: boolean;
   showSmsPermission: boolean;
   offeredChannels: PreferredCommunicationChannel[];
 } {
-  const offerSms = settings.offerSms && smsConsentOfferAvailable;
+  const offerSms = settings.offerSms;
   const offerEmail = settings.offerEmail;
   const offerPhoneCall = settings.offerPhoneCall;
   const offeredChannels: PreferredCommunicationChannel[] = [];
@@ -135,7 +177,7 @@ export function effectivePublicCommunicationSettings(
   if (offerPhoneCall) offeredChannels.push("phone_call");
 
   const askPreferences = settings.askPreferences && offeredChannels.length > 0;
-  const showSmsPermission = settings.requestSmsPermission && smsConsentOfferAvailable;
+  const showSmsPermission = settings.requestSmsPermission;
 
   return {
     ...settings,

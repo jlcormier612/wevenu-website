@@ -247,7 +247,12 @@ export async function insertEnrollment(client: AnyDbClient, venueId: string, seq
  * template, tagged with which enrollment/step produced it.
  */
 export async function materializeEnrollmentSteps(
-  client: AnyDbClient, venueId: string, enrollmentId: string, sequenceId: string, relationshipId: string,
+  client: AnyDbClient,
+  venueId: string,
+  enrollmentId: string,
+  sequenceId: string,
+  relationshipId: string,
+  messageStatus: "scheduled" | "cancelled" = "scheduled",
 ): Promise<void> {
   const { data: steps, error } = await client.from("sequence_steps").select("*")
     .eq("sequence_id", sequenceId).order("sort_order");
@@ -263,7 +268,7 @@ export async function materializeEnrollmentSteps(
     const step = mapped[i]!;
     const scheduledFor = scheduleIsos[i]!;
     const { data: scheduledId, error: schedError } = await insertScheduledMessageWithSequenceLink(
-      client, venueId, relationshipId, step, enrollmentId, scheduledFor,
+      client, venueId, relationshipId, step, enrollmentId, scheduledFor, messageStatus,
     );
     if (schedError) throw schedError;
     void scheduledId;
@@ -277,7 +282,13 @@ export async function materializeEnrollmentSteps(
  * row, not a coordinator-composed Scheduled Send.
  */
 async function insertScheduledMessageWithSequenceLink(
-  client: AnyDbClient, venueId: string, relationshipId: string, step: SequenceStep, enrollmentId: string, scheduledFor: string,
+  client: AnyDbClient,
+  venueId: string,
+  relationshipId: string,
+  step: SequenceStep,
+  enrollmentId: string,
+  scheduledFor: string,
+  messageStatus: "scheduled" | "cancelled" = "scheduled",
 ): Promise<{ data: string | null; error: unknown }> {
   const { data: template } = await client.from("message_templates").select("email_subject, email_body, sms_body")
     .eq("id", step.templateId).maybeSingle<{ email_subject: string | null; email_body: string | null; sms_body: string | null }>();
@@ -289,6 +300,7 @@ async function insertScheduledMessageWithSequenceLink(
       venue_id: venueId, relationship_id: relationshipId, template_id: step.templateId,
       channel: step.channel, email_subject: emailSubject || null, body,
       scheduled_for: scheduledFor, sequence_enrollment_id: enrollmentId, sequence_step_id: step.id,
+      status: messageStatus,
     })
     .select("id").single<{ id: string }>();
   return { data: data?.id ?? null, error };
@@ -296,6 +308,34 @@ async function insertScheduledMessageWithSequenceLink(
 
 export async function cancelEnrollment(client: DbClient, venueId: string, enrollmentId: string): Promise<void> {
   await exitEnrollments(client, venueId, [enrollmentId], "cancelled");
+}
+
+/** One-time stage-change skip: end the enrollment and cancel any still-scheduled steps. */
+export async function cancelEnrollmentImmediately(
+  client: AnyDbClient, venueId: string, enrollmentId: string,
+): Promise<void> {
+  await exitEnrollments(client, venueId, [enrollmentId], "cancelled");
+}
+
+/** Latest cancelled enrollment inside the double-click window, if one exists. */
+export async function findRecentCancelledEnrollment(
+  client: AnyDbClient,
+  sequenceId: string,
+  relationshipId: string,
+  enrolledAfterIso: string,
+): Promise<{ id: string; status: string; enrolledAt: string } | null> {
+  const { data, error } = await client.from("sequence_enrollments")
+    .select("id, status, enrolled_at")
+    .eq("sequence_id", sequenceId)
+    .eq("relationship_id", relationshipId)
+    .eq("status", "cancelled")
+    .gte("enrolled_at", enrolledAfterIso)
+    .order("enrolled_at", { ascending: false })
+    .limit(1)
+    .maybeSingle<{ id: string; status: string; enrolled_at: string }>();
+  if (error) throw error;
+  if (!data) return null;
+  return { id: data.id, status: data.status, enrolledAt: data.enrolled_at };
 }
 
 /** Pause one enrollment — status stays active; paused_at set. Does not touch scheduled_messages. */

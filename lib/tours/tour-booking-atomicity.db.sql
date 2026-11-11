@@ -198,7 +198,10 @@ begin
       if sqlerrm not like '%no longer available%' then raise; end if;
   end;
 
+  -- Test cleanup only: builtin schedule-item seed rows otherwise block venue delete.
+  alter table public.venue_schedule_item_types disable trigger venue_schedule_item_types_no_builtin_delete;
   delete from public.venues where id = v_venue;
+  alter table public.venue_schedule_item_types enable trigger venue_schedule_item_types_no_builtin_delete;
   delete from auth.users where id = v_owner;
 end;
 $$;

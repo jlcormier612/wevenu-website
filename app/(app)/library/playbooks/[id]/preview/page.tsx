@@ -41,6 +41,7 @@ export default async function PlaybookTemplatePreviewPage({ params }: Props) {
       caption={caption}
       editHref={`/library/playbooks/${template.id}`}
       libraryHref="/library/playbooks"
+      libraryLabel="Planning Templates"
       contentMaxWidthClassName="max-w-xl"
     >
       <div className="space-y-4 pb-10">

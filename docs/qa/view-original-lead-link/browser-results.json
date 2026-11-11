@@ -1,0 +1,51 @@
+{
+  "tipPrefix": "5223e14d",
+  "checks": [
+    {
+      "name": "serving_commit",
+      "pass": true,
+      "detail": "5223e14dde3e04c9783a70fda055c17afe036f83"
+    },
+    {
+      "name": "pre_book_inquiry_visible",
+      "pass": true,
+      "detail": "OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\nClients\nVendors\n\nSCHEDULING\n\nCalendar\nTours\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nLIBRARY\n\nTemplates\nDocuments\n\nFINANCIALS\n\nContracts\nPayments\n\nTO DO’S\n\nTask Center\nRequests\n\nYOUR VENUE\n\nSetup\nSettings\nGuidance\nVenue Guide\nReports\nHelp & Feedback\nJen's Fan"
+    },
+    {
+      "name": "one_client_from_lead",
+      "pass": true,
+      "detail": "[{\"id\":\"62b577b2-cf53-490b-8b47-fb81c7d4b5b4\",\"lead_id\":\"01b86675-71a5-4739-8d02-f3e4affad8c4\"}]"
+    },
+    {
+      "name": "celebration_link_visible",
+      "pass": true,
+      "detail": "View original lead"
+    },
+    {
+      "name": "workspace_link_canonical",
+      "pass": true,
+      "detail": "href=/leads/01b86675-71a5-4739-8d02-f3e4affad8c4 text=View original lead"
+    },
+    {
+      "name": "original_lead_opens",
+      "pass": true,
+      "detail": "{\"url\":\"https://app.sandbox.hellotocheers.com/leads/01b86675-71a5-4739-8d02-f3e4affad8c4\",\"leadAfter\":{\"id\":\"01b86675-71a5-4739-8d02-f3e4affad8c4\",\"inquiry_message\":\"[qa] original-lead-link disposable inquiry 384685\",\"sales_stage\":\"booked\"}}"
+    },
+    {
+      "name": "inquiry_history_intact",
+      "pass": true,
+      "detail": "OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\n3\nClients\nVendors\n\nSCHEDULING\n\nCalendar\nTours\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nLIBRARY\n\nTemplates\nDocuments\n\nFINANCIALS\n\nContracts\n13\nPayments\n15\n\nTO DO’S\n\nTask Center\nRequests\n\nYOUR VENUE\n\nSetup\nSettings\nGuidance\nVenue Guide\nReports\nHelp & Feedback\nJen's Fancy Venue\nSearch\n⌘K\n99+\nJ\njennifer@hellotocheers.com\nLeads\nOL\nOrig Lead384685\nWedding\n·\nApr 5"
+    },
+    {
+      "name": "workspace_link_after_reload",
+      "pass": true,
+      "detail": "https://app.sandbox.hellotocheers.com/clients/62b577b2-cf53-490b-8b47-fb81c7d4b5b4"
+    },
+    {
+      "name": "no_duplicate_lead",
+      "pass": true,
+      "detail": "count=1"
+    }
+  ],
+  "pass": true
+}

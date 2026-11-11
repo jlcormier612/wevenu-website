@@ -1,0 +1,100 @@
+{
+  "expectedSha": "a11547be457ce5323e4d32fb2fda2d6ff7df0d53",
+  "eventId": "4ed4d7fb-a301-42eb-8dc6-6b76a872f8e8",
+  "eventOrderId": "f0fa9108-c6b8-4ea6-a071-5fd43db61a51",
+  "invoiceId": "08500c0c-13c0-4d13-ae73-0b870a8e4770",
+  "passed": 18,
+  "failed": 0,
+  "checks": [
+    {
+      "name": "serving_sha",
+      "pass": true,
+      "detail": "serving=a11547be457ce5323e4d32fb2fda2d6ff7df0d53 expected=a11547be457ce5323e4d32fb2fda2d6ff7df0d53"
+    },
+    {
+      "name": "linkage_same_event_order_invoice",
+      "pass": true,
+      "detail": "{\"eo\":{\"status\":\"open\",\"shared_at\":null},\"inv\":{\"num\":\"INV-2026-08500C\",\"eo\":\"f0fa9108-c6b8-4ea6-a071-5fd43db61a51\"}}"
+    },
+    {
+      "name": "delivery_subtotal_2243",
+      "pass": true,
+      "detail": "delivery=2243 lines=7"
+    },
+    {
+      "name": "line_provenance_custom",
+      "pass": true,
+      "detail": "custom,custom,custom,custom,custom,custom,custom"
+    },
+    {
+      "name": "fixture_reset_unshared_open",
+      "pass": true,
+      "detail": "already open/unshared"
+    },
+    {
+      "name": "portal_empty_before_share",
+      "pass": true,
+      "detail": "rows=0"
+    },
+    {
+      "name": "venue_shows_canonical_lines",
+      "pass": true,
+      "detail": "Delivery subtotal (for reference): $2,243 — amount due is on Invoice / Payments.\n\nPackage context"
+    },
+    {
+      "name": "finalize_control_visible",
+      "pass": true,
+      "detail": "Finalize"
+    },
+    {
+      "name": "finalized_persisted",
+      "pass": true,
+      "detail": "{\"status\":\"finalized\",\"finalized_at\":\"2026-10-22T22:27:25.379+00:00\",\"shared_at\":null,\"revision\":5}"
+    },
+    {
+      "name": "share_control_after_finalize",
+      "pass": true,
+      "detail": "Share with Client"
+    },
+    {
+      "name": "shared_at_and_snapshot",
+      "pass": true,
+      "detail": "{\"shared_at\":\"2026-10-22T22:27:38.426+00:00\",\"snapLines\":7,\"revision\":5}"
+    },
+    {
+      "name": "snapshot_includes_key_lines",
+      "pass": true,
+      "detail": "Plated Dinner | Day-of Coordination | Beer & Wine | Chiavari Chair | Ceremony Coordination | Arbor | Buffet Dinner"
+    },
+    {
+      "name": "portal_rpc_returns_shared_lines",
+      "pass": true,
+      "detail": "rows=7"
+    },
+    {
+      "name": "client_sees_shared_order",
+      "pass": true,
+      "detail": "Bindi & Jake\n\n·\n\nMeadowbrook Valley Venue\n\nOct 24, 2027\n\nExport my data\n🏠\nHome\n✅\nTasks\n9\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n🪑\nIncluded\n📋\nOrder\n1\n💳\nPayments\n💬\nMessages\n🏛️\nGuide\n🤝\nVendors\nWhat you're receiving\nShared\n\nYour Event Order — the delivery list for your event. Not your invoice or contract.\n\nUpdated Oct 22, 2026\n\nCATERING\n\nPlated Dinner\n\n×1 person · Additional\n\nPer person\n\n$85.00\n\nBu"
+    },
+    {
+      "name": "invoice_linkage_unchanged",
+      "pass": true,
+      "detail": "{\"event_order_id\":\"f0fa9108-c6b8-4ea6-a071-5fd43db61a51\",\"event_id\":\"4ed4d7fb-a301-42eb-8dc6-6b76a872f8e8\",\"invoice_number\":\"INV-2026-08500C\"}"
+    },
+    {
+      "name": "template_unchanged",
+      "pass": true,
+      "detail": "before=7 after=7"
+    },
+    {
+      "name": "cross_tenant_no_leak",
+      "pass": true,
+      "detail": "foreignRows=0"
+    },
+    {
+      "name": "bogus_token_empty",
+      "pass": true,
+      "detail": "rows=0"
+    }
+  ]
+}

@@ -31,11 +31,14 @@ export async function POST(request: Request) {
   const admin = createAdminClient();
   const { data: enrollment, error } = await admin
     .from("venue_enrollments")
-    .select("id, venue_id, owner_email, onboarding_type, white_glove_status, status")
+    .select(
+      "id, venue_id, venue_name, owner_email, onboarding_type, white_glove_status, status",
+    )
     .eq("intake_token", token)
     .maybeSingle<{
       id: string;
       venue_id: string | null;
+      venue_name: string | null;
       owner_email: string | null;
       onboarding_type: string;
       white_glove_status: string | null;
@@ -51,6 +54,8 @@ export async function POST(request: Request) {
   if (enrollment.status === "activated") {
     return NextResponse.json({ error: "already_activated" }, { status: 409 });
   }
+
+  const previousWhiteGloveStatus = enrollment.white_glove_status;
 
   const result = await submitOnboardingIntake({
     venueId: enrollment.venue_id,
@@ -71,6 +76,30 @@ export async function POST(request: Request) {
     });
   } catch (crmErr) {
     console.error("[white-glove/intake] CRM milestone sync failed", crmErr);
+  }
+
+  try {
+    const { count: materialsCount } = await admin
+      .from("venue_onboarding_materials")
+      .select("id", { count: "exact", head: true })
+      .eq("venue_id", enrollment.venue_id);
+    const { notifyWhiteGloveIntakeSubmitted } = await import(
+      "@/lib/onboarding/white-glove-ops-notify"
+    );
+    await notifyWhiteGloveIntakeSubmitted({
+      venueName:
+        body.intake.venueName?.trim() ||
+        enrollment.venue_name?.trim() ||
+        "Venue",
+      ownerEmail: enrollment.owner_email,
+      enrollmentId: enrollment.id,
+      venueId: enrollment.venue_id,
+      intake: body.intake,
+      materialsCount: materialsCount ?? 0,
+      previousWhiteGloveStatus,
+    });
+  } catch (notifyErr) {
+    console.error("[white-glove/intake] ops notify failed", notifyErr);
   }
 
   return NextResponse.json({ ok: true, waiting: true });

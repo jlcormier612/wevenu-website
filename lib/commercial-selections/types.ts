@@ -9,6 +9,15 @@ export type CommercialSelectionItem = {
   description: string;
   quantity: number;
   unit: string | null;
+  /** Frozen line economics when present (proposal-approved selections). */
+  unitPrice?: number;
+  lineTotal?: number;
+  offerRole?: "primary" | "addon";
+  sourcePackageId?: string | null;
+  /** Frozen catalog Offering link from the package inclusion (direct Select package). */
+  offeringId?: string | null;
+  /** Frozen from the package inclusion: quantity is per guest. */
+  perGuest?: boolean;
 };
 
 export type CommercialSelection = {
@@ -17,9 +26,34 @@ export type CommercialSelection = {
   leadId: string | null;
   clientId: string | null;
   eventId: string | null;
+  /** L1 commercial_proposals id when created from a multi-option proposal; null for direct Select package. */
+  proposalId: string | null;
   sourcePackageId: string | null;
   name: string;
+  /**
+   * Original package price before discount/tax.
+   * Legacy rows without a separate package use the same value as totalAmount.
+   */
+  packageAmount: number;
+  /** True discount dollars only (never a deposit). Frozen rollup of reductions. */
+  discountAmount: number;
+  discountType: "fixed" | "percent" | null;
+  discountValue: number | null;
+  /**
+   * Named adjustments (discounts, credits, charges, fees).
+   * Empty/undefined when only legacy single discount_* columns are populated.
+   */
+  financialAdjustments?: import("@/lib/invoices/financial-adjustments").FinancialAdjustment[];
+  /** Exclusive tax was deliberately applied to these terms. */
+  taxApplied: boolean;
+  taxRatePercent: number | null;
+  taxAmount: number;
+  /**
+   * Final agreed commercial commitment: package − discount + tax.
+   * Invoice and payment plans inherit this amount.
+   */
   totalAmount: number;
+  /** Payment allocation suggestion — not a discount, not in the taxable base. */
   depositAmount: number;
   includedItems: CommercialSelectionItem[];
   status: CommercialSelectionStatus;
@@ -41,9 +75,28 @@ export type CreateCommercialSelectionInput = {
   eventId?: string;
   sourcePackageId: string;
   name: string;
+  /** Original package price; defaults to totalAmount when omitted (legacy callers). */
+  packageAmount?: number;
+  discountAmount?: number;
+  discountType?: "fixed" | "percent" | null;
+  discountValue?: number | null;
+  taxApplied?: boolean;
+  taxRatePercent?: number | null;
+  taxAmount?: number;
+  /** Final agreed total (package − discount + tax). */
   totalAmount: number;
   depositAmount: number;
   includedItems: CommercialSelectionItem[];
+};
+
+/** Update financial terms on a draft Selected Package before contract/invoice. */
+export type UpdateCommercialSelectionTermsInput = {
+  packageAmount: number;
+  discountType?: "fixed" | "percent" | null;
+  discountValue?: number | null;
+  applyTax: boolean;
+  taxRatePercent?: number | null;
+  depositAmount: number;
 };
 
 export type CommercialSelectionErrors = Record<string, string>;

@@ -1,0 +1,18 @@
+PASS held_date_not_in_public_available_set — available=2027-09-01,2027-09-02,2027-09-03,2027-09-05,2027-09-06,2027-09-07,2027-09-08,2027-09-09,2027-09-10
+PASS generic_no_existing_lead_readonly_block — no o= context
+PASS generic_preferred_optional_for_tour — GenHold 1791773866540 Inquiry Form 📅 Schedule a Tour Pick a date and time to visit us. ✉️ Request Information Tell us about your event. Select your tour October 2026 Sun Mon Tue Wed Thu Fri Sat 1 2 3
+PASS generic_ui_tour_slot_selected — slot
+PASS generic_confirm_tour_without_selecting_held_date — ok=true eventDate="" err=
+PASS generic_attached_existing_lead — attached=true
+PASS generic_payload_event_date_empty_or_absent — eventDate=""
+PASS personal_link_readonly_preferred — o= context
+PASS personal_link_hides_mode_toggle — locked schedule_tour
+PASS preferred_date_unchanged — 2027-09-04
+PASS hold_still_active — {"status":"active","hold_date":"2027-09-04"}
+PASS no_duplicate_lead — count=1
+{
+  "passCount": 12,
+  "total": 12,
+  "tip": "0122911f32c20b33ea99321d1df4ad7306cea3ce",
+  "verdict": "GREEN"
+}

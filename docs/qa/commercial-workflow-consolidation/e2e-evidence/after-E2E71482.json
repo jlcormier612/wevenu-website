@@ -1,0 +1,19 @@
+{
+  "eo": {
+    "id": "624eceef-5096-4288-b104-62daa3a82d11",
+    "status": "finalized",
+    "shared_at": "2026-10-23T16:07:20.128+00:00",
+    "finalized_at": "2026-10-23T16:07:02.928+00:00",
+    "revision": 9,
+    "client_agreed_at": "2026-10-23T16:08:03.562897+00:00",
+    "client_agreed_name": "E2E-COMMERCIAL-E2E71482-ACCEPT2",
+    "client_agreed_revision": 9
+  },
+  "inv": null,
+  "at": "2026-10-23T16:08:17.036Z",
+  "runId": "E2E71482",
+  "consoleErrors": [
+    "Failed to load resource: the server responded with a status of 502 ()",
+    "ChunkLoadError: Failed to load chunk /_next/static/chunks/00rp2qbfdtuoo.js?dpl=c5bdafc029ca9ee0a3ad356e96131e30bd1b96bd from module 964893\n    at https://app.sandbox.hellotocheers.com/_next/static/chunks/turbopack-0hl8amrq-f2mf.js?dpl=c5bdafc029ca9ee0a3ad356e96131e30bd1b96bd:1:6130"
+  ]
+}

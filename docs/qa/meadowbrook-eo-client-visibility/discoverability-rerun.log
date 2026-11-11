@@ -1,0 +1,136 @@
+PASS serving_sha — serving=a11547be457ce5323e4d32fb2fda2d6ff7df0d53 expected=a11547be457ce5323e4d32fb2fda2d6ff7df0d53
+PASS template_baseline — {"templateId":"99585da2-587c-4b7a-9e59-5e9db5d4d998","templateLineCountBefore":5}
+PASS scenario_c_unshared_api — {"inv":[],"eo":[]}
+PASS scenario_a_home_entries — inv=1 eo=1 nav=🏠
+Home
+✅
+Tasks
+🕒
+Timeline
+📁
+Docs
+🗺️
+Floor Plan
+🪑
+Included
+📋
+Order
+💳
+Payments
+💬
+Messages
+🏛️
+Guide
+🤝
+Vendors
+PASS scenario_a_inventory_empty — empty=1
+PASS scenario_c_portal_empty_order — empty=1
+PASS scenario_d_shared_api — {"inv":{"id":"bff67d75-033e-4319-ae49-30c2841dea16","status":"shared","finalized_at":null,"item_id":"c7169dd3-83d7-4d19-9a03-84a3bb660e09","item_name":"Gap Closure Cocktail Tables","item_category":"Tables","item_quantity":8,"item_unit_price":null,"item_is_included":true,"item_notes":null,"item_sort_order":1},"eo":{"id"
+PASS scenario_d_inventory_visible — InvEoPortal
+
+·
+
+Jen's Fancy Venue
+
+Apr 6, 2077
+
+Export my data
+🏠
+Home
+✅
+Tasks
+🕒
+Timeline
+📁
+Docs
+🗺️
+Floor Plan
+🪑
+Included
+📋
+Order
+💳
+Payments
+💬
+Messages
+🏛️
+Guide
+🤝
+Vendors
+What's included in your event
+
+Event inventory from your venue — read-only. For the delivery list, open Event Order.
+
+In progress
+
+INCLUDED
+
+PASS scenario_d_event_order_visible — InvEoPortal
+
+·
+
+Jen's Fancy Venue
+
+Apr 6, 2077
+
+Export my data
+🏠
+Home
+✅
+Tasks
+🕒
+Timeline
+📁
+Docs
+🗺️
+Floor Plan
+🪑
+Included
+📋
+Order
+💳
+Payments
+💬
+Messages
+🏛️
+Guide
+🤝
+Vendors
+What you're receiving
+Shared
+
+Your Event Order — the delivery list for your event. Not your invoice or contract.
+
+Updated Oct 22, 2026
+
+RECE
+PASS scenario_f_isolation — {"otherInv":[],"otherEo":[]}
+PASS scenario_b_template_isolation — before=5 after=5
+PASS scenario_e_snapshot_until_reshare — {"id":"4922c672-0130-4458-87f6-59010c050039","status":"open","revision":1,"shared_at":"2026-10-22T22:28:47.966+00:00","section_id":"3d74500a-3719-4fcc-b581-e9e133ab9420","section_name":"Reception","line_id":"2b9a5701-ac40-4af4-8ee5-9d387ef364db","line_description":"Gap Closure Banquet Tables","line_quantity":10,"line_a
+PASS scenario_g_nav_labels — 🏠
+Home
+✅
+Tasks
+🕒
+Timeline
+📁
+Docs
+🗺️
+Floor Plan
+🪑
+Included
+1
+📋
+Order
+1
+💳
+Payments
+💬
+Messages
+🏛️
+Guide
+🤝
+Vendors
+PASS scenario_g_mobile_home — home=1 moreInv=true moreEo=true
+
+GREEN passed=14 failed=0

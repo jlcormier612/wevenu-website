@@ -57,8 +57,10 @@
   --card: var(--true-white);
   --card-foreground: var(--forest-sage);
   --muted: var(--natural-cream);
-  --muted-foreground: color-mix(in oklch, var(--forest-sage) 68%, transparent);
+  --muted-foreground: color-mix(in oklch, var(--forest-sage) 80%, transparent);
   --border: var(--taupe-medium);
+  --input: var(--taupe-medium);
+  --ring: var(--heritage-sage);
   --primary: var(--heritage-sage);
   --primary-foreground: var(--true-white);
 
@@ -84,8 +86,10 @@
   --card: var(--heritage-sage);
   --card-foreground: var(--true-white);
   --muted: var(--heritage-sage);
-  --muted-foreground: color-mix(in oklch, var(--true-white) 78%, transparent);
-  --border: color-mix(in oklch, var(--true-white) 20%, transparent);
+  --muted-foreground: color-mix(in oklch, var(--true-white) 86%, transparent);
+  --border: color-mix(in oklch, var(--true-white) 28%, transparent);
+  --input: color-mix(in oklch, var(--true-white) 32%, transparent);
+  --ring: var(--soft-sage);
   --primary: var(--soft-sage);
   --primary-foreground: var(--forest-sage);
 
@@ -166,6 +170,63 @@
 
 .ws-muted {
   @apply text-muted-foreground;
+}
+
+/*
+ * Shared text control surface. Light: white fill + forest ink.
+ * Dark: translucent fill + semantic foreground (never white-on-white /
+ * forest-on-forest from remapped --warm-gray).
+ */
+.ws-control {
+  border: 1px solid color-mix(in srgb, var(--taupe-medium) 55%, transparent);
+  background-color: var(--true-white);
+  color: var(--forest-sage);
+}
+
+.dark .ws-control {
+  border-color: var(--border);
+  background-color: color-mix(in oklch, var(--true-white) 12%, transparent);
+  color: var(--foreground);
+}
+
+.ws-control-muted {
+  border: 1px solid color-mix(in srgb, var(--taupe-medium) 40%, transparent);
+  background-color: color-mix(in srgb, var(--warm-gray) 50%, transparent);
+  color: var(--foreground);
+}
+
+.dark .ws-control-muted {
+  border-color: var(--border);
+  background-color: color-mix(in oklch, var(--true-white) 8%, transparent);
+  color: var(--foreground);
+}
+
+/*
+ * Systemic dark-mode safeguard for native controls that still use
+ * hard-coded light fills without an explicit text color. Excluded inside
+ * [data-theme-lock="light"] (activation / always-light brand surfaces).
+ */
+.dark input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="file"]):not([type="submit"]):not([type="button"]):not([type="image"]):not([type="reset"]),
+.dark textarea,
+.dark select {
+  color: var(--foreground);
+  background-color: color-mix(in oklch, var(--true-white) 12%, transparent);
+  border-color: var(--border);
+}
+
+[data-theme-lock="light"] input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="file"]):not([type="submit"]):not([type="button"]):not([type="image"]):not([type="reset"]),
+[data-theme-lock="light"] textarea,
+[data-theme-lock="light"] select {
+  color: var(--foreground);
+  background-color: var(--true-white);
+  border-color: color-mix(in srgb, var(--taupe-medium) 55%, transparent);
+}
+
+[data-theme-lock="light"] .ws-control-muted,
+[data-theme-lock="light"] input.ws-control-muted {
+  background-color: color-mix(in srgb, var(--warm-gray) 50%, transparent);
+  color: var(--foreground);
+  border-color: color-mix(in srgb, var(--taupe-medium) 40%, transparent);
 }
 
 /*

@@ -9,7 +9,6 @@ import { createAdminClient } from "@/integrations/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/env";
 import * as repo from "@/lib/leads/repository";
 import { LeadTourWriteError, TOUR_TIME_REQUIRED } from "@/lib/leads/relationship-tour";
-import { tourCapacityFailureFromUnknown } from "@/lib/tours/occupancy";
 import { requireAdminUser } from "@/lib/hq/crm-service";
 import type {
   CreateLeadResult,
@@ -21,17 +20,31 @@ import type {
   TaskInput,
 } from "@/lib/leads/types";
 import {
+  followUpCompletedTitle,
+  resolveFollowUpCompletion,
+  type FollowUpCompletionInput,
+} from "@/lib/leads/follow-up-completion";
+import {
   validateLeadInput,
   validateStatus,
   validateTaskInput,
 } from "@/lib/leads/validation";
+import { parseMoneyInput } from "@/lib/leads/constants";
 import { getCurrentVenue } from "@/lib/venue/service";
+
+function estimatedBudgetFromInput(raw: string | null | undefined): number | null {
+  const parsed = parseMoneyInput(raw ?? "");
+  if (!parsed) return null;
+  const n = Number(parsed);
+  return Number.isFinite(n) ? n : null;
+}
 import { exitActiveEnrollmentsForRelationship } from "@/lib/message-sequences/repository";
 import {
   triggerSequencesForRelationship,
   wouldEnrollOnStageChange,
 } from "@/lib/message-sequences/service";
 import {
+  CANCELLED_RELATIONSHIP_STAGE,
   isForwardSalesStageMove,
   isManuallyAssignableSalesStage,
   isSalesStage,
@@ -40,8 +53,12 @@ import {
 } from "@/lib/leads/sales-stages";
 import { ingestLead } from "@/lib/lead-intake/pipeline";
 import type { RawIntakeInput, TrustTier } from "@/lib/lead-intake/types";
-import { previewFirstStepForSequence } from "@/lib/message-sequences/confirm-preview";
-import type { AutomationMessagePreview } from "@/lib/message-sequences/confirm-preview";
+import { originAfterStaffEdit, originForWritePath } from "@/lib/leads/inquiry-message-origin";
+import {
+  previewStepsForSequence,
+  type AutomationMessagePreview,
+  type StageChangeMessagePlan,
+} from "@/lib/message-sequences/confirm-preview";
 import { requireIdentityDecision } from "@/lib/identity/decision";
 
 /** Shared auth + venue guard. Returns a typed error if anything is missing. */
@@ -99,7 +116,7 @@ export function leadInputToRawIntake(input: LeadInput): RawIntakeInput {
     eventDate: input.eventDate,
     endDate: input.endDate,
     guestCount: input.guestCount ? parseInt(input.guestCount, 10) || null : null,
-    estimatedBudget: input.estimatedBudget ? parseFloat(input.estimatedBudget) || null : null,
+    estimatedBudget: estimatedBudgetFromInput(input.estimatedBudget),
     inquiryMessage: input.inquiryMessage,
     inquiryDate: input.inquiryDate,
   };
@@ -142,6 +159,30 @@ async function createLeadCore(
   supabase: Awaited<ReturnType<typeof createClient>>, venueId: string, input: LeadInput, trustTier: TrustTier,
   historicalImport = false,
 ): Promise<CreateLeadResult> {
+  // Manual / ordinary new Lead: venue accepted inquiry types are required.
+  // Historical import (Migration Center / White-Glove) may carry legacy types.
+  if (!historicalImport) {
+    const { data: venueRow } = await supabase
+      .from("venues")
+      .select("accepted_inquiry_event_types")
+      .eq("id", venueId)
+      .maybeSingle<{ accepted_inquiry_event_types: unknown }>();
+    const { assertEventTypeAcceptedForNewRecord } = await import(
+      "@/lib/event-types/assert-accepted"
+    );
+    const accepted = assertEventTypeAcceptedForNewRecord(
+      input.eventType,
+      venueRow?.accepted_inquiry_event_types,
+    );
+    if (!accepted.ok) {
+      return {
+        ok: false,
+        errors: { eventType: accepted.error },
+        message: accepted.error,
+      };
+    }
+  }
+
   if (trustTier === "manual" && !historicalImport) {
     const { findPossibleDuplicateMatches } = await import("@/lib/leads/duplicate-detection");
     const matches = await findPossibleDuplicateMatches(supabase, venueId, {
@@ -188,14 +229,22 @@ async function createLeadCore(
       eventDate: input.eventDate,
       endDate: input.endDate,
       guestCount: input.guestCount ? parseInt(input.guestCount, 10) || null : null,
-      estimatedBudget: input.estimatedBudget ? parseFloat(input.estimatedBudget) || null : null,
+      estimatedBudget: estimatedBudgetFromInput(input.estimatedBudget),
       inquiryMessage: input.inquiryMessage,
       inquiryDate: input.inquiryDate,
       sourceData: input.originalSourceLabel ? { original_source_label: input.originalSourceLabel } : undefined,
     },
     create: async () => {
       try {
-        const leadId = await repo.insertLead(supabase, venueId, input, historicalImport);
+        const inquiryMessageOrigin = historicalImport || trustTier === "import"
+          ? originForWritePath("import")
+          : originForWritePath("manual_new_lead");
+        const leadId = await repo.insertLead(
+          supabase,
+          venueId,
+          { ...input, inquiryMessageOrigin },
+          historicalImport,
+        );
         const { data: lead } = await supabase.from("leads").select("relationship_id")
           .eq("id", leadId).maybeSingle<{ relationship_id: string | null }>();
         if (!lead?.relationship_id) return { ok: false, error: "Lead created without a relationship." };
@@ -253,19 +302,39 @@ export async function updateLeadSalesStage(
   leadId: string,
   stage: string,
   opts?: {
-    allowBooked?: boolean;
     clientId?: string | null;
     /** Required to leave Booked for a non-Lost sales-pipeline stage (Move back to Sales Pipeline). */
     allowLeaveBooked?: boolean;
+    /** Venue pipeline stage id to store alongside sales_stage (custom pipelines). */
+    pipelineStageId?: string | null;
+    /** Required when stage is lost — structured reason + optional detail. */
+    lost?: { reason: string; detail: string | null } | null;
+    /**
+     * Set only by the stage-change confirmation.
+     * send schedules matching messages; skip records them cancelled for this attempt.
+     * Omitted callers keep the existing fire-and-forget enrollment.
+     */
+    customerMessages?: "send" | "skip";
   },
 ): Promise<LeadActionResult> {
   if (!validateStatus(stage) || !isSalesStage(stage))
     return { ok: false, message: `"${stage}" is not a valid sales stage.` };
-  if (stage === "booked" && !opts?.allowBooked) {
-    return { ok: false, message: "Booking Started is only set by starting a booking file." };
+  if (stage === "booked") {
+    return { ok: false, message: "Move to Booked requires confirmation — use Confirm Booked move." };
   }
-  if (!opts?.allowBooked && !isManuallyAssignableSalesStage(stage)) {
+  if (!isManuallyAssignableSalesStage(stage)) {
     return { ok: false, message: "That stage cannot be set manually." };
+  }
+  if (stage === "lost") {
+    const { validateLostReasonInput, isLostReasonValue } = await import("@/lib/leads/lost-reasons");
+    if (!opts?.lost || !isLostReasonValue(opts.lost.reason)) {
+      return { ok: false, message: "Marking a lead Lost requires a lost reason." };
+    }
+    const lostErr = validateLostReasonInput({
+      reason: opts.lost.reason,
+      detail: opts.lost.detail,
+    });
+    if (lostErr) return { ok: false, message: lostErr };
   }
 
   const result = await withVenue(async (supabase, venueId) => {
@@ -278,59 +347,27 @@ export async function updateLeadSalesStage(
     // Lost remains available from Booked (deal died after booking).
     if (
       previousStage === "booked"
-      && stage !== "booked"
       && stage !== "lost"
       && !opts?.allowLeaveBooked
     ) {
       return {
         ok: false,
-        message: "Use Move back to Sales Pipeline to leave Booking Started.",
+        message: "Use Move back to Sales Pipeline to leave Booked.",
       } as LeadActionResult;
     }
 
-    await repo.updateLeadSalesStage(supabase, venueId, leadId, stage);
-
-    if (stage === "booked") {
-      // Idempotent: already Booked → do not emit another lifecycle event.
-      // Booked → Lost → Booked emits rebooked via recordLifecycleBooking.
-      if (previousStage !== "booked") {
-        const { data: { user } } = await supabase.auth.getUser();
-        let clientId = opts?.clientId ?? null;
-        if (!clientId) {
-          const { data: linked } = await supabase.from("clients").select("id")
-            .eq("lead_id", leadId).eq("venue_id", venueId)
-            .maybeSingle<{ id: string }>();
-          clientId = linked?.id ?? null;
-        }
-        const { recordLifecycleBooking } = await import("@/lib/lifecycle-bookings/service");
-        const recorded = await recordLifecycleBooking(supabase, {
-          venueId,
-          leadId,
-          clientId,
-          origin: "pipeline",
-          actorUserId: user?.id ?? null,
-          previousSalesStage: previousStage,
-        });
-        if (!recorded.ok) {
-          console.error("Lifecycle booking record failed:", recorded.message);
-        }
-      }
-
-      const { data: tour } = await supabase
-        .from("tour_appointments")
-        .select("id")
-        .eq("lead_id", leadId)
-        .eq("venue_id", venueId)
-        .limit(1)
-        .maybeSingle<{ id: string }>();
-      if (tour) {
-        void supabase.from("lead_signal_events").insert({
-          venue_id: venueId, lead_id: leadId,
-          signal_type: "tour_converted", signal_strength: 3,
-          metadata: { appointment_id: tour.id },
-        }).then(null, () => {});
-      }
-    }
+    await repo.updateLeadSalesStage(
+      supabase,
+      venueId,
+      leadId,
+      stage,
+      opts?.pipelineStageId !== undefined ? opts.pipelineStageId : undefined,
+      stage === "lost" && opts?.lost
+        ? { reason: opts.lost.reason, detail: opts.lost.detail }
+        : stage === "lost"
+          ? null
+          : undefined,
+    );
 
     const { data: lead } = await supabase.from("leads").select("relationship_id")
       .eq("id", leadId).maybeSingle<{ relationship_id: string | null }>();
@@ -344,17 +381,34 @@ export async function updateLeadSalesStage(
           console.error("Series exit (exited_lost) failed:", e);
         }
       }
-      if (stage === "booked") {
+      const customerMessages = opts?.customerMessages;
+      if (customerMessages === "send" || customerMessages === "skip") {
         try {
-          await exitActiveEnrollmentsForRelationship(
-            supabase, venueId, lead.relationship_id, "exited_booking",
+          const enrollmentIds = await triggerSequencesForRelationship(
+            supabase, venueId, lead.relationship_id, "lead_stage_changed", stage,
+            { customerMessages },
           );
+          if (customerMessages === "skip" && enrollmentIds.length > 0) {
+            await repo.insertActivity(
+              supabase,
+              venueId,
+              leadId,
+              "automation_skipped",
+              "Automation messages not sent",
+              "This stage change continued without sending the matching automation messages. The saved automation was not changed.",
+            );
+          }
         } catch (e) {
-          console.error("Series exit (exited_booking) failed:", e);
+          console.error("Series enrollment (lead_stage_changed) failed:", e);
+          return {
+            ok: true,
+            automationWarning: "The stage was updated, but the automation did not finish. Check scheduled messages before assuming one will send.",
+          } as LeadActionResult;
         }
+      } else {
+        void triggerSequencesForRelationship(supabase, venueId, lead.relationship_id, "lead_stage_changed", stage)
+          .catch((e) => console.error("Series enrollment (lead_stage_changed) failed:", e));
       }
-      void triggerSequencesForRelationship(supabase, venueId, lead.relationship_id, "lead_stage_changed", stage)
-        .catch((e) => console.error("Series enrollment (lead_stage_changed) failed:", e));
     }
 
     return { ok: true } as LeadActionResult;
@@ -366,18 +420,24 @@ export async function updateLeadSalesStage(
 export async function updateLeadStatus(
   leadId: string,
   status: string,
+  opts?: { customerMessages?: "send" | "skip" },
 ): Promise<LeadActionResult> {
-  return updateLeadSalesStage(leadId, status);
+  return updateLeadSalesStage(leadId, status, opts);
 }
 
 /**
  * Forward-only auto stage advance (tour booked, sequence enroll, etc.).
  * Never moves backward; never overrides Booked/Lost.
+ * Booked is structurally excluded — only bookClient / book_relationship
+ * may write sales_stage booked.
  */
 export async function advanceLeadSalesStageIfForward(
   leadId: string,
-  target: SalesStage,
+  target: Exclude<SalesStage, "booked">,
 ): Promise<LeadActionResult> {
+  if ((target as SalesStage) === "booked") {
+    return { ok: false, message: "Booked requires the canonical booking operation." };
+  }
   const result = await withVenue(async (supabase, venueId) => {
     const { data: row } = await supabase.from("leads").select("sales_stage")
       .eq("id", leadId).eq("venue_id", venueId)
@@ -388,14 +448,329 @@ export async function advanceLeadSalesStageIfForward(
     if (!isForwardSalesStageMove(row.sales_stage, target)) {
       return { ok: true } as LeadActionResult;
     }
-    return updateLeadSalesStage(leadId, target, { allowBooked: target === "booked" });
+    return updateLeadSalesStage(leadId, target);
   });
   return result as LeadActionResult;
 }
 
-/** Board / detail: move to a sales stage key (not a pipeline_templates stage id). */
-export async function updateLeadPipelineStage(leadId: string, stageKey: string): Promise<LeadActionResult> {
-  return updateLeadSalesStage(leadId, stageKey);
+/** Board / detail: move to a venue pipeline stage id, or a sales_stage key when no custom template is active. */
+export async function updateLeadPipelineStage(
+  leadId: string,
+  stageKeyOrId: string,
+  opts?: { customerMessages?: "send" | "skip" },
+): Promise<LeadActionResult> {
+  const looksLikeUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(stageKeyOrId);
+
+  if (looksLikeUuid) {
+    const result = await withVenue(async (supabase, venueId) => {
+      const { data: stage, error } = await supabase
+        .from("pipeline_stages")
+        .select("id, canonical_stage, pipeline_template_id")
+        .eq("id", stageKeyOrId)
+        .eq("venue_id", venueId)
+        .maybeSingle<{ id: string; canonical_stage: string; pipeline_template_id: string }>();
+      if (error) throw error;
+      if (!stage) return { ok: false, message: "That pipeline stage was not found." } as LeadActionResult;
+
+      const { data: tpl } = await supabase
+        .from("pipeline_templates")
+        .select("id, is_active")
+        .eq("id", stage.pipeline_template_id)
+        .eq("venue_id", venueId)
+        .maybeSingle<{ id: string; is_active: boolean }>();
+      if (!tpl?.is_active) {
+        return { ok: false, message: "That stage is not on the active pipeline." } as LeadActionResult;
+      }
+
+      const { salesStageForCanonical } = await import("@/lib/pipeline-templates/sales-stage-bridge");
+      const { isCanonicalStage } = await import("@/lib/pipeline-templates/types");
+      const { transitionKindForCanonical } = await import("@/lib/leads/pipeline-stage-transition");
+      if (!isCanonicalStage(stage.canonical_stage)) {
+        return { ok: false, message: "That stage has an invalid reporting category." } as LeadActionResult;
+      }
+      const kind = transitionKindForCanonical(stage.canonical_stage);
+      if (kind === "booked") {
+        return {
+          ok: false,
+          message: "Moving to Booked requires confirmation — use Confirm Booked move.",
+        } as LeadActionResult;
+      }
+      if (kind === "lost") {
+        return {
+          ok: false,
+          message: "Marking a lead Lost requires a lost reason.",
+        } as LeadActionResult;
+      }
+      const { data: currentLead } = await supabase
+        .from("leads")
+        .select("sales_stage")
+        .eq("id", leadId)
+        .eq("venue_id", venueId)
+        .maybeSingle<{ sales_stage: string | null }>();
+      const fallback = currentLead?.sales_stage && isSalesStage(currentLead.sales_stage)
+        ? currentLead.sales_stage
+        : "new_inquiry";
+      const salesStage = salesStageForCanonical(stage.canonical_stage, fallback);
+      return updateLeadSalesStage(leadId, salesStage, {
+        pipelineStageId: stage.id,
+        customerMessages: opts?.customerMessages,
+      });
+    });
+    return result as LeadActionResult;
+  }
+
+  const { transitionKindForSalesStageKey } = await import("@/lib/leads/pipeline-stage-transition");
+  const kind = transitionKindForSalesStageKey(stageKeyOrId);
+  if (kind === "booked") {
+    return { ok: false, message: "Moving to Booked requires confirmation — use Confirm Booked move." };
+  }
+  if (kind === "lost") {
+    return { ok: false, message: "Marking a lead Lost requires a lost reason." };
+  }
+  return updateLeadSalesStage(leadId, stageKeyOrId, opts);
+}
+
+/**
+ * Mark a lead Lost with a required structured reason.
+ * Accepts a venue pipeline stage id (Lost / Cancelled reporting category) or the sales_stage key "lost".
+ */
+export async function markLeadLost(
+  leadId: string,
+  input: { reason: string; detail?: string | null },
+  stageKeyOrId?: string,
+): Promise<LeadActionResult> {
+  const { validateLostReasonInput, isLostReasonValue } = await import("@/lib/leads/lost-reasons");
+  if (!isLostReasonValue(input.reason)) {
+    return { ok: false, message: "Choose a lost reason." };
+  }
+  const lostErr = validateLostReasonInput({
+    reason: input.reason,
+    detail: input.detail,
+  });
+  if (lostErr) return { ok: false, message: lostErr };
+
+  const detail = input.detail?.trim() || null;
+  const target = stageKeyOrId?.trim() || "lost";
+  const looksLikeUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(target);
+
+  if (looksLikeUuid) {
+    return withVenue(async (supabase, venueId) => {
+      const { data: stage, error } = await supabase
+        .from("pipeline_stages")
+        .select("id, canonical_stage, pipeline_template_id")
+        .eq("id", target)
+        .eq("venue_id", venueId)
+        .maybeSingle<{ id: string; canonical_stage: string; pipeline_template_id: string }>();
+      if (error) throw error;
+      if (!stage) return { ok: false, message: "That pipeline stage was not found." } as LeadActionResult;
+
+      const { transitionKindForCanonical } = await import("@/lib/leads/pipeline-stage-transition");
+      if (transitionKindForCanonical(stage.canonical_stage) !== "lost") {
+        return { ok: false, message: "That stage is not a Lost stage." } as LeadActionResult;
+      }
+      const { data: tpl } = await supabase
+        .from("pipeline_templates")
+        .select("is_active")
+        .eq("id", stage.pipeline_template_id)
+        .eq("venue_id", venueId)
+        .maybeSingle<{ is_active: boolean }>();
+      if (!tpl?.is_active) {
+        return { ok: false, message: "That stage is not on the active pipeline." } as LeadActionResult;
+      }
+
+      return updateLeadSalesStage(leadId, "lost", {
+        pipelineStageId: stage.id,
+        lost: { reason: input.reason, detail },
+      });
+    }) as Promise<LeadActionResult>;
+  }
+
+  return updateLeadSalesStage(leadId, "lost", {
+    pipelineStageId: null,
+    lost: { reason: input.reason, detail },
+  });
+}
+
+/**
+ * Confirmed Mark as Booked: reuse or create the client and event, then
+ * run the same bookClient transition automatic booking uses.
+ */
+async function linkBookedCommercialSelection(input: {
+  selectionId?: string | null;
+  leadId?: string | null;
+  clientId: string;
+  eventId: string | null;
+}): Promise<void> {
+  if (!input.eventId) return;
+  const {
+    getActiveSelectedPackageForLead,
+    getActiveSelectedPackageForClient,
+    attachSelectionToBookingFile,
+  } = await import("@/lib/commercial-selections/service");
+  let selectionId = input.selectionId ?? null;
+  if (!selectionId && input.leadId) {
+    selectionId = (await getActiveSelectedPackageForLead(input.leadId))?.id ?? null;
+  }
+  if (!selectionId) {
+    selectionId = (await getActiveSelectedPackageForClient(input.clientId))?.id ?? null;
+  }
+  if (!selectionId) return;
+  await attachSelectionToBookingFile(selectionId, {
+    clientId: input.clientId,
+    eventId: input.eventId,
+    leadId: input.leadId ?? undefined,
+  });
+}
+
+export async function confirmPipelineBookedMove(
+  leadId: string,
+  stageKeyOrId: string,
+  opts?: {
+    spaceId?: string;
+    selectionId?: string;
+    occupancy?: import("@/lib/booking-journey/confirmed-occupancy").ConfirmedBookingOccupancy;
+  },
+): Promise<
+  | { ok: true; clientId: string; eventId: string | null; invitationSent: false; warning?: string; newlyBooked: boolean }
+  | { ok: false; message: string }
+> {
+  const looksLikeUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(stageKeyOrId);
+
+  const resolved = await withVenue(async (supabase, venueId) => {
+    let pipelineStageId: string | null = null;
+
+    if (looksLikeUuid) {
+      const { data: stage, error } = await supabase
+        .from("pipeline_stages")
+        .select("id, canonical_stage, pipeline_template_id")
+        .eq("id", stageKeyOrId)
+        .eq("venue_id", venueId)
+        .maybeSingle<{ id: string; canonical_stage: string; pipeline_template_id: string }>();
+      if (error) throw error;
+      if (!stage) return { ok: false as const, message: "That pipeline stage was not found." };
+      const { transitionKindForCanonical } = await import("@/lib/leads/pipeline-stage-transition");
+      if (transitionKindForCanonical(stage.canonical_stage) !== "booked") {
+        return { ok: false as const, message: "That stage is not mapped to Booked." };
+      }
+      const { data: tpl } = await supabase
+        .from("pipeline_templates")
+        .select("is_active")
+        .eq("id", stage.pipeline_template_id)
+        .eq("venue_id", venueId)
+        .maybeSingle<{ is_active: boolean }>();
+      if (!tpl?.is_active) {
+        return { ok: false as const, message: "That stage is not on the active pipeline." };
+      }
+      pipelineStageId = stage.id;
+    } else if (stageKeyOrId !== "booked") {
+      return { ok: false as const, message: "That is not a Booked stage." };
+    }
+
+    const lead = await repo.getLead(supabase, venueId, leadId);
+    if (!lead) return { ok: false as const, message: "Lead not found." };
+
+    const occupancy = opts?.occupancy;
+    if (!occupancy?.eventDate?.trim()) {
+      return { ok: false as const, message: "Confirm the event date, spaces, and times before booking this relationship." };
+    }
+    const { bookingConfirmationError } = await import("@/lib/booking-journey/confirmed-occupancy");
+    const { data: rules } = await supabase
+      .from("venue_capacity_rules")
+      .select("max_simultaneous_events")
+      .eq("venue_id", venueId)
+      .maybeSingle<{ max_simultaneous_events: number | null }>();
+    const { effectiveMaxSimultaneousEvents } = await import("@/lib/availability/event-occupancy");
+    const occupancyError = bookingConfirmationError(
+      occupancy,
+      effectiveMaxSimultaneousEvents({ maxSimultaneousEvents: rules?.max_simultaneous_events ?? 1 }),
+    );
+    if (occupancyError) return { ok: false as const, message: occupancyError };
+
+    const spaceId = occupancy.spaceId?.trim() || undefined;
+
+    const { convertLeadToClient } = await import("@/lib/clients/service");
+    const converted = await convertLeadToClient(lead, { spaceId });
+    if (!converted.ok) return converted;
+
+    let warning: string | undefined;
+    const { getActiveSelectedPackageForLead, attachSelectionToBookingFile } = await import(
+      "@/lib/commercial-selections/service"
+    );
+    const attachId = opts?.selectionId
+      ?? (await getActiveSelectedPackageForLead(lead.id))?.id
+      ?? null;
+    if (attachId) {
+      const attached = await attachSelectionToBookingFile(attachId, {
+        clientId: converted.clientId,
+        eventId: converted.eventId,
+        leadId: lead.id,
+      });
+      if (!attached.ok) {
+        warning = attached.message
+          ? `Booking file started, but the selected package could not be linked: ${attached.message}.`
+          : "Booking file started, but the selected package could not be linked.";
+      }
+    }
+
+    const { bookClient } = await import("@/lib/booking-journey/book-client");
+    const booked = await bookClient(supabase, {
+      venueId,
+      clientId: converted.clientId,
+      eventId: converted.eventId,
+      leadId: lead.id,
+      pipelineStageId,
+      source: "manual",
+      spaceId,
+      confirmedOccupancy: occupancy,
+    });
+    if (!booked.ok) {
+      return { ok: false as const, message: booked.message };
+    }
+
+    if (booked.eventId) {
+      await linkBookedCommercialSelection({
+        selectionId: attachId,
+        leadId: lead.id,
+        clientId: converted.clientId,
+        eventId: booked.eventId,
+      });
+    }
+
+    if (booked.eventId) {
+      const { applyEventAssignmentAfterBooking } = await import("@/lib/team/booking-assignment");
+      const assigned = await applyEventAssignmentAfterBooking({
+        supabase,
+        venueId,
+        eventId: booked.eventId,
+        selectedStaffId: occupancy.assignedStaffId,
+      });
+      if (!assigned.ok) {
+        warning = warning
+          ? `${warning} Team assignment was not saved: ${assigned.message}`
+          : `Booked, but the team assignment was not saved: ${assigned.message}`;
+      }
+    }
+
+    return {
+      ok: true as const,
+      clientId: converted.clientId,
+      eventId: booked.eventId,
+      invitationSent: false as const,
+      warning,
+      newlyBooked: booked.newlyBooked,
+    };
+  });
+
+  if (!resolved.ok) {
+    return {
+      ok: false,
+      message: "message" in resolved && resolved.message ? resolved.message : "Could not book this client.",
+    };
+  }
+  if (!("newlyBooked" in resolved)) {
+    return { ok: false, message: "Could not book this client." };
+  }
+  return resolved;
 }
 
 /**
@@ -410,7 +785,24 @@ export async function moveLeadBackToSalesPipeline(leadId: string): Promise<LeadA
       .maybeSingle<{ sales_stage: string | null }>();
     if (!row) return { ok: false, message: "Lead not found." } as LeadActionResult;
     if (row.sales_stage !== "booked") {
-      return { ok: false, message: "This lead is not currently in Booking Started." } as LeadActionResult;
+      return { ok: false, message: "This lead is not currently Booked." } as LeadActionResult;
+    }
+    const { data: linked } = await supabase.from("clients").select("id")
+      .eq("lead_id", leadId).eq("venue_id", venueId)
+      .maybeSingle<{ id: string }>();
+    if (linked) {
+      const { data: bookedEvent } = await supabase.from("events").select("id")
+        .eq("client_id", linked.id).eq("venue_id", venueId)
+        .not("booked_at", "is", null)
+        .neq("status", "cancelled")
+        .limit(1)
+        .maybeSingle<{ id: string }>();
+      if (bookedEvent) {
+        return {
+          ok: false,
+          message: "This client is booked. Cancel the event to leave Booked.",
+        } as LeadActionResult;
+      }
     }
     return updateLeadSalesStage(leadId, SALES_PIPELINE_RETURN_STAGE, { allowLeaveBooked: true });
   });
@@ -418,58 +810,250 @@ export async function moveLeadBackToSalesPipeline(leadId: string): Promise<LeadA
 }
 
 /**
- * Return a previously converted relationship to Booked (rebooking when first_booked_at already set).
- * Requires an existing linked client — does not create a new client/event.
+ * A cancelled booked relationship is not an active Booked Client.
+ * sales_stage leaves `booked`. Historical events.booked_at is not cleared.
+ * `cancelled` is not a sales-pipeline column and is not Lost.
  */
-export async function returnLeadToBooked(leadId: string): Promise<LeadActionResult> {
+export async function leaveActiveBookedPipeline(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  venueId: string,
+  clientId: string,
+): Promise<void> {
+  const { data: client } = await supabase
+    .from("clients")
+    .select("lead_id")
+    .eq("id", clientId)
+    .eq("venue_id", venueId)
+    .maybeSingle<{ lead_id: string | null }>();
+  const leadId = client?.lead_id;
+  if (!leadId) return;
+
+  const { data: lead } = await supabase
+    .from("leads")
+    .select("sales_stage")
+    .eq("id", leadId)
+    .eq("venue_id", venueId)
+    .maybeSingle<{ sales_stage: string | null }>();
+  if (!lead || lead.sales_stage !== "booked") return;
+
+  const { error } = await supabase
+    .from("leads")
+    .update({
+      sales_stage: CANCELLED_RELATIONSHIP_STAGE,
+      pipeline_stage_id: null,
+      lost_reason: null,
+      lost_reason_detail: null,
+      lost_at: null,
+    })
+    .eq("id", leadId)
+    .eq("venue_id", venueId);
+  if (error) throw error;
+}
+
+/**
+ * Mark a previously linked relationship as Booked.
+ * Requires an existing linked client — does not create a new client/event.
+ * An already-active Booked lead is a no-op. A cancelled relationship
+ * (even if sales_stage was left on booked) calls bookClient.
+ * Same canonical bookClient transition as pipeline Mark as Booked.
+ */
+export async function returnLeadToBooked(
+  leadId: string,
+  occupancy?: import("@/lib/booking-journey/confirmed-occupancy").ConfirmedBookingOccupancy,
+): Promise<
+  | { ok: true; clientId: string; eventId: string | null; newlyBooked: boolean }
+  | { ok: false; message: string }
+> {
   const result = await withVenue(async (supabase, venueId) => {
     const { data: row } = await supabase.from("leads").select("sales_stage")
       .eq("id", leadId).eq("venue_id", venueId)
       .maybeSingle<{ sales_stage: string | null }>();
-    if (!row) return { ok: false, message: "Lead not found." } as LeadActionResult;
-    if (row.sales_stage === "booked") {
-      return { ok: true } as LeadActionResult;
-    }
+    if (!row) return { ok: false as const, message: "Lead not found." };
+
     const { data: linked } = await supabase.from("clients").select("id")
       .eq("lead_id", leadId).eq("venue_id", venueId)
       .maybeSingle<{ id: string }>();
     if (!linked) {
       return {
-        ok: false,
-        message: "There is no client linked to this inquiry yet. Create a contract or set up payments from the Booking Journey first, or start the booking file.",
-      } as LeadActionResult;
+        ok: false as const,
+        message: "There is no client linked to this inquiry yet. Create a contract or set up payments from Commercial first, or start the booking file.",
+      };
     }
-    return updateLeadSalesStage(leadId, "booked", { allowBooked: true, clientId: linked.id });
+
+    if (row.sales_stage === "booked") {
+      const { data: cancelledEvent } = await supabase.from("events").select("id")
+        .eq("client_id", linked.id).eq("venue_id", venueId)
+        .eq("status", "cancelled")
+        .not("booked_at", "is", null)
+        .limit(1)
+        .maybeSingle<{ id: string }>();
+      if (!cancelledEvent) {
+        return {
+          ok: true as const,
+          clientId: linked.id,
+          eventId: null,
+          newlyBooked: false,
+        };
+      }
+    }
+
+    if (!occupancy?.eventDate?.trim()) {
+      return { ok: false as const, message: "Confirm the event date, spaces, and times before booking this relationship." };
+    }
+    const { bookingConfirmationError } = await import("@/lib/booking-journey/confirmed-occupancy");
+    const { data: rules } = await supabase
+      .from("venue_capacity_rules")
+      .select("max_simultaneous_events")
+      .eq("venue_id", venueId)
+      .maybeSingle<{ max_simultaneous_events: number | null }>();
+    const { effectiveMaxSimultaneousEvents } = await import("@/lib/availability/event-occupancy");
+    const occupancyError = bookingConfirmationError(
+      occupancy,
+      effectiveMaxSimultaneousEvents({ maxSimultaneousEvents: rules?.max_simultaneous_events ?? 1 }),
+    );
+    if (occupancyError) return { ok: false as const, message: occupancyError };
+
+    const { bookClient } = await import("@/lib/booking-journey/book-client");
+    const booked = await bookClient(supabase, {
+      venueId,
+      clientId: linked.id,
+      leadId,
+      source: "manual",
+      spaceId: occupancy.spaceId,
+      confirmedOccupancy: occupancy,
+    });
+    if (!booked.ok) return { ok: false as const, message: booked.message };
+    if (booked.eventId) {
+      await linkBookedCommercialSelection({
+        leadId,
+        clientId: linked.id,
+        eventId: booked.eventId,
+      });
+      const { applyEventAssignmentAfterBooking } = await import("@/lib/team/booking-assignment");
+      await applyEventAssignmentAfterBooking({
+        supabase,
+        venueId,
+        eventId: booked.eventId,
+        selectedStaffId: occupancy.assignedStaffId,
+      });
+    }
+    return {
+      ok: true as const,
+      clientId: linked.id,
+      eventId: booked.eventId ?? null,
+      newlyBooked: booked.newlyBooked,
+    };
+  });
+  return result as
+    | { ok: true; clientId: string; eventId: string | null; newlyBooked: boolean }
+    | { ok: false; message: string };
+}
+
+/**
+ * Same canonical bookClient transition as Return to Booked, starting from
+ * the client rather than the lead. Does not create records.
+ */
+export async function returnClientToBooked(
+  clientId: string,
+  occupancy?: import("@/lib/booking-journey/confirmed-occupancy").ConfirmedBookingOccupancy,
+): Promise<LeadActionResult> {
+  const result = await withVenue(async (supabase, venueId) => {
+    if (!occupancy?.eventDate?.trim()) {
+      return { ok: false, message: "Confirm the event date, spaces, and times before booking this relationship." } as LeadActionResult;
+    }
+    const { bookingConfirmationError } = await import("@/lib/booking-journey/confirmed-occupancy");
+    const { data: rules } = await supabase
+      .from("venue_capacity_rules")
+      .select("max_simultaneous_events")
+      .eq("venue_id", venueId)
+      .maybeSingle<{ max_simultaneous_events: number | null }>();
+    const { effectiveMaxSimultaneousEvents } = await import("@/lib/availability/event-occupancy");
+    const occupancyError = bookingConfirmationError(
+      occupancy,
+      effectiveMaxSimultaneousEvents({ maxSimultaneousEvents: rules?.max_simultaneous_events ?? 1 }),
+    );
+    if (occupancyError) return { ok: false, message: occupancyError } as LeadActionResult;
+    const { bookClient } = await import("@/lib/booking-journey/book-client");
+    const booked = await bookClient(supabase, {
+      venueId,
+      clientId,
+      source: "manual",
+      spaceId: occupancy.spaceId,
+      confirmedOccupancy: occupancy,
+    });
+    if (!booked.ok) return { ok: false, message: booked.message } as LeadActionResult;
+    if (booked.eventId) {
+      await linkBookedCommercialSelection({
+        clientId,
+        eventId: booked.eventId,
+      });
+      const { applyEventAssignmentAfterBooking } = await import("@/lib/team/booking-assignment");
+      await applyEventAssignmentAfterBooking({
+        supabase,
+        venueId,
+        eventId: booked.eventId,
+        selectedStaffId: occupancy.assignedStaffId,
+      });
+    }
+    return { ok: true } as LeadActionResult;
   });
   return result as LeadActionResult;
 }
 
 export async function wouldEnrollOnPipelineStageMove(
   leadId: string,
-  stageKey: string,
+  stageKeyOrId: string,
 ): Promise<
-  | { ok: true; wouldEnroll: boolean; preview: AutomationMessagePreview | null }
+  | { ok: true; wouldEnroll: boolean; preview: AutomationMessagePreview | null; plan: StageChangeMessagePlan | null }
   | { ok: false; message: string }
 > {
-  if (!isSalesStage(stageKey)) return { ok: false, message: "Invalid sales stage." };
+  let salesStageKey = stageKeyOrId;
+  const looksLikeUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(stageKeyOrId);
+  if (looksLikeUuid) {
+    const venue = await getCurrentVenue();
+    if (!venue) return { ok: false, message: "No venue found." };
+    const supabase = await createClient();
+    const { data: stage } = await supabase
+      .from("pipeline_stages")
+      .select("canonical_stage")
+      .eq("id", stageKeyOrId)
+      .eq("venue_id", venue.id)
+      .maybeSingle<{ canonical_stage: string }>();
+    if (!stage) return { ok: false, message: "That pipeline stage was not found." };
+    const { salesStageForCanonical } = await import("@/lib/pipeline-templates/sales-stage-bridge");
+    const { isCanonicalStage } = await import("@/lib/pipeline-templates/types");
+    if (!isCanonicalStage(stage.canonical_stage)) return { ok: false, message: "Invalid reporting category." };
+    const { data: currentLead } = await supabase.from("leads").select("sales_stage")
+      .eq("id", leadId).eq("venue_id", venue.id)
+      .maybeSingle<{ sales_stage: string | null }>();
+    const fallback = currentLead?.sales_stage && isSalesStage(currentLead.sales_stage)
+      ? currentLead.sales_stage
+      : "new_inquiry";
+    salesStageKey = salesStageForCanonical(stage.canonical_stage, fallback);
+  }
+  if (!isSalesStage(salesStageKey)) return { ok: false, message: "Invalid sales stage." };
   const venue = await getCurrentVenue();
   if (!venue) return { ok: false, message: "No venue found." };
   const supabase = await createClient();
   const { data: lead } = await supabase.from("leads").select("relationship_id")
     .eq("id", leadId).eq("venue_id", venue.id)
     .maybeSingle<{ relationship_id: string | null }>();
-  if (!lead?.relationship_id) return { ok: true, wouldEnroll: false, preview: null };
-  const check = await wouldEnrollOnStageChange(supabase, venue.id, lead.relationship_id, stageKey);
-  let preview: AutomationMessagePreview | null = null;
-  if (check.wouldEnroll && check.sequenceId) {
-    preview = await previewFirstStepForSequence(supabase, venue.id, check.sequenceId, lead.relationship_id);
+  if (!lead?.relationship_id) return { ok: true, wouldEnroll: false, preview: null, plan: null };
+  const check = await wouldEnrollOnStageChange(supabase, venue.id, lead.relationship_id, salesStageKey);
+  const steps = [];
+  for (const sequence of check.sequences) {
+    steps.push(...await previewStepsForSequence(supabase, venue.id, sequence.id, lead.relationship_id));
   }
-  return { ok: true, wouldEnroll: check.wouldEnroll, preview };
+  const plan: StageChangeMessagePlan | null = check.wouldEnroll
+    ? { steps, advancesPipeline: check.sequences.some((sequence) => sequence.updatePipelineOnEnroll) }
+    : null;
+  const firstPreview = steps.find((step) => step.preview.ok)?.preview ?? steps[0]?.preview ?? null;
+  return { ok: true, wouldEnroll: check.wouldEnroll, preview: firstPreview, plan };
 }
 
 /**
- * Ensure Standard Sales Pipeline library record exists (idempotent).
- * Does not control live Board stages.
+ * Ensure the Standard pipeline exists, is active, and matches the product baseline.
+ * Idempotent — safe on every Leads / Board load and on venue provisioning.
  */
 export async function ensureStandardSalesPipelineForCurrentVenue(): Promise<void> {
   if (!isSupabaseConfigured) return;
@@ -536,7 +1120,7 @@ export async function addTask(
 
 export async function updateTask(
   taskId: string,
-  input: { title: string; dueDate: string },
+  input: { title: string; dueDate: string; assignedToStaffId?: string | null },
 ): Promise<LeadActionResult> {
   if (!input.title.trim()) return { ok: false, message: "Task title is required." };
   const result = await withVenue(async (supabase, venueId) => {
@@ -573,6 +1157,42 @@ export async function deleteTask(taskId: string): Promise<LeadActionResult> {
 
 // ---- Sprint 6: lead info + relationship -------------------------------------
 
+/**
+ * Autosave the Lead's planned Event Space. Planning only: no Event row,
+ * no sales-stage change, no booked_at stamp.
+ */
+export async function setLeadPlannedEventSpace(
+  leadId: string,
+  spaceId: string | null,
+): Promise<LeadActionResult> {
+  const result = await withVenue(async (supabase, venueId) => {
+    const trimmed = spaceId?.trim() || null;
+    const { data: lead } = await supabase
+      .from("leads")
+      .select("id")
+      .eq("id", leadId)
+      .eq("venue_id", venueId)
+      .maybeSingle<{ id: string }>();
+    if (!lead) return { ok: false, message: "Lead not found." } as LeadActionResult;
+
+    if (trimmed) {
+      const { data: space } = await supabase
+        .from("venue_spaces")
+        .select("id")
+        .eq("id", trimmed)
+        .eq("venue_id", venueId)
+        .maybeSingle<{ id: string }>();
+      if (!space) {
+        return { ok: false, message: "That event space is not on this venue." } as LeadActionResult;
+      }
+    }
+
+    await repo.setPlannedEventSpace(supabase, venueId, leadId, trimmed);
+    return { ok: true } as LeadActionResult;
+  });
+  return result as LeadActionResult;
+}
+
 export async function updateLeadInfo(
   leadId: string,
   input: LeadInput,
@@ -580,7 +1200,50 @@ export async function updateLeadInfo(
   const errors = validateLeadInput(input);
   if (Object.keys(errors).length > 0) return { ok: false, errors };
   const result = await withVenue(async (supabase, venueId) => {
-    await repo.updateLeadInfo(supabase, venueId, leadId, input);
+    const [{ data: existing, error: existingError }, { data: venueRow }] = await Promise.all([
+      supabase
+        .from("leads")
+        .select("event_type, inquiry_message, inquiry_message_origin")
+        .eq("id", leadId)
+        .eq("venue_id", venueId)
+        .maybeSingle<{
+          event_type: string | null;
+          inquiry_message: string | null;
+          inquiry_message_origin: string | null;
+        }>(),
+      supabase
+        .from("venues")
+        .select("accepted_inquiry_event_types")
+        .eq("id", venueId)
+        .maybeSingle<{ accepted_inquiry_event_types: unknown }>(),
+    ]);
+    if (existingError) throw existingError;
+    if (!existing) return { ok: false, message: "Lead not found." } as LeadActionResult;
+
+    const { assertEventTypeChangeAllowed } = await import(
+      "@/lib/event-types/assert-accepted"
+    );
+    const change = assertEventTypeChangeAllowed({
+      previousEventType: existing?.event_type,
+      nextEventType: input.eventType,
+      acceptedRaw: venueRow?.accepted_inquiry_event_types,
+    });
+    if (!change.ok) {
+      return {
+        ok: false,
+        errors: { eventType: change.error },
+        message: change.error,
+      } as LeadActionResult;
+    }
+
+    await repo.updateLeadInfo(supabase, venueId, leadId, {
+      ...input,
+      inquiryMessageOrigin: originAfterStaffEdit({
+        previousMessage: existing?.inquiry_message,
+        nextMessage: input.inquiryMessage,
+        previousOrigin: existing?.inquiry_message_origin,
+      }),
+    });
     await repo.insertActivity(supabase, venueId, leadId, "lead_updated", "Lead information updated");
     return { ok: true } as LeadActionResult;
   });
@@ -593,23 +1256,19 @@ export async function updateRelationshipFields(
   activityHints: { tourScheduled?: boolean; followUpSet?: boolean; contactedSet?: boolean },
 ): Promise<LeadActionResult> {
   const result = await withVenue(async (supabase, venueId) => {
+    let tourConflict: { message: string } | undefined;
     try {
-      await repo.updateRelationshipFields(supabase, venueId, leadId, input);
+      const outcome = await repo.updateRelationshipFields(supabase, venueId, leadId, input);
+      tourConflict = outcome.tourConflict;
     } catch (err) {
       if (err instanceof LeadTourWriteError) {
         return { ok: false, message: err.message || TOUR_TIME_REQUIRED } as LeadActionResult;
       }
-      const fail = tourCapacityFailureFromUnknown(err);
-      if (fail) {
-        return {
-          ok: false,
-          message: "That time is no longer available. Please choose another time.",
-        } as LeadActionResult;
-      }
       throw err;
     }
     // Log specific meaningful events rather than a generic "updated".
-    if (activityHints.tourScheduled && input.tourDate && input.tourTime) {
+    // Tour capacity conflict still saved follow-up — do not invent a tour_scheduled activity.
+    if (!tourConflict && activityHints.tourScheduled && input.tourDate && input.tourTime) {
       const { formatDate } = await import("@/lib/leads/constants");
       await repo.insertActivity(supabase, venueId, leadId, "tour_scheduled",
         `Tour scheduled for ${formatDate(input.tourDate)}`);
@@ -624,7 +1283,56 @@ export async function updateRelationshipFields(
       await repo.insertActivity(supabase, venueId, leadId, "relationship_updated",
         "Relationship details updated");
     }
+    return { ok: true, tourConflict } as LeadActionResult;
+  });
+  return result as LeadActionResult;
+}
+
+export async function completeFollowUp(
+  leadId: string,
+  input: FollowUpCompletionInput,
+): Promise<LeadActionResult> {
+  const result = await withVenue(async (supabase, venueId) => {
+    const current = await repo.getOutstandingFollowUp(supabase, venueId, leadId);
+    if (!current) return { ok: false, message: "Lead not found." } as LeadActionResult;
+    const resolved = resolveFollowUpCompletion(current, input);
+    if (!resolved.ok) return { ok: false, message: resolved.message } as LeadActionResult;
+
+    await repo.updateOutstandingFollowUp(supabase, venueId, leadId, {
+      nextActionText: resolved.nextActionText,
+      followUpDate: resolved.followUpDate,
+    });
+
+    const { formatDate } = await import("@/lib/leads/constants");
+    await repo.insertActivity(
+      supabase,
+      venueId,
+      leadId,
+      "follow_up_completed",
+      followUpCompletedTitle(resolved.completedDate, formatDate),
+      resolved.completedAction ?? undefined,
+    );
+    if (resolved.writeFollowUpSet && resolved.followUpDate) {
+      await repo.insertActivity(
+        supabase,
+        venueId,
+        leadId,
+        "follow_up_set",
+        `Follow-up set for ${formatDate(resolved.followUpDate)}`,
+      );
+    }
     return { ok: true } as LeadActionResult;
+  });
+  return result as LeadActionResult;
+}
+
+export async function setLeadAssignedStaff(
+  leadId: string,
+  staffId: string | null,
+): Promise<LeadActionResult> {
+  const result = await withVenue(async (supabase, venueId) => {
+    const { persistLeadStaffAssignment } = await import("@/lib/team/staff-assignment");
+    return persistLeadStaffAssignment(supabase, venueId, leadId, staffId);
   });
   return result as LeadActionResult;
 }

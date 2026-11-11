@@ -24,10 +24,10 @@ export function WelcomeExperienceDocumentList({
             className="flex flex-col gap-1 border-t border-[color-mix(in_srgb,var(--taupe-medium)_35%,transparent)] pt-4 first:border-t-0 first:pt-0 sm:flex-row sm:items-baseline sm:justify-between sm:gap-6"
           >
             <div className="min-w-0">
-              <p className="text-sm font-medium text-[var(--forest-sage)]">
+              <p className="text-sm font-medium text-foreground">
                 {doc.title}
               </p>
-              <p className="mt-1 text-xs leading-relaxed text-[color-mix(in_oklch,var(--forest-sage)_58%,transparent)]">
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
                 Version {doc.version}
                 <span aria-hidden className="mx-1.5">
                   ·

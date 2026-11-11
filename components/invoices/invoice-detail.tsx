@@ -7,9 +7,23 @@ import { useRouter } from "next/navigation";
 import { Mail, Printer, Receipt } from "lucide-react";
 import { toast } from "sonner";
 
-import { sendInvoiceEmailAction, updateInvoiceStatusAction } from "@/app/(app)/invoices/actions";
+import {
+  previewInvoiceAndPaymentPlanAction,
+  sendInvoiceAndPaymentPlanAction,
+  updateInvoiceDisplayNameAction,
+  updateInvoiceStatusAction,
+  type InvoiceAndPaymentPlanPreview,
+} from "@/app/(app)/invoices/actions";
+import { venueToday } from "@/lib/venue/timezone";
+import { invoiceHumanLabel } from "@/lib/invoices/display-name";
+import { ArtifactReviewOverlay } from "@/components/artifacts/artifact-review-overlay";
+import { AdjustPaymentPlanDialog } from "@/components/invoices/adjust-payment-plan-dialog";
+import { ApplyPostPaymentCreditDialog } from "@/components/invoices/apply-post-payment-credit-dialog";
 import { EventOrderDriftBanner } from "@/components/invoices/event-order-drift-banner";
 import { InvoiceLineItemsEditor } from "@/components/invoices/invoice-line-items-editor";
+import { RecordOfflinePaymentDialog } from "@/components/invoices/record-offline-payment-dialog";
+import { PaymentPlanEditor, PaymentPlanNeedsReview } from "@/components/payments/payment-plan-editor";
+import { InvoicePrintDocument } from "@/components/invoices/invoice-print-document";
 import { InvoiceStatusBadge } from "@/components/invoices/invoice-status-badge";
 import { BusinessAssetActionRow, BusinessAssetHeader } from "@/components/business-assets/asset-header";
 import type { WaitingOn } from "@/components/business-assets/waiting-state";
@@ -20,15 +34,26 @@ import {
   Card, CardContent, CardDescription, CardHeader, CardTitle,
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { formatCurrency, invoiceStatusLabel } from "@/lib/invoices/constants";
+import { formatCurrency, invoiceLineTypesForVenue, invoiceStatusLabel, taxableAmountBeforeTax } from "@/lib/invoices/constants";
+import { paymentPlanOverview } from "@/lib/payments/constants";
+import {
+  planTotalsReconcile,
+  scheduleHasPaymentActivity,
+  scheduledPlanTotal,
+} from "@/lib/payments/reconcile-commitment";
 import type { AmountDueNowResult } from "@/lib/invoices/amount-due-now";
 import type { EventOrderDrift, InvoiceStatus, InvoiceWithLineItems } from "@/lib/invoices/types";
 import type { Package } from "@/lib/packages/types";
+import type { Venue } from "@/lib/venue/types";
+import { NOTES_FROM_YOUR_VENUE_LABEL } from "@/lib/notes/internal-notes-copy";
+import { isSystemBookingCommitmentNote } from "@/lib/invoices/customer-facing-notes";
+import { resolveInvoiceBackNavigation } from "@/lib/invoices/return-path";
 import { safePaymentScheduleReturnPath } from "@/lib/payments/starters";
 
 const STATUS_TRANSITIONS: Record<InvoiceStatus, { next: InvoiceStatus; label: string } | null> = {
-  draft: { next: "sent",  label: "Mark as Sent" },
+  draft: { next: "sent",  label: "Mark as issued" },
   sent:  { next: "paid",  label: "Mark as Paid" },
+  partially_paid: null, // payment recording uses the deliberate offline dialog
   paid:  null,
   void:  null,
 };
@@ -36,7 +61,11 @@ const STATUS_TRANSITIONS: Record<InvoiceStatus, { next: InvoiceStatus; label: st
 // Same "whose turn" question Contracts/Questionnaires/Messaging already
 // answer, generalized here (BA4, Step 1C).
 const INVOICE_WAITING_ON: Record<InvoiceStatus, WaitingOn> = {
-  draft: "venue", sent: "client", paid: "completed", void: "none",
+  draft: "venue",
+  sent: "client",
+  partially_paid: "client",
+  paid: "completed",
+  void: "none",
 };
 
 export function InvoiceDetail({
@@ -44,15 +73,30 @@ export function InvoiceDetail({
   packages,
   eventOrderDrift = null,
   emailConfigured = true,
+  returnTo = null,
   returnToPaymentSchedule = null,
+  leadId = null,
+  relationshipBooked = false,
   amountDueNow = null,
   paidToDate = null,
   cancelledPlanAmount = 0,
+  venue,
+  paymentRequestAlreadySent = false,
+  linkedScheduleId = null,
+  scheduleLines = null,
+  scheduleNotes = null,
+  scheduleTiming = null,
 }: {
   invoice: InvoiceWithLineItems;
   packages: Package[];
   eventOrderDrift?: EventOrderDrift | null;
   emailConfigured?: boolean;
+  /** Originating workspace (lead/client/invoices/documents). */
+  returnTo?: string | null;
+  /** Linked lead when the invoice belongs to a pre-booking relationship. */
+  leadId?: string | null;
+  /** True only when the relationship Event has booked_at. */
+  relationshipBooked?: boolean;
   /** When set (from payment-schedule handoff), show continue CTA after amount exists. */
   returnToPaymentSchedule?: string | null;
   /** Next open installment — never the full outstanding under "Amount Due Now". */
@@ -64,18 +108,174 @@ export function InvoiceDetail({
   paidToDate?: number | null;
   /** Sum of cancelled schedule commitments still shown on the plan history. */
   cancelledPlanAmount?: number;
+  venue: Venue;
+  /** Persisted successful payment-request send (conversation invoice_email). */
+  paymentRequestAlreadySent?: boolean;
+  linkedScheduleId?: string | null;
+  scheduleLines?: {
+    id?: string;
+    label: string;
+    amount: number;
+    dueDate: string | null;
+    status: string;
+    obligationKind?: import("@/lib/payments/types").PaymentObligationKind | null;
+    paidAmount?: number | null;
+    stripeCheckoutSessionId?: string | null;
+    stripePaymentIntentId?: string | null;
+  }[] | null;
+  scheduleNotes?: string | null;
+  scheduleTiming?: {
+    eventDate: string | null;
+    bookingDate: string | null;
+    executedAt: string | null;
+    today: string;
+  } | null;
 }) {
   const router = useRouter();
   const [status, setStatus] = React.useState<InvoiceStatus>(invoice.status);
+  React.useEffect(() => {
+    setStatus(invoice.status);
+  }, [invoice.status]);
   const [pending, startTransition] = React.useTransition();
   const [emailPending, startEmail] = React.useTransition();
+  const [namePending, startName] = React.useTransition();
+  const [previewOpen, setPreviewOpen] = React.useState(false);
+  const [sendOpen, setSendOpen] = React.useState(false);
+  const [sendPreview, setSendPreview] = React.useState<InvoiceAndPaymentPlanPreview | null>(null);
+  const [sendLock, setSendLock] = React.useState(false);
+  const [paymentRequestSent, setPaymentRequestSent] = React.useState(paymentRequestAlreadySent);
+  React.useEffect(() => {
+    setPaymentRequestSent(paymentRequestAlreadySent);
+  }, [paymentRequestAlreadySent]);
+  const [editingPlan, setEditingPlan] = React.useState(false);
+  const [editingName, setEditingName] = React.useState(false);
+  const [recordPaymentOpen, setRecordPaymentOpen] = React.useState(false);
+  const [creditOpen, setCreditOpen] = React.useState(false);
+  const [adjustPlanOpen, setAdjustPlanOpen] = React.useState(false);
+  const humanTitle = invoiceHumanLabel({
+    displayName: invoice.displayName,
+    invoiceNumber: invoice.invoiceNumber,
+  });
+  const [nameDraft, setNameDraft] = React.useState(invoice.displayName?.trim() || humanTitle);
   const transition = STATUS_TRANSITIONS[status];
   const continueToSchedule = safePaymentScheduleReturnPath(returnToPaymentSchedule);
+  const backNav = resolveInvoiceBackNavigation({
+    returnTo,
+    clientName: invoice.clientName,
+    leadId,
+    clientId: invoice.clientId,
+    relationshipBooked,
+  });
   const displayPaidToDate = paidToDate != null
     ? paidToDate
     : Math.max(0, invoice.total - invoice.balanceDue);
+  const scheduledTotal = scheduleLines ? scheduledPlanTotal(scheduleLines) : 0;
+  const planMismatch = Boolean(
+    scheduleLines && scheduleLines.length > 0 && !planTotalsReconcile(scheduledTotal, invoice.total),
+  );
+  const planHasActivity = Boolean(
+    scheduleLines && scheduleHasPaymentActivity(scheduleLines, status),
+  );
+  const planOverview = scheduleLines && scheduleLines.length > 0
+    ? paymentPlanOverview({
+        invoiceStatus: status,
+        items: scheduleLines.map((l) => ({
+          status: l.status as import("@/lib/payments/types").PaymentItemStatus,
+          amount: l.amount,
+          paidAmount: l.paidAmount ?? null,
+        })),
+      })
+    : null;
+  const hasOpenOfflineInstallment = Boolean(
+    scheduleLines?.some((l) =>
+      (l.status === "pending" || l.status === "overdue" || l.status === "partially_paid")
+      && !l.stripePaymentIntentId
+    ),
+  );
+  const showRecordPayment =
+    Boolean(linkedScheduleId)
+    && hasOpenOfflineInstallment
+    && (status === "sent" || status === "partially_paid");
+  const showApplyCredit =
+    invoice.balanceDue > 0
+    && (status === "sent" || status === "partially_paid" || status === "paid")
+    && displayPaidToDate > 0;
+  const showAdjustPlan =
+    Boolean(linkedScheduleId && scheduleLines && scheduleLines.length > 0)
+    && invoice.balanceDue > 0
+    && (status === "sent" || status === "partially_paid");
+
+  function saveDisplayName() {
+    startName(async () => {
+      const result = await updateInvoiceDisplayNameAction(invoice.id, nameDraft);
+      if (!result.ok) {
+        toast.error(result.message ?? "Could not save invoice name.");
+        return;
+      }
+      toast.success("Invoice name saved.");
+      setEditingName(false);
+      router.refresh();
+    });
+  }
+
+  function openSendReview() {
+    if (paymentRequestSent) {
+      toast.message("This invoice and payment plan was already sent.");
+      return;
+    }
+    startEmail(async () => {
+      const result = await previewInvoiceAndPaymentPlanAction(invoice.id);
+      if (!result.ok || !("preview" in result)) {
+        if (!result.ok && result.message?.toLowerCase().includes("already sent")) {
+          setPaymentRequestSent(true);
+        }
+        toast.error(!result.ok ? (result.message ?? "Could not prepare this invoice and payment plan.") : "Could not prepare this invoice and payment plan.");
+        return;
+      }
+      if ("alreadySent" in result && result.alreadySent) {
+        setPaymentRequestSent(true);
+        toast.message("This invoice and payment plan was already sent.");
+        return;
+      }
+      setSendPreview(result.preview);
+      setSendOpen(true);
+    });
+  }
+
+  function sendInvoiceAndPaymentPlan() {
+    if (sendLock || emailPending || paymentRequestSent) return;
+    setSendLock(true);
+    startEmail(async () => {
+      try {
+        const result = await sendInvoiceAndPaymentPlanAction(invoice.id);
+        if (!result.ok) {
+          if (result.message?.toLowerCase().includes("already sent")) {
+            setPaymentRequestSent(true);
+            setSendOpen(false);
+          }
+          toast.error(result.message ?? "Could not send.");
+          return;
+        }
+        if ("method" in result && result.method === "mailto" && result.mailtoUrl) {
+          window.open(result.mailtoUrl, "_blank");
+          toast.success("Your email app opened. Hello to Cheers did not send this email.");
+        } else {
+          setPaymentRequestSent(true);
+          toast.success("Invoice and payment plan sent.");
+        }
+        setSendOpen(false);
+        router.refresh();
+      } finally {
+        setSendLock(false);
+      }
+    });
+  }
 
   function handleStatusChange(next: InvoiceStatus) {
+    if (next === "paid" && linkedScheduleId) {
+      setRecordPaymentOpen(true);
+      return;
+    }
     startTransition(async () => {
       const result = await updateInvoiceStatusAction(invoice.id, next);
       if (result.ok) { setStatus(next); toast.success(`Invoice marked as ${invoiceStatusLabel(next)}.`); router.refresh(); }
@@ -85,11 +285,35 @@ export function InvoiceDetail({
 
   return (
     <div className="space-y-6">
+      <RecordOfflinePaymentDialog
+        invoiceId={invoice.id}
+        open={recordPaymentOpen}
+        onOpenChange={setRecordPaymentOpen}
+        onRecorded={() => router.refresh()}
+        acceptedMethods={venue.commercialBookingPrefs?.acceptedPaymentMethods ?? null}
+      />
+      <ApplyPostPaymentCreditDialog
+        invoiceId={invoice.id}
+        balanceDue={invoice.balanceDue}
+        open={creditOpen}
+        onOpenChange={setCreditOpen}
+      />
+      {linkedScheduleId && scheduleLines && (
+        <AdjustPaymentPlanDialog
+          open={adjustPlanOpen}
+          onOpenChange={setAdjustPlanOpen}
+          invoiceId={invoice.id}
+          scheduleId={linkedScheduleId}
+          invoiceTotal={invoice.total}
+          balanceDue={invoice.balanceDue}
+          scheduleLines={scheduleLines}
+        />
+      )}
       <BusinessAssetHeader
-        backHref="/invoices"
-        backLabel="Invoices"
-        whatIsThis="Invoice"
-        title={invoice.invoiceNumber}
+        backHref={backNav.href}
+        backLabel={backNav.label}
+        whatIsThis="Invoice & Payment Plan"
+        title={humanTitle}
         status={<>
           <InvoiceStatusBadge status={status} />
           <QuickBooksSyncStatusBadge status={invoice.quickbooksSyncStatus} entityType="invoice" entityId={invoice.id} />
@@ -97,12 +321,50 @@ export function InvoiceDetail({
         waitingOn={INVOICE_WAITING_ON[status]}
         lastUpdated={new Date(invoice.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
         relationship={invoice.clientName ? { name: invoice.clientName, href: `/clients/${invoice.clientId}` } : null}
-        primaryAction={transition && (
-          <Button type="button" size="sm" onClick={() => handleStatusChange(transition.next)} disabled={pending}>
-            {pending ? "Updating…" : transition.label}
+        primaryAction={
+          status === "draft" && invoice.clientId && linkedScheduleId && !paymentRequestSent
+            ? null
+            : showRecordPayment
+              ? (
+                <Button type="button" size="sm" onClick={() => setRecordPaymentOpen(true)} disabled={pending}>
+                  Record payment received
+                </Button>
+              )
+              : transition && transition.next !== "paid" ? (
+                <Button type="button" size="sm" onClick={() => handleStatusChange(transition.next)} disabled={pending}>
+                  {pending ? "Updating…" : transition.label}
+                </Button>
+              ) : null
+        }
+      />
+
+      <div className="space-y-2">
+        <p className="text-xs text-muted-foreground">
+          System number <span className="font-medium text-foreground">{invoice.invoiceNumber}</span>
+          {" "}(immutable — for accounting and integrations)
+        </p>
+        {editingName ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              className="h-8 min-w-[12rem] flex-1 rounded-md border border-border bg-background px-2 text-sm"
+              value={nameDraft}
+              onChange={(e) => setNameDraft(e.target.value)}
+              maxLength={120}
+              aria-label="Invoice name"
+            />
+            <Button type="button" size="sm" onClick={saveDisplayName} disabled={namePending || !nameDraft.trim()}>
+              {namePending ? "Saving…" : "Save name"}
+            </Button>
+            <Button type="button" size="sm" variant="ghost" onClick={() => { setEditingName(false); setNameDraft(humanTitle); }} disabled={namePending}>
+              Cancel
+            </Button>
+          </div>
+        ) : (
+          <Button type="button" size="sm" variant="outline" onClick={() => setEditingName(true)}>
+            Edit invoice name
           </Button>
         )}
-      />
+      </div>
 
       {(invoice.eventDate || invoice.eventOrderRevisionAtFreeze != null || invoice.amendsInvoiceId || invoice.amendedByInvoiceId) && (
         <div className="space-y-1">
@@ -130,23 +392,50 @@ export function InvoiceDetail({
 
       <BusinessAssetActionRow
         secondary={<>
-          {invoice.clientId && status !== "void" && (
-            <Button type="button" variant="outline" size="sm" disabled={emailPending}
-              title={emailConfigured ? undefined : "No email provider is connected — this will open your own email client instead of sending in-app."}
-              onClick={() => startEmail(async () => {
-                const result = await sendInvoiceEmailAction(invoice.id);
-                if (!result.ok) { toast.error(result.message ?? "Could not send."); return; }
-                if ("method" in result && result.method === "mailto" && result.mailtoUrl) {
-                  window.open(result.mailtoUrl, "_blank");
-                  toast.success("Opening your email client…");
-                } else {
-                  toast.success("Invoice emailed successfully.");
-                }
-              })}>
-              {emailPending
-                ? <><span className="mr-1">⋯</span>Sending…</>
-                : <><Mail className="mr-1 h-3.5 w-3.5" /> {emailConfigured ? "Email" : "Email (opens your mail app)"}</>}
+          {showApplyCredit && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setCreditOpen(true)}
+              disabled={pending}
+              data-testid="apply-post-payment-credit"
+            >
+              Apply credit
             </Button>
+          )}
+          {showAdjustPlan && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setAdjustPlanOpen(true)}
+              disabled={pending}
+              data-testid="adjust-invoice-payment-plan"
+            >
+              Adjust invoice / payment plan
+            </Button>
+          )}
+          {invoice.clientId && status !== "void" && (
+            linkedScheduleId && !paymentRequestSent ? (
+              <Button type="button" size="sm"
+                title="See what the client will receive, then send it from the preview."
+                onClick={() => setPreviewOpen(true)}
+                data-testid="send-invoice-and-payment-plan">
+                <Mail className="mr-1 h-3.5 w-3.5" /> Preview/Send
+              </Button>
+            ) : (
+              <Button type="button" variant="outline" size="sm"
+                title="What the client will receive. Preview does not send."
+                onClick={() => setPreviewOpen(true)}>
+                <Mail className="mr-1 h-3.5 w-3.5" /> Preview
+              </Button>
+            )
+          )}
+          {invoice.clientId && status !== "void" && linkedScheduleId && paymentRequestSent && (
+            <p className="text-xs text-muted-foreground self-center" data-testid="payment-request-already-sent">
+              Sent. A new send is not available for this invoice.
+            </p>
           )}
           {status !== "void" && status !== "paid" && (
             <Button type="button" variant="outline" size="sm"
@@ -211,6 +500,17 @@ export function InvoiceDetail({
                     </p>
                   )}
                 </>
+              ) : amountDueNow?.kind === "scheduled_future" ? (
+                <>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Next payment</p>
+                  <p className="text-2xl font-semibold text-heading">{formatCurrency(amountDueNow.amount)}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Not due yet
+                    {amountDueNow.dueDate
+                      ? ` · ${new Date(amountDueNow.dueDate + "T12:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}`
+                      : ""}
+                  </p>
+                </>
               ) : (
                 <>
                   <p className="text-xs uppercase tracking-wide text-muted-foreground">Outstanding</p>
@@ -247,6 +547,8 @@ export function InvoiceDetail({
             initialItems={invoice.lineItems}
             packages={packages}
             invoiceStatus={status}
+            lineTypes={invoiceLineTypesForVenue(venue.commercialBookingPrefs)}
+            defaultTaxPercent={venue.commercialBookingPrefs?.defaultTaxPercent ?? null}
           />
         </CardContent>
       </Card>
@@ -264,6 +566,12 @@ export function InvoiceDetail({
                 <div className="flex justify-between">
                   <dt className="text-muted-foreground">Discounts / Deposits</dt>
                   <dd className="font-medium text-success">−{formatCurrency(invoice.discountAmount)}</dd>
+                </div>
+              )}
+              {invoice.taxAmount > 0 && (
+                <div className="flex justify-between">
+                  <dt className="text-muted-foreground">Taxable amount</dt>
+                  <dd className="font-medium">{formatCurrency(taxableAmountBeforeTax(invoice.subtotal, invoice.discountAmount))}</dd>
                 </div>
               )}
               {invoice.taxAmount > 0 && (
@@ -288,10 +596,10 @@ export function InvoiceDetail({
         </CardContent>
       </Card>
 
-      {/* Notes */}
-      {invoice.notes && (
+      {/* Notes from your venue — suppress system booking-commitment metadata */}
+      {invoice.notes && !isSystemBookingCommitmentNote(invoice.notes) && (
         <Card>
-          <CardHeader><CardTitle className="text-base text-sm">Notes</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-base text-sm">{NOTES_FROM_YOUR_VENUE_LABEL}</CardTitle></CardHeader>
           <CardContent><p className="text-sm text-muted-foreground whitespace-pre-line">{invoice.notes}</p></CardContent>
         </Card>
       )}
@@ -300,6 +608,114 @@ export function InvoiceDetail({
       {status !== "void" && invoice.total > 0 && (
         <Card>
           <CardContent className="pt-6">
+            {linkedScheduleId && scheduleLines && scheduleLines.length > 0 ? (
+              <div className="space-y-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="space-y-0.5">
+                    <p className="text-sm font-medium text-heading">Payment plan</p>
+                    {planOverview ? (
+                      <p className="text-xs text-muted-foreground">
+                        {planOverview.paidInstallments} of {planOverview.totalInstallments} paid
+                        {" · "}
+                        {formatCurrency(planOverview.paidAmount)} paid
+                        {" · "}
+                        {formatCurrency(planOverview.remainingAmount)} remaining
+                      </p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        Complete schedule for this booking. Preview shows what the client will receive. Send issues it and emails them — including a pay-now link when a payment is due now.
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {!planHasActivity && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setEditingPlan(true)}
+                      >
+                        Edit payment plan
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                {planMismatch && (
+                  <PaymentPlanNeedsReview
+                    previousTotal={scheduledTotal}
+                    nextTotal={invoice.total}
+                    canEdit={!planHasActivity}
+                    onEdit={() => setEditingPlan(true)}
+                  />
+                )}
+                {editingPlan && !planHasActivity ? (
+                  <div className="rounded-lg border border-border p-4">
+                    <PaymentPlanEditor
+                      scheduleId={linkedScheduleId}
+                      invoiceId={invoice.id}
+                      invoiceTotal={invoice.total}
+                      lines={scheduleLines}
+                      timingCtx={scheduleTiming ?? {
+                        eventDate: invoice.eventDate,
+                        bookingDate: invoice.bookedAt,
+                        executedAt: null,
+                        today: venueToday(venue.timezone),
+                      }}
+                      commitLabel="Save payment plan"
+                      onSaved={() => setEditingPlan(false)}
+                    />
+                  </div>
+                ) : (
+                <ul className="space-y-2 text-sm">
+                  {scheduleLines.map((line, i) => {
+                    const isPartial = line.status === "partially_paid" && line.paidAmount != null;
+                    const remainingOnLine = isPartial
+                      ? Math.max(0, Math.round((line.amount - Number(line.paidAmount)) * 100) / 100)
+                      : null;
+                    return (
+                    <li
+                      key={`${line.label}-${i}`}
+                      className="flex flex-wrap items-baseline justify-between gap-2 border-b border-border/40 pb-2 last:border-0 last:pb-0"
+                    >
+                      <div>
+                        <p className="font-medium text-foreground">{line.label}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {line.dueDate
+                            ? new Date(line.dueDate + "T12:00:00").toLocaleDateString("en-US", {
+                                month: "short",
+                                day: "numeric",
+                                year: "numeric",
+                              })
+                            : "No due date"}
+                          {" · "}
+                          <span className="capitalize">{line.status.replace(/_/g, " ")}</span>
+                          {isPartial ? (
+                            <>
+                              {" · "}
+                              {formatCurrency(Number(line.paidAmount))} received
+                            </>
+                          ) : null}
+                        </p>
+                      </div>
+                      <p className="text-right font-semibold text-heading">
+                        {isPartial && remainingOnLine != null ? (
+                          <>
+                            <span className="block">{formatCurrency(remainingOnLine)} due</span>
+                            <span className="block text-xs font-normal text-muted-foreground">
+                              of {formatCurrency(line.amount)}
+                            </span>
+                          </>
+                        ) : (
+                          formatCurrency(line.amount)
+                        )}
+                      </p>
+                    </li>
+                    );
+                  })}
+                </ul>
+                )}
+              </div>
+            ) : (
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="space-y-0.5">
                 <p className="text-sm font-medium text-heading">
@@ -320,6 +736,7 @@ export function InvoiceDetail({
                 {continueToSchedule ? "Continue to payment schedule →" : "Create payment schedule →"}
               </Button>
             </div>
+            )}
           </CardContent>
         </Card>
       )}
@@ -353,6 +770,90 @@ export function InvoiceDetail({
           <CardContent><ActivityTimeline activities={invoice.activities} /></CardContent>
         </Card>
       )}
+
+      <ArtifactReviewOverlay
+        open={previewOpen}
+        eyebrow="Customer-facing invoice and payment plan"
+        title={humanTitle}
+        onBack={() => setPreviewOpen(false)}
+        primary={
+          invoice.clientId && status !== "void" && linkedScheduleId && !paymentRequestSent ? (
+            <Button
+              type="button"
+              size="sm"
+              disabled={emailPending || planMismatch}
+              onClick={() => {
+                setPreviewOpen(false);
+                openSendReview();
+              }}
+              data-testid="preview-send-invoice-and-payment-plan"
+            >
+              Send to Client
+            </Button>
+          ) : undefined
+        }
+      >
+        <div className="bg-white py-8">
+          <InvoicePrintDocument
+            invoice={invoice}
+            venue={venue}
+            amountDueNow={amountDueNow}
+            paidToDateOverride={paidToDate}
+            cancelledPlanAmount={cancelledPlanAmount}
+            scheduleLines={scheduleLines}
+            paymentInstructions={scheduleNotes ?? invoice.notes}
+            venuePaymentInstructions={
+              venue.commercialBookingPrefs?.clientPaymentInstructions ?? null
+            }
+          />
+        </div>
+      </ArtifactReviewOverlay>
+
+      <ArtifactReviewOverlay
+        open={sendOpen}
+        eyebrow="Invoice and payment plan"
+        title="Preview and send"
+        onBack={() => setSendOpen(false)}
+        primary={
+          <Button
+            type="button"
+            size="sm"
+            disabled={emailPending || sendLock}
+            onClick={sendInvoiceAndPaymentPlan}
+            data-testid="confirm-send-invoice-and-payment-plan"
+          >
+            {emailPending || sendLock
+              ? "Sending…"
+              : emailConfigured
+                ? "Send"
+                : "Open in email"}
+          </Button>
+        }
+      >
+        <div className="space-y-4">
+          {sendPreview && (
+            <p className="mx-auto max-w-3xl text-sm text-muted-foreground px-4">
+              {sendPreview.payableNow
+                ? `This sends to ${sendPreview.recipient} with a link to view the invoice and payment plan. When an installment is due, they can pay ${sendPreview.amountDueNow} from that page. The client does not need a planning portal invitation.`
+                : `This sends to ${sendPreview.recipient} with a link to view the invoice and payment plan. Nothing is presented as payable now.`}
+            </p>
+          )}
+          <div className="bg-white py-8">
+            <InvoicePrintDocument
+              invoice={invoice}
+              venue={venue}
+              amountDueNow={amountDueNow}
+              paidToDateOverride={paidToDate}
+              cancelledPlanAmount={cancelledPlanAmount}
+              scheduleLines={scheduleLines}
+              paymentInstructions={scheduleNotes ?? invoice.notes}
+              venuePaymentInstructions={
+                venue.commercialBookingPrefs?.clientPaymentInstructions ?? null
+              }
+            />
+          </div>
+        </div>
+      </ArtifactReviewOverlay>
     </div>
   );
 }

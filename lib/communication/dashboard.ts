@@ -11,9 +11,13 @@ import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getCurrentVenue } from "@/lib/venue/service";
 import { getCommunicationHealth, type CommunicationHealth } from "@/lib/communication/health";
-import { isDeliveryFailureStatus } from "@/lib/communication/status-labels";
+import { aggregateOutboundStatusCounts } from "@/lib/communication/dashboard-counts";
+import { NEEDS_ATTENTION_STATUSES } from "@/lib/communication/attention-history";
 
 const WINDOW_DAYS = 30;
+/** Safety cap for attention-filtered history (same window as the tile count). */
+const ATTENTION_HISTORY_LIMIT = 500;
+const DEFAULT_HISTORY_LIMIT = 50;
 
 export type CommunicationCounts = {
   windowDays: number;
@@ -34,6 +38,8 @@ export type MessageHistoryItem = {
   occurredAt: string;
   leadId: string | null;
   clientId: string | null;
+  /** Conversation-backed rows only — Inbox deep-link when lead/client missing. */
+  conversationId: string | null;
 };
 
 export type CommunicationDashboardData = {
@@ -50,23 +56,25 @@ const EMPTY: CommunicationDashboardData = {
 
 type DbClient = Awaited<ReturnType<typeof createClient>>;
 
-// "Delivered successfully" reads, to a venue owner, as "the whole chain
-// worked" — opened/clicked/replied are all a delivered message that then
-// did even better, not a different outcome.
-const DELIVERED_LIKE = new Set(["delivered", "opened", "clicked", "replied"]);
-
-export async function getCommunicationDashboardData(): Promise<CommunicationDashboardData> {
+export async function getCommunicationDashboardData(opts?: {
+  attentionOnly?: boolean;
+}): Promise<CommunicationDashboardData> {
   if (!isSupabaseConfigured) return EMPTY;
   const venue = await getCurrentVenue();
   if (!venue) return EMPTY;
 
   const client = await createClient();
   const since = new Date(Date.now() - WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  const attentionOnly = opts?.attentionOnly === true;
 
   const [health, counts, history] = await Promise.all([
     getCommunicationHealth(),
     getCounts(client, venue.id, since),
-    getHistory(client, venue.id),
+    getHistory(client, venue.id, {
+      attentionOnly,
+      since: attentionOnly ? since : null,
+      limit: attentionOnly ? ATTENTION_HISTORY_LIMIT : DEFAULT_HISTORY_LIMIT,
+    }),
   ]);
 
   return { health, counts, history };
@@ -86,32 +94,57 @@ async function getCounts(client: DbClient, venueId: string, since: string): Prom
       .gte("sent_at", since),
   ]);
   const rows = [...(legacy.data ?? []), ...(conversation.data ?? [])] as { status: string | null }[];
+  const breakdown = aggregateOutboundStatusCounts(rows.map((r) => r.status));
   return {
     windowDays: WINDOW_DAYS,
-    sent: rows.length,
-    delivered: rows.filter((r) => r.status && DELIVERED_LIKE.has(r.status)).length,
-    needsAttention: rows.filter((r) => isDeliveryFailureStatus(r.status)).length,
+    sent: breakdown.sent,
+    delivered: breakdown.delivered,
+    needsAttention: breakdown.needsAttention,
   };
 }
 
-async function getHistory(client: DbClient, venueId: string): Promise<MessageHistoryItem[]> {
+async function getHistory(
+  client: DbClient,
+  venueId: string,
+  opts?: { attentionOnly?: boolean; since?: string | null; limit?: number },
+): Promise<MessageHistoryItem[]> {
+  const attentionOnly = opts?.attentionOnly === true;
+  const since = opts?.since ?? null;
+  const limit = opts?.limit ?? DEFAULT_HISTORY_LIMIT;
+  // Per-source fetch; attention mode pulls enough rows to cover the full tile count.
+  const perSourceLimit = attentionOnly ? limit : Math.min(30, limit);
+
   type LegacyRow = {
     id: string; direction: "outbound" | "inbound"; status: string | null; error_message: string | null;
     body: string; created_at: string; from_name: string | null;
     message_threads: { lead_id: string | null; client_id: string | null; entity_name?: string } | { lead_id: string | null; client_id: string | null }[] | null;
   };
-  const [legacy, conversation] = await Promise.all([
-    client.from("messages")
-      .select("id, direction, status, error_message, body, created_at, from_name, message_threads(lead_id, client_id)")
-      .eq("venue_id", venueId).eq("channel", "email")
-      .order("created_at", { ascending: false })
-      .limit(30),
-    client.from("conversation_messages")
-      .select("id, sender_type, channel, status, failure_reason, body, sent_at, conversation_id")
-      .eq("venue_id", venueId).in("channel", ["email", "sms"])
-      .order("sent_at", { ascending: false })
-      .limit(30),
-  ]);
+
+  let legacyQuery = client.from("messages")
+    .select("id, direction, status, error_message, body, created_at, from_name, message_threads(lead_id, client_id)")
+    .eq("venue_id", venueId).eq("channel", "email")
+    .order("created_at", { ascending: false })
+    .limit(perSourceLimit);
+  let conversationQuery = client.from("conversation_messages")
+    .select("id, sender_type, channel, status, failure_reason, body, sent_at, conversation_id")
+    .eq("venue_id", venueId).in("channel", ["email", "sms"])
+    .order("sent_at", { ascending: false })
+    .limit(perSourceLimit);
+
+  if (attentionOnly) {
+    legacyQuery = legacyQuery
+      .eq("direction", "outbound")
+      .in("status", [...NEEDS_ATTENTION_STATUSES]);
+    conversationQuery = conversationQuery
+      .in("sender_type", ["venue_staff", "system"])
+      .in("status", [...NEEDS_ATTENTION_STATUSES]);
+    if (since) {
+      legacyQuery = legacyQuery.gte("created_at", since);
+      conversationQuery = conversationQuery.gte("sent_at", since);
+    }
+  }
+
+  const [legacy, conversation] = await Promise.all([legacyQuery, conversationQuery]);
 
   const legacyItems: MessageHistoryItem[] = ((legacy.data ?? []) as unknown as LegacyRow[]).map((m) => {
     const thread = Array.isArray(m.message_threads) ? m.message_threads[0] : m.message_threads;
@@ -119,6 +152,7 @@ async function getHistory(client: DbClient, venueId: string): Promise<MessageHis
       id: m.id, source: "legacy", channel: "email", direction: m.direction === "inbound" ? "inbound" : "outbound",
       status: m.status, failureReason: m.error_message, recipientName: null, preview: m.body.slice(0, 80),
       occurredAt: m.created_at, leadId: thread?.lead_id ?? null, clientId: thread?.client_id ?? null,
+      conversationId: null,
     };
   });
 
@@ -133,13 +167,26 @@ async function getHistory(client: DbClient, venueId: string): Promise<MessageHis
   const leadByConversation = new Map<string, string>();
   const clientByConversation = new Map<string, string>();
   if (conversationIds.length > 0) {
+    type ConvMeta = {
+      id: string;
+      relationship_id: string | null;
+      inbox_owner_lead_id: string | null;
+      inbox_owner_client_id: string | null;
+    };
     const { data: conversations } = await client.from("conversations")
-      .select("id, relationship_id").in("id", conversationIds);
+      .select("id, relationship_id, inbox_owner_lead_id, inbox_owner_client_id")
+      .in("id", conversationIds);
+    const convMeta = (conversations ?? []) as ConvMeta[];
     const relationshipByConversation = new Map(
-      ((conversations ?? []) as { id: string; relationship_id: string | null }[])
+      convMeta
         .filter((c) => c.relationship_id)
         .map((c) => [c.id, c.relationship_id!]),
     );
+    // Prefer explicit inbox owner ids when set (may outrank a stale relationship join).
+    for (const c of convMeta) {
+      if (c.inbox_owner_client_id) clientByConversation.set(c.id, c.inbox_owner_client_id);
+      if (c.inbox_owner_lead_id) leadByConversation.set(c.id, c.inbox_owner_lead_id);
+    }
     const relationshipIds = [...new Set(relationshipByConversation.values())];
     if (relationshipIds.length > 0) {
       const [{ data: relationships }, { data: leads }, { data: clients }] = await Promise.all([
@@ -156,10 +203,14 @@ async function getHistory(client: DbClient, venueId: string): Promise<MessageHis
       for (const [convId, relId] of relationshipByConversation) {
         const name = nameByRelationship.get(relId);
         if (name) nameByConversation.set(convId, name);
-        const leadId = leadByRelationship.get(relId);
-        if (leadId) leadByConversation.set(convId, leadId);
-        const clientId = clientByRelationship.get(relId);
-        if (clientId) clientByConversation.set(convId, clientId);
+        if (!leadByConversation.has(convId)) {
+          const leadId = leadByRelationship.get(relId);
+          if (leadId) leadByConversation.set(convId, leadId);
+        }
+        if (!clientByConversation.has(convId)) {
+          const clientId = clientByRelationship.get(relId);
+          if (clientId) clientByConversation.set(convId, clientId);
+        }
       }
     }
   }
@@ -171,9 +222,10 @@ async function getHistory(client: DbClient, venueId: string): Promise<MessageHis
     preview: m.body.slice(0, 80), occurredAt: m.sent_at,
     leadId: leadByConversation.get(m.conversation_id) ?? null,
     clientId: clientByConversation.get(m.conversation_id) ?? null,
+    conversationId: m.conversation_id,
   }));
 
   return [...legacyItems, ...conversationItems]
     .sort((a, b) => (a.occurredAt < b.occurredAt ? 1 : -1))
-    .slice(0, 50);
+    .slice(0, limit);
 }

@@ -22,6 +22,9 @@ export async function GET() {
     prefContractRequiresAttention?: boolean;
     prefContractSigned?: boolean;
     prefFinalGuestCountSubmitted?: boolean;
+    prefTourScheduled?: boolean;
+    prefTourConfirmed?: boolean;
+    prefProposalAccepted?: boolean;
     channelEmail?: boolean;
     channelSms?: boolean;
     channelPush?: boolean;
@@ -48,6 +51,9 @@ export async function POST(req: NextRequest) {
     prefContractRequiresAttention?: boolean;
     prefContractSigned?:            boolean;
     prefFinalGuestCountSubmitted?:  boolean;
+    prefTourScheduled?:             boolean;
+    prefTourConfirmed?:             boolean;
+    prefProposalAccepted?:          boolean;
   };
 
   const supabase = await createClient();
@@ -66,6 +72,9 @@ export async function POST(req: NextRequest) {
     p_pref_contract_requires_attention: body.prefContractRequiresAttention ?? null,
     p_pref_contract_signed:             body.prefContractSigned            ?? null,
     p_pref_final_guest_count_submitted: body.prefFinalGuestCountSubmitted  ?? null,
+    p_pref_tour_scheduled:              body.prefTourScheduled             ?? null,
+    p_pref_tour_confirmed:              body.prefTourConfirmed             ?? null,
+    p_pref_proposal_accepted:           body.prefProposalAccepted          ?? null,
   });
 
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });

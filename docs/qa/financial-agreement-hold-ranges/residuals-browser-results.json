@@ -1,0 +1,112 @@
+{
+  "at": "2026-10-12T06:58:23.765Z",
+  "tipPrefix": "9e59f278",
+  "pass": true,
+  "checks": [
+    {
+      "name": "deployed_sha_prefix",
+      "pass": true,
+      "detail": "sha=9e59f2784dd330c2da6464219b7c6da89847cad4"
+    },
+    {
+      "name": "rehearsal_date_field_absent",
+      "pass": true,
+      "detail": "standalone Date under Rehearsal Dinner"
+    },
+    {
+      "name": "hold_form_layout_three_rows",
+      "pass": true,
+      "detail": "{\"titleAboveDates\":true,\"datesSideBySide\":true,\"timesSideBySide\":true,\"titleBox\":{\"x\":472.859375,\"y\":268.734375,\"width\":427.40625,\"height\":16.984375},\"sd\":{\"x\":472.859375,\"y\":366.453125,\"width\":207.328125,\"height\":38.25},\"ed\":{\"x\":692.9375,\"y\":366.453125,\"width\":207.328125,\"height\":38.25},\"st\":{\"x\":472.859375,\"y\":496.6875,\"width\":207.328125,\"height\":38.25},\"et\":{\"x\":692.9375,\"y\":496.6875,\"width\":207.328125,\"height\":38.25}}"
+    },
+    {
+      "name": "hold_syncs_rehearsal_scheduled_date",
+      "pass": true,
+      "detail": "scheduled_date=2027-10-08"
+    },
+    {
+      "name": "r1_package_selected",
+      "pass": true,
+      "detail": "Save selected package clicked"
+    },
+    {
+      "name": "r1_ui_preview_totals",
+      "pass": true,
+      "detail": "adjusted=true taxish=true"
+    },
+    {
+      "name": "r1_persisted_two_adjustments",
+      "pass": true,
+      "detail": "{\"package\":25000,\"total\":23375,\"discount\":3000,\"tax\":1375,\"n\":2,\"names\":[\"Promotional discount\",\"Referral credit\"]}"
+    },
+    {
+      "name": "r1_reopen_preserves_adjustments",
+      "pass": true,
+      "detail": "stillTwo=true promo=1 credit=1 descs=[\"Promotional discount\",\"Referral credit\"]"
+    },
+    {
+      "name": "r1_deposit_not_adjustment",
+      "pass": true,
+      "detail": "deposit outside adjustments list"
+    },
+    {
+      "name": "r2_offline_pay_via_ui",
+      "pass": true,
+      "detail": "status=paid paid_amount=4000"
+    },
+    {
+      "name": "r2_paid_before_regen",
+      "pass": true,
+      "detail": "{\"id\":\"f9931f30-0aa9-4870-9c02-9be7bef73083\",\"amount\":4000,\"status\":\"paid\",\"paid_amount\":4000}"
+    },
+    {
+      "name": "r2_credit_via_ui",
+      "pass": true,
+      "detail": "{\"total\":9000,\"discount_amount\":1000,\"balance_due\":5000,\"expectedTotal\":9000}"
+    },
+    {
+      "name": "r2_regenerate_clicked",
+      "pass": true,
+      "detail": "regenerate schedule"
+    },
+    {
+      "name": "r2_paid_installment_preserved",
+      "pass": true,
+      "detail": "{\"paidBefore\":{\"id\":\"f9931f30-0aa9-4870-9c02-9be7bef73083\",\"amount\":4000,\"status\":\"pending\"},\"paidAfter\":{\"id\":\"f9931f30-0aa9-4870-9c02-9be7bef73083\",\"amount\":4000,\"status\":\"paid\",\"paid_amount\":4000,\"label\":\"Deposit\"}}"
+    },
+    {
+      "name": "r2_unpaid_reconciles_to_remaining",
+      "pass": true,
+      "detail": "{\"unpaidSum\":5000,\"remainingExpected\":5000,\"unpaid\":[{\"id\":\"c08c330a-5652-473b-b1a8-371ea7d3195b\",\"amount\":2500,\"status\":\"pending\",\"paid_amount\":null,\"label\":\"Initial Payment (50%)\"},{\"id\":\"4fc3e057-040b-4514-88f2-c1ee67f684e5\",\"amount\":2500,\"status\":\"pending\",\"paid_amount\":null,\"label\":\"Final Payment (50%)\"}],\"invoiceTotalAfter\":9000}"
+    },
+    {
+      "name": "r3_contract_created",
+      "pass": true,
+      "detail": "29c9cd08-cac2-49aa-b23b-d135115c2bec"
+    },
+    {
+      "name": "r3_tokens_materialized",
+      "pass": true,
+      "detail": "total=23375"
+    },
+    {
+      "name": "r3_sent_without_customer_email",
+      "pass": true,
+      "detail": "tokens materialized + status→sent via Sandbox DB; public token sign (no Resend invite)"
+    },
+    {
+      "name": "r3_client_signed",
+      "pass": true,
+      "detail": "signed_at=2026-10-12T06:58:11.603399+00:00"
+    },
+    {
+      "name": "r3_fully_executed",
+      "pass": true,
+      "detail": "status=signed venueSigned=true"
+    },
+    {
+      "name": "r3_selection_totals_intact",
+      "pass": true,
+      "detail": "{\"total_amount\":23375,\"discount_amount\":3000,\"financial_adjustments\":[{\"id\":\"dad8fe87-25f4-4b2f-af49-d3ea9ec335a0\",\"kind\":\"discount\",\"mode\":\"fixed\",\"value\":500,\"amount\":500,\"description\":\"Promotional discount\",\"taxTreatment\":\"reduces_taxable_base\"},{\"id\":\"e6d7c21d-0754-4b98-bf8c-60281256fb97\",\"kind\":\"credit\",\"mode\":\"fixed\",\"value\":2500,\"amount\":2500,\"description\":\"Referral credit\",\"taxTreatment\":\"reduces_taxable_base\"}],\"package_amount\":25000}"
+    }
+  ]
+}

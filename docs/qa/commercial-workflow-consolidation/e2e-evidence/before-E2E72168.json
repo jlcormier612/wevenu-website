@@ -1,0 +1,20 @@
+{
+  "eo": {
+    "id": "624eceef-5096-4288-b104-62daa3a82d11",
+    "status": "finalized",
+    "shared_at": "2026-10-23T16:07:20.128+00:00",
+    "finalized_at": "2026-10-23T16:07:02.928+00:00",
+    "revision": 9,
+    "client_agreed_at": "2026-10-23T16:08:03.562897+00:00",
+    "client_agreed_name": "E2E-COMMERCIAL-E2E71482-ACCEPT2",
+    "client_agreed_revision": 9
+  },
+  "inv": {
+    "id": "2cdf3609-21e0-4ffc-a56d-062485ea683d",
+    "status": "shared",
+    "template_id": "9a2c583a-4b4b-4b45-b970-6ae876355138",
+    "finalized_at": null
+  },
+  "at": "2026-10-23T16:16:11.691Z",
+  "runId": "E2E72168"
+}

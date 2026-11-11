@@ -8,6 +8,8 @@ import {
   filterValidAcceptedEventTypes,
   parseAcceptedEventTypes,
 } from "@/lib/event-types/canonical";
+import { removedAcceptedEventTypes } from "@/lib/event-setup/setup-profile-event-types";
+import { pruneSetupProfileAssignmentsForRemovedEventTypes } from "@/lib/event-setup/profiles";
 import type {
   InquiryFormFieldsConfig,
   InquiryFormQuestion,
@@ -20,6 +22,8 @@ import {
   type InquiryCommunicationSettings,
 } from "@/lib/communication/sms-consent";
 import { isSmsConfigured, isSmsConsentOfferAvailable } from "@/lib/sms/send";
+import { mapInquiryFormQuestion } from "@/lib/inquiry-form/map-question";
+import { buildInquiryFormQuestionInsertRows } from "@/lib/inquiry-form/question-order";
 import { getCurrentUserRole, getCurrentVenue } from "@/lib/venue/service";
 
 function canManageInquiryFormSettings(role: string | null): boolean {
@@ -35,15 +39,8 @@ type DbQuestionRow = {
   sort_order: number;
 };
 
-function mapQuestion(row: DbQuestionRow): InquiryFormQuestion {
-  return {
-    id: row.id,
-    questionText: row.question_text,
-    questionType: row.question_type,
-    required: row.required,
-    options: Array.isArray(row.options) ? row.options : [],
-    sortOrder: row.sort_order,
-  };
+function mapQuestion(row: Parameters<typeof mapInquiryFormQuestion>[0]): InquiryFormQuestion {
+  return mapInquiryFormQuestion(row);
 }
 
 function parseFieldsConfig(raw: unknown): InquiryFormFieldsConfig {
@@ -75,11 +72,13 @@ export async function getPublicInquiryFormConfig(embedKey: string): Promise<Publ
   }
   const venue = payload.venue as Record<string, unknown>;
   const venueId = String(venue.id);
-  // Consent UI may appear while A2P is pending; outbound still requires send-ready + opt-in.
-  const smsConsentOfferAvailable = await isSmsConsentOfferAvailable(venueId);
+  const { data: timezoneRow } = await supabase
+    .from("venues")
+    .select("timezone, accent_color, neutral_color")
+    .eq("id", venueId)
+    .maybeSingle<{ timezone: string | null; accent_color: string | null; neutral_color: string | null }>();
   const communicationSettings = effectivePublicCommunicationSettings(
     parseInquiryCommunicationSettings(payload.inquiryCommunicationSettings),
-    smsConsentOfferAvailable,
   );
   return {
     venue: {
@@ -88,14 +87,24 @@ export async function getPublicInquiryFormConfig(embedKey: string): Promise<Publ
       logoUrl: (venue.logoUrl as string | null) ?? null,
       primaryColor: String(venue.primaryColor ?? "#5D6F5D"),
       secondaryColor: String(venue.secondaryColor ?? "#4F5F4F"),
+      accentColor: String(timezoneRow?.accent_color ?? "#B8AEA1"),
+      neutralColor: String(timezoneRow?.neutral_color ?? "#F7F5F1"),
       email: (venue.email as string | null) ?? null,
       phone: (venue.phone as string | null) ?? null,
       addressLine1: (venue.addressLine1 as string | null) ?? null,
       city: (venue.city as string | null) ?? null,
       stateRegion: (venue.stateRegion as string | null) ?? null,
+      timezone: timezoneRow?.timezone ?? null,
     },
     tourSchedulingEnabled: Boolean(payload.tourSchedulingEnabled),
     tourEmbedKey: (payload.tourEmbedKey as string | null) ?? null,
+    tourProtectionRequired: Boolean(payload.tourProtectionRequired),
+    tourProtectionKind:
+      payload.tourProtectionKind === "fee" || payload.tourProtectionKind === "setup"
+        ? payload.tourProtectionKind
+        : null,
+    tourProtectionFeeCents:
+      typeof payload.tourProtectionFeeCents === "number" ? payload.tourProtectionFeeCents : null,
     inquiryEventDateMode: payload.inquiryEventDateMode === "choose_available" ? "choose_available" : "request_preferred",
     inquiryFormFields: parseFieldsConfig(payload.inquiryFormFields),
     acceptedEventTypes: parseAcceptedEventTypes(payload.acceptedEventTypes),
@@ -157,14 +166,17 @@ export async function updateInquiryFormSettings(
   const update: Record<string, unknown> = {};
   if (patch.inquiryEventDateMode) update.inquiry_event_date_mode = patch.inquiryEventDateMode;
   if (patch.inquiryFormFields) update.inquiry_form_fields = patch.inquiryFormFields;
+
+  let previousAccepted: unknown = null;
+  let nextAccepted: string[] | null = null;
   if (patch.acceptedEventTypes) {
     const valid = filterValidAcceptedEventTypes(patch.acceptedEventTypes);
     if (valid.length === 0) return { ok: false, error: "accepted_types_empty" };
+    nextAccepted = valid;
     update.accepted_inquiry_event_types = valid;
   }
   if (patch.inquiryCommunicationSettings) {
-    // Persist venue intent. Public forms still hide SMS when the venue
-    // has no sender (effectivePublicCommunicationSettings).
+    // Persist venue intent. A missing sending number does not turn these off.
     update.inquiry_communication_settings = {
       askPreferences: patch.inquiryCommunicationSettings.askPreferences === true,
       offerEmail: patch.inquiryCommunicationSettings.offerEmail !== false,
@@ -176,6 +188,17 @@ export async function updateInquiryFormSettings(
   if (Object.keys(update).length === 0) return { ok: true };
 
   const admin = createAdminClient();
+
+  if (nextAccepted) {
+    const { data: priorRow, error: priorError } = await admin
+      .from("venues")
+      .select("accepted_inquiry_event_types")
+      .eq("id", venue.id)
+      .maybeSingle<{ accepted_inquiry_event_types: unknown }>();
+    if (priorError) return { ok: false, error: priorError.message };
+    previousAccepted = priorRow?.accepted_inquiry_event_types ?? null;
+  }
+
   const { data, error } = await admin
     .from("venues")
     .update(update)
@@ -184,6 +207,13 @@ export async function updateInquiryFormSettings(
     .maybeSingle();
   if (error) return { ok: false, error: error.message };
   if (!data?.id) return { ok: false, error: "no_row_updated" };
+
+  if (nextAccepted) {
+    const removed = removedAcceptedEventTypes(previousAccepted, nextAccepted);
+    const pruned = await pruneSetupProfileAssignmentsForRemovedEventTypes(venue.id, removed);
+    if (!pruned.ok) return { ok: false, error: pruned.message };
+  }
+
   return { ok: true };
 }
 
@@ -197,17 +227,12 @@ export async function replaceInquiryFormQuestions(
     return { ok: false, error: "forbidden" };
   }
   const admin = createAdminClient();
+  // Delete only active-form rows. Historical answers live on lead.source_data
+  // snapshots (questionText + answer) — no FK cascade into submissions.
   const { error: delError } = await admin.from("inquiry_form_questions").delete().eq("venue_id", venue.id);
   if (delError) return { ok: false, error: delError.message };
   if (questions.length === 0) return { ok: true };
-  const rows = questions.map((q, i) => ({
-    venue_id: venue.id,
-    question_text: q.questionText.trim(),
-    question_type: q.questionType,
-    required: q.required,
-    options: q.options.length ? q.options : null,
-    sort_order: i,
-  }));
+  const rows = buildInquiryFormQuestionInsertRows(venue.id, questions);
   const { error } = await admin.from("inquiry_form_questions").insert(rows);
   return error ? { ok: false, error: error.message } : { ok: true };
 }

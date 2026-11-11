@@ -261,7 +261,7 @@ export function SupportResolveControl({
                 </div>
 
                 {item.body ? (
-                  <div className="mt-3 whitespace-pre-wrap rounded-sm bg-[color-mix(in_srgb,var(--header-linen)_70%,var(--true-white))] px-3 py-2.5 text-sm leading-relaxed text-[var(--forest-sage)]">
+                  <div className="mt-3 whitespace-pre-wrap rounded-sm bg-[color-mix(in_srgb,var(--header-linen)_70%,var(--true-white))] px-3 py-2.5 text-sm leading-relaxed text-foreground">
                     {item.body}
                   </div>
                 ) : (
@@ -272,7 +272,7 @@ export function SupportResolveControl({
                 )}
 
                 {replyingId === item.id ? (
-                  <div className="mt-4 space-y-3 rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_40%,transparent)] bg-[var(--true-white)] p-3">
+                  <div className="mt-4 space-y-3 rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_40%,transparent)] bg-[var(--true-white)] p-3 text-foreground">
                     <p className="text-xs ws-muted">
                       To: {ownerEmail || "—"} · Email reply to owner
                     </p>
@@ -282,7 +282,7 @@ export function SupportResolveControl({
                         type="text"
                         value={replySubject}
                         onChange={(e) => setReplySubject(e.target.value)}
-                        className="mt-1 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_50%,transparent)] bg-[var(--natural-cream)] px-3 py-2 text-[var(--forest-sage)]"
+                        className="mt-1 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_50%,transparent)] bg-[var(--natural-cream)] px-3 py-2 text-foreground"
                       />
                     </label>
                     <label className="block text-sm">
@@ -291,7 +291,7 @@ export function SupportResolveControl({
                         value={replyBody}
                         onChange={(e) => setReplyBody(e.target.value)}
                         rows={6}
-                        className="mt-1 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_50%,transparent)] bg-[var(--natural-cream)] px-3 py-2 text-[var(--forest-sage)]"
+                        className="mt-1 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_50%,transparent)] bg-[var(--natural-cream)] px-3 py-2 text-foreground"
                       />
                     </label>
                     <div className="flex flex-wrap gap-2">
@@ -311,7 +311,7 @@ export function SupportResolveControl({
                         type="button"
                         disabled={sendingReply}
                         onClick={() => setReplyingId(null)}
-                        className="rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] px-4 py-2 text-sm font-medium text-[var(--forest-sage)] disabled:opacity-60"
+                        className="rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] px-4 py-2 text-sm font-medium text-foreground disabled:opacity-60"
                       >
                         Cancel
                       </button>
@@ -334,7 +334,7 @@ export function SupportResolveControl({
             type="button"
             disabled={pending || sendingReply}
             onClick={() => void onResolve({ all: true })}
-            className="rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--warm-gray)] px-4 py-2 text-sm font-medium text-[var(--forest-sage)] disabled:opacity-60"
+            className="rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--warm-gray)] px-4 py-2 text-sm font-medium text-foreground disabled:opacity-60"
           >
             Resolve all
           </button>

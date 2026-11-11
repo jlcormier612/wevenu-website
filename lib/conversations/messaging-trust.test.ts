@@ -100,13 +100,24 @@ describe("delivery recovery actions", () => {
   });
 
   it("shows Use text for email failure with client", () => {
-    const actions = deliveryRecoveryActions({
+    // Unknown / missing email diagnostics must not invent a Retry suggestion.
+    const unknown = deliveryRecoveryActions({
       channel: "email",
       status: "undelivered",
       leadId: null,
       clientId: "client-1",
     }).map((a) => a.id);
-    assert.deepEqual(actions, ["retry", "use_sms", "open_client"]);
+    assert.deepEqual(unknown, ["use_sms", "open_client"]);
+
+    const temporary = deliveryRecoveryActions({
+      channel: "email",
+      status: "failed",
+      leadId: null,
+      clientId: "client-1",
+      failureReason:
+        "The recipient's email provider temporarily could not accept this message after it was submitted.",
+    }).map((a) => a.id);
+    assert.deepEqual(temporary, ["retry", "use_sms", "open_client"]);
   });
 
   it("hides recovery when delivery succeeded", () => {
@@ -179,12 +190,50 @@ describe("texting lifecycle honesty", () => {
 });
 
 describe("texting setup role gate", () => {
-  it("only owner/manager may configure", () => {
+  it("legacy role helper still maps owner/manager", () => {
     assert.equal(canConfigureVenueTexting("owner"), true);
     assert.equal(canConfigureVenueTexting("manager"), true);
     assert.equal(canConfigureVenueTexting("coordinator"), false);
     assert.equal(canConfigureVenueTexting("staff"), false);
     assert.equal(canConfigureVenueTexting(null), false);
+  });
+
+  it("capability gate uses settings.texting", async () => {
+    const { canConfigureVenueTextingFromAccess } = await import(
+      "@/lib/texting-registration/authority"
+    );
+    const { hasCapability } = await import("@/lib/authorization");
+    assert.equal(
+      canConfigureVenueTextingFromAccess({
+        isActive: true,
+        isOwner: false,
+        accessTitle: "administrator",
+        overrides: null,
+      }),
+      true,
+    );
+    assert.equal(
+      canConfigureVenueTextingFromAccess({
+        isActive: true,
+        isOwner: false,
+        accessTitle: "manager",
+        overrides: null,
+      }),
+      false,
+    );
+    assert.equal(
+      hasCapability(
+        {
+          isActive: true,
+          isOwner: false,
+          accessTitle: "manager",
+          overrides: { "settings.texting": true },
+        },
+        "settings.texting",
+      ),
+      // Manager cannot be granted settings.texting per catalog grantableTo
+      false,
+    );
   });
 });
 

@@ -6,24 +6,38 @@ import { ChevronRight, HelpCircle } from "lucide-react";
 import { StageAcknowledgeButton } from "@/components/setup-hub/stage-acknowledge-button";
 import { setBringYourBusinessPathAction } from "@/app/(app)/setup-hub/actions";
 import { BRING_YOUR_BUSINESS_ROUTES } from "@/lib/setup-hub/bring-your-business";
-import { BRING_BUSINESS_OPTIONS } from "@/lib/onboarding/types";
+import {
+  BRING_BUSINESS_OPTIONS,
+  bringBusinessIntakeHeading,
+  bringBusinessMigrationHref,
+  type BringBusinessChoice,
+} from "@/lib/onboarding/types";
 import type { BringYourBusinessPath } from "@/lib/setup-hub/types";
 
 /**
  * Setup Hub — Bring Your Business.
  * Three equally respected paths: import, add individually, skip for now.
+ * Intake bring_business_choice is acknowledged when present; it is not a new source of truth.
  */
 export function BringYourBusinessChoices({
   done,
   hasImportedData,
   path,
   calendarReadyHint,
+  intakeBringBusinessChoice = null,
 }: {
   done: boolean;
   hasImportedData: boolean;
   path: BringYourBusinessPath | null;
   calendarReadyHint?: string | null;
+  intakeBringBusinessChoice?: BringBusinessChoice | null;
 }) {
+  const intakeHeading = bringBusinessIntakeHeading(intakeBringBusinessChoice);
+  const intakeMigrationHref =
+    intakeBringBusinessChoice && intakeBringBusinessChoice !== "starting_fresh"
+      ? bringBusinessMigrationHref(intakeBringBusinessChoice)
+      : null;
+
   if (done) {
     return (
       <div className="flex flex-wrap items-center gap-3 pt-1">
@@ -53,13 +67,18 @@ export function BringYourBusinessChoices({
             </Link>
           </>
         ) : path === "skipped" ? (
-          <Link
-            href={BRING_YOUR_BUSINESS_ROUTES.migrationCenter}
-            className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
-          >
-            Changed your mind? Bring your business over
-            <ChevronRight className="h-3 w-3" />
-          </Link>
+          <div className="space-y-1">
+            {intakeBringBusinessChoice === "starting_fresh" ? (
+              <p className="text-xs text-muted-foreground">Start fresh — that matches what you told us at setup.</p>
+            ) : null}
+            <Link
+              href={intakeMigrationHref ?? BRING_YOUR_BUSINESS_ROUTES.migrationCenter}
+              className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+            >
+              Changed your mind? Bring your business over
+              <ChevronRight className="h-3 w-3" />
+            </Link>
+          </div>
         ) : null}
       </div>
     );
@@ -76,8 +95,32 @@ export function BringYourBusinessChoices({
         </p>
       ) : null}
 
+      {intakeHeading && intakeBringBusinessChoice !== "starting_fresh" ? (
+        <div className="htc-surface-guidance space-y-2 p-3 text-sm">
+          <p className="font-medium">{intakeHeading}</p>
+          <p className="text-xs text-muted-foreground">
+            You already chose this during setup. You can still pick a different path below.
+          </p>
+          {intakeMigrationHref ? (
+            <Link
+              href={intakeMigrationHref}
+              className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+            >
+              Continue with that source
+              <ChevronRight className="h-3 w-3" />
+            </Link>
+          ) : null}
+        </div>
+      ) : null}
+
+      {intakeBringBusinessChoice === "starting_fresh" ? (
+        <p className="text-xs text-muted-foreground">
+          Start fresh — that matches what you told us at setup. You can still import or add records if you change course.
+        </p>
+      ) : null}
+
       <div className="space-y-2">
-        <div className="rounded-md border p-3 text-sm space-y-2">
+        <div className="htc-surface-guidance space-y-2 p-3 text-sm">
           <p className="font-medium">Import my business</p>
           <p className="text-xs text-muted-foreground">
             Bring clients and calendar commitments over through Migration Center. HoneyBook, Tripleseat, or another system — all fine.
@@ -98,7 +141,7 @@ export function BringYourBusinessChoices({
                 >
                   <span>
                     <span className="font-medium">{opt.title.replace(/^Yes — /, "")}</span>
-                    <span className="mt-0.5 block text-muted-foreground">{opt.description}</span>
+                    <span className="mt-1 block text-muted-foreground">{opt.description}</span>
                   </span>
                   <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" />
                 </Link>
@@ -107,7 +150,7 @@ export function BringYourBusinessChoices({
           </div>
         </div>
 
-        <div className="rounded-md border p-3 text-sm">
+        <div className="htc-surface-guidance space-y-2 p-3 text-sm">
           <p className="font-medium">Add things individually</p>
           <p className="mt-1 text-xs text-muted-foreground">
             Enter clients and commitments yourself as you go. Not inferior to importing — just a different pace.
@@ -119,7 +162,7 @@ export function BringYourBusinessChoices({
             />
             <Link
               href={BRING_YOUR_BUSINESS_ROUTES.spreadsheetImport}
-              className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground hover:underline"
+              className="htc-record-link inline-flex items-center gap-1 text-xs"
             >
               Open Import
               <ChevronRight className="h-3 w-3" />
@@ -127,7 +170,7 @@ export function BringYourBusinessChoices({
           </div>
         </div>
 
-        <div className="rounded-md border p-3 text-sm">
+        <div className="htc-surface-guidance space-y-2 p-3 text-sm">
           <p className="font-medium">I&apos;m starting fresh / skip for now</p>
           <p className="mt-1 text-xs text-muted-foreground">
             Nothing to bring over yet. You can always import later.
@@ -146,7 +189,7 @@ export function BringYourBusinessChoices({
         className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground hover:underline"
       >
         <HelpCircle className="h-3 w-3" />
-        What Should I Set Up Before I Start?
+        How to bring your business over
       </Link>
     </div>
   );

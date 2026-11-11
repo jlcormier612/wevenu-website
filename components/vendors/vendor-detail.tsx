@@ -16,15 +16,20 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { formatPhoneDisplay, toE164 } from "@/lib/sms/phone";
 import { formatTime } from "@/lib/vendors/constants";
 import type { VendorReview, VendorWithEvents } from "@/lib/vendors/types";
 import type { WorkspaceDocument } from "@/lib/document-workspace/types";
 import type { VendorRollupConversation } from "@/lib/conversations/types";
+import {
+  INTERNAL_NOTES_PRIVACY_HINT,
+  internalNotesLabel,
+} from "@/lib/notes/internal-notes-copy";
 
 export function VendorDetail({
-  vendor, workspaceDocuments = [], pinnedDocumentKeys = [], recentDocumentEntries = [], reviews = [], conversations = [],
+  vendor, workspaceDocuments = [], pinnedDocumentKeys = [], reviews = [], conversations = [],
 }: {
-  vendor: VendorWithEvents; workspaceDocuments?: WorkspaceDocument[]; pinnedDocumentKeys?: string[]; recentDocumentEntries?: [string, string][]; reviews?: VendorReview[]; conversations?: VendorRollupConversation[];
+  vendor: VendorWithEvents; workspaceDocuments?: WorkspaceDocument[]; pinnedDocumentKeys?: string[]; reviews?: VendorReview[]; conversations?: VendorRollupConversation[];
 }) {
   const router = useRouter();
   const [deletePending, startDelete] = React.useTransition();
@@ -148,7 +153,7 @@ export function VendorDetail({
             )}
             {[
               { icon: Mail, label: "Email", value: vendor.email, href: vendor.email ? `mailto:${vendor.email}` : null },
-              { icon: Phone, label: "Phone", value: vendor.phone, href: vendor.phone ? `tel:${vendor.phone}` : null },
+              { icon: Phone, label: "Phone", value: vendor.phone ? formatPhoneDisplay(vendor.phone) : vendor.phone, href: vendor.phone ? `tel:${toE164(vendor.phone) ?? vendor.phone}` : null },
             ].map(({ icon: Icon, label, value, href }) =>
               value ? (
                 <div key={label} className="flex items-start gap-3">
@@ -214,7 +219,8 @@ export function VendorDetail({
               )}
               {vendor.notes && (
                 <div>
-                  <p className="text-xs text-muted-foreground">Internal notes</p>
+                  <p className="text-xs text-muted-foreground">{internalNotesLabel("vendor")}</p>
+                  <p className="text-[11px] text-muted-foreground">{INTERNAL_NOTES_PRIVACY_HINT}</p>
                   <p className="whitespace-pre-wrap text-sm text-foreground">{vendor.notes}</p>
                 </div>
               )}
@@ -266,7 +272,6 @@ export function VendorDetail({
             description="Contracts, insurance certificates, menus, and other vendor files."
             documents={workspaceDocuments}
             initialPinnedKeys={pinnedDocumentKeys}
-            initialRecentEntries={recentDocumentEntries}
             uploadTarget={{ entityType: "vendor", entityId: vendor.id, venueId: vendor.venueId }}
           />
         </TabsContent>

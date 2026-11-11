@@ -1,0 +1,57 @@
+{
+  "servingSha": "2077eb78c00b83bb012b045dec07c7d02f76bfb3",
+  "deployRun": "https://github.com/jlcormier612/wevenu-website/actions/runs/42718752917",
+  "venueId": "9336a6cb-6a49-4a38-82bc-ff3b2361e8a3",
+  "venueName": "[DISPOSABLE-P3-CANCEL] 1794244329",
+  "subscriptionId": "sub_1UZw74ErUqJH7nkta71f0YMw",
+  "steps": [
+    {
+      "before": {
+        "source": "standard",
+        "label": "Standard catalog pricing",
+        "amountCents": 19900,
+        "amount": "$199"
+      }
+    },
+    {
+      "create": {
+        "stripeApplied": true,
+        "coupon": "htc_fnd_pct_15_59b2938f338a4894b9",
+        "recon": "applied"
+      }
+    },
+    {
+      "after": {
+        "source": "founder_override",
+        "label": "Special pricing",
+        "amountCents": 16915,
+        "amount": "$169.15"
+      },
+      "invoice": "$169.15"
+    },
+    {
+      "stripeAfter": null
+    },
+    {
+      "fixed": {
+        "stripeApplied": true,
+        "price": "price_1Ua1xCErUqJH7nkt661ug3Zp"
+      }
+    },
+    {
+      "tierHold": "a3ceb9cd-1e2b-4119-9c3d-645951801433"
+    }
+  ],
+  "ok": false,
+  "checks": {
+    "deploy_serving_2077eb78": true,
+    "readiness_founder_ready": true,
+    "percent_stripe_applied": true,
+    "percent_htc_offer": true,
+    "percent_amount_16915": true,
+    "stripe_coupon_matches": false,
+    "end_restores": true,
+    "fixed_stripe_applied": true,
+    "tier_freeze_hold": true
+  }
+}

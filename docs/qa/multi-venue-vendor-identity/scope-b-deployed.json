@@ -1,0 +1,94 @@
+{
+  "ok": true,
+  "dpl": "f276f919886b6ebb744b769138deb7cf94669009",
+  "health": {
+    "ok": true,
+    "checks": {
+      "env": "ok",
+      "supabase": "ok"
+    }
+  },
+  "email": "scopeb-1791606100231@example.test",
+  "cuppity": [
+    {
+      "id": "4cdf71a5-abe4-43d1-a4f1-1795261db881",
+      "email": "jj@google.com",
+      "is_claimed": false,
+      "business_name": "Cuppity Cakes"
+    },
+    {
+      "id": "891899a8-8521-4be0-9dfa-3bcba3077c54",
+      "email": "jlcormier612@gmail.com",
+      "is_claimed": true,
+      "business_name": "Cuppity Cakes"
+    },
+    {
+      "id": "f05f23e7-b3cf-4195-92e4-7d9ffc883eca",
+      "email": "jj@google.com",
+      "is_claimed": false,
+      "business_name": "Cuppity Cakes"
+    }
+  ],
+  "checks": [
+    {
+      "name": "runtime",
+      "pass": true,
+      "detail": "dpl=f276f919886b6ebb744b769138deb7cf94669009"
+    },
+    {
+      "name": "second-venue-reuses-global-identity",
+      "pass": true,
+      "detail": "url=732f36ff-7171-4e95-8743-aa7081cd3fda count=1"
+    },
+    {
+      "name": "relationships-are-independent",
+      "pass": true,
+      "detail": "[{\"venue_id\":\"ebfeb3e7-cb95-44a4-9cbd-e0b2f2ff3803\",\"status\":\"active\",\"notes\":\"Other venue private note\",\"preference_level\":\"standard\",\"is_required\":false},{\"venue_id\":\"a415ac52-cd74-42a6-8df7-7a8f6e71d080\",\"status\":\"active\",\"notes\":\"Fancy private note\",\"preference_level\":\"standard\",\"is_required\":true}]"
+    },
+    {
+      "name": "deactivate-one-venue-only",
+      "pass": true,
+      "detail": "[{\"venue_id\":\"ebfeb3e7-cb95-44a4-9cbd-e0b2f2ff3803\",\"status\":\"active\"},{\"venue_id\":\"a415ac52-cd74-42a6-8df7-7a8f6e71d080\",\"status\":\"inactive\"}]"
+    },
+    {
+      "name": "reactivate-fancy-only",
+      "pass": true,
+      "detail": "{\"status\":\"active\"}"
+    },
+    {
+      "name": "event-assignment-scoped-to-fancy",
+      "pass": true,
+      "detail": "[{\"venue_id\":\"a415ac52-cd74-42a6-8df7-7a8f6e71d080\",\"event_id\":\"4056f77d-9a2f-4eac-af2f-4d73e24d1dae\"}]"
+    },
+    {
+      "name": "rls-hides-other-venue-relationship",
+      "pass": true,
+      "detail": "[]"
+    },
+    {
+      "name": "rls-shows-own-venue-relationship",
+      "pass": true,
+      "detail": "[{\"notes\":\"Fancy private note\"}]"
+    },
+    {
+      "name": "rls-blocks-cross-venue-event-assignment",
+      "pass": true,
+      "detail": "new row violates row-level security policy for table \"event_vendor_assignments\""
+    },
+    {
+      "name": "ambiguous-email-does-not-merge",
+      "pass": true,
+      "detail": "count=3 third=1ab66384-e212-4d66-b79c-3b2a8d2ece7d"
+    },
+    {
+      "name": "cuppity-rows-untouched",
+      "pass": true,
+      "detail": "before=3 after=3 ids=4cdf71a5-abe4-43d1-a4f1-1795261db881,891899a8-8521-4be0-9dfa-3bcba3077c54,f05f23e7-b3cf-4195-92e4-7d9ffc883eca"
+    },
+    {
+      "name": "disposable-cleaned",
+      "pass": true,
+      "detail": "leftover=0"
+    }
+  ]
+}

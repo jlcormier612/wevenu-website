@@ -7,10 +7,27 @@ import {
   clampDayOffset,
   compareTimelineEntries,
   minutesToTime,
-  resolveEntryTimeFromOffset,
   timeToMinutes,
   type TimelineTemplate,
 } from "@/lib/timeline/constants";
+import {
+  audiencesWithClientShare,
+  sanitizeVenueOwnedAudiences,
+  venueItemVisibleToClient,
+  VENUE_OWNED_DEFAULT_AUDIENCES,
+} from "@/lib/timeline/audience-ownership";
+import { provenanceFromTemplateApply, timingColumnsForUntypedDisplaySave, timingDbColumns, type TimingProvenance } from "@/lib/timeline/timing-provenance";
+import {
+  applyScheduleLinkedContentProtection,
+  expectedScheduleLinkedContent,
+  SCHEDULE_LINKED_UNLOCK_BLOCKED_MESSAGE,
+  scheduleLinkedContentDiverged,
+  scheduleLinkedMilestoneMatchesSchedule,
+} from "@/lib/timeline/schedule-sync";
+import {
+  VENUE_TIMELINE_REPLACE_BLOCKED_ERROR,
+  VENUE_TIMELINE_REPLACE_BLOCKED_MESSAGE,
+} from "@/lib/timeline-templates/replace-guard";
 import type {
   TimelineAudience, TimelineEntry, TimelineEntryAttachment, TimelineEntryInput,
   TimelineEntryLink, TimelineEntryStatus, TimelineLockState, TimelineOwner, TimelineRelatedLink, TimelineRelatedSourceType, TimelineSection,
@@ -19,7 +36,7 @@ import type {
 type DbClient = Awaited<ReturnType<typeof createClient>>;
 
 type EntryRow = {
-  id: string; venue_id: string; event_id: string;
+  id: string; venue_id: string; event_id: string | null; client_id?: string | null;
   title: string; description: string | null; notes: string | null;
   entry_time: string | null; day_offset: number; sort_order: number;
   audiences: string[]; section_id: string | null;
@@ -27,19 +44,76 @@ type EntryRow = {
   status: TimelineEntryStatus;
   assigned_to_staff_id: string | null;
   created_at: string; updated_at: string;
+  timing_day_intent?: string | null;
+  timing_day_anchor?: string | null;
+  timing_relative_day_offset?: number | null;
+  timing_day_offset_overridden?: boolean | null;
+  timing_template_day_offset?: number | null;
+  timing_template_day_anchor?: string | null;
+  timing_fixed_date?: string | null;
+  timing_clock_intent?: string | null;
+  timing_relative_minutes?: number | null;
+  timing_clock_overridden?: boolean | null;
+  timing_attention?: string | null;
 };
 
-type SectionRow = { id: string; venue_id: string; event_id: string; name: string; sort_order: number; client_can_add: boolean; created_at: string; updated_at: string; };
+type SectionRow = { id: string; venue_id: string; event_id: string | null; client_id?: string | null; name: string; sort_order: number; client_can_add: boolean; created_at: string; updated_at: string; };
 type LinkRow = { id: string; venue_id: string; timeline_entry_id: string; url: string; label: string | null; sort_order: number; created_at: string; };
 type AttachmentRow = { id: string; venue_id: string; timeline_entry_id: string; document_id: string; sort_order: number; created_at: string; };
 
+function mapTiming(r: {
+  timing_day_intent?: string | null;
+  timing_day_anchor?: string | null;
+  timing_relative_day_offset?: number | null;
+  timing_day_offset_overridden?: boolean | null;
+  timing_template_day_offset?: number | null;
+  timing_template_day_anchor?: string | null;
+  timing_fixed_date?: string | null;
+  timing_clock_intent?: string | null;
+  timing_relative_minutes?: number | null;
+  timing_clock_overridden?: boolean | null;
+  timing_attention?: string | null;
+}): TimingProvenance | undefined {
+  if (r.timing_day_intent === undefined && r.timing_attention === undefined && r.timing_clock_intent === undefined) {
+    return undefined;
+  }
+  const dayIntent = r.timing_day_intent === "relative" || r.timing_day_intent === "fixed" || r.timing_day_intent === "unknown"
+    ? r.timing_day_intent
+    : null;
+  const anchor = r.timing_day_anchor === "event_end" || r.timing_day_anchor === "event_start" ? r.timing_day_anchor : null;
+  const templateAnchor = r.timing_template_day_anchor === "event_end" || r.timing_template_day_anchor === "event_start"
+    ? r.timing_template_day_anchor
+    : null;
+  const clock = r.timing_clock_intent === "relative" || r.timing_clock_intent === "explicit"
+    || r.timing_clock_intent === "untimed" || r.timing_clock_intent === "unknown"
+    ? r.timing_clock_intent
+    : null;
+  const attention = r.timing_attention === "missing_event_end" || r.timing_attention === "invalid_event_end"
+    || r.timing_attention === "unknown_intent"
+    ? r.timing_attention
+    : null;
+  return {
+    dayIntent,
+    dayAnchor: anchor,
+    relativeDayOffset: r.timing_relative_day_offset ?? null,
+    dayOffsetOverridden: Boolean(r.timing_day_offset_overridden),
+    templateDayOffset: r.timing_template_day_offset ?? null,
+    templateDayAnchor: templateAnchor,
+    fixedDate: r.timing_fixed_date ?? null,
+    clockIntent: clock,
+    relativeMinutes: r.timing_relative_minutes ?? null,
+    clockOverridden: Boolean(r.timing_clock_overridden),
+    attention,
+  };
+}
+
 function mapEntry(r: EntryRow): TimelineEntry {
   return {
-    id: r.id, venueId: r.venue_id, eventId: r.event_id,
+    id: r.id, venueId: r.venue_id, eventId: r.event_id ?? "",
     title: r.title, description: r.description, notes: r.notes,
     entryTime: r.entry_time?.slice(0, 5) ?? null,
     dayOffset: r.day_offset ?? 0,
-    audiences: (r.audiences ?? ["venue"]) as TimelineAudience[],
+    audiences: (r.audiences ?? [...VENUE_OWNED_DEFAULT_AUDIENCES]) as TimelineAudience[],
     sectionId: r.section_id,
     sortOrder: r.sort_order,
     owner: r.owner ?? "venue",
@@ -47,27 +121,45 @@ function mapEntry(r: EntryRow): TimelineEntry {
     status: r.status ?? "not_started",
     assignedToStaffId: r.assigned_to_staff_id,
     createdAt: r.created_at, updatedAt: r.updated_at,
+    timing: mapTiming(r),
   };
 }
 
 async function resolveClampedDayOffset(
-  client: DbClient, eventId: string, dayOffset: number | null | undefined,
+  client: DbClient,
+  eventId: string | null,
+  dayOffset: number | null | undefined,
+  clientId?: string | null,
 ): Promise<number> {
-  const { data } = await client.from("events")
-    .select("event_date, event_end_date")
-    .eq("id", eventId)
-    .maybeSingle<{ event_date: string | null; event_end_date: string | null }>();
-  return clampDayOffset(dayOffset ?? 0, data?.event_date ?? null, data?.event_end_date);
+  if (eventId) {
+    const { data } = await client.from("events")
+      .select("event_date, event_end_date")
+      .eq("id", eventId)
+      .maybeSingle<{ event_date: string | null; event_end_date: string | null }>();
+    return clampDayOffset(dayOffset ?? 0, data?.event_date ?? null, data?.event_end_date);
+  }
+  if (clientId) {
+    const { data } = await client.from("clients")
+      .select("event_date")
+      .eq("id", clientId)
+      .maybeSingle<{ event_date: string | null }>();
+    return clampDayOffset(dayOffset ?? 0, data?.event_date ?? null, null);
+  }
+  return clampDayOffset(dayOffset ?? 0, null, null);
 }
 
 function mapSection(r: SectionRow): TimelineSection {
-  return { id: r.id, venueId: r.venue_id, eventId: r.event_id, name: r.name, sortOrder: r.sort_order, clientCanAdd: r.client_can_add, createdAt: r.created_at, updatedAt: r.updated_at };
+  return { id: r.id, venueId: r.venue_id, eventId: r.event_id ?? "", name: r.name, sortOrder: r.sort_order, clientCanAdd: r.client_can_add, createdAt: r.created_at, updatedAt: r.updated_at };
 }
 
-/** Venue never owns guest publication — strip on write so legacy tags can't re-stick. */
+/**
+ * Venue-owned writes: only Client + Vendors. Rejects wedding_party, guests,
+ * venue, and unknown tags (fail closed — not silent strip).
+ */
 function sanitizeVenueAudiences(audiences: TimelineAudience[] | undefined): TimelineAudience[] {
-  const next = (audiences ?? ["venue"]).filter((a) => a !== "guests");
-  return next.length > 0 ? next : ["venue"];
+  const result = sanitizeVenueOwnedAudiences(audiences);
+  if (!result.ok) throw new Error(result.message);
+  return result.audiences;
 }
 
 // ---- Entries -------------------------------------------------------------------
@@ -107,6 +199,21 @@ export async function getTimelineEntries(
     assignedToStaffId: (e.assignedToStaffId as string | null) ?? null,
     createdAt: (e.createdAt as string | null) ?? "",
     updatedAt: (e.updatedAt as string | null) ?? "",
+    timing: ("timingDayIntent" in e || "timingAttention" in e)
+      ? mapTiming({
+        timing_day_intent: (e.timingDayIntent as string | null) ?? null,
+        timing_day_anchor: (e.timingDayAnchor as string | null) ?? null,
+        timing_relative_day_offset: (e.timingRelativeDayOffset as number | null) ?? null,
+        timing_day_offset_overridden: (e.timingDayOffsetOverridden as boolean | null) ?? null,
+        timing_template_day_offset: (e.timingTemplateDayOffset as number | null) ?? null,
+        timing_template_day_anchor: (e.timingTemplateDayAnchor as string | null) ?? null,
+        timing_fixed_date: (e.timingFixedDate as string | null) ?? null,
+        timing_clock_intent: (e.timingClockIntent as string | null) ?? null,
+        timing_relative_minutes: (e.timingRelativeMinutes as number | null) ?? null,
+        timing_clock_overridden: (e.timingClockOverridden as boolean | null) ?? null,
+        timing_attention: (e.timingAttention as string | null) ?? null,
+      })
+      : undefined,
   }));
   entries.sort(compareTimelineEntries);
   return entries;
@@ -120,7 +227,7 @@ export async function getTimelineEntries(
 export async function insertEntry(
   client: DbClient, venueId: string, eventId: string, input: TimelineEntryInput,
 ): Promise<TimelineEntry> {
-  const dayOffset = await resolveClampedDayOffset(client, eventId, input.dayOffset);
+  const dayOffset = await resolveClampedDayOffset(client, eventId, input.timing?.dayOffset ?? input.dayOffset);
   const { data, error } = await client.from("timeline_entries")
     .insert({
       venue_id: venueId, event_id: eventId,
@@ -136,6 +243,46 @@ export async function insertEntry(
       lock_state: input.lockState ?? "locked",
       status: input.status ?? "not_started",
       assigned_to_staff_id: input.assignedToStaffId ?? null,
+      ...(input.timing ? timingDbColumns({ ...input.timing, dayOffset, entryTime: input.entryTime || null }) : {}),
+    })
+    .select().single<EntryRow>();
+  if (error) throw error;
+  return mapEntry(data);
+}
+
+/** Venue-owned timeline prepared before Booked. Submissions stay on the Event. */
+export async function getClientTimelineEntries(
+  client: DbClient, venueId: string, clientId: string,
+): Promise<TimelineEntry[]> {
+  const { data, error } = await client.from("timeline_entries").select("*")
+    .eq("venue_id", venueId).eq("client_id", clientId).is("event_id", null).eq("owner", "venue")
+    .order("day_offset").order("sort_order").order("created_at");
+  if (error) throw error;
+  const entries = (data as EntryRow[]).map(mapEntry);
+  entries.sort(compareTimelineEntries);
+  return entries;
+}
+
+export async function insertClientEntry(
+  client: DbClient, venueId: string, clientId: string, input: TimelineEntryInput,
+): Promise<TimelineEntry> {
+  const dayOffset = await resolveClampedDayOffset(client, null, input.timing?.dayOffset ?? input.dayOffset, clientId);
+  const { data, error } = await client.from("timeline_entries")
+    .insert({
+      venue_id: venueId, event_id: null, client_id: clientId,
+      title: input.title.trim(),
+      description: input.description.trim() || null,
+      notes: input.notes?.trim() || null,
+      entry_time: input.entryTime || null,
+      day_offset: dayOffset,
+      audiences: sanitizeVenueAudiences(input.audiences),
+      section_id: input.sectionId ?? null,
+      sort_order: input.sortOrder ?? 0,
+      owner: "venue",
+      lock_state: input.lockState ?? "locked",
+      status: input.status ?? "not_started",
+      assigned_to_staff_id: input.assignedToStaffId ?? null,
+      ...(input.timing ? timingDbColumns({ ...input.timing, dayOffset, entryTime: input.entryTime || null }) : {}),
     })
     .select().single<EntryRow>();
   if (error) throw error;
@@ -157,22 +304,67 @@ export async function insertEntry(
  */
 export async function updateEntry(
   client: DbClient, venueId: string, entryId: string, input: TimelineEntryInput,
-): Promise<void> {
+): Promise<{ dayOffset: number; entryTime: string | null }> {
   const { data: current } = await client.from("timeline_entries")
-    .select("owner, event_id, day_offset")
+    .select("owner, event_id, client_id, day_offset, entry_time, title, description, notes, source_space_use_key, timing_day_intent, timing_day_anchor, timing_clock_intent")
     .eq("id", entryId).eq("venue_id", venueId)
-    .maybeSingle<{ owner: TimelineOwner; event_id: string; day_offset: number }>();
+    .maybeSingle<{
+      owner: TimelineOwner;
+      event_id: string | null;
+      client_id: string | null;
+      day_offset: number;
+      entry_time: string | null;
+      title: string | null;
+      description: string | null;
+      notes: string | null;
+      source_space_use_key: string | null;
+      timing_day_intent: string | null;
+      timing_day_anchor: string | null;
+      timing_clock_intent: string | null;
+    }>();
   if (current?.owner !== "venue") throw new Error("This item belongs to the couple's own planning timeline and can't be edited here.");
 
+  const requestedDay = input.timing?.dayOffset ?? (input.dayOffset !== undefined ? input.dayOffset : current.day_offset);
+  const untyped = input.timing
+    ? null
+    : timingColumnsForUntypedDisplaySave(
+      {
+        dayIntent: current.timing_day_intent === "relative" || current.timing_day_intent === "fixed" || current.timing_day_intent === "unknown"
+          ? current.timing_day_intent
+          : null,
+        dayAnchor: current.timing_day_anchor === "event_end" || current.timing_day_anchor === "event_start"
+          ? current.timing_day_anchor
+          : null,
+        clockIntent: current.timing_clock_intent === "relative" || current.timing_clock_intent === "explicit"
+          || current.timing_clock_intent === "untimed" || current.timing_clock_intent === "unknown"
+          ? current.timing_clock_intent
+          : null,
+        dayOffset: current.day_offset,
+        entryTime: current.entry_time?.slice(0, 5) ?? null,
+      },
+      { dayOffset: requestedDay ?? current.day_offset, entryTime: input.entryTime || null },
+    );
   const dayOffset = await resolveClampedDayOffset(
-    client, current.event_id, input.dayOffset !== undefined ? input.dayOffset : current.day_offset,
+    client,
+    current.event_id,
+    untyped ? untyped.dayOffset : requestedDay,
+    current.client_id,
   );
+  if (untyped && untyped.timingColumns.timing_relative_day_offset != null) {
+    untyped.timingColumns.timing_relative_day_offset = dayOffset;
+  }
+  const entryTime = untyped ? untyped.entryTime : (input.entryTime || null);
   const patch: Record<string, unknown> = {
     title: input.title.trim(),
     description: input.description.trim() || null,
-    entry_time: input.entryTime || null,
+    entry_time: entryTime,
     day_offset: dayOffset,
   };
+  if (input.timing) {
+    Object.assign(patch, timingDbColumns({ ...input.timing, dayOffset, entryTime: input.entryTime || null }));
+  } else if (untyped) {
+    Object.assign(patch, untyped.timingColumns);
+  }
   if (input.notes !== undefined) patch.notes = input.notes.trim() || null;
   if (input.sectionId !== undefined) patch.section_id = input.sectionId;
   if (input.lockState !== undefined) patch.lock_state = input.lockState;
@@ -180,10 +372,162 @@ export async function updateEntry(
   if (input.status !== undefined) patch.status = input.status;
   if (input.assignedToStaffId !== undefined) patch.assigned_to_staff_id = input.assignedToStaffId;
 
+  // Schedule-linked rows: keep the key on content edits, lock while content
+  // differs from the authoritative schedule, and refuse unlock-only saves that
+  // would leave an edited milestone editable for the next reconcile.
+  // Reconciliation never uses this path. Detached (null key) rows use normal lock.
+  if (current.source_space_use_key) {
+    const contentEdited = scheduleLinkedContentDiverged(
+      {
+        title: current.title ?? "",
+        description: current.description,
+        notes: current.notes,
+        entryTime: current.entry_time,
+        dayOffset: current.day_offset ?? 0,
+      },
+      {
+        title: input.title,
+        description: input.description,
+        notes: input.notes,
+        notesProvided: input.notes !== undefined,
+        entryTime: entryTime,
+        dayOffset,
+      },
+    );
+    const unlockRequested = input.lockState === "editable";
+    const finalNotes = input.notes !== undefined
+      ? (input.notes.trim() || null)
+      : (current.notes?.trim() || null);
+    const finalContent = {
+      title: input.title.trim(),
+      description: input.description.trim() || null,
+      notes: finalNotes,
+      entryTime,
+      dayOffset,
+    };
+
+    if (unlockRequested) {
+      if (!current.event_id) {
+        applyScheduleLinkedContentProtection(patch);
+        if (!contentEdited) throw new Error(SCHEDULE_LINKED_UNLOCK_BLOCKED_MESSAGE);
+      } else {
+        const { data: eventRow, error: eventErr } = await client
+          .from("events")
+          .select("event_date, event_end_date")
+          .eq("id", current.event_id)
+          .eq("venue_id", venueId)
+          .maybeSingle<{ event_date: string | null; event_end_date: string | null }>();
+        if (eventErr) throw eventErr;
+
+        const { data: assignRow, error: assignErr } = await client
+          .from("event_space_assignments")
+          .select("use_key, use_label, start_time, end_time, scheduled_date, sort_order, venue_spaces(name)")
+          .eq("event_id", current.event_id)
+          .eq("venue_id", venueId)
+          .eq("use_key", current.source_space_use_key)
+          .maybeSingle();
+        if (assignErr) throw assignErr;
+
+        const spaceRaw = assignRow
+          ? (assignRow as { venue_spaces?: { name: string | null } | { name: string | null }[] | null }).venue_spaces
+          : null;
+        const space = Array.isArray(spaceRaw) ? spaceRaw[0] : spaceRaw;
+        const expected = assignRow
+          ? expectedScheduleLinkedContent({
+            eventDate: eventRow?.event_date ?? null,
+            eventEndDate: eventRow?.event_end_date ?? null,
+            assignment: {
+              useKey: String((assignRow as { use_key: string }).use_key),
+              useLabel: String(
+                (assignRow as { use_label: string | null }).use_label
+                  ?? (assignRow as { use_key: string }).use_key,
+              ),
+              spaceName: space?.name ?? null,
+              startTime: (assignRow as { start_time: string | null }).start_time,
+              endTime: (assignRow as { end_time: string | null }).end_time,
+              scheduledDate: (assignRow as { scheduled_date: string | null }).scheduled_date,
+              sortOrder: Number((assignRow as { sort_order?: number | null }).sort_order ?? 0),
+            },
+          })
+          : null;
+
+        const matches = expected
+          ? scheduleLinkedMilestoneMatchesSchedule(finalContent, expected)
+          : false;
+
+        if (matches) {
+          patch.lock_state = "editable";
+        } else {
+          applyScheduleLinkedContentProtection(patch);
+          if (!contentEdited) throw new Error(SCHEDULE_LINKED_UNLOCK_BLOCKED_MESSAGE);
+        }
+      }
+    } else if (contentEdited) {
+      applyScheduleLinkedContentProtection(patch);
+    }
+  }
+
   const { error } = await client.from("timeline_entries")
     .update(patch)
     .eq("id", entryId).eq("venue_id", venueId);
   if (error) throw error;
+  return { dayOffset, entryTime };
+}
+
+/**
+ * Persist Client audience on every venue-owned entry for this event that
+ * is not yet visible in the couple portal. Idempotent — already-shared
+ * rows and client-owned rows are left untouched. No email/SMS.
+ */
+export async function shareVenueTimelineWithCouple(
+  client: DbClient, venueId: string, eventId: string,
+): Promise<{ sharedCount: number; alreadySharedCount: number; venueOwnedCount: number }> {
+  const entries = await getTimelineEntries(client, venueId, eventId);
+  const venueOwned = entries.filter((e) => e.owner === "venue");
+  let sharedCount = 0;
+  let alreadySharedCount = 0;
+  for (const entry of venueOwned) {
+    if (venueItemVisibleToClient(entry.audiences)) {
+      alreadySharedCount += 1;
+      continue;
+    }
+    const next = sanitizeVenueAudiences(audiencesWithClientShare(entry.audiences));
+    const { error } = await client.from("timeline_entries")
+      .update({ audiences: next })
+      .eq("id", entry.id)
+      .eq("venue_id", venueId)
+      .eq("owner", "venue");
+    if (error) throw error;
+    sharedCount += 1;
+  }
+  return { sharedCount, alreadySharedCount, venueOwnedCount: venueOwned.length };
+}
+
+/**
+ * Pre-booking client timeline — same Client-audience publish semantics.
+ */
+export async function shareClientVenueTimelineWithCouple(
+  client: DbClient, venueId: string, clientId: string,
+): Promise<{ sharedCount: number; alreadySharedCount: number; venueOwnedCount: number }> {
+  const entries = await getClientTimelineEntries(client, venueId, clientId);
+  const venueOwned = entries.filter((e) => e.owner === "venue");
+  let sharedCount = 0;
+  let alreadySharedCount = 0;
+  for (const entry of venueOwned) {
+    if (venueItemVisibleToClient(entry.audiences)) {
+      alreadySharedCount += 1;
+      continue;
+    }
+    const next = sanitizeVenueAudiences(audiencesWithClientShare(entry.audiences));
+    const { error } = await client.from("timeline_entries")
+      .update({ audiences: next })
+      .eq("id", entry.id)
+      .eq("venue_id", venueId)
+      .eq("owner", "venue");
+    if (error) throw error;
+    sharedCount += 1;
+  }
+  return { sharedCount, alreadySharedCount, venueOwnedCount: venueOwned.length };
 }
 
 /**
@@ -231,6 +575,34 @@ export async function deleteEntry(
 }
 
 /**
+ * P2 / D5 defense-in-depth: refuse bulk wipe when any venue-owned working
+ * rows exist. Eligible empty clears go through the guarded SQL helper.
+ * Overview replace uses replace_venue_timeline_from_template_items instead.
+ */
+export async function deleteVenueOwnedEntriesForEvent(
+  client: DbClient, venueId: string, eventId: string,
+): Promise<{ ok: true; deleted: number } | { ok: false; message: string; error?: string }> {
+  // Prefer the transactional RPC so the refuse-if-not-empty check cannot race a wipe.
+  const { data, error } = await client.rpc("delete_venue_owned_timeline_entries_if_empty", {
+    p_event_id: eventId,
+  });
+  if (error) {
+    return { ok: false, message: error.message || "Could not clear venue-owned timeline items." };
+  }
+  const row = (data ?? {}) as { ok?: boolean; error?: string; message?: string; deleted?: number };
+  if (row.ok !== true) {
+    return {
+      ok: false,
+      error: String(row.error ?? VENUE_TIMELINE_REPLACE_BLOCKED_ERROR),
+      message: String(row.message ?? VENUE_TIMELINE_REPLACE_BLOCKED_MESSAGE),
+    };
+  }
+  // Venue scope is enforced inside the RPC via current_user_venue_id(); venueId is for call-site clarity.
+  void venueId;
+  return { ok: true, deleted: Number(row.deleted ?? 0) };
+}
+
+/**
  * Delay recovery — "push everything after this entry back by N minutes."
  * Timeline entries have no duration/dependency model (a deliberate,
  * documented open question — docs/shared-template-architecture.md), so
@@ -257,19 +629,34 @@ export async function shiftEntriesAfter(
 
   const { data: rows, error: fetchError } = await client
     .from("timeline_entries")
-    .select("id, entry_time, day_offset")
+    .select("id, entry_time, day_offset, timing_clock_intent, source_space_use_key")
     .eq("venue_id", venueId).eq("event_id", eventId).eq("owner", "venue")
     .eq("day_offset", anchorDay)
     .not("entry_time", "is", null)
     .gt("entry_time", anchor.entry_time);
   if (fetchError) throw fetchError;
 
-  const toShift = (rows ?? []) as { id: string; entry_time: string }[];
+  const toShift = (rows ?? []) as {
+    id: string;
+    entry_time: string;
+    timing_clock_intent: string | null;
+    source_space_use_key: string | null;
+  }[];
   for (const row of toShift) {
     const newTime = minutesToTime(timeToMinutes(row.entry_time.slice(0, 5)) + minutesDelta);
+    const patch: Record<string, unknown> = {
+      entry_time: newTime,
+      timing_clock_overridden: true,
+    };
+    // Pushing the clock is an intentional edit: keep the schedule link and lock.
+    if (row.source_space_use_key) applyScheduleLinkedContentProtection(patch);
+    if (row.timing_clock_intent === "relative") {
+      patch.timing_clock_intent = "explicit";
+      patch.timing_relative_minutes = null;
+    }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await (client.from("timeline_entries") as any)
-      .update({ entry_time: newTime }).eq("id", row.id).eq("venue_id", venueId);
+      .update(patch).eq("id", row.id).eq("venue_id", venueId);
     if (error) throw error;
   }
   return { shiftedCount: toShift.length };
@@ -324,15 +711,18 @@ export async function reorderEntries(
   client: DbClient, venueId: string, updates: { id: string; sectionId: string | null; sortOrder: number; dayOffset?: number }[],
 ): Promise<void> {
   if (updates.length === 0) return;
-  const { data: owned } = await client.from("timeline_entries").select("id, event_id")
+  const { data: owned } = await client.from("timeline_entries").select("id, event_id, client_id")
     .eq("venue_id", venueId).eq("owner", "venue").in("id", updates.map((u) => u.id));
-  const ownedById = new Map((owned ?? []).map((r) => [(r as { id: string; event_id: string }).id, (r as { id: string; event_id: string }).event_id]));
+  const ownedById = new Map((owned ?? []).map((r) => {
+    const row = r as { id: string; event_id: string | null; client_id: string | null };
+    return [row.id, row] as const;
+  }));
   for (const u of updates) {
-    const eventId = ownedById.get(u.id);
-    if (!eventId) continue;
+    const row = ownedById.get(u.id);
+    if (!row) continue;
     const patch: Record<string, unknown> = { section_id: u.sectionId, sort_order: u.sortOrder };
     if (u.dayOffset !== undefined) {
-      patch.day_offset = await resolveClampedDayOffset(client, eventId, u.dayOffset);
+      patch.day_offset = await resolveClampedDayOffset(client, row.event_id, u.dayOffset, row.client_id);
     }
     const { error } = await client.from("timeline_entries")
       .update(patch)
@@ -351,16 +741,55 @@ export async function applyTemplate(
   client: DbClient, venueId: string, eventId: string,
   template: TimelineTemplate, startTime: string | null,
 ): Promise<void> {
-  const rows = template.entries.map((te, i) => ({
-    venue_id: venueId,
-    event_id: eventId,
-    title: te.title,
-    description: te.description ?? null,
-    entry_time: resolveEntryTimeFromOffset(te.minutesOffset, startTime),
-    day_offset: Math.max(0, Math.trunc(te.dayOffset ?? 0)),
-    sort_order: i,
-  }));
+  const rows = template.entries.map((te, i) => {
+    const timing = provenanceFromTemplateApply({
+      dayOffset: te.dayOffset ?? 0,
+      dayAnchor: "event_start",
+      timeOfDay: null,
+      minutesOffset: te.minutesOffset,
+      eventDate: null,
+      eventEndDate: null,
+      eventStartTime: startTime,
+    });
+    return {
+      venue_id: venueId,
+      event_id: eventId,
+      title: te.title,
+      description: te.description ?? null,
+      sort_order: i,
+      ...timingDbColumns(timing),
+    };
+  });
 
+  const { error } = await client.from("timeline_entries").insert(rows);
+  if (error) throw error;
+}
+
+export async function applyTemplateToClient(
+  client: DbClient, venueId: string, clientId: string,
+  template: TimelineTemplate, startTime: string | null,
+): Promise<void> {
+  const rows = template.entries.map((te, i) => {
+    const timing = provenanceFromTemplateApply({
+      dayOffset: te.dayOffset ?? 0,
+      dayAnchor: "event_start",
+      timeOfDay: null,
+      minutesOffset: te.minutesOffset,
+      eventDate: null,
+      eventEndDate: null,
+      eventStartTime: startTime,
+    });
+    return {
+      venue_id: venueId,
+      event_id: null,
+      client_id: clientId,
+      title: te.title,
+      description: te.description ?? null,
+      sort_order: i,
+      owner: "venue" as const,
+      ...timingDbColumns(timing),
+    };
+  });
   const { error } = await client.from("timeline_entries").insert(rows);
   if (error) throw error;
 }
@@ -374,9 +803,37 @@ export async function getSections(client: DbClient, venueId: string, eventId: st
   return (data as SectionRow[]).map(mapSection);
 }
 
-export async function insertSection(client: DbClient, venueId: string, eventId: string, name: string, sortOrder: number): Promise<TimelineSection> {
+export async function getClientSections(client: DbClient, venueId: string, clientId: string): Promise<TimelineSection[]> {
+  const { data, error } = await client.from("timeline_sections").select("*")
+    .eq("venue_id", venueId).eq("client_id", clientId).is("event_id", null).order("sort_order");
+  if (error) throw error;
+  return (data as SectionRow[]).map(mapSection);
+}
+
+export async function insertSection(
+  client: DbClient,
+  venueId: string,
+  eventId: string,
+  name: string,
+  sortOrder: number,
+  opts?: { clientCanAdd?: boolean },
+): Promise<TimelineSection> {
   const { data, error } = await client.from("timeline_sections")
-    .insert({ venue_id: venueId, event_id: eventId, name: name.trim(), sort_order: sortOrder })
+    .insert({
+      venue_id: venueId,
+      event_id: eventId,
+      name: name.trim(),
+      sort_order: sortOrder,
+      client_can_add: opts?.clientCanAdd === true,
+    })
+    .select().single<SectionRow>();
+  if (error) throw error;
+  return mapSection(data);
+}
+
+export async function insertClientSection(client: DbClient, venueId: string, clientId: string, name: string, sortOrder: number): Promise<TimelineSection> {
+  const { data, error } = await client.from("timeline_sections")
+    .insert({ venue_id: venueId, event_id: null, client_id: clientId, name: name.trim(), sort_order: sortOrder })
     .select().single<SectionRow>();
   if (error) throw error;
   return mapSection(data);
@@ -416,7 +873,9 @@ export async function duplicateSection(
   if (sourceError) throw sourceError;
   if (!sourceRow) throw new Error("Section not found.");
 
-  const newSection = await insertSection(client, venueId, eventId, `${sourceRow.name} (Copy)`, sortOrder);
+  const newSection = sourceRow.event_id
+    ? await insertSection(client, venueId, sourceRow.event_id, `${sourceRow.name} (Copy)`, sortOrder)
+    : await insertClientSection(client, venueId, sourceRow.client_id ?? eventId, `${sourceRow.name} (Copy)`, sortOrder);
 
   const { data: sourceEntryRows, error: entriesError } = await client.from("timeline_entries")
     .select("*").eq("section_id", sourceSectionId).eq("venue_id", venueId).eq("owner", "venue")
@@ -427,9 +886,25 @@ export async function duplicateSection(
   if (sourceEntries.length === 0) return { section: newSection, entries: [] };
 
   const rows = sourceEntries.map((e, i) => ({
-    venue_id: venueId, event_id: eventId, section_id: newSection.id,
+    venue_id: venueId,
+    event_id: sourceRow.event_id,
+    client_id: sourceRow.event_id ? null : (sourceRow.client_id ?? null),
+    section_id: newSection.id,
     title: e.title, description: e.description, notes: e.notes, entry_time: e.entryTime,
     day_offset: e.dayOffset ?? 0,
+    ...(e.timing ? {
+      timing_day_intent: e.timing.dayIntent,
+      timing_day_anchor: e.timing.dayAnchor,
+      timing_relative_day_offset: e.timing.relativeDayOffset,
+      timing_day_offset_overridden: e.timing.dayOffsetOverridden,
+      timing_template_day_offset: e.timing.templateDayOffset,
+      timing_template_day_anchor: e.timing.templateDayAnchor,
+      timing_fixed_date: e.timing.fixedDate,
+      timing_clock_intent: e.timing.clockIntent,
+      timing_relative_minutes: e.timing.relativeMinutes,
+      timing_clock_overridden: e.timing.clockOverridden,
+      timing_attention: e.timing.attention,
+    } : {}),
     audiences: sanitizeVenueAudiences(e.audiences), owner: "venue" as const, lock_state: e.lockState,
     assigned_to_staff_id: e.assignedToStaffId, status: "not_started" as const,
     sort_order: i,

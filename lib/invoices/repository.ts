@@ -1,5 +1,10 @@
 import { createClient } from "@/integrations/supabase/server";
 import { computeInvoiceTotals, deriveRevenueCategory, generateInvoiceNumber } from "@/lib/invoices/constants";
+import {
+  exclusiveTaxAmountFromRollup,
+  percentDiscountAmountFromRollup,
+  type TaxRollupLine,
+} from "@/lib/invoices/exclusive-tax";
 import { computeInvoiceBalanceDue } from "@/lib/payments/invoice-balance";
 import type {
   AddLineItemResult,
@@ -13,11 +18,13 @@ import type {
   InvoiceWithLineItems,
 } from "@/lib/invoices/types";
 
+export type { TaxRollupLine };
+
 type DbClient = Awaited<ReturnType<typeof createClient>>;
 
 type InvoiceRow = {
   id: string; venue_id: string; client_id: string | null; event_id: string | null;
-  invoice_number: string; status: InvoiceStatus;
+  invoice_number: string; display_name: string | null; status: InvoiceStatus;
   subtotal: number; discount_amount: number; tax_amount: number; total: number; balance_due: number;
   notes: string | null; due_date: string | null; issued_at: string | null;
   event_order_id: string | null; event_order_dismissed_fingerprint: string | null;
@@ -25,16 +32,32 @@ type InvoiceRow = {
   quickbooks_sync_status: "not_synced" | "pending" | "synced" | "failed";
   branding_snapshot: InvoiceBrandingSnapshot | null;
   created_at: string; updated_at: string;
-  clients?: { first_name: string; last_name: string; partner_first_name: string | null; partner_last_name: string | null } | null;
+  clients?: {
+    first_name: string;
+    last_name: string;
+    partner_first_name: string | null;
+    partner_last_name: string | null;
+    event_date?: string | null;
+  } | null;
   events?: { name: string; event_date: string; booked_at: string | null } | null;
 };
-type LineItemRow = { id: string; invoice_id: string; venue_id: string; package_id: string | null; type: InvoiceLineItem["type"]; description: string; quantity: number; unit_price: number; amount: number; sort_order: number; created_at: string; event_order_line_id: string | null; revenue_category: string | null; };
+type LineItemRow = {
+  id: string; invoice_id: string; venue_id: string; package_id: string | null;
+  type: InvoiceLineItem["type"]; description: string; quantity: number;
+  unit_price: number; amount: number; sort_order: number; created_at: string;
+  event_order_line_id: string | null; revenue_category: string | null;
+  discount_type?: "fixed" | "percent" | null;
+  discount_value?: number | string | null;
+  tax_rate_mode?: "percent" | "fixed" | null;
+  tax_rate_value?: number | string | null;
+};
 type ActivityRow = { id: string; venue_id: string; invoice_id: string; type: string; title: string; description: string | null; created_at: string; };
 
 function mapInvoice(r: InvoiceRow, amendedBy?: { id: string; invoiceNumber: string } | null): Invoice {
   const cn = r.clients ? [r.clients.first_name, r.clients.last_name, r.clients.partner_first_name, r.clients.partner_last_name].filter(Boolean).join(" / ") : null;
   return {
-    id: r.id, venueId: r.venue_id, clientId: r.client_id, eventId: r.event_id, invoiceNumber: r.invoice_number, status: r.status,
+    id: r.id, venueId: r.venue_id, clientId: r.client_id, eventId: r.event_id,
+    invoiceNumber: r.invoice_number, displayName: r.display_name ?? null, status: r.status,
     subtotal: Number(r.subtotal), discountAmount: Number(r.discount_amount), taxAmount: Number(r.tax_amount), total: Number(r.total), balanceDue: Number(r.balance_due),
     notes: r.notes, dueDate: r.due_date, issuedAt: r.issued_at,
     eventOrderId: r.event_order_id, eventOrderDismissedFingerprint: r.event_order_dismissed_fingerprint,
@@ -43,19 +66,29 @@ function mapInvoice(r: InvoiceRow, amendedBy?: { id: string; invoiceNumber: stri
     quickbooksSyncStatus: r.quickbooks_sync_status,
     brandingSnapshot: r.branding_snapshot ?? null,
     createdAt: r.created_at, updatedAt: r.updated_at, clientName: cn,
-    eventDate: r.events?.event_date ?? null,
+    eventDate: r.events?.event_date ?? r.clients?.event_date ?? null,
     bookedAt: r.events?.booked_at ?? null,
     eventName: r.events?.name ?? null,
   };
 }
-const mapItem = (r: LineItemRow): InvoiceLineItem => ({ id: r.id, invoiceId: r.invoice_id, venueId: r.venue_id, packageId: r.package_id, type: r.type, description: r.description, quantity: Number(r.quantity), unitPrice: Number(r.unit_price), amount: Number(r.amount), sortOrder: r.sort_order, createdAt: r.created_at, eventOrderLineId: r.event_order_line_id, revenueCategory: r.revenue_category });
+const mapItem = (r: LineItemRow): InvoiceLineItem => ({
+  id: r.id, invoiceId: r.invoice_id, venueId: r.venue_id, packageId: r.package_id,
+  type: r.type, description: r.description, quantity: Number(r.quantity),
+  unitPrice: Number(r.unit_price), amount: Number(r.amount), sortOrder: r.sort_order,
+  createdAt: r.created_at, eventOrderLineId: r.event_order_line_id,
+  revenueCategory: r.revenue_category,
+  discountType: r.discount_type ?? null,
+  discountValue: r.discount_value != null ? Number(r.discount_value) : null,
+  taxRateMode: r.tax_rate_mode ?? null,
+  taxRateValue: r.tax_rate_value != null ? Number(r.tax_rate_value) : null,
+});
 const mapActivity = (r: ActivityRow): InvoiceActivity => ({ id: r.id, venueId: r.venue_id, invoiceId: r.invoice_id, type: r.type, title: r.title, description: r.description, createdAt: r.created_at });
 
 // ---- Invoices ---------------------------------------------------------------
 
 export async function getInvoices(client: DbClient, venueId: string, filters?: { q?: string; status?: string }): Promise<Invoice[]> {
   let q = client.from("invoices")
-    .select("*, clients(first_name, last_name, partner_first_name, partner_last_name), events(name, event_date, booked_at)")
+    .select("*, clients(first_name, last_name, partner_first_name, partner_last_name, event_date), events(name, event_date, booked_at)")
     .eq("venue_id", venueId);
   if (filters?.status) q = q.eq("status", filters.status);
   if (filters?.q) q = q.ilike("invoice_number", `%${filters.q}%`);
@@ -66,9 +99,11 @@ export async function getInvoices(client: DbClient, venueId: string, filters?: {
 
 export async function getInvoice(client: DbClient, venueId: string, id: string): Promise<InvoiceWithLineItems | null> {
   const [invRes, itemsRes, amendedByRes, activitiesRes] = await Promise.all([
-    client.from("invoices").select("*, clients(first_name, last_name, partner_first_name, partner_last_name), events(name, event_date, booked_at)").eq("id", id).eq("venue_id", venueId).maybeSingle<InvoiceRow>(),
+    client.from("invoices").select("*, clients(first_name, last_name, partner_first_name, partner_last_name, event_date), events(name, event_date, booked_at)").eq("id", id).eq("venue_id", venueId).maybeSingle<InvoiceRow>(),
     client.from("invoice_line_items").select("*").eq("invoice_id", id).order("sort_order").order("created_at"),
-    client.from("invoices").select("id, invoice_number").eq("amends_invoice_id", id).eq("venue_id", venueId).maybeSingle<{ id: string; invoice_number: string }>(),
+    // Prefer a live amendment; voided "Invoice new charges" drafts must not
+    // permanently block another incremental invoice on this parent.
+    client.from("invoices").select("id, invoice_number, status").eq("amends_invoice_id", id).eq("venue_id", venueId).neq("status", "void").order("created_at", { ascending: false }).limit(1).maybeSingle<{ id: string; invoice_number: string; status: string }>(),
     // D8 — invoice_activities has been written to (insertActivity, below)
     // since this table existed but never read anywhere; Invoice Detail was
     // the one Business Asset page of five missing its ActivityTimeline.
@@ -86,10 +121,63 @@ export async function getInvoice(client: DbClient, venueId: string, id: string):
   };
 }
 
+export async function getInvoicesForEventOrder(client: DbClient, venueId: string, eventOrderId: string): Promise<Invoice[]> {
+  const { data, error } = await client.from("invoices")
+    .select("*, clients(first_name, last_name, partner_first_name, partner_last_name, event_date), events(name, event_date, booked_at)")
+    .eq("venue_id", venueId)
+    .eq("event_order_id", eventOrderId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data as unknown as InvoiceRow[]).map((r) => mapInvoice(r));
+}
+
+export type InvoiceLineMarker = {
+  invoiceId: string;
+  type: string;
+  eventOrderLineId: string | null;
+};
+
+export async function listInvoiceLineMarkers(
+  client: DbClient,
+  venueId: string,
+  invoiceIds: string[],
+): Promise<InvoiceLineMarker[]> {
+  if (invoiceIds.length === 0) return [];
+  const { data, error } = await client.from("invoice_line_items")
+    .select("invoice_id, type, event_order_line_id")
+    .eq("venue_id", venueId)
+    .in("invoice_id", invoiceIds);
+  if (error) throw error;
+  return ((data ?? []) as { invoice_id: string; type: string; event_order_line_id: string | null }[]).map((row) => ({
+    invoiceId: row.invoice_id,
+    type: row.type,
+    eventOrderLineId: row.event_order_line_id,
+  }));
+}
+
 export async function getInvoicesForClient(client: DbClient, venueId: string, clientId: string): Promise<Invoice[]> {
   const { data, error } = await client.from("invoices")
-    .select("*, clients(first_name, last_name, partner_first_name, partner_last_name), events(name, event_date, booked_at)")
+    .select("*, clients(first_name, last_name, partner_first_name, partner_last_name, event_date), events(name, event_date, booked_at)")
     .eq("venue_id", venueId).eq("client_id", clientId).order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data as unknown as InvoiceRow[]).map((r) => mapInvoice(r));
+}
+
+/**
+ * Client Workspace list path.
+ * Scope: client_id = clientId OR event_id = eventId (venue RLS still applies).
+ * Matches prior app-side filter: inv.eventId === eventId || inv.clientId === id.
+ */
+export async function getInvoicesForClientOrEvent(
+  client: DbClient,
+  venueId: string,
+  scope: { clientId: string; eventId: string },
+): Promise<Invoice[]> {
+  const { data, error } = await client.from("invoices")
+    .select("*, clients(first_name, last_name, partner_first_name, partner_last_name, event_date), events(name, event_date, booked_at)")
+    .eq("venue_id", venueId)
+    .or(`client_id.eq.${scope.clientId},event_id.eq.${scope.eventId}`)
+    .order("created_at", { ascending: false });
   if (error) throw error;
   return (data as unknown as InvoiceRow[]).map((r) => mapInvoice(r));
 }
@@ -99,7 +187,9 @@ export async function insertInvoice(client: DbClient, venueId: string, input: In
   const { data, error } = await client.from("invoices")
     .insert({
       venue_id: venueId, client_id: input.clientId || null, event_id: input.eventId || null,
-      invoice_number: "PENDING", notes: input.notes.trim() || null, due_date: input.dueDate || null,
+      invoice_number: "PENDING",
+      display_name: (input.displayName?.trim() || "Invoice"),
+      notes: input.notes.trim() || null, due_date: input.dueDate || null,
       event_order_id: input.eventOrderId ?? null, amends_invoice_id: input.amendsInvoiceId ?? null,
     })
     .select("id").single<{ id: string }>();
@@ -108,6 +198,25 @@ export async function insertInvoice(client: DbClient, venueId: string, input: In
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await (client.from("invoices") as any).update({ invoice_number: invoiceNumber }).eq("id", data.id);
   return data.id;
+}
+
+/** Presentation-only — never touches invoice_number or payment references. */
+export async function updateInvoiceDisplayName(
+  client: DbClient,
+  venueId: string,
+  invoiceId: string,
+  displayName: string,
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  const name = displayName.trim();
+  if (!name) return { ok: false, message: "Invoice name is required." };
+  if (name.length > 120) return { ok: false, message: "Invoice name must be 120 characters or fewer." };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("invoices") as any)
+    .update({ display_name: name })
+    .eq("id", invoiceId)
+    .eq("venue_id", venueId);
+  if (error) return { ok: false, message: error.message };
+  return { ok: true };
 }
 
 /**
@@ -160,9 +269,46 @@ export async function insertFrozenLinesFromEventOrder(
 ): Promise<void> {
   if (lines.length === 0) return;
 
+  // Authoritative de-dupe: never attach an EO line that is already frozen on
+  // any non-void invoice (including a concurrent send that won the race).
+  const candidateIds = [...new Set(lines.map((l) => l.eventOrderLineId))];
+  const { data: existingRows, error: existingErr } = await client
+    .from("invoice_line_items")
+    .select("event_order_line_id, invoice_id")
+    .eq("venue_id", venueId)
+    .in("event_order_line_id", candidateIds)
+    .not("event_order_line_id", "is", null);
+  if (existingErr) throw existingErr;
+  const existing = (existingRows ?? []) as { event_order_line_id: string; invoice_id: string }[];
+  const invoiceIds = [...new Set(existing.map((r) => r.invoice_id))];
+  let nonVoidInvoiceIds = new Set<string>();
+  if (invoiceIds.length > 0) {
+    const { data: invRows, error: invErr } = await client
+      .from("invoices")
+      .select("id, status")
+      .eq("venue_id", venueId)
+      .in("id", invoiceIds);
+    if (invErr) throw invErr;
+    nonVoidInvoiceIds = new Set(
+      ((invRows ?? []) as { id: string; status: string }[])
+        .filter((inv) => inv.status !== "void")
+        .map((inv) => inv.id),
+    );
+  }
+  const alreadyFrozen = new Set(
+    existing
+      .filter((r) => nonVoidInvoiceIds.has(r.invoice_id))
+      .map((r) => r.event_order_line_id),
+  );
+  const toInsert = lines.filter((l) => !alreadyFrozen.has(l.eventOrderLineId));
+  if (toInsert.length === 0) {
+    await recomputeInvoiceTotals(client, venueId, invoiceId);
+    return;
+  }
+
   // D5B — same write-path fix as addLineItem above. Batch-fetch every
   // distinct package's category once rather than per line.
-  const packageIds = [...new Set(lines.map((l) => l.packageId).filter((id): id is string => !!id))];
+  const packageIds = [...new Set(toInsert.map((l) => l.packageId).filter((id): id is string => !!id))];
   const categoryByPackageId = new Map<string, string | null>();
   if (packageIds.length > 0) {
     const { data: pkgs } = await client.from("packages").select("id, category").in("id", packageIds);
@@ -170,7 +316,7 @@ export async function insertFrozenLinesFromEventOrder(
   }
 
   const { error } = await client.from("invoice_line_items").insert(
-    lines.map((l) => ({
+    toInsert.map((l) => ({
       invoice_id: invoiceId, venue_id: venueId, event_order_line_id: l.eventOrderLineId,
       package_id: l.packageId, type: l.type, description: l.description,
       quantity: l.quantity, unit_price: l.unitPrice, amount: l.amount, sort_order: l.sortOrder,
@@ -192,16 +338,49 @@ export async function insertActivity(client: DbClient, venueId: string, invoiceI
   await client.from("invoice_activities").insert({ venue_id: venueId, invoice_id: invoiceId, type, title, description: description ?? null });
 }
 
-export async function addLineItem(client: DbClient, venueId: string, invoiceId: string, input: InvoiceLineItemInput): Promise<InvoiceLineItem> {
-  const isDiscount = input.type === "discount" || input.type === "deposit";
+/**
+ * Optional live Event Order charge projections for draft EO-linked invoices.
+ * Stored invoice_line_items alone omit those charges until freeze-on-send, which
+ * previously produced $0 percent tax / percent discount on EO drafts.
+ */
+export type AddLineItemOptions = {
+  additionalRollupLines?: TaxRollupLine[];
+};
+
+export async function addLineItem(
+  client: DbClient,
+  venueId: string,
+  invoiceId: string,
+  input: InvoiceLineItemInput,
+  opts?: AddLineItemOptions,
+): Promise<InvoiceLineItem> {
+  const isDiscount = input.type === "discount";
   const qty = parseFloat(input.quantity) || 1;
   let price = parseFloat(input.unitPrice.replace(/[$,]/g, "")) || 0;
+  let taxRateMode: "percent" | "fixed" | null = null;
+  let taxRateValue: number | null = null;
 
-  // For percentage discounts: compute dollar amount from current invoice subtotal
+  const { data: storedLines } = await client.from("invoice_line_items")
+    .select("type, amount").eq("invoice_id", invoiceId);
+  const rollup: TaxRollupLine[] = [
+    ...(opts?.additionalRollupLines ?? []),
+    ...((storedLines ?? []) as TaxRollupLine[]),
+  ];
+
+  // Percentage discounts: freeze dollar amount from current charge subtotal at add time.
   if (isDiscount && input.discountType === "percent" && input.discountValue) {
-    const pct = parseFloat(input.discountValue) || 0;
-    const { data: inv } = await client.from("invoices").select("subtotal").eq("id", invoiceId).maybeSingle<{ subtotal: number }>();
-    price = parseFloat(((Number(inv?.subtotal ?? 0) * pct) / 100).toFixed(2));
+    price = percentDiscountAmountFromRollup(rollup, input.discountValue);
+  }
+
+  // Tax with percent: exclusive tax on (charges − discounts). Persist applied rate.
+  if (input.type === "tax" && input.taxRatePercent) {
+    const computed = exclusiveTaxAmountFromRollup(rollup, input.taxRatePercent);
+    price = computed.taxAmount;
+    taxRateMode = "percent";
+    taxRateValue = computed.taxRatePercent;
+  } else if (input.type === "tax" && price > 0) {
+    taxRateMode = "fixed";
+    taxRateValue = price;
   }
 
   const amount = parseFloat((qty * price).toFixed(2));
@@ -220,11 +399,79 @@ export async function addLineItem(client: DbClient, venueId: string, invoiceId: 
   const revenueCategory = deriveRevenueCategory(input.type, packageCategory);
 
   const { data, error } = await client.from("invoice_line_items")
-    .insert({ invoice_id: invoiceId, venue_id: venueId, package_id: input.packageId || null, type: input.type, description: input.description.trim(), quantity: qty, unit_price: price, amount, sort_order: sortOrder, discount_type: input.discountType ?? null, discount_value: input.discountValue ? parseFloat(input.discountValue) : null, revenue_category: revenueCategory })
+    .insert({
+      invoice_id: invoiceId,
+      venue_id: venueId,
+      package_id: input.packageId || null,
+      type: input.type,
+      description: input.description.trim(),
+      quantity: qty,
+      unit_price: price,
+      amount,
+      sort_order: sortOrder,
+      discount_type: input.discountType ?? null,
+      discount_value: input.discountValue ? parseFloat(input.discountValue) : null,
+      tax_rate_mode: taxRateMode,
+      tax_rate_value: taxRateValue,
+      revenue_category: revenueCategory,
+    })
     .select().single<LineItemRow>();
   if (error) throw error;
+  await refreshPercentTaxLines(client, venueId, invoiceId, opts?.additionalRollupLines);
   await recomputeInvoiceTotals(client, venueId, invoiceId);
-  return mapItem(data);
+  // Re-read so callers see refreshed percent-tax amounts when this insert
+  // was a tax line (or when refresh adjusted siblings only — same row).
+  const { data: fresh } = await client.from("invoice_line_items")
+    .select("*").eq("id", data.id).maybeSingle<LineItemRow>();
+  return mapItem(fresh ?? data);
+}
+
+/**
+ * Keep draft percent-tax lines aligned with the current charge/discount base.
+ * Does not invent tax lines. Idempotent: no write when amounts already match.
+ */
+export async function refreshPercentTaxLines(
+  client: DbClient,
+  venueId: string,
+  invoiceId: string,
+  additionalRollupLines?: TaxRollupLine[],
+): Promise<number> {
+  const { data: rows } = await client.from("invoice_line_items")
+    .select("id, type, amount, quantity, unit_price, tax_rate_mode, tax_rate_value")
+    .eq("invoice_id", invoiceId)
+    .eq("venue_id", venueId);
+  const all = (rows ?? []) as Array<{
+    id: string;
+    type: InvoiceLineItem["type"];
+    amount: number;
+    quantity: number;
+    unit_price: number;
+    tax_rate_mode: "percent" | "fixed" | null;
+    tax_rate_value: number | string | null;
+  }>;
+  const taxRows = all.filter((r) => r.type === "tax" && r.tax_rate_mode === "percent" && r.tax_rate_value != null);
+  if (taxRows.length === 0) return 0;
+
+  const baseRollup: TaxRollupLine[] = [
+    ...(additionalRollupLines ?? []),
+    ...all.filter((r) => r.type !== "tax").map((r) => ({ type: r.type, amount: Number(r.amount) })),
+  ];
+
+  let updated = 0;
+  for (const tax of taxRows) {
+    const computed = exclusiveTaxAmountFromRollup(baseRollup, tax.tax_rate_value);
+    const qty = Number(tax.quantity) || 1;
+    const nextUnit = computed.taxAmount;
+    const nextAmount = parseFloat((qty * nextUnit).toFixed(2));
+    if (Number(tax.unit_price) === nextUnit && Number(tax.amount) === nextAmount) continue;
+    const { error } = await client.from("invoice_line_items")
+      .update({ unit_price: nextUnit, amount: nextAmount })
+      .eq("id", tax.id)
+      .eq("venue_id", venueId);
+    if (error) throw error;
+    updated += 1;
+  }
+  return updated;
 }
 
 /**
@@ -243,14 +490,36 @@ export async function removeLineItem(client: DbClient, venueId: string, invoiceI
   if (!data || data.length === 0) {
     return { ok: false, message: "Only an Owner or Manager can remove an invoice line item." };
   }
-  await recomputeInvoiceTotals(client, venueId, invoiceId);
   return { ok: true };
+}
+
+/** After remove: refresh percent tax (caller supplies EO projections when draft-linked). */
+export async function afterLineItemMutation(
+  client: DbClient,
+  venueId: string,
+  invoiceId: string,
+  additionalRollupLines?: TaxRollupLine[],
+): Promise<void> {
+  await refreshPercentTaxLines(client, venueId, invoiceId, additionalRollupLines);
+  await recomputeInvoiceTotals(client, venueId, invoiceId);
 }
 
 export async function updateInvoiceStatus(
   client: DbClient, venueId: string, invoiceId: string, status: InvoiceStatus,
   extra?: { eventOrderRevisionAtFreeze?: number; brandingSnapshot?: InvoiceBrandingSnapshot },
 ): Promise<void> {
+  // Void restores EO-line eligibility: clear provenance so a unique
+  // event_order_line_id constraint (and re-freeze) can attach the line again.
+  // Amounts/descriptions on the voided rows stay for audit; only the link clears.
+  if (status === "void") {
+    const { error: clearErr } = await client
+      .from("invoice_line_items")
+      .update({ event_order_line_id: null })
+      .eq("invoice_id", invoiceId)
+      .eq("venue_id", venueId)
+      .not("event_order_line_id", "is", null);
+    if (clearErr) throw clearErr;
+  }
   const patch: Record<string, unknown> = { status };
   if (status === "sent") {
     patch.issued_at = new Date().toISOString();

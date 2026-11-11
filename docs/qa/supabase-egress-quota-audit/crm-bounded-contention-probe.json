@@ -1,0 +1,35 @@
+{
+  "at": "2026-10-11T23:16:33.649Z",
+  "project": "wvpsldwwjqdannqasrdf",
+  "lockProfile": {
+    "proname": "htc_crm_replace_store",
+    "has_try_lock": true,
+    "prosrc_chars": 4881,
+    "has_store_busy": true,
+    "has_lock_timeout": true,
+    "has_blocking_lock": false,
+    "has_statement_timeout": true
+  },
+  "lockProfileError": null,
+  "loadA": {
+    "ms": 331,
+    "version": 6788,
+    "storeBytes": 223096
+  },
+  "loadB": {
+    "ms": 116,
+    "version": 6788
+  },
+  "versionStable": true,
+  "staleReplace": {
+    "ms": 80,
+    "error": "htc_crm_version_conflict (expected 6738, actual 6788)",
+    "code": "P0001",
+    "conflict": true,
+    "busy": false,
+    "lockTimeout": false,
+    "timedOut": false,
+    "fastBoundedConflict": true
+  },
+  "green": true
+}

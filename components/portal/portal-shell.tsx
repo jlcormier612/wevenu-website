@@ -29,9 +29,17 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { Wordmark } from "@/components/brand/wordmark";
 import { FeedbackSheet } from "@/components/feedback/feedback-sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { sessionDeviceLabel } from "@/lib/client-auth/session-label";
 import { countUnreadVenueMessages } from "@/lib/portal/unread-messages";
+import { HTC_NATIVE_SELECT_CLASS } from "@/lib/ui/native-select";
 
 import type {
   ClientMedia, CoupleBudget, CoupleProfile, CoupleTodo, CoupleGuest,
@@ -41,10 +49,14 @@ import type {
 } from "@/lib/portal/types";
 import { getAnniversaryObservations, getCountdownObservation, getWeddingDayObservations } from "@/lib/luv/portal-observations";
 import {
-  type AccountState, getAccountStateAction, changePasswordAction, revokeSessionAction,
+  type AccountState, type PortalSmsPermissionView, getAccountStateAction, getPortalSmsPermissionAction,
+  changePasswordAction, revokeSessionAction,
   grantSupportAccessAction, revokeSupportGrantAction,
 } from "@/app/(portal)/p/[token]/account-actions";
 import { PortalLegalHistorySection } from "@/components/legal/legal-history-section";
+import { PasswordInput } from "@/components/ui/password-input";
+import { CouplePhotoHeroControl } from "@/components/portal/couple-photo-hero-control";
+
 import { RequestsPortalSection } from "@/components/portal/requests-section";
 import { LuvIntroCard } from "@/components/luv/luv-intro-card";
 import { UnifiedTasksSection } from "@/components/portal/unified-tasks-section";
@@ -55,7 +67,7 @@ import {
 import { shouldOfferPreferredVendorsNavigation } from "@/lib/portal/preferred-vendors-surfaces";
 import {
   buildUnifiedTaskList,
-  unifiedTaskCompletionCounts,
+  unifiedActiveAttentionCount,
   type UnifiedTask,
 } from "@/lib/portal/unified-tasks";
 import {
@@ -70,6 +82,7 @@ import {
   selectNextStepsForHome,
   type NextStepsItem,
 } from "@/lib/portal/next-steps";
+import { documentPortalReturnPath, isDocumentPortalSection } from "@/lib/portal/document-return";
 import { remainingBalanceFromSchedules, selectCanonicalPaymentSchedules } from "@/lib/portal/payment-schedules";
 import { resolvePlanningJourney } from "@/lib/portal/planning-journey";
 import {
@@ -95,6 +108,11 @@ import { homeLaunchHeading, homeLaunchPrompt } from "@/lib/event-experience";
 import { resolveLuvHomeSuggestion } from "@/lib/portal/luv-suggestions";
 import { resolveHomeMemories } from "@/lib/portal/memories";
 import {
+  coupleChoicesNavVisible,
+  coupleEventOrderNavVisible,
+  coupleInventoryNavVisible,
+} from "@/lib/portal/couple-nav-visibility";
+import {
   formatPortalHash,
   parsePortalHash,
   portalFocusElementId,
@@ -105,6 +123,7 @@ import { partitionByCompletion } from "@/lib/tasks/group-by-completion";
 import type { PortalRequestSummary } from "@/lib/requests/types";
 import { QuestionnairePortalSection } from "@/components/portal/questionnaire-section";
 import { InventoryPortalSection } from "@/components/portal/inventory-section";
+import { ChoicesPortalSection } from "@/components/portal/choices-section";
 import { EventOrderPortalSection } from "@/components/portal/event-order-section";
 import FloorPlanSection from "@/components/portal/floor-plan-section";
 import { CoupleNotificationBell } from "@/components/portal/couple-notification-bell";
@@ -118,15 +137,16 @@ import {
 } from "@/lib/legal/welcome-integration";
 import type { CouplePortalLegalGateStatus } from "@/lib/legal/types";
 
-// Portal chrome uses Hello to Cheers design tokens (see PortalShell root).
-// Legacy aliases `--venue-*` resolve to HTC tokens so existing section chrome
-// stays tokenized without venue palette theming. TAUPE stays fixed for body/
-// icon muted text. ROSE/ROSE_DEEP remain Luv's persona colors only.
-const SAGE = "var(--venue-primary)"; // → HTC --primary (heritage sage)
-const LINEN = "var(--venue-neutral)"; // → HTC --secondary (natural cream)
+// Portal chrome uses Hello to Cheers design tokens (see PortalShell root +
+// Celebration Soft B in app/(portal)/layout.tsx). Legacy `--venue-*` aliases
+// resolve to HTC tokens — not venues.palette. ROSE hexes match --htc-blush
+// (celebration / Luv-adjacent only). Kept as HEX so existing `${ROSE}28`
+// alpha suffixes in inline styles keep working.
+const SAGE = "var(--venue-primary)"; // → HTC botanical primary
+const LINEN = "var(--venue-neutral)"; // → HTC linen / secondary
 const TAUPE = "#B8AEA1";
-const ROSE  = "#D8A7AA";
-const ROSE_DEEP = "#C17F84";
+const ROSE = "#d99a9e"; // --htc-blush
+const ROSE_DEEP = "#b87a7e"; // deeper blush label ink on ivory
 const CREAM = "var(--venue-neutral)";
 
 // ── Shared utilities ──────────────────────────────────────────────────────────
@@ -274,7 +294,7 @@ function PlanningJourney({ du }: { du: number | null }) {
                             ? ROSE
                             : isPast
                               ? SAGE
-                              : "#DED6CA",
+                              : "var(--border)",
                         boxShadow: isCurrent ? `0 0 0 4px ${ROSE}28` : "none",
                       }}
                       aria-hidden
@@ -298,7 +318,7 @@ function PlanningJourney({ du }: { du: number | null }) {
                   {i < model.steps.length - 1 && (
                     <div
                       className="flex-1 h-0.5 mt-[6px] min-w-[6px]"
-                      style={{ background: isPast ? SAGE : "#DED6CA" }}
+                      style={{ background: isPast ? SAGE : "var(--border)" }}
                       aria-hidden
                     />
                   )}
@@ -393,13 +413,13 @@ function WeddingSnapshotCard({
 
   return (
     <div className="rounded-2xl border border-border bg-card p-5">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.15em] mb-3" style={{ color: ROSE_DEEP }}>🌿 Your Snapshot</p>
+      <p className="text-xs font-semibold uppercase tracking-[0.15em] mb-3" style={{ color: ROSE_DEEP }}>🌿 Your Snapshot</p>
       <div className="grid grid-cols-2 gap-2">
         {cells.map(cell => (
           <div key={cell.label} className="rounded-xl p-3" style={{ background: "#F8F6F2" }}>
             <p className="text-base mb-1">{cell.emoji}</p>
             <p className="text-xs font-medium text-heading leading-snug">{cell.label}</p>
-            {cell.sub && <p className="text-[10px] text-muted-foreground mt-0.5">{cell.sub}</p>}
+            {cell.sub && <p className="text-xs text-muted-foreground mt-0.5">{cell.sub}</p>}
           </div>
         ))}
       </div>
@@ -415,7 +435,7 @@ function VenueNoteCard({ venueName }: { venueName: string }) {
   return (
     <div className="rounded-2xl overflow-hidden" style={{ border: `1px solid #E8E2D8` }}>
       <div className="px-5 pt-4 pb-5" style={{ background: "linear-gradient(135deg, #F9F6F0 0%, #F4EFE6 100%)" }}>
-        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] mb-3" style={{ color: ROSE_DEEP }}>
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] mb-3" style={{ color: ROSE_DEEP }}>
           💌 From Your Venue
         </p>
         <p className="font-heading text-sm text-heading leading-relaxed italic">
@@ -467,8 +487,12 @@ const COMING_UP_BY_BRACKET: Record<string, { emoji: string; text: string }[]> = 
 function ComingUpCard({ bracket, onNavigate }: { bracket: string; onNavigate: (s: PortalSection) => void }) {
   const items = COMING_UP_BY_BRACKET[bracket] ?? COMING_UP_BY_BRACKET["6-9"];
   return (
-    <div className="rounded-2xl p-5 space-y-3" style={{ background: `linear-gradient(135deg, ${ROSE}10 0%, #FAF8F5 100%)`, border: `1px solid ${ROSE}28` }}>
-      <p className="text-[10px] font-semibold uppercase tracking-[0.2em]" style={{ color: ROSE_DEEP }}>💗 Coming Up</p>
+    <div
+      data-portal-celebration=""
+      className="rounded-2xl p-5 space-y-3"
+      style={{ background: `linear-gradient(135deg, ${ROSE}18 0%, #faf9f5 100%)`, border: `1px solid ${ROSE}28` }}
+    >
+      <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: ROSE_DEEP }}>💗 Coming Up</p>
       <div className="space-y-2.5">
         {items.map(item => (
           <button key={item.text} type="button" onClick={() => onNavigate("todos")}
@@ -512,9 +536,9 @@ function SeasonalInspirationCard({
   const inspiration = INSPIRATION_CONTENT[bracket] ?? INSPIRATION_CONTENT["6-9"];
 
   return (
-    <div className="rounded-3xl overflow-hidden" style={{ border: `1px solid ${ROSE}28` }}>
-      <div className="p-6 sm:p-7 space-y-5" style={{ background: `linear-gradient(135deg, ${ROSE}10 0%, #FBF9F6 100%)` }}>
-        <p className="text-[10px] font-semibold uppercase tracking-[0.2em]" style={{ color: ROSE_DEEP }}>{emoji} Seasonal Inspiration</p>
+    <div data-portal-celebration="" className="rounded-3xl overflow-hidden" style={{ border: `1px solid ${ROSE}28` }}>
+      <div className="p-6 sm:p-7 space-y-5" style={{ background: `linear-gradient(135deg, ${ROSE}18 0%, #faf9f5 100%)` }}>
+        <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: ROSE_DEEP }}>{emoji} Seasonal Inspiration</p>
 
         {/* Seasonal reminder — the season's own narrative framing */}
         <div>
@@ -525,7 +549,7 @@ function SeasonalInspirationCard({
         {/* Seasonal planning tips */}
         {suggestions.length > 0 && (
           <div className="space-y-2 pt-1 border-t" style={{ borderColor: `${ROSE}20` }}>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.15em] pt-3" style={{ color: ROSE_DEEP }}>Seasonal planning tips</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.15em] pt-3" style={{ color: ROSE_DEEP }}>Seasonal planning tips</p>
             <div className="space-y-2.5">
               {suggestions.slice(0, 3).map(s => (
                 <button key={s.title} type="button" onClick={() => onNavigate("todos")}
@@ -541,7 +565,7 @@ function SeasonalInspirationCard({
 
         {/* Seasonal décor ideas */}
         <div className="space-y-1.5 pt-1 border-t" style={{ borderColor: `${ROSE}20` }}>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.15em] pt-3" style={{ color: ROSE_DEEP }}>Seasonal décor ideas</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.15em] pt-3" style={{ color: ROSE_DEEP }}>Seasonal décor ideas</p>
           <div className="space-y-1.5">
             {inspiration.items.map(item => (
               <p key={item} className="text-xs text-muted-foreground flex items-center gap-2">
@@ -576,13 +600,17 @@ function WeddingJourneySection({ guestStats }: { guestStats: GuestStats | null }
   const doneCount = Object.values(completed).filter(Boolean).length;
 
   return (
-    <div className="rounded-3xl p-6 sm:p-8" style={{
-      background: "linear-gradient(135deg, #F7F5F0 0%, #F0EDE6 100%)",
-      border: "1px solid #E8E2D8",
-    }}>
+    <div
+      data-portal-celebration=""
+      className="rounded-3xl p-6 sm:p-8"
+      style={{
+        background: `linear-gradient(135deg, ${ROSE}14 0%, #faf9f5 55%, #f3f0e9 100%)`,
+        border: `1px solid ${ROSE}28`,
+      }}
+    >
       <div className="flex items-start justify-between mb-6">
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] mb-1" style={{ color: ROSE_DEEP }}>💗 Your Wedding Journey</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] mb-1" style={{ color: ROSE_DEEP }}>💗 Your Wedding Journey</p>
           <p className="font-heading text-2xl sm:text-3xl text-heading leading-snug">Milestones worth celebrating</p>
         </div>
         <div className="text-right shrink-0 pl-4">
@@ -598,7 +626,7 @@ function WeddingJourneySection({ guestStats }: { guestStats: GuestStats | null }
             <div key={m.key} className={`flex items-start gap-4 ${!done && !isNext ? "opacity-50" : ""}`}>
               <div className="h-7 w-7 rounded-full border-2 flex items-center justify-center shrink-0 mt-0.5"
                 style={{
-                  borderColor: done ? SAGE : isNext ? ROSE : "#DED6CA",
+                  borderColor: done ? SAGE : isNext ? ROSE : "var(--border)",
                   background: done ? SAGE : isNext ? `${ROSE}12` : "white",
                 }}>
                 {done
@@ -777,7 +805,7 @@ function FeedbackFlow({
         {step === "step1" && (
           <>
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] mb-2" style={{ color: ROSE_DEEP }}>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] mb-2" style={{ color: ROSE_DEEP }}>
                 Your experience with {venueName}
               </p>
               <p className="text-xs text-muted-foreground mb-3">
@@ -794,7 +822,7 @@ function FeedbackFlow({
                 <label className="text-xs font-medium text-heading block mb-1.5">What did you love most?</label>
                 <textarea value={lovedMost} onChange={e => setLovedMost(e.target.value)}
                   placeholder="The ceremony space, our coordinator, the little details..."
-                  rows={3} className="w-full rounded-xl border px-3.5 py-2.5 text-sm resize-none focus:outline-none bg-white/80"
+                  rows={3} className="w-full rounded-xl border px-3.5 py-2.5 text-sm resize-none focus:outline-none bg-card"
                   style={{ borderColor: `${ROSE}40` }} />
               </div>
               <div>
@@ -804,10 +832,10 @@ function FeedbackFlow({
                 </label>
                 <textarea value={couldImprove} onChange={e => setCouldImprove(e.target.value)}
                   placeholder="Even the smallest things help us improve..."
-                  rows={2} className="w-full rounded-xl border px-3.5 py-2.5 text-sm resize-none focus:outline-none bg-white/80"
+                  rows={2} className="w-full rounded-xl border px-3.5 py-2.5 text-sm resize-none focus:outline-none bg-card"
                   style={{ borderColor: `${ROSE}40` }} />
               </div>
-              <div className="flex items-center justify-between rounded-xl border p-3.5 bg-white/50"
+              <div className="flex items-center justify-between rounded-xl border p-3.5 bg-card/50"
                 style={{ borderColor: `${ROSE}30` }}>
                 <p className="text-sm font-medium text-heading">Would you recommend {venueName}?</p>
                 <div className="flex gap-2">
@@ -836,7 +864,7 @@ function FeedbackFlow({
         {step === "step2" && (
           <>
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] mb-2" style={{ color: ROSE_DEEP }}>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] mb-2" style={{ color: ROSE_DEEP }}>
                 Sharing your kind words
               </p>
               <p className="text-sm font-medium text-heading mb-1">
@@ -864,9 +892,9 @@ function FeedbackFlow({
         {/* ── Step 3: Hello to Cheers platform feedback (separate — never to venue) ── */}
         {step === "step3" && (
           <>
-            <div className="rounded-xl border p-4 space-y-4 bg-white">
+            <div className="rounded-xl border p-4 space-y-4 bg-card">
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground mb-1">
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground mb-1">
                   Just for the Hello to Cheers team
                 </p>
                 <p className="text-sm font-medium text-heading">How was your experience using Hello to Cheers?</p>
@@ -876,7 +904,7 @@ function FeedbackFlow({
               </div>
 
               <div>
-                <div className="flex justify-between text-[10px] text-muted-foreground mb-1.5">
+                <div className="flex justify-between text-xs text-muted-foreground mb-1.5">
                   <span>Not likely</span>
                   <span className="font-semibold text-heading">{npsScore} / 10</span>
                   <span>Extremely likely</span>
@@ -884,7 +912,7 @@ function FeedbackFlow({
                 <input type="range" min={0} max={10} value={npsScore}
                   onChange={e => setNpsScore(Number(e.target.value))}
                   className="w-full accent-rose-400" />
-                <p className="text-center text-[10px] text-muted-foreground mt-1">
+                <p className="text-center text-xs text-muted-foreground mt-1">
                   How likely are you to recommend Hello to Cheers to others?
                 </p>
               </div>
@@ -1283,7 +1311,7 @@ function KeepsakeSection({
       {/* ── Venue anniversary message (if sent) ── */}
       {annivMessages.length > 0 && (
         <div className="rounded-2xl p-5 space-y-3" style={{ background: `color-mix(in srgb, var(--venue-primary) 3%, transparent)`, border: `1px solid color-mix(in srgb, var(--venue-primary) 15%, transparent)` }}>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ color: SAGE }}>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em]" style={{ color: SAGE }}>
             A note from {venueName}
           </p>
           {annivMessages.map(m => (
@@ -1298,7 +1326,7 @@ function KeepsakeSection({
       {luvObs.length > 0 && (
         <div className="rounded-2xl px-5 py-4 space-y-3"
           style={{ background: "#FDF5F5", border: `1px solid ${ROSE}28` }}>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ color: ROSE_DEEP }}>💗 Luv</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em]" style={{ color: ROSE_DEEP }}>💗 Luv</p>
           {luvObs.map(obs => (
             <p key={obs.id} className="text-sm leading-relaxed" style={{ color: "#5A3235" }}>{obs.text}</p>
           ))}
@@ -1512,7 +1540,7 @@ function WeddingDayPortal({
       {countdown && (
         <div className="rounded-2xl px-5 py-4 text-center space-y-1"
           style={{ background: `linear-gradient(135deg, ${ROSE}18 0%, #FBF8F5 100%)`, border: `1px solid ${ROSE}35` }}>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.2em]" style={{ color: ROSE_DEEP }}>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: ROSE_DEEP }}>
             💗 Ceremony begins in
           </p>
           <p className="font-heading text-4xl text-heading font-medium">{countdown.label}</p>
@@ -1523,7 +1551,7 @@ function WeddingDayPortal({
       {/* ── Luv observations ── */}
       <div className="rounded-2xl p-5 space-y-3"
         style={{ background: "#FDF5F5", border: `1px solid ${ROSE}30` }}>
-        <p className="text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ color: ROSE_DEEP }}>💗 Luv</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.18em]" style={{ color: ROSE_DEEP }}>💗 Luv</p>
         {luvMessages.map((msg, i) => (
           <p key={i} className="text-sm leading-relaxed" style={{ color: "#5A3235" }}>{msg}</p>
         ))}
@@ -1540,7 +1568,7 @@ function WeddingDayPortal({
             {entries.map((e, i) => {
               const isFirst = i === 0;
               return (
-                <div key={e.id} className={`flex items-start gap-3 px-5 py-3 ${isFirst ? "bg-white" : ""}`}>
+                <div key={e.id} className={`flex items-start gap-3 px-5 py-3 ${isFirst ? "bg-card" : ""}`}>
                   <div className="shrink-0 w-14 text-right pt-0.5">
                     <p className="text-xs font-semibold" style={{ color: isFirst ? ROSE_DEEP : "#A09690" }}>
                       {fmtPortalTime(e.entryTime)}
@@ -1548,7 +1576,7 @@ function WeddingDayPortal({
                   </div>
                   <div className="shrink-0 mt-1.5">
                     <div className="h-2.5 w-2.5 rounded-full"
-                      style={{ background: isFirst ? ROSE : "#DED6CA" }} />
+                      style={{ background: isFirst ? ROSE : "var(--border)" }} />
                   </div>
                   <p className={`text-sm leading-snug ${isFirst ? "font-semibold text-heading" : "text-muted-foreground"}`}>
                     {e.title}
@@ -1570,7 +1598,7 @@ function WeddingDayPortal({
           <div className="divide-y divide-border/40">
             {weddingDayTasks.map(t => (
               <div key={t.id} className="flex items-center gap-3 px-5 py-3">
-                <div className="h-4 w-4 rounded border-2 shrink-0" style={{ borderColor: "#DED6CA" }} />
+                <div className="h-4 w-4 rounded border-2 shrink-0" style={{ borderColor: "var(--border)" }} />
                 <p className="text-sm text-heading">{t.title}</p>
               </div>
             ))}
@@ -1680,7 +1708,7 @@ function WeddingDaySection({
             {finalDetailsTasks.map(t => (
               <div key={t.id} className="flex items-center gap-3 px-5 py-3">
                 <div className="h-4 w-4 rounded border-2 shrink-0"
-                  style={{ borderColor: t.status === "complete" ? SAGE : "#DED6CA",
+                  style={{ borderColor: t.status === "complete" ? SAGE : "var(--border)",
                            background: t.status === "complete" ? SAGE : "white" }}>
                   {t.status === "complete" && <Check className="h-3 w-3 text-white" />}
                 </div>
@@ -1730,11 +1758,16 @@ function OverviewSection({
     ? Math.round(required.filter(t => t.status === "complete").length / required.length * 100)
     : 0;
   const coupleName = [context.client.firstName, context.client.partnerFirstName].filter(Boolean).join(" & ");
-  const bracket = getSuggestionBracket(du);
   const venueHeroPhotoUrl = context.venue.heroImageUrl;
   const venueName = context.venue.name;
   const accessLevel = context.accessLevel;
   const canSeeFinancial = accessLevel !== "view_only";
+  const planningCapabilities =
+    context.venue.planningCapabilities ?? DEFAULT_PLANNING_CAPABILITIES;
+  const timelineEnabled = isPortalSectionEnabledByCapabilities(
+    "timeline",
+    planningCapabilities,
+  );
 
   const [p1Count, setP1Count] = React.useState<number | null>(null);
   const nextStepsRef = React.useRef<HTMLDivElement | null>(null);
@@ -1755,7 +1788,7 @@ function OverviewSection({
     <div className="space-y-6">
 
       {/* 1. Hero / Wedding Snapshot */}
-      <div className="rounded-3xl overflow-hidden relative min-h-[min(48vh,420px)] sm:min-h-[min(64vh,560px)]" style={{
+      <div data-portal-hero className="group/hero rounded-3xl overflow-hidden relative min-h-[min(48vh,420px)] sm:min-h-[min(64vh,560px)]" style={{
         background: venueHeroPhotoUrl
           ? `url(${venueHeroPhotoUrl}) center/cover no-repeat`
           : `linear-gradient(155deg, var(--venue-secondary) 0%, var(--venue-primary) 38%, var(--venue-secondary) 100%)`,
@@ -1782,7 +1815,9 @@ function OverviewSection({
           </>
         )}
 
-        <div className="relative flex flex-col justify-end gap-3 p-8 sm:p-10 min-h-[min(48vh,420px)] sm:min-h-[min(64vh,560px)]">
+        <div className="relative flex flex-col p-8 sm:p-10 min-h-[min(48vh,420px)] sm:min-h-[min(64vh,560px)]">
+          <CouplePhotoHeroControl token={token} />
+          <div className="flex flex-1 flex-col justify-end gap-3 group-data-[couple-photo=shown]/hero:mt-4">
           <div className="flex items-center gap-2.5">
             <span className="h-px w-5" style={{ background: `${ROSE}60` }} />
             <span className="text-[11px] font-semibold uppercase tracking-[0.28em]" style={{ color: "rgba(255,255,255,0.75)" }}>
@@ -1834,11 +1869,14 @@ function OverviewSection({
               style={{ borderColor: "rgba(255,255,255,0.35)", background: "rgba(255,255,255,0.08)" }}>
               Message {venueName}
             </button>
-            <button type="button" onClick={() => onNavigate("timeline")}
-              className="text-xs font-medium px-4 py-2.5 rounded-full text-white border transition-colors"
-              style={{ borderColor: "rgba(255,255,255,0.35)", background: "rgba(255,255,255,0.08)" }}>
-              View Timeline
-            </button>
+            {timelineEnabled && (
+              <button type="button" onClick={() => onNavigate("timeline")}
+                className="text-xs font-medium px-4 py-2.5 rounded-full text-white border transition-colors"
+                style={{ borderColor: "rgba(255,255,255,0.35)", background: "rgba(255,255,255,0.08)" }}>
+                View Timeline
+              </button>
+            )}
+          </div>
           </div>
         </div>
       </div>
@@ -1866,7 +1904,7 @@ function OverviewSection({
         token={token}
         venueName={venueName}
         canSeeFinancial={canSeeFinancial}
-        planningCapabilities={context.venue.planningCapabilities ?? DEFAULT_PLANNING_CAPABILITIES}
+        planningCapabilities={planningCapabilities}
         onNavigate={onNavigate}
       />
 
@@ -1901,10 +1939,20 @@ function OverviewSection({
       <div className="space-y-3" data-luv-home>
         <LuvDailyCard
           token={token}
+          venueName={venueName}
+          hasEvent={Boolean(context.event)}
+          eventDateLabel={
+            context.event?.eventDate
+              ? new Date(context.event.eventDate + "T12:00:00").toLocaleDateString("en-US", {
+                  month: "long",
+                  day: "numeric",
+                  year: "numeric",
+                })
+              : null
+          }
           du={du}
           guestStats={guestStats}
           readiness={readinessScore}
-          bracket={bracket}
           recentActivity={recentActivity}
           venueAttentionCount={p1Count ?? 0}
           planningCapabilities={context.venue.planningCapabilities ?? DEFAULT_PLANNING_CAPABILITIES}
@@ -1983,16 +2031,129 @@ function WorkingWithYourVenue({
   planningCapabilities?: import("@/lib/playbooks/capabilities").VenuePlanningCapabilities;
   onNavigate: (s: PortalSection) => void;
 }) {
+  const invCap = isPortalSectionEnabledByCapabilities("inventory", planningCapabilities);
+  const eoCap = isPortalSectionEnabledByCapabilities("event-order", planningCapabilities);
+  const [showInventoryHome, setShowInventoryHome] = React.useState(false);
+  const [showSharedOrderDocs, setShowSharedOrderDocs] = React.useState(false);
+  const [showOrderAcceptHome, setShowOrderAcceptHome] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!invCap && !eoCap) return;
+    let cancelled = false;
+    if (invCap) {
+      fetch(`/api/portal/inventory?token=${encodeURIComponent(token)}`)
+        .then((r) => r.json())
+        .then((d: { inventory?: { status?: string } | null }) => {
+          if (cancelled) return;
+          setShowInventoryHome(
+            coupleInventoryNavVisible({
+              hasInventory: Boolean(d?.inventory),
+              status: d?.inventory?.status ?? null,
+            }),
+          );
+        })
+        .catch(() => {
+          if (!cancelled) setShowInventoryHome(false);
+        });
+    }
+    if (eoCap) {
+      fetch(`/api/portal/event-order?token=${encodeURIComponent(token)}`)
+        .then((r) => r.json())
+        .then((d: {
+          eventOrder?: { clientAgreedAt?: string | null } | null;
+        }) => {
+          if (cancelled) return;
+          const shared = Boolean(d?.eventOrder);
+          setShowSharedOrderDocs(shared);
+          setShowOrderAcceptHome(
+            coupleEventOrderNavVisible({
+              shared,
+              clientAgreedAt: d?.eventOrder?.clientAgreedAt ?? null,
+            }),
+          );
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setShowSharedOrderDocs(false);
+            setShowOrderAcceptHome(false);
+          }
+        });
+    }
+    return () => { cancelled = true; };
+  }, [token, invCap, eoCap]);
+
+  const showHomeRow = showInventoryHome || showSharedOrderDocs || showOrderAcceptHome;
+
   return (
     <div className="space-y-3">
-      <p className="text-[10px] font-bold uppercase tracking-[0.2em]" style={{ color: SAGE }}>Working With Your Venue</p>
+      <p className="text-xs font-bold uppercase tracking-[0.2em]" style={{ color: SAGE }}>Working With Your Venue</p>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         <VenueTeamCard token={token} venueName={venueName} onNavigate={onNavigate} />
         <div className="space-y-3">
           {canSeeFinancial && <PaymentsCard token={token} onNavigate={onNavigate} />}
-          <TimelineCard token={token} onNavigate={onNavigate} />
+          {isPortalSectionEnabledByCapabilities("timeline", planningCapabilities) && (
+            <TimelineCard token={token} onNavigate={onNavigate} />
+          )}
         </div>
       </div>
+      {showHomeRow && (
+        <div
+          className="grid grid-cols-1 sm:grid-cols-2 gap-3"
+          data-testid="portal-home-inventory-order"
+        >
+          {showInventoryHome && (
+            <button
+              type="button"
+              onClick={() => onNavigate("inventory")}
+              data-testid="portal-home-inventory-entry"
+              className="rounded-2xl border bg-card px-4 py-3 text-left hover:shadow-sm transition-shadow"
+              style={{ borderColor: "#E8E3DC" }}
+            >
+              <p className="text-sm font-semibold text-heading">Inventory</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
+                Items {venueName} listed for your event — review or submit your selections
+              </p>
+              <p className="text-[11px] font-semibold mt-2" style={{ color: SAGE }}>
+                Open Inventory →
+              </p>
+            </button>
+          )}
+          {showOrderAcceptHome && (
+            <button
+              type="button"
+              onClick={() => onNavigate("event-order")}
+              data-testid="portal-home-event-order-entry"
+              className="rounded-2xl border bg-card px-4 py-3 text-left hover:shadow-sm transition-shadow"
+              style={{ borderColor: "#E8E3DC" }}
+            >
+              <p className="text-sm font-semibold text-heading">Event Order</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
+                Review what you&apos;re receiving from {venueName} — acceptance is optional
+              </p>
+              <p className="text-[11px] font-semibold mt-2" style={{ color: SAGE }}>
+                Review Event Order →
+              </p>
+            </button>
+          )}
+          {showSharedOrderDocs && !showOrderAcceptHome && (
+            <button
+              type="button"
+              onClick={() => onNavigate("documents")}
+              data-testid="portal-home-event-order-docs-entry"
+              className="rounded-2xl border bg-card px-4 py-3 text-left hover:shadow-sm transition-shadow"
+              style={{ borderColor: "#E8E3DC" }}
+            >
+              <p className="text-sm font-semibold text-heading">Event Order</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
+                Your shared Event Order is in Documents with your contracts and invoices
+              </p>
+              <p className="text-[11px] font-semibold mt-2" style={{ color: SAGE }}>
+                Open Documents →
+              </p>
+            </button>
+          )}
+        </div>
+      )}
       <div className="flex flex-wrap gap-x-4 gap-y-1 px-0.5">
         <button type="button" onClick={() => onNavigate("guide")}
           className="text-[11px] font-medium text-muted-foreground hover:underline" style={{ color: SAGE }}>
@@ -2068,7 +2229,7 @@ function WhatsHappeningCard({
                   <p className="text-xs text-heading leading-snug">{item.summary}</p>
                   {item.whenLabel ? (
                     <time
-                      className="text-[10px] text-muted-foreground mt-0.5 block"
+                      className="text-xs text-muted-foreground mt-0.5 block"
                       dateTime={item.occurredAt}
                     >
                       {item.whenLabel}
@@ -2146,7 +2307,7 @@ function MemoryStrip({
         >
           <h2
             id="memories-heading"
-            className="text-[10px] font-semibold uppercase tracking-[0.16em]"
+            className="text-xs font-semibold uppercase tracking-[0.16em]"
             style={{ color: ROSE_DEEP }}
           >
             {model.heading}
@@ -2180,7 +2341,7 @@ function MemoryStrip({
       >
         <h2
           id="memories-heading"
-          className="text-[10px] font-semibold uppercase tracking-[0.16em]"
+          className="text-xs font-semibold uppercase tracking-[0.16em]"
           style={{ color: ROSE_DEEP }}
         >
           {model.heading}
@@ -2457,7 +2618,7 @@ function TodoSection({ token, onCountChange, eventDate }: { token: string; onCou
               ))}
               {done.length > 0 && (
                 <div className="pt-2 border-t border-border/50 space-y-1">
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wide px-3 py-1">Completed ({done.length})</p>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide px-3 py-1">Completed ({done.length})</p>
                   {done.map(t => (
                     <div key={t.id} className="flex items-center gap-3 py-2 px-3 rounded-xl opacity-50">
                       <button type="button" onClick={() => handleToggle(t)} className="shrink-0 h-5 w-5 rounded border flex items-center justify-center" style={{ background: SAGE, borderColor: SAGE }}>
@@ -2480,7 +2641,7 @@ function TodoSection({ token, onCountChange, eventDate }: { token: string; onCou
                 className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-ring" />
               <div className="flex gap-2">
                 <select value={addCategory} onChange={e => setAddCategory(e.target.value)}
-                  className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm">
+                  className={`flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm ${HTC_NATIVE_SELECT_CLASS}`}>
                   <option value="">Category…</option>
                   {TODO_CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
                 </select>
@@ -2508,7 +2669,7 @@ function TodoSection({ token, onCountChange, eventDate }: { token: string; onCou
               <div>
                 <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Suggested for your stage</p>
                 {eventDate && (
-                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                  <p className="text-xs text-muted-foreground mt-0.5">
                     💗 {getBracketLabel(getSuggestionBracket(daysUntil(eventDate)))}
                   </p>
                 )}
@@ -2742,7 +2903,7 @@ function OurPeopleSection({ token, context }: { token: string; context: PortalCo
 
       {/* Header */}
       <div className="rounded-3xl p-6" style={{ background: `linear-gradient(135deg, ${ROSE}10 0%, #FAF8F5 100%)`, border: `1px solid ${ROSE}25` }}>
-        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] mb-1.5" style={{ color: ROSE_DEEP }}>💗 Your People</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] mb-1.5" style={{ color: ROSE_DEEP }}>💗 Your People</p>
         <p className="font-heading text-xl text-heading leading-snug mb-2">Who is helping you plan your celebration?</p>
         <p className="text-sm text-muted-foreground leading-relaxed">
           Invite family members, your wedding planner, or anyone you'd like to share parts of your planning experience with. You control what each person can see and do.
@@ -2751,7 +2912,7 @@ function OurPeopleSection({ token, context }: { token: string; context: PortalCo
 
       {/* Primary couple */}
       <div>
-        <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground mb-2 px-1">Primary</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground mb-2 px-1">Primary</p>
         <div className="rounded-2xl border border-border bg-card p-4 flex items-center gap-3">
           <div className="h-10 w-10 rounded-full flex items-center justify-center shrink-0 text-sm font-semibold"
             style={{ background: `color-mix(in srgb, var(--venue-primary) 13%, transparent)`, color: SAGE }}>
@@ -2770,7 +2931,7 @@ function OurPeopleSection({ token, context }: { token: string; context: PortalCo
         <div className="py-6 text-center"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground mx-auto" /></div>
       ) : participants.length > 0 ? (
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground mb-2 px-1">Planning Team</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground mb-2 px-1">Planning Team</p>
           <div className="space-y-2">
             {participants.map(p => {
               const isEditing = editingId === p.id;
@@ -2809,7 +2970,7 @@ function OurPeopleSection({ token, context }: { token: string; context: PortalCo
                         <div>
                           <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">Role</p>
                           <select value={editRole} onChange={e => setEditRole(e.target.value)}
-                            className="w-full rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs focus:outline-none">
+                            className={`w-full rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs focus:outline-none ${HTC_NATIVE_SELECT_CLASS}`}>
                             {Object.entries(ROLE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                           </select>
                           {editRole === "custom" && (
@@ -2820,7 +2981,7 @@ function OurPeopleSection({ token, context }: { token: string; context: PortalCo
                         <div>
                           <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">Permissions</p>
                           <select value={editPermission} onChange={e => setEditPermission(e.target.value)}
-                            className="w-full rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs focus:outline-none">
+                            className={`w-full rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs focus:outline-none ${HTC_NATIVE_SELECT_CLASS}`}>
                             {Object.entries(PERMISSION_META).map(([v, m]) => <option key={v} value={v}>{m.label}</option>)}
                           </select>
                           <p className="text-[10px] text-muted-foreground mt-1 leading-snug">{PERMISSION_META[editPermission]?.desc}</p>
@@ -2863,35 +3024,100 @@ function OurPeopleSection({ token, context }: { token: string; context: PortalCo
 
       {/* Invite form / button */}
       {showInvite ? (
-        <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
-          <p className="text-sm font-semibold text-heading">Invite someone to help plan</p>
-          <div className="grid grid-cols-2 gap-3">
-            <input value={inviteFirst} onChange={e => setInviteFirst(e.target.value)} placeholder="First name *" autoFocus
-              className="rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring" />
-            <input value={inviteLast} onChange={e => setInviteLast(e.target.value)} placeholder="Last name"
-              className="rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring" />
+        <div className="rounded-2xl border border-border bg-card p-5 space-y-4" data-testid="portal-invite-form">
+          <div className="space-y-1.5">
+            <p className="text-sm font-semibold text-heading">Invite someone to help plan</p>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              We&apos;ll email them a private invitation to this event workspace. They create a Hello to Cheers
+              account (or sign in if they already have one) and only then receive the access level you choose below.
+              Knowing an email address alone does not grant access.
+            </p>
           </div>
-          <input type="email" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} placeholder="Email address *"
-            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring" />
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">Role</p>
-              <select value={inviteRole} onChange={e => setInviteRole(e.target.value)}
-                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <label htmlFor="invite-first" className="text-xs font-medium text-heading">
+                First name <span className="text-destructive">*</span>
+              </label>
+              <input
+                id="invite-first"
+                value={inviteFirst}
+                onChange={e => setInviteFirst(e.target.value)}
+                autoFocus
+                required
+                autoComplete="given-name"
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label htmlFor="invite-last" className="text-xs font-medium text-heading">Last name</label>
+              <input
+                id="invite-last"
+                value={inviteLast}
+                onChange={e => setInviteLast(e.target.value)}
+                autoComplete="family-name"
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+              />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <label htmlFor="invite-email" className="text-xs font-medium text-heading">
+              Email address <span className="text-destructive">*</span>
+            </label>
+            <input
+              id="invite-email"
+              type="email"
+              value={inviteEmail}
+              onChange={e => setInviteEmail(e.target.value)}
+              required
+              autoComplete="email"
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+            />
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <label htmlFor="invite-role" className="text-xs font-medium text-heading">
+                Their role
+              </label>
+              <p className="text-[11px] text-muted-foreground leading-snug">
+                How they relate to your celebration (shown on your team list).
+              </p>
+              <select
+                id="invite-role"
+                value={inviteRole}
+                onChange={e => setInviteRole(e.target.value)}
+                className={`w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none ${HTC_NATIVE_SELECT_CLASS}`}
+              >
                 {Object.entries(ROLE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
               </select>
               {inviteRole === "custom" && (
-                <input value={inviteCustomRole} onChange={e => setInviteCustomRole(e.target.value)} placeholder="e.g. Mother of the Bride"
-                  className="mt-2 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none" />
+                <div className="space-y-1.5 pt-1">
+                  <label htmlFor="invite-custom-role" className="text-xs font-medium text-heading">Custom role label</label>
+                  <input
+                    id="invite-custom-role"
+                    value={inviteCustomRole}
+                    onChange={e => setInviteCustomRole(e.target.value)}
+                    placeholder="e.g. Mother of the Bride"
+                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none"
+                  />
+                </div>
               )}
             </div>
-            <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">Access Level</p>
-              <select value={invitePermission} onChange={e => setInvitePermission(e.target.value)}
-                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none">
+            <div className="space-y-1.5">
+              <label htmlFor="invite-access" className="text-xs font-medium text-heading">
+                Access level
+              </label>
+              <p className="text-[11px] text-muted-foreground leading-snug">
+                What they can see and do in this workspace after they accept.
+              </p>
+              <select
+                id="invite-access"
+                value={invitePermission}
+                onChange={e => setInvitePermission(e.target.value)}
+                className={`w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none ${HTC_NATIVE_SELECT_CLASS}`}
+              >
                 {Object.entries(PERMISSION_META).map(([v, m]) => <option key={v} value={v}>{m.label}</option>)}
               </select>
-              <p className="text-[10px] text-muted-foreground mt-1 leading-snug">{PERMISSION_META[invitePermission]?.desc}</p>
+              <p className="text-[11px] text-muted-foreground mt-1 leading-snug">{PERMISSION_META[invitePermission]?.desc}</p>
             </div>
           </div>
           <div className="flex justify-end gap-2 pt-1">
@@ -2900,11 +3126,12 @@ function OurPeopleSection({ token, context }: { token: string; context: PortalCo
             <button type="button" onClick={handleInvite} disabled={!inviteFirst.trim() || !inviteEmail.trim() || inviting}
               className="text-sm font-semibold px-5 py-2 rounded-xl text-white disabled:opacity-50 flex items-center gap-2"
               style={{ background: ROSE }}>
-              {inviting ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Sending…</> : "Send Invitation 💗"}
+              {inviting ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Sending…</> : "Send Invitation"}
             </button>
           </div>
         </div>
       ) : (
+
         <button type="button" onClick={() => setShowInvite(true)}
           className="w-full flex items-center justify-center gap-2 rounded-2xl border border-dashed py-4 text-sm font-medium transition-colors hover:bg-muted/30"
           style={{ borderColor: `${ROSE}50`, color: ROSE_DEEP }}>
@@ -2915,7 +3142,7 @@ function OurPeopleSection({ token, context }: { token: string; context: PortalCo
       {/* Activity feed */}
       {activity.length > 0 && (
         <div className="rounded-2xl border border-border/50 bg-card p-4 space-y-3">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">✨ Recent Activity</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">✨ Recent Activity</p>
           <div className="space-y-2.5">
             {activity.map(a => (
               <div key={a.id} className="flex items-start gap-2.5">
@@ -3067,8 +3294,22 @@ function TimelinePortalSection({
 // the panel rather than loaded on every dashboard visit.
 // ── Ask Luv FAB — deeper entry only; Home card stays non-chat (Impl 6).
 // Mounted once at PortalShell root. Does not auto-open over Next Steps.
-function FloatingLuvWidget({ token, onNavigateToGuide }: { token: string; onNavigateToGuide: () => void }) {
+function FloatingLuvWidget({
+  token,
+  onNavigateToGuide,
+  onNavigate,
+}: {
+  token: string;
+  onNavigateToGuide: () => void;
+  onNavigate: (section: PortalSection) => void;
+}) {
   const [open, setOpen] = React.useState(false);
+
+  React.useEffect(() => {
+    const onOpen = () => setOpen(true);
+    window.addEventListener("htc:open-ask-luv", onOpen);
+    return () => window.removeEventListener("htc:open-ask-luv", onOpen);
+  }, []);
 
   return (
     <>
@@ -3097,9 +3338,25 @@ function FloatingLuvWidget({ token, onNavigateToGuide }: { token: string; onNavi
           <div className="flex-1 overflow-y-auto">
             {(() => {
               const { LuvAskSection } = require("@/components/portal/luv-ask-section") as {
-                LuvAskSection: React.ComponentType<{ token: string; onNavigateToGuide?: () => void }>;
+                LuvAskSection: React.ComponentType<{
+                  token: string;
+                  onNavigateToGuide?: () => void;
+                  onNavigate?: (target: "guide" | "payments" | "documents") => void;
+                }>;
               };
-              return <LuvAskSection token={token} onNavigateToGuide={() => { onNavigateToGuide(); setOpen(false); }} />;
+              return (
+                <LuvAskSection
+                  token={token}
+                  onNavigateToGuide={() => {
+                    onNavigateToGuide();
+                    setOpen(false);
+                  }}
+                  onNavigate={(target) => {
+                    onNavigate(target);
+                    setOpen(false);
+                  }}
+                />
+              );
             })()}
           </div>
         </div>
@@ -3436,7 +3693,7 @@ function JourneySection({
 
       {/* ── Header ── */}
       <div className="space-y-1">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.2em]" style={{ color: ROSE_DEEP }}>
+        <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: ROSE_DEEP }}>
           📖 Your Journey
         </p>
         <h2 className="text-2xl font-bold text-heading">
@@ -3786,7 +4043,7 @@ function OurStorySection({
       {/* ── Hashtag + Our Story ── */}
       <section className="space-y-4">
         <div className="flex items-center justify-between">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ color: ROSE_DEEP }}>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em]" style={{ color: ROSE_DEEP }}>
             💍 Who You Are
           </p>
           {!editing && (
@@ -3856,7 +4113,7 @@ function OurStorySection({
       {/* ── Engagement Photos ── */}
       <section className="space-y-4">
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ color: ROSE_DEEP }}>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em]" style={{ color: ROSE_DEEP }}>
             📸 Engagement Photos
           </p>
           <p className="text-xs text-muted-foreground mt-0.5">
@@ -3877,7 +4134,7 @@ function OurStorySection({
       {/* ── Inspiration Board ── */}
       <section className="space-y-4">
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ color: ROSE_DEEP }}>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em]" style={{ color: ROSE_DEEP }}>
             🌸 Inspiration Board
           </p>
           <p className="text-xs text-muted-foreground mt-0.5">
@@ -3897,7 +4154,7 @@ function OurStorySection({
       <section className="space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ color: ROSE_DEEP }}>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em]" style={{ color: ROSE_DEEP }}>
               📖 Planning Journal
             </p>
             <p className="text-xs text-muted-foreground mt-0.5">
@@ -3977,7 +4234,7 @@ function OurStorySection({
                 <div className="relative inline-block">
                   <img src={entryMediaUrl} alt="" className="rounded-xl h-28 w-28 object-cover" />
                   <button type="button" onClick={() => { setEntryMediaId(null); setEntryMediaUrl(null); }}
-                    className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-white border border-border flex items-center justify-center text-[10px] text-muted-foreground hover:text-heading shadow-sm">
+                    className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-card border border-border flex items-center justify-center text-[10px] text-muted-foreground hover:text-heading shadow-sm">
                     ×
                   </button>
                 </div>
@@ -4095,8 +4352,9 @@ const SUPPORT_ACCESS_DURATIONS = [
   { hours: 72, label: "3 days" },
 ];
 
-function AccountSettingsPanel({ venueName }: { venueName: string }) {
+function AccountSettingsPanel({ token, venueName }: { token: string; venueName: string }) {
   const [state, setState] = React.useState<AccountState | null>(null);
+  const [smsPermission, setSmsPermission] = React.useState<PortalSmsPermissionView | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [newPassword, setNewPassword] = React.useState("");
   const [confirmPassword, setConfirmPassword] = React.useState("");
@@ -4107,8 +4365,12 @@ function AccountSettingsPanel({ venueName }: { venueName: string }) {
   const [revokingGrantId, setRevokingGrantId] = React.useState<string | null>(null);
 
   const refresh = React.useCallback(() => {
-    getAccountStateAction().then((s) => { setState(s); setLoading(false); });
-  }, []);
+    Promise.all([getAccountStateAction(), getPortalSmsPermissionAction(token)]).then(([s, sms]) => {
+      setState(s);
+      setSmsPermission(sms);
+      setLoading(false);
+    });
+  }, [token]);
 
   React.useEffect(() => { refresh(); }, [refresh]);
 
@@ -4150,16 +4412,27 @@ function AccountSettingsPanel({ venueName }: { venueName: string }) {
     return <div className="py-6 text-center"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground mx-auto" /></div>;
   }
 
+  const smsCard = smsPermission ? (
+    <div className="rounded-2xl border border-border bg-card p-4 space-y-1.5">
+      <p className="text-sm font-semibold text-heading">Text messaging</p>
+      <p className="text-sm text-foreground">{smsPermission.label}</p>
+      <p className="text-xs text-muted-foreground">{smsPermission.detail}</p>
+    </div>
+  ) : null;
+
   if (!state?.loggedIn) {
     return (
-      <div className="rounded-2xl border border-border bg-card p-6 text-center space-y-3">
-        <p className="text-sm font-semibold text-heading">Sign in to manage your account</p>
-        <p className="text-xs text-muted-foreground max-w-xs mx-auto">
-          Account settings — password, sessions, and support access — require signing in with your own account.
-        </p>
-        <a href="/client/login" className="inline-block text-xs font-semibold px-4 py-2 rounded-xl text-white" style={{ background: SAGE }}>
-          Sign In
-        </a>
+      <div className="space-y-6">
+        {smsCard}
+        <div className="rounded-2xl border border-border bg-card p-6 text-center space-y-3">
+          <p className="text-sm font-semibold text-heading">Sign in to manage your account</p>
+          <p className="text-xs text-muted-foreground max-w-xs mx-auto">
+            Account settings — password, sessions, and support access — require signing in with your own account.
+          </p>
+          <a href="/client/login" className="inline-block text-xs font-semibold px-4 py-2 rounded-xl text-white" style={{ background: SAGE }}>
+            Sign In
+          </a>
+        </div>
       </div>
     );
   }
@@ -4169,29 +4442,43 @@ function AccountSettingsPanel({ venueName }: { venueName: string }) {
   return (
     <div className="space-y-6">
       <div className="rounded-3xl p-6" style={{ background: `linear-gradient(135deg, ${ROSE}10 0%, #FAF8F5 100%)`, border: `1px solid ${ROSE}25` }}>
-        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] mb-1.5" style={{ color: ROSE_DEEP }}>⚙️ Account</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] mb-1.5" style={{ color: ROSE_DEEP }}>⚙️ Account</p>
         <p className="font-heading text-xl text-heading leading-snug">Your account, your workspace</p>
         <p className="text-sm text-muted-foreground mt-1">You own this account. {venueName} can invite, resend, or revoke access, but never sign in as you.</p>
       </div>
+
+      {smsCard}
 
       {/* Password */}
       <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
         <p className="text-sm font-semibold text-heading">Password</p>
         <div className="grid gap-2 sm:grid-cols-2">
           <div className="space-y-1">
-            <p className="text-xs font-medium text-heading">New password</p>
-            <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)}
-              className="w-full h-9 rounded-lg border border-border bg-background px-3 text-sm" minLength={8} />
+            <label htmlFor="account-new-password" className="text-xs font-medium text-heading">New password</label>
+            <PasswordInput
+              id="account-new-password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              className="h-9"
+              minLength={8}
+              autoComplete="new-password"
+            />
           </div>
           <div className="space-y-1">
-            <p className="text-xs font-medium text-heading">Confirm password</p>
-            <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full h-9 rounded-lg border border-border bg-background px-3 text-sm" minLength={8} />
+            <label htmlFor="account-confirm-password" className="text-xs font-medium text-heading">Confirm password</label>
+            <PasswordInput
+              id="account-confirm-password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              className="h-9"
+              minLength={8}
+              autoComplete="new-password"
+            />
           </div>
         </div>
         <button type="button" onClick={handleChangePassword} disabled={savingPassword}
           className="text-xs font-semibold px-4 py-2 rounded-xl text-white disabled:opacity-60" style={{ background: SAGE }}>
-          {savingPassword ? "Saving…" : "Update Password"}
+          {savingPassword ? "Saving…" : "Change password"}
         </button>
       </div>
 
@@ -4242,11 +4529,27 @@ function AccountSettingsPanel({ venueName }: { venueName: string }) {
             </button>
           </div>
         ) : (
-          <div className="flex items-center gap-2 flex-wrap">
-            <select value={grantHours} onChange={(e) => setGrantHours(Number(e.target.value))}
-              className="h-9 rounded-lg border border-border bg-background px-2 text-xs">
-              {SUPPORT_ACCESS_DURATIONS.map((d) => <option key={d.hours} value={d.hours}>{d.label}</option>)}
-            </select>
+          <div className="space-y-2" data-testid="support-access-grant">
+            <div className="space-y-1">
+              <label htmlFor="support-access-duration" className="text-xs font-medium text-heading">
+                Access duration
+              </label>
+              <p className="text-[11px] text-muted-foreground leading-snug">
+                How long {venueName} may view your workspace. Access expires automatically and every visit is logged.
+              </p>
+              <select
+                id="support-access-duration"
+                value={grantHours}
+                onChange={(e) => setGrantHours(Number(e.target.value))}
+                className={`h-9 w-full max-w-[12rem] rounded-lg border border-border bg-background px-2 text-xs ${HTC_NATIVE_SELECT_CLASS}`}
+                aria-label="Access duration"
+                data-testid="support-access-duration"
+              >
+                {SUPPORT_ACCESS_DURATIONS.map((d) => (
+                  <option key={d.hours} value={d.hours}>{d.label}</option>
+                ))}
+              </select>
+            </div>
             <button type="button" onClick={handleGrantAccess} disabled={granting}
               className="text-xs font-semibold px-4 py-2 rounded-xl text-white disabled:opacity-60" style={{ background: ROSE_DEEP }}>
               {granting ? "Granting…" : "Grant Temporary Access"}
@@ -4305,23 +4608,30 @@ function PortalProductFeedbackCard({
 function AccountSection({ token, context, venueName }: { token: string; context: PortalContext; venueName: string }) {
   const [tab, setTab] = React.useState<"account" | "people">("account");
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-1 rounded-xl bg-muted/60 p-1 w-fit">
+    <div className="space-y-4" data-testid="portal-account-section">
+      <div className="flex items-center gap-1 rounded-xl bg-muted/60 p-1 w-fit" role="tablist" aria-label="Account areas">
         {(["account", "people"] as const).map((t) => (
-          <button key={t} type="button" onClick={() => setTab(t)}
+          <button
+            key={t}
+            type="button"
+            role="tab"
+            aria-selected={tab === t}
+            data-testid={`portal-account-tab-${t}`}
+            onClick={() => setTab(t)}
             className="px-3 py-1.5 text-sm font-medium rounded-lg transition-all"
             style={{
               color: tab === t ? SAGE : "#6A6460",
               background: tab === t ? "var(--card)" : "transparent",
               fontWeight: tab === t ? 600 : 400,
-            }}>
+            }}
+          >
             {t === "account" ? "Account" : "People"}
           </button>
         ))}
       </div>
       {tab === "account" ? (
         <div className="space-y-6">
-          <AccountSettingsPanel venueName={venueName} />
+          <AccountSettingsPanel token={token} venueName={venueName} />
           <PortalProductFeedbackCard token={token} venueId={context.venue.id} />
         </div>
       ) : (
@@ -4397,17 +4707,29 @@ const NAV_ITEMS: { id: PortalSection; icon: string; label: string; shortLabel?: 
   { id: "timeline",    icon: "🕒", label: "Timeline",          available: true, group: "venue" },
   { id: "documents",   icon: "📁", label: "Documents",         shortLabel: "Docs",     available: true, group: "venue" },
   { id: "floor_plans", icon: "🗺️", label: "Floor Plan",        available: true, group: "venue" },
+  // Inventory / Event Order / Choices: capability-on in NAV_ITEMS; P2-D filters
+  // passive discovery (Documents-first). Deep links still mount sections.
+  { id: "inventory",   icon: "🪑", label: "Inventory",         shortLabel: "Inventory", available: true, group: "venue" },
   { id: "event-order", icon: "📋", label: "Event Order",       shortLabel: "Order",    available: true, group: "venue" },
+  { id: "choices",     icon: "✅", label: "Your Choices",      shortLabel: "Choices",  available: true, group: "venue" },
   { id: "payments",    icon: "💳", label: "Payments",          available: true, group: "venue" },
   { id: "messages",    icon: "💬", label: "Messages",          available: true, group: "venue" },
   { id: "guide",       icon: "🏛️", label: "Venue Guide",       shortLabel: "Guide",    available: true, group: "venue" },
   { id: "vendors",     icon: "🤝", label: "Preferred Vendors", shortLabel: "Vendors",  available: true, group: "venue" },
 ];
 
+/**
+ * Narrow viewports cannot fit the desktop tab row. These stay directly
+ * tappable; every other available NAV_ITEMS destination is in the More sheet.
+ * Order follows NAV_ITEMS. None are removed.
+ */
+const PORTAL_MOBILE_PRIMARY_IDS = ["overview", "tasks", "messages", "payments"] as const;
+
 export function PortalShell({
   token, context, initialTasks, initialVendorTasks = [], initialTimelineSections = [], initialTimelineEntries = [],
   initialTimelineLastSubmittedAt = null, initialTimelineHasUnpublishedChanges = false,
   initialLegalGate,
+  initialSection,
 }: {
   token: string;
   context: PortalContext;
@@ -4418,8 +4740,10 @@ export function PortalShell({
   initialTimelineLastSubmittedAt?: string | null;
   initialTimelineHasUnpublishedChanges?: boolean;
   initialLegalGate?: CouplePortalLegalGateStatus;
+  /** Server-resolved deep link (e.g. ?view=choices) so email redirects that drop #hash still land. */
+  initialSection?: PortalSection;
 }) {
-  const [activeSection, setActiveSection] = React.useState<PortalSection>("overview");
+  const [activeSection, setActiveSection] = React.useState<PortalSection>(initialSection ?? "overview");
   const [workspaceFocus, setWorkspaceFocus] = React.useState<PortalWorkspaceFocus | null>(null);
   const [guestStats, setGuestStats] = React.useState<GuestStats | null>(null);
   const [todoCount, setTodoCount] = React.useState(0);
@@ -4429,10 +4753,14 @@ export function PortalShell({
   const [paymentsOverdueCount, setPaymentsOverdueCount] = React.useState(0);
   /** Messages nav badge — unread venue messages. */
   const [messagesUnreadCount, setMessagesUnreadCount] = React.useState(0);
-  const [hasSharedEventOrder, setHasSharedEventOrder] = React.useState(false);
+  /** P2-D — nav visibility (Documents-first). Sections stay mountable via deep links. */
+  const [showEventOrderNav, setShowEventOrderNav] = React.useState(false);
+  const [showInventoryNav, setShowInventoryNav] = React.useState(false);
+  const [showChoicesNav, setShowChoicesNav] = React.useState(false);
   const [profile, setProfile] = React.useState<CoupleProfile | null>(null);
   const [recentActivity, setRecentActivity] = React.useState<RecentActivity | null>(null);
   const [showLuvIntro, setShowLuvIntro] = React.useState(false);
+  const [moreOpen, setMoreOpen] = React.useState(false);
   const [needsLegalAcceptance, setNeedsLegalAcceptance] = React.useState(
     () => initialLegalGate?.needsAcceptance ?? true,
   );
@@ -4451,7 +4779,12 @@ export function PortalShell({
       available:
         item.available
         && isPortalSectionEnabledByCapabilities(item.id, planningCapabilities)
-        && (item.id !== "event-order" || hasSharedEventOrder),
+        // P2-D Documents-first: Choices only while couple must act; Inventory while
+        // client-facing collaboration is active; Event Order nav only while shared
+        // acceptance is still open. Deep links / Documents still open sections.
+        && (item.id !== "choices" || showChoicesNav)
+        && (item.id !== "inventory" || showInventoryNav)
+        && (item.id !== "event-order" || showEventOrderNav),
     }))
     .filter((item) => item.available);
 
@@ -4459,11 +4792,45 @@ export function PortalShell({
     let cancelled = false;
     fetch(`/api/portal/event-order?token=${encodeURIComponent(token)}`)
       .then((r) => r.json())
-      .then((d: { eventOrder?: unknown }) => {
-        if (!cancelled) setHasSharedEventOrder(!!d?.eventOrder);
+      .then((d: {
+        eventOrder?: { clientAgreedAt?: string | null } | null;
+      }) => {
+        if (cancelled) return;
+        const shared = Boolean(d?.eventOrder);
+        setShowEventOrderNav(
+          coupleEventOrderNavVisible({
+            shared,
+            clientAgreedAt: d?.eventOrder?.clientAgreedAt ?? null,
+          }),
+        );
       })
       .catch(() => {
-        if (!cancelled) setHasSharedEventOrder(false);
+        if (!cancelled) setShowEventOrderNav(false);
+      });
+    fetch(`/api/portal/inventory?token=${encodeURIComponent(token)}`)
+      .then((r) => r.json())
+      .then((d: { inventory?: { status?: string } | null }) => {
+        if (cancelled) return;
+        const inv = d?.inventory ?? null;
+        setShowInventoryNav(
+          coupleInventoryNavVisible({
+            hasInventory: Boolean(inv),
+            status: inv?.status ?? null,
+          }),
+        );
+      })
+      .catch(() => {
+        if (!cancelled) setShowInventoryNav(false);
+      });
+    fetch(`/api/portal/choices?token=${encodeURIComponent(token)}`)
+      .then((r) => r.json())
+      .then((d: { choices?: Array<{ status: string }> }) => {
+        if (cancelled) return;
+        const list = Array.isArray(d?.choices) ? d.choices : [];
+        setShowChoicesNav(coupleChoicesNavVisible(list));
+      })
+      .catch(() => {
+        if (!cancelled) setShowChoicesNav(false);
       });
     return () => { cancelled = true; };
   }, [token]);
@@ -4619,7 +4986,7 @@ export function PortalShell({
         documents: documentsRes.documents ?? [],
         timelineHasUnpublishedChanges: !!timelineRes.hasUnpublishedChanges,
       });
-      const { open } = unifiedTaskCompletionCounts(unified);
+      const open = unifiedActiveAttentionCount(unified);
       const vendorShare = vendorTasks.filter((t) => isShareTimelineVendorAttention(t)).length;
       setTasksAttentionCount(open + vendorShare);
     });
@@ -4641,6 +5008,8 @@ export function PortalShell({
       body: JSON.stringify({ token }),
     });
   }
+
+  const documentFocus = isDocumentPortalSection(initialSection);
 
   if (needsLegalAcceptance && legalDocuments.length > 0) {
     const welcomeDocs: WelcomeExperienceDocument[] = legalDocuments.map(
@@ -4664,7 +5033,7 @@ export function PortalShell({
         introduction={copy.introduction}
         documents={welcomeDocs}
         context={welcomeContext}
-        returnTo={`/p/${token}`}
+        returnTo={documentPortalReturnPath(token, initialSection)}
         portalToken={token}
         onSuccess={() => setNeedsLegalAcceptance(false)}
       />
@@ -4688,7 +5057,7 @@ export function PortalShell({
           <p className="font-heading text-xl text-[var(--forest-sage)]">
             Preparing your workspace
           </p>
-          <p className="mt-3 text-sm leading-relaxed text-[color-mix(in_oklch,var(--forest-sage)_70%,transparent)]">
+          <p className="mt-3 text-sm leading-relaxed text-[color-mix(in_oklch,var(--forest-sage)_80%,transparent)]">
             We&apos;re confirming a few required documents. Refresh if this
             takes too long, or contact your venue for help.
           </p>
@@ -4703,7 +5072,8 @@ export function PortalShell({
   const actionCount = tasksAttentionCount ?? (
     // SSR / pre-fetch fallback — venue open checklist + timeline only
     // (payments/requests need client fetch for full fidelity).
-    unifiedTaskCompletionCounts(
+    // Submitted/waiting rows are excluded from attention (still on Tasks).
+    unifiedActiveAttentionCount(
       buildUnifiedTaskList({
         venueTasks: initialTasks,
         requests: [],
@@ -4712,7 +5082,7 @@ export function PortalShell({
         documents: [],
         timelineHasUnpublishedChanges: initialTimelineHasUnpublishedChanges,
       }),
-    ).open
+    )
     + initialVendorTasks.filter((t) => isShareTimelineVendorAttention(t)).length
   );
   const isOverview = activeSection === "overview";
@@ -4722,18 +5092,28 @@ export function PortalShell({
     || activeSection === "timeline"
     || activeSection === "documents"
     || activeSection === "guide";
+  const mobilePrimaryItems = PORTAL_MOBILE_PRIMARY_IDS
+    .map((id) => navItems.find((item) => item.id === id))
+    .filter((item): item is (typeof navItems)[number] => Boolean(item));
+  const mobileMoreItems = navItems.filter(
+    (item) => !PORTAL_MOBILE_PRIMARY_IDS.includes(
+      item.id as (typeof PORTAL_MOBILE_PRIMARY_IDS)[number],
+    ),
+  );
+  const moreIsActive = mobileMoreItems.some((item) => item.id === activeSection);
 
   return (
     <div
       className="h-full flex flex-col overflow-hidden overscroll-none"
+      data-portal-document={documentFocus ? "focus" : "workspace"}
       style={{
-        // Two-layer branding: HTC owns application chrome. Keep the legacy
-        // `--venue-*` names so portal sections stay token-driven, but bind
-        // them to Hello to Cheers design-system tokens — not venues.palette.
-        // Venue logo / name / hero imagery still render from context.venue.*
-        // identity assets. Correspondence (email, contracts, brochures, etc.)
-        // continues to use live venue colors outside this shell.
-        background: "var(--background)",
+        // Two-layer branding: HTC owns application chrome (Celebration Soft B).
+        // Keep legacy `--venue-*` names so portal sections stay token-driven,
+        // bound to Hello to Cheers tokens — not venues.palette. Venue logo /
+        // name / hero imagery still render from context.venue.* identity
+        // assets. Correspondence continues to use live venue colors outside
+        // this shell.
+        background: "var(--htc-ivory, var(--background))",
         "--venue-primary": "var(--primary)",
         "--venue-secondary": "var(--heading)",
         "--venue-accent": "var(--accent)",
@@ -4742,47 +5122,57 @@ export function PortalShell({
     >
 
       {/* ── Sticky Header ── */}
-      <header className="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-[#DED6CA]">
-        {/* Venue + couple identity */}
+      <header className="sticky top-0 z-30 bg-card/95 backdrop-blur border-b border-border">
+        {/* Platform Wordmark (top-left) + couple/venue identity */}
         <div className="max-w-6xl mx-auto px-3 sm:px-4 py-2.5 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5 min-w-0">
-            {context.venue.logoUrl && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={context.venue.logoUrl} alt={context.venue.name} className="h-7 w-7 rounded-full object-cover shrink-0" />
-            )}
-            <p className="text-sm font-semibold text-heading leading-tight font-heading truncate">{coupleName}</p>
-            <span className="text-muted-foreground/40 text-xs shrink-0">·</span>
-            <p className="text-xs text-muted-foreground truncate">{context.venue.name}</p>
+          <div className="flex items-center gap-3 min-w-0">
+            <Wordmark
+              sizeClassName="h-7 w-auto max-w-[8.25rem] sm:h-8 sm:max-w-[9.5rem]"
+              className="shrink-0"
+            />
+            <div className="flex min-w-0 items-center gap-2 border-l border-border/60 pl-3">
+              {context.venue.logoUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={context.venue.logoUrl}
+                  alt={context.venue.name}
+                  className="h-7 w-7 shrink-0 rounded-full border border-border/50 bg-[var(--htc-ivory,#faf9f5)] object-contain p-0.5"
+                />
+              )}
+              <p className="truncate text-xs text-muted-foreground">{context.venue.name}</p>
+            </div>
           </div>
           <div className="flex items-center gap-3 shrink-0">
-            {context.event && (
+            {context.event && !documentFocus && (
               <p className="text-xs text-muted-foreground hidden lg:block">
                 {formatPortalEventRangeShort(context.event.eventDate, context.event.eventEndDate)}
               </p>
             )}
+            {!documentFocus ? (
             <a
               href={`/api/portal/export?token=${encodeURIComponent(token)}`}
               download
-              className="text-[11px] font-medium text-muted-foreground hover:text-foreground underline decoration-dotted underline-offset-2"
+              data-portal-export="header"
+              className="hidden text-[11px] font-medium text-muted-foreground underline decoration-dotted underline-offset-2 hover:text-foreground lg:inline"
               title="Download a copy of your guest list, budget, and seating data"
             >
               Export my data
             </a>
+            ) : null}
+            {!documentFocus ? (
             <CoupleNotificationBell
               token={token}
               onNavigate={(section) => navigateTo(section)}
             />
-            {/* Account — Program 5 (2026-07-24): "That's a global function.
-                It doesn't belong with either planning area." The only
-                header-level nav control; everything else routes through
-                the single venue-operational row below or a dashboard
-                launch card. */}
+            ) : null}
+            {!documentFocus ? (
             <button type="button" onClick={() => navigateTo("account")}
               title="Account"
               className="h-7 w-7 rounded-full flex items-center justify-center transition-colors hover:bg-muted/60 shrink-0"
               style={{ color: activeSection === "account" ? SAGE : "#6A6460" }}>
               <Settings className="h-4 w-4" />
             </button>
+            ) : null}
           </div>
         </div>
 
@@ -4790,7 +5180,9 @@ export function PortalShell({
             only. "Your Wedding" destinations (Website/Guests/Seating/Budget/
             Our Story/Plans) stay on dashboard launch cards. Floor Plan is
             venue-shared and lives in this top row with other venue surfaces. */}
-        <div className="max-w-6xl mx-auto px-2 sm:px-3">
+        {documentFocus ? null : (
+        <>
+        <div className="mx-auto hidden max-w-6xl px-2 sm:px-3 lg:block" data-portal-nav="desktop">
           <nav className="flex items-stretch justify-between gap-0 py-0.5" aria-label="Portal">
             {navItems.map(item => {
               const isActive = activeSection === item.id;
@@ -4798,7 +5190,10 @@ export function PortalShell({
                 item.id === "tasks" ? (actionCount > 0 ? actionCount : 0)
                   : item.id === "payments" ? paymentsOverdueCount
                     : item.id === "messages" ? messagesUnreadCount
-                      : 0;
+                      : item.id === "inventory" && showInventoryNav ? 1
+                        : item.id === "event-order" && showEventOrderNav ? 1
+                          : item.id === "choices" && showChoicesNav ? 1
+                            : 0;
               const badgeTitle =
                 item.id === "tasks"
                   ? (badge === 1 ? "1 open task" : `${badge} open tasks`)
@@ -4806,7 +5201,13 @@ export function PortalShell({
                     ? (badge === 1 ? "1 overdue payment" : `${badge} overdue payments`)
                     : item.id === "messages"
                       ? (badge === 1 ? "1 unread message" : `${badge} unread messages`)
-                      : "";
+                      : item.id === "inventory" && showInventoryNav
+                        ? "Inventory needs your attention"
+                        : item.id === "event-order" && showEventOrderNav
+                          ? "Event Order waiting for your review"
+                          : item.id === "choices" && showChoicesNav
+                            ? "Selections waiting for you"
+                            : "";
               const badgeAria =
                 badge > 0 ? `${item.label}, ${badgeTitle}` : undefined;
               return (
@@ -4836,6 +5237,98 @@ export function PortalShell({
             })}
           </nav>
         </div>
+        <div className="mx-auto max-w-6xl px-2 lg:hidden" data-portal-nav="mobile">
+          <nav className="flex items-center justify-between gap-1 py-0.5" aria-label="Portal">
+            {mobilePrimaryItems.map((item) => {
+              const isActive = activeSection === item.id;
+              const badge =
+                item.id === "tasks" ? (actionCount > 0 ? actionCount : 0)
+                  : item.id === "payments" ? paymentsOverdueCount
+                    : item.id === "messages" ? messagesUnreadCount
+                      : 0;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  data-portal-primary={item.id}
+                  onClick={() => navigateTo(item.id)}
+                  title={item.label}
+                  className="whitespace-nowrap rounded-md px-1.5 py-2 text-[13px] font-medium"
+                  style={{
+                    color: isActive ? SAGE : "#3D3833",
+                    background: isActive ? "color-mix(in srgb, var(--venue-primary) 9%, transparent)" : "transparent",
+                    fontWeight: isActive ? 700 : 500,
+                  }}
+                >
+                  {item.label}
+                  {badge > 0 ? (
+                    <span className="ml-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-0.5 text-[8px] font-bold text-white" style={{ background: ROSE }}>
+                      {badge > 9 ? "9+" : badge}
+                    </span>
+                  ) : null}
+                </button>
+              );
+            })}
+            <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
+              <button
+                type="button"
+                data-portal-more-trigger
+                aria-expanded={moreOpen}
+                onClick={() => setMoreOpen(true)}
+                className="whitespace-nowrap rounded-md px-1.5 py-2 text-[13px] font-medium"
+                style={{
+                  color: moreIsActive ? SAGE : "#3D3833",
+                  background: moreIsActive ? "color-mix(in srgb, var(--venue-primary) 9%, transparent)" : "transparent",
+                  fontWeight: moreIsActive ? 700 : 500,
+                }}
+              >
+                More
+              </button>
+              <SheetContent side="left" className="w-[min(100%,18rem)] border-border bg-card p-0 text-foreground">
+                <SheetHeader className="border-b border-border px-5 py-4 text-left">
+                  <SheetTitle>More</SheetTitle>
+                </SheetHeader>
+                <nav className="flex flex-col gap-1 px-3 py-4" aria-label="More portal destinations">
+                  {mobileMoreItems.map((item) => {
+                    const isActive = activeSection === item.id;
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        data-portal-more-item={item.id}
+                        onClick={() => {
+                          setMoreOpen(false);
+                          navigateTo(item.id);
+                        }}
+                        className="flex items-center gap-2 rounded-md px-3 py-2.5 text-left text-sm font-medium"
+                        style={{
+                          color: isActive ? SAGE : "#3D3833",
+                          background: isActive ? "color-mix(in srgb, var(--venue-primary) 9%, transparent)" : "transparent",
+                          fontWeight: isActive ? 700 : 500,
+                        }}
+                      >
+                        <span aria-hidden>{item.icon}</span>
+                        <span>{item.label}</span>
+                      </button>
+                    );
+                  })}
+                </nav>
+                <div className="mt-auto border-t border-border px-5 py-4">
+                  <a
+                    href={`/api/portal/export?token=${encodeURIComponent(token)}`}
+                    download
+                    data-portal-export="menu"
+                    className="text-sm font-medium text-muted-foreground underline decoration-dotted underline-offset-2 hover:text-foreground"
+                  >
+                    Export my data
+                  </a>
+                </div>
+              </SheetContent>
+            </Sheet>
+          </nav>
+        </div>
+        </>
+        )}
       </header>
 
       {/* ── Content ── */}
@@ -4895,9 +5388,12 @@ export function PortalShell({
             )}
             {activeSection === "people"    && <OurPeopleSection token={token} context={context} />}
             {activeSection === "questionnaire" && <QuestionnairePortalSection token={token} />}
+            {activeSection === "choices" && <ChoicesPortalSection token={token} />}
             {activeSection === "inventory" && <InventoryPortalSection token={token} />}
             {activeSection === "event-order" && <EventOrderPortalSection token={token} />}
-            {activeSection === "floor_plans" && planningCapabilities.floorPlan && <FloorPlanSection token={token} />}
+            {activeSection === "floor_plans" && planningCapabilities.floorPlan && (
+              <FloorPlanSection token={token} guestCount={context.event?.guestCount ?? null} />
+            )}
             {activeSection === "vendors"   && planningCapabilities.vendors && <VendorPortalSection token={token} context={context} />}
             {activeSection === "budget"    && <BudgetPortalSection token={token} />}
             {activeSection === "payments"  && <PaymentPortalSection token={token} />}
@@ -4914,16 +5410,17 @@ export function PortalShell({
         )}
       </main>
 
-      {/* Venue Brand Experience Phase 1: "Powered by Hello to Cheers" removed —
-          the venue is the only visible brand on this customer-facing surface.
-          Pinned outside the scroll region so couples cannot scroll past it
-          into empty page chrome. */}
+      {/* Footer stays venue-named; platform brand lives in the header Wordmark. */}
       <footer className="text-center py-3 text-[10px] border-t border-border/30 shrink-0" style={{ color: TAUPE }}>
         {context.venue.name}
       </footer>
 
       {/* Persistent across every tab, not just Overview — Program 5. */}
-      <FloatingLuvWidget token={token} onNavigateToGuide={() => navigateTo("guide")} />
+      <FloatingLuvWidget
+        token={token}
+        onNavigateToGuide={() => navigateTo("guide")}
+        onNavigate={(section) => navigateTo(section)}
+      />
     </div>
   );
 }
@@ -5058,7 +5555,8 @@ function NextStepsCard({
           documents,
           timelineHasUnpublishedChanges: timelineUnpublished,
         })
-          .filter((t: UnifiedTask) => !t.completed)
+          // Submitted/waiting stays on Tasks but leaves Home Next Steps.
+          .filter((t: UnifiedTask) => !t.completed && !t.awaitingVenueReview)
           .map(fromUnifiedTask),
         ...vendorTasks
           .filter((t) => isShareTimelineVendorAttention(t))
@@ -5128,7 +5626,7 @@ function NextStepsCard({
             )}
           </div>
           {t.description && (
-            <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-1">{t.description}</p>
+            <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{t.description}</p>
           )}
           <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-1">
             {due && (
@@ -5481,7 +5979,7 @@ function WeddingPlanningProgressCard({
           >
             {progress.percent}%
           </p>
-          <p className="text-[10px] text-muted-foreground mt-0.5 leading-none">readiness</p>
+          <p className="text-xs text-muted-foreground mt-0.5 leading-none">readiness</p>
         </div>
       </div>
       <p id="planning-progress-support" className="text-[11px] text-muted-foreground mb-1 leading-snug">
@@ -5687,31 +6185,41 @@ function StoryLaunchCard({ profile, onNavigate }: { profile: CoupleProfile | nul
   return <WeddingLaunchCard icon="💍" model={model} onNavigate={onNavigate} />;
 }
 
-// Couple Home Impl 6 — Luv Suggestions:
-// One quiet suggestion card under Your Wedding (P4). Existing priority chain
-// via resolveLuvHomeSuggestion — warm, optional, never silently acts, and
-// skips venue-owned signals when Your Next Steps already has attention.
+// Couple Home — Luv Suggestions:
+// One quiet suggestion under Your Wedding (P4). Speaks only from HTC-known
+// venue/client facts (contract, payment, tasks, event date) — never generic
+// wedding-planning assumptions. Warm, optional, never silently acts.
 function LuvDailyCard({
-  token, du, guestStats, readiness, bracket, recentActivity, venueAttentionCount, planningCapabilities = DEFAULT_PLANNING_CAPABILITIES, onNavigate,
+  token, venueName, hasEvent, eventDateLabel, du, guestStats, readiness, recentActivity, venueAttentionCount, planningCapabilities = DEFAULT_PLANNING_CAPABILITIES, onNavigate,
 }: {
   token: string;
+  venueName: string;
+  hasEvent: boolean;
+  eventDateLabel: string | null;
   du: number | null;
   guestStats: GuestStats | null;
   readiness: number;
-  bracket: string;
   recentActivity: RecentActivity | null;
   venueAttentionCount: number;
   planningCapabilities?: import("@/lib/playbooks/capabilities").VenuePlanningCapabilities;
   onNavigate: (s: PortalSection) => void;
 }) {
   const [questionnaire, setQuestionnaire] = React.useState<{ status: string } | null | undefined>(undefined);
+  const [documents, setDocuments] = React.useState<{ docType: string; status: string | null; signToken?: string | null }[] | null>(null);
+  const [paymentSchedules, setPaymentSchedules] = React.useState<PaymentScheduleLite[] | null>(null);
 
   React.useEffect(() => {
     fetch(`/api/portal/questionnaire?token=${token}`).then((r) => r.json())
       .then((d: { questionnaire?: { status: string } | null }) => setQuestionnaire(d.questionnaire ?? null)).catch(() => setQuestionnaire(null));
+    fetch(`/api/portal/documents?token=${token}`).then((r) => r.json())
+      .then((d: { documents?: { docType: string; status: string | null; signToken?: string | null }[] }) => setDocuments(d.documents ?? []))
+      .catch(() => setDocuments([]));
+    fetch(`/api/portal/payments?token=${token}`).then((r) => r.json())
+      .then((d: { schedules?: PaymentScheduleLite[] }) => setPaymentSchedules(d.schedules ?? []))
+      .catch(() => setPaymentSchedules([]));
   }, [token]);
 
-  if (questionnaire === undefined) {
+  if (questionnaire === undefined || documents === null || paymentSchedules === null) {
     return (
       <section
         className="rounded-2xl px-4 py-3.5"
@@ -5731,21 +6239,49 @@ function LuvDailyCard({
     );
   }
 
-  const today = new Date();
   const questionnaireOpen = Boolean(
     questionnaire && questionnaire.status !== "submitted" && questionnaire.status !== "completed",
   );
 
+  const contractAwaitingSignature = documents.some(
+    (d) => d.docType === "contract" && d.status === "sent",
+  );
+  const contractFullyExecuted = documents.some(
+    (d) => d.docType === "contract" && (d.status === "signed" || d.status === "fully_executed"),
+  );
+
+  const outstanding = selectCanonicalPaymentSchedules(
+    paymentSchedules.map((s, i) => ({ ...s, id: s.id ?? `anon_${i}` })),
+  )
+    .flatMap((s) => s.lineItems)
+    .filter((li) => li.status !== "paid" && li.status !== "cancelled" && li.dueDate);
+  outstanding.sort((a, b) => (a.dueDate! < b.dueDate! ? -1 : 1));
+  const nextLi = outstanding[0] ?? null;
+  const nextPayment = nextLi
+    ? {
+        label: nextLi.label,
+        dueDateLabel: new Date(nextLi.dueDate! + "T12:00:00").toLocaleDateString("en-US", {
+          month: "long",
+          day: "numeric",
+          year: "numeric",
+        }),
+      }
+    : null;
+
   const suggestion = resolveLuvHomeSuggestion({
+    venueName,
+    hasEvent,
     daysUntil: du,
+    eventDateLabel,
     guestTotal: guestStats?.total ?? 0,
     guestAttending: guestStats?.attending ?? 0,
     readiness,
-    bracket,
     totalThisWeek: recentActivity?.totalThisWeek ?? 0,
     questionnaireOpen,
     venueAttentionCount,
-    dayOfMonth: today.getDate(),
+    contractAwaitingSignature,
+    contractFullyExecuted,
+    nextPayment,
     disabledDestinations: planningCapabilities.vendors ? [] : ["vendors"],
   });
 

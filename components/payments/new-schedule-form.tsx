@@ -5,9 +5,9 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import Link from "next/link";
 
 import { createScheduleAction } from "@/app/(app)/payments/actions";
+import { TimingFields } from "@/components/payments/timing-fields";
 import { Field } from "@/components/setup/field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,8 +17,13 @@ import { formatCurrency } from "@/lib/invoices/constants";
 import type { Invoice } from "@/lib/invoices/types";
 import {
   OBLIGATION_KIND_OPTIONS,
-  type PaymentTiming,
 } from "@/lib/payments/constants";
+import type { RemainingBalanceMode } from "@/lib/booking-journey/venue-prefs";
+import {
+  draftsFromCustomTemplate,
+  resolveConfiguredPlanSeed,
+} from "@/lib/payments/configured-plan-seed";
+import type { CustomScheduleTemplate } from "@/lib/payments/custom-default-schedule";
 import {
   PLAN_BUILDER_QUICK_PRESETS,
   PLAN_BUILDER_STRUCTURES,
@@ -39,129 +44,63 @@ import {
   formatTimingLabel,
 } from "@/lib/payments/starters";
 import type { PaymentErrors, PaymentObligationKind, ScheduleInput } from "@/lib/payments/types";
+import {
+  NOTES_FROM_YOUR_VENUE_HINT,
+  NOTES_FROM_YOUR_VENUE_LABEL,
+} from "@/lib/notes/internal-notes-copy";
 import { cn } from "@/lib/utils";
 
-type Step = "structure" | "build" | "review";
-
-function TimingFields({
-  line,
-  onChange,
-}: {
-  line: PlanBuilderLineDraft;
-  onChange: (timing: PaymentTiming, dueDate: string) => void;
-}) {
-  const mode =
-    line.dueDate.trim()
-      ? "fixed"
-      : line.timing.type === "at_booking"
-        ? "at_booking"
-        : line.timing.type === "after_booking"
-          ? "after_booking"
-          : "before_event";
-
-  return (
-    <div className="grid gap-2 sm:grid-cols-2">
-      <div className="space-y-1">
-        <label className="text-xs text-muted-foreground">Due date rule</label>
-        <select
-          className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-          value={mode}
-          onChange={(e) => {
-            const v = e.target.value;
-            if (v === "fixed") {
-              onChange(line.timing, line.dueDate || new Date().toISOString().slice(0, 10));
-              return;
-            }
-            if (v === "at_booking") {
-              onChange({ type: "at_booking" }, "");
-              return;
-            }
-            if (v === "after_booking") {
-              onChange({ type: "after_booking", days: 7 }, "");
-              return;
-            }
-            onChange({ type: "before_event", days: 30 }, "");
-          }}
-        >
-          <option value="at_booking">At booking</option>
-          <option value="before_event">Days before event</option>
-          <option value="after_booking">Days after booking</option>
-          <option value="fixed">Specific date</option>
-        </select>
-      </div>
-      {mode === "before_event" || mode === "after_booking" ? (
-        <div className="space-y-1">
-          <label className="text-xs text-muted-foreground">Days</label>
-          <Input
-            type="number"
-            min={0}
-            value={
-              line.timing.type === "before_event" || line.timing.type === "after_booking"
-                ? line.timing.days
-                : 0
-            }
-            onChange={(e) => {
-              const days = Math.max(0, Number(e.target.value) || 0);
-              onChange(
-                mode === "after_booking"
-                  ? { type: "after_booking", days }
-                  : { type: "before_event", days },
-                "",
-              );
-            }}
-          />
-        </div>
-      ) : mode === "fixed" ? (
-        <div className="space-y-1">
-          <label className="text-xs text-muted-foreground">Date</label>
-          <Input
-            type="date"
-            value={line.dueDate}
-            onChange={(e) => onChange(line.timing, e.target.value)}
-          />
-        </div>
-      ) : (
-        <div className="flex items-end text-xs text-muted-foreground pb-2">
-          Uses the Event booking date
-        </div>
-      )}
-    </div>
-  );
-}
+type Step = "structure" | "build" | "preview";
 
 /**
  * Payment Plan Builder — builds the invoice-tied payment schedule.
  * Presets are builder options only (not Library assets).
+ * Venue Custom defaults hydrate via resolveConfiguredPlanSeed (same as booking journey).
  */
 export function NewScheduleForm({
   linkedInvoice,
   initialPresetId,
+  remainingBalanceMode = null,
+  customSchedule = null,
+  defaultDepositPercent = 25,
+  executedAt = null,
+  today,
 }: {
   linkedInvoice: Invoice;
   initialPresetId?: string | null;
+  remainingBalanceMode?: RemainingBalanceMode | null;
+  customSchedule?: CustomScheduleTemplate | null;
+  defaultDepositPercent?: number;
+  /** YYYY-MM-DD — Fully Executed contract date for agreement-relative timing. */
+  executedAt?: string | null;
+  /** Venue-local today (YYYY-MM-DD). */
+  today: string;
 }) {
   const router = useRouter();
   const invoiceTotal = linkedInvoice.total;
+  const [explicitEventDate, setExplicitEventDate] = React.useState("");
+  const resolvedEventDate = linkedInvoice.eventDate || explicitEventDate.trim() || null;
   const timingCtx = {
-    eventDate: linkedInvoice.eventDate,
+    eventDate: resolvedEventDate,
     bookingDate: linkedInvoice.bookedAt,
+    executedAt: executedAt?.trim().slice(0, 10) || null,
+    today,
   };
 
-  const initialQuick =
-    initialPresetId === "thirds" ||
-    initialPresetId === "fifty_fifty" ||
-    initialPresetId === "wedding_four"
-      ? (initialPresetId as PlanBuilderQuickPresetId)
-      : "thirds";
+  const defaultDeposit =
+    Math.round((invoiceTotal * (defaultDepositPercent / 100) + Number.EPSILON) * 100) / 100;
+  const configured = resolveConfiguredPlanSeed({
+    remainingBalanceMode,
+    defaultSchedulePresetId: initialPresetId ?? null,
+    customSchedule,
+    invoiceTotal,
+    defaultDeposit,
+  });
 
-  const [step, setStep] = React.useState<Step>("structure");
-  const [structure, setStructure] = React.useState<PlanBuilderStructure>(
-    initialPresetId === "custom" ? "custom" : "percentage",
-  );
+  const [step, setStep] = React.useState<Step>(configured.startAt);
+  const [structure, setStructure] = React.useState<PlanBuilderStructure>(configured.structure);
   const [equalCount, setEqualCount] = React.useState(3);
-  const [lines, setLines] = React.useState<PlanBuilderLineDraft[]>(() =>
-    linesFromPreset(initialQuick, invoiceTotal),
-  );
+  const [lines, setLines] = React.useState<PlanBuilderLineDraft[]>(() => configured.lines);
   const [input, setInput] = React.useState<ScheduleInput>({
     title: linkedInvoice.clientName
       ? `Payment schedule — ${linkedInvoice.clientName}`
@@ -173,9 +112,6 @@ export function NewScheduleForm({
   const [pending, startTransition] = React.useTransition();
 
   const validation = validatePlanBuilderLines(lines, invoiceTotal, timingCtx);
-  const setBookingHref = linkedInvoice.eventId
-    ? `/events/${linkedInvoice.eventId}/edit`
-    : null;
 
   function applyQuickPreset(id: PlanBuilderQuickPresetId) {
     setStructure("percentage");
@@ -187,8 +123,17 @@ export function NewScheduleForm({
     setStructure(next);
     if (next === "equal") {
       setLines(defaultEqualLines(equalCount, invoiceTotal));
-    } else if (next === "custom" && lines.length === 0) {
-      setLines(defaultEqualLines(1, invoiceTotal));
+    } else if (next === "custom") {
+      const fromSaved = customSchedule
+        ? draftsFromCustomTemplate(customSchedule, invoiceTotal)
+        : null;
+      setLines((prev) =>
+        fromSaved && fromSaved.length > 0
+          ? fromSaved
+          : prev.length > 0
+            ? prev
+            : defaultEqualLines(4, invoiceTotal),
+      );
     } else if (next === "percentage") {
       setLines(syncAmountsFromPercentages(lines.length ? lines : defaultEqualLines(3, invoiceTotal), invoiceTotal));
     } else if (next === "dollar") {
@@ -217,7 +162,7 @@ export function NewScheduleForm({
       label: `Payment ${lines.length + 1}`,
       pctOfTotal: 0,
       amount: 0,
-      timing: isFirst ? { type: "at_booking" } : { type: "before_event", days: 30 },
+      timing: isFirst ? { type: "due_today" } : { type: "before_event", days: 30 },
       dueDate: "",
       obligationKind: isFirst ? "deposit" : "installment",
     };
@@ -249,8 +194,8 @@ export function NewScheduleForm({
 
   return (
     <div className="space-y-5">
-      <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 space-y-1">
-        <p className="text-xs font-semibold text-primary uppercase tracking-wide">
+      <div className="htc-surface-guidance space-y-1 px-4 py-3">
+        <p className="text-xs font-semibold text-heading uppercase tracking-wide">
           Payment Plan Builder
         </p>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-0.5 text-sm">
@@ -271,6 +216,23 @@ export function NewScheduleForm({
         <p className="text-xs text-muted-foreground">
           Choose how {formatCurrency(invoiceTotal)} should be collected. The schedule you save becomes this booking&apos;s payment commitment.
         </p>
+        {!linkedInvoice.eventDate && (
+          <div className="mt-3 space-y-1.5">
+            <label htmlFor="ps-event-date-for-calc" className="text-xs font-medium text-heading">
+              Event date for payment due dates
+            </label>
+            <Input
+              id="ps-event-date-for-calc"
+              type="date"
+              value={explicitEventDate}
+              onChange={(e) => setExplicitEventDate(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">
+              No Event date is on file yet. Enter the date only to calculate &quot;days before event&quot;
+              due dates. This does not create an Event or reserve the date.
+            </p>
+          </div>
+        )}
       </div>
 
       <Field label="Schedule name *" htmlFor="ps-title" error={errors.title} hint="Shown to your team on this booking.">
@@ -291,13 +253,14 @@ export function NewScheduleForm({
       </Field>
 
       <div className="flex flex-wrap gap-2 text-xs">
-        {(["structure", "build", "review"] as Step[]).map((s, i) => (
+        {(["structure", "build", "preview"] as Step[]).map((s, i) => (
           <button
             key={s}
             type="button"
             onClick={() => {
-              if (s === "review" && !validation.ok) return;
-              if (s === "build" || s === "structure" || validation.ok) setStep(s);
+              // Non-destructive: navigating steps never rebuilds lines from the original preset.
+              if (s === "preview" && !validation.ok) return;
+              setStep(s);
             }}
             className={cn(
               "rounded-full border px-3 py-1 capitalize",
@@ -306,7 +269,7 @@ export function NewScheduleForm({
                 : "border-border text-muted-foreground",
             )}
           >
-            {i + 1}. {s === "structure" ? "Choose structure" : s === "build" ? "Build schedule" : "Review"}
+            {i + 1}. {s === "structure" ? "Choose structure" : s === "build" ? "Build schedule" : "Preview"}
           </button>
         ))}
       </div>
@@ -384,7 +347,12 @@ export function NewScheduleForm({
                 Structure: {PLAN_BUILDER_STRUCTURES.find((s) => s.id === structure)?.label}
               </p>
             </div>
-            <Button type="button" size="sm" variant="outline" onClick={() => setStep("structure")}>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => setStep("structure")}
+            >
               Change structure
             </Button>
           </div>
@@ -483,6 +451,7 @@ export function NewScheduleForm({
                 </div>
                 <TimingFields
                   line={line}
+                  today={today}
                   onChange={(timing, dueDate) => updateLine(line.id, { timing, dueDate })}
                 />
                 {validation.lineErrors[line.id] && (
@@ -542,22 +511,16 @@ export function NewScheduleForm({
             ))}
           </div>
 
-          {!linkedInvoice.bookedAt &&
+          {!executedAt &&
             lines.some(
               (l) =>
-                !l.dueDate.trim() &&
-                (l.timing.type === "at_booking" || l.timing.type === "after_booking"),
+                !l.dueDate.trim() && l.timing.type === "after_execution",
             ) && (
               <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 px-4 py-3 space-y-2">
-                <p className="text-sm font-medium text-heading">Booking date needed</p>
+                <p className="text-sm font-medium text-heading">Fully executed contract needed</p>
                 <p className="text-xs text-muted-foreground">
-                  One or more payments use booking timing. Add the booking date, or set a specific due date on those lines.
+                  One or more payments use days after the contract is fully executed. Finish signing first, or set a specific due date on those lines.
                 </p>
-                {setBookingHref ? (
-                  <Button size="sm" variant="outline" render={<Link href={setBookingHref} />}>
-                    Set booking date
-                  </Button>
-                ) : null}
               </div>
             )}
 
@@ -568,7 +531,7 @@ export function NewScheduleForm({
             <Button
               type="button"
               disabled={!validation.ok}
-              onClick={() => setStep("review")}
+              onClick={() => setStep("preview")}
             >
               Review schedule
             </Button>
@@ -576,26 +539,22 @@ export function NewScheduleForm({
         </div>
       )}
 
-      {step === "review" && (
+      {step === "preview" && (
         <div className="space-y-4">
           <div>
-            <p className="text-sm font-medium text-heading">Review before saving</p>
+            <p className="text-sm font-medium text-heading">Review schedule</p>
             <p className="text-xs text-muted-foreground">
-              Saving creates this booking&apos;s payment schedule. Later preset changes will not alter it.
+              Review the complete schedule before creating it. You can edit again without losing your work. Saving does not send.
             </p>
           </div>
           <div className="rounded-lg border border-border bg-muted/20 px-4 py-3 space-y-2">
             <div className="flex flex-wrap justify-between gap-2 text-sm">
-              <span>Invoice total</span>
+              <span>Total commitment</span>
               <span className="font-medium">{formatCurrency(invoiceTotal)}</span>
             </div>
             <div className="flex flex-wrap justify-between gap-2 text-sm">
               <span>Total scheduled</span>
               <span className="font-medium">{formatCurrency(validation.scheduledTotal)}</span>
-            </div>
-            <div className="flex flex-wrap justify-between gap-2 text-sm">
-              <span>Balance after schedule</span>
-              <span className="font-medium">{formatCurrency(0)}</span>
             </div>
             <Separator />
             <ul className="space-y-2">
@@ -625,19 +584,19 @@ export function NewScheduleForm({
             </ul>
           </div>
 
-          <Field label="Internal notes" htmlFor="ps-notes" hint="Optional — visible only to your team.">
+          <Field label={NOTES_FROM_YOUR_VENUE_LABEL} htmlFor="ps-notes" hint={NOTES_FROM_YOUR_VENUE_HINT}>
             <Textarea
               id="ps-notes"
               value={input.notes}
               onChange={(e) => setInput((p) => ({ ...p, notes: e.target.value }))}
-              placeholder="Any notes about this payment arrangement…"
+              placeholder="Payment instructions or notes shown with this plan…"
               rows={2}
             />
           </Field>
 
           <div className="flex flex-wrap items-center justify-end gap-3">
             <Button type="button" variant="outline" onClick={() => setStep("build")} disabled={pending}>
-              Back
+              Edit
             </Button>
             <Button type="button" variant="outline" onClick={() => router.back()} disabled={pending}>
               Cancel
@@ -649,7 +608,7 @@ export function NewScheduleForm({
                   Creating…
                 </>
               ) : (
-                "Save payment schedule"
+                "Create payment plan"
               )}
             </Button>
           </div>

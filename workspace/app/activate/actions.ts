@@ -17,7 +17,16 @@ export async function activateAccountAction(
   if (!gated.ok) {
     return { error: gated.error };
   }
-  const { token, email, password, relationshipId } = gated;
+  const {
+    token,
+    email,
+    password,
+    relationshipId,
+    purchaserIsOwner,
+    invitedOwnerName,
+    invitedOwnerEmail,
+    inviteOwnerNow,
+  } = gated;
 
   // Record legal acceptances immediately before completing CRM account activation.
   if (email) {
@@ -37,7 +46,15 @@ export async function activateAccountAction(
   // Relationship is marked activated below, so a failure here leaves both
   // sides consistently "not yet activated" and safely retryable — the
   // activation token is only consumed on real success.
-  const bridged = await activateVenueAccount({ token, password });
+  const bridged = await activateVenueAccount({
+    token,
+    password,
+    purchaserIsOwner,
+    legalAccepted: true,
+    invitedOwnerName,
+    invitedOwnerEmail,
+    inviteOwnerNow,
+  });
   if (!bridged.ok) {
     console.error("[activate] product account bridge failed", bridged.error);
     return { error: "We couldn't set up your account just now. Please try again in a moment." };
@@ -57,5 +74,9 @@ export async function activateAccountAction(
     console.error("[activate] local relationship activation threw after real account succeeded", error);
   }
 
-  redirect(productPostActivationLoginUrl());
+  // Product activate already stored a server-trusted one-time handoff for
+  // bridged.venueId. Do not put a raw venue id on the login URL. Pass the
+  // purchaser email for login prefill only — proxy clears any prior venue
+  // session when activated=1 so a different browser account cannot win.
+  redirect(productPostActivationLoginUrl(email));
 }

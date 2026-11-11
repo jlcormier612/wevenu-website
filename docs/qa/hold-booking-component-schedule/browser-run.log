@@ -1,0 +1,31 @@
+PASS migration_scheduled_date_column — scheduled_date selectable
+PASS serving_commit — 7ee3a7d39a28ba3575f144e86b1801d15c61e848
+PASS inclusive_fri_sat_hold — [{"id":"aba895a6-8cf6-4545-9311-dca0acfb3cba","status":"active","hold_date":"2027-09-03","end_date":"2027-09-04","space_id":"3b36ec69-b17d-4351-8186-68d96dd6dfe7","start_time":null,"end_time":null}]
+PASS current_hold_section — Current hold
+
+This lead already has a hold on the calendar. Update the details below to reflect the final booking.
+
+September 3, 2027 – September 4, 2027 · All day · Barn
+PASS schedule_preview_visible — booking-schedule-preview
+PASS schedule_grouped_by_date — Proposed final schedule
+
+Each component reserves only its own date and time window within the overall event dates.
+
+SEPTEMBER 3, 2027
+
+Rehearsal Dinner — Barn — 6:00 PM–9:00 PM
+
+SEPTEMBER 4, 2027
+
+Ceremony — Covered Bridge — 3:00 PM–4:00 PM
+Cocktail Hour — Stone Patio — 4:00 PM–5:00 PM
+Reception — Barn — 5:00 PM–10:00 PM
+PASS event_range_persisted — {"id":"c9fa734a-5d12-4e8a-be2b-cc7df0288803","status":"confirmed","booked_at":"2026-10-12","event_date":"2027-09-03","event_end_date":"2027-09-04","start_time":"15:00:00","end_time":"22:00:00","space_id":"3b36ec69-b17d-4351-8186-68d96dd6dfe7"}
+PASS rehearsal_fri_barn_window — {"use_key":"rehearsal_dinner","space_id":"3b36ec69-b17d-4351-8186-68d96dd6dfe7","start_time":"18:00:00","end_time":"21:00:00","scheduled_date":"2027-09-03"}
+PASS reception_sat_barn_window — {"use_key":"reception","space_id":"3b36ec69-b17d-4351-8186-68d96dd6dfe7","start_time":"17:00:00","end_time":"22:00:00","scheduled_date":"2027-09-04"}
+PASS ceremony_sat_bridge — {"use_key":"ceremony","space_id":"40f81c67-199d-47f8-bf7d-79c118e34198","start_time":"15:00:00","end_time":"16:00:00","scheduled_date":"2027-09-04"}
+PASS no_undated_barn_duplicate — [{"use_key":"rehearsal_dinner","space_id":"3b36ec69-b17d-4351-8186-68d96dd6dfe7","start_time":"18:00:00","end_time":"21:00:00","scheduled_date":"2027-09-03"},{"use_key":"ceremony","space_id":"40f81c67-199d-47f8-bf7d-79c118e34198","start_time":"15:00:00","end_time":"16:00:00","scheduled_date":"2027-09-04"},{"use_key":"reception","space_id":"3b36ec69-b17d-4351-8186-68d96dd6dfe7","start_time":"17:00:00","end_time":"22:00:00","scheduled_date":"2027-09-04"},{"use_key":"cocktail_hour","space_id":"f6df6024-e6a0-4df8-b391-27f2eae61238","start_time":"16:00:00","end_time":"17:00:00","scheduled_date":"2027-09-04"}]
+PASS own_hold_reconciled — [{"id":"aba895a6-8cf6-4545-9311-dca0acfb3cba","status":"converted","hold_date":"2027-09-03","end_date":"2027-09-04","space_id":"3b36ec69-b17d-4351-8186-68d96dd6dfe7","start_time":null,"end_time":null}]
+PASS foreign_overlap_blocked — {"url":"https://app.sandbox.hellotocheers.com/leads/6c6480a4-96c6-49e3-8a85-500fad1d300a","conflictEvents":[],"body":"OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\n3\nClients\nVendors\n\nSCHEDULING\n\nCalendar\nTours\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nLIBRARY\n\nTemplates\nDocuments\n\nFINANCIALS\n\nContracts\n13\nPayments\n15\n\nTO DO’S\n\nTask Center\nRequests\n\nYOUR VENUE\n\nSetup\nSettings\nGuidance\nVenue Guide\nReports\nHelp & Feedback\nJen's Fancy Venue\nSearch\n⌘K\n99+\nJ\njennifer@hellotocheers.com\nConfirm this booking\n\nReview the dates, spaces, and times for this event.\n\nEvent date\n*\nEnd date\n\nLeave blank for a single-day event.\n\nSpace"}
+PASS primary_intact_after_conflict — {"stillBooked":{"id":"c9fa734a-5d12-4e8a-be2b-cc7df0288803","status":"confirmed","booked_at":"2026-10-12","event_date":"2027-09-03","event_end_date":"2027-09-04","start_time":"15:00:00","end_time":"22:00:00","space_id":"3b36ec69-b17d-4351-8186-68d96dd6dfe7"},"stillAssigns":[{"use_key":"rehearsal_dinner","space_id":"3b36ec69-b17d-4351-8186-68d96dd6dfe7","start_time":"18:00:00","end_time":"21:00:00","scheduled_date":"2027-09-03"},{"use_key":"ceremony","space_id":"40f81c67-199d-47f8-bf7d-79c118e34198","start_time":"15:00:00","end_time":"16:00:00","scheduled_date":"2027-09-04"},{"use_key":"reception","space_id":"3b36ec69-b17d-4351-8186-68d96dd6dfe7","start_time":"17:00:00","end_time":"22:00:00","scheduled_date":"2027-09-04"},{"use_key":"cocktail_hour","space_id":"f6df6024-e6a0-4df8-b391-27f2eae61238","start_time":"16:00:00","end_time":"17:00:00","scheduled_date":"2027-09-04"}]}
+ALL PASS

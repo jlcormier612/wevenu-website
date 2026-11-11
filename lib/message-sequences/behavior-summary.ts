@@ -4,6 +4,7 @@
  */
 import { SEQUENCE_TRIGGER_TYPES } from "@/lib/message-sequences/constants";
 import { salesStageLabel } from "@/lib/leads/sales-stages";
+import { audienceForTrigger } from "@/lib/message-sequences/platform-triggers";
 import type { MessageSequenceInput, SequenceStepInput } from "@/lib/message-sequences/types";
 
 export type AutomationBehaviorSummary = {
@@ -19,18 +20,20 @@ export type AutomationBehaviorSummary = {
 
 function timingPhrase(offsetDays: number, isFirst: boolean): string {
   if (offsetDays === 0) {
-    return isFirst ? "immediately" : "right after the previous message";
+    return isFirst ? "immediately" : "immediately after the previous message";
   }
   if (offsetDays === 1) {
-    return isFirst ? "1 day after they join" : "1 day after the previous message";
+    return isFirst
+      ? "1 day after they enter this automation"
+      : "1 day after the previous message";
   }
   return isFirst
-    ? `${offsetDays} days after they join`
+    ? `${offsetDays} days after they enter this automation`
     : `${offsetDays} days after the previous message`;
 }
 
 function channelWord(channel: SequenceStepInput["channel"]): string {
-  return channel === "sms" ? "SMS" : "email";
+  return channel === "sms" ? "text" : "email";
 }
 
 function startsWhen(input: MessageSequenceInput): string {
@@ -47,7 +50,8 @@ function startsWhen(input: MessageSequenceInput): string {
 
 function stepLine(step: SequenceStepInput, index: number): string {
   const when = timingPhrase(step.offsetDays, index === 0);
-  return `Send an ${channelWord(step.channel)} ${when}`;
+  const article = step.channel === "sms" ? "a" : "an";
+  return `Send ${article} ${channelWord(step.channel)} ${when}`;
 }
 
 function stepsNarrative(steps: SequenceStepInput[]): string {
@@ -66,9 +70,29 @@ function stepsNarrative(steps: SequenceStepInput[]): string {
   return `we'll ${parts.join(", ")}`;
 }
 
-/** Shared stop copy — matches engine exits (booked / lost / reply / manual stop / finished). */
+/**
+ * Sales / Lead stop copy — booking and Lost are lead-lifecycle exits.
+ * Also used for manual automations (no Client category).
+ */
 export const AUTOMATION_STOPS_SUMMARY =
   "It stops for someone when they book, are marked Lost, reply to a message, finish every step, or you stop them.";
+
+/**
+ * Client-category stop copy — omits booking / Lost, which are lead-lifecycle
+ * concepts and confuse people in post-booking Client automations. Reply,
+ * finished steps, and manual stop remain the venue-facing stops; engine
+ * relationship-wide booking/Lost exits are unchanged.
+ */
+export const CLIENT_AUTOMATION_STOPS_SUMMARY =
+  "It stops for someone when they reply to a message, finish every step, or you stop them.";
+
+export function automationStopsSummaryForTrigger(
+  triggerType: MessageSequenceInput["triggerType"],
+): string {
+  return audienceForTrigger(triggerType) === "client"
+    ? CLIENT_AUTOMATION_STOPS_SUMMARY
+    : AUTOMATION_STOPS_SUMMARY;
+}
 
 /**
  * Build a preview that reflects the actual configured automation.
@@ -76,7 +100,7 @@ export const AUTOMATION_STOPS_SUMMARY =
 export function buildAutomationBehaviorSummary(input: MessageSequenceInput): AutomationBehaviorSummary {
   const starts = startsWhen(input);
   const stepLines = input.steps.map((s, i) => stepLine(s, i));
-  const stops = AUTOMATION_STOPS_SUMMARY;
+  const stops = automationStopsSummaryForTrigger(input.triggerType);
 
   let paragraph: string;
   if (input.steps.length === 0) {

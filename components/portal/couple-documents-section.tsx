@@ -2,18 +2,32 @@
 
 import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
+import { CoupleDocumentViewerDialog } from "@/components/portal/couple-document-viewer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { coupleCelebrationMessage } from "@/lib/luv/celebrations";
 import { celebrateLuv } from "@/lib/luv/celebrate";
 import { shouldPresentVerifiedCelebration } from "@/lib/luv/verified-domain-celebrations";
+import { coupleDocumentStatusBadge } from "@/lib/portal/couple-document-status";
+import {
+  coupleDocumentViewTarget,
+  type CoupleDocumentViewTarget,
+} from "@/lib/portal/couple-document-viewer";
 import { portalFocusElementId } from "@/lib/portal/workspace-routing";
+import {
+  DOCS_QUESTIONNAIRE_HANDOFF_KEY,
+  isSubmittedQuestionnaireDocumentStatus,
+  submittedQuestionnaireTitle,
+} from "@/lib/questionnaire-family/submitted-answers";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type DocType =
   | "contract" | "invoice" | "upload" | "planning_guide"
-  | "brochure" | "receipt" | "package" | "insurance" | "floor_plan" | "menu" | "permit" | "other";
+  | "brochure" | "receipt" | "package" | "insurance" | "floor_plan" | "menu" | "permit"
+  | "event_order" | "event_inventory" | "client_choices" | "other";
+
+type DocumentsNavigate = (s: "questionnaire" | "event-order" | "inventory") => void;
 
 type LineItem = { id: string; description: string; quantity: number; unitPrice: number; amount: number; type: string };
 
@@ -25,6 +39,7 @@ type CoupleDocument = {
   signedAt: string | null;
   amount: number | null;
   balanceDue?: number | null;
+  invoiceNumber?: string | null;
   fileUrl: string | null;
   fileSize: number | null;
   mimeType: string | null;
@@ -35,11 +50,21 @@ type CoupleDocument = {
   vendorName?: string | null;
   shareWithVenue?: boolean;
   createdAt: string;
+  clientAgreedAt?: string | null;
+  portalSection?: string | null;
 };
 
 type PaidLineItem = { id: string; label: string; amount: number; paidAt: string; paidAmount: number | null; paymentMethod: string | null; scheduleTitle: string };
 
-type QuestionnaireSummary = { status: string };
+type PortalScheduleLine = { id: string; label: string; amount: number; dueDate: string | null; status: string };
+type PortalSchedule = { id: string; title: string; invoiceId?: string | null; lineItems: PortalScheduleLine[] };
+
+type QuestionnaireDocSummary = {
+  questionnaire_id?: string;
+  access_key?: string;
+  kind?: string;
+  status: string;
+};
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -55,17 +80,17 @@ const DOC_META: Record<DocType, { emoji: string; label: string; color: string }>
   floor_plan:     { emoji: "🗺️", label: "Floor Plan",     color: "bg-teal-50 text-teal-700 border-teal-100" },
   menu:           { emoji: "🍽️", label: "Menu",           color: "bg-orange-50 text-orange-700 border-orange-100" },
   permit:         { emoji: "📜", label: "Permit",         color: "bg-gray-50 text-gray-600 border-gray-100" },
+  event_order:    { emoji: "📦", label: "Event Order",    color: "bg-emerald-50 text-emerald-700 border-emerald-100" },
+  event_inventory:{ emoji: "🪑", label: "Inventory",      color: "bg-teal-50 text-teal-700 border-teal-100" },
+  client_choices: { emoji: "✅", label: "Selections",     color: "bg-violet-50 text-violet-700 border-violet-100" },
   other:          { emoji: "📁", label: "File",           color: "bg-gray-50 text-gray-600 border-gray-100" },
 };
 
-const STATUS_BADGE: Record<string, { label: string; color: string }> = {
-  signed:    { label: "Signed",    color: "bg-green-50 text-green-700 border-green-200" },
-  sent:      { label: "Awaiting your signature", color: "bg-amber-50 text-amber-700 border-amber-200" },
-  draft:     { label: "Draft",     color: "bg-gray-50 text-gray-500 border-gray-200" },
-  paid:      { label: "Paid",      color: "bg-green-50 text-green-700 border-green-200" },
-  overdue:   { label: "Overdue",   color: "bg-red-50 text-red-600 border-red-200" },
-  cancelled: { label: "Void",      color: "bg-gray-50 text-gray-400 border-gray-200" },
-};
+function StatusBadge({ doc }: { doc: CoupleDocument }) {
+  const badge = coupleDocumentStatusBadge(doc.docType, doc.status);
+  if (!badge) return null;
+  return <Badge className={`text-[10px] px-1.5 py-0 border ${badge.color}`}>{badge.label}</Badge>;
+}
 
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
@@ -83,9 +108,18 @@ function fmtBytes(b: number) {
 
 // ── Contract card — real content, read inline, sign if pending ────────────────
 
-function ContractCard({ doc }: { doc: CoupleDocument }) {
+function ContractCard({
+  doc,
+  token,
+  onOpenFile,
+}: {
+  doc: CoupleDocument;
+  token: string;
+  onOpenFile: (doc: CoupleDocumentViewTarget) => void;
+}) {
   const [expanded, setExpanded] = useState(false);
   const needsSignature = doc.status === "sent" && !!doc.signToken;
+  const viewTarget = coupleDocumentViewTarget(doc, token);
 
   return (
     <div className={`w-full rounded-xl border overflow-hidden ${needsSignature ? "border-amber-300 bg-amber-50/30" : "border-border/60 bg-card"}`}>
@@ -94,25 +128,29 @@ function ContractCard({ doc }: { doc: CoupleDocument }) {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm font-medium text-heading truncate">{doc.name}</span>
-            {doc.status && STATUS_BADGE[doc.status] && (
-              <Badge className={`text-[10px] px-1.5 py-0 border ${STATUS_BADGE[doc.status].color}`}>{STATUS_BADGE[doc.status].label}</Badge>
-            )}
+            <StatusBadge doc={doc} />
           </div>
           <div className="flex items-center gap-3 mt-0.5 text-[11px] text-muted-foreground">
             {doc.signedAt ? <span>Signed {fmtDate(doc.signedAt)}</span> : <span>Shared {fmtDate(doc.createdAt)}</span>}
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          {doc.fileUrl && (
-            <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer"
-              className="text-xs font-semibold text-[var(--venue-primary)] hover:opacity-80 transition-opacity">
-              Open ↗
-            </a>
+          {viewTarget && (
+            <button
+              type="button"
+              onClick={() => onOpenFile(viewTarget)}
+              data-testid="portal-document-open"
+              className="text-xs font-semibold text-[var(--venue-primary)] hover:opacity-80 transition-opacity"
+            >
+              Open
+            </button>
           )}
-          <button type="button" onClick={() => setExpanded((v) => !v)}
-            className="text-xs text-[var(--venue-primary)] hover:underline">
-            {expanded ? "Hide" : "Review"}
-          </button>
+          {doc.content ? (
+            <button type="button" onClick={() => setExpanded((v) => !v)}
+              className="text-xs text-[var(--venue-primary)] hover:underline">
+              {expanded ? "Hide" : "Review"}
+            </button>
+          ) : null}
         </div>
       </div>
       {expanded && doc.content && (
@@ -133,9 +171,20 @@ function ContractCard({ doc }: { doc: CoupleDocument }) {
 
 // ── Invoice card — real line items + balance due ───────────────────────────────
 
-function InvoiceCard({ doc }: { doc: CoupleDocument }) {
+function InvoiceCard({
+  doc,
+  token,
+  schedule,
+  onOpenFile,
+}: {
+  doc: CoupleDocument;
+  token: string;
+  schedule?: PortalSchedule | null;
+  onOpenFile: (doc: CoupleDocumentViewTarget) => void;
+}) {
   const [expanded, setExpanded] = useState(false);
   const hasBalance = (doc.balanceDue ?? 0) > 0;
+  const viewTarget = coupleDocumentViewTarget(doc, token);
 
   return (
     <div className={`w-full rounded-xl border overflow-hidden ${hasBalance ? "border-amber-300 bg-amber-50/30" : "border-border/60 bg-card"}`}>
@@ -144,27 +193,60 @@ function InvoiceCard({ doc }: { doc: CoupleDocument }) {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm font-medium text-heading truncate">{doc.name}</span>
-            {doc.status && STATUS_BADGE[doc.status] && (
-              <Badge className={`text-[10px] px-1.5 py-0 border ${STATUS_BADGE[doc.status].color}`}>{STATUS_BADGE[doc.status].label}</Badge>
-            )}
+            <StatusBadge doc={doc} />
           </div>
+          {doc.invoiceNumber ? (
+            <p className="text-[11px] text-muted-foreground">{doc.invoiceNumber}</p>
+          ) : null}
           <div className="flex items-center gap-3 mt-0.5 text-[11px] text-muted-foreground">
             <span>Total {fmtCurrency(doc.amount ?? 0)}</span>
-            {hasBalance && <span className="text-amber-700 font-medium">· {fmtCurrency(doc.balanceDue!)} due</span>}
+            {hasBalance && <span className="text-amber-700 font-medium">· Balance: {fmtCurrency(doc.balanceDue!)}</span>}
           </div>
         </div>
-        <button type="button" onClick={() => setExpanded((v) => !v)} className="text-xs text-[var(--venue-primary)] hover:underline shrink-0">
-          {expanded ? "Hide" : "Details"}
-        </button>
+        <div className="flex shrink-0 items-center gap-2">
+          {viewTarget && (
+            <button
+              type="button"
+              onClick={() => onOpenFile(viewTarget)}
+              data-testid="portal-document-open"
+              className="text-xs font-semibold text-[var(--venue-primary)] hover:opacity-80 transition-opacity"
+            >
+              Open
+            </button>
+          )}
+          <button type="button" onClick={() => setExpanded((v) => !v)} className="text-xs text-[var(--venue-primary)] hover:underline">
+            {expanded ? "Hide" : "Details"}
+          </button>
+        </div>
       </div>
-      {expanded && doc.lineItems && (
-        <div className="px-3 pb-3 border-t border-border/40 pt-3 space-y-1.5">
-          {doc.lineItems.map((li) => (
-            <div key={li.id} className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>{li.description} {li.quantity !== 1 && <span className="opacity-70">× {li.quantity}</span>}</span>
-              <span className="font-mono">{fmtCurrency(li.amount)}</span>
+      {expanded && (
+        <div className="px-3 pb-3 border-t border-border/40 pt-3 space-y-3">
+          {doc.lineItems && doc.lineItems.length > 0 && (
+            <div className="space-y-1.5">
+              {doc.lineItems.map((li) => (
+                <div key={li.id} className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>{li.description} {li.quantity !== 1 && <span className="opacity-70">× {li.quantity}</span>}</span>
+                  <span className="font-mono">{fmtCurrency(li.amount)}</span>
+                </div>
+              ))}
             </div>
-          ))}
+          )}
+          {schedule && schedule.lineItems.length > 0 && (
+            <div className="space-y-1.5" data-testid="invoice-installment-schedule">
+              <p className="text-[11px] font-medium text-heading">Payment plan</p>
+              {schedule.lineItems.map((li) => (
+                <div key={li.id} className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>
+                    {li.label}
+                    {li.dueDate ? ` · due ${fmtDate(li.dueDate + "T12:00:00")}` : ""}
+                    {" · "}
+                    <span className="capitalize">{li.status.replace(/_/g, " ")}</span>
+                  </span>
+                  <span className="font-mono">{fmtCurrency(li.amount)}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
       {hasBalance && (
@@ -178,14 +260,92 @@ function InvoiceCard({ doc }: { doc: CoupleDocument }) {
   );
 }
 
+// ── Event Order card — shared final order; opens existing portal section ─────
+
+function EventOrderCard({
+  doc,
+  onNavigate,
+}: {
+  doc: CoupleDocument;
+  onNavigate?: DocumentsNavigate;
+}) {
+  const agreed = Boolean(doc.clientAgreedAt) || doc.status === "agreed";
+  return (
+    <button
+      type="button"
+      onClick={() => onNavigate?.("event-order")}
+      data-testid="portal-documents-event-order"
+      className="w-full text-left flex items-center gap-3 rounded-xl border border-border/60 bg-card px-3 py-3 transition-opacity hover:opacity-90"
+    >
+      <div className="w-9 h-9 rounded-lg flex items-center justify-center text-lg border bg-emerald-50 text-emerald-700 border-emerald-100 shrink-0">📦</div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-sm font-medium text-heading truncate">{doc.name || "Event Order"}</span>
+          <Badge className={`text-[10px] px-1.5 py-0 border ${agreed ? "bg-green-50 text-green-700 border-green-200" : "bg-emerald-50 text-emerald-700 border-emerald-200"}`}>
+            {agreed ? "Approved" : "Shared"}
+          </Badge>
+        </div>
+        <div className="flex items-center gap-3 mt-0.5 text-[11px] text-muted-foreground">
+          <span>Event Order</span>
+          <span>· Shared {fmtDate(doc.createdAt)}</span>
+        </div>
+      </div>
+      <span className="text-xs font-semibold text-[var(--venue-primary)] shrink-0">
+        {agreed ? "Open →" : "Review →"}
+      </span>
+    </button>
+  );
+}
+
+function InventoryAgreementCard({
+  doc,
+  onNavigate,
+}: {
+  doc: CoupleDocument;
+  onNavigate?: DocumentsNavigate;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onNavigate?.("inventory")}
+      data-testid="portal-documents-inventory"
+      className="w-full text-left flex items-center gap-3 rounded-xl border border-border/60 bg-card px-3 py-3 transition-opacity hover:opacity-90"
+    >
+      <div className="w-9 h-9 rounded-lg flex items-center justify-center text-lg border bg-teal-50 text-teal-700 border-teal-100 shrink-0">🪑</div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-sm font-medium text-heading truncate">{doc.name || "Inventory Agreement"}</span>
+          <Badge className="text-[10px] px-1.5 py-0 border bg-green-50 text-green-700 border-green-200">
+            Finalized
+          </Badge>
+        </div>
+        <div className="flex items-center gap-3 mt-0.5 text-[11px] text-muted-foreground">
+          <span>Inventory Agreement</span>
+          <span>· Locked {fmtDate(doc.createdAt)}</span>
+        </div>
+      </div>
+      <span className="text-xs font-semibold text-[var(--venue-primary)] shrink-0">Open →</span>
+    </button>
+  );
+}
+
 // ── Generic document / receipt row ──────────────────────────────────────────
 
-function DocRow({ doc }: { doc: CoupleDocument }) {
+function DocRow({
+  doc,
+  token,
+  onOpenFile,
+}: {
+  doc: CoupleDocument;
+  token: string;
+  onOpenFile: (doc: CoupleDocumentViewTarget) => void;
+}) {
   const meta = DOC_META[doc.docType] ?? DOC_META.other;
   const fromVendor =
     doc.uploadedBy === "vendor"
       ? (doc.vendorName?.trim() ? `From ${doc.vendorName.trim()}` : "From your vendors")
       : null;
+  const viewTarget = coupleDocumentViewTarget(doc, token);
 
   return (
     <div className="flex w-full items-center gap-3 rounded-xl border border-border/60 bg-card px-3 py-3 group">
@@ -207,11 +367,15 @@ function DocRow({ doc }: { doc: CoupleDocument }) {
           <span>· {fmtDate(doc.createdAt)}</span>
         </div>
       </div>
-      {doc.fileUrl && (
-        <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer"
-          className="shrink-0 text-xs font-semibold text-[var(--venue-primary)] hover:opacity-80 transition-opacity">
-          Open ↗
-        </a>
+      {viewTarget && (
+        <button
+          type="button"
+          onClick={() => onOpenFile(viewTarget)}
+          data-testid="portal-document-open"
+          className="shrink-0 text-xs font-semibold text-[var(--venue-primary)] hover:opacity-80 transition-opacity"
+        >
+          Open
+        </button>
       )}
     </div>
   );
@@ -233,31 +397,60 @@ function ReceiptRow({ r }: { r: PaidLineItem }) {
   );
 }
 
-// ── Questionnaire card — Program 4, Initiative C, Phase 6 (2026-07-23):
-// a questionnaire is a document as much as it's a task; the couple should
-// never wonder where it lives. Reuses the existing questionnaire status,
-// links back to the same section Tasks already navigates to.
+// Questionnaire cards — same portal questionnaire records (not a second store).
+// Submitted/complete open the read-only answers review in the Questionnaire section.
 const QUESTIONNAIRE_STATUS_BADGE: Record<string, { label: string; color: string }> = {
   not_started: { label: "Not started", color: "bg-amber-50 text-amber-700 border-amber-200" },
+  sent:        { label: "To complete", color: "bg-amber-50 text-amber-700 border-amber-200" },
   in_progress: { label: "In progress", color: "bg-amber-50 text-amber-700 border-amber-200" },
   submitted:   { label: "Submitted",   color: "bg-green-50 text-green-700 border-green-200" },
-  completed:   { label: "Submitted",   color: "bg-green-50 text-green-700 border-green-200" },
+  resubmitted: { label: "Resubmitted", color: "bg-green-50 text-green-700 border-green-200" },
+  changes_requested: { label: "Changes requested", color: "bg-amber-50 text-amber-700 border-amber-200" },
+  complete:    { label: "Complete",    color: "bg-green-50 text-green-700 border-green-200" },
+  completed:   { label: "Complete",    color: "bg-green-50 text-green-700 border-green-200" },
 };
 
-function QuestionnaireCard({ status, onNavigate }: { status: string; onNavigate: (s: "questionnaire") => void }) {
-  const badge = QUESTIONNAIRE_STATUS_BADGE[status] ?? QUESTIONNAIRE_STATUS_BADGE.not_started;
-  const isDone = status === "submitted" || status === "completed";
+function QuestionnaireCard({
+  row,
+  onNavigate,
+}: {
+  row: QuestionnaireDocSummary;
+  onNavigate: (s: "questionnaire") => void;
+}) {
+  const badge = QUESTIONNAIRE_STATUS_BADGE[row.status] ?? QUESTIONNAIRE_STATUS_BADGE.not_started;
+  const isDone = isSubmittedQuestionnaireDocumentStatus(row.status);
+  const title = submittedQuestionnaireTitle(row.kind);
 
   return (
-    <button type="button" onClick={() => onNavigate("questionnaire")}
-      className={`w-full text-left flex items-center gap-3 rounded-xl border px-3 py-3 transition-opacity hover:opacity-90 ${isDone ? "border-border/60 bg-card" : "border-amber-300 bg-amber-50/30"}`}>
+    <button
+      type="button"
+      onClick={() => {
+        const key = row.questionnaire_id ?? row.access_key ?? "";
+        if (key && typeof window !== "undefined") {
+          try {
+            sessionStorage.setItem(DOCS_QUESTIONNAIRE_HANDOFF_KEY, key);
+          } catch {
+            // ignore quota / private mode
+          }
+        }
+        onNavigate("questionnaire");
+      }}
+      data-testid="portal-documents-questionnaire"
+      data-questionnaire-id={row.questionnaire_id ?? ""}
+      data-status={row.status}
+      className={`w-full text-left flex items-center gap-3 rounded-xl border px-3 py-3 transition-opacity hover:opacity-90 ${isDone ? "border-border/60 bg-card" : "border-amber-300 bg-amber-50/30"}`}
+    >
       <div className="w-9 h-9 rounded-lg flex items-center justify-center text-lg border bg-purple-50 text-purple-700 border-purple-100 shrink-0">📋</div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-sm font-medium text-heading">Final Details Questionnaire</span>
+          <span className="text-sm font-medium text-heading">{title}</span>
           <Badge className={`text-[10px] px-1.5 py-0 border ${badge.color}`}>{badge.label}</Badge>
         </div>
-        <p className="text-[11px] text-muted-foreground mt-0.5">Meal selections, music, emergency contact, and more.</p>
+        <p className="text-[11px] text-muted-foreground mt-0.5">
+          {isDone
+            ? "Your submitted answers — open to review (read-only)."
+            : "Open to complete and submit your answers."}
+        </p>
       </div>
       <span className="text-xs font-semibold text-[var(--venue-primary)] shrink-0">{isDone ? "Review →" : "Complete →"}</span>
     </button>
@@ -355,22 +548,24 @@ function UploadRow({ token, onDone }: { token: string; onDone: () => void }) {
       id={portalFocusElementId("documents", "upload")}
       className="flex flex-col items-end gap-2 sm:flex-row sm:items-center sm:gap-3"
     >
-      <label className="flex items-center gap-2 text-xs text-gray-500 cursor-pointer hover:text-gray-700">
+      <label className="flex min-h-9 items-center gap-2 text-xs font-medium text-foreground cursor-pointer">
         <input
           type="checkbox"
           checked={isInsurance}
           onChange={(e) => handleInsuranceToggle(e.target.checked)}
-          className="rounded"
+          className="h-4 w-4 shrink-0 rounded border border-input bg-background text-primary accent-primary"
+          aria-label="Event insurance"
         />
         Event insurance
       </label>
-      <label className="flex items-center gap-2 text-xs text-gray-500 cursor-pointer hover:text-gray-700">
+      <label className={`flex min-h-9 items-center gap-2 text-xs font-medium cursor-pointer ${isInsurance ? "text-muted-foreground" : "text-foreground"}`}>
         <input
           type="checkbox"
           checked={shareWithVenue || isInsurance}
           onChange={(e) => handleShareToggle(e.target.checked)}
-          className="rounded"
+          className="h-4 w-4 shrink-0 rounded border border-input bg-background text-primary accent-primary disabled:opacity-60"
           disabled={isInsurance}
+          aria-label={isInsurance ? "Share with venue (required)" : "Share with venue"}
         />
         Share with venue{isInsurance ? " (required)" : ""}
       </label>
@@ -381,7 +576,14 @@ function UploadRow({ token, onDone }: { token: string; onDone: () => void }) {
         className="hidden"
         onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ""; }}
       />
-      <Button size="sm" variant="outline" disabled={uploading} onClick={() => fileRef.current?.click()} className="text-xs">
+      <Button
+        size="sm"
+        variant="outline"
+        disabled={uploading}
+        onClick={() => fileRef.current?.click()}
+        className="min-h-9 border-border bg-background text-foreground hover:bg-muted"
+        data-testid="portal-upload-document"
+      >
         {uploading ? "Uploading…" : isInsurance ? "+ Upload insurance" : "+ Upload document"}
       </Button>
     </div>
@@ -390,11 +592,19 @@ function UploadRow({ token, onDone }: { token: string; onDone: () => void }) {
 
 // ── Main Component ────────────────────────────────────────────────────────────
 
-export default function CoupleDocumentsSection({ token, onNavigate }: { token: string; onNavigate?: (s: "questionnaire") => void }) {
+export default function CoupleDocumentsSection({
+  token,
+  onNavigate,
+}: {
+  token: string;
+  onNavigate?: DocumentsNavigate;
+}) {
   const [documents, setDocuments] = useState<CoupleDocument[]>([]);
   const [receipts, setReceipts] = useState<PaidLineItem[]>([]);
-  const [questionnaire, setQuestionnaire] = useState<QuestionnaireSummary | null>(null);
+  const [schedules, setSchedules] = useState<PortalSchedule[]>([]);
+  const [questionnaires, setQuestionnaires] = useState<QuestionnaireDocSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [viewerDoc, setViewerDoc] = useState<CoupleDocumentViewTarget | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -406,16 +616,36 @@ export default function CoupleDocumentsSection({ token, onNavigate }: { token: s
       ]);
       const [docsJson, paymentsJson, questionnaireJson] = await Promise.all([docsRes.json(), paymentsRes.json(), questionnaireRes.json()]);
       setDocuments(docsJson.documents ?? []);
-      setQuestionnaire(questionnaireJson.questionnaire ? { status: questionnaireJson.questionnaire.status } : null);
+      const list = (questionnaireJson.questionnaires ?? []) as QuestionnaireDocSummary[];
+      // Prefer full list; fall back to singular back-compat payload.
+      setQuestionnaires(
+        list.length > 0
+          ? list
+          : questionnaireJson.questionnaire
+            ? [questionnaireJson.questionnaire as QuestionnaireDocSummary]
+            : [],
+      );
 
       // Receipts are derived from paid payment line items — not a separate
       // entity (Client Collaboration Workspace, 2026-07-22): "the client
       // should never need to find these through emails," but Hello to
       // Cheers has no first-class Receipt record, so this reuses the same
       // payment data the Payments tab already reads.
-      type Schedule = { title: string; lineItems: { id: string; label: string; amount: number; status: string; paidAt: string | null; paidAmount: number | null; paymentMethod: string | null }[] };
-      const schedules = (paymentsJson.schedules ?? []) as Schedule[];
-      const paid: PaidLineItem[] = schedules.flatMap((s) =>
+      type Schedule = { id: string; title: string; invoiceId?: string | null; lineItems: { id: string; label: string; amount: number; dueDate?: string | null; status: string; paidAt: string | null; paidAmount: number | null; paymentMethod: string | null }[] };
+      const nextSchedules = (paymentsJson.schedules ?? []) as Schedule[];
+      setSchedules(nextSchedules.map((s) => ({
+        id: s.id,
+        title: s.title,
+        invoiceId: s.invoiceId ?? null,
+        lineItems: s.lineItems.map((li) => ({
+          id: li.id,
+          label: li.label,
+          amount: li.amount,
+          dueDate: li.dueDate ?? null,
+          status: li.status,
+        })),
+      })));
+      const paid: PaidLineItem[] = nextSchedules.flatMap((s) =>
         s.lineItems.filter((li) => li.status === "paid" && li.paidAt).map((li) => ({
           id: li.id, label: li.label, amount: li.amount, paidAt: li.paidAt!, paidAmount: li.paidAmount,
           paymentMethod: li.paymentMethod, scheduleTitle: s.title,
@@ -435,20 +665,36 @@ export default function CoupleDocumentsSection({ token, onNavigate }: { token: s
 
   const contracts = documents.filter((d) => d.docType === "contract");
   const invoices = documents.filter((d) => d.docType === "invoice");
-  const venueShared = documents.filter((d) => d.uploadedBy === "venue" && d.docType !== "contract" && d.docType !== "invoice");
+  const eventOrders = documents.filter((d) => d.docType === "event_order");
+  const inventories = documents.filter((d) => d.docType === "event_inventory");
+  const venueShared = documents.filter(
+    (d) =>
+      d.uploadedBy === "venue"
+      && d.docType !== "contract"
+      && d.docType !== "invoice"
+      && d.docType !== "event_order"
+      && d.docType !== "event_inventory",
+  );
   const vendorShared = documents.filter((d) => d.uploadedBy === "vendor" && d.docType !== "contract" && d.docType !== "invoice");
   const coupleUploaded = documents.filter((d) => d.uploadedBy === "couple");
 
   const pendingSignature = contracts.filter((c) => c.status === "sent" && c.signToken);
-  const isEmpty = documents.length === 0 && receipts.length === 0 && !questionnaire;
+  const isEmpty = documents.length === 0 && receipts.length === 0 && questionnaires.length === 0;
 
   return (
     <div id="portal-focus-documents-sign" className="w-full space-y-8">
+      <CoupleDocumentViewerDialog
+        doc={viewerDoc}
+        open={viewerDoc != null}
+        onOpenChange={(open) => {
+          if (!open) setViewerDoc(null);
+        }}
+      />
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 className="text-sm font-semibold text-heading">Documents</h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Contracts, invoices, receipts, and anything your venue or vendors share — all in one place.
+            Contracts, invoices, questionnaires, your Event Order, receipts, and anything your venue or vendors share — all in one place.
           </p>
         </div>
         <UploadRow token={token} onDone={load} />
@@ -465,7 +711,7 @@ export default function CoupleDocumentsSection({ token, onNavigate }: { token: s
       {pendingSignature.length > 0 && (
         <div className="w-full rounded-xl border border-amber-300 bg-amber-50/40 px-3 py-3">
           <p className="text-sm font-semibold text-amber-800">
-            ✍️ {pendingSignature.length} contract{pendingSignature.length === 1 ? "" : "s"} waiting for your signature
+            ✍️ {`${pendingSignature.length} contract${pendingSignature.length === 1 ? "" : "s"} waiting for your signature`}
           </p>
         </div>
       )}
@@ -473,21 +719,61 @@ export default function CoupleDocumentsSection({ token, onNavigate }: { token: s
       {contracts.length > 0 && (
         <section className="space-y-3">
           <h3 className="text-sm font-semibold text-heading">Contracts</h3>
-          <div className="space-y-2">{contracts.map((doc) => <ContractCard key={doc.id} doc={doc} />)}</div>
+          <div className="space-y-2">{contracts.map((doc) => (
+            <ContractCard key={doc.id} doc={doc} token={token} onOpenFile={setViewerDoc} />
+          ))}</div>
         </section>
       )}
 
-      {questionnaire && onNavigate && (
-        <section className="space-y-3">
-          <h3 className="text-sm font-semibold text-heading">Questionnaire</h3>
-          <QuestionnaireCard status={questionnaire.status} onNavigate={onNavigate} />
+      {eventOrders.length > 0 && (
+        <section className="space-y-3" data-testid="portal-documents-event-orders">
+          <h3 className="text-sm font-semibold text-heading">Event Order</h3>
+          <div className="space-y-2">
+            {eventOrders.map((doc) => (
+              <EventOrderCard key={doc.id} doc={doc} onNavigate={onNavigate} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {inventories.length > 0 && (
+        <section className="space-y-3" data-testid="portal-documents-inventories">
+          <h3 className="text-sm font-semibold text-heading">Inventory Agreement</h3>
+          <div className="space-y-2">
+            {inventories.map((doc) => (
+              <InventoryAgreementCard key={doc.id} doc={doc} onNavigate={onNavigate} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {questionnaires.length > 0 && onNavigate && (
+        <section className="space-y-3" data-testid="portal-documents-questionnaires">
+          <h3 className="text-sm font-semibold text-heading">Questionnaires</h3>
+          <div className="space-y-2">
+            {questionnaires.map((row) => (
+              <QuestionnaireCard
+                key={row.questionnaire_id ?? row.access_key ?? `${row.kind}-${row.status}`}
+                row={row}
+                onNavigate={onNavigate}
+              />
+            ))}
+          </div>
         </section>
       )}
 
       {invoices.length > 0 && (
         <section className="space-y-3">
           <h3 className="text-sm font-semibold text-heading">Invoices</h3>
-          <div className="space-y-2">{invoices.map((doc) => <InvoiceCard key={doc.id} doc={doc} />)}</div>
+          <div className="space-y-2">{invoices.map((doc) => (
+            <InvoiceCard
+              key={doc.id}
+              doc={doc}
+              token={token}
+              schedule={schedules.find((s) => s.invoiceId === doc.id) ?? null}
+              onOpenFile={setViewerDoc}
+            />
+          ))}</div>
         </section>
       )}
 
@@ -501,21 +787,27 @@ export default function CoupleDocumentsSection({ token, onNavigate }: { token: s
       {venueShared.length > 0 && (
         <section className="space-y-3">
           <h3 className="text-sm font-semibold text-heading">From your venue</h3>
-          <div className="space-y-2">{venueShared.map((doc) => <DocRow key={doc.id} doc={doc} />)}</div>
+          <div className="space-y-2">{venueShared.map((doc) => (
+            <DocRow key={doc.id} doc={doc} token={token} onOpenFile={setViewerDoc} />
+          ))}</div>
         </section>
       )}
 
       {vendorShared.length > 0 && (
         <section className="space-y-3">
           <h3 className="text-sm font-semibold text-heading">From your vendors</h3>
-          <div className="space-y-2">{vendorShared.map((doc) => <DocRow key={doc.id} doc={doc} />)}</div>
+          <div className="space-y-2">{vendorShared.map((doc) => (
+            <DocRow key={doc.id} doc={doc} token={token} onOpenFile={setViewerDoc} />
+          ))}</div>
         </section>
       )}
 
       {coupleUploaded.length > 0 && (
         <section className="space-y-3">
           <h3 className="text-sm font-semibold text-heading">Your uploads</h3>
-          <div className="space-y-2">{coupleUploaded.map((doc) => <DocRow key={doc.id} doc={doc} />)}</div>
+          <div className="space-y-2">{coupleUploaded.map((doc) => (
+            <DocRow key={doc.id} doc={doc} token={token} onOpenFile={setViewerDoc} />
+          ))}</div>
         </section>
       )}
     </div>

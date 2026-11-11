@@ -1,22 +1,48 @@
 /**
  * Brochures application service. Server-only.
  */
+import { createAdminClient } from "@/integrations/supabase/admin";
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured, publicAppOrigin } from "@/lib/env";
 import * as repo from "@/lib/brochures/repository";
 import type {
-  Brochure, BrochureActionResult, BrochureInput, BrochureRenderData, BrochureWithActivity,
-  CreateBrochureResult,
+  Brochure,   BrochureActionResult, BrochureInput, BrochureRenderData, BrochureWithActivity,
+  CreateBrochureResult, DeleteBrochurePhotoResult,
 } from "@/lib/brochures/types";
 import {
   normalizeBrochurePhotoLayout,
   normalizeBrochurePhotoUrls,
 } from "@/lib/brochures/photo-layout";
+import { brochurePhotoObjectPath, withoutBrochurePhoto } from "@/lib/brochures/photo-storage";
+import { publicAvailabilityPath } from "@/lib/availability/public-calendar-month";
 import { getCurrentVenue } from "@/lib/venue/service";
 import { getPackages } from "@/lib/packages/service";
 import { getLead } from "@/lib/leads/service";
 import { leadDisplayName } from "@/lib/leads/constants";
 import { sendEmail } from "@/lib/email/send";
+import {
+  emailBrandFromVenue,
+  escapeHtml,
+  renderBrandedEmailHtml,
+} from "@/lib/email/venue-brand";
+
+/** Client-facing brochure FAQ visibility — shared by authenticated preview and public token render. */
+export type VenueGuideFaq = {
+  question: string;
+  answer: string;
+  audience?: string;
+  published?: boolean;
+};
+
+/**
+ * Brochure FAQs come only from Venue Guide (`venue_operational_info.faqs`).
+ * Unpublished starters stay out. Vendor-only FAQs stay out of client brochures.
+ */
+export function faqsForClientBrochure(faqs: VenueGuideFaq[]): { question: string; answer: string }[] {
+  return faqs
+    .filter((f) => f.audience !== "vendors" && f.published !== false)
+    .map((f) => ({ question: f.question, answer: f.answer }));
+}
 
 async function withVenue<T>(
   fn: (supabase: Awaited<ReturnType<typeof createClient>>, venueId: string) => Promise<T>,
@@ -67,9 +93,7 @@ export async function getBrochureRenderData(id: string): Promise<BrochureRenderD
       ? supabase.from("venue_operational_info").select("faqs").eq("venue_id", venue.id).maybeSingle<{ faqs: { question: string; answer: string; audience?: string }[] }>()
       : Promise.resolve({ data: null }),
   ]);
-  const faqsRaw = (guideRes.data?.faqs ?? []) as {
-    question: string; answer: string; audience?: string; published?: boolean;
-  }[];
+  const faqsRaw = (guideRes.data?.faqs ?? []) as VenueGuideFaq[];
 
   return {
     brochure: {
@@ -82,12 +106,12 @@ export async function getBrochureRenderData(id: string): Promise<BrochureRenderD
       logoUrl: venue.logoUrl ?? null, story: venue.story ?? null, heroImageUrl: venue.heroImageUrl ?? null,
       primaryColor: venue.primaryColor || "#5D6F5D", secondaryColor: venue.secondaryColor || "#4F5F4F",
       accentColor: venue.accentColor || "#B8AEA1",
+      neutralColor: venue.neutralColor || "#F7F5F1",
       email: venue.email ?? null, phone: venue.phone ?? null, website: venue.website ?? null,
     },
     packages: packagesAll.map((p) => ({ name: p.name, description: p.description, basePrice: p.basePrice, category: p.category })),
-    faqs: faqsRaw
-      .filter((f) => f.audience !== "vendors" && f.published !== false)
-      .map((f) => ({ question: f.question, answer: f.answer })),
+    faqs: faqsForClientBrochure(faqsRaw),
+    availabilityPath: publicAvailabilityPath(venue.embedKey),
   };
 }
 
@@ -97,6 +121,7 @@ type PublicBrochureRow = {
   venue_id: string; venue_name: string; venue_business_name: string | null; venue_logo_url: string | null; venue_story: string | null;
   venue_hero_image_url: string | null; venue_primary_color: string; venue_secondary_color: string; venue_accent_color: string;
   venue_email: string | null; venue_phone: string | null; venue_website: string | null;
+  venue_embed_key?: string | null;
   packages: { name: string; description: string | null; basePrice: number | null; category: string | null }[];
   faqs: { question: string; answer: string; audience?: string; published?: boolean }[];
 };
@@ -110,6 +135,20 @@ export async function getBrochureRenderDataByToken(token: string): Promise<Broch
   const row = (Array.isArray(data) ? data[0] : data) as PublicBrochureRow;
   if (!row?.id) return null;
 
+  // Public RPC historically omitted neutral; load from venues without a second branding system.
+  let neutralColor = "#F7F5F1";
+  try {
+    const admin = createAdminClient();
+    const { data: colorRow } = await admin
+      .from("venues")
+      .select("neutral_color")
+      .eq("id", row.venue_id)
+      .maybeSingle<{ neutral_color: string | null }>();
+    if (colorRow?.neutral_color) neutralColor = colorRow.neutral_color;
+  } catch {
+    // Keep default when admin lookup is unavailable.
+  }
+
   return {
     brochure: {
       id: row.id, name: row.name, welcomeText: row.welcome_text,
@@ -122,15 +161,13 @@ export async function getBrochureRenderDataByToken(token: string): Promise<Broch
       logoUrl: row.venue_logo_url, story: row.venue_story, heroImageUrl: row.venue_hero_image_url,
       primaryColor: row.venue_primary_color || "#5D6F5D", secondaryColor: row.venue_secondary_color || "#4F5F4F",
       accentColor: row.venue_accent_color || "#B8AEA1",
+      neutralColor,
       email: row.venue_email, phone: row.venue_phone, website: row.venue_website,
     },
     packages: row.include_packages ? (row.packages ?? []).map((p) => ({ name: p.name, description: p.description, basePrice: p.basePrice, category: p.category })) : [],
-    // RPC already applies filter_published_venue_faqs; keep published!==false as defense-in-depth.
-    faqs: row.include_faqs
-      ? (row.faqs ?? [])
-          .filter((f) => f.audience !== "vendors" && f.published !== false)
-          .map((f) => ({ question: f.question, answer: f.answer }))
-      : [],
+    // RPC already applies filter_published_venue_faqs; keep the same client rule as defense-in-depth.
+    faqs: row.include_faqs ? faqsForClientBrochure(row.faqs ?? []) : [],
+    availabilityPath: publicAvailabilityPath(row.venue_embed_key),
   };
 }
 
@@ -150,12 +187,24 @@ export async function createBrochure(input: BrochureInput): Promise<CreateBrochu
 export async function updateBrochure_(id: string, input: BrochureInput): Promise<BrochureActionResult> {
   const errors = validateInput(input);
   if (Object.keys(errors).length > 0) return { ok: false, errors };
-  const result = await withVenue(async (supabase, venueId) => {
-    await repo.updateBrochure(supabase, venueId, id, input);
-    await repo.insertActivity(supabase, venueId, id, "updated", "Brochure updated");
-    return { ok: true } as BrochureActionResult;
-  });
-  return result as BrochureActionResult;
+  try {
+    const result = await withVenue(async (supabase, venueId) => {
+      await repo.updateBrochure(supabase, venueId, id, input);
+      await repo.insertActivity(supabase, venueId, id, "updated", "Brochure updated");
+      return { ok: true } as BrochureActionResult;
+    });
+    return result as BrochureActionResult;
+  } catch (err) {
+    return { ok: false, message: actionErrorMessage(err, "Could not save brochure.") };
+  }
+}
+
+function actionErrorMessage(err: unknown, fallback: string): string {
+  if (err instanceof Error && err.message) return err.message;
+  if (err && typeof err === "object" && "message" in err && typeof err.message === "string" && err.message) {
+    return err.message;
+  }
+  return fallback;
 }
 
 export async function updateBrochurePhotography_(
@@ -163,11 +212,62 @@ export async function updateBrochurePhotography_(
   photoUrls: string[],
   photoLayout: string,
 ): Promise<BrochureActionResult> {
-  const result = await withVenue(async (supabase, venueId) => {
-    await repo.updateBrochurePhotography(supabase, venueId, id, photoUrls, photoLayout);
-    return { ok: true } as BrochureActionResult;
-  });
-  return result as BrochureActionResult;
+  try {
+    const result = await withVenue(async (supabase, venueId) => {
+      await repo.updateBrochurePhotography(supabase, venueId, id, photoUrls, photoLayout);
+      return { ok: true } as BrochureActionResult;
+    });
+    return result as BrochureActionResult;
+  } catch (err) {
+    return { ok: false, message: actionErrorMessage(err, "Could not save photos.") };
+  }
+}
+
+/**
+ * Permanently delete one uploaded brochure photo.
+ * Venue hero images are not brochure-photo objects and are refused.
+ * Another venue's path is refused. Storage is removed only after every
+ * brochure row for this venue has dropped the URL.
+ */
+export async function deleteBrochurePhoto_(
+  brochureId: string,
+  url: string,
+): Promise<DeleteBrochurePhotoResult> {
+  try {
+    const result = await withVenue(async (supabase, venueId) => {
+      const path = brochurePhotoObjectPath(url, venueId);
+      if (!path) {
+        return {
+          ok: false,
+          message: "Only a photo uploaded for brochures can be deleted. The venue photo stays in your venue settings.",
+        } as DeleteBrochurePhotoResult;
+      }
+      const brochures = await repo.getBrochures(supabase, venueId, true);
+      for (const brochure of brochures) {
+        const next = withoutBrochurePhoto(brochure.photoUrls, url);
+        if (next.length === brochure.photoUrls.length) continue;
+        await repo.updateBrochurePhotography(supabase, venueId, brochure.id, next, brochure.photoLayout);
+      }
+      const { error } = await supabase.storage.from("uploads").remove([path]);
+      if (error) {
+        return {
+          ok: false,
+          message: error.message || "Could not delete the uploaded photo.",
+        } as DeleteBrochurePhotoResult;
+      }
+      const current = brochures.find((brochure) => brochure.id === brochureId);
+      return {
+        ok: true,
+        photoUrls: withoutBrochurePhoto(current?.photoUrls ?? [], url),
+      } as DeleteBrochurePhotoResult;
+    });
+    if (result && typeof result === "object" && "ok" in result && result.ok === false && !("photoUrls" in result)) {
+      return { ok: false, message: result.message ?? "Could not delete the photo." };
+    }
+    return result as DeleteBrochurePhotoResult;
+  } catch (err) {
+    return { ok: false, message: actionErrorMessage(err, "Could not delete the photo.") };
+  }
 }
 
 export async function setBrochureArchived_(id: string, isArchived: boolean): Promise<BrochureActionResult> {
@@ -220,7 +320,12 @@ export async function sendBrochureToLead(brochureId: string, leadId: string, cus
       to: lead.email,
       subject: `${brochure.name} — ${venueName}`,
       text: `Hi ${lead.firstName || recipientName},\n\n${intro}\n\nView it here: ${url}\n\n— ${venueName}`,
-      html: `<p>Hi ${lead.firstName || recipientName},</p><p>${intro}</p><p><a href="${url}">View ${brochure.name}</a></p><p>— ${venueName}</p>`,
+      html: renderBrandedEmailHtml(emailBrandFromVenue(venue), [
+        `<p>Hi ${escapeHtml(lead.firstName || recipientName)},</p>`,
+        `<p>${escapeHtml(intro)}</p>`,
+        `<p><a href="${escapeHtml(url)}">View ${escapeHtml(brochure.name)}</a></p>`,
+        `<p>— ${escapeHtml(venueName)}</p>`,
+      ].join("")),
     });
     if (!sendResult.ok) return { ok: false, message: sendResult.message } as BrochureActionResult;
 

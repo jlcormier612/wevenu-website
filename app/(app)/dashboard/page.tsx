@@ -7,16 +7,25 @@ import { Greeting } from "@/components/dashboard/greeting";
 import { MilestoneToast } from "@/components/dashboard/milestone-toast";
 import { DashboardLuvIntro } from "@/components/dashboard/luv-intro";
 import { DashboardLuvEntryCard } from "@/components/dashboard/luv-dashboard-entry";
-import { YourNextStepsCard } from "@/components/dashboard/getting-started";
-import { DigestCallout } from "@/components/dashboard/digest-callout";
+import { BusinessSnapshotSection } from "@/components/dashboard/business-snapshot";
 import { AttentionList } from "@/components/dashboard-system/attention-list";
+import { FocusAttentionRow } from "@/components/dashboard-system/focus-attention-row";
 import { Button } from "@/components/ui/button";
 import { getDashboardData } from "@/lib/dashboard/service";
-import { excludeTodayFocusFromNextSteps, VENUE_NEXT_STEPS_CAP } from "@/lib/dashboard/venue-next-steps";
+import { getBusinessSnapshot } from "@/lib/dashboard/business-snapshot";
+import {
+  forensicCount,
+  forensicExtra,
+  forensicRecordL1,
+  forensicTime,
+  withDashboardForensic,
+} from "@/lib/dashboard/forensic-timing";
 import {
   classifyBriefingItems, classifyUpcomingItems,
   collectCrossSectionSubjects, excludeByCrossSectionSubject,
 } from "@/lib/dashboard-system/decision-engine";
+import { listDismissedDashboardAttentionKeys } from "@/lib/dashboard-system/attention-dismiss";
+import { filterDismissedFocusItems } from "@/lib/dashboard-system/attention-identity";
 import type { ClassifiedItem, Priority } from "@/lib/dashboard-system/decision-engine";
 import { selectLuvDashboardEntry } from "@/lib/dashboard-system/luv-entry";
 
@@ -32,26 +41,37 @@ const PRIORITY_SEVERITY: Record<Priority, "critical" | "warning" | undefined> = 
 };
 
 /**
- * Venue Dashboard — operational front door.
+ * Venue Dashboard — concise awareness / briefing surface.
  *
- * Section jobs (must stay distinct):
- *   1. Today's Focus — what requires attention TODAY (NOW queue)
- *   2. Your Next Steps — what to do AFTER today's urgent work (NEXT queue)
- *   3. Upcoming — what's coming (awareness, not another task queue)
+ * Section order (must stay distinct):
+ *   1. Greeting
+ *   2. Business Snapshot — compact business-state numbers (not Reports)
+ *   3. Today's Focus — what requires attention TODAY (actionable NOW)
+ *   4. Luv
+ *   5. Coming up — what's coming (awareness, not another task queue)
+ *   6. View Reports
  *
- * The same underlying entity must never appear across Today's Focus, Your
- * Next Steps, or Upcoming — see excludeTodayFocusFromNextSteps and
- * excludeByCrossSectionSubject (shared type:id identity keys; date
- * partitioning alone is not enough).
- *
- * The former shortcut grid was removed: every shortcut duplicated primary nav
- * or contextual creation. "+ New Lead" remains as the header primary action.
- * No Bookings nav item — booking is a lifecycle concept, not a domain object.
+ * Owning surfaces do the work (Leads, Inbox/Conversation, Contracts,
+ * Invoices, Tours, Task Center). Dashboard does not reproduce their queues.
+ * "+ New Lead" remains as the header primary action.
  */
 export default async function DashboardPage({ searchParams }: Props) {
-  const [data] = await Promise.all([getDashboardData(), searchParams]);
+  // Phase 3B timer-only forensic — temporary; does not change page semantics.
+  return withDashboardForensic(async () => {
+  const [data, snapshot] = await Promise.all([
+    forensicTime("get_dashboard_data", () => getDashboardData()),
+    forensicTime("business_snapshot", () => getBusinessSnapshot()),
+    searchParams,
+  ]);
 
   if (!data) {
+    forensicExtra("dashboard_data", "null");
+    forensicRecordL1({
+      source: "NONE",
+      type: null,
+      candidate: null,
+      path: "dashboard_unavailable",
+    });
     return (
       <div className="htc-hospitality-page flex flex-col items-center justify-center py-24 text-center">
         <p className="text-muted-foreground">Dashboard unavailable.</p>
@@ -59,37 +79,41 @@ export default async function DashboardPage({ searchParams }: Props) {
     );
   }
 
-  // Precedence: Today's Focus (NOW) is never filtered — it's the highest-
-  // priority section and every other section is filtered against it.
-  const allFocusItems = classifyBriefingItems(data);
-  const focusItems = allFocusItems.slice(0, 10);
+  const assembly = await forensicTime("rsc_focus_l1_assembly", async () => {
+    const dismissedKeys = new Set(await listDismissedDashboardAttentionKeys());
+    const allFocusItems = filterDismissedFocusItems(classifyBriefingItems(data), dismissedKeys);
+    const focusItems = allFocusItems.slice(0, 10);
 
-  // NEXT queue: exclude anything already claimed by Today's Focus, then cap
-  // for display. data.nextSteps arrives at a larger candidate cap
-  // (lib/dashboard/service.ts) specifically so this filter can't quietly
-  // shrink what's visible below VENUE_NEXT_STEPS_CAP real, distinct items.
-  const allNextSteps = excludeTodayFocusFromNextSteps(
-    data.nextSteps,
-    allFocusItems,
-    data.todayIso,
-  );
-  const nextSteps = allNextSteps.slice(0, VENUE_NEXT_STEPS_CAP);
+    const claimedSubjects = collectCrossSectionSubjects(allFocusItems);
+    const upcomingItems = excludeByCrossSectionSubject(classifyUpcomingItems(data), claimedSubjects).slice(0, 10);
 
-  // COMING queue: exclude anything already claimed by Today's Focus or by
-  // the Next Steps actually being shown (not the full candidate set — an
-  // item Next Steps itself didn't have room for is still fair game for
-  // Upcoming to surface).
-  const claimedSubjects = collectCrossSectionSubjects(allFocusItems);
-  for (const step of nextSteps) claimedSubjects.add(step.subjectKey);
-  const upcomingItems = excludeByCrossSectionSubject(classifyUpcomingItems(data), claimedSubjects).slice(0, 10);
+    forensicCount("focus_items_classified", allFocusItems.length);
+    forensicCount("focus_items_shown", focusItems.length);
+    forensicCount("upcoming_items_shown", upcomingItems.length);
+    forensicCount("luv_observations_in", data.luvObservations.length);
+    forensicCount("insight_observations_in", data.insightObservations.length);
+    forensicCount("recommendations_in", data.recommendations.length);
 
-  const luvEntry = data.luvObservationsEnabled
-    ? selectLuvDashboardEntry({
-        focusItems,
-        observations: [...data.luvObservations, ...data.insightObservations],
-        recommendations: data.recommendations,
-      })
-    : null;
+    const luvEntry = data.luvObservationsEnabled
+      ? selectLuvDashboardEntry({
+          focusItems,
+          observations: data.luvObservations,
+          recommendations: [],
+        })
+      : (forensicRecordL1({
+          source: "NONE",
+          type: "observations_disabled",
+          candidate: null,
+          path: "luv_observations_disabled",
+        }), null);
+
+    return { allFocusItems, focusItems, upcomingItems, luvEntry };
+  });
+
+  const { allFocusItems, focusItems, upcomingItems, luvEntry } = assembly;
+
+  // RSC JSX build is sync; serialization cost is not separately measurable here.
+  forensicExtra("rsc_serialization", "UNKNOWN");
 
   return (
     <div className="htc-hospitality-page space-y-4 sm:space-y-6">
@@ -108,14 +132,15 @@ export default async function DashboardPage({ searchParams }: Props) {
         show={data.showLuvIntro}
         setupHref={data.onboarding.show ? "/setup-hub" : "/setup-hub"}
       />
-      {data.showDigestCallout && <DigestCallout />}
 
-      {/* 1. NOW — overdue, due today, urgent operational attention */}
+      {snapshot && <BusinessSnapshotSection cards={snapshot.cards} />}
+
       <section>
         <AttentionList
           icon={<CalendarClock className="h-4 w-4 text-primary" />}
           title="Today's Focus"
           description="What requires attention today."
+          headerBand="eucalyptus"
           headerRight={allFocusItems.length > focusItems.length ? <span className="text-xs text-muted-foreground">{focusItems.length} of {allFocusItems.length}</span> : undefined}
           items={focusItems}
           getKey={(i) => i.id}
@@ -124,26 +149,18 @@ export default async function DashboardPage({ searchParams }: Props) {
               Nothing urgent today — you&apos;re all caught up.
             </p>
           }
-          renderRow={(item) => <ClassifiedRow item={item} />}
+          renderRow={(item) => <FocusAttentionRow item={item} />}
         />
       </section>
 
-      {/* Luv interprets Today's Focus — not a second task list */}
       {luvEntry && <DashboardLuvEntryCard entry={luvEntry} />}
 
-      {/* 2. NEXT — actionable follow-ups that are not today's urgent work */}
-      {nextSteps.length > 0 && (
-        <section id="your-next-steps">
-          <YourNextStepsCard items={nextSteps} today={data.todayIso} />
-        </section>
-      )}
-
-      {/* 3. COMING — upcoming events only (not payments, tasks, or other dates) */}
       <section>
         <AttentionList
           icon={<CalendarClock className="h-4 w-4 text-muted-foreground" />}
           title="Coming up"
-          description="Events in the next 60 days."
+          description="Events in the next 30 days."
+          headerBand="none"
           className="htc-surface-guidance"
           items={upcomingItems}
           getKey={(i) => i.id}
@@ -167,6 +184,7 @@ export default async function DashboardPage({ searchParams }: Props) {
       </section>
     </div>
   );
+  });
 }
 
 function ClassifiedRow({ item }: { item: ClassifiedItem }): ReactNode {

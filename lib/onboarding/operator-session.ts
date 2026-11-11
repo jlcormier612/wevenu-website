@@ -4,6 +4,7 @@
  * Does not weaken RLS globally. Session is explicit and reversible.
  */
 import { createAdminClient } from "@/integrations/supabase/admin";
+import { accessTitleForLegacyRole } from "@/lib/authorization/membership";
 import { isSupabaseConfigured } from "@/lib/env";
 import { requireAdminUser } from "@/lib/hq/crm-service";
 
@@ -56,6 +57,9 @@ export async function startOperatorVenueSession(
       is_owner: false,
       accepted_at: new Date().toISOString(),
       is_active: true,
+      // NOT NULL on venue_staff — omitting these fails the insert outright.
+      access_title: accessTitleForLegacyRole("manager"),
+      title_basis: accessTitleForLegacyRole("manager"),
     });
     if (error) return { ok: false, error: error.message };
   }

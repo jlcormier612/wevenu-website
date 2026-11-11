@@ -62,7 +62,7 @@ function financialFactFromJourney(journey: BookingJourneyModel, clientId: string
   if (journey.currentKey === "deposit" && deposit && remaining) {
     return { fact: `${deposit} deposit due · ${remaining} remaining`, href };
   }
-  if (journey.isCommerciallyBooked && remaining && remaining !== "$0") {
+  if (journey.commercialReady && remaining && remaining !== "$0") {
     return { fact: `${remaining} remaining`, href };
   }
   if (journey.currentKey === "deposit" && deposit) {

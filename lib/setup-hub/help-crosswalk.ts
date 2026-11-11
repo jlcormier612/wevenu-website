@@ -38,7 +38,9 @@ export type SetupHelpCrosswalkRow = {
   completionSignal: string;
 };
 
-const publishedSlugs = new Set(FINAL_HELP_ARTICLES.map((a) => a.slug));
+const publishedSlugs = new Set(
+  FINAL_HELP_ARTICLES.filter((a) => (a.audience ?? "staff") !== "couple").map((a) => a.slug),
+);
 
 function help(slug: string): { helpSlug: string; helpTitle: string } {
   const article = FINAL_HELP_ARTICLES.find((a) => a.slug === slug);
@@ -58,7 +60,7 @@ export const SETUP_HELP_CROSSWALK: readonly SetupHelpCrosswalkRow[] = [
     ...help("where-do-my-venue-colors-actually-show-up"),
     required: true,
     canBeNotApplicable: false,
-    completionSignal: "Deliberate review (your_venue_reviewed_at), after visiting Business & Brand (name, contact, hours, logo, hero, colors).",
+    completionSignal: "Authoritative venue fields named by the card: name, email, phone, business hours, logo, hero, brand colors. Not Venue Guide. Not your_venue_reviewed_at.",
   },
   {
     stage: "calendar-availability",
@@ -69,7 +71,7 @@ export const SETUP_HELP_CROSSWALK: readonly SetupHelpCrosswalkRow[] = [
     ...help("how-do-i-set-my-tour-availability"),
     required: true,
     canBeNotApplicable: true, // tours may be Not offered; spaces/capacity still apply
-    completionSignal: "Deliberate review (calendar_availability_reviewed_at). Tours off = Not offered, not incomplete.",
+    completionSignal: "Multi-space venues need ≥1 space. Single-space venues are satisfied. Tours off is Not offered. Not calendar_availability_reviewed_at.",
   },
   {
     stage: "bring-your-business",
@@ -81,7 +83,7 @@ export const SETUP_HELP_CROSSWALK: readonly SetupHelpCrosswalkRow[] = [
     helpTitle: null,
     required: true,
     canBeNotApplicable: false,
-    completionSignal: "imported (import_batches) | individual (path) | skipped (path). Unaddressed until one is chosen.",
+    completionSignal: "Migration Center import (import_batches.migration_session_id) | individual (path) | skipped (path). Spreadsheet/HQ imports alone do not complete.",
   },
   {
     stage: "your-offerings",
@@ -126,11 +128,11 @@ export const SETUP_HELP_CROSSWALK: readonly SetupHelpCrosswalkRow[] = [
     helpTitle: null,
     required: false,
     canBeNotApplicable: true, // solo venue
-    completionSignal: "Active non-owner team member OR solo confirmation. Optional — solo is complete.",
+    completionSignal: "Deliberate Team/Owners action (venue_staff.invited_by set) OR solo confirmation. Purchaser/onboarding owner rows do not count. Optional.",
   },
   {
     stage: "financials",
-    title: "Online payments",
+    title: "Online Payments",
     destinationHref: "/settings/integrations",
     destinationLabel: "Open Financials & Integrations",
     destinationPathLabel: "Your Venue → Settings → Financials & Integrations",

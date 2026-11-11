@@ -15,7 +15,7 @@ export default async function OnboardingDashboardPage() {
       <div>
         <h1 className="font-heading text-2xl font-semibold text-heading">Customer Success</h1>
         <p className="text-sm text-muted-foreground">
-          {openCount} venue{openCount === 1 ? "" : "s"} in active onboarding
+          {`${openCount} venue${openCount === 1 ? "" : "s"} in active onboarding`}
           {blockedCount > 0 && <span className="text-destructive"> · {blockedCount} blocked</span>}
         </p>
       </div>

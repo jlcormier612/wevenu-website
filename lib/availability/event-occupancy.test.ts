@@ -11,6 +11,7 @@ import {
   eventOccupancyOverlapsTour,
   evaluateEventOccupancy,
   formatOperationalInstant,
+  intervalsForScheduleWindow,
   isInquiryEventDateAvailable,
   isSimpleOperatingModel,
   operationalWindow,
@@ -743,7 +744,8 @@ describe("min_turnaround_hours", () => {
 
 describe("isInquiryEventDateAvailable (date-level, same occupancy authority)", () => {
   const simple = venue({ effectiveMax: 1, activeSpaceIds: [], allSpaceIds: [] });
-  const multi = venue({ effectiveMax: 2 });
+  const multi = venue({ effectiveMax: 2, allowSimultaneousPublicAvailability: true });
+  const multiDefault = venue({ effectiveMax: 2 });
 
   it("simple venue: empty date is available; an occupying Event makes it unavailable", () => {
     assert.equal(isInquiryEventDateAvailable("2027-06-12", simple, []), true);
@@ -762,7 +764,21 @@ describe("isInquiryEventDateAvailable (date-level, same occupancy authority)", (
     );
   });
 
-  it("simultaneous venue: available when at least one active space would accept a full-day Event", () => {
+  it("default: confirmed Event closes the date even when another space is free", () => {
+    const existing = [event({ id: "a", eventDate: "2027-06-12", spaceId: BALLROOM, status: "confirmed" })];
+    assert.equal(isInquiryEventDateAvailable("2027-06-12", multiDefault, existing), false);
+    assert.equal(
+      isInquiryEventDateAvailable("2027-06-12", multi, existing),
+      true,
+    );
+  });
+
+  it("default: confirmed Event with missing space assignment still closes the date", () => {
+    const existing = [event({ id: "a", eventDate: "2027-06-12", spaceId: null, status: "confirmed" })];
+    assert.equal(isInquiryEventDateAvailable("2027-06-12", multiDefault, existing), false);
+  });
+
+  it("opt-in simultaneous: available when at least one active space would accept a full-day Event", () => {
     const existing = [event({ id: "a", eventDate: "2027-06-12", spaceId: BALLROOM })];
     assert.equal(isInquiryEventDateAvailable("2027-06-12", multi, existing), true);
     const both = [
@@ -773,7 +789,7 @@ describe("isInquiryEventDateAvailable (date-level, same occupancy authority)", (
     assert.equal(isInquiryEventDateAvailable("2027-06-12", multi, both), false);
   });
 
-  it("Event Space: same-space all-day occupancy does not hide a free sister space", () => {
+  it("opt-in Event Space: same-space all-day occupancy does not hide a free sister space", () => {
     const existing = [event({ id: "a", eventDate: "2027-06-12", spaceId: BALLROOM })];
     assert.equal(isInquiryEventDateAvailable("2027-06-12", multi, existing), true);
   });
@@ -803,11 +819,190 @@ describe("isInquiryEventDateAvailable (date-level, same occupancy authority)", (
   it("cancelled Events do not close the inquiry date", () => {
     const existing = [event({ id: "a", eventDate: "2027-06-12", status: "cancelled" })];
     assert.equal(isInquiryEventDateAvailable("2027-06-12", simple, existing), true);
+    assert.equal(isInquiryEventDateAvailable("2027-06-12", multiDefault, existing), true);
   });
 
-  it("zero active spaces on a simultaneous venue is unavailable", () => {
-    const none = venue({ effectiveMax: 2, activeSpaceIds: [], allSpaceIds: [] });
+  it("zero active spaces on an opt-in simultaneous venue is unavailable", () => {
+    const none = venue({
+      effectiveMax: 2,
+      allowSimultaneousPublicAvailability: true,
+      activeSpaceIds: [],
+      allSpaceIds: [],
+    });
     assert.equal(isInquiryEventDateAvailable("2027-06-12", none, []), false);
   });
 });
 
+
+describe("component scheduledDate occupancy (Fri rehearsal ≠ Sat reception)", () => {
+  const multi = venue({ effectiveMax: 2, activeSpaceIds: [BALLROOM, GARDEN], allSpaceIds: [BALLROOM, GARDEN] });
+
+  it("intervalsForScheduleWindow limits a dated window to that day", () => {
+    assert.deepEqual(
+      intervalsForScheduleWindow("2027-09-03", "2027-09-04", {
+        start: "18:00",
+        end: "21:00",
+        scheduledDate: "2027-09-03",
+      }).map((r) => r.date),
+      ["2027-09-03"],
+    );
+    assert.deepEqual(
+      intervalsForScheduleWindow("2027-09-03", "2027-09-04", {
+        start: "16:00",
+        end: "22:00",
+        scheduledDate: null,
+      }).map((r) => r.date),
+      ["2027-09-03", "2027-09-04"],
+    );
+  });
+
+  it("Fri barn rehearsal does not conflict with Sat barn reception on the same event range", () => {
+    const existing = [
+      event({
+        id: "booked",
+        eventDate: "2027-09-03",
+        eventEndDate: "2027-09-04",
+        spaceId: BALLROOM,
+        windows: [
+          { spaceId: BALLROOM, startTime: "18:00", endTime: "21:00", scheduledDate: "2027-09-03" },
+          { spaceId: BALLROOM, startTime: "16:00", endTime: "22:00", scheduledDate: "2027-09-04" },
+        ],
+      }),
+    ];
+    // Another lead wants Sat morning barn — should be free relative to Fri evening only occupancy
+    const morning = evaluateEventOccupancy(
+      input({
+        eventDate: "2027-09-04",
+        spaceId: BALLROOM,
+        startTime: "09:00",
+        endTime: "12:00",
+        windows: [{ spaceId: BALLROOM, startTime: "09:00", endTime: "12:00", scheduledDate: "2027-09-04" }],
+      }),
+      multi,
+      existing,
+    );
+    assert.equal(morning.ok, true, morning.ok ? "" : morning.message);
+
+    // Same Sat evening barn window conflicts
+    const evening = evaluateEventOccupancy(
+      input({
+        eventDate: "2027-09-04",
+        spaceId: BALLROOM,
+        startTime: "17:00",
+        endTime: "21:00",
+        windows: [{ spaceId: BALLROOM, startTime: "17:00", endTime: "21:00", scheduledDate: "2027-09-04" }],
+      }),
+      multi,
+      existing,
+    );
+    assert.equal(evening.ok, false);
+  });
+
+  it("undated assignment windows still occupy every protected day (legacy)", () => {
+    const existing = [
+      event({
+        id: "legacy",
+        eventDate: "2027-09-03",
+        eventEndDate: "2027-09-04",
+        spaceId: BALLROOM,
+        windows: [
+          { spaceId: BALLROOM, startTime: "18:00", endTime: "21:00" },
+        ],
+      }),
+    ];
+    const fri = evaluateEventOccupancy(
+      input({
+        eventDate: "2027-09-03",
+        spaceId: BALLROOM,
+        startTime: "18:30",
+        endTime: "20:00",
+        windows: [{ spaceId: BALLROOM, startTime: "18:30", endTime: "20:00", scheduledDate: "2027-09-03" }],
+      }),
+      multi,
+      existing,
+    );
+    const sat = evaluateEventOccupancy(
+      input({
+        eventDate: "2027-09-04",
+        spaceId: BALLROOM,
+        startTime: "18:30",
+        endTime: "20:00",
+        windows: [{ spaceId: BALLROOM, startTime: "18:30", endTime: "20:00", scheduledDate: "2027-09-04" }],
+      }),
+      multi,
+      existing,
+    );
+    assert.equal(fri.ok, false);
+    assert.equal(sat.ok, false);
+  });
+});
+
+describe("Nicole May 8–9 component occupancy matrix", () => {
+  const BARN = "6366187b-e7f5-45d0-b9bd-5534a48f6650";
+  const VILLA = "e11e9e2f-1930-464d-b9e7-d0c61c30b221";
+  const BRIDGE = "696791d8-0e6f-4a6c-b99e-031ee7237d38";
+  const LAWN = "56a70756-5ee3-4e08-8e1b-d1713c5bbbec";
+  const meadowbrook = venue({
+    effectiveMax: 4,
+    activeSpaceIds: [BARN, VILLA, BRIDGE, LAWN],
+    allSpaceIds: [BARN, VILLA, BRIDGE, LAWN],
+    minTurnaroundHours: 0,
+  });
+  const nicole = event({
+    id: "e15869c8-736d-42cc-a00a-4b4bbdadc0f1",
+    status: "confirmed",
+    eventDate: "2027-05-08",
+    eventEndDate: "2027-05-09",
+    spaceId: BARN,
+    spaceIds: [BARN, VILLA, BRIDGE, LAWN],
+    windows: [
+      { spaceId: BARN, startTime: "18:00", endTime: "21:00", scheduledDate: "2027-05-08" },
+      { spaceId: VILLA, startTime: "14:00", endTime: "16:00", scheduledDate: "2027-05-09" },
+      { spaceId: BRIDGE, startTime: "16:00", endTime: "17:00", scheduledDate: "2027-05-09" },
+      { spaceId: LAWN, startTime: "17:00", endTime: "18:00", scheduledDate: "2027-05-09" },
+      { spaceId: BARN, startTime: "18:00", endTime: "22:00", scheduledDate: "2027-05-09" },
+    ],
+  });
+
+  function overlap(spaceId: string, date: string, startTime: string, endTime: string) {
+    return evaluateEventOccupancy(
+      input({
+        eventDate: date,
+        spaceId,
+        startTime,
+        endTime,
+        windows: [{ spaceId, startTime, endTime, scheduledDate: date }],
+      }),
+      meadowbrook,
+      [nicole],
+    );
+  }
+
+  it("rejects overlapping requests on each Nicole component space/time", () => {
+    assert.equal(overlap(BARN, "2027-05-09", "18:30", "20:00").ok, false, "Reception Barn");
+    assert.equal(overlap(VILLA, "2027-05-09", "14:30", "15:30").ok, false, "Getting Ready Villa");
+    assert.equal(overlap(BRIDGE, "2027-05-09", "16:15", "16:45").ok, false, "Ceremony Bridge");
+    assert.equal(overlap(LAWN, "2027-05-09", "17:15", "17:45").ok, false, "Cocktail Lawn");
+    assert.equal(overlap(BARN, "2027-05-08", "18:30", "20:00").ok, false, "Rehearsal Dinner Barn");
+  });
+
+  it("allows a different space during the same period under multi-space capacity", () => {
+    // Villa is busy 14–16; Barn must remain bookable in that window on May 9.
+    const barnMorning = overlap(BARN, "2027-05-09", "14:00", "16:00");
+    assert.equal(barnMorning.ok, true, barnMorning.ok ? "" : barnMorning.message);
+  });
+
+  it("allows the same space outside the occupied interval (not parent date-range alone)", () => {
+    const barnBeforeReception = overlap(BARN, "2027-05-09", "10:00", "12:00");
+    assert.equal(barnBeforeReception.ok, true, barnBeforeReception.ok ? "" : barnBeforeReception.message);
+    // Saturday Barn after rehearsal ends at 21:00
+    const barnAfterRehearsal = overlap(BARN, "2027-05-08", "21:30", "22:30");
+    assert.equal(barnAfterRehearsal.ok, true, barnAfterRehearsal.ok ? "" : barnAfterRehearsal.message);
+  });
+
+  it("repository occupancy load still selects assignment scheduled_date", () => {
+    const src = readFileSync(resolve("lib/availability/repository.ts"), "utf8");
+    assert.match(src, /event_space_assignments/);
+    assert.match(src, /scheduled_date/);
+  });
+});

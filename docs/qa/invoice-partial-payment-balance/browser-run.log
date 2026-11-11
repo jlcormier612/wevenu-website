@@ -1,0 +1,25 @@
+◇ injected env (4) from .env.local // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+PASS db_invoice_total_unchanged — 36656.25
+PASS db_payment_received_unchanged — 7164.06
+PASS db_installment_partial — partially_paid
+PASS db_installment_remainder — 2000
+PASS db_net_paid — 7164.06
+PASS db_balance_due — 29492.19
+PASS db_rpc_paid — 7164.06
+PASS calc_balance — 29492.19
+PASS no_extra_payment_rows — qualifyingLines=1
+PASS serving_commit — b21337d1e4fffa946ca8fa0e3c51c5f938b0c1c7
+PASS ui_paid_to_date — $7,164.06
+PASS ui_balance_remaining — $29,492.19
+PASS ui_not_full_balance — balance must not show full $36,656.25
+PASS ui_partial_installment — installment Partially Paid + $2,000 due + $7,164.06 received
+PASS ui_total_unchanged — $36,656.25
+PASS print_paid_to_date — $7,164.06
+PASS print_balance_remaining — $29,492.19
+PASS print_not_full_as_balance — print balance not full total
+PASS persisted_unchanged_by_browser — {"total":36656.25,"balance_due":29492.19,"status":"partially_paid","paidRpc":7164.06,"initial_paid":7164.06}
+{
+  "ok": true,
+  "servingSha": "b21337d1e4fffa946ca8fa0e3c51c5f938b0c1c7",
+  "fail": []
+}

@@ -1,0 +1,87 @@
+{
+  "status": "GREEN",
+  "servingSha": "a9bd5903cf1baae14a72b0e2e0898d7b837c552d",
+  "expectedSha": "a9bd5903cf1baae14a72b0e2e0898d7b837c552d",
+  "eventId": "5cd0be77-ec99-48c6-a86b-7235b3a65f76",
+  "clientId": "e4a6a755-a0d2-4e3c-b5f0-9f099355545a",
+  "passed": 15,
+  "failed": 0,
+  "checks": [
+    {
+      "name": "serving_sha",
+      "pass": true,
+      "detail": "serving=a9bd5903cf1baae14a72b0e2e0898d7b837c552d expected=a9bd5903cf1baae14a72b0e2e0898d7b837c552d"
+    },
+    {
+      "name": "network_eligible",
+      "pass": true,
+      "detail": "n=5"
+    },
+    {
+      "name": "fixture",
+      "pass": true,
+      "detail": "event=5cd0be77-ec99-48c6-a86b-7235b3a65f76 client=e4a6a755-a0d2-4e3c-b5f0-9f099355545a other=480628b3-e7a7-48a0-9c84-25b14bd93a26"
+    },
+    {
+      "name": "inventory_badge_included",
+      "pass": true,
+      "detail": "badge=Included"
+    },
+    {
+      "name": "questionnaires_absent_from_setup",
+      "pass": true,
+      "detail": "setupCards=0"
+    },
+    {
+      "name": "questionnaires_nav_order",
+      "pass": true,
+      "detail": "tabs=Overview | Planning | Timeline | Floor Plans | Vendors | Inventory | Event Order | Questionnaires | Documents | Payments | Conversation | Activity | Internal notes"
+    },
+    {
+      "name": "questionnaires_tab_opens",
+      "pass": true,
+      "detail": "https://app.sandbox.hellotocheers.com/clients/e4a6a755-a0d2-4e3c-b5f0-9f099355545a#questionnaires"
+    },
+    {
+      "name": "vendors_inherited_full_list",
+      "pass": true,
+      "detail": "eventRecs=4 eligibleNetwork=5"
+    },
+    {
+      "name": "vendors_source_vs_event",
+      "pass": true,
+      "detail": "covered=4/5 eventRecs=4"
+    },
+    {
+      "name": "vendors_editor_shows_list",
+      "pass": true,
+      "detail": "listVisible=true"
+    },
+    {
+      "name": "vendors_exclude_event_only",
+      "pass": true,
+      "detail": "excluded=42a8d273-f738-4f3c-bdcd-f2a5a237e1b3 remaining=3"
+    },
+    {
+      "name": "vendors_network_untouched",
+      "pass": true,
+      "detail": "status=active pref=preferred"
+    },
+    {
+      "name": "vendors_other_event_unchanged",
+      "pass": true,
+      "detail": "before=0 after=0"
+    },
+    {
+      "name": "vendors_assignments_independent",
+      "pass": true,
+      "detail": "assignments=2"
+    },
+    {
+      "name": "no_invoice_side_effect",
+      "pass": true,
+      "detail": "before=38 after=38"
+    }
+  ],
+  "at": "2026-10-22T05:33:17.143Z"
+}

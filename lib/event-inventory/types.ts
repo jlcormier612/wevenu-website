@@ -10,7 +10,16 @@
  * workflow-implementation.md for the full architecture.
  */
 
-export type EventInventoryStatus = "draft" | "shared" | "finalized";
+export type EventInventoryStatus =
+  | "draft"
+  | "shared"
+  | "submitted"
+  | "changes_requested"
+  | "confirmed"
+  | "finalized";
+
+/** view = couple read-only when shared; select = couple drafts/submits quantities. */
+export type EventInventoryCollaborationMode = "view" | "select";
 
 export type EventInventory = {
   id: string;
@@ -18,6 +27,7 @@ export type EventInventory = {
   eventId: string;
   templateId: string | null;
   status: EventInventoryStatus;
+  collaborationMode: EventInventoryCollaborationMode;
   finalizedAt: string | null;
   createdAt: string;
   updatedAt: string;
@@ -31,12 +41,22 @@ export type EventInventoryItem = {
   inventoryItemId: string | null;
   name: string;
   category: string | null;
+  /** Catalog photo snapshot for client-facing display. Null = no photo. */
+  imageUrl: string | null;
   quantity: number;
   /** Null = included at no extra charge; the Master Catalog has no price field at all today (confirmed), so this is always directly entered, never looked up. */
   unitPrice: number | null;
   isIncluded: boolean;
+  /** False = Venue only: counts operationally, never shown to the couple, handed to the Event Order, or billed. Independent of isIncluded. */
+  clientVisible: boolean;
   notes: string | null;
   sortOrder: number;
+  /** When true (select mode), couple may choose 0..maxQuantity. */
+  clientSelectable: boolean;
+  /** Cap for couple selection; null → use quantity. */
+  maxQuantity: number | null;
+  clientDraftQuantity: number | null;
+  clientSubmittedQuantity: number | null;
   /** D8 — set once this item has actually been pushed into the Event Order; null = still eligible. Per-item, not a single all-time flag on the Event Inventory as a whole, so items added after a first push remain reachable. */
   addedToEventOrderAt: string | null;
   createdAt: string;
@@ -80,6 +100,8 @@ export type InventoryTemplateItem = {
   quantity: number;
   unitPrice: number | null;
   isIncluded: boolean;
+  /** False = Venue only; carried onto event inventory when the template is applied. */
+  clientVisible: boolean;
   notes: string | null;
   sortOrder: number;
   createdAt: string;
@@ -95,7 +117,11 @@ export type InventoryItemInput = {
   quantity: string;
   unitPrice?: string;
   isIncluded: boolean;
+  /** Omitted → visible on insert, unchanged on update. */
+  clientVisible?: boolean;
   notes?: string;
+  /** Optional explicit photo URL; when omitted and inventoryItemId is set, catalog image_url is snapshotted. */
+  imageUrl?: string | null;
 };
 
 export type EventInventoryErrors = Record<string, string>;

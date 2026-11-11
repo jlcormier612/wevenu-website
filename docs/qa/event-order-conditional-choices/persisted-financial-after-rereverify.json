@@ -1,0 +1,33 @@
+{
+  "capturedAt": "2026-10-25T20:11:51.977Z",
+  "eventOrder": {
+    "id": "624eceef-5096-4288-b104-62daa3a82d11",
+    "status": "finalized",
+    "revision": 26
+  },
+  "platedCount": 1,
+  "buffetCount": 0,
+  "platedLines": [
+    {
+      "id": "fbe0ba3f-530a-4cd3-a840-b07d6e346bd9",
+      "description": "Plated Dinner",
+      "unit_price": 85,
+      "amount": 85,
+      "is_included": false,
+      "provenance": "custom"
+    }
+  ],
+  "buffetLines": [],
+  "invoices": [
+    {
+      "id": "4489c869-38fd-4ae1-8cad-cc7043d1d527",
+      "status": "sent",
+      "total": 2189.81,
+      "subtotal": 2061,
+      "tax_amount": 128.81,
+      "event_order_revision_at_freeze": 26
+    }
+  ],
+  "paymentSchedules": null,
+  "expectedPayable": 2189.81
+}

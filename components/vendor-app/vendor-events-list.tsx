@@ -45,10 +45,10 @@ export function VendorEventsList({ events }: { events: VendorEventListItem[] }) 
       <h1 className="font-heading text-2xl font-medium text-heading">Events</h1>
 
       {events.length === 0 ? (
-        <div className="rounded-sm border border-dashed border-border py-14 text-center">
-          <CalendarDays className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+        <div data-vendor-empty="framed" className="htc-vendor-empty-framed py-14 text-center">
+          <CalendarDays className="mx-auto mb-2 h-8 w-8 text-muted-foreground" />
           <p className="text-sm font-medium text-foreground">No events yet</p>
-          <p className="text-xs mt-1 text-muted-foreground max-w-xs mx-auto">
+          <p className="mx-auto mt-1 max-w-xs text-xs text-muted-foreground">
             Venues will assign you to events when they book you. Your event workspace will appear here.
           </p>
         </div>

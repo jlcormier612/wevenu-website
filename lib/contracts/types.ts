@@ -34,7 +34,7 @@ export type Contract = {
   eventId: string | null;
   templateId: string | null;
   title: string;
-  content: string; // rendered (tokens already resolved)
+  content: string; // draft: authored tokens intact; sent/signed: customer-facing resolved text
   status: ContractStatus;
   /** htc = Hello to Cheers e-sign; external = recorded as executed elsewhere. */
   executionOrigin: ContractExecutionOrigin;
@@ -111,9 +111,9 @@ export type NewContractInput = {
   /** Work Package D4 — set only by createAmendmentFromContract. */
   amendsContractId?: string;
   /**
-   * Client contact ids selected as required signers. Empty/undefined → default
-   * one required signer from the client's primary contact (or client record).
-   * Never auto-assumes couple = two signers.
+   * Required signer candidate ids: client_contact uuid, or
+   * relationship:primary / relationship:partner. Empty/undefined → default
+   * one required signer (primary with email). Never auto-assumes couple = 2.
    */
   clientSignerContactIds?: string[];
   /** Booking Journey — link contract to frozen Selected Package (CommercialSelection). */
@@ -123,9 +123,24 @@ export type NewContractInput = {
 export type ContractErrors = Record<string, string>;
 
 export type ContractActionResult =
-  | { ok: true }
+  | {
+      ok: true;
+      /** Set when venue countersign caused bookClient to stamp booked_at for the first time. */
+      newlyBooked?: boolean;
+      clientId?: string | null;
+      eventId?: string | null;
+      /** Present after a draft content save — next edit must send this concurrency token. */
+      updatedAt?: string;
+    }
   /** reason:"stale" — Work Package D4's concurrency check — a save was rejected because someone else saved first; the UI should prompt a reload, never silently overwrite. */
-  | { ok: false; errors?: ContractErrors; message?: string; reason?: "stale" | "not_editable" | "not_found" };
+  | {
+      ok: false;
+      errors?: ContractErrors;
+      message?: string;
+      reason?: "stale" | "not_editable" | "not_found";
+      /** Structured send warning — currently only starter-policy placeholders. */
+      code?: "STARTER_POLICY_PLACEHOLDERS";
+    };
 
 export type CreateContractResult =
   | { ok: true; contractId: string }

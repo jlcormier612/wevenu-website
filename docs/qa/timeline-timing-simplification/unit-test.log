@@ -1,0 +1,50 @@
+▶ Starter Timeline masters
+  ✔ ships TL-01 / TL-02 / TL-03 with customer-facing names (1.280459ms)
+  ✔ does not invent clock times on any starter activity (0.407875ms)
+  ✔ Wedding Weekend uses dayOffset 0 / 1 / 2 with Standard Wedding Day on offset 1 (1.809ms)
+  ✔ Reception Only omits ceremony seating / begins (on-site ceremony) (0.118833ms)
+✔ Starter Timeline masters (4.89175ms)
+▶ Timeline starter provision skip rules
+  ✔ skips when source_master_key already exists (idempotent) (0.419792ms)
+  ✔ skips same-named customized templates (never overwrite) (0.07475ms)
+  ✔ creates when key and name are free (0.174292ms)
+✔ Timeline starter provision skip rules (1.035416ms)
+▶ Apply without inventing times
+  ✔ returns null entry time when minutesOffset is null (0.289083ms)
+  ✔ still resolves explicit relative offsets when present (0.211625ms)
+  ✔ booking-picker starters align with master keys and weekend dayOffsets (0.338375ms)
+✔ Apply without inventing times (1.186167ms)
+▶ compareTimelineEntries chronological order
+  ✔ orders timed entries earliest to latest on the same day (3.023958ms)
+  ✔ places an entry edited earlier ahead of former neighbors (0.09775ms)
+  ✔ places an entry edited later after former neighbors (0.111542ms)
+  ✔ keeps equal-time entries ordered by sortOrder then createdAt (0.091791ms)
+  ✔ places untimed entries after timed ones on the same day (0.08425ms)
+  ✔ venue Timeline view and document use compareTimelineEntries for display (1.385208ms)
+✔ compareTimelineEntries chronological order (5.600291ms)
+▶ timeline relative-time anchor (events.start_time)
+  ✔ offsets resolve from event start, not reception or getting-ready (1.36375ms)
+  ✔ null event start does not invent a clock time (no noon fallback) (0.084916ms)
+  ✔ out-of-day offsets return null (no wrap inventing next day) (0.06975ms)
+  ✔ documents timeOfDay precedence: apply prefers fixed clock over offset (0.063125ms)
+✔ timeline relative-time anchor (events.start_time) (3.239292ms)
+▶ saveEventTimelineDraft batch contract
+  ✔ exposes saveEventTimelineDraft and wires a single revalidate action (0.52375ms)
+  ✔ setup editor uses AM/PM time input and Save all changes (0.105125ms)
+  ✔ does not confirm every row removal (0.055708ms)
+✔ saveEventTimelineDraft batch contract (1.203917ms)
+▶ timeline timing presentation
+  ✔ labels template days relative to event date without inventing ceremony days (0.657292ms)
+  ✔ names Day-of schedule start in relative phrases (0.108667ms)
+  ✔ round-trips before/after form to minutesOffset (0.781ms)
+  ✔ defaults to specific mode; flags legacy dual timing (0.133416ms)
+  ✔ preview refuses to invent a clock when schedule start is missing (32.613708ms)
+✔ timeline timing presentation (35.085ms)
+ℹ tests 28
+ℹ suites 7
+ℹ pass 28
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 248.282208

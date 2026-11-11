@@ -6,14 +6,18 @@
 
 import type { NavItem, NavSection } from "@/lib/navigation";
 
-const STAFF_HIDDEN_FINANCIAL_HREFS = new Set(["/invoices", "/payments"]);
+const STAFF_HIDDEN_FINANCIAL_PATHS = new Set(["/invoices", "/payments"]);
+
+function financialPath(href: string): string {
+  return href.split("?")[0];
+}
 
 export function canAccessFinancialNavHref(
   role: string | null | undefined,
   href: string,
 ): boolean {
   if (role !== "staff") return true;
-  return !STAFF_HIDDEN_FINANCIAL_HREFS.has(href);
+  return !STAFF_HIDDEN_FINANCIAL_PATHS.has(financialPath(href));
 }
 
 export function filterNavSectionsForRole(
@@ -22,7 +26,9 @@ export function filterNavSectionsForRole(
 ): NavSection[] {
   return sections
     .map((section) => {
-      if (section.label !== "Financials") return section;
+      // Matched on the stable id, not the label: "Financials" is editorial and
+      // a rewording must not quietly expose invoices/payments to staff.
+      if (section.id !== "financials") return section;
       const items = section.items.filter((item: NavItem) =>
         canAccessFinancialNavHref(role, item.href),
       );

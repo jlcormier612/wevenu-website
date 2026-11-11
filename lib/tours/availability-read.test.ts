@@ -18,6 +18,13 @@ describe("parseCoordinatorTourAvailability", () => {
       ],
       exceptions: [
         { id: "e1", startDate: "2026-09-04", endDate: "2026-09-04", label: "Blocked" },
+        {
+          id: "e2",
+          startDate: "2026-12-25",
+          endDate: "2026-12-25",
+          label: "Christmas",
+          recurrenceRule: "annual",
+        },
       ],
     });
     assert.equal(load.ok, true);
@@ -26,6 +33,8 @@ describe("parseCoordinatorTourAvailability", () => {
     assert.equal(load.windows[0].dayOfWeek, 1);
     assert.equal(load.windows[0].startTime, "09:00");
     assert.equal(load.exceptions[0].startDate, "2026-09-04");
+    assert.equal(load.exceptions[0].recurrenceRule, "none");
+    assert.equal(load.exceptions[1].recurrenceRule, "annual");
   });
 
   it("does not treat a failed RPC as an empty schedule", () => {
@@ -58,6 +67,10 @@ describe("get_coordinator_tour_availability security contract", () => {
     join(process.cwd(), "supabase/migrations/20261298000000_coordinator_tour_availability_read.sql"),
     "utf8",
   );
+  const annual = readFileSync(
+    join(process.cwd(), "supabase/migrations/20261413200000_tour_availability_exception_annual.sql"),
+    "utf8",
+  );
 
   it("does not accept a venue_id argument", () => {
     assert.match(sql, /get_coordinator_tour_availability\(\)/);
@@ -68,5 +81,11 @@ describe("get_coordinator_tour_availability security contract", () => {
   it("is not granted to anon", () => {
     assert.match(sql, /revoke all on function public\.get_coordinator_tour_availability\(\) from public, anon/);
     assert.match(sql, /grant execute on function public\.get_coordinator_tour_availability\(\) to authenticated/);
+  });
+
+  it("annual migration returns recurrenceRule and keeps the same security grants", () => {
+    assert.match(annual, /'recurrenceRule', coalesce\(e\.recurrence_rule, 'none'\)/);
+    assert.match(annual, /revoke all on function public\.get_coordinator_tour_availability\(\) from public, anon/);
+    assert.match(annual, /grant execute on function public\.get_coordinator_tour_availability\(\) to authenticated/);
   });
 });

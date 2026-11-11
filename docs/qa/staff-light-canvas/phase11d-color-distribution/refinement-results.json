@@ -1,0 +1,377 @@
+[
+  {
+    "label": "booking-normal",
+    "viewport": "desktop",
+    "path": "/clients/49aba826-0bd3-4891-ac9f-02a18b2b6962",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11d-color-distribution/evidence-refinements/booking-normal-desktop.png",
+    "overflowX": false,
+    "stretchRatio": 0.54,
+    "summaryHeight": 224,
+    "staffColHeight": 415,
+    "surfaces": [
+      {
+        "sel": "[data-testid=\"event-booking-summary\"]",
+        "bg": "#DCE8E0",
+        "height": 224
+      },
+      {
+        "sel": "[data-testid=\"event-staff-assignment\"]",
+        "bg": "#F3F0E9",
+        "height": 85
+      },
+      {
+        "sel": "[data-testid=\"client-staffing-column\"]",
+        "bg": "transparent",
+        "height": 415
+      }
+    ]
+  },
+  {
+    "label": "booking-multi-schedule",
+    "viewport": "desktop",
+    "path": "/clients/dc2441e7-59e4-4d95-a6c1-b8ff648d92e1",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11d-color-distribution/evidence-refinements/booking-multi-schedule-desktop.png",
+    "overflowX": false,
+    "stretchRatio": 1.041,
+    "summaryHeight": 432,
+    "staffColHeight": 415,
+    "surfaces": [
+      {
+        "sel": "[data-testid=\"event-booking-summary\"]",
+        "bg": "#DCE8E0",
+        "height": 432
+      },
+      {
+        "sel": "[data-testid=\"event-booking-component-schedule\"]",
+        "bg": "transparent",
+        "height": 314
+      },
+      {
+        "sel": "[data-testid=\"client-staffing-column\"]",
+        "bg": "transparent",
+        "height": 415
+      }
+    ]
+  },
+  {
+    "label": "booking-cancelled",
+    "viewport": "desktop",
+    "path": "/clients/7810ae0e-3694-473e-890a-2319f034e617",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11d-color-distribution/evidence-refinements/booking-cancelled-desktop.png",
+    "overflowX": false,
+    "stretchRatio": 0.858,
+    "summaryHeight": 356,
+    "staffColHeight": 415,
+    "surfaces": [
+      {
+        "sel": "[data-testid=\"event-booking-summary\"]",
+        "bg": "#DCE8E0",
+        "height": 356
+      },
+      {
+        "sel": "[data-testid=\"client-staffing-column\"]",
+        "bg": "transparent",
+        "height": 415
+      }
+    ]
+  },
+  {
+    "label": "lead-space-prefs-visible",
+    "viewport": "desktop",
+    "path": "/leads/20e470d8-ab91-4db1-bbae-d75dad943b69",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11d-color-distribution/evidence-refinements/lead-space-prefs-visible-desktop.png",
+    "overflowX": false,
+    "stretchRatio": null,
+    "summaryHeight": null,
+    "staffColHeight": null,
+    "surfaces": [
+      {
+        "sel": "[data-testid=\"lead-space-preferences\"]",
+        "bg": "#F3F0E9",
+        "height": 89
+      },
+      {
+        "sel": "[data-testid=\"lead-sales-availability\"]",
+        "bg": "#F3F0E9",
+        "height": 118
+      },
+      {
+        "sel": "[data-testid=\"lead-contact-card\"]",
+        "bg": "#FFFFFF",
+        "height": 520
+      }
+    ]
+  },
+  {
+    "label": "lead-space-prefs-hidden",
+    "viewport": "desktop",
+    "path": "/leads/6cf4f9a0-66b8-4e6f-8afa-b5d2e7327b2d",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11d-color-distribution/evidence-refinements/lead-space-prefs-hidden-desktop.png",
+    "overflowX": false,
+    "stretchRatio": null,
+    "summaryHeight": null,
+    "staffColHeight": null,
+    "surfaces": [
+      {
+        "sel": "[data-testid=\"lead-space-preferences\"]",
+        "bg": "#F3F0E9",
+        "height": 89
+      },
+      {
+        "sel": "[data-testid=\"lead-sales-availability\"]",
+        "bg": "#F3F0E9",
+        "height": 85
+      }
+    ]
+  },
+  {
+    "label": "booking-normal",
+    "viewport": "mobile-390",
+    "path": "/clients/49aba826-0bd3-4891-ac9f-02a18b2b6962",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11d-color-distribution/evidence-refinements/booking-normal-mobile-390.png",
+    "overflowX": false,
+    "stretchRatio": 0.748,
+    "summaryHeight": 320,
+    "staffColHeight": 428,
+    "surfaces": [
+      {
+        "sel": "[data-testid=\"event-booking-summary\"]",
+        "bg": "#DCE8E0",
+        "height": 320
+      },
+      {
+        "sel": "[data-testid=\"event-staff-assignment\"]",
+        "bg": "#F3F0E9",
+        "height": 81
+      },
+      {
+        "sel": "[data-testid=\"client-staffing-column\"]",
+        "bg": "transparent",
+        "height": 428
+      }
+    ]
+  },
+  {
+    "label": "booking-multi-schedule",
+    "viewport": "mobile-390",
+    "path": "/clients/dc2441e7-59e4-4d95-a6c1-b8ff648d92e1",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11d-color-distribution/evidence-refinements/booking-multi-schedule-mobile-390.png",
+    "overflowX": false,
+    "stretchRatio": 1.009,
+    "summaryHeight": 432,
+    "staffColHeight": 428,
+    "surfaces": [
+      {
+        "sel": "[data-testid=\"event-booking-summary\"]",
+        "bg": "#DCE8E0",
+        "height": 432
+      },
+      {
+        "sel": "[data-testid=\"event-booking-component-schedule\"]",
+        "bg": "transparent",
+        "height": 314
+      },
+      {
+        "sel": "[data-testid=\"client-staffing-column\"]",
+        "bg": "transparent",
+        "height": 428
+      }
+    ]
+  },
+  {
+    "label": "booking-cancelled",
+    "viewport": "mobile-390",
+    "path": "/clients/7810ae0e-3694-473e-890a-2319f034e617",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11d-color-distribution/evidence-refinements/booking-cancelled-mobile-390.png",
+    "overflowX": false,
+    "stretchRatio": 0.832,
+    "summaryHeight": 356,
+    "staffColHeight": 428,
+    "surfaces": [
+      {
+        "sel": "[data-testid=\"event-booking-summary\"]",
+        "bg": "#DCE8E0",
+        "height": 356
+      },
+      {
+        "sel": "[data-testid=\"client-staffing-column\"]",
+        "bg": "transparent",
+        "height": 428
+      }
+    ]
+  },
+  {
+    "label": "lead-space-prefs-visible",
+    "viewport": "mobile-390",
+    "path": "/leads/20e470d8-ab91-4db1-bbae-d75dad943b69",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11d-color-distribution/evidence-refinements/lead-space-prefs-visible-mobile-390.png",
+    "overflowX": false,
+    "stretchRatio": null,
+    "summaryHeight": null,
+    "staffColHeight": null,
+    "surfaces": [
+      {
+        "sel": "[data-testid=\"lead-space-preferences\"]",
+        "bg": "#F3F0E9",
+        "height": 85
+      },
+      {
+        "sel": "[data-testid=\"lead-sales-availability\"]",
+        "bg": "#F3F0E9",
+        "height": 156
+      },
+      {
+        "sel": "[data-testid=\"lead-contact-card\"]",
+        "bg": "#FFFFFF",
+        "height": 351
+      }
+    ]
+  },
+  {
+    "label": "lead-space-prefs-hidden",
+    "viewport": "mobile-390",
+    "path": "/leads/6cf4f9a0-66b8-4e6f-8afa-b5d2e7327b2d",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11d-color-distribution/evidence-refinements/lead-space-prefs-hidden-mobile-390.png",
+    "overflowX": false,
+    "stretchRatio": null,
+    "summaryHeight": null,
+    "staffColHeight": null,
+    "surfaces": [
+      {
+        "sel": "[data-testid=\"lead-space-preferences\"]",
+        "bg": "#F3F0E9",
+        "height": 85
+      },
+      {
+        "sel": "[data-testid=\"lead-sales-availability\"]",
+        "bg": "#F3F0E9",
+        "height": 123
+      }
+    ]
+  },
+  {
+    "label": "booking-normal",
+    "viewport": "mobile-375",
+    "path": "/clients/49aba826-0bd3-4891-ac9f-02a18b2b6962",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11d-color-distribution/evidence-refinements/booking-normal-mobile-375.png",
+    "overflowX": false,
+    "stretchRatio": 0.656,
+    "summaryHeight": 320,
+    "staffColHeight": 488,
+    "surfaces": [
+      {
+        "sel": "[data-testid=\"event-booking-summary\"]",
+        "bg": "#DCE8E0",
+        "height": 320
+      },
+      {
+        "sel": "[data-testid=\"event-staff-assignment\"]",
+        "bg": "#F3F0E9",
+        "height": 123
+      },
+      {
+        "sel": "[data-testid=\"client-staffing-column\"]",
+        "bg": "transparent",
+        "height": 488
+      }
+    ]
+  },
+  {
+    "label": "booking-multi-schedule",
+    "viewport": "mobile-375",
+    "path": "/clients/dc2441e7-59e4-4d95-a6c1-b8ff648d92e1",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11d-color-distribution/evidence-refinements/booking-multi-schedule-mobile-375.png",
+    "overflowX": false,
+    "stretchRatio": 0.885,
+    "summaryHeight": 432,
+    "staffColHeight": 488,
+    "surfaces": [
+      {
+        "sel": "[data-testid=\"event-booking-summary\"]",
+        "bg": "#DCE8E0",
+        "height": 432
+      },
+      {
+        "sel": "[data-testid=\"event-booking-component-schedule\"]",
+        "bg": "transparent",
+        "height": 314
+      },
+      {
+        "sel": "[data-testid=\"client-staffing-column\"]",
+        "bg": "transparent",
+        "height": 488
+      }
+    ]
+  },
+  {
+    "label": "booking-cancelled",
+    "viewport": "mobile-375",
+    "path": "/clients/7810ae0e-3694-473e-890a-2319f034e617",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11d-color-distribution/evidence-refinements/booking-cancelled-mobile-375.png",
+    "overflowX": false,
+    "stretchRatio": 0.73,
+    "summaryHeight": 356,
+    "staffColHeight": 488,
+    "surfaces": [
+      {
+        "sel": "[data-testid=\"event-booking-summary\"]",
+        "bg": "#DCE8E0",
+        "height": 356
+      },
+      {
+        "sel": "[data-testid=\"client-staffing-column\"]",
+        "bg": "transparent",
+        "height": 488
+      }
+    ]
+  },
+  {
+    "label": "lead-space-prefs-visible",
+    "viewport": "mobile-375",
+    "path": "/leads/20e470d8-ab91-4db1-bbae-d75dad943b69",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11d-color-distribution/evidence-refinements/lead-space-prefs-visible-mobile-375.png",
+    "overflowX": false,
+    "stretchRatio": null,
+    "summaryHeight": null,
+    "staffColHeight": null,
+    "surfaces": [
+      {
+        "sel": "[data-testid=\"lead-space-preferences\"]",
+        "bg": "#F3F0E9",
+        "height": 85
+      },
+      {
+        "sel": "[data-testid=\"lead-sales-availability\"]",
+        "bg": "#F3F0E9",
+        "height": 156
+      },
+      {
+        "sel": "[data-testid=\"lead-contact-card\"]",
+        "bg": "#FFFFFF",
+        "height": 351
+      }
+    ]
+  },
+  {
+    "label": "lead-space-prefs-hidden",
+    "viewport": "mobile-375",
+    "path": "/leads/6cf4f9a0-66b8-4e6f-8afa-b5d2e7327b2d",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11d-color-distribution/evidence-refinements/lead-space-prefs-hidden-mobile-375.png",
+    "overflowX": false,
+    "stretchRatio": null,
+    "summaryHeight": null,
+    "staffColHeight": null,
+    "surfaces": [
+      {
+        "sel": "[data-testid=\"lead-space-preferences\"]",
+        "bg": "#F3F0E9",
+        "height": 85
+      },
+      {
+        "sel": "[data-testid=\"lead-sales-availability\"]",
+        "bg": "#F3F0E9",
+        "height": 123
+      }
+    ]
+  }
+]

@@ -1,5 +1,17 @@
-import Link from "next/link";
+"use client";
 
+import * as React from "react";
+import Link from "next/link";
+import { toast } from "sonner";
+
+import {
+  inviteClientAction,
+  previewClientInviteAction,
+} from "@/app/(app)/clients/[id]/portal-actions";
+import { ClientInvitePreviewOverlay } from "@/components/portal/client-invite-preview-overlay";
+import { Button } from "@/components/ui/button";
+import type { ClientInviteEmailContent } from "@/lib/client-auth/client-invite-email";
+import { isBookingWorkspaceHref } from "@/lib/clients/booking-handoff";
 import type { CommunicationsReviewModel } from "@/lib/clients/communications-review";
 
 export function CommunicationsReviewPanel({
@@ -7,6 +19,57 @@ export function CommunicationsReviewPanel({
 }: {
   communications: CommunicationsReviewModel;
 }) {
+  const [invitePending, startInvite] = React.useTransition();
+  const inviteOnFile = communications.rows.some((row) => row.key === "invitation" && row.onFile);
+  const [sentNow, setSentNow] = React.useState(inviteOnFile);
+  const invite = communications.invite;
+  const [previewOpen, setPreviewOpen] = React.useState(false);
+  const [preview, setPreview] = React.useState<ClientInviteEmailContent | null>(null);
+  const [previewLoading, setPreviewLoading] = React.useState(false);
+  const [sending, setSending] = React.useState(false);
+
+  React.useEffect(() => {
+    if (inviteOnFile) setSentNow(true);
+  }, [inviteOnFile]);
+
+  async function openInvitePreview() {
+    if (!invite.canInvite || !invite.email || invitePending || sentNow || previewLoading || sending) return;
+    setPreviewLoading(true);
+    setPreview(null);
+    setPreviewOpen(true);
+    const result = await previewClientInviteAction(invite.email, invite.coupleName);
+    setPreviewLoading(false);
+    if (!result.ok) {
+      setPreviewOpen(false);
+      toast.error(result.error ?? "Could not prepare the invitation preview.");
+      return;
+    }
+    setPreview(result.preview);
+  }
+
+  function closePreview() {
+    if (sending) return;
+    setPreviewOpen(false);
+    setPreview(null);
+  }
+
+  function confirmSend() {
+    if (!invite.canInvite || !invite.email || sending || invitePending || sentNow || !preview) return;
+    setSending(true);
+    startInvite(async () => {
+      const result = await inviteClientAction(invite.clientId, invite.email!, invite.coupleName);
+      setSending(false);
+      if (!result.ok) {
+        toast.error(result.error ?? "Could not send the invitation.");
+        return;
+      }
+      setSentNow(true);
+      setPreviewOpen(false);
+      setPreview(null);
+      toast.success("Invitation sent.");
+    });
+  }
+
   return (
     <div
       id="communications"
@@ -26,29 +89,59 @@ export function CommunicationsReviewPanel({
             <span
               className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-semibold"
               style={
-                row.onFile
+                row.onFile || (row.key === "invitation" && sentNow)
                   ? { background: "#D8A7AA20", color: "#5A3235" }
                   : { background: "transparent", color: "#9ca3af" }
               }
             >
-              {row.onFile ? "✓" : "○"}
+              {row.onFile || (row.key === "invitation" && sentNow) ? "✓" : "○"}
             </span>
             <div className="min-w-0 flex-1">
-              <p style={{ color: row.onFile || row.needsAttention ? "#3D2F30" : "#9ca3af" }}>
+              <p style={{ color: row.onFile || row.needsAttention || (row.key === "invitation" && sentNow) ? "#3D2F30" : "#9ca3af" }}>
                 {row.label}
               </p>
-              <p className="text-xs text-muted-foreground">{row.detail}</p>
+              <p className="text-xs text-muted-foreground">
+                {row.key === "invitation" && sentNow ? "Invitation sent" : row.detail}
+              </p>
+              {row.key === "invitation" && invite.disabledReason && !invite.canInvite && !row.onFile ? (
+                <p className="mt-1 text-xs" style={{ color: "#5A3235" }}>
+                  {invite.disabledReason}
+                </p>
+              ) : null}
             </div>
-            <Link
-              href={row.href}
-              className="shrink-0 text-xs font-medium underline-offset-2 hover:underline"
-              style={{ color: "#5A3235" }}
-            >
-              {row.actionLabel}
-            </Link>
+            {row.key === "invitation" && invite.canInvite && !sentNow ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                disabled={previewLoading || invitePending || sending}
+                onClick={openInvitePreview}
+                className="shrink-0"
+                data-testid="open-client-invite-preview"
+              >
+                {previewLoading ? "Preparing…" : "Invite client"}
+              </Button>
+            ) : isBookingWorkspaceHref(row.href) ? null : (
+              <Link
+                href={row.href}
+                className="shrink-0 text-xs font-medium underline-offset-2 hover:underline"
+                style={{ color: "#5A3235" }}
+              >
+                {row.actionLabel}
+              </Link>
+            )}
           </li>
         ))}
       </ul>
+
+      <ClientInvitePreviewOverlay
+        open={previewOpen}
+        preview={preview}
+        mode="invite"
+        sending={sending || invitePending}
+        onBack={closePreview}
+        onConfirmSend={confirmSend}
+      />
     </div>
   );
 }

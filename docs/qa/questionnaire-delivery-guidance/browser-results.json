@@ -1,0 +1,72 @@
+{
+  "status": "GREEN",
+  "servingSha": "eed873c32ce31e3d562daefbb76d4d68b76b847a",
+  "expectedSha": "eed873c32ce31e3d562daefbb76d4d68b76b847a",
+  "clientId": "b4e2764b-be33-4579-89e3-0c8e4a6dd5be",
+  "eventId": "ebf74f77-2944-474a-b735-48762ecb6842",
+  "passed": 12,
+  "failed": 0,
+  "checks": [
+    {
+      "name": "serving_sha",
+      "pass": true,
+      "detail": "serving=eed873c32ce31e3d562daefbb76d4d68b76b847a expected=eed873c32ce31e3d562daefbb76d4d68b76b847a"
+    },
+    {
+      "name": "fixture",
+      "pass": true,
+      "detail": "client=b4e2764b-be33-4579-89e3-0c8e4a6dd5be event=ebf74f77-2944-474a-b735-48762ecb6842"
+    },
+    {
+      "name": "guidance_visible",
+      "pass": true,
+      "detail": "Questionnaire delivery\n\nYou can request questionnaire information through planning tasks or automated messages where supported. If you've already requested the same information through one of those wo"
+    },
+    {
+      "name": "guidance_avoids_duplicate_copy",
+      "pass": true,
+      "detail": "Questionnaire delivery\n\nYou can request questionnaire information through planning tasks or automated messages where supported. If you've already requested the same information through one of those workflows, you don't need to send a separate questionnaire request here. Use this "
+    },
+    {
+      "name": "guidance_does_not_claim_auto_send",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "name": "kind_tabs_visible",
+      "pass": true,
+      "detail": "tabs"
+    },
+    {
+      "name": "tab_switch_final_details",
+      "pass": true,
+      "detail": "final_details"
+    },
+    {
+      "name": "preview_opened",
+      "pass": true,
+      "detail": "https://app.sandbox.hellotocheers.com/events/ebf74f77-2944-474a-b735-48762ecb6842/questionnaire-preview?kind=client_planning&from=event"
+    },
+    {
+      "name": "questionnaires_unchanged",
+      "pass": true,
+      "detail": "fingerprint"
+    },
+    {
+      "name": "no_new_sent_questionnaires",
+      "pass": true,
+      "detail": "b=4 a=4"
+    },
+    {
+      "name": "no_invite_side_effect",
+      "pass": true,
+      "detail": "b=34 a=34"
+    },
+    {
+      "name": "no_notification_side_effect",
+      "pass": true,
+      "detail": "b=3489 a=3489"
+    }
+  ],
+  "at": "2026-10-22T17:39:24.066Z"
+}

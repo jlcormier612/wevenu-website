@@ -22,7 +22,8 @@ export const OFFERING_STARTER_CATEGORIES: readonly OfferingStarterCategory[] = [
   },
   {
     key: "OFF-CAT-bar",
-    name: "Bar",
+    // Canonical label matches EO Template suggested "Bar Service" (alias "Bar" still matches).
+    name: "Bar Service",
     items: [
       { name: "Premium open bar", unit: "event", description: "Beer, wine, and well spirits" },
       { name: "Champagne toast", unit: "guest" },
@@ -44,5 +45,15 @@ export const OFFERING_STARTER_CATEGORIES: readonly OfferingStarterCategory[] = [
       { name: "Chiavari chair rental", unit: "each" },
       { name: "Ivory linen rental", unit: "each" },
     ],
+  },
+  {
+    key: "OFF-CAT-florals",
+    name: "Florals",
+    items: [],
+  },
+  {
+    key: "OFF-CAT-decor",
+    name: "Décor",
+    items: [],
   },
 ] as const;

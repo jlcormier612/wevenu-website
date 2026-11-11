@@ -27,7 +27,17 @@ import { comingUpHorizonEnd } from "@/lib/clients/list-filters";
 import { isOverdue, formatDate as formatLeadDate, leadDisplayName } from "@/lib/leads/constants";
 import { formatDate as formatEventDate } from "@/lib/events/constants";
 import { formatDate as formatPaymentDate, formatMoney } from "@/lib/payments/constants";
+import { leadCountsOnTodaySchedule } from "@/lib/dashboard/focus-lead-membership";
 import type { DashboardData } from "@/lib/dashboard/types";
+import { formatVenueLocalClock } from "@/lib/venue/timezone";
+import {
+  eventTodayDismissalKey,
+  leadAttentionDismissalKey,
+  leadFollowUpTodayDismissalKey,
+  leadTaskDismissalKey,
+  paymentDueTodayDismissalKey,
+  tourTodayDismissalKey,
+} from "@/lib/dashboard-system/attention-identity";
 
 /** The certified 7-tier Priority Hierarchy (architecture doc §5) — only the 4 this Dashboard is allowed to surface are used here (Historical/Learning/Celebration are Reports/Luv territory, per the same doc's own routing table). */
 export type Priority = "critical" | "needs_attention_today" | "upcoming" | "informational";
@@ -46,22 +56,17 @@ export type ClassifiedItem = {
   /** ISO date, for sort ordering — null sorts last. */
   sortDate: string | null;
   /**
-   * Cross-section dedupe key (Dashboard IA cleanup) — "type:id" of the real
-   * underlying entity this item is about, set ONLY where a different
-   * Dashboard section's item is confirmed to represent the exact same
-   * entity, never inferred from label text. null means "no other section
-   * currently has a comparable item" — that is the correct, honest default,
-   * not a gap to fill in. In particular: Today's Focus tasks come from
-   * lead_tasks; Your Next Steps tasks come from event_tasks. These are
-   * different tables (a lead's pipeline task vs. a booked event's Task
-   * Center task) that happen to share the word "task" — never matched here.
-   * Event Readiness items (briefing-contract-{eventId}, etc.) are an
-   * event-level aggregate; Your Next Steps' contract/payment items are
-   * per-record. Matching those would require plumbing an eventId through
-   * the contracts/payments queries this phase intentionally leaves alone —
-   * a real, documented remaining gap, not silently papered over.
+   * Cross-section dedupe key — "type:id" of the real underlying entity this
+   * item is about, set ONLY where another Dashboard section's item is confirmed
+   * to represent the exact same entity. null means no other section currently
+   * has a comparable item.
    */
   crossSectionSubject: string | null;
+  /**
+   * Stable Focus dismissal fingerprint for this recommendation condition.
+   * Not rendered copy. Not a list index.
+   */
+  dismissalKey?: string;
 };
 
 /** Collects the non-null cross-section subjects already claimed by a set of items. */
@@ -102,11 +107,12 @@ export function classifyDashboardItems(data: DashboardData): ClassifiedItem[] {
       domain: "Leads",
       label: leadDisplayName(lead.firstName, lead.lastName, lead.partnerFirstName, lead.partnerLastName),
       detail: lead.reason,
-      href: `/leads/${lead.id}`,
+      href: `/leads/${lead.id}?tab=messages`,
       rightLabel: "Follow up",
       rightSeverity: "warning",
       sortDate: null,
       crossSectionSubject: `lead:${lead.id}`,
+      dismissalKey: leadAttentionDismissalKey(lead, today),
     });
   }
 
@@ -127,19 +133,18 @@ export function classifyDashboardItems(data: DashboardData): ClassifiedItem[] {
       domain: "Leads",
       label: leadDisplayName(lead.firstName, lead.lastName, lead.partnerFirstName, lead.partnerLastName),
       detail: lead.nextActionText ?? "Follow-up scheduled for today",
-      href: `/leads/${lead.id}`,
+      href: `/leads/${lead.id}?tab=messages`,
       rightLabel: "Today",
       rightSeverity: "warning",
       sortDate: today,
       crossSectionSubject: `lead:${lead.id}`,
+      dismissalKey: leadFollowUpTodayDismissalKey(lead.id, lead.followUpDate ?? today),
     });
   }
 
-  // ── Tasks domain: overdue tasks (Critical — a missed commitment) ──────
+  // ── Tasks domain: overdue lead_tasks (Critical — a missed commitment) ─
   // crossSectionSubject stays null: these are lead_tasks (pipeline-stage
-  // tasks), a different table from Your Next Steps' event_tasks (Task
-  // Center). Both are called "task" but are not the same entity — never
-  // matched against each other.
+  // tasks), a different table from Task Center event_tasks.
   for (const task of data.openTasks) {
     if (!isOverdue(task.dueDate)) continue;
     items.push({
@@ -148,11 +153,12 @@ export function classifyDashboardItems(data: DashboardData): ClassifiedItem[] {
       domain: "Tasks",
       label: task.title,
       detail: task.leadName,
-      href: `/leads/${task.leadId}`,
+      href: `/leads/${task.leadId}?tab=tasks`,
       rightLabel: "Overdue",
       rightSeverity: "critical",
       sortDate: task.dueDate,
       crossSectionSubject: null,
+      dismissalKey: leadTaskDismissalKey(task.id, task.dueDate),
     });
   }
 
@@ -170,16 +176,17 @@ export function classifyDashboardItems(data: DashboardData): ClassifiedItem[] {
   // this phase's own "Duplicate information removed" requirement rather
   // than introducing a new duplicate while building it.
 
-  // ── Bookings/Events domain: tours scheduled today (Needs Attention Today — same-day operational) ──
+  // ── Tours scheduled today — Tours surface owns the appointment list ──
   for (const lead of data.upcomingTours) {
-    if (lead.tourDate !== today) continue;
+    // Completed tours are not remaining work, even when the booked slot is today.
+    if (!leadCountsOnTodaySchedule(lead, today)) continue;
     items.push({
       id: `tour-${lead.id}`,
       priority: "needs_attention_today",
       domain: "Calendar",
       label: `Tour: ${leadDisplayName(lead.firstName, lead.lastName, lead.partnerFirstName, lead.partnerLastName)}`,
-      detail: lead.tourTime ? `Today at ${lead.tourTime.slice(0, 5)}` : "Today",
-      href: `/leads/${lead.id}`,
+      detail: lead.tourTime ? `Today at ${formatVenueLocalClock(lead.tourTime)}` : "Today",
+      href: `/tours`,
       rightLabel: "Today",
       rightSeverity: "warning",
       sortDate: lead.tourDate,
@@ -187,6 +194,7 @@ export function classifyDashboardItems(data: DashboardData): ClassifiedItem[] {
       // follow-up are different obligations about the same lead. Suppressing
       // the follow-up because a tour is showing would lose real information.
       crossSectionSubject: null,
+      dismissalKey: tourTodayDismissalKey(lead.id, lead.tourDate ?? today),
     });
   }
 
@@ -195,21 +203,20 @@ export function classifyDashboardItems(data: DashboardData): ClassifiedItem[] {
   // service.ts) already computes this exact "needs_attention" fan-out
   // across every active booking; reused directly, never re-derived. ──
   for (const item of data.briefing.needsAttentionNow) {
+    const who = item.eventName?.trim() || null;
     items.push({
       id: item.id,
       priority: "critical",
       domain: "Event Readiness",
-      label: item.eventName ?? item.label,
-      detail: item.detail,
+      // Issue first (what), then who/where (detail) — not a generic booking dump.
+      label: item.detail?.trim() || item.label,
+      detail: who ? `${item.label} · ${who}` : item.label,
       href: item.link,
       rightLabel: item.eventDate ? formatEventDate(item.eventDate) : undefined,
       rightSeverity: "critical",
       sortDate: item.eventDate,
-      // Event-level aggregate (this event's contracts/payments/requests
-      // need attention) vs. Your Next Steps' per-record contract/payment
-      // items — different granularity, no clean shared id without plumbing
-      // an eventId through those queries. Left unmatched, not guessed.
       crossSectionSubject: null,
+      dismissalKey: item.conditionKey ?? item.id,
     });
   }
 
@@ -233,19 +240,20 @@ function classifyDatedItems(data: DashboardData): ClassifiedItem[] {
     // Today's tours are already published as actionable work by
     // classifyDashboardItems, under a different id — excluded here so a tour
     // happening today cannot arrive in the same section twice.
-    if (lead.tourDate === today) continue;
+    if (lead.tourCompleted || lead.tourDate === today) continue;
     items.push({
       id: `up-tour-${lead.id}`,
       priority: "upcoming",
       domain: "Calendar",
       label: `Tour: ${leadDisplayName(lead.firstName, lead.lastName, lead.partnerFirstName, lead.partnerLastName)}`,
       detail: "Tour",
-      href: `/leads/${lead.id}`,
+      href: `/tours`,
       rightLabel: lead.tourDate ? formatLeadDate(lead.tourDate) : undefined,
       sortDate: lead.tourDate,
       // Same reasoning as today's tour item above: not the same obligation
       // as a lead follow-up, even for the same lead.
       crossSectionSubject: null,
+      dismissalKey: tourTodayDismissalKey(lead.id, lead.tourDate ?? today),
     });
   }
 
@@ -261,6 +269,7 @@ function classifyDatedItems(data: DashboardData): ClassifiedItem[] {
       sortDate: event.eventDate,
       // No other section currently emits a comparable per-event key.
       crossSectionSubject: null,
+      dismissalKey: eventTodayDismissalKey(event.id, event.eventDate),
     });
   }
 
@@ -280,6 +289,7 @@ function classifyDatedItems(data: DashboardData): ClassifiedItem[] {
       // payment items are overdue/today-only), so the match is honest and
       // future-proof rather than a coincidence of the current date filter.
       crossSectionSubject: `payment:${payment.scheduleId}`,
+      dismissalKey: paymentDueTodayDismissalKey(payment.id, payment.dueDate),
     });
   }
 
@@ -288,7 +298,7 @@ function classifyDatedItems(data: DashboardData): ClassifiedItem[] {
 }
 
 /**
- * Coming up is events only — the events table, real event dates, next 60 days.
+ * Coming up is events only — the events table, real event dates, next 30 days.
  *
  * Payments, invoices, tours, tasks, and other dated facts are a different
  * domain. They must not be merged into this list (even when they belong to
@@ -312,6 +322,7 @@ export function classifyUpcomingItems(data: DashboardData): ClassifiedItem[] {
       rightLabel: formatEventDate(event.eventDate),
       sortDate: event.eventDate,
       crossSectionSubject: null,
+      dismissalKey: eventTodayDismissalKey(event.id, event.eventDate),
     });
   }
   return items.sort((a, b) => (a.sortDate ?? "9999").localeCompare(b.sortDate ?? "9999"));

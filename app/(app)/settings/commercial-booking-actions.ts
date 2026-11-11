@@ -7,6 +7,7 @@ import {
   normalizeCommercialBookingPrefs,
   type VenueCommercialBookingPrefs,
 } from "@/lib/booking-journey/venue-prefs";
+import { validateCustomScheduleTemplate } from "@/lib/payments/custom-default-schedule";
 import { createClient } from "@/integrations/supabase/server";
 import { getCurrentUserRole, getCurrentVenue } from "@/lib/venue/service";
 import { updateVenueFields } from "@/lib/venue/repository";
@@ -21,11 +22,28 @@ export async function saveCommercialBookingPrefsAction(
   const venue = await getCurrentVenue();
   if (!venue) return { ok: false, message: "Venue not found." };
 
+  if (
+    input.remainingBalanceMode === "plan"
+    && input.defaultSchedulePresetId === "custom"
+  ) {
+    const v = validateCustomScheduleTemplate(input.defaultCustomSchedule);
+    if (!v.ok) {
+      return { ok: false, message: v.errors[0] ?? "Fix your Custom payment schedule before saving." };
+    }
+  }
+
   const prefs = normalizeCommercialBookingPrefs({
     ...DEFAULT_COMMERCIAL_BOOKING_PREFS,
     ...venue.commercialBookingPrefs,
     ...input,
   });
+
+  if (prefs.defaultSchedulePresetId === "custom") {
+    const v = validateCustomScheduleTemplate(prefs.defaultCustomSchedule);
+    if (!v.ok) {
+      return { ok: false, message: v.errors[0] ?? "Fix your Custom payment schedule before saving." };
+    }
+  }
 
   const supabase = await createClient();
   await updateVenueFields(supabase, venue.id, {

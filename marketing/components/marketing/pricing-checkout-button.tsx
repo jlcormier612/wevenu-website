@@ -7,7 +7,7 @@ import { OnboardingSelection } from "@/components/marketing/onboarding-selection
 import type { OnboardingType } from "@/lib/marketing/enrollment";
 import { getPlanDisplayName } from "@/lib/marketing/onboarding-packages";
 import type { SubscriptionPlanId } from "@/lib/marketing/pricing-page";
-import { HOVER_FILL, HOVER_LINK, HOVER_OUTLINE } from "@/lib/marketing/rhythm";
+import { HOVER_LINK, HOVER_OUTLINE } from "@/lib/marketing/rhythm";
 import { cn } from "@/lib/utils";
 
 type PricingCheckoutButtonProps = {
@@ -15,6 +15,12 @@ type PricingCheckoutButtonProps = {
   label: string;
   /** primary — one filled plan CTA; secondary — quiet outline peers */
   variant?: "primary" | "secondary";
+  /** Phase 2 Weven Checkout available (server readiness). */
+  wevenOfferAvailable?: boolean;
+  /** Phase 4 Add Another Venue — durable reservation id (server resolves group price). */
+  organizationReservationId?: string | null;
+  /** Prefill new property name from Add Another Venue. */
+  prefillVenueName?: string | null;
   className?: string;
 };
 
@@ -29,6 +35,9 @@ export function PricingCheckoutButton({
   planId,
   label,
   variant = "primary",
+  wevenOfferAvailable = false,
+  organizationReservationId = null,
+  prefillVenueName = null,
   className,
 }: PricingCheckoutButtonProps) {
   const [open, setOpen] = useState(false);
@@ -54,9 +63,12 @@ export function PricingCheckoutButton({
           welcome_back: selection.welcomeBack,
           onboarding_type: selection.onboardingType,
           legal_accepted: selection.legalAccepted,
-          venue_name: selection.venueName,
+          venue_name: selection.venueName || prefillVenueName || "",
           first_name: selection.firstName,
           last_name: selection.lastName,
+          ...(organizationReservationId
+            ? { organization_reservation_id: organizationReservationId }
+            : {}),
         }),
       });
       const data = (await res.json()) as { url?: string; error?: string };
@@ -83,7 +95,7 @@ export function PricingCheckoutButton({
           "inline-flex w-full items-center justify-center rounded-full px-6 py-3 text-sm tracking-wide transition duration-200 ease-out disabled:opacity-60",
           FOCUS_RING,
           variant === "primary" &&
-            `bg-[var(--heritage-sage)] text-[var(--true-white)] ${HOVER_FILL}`,
+            `bg-[var(--botanical)] text-[var(--true-white)] hover:bg-[color-mix(in_srgb,var(--botanical)_88%,black)]`,
           variant === "secondary" &&
             `border border-[var(--heritage-sage)]/35 bg-transparent text-[var(--forest-sage)] ${HOVER_OUTLINE}`,
           className,
@@ -97,6 +109,7 @@ export function PricingCheckoutButton({
         planLabel={getPlanDisplayName(planId)}
         loading={loading}
         error={error}
+        wevenOfferAvailable={wevenOfferAvailable}
         onClose={() => {
           if (!loading) {
             setOpen(false);

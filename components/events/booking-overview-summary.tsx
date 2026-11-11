@@ -4,9 +4,10 @@ import Link from "next/link";
 
 import { ClientStatusBadge } from "@/components/clients/client-status-badge";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDate } from "@/lib/events/constants";
 import { eventTypeLabel } from "@/lib/leads/constants";
+import { inquiryMessageDisplayLabel } from "@/lib/leads/inquiry-message-origin";
 import type { ClientStatus } from "@/lib/clients/types";
 import type { EventReadiness } from "@/lib/playbooks/types";
 import type { Invoice } from "@/lib/invoices/types";
@@ -15,21 +16,23 @@ import { pickNextOpenPaymentLine } from "@/lib/invoices/amount-due-now";
 import type { TimelineEntry } from "@/lib/timeline/types";
 import type { EventVendorAssignment } from "@/lib/vendors/types";
 import type { EventVendorRecommendation } from "@/lib/vendor-recommendations/types";
+import { overviewVendorSummaryLines } from "@/lib/vendors/overview-vendor-copy";
 import type { ConversationMessage } from "@/lib/conversations/types";
 import type { Document } from "@/lib/documents/types";
 
 // ---- Small shared tile ------------------------------------------------------
 
 function SummaryTile({
-  title, lines, linkHref, linkLabel,
+  title, lines, linkHref, linkLabel, testId,
 }: {
   title: string;
   lines: ReactNode[];
   linkHref: string;
   linkLabel: string;
+  testId?: string;
 }) {
   return (
-    <Card>
+    <Card data-testid={testId}>
       <CardHeader className="pb-2">
         <CardTitle className="text-sm">{title}</CardTitle>
       </CardHeader>
@@ -47,13 +50,17 @@ function SummaryTile({
 
 function readinessLine(readiness: EventReadiness | null): ReactNode {
   if (!readiness) return <span className="text-muted-foreground">Not started</span>;
-  return `${readiness.score}% · ${readiness.completedRequired} of ${readiness.totalRequired} tasks`;
+  const waived = readiness.waivedRequired ?? 0;
+  const progress = waived > 0
+    ? `${readiness.completedRequired} completed · ${waived} waived of ${readiness.totalRequired}`
+    : `${readiness.completedRequired} of ${readiness.totalRequired} completed`;
+  return `${readiness.score}% · ${progress}`;
 }
 
 // ---- Main ---------------------------------------------------------------------
 
 export function BookingOverviewSummary({
-  clientName, eventType, eventDate, spaceName, guestCount, guestCountSubmission, clientStatus,
+  clientName, eventType, eventDate, spaceName, spaceAssignmentsDisplay, guestCount, guestCountSubmission, clientStatus,
   readinessByKind,
   invoices,
   paymentScheduleLines = null,
@@ -61,11 +68,14 @@ export function BookingOverviewSummary({
   vendorAssignments, vendorRecommendations,
   conversationMessages,
   documents,
+  contact = null,
 }: {
   clientName: string | null;
   eventType: string | null;
   eventDate: string;
   spaceName: string | null;
+  /** Multi-use formatted lines (Ceremony: Garden…). Wins over spaceName when set. */
+  spaceAssignmentsDisplay?: string | null;
   guestCount: number | null;
   guestCountSubmission?: { count: number; submittedAt: string } | null;
   clientStatus: ClientStatus;
@@ -77,6 +87,20 @@ export function BookingOverviewSummary({
   vendorRecommendations: EventVendorRecommendation[];
   conversationMessages: ConversationMessage[];
   documents: Document[];
+  /** Current contact on the client, plus historical source and inquiry from the lead. */
+  contact?: {
+    clientId: string;
+    firstName: string | null;
+    lastName: string | null;
+    partnerFirstName: string | null;
+    partnerLastName: string | null;
+    phone: string | null;
+    email: string | null;
+    partnerEmail: string | null;
+    source: string | null;
+    inquiryMessage: string | null;
+    inquiryMessageOrigin?: string | null;
+  } | null;
 }) {
   // ---- Payments: simple sums/finds over already-fetched invoices, nothing new invented ----
   const balanceDue = invoices.reduce((sum, inv) => sum + inv.balanceDue, 0);
@@ -99,9 +123,12 @@ export function BookingOverviewSummary({
     ? timeline.reduce((latest, e) => (e.updatedAt > latest ? e.updatedAt : latest), timeline[0].updatedAt)
     : null;
 
-  // ---- Vendors ----
-  const vendorsSelected = vendorAssignments.length;
-  const recommendationsPending = vendorRecommendations.filter((r) => !r.selectedAt).length;
+  // ---- Vendors (assignments ≠ couple selections; unsubmitted highlights ≠ staff queue) ----
+  const vendorOverviewLines = overviewVendorSummaryLines({
+    assignmentCount: vendorAssignments.length,
+    highlightCount: vendorRecommendations.length,
+    submittedHighlightCount: vendorRecommendations.filter((r) => Boolean(r.selectedAt)).length,
+  });
 
   // ---- Messages: real per-message unread count (venueReadAt). ----
   const lastConversationMessage = [...conversationMessages].sort((a, b) => (a.sentAt < b.sentAt ? 1 : -1))[0];
@@ -115,7 +142,9 @@ export function BookingOverviewSummary({
           <span className="font-medium text-heading">{clientName ?? "—"}</span>
           {eventType && <Badge variant="outline">{eventTypeLabel(eventType)}</Badge>}
           <span className="text-muted-foreground">{formatDate(eventDate)}</span>
-          <span className="text-muted-foreground">{spaceName ?? "No space assigned"}</span>
+          <span className="text-muted-foreground whitespace-pre-line">
+            {spaceAssignmentsDisplay ?? spaceName ?? "No space assigned"}
+          </span>
           <span className="text-muted-foreground">
             {guestCount != null ? `${guestCount.toLocaleString()} guests` : "Guest count TBD"}
             {guestCountSubmission && (
@@ -127,6 +156,42 @@ export function BookingOverviewSummary({
           <ClientStatusBadge status={clientStatus} />
         </CardContent>
       </Card>
+      {(contact) && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Contact Information</CardTitle>
+            <CardAction>
+              <Link
+                href={`/clients/${contact.clientId}/edit`}
+                className="text-xs font-medium text-primary hover:underline"
+                aria-label="Edit contact information"
+              >
+                Edit
+              </Link>
+            </CardAction>
+          </CardHeader>
+          <CardContent className="space-y-1.5 text-sm">
+            <p>
+              <span className="text-muted-foreground">Name · </span>
+              {[contact.firstName, contact.lastName].filter(Boolean).join(" ") || "—"}
+            </p>
+            <p><span className="text-muted-foreground">Phone · </span>{contact.phone || "—"}</p>
+            <p><span className="text-muted-foreground">Email · </span>{contact.email || "—"}</p>
+            <p>
+              <span className="text-muted-foreground">Partner · </span>
+              {[contact.partnerFirstName, contact.partnerLastName].filter(Boolean).join(" ") || "—"}
+            </p>
+            <p><span className="text-muted-foreground">Partner email · </span>{contact.partnerEmail || "—"}</p>
+            {contact.source && <p><span className="text-muted-foreground">Source · </span>{contact.source}</p>}
+            {contact.inquiryMessage && (
+              <p className="whitespace-pre-wrap pt-1 text-foreground">
+                <span className="text-muted-foreground">{inquiryMessageDisplayLabel(contact.inquiryMessageOrigin)} · </span>
+                {contact.inquiryMessage}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* ── Summary tiles ────────────────────────────────────────────────── */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -156,11 +221,9 @@ export function BookingOverviewSummary({
         />
         <SummaryTile
           title="Vendors"
-          lines={[
-            `${vendorsSelected} vendor${vendorsSelected === 1 ? "" : "s"} selected`,
-            `${recommendationsPending} recommendation${recommendationsPending === 1 ? "" : "s"} pending`,
-          ]}
+          lines={vendorOverviewLines}
           linkHref="#vendors" linkLabel="Open Vendors"
+          testId="overview-vendors-tile"
         />
         <SummaryTile
           title="Conversation"

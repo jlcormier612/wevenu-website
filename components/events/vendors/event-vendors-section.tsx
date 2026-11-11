@@ -13,19 +13,22 @@ import {
   removeVendorAssignmentAction,
   setVendorAssignmentPaymentAction,
 } from "@/app/(app)/events/[id]/vendor-actions";
+import { assignVendorToClientAction } from "@/app/(app)/clients/planning-actions";
 import { ConversationThread } from "@/components/conversations/conversation-thread";
 import { VendorCategoryBadge } from "@/components/vendors/vendor-category-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useSyncedState } from "@/lib/hooks/use-synced-state";
 import type { Document } from "@/lib/documents/types";
 import { formatTime, vendorCategoryLabel } from "@/lib/vendors/constants";
+import { vendorPreferenceClientLabel } from "@/lib/vendors/list-presentation";
+import {
+  INTERNAL_NOTES_PRIVACY_HINT,
+  internalNotesLabel,
+} from "@/lib/notes/internal-notes-copy";
 import type { EventVendorAssignment, Vendor } from "@/lib/vendors/types";
 import type { EventVendorRemovalRequest } from "@/lib/vendor-removal-requests/types";
 
@@ -59,7 +62,7 @@ function VendorPaymentControl({ eventId, assignment }: { eventId: string; assign
 
   function save(nextFee: number | null, nextStatus: "pending" | "paid") {
     startTransition(async () => {
-      const result = await setVendorAssignmentPaymentAction(assignment.id, eventId, nextFee, nextStatus);
+      const result = await setVendorAssignmentPaymentAction(assignment.id, eventId || "", nextFee, nextStatus);
       if (result.ok) { setFee(nextFee); setStatus(nextStatus); router.refresh(); }
       else toast.error(result.message ?? "Could not update payment.");
     });
@@ -67,7 +70,10 @@ function VendorPaymentControl({ eventId, assignment }: { eventId: string; assign
 
   function handleEditFee(e: React.MouseEvent) {
     e.preventDefault(); e.stopPropagation();
-    const input = window.prompt("Agreed fee for this vendor ($)", fee != null ? String(fee) : "");
+    const input = window.prompt(
+      "Venue cost for this vendor ($) — what the venue owes them. Not a couple charge or Event Order line.",
+      fee != null ? String(fee) : "",
+    );
     if (input === null) return;
     const trimmed = input.trim();
     if (!trimmed) { save(null, status); return; }
@@ -84,23 +90,29 @@ function VendorPaymentControl({ eventId, assignment }: { eventId: string; assign
   if (fee == null) {
     return (
       <button type="button" onClick={handleEditFee} disabled={pending}
-        className="text-[10px] font-medium px-2 py-0.5 rounded-full border border-border text-muted-foreground hover:border-primary/40">
-        + Add fee
+        className="text-[10px] font-medium px-2 py-0.5 rounded-full border border-border text-muted-foreground hover:border-primary/40"
+        title="Venue cost owed to this vendor — not charged to the couple"
+        aria-label="Add venue cost for this vendor">
+        + Add venue cost
       </button>
     );
   }
 
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex items-center gap-1" title="Venue cost owed to this vendor — not a couple charge">
       <button type="button" onClick={handleEditFee} disabled={pending}
-        className="text-[10px] font-medium px-2 py-0.5 rounded-full border border-border text-foreground hover:border-primary/40">
-        ${fee.toLocaleString()}
+        className="text-[10px] font-medium px-2 py-0.5 rounded-full border border-border text-foreground hover:border-primary/40"
+        aria-label={`Venue cost $${fee.toLocaleString()} — edit`}>
+        Venue cost ${fee.toLocaleString()}
       </button>
       <button type="button" onClick={toggleStatus} disabled={pending}
         className={`text-[10px] font-medium px-2 py-0.5 rounded-full border transition-colors ${
-          status === "paid" ? "border-primary/40 bg-primary/10 text-primary" : "border-amber-300 bg-amber-50 text-amber-700"
-        }`}>
-        {pending ? "…" : status === "paid" ? "Paid" : "Pending"}
+          status === "paid"
+            ? "border-primary/40 bg-primary/10 text-primary"
+            : "border-amber-300 bg-amber-50 text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100"
+        }`}
+        aria-label={status === "paid" ? "Mark venue cost unpaid" : "Mark venue cost paid"}>
+        {pending ? "…" : status === "paid" ? "Paid to vendor" : "Unpaid"}
       </button>
     </div>
   );
@@ -110,11 +122,13 @@ function VendorPaymentControl({ eventId, assignment }: { eventId: string; assign
 
 export function EventVendorsSection({
   eventId,
+  planningClientId = null,
   initialAssignments,
   availableVendors,
   vendorDocuments = [],
 }: {
   eventId: string;
+  planningClientId?: string | null;
   initialAssignments: EventVendorAssignment[];
   availableVendors: Vendor[];
   vendorDocuments?: (Document & { vendorName: string | null })[];
@@ -123,7 +137,7 @@ export function EventVendorsSection({
   // See lib/hooks/use-synced-state.ts.
   const [assignments, setAssignments] = useSyncedState(initialAssignments);
   const [showForm, setShowForm]       = React.useState(false);
-  const [vendorId, setVendorId]       = React.useState("");
+  const [vendorIds, setVendorIds]     = React.useState<string[]>([]);
   const [arrivalTime, setArrivalTime] = React.useState("");
   const [setupLocation, setSetupLocation] = React.useState("");
   const [loadInNotes, setLoadInNotes] = React.useState("");
@@ -141,43 +155,72 @@ export function EventVendorsSection({
   }, [assignments]);
 
   const preferred    = availableVendors.filter(v => v.isPreferred);
-  const others       = availableVendors.filter(v => !v.isPreferred);
+  const recommended  = availableVendors.filter(v => !v.isPreferred && v.preferenceLevel === "recommended");
+  const others       = availableVendors.filter(v => !v.isPreferred && v.preferenceLevel !== "recommended");
   const assignedIds  = new Set(assignments.map(a => a.vendorId));
   const unassigned   = availableVendors.filter(v => !assignedIds.has(v.id));
 
   function resetForm() {
-    setVendorId(""); setArrivalTime(""); setSetupLocation("");
+    setVendorIds([]); setArrivalTime(""); setSetupLocation("");
     setLoadInNotes(""); setNotes(""); setShowForm(false);
   }
 
+  function toggleVendor(id: string) {
+    setVendorIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  }
+
   function handleAdd() {
-    if (!vendorId) return;
+    const toAssign = vendorIds.filter((id) => !assignedIds.has(id));
+    if (toAssign.length === 0) return;
     startAdd(async () => {
-      const result = await assignVendorAction(eventId, {
-        vendorId, arrivalTime, setupLocation, loadInNotes, notes,
-      });
-      if (result.ok && "assignment" in result) {
-        setAssignments(prev => [...prev, result.assignment]);
-        resetForm();
-        router.refresh();
-      } else if (!result.ok) {
-        toast.error(result.message ?? "Could not assign vendor.");
+      const added: EventVendorAssignment[] = [];
+      for (const vendorId of toAssign) {
+        const input = { vendorId, arrivalTime, setupLocation, loadInNotes, notes };
+        const result = planningClientId && !eventId
+          ? await assignVendorToClientAction(planningClientId, input)
+          : await assignVendorAction(eventId, input);
+        if (result.ok && "assignment" in result) {
+          added.push(result.assignment);
+        } else if (!result.ok) {
+          toast.error(result.message ?? "Could not assign vendor.");
+          if (added.length > 0) {
+            setAssignments((prev) => [...prev, ...added]);
+            router.refresh();
+          }
+          return;
+        }
       }
+      setAssignments((prev) => [...prev, ...added]);
+      resetForm();
+      toast.success(
+        added.length === 1
+          ? "Vendor assigned."
+          : `${added.length} vendors assigned.`,
+      );
+      router.refresh();
     });
   }
 
-  async function handleRemove(assignmentId: string, vendorName: string) {
-    if (!confirm(`Remove ${vendorName} from this event? They'll lose access to the event workspace and conversations for this booking.`)) {
+  async function handleRemove(assignmentId: string, vendorName: string, opts?: { isRequired?: boolean }) {
+    const required = opts?.isRequired === true;
+    const message = required
+      ? `Remove required vendor ${vendorName}?\n\nThis overrides the venue Required designation for this event. They will lose access to the event workspace and conversations for this booking. Event Order / invoice lines are not changed automatically.`
+      : `Remove ${vendorName} from this event? They'll lose access to the event workspace and conversations for this booking.`;
+    if (!confirm(message)) {
       return;
     }
     setAssignments(prev => prev.filter(a => a.id !== assignmentId));
-    const result = await removeVendorAssignmentAction(assignmentId, eventId);
+    const result = await removeVendorAssignmentAction(assignmentId, eventId || planningClientId || "");
     if (!result.ok) {
       toast.error("Could not remove vendor.");
       router.refresh();
       return;
     }
-    toast.success(`${vendorName} removed from this event.`);
+    toast.success(
+      required
+        ? `${vendorName} removed (required-vendor exception).`
+        : `${vendorName} removed from this event.`,
+    );
     router.refresh();
   }
 
@@ -226,6 +269,16 @@ export function EventVendorsSection({
                       {a.vendorName}
                     </Link>
                     <VendorCategoryBadge category={a.vendorCategory} />
+                    {availableVendors.find((v) => v.id === a.vendorId)?.isRequired && (
+                      <Badge className="htc-badge-attention text-[10px]">
+                        Required
+                      </Badge>
+                    )}
+                    {availableVendors.find((v) => v.id === a.vendorId)?.isInHouse && (
+                      <span className="rounded-full border border-border px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                        In-house
+                      </span>
+                    )}
                   </div>
                   <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                     {a.arrivalTime && (
@@ -257,7 +310,9 @@ export function EventVendorsSection({
                     </button>
                   )}
                   <button type="button"
-                    onClick={() => handleRemove(a.id, a.vendorName)}
+                    onClick={() => handleRemove(a.id, a.vendorName, {
+                      isRequired: availableVendors.find((v) => v.id === a.vendorId)?.isRequired,
+                    })}
                     className="opacity-0 transition-opacity group-hover:opacity-100 text-muted-foreground hover:text-destructive"
                     aria-label="Remove vendor">
                     <Trash2 className="h-3.5 w-3.5" />
@@ -266,17 +321,27 @@ export function EventVendorsSection({
               </div>
 
               {(a.pendingRemovalRequests ?? []).length > 0 && (
-                <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 space-y-2">
-                  {(a.pendingRemovalRequests ?? []).map((req) => (
+                <div
+                  className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 space-y-2 text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100"
+                  data-testid="vendor-removal-request-banner"
+                >
+                  {(a.pendingRemovalRequests ?? []).map((req) => {
+                    const isRequired = !!availableVendors.find((v) => v.id === a.vendorId)?.isRequired;
+                    return (
                     <div key={req.id} className="flex flex-wrap items-start justify-between gap-2">
                       <div className="min-w-0 space-y-0.5">
-                        <p className="text-xs font-medium text-amber-900">
+                        <p className="text-xs font-medium">
                           {req.requestedBy === "couple"
-                            ? `Couple withdrew ${a.vendorName} — remove from event?`
-                            : `${a.vendorName} requested to leave`}
+                            ? `Couple asked to remove ${a.vendorName} — assignment still active until you decide.`
+                            : `${a.vendorName} requested to leave — assignment still active until you decide.`}
                         </p>
+                        {isRequired && (
+                          <p className="text-[11px] font-medium">
+                            Required vendor — dismissing keeps them assigned; removing overrides the requirement.
+                          </p>
+                        )}
                         {req.reason && (
-                          <p className="text-[11px] text-amber-800/80 italic">“{req.reason}”</p>
+                          <p className="text-[11px] opacity-80 italic">“{req.reason}”</p>
                         )}
                       </div>
                       <div className="flex shrink-0 items-center gap-1.5">
@@ -284,8 +349,9 @@ export function EventVendorsSection({
                           type="button"
                           size="sm"
                           variant="outline"
-                          className="h-7 text-xs"
+                          className="h-7 text-xs bg-background text-foreground"
                           onClick={() => handleDismissRequest(req)}
+                          aria-label="Dismiss request — keep vendor assigned"
                         >
                           Dismiss request
                         </Button>
@@ -294,22 +360,26 @@ export function EventVendorsSection({
                           size="sm"
                           variant="destructive"
                           className="h-7 text-xs"
-                          onClick={() => handleRemove(a.id, a.vendorName)}
+                          onClick={() => handleRemove(a.id, a.vendorName, { isRequired })}
+                          aria-label={isRequired ? "Remove required vendor from event" : "Remove vendor from event"}
                         >
-                          Remove
+                          {isRequired ? "Remove (override required)" : "Remove from event"}
                         </Button>
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
 
-              {/* Row 2: Check-in status + payment */}
+              {/* Check-in and payment describe the booked occasion. */}
+              {eventId ? (
               <div className="flex flex-wrap items-center gap-3 pt-0.5 border-t border-border/50">
                 <CheckinBadge label="Arrived"       checked={!!a.checkedInAt} />
                 <CheckinBadge label="Setup done"    checked={!!a.setupCompleteAt} />
                 <VendorPaymentControl eventId={eventId} assignment={a} />
               </div>
+              ) : null}
 
               {/* From vendor — docs they shared onto this event */}
               {(() => {
@@ -354,49 +424,103 @@ export function EventVendorsSection({
       {showForm ? (
         <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
           <p className="text-xs text-muted-foreground">
-            An internal note that this vendor is working this event — it doesn&apos;t give them portal access. Use Send Invite on the vendor&apos;s own page for that.
+            {planningClientId && !eventId
+              ? "Assigning records these vendors on this event. It does not email them, create an invitation, or reserve the date. Use Send Invite on a vendor’s own page for portal access."
+              : "Assigning notifies the vendor that they are on this event. An unclaimed vendor also receives a claim link. Listing or recommending a vendor does not assign them."}
           </p>
-          {/* Vendor select */}
-          <div className="space-y-1.5">
-            <Label htmlFor="ev-vendor" className="text-xs">Vendor *</Label>
-            <Select
-              value={vendorId}
-              onValueChange={setVendorId}
-              items={[...preferred, ...others]
-                .filter(v => !assignedIds.has(v.id))
-                .map(v => ({ value: v.id, label: `${v.businessName}${v.category ? ` · ${vendorCategoryLabel(v.category)}` : ""}` }))}
-            >
-              <SelectTrigger id="ev-vendor">
-                <SelectValue placeholder="Select a vendor…" />
-              </SelectTrigger>
-              <SelectContent>
-                {preferred.filter(v => !assignedIds.has(v.id)).length > 0 && (
-                  <>
-                    <SelectItem value="__pref__" disabled>⭐ Preferred Vendors</SelectItem>
-                    {preferred.filter(v => !assignedIds.has(v.id)).map(v => (
-                      <SelectItem key={v.id} value={v.id}>
-                        {v.businessName}{v.category ? ` · ${vendorCategoryLabel(v.category)}` : ""}
-                      </SelectItem>
-                    ))}
-                  </>
+          {/* Multi-select vendors */}
+          <div className="space-y-1.5" data-testid="event-vendor-multi-assign">
+            <Label className="text-xs">Vendors *</Label>
+            {unassigned.length === 0 ? (
+              <p className="text-xs text-muted-foreground">All directory vendors are already assigned.</p>
+            ) : (
+              <ul className="max-h-48 space-y-1.5 overflow-y-auto rounded-md border border-border bg-background p-2">
+                {preferred.filter((v) => !assignedIds.has(v.id)).length > 0 && (
+                  <li className="px-1 pt-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Preferred
+                  </li>
                 )}
-                {others.filter(v => !assignedIds.has(v.id)).length > 0 && (
-                  <>
-                    {preferred.filter(v => !assignedIds.has(v.id)).length > 0 && (
-                      <SelectItem value="__other__" disabled>Other Vendors</SelectItem>
-                    )}
-                    {others.filter(v => !assignedIds.has(v.id)).map(v => (
-                      <SelectItem key={v.id} value={v.id}>
-                        {v.businessName}{v.category ? ` · ${vendorCategoryLabel(v.category)}` : ""}
-                      </SelectItem>
-                    ))}
-                  </>
+                {preferred.filter((v) => !assignedIds.has(v.id)).map((v) => (
+                  <li key={v.id}>
+                    <label className="flex cursor-pointer items-start gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        className="mt-0.5"
+                        checked={vendorIds.includes(v.id)}
+                        onChange={() => toggleVendor(v.id)}
+                        data-testid={`assign-vendor-${v.id}`}
+                      />
+                      <span className="min-w-0">
+                        <span className="font-medium text-foreground">{v.businessName}</span>
+                        {v.category ? (
+                          <span className="text-muted-foreground"> · {vendorCategoryLabel(v.category)}</span>
+                        ) : null}
+                        {vendorPreferenceClientLabel(v.preferenceLevel) ? (
+                          <span className="text-muted-foreground"> · {vendorPreferenceClientLabel(v.preferenceLevel)}</span>
+                        ) : null}
+                        {v.isRequired ? <span className="text-muted-foreground"> · Required</span> : null}
+                        {v.isInHouse ? <span className="text-muted-foreground"> · In-house</span> : null}
+                      </span>
+                    </label>
+                  </li>
+                ))}
+                {recommended.filter((v) => !assignedIds.has(v.id)).length > 0 && (
+                  <li className="px-1 pt-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Recommended
+                  </li>
                 )}
-                {unassigned.length === 0 && (
-                  <SelectItem value="__none__" disabled>All vendors assigned</SelectItem>
+                {recommended.filter((v) => !assignedIds.has(v.id)).map((v) => (
+                  <li key={v.id}>
+                    <label className="flex cursor-pointer items-start gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        className="mt-0.5"
+                        checked={vendorIds.includes(v.id)}
+                        onChange={() => toggleVendor(v.id)}
+                        data-testid={`assign-vendor-${v.id}`}
+                      />
+                      <span className="min-w-0">
+                        <span className="font-medium text-foreground">{v.businessName}</span>
+                        <span className="text-muted-foreground"> · Recommended</span>
+                        {v.isRequired ? <span className="text-muted-foreground"> · Required</span> : null}
+                        {v.isInHouse ? <span className="text-muted-foreground"> · In-house</span> : null}
+                      </span>
+                    </label>
+                  </li>
+                ))}
+                {others.filter((v) => !assignedIds.has(v.id)).length > 0 && (
+                  <li className="px-1 pt-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Directory
+                  </li>
                 )}
-              </SelectContent>
-            </Select>
+                {others.filter((v) => !assignedIds.has(v.id)).map((v) => (
+                  <li key={v.id}>
+                    <label className="flex cursor-pointer items-start gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        className="mt-0.5"
+                        checked={vendorIds.includes(v.id)}
+                        onChange={() => toggleVendor(v.id)}
+                        data-testid={`assign-vendor-${v.id}`}
+                      />
+                      <span className="min-w-0">
+                        <span className="font-medium text-foreground">{v.businessName}</span>
+                        {v.category ? (
+                          <span className="text-muted-foreground"> · {vendorCategoryLabel(v.category)}</span>
+                        ) : null}
+                        {v.isRequired ? <span className="text-muted-foreground"> · Required</span> : null}
+                        {v.isInHouse ? <span className="text-muted-foreground"> · In-house</span> : null}
+                      </span>
+                    </label>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {vendorIds.length > 1 ? (
+              <p className="text-[11px] text-muted-foreground">
+                Shared arrival, setup, load-in, and notes apply to all selected vendors. Edit individually afterward if needed.
+              </p>
+            ) : null}
           </div>
 
           {/* Arrival time + setup location */}
@@ -427,17 +551,26 @@ export function EventVendorsSection({
 
           {/* Internal notes */}
           <div className="space-y-1.5">
-            <Label htmlFor="ev-notes" className="text-xs">
-              Internal notes <span className="font-normal text-muted-foreground">(optional, not shown to vendor)</span>
-            </Label>
+            <Label htmlFor="ev-notes" className="text-xs">{internalNotesLabel("vendor")}</Label>
+            <p className="text-[11px] text-muted-foreground">{INTERNAL_NOTES_PRIVACY_HINT}</p>
             <Textarea id="ev-notes" value={notes} onChange={e => setNotes(e.target.value)}
               placeholder="Coordinator reminders, special requirements…" rows={2} />
           </div>
 
           <div className="flex items-center justify-end gap-2">
             <Button type="button" variant="ghost" size="sm" onClick={resetForm}>Cancel</Button>
-            <Button type="button" size="sm" disabled={!vendorId || addPending} onClick={handleAdd}>
-              {addPending ? "Assigning…" : "Assign Vendor"}
+            <Button
+              type="button"
+              size="sm"
+              disabled={vendorIds.filter((id) => !assignedIds.has(id)).length === 0 || addPending}
+              onClick={handleAdd}
+              data-testid="event-vendor-assign-submit"
+            >
+              {addPending
+                ? "Assigning…"
+                : vendorIds.length > 1
+                  ? `Assign ${vendorIds.length} vendors`
+                  : "Assign Vendor"}
             </Button>
           </div>
         </div>

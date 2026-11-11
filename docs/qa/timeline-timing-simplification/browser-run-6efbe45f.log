@@ -1,0 +1,35 @@
+PASS serving-sha — expected=6efbe45f64c9a504f6cc35a38ae299451969cfbd ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:6efbe45f64c9a504f6cc35a38ae299451969cfbd
+PASS serving-digest — sha256:cc754a14a8afc794ef82bbf508b9e107a7e88f953f0bc576d8a2c872007d79df
+PASS H-end-anchor-resolves-to-last-day — resolved=2 endDate=2060-07-19
+PASS H-before-offset-kept — resolved=-1
+PASS H-missing-end-no-invent — fallback=0
+PASS C-missing-start-no-invent — resolveEntryTimeFromOffset(-30,null)===null
+PASS A-template-shows-day-label — day label
+PASS B-template-shows-relative-phrase — relative phrase
+PASS H-relative-day-rule-control — day rule sheet
+PASS H-day-anchor-control — anchor
+PASS H-day-offset-control — offset
+PASS H-day-preview-named — Day 1 — event start date. Negative = before that date; 0 = on that date; positive = after. Event-end anchors need a multi-day event end date when applied (otherwise they fall back to the start date).
+PASS F-legacy-conflict-surfaced — conflict
+PASS A-specific-mode-control — specific
+PASS B-relative-mode-control — relative
+PASS no-raw-relative-min-label — label gone
+PASS B-named-anchor-in-editor — anchor named
+PASS A-ui-add-item-flow — add sheet completed
+PASS A-ui-specific-persisted — {"id":"60c7c941-bc54-4c0d-883b-76ed5793551f","time_of_day":"17:30:00","minutes_offset":null,"day_offset":0,"title":"QA-TT-TTMVOSJK6T-ui-specific"}
+PASS H-before-applied — {"title":"QA-TT-TTMVOSJK6T-before","entry_time":"09:00","day_offset":-1}
+PASS H-end-applied-last-day — {"title":"QA-TT-TTMVOSJK6T-end","entry_time":"11:00","day_offset":2}
+PASS B-baked-relative-1530 — {"title":"QA-TT-TTMVOSJK6T-rel","entry_time":"15:30","day_offset":0}
+PASS D-day2-offset-preserved — {"title":"QA-TT-TTMVOSJK6T-day2","entry_time":"10:00","day_offset":1}
+PASS F-dual-prefers-clock — {"title":"QA-TT-TTMVOSJK6T-dual","entry_time":"14:00","day_offset":0}
+PASS C-apply-path-null — null
+PASS D-no-day-offset-label — no bare Day offset label
+PASS D-event-day-control-present — row day
+PASS I-event-day-editable — disabled=false
+PASS D-day-shows-calendar — 1 day before · Fri, Jul 16
+FAIL D-event-day-control-present — TypeError: page.getByDisplayValue is not a function
+PASS G-schedule-shows-specific — title visible
+PASS G-schedule-shows-baked-rel — rel item
+PASS E-template-untouched — {"title":"QA-TT-TTMVOSJK6T-specific","time_of_day":"15:00:00","minutes_offset":null}
+
+NOT GREEN timeline timing simplification

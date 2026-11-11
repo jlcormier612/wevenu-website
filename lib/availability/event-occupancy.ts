@@ -101,6 +101,19 @@ export type OccupancyEvent = {
   eventDate: string;
   eventEndDate: string | null;
   spaceId: string | null;
+  /** Canonical spaces from event_space_assignments (+ spaceId). */
+  spaceIds?: string[];
+  /**
+   * Per-use windows. When any row has its own times, occupancy uses those
+   * windows instead of one event-wide envelope. Optional scheduledDate limits
+   * the window to that calendar day within the event range.
+   */
+  windows?: Array<{
+    spaceId: string;
+    startTime?: string | null;
+    endTime?: string | null;
+    scheduledDate?: string | null;
+  }> | null;
   setupTime: string | null;
   startTime: string | null;
   endTime: string | null;
@@ -111,6 +124,15 @@ export type OccupancyInput = {
   eventDate: string;
   eventEndDate?: string | null;
   spaceId?: string | null;
+  /** Additional spaces for the candidate (assignments). */
+  spaceIds?: string[] | null;
+  /** Per-space windows. When set, each space occupies only its own times. */
+  windows?: Array<{
+    spaceId: string;
+    startTime?: string | null;
+    endTime?: string | null;
+    scheduledDate?: string | null;
+  }> | null;
   setupTime?: string | null;
   startTime?: string | null;
   endTime?: string | null;
@@ -132,6 +154,13 @@ export type OccupancyVenue = {
   allSpaceIds: string[];
   /** 0 / missing / negative → no turnaround requirement. */
   minTurnaroundHours?: number;
+  /**
+   * When true, inquiry / choose_available uses space-based simultaneous
+   * availability (any free active space keeps the date Available).
+   * Default false: a confirmed Event occupying the date closes it venue-wide
+   * for public inquiry, matching venues.allow_simultaneous_public_availability.
+   */
+  allowSimultaneousPublicAvailability?: boolean;
 };
 
 const ALL_DAY_START = "00:00";
@@ -223,7 +252,7 @@ export function eventOccupancyOverlapsTour(
   event: OccupancyEvent,
   tour: { date: string; startTime: string; durationMinutes: number },
 ): boolean {
-  if (event.status === "cancelled") return false;
+  if (event.status === "cancelled" || event.status === "complete") return false;
   if (!datesInProtectedRange(event.eventDate, event.eventEndDate).includes(tour.date)) {
     return false;
   }
@@ -348,12 +377,161 @@ function occupyingEvents(existing: OccupancyEvent[], excludeEventId?: string | n
   });
 }
 
-function eventOverlapsCandidate(event: OccupancyEvent, input: OccupancyInput, candidateWindow: { start: string; end: string }): boolean {
+type ScheduleWindow = {
+  spaceId: string | null;
+  start: string;
+  end: string;
+  /** Null = every day in the event protected range. */
+  scheduledDate: string | null;
+};
+
+function scheduleWindowsForInput(input: OccupancyInput): ScheduleWindow[] {
+  const precise = (input.windows ?? []).filter((row) => row.spaceId?.trim());
+  if (precise.length > 0) {
+    return precise.map((row) => ({
+      spaceId: row.spaceId.trim(),
+      scheduledDate: blankToNull(row.scheduledDate),
+      ...operationalWindow({
+        setupTime: row.startTime ? null : input.setupTime,
+        startTime: row.startTime ?? input.startTime,
+        endTime: row.endTime ?? input.endTime,
+        teardownTime: row.endTime ? null : input.teardownTime,
+      }),
+    }));
+  }
+  const spaces = occupiedSpaceIds({ spaceId: input.spaceId, spaceIds: input.spaceIds });
+  const window = operationalWindow(input);
+  if (spaces.length === 0) return [{ spaceId: null, scheduledDate: null, ...window }];
+  return spaces.map((spaceId) => ({ spaceId, scheduledDate: null, ...window }));
+}
+
+function scheduleWindowsForEvent(event: OccupancyEvent): ScheduleWindow[] {
+  const precise = (event.windows ?? []).filter((row) => row.spaceId?.trim());
+  if (precise.length > 0) {
+    return precise.map((row) => ({
+      spaceId: row.spaceId.trim(),
+      scheduledDate: blankToNull(row.scheduledDate),
+      ...operationalWindow({
+        setupTime: row.startTime ? null : event.setupTime,
+        startTime: row.startTime ?? event.startTime,
+        endTime: row.endTime ?? event.endTime,
+        teardownTime: row.endTime ? null : event.teardownTime,
+      }),
+    }));
+  }
+  const spaces = occupiedSpaceIds(event);
+  const window = operationalWindow(event);
+  if (spaces.length === 0) return [{ spaceId: null, scheduledDate: null, ...window }];
+  return spaces.map((spaceId) => ({ spaceId, scheduledDate: null, ...window }));
+}
+
+/** Expand a schedule window onto its actual protected day(s). */
+export function intervalsForScheduleWindow(
+  eventDate: string,
+  eventEndDate: string | null | undefined,
+  window: { start: string; end: string; scheduledDate?: string | null },
+): OperationalInterval[] {
+  const range = datesInProtectedRange(eventDate, eventEndDate);
+  const scheduled = blankToNull(window.scheduledDate);
+  const days = scheduled ? (range.includes(scheduled) ? [scheduled] : []) : range;
+  return days.map((date) => ({
+    date,
+    start: operationalInstantMinutes(date, window.start),
+    end: operationalInstantMinutes(date, window.end),
+  }));
+}
+
+type DatedSpaceInterval = OperationalInterval & { spaceId: string | null };
+
+function datedIntervalsForInput(input: OccupancyInput): DatedSpaceInterval[] {
+  return scheduleWindowsForInput(input).flatMap((row) =>
+    intervalsForScheduleWindow(input.eventDate, input.eventEndDate, row).map((interval) => ({
+      ...interval,
+      spaceId: row.spaceId,
+    })),
+  );
+}
+
+function datedIntervalsForEvent(event: OccupancyEvent): DatedSpaceInterval[] {
+  return scheduleWindowsForEvent(event).flatMap((row) =>
+    intervalsForScheduleWindow(event.eventDate, event.eventEndDate, row).map((interval) => ({
+      ...interval,
+      spaceId: row.spaceId,
+    })),
+  );
+}
+
+function datedIntervalsOverlap(a: OperationalInterval, b: OperationalInterval): boolean {
+  return a.date === b.date && a.start < b.end && b.start < a.end;
+}
+
+function eventOverlapsCandidate(event: OccupancyEvent, input: OccupancyInput, _candidateWindow: { start: string; end: string }): boolean {
   if (!dateRangesOverlap(event.eventDate, event.eventEndDate, input.eventDate, input.eventEndDate)) {
     return false;
   }
-  const other = operationalWindow(event);
-  return windowsOverlap(candidateWindow, other);
+  const left = datedIntervalsForInput(input);
+  const right = datedIntervalsForEvent(event);
+  return left.some((a) => right.some((b) => datedIntervalsOverlap(a, b)));
+}
+
+function sameSpaceWindowOverlap(event: OccupancyEvent, input: OccupancyInput): boolean {
+  if (!dateRangesOverlap(event.eventDate, event.eventEndDate, input.eventDate, input.eventEndDate)) {
+    return false;
+  }
+  const left = datedIntervalsForInput(input);
+  const right = datedIntervalsForEvent(event);
+  return left.some((a) => right.some((b) =>
+    !!a.spaceId && !!b.spaceId && a.spaceId === b.spaceId && datedIntervalsOverlap(a, b),
+  ));
+}
+
+function occupiedSpaceIds(event: {
+  spaceId?: string | null;
+  spaceIds?: readonly string[] | null;
+}): string[] {
+  const set = new Set<string>();
+  for (const id of event.spaceIds ?? []) {
+    const t = id?.trim();
+    if (t) set.add(t);
+  }
+  const primary = blankToNull(event.spaceId);
+  if (primary) set.add(primary);
+  return [...set];
+}
+
+function spaceSetsIntersect(a: readonly string[], b: readonly string[]): boolean {
+  if (a.length === 0 || b.length === 0) return false;
+  return a.some((id) => b.includes(id));
+}
+
+function turnaroundForSharedWindows(
+  input: OccupancyInput,
+  event: OccupancyEvent,
+  hours: number,
+  simultaneous: boolean,
+): { earliestStart: number; otherIsBefore: boolean } | null {
+  const left = datedIntervalsForInput(input);
+  const right = datedIntervalsForEvent(event);
+  const spaces = new Set<string>();
+  if (!simultaneous) {
+    for (const row of left) if (row.spaceId) spaces.add(row.spaceId);
+    if (spaces.size === 0) spaces.add("");
+  } else {
+    for (const row of left) {
+      if (row.spaceId && right.some((other) => other.spaceId === row.spaceId)) spaces.add(row.spaceId);
+    }
+  }
+  let found: { earliestStart: number; otherIsBefore: boolean } | null = null;
+  for (const spaceId of spaces) {
+    const cand = left.filter((row) => !simultaneous || row.spaceId === spaceId || spaceId === "");
+    const other = right.filter((row) => !simultaneous || row.spaceId === spaceId || spaceId === "");
+    const violation = turnaroundViolation(cand, other, hours);
+    if (!violation) continue;
+    if (!found || (violation.otherIsBefore && violation.earliestStart > found.earliestStart)) {
+      found = violation;
+    }
+  }
+  return found;
 }
 
 export function evaluateEventOccupancy(
@@ -363,6 +541,11 @@ export function evaluateEventOccupancy(
 ): OccupancyResult {
   const effectiveMax = venue.effectiveMax < 1 ? 1 : Math.trunc(venue.effectiveMax);
   const spaceId = blankToNull(input.spaceId);
+  const windowSpaces = (input.windows ?? []).map((row) => row.spaceId?.trim()).filter((id): id is string => !!id);
+  const candidateSpaces = occupiedSpaceIds({
+    spaceId,
+    spaceIds: [...(input.spaceIds ?? []), ...windowSpaces],
+  });
   const simultaneous = effectiveMax >= 2;
 
   if (simultaneous) {
@@ -373,19 +556,21 @@ export function evaluateEventOccupancy(
         message: "Add an Event Space in Availability settings before booking. This venue can host more than one event at the same time.",
       };
     }
-    if (!spaceId) {
+    if (candidateSpaces.length === 0) {
       return {
         ok: false,
         code: "missing_space",
         message: "Assign an Event Space before booking. This venue can host more than one event at the same time.",
       };
     }
-    if (!venue.allSpaceIds.includes(spaceId)) {
-      return {
-        ok: false,
-        code: "invalid_space",
-        message: "That Event Space does not belong to this venue.",
-      };
+    for (const id of candidateSpaces) {
+      if (!venue.allSpaceIds.includes(id)) {
+        return {
+          ok: false,
+          code: "invalid_space",
+          message: "That Event Space does not belong to this venue.",
+        };
+      }
     }
   }
 
@@ -396,8 +581,8 @@ export function evaluateEventOccupancy(
     if (eventOverlapsCandidate(event, input, candidateWindow)) overlapping.push(event);
   }
 
-  if (simultaneous && spaceId) {
-    const sameSpace = overlapping.find((e) => e.spaceId === spaceId);
+  if (simultaneous && candidateSpaces.length > 0) {
+    const sameSpace = occupying.find((e) => sameSpaceWindowOverlap(e, input));
     if (sameSpace) {
       const label = sameSpace.name?.trim() || "another event";
       return {
@@ -423,13 +608,23 @@ export function evaluateEventOccupancy(
   });
   if (turnaroundHours > 0) {
     const candidateIntervals = eventOperationalIntervals(input);
+    const precise = (input.windows ?? []).some((row) => row.startTime && row.endTime)
+      || occupying.some((event) => (event.windows ?? []).some((row) => row.startTime && row.endTime));
     for (const event of occupying) {
-      if (simultaneous && spaceId && event.spaceId !== spaceId) continue;
-      const violation = turnaroundViolation(
-        candidateIntervals,
-        eventOperationalIntervals(event),
-        turnaroundHours,
-      );
+      if (
+        simultaneous
+        && candidateSpaces.length > 0
+        && !spaceSetsIntersect(candidateSpaces, occupiedSpaceIds(event))
+      ) {
+        continue;
+      }
+      const violation = precise
+        ? turnaroundForSharedWindows(input, event, turnaroundHours, simultaneous)
+        : turnaroundViolation(
+          candidateIntervals,
+          eventOperationalIntervals(event),
+          turnaroundHours,
+        );
       if (violation) {
         const label = event.name?.trim() || "another event";
         const hoursLabel = formatTurnaroundHours(turnaroundHours);
@@ -449,8 +644,12 @@ export function evaluateEventOccupancy(
  * Date-level inquiry / choose_available check: would a dated Event occupying
  * this calendar day (missing times → 00:00–23:59) be refused by occupancy?
  *
- * Simultaneous venues: available if at least one active Event Space would
- * accept a full-day Event. Zero active spaces → unavailable (`no_spaces`).
+ * Default (allowSimultaneousPublicAvailability !== true): a confirmed Event
+ * occupying the date closes it venue-wide for public inquiry, even when staff
+ * capacity allows more than one simultaneous event and another space is free.
+ *
+ * Opt-in simultaneous public availability: available if at least one active
+ * Event Space would accept a full-day Event. Zero active spaces → unavailable.
  * Does not create an Event. Calendar blocks are a separate check.
  */
 export function isInquiryEventDateAvailable(
@@ -458,12 +657,18 @@ export function isInquiryEventDateAvailable(
   venue: OccupancyVenue,
   existing: OccupancyEvent[],
 ): boolean {
-  const simultaneous = (venue.effectiveMax < 1 ? 1 : Math.trunc(venue.effectiveMax)) >= 2;
+  const max = venue.effectiveMax < 1 ? 1 : Math.trunc(venue.effectiveMax);
+  const simultaneous = venue.allowSimultaneousPublicAvailability === true && max >= 2;
   if (simultaneous) {
     if (venue.activeSpaceIds.length === 0) return false;
     return venue.activeSpaceIds.some((spaceId) =>
       evaluateEventOccupancy({ eventDate: date, spaceId }, venue, existing).ok,
     );
   }
-  return evaluateEventOccupancy({ eventDate: date }, venue, existing).ok;
+  // Venue-wide inquiry occupancy (effective max 1 for this check only).
+  return evaluateEventOccupancy(
+    { eventDate: date },
+    { ...venue, effectiveMax: 1 },
+    existing,
+  ).ok;
 }

@@ -1,0 +1,12 @@
+{
+  "id": "ii_1Ua3UtErUqJH7nktl9ZkqlMA",
+  "amount": -24900,
+  "subscription": "sub_1UZvv7ErUqJH7nktxwGc9vmC",
+  "customer": "cus_Vb8ByVzSBbqWcS",
+  "metadata": {
+    "htc_credit_kind": "refer_a_venue",
+    "htc_referral_id": "db898afa-c1c8-41fe-91e2-725f70070cce",
+    "htc_referral_reward_id": "6097ac77-24db-4745-b5af-f89ebae4991d",
+    "htc_scope": "saas_subscription"
+  }
+}

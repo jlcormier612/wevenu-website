@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ChevronRight, X } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,39 +10,66 @@ import type { LuvDashboardEntry } from "@/lib/dashboard-system/luv-entry";
 
 /**
  * Restrained Dashboard Luv card — interpretation only, not a second task list.
- * Optional dismiss: recommendation dismiss persists; other entries hide for the session.
+ * White working surface + blush top accent strip (not a full blush alert panel).
+ * Dismiss is only offered when luv_recommendations can persist it:
+ * a Guide-gap / recommendation id, or a computed observation's stable id.
  */
 export function DashboardLuvEntryCard({ entry }: { entry: LuvDashboardEntry }) {
+  const router = useRouter();
   const [hidden, setHidden] = React.useState(false);
   if (hidden) return null;
 
+  const canPersistDismiss = Boolean(entry.dismissRecommendationId || entry.dismissObservationId);
+
   async function dismiss() {
-    setHidden(true);
-    if (entry.dismissRecommendationId) {
-      await fetch(`/api/recommendations/${entry.dismissRecommendationId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "dismiss" }),
-      }).catch(() => undefined);
+    try {
+      const res = entry.dismissRecommendationId
+        ? await fetch(`/api/recommendations/${entry.dismissRecommendationId}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "dismiss" }),
+          })
+        : entry.dismissObservationId
+          ? await fetch("/api/recommendations/observation", {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ action: "dismiss", observationId: entry.dismissObservationId }),
+            })
+          : null;
+      if (!res) return;
+      if (!res.ok) return;
+      const payload = (await res.json()) as { ok?: boolean };
+      if (payload.ok !== true) return;
+      setHidden(true);
+      router.refresh();
+    } catch {
+      // Persist failed — keep the card so refresh cannot invent a dismissal.
     }
   }
 
   return (
     <section>
-      <Card className="border-rose-200/40" style={{ background: "color-mix(in oklch, var(--destructive) 2%, var(--card))" }}>
+      <Card className="overflow-hidden rounded-[0.75rem] border-[color:var(--htc-border-warm)] bg-card ring-0">
+        <div
+          className="h-1.5 w-full bg-[var(--htc-soft-blush)]"
+          data-luv-accent=""
+          aria-hidden
+        />
         <CardHeader className="pb-2">
           <div className="flex items-start justify-between gap-2">
-            <CardTitle className="flex items-center gap-2 text-sm">
+            <CardTitle className="flex items-center gap-2 text-sm text-heading">
               <span aria-hidden>💗</span> Luv
             </CardTitle>
-            <button
-              type="button"
-              onClick={() => void dismiss()}
-              aria-label="Dismiss Luv note"
-              className="rounded-md p-1 text-muted-foreground transition-opacity hover:opacity-70"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
+            {canPersistDismiss ? (
+              <button
+                type="button"
+                onClick={() => void dismiss()}
+                aria-label="Dismiss Luv note"
+                className="rounded-md p-1 text-muted-foreground transition-opacity hover:opacity-70"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            ) : null}
           </div>
         </CardHeader>
         <CardContent className="space-y-2 pt-0">
@@ -51,7 +79,7 @@ export function DashboardLuvEntryCard({ entry }: { entry: LuvDashboardEntry }) {
           )}
           <Link
             href={entry.actionHref}
-            className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+            className="htc-record-link inline-flex items-center gap-1 text-xs font-medium"
           >
             {entry.actionLabel}
             <ChevronRight className="h-3 w-3" />

@@ -1,0 +1,44 @@
+{
+  "at": "2026-10-15T00:23:52.772Z",
+  "servingExpected": "2bfe4cde2224d24169f906f5a2bc777488722795",
+  "venue": {
+    "id": "af2d6aa1-0eb2-4e65-aa6f-c066cb71a4b6",
+    "name": "Juniper Valley Farm",
+    "ownerUserIdPrefix": "6721694e"
+  },
+  "fancyJuniperCount": 0,
+  "juniperStaffSummary": [
+    {
+      "emailDomain": "yahoo.com",
+      "hasUserId": false,
+      "isOwner": false,
+      "accepted": false,
+      "ownerInvitePending": true,
+      "hasInviteToken": true
+    },
+    {
+      "emailDomain": "gmail.com",
+      "hasUserId": true,
+      "isOwner": false,
+      "accepted": true,
+      "ownerInvitePending": false,
+      "hasInviteToken": true
+    }
+  ],
+  "purchaserActivePrefix": "05f16a15",
+  "fancyActivePrefix": "a415ac52",
+  "mismatchProbe": {
+    "ok": false,
+    "error": "email_mismatch"
+  },
+  "pendingInviteProbed": true,
+  "checks": {
+    "handoffsTableExists": true,
+    "fancyHasNoJuniperMembership": true,
+    "fancyActiveIsFancy": true,
+    "juniperOwnerNotFancy": true,
+    "mismatchRejectsWhenPendingInvite": true
+  },
+  "allPass": true,
+  "readOnly": true
+}

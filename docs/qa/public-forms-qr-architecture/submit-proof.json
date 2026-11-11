@@ -1,0 +1,94 @@
+{
+  "getPublicForm": {
+    "ok": true,
+    "venueName": "Jen's Fancy Venue",
+    "publicTitle": "Welcome to our Wedding Expo!",
+    "questionCount": 3
+  },
+  "submit": {
+    "ok": true,
+    "lead_id": "77c69ad8-9a08-4907-80ee-67b4e068ea45",
+    "relationshipId": "d4ee9c3e-a3a0-404c-8e74-14dc7bb846b4",
+    "isReturningRelationship": false
+  },
+  "lead": {
+    "id": "77c69ad8-9a08-4907-80ee-67b4e068ea45",
+    "venue_id": "a415ac52-cd74-42a6-8df7-7a8f6e71d080",
+    "first_name": "Expo",
+    "last_name": "QA",
+    "email": "expo.qa.1790443826678@example.com",
+    "source": "website",
+    "source_data": {
+      "source": "public_form",
+      "form_key": "35a56b1d565ff8d49287e1d2abb3870c",
+      "utm_source": "wave1_qa",
+      "landing_page": "https://app.sandbox.hellotocheers.com/forms/35a56b1d565ff8d49287e1d2abb3870c",
+      "submitted_at": "2026-09-26T17:30:26.732935+00:00",
+      "custom_answers": [
+        {
+          "answer": "Outdoor ceremony space",
+          "questionText": "What are you looking for?"
+        },
+        {
+          "answer": "Fall",
+          "questionText": "Preferred wedding season?"
+        }
+      ],
+      "public_form_id": "5f4ab426-6fca-4a5c-ab9d-924f9171c4b4",
+      "qr_campaign_id": "70bb03ba-b3bb-4292-9ff5-f5e93b9116b9",
+      "public_form_public_title": "Welcome to our Wedding Expo!",
+      "public_form_internal_name": "Wedding Expo — QA"
+    },
+    "relationship_id": "d4ee9c3e-a3a0-404c-8e74-14dc7bb846b4",
+    "status": null
+  },
+  "sourceData": {
+    "source": "public_form",
+    "form_key": "35a56b1d565ff8d49287e1d2abb3870c",
+    "utm_source": "wave1_qa",
+    "landing_page": "https://app.sandbox.hellotocheers.com/forms/35a56b1d565ff8d49287e1d2abb3870c",
+    "submitted_at": "2026-09-26T17:30:26.732935+00:00",
+    "custom_answers": [
+      {
+        "answer": "Outdoor ceremony space",
+        "questionText": "What are you looking for?"
+      },
+      {
+        "answer": "Fall",
+        "questionText": "Preferred wedding season?"
+      }
+    ],
+    "public_form_id": "5f4ab426-6fca-4a5c-ab9d-924f9171c4b4",
+    "qr_campaign_id": "70bb03ba-b3bb-4292-9ff5-f5e93b9116b9",
+    "public_form_public_title": "Welcome to our Wedding Expo!",
+    "public_form_internal_name": "Wedding Expo — QA"
+  },
+  "attribution": {
+    "public_form_id": "5f4ab426-6fca-4a5c-ab9d-924f9171c4b4",
+    "qr_campaign_id": "70bb03ba-b3bb-4292-9ff5-f5e93b9116b9",
+    "utm_source": "wave1_qa",
+    "custom_answers": [
+      {
+        "answer": "Outdoor ceremony space",
+        "questionText": "What are you looking for?"
+      },
+      {
+        "answer": "Fall",
+        "questionText": "Preferred wedding season?"
+      }
+    ]
+  },
+  "sideEffects": {
+    "clients": 0,
+    "events": -1,
+    "contracts": -1,
+    "invoices": -1,
+    "payment_plans": -1
+  },
+  "security": {
+    "bogusTokenOk": false,
+    "inactiveSubmitOk": false,
+    "inactiveError": "Form is not available.",
+    "leadVenueMatchesFancy": true
+  }
+}

@@ -1,0 +1,344 @@
+"use client";
+
+import * as React from "react";
+
+import Link from "next/link";
+
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { describeCommercialFacts } from "@/lib/booking-journey/commercial-facts";
+import { appendInvoiceReturnTo } from "@/lib/invoices/return-path";
+import { canCreateContract } from "@/lib/booking-journey/model";
+import type { BookingJourneyModel } from "@/lib/booking-journey/model";
+import { publicAppOrigin } from "@/lib/env";
+import { toast } from "sonner";
+
+export function CommercialFacts({
+  journey,
+  today,
+  contractPending,
+  onSelectPackage,
+  onEditFinancialTerms,
+  onCreateProposal,
+  onPreviewProposal,
+  onCreateShareLink,
+  onCopyShareLink,
+  onResendProposalEmail,
+  onWithdrawProposal,
+  withdrawPending,
+  onCreateContract,
+  contractHref = null,
+  onSetupPayments,
+  onRecordDeposit,
+  invoiceReturnTo = null,
+}: {
+  journey: BookingJourneyModel;
+  today?: string;
+  contractPending?: boolean;
+  onSelectPackage: () => void;
+  onEditFinancialTerms?: () => void;
+  onCreateProposal?: () => void;
+  onPreviewProposal: () => void;
+  onCreateShareLink: () => void;
+  onCopyShareLink: () => void;
+  onResendProposalEmail?: () => void;
+  onWithdrawProposal?: () => void;
+  withdrawPending?: boolean;
+  onCreateContract: () => void;
+  /** Set when the client already exists, so Create contract is a native link. */
+  contractHref?: string | null;
+  onSetupPayments: () => void;
+  onRecordDeposit: () => void;
+  /** Originating Lead or Client workspace for invoice-detail back nav. */
+  invoiceReturnTo?: string | null;
+}) {
+  const selection = journey.selection;
+  const proposal = journey.proposal;
+  const rows = describeCommercialFacts({
+    selection,
+    proposal,
+    contract: journey.contract,
+    paymentLines: journey.paymentLines,
+    prefs: journey.prefs,
+    paymentRequestSent: journey.paymentRequestSent,
+    today,
+  });
+  const allowOffer = journey.prefs.agreementMethod === "offer" || journey.prefs.agreementMethod === "either";
+  const allowSelectPackage =
+    journey.prefs.agreementMethod === "contract" || journey.prefs.agreementMethod === "either";
+  const activePaymentLines = journey.paymentLines.filter((line) => line.status !== "cancelled");
+  const depositLine = activePaymentLines.find((line) => line.obligationKind === "deposit");
+  const depositDue = Boolean(depositLine && depositLine.status !== "paid");
+  const [withdrawOpen, setWithdrawOpen] = React.useState(false);
+  const waitingOnCouple = proposal?.status === "sent" || proposal?.status === "selected";
+  const proposalWithdrawn = proposal?.status === "withdrawn";
+  const showCreateContract = canCreateContract({
+    selection,
+    proposal,
+    contract: journey.contract,
+    prefs: journey.prefs,
+  });
+  const createContractPrimary = journey.primaryAction === "create_contract";
+
+  function copyProposalLink() {
+    const token = proposal?.acceptToken;
+    if (!token) {
+      toast.error("Send the proposal first to get a share link.");
+      return;
+    }
+    const url = `${publicAppOrigin()}/offer/${token}`;
+    void navigator.clipboard.writeText(url).then(
+      () => toast.success("Proposal link copied."),
+      () => toast.error("Could not copy the link."),
+    );
+  }
+
+  return (
+    <section className="rounded-lg border border-border bg-card px-4 py-4 sm:px-5">
+      <h2 className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
+        Booking Details
+      </h2>
+      <p className="mt-2 text-sm font-medium text-heading">What they booked</p>
+      <p className="mt-1 text-sm text-muted-foreground leading-relaxed">
+        These records are separate from the sales pipeline. You mark a relationship Booked when you&apos;re ready — payment does not decide it.
+      </p>
+      <p className="mt-3 text-sm text-heading">{journey.direction}</p>
+
+      {!selection && !proposal ? (
+        <div className="mt-4 flex flex-wrap gap-2">
+          {allowOffer && onCreateProposal ? (
+            <Button type="button" size="sm" onClick={onCreateProposal}>
+              Create proposal
+              <span className="ml-1.5 hidden text-xs font-normal opacity-80 sm:inline">
+                — Let the couple choose
+              </span>
+            </Button>
+          ) : null}
+          {allowSelectPackage ? (
+            <Button
+              type="button"
+              size="sm"
+              variant={allowOffer ? "outline" : "default"}
+              onClick={onSelectPackage}
+            >
+              Select package
+              <span className="ml-1.5 hidden text-xs font-normal opacity-80 sm:inline">
+                — Choose the package now
+              </span>
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
+
+      <ul className="mt-4 divide-y divide-border" data-testid="booking-details-rows">
+        {rows.map((row) => {
+          return (
+          <li key={row.key} className="flex flex-col gap-2 py-3" data-testid={`booking-details-row-${row.key}`}>
+            {/*
+              Keep facts and actions in separate flex children. Do not put long
+              helper copy inside the shrink-0 action column — basis-full text
+              there crushed the package details into a narrow left column.
+            */}
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+              <div className="min-w-0 flex-1" data-testid={row.key === "package" ? "booking-details-package-facts" : undefined}>
+                <p className="text-sm font-medium text-heading">{row.title}</p>
+                <p className="text-sm text-heading">{row.state}</p>
+                {row.detail ? (
+                  <p className="mt-1 whitespace-pre-line text-xs text-muted-foreground">{row.detail}</p>
+                ) : null}
+                {row.key === "contract" ? (
+                  <p
+                    className="mt-2 text-xs text-muted-foreground leading-relaxed"
+                    data-testid="contract-responsibility-note"
+                  >
+                    You are responsible for your agreement&apos;s terms and policies, including any
+                    applicable taxes, discounts, and venue-specific practices. Review your agreement
+                    before sending it to your clients.
+                  </p>
+                ) : null}
+                {row.key === "payment_plan" ? (
+                  <p
+                    className="mt-2 text-xs text-muted-foreground leading-relaxed"
+                    data-testid="invoice-payment-plan-responsibility-note"
+                  >
+                    You are responsible for determining and applying any taxes, discounts, fees, and
+                    payment terms appropriate to your venue and event. Tax and discount additions were
+                    set under &apos;Leads &amp; Booking&apos; section in Settings under Invoice
+                    Adjustments. If applicable/enabled, add Tax and/or Discount line items on the
+                    Invoice draft itself.
+                  </p>
+                ) : null}
+              </div>
+              <div className="flex shrink-0 flex-wrap gap-2 sm:max-w-[min(100%,20rem)] sm:justify-end">
+                {row.key === "package" && !selection && proposalWithdrawn ? (
+                  <Button type="button" size="sm" onClick={onSelectPackage}>
+                    Select package
+                  </Button>
+                ) : null}
+                {row.key === "package" && selection ? (
+                  <Button type="button" size="sm" variant="outline" onClick={onSelectPackage}>
+                    View / Change package
+                  </Button>
+                ) : null}
+                {row.key === "package" && selection && onEditFinancialTerms
+                  && selection.status === "draft" && !selection.invoiceId && !selection.contractId ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={onEditFinancialTerms}
+                    data-testid="edit-invoice-adjustments"
+                  >
+                    Tax &amp; discount
+                  </Button>
+                ) : null}
+                {row.key === "package" && selection && !proposal && allowOffer && selection.status !== "accepted" ? (
+                  <Button type="button" size="sm" onClick={onCreateShareLink}>
+                    Create share link
+                  </Button>
+                ) : null}
+                {row.key === "package" && selection?.acceptToken && !proposal ? (
+                  <Button type="button" size="sm" variant="outline" onClick={onCopyShareLink}>
+                    Copy share link
+                  </Button>
+                ) : null}
+                {row.key === "package" && selection && !proposal ? (
+                  <Button type="button" size="sm" variant="outline" onClick={onPreviewProposal}>
+                    Preview
+                  </Button>
+                ) : null}
+
+                {row.key === "proposal" && proposal ? (
+                  <>
+                    {onCreateProposal && (proposal.status === "draft" || proposal.status === "superseded") ? (
+                      <Button type="button" size="sm" onClick={onCreateProposal}>
+                        {proposal.status === "draft" ? "Continue proposal" : "Create proposal"}
+                      </Button>
+                    ) : null}
+                    {proposal.acceptToken && !proposalWithdrawn ? (
+                      <Button type="button" size="sm" variant="outline" onClick={copyProposalLink}>
+                        Copy proposal link
+                      </Button>
+                    ) : null}
+                    {proposalWithdrawn ? (
+                      <p className="self-center text-xs text-muted-foreground">Link no longer active</p>
+                    ) : null}
+                    {proposalWithdrawn && onCreateProposal && allowOffer ? (
+                      <Button type="button" size="sm" variant="ghost" onClick={onCreateProposal}>
+                        {selection ? "Start a new proposal" : "Create proposal"}
+                      </Button>
+                    ) : null}
+                    {onResendProposalEmail && (proposal.status === "sent" || proposal.status === "selected") ? (
+                      <Button type="button" size="sm" variant="outline" onClick={onResendProposalEmail}>
+                        Resend proposal email
+                      </Button>
+                    ) : null}
+                  </>
+                ) : null}
+
+                {row.key === "contract" && showCreateContract && contractHref ? (
+                  <Button
+                    size="sm"
+                    variant={createContractPrimary ? "default" : "outline"}
+                    nativeButton={false}
+                    render={<Link href={contractHref} />}
+                    data-testid="create-contract"
+                  >
+                    Create contract
+                  </Button>
+                ) : null}
+                {row.key === "contract" && showCreateContract && !contractHref && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={createContractPrimary ? "default" : "outline"}
+                    disabled={contractPending}
+                    onClick={onCreateContract}
+                    data-testid="create-contract"
+                  >
+                    {contractPending ? "Preparing…" : "Create contract"}
+                  </Button>
+                )}
+                {row.key === "contract" && journey.contract && (
+                  <Button type="button" size="sm" variant="outline" render={<Link href={`/contracts/${journey.contract.id}`} />}>
+                    {journey.contract.status === "draft" ? "Preview and send" : "Open contract"}
+                  </Button>
+                )}
+                {row.key === "payment_plan" && selection && activePaymentLines.length === 0 && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={onSetupPayments}
+                    data-testid="setup-payments"
+                  >
+                    Set up payments
+                  </Button>
+                )}
+                {row.key === "payment_plan" && selection?.invoiceId && activePaymentLines.length > 0 && (
+                  <Button type="button" size="sm" variant="outline" render={<Link href={appendInvoiceReturnTo(`/invoices/${selection.invoiceId}`, invoiceReturnTo) ?? `/invoices/${selection.invoiceId}`} />}>
+                    {journey.paymentRequestSent ? "Open invoice" : "Preview and send"}
+                  </Button>
+                )}
+                {row.key === "deposit" && depositDue && journey.prefs.paymentCollection !== "online" && (
+                  <Button type="button" size="sm" variant="outline" onClick={onRecordDeposit}>
+                    Record deposit received
+                  </Button>
+                )}
+              </div>
+            </div>
+          </li>
+          );
+        })}
+      </ul>
+
+      {waitingOnCouple && onWithdrawProposal ? (
+        <div className="mt-3 border-t border-border pt-3">
+          <p className="text-xs text-muted-foreground">Need to proceed another way?</p>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-auto px-0 text-xs text-muted-foreground"
+            onClick={() => setWithdrawOpen(true)}
+          >
+            Continue manually
+          </Button>
+        </div>
+      ) : null}
+
+      <Dialog open={withdrawOpen} onOpenChange={setWithdrawOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Continue manually?</DialogTitle>
+            <DialogDescription>
+              This will withdraw the proposal so the couple can no longer approve it through the proposal link. You can then select the package and continue the booking manually.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setWithdrawOpen(false)} disabled={withdrawPending}>
+              Keep waiting for couple
+            </Button>
+            <Button
+              type="button"
+              disabled={withdrawPending || !onWithdrawProposal}
+              onClick={() => {
+                setWithdrawOpen(false);
+                onWithdrawProposal?.();
+              }}
+            >
+              {withdrawPending ? "Withdrawing…" : "Withdraw proposal & continue manually"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </section>
+  );
+}

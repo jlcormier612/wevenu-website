@@ -1,0 +1,2 @@
+clientEmail,eventDate,contractedTotal,packageName,paidAmount,paidDate,paidMethod,remainingAmount1,remainingDueDate1,contractTitle,contractSignedAt,shareSignedAgreementWithCouple,sourceId
+spec.ops.client@example.invalid,2026-10-30,8500,Spec Gold,2000,2026-10-30,check,6500,2026-10-30,External Spec Agreement,2026-10-30,no,spec-ac-001

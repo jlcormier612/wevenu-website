@@ -1,0 +1,85 @@
+{
+  "ownerTrigger": null,
+  "ownerSave": null,
+  "placeHold": {
+    "h": 46.8,
+    "w": 108,
+    "fontSize": "13.6px",
+    "paddingTop": "0px",
+    "paddingBottom": "0px",
+    "paddingLeft": "10.625px",
+    "paddingRight": "10.625px",
+    "borderRadius": "3.825px",
+    "tag": "button",
+    "testId": "date-hold-place",
+    "text": "Place Hold"
+  },
+  "scheduleTour": {
+    "h": 34,
+    "w": 131.1,
+    "fontSize": "13.6px",
+    "paddingTop": "0px",
+    "paddingBottom": "0px",
+    "paddingLeft": "10.625px",
+    "paddingRight": "10.625px",
+    "borderRadius": "3.825px",
+    "tag": "button",
+    "testId": "schedule-tour-action",
+    "text": "Schedule Tour"
+  },
+  "sampleButtons": [
+    {
+      "h": 34,
+      "w": 131.1,
+      "fontSize": "13.6px",
+      "paddingTop": "0px",
+      "paddingBottom": "0px",
+      "paddingLeft": "10.625px",
+      "paddingRight": "10.625px",
+      "borderRadius": "3.825px",
+      "tag": "button",
+      "testId": "schedule-tour-action",
+      "text": "Schedule Tour"
+    },
+    {
+      "h": 46.8,
+      "w": 78.6,
+      "fontSize": "13.6px",
+      "paddingTop": "0px",
+      "paddingBottom": "0px",
+      "paddingLeft": "10.625px",
+      "paddingRight": "10.625px",
+      "borderRadius": "3.825px",
+      "tag": "button",
+      "testId": "lead-staff-assignment-save",
+      "text": "Edit/Save"
+    },
+    {
+      "h": 34,
+      "w": 46.2,
+      "fontSize": "13.6px",
+      "paddingTop": "0px",
+      "paddingBottom": "0px",
+      "paddingLeft": "10.625px",
+      "paddingRight": "10.625px",
+      "borderRadius": "3.825px",
+      "tag": "button",
+      "testId": "tour-appointment-edit-925af1cc-a02f-4763-a75d-459e14b62e01",
+      "text": "Edit"
+    },
+    {
+      "h": 34,
+      "w": 46.2,
+      "fontSize": "13.6px",
+      "paddingTop": "0px",
+      "paddingBottom": "0px",
+      "paddingLeft": "10.625px",
+      "paddingRight": "10.625px",
+      "borderRadius": "3.825px",
+      "tag": "button",
+      "testId": "tour-followup-edit",
+      "text": "Edit"
+    }
+  ],
+  "rowHeight": 46.8
+}

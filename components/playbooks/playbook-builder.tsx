@@ -37,7 +37,7 @@ import {
   setMilestoneKindAction,
   updateTemplateTaskAction,
 } from "@/app/(app)/playbooks/actions";
-import { saveVenueDocumentAction } from "@/app/(app)/documents/actions";
+import { saveVenueDocumentAction, venueDocumentUploadPathAction } from "@/app/(app)/documents/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -47,9 +47,10 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { createClient } from "@/integrations/supabase/client";
+import { ATTACHMENT_SOURCE_LABELS } from "@/lib/documents/attachment-source";
 import { DueDateComposer } from "@/components/playbooks/due-date-composer";
 import {
-  AUTO_COMPLETE_TRIGGERS, categoryColor, categoryLabel, defaultReminderForCategory,
+  AUTO_COMPLETE_TRIGGERS, categoryLabel, categoryLabelStyle, defaultReminderForCategory,
   directionForOffset, formatDaysOffset, offsetForDirection, taskActionOptionsForKind, TASK_CATEGORIES, taskActionLabel,
 } from "@/lib/playbooks/constants";
 import type { DueDateDirection } from "@/lib/playbooks/constants";
@@ -128,12 +129,15 @@ function AttachmentsField({
     setUploading(true);
     try {
       const supabase = createClient();
-      const docId = crypto.randomUUID();
-      const ext = file.name.split(".").pop()?.toLowerCase() ?? "bin";
       // Venue-level path — this file belongs to the venue itself, not one
       // lead/client/event/vendor, so it outlives any single application of
       // this template (venue-level documents, Planning Templates UX Rebuild).
-      const storagePath = `venue/${docId}.${ext}`;
+      // The venue id has to lead the path or the bucket policy rejects the
+      // upload, and the browser can't be trusted for it, so the server hands
+      // it back from the session.
+      const pathResult = await venueDocumentUploadPathAction(file.name);
+      if (!pathResult.ok) { toast.error(pathResult.message); return; }
+      const storagePath = pathResult.storagePath;
       const { error: uploadError } = await supabase.storage.from("documents").upload(storagePath, file, { upsert: false, contentType: file.type });
       if (uploadError) throw new Error(uploadError.message);
       const { data: urlData } = supabase.storage.from("documents").getPublicUrl(storagePath);
@@ -191,14 +195,19 @@ function AttachmentsField({
 
       <div className="flex flex-wrap items-center gap-1.5">
         <input ref={fileRef} type="file" accept={ACCEPT} onChange={handleFileSelect} className="hidden" id={`upload-${taskId}`} />
-        <Button type="button" variant="outline" size="sm" className="h-7 px-2 text-xs" disabled={uploading} onClick={() => fileRef.current?.click()}>
-          {uploading ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Upload className="mr-1 h-3 w-3" />} Upload a file
-        </Button>
+        {/*
+          Documents first and filled; uploading is the bordered fallback. The
+          checklist file a task points at — policies, a setup diagram — is
+          reusable across every event this template is applied to.
+        */}
         {availableDocs.length > 0 && (
-          <Button type="button" variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => setAttachingExisting((v) => !v)}>
-            <FileText className="mr-1 h-3 w-3" /> Use an existing document
+          <Button type="button" size="sm" className="h-7 px-2 text-xs" onClick={() => setAttachingExisting((v) => !v)}>
+            <FileText className="mr-1 h-3 w-3" /> {ATTACHMENT_SOURCE_LABELS.fromDocuments}
           </Button>
         )}
+        <Button type="button" variant="outline" size="sm" className="h-7 px-2 text-xs" disabled={uploading} onClick={() => fileRef.current?.click()}>
+          {uploading ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Upload className="mr-1 h-3 w-3" />} {ATTACHMENT_SOURCE_LABELS.fromComputer}
+        </Button>
         <Button type="button" variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => setAddingLink((v) => !v)}>
           <Link2 className="mr-1 h-3 w-3" /> Add a link
         </Button>
@@ -474,7 +483,7 @@ function TaskRow({
           )}
         </div>
         <div className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
-          <span style={{ color: categoryColor(task.category) }}>{categoryLabel(task.category)}</span>
+          <span {...categoryLabelStyle(task.category)}>{categoryLabel(task.category)}</span>
           <span>·</span>
           <span>{formatDaysOffset(task.daysOffset)}</span>
           {task.reminderBeforeDays && <><span>·</span><span>reminds {task.reminderBeforeDays[0]}d before</span></>}
@@ -483,7 +492,7 @@ function TaskRow({
           {attachmentCount > 0 && <><span>·</span><span>{attachmentCount} attachment{attachmentCount === 1 ? "" : "s"}</span></>}
         </div>
       </div>
-      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+      <div className="flex items-center gap-1 shrink-0" data-testid="playbook-task-row-actions">
         <button type="button" onClick={onEdit} className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Edit">
           <Pencil className="h-3.5 w-3.5" />
         </button>
@@ -625,8 +634,8 @@ function MilestoneChapter({
   const editingTask = tasks.find((t) => t.id === editingId);
 
   return (
-    <div className="rounded-xl border border-border bg-card/60">
-      <div className="flex items-center gap-2 px-4 py-3 border-b border-border/60">
+    <div className="rounded-xl border border-border bg-card overflow-hidden">
+      <div className="htc-hospitality-section-label flex items-center gap-2 rounded-none border-x-0 border-t-0 px-4 py-3">
         {renaming ? (
           <div className="flex items-center gap-1.5 flex-1">
             <Input
@@ -640,7 +649,7 @@ function MilestoneChapter({
         ) : (
           <button type="button" onClick={() => setRenaming(true)} className="flex items-center gap-1.5 flex-1 text-left group/name">
             <h3 className="font-heading text-sm font-semibold text-heading">{milestone.name}</h3>
-            <Pencil className="h-3 w-3 text-muted-foreground opacity-0 group-hover/name:opacity-100 transition-opacity" />
+            <Pencil className="h-3 w-3 text-muted-foreground" />
           </button>
         )}
         <span className="text-xs text-muted-foreground shrink-0">{tasks.length} task{tasks.length !== 1 ? "s" : ""}</span>

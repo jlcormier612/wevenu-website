@@ -13,7 +13,7 @@ export const EVENT_TYPES: EventTypeOption[] = [
   { value: "wedding", label: "Wedding" },
   { value: "elopement", label: "Elopement" },
   { value: "engagement_party", label: "Engagement Party" },
-  { value: "rehearsal_dinner", label: "Rehearsal Dinner" },
+  { value: "rehearsal_dinner", label: "Rehearsal Dinner Only" },
   { value: "reception", label: "Reception Only" },
   { value: "corporate", label: "Corporate Event" },
   { value: "social_event", label: "Social Event" },
@@ -47,6 +47,11 @@ export const EVENT_TYPE_LEGACY_ALIASES: Record<string, string> = {
   birthday_milestone: "birthday",
 };
 
+/** Prior display labels that still resolve to a canonical value. */
+const EVENT_TYPE_LABEL_ALIASES: Record<string, string> = {
+  "rehearsal dinner": "rehearsal_dinner",
+};
+
 export function isCanonicalEventType(value: string | null | undefined): boolean {
   if (!value) return false;
   return CANONICAL_VALUES.has(normalizeEventType(value) ?? "");
@@ -61,7 +66,8 @@ export function normalizeEventType(value: string | null | undefined): string | n
   const aliased = EVENT_TYPE_LEGACY_ALIASES[lower] ?? lower;
   if (CANONICAL_VALUES.has(aliased)) return aliased;
   const byLabel = EVENT_TYPES.find((t) => t.label.toLowerCase() === lower);
-  return byLabel?.value ?? null;
+  if (byLabel) return byLabel.value;
+  return EVENT_TYPE_LABEL_ALIASES[lower] ?? null;
 }
 
 export function eventTypeLabel(value: string | null | undefined): string {

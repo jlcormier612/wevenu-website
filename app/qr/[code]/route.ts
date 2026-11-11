@@ -18,11 +18,16 @@
 import { type NextRequest, NextResponse } from "next/server";
 
 import { createAdminClient } from "@/integrations/supabase/admin";
+import { publicAppOrigin } from "@/lib/env";
+import { publicFormPath } from "@/lib/public-forms/public-url";
+import { qrInactiveRedirectUrl } from "@/lib/qr-campaigns/inactive-redirect";
+import { publicTourSchedulingPath } from "@/lib/tours/public-link";
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ code: string }> }) {
   const { code } = await params;
-  const { origin } = request.nextUrl;
+  const origin = publicAppOrigin();
   const admin = createAdminClient();
+  const inactive = () => NextResponse.redirect(qrInactiveRedirectUrl());
 
   const { data } = await admin.rpc("resolve_qr_scan", {
     p_code: code,
@@ -33,10 +38,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const result = data as {
     ok: boolean; campaignId?: string; venueId?: string;
     destinationType?: string; destinationUrl?: string | null;
+    publicFormId?: string | null;
   } | null;
 
   if (!result?.ok) {
-    return NextResponse.redirect(new URL("/qr/inactive", origin));
+    return inactive();
   }
 
   if (result.destinationType === "inquiry_form" || result.destinationType === "tour_booking") {
@@ -46,10 +52,25 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     if (result.destinationType === "inquiry_form" && venue?.embed_key) {
       return NextResponse.redirect(new URL(`/form/${venue.embed_key}?qr=${result.campaignId}`, origin));
     }
-    if (result.destinationType === "tour_booking" && venue?.tour_embed_key) {
-      return NextResponse.redirect(new URL(`/book/${venue.tour_embed_key}?qr=${result.campaignId}`, origin));
+    const tourPath = publicTourSchedulingPath(venue?.tour_embed_key);
+    if (result.destinationType === "tour_booking" && tourPath) {
+      return NextResponse.redirect(new URL(`${tourPath}?qr=${result.campaignId}`, origin));
     }
-    return NextResponse.redirect(new URL("/qr/inactive", origin));
+    return inactive();
+  }
+
+  if (result.destinationType === "public_form" && result.publicFormId) {
+    const { data: form } = await admin
+      .from("public_forms")
+      .select("public_key, status, venue_id")
+      .eq("id", result.publicFormId)
+      .maybeSingle<{ public_key: string; status: string; venue_id: string }>();
+    if (!form || form.status !== "published" || form.venue_id !== result.venueId) {
+      return inactive();
+    }
+    const path = publicFormPath(form.public_key);
+    if (!path) return inactive();
+    return NextResponse.redirect(new URL(`${path}?qr=${result.campaignId}`, origin));
   }
 
   if (result.destinationUrl) {
@@ -58,5 +79,5 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.redirect(dest);
   }
 
-  return NextResponse.redirect(new URL("/qr/inactive", origin));
+  return inactive();
 }

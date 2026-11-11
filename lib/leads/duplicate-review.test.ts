@@ -42,8 +42,19 @@ describe("Possible duplicate inquiry seams", () => {
     assert.doesNotMatch(review, /relationship_id:\s*matched/);
     assert.doesNotMatch(review, /\.update\(\{[\s\S]*relationship_id/);
     assert.match(review, /never merges Relationships/);
-    assert.match(banner, /does not automatically merge/);
-    assert.match(banner, /Delete this duplicate lead/);
+    // Detection remains warn-only; venue confirms Merge lead explicitly.
+    assert.match(banner, /Possible duplicate lead/);
+    assert.match(banner, /does not merge on its own/);
+    assert.match(banner, /Merge lead/);
+    assert.match(banner, /Keep separate/);
+    assert.doesNotMatch(banner, /delete this duplicate|copy the information|paste the other lead/i);
+    assert.doesNotMatch(review, /confirmMergeLeads|merge_leads_v1/);
+  });
+
+  it("duplicate banner opens MergeLeadDialog with the matched lead prefilled", () => {
+    assert.match(banner, /MergeLeadDialog/);
+    assert.match(banner, /initialOtherLeadId=\{review\.matchedLeadId\}/);
+    assert.match(banner, /duplicate-merge-open/);
   });
 
   it("venue create requires an identity decision, not Create anyway", () => {
@@ -57,6 +68,23 @@ describe("Possible duplicate inquiry seams", () => {
   it("notification CTA uses existing venue inbox", () => {
     assert.match(bell, /possible_duplicate_inquiry/);
     assert.match(bell, /Review possible duplicate/);
+  });
+
+  it("duplicate notification body uses newline field rows, not middle-dot concatenation", () => {
+    assert.match(review, /bodyParts\.join\("\\n"\)/);
+    assert.doesNotMatch(review, /bodyParts\.join\(" · "\)/);
+    assert.match(review, /Email: \$\{best\.email\}/);
+  });
+
+  it("keeps the same-email exception unless inquiry text also matches", () => {
+    assert.match(detection, /signals\.length === 1/);
+    assert.match(detection, /signals\[0\] === "email"/);
+    assert.match(detection, /normalizeInquiryText/);
+  });
+
+  it("keep separate does not delete either lead", () => {
+    assert.match(review, /status: "kept_separate"/);
+    assert.doesNotMatch(review, /from\("leads"\)\s*\.delete/);
   });
 
   it("rejects fuzzy matching language in the detector", () => {

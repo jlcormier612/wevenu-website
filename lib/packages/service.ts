@@ -54,8 +54,46 @@ export async function getPackage(id: string): Promise<PackageWithItems | null> {
 export async function addPackageItem(packageId: string, input: PackageItemInput): Promise<{ ok: true; item: import("@/lib/packages/types").PackageItem } | PackageActionResult> {
   if (!input.description.trim()) return { ok: false, message: "Description is required." };
   const result = await withVenue(async (c, venueId) => {
-    const item = await repo.insertPackageItem(c, venueId, packageId, input);
+    try {
+      const item = await repo.insertPackageItem(c, venueId, packageId, input);
+      return { ok: true, item };
+    } catch (e) {
+      const message = String((e as { message?: unknown })?.message ?? e);
+      if (message.includes("offering_not_in_venue")) return { ok: false, message: "That offering is not in this venue's catalog." };
+      throw e;
+    }
+  });
+  return result as { ok: true; item: import("@/lib/packages/types").PackageItem } | PackageActionResult;
+}
+
+export async function setPackageItemQuantity(
+  itemId: string,
+  quantity: number,
+  perGuest: boolean,
+): Promise<{ ok: true; item: import("@/lib/packages/types").PackageItem } | PackageActionResult> {
+  if (!Number.isFinite(quantity) || quantity <= 0) return { ok: false, message: "Enter a quantity above zero." };
+  const result = await withVenue(async (c, venueId) => {
+    const item = await repo.setPackageItemQuantity(c, venueId, itemId, quantity, perGuest);
+    if (!item) return { ok: false, message: "Inclusion not found." };
     return { ok: true, item };
+  });
+  return result as { ok: true; item: import("@/lib/packages/types").PackageItem } | PackageActionResult;
+}
+
+export async function linkPackageItemOffering(
+  itemId: string,
+  offeringId: string | null,
+): Promise<{ ok: true; item: import("@/lib/packages/types").PackageItem } | PackageActionResult> {
+  const result = await withVenue(async (c, venueId) => {
+    try {
+      const item = await repo.setPackageItemOffering(c, venueId, itemId, offeringId || null);
+      if (!item) return { ok: false, message: "Inclusion not found." };
+      return { ok: true, item };
+    } catch (e) {
+      const message = String((e as { message?: unknown })?.message ?? e);
+      if (message.includes("offering_not_in_venue")) return { ok: false, message: "That offering is not in this venue's catalog." };
+      throw e;
+    }
   });
   return result as { ok: true; item: import("@/lib/packages/types").PackageItem } | PackageActionResult;
 }
@@ -100,6 +138,42 @@ export async function createPackageForVenue(venueId: string, input: PackageInput
   if (errors) return { ok: false, errors };
   const packageId = await repo.insertPackage(createAdminClient(), venueId, input);
   return { ok: true, packageId };
+}
+
+/** Append composition lines after package create (Import Data / Migration Center). */
+export async function addPackageItems(
+  packageId: string,
+  items: PackageItemInput[],
+): Promise<PackageActionResult> {
+  if (items.length === 0) return { ok: true };
+  for (const item of items) {
+    if (!item.description.trim()) return { ok: false, message: "Each included item needs a description." };
+  }
+  const result = await withVenue(async (c, venueId) => {
+    for (const item of items) {
+      await repo.insertPackageItem(c, venueId, packageId, item);
+    }
+    return { ok: true } as PackageActionResult;
+  });
+  return result as PackageActionResult;
+}
+
+export async function addPackageItemsForVenue(
+  venueId: string,
+  packageId: string,
+  items: PackageItemInput[],
+): Promise<PackageActionResult> {
+  const actor = await requireAdminUser();
+  if (!actor) return { ok: false, message: "Not signed in as an HQ admin." };
+  if (items.length === 0) return { ok: true };
+  for (const item of items) {
+    if (!item.description.trim()) return { ok: false, message: "Each included item needs a description." };
+  }
+  const admin = createAdminClient();
+  for (const item of items) {
+    await repo.insertPackageItem(admin, venueId, packageId, item);
+  }
+  return { ok: true };
 }
 
 export async function updatePackage_(id: string, input: PackageInput): Promise<PackageActionResult> {

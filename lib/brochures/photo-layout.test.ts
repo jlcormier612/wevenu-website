@@ -58,8 +58,9 @@ describe("Brochure photography + layouts", () => {
     assert.match(editor, /Add photos/);
     assert.match(editor, /uploadToStorage/);
     assert.match(editor, /listPublicUploadUrls/);
-    assert.match(editor, /removeBrochurePhoto/);
-    assert.match(editor, /multiple/);
+    assert.match(editor, /removeBrochurePhoto|withoutBrochurePhoto/);
+    assert.match(editor, /Delete photo/);
+    assert.match(editor, /Remove from brochure/);
     assert.doesNotMatch(editor, /removeFromStorage/);
     assert.match(actions, /updateBrochurePhotographyAction/);
     assert.match(preview, /BrochurePhotoComposition/);

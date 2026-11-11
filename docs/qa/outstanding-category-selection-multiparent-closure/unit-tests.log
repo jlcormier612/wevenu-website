@@ -1,0 +1,60 @@
+▶ selection progress + max enforcement helpers
+  ✔ formats exact-N live counts (0.652417ms)
+  ✔ formats min–max range and optional capped groups (0.0775ms)
+  ✔ formats single-select progress (0.103959ms)
+  ✔ detects at-maximum without inventing silent replacement (0.101583ms)
+  ✔ explains why another option cannot be selected (0.117875ms)
+✔ selection progress + max enforcement helpers (2.108875ms)
+▶ portal + finalize seams
+  ✔ portal uses live progress and blocks over-max adds (0.817541ms)
+  ✔ finalize re-validates before Event Order mutations (1.453583ms)
+✔ portal + finalize seams (2.382291ms)
+▶ validateChoicesAnswers
+  ✔ rejects submit with no dinner selection (1.022875ms)
+  ✔ rejects two dinners in a pick-one group (0.105625ms)
+  ✔ allows dinner only (arbor optional declined) (0.078792ms)
+  ✔ allows dinner + arbor (0.068666ms)
+  ✔ rejects unknown option ids (0.066875ms)
+  ✔ rejects below multi minimum with actionable message (0.088583ms)
+  ✔ rejects above multi maximum with actionable message (0.248292ms)
+  ✔ skips inactive required dependents and rejects orphan child answers (0.355084ms)
+✔ validateChoicesAnswers (3.059584ms)
+▶ offering category identity
+  ✔ exposes every built-in EO suggested category including Décor and Florals (0.673666ms)
+  ✔ starter catalog includes Florals and Décor and uses Bar Service canonical label (0.110458ms)
+  ✔ reuses existing Bar row when asking for Bar Service (alias bucket) (0.24475ms)
+  ✔ reuses case/whitespace variants without inventing a second identity (0.064208ms)
+  ✔ does not collapse unrelated custom categories (0.084833ms)
+  ✔ EO addSection ensures offering category; provision syncs template section names (0.374417ms)
+  ✔ guided wizard exposes Change package categories on configure (0.4805ms)
+✔ offering category identity (2.800542ms)
+▶ Offerings hierarchy helpers
+  ✔ classifies majors vs items and filters authoring contexts (1.509583ms)
+  ✔ orders children under parents (8.028375ms)
+✔ Offerings hierarchy helpers (10.486125ms)
+▶ Offerings multi-parent associations
+  ✔ associates one offering with two major choices without duplicating the catalog row (0.188375ms)
+  ✔ lists multiple offerings under the same major (0.065333ms)
+  ✔ removing one of two associations preserves the other (in-memory model) (0.083292ms)
+  ✔ offering with no parent remains valid standalone/major (0.086792ms)
+  ✔ orders multi-parent item under every associated major (0.134334ms)
+  ✔ Whiskey-style dual bar parents place the item under both majors (0.107625ms)
+  ✔ formats multiple parent names for display (0.081958ms)
+  ✔ authoring under Plated does not surface Buffet-only items (0.096291ms)
+  ✔ shared catalog offering on two options only charges when the active path is selected (0.682416ms)
+✔ Offerings multi-parent associations (1.744125ms)
+▶ Offerings hierarchy migration + UI seams
+  ✔ adds parent_offering_id with one-level validation (0.281542ms)
+  ✔ adds offering_major_links with backfill and venue RLS (0.086042ms)
+  ✔ app model uses parentOfferingIds and replaces links on write (0.047667ms)
+  ✔ catalog UI exposes multi major association without duplicating dependency model (0.157292ms)
+  ✔ guided defaults no longer invent Catering choices labels (0.1745ms)
+✔ Offerings hierarchy migration + UI seams (0.844ms)
+ℹ tests 38
+ℹ suites 7
+ℹ pass 38
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 177.696542

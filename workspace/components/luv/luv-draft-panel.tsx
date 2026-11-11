@@ -108,7 +108,7 @@ export function LuvDraftPanel({
             <button
               type="button"
               onClick={onClose}
-              className="rounded-sm px-2 py-1 text-sm ws-muted hover:text-[var(--forest-sage)]"
+              className="rounded-sm px-2 py-1 text-sm ws-muted hover:text-foreground"
             >
               Close
             </button>
@@ -267,7 +267,7 @@ export function LuvInsightActions({
           className={
             primary === "draft" || primary === "send_email"
               ? btnClass(primary === "send_email" ? "send_email" : "draft")
-              : "rounded-sm border border-[color-mix(in_srgb,var(--dusty-rose)_45%,var(--taupe-medium))] px-3 py-1.5 text-xs text-[var(--forest-sage)] hover:border-[var(--dusty-rose)]"
+              : "rounded-sm border border-[color-mix(in_srgb,var(--dusty-rose)_45%,var(--taupe-medium))] px-3 py-1.5 text-xs text-foreground hover:border-[var(--dusty-rose)]"
           }
         >
           {draftLabel}
@@ -305,7 +305,7 @@ export function LuvInsightActions({
         <button
           type="button"
           disabled={pending}
-          className="rounded-sm px-3 py-1.5 text-xs ws-muted hover:text-[var(--forest-sage)]"
+          className="rounded-sm px-3 py-1.5 text-xs ws-muted hover:text-foreground"
           onClick={() => {
             const fd = new FormData();
             fd.set("insightId", insight.id);

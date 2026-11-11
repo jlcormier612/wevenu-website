@@ -43,6 +43,7 @@ function line(partial: Partial<EventOrderLine> & Pick<EventOrderLine, "id" | "de
     unit: null,
     isIncluded: true,
     notes: null,
+    boundToHeadcount: false,
     sortOrder: 0,
     createdAt: "2026-01-01T00:00:00Z",
     updatedAt: "2026-01-01T00:00:00Z",

@@ -31,9 +31,9 @@ export const SALES_STAGE_META: SalesStageMeta[] = [
   { value: "proposal_sent", label: "Proposal Sent", order: 4, description: "Proposal has been sent" },
   {
     value: "booked",
-    label: "Booking Started",
+    label: "Booked",
     order: 5,
-    description: "Booking file opened — not commercially Booked until agreement and deposit",
+    description: "The venue's booking transition is complete",
   },
   { value: "lost", label: "Lost", order: 6, description: "Opportunity marked lost" },
 ];
@@ -41,10 +41,23 @@ export const SALES_STAGE_META: SalesStageMeta[] = [
 /** Default Sales Pipeline entry when leaving Booked without inventing prior-stage history. */
 export const SALES_PIPELINE_RETURN_STAGE: SalesStage = "new_inquiry";
 
-export const STANDARD_SALES_PIPELINE_NAME = "Standard Sales Pipeline";
+/**
+ * Cancelled booked relationship. Stored on leads.sales_stage so the lead is
+ * not an active Booked Client, and not a sales-pipeline column (not Lost,
+ * not New Inquiry). Client/event status remains the cancellation record.
+ */
+export const CANCELLED_RELATIONSHIP_STAGE = "cancelled";
+
+export function isCancelledRelationshipStage(stage: string | null | undefined): boolean {
+  return stage === CANCELLED_RELATIONSHIP_STAGE;
+}
+
+/** @deprecated Prefer STANDARD_PIPELINE_NAME from lib/pipeline-templates/standard. */
+export const STANDARD_SALES_PIPELINE_NAME = "Standard";
 
 export function salesStageLabel(stage: string | null | undefined): string {
   if (!stage) return "";
+  if (stage === CANCELLED_RELATIONSHIP_STAGE) return "Cancelled";
   return SALES_STAGE_META.find((s) => s.value === stage)?.label ?? stage;
 }
 

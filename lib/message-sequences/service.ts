@@ -7,10 +7,16 @@ import { isSupabaseConfigured } from "@/lib/env";
 import * as repo from "@/lib/message-sequences/repository";
 import { validateSequenceInput } from "@/lib/message-sequences/validation";
 import type {
-  CreateSequenceResult, EnrollResult, MessageSequenceInput, MessageSequenceListItem,
+  CreateSequenceResult, EnrollResult, MessageSequence, MessageSequenceInput, MessageSequenceListItem,
   MessageSequenceWithSteps, SequenceActionResult, SequenceEnrollment, SequenceTriggerType,
 } from "@/lib/message-sequences/types";
 import { getCurrentVenue } from "@/lib/venue/service";
+import {
+  isUniqueViolation,
+  shouldRecordAnotherSkip,
+  STAGE_CHANGE_SKIP_WINDOW_MS,
+  type StageChangeMessageChoice,
+} from "@/lib/message-sequences/stage-change-message-choice";
 
 type DbClient = Awaited<ReturnType<typeof createClient>>;
 type AnyDbClient = DbClient | ReturnType<typeof createAdminClient>;
@@ -167,69 +173,129 @@ export async function resumeEnrollment_(enrollmentId: string): Promise<SequenceA
 export async function triggerSequencesForRelationship(
   supabase: AnyDbClient, venueId: string, relationshipId: string,
   triggerType: SequenceTriggerType, triggerStage?: string,
+  opts?: { customerMessages?: Extract<StageChangeMessageChoice, "send" | "skip"> },
 ): Promise<string[]> {
+  const skipMessages = opts?.customerMessages === "skip";
   const sequences = await repo.getActiveSequencesForTrigger(supabase, venueId, triggerType, triggerStage);
   const enrollmentIds: string[] = [];
   for (const seq of sequences) {
     if (await repo.hasActiveEnrollment(supabase, seq.id, relationshipId)) continue;
-    const enrollmentId = await repo.insertEnrollment(supabase, venueId, seq.id, relationshipId);
-    await repo.materializeEnrollmentSteps(supabase, venueId, enrollmentId, seq.id, relationshipId);
+    if (skipMessages) {
+      const recent = await repo.findRecentCancelledEnrollment(
+        supabase,
+        seq.id,
+        relationshipId,
+        new Date(Date.now() - STAGE_CHANGE_SKIP_WINDOW_MS).toISOString(),
+      );
+      if (recent && !shouldRecordAnotherSkip(
+        { status: recent.status, enrolledAtMs: new Date(recent.enrolledAt).getTime() },
+        Date.now(),
+      )) {
+        continue;
+      }
+    }
+    let enrollmentId: string;
+    try {
+      enrollmentId = await repo.insertEnrollment(supabase, venueId, seq.id, relationshipId);
+    } catch (error) {
+      if (isUniqueViolation(error)) continue;
+      throw error;
+    }
+    try {
+      await repo.materializeEnrollmentSteps(
+        supabase,
+        venueId,
+        enrollmentId,
+        seq.id,
+        relationshipId,
+        skipMessages ? "cancelled" : "scheduled",
+      );
+      await maybeAdvanceLeadOnSequenceEnroll(
+        supabase,
+        venueId,
+        relationshipId,
+        seq.updatePipelineOnEnroll === true,
+        triggerType,
+      );
+    } finally {
+      if (skipMessages) {
+        await repo.cancelEnrollmentImmediately(supabase, venueId, enrollmentId);
+      }
+    }
     enrollmentIds.push(enrollmentId);
-    await maybeAdvanceLeadOnSequenceEnroll(
-      supabase, venueId, relationshipId, seq.updatePipelineOnEnroll === true,
-    );
   }
   return enrollmentIds;
 }
 
 /**
- * When a sequence has update_pipeline_on_enroll, move the open lead for this
- * relationship to enrolled_in_sequence (forward-only). Does not move Booked/Lost
- * or regress. Does not re-fire stage triggers here — avoids enrollment loops;
- * coordinators who manually set Enrolled still get lead_stage_changed triggers.
+ * When a sequence has update_pipeline_on_enroll, advance the open lead for this
+ * relationship exactly one stage on the venue's active Pipeline (forward-only).
+ * Does not move Booked/Lost, does not wrap from the final stage, and does not
+ * hard-code a destination such as "In Follow-Up". Does not re-fire stage
+ * triggers here — avoids enrollment loops.
+ *
+ * lead_created enrollments never advance: New Inquiry Welcome must not kick a
+ * brand-new lead to the next Standard column (e.g. In Workflow).
  */
 async function maybeAdvanceLeadOnSequenceEnroll(
   supabase: AnyDbClient,
   venueId: string,
   relationshipId: string,
   updatePipelineOnEnroll: boolean,
+  triggerType?: SequenceTriggerType,
 ): Promise<void> {
   if (!updatePipelineOnEnroll) return;
-  const { isSalesStage, isForwardSalesStageMove } = await import("@/lib/leads/sales-stages");
+  if (triggerType === "lead_created") return;
   const { data: lead } = await supabase.from("leads")
-    .select("id, sales_stage")
+    .select("id, sales_stage, pipeline_stage_id")
     .eq("venue_id", venueId)
     .eq("relationship_id", relationshipId)
     .not("sales_stage", "in", "(booked,lost)")
     .order("created_at", { ascending: false })
     .limit(1)
-    .maybeSingle<{ id: string; sales_stage: string }>();
-  if (!lead || !isSalesStage(lead.sales_stage)) return;
-  if (!isForwardSalesStageMove(lead.sales_stage, "enrolled_in_sequence")) return;
+    .maybeSingle<{ id: string; sales_stage: string; pipeline_stage_id: string | null }>();
+  if (!lead) return;
+
+  const { getActiveTemplateWithStages } = await import("@/lib/pipeline-templates/repository");
+  const { resolveAdvanceOnEnrollTarget } = await import(
+    "@/lib/message-sequences/advance-pipeline-on-enroll"
+  );
+  const active = await getActiveTemplateWithStages(supabase as DbClient, venueId);
+  const target = resolveAdvanceOnEnrollTarget({
+    stages: active?.stages ?? null,
+    pipelineStageId: lead.pipeline_stage_id,
+    salesStage: lead.sales_stage,
+  });
+  if (!target) return;
+
+  const patch =
+    target.kind === "pipeline"
+      ? { sales_stage: target.salesStage, pipeline_stage_id: target.stageId }
+      : { sales_stage: target.salesStage };
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await (supabase.from("leads") as any)
-    .update({ sales_stage: "enrolled_in_sequence" })
+    .update(patch)
     .eq("id", lead.id)
     .eq("venue_id", venueId);
 }
 
 /**
  * Preview of triggerSequencesForRelationship for lead_stage_changed — same
- * matching + already-enrolled skip, without inserting. Used to disclose
- * before a Pipeline stage move commits. Also returns the first matching
- * sequence id (for first-step message preview) when enrollment would occur.
+ * matching + already-enrolled skip, without inserting. Returns every
+ * sequence that would enroll so the confirmation can list every message.
  */
 export async function wouldEnrollOnStageChange(
   supabase: AnyDbClient, venueId: string, relationshipId: string, triggerStage: string,
-): Promise<{ wouldEnroll: boolean; sequenceId: string | null }> {
+): Promise<{ wouldEnroll: boolean; sequenceId: string | null; sequences: MessageSequence[] }> {
   const sequences = await repo.getActiveSequencesForTrigger(
     supabase, venueId, "lead_stage_changed", triggerStage,
   );
+  const fresh: MessageSequence[] = [];
   for (const seq of sequences) {
     if (await repo.hasActiveEnrollment(supabase, seq.id, relationshipId)) continue;
-    return { wouldEnroll: true, sequenceId: seq.id };
+    fresh.push(seq);
   }
-  return { wouldEnroll: false, sequenceId: null };
+  return { wouldEnroll: fresh.length > 0, sequenceId: fresh[0]?.id ?? null, sequences: fresh };
 }
 
 /** Stop on booking (§3.3) — called once a lead becomes a client. */

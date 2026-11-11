@@ -3,9 +3,8 @@
 import * as React from "react";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowUpDown, Search, SlidersHorizontal } from "lucide-react";
-
-import { LeadStatusBadge } from "@/components/leads/lead-status-badge";
 
 function momentumLabel(score: number, status: string): { tier: "hot" | "warm" | "growing" | "early" | "quiet" } {
   if (status === "booked" || status === "won") return { tier: "hot" };
@@ -32,12 +31,32 @@ import {
 } from "@/components/ui/table";
 import {
   LEAD_STATUSES,
+  ACTIVE_STATUSES,
   eventTypeLabel,
   formatDate,
   formatCurrency,
   leadDisplayName,
+  sourceLabel,
+  statusLabel,
 } from "@/lib/leads/constants";
+import { isOpenLeadLifecycle, isOpenLeadOpportunity } from "@/lib/leads/open-lifecycle";
 import type { Lead, LeadStatus } from "@/lib/leads/types";
+import { normalizeEventType } from "@/lib/event-types/canonical";
+import { isStaleWithoutContact } from "@/lib/leads/stale-contact";
+import { salesStageLabel } from "@/lib/leads/sales-stages";
+import { LeadUnseenIndicator } from "@/components/leads/lead-unseen-indicator";
+import { LeadMessageAttentionIndicator } from "@/components/leads/lead-message-attention-indicator";
+import type { LeadMessageAttention } from "@/lib/leads/message-attention";
+import { isUnseenLeadAttention } from "@/lib/navigation/attention";
+import {
+  ATTENTION_CHIP,
+  ATTENTION_CHIP_COUNT,
+  IDLE_CHIP,
+  IDLE_CHIP_COUNT,
+  SELECTED_CHIP,
+  SELECTED_CHIP_COUNT,
+} from "@/lib/ui/selected-state";
+import { cn } from "@/lib/utils";
 
 type FilterKey = "all" | LeadStatus;
 type EventTypeFilter = "all" | string;
@@ -76,40 +95,112 @@ function sortLeads(leads: Lead[], sort: SortKey): Lead[] {
 export function LeadList({
   leads,
   initialAttention,
+  initialOutcome = "active",
+  unattendedInquiryLeadIds = [],
+  currentBookedCount = 0,
+  messageAttentionByLeadId = {},
 }: {
   leads: Lead[];
   /** Dashboard/Luv deep-link: same 7-day stale-contact condition as generate_venue_recommendations. */
-  initialAttention?: "stale_contact" | "active" | null;
+  initialAttention?: "stale_contact" | "open" | "active" | "unseen" | "unattended_inquiry" | null;
+  /** lost = the Lost outcome list. Booked is a link to Clients, not a lead filter. */
+  initialOutcome?: "active" | "lost";
+  /** Server-recomputed P-A1 qualifying IDs (same evaluator as the cluster). */
+  unattendedInquiryLeadIds?: readonly string[];
+  /** Current Booked membership — same population as Clients → All Bookings. */
+  currentBookedCount?: number;
+  /** Decision C — needs_response message attention, distinct from venue_seen_at. */
+  messageAttentionByLeadId?: Record<string, LeadMessageAttention>;
 }) {
+  const router = useRouter();
+  const unattendedIdSet = React.useMemo(
+    () => new Set(unattendedInquiryLeadIds),
+    [unattendedInquiryLeadIds],
+  );
   const [query, setQuery] = React.useState("");
-  const [statusFilter, setStatusFilter] = React.useState<FilterKey>("all");
+  const [statusFilter, setStatusFilter] = React.useState<string>(initialOutcome === "lost" ? "lost" : "all");
   const [eventTypeFilter, setEventTypeFilter] = React.useState<EventTypeFilter>("all");
   const [sort, setSort] = React.useState<SortKey>(
     initialAttention === "stale_contact" ? "last_contacted" : "newest",
   );
-  const [attentionFilter, setAttentionFilter] = React.useState<"all" | "stale_contact" | "active">(
-    initialAttention === "stale_contact" ? "stale_contact" : initialAttention === "active" ? "active" : "all",
+  const [attentionFilter, setAttentionFilter] = React.useState<"all" | "stale_contact" | "open" | "unseen" | "unattended_inquiry">(
+    initialAttention === "stale_contact" ? "stale_contact"
+      : initialAttention === "open" ? "open"
+      : initialAttention === "unseen" ? "unseen"
+      : initialAttention === "unattended_inquiry" ? "unattended_inquiry"
+      : "all",
   );
+
+  const queue = React.useMemo(
+    () => leads.filter((l) => isOpenLeadLifecycle(l.salesStage ?? l.status)),
+    [leads],
+  );
+
+  function isLostLead(lead: Lead): boolean {
+    return String(lead.salesStage ?? lead.status) === "lost";
+  }
+
+  /** Same open definition as Dashboard Lead Flow — reporting category, not exclude flag. */
+  function leadIsOpenOpportunity(lead: Lead): boolean {
+    return isOpenLeadOpportunity({ salesStage: lead.salesStage ?? lead.status });
+  }
+
+  function stageDisplayName(lead: Lead): string {
+    return salesStageLabel(lead.salesStage ?? lead.status) || statusLabel(lead.salesStage ?? lead.status);
+  }
 
   const filtered = React.useMemo(() => {
     const q = query.toLowerCase().trim();
-    const staleCutoffMs = Date.now() - 7 * 86_400_000;
-    const base = leads.filter((l) => {
+    const nowMs = Date.now();
+    if (attentionFilter === "unattended_inquiry") {
+      const base = leads.filter((l) => {
+        if (!unattendedIdSet.has(l.id)) return false;
+        if (!q) return true;
+        return [
+          l.firstName, l.lastName, l.partnerFirstName, l.partnerLastName,
+          l.email, l.phone, l.eventType, l.source,
+        ].some((v) => v?.toLowerCase().includes(q));
+      });
+      return sortLeads(base, sort);
+    }
+    const base = (statusFilter === "lost" ? leads.filter(isLostLead) : queue).filter((l) => {
       const stage = l.salesStage ?? l.status;
-      if (statusFilter !== "all" && stage !== statusFilter) return false;
-      if (eventTypeFilter !== "all" && l.eventType !== eventTypeFilter) return false;
+      if (statusFilter !== "all" && statusFilter !== "lost") {
+        if (stage !== statusFilter) {
+          return false;
+        }
+      }
+      if (eventTypeFilter !== "all") {
+        // Group by canonical key so "Wedding" / "wedding" never become two filters.
+        if (normalizeEventType(l.eventType) !== eventTypeFilter) return false;
+      }
       if (attentionFilter === "stale_contact") {
-        // Same closed set + reporting boundary as generate_venue_recommendations.
-        if (["lost", "booked", "won", "cancelled"].includes(stage)) {
+        // Same open-lifecycle + opportunity-age rule as generate_venue_recommendations
+        // (coalesce last contact → inquiry → created; never treat null contact as ancient).
+        if (!leadIsOpenOpportunity(l)) {
           return false;
         }
         if (l.excludeFromBusinessReporting) return false;
-        const contacted = l.lastContactedAt ? new Date(l.lastContactedAt).getTime() : null;
-        if (contacted != null && contacted >= staleCutoffMs) return false;
+        if (!isStaleWithoutContact({
+          lastContactedAt: l.lastContactedAt,
+          inquiryDate: l.inquiryDate,
+          createdAt: l.createdAt,
+        }, nowMs)) {
+          return false;
+        }
       }
-      if (attentionFilter === "active") {
-        if (stage === "lost" || stage === "booked") return false;
-        if (l.excludeFromBusinessReporting) return false;
+      if (attentionFilter === "open") {
+        // Same open-lead definition as Dashboard Lead Flow (non-terminal reporting category).
+        if (!leadIsOpenOpportunity(l)) return false;
+      }
+      if (attentionFilter === "unseen") {
+        // Same population as Leads nav attention badge + row New indicator.
+        if (!isUnseenLeadAttention({
+          venueSeenAt: l.venueSeenAt,
+          salesStage: l.salesStage ?? l.status,
+        })) {
+          return false;
+        }
       }
       if (!q) return true;
       return [
@@ -118,73 +209,130 @@ export function LeadList({
       ].some((v) => v?.toLowerCase().includes(q));
     });
     return sortLeads(base, sort);
-  }, [leads, query, statusFilter, eventTypeFilter, sort, attentionFilter]);
+  }, [queue, leads, query, statusFilter, eventTypeFilter, sort, attentionFilter, unattendedIdSet]);
 
   const statusCounts = React.useMemo(() => {
-    const map = new Map<FilterKey, number>([["all", leads.length]]);
-    LEAD_STATUSES.forEach((s) => map.set(s.value, 0));
-    leads.forEach((l) => {
+    const population = queue;
+    const map = new Map<string, number>([["all", population.length]]);
+    ACTIVE_STATUSES.forEach((s) => map.set(s, 0));
+    population.forEach((l) => {
       const stage = l.salesStage ?? l.status;
       map.set(stage, (map.get(stage) ?? 0) + 1);
     });
+    map.set("booked", currentBookedCount);
+    map.set("lost", leads.filter(isLostLead).length);
     return map;
-  }, [leads]);
+  }, [queue, leads, currentBookedCount]);
+
+  type StageChip = { key: string; label: string; kind: "active" | "booked" | "lost" };
+  const activeChips: StageChip[] = [
+    { key: "all", label: "All", kind: "active" },
+    ...LEAD_STATUSES.filter((s) => (ACTIVE_STATUSES as readonly string[]).includes(s.value)).map((s) => ({
+      key: s.value,
+      label: s.label,
+      kind: "active" as const,
+    })),
+  ];
+  const stageChips: StageChip[] = [
+    ...activeChips,
+    { key: "booked", label: "Booked", kind: "booked" },
+    { key: "lost", label: "Lost", kind: "lost" },
+  ];
 
   const activeEventTypes = React.useMemo(() => {
+    const population = queue;
     const seen = new Map<string, number>();
-    leads.forEach((l) => { if (l.eventType) seen.set(l.eventType, (seen.get(l.eventType) ?? 0) + 1); });
+    population.forEach((l) => {
+      const key = normalizeEventType(l.eventType);
+      if (!key) return;
+      seen.set(key, (seen.get(key) ?? 0) + 1);
+    });
     return [...seen.entries()].sort((a, b) => b[1] - a[1]);
-  }, [leads]);
+  }, [queue]);
 
   const hasActiveFilters =
     statusFilter !== "all" || eventTypeFilter !== "all" || query || attentionFilter !== "all";
+
+  function showAllActiveLeads() {
+    setAttentionFilter("all");
+    setStatusFilter("all");
+    router.replace("/leads");
+  }
 
   return (
     <div className="space-y-4">
     <div className="space-y-3">
       {attentionFilter === "stale_contact" && (
-        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-rose-200/50 bg-rose-50/40 px-3 py-2 text-sm">
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-[0.75rem] border border-[color:color-mix(in_oklch,var(--htc-soft-rose)_45%,var(--htc-border-warm))] bg-[var(--htc-soft-blush)] px-3 py-2 text-sm">
           <p className="text-foreground">
-            Showing active leads with no contact in 7+ days
-            <span className="text-muted-foreground"> — the same condition as Luv&apos;s follow-up insight.</span>
+            Showing active leads with no contact in 7+ days.
           </p>
           <button
             type="button"
-            onClick={() => setAttentionFilter("all")}
+            onClick={() => showAllActiveLeads()}
             className="text-xs font-medium text-primary hover:underline"
           >
-            Show all leads
+            Show all active leads
           </button>
         </div>
       )}
-      {attentionFilter === "active" && (
+      {attentionFilter === "open" && (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-muted/40 px-3 py-2 text-sm">
           <p className="text-foreground">
-            Showing active leads still in play.
+            Showing open leads — not booked, lost, won, or cancelled.
           </p>
           <button
             type="button"
-            onClick={() => setAttentionFilter("all")}
+            onClick={() => showAllActiveLeads()}
             className="text-xs font-medium text-primary hover:underline"
           >
-            Show all leads
+            Show all active leads
           </button>
         </div>
       )}
-      <div className="htc-hospitality-toolbar flex flex-col gap-2 sm:flex-row sm:items-center">
+      {attentionFilter === "unseen" && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-muted/40 px-3 py-2 text-sm">
+          <p className="text-foreground">
+            Showing unseen open leads — same population as the Leads navigation badge.
+          </p>
+          <button
+            type="button"
+            onClick={() => showAllActiveLeads()}
+            className="text-xs font-medium text-primary hover:underline"
+          >
+            Show all active leads
+          </button>
+        </div>
+      )}
+      {attentionFilter === "unattended_inquiry" && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-muted/40 px-3 py-2 text-sm">
+          <p className="text-foreground">
+            Showing inquiries that still need a first venue response (48 hours–14 days).
+          </p>
+          <button
+            type="button"
+            onClick={() => showAllActiveLeads()}
+            className="text-xs font-medium text-primary hover:underline"
+          >
+            Show all active leads
+          </button>
+        </div>
+      )}
+      <div className="htc-hospitality-toolbar space-y-3">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
           <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search by name, email, event type…"
-            className="pl-9"
+            className="border-[color:var(--htc-border-warm)] bg-card pl-9"
           />
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
           <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" />
           <Select value={sort} onValueChange={(v) => setSort(v as SortKey)} items={SORT_OPTIONS}>
-            <SelectTrigger className="h-9 w-44 text-sm border-border">
+            <SelectTrigger className="h-9 w-44 border-[color:var(--htc-border-warm)] bg-card text-sm text-muted-foreground">
               <SelectValue placeholder="Most Recent" />
             </SelectTrigger>
             <SelectContent>
@@ -196,29 +344,55 @@ export function LeadList({
 
       <div className="flex flex-wrap gap-1.5 items-center">
         <span className="text-xs text-muted-foreground font-medium mr-0.5">Stage:</span>
-        {(["all", ...LEAD_STATUSES.map((s) => s.value)] as FilterKey[]).map((key) => {
-          const label = key === "all" ? "All" : LEAD_STATUSES.find((s) => s.value === key)?.label ?? key;
-          const count = statusCounts.get(key) ?? 0;
-          const active = statusFilter === key;
+        {stageChips.map((chip) => {
+          const count = statusCounts.get(chip.key) ?? 0;
+          /* New Inquiry with population uses blush attention (Clients Needs Attention pattern). */
+          const attentionIdle = chip.key === "new_inquiry" && count > 0;
+          const chipClass = (active: boolean) =>
+            cn(
+              "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+              active ? SELECTED_CHIP : attentionIdle ? ATTENTION_CHIP : IDLE_CHIP,
+            );
+          const countClass = (active: boolean) =>
+            cn(
+              "rounded-full px-1.5 py-px text-[10px] font-semibold",
+              active ? SELECTED_CHIP_COUNT : attentionIdle ? ATTENTION_CHIP_COUNT : IDLE_CHIP_COUNT,
+            );
+          if (chip.kind === "booked") {
+            return (
+              <Link key={chip.key} href="/clients?filter=all" className={chipClass(false)}>
+                {chip.label}
+                <span className={countClass(false)}>{count}</span>
+              </Link>
+            );
+          }
+          const active = chip.key === "all"
+            ? attentionFilter === "all" && statusFilter === "all"
+            : statusFilter === chip.key;
           return (
             <button
-              key={key}
+              key={chip.key}
               type="button"
-              onClick={() => setStatusFilter(key)}
-              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-                active
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground"
-              }`}
+              onClick={() => {
+                if (chip.key === "all") {
+                  showAllActiveLeads();
+                  return;
+                }
+                setStatusFilter(chip.key);
+                if (chip.kind === "lost") router.replace("/leads?view=lost");
+                else if (initialOutcome === "lost") router.replace("/leads");
+              }}
+              className={chipClass(active)}
             >
-              {label}
-              <span className={`rounded-full px-1.5 py-px text-[10px] font-semibold ${active ? "bg-primary-foreground/20 text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
-                {count}
-              </span>
+              {chip.label}
+              <span className={countClass(active)}>{count}</span>
             </button>
           );
         })}
       </div>
+      <p className="text-xs text-muted-foreground">
+        All is active sales work. Booked and Lost are outcomes and are not included in All.
+      </p>
 
       {activeEventTypes.length > 1 && (
         <div className="flex flex-wrap gap-1.5 items-center">
@@ -226,21 +400,31 @@ export function LeadList({
             <SlidersHorizontal className="inline h-3 w-3 mr-1" />Type:
           </span>
           <button type="button" onClick={() => setEventTypeFilter("all")}
-            className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium transition-colors ${eventTypeFilter === "all" ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground"}`}>
+            className={cn(
+              "inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+              eventTypeFilter === "all" ? SELECTED_CHIP : IDLE_CHIP,
+            )}>
             All
           </button>
           {activeEventTypes.map(([type, count]) => (
             <button key={type} type="button" onClick={() => setEventTypeFilter(type)}
-              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${eventTypeFilter === type ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground"}`}>
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                eventTypeFilter === type ? SELECTED_CHIP : IDLE_CHIP,
+              )}>
               {eventTypeLabel(type)}
-              <span className={`rounded-full px-1.5 py-px text-[10px] font-semibold ${eventTypeFilter === type ? "bg-primary-foreground/20 text-primary-foreground" : "bg-muted text-muted-foreground"}`}>{count}</span>
+              <span className={cn(
+                "rounded-full px-1.5 py-px text-[10px] font-semibold",
+                eventTypeFilter === type ? SELECTED_CHIP_COUNT : IDLE_CHIP_COUNT,
+              )}>{count}</span>
             </button>
           ))}
         </div>
       )}
+      </div>
 
       {hasActiveFilters && (
-        <button type="button" onClick={() => { setQuery(""); setStatusFilter("all"); setEventTypeFilter("all"); setAttentionFilter("all"); }}
+        <button type="button" onClick={() => { setQuery(""); setStatusFilter("all"); setEventTypeFilter("all"); showAllActiveLeads(); }}
           className="text-xs text-muted-foreground hover:text-foreground transition-colors underline-offset-2 hover:underline">
           Clear all filters
         </button>
@@ -258,7 +442,31 @@ export function LeadList({
         </div>
       )}
 
-      {leads.length > 0 && filtered.length === 0 && (
+      {statusFilter === "lost" && filtered.length === 0 && (statusCounts.get("lost") ?? 0) === 0 && leads.length > 0 && (
+        <div className="flex flex-col items-center justify-center rounded-sm border border-dashed border-border bg-card/40 py-16 text-center">
+          <p className="font-heading text-lg font-medium text-heading">No lost opportunities</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Lost stays here as history. It is not part of All.
+          </p>
+        </div>
+      )}
+
+      {statusFilter !== "lost" && queue.length === 0 && leads.length > 0 && (
+        <div className="flex flex-col items-center justify-center rounded-sm border border-dashed border-border bg-card/40 py-16 text-center">
+          <p className="font-heading text-lg font-medium text-heading">No active leads</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Booked and Lost are outcomes. They are not in All.
+          </p>
+        </div>
+      )}
+
+      {statusFilter === "lost" && filtered.length === 0 && (statusCounts.get("lost") ?? 0) > 0 && (
+        <div className="rounded-sm border border-dashed border-border py-10 text-center">
+          <p className="text-sm text-muted-foreground">No lost opportunities match your filters.</p>
+        </div>
+      )}
+
+      {statusFilter !== "lost" && queue.length > 0 && filtered.length === 0 && (
         <div className="rounded-sm border border-dashed border-border py-10 text-center">
           <p className="text-sm text-muted-foreground">No leads match your filters.</p>
           <Button variant="link" size="sm" className="mt-1" onClick={() => { setQuery(""); setStatusFilter("all"); setEventTypeFilter("all"); }}>
@@ -268,7 +476,7 @@ export function LeadList({
       )}
 
       {filtered.length > 0 && (
-        <div className="htc-hospitality-table rounded-sm border border-border bg-card">
+        <div className="htc-hospitality-table">
           <Table>
             <TableHeader>
               <TableRow>
@@ -277,6 +485,7 @@ export function LeadList({
                 <TableHead>Date</TableHead>
                 <TableHead>Guests</TableHead>
                 <TableHead>Budget</TableHead>
+                <TableHead>Source</TableHead>
                 <TableHead>Stage</TableHead>
                 <TableHead>Received</TableHead>
                 <TableHead className="w-16" />
@@ -288,9 +497,18 @@ export function LeadList({
                 return (
                 <TableRow key={lead.id} className="group">
                   <TableCell className="font-medium text-foreground">
-                    <Link href={`/leads/${lead.id}`} className="hover:text-primary">
-                      {leadDisplayName(lead.firstName, lead.lastName, lead.partnerFirstName, lead.partnerLastName)}
-                    </Link>
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <LeadUnseenIndicator
+                        venueSeenAt={lead.venueSeenAt}
+                        salesStage={lead.salesStage ?? lead.status}
+                      />
+                      <LeadMessageAttentionIndicator
+                        attention={messageAttentionByLeadId[lead.id] ?? null}
+                      />
+                      <Link href={`/leads/${lead.id}`} className="htc-record-link truncate">
+                        {leadDisplayName(lead.firstName, lead.lastName, lead.partnerFirstName, lead.partnerLastName)}
+                      </Link>
+                    </div>
                     {lead.email && (
                       <p className="text-xs text-muted-foreground">{lead.email}</p>
                     )}
@@ -311,9 +529,12 @@ export function LeadList({
                   <TableCell className="text-sm">
                     {lead.estimatedBudget != null ? formatCurrency(lead.estimatedBudget) : <span className="text-muted-foreground">—</span>}
                   </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {lead.source ? sourceLabel(lead.source) : <span className="text-muted-foreground">—</span>}
+                  </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1.5">
-                      <LeadStatusBadge status={stage} />
+                      <Badge variant="outline">{stageDisplayName(lead)}</Badge>
                       {lead.commitmentScore > 0 && (() => {
                         const { tier } = momentumLabel(lead.commitmentScore, stage);
                         const dot = tier === "hot" ? "bg-success" : tier === "warm" ? "bg-[#C7A66A]" : tier === "growing" ? "bg-primary/50" : null;

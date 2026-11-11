@@ -1,0 +1,55 @@
+{
+  "venueId": "50972d6d-98c3-43ff-bae3-e4df9f421959",
+  "primaryId": "fe9553c6-7342-4016-bd75-f494ab7acdc9",
+  "secondaryId": "15fb348e-841e-41d3-95b0-0681a2ea6750",
+  "tourId": "6a5f5877-52bd-489a-8034-e108dfef1d60",
+  "pass": 9,
+  "fail": 0,
+  "checks": [
+    {
+      "name": "signed_in_as_owner",
+      "pass": true,
+      "detail": "56b7bb5f-7739-40bf-91af-a6bed2c98c3c"
+    },
+    {
+      "name": "merge_rpc_ok",
+      "pass": true,
+      "detail": "{\"ok\":true,\"primaryId\":\"fe9553c6-7342-4016-bd75-f494ab7acdc9\",\"secondaryId\":\"15fb348e-841e-41d3-95b0-0681a2ea6750\",\"alreadyMerged\":false}"
+    },
+    {
+      "name": "phone_filled_on_primary",
+      "pass": true,
+      "detail": "555-0199"
+    },
+    {
+      "name": "secondary_soft_marked",
+      "pass": true,
+      "detail": "{\"id\":\"15fb348e-841e-41d3-95b0-0681a2ea6750\",\"merged_into_lead_id\":\"fe9553c6-7342-4016-bd75-f494ab7acdc9\",\"merged_at\":\"2026-10-20T22:25:11.642743+00:00\"}"
+    },
+    {
+      "name": "note_reparented",
+      "pass": true,
+      "detail": "fe9553c6-7342-4016-bd75-f494ab7acdc9"
+    },
+    {
+      "name": "tour_reparented_same_slot",
+      "pass": true,
+      "detail": "{\"id\":\"6a5f5877-52bd-489a-8034-e108dfef1d60\",\"lead_id\":\"fe9553c6-7342-4016-bd75-f494ab7acdc9\",\"status\":\"scheduled\",\"scheduled_at\":\"2028-07-12T15:00:00+00:00\"}"
+    },
+    {
+      "name": "retry_idempotent_already_merged",
+      "pass": true,
+      "detail": "{\"rpc2\":{\"ok\":true,\"primaryId\":\"fe9553c6-7342-4016-bd75-f494ab7acdc9\",\"secondaryId\":\"15fb348e-841e-41d3-95b0-0681a2ea6750\",\"alreadyMerged\":true},\"rpc3\":{\"ok\":true,\"primaryId\":\"fe9553c6-7342-4016-bd75-f494ab7acdc9\",\"secondaryId\":\"15fb348e-841e-41d3-95b0-0681a2ea6750\",\"alreadyMerged\":true},\"retryOk\":true,\"retryStale\":false}"
+    },
+    {
+      "name": "cross_venue_rejected",
+      "pass": true,
+      "detail": "{\"ok\":false,\"error\":\"secondary_not_found\"}"
+    },
+    {
+      "name": "no_tour_duplication",
+      "pass": true,
+      "detail": "count=1"
+    }
+  ]
+}

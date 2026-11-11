@@ -2,13 +2,45 @@
  * Help & Guides — final published article set (editorial source of truth).
  * Bodies are exact customer-facing copy. Blocked articles must not publish
  * until Jennifer resolves the UI path mismatch.
+ *
+ * Audience / couple projection:
+ * - Default audience is staff (venue Help / Success Library).
+ * - `audience: "couple"` articles are couple-portal how-tos — canonical HTC
+ *   product knowledge, never published into venue staff Help.
+ * - `audience: "both"` with `coupleBody` keeps one staff body and a couple-safe
+ *   projection for Ask Luv (staff operational instructions stay out of couples).
  */
+
+import { COUPLE_PORTAL_HELP_ARTICLES } from "@/lib/help-guides/couple-portal-articles";
+import { INTEGRATION_SETUP_ARTICLES } from "@/lib/help-guides/integration-setup-articles";
+
+export type FinalHelpRelatedFeature = { href: string; label: string };
+
+/** Who may receive this article's content. Omitted = staff-only. */
+export type HelpArticleAudience = "staff" | "couple" | "both";
 
 export type FinalHelpArticle = {
   slug: string;
   title: string;
   category: string;
   body: string;
+  /**
+   * Audience gate. Default `staff`.
+   * Couple Ask Luv only receives `couple` articles, or `both` articles that
+   * also define `coupleBody` (never the raw staff body).
+   */
+  audience?: HelpArticleAudience;
+  /**
+   * Couple-safe projected body when `audience` is `both`.
+   * Derived from the same product truth as `body`; never invents capabilities.
+   */
+  coupleBody?: string;
+  /** Optional couple-facing title override for Ask Luv provenance. */
+  coupleTitle?: string;
+  /** Deterministic retrieval keywords for couple Ask Luv. */
+  coupleKeywords?: readonly string[];
+  /** Optional “Go do it” links on the Help article page. */
+  relatedFeatures?: readonly FinalHelpRelatedFeature[];
   /** When set, article must not be published until product/content resolves it. */
   blocked?: {
     referencedCopy: string;
@@ -17,6 +49,12 @@ export type FinalHelpArticle = {
     appearsToBe: "content_mismatch" | "product_change";
   };
 };
+
+/** Staff Help / Success Library may publish these (excludes couple-only). */
+export function isStaffPublishableHelpArticle(article: FinalHelpArticle): boolean {
+  if (article.blocked) return false;
+  return (article.audience ?? "staff") !== "couple";
+}
 
 export const FINAL_HELP_CATEGORY_ORDER = [
   "Getting Started",
@@ -54,7 +92,7 @@ Make sure your basic venue information is correct.
 
 Then go to:
 
-**Sales → Leads**
+**Your Relationships → Leads**
 
 This is where you'll start working with inquiries and moving them through your sales process.
 
@@ -66,29 +104,50 @@ It's to get your venue ready to work. You can refine the rest as you go.`,
   },
   {
     slug: "what-should-i-set-up-before-i-start",
-    title: "What Should I Set Up Before I Start?",
+    title: "How to Bring Your Business Over",
     category: "Getting Started",
-    body: `You don't need a perfect setup before you start working in Hello to Cheers.
+    body: `You don't need a perfect setup before you start working in Hello to Cheers. If you already keep clients, a calendar, or booked-event paperwork somewhere else, use this checklist so you bring the right records into the right place — and know what still needs a human look.
 
-For most venues, start with three things:
+---
 
-**1. Your venue information**
+**Two paths (pick the one that matches what you have)**
 
-Go to **Your Venue → Settings** and make sure your basic venue information is correct.
+**Import Data** (Settings → Import Data) — for a **small, clean list** of clients, leads, vendors, inventory templates, or package templates. Upload CSV, Excel, Word, PDF, or paste a list, then map your columns. Past client event dates can create historical calendar events; future dates stay on the client until you book.
 
-**2. Your basic offerings**
+**Migration Center** (Settings → Migration Center) — for a **real cutover**: events, tours, date holds, calendar blocks, packages, documents, and **booked-event invoices, payment schedules, and signed agreements**, with review before anything is created. Upload CSV for those types. Excel/Word/PDF contact lists still use Import Data.
 
-If you're ready to start creating bookings and invoices, make sure you have at least one Package set up.
+You can also start from **Setup → Bring Your Business**, which opens the same Migration Center and Import Data destinations.
 
-**3. Your inquiry process**
+---
 
-Take a look at **Sales → Leads** and make sure your Pipeline makes sense for the way your venue handles new inquiries.
+**Suggested order**
 
-You can build message templates, questionnaires, planning templates, inventory, and other reusable pieces as you need them.
+1. **Venue basics** — Settings → Business & Brand for your venue information.
+2. **Calendar & Availability** (recommended before dated events) — Settings → Availability. Add named event spaces and capacity if you host in more than one space. Single-space venues with no dated calendar import can skip ahead.
+3. **Clients and leads** — Import Data or Migration Center.
+4. **Vendors, inventory templates, and package templates** — Import Data (or packages in Migration Center). Package imports keep included-item descriptions; they do **not** automatically link to inventory stock.
+5. **Events, tours, date holds, and calendar blocks** — Migration Center only, one type at a time. Review duplicates and calendar conflicts before you commit.
+6. **Booked-event finances** — After the client and event exist, open Migration Center and choose **Booked-event finances (invoice, payments, signed agreement)**. Upload the signed PDF/DOCX or paste booking text, review the proposal, then confirm. Use **Documents** for contract files on a client or event.
+7. **Review what was skipped** — Resolve unclear rows in the import session. Session history lets you leave and resume later.
+8. **Verify in the product** — Check Clients, Leads, Calendar, Packages, and the event's invoice and documents. Counts on Import Data show live venue records, not only import history.
 
-You don't need to finish everything on day one.
+---
 
-Hello to Cheers is designed so you can build on it as your venue works.`,
+**What will not transfer automatically**
+
+- Standalone payment-only CSV files and retired key-date imports are not available.
+- Package templates do not create inventory stock links.
+- There is **no one-click undo** of a finished Migration Center session. Keep your source files; remove individual records where the product allows, or use session cleanup for attributed rows when offered.
+
+---
+
+**Day-one setup if you are not migrating yet**
+
+1. Confirm venue information under Settings.
+2. Add at least one Package when you are ready to create bookings and invoices.
+3. Review Leads → Pipeline so new inquiries match how you work.
+
+You can refine templates, questionnaires, and automation as you go.`,
   },
   {
     slug: "where-do-my-venue-colors-actually-show-up",
@@ -127,6 +186,33 @@ If your venue doesn't offer tours, you don't need to configure a tour schedule j
 Different venues handle tours differently. Your schedule should reflect the way your venue actually works.`,
   },
   {
+    slug: "how-does-date-availability-work",
+    title: "How Does Date Availability Work?",
+    category: "Finding & Booking Clients",
+    body: `You decide when a date is protected.
+
+HTC does not automatically reserve a date because a couple submits an inquiry, names a preferred date, signs a contract, or makes a payment.
+
+A date is protected in HTC in one of two ways:
+
+• Hold: You deliberately place a Hold on the date.
+• Booked: You move the relationship to Booked, either yourself or through an automation you've configured.
+
+Your venue may have its own booking process. HTC records and enforces the booking decision you make; it does not impose its own definition of when a couple is booked.
+
+A preferred date is not a reservation. A couple can tell you they want June 14, but June 14 remains available until you deliberately protect it.
+
+A Hold is not a booking. Whether a Hold prevents another booking is your availability setting, and that setting applies wherever HTC checks availability.
+
+By default, a booked event closes that date for prospective clients on your public availability calendar and inquiry form — even when another Event Space may be free. If your venue intentionally hosts more than one event on the same day and wants the date to stay open for new inquiries when capacity allows, turn that on in Settings → Availability → Date holds and availability → Allow inquiries when another event is booked. That opt-in also requires maximum simultaneous events of at least 2. Keeping a date open for inquiries does not mean every space is available, and it does not guarantee a booking. Your Scheduling Capacity still controls what your team can book; raising it alone does not change public Available / Not available.
+
+Choose whether tours can be scheduled when a booked event is occupying the date. Tour availability is controlled separately from event public availability. This setting applies wherever HTC checks tour availability.
+
+Blocked time, and an appointment configured to block availability, make that time unavailable. They are not bookings.
+
+Preparing a client's planning workspace does not reserve their date. You can do that work ahead of booking. You control when the client becomes Booked.`,
+  },
+  {
     slug: "how-does-my-pipeline-work",
     title: "How Does My Pipeline Work?",
     category: "Finding & Booking Clients",
@@ -134,7 +220,7 @@ Different venues handle tours differently. Your schedule should reflect the way 
 
 Go to:
 
-**Sales → Leads → Pipeline**
+**Your Relationships → Leads → Pipeline**
 
 Each Lead appears in the stage that represents where they are in the process.
 
@@ -150,7 +236,29 @@ If you're waiting for someone to respond or complete something, that's what **Re
 
 Your Pipeline answers one simple question:
 
-**Where is this relationship in the sales process?**`,
+**Where is this relationship in the sales process?**
+
+### Customize your sales process
+
+Every venue can have a sales process that works a little differently.
+
+You can customize your Pipeline from Customize Pipeline.
+
+Go to:
+
+Your Relationships → Leads → Customize Pipeline
+
+From Customize Pipeline, you can create a pipeline that matches the way your venue sells.
+
+You can:
+- create your own stages
+- name the stages to match your process
+- arrange the stages in the order your team uses them
+- choose the reporting category that each stage belongs to
+
+Once you activate a template, that pipeline becomes the sales process your team uses for Leads.
+
+Customize Pipeline is about shaping the sales process to fit your venue. Your Leads then move through those stages as each relationship progresses.`,
   },
   {
     slug: "can-i-customize-my-pipeline-stages",
@@ -160,7 +268,7 @@ Your Pipeline answers one simple question:
 
 Go to:
 
-**Sales → Leads → Pipeline Templates**
+**Your Relationships → Leads → Customize Pipeline**
 
 You can customize the names and order of your Pipeline stages so they make sense for the way your venue sells.
 
@@ -196,17 +304,15 @@ Automations should save you work without taking control away from you.`,
     category: "Finding & Booking Clients",
     body: `A **Lead** is someone you're working with as a potential booking.
 
-A **Client** is the relationship once it has moved into the client/event workspace.
+A **Client** is a Lead who has become a booking.
 
-When a Lead is booked, Hello to Cheers carries that relationship into the client experience so you can continue working with the same person and event.
+**You decide what "booked" means for your venue.**
 
-One important distinction:
+For some venues, a booking might mean the contract has been signed. For others, it might mean a deposit has been paid, both have happened, or another milestone has been reached.
 
-**Booked does not automatically mean the contract is signed or the invoice is paid.**
+Hello to Cheers lets you define your sales process around the way your venue actually works. When a Lead becomes booked, that relationship becomes a Client so your team can continue managing the event and everything that follows.
 
-Booking is part of the sales lifecycle.
-
-Contracts and payments are separate parts of the relationship, and Hello to Cheers keeps those records distinct so you can see what has actually happened.`,
+Contracts and payments are tracked separately, so you can always see what has actually been signed, invoiced, and paid.`,
   },
   {
     slug: "what-is-the-difference-between-task-center-and-requests",
@@ -238,6 +344,10 @@ That separation keeps each part of Hello to Cheers useful instead of making one 
     category: "Working With Clients",
     body: `Event Readiness gives you a quick way to see whether an event has something that needs your attention.
 
+You'll find it on the client's booking workspace:
+
+**Clients → open the client → Overview → Event Readiness**
+
 It isn't another task list.
 
 If something needs actual work, you'll find that work in places such as **Task Center**, **Requests**, **Financials**, or the relevant planning area of the event.
@@ -250,30 +360,67 @@ Use the underlying workspace to do the actual work.`,
   },
   {
     slug: "who-signs-a-contract-first-and-what-happens-after",
-    title: "Who Signs a Contract First, and What Happens After?",
+    title: "How Does Contract Signing Work?",
     category: "Contracts & Payments",
-    body: `Hello to Cheers uses a venue-first signing process.
+    audience: "both",
+    coupleTitle: "How Does Contract Signing Work?",
+    coupleKeywords: ["contract signing", "who signs first", "client signs first", "venue signs"],
+    coupleBody: `Hello to Cheers uses a client-first signing process.
 
-When you create a contract, the venue signs it first.
+Your venue prepares the contract and sends it to you for review.
 
-After the venue has signed, you explicitly **Release** the contract to the client.
+You can read through the contract and ask questions or request changes before signing.
 
-The client cannot see or sign the contract until you release it.
+Once you are comfortable with the agreement, you sign first.
+
+After you sign, the contract goes back to your venue for their review and signature.
 
 The sequence is:
 
-**Create → Venue signs → Release → Client signs**
+Send to Client → You Review → You Sign → Venue Signs → Fully Executed
 
-Releasing the contract is a separate step from signing it. This gives your venue a chance to make sure the agreement is ready before the client sees it.
+Once both you and the venue have signed, the contract is Fully Executed and becomes locked. The completed contract appears in Documents.
 
-Signing a contract also does not automatically create an invoice or payment plan.
+Contracts and payments are related, but they are separate. Signing a contract does not automatically create an invoice or payment plan.`,
+    body: `Hello to Cheers uses a client-first signing process.
 
-Contracts and payments are related, but they are separate records in Hello to Cheers.`,
+When you create a contract, you prepare it and send it to the client for review.
+
+The client can read through the contract and ask questions or request changes before signing.
+
+Once the client is comfortable with the agreement, the client signs it first.
+
+After the client signs, the contract comes back to you for review and your signature.
+
+The sequence is:
+
+Create → Send to Client → Client Reviews → Client Signs → Venue Signs → Fully Executed
+
+If changes are needed while the client is reviewing the contract, you can make those changes before the client signs.
+
+Once the client has signed, the version they signed is preserved. If you need to make changes instead of signing, the signed version remains part of the contract history and the revised version must go through the review and signing process again.
+
+Once both the client and venue have signed, the contract is Fully Executed and becomes locked.
+
+The completed contract then appears in Documents for both the venue and the client.
+
+Contracts and payments are related, but they are separate records in Hello to Cheers. Signing a contract does not automatically create an invoice or payment plan.`,
   },
   {
     slug: "can-more-than-one-person-sign-a-contract",
     title: "Can More Than One Person Sign a Contract?",
     category: "Contracts & Payments",
+    audience: "both",
+    coupleKeywords: ["multiple signers", "two signatures", "partner sign", "both sign"],
+    coupleBody: `Yes.
+
+A contract can require more than one client signature.
+
+Hello to Cheers tracks each required signer separately, so you can see whether all required signatures have been completed.
+
+For example, if two people need to sign, the contract can show that one of two signatures has been completed while the second is still outstanding.
+
+Each signer completes their own signature rather than sharing one signature between them.`,
     body: `Yes.
 
 A contract can require more than one client signature.
@@ -288,6 +435,15 @@ Each signer completes their own signature rather than sharing one signature betw
     slug: "can-couples-pay-online",
     title: "Can Couples Pay Online?",
     category: "Contracts & Payments",
+    audience: "both",
+    coupleKeywords: ["can i pay online", "stripe", "online payment", "credit card"],
+    coupleBody: `Yes — when your venue has connected online payment collection (Stripe).
+
+Open **Payments** in your portal to see amounts your venue has shared and any **Pay now** options that are available.
+
+Stripe handles the payment processing. Your venue's payment settings determine whether online payment is available to you.
+
+If you do not see a way to pay online, ask your coordinator — online collection may not be enabled, or that amount may not be payable online yet.`,
     body: `Yes, if your venue has connected Stripe for online payments.
 
 Go to:
@@ -340,11 +496,11 @@ A Payment Schedule defines when payments are due and how the total is divided ov
 
 Payments are the actual financial activity associated with a booking.
 
-The Library holds reusable definitions such as Packages and payment-plan structures.
+The Library holds reusable templates such as Packages and payment-plan structures.
 
 The event/client record holds what was actually used for that relationship.
 
-That distinction matters because changing a reusable Library definition should not silently rewrite something your venue has already committed to a client.`,
+That distinction matters because changing a reusable Library template should not silently rewrite something your venue has already committed to a client.`,
   },
   {
     slug: "whats-the-difference-between-a-package-inventory-and-an-inventory-template",
@@ -362,7 +518,7 @@ You can organize those items into reusable templates so you don't have to build 
 
 The important mental model is:
 
-**Library = reusable definitions.**
+**Library = reusable templates.**
 
 **Event = what is actually being used for this event.**
 
@@ -538,9 +694,13 @@ That distinction is important because your template describes the way your venue
     category: "Planning the Event",
     body: `Task Center is where your venue team manages the work that needs to happen across your events.
 
-Use the task views to see the work that belongs to you, your team, or the broader venue task list.
+Choose a lens:
 
-The exact views may be labeled according to the current Task Center interface, but the underlying idea is simple:
+* **My Work** — work assigned to you
+* **By Person** — work grouped by who it's assigned to
+* **All Team Work** — the full venue task list
+
+These lenses are different views over the same tasks. They are not separate permission boundaries.
 
 **Task Center = work that needs to happen.**
 
@@ -568,27 +728,30 @@ This keeps the Calendar from becoming a second task list full of noise.`,
     slug: "how-do-vendors-work-in-hello-to-cheers",
     title: "How Do Vendors Work in Hello to Cheers?",
     category: "Vendors",
-    body: `Hello to Cheers keeps the vendor relationship separate from a specific event.
+    audience: "both",
+    coupleKeywords: ["how vendors work", "vendor portal", "connected vendor"],
+    coupleBody: `Vendors can be invited into Hello to Cheers so everyone is working from the same information.
 
-A vendor can have a relationship with your venue and then be assigned to individual events.
+Once a vendor is connected to your event, you may see the vendor information your venue has made available, communicate with the vendor, and make vendor choices when appropriate.
 
-That means the same photographer, florist, caterer, DJ, or other vendor can work with your venue across multiple events without creating a completely new vendor identity every time.
+Your venue stays connected to the whole relationship.
 
-Think of the relationship in three layers:
+In your portal, start with **Preferred Vendors** for the list your venue has shared with you.`,
+    body: `Vendors can be invited into Hello to Cheers so everyone is working from the same information.
 
-**Vendor**
+When you invite a vendor, they can create or access their own portal and maintain their business information, contact details, services, and other profile information. You don't have to keep updating their information for them.
 
-The vendor's overall identity.
+Once a vendor is connected to an event, clients can see the vendor information you've made available to them, communicate with the vendor, and make vendor choices directly when appropriate.
 
-**Venue relationship**
+Those interactions stay connected to the event, so your venue can see the pertinent details without having to chase information across emails, texts, and separate vendor systems.
 
-Your venue's relationship with that vendor.
+Vendor = owns their information.
 
-**Event assignment**
+Client = can connect and make choices.
 
-The vendor's role on a particular event.
+Venue = stays connected to the whole relationship.
 
-Once a vendor is assigned to an event, the event workspace can show the information that matters for that event without exposing unrelated information from other events.`,
+The goal is simple: everyone works together, while the venue keeps the context it needs to manage the event.`,
   },
   {
     slug: "what-is-the-day-of-sheet-and-how-do-i-get-one",
@@ -697,7 +860,12 @@ Do not treat completion as deletion.
 
 The event has moved into its next stage; its history still matters.`,
   },
+  ...INTEGRATION_SETUP_ARTICLES,
+  ...COUPLE_PORTAL_HELP_ARTICLES,
 ];
 
-export const PUBLISHABLE_HELP_ARTICLES = FINAL_HELP_ARTICLES.filter((a) => !a.blocked);
+export const PUBLISHABLE_HELP_ARTICLES = FINAL_HELP_ARTICLES.filter(isStaffPublishableHelpArticle);
 export const BLOCKED_HELP_ARTICLES = FINAL_HELP_ARTICLES.filter((a) => a.blocked);
+export const COUPLE_HELP_ARTICLES = FINAL_HELP_ARTICLES.filter(
+  (a) => (a.audience ?? "staff") === "couple" || ((a.audience ?? "staff") === "both" && Boolean(a.coupleBody)),
+);

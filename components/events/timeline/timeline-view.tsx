@@ -22,6 +22,7 @@ import {
   GripVertical,
   Pencil,
   Plus,
+  Share2,
   Trash2,
   X,
 } from "lucide-react";
@@ -33,12 +34,21 @@ import {
   deleteEntryAction,
   deleteSectionAction,
   duplicateSectionAction,
+  ensureCoupleAdditionsSectionAction,
   renameSectionAction,
   reorderEntriesAction,
   reorderSectionsAction,
   setSectionClientCanAddAction,
+  confirmVenueTimelineReleaseAction,
+  previewVenueTimelineReleaseAction,
+  shareClientTimelineWithCoupleAction,
   updateEntryAction,
 } from "@/app/(app)/events/[id]/timeline-actions";
+import {
+  addClientTimelineEntryAction,
+  addClientTimelineSectionAction,
+} from "@/app/(app)/clients/planning-actions";
+import { compareTimelineEntries } from "@/lib/timeline/constants";
 import { TemplatePicker } from "@/components/events/timeline/template-picker";
 import { TimelineEntryForm } from "@/components/events/timeline/timeline-entry-form";
 import { ALL_FILTER, TimelineFilterBar, type TimelineStatusFilter } from "@/components/events/timeline/timeline-filter-bar";
@@ -46,6 +56,12 @@ import { TimelineSummaryBar } from "@/components/events/timeline/timeline-summar
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useSyncedState } from "@/lib/hooks/use-synced-state";
+import {
+  audiencesWithClientShare,
+  computeVenueTimelineClientShareStatus,
+  venueItemVisibleToClient,
+} from "@/lib/timeline/audience-ownership";
+import { formatDayOfBookingWindow } from "@/lib/events/booking-summary";
 import { formatTime, formatTimelineDayHeader, getDueStatus, isMultiDayEvent, maxDayOffset } from "@/lib/timeline/constants";
 import type { Document } from "@/lib/documents/types";
 import type { FloorPlan } from "@/lib/floor-plans/types";
@@ -96,18 +112,19 @@ type RelatedContext = {
 // ---- Single timeline entry row ----------------------------------------------
 
 const DUE_STATUS_BADGE: Record<"upcoming" | "today", string> = {
-  upcoming: "bg-muted text-muted-foreground",
+  upcoming: "htc-badge-active",
   today: "bg-primary/10 text-primary",
 };
 
 function TimelineEntryRow({
-  entry, eventId, venueId, sections, links, attachments, availableDocuments,
+  entry, eventId, planningClientId = null, venueId, sections, links, attachments, availableDocuments,
   relatedLinks, relatedContext, onRelatedChanged,
   eventStartTime, eventDate, eventEndDate, teamMembers, editing, onStartEdit, onCancelEdit, onDelete, onUpdate,
   onLinksChanged, onAttachmentsChanged, onDragStart, onDragEnd, isDragOver,
 }: {
   entry: TimelineEntry;
   eventId: string;
+  planningClientId?: string | null;
   venueId: string;
   sections: TimelineSection[];
   links: TimelineEntryLink[];
@@ -139,7 +156,7 @@ function TimelineEntryRow({
 
   function handleUpdate(input: TimelineEntryInput) {
     startUpdate(async () => {
-      const result = await updateEntryAction(entry.id, eventId, input);
+      const result = await updateEntryAction(entry.id, eventId || planningClientId || "", input);
       if (result.ok) {
         onUpdate(entry.id, input);
       } else {
@@ -152,7 +169,7 @@ function TimelineEntryRow({
     return (
       <TimelineEntryForm
         eventId={eventId} venueId={venueId} entryId={entry.id} sections={sections}
-        eventDate={eventDate} eventEndDate={eventEndDate}
+        eventDate={eventDate} eventEndDate={eventEndDate} eventStartTime={eventStartTime}
         initial={{
           title: entry.title,
           description: entry.description ?? "",
@@ -164,6 +181,7 @@ function TimelineEntryRow({
           lockState: entry.lockState,
           status: entry.status,
           assignedToStaffId: entry.assignedToStaffId,
+          timing: entry.timing,
         }}
         links={links} attachments={attachments} availableDocuments={availableDocuments}
         onLinksChanged={onLinksChanged} onAttachmentsChanged={onAttachmentsChanged}
@@ -203,23 +221,26 @@ function TimelineEntryRow({
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               {entry.entryTime && (
-                <span className="shrink-0 text-xs font-semibold text-heading">
+                <span className="shrink-0 text-sm font-semibold text-heading">
                   {formatTime(entry.entryTime)}
                 </span>
               )}
               {isEventStart && (
-                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+                <span
+                  className="htc-badge-attention rounded-full px-2 py-0.5 text-xs font-medium"
+                  data-testid="timeline-event-start-badge"
+                >
                   Event start
                 </span>
               )}
               {!entry.entryTime && (
-                <span className="text-[10px] text-muted-foreground italic">No time set</span>
+                <span className="text-xs text-muted-foreground italic">No time set</span>
               )}
-              <span className={cn("rounded-full px-1.5 py-0.5 text-[9px] font-semibold", DUE_STATUS_BADGE[dueStatus])}>
+              <span className={cn("rounded-full px-1.5 py-0.5 text-xs font-semibold", DUE_STATUS_BADGE[dueStatus])}>
                 {DUE_STATUS_LABEL[dueStatus]}
               </span>
               {isClientOwned && (
-                <span className="rounded-full bg-[#D8A7AA]/15 px-1.5 py-0.5 text-[9px] font-semibold text-[#8A5A5E]" title="From the client's latest submitted timeline — read-only here">
+                <span className="rounded-full bg-[#D8A7AA]/15 px-1.5 py-0.5 text-xs font-semibold text-[#8A5A5E]" title="From the client's latest submitted timeline — read-only here">
                   💗 From client&apos;s timeline
                 </span>
               )}
@@ -248,7 +269,7 @@ function TimelineEntryRow({
               </div>
             )}
             {(links.length > 0 || attachments.length > 0 || assignee) && (
-              <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
+              <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
                 {assignee && <span>Assigned to {assignee.name}</span>}
                 {links.length > 0 && <span>{links.length} link{links.length !== 1 ? "s" : ""}</span>}
                 {attachments.length > 0 && <span>{attachments.length} attachment{attachments.length !== 1 ? "s" : ""}</span>}
@@ -288,7 +309,7 @@ function TimelineEntryRow({
 // ---- One section (or the virtual Unsectioned bucket) -------------------------
 
 function TimelineSectionBlock({
-  sectionKey, name, entries, isUnsectioned, clientCanAdd, eventId, venueId, sections, eventStartTime, eventDate, eventEndDate, defaultDayOffset, teamMembers,
+  sectionKey, name, entries, isUnsectioned, clientCanAdd, eventId, planningClientId = null, venueId, sections, eventStartTime, eventDate, eventEndDate, defaultDayOffset, teamMembers,
   linksByEntry, attachmentsByEntry, availableDocuments, relatedLinksByEntry, relatedContext,
   editingEntryId, setEditingEntryId, onDeleteEntry, onUpdateEntry, onLinksChanged, onAttachmentsChanged, onRelatedChanged,
   addFormOpenFor, setAddFormOpenFor, onAddEntry, addPending, showAddButton = true,
@@ -302,6 +323,7 @@ function TimelineSectionBlock({
   isUnsectioned: boolean;
   clientCanAdd?: boolean;
   eventId: string;
+  planningClientId?: string | null;
   venueId: string;
   sections: TimelineSection[];
   eventStartTime: string | null;
@@ -433,7 +455,7 @@ function TimelineSectionBlock({
                 onDrop={() => onEntryDropRow(sectionKey, i)}
               >
                 <TimelineEntryRow
-                  entry={entry} eventId={eventId} venueId={venueId} sections={sections}
+                  entry={entry} eventId={eventId} planningClientId={planningClientId} venueId={venueId} sections={sections}
                   links={linksByEntry[entry.id] ?? []} attachments={attachmentsByEntry[entry.id] ?? []}
                   availableDocuments={availableDocuments} eventStartTime={eventStartTime}
                   eventDate={eventDate} eventEndDate={eventEndDate} teamMembers={teamMembers}
@@ -463,7 +485,7 @@ function TimelineSectionBlock({
             {showAddButton && (addFormOpenFor === sectionKey ? (
               <TimelineEntryForm
                 eventId={eventId} venueId={venueId} entryId={null} sections={sections}
-                eventDate={eventDate} eventEndDate={eventEndDate}
+                eventDate={eventDate} eventEndDate={eventEndDate} eventStartTime={eventStartTime}
                 initial={{
                   title: "", description: "", notes: "", entryTime: "",
                   dayOffset: defaultDayOffset,
@@ -495,8 +517,12 @@ function TimelineSectionBlock({
 
 export function TimelineView({
   eventId,
+  planningClientId = null,
   venueId,
   eventStartTime,
+  dayOfEndTime = null,
+  dayOfSetupTime = null,
+  dayOfTeardownTime = null,
   eventDate = null,
   eventEndDate = null,
   initialEntries,
@@ -514,8 +540,14 @@ export function TimelineView({
   timelineTemplates = [],
 }: {
   eventId: string;
+  /** When set and eventId is empty, saves belong to the client, not an Event. */
+  planningClientId?: string | null;
   venueId: string;
   eventStartTime: string | null;
+  /** Overall Day-of Schedule bounds (events.*) — metadata context only. */
+  dayOfEndTime?: string | null;
+  dayOfSetupTime?: string | null;
+  dayOfTeardownTime?: string | null;
   eventDate?: string | null;
   eventEndDate?: string | null;
   initialEntries: TimelineEntry[];
@@ -561,6 +593,7 @@ export function TimelineView({
   const [addingSection, setAddingSection] = React.useState(false);
   const [newSectionName, setNewSectionName] = React.useState("");
   const [sectionPending, startSectionAdd] = React.useTransition();
+  const [sharePending, startShare] = React.useTransition();
   const [collapsedSectionIds, setCollapsedSectionIds] = React.useState<Set<string>>(new Set());
 
   const dragEntryId = React.useRef<string | null>(null);
@@ -601,12 +634,43 @@ export function TimelineView({
   // Grouped, sorted view derived from flat state — server order stays a
   // sensible fallback (see getTimelineEntries), this is the display order.
   // Multi-day keys are `${dayOffset}::${sectionId}`; single-day keeps plain section ids.
-  const multiDay = isMultiDayEvent(eventDate, eventEndDate);
+  // Day bands when the event spans multiple calendar days OR venue-owned
+  // items sit on prep/loadout offsets outside Day 1.
+  const multiDay = React.useMemo(() => {
+    if (isMultiDayEvent(eventDate, eventEndDate)) return true;
+    return entries.some((e) => (e.dayOffset ?? 0) !== 0);
+  }, [eventDate, eventEndDate, entries]);
+  const dayOfWindow = formatDayOfBookingWindow({
+    startTime: eventStartTime,
+    endTime: dayOfEndTime,
+    setupTime: dayOfSetupTime,
+    teardownTime: dayOfTeardownTime,
+    multiDay,
+  });
+  const dayOfWindowStrip = dayOfWindow ? (
+    <div
+      className="rounded-md border border-border bg-card px-3 py-2 text-sm"
+      data-testid="timeline-day-of-booking-window"
+      title={
+        multiDay
+          ? "Overall booking window — not stamped onto individual timeline activities"
+          : "Day-of schedule bounds — not stamped onto individual timeline activities"
+      }
+    >
+      <p className="text-xs text-muted-foreground">
+        {multiDay ? "Overall booking window" : "Day-of schedule"}
+      </p>
+      <p className="mt-0.5 leading-snug text-foreground">{dayOfWindow}</p>
+    </div>
+  ) : null;
   const dayOffsets = React.useMemo(() => {
     if (!multiDay) return [null] as (number | null)[];
-    const max = maxDayOffset(eventDate, eventEndDate);
-    return Array.from({ length: max + 1 }, (_, i) => i);
-  }, [multiDay, eventDate, eventEndDate]);
+    const set = new Set<number>();
+    const spanMax = maxDayOffset(eventDate, eventEndDate);
+    for (let i = 0; i <= spanMax; i += 1) set.add(i);
+    for (const e of entries) set.add(e.dayOffset ?? 0);
+    return [...set].sort((a, b) => a - b) as (number | null)[];
+  }, [multiDay, eventDate, eventEndDate, entries]);
 
   const groups = React.useMemo(() => {
     const map = new Map<string, TimelineEntry[]>();
@@ -621,7 +685,8 @@ export function TimelineView({
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(e);
     }
-    for (const [, list] of map) list.sort((a, b) => a.sortOrder - b.sortOrder);
+    // Timed entries must display earliest→latest; sortOrder only ties equal times / untimed.
+    for (const [, list] of map) list.sort(compareTimelineEntries);
     return map;
   }, [entries, sections, dayOffsets, multiDay]);
 
@@ -630,12 +695,19 @@ export function TimelineView({
       const { dayOffset, sectionId } = parseDaySectionKey(sectionKey);
       const targetSectionId = sectionId === UNSECTIONED ? null : sectionId;
       const sortOrder = (groups.get(sectionKey) ?? []).length;
-      const result = await addEntryAction(eventId, {
-        ...input,
-        sectionId: targetSectionId,
-        sortOrder,
-        dayOffset: input.dayOffset ?? dayOffset ?? 0,
-      });
+      const result = planningClientId && !eventId
+        ? await addClientTimelineEntryAction(planningClientId, {
+          ...input,
+          sectionId: targetSectionId,
+          sortOrder,
+          dayOffset: input.dayOffset ?? dayOffset ?? 0,
+        })
+        : await addEntryAction(eventId, {
+          ...input,
+          sectionId: targetSectionId,
+          sortOrder,
+          dayOffset: input.dayOffset ?? dayOffset ?? 0,
+        });
       if (result.ok) {
         setEntries((prev) => [...prev, result.entry]);
         setAddFormOpenFor(null);
@@ -647,7 +719,7 @@ export function TimelineView({
 
   async function handleDelete(entryId: string) {
     setEntries((prev) => prev.filter((e) => e.id !== entryId));
-    const result = await deleteEntryAction(entryId, eventId);
+    const result = await deleteEntryAction(entryId, eventId || planningClientId || "");
     if (!result.ok) {
       toast.error("Could not delete entry.");
       router.refresh();
@@ -702,7 +774,7 @@ export function TimelineView({
       });
     }
     setEntries(next);
-    reorderEntriesAction(eventId, updates).then((result) => {
+    reorderEntriesAction(eventId || planningClientId || "", updates).then((result) => {
       if (!result.ok) { toast.error("Could not save the new order."); router.refresh(); }
     });
   }
@@ -767,7 +839,7 @@ export function TimelineView({
       if (fromIdx === -1 || toIdx === -1) return prev;
       const [moved] = list.splice(fromIdx, 1);
       list.splice(toIdx, 0, moved);
-      reorderSectionsAction(eventId, list.map((s) => s.id)).then((result) => {
+      reorderSectionsAction(eventId || planningClientId || "", list.map((s) => s.id)).then((result) => {
         if (!result.ok) { toast.error("Could not save section order."); router.refresh(); }
       });
       return list;
@@ -777,7 +849,9 @@ export function TimelineView({
   function handleAddSection() {
     if (!newSectionName.trim()) return;
     startSectionAdd(async () => {
-      const result = await addSectionAction(eventId, newSectionName.trim(), sections.length);
+      const result = planningClientId && !eventId
+        ? await addClientTimelineSectionAction(planningClientId, newSectionName.trim(), sections.length)
+        : await addSectionAction(eventId, newSectionName.trim(), sections.length);
       if (result.ok) {
         setSections((p) => [...p, result.section]);
         setNewSectionName("");
@@ -791,14 +865,14 @@ export function TimelineView({
   }
 
   async function handleRenameSection(sectionId: string, name: string) {
-    const result = await renameSectionAction(sectionId, eventId, name);
+    const result = await renameSectionAction(sectionId, eventId || planningClientId || "", name);
     if (result.ok) setSections((p) => p.map((s) => (s.id === sectionId ? { ...s, name } : s)));
     else toast.error(result.message ?? "Could not rename section.");
   }
 
   async function handleDeleteSection(section: TimelineSection) {
     if (!confirm(`Delete "${section.name}"? Its items move to Unsectioned — nothing is deleted.`)) return;
-    const result = await deleteSectionAction(section.id, eventId);
+    const result = await deleteSectionAction(section.id, eventId || planningClientId || "");
     if (result.ok) {
       setSections((p) => p.filter((s) => s.id !== section.id));
       setEntries((p) => p.map((e) => (e.sectionId === section.id ? { ...e, sectionId: null } : e)));
@@ -809,7 +883,7 @@ export function TimelineView({
 
   async function handleToggleClientCanAdd(sectionId: string, value: boolean) {
     setSections((p) => p.map((s) => (s.id === sectionId ? { ...s, clientCanAdd: value } : s)));
-    const result = await setSectionClientCanAddAction(sectionId, eventId, value);
+    const result = await setSectionClientCanAddAction(sectionId, eventId || planningClientId || "", value);
     if (!result.ok) {
       toast.error(result.message ?? "Could not update this setting.");
       setSections((p) => p.map((s) => (s.id === sectionId ? { ...s, clientCanAdd: !value } : s)));
@@ -817,7 +891,7 @@ export function TimelineView({
   }
 
   async function handleDuplicateSection(section: TimelineSection) {
-    const result = await duplicateSectionAction(eventId, section.id, sections.length);
+    const result = await duplicateSectionAction(eventId || planningClientId || "", section.id, sections.length);
     if (result.ok) {
       setSections((p) => [...p, result.section]);
       setEntries((p) => [...p, ...result.entries]);
@@ -831,27 +905,150 @@ export function TimelineView({
   const lastUpdatedIso = [...entries.map((e) => e.updatedAt), ...sections.map((s) => s.updatedAt)]
     .sort()
     .at(-1) ?? null;
+  const clientShareStatus = computeVenueTimelineClientShareStatus(entries);
+  const [releaseHint, setReleaseHint] = React.useState<{
+    hasPriorRelease: boolean;
+    lastReleasedAt: string | null;
+    workingAheadOfRelease: boolean;
+  } | null>(null);
+  React.useEffect(() => {
+    if (!eventId) {
+      setReleaseHint(null);
+      return;
+    }
+    let cancelled = false;
+    void previewVenueTimelineReleaseAction(eventId).then((preview) => {
+      if (cancelled || !preview.ok) return;
+      setReleaseHint({
+        hasPriorRelease: preview.hasPriorRelease,
+        lastReleasedAt: preview.lastReleasedAt,
+        workingAheadOfRelease: preview.workingAheadOfRelease,
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [eventId]);
+  const needsCoupleShare = planningClientId && !eventId
+    ? clientShareStatus.kind === "not_shared" || clientShareStatus.kind === "partial"
+    : !releaseHint?.hasPriorRelease;
 
-  // Empty state — no entries and no sections yet
+  function handleShareWithCouple() {
+    if (totalCount === 0) {
+      toast.error("Add timeline items before sharing with the couple.");
+      return;
+    }
+    // Pre-booking client planning (no event): keep legacy client-audience share.
+    if (planningClientId && !eventId) {
+      const ok = confirm(
+        "Share this planning timeline with the couple? Items tagged Client become visible in their portal. No email is sent.",
+      );
+      if (!ok) return;
+      startShare(async () => {
+        const result = await shareClientTimelineWithCoupleAction(planningClientId);
+        if (!result.ok) {
+          toast.error(result.message ?? "Could not share the timeline.");
+          return;
+        }
+        setEntries((prev) =>
+          prev.map((e) =>
+            e.owner === "venue" && !venueItemVisibleToClient(e.audiences)
+              ? { ...e, audiences: audiencesWithClientShare(e.audiences), updatedAt: new Date().toISOString() }
+              : e,
+          ),
+        );
+        toast.success("Shared with the couple.");
+        router.refresh();
+      });
+      return;
+    }
+
+    startShare(async () => {
+      const preview = await previewVenueTimelineReleaseAction(eventId);
+      if (!preview.ok) {
+        toast.error(preview.message ?? "Could not review what the couple will receive.");
+        return;
+      }
+      setReleaseHint({
+        hasPriorRelease: preview.hasPriorRelease,
+        lastReleasedAt: preview.lastReleasedAt,
+        workingAheadOfRelease: preview.workingAheadOfRelease,
+      });
+      if (preview.blocksRelease.length > 0) {
+        const titles = preview.blocksRelease.map((b) => String(b.title ?? "Item")).slice(0, 5).join(", ");
+        toast.error("Fix or replace items already on the shared timeline before sharing again.", {
+          description: titles,
+        });
+        return;
+      }
+      if (!preview.canRelease) {
+        toast.error("Add resolved timeline items before sharing with the couple.");
+        return;
+      }
+      const holdTitles = preview.heldOut.map((h) => String(h.title ?? "Item"));
+      const soft = preview.softWarnings.length
+        ? `\n\nNote: ${preview.softWarnings.length} fixed date(s) are outside the usual planning window (informational only).`
+        : "";
+      const holdNote = holdTitles.length
+        ? `\n\nNot shared yet — needs your decision:\n- ${holdTitles.slice(0, 8).join("\n- ")}`
+        : "";
+      const removalTitles = preview.removedFromRelease.map((r) => String(r.title ?? "Item"));
+      const removalNote = removalTitles.length
+        ? `\n\nItems being removed from the couple’s schedule:\n- ${removalTitles.slice(0, 12).join("\n- ")}${
+            removalTitles.length > 12 ? `\n- …and ${removalTitles.length - 12} more` : ""
+          }\n\nConfirming this release will remove these items from the schedule the couple sees.`
+        : "";
+      const ok = confirm(
+        `Review what the couple will receive.\n\nWill share: ${preview.willShare.length} item(s).${holdNote}${removalNote}${soft}\n\nNo email is sent. Continue?`,
+      );
+      if (!ok) return;
+      const idempotencyKey =
+        typeof crypto !== "undefined" && "randomUUID" in crypto
+          ? crypto.randomUUID()
+          : `release-${Date.now()}`;
+      const result = await confirmVenueTimelineReleaseAction(eventId, {
+        acknowledgedHoldOutIds: preview.heldOut.map((h) => String(h.id)),
+        workingFingerprint: preview.workingFingerprint,
+        idempotencyKey,
+      });
+      if (!result.ok) {
+        toast.error(result.message ?? "Sharing didn't finish. The couple still has the previous shared timeline.");
+        return;
+      }
+      setReleaseHint({
+        hasPriorRelease: true,
+        lastReleasedAt: result.releasedAt ?? new Date().toISOString(),
+        workingAheadOfRelease: false,
+      });
+      toast.success(
+        result.idempotentReplay
+          ? "Shared with the couple."
+          : `Shared with the couple (${result.entryCount ?? preview.willShare.length} item${(result.entryCount ?? preview.willShare.length) === 1 ? "" : "s"}).`,
+      );
+      router.refresh();
+    });
+  }
+
+  // Empty state — no entries and no sections yet.
+  // One Apply Template only (in the empty card with Add First Entry). Do not
+  // also mount a header TemplatePicker — that duplicated the same control.
   if (totalCount === 0 && sections.length === 0 && addFormOpenFor === null) {
     return (
       <div className="space-y-4">
-        <TimelineSummaryBar itemCount={0} lastUpdated={lastUpdatedIso} />
-        <div className="flex items-center justify-end">
-          <TemplatePicker
-            eventId={eventId}
-            eventStartTime={eventStartTime}
-            templates={timelineTemplates}
-            onApplied={() => router.refresh()}
-          />
-        </div>
+        <TimelineSummaryBar
+          itemCount={0}
+          lastUpdated={lastUpdatedIso}
+          clientShareStatus={clientShareStatus}
+          releaseStatus={eventId ? (releaseHint ?? { hasPriorRelease: false, lastReleasedAt: null, workingAheadOfRelease: false }) : null}
+        />
+        {dayOfWindowStrip}
         <div className="flex flex-col items-center justify-center rounded-sm border border-dashed border-border bg-card/40 py-16 text-center">
           <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
             <Clock className="h-5 w-5" />
           </span>
           <p className="font-heading text-base font-medium text-heading">No timeline yet</p>
           <p className="mt-1 max-w-xs text-sm text-muted-foreground">
-            Build the Timeline entry by entry, or start from a template.
+            Build the Timeline entry by entry, or start from a template. Sharing with the couple comes after items exist.
           </p>
           <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
             <Button
@@ -862,6 +1059,7 @@ export function TimelineView({
             </Button>
             <TemplatePicker
               eventId={eventId}
+              planningClientId={planningClientId}
               eventStartTime={eventStartTime}
               templates={timelineTemplates}
               onApplied={() => router.refresh()}
@@ -874,7 +1072,13 @@ export function TimelineView({
 
   return (
     <div className="space-y-4">
-      <TimelineSummaryBar itemCount={totalCount} lastUpdated={lastUpdatedIso} />
+      <TimelineSummaryBar
+        itemCount={totalCount}
+        lastUpdated={lastUpdatedIso}
+        clientShareStatus={clientShareStatus}
+        releaseStatus={eventId ? (releaseHint ?? { hasPriorRelease: false, lastReleasedAt: null, workingAheadOfRelease: false }) : null}
+      />
+      {dayOfWindowStrip}
 
       {/* Toolbar */}
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -885,14 +1089,62 @@ export function TimelineView({
           audience={filterAudience} onAudienceChange={setFilterAudience}
           status={filterStatus} onStatusChange={setFilterStatus}
         />
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            size="sm"
+            variant={needsCoupleShare ? "default" : "outline"}
+            disabled={sharePending || totalCount === 0}
+            onClick={handleShareWithCouple}
+            title={
+              needsCoupleShare
+                ? "Review what the couple will receive, then share. Does not send email."
+                : "Update the couple's shared timeline from your working schedule. Does not send email."
+            }
+            aria-label={needsCoupleShare ? "Share timeline with couple" : "Update shared timeline with couple"}
+            data-testid="timeline-share-with-couple"
+          >
+            <Share2 className="mr-1 h-3.5 w-3.5" />
+            {sharePending
+              ? "Sharing…"
+              : needsCoupleShare
+                ? "Share with Couple"
+                : "Update shared timeline"}
+          </Button>
           <TemplatePicker
             eventId={eventId}
+            planningClientId={planningClientId}
             eventStartTime={eventStartTime}
             templates={timelineTemplates}
             onApplied={() => router.refresh()}
             existingEntryCount={totalCount}
           />
+          {eventId && !sections.some((s) => s.clientCanAdd) ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              data-testid="timeline-enable-couple-additions"
+              disabled={sectionPending}
+              onClick={() => {
+                startSectionAdd(async () => {
+                  const result = await ensureCoupleAdditionsSectionAction(eventId);
+                  if (result.ok) {
+                    setSections((p) => (
+                      p.some((s) => s.id === result.section.id)
+                        ? p.map((s) => (s.id === result.section.id ? result.section : s))
+                        : [...p, result.section]
+                    ));
+                    toast.success("Couples can add items under “Your additions”.");
+                  } else {
+                    toast.error(result.message ?? "Could not enable couple additions.");
+                  }
+                });
+              }}
+            >
+              Allow couple additions
+            </Button>
+          ) : null}
           {addingSection ? (
             <div className="flex items-center gap-1">
               <Input
@@ -928,7 +1180,7 @@ export function TimelineView({
           const dayAddForm = addFormOpenFor === unsectionedKey ? (
             <TimelineEntryForm
               eventId={eventId} venueId={venueId} entryId={null} sections={sections}
-              eventDate={eventDate} eventEndDate={eventEndDate}
+              eventDate={eventDate} eventEndDate={eventEndDate} eventStartTime={eventStartTime}
               initial={{
                 title: "", description: "", notes: "", entryTime: "",
                 dayOffset: dayKey ?? 0,
@@ -963,6 +1215,7 @@ export function TimelineView({
                     key={key}
                     sectionKey={key}
                     name={section.name}
+                    planningClientId={planningClientId}
                     entries={sectionEntries}
                     isUnsectioned={false}
                     clientCanAdd={section.clientCanAdd}
@@ -1006,6 +1259,7 @@ export function TimelineView({
                 <TimelineSectionBlock
                   sectionKey={unsectionedKey}
                   name="Unsectioned"
+                  planningClientId={planningClientId}
                   entries={unsectionedEntries}
                   isUnsectioned
                   showAddButton={false}

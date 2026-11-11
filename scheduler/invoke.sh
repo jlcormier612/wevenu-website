@@ -7,10 +7,13 @@ set -u
 
 name="$1"
 url="$2"
+# Optional third arg: curl max-time seconds (default 60). Tier-upgrade
+# population cycle needs a longer window for Stripe retrieves.
+max_time="${3:-60}"
 started=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 body_file="/tmp/invoke-body.$$"
 
-code=$(curl -sS -o "$body_file" -w '%{http_code}' --max-time 60 \
+code=$(curl -sS -o "$body_file" -w '%{http_code}' --max-time "$max_time" \
   -H "Authorization: Bearer ${CRON_SECRET:-}" "$url")
 curl_exit=$?
 body=$(head -c 500 "$body_file" 2>/dev/null)

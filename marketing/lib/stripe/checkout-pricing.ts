@@ -1,13 +1,21 @@
 /**
- * Resolve SaaS Checkout price + Founding coupon for Hello to Cheers (System A).
+ * Resolve SaaS Checkout price + Founding/Weven discount for Hello to Cheers.
  *
- * Gather (starter): canonical $149 Price + optional $30/mo Founding coupon → $119.
- * Celebrate / Flourish: keep existing standard / Founder Price ID env model.
+ * Paths:
+ * - Legacy (default): Gather $149 + optional $30 forever coupon / founder Prices.
+ * - Launch V1: Gather $199 / Celebrate $249 / Flourish $349 + optional 10% Founding.
+ * - Phase 2 Weven (when declared + ready): same list Prices + 20% forever Weven coupon
+ *   (best-offer; may still earn a Founding grant without stacking coupons).
  *
  * Env names only — never hardcode Stripe Price / Coupon IDs.
  */
 
 import type { SubscriptionPlanId } from "@/lib/marketing/pricing-page";
+import {
+  isPricingLaunchV1Ready,
+  resolveLaunchCheckoutPricing,
+  type LaunchCheckoutPricing,
+} from "@shared/pricing";
 
 export type CheckoutPricingResolution = {
   plan: SubscriptionPlanId;
@@ -16,6 +24,7 @@ export type CheckoutPricingResolution = {
   /**
    * When set, Checkout Session must use `discounts: [{ coupon }]` and must NOT
    * set `allow_promotion_codes` (Stripe forbids both).
+   * Holds the winning coupon (Founding 10% or Weven 20%).
    */
   foundingCouponId: string | null;
   allowPromotionCodes: boolean;
@@ -25,7 +34,13 @@ export type CheckoutPricingResolution = {
     | "gather_founding_coupon"
     | "gather_founding_legacy_price"
     | "plan_standard"
-    | "plan_founder_price";
+    | "plan_founder_price"
+    | "launch_standard"
+    | "launch_founding_percent"
+    | "launch_weven_percent"
+    | "launch_group_percent";
+  /** Present on Launch V1 resolutions only */
+  launch?: LaunchCheckoutPricing;
 };
 
 function readEnvId(envName: string): string | null {
@@ -34,7 +49,7 @@ function readEnvId(envName: string): string | null {
   return value;
 }
 
-/** Canonical Gather ($149) Price — preferred env names then legacy starter. */
+/** Canonical Gather Price — preferred env names then legacy starter. */
 export function resolveGatherPriceId(): string {
   const priceId =
     readEnvId("STRIPE_GATHER_PRICE_ID") ||
@@ -48,7 +63,7 @@ export function resolveGatherPriceId(): string {
   return priceId;
 }
 
-/** $30/mo Founding Member coupon → $119 on Gather. */
+/** Legacy $30/mo Founding Member coupon → $119 on Gather. Not used by Launch V1. */
 export function resolveFoundingCouponId(): string | null {
   return (
     readEnvId("STRIPE_FOUNDING_COUPON_ID") ||
@@ -104,9 +119,9 @@ export function shouldProvisionFromCheckoutSession(input: {
 }
 
 /**
- * Resolve recurring Price (+ optional Founding coupon) for a Checkout Session.
+ * Legacy Resolve recurring Price (+ optional Founding coupon) for a Checkout Session.
  */
-export function resolveCheckoutPricing(
+export function resolveLegacyCheckoutPricing(
   plan: SubscriptionPlanId,
   options?: { founder?: boolean },
 ): CheckoutPricingResolution {
@@ -175,5 +190,60 @@ export function resolveCheckoutPricing(
     foundingCouponId: null,
     allowPromotionCodes: true,
     mode: "plan_standard",
+  };
+}
+
+/**
+ * Resolve Checkout pricing.
+ *
+ * Launch V1 is required for customer-facing Checkout. Legacy $149 / fixed
+ * Founding paths remain available via `resolveLegacyCheckoutPricing` for
+ * tests and migration tooling only — never as a silent customer fallback.
+ */
+export function resolveCheckoutPricing(
+  plan: SubscriptionPlanId,
+  options?: {
+    founder?: boolean;
+    launch?: {
+      earnedFoundingVenueCount: number;
+      programActive?: boolean;
+      venueAlreadyEarnedFounding?: boolean;
+      honorFoundingIssued?: boolean;
+      /** Explicit former-Weven self-declaration (never inferred from email). */
+      wevenDeclared?: boolean;
+      /** Durable verified Weven eligibility (not self-declare alone). */
+      wevenVerified?: boolean;
+      /** Server-resolved organization group eligibility (never trust the client). */
+      groupEligible?: boolean;
+    };
+  },
+): CheckoutPricingResolution {
+  if (!isPricingLaunchV1Ready()) {
+    throw new Error(
+      "Subscription checkout requires Pricing Launch V1. Legacy $149 / fixed-Founding pricing is disabled for customer Checkout.",
+    );
+  }
+  if (!options?.launch) {
+    throw new Error(
+      "Pricing Launch V1 is ready — Checkout must supply launch issuance context.",
+    );
+  }
+  const launch = resolveLaunchCheckoutPricing({
+    plan,
+    earnedFoundingVenueCount: options.launch.earnedFoundingVenueCount,
+    programActive: options.launch.programActive,
+    venueAlreadyEarnedFounding: options.launch.venueAlreadyEarnedFounding,
+    honorFoundingIssued: options.launch.honorFoundingIssued,
+    wevenDeclared: options.launch.wevenDeclared,
+    wevenVerified: options.launch.wevenVerified,
+    groupEligible: options.launch.groupEligible,
+  });
+  return {
+    plan,
+    priceId: launch.priceId,
+    foundingCouponId: launch.foundingCouponId,
+    allowPromotionCodes: launch.allowPromotionCodes,
+    mode: launch.mode,
+    launch,
   };
 }

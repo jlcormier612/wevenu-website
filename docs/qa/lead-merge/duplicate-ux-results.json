@@ -1,0 +1,105 @@
+{
+  "expectedShaPrefix": "8bc6afedd5b6",
+  "primaryId": "d8570939-4393-48b3-a3d4-ecf57b304e2c",
+  "secondaryId": "68f38a9b-bc43-4545-b7ca-01d8cf8be7c8",
+  "tourId": "8f120721-2a96-40f8-8a81-5a02c19b47c3",
+  "pass": 19,
+  "fail": 0,
+  "checks": [
+    {
+      "name": "fixtures_and_review",
+      "pass": true,
+      "detail": "P=d8570939-4393-48b3-a3d4-ecf57b304e2c S=68f38a9b-bc43-4545-b7ca-01d8cf8be7c8"
+    },
+    {
+      "name": "tour_on_secondary",
+      "pass": true,
+      "detail": "8f120721-2a96-40f8-8a81-5a02c19b47c3"
+    },
+    {
+      "name": "banner_heading",
+      "pass": true,
+      "detail": "heading"
+    },
+    {
+      "name": "no_manual_copy_delete",
+      "pass": true,
+      "detail": "old guidance absent on page"
+    },
+    {
+      "name": "merge_cta_on_banner",
+      "pass": true,
+      "detail": "cta"
+    },
+    {
+      "name": "modal_title",
+      "pass": true,
+      "detail": "Possible duplicate lead\n\nThis new inquiry may match a lead you already have. Mer"
+    },
+    {
+      "name": "modal_no_auto_merge",
+      "pass": true,
+      "detail": "explicit"
+    },
+    {
+      "name": "modal_no_copy_delete",
+      "pass": true,
+      "detail": "clean"
+    },
+    {
+      "name": "merge_dialog_opened",
+      "pass": true,
+      "detail": "from modal CTA"
+    },
+    {
+      "name": "preview_autoloaded",
+      "pass": true,
+      "detail": "auto preview"
+    },
+    {
+      "name": "primary_is_earliest",
+      "pass": true,
+      "detail": "earliest"
+    },
+    {
+      "name": "tour_shown",
+      "pass": true,
+      "detail": "tours section"
+    },
+    {
+      "name": "conflicts_resolved_or_none",
+      "pass": true,
+      "detail": "groups=3"
+    },
+    {
+      "name": "redirect_to_primary",
+      "pass": true,
+      "detail": "https://app.sandbox.hellotocheers.com/leads/d8570939-4393-48b3-a3d4-ecf57b304e2c"
+    },
+    {
+      "name": "secondary_soft_marked",
+      "pass": true,
+      "detail": "{\"merged_into_lead_id\":\"d8570939-4393-48b3-a3d4-ecf57b304e2c\",\"merged_at\":\"2026-10-20T23:33:39.52664+00:00\",\"phone\":\"555-0177\",\"first_name\":\"DupSecondary\"}"
+    },
+    {
+      "name": "phone_filled",
+      "pass": true,
+      "detail": "{\"phone\":\"555-0177\",\"merged_into_lead_id\":null,\"first_name\":\"DupPrimary\"}"
+    },
+    {
+      "name": "primary_name_kept",
+      "pass": true,
+      "detail": "DupPrimary"
+    },
+    {
+      "name": "tour_reparented",
+      "pass": true,
+      "detail": "{\"id\":\"8f120721-2a96-40f8-8a81-5a02c19b47c3\",\"lead_id\":\"d8570939-4393-48b3-a3d4-ecf57b304e2c\",\"status\":\"scheduled\",\"scheduled_at\":\"2028-09-13T15:00:00+00:00\"}"
+    },
+    {
+      "name": "secondary_redirects",
+      "pass": true,
+      "detail": "https://app.sandbox.hellotocheers.com/leads/d8570939-4393-48b3-a3d4-ecf57b304e2c?mergedFrom=68f38a9b-bc43-4545-b7ca-01d8cf8be7c8"
+    }
+  ]
+}

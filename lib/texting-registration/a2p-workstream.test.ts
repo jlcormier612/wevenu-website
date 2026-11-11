@@ -42,16 +42,17 @@ describe("A2P product invariants", () => {
     assert.equal(permissionFromTwilioOptOut(null, "Thanks!"), null);
   });
 
-  it("hides SMS consent UI when the venue has no sender / SMS offer", () => {
-    const off = effectivePublicCommunicationSettings({
+  it("keeps Text and optional SMS permission on the public form without a sending number", () => {
+    const on = effectivePublicCommunicationSettings({
       askPreferences: true,
       offerEmail: true,
       offerSms: true,
       offerPhoneCall: true,
       requestSmsPermission: true,
-    }, false);
-    assert.equal(off.showSmsPermission, false);
-    assert.equal(off.offerSms, false);
+    });
+    assert.equal(on.showSmsPermission, true);
+    assert.equal(on.offerSms, true);
+    assert.ok(on.offeredChannels.includes("sms"));
   });
 
   it("sendSms is the only Twilio Messages.json caller and gates consent", () => {
@@ -79,13 +80,19 @@ describe("A2P product invariants", () => {
 
   it("public evidence page and Privacy SMS language match the Twilio package", () => {
     const evidence = readFileSync(path.join(root, "marketing/app/sms-opt-in/page.tsx"), "utf8");
+    const consent = readFileSync(path.join(root, "lib/communication/sms-consent.ts"), "utf8");
+    const form = readFileSync(path.join(root, "components/form/inquiry-form.tsx"), "utf8");
+    assert.match(evidence, /SMS_PUBLIC_CONSENT_DISCLOSURES/);
+    assert.match(consent, /Reply STOP to opt out; reply START to opt back in/);
+    assert.match(consent, /not required to inquire, book a tour/i);
+    assert.match(consent, /Message and data rates may apply/i);
+    assert.match(form, /SMS_PUBLIC_CONSENT_DISCLOSURES/);
+    assert.match(form, /Text message/);
+    assert.match(form, /aria-required="false"/);
     assert.match(evidence, /unchecked by default/i);
-    assert.match(evidence, /not required/i);
-    assert.match(evidence, /Reply STOP/i);
-    assert.match(evidence, /START/i);
-    assert.match(evidence, /HELP/i);
+    assert.match(evidence, /is not\s+required/i);
     assert.match(evidence, /privacy@hellotocheers\.com/);
-    assert.match(evidence, /Message and data rates may apply/i);
+    assert.match(consent, /HELP for help/);
     assert.doesNotMatch(evidence, /quickcloud\.co/i);
     assert.doesNotMatch(evidence, /QuickCloud LLC/);
 
@@ -93,8 +100,10 @@ describe("A2P product invariants", () => {
     assert.match(legal, /optional box \(unchecked by default\)/);
     assert.match(legal, /You can submit an inquiry or book a tour without agreeing to text messages/);
     assert.match(legal, /Accepting these Terms is not SMS consent/);
-    const smsBlock = legal.slice(legal.indexOf("Text Messages (Hello to Cheers)"));
-    assert.doesNotMatch(smsBlock.slice(0, 2500), /operated by QuickCloud LLC/);
+    const smsBlock = legal.slice(legal.indexOf("Text Messaging and Communication Information"));
+    assert.doesNotMatch(smsBlock.slice(0, 3500), /operated by QuickCloud LLC/);
+    assert.match(smsBlock.slice(0, 3500), /required recipient permission has been recorded/);
+    assert.doesNotMatch(smsBlock.slice(0, 3500), /Twilio requires/);
 
     const flow = buildA2pCampaignMessageFlow({
       brandName: "QuickCloud LLC",

@@ -1,0 +1,229 @@
+{
+  "status": "GREEN",
+  "servingSha": "afbd0dff516dbda3057dc056475ea96b0c9adcc5",
+  "expectedSha": "afbd0dff516dbda3057dc056475ea96b0c9adcc5",
+  "eventId": "ebf74f77-2944-474a-b735-48762ecb6842",
+  "clientId": "b4e2764b-be33-4579-89e3-0c8e4a6dd5be",
+  "before": {
+    "invoices": 38,
+    "portalSessions": 1,
+    "invites": 1,
+    "notificationLog": 3477,
+    "eo": {
+      "id": "624eceef-5096-4288-b104-62daa3a82d11",
+      "shared_at": null,
+      "revision": 0,
+      "status": "open"
+    },
+    "inventory": null,
+    "recs": 5,
+    "tasks": 18,
+    "templates": 2
+  },
+  "after": {
+    "invoices": 38,
+    "invites": 1,
+    "notificationLog": 3477,
+    "eo": {
+      "id": "624eceef-5096-4288-b104-62daa3a82d11",
+      "shared_at": null,
+      "revision": 0,
+      "status": "open"
+    },
+    "inventory": null,
+    "recs": 5,
+    "tasks": 18,
+    "templates": 2,
+    "portalSessions": 2
+  },
+  "passed": 37,
+  "failed": 0,
+  "checks": [
+    {
+      "name": "serving_sha",
+      "pass": true,
+      "detail": "serving=afbd0dff516dbda3057dc056475ea96b0c9adcc5 expected=afbd0dff516dbda3057dc056475ea96b0c9adcc5"
+    },
+    {
+      "name": "fixture_event",
+      "pass": true,
+      "detail": "event=ebf74f77-2944-474a-b735-48762ecb6842 client=b4e2764b-be33-4579-89e3-0c8e4a6dd5be score=8"
+    },
+    {
+      "name": "preview_loaded",
+      "pass": true,
+      "detail": "Hello to Cheers"
+    },
+    {
+      "name": "preview_banner_safety",
+      "pass": true,
+      "detail": "safety note"
+    },
+    {
+      "name": "preview_back_link",
+      "pass": true,
+      "detail": "portal-preview-back"
+    },
+    {
+      "name": "tab_event-order_section",
+      "pass": true,
+      "detail": "portal-preview-event-order"
+    },
+    {
+      "name": "tab_floor-plans_section",
+      "pass": true,
+      "detail": "portal-preview-floor-plans"
+    },
+    {
+      "name": "tab_planning_section",
+      "pass": true,
+      "detail": "portal-preview-planning"
+    },
+    {
+      "name": "tab_inventory_section",
+      "pass": true,
+      "detail": "portal-preview-inventory"
+    },
+    {
+      "name": "tab_vendors_section",
+      "pass": true,
+      "detail": "portal-preview-vendors"
+    },
+    {
+      "name": "eo_uses_portal_view",
+      "pass": true,
+      "detail": "empty=true view=true"
+    },
+    {
+      "name": "inventory_uses_portal_view",
+      "pass": true,
+      "detail": "empty=true view=true"
+    },
+    {
+      "name": "floor_uses_portal_view",
+      "pass": true,
+      "detail": "empty=false view=true"
+    },
+    {
+      "name": "floor_no_mutating_choose",
+      "pass": true,
+      "detail": "Preview — not yet released\n\nLayout offers are visible for choosing; shared Floor Plan view appears after the venue shares a plan.\n\nChoose your layout\n\nYour venue has shared a few ways to arrange the s"
+    },
+    {
+      "name": "planning_uses_portal_view",
+      "pass": true,
+      "detail": "empty=false view=true"
+    },
+    {
+      "name": "planning_no_venue_task_leak",
+      "pass": true,
+      "detail": "none"
+    },
+    {
+      "name": "planning_shows_couple_task_when_present",
+      "pass": true,
+      "detail": "Complete your questionnaire"
+    },
+    {
+      "name": "vendors_uses_portal_view",
+      "pass": true,
+      "detail": "empty=false view=true"
+    },
+    {
+      "name": "vendors_show_when_configured",
+      "pass": true,
+      "detail": "shown=Flora's Flowers|Harah's Hair|Sweet Dreams Desserts empty=false"
+    },
+    {
+      "name": "narrow_screenshots",
+      "pass": true,
+      "detail": "390px all tabs"
+    },
+    {
+      "name": "return_to_booking",
+      "pass": true,
+      "detail": "href=/clients/b4e2764b-be33-4579-89e3-0c8e4a6dd5be url=https://app.sandbox.hellotocheers.com/clients/b4e2764b-be33-4579-89e3-0c8e4a6dd5be"
+    },
+    {
+      "name": "portal_session_insert_for_compare",
+      "pass": true,
+      "detail": "ppfid_1792684556995_b02387"
+    },
+    {
+      "name": "couple_portal_event_order_loaded",
+      "pass": true,
+      "detail": "B2P & Portal · Jen's Fancy Venue Jul 17, 2060 Export my data 🏠 Home ✅ Tasks 9+ 🕒 Timeline 📁 Docs 🗺️ Floor Plan 💳 Payments 💬 Messages 🏛️ Guide 🤝 Vend"
+    },
+    {
+      "name": "couple_portal_floor_plans_loaded",
+      "pass": true,
+      "detail": "B2P & Portal · Jen's Fancy Venue Jul 17, 2060 Export my data 🏠 Home ✅ Tasks 9+ 🕒 Timeline 📁 Docs 🗺️ Floor Plan 💳 Payments 💬 Messages 🏛️ Guide 🤝 Vend"
+    },
+    {
+      "name": "couple_portal_planning_loaded",
+      "pass": true,
+      "detail": "B2P & Portal · Jen's Fancy Venue Jul 17, 2060 Export my data 🏠 Home ✅ Tasks 9+ 🕒 Timeline 📁 Docs 🗺️ Floor Plan 💳 Payments 💬 Messages 🏛️ Guide 🤝 Vend"
+    },
+    {
+      "name": "couple_portal_inventory_loaded",
+      "pass": true,
+      "detail": "B2P & Portal · Jen's Fancy Venue Jul 17, 2060 Export my data 🏠 Home ✅ Tasks 9+ 🕒 Timeline 📁 Docs 🗺️ Floor Plan 💳 Payments 💬 Messages 🏛️ Guide 🤝 Vend"
+    },
+    {
+      "name": "couple_portal_vendors_loaded",
+      "pass": true,
+      "detail": "B2P & Portal · Jen's Fancy Venue Jul 17, 2060 Export my data 🏠 Home ✅ Tasks 9+ 🕒 Timeline 📁 Docs 🗺️ Floor Plan 💳 Payments 💬 Messages 🏛️ Guide 🤝 Vend"
+    },
+    {
+      "name": "eo_side_by_side_shared_lines",
+      "pass": true,
+      "detail": "EO not shared — draft overlay expected in preview only"
+    },
+    {
+      "name": "no_invoice_mutation",
+      "pass": true,
+      "detail": "b=38 a=38"
+    },
+    {
+      "name": "no_invite_mutation",
+      "pass": true,
+      "detail": "b=1 a=1"
+    },
+    {
+      "name": "no_notification_log_mutation",
+      "pass": true,
+      "detail": "b=3477 a=3477"
+    },
+    {
+      "name": "no_eo_share_mutation",
+      "pass": true,
+      "detail": "b={\"id\":\"624eceef-5096-4288-b104-62daa3a82d11\",\"shared_at\":null,\"revision\":0,\"status\":\"open\"} a={\"id\":\"624eceef-5096-4288-b104-62daa3a82d11\",\"shared_at\":null,\"revision\":0,\"status\":\"open\"}"
+    },
+    {
+      "name": "no_inventory_status_mutation",
+      "pass": true,
+      "detail": "b=null a=null"
+    },
+    {
+      "name": "no_recs_seed_mutation",
+      "pass": true,
+      "detail": "b=5 a=5"
+    },
+    {
+      "name": "no_task_mutation",
+      "pass": true,
+      "detail": "b=18 a=18"
+    },
+    {
+      "name": "library_templates_intact",
+      "pass": true,
+      "detail": "b=2 a=2"
+    },
+    {
+      "name": "portal_sessions_only_qa_insert",
+      "pass": true,
+      "detail": "delta=1 (0=no insert path, 1=qa compare token)"
+    }
+  ],
+  "at": "2026-10-22T15:56:11.900Z"
+}

@@ -1,0 +1,71 @@
+▶ merge-client is browser-safe
+  ✔ merge-client has no server/fs/product-sync imports (0.785666ms)
+  ✔ merge-lead-dialog imports gate helpers from merge-client, not merge.ts (0.235375ms)
+  ✔ Continue stays disabled until conflict choices resolve (0.129ms)
+✔ merge-client is browser-safe (1.901583ms)
+▶ lead merge field reconciliation
+  ✔ fills empty primary from populated secondary (0.694459ms)
+  ✔ treats identical values as one value (0.088458ms)
+  ✔ flags conflicting populated values without choosing (0.112625ms)
+  ✔ defaults primary to earliest created_at (7.935375ms)
+  ✔ marks identical created_at as needing explicit choice (0.071958ms)
+  ✔ explicit primaryId override can select the later lead as survivor (0.066959ms)
+  ✔ norm collapses channel arrays for comparison (0.069375ms)
+✔ lead merge field reconciliation (9.629167ms)
+▶ phone merge display + digit equivalence
+  ✔ formats both conflict choices via formatPhoneDisplay without changing stored values (0.284917ms)
+  ✔ treats digit-equivalent phones as same (keeps primary stored form) (0.084542ms)
+  ✔ phonePatchValue normalizes for storage without inventing digits (0.096375ms)
+  ✔ intake normalizeLeadInput stores phones via normalizeVenuePhoneInput (0.152625ms)
+✔ phone merge display + digit equivalence (0.737541ms)
+▶ FK preview labels (event space + staff)
+  ✔ shows event-space names on fill while keeping the underlying id (0.188375ms)
+  ✔ shows staff names on conflict choices while keeping both ids (0.11975ms)
+  ✔ uses readable fallbacks when related rows are missing (0.11425ms)
+  ✔ collects only FK ids that appear in diffs (0.8025ms)
+✔ FK preview labels (event space + staff) (1.290083ms)
+▶ Continue / final-confirm gate
+  ✔ blocks Continue while conflict fields lack choices (0.082125ms)
+  ✔ blocks Continue when tied created_at needs explicit survivor (0.035666ms)
+✔ Continue / final-confirm gate (0.153959ms)
+▶ inquiry message keep-both resolution
+  ✔ Keep both uses primary field and flags secondary history (0.087333ms)
+  ✔ Keep primary does not archive secondary (0.034ms)
+  ✔ Use secondary sets primary field to secondary text (0.03225ms)
+  ✔ identical text with keep-both does not create redundant history (0.036833ms)
+  ✔ empty secondary with keep-both does not create history (0.045291ms)
+  ✔ inquiry conflict is detected when both differ (0.074125ms)
+  ✔ identical inquiry messages are same, not conflict (0.047541ms)
+  ✔ empty primary + populated secondary is fill, not keep-both (0.054458ms)
+✔ inquiry message keep-both resolution (0.651166ms)
+▶ lead merge safety contracts (source)
+  ✔ confirm uses atomic RPC and revalidates stale timestamps (0.130708ms)
+  ✔ merge_leads_v1 casts UUID FK patch columns (space + staff) (0.100416ms)
+  ✔ merge discovery searches name/email/phone and excludes current lead (0.109792ms)
+  ✔ dialog is search-first, auto-previews on select, and has no UUID paste UI (0.201ms)
+  ✔ survivor cards are always selectable (not only after override or tied times) (0.088458ms)
+  ✔ merge preview formats phones and keeps both distinct tours by default (0.498042ms)
+  ✔ RPC soft-marks secondary and reparents tours without drop (0.199042ms)
+  ✔ RPC does not send messages or enroll sequences (0.133208ms)
+  ✔ blocks tour_protection and unauthorized callers (0.045167ms)
+  ✔ UI requires confirmation and surfaces conflicts/tours (0.097333ms)
+  ✔ secondary lead detail redirects to primary (0.105209ms)
+  ✔ list queries exclude merged secondaries (0.058042ms)
+  ✔ lead-received reporting also excludes soft-merged secondaries (0.124792ms)
+  ✔ duplicate banner no longer instructs manual copy/delete (0.113667ms)
+  ✔ idempotent already-merged path exists (0.030208ms)
+  ✔ preserve-inquiry migration archives secondary as activity, not a note or message send (0.071083ms)
+  ✔ confirm maps keep-both sentinel before RPC field patch (0.038375ms)
+  ✔ dialog offers keep-both as default for inquiry conflicts (0.058125ms)
+✔ lead merge safety contracts (source) (2.402708ms)
+▶ regression: duplicate detection still warn-only
+  ✔ duplicate-review still does not call merge on create (0.161917ms)
+✔ regression: duplicate detection still warn-only (0.254292ms)
+ℹ tests 47
+ℹ suites 8
+ℹ pass 47
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 425.758458

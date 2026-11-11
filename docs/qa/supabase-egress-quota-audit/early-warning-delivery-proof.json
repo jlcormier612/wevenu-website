@@ -1,0 +1,13 @@
+{
+  "at": "2026-10-11T23:18:30Z",
+  "snsTopic": "arn:aws:sns:us-east-1:405254329873:htc-sandbox-ops-alerts",
+  "sqsProofQueue": "https://sqs.us-east-1.amazonaws.com/405254329873/htc-sandbox-ops-alerts-proof",
+  "directPublishMessageId": "68ca4a94-7db0-522c-9be9-29d266d2251d",
+  "forcedAlarm": "htc-sandbox-auth-retryable-spike",
+  "observedOnSqs": [
+    "ALARM: \"htc-sandbox-auth-retryable-spike\" in US East (N. Virginia)",
+    "OK: \"htc-sandbox-auth-retryable-spike\" in US East (N. Virginia)"
+  ],
+  "deliveryProven": true,
+  "emailSubscription": "jennifer@hellotocheers.com PendingConfirmation"
+}

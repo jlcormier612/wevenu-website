@@ -24,7 +24,7 @@ export async function shareExternallyExecutedAgreementWithCouple(
   if (contract.executionOrigin !== "external") {
     return {
       ok: false,
-      message: "Only an externally executed agreement uses this share path. Use Release to client for HTC e-sign contracts.",
+      message: "Only an externally executed agreement uses this share path. Use Send to Client for HTC e-sign contracts.",
     };
   }
 

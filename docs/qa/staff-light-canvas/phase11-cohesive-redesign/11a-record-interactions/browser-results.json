@@ -1,0 +1,907 @@
+[
+  {
+    "label": "clients",
+    "viewport": "desktop",
+    "status": 200,
+    "url": "http://127.0.0.1:3000/clients",
+    "h1": "Clients",
+    "recordLinks": [
+      {
+        "text": "Jane Smith & John Doe",
+        "tag": "A",
+        "href": "/clients/b2a45f9f-6d1c-481d-b7dc-3dda0950c109",
+        "color": "rgb(36, 51, 43)",
+        "decoration": "none",
+        "cursor": "pointer",
+        "className": "htc-record-link"
+      },
+      {
+        "text": "Rebecca Sunshine & Brian Friendly",
+        "tag": "A",
+        "href": "/clients/8b7c6720-79ec-441a-b905-21c5620a507b",
+        "color": "rgb(36, 51, 43)",
+        "decoration": "none",
+        "cursor": "pointer",
+        "className": "htc-record-link"
+      },
+      {
+        "text": "Lucy Peanut & Charlie Brown",
+        "tag": "A",
+        "href": "/clients/3eaa4346-c663-4d63-a0d1-9b30fb325324",
+        "color": "rgb(36, 51, 43)",
+        "decoration": "none",
+        "cursor": "pointer",
+        "className": "htc-record-link"
+      },
+      {
+        "text": "Miss Piggy & Kermit Frog",
+        "tag": "A",
+        "href": "/clients/a980fb1b-8340-488a-985b-7606d69ede2d",
+        "color": "rgb(36, 51, 43)",
+        "decoration": "none",
+        "cursor": "pointer",
+        "className": "htc-record-link"
+      },
+      {
+        "text": "Jessica Beale & Justin Timberlake",
+        "tag": "A",
+        "href": "/clients/5a4c1965-30b0-4dd3-88fb-d885a8ab5acf",
+        "color": "rgb(36, 51, 43)",
+        "decoration": "none",
+        "cursor": "pointer",
+        "className": "htc-record-link"
+      }
+    ],
+    "overflowX": false,
+    "attentionRows": 14,
+    "hospitalityTable": true,
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11a-record-interactions/evidence/clients-desktop.png",
+    "defaultStyle": {
+      "text": "Jane Smith & John Doe",
+      "color": "rgb(36, 51, 43)",
+      "decoration": "none",
+      "outline": "rgb(36, 51, 43) none 3px",
+      "outlineOffset": "0px"
+    },
+    "hoverStyle": {
+      "text": "Jane Smith & John Doe",
+      "color": "rgb(36, 51, 43)",
+      "decoration": "underline",
+      "outline": "rgb(36, 51, 43) none 3px",
+      "outlineOffset": "0px"
+    },
+    "focusStyle": {
+      "text": "Jane Smith & John Doe",
+      "color": "rgb(36, 51, 43)",
+      "decoration": "underline",
+      "outline": "oklch(0.492091 0.0558523 159.885 / 0.6) solid 2px",
+      "outlineOffset": "-2px"
+    },
+    "hoverScreenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11a-record-interactions/evidence/clients-desktop-hover.png",
+    "focusScreenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11a-record-interactions/evidence/clients-desktop-focus.png",
+    "charcoalOk": true,
+    "hoverUnderline": true,
+    "hoverStaysCharcoal": true,
+    "focusHasOutline": true
+  },
+  {
+    "label": "clients",
+    "viewport": "mobile",
+    "status": 200,
+    "url": "http://127.0.0.1:3000/clients",
+    "h1": "Clients",
+    "recordLinks": [
+      {
+        "text": "Jane Smith & John Doe",
+        "tag": "A",
+        "href": "/clients/b2a45f9f-6d1c-481d-b7dc-3dda0950c109",
+        "color": "rgb(36, 51, 43)",
+        "decoration": "none",
+        "cursor": "pointer",
+        "className": "htc-record-link"
+      },
+      {
+        "text": "Rebecca Sunshine & Brian Friendly",
+        "tag": "A",
+        "href": "/clients/8b7c6720-79ec-441a-b905-21c5620a507b",
+        "color": "rgb(36, 51, 43)",
+        "decoration": "none",
+        "cursor": "pointer",
+        "className": "htc-record-link"
+      },
+      {
+        "text": "Lucy Peanut & Charlie Brown",
+        "tag": "A",
+        "href": "/clients/3eaa4346-c663-4d63-a0d1-9b30fb325324",
+        "color": "rgb(36, 51, 43)",
+        "decoration": "none",
+        "cursor": "pointer",
+        "className": "htc-record-link"
+      },
+      {
+        "text": "Miss Piggy & Kermit Frog",
+        "tag": "A",
+        "href": "/clients/a980fb1b-8340-488a-985b-7606d69ede2d",
+        "color": "rgb(36, 51, 43)",
+        "decoration": "none",
+        "cursor": "pointer",
+        "className": "htc-record-link"
+      },
+      {
+        "text": "Jessica Beale & Justin Timberlake",
+        "tag": "A",
+        "href": "/clients/5a4c1965-30b0-4dd3-88fb-d885a8ab5acf",
+        "color": "rgb(36, 51, 43)",
+        "decoration": "none",
+        "cursor": "pointer",
+        "className": "htc-record-link"
+      }
+    ],
+    "overflowX": false,
+    "attentionRows": 14,
+    "hospitalityTable": true,
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11a-record-interactions/evidence/clients-mobile.png"
+  },
+  {
+    "label": "leads",
+    "viewport": "desktop",
+    "status": 200,
+    "url": "http://127.0.0.1:3000/leads",
+    "h1": "Leads",
+    "recordLinks": [
+      {
+        "text": "Morgan RFXccd8",
+        "tag": "A",
+        "href": "/leads/263a6a9a-be3e-471d-b2bd-baded7cfcbc4",
+        "color": "rgb(36, 51, 43)",
+        "decoration": "none",
+        "cursor": "pointer",
+        "className": "htc-record-link truncate"
+      },
+      {
+        "text": "Morgan RFXcc52",
+        "tag": "A",
+        "href": "/leads/35c89e51-66f8-4e6f-adbf-48f0ee432b73",
+        "color": "rgb(36, 51, 43)",
+        "decoration": "none",
+        "cursor": "pointer",
+        "className": "htc-record-link truncate"
+      },
+      {
+        "text": "Morgan RFX62a5",
+        "tag": "A",
+        "href": "/leads/f725aa80-e7ba-4778-b51a-3b21f2c526ec",
+        "color": "rgb(36, 51, 43)",
+        "decoration": "none",
+        "cursor": "pointer",
+        "className": "htc-record-link truncate"
+      },
+      {
+        "text": "Morgan FULLb8a6",
+        "tag": "A",
+        "href": "/leads/3333c7c4-040d-4245-95b8-2794aa313f21",
+        "color": "rgb(36, 51, 43)",
+        "decoration": "none",
+        "cursor": "pointer",
+        "className": "htc-record-link truncate"
+      },
+      {
+        "text": "Morgan FULLc673",
+        "tag": "A",
+        "href": "/leads/5f1bb826-f458-4fd4-8173-f636e4b14576",
+        "color": "rgb(36, 51, 43)",
+        "decoration": "none",
+        "cursor": "pointer",
+        "className": "htc-record-link truncate"
+      }
+    ],
+    "overflowX": false,
+    "attentionRows": 0,
+    "hospitalityTable": true,
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11a-record-interactions/evidence/leads-desktop.png",
+    "defaultStyle": {
+      "text": "Morgan RFXccd8",
+      "color": "rgb(36, 51, 43)",
+      "decoration": "none",
+      "outline": "rgb(36, 51, 43) none 3px",
+      "outlineOffset": "0px"
+    },
+    "hoverStyle": {
+      "text": "Morgan RFXccd8",
+      "color": "rgb(36, 51, 43)",
+      "decoration": "underline",
+      "outline": "rgb(36, 51, 43) none 3px",
+      "outlineOffset": "0px"
+    },
+    "focusStyle": {
+      "text": "Morgan RFXccd8",
+      "color": "rgb(36, 51, 43)",
+      "decoration": "underline",
+      "outline": "oklch(0.492091 0.0558523 159.885 / 0.6) solid 2px",
+      "outlineOffset": "-2px"
+    },
+    "hoverScreenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11a-record-interactions/evidence/leads-desktop-hover.png",
+    "focusScreenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11a-record-interactions/evidence/leads-desktop-focus.png",
+    "charcoalOk": true,
+    "hoverUnderline": true,
+    "hoverStaysCharcoal": true,
+    "focusHasOutline": true
+  },
+  {
+    "label": "leads",
+    "viewport": "mobile",
+    "status": 200,
+    "url": "http://127.0.0.1:3000/leads",
+    "h1": "Leads",
+    "recordLinks": [
+      {
+        "text": "Morgan RFXccd8",
+        "tag": "A",
+        "href": "/leads/263a6a9a-be3e-471d-b2bd-baded7cfcbc4",
+        "color": "rgb(36, 51, 43)",
+        "decoration": "none",
+        "cursor": "pointer",
+        "className": "htc-record-link truncate"
+      },
+      {
+        "text": "Morgan RFXcc52",
+        "tag": "A",
+        "href": "/leads/35c89e51-66f8-4e6f-adbf-48f0ee432b73",
+        "color": "rgb(36, 51, 43)",
+        "decoration": "none",
+        "cursor": "pointer",
+        "className": "htc-record-link truncate"
+      },
+      {
+        "text": "Morgan RFX62a5",
+        "tag": "A",
+        "href": "/leads/f725aa80-e7ba-4778-b51a-3b21f2c526ec",
+        "color": "rgb(36, 51, 43)",
+        "decoration": "none",
+        "cursor": "pointer",
+        "className": "htc-record-link truncate"
+      },
+      {
+        "text": "Morgan FULLb8a6",
+        "tag": "A",
+        "href": "/leads/3333c7c4-040d-4245-95b8-2794aa313f21",
+        "color": "rgb(36, 51, 43)",
+        "decoration": "none",
+        "cursor": "pointer",
+        "className": "htc-record-link truncate"
+      },
+      {
+        "text": "Morgan FULLc673",
+        "tag": "A",
+        "href": "/leads/5f1bb826-f458-4fd4-8173-f636e4b14576",
+        "color": "rgb(36, 51, 43)",
+        "decoration": "none",
+        "cursor": "pointer",
+        "className": "htc-record-link truncate"
+      }
+    ],
+    "overflowX": false,
+    "attentionRows": 0,
+    "hospitalityTable": true,
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11a-record-interactions/evidence/leads-mobile.png"
+  },
+  {
+    "label": "contracts",
+    "viewport": "desktop",
+    "status": 200,
+    "url": "http://127.0.0.1:3000/contracts",
+    "h1": "Contracts",
+    "recordLinks": [
+      {
+        "text": "Morgan RFXccd8",
+        "tag": "A",
+        "href": "/contracts/b12bf0dd-7a42-40af-a9c2-22e9a86ed705?returnTo=%2Fcontracts",
+        "color": "rgb(36, 51, 43)",
+        "decoration": "none",
+        "cursor": "pointer",
+        "className": "htc-record-link block text-sm font-medium"
+      },
+      {
+        "text": "Morgan RFXcc52",
+        "tag": "A",
+        "href": "/contracts/62f4ea21-8df2-47a2-8962-1838410457d6?returnTo=%2Fcontracts",
+        "color": "rgb(36, 51, 43)",
+        "decoration": "none",
+        "cursor": "pointer",
+        "className": "htc-record-link block text-sm font-medium"
+      },
+      {
+        "text": "Morgan RFX62a5",
+        "tag": "A",
+        "href": "/contracts/49e2eb2c-3919-40fd-a667-40a4e4b58638?returnTo=%2Fcontracts",
+        "color": "rgb(36, 51, 43)",
+        "decoration": "none",
+        "cursor": "pointer",
+        "className": "htc-record-link block text-sm font-medium"
+      },
+      {
+        "text": "Morgan FULL75a7",
+        "tag": "A",
+        "href": "/contracts/bc32aa62-12c9-4a7d-88d2-a9031c9f492f?returnTo=%2Fcontracts",
+        "color": "rgb(36, 51, 43)",
+        "decoration": "none",
+        "cursor": "pointer",
+        "className": "htc-record-link block text-sm font-medium"
+      },
+      {
+        "text": "Morgan FULLc387",
+        "tag": "A",
+        "href": "/contracts/e5461894-f570-4384-adb8-ca851aadda8f?returnTo=%2Fcontracts",
+        "color": "rgb(36, 51, 43)",
+        "decoration": "none",
+        "cursor": "pointer",
+        "className": "htc-record-link block text-sm font-medium"
+      }
+    ],
+    "overflowX": false,
+    "attentionRows": 0,
+    "hospitalityTable": true,
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11a-record-interactions/evidence/contracts-desktop.png",
+    "defaultStyle": {
+      "text": "Morgan RFXccd8",
+      "color": "rgb(36, 51, 43)",
+      "decoration": "none",
+      "outline": "rgb(36, 51, 43) none 3px",
+      "outlineOffset": "0px"
+    },
+    "hoverStyle": {
+      "text": "Morgan RFXccd8",
+      "color": "rgb(36, 51, 43)",
+      "decoration": "underline",
+      "outline": "rgb(36, 51, 43) none 3px",
+      "outlineOffset": "0px"
+    },
+    "focusStyle": {
+      "text": "Morgan RFXccd8",
+      "color": "rgb(36, 51, 43)",
+      "decoration": "underline",
+      "outline": "oklch(0.492091 0.0558523 159.885 / 0.6) solid 2px",
+      "outlineOffset": "-2px"
+    },
+    "hoverScreenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11a-record-interactions/evidence/contracts-desktop-hover.png",
+    "focusScreenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11a-record-interactions/evidence/contracts-desktop-focus.png",
+    "charcoalOk": true,
+    "hoverUnderline": true,
+    "hoverStaysCharcoal": true,
+    "focusHasOutline": true
+  },
+  {
+    "label": "contracts",
+    "viewport": "mobile",
+    "status": 200,
+    "url": "http://127.0.0.1:3000/contracts",
+    "h1": "Contracts",
+    "recordLinks": [
+      {
+        "text": "Morgan RFXccd8",
+        "tag": "A",
+        "href": "/contracts/b12bf0dd-7a42-40af-a9c2-22e9a86ed705?returnTo=%2Fcontracts",
+        "color": "rgb(36, 51, 43)",
+        "decoration": "none",
+        "cursor": "pointer",
+        "className": "htc-record-link block text-sm font-medium"
+      },
+      {
+        "text": "Morgan RFXcc52",
+        "tag": "A",
+        "href": "/contracts/62f4ea21-8df2-47a2-8962-1838410457d6?returnTo=%2Fcontracts",
+        "color": "rgb(36, 51, 43)",
+        "decoration": "none",
+        "cursor": "pointer",
+        "className": "htc-record-link block text-sm font-medium"
+      },
+      {
+        "text": "Morgan RFX62a5",
+        "tag": "A",
+        "href": "/contracts/49e2eb2c-3919-40fd-a667-40a4e4b58638?returnTo=%2Fcontracts",
+        "color": "rgb(36, 51, 43)",
+        "decoration": "none",
+        "cursor": "pointer",
+        "className": "htc-record-link block text-sm font-medium"
+      },
+      {
+        "text": "Morgan FULL75a7",
+        "tag": "A",
+        "href": "/contracts/bc32aa62-12c9-4a7d-88d2-a9031c9f492f?returnTo=%2Fcontracts",
+        "color": "rgb(36, 51, 43)",
+        "decoration": "none",
+        "cursor": "pointer",
+        "className": "htc-record-link block text-sm font-medium"
+      },
+      {
+        "text": "Morgan FULLc387",
+        "tag": "A",
+        "href": "/contracts/e5461894-f570-4384-adb8-ca851aadda8f?returnTo=%2Fcontracts",
+        "color": "rgb(36, 51, 43)",
+        "decoration": "none",
+        "cursor": "pointer",
+        "className": "htc-record-link block text-sm font-medium"
+      }
+    ],
+    "overflowX": false,
+    "attentionRows": 0,
+    "hospitalityTable": true,
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11a-record-interactions/evidence/contracts-mobile.png"
+  },
+  {
+    "label": "vendors",
+    "viewport": "desktop",
+    "status": 200,
+    "url": "http://127.0.0.1:3000/vendors",
+    "h1": "Vendors",
+    "recordLinks": [
+      {
+        "text": "Baker's Dozen",
+        "tag": "A",
+        "href": "/vendors/a35f82fa-f63d-41e3-aad5-73c3eb90e971",
+        "color": "rgb(36, 51, 43)",
+        "decoration": "none",
+        "cursor": "pointer",
+        "className": "htc-record-link"
+      },
+      {
+        "text": "Cuppity Cakes",
+        "tag": "A",
+        "href": "/vendors/891899a8-8521-4be0-9dfa-3bcba3077c54",
+        "color": "rgb(36, 51, 43)",
+        "decoration": "none",
+        "cursor": "pointer",
+        "className": "htc-record-link"
+      },
+      {
+        "text": "Flora's Flowers",
+        "tag": "A",
+        "href": "/vendors/e5ed92aa-82a4-46c7-b6c2-36a90db714e1",
+        "color": "rgb(36, 51, 43)",
+        "decoration": "none",
+        "cursor": "pointer",
+        "className": "htc-record-link"
+      },
+      {
+        "text": "Harah's Hair",
+        "tag": "A",
+        "href": "/vendors/42a8d273-f738-4f3c-bdcd-f2a5a237e1b3",
+        "color": "rgb(36, 51, 43)",
+        "decoration": "none",
+        "cursor": "pointer",
+        "className": "htc-record-link"
+      },
+      {
+        "text": "Sweet Dreams Desserts",
+        "tag": "A",
+        "href": "/vendors/ec1d6f35-ebf7-4d3d-bda5-d011522d6e9d",
+        "color": "rgb(36, 51, 43)",
+        "decoration": "none",
+        "cursor": "pointer",
+        "className": "htc-record-link"
+      }
+    ],
+    "overflowX": false,
+    "attentionRows": 0,
+    "hospitalityTable": true,
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11a-record-interactions/evidence/vendors-desktop.png"
+  },
+  {
+    "label": "vendors",
+    "viewport": "mobile",
+    "status": 200,
+    "url": "http://127.0.0.1:3000/vendors",
+    "h1": "Vendors",
+    "recordLinks": [
+      {
+        "text": "Baker's Dozen",
+        "tag": "A",
+        "href": "/vendors/a35f82fa-f63d-41e3-aad5-73c3eb90e971",
+        "color": "rgb(36, 51, 43)",
+        "decoration": "none",
+        "cursor": "pointer",
+        "className": "htc-record-link"
+      },
+      {
+        "text": "Cuppity Cakes",
+        "tag": "A",
+        "href": "/vendors/891899a8-8521-4be0-9dfa-3bcba3077c54",
+        "color": "rgb(36, 51, 43)",
+        "decoration": "none",
+        "cursor": "pointer",
+        "className": "htc-record-link"
+      },
+      {
+        "text": "Flora's Flowers",
+        "tag": "A",
+        "href": "/vendors/e5ed92aa-82a4-46c7-b6c2-36a90db714e1",
+        "color": "rgb(36, 51, 43)",
+        "decoration": "none",
+        "cursor": "pointer",
+        "className": "htc-record-link"
+      },
+      {
+        "text": "Harah's Hair",
+        "tag": "A",
+        "href": "/vendors/42a8d273-f738-4f3c-bdcd-f2a5a237e1b3",
+        "color": "rgb(36, 51, 43)",
+        "decoration": "none",
+        "cursor": "pointer",
+        "className": "htc-record-link"
+      },
+      {
+        "text": "Sweet Dreams Desserts",
+        "tag": "A",
+        "href": "/vendors/ec1d6f35-ebf7-4d3d-bda5-d011522d6e9d",
+        "color": "rgb(36, 51, 43)",
+        "decoration": "none",
+        "cursor": "pointer",
+        "className": "htc-record-link"
+      }
+    ],
+    "overflowX": false,
+    "attentionRows": 0,
+    "hospitalityTable": true,
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11a-record-interactions/evidence/vendors-mobile.png"
+  },
+  {
+    "label": "requests",
+    "viewport": "desktop",
+    "status": 200,
+    "url": "http://127.0.0.1:3000/requests",
+    "h1": "Requests",
+    "recordLinks": [
+      {
+        "text": "RCS RCSMVSBSQHT Title",
+        "tag": "A",
+        "href": "/requests/7b7e4fca-40af-4833-bb2d-10f077634aa2",
+        "color": "rgb(36, 51, 43)",
+        "decoration": "none",
+        "cursor": "pointer",
+        "className": "htc-record-link font-medium"
+      },
+      {
+        "text": "RCS RCSMVSBROU2 Title",
+        "tag": "A",
+        "href": "/requests/c365d3f6-4a2d-4462-8c82-bd10594ee1bd",
+        "color": "rgb(36, 51, 43)",
+        "decoration": "none",
+        "cursor": "pointer",
+        "className": "htc-record-link font-medium"
+      },
+      {
+        "text": "FocusReq 1791176443064",
+        "tag": "A",
+        "href": "/requests/b1c780e7-a4ce-4eb7-b2ce-0cad34c8afd7",
+        "color": "rgb(36, 51, 43)",
+        "decoration": "none",
+        "cursor": "pointer",
+        "className": "htc-record-link font-medium"
+      }
+    ],
+    "overflowX": false,
+    "attentionRows": 0,
+    "hospitalityTable": false,
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11a-record-interactions/evidence/requests-desktop.png"
+  },
+  {
+    "label": "requests",
+    "viewport": "mobile",
+    "status": 200,
+    "url": "http://127.0.0.1:3000/requests",
+    "h1": "Requests",
+    "recordLinks": [
+      {
+        "text": "RCS RCSMVSBSQHT Title",
+        "tag": "A",
+        "href": "/requests/7b7e4fca-40af-4833-bb2d-10f077634aa2",
+        "color": "rgb(36, 51, 43)",
+        "decoration": "none",
+        "cursor": "pointer",
+        "className": "htc-record-link font-medium"
+      },
+      {
+        "text": "RCS RCSMVSBROU2 Title",
+        "tag": "A",
+        "href": "/requests/c365d3f6-4a2d-4462-8c82-bd10594ee1bd",
+        "color": "rgb(36, 51, 43)",
+        "decoration": "none",
+        "cursor": "pointer",
+        "className": "htc-record-link font-medium"
+      },
+      {
+        "text": "FocusReq 1791176443064",
+        "tag": "A",
+        "href": "/requests/b1c780e7-a4ce-4eb7-b2ce-0cad34c8afd7",
+        "color": "rgb(36, 51, 43)",
+        "decoration": "none",
+        "cursor": "pointer",
+        "className": "htc-record-link font-medium"
+      }
+    ],
+    "overflowX": false,
+    "attentionRows": 0,
+    "hospitalityTable": false,
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11a-record-interactions/evidence/requests-mobile.png"
+  },
+  {
+    "label": "tours",
+    "viewport": "desktop",
+    "status": 200,
+    "url": "http://127.0.0.1:3000/tours",
+    "h1": "Tours",
+    "recordLinks": [],
+    "overflowX": false,
+    "attentionRows": 0,
+    "hospitalityTable": false,
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11a-record-interactions/evidence/tours-desktop.png"
+  },
+  {
+    "label": "tours",
+    "viewport": "mobile",
+    "status": 200,
+    "url": "http://127.0.0.1:3000/tours",
+    "h1": "Tours",
+    "recordLinks": [],
+    "overflowX": false,
+    "attentionRows": 0,
+    "hospitalityTable": false,
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11a-record-interactions/evidence/tours-mobile.png"
+  },
+  {
+    "label": "documents",
+    "viewport": "desktop",
+    "status": 200,
+    "url": "http://127.0.0.1:3000/library/documents",
+    "h1": "Documents",
+    "recordLinks": [],
+    "overflowX": false,
+    "attentionRows": 0,
+    "hospitalityTable": false,
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11a-record-interactions/evidence/documents-desktop.png"
+  },
+  {
+    "label": "documents",
+    "viewport": "mobile",
+    "status": 200,
+    "url": "http://127.0.0.1:3000/library/documents",
+    "h1": "Documents",
+    "recordLinks": [],
+    "overflowX": false,
+    "attentionRows": 0,
+    "hospitalityTable": false,
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11a-record-interactions/evidence/documents-mobile.png"
+  },
+  {
+    "label": "payments",
+    "viewport": "desktop",
+    "status": 200,
+    "url": "http://127.0.0.1:3000/payments",
+    "h1": "Payments",
+    "recordLinks": [
+      {
+        "text": "Morgan RFXccd8",
+        "tag": "A",
+        "href": "/payments/dffcff84-782e-4962-8f27-468a2494bd2b",
+        "color": "rgb(36, 51, 43)",
+        "decoration": "none",
+        "cursor": "pointer",
+        "className": "htc-record-link"
+      },
+      {
+        "text": "Morgan RFXcc52",
+        "tag": "A",
+        "href": "/payments/21e67467-6d8d-4832-a790-3f58df509f6a",
+        "color": "rgb(36, 51, 43)",
+        "decoration": "none",
+        "cursor": "pointer",
+        "className": "htc-record-link"
+      },
+      {
+        "text": "Morgan RFX62a5",
+        "tag": "A",
+        "href": "/payments/756d7644-68bc-4248-bb45-55b403e1f5d7",
+        "color": "rgb(36, 51, 43)",
+        "decoration": "none",
+        "cursor": "pointer",
+        "className": "htc-record-link"
+      },
+      {
+        "text": "Morgan FULL75a7",
+        "tag": "A",
+        "href": "/payments/60b87edc-c98a-4899-800a-3f3ed530b71e",
+        "color": "rgb(36, 51, 43)",
+        "decoration": "none",
+        "cursor": "pointer",
+        "className": "htc-record-link"
+      },
+      {
+        "text": "Morgan FULLc387",
+        "tag": "A",
+        "href": "/payments/4066dd05-bba7-4306-92ab-3e5926ac70eb",
+        "color": "rgb(36, 51, 43)",
+        "decoration": "none",
+        "cursor": "pointer",
+        "className": "htc-record-link"
+      }
+    ],
+    "overflowX": false,
+    "attentionRows": 0,
+    "hospitalityTable": true,
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11a-record-interactions/evidence/payments-desktop.png"
+  },
+  {
+    "label": "payments",
+    "viewport": "mobile",
+    "status": 200,
+    "url": "http://127.0.0.1:3000/payments",
+    "h1": "Payments",
+    "recordLinks": [
+      {
+        "text": "Morgan RFXccd8",
+        "tag": "A",
+        "href": "/payments/dffcff84-782e-4962-8f27-468a2494bd2b",
+        "color": "rgb(36, 51, 43)",
+        "decoration": "none",
+        "cursor": "pointer",
+        "className": "htc-record-link"
+      },
+      {
+        "text": "Morgan RFXcc52",
+        "tag": "A",
+        "href": "/payments/21e67467-6d8d-4832-a790-3f58df509f6a",
+        "color": "rgb(36, 51, 43)",
+        "decoration": "none",
+        "cursor": "pointer",
+        "className": "htc-record-link"
+      },
+      {
+        "text": "Morgan RFX62a5",
+        "tag": "A",
+        "href": "/payments/756d7644-68bc-4248-bb45-55b403e1f5d7",
+        "color": "rgb(36, 51, 43)",
+        "decoration": "none",
+        "cursor": "pointer",
+        "className": "htc-record-link"
+      },
+      {
+        "text": "Morgan FULL75a7",
+        "tag": "A",
+        "href": "/payments/60b87edc-c98a-4899-800a-3f3ed530b71e",
+        "color": "rgb(36, 51, 43)",
+        "decoration": "none",
+        "cursor": "pointer",
+        "className": "htc-record-link"
+      },
+      {
+        "text": "Morgan FULLc387",
+        "tag": "A",
+        "href": "/payments/4066dd05-bba7-4306-92ab-3e5926ac70eb",
+        "color": "rgb(36, 51, 43)",
+        "decoration": "none",
+        "cursor": "pointer",
+        "className": "htc-record-link"
+      }
+    ],
+    "overflowX": false,
+    "attentionRows": 0,
+    "hospitalityTable": true,
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11a-record-interactions/evidence/payments-mobile.png"
+  },
+  {
+    "label": "events",
+    "viewport": "desktop",
+    "status": 200,
+    "url": "http://127.0.0.1:3000/clients",
+    "h1": "Clients",
+    "recordLinks": [
+      {
+        "text": "Jane Smith & John Doe",
+        "tag": "A",
+        "href": "/clients/b2a45f9f-6d1c-481d-b7dc-3dda0950c109",
+        "color": "rgb(36, 51, 43)",
+        "decoration": "none",
+        "cursor": "pointer",
+        "className": "htc-record-link"
+      },
+      {
+        "text": "Rebecca Sunshine & Brian Friendly",
+        "tag": "A",
+        "href": "/clients/8b7c6720-79ec-441a-b905-21c5620a507b",
+        "color": "rgb(36, 51, 43)",
+        "decoration": "none",
+        "cursor": "pointer",
+        "className": "htc-record-link"
+      },
+      {
+        "text": "Lucy Peanut & Charlie Brown",
+        "tag": "A",
+        "href": "/clients/3eaa4346-c663-4d63-a0d1-9b30fb325324",
+        "color": "rgb(36, 51, 43)",
+        "decoration": "none",
+        "cursor": "pointer",
+        "className": "htc-record-link"
+      },
+      {
+        "text": "Miss Piggy & Kermit Frog",
+        "tag": "A",
+        "href": "/clients/a980fb1b-8340-488a-985b-7606d69ede2d",
+        "color": "rgb(36, 51, 43)",
+        "decoration": "none",
+        "cursor": "pointer",
+        "className": "htc-record-link"
+      },
+      {
+        "text": "Jessica Beale & Justin Timberlake",
+        "tag": "A",
+        "href": "/clients/5a4c1965-30b0-4dd3-88fb-d885a8ab5acf",
+        "color": "rgb(36, 51, 43)",
+        "decoration": "none",
+        "cursor": "pointer",
+        "className": "htc-record-link"
+      }
+    ],
+    "overflowX": false,
+    "attentionRows": 14,
+    "hospitalityTable": true,
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11a-record-interactions/evidence/events-desktop.png"
+  },
+  {
+    "label": "events",
+    "viewport": "mobile",
+    "status": 200,
+    "url": "http://127.0.0.1:3000/clients",
+    "h1": "Clients",
+    "recordLinks": [
+      {
+        "text": "Jane Smith & John Doe",
+        "tag": "A",
+        "href": "/clients/b2a45f9f-6d1c-481d-b7dc-3dda0950c109",
+        "color": "rgb(36, 51, 43)",
+        "decoration": "none",
+        "cursor": "pointer",
+        "className": "htc-record-link"
+      },
+      {
+        "text": "Rebecca Sunshine & Brian Friendly",
+        "tag": "A",
+        "href": "/clients/8b7c6720-79ec-441a-b905-21c5620a507b",
+        "color": "rgb(36, 51, 43)",
+        "decoration": "none",
+        "cursor": "pointer",
+        "className": "htc-record-link"
+      },
+      {
+        "text": "Lucy Peanut & Charlie Brown",
+        "tag": "A",
+        "href": "/clients/3eaa4346-c663-4d63-a0d1-9b30fb325324",
+        "color": "rgb(36, 51, 43)",
+        "decoration": "none",
+        "cursor": "pointer",
+        "className": "htc-record-link"
+      },
+      {
+        "text": "Miss Piggy & Kermit Frog",
+        "tag": "A",
+        "href": "/clients/a980fb1b-8340-488a-985b-7606d69ede2d",
+        "color": "rgb(36, 51, 43)",
+        "decoration": "none",
+        "cursor": "pointer",
+        "className": "htc-record-link"
+      },
+      {
+        "text": "Jessica Beale & Justin Timberlake",
+        "tag": "A",
+        "href": "/clients/5a4c1965-30b0-4dd3-88fb-d885a8ab5acf",
+        "color": "rgb(36, 51, 43)",
+        "decoration": "none",
+        "cursor": "pointer",
+        "className": "htc-record-link"
+      }
+    ],
+    "overflowX": false,
+    "attentionRows": 14,
+    "hospitalityTable": true,
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11a-record-interactions/evidence/events-mobile.png"
+  }
+]

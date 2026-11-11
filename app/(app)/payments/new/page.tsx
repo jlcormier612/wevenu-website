@@ -1,15 +1,39 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 import { InvoicePickerForSchedule } from "@/components/payments/invoice-picker-for-schedule";
 import { NewScheduleForm } from "@/components/payments/new-schedule-form";
 import { PageHeader } from "@/components/shell/module-placeholder";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { getCurrentVenue } from "@/lib/venue/service";
+import { venueToday } from "@/lib/venue/timezone";
+import { createClient } from "@/integrations/supabase/server";
 import { formatCurrency } from "@/lib/invoices/constants";
 import { getInvoice, getInvoices } from "@/lib/invoices/service";
 
 export const metadata: Metadata = { title: "New payment schedule" };
 
 type Props = { searchParams: Promise<{ invoiceId?: string; preset?: string }> };
+
+/** Latest Fully Executed contract date for this client (YYYY-MM-DD), if any. */
+async function latestExecutedContractDate(clientId: string | null): Promise<string | null> {
+  if (!clientId) return null;
+  const venue = await getCurrentVenue();
+  if (!venue) return null;
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("contracts")
+    .select("signed_at")
+    .eq("venue_id", venue.id)
+    .eq("client_id", clientId)
+    .eq("status", "signed")
+    .not("signed_at", "is", null)
+    .order("signed_at", { ascending: false })
+    .limit(1)
+    .maybeSingle<{ signed_at: string }>();
+  return data?.signed_at ? data.signed_at.slice(0, 10) : null;
+}
 
 /**
  * Booking Financial Architecture Phase 1: a Payment Schedule always links
@@ -67,27 +91,78 @@ export default async function NewPaymentPage({ searchParams }: Props) {
     );
   }
 
+  const venue = await getCurrentVenue();
+  if (!venue) {
+    return (
+      <div className="space-y-6">
+        <PageHeader title="New payment schedule" description="Venue not found." />
+      </div>
+    );
+  }
+  const today = venueToday(venue.timezone);
+  const executedAt = await latestExecutedContractDate(invoice.clientId);
+  const prefs = venue.commercialBookingPrefs;
+  // Prefer URL preset when present; otherwise use the venue configured default
+  // so Custom hydrates the same saved structure as Booking Journey.
+  const seedPresetId = preset?.trim() || prefs.defaultSchedulePresetId;
+
+  const invoiceHref = `/invoices/${invoice.id}`;
+  const eventHref = invoice.eventId ? `/events/${invoice.eventId}?tab=event-order` : null;
+  const clientHref = invoice.clientId ? `/clients/${invoice.clientId}` : null;
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="Payment Plan Builder"
-        description="Choose how this invoice total should be collected — equal, percentage, dollar, or custom — then review and save the schedule."
+        description="Choose how this invoice total should be collected — equal, percentage, dollar, or custom — then preview and create the schedule. Saving creates the plan; sending the invoice and requesting payment stay separate steps on the invoice."
+        actions={(
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" variant="outline" render={<Link href={invoiceHref} />}>
+              Back to invoice
+            </Button>
+            {eventHref ? (
+              <Button size="sm" variant="ghost" render={<Link href={eventHref} />}>
+                Event Order
+              </Button>
+            ) : null}
+            {clientHref ? (
+              <Button size="sm" variant="ghost" render={<Link href={clientHref} />}>
+                Client
+              </Button>
+            ) : null}
+          </div>
+        )}
       />
       <Card>
         <CardHeader>
           <CardTitle>Build payment schedule</CardTitle>
           <CardDescription>
-            Invoice {invoice.invoiceNumber} · {formatCurrency(invoice.total)}
+            Invoice {invoice.invoiceNumber}
+            {invoice.displayName ? ` · ${invoice.displayName}` : ""}
+            {" · "}
+            Status {invoice.status}
+            {" · "}
+            Total {formatCurrency(invoice.total)}
             {invoice.eventDate
               ? ` · Event ${invoice.eventDate}`
               : " · Add an Event date on the booking so event-relative due dates can become calendar dates"}
-            {invoice.bookedAt
-              ? ` · Booked ${invoice.bookedAt}`
-              : " · At-booking timing needs a booking date on the Event first"}
+            {executedAt
+              ? ` · Contract fully executed ${executedAt}`
+              : " · Agreement-relative timing needs a fully executed contract"}
+            {" · "}
+            After create: review and send from the invoice.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <NewScheduleForm linkedInvoice={invoice} initialPresetId={preset} />
+          <NewScheduleForm
+            linkedInvoice={invoice}
+            initialPresetId={seedPresetId}
+            remainingBalanceMode={prefs.remainingBalanceMode}
+            customSchedule={prefs.defaultCustomSchedule}
+            defaultDepositPercent={prefs.defaultDepositPercent}
+            executedAt={executedAt}
+            today={today}
+          />
         </CardContent>
       </Card>
     </div>

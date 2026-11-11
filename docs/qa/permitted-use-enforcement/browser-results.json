@@ -1,0 +1,30 @@
+{
+  "at": "2026-10-28T16:10:46.740Z",
+  "expectedSha": "7ffb231b484d99cc01dda37c920bac24f0c62c2e",
+  "image": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:7ffb231b484d99cc01dda37c920bac24f0c62c2e",
+  "eventId": "9db18cf1-eba3-435d-9b72-9b1e8c3835bd",
+  "clientId": "dde28685-830d-4ab4-af90-741fd9eb3b11",
+  "checks": [
+    {
+      "name": "serving_sha",
+      "pass": true,
+      "detail": "expected=7ffb231b484d99cc01dda37c920bac24f0c62c2e ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:7ffb231b484d99cc01dda37c920bac24f0c62c2e"
+    },
+    {
+      "name": "event_fixture",
+      "pass": true,
+      "detail": "9db18cf1-eba3-435d-9b72-9b1e8c3835bd"
+    },
+    {
+      "name": "assignments_ui_reachable",
+      "pass": true,
+      "detail": "https://app.sandbox.hellotocheers.com/events/9db18cf1-eba3-435d-9b72-9b1e8c3835bd/edit"
+    },
+    {
+      "name": "no_horizontal_overflow",
+      "pass": true,
+      "detail": "overflow=false"
+    }
+  ],
+  "ok": true
+}

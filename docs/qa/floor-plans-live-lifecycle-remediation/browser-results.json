@@ -1,0 +1,124 @@
+{
+  "run": "FPLRMVRHPIJH",
+  "expectedSha": "12721ce63afa00b187b1bf5816dd7880d5eda219",
+  "servingImage": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:12721ce63afa00b187b1bf5816dd7880d5eda219",
+  "passed": 23,
+  "failed": 0,
+  "checks": [
+    {
+      "name": "serving_sha",
+      "pass": true,
+      "detail": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:12721ce63afa00b187b1bf5816dd7880d5eda219"
+    },
+    {
+      "name": "D0_banner_honest_when_empty",
+      "pass": true,
+      "detail": "empty=true bannerCount=0 rooms=Booking rooms (read-only): Barn"
+    },
+    {
+      "name": "D0_booking_rooms_not_none_while_assigned",
+      "pass": true,
+      "detail": "Booking rooms (read-only): Barn"
+    },
+    {
+      "name": "C_labels_preference_not_furniture",
+      "pass": true,
+      "detail": "preference=1 furnitureApproved=0 legacyClientApproved=0"
+    },
+    {
+      "name": "P2_card_grouped_controls",
+      "pass": true,
+      "detail": "visibility=3 prep=4"
+    },
+    {
+      "name": "D1_persist_open_flag",
+      "pass": true,
+      "detail": "[{\"id\":\"fd3c7323-49f8-48de-a712-7722c8d7467f\",\"trigger\":\"t1_layout_room\",\"plan\":\"4d842d6f-9c48-4e32-bbc9-82d0e45ce178\"}]"
+    },
+    {
+      "name": "D2_ui_shows_open_review_and_banner",
+      "pass": true,
+      "detail": "banner=true items=1 emptyGone=true"
+    },
+    {
+      "name": "D3_review_visible_after_navigation",
+      "pass": true,
+      "detail": "items=1"
+    },
+    {
+      "name": "D4_clear_removes_from_ui_and_persist",
+      "pass": true,
+      "detail": "openFlags=0 banner=0"
+    },
+    {
+      "name": "D5_clear_does_not_mutate_layout_access_seating",
+      "pass": true,
+      "detail": "{\"planBeforeClear\":{\"id\":\"4d842d6f-9c48-4e32-bbc9-82d0e45ce178\",\"space_id\":\"40f81c67-199d-47f8-bf7d-79c118e34198\",\"shared_with_couple\":true,\"client_access\":\"view\",\"client_layout_status\":\"working\"},\"planAfterClear\":{\"id\":\"4d842d6f-9c48-4e32-bbc9-82d0e45ce178\",\"space_id\":\"40f81c67-199d-47f8-bf7d-79c118e34198\",\"shared_with_couple\":true,\"client_access\":\"view\",\"client_layout_status\":\"working\"},\"eventBeforeClear\":{\"operational_floor_plan_id\":\"4d842d6f-9c48-4e32-bbc9-82d0e45ce178\",\"couple_selected_floor_plan_id\":\"4d842d6f-9c48-4e32-bbc9-82d0e45ce178\",\"seating_in_use_floor_plan_id\":null},\"eventAfterClear\":{\"operational_floor_plan_id\":\"4d842d6f-9c48-4e32-bbc9-82d0e45ce178\",\"couple_selected_floor_plan_id\":\"4d842d6f-9c48-4e32-bbc9-82d0e45ce178\",\"seating_in_use_floor_plan_id\":null}}"
+    },
+    {
+      "name": "A1_venue_sees_required_setups",
+      "pass": true,
+      "detail": "Wedding setups (optional)\n\nFor multi-part weddings, organize layouts into required setups such as Ceremony and Reception. Alternatives belong under one setup only. A single-layout wedding does not need this.\n\nHide setup organizer\n\nREQUIRED SETUP\n\nCeremony\n\nFPLR-FPLRMVRHPIJH-CeremonyWorking layout for this setup · Shared with couple\nDetach\n\nREQUIRED SETUP\n\nReception\n\nFPLR-FPLRMVRHPIJH-ReceptionWork"
+    },
+    {
+      "name": "A2_portal_api_has_setups",
+      "pass": true,
+      "detail": "{\"setups\":[{\"name\":\"Ceremony\",\"layouts\":[{\"name\":\"FPLR-FPLRMVRHPIJH-Ceremony\",\"isWorking\":true,\"sortOrder\":0,\"isApproved\":null,\"floorPlanId\":\"4d842d6f-9c48-4e32-bbc9-82d0e45ce178\",\"isPreference\":null,\"sharedWithCouple\":true}],\"setupId\":\"9347dc67-015d-4ca7-9346-3b6811cbd2e2\",\"sortOrder\":0,\"couplePreferenceStatus\":null,\"operationalFloorPlanId\":\"4d842d6f-9c48-4e32-bbc9-82d0e45ce178\",\"coupleApprovedFloorPlanId\":null,\"coupleSelectedFloorPlanId\":null},{\"name\":\"Reception\",\"layouts\":[{\"name\":\"FPLR-FPLRMVRHPIJH-Reception\",\"isWorking\":true,\"sortOrder\":0,\"isApproved\":null,\"floorPlanId\":\"8d96f2de-e924-43a8-88c1-a1b44bf35fd3\",\"isPreference\":null,\"sharedWithCouple\":true},{\"name\":\"FPLR-FPLRMVRHPIJH-Reception-Alt\",\"isWorking\":false,\"sortOrder\":1,\"isApproved\":null,\"floorPlanId\":\"b61f6f96-a7b8-47d8-8966-98bf777020b9\",\"isPreference\":null,\"sharedWithCouple\":true}],\"setupId\":\"b033b731-f676-45f8-9ae7-94c1139e163c\",\"sortOrder\":1,\"couplePreferenceStatus\":null,\"operationalFloorPlanId\":\"8d96f2de-e924-43a8-88c1-a1b44bf35fd3\",\"coupleApprovedFloorPlanId\":null,\"coupleSelectedFloorPlanId\":null}],\"hasSetups\":true}"
+    },
+    {
+      "name": "A2_couple_sees_setup_package",
+      "pass": true,
+      "detail": "weddingSetups=1 body=FPLRRemediation\n\n·\n\nJen's Fancy Venue\n\nJul 17, 2061\n\nExport my data\n🏠\nHome\n✅\nTasks\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n💳\nPayments\n💬\nMessages\n🏛️\nGuide\n🤝\nVendors\nYour wedding setups\n\nEach setup is a part of your wedding plan. Alternatives appear only under the setup they belong to. Saving a preference asks your venue to review it — it does not approve the layout or change what the venue will use by itself.\n\nREQUIRED SETUP\n\nCeremony\n\nFPLR-FPLRMVRHPIJH-Ceremony\nVenue working layout\n\nREQUIRED SET"
+    },
+    {
+      "name": "A2b_portal_select_reception_ok",
+      "pass": true,
+      "detail": "{\"status\":200,\"body\":{\"ok\":true,\"setupId\":\"b033b731-f676-45f8-9ae7-94c1139e163c\",\"floorPlanId\":\"b61f6f96-a7b8-47d8-8966-98bf777020b9\",\"couplePreferenceStatus\":\"pending\"}}"
+    },
+    {
+      "name": "A3_preference_does_not_replace_working_or_seating",
+      "pass": true,
+      "detail": "{\"cer\":{\"id\":\"9347dc67-015d-4ca7-9346-3b6811cbd2e2\",\"name\":\"Ceremony\",\"couple_selected_floor_plan_id\":null,\"operational_floor_plan_id\":\"4d842d6f-9c48-4e32-bbc9-82d0e45ce178\",\"seating_in_use_floor_plan_id\":\"4d842d6f-9c48-4e32-bbc9-82d0e45ce178\"},\"rec\":{\"id\":\"b033b731-f676-45f8-9ae7-94c1139e163c\",\"name\":\"Reception\",\"couple_selected_floor_plan_id\":\"b61f6f96-a7b8-47d8-8966-98bf777020b9\",\"operational_floor_plan_id\":\"8d96f2de-e924-43a8-88c1-a1b44bf35fd3\",\"seating_in_use_floor_plan_id\":null},\"eventAfterPref\":{\"operational_floor_plan_id\":\"4d842d6f-9c48-4e32-bbc9-82d0e45ce178\",\"couple_selected_floor_plan_id\":\"4d842d6f-9c48-4e32-bbc9-82d0e45ce178\",\"seating_in_use_floor_plan_id\":null}}"
+    },
+    {
+      "name": "B1_flip_linked_persist",
+      "pass": true,
+      "detail": "[{\"id\":\"cc68e5db-0ca9-4455-9e44-1854abfe7ce3\",\"venue_id\":\"a415ac52-cd74-42a6-8df7-7a8f6e71d080\",\"event_id\":\"744f289b-eceb-4442-8316-36413ea52479\",\"before_floor_plan_id\":\"4d842d6f-9c48-4e32-bbc9-82d0e45ce178\",\"after_floor_plan_id\":\"8d96f2de-e924-43a8-88c1-a1b44bf35fd3\",\"transition_notes\":\"Move cocktail furniture after ceremony.\",\"created_at\":\"2026-10-28T02:24:27.646801+00:00\",\"updated_at\":\"2026-10-28T02:24:27.764178+00:00\",\"recorded_before_space_id\":\"40f81c67-199d-47f8-bf7d-79c118e34198\",\"recorded_after_space_id\":\"3b36ec69-b17d-4351-8186-68d96dd6dfe7\",\"room_snapshot_captured_at\":\"2026-10-28T02:24:27.753+00:00\"}]"
+    },
+    {
+      "name": "B2_venue_understands_link",
+      "pass": true,
+      "detail": "Same-room flip link (optional)\n\nLink two real layouts as before and after for venue/staff planning. This records a relationship only — Hello to Cheers does not switch rooms automatically, on a timer, or with staffing. A static starter illustration is not a link.\n\nHide flip link\n\nLinked for venue/staff planning (not an automatic room switch)\n\nBefore: FPLR-FPLRMVRHPIJH-Ceremony\n\nAfter: FPLR-FPLRMVRH"
+    },
+    {
+      "name": "B3_unlink_preserves_layouts",
+      "pass": true,
+      "detail": "flips=0 plans=3 objs=9"
+    },
+    {
+      "name": "C1_furniture_submit_distinct_from_preference",
+      "pass": true,
+      "detail": "badge=1 panel=Furniture placement submitted: FPLR-FPLRMVRHPIJH-Ceremony\n\nSubmitted 10/27/2026, 10:24:34 PM. Open the layout to inspect table and furniture placement, then approve or request changes. This is not the same as approving their layout preference. Approving placement keeps this working layout — it does not create a second copy.\n\nApprove furniture place"
+    },
+    {
+      "name": "C2_approve_furniture_label_and_persist",
+      "pass": true,
+      "detail": "{\"afterApprove\":{\"client_layout_status\":\"approved\",\"space_id\":\"40f81c67-199d-47f8-bf7d-79c118e34198\",\"shared_with_couple\":true},\"furnitureApprovedAfter\":1,\"stillPreference\":1,\"legacyClientApprovedAfter\":0}"
+    },
+    {
+      "name": "E1_venue_next_action_clear_after_furniture_approve",
+      "pass": true,
+      "detail": "nextAfterApprove=1 furnitureBadge=1 preferenceBadge=1 status=Couple preference: FPLR-FPLRMVRHPIJH-Ceremony (pending). Preference is not the same as working layout, sharing, or seating access.\n\nFurniture layout is approved. When print/setup-ready, open it and Mark as Ready."
+    },
+    {
+      "name": "E2_couple_not_told_false_completion",
+      "pass": true,
+      "detail": "FPLRRemediation\n\n·\n\nJen's Fancy Venue\n\nJul 17, 2061\n\nExport my data\n🏠\nHome\n✅\nTasks\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n💳\nPayments\n💬\nMessages\n🏛️\nGuide\n🤝\nVendors\nYour wedding setups\n\nEach setup is a part of your wedding plan. Alternatives appear only under the setup they belong to. Saving a preference asks your venue to review it — it does not approve the layout or change what the venue will use"
+    },
+    {
+      "name": "cleanup",
+      "pass": true,
+      "detail": "events=1"
+    }
+  ]
+}

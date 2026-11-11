@@ -21,6 +21,7 @@ export function computeVenuePermissions(doc: WorkspaceDocument): WorkspacePermis
     comment: false,
     share: doc.docType === "document" || doc.docType === "contract" || doc.docType === "invoice",
     download: hasRealFile,
+    delete: doc.docType === "document",
     archive: false,
     lock: false,
   };

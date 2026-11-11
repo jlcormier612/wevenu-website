@@ -1,0 +1,160 @@
+{
+  "status": 200,
+  "body": {
+    "ok": true,
+    "organizations": [
+      {
+        "id": "90efb537-aa7e-4302-8f38-1c4d6e196d99",
+        "name": "[DISPOSABLE-P4-PROP-A] 1794260831925 Organization",
+        "status": "active",
+        "reviewStatus": "none",
+        "reviewNotes": null,
+        "groupEligible": true,
+        "qualifyingVenueCount": 2,
+        "reason": "Organization has 2 qualifying active subscriptions — group 10% eligible.",
+        "lastSnapshot": {
+          "evaluatedAt": "2026-11-09T22:43:09.33+00:00",
+          "groupEligible": true,
+          "reason": "Organization has 2 qualifying active subscriptions — group 10% eligible.",
+          "triggerEvent": "venue_activation"
+        },
+        "members": [
+          {
+            "membershipId": "305c9d0e-2254-4fd7-9be7-25347ecb4428",
+            "venueId": "4609a143-556c-4eb3-b64e-fc64f2dc19f8",
+            "venueName": "[DISPOSABLE-P4-PROP-A] 1794260831925",
+            "status": "active",
+            "role": "primary",
+            "reviewRequired": false,
+            "reviewReason": null,
+            "subscriptionStatus": "active",
+            "planKey": "starter",
+            "stripeSubscriptionId": "sub_1Ua0PFErUqJH7nktG6NBEFXb"
+          },
+          {
+            "membershipId": "c89ab2a3-5ff4-4a4b-931c-712c4b5ecc1a",
+            "venueId": "d2063d3c-108b-40ab-af02-d17578d6d96e",
+            "venueName": "[DISPOSABLE-P4-PROP-B] 1794264061011",
+            "status": "active",
+            "role": "member",
+            "reviewRequired": false,
+            "reviewReason": null,
+            "subscriptionStatus": "active",
+            "planKey": "starter",
+            "stripeSubscriptionId": "sub_1Ua1GUErUqJH7nktqmmVOnB3"
+          }
+        ],
+        "reservations": [
+          {
+            "id": "9f5d3033-1a6f-4d29-b814-8df99b365bca",
+            "status": "fulfilled",
+            "planKey": "starter",
+            "expiresAt": null,
+            "stripeCheckoutSessionId": "cs_test_a1R3xaWHxAj4MzknEqy5dESuAKd79xBrRRLNQSEZA5I8Gar3gu0l9lrmLa",
+            "fulfilledVenueId": "d2063d3c-108b-40ab-af02-d17578d6d96e",
+            "countsTowardEligibility": true
+          },
+          {
+            "id": "5d2f0807-f886-4e03-a294-16b8d5b25630",
+            "status": "reserved",
+            "planKey": "starter",
+            "expiresAt": null,
+            "stripeCheckoutSessionId": "cs_test_b1m3jzo3Fr5V46TtQfihKNhcASRVMfdRCSIN30ZbcxRRs9TwUWeIhZOGL4",
+            "fulfilledVenueId": null,
+            "countsTowardEligibility": true
+          },
+          {
+            "id": "62a8f9c2-5269-4524-889f-245e59ff69f8",
+            "status": "reserved",
+            "planKey": "starter",
+            "expiresAt": null,
+            "stripeCheckoutSessionId": "cs_test_b1tnQJWQTxcB8XDMhSXBSTKJ2lTph8NhLIuqnJpM302vYaCH9ay6frsP2A",
+            "fulfilledVenueId": null,
+            "countsTowardEligibility": true
+          },
+          {
+            "id": "705d3a6e-eeb5-4d8e-8280-977fd19afe36",
+            "status": "reserved",
+            "planKey": "starter",
+            "expiresAt": null,
+            "stripeCheckoutSessionId": "cs_test_b1JV2t7eBG37m5RkWA5g1s1iArbR1bH6XWwdaLDfsBfp54J862L6yIkIZ9",
+            "fulfilledVenueId": null,
+            "countsTowardEligibility": true
+          },
+          {
+            "id": "a5d87350-8f2a-4114-88b2-d8aa0da5e194",
+            "status": "reserved",
+            "planKey": "starter",
+            "expiresAt": "2026-11-10T22:22:16.964+00:00",
+            "stripeCheckoutSessionId": null,
+            "fulfilledVenueId": null,
+            "countsTowardEligibility": true
+          },
+          {
+            "id": "44cf91ad-58d3-4327-a8c5-e3ec0036c9ab",
+            "status": "reserved",
+            "planKey": "starter",
+            "expiresAt": "2026-11-10T22:24:25.502+00:00",
+            "stripeCheckoutSessionId": null,
+            "fulfilledVenueId": null,
+            "countsTowardEligibility": true
+          },
+          {
+            "id": "eb507db0-3f01-4b71-aa90-3000ccd537dd",
+            "status": "reserved",
+            "planKey": "starter",
+            "expiresAt": null,
+            "stripeCheckoutSessionId": "cs_test_a1Tb27mezy02NB3ha2NR6i6Trccjh3tdTA868hjCOAcjhefKvum8ZeuYhs",
+            "fulfilledVenueId": null,
+            "countsTowardEligibility": true
+          },
+          {
+            "id": "c2942a71-1dff-4098-b11a-55a82c36b600",
+            "status": "reserved",
+            "planKey": "starter",
+            "expiresAt": null,
+            "stripeCheckoutSessionId": "cs_test_a1k6ECXe6pIr98OLXtRXXjQSaSpyg8IQSEesr6oV5rDU1WKxml1oyAntzr",
+            "fulfilledVenueId": null,
+            "countsTowardEligibility": true
+          },
+          {
+            "id": "6d678d7b-1717-4b42-baa5-85b9358ad00b",
+            "status": "reserved",
+            "planKey": "starter",
+            "expiresAt": null,
+            "stripeCheckoutSessionId": "cs_test_a1UhFAPVr1r5NuBTKRIdI1MIBPwvT5gqWipZjQYwD0dkU3t1yYtNRDhRfe",
+            "fulfilledVenueId": null,
+            "countsTowardEligibility": true
+          },
+          {
+            "id": "ca551def-0b1f-423e-a607-7d8857c903aa",
+            "status": "reserved",
+            "planKey": "starter",
+            "expiresAt": null,
+            "stripeCheckoutSessionId": "cs_test_a1GsKOzGlt248nCDMBeuMvNmtjfCWdRVGQx82QZRY337mNwoBi5Mn0ClJ3",
+            "fulfilledVenueId": null,
+            "countsTowardEligibility": true
+          }
+        ],
+        "adjustments": [
+          {
+            "id": "21329a5f-9254-40ba-a3f3-36709971f8b8",
+            "venueId": "4609a143-556c-4eb3-b64e-fc64f2dc19f8",
+            "status": "applied",
+            "desiredOfferType": "group_pct",
+            "desiredPercentOff": 10,
+            "expectedRecurringAmountCents": 17910,
+            "relatedTierUpgradeId": null,
+            "errorMessage": null,
+            "appliedAt": "2026-11-09T22:45:10+00:00",
+            "createdAt": "2026-11-09T22:43:09.48907+00:00"
+          }
+        ]
+      }
+    ],
+    "gates": {
+      "groupPricingFlag": true,
+      "durableStore": true
+    }
+  }
+}

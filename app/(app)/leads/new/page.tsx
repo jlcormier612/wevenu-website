@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { NewInquiryForm } from "@/components/leads/new-inquiry-form";
+import { CollectionBackLink } from "@/components/library/collection-back-link";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import {
   Card,
@@ -10,7 +11,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { getBlock } from "@/lib/availability/service";
+import { normalizeEventType } from "@/lib/event-types/canonical";
+import { buildVenueEventTypeOptions } from "@/lib/event-types/venue-options";
+import { getInquiryFormSettings } from "@/lib/inquiry-form/service";
 import type { LeadInput } from "@/lib/leads/types";
+import { getCurrentVenue } from "@/lib/venue/service";
 
 export const metadata: Metadata = { title: "New Lead" };
 
@@ -37,14 +42,30 @@ export default async function NewLeadPage({
   searchParams: Promise<{ fromBlockId?: string }>;
 }) {
   const { fromBlockId } = await searchParams;
-  const block = fromBlockId ? await getBlock(fromBlockId) : null;
+  const [block, inquirySettings, venue] = await Promise.all([
+    fromBlockId ? getBlock(fromBlockId) : Promise.resolve(null),
+    getInquiryFormSettings(),
+    getCurrentVenue(),
+  ]);
 
   // Calendar Booking Placeholder — "Convert to Booking." Pre-filled, not
   // auto-created: a coordinator still reviews and submits, so nothing about
   // a real Lead is ever fabricated silently from a placeholder's guesses.
+  const eventTypeOptions = buildVenueEventTypeOptions({
+    acceptedRaw: inquirySettings?.acceptedEventTypes ?? null,
+  });
+  const acceptedSet = new Set(eventTypeOptions.map((o) => o.value));
+
   const initial: Partial<LeadInput> | undefined = block ? {
     ...(block.clientName ? parseClientName(block.clientName) : {}),
-    eventType: block.eventType ?? "wedding",
+    // New Lead is inquiry creation — only accepted types. A Hold with a
+    // legacy event type clears so the coordinator picks an accepted one.
+    eventType: (() => {
+      const fromHold = block.eventType
+        ? (normalizeEventType(block.eventType) ?? block.eventType)
+        : "";
+      return fromHold && acceptedSet.has(fromHold) ? fromHold : "";
+    })(),
     eventDate: block.startDate,
     guestCount: block.guestCount != null ? String(block.guestCount) : "",
     estimatedBudget: block.estimatedRevenue != null ? String(block.estimatedRevenue) : "",
@@ -52,23 +73,31 @@ export default async function NewLeadPage({
   } : undefined;
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title={block ? "Convert to Lead" : "New Lead"}
-        description={block
-          ? `Turning "${block.title}" into a real Lead — nothing here was retyped, review and save when ready.`
-          : "Record a new lead from a call, email, or walk-in."}
-      />
-      <Card>
-        <CardHeader>
+    <div className="htc-hospitality-page space-y-5 sm:space-y-6" data-htc-phase12="lead-new">
+      <CollectionBackLink href="/leads" label="Leads" />
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
+        <PageHeader
+          title={block ? "Convert to Lead" : "New Lead"}
+          description={block
+            ? `Turning "${block.title}" into a real Lead — nothing here was retyped, review and save when ready.`
+            : "Record a new lead from a call, email, or walk-in."}
+        />
+      </div>
+      <Card className="htc-working-card gap-0 py-0">
+        <CardHeader className="py-4">
           <CardTitle>Lead details</CardTitle>
           <CardDescription>
             Fill in what you know. Everything is editable later from the lead
             record.
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <NewInquiryForm initial={initial} fromBlockId={block ? fromBlockId : undefined} />
+        <CardContent className="py-5">
+          <NewInquiryForm
+            initial={initial}
+            fromBlockId={block ? fromBlockId : undefined}
+            eventTypeOptions={eventTypeOptions}
+            venueTimezone={venue?.timezone ?? null}
+          />
         </CardContent>
       </Card>
     </div>

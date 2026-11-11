@@ -1,0 +1,56 @@
+{
+  "workstream": "human-facing-cleanup-OPEN-list",
+  "updated": "2026-09-23",
+  "production": "untouched",
+  "commit": "0d545ff31749304804cc25fa7202a5c13b6aafcb",
+  "migration": {
+    "file": "20261406000000_sms_consent_email_tokens.sql",
+    "run": "https://github.com/jlcormier612/wevenu-website/actions/runs/35902237823",
+    "conclusion": "success"
+  },
+  "deploy": {
+    "run": "https://github.com/jlcormier612/wevenu-website/actions/runs/35902241069",
+    "headSha": "0d545ff31749304804cc25fa7202a5c13b6aafcb",
+    "status_at_report": "in_progress",
+    "prior_ecs_image": "htc-sandbox-venue-app:358 / 7dc63d6f… (not yet 0d545ff3)"
+  },
+  "implemented": {
+    "email_sms_consent": "Venue emails permission request; consent only after /sms-consent/[token] affirmative opt-in → communication_permissions source email_sms_consent. Unsolicited SMS remains fail-closed.",
+    "multi_space_assignment_ui": "Event create/edit shows use→space editor when space_operating_mode=multi and spaces have permitted_uses. Overview displays formatted assignments.",
+    "calendar_filter_gate": "Already gated on multi (prior). Confirmed Sweet Daisy (single Garden) week view has no space filter — correct."
+  },
+  "sandbox_fixture": {
+    "jen_fancy_venue_id": "a415ac52-cd74-42a6-8df7-7a8f6e71d080",
+    "space_operating_mode": "multi",
+    "permitted_uses_set": {
+      "Barn": ["ceremony", "reception"],
+      "Garden Lawn": ["ceremony", "cocktail_hour"],
+      "Covered Bridge": ["cocktail_hour", "getting_ready"]
+    }
+  },
+  "tests": {
+    "focused": 30,
+    "result": "pass",
+    "suites": [
+      "sms-consent-email",
+      "request-sms-consent",
+      "assignments",
+      "uses",
+      "event-spaces-merge"
+    ]
+  },
+  "browser_rcj": {
+    "status": "NOT GREEN — blocked",
+    "blockers": [
+      "Deploy 0d545ff3 still in_progress — SMS email CTA + assignment editor not on ECS yet",
+      "Active browser session was Sweet Daisy Barn & Farm (single-space), not Jen's Fancy; sign-out click did not complete"
+    ],
+    "partial_observation": "Sweet Daisy calendar week view correctly omits space filter while multi mode exists on Jen Fancy in DB"
+  },
+  "out_of_scope_this_pass": [
+    "invoice-name edit UI browser",
+    "named deposit mailbox",
+    "payment path re-proof"
+  ],
+  "verdict": "PARTIAL — code+DB migration GREEN for OPEN list; runtime+browser NOT GREEN until deploy finishes and Jen Fancy RCJ completes"
+}

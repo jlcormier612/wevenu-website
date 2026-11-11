@@ -23,6 +23,11 @@ export type RawEmailPayload = {
   replyTo?: string;
   /** Optional tags for Resend dashboard filtering */
   tags?: Array<{ name: string; value: string }>;
+  /**
+   * Resend Idempotency-Key. Same key + same payload within 24h returns the
+   * original email instead of sending another.
+   */
+  idempotencyKey?: string;
 };
 
 export function getEmailFromAddress(): string {
@@ -105,6 +110,9 @@ export async function sendRawEmail(payload: RawEmailPayload): Promise<RawSendRes
       headers: {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
+        ...(payload.idempotencyKey?.trim()
+          ? { "Idempotency-Key": payload.idempotencyKey.trim().slice(0, 256) }
+          : {}),
       },
       body: JSON.stringify(body),
     });

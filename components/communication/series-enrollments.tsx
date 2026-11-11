@@ -129,9 +129,9 @@ export function SeriesEnrollments({ sequenceId, enrollments }: { sequenceId: str
       {results.length > 0 && (
         <div className="space-y-1.5 rounded-lg border border-border p-2">
           {results.map((r) => (
-            <div key={r.id} className="flex items-start justify-between gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted/50">
+            <div key={r.id} className="htc-working-row flex items-start justify-between gap-2 rounded-md px-2 py-1.5 text-sm">
               <div className="min-w-0 space-y-0.5">
-                <span>{r.displayName}</span>
+                <span className="font-medium text-heading">{r.displayName}</span>
                 {r.otherActiveAutomations.length > 0 && (
                   <p className="text-xs text-amber-700 dark:text-amber-400">
                     Also in another active automation: {r.otherActiveAutomations.join(", ")}
@@ -155,11 +155,14 @@ export function SeriesEnrollments({ sequenceId, enrollments }: { sequenceId: str
             const isPaused = e.status === "active" && !!e.pausedAt;
             const others = e.otherActiveAutomations ?? [];
             return (
-              <div key={e.id} className="flex items-center justify-between rounded-lg border border-border px-3 py-2 text-sm">
+              <div key={e.id} className="htc-working-row flex items-center justify-between rounded-lg border border-border bg-card px-3 py-2 text-sm">
                 <div className="min-w-0 space-y-0.5">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-medium text-heading">{e.relationshipName}</span>
-                    <Badge variant={e.status === "active" && !isPaused ? "default" : "muted"} className="text-[10px]">
+                    <Badge
+                      variant="outline"
+                      className={`text-[10px] ${e.status === "active" && !isPaused ? "htc-badge-active" : isPaused ? "htc-badge-attention" : ""}`}
+                    >
                       {statusLabel(e)}
                     </Badge>
                   </div>

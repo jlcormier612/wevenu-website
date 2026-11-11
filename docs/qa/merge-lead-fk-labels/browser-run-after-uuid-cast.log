@@ -1,0 +1,46 @@
+PASS serving-sha — expected=889f005e8529e79ec35129a41889712463058df5 ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:889f005e8529e79ec35129a41889712463058df5
+PASS serving-digest — sha256:307b519809123cb1a9174f7958a5d8acfcb1c4021c26882fa41f7acd8d5d3d47
+PASS fixtures — {"cancelEarly":"0a8e3f74-0fa1-4880-bfd4-28cfa5a3841c","cancelLate":"0cdd6335-8918-45b0-b5b3-1e8ccb56c887","mergeEarly":"8c09ed9f-4a39-4164-b639-c3fec4d3013b","mergeLate":"d2f3ad3e-e3da-41a0-98fc-ae7c23fe7683","decoy":"a95160e4-9e45-4de4-a13f-88418de85b76","tour":"71cb6682-37a8-448d-baa2-1b7ccf331d21","tourIso":"2030-03-12T14:00:00.000Z"}
+PASS dialog-search-first — find field
+PASS dialog-no-uuid-ui — no UUID troubleshooting controls
+PASS continue-disabled-before-preview — continue gated until preview
+PASS search-by-name-multiple — count=2 ids=a95160e4-9e45-4de4-a13f-88418de85b76,0cdd6335-8918-45b0-b5b3-1e8ccb56c887
+PASS current-lead-excluded — ids=a95160e4-9e45-4de4-a13f-88418de85b76,0cdd6335-8918-45b0-b5b3-1e8ccb56c887
+PASS search-includes-late — 0cdd6335-8918-45b0-b5b3-1e8ccb56c887
+PASS search-includes-decoy — a95160e4-9e45-4de4-a13f-88418de85b76
+PASS ambiguous-hint — hint
+PASS search-by-phone — 0cdd6335-8918-45b0-b5b3-1e8ccb56c887
+PASS search-by-email — 0cdd6335-8918-45b0-b5b3-1e8ccb56c887
+PASS select-shows-selected — selected badge on row
+PASS auto-preview-after-select — preview auto
+PASS preview-survivor-earliest — earliest default
+PASS preview-survivor-reason — reason
+PASS preview-space-shows-name — Planned event space — fill empty primary from secondary: Barn
+PASS preview-staff-shows-names — Assigned staff — choose one
+
+Keep primary: Jen Fancy
+Use secondary: Ron Cormier
+PASS cancel-path-conflicts-resolved — groups=6
+PASS final-confirm-appears — irreversible step
+PASS final-cancel-keeps-preview — back to preview
+PASS cancel-leaves-early-unmerged — {"id":"0a8e3f74-0fa1-4880-bfd4-28cfa5a3841c","merged_into_lead_id":null,"updated_at":"2026-10-26T03:23:02.722242+00:00","email":"merge-cancel.1792984977820@hellotocheers-test.invalid","phone":null}
+PASS cancel-leaves-late-unmerged — {"id":"0cdd6335-8918-45b0-b5b3-1e8ccb56c887","merged_into_lead_id":null,"updated_at":"2026-10-26T03:22:58.474975+00:00","email":"alt-merge-cancel.1792984977820@hellotocheers-test.invalid","phone":"5554977820"}
+PASS cancel-identity-unchanged — {"early":{"id":"0a8e3f74-0fa1-4880-bfd4-28cfa5a3841c","merged_into_lead_id":null,"updated_at":"2026-10-26T03:23:02.722242+00:00","email":"merge-cancel.1792984977820@hellotocheers-test.invalid","phone":null},"late":{"id":"0cdd6335-8918-45b0-b5b3-1e8ccb56c887","merged_into_lead_id":null,"updated_at":"2026-10-26T03:22:58.474975+00:00","email":"alt-merge-cancel.1792984977820@hellotocheers-test.invalid","phone":"5554977820"}}
+PASS confirm-search-finds-early — 8c09ed9f-4a39-4164-b639-c3fec4d3013b
+PASS confirm-self-excluded — self not listed
+PASS confirm-path-conflicts-resolved — groups=3
+PASS pre-merge-tour-on-secondary — {"id":"71cb6682-37a8-448d-baa2-1b7ccf331d21","lead_id":"d2f3ad3e-e3da-41a0-98fc-ae7c23fe7683","status":"scheduled","scheduled_at":"2030-03-12T14:00:00+00:00"}
+PASS confirm-continue-enabled — Continue ready after conflict choices
+PASS redirect-to-survivor — https://app.sandbox.hellotocheers.com/leads/8c09ed9f-4a39-4164-b639-c3fec4d3013b | toast=["Leads merged. Opening the surviving lead."]
+PASS secondary-soft-marked — {"merged_into_lead_id":"8c09ed9f-4a39-4164-b639-c3fec4d3013b","merged_at":"2026-10-26T03:23:19.881099+00:00","first_name":"MergeLate","email":"merge-ok.1792984977820@hellotocheers-test.invalid"}
+PASS primary-not-merged — {"merged_into_lead_id":null,"first_name":"MergeEarly","phone":"7774977820","partner_email":"sam.partner.1792984977820@hellotocheers-test.invalid","email":"merge-ok.1792984977820@hellotocheers-test.invalid","planned_event_space_id":"3b36ec69-b17d-4351-8186-68d96dd6dfe7","assigned_staff_id":"67458154-e6fe-41e3-830e-ea39844e4e19"}
+PASS phone-filled-on-survivor — {"merged_into_lead_id":null,"first_name":"MergeEarly","phone":"7774977820","partner_email":"sam.partner.1792984977820@hellotocheers-test.invalid","email":"merge-ok.1792984977820@hellotocheers-test.invalid","planned_event_space_id":"3b36ec69-b17d-4351-8186-68d96dd6dfe7","assigned_staff_id":"67458154-e6fe-41e3-830e-ea39844e4e19"}
+PASS partner-email-kept-on-survivor — sam.partner.1792984977820@hellotocheers-test.invalid
+PASS space-filled-on-survivor — {"got":"3b36ec69-b17d-4351-8186-68d96dd6dfe7","expect":"3b36ec69-b17d-4351-8186-68d96dd6dfe7","name":"Barn"}
+PASS staff-kept-primary-on-survivor — {"got":"67458154-e6fe-41e3-830e-ea39844e4e19","expect":"67458154-e6fe-41e3-830e-ea39844e4e19","name":"Jen Fancy"}
+PASS tour-reassociated-same-row — {"id":"71cb6682-37a8-448d-baa2-1b7ccf331d21","lead_id":"8c09ed9f-4a39-4164-b639-c3fec4d3013b","status":"scheduled","scheduled_at":"2030-03-12T14:00:00+00:00"}
+PASS ui-after-reload-survivor — https://app.sandbox.hellotocheers.com/leads/8c09ed9f-4a39-4164-b639-c3fec4d3013b
+PASS self-merge-blocked — self rows=0
+PASS continue-disabled-without-valid-preview — no bypass
+
+GREEN merge lead discovery

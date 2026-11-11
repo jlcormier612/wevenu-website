@@ -34,6 +34,7 @@ export type StarterSequenceMaster = {
 /**
  * SEQ-01 New Inquiry Welcome — immediate welcome + gentle follow-up.
  * Both steps resolve to MSG-01 until the venue customizes step 2.
+ * Paused by default so a venue reviews and activates outbound mail deliberately.
  *
  * SEQ-02 Tour Follow-Up — after a completed tour (MSG-04), next morning.
  *
@@ -54,7 +55,7 @@ export const STARTER_SEQUENCE_MASTERS: readonly StarterSequenceMaster[] = [
     name: "New Inquiry Welcome",
     triggerType: "lead_created",
     triggerStage: null,
-    initialStatus: "active",
+    initialStatus: "paused",
     steps: [
       { templateMasterKey: "MSG-01", channel: "email", offsetDays: 0 },
       { templateMasterKey: "MSG-01", channel: "email", offsetDays: 3 },

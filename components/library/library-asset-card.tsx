@@ -94,7 +94,7 @@ export function LibraryAssetCard({
       <div className="flex flex-wrap items-center gap-2">
         <p className="font-medium text-heading">{title}</p>
         {isStarter && !isArchived && (
-          <Badge variant="muted" className="text-[10px]">Starter</Badge>
+          <Badge variant="outline" className="bg-card text-[10px]">Starter</Badge>
         )}
         {isArchived && (
           <Badge variant="muted" className="text-[10px]">Archived</Badge>

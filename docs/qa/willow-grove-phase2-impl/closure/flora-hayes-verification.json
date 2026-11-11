@@ -1,0 +1,56 @@
+{
+  "email": "lila@floraandbranch.example",
+  "cookieJar": "sb-wvpsldwwjqdannqasrdf-vendor-auth-token",
+  "steps": [
+    {
+      "name": "dashboard",
+      "ok": true,
+      "url": "https://app.sandbox.hellotocheers.com/vendor/dashboard",
+      "redirectedToLogin": false,
+      "showsFlora": true,
+      "showsWillowGrove": true,
+      "shot": "/Users/jensmac/Developer/wevenu-website/docs/qa/willow-grove-phase2-impl/closure/screenshots/flora-01-dashboard.png",
+      "snippet": "Flora & Branch\n\nFlorist\n\nHome\nEvents\nMessages\nDocuments\nProfile\nSwitch workspace\nGive feedback\nChange password\nSign out\n3\nGood evening, Lila.\n\nFriday, November 6\n\nWelcome! I'm Luv. I'll help you stay ahead of messages, tasks, and event details from your venues.\n\nSee today's briefing →\nPARTNERING WITH\n\nThe Willow Grove\n\nFlorist Partner\n\nPreferred Vendor\nPartner since November 2026\n· 2 events togeth"
+    },
+    {
+      "name": "events_list",
+      "ok": true,
+      "url": "https://app.sandbox.hellotocheers.com/vendor/events",
+      "showsHayes": true,
+      "shot": "/Users/jensmac/Developer/wevenu-website/docs/qa/willow-grove-phase2-impl/closure/screenshots/flora-02-events.png",
+      "snippet": "Flora & Branch\n\nFlorist\n\nHome\nEvents\nMessages\nDocuments\nProfile\nSwitch workspace\nGive feedback\nChange password\nSign out\n3\nEvents\nUPCOMING\n\nOlivia & James Hayes Wedding\n\nThe Willow Grove\n\nSat, May 20\n\nArrival 1:30 PM\n\nUpcoming\n\nAutumn Grove Dinner\n\nThe Willow Grove\n\nSun, Nov 22\n\nArrival 2:00 PM\n\nUpcoming"
+    },
+    {
+      "name": "hayes_event",
+      "ok": true,
+      "url": "https://app.sandbox.hellotocheers.com/vendor/events/6a413912-3a95-492e-89d9-2b3f66a7e1fc",
+      "showsHayes": true,
+      "showsSharedPlanning": true,
+      "exposesVenuePrivateNotes": false,
+      "exposesVenueFinancials": false,
+      "vendorOwnCostVisible": true,
+      "notesTabSnippet": "",
+      "snippet": "Flora & Branch\n\nFlorist\n\nHome\nEvents\nMessages\nDocuments\nProfile\nSwitch workspace\nGive feedback\nChange password\nSign out\n3\nEvents\nOlivia & James Hayes Wedding\nThe Willow Grove\n· Saturday, May 20, 2028\n· wedding\nOverview\nMessages\nTimeline\nTasks4\nDocuments\nVenue Information\nInternal notes\nOverview\n\nYour day-of assignment, open work, and recent updates for this event.\n\nYour assignment\nArrival at 1:30 PM\n\nSetup location\n\nGarden Lawn → Carriage House\n\nLoad-in notes\n\nUse north path to Lawn; do not drive on turf.\n\nDay-of status\n\nLet the venue know you've arrived and when setup is done. They'll see this on the wedding-day board.\n\nI've arrived\nSetup complete\nEvent Removal Request\nAt a glance\n\n4 open tasks\n\nNext: Confirm ceremony arch placement on Garden Lawn · Apr 20\n\nNo documents\n\nShared files for ",
+      "shot": "/Users/jensmac/Developer/wevenu-website/docs/qa/willow-grove-phase2-impl/closure/screenshots/flora-03-hayes.png"
+    }
+  ],
+  "membership": {
+    "vendorUser": {
+      "id": "4ed81733-8ee8-4499-96ef-0fb174a9a661",
+      "vendor_id": "8c7c787d-8656-48c1-8801-a0fb38b542bf",
+      "user_id": "d8edeee2-3734-490a-8361-c306ec4ac1f8",
+      "role": "owner",
+      "invited_by": null,
+      "invited_at": "2026-11-05T04:14:41.384227+00:00",
+      "accepted_at": "2026-11-05T04:14:41.312+00:00",
+      "is_active": true,
+      "created_at": "2026-11-05T04:14:41.384227+00:00"
+    },
+    "vendorId": "8c7c787d-8656-48c1-8801-a0fb38b542bf",
+    "business": "Flora & Branch",
+    "email": "lila@floraandbranch.example"
+  },
+  "rootCause": "Vendor portal uses isolated cookie jar sb-<ref>-vendor-auth-token via createVendorClient(). Prior Phase 2 probe set the staff venue cookie sb-<ref>-auth-token, so getVendorUser() saw no vendor session and redirected to /vendor/login. Not an auth defect or missing membership — demo session/cookie scope mismatch.",
+  "classification": "Session/cookie issue (demo harness) — legitimate vendor_users membership present",
+  "hayesEventId": "6a413912-3a95-492e-89d9-2b3f66a7e1fc"
+}

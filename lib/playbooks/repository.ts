@@ -1,6 +1,9 @@
 import { createClient } from "@/integrations/supabase/server";
 import { cadenceIntervalDays, getReminderCadence } from "@/lib/notifications/obligations";
+import { scheduledReminderAt } from "@/lib/notifications/schedule-times";
 import { clampDaysOffset, daysBetween, offsetDate } from "@/lib/playbooks/due-dates";
+import { applyAcceptedPackageToTasks } from "@/lib/playbooks/package-choice-task";
+import { getVenueTimezone } from "@/lib/venue/timezone";
 import type {
   EventPlaybookApplication,
   EventReadiness,
@@ -26,13 +29,13 @@ type DbClient = Awaited<ReturnType<typeof createClient>>;
 type TemplateRow = { id: string; venue_id: string; name: string; kind: string; event_type: string | null; is_default: boolean; is_archived: boolean; description: string | null; source_master_key?: string | null; created_at: string; updated_at: string; };
 type MilestoneRow = { id: string; template_id: string; venue_id: string; name: string; kind: string | null; sort_order: number; created_at: string; updated_at: string; };
 type TaskRow = { id: string; template_id: string; venue_id: string; title: string; description: string | null; owner_type: string; visibility: string; days_offset: number; due_date_rule_kind: string; category: string; milestone_id: string; auto_complete_trigger: string | null; depends_on_task_id: string | null; is_required: boolean; sort_order: number; created_at: string; reminder_before_days: number[] | null; escalation_after_days: number | null; notify_on_assign: boolean; notify_on_complete: boolean; action_type: string | null; action_label: string | null; needs_review: boolean; };
-type EventTaskRow = { id: string; venue_id: string; event_id: string; template_task_id: string | null; title: string; description: string | null; owner_type: string; visibility: string; due_date: string; days_offset: number; due_date_rule_kind: string; due_date_locked: boolean; category: string; milestone_name: string; milestone_kind: string | null; auto_complete_trigger: string | null; payment_line_item_id: string | null; is_required: boolean; status: string; depends_on_event_task_id: string | null; depends_on_title?: string | null; completed_at: string | null; completed_by: string | null; notes: string | null; sort_order: number; created_at: string; updated_at: string; reminder_before_days: number[] | null; escalation_after_days: number | null; notify_on_assign: boolean; notify_on_complete: boolean; assigned_to_staff_id: string | null; assigned_to_name?: string | null; action_type: string | null; action_label: string | null; request_id: string | null; scheduled_date: string | null; scheduled_start_time: string | null; scheduled_end_time: string | null; location: string | null; };
+type EventTaskRow = { id: string; venue_id: string; event_id: string; template_task_id: string | null; title: string; description: string | null; owner_type: string; visibility: string; due_date: string; days_offset: number; due_date_rule_kind: string; due_date_locked: boolean; category: string; milestone_name: string; milestone_kind: string | null; auto_complete_trigger: string | null; payment_line_item_id: string | null; is_required: boolean; status: string; progress_state?: string | null; depends_on_event_task_id: string | null; depends_on_title?: string | null; completed_at: string | null; completed_by: string | null; notes: string | null; sort_order: number; created_at: string; updated_at: string; reminder_before_days: number[] | null; escalation_after_days: number | null; notify_on_assign: boolean; notify_on_complete: boolean; assigned_to_staff_id: string | null; assigned_to_name?: string | null; action_type: string | null; action_label: string | null; request_id: string | null; scheduled_date: string | null; scheduled_start_time: string | null; scheduled_end_time: string | null; location: string | null; };
 
 const mapTemplate = (r: TemplateRow): PlaybookTemplate => ({ id: r.id, venueId: r.venue_id, name: r.name, kind: r.kind as PlaybookTemplate["kind"], eventType: r.event_type, isDefault: r.is_default, isArchived: r.is_archived, description: r.description, sourceMasterKey: r.source_master_key ?? null, createdAt: r.created_at, updatedAt: r.updated_at });
 const mapMilestone = (r: MilestoneRow): PlaybookMilestone => ({ id: r.id, templateId: r.template_id, venueId: r.venue_id, name: r.name, kind: (r.kind as PlaybookMilestone["kind"]) ?? null, sortOrder: r.sort_order, createdAt: r.created_at, updatedAt: r.updated_at });
 const mapTask = (r: TaskRow): PlaybookTask => ({ id: r.id, templateId: r.template_id, venueId: r.venue_id, title: r.title, description: r.description, ownerType: r.owner_type as PlaybookTask["ownerType"], visibility: r.visibility as PlaybookTask["visibility"], daysOffset: r.days_offset, dueDateRuleKind: r.due_date_rule_kind as PlaybookTask["dueDateRuleKind"], category: r.category as PlaybookTask["category"], milestoneId: r.milestone_id, autoCompleteTrigger: r.auto_complete_trigger, // Compatibility column retained in DB but inert for Planning workflow.
   dependsOnTaskId: null, isRequired: r.is_required, sortOrder: r.sort_order, createdAt: r.created_at, reminderBeforeDays: r.reminder_before_days ?? null, escalationAfterDays: r.escalation_after_days ?? null, notifyOnAssign: r.notify_on_assign, notifyOnComplete: r.notify_on_complete, actionType: (r.action_type as PlaybookTask["actionType"]) ?? null, actionLabel: r.action_label ?? null, needsReview: r.needs_review });
-const mapEventTask = (r: EventTaskRow): EventTask => ({ id: r.id, venueId: r.venue_id, eventId: r.event_id, templateTaskId: r.template_task_id, title: r.title, description: r.description, ownerType: r.owner_type as EventTask["ownerType"], visibility: r.visibility as EventTask["visibility"], dueDate: r.due_date, daysOffset: r.days_offset, dueDateRuleKind: r.due_date_rule_kind as EventTask["dueDateRuleKind"], dueDateLocked: r.due_date_locked, category: r.category as EventTask["category"], milestoneName: r.milestone_name, milestoneKind: (r.milestone_kind as EventTask["milestoneKind"]) ?? null, autoCompleteTrigger: r.auto_complete_trigger, paymentLineItemId: r.payment_line_item_id ?? null, isRequired: r.is_required, status: computeStatus(r), // Compatibility columns retained in DB but inert for Planning workflow.
+const mapEventTask = (r: EventTaskRow): EventTask => ({ id: r.id, venueId: r.venue_id, eventId: r.event_id, templateTaskId: r.template_task_id, title: r.title, description: r.description, ownerType: r.owner_type as EventTask["ownerType"], visibility: r.visibility as EventTask["visibility"], dueDate: r.due_date, daysOffset: r.days_offset, dueDateRuleKind: r.due_date_rule_kind as EventTask["dueDateRuleKind"], dueDateLocked: r.due_date_locked, category: r.category as EventTask["category"], milestoneName: r.milestone_name, milestoneKind: (r.milestone_kind as EventTask["milestoneKind"]) ?? null, autoCompleteTrigger: r.auto_complete_trigger, paymentLineItemId: r.payment_line_item_id ?? null, isRequired: r.is_required, status: computeStatus(r), progressState: r.progress_state === "not_started" || r.progress_state === "in_progress" || r.progress_state === "complete" ? r.progress_state : null, // Compatibility columns retained in DB but inert for Planning workflow.
   dependsOnEventTaskId: null, dependsOnTitle: null, completedAt: r.completed_at, completedBy: r.completed_by, notes: r.notes, sortOrder: r.sort_order, createdAt: r.created_at, updatedAt: r.updated_at, reminderBeforeDays: r.reminder_before_days ?? null, escalationAfterDays: r.escalation_after_days ?? null, notifyOnAssign: r.notify_on_assign, notifyOnComplete: r.notify_on_complete, assignedToStaffId: r.assigned_to_staff_id ?? null, assignedToName: r.assigned_to_name ?? null, actionType: (r.action_type as EventTask["actionType"]) ?? null, actionLabel: r.action_label ?? null, requestId: r.request_id ?? null, scheduledDate: r.scheduled_date ?? null, scheduledStartTime: r.scheduled_start_time ?? null, scheduledEndTime: r.scheduled_end_time ?? null, location: r.location ?? null });
 
 function computeStatus(r: EventTaskRow): TaskStatus {
@@ -98,7 +101,7 @@ export async function getTemplatesWithStats(client: DbClient, venueId: string): 
   }));
 }
 
-export async function insertTemplate(client: DbClient, venueId: string, name: string, kind: PlaybookTemplate["kind"], eventType: string | null, description: string | null, opts?: { sourceMasterKey?: string | null }): Promise<string> {
+export async function insertTemplate(client: DbClient, venueId: string, name: string, kind: PlaybookTemplate["kind"], eventType: string | null, description: string | null, opts?: { sourceMasterKey?: string | null; isDefault?: boolean }): Promise<string> {
   const { data, error } = await client.from("playbook_templates").insert({
     venue_id: venueId,
     name: name.trim(),
@@ -106,6 +109,7 @@ export async function insertTemplate(client: DbClient, venueId: string, name: st
     event_type: eventType || null,
     description: description?.trim() || null,
     source_master_key: opts?.sourceMasterKey ?? null,
+    is_default: opts?.isDefault === true,
   }).select("id").single<{ id: string }>();
   if (error) throw error;
   return data.id;
@@ -114,6 +118,25 @@ export async function insertTemplate(client: DbClient, venueId: string, name: st
 export async function renameTemplate(client: DbClient, venueId: string, id: string, name: string): Promise<void> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (client.from("playbook_templates") as any).update({ name: name.trim() }).eq("id", id).eq("venue_id", venueId);
+  if (error) throw error;
+}
+
+/** Template-level metadata only — does not touch milestones/tasks or source_master_key. Kind is immutable. */
+export async function updateTemplateDetails(
+  client: DbClient,
+  venueId: string,
+  id: string,
+  input: { name: string; eventType: string | null; description: string | null },
+): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("playbook_templates") as any)
+    .update({
+      name: input.name.trim(),
+      event_type: input.eventType || null,
+      description: input.description?.trim() || null,
+    })
+    .eq("id", id)
+    .eq("venue_id", venueId);
   if (error) throw error;
 }
 
@@ -344,6 +367,16 @@ export async function getEventTasks(client: DbClient, venueId: string, eventId: 
   return (data as any[]).map((r) => mapEventTask({ ...r, assigned_to_name: r.assignee?.full_name ?? null }));
 }
 
+export async function getClientTasks(client: DbClient, venueId: string, clientId: string): Promise<EventTask[]> {
+  const { data, error } = await client.from("event_tasks")
+    .select("*, assignee:assigned_to_staff_id(full_name)")
+    .eq("venue_id", venueId).eq("client_id", clientId).is("event_id", null)
+    .order("sort_order").order("due_date");
+  if (error) throw error;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (data as any[]).map((r) => mapEventTask({ ...r, assigned_to_name: r.assignee?.full_name ?? null }));
+}
+
 export async function getEventPlaybookApplications(client: DbClient, venueId: string, eventId: string): Promise<EventPlaybookApplication[]> {
   const { data, error } = await client.from("event_playbook_applications")
     .select("event_id, kind, template_id, template_name, applied_at, released_at")
@@ -352,6 +385,23 @@ export async function getEventPlaybookApplications(client: DbClient, venueId: st
   return (data ?? []).map((r) => ({
     eventId: r.event_id, kind: r.kind as EventPlaybookApplication["kind"],
     templateId: r.template_id, templateName: r.template_name, appliedAt: r.applied_at,
+    releasedAt: r.released_at ?? null,
+  }));
+}
+
+export async function getClientPlaybookApplications(client: DbClient, venueId: string, clientId: string): Promise<EventPlaybookApplication[]> {
+  const { data, error } = await client.from("event_playbook_applications")
+    .select("event_id, kind, template_id, template_name, applied_at, released_at")
+    .eq("venue_id", venueId)
+    .eq("client_id", clientId)
+    .is("event_id", null);
+  if (error) throw error;
+  return (data ?? []).map((r) => ({
+    eventId: r.event_id ?? "",
+    kind: r.kind as EventPlaybookApplication["kind"],
+    templateId: r.template_id,
+    templateName: r.template_name,
+    appliedAt: r.applied_at,
     releasedAt: r.released_at ?? null,
   }));
 }
@@ -512,6 +562,76 @@ export async function applyPlaybookToEvent(
   return { ok: true };
 }
 
+/**
+ * Apply a checklist to a client before an Event exists.
+ * Due dates use the preferred date as a planning anchor. That date is not occupancy.
+ * book_relationship attaches these rows to the Event; it does not copy them.
+ */
+export async function applyPlaybookToClient(
+  client: DbClient,
+  venueId: string,
+  clientId: string,
+  templateId: string,
+  anchorDate: string,
+  capabilities?: import("@/lib/playbooks/capabilities").VenuePlanningCapabilities,
+): Promise<ApplyPlaybookResult> {
+  const template = await getTemplate(client, venueId, templateId);
+  if (!template) throw new Error("Template not found.");
+
+  const { error: markerError } = await client.from("event_playbook_applications").insert({
+    client_id: clientId, venue_id: venueId, template_id: templateId, kind: template.kind,
+    template_name: template.name,
+    released_at: template.kind === "venue" ? new Date().toISOString() : null,
+  });
+  if (markerError) {
+    if (markerError.code === "23505") return { ok: false, reason: "already_applied" };
+    throw markerError;
+  }
+
+  const [tasksRaw, milestones] = await Promise.all([
+    getTemplateTasks(client, venueId, templateId),
+    getMilestones(client, venueId, templateId),
+  ]);
+  const { filterTasksForVenueCapabilities } = await import("@/lib/playbooks/capabilities");
+  const { DEFAULT_PLANNING_CAPABILITIES } = await import("@/lib/playbooks/capabilities");
+  const tasks = filterTasksForVenueCapabilities(tasksRaw, capabilities ?? DEFAULT_PLANNING_CAPABILITIES);
+  if (!tasks.length) return { ok: true };
+
+  const milestoneById = new Map(milestones.map((m) => [m.id, m]));
+  for (const t of tasks.sort((a, b) => a.sortOrder - b.sortOrder)) {
+    const dueDate = offsetDate(anchorDate, t.daysOffset);
+    const milestone = milestoneById.get(t.milestoneId);
+    const { data: inserted, error } = await client.from("event_tasks")
+      .insert({
+        venue_id: venueId, client_id: clientId, template_task_id: t.id,
+        title: t.title, description: t.description, owner_type: t.ownerType,
+        visibility: t.visibility, due_date: dueDate, days_offset: t.daysOffset,
+        due_date_rule_kind: t.dueDateRuleKind,
+        category: t.category,
+        milestone_name: milestone?.name ?? "Planning",
+        milestone_kind: milestone?.kind ?? null,
+        auto_complete_trigger: t.autoCompleteTrigger,
+        depends_on_event_task_id: null,
+        is_required: t.isRequired, sort_order: t.sortOrder,
+        status: "pending",
+        reminder_before_days: t.reminderBeforeDays,
+        escalation_after_days: t.escalationAfterDays,
+        notify_on_assign: t.notifyOnAssign,
+        notify_on_complete: t.notifyOnComplete,
+        action_type: t.actionType,
+        action_label: t.actionLabel,
+      })
+      .select("id").single<{ id: string }>();
+    if (error) throw error;
+    await copyAttachmentsToContextLinks(client, venueId, t.id, inserted.id);
+    if (template.kind !== "client") {
+      await createRemindersForTask(client, venueId, inserted.id, dueDate, t);
+    }
+  }
+
+  return { ok: true };
+}
+
 export type ReleasePlaybookResult = { ok: true } | { ok: false; reason: "not_found" | "already_released" };
 
 /**
@@ -597,7 +717,7 @@ export async function releasePlaybookApplication(client: DbClient, venueId: stri
     .maybeSingle<{ event_date: string }>();
   if (eventRow?.event_date) {
     const { data: venueRow } = await client.from("venues")
-      .select("planning_timeline_enabled, planning_floor_plan_enabled, planning_seating_enabled, planning_vendors_enabled")
+      .select("planning_checklists_enabled, planning_timeline_enabled, planning_floor_plan_enabled, planning_seating_enabled, planning_vendors_enabled, planning_inventory_enabled, planning_event_order_enabled, planning_questionnaires_enabled")
       .eq("id", venueId)
       .maybeSingle();
     const { capabilitiesFromVenueRow } = await import("@/lib/playbooks/capabilities");
@@ -641,11 +761,11 @@ async function createRemindersForTask(
     : "coordinator";
 
   const beforeDays = task.reminderBeforeDays ?? DEFAULT_REMINDER_BEFORE_DAYS;
-  const dueMidnight = dueDate + "T08:00:00Z"; // send reminder at 8am UTC on that day
+  const timezone = await getVenueTimezone(client, venueId);
 
   // Pre-due-date reminders (e.g., 7 days before, 3 days before, 1 day before)
   for (const days of beforeDays) {
-    const scheduledFor = offsetDatetime(dueMidnight, -days);
+    const scheduledFor = scheduledReminderAt(dueDate, -days, timezone);
     // Only schedule if the reminder is in the future
     if (new Date(scheduledFor) > new Date()) {
       reminders.push({
@@ -660,7 +780,7 @@ async function createRemindersForTask(
   reminders.push({
     venue_id: venueId, event_task_id: eventTaskId,
     reminder_type: "due_today", notify_role: notifyRole,
-    scheduled_for: dueMidnight,
+    scheduled_for: scheduledReminderAt(dueDate, 0, timezone),
   });
 
   // Overdue escalation (always to coordinator regardless of task owner)
@@ -668,14 +788,14 @@ async function createRemindersForTask(
     reminders.push({
       venue_id: venueId, event_task_id: eventTaskId,
       reminder_type: "escalation", notify_role: "coordinator",
-      scheduled_for: offsetDatetime(dueMidnight, task.escalationAfterDays),
+      scheduled_for: scheduledReminderAt(dueDate, task.escalationAfterDays, timezone),
     });
   } else {
     // Default: escalate to coordinator 3 days after overdue if no custom rule
     reminders.push({
       venue_id: venueId, event_task_id: eventTaskId,
       reminder_type: "overdue", notify_role: "coordinator",
-      scheduled_for: offsetDatetime(dueMidnight, 3),
+      scheduled_for: scheduledReminderAt(dueDate, 3, timezone),
     });
   }
 
@@ -691,7 +811,7 @@ async function createRemindersForTask(
       reminders.push({
         venue_id: venueId, event_task_id: eventTaskId,
         reminder_type: "overdue", notify_role: "couple",
-        scheduled_for: offsetDatetime(dueMidnight, 1),
+        scheduled_for: scheduledReminderAt(dueDate, 1, timezone),
         after_due_recur_interval_days: interval,
       });
     }
@@ -823,12 +943,6 @@ export async function updateEventTaskDueDate(
   }
 }
 
-function offsetDatetime(datetimeStr: string, days: number): string {
-  const d = new Date(datetimeStr);
-  d.setDate(d.getDate() + days);
-  return d.toISOString();
-}
-
 export async function completeEventTask(
   client: DbClient,
   venueId: string,
@@ -879,7 +993,12 @@ export async function updateEventTaskStatus(
   status: "waived" | "pending",
 ): Promise<void> {
   const patch: Record<string, unknown> = { status };
-  if (status === "pending") patch.completed_at = null; // un-complete or un-waive
+  // Waiver is not completion — never leave completion audit fields set.
+  // Restoring to pending also clears any prior completion stamp.
+  if (status === "waived" || status === "pending") {
+    patch.completed_at = null;
+    patch.completed_by = null;
+  }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await (client.from("event_tasks") as any).update(patch).eq("id", taskId).eq("venue_id", venueId);
 }
@@ -919,40 +1038,28 @@ export async function computeEventReadinessFromPlaybook(
   const tasks = await getEventTasks(client, venueId, event.id);
   if (!tasks.length) return null; // no playbook applied yet
 
-  const required = tasks.filter((t) => t.isRequired);
-  const optional = tasks.filter((t) => !t.isRequired);
-  // A waived required task is a deliberate, coordinator-approved skip, not
-  // an open requirement — it must count as satisfied the same way complete
-  // does, or a single waived required task permanently caps this event's
-  // readiness below 100%, forever (Planning Release Readiness Fixes).
-  const completedRequired = required.filter((t) => t.status === "complete" || t.status === "waived").length;
-  const completedOptional = optional.filter((t) => t.status === "complete").length;
-  const score = required.length > 0 ? Math.round((completedRequired / required.length) * 100) : 0;
-
-  return {
-    score,
-    completedRequired,
-    totalRequired: required.length,
-    completedOptional,
-    totalOptional: optional.length,
-    tasks,
-    blockedCount: tasks.filter((t) => t.status === "blocked").length,
-    overdueCount: tasks.filter((t) => t.status === "overdue").length,
-  };
+  return readinessFromTasks(tasks);
 }
 
 function readinessFromTasks(tasks: EventTask[]): EventReadiness | null {
   if (!tasks.length) return null;
   const required = tasks.filter((t) => t.isRequired);
   const optional = tasks.filter((t) => !t.isRequired);
-  // See the matching comment in computeEventReadinessFromPlaybook above —
-  // waived must count as satisfied for a required task.
-  const completedRequired = required.filter((t) => t.status === "complete" || t.status === "waived").length;
+  // Completed and waived are distinct persisted states. Waived satisfies a
+  // required slot for readiness score (so one waiver cannot permanently
+  // cap the event below 100%), but must never be counted or labeled as
+  // completed work.
+  const completedRequired = required.filter((t) => t.status === "complete").length;
+  const waivedRequired = required.filter((t) => t.status === "waived").length;
+  const satisfiedRequired = completedRequired + waivedRequired;
   const completedOptional = optional.filter((t) => t.status === "complete").length;
   return {
-    score: required.length > 0 ? Math.round((completedRequired / required.length) * 100) : 0,
-    completedRequired, totalRequired: required.length,
-    completedOptional, totalOptional: optional.length,
+    score: required.length > 0 ? Math.round((satisfiedRequired / required.length) * 100) : 0,
+    completedRequired,
+    waivedRequired,
+    totalRequired: required.length,
+    completedOptional,
+    totalOptional: optional.length,
     tasks,
     blockedCount: tasks.filter((t) => t.status === "blocked").length,
     overdueCount: tasks.filter((t) => t.status === "overdue").length,
@@ -968,11 +1075,384 @@ export async function computeEventTaskReadinessByKind(
   client: DbClient,
   venueId: string,
   eventId: string,
+  packageAccepted = false,
 ): Promise<{ client: EventReadiness | null; venue: EventReadiness | null }> {
-  const tasks = await getEventTasks(client, venueId, eventId);
+  const tasks = applyAcceptedPackageToTasks(await getEventTasks(client, venueId, eventId), packageAccepted);
   const clientTasks = tasks.filter((t) => t.ownerType === "couple");
   const venueTasks = tasks.filter((t) => t.ownerType !== "couple");
   return { client: readinessFromTasks(clientTasks), venue: readinessFromTasks(venueTasks) };
+}
+
+/**
+ * Pre-release event-specific Client Planning edits.
+ * Only allowed while the client application is still a draft (released_at null).
+ * Never mutates Library playbook_templates / playbook_tasks.
+ */
+async function requireDraftClientApplication(
+  client: DbClient,
+  venueId: string,
+  eventId: string,
+): Promise<{ ok: true } | { ok: false; reason: "not_found" | "already_released" }> {
+  const { data: appRow, error } = await client.from("event_playbook_applications")
+    .select("released_at")
+    .eq("event_id", eventId).eq("venue_id", venueId).eq("kind", "client")
+    .maybeSingle<{ released_at: string | null }>();
+  if (error) throw error;
+  if (!appRow) return { ok: false, reason: "not_found" };
+  if (appRow.released_at) return { ok: false, reason: "already_released" };
+  return { ok: true };
+}
+
+export async function replaceClientPlaybookOnEvent(
+  client: DbClient,
+  venueId: string,
+  eventId: string,
+  templateId: string,
+  eventDate: string,
+  capabilities?: import("@/lib/playbooks/capabilities").VenuePlanningCapabilities,
+): Promise<ApplyPlaybookResult | UnapplyPlaybookResult> {
+  const template = await getTemplate(client, venueId, templateId);
+  if (!template || template.kind !== "client" || template.isArchived) {
+    throw new Error("Select an active Client Planning template.");
+  }
+  const gate = await requireDraftClientApplication(client, venueId, eventId);
+  if (!gate.ok) {
+    // No application yet — apply fresh.
+    if (gate.reason === "not_found") {
+      return applyPlaybookToEvent(client, venueId, eventId, templateId, eventDate, capabilities);
+    }
+    return { ok: false, reason: "already_released" };
+  }
+  const removed = await unapplyPlaybookFromEvent(client, venueId, eventId, "client");
+  if (!removed.ok) return removed;
+  return applyPlaybookToEvent(client, venueId, eventId, templateId, eventDate, capabilities);
+}
+
+export async function addCustomClientEventTask(
+  client: DbClient,
+  venueId: string,
+  eventId: string,
+  eventDate: string,
+  input: {
+    title: string;
+    daysOffset: number;
+    description?: string | null;
+    /** Attach the event questionnaire portal action (does not send). */
+    attachQuestionnaire?: boolean;
+  },
+): Promise<{ ok: true; taskId: string } | { ok: false; reason: "not_found" | "already_released" }> {
+  const gate = await requireDraftClientApplication(client, venueId, eventId);
+  if (!gate.ok) return gate;
+  const title = input.title.trim();
+  if (!title) throw new Error("Task title is required.");
+  const daysOffset = clampDaysOffset(input.daysOffset);
+  const dueDate = offsetDate(eventDate, daysOffset);
+  const existing = await getEventTasks(client, venueId, eventId);
+  const clientTasks = existing.filter((t) => t.ownerType === "couple");
+  const sortOrder = clientTasks.reduce((max, t) => Math.max(max, t.sortOrder), 0) + 1;
+  const attachQuestionnaire = Boolean(input.attachQuestionnaire);
+  const { data: inserted, error } = await client.from("event_tasks")
+    .insert({
+      venue_id: venueId,
+      event_id: eventId,
+      template_task_id: null,
+      title,
+      description: input.description?.trim() || null,
+      owner_type: "couple",
+      visibility: "client_owned",
+      due_date: dueDate,
+      days_offset: daysOffset,
+      due_date_rule_kind: "relative_to_event",
+      category: "planning",
+      milestone_name: "Planning",
+      milestone_kind: null,
+      auto_complete_trigger: attachQuestionnaire ? "questionnaire_submitted" : null,
+      depends_on_event_task_id: null,
+      is_required: false,
+      sort_order: sortOrder,
+      status: "pending",
+      reminder_before_days: null,
+      escalation_after_days: null,
+      notify_on_assign: false,
+      notify_on_complete: false,
+      action_type: attachQuestionnaire ? "questionnaire" : null,
+      action_label: attachQuestionnaire ? "Open Questionnaire" : null,
+    })
+    .select("id")
+    .single<{ id: string }>();
+  if (error) throw error;
+  return { ok: true, taskId: inserted.id };
+}
+
+export async function removeClientEventTask(
+  client: DbClient,
+  venueId: string,
+  eventId: string,
+  taskId: string,
+): Promise<{ ok: true } | { ok: false; reason: "not_found" | "already_released" | "wrong_task" }> {
+  const gate = await requireDraftClientApplication(client, venueId, eventId);
+  if (!gate.ok) return gate;
+  const { data: row, error: fetchError } = await client.from("event_tasks")
+    .select("id, owner_type, event_id")
+    .eq("id", taskId).eq("venue_id", venueId)
+    .maybeSingle<{ id: string; owner_type: string; event_id: string | null }>();
+  if (fetchError) throw fetchError;
+  if (!row || row.event_id !== eventId || row.owner_type !== "couple") {
+    return { ok: false, reason: "wrong_task" };
+  }
+  await cancelRemindersForTask(client, venueId, taskId);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await (client.from("event_tasks") as any)
+    .update({ depends_on_event_task_id: null })
+    .eq("venue_id", venueId)
+    .eq("depends_on_event_task_id", taskId);
+  const { error } = await client.from("event_tasks")
+    .delete()
+    .eq("id", taskId)
+    .eq("venue_id", venueId)
+    .eq("event_id", eventId);
+  if (error) throw error;
+  return { ok: true };
+}
+
+export async function updateClientEventTaskFields(
+  client: DbClient,
+  venueId: string,
+  eventId: string,
+  eventDate: string,
+  taskId: string,
+  input: {
+    title?: string;
+    daysOffset?: number;
+    description?: string | null;
+    /** Set/clear questionnaire portal attachment (does not send). */
+    attachQuestionnaire?: boolean;
+  },
+): Promise<{ ok: true } | { ok: false; reason: "not_found" | "already_released" | "wrong_task" }> {
+  const gate = await requireDraftClientApplication(client, venueId, eventId);
+  if (!gate.ok) return gate;
+  const { data: row, error: fetchError } = await client.from("event_tasks")
+    .select("id, owner_type, event_id, reminder_before_days, escalation_after_days")
+    .eq("id", taskId).eq("venue_id", venueId)
+    .maybeSingle<{
+      id: string;
+      owner_type: string;
+      event_id: string | null;
+      reminder_before_days: number[] | null;
+      escalation_after_days: number | null;
+    }>();
+  if (fetchError) throw fetchError;
+  if (!row || row.event_id !== eventId || row.owner_type !== "couple") {
+    return { ok: false, reason: "wrong_task" };
+  }
+  const patch: Record<string, unknown> = {};
+  if (input.title !== undefined) {
+    const title = input.title.trim();
+    if (!title) throw new Error("Task title is required.");
+    patch.title = title;
+  }
+  if (input.description !== undefined) {
+    patch.description = input.description?.trim() || null;
+  }
+  if (input.daysOffset !== undefined) {
+    const daysOffset = clampDaysOffset(input.daysOffset);
+    patch.days_offset = daysOffset;
+    patch.due_date = offsetDate(eventDate, daysOffset);
+    patch.due_date_locked = false;
+    patch.due_date_rule_kind = "relative_to_event";
+  }
+  if (input.attachQuestionnaire !== undefined) {
+    if (input.attachQuestionnaire) {
+      patch.action_type = "questionnaire";
+      patch.action_label = "Open Questionnaire";
+      patch.auto_complete_trigger = "questionnaire_submitted";
+    } else {
+      patch.action_type = null;
+      patch.action_label = null;
+      patch.auto_complete_trigger = null;
+    }
+  }
+  if (Object.keys(patch).length === 0) return { ok: true };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("event_tasks") as any)
+    .update(patch)
+    .eq("id", taskId)
+    .eq("venue_id", venueId)
+    .eq("event_id", eventId);
+  if (error) throw error;
+  if (typeof patch.due_date === "string") {
+    await cancelRemindersForTask(client, venueId, taskId);
+  }
+  return { ok: true };
+}
+
+/**
+ * Event-specific Venue Planning setup edits.
+ * Venue applications are active on apply (released_at set) but stay internal —
+ * never portal-released. Template replace uses explicit unapply + apply.
+ * Never mutates Library playbook_templates / playbook_tasks.
+ */
+async function requireVenueApplication(
+  client: DbClient,
+  venueId: string,
+  eventId: string,
+): Promise<{ ok: true } | { ok: false; reason: "not_found" }> {
+  const { data: appRow, error } = await client.from("event_playbook_applications")
+    .select("id")
+    .eq("event_id", eventId).eq("venue_id", venueId).eq("kind", "venue")
+    .maybeSingle<{ id: string }>();
+  if (error) throw error;
+  if (!appRow) return { ok: false, reason: "not_found" };
+  return { ok: true };
+}
+
+export async function replaceVenuePlaybookOnEvent(
+  client: DbClient,
+  venueId: string,
+  eventId: string,
+  templateId: string,
+  eventDate: string,
+  capabilities?: import("@/lib/playbooks/capabilities").VenuePlanningCapabilities,
+): Promise<ApplyPlaybookResult | UnapplyPlaybookResult> {
+  const template = await getTemplate(client, venueId, templateId);
+  if (!template || template.kind !== "venue" || template.isArchived) {
+    throw new Error("Select an active Venue Planning template.");
+  }
+  const existing = await requireVenueApplication(client, venueId, eventId);
+  if (!existing.ok) {
+    return applyPlaybookToEvent(client, venueId, eventId, templateId, eventDate, capabilities);
+  }
+  const removed = await unapplyPlaybookFromEvent(client, venueId, eventId, "venue");
+  if (!removed.ok) return removed;
+  return applyPlaybookToEvent(client, venueId, eventId, templateId, eventDate, capabilities);
+}
+
+export async function addCustomVenueEventTask(
+  client: DbClient,
+  venueId: string,
+  eventId: string,
+  eventDate: string,
+  input: { title: string; daysOffset: number; description?: string | null },
+): Promise<{ ok: true; taskId: string } | { ok: false; reason: "not_found" }> {
+  const gate = await requireVenueApplication(client, venueId, eventId);
+  if (!gate.ok) return gate;
+  const title = input.title.trim();
+  if (!title) throw new Error("Task title is required.");
+  const daysOffset = clampDaysOffset(input.daysOffset);
+  const dueDate = offsetDate(eventDate, daysOffset);
+  const existing = await getEventTasks(client, venueId, eventId);
+  const venueTasks = existing.filter((t) => t.ownerType !== "couple");
+  const sortOrder = venueTasks.reduce((max, t) => Math.max(max, t.sortOrder), 0) + 1;
+  const { data: inserted, error } = await client.from("event_tasks")
+    .insert({
+      venue_id: venueId,
+      event_id: eventId,
+      template_task_id: null,
+      title,
+      description: input.description?.trim() || null,
+      owner_type: "coordinator",
+      visibility: "coordinator_only",
+      due_date: dueDate,
+      days_offset: daysOffset,
+      due_date_rule_kind: "relative_to_event",
+      category: "planning",
+      milestone_name: "Planning",
+      milestone_kind: null,
+      auto_complete_trigger: null,
+      depends_on_event_task_id: null,
+      is_required: false,
+      sort_order: sortOrder,
+      status: "pending",
+      reminder_before_days: null,
+      escalation_after_days: null,
+      notify_on_assign: false,
+      notify_on_complete: false,
+      action_type: null,
+      action_label: null,
+    })
+    .select("id")
+    .single<{ id: string }>();
+  if (error) throw error;
+  return { ok: true, taskId: inserted.id };
+}
+
+export async function removeVenueEventTask(
+  client: DbClient,
+  venueId: string,
+  eventId: string,
+  taskId: string,
+): Promise<{ ok: true } | { ok: false; reason: "not_found" | "wrong_task" }> {
+  const gate = await requireVenueApplication(client, venueId, eventId);
+  if (!gate.ok) return gate;
+  const { data: row, error: fetchError } = await client.from("event_tasks")
+    .select("id, owner_type, event_id")
+    .eq("id", taskId).eq("venue_id", venueId)
+    .maybeSingle<{ id: string; owner_type: string; event_id: string | null }>();
+  if (fetchError) throw fetchError;
+  if (!row || row.event_id !== eventId || row.owner_type === "couple") {
+    return { ok: false, reason: "wrong_task" };
+  }
+  await cancelRemindersForTask(client, venueId, taskId);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await (client.from("event_tasks") as any)
+    .update({ depends_on_event_task_id: null })
+    .eq("venue_id", venueId)
+    .eq("depends_on_event_task_id", taskId);
+  const { error } = await client.from("event_tasks")
+    .delete()
+    .eq("id", taskId)
+    .eq("venue_id", venueId)
+    .eq("event_id", eventId);
+  if (error) throw error;
+  return { ok: true };
+}
+
+export async function updateVenueEventTaskFields(
+  client: DbClient,
+  venueId: string,
+  eventId: string,
+  eventDate: string,
+  taskId: string,
+  input: { title?: string; daysOffset?: number; description?: string | null },
+): Promise<{ ok: true } | { ok: false; reason: "not_found" | "wrong_task" }> {
+  const gate = await requireVenueApplication(client, venueId, eventId);
+  if (!gate.ok) return gate;
+  const { data: row, error: fetchError } = await client.from("event_tasks")
+    .select("id, owner_type, event_id")
+    .eq("id", taskId).eq("venue_id", venueId)
+    .maybeSingle<{ id: string; owner_type: string; event_id: string | null }>();
+  if (fetchError) throw fetchError;
+  if (!row || row.event_id !== eventId || row.owner_type === "couple") {
+    return { ok: false, reason: "wrong_task" };
+  }
+  const patch: Record<string, unknown> = {};
+  if (input.title !== undefined) {
+    const title = input.title.trim();
+    if (!title) throw new Error("Task title is required.");
+    patch.title = title;
+  }
+  if (input.description !== undefined) {
+    patch.description = input.description?.trim() || null;
+  }
+  if (input.daysOffset !== undefined) {
+    const daysOffset = clampDaysOffset(input.daysOffset);
+    patch.days_offset = daysOffset;
+    patch.due_date = offsetDate(eventDate, daysOffset);
+    patch.due_date_locked = false;
+    patch.due_date_rule_kind = "relative_to_event";
+  }
+  if (Object.keys(patch).length === 0) return { ok: true };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("event_tasks") as any)
+    .update(patch)
+    .eq("id", taskId)
+    .eq("venue_id", venueId)
+    .eq("event_id", eventId);
+  if (error) throw error;
+  if (typeof patch.due_date === "string") {
+    await cancelRemindersForTask(client, venueId, taskId);
+  }
+  return { ok: true };
 }
 
 // ---- Internal Notes (event_tasks.notes) --------------------------------------

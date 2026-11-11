@@ -25,6 +25,7 @@ const TYPE_ICON: Record<string, React.ElementType> = {
   task_completed:      Check,
   tour_scheduled:      Calendar,
   follow_up_set:       Clock,
+  follow_up_completed: Check,
   last_contacted:      Phone,
   lead_updated:        Pencil,
   relationship_updated: Circle,
@@ -36,6 +37,7 @@ const TYPE_COLOR: Record<string, string> = {
   task_completed:      "bg-success/15 text-success",
   tour_scheduled:      "bg-primary/10 text-primary",
   follow_up_set:       "bg-warning/15 text-warning-foreground",
+  follow_up_completed: "bg-success/15 text-success",
 };
 
 // Dashboard Component System, Phase 1 Step 6 (docs/dashboard-component-

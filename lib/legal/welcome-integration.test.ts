@@ -323,6 +323,7 @@ describe("legal middleware decisions", () => {
       "/privacy",
       "/legal/privacy_policy",
       "/api/legal/welcome",
+      "/system/legal-unavailable",
       "/vendor/accept",
       "/vendor/login",
       "/workspaces",
@@ -339,6 +340,7 @@ describe("legal middleware decisions", () => {
         { action: "allow" },
       );
     }
+    assert.equal(isPublicLegalPath("/cookie-policy"), true);
     assert.equal(isPublicLegalPath("/cookies"), true);
   });
 

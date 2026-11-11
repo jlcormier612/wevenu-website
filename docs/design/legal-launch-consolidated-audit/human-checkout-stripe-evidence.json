@@ -1,0 +1,126 @@
+{
+  "session": {
+    "id": "cs_test_b0SSWiBFkpovWeWoOvzjYneT4YwmpUAOpG9pkfeFJ3jEEBiYYiY9CbAd0t",
+    "livemode": false,
+    "status": "complete",
+    "payment_status": "paid",
+    "mode": "subscription",
+    "amount_total": 59820,
+    "currency": "usd",
+    "customer": "cus_Vbal3RdUTzZhVk",
+    "subscription": "sub_1UaNa8ErUqJH7nktgny2cTb1",
+    "customer_email": null,
+    "customer_details": {
+      "address": {
+        "city": "Franklin",
+        "country": "US",
+        "line1": "123 Fun Road",
+        "line2": null,
+        "postal_code": "02038",
+        "state": "MA"
+      },
+      "business_name": null,
+      "email": "elliestjameshtc@yahoo.com",
+      "individual_name": null,
+      "name": "Ellie St. James",
+      "phone": null,
+      "tax_exempt": "none",
+      "tax_ids": []
+    }
+  },
+  "session_metadata": {
+    "applied_offer_type": "weven_pct",
+    "checkout_offer_id": "72c688c5-92fa-4422-9aef-1315814deac7",
+    "expected_recurring_amount_cents": "19920",
+    "founding_member": "true",
+    "founding_percent_off": "10",
+    "group_eligible": "false",
+    "group_percent_off": "0",
+    "htc_plan": "growing",
+    "legal_accept_ip": "108.26.149.165",
+    "legal_accept_ua": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36",
+    "legal_accepted": "true",
+    "legal_accepted_at": "2026-11-10T22:29:31.483Z",
+    "legal_privacy_document_id": "a8089eab-ec2e-44a3-979c-907d64f23b55",
+    "legal_tos_document_id": "ff7c838f-ecc6-4b87-9525-74ce677caab8",
+    "list_amount_cents": "24900",
+    "onboarding_type": "white_glove",
+    "owner_first_name": "Ellie",
+    "owner_last_name": "St. James",
+    "plan_name": "Celebrate",
+    "plan_tier": "growing",
+    "pricing_mode": "launch_weven_percent",
+    "pricing_version": "v1",
+    "venue_name": "The Willow Grove",
+    "welcome_back": "true",
+    "weven_declared": "true",
+    "weven_percent_off": "20",
+    "white_glove_price_id": "price_1UZk1EErUqJH7nkt4lWfvbIT"
+  },
+  "subscription": {
+    "id": "sub_1UaNa8ErUqJH7nktgny2cTb1",
+    "livemode": false,
+    "status": "active",
+    "customer": "cus_Vbal3RdUTzZhVk",
+    "latest_invoice": "in_1UaNa6ErUqJH7nktawjAtRFj",
+    "cancel_at_period_end": false
+  },
+  "subscription_items": [
+    {
+      "price": "price_1U5rfoErUqJH7nkts2RnCCtg",
+      "nickname": "Celebrate standard",
+      "unit_amount": 24900,
+      "product": "prod_V63nmGj2zZHfLv",
+      "quantity": 1
+    }
+  ],
+  "subscription_metadata": {
+    "applied_offer_type": "weven_pct",
+    "checkout_offer_id": "72c688c5-92fa-4422-9aef-1315814deac7",
+    "expected_recurring_amount_cents": "19920",
+    "founding_member": "true",
+    "founding_percent_off": "10",
+    "group_eligible": "false",
+    "group_percent_off": "0",
+    "htc_plan": "growing",
+    "legal_accept_ip": "108.26.149.165",
+    "legal_accept_ua": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36",
+    "legal_accepted": "true",
+    "legal_accepted_at": "2026-11-10T22:29:31.483Z",
+    "legal_privacy_document_id": "a8089eab-ec2e-44a3-979c-907d64f23b55",
+    "legal_tos_document_id": "ff7c838f-ecc6-4b87-9525-74ce677caab8",
+    "list_amount_cents": "24900",
+    "onboarding_type": "white_glove",
+    "owner_first_name": "Ellie",
+    "owner_last_name": "St. James",
+    "plan_name": "Celebrate",
+    "plan_tier": "growing",
+    "pricing_mode": "launch_weven_percent",
+    "pricing_version": "v1",
+    "venue_name": "The Willow Grove",
+    "welcome_back": "true",
+    "weven_declared": "true",
+    "weven_percent_off": "20",
+    "white_glove_price_id": "price_1UZk1EErUqJH7nkt4lWfvbIT"
+  },
+  "customer": {
+    "id": "cus_Vbal3RdUTzZhVk",
+    "livemode": false,
+    "email": "elliestjameshtc@yahoo.com",
+    "name": "Ellie St. James"
+  },
+  "line_items": [
+    {
+      "description": "Celebrate",
+      "amount_total": 19920,
+      "price": "price_1U5rfoErUqJH7nkts2RnCCtg",
+      "unit_amount": 24900
+    },
+    {
+      "description": "White Glove Setup",
+      "amount_total": 39900,
+      "price": "price_1UZk1EErUqJH7nkt4lWfvbIT",
+      "unit_amount": 39900
+    }
+  ]
+}

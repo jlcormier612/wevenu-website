@@ -1,0 +1,17 @@
+waiting for deploy 38333123630
+poll 1 in_progress:
+poll 2 in_progress:
+poll 3 in_progress:
+poll 4 in_progress:
+poll 5 in_progress:
+poll 6 in_progress:
+poll 7 in_progress:
+poll 8 in_progress:
+poll 9 in_progress:
+poll 10 in_progress:
+poll 11 in_progress:
+poll 12 in_progress:
+poll 13 completed:success
+DEPLOY_OK
+serving tip=5fe3d13ece6d3002452e28c30cda5b47754e8173
+SERVING_OK

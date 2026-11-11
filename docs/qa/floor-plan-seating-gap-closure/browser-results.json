@@ -1,0 +1,107 @@
+{
+  "expectedSha": "23e59a03c22202a8c7c7ccc58f89f0eeed9a7281",
+  "passed": 20,
+  "failed": 0,
+  "checks": [
+    {
+      "name": "serving_sha",
+      "pass": true,
+      "detail": "serving=23e59a03c22202a8c7c7ccc58f89f0eeed9a7281 expected=23e59a03c22202a8c7c7ccc58f89f0eeed9a7281"
+    },
+    {
+      "name": "inventory_seed",
+      "pass": true,
+      "detail": "{\"inventoryItemId\":\"abd07513-8585-4421-8f28-2b57d6d3b5ff\",\"prev\":0}"
+    },
+    {
+      "name": "scenario_a_template_objects",
+      "pass": true,
+      "detail": "count=17"
+    },
+    {
+      "name": "ensure_sole",
+      "pass": true,
+      "detail": "{\"ok\":true,\"reason\":\"sole_offer\",\"offerId\":\"0716c0c4-cac6-4bd5-8ff4-360f1b51850c\",\"floorPlanId\":\"588f1f8f-5133-4105-ada3-250ae96ad090\",\"autoAssigned\":true}"
+    },
+    {
+      "name": "scenario_a_fidelity",
+      "pass": true,
+      "detail": "{\"tpl\":17,\"plan\":17,\"missing\":[]}"
+    },
+    {
+      "name": "scenario_d_capacity_source",
+      "pass": true,
+      "detail": "{\"tables\":11,\"totalCap\":82}"
+    },
+    {
+      "name": "scenario_b_catalog",
+      "pass": true,
+      "detail": "{\"invCount\":12,\"planTypes\":2,\"seeded\":{\"name\":\"72\\\" Round Table\",\"color\":null,\"shape\":\"round\",\"width\":72,\"height\":null,\"length\":72,\"addable\":true,\"capacity\":8,\"remaining\":2,\"objectType\":\"table_round\",\"placeWidth\":72,\"placeHeight\":72,\"categoryName\":\"Tables\",\"displayShape\":\"round\",\"quantityUsed\":0,\"inventoryItemId\":\"abd07513-8585-4421-8f28-2b57d6d3b5ff\",\"quantityAvailable\":2,\"unavailableReason\":null,\"quantityConfigured\":true}}"
+    },
+    {
+      "name": "scenario_b_add_inventory",
+      "pass": true,
+      "detail": "{\"ok\":true,\"label\":\"72\\\" Round Table\",\"width\":72,\"height\":72,\"capacity\":8,\"objectId\":\"338a5cf9-7bdd-4b6a-b28a-a630856950ab\",\"objectType\":\"table_round\",\"inventoryItemId\":\"abd07513-8585-4421-8f28-2b57d6d3b5ff\"}"
+    },
+    {
+      "name": "scenario_b_add_second",
+      "pass": true,
+      "detail": "{\"ok\":true,\"label\":\"72\\\" Round Table\",\"width\":72,\"height\":72,\"capacity\":8,\"objectId\":\"dc642b14-0ba4-48cb-ad1e-64fa8856fa57\",\"objectType\":\"table_round\",\"inventoryItemId\":\"abd07513-8585-4421-8f28-2b57d6d3b5ff\"}"
+    },
+    {
+      "name": "scenario_b_qty_exceeded",
+      "pass": true,
+      "detail": "{\"ok\":false,\"error\":\"quantity_exceeded\"}"
+    },
+    {
+      "name": "scenario_c_outside_room",
+      "pass": true,
+      "detail": "{\"outside\":{\"ok\":false,\"error\":\"outside_room\"},\"roomW\":720,\"roomH\":480}"
+    },
+    {
+      "name": "scenario_d_move_preserves_assignment",
+      "pass": true,
+      "detail": "{\"moved\":{\"x\":225,\"y\":215,\"ok\":true,\"objectId\":\"338a5cf9-7bdd-4b6a-b28a-a630856950ab\"},\"seatAfter\":{\"table_object_id\":\"338a5cf9-7bdd-4b6a-b28a-a630856950ab\"}}"
+    },
+    {
+      "name": "scenario_d_remove_blocked",
+      "pass": true,
+      "detail": "{\"ok\":false,\"error\":\"has_assignments\",\"assignedCount\":1}"
+    },
+    {
+      "name": "scenario_d_remove_confirmed",
+      "pass": true,
+      "detail": "{\"remOk\":{\"ok\":true,\"objectId\":\"338a5cf9-7bdd-4b6a-b28a-a630856950ab\",\"unassignedCount\":1},\"seatGone\":[]}"
+    },
+    {
+      "name": "scenario_f_template_unchanged",
+      "pass": true,
+      "detail": "tplBefore=17 tplAfter=17"
+    },
+    {
+      "name": "scenario_f_event_isolation",
+      "pass": true,
+      "detail": "{\"planA\":\"588f1f8f-5133-4105-ada3-250ae96ad090\",\"planB\":\"9944f4c3-69b3-453d-8b47-80069f8955bc\",\"bHasAInventory\":false,\"countB\":17}"
+    },
+    {
+      "name": "browser_working_canvas",
+      "pass": true,
+      "detail": "working=1 addBtn=1"
+    },
+    {
+      "name": "browser_catalog",
+      "pass": true,
+      "detail": "catalog=1 items=12 planTypes=2"
+    },
+    {
+      "name": "scenario_e_seating_workspace",
+      "pass": true,
+      "detail": "FloorGapClosure\n\n·\n\nJen's Fancy Venue\n\nMar 7, 2075\n\nExport my data\n🏠\nHome\n✅\nTasks\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n💳\nPayments\n💬\nMessages\n🏛️\nGuide\n🤝\nVendors\n\nSeating for Gap Layout\n\nSubmit Seating Plan\nAsk Venue to Assist\n\nGAP LAYOUT\n\nLet's start seating your guests\n\n0 of 4 guests seated · 0%\n\n12\n\nTables with space\n\n4\n\nGuests to seat\n\nStart Seating\nJen's Fancy Venue\n💗"
+    },
+    {
+      "name": "scenario_f_ready_rejects_add",
+      "pass": true,
+      "detail": "{\"ok\":false,\"error\":\"plan_ready\"}"
+    }
+  ]
+}

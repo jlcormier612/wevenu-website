@@ -130,7 +130,7 @@ describe("portal channel visibility mapping", () => {
   it("portal Messages UI labels history channels", () => {
     const src = readFileSync(PORTAL_UI, "utf8");
     assert.match(src, /clientHistoryChannelLabel/);
-    assert.doesNotMatch(src, /channel:\s*"email".*fetch\("\/api\/portal\/messages"/s);
+    assert.doesNotMatch(src, /channel:\s*"email"[\s\S]*fetch\("\/api\/portal\/messages"/);
   });
 
   it("clientHistoryChannelLabel distinguishes portal / email / sms", () => {

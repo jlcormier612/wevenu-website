@@ -27,3 +27,51 @@ describe("conversation email send carries thread context", () => {
     assert.match(source, /isSendableChannel/);
   });
 });
+
+describe("tour emails also carry thread context for inbound reply matching", () => {
+  const source = readFileSync(resolve("lib/tours/communication.ts"), "utf8");
+  it("scheduled, confirmation, and request sends pass threadId", () => {
+    assert.match(source, /threadId: conversationId \?\? undefined/);
+    assert.match(source, /sendTourScheduled/);
+    assert.match(source, /sendTourConfirmation/);
+    assert.match(source, /sendTourConfirmationRequest/);
+  });
+});
+
+describe("proposal couple emails also carry thread context for inbound reply matching", () => {
+  const source = readFileSync(resolve("lib/commercial-proposals/couple-email.ts"), "utf8");
+  it("resolves venue_couple conversation and passes threadId like tour/conversation sends", () => {
+    assert.match(source, /findOrCreateVenueCoupleConversation/);
+    assert.match(source, /threadId: conversationId \?\? undefined/);
+  });
+});
+
+describe("contract invite emails also carry thread context for inbound reply matching", () => {
+  const source = readFileSync(resolve("lib/contracts/service.ts"), "utf8");
+  it("sendContractInviteEmails resolves venue_couple conversation and passes threadId", () => {
+    const invite = source.slice(
+      source.indexOf("async function sendContractInviteEmails"),
+      source.indexOf("export async function venueSignContract"),
+    );
+    assert.match(invite, /findOrCreateVenueCoupleConversation/);
+    assert.match(invite, /threadId: conversationId \?\? undefined/);
+  });
+});
+
+describe("venue conversation messages are newest-first", () => {
+  it("migration orders get_conversation messages by sent_at desc", () => {
+    const migration = readFileSync(
+      resolve("supabase/migrations/20261405700000_conversation_messages_newest_first.sql"),
+      "utf8",
+    );
+    assert.match(migration, /order by cm\.sent_at desc/);
+    assert.doesNotMatch(migration, /order by cm\.sent_at asc/);
+  });
+
+  it("Lead conversation UI sticks to the top (newest) not the bottom", () => {
+    const thread = readFileSync(resolve("components/conversations/conversation-thread.tsx"), "utf8");
+    assert.match(thread, /stickToNewestRef/);
+    assert.match(thread, /scrollMessagesToNewest/);
+    assert.match(thread, /const last = next\[0\]/);
+  });
+});

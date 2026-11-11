@@ -1,0 +1,62 @@
+[
+  {
+    "phantom": {
+      "id": "61063e85-de74-4402-b617-ccfa0f224d05",
+      "lead_id": null,
+      "status": "scheduled",
+      "scheduled_at": "2027-04-14T14:23:00+00:00",
+      "duration_minutes": 30,
+      "contact_email": "global-delete-qa-proof@example.test",
+      "contact_name": "GLOBAL-DELETE-QA VisibilityProof",
+      "confirm_token": "9290b790-1b81-43eb-8b9d-f068c875e48e",
+      "confirmed_at": null,
+      "confirmation_source": null,
+      "is_archived": true,
+      "created_at": "2026-09-30T03:35:40.0244+00:00",
+      "origin": "scheduled"
+    },
+    "siblingLeads": [],
+    "siblingTours": [
+      {
+        "id": "61063e85-de74-4402-b617-ccfa0f224d05",
+        "lead_id": null,
+        "status": "scheduled",
+        "scheduled_at": "2027-04-14T14:23:00+00:00",
+        "is_archived": true,
+        "confirm_token": "9290b790-1b81-43eb-8b9d-f068c875e48e",
+        "confirmed_at": null,
+        "confirmation_source": null
+      }
+    ]
+  },
+  {
+    "phantom": {
+      "id": "fa5148a2-ee8c-4954-b937-c8626cfb91a4",
+      "lead_id": null,
+      "status": "scheduled",
+      "scheduled_at": "2027-11-03T15:30:00+00:00",
+      "duration_minutes": 60,
+      "contact_email": "brand-rt-59a9e6af@hellotocheers.test",
+      "contact_name": "Runtime Brand",
+      "confirm_token": "696358c2-863d-411c-86f0-83ca3cbb2f28",
+      "confirmed_at": null,
+      "confirmation_source": null,
+      "is_archived": true,
+      "created_at": "2026-10-06T17:15:35.29991+00:00",
+      "origin": "scheduled"
+    },
+    "siblingLeads": [],
+    "siblingTours": [
+      {
+        "id": "fa5148a2-ee8c-4954-b937-c8626cfb91a4",
+        "lead_id": null,
+        "status": "scheduled",
+        "scheduled_at": "2027-11-03T15:30:00+00:00",
+        "is_archived": true,
+        "confirm_token": "696358c2-863d-411c-86f0-83ca3cbb2f28",
+        "confirmed_at": null,
+        "confirmation_source": null
+      }
+    ]
+  }
+]

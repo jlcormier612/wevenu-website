@@ -1,0 +1,154 @@
+{
+  "expectedSha": "1939228ef0bea24873ba8e01851549d3298f1018",
+  "servingImage": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:1939228ef0bea24873ba8e01851549d3298f1018",
+  "servingDigest": "sha256:d5138c99f999abbe1990ac611eb9d26845ef1882a4848340530d64b28ebe1cc3",
+  "counts": {
+    "pass": 20,
+    "fail": 0,
+    "total": 20
+  },
+  "checks": [
+    {
+      "name": "serving-sha",
+      "pass": true,
+      "detail": "expected=1939228ef0be ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:1939228ef0bea24873ba8e01851549d3298f1018"
+    },
+    {
+      "name": "fixture-shared-eo",
+      "pass": true,
+      "detail": "eo=624eceef-5096-4288-b104-62daa3a82d11 shared_at=2026-10-23T16:18:04.956+00:00"
+    },
+    {
+      "name": "portal-token",
+      "pass": true,
+      "detail": "present"
+    },
+    {
+      "name": "documents-api-shared-event-order",
+      "pass": true,
+      "detail": "shared=true eoDocs=1 total=1"
+    },
+    {
+      "name": "documents-api-other-types-intact",
+      "pass": true,
+      "detail": "ok=true hasContractOrInvoice=false types=event_order"
+    },
+    {
+      "name": "eo-portal-rpc-shared-only",
+      "pass": true,
+      "detail": "rows=44 err=null"
+    },
+    {
+      "name": "choices-deep-link",
+      "pass": true,
+      "detail": "B2P & Portal\n\n·\n\nJen's Fancy Venue\n\nJul 17, 2060\n\nExport my data\n9+\n🏠\nHome\n✅\nTasks\n9\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n🪑\nInventory\n1\n✅\nChoices\n1\n💳\nPayments\n💬\nMessages\n🏛️\nGuide\n🤝\nVendors\nYour Choices\n\nSelect options your venue asked for. Submitting sends them for review — i"
+    },
+    {
+      "name": "choices-submit",
+      "pass": true,
+      "detail": "status=submitted submitted_at=2026-10-23T21:25:55.208091+00:00"
+    },
+    {
+      "name": "nav-choices-hidden-after-submit",
+      "pass": true,
+      "detail": "navHasChoices=false"
+    },
+    {
+      "name": "tasks-section",
+      "pass": true,
+      "detail": "B2P & Portal\n\n·\n\nJen's Fancy Venue\n\nJul 17, 2060\n\nExport my data\n9+\n🏠\nHome\n✅\nTasks\n9\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n🪑\nInventory\n1\n💳\nPayments\n💬\nMessages\n8\n🏛️\nGuide\n🤝\nVendors\nFrom your venue\n\n"
+    },
+    {
+      "name": "documents-event-order-card",
+      "pass": true,
+      "detail": "eoCard=1 bodyHasEventOrder=true"
+    },
+    {
+      "name": "documents-open-event-order",
+      "pass": true,
+      "detail": "hash=#event-order"
+    },
+    {
+      "name": "legacy-event-order-deep-link",
+      "pass": true,
+      "detail": "B2P & Portal\n\n·\n\nJen's Fancy Venue\n\nJul 17, 2060\n\nExport my data\n9+\n🏠\nHome\n✅\nTasks\n9\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n🪑\nInventory\n1\n💳\nPayments\n💬\nMessages\n8\n🏛️\nGuide\n🤝\nVendors\nWhat you're recei"
+    },
+    {
+      "name": "nav-choices-lifecycle",
+      "pass": true,
+      "detail": "expect=false has=false editable="
+    },
+    {
+      "name": "nav-inventory-lifecycle",
+      "pass": true,
+      "detail": "expect=true has=true invStatus=shared"
+    },
+    {
+      "name": "nav-event-order-acceptance-only",
+      "pass": true,
+      "detail": "expect=false has=false shared=2026-10-23T16:18:04.956+00:00 agreed=2026-10-23T16:18:46.850349+00:00"
+    },
+    {
+      "name": "home-documents-or-accept-entry",
+      "pass": true,
+      "detail": "onHome=true homeAccept=0 homeDocs=1 homeInv=1 expectAccept=false shared=true"
+    },
+    {
+      "name": "venue-journey-intact",
+      "pass": true,
+      "detail": "stage0 journey"
+    },
+    {
+      "name": "booking-state-unchanged",
+      "pass": true,
+      "detail": "before=confirmed after=confirmed"
+    },
+    {
+      "name": "documents-no-draft-event-order",
+      "pass": true,
+      "detail": "draftExposed=false"
+    }
+  ],
+  "persist": {
+    "eventStatus": "confirmed",
+    "bookedAt": "2026-10-22",
+    "choicesBefore": [
+      {
+        "id": "d6809923-5735-415d-b00d-1204b4f64174",
+        "status": "sent"
+      }
+    ],
+    "choicesAfter": [
+      {
+        "id": "d6809923-5735-415d-b00d-1204b4f64174",
+        "status": "submitted"
+      },
+      {
+        "id": "5df6f8f6-2aca-47e1-bda5-e255694ef9da",
+        "status": "draft"
+      }
+    ],
+    "eventOrder": {
+      "id": "624eceef-5096-4288-b104-62daa3a82d11",
+      "sharedAt": "2026-10-23T16:18:04.956+00:00",
+      "clientAgreedAt": "2026-10-23T16:18:46.850349+00:00"
+    },
+    "inventoryStatus": "shared",
+    "documentsEventOrderCount": 1,
+    "nav": {
+      "choices": false,
+      "inventory": true,
+      "order": false
+    },
+    "expectNav": {
+      "choices": false,
+      "inventory": true,
+      "order": false
+    },
+    "home": {
+      "accept": 0,
+      "docs": 1
+    }
+  },
+  "at": "2026-10-23T21:26:23.714Z"
+}

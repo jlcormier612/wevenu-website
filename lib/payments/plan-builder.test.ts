@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 
 import {
   defaultEqualLines,
+  draftsFromStoredLines,
   linesFromPreset,
   sumAmounts,
   syncAmountsFromPercentages,
@@ -78,10 +79,26 @@ describe("Payment Plan Builder", () => {
     const lines = linesFromPreset("fifty_fifty", 8000);
     const commit = toCommitLines(lines, {
       eventDate: "2027-06-12",
-      bookingDate: "2026-09-01",
+      bookingDate: null,
+      today: "2026-09-25",
     });
-    assert.equal(commit[0].dueDate, "2026-09-01");
+    assert.equal(commit[0].dueDate, "2026-09-25");
     assert.ok(commit[1].dueDate.length === 10);
     assert.equal(sumAmounts(commit.map((c) => Number(c.amount))), 8000);
+  });
+
+  it("rehydrates stored lines with agreement-relative and event-relative anchors", () => {
+    const drafts = draftsFromStoredLines(
+      [
+        { label: "Retainer", amount: 1000, dueDate: "2026-09-25", obligationKind: "deposit" },
+        { label: "Planning", amount: 2000, dueDate: "2026-11-15", obligationKind: "installment" },
+        { label: "Event day", amount: 3000, dueDate: "2026-12-15", obligationKind: "final" },
+      ],
+      { eventDate: "2026-12-15", bookingDate: null, today: "2026-09-25" },
+    );
+    assert.equal(drafts[0]!.timing.type, "due_today");
+    assert.equal(drafts[1]!.timing.type, "before_event");
+    if (drafts[1]!.timing.type === "before_event") assert.equal(drafts[1]!.timing.days, 30);
+    assert.equal(drafts[2]!.timing.type, "on_event");
   });
 });

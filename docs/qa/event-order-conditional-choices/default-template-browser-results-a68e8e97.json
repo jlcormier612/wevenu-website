@@ -1,0 +1,115 @@
+{
+  "pass": true,
+  "passed": 21,
+  "failed": 0,
+  "total": 21,
+  "image": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:a68e8e9798b960f41f9058f50c62edb9c84f6ff1",
+  "digest": "sha256:535134b1609fdef6339a42aff8a3cb691500bcaab19b4e1caff54e70f9b4272a",
+  "checks": [
+    {
+      "name": "serving-sha",
+      "pass": true,
+      "detail": "expected=a68e8e9798b9 ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:a68e8e9798b960f41f9058f50c62edb9c84f6ff1"
+    },
+    {
+      "name": "serving-digest",
+      "pass": true,
+      "detail": "sha256:535134b1609fdef6339a42aff8a3cb691500bcaab19b4e1caff54e70f9b4272a"
+    },
+    {
+      "name": "production-untouched",
+      "pass": true,
+      "detail": "sandbox project only"
+    },
+    {
+      "name": "eo-d-02-exists",
+      "pass": true,
+      "detail": "{\"id\":\"d73d9734-98d9-46a0-b54b-dccadb036150\",\"name\":\"Ceremony + Reception\",\"source_master_key\":\"EO-D-02\"}"
+    },
+    {
+      "name": "upgrade-or-already-corrected",
+      "pass": true,
+      "detail": "{\"repaired\":false,\"upgraded\":false,\"conditionalAdded\":0}"
+    },
+    {
+      "name": "dinner-required-pick-one",
+      "pass": true,
+      "detail": "{\"dinner\":{\"id\":\"fa1636a6-a392-40d7-b3cb-a48cfcaec3e7\",\"templateId\":\"d73d9734-98d9-46a0-b54b-dccadb036150\",\"venueId\":\"a415ac52-cd74-42a6-8df7-7a8f6e71d080\",\"sectionId\":\"a2f36af6-3434-4dd6-9094-a75ef907712c\",\"name\":\"Dinner service\",\"instructions\":\"Pick one — prices are per person.\",\"selectionMode\":\"single\",\"minSelect\":1,\"maxSelect\":1,\"allowQuantity\":false,\"sortOrder\":1,\"createdAt\":\"2026-10-25T18:02:20.127602+00:00\",\"updatedAt\":\"2026-10-25T18:02:20.127602+00:00\"},\"dinnerOpts\":[{\"id\":\"4bf926c2-fd3a-44e6-9ea8-eb8ce67ab6c9\",\"templateId\":\"d73d9734-98d9-46a0-b54b-dccadb036150\",\"venueId\":\"a415ac52-cd74-42a6-8df7-7a8f6e71d080\",\"groupId\":\"fa1636a6-a392-40d7-b3cb-a48cfcaec3e7\",\"offeringId\":null,\"label\":\"Plated Dinner\",\"description\":\"Per person\",\"isIncluded\":false,\"unitPrice\":85,\"isDefault\":false,\"sortOrder\":0,\"createdAt\":\"2026-10-25T18:02:20.174042+00:00\",\"updatedAt\":\"2026-10-25T18:02:20.174042+00:00\"},{\"id\":\"c629b92b-132e-4d00-bc96-0e315df55f89\",\"templateId\":\"d73d9734-98d9-46a0-b54b-dccadb036150\",\"venueId\":\"a415ac52-cd74-42a6-8df7-7a8f6e71d080\",\"groupId\":\"fa1636a6-a392-40d7-b3cb-a48cfcaec3e7\",\"offeringId\":null,\"label\":\"Buffet Dinner\",\"description\":\"Per person\",\"isIncluded\":false,\"unitPrice\":72,\"isDefault\":false,\"sortOrder\":1,\"createdAt\":\"2026-10-25T18:02:20.221568+00:00\",\"updatedAt\":\"2026-10-25T18:02:20.221568+00:00\"}]}"
+    },
+    {
+      "name": "arbor-optional-not-fixed",
+      "pass": true,
+      "detail": "Arbor only as optional option"
+    },
+    {
+      "name": "included-fixed-lines",
+      "pass": true,
+      "detail": "[\"Ceremony Coordination\",\"Day-of Coordination\"]"
+    },
+    {
+      "name": "customized-preserved",
+      "pass": true,
+      "detail": "checked=2"
+    },
+    {
+      "name": "upgrade-idempotent",
+      "pass": true,
+      "detail": "{\"repaired\":false,\"upgraded\":false,\"conditionalAdded\":0}"
+    },
+    {
+      "name": "required-validation-blocks-empty",
+      "pass": true,
+      "detail": "Choose an option for “Dinner service” before submitting."
+    },
+    {
+      "name": "required-validation-blocks-two-dinners",
+      "pass": true,
+      "detail": "“Dinner service” allows only one selection."
+    },
+    {
+      "name": "scenario-b-no-arbor",
+      "pass": true,
+      "detail": "[{\"optionId\":\"4bf926c2-fd3a-44e6-9ea8-eb8ce67ab6c9\",\"groupId\":\"fa1636a6-a392-40d7-b3cb-a48cfcaec3e7\",\"offeringId\":null,\"description\":\"Plated Dinner\",\"quantity\":1,\"unitPrice\":85,\"isIncluded\":false,\"amount\":85}]"
+    },
+    {
+      "name": "scenario-a-has-arbor-once",
+      "pass": true,
+      "detail": "[{\"optionId\":\"5b59b659-9bcd-4c96-82bc-f1334d62df8f\",\"groupId\":\"dfd30bd7-bbc4-49f1-aca1-a00a35a5edd1\",\"offeringId\":null,\"description\":\"Arbor\",\"quantity\":1,\"unitPrice\":350,\"isIncluded\":false,\"amount\":350},{\"optionId\":\"4bf926c2-fd3a-44e6-9ea8-eb8ce67ab6c9\",\"groupId\":\"fa1636a6-a392-40d7-b3cb-a48cfcaec3e7\",\"offeringId\":null,\"description\":\"Plated Dinner\",\"quantity\":1,\"unitPrice\":85,\"isIncluded\":false,\"amount\":85},{\"optionId\":\"e4794273-22a0-43de-ae2c-345e64b94801\",\"groupId\":\"6cef4198-ae9c-48d1-abd6-4db051a2ed57\",\"offeringId\":null,\"description\":\"Beer & Wine\",\"quantity\":1,\"unitPrice\":28,\"isIncluded\":false,\"amount\":28}]"
+    },
+    {
+      "name": "editor-shows-dinner-group",
+      "pass": true,
+      "detail": "OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\n28\nClients\nVendors\n\nSCHEDULING\n\nCalendar\nTours\n4\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nLIBRARY\n\nTemplates\nDocuments\n\nFINANCIALS\n\nContracts\n13\nPayments\n14\n\nTO DO’S\n\nTask Center\nRequests\n\nYOUR VENUE\n\nSetup\nSettings\nGuidance\nVenue Guide\nReports\nHelp & Feedback\nJen's Fancy Venue\nSearch\n⌘K\n99+\nJ\njennifer@hellotocheers.com\nEvent Order Templates\n\nEVENT ORDER TEMPLATE\n\nCeremony + Reception\nOwner: Venue\n·\nUpdated Oct 25, 2026\nStarter\nActive\nPreview\nEdit\n\nYou ar"
+    },
+    {
+      "name": "editor-shows-arbor-optional",
+      "pass": true,
+      "detail": "Arbor visible in editor"
+    },
+    {
+      "name": "rpc-rejects-missing-required",
+      "pass": true,
+      "detail": "{\"ok\":false,\"message\":\"Choose an option for “Dinner service” before submitting.\"}"
+    },
+    {
+      "name": "scenario-a-submitted",
+      "pass": true,
+      "detail": "{\"status\":\"submitted\"}"
+    },
+    {
+      "name": "scenario-b-submitted",
+      "pass": true,
+      "detail": "{\"ok\":true,\"status\":\"submitted\",\"submissionNumber\":1}"
+    },
+    {
+      "name": "scenario-b-unselected-not-billable",
+      "pass": true,
+      "detail": "[\"Plated Dinner\"]"
+    },
+    {
+      "name": "event-orders-still-present",
+      "pass": true,
+      "detail": "[{\"id\":\"624eceef-5096-4288-b104-62daa3a82d11\",\"status\":\"finalized\",\"revision\":24}]"
+    }
+  ]
+}

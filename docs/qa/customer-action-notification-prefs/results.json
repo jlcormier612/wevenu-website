@@ -1,0 +1,91 @@
+{
+  "ok": true,
+  "results": {
+    "stamp": 1790196657210,
+    "venue": "a415ac52-cd74-42a6-8df7-7a8f6e71d080",
+    "tour_scheduled_on": {
+      "ok": true,
+      "count": 1,
+      "row": {
+        "id": "8d2f413f-2c0f-4440-a857-9ec82325e270",
+        "title": "New tour scheduled — Tour Notif1790196657210",
+        "body": "Oct 02, 2028 at 10:00 AM · 60 min · Wedding",
+        "needs_email": true,
+        "emailed_at": null,
+        "created_at": "2026-09-23T20:50:57.713+00:00"
+      }
+    },
+    "tour_scheduled_off": {
+      "ok": true,
+      "count": 0
+    },
+    "tour_confirmed_on": {
+      "ok": true,
+      "confirm1": {
+        "ok": true,
+        "alreadyConfirmed": false
+      },
+      "confirm2": {
+        "ok": true,
+        "alreadyConfirmed": true
+      },
+      "count": 1,
+      "replayCount": 1,
+      "apptAfter": {
+        "status": "confirmed",
+        "confirmed_at": "2026-09-23T20:50:58.280673+00:00",
+        "confirmation_source": "prospect_link"
+      },
+      "row": {
+        "id": "ba636105-fad6-4015-97d8-bb2355156b12",
+        "title": "Tour confirmed — Tour Notif1790196657210",
+        "body": "Oct 02, 2028 at 10:00 AM · Confirmed by the guest",
+        "needs_email": true,
+        "emailed_at": null,
+        "created_at": "2026-09-23T20:50:58.280673+00:00"
+      }
+    },
+    "confirmation_request_no_notify": {
+      "ok": true,
+      "count": 0
+    },
+    "tour_confirmed_off": {
+      "ok": true,
+      "count": 0
+    },
+    "proposal_accepted_on": {
+      "ok": true,
+      "accept1": {
+        "id": "bacf6f93-dd49-4e74-9abe-cf40144b4dea",
+        "ok": true,
+        "alreadyAccepted": false
+      },
+      "accept2": {
+        "id": "bacf6f93-dd49-4e74-9abe-cf40144b4dea",
+        "ok": true,
+        "alreadyAccepted": true
+      },
+      "count": 1,
+      "row": {
+        "id": "7dcbc4ef-3c7f-4130-a9ef-3015806019dd",
+        "title": "Proposal accepted — Tour Notif1790196657210",
+        "body": "$7,700.00 · Signature Wedding",
+        "needs_email": true,
+        "emailed_at": null,
+        "created_at": "2026-09-23T20:50:59.876794+00:00"
+      }
+    },
+    "proposal_accepted_off": {
+      "ok": true,
+      "count": 0
+    },
+    "email": {
+      "note": "Notification row ready for processVenueNotificationEmails; venue email present",
+      "venueEmail": "jennifer@hellotocheers.com",
+      "notificationId": "8d2f413f-2c0f-4440-a857-9ec82325e270",
+      "subject": "New tour scheduled — Tour Notif1790196657210",
+      "mailboxHint": "jyagnesak@yahoo.com",
+      "daisyAlsoConnected": "5c84e74e-355d-4ce1-9e6b-913a9267f543"
+    }
+  }
+}

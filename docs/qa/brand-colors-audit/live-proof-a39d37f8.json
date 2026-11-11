@@ -1,0 +1,125 @@
+{
+  "status": "GREEN",
+  "workstream": "Brand Colors — customer-facing consumption",
+  "production": "untouched",
+  "provedAt": "2026-09-22T23:10:00Z",
+  "runtime": {
+    "deploy": "https://github.com/jlcormier612/wevenu-website/actions/runs/35794679213",
+    "deployConclusion": "success",
+    "commit": "a39d37f8f93878c853d00f9413b9e1aeff76225d",
+    "ecsTaskDefinition": "htc-sandbox-venue-app:348",
+    "image": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:a39d37f8f93878c853d00f9413b9e1aeff76225d",
+    "imageDigest": "sha256:d0fe0f8a94a51a685a1431c627362cb6c13c9a60aac54c4fc26984c94ba6c7a5",
+    "taskArn": "arn:aws:ecs:us-east-1:405254329873:task/htc-sandbox/cc978a2b89e34c4f89be1eeced8a584a",
+    "rolloutState": "COMPLETED",
+    "albHealthyTarget": "10.20.0.51:3000"
+  },
+  "configured": {
+    "venue": "Jen's Fancy Venue",
+    "venueId": "a415ac52-cd74-42a6-8df7-7a8f6e71d080",
+    "primary": "#FF1493",
+    "secondary": "#00BFFF",
+    "accent": "#FF00FF",
+    "neutral": "#FFF0F5"
+  },
+  "method": "Live CDP computed-style scan matching exact configured hex; HTC #F7F5F1 never counted as Neutral.",
+  "surfaces": {
+    "brochureHtml": {
+      "url": "https://app.sandbox.hellotocheers.com/brochure/2f11c7db-971c-43de-813a-7bb5426bdb23?cb=brand-impl-a39d37f8",
+      "configured": { "P": true, "S": true, "A": true, "N": true },
+      "available": { "P": true, "S": true, "A": true, "N": true },
+      "consumed": { "P": true, "S": true, "A": true, "N": true },
+      "customerFacing": { "P": true, "S": true, "A": true, "N": true },
+      "hitCounts": { "P": 2, "S": 33, "A": 24, "N": 1, "HTC_bg": 0 },
+      "consumers": {
+        "Primary": "header borderBottom + contact borderTop #FF1493",
+        "Secondary": "venue name, brochure title, section heads #00BFFF",
+        "Accent": "package prices + availability link #FF00FF",
+        "Neutral": "article backgroundColor #FFF0F5 (not #F7F5F1)"
+      },
+      "varsOnArticle": {
+        "primary": "#FF1493",
+        "secondary": "#00BFFF",
+        "accent": "#FF00FF",
+        "neutral": "#FFF0F5",
+        "bg": "#fff0f5"
+      }
+    },
+    "contractHtml": {
+      "url": "https://app.sandbox.hellotocheers.com/contracts/7aa55c52-a5e3-4c8f-92d0-874ac9019f0e?review=1&cb=brand-impl-a39d37f8",
+      "configured": { "P": true, "S": true, "A": true, "N": true },
+      "available": { "P": true, "S": true, "A": true, "N": true },
+      "consumed": { "P": true, "S": true, "A": true, "N": true },
+      "customerFacing": { "P": true, "S": true, "A": true, "N": true },
+      "hitCounts": { "P": 6, "S": 2, "A": 1, "N": 1 },
+      "consumers": {
+        "Primary": "title card border-top #FF1493",
+        "Secondary": "venue name + Agreement eyebrow #00BFFF",
+        "Accent": "title accent rule #FF00FF",
+        "Neutral": "page surface #FFF0F5"
+      }
+    },
+    "proposal": {
+      "url": "https://app.sandbox.hellotocheers.com/leads/478127db-035a-4063-94d9-cb7a8a14eab2 (Preview overlay — same ProposalArtifact as /offer)",
+      "configured": { "P": true, "S": true, "A": true, "N": true },
+      "available": { "P": true, "S": true, "A": true, "N": true },
+      "consumed": { "P": true, "S": true, "A": true, "N": true },
+      "customerFacing": { "P": true, "S": true, "A": true, "N": true },
+      "hitCounts": { "P": 1, "S": 2, "A": 1, "N": 1 },
+      "consumers": {
+        "Primary": "title underline #FF1493",
+        "Secondary": "Your proposal + What's included #00BFFF",
+        "Accent": "package total #FF00FF",
+        "Neutral": "proposal surface #FFF0F5"
+      }
+    },
+    "publicBook": {
+      "url": "https://app.sandbox.hellotocheers.com/book/06d9570c05b77ccfe65b0a750363c5e5?cb=brand-impl-a39d37f8",
+      "configured": { "P": true, "S": true, "A": true, "N": true },
+      "available": { "P": true, "S": true, "A": true, "N": true },
+      "consumed": { "P": true, "S": true, "A": true, "N": true },
+      "customerFacing": { "P": true, "S": true, "A": true, "N": true },
+      "hitCounts": { "P": 2, "S": 8, "A": 4, "N": 1, "HTC_muted_controls": 3 },
+      "consumers": {
+        "Primary": "header bar + Confirm Tour CTA #FF1493",
+        "Secondary": "--heading → mode labels / section heads #00BFFF",
+        "Accent": "selected mode selector border #FF00FF",
+        "Neutral": "page root backgroundColor #FFF0F5"
+      },
+      "note": "HTC #F7F5F1 still appears on inactive muted control backgrounds (var(--muted)); that is NOT counted as venue Neutral. Root branded surface is #FFF0F5."
+    },
+    "email": {
+      "intentional": "Primary-only",
+      "consumed": { "P": true, "S": false, "A": false, "N": false },
+      "source": "lib/email/venue-brand.ts — unchanged Primary-only ceiling; tests assert no Secondary/Accent/Neutral in shell"
+    },
+    "weddingWebsiteColorStory": {
+      "intentionalSeparation": true,
+      "venueBrandHitsOnPortalWebsiteStudio": 0,
+      "note": "No code path merges venues.*_color into couple_websites Color Story"
+    }
+  },
+  "beforeAfterMatrix": {
+    "brochureHtml": {
+      "before": "P used; S/A available-unused; N unavailable",
+      "after": "P/S/A/N all consumed + customer-facing"
+    },
+    "contractHtml": {
+      "before": "all 4 available; only P consumed",
+      "after": "P/S/A/N all consumed + customer-facing"
+    },
+    "proposal": {
+      "before": "none consumed",
+      "after": "P/S/A/N all consumed + customer-facing"
+    },
+    "publicBook": {
+      "before": "P only; Neutral falsely represented by HTC cream tint",
+      "after": "P/S/A/N consumed; page Neutral = #FFF0F5"
+    }
+  },
+  "tests": {
+    "focused": "lib/theme/brand-colors-surfaces.test.ts + related — 58 passed",
+    "build": "npm run build — exit 0",
+    "typecheck": "pre-existing unrelated error in inbox-needs-response.test.ts only; no Brand Colors file errors"
+  }
+}

@@ -102,6 +102,10 @@ export function LifecycleActions({
       url?: string;
       emailed?: boolean;
       activateUrl?: string;
+      note?: string;
+      stripe?: { customerId?: string | null; subscriptionId?: string | null };
+      product?: { venue?: { entitlement_status?: string | null } };
+      result?: { detail?: string; ok?: boolean };
     };
     if (!res.ok) {
       setMessage(data.error || "Action failed");
@@ -175,7 +179,7 @@ export function LifecycleActions({
         <label className="text-sm">
           <span className="ws-eyebrow block mb-1">Plan</span>
           <select
-            className="rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2 text-sm"
+            className="rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2 text-sm text-foreground"
             value={plan}
             onChange={(e) => setPlan(e.target.value)}
             disabled={pending}
@@ -328,6 +332,111 @@ export function LifecycleActions({
             <ActionButton disabled={pending} onClick={() => run("reactivate")}>
               Reactivate Account
             </ActionButton>
+            <ActionButton
+              disabled={pending}
+              onClick={async () => {
+                const data = await run("get_entitlement");
+                if (data) {
+                  setMessage(
+                    `Stripe customer ${data.stripe?.customerId ?? "—"} · product ${
+                      data.product?.venue?.entitlement_status ??
+                      data.note ??
+                      "n/a"
+                    }`,
+                  );
+                }
+              }}
+            >
+              View Entitlement
+            </ActionButton>
+            <ActionButton
+              disabled={pending}
+              onClick={() => {
+                const until = window.prompt(
+                  "Extend access until (YYYY-MM-DD). Access-only — does not change Stripe invoices.",
+                );
+                if (!until) return;
+                const reason = window.prompt("Reason for this override?");
+                if (!reason?.trim()) return;
+                void run("founder_extend_access", {
+                  accessOverrideUntil: `${until}T23:59:59.000Z`,
+                  reason: reason.trim(),
+                });
+              }}
+            >
+              Extend Access
+            </ActionButton>
+            <ActionButton
+              disabled={pending}
+              onClick={() => {
+                const reason = window.prompt("Reason to pause billing suspension?");
+                if (!reason?.trim()) return;
+                void run("founder_pause_suspend", {
+                  pauseBillingSuspend: true,
+                  reason: reason.trim(),
+                });
+              }}
+            >
+              Pause Billing Suspend
+            </ActionButton>
+            <ActionButton
+              disabled={pending}
+              onClick={() => {
+                const reason = window.prompt("Reason to clear access override / pause?");
+                if (!reason?.trim()) return;
+                void run("founder_clear_override", { reason: reason.trim() });
+              }}
+            >
+              Clear Override
+            </ActionButton>
+            <ActionButton
+              disabled={pending}
+              onClick={() => {
+                const reason = window.prompt("Reason for retention hold?");
+                if (!reason?.trim()) return;
+                void run("founder_retention_hold", {
+                  retentionHold: true,
+                  reason: reason.trim(),
+                });
+              }}
+            >
+              Retention Hold
+            </ActionButton>
+            <ActionButton
+              disabled={pending}
+              onClick={() => {
+                const reason = window.prompt(
+                  "Reason for SECURITY lock? Payment success will NOT clear this.",
+                );
+                if (!reason?.trim()) return;
+                if (
+                  !window.confirm(
+                    "Set independent security lock? This blocks access even after payment.",
+                  )
+                ) {
+                  return;
+                }
+                void run("founder_security_lock", {
+                  manualSecurityLock: true,
+                  reason: reason.trim(),
+                });
+              }}
+            >
+              Security Lock
+            </ActionButton>
+            <ActionButton
+              disabled={pending}
+              onClick={() => {
+                const reason = window.prompt("Reason to clear security lock?");
+                if (!reason?.trim()) return;
+                void run("founder_security_lock", {
+                  manualSecurityLock: false,
+                  reason: reason.trim(),
+                });
+              }}
+            >
+              Clear Security Lock
+            </ActionButton>
           </>
         ) : null}
         {showCustomerActions && canManageBilling ? (
@@ -359,7 +468,7 @@ export function LifecycleActions({
           <label className="block text-sm">
             <span className="ws-muted">Title</span>
             <input
-              className="mt-1 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2 text-sm"
+              className="mt-1 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2 text-sm text-foreground"
               value={taskTitle}
               onChange={(e) => setTaskTitle(e.target.value)}
               placeholder="e.g. Follow up on walkthrough"
@@ -371,7 +480,7 @@ export function LifecycleActions({
               <span className="ws-muted">Due date</span>
               <input
                 type="date"
-                className="mt-1 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2 text-sm"
+                className="mt-1 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2 text-sm text-foreground"
                 value={taskDue}
                 onChange={(e) => setTaskDue(e.target.value)}
                 disabled={ownerBusy}
@@ -380,7 +489,7 @@ export function LifecycleActions({
             <label className="block text-sm sm:col-span-1">
               <span className="ws-muted">Notes (optional)</span>
               <input
-                className="mt-1 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2 text-sm"
+                className="mt-1 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2 text-sm text-foreground"
                 value={taskDescription}
                 onChange={(e) => setTaskDescription(e.target.value)}
                 placeholder="Context for the assignee"
@@ -418,7 +527,7 @@ export function LifecycleActions({
           <label className="block text-sm">
             <span className="ws-muted">Subject</span>
             <input
-              className="mt-1 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2 text-sm"
+              className="mt-1 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2 text-sm text-foreground"
               value={msgSubject}
               onChange={(e) => setMsgSubject(e.target.value)}
               disabled={ownerBusy}
@@ -428,7 +537,7 @@ export function LifecycleActions({
             <span className="ws-muted">Message</span>
             <textarea
               rows={8}
-              className="mt-1 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2 text-sm leading-relaxed"
+              className="mt-1 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2 text-sm leading-relaxed text-foreground"
               value={msgBody}
               onChange={(e) => setMsgBody(e.target.value)}
               disabled={ownerBusy}
@@ -469,7 +578,7 @@ export function LifecycleActions({
             <span className="ws-muted">Note</span>
             <textarea
               rows={5}
-              className="mt-1 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2 text-sm leading-relaxed"
+              className="mt-1 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2 text-sm leading-relaxed text-foreground"
               value={noteText}
               onChange={(e) => setNoteText(e.target.value)}
               placeholder="Capture context for the team…"
@@ -511,7 +620,7 @@ export function LifecycleActions({
       ) : null}
 
       {message ? (
-        <p className="mt-3 text-sm text-[var(--forest-sage)]" role="status">
+        <p className="mt-3 text-sm text-foreground" role="status">
           {message}
         </p>
       ) : null}

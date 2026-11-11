@@ -1,0 +1,141 @@
+PASS db_insurance_task_complete — {"id":"f5778f89-60ee-43dd-8755-f9f200df8b43","status":"complete","completed_at":"2026-10-22T17:49:34.537+00:00"}
+PASS db_couple_insurance_persisted — {"id":"fa395859-7f7c-4898-a86c-bb27b12e6a0f","source_type":"insurance","share_with_venue":true,"file_url":"https://wvpsldwwjqdannqasrdf.supabase.co/storage/v1/object/public/client-media/05f16a15-1752-4855-8a3b-aad5c593d8d9/0f554bb0-9766-4dd2-a4c1-fdd2bcd1e001/document-1792691373583.png"}
+PASS db_payment_schedule_matches_screenshot — [{"label":"Initial Payment","status":"paid","amount":3750,"paid_at":"2026-10-22T00:00:00+00:00","payment_method":"cash","quickbooks_sync_status":"pending"},{"label":"Planning Payment 1","status":"pending","amount":3750,"paid_at":null,"payment_method":null,"quickbooks_sync_status":"not_synced"},{"label":"Planning Paymen
+PASS serving_sha — serving=1061b7da46cbd2e8bbac31fb3d805f38e61eafd8 expected=1061b7da46cbd2e8bbac31fb3d805f38e61eafd8
+PASS venue_insurance_in_completed — Delete
+Bookings
+Bindi Lulu & Jake Paws
+View original lead
+Booked
+Cancel event
+Edit event
+Day-of Sheet
+
+October 24, 2027
+
+Sunday · In 366 days
+
+Booked
+Edit schedule
+
+Day-of schedule
+
+4:00 PM – 10:00 PM
+
+Guests
+
+50 guests
+
+SUNDAY, OCT 24, 2027
+
+Ceremony
+
+4:00 PM – 5:00 PM · Meadow Lawn
+
+Reception
+
+5:00 PM – 10:00 PM · Me
+PASS venue_insurance_not_in_upcoming_block — UPCOMING (7)
+
+Complete your questionnaire
+
+Planning
+·
+Client
+·
+Client completes
+·
+90 days before · Jul 26
+
+Auto-completes on trigger
+
+Create Request
+Waive
+
+Choose your vendorsOPTIONAL
+
+Planning
+·
+Client
+·
+Client completes
+·
+45 days before · Sep 9
+
+Auto-completes on trigger
+
+Create Request
+Waive
+
+Submit your guest count
+PASS venue_documents_shows_insurance — Delete
+Bookings
+Bindi Lulu & Jake Paws
+View original lead
+Booked
+Cancel event
+Edit event
+Day-of Sheet
+
+October 24, 2027
+
+Sunday · In 366 days
+
+Booked
+Edit schedule
+
+Day-of schedule
+
+4:00 PM – 10:00 PM
+
+Guests
+
+50 guests
+
+SUNDAY, OCT 24, 2027
+
+Ceremony
+
+4:00 PM – 5:00 PM · Meadow Lawn
+
+Reception
+
+5:00 PM – 10:00 PM · Me
+PASS venue_payments_show_schedule — Delete
+Bookings
+Bindi Lulu & Jake Paws
+View original lead
+Booked
+Cancel event
+Edit event
+Day-of Sheet
+
+October 24, 2027
+
+Sunday · In 366 days
+
+Booked
+Edit schedule
+
+Day-of schedule
+
+4:00 PM – 10:00 PM
+
+Guests
+
+50 guests
+
+SUNDAY, OCT 24, 2027
+
+Ceremony
+
+4:00 PM – 5:00 PM · Meadow Lawn
+
+Reception
+
+5:00 PM – 10:00 PM · Me
+PASS db_insurance_document_registered — {"docsBefore":1,"docsAfter":1,"insDocs":[{"id":"404fd5eb-409d-4bc8-8244-4a0f5a834f89","name":"Essential Wedding · Proposal · Hello to Cheers","category":"insurance","storage_url":"https://wvpsldwwjqdannqasrdf.supabase.co/storage/v1/object/public/client-media/05f16a15-1752-4855-8a3b-aad5c593d8d9/0f554bb0-9766-4dd2-a4c1-
+PASS db_no_duplicate_insurance_docs — count=1
+PASS db_task_still_complete_after_refresh — {"status":"complete","completed_at":"2026-10-22T17:49:34.537+00:00"}
+
+RESULT GREEN 11/11

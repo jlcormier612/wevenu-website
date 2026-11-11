@@ -1,0 +1,38 @@
+{
+  "checks": [
+    {
+      "name": "serving_sha",
+      "pass": true,
+      "detail": "expected=2b97ed8805fde90079fdb69ea6a7e3990ec7d14b ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:2b97ed8805fde90079fdb69ea6a7e3990ec7d14b",
+      "kind": "deploy"
+    },
+    {
+      "name": "portal_setup_no_inventory_event_order_toggles",
+      "pass": true,
+      "detail": "planningVisible=true invEoCopy=false",
+      "kind": "usability"
+    },
+    {
+      "name": "setup_profiles_treat_inventory_eo_as_commercial",
+      "pass": true,
+      "detail": "OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\n99+\nClients\nVendors\n\nSCHEDULING\n\nCalendar\nTours\n22\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nLIBRARY\n\nTemplates\nDocuments\n\nFINANCIALS\n\nContracts\n17\nPayments\n14\n\nTO DO’S\n\nTask Center\nRequests\n\nYOUR VENUE\n\nSetup\nSettings\nGuidance\nVenue Guide\nReports\nHelp & Feedback\nJen's Fancy Venue\nSearch\n⌘K\n99+\nJ\njennifer@hellotocheers.com\nSetup Profiles\n\nThis is where you t",
+      "kind": "usability"
+    },
+    {
+      "name": "finalize_notify_and_documents_seams_shipped",
+      "pass": true,
+      "detail": "covered by focused unit suite + migration on tip",
+      "kind": "deploy"
+    },
+    {
+      "name": "settings_390_no_inv_eo_toggles_usable",
+      "pass": true,
+      "detail": "overflowX=0",
+      "kind": "usability"
+    }
+  ],
+  "failed": 0,
+  "persisted": {
+    "expectedSha": "2b97ed8805fde90079fdb69ea6a7e3990ec7d14b"
+  }
+}

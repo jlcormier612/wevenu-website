@@ -36,7 +36,28 @@ describe("summarizeFloorPlanCapacity", () => {
     assert.equal(s.level, "seating_short");
     assert.equal(s.seatingShortfall, 4);
     assert.equal(floorPlanCapacityNeedsAttention(s), true);
-    assert.match(formatFloorPlanCapacitySentence(s), /short 4 seats/);
+    assert.match(formatFloorPlanCapacitySentence(s), /short 4 seats vs the event guest count/);
+  });
+
+  it("surplus is layout seats minus event guest count — not Space capacity minus layout", () => {
+    // Sandbox Joy & Buppy Robicheau / Standard Wedding — Ceremony + Reception
+    // observed: 210 seats · 30 tables · 75 guests · Space 350 · "135 to spare"
+    const s = summarizeFloorPlanCapacity({
+      objects: Array.from({ length: 30 }, () => ({ objectType: "table_round" as const, capacity: 7 })),
+      guestCount: 75,
+      spaceCapacity: 350,
+    });
+    // 30 × 7 = 210
+    assert.equal(s.seatingCapacity, 210);
+    assert.equal(s.tableCount, 30);
+    assert.equal(s.seatingSurplus, 135); // 210 − 75
+    assert.notEqual(s.seatingSurplus, 350 - 210); // must not be 140
+    const sentence = formatFloorPlanCapacitySentence(s);
+    assert.match(sentence, /210 layout seats across 30 tables/);
+    assert.match(sentence, /75 guests recorded on this event/);
+    assert.match(sentence, /assigned Space capacity 350/);
+    assert.match(sentence, /135 layout seats above the event guest count/);
+    assert.doesNotMatch(sentence, /seats to spare/);
   });
 
   it("flags Space capacity when guest count exceeds the Space", () => {

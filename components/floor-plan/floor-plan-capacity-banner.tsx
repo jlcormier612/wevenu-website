@@ -48,15 +48,31 @@ export function FloorPlanCapacityBanner({
           ? "border-warning/40 bg-warning/10"
           : "border-border bg-muted/30"
       }`}
+      data-testid="floor-plan-capacity-banner"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 space-y-1">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Seating capacity
           </p>
-          <p className="text-sm text-foreground">
+          <p className="text-sm text-foreground" data-testid="floor-plan-capacity-sentence">
             {sentence}
             {spaceNote && attention && summary.spaceCapacity != null ? spaceNote : null}
+          </p>
+          <p className="text-xs text-muted-foreground" data-testid="floor-plan-capacity-legend">
+            Layout seats sum seat counts on round, rectangular, and oval tables on this canvas
+            (including ceremony rows and cocktail tables when present). That total is one
+            simultaneous layout — zone labels like Ceremony / Cocktail / Reception are visual
+            areas, not separate timed setups. “Above guest count” is layout seats minus the
+            event&apos;s recorded guest count
+            {summary.guestCount != null && summary.seatingSurplus != null
+              ? ` (${summary.seatingCapacity} − ${summary.guestCount} = ${summary.seatingSurplus})`
+              : ""}
+            ; it is not Space capacity minus layout seats
+            {summary.spaceCapacity != null
+              ? ` (${summary.spaceCapacity} − ${summary.seatingCapacity} would be ${(summary.spaceCapacity - summary.seatingCapacity)})`
+              : ""}
+            .
           </p>
           {attention && (
             <p className="text-xs text-muted-foreground">

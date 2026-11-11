@@ -108,7 +108,7 @@ describe("customer-facing reporting copy", () => {
   it("Dashboard Coming up stays events-only and does not invent snapshot metrics", () => {
     assert.doesNotMatch(dashboard, /label="Payments to Watch"/);
     assert.doesNotMatch(dashboard, /label="Active Leads"/);
-    assert.match(dashboard, /Events in the next 60 days/);
+    assert.match(dashboard, /Events in the next 30 days/);
   });
 
   it("SQL reporting RPCs exclude exclude_from_business_reporting", () => {

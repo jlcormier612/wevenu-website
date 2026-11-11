@@ -1,0 +1,573 @@
+[
+  {
+    "label": "overview",
+    "viewport": "desktop-below",
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11b-reports-implementation/evidence/overview-desktop-below.png"
+  },
+  {
+    "label": "overview",
+    "viewport": "desktop",
+    "status": 200,
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11b-reports-implementation/evidence/overview-desktop.png",
+    "h1": "Reports",
+    "url": "/reporting",
+    "introAccent": true,
+    "linenFilter": true,
+    "savedShell": false,
+    "overflowX": false,
+    "kpis": [
+      {
+        "tone": "sales",
+        "label": "Leads",
+        "bg": "rgb(255, 255, 255)"
+      },
+      {
+        "tone": "sales",
+        "label": "Tours",
+        "bg": "rgb(255, 255, 255)"
+      },
+      {
+        "tone": "bookings",
+        "label": "Bookings",
+        "bg": "rgb(241, 245, 242)"
+      },
+      {
+        "tone": "bookings",
+        "label": "Leads who booked",
+        "bg": "rgb(241, 245, 242)"
+      },
+      {
+        "tone": "contracted",
+        "label": "Contracted",
+        "bg": "rgb(232, 240, 234)"
+      },
+      {
+        "tone": "collected",
+        "label": "Collected",
+        "bg": "rgb(220, 232, 224)"
+      },
+      {
+        "tone": "outstanding",
+        "label": "Outstanding",
+        "bg": "rgb(243, 240, 233)"
+      }
+    ],
+    "tiles": [
+      {
+        "tone": "sales",
+        "bg": "rgb(220, 232, 224)",
+        "text": "Leads0Received this period"
+      },
+      {
+        "tone": "sales",
+        "bg": "rgb(220, 232, 224)",
+        "text": "Tours3Scheduled this period"
+      },
+      {
+        "tone": "bookings",
+        "bg": "rgb(241, 245, 242)",
+        "text": "Bookings0Marked booked this period"
+      },
+      {
+        "tone": "contracted",
+        "bg": "rgb(232, 240, 234)",
+        "text": "Contracted$0Signed value (financial date)"
+      },
+      {
+        "tone": "collected",
+        "bg": "rgb(220, 232, 224)",
+        "text": "Collected$0Money received this period"
+      },
+      {
+        "tone": "outstanding",
+        "bg": "rgb(243, 240, 233)",
+        "text": "Outstanding$0Mixed clocks — see note"
+      },
+      {
+        "tone": "sales",
+        "bg": "rgb(220, 232, 224)",
+        "text": "Took a tour0%0 of 0 later toured"
+      },
+      {
+        "tone": "bookings",
+        "bg": "rgb(241, 245, 242)",
+        "text": "Leads who booked0%0 of 0 later booked — the book"
+      },
+      {
+        "tone": "bookings",
+        "bg": "rgb(241, 245, 242)",
+        "text": "Toured, then booked0%Of those who toured: 0 of 0"
+      }
+    ],
+    "outstandingBg": "rgb(243, 240, 233)",
+    "contractedBg": "rgb(232, 240, 234)",
+    "collectedBg": "rgb(220, 232, 224)"
+  },
+  {
+    "label": "overview",
+    "viewport": "mobile",
+    "status": 200,
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11b-reports-implementation/evidence/overview-mobile.png",
+    "h1": "Reports",
+    "url": "/reporting",
+    "introAccent": true,
+    "linenFilter": true,
+    "savedShell": false,
+    "overflowX": false,
+    "kpis": [
+      {
+        "tone": "sales",
+        "label": "Leads",
+        "bg": "rgb(255, 255, 255)"
+      },
+      {
+        "tone": "sales",
+        "label": "Tours",
+        "bg": "rgb(255, 255, 255)"
+      },
+      {
+        "tone": "bookings",
+        "label": "Bookings",
+        "bg": "rgb(241, 245, 242)"
+      },
+      {
+        "tone": "bookings",
+        "label": "Leads who booked",
+        "bg": "rgb(241, 245, 242)"
+      },
+      {
+        "tone": "contracted",
+        "label": "Contracted",
+        "bg": "rgb(232, 240, 234)"
+      },
+      {
+        "tone": "collected",
+        "label": "Collected",
+        "bg": "rgb(220, 232, 224)"
+      },
+      {
+        "tone": "outstanding",
+        "label": "Outstanding",
+        "bg": "rgb(243, 240, 233)"
+      }
+    ],
+    "tiles": [
+      {
+        "tone": "sales",
+        "bg": "rgb(220, 232, 224)",
+        "text": "Leads0Received this period"
+      },
+      {
+        "tone": "sales",
+        "bg": "rgb(220, 232, 224)",
+        "text": "Tours3Scheduled this period"
+      },
+      {
+        "tone": "bookings",
+        "bg": "rgb(241, 245, 242)",
+        "text": "Bookings0Marked booked this period"
+      },
+      {
+        "tone": "contracted",
+        "bg": "rgb(232, 240, 234)",
+        "text": "Contracted$0Signed value (financial date)"
+      },
+      {
+        "tone": "collected",
+        "bg": "rgb(220, 232, 224)",
+        "text": "Collected$0Money received this period"
+      },
+      {
+        "tone": "outstanding",
+        "bg": "rgb(243, 240, 233)",
+        "text": "Outstanding$0Mixed clocks — see note"
+      },
+      {
+        "tone": "sales",
+        "bg": "rgb(220, 232, 224)",
+        "text": "Took a tour0%0 of 0 later toured"
+      },
+      {
+        "tone": "bookings",
+        "bg": "rgb(241, 245, 242)",
+        "text": "Leads who booked0%0 of 0 later booked — the book"
+      },
+      {
+        "tone": "bookings",
+        "bg": "rgb(241, 245, 242)",
+        "text": "Toured, then booked0%Of those who toured: 0 of 0"
+      }
+    ],
+    "outstandingBg": "rgb(243, 240, 233)",
+    "contractedBg": "rgb(232, 240, 234)",
+    "collectedBg": "rgb(220, 232, 224)"
+  },
+  {
+    "label": "sales",
+    "viewport": "desktop-below",
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11b-reports-implementation/evidence/sales-desktop-below.png"
+  },
+  {
+    "label": "sales",
+    "viewport": "desktop",
+    "status": 200,
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11b-reports-implementation/evidence/sales-desktop.png",
+    "h1": "Reports",
+    "url": "/reporting/sales",
+    "introAccent": true,
+    "linenFilter": true,
+    "savedShell": false,
+    "overflowX": false,
+    "kpis": [],
+    "tiles": [
+      {
+        "tone": "sales",
+        "bg": "rgb(220, 232, 224)",
+        "text": "Leads0"
+      },
+      {
+        "tone": "bookings",
+        "bg": "rgb(241, 245, 242)",
+        "text": "Leads who booked0"
+      },
+      {
+        "tone": "bookings",
+        "bg": "rgb(241, 245, 242)",
+        "text": "Booking rate0%Leads who booked ÷ leads"
+      },
+      {
+        "tone": "sales",
+        "bg": "rgb(220, 232, 224)",
+        "text": "New leads0"
+      },
+      {
+        "tone": "sales",
+        "bg": "rgb(220, 232, 224)",
+        "text": "Tours this period3"
+      },
+      {
+        "tone": "bookings",
+        "bg": "rgb(241, 245, 242)",
+        "text": "Bookings this period0"
+      },
+      {
+        "tone": "neutral",
+        "bg": "rgb(255, 255, 255)",
+        "text": "Currently booked74On your pipeline right now — n"
+      },
+      {
+        "tone": "contracted",
+        "bg": "rgb(232, 240, 234)",
+        "text": "Contracted$0"
+      },
+      {
+        "tone": "collected",
+        "bg": "rgb(220, 232, 224)",
+        "text": "Collected$0"
+      }
+    ],
+    "outstandingBg": null,
+    "contractedBg": null,
+    "collectedBg": null
+  },
+  {
+    "label": "sales",
+    "viewport": "mobile",
+    "status": 200,
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11b-reports-implementation/evidence/sales-mobile.png",
+    "h1": "Reports",
+    "url": "/reporting/sales",
+    "introAccent": true,
+    "linenFilter": true,
+    "savedShell": false,
+    "overflowX": false,
+    "kpis": [],
+    "tiles": [
+      {
+        "tone": "sales",
+        "bg": "rgb(220, 232, 224)",
+        "text": "Leads0"
+      },
+      {
+        "tone": "bookings",
+        "bg": "rgb(241, 245, 242)",
+        "text": "Leads who booked0"
+      },
+      {
+        "tone": "bookings",
+        "bg": "rgb(241, 245, 242)",
+        "text": "Booking rate0%Leads who booked ÷ leads"
+      },
+      {
+        "tone": "sales",
+        "bg": "rgb(220, 232, 224)",
+        "text": "New leads0"
+      },
+      {
+        "tone": "sales",
+        "bg": "rgb(220, 232, 224)",
+        "text": "Tours this period3"
+      },
+      {
+        "tone": "bookings",
+        "bg": "rgb(241, 245, 242)",
+        "text": "Bookings this period0"
+      },
+      {
+        "tone": "neutral",
+        "bg": "rgb(255, 255, 255)",
+        "text": "Currently booked74On your pipeline right now — n"
+      },
+      {
+        "tone": "contracted",
+        "bg": "rgb(232, 240, 234)",
+        "text": "Contracted$0"
+      },
+      {
+        "tone": "collected",
+        "bg": "rgb(220, 232, 224)",
+        "text": "Collected$0"
+      }
+    ],
+    "outstandingBg": null,
+    "contractedBg": null,
+    "collectedBg": null
+  },
+  {
+    "label": "bookings",
+    "viewport": "desktop",
+    "status": 200,
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11b-reports-implementation/evidence/bookings-desktop.png",
+    "h1": "Reports",
+    "url": "/reporting/bookings",
+    "introAccent": true,
+    "linenFilter": true,
+    "savedShell": false,
+    "overflowX": false,
+    "kpis": [
+      {
+        "tone": "bookings",
+        "label": "Bookings",
+        "bg": "rgb(241, 245, 242)"
+      },
+      {
+        "tone": "contracted",
+        "label": "Contracted",
+        "bg": "rgb(232, 240, 234)"
+      },
+      {
+        "tone": "contracted",
+        "label": "Avg. contracted value",
+        "bg": "rgb(232, 240, 234)"
+      }
+    ],
+    "tiles": [],
+    "outstandingBg": null,
+    "contractedBg": "rgb(232, 240, 234)",
+    "collectedBg": null
+  },
+  {
+    "label": "bookings",
+    "viewport": "mobile",
+    "status": 200,
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11b-reports-implementation/evidence/bookings-mobile.png",
+    "h1": "Reports",
+    "url": "/reporting/bookings",
+    "introAccent": true,
+    "linenFilter": true,
+    "savedShell": false,
+    "overflowX": false,
+    "kpis": [
+      {
+        "tone": "bookings",
+        "label": "Bookings",
+        "bg": "rgb(241, 245, 242)"
+      },
+      {
+        "tone": "contracted",
+        "label": "Contracted",
+        "bg": "rgb(232, 240, 234)"
+      },
+      {
+        "tone": "contracted",
+        "label": "Avg. contracted value",
+        "bg": "rgb(232, 240, 234)"
+      }
+    ],
+    "tiles": [],
+    "outstandingBg": null,
+    "contractedBg": "rgb(232, 240, 234)",
+    "collectedBg": null
+  },
+  {
+    "label": "revenue",
+    "viewport": "desktop-below",
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11b-reports-implementation/evidence/revenue-desktop-below.png"
+  },
+  {
+    "label": "revenue",
+    "viewport": "desktop",
+    "status": 200,
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11b-reports-implementation/evidence/revenue-desktop.png",
+    "h1": "Reports",
+    "url": "/reporting/revenue",
+    "introAccent": true,
+    "linenFilter": true,
+    "savedShell": false,
+    "overflowX": false,
+    "kpis": [
+      {
+        "tone": "contracted",
+        "label": "Contracted",
+        "bg": "rgb(232, 240, 234)"
+      },
+      {
+        "tone": "collected",
+        "label": "Payments Collected",
+        "bg": "rgb(220, 232, 224)"
+      },
+      {
+        "tone": "outstanding",
+        "label": "Outstanding Balance",
+        "bg": "rgb(243, 240, 233)"
+      },
+      {
+        "tone": "contracted",
+        "label": "Avg. contracted value",
+        "bg": "rgb(232, 240, 234)"
+      }
+    ],
+    "tiles": [],
+    "outstandingBg": "rgb(243, 240, 233)",
+    "contractedBg": "rgb(232, 240, 234)",
+    "collectedBg": "rgb(220, 232, 224)"
+  },
+  {
+    "label": "revenue",
+    "viewport": "mobile",
+    "status": 200,
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11b-reports-implementation/evidence/revenue-mobile.png",
+    "h1": "Reports",
+    "url": "/reporting/revenue",
+    "introAccent": true,
+    "linenFilter": true,
+    "savedShell": false,
+    "overflowX": false,
+    "kpis": [
+      {
+        "tone": "contracted",
+        "label": "Contracted",
+        "bg": "rgb(232, 240, 234)"
+      },
+      {
+        "tone": "collected",
+        "label": "Payments Collected",
+        "bg": "rgb(220, 232, 224)"
+      },
+      {
+        "tone": "outstanding",
+        "label": "Outstanding Balance",
+        "bg": "rgb(243, 240, 233)"
+      },
+      {
+        "tone": "contracted",
+        "label": "Avg. contracted value",
+        "bg": "rgb(232, 240, 234)"
+      }
+    ],
+    "tiles": [],
+    "outstandingBg": "rgb(243, 240, 233)",
+    "contractedBg": "rgb(232, 240, 234)",
+    "collectedBg": "rgb(220, 232, 224)"
+  },
+  {
+    "label": "events",
+    "viewport": "desktop",
+    "status": 200,
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11b-reports-implementation/evidence/events-desktop.png",
+    "h1": "Reports",
+    "url": "/reporting/events",
+    "introAccent": true,
+    "linenFilter": true,
+    "savedShell": false,
+    "overflowX": false,
+    "kpis": [
+      {
+        "tone": "ops",
+        "label": "Events",
+        "bg": "rgb(255, 255, 255)"
+      },
+      {
+        "tone": "ops",
+        "label": "Average Guest Count",
+        "bg": "rgb(255, 255, 255)"
+      }
+    ],
+    "tiles": [],
+    "outstandingBg": null,
+    "contractedBg": null,
+    "collectedBg": null
+  },
+  {
+    "label": "events",
+    "viewport": "mobile",
+    "status": 200,
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11b-reports-implementation/evidence/events-mobile.png",
+    "h1": "Reports",
+    "url": "/reporting/events",
+    "introAccent": true,
+    "linenFilter": true,
+    "savedShell": false,
+    "overflowX": false,
+    "kpis": [
+      {
+        "tone": "ops",
+        "label": "Events",
+        "bg": "rgb(255, 255, 255)"
+      },
+      {
+        "tone": "ops",
+        "label": "Average Guest Count",
+        "bg": "rgb(255, 255, 255)"
+      }
+    ],
+    "tiles": [],
+    "outstandingBg": null,
+    "contractedBg": null,
+    "collectedBg": null
+  },
+  {
+    "label": "saved",
+    "viewport": "desktop",
+    "status": 200,
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11b-reports-implementation/evidence/saved-desktop.png",
+    "h1": "Reports",
+    "url": "/reporting/saved",
+    "introAccent": true,
+    "linenFilter": false,
+    "savedShell": true,
+    "overflowX": false,
+    "kpis": [],
+    "tiles": [],
+    "outstandingBg": null,
+    "contractedBg": null,
+    "collectedBg": null
+  },
+  {
+    "label": "saved",
+    "viewport": "mobile",
+    "status": 200,
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11b-reports-implementation/evidence/saved-mobile.png",
+    "h1": "Reports",
+    "url": "/reporting/saved",
+    "introAccent": true,
+    "linenFilter": false,
+    "savedShell": true,
+    "overflowX": false,
+    "kpis": [],
+    "tiles": [],
+    "outstandingBg": null,
+    "contractedBg": null,
+    "collectedBg": null
+  }
+]

@@ -56,10 +56,17 @@ type EventRow = {
   event_date: string; event_end_date: string | null;
   start_time: string | null; end_time: string | null;
   setup_time: string | null; teardown_time: string | null;
-  guest_count: number | null; created_at: string; updated_at: string;
+  guest_count: number | null;
+  guaranteed_guest_count?: number | null;
+  assigned_staff_id?: string | null; created_at: string; updated_at: string;
   booked_at: string | null;
   operational_floor_plan_id: string | null;
   couple_selected_floor_plan_id: string | null;
+  couple_preference_status?: string | null;
+  couple_approved_floor_plan_id?: string | null;
+  seating_in_use_floor_plan_id?: string | null;
+  external_ceremony_location?: string | null;
+  external_reception_location?: string | null;
   // embedded client name from join
   clients?: { first_name: string; last_name: string; partner_first_name: string | null; partner_last_name: string | null } | null;
 };
@@ -76,9 +83,16 @@ function mapEvent(r: EventRow): VenueEvent {
     startTime: r.start_time, endTime: r.end_time,
     setupTime: r.setup_time, teardownTime: r.teardown_time,
     guestCount: r.guest_count,
+    guaranteedGuestCount: r.guaranteed_guest_count ?? null,
+    assignedStaffId: r.assigned_staff_id ?? null,
     bookedAt: r.booked_at ?? null,
     operationalFloorPlanId: r.operational_floor_plan_id ?? null,
     coupleSelectedFloorPlanId: r.couple_selected_floor_plan_id ?? null,
+    couplePreferenceStatus: r.couple_preference_status ?? null,
+    coupleApprovedFloorPlanId: r.couple_approved_floor_plan_id ?? null,
+    seatingInUseFloorPlanId: r.seating_in_use_floor_plan_id ?? null,
+    externalCeremonyLocation: r.external_ceremony_location?.trim() || null,
+    externalReceptionLocation: r.external_reception_location?.trim() || null,
     createdAt: r.created_at, updatedAt: r.updated_at,
   };
 }
@@ -186,6 +200,11 @@ function toEventRow(venueId: string, input: EventInput): Record<string, unknown>
     setup_time: input.setupTime || null,
     teardown_time: input.teardownTime || null,
     guest_count: input.guestCount.trim() ? parseInt(input.guestCount, 10) : null,
+    guaranteed_guest_count: (input.guaranteedGuestCount ?? "").trim()
+      ? parseInt(input.guaranteedGuestCount, 10)
+      : null,
+    external_ceremony_location: input.externalCeremonyLocation?.trim() || null,
+    external_reception_location: input.externalReceptionLocation?.trim() || null,
   };
 }
 
@@ -196,9 +215,15 @@ function throwIfOccupancyDenied(error: unknown): never | void {
   if (blocked) throw new CalendarBlockWriteError(blocked.message);
 }
 
-export async function insertEvent(client: DbClient, venueId: string, input: EventInput, opts?: { status?: EventStatus }): Promise<string> {
+export async function insertEvent(
+  client: DbClient,
+  venueId: string,
+  input: EventInput,
+  opts?: { status?: EventStatus; bookedAt?: string | null },
+): Promise<string> {
   const row = toEventRow(venueId, input);
   if (opts?.status) row.status = opts.status;
+  if (opts?.bookedAt) row.booked_at = opts.bookedAt;
   const { data, error } = await client.from("events")
     .insert(row)
     .select("id").single<{ id: string }>();
@@ -217,6 +242,28 @@ export async function updateEvent(client: DbClient, venueId: string, eventId: st
     throwIfOccupancyDenied(error);
     throw error;
   }
+}
+
+/**
+ * Synchronized representation of the event date on the client row.
+ * Only event_date / end_date — never status, booked_at, or lifecycle fields.
+ */
+export async function syncClientEventDate(
+  client: DbClient,
+  venueId: string,
+  clientId: string,
+  eventDate: string,
+  endDate: string | null,
+): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("clients") as any)
+    .update({
+      event_date: eventDate,
+      end_date: endDate && endDate !== eventDate ? endDate : null,
+    })
+    .eq("id", clientId)
+    .eq("venue_id", venueId);
+  if (error) throw error;
 }
 
 export async function updateEventStatus(client: DbClient, venueId: string, eventId: string, status: EventStatus): Promise<void> {

@@ -2,6 +2,10 @@
  * Floor Plans data access layer. Server-only.
  */
 import { createClient } from "@/integrations/supabase/server";
+import {
+  normalizeClientLayoutStatus,
+  type ClientLayoutStatus,
+} from "@/lib/floor-plans/client-layout-review";
 import type {
   AddObjectInput,
   DisplayShape,
@@ -24,7 +28,7 @@ import type {
 type DbClient = Awaited<ReturnType<typeof createClient>>;
 
 type PlanRow = {
-  id: string; venue_id: string; event_id: string; name: string; space_id: string | null;
+  id: string; venue_id: string; event_id: string | null; client_id?: string | null; name: string; space_id: string | null;
   client_access: FloorPlanClientAccess;
   shared_with_vendors: boolean;
   shared_with_couple: boolean;
@@ -33,6 +37,11 @@ type PlanRow = {
   background_image_url: string | null; background_image_opacity: number; background_locked: boolean;
   room_width_ft: number; room_depth_ft: number; measurement_unit: MeasurementUnit;
   finalized_at: string | null;
+  couple_may_add_tables?: boolean | null;
+  client_layout_status?: string | null;
+  client_submitted_at?: string | null;
+  client_review_note?: string | null;
+  client_reviewed_at?: string | null;
   notes: string | null; created_at: string; updated_at: string;
 };
 
@@ -47,7 +56,7 @@ type ObjRow = {
 };
 
 const mapPlan = (r: PlanRow): FloorPlan => ({
-  id: r.id, venueId: r.venue_id, eventId: r.event_id, name: r.name,
+  id: r.id, venueId: r.venue_id, eventId: r.event_id ?? "", clientId: r.client_id ?? null, name: r.name,
   spaceId: r.space_id, clientAccess: r.client_access,
   sharedWithVendors: r.shared_with_vendors,
   sharedWithCouple: Boolean(r.shared_with_couple),
@@ -59,6 +68,11 @@ const mapPlan = (r: PlanRow): FloorPlan => ({
   roomWidthFt: Number(r.room_width_ft), roomDepthFt: Number(r.room_depth_ft),
   measurementUnit: r.measurement_unit,
   finalizedAt: r.finalized_at,
+  coupleMayAddTables: r.couple_may_add_tables !== false,
+  clientLayoutStatus: normalizeClientLayoutStatus(r.client_layout_status),
+  clientSubmittedAt: r.client_submitted_at ?? null,
+  clientReviewNote: r.client_review_note ?? null,
+  clientReviewedAt: r.client_reviewed_at ?? null,
   notes: r.notes, createdAt: r.created_at, updatedAt: r.updated_at,
 });
 
@@ -80,6 +94,15 @@ export async function getFloorPlansByEvent(
 ): Promise<FloorPlan[]> {
   const { data, error } = await client.from("floor_plans").select("*")
     .eq("event_id", eventId).eq("venue_id", venueId).order("created_at");
+  if (error) throw error;
+  return (data as PlanRow[]).map(mapPlan);
+}
+
+export async function getFloorPlansByClient(
+  client: DbClient, venueId: string, clientId: string,
+): Promise<FloorPlan[]> {
+  const { data, error } = await client.from("floor_plans").select("*")
+    .eq("venue_id", venueId).eq("client_id", clientId).is("event_id", null).order("created_at");
   if (error) throw error;
   return (data as PlanRow[]).map(mapPlan);
 }
@@ -133,6 +156,28 @@ export async function createFloorPlan(
   return data.id;
 }
 
+export async function createFloorPlanForClient(
+  client: DbClient,
+  venueId: string,
+  clientId: string,
+  name = "Floor Plan",
+  spaceId: string | null = null,
+  sourceTemplateId: string | null = null,
+): Promise<string> {
+  const { data, error } = await client.from("floor_plans")
+    .insert({
+      venue_id: venueId,
+      event_id: null,
+      client_id: clientId,
+      name,
+      space_id: spaceId,
+      source_template_id: sourceTemplateId,
+    })
+    .select("id").single<{ id: string }>();
+  if (error) throw error;
+  return data.id;
+}
+
 /** "Duplicate Existing Floor Plan" (Booking Floor Plan Workspace task) — clone another floor plan on this same booking into a new one, objects and background included. */
 export async function duplicateFloorPlanInto(
   client: DbClient, venueId: string, eventId: string, sourceId: string, name: string, spaceId: string | null,
@@ -141,7 +186,11 @@ export async function duplicateFloorPlanInto(
   if (!source) throw new Error("Floor plan not found.");
 
   const { data, error } = await client.from("floor_plans").insert({
-    venue_id: venueId, event_id: eventId, name: name.trim(), space_id: spaceId,
+    venue_id: venueId,
+    event_id: source.eventId || null,
+    client_id: source.eventId ? null : (source.clientId ?? null),
+    name: name.trim(),
+    space_id: spaceId,
     background_image_url: source.backgroundImageUrl, background_image_opacity: source.backgroundImageOpacity,
     background_document_id: source.backgroundDocumentId,
     room_width_ft: source.roomWidthFt, room_depth_ft: source.roomDepthFt, measurement_unit: source.measurementUnit,
@@ -234,6 +283,124 @@ export async function setEventOperationalFloorPlan(
   if (error) throw error;
 }
 
+/** Phase 2 — explicit seating-in-use designation (C1). Does not move assignments. */
+export async function setEventSeatingInUseFloorPlan(
+  client: DbClient, venueId: string, eventId: string, floorPlanId: string | null,
+): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("events") as any)
+    .update({ seating_in_use_floor_plan_id: floorPlanId })
+    .eq("id", eventId)
+    .eq("venue_id", venueId);
+  if (error) throw error;
+}
+
+export type EventFloorPlanPreferenceRow = {
+  operational_floor_plan_id: string | null;
+  couple_selected_floor_plan_id: string | null;
+  couple_preference_status: string | null;
+  couple_approved_floor_plan_id: string | null;
+  seating_in_use_floor_plan_id: string | null;
+};
+
+export async function getEventFloorPlanPreferenceState(
+  client: DbClient, venueId: string, eventId: string,
+): Promise<EventFloorPlanPreferenceRow | null> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (client.from("events") as any)
+    .select(
+      "operational_floor_plan_id, couple_selected_floor_plan_id, couple_preference_status, couple_approved_floor_plan_id, seating_in_use_floor_plan_id",
+    )
+    .eq("id", eventId)
+    .eq("venue_id", venueId)
+    .maybeSingle();
+  if (error) throw error;
+  return (data as EventFloorPlanPreferenceRow | null) ?? null;
+}
+
+/**
+ * Phase 2 — persist preference decision pointers only.
+ * Never updates guest_seat_assignments or floor_plan_objects.
+ */
+export async function updateEventFloorPlanPreferenceState(
+  client: DbClient,
+  venueId: string,
+  eventId: string,
+  patch: {
+    couple_selected_floor_plan_id?: string | null;
+    couple_preference_status?: string | null;
+    couple_approved_floor_plan_id?: string | null;
+    operational_floor_plan_id?: string | null;
+    seating_in_use_floor_plan_id?: string | null;
+  },
+): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("events") as any)
+    .update(patch)
+    .eq("id", eventId)
+    .eq("venue_id", venueId);
+  if (error) throw error;
+}
+
+/**
+ * Count seat assignments on a plan — for Case A/B/C classification only.
+ *
+ * `guest_seat_assignments` is RLS-enabled with no usable venue staff policy after
+ * the floor-plan seating rewrite (legacy policy still keyed off removed table_id).
+ * Authorize via the caller's client (floor_plans venue scope), then count with the
+ * service-role client. Never call without a prior venue/plan membership check.
+ */
+export async function countGuestSeatAssignments(
+  client: DbClient, floorPlanId: string, venueId?: string,
+): Promise<number> {
+  if (venueId) {
+    const { data: plan, error: planError } = await client
+      .from("floor_plans")
+      .select("id")
+      .eq("id", floorPlanId)
+      .eq("venue_id", venueId)
+      .maybeSingle();
+    if (planError) throw planError;
+    if (!plan) return 0;
+  }
+  const { createAdminClient } = await import("@/integrations/supabase/admin");
+  const admin = createAdminClient();
+  const { count, error } = await admin
+    .from("guest_seat_assignments")
+    .select("guest_id", { count: "exact", head: true })
+    .eq("floor_plan_id", floorPlanId);
+  if (error) throw error;
+  return count ?? 0;
+}
+
+/** Seat assignment counts for every floor plan on an event (Phase 2 Case B/C). */
+export async function countGuestSeatAssignmentsForEvent(
+  client: DbClient, venueId: string, eventId: string,
+): Promise<Record<string, number>> {
+  const { data: plans, error: planError } = await client
+    .from("floor_plans")
+    .select("id")
+    .eq("event_id", eventId)
+    .eq("venue_id", venueId);
+  if (planError) throw planError;
+  const ids = ((plans ?? []) as { id: string }[]).map((p) => p.id);
+  const out: Record<string, number> = {};
+  for (const id of ids) out[id] = 0;
+  if (ids.length === 0) return out;
+  // See countGuestSeatAssignments — staff JWT cannot read guest_seat_assignments directly.
+  const { createAdminClient } = await import("@/integrations/supabase/admin");
+  const admin = createAdminClient();
+  const { data: rows, error } = await admin
+    .from("guest_seat_assignments")
+    .select("floor_plan_id")
+    .in("floor_plan_id", ids);
+  if (error) throw error;
+  for (const row of (rows ?? []) as { floor_plan_id: string }[]) {
+    out[row.floor_plan_id] = (out[row.floor_plan_id] ?? 0) + 1;
+  }
+  return out;
+}
+
 /**
  * Sprint 1 — Vendor Event Assets, vendor side. Vendors have no RLS read on
  * floor_plans (same reasoning as every other vendor-facing table in this
@@ -287,6 +454,39 @@ export async function setFloorPlanFinalized(
   const { error } = await (client.from("floor_plans") as any)
     .update({ finalized_at: finalized ? new Date().toISOString() : null })
     .eq("id", planId).eq("venue_id", venueId);
+  if (error) throw error;
+}
+
+export async function setFloorPlanCoupleMayAddTables(
+  client: DbClient, venueId: string, planId: string, coupleMayAddTables: boolean,
+): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("floor_plans") as any)
+    .update({ couple_may_add_tables: coupleMayAddTables })
+    .eq("id", planId).eq("venue_id", venueId);
+  if (error) throw error;
+}
+
+export async function setFloorPlanClientLayoutReview(
+  client: DbClient,
+  venueId: string,
+  planId: string,
+  input: {
+    clientLayoutStatus: ClientLayoutStatus;
+    clientReviewNote?: string | null;
+  },
+): Promise<void> {
+  const now = new Date().toISOString();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("floor_plans") as any)
+    .update({
+      client_layout_status: input.clientLayoutStatus,
+      client_review_note: input.clientReviewNote ?? null,
+      client_reviewed_at: now,
+      updated_at: now,
+    })
+    .eq("id", planId)
+    .eq("venue_id", venueId);
   if (error) throw error;
 }
 
@@ -515,6 +715,7 @@ export async function updateObject(
   if ("notes" in input)             update.notes = input.notes;
   if (input.locked !== undefined)   update.locked = input.locked;
   if ("displayShape" in input)      update.display_shape = input.displayShape;
+  if ("inventoryItemId" in input)   update.inventory_item_id = input.inventoryItemId;
   if (Object.keys(update).length === 0) return;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (client.from("floor_plan_objects") as any)
@@ -590,4 +791,296 @@ export async function clearAllObjects(
     return { ok: false, message: "You don't have permission to clear this floor plan." };
   }
   return { ok: true };
+}
+
+// ── Phase 3 required setups ─────────────────────────────────────────────────
+
+export type SetupRow = {
+  id: string;
+  venue_id: string;
+  event_id: string;
+  name: string;
+  sort_order: number;
+  couple_selected_floor_plan_id: string | null;
+  couple_preference_status: string | null;
+  couple_approved_floor_plan_id: string | null;
+  operational_floor_plan_id: string | null;
+  seating_in_use_floor_plan_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type SetupMemberRow = {
+  id: string;
+  venue_id: string;
+  setup_id: string;
+  floor_plan_id: string;
+  sort_order: number;
+};
+
+export async function listEventFloorPlanSetups(
+  client: DbClient, venueId: string, eventId: string,
+): Promise<SetupRow[]> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (client.from("event_floor_plan_setups") as any)
+    .select("*")
+    .eq("venue_id", venueId)
+    .eq("event_id", eventId)
+    .order("sort_order", { ascending: true })
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return (data as SetupRow[] | null) ?? [];
+}
+
+export async function listSetupMembersForEvent(
+  client: DbClient, venueId: string, eventId: string,
+): Promise<Array<SetupMemberRow & { floor_plan_name: string; shared_with_couple: boolean }>> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: setups, error: sErr } = await (client.from("event_floor_plan_setups") as any)
+    .select("id")
+    .eq("venue_id", venueId)
+    .eq("event_id", eventId);
+  if (sErr) throw sErr;
+  const setupIds = ((setups as Array<{ id: string }> | null) ?? []).map((s) => s.id);
+  if (setupIds.length === 0) return [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (client.from("event_floor_plan_setup_members") as any)
+    .select("id, venue_id, setup_id, floor_plan_id, sort_order, floor_plans(name, shared_with_couple)")
+    .eq("venue_id", venueId)
+    .in("setup_id", setupIds)
+    .order("sort_order", { ascending: true });
+  if (error) throw error;
+  type Raw = SetupMemberRow & {
+    floor_plans: { name: string; shared_with_couple: boolean } | { name: string; shared_with_couple: boolean }[] | null;
+  };
+  return ((data as Raw[] | null) ?? []).map((row) => {
+    const fp = Array.isArray(row.floor_plans) ? row.floor_plans[0] : row.floor_plans;
+    return {
+      id: row.id,
+      venue_id: row.venue_id,
+      setup_id: row.setup_id,
+      floor_plan_id: row.floor_plan_id,
+      sort_order: row.sort_order,
+      floor_plan_name: fp?.name ?? "Layout",
+      shared_with_couple: Boolean(fp?.shared_with_couple),
+    };
+  });
+}
+
+export async function insertEventFloorPlanSetup(
+  client: DbClient,
+  input: { venueId: string; eventId: string; name: string; sortOrder: number },
+): Promise<SetupRow> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (client.from("event_floor_plan_setups") as any)
+    .insert({
+      venue_id: input.venueId,
+      event_id: input.eventId,
+      name: input.name.trim(),
+      sort_order: input.sortOrder,
+    })
+    .select("*")
+    .single();
+  if (error) throw error;
+  return data as SetupRow;
+}
+
+export async function updateEventFloorPlanSetup(
+  client: DbClient,
+  venueId: string,
+  setupId: string,
+  patch: {
+    name?: string;
+    sort_order?: number;
+    couple_selected_floor_plan_id?: string | null;
+    couple_preference_status?: string | null;
+    couple_approved_floor_plan_id?: string | null;
+    operational_floor_plan_id?: string | null;
+    seating_in_use_floor_plan_id?: string | null;
+  },
+): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("event_floor_plan_setups") as any)
+    .update(patch)
+    .eq("id", setupId)
+    .eq("venue_id", venueId);
+  if (error) throw error;
+}
+
+export async function deleteEventFloorPlanSetup(
+  client: DbClient, venueId: string, setupId: string,
+): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("event_floor_plan_setups") as any)
+    .delete()
+    .eq("id", setupId)
+    .eq("venue_id", venueId);
+  if (error) throw error;
+}
+
+export async function insertSetupMember(
+  client: DbClient,
+  input: { venueId: string; setupId: string; floorPlanId: string; sortOrder: number },
+): Promise<SetupMemberRow> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (client.from("event_floor_plan_setup_members") as any)
+    .insert({
+      venue_id: input.venueId,
+      setup_id: input.setupId,
+      floor_plan_id: input.floorPlanId,
+      sort_order: input.sortOrder,
+    })
+    .select("id, venue_id, setup_id, floor_plan_id, sort_order")
+    .single();
+  if (error) throw error;
+  return data as SetupMemberRow;
+}
+
+/** Detach only — never deletes the floor_plans row or seating. */
+export async function deleteSetupMember(
+  client: DbClient, venueId: string, setupId: string, floorPlanId: string,
+): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("event_floor_plan_setup_members") as any)
+    .delete()
+    .eq("venue_id", venueId)
+    .eq("setup_id", setupId)
+    .eq("floor_plan_id", floorPlanId);
+  if (error) throw error;
+}
+
+export async function getSetupById(
+  client: DbClient, venueId: string, setupId: string,
+): Promise<SetupRow | null> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (client.from("event_floor_plan_setups") as any)
+    .select("*")
+    .eq("id", setupId)
+    .eq("venue_id", venueId)
+    .maybeSingle();
+  if (error) throw error;
+  return (data as SetupRow | null) ?? null;
+}
+
+// ── Phase 4 linked before/after flips ───────────────────────────────────────
+
+export type FlipRow = {
+  id: string;
+  venue_id: string;
+  event_id: string;
+  before_floor_plan_id: string;
+  after_floor_plan_id: string;
+  transition_notes: string | null;
+  created_at: string;
+  updated_at: string;
+  /** Phase 5 — only meaningful when room_snapshot_captured_at is set. */
+  recorded_before_space_id?: string | null;
+  recorded_after_space_id?: string | null;
+  room_snapshot_captured_at?: string | null;
+};
+
+export async function getEventFloorPlanFlip(
+  client: DbClient, venueId: string, eventId: string,
+): Promise<FlipRow | null> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (client.from("event_floor_plan_flips") as any)
+    .select("*")
+    .eq("venue_id", venueId)
+    .eq("event_id", eventId)
+    .maybeSingle();
+  if (error) throw error;
+  return (data as FlipRow | null) ?? null;
+}
+
+/**
+ * Atomic upsert of the event's single flip pair. Replaces before/after IDs and
+ * notes only — never mutates floor_plans, seating, or setup membership.
+ */
+export async function upsertEventFloorPlanFlip(
+  client: DbClient,
+  input: {
+    venueId: string;
+    eventId: string;
+    beforeFloorPlanId: string;
+    afterFloorPlanId: string;
+    transitionNotes: string | null;
+  },
+): Promise<FlipRow> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (client.from("event_floor_plan_flips") as any)
+    .upsert(
+      {
+        venue_id: input.venueId,
+        event_id: input.eventId,
+        before_floor_plan_id: input.beforeFloorPlanId,
+        after_floor_plan_id: input.afterFloorPlanId,
+        transition_notes: input.transitionNotes,
+      },
+      { onConflict: "event_id" },
+    )
+    .select("*")
+    .single();
+  if (error) throw error;
+  return data as FlipRow;
+}
+
+/** Updates notes only — does not change linked layout IDs. */
+export async function updateEventFloorPlanFlipNotes(
+  client: DbClient,
+  venueId: string,
+  eventId: string,
+  transitionNotes: string | null,
+): Promise<FlipRow> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (client.from("event_floor_plan_flips") as any)
+    .update({ transition_notes: transitionNotes })
+    .eq("venue_id", venueId)
+    .eq("event_id", eventId)
+    .select("*")
+    .single();
+  if (error) throw error;
+  return data as FlipRow;
+}
+
+/**
+ * Phase 5 — persist room-relationship snapshot at link/upsert time.
+ * Notes-only updates must never call this. Sets room_snapshot_captured_at.
+ */
+export async function updateEventFloorPlanFlipRoomSnapshot(
+  client: DbClient,
+  venueId: string,
+  eventId: string,
+  input: {
+    recordedBeforeSpaceId: string | null;
+    recordedAfterSpaceId: string | null;
+  },
+): Promise<FlipRow> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (client.from("event_floor_plan_flips") as any)
+    .update({
+      recorded_before_space_id: input.recordedBeforeSpaceId,
+      recorded_after_space_id: input.recordedAfterSpaceId,
+      room_snapshot_captured_at: new Date().toISOString(),
+    })
+    .eq("venue_id", venueId)
+    .eq("event_id", eventId)
+    .select("*")
+    .single();
+  if (error) throw error;
+  return data as FlipRow;
+}
+
+/**
+ * Deletes only the flip relationship row (and its notes). Never deletes,
+ * detaches, or rewrites either floor_plan.
+ */
+export async function deleteEventFloorPlanFlip(
+  client: DbClient, venueId: string, eventId: string,
+): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("event_floor_plan_flips") as any)
+    .delete()
+    .eq("venue_id", venueId)
+    .eq("event_id", eventId);
+  if (error) throw error;
 }

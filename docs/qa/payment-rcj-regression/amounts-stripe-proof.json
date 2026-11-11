@@ -1,0 +1,86 @@
+{
+  "ok": true,
+  "venues": {
+    "daisy": {
+      "id": "5c84e74e-355d-4ce1-9e6b-913a9267f543",
+      "name": "Sweet Daisy Barn & Farm",
+      "stripe_account_id": "acct_1TNd2e9uzqH1tefA",
+      "stripe_onboarding_status": "connected",
+      "stripe_charges_enabled": true
+    },
+    "fancy": {
+      "id": "a415ac52-cd74-42a6-8df7-7a8f6e71d080",
+      "name": "Jen's Fancy Venue",
+      "stripe_account_id": null,
+      "stripe_onboarding_status": "not_started",
+      "stripe_charges_enabled": false
+    }
+  },
+  "fixture": {
+    "client": {
+      "id": "b2d09888-2816-4984-8c14-6373e7788365",
+      "email": "deposit.rcj.1790195312570@hellotocheers.test",
+      "first_name": "Deposit"
+    },
+    "invoice": {
+      "id": "ffc035cd-9bc8-4ea5-ae7d-b59fca98ac28",
+      "invoice_number": "INV-RCJ7700-MUEK2FNE",
+      "display_name": "Wedding Deposit",
+      "total": 7700,
+      "balance_due": 7700
+    },
+    "schedule": {
+      "id": "4f10e620-817f-4e00-818c-1a9a9c0300aa",
+      "total_amount": 7700
+    },
+    "lines": [
+      {
+        "id": "886a955e-bacc-4ad8-9411-146b012033b5",
+        "label": "Initial Payment",
+        "amount": 800,
+        "status": "pending",
+        "obligation_kind": "deposit"
+      },
+      {
+        "id": "41a56469-d165-48c8-8583-8cb0e2a81894",
+        "label": "Remaining Balance",
+        "amount": 6900,
+        "status": "pending",
+        "obligation_kind": "final"
+      }
+    ],
+    "deposit_line_id": "886a955e-bacc-4ad8-9411-146b012033b5",
+    "pay_url": "https://app.sandbox.hellotocheers.com/p/26e78e46f87b1fa18533f9815fba5dcb3c248d58774ec3fcce1acbf058f5a903",
+    "portal_token": "26e78e46f87b1fa18533f9815fba5dcb3c248d58774ec3fcce1acbf058f5a903"
+  },
+  "email_amount_lines": {
+    "body": "Initial Payment: $800.00\nTotal contracted: $7,700.00\nPaid to date: $0.00\nRemaining after this payment: $6,900.00",
+    "asserts": {
+      "total_contracted_7700": true,
+      "initial_800": true,
+      "remaining_6900": true,
+      "display_name_does_not_change_total": true
+    }
+  },
+  "checkout": {
+    "daisy": {
+      "itemId": "886a955e-bacc-4ad8-9411-146b012033b5",
+      "venueId": "5c84e74e-355d-4ce1-9e6b-913a9267f543",
+      "clientId": "b2d09888-2816-4984-8c14-6373e7788365",
+      "invoiceId": "ffc035cd-9bc8-4ea5-ae7d-b59fca98ac28",
+      "itemLabel": "Initial Payment",
+      "itemAmount": 800,
+      "scheduleId": "4f10e620-817f-4e00-818c-1a9a9c0300aa",
+      "chargesEnabled": true,
+      "stripeAccountId": "acct_1TNd2e9uzqH1tefA",
+      "acceptedPaymentMethods": [
+        "card",
+        "us_bank_account"
+      ]
+    },
+    "fancy_named_fixture": {
+      "error": "stripe_not_connected"
+    }
+  },
+  "audit_note": "INV-NAMED-MUEGXH6K on Fancy was a display_name-only seed (invoice total 800, no Stripe). Not the commercial $7700 RCJ."
+}

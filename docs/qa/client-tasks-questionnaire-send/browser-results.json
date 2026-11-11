@@ -1,0 +1,107 @@
+{
+  "expectedSha": "3961fccc446d0fcc8f250ce9b571688a249b7355",
+  "eventId": "ebf74f77-2944-474a-b735-48762ecb6842",
+  "checks": [
+    {
+      "name": "task-present",
+      "pass": true,
+      "detail": "{\"id\":\"86b6f362-981b-4a6b-a7bb-977735bdcc82\",\"title\":\"Complete your questionnaire\",\"auto_complete_trigger\":\"questionnaire_submitted\",\"action_type\":null,\"status\":\"pending\",\"progress_state\":null,\"request_id\":null}"
+    },
+    {
+      "name": "client-email-test-domain",
+      "pass": true,
+      "detail": "{\"id\":\"b4e2764b-be33-4579-89e3-0c8e4a6dd5be\",\"email\":\"b2p-simp-1792642396736@hellotocheers-test.invalid\",\"first_name\":\"B2P\"}"
+    },
+    {
+      "name": "serving-sha",
+      "pass": true,
+      "detail": "expected=3961fccc446d ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:3961fccc446d0fcc8f250ce9b571688a249b7355"
+    },
+    {
+      "name": "send-to-client-visible",
+      "pass": true,
+      "detail": "send=true"
+    },
+    {
+      "name": "no-create-request-on-questionnaire-task",
+      "pass": true,
+      "detail": "createNear=0"
+    },
+    {
+      "name": "share-sheet-opened",
+      "pass": true,
+      "detail": "recipientHint=true"
+    },
+    {
+      "name": "questionnaire-sent-persisted",
+      "pass": true,
+      "detail": "{\"id\":\"e055c612-ed2c-4180-a34c-03414fece3ed\",\"kind\":\"client_planning\",\"status\":\"sent\",\"sent_at\":\"2026-10-23T01:26:31.197+00:00\",\"access_key\":\"8889f57a908c4a658b1af138b30065ef\"}"
+    },
+    {
+      "name": "recipient-is-client-email",
+      "pass": true,
+      "detail": "recipient=b2p-simp-1792642396736@hellotocheers-test.invalid"
+    },
+    {
+      "name": "no-new-generic-request-from-send",
+      "pass": true,
+      "detail": "undefined"
+    },
+    {
+      "name": "couple-opens-questionnaire-link",
+      "pass": true,
+      "detail": "status=200 body=JEN'S FANCY VENUE\n\nLet's Start Planning\n\nYour celebration is scheduled for Saturday, July 17, 2060.\n\nYour date is booked, and we're excited to start planning with you.\n\nWe already have many of the bas"
+    },
+    {
+      "name": "couple-portal-questionnaire-reachable",
+      "pass": true,
+      "detail": "B2P & Portal\n\n·\n\nJen's Fancy Venue\n\n5\nHome\nTasks9+\nMessages1\nPayments\nMore\n\nJEN'S FANCY VENUE\n\nLet's Start Planning\n\nYour celebration is scheduled for Saturday, July 17, 2060.\n\nYour date is booked, and we're excited to start planning with you.\n\nWe already have many of the basics from your booking. T"
+    },
+    {
+      "name": "couple-submit",
+      "pass": true,
+      "detail": "{\"submitRes\":{\"ok\":true,\"status\":\"submitted\",\"celebrated\":false}}"
+    },
+    {
+      "name": "submit-does-not-complete-task",
+      "pass": true,
+      "detail": "{\"id\":\"86b6f362-981b-4a6b-a7bb-977735bdcc82\",\"title\":\"Complete your questionnaire\",\"auto_complete_trigger\":\"questionnaire_submitted\",\"action_type\":null,\"status\":\"pending\",\"progress_state\":\"in_progress\",\"request_id\":null}"
+    },
+    {
+      "name": "questionnaire-submitted-status",
+      "pass": true,
+      "detail": "{\"status\":\"submitted\"}"
+    },
+    {
+      "name": "ui-submitted-needs-venue-review",
+      "pass": true,
+      "detail": "visible=true"
+    },
+    {
+      "name": "questionnaire-marked-complete",
+      "pass": true,
+      "detail": "{\"status\":\"complete\"}"
+    },
+    {
+      "name": "venue-mark-complete-ui",
+      "pass": true,
+      "detail": "markVisible=true"
+    },
+    {
+      "name": "task-mark-complete-fallback",
+      "pass": true,
+      "detail": "auto-complete from questionnaire Mark Complete"
+    },
+    {
+      "name": "task-complete-after-review",
+      "pass": true,
+      "detail": "{\"id\":\"86b6f362-981b-4a6b-a7bb-977735bdcc82\",\"title\":\"Complete your questionnaire\",\"auto_complete_trigger\":\"questionnaire_submitted\",\"action_type\":null,\"status\":\"complete\",\"progress_state\":\"complete\",\"request_id\":null}"
+    },
+    {
+      "name": "task-complete-persists-after-refresh",
+      "pass": true,
+      "detail": "{\"id\":\"86b6f362-981b-4a6b-a7bb-977735bdcc82\",\"title\":\"Complete your questionnaire\",\"auto_complete_trigger\":\"questionnaire_submitted\",\"action_type\":null,\"status\":\"complete\",\"progress_state\":\"complete\",\"request_id\":null}"
+    }
+  ],
+  "failed": 0
+}

@@ -1,0 +1,76 @@
+{
+  "status": "OPEN \u2014 audit complete; awaiting product confirmation (no implementation)",
+  "venue": {
+    "id": "a415ac52-cd74-42a6-8df7-7a8f6e71d080",
+    "primary": "#FF1493",
+    "secondary": "#00BFFF",
+    "accent": "#FF00FF",
+    "neutral": "#FFF0F5"
+  },
+  "answers": {
+    "A_secondary_accent_customer_facing": "YES \u2014 but not uniformly. They are real stored brand fields with intentional product roles for printables/materials; they are NOT used in transactional email (Primary-only by design in lib/email/venue-brand.ts).",
+    "B_intended_uses_per_existing_design": {
+      "Primary": "Emails (CTA/header), public inquiry/tour/availability accents, many print headers, setup swatch",
+      "Secondary": "Brochure CSS --venue-secondary; contract signing artifact; vendor venue hero gradient; inquiry form model; setup hint: supports primary on branded materials",
+      "Accent": "Brochure --venue-accent; contract artifact; invoice due amounts; setup hint: highlights on brochures/printables. Note: wedding website has a SEPARATE site.accentColor / Color Story system \u2014 not the venue brand Accent swatch.",
+      "Neutral": "Public tour scheduler page background; contract --venue-neutral; invoice soft section backgrounds; setup hint: soft background on client-facing materials"
+    },
+    "C_stored_not_wired": "Partially. All four are stored (venues.*_color) and loaded via lib/venue/repository. Email path intentionally ignores Secondary/Accent/Neutral. Wedding website does not consume venue.secondary/accent/neutral as its theme \u2014 it uses its own palette/accentColor.",
+    "D_decorative_only": "No \u2014 Secondary/Accent/Neutral are product brand controls for materials (brochure/contract/invoice/tour page), not swatch-only. Email is the intentional Primary-only ceiling.",
+    "E_smallest_coherent_fix": "Do NOT invent new email uses. Leave OPEN until product confirms whether venue Secondary/Accent should also drive wedding-website Color Story or whether current separation is intended. No implementation in this pass."
+  },
+  "surfaces": {
+    "1_email": {
+      "primary": "YES",
+      "secondary": "NO (intentional)",
+      "accent": "NO",
+      "neutral": "NO",
+      "path": "lib/email/venue-brand.ts"
+    },
+    "2_proposals": {
+      "note": "timeline/print headers use primary; secondary/accent via shared print patterns where applicable"
+    },
+    "3_contracts": {
+      "primary": "YES",
+      "secondary": "YES CSS var",
+      "accent": "YES CSS var",
+      "neutral": "YES CSS var",
+      "path": "components/contracts/contract-signing-artifact.tsx"
+    },
+    "4_venue_guide_brochure": {
+      "primary": "YES",
+      "secondary": "YES",
+      "accent": "YES",
+      "path": "components/brochures/brochure-preview-view.tsx + lib/brochures"
+    },
+    "5_hosted_wedding_website": {
+      "venue_brand_secondary_accent_neutral": "NOT wired",
+      "uses": "site Color Story / accentColor override"
+    },
+    "6_public_inquiry": {
+      "primary": "YES",
+      "secondary": "loaded on model",
+      "path": "lib/inquiry-form"
+    },
+    "7_public_tour": {
+      "primary": "YES calendar/slots",
+      "neutral": "YES page background",
+      "path": "components/tours/tour-scheduler.tsx"
+    },
+    "8_client_portal": {
+      "limited": "mostly HTC/sage accents; not full venue Secondary/Accent wiring"
+    },
+    "9_pdfs_invoices": {
+      "primary": "YES",
+      "accent": "YES amounts",
+      "neutral": "YES section bg",
+      "secondary": "snapshotted",
+      "path": "components/invoices/invoice-print-document.tsx"
+    },
+    "10_other": {
+      "vendor_app_hero": "secondary+primary gradient"
+    }
+  },
+  "production": "untouched",
+  "implementation": "none"
+}

@@ -1,0 +1,18 @@
+{
+  "url": "https://checkout.stripe.com/c/pay/cs_test_a1R3xaWHxAj4MzknEqy5dESuAKd79xBrRRLNQSEZA5I8Gar3gu0l9lrmLa#fidnandhYHdWcXxpYCc%2FJ2FgY2RwaXEnKSdicyc%2FNSknZHVsTmB8Jz8ndW5acWB2cVowNFAxNzczQHdQdE9NMmtucV9nUEd%2Fa31udG91Smd2MTFHNUFrb2JfUGdJM2ZEMkxDUnNSUU00dkRfZ2FufWRtX09CXDJcY080REBoQHRHSHdpUk1pU3VHXDU1T05TNzZwZmEnKSdjd2poVmB3c2B3Jz9xd3BgKSdnZGZuYndqcGthRmppancnPycmY2NjY2NjJyknaWR8anBxUXx1YCc%2FJ3Zsa2JpYFpscWBoJ3gl",
+  "session_id": "cs_test_a1R3xaWHxAj4MzknEqy5dESuAKd79xBrRRLNQSEZA5I8Gar3gu0l9lrmLa",
+  "welcome_back": false,
+  "weven_declared": false,
+  "onboarding_type": "self_guided",
+  "founding_member": false,
+  "relationship_id": null,
+  "checkout_offer_id": "f838b66c-809d-4eba-926a-3f45a99cc624",
+  "pricing_mode": "launch_group_percent",
+  "applied_offer_type": "group_pct",
+  "group_eligible": true,
+  "group_percent_off": 10,
+  "expected_recurring_amount_cents": 17910,
+  "org_reservation_id": "9f5d3033-1a6f-4d29-b814-8df99b365bca",
+  "list_amount_cents": 19900,
+  "group_catalog_percent": 10
+}

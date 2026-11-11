@@ -74,7 +74,9 @@ export function DailyBriefingWidget({ briefing }: { briefing: LuvBriefing }) {
           <LuvHeart size={16} />
           <h2 className="font-heading text-sm font-semibold text-heading">Today&apos;s Briefing</h2>
           {totalUrgent > 0 && (
-            <span className="ml-auto text-xs font-semibold text-destructive">{totalUrgent} need{totalUrgent === 1 ? "s" : ""} attention</span>
+            <span className="ml-auto text-xs font-semibold text-destructive">
+              {`${totalUrgent} need${totalUrgent === 1 ? "s" : ""} attention`}
+            </span>
           )}
         </div>
       </CardHeader>

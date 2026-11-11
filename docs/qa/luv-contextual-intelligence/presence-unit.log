@@ -1,0 +1,87 @@
+▶ Luv does not restate Today's Focus
+  ✔ skips an observation about a lead already listed in Today's Focus (0.935583ms)
+  ✔ still shows a Level-1 observation when Today's Focus covers other work (0.302625ms)
+  ✔ ignores query strings and fragments when deciding what is a repeat (0.089791ms)
+  ✔ does not let a persisted recommendation occupy L1 when a live source is present (0.8035ms)
+  ✔ observations carry a persistable observation dismiss id, not a recommendation id (0.426041ms)
+  ✔ skips a recently dismissed recommendation so refresh cannot resurrect it (0.315667ms)
+  ✔ skips the Leads stale-contact filter recommendation instead of duplicating Leads (0.301125ms)
+  ✔ skips a recommendation that only points back at a Focus row (0.137ms)
+  ✔ says nothing at all when there is nothing to add (0.208458ms)
+  ✔ does not surface persisted tour_followup_pattern; Focus Calendar aggregate remains the fallback (0.442167ms)
+✔ Luv does not restate Today's Focus (5.504ms)
+▶ Dashboard Level-1 eligibility (Product Lock attention model)
+  ✔ A. Level-3 single-lead observation cannot win when no Level-1 item exists (0.16625ms)
+  ✔ B. Level-1 item still wins the Dashboard slot (0.149333ms)
+  ✔ C. Level-3 item does not displace a valid Level-1 item (0.067209ms)
+  ✔ D. One Dashboard card maximum remains enforced (0.137041ms)
+  ✔ E. Focus duplicate suppression remains intact (0.068833ms)
+  ✔ F. tour-upcoming-* cannot surface as the global Dashboard card (0.105625ms)
+  ✔ G. V2 tour-no-followup suppression/cooldown unchanged when pattern is dismissed (0.069333ms)
+  ✔ H. Level-3 intelligence is still present in the observation list (relocation, not deletion) (0.054875ms)
+  ✔ persisted recommendation cannot produce L1 over a Level-3 observation (0.041375ms)
+  ✔ record-scoped recommendation CTA is not Dashboard Level-1 (0.040542ms)
+✔ Dashboard Level-1 eligibility (Product Lock attention model) (1.141125ms)
+▶ Luv interprets Today's Focus when it has nothing new
+  ✔ does not aggregate Leads-only Focus into a stale-contact filter CTA (0.09375ms)
+  ✔ does not restate overdue Tasks already listed in Today's Focus (0.042792ms)
+  ✔ picks the domain with the most work among non-Leads/non-Tasks aggregates (0.060875ms)
+  ✔ reads Event Readiness as bookings with something outstanding (0.048667ms)
+  ✔ returns nothing for domains it has no interpretation for (0.038541ms)
+  ✔ does not promise to send or draft anything (0.12325ms)
+  ✔ Tasks-only Focus stays quiet rather than repeating the overdue count (0.045667ms)
+  ✔ useful live L1 still wins when Focus has overdue tasks (0.042375ms)
+  ✔ Calendar Focus still surfaces Luv even when overdue Tasks also exist (0.078917ms)
+✔ Luv interprets Today's Focus when it has nothing new (0.686041ms)
+▶ Contextual intelligence S1–S4 stay off Dashboard L1
+  ✔ each S1–S4 observation fails the Level-1 gate (0.049834ms)
+  ✔ S1–S4 alone never occupy the Dashboard Luv card (0.032ms)
+  ✔ Level-1 setup still wins when contextual L3 signals are present (0.068792ms)
+✔ Contextual intelligence S1–S4 stay off Dashboard L1 (0.191959ms)
+▶ Failure A — overdue tasks already on Focus
+  ✔ does not emit redundant past-due count + Want to clear them (0.855125ms)
+  ✔ still allows a distinct live L1 observation alongside overdue tasks (0.319542ms)
+✔ Failure A — overdue tasks already on Focus (1.836375ms)
+▶ Failure B — scheduled is not confirmed
+  ✔ scheduled cannot produce all-set / Good luck (22.864ms)
+  ✔ confirmation request sent still does not claim recipient confirmed (0.785209ms)
+  ✔ confirmed may use all-set within the window (0.39825ms)
+  ✔ completed and cancelled do not surface as upcoming all-set (0.082834ms)
+✔ Failure B — scheduled is not confirmed (24.345458ms)
+▶ source locks — no parallel factuality engine
+  ✔ observations engine uses status dispatcher and confirmation_requested_at (0.449666ms)
+  ✔ all-set builder requires isAuthoritativeTourConfirmed (0.292166ms)
+  ✔ Tasks omitted from Focus aggregate map (0.312416ms)
+✔ source locks — no parallel factuality engine (1.310458ms)
+▶ customer-facing contact evidence
+  ✔ internal notes are not contact (0.577291ms)
+  ✔ staff / system / customer messages on a real channel qualify (0.083292ms)
+  ✔ hasQualifyingCustomerContact uses records, not stage (0.100208ms)
+✔ customer-facing contact evidence (1.442875ms)
+▶ optional CTA — no dead same-page link
+  ✔ keeps a CTA that leaves the current record (0.176459ms)
+  ✔ omits a CTA that points at the current lead path (0.104542ms)
+  ✔ omits when there is no label (0.060417ms)
+✔ optional CTA — no dead same-page link (0.958042ms)
+▶ tour all-set — confirmed only, no CTA, 3-day window
+  ✔ silence when more than 3 days out, cancelled, or only scheduled (0.323167ms)
+  ✔ positive all-set only when status is confirmed (89.676458ms)
+✔ tour all-set — confirmed only, no CTA, 3-day window (90.113291ms)
+▶ scheduled but unconfirmed tour factuality
+  ✔ does not claim all-set / good luck for scheduled tours (0.525666ms)
+  ✔ confirmation requested is still not recipient confirmation (0.35825ms)
+  ✔ completed and cancelled stay silent via dispatcher (0.169125ms)
+  ✔ dispatcher routes confirmed vs scheduled correctly (0.574ms)
+✔ scheduled but unconfirmed tour factuality (1.7695ms)
+▶ coordinator address
+  ✔ solo staff uses current user; multi uses owner when present (0.096416ms)
+  ✔ prefixes once (0.057125ms)
+✔ coordinator address (0.202834ms)
+ℹ tests 55
+ℹ suites 12
+ℹ pass 55
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 662.376584

@@ -27,10 +27,16 @@ export type ConversationSummary = {
   latestMessage: ConversationMessagePreview | null;
   /**
    * Latest meaningful customer/staff message (excludes system + internal notes).
-   * Authoritative input for Needs Response on the Inbox list — enriched in
-   * getConversationInbox, not inferred from tip-of-thread alone.
+   * Used for preview / triage context. Needs Response itself is persisted on
+   * `needsResponse` (independent of unread).
    */
   latestMeaningfulMessage?: ConversationMessagePreview | null;
+  /**
+   * Persisted venue-level Needs Response flag (conversations.needs_response).
+   * Independent of venueUnread. Cleared by reply or explicit dismissal;
+   * reactivated by new meaningful inbound.
+   */
+  needsResponse?: boolean;
   // Communication Workspace Completion — Inbox filtering/cards/shortcuts.
   assignedStaffId: string | null;
   assignedStaffName: string | null;
@@ -59,6 +65,8 @@ export type ConversationSummary = {
   hasAttachments?: boolean;
   /** Booking Journey stage key when enriched for filters/display. */
   bookingStage?: string | null;
+  /** Present for vendor-kind rows in the Inbox Vendors category. */
+  conversationKind?: ConversationKind | null;
 };
 
 export type ConversationMessageAttachment = {
@@ -67,6 +75,13 @@ export type ConversationMessageAttachment = {
   fileName: string;
   fileSize: number | null;
   mimeType: string | null;
+};
+
+export type ConversationDetail = {
+  conversationId: string;
+  messages: ConversationMessage[];
+  /** Persisted Needs Response — unchanged by mark-read on open. */
+  needsResponse?: boolean;
 };
 
 export type ConversationMessage = {
@@ -85,11 +100,6 @@ export type ConversationMessage = {
   // the UI can explain *why* it was automated, not just that it was.
   channelMetadata: Record<string, unknown> | null;
   attachments: ConversationMessageAttachment[];
-};
-
-export type ConversationDetail = {
-  conversationId: string;
-  messages: ConversationMessage[];
 };
 
 export type PortalConversationMessage = {
@@ -141,6 +151,9 @@ export type ConversationComposeContext = {
   recipientPhone: string | null;
   recipientPhoneDisplay: string | null;
   emailReady: boolean;
+  /** Venue Twilio is provisioned and sending is not disabled (consent is separate). */
+  smsProvisioned: boolean;
+  /** Provisioned and the recipient currently may receive Text. */
   smsReady: boolean;
   sendingDisabled: boolean;
   /** Server-side permission/suppression — null when channel is allowed. */
@@ -148,6 +161,8 @@ export type ConversationComposeContext = {
   emailPermissionMessage: string | null;
   /** Informational SMS permission label when send is still allowed. */
   smsPermissionHint: string | null;
+  /** When permission is missing — points at the existing inquiry/tour consent flow. */
+  smsConsentCollectionHint: string | null;
   /** When SMS isn't configured yet — deep link to venue texting setup. */
   textingSetupHref: string | null;
 };

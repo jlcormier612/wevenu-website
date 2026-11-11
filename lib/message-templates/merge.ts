@@ -24,12 +24,18 @@ export type MergeContext = {
   clientName: string;
   /**
    * Recipient's separate first/last name, when the underlying record has
-   * them (clients/leads). Omit rather than derive by splitting clientName —
-   * a couple's clientName can be "Emily & James Carter" and is never a
-   * valid source for a single person's first/last name.
+   * them (clients/leads). Omit rather than derive by splitting clientName.
+   * clientName is the primary client contact only — never a concatenated
+   * couple or guessed second person.
    */
   clientFirstName?: string | null;
   clientLastName?: string | null;
+  /**
+   * Second person on the lead/client record, used only to address that
+   * person when their email is the send destination. Not a Smart Field.
+   */
+  partnerFirstName?: string | null;
+  partnerLastName?: string | null;
   coordinatorName: string;
   eventDate: string | null;  // ISO "YYYY-MM-DD"
   /** Work Package D5E — share dialogs; optional on scheduled sends. */
@@ -71,12 +77,25 @@ function daysUntil(iso: string | null | undefined): string {
   return String(diff);
 }
 
+/**
+ * Sign-off templates print coordinator_name and then venue_name.
+ * A coordinator that is missing, or that is only the venue name, must not
+ * repeat the venue on the next line.
+ */
+export function coordinatorNameForSignature(coordinator: string, venueName: string): string {
+  const name = coordinator.trim();
+  const venue = venueName.trim();
+  if (!name) return "";
+  if (venue && name.toLowerCase() === venue.toLowerCase()) return "";
+  return name;
+}
+
 /** Build the MergeData map from domain objects. Optional tokens only when present. */
 export function buildMergeData(ctx: MergeContext): MergeData {
   const data: MergeData = {
     venue_name:        ctx.venueName,
     client_name:       ctx.clientName,
-    coordinator_name:  ctx.coordinatorName,
+    coordinator_name:  coordinatorNameForSignature(ctx.coordinatorName, ctx.venueName),
     event_date:        formatMergeDate(ctx.eventDate),
     days_until_event:  daysUntil(ctx.eventDate),
   };
@@ -86,9 +105,6 @@ export function buildMergeData(ctx: MergeContext): MergeData {
   }
   if (ctx.clientLastName) {
     data.last_name = ctx.clientLastName;
-  }
-  if (ctx.clientFirstName && ctx.clientLastName) {
-    data.full_name = `${ctx.clientFirstName} ${ctx.clientLastName}`;
   }
   if (ctx.eventName != null && ctx.eventName !== "") {
     data.event_name = ctx.eventName;

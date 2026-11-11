@@ -6,7 +6,6 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, it } from "node:test";
 
-import { PERSPECTIVES } from "@/components/calendar/perspectives";
 import {
   coveringCalendarBlockTitle,
   eventCoverageInterval,
@@ -91,8 +90,8 @@ describe("Calendar Slice 2A.1 — schema seams", () => {
     assert.ok(backfillAt > 0 && coveringAt > backfillAt);
   });
 
-  it("Finance perspective is removed", () => {
-    assert.equal(PERSPECTIVES.some((p) => (p as { id: string }).id === "finance"), false);
+  it("Finance perspective is removed (perspectives retired entirely)", () => {
+    assert.match(perspectivesSrc, /CALENDAR_PERSPECTIVES_RETIRED/);
     assert.doesNotMatch(perspectivesSrc, /id: "finance"/);
   });
 });

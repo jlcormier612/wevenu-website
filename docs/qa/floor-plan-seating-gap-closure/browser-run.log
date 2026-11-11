@@ -1,0 +1,70 @@
+PASS serving_sha — serving=23e59a03c22202a8c7c7ccc58f89f0eeed9a7281 expected=23e59a03c22202a8c7c7ccc58f89f0eeed9a7281
+PASS inventory_seed — {"inventoryItemId":"abd07513-8585-4421-8f28-2b57d6d3b5ff","prev":0}
+PASS scenario_a_template_objects — count=17
+PASS ensure_sole — {"ok":true,"reason":"sole_offer","offerId":"0716c0c4-cac6-4bd5-8ff4-360f1b51850c","floorPlanId":"588f1f8f-5133-4105-ada3-250ae96ad090","autoAssigned":true}
+PASS scenario_a_fidelity — {"tpl":17,"plan":17,"missing":[]}
+PASS scenario_d_capacity_source — {"tables":11,"totalCap":82}
+PASS scenario_b_catalog — {"invCount":12,"planTypes":2,"seeded":{"name":"72\" Round Table","color":null,"shape":"round","width":72,"height":null,"length":72,"addable":true,"capacity":8,"remaining":2,"objectType":"table_round","placeWidth":72,"placeHeight":72,"categoryName":"Tables","displayShape":"round","quantityUsed":0,"inventoryItemId":"abd07513-8585-4421-8f28-2b57d6d3b5ff","quantityAvailable":2,"unavailableReason":null,"quantityConfigured":true}}
+PASS scenario_b_add_inventory — {"ok":true,"label":"72\" Round Table","width":72,"height":72,"capacity":8,"objectId":"338a5cf9-7bdd-4b6a-b28a-a630856950ab","objectType":"table_round","inventoryItemId":"abd07513-8585-4421-8f28-2b57d6d3b5ff"}
+PASS scenario_b_add_second — {"ok":true,"label":"72\" Round Table","width":72,"height":72,"capacity":8,"objectId":"dc642b14-0ba4-48cb-ad1e-64fa8856fa57","objectType":"table_round","inventoryItemId":"abd07513-8585-4421-8f28-2b57d6d3b5ff"}
+PASS scenario_b_qty_exceeded — {"ok":false,"error":"quantity_exceeded"}
+PASS scenario_c_outside_room — {"outside":{"ok":false,"error":"outside_room"},"roomW":720,"roomH":480}
+PASS scenario_d_move_preserves_assignment — {"moved":{"x":225,"y":215,"ok":true,"objectId":"338a5cf9-7bdd-4b6a-b28a-a630856950ab"},"seatAfter":{"table_object_id":"338a5cf9-7bdd-4b6a-b28a-a630856950ab"}}
+PASS scenario_d_remove_blocked — {"ok":false,"error":"has_assignments","assignedCount":1}
+PASS scenario_d_remove_confirmed — {"remOk":{"ok":true,"objectId":"338a5cf9-7bdd-4b6a-b28a-a630856950ab","unassignedCount":1},"seatGone":[]}
+PASS scenario_f_template_unchanged — tplBefore=17 tplAfter=17
+PASS scenario_f_event_isolation — {"planA":"588f1f8f-5133-4105-ada3-250ae96ad090","planB":"9944f4c3-69b3-453d-8b47-80069f8955bc","bHasAInventory":false,"countB":17}
+PASS browser_working_canvas — working=1 addBtn=1
+PASS browser_catalog — catalog=1 items=12 planTypes=2
+PASS scenario_e_seating_workspace — FloorGapClosure
+
+·
+
+Jen's Fancy Venue
+
+Mar 7, 2075
+
+Export my data
+🏠
+Home
+✅
+Tasks
+🕒
+Timeline
+📁
+Docs
+🗺️
+Floor Plan
+💳
+Payments
+💬
+Messages
+🏛️
+Guide
+🤝
+Vendors
+
+Seating for Gap Layout
+
+Submit Seating Plan
+Ask Venue to Assist
+
+GAP LAYOUT
+
+Let's start seating your guests
+
+0 of 4 guests seated · 0%
+
+12
+
+Tables with space
+
+4
+
+Guests to seat
+
+Start Seating
+Jen's Fancy Venue
+💗
+PASS scenario_f_ready_rejects_add — {"ok":false,"error":"plan_ready"}
+passed=20 failed=0

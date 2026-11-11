@@ -21,37 +21,40 @@ describe("Sales → Booking lifecycle product rules", () => {
     assert.equal(SALES_PIPELINE_RETURN_STAGE, "new_inquiry");
   });
 
-  it("Booking Started is not manually assignable; move-back destination is", () => {
+  it("Booked is not a free pipeline drag; confirmation is required", () => {
     assert.equal(isManuallyAssignableSalesStage("booked"), false);
     assert.equal(isManuallyAssignableSalesStage(SALES_PIPELINE_RETURN_STAGE), true);
+    assert.match(service, /Move to Booked requires confirmation|allowBooked/);
   });
 
-  it("Booking Started copy does not imply contract or payment complete", () => {
+  it("pipeline booked means the canonical booking transition", () => {
     const booked = SALES_STAGE_META.find((s) => s.value === "booked");
     assert.ok(booked);
-    assert.equal(booked!.label, "Booking Started");
-    assert.doesNotMatch(booked!.description, /deposit is paid|agreement is signed/i);
-    assert.match(booked!.description, /not commercially Booked/i);
+    assert.equal(booked!.label, "Booked");
+    assert.match(booked!.description, /booking transition is complete/i);
   });
 
-  it("server requires allowLeaveBooked to leave Booking Started for active pipeline stages", () => {
+  it("server requires allowLeaveBooked to leave Booked for active pipeline stages", () => {
     assert.match(service, /allowLeaveBooked/);
-    assert.match(service, /Use Move back to Sales Pipeline to leave Booking Started/);
+    assert.match(service, /Use Move back to Sales Pipeline to leave Booked/);
     assert.match(service, /stage !== "lost"/);
   });
 
-  it("moveLeadBackToSalesPipeline targets SALES_PIPELINE_RETURN_STAGE with allowLeaveBooked", () => {
+  it("moveLeadBackToSalesPipeline refuses a canonically booked client", () => {
     const fn = service.slice(service.indexOf("export async function moveLeadBackToSalesPipeline"));
     assert.match(fn, /SALES_PIPELINE_RETURN_STAGE/);
     assert.match(fn, /allowLeaveBooked:\s*true/);
-    assert.match(fn, /sales_stage !== "booked"/);
+    assert.match(fn, /booked_at/);
+    assert.match(fn, /Cancel the event to leave Booked/);
   });
 
-  it("returnLeadToBooked requires linked client and uses allowBooked", () => {
+  it("returnLeadToBooked reuses bookClient", () => {
     const fn = service.slice(service.indexOf("export async function returnLeadToBooked"));
-    assert.match(fn, /allowBooked:\s*true/);
-    assert.match(fn, /lead_id/);
+    assert.match(fn, /bookClient/);
+    assert.match(fn, /source: "manual"/);
     assert.match(fn, /no client linked/i);
+    assert.match(fn, /confirmedOccupancy: occupancy/);
+    assert.match(fn, /Confirm the event date, spaces, and times/);
   });
 
   it("convertLeadToClient creates the workspace without pipeline Booked", () => {
@@ -64,8 +67,7 @@ describe("Sales → Booking lifecycle product rules", () => {
 
   it("UI confirms Start booking file before mutation", () => {
     assert.match(detail, /Start booking file\?/);
-    assert.match(detail, /not commercially Booked until/i);
-    assert.match(detail, /Booking Started/);
+    assert.match(detail, /It does not book them, and it does not reserve their date/);
     assert.match(detail, /setConfirmBookOpen\(true\)/);
     assert.match(detail, /confirmBookThisLead/);
     // Mutation runs only after confirm (and optional automation disclose), not on request.
@@ -75,17 +77,26 @@ describe("Sales → Booking lifecycle product rules", () => {
     );
   });
 
-  it("UI exposes Move back and Return to Booking Started with confirmations", () => {
-    assert.match(detail, /Move back to Sales Pipeline/);
-    assert.match(detail, /Return to Booking Started/);
-    assert.match(detail, /client, event, documents, messages, and financial information/i);
-    assert.match(detail, /commercially Booked only after/i);
-    assert.match(actions, /moveLeadBackToSalesPipelineAction/);
+  it("UI exposes Mark as Booked through the same bookClient transition", () => {
+    assert.match(detail, /Mark as Booked/);
+    assert.match(detail, /PipelineBookedConfirmDialog/);
+    assert.match(detail, /confirmMarkAsBooked\(occupancy/);
+    assert.match(detail, /prefillBookingConfirmation/);
+    assert.doesNotMatch(detail, /Return to Booked/);
+    assert.doesNotMatch(detail, /Open booking file →/);
+    assert.match(detail, /Continue setup/);
+    assert.match(detail, /data-testid="continue-booking-setup-action"/);
+    assert.match(detail, /View booking/);
+    assert.match(detail, /data-testid="view-booking-workspace-action"/);
     assert.match(actions, /returnLeadToBookedAction/);
+    assert.match(actions, /moveLeadBackToSalesPipelineAction/);
+    assert.match(detail, /window\.location\.assign\(`\/clients\/\$\{result\.clientId\}\/booked/);
   });
 
-  it("pipeline board blocks leaving Booking Started except via dedicated path", () => {
-    assert.match(board, /Move back to Sales Pipeline/);
-    assert.match(board, /Booking Started is only set by starting a booking file/);
+  it("pipeline board confirms Mark as Booked before the canonical transition", () => {
+    assert.match(board, /confirmPipelineBookedMoveAction/);
+    assert.match(board, /PipelineBookedConfirmDialog/);
+    assert.match(board, /newlyBooked/);
+    assert.doesNotMatch(board, /from: "booked"/);
   });
 });

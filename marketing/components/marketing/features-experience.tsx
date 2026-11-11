@@ -76,7 +76,7 @@ export function FeaturesExperience() {
             {page.close.headline}
           </h2>
           <div className="mt-8 space-y-3 text-base leading-[1.7] text-[var(--forest-sage)]/70 md:text-lg max-w-[65ch]">
-            {page.close.lines.map((line) => (
+            {page.close.body.map((line) => (
               <p key={line}>{line}</p>
             ))}
           </div>

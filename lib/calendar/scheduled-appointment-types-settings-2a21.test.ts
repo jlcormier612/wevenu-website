@@ -67,7 +67,7 @@ describe("Calendar Slice 2A.2.1 — Settings placement & copy", () => {
   });
 
   it("uses locked occupancy label and helper copy", () => {
-    assert.match(sectionSrc, /Reserves venue time for events/);
+    assert.match(sectionSrc, /Blocks event bookings/);
     assert.match(
       sectionSrc,
       /When on, this time counts as reserved on your Calendar so another event can’t book over it\. It does not change when couples can book tours — that’s under Tour Availability above\./,

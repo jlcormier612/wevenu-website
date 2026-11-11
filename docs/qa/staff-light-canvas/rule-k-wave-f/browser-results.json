@@ -1,0 +1,64 @@
+{
+  "expectSha": "3be58e1b09b5ffe9c0f16b3148eaa51055bb8519",
+  "app": "https://app.sandbox.hellotocheers.com",
+  "checks": {
+    "deploy_sha": {
+      "ok": true,
+      "detail": {
+        "dpl": "3be58e1b09b5ffe9c0f16b3148eaa51055bb8519",
+        "EXPECT_SHA": "3be58e1b09b5ffe9c0f16b3148eaa51055bb8519",
+        "source": "ssr-/login"
+      }
+    },
+    "saved_reports_structure": {
+      "ok": true,
+      "detail": {
+        "hasGuidance": true,
+        "hasShell": false,
+        "guidanceText": "About Saved Reports\n\nReports you've saved so you can reopen them quickly or have them delivered. Starters for Sales, Bookings, Revenue, and Events are ready to ",
+        "guidanceBg": "rgb(234, 241, 247)",
+        "cardBg": "rgb(255, 255, 255)",
+        "canvasBg": "rgb(248, 247, 243)",
+        "brokenCopy": false
+      }
+    },
+    "saved_reports_colors": {
+      "ok": true,
+      "detail": {
+        "guidanceHex": "#eaf1f7",
+        "cardHex": "#ffffff",
+        "canvas": "#f8f7f3"
+      }
+    },
+    "public_forms_white_cards": {
+      "ok": true,
+      "detail": {
+        "cardCount": 4,
+        "firstBg": "rgb(255, 255, 255)",
+        "hasPublished": true,
+        "hex": "#ffffff"
+      }
+    },
+    "timeline_copy": {
+      "ok": true,
+      "detail": {
+        "snippet": "Reusable day-of schedules you build once and apply to any booking."
+      }
+    },
+    "automations_working_card": {
+      "ok": true,
+      "detail": {
+        "headerBg": "rgb(220, 232, 224)",
+        "workingCards": 2,
+        "hasHelp": true,
+        "headerHex": "#dce8e0"
+      }
+    }
+  },
+  "shots": [
+    "sandbox-saved-reports.png",
+    "sandbox-public-forms.png",
+    "sandbox-timeline-templates.png",
+    "sandbox-automations-edit.png"
+  ]
+}

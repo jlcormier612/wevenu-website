@@ -5,6 +5,7 @@
  * relationship to return the flat Vendor shape the UI expects.
  */
 import { createClient } from "@/integrations/supabase/server";
+import { normalizeVenuePhoneInput } from "@/lib/sms/phone";
 import type {
   EventVendorAssignment,
   Vendor,
@@ -53,7 +54,7 @@ type VendorReviewRow = {
 };
 
 type EVARow = {
-  id: string; venue_id: string; event_id: string; vendor_id: string;
+  id: string; venue_id: string; event_id: string | null; vendor_id: string;
   arrival_time: string | null; setup_location: string | null; load_in_notes: string | null;
   notes: string | null; created_at: string;
   checked_in_at: string | null; setup_complete_at: string | null;
@@ -147,7 +148,7 @@ function mapEVA(r: EVARow): EventVendorAssignment {
   return {
     id:              r.id,
     venueId:         r.venue_id,
-    eventId:         r.event_id,
+    eventId:         r.event_id ?? "",
     vendorId:        r.vendor_id,
     vendorName:      r.vendors?.business_name ?? "Unknown vendor",
     vendorCategory:  r.vendors?.category ?? null,
@@ -222,7 +223,7 @@ function toVendorProfileRow(input: VendorInput): Record<string, unknown> {
     category:       input.category || null,
     contact_name:   input.contactName.trim() || null,
     email:          input.email.trim() || null,
-    phone:          input.phone.trim() || null,
+    phone:          normalizeVenuePhoneInput(input.phone) || null,
     website_url:    input.websiteUrl.trim() || null,
     instagram_url:  input.instagramUrl.trim() || null,
     facebook_url:   input.facebookUrl.trim() || null,
@@ -254,7 +255,8 @@ export async function findActiveDuplicateVendor(
   q = trimmedEmail
     ? q.ilike("vendors.email", trimmedEmail)
     : q.ilike("vendors.business_name", businessName.trim());
-  const { data } = await q.limit(1).maybeSingle<{ vendor_id: string }>();
+  const { data, error } = await q.limit(1).maybeSingle<{ vendor_id: string }>();
+  if (error) throw error;
   return data ? { id: data.vendor_id } : null;
 }
 
@@ -263,9 +265,37 @@ export async function findActiveDuplicateVendor(
  * can reactivate a paused relationship instead of minting a second global
  * vendor identity.
  */
+export type VendorIdentityMatch =
+  | { kind: "unique"; vendorId: string; status?: string; isClaimed?: boolean }
+  | { kind: "ambiguous" }
+  | { kind: "none" };
+
+/** Exactly one row can be reused. Zero creates. Two or more must not be merged. */
+export function classifyIdentityCount(count: number): "unique" | "ambiguous" | "none" {
+  if (count === 1) return "unique";
+  if (count > 1) return "ambiguous";
+  return "none";
+}
+
+async function matchRows<T extends { vendor_id?: string; id?: string; status?: string; is_claimed?: boolean }>(
+  rows: T[] | null,
+  idOf: (row: T) => string,
+): Promise<VendorIdentityMatch> {
+  const list = rows ?? [];
+  const kind = classifyIdentityCount(list.length);
+  if (kind !== "unique") return { kind };
+  const row = list[0]!;
+  return {
+    kind: "unique",
+    vendorId: idOf(row),
+    status: row.status,
+    isClaimed: row.is_claimed,
+  };
+}
+
 export async function findVenueVendorRelationshipMatch(
   client: DbClient, venueId: string, businessName: string, email: string,
-): Promise<{ vendorId: string; status: string } | null> {
+): Promise<VendorIdentityMatch> {
   const trimmedEmail = email.trim();
   const trimmedName = businessName.trim();
   if (trimmedEmail) {
@@ -273,43 +303,45 @@ export async function findVenueVendorRelationshipMatch(
       .select("vendor_id, status, vendors!inner(email)")
       .eq("venue_id", venueId)
       .ilike("vendors.email", trimmedEmail)
-      .limit(1)
-      .maybeSingle<{ vendor_id: string; status: string }>();
-    if (data) return { vendorId: data.vendor_id, status: data.status };
+      .limit(2);
+    const match = await matchRows(data as Array<{ vendor_id: string; status: string }> | null, (row) => row.vendor_id);
+    if (match.kind !== "none") return match;
   }
   if (trimmedName) {
     const { data } = await client.from("venue_vendor_relationships")
       .select("vendor_id, status, vendors!inner(business_name)")
       .eq("venue_id", venueId)
       .ilike("vendors.business_name", trimmedName)
-      .limit(1)
-      .maybeSingle<{ vendor_id: string; status: string }>();
-    if (data) return { vendorId: data.vendor_id, status: data.status };
+      .limit(2);
+    return matchRows(data as Array<{ vendor_id: string; status: string }> | null, (row) => row.vendor_id);
   }
-  return null;
+  return { kind: "none" };
 }
 
-/** Global vendor identity match (email preferred, then exact business name). */
+/**
+ * Global vendor identity. Email is checked first. A match is reusable only
+ * when it is the single row for that email. Multiple email or name matches
+ * are ambiguous and must not be attached.
+ */
 export async function findGlobalVendorIdentity(
   client: DbClient, businessName: string, email: string,
-): Promise<{ id: string; isClaimed: boolean } | null> {
+): Promise<VendorIdentityMatch> {
   const trimmedEmail = email.trim();
   if (trimmedEmail) {
     const { data } = await client.from("vendors")
       .select("id, is_claimed")
       .ilike("email", trimmedEmail)
-      .limit(1)
-      .maybeSingle<{ id: string; is_claimed: boolean }>();
-    if (data) return { id: data.id, isClaimed: data.is_claimed };
+      .limit(2);
+    const match = await matchRows(data as Array<{ id: string; is_claimed: boolean }> | null, (row) => row.id);
+    if (match.kind !== "none") return match;
   }
   const trimmedName = businessName.trim();
-  if (!trimmedName) return null;
+  if (!trimmedName) return { kind: "none" };
   const { data } = await client.from("vendors")
     .select("id, is_claimed")
     .ilike("business_name", trimmedName)
-    .limit(1)
-    .maybeSingle<{ id: string; is_claimed: boolean }>();
-  return data ? { id: data.id, isClaimed: data.is_claimed } : null;
+    .limit(2);
+  return matchRows(data as Array<{ id: string; is_claimed: boolean }> | null, (row) => row.id);
 }
 
 async function upsertVenueRelationship(
@@ -342,18 +374,21 @@ export type ResolveVendorDecision =
 
 /** Pure decision tree for resolveOrCreateVendor — unit-tested without DB. */
 export function decideVendorResolve(
-  venueMatch: { vendorId: string; status: string } | null,
-  global: { id: string } | null,
+  venueMatch: VendorIdentityMatch,
+  global: VendorIdentityMatch,
 ): ResolveVendorDecision {
-  if (venueMatch) {
+  if (venueMatch.kind === "unique") {
     return {
       action: "reuse_venue",
       vendorId: venueMatch.vendorId,
       reactivate: venueMatch.status === "inactive",
     };
   }
-  if (global) {
-    return { action: "attach_global", vendorId: global.id };
+  if (venueMatch.kind === "ambiguous" || global.kind === "ambiguous") {
+    return { action: "create_new" };
+  }
+  if (global.kind === "unique") {
+    return { action: "attach_global", vendorId: global.vendorId };
   }
   return { action: "create_new" };
 }
@@ -364,9 +399,9 @@ export async function resolveOrCreateVendor(
   const venueMatch = await findVenueVendorRelationshipMatch(
     client, venueId, input.businessName, input.email,
   );
-  const global = venueMatch
-    ? null
-    : await findGlobalVendorIdentity(client, input.businessName, input.email);
+  const global = venueMatch.kind === "none"
+    ? await findGlobalVendorIdentity(client, input.businessName, input.email)
+    : { kind: "none" as const };
   const decision = decideVendorResolve(venueMatch, global);
 
   if (decision.action === "reuse_venue") {
@@ -403,7 +438,7 @@ export async function insertVendor(client: DbClient, venueId: string, input: Ven
       category: input.category,
       contactName: input.contactName.trim(),
       email: input.email.trim(),
-      phone: input.phone.trim(),
+      phone: normalizeVenuePhoneInput(input.phone),
       websiteUrl: input.websiteUrl.trim(),
       instagramUrl: input.instagramUrl.trim(),
       facebookUrl: input.facebookUrl.trim(),
@@ -527,18 +562,37 @@ export async function insertVendorReview(client: DbClient, venueId: string, vend
 
 // ── Event vendor assignments ──────────────────────────────────────────────────
 
+/** Venue-facing columns only — excludes vendor-private internal_notes. */
+const EVA_VENUE_SELECT =
+  "id, venue_id, event_id, vendor_id, arrival_time, setup_location, load_in_notes, notes, created_at, checked_in_at, setup_complete_at, agreed_fee, payment_status, vendors(business_name, category, contact_name, phone), conversations!event_vendor_assignment_id(id, conversation_kind)";
+
 export async function getEventVendorAssignments(
   client: DbClient, venueId: string, eventId: string,
 ): Promise<EventVendorAssignment[]> {
   const { data, error } = await client
     .from("event_vendor_assignments")
-    .select("*, vendors(business_name, category, contact_name, phone), conversations!event_vendor_assignment_id(id, conversation_kind)")
+    .select(EVA_VENUE_SELECT)
     .eq("event_id", eventId)
     .eq("venue_id", venueId)
     .order("arrival_time", { ascending: true, nullsFirst: false })
     .order("created_at",   { ascending: true });
   if (error) throw error;
-  return (data as EVARow[]).map(mapEVA);
+  return (data as unknown as EVARow[]).map(mapEVA);
+}
+
+export async function getClientVendorAssignments(
+  client: DbClient, venueId: string, clientId: string,
+): Promise<EventVendorAssignment[]> {
+  const { data, error } = await client
+    .from("event_vendor_assignments")
+    .select(EVA_VENUE_SELECT)
+    .eq("client_id", clientId)
+    .is("event_id", null)
+    .eq("venue_id", venueId)
+    .order("arrival_time", { ascending: true, nullsFirst: false })
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return (data as unknown as EVARow[]).map(mapEVA);
 }
 
 export async function insertVendorAssignment(
@@ -555,7 +609,7 @@ export async function insertVendorAssignment(
       load_in_notes:  input.loadInNotes.trim() || null,
       notes:          input.notes.trim() || null,
     })
-    .select("*, vendors(business_name, category, contact_name, phone), conversations!event_vendor_assignment_id(id, conversation_kind)")
+    .select(EVA_VENUE_SELECT)
     .single<EVARow>();
 
   // Couple Submit may have already created the assignment — treat as success
@@ -563,8 +617,42 @@ export async function insertVendorAssignment(
   if (error?.code === "23505") {
     const { data: existing, error: readErr } = await client
       .from("event_vendor_assignments")
-      .select("*, vendors(business_name, category, contact_name, phone), conversations!event_vendor_assignment_id(id, conversation_kind)")
+      .select(EVA_VENUE_SELECT)
       .eq("event_id", eventId)
+      .eq("vendor_id", input.vendorId)
+      .eq("venue_id", venueId)
+      .single<EVARow>();
+    if (readErr || !existing) throw readErr ?? error;
+    return { assignment: mapEVA(existing), created: false };
+  }
+  if (error) throw error;
+  return { assignment: mapEVA(data), created: true };
+}
+
+export async function insertClientVendorAssignment(
+  client: DbClient, venueId: string, clientId: string, input: VendorAssignmentInput,
+): Promise<{ assignment: EventVendorAssignment; created: boolean }> {
+  const { data, error } = await client
+    .from("event_vendor_assignments")
+    .insert({
+      venue_id:       venueId,
+      event_id:       null,
+      client_id:      clientId,
+      vendor_id:      input.vendorId,
+      arrival_time:   input.arrivalTime || null,
+      setup_location: input.setupLocation.trim() || null,
+      load_in_notes:  input.loadInNotes.trim() || null,
+      notes:          input.notes.trim() || null,
+    })
+    .select(EVA_VENUE_SELECT)
+    .single<EVARow>();
+
+  if (error?.code === "23505") {
+    const { data: existing, error: readErr } = await client
+      .from("event_vendor_assignments")
+      .select(EVA_VENUE_SELECT)
+      .eq("client_id", clientId)
+      .is("event_id", null)
       .eq("vendor_id", input.vendorId)
       .eq("venue_id", venueId)
       .single<EVARow>();

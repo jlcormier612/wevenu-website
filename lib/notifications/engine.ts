@@ -19,8 +19,15 @@ import { createClient } from "@supabase/supabase-js";
 
 import { recordExternalClientOutbound } from "@/lib/conversations/record-external-outbound";
 import { appendEmailSignatureText, emailBrandFromVenue, escapeHtml } from "@/lib/email/venue-brand";
+import { applyReminderScope } from "@/lib/notifications/reminder-scope";
+import { nextRecurringReminderAt } from "@/lib/notifications/schedule-times";
+import {
+  buildTourReminderCoordinatorEmail,
+  buildTourReminderCoupleEmail,
+} from "@/lib/notifications/tour-reminder-email";
 import { buildReminderEmail } from "@/lib/notifications/templates";
 import { determineChannel, type NotificationRole, type ProcessResult } from "@/lib/notifications/types";
+import { getVenueTimezone } from "@/lib/venue/timezone";
 
 const BATCH_SIZE = 50;  // reminders per run
 
@@ -39,13 +46,24 @@ function getBaseUrl(): string {
   return "http://localhost:3000";
 }
 
-export async function processReminders(): Promise<ProcessResult> {
+/**
+ * Optional scope for Sandbox/QA isolation. Cron and Settings call with no
+ * args — selection stays global. A non-empty reminderIds list and venueId
+ * each narrow the query. When both are set, a reminder must match both.
+ * An empty reminderIds array does not filter by id.
+ */
+export type ReminderProcessScope = {
+  reminderIds?: string[];
+  venueId?: string;
+};
+
+export async function processReminders(scope?: ReminderProcessScope): Promise<ProcessResult> {
   const result: ProcessResult = { processed: 0, sent: 0, failed: 0, skipped: 0, errors: [] };
   const supabase = getServiceClient();
   const now = new Date().toISOString();
 
   // Fetch batch of due reminders (both task and tour reminders)
-  const { data: reminders, error } = await supabase
+  let query = supabase
     .from("task_reminders")
     .select(`
       id, venue_id, event_task_id, tour_appointment_id, reminder_type, notify_role, scheduled_for, after_due_recur_interval_days,
@@ -63,6 +81,10 @@ export async function processReminders(): Promise<ProcessResult> {
     .lte("scheduled_for", now)
     .order("scheduled_for")
     .limit(BATCH_SIZE);
+
+  query = applyReminderScope(query, scope);
+
+  const { data: reminders, error } = await query;
 
   if (error) { result.errors.push(`Fetch error: ${error.message}`); return result; }
   if (!reminders?.length) return result;
@@ -126,8 +148,9 @@ export async function processReminders(): Promise<ProcessResult> {
           portalToken = session?.access_token;
         }
 
+        const { VENUE_EMAIL_BRAND_SELECT } = await import("@/lib/email/venue-brand");
         const { data: venueRow } = await supabase.from("venues")
-          .select("name, primary_color, logo_url, email_signature, email, phone")
+          .select(VENUE_EMAIL_BRAND_SELECT)
           .eq("id", reminder.venue_id)
           .maybeSingle();
         const brand = emailBrandFromVenue(venueRow);
@@ -135,18 +158,28 @@ export async function processReminders(): Promise<ProcessResult> {
         const venueColor = brand.primaryColor;
 
         let emailContent: { subject: string; html: string; text: string };
+        let coupleHtmlAlreadyBranded = false;
         if (isTourReminder && tourAppt) {
-          // Tour reminder email
-          const tourDate = new Date(tourAppt.scheduled_at);
-          const dateStr = tourDate.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
-          const timeStr = tourDate.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-          const subj = role === "coordinator"
-            ? `Tour reminder: ${tourAppt.contact_name ?? "Upcoming tour"} — ${dateStr} at ${timeStr}`
-            : `Your tour at ${venueName} is tomorrow — ${dateStr} at ${timeStr}`;
-          const body = role === "coordinator"
-            ? `You have a venue tour tomorrow at ${timeStr} with ${tourAppt.contact_name ?? "a prospective client"}. Duration: ${tourAppt.duration_minutes} minutes.`
-            : `Just a reminder that your tour at ${venueName} is tomorrow at ${timeStr}. We look forward to meeting you!`;
-          emailContent = { subject: subj, html: `<p>${body}</p><p>— ${venueName}</p>`, text: body };
+          // Tour reminder email — venue timezone, human 12h clock.
+          const { getVenueTimezone, formatVenueLocalTourDisplay } = await import("@/lib/venue/timezone");
+          const tz = await getVenueTimezone(supabase, reminder.venue_id);
+          const { dateLabel, timeLabel } = formatVenueLocalTourDisplay(tourAppt.scheduled_at, tz);
+          if (role === "couple") {
+            // Customer-facing: shared venue-branded shell (logo when logo_url set).
+            emailContent = buildTourReminderCoupleEmail({ brand, dateLabel, timeLabel });
+            coupleHtmlAlreadyBranded = true;
+          } else {
+            // Staff: shared HTC venue-notification shell + Sage CTA (unchanged subject).
+            emailContent = buildTourReminderCoordinatorEmail({
+              contactName: tourAppt.contact_name ?? null,
+              dateLabel,
+              timeLabel,
+              durationMinutes: tourAppt.duration_minutes,
+              venueName,
+              leadId: tourAppt.lead_id ?? null,
+              appOrigin: getBaseUrl(),
+            });
+          }
         } else {
           // Task reminder email
           const coupleName = [client?.first_name, client?.partner_first_name].filter(Boolean).join(" & ");
@@ -156,12 +189,14 @@ export async function processReminders(): Promise<ProcessResult> {
             eventDate: event?.event_date ?? "",
             dueDate: task!.due_date,
             role, reminderType: reminder.reminder_type,
-            portalToken, venueBaseUrl: getBaseUrl(), venueName, venueColor,
+            portalToken, venueBaseUrl: getBaseUrl(), venueName, venueColor, brand,
           });
+          if (role === "couple") coupleHtmlAlreadyBranded = true;
         }
 
         // Couple-facing emails get the venue signature; coordinator alerts stay internal-shaped.
-        if (role === "couple") {
+        // Tour reminder couple HTML already includes signature via the branded shell.
+        if (role === "couple" && !coupleHtmlAlreadyBranded) {
           emailContent.text = appendEmailSignatureText(emailContent.text, brand);
           const sig = brand.emailSignature?.trim();
           const contact = brand.replyContact?.trim();
@@ -178,25 +213,57 @@ export async function processReminders(): Promise<ProcessResult> {
         bodyPreview = emailContent.html.replace(/<[^>]+>/g, "").slice(0, 500);
         outboundBody = emailContent.text;
 
-        // Send via Resend REST API
-        const apiKey = process.env.RESEND_API_KEY;
-        const fromEmail = process.env.FROM_EMAIL ?? "Hello to Cheers <onboarding@resend.dev>";
-        if (apiKey) {
-          const resendResponse = await fetch("https://api.resend.com/emails", {
-            method: "POST",
-            headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
-            body: JSON.stringify({ from: fromEmail, to: recipientEmail, subject: emailContent.subject, html: emailContent.html, text: emailContent.text }),
+        if (role === "couple") {
+          // Couple-facing: established sendEmail + threadId (same as proposal/contract).
+          const { sendEmail } = await import("@/lib/email/send");
+          const { resolveVenueCoupleThreadId } = await import(
+            "@/lib/conversations/resolve-couple-thread"
+          );
+          const threadId = await resolveVenueCoupleThreadId(supabase, reminder.venue_id, {
+            clientId: event?.client_id ?? null,
+            leadId: tourAppt?.lead_id ?? null,
           });
-          if (!resendResponse.ok) {
-            const err = await resendResponse.json().catch(() => ({})) as { message?: string };
-            throw new Error(err.message ?? `Resend HTTP ${resendResponse.status}`);
-          }
-          const resendData = await resendResponse.json() as { id?: string };
-          providerMessageId = resendData.id ?? null;
+          const venueEmail =
+            (venueRow as { email?: string | null } | null)?.email ?? undefined;
+          const sendResult = await sendEmail({
+            to: recipientEmail,
+            subject: emailContent.subject,
+            text: emailContent.text,
+            html: emailContent.html,
+            replyTo: venueEmail,
+            threadId: threadId ?? undefined,
+          });
+          if (!sendResult.ok) throw new Error(sendResult.message);
+          providerMessageId =
+            sendResult.method === "resend" ? sendResult.providerId ?? null : null;
           sent = true;
         } else {
-          console.log(`[notifications] DEV send to ${recipientEmail}: ${subject}`);
-          sent = true;
+          // Coordinator/staff: preserve existing raw Resend path and branding.
+          const apiKey = process.env.RESEND_API_KEY;
+          const fromEmail = process.env.FROM_EMAIL ?? "Hello to Cheers <onboarding@resend.dev>";
+          if (apiKey) {
+            const resendResponse = await fetch("https://api.resend.com/emails", {
+              method: "POST",
+              headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
+              body: JSON.stringify({
+                from: fromEmail,
+                to: recipientEmail,
+                subject: emailContent.subject,
+                html: emailContent.html,
+                text: emailContent.text,
+              }),
+            });
+            if (!resendResponse.ok) {
+              const err = await resendResponse.json().catch(() => ({})) as { message?: string };
+              throw new Error(err.message ?? `Resend HTTP ${resendResponse.status}`);
+            }
+            const resendData = await resendResponse.json() as { id?: string };
+            providerMessageId = resendData.id ?? null;
+            sent = true;
+          } else {
+            console.log(`[notifications] DEV send to ${recipientEmail}: ${subject}`);
+            sent = true;
+          }
         }
       } else {
         // SMS / in_app / push — not yet implemented, skip gracefully
@@ -254,12 +321,15 @@ export async function processReminders(): Promise<ProcessResult> {
         task.status !== "complete" &&
         task.status !== "waived"
       ) {
-        const next = new Date();
-        next.setDate(next.getDate() + reminder.after_due_recur_interval_days);
+        const timezone = await getVenueTimezone(supabase, reminder.venue_id);
         await supabase.from("task_reminders").insert({
           venue_id: reminder.venue_id, event_task_id: reminder.event_task_id,
           reminder_type: "overdue", notify_role: role,
-          scheduled_for: next.toISOString(),
+          scheduled_for: nextRecurringReminderAt(
+            reminder.scheduled_for,
+            reminder.after_due_recur_interval_days,
+            timezone,
+          ),
           after_due_recur_interval_days: reminder.after_due_recur_interval_days,
         });
       }

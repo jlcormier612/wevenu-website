@@ -1,0 +1,38 @@
+PASS [serving] serving_sha — expected=553a7aaf044f1e605965e0c4df21f088fc03a96b ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:553a7aaf044f1e605965e0c4df21f088fc03a96b
+PASS [serving] api_health — {"status":200,"body":{"ok":true,"checks":{"env":"ok","supabase":"ok"}}}
+PASS [fixture] fixture_multi_min2_max2_three_options — {"templateId":"34f1d1e3-0311-4459-80e3-b405c2170de3","groupId":"b13b75fc-1e9f-430b-8940-d67793ae521c","optionIds":["c8c74dc1-21fe-40df-b4d3-111f17926e4d","475f82d7-8774-429b-883b-3939454ad925","b9d87220-e05b-4a0a-8ab8-9934670825f2"],"labels":["EOCE-EOCEMVROWB8V-A","EOCE-EOCEMVROWB8V-B","EOCE-EOCEMVROWB8V-C"]}
+PASS [live-ui] venue_selected_disposable_sides_template — EOCE-EOCEMVROWB8V-Sides
+PASS [persisted] packet_has_min2_max2_sides — {"choicesId":"8ae71e07-6c3e-4234-aa26-62d32eb74f6d","sides":{"id":"b13b75fc-1e9f-430b-8940-d67793ae521c","name":"Side dishes","maxSelect":2,"minSelect":2,"sectionId":"1f4f5f88-e455-4a54-af30-6b3cd7617a8d","sortOrder":0,"instructions":"Choose exactly 2 sides.","allowQuantity":false,"selectionMode":"multi","dependsOnOptionIds":[]},"optCount":3}
+UX[ok] Couple sides rules — Min/max selection rules visible on group.
+PASS [live-ui] couple_sees_min_max_rules_copy — Pick many · required · choose exactly 2
+PASS [live-ui] live_min_reject_zero_selections — “Side dishes” requires at least 2 selections.
+UX[ok] Min reject (0) — Actionable min message; submit blocked.
+PASS [live-ui] live_min_reject_one_selection — “Side dishes” requires at least 2 selections.
+PASS [live-ui] ui_allows_selecting_above_max_before_submit — three checkboxes checked
+PASS [live-ui] live_max_reject_three_selections — “Side dishes” allows at most 2 selections.
+UX[ok] Max reject (3) — Actionable max message; submit blocked.
+PASS [live-ui+persisted] draft_saved_with_ac_including_soon_removed — {"status":"in_progress","draftIds":["c8c74dc1-21fe-40df-b4d3-111f17926e4d","b9d87220-e05b-4a0a-8ab8-9934670825f2"]}
+PASS [live-ui] venue_remove_button_visible — aria-label=Remove EOCE-EOCEMVROWB8V-C
+PASS [live-ui+persisted] venue_removed_option_c_via_ui — [{"id":"c8c74dc1-21fe-40df-b4d3-111f17926e4d","label":"EOCE-EOCEMVROWB8V-A"},{"id":"475f82d7-8774-429b-883b-3939454ad925","label":"EOCE-EOCEMVROWB8V-B"}]
+PASS [persisted] hydrate_pruned_removed_option_from_definition_and_answers — {"defOptCount":2,"answers":["c8c74dc1-21fe-40df-b4d3-111f17926e4d"],"status":"in_progress"}
+PASS [live-ui] couple_no_longer_sees_removed_option_c — label=EOCE-EOCEMVROWB8V-C staleMsg=false
+UX[ok] Stale draft after venue option remove — Removed option gone; review message optional.
+PASS [live-ui] stale_or_below_min_submit_blocked — “Side dishes” requires at least 2 selections.
+PASS [live-ui+persisted] final_submit_without_removed_option — {"status":"submitted","finalIds":["c8c74dc1-21fe-40df-b4d3-111f17926e4d","475f82d7-8774-429b-883b-3939454ad925"]}
+PASS [live-ui+persisted] refresh_preserves_valid_final_answers — {"status":"submitted","ids":["c8c74dc1-21fe-40df-b4d3-111f17926e4d","475f82d7-8774-429b-883b-3939454ad925"]}
+PASS [persisted] no_duplicate_packets — packets=1
+PASS [live-ui] venue_summary_shows_remaining_sides — Couple-submitted choices
+
+FOOD
+Side dishes
+
+Pick many · required
+
+Choose exactly 2 sides.
+
+EOCE-EOCEMVROWB8V-ASELECTED
++$10.00
+EOCE-EOCEMVROWB8V-BSELECTED
++$11.00
+
+20/20 passed; UX blockers/p2=0

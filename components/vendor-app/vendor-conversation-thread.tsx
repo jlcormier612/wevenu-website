@@ -38,7 +38,7 @@ function AttachmentList({ attachments, isVendor }: { attachments: VendorConversa
           target="_blank"
           rel="noopener noreferrer"
           className={`block ${isImageAttachment(a.mimeType) ? "" : "flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs underline-offset-2 hover:underline"} ${
-            isImageAttachment(a.mimeType) ? "" : isVendor ? "bg-white/15 dark:bg-[var(--forest-sage)]/10" : "bg-background/60"
+            isImageAttachment(a.mimeType) ? "" : isVendor ? "bg-primary-foreground/15" : "bg-background/60"
           }`}
         >
           {isImageAttachment(a.mimeType) ? (
@@ -62,15 +62,12 @@ function Bubble({
 }) {
   const isVendor = msg.senderType === "vendor";
   const isAutomated = msg.senderType === "system";
-  // Light: heritage-sage + white. Dark staff tokens: soft-sage + forest-sage.
-  // Avoid color-mix / arbitrary var() text overrides — they produced murky
-  // bubbles with unreadable foreground in couple threads.
+  // Contemporary Botanical light: botanical primary bubbles; blush wash for couple.
   const incomingTone =
     audience === "couple"
-      ? "bg-[color-mix(in_oklch,var(--dusty-rose)_12%,var(--muted))] text-foreground dark:bg-[color-mix(in_oklch,var(--dusty-rose)_28%,transparent)] dark:ring-1 dark:ring-[color-mix(in_oklch,var(--dusty-rose)_45%,transparent)]"
-      : "bg-muted text-foreground dark:bg-white/10 dark:ring-1 dark:ring-white/15";
-  const outgoingTone =
-    "bg-[var(--heritage-sage)] text-white dark:bg-[var(--soft-sage)] dark:text-[var(--forest-sage)]";
+      ? "bg-[color-mix(in_oklch,var(--htc-blush,#d99a9e)_12%,var(--muted))] text-foreground"
+      : "bg-muted text-foreground";
+  const outgoingTone = "bg-primary text-primary-foreground";
   return (
     <div className={`flex ${isVendor ? "justify-end" : "justify-start"}`}>
       <div className={cn("max-w-[75%] rounded-lg px-4 py-2.5", isVendor ? outgoingTone : incomingTone)}>
@@ -84,9 +81,7 @@ function Bubble({
         <p
           className={cn(
             "mt-1 text-[10px]",
-            isVendor
-              ? "text-white/70 dark:text-[color-mix(in_oklch,var(--forest-sage)_72%,transparent)]"
-              : "text-muted-foreground",
+            isVendor ? "text-primary-foreground/70" : "text-muted-foreground",
           )}
         >
           {formatTime(msg.sentAt)}
@@ -198,8 +193,8 @@ export function VendorConversationThread({
         "flex min-h-0 flex-col overflow-hidden rounded-sm border bg-card",
         showHeader ? "h-full" : "h-[480px]",
         isCouple
-          ? "border-[color-mix(in_oklch,var(--dusty-rose)_30%,var(--border))] dark:border-[color-mix(in_oklch,var(--dusty-rose)_42%,transparent)]"
-          : "border-[color-mix(in_oklch,var(--forest-sage)_24%,var(--border))] dark:border-white/20",
+          ? "border-[color-mix(in_oklch,var(--htc-blush,#d99a9e)_30%,var(--border))]"
+          : "border-[color-mix(in_oklch,var(--htc-botanical,#446b56)_24%,var(--border))]",
       )}
     >
       {showHeader && (
@@ -207,8 +202,8 @@ export function VendorConversationThread({
           className={cn(
             "flex shrink-0 items-center gap-2 border-b px-4 py-3",
             isCouple
-              ? "border-[color-mix(in_oklch,var(--dusty-rose)_22%,var(--border))] bg-[color-mix(in_oklch,var(--dusty-rose)_8%,transparent)] dark:border-[color-mix(in_oklch,var(--dusty-rose)_35%,transparent)] dark:bg-[color-mix(in_oklch,var(--dusty-rose)_16%,transparent)]"
-              : "border-[color-mix(in_oklch,var(--forest-sage)_18%,var(--border))] bg-[color-mix(in_oklch,var(--forest-sage)_6%,transparent)] dark:border-white/15 dark:bg-white/6",
+              ? "border-[color-mix(in_oklch,var(--htc-blush,#d99a9e)_22%,var(--border))] bg-[color-mix(in_oklch,var(--htc-blush,#d99a9e)_8%,transparent)]"
+              : "border-[color-mix(in_oklch,var(--htc-botanical,#446b56)_18%,var(--border))] bg-[color-mix(in_oklch,var(--htc-botanical,#446b56)_6%,transparent)]",
           )}
         >
           <Link href="/vendor/messages" className="text-muted-foreground hover:text-foreground">
@@ -227,8 +222,8 @@ export function VendorConversationThread({
         className={cn(
           "shrink-0 border-b px-4 py-2",
           isCouple
-            ? "border-[color-mix(in_oklch,var(--dusty-rose)_22%,var(--border))] bg-[color-mix(in_oklch,var(--dusty-rose)_12%,var(--muted))] dark:border-[color-mix(in_oklch,var(--dusty-rose)_35%,transparent)] dark:bg-[color-mix(in_oklch,var(--dusty-rose)_18%,transparent)]"
-            : "border-[color-mix(in_oklch,var(--forest-sage)_18%,var(--border))] bg-[color-mix(in_oklch,var(--forest-sage)_8%,var(--muted))] dark:border-white/15 dark:bg-white/8",
+            ? "border-[color-mix(in_oklch,var(--htc-blush,#d99a9e)_22%,var(--border))] bg-[color-mix(in_oklch,var(--htc-blush,#d99a9e)_12%,var(--muted))]"
+            : "border-[color-mix(in_oklch,var(--htc-botanical,#446b56)_18%,var(--border))] bg-[color-mix(in_oklch,var(--htc-botanical,#446b56)_8%,var(--muted))]",
         )}
       >
         <p className="text-xs font-medium text-foreground">Talking to {recipientName}</p>
@@ -250,8 +245,8 @@ export function VendorConversationThread({
         className={cn(
           "shrink-0 space-y-2 border-t p-3",
           isCouple
-            ? "border-[color-mix(in_oklch,var(--dusty-rose)_22%,var(--border))] dark:border-[color-mix(in_oklch,var(--dusty-rose)_35%,transparent)]"
-            : "border-[color-mix(in_oklch,var(--forest-sage)_18%,var(--border))] dark:border-white/15",
+            ? "border-[color-mix(in_oklch,var(--htc-blush,#d99a9e)_22%,var(--border))]"
+            : "border-[color-mix(in_oklch,var(--htc-botanical,#446b56)_18%,var(--border))]",
         )}
       >
         {pendingFile && (

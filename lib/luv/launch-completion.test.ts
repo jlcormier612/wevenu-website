@@ -34,7 +34,7 @@ describe("Luv action destinations stay trustworthy", () => {
       const path = link.split("?")[0].split("#")[0];
       assert.match(
         path,
-        /^\/(leads|events|clients|contracts|tasks|tours|messaging\/health|payments|setup-hub|reporting|documents|vendors)(\/|$)/,
+        /^\/(leads|events|clients|contracts|tasks|tours|messaging(\/health)?|payments|setup-hub|reporting|documents|vendors)(\/|$)/,
         `unexpected Luv link: ${link}`,
       );
     }
@@ -70,7 +70,7 @@ describe("Luv settings honesty for launch", () => {
 });
 
 describe("selectLuvDashboardEntry dismissal metadata", () => {
-  it("carries recommendation id when a recommendation leads", () => {
+  it("persisted recommendation cannot occupy L1 or carry a dismiss id", () => {
     const entry = selectLuvDashboardEntry({
       focusItems: [],
       observations: [],
@@ -89,6 +89,7 @@ describe("selectLuvDashboardEntry dismissal metadata", () => {
         createdAt: "2026-09-12T00:00:00.000Z",
       }],
     });
-    assert.equal(entry?.dismissRecommendationId, "rec-dismiss-me");
+    assert.equal(entry, null);
+    assert.equal(entry?.dismissRecommendationId, undefined);
   });
 });

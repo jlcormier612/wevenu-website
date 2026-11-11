@@ -63,13 +63,17 @@ describe("Phase 2 layout selection rules", () => {
     );
   });
 
-  it("treats selection and operational as independent pointers", () => {
-    const operationalId = "plan-ops";
+  it("reconciles operational to the client's selected plan without deleting the prior plan", () => {
+    const priorOperationalId = "plan-ops";
     const coupleSelectedId = "plan-choice";
-    assert.notEqual(operationalId, coupleSelectedId);
-    // Changing selection must not imply changing operational in product code.
-    const afterSelect = { operationalId, coupleSelectedId: "plan-b" };
-    assert.equal(afterSelect.operationalId, "plan-ops");
-    assert.equal(afterSelect.coupleSelectedId, "plan-b");
+    // Pointer retarget only — prior plan row (and seating) remains.
+    const afterSelect = {
+      operationalId: coupleSelectedId,
+      coupleSelectedId,
+      retainedPlans: [priorOperationalId, coupleSelectedId],
+    };
+    assert.equal(afterSelect.operationalId, coupleSelectedId);
+    assert.deepEqual(afterSelect.retainedPlans, [priorOperationalId, coupleSelectedId]);
   });
 });
+

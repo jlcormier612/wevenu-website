@@ -18,22 +18,32 @@ import { requireAdminUser } from "@/lib/hq/crm-service";
 import { getOnboardingEngagement } from "@/lib/hq/onboarding-service";
 import { createClientForVenue, findActiveDuplicateClientForVenue } from "@/lib/clients/service";
 import { resolveSpaceId } from "@/lib/migration/resolve-refs";
+import { isPastEventDate } from "@/lib/migration/historical-record";
 import { evaluateCutoverPrerequisites } from "@/lib/setup-hub/bring-your-business";
-import { createLeadForVenue, findActiveDuplicateLeadForVenue, leadIdentityKey, leadInputToRawIntake } from "@/lib/leads/service";
+import { createLeadForVenue, findActiveDuplicateLeadForVenue, leadInputToRawIntake } from "@/lib/leads/service";
 import { logDuplicateBatchRejection } from "@/lib/lead-intake/pipeline";
 import { createVendorForVenue, findActiveDuplicateVendorForVenue } from "@/lib/vendors/service";
 import {
   createItemForVenue, findActiveDuplicateInventoryItemForVenue,
   getCategoriesForVenue, createCategoryForVenue,
 } from "@/lib/inventory/service";
-import { createPackageForVenue, findActiveDuplicatePackageForVenue } from "@/lib/packages/service";
-import { createImportBatchForVenue, finalizeImportBatch, stampImportBatch } from "@/lib/import/batches";
+import {
+  addPackageItemsForVenue, createPackageForVenue, findActiveDuplicatePackageForVenue,
+} from "@/lib/packages/service";
+import { acceptCreatedImportRow, createImportBatchForVenue, finalizeImportBatch } from "@/lib/import/batches";
+import { decideHistoricalImportDuplicate, haltUntrackedHistoricalImport } from "@/lib/import/historical-guard";
+import {
+  catalogNameWithinFileKey,
+  normalizeImportVendorPricingTier,
+  personEmailWithinFileKey,
+  vendorWithinFileKey,
+} from "@/lib/import/preview-integrity";
 import type { ClientInput } from "@/lib/clients/types";
 import type { InventoryItemInput, InventoryShape } from "@/lib/inventory/types";
 import type { LeadInput } from "@/lib/leads/types";
 import type { PackageInput } from "@/lib/packages/types";
 import type { VendorInput } from "@/lib/vendors/types";
-import type { InventoryImportRow } from "@/lib/import/utils";
+import type { InventoryImportRow, PackageImportRow } from "@/lib/import/utils";
 import type { ImportResult } from "@/lib/import/types";
 import { DISPLAY_SHAPES } from "@/components/floor-plan/floor-plan-shapes";
 
@@ -54,7 +64,13 @@ export async function importCouplesForVenueAction(venueId: string, rows: ClientI
   const errors: ImportResult["errors"] = [];
   const createdIds: string[] = [];
   const admin = createAdminClient();
-  const batchId = await createImportBatchForVenue(admin, venueId, "couples", sourceLabel ?? null, rows.length, actor.userId, await engagementIdFor(venueId));
+  const tracked = haltUntrackedHistoricalImport(
+    venueId,
+    await createImportBatchForVenue(admin, venueId, "couples", sourceLabel ?? null, rows.length, actor.userId, await engagementIdFor(venueId)),
+  );
+  if (!tracked.ok) return tracked.result;
+  const batchId = tracked.batchId;
+  const seenEmails = new Set<string>();
   const [{ count: spacesCount }, { data: rules }] = await Promise.all([
     admin.from("venue_spaces").select("id", { count: "exact", head: true }).eq("venue_id", venueId).eq("is_active", true),
     admin.from("venue_capacity_rules").select("max_simultaneous_events").eq("venue_id", venueId)
@@ -72,18 +88,26 @@ export async function importCouplesForVenueAction(venueId: string, rows: ClientI
       errors.push({ row: i + 1, message: "Missing required fields: first name, last name", kind: "skipped" });
       continue;
     }
+    const emailKey = personEmailWithinFileKey(row.email ?? "");
+    if (emailKey) {
+      if (seenEmails.has(emailKey)) {
+        errors.push({ row: i + 1, message: "Skipped — duplicate of an earlier row in this same file (same email)", kind: "skipped" });
+        continue;
+      }
+      seenEmails.add(emailKey);
+    }
     if (!cutover.readyForDatedEvents && row.eventDate?.trim()) {
       errors.push({ row: i + 1, message: cutover.message ?? "Add Event Spaces before importing dated Events.", kind: "error" });
       continue;
     }
-    try {
-      const duplicate = await findActiveDuplicateClientForVenue(venueId, row.email ?? "", row.firstName, row.lastName);
-      if (duplicate) {
-        errors.push({ row: i + 1, message: "Skipped — matches an already-active client", kind: "skipped" });
-        continue;
-      }
-    } catch {
-      // Duplicate check failing must never block a legitimate import.
+    const dup = await decideHistoricalImportDuplicate(
+      i + 1,
+      () => findActiveDuplicateClientForVenue(venueId, row.email ?? "", row.firstName, row.lastName),
+      "Skipped — matches an already-active client",
+    );
+    if (dup.action !== "create") {
+      errors.push(dup.error);
+      continue;
     }
     try {
       const raw = row.spaceId.trim();
@@ -97,9 +121,19 @@ export async function importCouplesForVenueAction(venueId: string, rows: ClientI
         }
         input = { ...row, spaceId: resolved.spaceId ?? "" };
       }
-      const result = await createClientForVenue(venueId, input);
+      const asHistorical = isPastEventDate(input.eventDate);
+      const result = await createClientForVenue(venueId, input, true, asHistorical);
       if (result.ok) {
-        createdIds.push(result.clientId);
+        const accepted = await acceptCreatedImportRow({
+          entityType: "couples",
+          batchId,
+          createdId: result.clientId,
+          venueId,
+          rowNumber: i + 1,
+          client: admin,
+        });
+        if (accepted.accepted) createdIds.push(result.clientId);
+        else errors.push(accepted.error);
       } else {
         const msg = "message" in result ? result.message : "errors" in result ? Object.values(result.errors ?? {}).join(", ") : "Unknown error";
         errors.push({ row: i + 1, message: msg ?? "Unknown error", kind: "error" });
@@ -108,8 +142,6 @@ export async function importCouplesForVenueAction(venueId: string, rows: ClientI
       errors.push({ row: i + 1, message: e instanceof Error ? e.message : "Unknown error", kind: "error" });
     }
   }
-
-  await stampImportBatch("couples", batchId, createdIds, admin);
   const skipped = errors.filter((e) => e.kind === "skipped").length;
   await finalizeImportBatch(batchId, { imported: createdIds.length, skipped, errors: errors.length - skipped }, admin);
   if (createdIds.length > 0) revalidatePath(`/admin/onboarding/${venueId}`);
@@ -123,7 +155,12 @@ export async function importLeadsForVenueAction(venueId: string, rows: LeadInput
   const errors: ImportResult["errors"] = [];
   const createdIds: string[] = [];
   const admin = createAdminClient();
-  const batchId = await createImportBatchForVenue(admin, venueId, "leads", sourceLabel ?? null, rows.length, actor.userId, await engagementIdFor(venueId));
+  const tracked = haltUntrackedHistoricalImport(
+    venueId,
+    await createImportBatchForVenue(admin, venueId, "leads", sourceLabel ?? null, rows.length, actor.userId, await engagementIdFor(venueId)),
+  );
+  if (!tracked.ok) return tracked.result;
+  const batchId = tracked.batchId;
   const seenKeys = new Set<string>();
 
   for (let i = 0; i < rows.length; i++) {
@@ -133,32 +170,39 @@ export async function importLeadsForVenueAction(venueId: string, rows: LeadInput
       continue;
     }
 
-    // Migration Center §2.1 item 3 (2026-07-22) — see the identical check
-    // in app/(app)/settings/import/actions.ts's importLeadsAction for the
-    // full rationale.
-    const key = leadIdentityKey(row.email, row.firstName, row.lastName);
-    if (seenKeys.has(key)) {
-      errors.push({ row: i + 1, message: "Skipped — duplicate of an earlier row in this same file", kind: "skipped" });
-      // Same source resolution createLeadCore already uses — see the
-      // identical comment in app/(app)/settings/import/actions.ts.
-      void logDuplicateBatchRejection(admin, venueId, row.source || "other", "import", row, leadInputToRawIntake(row));
-      continue;
-    }
-    seenKeys.add(key);
-
-    try {
-      const duplicate = await findActiveDuplicateLeadForVenue(venueId, row.email ?? "", row.firstName, row.lastName);
-      if (duplicate) {
-        errors.push({ row: i + 1, message: "Skipped — matches an already-active lead", kind: "skipped" });
+    // Email-only within-file skip — blank emails never match each other.
+    const emailKey = personEmailWithinFileKey(row.email ?? "");
+    if (emailKey) {
+      if (seenKeys.has(emailKey)) {
+        errors.push({ row: i + 1, message: "Skipped — duplicate of an earlier row in this same file (same email)", kind: "skipped" });
+        void logDuplicateBatchRejection(admin, venueId, row.source || "other", "import", row, leadInputToRawIntake(row));
         continue;
       }
-    } catch {
-      // Duplicate check failing must never block a legitimate import.
+      seenKeys.add(emailKey);
+    }
+
+    const dup = await decideHistoricalImportDuplicate(
+      i + 1,
+      () => findActiveDuplicateLeadForVenue(venueId, row.email ?? "", row.firstName, row.lastName),
+      "Skipped — matches an already-active lead",
+    );
+    if (dup.action !== "create") {
+      errors.push(dup.error);
+      continue;
     }
     try {
       const result = await createLeadForVenue(venueId, row);
       if (result.ok) {
-        createdIds.push(result.leadId);
+        const accepted = await acceptCreatedImportRow({
+          entityType: "leads",
+          batchId,
+          createdId: result.leadId,
+          venueId,
+          rowNumber: i + 1,
+          client: admin,
+        });
+        if (accepted.accepted) createdIds.push(result.leadId);
+        else errors.push(accepted.error);
       } else {
         const msg = "message" in result ? result.message : "errors" in result ? Object.values(result.errors ?? {}).join(", ") : "Unknown error";
         errors.push({ row: i + 1, message: msg ?? "Unknown error", kind: "error" });
@@ -167,8 +211,6 @@ export async function importLeadsForVenueAction(venueId: string, rows: LeadInput
       errors.push({ row: i + 1, message: e instanceof Error ? e.message : "Unknown error", kind: "error" });
     }
   }
-
-  await stampImportBatch("leads", batchId, createdIds, admin);
   const skipped = errors.filter((e) => e.kind === "skipped").length;
   await finalizeImportBatch(batchId, { imported: createdIds.length, skipped, errors: errors.length - skipped }, admin);
   if (createdIds.length > 0) revalidatePath(`/admin/onboarding/${venueId}`);
@@ -182,7 +224,13 @@ export async function importVendorsForVenueAction(venueId: string, rows: VendorI
   const errors: ImportResult["errors"] = [];
   const createdIds: string[] = [];
   const admin = createAdminClient();
-  const batchId = await createImportBatchForVenue(admin, venueId, "vendors", sourceLabel ?? null, rows.length, actor.userId, await engagementIdFor(venueId));
+  const tracked = haltUntrackedHistoricalImport(
+    venueId,
+    await createImportBatchForVenue(admin, venueId, "vendors", sourceLabel ?? null, rows.length, actor.userId, await engagementIdFor(venueId)),
+  );
+  if (!tracked.ok) return tracked.result;
+  const batchId = tracked.batchId;
+  const seenVendorKeys = new Set<string>();
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
@@ -190,29 +238,56 @@ export async function importVendorsForVenueAction(venueId: string, rows: VendorI
       errors.push({ row: i + 1, message: "Missing required field: business name", kind: "skipped" });
       continue;
     }
-    try {
-      const duplicate = await findActiveDuplicateVendorForVenue(venueId, row.businessName, row.email ?? "");
-      if (duplicate) {
-        errors.push({ row: i + 1, message: "Skipped — matches a vendor already in this venue's directory", kind: "skipped" });
+    const withinKey = vendorWithinFileKey(row.businessName, row.email ?? "");
+    if (withinKey) {
+      if (seenVendorKeys.has(withinKey)) {
+        errors.push({ row: i + 1, message: "Skipped — duplicate of an earlier row in this same file", kind: "skipped" });
         continue;
       }
-    } catch {
-      // Duplicate check failing must never block a legitimate import.
+      seenVendorKeys.add(withinKey);
+    }
+    const tierNorm = normalizeImportVendorPricingTier(row.pricingTier ?? "");
+    if (!tierNorm.ok) {
+      errors.push({ row: i + 1, message: tierNorm.message, kind: "error" });
+      continue;
+    }
+    const normalizedVendor = { ...row, pricingTier: tierNorm.value };
+    const dup = await decideHistoricalImportDuplicate(
+      i + 1,
+      () => findActiveDuplicateVendorForVenue(venueId, normalizedVendor.businessName, normalizedVendor.email ?? ""),
+      "Skipped — matches a vendor already in this venue's directory",
+    );
+    if (dup.action !== "create") {
+      errors.push(dup.error);
+      continue;
     }
     try {
-      const result = await createVendorForVenue(venueId, row);
+      const result = await createVendorForVenue(venueId, normalizedVendor);
       if (result.ok) {
-        createdIds.push(result.vendorId);
+        const accepted = await acceptCreatedImportRow({
+          entityType: "vendors",
+          batchId,
+          createdId: result.vendorId,
+          venueId,
+          rowNumber: i + 1,
+          client: admin,
+        });
+        if (accepted.accepted) createdIds.push(result.vendorId);
+        else errors.push(accepted.error);
       } else {
         const msg = "message" in result ? result.message : "errors" in result ? Object.values(result.errors ?? {}).join(", ") : "Unknown error";
-        errors.push({ row: i + 1, message: msg ?? "Unknown error", kind: "error" });
+        errors.push({ row: i + 1, message: msg || "Unknown error", kind: "error" });
       }
     } catch (e) {
-      errors.push({ row: i + 1, message: e instanceof Error ? e.message : "Unknown error", kind: "error" });
+      const msg =
+        e instanceof Error
+          ? e.message
+          : e && typeof e === "object" && "message" in e && typeof (e as { message: unknown }).message === "string"
+            ? (e as { message: string }).message
+            : "Unknown error";
+      errors.push({ row: i + 1, message: msg, kind: "error" });
     }
   }
-
-  await stampImportBatch("vendors", batchId, createdIds, admin);
   const skipped = errors.filter((e) => e.kind === "skipped").length;
   await finalizeImportBatch(batchId, { imported: createdIds.length, skipped, errors: errors.length - skipped }, admin);
   if (createdIds.length > 0) revalidatePath(`/admin/onboarding/${venueId}`);
@@ -226,7 +301,13 @@ export async function importInventoryForVenueAction(venueId: string, rows: Inven
   const errors: ImportResult["errors"] = [];
   const createdIds: string[] = [];
   const admin = createAdminClient();
-  const batchId = await createImportBatchForVenue(admin, venueId, "inventory", sourceLabel ?? null, rows.length, actor.userId, await engagementIdFor(venueId));
+  const tracked = haltUntrackedHistoricalImport(
+    venueId,
+    await createImportBatchForVenue(admin, venueId, "inventory", sourceLabel ?? null, rows.length, actor.userId, await engagementIdFor(venueId)),
+  );
+  if (!tracked.ok) return tracked.result;
+  const batchId = tracked.batchId;
+  const seenInventoryKeys = new Set<string>();
 
   const existingCategories = await getCategoriesForVenue(venueId);
   const categoryIdByName = new Map(existingCategories.map((c) => [c.name.toLowerCase(), c.id]));
@@ -237,14 +318,22 @@ export async function importInventoryForVenueAction(venueId: string, rows: Inven
       errors.push({ row: i + 1, message: "Missing required field: item name", kind: "skipped" });
       continue;
     }
-    try {
-      const duplicate = await findActiveDuplicateInventoryItemForVenue(venueId, row.name);
-      if (duplicate) {
-        errors.push({ row: i + 1, message: "Skipped — matches an item already in this venue's inventory", kind: "skipped" });
+    const withinKey = catalogNameWithinFileKey(row.name);
+    if (withinKey) {
+      if (seenInventoryKeys.has(withinKey)) {
+        errors.push({ row: i + 1, message: "Skipped — duplicate of an earlier row in this same file (same name)", kind: "skipped" });
         continue;
       }
-    } catch {
-      // Duplicate check failing must never block a legitimate import.
+      seenInventoryKeys.add(withinKey);
+    }
+    const dup = await decideHistoricalImportDuplicate(
+      i + 1,
+      () => findActiveDuplicateInventoryItemForVenue(venueId, row.name),
+      "Skipped — matches an item already in this venue's inventory",
+    );
+    if (dup.action !== "create") {
+      errors.push(dup.error);
+      continue;
     }
     try {
       let categoryId: string | null = null;
@@ -274,7 +363,16 @@ export async function importInventoryForVenueAction(venueId: string, rows: Inven
       };
       const result = await createItemForVenue(venueId, input);
       if (result.ok) {
-        createdIds.push(result.itemId);
+        const accepted = await acceptCreatedImportRow({
+          entityType: "inventory",
+          batchId,
+          createdId: result.itemId,
+          venueId,
+          rowNumber: i + 1,
+          client: admin,
+        });
+        if (accepted.accepted) createdIds.push(result.itemId);
+        else errors.push(accepted.error);
       } else {
         errors.push({ row: i + 1, message: "message" in result ? (result.message ?? "Unknown error") : "Unknown error", kind: "error" });
       }
@@ -282,22 +380,26 @@ export async function importInventoryForVenueAction(venueId: string, rows: Inven
       errors.push({ row: i + 1, message: e instanceof Error ? e.message : "Unknown error", kind: "error" });
     }
   }
-
-  await stampImportBatch("inventory", batchId, createdIds, admin);
   const skipped = errors.filter((e) => e.kind === "skipped").length;
   await finalizeImportBatch(batchId, { imported: createdIds.length, skipped, errors: errors.length - skipped }, admin);
   if (createdIds.length > 0) revalidatePath(`/admin/onboarding/${venueId}`);
   return { imported: createdIds.length, errors, batchId };
 }
 
-export async function importPackagesForVenueAction(venueId: string, rows: PackageInput[], sourceLabel?: string): Promise<ImportResult> {
+export async function importPackagesForVenueAction(venueId: string, rows: PackageImportRow[], sourceLabel?: string): Promise<ImportResult> {
   const actor = await requireAdminUser();
   if (!actor) return { imported: 0, errors: [{ row: 0, message: "Not signed in as an HQ admin.", kind: "error" }], batchId: null };
 
   const errors: ImportResult["errors"] = [];
   const createdIds: string[] = [];
   const admin = createAdminClient();
-  const batchId = await createImportBatchForVenue(admin, venueId, "packages", sourceLabel ?? null, rows.length, actor.userId, await engagementIdFor(venueId));
+  const tracked = haltUntrackedHistoricalImport(
+    venueId,
+    await createImportBatchForVenue(admin, venueId, "packages", sourceLabel ?? null, rows.length, actor.userId, await engagementIdFor(venueId)),
+  );
+  if (!tracked.ok) return tracked.result;
+  const batchId = tracked.batchId;
+  const seenPackageKeys = new Set<string>();
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
@@ -305,19 +407,54 @@ export async function importPackagesForVenueAction(venueId: string, rows: Packag
       errors.push({ row: i + 1, message: "Missing required field: package name", kind: "skipped" });
       continue;
     }
-    try {
-      const duplicate = await findActiveDuplicatePackageForVenue(venueId, row.name);
-      if (duplicate) {
-        errors.push({ row: i + 1, message: "Skipped — matches a package this venue already offers", kind: "skipped" });
+    const withinKey = catalogNameWithinFileKey(row.name);
+    if (withinKey) {
+      if (seenPackageKeys.has(withinKey)) {
+        errors.push({ row: i + 1, message: "Skipped — duplicate of an earlier row in this same file (same name)", kind: "skipped" });
         continue;
       }
-    } catch {
-      // Duplicate check failing must never block a legitimate import.
+      seenPackageKeys.add(withinKey);
+    }
+    const shell: PackageInput = {
+      name: row.name,
+      description: row.description,
+      basePrice: row.basePrice,
+      category: row.category,
+      isActive: row.isActive,
+    };
+    const includedItems = row.includedItems ?? [];
+    const dup = await decideHistoricalImportDuplicate(
+      i + 1,
+      () => findActiveDuplicatePackageForVenue(venueId, row.name),
+      "Skipped — matches a package this venue already offers",
+    );
+    if (dup.action !== "create") {
+      errors.push(dup.error);
+      continue;
     }
     try {
-      const result = await createPackageForVenue(venueId, row);
+      const result = await createPackageForVenue(venueId, shell);
       if (result.ok) {
-        createdIds.push(result.packageId);
+        if (includedItems.length > 0) {
+          const itemsResult = await addPackageItemsForVenue(venueId, result.packageId, includedItems);
+          if (!itemsResult.ok) {
+            errors.push({
+              row: i + 1,
+              message: itemsResult.message ?? "Package created but included items could not be saved.",
+              kind: "error",
+            });
+          }
+        }
+        const accepted = await acceptCreatedImportRow({
+          entityType: "packages",
+          batchId,
+          createdId: result.packageId,
+          venueId,
+          rowNumber: i + 1,
+          client: admin,
+        });
+        if (accepted.accepted) createdIds.push(result.packageId);
+        else errors.push(accepted.error);
       } else {
         const msg = "message" in result ? result.message : "errors" in result ? Object.values(result.errors ?? {}).join(", ") : "Unknown error";
         errors.push({ row: i + 1, message: msg ?? "Unknown error", kind: "error" });
@@ -326,8 +463,6 @@ export async function importPackagesForVenueAction(venueId: string, rows: Packag
       errors.push({ row: i + 1, message: e instanceof Error ? e.message : "Unknown error", kind: "error" });
     }
   }
-
-  await stampImportBatch("packages", batchId, createdIds, admin);
   const skipped = errors.filter((e) => e.kind === "skipped").length;
   await finalizeImportBatch(batchId, { imported: createdIds.length, skipped, errors: errors.length - skipped }, admin);
   if (createdIds.length > 0) revalidatePath(`/admin/onboarding/${venueId}`);

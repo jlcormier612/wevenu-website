@@ -52,6 +52,13 @@ const STEPS: SeedStep[] = [
     },
   },
   {
+    key: "playbooks",
+    run: async (venueId) => {
+      const { seedPlaybookStarters } = await import("@/lib/playbooks/provision");
+      await seedPlaybookStarters(venueId);
+    },
+  },
+  {
     key: "questionnaires",
     run: async (venueId) => {
       const { seedQuestionnaireFamily } = await import("@/lib/questionnaire-family/provision");
@@ -114,6 +121,25 @@ const STEPS: SeedStep[] = [
         "@/lib/calendar/schedule-item-catalog-repository"
       );
       await seedVenueScheduleItemTypes(client as Awaited<ReturnType<typeof createClient>>, venueId);
+    },
+  },
+  {
+    key: "standard_pipeline",
+    run: async (venueId, client) => {
+      const { error } = await client.rpc("ensure_standard_sales_pipeline", {
+        p_venue_id: venueId,
+      });
+      if (error) throw error;
+    },
+  },
+  {
+    // After Library starters so refs resolve. Idempotent; wedding-only assignment.
+    key: "setup_profiles",
+    run: async (venueId) => {
+      const { seedStandardWeddingSetupProfile } = await import(
+        "@/lib/event-setup/provision-standard-wedding-setup"
+      );
+      await seedStandardWeddingSetupProfile(venueId);
     },
   },
 ];

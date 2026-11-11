@@ -1,0 +1,33 @@
+{
+  "expectedSha": "3377a8614cb9e66637142f36495b36bc4dba774a",
+  "image": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:3377a8614cb9e66637142f36495b36bc4dba774a",
+  "digest": "sha256:95ad0e6068b06255884e75f86e3386294f0eca4af2fd0c35f8704b23d6e4d8fe",
+  "eventId": "ebf74f77-2944-474a-b735-48762ecb6842",
+  "clientId": "b4e2764b-be33-4579-89e3-0c8e4a6dd5be",
+  "before": {
+    "assigned_staff_id": null,
+    "status": "confirmed",
+    "booked_at": "2026-10-22",
+    "team": [
+      {
+        "id": "340acb14-57de-413d-8079-e7ee75b68979",
+        "full_name": "QA Legacy Florist",
+        "role": "Florist",
+        "phone": "555-0100"
+      }
+    ]
+  },
+  "afterRestore": {
+    "assigned_staff_id": null,
+    "status": "confirmed",
+    "booked_at": "2026-10-22",
+    "team": [
+      {
+        "id": "340acb14-57de-413d-8079-e7ee75b68979",
+        "full_name": "QA Legacy Florist",
+        "role": "Florist",
+        "phone": "555-0100"
+      }
+    ]
+  }
+}

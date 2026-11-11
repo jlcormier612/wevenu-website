@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
+import { SetupGuideLink } from "@/components/help/setup-guide-link";
 import type { FacebookConnection, FacebookLeadForm, FacebookLeadLogEntry } from "@/lib/facebook/types";
 import { facebookUiState } from "@/lib/facebook/ui-state";
 import { cn } from "@/lib/utils";
@@ -451,33 +452,33 @@ export function FacebookConnectSection({
     />
   );
 
-  const recentActivity = recentLog.length > 0 && (
+  const succeededLog = recentLog.filter((e) => e.outcome === "succeeded");
+  const failedCount = recentLog.filter(
+    (e) => e.outcome === "dead_lettered" || e.outcome === "failed",
+  ).length;
+  const recentActivity = (succeededLog.length > 0 || failedCount > 0) && (
     <div className="space-y-1.5 rounded-lg border border-border p-3">
-      <p className="text-xs font-medium text-muted-foreground">Recent activity</p>
-      <ul className="space-y-1">
-        {recentLog.slice(0, 10).map((entry) => (
-          <li key={entry.id} className="flex items-center justify-between text-xs">
-            <span>
-              <Badge
-                variant={
-                  entry.outcome === "succeeded"
-                    ? "success"
-                    : entry.outcome === "dead_lettered"
-                      ? "destructive"
-                      : "warning"
-                }
-              >
-                {entry.outcome === "succeeded"
-                  ? "Imported"
-                  : entry.outcome === "dead_lettered"
-                    ? "Failed"
-                    : "Retrying"}
-              </Badge>
-            </span>
-            <span className="text-muted-foreground">{new Date(entry.createdAt).toLocaleString()}</span>
-          </li>
-        ))}
-      </ul>
+      <p className="text-xs font-medium text-muted-foreground">Recent Lead Ads</p>
+      {failedCount > 0 ? (
+        <p className="text-xs text-muted-foreground">
+          Lead Ads needs attention — reconnect Meta or check your selected forms.
+        </p>
+      ) : null}
+      {succeededLog.length > 0 ? (
+        <ul className="space-y-1">
+          {succeededLog.slice(0, 5).map((entry) => (
+            <li key={entry.id} className="flex items-center justify-between text-xs">
+              <span className="text-foreground">Received</span>
+              <span className="text-muted-foreground">
+                {new Date(entry.createdAt).toLocaleDateString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                })}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
     </div>
   );
 
@@ -511,7 +512,7 @@ export function FacebookConnectSection({
           {connectUrlLoading ? (
             <p className="text-sm text-muted-foreground">Preparing Facebook Connect…</p>
           ) : !isConfigured ? (
-            <div className="rounded-lg border border-border bg-muted/30 p-4">
+            <div className="htc-surface-guidance p-4">
               <p className="text-sm text-muted-foreground">
                 Facebook / Instagram Lead Ads isn&apos;t available for your account yet. Contact support to get this
                 connected.
@@ -529,6 +530,12 @@ export function FacebookConnectSection({
               >
                 <ExternalLink className="h-3.5 w-3.5" /> Connect with Facebook
               </a>
+              <div>
+                <SetupGuideLink
+                  href="/help/how-to-connect-facebook-instagram-lead-ads"
+                  label="Need help? Follow the step-by-step Facebook & Instagram Lead Ads guide"
+                />
+              </div>
             </>
           )}
         </div>
@@ -652,7 +659,23 @@ export function FacebookConnectSection({
           Every lead submitted through your connected Lead Ads forms becomes a Lead in Hello to Cheers automatically.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">{renderBody()}</CardContent>
+      <CardContent className="space-y-4">
+        <div className="htc-surface-guidance px-3 py-2.5">
+          <p className="text-xs text-muted-foreground">
+            <span className="font-semibold text-foreground">Before you start: </span>
+            Make sure you have access to the correct Facebook Page and know which Lead Ads forms should send leads into Hello to Cheers.
+          </p>
+        </div>
+        {renderBody()}
+        {!isDisconnected ? (
+          <div>
+            <SetupGuideLink
+              href="/help/how-to-connect-facebook-instagram-lead-ads"
+              label="Need help? Follow the step-by-step Facebook & Instagram Lead Ads guide"
+            />
+          </div>
+        ) : null}
+      </CardContent>
     </Card>
   );
 }

@@ -142,6 +142,10 @@ export {
   appendNotification,
   markNotificationsRead,
   mutateRelationship,
+  decidePurchaseMatch,
+  subscriptionMatchAllowsReuse,
+  isEstablishedPurchaseRelationship,
+  resolveSubscriptionLifecycleRelationship,
   syncRelationshipFromProduct,
   resolveWelcomeBackVerification,
   resolveOpenFeedback,
@@ -171,6 +175,7 @@ export {
   type RecordInboundEmailResult,
 } from "./inbound-email";
 export {
+  findRelationshipByTimelineSourceId,
   ingestContactForm,
   ingestWalkthroughRequest,
   ingestWalkthroughCanceled,
@@ -193,3 +198,8 @@ export {
   ensureWhiteGloveChecklistsForLiveStore,
   isWhiteGloveChecklistTitle,
 } from "./white-glove-checklist";
+export {
+  resolveRelationshipForSubscription,
+  type RelationshipStripeRef,
+  type SubscriptionRelationshipResolution,
+} from "./resolve-subscription-relationship";

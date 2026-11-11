@@ -1,0 +1,41 @@
+{
+  "eventStatus": "confirmed",
+  "bookedAt": "2026-10-22",
+  "choicesBefore": [
+    {
+      "id": "d6809923-5735-415d-b00d-1204b4f64174",
+      "status": "sent"
+    }
+  ],
+  "choicesAfter": [
+    {
+      "id": "d6809923-5735-415d-b00d-1204b4f64174",
+      "status": "submitted"
+    },
+    {
+      "id": "5df6f8f6-2aca-47e1-bda5-e255694ef9da",
+      "status": "draft"
+    }
+  ],
+  "eventOrder": {
+    "id": "624eceef-5096-4288-b104-62daa3a82d11",
+    "sharedAt": "2026-10-23T16:18:04.956+00:00",
+    "clientAgreedAt": "2026-10-23T16:18:46.850349+00:00"
+  },
+  "inventoryStatus": "shared",
+  "documentsEventOrderCount": 1,
+  "nav": {
+    "choices": false,
+    "inventory": true,
+    "order": false
+  },
+  "expectNav": {
+    "choices": false,
+    "inventory": true,
+    "order": false
+  },
+  "home": {
+    "accept": 0,
+    "docs": 1
+  }
+}

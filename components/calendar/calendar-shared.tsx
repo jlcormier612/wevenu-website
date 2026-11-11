@@ -2,9 +2,9 @@
 
 /**
  * Shared building blocks for every Calendar surface (Month grid, Week/Day/
- * Agenda views, Booking Schedule) — kept in their own file so those views
- * can import them without creating a circular dependency on
- * calendar-view.tsx, which itself renders the Week/Day/Agenda views.
+ * Agenda views) — kept in their own file so those views can import them
+ * without creating a circular dependency on calendar-view.tsx, which itself
+ * renders the Week/Day/Agenda views.
  */
 import * as React from "react";
 
@@ -15,21 +15,21 @@ import {
   MoreHorizontal, Pencil, Phone, Trash2, User, Users, Utensils,
 } from "lucide-react";
 
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
 import type { CalendarItem, CalendarItemType } from "@/lib/calendar/types";
-import { CALENDAR_MAX_YEAR, CALENDAR_MIN_YEAR } from "@/lib/calendar/types";
 import { isBookingPlaceholder } from "@/lib/availability/types";
 import type { ManualScheduleType } from "@/lib/availability/types";
 import {
-  isVenueCalendarItemType,
+  filtersFromTaxonomySelection,
+  presentVenueCalendarTaxonomyKeys,
+  nextTaxonomySelectionAfterToggle,
+  taxonomySelectionFromFilters,
   venueCalendarTaxonomyLabel,
   type VenueCalendarTaxonomyKey,
   VENUE_CALENDAR_TAXONOMY,
 } from "@/lib/calendar/venue-calendar-scope";
-import { activePerspectiveId, getPerspectives } from "@/components/calendar/perspectives";
 import { cn } from "@/lib/utils";
+
+export { MonthYearPicker } from "@/components/shared/month-year-picker";
 
 type ItemMeta = {
   label: string;
@@ -42,16 +42,15 @@ type ItemMeta = {
 // overrides in .dark { } work automatically — no JS dark-mode detection needed.
 export const TYPE_META: Record<CalendarItemType, ItemMeta> = {
   event:          { label: "Event",       icon: CalendarDays,  dotColor: "var(--cal-event)",       textClass: "text-primary" },
-  tour:           { label: "Tour",        icon: MapPin,        dotColor: "var(--cal-tour)",        textClass: "text-muted-foreground" },
+  // Tour uses the platform clear blue (--cal-tour → same token family as the
+  // former walkthrough blue), not soft-sage green.
+  tour:           { label: "Tour",        icon: MapPin,        dotColor: "var(--cal-tour)",        textClass: "text-heading" },
   follow_up:      { label: "Follow-up",   icon: Phone,         dotColor: "var(--cal-follow-up)",   textClass: "text-muted-foreground" },
   payment_due:    { label: "Payment Due", icon: DollarSign,    dotColor: "var(--cal-payment-due)", textClass: "text-destructive" },
   // One human-facing Hold concept — backend may still use date_holds table.
-  date_hold:      { label: "Hold",        icon: Clock,         dotColor: "var(--cal-date-hold)",   textClass: "text-warning-foreground" },
-  // "Blocked Time" — no longer the primary manual concept, just one of
-  // several a coordinator can pick from "+ Add Schedule Item" (Calendar
-  // Manual Type Redesign). Charcoal, not red — a closed date is a neutral
-  // fact, not an alarm.
-  calendar_block: { label: "Blocked Time", icon: Ban,           dotColor: "var(--cal-blocked)",     textClass: "text-muted-foreground" },
+  date_hold:      { label: "Hold",        icon: Clock,         dotColor: "var(--cal-date-hold)",   textClass: "text-heading" },
+  // Blocked Time = intentionally unavailable — destructive/error red.
+  calendar_block: { label: "Blocked Time", icon: Ban,           dotColor: "var(--cal-blocked)",     textClass: "text-destructive" },
   planning_activity: { label: "Planning", icon: CalendarClock, dotColor: "var(--cal-planning-activity)", textClass: "text-heading" },
   request_due:          { label: "Request",           icon: ClipboardList, dotColor: "var(--cal-request-due)",          textClass: "text-heading" },
   contract_expiration:  { label: "Contract Expires",  icon: FileSignature, dotColor: "var(--cal-contract-expiration)",  textClass: "text-warning-foreground" },
@@ -60,28 +59,24 @@ export const TYPE_META: Record<CalendarItemType, ItemMeta> = {
   timeline_entry: { label: "Timeline",      icon: GanttChart, dotColor: "var(--cal-timeline-entry)", textClass: "text-heading" },
 };
 
-// Calendar Manual Type Redesign — one visual identity per manual type, so a
-// coordinator recognizes "Tour," "Meeting," "Walkthrough," and "Blocked
-// Time" at a glance regardless of whether the item is system-generated or
-// manually scheduled. Tour and Blocked Time deliberately reuse TYPE_META's
-// own entries rather than duplicating them — a manually-scheduled "Tour" on
-// Calendar should look exactly like a real booked tour, not a lookalike.
+// Appointment classifications share one orange visual identity (Appointment).
+// Hold placeholders share Hold yellow. Blocked Time reuses TYPE_META.
 export const MANUAL_TYPE_META: Record<ManualScheduleType, ItemMeta> = {
-  // Legacy manual Tour rows — must not look identical to tour_appointments.
-  tour:                 { label: "Manual tour (not booked)", icon: Ban,      dotColor: "var(--cal-other)", textClass: "text-muted-foreground" },
+  // Legacy manual Tour rows — Appointment taxonomy, not a sixth legend peer.
+  tour:                 { label: "Manual tour (not booked)", icon: Ban,      dotColor: "var(--cal-meeting)", textClass: "text-heading" },
   consultation:         { label: "Consultation",         icon: Phone,     dotColor: "var(--cal-meeting)", textClass: "text-heading" },
   client_meeting:       { label: "Client Meeting",       icon: Users,     dotColor: "var(--cal-meeting)", textClass: "text-heading" },
   vendor_meeting:       { label: "Vendor Meeting",       icon: Handshake, dotColor: "var(--cal-meeting)", textClass: "text-heading" },
-  walkthrough:          { label: "Walkthrough",          icon: Footprints, dotColor: "var(--cal-walkthrough)", textClass: "text-heading" },
-  tasting:              { label: "Tasting",              icon: Utensils,  dotColor: "var(--cal-other)", textClass: "text-muted-foreground" },
-  personal_appointment: { label: "Personal Appointment", icon: User,      dotColor: "var(--cal-follow-up)", textClass: "text-muted-foreground" },
+  walkthrough:          { label: "Walkthrough",          icon: Footprints, dotColor: "var(--cal-meeting)", textClass: "text-heading" },
+  tasting:              { label: "Tasting",              icon: Utensils,  dotColor: "var(--cal-meeting)", textClass: "text-heading" },
+  personal_appointment: { label: "Personal Appointment", icon: User,      dotColor: "var(--cal-meeting)", textClass: "text-heading" },
   blocked_time:         TYPE_META.calendar_block,
   // Holds — booking placeholders; must not reuse Event visual identity.
-  wedding_event_booking: { label: "Hold", icon: Clock, dotColor: "var(--cal-date-hold)", textClass: "text-warning-foreground" },
-  private_event:         { label: "Hold", icon: Clock, dotColor: "var(--cal-date-hold)", textClass: "text-warning-foreground" },
-  other:                { label: "Other",                icon: MoreHorizontal, dotColor: "var(--cal-other)", textClass: "text-muted-foreground" },
-  // Custom catalog offerings reuse Other visuals; label comes from catalogLabel.
-  custom:               { label: "Custom",               icon: MoreHorizontal, dotColor: "var(--cal-other)", textClass: "text-muted-foreground" },
+  wedding_event_booking: { label: "Hold", icon: Clock, dotColor: "var(--cal-date-hold)", textClass: "text-heading" },
+  private_event:         { label: "Hold", icon: Clock, dotColor: "var(--cal-date-hold)", textClass: "text-heading" },
+  other:                { label: "Other",                icon: MoreHorizontal, dotColor: "var(--cal-meeting)", textClass: "text-heading" },
+  // Custom catalog offerings resolve as Appointment; label from catalogLabel.
+  custom:               { label: "Custom",               icon: MoreHorizontal, dotColor: "var(--cal-meeting)", textClass: "text-heading" },
 };
 
 /** Resolves the correct visual identity for any item — manual schedule items
@@ -131,14 +126,16 @@ export function formatTime(hhmm: string | null): string {
 // delete affordance for the one editable type (calendar_block).
 
 export function ItemRow({
-  item, onDeleteBlock, onEditBlock, deleting, showDate,
+  item, onDeleteBlock, onEditBlock, onViewBlock, deleting, showDate,
 }: {
   item: CalendarItem;
   onDeleteBlock?: (blockId: string) => void;
-  /** Manual Schedule Items are the one editable type; omitted on read-only surfaces (print, Booking Schedule). */
+  /** Manual Schedule Items are the one editable type; omitted on read-only surfaces (print). */
   onEditBlock?: (blockId: string) => void;
+  /** Opens read-only details — must not be the same path as onEditBlock. */
+  onViewBlock?: (blockId: string) => void;
   deleting?: boolean;
-  /** Agenda/Booking Schedule span many days — show each row's own date. */
+  /** Agenda spans many days — show each row's own date. */
   showDate?: boolean;
 }) {
   const meta = resolveItemMeta(item);
@@ -180,6 +177,9 @@ export function ItemRow({
               {item.endTime ? `${formatTime(item.time)} – ${formatTime(item.endTime)}` : formatTime(item.time)}
             </span>
           )}
+          {!item.time && isBlock && (
+            <span className="text-xs text-muted-foreground">All day</span>
+          )}
         </div>
         <p className="text-sm font-medium text-foreground truncate">{item.title}</p>
         {item.subtitle && (
@@ -198,10 +198,22 @@ export function ItemRow({
     </>
   );
 
-  if (isBlock && !isConverted && item.rawId && (onDeleteBlock || onEditBlock)) {
+  if (isBlock && !isConverted && item.rawId && (onDeleteBlock || onEditBlock || onViewBlock)) {
     return (
       <div className="flex items-start gap-3 rounded-lg border border-border bg-card p-3">
-        {inner}
+        {onViewBlock ? (
+          <button
+            type="button"
+            onClick={() => onViewBlock(item.rawId!)}
+            className="flex min-w-0 flex-1 items-start gap-3 text-left rounded-md hover:bg-muted/40 transition-colors -m-1 p-1"
+            data-testid="schedule-item-view"
+            aria-label={`View ${item.title}`}
+          >
+            {inner}
+          </button>
+        ) : (
+          <div className="flex min-w-0 flex-1 items-start gap-3">{inner}</div>
+        )}
         <div className="ml-1 mt-0.5 flex shrink-0 items-center gap-1">
           {isPlaceholder && (
             <Link
@@ -211,9 +223,8 @@ export function ItemRow({
               Convert to Lead
             </Link>
           )}
-          {/* Until now a manual item could only be created or deleted, so
-              correcting a typo or a time meant deleting and re-entering it —
-              losing the item's own history and any relationship set on it. */}
+          {/* Explicit edit — opening the row is view-only so a glance cannot
+              overwrite times or notes by landing in the Schedule Item form. */}
           {onEditBlock && (
             <button
               type="button"
@@ -222,6 +233,7 @@ export function ItemRow({
               className="shrink-0 rounded p-1 text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
               title="Edit schedule item"
               aria-label="Edit schedule item"
+              data-testid="schedule-item-edit"
             >
               <Pencil className="h-3.5 w-3.5" />
             </button>
@@ -253,70 +265,87 @@ export function ItemRow({
   );
 }
 
-// ---- Filter bar (Calendar Integration Phase 4) -------------------------------
-// Multi-filtering by type + assignee + space, shared by Month/Week/Day/
-// Agenda. Selections persist via useCalendarFilters (localStorage), so this
-// is deliberately dumb/presentational — all state lives in the hook.
+// ---- Filter bar — taxonomy chips + staff/space -------------------------------
+// Filters by locked taxonomy (Event · Tour · Appointment · Hold · Blocked Time)
+// mapped onto the existing types + manualTypes axes. Perspective buckets are gone.
 
 export function FilterBar({
-  filters, onChange, presentTypes, staffOptions, spaceOptions,
+  filters, onChange, presentTypes, staffOptions, spaceOptions, items = [],
 }: {
   filters: import("@/components/calendar/use-calendar-filters").CalendarFilterState;
   onChange: (next: import("@/components/calendar/use-calendar-filters").CalendarFilterState) => void;
   presentTypes: CalendarItemType[];
   staffOptions: [string, string][];
   spaceOptions: [string, string][];
+  /** When provided, taxonomy chips reflect items actually on the calendar. */
+  items?: CalendarItem[];
 }) {
   const UNASSIGNED = "__unassigned__";
-  // Venue Calendar filter chips — never surface Booking-Schedule-only types
-  // even if a stale item or localStorage edge case leaks one in.
-  const venuePresentTypes = presentTypes.filter(isVenueCalendarItemType);
-  const activeTypes = filters.types ?? venuePresentTypes;
+  const presentTaxonomy = React.useMemo(() => {
+    if (items.length > 0) return presentVenueCalendarTaxonomyKeys(items);
+    // Fallback when callers pass only presentTypes (no item list): map raw types.
+    const synthetic = presentTypes.flatMap((type): CalendarItem[] => {
+      if (type === "calendar_block") {
+        return [
+          { type, manualType: "consultation" } as CalendarItem,
+          { type, manualType: "blocked_time" } as CalendarItem,
+          { type, manualType: "wedding_event_booking" } as CalendarItem,
+        ];
+      }
+      return [{ type } as CalendarItem];
+    });
+    return presentVenueCalendarTaxonomyKeys(synthetic);
+  }, [items, presentTypes]);
 
-  function toggleType(type: CalendarItemType) {
-    if (!isVenueCalendarItemType(type)) return;
-    const current = filters.types ?? venuePresentTypes;
-    const next = current.includes(type) ? current.filter((t) => t !== type) : [...current, type];
-    // Selecting everything is equivalent to "no filter" — collapses back to null
-    // so a newly-appearing type on a future navigation defaults to visible.
-    onChange({ ...filters, types: next.length === venuePresentTypes.length ? null : next });
+  const legend = venueCalendarLegendEntries();
+  const activeTaxonomy = taxonomySelectionFromFilters(filters, presentTaxonomy);
+
+  function toggleTaxonomy(key: VenueCalendarTaxonomyKey) {
+    const current = activeTaxonomy.length > 0 ? activeTaxonomy : presentTaxonomy;
+    const next = nextTaxonomySelectionAfterToggle(current, key, presentTaxonomy);
+    // last remaining chip cannot be cleared — helper returns `current` unchanged
+    if (next.length === current.length && next.every((k, i) => k === current[i])) {
+      if (current.includes(key)) return;
+    }
+    const mapped = filtersFromTaxonomySelection(next, presentTaxonomy);
+    onChange({ ...filters, types: mapped.types, manualTypes: mapped.manualTypes });
   }
 
-  const hasActiveFilter = filters.types !== null || filters.staffId !== null || filters.spaceId !== null;
+  const hasActiveFilter =
+    filters.types !== null ||
+    filters.manualTypes !== null ||
+    filters.staffId !== null ||
+    filters.spaceId !== null;
 
   return (
-    <div className="space-y-2">
+    <div className="htc-calendar-filters" data-cal-filters="">
       <div className="flex flex-wrap items-center gap-1.5">
-        {venuePresentTypes.map((type) => {
-          const meta = TYPE_META[type];
-          const active = activeTypes.includes(type);
-          // calendar_block covers appointments and availability blocks — do not
-          // label the filter chip as only "Blocked Time".
-          const chipLabel = type === "calendar_block" ? "Appointments & blocks" : meta.label;
+        {presentTaxonomy.map((key) => {
+          const entry = legend.find((e) => e.key === key)!;
+          const active = activeTaxonomy.includes(key);
           return (
             <button
-              key={type}
+              key={key}
               type="button"
-              onClick={() => toggleType(type)}
-              className={cn(
-                "flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-colors",
-                active ? "border-transparent bg-muted text-foreground" : "border-border text-muted-foreground opacity-50",
-              )}
+              onClick={() => toggleTaxonomy(key)}
+              data-taxonomy-chip=""
+              data-taxonomy-key={key}
+              data-active={active ? "true" : "false"}
+              aria-pressed={active}
             >
-              <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: meta.dotColor }} />
-              {chipLabel}
+              <span className="htc-calendar-dot" style={{ backgroundColor: entry.dotColor }} />
+              {entry.label}
             </button>
           );
         })}
       </div>
 
-      {(staffOptions.length > 0 || spaceOptions.length > 0) && (
+      {(staffOptions.length > 0 || spaceOptions.length > 0 || hasActiveFilter) && (
         <div className="flex flex-wrap items-center gap-2">
           {staffOptions.length > 0 && (
             <select
               value={filters.staffId ?? ""}
               onChange={(e) => onChange({ ...filters, staffId: e.target.value || null })}
-              className="h-7 rounded-md border border-border bg-background px-2 text-xs"
             >
               <option value="">Everyone</option>
               <option value={UNASSIGNED}>Unassigned</option>
@@ -325,12 +354,11 @@ export function FilterBar({
           )}
           {spaceOptions.length > 0 && (
             <select
+              aria-label="Space"
               value={filters.spaceId ?? ""}
               onChange={(e) => onChange({ ...filters, spaceId: e.target.value || null })}
-              className="h-7 rounded-md border border-border bg-background px-2 text-xs"
             >
-              <option value="">Every space</option>
-              <option value={UNASSIGNED}>No space set</option>
+              <option value="">All spaces</option>
               {spaceOptions.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
             </select>
           )}
@@ -338,114 +366,13 @@ export function FilterBar({
             <button
               type="button"
               onClick={() => onChange({ types: null, staffId: null, spaceId: null, manualTypes: null })}
-              className="text-xs text-muted-foreground hover:text-foreground underline"
+              className="text-xs font-medium text-heading underline underline-offset-2 hover:text-foreground"
             >
               Clear filters
             </button>
           )}
         </div>
       )}
-    </div>
-  );
-}
-
-// ---- Perspective switcher (Calendar Release Completion) ---------------------
-// "What am I doing right now," not "what filter do I need." Every button
-// here does exactly one thing: call the same setFilters the manual chips
-// above already call, with a predefined preset — never a second filtering
-// mechanism, never a separate persisted "mode." The switcher's own
-// highlighted state is derived by comparing the live filters against each
-// preset (components/calendar/perspectives.ts's activePerspectiveId), so it
-// can never drift out of sync with what's actually being shown, and a
-// coordinator who further adjusts filters after picking one sees that
-// reflected honestly (nothing highlighted) rather than a stale label.
-
-export function PerspectiveSwitcher({
-  filters, onChange, tastingEnabled = false,
-}: {
-  filters: import("@/components/calendar/use-calendar-filters").CalendarFilterState;
-  onChange: (next: import("@/components/calendar/use-calendar-filters").CalendarFilterState) => void;
-  /** When true, Sales/Planning presets include Tasting. */
-  tastingEnabled?: boolean;
-}) {
-  const perspectives = getPerspectives(tastingEnabled);
-  const active = activePerspectiveId(filters, tastingEnabled);
-
-  return (
-    <div className="flex flex-wrap items-center gap-1.5">
-      {perspectives.map((p) => (
-        <button
-          key={p.id}
-          type="button"
-          title={p.description}
-          onClick={() => onChange(p.filters)}
-          className={cn(
-            "flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
-            active === p.id
-              ? "border-transparent bg-primary text-primary-foreground"
-              : "border-border text-muted-foreground hover:text-foreground hover:border-ring",
-          )}
-        >
-          <span>{p.emoji}</span>
-          {p.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-const MONTH_NAMES = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
-];
-
-const YEAR_OPTIONS = Array.from(
-  { length: CALENDAR_MAX_YEAR - CALENDAR_MIN_YEAR + 1 },
-  (_, i) => CALENDAR_MIN_YEAR + i,
-);
-
-/**
- * Jump straight to a distant month/year instead of walking there one
- * chevron-click at a time. The year range is the same constant the server
- * param validator uses, so every year offered here is one the resolver honours.
- */
-export function MonthYearPicker({
-  year, month, onChange,
-}: {
-  year: number;
-  month: number;
-  onChange: (year: number, month: number) => void;
-}) {
-  return (
-    <div className="flex items-center gap-1.5">
-      <Select
-        value={String(month)}
-        onValueChange={(v) => onChange(year, Number(v))}
-        items={Object.fromEntries(MONTH_NAMES.map((m, i) => [String(i + 1), m]))}
-      >
-        <SelectTrigger className="h-9 w-[9.5rem]" aria-label="Month">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          {MONTH_NAMES.map((m, i) => (
-            <SelectItem key={m} value={String(i + 1)}>{m}</SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      <Select
-        value={String(year)}
-        onValueChange={(v) => onChange(Number(v), month)}
-        items={Object.fromEntries(YEAR_OPTIONS.map((y) => [String(y), String(y)]))}
-      >
-        <SelectTrigger className="h-9 w-[6rem]" aria-label="Year">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          {YEAR_OPTIONS.map((y) => (
-            <SelectItem key={y} value={String(y)}>{y}</SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
     </div>
   );
 }

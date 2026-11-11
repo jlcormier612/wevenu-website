@@ -43,6 +43,9 @@ export type BrochureInput = {
   includePackages: boolean;
   includeFaqs: boolean;
   closingText: string;
+  /** When set, Save writes photos in the same row update as content (atomic). */
+  photoUrls?: string[];
+  photoLayout?: BrochurePhotoLayout;
 };
 
 export type BrochureErrors = Record<string, string>;
@@ -50,6 +53,10 @@ export type BrochureErrors = Record<string, string>;
 export type BrochureActionResult =
   | { ok: true }
   | { ok: false; message?: string; errors?: BrochureErrors };
+
+export type DeleteBrochurePhotoResult =
+  | { ok: true; photoUrls: string[] }
+  | { ok: false; message: string };
 
 export type CreateBrochureResult =
   | { ok: true; brochureId: string }
@@ -77,10 +84,14 @@ export type BrochureRenderData = {
     primaryColor: string;
     secondaryColor: string;
     accentColor: string;
+    /** Soft venue-branded surface; not the HTC app background. */
+    neutralColor: string;
     email: string | null;
     phone: string | null;
     website: string | null;
   };
   packages: { name: string; description: string | null; basePrice: number | null; category: string | null }[];
   faqs: { question: string; answer: string }[];
+  /** Live public availability path. Relative so it follows the current app domain. Not a date list. */
+  availabilityPath: string | null;
 };

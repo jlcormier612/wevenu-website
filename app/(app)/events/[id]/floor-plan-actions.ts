@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 
+import { getRequiredVsPlacedSummaryForEvent } from "@/lib/floor-plans/required-vs-placed-service";
+
 import {
   addObject,
   applyTemplate,
@@ -16,6 +18,9 @@ import {
   setBackgroundLocked,
   setClientAccess,
   setCoupleShare,
+  approveClientFloorPlanLayout,
+  requestClientFloorPlanChanges,
+  setCoupleMayAddTables,
   setFinalized,
   setOperationalFloorPlan,
   setVendorAccess,
@@ -39,6 +44,7 @@ import type {
 
 function revalidateEvent(eventId: string) {
   revalidatePath(`/events/${eventId}`);
+  revalidatePath(`/clients/${eventId}`);
 }
 
 // The workspace's card grid lives on the event's floor-plans index — revalidate
@@ -215,6 +221,57 @@ export async function upsertFloorPlanOfferAction(
   return result;
 }
 
+/** Overview setup — recover offers from profile template ids and init working layout. */
+export async function ensureEventFloorPlanOffersAction(
+  eventId: string,
+  templateIds: string[],
+  preferredId: string | null = null,
+): Promise<{ ok: true; created: number } | FloorPlanActionResult> {
+  const { ensureEventFloorPlanOffers } = await import("@/lib/floor-plan-offers/service");
+  const result = await ensureEventFloorPlanOffers(eventId, templateIds, preferredId);
+  if (result.ok) { revalidateEvent(eventId); revalidateWorkspace(eventId); }
+  return result;
+}
+
+/**
+ * Initialize or reconcile the event's working (operational) layout from offers
+ * or the client's confirmed selection. Idempotent — does not duplicate clones.
+ */
+export async function ensureWorkingFloorPlanAction(
+  eventId: string,
+  preferredTemplateId: string | null = null,
+): Promise<
+  | { ok: true; floorPlanId: string | null; created: boolean; reason: string }
+  | FloorPlanActionResult
+> {
+  if (!eventId) return { ok: false, message: "Event is required." };
+  const { createClient } = await import("@/integrations/supabase/server");
+  const { getCurrentVenue, getCurrentUserRole } = await import("@/lib/venue/service");
+  const { canEditFloorPlans, FLOOR_PLAN_EDIT_DENIED } = await import("@/lib/floor-plans/authorize");
+  const venue = await getCurrentVenue();
+  if (!venue) return { ok: false, message: "No venue found." };
+  const role = await getCurrentUserRole();
+  if (!canEditFloorPlans(role)) return { ok: false, message: FLOOR_PLAN_EDIT_DENIED };
+  const supabase = await createClient();
+  const { ensureWorkingLayoutForEvent } = await import("@/lib/floor-plans/ensure-working-layout");
+  const result = await ensureWorkingLayoutForEvent(supabase, venue.id, eventId, {
+    preferredTemplateId,
+  });
+  if (result.ok) {
+    revalidateEvent(eventId);
+    revalidateWorkspace(eventId);
+    if (result.floorPlanId) {
+      revalidatePath(`/events/${eventId}/floor-plans/${result.floorPlanId}`);
+    }
+  }
+  return {
+    ok: true,
+    floorPlanId: result.floorPlanId,
+    created: result.created,
+    reason: result.reason,
+  };
+}
+
 /** Phase 2 — update offer metadata / re-enable. */
 export async function updateFloorPlanOfferAction(
   eventId: string,
@@ -280,4 +337,276 @@ export async function getFloorPlanReconciliationAction(
   planId: string,
 ): Promise<FloorPlanSectionReconciliation[]> {
   return getFloorPlanReconciliation(planId);
+}
+
+/** Required vs placed — one line per setup (or layout). Read-only. */
+export async function getFloorPlanRequiredStatusAction(
+  eventId: string, plans: { id: string; name: string }[],
+): Promise<Awaited<ReturnType<typeof getRequiredVsPlacedSummaryForEvent>>> {
+  return getRequiredVsPlacedSummaryForEvent(eventId, plans);
+}
+
+export async function setFloorPlanCoupleMayAddTablesAction(
+  planId: string, eventId: string, coupleMayAddTables: boolean,
+): Promise<FloorPlanActionResult> {
+  const result = await setCoupleMayAddTables(planId, coupleMayAddTables);
+  if (result.ok) revalidateEvent(eventId);
+  return result;
+}
+
+export async function approveClientFloorPlanLayoutAction(
+  planId: string, eventId: string,
+): Promise<FloorPlanActionResult> {
+  const result = await approveClientFloorPlanLayout(planId);
+  if (result.ok) revalidateEvent(eventId);
+  return result;
+}
+
+export async function requestClientFloorPlanChangesAction(
+  planId: string, eventId: string, note: string,
+): Promise<FloorPlanActionResult> {
+  const result = await requestClientFloorPlanChanges(planId, note);
+  if (result.ok) revalidateEvent(eventId);
+  return result;
+}
+
+/**
+ * Phase 2 — venue preference review (approve / decline / defer).
+ * Approval does not change sharing. Seating assignments are never rewritten.
+ */
+export async function decideCoupleFloorPlanPreferenceAction(
+  eventId: string,
+  input:
+    | { decision: "decline" }
+    | { decision: "defer" }
+    | { decision: "approve"; seatingChoice?: "start_on_preferred"; seatingInUseFloorPlanId?: string },
+): Promise<FloorPlanActionResult> {
+  const { decideCoupleFloorPlanPreference } = await import("@/lib/floor-plans/preference-service");
+  const result = await decideCoupleFloorPlanPreference(eventId, input);
+  if (result.ok) {
+    revalidateEvent(eventId);
+    revalidateWorkspace(eventId);
+  }
+  return result;
+}
+
+/** Phase 2 — explicit seating-in-use designation (C1). */
+export async function setSeatingInUseFloorPlanAction(
+  eventId: string,
+  floorPlanId: string | null,
+): Promise<FloorPlanActionResult> {
+  const { setSeatingInUseFloorPlan } = await import("@/lib/floor-plans/preference-service");
+  const result = await setSeatingInUseFloorPlan(eventId, floorPlanId);
+  if (result.ok) {
+    revalidateEvent(eventId);
+    revalidateWorkspace(eventId);
+  }
+  return result;
+}
+
+// ── Phase 3 required setups ─────────────────────────────────────────────────
+
+export async function listSetupsWithMembersAction(eventId: string) {
+  const { listSetupsWithMembers } = await import("@/lib/floor-plans/setup-service");
+  return listSetupsWithMembers(eventId);
+}
+
+export async function createRequiredSetupAction(eventId: string, name: string) {
+  const { createRequiredSetup } = await import("@/lib/floor-plans/setup-service");
+  const result = await createRequiredSetup(eventId, name);
+  if (result.ok) {
+    revalidateEvent(eventId);
+    revalidateWorkspace(eventId);
+  }
+  return result;
+}
+
+export async function ensureDefaultWeddingSetupsAction(eventId: string) {
+  const { ensureDefaultWeddingSetups } = await import("@/lib/floor-plans/setup-service");
+  const result = await ensureDefaultWeddingSetups(eventId);
+  if (result.ok) {
+    revalidateEvent(eventId);
+    revalidateWorkspace(eventId);
+  }
+  return result;
+}
+
+export async function renameRequiredSetupAction(eventId: string, setupId: string, name: string) {
+  const { renameRequiredSetup } = await import("@/lib/floor-plans/setup-service");
+  const result = await renameRequiredSetup(eventId, setupId, name);
+  if (result.ok) {
+    revalidateEvent(eventId);
+    revalidateWorkspace(eventId);
+  }
+  return result;
+}
+
+export async function removeRequiredSetupAction(eventId: string, setupId: string) {
+  const { removeRequiredSetup } = await import("@/lib/floor-plans/setup-service");
+  const result = await removeRequiredSetup(eventId, setupId);
+  if (result.ok) {
+    revalidateEvent(eventId);
+    revalidateWorkspace(eventId);
+  }
+  return result;
+}
+
+export async function attachLayoutToSetupAction(
+  eventId: string,
+  setupId: string,
+  floorPlanId: string,
+) {
+  const { attachLayoutToSetup } = await import("@/lib/floor-plans/setup-service");
+  const result = await attachLayoutToSetup(eventId, setupId, floorPlanId);
+  if (result.ok) {
+    revalidateEvent(eventId);
+    revalidateWorkspace(eventId);
+  }
+  return result;
+}
+
+export async function detachLayoutFromSetupAction(
+  eventId: string,
+  setupId: string,
+  floorPlanId: string,
+) {
+  const { detachLayoutFromSetup } = await import("@/lib/floor-plans/setup-service");
+  const result = await detachLayoutFromSetup(eventId, setupId, floorPlanId);
+  if (result.ok) {
+    revalidateEvent(eventId);
+    revalidateWorkspace(eventId);
+  }
+  return result;
+}
+
+export async function setSetupWorkingLayoutAction(
+  eventId: string,
+  setupId: string,
+  floorPlanId: string,
+) {
+  const { setSetupWorkingLayout } = await import("@/lib/floor-plans/setup-service");
+  const result = await setSetupWorkingLayout(eventId, setupId, floorPlanId);
+  if (result.ok) {
+    revalidateEvent(eventId);
+    revalidateWorkspace(eventId);
+  }
+  return result;
+}
+
+export async function decideSetupFloorPlanPreferenceAction(
+  eventId: string,
+  setupId: string,
+  input:
+    | { decision: "decline" }
+    | { decision: "defer" }
+    | { decision: "approve"; seatingChoice?: "start_on_preferred"; seatingInUseFloorPlanId?: string },
+): Promise<FloorPlanActionResult> {
+  const { decideSetupFloorPlanPreference } = await import("@/lib/floor-plans/setup-service");
+  const result = await decideSetupFloorPlanPreference(eventId, setupId, input);
+  if (result.ok) {
+    revalidateEvent(eventId);
+    revalidateWorkspace(eventId);
+  }
+  return result;
+}
+
+// ── Phase 4 linked before/after flips ───────────────────────────────────────
+
+export async function getEventFloorPlanFlipAction(eventId: string) {
+  const { getEventFloorPlanFlip } = await import("@/lib/floor-plans/flip-service");
+  return getEventFloorPlanFlip(eventId);
+}
+
+export async function linkEventFloorPlanFlipAction(
+  eventId: string,
+  beforeFloorPlanId: string,
+  afterFloorPlanId: string,
+  transitionNotes?: string | null,
+) {
+  const { linkEventFloorPlanFlip } = await import("@/lib/floor-plans/flip-service");
+  const result = await linkEventFloorPlanFlip(
+    eventId,
+    beforeFloorPlanId,
+    afterFloorPlanId,
+    transitionNotes,
+  );
+  if (result.ok) {
+    revalidateEvent(eventId);
+    revalidateWorkspace(eventId);
+  }
+  return result;
+}
+
+export async function updateEventFloorPlanFlipNotesAction(
+  eventId: string,
+  transitionNotes: string | null,
+) {
+  const { updateEventFloorPlanFlipNotes } = await import("@/lib/floor-plans/flip-service");
+  const result = await updateEventFloorPlanFlipNotes(eventId, transitionNotes);
+  if (result.ok) {
+    revalidateEvent(eventId);
+    revalidateWorkspace(eventId);
+  }
+  return result;
+}
+
+export async function unlinkEventFloorPlanFlipAction(eventId: string) {
+  const { unlinkEventFloorPlanFlip } = await import("@/lib/floor-plans/flip-service");
+  const result = await unlinkEventFloorPlanFlip(eventId);
+  if (result.ok) {
+    revalidateEvent(eventId);
+    revalidateWorkspace(eventId);
+  }
+  return result;
+}
+
+// ── Phase 5 booking-change review flags ─────────────────────────────────────
+
+export async function listOpenFloorPlanReviewFlagsAction(eventId: string) {
+  const { listOpenReviewFlagsForEvent } = await import(
+    "@/lib/floor-plans/review-flag-service"
+  );
+  return listOpenReviewFlagsForEvent(eventId);
+}
+
+export async function getEventBookingRoomSetAction(eventId: string): Promise<string[]> {
+  const { captureBookingRoomSetBeforeMutation } = await import(
+    "@/lib/floor-plans/review-flag-service"
+  );
+  return captureBookingRoomSetBeforeMutation(eventId);
+}
+
+export async function clearFloorPlanReviewFlagAction(
+  eventId: string,
+  flagId: string,
+): Promise<FloorPlanActionResult> {
+  const { clearFloorPlanReviewFlag } = await import(
+    "@/lib/floor-plans/review-flag-service"
+  );
+  const result = await clearFloorPlanReviewFlag(eventId, flagId);
+  if (result.ok) {
+    revalidateEvent(eventId);
+    revalidateWorkspace(eventId);
+  }
+  return result.ok
+    ? { ok: true }
+    : { ok: false, message: result.message };
+}
+
+export async function updateFloorPlanSpaceAction(
+  eventId: string,
+  floorPlanId: string,
+  spaceId: string | null,
+): Promise<FloorPlanActionResult & { flagWarning?: string }> {
+  const { updateFloorPlanSpace } = await import(
+    "@/lib/floor-plans/review-flag-service"
+  );
+  const result = await updateFloorPlanSpace(eventId, floorPlanId, spaceId);
+  if (result.ok) {
+    revalidateEvent(eventId);
+    revalidateWorkspace(eventId);
+    revalidatePath(`/events/${eventId}/floor-plans/${floorPlanId}`);
+  }
+  if (!result.ok) return { ok: false, message: result.message };
+  return { ok: true, flagWarning: result.flagWarning };
 }

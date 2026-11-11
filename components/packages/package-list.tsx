@@ -2,9 +2,8 @@
 
 import * as React from "react";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Archive, ArchiveRestore, BookPlus, Copy, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
+import { Archive, ArchiveRestore, BookPlus, Copy, Loader2, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { addPackageStarterAgainAction } from "@/app/(app)/library/packages/actions";
@@ -118,14 +117,11 @@ export function PackageList({
         <div className="flex justify-end">
           <StarterMenu missingKeys={missingStarterKeys} />
         </div>
-        <div className="rounded-sm border border-dashed border-border py-16 text-center">
+        <div className="htc-surface-guidance rounded-sm border-dashed py-16 text-center">
           <p className="text-sm font-medium text-heading">No packages yet</p>
           <p className="text-xs text-muted-foreground mt-1">
             Add your venue offerings, or restore Hello to Cheers starters to customize.
           </p>
-          <Button type="button" size="sm" className="mt-4" render={<Link href="/packages/new" />}>
-            <Plus className="mr-1 h-3.5 w-3.5" /> Add Package
-          </Button>
         </div>
       </div>
     );
@@ -141,7 +137,7 @@ export function PackageList({
         description={pkg.description ? <span className="line-clamp-2">{pkg.description}</span> : undefined}
         isStarter={Boolean(pkg.sourceMasterKey)}
         isArchived={!pkg.isActive}
-        badges={pkg.category ? <Badge variant="muted" className="text-[10px]">{pkg.category}</Badge> : undefined}
+        badges={pkg.category ? <Badge variant="outline" className="htc-badge-active text-[10px]">{pkg.category}</Badge> : undefined}
         primaryActions={archivedView
           ? [
               { id: "preview", label: LIBRARY_LABELS.preview, href: `/packages/${pkg.id}/preview`, emphasis: "preview" },
@@ -185,9 +181,6 @@ export function PackageList({
           <StarterMenu missingKeys={missingStarterKeys} />
         </div>
       )}
-      <p className="text-xs text-muted-foreground">
-        Packages are reusable structures for booking. Archiving hides them from the active list — it does not send anything to a client.
-      </p>
       {active.length === 0 ? (
         <p className="text-sm text-muted-foreground py-8 text-center">No active packages. Restore one from Archived, or add a new package.</p>
       ) : (

@@ -1,0 +1,20 @@
+PASS serving_sha — serving=3dbc2a45fbcc0fd9fa430884a3c9cc82d46d52d0 expected=3dbc2a45fbcc0fd9fa430884a3c9cc82d46d52d0
+PASS templates_available — [{"id":"c680cc72-872d-4dab-9bc0-815fefb35251","name":"Standard Wedding — Ceremony + Reception"},{"id":"026fb633-2dce-4c73-87c8-144bb29a0318","name":"Standard Wedding — Reception Only"},{"id":"3d4e11ef-7de7-495b-8fc7-b2eaf59584c3","name":"Barn-master-floorplan"}]
+PASS zero_offers_waiting — {"ok":true,"reason":"no_offers","floorPlanId":null,"autoAssigned":false}
+PASS zero_offers_portal_waiting_ui — Waiting on a layout
+PASS sole_offer_auto_assigned — {"ok":true,"reason":"sole_offer","offerId":"8e3e20b2-7121-45cf-a009-3160cbf1d6eb","floorPlanId":"c1518795-63db-4547-8e24-d05e7a1cdb9b","autoAssigned":true}
+PASS sole_assign_idempotent — {"ensureSoleAgain":{"ok":true,"reason":"already_selected","floorPlanId":"c1518795-63db-4547-8e24-d05e7a1cdb9b","autoAssigned":false},"planCount":1}
+PASS sole_shared_and_seating_open — {"id":"c1518795-63db-4547-8e24-d05e7a1cdb9b","shared_with_couple":true,"client_access":"view","source_template_id":"026fb633-2dce-4c73-87c8-144bb29a0318"}
+PASS couple_move_unlocked — {"moveOk":{"x":400,"y":48,"ok":true,"objectId":"0b6d2a59-ee42-4337-a7ce-60b673d384e9"},"afterMove":{"x":400,"y":48}}
+PASS couple_move_locked_rejected — {"moveLocked":{"ok":false,"error":"object_locked"},"afterLocked":{"x":360,"y":90}}
+PASS couple_add_table — {"ok":true,"objectId":"7df0ee63-fd04-4cc9-90a2-def866bcad7f","objectType":"table_round"}
+PASS seating_without_venue_share_gate — {"seat":true,"seats":[{"id":"11dee398-3718-48a1-a78d-a71953cdb770","table_object_id":"7df0ee63-fd04-4cc9-90a2-def866bcad7f"}]}
+PASS move_preserves_assignment — [{"table_object_id":"7df0ee63-fd04-4cc9-90a2-def866bcad7f"}]
+PASS ready_blocks_couple_move — {"ok":false,"error":"plan_ready"}
+PASS sole_portal_skips_chooser — Your Floor Plan | Ready for the event | Ready for the event | Ready for the event
+PASS invalid_token_denied — {"ok":false,"error":"invalid_token"}
+PASS multi_needs_selection — {"ok":true,"reason":"needs_selection","floorPlanId":null,"autoAssigned":false}
+PASS multi_select_shares_and_seating — {"selectB":{"ok":true,"offerId":"bad43750-6fcf-4cdd-9175-7e9a443e73b8","templateId":"c680cc72-872d-4dab-9bc0-815fefb35251","floorPlanId":"86d32d19-b120-48f7-99bf-974ba9ec2e82","autoAssigned":false},"multiPlan":{"shared_with_couple":true,"client_access":"view","source_template_id"
+PASS multi_portal_working_after_select — Your Floor Plan | Seating is available
+
+GREEN passed=18 failed=0

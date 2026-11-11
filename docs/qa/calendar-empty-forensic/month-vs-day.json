@@ -1,0 +1,27 @@
+{
+  "monthHtmlHasLucy": true,
+  "monthHtmlHasTourId": true,
+  "monthHtmlHasVenueTour": true,
+  "monthHtmlHasEllie": true,
+  "monthHtmlHasNicole": true,
+  "atAGlance": "at a glance — 4 items",
+  "clearFiltersVisible": 0,
+  "clickedCell": {
+    "txt": "15",
+    "dd": null,
+    "y": 946.234375
+  },
+  "clicked15": true,
+  "panelAfter15": "Schedule Item\nPrint / Export\n\nPUBLIC AVAILABILITY\n\nShare your current available event selection dates with couples.\n\nCopy availability link\nPreview\n\nYour link always reflects your current availability.\n\nTOUR AVAILABILITY\n\nLet new prospects choose an available time to schedule a tour.\n\nCopy tour link\nPreview\n\nThis is a general tour link for websites, QR codes, and new prospects. Your current tour availability always applies.\n\nAlready working with someone? Use the personalized scheduling link that",
+  "bodyHasLucyAfterClear": true,
+  "bodyHasVenueTourAfterClear": true,
+  "agendaHasLucy": true,
+  "agendaHasVenueTour": true,
+  "agendaSnippet": [
+    "Venue Tour — Lydia Cormier & Ali Shazam",
+    "Venue Tour — Nicole Bethune & Colby Yagnesak",
+    "Venue Tour — Lucy Wraps & Adam Cormier"
+  ],
+  "dayClearedHasLucy": true,
+  "rscPayloads": []
+}

@@ -1,0 +1,55 @@
+{
+  "expectedSha": "14bf79a6f04ad43a7dbd89c7a1e3d67b37918919",
+  "fancy": "a415ac52-cd74-42a6-8df7-7a8f6e71d080",
+  "primaryId": "2da6122a-7d38-4c37-83b9-c07b3b49017b",
+  "secondaryId": "be420e30-d789-4171-9675-f29521e31648",
+  "pass": 9,
+  "fail": 0,
+  "checks": [
+    {
+      "name": "fixtures_created",
+      "pass": true,
+      "detail": "A=2da6122a-7d38-4c37-83b9-c07b3b49017b B=be420e30-d789-4171-9675-f29521e31648"
+    },
+    {
+      "name": "merge_button_visible",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "name": "merge_dialog_open",
+      "pass": true,
+      "detail": "dialog"
+    },
+    {
+      "name": "preview_shows_primary",
+      "pass": true,
+      "detail": "Survives label"
+    },
+    {
+      "name": "confirm_enabled",
+      "pass": true,
+      "detail": "enabled"
+    },
+    {
+      "name": "redirected_to_primary",
+      "pass": true,
+      "detail": "https://app.sandbox.hellotocheers.com/leads/2da6122a-7d38-4c37-83b9-c07b3b49017b | toast=[\"Leads merged. Opening the surviving lead.\"]"
+    },
+    {
+      "name": "db_secondary_soft_marked",
+      "pass": true,
+      "detail": "{\"merged_into_lead_id\":\"2da6122a-7d38-4c37-83b9-c07b3b49017b\",\"merged_at\":\"2026-10-20T22:48:26.201909+00:00\",\"phone\":\"555-0188\"}"
+    },
+    {
+      "name": "db_phone_filled",
+      "pass": true,
+      "detail": "{\"phone\":\"555-0188\",\"merged_into_lead_id\":null}"
+    },
+    {
+      "name": "secondary_page_redirects",
+      "pass": true,
+      "detail": "https://app.sandbox.hellotocheers.com/leads/2da6122a-7d38-4c37-83b9-c07b3b49017b?mergedFrom=be420e30-d789-4171-9675-f29521e31648"
+    }
+  ]
+}

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { createAdminClient } from "@/integrations/supabase/admin";
+import { purchaserAlreadyHasLogin } from "@/lib/activation/existing-login";
 import { isSupabaseConfigured } from "@/lib/env";
 
 export const runtime = "nodejs";
@@ -45,6 +46,9 @@ export type ByTokenLookupResult =
       id: string;
       venueName: string;
       ownerEmail: string;
+      ownerFirstName: string | null;
+      ownerLastName: string | null;
+      alreadyHasLogin: boolean;
     }
   | { ok: false; error: string };
 
@@ -84,7 +88,7 @@ export async function POST(request: Request) {
   try {
     const { data: enrollment, error } = await admin
       .from("venue_enrollments")
-      .select("id, venue_name, owner_email, status, activation_token_created_at")
+      .select("id, venue_name, owner_email, owner_first_name, owner_last_name, status, venue_id, activation_token_created_at")
       .eq("activation_token", token)
       .maybeSingle();
     if (error) throw error;
@@ -112,6 +116,12 @@ export async function POST(request: Request) {
       } satisfies ByTokenLookupResult);
     }
 
+    const alreadyHasLogin = await purchaserAlreadyHasLogin(admin, {
+      ownerEmail: enrollment.owner_email as string | null,
+      enrollmentVenueId: (enrollment.venue_id as string | null) ?? null,
+      enrollmentStatus: enrollment.status as string | null,
+    });
+
     return NextResponse.json({
       ok: true,
       found: true,
@@ -119,6 +129,9 @@ export async function POST(request: Request) {
       id: enrollment.id as string,
       venueName: (enrollment.venue_name as string) || "your venue",
       ownerEmail: (enrollment.owner_email as string) || "",
+      ownerFirstName: (enrollment.owner_first_name as string | null) ?? null,
+      ownerLastName: (enrollment.owner_last_name as string | null) ?? null,
+      alreadyHasLogin,
     } satisfies ByTokenLookupResult);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

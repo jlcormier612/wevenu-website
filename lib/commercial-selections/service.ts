@@ -28,7 +28,7 @@ function validateAmounts(
     return { depositAmount: "Enter a valid deposit amount." };
   }
   if (depositAmount > totalAmount) {
-    return { depositAmount: "Deposit cannot exceed the package total." };
+    return { depositAmount: "Deposit cannot exceed the agreed total." };
   }
   return null;
 }
@@ -82,6 +82,45 @@ export async function getSelectedPackage(
 }
 
 /**
+ * Resolve the frozen Selected Package for contract merge / New Contract.
+ *
+ * Prefer an explicit selectionId, but if that row was superseded (e.g. the
+ * venue re-saved Essential Wedding and the URL still carries the old id),
+ * follow superseded_by_id and/or fall back to the active selection for the
+ * event, client, or lead. Never treat a superseded row as the merge source.
+ */
+export async function resolveActiveCommercialSelection(opts: {
+  selectionId?: string | null;
+  eventId?: string | null;
+  clientId?: string | null;
+  leadId?: string | null;
+}): Promise<CommercialSelection | null> {
+  let selection = opts.selectionId ? await getSelectedPackage(opts.selectionId) : null;
+
+  // Follow replacement chain (bounded) when the URL/form still has a stale id.
+  for (let i = 0; i < 5 && selection?.status === "superseded"; i++) {
+    if (!selection.supersededById) {
+      selection = null;
+      break;
+    }
+    selection = await getSelectedPackage(selection.supersededById);
+  }
+  if (selection?.status === "superseded") selection = null;
+
+  if (!selection && opts.eventId) {
+    selection = await getActiveSelectedPackageForEvent(opts.eventId);
+  }
+  if (!selection && opts.clientId) {
+    selection = await getActiveSelectedPackageForClient(opts.clientId);
+  }
+  if (!selection && opts.leadId) {
+    selection = await getActiveSelectedPackageForLead(opts.leadId);
+  }
+  if (!selection || selection.status === "superseded") return null;
+  return selection;
+}
+
+/**
  * Create a frozen Selected Package from a Library package.
  * If an active selection already exists for this lead/client, it is superseded.
  */
@@ -104,7 +143,9 @@ export async function createSelectedPackageFromLibrary(input: {
   if (pkg.basePrice == null || !(pkg.basePrice > 0)) {
     return { ok: false, message: "Set a price on this package in the Library before selecting it." };
   }
-  const totalAmount = roundMoney(pkg.basePrice);
+  const packagePrice = roundMoney(pkg.basePrice);
+  // At select time, package = final unless the caller applies discount/tax via updateTerms.
+  const totalAmount = packagePrice;
   const depositAmount = roundMoney(
     input.depositAmount != null
       ? input.depositAmount
@@ -119,7 +160,21 @@ export async function createSelectedPackageFromLibrary(input: {
     description: item.description,
     quantity: item.quantity,
     unit: item.unit,
+    ...(item.offeringId ? { offeringId: item.offeringId } : {}),
+    ...(item.perGuest ? { perGuest: true } : {}),
   }));
+
+  const financial = {
+    packageAmount: packagePrice,
+    discountAmount: 0,
+    discountType: null as "fixed" | "percent" | null,
+    discountValue: null as number | null,
+    taxApplied: false,
+    taxRatePercent: null as number | null,
+    taxAmount: 0,
+    totalAmount,
+    depositAmount,
+  };
 
   const result = await withVenue(async (supabase, venueId) => {
     let previous: CommercialSelection | null = null;
@@ -136,8 +191,7 @@ export async function createSelectedPackageFromLibrary(input: {
           eventId: input.eventId ?? previous.eventId ?? undefined,
           sourcePackageId: pkg.id,
           name: pkg.name,
-          totalAmount,
-          depositAmount,
+          ...financial,
           includedItems,
           version: previous.version + 1,
         })
@@ -147,8 +201,7 @@ export async function createSelectedPackageFromLibrary(input: {
           eventId: input.eventId,
           sourcePackageId: pkg.id,
           name: pkg.name,
-          totalAmount,
-          depositAmount,
+          ...financial,
           includedItems,
         });
 
@@ -222,14 +275,93 @@ export async function markSelectionAccepted(
     }
     const updated = await repo.markAcceptedVenue(supabase, venueId, selectionId);
     if (!updated) return { ok: false, message: "Could not mark as accepted." };
-    if (existing.clientId) {
-      const { maybeStampCommercialBookedAt } = await import("@/lib/booking-journey/stamp-commercial-booked-at");
-      await maybeStampCommercialBookedAt(supabase, venueId, {
-        clientId: existing.clientId,
-        eventId: existing.eventId,
-      });
+    const title = `The venue marked the ${existing.name} proposal accepted.`;
+    const amount = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(existing.totalAmount);
+    try {
+      if (existing.leadId) {
+        const { insertActivity } = await import("@/lib/leads/repository");
+        await insertActivity(supabase, venueId, existing.leadId, "proposal_accepted", title, amount);
+      } else if (existing.clientId) {
+        const { insertClientActivity } = await import("@/lib/clients/repository");
+        await insertClientActivity(supabase, venueId, existing.clientId, "proposal_accepted", title, amount);
+      }
+    } catch {
+      // The selection is already accepted. A failed history row must not report that acceptance failed.
     }
     return { ok: true };
+  });
+  return result as CommercialSelectionActionResult;
+}
+
+/**
+ * Apply discount / exclusive tax on a draft Selected Package before contract or invoice.
+ * Persists frozen discount dollars and applied tax rate so later venue defaults cannot rewrite terms.
+ */
+export async function updateCommercialSelectionTerms(
+  selectionId: string,
+  input: {
+    packageAmount: number;
+    discountType?: "fixed" | "percent" | null;
+    discountValue?: number | null;
+    adjustments?: import("@/lib/invoices/financial-adjustments").FinancialAdjustmentInput[] | null;
+    applyTax: boolean;
+    taxRatePercent?: number | null;
+    depositAmount: number;
+  },
+): Promise<CommercialSelectionActionResult> {
+  const { computeAgreedFinancialTermsMulti } = await import("@/lib/invoices/financial-adjustments");
+  const terms = computeAgreedFinancialTermsMulti({
+    packagePrice: input.packageAmount,
+    adjustments: input.adjustments,
+    discountMode: input.discountType ?? null,
+    discountValue: input.discountValue ?? null,
+    applyTax: input.applyTax,
+    taxRatePercent: input.taxRatePercent ?? null,
+  });
+  let depositAmount = roundMoney(input.depositAmount);
+  if (depositAmount > terms.finalTotal) {
+    depositAmount = terms.finalTotal;
+  }
+  const amountErrors = validateAmounts(terms.finalTotal, depositAmount);
+  if (amountErrors) return { ok: false, errors: amountErrors };
+
+  const result = await withVenue(async (supabase, venueId) => {
+    const existing = await repo.getSelection(supabase, venueId, selectionId);
+    if (!existing) return { ok: false, message: "Selected package not found." } as CommercialSelectionActionResult;
+    if (existing.status !== "draft") {
+      return {
+        ok: false,
+        message: "Financial terms can only be edited on a draft Selected Package.",
+      } as CommercialSelectionActionResult;
+    }
+    if (existing.invoiceId) {
+      return {
+        ok: false,
+        message: "An invoice already exists for these terms. Amend through the invoice workflow.",
+      } as CommercialSelectionActionResult;
+    }
+    if (existing.contractId) {
+      return {
+        ok: false,
+        message: "A contract is already linked. Create an amendment or a new Selected Package version to change terms.",
+      } as CommercialSelectionActionResult;
+    }
+    const updated = await repo.updateSelectionFinancialTerms(supabase, venueId, selectionId, {
+      packageAmount: terms.packagePrice,
+      discountAmount: terms.discountAmount,
+      discountType: terms.discountMode,
+      discountValue: terms.discountValue,
+      financialAdjustments: terms.adjustments,
+      taxApplied: terms.taxApplied,
+      taxRatePercent: terms.taxRatePercent,
+      taxAmount: terms.taxAmount,
+      totalAmount: terms.finalTotal,
+      depositAmount,
+    });
+    if (!updated) {
+      return { ok: false, message: "Could not update financial terms." } as CommercialSelectionActionResult;
+    }
+    return { ok: true } as CommercialSelectionActionResult;
   });
   return result as CommercialSelectionActionResult;
 }

@@ -12,6 +12,7 @@ import { toast } from "sonner";
 
 import {
   applyPlaybookAction,
+  applyPlaybookToClientAction,
   getPlaybookApplyPreviewAction,
 } from "@/app/(app)/playbooks/actions";
 import { Badge } from "@/components/ui/badge";
@@ -36,6 +37,7 @@ export function PlaybookApplyPreviewSheet({
   kind,
   eventId,
   eventDate,
+  clientId,
   onApplied,
   /** When false, preview-only (e.g. event create form before an event exists). */
   canApply = true,
@@ -46,6 +48,8 @@ export function PlaybookApplyPreviewSheet({
   kind: PlaybookKind;
   eventId?: string;
   eventDate?: string;
+  /** Set when the checklist is applied to a client before an Event exists. */
+  clientId?: string;
   onApplied?: () => void;
   canApply?: boolean;
 }) {
@@ -57,7 +61,9 @@ export function PlaybookApplyPreviewSheet({
 
   const kindCopy = applyPreviewKindCopy(kind);
   const taskCount = groups.reduce((n, g) => n + g.taskTitles.length, 0);
-  const applyEnabled = canApply && !!eventId && !!eventDate;
+  // Pre-book prepare workspace applies to the client (clientId + preferred date);
+  // booked events apply to the event. Preview itself never mutates.
+  const applyEnabled = canApply && !!eventDate && (!!eventId || !!clientId);
 
   React.useEffect(() => {
     if (!open || !templateId) return;
@@ -82,9 +88,11 @@ export function PlaybookApplyPreviewSheet({
   }, [open, templateId]);
 
   function handleApply() {
-    if (!eventId || !eventDate) return;
+    if (!eventDate || (!eventId && !clientId)) return;
     startApply(async () => {
-      const result = await applyPlaybookAction(eventId, templateId, eventDate);
+      const result = eventId
+        ? await applyPlaybookAction(eventId, templateId, eventDate)
+        : await applyPlaybookToClientAction(clientId!, templateId, eventDate);
       if (result.ok) {
         toast.success(
           kind === "client"
@@ -177,11 +185,16 @@ export function PlaybookApplyPreviewSheet({
               onClick={handleApply}
               disabled={applying || loading || !!loadError || taskCount === 0}
               className="w-full"
+              data-testid="playbook-apply-confirm"
             >
               {applying ? (
                 <><Loader2 className="mr-1.5 h-4 w-4 animate-spin" />Applying…</>
-              ) : (
+              ) : eventId ? (
                 "Apply to this event"
+              ) : kind === "client" ? (
+                "Apply Client Planning"
+              ) : (
+                "Apply Venue Planning"
               )}
             </Button>
           ) : (

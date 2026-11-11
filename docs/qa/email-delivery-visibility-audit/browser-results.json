@@ -1,0 +1,79 @@
+{
+  "at": "2026-10-14T20:03:08.432Z",
+  "expectedSha": "511b757aebb34125b0b1696671c179dd1545977f",
+  "servingImage": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:511b757aebb34125b0b1696671c179dd1545977f",
+  "pass": true,
+  "checks": [
+    {
+      "name": "Serving expected SHA",
+      "pass": true,
+      "detail": "image=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:511b757aebb34125b0b1696671c179dd1545977f expected=511b757aebb3"
+    },
+    {
+      "name": "Readiness present",
+      "pass": true,
+      "detail": "count=1"
+    },
+    {
+      "name": "Aggregate attention tile absent",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "Aggregate failure list / Excellent scoring absent",
+      "pass": true,
+      "detail": "history=0 issues=0"
+    },
+    {
+      "name": "Health page points owners to Inbox for failures",
+      "pass": true,
+      "detail": "intro copy"
+    },
+    {
+      "name": "Settings → Text messaging link present",
+      "pass": true,
+      "detail": "href=/settings/communications#texting"
+    },
+    {
+      "name": "How-to-read copy uses complete-setup wording",
+      "pass": true,
+      "detail": "approved copy"
+    },
+    {
+      "name": "Compact Couldn't deliver badge present",
+      "pass": true,
+      "detail": "count=1"
+    },
+    {
+      "name": "Badge has no inline reputation / mailing-list prose",
+      "pass": true,
+      "detail": "text=❌ Couldn't deliver"
+    },
+    {
+      "name": "Failure explanation not inline before open",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "Detail popover shows explanation",
+      "pass": true,
+      "detail": "count=1"
+    },
+    {
+      "name": "Detail popover shows next action",
+      "pass": true,
+      "detail": "count=1"
+    },
+    {
+      "name": "Popover explanation omits reputation scare",
+      "pass": true,
+      "detail": "The recipient's email provider sent a hard bounce message, but didn't specify the reason for the hard bounce."
+    },
+    {
+      "name": "No critical console errors",
+      "pass": true,
+      "detail": "errors=0"
+    }
+  ],
+  "consoleErrors": []
+}

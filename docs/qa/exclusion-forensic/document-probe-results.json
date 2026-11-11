@@ -1,0 +1,37 @@
+{
+  "venueId": "d25100dd-bff3-47f9-adb6-29c0fb5ead11",
+  "eventId": "d1571c3c-d281-4e8b-ad1c-1e5dd89cd08a",
+  "checks": [
+    {
+      "name": "normalize_missing_storage_rejected",
+      "pass": true,
+      "detail": "Documents need a file name plus storagePath and storageUrl from an uploaded file."
+    },
+    {
+      "name": "normalize_key_date_retired",
+      "pass": true,
+      "detail": "Key Dates have been retired and can no longer be imported."
+    },
+    {
+      "name": "normalize_payment_redirects",
+      "pass": true,
+      "detail": "Use Active commitment (Event Order, invoice, and payment plan) — standalone payment rows are not imported alone."
+    },
+    {
+      "name": "storage_object_absent",
+      "pass": true,
+      "detail": "listed=0 err=undefined"
+    },
+    {
+      "name": "db_row_created_without_storage_object",
+      "pass": true,
+      "detail": "doc=e7139ed8 path=d25100dd-bff3-47f9-adb6-29c0fb5ead11/migration-cert/does-not-exist-1792526928475.pdf"
+    },
+    {
+      "name": "download_fails_for_missing_object",
+      "pass": true,
+      "detail": "Object not found"
+    }
+  ],
+  "at": "2026-10-20T20:08:50.392Z"
+}

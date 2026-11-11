@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { celebrateLuv } from "@/lib/luv/celebrate";
 import { coupleCelebrationMessage } from "@/lib/luv/celebrations";
+import { greetingFirstName } from "@shared/relationships/normalize";
 
 export function SignForm({
   token,
@@ -44,11 +45,12 @@ export function SignForm({
   }
 
   if (done) {
+    const thankYouName = greetingFirstName({ fullName: name });
     return (
       <div className="rounded-xl border border-green-200 bg-green-50 p-6 text-center space-y-2">
         <p className="text-lg font-semibold text-green-800">✓ Agreement signed</p>
         <p className="text-sm text-green-700">
-          Thank you, {name}. Your signature has been recorded.
+          Thank you, {thankYouName}. Your signature has been recorded.
           The venue will receive a notification and may follow up with next steps.
         </p>
       </div>

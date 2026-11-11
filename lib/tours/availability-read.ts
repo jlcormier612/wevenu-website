@@ -47,6 +47,7 @@ export function parseCoordinatorTourAvailability(payload: unknown): TourAvailabi
       startDate: e.startDate,
       endDate: e.endDate,
       label: typeof e.label === "string" ? e.label : null,
+      recurrenceRule: e.recurrenceRule === "annual" ? "annual" : "none",
     });
   }
   return { ok: true, windows, exceptions };

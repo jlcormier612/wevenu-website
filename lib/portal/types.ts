@@ -60,13 +60,8 @@ export type PortalContext = {
     city: string | null;
     stateRegion: string | null;
     postalCode: string | null;
-    /** Optional planning surfaces this venue offers (defaults all true). */
-    planningCapabilities?: {
-      timeline: boolean;
-      floorPlan: boolean;
-      seating: boolean;
-      vendors: boolean;
-    };
+    /** Optional planning / setup surfaces this venue offers (defaults all true). */
+    planningCapabilities?: import("@/lib/playbooks/capabilities").VenuePlanningCapabilities;
   };
 };
 
@@ -90,6 +85,12 @@ export type PortalTask = {
   milestoneName: string;
   milestoneKind: "event_day" | "final_stretch" | null;
   status: "pending" | "blocked" | "complete" | "overdue";
+  /**
+   * Couple submit / venue-review intermediate state from event_tasks.progress_state.
+   * in_progress = submitted, waiting on venue — does not mean status=complete.
+   * Optional for older fixtures; treat missing as null.
+   */
+  progressState?: "not_started" | "in_progress" | "complete" | null;
   isRequired: boolean;
   completedAt: string | null;
   /** Domain auto-complete trigger from event_tasks; null = acknowledgment / manual. */
@@ -106,6 +107,8 @@ export type PortalTask = {
   canUndo: boolean;
   /** Web links attached via playbook attachments / event context links. */
   links: PortalTaskLink[];
+  /** "Choose your package" read as done because an accepted package exists (never persisted). */
+  packageApproved?: boolean;
 };
 
 /** Vendor-owned task projected into the portal (not an event_tasks row). */
@@ -163,13 +166,22 @@ export type PortalVenueSpace = {
 };
 
 
-export type PortalSection = "overview" | "guests" | "todos" | "budget" | "seating" | "people" | "website" | "story" | "journey" | "tasks" | "timeline" | "vendors" | "payments" | "documents" | "messages" | "ask" | "guide" | "account" | "requests" | "questionnaire" | "inventory" | "floor_plans" | "event-order";
+export type PortalSection = "overview" | "guests" | "todos" | "budget" | "seating" | "people" | "website" | "story" | "journey" | "tasks" | "timeline" | "vendors" | "payments" | "documents" | "messages" | "ask" | "guide" | "account" | "requests" | "questionnaire" | "inventory" | "floor_plans" | "event-order" | "choices";
 
 /** Phase 1 — couple Floor Plan list item (layout view). */
 export type PortalFloorPlanSummary = {
   id: string;
   name: string;
   isOperational: boolean;
+  isCoupleSelected?: boolean;
+  isCoupleApproved?: boolean;
+  isSeatingInUse?: boolean;
+  isReady?: boolean;
+  clientLayoutStatus?: string;
+  clientSubmittedAt?: string | null;
+  clientReviewNote?: string | null;
+  clientReviewedAt?: string | null;
+  coupleMayAddTables?: boolean;
   spaceId: string | null;
   createdAt: string;
 };
@@ -189,6 +201,48 @@ export type PortalFloorPlanObject = {
   notes: string | null;
   displayShape: string | null;
   inventoryItemId: string | null;
+  /** Venue-locked elements cannot be moved or deleted by the couple. */
+  locked?: boolean;
+};
+
+/** Catalog entry for couple-facing Add furniture (inventory or plan-type fallback). */
+export type PortalFloorPlanCatalogItem = {
+  inventoryItemId?: string;
+  objectType: string;
+  name: string;
+  shape?: string | null;
+  displayShape?: string | null;
+  width?: number | null;
+  length?: number | null;
+  height?: number | null;
+  placeWidth?: number | null;
+  placeHeight?: number | null;
+  color?: string | null;
+  capacity?: number | null;
+  quantityAvailable: number;
+  quantityUsed: number;
+  remaining: number;
+  quantityConfigured: boolean;
+  /** Quantity on the couple's Event Order; when > 0 it is the limit. */
+  orderQuantity?: number;
+  /** What sets the limit: the Event Order, or venue stock. */
+  limitSource?: "event_order" | "stock" | null;
+  addable: boolean;
+  unavailableReason?: string | null;
+  categoryName?: string | null;
+};
+
+export type PortalFloorPlanFurnitureCatalog = {
+  planId: string;
+  coupleMayAddTables: boolean;
+  isReady: boolean;
+  clientLayoutStatus?: string;
+  roomWidthFt: number | null;
+  roomDepthFt: number | null;
+  measurementUnit?: string | null;
+  inventoryItems: PortalFloorPlanCatalogItem[];
+  planTableTypes: PortalFloorPlanCatalogItem[];
+  coordinateModel?: { unit: string; note: string };
 };
 
 export type PortalFloorPlanDetail = {
@@ -197,6 +251,16 @@ export type PortalFloorPlanDetail = {
     name: string;
     spaceId: string | null;
     isOperational: boolean;
+    isCoupleSelected?: boolean;
+    isCoupleApproved?: boolean;
+    isSeatingInUse?: boolean;
+    isReady?: boolean;
+    /** When true, couple may add table objects on this working plan. */
+    coupleMayAddTables?: boolean;
+    clientLayoutStatus?: string;
+    clientSubmittedAt?: string | null;
+    clientReviewNote?: string | null;
+    clientReviewedAt?: string | null;
     backgroundImageUrl: string | null;
     backgroundImageOpacity: number;
     roomWidthFt: number;
@@ -204,6 +268,12 @@ export type PortalFloorPlanDetail = {
     measurementUnit: string;
     notes: string | null;
   };
+  /** Event.guest_count — recorded guest estimate, not seated assignments. */
+  eventGuestCount?: number | null;
+  /** Assigned Space display name when known. */
+  spaceName?: string | null;
+  /** venue_spaces.capacity for the plan/event Space. */
+  spaceCapacity?: number | null;
   objects: PortalFloorPlanObject[];
 };
 
@@ -272,6 +342,8 @@ export type BudgetCategory = {
   actualAmount: number;
   notes: string | null;
   displayOrder: number;
+  /** Soft-removed starter/custom rows — budgeted returned to unallocated. */
+  isRemoved?: boolean;
 };
 
 export type CoupleBudget = {

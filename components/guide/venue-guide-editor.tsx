@@ -36,9 +36,9 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils";
 
 // ── Section definitions ──────────────────────────────────────────────────────
 
@@ -172,20 +172,25 @@ function CompletionMeter({ data }: { data: VenueGuideData }) {
           />
         </div>
 
-        {/* Section pills with weight stars */}
-        <div className="flex flex-wrap gap-1.5">
+        {/* Section pills with weight stars — theme tokens so outlines stay visible in dark mode. */}
+        <div className="flex flex-wrap gap-1.5" data-testid="guide-completion-pills">
           {SECTIONS.map(s => {
             const done = s.isFilled(data);
             return (
-              <span key={s.key}
-                className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full font-medium"
-                style={done
-                  ? { background: "#5D6F5D18", color: "#3D5040", border: "1px solid #5D6F5D30" }
-                  : { background: "#F3F0EC",   color: "#8A837D",  border: "1px solid #E0D8D0" }
-                }>
-                {done ? <Check className="h-2.5 w-2.5" /> : <span className="h-2 w-2 rounded-full bg-current opacity-40 inline-block" />}
+              <span
+                key={s.key}
+                data-testid={`guide-completion-pill-${s.key}`}
+                data-filled={done ? "true" : "false"}
+                className={cn(
+                  "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium",
+                  done
+                    ? "border-primary/35 bg-primary/15 text-foreground"
+                    : "border-border bg-muted text-muted-foreground",
+                )}
+              >
+                {done ? <Check className="h-2.5 w-2.5" /> : <span className="inline-block h-2 w-2 rounded-full bg-current opacity-40" />}
                 {s.emoji} {s.title}
-                <span className="opacity-60 text-[9px]">{WEIGHT_STARS[s.weight]}</span>
+                <span className="text-[9px] opacity-60">{WEIGHT_STARS[s.weight]}</span>
               </span>
             );
           })}
@@ -231,9 +236,9 @@ function AudienceControl({
               type="button"
               disabled={disabled}
               onClick={() => onChange(opt.value)}
-              className={`px-2.5 py-1 text-[11px] font-medium rounded-md transition-colors ${
+              className={`px-2.5 py-1 text-[11px] font-medium rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                 active
-                  ? "bg-background text-heading shadow-sm"
+                  ? "bg-selected text-selected-foreground shadow-sm ring-1 ring-inset ring-selected-border"
                   : "text-muted-foreground hover:text-heading"
               }`}
             >
@@ -272,7 +277,7 @@ function SectionHeader({
         <div className="flex items-center gap-2 flex-wrap">
           <p className="text-sm font-semibold text-heading">{section.title}</p>
           {isFilled
-            ? <Badge variant="outline" className="text-[10px] py-0 px-1.5 font-medium text-emerald-700 border-emerald-200 bg-emerald-50">✓ Complete</Badge>
+            ? <Badge variant="outline" className="htc-badge-active text-[10px] py-0 px-1.5 font-medium">✓ Complete</Badge>
             : <Badge variant="outline" className="text-[10px] py-0 px-1.5 font-medium text-muted-foreground">Empty</Badge>
           }
         </div>
@@ -352,7 +357,10 @@ function FaqStarterRestoreMenu({ missingKeys }: { missingKeys: FaqStarterMasterK
         }
       />
       <DropdownMenuContent align="end" className="w-72">
-        <DropdownMenuLabel>Hello to Cheers starters</DropdownMenuLabel>
+        {/* Section heading — not DropdownMenuLabel (Base UI GroupLabel needs Menu.Group). */}
+        <div className="px-1.5 py-1 text-xs font-medium text-muted-foreground">
+          Hello to Cheers starters
+        </div>
         {missingKeys.map((key) => {
           const master = getFaqStarterMaster(key);
           if (!master) return null;
@@ -857,7 +865,7 @@ function StorySection({
           <div className="flex items-center gap-2 flex-wrap">
             <p className="text-sm font-semibold text-heading">Our Story</p>
             {isFilled
-              ? <Badge variant="outline" className="text-[10px] py-0 px-1.5 font-medium text-emerald-700 border-emerald-200 bg-emerald-50">✓ Complete</Badge>
+              ? <Badge variant="outline" className="htc-badge-active text-[10px] py-0 px-1.5 font-medium">✓ Complete</Badge>
               : <Badge variant="outline" className="text-[10px] py-0 px-1.5 font-medium text-muted-foreground">Empty</Badge>
             }
           </div>
@@ -946,23 +954,53 @@ export function VenueGuideEditor({
     setStory(initialStory);
   }, [initialStory]);
 
-  async function save(partial: Parameters<typeof saveGuideAction>[0], field: string) {
+  async function save(
+    partial: Parameters<typeof saveGuideAction>[0],
+    field: string,
+  ): Promise<boolean> {
     setSaving(field);
-    const result = await saveGuideAction(partial);
-    if (result.ok) {
-      toast.success(librarySavedToastMessage());
-    } else {
+    try {
+      const result = await saveGuideAction(partial);
+      if (result.ok) {
+        toast.success(librarySavedToastMessage());
+        return true;
+      }
       toast.error(result.error ?? "Could not save. Please try again.");
+      return false;
+    } catch (err) {
+      // Includes Next.js "Failed to find Server Action" after a deploy with a stale tab.
+      const message = err instanceof Error && err.message
+        ? err.message
+        : "Could not save.";
+      toast.error(
+        /server action|older or newer deployment/i.test(message)
+          ? "This page is out of date after an update. Refresh, then Save again — your edits are still in the form."
+          : message,
+      );
+      return false;
+    } finally {
+      setSaving(null);
     }
-    setSaving(null);
   }
 
   async function saveStory(v: string) {
     setSaving("story");
-    await updateStoryAction(v);
-    setStory(v);
-    toast.success(librarySavedToastMessage());
-    setSaving(null);
+    try {
+      await updateStoryAction(v);
+      setStory(v);
+      toast.success(librarySavedToastMessage());
+    } catch (err) {
+      const message = err instanceof Error && err.message
+        ? err.message
+        : "Could not save.";
+      toast.error(
+        /server action|older or newer deployment/i.test(message)
+          ? "This page is out of date after an update. Refresh, then Save again — your edits are still in the form."
+          : message,
+      );
+    } finally {
+      setSaving(null);
+    }
   }
 
   async function setSectionAudience(key: GuideSectionKey, audience: GuideAudience) {
@@ -996,13 +1034,13 @@ export function VenueGuideEditor({
     if (cleaned.length === 0) {
       const { faqs: _removed, ...rest } = nextOverrides;
       void _removed;
-      setData((d) => ({ ...d, sectionOverrides: rest }));
-      await save({ section_overrides: rest }, "section_overrides");
+      const ok = await save({ section_overrides: rest }, "section_overrides");
+      if (ok) setData((d) => ({ ...d, sectionOverrides: rest }));
       return;
     }
     nextOverrides.faqs = { vendors: cleaned };
-    setData((d) => ({ ...d, sectionOverrides: nextOverrides }));
-    await save({ section_overrides: nextOverrides }, "section_overrides");
+    const ok = await save({ section_overrides: nextOverrides }, "section_overrides");
+    if (ok) setData((d) => ({ ...d, sectionOverrides: nextOverrides }));
   }
 
   function sectionProps(key: GuideSectionKey) {
@@ -1028,12 +1066,16 @@ export function VenueGuideEditor({
 
   return (
     <div className="space-y-4 max-w-3xl">
-      <div className="rounded-sm border border-border bg-muted/30 px-4 py-3 text-sm space-y-1.5">
+      <div
+        className="htc-venue-guide-orientation rounded-sm border px-4 py-3 text-sm space-y-1.5"
+        data-testid="venue-guide-orientation"
+      >
         <p className="font-medium text-heading">What clients see here</p>
         <p className="text-muted-foreground text-xs leading-relaxed">
           Everything in this guide (parking, policies, FAQs, day-of contacts, and the rest) is edited
-          on this page — this is the source of truth clients and vendors read in the portal. Your
-          venue name, logo, and brand colors used in emails and portal chrome live in{" "}
+          on this page — this is the source of truth clients and vendors read in their portals. Your
+          venue name, logo, and brand colors used in emails and throughout your client and vendor
+          portals live in{" "}
           <a href="/settings/business" className="underline underline-offset-2 text-heading">
             Settings → Business &amp; Brand
           </a>
@@ -1226,8 +1268,10 @@ export function VenueGuideEditor({
           savingVendor={saving === "section_overrides"}
           missingStarterKeys={missingStarterKeys}
           onSaveClient={async items => {
-            setData(d => ({ ...d, faqs: items }));
-            await save({ faqs: items }, "faqs");
+            // Commit parent state only after persistence succeeds so a failed /
+            // thrown Server Action cannot clear dirty and leave a phantom FAQ.
+            const ok = await save({ faqs: items }, "faqs");
+            if (ok) setData(d => ({ ...d, faqs: items }));
           }}
           onSaveVendor={async items => {
             await setVendorFaqs(items);
@@ -1241,8 +1285,8 @@ export function VenueGuideEditor({
           contacts={data.importantContacts}
           saving={saving === "important_contacts"}
           onSave={async items => {
-            setData(d => ({ ...d, importantContacts: items }));
-            await save({ important_contacts: items }, "important_contacts");
+            const ok = await save({ important_contacts: items }, "important_contacts");
+            if (ok) setData(d => ({ ...d, importantContacts: items }));
           }}
         />
       </SectionCard>

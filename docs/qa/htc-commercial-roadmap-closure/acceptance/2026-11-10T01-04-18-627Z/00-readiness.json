@@ -1,0 +1,269 @@
+{
+  "founderReady": {
+    "status": 200,
+    "json": {
+      "ok": true,
+      "readiness": {
+        "mode": "founder_ready",
+        "ready": true,
+        "flagEnabled": true,
+        "missing": [],
+        "saasProductId": "prod_V4AgrDDqyO0YGF",
+        "diagnosticMessage": "Founder custom pricing (Phase 5) is ready."
+      },
+      "venue": {
+        "id": "f9427d5e-84f9-48bc-a9fa-8a2bcb95af7f",
+        "name": "[DISPOSABLE-P3-REHEARSAL] 1794243588",
+        "planKey": "growing",
+        "planName": "Celebrate",
+        "listAmountCents": 24900,
+        "stripeSubscriptionId": "sub_1UZvv7ErUqJH7nktxwGc9vmC",
+        "stripeCustomerId": "cus_Vb8ByVzSBbqWcS",
+        "subscriptionStatus": "active",
+        "currentPeriodEnd": null,
+        "listAmount": "$249"
+      },
+      "grants": [],
+      "groupEligible": false,
+      "holdActive": false,
+      "pendingTierUpgrade": null,
+      "appliedOffer": {
+        "source": "standard",
+        "label": "Standard catalog pricing",
+        "amountCents": 24900,
+        "amount": "$249"
+      },
+      "nextInvoicePreviewCents": 24900,
+      "nextInvoicePreview": "$249",
+      "nextInvoicePreviewSource": "stripe_test_preview",
+      "arrangements": [
+        {
+          "id": "3c309304-2ef9-46f8-8272-efa0e757beed",
+          "kind": "percent_off",
+          "status": "ended",
+          "percentOff": 15,
+          "amountOffCents": null,
+          "fixedRateCents": null,
+          "frozenListAmountCents": null,
+          "planScope": "all",
+          "survivesTierChange": true,
+          "preventsTierUpgrade": false,
+          "protectsBaseRate": false,
+          "effectiveAt": "2026-11-10T01:02:58.106+00:00",
+          "expiresAt": null,
+          "durationBillingCycles": null,
+          "reason": "Phase 5+6 combined closure acceptance",
+          "internalNotes": null,
+          "customerFacingLabel": "Special pricing",
+          "createdByEmail": "jennifer@hellotocheers.com",
+          "reconciliationStatus": "pending",
+          "expectedRecurringAmountCents": 21165,
+          "expectedRecurringAmount": "$211.65",
+          "lastReconcileError": "Subscription has an attached schedule — defer founder change to Phase 3 path.",
+          "lastReconciledAt": "2026-11-10T01:02:59.839+00:00",
+          "stripeCouponId": "htc_fnd_pct_15_3c3093042ef946f882",
+          "stripePriceId": "price_1U5rfoErUqJH7nkts2RnCCtg",
+          "audit": [
+            {
+              "at": "2026-11-10T01:02:59.169Z",
+              "by": "jennifer@hellotocheers.com",
+              "kind": "percent_off",
+              "action": "created",
+              "status": "active"
+            },
+            {
+              "at": "2026-11-10T01:02:59.839Z",
+              "error": "Subscription has an attached schedule — defer founder change to Phase 3 path.",
+              "action": "reconcile_failed",
+              "deferred": true
+            },
+            {
+              "at": "2026-11-10T01:03:24.058Z",
+              "by": "jennifer@hellotocheers.com",
+              "action": "ended",
+              "reason": "Phase 5+6 combined closure cleanup before referral reward"
+            }
+          ],
+          "createdAt": "2026-11-10T01:02:59.216868+00:00"
+        }
+      ]
+    }
+  },
+  "referralReady": {
+    "status": 200,
+    "json": {
+      "ok": true,
+      "readiness": {
+        "mode": "referral_ready",
+        "ready": true,
+        "flagEnabled": true,
+        "rewardIssueEnabled": true,
+        "missing": [],
+        "qualificationDays": 30,
+        "diagnosticMessage": "Refer a Venue is ready (submission, qualification, and reward issuance)."
+      },
+      "referrals": [
+        {
+          "id": "e9736984-1640-41a1-a0a1-a337668e3fa0",
+          "referringVenueId": "f9427d5e-84f9-48bc-a9fa-8a2bcb95af7f",
+          "referringOrganizationId": null,
+          "submittedByUserId": "2fa73101-337b-4530-8c77-f3c272c5463e",
+          "submittedByEmail": "jennifer@hellotocheers.com",
+          "referredVenueName": "DISPOSABLE-P6-BROWSER-1794272611230",
+          "referredCity": "Austin",
+          "referredState": "TX",
+          "referredWebsite": "https://p6-browser-1794272611230.test",
+          "referredWebsiteDomain": "p6-browser-1794272611230.test",
+          "referredContactEmail": "alex+1794272611230@hellotocheers.com",
+          "referredContactName": "Alex Referral",
+          "referredContactRole": "Owner",
+          "notes": "Combined Phase 5+6 closure acceptance — disposable.",
+          "status": "submitted",
+          "assignedOwnerEmail": null,
+          "linkedRelationshipId": null,
+          "linkedVenueId": null,
+          "isSelfReferral": false,
+          "isSameOrganization": false,
+          "isExistingPayingCustomer": false,
+          "isDuplicateClaim": false,
+          "blockedReason": null,
+          "programPolicyVersion": "referral_v1",
+          "qualificationDays": 30,
+          "audit": [
+            {
+              "at": "2026-11-10T01:03:32.016Z",
+              "by": "jennifer@hellotocheers.com",
+              "action": "submitted"
+            }
+          ],
+          "metadata": {
+            "referrerPlanKey": "growing",
+            "earlierReferralId": null
+          },
+          "createdAt": "2026-11-10T01:03:32.032798+00:00",
+          "updatedAt": "2026-11-10T01:03:32.032798+00:00"
+        },
+        {
+          "id": "478c364a-c092-45ea-9ad7-ac09cd5ba04c",
+          "referringVenueId": "9336a6cb-6a49-4a38-82bc-ff3b2361e8a3",
+          "referringOrganizationId": null,
+          "submittedByUserId": null,
+          "submittedByEmail": "jennifer@hellotocheers.com",
+          "referredVenueName": "DISPOSABLE-P6-REF-1794272062269",
+          "referredCity": "Austin",
+          "referredState": "TX",
+          "referredWebsite": "https://p6-ref-1794272062269.test",
+          "referredWebsiteDomain": "p6-ref-1794272062269.test",
+          "referredContactEmail": "contact+p6-1794272062269@hellotocheers.com",
+          "referredContactName": "P6 Contact",
+          "referredContactRole": null,
+          "notes": null,
+          "status": "reward_issued",
+          "assignedOwnerEmail": null,
+          "linkedRelationshipId": null,
+          "linkedVenueId": "41fdc275-0a13-4d9f-b053-90bd70ab8789",
+          "isSelfReferral": false,
+          "isSameOrganization": false,
+          "isExistingPayingCustomer": false,
+          "isDuplicateClaim": false,
+          "blockedReason": null,
+          "programPolicyVersion": "referral_v1",
+          "qualificationDays": 30,
+          "audit": [
+            {
+              "at": "2026-11-10T00:54:23.479Z",
+              "by": "phase6-harness@hellotocheers.com",
+              "action": "attributed",
+              "referredVenueId": "41fdc275-0a13-4d9f-b053-90bd70ab8789"
+            },
+            {
+              "at": "2026-11-10T00:54:24.338Z",
+              "by": "phase6-harness@hellotocheers.com",
+              "action": "qualification_pending"
+            },
+            {
+              "at": "2026-11-10T00:54:24.917Z",
+              "by": "phase6-harness@hellotocheers.com",
+              "action": "reward_eligible",
+              "amountCents": 19900
+            },
+            {
+              "at": "2026-11-10T00:54:25.876Z",
+              "by": "phase6-harness@hellotocheers.com",
+              "action": "reward_issued"
+            }
+          ],
+          "metadata": {
+            "harness": "phase6",
+            "disposable": true
+          },
+          "createdAt": "2026-11-10T00:54:22.68399+00:00",
+          "updatedAt": "2026-11-10T00:54:26.372+00:00"
+        },
+        {
+          "id": "f77458fb-78ef-4af9-9889-11f92030a562",
+          "referringVenueId": "9336a6cb-6a49-4a38-82bc-ff3b2361e8a3",
+          "referringOrganizationId": null,
+          "submittedByUserId": null,
+          "submittedByEmail": "jennifer@hellotocheers.com",
+          "referredVenueName": "DISPOSABLE-P6-REF-1794271429189",
+          "referredCity": "Austin",
+          "referredState": "TX",
+          "referredWebsite": "https://p6-ref-1794271429189.test",
+          "referredWebsiteDomain": "p6-ref-1794271429189.test",
+          "referredContactEmail": "contact+p6-1794271429189@hellotocheers.com",
+          "referredContactName": "P6 Contact",
+          "referredContactRole": null,
+          "notes": null,
+          "status": "reward_issued",
+          "assignedOwnerEmail": null,
+          "linkedRelationshipId": null,
+          "linkedVenueId": "6d3abc3e-c323-4c30-be64-b3ab899b6110",
+          "isSelfReferral": false,
+          "isSameOrganization": false,
+          "isExistingPayingCustomer": false,
+          "isDuplicateClaim": false,
+          "blockedReason": null,
+          "programPolicyVersion": "referral_v1",
+          "qualificationDays": 30,
+          "audit": [
+            {
+              "at": "2026-11-10T00:43:50.334Z",
+              "by": "phase6-harness@hellotocheers.com",
+              "action": "attributed",
+              "referredVenueId": "6d3abc3e-c323-4c30-be64-b3ab899b6110"
+            },
+            {
+              "at": "2026-11-10T00:43:50.887Z",
+              "by": "phase6-harness@hellotocheers.com",
+              "action": "qualification_pending"
+            },
+            {
+              "at": "2026-11-10T00:43:51.350Z",
+              "by": "phase6-harness@hellotocheers.com",
+              "action": "reward_eligible",
+              "amountCents": 19900
+            },
+            {
+              "at": "2026-11-10T00:55:03.760Z",
+              "by": "scheduler",
+              "action": "reward_eligible",
+              "amountCents": 19900
+            },
+            {
+              "at": "2026-11-10T00:55:04.702Z",
+              "by": "scheduler",
+              "action": "reward_issued"
+            }
+          ],
+          "metadata": {
+            "harness": "phase6",
+            "disposable": true
+          },
+          "createdAt": "2026-11-10T00:43:49.574143+00:00",
+          "updatedAt": "2026-11-10T00:55:05.089+00:00"
+        }
+      ]
+    }
+  }
+}

@@ -6,21 +6,12 @@ import { Loader2, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import { applyTimelineTemplateAction } from "@/app/(app)/timeline-templates/booking-actions";
+import { applyClientTimelineTemplateAction } from "@/app/(app)/clients/planning-actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { resolveDefaultTimelineTemplateId } from "@/lib/timeline-templates/default-for-event";
 import type { TimelineTemplate } from "@/lib/timeline-templates/types";
-
-/** The venue's marked default for this event type + space, degrading gracefully to a less specific default rather than inventing one the venue hasn't set. Mirrors resolveDefaultTemplateId in booking-setup-card.tsx. */
-function resolveDefaultTimelineTemplateId(templates: TimelineTemplate[], eventType: string | null, spaceId: string | null): string | undefined {
-  const defaults = templates.filter((t) => t.isDefault);
-  return (
-    defaults.find((t) => t.eventType === eventType && t.spaceId === spaceId)
-    ?? defaults.find((t) => t.eventType === eventType && !t.spaceId)
-    ?? defaults.find((t) => !t.eventType && t.spaceId === spaceId)
-    ?? defaults.find((t) => !t.eventType && !t.spaceId)
-  )?.id;
-}
 
 /**
  * Shown once, on a booking with no Timeline yet — disappears permanently as
@@ -30,9 +21,10 @@ function resolveDefaultTimelineTemplateId(templates: TimelineTemplate[], eventTy
  * with no Timeline yet, or vice versa.
  */
 export function TimelineSetupCard({
-  eventId, eventType, spaceId, eventStartTime, templates, hasTimeline, onApplied,
+  eventId, planningClientId = null, eventType, spaceId, eventStartTime, templates, hasTimeline, onApplied,
 }: {
   eventId: string;
+  planningClientId?: string | null;
   eventType: string | null;
   spaceId: string | null;
   eventStartTime: string | null;
@@ -49,7 +41,9 @@ export function TimelineSetupCard({
   function handleApply() {
     if (!selectedTemplate) return;
     startApply(async () => {
-      const result = await applyTimelineTemplateAction(eventId, selectedTemplate, eventStartTime);
+      const result = planningClientId && !eventId
+        ? await applyClientTimelineTemplateAction(planningClientId, selectedTemplate, eventStartTime)
+        : await applyTimelineTemplateAction(eventId, selectedTemplate, eventStartTime);
       if (result.ok) { toast.success("Timeline applied."); onApplied(); }
       else toast.error(result.message ?? "Could not apply timeline template.");
     });
@@ -74,7 +68,9 @@ export function TimelineSetupCard({
           </Button>
         </div>
         {!eventStartTime && (
-          <p className="mt-2 text-[11px] text-muted-foreground">No start time set yet — times will be calculated from noon until you add one.</p>
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            No Day-of schedule start yet — relative template items will stay without a clock time until you set one. Specific clock times still apply as written.
+          </p>
         )}
       </CardContent>
     </Card>

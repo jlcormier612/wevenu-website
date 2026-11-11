@@ -62,6 +62,7 @@ import {
   updateObjectAction,
   updateRoomSettingsAction,
 } from "@/app/(app)/events/[id]/floor-plan-actions";
+import { createClientFloorPlanAction } from "@/app/(app)/clients/planning-actions";
 import { LibrarySaveStatus, useLibrarySaveStatus } from "@/components/library/library-save-status";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -72,9 +73,13 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { prepareFloorPlanSourceUpload } from "@/lib/floor-plans/client-background-upload";
 import { backgroundClearPatch } from "@/lib/floor-plans/background-document";
 import {
+  FLOOR_PLAN_NOTES_LABEL,
+  FLOOR_PLAN_NOTES_SHARE_HINT,
+} from "@/lib/notes/floor-plan-notes-copy";
+import {
   DISPLAY_SHAPES, DISPLAY_SHAPE_LABELS, DISPLAY_SHAPE_STYLE, FloorPlanShapeSvg,
 } from "@/components/floor-plan/floor-plan-shapes";
-import { OBJECT_STYLE, OBJECT_TYPES, nextObjectLabel } from "@/lib/floor-plans/constants";
+import { OBJECT_STYLE, OBJECT_TYPES } from "@/lib/floor-plans/constants";
 import type {
   DisplayShape,
   FloorPlanCanvasObject,
@@ -85,6 +90,12 @@ import type {
 } from "@/lib/floor-plans/types";
 import { FloorPlanCapacityBanner } from "@/components/floor-plan/floor-plan-capacity-banner";
 import { isSeatingTableType } from "@/lib/floor-plans/capacity";
+import {
+  inventoryLinkStatus,
+  nextPlacementLabel,
+  resolveItemTypeLabel,
+  suggestedCapacityForPlacement,
+} from "@/lib/floor-plans/object-identity";
 import {
   floorPlanKeyboardTargetIsTextEntry,
   floorPlanNudgeStep,
@@ -312,7 +323,8 @@ function inventoryToAddSource(item: InventoryItem): AddSource {
   return {
     objectType,
     toolbarLabel: label,
-    fixedLabel: label,
+    // Placement IDs (C1, T1) are generated at insert — do not use the inventory
+    // name as the canvas label (that conflates item type with placement ID).
     width: item.width ?? undefined,
     height: item.length ?? undefined, // floor "length" (depth) becomes the canvas Y-extent
     color: item.color ?? undefined,
@@ -325,24 +337,50 @@ function inventoryToAddSource(item: InventoryItem): AddSource {
 
 function PropertiesPanel({
   obj,
+  inventoryItems = [],
   onUpdate,
   onDuplicate,
   onDelete,
   onReorder,
 }: {
   obj: FloorPlanCanvasObject;
+  inventoryItems?: InventoryItem[];
   onUpdate: (id: string, patch: Partial<FloorPlanCanvasObject>) => void;
   onDuplicate: (id: string) => void;
   onDelete: (id: string) => void;
   onReorder: (id: string, direction: "forward" | "backward") => void;
 }) {
+  const linkedItem = obj.inventoryItemId
+    ? inventoryItems.find((i) => i.id === obj.inventoryItemId) ?? null
+    : null;
+  const itemType = resolveItemTypeLabel(obj, linkedItem?.name ?? null);
+  const link = inventoryLinkStatus(obj.inventoryItemId, linkedItem?.name ?? null);
+  const linkable = inventoryItems.filter((i) => !i.isArchived && i.availableForFloorPlans);
+
   return (
-    <div className="space-y-3 p-3 border border-border bg-card rounded-xl">
-      <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          {OBJECT_TYPES[obj.objectType].label}
-        </p>
-        {obj.locked && <Lock className="h-3.5 w-3.5 text-muted-foreground" />}
+    <div
+      className="space-y-3 p-3 border border-border bg-card rounded-xl"
+      data-testid="floor-plan-object-properties"
+      data-inventory-linked={link.kind}
+      data-item-type-source={itemType.source}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Item type
+          </p>
+          <p className="text-sm font-medium text-heading truncate" data-testid="floor-plan-object-item-type">
+            {itemType.label}
+          </p>
+          <p className="text-[10px] text-muted-foreground">
+            {itemType.source === "inventory"
+              ? "From linked inventory"
+              : itemType.source === "shape"
+                ? "From layout shape (not linked to inventory)"
+                : "From object category"}
+          </p>
+        </div>
+        {obj.locked && <Lock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
       </div>
 
       {/* Actions */}
@@ -375,13 +413,18 @@ function PropertiesPanel({
       <div className="space-y-2">
         <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Details</p>
         <div className="space-y-1">
-          <Label className="text-xs">Label</Label>
+          <Label className="text-xs">Placement label</Label>
           <Input
             value={obj.label ?? ""}
             onChange={(e) => onUpdate(obj.id, { label: e.target.value })}
             className="h-7 text-xs"
             disabled={obj.locked}
+            placeholder="e.g. C1 or T3"
+            data-testid="floor-plan-object-placement-label"
           />
+          <p className="text-[10px] text-muted-foreground">
+            Canvas ID for this placement only — not the inventory item name.
+          </p>
         </div>
         {obj.objectType.startsWith("table") && (
           <div className="space-y-1">
@@ -393,10 +436,53 @@ function PropertiesPanel({
               className="h-7 text-xs w-20"
               placeholder="0"
               disabled={obj.locked}
+              data-testid="floor-plan-object-capacity"
             />
           </div>
         )}
       </div>
+
+      {/* Inventory link */}
+      {obj.objectType !== "text_label" ? (
+        <div className="space-y-2" data-testid="floor-plan-object-inventory-link">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Inventory
+          </p>
+          <p className="text-[11px] text-muted-foreground" data-testid="floor-plan-object-inventory-status">
+            {link.summary}
+          </p>
+          {linkable.length > 0 ? (
+            <select
+              className="h-8 w-full rounded-md border border-border bg-background px-2 text-xs"
+              value={obj.inventoryItemId ?? ""}
+              disabled={obj.locked}
+              data-testid="floor-plan-object-inventory-select"
+              onChange={(e) => {
+                const next = e.target.value || null;
+                onUpdate(obj.id, { inventoryItemId: next });
+              }}
+            >
+              <option value="">Not linked (layout only)</option>
+              {linkable.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name}
+                  {item.quantityAvailable === 0 ? " · stock unset (0)" : ` · qty ${item.quantityAvailable}`}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <p className="text-[11px] text-muted-foreground">
+              No Floor Plan–enabled inventory items yet.{" "}
+              <Link href="/library/inventory" className="underline hover:text-foreground">
+                Manage Inventory
+              </Link>
+            </p>
+          )}
+          <p className="text-[10px] text-muted-foreground">
+            Linking is explicit — similarly named items (Cocktail vs Round vs 60&quot; Round) stay distinct. Never matched by name.
+          </p>
+        </div>
+      ) : null}
 
       {/* Size & Rotation */}
       <div className="space-y-2">
@@ -472,14 +558,16 @@ function PropertiesPanel({
         </div>
       )}
 
-      {/* Notes */}
+      {/* Notes — part of the floor-plan artifact; may travel when shared */}
       <div className="space-y-1">
-        <Label className="text-xs">Notes</Label>
+        <Label className="text-xs">{FLOOR_PLAN_NOTES_LABEL}</Label>
+        <p className="text-[11px] text-muted-foreground">{FLOOR_PLAN_NOTES_SHARE_HINT}</p>
         <Textarea
           value={obj.notes ?? ""}
           onChange={(e) => onUpdate(obj.id, { notes: e.target.value || null })}
           className="text-xs min-h-14"
           disabled={obj.locked}
+          placeholder="Placement or setup note for this object…"
         />
       </div>
 
@@ -489,6 +577,7 @@ function PropertiesPanel({
           <input
             type="checkbox"
             checked={obj.locked}
+            data-testid="floor-plan-object-lock-toggle"
             onChange={(e) => onUpdate(obj.id, { locked: e.target.checked })}
           />
           Lock Position
@@ -579,11 +668,12 @@ function RoomSettingsPanel({
       </div>
       {onChangeNotes && (
         <div className="space-y-1">
-          <Label className="text-xs">Notes</Label>
+          <Label className="text-xs">{FLOOR_PLAN_NOTES_LABEL}</Label>
+          <p className="text-[11px] text-muted-foreground">{FLOOR_PLAN_NOTES_SHARE_HINT}</p>
           <Textarea
             value={notesValue} onChange={(e) => setNotesValue(e.target.value)}
             onBlur={() => { if (notesValue !== (notes ?? "")) onChangeNotes(notesValue); }}
-            rows={3} placeholder="Setup notes for your team — appears on the printed plan."
+            rows={3} placeholder="Setup notes for this floor plan…"
             className="text-xs"
           />
         </div>
@@ -597,6 +687,7 @@ function RoomSettingsPanel({
 export function FloorPlanEditor({
   initialPlan,
   eventId,
+  planningClientId = null,
   eventName,
   venueId,
   actions,
@@ -611,6 +702,7 @@ export function FloorPlanEditor({
 }: {
   initialPlan: FloorPlanCanvasPlan | null;
   eventId?: string;
+  planningClientId?: string | null;
   eventName?: string;
   venueId: string;
   /**
@@ -644,20 +736,24 @@ export function FloorPlanEditor({
   /** Staff view-only — no canvas mutations. */
   readOnly?: boolean;
 }) {
+  const refreshId = eventId || planningClientId || "";
+  const preBooking = Boolean(planningClientId) && !eventId;
   const boundActions: FloorPlanEditorActions = actions ?? {
-    create: () => createFloorPlanAction(eventId!),
-    addObject: (planId, input) => addObjectAction(planId, eventId!, input),
+    create: () => preBooking
+      ? createClientFloorPlanAction(planningClientId!)
+      : createFloorPlanAction(refreshId),
+    addObject: (planId, input) => addObjectAction(planId, refreshId, input),
     updateObject: (objId, input) => updateObjectAction(objId, input),
-    deleteObject: (objId) => deleteObjectAction(objId, eventId!),
-    reorderObject: (planId, objId, direction) => reorderObjectAction(planId, objId, eventId!, direction),
+    deleteObject: (objId) => deleteObjectAction(objId, refreshId),
+    reorderObject: (planId, objId, direction) => reorderObjectAction(planId, objId, refreshId, direction),
     updateBackground: (planId, url, opacity, backgroundDocumentId) =>
-      updateBackgroundAction(planId, eventId!, url, opacity, backgroundDocumentId),
+      updateBackgroundAction(planId, refreshId, url, opacity, backgroundDocumentId),
     attachBackgroundDocument: (planId, payload) =>
-      attachFloorPlanBackgroundAction(planId, eventId!, payload),
-    setBackgroundLocked: (planId, locked) => setBackgroundLockedAction(planId, eventId!, locked),
-    updateRoomSettings: (planId, input) => updateRoomSettingsAction(planId, eventId!, input),
-    clear: (planId) => clearFloorPlanAction(planId, eventId!),
-    updateNotes: (planId, notes) => updateNotesAction(planId, eventId!, notes),
+      attachFloorPlanBackgroundAction(planId, refreshId, payload),
+    setBackgroundLocked: (planId, locked) => setBackgroundLockedAction(planId, refreshId, locked),
+    updateRoomSettings: (planId, input) => updateRoomSettingsAction(planId, refreshId, input),
+    clear: (planId) => clearFloorPlanAction(planId, refreshId),
+    updateNotes: (planId, notes) => updateNotesAction(planId, refreshId, notes),
   };
   const [plan, setPlan] = React.useState<FloorPlanCanvasPlan | null>(initialPlan);
   const [objects, setObjects] = React.useState<FloorPlanCanvasObject[]>(initialPlan?.objects ?? []);
@@ -823,13 +919,22 @@ export function FloorPlanEditor({
       const pos = toCanvas(e.clientX, e.clientY);
       const source = addSource!;
       const label = source.fixedLabel
-        ?? nextObjectLabel(objects.map((o) => ({ objectType: o.objectType, label: o.label })), source.objectType);
+        ?? nextPlacementLabel(
+          objects.map((o) => ({ label: o.label })),
+          source.displayShape ?? null,
+          source.objectType,
+        );
+      const capacity = suggestedCapacityForPlacement(
+        source.displayShape ?? null,
+        source.objectType,
+        source.width ?? OBJECT_TYPES[source.objectType].defaultWidth,
+      );
       void (async () => {
         const result = await boundActions.addObject(plan.id, {
           objectType: source.objectType,
           x: snapValue(pos.x), y: snapValue(pos.y),
           label,
-          capacity: OBJECT_TYPES[source.objectType].defaultCapacity ?? undefined,
+          capacity: capacity ?? undefined,
           width: source.width,
           height: source.height,
           color: source.color,
@@ -1032,8 +1137,8 @@ export function FloorPlanEditor({
       let result: { ok: boolean; message?: string; documentId?: string };
       if (boundActions.attachBackgroundDocument) {
         result = await boundActions.attachBackgroundDocument(plan.id, payload);
-      } else if (eventId) {
-        result = await attachFloorPlanBackgroundAction(plan.id, eventId, payload);
+      } else if (eventId || planningClientId) {
+        result = await attachFloorPlanBackgroundAction(plan.id, (eventId || planningClientId)!, payload);
       } else {
         throw new Error("Missing floor plan context.");
       }
@@ -1172,7 +1277,7 @@ export function FloorPlanEditor({
   // Empty state (no floor plan yet)
   if (!plan) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-center">
+      <div className="htc-surface-guidance flex flex-col items-center justify-center px-4 py-16 text-center">
         <p className="font-heading text-lg font-medium text-heading">No floor plan yet</p>
         <p className="mt-1 mb-4 text-sm text-muted-foreground">
           {readOnly
@@ -1198,7 +1303,7 @@ export function FloorPlanEditor({
     <TooltipProvider>
     <div className="space-y-4">
       {readOnly ? (
-        <p className="rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+        <p className="htc-surface-guidance-compact px-3 py-2 text-xs">
           View-only — you can look at this layout, but only an Owner, Manager, or Coordinator can edit it.
         </p>
       ) : (
@@ -1488,13 +1593,14 @@ export function FloorPlanEditor({
         {selectedObj ? (
           <PropertiesPanel
             obj={selectedObj}
+            inventoryItems={inventoryItems}
             onUpdate={handlePropertyUpdate}
             onDuplicate={handleDuplicate}
             onDelete={handleDelete}
             onReorder={handleReorder}
           />
         ) : (
-          <div className="rounded-xl border border-dashed border-border p-4 text-center">
+          <div className="htc-surface-guidance-compact p-4 text-center">
             <p className="text-xs text-muted-foreground">
               Select an object to edit its properties.
             </p>
@@ -1514,14 +1620,29 @@ export function FloorPlanEditor({
 
       {/* Inventory Usage (Requirement 2) — informational only, never blocks placement */}
       {liveUsage.length > 0 && (
-        <div className="rounded-xl border border-border bg-muted/20 p-4 space-y-2">
+        <div
+          className="htc-surface-guidance space-y-2 p-4"
+          data-testid="floor-plan-inventory-usage"
+        >
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Inventory Usage</p>
+          <p className="text-[11px] text-muted-foreground" data-testid="floor-plan-inventory-usage-legend">
+            Available is the venue&apos;s configured inventory quantity (starters often remain 0 until
+            you set stock). Used counts only placements linked to that inventory item — not every
+            canvas object with a similar label, and not unlinked layout shapes. Remaining = Available − Used.
+            This is reporting only; it does not reserve or allocate stock.
+          </p>
+          {liveUsage.some((u) => u.quantityAvailable === 0) ? (
+            <p className="text-[11px] text-muted-foreground" data-testid="floor-plan-inventory-stock-unset-hint">
+              Some items show Available 0 — set quantity in Inventory if that should reflect real stock.
+              Remaining can look negative when linked placements exceed an unset (0) quantity.
+            </p>
+          ) : null}
           <table className="w-full text-xs">
             <thead>
               <tr className="text-left text-muted-foreground">
                 <th className="font-normal pb-1">Inventory Item</th>
-                <th className="font-normal pb-1 text-right">Available</th>
-                <th className="font-normal pb-1 text-right">Used</th>
+                <th className="font-normal pb-1 text-right">Available (venue)</th>
+                <th className="font-normal pb-1 text-right">Used (this event)</th>
                 <th className="font-normal pb-1 text-right">Remaining</th>
               </tr>
             </thead>
@@ -1529,7 +1650,12 @@ export function FloorPlanEditor({
               {liveUsage.map((u) => {
                 const overCommitted = u.remaining < 0;
                 return (
-                  <tr key={u.itemId} className={overCommitted ? "text-destructive" : "text-foreground"}>
+                  <tr
+                    key={u.itemId}
+                    className={overCommitted ? "text-destructive" : "text-foreground"}
+                    data-testid="floor-plan-inventory-usage-row"
+                    data-item-id={u.itemId}
+                  >
                     <td className="py-0.5">{u.name}</td>
                     <td className="py-0.5 text-right">{u.quantityAvailable}</td>
                     <td className="py-0.5 text-right">{u.quantityUsed}</td>

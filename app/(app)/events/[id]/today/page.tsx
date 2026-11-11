@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, CalendarClock } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 
 import { WeddingDayDashboard } from "@/components/events/wedding-day-dashboard";
 import { getDocuments } from "@/lib/documents/service";
@@ -55,16 +55,11 @@ export default async function TodayPage({ params }: Props) {
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-6">
 
         {/* Back nav */}
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
           <Link href={`/events/${id}`}
             className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
             <ArrowLeft className="h-3.5 w-3.5" />
             Back to event
-          </Link>
-          <Link href={`/calendar/booking/${id}`}
-            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
-            <CalendarClock className="h-3.5 w-3.5" />
-            Booking Schedule
           </Link>
         </div>
 

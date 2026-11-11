@@ -1,0 +1,24 @@
+{
+  "tourBtnCount": 1,
+  "afterTourClick": {
+    "space": "",
+    "hasLucy": false,
+    "filterBar": "Tour\nAll spaces\nMeadowbrook Barn\nBrook Bridge\nMeadowbrook Villa\nMeadow Lawn\nClear filters"
+  },
+  "clickedY": 946.234375,
+  "tourOnlyPanel": "Thursday, October 15\n\nNothing scheduled for this day. Add a schedule item, or book a tour from Tours.",
+  "tourOnlyHasLucy": false,
+  "barnTourGlance": "no-glance-or-empty",
+  "barnTourHasLucy": false,
+  "barnTourHasVenueTour": false,
+  "afterClearGlance": "at a glance — 4 items",
+  "afterClearLucy": true,
+  "decBlockedAllSpaces": {
+    "hasChristmas": false
+  },
+  "decBlockedBarn": {
+    "hasChristmas": false,
+    "glance": null,
+    "emptyHint": true
+  }
+}

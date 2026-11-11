@@ -1,0 +1,20 @@
+{
+  "at": "2026-10-22T21:40:00Z",
+  "migrationSha": "23e59a03c22202a8c7c7ccc58f89f0eeed9a7281",
+  "migrationRun": "https://github.com/jlcormier612/wevenu-website/actions/runs/39858761866",
+  "verdict": "DB_PROOF_GREEN",
+  "passed": 11,
+  "failed": 0,
+  "checks": [
+    "ensure",
+    "fidelity (17=17 template objects)",
+    "catalog (72\" Round remaining=2 addable)",
+    "add1 / add2 inventory",
+    "qty_exceeded on 3rd",
+    "outside_room move reject",
+    "move_preserves assignment",
+    "remove_blocked has_assignments",
+    "remove_ok with confirm",
+    "template_isolation"
+  ]
+}

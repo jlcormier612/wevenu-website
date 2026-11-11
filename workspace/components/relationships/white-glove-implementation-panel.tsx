@@ -29,6 +29,8 @@ type Props = {
   canOverride: boolean;
   canEdit: boolean;
   timelineLabel: string;
+  /** Product venue id when bound — links to authoritative Product HQ workbench. */
+  productVenueId?: string | null;
 };
 
 export function WhiteGloveImplementationPanel({
@@ -46,7 +48,14 @@ export function WhiteGloveImplementationPanel({
   canOverride,
   canEdit,
   timelineLabel,
+  productVenueId,
 }: Props) {
+  const productHqBase = (
+    process.env.NEXT_PUBLIC_PRODUCT_APP_URL?.trim() || "https://app.sandbox.hellotocheers.com"
+  ).replace(/\/$/, "");
+  const productHqUrl = productVenueId
+    ? `${productHqBase}/admin/onboarding/${encodeURIComponent(productVenueId)}`
+    : null;
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [notes, setNotes] = useState(initialNotes);
@@ -178,9 +187,27 @@ export function WhiteGloveImplementationPanel({
           </div>
         ) : null}
         <p className="mt-3 text-xs ws-muted">
-          This updates the CRM checklist only. Customer access is granted only via{" "}
-          <strong>Finish White Glove Setup</strong> in Product HQ.
+          This updates the CRM checklist only. Checking tasks here does not mean packages,
+          contracts, or templates are configured in the product. Customer access is granted
+          only via <strong>Finish White Glove Setup</strong> in Product HQ.
         </p>
+        {productHqUrl ? (
+          <p className="mt-2 text-sm">
+            <a
+              href={productHqUrl}
+              className="text-[var(--heritage-sage)] underline-offset-4 hover:underline"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Open Product HQ White Glove workbench →
+            </a>
+          </p>
+        ) : (
+          <p className="mt-2 text-xs ws-muted">
+            Bind this relationship to a product venue to open the authoritative setup
+            workbench.
+          </p>
+        )}
       </section>
 
       <section className="ws-panel p-6">
@@ -201,7 +228,7 @@ export function WhiteGloveImplementationPanel({
             <label key={key} className="block text-sm">
               <span className="ws-eyebrow">{label}</span>
               <textarea
-                className="mt-1.5 min-h-[88px] w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_45%,transparent)] bg-[var(--true-white)] p-3 text-sm"
+                className="mt-1.5 min-h-[88px] w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_45%,transparent)] bg-[var(--true-white)] p-3 text-sm text-foreground"
                 value={assets[key] ?? ""}
                 disabled={!canEdit || pending}
                 onChange={(e) =>
@@ -217,7 +244,7 @@ export function WhiteGloveImplementationPanel({
       <section className="ws-panel p-6">
         <h2 className="font-heading text-xl">Internal notes</h2>
         <textarea
-          className="mt-3 min-h-[120px] w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_45%,transparent)] bg-[var(--true-white)] p-3 text-sm"
+          className="mt-3 min-h-[120px] w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_45%,transparent)] bg-[var(--true-white)] p-3 text-sm text-foreground"
           value={notes}
           disabled={!canEdit || pending}
           onChange={(e) => setNotes(e.target.value)}
@@ -236,7 +263,7 @@ export function WhiteGloveImplementationPanel({
       </section>
 
       {message ? (
-        <p className="text-sm text-[var(--forest-sage)]" role="status">
+        <p className="text-sm text-foreground" role="status">
           {message}
         </p>
       ) : null}

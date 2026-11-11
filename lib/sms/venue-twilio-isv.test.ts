@@ -34,11 +34,16 @@ function captureEnv() {
 }
 
 function restoreEnv() {
+  const env = process.env as Record<string, string | undefined>;
   for (const key of KEYS) {
-    if (snapshot[key] === undefined) delete process.env[key];
-    else process.env[key] = snapshot[key];
+    if (snapshot[key] === undefined) delete env[key];
+    else env[key] = snapshot[key];
   }
   clearVenueTwilioSecretCache();
+}
+
+function setEnv(key: string, value: string) {
+  (process.env as Record<string, string | undefined>)[key] = value;
 }
 
 const VENUE_A = "11111111-1111-1111-1111-111111111111";
@@ -49,7 +54,7 @@ const MG_A = "MGaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 const MG_B = "MGbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
 
 function installTwoVenueAccounts() {
-  process.env.NODE_ENV = "test";
+  setEnv("NODE_ENV", "test");
   process.env.TWILIO_VENUE_ACCOUNTS_JSON = JSON.stringify([
     {
       venue_id: VENUE_A,
@@ -57,6 +62,11 @@ function installTwoVenueAccounts() {
       messaging_service_sid: MG_A,
       default_from_e164: "+15551110001",
       phone_number_sid: "PNaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      a2p_brand_sid: "BNaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      a2p_campaign_sid: "QEaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      a2p_brand_status: "APPROVED",
+      a2p_campaign_status: "VERIFIED",
+      phone_a2p_status: "REGISTERED",
       status: "ready",
     },
     {
@@ -65,6 +75,11 @@ function installTwoVenueAccounts() {
       messaging_service_sid: MG_B,
       default_from_e164: "+15551110002",
       phone_number_sid: "PNbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      a2p_brand_sid: "BNbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      a2p_campaign_sid: "QEbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      a2p_brand_status: "APPROVED",
+      a2p_campaign_status: "VERIFIED",
+      phone_a2p_status: "REGISTERED",
       status: "ready",
     },
   ]);
@@ -88,7 +103,7 @@ captureEnv();
 afterEach(restoreEnv);
 
 describe("venue Twilio ISV config readiness", () => {
-  it("isVenueTwilioSendReady requires ready + account + messaging service + real sender", () => {
+  it("isVenueTwilioSendReady requires ready + account + messaging service + brand/campaign + real sender", () => {
     const base: VenueTwilioAccount = {
       venueId: VENUE_A,
       twilioAccountSid: AC_A,
@@ -96,8 +111,11 @@ describe("venue Twilio ISV config readiness", () => {
       defaultFromE164: "+15551110001",
       phoneNumberSid: "PNaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       secondaryProfileSid: null,
-      a2pBrandSid: null,
-      a2pCampaignSid: null,
+      a2pBrandSid: "BNbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      a2pCampaignSid: "QEcccccccccccccccccccccccccccccccc",
+      a2pBrandStatus: "APPROVED",
+      a2pCampaignStatus: "VERIFIED",
+      phoneA2pStatus: "REGISTERED",
       status: "ready",
       statusDetail: null,
     };
@@ -107,6 +125,8 @@ describe("venue Twilio ISV config readiness", () => {
     assert.equal(isVenueTwilioSendReady({ ...base, messagingServiceSid: "" }), false);
     assert.equal(isVenueTwilioSendReady({ ...base, defaultFromE164: null }), false);
     assert.equal(isVenueTwilioSendReady({ ...base, phoneNumberSid: null }), false);
+    assert.equal(isVenueTwilioSendReady({ ...base, a2pBrandSid: null }), false);
+    assert.equal(isVenueTwilioSendReady({ ...base, a2pCampaignSid: null }), false);
     assert.equal(isVenueTwilioSendReady({ ...base, defaultFromE164: "  ", phoneNumberSid: "PN" }), false);
     assert.equal(isVenueTwilioSendReady(null), false);
   });
@@ -135,7 +155,7 @@ describe("venue Twilio ISV config readiness", () => {
 
 describe("venue Twilio fail-closed + tenant isolation", () => {
   it("fails closed when venue has no Twilio account (ignores global TWILIO_* env)", async () => {
-    process.env.NODE_ENV = "test";
+    setEnv("NODE_ENV", "test");
     process.env.COMMUNICATION_MODE = "real";
     process.env.TWILIO_ACCOUNT_SID = AC_A;
     process.env.TWILIO_AUTH_TOKEN = "parent-token";
@@ -158,7 +178,7 @@ describe("venue Twilio fail-closed + tenant isolation", () => {
   });
 
   it("fails closed for pending_compliance even when Messaging Service SID exists", async () => {
-    process.env.NODE_ENV = "test";
+    setEnv("NODE_ENV", "test");
     process.env.COMMUNICATION_MODE = "real";
     process.env.TWILIO_VENUE_ACCOUNTS_JSON = JSON.stringify([
       {
@@ -232,7 +252,7 @@ describe("venue Twilio fail-closed + tenant isolation", () => {
   });
 
   it("sandbox mode still requires venue Twilio resolution before redirect", async () => {
-    process.env.NODE_ENV = "test";
+    setEnv("NODE_ENV", "test");
     process.env.COMMUNICATION_MODE = "sandbox";
     delete process.env.COMMUNICATION_SANDBOX_PHONE;
     installTwoVenueAccounts();
@@ -247,7 +267,7 @@ describe("venue Twilio fail-closed + tenant isolation", () => {
   });
 
   it("sendSms posts to the venue subaccount with Messaging Service (mocked fetch)", async () => {
-    process.env.NODE_ENV = "test";
+    setEnv("NODE_ENV", "test");
     process.env.COMMUNICATION_MODE = "real";
     process.env.NEXT_PUBLIC_APP_URL = "https://app.example.com";
     installTwoVenueAccounts();
@@ -282,6 +302,70 @@ describe("venue Twilio fail-closed + tenant isolation", () => {
       // API key basic auth, not AccountSid:AuthToken
       const expectedAuth = `Basic ${Buffer.from("SKaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:secret-a").toString("base64")}`;
       assert.equal(calls[0]!.auth, expectedAuth);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("sendSms returns a human failure and never exposes raw Twilio error text", async () => {
+    setEnv("NODE_ENV", "test");
+    process.env.COMMUNICATION_MODE = "real";
+    installTwoVenueAccounts();
+
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = (async () =>
+      new Response(
+        JSON.stringify({
+          code: 20429,
+          message: "Too many requests. AccountSid ACaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        }),
+        { status: 429 },
+      )) as typeof fetch;
+
+    try {
+      const result = await sendSms({
+        to: "+16155551234",
+        body: "Hello",
+        venueId: VENUE_A,
+        skipPermissionCheck: true,
+      });
+      assert.equal(result.ok, false);
+      if (!result.ok) {
+        assert.equal(result.message, "Your message couldn’t be sent. Please try again.");
+        assert.doesNotMatch(result.message, /Twilio|AccountSid|20429|Too many requests/i);
+      }
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("sendSms maps known invalid-phone provider failures without exposing codes", async () => {
+    setEnv("NODE_ENV", "test");
+    process.env.COMMUNICATION_MODE = "real";
+    installTwoVenueAccounts();
+
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = (async () =>
+      new Response(
+        JSON.stringify({
+          code: 21211,
+          message: "The 'To' number +15551212 is not a valid phone number.",
+        }),
+        { status: 400 },
+      )) as typeof fetch;
+
+    try {
+      const result = await sendSms({
+        to: "+15551212",
+        body: "Hello",
+        venueId: VENUE_A,
+        skipPermissionCheck: true,
+      });
+      assert.equal(result.ok, false);
+      if (!result.ok) {
+        assert.equal(result.message, "This phone number appears invalid.");
+        assert.doesNotMatch(result.message, /21211|Twilio/i);
+      }
     } finally {
       globalThis.fetch = originalFetch;
     }

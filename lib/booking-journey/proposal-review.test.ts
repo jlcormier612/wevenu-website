@@ -42,14 +42,14 @@ describe("Proposal review artifact", () => {
     assert.match(couple, /ProposalArtifact/);
     assert.match(couple, /acceptOfferAction/);
     assert.doesNotMatch(artifact, /acceptOfferAction|sendOfferAction|markOfferAccepted/);
-    assert.match(panel, /Review proposal/);
+    assert.match(panel, />\s*Review\s*</);
     assert.match(panel, /proposalViewFromSelection/);
     assert.match(panel, /ArtifactReviewOverlay/);
     assert.match(panel, /handleSendOffer/);
     assert.match(panel, /sendOfferAction/);
     assert.match(panel, /Mark accepted \(offline\)/);
     assert.match(panel, /Internal exception/);
-    const sendIdx = panel.indexOf('"Send proposal"');
+    const sendIdx = panel.indexOf('"Create share link"');
     const reviewIdx = panel.indexOf("offerReviewOpen");
     assert.ok(reviewIdx > 0 && sendIdx > reviewIdx);
     const overlayChrome = readFileSync(resolve("components/artifacts/artifact-review-overlay.tsx"), "utf8");
@@ -64,8 +64,9 @@ describe("Proposal review artifact", () => {
       panel.indexOf("<ArtifactReviewOverlay"),
       panel.indexOf("</ArtifactReviewOverlay>"),
     );
-    assert.match(overlay, /Send proposal/);
+    assert.match(overlay, /Create share link/);
+    assert.doesNotMatch(overlay, /Send proposal/);
     assert.doesNotMatch(overlay, /handleMarkAccepted|Mark accepted/);
-    assert.match(panel, /Internal exception — does not send the proposal to the couple/);
+    assert.match(panel, /Internal exception — does not send anything to the couple/);
   });
 });

@@ -79,6 +79,7 @@ export type TaskActionType =
   | "vendor_library" | "payments" | "documents" | "guest_list"
   | "questionnaire" | "contract" | "timeline" | "floor_plan"
   | "event_order" | "wedding_website" | "event_details"
+  | "client_choices"
   /** @deprecated Key Dates product retired — kept only so historical playbook/task rows still typecheck. */
   | "key_dates";
 
@@ -160,6 +161,12 @@ export type EventTask = {
   paymentLineItemId: string | null;
   isRequired: boolean;
   status: TaskStatus;
+  /**
+   * Intermediate work for tasks that use it (e.g. vendor_selected:
+   * not_started → in_progress after couple submit → complete when venue confirms).
+   * Null = binary pending/complete task.
+   */
+  progressState: "not_started" | "in_progress" | "complete" | null;
   /** @deprecated Compatibility only — always null in product paths. Planning has no task dependencies. */
   dependsOnEventTaskId: string | null;
   /** @deprecated Compatibility only — always null in product paths. */
@@ -183,6 +190,8 @@ export type EventTask = {
   // a coordinator has chosen to turn this task into a client-facing Request.
   // Independent lifecycle: completing the Request never completes this task.
   requestId: string | null;
+  /** "Choose your package" read as done because an accepted package exists (never persisted). */
+  packageApproved?: boolean;
   // Scheduled Activity (Calendar Integration — Phase 1): a due date answers
   // "when should this be finished"; these answer "when does this actually
   // happen." All four are independently nullable — most tasks stay due-date
@@ -241,8 +250,12 @@ export type TaskReminder = {
 };
 
 export type EventReadiness = {
-  score: number;               // 0–100: completed required / total required × 100
+  /** 0–100: (completed + waived required) / total required × 100 — waived satisfies, but is not completion. */
+  score: number;
+  /** Required tasks with status === "complete" only. */
   completedRequired: number;
+  /** Required tasks with status === "waived" (distinct from completion). */
+  waivedRequired: number;
   totalRequired: number;
   completedOptional: number;
   totalOptional: number;

@@ -6,37 +6,70 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import {
+  confirmPipelineBookedMoveAction,
+  getBookingConfirmationDraftAction,
+  markLeadLostAction,
   updateLeadPipelineStageAction,
   wouldEnrollOnPipelineStageMoveAction,
 } from "@/app/(app)/leads/[id]/actions";
+import type { BookingConfirmationDraft } from "@/lib/booking-journey/confirmation-draft";
+import type { ConfirmedBookingOccupancy } from "@/lib/booking-journey/confirmed-occupancy";
+import { LostReasonDialog } from "@/components/leads/lost-reason-dialog";
 import { PipelineAutomationConfirmDialog } from "@/components/leads/pipeline-automation-confirm";
+import { PipelineBookedConfirmDialog } from "@/components/leads/pipeline-booked-confirm-dialog";
 import { eventTypeLabel, formatCurrency, formatDate, leadDisplayName } from "@/lib/leads/constants";
+import type { LostReasonValue } from "@/lib/leads/lost-reasons";
+import { resolveTransitionKind } from "@/lib/leads/pipeline-stage-transition";
 import { SALES_STAGE_META, type SalesStage } from "@/lib/leads/sales-stages";
 import type { Lead } from "@/lib/leads/types";
-import type { AutomationMessagePreview } from "@/lib/message-sequences/confirm-preview";
+import type { StageChangeMessagePlan } from "@/lib/message-sequences/confirm-preview";
+type BoardColumn = {
+  key: string;
+  label: string;
+  /** sales_stage key used for Booked / Lost guards when on fixed board */
+  salesStage: SalesStage;
+};
+
+function fixedColumns(): BoardColumn[] {
+  return SALES_STAGE_META.map((s) => ({
+    key: s.value,
+    label: s.label,
+    salesStage: s.value,
+  }));
+}
 
 /**
- * Fixed seven-column Sales Pipeline board.
- * Stage keys are authoritative sales_stage values — not pipeline_templates stage ids.
+ * Pipeline board — fixed seven-stage Sales Pipeline from leads.sales_stage.
+ * Active venue templates do not drive live columns or labels.
  */
-export function PipelineBoard({ leads }: { leads: Lead[] }) {
+export function PipelineBoard({
+  leads,
+}: {
+  leads: Lead[];
+}) {
   const router = useRouter();
-  const stages = SALES_STAGE_META;
+  const columnsMeta = fixedColumns();
 
-  const [overrides, setOverrides] = React.useState<Record<string, SalesStage>>({});
+  const [overrides, setOverrides] = React.useState<Record<string, string>>({});
   const [pendingLeadIds, setPendingLeadIds] = React.useState<Set<string>>(new Set());
   const [draggingLeadId, setDraggingLeadId] = React.useState<string | null>(null);
-  const [dragOverStage, setDragOverStage] = React.useState<SalesStage | null>(null);
+  const [dragOverStage, setDragOverStage] = React.useState<string | null>(null);
   const [confirmMove, setConfirmMove] = React.useState<{
     leadId: string;
-    targetStage: SalesStage;
-    preview: AutomationMessagePreview | null;
+    targetKey: string;
+    plan: StageChangeMessagePlan | null;
   } | null>(null);
+  const [lostMove, setLostMove] = React.useState<{ leadId: string; targetKey: string; label: string } | null>(null);
+  const [bookedMove, setBookedMove] = React.useState<{ leadId: string; targetKey: string; label: string } | null>(null);
+  const [bookingDraft, setBookingDraft] = React.useState<BookingConfirmationDraft | null>(null);
+  const [bookingDraftError, setBookingDraftError] = React.useState<string | null>(null);
+  const bookingDraftLeadRef = React.useRef<string | null>(null);
+  const [lifecyclePending, setLifecyclePending] = React.useState(false);
 
-  const { columns, currentStageByLead } = React.useMemo(() => {
-    const cols = new Map<SalesStage, Lead[]>();
-    stages.forEach((s) => cols.set(s.value, []));
-    const currentByLead: Record<string, SalesStage> = {};
+  const { columns, currentKeyByLead } = React.useMemo(() => {
+    const currentByLead: Record<string, string> = {};
+    const cols = new Map<string, Lead[]>();
+    for (const s of SALES_STAGE_META) cols.set(s.value, []);
     for (const lead of leads) {
       const stage = (overrides[lead.id] ?? lead.salesStage ?? lead.status) as SalesStage;
       if (cols.has(stage)) {
@@ -44,14 +77,14 @@ export function PipelineBoard({ leads }: { leads: Lead[] }) {
         currentByLead[lead.id] = stage;
       }
     }
-    return { columns: cols, currentStageByLead: currentByLead };
-  }, [leads, overrides, stages]);
+    return { columns: cols, currentKeyByLead: currentByLead };
+  }, [leads, overrides]);
 
-  function commitMove(leadId: string, targetStage: SalesStage) {
-    setOverrides((p) => ({ ...p, [leadId]: targetStage }));
+  function commitMove(leadId: string, targetKey: string, customerMessages?: "send" | "skip") {
+    setOverrides((p) => ({ ...p, [leadId]: targetKey }));
     setPendingLeadIds((p) => new Set(p).add(leadId));
 
-    updateLeadPipelineStageAction(leadId, targetStage).then((result) => {
+    updateLeadPipelineStageAction(leadId, targetKey, customerMessages).then((result) => {
       setPendingLeadIds((p) => {
         const n = new Set(p);
         n.delete(leadId);
@@ -65,28 +98,52 @@ export function PipelineBoard({ leads }: { leads: Lead[] }) {
           return n;
         });
       } else {
+        if (result.automationWarning) toast.warning(result.automationWarning);
         router.refresh();
       }
     });
   }
 
-  function handleDrop(targetStage: SalesStage) {
+  function handleDrop(targetKey: string) {
     const leadId = draggingLeadId;
     setDraggingLeadId(null);
     setDragOverStage(null);
     if (!leadId) return;
-    if (currentStageByLead[leadId] === targetStage) return;
-    if (targetStage === "booked") {
-      toast.error("Booking Started is only set by starting a booking file.");
-      return;
-    }
-    if (currentStageByLead[leadId] === "booked" && targetStage !== "lost") {
+    if (currentKeyByLead[leadId] === targetKey) return;
+
+    const targetMeta = columnsMeta.find((c) => c.key === targetKey);
+    const currentMeta = columnsMeta.find((c) => c.key === currentKeyByLead[leadId]);
+    if (!targetMeta) return;
+
+    if (currentMeta?.salesStage === "booked" && targetMeta.salesStage !== "lost") {
       toast.error("Open this lead and use Move back to Sales Pipeline.");
       return;
     }
 
+    const kind = resolveTransitionKind({ targetKey });
+
+    if (kind === "booked") {
+      setBookingDraft(null);
+      setBookingDraftError(null);
+      setBookedMove({ leadId, targetKey, label: targetMeta.label });
+      bookingDraftLeadRef.current = leadId;
+      void getBookingConfirmationDraftAction(leadId).then((loaded) => {
+        if (bookingDraftLeadRef.current !== leadId) return;
+        if (!loaded.ok) {
+          setBookingDraftError(loaded.message);
+          return;
+        }
+        setBookingDraft(loaded.draft);
+      });
+      return;
+    }
+    if (kind === "lost") {
+      setLostMove({ leadId, targetKey, label: targetMeta.label });
+      return;
+    }
+
     setPendingLeadIds((p) => new Set(p).add(leadId));
-    wouldEnrollOnPipelineStageMoveAction(leadId, targetStage).then((check) => {
+    wouldEnrollOnPipelineStageMoveAction(leadId, targetKey).then((check) => {
       setPendingLeadIds((p) => {
         const n = new Set(p);
         n.delete(leadId);
@@ -97,43 +154,99 @@ export function PipelineBoard({ leads }: { leads: Lead[] }) {
         return;
       }
       if (check.wouldEnroll) {
-        setConfirmMove({ leadId, targetStage, preview: check.preview });
+        setConfirmMove({ leadId, targetKey, plan: check.plan });
         return;
       }
-      commitMove(leadId, targetStage);
+      commitMove(leadId, targetKey);
     });
+  }
+
+  async function confirmLost(input: { reason: LostReasonValue; detail: string | null }) {
+    if (!lostMove) return;
+    const { leadId, targetKey } = lostMove;
+    setLifecyclePending(true);
+    const result = await markLeadLostAction(leadId, input, targetKey);
+    setLifecyclePending(false);
+    if (!result.ok) {
+      toast.error(result.message ?? "Could not mark this lead Lost.");
+      return;
+    }
+    setLostMove(null);
+    setOverrides((p) => ({ ...p, [leadId]: targetKey }));
+    toast.success("Marked as Lost.");
+    router.refresh();
+  }
+
+  async function confirmBooked(occupancy: ConfirmedBookingOccupancy) {
+    if (!bookedMove) return;
+    const { leadId, targetKey } = bookedMove;
+    setLifecyclePending(true);
+    const result = await confirmPipelineBookedMoveAction(leadId, targetKey, { occupancy });
+    setLifecyclePending(false);
+    if (!result.ok) {
+      toast.error(result.message ?? "Could not move this lead to Booked.");
+      return;
+    }
+    setBookedMove(null);
+    if (result.warning) toast.warning(result.warning);
+    if (!result.newlyBooked) {
+      toast.success("Already booked.");
+      router.refresh();
+      return;
+    }
+    const qs = new URLSearchParams();
+    if (result.eventId) qs.set("eventId", result.eventId);
+    router.push(`/clients/${result.clientId}/booked?${qs.toString()}`);
   }
 
   return (
     <>
-      <div className="flex gap-4 overflow-x-auto pb-2">
-        {stages.map((stage) => {
-          const stageLeads = columns.get(stage.value) ?? [];
+      <div className="htc-pipeline-board" data-htc-pipeline-board="">
+        {columnsMeta.map((stage) => {
+          const stageLeads = columns.get(stage.key) ?? [];
           const stageValue = stageLeads.reduce((sum, l) => sum + (l.estimatedBudget ?? 0), 0);
-          const isDragTarget = dragOverStage === stage.value;
+          const isDragTarget = dragOverStage === stage.key;
           return (
             <div
-              key={stage.value}
+              key={stage.key}
               onDragOver={(e) => {
                 e.preventDefault();
-                setDragOverStage(stage.value);
+                setDragOverStage(stage.key);
               }}
-              onDragLeave={() => setDragOverStage((p) => (p === stage.value ? null : p))}
-              onDrop={() => handleDrop(stage.value)}
-              className={`flex w-72 shrink-0 flex-col rounded-sm border transition-colors ${isDragTarget ? "border-primary bg-primary/5" : "border-border bg-card/40"}`}
+              onDragLeave={() => setDragOverStage((p) => (p === stage.key ? null : p))}
+              onDrop={() => handleDrop(stage.key)}
+              className="htc-pipeline-column"
+              data-drag-target={isDragTarget ? "true" : undefined}
+              data-pipeline-stage={stage.key}
             >
-              <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2.5">
-                <p className="truncate text-sm font-semibold text-heading">{stage.label}</p>
-                <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
+              <div className="htc-pipeline-column-header">
+                <div className="flex min-w-0 items-center gap-2">
+                  {stage.salesStage === "booked" ? (
+                    <a href="/clients?filter=all" className="htc-record-link truncate text-sm font-semibold text-heading">
+                      {stage.label}
+                    </a>
+                  ) : stage.salesStage === "lost" ? (
+                    <a href="/leads?view=lost" className="htc-record-link truncate text-sm font-semibold text-heading">
+                      {stage.label}
+                    </a>
+                  ) : (
+                    <p className="truncate text-sm font-semibold text-heading">{stage.label}</p>
+                  )}
+                </div>
+                <span className="htc-badge-active shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold">
                   {stageLeads.length}
                 </span>
               </div>
-              <p className="px-3 pt-2 text-xs font-medium text-muted-foreground">{formatCurrency(stageValue)}</p>
+              <p className="htc-pipeline-column-value">{formatCurrency(stageValue)}</p>
 
-              <div className="min-h-24 flex-1 space-y-2 p-2.5">
+              <div className="htc-pipeline-column-body">
                 {stageLeads.length === 0 && (
                   <p className="px-1 py-6 text-center text-xs leading-relaxed text-muted-foreground">
-                    No leads in {stage.label} yet. Leads move into this stage as you work through your sales process.
+                    {stage.salesStage === "booked"
+                      ? "No booked outcomes yet. Booked relationships are worked in Clients."
+                      : stage.salesStage === "lost"
+                        ? "No lost opportunities yet."
+                        : `No leads in ${stage.label} yet.`}
                   </p>
                 )}
                 {stageLeads.map((lead) => (
@@ -148,9 +261,10 @@ export function PipelineBoard({ leads }: { leads: Lead[] }) {
                     onKeyDown={(e) => {
                       if (e.key === "Enter") router.push(`/leads/${lead.id}`);
                     }}
-                    className={`cursor-grab rounded-lg border border-border bg-card px-3 py-2.5 shadow-sm transition-colors hover:border-primary/40 ${pendingLeadIds.has(lead.id) ? "opacity-50" : ""}`}
+                    className={`htc-pipeline-lead-card${pendingLeadIds.has(lead.id) ? " opacity-50" : ""}`}
+                    data-pipeline-lead-card=""
                   >
-                    <p className="truncate text-sm font-medium text-foreground">
+                    <p className="htc-record-link truncate text-sm font-medium text-foreground">
                       {leadDisplayName(lead.firstName, lead.lastName, lead.partnerFirstName, lead.partnerLastName)}
                     </p>
                     {lead.eventType && (
@@ -169,14 +283,42 @@ export function PipelineBoard({ leads }: { leads: Lead[] }) {
 
       <PipelineAutomationConfirmDialog
         open={confirmMove != null}
-        preview={confirmMove?.preview ?? null}
+        plan={confirmMove?.plan ?? null}
         onCancel={() => setConfirmMove(null)}
-        onContinue={() => {
+        onSend={() => {
           if (!confirmMove) return;
-          const { leadId, targetStage } = confirmMove;
+          const { leadId, targetKey } = confirmMove;
           setConfirmMove(null);
-          commitMove(leadId, targetStage);
+          commitMove(leadId, targetKey, "send");
         }}
+        onSkip={() => {
+          if (!confirmMove) return;
+          const { leadId, targetKey } = confirmMove;
+          setConfirmMove(null);
+          commitMove(leadId, targetKey, "skip");
+        }}
+      />
+
+      <LostReasonDialog
+        open={lostMove != null}
+        stageLabel={lostMove?.label}
+        confirming={lifecyclePending}
+        onCancel={() => setLostMove(null)}
+        onConfirm={confirmLost}
+      />
+
+      <PipelineBookedConfirmDialog
+        open={bookedMove != null}
+        confirming={lifecyclePending}
+        draft={bookingDraft}
+        loadError={bookingDraftError}
+        onCancel={() => {
+          bookingDraftLeadRef.current = null;
+          setBookedMove(null);
+          setBookingDraft(null);
+          setBookingDraftError(null);
+        }}
+        onConfirm={confirmBooked}
       />
     </>
   );

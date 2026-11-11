@@ -1,0 +1,94 @@
+{
+  "verdict": "GREEN",
+  "expectedSha": "3dbc2a45fbcc0fd9fa430884a3c9cc82d46d52d0",
+  "passed": 17,
+  "failed": 0,
+  "checks": [
+    {
+      "name": "serving_sha",
+      "pass": true,
+      "detail": "serving=3dbc2a45fbcc0fd9fa430884a3c9cc82d46d52d0 expected=3dbc2a45fbcc0fd9fa430884a3c9cc82d46d52d0"
+    },
+    {
+      "name": "rpc_optional_vs_required_split",
+      "pass": true,
+      "detail": "{\"optional\":[\"Baker's Dozen\",\"Harah's Hair\"],\"required\":[\"Cuppity Cakes\"]}"
+    },
+    {
+      "name": "portal_required_section_shows_cuppity",
+      "pass": true,
+      "detail": "REQUIRED FOR YOUR EVENT | Cuppity Cakes | Required for your event"
+    },
+    {
+      "name": "portal_tab_count_matches_optional_cards",
+      "pass": true,
+      "detail": "Recommended for You (2)"
+    },
+    {
+      "name": "portal_does_not_count_required_in_recommended_tab",
+      "pass": true,
+      "detail": "Recommended for You (2)"
+    },
+    {
+      "name": "pick_visible_when_not_confirmed",
+      "pass": true,
+      "detail": "selectVisible=true"
+    },
+    {
+      "name": "private_pick_persists_without_selected_at",
+      "pass": true,
+      "detail": "{\"id\":\"e7105f32-9d19-425e-9836-17bbafafca18\",\"picked_at\":\"2026-10-22T21:16:09.896012+00:00\",\"selected_at\":null,\"vendor_id\":\"42a8d273-f738-4f3c-bdcd-f2a5a237e1b3\"}"
+    },
+    {
+      "name": "inquiry_to_claimed_vendor_persists",
+      "pass": true,
+      "detail": "{\"ok\":true,\"created\":true,\"messageId\":\"18a9edca-5262-45d6-99c8-bda8961bfac0\",\"conversationId\":\"91c6628e-66c7-4f5d-bcc5-d18b49b2b47f\"}"
+    },
+    {
+      "name": "inquiry_message_row_exists",
+      "pass": true,
+      "detail": "{\"rows\":[{\"id\":\"18a9edca-5262-45d6-99c8-bda8961bfac0\",\"body\":\"Sandbox QA — are you available for our date?\",\"sender_type\":\"lead_or_client\",\"conversation_id\":\"91c6628e-66c7-4f5d-bcc5-d18b49b2b47f\"}]}"
+    },
+    {
+      "name": "anon_cannot_read_inquiry_conversation_directly",
+      "pass": true,
+      "detail": "{\"data\":null}"
+    },
+    {
+      "name": "unclaimed_inquiry_rejected_by_design",
+      "pass": true,
+      "detail": "Meadowbrook Harah is_claimed=false; start_portal_vendor_inquiry returns vendor_unclaimed (probed earlier)"
+    },
+    {
+      "name": "submit_vendor_list_ok",
+      "pass": true,
+      "detail": "{\"ok\":true,\"eventId\":\"d5df9827-b2f5-43a7-97f9-f969d473d820\",\"venueId\":\"a415ac52-cd74-42a6-8df7-7a8f6e71d080\",\"celebrated\":true,\"submissionId\":\"3b5eb64e-c822-4ec5-a500-5aef4f31c77c\",\"newlyAssigned\":[{\"vendorId\":\"42a8d273-f738-4f3c-bdcd-f2a5a237e1b3\",\"assignmentId\":\"7ced8f96-7bc3-427a-8974-43c7e9c1bf5b\"}],\"selectedCount\":1,\"removalRequests\":[{\"vendorId\":\"891899a8-8521-4be0-9dfa-3bcba3077c54\",\"requestId\":\"bbfd3864-2e22-46e5-a4c8-20c526e8ac06\",\"assignmentId\":\"3c3dbe4b-b07f-4e74-8939-62bebdc8858c\"}]}"
+    },
+    {
+      "name": "submit_sets_selected_at",
+      "pass": true,
+      "detail": "{\"vendor_id\":\"42a8d273-f738-4f3c-bdcd-f2a5a237e1b3\",\"picked_at\":\"2026-10-22T21:16:09.896012+00:00\",\"selected_at\":\"2026-10-22T21:16:13.116435+00:00\"}"
+    },
+    {
+      "name": "event_assignments_include_required_and_submitted",
+      "pass": true,
+      "detail": "[{\"id\":\"7ced8f96-7bc3-427a-8974-43c7e9c1bf5b\",\"vendor_id\":\"42a8d273-f738-4f3c-bdcd-f2a5a237e1b3\"},{\"id\":\"3c3dbe4b-b07f-4e74-8939-62bebdc8858c\",\"vendor_id\":\"891899a8-8521-4be0-9dfa-3bcba3077c54\"}]"
+    },
+    {
+      "name": "resubmit_idempotent_no_duplicate_harah_assignment",
+      "pass": true,
+      "detail": "{\"assignCount\":1,\"submit2\":{\"ok\":true,\"eventId\":\"d5df9827-b2f5-43a7-97f9-f969d473d820\",\"venueId\":\"a415ac52-cd74-42a6-8df7-7a8f6e71d080\",\"celebrated\":false,\"submissionId\":\"d96f31de-7fa5-4de7-987e-e9eeb8421a6f\",\"newlyAssigned\":[],\"selectedCount\":1,\"removalRequests\":[{\"vendorId\":\"891899a8-8521-4be0-9dfa-3bcba3077c54\",\"requestId\":\"bbfd3864-2e22-46e5-a4c8-20c526e8ac06\",\"assignmentId\":\"3c3dbe4b-b07f-4e74-8939-62bebdc8858c\"}]}}"
+    },
+    {
+      "name": "venue_can_see_submitted_selections",
+      "pass": true,
+      "detail": "[{\"vendor_id\":\"42a8d273-f738-4f3c-bdcd-f2a5a237e1b3\",\"selected_at\":\"2026-10-22T21:16:13.116435+00:00\"}]"
+    },
+    {
+      "name": "portal_shows_chosen_after_submit",
+      "pass": true,
+      "detail": "On your team | Harah's Hair· booked | Harah's Hair | On your team"
+    }
+  ],
+  "at": "2026-10-22T21:16:17.923Z"
+}

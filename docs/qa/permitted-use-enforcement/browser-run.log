@@ -1,0 +1,5 @@
+PASS serving_sha — expected=7ffb231b484d99cc01dda37c920bac24f0c62c2e ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:7ffb231b484d99cc01dda37c920bac24f0c62c2e
+PASS event_fixture — 9db18cf1-eba3-435d-9b72-9b1e8c3835bd
+PASS assignments_ui_reachable — https://app.sandbox.hellotocheers.com/events/9db18cf1-eba3-435d-9b72-9b1e8c3835bd/edit
+PASS no_horizontal_overflow — overflow=false
+VERDICT=GREEN

@@ -112,7 +112,14 @@ export function FinalDetailsForm({
   const [submitting, startSubmit] = React.useTransition();
   const [reopening, startReopen] = React.useTransition();
   const [applyingTemplate, startApplyTemplate] = React.useTransition();
-  const [selectedTemplateId, setSelectedTemplateId] = React.useState<string>("");
+  const activeTemplates = templates.filter((t) => !t.isArchived);
+  const [selectedTemplateId, setSelectedTemplateId] = React.useState<string>(() => {
+    if (initial?.templateId && templates.some((t) => t.id === initial.templateId && !t.isArchived)) {
+      return initial.templateId;
+    }
+    if (activeTemplates.length === 1) return activeTemplates[0].id;
+    return "";
+  });
   const [formUrl, setFormUrl] = React.useState<string | null>(null);
   const [copiedUrl, setCopiedUrl] = React.useState(false);
   const isSubmitted = initial?.status === "submitted" || initial?.status === "resubmitted" || initial?.status === "complete";
@@ -120,8 +127,9 @@ export function FinalDetailsForm({
   const includedFields = initial?.includedFields ?? [...CONFIGURABLE_FIELDS];
   const canApplyTemplate = !initial || initial.status === "draft";
 
-  const appUrl = typeof window !== "undefined" ? window.location.origin : "";
-  const currentFormUrl = formUrl ?? (initial?.accessKey ? `${appUrl}/questionnaire/${initial.accessKey}` : null);
+  // Relative path for render (hydration-safe). Absolute origin only when copying.
+  const formPath = initial?.accessKey ? `/questionnaire/${initial.accessKey}` : null;
+  const currentFormUrl = formUrl ?? formPath;
 
   function handleApplyTemplate() {
     if (!selectedTemplateId) return;
@@ -155,7 +163,10 @@ export function FinalDetailsForm({
 
   function handleCopyUrl() {
     if (!currentFormUrl) return;
-    navigator.clipboard.writeText(currentFormUrl);
+    const absolute = /^https?:\/\//i.test(currentFormUrl)
+      ? currentFormUrl
+      : `${window.location.origin}${currentFormUrl}`;
+    navigator.clipboard.writeText(absolute);
     setCopiedUrl(true);
     setTimeout(() => setCopiedUrl(false), 2000);
   }
@@ -277,7 +288,7 @@ export function FinalDetailsForm({
       <div className="rounded-sm border border-border bg-muted/30 p-4 space-y-3">
         <div className="flex items-center justify-between gap-2">
           <p className="text-xs text-muted-foreground">{statusSentence}</p>
-          <a href={`/events/${eventId}/questionnaire-preview`} target="_blank" rel="noopener noreferrer" className="shrink-0">
+          <a href={`/events/${eventId}/questionnaire-preview?kind=final_details&from=event`} className="shrink-0">
             <Button type="button" variant="ghost" size="sm">Preview as client</Button>
           </a>
         </div>
@@ -310,9 +321,27 @@ export function FinalDetailsForm({
             {initial?.templateId ? "Questionnaire template applied" : "Use a template? (optional)"}
           </p>
           <div className="flex items-center gap-2">
-            <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId} items={templates.map((t) => ({ value: t.id, label: t.name }))}>
-              <SelectTrigger className="w-56"><SelectValue placeholder="Choose a template…" /></SelectTrigger>
-              <SelectContent>{templates.filter((t) => !t.isArchived).map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
+            <Select
+              value={selectedTemplateId || null}
+              onValueChange={(v) => setSelectedTemplateId(v ?? "")}
+              items={activeTemplates.map((t) => ({ value: t.id, label: t.name }))}
+            >
+              <SelectTrigger className="w-56">
+                <SelectValue placeholder={activeTemplates.length === 0 ? "No templates" : "Select a template…"}>
+                  {(value: string | null) => {
+                    if (!value) return null;
+                    const match = activeTemplates.find((t) => t.id === value);
+                    if (match) return match.name;
+                    if (activeTemplates.length === 0) return "Loading templates…";
+                    return "Select a template…";
+                  }}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {activeTemplates.map((t) => (
+                  <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                ))}
+              </SelectContent>
             </Select>
             <Button type="button" variant="outline" size="sm" onClick={handleApplyTemplate} disabled={!selectedTemplateId || applyingTemplate}>
               {applyingTemplate ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Apply"}

@@ -49,13 +49,13 @@ export function VendorAcceptUnauthPanel({
       <button
         type="button"
         onClick={() => setMode("create")}
-        className="block w-full text-center rounded-lg bg-foreground text-background font-semibold py-3 text-sm hover:opacity-90 transition-opacity"
+        className="block w-full text-center rounded-sm bg-primary text-primary-foreground font-semibold py-3 text-sm hover:opacity-90 transition-opacity"
       >
         Claim My Vendor Profile
       </button>
       <a
         href={signInHref}
-        className="block w-full text-center rounded-lg border border-border bg-background font-semibold py-3 text-sm text-foreground hover:bg-muted/50 transition-colors"
+        className="block w-full text-center rounded-sm border border-border bg-card font-semibold py-3 text-sm text-foreground hover:bg-muted/50 transition-colors"
       >
         Sign in to claim
       </a>

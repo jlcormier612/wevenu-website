@@ -6,6 +6,7 @@ import { DeleteSeriesButton } from "@/components/communication/delete-series-but
 import { SeriesEnrollments } from "@/components/communication/series-enrollments";
 import { SeriesForm } from "@/components/communication/series-form";
 import { SeriesStatusToggle } from "@/components/communication/series-status-toggle";
+import { CollectionBackLink } from "@/components/library/collection-back-link";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getEnrollments, getSequence } from "@/lib/message-sequences/service";
@@ -30,39 +31,39 @@ export default async function EditSeriesPage({ params }: Props) {
   const activeCount = enrollments.filter((e) => e.status === "active").length;
 
   return (
-    <div className="htc-hospitality-page htc-hospitality-heading htc-hospitality-intro-accent space-y-6">
-      <PageHeader
-        title={series.name}
-        description="Review who this is for, what will happen, and who is currently receiving messages."
-        actions={
-          <div className="flex items-center gap-2">
-            <SeriesStatusToggle seriesId={series.id} status={series.status} />
-            <DeleteSeriesButton seriesId={series.id} seriesName={series.name} />
-          </div>
-        }
-      />
+    <div className="htc-hospitality-page space-y-5 sm:space-y-6" data-htc-phase12="automations-edit">
+      <CollectionBackLink href="/communication/series" label="Automations" />
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
+        <PageHeader
+          title={series.name}
+          description="Review who this is for, what will happen, and who is currently receiving messages."
+          actions={
+            <div className="flex items-center gap-2">
+              <SeriesStatusToggle seriesId={series.id} status={series.status} />
+              <DeleteSeriesButton seriesId={series.id} seriesName={series.name} />
+            </div>
+          }
+        />
+      </div>
       <AutomationsHelp />
-      <Card>
-        <CardHeader>
+      <Card className="htc-working-card gap-0 py-0">
+        <CardHeader className="py-4">
           <CardTitle>Automation</CardTitle>
-          <CardDescription>
-            Changes to messages only affect people who join after you save. Preview updates as you edit.
-          </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="py-5">
           <SeriesForm series={series} templates={templates} />
         </CardContent>
       </Card>
-      <Card>
-        <CardHeader>
+      <Card className="htc-working-card gap-0 py-0">
+        <CardHeader className="py-4">
           <CardTitle>People in this automation</CardTitle>
           <CardDescription>
             {series.triggerType
-              ? `People can join automatically, or you can add someone yourself. ${activeCount} active right now.`
+              ? `People can enter this automation automatically, or you can add someone yourself. ${activeCount} active right now.`
               : `This automation only starts when you add someone. ${activeCount} active right now.`}
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="py-5">
           <SeriesEnrollments sequenceId={series.id} enrollments={enrollments} />
         </CardContent>
       </Card>

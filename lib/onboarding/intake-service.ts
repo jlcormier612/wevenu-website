@@ -4,13 +4,15 @@
  */
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/env";
-import type {
-  BringBusinessChoice,
-  InquirySourceKey,
-  OnboardingIntakeInput,
-  OnboardingIntakeRecord,
-  SpaceMode,
-  TastingAppointmentChoice,
+import {
+  sanitizeAppointmentTypeKeys,
+  spaceOperatingModeFromIntake,
+  type AppointmentTypeKey,
+  type BringBusinessChoice,
+  type InquirySourceKey,
+  type OnboardingIntakeInput,
+  type OnboardingIntakeRecord,
+  type SpaceMode,
 } from "@/lib/onboarding/types";
 
 type IntakeRow = {
@@ -32,7 +34,9 @@ type IntakeRow = {
   space_mode: SpaceMode | null;
   spaces: unknown;
   offers_tours: boolean | null;
-  tasting_appointment_choice: TastingAppointmentChoice | null;
+  offers_tastings_or_appointments: boolean | null;
+  appointment_type_keys: string[] | null;
+  appointment_types_other: string | null;
   inquiry_sources: string[] | null;
   inquiry_sources_other: string | null;
   bring_business_choice: BringBusinessChoice | null;
@@ -76,7 +80,9 @@ function mapRow(r: IntakeRow): OnboardingIntakeRecord {
     spaceMode: r.space_mode ?? "one",
     spaces: mapSpaces(r.spaces),
     offersTours: r.offers_tours ?? false,
-    tastingAppointmentChoice: r.tasting_appointment_choice ?? "neither",
+    offersTastingsOrAppointments: r.offers_tastings_or_appointments,
+    appointmentTypeKeys: sanitizeAppointmentTypeKeys(r.appointment_type_keys),
+    appointmentTypesOther: r.appointment_types_other,
     inquirySources: (r.inquiry_sources ?? []) as InquirySourceKey[],
     inquirySourcesOther: r.inquiry_sources_other,
     bringBusinessChoice: r.bring_business_choice ?? "starting_fresh",
@@ -141,7 +147,16 @@ export async function submitOnboardingIntake(input: {
     space_mode: intake.spaceMode,
     spaces: spacesJson,
     offers_tours: intake.offersTours,
-    tasting_appointment_choice: intake.tastingAppointmentChoice,
+    offers_tastings_or_appointments: intake.offersTastingsOrAppointments,
+    appointment_type_keys:
+      intake.offersTastingsOrAppointments === true
+        ? sanitizeAppointmentTypeKeys(intake.appointmentTypeKeys)
+        : ([] as AppointmentTypeKey[]),
+    appointment_types_other:
+      intake.offersTastingsOrAppointments === true &&
+      (intake.appointmentTypeKeys ?? []).includes("other")
+        ? intake.appointmentTypesOther?.trim() || null
+        : null,
     inquiry_sources: intake.inquirySources,
     inquiry_sources_other:
       intake.inquirySources.includes("other")
@@ -162,43 +177,67 @@ export async function submitOnboardingIntake(input: {
     .single<{ id: string }>();
   if (error) return { ok: false, error: error.message };
 
-  // Apply venue basics
-  await admin
-    .from("venues")
-    .update({
-      name: intake.venueName.trim(),
-      email: intake.contactEmail?.trim().toLowerCase() || undefined,
-      phone: intake.contactPhone?.trim() || null,
-      website: intake.website?.trim() || null,
-      address_line1: intake.addressLine1?.trim() || null,
-      address_line2: intake.addressLine2?.trim() || null,
-      city: intake.city?.trim() || null,
-      state_region: intake.stateRegion?.trim() || null,
-      postal_code: intake.postalCode?.trim() || null,
-      country: intake.country?.trim() || null,
-    })
-    .eq("id", input.venueId);
+  // Apply venue basics. Do not overwrite venues.email with purchaser identity —
+  // venue contact email is optional and configured in Team / Business settings.
+  const venueBasics: Record<string, unknown> = {
+    name: intake.venueName.trim(),
+    phone: intake.contactPhone?.trim() || null,
+    website: intake.website?.trim() || null,
+    address_line1: intake.addressLine1?.trim() || null,
+    address_line2: intake.addressLine2?.trim() || null,
+    city: intake.city?.trim() || null,
+    state_region: intake.stateRegion?.trim() || null,
+    postal_code: intake.postalCode?.trim() || null,
+    country: intake.country?.trim() || null,
+    space_operating_mode: spaceOperatingModeFromIntake(intake.spaceMode),
+  };
+  const explicitVenueEmail = intake.contactEmail?.trim().toLowerCase() || "";
+  if (explicitVenueEmail) {
+    venueBasics.email = explicitVenueEmail;
+  }
+  await admin.from("venues").update(venueBasics).eq("id", input.venueId);
 
-  // Spaces — create missing by name (idempotent)
+  // Spaces — create missing by exact case-insensitive name; update capacity when
+  // the same named space already exists (deterministic, not fuzzy).
   const { data: existingSpaces } = await admin
     .from("venue_spaces")
-    .select("id, name")
+    .select("id, name, capacity")
     .eq("venue_id", input.venueId);
-  const existingNames = new Set(
-    (existingSpaces ?? []).map((s: { name: string }) => s.name.trim().toLowerCase()),
+  const byName = new Map(
+    (existingSpaces ?? []).map((s: { id: string; name: string; capacity: number | null }) => [
+      s.name.trim().toLowerCase(),
+      s,
+    ]),
   );
   for (let i = 0; i < spacesJson.length; i++) {
     const space = spacesJson[i];
     const key = space.name.trim().toLowerCase();
-    if (existingNames.has(key)) continue;
-    await admin.from("venue_spaces").insert({
-      venue_id: input.venueId,
-      name: space.name,
-      capacity: space.maxCapacity,
-      sort_order: i,
-      is_active: true,
-    });
-    existingNames.add(key);
+    const existing = byName.get(key);
+    if (existing) {
+      const nextCapacity = space.maxCapacity;
+      if (nextCapacity != null && nextCapacity !== existing.capacity) {
+        await admin
+          .from("venue_spaces")
+          .update({ capacity: nextCapacity, sort_order: i })
+          .eq("id", existing.id)
+          .eq("venue_id", input.venueId);
+      }
+      continue;
+    }
+    const { data: created } = await admin
+      .from("venue_spaces")
+      .insert({
+        venue_id: input.venueId,
+        name: space.name,
+        capacity: space.maxCapacity,
+        sort_order: i,
+        is_active: true,
+      })
+      .select("id, name, capacity")
+      .single();
+    if (created) {
+      byName.set(key, created as { id: string; name: string; capacity: number | null });
+    }
   }
 
   // Tours — only enable when Yes; never invent extra tour rules
@@ -252,4 +291,68 @@ export async function submitOnboardingIntake(input: {
   }
 
   return { ok: true, intakeId: saved.id };
+}
+
+/**
+ * Settings mirror of the onboarding appointment Yes/No + types.
+ * Writes the same venue_onboarding_intake columns; does not configure scheduling.
+ */
+export async function updateVenueAppointmentOfferSignal(input: {
+  venueId: string;
+  offersAppointmentsOtherThanTours: boolean | null;
+  appointmentTypeKeys?: AppointmentTypeKey[];
+  appointmentTypesOther?: string | null;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!isSupabaseConfigured) return { ok: false, error: "not_configured" };
+  const admin = createAdminClient();
+  const offers = input.offersAppointmentsOtherThanTours;
+  const keys =
+    offers === true ? sanitizeAppointmentTypeKeys(input.appointmentTypeKeys) : [];
+  const other =
+    offers === true && keys.includes("other")
+      ? input.appointmentTypesOther?.trim() || null
+      : null;
+
+  const { data: existing } = await admin
+    .from("venue_onboarding_intake")
+    .select("id, path")
+    .eq("venue_id", input.venueId)
+    .maybeSingle<{ id: string; path: string | null }>();
+
+  if (existing?.id) {
+    const { error } = await admin
+      .from("venue_onboarding_intake")
+      .update({
+        offers_tastings_or_appointments: offers,
+        appointment_type_keys: keys,
+        appointment_types_other: other,
+      })
+      .eq("venue_id", input.venueId);
+    if (error) return { ok: false, error: error.message };
+    return { ok: true };
+  }
+
+  const { data: hub } = await admin
+    .from("venue_setup_hub_state")
+    .select("onboarding_type")
+    .eq("venue_id", input.venueId)
+    .maybeSingle<{ onboarding_type: string | null }>();
+  const path =
+    hub?.onboarding_type === "white_glove" || hub?.onboarding_type === "self_setup"
+      ? hub.onboarding_type
+      : "self_setup";
+
+  const { error } = await admin.from("venue_onboarding_intake").insert({
+    venue_id: input.venueId,
+    path,
+    venue_name: null,
+    spaces: [],
+    offers_tours: null,
+    offers_tastings_or_appointments: offers,
+    appointment_type_keys: keys,
+    appointment_types_other: other,
+    inquiry_sources: [],
+  });
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
 }

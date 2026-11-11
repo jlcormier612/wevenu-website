@@ -1,0 +1,197 @@
+{
+  "run": "WGIMPMVT5E7WE",
+  "expectedSha": "c1354935924235402db657654065e034a74a9cfd",
+  "servingImage": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:c1354935924235402db657654065e034a74a9cfd",
+  "venueId": "e6041692-a46d-4774-9dd2-32a4f47ec2ad",
+  "enrollmentId": "8ee3cc55-f42d-4736-bbe9-9aad673eeae0",
+  "pass": 31,
+  "fail": 0,
+  "checks": [
+    {
+      "name": "serving_sha",
+      "pass": true,
+      "detail": "expected=c1354935924235402db657654065e034a74a9cfd ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:c1354935924235402db657654065e034a74a9cfd",
+      "kind": "deploy"
+    },
+    {
+      "name": "disposable_enrollment",
+      "pass": true,
+      "detail": "{\"venueId\":\"e6041692-a46d-4774-9dd2-32a4f47ec2ad\",\"enrollmentId\":\"8ee3cc55-f42d-4736-bbe9-9aad673eeae0\"}",
+      "kind": "setup"
+    },
+    {
+      "name": "seed_existing_template",
+      "pass": true,
+      "detail": "id=ec11f261-d7e3-4304-a900-f2e216337829",
+      "kind": "setup"
+    },
+    {
+      "name": "upload_messages",
+      "pass": true,
+      "detail": "{\"status\":200,\"json\":{\"ok\":true,\"id\":\"049efb23-6e6b-4fce-8c5c-df7aa09424e8\",\"fileName\":\"message-templates-WGIMPMVT5E7WE.txt\",\"uploadedAt\":\"2026-10-29T06:14:12.95545+00:00\"}}",
+      "kind": "materials"
+    },
+    {
+      "name": "upload_unsupported_meta",
+      "pass": true,
+      "detail": "{\"status\":200,\"json\":{\"ok\":true,\"id\":\"f3091022-5e7b-4c67-a4aa-ede8f975247d\",\"fileName\":\"unsupported-meta-WGIMPMVT5E7WE.txt\",\"uploadedAt\":\"2026-10-29T06:14:13.996563+00:00\"}}",
+      "kind": "materials"
+    },
+    {
+      "name": "upload_planning",
+      "pass": true,
+      "detail": "{\"status\":200,\"json\":{\"ok\":true,\"id\":\"17a89c01-5d20-435f-8b11-e02ae7c834ea\",\"fileName\":\"planning-checklist-WGIMPMVT5E7WE.md\",\"uploadedAt\":\"2026-10-29T06:14:14.788861+00:00\"}}",
+      "kind": "materials"
+    },
+    {
+      "name": "upload_malformed_json",
+      "pass": true,
+      "detail": "{\"status\":200,\"json\":{\"ok\":true,\"id\":\"4df3edbd-a586-4bce-b149-fb2a1984b935\",\"fileName\":\"bad-templates-WGIMPMVT5E7WE.txt\",\"uploadedAt\":\"2026-10-29T06:14:15.963484+00:00\"}}",
+      "kind": "materials"
+    },
+    {
+      "name": "upload_scan_pdf",
+      "pass": true,
+      "detail": "{\"status\":200,\"json\":{\"ok\":true,\"id\":\"c6a4ab09-c42c-42d8-bc9a-4552781ad8bb\",\"fileName\":\"scan-only-WGIMPMVT5E7WE.pdf\",\"uploadedAt\":\"2026-10-29T06:14:16.75006+00:00\"}}",
+      "kind": "materials"
+    },
+    {
+      "name": "materials_rows",
+      "pass": true,
+      "detail": "[\"message-templates-WGIMPMVT5E7WE.txt\",\"unsupported-meta-WGIMPMVT5E7WE.txt\",\"planning-checklist-WGIMPMVT5E7WE.md\",\"bad-templates-WGIMPMVT5E7WE.txt\",\"scan-only-WGIMPMVT5E7WE.pdf\"]",
+      "kind": "materials"
+    },
+    {
+      "name": "hq_panel_lists_materials",
+      "pass": true,
+      "detail": "HQ\nBETA\nBeta Command Center\nFeedback & Roadmap\nOPERATIONS\nOps Alerts\nCustomer Success\nHelp & Guides\nSupport\n1374\nAnalytics\nSystem Health\nBUSINESS\nLegal\nCOMING SOON\nSettings\nSOON\n← Back to Hello to Cheers\n← Customer Success\nWG Import WGIMPMVT5E7WE 1793254444756\nNot Started\n\nUnassigned\n\nStart Onboarding\nAssign to me (jennifer@hellotocheers.com)\nSave\nWhite Glove — WG Import WGIMPMVT5E7WE 179325444475",
+      "kind": "hq"
+    },
+    {
+      "name": "messages_preview_shows_proposals",
+      "pass": true,
+      "detail": "{\"proposal0Name\":\"WG Tour Follow-up WGIMPMVT5E7WE\",\"proposal1Name\":\"Existing Intact WGIMPMVT5E7WE\",\"reviewText\":\"Review import — message-templates-WGIMPMVT5E7WE.txt\\n\\nClose\\n\\nReading the file does not create templates. Confirm apply after you edit or exclude items. Existing records with the same name are not overwritten.\\n\\nMessage templates\\nPlanning checklist\\n\\nParsed as labeled template blocks. Review each one be\"}",
+      "kind": "A"
+    },
+    {
+      "name": "messages_apply_creates_new",
+      "pass": true,
+      "detail": "{\n  \"ok\": true,\n  \"applied\": true,\n  \"created\": [\n    {\n      \"id\": \"a00a76a5-d8f8-47d6-8d83-0814668cc6a5\",\n      \"name\": \"WG Tour Follow-up WGIMPMVT5E7WE\"\n    }\n  ],\n  \"skipped\": [],\n  \"rejected\": [\n    {\n      \"name\": \"Existing Intact WGIMPMVT5E7WE\",\n      \"reason\": \"A template with this name already exists and was not overwritten.\"\n    }\n  ]\n}",
+      "kind": "A"
+    },
+    {
+      "name": "messages_conflict_not_overwritten",
+      "pass": true,
+      "detail": "{\n  \"ok\": true,\n  \"applied\": true,\n  \"created\": [\n    {\n      \"id\": \"a00a76a5-d8f8-47d6-8d83-0814668cc6a5\",\n      \"name\": \"WG Tour Follow-up WGIMPMVT5E7WE\"\n    }\n  ],\n  \"skipped\": [],\n  \"rejected\": [\n    {\n      \"name\": \"Existing Intact WGIMPMVT5E7WE\",\n      \"reason\": \"A template with this name already exists and was not overwritten.\"\n    }\n  ]\n}",
+      "kind": "A"
+    },
+    {
+      "name": "messages_identical_retry_no_duplicate",
+      "pass": true,
+      "detail": "{\n  \"ok\": true,\n  \"applied\": true,\n  \"created\": [],\n  \"skipped\": [\n    {\n      \"name\": \"WG Tour Follow-up WGIMPMVT5E7WE\",\n      \"reason\": \"Already imported. Not duplicated.\"\n    }\n  ],\n  \"rejected\": [\n    {\n      \"name\": \"Existing Intact WGIMPMVT5E7WE\",\n      \"reason\": \"A template with this name already exists and was not overwritten.\"\n    }\n  ]\n}",
+      "kind": "A"
+    },
+    {
+      "name": "messages_persisted_venue",
+      "pass": true,
+      "detail": "{\"id\":\"a00a76a5-d8f8-47d6-8d83-0814668cc6a5\",\"name\":\"WG Tour Follow-up WGIMPMVT5E7WE\",\"category\":\"tour\",\"email_subject\":\"Thanks for touring with us\",\"email_body\":\"We loved meeting you. Here are next steps for your date.\",\"venue_id\":\"e6041692-a46d-4774-9dd2-32a4f47ec2ad\"}",
+      "kind": "A"
+    },
+    {
+      "name": "messages_existing_intact",
+      "pass": true,
+      "detail": "{\"id\":\"ec11f261-d7e3-4304-a900-f2e216337829\",\"name\":\"Existing Intact WGIMPMVT5E7WE\",\"category\":\"general\",\"email_subject\":\"Keep me\",\"email_body\":\"This existing template must remain untouched.\",\"venue_id\":\"e6041692-a46d-4774-9dd2-32a4f47ec2ad\"}",
+      "kind": "A"
+    },
+    {
+      "name": "messages_unsupported_reported",
+      "pass": true,
+      "detail": "Review import — unsupported-meta-WGIMPMVT5E7WE.txt\n\nClose\n\nReading the file does not create templates. Confirm apply after you edit or exclude items. Existing records with the same name are not overwritten.\n\nMessage templates\nPlanning checklist\n\nParsed as JSON. Confirm before any template is saved. Existing templates are not overwritten.\n\nInclude\n\nCategory: general\n\nSubject: Check warnings\n\nCategory “not_a_real_category” is not a Hello to Cheers category and was not applied.\n\nUnsupported fields ",
+      "kind": "A"
+    },
+    {
+      "name": "messages_unknown_category_stored_as_general",
+      "pass": true,
+      "detail": "{\"unsupportedRow\":{\"id\":\"05e5b559-0131-487b-9740-2434f751b44f\",\"name\":\"WG Unsupported Meta WGIMPMVT5E7WE\",\"category\":\"general\"},\"unsupportedResult\":\"{\\n  \\\"ok\\\": true,\\n  \\\"applied\\\": true,\\n  \\\"created\\\": [\\n    {\\n      \\\"id\\\": \\\"05e5b559-0131-487b-9740-2434f751b44f\\\",\\n      \\\"name\\\": \\\"WG Unsupported Meta WGIMPMVT5E7WE\\\"\\n    }\\n  ],\\n  \\\"skipped\\\": [],\\n  \\\"rejected\\\": []\\n}\"}",
+      "kind": "A"
+    },
+    {
+      "name": "malformed_json_honest_error",
+      "pass": true,
+      "detail": "This file looks like JSON but is not valid. Nothing was imported.",
+      "kind": "A"
+    },
+    {
+      "name": "malformed_json_no_false_rows",
+      "pass": true,
+      "detail": "before=3 after=3",
+      "kind": "A"
+    },
+    {
+      "name": "scan_pdf_honest_error",
+      "pass": true,
+      "detail": "This PDF has no extractable text. It may be a scan or image. Nothing was imported.",
+      "kind": "B"
+    },
+    {
+      "name": "planning_preview_proposals",
+      "pass": true,
+      "detail": "{\"planTitles\":[\"Confirm guest count estimate 90 days before\",\"Book preferred caterer 60 days before\",\"Undated vendor call that needs operator timing\",\"Open doors for vendors day of\"],\"planText\":\"Review import — planning-checklist-WGIMPMVT5E7WE.md\\n\\nClose\\n\\nReading the file does not create templates. Confirm apply after you edit or exclude items. Existing records with the same name are not overwritten.\\n\\nMessage templates\\nPlanning checklist\\n\\nExtracted for review only. Nothing is on the venue ch\"}",
+      "kind": "B"
+    },
+    {
+      "name": "planning_undated_flagged",
+      "pass": true,
+      "detail": "Review import — planning-checklist-WGIMPMVT5E7WE.md\n\nClose\n\nReading the file does not create templates. Confirm apply after you edit or exclude items. Existing records with the same name are not overwritten.\n\nMessage templates\nPlanning checklist\n\nExtracted for review only. Nothing is on the venue checklist until you apply.\n\n1 item(s) have no timing in the source. Set a days-before/after value or e",
+      "kind": "B"
+    },
+    {
+      "name": "planning_apply_ok",
+      "pass": true,
+      "detail": "{\n  \"ok\": true,\n  \"duplicate\": false,\n  \"templateId\": \"82917936-00f5-42c7-a688-0c612bcea3db\",\n  \"created\": 3,\n  \"excluded\": 1\n}",
+      "kind": "B"
+    },
+    {
+      "name": "planning_excluded_undated",
+      "pass": true,
+      "detail": "{\n  \"ok\": true,\n  \"duplicate\": false,\n  \"templateId\": \"82917936-00f5-42c7-a688-0c612bcea3db\",\n  \"created\": 3,\n  \"excluded\": 1\n}",
+      "kind": "B"
+    },
+    {
+      "name": "planning_template_persisted",
+      "pass": true,
+      "detail": "{\"id\":\"82917936-00f5-42c7-a688-0c612bcea3db\",\"name\":\"WG Planning WGIMPMVT5E7WE\",\"venue_id\":\"e6041692-a46d-4774-9dd2-32a4f47ec2ad\",\"kind\":\"client\"}",
+      "kind": "B"
+    },
+    {
+      "name": "planning_only_approved_tasks",
+      "pass": true,
+      "detail": "[{\"id\":\"1b0cfbfe-8df1-43c7-86df-a85bdfabfdb3\",\"title\":\"Edited guest count WGIMPMVT5E7WE\",\"days_offset\":-90,\"needs_review\":false},{\"id\":\"05a16106-6338-444a-b717-77ec5427ab7c\",\"title\":\"Book preferred caterer 60 days before\",\"days_offset\":-60,\"needs_review\":false},{\"id\":\"5005e58b-d802-45c4-ae4f-d887a7649e1c\",\"title\":\"Open doors for vendors day of\",\"days_offset\":0,\"needs_review\":false}]",
+      "kind": "B"
+    },
+    {
+      "name": "planning_no_invented_null_offsets",
+      "pass": true,
+      "detail": "[{\"title\":\"Edited guest count WGIMPMVT5E7WE\",\"days_offset\":-90},{\"title\":\"Book preferred caterer 60 days before\",\"days_offset\":-60},{\"title\":\"Open doors for vendors day of\",\"days_offset\":0}]",
+      "kind": "B"
+    },
+    {
+      "name": "planning_duplicate_retry",
+      "pass": true,
+      "detail": "{\n  \"ok\": true,\n  \"duplicate\": true,\n  \"templateId\": \"82917936-00f5-42c7-a688-0c612bcea3db\"\n}",
+      "kind": "B"
+    },
+    {
+      "name": "planning_no_second_template",
+      "pass": true,
+      "detail": "count=1",
+      "kind": "B"
+    },
+    {
+      "name": "cross_venue_templates_untouched",
+      "pass": true,
+      "detail": "before=11 after=11",
+      "kind": "isolation"
+    }
+  ]
+}

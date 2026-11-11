@@ -140,7 +140,7 @@ export function WorkspaceUploadButton({
 
   if (!open) {
     return (
-      <Button type="button" variant="outline" size="sm" onClick={() => setOpen(true)}>
+      <Button type="button" size="sm" onClick={() => setOpen(true)}>
         <Plus className="mr-1 h-3.5 w-3.5" /> Upload Document
       </Button>
     );

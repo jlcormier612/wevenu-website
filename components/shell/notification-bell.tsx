@@ -2,9 +2,10 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { Bell } from "lucide-react";
+import { Bell, Trash2 } from "lucide-react";
 
 import { normalizeVenueNotificationHref } from "@/lib/notifications/venue-deep-links";
+import { useBackoffPoll } from "@/lib/polling/use-backoff-poll";
 
 type VenueNotification = {
   id: string;
@@ -26,6 +27,12 @@ type NotificationsResponse = {
 const NOTIFICATION_CTA: Record<string, string> = {
   new_lead:               "Review inquiry",
   possible_duplicate_inquiry: "Review possible duplicate",
+  proposal_accepted:      "Open the relationship",
+  proposal_selected:      "Open the relationship",
+  proposal_sent:          "Open the relationship",
+  event_order_approved:   "Open Event Order",
+  tour_scheduled:         "Open the lead",
+  tour_confirmed:         "Open the lead",
   // Destination is Booking Documents (#documents) — there is no venue Guest List tab.
   rsvp_received:          "Open documents",
   task_completed_couple:  "Open playbook",
@@ -34,6 +41,7 @@ const NOTIFICATION_CTA: Record<string, string> = {
   feedback_received:      "Review feedback",
   referral_received:      "View referral",
   message_received:       "Reply to message",
+  client_photo_shared:    "View photo",
 };
 
 function getCta(type: string): string {
@@ -59,25 +67,24 @@ export function NotificationBell() {
   const [loading, setLoading]             = React.useState(true);
   const panelRef                          = React.useRef<HTMLDivElement>(null);
 
-  async function fetchNotifications() {
+  async function fetchNotifications(): Promise<boolean> {
     try {
       const res  = await fetch("/api/notifications");
+      if (!res.ok) return false;
       const data = await res.json() as NotificationsResponse;
       setNotifications(data.notifications ?? []);
       setUnreadCount(data.unreadCount ?? 0);
+      return true;
     } catch {
       // silent — never crash the shell over a failed notification fetch
+      return false;
     } finally {
       setLoading(false);
     }
   }
 
-  // Initial fetch + 60s poll
-  React.useEffect(() => {
-    fetchNotifications();
-    const id = setInterval(fetchNotifications, 60_000);
-    return () => clearInterval(id);
-  }, []);
+  // Initial fetch, then a 60s cadence that backs off while the API is failing.
+  useBackoffPoll(fetchNotifications);
 
   // Close on outside click
   React.useEffect(() => {
@@ -115,7 +122,30 @@ export function NotificationBell() {
     });
   }
 
+  async function clearAll() {
+    setNotifications([]);
+    setUnreadCount(0);
+    await fetch("/api/notifications/clear", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids: [] }),
+    });
+  }
+
+  async function clearOne(id: string, wasUnread: boolean) {
+    setNotifications(prev => prev.filter(n => n.id !== id));
+    if (wasUnread) {
+      setUnreadCount(prev => Math.max(0, prev - 1));
+    }
+    await fetch("/api/notifications/clear", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids: [id] }),
+    });
+  }
+
   const hasUnread = unreadCount > 0;
+  const hasNotifications = notifications.length > 0;
 
   return (
     <div className="relative" ref={panelRef}>
@@ -140,7 +170,7 @@ export function NotificationBell() {
       {/* Panel */}
       {open && (
         <div
-          className="absolute right-0 top-full z-50 mt-1.5 w-[340px] overflow-hidden rounded-sm border bg-background"
+          className="absolute right-0 top-full z-50 mt-1.5 w-[340px] overflow-hidden rounded-sm border bg-background max-sm:fixed max-sm:inset-x-2 max-sm:top-[4.25rem] max-sm:w-auto"
           style={{ maxHeight: "min(500px, calc(100svh - 88px))" }}
         >
           {/* Header */}
@@ -153,14 +183,28 @@ export function NotificationBell() {
                 </span>
               )}
             </div>
-            {hasUnread && (
-              <button
-                onClick={markAllRead}
-                className="text-xs text-primary hover:underline"
-              >
-                Mark all read
-              </button>
-            )}
+            <div className="flex items-center gap-2">
+              {hasUnread && (
+                <button
+                  type="button"
+                  onClick={markAllRead}
+                  className="text-xs text-primary hover:underline"
+                >
+                  Mark all read
+                </button>
+              )}
+              {hasNotifications && (
+                <button
+                  type="button"
+                  onClick={() => void clearAll()}
+                  className="inline-flex items-center gap-1 rounded px-1 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-destructive"
+                  aria-label="Clear all notifications"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Clear all
+                </button>
+              )}
+            </div>
           </div>
 
           {/* List */}
@@ -176,14 +220,14 @@ export function NotificationBell() {
                 <p className="text-xs text-muted-foreground">Notifications will appear here as activity happens.</p>
               </div>
             ) : (
-              <div className="divide-y divide-border/50">
+              <div className="space-y-2 p-2">
                 {notifications.map(n => {
                   const isUnread = !n.readAt;
                   const href = normalizeVenueNotificationHref(n.link, n.type);
 
                   const itemContent = (
                     <div
-                      className={`flex gap-3 px-4 py-3.5 transition-colors hover:bg-muted/40 cursor-pointer ${isUnread ? "bg-primary/[0.03]" : ""}`}
+                      className="htc-notification-row flex cursor-pointer gap-3 rounded-lg border border-border bg-card px-3.5 py-3"
                       onClick={() => {
                         if (isUnread) void markOneRead(n.id);
                         setOpen(false);
@@ -197,12 +241,27 @@ export function NotificationBell() {
                           <p className={`text-sm leading-snug ${isUnread ? "font-semibold text-heading" : "font-medium text-foreground/80"}`}>
                             {n.title}
                           </p>
-                          {isUnread && (
-                            <span
-                              className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-primary"
-                              aria-hidden="true"
-                            />
-                          )}
+                          <div className="flex shrink-0 items-start gap-1">
+                            {isUnread && (
+                              <span
+                                className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary"
+                                aria-hidden="true"
+                              />
+                            )}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                void clearOne(n.id, isUnread);
+                              }}
+                              className="rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-destructive"
+                              aria-label="Dismiss"
+                              title="Dismiss"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
                         </div>
                         {n.body && (
                           <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
@@ -210,7 +269,10 @@ export function NotificationBell() {
                           </p>
                         )}
                         {href && (
-                          <p className="mt-1.5 text-[10px] font-semibold" style={{ color: "#9B4F54" }}>
+                          <p
+                            data-testid="notification-cta"
+                            className="mt-1.5 text-[10px] font-semibold text-[#9B4F54] dark:text-[color-mix(in_oklch,var(--dusty-rose)_22%,var(--true-white))]"
+                          >
                             {getCta(n.type)} →
                           </p>
                         )}
@@ -233,11 +295,11 @@ export function NotificationBell() {
             )}
           </div>
 
-          {/* Footer */}
+          {/* Footer — list is the latest 40 rows; there is no age-based expiry job. */}
           {!loading && notifications.length > 0 && (
             <div className="border-t px-4 py-2">
               <p className="text-center text-[10px] text-muted-foreground">
-                {notifications.length} most recent · older notifications expire after 30 days
+                {notifications.length} most recent
               </p>
             </div>
           )}

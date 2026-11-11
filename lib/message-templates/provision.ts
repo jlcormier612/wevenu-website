@@ -67,7 +67,7 @@ export async function provisionStarterMessageTemplates(
 
     if (sameName.length > 0) {
       // Venue already has a same-named (likely customized) template — do not
-      // duplicate or overwrite. They can use "Add starter again" deliberately.
+      // duplicate or overwrite. They can deliberately add another starter copy.
       skipped.push(master.key);
       continue;
     }

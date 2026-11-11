@@ -14,9 +14,9 @@ describe("starter Automations (launch set)", () => {
     assert.deepEqual(keys, ["SEQ-01", "SEQ-02", "SEQ-03", "SEQ-04"]);
   });
 
-  it("SEQ-01 is active by default; SEQ-02/03/04 start paused (safe opt-in)", () => {
+  it("all starter sequences including SEQ-01 start paused (safe opt-in)", () => {
     const byKey = Object.fromEntries(STARTER_SEQUENCE_MASTERS.map((m) => [m.key, m]));
-    assert.equal(byKey["SEQ-01"]!.initialStatus, "active");
+    assert.equal(byKey["SEQ-01"]!.initialStatus, "paused");
     assert.equal(byKey["SEQ-02"]!.initialStatus, "paused");
     assert.equal(byKey["SEQ-03"]!.initialStatus, "paused");
     assert.equal(byKey["SEQ-04"]!.initialStatus, "paused");

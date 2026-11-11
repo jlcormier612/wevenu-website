@@ -46,6 +46,9 @@ type VenueRow = {
   accent_color: string;
   neutral_color: string;
   email_signature: string | null;
+  email_footer_show_signature?: boolean | null;
+  email_footer_show_email?: boolean | null;
+  email_footer_show_phone?: boolean | null;
   public_review_url: string | null;
   currency: string;
   week_starts_on: number;
@@ -61,18 +64,26 @@ type VenueRow = {
   onboarding_dismissed: boolean;
   luv_intro_seen_at: string | null;
   embed_key: string;
+  hold_blocks_availability?: boolean | null;
+  allow_simultaneous_public_availability?: boolean | null;
+  allow_tours_during_booked_events?: boolean | null;
   lead_email_key: string;
   tour_scheduling_enabled: boolean;
   conversation_experience_enabled: boolean;
   event_order_enabled: boolean;
+  planning_checklists_enabled: boolean | null;
   planning_timeline_enabled: boolean | null;
   planning_floor_plan_enabled: boolean | null;
   planning_seating_enabled: boolean | null;
   planning_vendors_enabled: boolean | null;
+  planning_inventory_enabled: boolean | null;
+  planning_event_order_enabled: boolean | null;
+  planning_questionnaires_enabled: boolean | null;
   access_disabled: boolean | null;
   account_status: "active" | "suspended" | null;
   saas_stripe_customer_id: string | null;
   commercial_booking_prefs?: VenueCommercialBookingPrefs | Record<string, unknown> | null;
+  space_operating_mode?: "single" | "multi" | null;
   created_at: string;
   updated_at: string;
 };
@@ -105,6 +116,9 @@ function mapVenue(r: VenueRow): Venue {
     accentColor: r.accent_color ?? "#B8AEA1",
     neutralColor: r.neutral_color ?? "#F7F5F1",
     emailSignature: r.email_signature ?? null,
+    emailFooterShowSignature: r.email_footer_show_signature !== false,
+    emailFooterShowEmail: r.email_footer_show_email !== false,
+    emailFooterShowPhone: r.email_footer_show_phone === true,
     publicReviewUrl: r.public_review_url ?? null,
     currency: r.currency,
     weekStartsOn: r.week_starts_on,
@@ -120,18 +134,26 @@ function mapVenue(r: VenueRow): Venue {
     onboardingDismissed: r.onboarding_dismissed,
     luvIntroSeenAt: r.luv_intro_seen_at,
     embedKey: r.embed_key ?? "",
+    holdBlocksAvailability: r.hold_blocks_availability !== false,
+    allowSimultaneousPublicAvailability: r.allow_simultaneous_public_availability === true,
+    allowToursDuringBookedEvents: r.allow_tours_during_booked_events === true,
     leadEmailKey: r.lead_email_key ?? "",
     tourSchedulingEnabled: r.tour_scheduling_enabled ?? false,
     conversationExperienceEnabled: r.conversation_experience_enabled ?? false,
     eventOrderEnabled: r.event_order_enabled ?? false,
+    planningChecklistsEnabled: r.planning_checklists_enabled ?? true,
     planningTimelineEnabled: r.planning_timeline_enabled ?? true,
     planningFloorPlanEnabled: r.planning_floor_plan_enabled ?? true,
     planningSeatingEnabled: r.planning_seating_enabled ?? true,
     planningVendorsEnabled: r.planning_vendors_enabled ?? true,
+    planningInventoryEnabled: r.planning_inventory_enabled ?? true,
+    planningEventOrderEnabled: r.planning_event_order_enabled ?? true,
+    planningQuestionnairesEnabled: r.planning_questionnaires_enabled ?? true,
     accessDisabled: r.access_disabled === true,
     accountStatus: r.account_status === "suspended" ? "suspended" : "active",
     saasStripeCustomerId: r.saas_stripe_customer_id ?? null,
     commercialBookingPrefs: normalizeCommercialBookingPrefs(r.commercial_booking_prefs),
+    spaceOperatingMode: r.space_operating_mode === "multi" ? "multi" : "single",
     createdAt: r.created_at,
     updatedAt: r.updated_at,
   };
@@ -215,6 +237,20 @@ export async function getVenueForCurrentUser(
   return data ? mapVenue(data) : null;
 }
 
+/** A venue by id — for token-scoped public documents that have no staff session. */
+export async function getVenueById(
+  client: DbClient,
+  venueId: string,
+): Promise<Venue | null> {
+  const { data, error } = await client
+    .from("venues")
+    .select("*")
+    .eq("id", venueId)
+    .maybeSingle<VenueRow>();
+  if (error) throw error;
+  return data ? mapVenue(data) : null;
+}
+
 /**
  * Atomically upserts the setup payload; returns the venue id. `completed`
  * controls whether this is a final "Create venue" submit (true) or a
@@ -267,6 +303,9 @@ export async function getVenueFullDetails(
     .select("full_name, title, email")
     .eq("venue_id", venue.id)
     .eq("is_owner", true)
+    .eq("is_active", true)
+    .order("accepted_at", { ascending: true, nullsFirst: false })
+    .limit(1)
     .maybeSingle<{ full_name: string; title: string | null; email: string | null }>();
   if (staffErr) throw staffErr;
 
@@ -340,10 +379,22 @@ export async function updateOwnerStaff(
   venueId: string,
   patch: { full_name: string; title: string | null; email: string | null },
 ): Promise<void> {
+  // Prefer a single accepted owner row when multiple owners exist (settings
+  // profile fields remain a primary-contact convenience, not multi-owner edit).
+  const { data: primary, error: findErr } = await client
+    .from("venue_staff")
+    .select("id")
+    .eq("venue_id", venueId)
+    .eq("is_owner", true)
+    .eq("is_active", true)
+    .order("accepted_at", { ascending: true, nullsFirst: false })
+    .limit(1)
+    .maybeSingle<{ id: string }>();
+  if (findErr) throw findErr;
+  if (!primary) return;
   const { error } = await client
     .from("venue_staff")
     .update(patch)
-    .eq("venue_id", venueId)
-    .eq("is_owner", true);
+    .eq("id", primary.id);
   if (error) throw error;
 }

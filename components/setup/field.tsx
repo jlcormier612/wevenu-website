@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
  * messages stay legible while still signalling with the palette's error color.
  */
 export function Field({
+  id,
   label,
   htmlFor,
   required,
@@ -21,6 +22,7 @@ export function Field({
   className,
   children,
 }: {
+  id?: string;
   label?: string;
   htmlFor?: string;
   required?: boolean;
@@ -30,7 +32,7 @@ export function Field({
   children: React.ReactNode;
 }) {
   return (
-    <div className={cn("space-y-1.5", className)}>
+    <div id={id} className={cn("space-y-1.5", className)}>
       {label ? (
         <Label htmlFor={htmlFor}>
           {label}

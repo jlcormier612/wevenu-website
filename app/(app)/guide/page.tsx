@@ -21,12 +21,12 @@ export default async function VenueGuidePage() {
     .filter((k): k is FaqStarterMasterKey => !presentKeys.has(k));
 
   return (
-    <div className="htc-hospitality-page space-y-6">
+    <div className="htc-hospitality-page space-y-4 sm:space-y-6">
       <div className="htc-hospitality-heading htc-hospitality-intro-accent">
-      <PageHeader
-        title="Venue Guide"
-        description="Everything your clients need to know — parking, policies, FAQs, and more. Clients browse this in their portal and Luv answers questions from it."
-      />
+        <PageHeader
+          title="Venue Guide"
+          description="Everything your clients need to know — parking, policies, FAQs, and more. Clients browse this in their portal and Luv answers questions from it."
+        />
       </div>
       <VenueGuideEditor initial={initial} missingStarterKeys={missingStarterKeys} initialStory={venue?.story ?? ""} />
     </div>

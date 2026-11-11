@@ -1,0 +1,114 @@
+▶ conditional choice groups
+  ✔ 1. required parent cannot be skipped (2.655959ms)
+  ✔ 2. Plated reveals only plated child groups (1.253584ms)
+  ✔ 3. Buffet reveals only buffet child groups (0.103292ms)
+  ✔ 4. switching Plated → Buffet deactivates plated-only selections (0.866333ms)
+  ✔ 5. switching Buffet → Plated deactivates buffet-only selections (0.073167ms)
+  ✔ 6. inactive children cannot remain billable (0.173875ms)
+  ✔ 7. Bar parent/child behaves equivalently (0.111042ms)
+  ✔ 8. parent + child prices are not double-counted beyond selected lines (0.094667ms)
+  ✔ 9. required child blocks submit when active and unanswered (0.093666ms)
+  ✔ 10. hidden required child does not block submit (0.108041ms)
+  ✔ 11. orphan answers on inactive children are rejected without reconcile (0.085875ms)
+  ✔ 12. nested children render immediately after parent in visible order (0.834125ms)
+✔ conditional choice groups (10.959834ms)
+▶ portal Choices submit contract
+  ✔ submit validates answers then calls submit_client_choices RPC (0.958916ms)
+  ✔ save path is distinct from submit and does not finalize (0.129625ms)
+  ✔ portal UI exposes Save vs Submit and truthful submitted copy (0.152ms)
+  ✔ venue panel surfaces couple-submitted choices for review (0.072ms)
+✔ portal Choices submit contract (2.051584ms)
+▶ selection-request lifecycle isolation
+  ✔ sendClientChoicesRequest only portals + emails — never shares Event Order (0.685958ms)
+  ✔ client-choices lib never imports Event Order share/finalize APIs (0.158209ms)
+  ✔ selection email uses choices deep link, not Event Order hash (0.088333ms)
+  ✔ Event Order share remains a separate representation path (0.070375ms)
+  ✔ ShareDialog selection send wires sendClientChoicesRequestAction only (0.098917ms)
+✔ selection-request lifecycle isolation (2.135792ms)
+▶ validateChoicesAnswers
+  ✔ rejects submit with no dinner selection (0.874792ms)
+  ✔ rejects two dinners in a pick-one group (0.091958ms)
+  ✔ allows dinner only (arbor optional declined) (0.065791ms)
+  ✔ allows dinner + arbor (0.063292ms)
+  ✔ rejects unknown option ids (0.065041ms)
+  ✔ skips inactive required dependents and rejects orphan child answers (0.145958ms)
+✔ validateChoicesAnswers (2.126125ms)
+▶ request budget
+  ✔ is bounded and well under the claim lease (0.917208ms)
+  ✔ classifies methods that can change QuickBooks state (0.123416ms)
+  ✔ recognises both timeout and abort signals (0.084ms)
+✔ request budget (1.847583ms)
+▶ a read that fails may be retried
+  ✔ timeout stays retryable and certain (0.113917ms)
+  ✔ dropped connection stays retryable and certain (0.304ms)
+✔ a read that fails may be retried (0.511875ms)
+▶ a write that fails is never silently replayed
+  ✔ timeout is uncertain and not retryable (0.099583ms)
+  ✔ dropped connection is uncertain and not retryable (0.057833ms)
+  ✔ says why it is being held, without guessing the outcome (0.175458ms)
+  ✔ reports the budget it exceeded (0.06675ms)
+✔ a write that fails is never silently replayed (0.533542ms)
+▶ the client applies the budget everywhere it calls Intuit
+  ✔ every outbound fetch carries a timeout signal (0.160291ms)
+  ✔ token refresh and API calls both handle a transport failure (0.055167ms)
+  ✔ a failed token refresh is not treated as a dead connection (0.053125ms)
+✔ the client applies the budget everywhere it calls Intuit (0.355041ms)
+▶ uncertainty survives the whole call chain
+  ✔ every sync path forwards it rather than dropping it (4.819041ms)
+  ✔ the processor holds an uncertain write instead of failing or retrying it (0.350667ms)
+  ✔ a throw from dispatch is held as uncertain, not failed and not fatal (0.121709ms)
+  ✔ holding leaves the claim and attempt count untouched so the lease can surface it (2.079333ms)
+✔ uncertainty survives the whole call chain (7.527792ms)
+▶ QuickBooks backoff and dead-letter ceiling
+  ✔ grows exponentially from one minute and caps at six hours (0.595708ms)
+  ✔ never returns a delay below the base or above the cap (0.131541ms)
+  ✔ is monotonic until it saturates (0.0855ms)
+  ✔ gives up after eight attempts (0.061625ms)
+  ✔ computeNextAttemptAt returns a future ISO timestamp (1.611708ms)
+✔ QuickBooks backoff and dead-letter ceiling (3.402459ms)
+▶ every entity push reads QuickBooks before it writes
+  ✔ Customer is looked up by a deterministic key before create (0.616917ms)
+  ✔ Invoice is looked up by a deterministic key before create (0.30875ms)
+  ✔ Payment is looked up by a deterministic key before create (1.105459ms)
+  ✔ refund reconciles an existing Payment (GET before update/void), never creates RefundReceipt (0.439ms)
+  ✔ quotes are escaped so a name cannot break out of the QBO query (0.413208ms)
+✔ every entity push reads QuickBooks before it writes (3.238041ms)
+▶ queue claim and release transitions
+  ✔ a claim only succeeds from pending or failed_retrying (0.105375ms)
+  ✔ releasing returns an item to pending without burning an attempt (0.059042ms)
+  ✔ a disconnected venue releases the item rather than failing it (0.057041ms)
+✔ queue claim and release transitions (0.287375ms)
+▶ abandoned-claim classification
+  ✔ never reclaims a claim that is still inside the lease (0.143208ms)
+  ✔ reclaims a stale claim only when no dispatch marker was written (0.05825ms)
+  ✔ holds a stale claim that may have reached Intuit (0.046708ms)
+  ✔ leaves a row alone when the claim time is missing or unreadable (0.046875ms)
+  ✔ the lease is longer than the five-minute cron period (0.033791ms)
+✔ abandoned-claim classification (0.391459ms)
+▶ recovery and selection are wired safely
+  ✔ the tested rule is the executed rule — no second copy in SQL (0.059ms)
+  ✔ only undispatched stale claims are returned to the queue (0.035208ms)
+  ✔ the dispatch marker is written before dispatch, not after (0.038375ms)
+  ✔ claiming clears the previous attempt's marker (0.041ms)
+  ✔ due work is selected per connected venue and an empty list selects nothing (0.069542ms)
+  ✔ recovery runs before work is selected so freed rows run this tick (0.034292ms)
+  ✔ disconnected venues' work is retained, never deleted or dead-lettered (0.089083ms)
+✔ recovery and selection are wired safely (0.441375ms)
+▶ health signal separates idle from stuck
+  ✔ reports reclaimed, review and deferred counts plus the oldest eligible age (0.182ms)
+  ✔ only says idle when there is genuinely nothing held (0.120791ms)
+  ✔ exposes no venue, entity or customer identifiers (0.101375ms)
+✔ health signal separates idle from stuck (0.539583ms)
+▶ dependency ordering survives
+  ✔ an invoice waits for its customer, a payment and refund for their invoice (0.179541ms)
+  ✔ a dependency miss is always retryable, never an immediate dead-letter (0.115792ms)
+  ✔ a deleted source record is not retryable (0.957666ms)
+✔ dependency ordering survives (1.364625ms)
+ℹ tests 74
+ℹ suites 16
+ℹ pass 74
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 439.2775

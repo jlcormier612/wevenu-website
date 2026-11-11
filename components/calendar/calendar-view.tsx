@@ -30,22 +30,21 @@ import {
   type ScheduleItemPickerOption,
   type VenueScheduleItemType,
 } from "@/lib/calendar/schedule-item-catalog";
-import { EVENT_TYPES } from "@/lib/leads/constants";
+import type { VenueEventTypeOption } from "@/lib/event-types/venue-options";
+import { buildVenueEventTypeOptions } from "@/lib/event-types/venue-options";
 import { toast } from "sonner";
 import { describeRecurrence } from "@/lib/calendar/recurrence";
+import { formScheduleItemTimes } from "@/lib/calendar/schedule-item-times";
 import type { CalendarItem, ScheduleRelationOption } from "@/lib/calendar/types";
-import { cn } from "@/lib/utils";
 import {
   FilterBar,
   formatTime,
   ItemRow,
   MANUAL_TYPE_META,
   MonthYearPicker,
-  PerspectiveSwitcher,
   resolveItemMeta,
-  venueCalendarLegendEntries,
 } from "@/components/calendar/calendar-shared";
-import { activePerspectiveId, applyPerspectiveLinkOverrides } from "@/components/calendar/perspectives";
+import { ScheduleItemDetailDialog } from "@/components/calendar/schedule-item-detail-dialog";
 import { ScheduleRelationPicker } from "@/components/calendar/schedule-relation-picker";
 import { useCalendarFilters } from "@/components/calendar/use-calendar-filters";
 import { WeekView } from "@/components/calendar/week-view";
@@ -55,6 +54,7 @@ import {
   venueCalendarTaxonomyKey,
   venueCalendarTaxonomyLabel,
 } from "@/lib/calendar/venue-calendar-scope";
+import { shouldShowCalendarSpaceFilter } from "@/lib/venue-spaces/uses";
 
 export { TYPE_META, formatTime, ItemRow, venueCalendarLegendEntries } from "@/components/calendar/calendar-shared";
 
@@ -73,23 +73,26 @@ const MONTH_NAMES = [
 // platform, never a different tool (closing instruction of Phase 3).
 
 function ViewSwitcher({ current, onChange }: { current: "month" | "week" | "day" | "agenda"; onChange: (v: "month" | "week" | "day" | "agenda") => void }) {
-  const views: { value: "month" | "week" | "day" | "agenda"; label: string }[] = [
-    { value: "month", label: "Month" },
-    { value: "week", label: "Week" },
-    { value: "day", label: "Day" },
-    { value: "agenda", label: "Agenda" },
+  // Day = one calendar day. Agenda = upcoming list for the selected month.
+  // Labels spell that out so the two list-like views are not confused.
+  const views: { value: "month" | "week" | "day" | "agenda"; label: string; title: string }[] = [
+    { value: "month", label: "Month", title: "Month grid" },
+    { value: "week", label: "Week", title: "Seven-day week" },
+    { value: "day", label: "Day", title: "One day" },
+    { value: "agenda", label: "Month list", title: "Upcoming list for this month" },
   ];
   return (
-    <div className="inline-flex rounded-lg border border-border p-0.5">
+    <div className="htc-calendar-view-switcher" role="group" aria-label="Calendar view">
       {views.map((v) => (
         <button
           key={v.value}
           type="button"
+          title={v.title}
+          aria-label={v.title}
+          aria-pressed={current === v.value}
+          data-cal-view={v.value}
+          data-active={current === v.value ? "true" : "false"}
           onClick={() => onChange(v.value)}
-          className={cn(
-            "rounded-md px-3 py-1 text-sm font-medium transition-colors",
-            current === v.value ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground",
-          )}
         >
           {v.label}
         </button>
@@ -156,37 +159,35 @@ function CalendarGrid({
   });
 
   return (
-    <div className="select-none">
+    <div className="htc-calendar-month-grid select-none" data-cal-month-grid="">
       {/* Day-name header */}
-      <div className="grid grid-cols-7 mb-1">
+      <div data-cal-weekday-row="">
         {DAY_NAMES.map((d) => (
-          <div key={d} className="py-1.5 text-center text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <div key={d} data-cal-weekday="">
             {d}
           </div>
         ))}
       </div>
-      {/* Day cells */}
-      <div className="grid grid-cols-7 gap-px bg-border rounded-sm overflow-hidden border border-border">
+      {/* Day cells — white working surfaces; --cal-* dots unchanged */}
+      <div data-cal-day-grid="">
         {cells.map((cell, i) =>
           cell === null ? (
-            <div key={i} className="bg-muted/20 min-h-[72px]" />
+            <div key={i} data-cal-day-outside="" aria-hidden />
           ) : (
             <button
               key={cell.dateStr}
               type="button"
+              data-cal-day-cell=""
+              data-selected={cell.dateStr === selectedDate ? "true" : "false"}
+              data-today={cell.dateStr === today ? "true" : "false"}
               onClick={() => onSelectDate(cell.dateStr === selectedDate ? "" : cell.dateStr)}
-              className={cn(
-                "bg-background min-h-[72px] p-1.5 text-left transition-colors hover:bg-muted/40 focus:outline-none focus:bg-muted/40",
-                cell.dateStr === selectedDate && "bg-primary/5 ring-1 ring-inset ring-primary/30",
-              )}
+              className="focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
             >
-              {/* Day number */}
-              <span className={cn(
-                "flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium",
-                cell.dateStr === today
-                  ? "bg-primary text-primary-foreground"
-                  : "text-foreground",
-              )}>
+              {/* Day number — botanical Today marker preserved when also selected */}
+              <span
+                data-cal-day-num=""
+                data-today={cell.dateStr === today ? "true" : "false"}
+              >
                 {cell.dayNum}
               </span>
               {/* Item dots */}
@@ -194,17 +195,25 @@ function CalendarGrid({
                 <div className="mt-1 flex flex-wrap gap-0.5">
                   {cell.items.slice(0, 4).map((item) => {
                     const meta = resolveItemMeta(item);
+                    const tipParts = [
+                      meta.label,
+                      item.title,
+                      item.time
+                        ? (item.endTime ? `${item.time}–${item.endTime}` : item.time)
+                        : null,
+                      item.spaceName,
+                    ].filter(Boolean);
                     return (
                       <span
                         key={item.id}
-                        className="block h-1.5 w-1.5 rounded-full"
+                        className="htc-calendar-dot"
                         style={{ backgroundColor: meta.dotColor }}
-                        title={`${meta.label}: ${item.title}`}
+                        title={tipParts.join(" · ")}
                       />
                     );
                   })}
                   {cell.items.length > 4 && (
-                    <span className="text-[9px] text-muted-foreground leading-none mt-0.5">
+                    <span className="mt-0.5 text-[9px] leading-none text-muted-foreground" title={`${cell.items.length} scheduled items`}>
                       +{cell.items.length - 4}
                     </span>
                   )}
@@ -221,20 +230,21 @@ function CalendarGrid({
 // ---- Day detail panel -------------------------------------------------------
 
 function DayDetail({
-  date, items, onDeleteBlock, onEditBlock, deletingId, deletePending,
+  date, items, onDeleteBlock, onEditBlock, onViewBlock, deletingId, deletePending,
 }: {
   date: string | null;
   items: CalendarItem[];
   onDeleteBlock: (blockId: string) => void;
   onEditBlock?: (blockId: string) => void;
+  onViewBlock?: (blockId: string) => void;
   deletingId: string | null;
   deletePending: boolean;
 }) {
   if (!date) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 text-center">
-        <CalendarDays className="h-8 w-8 text-muted-foreground mb-2" />
-        <p className="text-sm text-muted-foreground">Select a day to see what&apos;s scheduled.</p>
+      <div data-cal-schedule-empty="" className="flex flex-col items-center justify-center gap-2 py-8">
+        <CalendarDays className="h-7 w-7 text-muted-foreground" />
+        <p>Select a day to see what&apos;s scheduled.</p>
       </div>
     );
   }
@@ -249,14 +259,17 @@ function DayDetail({
     <div className="space-y-3">
       <p className="font-heading text-base font-medium text-heading">{label}</p>
       {dateItems.length === 0 ? (
-        <p className="text-sm text-muted-foreground py-4 text-center">
-          Nothing scheduled for this day. Add a schedule item, or book a tour from Tours.
-        </p>
+        <div data-cal-schedule-empty="">
+          <p>
+            Nothing scheduled for this day. Add a schedule item, or book a tour from Tours.
+          </p>
+        </div>
       ) : (
         <div className="space-y-2">
           {dateItems.map((item) => (
             <ItemRow
               key={item.id} item={item} onDeleteBlock={onDeleteBlock} onEditBlock={onEditBlock}
+              onViewBlock={onViewBlock}
               deleting={deletePending && deletingId === item.rawId}
             />
           ))}
@@ -266,34 +279,16 @@ function DayDetail({
   );
 }
 
-// ---- Legend -----------------------------------------------------------------
-// Venue Calendar only — never Object.entries(TYPE_META). Booking Schedule and
-// other lenses may still use excluded TYPE_META entries; this legend must not.
-function Legend({ tastingEnabled }: { tastingEnabled: boolean }) {
-  return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
-      {venueCalendarLegendEntries({ tastingEnabled }).map((entry) => (
-        <div key={entry.key} className="flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: entry.dotColor }} />
-          <span className="text-xs text-muted-foreground">{entry.label}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
+// Phase 11C — duplicate taxonomy legend removed; FilterBar chips are the
+// interactive source of Event/Tour/Appointment/Hold/Blocked Time colors.
 
 // ---- Main CalendarView ------------------------------------------------------
 
-export function CalendarView({
-  view = "month",
-  year,
-  month,
-  weekStart,
-  dayDate,
-  items,
-  today,
-  scheduleCatalog = [],
-}: {
+export type CalendarViewHandle = {
+  toggleScheduleForm: () => void;
+};
+
+export const CalendarView = React.forwardRef<CalendarViewHandle, {
   view?: "month" | "week" | "day" | "agenda";
   year: number;
   month: number;
@@ -303,13 +298,43 @@ export function CalendarView({
   today: string;
   /** Enabled venue catalog rows for the Schedule Item type picker (2A.2.2). */
   scheduleCatalog?: VenueScheduleItemType[];
-}) {
+  /**
+   * Accepted inquiry event types for Hold (booking placeholder) forms.
+   * Holds convert to New Lead — same accepted set as Add New Lead.
+   */
+  bookingEventTypeOptions?: VenueEventTypeOption[];
+  /** multi = show calendar-by-space filter; single = hide (venue setup choice). */
+  spaceOperatingMode?: "single" | "multi";
+  /** Configured physical spaces — filter lists these, not only spaces with items this month. */
+  venueSpaces?: Array<{ id: string; name: string; isActive?: boolean }>;
+  /** When true, toolbar omits Add Schedule Item (header owns the primary CTA). */
+  hideToolbarCreate?: boolean;
+}>(function CalendarView({
+  view = "month",
+  year,
+  month,
+  weekStart,
+  dayDate,
+  items,
+  today,
+  scheduleCatalog = [],
+  bookingEventTypeOptions = [],
+  spaceOperatingMode = "single",
+  venueSpaces = [],
+  hideToolbarCreate = false,
+}, ref) {
   const router = useRouter();
-  const { filters, setFilters, filteredItems, presentTypes, staffOptions, spaceOptions } = useCalendarFilters(items);
+  const activeSpaceCount = venueSpaces.filter((s) => s.isActive !== false).length;
+  const showSpaceFilter = shouldShowCalendarSpaceFilter(spaceOperatingMode, activeSpaceCount);
+  const { filters, setFilters, filteredItems, presentTypes, staffOptions, spaceOptions } = useCalendarFilters(
+    items,
+    undefined,
+    { showSpaceFilter, venueSpaces },
+  );
   const tastingEnabled = scheduleCatalog.some(
     (r) => r.source === "builtin" && r.builtinKey === "tasting" && r.enabled && !r.archivedAt,
   );
-  const displayItems = applyPerspectiveLinkOverrides(filteredItems, activePerspectiveId(filters, tastingEnabled));
+  const displayItems = filteredItems;
   const pickerGroups = React.useMemo(
     () => buildScheduleItemPickerGroups(scheduleCatalog),
     [scheduleCatalog],
@@ -343,8 +368,9 @@ export function CalendarView({
   const [blockStart, setBlockStart] = React.useState(today);
   const [blockEnd, setBlockEnd] = React.useState(today);
   const [blockIsAllDay, setBlockIsAllDay] = React.useState(false);
-  const [blockStartTime, setBlockStartTime] = React.useState("09:00");
-  const [blockEndTime, setBlockEndTime] = React.useState("17:00");
+  // Empty until the coordinator types clock times — do not invent 09:00–17:00.
+  const [blockStartTime, setBlockStartTime] = React.useState("");
+  const [blockEndTime, setBlockEndTime] = React.useState("");
   // Recurrence is now frequency + interval + one end condition, rather than a
   // fixed four-item list. The simple presets still map onto interval 1, so
   // "Every week" is unchanged for anyone who never opens Custom.
@@ -366,14 +392,30 @@ export function CalendarView({
   // Calendar Booking Placeholder — only read/sent when blockType is a
   // Bookings type (isBookingPlaceholder); every other Schedule Item leaves
   // these untouched and unsent.
-  const [blockEventType, setBlockEventType] = React.useState("wedding");
+  const defaultHoldEventType = bookingEventTypeOptions[0]?.value ?? "wedding";
+  const [blockEventType, setBlockEventType] = React.useState(defaultHoldEventType);
   const [blockClientName, setBlockClientName] = React.useState("");
   const [blockGuestCount, setBlockGuestCount] = React.useState("");
   const [blockEstimatedRevenue, setBlockEstimatedRevenue] = React.useState("");
   const [blockPending, startBlock] = React.useTransition();
   const [deletingId, setDeletingId] = React.useState<string | null>(null);
   const [deletePending, startDelete] = React.useTransition();
+  const [viewingBlockId, setViewingBlockId] = React.useState<string | null>(null);
   const formRef = React.useRef<HTMLDivElement>(null);
+
+  const holdEventTypeOptions = React.useMemo(
+    () =>
+      buildVenueEventTypeOptions({
+        acceptedRaw: bookingEventTypeOptions.map((o) => o.value),
+        currentValue: editingBlockId ? blockEventType : null,
+      }),
+    [bookingEventTypeOptions, editingBlockId, blockEventType],
+  );
+
+  const selectedHoldEventType = holdEventTypeOptions.find((o) => o.value === blockEventType);
+  const holdEventTypeHint = selectedHoldEventType?.isLegacyCurrent
+    ? selectedHoldEventType.description
+    : undefined;
 
   function defaultFormDate() {
     if (view === "day") return dayDate || today;
@@ -429,14 +471,28 @@ export function CalendarView({
     setBlockTitle("");
     applySafeDefaultType();
     setBlockReason("other"); setBlockStart(date); setBlockEnd(date);
-    setBlockIsAllDay(false); setBlockStartTime("09:00"); setBlockEndTime("17:00");
+    setBlockIsAllDay(false); setBlockStartTime(""); setBlockEndTime("");
     setBlockRecurrence("none"); setBlockRecurrenceCustom(false); setBlockRecurrenceInterval("1");
     setBlockRecurrenceEndMode("never"); setBlockRecurrenceEnd(""); setBlockRecurrenceCount("10");
     setBlockRelatedTo(null);
     setBlockNotes("");
-    setBlockEventType("wedding"); setBlockClientName(""); setBlockGuestCount(""); setBlockEstimatedRevenue("");
+    setBlockEventType(defaultHoldEventType); setBlockClientName(""); setBlockGuestCount(""); setBlockEstimatedRevenue("");
     setEditingBlockId(null);
   }
+
+  const showBlockFormRef = React.useRef(showBlockForm);
+  showBlockFormRef.current = showBlockForm;
+  React.useImperativeHandle(ref, () => ({
+    toggleScheduleForm: () => {
+      if (showBlockFormRef.current) {
+        setShowBlockForm(false);
+        resetBlockForm();
+      } else {
+        resetBlockForm();
+        setShowBlockForm(true);
+      }
+    },
+  }));
 
   /** The recurrence half of the payload, shared by create and update. */
   function recurrencePayload() {
@@ -514,8 +570,14 @@ export function CalendarView({
     });
   }
 
+  /** Read-only details — never opens the Schedule Item form. */
+  function handleViewBlock(blockId: string) {
+    setViewingBlockId(blockId);
+  }
+
   /** Opens the form pre-filled from an existing item. */
   function handleEditBlock(blockId: string) {
+    setViewingBlockId(null);
     setLoadingBlock(true);
     setShowBlockForm(true);
     setEditingBlockId(blockId);
@@ -541,8 +603,9 @@ export function CalendarView({
       setBlockStart(block.startDate);
       setBlockEnd(block.endDate);
       setBlockIsAllDay(block.isAllDay);
-      setBlockStartTime(block.startTime ?? "09:00");
-      setBlockEndTime(block.endTime ?? "17:00");
+      const times = formScheduleItemTimes(block.isAllDay, block.startTime, block.endTime);
+      setBlockStartTime(times.startTime);
+      setBlockEndTime(times.endTime);
       setBlockRecurrence(block.recurrenceRule);
       setBlockRecurrenceInterval(String(block.recurrenceInterval || 1));
       // Anything that isn't a plain every-one series opens with Custom already
@@ -567,7 +630,7 @@ export function CalendarView({
         setBlockRelatedTo(null);
       }
       setBlockNotes(block.notes ?? "");
-      setBlockEventType(block.eventType ?? "wedding");
+      setBlockEventType(block.eventType ?? defaultHoldEventType);
       setBlockClientName(block.clientName ?? "");
       setBlockGuestCount(block.guestCount != null ? String(block.guestCount) : "");
       setBlockEstimatedRevenue(block.estimatedRevenue != null ? String(block.estimatedRevenue) : "");
@@ -585,7 +648,7 @@ export function CalendarView({
       if (result.ok) {
         toast.success(
           editingBlockId ? "Schedule item updated."
-            : isBookingPlaceholder(blockType) ? "Date booked."
+            : isBookingPlaceholder(blockType) ? "Hold placed."
             : "Schedule item added.",
         );
         setShowBlockForm(false);
@@ -598,18 +661,60 @@ export function CalendarView({
     });
   }
 
+  function toIsoLocal(d: Date): string {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  }
+
   function navigate(delta: number) {
     let newMonth = month + delta;
     let newYear = year;
     if (newMonth > 12) { newMonth = 1; newYear++; }
     if (newMonth < 1)  { newMonth = 12; newYear--; }
+    if (view === "agenda") {
+      router.push(`/calendar?view=agenda&year=${newYear}&month=${newMonth}`);
+      return;
+    }
     router.push(`/calendar?year=${newYear}&month=${newMonth}`);
+  }
+
+  function navigateWeek(deltaWeeks: number) {
+    const startIso = weekStart || today;
+    const [wy, wm, wd] = startIso.split("-").map(Number);
+    const d = new Date(wy, wm - 1, wd);
+    d.setDate(d.getDate() + deltaWeeks * 7);
+    router.push(`/calendar?view=week&weekStart=${toIsoLocal(d)}`);
+  }
+
+  function navigateDay(deltaDays: number) {
+    const startIso = dayDate || today;
+    const [dy, dm, dd] = startIso.split("-").map(Number);
+    const d = new Date(dy, dm - 1, dd);
+    d.setDate(d.getDate() + deltaDays);
+    router.push(`/calendar?view=day&date=${toIsoLocal(d)}`);
   }
 
   // `today` is the venue's own calendar day (resolved server-side), so this
   // stays correct for a venue whose date differs from the browser's.
   const [todayYear, todayMonth] = today.split("-").map(Number);
   const isCurrentMonth = year === todayYear && month === todayMonth;
+
+  const weekStartIso = weekStart || today;
+  const [weekY, weekM, weekD] = weekStartIso.split("-").map(Number);
+  const weekStartDate = new Date(weekY, weekM - 1, weekD);
+  const weekEndDate = new Date(weekY, weekM - 1, weekD + 6);
+  const weekRangeLabel = `${weekStartDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })} – ${weekEndDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
+  const isCurrentWeek = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(weekY, weekM - 1, weekD + i);
+    return toIsoLocal(d) === today;
+  }).some(Boolean);
+
+  const dayIso = dayDate || today;
+  const [dayY, dayM, dayD] = dayIso.split("-").map(Number);
+  const dayLabel = new Date(dayY, dayM - 1, dayD).toLocaleDateString("en-US", {
+    weekday: "long", month: "long", day: "numeric", year: "numeric",
+  });
+  const isCurrentDay = dayIso === today;
+  const isCurrentAgendaWindow = year === todayYear && month === todayMonth;
 
   const recurrenceSummary = describeRecurrence({
     rule: blockRecurrence,
@@ -686,17 +791,118 @@ export function CalendarView({
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <ViewSwitcher current={view} onChange={switchView} />
-        <Button
-          type="button" variant="outline" size="sm"
-          onClick={() => {
-            if (showBlockForm) { setShowBlockForm(false); resetBlockForm(); }
-            else { resetBlockForm(); setShowBlockForm(true); }
-          }}
+      {/* Phase 11C — linen toolbar: view switcher (+ Month date nav on same shell). */}
+      <div className="htc-calendar-toolbar" data-cal-toolbar="">
+        <div className="htc-calendar-toolbar-row" data-cal-toolbar-row="views">
+          <ViewSwitcher current={view} onChange={switchView} />
+          {!hideToolbarCreate && (
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => {
+                if (showBlockForm) { setShowBlockForm(false); resetBlockForm(); }
+                else { resetBlockForm(); setShowBlockForm(true); }
+              }}
+            >
+              <Plus className="mr-1 h-3.5 w-3.5" /> Add Schedule Item
+            </Button>
+          )}
+        </div>
+        {/* Shared date navigation for all views — one linen toolbar with view switcher. */}
+        <div
+          className="htc-calendar-toolbar-row htc-calendar-month-nav"
+          data-cal-toolbar-row="date"
+          data-cal-day-nav={view === "day" ? "" : undefined}
         >
-          <Plus className="mr-1 h-3.5 w-3.5" /> Add Schedule Item
-        </Button>
+          {view === "week" ? (
+            <>
+              <div className="htc-calendar-month-nav-group">
+                <Button type="button" variant="ghost" size="icon" onClick={() => navigateWeek(-1)} aria-label="Previous week">
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <h2 className="min-w-0 px-1 text-center font-heading text-base font-medium text-heading sm:min-w-[220px] sm:text-lg">
+                  {weekRangeLabel}
+                </h2>
+                <Button type="button" variant="ghost" size="icon" onClick={() => navigateWeek(1)} aria-label="Next week">
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+              {!isCurrentWeek && (
+                <Button type="button" variant="outline" size="sm" onClick={() => router.push(`/calendar?view=week&weekStart=${today}`)}>
+                  Today
+                </Button>
+              )}
+            </>
+          ) : view === "day" ? (
+            <>
+              <div className="htc-calendar-month-nav-group">
+                <Button type="button" variant="ghost" size="icon" onClick={() => navigateDay(-1)} aria-label="Previous day">
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <h2 className="min-w-0 px-1 text-center font-heading text-base font-medium text-heading sm:min-w-[260px] sm:text-lg">
+                  {dayLabel}
+                </h2>
+                <Button type="button" variant="ghost" size="icon" onClick={() => navigateDay(1)} aria-label="Next day">
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+              {!isCurrentDay && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  data-cal-day-today=""
+                  onClick={() => router.push(`/calendar?view=day&date=${today}`)}
+                >
+                  Today
+                </Button>
+              )}
+            </>
+          ) : view === "agenda" ? (
+            <>
+              <div className="htc-calendar-month-nav-group">
+                <Button type="button" variant="ghost" size="icon" onClick={() => navigate(-1)} aria-label="Previous month">
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <MonthYearPicker
+                  year={year}
+                  month={month}
+                  onChange={(y, m) => router.push(`/calendar?view=agenda&year=${y}&month=${m}`)}
+                />
+                <Button type="button" variant="ghost" size="icon" onClick={() => navigate(1)} aria-label="Next month">
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+              {!isCurrentAgendaWindow && (
+                <Button type="button" variant="outline" size="sm" onClick={() => router.push(`/calendar?view=agenda&year=${todayYear}&month=${todayMonth}`)}>
+                  Today
+                </Button>
+              )}
+            </>
+          ) : (
+            <>
+              <div className="htc-calendar-month-nav-group">
+                <Button type="button" variant="ghost" size="icon" onClick={() => navigate(-1)} aria-label="Previous month">
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <MonthYearPicker
+                  year={year}
+                  month={month}
+                  onChange={(y, m) => router.push(`/calendar?year=${y}&month=${m}`)}
+                />
+                <Button type="button" variant="ghost" size="icon" onClick={() => navigate(1)} aria-label="Next month">
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+              {!isCurrentMonth && (
+                <Button type="button" variant="outline" size="sm"
+                  onClick={() => router.push(`/calendar?year=${todayYear}&month=${todayMonth}`)}>
+                  Today
+                </Button>
+              )}
+            </>
+          )}
+        </div>
       </div>
 
       {/* Add/Edit Schedule Item — lives above every view so Edit from Week/
@@ -735,7 +941,7 @@ export function CalendarView({
                 <SelectTrigger>
                   <span className="flex items-center gap-1.5">
                     {blockPickerValue !== OPTIONAL_TYPE_NONE && (
-                      <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: MANUAL_TYPE_META[blockType].dotColor }} />
+                      <span className="h-4 w-4 rounded-full shrink-0" style={{ backgroundColor: MANUAL_TYPE_META[blockType].dotColor }} />
                     )}
                     <SelectValue placeholder="No classification" />
                   </span>
@@ -750,7 +956,7 @@ export function CalendarView({
                       {group.options.map((t: ScheduleItemPickerOption) => (
                         <SelectItem key={t.value} value={t.value}>
                           <span className="flex items-center gap-1.5">
-                            <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: MANUAL_TYPE_META[t.metaType].dotColor }} />
+                            <span className="h-4 w-4 rounded-full shrink-0" style={{ backgroundColor: MANUAL_TYPE_META[t.metaType].dotColor }} />
                             {t.label}
                           </span>
                         </SelectItem>
@@ -764,7 +970,7 @@ export function CalendarView({
                       </div>
                       <SelectItem value={blockPickerValue}>
                         <span className="flex items-center gap-1.5">
-                          <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: MANUAL_TYPE_META[blockType].dotColor }} />
+                          <span className="h-4 w-4 rounded-full shrink-0" style={{ backgroundColor: MANUAL_TYPE_META[blockType].dotColor }} />
                           {currentTypeDisplayLabel()}
                         </span>
                       </SelectItem>
@@ -790,26 +996,50 @@ export function CalendarView({
             {isBookingPlaceholder(blockType) && blockPickerValue !== OPTIONAL_TYPE_NONE && (
               <div className="space-y-1.5">
                 <Label className="text-xs">Event type</Label>
-                <Select value={blockEventType} onValueChange={setBlockEventType} items={EVENT_TYPES}>
+                <Select value={blockEventType} onValueChange={setBlockEventType} items={holdEventTypeOptions}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{EVENT_TYPES.map((e) => <SelectItem key={e.value} value={e.value}>{e.label}</SelectItem>)}</SelectContent>
+                  <SelectContent>{holdEventTypeOptions.map((e) => <SelectItem key={e.value} value={e.value}>{e.label}</SelectItem>)}</SelectContent>
                 </Select>
+                {holdEventTypeHint ? (
+                  <p className="text-[11px] text-muted-foreground">{holdEventTypeHint}</p>
+                ) : null}
               </div>
             )}
-            <div className="space-y-1.5">
-              <Label className="text-xs">Start date *</Label>
-              <Input type="date" value={blockStart} onChange={(e) => setBlockStart(e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">End date</Label>
-              <Input type="date" value={blockEnd} onChange={(e) => setBlockEnd(e.target.value)} min={blockStart} />
+            {/* Own full-width row so Start/End sit together beneath Type (not beside it). */}
+            <div className="grid gap-3 sm:col-span-2 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Start date *</Label>
+                <Input
+                  type="date"
+                  value={blockStart}
+                  onChange={(e) => {
+                    const next = e.target.value;
+                    setBlockStart(next);
+                    // Keep a multi-day span coherent — never leave end before start.
+                    if (!blockEnd || blockEnd < next) setBlockEnd(next);
+                  }}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">End date</Label>
+                <Input type="date" value={blockEnd} onChange={(e) => setBlockEnd(e.target.value)} min={blockStart} />
+              </div>
             </div>
             <div className="space-y-1.5 sm:col-span-2">
               <label className="flex items-center gap-2 cursor-pointer select-none">
                 <input
                   type="checkbox"
                   checked={blockIsAllDay}
-                  onChange={(e) => setBlockIsAllDay(e.target.checked)}
+                  onChange={(e) => {
+                    const next = e.target.checked;
+                    setBlockIsAllDay(next);
+                    // All-day rows store null times — clear the inputs so a later
+                    // uncheck cannot resurrect fabricated placeholders.
+                    if (next) {
+                      setBlockStartTime("");
+                      setBlockEndTime("");
+                    }
+                  }}
                   className="h-4 w-4 rounded border-border"
                 />
                 <span className="text-xs text-foreground">All day</span>
@@ -884,9 +1114,12 @@ export function CalendarView({
             )}
           </div>
           {isBookingPlaceholder(blockType) && (
-            <p className="text-xs text-muted-foreground">
-              This reserves the date without creating a Lead yet — enough to say &quot;booked&quot; today. You can convert it to a real Lead whenever you&apos;re ready, with nothing to retype.
-            </p>
+            <div className="space-y-1">
+              <p className="text-xs font-medium text-heading">You&apos;re placing a Hold on this date.</p>
+              <p className="text-xs text-muted-foreground">
+                Whether this Hold prevents booking is controlled by your availability settings. You can convert it to a real Lead whenever you&apos;re ready, with nothing to retype.
+              </p>
+            </div>
           )}
 
           {/* Recurrence — presets plus a Custom mode. The presets are the same
@@ -1002,89 +1235,75 @@ export function CalendarView({
         </div>
       )}
 
+      <ScheduleItemDetailDialog
+        item={viewingBlockId
+          ? (items.find((i) => i.type === "calendar_block" && i.rawId === viewingBlockId) ?? null)
+          : null}
+        open={Boolean(viewingBlockId)}
+        onOpenChange={(next) => { if (!next) setViewingBlockId(null); }}
+        onEdit={handleEditBlock}
+      />
+
       {view === "week" && (
         <WeekView
           weekStart={weekStart || today} items={items} today={today}
-          onEditBlock={handleEditBlock} onDeleteBlock={handleDeleteBlock}
+          onEditBlock={handleEditBlock} onViewBlock={handleViewBlock} onDeleteBlock={handleDeleteBlock}
           deletingId={deletingId} deletePending={deletePending}
           tastingEnabled={tastingEnabled}
+          showSpaceFilter={showSpaceFilter}
+          venueSpaces={venueSpaces}
         />
       )}
       {view === "day" && (
         <DayView
           date={dayDate || today} items={items} today={today}
-          onEditBlock={handleEditBlock} onDeleteBlock={handleDeleteBlock}
+          onEditBlock={handleEditBlock} onViewBlock={handleViewBlock} onDeleteBlock={handleDeleteBlock}
           deletingId={deletingId} deletePending={deletePending}
           tastingEnabled={tastingEnabled}
+          showSpaceFilter={showSpaceFilter}
+          venueSpaces={venueSpaces}
         />
       )}
       {view === "agenda" && (
         <AgendaView
           items={items} today={today} year={year} month={month}
-          onEditBlock={handleEditBlock} onDeleteBlock={handleDeleteBlock}
+          onEditBlock={handleEditBlock} onViewBlock={handleViewBlock} onDeleteBlock={handleDeleteBlock}
           deletingId={deletingId} deletePending={deletePending}
           tastingEnabled={tastingEnabled}
+          showSpaceFilter={showSpaceFilter}
+          venueSpaces={venueSpaces}
         />
       )}
 
       {view === "month" && (
       <>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <Button type="button" variant="outline" size="icon" onClick={() => navigate(-1)} aria-label="Previous month">
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <MonthYearPicker
-            year={year}
-            month={month}
-            onChange={(y, m) => router.push(`/calendar?year=${y}&month=${m}`)}
-          />
-          <Button type="button" variant="outline" size="icon" onClick={() => navigate(1)} aria-label="Next month">
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-        {!isCurrentMonth && (
-          <Button type="button" variant="ghost" size="sm"
-            onClick={() => router.push(`/calendar?year=${todayYear}&month=${todayMonth}`)}>
-            Today
-          </Button>
-        )}
-      </div>
+      {/* Phase 11C — interactive FilterBar carries taxonomy (legend removed as duplicate). */}
+      <FilterBar filters={filters} onChange={setFilters} presentTypes={presentTypes} staffOptions={staffOptions} spaceOptions={spaceOptions} items={items} />
 
-      {/* Legend */}
-      <Legend tastingEnabled={tastingEnabled} />
-
-      {/* Perspectives (Calendar Release Completion) */}
-      <PerspectiveSwitcher filters={filters} onChange={setFilters} tastingEnabled={tastingEnabled} />
-
-      {/* Filters (Calendar Integration Phase 4) */}
-      <FilterBar filters={filters} onChange={setFilters} presentTypes={presentTypes} staffOptions={staffOptions} spaceOptions={spaceOptions} />
-
-      {/* Main grid + detail */}
+      {/* Main grid + Schedule companion (Month only) */}
       <div className="grid gap-6 xl:grid-cols-[1fr_300px]">
-        {/* Calendar grid */}
         <CalendarGrid
           year={year} month={month} items={displayItems}
           selectedDate={selectedDate} today={today}
           onSelectDate={setSelectedDate}
         />
 
-        {/* Day detail */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Schedule</CardTitle>
-          </CardHeader>
-          <CardContent>
+        <aside className="htc-calendar-schedule" data-cal-schedule-panel="" aria-label="Schedule">
+          <div data-cal-schedule-header="">
+            <p data-cal-schedule-title="">Schedule</p>
+          </div>
+          <div data-cal-schedule-body="">
             <DayDetail
               date={selectedDate || null}
               items={displayItems}
               onDeleteBlock={handleDeleteBlock}
               onEditBlock={handleEditBlock}
+              onViewBlock={handleViewBlock}
               deletingId={deletingId}
               deletePending={deletePending}
             />
-          </CardContent>
-        </Card>
+          </div>
+        </aside>
       </div>
 
       {/* This month summary */}
@@ -1094,8 +1313,7 @@ export function CalendarView({
             <CardTitle className="text-sm text-muted-foreground flex items-center gap-2 flex-wrap">
               {MONTH_NAMES[month - 1]} at a glance — {filteredItems.length} item{filteredItems.length !== 1 ? "s" : ""}
               {/* Operational cue (Phase 4) — a count of items Calendar already
-                  knows are overdue, not a Readiness recomputation. See
-                  BookingScheduleView for the same convention. */}
+                  knows are overdue, not a Readiness recomputation. */}
               {filteredItems.filter((i) => i.subtitle === "Overdue").length > 0 && (
                 <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">
                   {filteredItems.filter((i) => i.subtitle === "Overdue").length} overdue
@@ -1125,7 +1343,7 @@ export function CalendarView({
                         className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md"
                         style={{ backgroundColor: `${dotColor}20`, color: dotColor }}
                       >
-                        <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: dotColor }} />
+                        <span className="htc-calendar-dot" style={{ backgroundColor: dotColor }} />
                       </span>
                       <span className="text-sm text-foreground">
                         {count} {label}{count !== 1 ? "s" : ""}
@@ -1142,4 +1360,5 @@ export function CalendarView({
       )}
     </div>
   );
-}
+});
+

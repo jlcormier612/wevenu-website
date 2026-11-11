@@ -1,0 +1,10 @@
+PASS leads_created — A=7cc4090b-b224-4e7f-8c12-da6198878d8c B=5e807822-d037-49dd-872c-394a707bb9c7
+PASS tour1_created — 7a1f875a-1f14-422c-8222-a42a8df0cd40
+PASS tour1_occupies_before_cancel — occ=1
+PASS cancel_releases_occupancy — err=none occ=0
+PASS same_slot_bookable_after_cancel — ba6c6f24-5ef4-4050-84c2-849fdf3851e2
+PASS tour2_created — bfd594c4-b539-4fb4-9c9d-66554a57691b
+PASS reparent_preserves_appointment — lead=7cc4090b-b224-4e7f-8c12-da6198878d8c status=confirmed id=bfd594c4-b539-4fb4-9c9d-66554a57691b
+PASS lead_delete_path_cancels_and_nulls_lead — {"id":"e3ad0be2-78ea-4068-b4b8-ecd914b86e69","lead_id":null,"status":"cancelled","is_archived":true}
+
+SUMMARY pass=8 fail=0 venue=6ad57710-6e10-4711-a011-e860d84a6627

@@ -141,12 +141,19 @@ export function VendorLibrarySection({
       )}
 
       {docs.length === 0 ? (
-        <div className="rounded-sm border border-dashed border-border py-10 text-center">
-          <FileText className="h-7 w-7 mx-auto mb-2 text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">No documents yet.</p>
+        <div
+          data-vendor-empty="documents"
+          className="htc-vendor-empty-documents py-10 text-center"
+        >
+          <FileText className="mx-auto mb-2 h-7 w-7 text-[var(--htc-calm-accent,#63819a)]" />
+          <p className="text-sm font-medium text-foreground">No documents yet</p>
+          <p className="mx-auto mt-1 max-w-sm text-xs text-muted-foreground">
+            Upload COIs, W-9s, and rate cards here so you can share them with venues and clients
+            when an event needs them.
+          </p>
         </div>
       ) : (
-        <div className="rounded-sm border border-border bg-card divide-y divide-border">
+        <div className="htc-surface-working divide-y divide-border overflow-hidden">
           {docs.map((d) => (
             <div key={d.id} className="flex items-center gap-3 px-4 py-3">
               <FileText className="h-4 w-4 text-muted-foreground shrink-0" />

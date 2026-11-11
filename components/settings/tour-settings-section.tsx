@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { getTourSlotPreviewAction } from "@/app/(app)/settings/tour-actions";
+import { publicTourSchedulingPath } from "@/lib/tours/public-link";
 import type { TourSettings } from "@/lib/tours/types";
 
 function localIsoDate(d: Date): string {
@@ -80,9 +81,13 @@ export function TourSettingsSection({ initialSettings }: Props) {
   const [saving, startSave] = React.useTransition();
   const [previewRefreshKey, setPreviewRefreshKey] = React.useState(0);
 
-  const bookingUrl = typeof window !== "undefined"
-    ? `${window.location.origin}/book/${s.tourEmbedKey}`
-    : `/book/${s.tourEmbedKey}`;
+  // Relative path only in render — absolute origin must not branch on `window`
+  // or React hydration #418 fires (server relative vs client absolute).
+  const bookingUrl = publicTourSchedulingPath(s.tourEmbedKey) ?? "";
+  function absoluteBookingUrl() {
+    if (!bookingUrl) return "";
+    return `${window.location.origin}${bookingUrl}`;
+  }
 
   function set<K extends keyof TourSettings>(k: K, v: TourSettings[K]) {
     setS((p) => ({ ...p, [k]: v }));
@@ -122,17 +127,23 @@ export function TourSettingsSection({ initialSettings }: Props) {
           {/* Booking link */}
           <div className="space-y-1.5">
             <Label className="text-xs">Booking link</Label>
-            <p className="text-xs text-muted-foreground">Share this on your website so clients can schedule a tour directly.</p>
+            <p className="text-xs text-muted-foreground">
+              General public link for your website. For a lead who already inquired (or has a hold), open
+              their lead and use Copy scheduling link instead.
+            </p>
             <div className="flex gap-2">
               <div className="flex-1 rounded-lg border border-border bg-muted/40 px-3 py-2">
                 <p className="text-[11px] font-mono text-muted-foreground break-all">{bookingUrl}</p>
               </div>
               <Button type="button" variant="outline" size="sm" className="shrink-0"
-                onClick={() => { navigator.clipboard.writeText(bookingUrl); toast.success("Copied!"); }}>
+                onClick={() => {
+                  navigator.clipboard.writeText(absoluteBookingUrl());
+                  toast.success("General tour booking link copied. Use Copy scheduling link on a lead for personal links.");
+                }}>
                 <Copy className="h-3.5 w-3.5" />
               </Button>
               <Button type="button" variant="outline" size="sm" className="shrink-0"
-                onClick={() => window.open(bookingUrl, "_blank")}>
+                onClick={() => window.open(absoluteBookingUrl(), "_blank")}>
                 <ExternalLink className="h-3.5 w-3.5" />
               </Button>
             </div>
@@ -174,6 +185,74 @@ export function TourSettingsSection({ initialSettings }: Props) {
               <Input type="number" min="1" max="365" value={s.tourMaxAdvanceDays}
                 onChange={(e) => set("tourMaxAdvanceDays", parseInt(e.target.value) || 90)} />
             </div>
+          </div>
+
+          <div className="rounded-xl border border-border bg-muted/20 p-4 space-y-3">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Before a tour is booked</p>
+            <p className="text-xs text-muted-foreground">
+              Online visitors can book a tour immediately, or you can ask them to save a card or pay a tour fee first. A tour is never held until that step succeeds.
+            </p>
+            {!s.tourProtectionEligible && (
+              <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                Connect online payments and finish account setup before offering a card or fee step. Until then, visitors book tours normally.
+              </p>
+            )}
+            <div className="space-y-2">
+              <label className="flex items-start gap-3 rounded-lg border border-border px-3 py-2.5">
+                <input
+                  type="radio"
+                  name="tour-protection"
+                  className="mt-1"
+                  checked={s.tourProtectionMode === "none"}
+                  onChange={() => set("tourProtectionMode", "none")}
+                />
+                <span>
+                  <span className="block text-sm font-medium text-heading">Book the tour immediately</span>
+                  <span className="block text-xs text-muted-foreground">No extra step. The appointment is created when they submit.</span>
+                </span>
+              </label>
+              <label className={`flex items-start gap-3 rounded-lg border border-border px-3 py-2.5 ${!s.tourProtectionEligible ? "opacity-60" : ""}`}>
+                <input
+                  type="radio"
+                  name="tour-protection"
+                  className="mt-1"
+                  disabled={!s.tourProtectionEligible}
+                  checked={s.tourProtectionMode === "setup"}
+                  onChange={() => set("tourProtectionMode", "setup")}
+                />
+                <span>
+                  <span className="block text-sm font-medium text-heading">Save a card on file first</span>
+                  <span className="block text-xs text-muted-foreground">They are not charged just for saving a card. The tour is booked only after that step succeeds.</span>
+                </span>
+              </label>
+              <label className={`flex items-start gap-3 rounded-lg border border-border px-3 py-2.5 ${!s.tourProtectionEligible ? "opacity-60" : ""}`}>
+                <input
+                  type="radio"
+                  name="tour-protection"
+                  className="mt-1"
+                  disabled={!s.tourProtectionEligible}
+                  checked={s.tourProtectionMode === "fee"}
+                  onChange={() => set("tourProtectionMode", "fee")}
+                />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-medium text-heading">Collect a tour fee first</span>
+                  <span className="block text-xs text-muted-foreground">The fee is paid to your venue. It is not an event invoice. The tour is booked only after payment succeeds.</span>
+                </span>
+              </label>
+            </div>
+            {s.tourProtectionMode === "fee" && (
+              <div className="space-y-1.5 max-w-xs">
+                <Label className="text-xs">Tour fee (USD)</Label>
+                <Input
+                  type="number"
+                  min="1"
+                  step="0.01"
+                  value={(s.tourProtectionFeeCents / 100).toFixed(2)}
+                  onChange={(e) => set("tourProtectionFeeCents", Math.round((parseFloat(e.target.value) || 0) * 100))}
+                  disabled={!s.tourProtectionEligible}
+                />
+              </div>
+            )}
           </div>
 
           {/* Available slot preview — always the output of the availability

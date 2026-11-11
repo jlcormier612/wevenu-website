@@ -13,6 +13,7 @@ export const COUPLE_FIELDS: ImportFieldDef[] = [
   { key: "partnerLastName",  label: "Partner 2 Last Name",     required: false },
   { key: "email",            label: "Email",                   required: false },
   { key: "phone",            label: "Phone",                   required: false },
+  { key: "partnerEmail",     label: "Partner 2 Email",         required: false },
   { key: "eventDate",        label: "Event Date (YYYY-MM-DD)", required: false },
   { key: "endDate",          label: "Event End Date (YYYY-MM-DD)", required: false },
   { key: "eventType",        label: "Event Type",              required: false },
@@ -22,7 +23,7 @@ export const COUPLE_FIELDS: ImportFieldDef[] = [
   { key: "setupTime",        label: "Setup Time (HH:MM)",      required: false },
   { key: "teardownTime",     label: "Teardown Time (HH:MM)",   required: false },
   { key: "spaceName",        label: "Event Space Name",        required: false },
-  { key: "internalNotes",    label: "Notes",                   required: false },
+  { key: "internalNotes",    label: "Internal notes",          required: false },
 ];
 
 export const LEAD_FIELDS: ImportFieldDef[] = [
@@ -32,6 +33,7 @@ export const LEAD_FIELDS: ImportFieldDef[] = [
   { key: "phone",           label: "Phone",                   required: false },
   { key: "eventDate",       label: "Event Date (YYYY-MM-DD)", required: false },
   { key: "eventType",       label: "Event Type",              required: false },
+  { key: "guestCount",      label: "Guest Count",             required: false },
   { key: "estimatedBudget", label: "Budget",                  required: false },
   { key: "source",          label: "Source",                  required: false },
   { key: "inquiryMessage",  label: "Inquiry Notes",           required: false },
@@ -61,10 +63,15 @@ export const INVENTORY_FIELDS: ImportFieldDef[] = [
 ];
 
 export const PACKAGE_FIELDS: ImportFieldDef[] = [
-  { key: "name",        label: "Package Name", required: true  },
-  { key: "description", label: "Description",  required: false },
-  { key: "basePrice",   label: "Base Price",   required: false },
-  { key: "category",    label: "Category",     required: false },
+  { key: "name",           label: "Package Name", required: true  },
+  { key: "description",    label: "Description",  required: false },
+  { key: "basePrice",      label: "Base Price",   required: false },
+  { key: "category",       label: "Category",     required: false },
+  {
+    key: "includedItems",
+    label: "Included Items (desc|qty|unit; …)",
+    required: false,
+  },
 ];
 
 export const ENTITY_FIELDS: Record<EntityType, ImportFieldDef[]> = {
@@ -82,7 +89,7 @@ export type ImportRowError = { row: number; message: string; kind: "skipped" | "
 export type ImportResult = {
   imported: number;
   errors: ImportRowError[];
-  /** Migration Center — the batch this run created, for history/rollback. Null if the batch itself couldn't be recorded (never blocks the import). */
+  /** Batch this run created. Null when the import did not produce durable history. */
   batchId: string | null;
 };
 
@@ -94,6 +101,8 @@ export type ImportBatch = {
   sourceLabel: string | null;
   importedByType: "venue" | "hq_staff";
   importedBy: string | null;
+  /** Set when the batch was produced by Migration Center; null for spreadsheet/HQ ad-hoc runs. */
+  migrationSessionId: string | null;
   rowCount: number;
   importedCount: number;
   skippedCount: number;

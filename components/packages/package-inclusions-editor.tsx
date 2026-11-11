@@ -5,20 +5,91 @@ import * as React from "react";
 import { Check, Loader2, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
-import { addPackageItemAction, removePackageItemAction } from "@/app/(app)/packages/actions";
+import { addPackageItemAction, linkPackageItemOfferingAction, removePackageItemAction, setPackageItemQuantityAction } from "@/app/(app)/packages/actions";
 import { LibrarySaveStatus, useLibrarySaveStatus } from "@/components/library/library-save-status";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useSyncedState } from "@/lib/hooks/use-synced-state";
+import type { OfferingWithCategory } from "@/lib/offerings/types";
 import type { PackageItem } from "@/lib/packages/types";
+
+function offeringOptionLabel(o: OfferingWithCategory): string {
+  return [
+    o.parentOfferingName ? `${o.parentOfferingName} › ${o.name}` : o.name,
+    o.categoryName ?? "uncategorized",
+    o.defaultUnitPrice != null ? `$${o.defaultUnitPrice.toFixed(2)}` : "unpriced",
+  ].join(" · ");
+}
+
+function OfferingOptions({ offerings, current }: { offerings: OfferingWithCategory[]; current?: string | null }) {
+  return (
+    <>
+      {offerings
+        .filter((o) => !o.isArchived || o.id === current)
+        .map((o) => (
+          <option key={o.id} value={o.id}>
+            {offeringOptionLabel(o)}{o.isArchived ? " · archived" : ""}
+          </option>
+        ))}
+    </>
+  );
+}
+
+function InclusionCount({
+  item,
+  disabled,
+  onSave,
+}: {
+  item: PackageItem;
+  disabled: boolean;
+  onSave: (quantity: number, perGuest: boolean) => void;
+}) {
+  const [qty, setQty] = React.useState(String(item.quantity));
+  const perGuest = item.perGuest === true;
+
+  function commitQty() {
+    const n = Number(qty);
+    if (!Number.isFinite(n) || n <= 0) { setQty(String(item.quantity)); return; }
+    if (n !== item.quantity) onSave(n, perGuest);
+  }
+
+  return (
+    <span className="flex items-center gap-1.5 text-xs text-muted-foreground" data-testid={`package-inclusion-count-${item.id}`}>
+      <Input
+        type="number"
+        min="0"
+        step="1"
+        aria-label={`How many for ${item.description}`}
+        className="h-8 w-16 text-xs"
+        value={qty}
+        disabled={disabled}
+        onChange={(e) => setQty(e.target.value)}
+        onBlur={commitQty}
+        onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+      />
+      <label className="flex items-center gap-1">
+        <input
+          type="checkbox"
+          className="size-3.5"
+          checked={perGuest}
+          disabled={disabled}
+          onChange={(e) => onSave(Number(qty) > 0 ? Number(qty) : item.quantity, e.target.checked)}
+        />
+        per guest
+      </label>
+    </span>
+  );
+}
 
 export function PackageInclusionsEditor({
   packageId,
   initialItems,
+  offerings = [],
 }: {
   packageId: string;
   initialItems: PackageItem[];
+  offerings?: OfferingWithCategory[];
 }) {
   // See lib/hooks/use-synced-state.ts — PackageForm is an always-mounted
   // sibling on this same page and calls router.refresh() on save.
@@ -27,24 +98,63 @@ export function PackageInclusionsEditor({
   const [description, setDescription] = React.useState("");
   const [quantity, setQuantity] = React.useState("1");
   const [unit, setUnit] = React.useState("");
+  const [perGuest, setPerGuest] = React.useState(false);
+  const [offeringId, setOfferingId] = React.useState("");
   const [addPending, startAdd] = React.useTransition();
   const [removingId, setRemovingId] = React.useState<string | null>(null);
+  const [linkingId, setLinkingId] = React.useState<string | null>(null);
   const saveUi = useLibrarySaveStatus();
+
+  function chooseNewOffering(id: string) {
+    setOfferingId(id);
+    const o = offerings.find((x) => x.id === id);
+    if (!o) return;
+    if (!description.trim()) setDescription(o.name);
+    if (!unit.trim() && o.unit) setUnit(o.unit);
+  }
 
   function handleAdd() {
     if (!description.trim()) return;
     startAdd(async () => {
       saveUi.markSaving();
-      const result = await addPackageItemAction(packageId, { description, quantity, unit });
+      const result = await addPackageItemAction(packageId, { description, quantity, unit, offeringId: offeringId || null, perGuest });
       if (result.ok && "item" in result) {
         setItems((p) => [...p, result.item]);
-        setDescription(""); setQuantity("1"); setUnit(""); setShowAdd(false);
+        setDescription(""); setQuantity("1"); setUnit(""); setPerGuest(false); setOfferingId(""); setShowAdd(false);
         saveUi.markSaved();
       } else {
         saveUi.markError();
         toast.error("message" in result ? result.message ?? "Could not add." : "Could not add.");
       }
     });
+  }
+
+  async function handleLink(itemId: string, nextOfferingId: string) {
+    setLinkingId(itemId);
+    saveUi.markSaving();
+    const result = await linkPackageItemOfferingAction(packageId, itemId, nextOfferingId || null);
+    setLinkingId(null);
+    if (result.ok && "item" in result) {
+      setItems((p) => p.map((i) => (i.id === itemId ? result.item : i)));
+      saveUi.markSaved();
+    } else {
+      saveUi.markError();
+      toast.error("message" in result ? result.message ?? "Could not link." : "Could not link.");
+    }
+  }
+
+  async function handleCount(itemId: string, nextQuantity: number, nextPerGuest: boolean) {
+    setLinkingId(itemId);
+    saveUi.markSaving();
+    const result = await setPackageItemQuantityAction(packageId, itemId, nextQuantity, nextPerGuest);
+    setLinkingId(null);
+    if (result.ok && "item" in result) {
+      setItems((p) => p.map((i) => (i.id === itemId ? result.item : i)));
+      saveUi.markSaved();
+    } else {
+      saveUi.markError();
+      toast.error("message" in result ? result.message ?? "Could not save the count." : "Could not save the count.");
+    }
   }
 
   async function handleRemove(itemId: string) {
@@ -64,21 +174,45 @@ export function PackageInclusionsEditor({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-xs text-muted-foreground">Inclusions save as soon as you add or remove them.</p>
+        <p className="text-xs text-muted-foreground">Inclusions save as soon as you add, link, or remove them.</p>
         <LibrarySaveStatus status={saveUi.status} model="autosave" />
       </div>
+      {offerings.length > 0 && (
+        <p className="text-xs text-muted-foreground" data-testid="package-inclusion-offering-hint">
+          Link an inclusion to a catalog offering so it carries onto the Event Order as that offering when this package is accepted.
+          Set how many go on each Event Order, or tick per guest (for example 1 chair per guest).
+        </p>
+      )}
       {items.length === 0 && !showAdd && (
         <p className="text-xs text-muted-foreground py-2">No inclusions listed yet. Add what&apos;s included in this package.</p>
       )}
       {items.length > 0 && (
         <ul className="space-y-1.5">
           {items.map((item) => (
-            <li key={item.id} className="group flex items-center gap-2 text-sm">
+            <li key={item.id} className="group flex flex-wrap items-center gap-2 text-sm" data-testid={`package-inclusion-${item.id}`}>
               <Check className="h-3.5 w-3.5 shrink-0 text-success" />
-              <span className="flex-1 text-foreground">
-                {item.quantity !== 1 && <span className="text-muted-foreground mr-1">{item.quantity}{item.unit ? ` ${item.unit}` : ""}</span>}
+              <span className="min-w-[10rem] flex-1 text-foreground">
+                {!item.offeringId && (item.quantity !== 1 || item.perGuest) && (
+                  <span className="text-muted-foreground mr-1">{item.quantity}{item.unit ? ` ${item.unit}` : ""}{item.perGuest ? " per guest" : ""}</span>
+                )}
                 {item.description}
               </span>
+              {item.offeringId && (
+                <InclusionCount key={`${item.quantity}:${item.perGuest === true}`} item={item} disabled={linkingId === item.id} onSave={(q, pg) => void handleCount(item.id, q, pg)} />
+              )}
+              {offerings.length > 0 && (
+                <select
+                  aria-label={`Catalog offering for ${item.description}`}
+                  className="h-8 max-w-[18rem] rounded-md border border-border bg-background px-2 text-xs"
+                  value={item.offeringId ?? ""}
+                  disabled={linkingId === item.id}
+                  data-testid={`package-inclusion-offering-${item.id}`}
+                  onChange={(e) => void handleLink(item.id, e.target.value)}
+                >
+                  <option value="">Not linked to an offering</option>
+                  <OfferingOptions offerings={offerings} current={item.offeringId} />
+                </select>
+              )}
               <button type="button" onClick={() => handleRemove(item.id)} disabled={removingId === item.id}
                 className="opacity-0 group-hover:opacity-100 rounded p-0.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-opacity" aria-label="Remove">
                 {removingId === item.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
@@ -90,6 +224,20 @@ export function PackageInclusionsEditor({
 
       {showAdd && (
         <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto] items-end rounded-lg border border-ring bg-card p-3">
+          {offerings.length > 0 && (
+            <div className="space-y-1.5 sm:col-span-3">
+              <Label className="text-xs">Catalog offering (optional)</Label>
+              <select
+                className="flex h-9 w-full rounded-md border border-border bg-background px-3 text-sm"
+                value={offeringId}
+                data-testid="package-inclusion-new-offering"
+                onChange={(e) => chooseNewOffering(e.target.value)}
+              >
+                <option value="">Not linked to an offering</option>
+                <OfferingOptions offerings={offerings} />
+              </select>
+            </div>
+          )}
           <div className="space-y-1.5">
             <Label className="text-xs">Inclusion *</Label>
             <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Ceremony space, catering for 150 guests…" autoFocus />
@@ -97,6 +245,10 @@ export function PackageInclusionsEditor({
           <div className="space-y-1.5">
             <Label className="text-xs">Qty</Label>
             <Input type="number" value={quantity} onChange={(e) => setQuantity(e.target.value)} className="w-16" min="0" step="1" />
+            <label className="flex items-center gap-1 text-xs text-muted-foreground">
+              <input type="checkbox" className="size-3.5" checked={perGuest} onChange={(e) => setPerGuest(e.target.checked)} data-testid="package-inclusion-new-per-guest" />
+              per guest
+            </label>
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs">Unit</Label>

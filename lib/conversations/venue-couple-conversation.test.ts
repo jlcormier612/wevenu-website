@@ -158,7 +158,7 @@ describe("SMS path source locks (Track B)", () => {
       assert.match(src, /findOrCreateVenueCoupleConversation/);
     }
     assert.match(repo, /findVenueCoupleConversationId/);
-    assert.match(inbound, /No match → log and skip/);
+    assert.match(inbound, /persist inbound_sms_unmatched/);
     assert.match(inbound, /venue_couple/);
   });
 });

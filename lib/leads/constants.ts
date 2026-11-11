@@ -8,6 +8,8 @@ import {
   EVENT_TYPES as CANONICAL_EVENT_TYPES,
   eventTypeLabel as labelFromCanonical,
 } from "@/lib/event-types/canonical";
+import { formatMoneyDisplay } from "@/lib/money/format";
+import { venueToday } from "@/lib/venue/timezone";
 
 export type StatusMeta = {
   value: SalesStage;
@@ -36,20 +38,30 @@ export type Option = { value: string; label: string };
 export const EVENT_TYPES: Option[] = CANONICAL_EVENT_TYPES;
 
 export const LEAD_SOURCES: Option[] = [
-  { value: "website",      label: "Website" },
-  { value: "referral",     label: "Referral" },
-  { value: "the_knot",     label: "The Knot" },
-  { value: "wedding_wire", label: "WeddingWire" },
-  { value: "instagram",    label: "Instagram" },
-  { value: "facebook",     label: "Facebook" },
-  { value: "google",       label: "Google" },
-  { value: "email",        label: "Direct Email" },
-  { value: "phone",        label: "Phone Call" },
-  { value: "walk_in",      label: "Walk-in" },
-  { value: "other",        label: "Other" },
+  { value: "website",               label: "Website" },
+  { value: "referral",              label: "Referral" },
+  { value: "the_knot",              label: "The Knot" },
+  { value: "wedding_wire",          label: "WeddingWire" },
+  { value: "zola",                  label: "Zola" },
+  { value: "here_comes_the_guide",  label: "Here Comes the Guide" },
+  { value: "instagram",             label: "Instagram" },
+  { value: "facebook",              label: "Facebook" },
+  { value: "google",                label: "Google" },
+  { value: "email",                 label: "Direct Email" },
+  { value: "phone",                 label: "Phone Call" },
+  { value: "walk_in",               label: "Walk-in" },
+  { value: "other",                 label: "Other" },
 ];
 
-export function createInitialLeadInput(): LeadInput {
+/**
+ * Blank New Lead defaults. Inquiry date must be the venue's local calendar
+ * day — never `toISOString().slice(0, 10)`, which is UTC and shows tomorrow
+ * for Eastern venues every evening.
+ */
+export function createInitialLeadInput(
+  venueTimezone?: string | null,
+  now: Date = new Date(),
+): LeadInput {
   return {
     firstName: "",
     lastName: "",
@@ -66,7 +78,7 @@ export function createInitialLeadInput(): LeadInput {
     estimatedBudget: "",
     source: "",
     inquiryMessage: "",
-    inquiryDate: new Date().toISOString().slice(0, 10),
+    inquiryDate: venueToday(venueTimezone ?? null, now),
   };
 }
 
@@ -99,14 +111,26 @@ export function eventTypeLabel(value: string | null): string {
 /** Intake/registry keys that are not offered on the manual New Lead picker. */
 const INTAKE_SOURCE_LABELS: Record<string, string> = {
   facebook_lead_ads: "Facebook Lead Ads",
-  email_parsed_generic: "Email (auto-detected)",
+  email_parsed_generic: "Email — source unknown",
   tour_scheduling: "Tour Request",
+};
+
+/**
+ * Legacy / alternate identifiers that map onto lead_sources keys.
+ * Migration Center uses `weddingwire`; leads.source uses `wedding_wire`.
+ */
+const SOURCE_KEY_ALIASES: Record<string, string> = {
+  weddingwire: "wedding_wire",
+  theknot: "the_knot",
+  herecomestheguide: "here_comes_the_guide",
+  hctg: "here_comes_the_guide",
 };
 
 export function sourceLabel(value: string | null): string {
   if (!value) return "";
-  return LEAD_SOURCES.find((s) => s.value === value)?.label
-    ?? INTAKE_SOURCE_LABELS[value]
+  const key = SOURCE_KEY_ALIASES[value] ?? value;
+  return LEAD_SOURCES.find((s) => s.value === key)?.label
+    ?? INTAKE_SOURCE_LABELS[key]
     ?? value;
 }
 
@@ -118,12 +142,17 @@ export function sourceLabel(value: string | null): string {
  * import row. Falls back to "other" rather than dropping the row, and never
  * discards the original text: the caller stores it in source_data so
  * nothing is silently lost.
+ *
+ * Also normalizes legacy marketplace identifiers (weddingwire → wedding_wire).
  */
 export function resolveLeadSourceKey(rawValue: string | null | undefined): { key: string; originalLabel: string | null } {
   const trimmed = rawValue?.trim();
   if (!trimmed) return { key: "other", originalLabel: null };
   const normalized = trimmed.toLowerCase().replace(/[\s-]+/g, "_");
-  const match = LEAD_SOURCES.find((s) => s.value === normalized || s.label.toLowerCase() === trimmed.toLowerCase());
+  const aliased = SOURCE_KEY_ALIASES[normalized] ?? normalized;
+  const match = LEAD_SOURCES.find(
+    (s) => s.value === aliased || s.value === normalized || s.label.toLowerCase() === trimmed.toLowerCase(),
+  );
   return match ? { key: match.value, originalLabel: null } : { key: "other", originalLabel: trimmed };
 }
 
@@ -139,12 +168,27 @@ export function formatDate(iso: string | null | undefined): string {
 }
 
 export function formatCurrency(amount: number | null | undefined): string {
-  if (amount == null) return "";
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  }).format(amount);
+  return formatMoneyDisplay(amount, "USD");
+}
+
+/** Parse a typed money string into a storage-friendly numeric string (no $ / commas). */
+export function parseMoneyInput(raw: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed) return "";
+  const cleaned = trimmed.replace(/[$,\s]/g, "");
+  if (!cleaned || cleaned === "." || cleaned === "-" || cleaned === "-.") return "";
+  const n = Number(cleaned);
+  if (!Number.isFinite(n)) return trimmed.replace(/[$,\s]/g, "");
+  return String(n);
+}
+
+/** Format a typed money field for display after blur; empty stays empty (not $0). */
+export function formatMoneyInputDisplay(raw: string): string {
+  const parsed = parseMoneyInput(raw);
+  if (!parsed) return "";
+  const n = Number(parsed);
+  if (!Number.isFinite(n)) return raw;
+  return formatCurrency(n);
 }
 
 /** Relative timestamp ("just now", "2 hours ago", "Jun 26") for activity feeds. */
@@ -176,13 +220,21 @@ export function isDueToday(iso: string | null | undefined): boolean {
 
 /** Build the initial RelationshipInput from an existing lead (or blank). */
 export function createInitialRelationshipInput(lead?: Lead | null): RelationshipInput {
+  const scheduledDate = lead?.tourScheduledDate ?? (!lead?.tourCompleted ? lead?.tourDate : null) ?? "";
+  const scheduledTime = lead?.tourScheduledTime ?? (!lead?.tourCompleted ? lead?.tourTime : null) ?? "";
+  // Actual is a separate clock. Never copy the booked slot into it here —
+  // a future appointment must not look like it already occurred.
+  const actualDate = lead?.tourActualDate ?? "";
+  const actualTime = lead?.tourActualTime ?? "";
   return {
     nextActionText: lead?.nextActionText ?? "",
     nextActionDue: lead?.nextActionDue ?? "",
     followUpDate: lead?.followUpDate ?? "",
     lastContactedAt: lead?.lastContactedAt ?? "",
-    tourDate: lead?.tourDate ?? "",
-    tourTime: lead?.tourTime ?? "",
+    tourDate: scheduledDate || lead?.tourDate || "",
+    tourTime: scheduledTime || lead?.tourTime || "",
+    tourActualDate: actualDate || "",
+    tourActualTime: actualTime || "",
     tourCompleted: lead?.tourCompleted ?? false,
     tourNotes: lead?.tourNotes ?? "",
   };
@@ -198,6 +250,7 @@ const ACTIVITY_LABELS: Partial<Record<ActivityType | string, string>> = {
   task_completed: "Task completed",
   tour_scheduled: "Tour scheduled",
   follow_up_set: "Follow-up set",
+  follow_up_completed: "Follow-up completed",
   last_contacted: "Marked as contacted",
   lead_updated: "Lead info updated",
   relationship_updated: "Relationship details updated",

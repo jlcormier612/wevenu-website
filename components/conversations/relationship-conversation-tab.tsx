@@ -23,6 +23,7 @@ export function RelationshipConversationTab({
   eventCount,
   initialBody,
   initialSubject,
+  onAuthoritativeSendSuccess,
 }: {
   conversationId: string | null;
   /** Relationship ids for Documents links + delivery recovery (I8). */
@@ -38,6 +39,11 @@ export function RelationshipConversationTab({
   /** RC2, Milestone 5 — the Luv→Messages "Use this draft" bridge (lead-detail.tsx). */
   initialBody?: string;
   initialSubject?: string;
+  /**
+   * Called after ConversationCompose reports an authoritative send success.
+   * Used by the Luv draft panel to leave PENDING REVIEW — never on send failure.
+   */
+  onAuthoritativeSendSuccess?: () => Promise<void> | void;
 }) {
   if (!conversationId) {
     // Shouldn't happen in practice — every Relationship gets a Conversation
@@ -83,6 +89,7 @@ export function RelationshipConversationTab({
         summary={summary}
         initialBody={initialBody}
         initialSubject={initialSubject}
+        onAuthoritativeSendSuccess={onAuthoritativeSendSuccess}
       />
     </div>
   );

@@ -122,6 +122,25 @@ export async function getVenueDocuments(client: DbClient, venueId: string): Prom
   return (data as DocRow[]).map(mapDoc);
 }
 
+/**
+ * One venue-level document. The four null predicates are the definition of
+ * "venue-level", so this cannot be used to reach an entity-scoped document —
+ * Library actions must never operate on a lead/client/event/vendor file.
+ */
+export async function findVenueDocument(
+  client: DbClient,
+  venueId: string,
+  documentId: string,
+): Promise<Document | null> {
+  const { data, error } = await client.from("documents").select("*")
+    .eq("id", documentId)
+    .eq("venue_id", venueId)
+    .is("lead_id", null).is("client_id", null).is("event_id", null).is("vendor_id", null)
+    .maybeSingle<DocRow>();
+  if (error) throw error;
+  return data ? mapDoc(data) : null;
+}
+
 export async function insertVenueDocument(client: DbClient, venueId: string, payload: DocumentUploadPayload): Promise<string> {
   const tags = payload.tags.split(",").map((t) => t.trim()).filter(Boolean);
   const { data, error } = await client.from("documents").insert({
@@ -208,13 +227,14 @@ export async function getDocumentForAccess(
   clientId: string | null;
   eventId: string | null;
   storagePath: string;
+  storageUrl: string | null;
   isCoupleVisible: boolean;
   sharedWithVendors: boolean;
   fileName: string;
 } | null> {
   const { data, error } = await client
     .from("documents")
-    .select("id, venue_id, client_id, event_id, storage_path, is_couple_visible, shared_with_vendors, file_name")
+    .select("id, venue_id, client_id, event_id, storage_path, storage_url, is_couple_visible, shared_with_vendors, file_name")
     .eq("id", documentId)
     .maybeSingle<{
       id: string;
@@ -222,6 +242,7 @@ export async function getDocumentForAccess(
       client_id: string | null;
       event_id: string | null;
       storage_path: string;
+      storage_url: string | null;
       is_couple_visible: boolean;
       shared_with_vendors: boolean;
       file_name: string;
@@ -234,6 +255,7 @@ export async function getDocumentForAccess(
     clientId: data.client_id,
     eventId: data.event_id,
     storagePath: data.storage_path,
+    storageUrl: data.storage_url,
     isCoupleVisible: data.is_couple_visible,
     sharedWithVendors: data.shared_with_vendors,
     fileName: data.file_name,
@@ -288,6 +310,21 @@ export async function listDocumentFileVersionPaths(
     .eq("document_id", documentId);
   if (error) throw error;
   return ((data ?? []) as { storage_path: string }[]).map((r) => r.storage_path).filter(Boolean);
+}
+
+export async function findDocumentStoragePath(
+  client: DbClient,
+  venueId: string,
+  documentId: string,
+): Promise<string | null> {
+  const { data, error } = await client
+    .from("documents")
+    .select("storage_path")
+    .eq("id", documentId)
+    .eq("venue_id", venueId)
+    .maybeSingle<{ storage_path: string }>();
+  if (error) throw error;
+  return data?.storage_path ?? null;
 }
 
 export async function deleteDocument(

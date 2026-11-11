@@ -1,8 +1,15 @@
 import { NextResponse } from "next/server";
 
 import { createAdminClient } from "@/integrations/supabase/admin";
+import {
+  parseExplicitPurchaserIsOwner,
+  PURCHASER_OWNERSHIP_REQUIRED_ERROR,
+  PURCHASER_OWNERSHIP_REQUIRED_MESSAGE,
+} from "@/lib/activation/purchaser-ownership";
 import { isSupabaseConfigured } from "@/lib/env";
 import { resolveUserIdForEmail } from "@/lib/legal/service";
+import { isLegalAcceptedValue } from "@/lib/legal/signup-consent";
+import { createPurchaseOnboardingHandoff } from "@/lib/venue/onboarding-handoff";
 
 export const runtime = "nodejs";
 
@@ -11,31 +18,21 @@ export const runtime = "nodejs";
  *
  * Auth: Bearer PRODUCT_SYNC_API_KEY
  *
- * Replaces the previous local-file "simulated" credential recording
- * (workspace/app/activate/actions.ts's recordOwnerActivationCredential).
- * Creates the real, loggable-into product account:
+ * Body: { token, password, purchaserIsOwner (required boolean),
+ *         legalAccepted: true, invitedOwnerName?, invitedOwnerEmail? }
  *
- *   1. Look up the enrollment by activation token.
- *   2. Get-or-create the auth.users row for the owner's email — reuses
- *      resolveUserIdForEmail, the same helper the legal-acceptance step
- *      (which runs immediately before this call, per the existing
- *      activation flow) already uses to create a passwordless auth.users
- *      row for the FK. That row is expected to already exist by the time
- *      this runs; this call is what actually gives it a real, usable
- *      password.
- *   3. Set the real password via the Admin API (never touches product
- *      tables — auth.users remains the only place a credential lives).
- *   4. Call the atomic activate_venue_enrollment() Postgres function,
- *      which creates the venues row, upserts the owner venue_staff row,
- *      and marks the enrollment activated in one transaction. Idempotent
- *      on retry (already-activated returns the existing venueId and
- *      repairs a missing owner staff row).
- *
- * Body: { token, password }
+ * Purchaser ≠ Owner unless purchaserIsOwner is explicitly true.
+ * Missing/invalid ownership choice is rejected (fail closed).
+ * Legal acknowledgment is required before auth password / venue creation.
  */
 type ActivateBody = {
   token?: string;
   password?: string;
+  purchaserIsOwner?: unknown;
+  legalAccepted?: unknown;
+  invitedOwnerName?: string | null;
+  invitedOwnerEmail?: string | null;
+  inviteOwnerNow?: unknown;
 };
 
 function authorize(request: Request): boolean {
@@ -66,11 +63,40 @@ export async function POST(request: Request) {
 
   const token = body.token?.trim();
   const password = body.password ?? "";
+  if (!isLegalAcceptedValue(body.legalAccepted)) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "legal_acceptance_required",
+        message:
+          "Please agree to the Terms of Service and Privacy Policy to continue.",
+      },
+      { status: 400 },
+    );
+  }
+  const ownership = parseExplicitPurchaserIsOwner(body.purchaserIsOwner);
+  if (!ownership.ok) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: ownership.error,
+        message: PURCHASER_OWNERSHIP_REQUIRED_MESSAGE,
+      },
+      { status: 400 },
+    );
+  }
+  const purchaserIsOwner = ownership.purchaserIsOwner;
+  const invitedOwnerName = body.invitedOwnerName?.trim() || null;
+  const invitedOwnerEmail = body.invitedOwnerEmail?.trim().toLowerCase() || null;
+  const inviteOwnerNow = body.inviteOwnerNow === true;
   if (!token) {
     return NextResponse.json({ error: "token is required" }, { status: 400 });
   }
-  if (password.length < 8) {
-    return NextResponse.json({ error: "password must be at least 8 characters" }, { status: 400 });
+  if (!purchaserIsOwner && ((invitedOwnerName && !invitedOwnerEmail) || (!invitedOwnerName && invitedOwnerEmail))) {
+    return NextResponse.json(
+      { error: "Owner name and email must both be provided, or both left blank to add later." },
+      { status: 400 },
+    );
   }
 
   const admin = createAdminClient();
@@ -78,7 +104,9 @@ export async function POST(request: Request) {
   try {
     const { data: enrollment, error: lookupErr } = await admin
       .from("venue_enrollments")
-      .select("id, owner_email, status, venue_id, onboarding_type")
+      .select(
+        "id, owner_email, owner_first_name, owner_last_name, venue_name, status, venue_id, onboarding_type, stripe_checkout_session_id",
+      )
       .eq("activation_token", token)
       .maybeSingle();
     if (lookupErr) throw lookupErr;
@@ -92,11 +120,31 @@ export async function POST(request: Request) {
 
     const userId = await resolveUserIdForEmail(enrollment.owner_email);
 
-    // Password updates stay retry-safe: an already-activated owner who
-    // re-submits the form gets a working credential again. Venue creation
-    // itself stays idempotent inside activate_venue_enrollment().
-    const { error: pwErr } = await admin.auth.admin.updateUserById(userId, { password });
-    if (pwErr) throw pwErr;
+    // First activation of a user with no other accepted membership sets the
+    // submitted password. A second venue, or a replay after activation, does not.
+    let otherMemberships = admin
+      .from("venue_staff")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .eq("is_active", true)
+      .not("accepted_at", "is", null);
+    if (enrollment.venue_id) {
+      otherMemberships = otherMemberships.neq("venue_id", enrollment.venue_id);
+    }
+    const { count: otherCount, error: memberErr } = await otherMemberships;
+    if (memberErr) throw memberErr;
+    const alreadyHasLogin =
+      enrollment.status === "activated" || (otherCount ?? 0) > 0;
+    if (!alreadyHasLogin && password.length < 8) {
+      return NextResponse.json(
+        { error: "password must be at least 8 characters" },
+        { status: 400 },
+      );
+    }
+    if (!alreadyHasLogin) {
+      const { error: pwErr } = await admin.auth.admin.updateUserById(userId, { password });
+      if (pwErr) throw pwErr;
+    }
 
     // Always call the RPC — including on already-activated retries — so
     // the owner venue_staff row is upserted/repaired. Older activations
@@ -106,19 +154,173 @@ export async function POST(request: Request) {
       .rpc("activate_venue_enrollment", {
         p_activation_token: token,
         p_owner_user_id: userId,
+        p_purchaser_is_owner: purchaserIsOwner,
+        p_invited_owner_name: inviteOwnerNow ? invitedOwnerName : null,
+        p_invited_owner_email: inviteOwnerNow ? invitedOwnerEmail : null,
       })
       .single();
     if (activateErr) {
-      if (activateErr.message.toLowerCase().includes("invalid_or_expired_token")) {
+      const activateMsg = activateErr.message.toLowerCase();
+      if (activateMsg.includes("invalid_or_expired_token")) {
         return NextResponse.json({ ok: false, error: "invalid_or_expired_token" }, { status: 404 });
       }
-      if (activateErr.message.toLowerCase().includes("token_expired")) {
+      if (activateMsg.includes("token_expired")) {
         return NextResponse.json({ ok: false, error: "token_expired" }, { status: 410 });
+      }
+      if (activateMsg.includes("purchaser_ownership_choice_required")) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error: PURCHASER_OWNERSHIP_REQUIRED_ERROR,
+            message: PURCHASER_OWNERSHIP_REQUIRED_MESSAGE,
+          },
+          { status: 400 },
+        );
       }
       throw activateErr;
     }
 
     const row = result as { venue_id: string; already_activated: boolean };
+
+    if (row.venue_id) {
+      const handoff = await createPurchaseOnboardingHandoff({
+        userId,
+        intendedEmail: enrollment.owner_email,
+        venueId: row.venue_id,
+      });
+      if (!handoff.ok) {
+        console.error("[enrollment/activate] onboarding handoff failed", handoff.error);
+      }
+
+      // Bind every earned grant for this Session (Founding and/or Weven) to the
+      // venue. Soft-milestone issuance already happened at Checkout — activation
+      // never rechecks capacity. Pending Weven verification must not block this.
+      const checkoutSessionId =
+        typeof enrollment.stripe_checkout_session_id === "string"
+          ? enrollment.stripe_checkout_session_id
+          : null;
+      if (checkoutSessionId) {
+        try {
+          const {
+            isPricingLaunchV1Ready,
+            requireDurablePricingOfferStore,
+            getPricingOfferStore,
+          } = await import("@shared/pricing");
+          const offerStore = isPricingLaunchV1Ready()
+            ? requireDurablePricingOfferStore()
+            : getPricingOfferStore();
+          await offerStore.bindAllGrantsForSession(
+            checkoutSessionId,
+            row.venue_id,
+          );
+        } catch (grantBindErr) {
+          console.error(
+            "[enrollment/activate] offer grant venue bind failed",
+            grantBindErr,
+          );
+        }
+
+        // Phase 4 — fulfill org reservation + queue prospective group adjustments.
+        try {
+          const {
+            ACTIVE_TIER_UPGRADE_STATUSES,
+            executeGroupCouponChange,
+            fulfillOrganizationVenueActivation,
+            getPricingOfferStore: getOfferStoreForGrants,
+            getTierUpgradeStore,
+            isPricingGroupV1FlagEnabled,
+          } = await import("@shared/pricing");
+          const { requireDurableGroupOrgStore } = await import(
+            "@shared/pricing/group-org-store-access"
+          );
+          if (isPricingGroupV1FlagEnabled()) {
+            const orgStore = requireDurableGroupOrgStore();
+            const offerStoreForGrants = getOfferStoreForGrants();
+            const tierStore = getTierUpgradeStore();
+            await fulfillOrganizationVenueActivation({
+              store: orgStore,
+              reservationId: null,
+              checkoutSessionId,
+              venueId: row.venue_id,
+              loadMemberBilling: async (venueIds) => {
+                if (venueIds.length === 0) return [];
+                const { data } = await admin
+                  .from("venues")
+                  .select(
+                    "id, saas_plan_key, saas_subscription_status, saas_stripe_subscription_id",
+                  )
+                  .in("id", venueIds);
+                const snaps = [];
+                for (const v of data ?? []) {
+                  const venueId = v.id as string;
+                  const grants =
+                    await offerStoreForGrants.listEarnedGrantsForVenue(venueId);
+                  const upgrades =
+                    await tierStore.listUpgradesForVenue(venueId);
+                  const pending =
+                    upgrades.find((u) =>
+                      (ACTIVE_TIER_UPGRADE_STATUSES as readonly string[]).includes(
+                        u.status,
+                      ),
+                    ) ?? null;
+                  snaps.push({
+                    venueId,
+                    planKey: ((v.saas_plan_key as string) ||
+                      "starter") as "starter" | "growing" | "professional",
+                    subscriptionStatus:
+                      (v.saas_subscription_status as string | null) ?? null,
+                    stripeSubscriptionId:
+                      (v.saas_stripe_subscription_id as string | null) ?? null,
+                    grants: grants.map((g) => ({
+                      id: g.id,
+                      offerType: g.offerType,
+                      percentOff: g.percentOff ?? 0,
+                      status: g.status,
+                    })),
+                    pendingTierUpgrade: pending,
+                  });
+                }
+                return snaps;
+              },
+              executeAdjustments: async (adjustment, decision) => {
+                if (
+                  !adjustment.stripeSubscriptionId ||
+                  decision.action === "noop" ||
+                  decision.action === "defer_to_schedule"
+                ) {
+                  return { ok: true };
+                }
+                try {
+                  const Stripe = (await import("stripe")).default;
+                  const key = process.env.STRIPE_SECRET_KEY;
+                  if (!key) {
+                    return { ok: false, error: "STRIPE_SECRET_KEY missing" };
+                  }
+                  const stripe = new Stripe(key);
+                  return executeGroupCouponChange({
+                    // Stripe SDK types are wider than the minimal executor surface.
+                    stripe: stripe as unknown as import("@shared/pricing").GroupStripeExecutor,
+                    subscriptionId: adjustment.stripeSubscriptionId,
+                    decision,
+                    idempotencyKey: adjustment.idempotencyKey,
+                  });
+                } catch (err) {
+                  return {
+                    ok: false,
+                    error: err instanceof Error ? err.message : String(err),
+                  };
+                }
+              },
+            });
+          }
+        } catch (groupErr) {
+          console.error(
+            "[enrollment/activate] Phase 4 organization fulfill failed",
+            groupErr,
+          );
+        }
+      }
+    }
 
     // Shared provisioning: starters + Setup Hub state (idempotent).
     // Must run after the venue exists so Self-Setup and White Glove share
@@ -151,6 +353,87 @@ export async function POST(request: Request) {
         });
       } catch (crmErr) {
         console.error("[enrollment/activate] CRM milestone sync failed", crmErr);
+      }
+
+      // Record or invite the first Owner after purchaser said they are not one.
+      if (!purchaserIsOwner && invitedOwnerName && invitedOwnerEmail && !row.already_activated) {
+        if (!inviteOwnerNow) {
+          try {
+            const { data: existingOwner } = await admin
+              .from("venue_staff")
+              .select("id")
+              .eq("venue_id", row.venue_id)
+              .eq("email", invitedOwnerEmail)
+              .eq("is_active", true)
+              .maybeSingle<{ id: string }>();
+            if (!existingOwner) {
+              await admin.from("venue_staff").insert({
+                venue_id: row.venue_id,
+                user_id: null,
+                full_name: invitedOwnerName,
+                email: invitedOwnerEmail,
+                role: "staff",
+                is_owner: true,
+                is_active: true,
+                accepted_at: null,
+                invited_at: null,
+                invite_token: null,
+                access_title: "administrator",
+                title_basis: "administrator",
+                capability_overrides: {},
+                owner_invite_pending: false,
+              });
+            }
+          } catch (recordErr) {
+            console.error("[enrollment/activate] record Owner later failed", recordErr);
+          }
+        }
+      }
+      if (!purchaserIsOwner && inviteOwnerNow && invitedOwnerEmail && !row.already_activated) {
+        try {
+          const { data: pendingOwner } = await admin
+            .from("venue_staff")
+            .select("full_name, email, invite_token")
+            .eq("venue_id", row.venue_id)
+            .eq("owner_invite_pending", true)
+            .eq("is_active", true)
+            .maybeSingle<{
+              full_name: string;
+              email: string | null;
+              invite_token: string | null;
+            }>();
+          if (pendingOwner?.invite_token && pendingOwner.email) {
+            const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? "").replace(/\/$/, "");
+            const acceptUrl = `${appUrl}/join?token=${pendingOwner.invite_token}`;
+            const venueName = enrollment.venue_name || "your venue";
+            const administratorName =
+              [enrollment.owner_first_name, enrollment.owner_last_name]
+                .filter(Boolean)
+                .join(" ")
+                .trim() || enrollment.owner_email || "Your Administrator";
+            const { sendEmail } = await import("@/lib/email/send");
+            const { buildOwnerInviteHtml, buildOwnerInviteText } =
+              await import("@/lib/email/team-invite");
+            await sendEmail({
+              to: pendingOwner.email,
+              subject: `You're invited as an Owner of ${venueName} on Hello to Cheers`,
+              text: buildOwnerInviteText({
+                memberName: pendingOwner.full_name,
+                venueName,
+                acceptUrl,
+                administratorName,
+              }),
+              html: buildOwnerInviteHtml({
+                memberName: pendingOwner.full_name,
+                venueName,
+                acceptUrl,
+                administratorName,
+              }),
+            });
+          }
+        } catch (inviteErr) {
+          console.error("[enrollment/activate] Owner invite email failed", inviteErr);
+        }
       }
     }
 

@@ -25,15 +25,147 @@ import { getVenueTimezone } from "@/lib/venue/timezone";
 import type { LuvBriefingItem, LuvObservation } from "@/lib/luv/types";
 import type { LuvSettings } from "@/lib/luv/settings";
 import { computeInterestFromSignals } from "@/lib/leads/signals";
-import { generateMomentumLanguage } from "@/lib/leads/momentum";
+import {
+  isRecordScoped,
+  recordScopeWantsClientSurface,
+  recordScopeWantsEventWindow,
+  recordScopeWantsLeadPipeline,
+  type LuvObservationRecordScope,
+} from "@/lib/luv/observation-record-scope";
+import { tourFollowUpSuperseded } from "@/lib/luv/observation-supersession";
+import { buildPlanningWindowObservationsForEvent } from "@/lib/luv/planning-window-observations";
 import { computeEventTaskReadinessByKind } from "@/lib/playbooks/repository";
-import { computePlanningReadiness, computeTimelineReadiness } from "@/lib/readiness/compute";
+import { computePaymentsReadiness } from "@/lib/readiness/compute";
 import { getRequests } from "@/lib/requests/service";
 import type { Request as PlatformRequest } from "@/lib/requests/types";
 import { computeWebsiteReadiness } from "@/lib/wedding-website/readiness";
 import type { TimelineEntry } from "@/lib/timeline/types";
+import { paymentsAttentionHref } from "@/lib/luv/briefing-attention-links";
+import {
+  applyContextualSupersession,
+  buildLegacyNoFollowUpObservation,
+  buildS1EventContractObservation,
+  buildS2EventPaymentObservation,
+  buildS3UnattendedInquiryObservation,
+} from "@/lib/luv/contextual-signals";
+import { evaluateCompletedTour } from "@/lib/luv/completed-tour-intelligence";
+import { buildUpcomingTourStatusObservation } from "@/lib/luv/observation-quality";
+import { isAuthoritativeProposalSentRecord } from "@/lib/luv/pipeline-stage-evidence";
+import { loadUnattendedInquiryContactEvidence } from "@/lib/luv/unattended-inquiry-contact";
+import { getInvoices } from "@/lib/invoices/repository";
+import { getAllLineItems, getSchedules } from "@/lib/payments/repository";
+import type { Invoice } from "@/lib/invoices/types";
+import { forensicCount, forensicTime } from "@/lib/dashboard/forensic-timing";
+import { tourOccurrenceIso } from "@/lib/tours/occurrence-clock";
 
 type DbClient = Awaited<ReturnType<typeof createClient>>;
+
+/**
+ * Tour follow-up is only actionable while the relationship is still
+ * pre-agreement. A signed (or client-signed) contract, a received
+ * installment, or Booked/Lost supersedes it. A lead we cannot load is
+ * omitted — validity cannot be established.
+ */
+async function leadsWhoseTourFollowUpIsStale(
+  supabase: DbClient,
+  venueId: string,
+  leadIds: Array<string | null>,
+): Promise<Set<string>> {
+  const ids = [...new Set(leadIds.filter((id): id is string => Boolean(id)))];
+  const stale = new Set<string>();
+  if (ids.length === 0) return stale;
+
+  const { data: leads } = await supabase
+    .from("leads")
+    .select("id, first_booked_at, lost_at")
+    .eq("venue_id", venueId)
+    .in("id", ids);
+
+  const known = new Set<string>();
+  const bookedByLead = new Map<string, boolean>();
+  const lostByLead = new Map<string, boolean>();
+  for (const lead of (leads ?? []) as { id: string; first_booked_at: string | null; lost_at: string | null }[]) {
+    known.add(lead.id);
+    bookedByLead.set(lead.id, Boolean(lead.first_booked_at));
+    lostByLead.set(lead.id, Boolean(lead.lost_at));
+  }
+  for (const id of ids) {
+    if (!known.has(id)) stale.add(id);
+  }
+
+  const { data: clients } = await supabase
+    .from("clients")
+    .select("id, lead_id")
+    .eq("venue_id", venueId)
+    .in("lead_id", ids);
+  const clientRows = (clients ?? []) as { id: string; lead_id: string | null }[];
+  const clientIds = clientRows.map((c) => c.id);
+  const signedClientIds = new Set<string>();
+  const paidClientIds = new Set<string>();
+
+  if (clientIds.length > 0) {
+    const { data: contracts } = await supabase
+      .from("contracts")
+      .select("id, client_id, status, contract_signers(signer_type, signed_at)")
+      .eq("venue_id", venueId)
+      .in("client_id", clientIds)
+      .in("status", ["sent", "signed"]);
+    for (const row of (contracts ?? []) as {
+      client_id: string | null;
+      status: string;
+      contract_signers: { signer_type: string; signed_at: string | null }[] | { signer_type: string; signed_at: string | null } | null;
+    }[]) {
+      if (!row.client_id) continue;
+      const signers = Array.isArray(row.contract_signers)
+        ? row.contract_signers
+        : row.contract_signers
+          ? [row.contract_signers]
+          : [];
+      const clientSigned = signers.some((s) => s.signer_type === "client" && s.signed_at != null);
+      if (row.status === "signed" || clientSigned) signedClientIds.add(row.client_id);
+    }
+
+    const { data: schedules } = await supabase
+      .from("payment_schedules")
+      .select("client_id, payment_line_items(status)")
+      .eq("venue_id", venueId)
+      .in("client_id", clientIds);
+    for (const row of (schedules ?? []) as {
+      client_id: string | null;
+      payment_line_items: { status: string }[] | { status: string } | null;
+    }[]) {
+      if (!row.client_id) continue;
+      const lines = Array.isArray(row.payment_line_items)
+        ? row.payment_line_items
+        : row.payment_line_items
+          ? [row.payment_line_items]
+          : [];
+      if (lines.some((l) => l.status === "paid")) paidClientIds.add(row.client_id);
+    }
+  }
+
+  const clientsByLead = new Map<string, string[]>();
+  for (const c of clientRows) {
+    if (!c.lead_id) continue;
+    const list = clientsByLead.get(c.lead_id) ?? [];
+    list.push(c.id);
+    clientsByLead.set(c.lead_id, list);
+  }
+
+  for (const id of ids) {
+    if (stale.has(id)) continue;
+    const related = clientsByLead.get(id) ?? [];
+    if (tourFollowUpSuperseded({
+      booked: bookedByLead.get(id) === true,
+      lost: lostByLead.get(id) === true,
+      contractSigned: related.some((cid) => signedClientIds.has(cid)),
+      paymentReceived: related.some((cid) => paidClientIds.has(cid)),
+    })) {
+      stale.add(id);
+    }
+  }
+  return stale;
+}
 
 /** Friendly day-count phrasing. */
 function inDays(iso: string): string {
@@ -58,27 +190,27 @@ function daysAgo(iso: string): number {
  * exactly this and the read path in lib/leads/repository.ts already uses it,
  * which is why the Dashboard row said 11:00 while Luv said 3:00 PM.
  */
-function venueLocalLabel(iso: string, timezone: string | null, opts: Intl.DateTimeFormatOptions): string {
-  try {
-    return new Intl.DateTimeFormat("en-US", { timeZone: timezone || "America/New_York", ...opts }).format(new Date(iso));
-  } catch {
-    return new Intl.DateTimeFormat("en-US", { timeZone: "UTC", ...opts }).format(new Date(iso));
-  }
-}
-
 export async function getLuvObservations(
   supabase: DbClient,
   venueId: string,
   today: string,
   settings?: Pick<LuvSettings, "observationsEnabled">,
+  scope?: LuvObservationRecordScope,
 ): Promise<LuvObservation[]> {
   if (settings?.observationsEnabled === false) return [];
   const observations: LuvObservation[] = [];
+  const wantLead = recordScopeWantsLeadPipeline(scope);
+  const wantEvent = recordScopeWantsEventWindow(scope);
+  const wantClient = recordScopeWantsClientSurface(scope);
+  const scopedEventId = isRecordScoped(scope) ? scope?.eventId : undefined;
+  const scopedClientId = isRecordScoped(scope) ? scope?.clientId : undefined;
+  const emptyRows = Promise.resolve({ data: [] as never[] });
 
   const soon21 = new Date(Date.now() + 21 * 86_400_000).toISOString().slice(0, 10);
   const soon30 = new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10);
   const threeDaysAgo = new Date(Date.now() - 3 * 86_400_000).toISOString();
   const twoDaysAgo   = new Date(Date.now() - 2 * 86_400_000).toISOString();
+  const fortyEightHoursAgo = new Date(Date.now() - 48 * 3_600_000).toISOString();
 
   const soon7  = new Date(Date.now() + 7  * 86_400_000).toISOString().slice(0, 10);
   const soon90 = new Date(Date.now() + 90 * 86_400_000).toISOString().slice(0, 10);
@@ -98,38 +230,54 @@ export async function getLuvObservations(
     completedNoFollowUpRes,
     noShowRes,
     venueTimezone,
-  ] = await Promise.all([
+    sentContractsRes,
+    unattendedInquiryRes,
+    paymentInvoices,
+    paymentSchedules,
+    paymentLineItems,
+  ] = await forensicTime("luv_obs_primary_queries", () => Promise.all([
     // 1+2: Events within 21 days (not cancelled)
-    onlyBusinessReporting(
-      supabase.from("events")
-        .select("id, name, event_date")
-        .eq("venue_id", venueId)
-        .not("status", "in", "(cancelled,complete)")
-        .gte("event_date", today)
-        .lte("event_date", soon21)
-        .order("event_date"),
-    ),
+    wantEvent
+      ? onlyBusinessReporting(
+        (() => {
+          let q = supabase.from("events")
+            .select("id, name, event_date, client_id, status")
+            .eq("venue_id", venueId)
+            .not("status", "in", "(cancelled,complete)")
+            .gte("event_date", today)
+            .lte("event_date", soon21)
+            .order("event_date");
+          if (scopedEventId) q = q.eq("id", scopedEventId);
+          return q;
+        })(),
+      )
+      : emptyRows,
 
     // Helper: timeline entry counts for those events
-    supabase.from("timeline_entries")
-      .select("event_id")
-      .eq("venue_id", venueId),
+    wantEvent
+      ? (() => {
+          let q = supabase.from("timeline_entries")
+            .select("event_id")
+            .eq("venue_id", venueId);
+          if (scopedEventId) q = q.eq("event_id", scopedEventId);
+          return q;
+        })()
+      : emptyRows,
 
     // Helper: which events have floor plans
-    supabase.from("floor_plans")
-      .select("event_id")
-      .eq("venue_id", venueId),
+    wantEvent
+      ? (() => {
+          let q = supabase.from("floor_plans")
+            .select("event_id")
+            .eq("venue_id", venueId);
+          if (scopedEventId) q = q.eq("event_id", scopedEventId);
+          return q;
+        })()
+      : emptyRows,
 
-    // 3: Qualified/proposal leads — narrowed to "no tour scheduled" below,
-    // against tour_appointments (Program 2 Phase 1a's canonical source),
-    // since the query builder can't express a NOT EXISTS join inline here.
-    onlyBusinessReporting(
-      supabase.from("leads")
-        .select("id, first_name, last_name, partner_first_name, sales_stage, created_at")
-        .eq("venue_id", venueId)
-        .in("sales_stage", ["tour_scheduled", "proposal_sent"])
-        .order("created_at"),
-    ),
+    // 3: Retired — "may be ready to schedule a tour" used sales_stage
+    // (tour_scheduled / proposal_sent) as proof. Stage is never evidence.
+    emptyRows,
 
     // 4: Contracts sent 3+ days ago, still awaiting signature
     supabase.from("contracts")
@@ -150,23 +298,38 @@ export async function getLuvObservations(
       .order("expires_at"),
 
     // 6: "New" leads older than 48 h with no follow-up date
-    onlyBusinessReporting(
-      supabase.from("leads")
-        .select("id, first_name, last_name, partner_first_name, created_at")
-        .eq("venue_id", venueId)
-        .eq("sales_stage", "new_inquiry")
-        .is("follow_up_date", null)
-        .lt("created_at", twoDaysAgo)
-        .order("created_at"),
-    ),
+    // Contact / tour / inbound evidence loaded after this query — last_contacted_at
+    // alone is not enough (Betty-class active tour + venue_staff exchange).
+    wantLead
+      ? onlyBusinessReporting(
+        (() => {
+          let q = supabase.from("leads")
+            .select("id, first_name, last_name, partner_first_name, created_at, last_contacted_at, relationship_id")
+            .eq("venue_id", venueId)
+            .is("first_booked_at", null)
+            .is("lost_at", null)
+            .is("follow_up_date", null)
+            .lt("created_at", twoDaysAgo)
+            .order("created_at");
+          if (scope?.leadId) q = q.eq("id", scope.leadId);
+          return q;
+        })(),
+      )
+      : emptyRows,
 
     // 7. Questionnaire: sent but not submitted for approaching events
-    supabase.from("event_questionnaires")
-      .select("id, event_id, status, sent_at, opened_at, access_key, events(name, event_date)")
-      .eq("venue_id", venueId)
-      .in("status", ["sent", "draft"])   // approaching events missing questionnaire submission
-      .gte("events.event_date", today)
-      .lte("events.event_date", soon30),
+    wantEvent
+      ? (() => {
+          let q = supabase.from("event_questionnaires")
+            .select("id, event_id, status, sent_at, opened_at, access_key, events(name, event_date)")
+            .eq("venue_id", venueId)
+            .in("status", ["sent", "draft"])   // approaching events missing questionnaire submission
+            .gte("events.event_date", today)
+            .lte("events.event_date", soon30);
+          if (scopedEventId) q = q.eq("event_id", scopedEventId);
+          return q;
+        })()
+      : emptyRows,
 
     // 8. Contracts expiring within 30 days
     supabase.from("contracts")
@@ -178,37 +341,99 @@ export async function getLuvObservations(
       .lte("expires_at", soon30)
       .order("expires_at"),
 
-    // 10: Upcoming tours (within 7 days) — high-value observation
-    supabase.from("tour_appointments")
-      .select("id, scheduled_at, contact_name, contact_email, duration_minutes, lead_id")
-      .eq("venue_id", venueId)
-      .in("status", ["scheduled", "confirmed"])
-      .gte("scheduled_at", today)
-      .lte("scheduled_at", soon7 + "T23:59:59")
-      .order("scheduled_at"),
+    // 10: Upcoming tours (within 7 days) — status-aware observation
+    wantLead
+      ? (() => {
+          let q = supabase.from("tour_appointments")
+            .select("id, scheduled_at, contact_name, contact_email, duration_minutes, lead_id, status, confirmation_requested_at")
+            .eq("venue_id", venueId)
+            .in("status", ["scheduled", "confirmed"])
+            .gte("scheduled_at", today)
+            .lte("scheduled_at", soon7 + "T23:59:59")
+            .order("scheduled_at");
+          if (scope?.leadId) q = q.eq("lead_id", scope.leadId);
+          return q;
+        })()
+      : emptyRows,
 
     // 11: Completed tours not yet followed up (within 7 days)
-    supabase.from("tour_appointments")
-      .select("id, scheduled_at, contact_name, lead_id, completed_at")
-      .eq("venue_id", venueId)
-      .eq("status", "completed")
-      .is("follow_up_sent_at", null)
-      .gte("scheduled_at", new Date(Date.now() - 7 * 86_400_000).toISOString())
-      .order("scheduled_at", { ascending: false }),
+    wantLead
+      ? (() => {
+          let q = supabase.from("tour_appointments")
+            .select("id, scheduled_at, actual_occurred_at, contact_name, lead_id, completed_at")
+            .eq("venue_id", venueId)
+            .eq("status", "completed")
+            .is("follow_up_sent_at", null)
+            .gte("completed_at", new Date(Date.now() - 7 * 86_400_000).toISOString())
+            .order("completed_at", { ascending: false });
+          if (scope?.leadId) q = q.eq("lead_id", scope.leadId);
+          return q;
+        })()
+      : emptyRows,
 
     // 12: Recent no-shows (within 3 days)
-    supabase.from("tour_appointments")
-      .select("id, scheduled_at, contact_name, lead_id")
-      .eq("venue_id", venueId)
-      .eq("status", "no_show")
-      .gte("scheduled_at", new Date(Date.now() - 3 * 86_400_000).toISOString())
-      .order("scheduled_at", { ascending: false }),
+    wantLead
+      ? (() => {
+          let q = supabase.from("tour_appointments")
+            .select("id, scheduled_at, contact_name, lead_id")
+            .eq("venue_id", venueId)
+            .eq("status", "no_show")
+            .gte("scheduled_at", new Date(Date.now() - 3 * 86_400_000).toISOString())
+            .order("scheduled_at", { ascending: false });
+          if (scope?.leadId) q = q.eq("lead_id", scope.leadId);
+          return q;
+        })()
+      : emptyRows,
 
     // 13: The venue's own timezone. tour_appointments.scheduled_at is a
     // timestamptz, so rendering it without this reports the *server's* wall
     // clock — UTC in every deployment — rather than the venue's.
     getVenueTimezone(supabase, venueId),
-  ]);
+
+    // S1: sent contracts (any age) with event linkage — venue scoped
+    wantEvent
+      ? (() => {
+          let q = supabase.from("contracts")
+            .select("id, title, status, sent_at, event_id, client_id, clients(first_name, last_name)")
+            .eq("venue_id", venueId)
+            .eq("status", "sent")
+            .not("sent_at", "is", null)
+            .not("event_id", "is", null);
+          if (scopedEventId) q = q.eq("event_id", scopedEventId);
+          return q;
+        })()
+      : emptyRows,
+
+    // S3: new inquiries ≥48h with no recorded contact
+    wantLead
+      ? onlyBusinessReporting(
+        (() => {
+          let q = supabase.from("leads")
+            .select("id, first_name, last_name, sales_stage, created_at, last_contacted_at, first_booked_at, lost_at, relationship_id, inquiry_message_origin")
+            .eq("venue_id", venueId)
+            .is("first_booked_at", null)
+            .is("lost_at", null)
+            .lte("created_at", fortyEightHoursAgo)
+            .order("created_at");
+          if (scope?.leadId) q = q.eq("id", scope.leadId);
+          return q;
+        })(),
+      )
+      : emptyRows,
+
+    // S2: same payment sources Daily Briefing / Event Readiness use
+    getInvoices(supabase, venueId),
+    getSchedules(supabase, venueId),
+    getAllLineItems(supabase, venueId),
+  ]));
+
+  forensicCount("luv_obs_upcoming_events", (upcomingEventsRes.data ?? []).length);
+  forensicCount("luv_obs_qualified_leads", (qualifiedLeadsRes.data ?? []).length);
+  forensicCount("luv_obs_awaiting_signatures", (awaitingSignaturesRes.data ?? []).length);
+  forensicCount("luv_obs_upcoming_tours", (upcomingToursRes.data ?? []).length);
+  forensicCount("luv_obs_payment_invoices", paymentInvoices.length);
+  forensicCount("luv_obs_payment_schedules", paymentSchedules.length);
+  forensicCount("luv_obs_payment_line_items", paymentLineItems.length);
 
   // ── 1 & 2: Events approaching — grouped coordinator briefing ─────────────
   // Instead of individual observations, generate ONE briefing card per event
@@ -222,7 +447,7 @@ export async function getLuvObservations(
     (floorPlansRes.data ?? []).map((r: { event_id: string }) => r.event_id),
   );
 
-  for (const ev of (upcomingEventsRes.data ?? []) as { id: string; name: string; event_date: string }[]) {
+  for (const ev of (upcomingEventsRes.data ?? []) as { id: string; name: string; event_date: string; client_id: string | null; status: string }[]) {
     const du = Math.ceil((new Date(ev.event_date + "T12:00:00").getTime() - Date.now()) / 86_400_000);
     const hasTimeline = eventsWithTimelines.has(ev.id);
     const hasFloorPlan = eventsWithFloorPlans.has(ev.id);
@@ -257,34 +482,9 @@ export async function getLuvObservations(
     });
   }
 
-  // ── 3: Qualified leads with no tour ──────────────────────────────────────
-
-  const qualifiedLeads = (qualifiedLeadsRes.data ?? []) as { id: string; first_name: string; last_name: string; partner_first_name?: string | null; sales_stage: string; created_at: string }[];
-  const leadsWithActiveTours = new Set<string>();
-  if (qualifiedLeads.length > 0) {
-    const { data: activeTours } = await supabase.from("tour_appointments")
-      .select("lead_id").eq("venue_id", venueId)
-      .in("lead_id", qualifiedLeads.map((l) => l.id))
-      .not("status", "in", "(cancelled)");
-    for (const t of (activeTours ?? []) as { lead_id: string | null }[]) {
-      if (t.lead_id) leadsWithActiveTours.add(t.lead_id);
-    }
-  }
-
-  for (const lead of qualifiedLeads.filter((l) => !leadsWithActiveTours.has(l.id))) {
-    const name = [lead.first_name, lead.last_name].filter(Boolean).join(" ");
-    const days = daysAgo(lead.created_at);
-    observations.push({
-      id: `tour-${lead.id}`,
-      kind: "recommendation",
-      priority: "medium",
-      message: `${name} may be ready to schedule a tour.`,
-      detail: `${lead.sales_stage === "proposal_sent" ? "Proposal sent" : "Tour scheduled"} · ${days} day${days !== 1 ? "s" : ""} in the pipeline.`,
-      link: `/leads/${lead.id}`,
-      actionLabel: "View Lead →",
-      recommendation: { label: "Invite them to schedule a tour", link: `/leads/${lead.id}`, type: "navigate" },
-    });
-  }
+  // ── 3: Retired. Stage-based "ready to schedule a tour" invented work
+  // from sales_stage (including a false "Tour scheduled" claim).
+  void qualifiedLeadsRes;
 
   // ── 4: Contracts awaiting signature ──────────────────────────────────────
 
@@ -332,19 +532,41 @@ export async function getLuvObservations(
   }
 
   // ── 6: New leads with no follow-up set ───────────────────────────────────
-
-  for (const lead of (newNoFollowUpRes.data ?? []) as { id: string; first_name: string; last_name: string; created_at: string }[]) {
-    const name = [lead.first_name, lead.last_name].filter(Boolean).join(" ");
-    const days = daysAgo(lead.created_at);
-    observations.push({
-      id: `followup-${lead.id}`,
-      kind: "risk",
-      priority: "low",
-      message: `${name} reached out ${days} day${days !== 1 ? "s" : ""} ago — they might appreciate hearing from you.`,
-      link: `/leads/${lead.id}`,
-      actionLabel: "View Lead →",
-      recommendation: { label: "Ask Luv to draft a follow-up", link: `/leads/${lead.id}?luv=follow_up_email`, type: "draft" },
-    });
+  // Same first-response evidence as S3 (venue_staff outbound + tour contact).
+  // Recency uses latest prospect inbound when newer than created_at.
+  {
+    const legacyRows = (newNoFollowUpRes.data ?? []) as {
+      id: string;
+      first_name: string;
+      last_name: string;
+      created_at: string;
+      last_contacted_at: string | null;
+      relationship_id: string | null;
+    }[];
+    const legacyContact = await loadUnattendedInquiryContactEvidence(
+      supabase,
+      venueId,
+      legacyRows,
+    );
+    for (const lead of legacyRows) {
+      const obs = buildLegacyNoFollowUpObservation(
+        {
+          id: lead.id,
+          venueId,
+          firstName: lead.first_name,
+          lastName: lead.last_name,
+          createdAt: lead.created_at,
+          lastContactedAt: lead.last_contacted_at,
+          hasVenueStaffOutbound: legacyContact.contactedLeadIds.has(lead.id),
+          tourStatus: legacyContact.tourStatusByLeadId.get(lead.id) ?? null,
+          tourOrigin: legacyContact.tourOriginByLeadId.get(lead.id) ?? null,
+          latestProspectActivityAt:
+            legacyContact.latestProspectActivityAtByLeadId.get(lead.id) ?? null,
+        },
+        { venueId },
+      );
+      if (obs) observations.push(obs);
+    }
   }
 
   // ── 7: Questionnaire sent but not submitted ───────────────────────────────
@@ -421,10 +643,16 @@ export async function getLuvObservations(
   // ── Website missing content + unpublished ────────────────────────────────
   // Events within 6 months with published website but missing travel info
   const sixMonths = new Date(Date.now() + 180 * 86_400_000).toISOString().slice(0, 10);
-  const { data: sitesWithGaps } = await supabase
-    .from("couple_websites")
-    .select("client_id, slug, is_published, content, couple_guests(count)")
-    .eq("venue_id", venueId);
+  const { data: sitesWithGaps } = wantClient
+    ? await (() => {
+        let q = supabase
+          .from("couple_websites")
+          .select("client_id, slug, is_published, content, couple_guests(count)")
+          .eq("venue_id", venueId);
+        if (scopedClientId) q = q.eq("client_id", scopedClientId);
+        return q;
+      })()
+    : { data: [] };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   for (const site of (sitesWithGaps ?? []) as any[]) {
@@ -467,14 +695,20 @@ export async function getLuvObservations(
   // ── Wedding website milestones ───────────────────────────────────────────
   // "Emily & James just published their website." — coordinator awareness
   const websiteSince7d = new Date(Date.now() - 7 * 86_400_000).toISOString();
-  const { data: recentlyPublished } = await supabase
-    .from("couple_websites")
-    .select("client_id, slug, updated_at, clients(first_name, partner_first_name)")
-    .eq("venue_id", venueId)
-    .eq("is_published", true)
-    .gte("updated_at", websiteSince7d)
-    .order("updated_at", { ascending: false })
-    .limit(5);
+  const { data: recentlyPublished } = wantClient
+    ? await (() => {
+        let q = supabase
+          .from("couple_websites")
+          .select("client_id, slug, updated_at, clients(first_name, partner_first_name)")
+          .eq("venue_id", venueId)
+          .eq("is_published", true)
+          .gte("updated_at", websiteSince7d)
+          .order("updated_at", { ascending: false })
+          .limit(5);
+        if (scopedClientId) q = q.eq("client_id", scopedClientId);
+        return q;
+      })()
+    : { data: [] };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   for (const site of (recentlyPublished ?? []) as any[]) {
@@ -498,15 +732,21 @@ export async function getLuvObservations(
   // reads; this block calls both directly and narrates around whatever they
   // already say, instead of re-deriving overdue/blocked counts or a
   // readiness percentage from a second, independent event_tasks query.
-  const { data: planningCandidateEvents } = await onlyBusinessReporting(
-    supabase
-      .from("events")
-      .select("id, name, event_date, client_id, clients(first_name, partner_first_name)")
-      .eq("venue_id", venueId)
-      .not("status", "in", "(cancelled,complete)")
-      .gte("event_date", today)
-      .lte("event_date", soon90),
-  );
+  const { data: planningCandidateEvents } = wantEvent
+    ? await onlyBusinessReporting(
+      (() => {
+        let q = supabase
+          .from("events")
+          .select("id, name, event_date, client_id, clients(first_name, partner_first_name)")
+          .eq("venue_id", venueId)
+          .not("status", "in", "(cancelled,complete)")
+          .gte("event_date", today)
+          .lte("event_date", soon90);
+        if (scopedEventId) q = q.eq("id", scopedEventId);
+        return q;
+      })(),
+    )
+    : { data: [] };
 
   // Timeline + Communication — read Event Readiness, same discipline as
   // Planning above (Luv Experience Completion, Work Stream 2). Both fetched
@@ -533,145 +773,112 @@ export async function getLuvObservations(
   // message_threads count that stops growing for every venue, producing an
   // increasingly false "no messages logged yet" as real activity moves to
   // conversation_messages.
-  const [timelineStatusRes, threadCountsRes, conversationMessageRes, clientRelationshipRes] = await Promise.all([
-    supabase.from("timeline_entries").select("event_id, status").eq("venue_id", venueId).eq("owner", "venue"),
-    supabase.from("message_threads").select("event_id, message_count").eq("venue_id", venueId),
-    supabase.from("conversation_messages").select("conversations!inner(relationship_id)").eq("venue_id", venueId),
-    supabase.from("clients").select("id, relationship_id").eq("venue_id", venueId).not("relationship_id", "is", null),
-  ]);
-  const timelineByEvent = new Map<string, Pick<TimelineEntry, "status">[]>();
-  for (const r of (timelineStatusRes.data ?? []) as { event_id: string; status: TimelineEntry["status"] }[]) {
-    if (!r.event_id) continue;
-    const list = timelineByEvent.get(r.event_id) ?? [];
-    list.push({ status: r.status });
-    timelineByEvent.set(r.event_id, list);
-  }
-  const threadCountByEvent = new Map<string, number>();
-  for (const r of (threadCountsRes.data ?? []) as { event_id: string | null; message_count: number }[]) {
-    if (!r.event_id) continue;
-    threadCountByEvent.set(r.event_id, (threadCountByEvent.get(r.event_id) ?? 0) + r.message_count);
-  }
-  const relationshipIdByClientId = new Map<string, string>();
-  for (const c of (clientRelationshipRes.data ?? []) as { id: string; relationship_id: string | null }[]) {
-    if (c.relationship_id) relationshipIdByClientId.set(c.id, c.relationship_id);
-  }
-  const conversationMessageCountByRelationship = new Map<string, number>();
-  type ConversationMessageJoinRow = { conversations: { relationship_id: string | null } | { relationship_id: string | null }[] | null };
-  for (const r of (conversationMessageRes.data ?? []) as ConversationMessageJoinRow[]) {
-    const rel = Array.isArray(r.conversations) ? r.conversations[0] : r.conversations;
-    if (!rel?.relationship_id) continue;
-    conversationMessageCountByRelationship.set(
-      rel.relationship_id, (conversationMessageCountByRelationship.get(rel.relationship_id) ?? 0) + 1,
+  const planningCandidates = (planningCandidateEvents ?? []) as {
+    id: string; name: string; event_date: string; client_id: string | null;
+    clients?: { first_name?: string | null; partner_first_name?: string | null } | null;
+  }[];
+
+  // P7 readiness is independent per event. Skip the whole window when the
+  // record surface's event is outside 90 days (or no event is in scope).
+  // Otherwise load supporting rows + every event's readiness in one
+  // Promise.all — same query volume as before, not sequential awaits.
+  if (planningCandidates.length > 0) {
+    const timelineQuery = (() => {
+      let q = supabase.from("timeline_entries").select("event_id, status").eq("venue_id", venueId).eq("owner", "venue");
+      if (scopedEventId) q = q.eq("event_id", scopedEventId);
+      return q;
+    })();
+    const threadQuery = (() => {
+      let q = supabase.from("message_threads").select("event_id, message_count").eq("venue_id", venueId);
+      if (scopedEventId) q = q.eq("event_id", scopedEventId);
+      return q;
+    })();
+    const clientRelQuery = (() => {
+      let q = supabase.from("clients").select("id, relationship_id").eq("venue_id", venueId).not("relationship_id", "is", null);
+      if (scopedClientId) q = q.eq("id", scopedClientId);
+      return q;
+    })();
+    const [timelineStatusRes, threadCountsRes, conversationMessageRes, clientRelationshipRes, readinessResults] = await forensicTime(
+      "luv_obs_planning_readiness",
+      () => Promise.all([
+      timelineQuery,
+      threadQuery,
+      supabase.from("conversation_messages").select("conversations!inner(relationship_id)").eq("venue_id", venueId),
+      clientRelQuery,
+      Promise.all(planningCandidates.map((ev) => computeEventTaskReadinessByKind(supabase, venueId, ev.id))),
+    ]),
     );
-  }
-
-  for (const ev of (planningCandidateEvents ?? []) as { id: string; name: string; event_date: string; client_id: string | null; clients?: { first_name?: string | null; partner_first_name?: string | null } | null }[]) {
-    const readinessByKind = await computeEventTaskReadinessByKind(supabase, venueId, ev.id);
-    const du = Math.ceil((new Date(ev.event_date + "T12:00:00").getTime() - Date.now()) / 86_400_000);
-    const name = [ev.clients?.first_name, ev.clients?.partner_first_name].filter(Boolean).join(" & ") || ev.name;
-
-    if (readinessByKind.client || readinessByKind.venue) {
-      const planning = computePlanningReadiness(readinessByKind);
-      const totalRequired = (readinessByKind.client?.totalRequired ?? 0) + (readinessByKind.venue?.totalRequired ?? 0);
-      const completedRequired = (readinessByKind.client?.completedRequired ?? 0) + (readinessByKind.venue?.completedRequired ?? 0);
-
-      if (planning.status === "needs_attention") {
-        observations.push({
-          id: `planning-attention-${ev.id}`,
-          kind: "risk",
-          priority: du <= 30 ? "high" : "medium",
-          message: `${name}'s planning needs attention.`,
-          detail: planning.detail,
-          link: `/events/${ev.id}#playbook`,
-          actionLabel: "View Playbook →",
-          recommendation: { label: "Review overdue or blocked tasks", link: `/events/${ev.id}#playbook`, type: "navigate" },
-        });
-      } else if (totalRequired >= 5 && completedRequired / totalRequired >= 0.7) {
-        observations.push({
-          id: `strong-momentum-${ev.id}`,
-          kind: "fact",
-          priority: "low",
-          message: `${name} has no exceptions and is ${planning.metric ?? `${completedRequired}/${totalRequired}`} ready.`,
-          detail: du <= 30 ? "Everything is on track for the big day." : "Planning momentum looks strong.",
-          link: `/events/${ev.id}`,
-          actionLabel: "View Event →",
-        });
-      }
+    forensicCount("luv_obs_planning_candidates", planningCandidates.length);
+    const timelineByEvent = new Map<string, Pick<TimelineEntry, "status">[]>();
+    for (const r of (timelineStatusRes.data ?? []) as { event_id: string; status: TimelineEntry["status"] }[]) {
+      if (!r.event_id) continue;
+      const list = timelineByEvent.get(r.event_id) ?? [];
+      list.push({ status: r.status });
+      timelineByEvent.set(r.event_id, list);
+    }
+    const threadCountByEvent = new Map<string, number>();
+    for (const r of (threadCountsRes.data ?? []) as { event_id: string | null; message_count: number }[]) {
+      if (!r.event_id) continue;
+      threadCountByEvent.set(r.event_id, (threadCountByEvent.get(r.event_id) ?? 0) + r.message_count);
+    }
+    const relationshipIdByClientId = new Map<string, string>();
+    for (const c of (clientRelationshipRes.data ?? []) as { id: string; relationship_id: string | null }[]) {
+      if (c.relationship_id) relationshipIdByClientId.set(c.id, c.relationship_id);
+    }
+    const conversationMessageCountByRelationship = new Map<string, number>();
+    type ConversationMessageJoinRow = { conversations: { relationship_id: string | null } | { relationship_id: string | null }[] | null };
+    for (const r of (conversationMessageRes.data ?? []) as ConversationMessageJoinRow[]) {
+      const rel = Array.isArray(r.conversations) ? r.conversations[0] : r.conversations;
+      if (!rel?.relationship_id) continue;
+      conversationMessageCountByRelationship.set(
+        rel.relationship_id, (conversationMessageCountByRelationship.get(rel.relationship_id) ?? 0) + 1,
+      );
     }
 
-    // Timeline — genuinely new coverage: the "events approaching" briefing
-    // above (≤21 days) already flags a missing timeline as a boolean; this
-    // reads real completion% for the wider 22-90 day window, where a large
-    // outstanding share is a real, worth-surfacing risk per
-    // docs/luv-platform-intelligence-architecture.md §1's Timeline section.
-    if (du > 21) {
-      const entries = timelineByEvent.get(ev.id) ?? [];
-      const timeline = computeTimelineReadiness(entries as unknown as TimelineEntry[]);
-      if (timeline.status === "waiting" && entries.length >= 5) {
-        const complete = entries.filter((e) => e.status === "complete").length;
-        if (complete / entries.length < 0.5) {
-          observations.push({
-            id: `timeline-attention-${ev.id}`,
-            kind: "risk",
-            priority: du <= 60 ? "medium" : "low",
-            message: `${name}'s day-of timeline is ${timeline.metric ?? `${complete}/${entries.length}`} complete with ${du} days to go.`,
-            link: `/events/${ev.id}#timeline`,
-            actionLabel: "View Timeline →",
-            recommendation: { label: "Review the timeline", link: `/events/${ev.id}#timeline`, type: "navigate" },
-          });
-        }
-      }
-    }
-
-    // Communication — genuinely new coverage: nothing today tells a
-    // coordinator an approaching event has zero logged contact. Combines
-    // legacy message_threads counts with conversation_messages counts
-    // (via the event's client → relationship) — RC2, Milestone 5: every
-    // venue now defaults onto Conversations, so a signal built from
-    // message_threads alone would increasingly under-report real activity
-    // as new messages stop landing there. This doesn't need
-    // computeCommunicationReadiness's fuller unread-aware logic (that
-    // needs a real per-message read state this venue-wide pass doesn't
-    // have) — "has any contact been logged at all" is a plain count.
-    if (du <= 30) {
+    planningCandidates.forEach((ev, index) => {
+      const readinessByKind = readinessResults[index];
       const relationshipId = ev.client_id ? relationshipIdByClientId.get(ev.client_id) : undefined;
       const totalMessageCount =
         (threadCountByEvent.get(ev.id) ?? 0) +
         (relationshipId ? conversationMessageCountByRelationship.get(relationshipId) ?? 0 : 0);
-      if (totalMessageCount === 0) {
-        observations.push({
-          id: `communication-none-${ev.id}`,
-          kind: "fact",
-          priority: "low",
-          message: `${name} is ${inDays(ev.event_date)} with no messages logged yet.`,
-          link: `/events/${ev.id}#messages`,
-          actionLabel: "View Event →",
-        });
-      }
-    }
+      observations.push(
+        ...buildPlanningWindowObservationsForEvent(
+          ev,
+          readinessByKind,
+          timelineByEvent.get(ev.id) ?? [],
+          totalMessageCount,
+        ),
+      );
+    });
   }
 
   // ── Upcoming tour appointments ───────────────────────────────────────────
-  // Tours are high-intent moments. Coordinator should know what's coming up.
-  for (const tour of (upcomingToursRes.data ?? []) as { id: string; scheduled_at: string; contact_name: string | null; duration_minutes: number; lead_id: string | null }[]) {
+  // Authoritative source: tour_appointments. Never sales_stage.
+  // Confirmed → all-set. Scheduled → unconfirmed language (never "all set").
+  // Completed / cancelled / no_show → silence here.
+  const upcomingTours = (upcomingToursRes.data ?? []) as {
+    id: string;
+    scheduled_at: string;
+    contact_name: string | null;
+    duration_minutes: number;
+    lead_id: string | null;
+    status: string | null;
+    confirmation_requested_at: string | null;
+  }[];
+  for (const tour of upcomingTours) {
     const tourDate = new Date(tour.scheduled_at);
     const du = Math.ceil((tourDate.getTime() - Date.now()) / 86_400_000);
-    const timeStr = venueLocalLabel(tour.scheduled_at, venueTimezone, {
-      weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit",
+    const ready = buildUpcomingTourStatusObservation({
+      tourId: tour.id,
+      scheduledAt: tour.scheduled_at,
+      status: tour.status,
+      confirmationRequestedAt: tour.confirmation_requested_at,
+      contactName: tour.contact_name,
+      leadId: tour.lead_id,
+      daysUntil: du,
+      timeZone: venueTimezone,
     });
-    const name = tour.contact_name ?? "A prospective client";
-    observations.push({
-      id: `tour-upcoming-${tour.id}`,
-      kind: "fact",
-      priority: du === 0 ? "high" : "medium",
-      message: du === 0
-        ? `${name} has a tour today at ${venueLocalLabel(tour.scheduled_at, venueTimezone, { hour: "numeric", minute: "2-digit" })}.`
-        : `${name} has a tour scheduled for ${timeStr}.`,
-      detail: `${tour.duration_minutes}-minute tour. ${du === 0 ? "Make sure everything is ready." : `In ${du} day${du !== 1 ? "s" : ""}.`}`,
-      link: tour.lead_id ? `/leads/${tour.lead_id}` : "/leads",
-      actionLabel: "View Lead →",
-      recommendation: { label: "Prepare for the tour", link: tour.lead_id ? `/leads/${tour.lead_id}` : "/leads", type: "navigate" },
-    });
+    if (ready) observations.push(ready);
   }
 
   // ── Momentum: relationship health language ────────────────────────────────
@@ -679,14 +886,21 @@ export async function getLuvObservations(
   // Avoids duplicating observations already covered by specific patterns above.
 
   // Fetch leads with high or declining commitment for momentum observations
-  const { data: momentumLeads } = await onlyBusinessReporting(
-    supabase.from("leads")
-      .select("id, first_name, last_name, sales_stage, commitment_score, last_contacted_at, created_at")
-      .eq("venue_id", venueId)
-      .not("sales_stage", "in", "(booked,lost)")
-      .order("commitment_score", { ascending: false })
-      .limit(20),
-  );
+  const { data: momentumLeads } = wantLead
+    ? await onlyBusinessReporting(
+      (() => {
+        let q = supabase.from("leads")
+          .select("id, first_name, last_name, first_booked_at, lost_at, commitment_score, last_contacted_at, created_at")
+          .eq("venue_id", venueId)
+          .is("first_booked_at", null)
+          .is("lost_at", null)
+          .order("commitment_score", { ascending: false })
+          .limit(20);
+        if (scope?.leadId) q = q.eq("id", scope.leadId);
+        return q;
+      })(),
+    )
+    : { data: [] };
 
   // For leads with signals, compute interest
   if (momentumLeads?.length) {
@@ -705,7 +919,7 @@ export async function getLuvObservations(
       signalsByLead.set(s.lead_id, arr);
     }
 
-    for (const lead of momentumLeads as { id: string; first_name: string; last_name: string; sales_stage: string; commitment_score: number; last_contacted_at: string | null; created_at: string }[]) {
+    for (const lead of momentumLeads as { id: string; first_name: string; last_name: string; first_booked_at: string | null; lost_at: string | null; commitment_score: number; last_contacted_at: string | null; created_at: string }[]) {
       const name = [lead.first_name, lead.last_name].filter(Boolean).join(" ");
       const leadSignals = signalsByLead.get(lead.id) ?? [];
       const interestScore = computeInterestFromSignals(leadSignals);
@@ -771,13 +985,13 @@ export async function getLuvObservations(
       map.set(s.lead_id, (map.get(s.lead_id) ?? 0) + s.signal_strength);
     }
 
-    for (const lead of momentumLeads as { id: string; first_name: string; last_name: string; sales_stage: string; commitment_score: number; last_contacted_at: string | null }[]) {
+    for (const lead of momentumLeads as { id: string; first_name: string; last_name: string; first_booked_at: string | null; lost_at: string | null; commitment_score: number; last_contacted_at: string | null }[]) {
       const name = [lead.first_name, lead.last_name].filter(Boolean).join(" ");
       const recent = recentByLead.get(lead.id) ?? 0;
       const prior  = priorByLead.get(lead.id) ?? 0;
       const alreadyCovered = observations.some((o) => o.id.includes(lead.id));
       if (alreadyCovered) continue;
-      if (lead.sales_stage === "booked" || lead.sales_stage === "lost") continue;
+      if (lead.first_booked_at || lead.lost_at) continue;
 
       // Significant INCREASE in signals this week
       if (recent >= 4 && prior === 0) {
@@ -811,13 +1025,19 @@ export async function getLuvObservations(
   // ── Couple portal engagement signals ─────────────────────────────────────
   // Inactivity only — a login timestamp, not private planning content
   // (guest list momentum retired below; see that note for why).
-  const { data: portalSessions } = await supabase
-    .from("client_portal_sessions")
-    .select("client_id, last_accessed_at, clients(first_name, partner_first_name, lead_id)")
-    .eq("venue_id", venueId)
-    .not("last_accessed_at", "is", null)
-    .order("last_accessed_at", { ascending: false })
-    .limit(20);
+  const { data: portalSessions } = wantClient
+    ? await (() => {
+        let q = supabase
+          .from("client_portal_sessions")
+          .select("client_id, last_accessed_at, clients(first_name, partner_first_name, lead_id)")
+          .eq("venue_id", venueId)
+          .not("last_accessed_at", "is", null)
+          .order("last_accessed_at", { ascending: false })
+          .limit(20);
+        if (scopedClientId) q = q.eq("client_id", scopedClientId);
+        return q;
+      })()
+    : { data: [] };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   for (const sess of (portalSessions ?? []) as any[]) {
@@ -858,26 +1078,117 @@ export async function getLuvObservations(
   // patched: keeping both would be redundant with that celebration anyway.
 
   // ── Completed tours without follow-up ────────────────────────────────────
-  // The 48 hours after a tour determines conversion. Surface immediately.
-  for (const tour of (completedNoFollowUpRes.data ?? []) as { id: string; scheduled_at: string; contact_name: string | null; lead_id: string | null }[]) {
-    const hoursAgo = Math.round((Date.now() - new Date(tour.scheduled_at).getTime()) / 3_600_000);
-    const name = tour.contact_name ?? "A prospective client";
-    observations.push({
-      id: `tour-no-followup-${tour.id}`,
-      kind: "risk",
-      priority: hoursAgo <= 24 ? "high" : "medium",
-      message: hoursAgo < 48
-        ? `${name} completed their tour ${hoursAgo}h ago — follow up while it's fresh.`
-        : `${name} completed their tour and hasn't received a follow-up yet.`,
-      detail: "Send a thank-you and keep momentum alive.",
-      link: tour.lead_id ? `/leads/${tour.lead_id}` : "/leads",
-      actionLabel: "View Lead →",
-      recommendation: { label: "Ask Luv to draft a follow-up", link: tour.lead_id ? `/leads/${tour.lead_id}?luv=follow_up_email` : "/leads", type: "draft" },
+  // Useful only while the relationship is still pre-agreement. Signed,
+  // Booked, or paid facts supersede this observation.
+  const staleTourFollowUpLeads = await leadsWhoseTourFollowUpIsStale(
+    supabase,
+    venueId,
+    ((completedNoFollowUpRes.data ?? []) as { lead_id: string | null }[])
+      .concat((noShowRes.data ?? []) as { lead_id: string | null }[])
+      .map((t) => t.lead_id),
+  );
+
+  const completedTours = (completedNoFollowUpRes.data ?? []) as {
+    id: string;
+    scheduled_at: string | null;
+    actual_occurred_at?: string | null;
+    completed_at?: string | null;
+    contact_name: string | null;
+    lead_id: string | null;
+  }[];
+  const completedLeadIds = [...new Set(completedTours.map((t) => t.lead_id).filter(Boolean))] as string[];
+  const completedLeadMeta = new Map<string, {
+    relationshipId: string | null;
+    inquiryMessage: string | null;
+    inquiryOrigin: string | null;
+  }>();
+  const proposalSentByLead = new Set<string>();
+  const messagesByLead = new Map<string, { sentAt: string; senderType: string; channel: string | null; body: string | null }[]>();
+  if (completedLeadIds.length > 0) {
+    const { data: completedLeads } = await supabase.from("leads")
+      .select("id, relationship_id, inquiry_message, inquiry_message_origin")
+      .eq("venue_id", venueId)
+      .in("id", completedLeadIds);
+    for (const row of (completedLeads ?? []) as {
+      id: string; relationship_id: string | null; inquiry_message: string | null; inquiry_message_origin: string | null;
+    }[]) {
+      completedLeadMeta.set(row.id, {
+        relationshipId: row.relationship_id,
+        inquiryMessage: row.inquiry_message,
+        inquiryOrigin: row.inquiry_message_origin,
+      });
+    }
+    const { data: sentProposals } = await supabase.from("commercial_proposals")
+      .select("lead_id, status, offered_at")
+      .eq("venue_id", venueId)
+      .in("lead_id", completedLeadIds)
+      .eq("status", "sent")
+      .not("offered_at", "is", null);
+    for (const row of (sentProposals ?? []) as { lead_id: string | null; status: string; offered_at: string | null }[]) {
+      if (row.lead_id && isAuthoritativeProposalSentRecord({ status: row.status, offeredAt: row.offered_at })) {
+        proposalSentByLead.add(row.lead_id);
+      }
+    }
+    const relIds = [...new Set(
+      [...completedLeadMeta.values()].map((m) => m.relationshipId).filter(Boolean),
+    )] as string[];
+    if (relIds.length > 0) {
+      const { data: convs } = await supabase.from("conversations")
+        .select("id, relationship_id")
+        .eq("venue_id", venueId)
+        .in("relationship_id", relIds);
+      const convIds = (convs ?? []).map((c: { id: string }) => c.id);
+      const relByConv = new Map((convs ?? []).map((c: { id: string; relationship_id: string }) => [c.id, c.relationship_id]));
+      const leadByRel = new Map<string, string>();
+      for (const [leadId, meta] of completedLeadMeta) {
+        if (meta.relationshipId) leadByRel.set(meta.relationshipId, leadId);
+      }
+      if (convIds.length > 0) {
+        const { data: msgs } = await supabase.from("conversation_messages")
+          .select("conversation_id, sender_type, channel, body, sent_at")
+          .eq("venue_id", venueId)
+          .in("conversation_id", convIds);
+        for (const m of (msgs ?? []) as {
+          conversation_id: string; sender_type: string; channel: string | null; body: string | null; sent_at: string;
+        }[]) {
+          const rel = relByConv.get(m.conversation_id);
+          const leadId = rel ? leadByRel.get(rel) : undefined;
+          if (!leadId) continue;
+          const list = messagesByLead.get(leadId) ?? [];
+          list.push({
+            sentAt: m.sent_at,
+            senderType: m.sender_type,
+            channel: m.channel,
+            body: m.body,
+          });
+          messagesByLead.set(leadId, list);
+        }
+      }
+    }
+  }
+
+  for (const tour of completedTours) {
+    if (!tour.lead_id || staleTourFollowUpLeads.has(tour.lead_id)) continue;
+    const occurrence = tourOccurrenceIso(tour);
+    if (!occurrence) continue;
+    const meta = completedLeadMeta.get(tour.lead_id);
+    const decision = evaluateCompletedTour({
+      tourId: tour.id,
+      leadId: tour.lead_id,
+      contactName: tour.contact_name,
+      occurredAt: occurrence,
+      proposalSent: proposalSentByLead.has(tour.lead_id),
+      messages: messagesByLead.get(tour.lead_id) ?? [],
+      inquiryMessage: meta?.inquiryMessage,
+      inquiryOrigin: meta?.inquiryOrigin,
     });
+    if (decision.mode === "silence") continue;
+    observations.push(decision.observation);
   }
 
   // ── No-show tours ─────────────────────────────────────────────────────────
   for (const tour of (noShowRes.data ?? []) as { id: string; scheduled_at: string; contact_name: string | null; lead_id: string | null }[]) {
+    if (!tour.lead_id || staleTourFollowUpLeads.has(tour.lead_id)) continue;
     const name = tour.contact_name ?? "A prospective client";
     observations.push({
       id: `tour-no-show-${tour.id}`,
@@ -903,7 +1214,16 @@ export async function getLuvObservations(
   // dueDate/sourceFeature directly, matching
   // docs/luv-platform-reconciliation.md §7's own mapping of Request states
   // onto the six observation kinds.
-  const allRequests = await getRequests();
+  const allRequests = await forensicTime("luv_obs_requests", async () =>
+    !isRecordScoped(scope)
+      ? await getRequests()
+      : scope?.eventId
+        ? await getRequests({ eventId: scope.eventId })
+        : scope?.clientId
+          ? await getRequests({ clientId: scope.clientId })
+          : [],
+  );
+  forensicCount("luv_obs_requests_rows", allRequests.length);
   const sevenDaysAgoIso = new Date(Date.now() - 7 * 86_400_000).toISOString();
 
   for (const req of allRequests as PlatformRequest[]) {
@@ -958,9 +1278,141 @@ export async function getLuvObservations(
     }
   }
 
-  // Sort by priority (high → medium → low), cap at 8
+  // ── Contextual intelligence S1–S3 (S4 handled in tour loop) ───────────────
+  // L3 only — record-scoped hrefs fail Dashboard L1 gate by design.
+  const upcomingEvents = (upcomingEventsRes.data ?? []) as {
+    id: string; name: string; event_date: string; client_id: string | null; status: string;
+  }[];
+  const eventById = new Map(upcomingEvents.map((e) => [e.id, e]));
+
+  // S1 — approaching event + sent contract
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  for (const row of (sentContractsRes.data ?? []) as any[]) {
+    if (!row.event_id) continue;
+    const ev = eventById.get(row.event_id);
+    if (!ev) continue;
+    const client = Array.isArray(row.clients) ? row.clients[0] : row.clients;
+    const s1 = buildS1EventContractObservation(
+      {
+        id: ev.id,
+        venueId,
+        name: ev.name,
+        eventDate: ev.event_date,
+        status: ev.status,
+        clientId: ev.client_id,
+      },
+      {
+        id: row.id,
+        venueId,
+        title: row.title,
+        status: row.status,
+        sentAt: row.sent_at,
+        eventId: row.event_id,
+        clientId: row.client_id,
+        clientFirstName: client?.first_name ?? null,
+        clientLastName: client?.last_name ?? null,
+      },
+      { venueId },
+    );
+    if (s1) observations.push(s1);
+  }
+
+  // S2 — approaching event + authoritative payment needs_attention
+  const linesByScheduleId = new Map<string, typeof paymentLineItems>();
+  for (const line of paymentLineItems) {
+    const list = linesByScheduleId.get(line.scheduleId) ?? [];
+    list.push(line);
+    linesByScheduleId.set(line.scheduleId, list);
+  }
+  const scheduleLinesByEventId = new Map<string, { status: string; dueDate: string | null; amount: number }[]>();
+  for (const schedule of paymentSchedules) {
+    if (!schedule.eventId) continue;
+    const lines = (linesByScheduleId.get(schedule.id) ?? []).map((l) => ({
+      status: l.status,
+      dueDate: l.dueDate,
+      amount: l.amount,
+    }));
+    const existing = scheduleLinesByEventId.get(schedule.eventId) ?? [];
+    scheduleLinesByEventId.set(schedule.eventId, existing.concat(lines));
+  }
+  const invoicesByEventId = new Map<string, Invoice[]>();
+  for (const inv of paymentInvoices) {
+    if (!inv.eventId) continue;
+    const list = invoicesByEventId.get(inv.eventId) ?? [];
+    list.push(inv);
+    invoicesByEventId.set(inv.eventId, list);
+  }
+  for (const ev of upcomingEvents) {
+    if (!ev.client_id) continue;
+    const eventInvoices = invoicesByEventId.get(ev.id) ?? [];
+    const eventScheduleLines = scheduleLinesByEventId.get(ev.id) ?? [];
+    if (eventInvoices.length === 0 && eventScheduleLines.length === 0) continue;
+    const section = computePaymentsReadiness(eventInvoices, eventScheduleLines);
+    const s2 = buildS2EventPaymentObservation(
+      {
+        id: ev.id,
+        venueId,
+        name: ev.name,
+        eventDate: ev.event_date,
+        status: ev.status,
+        clientId: ev.client_id,
+      },
+      {
+        eventId: ev.id,
+        venueId,
+        status: section.status,
+        detail: section.detail,
+        href: paymentsAttentionHref(eventInvoices, ev.client_id),
+      },
+      { venueId },
+    );
+    if (s2) observations.push(s2);
+  }
+
+  // S3 — unattended inquiry (≥48h) using communication + tour records, not stage
+  const s3Rows = (unattendedInquiryRes.data ?? []) as {
+    id: string; first_name: string; last_name: string; sales_stage: string;
+    created_at: string; last_contacted_at: string | null;
+    first_booked_at: string | null; lost_at: string | null; relationship_id: string | null;
+    inquiry_message_origin: string | null;
+  }[];
+  const { contactedLeadIds, tourStatusByLeadId, tourOriginByLeadId } = await loadUnattendedInquiryContactEvidence(
+    supabase,
+    venueId,
+    s3Rows,
+  );
+  for (const row of s3Rows) {
+    const s3 = buildS3UnattendedInquiryObservation(
+      {
+        id: row.id,
+        venueId,
+        firstName: row.first_name,
+        lastName: row.last_name,
+        salesStage: row.sales_stage,
+        createdAt: row.created_at,
+        lastContactedAt: row.last_contacted_at,
+        inquiryMessageOrigin: row.inquiry_message_origin,
+        hasVenueStaffOutbound: contactedLeadIds.has(row.id),
+        tourStatus: tourStatusByLeadId.get(row.id) ?? null,
+        tourOrigin: tourOriginByLeadId.get(row.id) ?? null,
+        firstBookedAt: row.first_booked_at,
+        lostAt: row.lost_at,
+      },
+      { venueId },
+    );
+    if (s3) observations.push(s3);
+  }
+
+  // Sort by priority (high → medium → low), prefer contextual L3 signals under the cap
   const order: Record<LuvObservation["priority"], number> = { high: 0, medium: 1, low: 2 };
-  return observations
-    .sort((a, b) => order[a.priority] - order[b.priority])
-    .slice(0, 8);
+  const superseded = applyContextualSupersession(observations);
+  const sorted = superseded.sort((a, b) => order[a.priority] - order[b.priority]);
+  const isContextual = (o: LuvObservation) =>
+    o.id.startsWith("event-contract-unsigned-") ||
+    o.id.startsWith("event-payment-attention-") ||
+    o.id.startsWith("inquiry-unattended-") ||
+    o.id.startsWith("tour-upcoming-");
+  const contextual = sorted.filter(isContextual);
+  const rest = sorted.filter((o) => !isContextual(o));
+  return [...contextual, ...rest].slice(0, 8);
 }

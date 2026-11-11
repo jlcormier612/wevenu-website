@@ -1,0 +1,152 @@
+/**
+ * Communications & Automation settings — customer-facing copy + status logic.
+ */
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { describe, it } from "node:test";
+
+import { resolveTextingDisplayPhase } from "@/lib/texting-registration/account-sync";
+import { buildTextingStatusPanel } from "@/lib/texting-registration/status-panel";
+import { classifyPendingReminder } from "@/lib/notifications/stats";
+import type { VenueTwilioAccount } from "@/lib/sms/venue-twilio-config";
+
+const notifSection = readFileSync(
+  resolve("components/settings/notifications-section.tsx"),
+  "utf8",
+);
+const identitySection = readFileSync(
+  resolve("components/settings/communication-identity-section.tsx"),
+  "utf8",
+);
+
+function account(partial: Partial<VenueTwilioAccount>): VenueTwilioAccount {
+  return {
+    venueId: "v1",
+    twilioAccountSid: "ACaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    messagingServiceSid: "MGaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    defaultFromE164: null,
+    phoneNumberSid: null,
+    secondaryProfileSid: null,
+    a2pBrandSid: null,
+    a2pCampaignSid: null,
+    status: "pending_compliance",
+    statusDetail: null,
+    ...partial,
+  };
+}
+
+describe("texting status reflects real readiness", () => {
+  it("does not claim under_review for bare pending_compliance without Twilio evidence", () => {
+    const phase = resolveTextingDisplayPhase(
+      "information_saved",
+      account({ status: "pending_compliance", defaultFromE164: null, phoneNumberSid: null }),
+      false,
+    );
+    assert.equal(phase, "information_saved");
+    const panel = buildTextingStatusPanel({
+      registration: null,
+      phase,
+      smsReady: false,
+      textingNumberE164: null,
+    });
+    assert.equal(panel.smsReady, false);
+    assert.notEqual(panel.phase, "under_review");
+    assert.notEqual(panel.texting.label, "Ready");
+  });
+
+  it("reports ready only when smsReady / send-ready account has a number", () => {
+    const readyAccount = account({
+      status: "ready",
+      defaultFromE164: "+15551234567",
+      phoneNumberSid: "PNaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      a2pBrandSid: "BNbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      a2pCampaignSid: "QEcccccccccccccccccccccccccccccccc",
+      a2pBrandStatus: "APPROVED",
+      a2pCampaignStatus: "VERIFIED",
+    });
+    const phase = resolveTextingDisplayPhase("under_review", readyAccount, true);
+    assert.equal(phase, "ready");
+    const panel = buildTextingStatusPanel({
+      registration: null,
+      phase,
+      smsReady: true,
+      textingNumberE164: "+15551234567",
+    });
+    assert.equal(panel.smsReady, true);
+    assert.equal(panel.texting.label, "Ready");
+    assert.match(panel.textingNumber.label, /555/);
+  });
+});
+
+describe("reminder scheduled vs due semantics", () => {
+  const now = Date.parse("2026-09-21T18:00:00.000Z");
+
+  it("classifies future pending rows as waiting_future (UI: scheduled)", () => {
+    assert.equal(classifyPendingReminder("2026-11-18T08:00:00.000Z", now), "waiting_future");
+  });
+
+  it("classifies past/equal pending rows as due_now", () => {
+    assert.equal(classifyPendingReminder("2026-09-21T18:00:00.000Z", now), "due_now");
+  });
+
+  it("Settings UI labels future count as scheduled and due rows as waiting to send", () => {
+    assert.match(notifSection, /label="scheduled"/);
+    assert.match(notifSection, /label="waiting to send"/);
+    assert.match(notifSection, /waiting to send/);
+    assert.match(
+      notifSection,
+      /Reminders send on the first automatic check after their scheduled time/,
+    );
+    assert.match(notifSection, /Processes reminders that are due now \(not future ones\)/);
+    assert.match(
+      notifSection,
+      /Automatic reminders are checked about every 30 minutes\. A reminder is sent on the first check after its scheduled time/,
+    );
+    assert.doesNotMatch(notifSection, /not stuck/);
+    assert.doesNotMatch(notifSection, /automatically at their scheduled time/);
+    assert.match(notifSection, /stats\.dueNow > 0/);
+    assert.match(notifSection, /nextLabel/);
+    assert.match(
+      notifSection,
+      /stats\.dueNow > 0 \? \([\s\S]*Reminders send on the first automatic check after their scheduled time/,
+    );
+  });
+});
+
+describe("SMS message body copy", () => {
+  it("uses the approved customer-facing wording", () => {
+    assert.match(
+      identitySection,
+      /The message you write — exactly what the client receives/,
+    );
+    assert.match(
+      identitySection,
+      /Keep SMS concise\. Include your venue name when it helps the client know who.s messaging them\./,
+    );
+    assert.doesNotMatch(identitySection, /no email-style footer/);
+  });
+});
+
+describe("Reply / contact copy", () => {
+  it("uses venue-facing Inbox routing copy without inbound plumbing language", () => {
+    assert.match(identitySection, /label="Reply \/ contact"/);
+    assert.match(
+      identitySection,
+      /Replies to your messages are routed to your Inbox automatically\./,
+    );
+    assert.match(identitySection, /Contact: \{venueEmail\}/);
+    assert.doesNotMatch(identitySection, /when inbound is configured/);
+    assert.doesNotMatch(identitySection, /thread matching/);
+    assert.doesNotMatch(identitySection, /contact shown as/);
+  });
+});
+
+describe("brand color swatch", () => {
+  it("renders a swatch from the configured primaryColor value", () => {
+    assert.match(identitySection, /backgroundColor: primaryColor/);
+    assert.match(identitySection, /h-4 w-4/);
+    assert.match(identitySection, /\{primaryColor\}/);
+    assert.doesNotMatch(identitySection, /#FF1493/);
+  });
+});

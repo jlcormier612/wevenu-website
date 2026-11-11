@@ -1,8 +1,17 @@
 import type { Metadata } from "next";
 
-import { activationUrlFromToken, whiteGloveIntakeUrlFromToken } from "@shared/email";
+import {
+  activationUrlFromToken,
+  productPostActivationLoginUrl,
+  whiteGloveIntakeUrlFromToken,
+} from "@shared/email";
 import { getEnrollmentBySession } from "@shared/product-account";
 import { MarketingCta } from "@/components/marketing/marketing-cta";
+import { SuccessPendingRefresh } from "@/components/pricing/success-pending-refresh";
+import {
+  classifySuccessEnrollment,
+  waitForEnrollmentBySession,
+} from "@/lib/pricing/wait-for-enrollment";
 import { TYPE_HERO_SHELL, TYPE_LABEL } from "@/lib/marketing/rhythm";
 
 export const metadata: Metadata = {
@@ -14,18 +23,14 @@ export const dynamic = "force-dynamic";
 
 type SuccessSearchParams = Promise<{ session_id?: string }>;
 
-function productAppLoginUrl(): string {
-  const base = (process.env.NEXT_PUBLIC_PRODUCT_APP_URL?.trim() || "http://localhost:3000").replace(
-    /\/$/,
-    "",
-  );
-  return `${base}/login`;
-}
-
 /**
  * Post-purchase welcome.
- * Self-Setup → activation CTA.
+ * Self-Setup → activation CTA (only after enrollment is available).
  * White Glove → intake CTA (no product access yet).
+ *
+ * Bounded server retries cover the normal Checkout → webhook gap. A soft
+ * client refresh continues while still processing. Lookups are read-only and
+ * keyed by Stripe Checkout Session id — never create enrollments here.
  */
 export default async function PricingSuccessPage({
   searchParams,
@@ -35,49 +40,54 @@ export default async function PricingSuccessPage({
   const params = await searchParams;
   const sessionId = params.session_id?.trim() || null;
 
-  const lookup = sessionId ? await getEnrollmentBySession(sessionId) : null;
-  const enrollment = lookup?.ok && lookup.found ? lookup : null;
+  const outcome = await waitForEnrollmentBySession(sessionId, {
+    attempts: 8,
+    delayMs: 500,
+    lookup: getEnrollmentBySession,
+  });
+  const view = classifySuccessEnrollment(outcome);
+  const enrollment =
+    outcome.status === "found" ? outcome.enrollment : null;
 
-  const isSelfSetupWelcome = Boolean(
-    enrollment &&
-      enrollment.status !== "activated" &&
-      enrollment.onboardingType !== "white_glove" &&
-      enrollment.activationToken,
-  );
-
-  const isWhiteGloveWelcome = Boolean(
-    enrollment && enrollment.onboardingType === "white_glove" && enrollment.status !== "activated",
-  );
+  const isSelfSetupWelcome = view === "self_setup_ready";
+  const isWhiteGloveWelcome = view === "white_glove_ready";
+  const isProcessing = view === "processing";
+  const isMissingSession = view === "missing_session";
 
   let heading = "Welcome to Hello to Cheers";
   let body =
     "Your subscription is active. We're setting up your venue account now — this usually only takes a moment.";
   let primaryCta: { href: string; label: string } | null = null;
 
-  if (enrollment) {
-    if (enrollment.status === "activated") {
-      heading = "You're already set up";
-      body = "Your account is active. Sign in to pick up right where you left off.";
-      primaryCta = { href: productAppLoginUrl(), label: "Sign in" };
-    } else if (enrollment.onboardingType === "white_glove") {
-      heading = "Let's get your venue ready";
-      body =
-        "You've chosen White Glove Setup. We'll build your Hello to Cheers workspace using the information and materials you provide. You don't need to configure everything yourself.";
-      if (enrollment.intakeToken) {
-        primaryCta = {
-          href: whiteGloveIntakeUrlFromToken(enrollment.intakeToken),
-          label: "Continue",
-        };
-      }
-    } else if (enrollment.activationToken) {
+  if (view === "already_activated" && enrollment) {
+    heading = "You're already set up";
+    body =
+      "Your account is active. Sign in with the email from this purchase to open your venue — not a different account that may already be signed in on this device.";
+    primaryCta = {
+      href: productPostActivationLoginUrl(enrollment.ownerEmail),
+      label: "Sign in",
+    };
+  } else if (view === "white_glove_ready" && enrollment) {
+    heading = "Let's get your venue ready";
+    body =
+      "You've chosen White Glove Setup. We'll build your Hello to Cheers workspace using the information and materials you provide. You don't need to configure everything yourself.";
+    if (enrollment.intakeToken) {
       primaryCta = {
-        href: activationUrlFromToken(enrollment.activationToken),
-        label: "Get started",
+        href: whiteGloveIntakeUrlFromToken(enrollment.intakeToken),
+        label: "Continue",
       };
     }
-  } else if (sessionId) {
+  } else if (view === "self_setup_ready" && enrollment?.activationToken) {
+    primaryCta = {
+      href: activationUrlFromToken(enrollment.activationToken),
+      label: "Get started",
+    };
+  } else if (isProcessing && sessionId) {
     body =
-      "Your subscription is active. We're finishing setting up your venue account — check your email in the next few minutes for your next step.";
+      "Your payment went through. We're finishing your venue account now — this usually takes just a few seconds. You can stay on this page, or check your email for the next step.";
+  } else if (isMissingSession) {
+    body =
+      "If you just completed checkout, open the link from your confirmation email to continue. If you need help, reply to that email and we'll take care of you.";
   }
 
   return (
@@ -127,7 +137,9 @@ export default async function PricingSuccessPage({
               <div className="mt-12 flex flex-col items-center">
                 <MarketingCta href={primaryCta.href} label={primaryCta.label} variant="primary" />
               </div>
-            ) : null}
+            ) : (
+              <SuccessPendingRefresh />
+            )}
           </>
         ) : (
           <>
@@ -142,6 +154,7 @@ export default async function PricingSuccessPage({
                 <MarketingCta href={primaryCta.href} label={primaryCta.label} variant="primary" />
               </div>
             ) : null}
+            {isProcessing && sessionId ? <SuccessPendingRefresh /> : null}
           </>
         )}
       </div>

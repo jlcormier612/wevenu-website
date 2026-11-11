@@ -5,6 +5,7 @@ import {
   STANDARD_VENUE_WORKFLOW_MILESTONES, STANDARD_VENUE_WORKFLOW_TASKS,
 } from "@/lib/playbooks/constants";
 import * as repo from "@/lib/playbooks/repository";
+import { applyAcceptedPackageToTasks, hasAcceptedPackage, isPackageChoiceTask } from "@/lib/playbooks/package-choice-task";
 import type {
   CreatePlaybookResult,
   EventPlaybookApplication,
@@ -65,6 +66,23 @@ export async function renameTemplate_(id: string, name: string): Promise<Playboo
   if (!name.trim()) return { ok: false, message: "Template name is required." };
   const result = await withVenue(async (c, venueId) => {
     await repo.renameTemplate(c, venueId, id, name);
+    return { ok: true } as PlaybookActionResult;
+  });
+  return result as PlaybookActionResult;
+}
+
+export async function updateTemplateDetails_(
+  id: string,
+  input: { name: string; eventType: string | null; description: string | null },
+): Promise<PlaybookActionResult> {
+  if (!input.name.trim()) return { ok: false, message: "Template name is required." };
+  const result = await withVenue(async (c, venueId) => {
+    const existing = await repo.getTemplate(c, venueId, id);
+    if (!existing) return { ok: false, message: "Template not found." } as PlaybookActionResult;
+    await repo.updateTemplateDetails(c, venueId, id, input);
+    if (existing.isDefault) {
+      await repo.setTemplateDefault(c, venueId, id, input.eventType, existing.kind);
+    }
     return { ok: true } as PlaybookActionResult;
   });
   return result as PlaybookActionResult;
@@ -223,7 +241,31 @@ export async function getEventTasks(eventId: string): Promise<EventTask[]> {
   if (!isSupabaseConfigured) return [];
   const venue = await getCurrentVenue();
   if (!venue) return [];
-  return repo.getEventTasks(await createClient(), venue.id, eventId);
+  const supabase = await createClient();
+  const tasks = await repo.getEventTasks(supabase, venue.id, eventId);
+  if (!tasks.some(isPackageChoiceTask)) return tasks;
+  return applyAcceptedPackageToTasks(tasks, await eventPackageAccepted(supabase, venue.id, eventId));
+}
+
+async function eventPackageAccepted(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  venueId: string,
+  eventId: string,
+): Promise<boolean> {
+  const { data: event } = await supabase
+    .from("events")
+    .select("client_id")
+    .eq("id", eventId)
+    .eq("venue_id", venueId)
+    .maybeSingle<{ client_id: string | null }>();
+  return event?.client_id ? hasAcceptedPackage(supabase, venueId, event.client_id) : false;
+}
+
+export async function getClientTasks(clientId: string): Promise<EventTask[]> {
+  if (!isSupabaseConfigured) return [];
+  const venue = await getCurrentVenue();
+  if (!venue) return [];
+  return repo.getClientTasks(await createClient(), venue.id, clientId);
 }
 
 export async function getEventPlaybookApplications(eventId: string): Promise<EventPlaybookApplication[]> {
@@ -233,10 +275,17 @@ export async function getEventPlaybookApplications(eventId: string): Promise<Eve
   return repo.getEventPlaybookApplications(await createClient(), venue.id, eventId);
 }
 
+export async function getClientPlaybookApplications(clientId: string): Promise<EventPlaybookApplication[]> {
+  if (!isSupabaseConfigured) return [];
+  const venue = await getCurrentVenue();
+  if (!venue) return [];
+  return repo.getClientPlaybookApplications(await createClient(), venue.id, clientId);
+}
+
 export async function applyPlaybookToEvent(eventId: string, templateId: string, eventDate: string): Promise<PlaybookActionResult> {
   const result = await withVenue(async (c, venueId) => {
     const { data: venueRow } = await c.from("venues")
-      .select("planning_timeline_enabled, planning_floor_plan_enabled, planning_seating_enabled, planning_vendors_enabled")
+      .select("planning_checklists_enabled, planning_timeline_enabled, planning_floor_plan_enabled, planning_seating_enabled, planning_vendors_enabled, planning_inventory_enabled, planning_event_order_enabled, planning_questionnaires_enabled")
       .eq("id", venueId)
       .maybeSingle();
     const { capabilitiesFromVenueRow } = await import("@/lib/playbooks/capabilities");
@@ -255,6 +304,239 @@ export async function applyPlaybookToEvent(eventId: string, templateId: string, 
       } as PlaybookActionResult;
     }
     return { ok: true } as PlaybookActionResult;
+  });
+  return result as PlaybookActionResult;
+}
+
+export async function applyPlaybookToClient(clientId: string, templateId: string, anchorDate: string): Promise<PlaybookActionResult> {
+  const result = await withVenue(async (c, venueId) => {
+    const { data: venueRow } = await c.from("venues")
+      .select("planning_checklists_enabled, planning_timeline_enabled, planning_floor_plan_enabled, planning_seating_enabled, planning_vendors_enabled, planning_inventory_enabled, planning_event_order_enabled, planning_questionnaires_enabled")
+      .eq("id", venueId)
+      .maybeSingle();
+    const { capabilitiesFromVenueRow } = await import("@/lib/playbooks/capabilities");
+    const caps = capabilitiesFromVenueRow(venueRow);
+    const applied = await repo.applyPlaybookToClient(c, venueId, clientId, templateId, anchorDate, caps);
+    if (!applied.ok) {
+      const template = await repo.getTemplate(c, venueId, templateId);
+      const kindLabel = template?.kind === "client" ? "Client Planning" : "Venue Planning";
+      return {
+        ok: false,
+        message: `This client already has a ${kindLabel} checklist applied. Booking keeps that checklist; it is not copied.`,
+      } as PlaybookActionResult;
+    }
+    return { ok: true } as PlaybookActionResult;
+  });
+  return result as PlaybookActionResult;
+}
+
+function draftGateMessage(
+  reason: "not_found" | "already_released" | "wrong_task" | "already_applied",
+): string {
+  if (reason === "already_released") {
+    return "Client Planning has already been released. Event-specific setup edits are locked — use the Planning management workspace for ongoing changes.";
+  }
+  if (reason === "wrong_task") {
+    return "That task is not part of this event's client checklist.";
+  }
+  if (reason === "already_applied") {
+    return "This event already has a Client Planning checklist applied. Switch templates from the setup editor, or remove Planning and start over.";
+  }
+  return "Apply a Client Planning checklist to this event before editing it.";
+}
+
+/** Replace this event's draft Client Planning with another active client template. */
+export async function replaceClientPlaybookOnEvent(
+  eventId: string,
+  templateId: string,
+  eventDate: string,
+): Promise<PlaybookActionResult> {
+  const result = await withVenue(async (c, venueId) => {
+    const { data: venueRow } = await c.from("venues")
+      .select("planning_checklists_enabled, planning_timeline_enabled, planning_floor_plan_enabled, planning_seating_enabled, planning_vendors_enabled, planning_inventory_enabled, planning_event_order_enabled, planning_questionnaires_enabled")
+      .eq("id", venueId)
+      .maybeSingle();
+    const { capabilitiesFromVenueRow } = await import("@/lib/playbooks/capabilities");
+    const caps = capabilitiesFromVenueRow(venueRow);
+    try {
+      const replaced = await repo.replaceClientPlaybookOnEvent(
+        c, venueId, eventId, templateId, eventDate, caps,
+      );
+      if (!replaced.ok) {
+        return { ok: false, message: draftGateMessage(replaced.reason) } as PlaybookActionResult;
+      }
+      return {
+        ok: true,
+        message: "This event's client checklist now uses the selected template. The Library template was not changed.",
+      } as PlaybookActionResult;
+    } catch (err) {
+      return {
+        ok: false,
+        message: err instanceof Error ? err.message : "Could not switch the client checklist template.",
+      } as PlaybookActionResult;
+    }
+  });
+  return result as PlaybookActionResult;
+}
+
+export async function addCustomClientEventTask(
+  eventId: string,
+  eventDate: string,
+  input: {
+    title: string;
+    daysOffset: number;
+    description?: string | null;
+    attachQuestionnaire?: boolean;
+  },
+): Promise<PlaybookActionResult & { taskId?: string }> {
+  const result = await withVenue(async (c, venueId) => {
+    try {
+      const added = await repo.addCustomClientEventTask(c, venueId, eventId, eventDate, input);
+      if (!added.ok) return { ok: false, message: draftGateMessage(added.reason) } as PlaybookActionResult;
+      return { ok: true, taskId: added.taskId, message: "Task added to this event's checklist." } as PlaybookActionResult & { taskId: string };
+    } catch (err) {
+      return {
+        ok: false,
+        message: err instanceof Error ? err.message : "Could not add the task.",
+      } as PlaybookActionResult;
+    }
+  });
+  return result as PlaybookActionResult & { taskId?: string };
+}
+
+export async function removeClientEventTask(
+  eventId: string,
+  taskId: string,
+): Promise<PlaybookActionResult> {
+  const result = await withVenue(async (c, venueId) => {
+    const removed = await repo.removeClientEventTask(c, venueId, eventId, taskId);
+    if (!removed.ok) return { ok: false, message: draftGateMessage(removed.reason) } as PlaybookActionResult;
+    return { ok: true, message: "Task removed from this event's checklist." } as PlaybookActionResult;
+  });
+  return result as PlaybookActionResult;
+}
+
+export async function updateClientEventTaskFields(
+  eventId: string,
+  eventDate: string,
+  taskId: string,
+  input: {
+    title?: string;
+    daysOffset?: number;
+    description?: string | null;
+    attachQuestionnaire?: boolean;
+  },
+): Promise<PlaybookActionResult> {
+  const result = await withVenue(async (c, venueId) => {
+    try {
+      const updated = await repo.updateClientEventTaskFields(c, venueId, eventId, eventDate, taskId, input);
+      if (!updated.ok) return { ok: false, message: draftGateMessage(updated.reason) } as PlaybookActionResult;
+      return { ok: true, message: "Task saved for this event." } as PlaybookActionResult;
+    } catch (err) {
+      return {
+        ok: false,
+        message: err instanceof Error ? err.message : "Could not save the task.",
+      } as PlaybookActionResult;
+    }
+  });
+  return result as PlaybookActionResult;
+}
+
+function venueSetupGateMessage(
+  reason: "not_found" | "wrong_task" | "already_applied" | "already_released",
+): string {
+  if (reason === "wrong_task") {
+    return "That task is not part of this event's venue checklist.";
+  }
+  if (reason === "already_applied" || reason === "already_released") {
+    return "This event already has a Venue Planning checklist applied. Switch templates from the setup editor, or remove Planning and start over.";
+  }
+  return "Apply a Venue Planning checklist to this event before editing it.";
+}
+
+/** Replace this event's Venue Planning with another active venue template. Stays internal. */
+export async function replaceVenuePlaybookOnEvent(
+  eventId: string,
+  templateId: string,
+  eventDate: string,
+): Promise<PlaybookActionResult> {
+  const result = await withVenue(async (c, venueId) => {
+    const { data: venueRow } = await c.from("venues")
+      .select("planning_checklists_enabled, planning_timeline_enabled, planning_floor_plan_enabled, planning_seating_enabled, planning_vendors_enabled, planning_inventory_enabled, planning_event_order_enabled, planning_questionnaires_enabled")
+      .eq("id", venueId)
+      .maybeSingle();
+    const { capabilitiesFromVenueRow } = await import("@/lib/playbooks/capabilities");
+    const caps = capabilitiesFromVenueRow(venueRow);
+    try {
+      const replaced = await repo.replaceVenuePlaybookOnEvent(
+        c, venueId, eventId, templateId, eventDate, caps,
+      );
+      if (!replaced.ok) {
+        return { ok: false, message: venueSetupGateMessage(replaced.reason) } as PlaybookActionResult;
+      }
+      return {
+        ok: true,
+        message: "This event's venue checklist now uses the selected template. It stays internal — the Library template was not changed.",
+      } as PlaybookActionResult;
+    } catch (err) {
+      return {
+        ok: false,
+        message: err instanceof Error ? err.message : "Could not switch the venue checklist template.",
+      } as PlaybookActionResult;
+    }
+  });
+  return result as PlaybookActionResult;
+}
+
+export async function addCustomVenueEventTask(
+  eventId: string,
+  eventDate: string,
+  input: { title: string; daysOffset: number; description?: string | null },
+): Promise<PlaybookActionResult & { taskId?: string }> {
+  const result = await withVenue(async (c, venueId) => {
+    try {
+      const added = await repo.addCustomVenueEventTask(c, venueId, eventId, eventDate, input);
+      if (!added.ok) return { ok: false, message: venueSetupGateMessage(added.reason) } as PlaybookActionResult;
+      return { ok: true, taskId: added.taskId, message: "Task added to this event's venue checklist." } as PlaybookActionResult & { taskId: string };
+    } catch (err) {
+      return {
+        ok: false,
+        message: err instanceof Error ? err.message : "Could not add the task.",
+      } as PlaybookActionResult;
+    }
+  });
+  return result as PlaybookActionResult & { taskId?: string };
+}
+
+export async function removeVenueEventTask(
+  eventId: string,
+  taskId: string,
+): Promise<PlaybookActionResult> {
+  const result = await withVenue(async (c, venueId) => {
+    const removed = await repo.removeVenueEventTask(c, venueId, eventId, taskId);
+    if (!removed.ok) return { ok: false, message: venueSetupGateMessage(removed.reason) } as PlaybookActionResult;
+    return { ok: true, message: "Task removed from this event's venue checklist." } as PlaybookActionResult;
+  });
+  return result as PlaybookActionResult;
+}
+
+export async function updateVenueEventTaskFields(
+  eventId: string,
+  eventDate: string,
+  taskId: string,
+  input: { title?: string; daysOffset?: number; description?: string | null },
+): Promise<PlaybookActionResult> {
+  const result = await withVenue(async (c, venueId) => {
+    try {
+      const updated = await repo.updateVenueEventTaskFields(c, venueId, eventId, eventDate, taskId, input);
+      if (!updated.ok) return { ok: false, message: venueSetupGateMessage(updated.reason) } as PlaybookActionResult;
+      return { ok: true, message: "Venue task saved for this event." } as PlaybookActionResult;
+    } catch (err) {
+      return {
+        ok: false,
+        message: err instanceof Error ? err.message : "Could not save the task.",
+      } as PlaybookActionResult;
+    }
   });
   return result as PlaybookActionResult;
 }
@@ -283,12 +565,11 @@ export async function unapplyPlaybookFromEvent(
   return result as PlaybookActionResult;
 }
 
-/** The deliberate second step for Client Planning (Draft → Release,
- *  2026-07-10): makes the checklist visible in the couple portal and starts
- *  its reminders. Also makes sure a portal link actually exists for this
- *  client. Phase 3: after a successful release, send the existing client
- *  invitation if an email is on file. Invitation failure does not roll
- *  back the release. */
+/** The deliberate second step for Client Planning (Draft → Release):
+ *  makes the checklist visible in the couple portal and starts its reminders.
+ *  Ensures a portal session exists so the couple can open the portal when invited.
+ *  Does NOT send the client invitation email — invite is a separate, explicit action
+ *  (PortalLinkWidget / Invite client to workspace). */
 export async function releasePlaybookApplication(eventId: string, clientId: string, coupleName: string): Promise<PlaybookActionResult> {
   const result = await withVenue(async (c, venueId) => {
     const released = await repo.releasePlaybookApplication(c, venueId, eventId);
@@ -305,37 +586,11 @@ export async function releasePlaybookApplication(eventId: string, clientId: stri
     const sessions = await getPortalSessions(clientId);
     if (sessions.length === 0) await createPortalSession(clientId, coupleName);
 
-    const { getClient } = await import("@/lib/clients/service");
-    const { inviteClient } = await import("@/lib/client-auth/service");
-    const client = await getClient(clientId);
-    const email = client?.email?.trim() ?? "";
-    if (!email) {
-      return {
-        ok: true,
-        message: "Client Planning released. No invitation sent — no client email on file.",
-      } as PlaybookActionResult;
-    }
-
-    try {
-      const invited = await inviteClient(clientId, email, coupleName);
-      if (!invited.ok) {
-        console.error("[release] inviteClient failed after release:", invited.error);
-        return {
-          ok: true,
-          message: "Client Planning released. The invitation could not be sent — invite them from the Client page.",
-        } as PlaybookActionResult;
-      }
-      return {
-        ok: true,
-        message: "Client Planning released. Their invitation has been sent.",
-      } as PlaybookActionResult;
-    } catch (e) {
-      console.error("[release] inviteClient threw after release:", e instanceof Error ? e.message : e);
-      return {
-        ok: true,
-        message: "Client Planning released. The invitation could not be sent — invite them from the Client page.",
-      } as PlaybookActionResult;
-    }
+    return {
+      ok: true,
+      message:
+        "Client Planning released — the checklist is now visible in their portal. This does not send an invitation email. Invite them to the workspace separately when you are ready.",
+    } as PlaybookActionResult;
   });
   return result as PlaybookActionResult;
 }
@@ -521,7 +776,13 @@ export async function getEventTaskReadinessByKind(eventId: string): Promise<{ cl
   if (!isSupabaseConfigured) return { client: null, venue: null };
   const venue = await getCurrentVenue();
   if (!venue) return { client: null, venue: null };
-  return repo.computeEventTaskReadinessByKind(await createClient(), venue.id, eventId);
+  const supabase = await createClient();
+  return repo.computeEventTaskReadinessByKind(
+    supabase,
+    venue.id,
+    eventId,
+    await eventPackageAccepted(supabase, venue.id, eventId),
+  );
 }
 
 // ---- Create from the Standard reference templates ---------------------------
@@ -565,7 +826,7 @@ export async function createStandardClientPlanningTemplate(): Promise<CreatePlay
       // Add-again: venue copy without unique master key.
       const templateId = await createFromReference(
         c, venueId, "Standard Wedding — Client Planning (Copy)", "client", "wedding",
-        "Guides your client through their own to-dos, from booking through post-event.",
+        "Guides your client through their own to-dos after booking, through post-event.",
         STANDARD_CLIENT_PLANNING_MILESTONES, STANDARD_CLIENT_PLANNING_TASKS,
         null,
       );
@@ -573,7 +834,7 @@ export async function createStandardClientPlanningTemplate(): Promise<CreatePlay
     }
     const templateId = await createFromReference(
       c, venueId, "Standard Wedding — Client Planning", "client", "wedding",
-      "Guides your client through their own to-dos, from booking through post-event.",
+      "Guides your client through their own to-dos after booking, through post-event.",
       STANDARD_CLIENT_PLANNING_MILESTONES, STANDARD_CLIENT_PLANNING_TASKS,
       "PB-CLIENT-01",
     );
@@ -593,7 +854,7 @@ export async function createStandardVenueWorkflowTemplate(): Promise<CreatePlayb
     if (existing) {
       const templateId = await createFromReference(
         c, venueId, "Standard Wedding — Venue Planning (Copy)", "venue", "wedding",
-        "Runs your team's internal checklist, from booking through post-event.",
+        "Runs your team's internal checklist for a booked event, from planning through post-event.",
         STANDARD_VENUE_WORKFLOW_MILESTONES, STANDARD_VENUE_WORKFLOW_TASKS,
         null,
       );
@@ -601,7 +862,7 @@ export async function createStandardVenueWorkflowTemplate(): Promise<CreatePlayb
     }
     const templateId = await createFromReference(
       c, venueId, "Standard Wedding — Venue Planning", "venue", "wedding",
-      "Runs your team's internal checklist, from booking through post-event.",
+      "Runs your team's internal checklist for a booked event, from planning through post-event.",
       STANDARD_VENUE_WORKFLOW_MILESTONES, STANDARD_VENUE_WORKFLOW_TASKS,
       "PB-VENUE-01",
     );

@@ -715,6 +715,44 @@ export async function recordCouplePortalLegalAcceptances(input: {
 }
 
 /**
+ * Record Vendor End User Terms + Privacy for a vendor auth user.
+ */
+export async function recordVendorPortalLegalAcceptances(input: {
+  userId?: string | null;
+  email?: string | null;
+  relationshipId?: string | null;
+  acceptedAt?: string | null;
+  ipAddress?: string | null;
+  userAgent?: string | null;
+  acceptanceMethod?: LegalAcceptanceMethod;
+}): Promise<LegalAcceptance[]> {
+  if (!isSupabaseConfigured) {
+    throw new Error("Supabase is not configured.");
+  }
+
+  let userId = input.userId?.trim() || null;
+  if (!userId) {
+    const email = input.email?.trim().toLowerCase() || "";
+    if (!email) {
+      throw new Error(
+        "A signed-in user or email is required to record legal acceptances.",
+      );
+    }
+    userId = await resolveUserIdForEmail(email);
+  }
+
+  return recordActiveLegalAcceptancesForTypes({
+    userId,
+    documentTypes: VENDOR_PORTAL_LEGAL_TYPES,
+    relationshipId: input.relationshipId,
+    acceptedAt: input.acceptedAt,
+    ipAddress: input.ipAddress,
+    userAgent: input.userAgent,
+    acceptanceMethod: input.acceptanceMethod ?? "Vendor Invitation",
+  });
+}
+
+/**
  * Resolve couple portal legal identity from a portal access token.
  * relationship_id prefers clients.relationship_id, else clients.id.
  */

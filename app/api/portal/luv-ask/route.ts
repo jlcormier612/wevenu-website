@@ -1,12 +1,16 @@
 /**
  * POST /api/portal/luv-ask
  *
- * Couple asks Luv a question about the venue.
- * Luv answers warmly and returns the most relevant Venue Guide section so
- * the UI can surface a "View in Venue Guide →" chip.
+ * Couple asks Luv a question.
+ * Knowledge layers:
+ *   1. HTC product knowledge — couple-safe Help article projections
+ *   2. Venue Guide — published client-facing venue information
+ *   3. Portal context — this couple's payments / contracts / documents (Phase 2A)
+ *
+ * Luv Intelligence V1: structured outcome + information-gap next steps + signal persistence.
  *
  * Body:     { token: string; question: string }
- * Response: { answer: string; guideSection?: string | null } | { error: string }
+ * Response: { answer, guideSection, outcome, nextSteps } | { error }
  */
 
 import { NextResponse } from "next/server";
@@ -18,6 +22,16 @@ import {
   luvAskClientIp,
 } from "@/lib/luv/ask-guard";
 import {
+  parseLuvAskModelResponse,
+  unavailableAskResponse,
+  type LuvAskNextStepType,
+  type LuvAskOutcome,
+} from "@/lib/luv/ask-outcome";
+import { recordLuvAskSignal } from "@/lib/luv/ask-signals";
+import { buildCoupleAskLuvSystemPrompt } from "@/lib/luv/couple-ask-prompt";
+import { retrieveCoupleHtcKnowledge } from "@/lib/luv/couple-htc-knowledge";
+import { loadLuvAskPortalContext } from "@/lib/luv/portal-context/load";
+import {
   getLuvSettingsForVenueId,
   isLuvDraftingEnabled,
   luvAskVoiceInstruction,
@@ -27,130 +41,32 @@ import {
   type VenueGuideRaw,
 } from "@/lib/venue-guide/audience";
 
-type VenueInfo = {
-  venueName?: string;
-  parkingInfo?: string | null;
-  transportation?: string | null;
-  faqs?: { question: string; answer: string }[] | null;
-  policies?: string | null;
-  ceremonyInstructions?: string | null;
-  rainPlan?: string | null;
-  nearbyAccommodations?: string | null;
-  thingsToDo?: string | null;
-  importantContacts?: { name: string; role: string; phone?: string; email?: string }[] | null;
-  hotelBlocks?: { name: string; url?: string; code?: string; notes?: string }[] | null;
+type AskJsonBody = {
+  answer: string;
+  guideSection: string | null;
+  outcome: LuvAskOutcome;
+  nextSteps: LuvAskNextStepType[];
 };
 
-// Map our guide section keys to their UI labels — must match venue-guide-section.tsx
-const GUIDE_SECTION_LABELS: Record<string, string> = {
-  parking:        "Parking & Transportation",
-  accommodations: "Accommodations",
-  weather:        "Weather & Rain Plan",
-  policies:       "Policies & Rules",
-  ceremony:       "Ceremony & Arrival",
-  things_to_know: "Things To Know",
-  faqs:           "FAQs",
-  contacts:       "Important Contacts",
-};
-
-function hasContent(v: string | null | undefined): boolean {
-  return typeof v === "string" && v.trim().length > 0;
+function askJson(body: AskJsonBody, status = 200) {
+  return NextResponse.json(body, { status });
 }
 
-function buildContext(info: VenueInfo, venueName: string, voiceInstruction: string): string {
-  const parts: string[] = [];
-
-  parts.push(
-    `You are Luv 💗, the warm and knowledgeable wedding assistant for ${venueName}.`,
-    `You help couples planning their wedding by answering questions about this venue clearly, warmly, and concisely.`,
-    ``,
-    `IMPORTANT — RESPONSE FORMAT:`,
-    `Always respond with a single valid JSON object. Do not include markdown fences or any text outside the JSON.`,
-    `Format:`,
-    `{`,
-    `  "answer": "Your warm, helpful answer here. One to three short paragraphs. No markdown formatting.",`,
-    `  "guideSection": "<section_key> | null"`,
-    `}`,
-    ``,
-    `GUIDE SECTION KEYS — set guideSection to the most relevant key when your answer draws from that section's info. Set null if not applicable:`,
-    `  "parking"        → Parking & Transportation`,
-    `  "accommodations" → Accommodations (hotels, hotel blocks)`,
-    `  "weather"        → Weather & Rain Plan (rain plan, contingency)`,
-    `  "policies"       → Policies & Rules (what's allowed, vendor rules, restrictions)`,
-    `  "ceremony"       → Ceremony & Arrival (ceremony setup, arrival instructions)`,
-    `  "things_to_know" → Things To Know (general venue tips)`,
-    `  "faqs"           → FAQs`,
-    `  "contacts"       → Important Contacts (coordinator, venue team)`,
-    ``,
-    `RULES:`,
-    `- Only use the information provided below. If something isn't covered, say so honestly and suggest they ask their coordinator directly.`,
-    `- ${voiceInstruction}`,
-    `- When you reference information from a specific section, set guideSection accordingly so couples can explore further.`,
-    `- Never make up information about the venue.`,
-    `- Never reference vendor-only setup, load-in, or dock details — those are outside this couple-facing guide.`,
-    ``,
-    `--- VENUE KNOWLEDGE ---`,
-  );
-
-  if (hasContent(info.policies))
-    parts.push(`Policies & Rules (guideSection: "policies"):\n${info.policies}`);
-
-  if (hasContent(info.parkingInfo) || hasContent(info.transportation)) {
-    parts.push(`Parking & Transportation (guideSection: "parking"):`);
-    if (hasContent(info.parkingInfo))    parts.push(info.parkingInfo!);
-    if (hasContent(info.transportation)) parts.push(info.transportation!);
-  }
-
-  if (hasContent(info.ceremonyInstructions))
-    parts.push(`Ceremony & Arrival (guideSection: "ceremony"):\n${info.ceremonyInstructions}`);
-
-  if (hasContent(info.rainPlan))
-    parts.push(`Weather & Rain Plan (guideSection: "weather"):\n${info.rainPlan}`);
-
-  if (hasContent(info.nearbyAccommodations) || (info.hotelBlocks?.length)) {
-    parts.push(`Accommodations (guideSection: "accommodations"):`);
-    if (hasContent(info.nearbyAccommodations)) parts.push(info.nearbyAccommodations!);
-    if (info.hotelBlocks?.length) {
-      parts.push("Hotel Blocks:");
-      for (const h of info.hotelBlocks) {
-        parts.push(`- ${h.name}${h.code ? ` (booking code: ${h.code})` : ""}${h.url ? ` — ${h.url}` : ""}${h.notes ? ` — ${h.notes}` : ""}`);
-      }
-    }
-  }
-
-  if (hasContent(info.thingsToDo))
-    parts.push(`Things To Know (guideSection: "things_to_know"):\n${info.thingsToDo}`);
-
-  if (info.faqs?.length) {
-    parts.push(`Frequently Asked Questions (guideSection: "faqs"):`);
-    for (const faq of info.faqs) {
-      parts.push(`Q: ${faq.question}\nA: ${faq.answer}`);
-    }
-  }
-
-  if (info.importantContacts?.length) {
-    parts.push(`Important Contacts (guideSection: "contacts"):`);
-    for (const c of info.importantContacts) {
-      parts.push(`- ${c.name} (${c.role})${c.phone ? ` — ${c.phone}` : ""}${c.email ? ` — ${c.email}` : ""}`);
-    }
-  }
-
-  return parts.join("\n\n");
-}
-
-function parseAskJson(raw: string): { answer: string; guideSection: string | null } {
-  // Strip markdown fences the model might add despite instructions
-  const cleaned = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
-  try {
-    const parsed = JSON.parse(cleaned) as { answer?: unknown; guideSection?: unknown };
-    const answer = typeof parsed.answer === "string" ? parsed.answer.trim() : "";
-    const guideSection = typeof parsed.guideSection === "string" && parsed.guideSection in GUIDE_SECTION_LABELS
-      ? parsed.guideSection
-      : null;
-    return { answer: answer || raw.trim(), guideSection };
-  } catch {
-    return { answer: raw.trim(), guideSection: null };
-  }
+async function respondAndSignal(
+  token: string,
+  question: string,
+  body: AskJsonBody,
+  status = 200,
+) {
+  // Fire-and-forget persistence — never block or fail the client response.
+  void recordLuvAskSignal({
+    token,
+    question,
+    outcome: body.outcome,
+    guideSection: body.guideSection,
+    nextSteps: body.nextSteps,
+  });
+  return askJson(body, status);
 }
 
 export async function POST(request: Request) {
@@ -166,27 +82,34 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "missing_token_or_question" }, { status: 400 });
   }
 
+  const trimmedQuestion = question.trim();
+
   if (isLuvAskQuestionTooLong(question)) {
-    return NextResponse.json({
-      answer: "That's a bit too long — try a shorter question.",
-      guideSection: null,
-    }, { status: 400 });
+    return respondAndSignal(
+      token,
+      trimmedQuestion,
+      unavailableAskResponse("That's a bit too long — try a shorter question."),
+      400,
+    );
   }
 
   const rate = checkLuvAskRateLimit({ token, ip: luvAskClientIp(request) });
   if (!rate.allowed) {
-    return NextResponse.json({
-      answer: "Luv needs a short break — please try again in a few minutes.",
-      guideSection: null,
-    }, { status: 429 });
+    return respondAndSignal(
+      token,
+      trimmedQuestion,
+      unavailableAskResponse("Luv needs a short break — please try again in a few minutes."),
+      429,
+    );
   }
 
   const supabase = await createClient();
 
-  const { data: venueInfo, error: infoErr } = await supabase.rpc("get_venue_info_for_portal", { p_token: token });
+  const { data: venueInfo, error: infoErr } = await supabase.rpc("get_venue_info_for_portal", {
+    p_token: token,
+  });
   if (infoErr) return NextResponse.json({ error: infoErr.message }, { status: 500 });
 
-  // get_venue_info_for_portal returns camelCase keys (no nested venue_name).
   const projected = projectGuideForAudience(
     (venueInfo ?? null) as VenueGuideRaw | null,
     "clients",
@@ -195,70 +118,113 @@ export async function POST(request: Request) {
   const { data: portalCtx } = await supabase.rpc("get_portal_context", { p_token: token });
   const venueId = (portalCtx as { venue?: { id?: string } } | null)?.venue?.id;
   if (!venueId) {
-    return NextResponse.json({
-      answer: "Luv isn't configured yet — ask your venue coordinator directly.",
-      guideSection: null,
-    });
+    return respondAndSignal(
+      token,
+      trimmedQuestion,
+      unavailableAskResponse(
+        "Luv isn't configured yet — ask your venue coordinator directly.",
+      ),
+    );
   }
 
   const settings = await getLuvSettingsForVenueId(venueId);
   if (!isLuvDraftingEnabled(settings)) {
-    return NextResponse.json({
-      answer: "Luv isn't available right now — ask your venue coordinator directly.",
-      guideSection: null,
-    });
+    return respondAndSignal(
+      token,
+      trimmedQuestion,
+      unavailableAskResponse(
+        "Luv isn't available right now — ask your venue coordinator directly.",
+      ),
+    );
   }
 
-  const apiKeyConfigured = isOpenAiConfigured();
-  if (!apiKeyConfigured) {
-    return NextResponse.json({
-      answer: "Luv isn't available right now — ask your venue coordinator directly.",
-      guideSection: null,
-    });
+  if (!isOpenAiConfigured()) {
+    return respondAndSignal(
+      token,
+      trimmedQuestion,
+      unavailableAskResponse(
+        "Luv isn't available right now — ask your venue coordinator directly.",
+      ),
+    );
   }
 
   const venueName = "your venue";
+  const htcHits = retrieveCoupleHtcKnowledge(trimmedQuestion);
 
-  const info: VenueInfo = {
+  let portalContext = null;
+  try {
+    portalContext = await loadLuvAskPortalContext(token);
+  } catch (err) {
+    console.error("luv-ask portal context load failed:", err);
+  }
+
+  const importantContacts = (projected?.importantContacts ?? []) as {
+    name: string;
+    role: string;
+    phone?: string;
+    email?: string;
+  }[];
+  const hasPublishedContacts = importantContacts.some(
+    (c) => c && typeof c.name === "string" && c.name.trim().length > 0,
+  );
+
+  const systemPrompt = buildCoupleAskLuvSystemPrompt({
     venueName,
-    parkingInfo:          projected?.parkingInfo ?? null,
-    transportation:       projected?.transportation ?? null,
-    faqs:                 projected?.faqs ?? [],
-    policies:             projected?.policies ?? null,
-    ceremonyInstructions: projected?.ceremonyInstructions ?? null,
-    rainPlan:             projected?.rainPlan ?? null,
-    nearbyAccommodations: projected?.nearbyAccommodations ?? null,
-    thingsToDo:           projected?.thingsToDo ?? null,
-    importantContacts:    (projected?.importantContacts ?? []) as VenueInfo["importantContacts"],
-    hotelBlocks:          (projected?.hotelBlocks ?? []) as VenueInfo["hotelBlocks"],
-  };
-
-  const systemPrompt = buildContext(info, venueName, luvAskVoiceInstruction(settings.preferredTone));
+    voiceInstruction: luvAskVoiceInstruction(settings.preferredTone),
+    htcHits,
+    venueInfo: {
+      parkingInfo: projected?.parkingInfo ?? null,
+      transportation: projected?.transportation ?? null,
+      faqs: projected?.faqs ?? [],
+      policies: projected?.policies ?? null,
+      ceremonyInstructions: projected?.ceremonyInstructions ?? null,
+      rainPlan: projected?.rainPlan ?? null,
+      nearbyAccommodations: projected?.nearbyAccommodations ?? null,
+      thingsToDo: projected?.thingsToDo ?? null,
+      importantContacts,
+      hotelBlocks: (projected?.hotelBlocks ?? []) as {
+        name: string;
+        url?: string;
+        code?: string;
+        notes?: string;
+      }[],
+    },
+    portalContext,
+  });
 
   try {
     const raw = await openAiChatCompletion({
       messages: [
         { role: "system", content: systemPrompt },
-        { role: "user", content: `Question from the couple: "${question.trim()}"` },
+        { role: "user", content: `Question from the couple: "${trimmedQuestion}"` },
       ],
       maxCompletionTokens: 600,
       timeoutMs: 25_000,
     });
-    const { answer, guideSection } = parseAskJson(raw);
+    const parsed = parseLuvAskModelResponse(raw, { hasPublishedContacts });
 
-    return NextResponse.json({ answer, guideSection });
+    return respondAndSignal(token, trimmedQuestion, {
+      answer: parsed.answer,
+      guideSection: parsed.guideSection,
+      outcome: parsed.outcome,
+      nextSteps: parsed.nextSteps,
+    });
   } catch (err) {
     console.error("luv-ask error:", err);
     const message = err instanceof Error ? err.message : "";
     if (message.startsWith("OpenAI API error")) {
-      return NextResponse.json({
-        answer: "Luv had trouble answering that right now. Try asking your venue coordinator directly.",
-        guideSection: null,
-      });
+      return respondAndSignal(
+        token,
+        trimmedQuestion,
+        unavailableAskResponse(
+          "Luv had trouble answering that right now. Try asking your venue coordinator directly.",
+        ),
+      );
     }
-    return NextResponse.json({
-      answer: "Luv couldn't connect right now. Please try again.",
-      guideSection: null,
-    });
+    return respondAndSignal(
+      token,
+      trimmedQuestion,
+      unavailableAskResponse("Luv couldn't connect right now. Please try again."),
+    );
   }
 }

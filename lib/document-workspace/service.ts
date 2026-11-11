@@ -1,3 +1,4 @@
+import { createAdminClient } from "@/integrations/supabase/admin";
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getCurrentVenue } from "@/lib/venue/service";
@@ -5,7 +6,9 @@ import {
   applyContractVersionLineage,
   normalizeWorkspaceDocument,
   workspaceDocKey,
+  type WorkspaceRawRow,
 } from "@/lib/document-workspace/normalize";
+import { applyQuestionnaireWorkspaceNames } from "@/lib/document-workspace/questionnaire-names";
 import type {
   WorkspaceActivityEntry,
   WorkspaceDocument,
@@ -13,6 +16,7 @@ import type {
   WorkspaceVersion,
 } from "@/lib/document-workspace/types";
 import * as contractRepo from "@/lib/contracts/repository";
+import { healSharedCoupleInsuranceVenueDocuments } from "@/lib/portal/ensure-couple-insurance-venue-document";
 
 /** Global Documents (no scope) or a Relationship/Vendor/Event-filtered view — same one RPC, same one shape, per the brief's own "filtered view, not another document system." */
 export async function getVenueWorkspaceDocuments(scope: WorkspaceScope = {}): Promise<WorkspaceDocument[]> {
@@ -20,6 +24,30 @@ export async function getVenueWorkspaceDocuments(scope: WorkspaceScope = {}): Pr
   const venue = await getCurrentVenue();
   if (!venue) return [];
   const supabase = await createClient();
+  // Shared couple insurance lives in couple_documents; heal missing venue
+  // documents rows so All Documents reflects share_with_venue without re-upload.
+  // Admin write after venue session is established — couple_documents is not
+  // writable under venue RLS; registration is still venue-scoped by IDs.
+  if (scope.clientId) {
+    try {
+      const { data: owned } = await supabase
+        .from("clients")
+        .select("id")
+        .eq("id", scope.clientId)
+        .eq("venue_id", venue.id)
+        .maybeSingle<{ id: string }>();
+      if (owned?.id) {
+        await healSharedCoupleInsuranceVenueDocuments(
+          createAdminClient() as never,
+          venue.id,
+          scope.clientId,
+          scope.eventId ?? null,
+        );
+      }
+    } catch (err) {
+      console.error("[getVenueWorkspaceDocuments] couple insurance heal", err);
+    }
+  }
   const { data, error } = await supabase.rpc("get_venue_documents", {
     p_lead_id: scope.leadId ?? null,
     p_client_id: scope.clientId ?? null,
@@ -30,8 +58,39 @@ export async function getVenueWorkspaceDocuments(scope: WorkspaceScope = {}): Pr
     console.error("[getVenueWorkspaceDocuments]", error.message);
     return [];
   }
-  const rows = (data?.documents ?? []) as Parameters<typeof normalizeWorkspaceDocument>[0][];
-  const docs = rows.map(normalizeWorkspaceDocument);
+  const rawRows = (data?.documents ?? []) as WorkspaceRawRow[];
+  const questionnaireIds = rawRows
+    .filter((r) => r.docType === "questionnaire")
+    .map((r) => r.id);
+  const kindById = new Map<string, string>();
+  if (questionnaireIds.length > 0) {
+    const { data: kindRows, error: kindError } = await supabase
+      .from("event_questionnaires")
+      .select("id, kind")
+      .eq("venue_id", venue.id)
+      .in("id", questionnaireIds);
+    if (kindError) {
+      console.error("[getVenueWorkspaceDocuments] questionnaire kinds", kindError.message);
+    } else {
+      for (const row of (kindRows ?? []) as { id: string; kind: string }[]) {
+        if (row.kind) kindById.set(row.id, row.kind);
+      }
+    }
+  }
+  // Titles come from questionnaire-family kindLabel — not the legacy RPC hardcode.
+  const rows = applyQuestionnaireWorkspaceNames(rawRows, kindById);
+  const { isReturnedQuestionnaireDocumentStatus } = await import(
+    "@/lib/document-workspace/questionnaire-document-status"
+  );
+  // Documents = event artifacts. Sent/in_progress questionnaires stay on the
+  // Questionnaires workflow until the couple returns answers.
+  const docs = rows
+    .map(normalizeWorkspaceDocument)
+    .filter(
+      (d) =>
+        d.docType !== "questionnaire"
+        || isReturnedQuestionnaireDocumentStatus(d.rawStatus),
+    );
 
   const contractIds = docs.filter((d) => d.docType === "contract").map((d) => d.id);
   if (contractIds.length === 0) return docs;
@@ -39,11 +98,55 @@ export async function getVenueWorkspaceDocuments(scope: WorkspaceScope = {}): Pr
   try {
     const nodes = await contractRepo.listContractLineageNodes(supabase, venue.id, contractIds);
     const { isContractFinalized } = await import("@/lib/contracts/document-integration");
+    const ids = nodes.map((n) => n.id);
+    const { data: signerRows } = ids.length
+      ? await supabase
+          .from("contract_signers")
+          .select("contract_id, signer_type, signed_at, is_required")
+          .eq("venue_id", venue.id)
+          .in("contract_id", ids)
+      : { data: [] as { contract_id: string; signer_type: string; signed_at: string | null; is_required: boolean }[] };
+
+    type Progress = {
+      venueSigned: boolean;
+      requiredClientTotal: number;
+      requiredClientSigned: number;
+      anyClientSigned: boolean;
+    };
+    const progressByContract = new Map<string, Progress>();
+    for (const row of (signerRows ?? []) as {
+      contract_id: string; signer_type: string; signed_at: string | null; is_required: boolean;
+    }[]) {
+      const cur = progressByContract.get(row.contract_id) ?? {
+        venueSigned: false,
+        requiredClientTotal: 0,
+        requiredClientSigned: 0,
+        anyClientSigned: false,
+      };
+      if (row.signer_type === "venue") {
+        cur.venueSigned = Boolean(row.signed_at);
+      } else if (row.signer_type === "client") {
+        if (row.is_required) {
+          cur.requiredClientTotal += 1;
+          if (row.signed_at) cur.requiredClientSigned += 1;
+        }
+        if (row.signed_at) cur.anyClientSigned = true;
+      }
+      progressByContract.set(row.contract_id, cur);
+    }
+
     const withFinal = await Promise.all(
-      nodes.map(async (n) => ({
-        ...n,
-        finalized: n.status === "signed" ? await isContractFinalized(supabase, n.id) : false,
-      })),
+      nodes.map(async (n) => {
+        const progress = progressByContract.get(n.id);
+        return {
+          ...n,
+          finalized: n.status === "signed" ? await isContractFinalized(supabase, n.id) : false,
+          venueSigned: progress?.venueSigned ?? false,
+          anyClientSigned: progress?.anyClientSigned ?? false,
+          requiredClientTotal: progress?.requiredClientTotal ?? 0,
+          requiredClientSigned: progress?.requiredClientSigned ?? 0,
+        };
+      }),
     );
     return applyContractVersionLineage(docs, withFinal);
   } catch (err) {
@@ -101,7 +204,10 @@ export async function getPinnedDocumentKeys(): Promise<Set<string>> {
   return new Set((data ?? []).map((r) => workspaceDocKey(r.doc_type, r.doc_id)));
 }
 
-// ── Recent Documents (Step 2, Section 1 — "interacted with", not uploaded) ──
+// ── Recent Documents interaction timestamps ──────────────────────────────────
+// Writes still happen via recordDocumentInteractionAction (preview/open/download).
+// The Documents UI no longer renders a separate Recent section — Most Recent is
+// a sort on the single All Documents list. Kept for callers that need the map.
 
 export async function getRecentInteractionMap(limit = 100): Promise<Map<string, string>> {
   if (!isSupabaseConfigured) return new Map();

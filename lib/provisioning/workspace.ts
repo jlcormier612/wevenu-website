@@ -2,8 +2,7 @@
  * Reusable workspace provisioning — independent of the legacy SetupWizard.
  *
  * Creates/links the minimum viable prepared workspace:
- * - venue row (when needed)
- * - owner venue_staff
+ * - venue row and owner membership, via provision_enrollment_venue
  * - Setup Hub state
  * - White Glove engagement (when onboarding_type = white_glove)
  * - starter content
@@ -45,22 +44,19 @@ type EnrollmentRow = {
   venue_id: string | null;
   intake_token: string | null;
   white_glove_status: string | null;
+  purchase_hold: boolean | null;
+  stripe_customer_id: string | null;
+  stripe_subscription_id: string | null;
 };
 
 function newIntakeToken(): string {
   return `intake_${randomBytes(24).toString("hex")}`;
 }
 
-function ownerDisplayName(row: EnrollmentRow): string {
-  const parts = [row.owner_first_name, row.owner_last_name].filter(Boolean);
-  if (parts.length > 0) return parts.join(" ");
-  return row.venue_name?.trim() || "Owner";
-}
-
 /**
  * Provision a venue workspace from a durable enrollment row.
  * Used for White Glove immediately after purchase, and for Self-Setup
- * when activation creates/links the venue.
+ * when activation links the venue. Venue creation is provision_enrollment_venue.
  */
 export async function provisionWorkspaceFromEnrollment(
   input: ProvisionWorkspaceInput,
@@ -74,7 +70,7 @@ export async function provisionWorkspaceFromEnrollment(
   const { data: enrollment, error: enrollErr } = await admin
     .from("venue_enrollments")
     .select(
-      "id, venue_name, owner_email, owner_first_name, owner_last_name, onboarding_type, status, venue_id, intake_token, white_glove_status",
+      "id, venue_name, owner_email, owner_first_name, owner_last_name, onboarding_type, status, venue_id, intake_token, white_glove_status, purchase_hold, stripe_customer_id, stripe_subscription_id",
     )
     .eq("id", input.enrollmentId)
     .maybeSingle<EnrollmentRow>();
@@ -86,108 +82,33 @@ export async function provisionWorkspaceFromEnrollment(
     return { ok: false, error: "enrollment_not_found" };
   }
 
+  if (enrollment.purchase_hold) {
+    return { ok: false, error: "purchase_held" };
+  }
+
   const ownerUserId =
     input.ownerUserId ?? (await resolveUserIdForEmail(enrollment.owner_email));
 
-  let venueId = enrollment.venue_id;
-  let alreadyProvisioned = Boolean(venueId);
+  const alreadyProvisioned = Boolean(enrollment.venue_id);
   let intakeToken = enrollment.intake_token;
 
-  if (!venueId) {
-    const { data: existingVenue } = await admin
-      .from("venues")
-      .select("id")
-      .eq("owner_user_id", ownerUserId)
-      .maybeSingle<{ id: string }>();
-
-    if (existingVenue?.id) {
-      venueId = existingVenue.id;
-      alreadyProvisioned = true;
-    } else {
-      const { data: created, error: venueErr } = await admin
-        .from("venues")
-        .insert({
-          owner_user_id: ownerUserId,
-          name: enrollment.venue_name,
-          email: enrollment.owner_email,
-          setup_completed: false,
-        })
-        .select("id")
-        .single<{ id: string }>();
-
-      if (venueErr) {
-        // Concurrent provision — unique owner — re-read.
-        if (venueErr.code === "23505") {
-          const { data: raced } = await admin
-            .from("venues")
-            .select("id")
-            .eq("owner_user_id", ownerUserId)
-            .maybeSingle<{ id: string }>();
-          if (!raced?.id) {
-            return { ok: false, error: venueErr.message };
-          }
-          venueId = raced.id;
-          alreadyProvisioned = true;
-        } else {
-          return { ok: false, error: venueErr.message };
-        }
-      } else {
-        venueId = created.id;
-        alreadyProvisioned = false;
-      }
-    }
-  }
-
-  // Owner staff — idempotent upsert on unique owner-per-venue.
-  const { error: staffErr } = await admin.from("venue_staff").upsert(
+  // Webhook/purchase time does not know purchaser-is-owner. Create the
+  // venue and leave membership unset until activation passes an explicit
+  // p_purchaser_is_owner. p_is_owner omitted → SQL null → no staff insert.
+  const { data: provisionedVenueId, error: provisionErr } = await admin.rpc(
+    "provision_enrollment_venue",
     {
-      venue_id: venueId,
-      user_id: ownerUserId,
-      full_name: ownerDisplayName(enrollment),
-      email: enrollment.owner_email,
-      role: "owner",
-      is_owner: true,
-      accepted_at: new Date().toISOString(),
-      is_active: true,
+      p_enrollment_id: enrollment.id,
+      p_owner_user_id: ownerUserId,
     },
-    { onConflict: "venue_id", ignoreDuplicates: false },
   );
-  // Partial unique index on (venue_id) WHERE is_owner — PostgREST upsert
-  // may not support the partial constraint; fall back to insert-or-update.
-  if (staffErr) {
-    const { data: existingStaff } = await admin
-      .from("venue_staff")
-      .select("id")
-      .eq("venue_id", venueId)
-      .eq("is_owner", true)
-      .maybeSingle<{ id: string }>();
-    if (existingStaff?.id) {
-      await admin
-        .from("venue_staff")
-        .update({
-          user_id: ownerUserId,
-          email: enrollment.owner_email,
-          full_name: ownerDisplayName(enrollment),
-          is_active: true,
-          accepted_at: new Date().toISOString(),
-        })
-        .eq("id", existingStaff.id);
-    } else {
-      const { error: insertStaffErr } = await admin.from("venue_staff").insert({
-        venue_id: venueId,
-        user_id: ownerUserId,
-        full_name: ownerDisplayName(enrollment),
-        email: enrollment.owner_email,
-        role: "owner",
-        is_owner: true,
-        accepted_at: new Date().toISOString(),
-        is_active: true,
-      });
-      if (insertStaffErr && insertStaffErr.code !== "23505") {
-        return { ok: false, error: insertStaffErr.message };
-      }
-    }
+  if (provisionErr) {
+    return { ok: false, error: provisionErr.message };
   }
+  if (typeof provisionedVenueId !== "string" || !provisionedVenueId) {
+    return { ok: false, error: "provision_enrollment_venue returned no venue" };
+  }
+  const venueId = provisionedVenueId;
 
   // Setup Hub state
   const { error: hubErr } = await admin.from("venue_setup_hub_state").upsert(
@@ -245,6 +166,19 @@ export async function provisionWorkspaceFromEnrollment(
 
   const starters = await seedWorkspaceStarters(venueId, admin);
 
+  // Persist SaaS Stripe identifiers on the venue for Billing Portal + entitlement sync.
+  // Does not change access_disabled — activation remains a separate step.
+  try {
+    const { persistSaasStripeIds } = await import("@/lib/entitlement");
+    await persistSaasStripeIds({
+      venueId,
+      stripeCustomerId: enrollment.stripe_customer_id,
+      stripeSubscriptionId: enrollment.stripe_subscription_id,
+    });
+  } catch (persistErr) {
+    console.warn("[provisioning] saas stripe id persist skipped", persistErr);
+  }
+
   return {
     ok: true,
     venueId,
@@ -255,8 +189,7 @@ export async function provisionWorkspaceFromEnrollment(
 }
 
 /**
- * Ensure starters + hub state for an already-created venue (e.g. after
- * activate_venue_enrollment RPC creates the venue row).
+ * Ensure starters + hub state for a venue the shared provision operation created.
  */
 export async function ensureProvisionedWorkspace(input: {
   venueId: string;

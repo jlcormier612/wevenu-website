@@ -14,7 +14,7 @@ export function WorkspaceEmptyState({ kind }: { kind: WorkspaceEmptyStateKind })
   const meta = META[kind];
   const Icon = meta.icon;
   return (
-    <div className="flex flex-col items-center justify-center gap-2 rounded-sm border border-dashed border-border py-16 text-center">
+    <div className={`flex flex-col items-center justify-center gap-2 rounded-sm border border-dashed py-16 text-center ${kind === "no_documents" || kind === "no_results" ? "htc-surface-guidance" : "border-border"}`}>
       <Icon className={`h-8 w-8 text-muted-foreground ${kind === "loading" ? "animate-spin" : ""}`} />
       <p className="text-sm font-medium text-heading">{meta.title}</p>
       {meta.body && <p className="text-xs text-muted-foreground max-w-xs">{meta.body}</p>}

@@ -12,8 +12,9 @@
  *
  * Commitment Alignment: picks stay private (picked_at) until Submit, which
  * reveals selected_at to the venue, creates event_vendor_assignments
- * (venue↔vendor + couple↔vendor conversations + vendor email), and completes
- * the "Choose your vendors" task.
+ * (venue↔vendor + couple↔vendor conversations + vendor email), and advances
+ * "Choose your vendors" to needs-review (progress_state in_progress). Submit
+ * does not mark that task complete — the venue confirms the vendor team.
  *
  * Messaging: once assigned, couples open a dedicated couple↔vendor thread
  * from this section. Venue↔vendor ops stay separate.
@@ -23,10 +24,16 @@ import * as React from "react";
 import { ArrowLeft, Check, ExternalLink, Mail, MessageSquare, Phone } from "lucide-react";
 import { toast } from "sonner";
 
+import { formatPhoneDisplay, toE164 } from "@/lib/sms/phone";
+
 import { Button } from "@/components/ui/button";
 import { PortalCoupleVendorThread } from "@/components/portal/couple-vendor-thread";
 import { celebrateLuv } from "@/lib/luv/celebrate";
 import { coupleCelebrationMessage } from "@/lib/luv/celebrations";
+import {
+  canToggleVendorPick,
+  vendorPickSaveErrorMessage,
+} from "@/lib/portal/vendor-pick-errors";
 import { formatCivilDateLabel } from "@/lib/vendor-availability/dates";
 import type { CoupleAvailabilityStatus } from "@/lib/vendor-availability/query";
 import { vendorCategoryLabel } from "@/lib/vendors/constants";
@@ -145,10 +152,22 @@ type CardVendor = {
 
 function EventDateAvailability({
   availability,
+  onThisEventTeam,
 }: {
   availability: DateAvailability | null | undefined;
+  /** Assigned / required for this couple's event — do not show as Unavailable. */
+  onThisEventTeam?: boolean;
 }) {
   if (!availability) return null;
+  if (onThisEventTeam) {
+    return (
+      <p className="mt-1 inline-flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-800">
+        <span>{formatCivilDateLabel(availability.eventDate)}</span>
+        <span aria-hidden>·</span>
+        <span>On your event</span>
+      </p>
+    );
+  }
   const status = availability.status;
   const marker = status === "available" ? "Available" : status === "unavailable" ? "Unavailable" : "Availability not confirmed";
   const tone =
@@ -221,6 +240,13 @@ function PickButton({
   const isPicked = !!rec.pickedAt;
   const isSubmitted = !!rec.selectedAt;
 
+  if (rec.isRequired) {
+    return (
+      <p className="text-[11px] font-medium text-foreground leading-snug max-w-[9rem] text-right">
+        Required for your event
+      </p>
+    );
+  }
   if (isAssigned && !isPicked && !isSubmitted) {
     return (
       <p className="text-[11px] text-muted-foreground leading-snug max-w-[9rem] text-right">
@@ -230,7 +256,9 @@ function PickButton({
   }
   if (!onToggle) return null;
   const dateStatus = rec.dateAvailability?.status;
-  if ((dateStatus === "unavailable" || dateStatus === "not_confirmed") && !isPicked && !isSubmitted) {
+  // Unavailable blocks new picks. "Not confirmed" is informational only —
+  // couples may still privately pick while asking about the date.
+  if (dateStatus === "unavailable" && !isPicked && !isSubmitted) {
     return null;
   }
 
@@ -242,12 +270,11 @@ function PickButton({
         onToggle(!isPicked);
       }}
       disabled={toggling}
-      className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-xl transition-colors disabled:opacity-60 ${
+      className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-xl transition-colors disabled:opacity-100 disabled:bg-muted disabled:text-muted-foreground ${
         isPicked
           ? "bg-[color-mix(in_srgb,var(--venue-primary)_10%,transparent)] text-[var(--venue-primary)] hover:bg-[color-mix(in_srgb,var(--venue-primary)_20%,transparent)]"
-          : "text-white hover:opacity-90"
+          : "bg-[var(--venue-primary)] text-primary-foreground hover:opacity-90"
       }`}
-      style={isPicked ? undefined : { background: "var(--venue-primary)" }}
     >
       {toggling ? "Saving…" : isPicked ? "Unpick" : "Pick"}
     </button>
@@ -315,7 +342,10 @@ function VendorListRow({
         {rec.note && (
           <p className="text-[11px] text-primary mt-0.5 truncate">{rec.note}</p>
         )}
-        <EventDateAvailability availability={rec.dateAvailability} />
+        <EventDateAvailability
+          availability={rec.dateAvailability}
+          onThisEventTeam={!!rec.isAssigned || !!rec.isRequired}
+        />
         <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
           <button
             type="button"
@@ -327,7 +357,7 @@ function VendorListRow({
           >
             View profile
           </button>
-          {rec.dateAvailability?.status === "not_confirmed" ? (
+          {rec.dateAvailability?.status === "not_confirmed" && !rec.isAssigned && !rec.isRequired ? (
             <button
               type="button"
               onClick={(e) => {
@@ -413,7 +443,10 @@ function VendorDetail({
                 {pricing && <span className="ml-1.5 text-muted-foreground/70">{pricing}</span>}
               </p>
               <ProcessChips rec={rec} />
-              <EventDateAvailability availability={rec.dateAvailability} />
+              <EventDateAvailability
+                availability={rec.dateAvailability}
+                onThisEventTeam={!!rec.isAssigned || !!rec.isRequired}
+              />
             </div>
             <StatusChip rec={rec} />
           </div>
@@ -567,10 +600,10 @@ function VendorDetail({
                 )}
                 {rec.phone && (
                   <p className="text-xs">
-                    <a href={`tel:${rec.phone}`}
+                    <a href={`tel:${toE164(rec.phone) ?? rec.phone}`}
                       className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground">
                       <Phone className="h-3.5 w-3.5 shrink-0" />
-                      {rec.phone}
+                      {formatPhoneDisplay(rec.phone)}
                     </a>
                   </p>
                 )}
@@ -620,39 +653,47 @@ function VendorDetail({
               <p className="text-xs text-center text-muted-foreground leading-relaxed py-1">
                 Assigned — ask your venue to change
               </p>
+            ) : rec.isRequired && !isPicked && !isSubmitted ? (
+              <p className="text-xs text-center text-muted-foreground leading-relaxed py-1">
+                Required for your event — your venue includes this vendor
+              </p>
             ) : rec.dateAvailability?.status === "unavailable" && !isPicked && !isSubmitted ? (
               <p className="text-xs text-center text-muted-foreground leading-relaxed py-1">
                 Unavailable for your event date
               </p>
-            ) : rec.dateAvailability?.status === "not_confirmed" ? (
-              canMessageInApp && onContactVendor && !showComposer ? (
-                <button
-                  type="button"
-                  onClick={() => setShowComposer(true)}
-                  className="w-full text-xs font-semibold py-2.5 px-3 rounded-xl border border-border text-foreground hover:bg-muted"
-                >
-                  Ask about availability
-                </button>
-              ) : !canMessageInApp ? (
-                <p className="text-xs text-center text-muted-foreground leading-relaxed py-1">
-                  Ask about availability using the contact details above
-                </p>
-              ) : null
-            ) : onToggle ? (
-              <button
-                type="button"
-                onClick={() => onToggle(!isPicked)}
-                disabled={toggling}
-                className={`w-full text-xs font-semibold py-2.5 px-3 rounded-xl transition-colors disabled:opacity-60 ${
-                  isPicked
-                    ? "bg-[color-mix(in_srgb,var(--venue-primary)_10%,transparent)] text-[var(--venue-primary)] hover:bg-[color-mix(in_srgb,var(--venue-primary)_20%,transparent)]"
-                    : "text-white hover:opacity-90"
-                }`}
-                style={isPicked ? undefined : { background: "var(--venue-primary)" }}
-              >
-                {toggling ? "Saving…" : isPicked ? "Unpick" : "Select vendor"}
-              </button>
-            ) : null}
+            ) : (
+              <div className="flex flex-col gap-2">
+                {rec.dateAvailability?.status === "not_confirmed" && !isPicked && !isSubmitted ? (
+                  canMessageInApp && onContactVendor && !showComposer ? (
+                    <button
+                      type="button"
+                      onClick={() => setShowComposer(true)}
+                      className="w-full text-xs font-semibold py-2.5 px-3 rounded-xl border border-border text-foreground hover:bg-muted"
+                    >
+                      Ask about availability
+                    </button>
+                  ) : !canMessageInApp ? (
+                    <p className="text-xs text-center text-muted-foreground leading-relaxed py-1">
+                      Ask about availability using the contact details above. You can still pick this vendor privately.
+                    </p>
+                  ) : null
+                ) : null}
+                {onToggle ? (
+                  <button
+                    type="button"
+                    onClick={() => onToggle(!isPicked)}
+                    disabled={toggling}
+                    className={`w-full text-xs font-semibold py-2.5 px-3 rounded-xl transition-colors disabled:opacity-100 disabled:bg-muted disabled:text-muted-foreground ${
+                      isPicked
+                        ? "bg-[color-mix(in_srgb,var(--venue-primary)_10%,transparent)] text-[var(--venue-primary)] hover:bg-[color-mix(in_srgb,var(--venue-primary)_20%,transparent)]"
+                        : "bg-[var(--venue-primary)] text-primary-foreground hover:opacity-90"
+                    }`}
+                  >
+                    {toggling ? "Saving…" : isPicked ? "Unpick" : "Select vendor"}
+                  </button>
+                ) : null}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -677,7 +718,7 @@ function SubmitBar({
       {!confirmingSubmit ? (
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <p className="text-sm text-foreground">
-            {pendingCount} pick{pendingCount === 1 ? "" : "s"} not yet sent to your venue.
+            {`${pendingCount} pick${pendingCount === 1 ? "" : "s"} not yet sent to your venue.`}
           </p>
           <Button type="button" size="sm" onClick={onConfirm}>Submit Vendor List</Button>
         </div>
@@ -687,8 +728,23 @@ function SubmitBar({
             This submits your list to the venue and notifies the vendors you picked — continue?
           </p>
           <div className="flex gap-2">
-            <Button type="button" variant="outline" size="sm" disabled={submitting} onClick={onBack}>Back</Button>
-            <Button type="button" size="sm" disabled={submitting} onClick={onSubmit}>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              disabled={submitting}
+              onClick={onBack}
+              className="disabled:opacity-100 disabled:bg-muted disabled:text-muted-foreground"
+            >
+              Back
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              disabled={submitting}
+              onClick={onSubmit}
+              className="disabled:opacity-100 disabled:bg-primary/40 disabled:text-primary-foreground"
+            >
               {submitting ? "Submitting…" : "Submit to Venue"}
             </Button>
           </div>
@@ -769,16 +825,16 @@ export function VendorSection({ token, clientId, venueName, eventDate: eventDate
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ token, clientId, recommendationId, picked }),
       });
-      const data = await res.json() as { ok?: boolean };
+      const data = await res.json() as { ok?: boolean; error?: string };
       if (data.ok) {
         const pickedAt = picked ? new Date().toISOString() : null;
         setRecommendations((prev) => prev.map((r) => r.id === recommendationId ? { ...r, pickedAt } : r));
         setDirectory((prev) => prev.map((v) => v.vendorId === vendorId ? { ...v, pickedAt, recommendationId } : v));
       } else {
-        toast.error("Couldn't save your pick. Please try again.");
+        toast.error(vendorPickSaveErrorMessage(data.error));
       }
     } catch {
-      toast.error("Couldn't save your pick. Please try again.");
+      toast.error(vendorPickSaveErrorMessage(null));
     } finally {
       setTogglingKey(null);
     }
@@ -792,7 +848,12 @@ export function VendorSection({ token, clientId, venueName, eventDate: eventDate
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ token, clientId, vendorId, picked }),
       });
-      const data = await res.json() as { ok?: boolean; recommendationId?: string | null; pickedAt?: string | null };
+      const data = await res.json() as {
+        ok?: boolean;
+        error?: string;
+        recommendationId?: string | null;
+        pickedAt?: string | null;
+      };
       if (data.ok) {
         const pickedAt = picked ? (data.pickedAt ?? new Date().toISOString()) : null;
         setDirectory((prev) => prev.map((v) =>
@@ -809,10 +870,10 @@ export function VendorSection({ token, clientId, venueName, eventDate: eventDate
           return prev;
         });
       } else {
-        toast.error("Couldn't save your pick. Please try again.");
+        toast.error(vendorPickSaveErrorMessage(data.error));
       }
     } catch {
-      toast.error("Couldn't save your pick. Please try again.");
+      toast.error(vendorPickSaveErrorMessage(null));
     } finally {
       setTogglingKey(null);
     }
@@ -850,8 +911,8 @@ export function VendorSection({ token, clientId, venueName, eventDate: eventDate
         } else {
           toast.success(
             n > 0
-              ? `Your vendors are submitted — ${venueName} and the vendors have been notified.`
-              : "Your vendor list is submitted — your venue can see it now.",
+              ? `List submitted to ${venueName} — they will review and confirm your vendor team.`
+              : `List submitted to ${venueName} — they can see it and will confirm when ready.`,
           );
         }
         setConfirmingSubmit(false);
@@ -943,18 +1004,32 @@ export function VendorSection({ token, clientId, venueName, eventDate: eventDate
   }
 
   // Unified pending across both tabs (directory drafts may not appear on Recommended yet).
+  // Required vendors are not optional picks — exclude from pending submit count.
   const pendingVendorIds = new Set<string>();
   for (const r of recommendations) {
+    if (r.isRequired) continue;
     if (!!r.pickedAt !== !!r.selectedAt) pendingVendorIds.add(r.vendorId);
   }
   for (const v of directory) {
+    if (v.isRequired) continue;
     if (!!v.pickedAt !== !!v.selectedAt) pendingVendorIds.add(v.vendorId);
   }
   const pendingCount = pendingVendorIds.size;
 
-  const teamVendors = directory.filter((v) => v.isAssigned || v.selectedAt);
+  const requiredFromDir = directory.filter((v) => v.isRequired);
+  const requiredFromRecs = recommendations.filter((r) => r.isRequired);
+  const requiredList: CardVendor[] = requiredFromDir.length > 0
+    ? requiredFromDir.map((v) => ({ ...v, note: null }))
+    : requiredFromRecs;
+
+  // Tab counts must match cards rendered under each tab (required vendors live
+  // in the separate "Required for Your Event" section, not in these lists).
+  const optionalRecommendations = recommendations.filter((r) => !r.isRequired);
+  const optionalDirectory = directory.filter((v) => !v.isRequired);
+
+  const teamVendors = directory.filter((v) => !v.isRequired && (v.isAssigned || v.selectedAt));
   // Prefer assignment list; fall back to selected from recommendations when directory empty.
-  const teamFromRecs = recommendations.filter((r) => r.isAssigned || r.selectedAt);
+  const teamFromRecs = recommendations.filter((r) => !r.isRequired && (r.isAssigned || r.selectedAt));
   const teamList = teamVendors.length > 0 ? teamVendors : teamFromRecs;
 
   function groupByCategory<T extends { category: string | null }>(items: T[]) {
@@ -996,14 +1071,17 @@ export function VendorSection({ token, clientId, venueName, eventDate: eventDate
     const toggleKey = viewing.source === "recommended" && viewing.recommendationId
       ? viewing.recommendationId
       : `dir:${viewing.vendorId}`;
+    const canPick = canToggleVendorPick(eventDate) && !viewingRec.isRequired;
     return (
       <VendorDetail
         rec={viewingRec}
         onBack={closeVendor}
         onToggle={
-          viewing.source === "recommended" && viewing.recommendationId
-            ? (picked) => handleToggleRecommendation(viewing.recommendationId!, viewing.vendorId, picked)
-            : (picked) => handleToggleDirectory(viewing.vendorId, picked)
+          !canPick
+            ? undefined
+            : viewing.source === "recommended" && viewing.recommendationId
+              ? (picked) => handleToggleRecommendation(viewing.recommendationId!, viewing.vendorId, picked)
+              : (picked) => handleToggleDirectory(viewing.vendorId, picked)
         }
         toggling={togglingKey === toggleKey}
         contacting={contacting}
@@ -1034,7 +1112,11 @@ export function VendorSection({ token, clientId, venueName, eventDate: eventDate
           <p className="text-sm text-foreground mt-2">
             Your event date: <span className="font-medium">{formatCivilDateLabel(eventDate)}</span>
           </p>
-        ) : null}
+        ) : (
+          <p className="text-sm text-muted-foreground mt-2">
+            Your venue still needs to set up your event before you can save vendor picks.
+          </p>
+        )}
         {requiredCategories.length > 0 && (
           <p className="text-xs text-muted-foreground mt-2">
             Required categories:{" "}
@@ -1042,6 +1124,42 @@ export function VendorSection({ token, clientId, venueName, eventDate: eventDate
           </p>
         )}
       </div>
+
+      {requiredList.length > 0 && (
+        <div
+          className="rounded-2xl border border-foreground/15 bg-muted/40 p-4 space-y-3"
+          data-testid="portal-required-vendors"
+        >
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-foreground">
+              Required for Your Event
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Your venue requires these vendors for this event. They are already part of your vendor team.
+            </p>
+          </div>
+          <div className="space-y-2">
+            {requiredList.map((v) => (
+              <VendorListRow
+                key={v.vendorId}
+                rec={v}
+                onView={() => {
+                  const inDir = directory.some((d) => d.vendorId === v.vendorId);
+                  if (inDir) openVendor({ vendorId: v.vendorId, source: "directory" });
+                  else {
+                    const r = recommendations.find((x) => x.vendorId === v.vendorId);
+                    openVendor({
+                      vendorId: v.vendorId,
+                      source: "recommended",
+                      recommendationId: r?.id,
+                    });
+                  }
+                }}
+              />
+            ))}
+          </div>
+        </div>
+      )}
 
       {teamList.length > 0 && (
         <div className="rounded-2xl border border-[color-mix(in_srgb,var(--venue-primary)_25%,transparent)] bg-[color-mix(in_srgb,var(--venue-primary)_6%,transparent)] p-4 space-y-2">
@@ -1093,30 +1211,30 @@ export function VendorSection({ token, clientId, venueName, eventDate: eventDate
       <div className="flex items-center gap-1 border-b border-border">
         <button type="button" onClick={() => setTab("recommended")}
           className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${tab === "recommended" ? "border-[var(--venue-primary)] text-[var(--venue-primary)]" : "border-transparent text-muted-foreground hover:text-foreground"}`}>
-          Recommended for You{recommendations.length > 0 && ` (${recommendations.length})`}
+          Recommended for You{optionalRecommendations.length > 0 && ` (${optionalRecommendations.length})`}
         </button>
         <button type="button" onClick={() => setTab("directory")}
           className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${tab === "directory" ? "border-[var(--venue-primary)] text-[var(--venue-primary)]" : "border-transparent text-muted-foreground hover:text-foreground"}`}>
-          Approved vendors{directory.length > 0 && ` (${directory.length})`}
+          Approved vendors{optionalDirectory.length > 0 && ` (${optionalDirectory.length})`}
         </button>
       </div>
 
       {tab === "recommended" && (
         <div className="space-y-5">
           {submitBar}
-          {!recommendations.length ? (
+          {!optionalRecommendations.length ? (
             <div className="py-16 text-center space-y-3 max-w-sm mx-auto px-4">
               <p className="text-3xl">🤝</p>
               <p className="font-semibold text-heading">No vendors recommended yet</p>
               <p className="text-sm text-muted-foreground">Your venue will add recommendations here — or browse their approved vendors.</p>
-              {directory.length > 0 && (
+              {optionalDirectory.length > 0 && (
                 <button type="button" onClick={() => setTab("directory")} className="text-sm font-medium text-[var(--venue-primary)] hover:underline">
-                  Browse all {directory.length} approved vendors →
+                  Browse all {optionalDirectory.length} approved vendors →
                 </button>
               )}
             </div>
           ) : (
-            groupByCategory(recommendations).map(([category, recs]) => (
+            groupByCategory(optionalRecommendations).map(([category, recs]) => (
               <div key={category} className="space-y-2">
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   {CATEGORY_EMOJI[category] ?? "⭐"} {vendorCategoryLabel(category)}
@@ -1126,7 +1244,11 @@ export function VendorSection({ token, clientId, venueName, eventDate: eventDate
                     <VendorListRow
                       key={r.id}
                       rec={r}
-                      onToggle={(picked) => handleToggleRecommendation(r.id, r.vendorId, picked)}
+                      onToggle={
+                        canToggleVendorPick(eventDate)
+                          ? (picked) => handleToggleRecommendation(r.id, r.vendorId, picked)
+                          : undefined
+                      }
                       toggling={togglingKey === r.id}
                       onView={() => openVendor({
                         vendorId: r.vendorId,
@@ -1147,7 +1269,7 @@ export function VendorSection({ token, clientId, venueName, eventDate: eventDate
           <div className="py-12 text-center">
             <p className="text-sm text-muted-foreground">Loading {venueName}&apos;s vendors…</p>
           </div>
-        ) : !directory.length ? (
+        ) : !optionalDirectory.length ? (
           <div className="py-16 text-center space-y-2 max-w-sm mx-auto px-4">
             <p className="text-3xl">🤝</p>
             <p className="font-semibold text-heading">No vendors listed yet</p>
@@ -1156,7 +1278,7 @@ export function VendorSection({ token, clientId, venueName, eventDate: eventDate
         ) : (
           <div className="space-y-5">
             {submitBar}
-            {groupByCategory(directory).map(([category, vendors]) => (
+            {groupByCategory(optionalDirectory).map(([category, vendors]) => (
               <div key={category} className="space-y-2">
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   {CATEGORY_EMOJI[category] ?? "⭐"} {vendorCategoryLabel(category)}
@@ -1166,7 +1288,11 @@ export function VendorSection({ token, clientId, venueName, eventDate: eventDate
                     <VendorListRow
                       key={v.id}
                       rec={{ ...v, note: null }}
-                      onToggle={(picked) => handleToggleDirectory(v.vendorId, picked)}
+                      onToggle={
+                        canToggleVendorPick(eventDate)
+                          ? (picked) => handleToggleDirectory(v.vendorId, picked)
+                          : undefined
+                      }
                       toggling={togglingKey === `dir:${v.vendorId}`}
                       onView={() => openVendor({ vendorId: v.vendorId, source: "directory" })}
                     />

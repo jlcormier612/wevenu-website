@@ -1,0 +1,161 @@
+{
+  "observedAt": "2026-10-11T20:57:06.977Z",
+  "expectSha": "459d63fc",
+  "dpl": "459d63fc48ce6d11719d5bb809ca98ffa904b93e",
+  "fixture": {
+    "purchaserEmail": "handoff.buyer.1791752226978@hellotocheers-test.invalid",
+    "buyerIdPrefix": "9fca4d95…",
+    "priorVenueIdPrefix": "e440d6d1…",
+    "purchasedVenueIdPrefix": "0be41ad2…",
+    "strangerVenueIdPrefix": "cabcd523…"
+  },
+  "checks": [
+    {
+      "name": "invariant_before",
+      "pass": true,
+      "detail": "{\"label\":\"before\",\"meadowOwnerIsPurchaser\":true,\"jenniferVenueCount\":3,\"jenniferHasMeadowbrook\":false,\"jenniferVenueIds\":[\"31ea4816…\",\"5c84e74e…\",\"a415ac52…\"]}"
+    },
+    {
+      "name": "fixture_handoff_pending",
+      "pass": true,
+      "detail": "{\"handoffId\":\"a1a0c8fc…\",\"venueId\":\"0be41ad2…\",\"priorId\":\"e440d6d1…\",\"buyerId\":\"9fca4d95…\",\"email\":\"handoff.buyer.1791752226978@hellotocheers-test.invalid\",\"consumed_at\":null}"
+    },
+    {
+      "name": "unauth_consume_rejected",
+      "pass": true,
+      "detail": "{\"ok\":false,\"error\":\"unauthenticated\"}"
+    },
+    {
+      "name": "wrong_user_consume_rejected",
+      "pass": true,
+      "detail": "{\"ok\":false,\"error\":\"no_handoff\"}"
+    },
+    {
+      "name": "runtime_dpl",
+      "pass": true,
+      "detail": "dpl=459d63fc48ce6d11719d5bb809ca98ffa904b93e"
+    },
+    {
+      "name": "activated_url_not_auth",
+      "pass": true,
+      "detail": "http=200"
+    },
+    {
+      "name": "jennifer_session_before",
+      "pass": true,
+      "detail": "url=https://app.sandbox.hellotocheers.com/dashboard snippet=OVERVIEW Dashboard YOUR RELATIONSHIPS Leads 2 Clients Vendors SCHEDULING Calendar Tours 2 COMMUNICATION Inbox 3 Automations LIBRARY Templates Documents FINANCIALS Contracts 2 Payments 5 TO DO’S Task Center Requests YOUR VENUE Setup Settings Guidance Venue Guide Reports Help & Fee"
+    },
+    {
+      "name": "activated_stays_on_login",
+      "pass": true,
+      "detail": "url=https://app.sandbox.hellotocheers.com/login?activated=1&next=%2Fsetup-hub&email=handoff.buyer.1791752226978%40hellotocheers-test.invalid"
+    },
+    {
+      "name": "activated_handoff_copy",
+      "pass": true,
+      "detail": "Welcome to Hello to Cheers Sign in with handoff.buyer.1791752226978@hellotocheers-test.invalid — the email used for this purchase — to open your new venue. If another account was signed in on this device, it has been sig"
+    },
+    {
+      "name": "email_prefill_only",
+      "pass": true,
+      "detail": "prefill=handoff.buyer.1791752226978@hellotocheers-test.invalid"
+    },
+    {
+      "name": "refresh_before_signin",
+      "pass": true,
+      "detail": "url=https://app.sandbox.hellotocheers.com/login?activated=1&next=%2Fsetup-hub&email=handoff.buyer.1791752226978%40hellotocheers-test.invalid"
+    },
+    {
+      "name": "dashboard_before_auth_blocked",
+      "pass": true,
+      "detail": "url=https://app.sandbox.hellotocheers.com/login?next=%2Fdashboard"
+    },
+    {
+      "name": "wrong_password_rejected",
+      "pass": true,
+      "detail": "url=https://app.sandbox.hellotocheers.com/login?activated=1&next=%2Fsetup-hub&email=handoff.buyer.1791752226978%40hellotocheers-test.invalid alert=Welcome to Hello to Cheers\nSign in with handoff.buyer.1791752226978@hellotocheers-test.invalid — the email used for this purchase — to open your new venue. If another account was s"
+    },
+    {
+      "name": "purchaser_signin_landed",
+      "pass": true,
+      "detail": "url=https://app.sandbox.hellotocheers.com/welcome?returnTo=%2Fsetup-hub&context=venueSignup snippet=Welcome to Hello to Cheers Before creating your venue workspace, please review the documents below. Venue Subscription Agreement Version 2026-09-23.1·Effective September 23, 2026 View → Privacy Policy Version 2026-09-23.1·Effective September 23, 2026 View → Cookie Policy Version 2026-07-15.1·Effective July 15, 2026 View → Acceptable Use Policy Version 2026-07-15.1·Effective July 15, 2026 View → I "
+    },
+    {
+      "name": "welcome_gate_observed",
+      "pass": true,
+      "detail": "https://app.sandbox.hellotocheers.com/welcome?returnTo=%2Fsetup-hub&context=venueSignup"
+    },
+    {
+      "name": "welcome_continue_completed",
+      "pass": true,
+      "detail": "url=https://app.sandbox.hellotocheers.com/onboarding/intake snippet="
+    },
+    {
+      "name": "purchaser_dashboard_accessible",
+      "pass": true,
+      "detail": "url=https://app.sandbox.hellotocheers.com/onboarding/intake snippet=OVERVIEW Dashboard YOUR RELATIONSHIPS Leads Clients Vendors SCHEDULING Calendar Tours COMMUNICATION Inbox Automations LIBRARY Templates Documents FINANCIALS Contracts Payments TO DO’S Task Center Requests YOUR VENUE Setup Settings Guidance Venue Guide Reports Help & Feedback Handoff Purchased 1791752226978 Search ⌘K HB handoff.buyer.1791752226978@hellotocheers-test.invalid Tell us about your venue"
+    },
+    {
+      "name": "handoff_consumed",
+      "pass": true,
+      "detail": "{\"consumed_at\":\"2026-10-11T20:57:32.855525+00:00\",\"venueId\":\"0be41ad2…\"}"
+    },
+    {
+      "name": "active_venue_is_purchased",
+      "pass": true,
+      "detail": "active=0be41ad2… expected=0be41ad2…"
+    },
+    {
+      "name": "refresh_after_consume_stable",
+      "pass": true,
+      "detail": "url=https://app.sandbox.hellotocheers.com/onboarding/intake active=0be41ad2…"
+    },
+    {
+      "name": "handoff_replay_rejected",
+      "pass": true,
+      "detail": "{\"ok\":false,\"error\":\"no_handoff\"}"
+    },
+    {
+      "name": "authz_intended_venue_ok",
+      "pass": true,
+      "detail": "{\"ok\":true,\"venueId\":\"0be41ad2-9d51-4a32-890d-48c4d5e80554\",\"venueName\":\"Handoff Purchased 1791752226978\"}"
+    },
+    {
+      "name": "authz_stranger_venue_rejected",
+      "pass": true,
+      "detail": "{\"ok\":false,\"error\":\"not_a_member\"}"
+    },
+    {
+      "name": "buyer_memberships",
+      "pass": true,
+      "detail": "[\"0be41ad2…\",\"e440d6d1…\"]"
+    },
+    {
+      "name": "jennifer_not_on_disposable",
+      "pass": true,
+      "detail": "rows=0"
+    },
+    {
+      "name": "ownership_immutable_after_replay_nav",
+      "pass": true,
+      "detail": "owner=9fca4d95…"
+    },
+    {
+      "name": "expired_handoff_rejected",
+      "pass": true,
+      "detail": "{\"create\":{\"id\":\"f7c48353-2278-47ed-a84f-56c79162e291\",\"ok\":true},\"consume\":{\"ok\":false,\"error\":\"no_handoff\"}}"
+    },
+    {
+      "name": "malformed_email_prefill_safe",
+      "pass": true,
+      "detail": "http=200 prefill=(empty)"
+    },
+    {
+      "name": "invariant_after",
+      "pass": true,
+      "detail": "{\"before\":{\"label\":\"before\",\"meadowOwnerIsPurchaser\":true,\"jenniferVenueCount\":3,\"jenniferHasMeadowbrook\":false,\"jenniferVenueIds\":[\"31ea4816…\",\"5c84e74e…\",\"a415ac52…\"]},\"after\":{\"label\":\"after\",\"meadowOwnerIsPurchaser\":true,\"jenniferVenueCount\":3,\"jenniferHasMeadowbrook\":false,\"jenniferVenueIds\":[\"31ea4816…\",\"5c84e74e…\",\"a415ac52…\"]}}"
+    }
+  ],
+  "hardFail": [],
+  "ok": true
+}

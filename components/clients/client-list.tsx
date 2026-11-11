@@ -7,6 +7,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Search } from "lucide-react";
 
 import { ClientStatusBadge } from "@/components/clients/client-status-badge";
+import { PortalActivationRowActions } from "@/components/clients/portal-activation-row-actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +20,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import type { PortalActivationState } from "@/lib/activation/portal-open-milestone";
+import { portalActivationStateLabel, portalPendingDeliveryLabel } from "@/lib/activation/portal-open-milestone";
 import {
   clientDisplayName,
   eventTypeLabel,
@@ -28,20 +31,22 @@ import {
   CLIENT_LIST_FILTERS,
   clientMatchesListFilter,
   countClientListFilters,
+  isPortalActivationFilter,
   parseClientListFilter,
-  weddingWeekEnd,
   comingUpHorizonEnd,
   type ClientListFilterKey,
 } from "@/lib/clients/list-filters";
 import type { Client } from "@/lib/clients/types";
+import {
+  ATTENTION_CHIP,
+  ATTENTION_CHIP_COUNT,
+  SELECTED_CHIP,
+  SELECTED_CHIP_COUNT,
+} from "@/lib/ui/selected-state";
+import { cn } from "@/lib/utils";
 
-// Client Workspace list-page UX pass — the chips used to be the record's
-// raw lifecycle status (Planning/Confirmed/Complete/Cancelled), which
-// answers "what stage is this record in," not "what do I need to look at
-// this morning." These are operational views instead, computed from data
-// already on the Client object (plus one attention-flag set fetched once
-// for the whole page — see lib/clients/service.ts's getClientAttentionFlags)
-// — no new backend state, no new columns.
+// Operational buckets: All Bookings is the working list. Coming up and
+// Needs Attention are subsets of it. Cancelled and Past are historical.
 type SortKey = "event_asc" | "event_desc" | "az" | "za" | "newest";
 
 const SORT_OPTIONS: { value: SortKey; label: string }[] = [
@@ -52,11 +57,8 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
   { value: "newest",     label: "Most Recent" },
 ];
 
-// Sticky filter — same shape as components/calendar/use-calendar-filters.ts:
-// a browser preference, not a synced one. First-ever visit (no saved key
-// yet) defaults to "upcoming" — that's what almost everyone wants first —
-// after that, whatever the coordinator last picked, including "all" for an
-// owner who prefers the full list.
+// Sticky filter — a browser preference, not a synced one. First visit
+// opens All Bookings, the active working list.
 const FILTER_STORAGE_KEY = "wevenu-clients-filter";
 
 function loadSavedFilter(): ClientListFilterKey | null {
@@ -72,38 +74,65 @@ function persistFilter(next: ClientListFilterKey) {
   try { window.localStorage.setItem(FILTER_STORAGE_KEY, next); } catch { /* ignore */ }
 }
 
-export function ClientList({ clients, attentionClientIds = new Set(), today }: { clients: Client[]; attentionClientIds?: Set<string>; today: string }) {
+export function ClientList({
+  clients,
+  attentionClientIds = new Set(),
+  bookedClientIds = new Set(),
+  today,
+  portalActivationByClientId = {},
+  portalActivationProgress,
+}: {
+  clients: Client[];
+  attentionClientIds?: Set<string>;
+  /** Clients with events.booked_at set and the event not cancelled. */
+  bookedClientIds?: Set<string>;
+  today: string;
+  portalActivationByClientId?: Record<string, {
+    state: PortalActivationState;
+    invitationId: string | null;
+    invitationStatus: "pending" | "accepted" | "revoked" | null;
+    deliveryStatus?: string | null;
+    providerMessageId?: string | null;
+  }>;
+  portalActivationProgress?: { opened: number; target: number };
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const urlFilter = parseClientListFilter(searchParams.get("filter"));
   const [query, setQuery] = React.useState("");
-  const [storedFilter, setStoredFilter] = React.useState<ClientListFilterKey>(() => loadSavedFilter() ?? "upcoming");
+  const [storedFilter, setStoredFilter] = React.useState<ClientListFilterKey>(() => {
+    const saved = loadSavedFilter();
+    if (saved && isPortalActivationFilter(saved)) return "all";
+    return saved ?? "all";
+  });
   const [sort, setSort] = React.useState<SortKey>("event_asc");
   const filter = urlFilter ?? storedFilter;
+  const portalMode = isPortalActivationFilter(filter);
 
   // URL is the source of truth while present (Dashboard deep-link). Persist
-  // it for the next visit without copying it into React state — filter is
-  // already `urlFilter ?? storedFilter`.
+  // sticky operational filters only — not the Luv portal-activation handoff.
   React.useEffect(() => {
     if (!urlFilter) return;
+    if (isPortalActivationFilter(urlFilter)) return;
     persistFilter(urlFilter);
   }, [urlFilter]);
 
   const setFilter = React.useCallback((next: ClientListFilterKey) => {
-    setStoredFilter(next);
-    persistFilter(next);
+    if (!isPortalActivationFilter(next)) {
+      setStoredFilter(next);
+      persistFilter(next);
+    }
     const params = new URLSearchParams(searchParams.toString());
     params.set("filter", next);
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
   }, [pathname, router, searchParams]);
 
   // Venue-local today, passed from the server — same string the Dashboard count uses.
-  const weekOut = React.useMemo(() => weddingWeekEnd(today), [today]);
   const comingUpOut = React.useMemo(() => comingUpHorizonEnd(today), [today]);
   const filterCtx = React.useMemo(
-    () => ({ today, weekOut, comingUpOut, attentionClientIds }),
-    [today, weekOut, comingUpOut, attentionClientIds],
+    () => ({ today, comingUpOut, attentionClientIds, bookedClientIds }),
+    [today, comingUpOut, attentionClientIds, bookedClientIds],
   );
 
   const filtered = React.useMemo(() => {
@@ -114,7 +143,17 @@ export function ClientList({ clients, attentionClientIds = new Set(), today }: {
       return [c.firstName, c.lastName, c.partnerFirstName, c.partnerLastName, c.email, c.eventType]
         .some((v) => v?.toLowerCase().includes(q));
     });
-    return [...base].sort((a, b) => {
+    const sorted = [...base].sort((a, b) => {
+      if (portalMode) {
+        const order: Record<PortalActivationState, number> = {
+          not_invited: 0,
+          invited_not_opened: 1,
+          opened: 2,
+        };
+        const aState = portalActivationByClientId[a.id]?.state ?? "not_invited";
+        const bState = portalActivationByClientId[b.id]?.state ?? "not_invited";
+        if (order[aState] !== order[bState]) return order[aState] - order[bState];
+      }
       switch (sort) {
         case "event_desc": return (b.eventDate ?? "") < (a.eventDate ?? "") ? -1 : 1;
         case "az":         return (a.firstName ?? "").localeCompare(b.firstName ?? "");
@@ -123,17 +162,12 @@ export function ClientList({ clients, attentionClientIds = new Set(), today }: {
         default:           return (a.eventDate ?? "9999") < (b.eventDate ?? "9999") ? -1 : 1;
       }
     });
-  }, [clients, query, filter, sort, filterCtx]);
+    return sorted;
+  }, [clients, query, filter, sort, filterCtx, portalMode, portalActivationByClientId]);
 
   const counts = React.useMemo(() => countClientListFilters(clients, filterCtx), [clients, filterCtx]);
 
-  // "What kind of day am I walking into?" is now answered by the filter
-  // pills themselves — they already carry counts and already act as the
-  // click target, so a separate metric strip above them was showing the
-  // same three numbers twice under two different labels ("Active Weddings"
-  // vs. "All," "This Week" vs. "Wedding Week"). The one fact the pills
-  // don't already say out loud — a wedding is happening today — gets a
-  // single non-clickable line instead, only when it's actually true.
+  // A wedding happening today is the one fact the pills don't already say.
   const weddingDayToday = React.useMemo(
     () => clients.filter((c) => c.status !== "cancelled" && c.eventDate === today).length,
     [clients, today],
@@ -141,48 +175,85 @@ export function ClientList({ clients, attentionClientIds = new Set(), today }: {
 
   return (
     <div className="space-y-4">
-      {weddingDayToday > 0 && (
+      {portalMode && portalActivationProgress ? (
+        <div
+          className="rounded-lg border border-border bg-muted/20 px-4 py-3 space-y-1"
+          data-testid="portal-activation-banner"
+        >
+          <p className="text-sm font-medium text-heading">Get 3 couples started in their portals</p>
+          <p className="text-xs text-muted-foreground">
+            {portalActivationProgress.opened} of {portalActivationProgress.target} booked couples have opened their planning portal.
+            Invite the rest, or resend if they haven’t opened yet.
+          </p>
+        </div>
+      ) : null}
+      {weddingDayToday > 0 && !portalMode && (
         <p className="text-sm font-medium text-heading">
-          🎉 {weddingDayToday} wedding{weddingDayToday === 1 ? "" : "s"} today
+          🎉 {`${weddingDayToday} wedding${weddingDayToday === 1 ? "" : "s"} today`}
         </p>
       )}
-      <div className="htc-hospitality-toolbar flex flex-col gap-2 sm:flex-row sm:items-center">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-          <Input value={query} onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search by client or event type…" className="pl-9" />
+      <div className="htc-hospitality-toolbar space-y-3">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <div className="relative flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input value={query} onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search by client or event type…" className="border-[color:var(--htc-border-warm)] bg-card pl-9" />
+          </div>
+          <Select value={sort} onValueChange={(v) => setSort(v as SortKey)} items={SORT_OPTIONS}>
+            <SelectTrigger className="h-9 w-full border-[color:var(--htc-border-warm)] bg-card sm:w-52 text-sm text-muted-foreground">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>{SORT_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
+          </Select>
         </div>
-        <Select value={sort} onValueChange={(v) => setSort(v as SortKey)} items={SORT_OPTIONS}>
-          <SelectTrigger className="h-9 w-full sm:w-52 text-sm text-muted-foreground">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>{SORT_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
-        </Select>
-      </div>
-      {/* Operational view pills — what to look at, not what stage a record is in */}
-      <div className="flex flex-wrap gap-1.5">
-        {CLIENT_LIST_FILTERS.map(({ key, label }) => {
-          const count = counts[key];
-          const active = filter === key;
-          return (
-            <button key={key} type="button" onClick={() => setFilter(key)}
-              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${active ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground"}`}>
-              {label}
-              <span className={`rounded-full px-1.5 py-px text-[10px] font-semibold ${active ? "bg-primary-foreground/20 text-primary-foreground" : "bg-muted text-muted-foreground"}`}>{count}</span>
-            </button>
-          );
-        })}
+        {/* Operational view pills — what to look at, not what stage a record is in */}
+        <div className="flex flex-wrap gap-1.5">
+          {CLIENT_LIST_FILTERS.map(({ key, label }) => {
+            const count = counts[key];
+            const active = filter === key;
+            const attention = key === "needs_attention";
+            return (
+              <button key={key} type="button" onClick={() => setFilter(key)}
+                aria-pressed={active}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                  active
+                    ? SELECTED_CHIP
+                    : attention
+                      ? ATTENTION_CHIP
+                      : "border-[color:var(--htc-border-warm)] bg-card text-foreground hover:border-[color-mix(in_oklch,var(--htc-eucalyptus)_45%,var(--htc-border-warm))]",
+                )}>
+                {label}
+                <span
+                  className={cn(
+                    "rounded-full px-1.5 py-px text-[10px] font-semibold",
+                    active
+                      ? SELECTED_CHIP_COUNT
+                      : attention
+                        ? ATTENTION_CHIP_COUNT
+                        : "bg-[color:var(--htc-canvas)] text-muted-foreground",
+                  )}
+                >
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {clients.length === 0 && (
-        <div className="flex flex-col items-center justify-center rounded-sm border border-dashed border-border bg-card/40 py-16 text-center">
+        <div
+          className="flex flex-col items-center justify-center rounded-sm border border-dashed border-border bg-card/40 py-16 text-center"
+          data-clients-empty="true"
+        >
           <p className="font-heading text-lg font-medium text-heading">No clients yet</p>
-          <p className="mt-1 mb-4 text-sm text-muted-foreground">
-            When you book a client, convert their lead inquiry here — or add a client directly.
+          <p className="mt-1 mb-4 max-w-md text-sm text-muted-foreground">
+            Add your first client or import an existing client list. You can also convert a booked lead inquiry here later.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-2">
-            <Button render={<Link href="/leads" />} variant="outline">View Leads</Button>
-            <Button render={<Link href="/clients/new" />}>+ New Client</Button>
+            <Button render={<Link href="/clients/new" />}>Add your first client</Button>
+            <Button render={<Link href="/settings/import?type=couples" />} variant="outline">Import Clients</Button>
           </div>
         </div>
       )}
@@ -195,44 +266,80 @@ export function ClientList({ clients, attentionClientIds = new Set(), today }: {
       )}
 
       {filtered.length > 0 && (
-        <div className="htc-hospitality-table rounded-sm border border-border bg-card">
+        <div className="htc-hospitality-table">
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Client</TableHead>
                 <TableHead>Event Type</TableHead>
                 <TableHead>Event Date</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Guests</TableHead>
-                <TableHead className="w-16" />
+                {portalMode ? <TableHead>Portal</TableHead> : <TableHead>Status</TableHead>}
+                {!portalMode ? <TableHead>Guests</TableHead> : null}
+                <TableHead className={portalMode ? "min-w-[10rem]" : "w-16"} />
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map((client) => (
-                <TableRow key={client.id} className="group">
-                  <TableCell className="font-medium text-foreground">
-                    <Link href={`/clients/${client.id}`} className="hover:text-primary">
-                      {clientDisplayName(client.firstName, client.lastName, client.partnerFirstName, client.partnerLastName)}
-                    </Link>
-                    {client.email && <p className="text-xs text-muted-foreground">{client.email}</p>}
-                  </TableCell>
-                  <TableCell>
-                    {client.eventType
-                      ? <Badge variant="outline">{eventTypeLabel(client.eventType)}</Badge>
-                      : <span className="text-muted-foreground">—</span>}
-                  </TableCell>
-                  <TableCell className="text-sm">
-                    {client.eventDate ? formatDate(client.eventDate) : <span className="text-muted-foreground">TBD</span>}
-                  </TableCell>
-                  <TableCell><ClientStatusBadge status={client.status} /></TableCell>
-                  <TableCell className="text-sm">
-                    {client.guestCount != null ? client.guestCount.toLocaleString() : <span className="text-muted-foreground">—</span>}
-                  </TableCell>
-                  <TableCell>
-                    <Button variant="ghost" size="sm" render={<Link href={`/clients/${client.id}`} />}>View →</Button>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {filtered.map((client) => {
+                const portal = portalActivationByClientId[client.id];
+                const portalState = portal?.state ?? "not_invited";
+                const needsAttention = attentionClientIds.has(client.id);
+                return (
+                  <TableRow
+                    key={client.id}
+                    className="group"
+                    data-portal-state={portalMode ? portalState : undefined}
+                    data-attention={!portalMode && needsAttention ? "true" : undefined}
+                  >
+                    <TableCell className="font-medium text-foreground">
+                      <Link href={`/clients/${client.id}`} className="htc-record-link">
+                        {clientDisplayName(client.firstName, client.lastName, client.partnerFirstName, client.partnerLastName)}
+                      </Link>
+                      {client.email && <p className="text-xs text-muted-foreground">{client.email}</p>}
+                    </TableCell>
+                    <TableCell>
+                      {client.eventType
+                        ? <Badge variant="outline">{eventTypeLabel(client.eventType)}</Badge>
+                        : <span className="text-muted-foreground">—</span>}
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      {client.eventDate ? formatDate(client.eventDate) : <span className="text-muted-foreground">TBD</span>}
+                    </TableCell>
+                    {portalMode ? (
+                      <TableCell className="text-sm" data-testid={`portal-state-${client.id}`}>
+                        {portalState === "invited_not_opened" && portal?.invitationStatus === "pending"
+                          ? portalPendingDeliveryLabel(portal.deliveryStatus, portal.providerMessageId)
+                          : portalActivationStateLabel(portalState)}
+                      </TableCell>
+                    ) : (
+                      <TableCell><ClientStatusBadge status={client.status} /></TableCell>
+                    )}
+                    {!portalMode ? (
+                      <TableCell className="text-sm">
+                        {client.guestCount != null ? client.guestCount.toLocaleString() : <span className="text-muted-foreground">—</span>}
+                      </TableCell>
+                    ) : null}
+                    <TableCell>
+                      {portalMode ? (
+                        <PortalActivationRowActions
+                          row={{
+                            clientId: client.id,
+                            firstName: client.firstName,
+                            lastName: client.lastName,
+                            partnerFirstName: client.partnerFirstName,
+                            partnerLastName: client.partnerLastName,
+                            email: client.email,
+                            state: portalState,
+                            invitationId: portal?.invitationId ?? null,
+                            invitationStatus: portal?.invitationStatus ?? null,
+                          }}
+                        />
+                      ) : (
+                        <Button variant="ghost" size="sm" render={<Link href={`/clients/${client.id}`} />}>View →</Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </div>

@@ -1,0 +1,2 @@
+clientEmail,eventDate,firstName,lastName,guestEmail,rsvpStatus,sourceId
+missing.parent@example.invalid,2026-10-30,OrphanGus,Ghost,orphan.gus@example.invalid,pending,spec-gst-orphan

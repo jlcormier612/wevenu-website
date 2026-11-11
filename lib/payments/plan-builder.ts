@@ -9,6 +9,7 @@ import {
 import {
   allocatePresetAmounts,
   resolveDueDateFromTiming,
+  type PaymentTimingContext,
 } from "@/lib/payments/starters";
 import type { PaymentObligationKind } from "@/lib/payments/types";
 
@@ -75,8 +76,10 @@ export function defaultEqualLines(
         ? "final"
         : "installment";
     const timing: PaymentTiming = isFirst
-      ? { type: "at_booking" }
-      : { type: "before_event", days: isLast ? 30 : Math.max(14, 90 - i * 30) };
+      ? { type: "due_today" }
+      : isLast && n > 1
+        ? { type: "before_event", days: 30 }
+        : { type: "before_event", days: Math.max(14, 90 - i * 30) };
     return {
       id: createLineId(),
       label: isFirst
@@ -94,7 +97,7 @@ export function defaultEqualLines(
 }
 
 export function linesFromPreset(
-  presetId: PlanBuilderQuickPresetId,
+  presetId: PlanBuilderQuickPresetId | string,
   invoiceTotal: number,
 ): PlanBuilderLineDraft[] {
   const preset = SCHEDULE_PRESETS.find((p) => p.id === presetId);
@@ -146,7 +149,7 @@ export function syncPercentagesFromAmounts(
 export function validatePlanBuilderLines(
   lines: PlanBuilderLineDraft[],
   invoiceTotal: number,
-  ctx: { eventDate: string | null; bookingDate: string | null },
+  ctx: PaymentTimingContext,
 ): PlanBuilderValidation {
   const errors: string[] = [];
   const lineErrors: Record<string, string> = {};
@@ -164,14 +167,26 @@ export function validatePlanBuilderLines(
       lineErrors[line.id] = "Enter a valid amount.";
     }
 
-    const needsBooking =
-      line.timing.type === "at_booking" || line.timing.type === "after_booking";
-    if (needsBooking && !ctx.bookingDate && !line.dueDate.trim()) {
+    if (line.dueDate.trim()) {
+      // Specific date override — no anchor required.
+    } else if (line.timing.type === "due_today" && !ctx.today) {
+      lineErrors[line.id] =
+        lineErrors[line.id] ?? "Could not resolve today’s date for this due-date rule.";
+    } else if (line.timing.type === "after_execution" && !ctx.executedAt) {
       lineErrors[line.id] =
         lineErrors[line.id] ??
-        "Booking date needed for this due-date rule (or set a specific date).";
-    }
-    if (line.timing.type === "before_event" && !ctx.eventDate && !line.dueDate.trim()) {
+        "Contract must be fully executed for this due-date rule (or set a specific date).";
+    } else if (
+      (line.timing.type === "at_booking" || line.timing.type === "after_booking")
+      && !ctx.bookingDate
+    ) {
+      lineErrors[line.id] =
+        lineErrors[line.id] ??
+        "Booking date needed for this legacy due-date rule (or set a specific date).";
+    } else if (
+      (line.timing.type === "before_event" || line.timing.type === "on_event")
+      && !ctx.eventDate
+    ) {
       lineErrors[line.id] =
         lineErrors[line.id] ??
         "Event date needed for this due-date rule (or set a specific date).";
@@ -206,7 +221,7 @@ export function validatePlanBuilderLines(
 
 export function resolveBuilderLineDueDate(
   line: PlanBuilderLineDraft,
-  ctx: { eventDate: string | null; bookingDate: string | null },
+  ctx: PaymentTimingContext,
 ): string | null {
   if (line.dueDate.trim()) return line.dueDate.trim().slice(0, 10);
   return resolveDueDateFromTiming(line.timing, ctx);
@@ -221,7 +236,7 @@ export type CommitBuilderLine = {
 
 export function toCommitLines(
   lines: PlanBuilderLineDraft[],
-  ctx: { eventDate: string | null; bookingDate: string | null },
+  ctx: PaymentTimingContext,
 ): CommitBuilderLine[] {
   return lines.map((line) => ({
     label: line.label.trim(),
@@ -229,6 +244,68 @@ export function toCommitLines(
     dueDate: resolveBuilderLineDueDate(line, ctx) ?? "",
     obligationKind: line.obligationKind,
   }));
+}
+
+function calendarDaysBetween(from: string, to: string): number {
+  const a = new Date(`${from.slice(0, 10)}T12:00:00`);
+  const b = new Date(`${to.slice(0, 10)}T12:00:00`);
+  return Math.round((b.getTime() - a.getTime()) / 86_400_000);
+}
+
+/** Rehydrate stored installments into builder drafts without inventing a booking-date picker. */
+export function draftsFromStoredLines(
+  lines: {
+    label: string;
+    amount: number;
+    dueDate: string | null;
+    obligationKind?: PaymentObligationKind | null;
+  }[],
+  ctx: PaymentTimingContext,
+): PlanBuilderLineDraft[] {
+  const today = ctx.today?.trim().slice(0, 10) || null;
+  const eventDate = ctx.eventDate?.trim().slice(0, 10) || null;
+  const executedAt = ctx.executedAt?.trim().slice(0, 10) || null;
+  return lines.map((line, i) => {
+    const due = line.dueDate?.trim().slice(0, 10) || "";
+    let timing: PaymentTiming = { type: "due_today" };
+    let dueDate = "";
+    if (!due) {
+      timing = { type: "due_today" };
+    } else if (today && due === today) {
+      timing = { type: "due_today" };
+    } else if (eventDate && due === eventDate) {
+      timing = { type: "on_event" };
+    } else if (eventDate) {
+      const daysBefore = calendarDaysBetween(due, eventDate);
+      if (daysBefore > 0) {
+        timing = { type: "before_event", days: daysBefore };
+      } else {
+        dueDate = due;
+      }
+    } else if (executedAt) {
+      const daysAfter = calendarDaysBetween(executedAt, due);
+      if (daysAfter >= 0) {
+        timing = { type: "after_execution", days: daysAfter };
+      } else {
+        dueDate = due;
+      }
+    } else {
+      dueDate = due;
+    }
+    const isFirst = i === 0;
+    const isLast = i === lines.length - 1;
+    const obligationKind: PaymentObligationKind = line.obligationKind
+      ?? (isFirst ? "deposit" : isLast ? "final" : "installment");
+    return {
+      id: createLineId(),
+      label: line.label,
+      amount: line.amount,
+      pctOfTotal: 0,
+      timing,
+      dueDate,
+      obligationKind,
+    };
+  });
 }
 
 export const PLAN_BUILDER_STRUCTURES: {
@@ -263,7 +340,7 @@ export const PLAN_BUILDER_QUICK_PRESETS: {
   label: string;
   description: string;
 }[] = [
-  { id: "thirds", label: "1/3", description: "Three payments — booking, planning, final." },
-  { id: "fifty_fifty", label: "50/50", description: "Half at booking, half before the event." },
-  { id: "wedding_four", label: "Four payments", description: "Equal quarters across booking and planning." },
+  { id: "thirds", label: "1/3", description: "Three payments — today, planning, final." },
+  { id: "fifty_fifty", label: "50/50", description: "Half due today, half before the event." },
+  { id: "wedding_four", label: "Four payments", description: "Equal quarters across today and planning." },
 ];

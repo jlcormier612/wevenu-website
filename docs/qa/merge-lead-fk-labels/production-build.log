@@ -1,0 +1,494 @@
+
+> wevenu-website@0.1.0 build
+> next build
+
+▲ Next.js 16.2.9 (Turbopack)
+- Environments: .env.local
+
+  Creating an optimized production build ...
+Turbopack build encountered 2 warnings:
+./next.config.ts
+Encountered unexpected file in NFT list
+A file was traced that indicates that the whole project was traced unintentionally. Somewhere in the import trace below, there are:
+- filesystem operations (like path.join, path.resolve or fs.readFile), or
+- very dynamic requires (like require('./' + foo)).
+To resolve this, you can
+- remove them if possible, or
+- only use them in development, or
+- make sure they are statically scoped to some subfolder: path.join(process.cwd(), 'data', bar), or
+- add ignore comments: path.join(/*turbopackIgnore: true*/ process.cwd(), bar)
+
+Import trace:
+  Server Component:
+    ./next.config.ts
+    ./lib/import/file-parsing.ts
+    ./lib/migration/smart-extract.ts
+    ./app/(app)/settings/migration-actions.ts
+    ./app/(app)/settings/migration/page.tsx
+
+
+./next.config.ts
+Encountered unexpected file in NFT list
+A file was traced that indicates that the whole project was traced unintentionally. Somewhere in the import trace below, there are:
+- filesystem operations (like path.join, path.resolve or fs.readFile), or
+- very dynamic requires (like require('./' + foo)).
+To resolve this, you can
+- remove them if possible, or
+- only use them in development, or
+- make sure they are statically scoped to some subfolder: path.join(process.cwd(), 'data', bar), or
+- add ignore comments: path.join(/*turbopackIgnore: true*/ process.cwd(), bar)
+
+Output asset trace:
+  [output]/.next/server/app/(app)/settings/migration/page.js
+  [output]/.next/server/chunks/ssr/_14v1sm2._.js
+
+Import trace:
+  Server Component:
+    ./next.config.ts
+    ./lib/import/file-parsing.ts
+    ./lib/migration/smart-extract.ts
+    ./app/(app)/settings/migration-actions.ts
+    ./app/(app)/settings/migration/page.tsx
+
+
+✓ Compiled successfully in 44s
+  Running TypeScript ...
+  Finished TypeScript in 33.9s ...
+  Collecting page data using 7 workers ...
+  Generating static pages using 7 workers (0/208) ...
+  Generating static pages using 7 workers (52/208) 
+  Generating static pages using 7 workers (104/208) 
+  Generating static pages using 7 workers (156/208) 
+✓ Generating static pages using 7 workers (208/208) in 255ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ○ /
+├ ○ /_not-found
+├ ƒ /acceptable-use
+├ ƒ /account/password
+├ ƒ /admin
+├ ƒ /admin/analytics
+├ ƒ /admin/beta
+├ ƒ /admin/feedback
+├ ƒ /admin/legal
+├ ƒ /admin/legal/[type]
+├ ƒ /admin/legal/[type]/[id]
+├ ƒ /admin/legal/[type]/new
+├ ƒ /admin/legal/history
+├ ƒ /admin/legal/outstanding
+├ ƒ /admin/onboarding
+├ ƒ /admin/onboarding/[venueId]
+├ ƒ /admin/ops-alerts
+├ ƒ /admin/ops-alerts/[id]
+├ ƒ /admin/success-library
+├ ƒ /admin/success-library/[id]/edit
+├ ƒ /admin/success-library/new
+├ ƒ /admin/support
+├ ƒ /admin/system-health
+├ ƒ /admin/venues/[venueId]
+├ ƒ /admin/venues/[venueId]/view-as
+├ ƒ /analytics
+├ ƒ /api/admin/feedback
+├ ƒ /api/analytics
+├ ƒ /api/analytics/health
+├ ƒ /api/automation/process
+├ ƒ /api/billing/portal
+├ ƒ /api/brochures/[id]/pdf
+├ ƒ /api/brochures/public/[token]/pdf
+├ ƒ /api/communication/scheduled/process
+├ ƒ /api/conversations/attach-document
+├ ƒ /api/conversations/upload
+├ ƒ /api/digest
+├ ƒ /api/documents/[id]/file
+├ ƒ /api/documents/[id]/replace
+├ ƒ /api/events/[id]/wedding-day
+├ ƒ /api/facebook/callback
+├ ƒ /api/facebook/disconnect
+├ ƒ /api/facebook/reconcile/process
+├ ƒ /api/facebook/sync/process
+├ ƒ /api/facebook/webhook
+├ ƒ /api/feedback
+├ ƒ /api/feedback/features
+├ ƒ /api/feedback/features/[id]/vote
+├ ƒ /api/feedback/upload
+├ ƒ /api/health
+├ ƒ /api/internal/enrollment/activate
+├ ƒ /api/internal/enrollment/by-session
+├ ƒ /api/internal/enrollment/by-token
+├ ƒ /api/internal/enrollment/provision
+├ ƒ /api/internal/enrollment/upsert
+├ ƒ /api/internal/legal/acceptances
+├ ƒ /api/internal/legal/compliance
+├ ƒ /api/internal/legal/venue-activate
+├ ƒ /api/internal/product-access/lock
+├ ƒ /api/leads/email-intake
+├ ƒ /api/legal/active
+├ ƒ /api/legal/gate
+├ ƒ /api/legal/welcome
+├ ƒ /api/luv/actions
+├ ƒ /api/luv/actions/[id]
+├ ƒ /api/luv/draft
+├ ƒ /api/luv/roll-up
+├ ƒ /api/messages/unread
+├ ƒ /api/messaging/inbound
+├ ƒ /api/messaging/sms-inbound
+├ ƒ /api/messaging/sms-status
+├ ƒ /api/messaging/webhook
+├ ƒ /api/navigation/attention
+├ ƒ /api/notifications
+├ ƒ /api/notifications/clear
+├ ƒ /api/notifications/preferences
+├ ƒ /api/notifications/process
+├ ƒ /api/notifications/read
+├ ƒ /api/notifications/stats
+├ ƒ /api/onboarding/white-glove/intake
+├ ƒ /api/onboarding/white-glove/materials
+├ ƒ /api/portal/acknowledge-vendor-task
+├ ƒ /api/portal/activity
+├ ƒ /api/portal/anniversary-messages
+├ ƒ /api/portal/budget
+├ ƒ /api/portal/budget/category
+├ ƒ /api/portal/budget/contributor
+├ ƒ /api/portal/checkout
+├ ƒ /api/portal/choices
+├ ƒ /api/portal/choices/save
+├ ƒ /api/portal/choices/submit
+├ ƒ /api/portal/complete-task
+├ ƒ /api/portal/complete-vendor-task
+├ ƒ /api/portal/documents
+├ ƒ /api/portal/documents/[id]/file
+├ ƒ /api/portal/event-order
+├ ƒ /api/portal/event-order/accept
+├ ƒ /api/portal/export
+├ ƒ /api/portal/feedback
+├ ƒ /api/portal/floor-plan-offers
+├ ƒ /api/portal/floor-plan-offers/[offerId]
+├ ƒ /api/portal/floor-plan-offers/select
+├ ƒ /api/portal/floor-plans
+├ ƒ /api/portal/floor-plans/[planId]
+├ ƒ /api/portal/floor-plans/add-table
+├ ƒ /api/portal/floor-plans/ensure-assignment
+├ ƒ /api/portal/floor-plans/furniture-catalog
+├ ƒ /api/portal/floor-plans/move-object
+├ ƒ /api/portal/floor-plans/remove-object
+├ ƒ /api/portal/floor-plans/submit
+├ ƒ /api/portal/guest-count
+├ ƒ /api/portal/guests
+├ ƒ /api/portal/households
+├ ƒ /api/portal/inventory
+├ ƒ /api/portal/inventory/save
+├ ƒ /api/portal/inventory/submit
+├ ƒ /api/portal/invitation-progress
+├ ƒ /api/portal/invite
+├ ƒ /api/portal/journal
+├ ƒ /api/portal/journey
+├ ƒ /api/portal/legal
+├ ƒ /api/portal/luv-ask
+├ ƒ /api/portal/luv-intro
+├ ƒ /api/portal/meal-options
+├ ƒ /api/portal/media
+├ ƒ /api/portal/memories
+├ ƒ /api/portal/messages
+├ ƒ /api/portal/messages/attachments
+├ ƒ /api/portal/messages/upload
+├ ƒ /api/portal/notifications
+├ ƒ /api/portal/notifications/clear
+├ ƒ /api/portal/notifications/read
+├ ƒ /api/portal/participants
+├ ƒ /api/portal/payments
+├ ƒ /api/portal/platform-feedback
+├ ƒ /api/portal/plus-one
+├ ƒ /api/portal/post-wedding-status
+├ ƒ /api/portal/product-feedback
+├ ƒ /api/portal/product-feedback/upload
+├ ƒ /api/portal/profile
+├ ƒ /api/portal/questionnaire
+├ ƒ /api/portal/referral
+├ ƒ /api/portal/relationship-photo
+├ ƒ /api/portal/requests
+├ ƒ /api/portal/requests/[id]
+├ ƒ /api/portal/rsvp
+├ ƒ /api/portal/rsvp-insights
+├ ƒ /api/portal/rsvp-questions
+├ ƒ /api/portal/rsvp/lookup
+├ ƒ /api/portal/rsvp/preview
+├ ƒ /api/portal/run-of-show
+├ ƒ /api/portal/seating
+├ ƒ /api/portal/seating/assign
+├ ƒ /api/portal/seating/delegate
+├ ƒ /api/portal/seating/floor-plans
+├ ƒ /api/portal/seating/submit
+├ ƒ /api/portal/seating/suggestions
+├ ƒ /api/portal/tasks
+├ ƒ /api/portal/timeline
+├ ƒ /api/portal/timeline/add
+├ ƒ /api/portal/timeline/delete
+├ ƒ /api/portal/timeline/share
+├ ƒ /api/portal/timeline/submit
+├ ƒ /api/portal/timeline/visibility
+├ ƒ /api/portal/todos
+├ ƒ /api/portal/undo-task
+├ ƒ /api/portal/upload
+├ ƒ /api/portal/vendors
+├ ƒ /api/portal/vendors/directory
+├ ƒ /api/portal/vendors/inquiry
+├ ƒ /api/portal/vendors/messages
+├ ƒ /api/portal/vendors/submit
+├ ƒ /api/portal/venue-info
+├ ƒ /api/portal/venue-spaces
+├ ƒ /api/portal/venue-team
+├ ƒ /api/portal/website
+├ ƒ /api/portal/website/analytics
+├ ƒ /api/portal/website/catalog
+├ ƒ /api/portal/website/change-nudges
+├ ƒ /api/portal/website/guest-timeline
+├ ƒ /api/portal/website/qr
+├ ƒ /api/portal/website/suggestions
+├ ƒ /api/portal/website/sync-section
+├ ƒ /api/public/forms/submit
+├ ƒ /api/public/inquire
+├ ƒ /api/public/inquiry-available-dates
+├ ƒ /api/public/questionnaire
+├ ƒ /api/public/questionnaire/draft
+├ ƒ /api/qr-campaigns/image
+├ ƒ /api/quickbooks/callback
+├ ƒ /api/quickbooks/sync/process
+├ ƒ /api/recommendations/[id]
+├ ƒ /api/recommendations/observation
+├ ƒ /api/rsvp/concierge
+├ ƒ /api/saved-reports/[id]/export.csv
+├ ƒ /api/saved-reports/process
+├ ƒ /api/search
+├ ƒ /api/sms-consent/redeem
+├ ƒ /api/stripe/callback
+├ ƒ /api/texting/provision/process
+├ ƒ /api/tours/book
+├ ƒ /api/tours/confirmation-request
+├ ƒ /api/tours/outcome
+├ ƒ /api/tours/protection-status
+├ ƒ /api/tours/slots
+├ ƒ /api/tours/status
+├ ƒ /api/vendor/conversations/upload
+├ ƒ /api/vendor/documents/[id]/file
+├ ƒ /api/vendor/documents/upload
+├ ƒ /api/vendor/notifications
+├ ƒ /api/vendor/notifications/clear
+├ ƒ /api/vendor/notifications/read
+├ ƒ /api/venue/export
+├ ƒ /api/venue/seating
+├ ƒ /api/venue/seating/assign
+├ ƒ /api/venue/seating/delegate
+├ ƒ /api/venue/seating/submit
+├ ƒ /api/webhooks/stripe-connect
+├ ○ /auth/confirm
+├ ƒ /automations
+├ ƒ /availability/[token]
+├ ƒ /billing/suspended
+├ ƒ /book/[key]
+├ ƒ /book/-/icon
+├ ƒ /book/[key]/protection
+├ ƒ /brochure/[token]
+├ ƒ /calendar
+├ ƒ /calendar/print
+├ ƒ /client/accept
+├ ƒ /client/accept-participant
+├ ƒ /client/login
+├ ƒ /clients
+├ ƒ /clients/[id]
+├ ƒ /clients/[id]/booked
+├ ƒ /clients/[id]/edit
+├ ƒ /clients/[id]/floor-plans/[planId]
+├ ƒ /clients/[id]/portal-preview
+├ ƒ /clients/new
+├ ƒ /communication/series
+├ ƒ /communication/series/[id]
+├ ƒ /communication/series/[id]/edit
+├ ƒ /communication/series/new
+├ ƒ /communication/templates
+├ ƒ /communication/templates/[id]/edit
+├ ƒ /communication/templates/[id]/preview
+├ ƒ /communication/templates/new
+├ ƒ /confirm/[token]
+├ ƒ /contracts
+├ ƒ /contracts/[id]
+├ ƒ /contracts/new
+├ ƒ /contracts/templates
+├ ƒ /contracts/templates/[id]/edit
+├ ƒ /contracts/templates/[id]/preview
+├ ƒ /contracts/templates/new
+├ ƒ /cookies
+├ ƒ /dashboard
+├ ƒ /documents
+├ ƒ /end-user-terms
+├ ƒ /events
+├ ƒ /events/[id]
+├ ƒ /events/[id]/day-sheet
+├ ƒ /events/[id]/edit
+├ ƒ /events/[id]/floor-plan-print/[planId]
+├ ƒ /events/[id]/floor-plans/[planId]
+├ ƒ /events/[id]/questionnaire-preview
+├ ƒ /events/[id]/seating
+├ ƒ /events/[id]/seating-print
+├ ƒ /events/[id]/seating/manage
+├ ƒ /events/[id]/timeline-print
+├ ƒ /events/[id]/today
+├ ƒ /events/new
+├ ƒ /feedback
+├ ƒ /forgot-password
+├ ƒ /form/[key]
+├ ƒ /form/-/icon
+├ ƒ /forms/[token]
+├ ƒ /guide
+├ ƒ /help
+├ ƒ /help/[slug]
+├ ƒ /invoices
+├ ƒ /invoices/[id]
+├ ƒ /invoices/[id]/print
+├ ƒ /invoices/new
+├ ƒ /join
+├ ƒ /leads
+├ ƒ /leads/[id]
+├ ƒ /leads/[id]/edit
+├ ƒ /leads/new
+├ ƒ /leads/pipeline
+├ ƒ /legal/[type]
+├ ƒ /library
+├ ƒ /library/brochures
+├ ƒ /library/brochures/[id]
+├ ƒ /library/brochures/[id]/preview
+├ ƒ /library/choices-templates
+├ ƒ /library/choices-templates/[id]
+├ ƒ /library/choices-templates/[id]/preview
+├ ƒ /library/contracts
+├ ƒ /library/documents
+├ ƒ /library/event-order-templates
+├ ƒ /library/event-order-templates/[id]
+├ ƒ /library/event-order-templates/[id]/preview
+├ ƒ /library/floor-plan-templates
+├ ƒ /library/floor-plan-templates/[id]
+├ ƒ /library/floor-plan-templates/[id]/preview
+├ ƒ /library/inventory
+├ ƒ /library/inventory-templates
+├ ƒ /library/inventory-templates/[id]
+├ ƒ /library/inventory-templates/[id]/preview
+├ ƒ /library/inventory/[id]/edit
+├ ƒ /library/inventory/new
+├ ƒ /library/offerings
+├ ƒ /library/packages
+├ ƒ /library/payment-schedules
+├ ƒ /library/pipeline-templates
+├ ƒ /library/pipeline-templates/[id]/edit
+├ ƒ /library/pipeline-templates/[id]/preview
+├ ƒ /library/pipeline-templates/new
+├ ƒ /library/planning-templates
+├ ƒ /library/playbooks
+├ ƒ /library/playbooks/[id]
+├ ƒ /library/playbooks/[id]/preview
+├ ƒ /library/public-forms
+├ ƒ /library/public-forms/[id]
+├ ƒ /library/public-forms/[id]/preview
+├ ƒ /library/qr-campaigns
+├ ƒ /library/questionnaire-templates
+├ ƒ /library/questionnaire-templates/[id]
+├ ƒ /library/questionnaire-templates/[id]/preview
+├ ƒ /library/timeline-templates
+├ ƒ /library/timeline-templates/[id]
+├ ƒ /library/timeline-templates/[id]/preview
+├ ƒ /login
+├ ƒ /messages
+├ ƒ /messaging
+├ ƒ /messaging/health
+├ ƒ /offer/[token]
+├ ƒ /onboarding/intake
+├ ƒ /onboarding/ownership
+├ ƒ /onboarding/white-glove/[token]
+├ ƒ /onboarding/white-glove/[token]/waiting
+├ ƒ /p/[token]
+├ ƒ /p/[token]/icon-15misy
+├ ƒ /packages
+├ ƒ /packages/[id]
+├ ƒ /packages/[id]/preview
+├ ƒ /packages/new
+├ ƒ /payments
+├ ƒ /payments/[id]
+├ ƒ /payments/new
+├ ƒ /privacy
+├ ƒ /qr/[code]
+├ ○ /qr/inactive
+├ ƒ /questionnaire/[key]
+├ ƒ /questionnaire/-/icon
+├ ƒ /reporting
+├ ƒ /reporting/bookings
+├ ƒ /reporting/events
+├ ƒ /reporting/revenue
+├ ƒ /reporting/sales
+├ ƒ /reporting/saved
+├ ƒ /reporting/saved/[id]
+├ ƒ /requests
+├ ƒ /requests/[id]
+├ ƒ /reset-password
+├ ƒ /rsvp/[token]
+├ ƒ /rsvp/-/icon
+├ ƒ /select-venue
+├ ƒ /settings
+├ ƒ /settings/availability
+├ ƒ /settings/business
+├ ƒ /settings/communications
+├ ƒ /settings/import
+├ ƒ /settings/integrations
+├ ƒ /settings/leads
+├ ƒ /settings/leads/setup-profiles
+├ ƒ /settings/migration
+├ ƒ /settings/team
+├ ƒ /setup
+├ ƒ /setup-hub
+├ ƒ /setup-hub/financials
+├ ƒ /setup-hub/lead-capture
+├ ƒ /sign/[token]
+├ ƒ /sign/-/icon
+├ ƒ /sms-consent/[token]
+├ ƒ /success-library
+├ ƒ /success-library/[slug]
+├ ƒ /tasks
+├ ƒ /terms
+├ ƒ /timeline
+├ ƒ /tours
+├ ƒ /vendor-terms
+├ ƒ /vendor/accept
+├ ƒ /vendor/account/password
+├ ƒ /vendor/availability
+├ ƒ /vendor/dashboard
+├ ƒ /vendor/documents
+├ ƒ /vendor/events
+├ ƒ /vendor/events/[id]
+├ ƒ /vendor/floor-plans/[planId]
+├ ƒ /vendor/handbook
+├ ƒ /vendor/inquiries
+├ ƒ /vendor/inquiries/[id]
+├ ƒ /vendor/login
+├ ƒ /vendor/luv
+├ ƒ /vendor/messages
+├ ƒ /vendor/messages/[conversationId]
+├ ƒ /vendor/packages
+├ ƒ /vendor/partnerships
+├ ƒ /vendor/profile
+├ ƒ /vendor/task-templates
+├ ƒ /vendor/tasks
+├ ƒ /vendor/timeline
+├ ƒ /vendor/venues
+├ ƒ /vendors
+├ ƒ /vendors/[id]
+├ ƒ /vendors/[id]/edit
+├ ƒ /vendors/new
+├ ƒ /w/[slug]
+├ ƒ /w/-/icon
+├ ƒ /welcome
+└ ƒ /workspaces
+
+
+ƒ Proxy (Middleware)
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

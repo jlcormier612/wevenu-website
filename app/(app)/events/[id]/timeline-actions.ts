@@ -13,6 +13,7 @@ import {
   deleteEntry,
   deleteSection,
   duplicateSection,
+  ensureCoupleAdditionsSectionForEvent,
   removeEntryAttachment,
   removeEntryLink,
   removePlanningLink,
@@ -21,7 +22,10 @@ import {
   reorderEntries,
   reorderEntry,
   reorderSections,
+  saveEventTimelineDraft,
   setSectionClientCanAdd,
+  shareClientTimelineWithCouple,
+  shareTimelineWithCouple,
   shiftEntriesAfter,
   updateEntry,
 } from "@/lib/timeline/service";
@@ -33,12 +37,20 @@ import type {
   AddSectionResult,
   DuplicateSectionResult,
   TimelineActionResult,
+  TimelineDraftBatchInput,
+  TimelineDraftBatchResult,
   TimelineEntryInput,
   TimelineRelatedSourceType,
 } from "@/lib/timeline/types";
+import type { ShareTimelineWithCoupleResult } from "@/lib/timeline/service";
 
 function revalidateEvent(eventId: string) {
   revalidatePath(`/events/${eventId}`);
+  // Day-of Sheet + Timeline print are separate RSC routes — parent
+  // revalidatePath does not invalidate them. Without these, deletes/edits
+  // leave a stale preview until a hard redeploy or unrelated mutation.
+  revalidatePath(`/events/${eventId}/day-sheet`);
+  revalidatePath(`/events/${eventId}/timeline-print`);
 }
 
 /**
@@ -65,8 +77,24 @@ async function revalidateVendorEventTimelines(eventId: string) {
   }
 }
 
+async function revalidateClientWorkspace(eventId: string) {
+  try {
+    const { createClient } = await import("@/integrations/supabase/server");
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from("events")
+      .select("client_id")
+      .eq("id", eventId)
+      .maybeSingle<{ client_id: string | null }>();
+    if (data?.client_id) revalidatePath(`/clients/${data.client_id}`);
+  } catch {
+    // Non-blocking.
+  }
+}
+
 async function revalidateTimelineSurfaces(eventId: string) {
   revalidateEvent(eventId);
+  await revalidateClientWorkspace(eventId);
   await revalidateVendorEventTimelines(eventId);
 }
 
@@ -115,6 +143,22 @@ export async function deleteEntryAction(
   return result;
 }
 
+/**
+ * Event Timeline setup editor — apply deletes + upserts in one action
+ * (single revalidate). Does not touch Library templates or other events.
+ */
+export async function saveEventTimelineDraftAction(
+  eventId: string,
+  draft: TimelineDraftBatchInput,
+): Promise<TimelineDraftBatchResult> {
+  const result = await saveEventTimelineDraft(eventId, draft);
+  if (result.ok && (result.deleted > 0 || result.updated > 0 || result.created > 0)) {
+    await revalidateTimelineSurfaces(eventId);
+    void triggerTimelineAutoComplete(eventId);
+  }
+  return result;
+}
+
 export async function shiftEntriesAfterAction(
   eventId: string, afterEntryId: string, minutesDelta: number,
 ): Promise<TimelineActionResult & { shiftedCount?: number }> {
@@ -144,6 +188,64 @@ export async function applyTemplateAction(
 ): Promise<TimelineActionResult> {
   const result = await applyTemplate(eventId, templateId, eventStartTime);
   if (result.ok) await revalidateTimelineSurfaces(eventId);
+  return result;
+}
+
+/** Overview setup editor — replace venue-owned timeline from a Library template (no share). */
+export async function replaceEventTimelineFromTemplateAction(
+  eventId: string,
+  templateId: string,
+  eventStartTime: string | null,
+): Promise<TimelineActionResult> {
+  try {
+    const { replaceEventTimelineFromTemplate } = await import("@/lib/timeline-templates/apply");
+    const result = await replaceEventTimelineFromTemplate(eventId, templateId, eventStartTime);
+    if (result.ok) await revalidateTimelineSurfaces(eventId);
+    return result;
+  } catch (err) {
+    console.error("replaceEventTimelineFromTemplateAction failed:", err);
+    return {
+      ok: false,
+      message: err instanceof Error ? err.message : "Could not switch the timeline template.",
+    };
+  }
+}
+
+/** P1b: release venue working timeline to the couple (immutable snapshot). No email. */
+export async function shareTimelineWithCoupleAction(
+  eventId: string,
+): Promise<ShareTimelineWithCoupleResult> {
+  const result = await shareTimelineWithCouple(eventId);
+  if (result.ok) await revalidateTimelineSurfaces(eventId);
+  return result;
+}
+
+export async function previewVenueTimelineReleaseAction(eventId: string) {
+  const { previewVenueTimelineRelease } = await import("@/lib/timeline/release-service");
+  return previewVenueTimelineRelease(eventId);
+}
+
+export async function confirmVenueTimelineReleaseAction(
+  eventId: string,
+  input: {
+    acknowledgedHoldOutIds: string[];
+    workingFingerprint: string;
+    idempotencyKey?: string | null;
+  },
+) {
+  const { confirmVenueTimelineRelease } = await import("@/lib/timeline/release-service");
+  const result = await confirmVenueTimelineRelease(eventId, input);
+  if (result.ok) await revalidateTimelineSurfaces(eventId);
+  return result;
+}
+
+export async function shareClientTimelineWithCoupleAction(
+  clientId: string,
+): Promise<ShareTimelineWithCoupleResult> {
+  const result = await shareClientTimelineWithCouple(clientId);
+  if (result.ok) {
+    revalidatePath(`/clients/${clientId}`);
+  }
   return result;
 }
 
@@ -182,6 +284,12 @@ export async function duplicateSectionAction(eventId: string, sourceSectionId: s
 export async function setSectionClientCanAddAction(sectionId: string, eventId: string, clientCanAdd: boolean): Promise<TimelineActionResult> {
   const result = await setSectionClientCanAdd(sectionId, clientCanAdd);
   if (result.ok) revalidateEvent(eventId);
+  return result;
+}
+
+export async function ensureCoupleAdditionsSectionAction(eventId: string): Promise<AddSectionResult> {
+  const result = await ensureCoupleAdditionsSectionForEvent(eventId);
+  if (result.ok) await revalidateTimelineSurfaces(eventId);
   return result;
 }
 

@@ -4,6 +4,10 @@
  */
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { getIntakeForVenue } from "@/lib/onboarding/intake-service";
+import {
+  tastingAppointmentSignalLabel,
+  whiteGloveCalendarCanBeFinished,
+} from "@/lib/onboarding/tasting-signal";
 import { validateWhiteGloveHandoff } from "@/lib/onboarding/white-glove-handoff";
 import type { OperatorStageRow } from "@/components/hq/white-glove-operator-panel";
 
@@ -22,7 +26,7 @@ export async function getWhiteGloveOperatorView(venueId: string) {
     getIntakeForVenue(venueId),
     admin
       .from("venue_onboarding_materials")
-      .select("id, file_name, public_url")
+      .select("id, file_name, content_type, byte_size, storage_path, public_url, uploaded_at")
       .eq("venue_id", venueId)
       .order("uploaded_at", { ascending: false }),
     admin.from("venue_setup_hub_state").select("*").eq("venue_id", venueId).maybeSingle(),
@@ -59,10 +63,12 @@ export async function getWhiteGloveOperatorView(venueId: string) {
     {
       key: "calendar",
       title: "Calendar model",
-      status:
-        intake?.offersTours === false && intake?.tastingAppointmentChoice === "neither"
-          ? "we_can_finish"
-          : "decision_needed",
+      status: whiteGloveCalendarCanBeFinished({
+        offersTours: intake?.offersTours,
+        offersTastingsOrAppointments: intake?.offersTastingsOrAppointments,
+      })
+        ? "we_can_finish"
+        : "decision_needed",
       detail:
         spacesCount > 0
           ? `${spacesCount} space(s) configured`
@@ -115,7 +121,13 @@ export async function getWhiteGloveOperatorView(venueId: string) {
   const intakeSummary = intake
     ? [
         `Contact: ${intake.primaryContactName ?? "—"} · ${intake.contactEmail ?? "—"} · ${intake.contactPhone ?? "—"}`,
-        `Spaces: ${intake.spaceMode} · Tours: ${intake.offersTours ? "Yes" : "No"} · Tastings/appointments: ${intake.tastingAppointmentChoice}`,
+        `Spaces: ${intake.spaceMode} · Tours: ${intake.offersTours ? "Yes" : "No"} · Appointments other than tours: ${tastingAppointmentSignalLabel(intake.offersTastingsOrAppointments)}`,
+        intake.offersTastingsOrAppointments === true
+          ? `Appointment types: ${(intake.appointmentTypeKeys ?? []).join(", ") || "—"}`
+          : null,
+        intake.appointmentTypesOther
+          ? `Other appointment types: ${intake.appointmentTypesOther}`
+          : null,
         `Inquiry sources: ${(intake.inquirySources ?? []).join(", ") || "—"}`,
         intake.inquirySourcesOther ? `Other: ${intake.inquirySourcesOther}` : null,
         `Bring business: ${intake.bringBusinessChoice}`,
@@ -129,10 +141,23 @@ export async function getWhiteGloveOperatorView(venueId: string) {
     accessEmailSentAt: enrollmentRes.data?.access_email_sent_at ?? null,
     stages,
     materials: (materialsRes.data ?? []).map(
-      (m: { id: string; file_name: string; public_url: string | null }) => ({
+      (m: {
+        id: string;
+        file_name: string;
+        content_type: string | null;
+        byte_size: number | null;
+        storage_path: string | null;
+        public_url: string | null;
+        uploaded_at: string;
+      }) => ({
         id: m.id,
         fileName: m.file_name,
-        url: m.public_url,
+        contentType: m.content_type,
+        byteSize: m.byte_size,
+        uploadedAt: m.uploaded_at,
+        // Authorized short-lived download — never the dead public_url.
+        downloadPath: `/api/admin/onboarding/materials/${m.id}/file`,
+        hasStorageObject: Boolean(m.storage_path?.trim() || m.public_url?.trim()),
       }),
     ),
     intakeSummary,

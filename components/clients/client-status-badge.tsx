@@ -1,15 +1,10 @@
-import { Badge, type BadgeVariant } from "@/components/ui/badge";
-import { clientStatusLabel } from "@/lib/clients/constants";
+import { Badge } from "@/components/ui/badge";
 import type { ClientStatus } from "@/lib/clients/types";
 
-const STATUS_VARIANT: Record<ClientStatus, BadgeVariant> = {
-  booking:   "muted",
-  planning:  "muted",
-  confirmed: "default",
-  complete:  "success",
-  cancelled: "destructive",
-};
-
 export function ClientStatusBadge({ status }: { status: ClientStatus }) {
-  return <Badge variant={STATUS_VARIANT[status]}>{clientStatusLabel(status)}</Badge>;
+  if (status === "cancelled") {
+    return <Badge variant="destructive">Cancelled</Badge>;
+  }
+  /* Eucalyptus chip — dark text on soft botanical wash (not green text). */
+  return <Badge variant="accent">Booked</Badge>;
 }

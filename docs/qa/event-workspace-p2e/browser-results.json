@@ -1,0 +1,736 @@
+{
+  "expectedSha": "1939228ef0bea24873ba8e01851549d3298f1018",
+  "servingImage": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:1939228ef0bea24873ba8e01851549d3298f1018",
+  "servingDigest": "sha256:d5138c99f999abbe1990ac611eb9d26845ef1882a4848340530d64b28ebe1cc3",
+  "counts": {
+    "pass": 46,
+    "fail": 0,
+    "total": 46
+  },
+  "byScenario": {
+    "gate": {
+      "pass": 4,
+      "fail": 0
+    },
+    "A": {
+      "pass": 7,
+      "fail": 0
+    },
+    "B": {
+      "pass": 6,
+      "fail": 0
+    },
+    "C": {
+      "pass": 4,
+      "fail": 0
+    },
+    "D": {
+      "pass": 7,
+      "fail": 0
+    },
+    "E": {
+      "pass": 8,
+      "fail": 0
+    },
+    "F": {
+      "pass": 5,
+      "fail": 0
+    },
+    "G": {
+      "pass": 5,
+      "fail": 0
+    }
+  },
+  "checks": [
+    {
+      "name": "serving-sha",
+      "pass": true,
+      "detail": "expected=1939228ef0be ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:1939228ef0bea24873ba8e01851549d3298f1018",
+      "scenario": "gate"
+    },
+    {
+      "name": "serving-digest-present",
+      "pass": true,
+      "detail": "sha256:d5138c99f999abbe1990ac611eb9d26845ef1882a4848340530d64b28ebe1cc3",
+      "scenario": "gate"
+    },
+    {
+      "name": "portal-token",
+      "pass": true,
+      "detail": "present",
+      "scenario": "gate"
+    },
+    {
+      "name": "fixture-choices-with-options",
+      "pass": true,
+      "detail": "id=5df6f8f6-2aca-47e1-bda5-e255694ef9da name=Wedding Reception opts=2 status=sent",
+      "scenario": "gate"
+    },
+    {
+      "name": "A-journey-or-workflow",
+      "pass": true,
+      "detail": "stage0 journey or commercial workflow",
+      "scenario": "A"
+    },
+    {
+      "name": "A-choices-panel",
+      "pass": true,
+      "detail": "client-choices-panel",
+      "scenario": "A"
+    },
+    {
+      "name": "A-order-anchor",
+      "pass": true,
+      "detail": "event-order-order",
+      "scenario": "A"
+    },
+    {
+      "name": "A-preview-dialog",
+      "pass": true,
+      "detail": "preview open",
+      "scenario": "A"
+    },
+    {
+      "name": "A-preview-no-lifecycle-mutation",
+      "pass": true,
+      "detail": "acts 49→49 status sent→sent",
+      "scenario": "A"
+    },
+    {
+      "name": "A-selectable-offerings-present",
+      "pass": true,
+      "detail": "groups=1 selectable=true",
+      "scenario": "A"
+    },
+    {
+      "name": "A-fixed-or-included-preserved",
+      "pass": true,
+      "detail": "fixedOrNonChoicesLines=0 includedOpt=true",
+      "scenario": "A"
+    },
+    {
+      "name": "B-send-cta",
+      "pass": true,
+      "detail": "count=1",
+      "scenario": "B"
+    },
+    {
+      "name": "B-share-dialog",
+      "pass": true,
+      "detail": "ShareDialog",
+      "scenario": "B"
+    },
+    {
+      "name": "B-portal-status-sent",
+      "pass": true,
+      "detail": "status=sent",
+      "scenario": "B"
+    },
+    {
+      "name": "B-email-activity-truthful",
+      "pass": true,
+      "detail": "types=email_submitted,resent,email_submitted,sent,amended,finalized,submitted,sent,amended,finalized",
+      "scenario": "B"
+    },
+    {
+      "name": "B-choices-deep-link",
+      "pass": true,
+      "detail": "B2P & Portal\n\n·\n\nJen's Fancy Venue\n\nJul 17, 2060\n\nExport my data\n9+\n🏠\nHome\n✅\nTasks\n9\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n🪑\nInventory\n1\n📋\nOrder\n1\n✅\nChoices\n1\n💳\nPayments\n💬\nMessages\n9+\n🏛️\nGuide\n🤝\nVendors\nYour Choices\n\nSelect options your venue asked for. Submitting sends them ",
+      "scenario": "B"
+    },
+    {
+      "name": "B-choices-nav-while-active",
+      "pass": true,
+      "detail": "navHasChoices=true",
+      "scenario": "B"
+    },
+    {
+      "name": "C-choices-submitted",
+      "pass": true,
+      "detail": "status=submitted submitted_at=2026-10-23T21:37:10.363382+00:00",
+      "scenario": "C"
+    },
+    {
+      "name": "C-choices-nav-hidden-after-submit",
+      "pass": true,
+      "detail": "navHasChoices=false",
+      "scenario": "C"
+    },
+    {
+      "name": "C-no-invoice-from-submit-alone",
+      "pass": true,
+      "detail": "invoices 1→1",
+      "scenario": "C"
+    },
+    {
+      "name": "C-no-payment-plan-from-submit-alone",
+      "pass": true,
+      "detail": "schedules 1→1",
+      "scenario": "C"
+    },
+    {
+      "name": "D-create-update-cta",
+      "pass": true,
+      "detail": "count=1",
+      "scenario": "D"
+    },
+    {
+      "name": "D-cta-label",
+      "pass": true,
+      "detail": "Update Event Order from selections",
+      "scenario": "D"
+    },
+    {
+      "name": "D-choices-finalized",
+      "pass": true,
+      "detail": "status=finalized applied=1",
+      "scenario": "D"
+    },
+    {
+      "name": "D-applied-lines-present",
+      "pass": true,
+      "detail": "applied=1 eoLines=44",
+      "scenario": "D"
+    },
+    {
+      "name": "D-fixed-lines-preserved",
+      "pass": true,
+      "detail": "nonChoices 0→44",
+      "scenario": "D"
+    },
+    {
+      "name": "D-no-duplicate-choices-lines",
+      "pass": true,
+      "detail": "descs=0 unique=0",
+      "scenario": "D"
+    },
+    {
+      "name": "D-apply-idempotent-line-ids",
+      "pass": true,
+      "detail": "matched=1",
+      "scenario": "D"
+    },
+    {
+      "name": "E-already-shared",
+      "pass": true,
+      "detail": "shared_at=2026-10-23T16:18:04.956+00:00",
+      "scenario": "E"
+    },
+    {
+      "name": "E-eo-shared",
+      "pass": true,
+      "detail": "shared_at=2026-10-23T16:18:04.956+00:00 status=finalized",
+      "scenario": "E"
+    },
+    {
+      "name": "E-documents-api-shared-eo",
+      "pass": true,
+      "detail": "eoDocs=1",
+      "scenario": "E"
+    },
+    {
+      "name": "E-documents-no-draft",
+      "pass": true,
+      "detail": "draftExposed=false",
+      "scenario": "E"
+    },
+    {
+      "name": "E-other-doc-types-intact",
+      "pass": true,
+      "detail": "ok=true types=event_order,client_choices",
+      "scenario": "E"
+    },
+    {
+      "name": "E-documents-card",
+      "pass": true,
+      "detail": "eoCard=1",
+      "scenario": "E"
+    },
+    {
+      "name": "E-documents-opens-order",
+      "pass": true,
+      "detail": "hash=#event-order",
+      "scenario": "E"
+    },
+    {
+      "name": "E-share-not-acceptance",
+      "pass": true,
+      "detail": "agreed_at=null (optional; share≠accept)",
+      "scenario": "E"
+    },
+    {
+      "name": "F-invoice-anchor",
+      "pass": true,
+      "detail": "invoice section",
+      "scenario": "F"
+    },
+    {
+      "name": "F-existing-invoice-path",
+      "pass": true,
+      "detail": "create not shown — invoice may already exist",
+      "scenario": "F"
+    },
+    {
+      "name": "F-payment-plan-entry",
+      "pass": true,
+      "detail": "entry N/A or already created",
+      "scenario": "F"
+    },
+    {
+      "name": "F-no-duplicate-invoice-on-retry",
+      "pass": true,
+      "detail": "inv 1→1",
+      "scenario": "F"
+    },
+    {
+      "name": "F-submit-did-not-create-invoice",
+      "pass": true,
+      "detail": "re-assert C invariant",
+      "scenario": "F"
+    },
+    {
+      "name": "G-booking-status-unchanged",
+      "pass": true,
+      "detail": "before=confirmed after=confirmed",
+      "scenario": "G"
+    },
+    {
+      "name": "G-booked-at-unchanged",
+      "pass": true,
+      "detail": "before=2026-10-22 after=2026-10-22",
+      "scenario": "G"
+    },
+    {
+      "name": "G-inventory-distinct",
+      "pass": true,
+      "detail": "invStatus=shared eoId=624eceef-5096-4288-b104-62daa3a82d11",
+      "scenario": "G"
+    },
+    {
+      "name": "G-inventory-deep-link",
+      "pass": true,
+      "detail": "inventory section reachable",
+      "scenario": "G"
+    },
+    {
+      "name": "G-legacy-event-order-deep-link",
+      "pass": true,
+      "detail": "legacy deep link",
+      "scenario": "G"
+    }
+  ],
+  "persist": {
+    "eventBefore": {
+      "status": "confirmed",
+      "booked_at": "2026-10-22"
+    },
+    "eventAfter": {
+      "status": "confirmed",
+      "booked_at": "2026-10-22"
+    },
+    "choicesId": "5df6f8f6-2aca-47e1-bda5-e255694ef9da",
+    "choicesFinal": {
+      "id": "5df6f8f6-2aca-47e1-bda5-e255694ef9da",
+      "status": "finalized",
+      "applied_line_ids": [
+        "b83db5d5-15b7-40d4-ac69-7c1093f1b2df"
+      ],
+      "answers": {
+        "5f7ee48b-892f-404d-b1ba-52a27605a2b2": {
+          "optionIds": [
+            "9e0eb8bb-8e5a-4e70-8a37-1ada944e26dd"
+          ]
+        }
+      },
+      "event_order_id": "624eceef-5096-4288-b104-62daa3a82d11"
+    },
+    "submittedAnswers": {
+      "5f7ee48b-892f-404d-b1ba-52a27605a2b2": {
+        "optionIds": [
+          "9e0eb8bb-8e5a-4e70-8a37-1ada944e26dd"
+        ]
+      }
+    },
+    "eventOrder": {
+      "id": "624eceef-5096-4288-b104-62daa3a82d11",
+      "status": "finalized",
+      "shared_at": "2026-10-23T16:18:04.956+00:00",
+      "client_agreed_at": null
+    },
+    "eventOrderLines": [
+      {
+        "id": "63ba006b-4e4b-404f-bb5c-56b8eb1c5b3e",
+        "description": "Vegetarian entrée",
+        "quantity": 1,
+        "unit_price": 10,
+        "is_included": true,
+        "notes": "Per person"
+      },
+      {
+        "id": "c1872f57-bfbb-469e-a2ab-56dff9a22941",
+        "description": "Champagne toast",
+        "quantity": 1,
+        "unit_price": 2,
+        "is_included": true,
+        "notes": "Per person"
+      },
+      {
+        "id": "918727da-fff0-4f87-8e44-733b0f13d714",
+        "description": "Chiavari chair rental",
+        "quantity": 1,
+        "unit_price": 5,
+        "is_included": true,
+        "notes": "Per each"
+      },
+      {
+        "id": "00ad8c4a-bbeb-4719-983d-c1531b0f47d2",
+        "description": "Day-of coordination",
+        "quantity": 1,
+        "unit_price": 300,
+        "is_included": true,
+        "notes": "Flat"
+      },
+      {
+        "id": "819bbc73-dd56-491b-a796-d3d029ecee5c",
+        "description": "Caesar salad",
+        "quantity": 1,
+        "unit_price": 3,
+        "is_included": true,
+        "notes": "Per person"
+      },
+      {
+        "id": "0b5f047f-8b8c-4788-850f-ed10ded60a4b",
+        "description": "Ceremony Coordination",
+        "quantity": 1,
+        "unit_price": 500,
+        "is_included": false,
+        "notes": "Flat"
+      },
+      {
+        "id": "f05489a7-2a9a-4b36-8934-da0394a7a490",
+        "description": "Plated Dinner",
+        "quantity": 1,
+        "unit_price": 85,
+        "is_included": false,
+        "notes": "Per person"
+      },
+      {
+        "id": "78f5d47c-5781-425b-b5da-11f8158fbdac",
+        "description": "Beer & Wine",
+        "quantity": 1,
+        "unit_price": 28,
+        "is_included": false,
+        "notes": "Per person"
+      },
+      {
+        "id": "ca7c8427-2179-4359-b5df-adf67c2fa3c7",
+        "description": "Chiavari Chair",
+        "quantity": 1,
+        "unit_price": 8,
+        "is_included": false,
+        "notes": "Per chair"
+      },
+      {
+        "id": "82682b64-cd03-4e1b-ade1-101b93b47d83",
+        "description": "Arbor",
+        "quantity": 1,
+        "unit_price": 350,
+        "is_included": false,
+        "notes": "Flat"
+      },
+      {
+        "id": "cad23a16-731b-4432-be95-11f70b73b49c",
+        "description": "Buffet Dinner",
+        "quantity": 1,
+        "unit_price": 72,
+        "is_included": false,
+        "notes": "Per person"
+      },
+      {
+        "id": "eddfe473-4ea3-4e5d-a733-17867e63a944",
+        "description": "8' Banquet Table",
+        "quantity": 1,
+        "unit_price": null,
+        "is_included": true,
+        "notes": null
+      },
+      {
+        "id": "fed6766a-cf00-46f8-9ce7-8bbf9cb3c22a",
+        "description": "Chiavari Chair",
+        "quantity": 1,
+        "unit_price": null,
+        "is_included": true,
+        "notes": null
+      },
+      {
+        "id": "d55a20fc-3d5b-4b44-90f7-a6abc3efa7d4",
+        "description": "Head Table",
+        "quantity": 1,
+        "unit_price": null,
+        "is_included": true,
+        "notes": null
+      },
+      {
+        "id": "f577b299-0240-442b-be54-7b7145277221",
+        "description": "Sweetheart Table",
+        "quantity": 1,
+        "unit_price": null,
+        "is_included": true,
+        "notes": null
+      },
+      {
+        "id": "b40264c1-6b4b-4701-8eec-7bceb6ccfc43",
+        "description": "QA Included Chairs mvk6tawi",
+        "quantity": 100,
+        "unit_price": 0,
+        "is_included": true,
+        "notes": null
+      },
+      {
+        "id": "b89177d4-a2b9-4ac7-b45d-c6298a1a9517",
+        "description": "QA Optional Linens mvk6tawi",
+        "quantity": 4,
+        "unit_price": 25,
+        "is_included": false,
+        "notes": null
+      },
+      {
+        "id": "28eb4a36-1f94-4ac5-a179-be95b2d78c63",
+        "description": "60\" Round Table",
+        "quantity": 1,
+        "unit_price": null,
+        "is_included": true,
+        "notes": null
+      },
+      {
+        "id": "bc306a78-18a4-4eeb-afa2-533b1b4cb683",
+        "description": "Cocktail Table",
+        "quantity": 1,
+        "unit_price": null,
+        "is_included": true,
+        "notes": null
+      },
+      {
+        "id": "c6b8a816-6c3a-4d64-a33b-5bfc9632b4cc",
+        "description": "Dance Floor",
+        "quantity": 1,
+        "unit_price": null,
+        "is_included": true,
+        "notes": null
+      },
+      {
+        "id": "de326099-2f49-46ba-ac5c-ea97f143b92d",
+        "description": "Bar",
+        "quantity": 1,
+        "unit_price": null,
+        "is_included": true,
+        "notes": null
+      },
+      {
+        "id": "7507a362-3fec-4da6-9f6a-f0bbabc7cbe6",
+        "description": "DJ / Band Table",
+        "quantity": 1,
+        "unit_price": null,
+        "is_included": true,
+        "notes": null
+      },
+      {
+        "id": "86230a69-14b1-4422-b529-13e9b1bec465",
+        "description": "Cake Table",
+        "quantity": 1,
+        "unit_price": null,
+        "is_included": true,
+        "notes": null
+      },
+      {
+        "id": "40d07ce4-7713-4839-8d31-dcbf6699e300",
+        "description": "Gift / Card Table",
+        "quantity": 1,
+        "unit_price": null,
+        "is_included": true,
+        "notes": null
+      },
+      {
+        "id": "a16d58d1-9740-405d-9933-83417351e23a",
+        "description": "Dessert Table",
+        "quantity": 1,
+        "unit_price": null,
+        "is_included": true,
+        "notes": null
+      },
+      {
+        "id": "4e0782a9-97cb-4101-ba33-0d8110da8752",
+        "description": "Dinner Plate",
+        "quantity": 1,
+        "unit_price": null,
+        "is_included": true,
+        "notes": null
+      },
+      {
+        "id": "168907b2-6f55-4c36-b4f3-849f17ce1651",
+        "description": "Salad Plate",
+        "quantity": 1,
+        "unit_price": null,
+        "is_included": true,
+        "notes": null
+      },
+      {
+        "id": "eb57b1f9-65c3-4d9a-bc34-d76831cd275a",
+        "description": "Water Glass",
+        "quantity": 1,
+        "unit_price": null,
+        "is_included": true,
+        "notes": null
+      },
+      {
+        "id": "b23e67ad-2ba6-40fb-a5db-480c7610ab45",
+        "description": "Wine Glass",
+        "quantity": 1,
+        "unit_price": null,
+        "is_included": true,
+        "notes": null
+      },
+      {
+        "id": "3a7b0373-0c7f-4569-9294-9dfb4545288a",
+        "description": "Champagne Glass",
+        "quantity": 1,
+        "unit_price": null,
+        "is_included": true,
+        "notes": null
+      },
+      {
+        "id": "ed462b6a-1b25-4e66-acdc-7804c1730327",
+        "description": "Flatware Place Setting",
+        "quantity": 1,
+        "unit_price": null,
+        "is_included": true,
+        "notes": null
+      },
+      {
+        "id": "7112bd4c-b504-49fa-919c-fa4a38abdc73",
+        "description": "108\" Round Linen",
+        "quantity": 1,
+        "unit_price": null,
+        "is_included": true,
+        "notes": null
+      },
+      {
+        "id": "a043eb68-29c0-4bfe-861c-c6d694342a0d",
+        "description": "8' Banquet Linen",
+        "quantity": 1,
+        "unit_price": null,
+        "is_included": true,
+        "notes": null
+      },
+      {
+        "id": "18393095-f424-41bd-a758-d2e2bef2c48c",
+        "description": "Cocktail Table Linen",
+        "quantity": 1,
+        "unit_price": null,
+        "is_included": true,
+        "notes": null
+      },
+      {
+        "id": "882db3c9-ad6f-4236-bae1-25e3befe9c47",
+        "description": "Napkin",
+        "quantity": 1,
+        "unit_price": null,
+        "is_included": true,
+        "notes": null
+      },
+      {
+        "id": "b141f515-280f-4cbc-9fd2-0890d2616bb1",
+        "description": "Easel",
+        "quantity": 1,
+        "unit_price": null,
+        "is_included": true,
+        "notes": null
+      },
+      {
+        "id": "898d2972-8866-4d88-9b2b-cc316e0bfd14",
+        "description": "Table Number Stand",
+        "quantity": 1,
+        "unit_price": null,
+        "is_included": true,
+        "notes": null
+      },
+      {
+        "id": "dc77c8d5-afa6-4c2f-9d49-8cf6f9fd982a",
+        "description": "Welcome Sign Stand",
+        "quantity": 1,
+        "unit_price": null,
+        "is_included": true,
+        "notes": null
+      },
+      {
+        "id": "271ffb10-f0e2-4536-908d-b3bde8da028e",
+        "description": "Closure Optional Uplighting mvk717fu",
+        "quantity": 3,
+        "unit_price": 40,
+        "is_included": false,
+        "notes": null
+      },
+      {
+        "id": "72402d78-ae7e-4dad-93bf-d15479b4054b",
+        "description": "Getting Ready Room",
+        "quantity": 1,
+        "unit_price": null,
+        "is_included": true,
+        "notes": null
+      },
+      {
+        "id": "8a0a4346-170e-4c03-a4fd-fc557fa795ae",
+        "description": "Coat Rack",
+        "quantity": 1,
+        "unit_price": null,
+        "is_included": true,
+        "notes": null
+      },
+      {
+        "id": "e1aa6958-be7d-41c2-9841-ff6523725108",
+        "description": "High Chair",
+        "quantity": 1,
+        "unit_price": null,
+        "is_included": true,
+        "notes": null
+      },
+      {
+        "id": "de51bb79-7fd5-411a-a66d-8dbd264a39aa",
+        "description": "Closure Optional Uplighting mvk7ux9x",
+        "quantity": 3,
+        "unit_price": 40,
+        "is_included": false,
+        "notes": null
+      },
+      {
+        "id": "b83db5d5-15b7-40d4-ac69-7c1093f1b2df",
+        "description": "Premium open bar",
+        "quantity": 1,
+        "unit_price": 750,
+        "is_included": false,
+        "notes": "choices:5df6f8f6-2aca-47e1-bda5-e255694ef9da:9e0eb8bb-8e5a-4e70-8a37-1ada944e26dd"
+      }
+    ],
+    "invoices": {
+      "before": 1,
+      "afterSubmit": 1,
+      "afterHandoff": 1
+    },
+    "paymentSchedules": {
+      "before": 1,
+      "afterSubmit": 1
+    },
+    "inventory": {
+      "before": {
+        "id": "2cdf3609-21e0-4ffc-a56d-062485ea683d",
+        "status": "shared"
+      },
+      "after": {
+        "id": "2cdf3609-21e0-4ffc-a56d-062485ea683d",
+        "status": "shared"
+      }
+    },
+    "documentsEventOrderCount": 1
+  },
+  "at": "2026-10-23T21:37:53.508Z"
+}

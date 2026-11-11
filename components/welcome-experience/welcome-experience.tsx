@@ -38,7 +38,7 @@ const LIGHT_THEME_VARS = {
   "--foreground": "var(--black)",
   "--heading": "var(--forest-sage)",
   "--muted-foreground":
-    "color-mix(in oklch, var(--forest-sage) 70%, transparent)",
+    "color-mix(in oklch, var(--forest-sage) 80%, transparent)",
   "--border": "var(--taupe-light)",
   "--ring": "var(--heritage-sage)",
 } as CSSProperties;
@@ -94,11 +94,11 @@ export function WelcomeExperience({
         </div>
 
         <div className="mt-8 rounded-lg border border-[color-mix(in_srgb,var(--taupe-medium)_40%,transparent)] bg-[var(--true-white)] px-6 py-8 shadow-sm sm:mt-10 sm:px-8 sm:py-9">
-          <h1 className="text-center font-heading text-2xl font-medium tracking-tight text-[var(--forest-sage)] sm:text-[1.75rem]">
+          <h1 className="text-center font-heading text-2xl font-medium tracking-tight text-heading sm:text-[1.75rem]">
             {heading}
           </h1>
 
-          <div className="mt-4 space-y-3 text-center text-sm leading-relaxed text-[color-mix(in_oklch,var(--forest-sage)_75%,transparent)]">
+          <div className="mt-4 space-y-3 text-center text-sm leading-relaxed text-muted-foreground">
             {paragraphs.map((paragraph, index) => (
               <p key={`intro-${index}`}>{paragraph}</p>
             ))}
@@ -110,7 +110,7 @@ export function WelcomeExperience({
             <div className="mt-8">
               <label
                 htmlFor={AGREE_CHECKBOX_ID}
-                className="flex cursor-pointer items-start gap-3 text-left text-sm leading-relaxed text-[var(--forest-sage)]"
+                className="flex cursor-pointer items-start gap-3 text-left text-sm leading-relaxed text-foreground"
               >
                 <input
                   id={AGREE_CHECKBOX_ID}
@@ -144,8 +144,8 @@ export function WelcomeExperience({
             )}
           </button>
 
-          <div className="mt-8 text-center text-xs leading-relaxed text-[color-mix(in_oklch,var(--forest-sage)_58%,transparent)]">
-            <p className="font-medium text-[color-mix(in_oklch,var(--forest-sage)_70%,transparent)]">
+          <div className="mt-8 text-center text-xs leading-relaxed text-muted-foreground">
+            <p className="font-medium text-foreground/80">
               {WELCOME_SUPPORT_HEADING}
             </p>
             <p className="mt-1">{WELCOME_SUPPORT_BODY}</p>

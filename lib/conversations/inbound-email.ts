@@ -27,6 +27,58 @@ export function providerIdFromInReplyTo(inReplyTo: string): string {
   return inReplyTo.replace(/[<>]/g, "").trim().split("@")[0] ?? "";
 }
 
+/**
+ * Keep the couple's new reply; drop the prior message mail clients append.
+ * Matches Apple Mail / Gmail "On <date>, <name> wrote:", Outlook
+ * "-----Original Message-----", and trailing ">" quoted lines.
+ */
+export function stripEmailReplyQuotes(body: string): string {
+  const normalized = body.replace(/\r\n/g, "\n");
+  if (!normalized.trim()) return "";
+
+  const lines = normalized.split("\n");
+  let cutAt = lines.length;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]!.trim();
+    if (!line) continue;
+
+    // "On Monday, November 2, 2026 at 11:36:03 PM EST, Hello to Cheers <…> wrote:"
+    if (/^On\s+\S[\s\S]*\bwrote:\s*$/i.test(line)) {
+      cutAt = i;
+      break;
+    }
+    // Header and remainder on one line
+    if (/^On\s+\S.+\bwrote:\s+\S/i.test(line)) {
+      cutAt = i;
+      break;
+    }
+    if (/^-{2,}\s*Original Message\s*-{2,}/i.test(line)) {
+      cutAt = i;
+      break;
+    }
+    if (/^_{5,}\s*$/.test(line)) {
+      cutAt = i;
+      break;
+    }
+  }
+
+  const kept = lines.slice(0, cutAt);
+
+  // Strip trailing ">" quote blocks and blank lines from the kept prefix.
+  while (kept.length > 0) {
+    const last = kept[kept.length - 1]!.trim();
+    if (!last || /^>/.test(last)) {
+      kept.pop();
+      continue;
+    }
+    break;
+  }
+
+  const result = kept.join("\n").trim();
+  return result || normalized.trim();
+}
+
 export type InboundEmailMatch = {
   conversationId: string;
   venueId: string;
@@ -193,7 +245,7 @@ export async function recordInboundConversationEmail(
     venue_id: match.venueId,
     sender_type: "lead_or_client",
     channel: "email",
-    body: body.trim(),
+    body: stripEmailReplyQuotes(body),
     status: "received",
   });
   if (!inserted.ok) return inserted;

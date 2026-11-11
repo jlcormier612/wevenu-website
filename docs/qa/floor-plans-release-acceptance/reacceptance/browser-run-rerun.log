@@ -1,0 +1,52 @@
+PASS [serving] serving_sha — expected=38b2d591f2ee7a0cad3a96a8124424dbe6837549 ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:38b2d591f2ee7a0cad3a96a8124424dbe6837549
+PASS [serving] api_health — {"status":200,"body":{"ok":true,"checks":{"env":"ok","supabase":"ok"}}}
+PASS [persisted] fixture_zero_layouts — plans=0
+UX[ok] Event setup floor-plan offers — Offer editor explains event-only offers vs Library.
+PASS [live-ui] j2_change_opens_offer_editor_without_profile — Edit floor-plan offers for this event
+
+FPRA-FPRAMVRNU3NG-Wedding. Add or withdraw which Library layouts this couple can choose from. Offering a layout also establishes this event's working layout when one is missing — Open Floor Plans then opens that layout for editing and seating. This does not release layouts to the client portal by itself.
+
+Layo
+PASS [live-ui+persisted] j2_multi_offers_created_via_ui — {"offeredA":true,"offeredB":true,"offersNow":[{"id":"078153eb-7ec1-4190-b07f-b9d3200a5c77","couple_label":"FPRA-FPRAMVRNU3NG-Offer-A","is_offered":true,"floor_plan_template_id":"3d4e11ef-7de7-495b-8fc7-b2eaf59584c3"},{"id":"828cea58-74ce-412f-a45c-094bc4bd8eb2","couple_label":"FPRA-FPRAMVRNU3NG-Offer-B","is_offered":true,"floor_plan_template_id":"0
+PASS [live-ui+persisted] j2_layouts_shared_via_ui — [{"id":"f3bd19ea-4a0e-4855-9a91-a76019dfb4bf","shared_with_couple":true},{"id":"5447b575-6177-4d8a-9ad8-6bcccf652e37","shared_with_couple":true}]
+UX[ok] Couple multi-offer chooser — Chooser or preference action present for multi-offer path.
+PASS [live-ui] j2_couple_sees_multi_offer_chooser — FPRA
+
+·
+
+Jen's Fancy Venue
+
+Nov 4, 2027
+
+Export my data
+🏠
+Home
+✅
+Tasks
+🕒
+Timeline
+📁
+Docs
+🗺️
+Floor Plan
+💳
+Payments
+💬
+Messages
+🏛️
+Guide
+🤝
+Vendors
+Choose your preferred layout
+
+Save a preference for your venue to review. This does not approve the layout or change what the venue uses, and it does not share seating by itself. This is not a multi
+PASS [live-ui+persisted] j2_couple_preference_persisted — {"prefSaved":true,"evtPref":{"couple_selected_floor_plan_id":"f3bd19ea-4a0e-4855-9a91-a76019dfb4bf","couple_preference_status":"pending"},"setupPrefs":[]}
+PASS [live-ui+persisted] j2_preference_survives_return — {"evtPref2":{"couple_selected_floor_plan_id":"f3bd19ea-4a0e-4855-9a91-a76019dfb4bf"},"text":"FPRA\n\n·\n\nJen's Fancy Venue\n\nNov 4, 2027\n\nExport my data\n🏠\nHome\n✅\nTasks\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n💳\nPayments\n💬\nMessages\n🏛️\nGuide\n🤝\nVendors\nChoose your preferred layout\n\nSave a preference for your venue to review. Th
+PASS [live-ui+persisted] setup_members_attached_via_ui_only — {"cerOk":true,"recOk":true,"setups":[{"id":"12df5a17-2ff3-4915-8ea1-39a70c380098","name":"Ceremony"},{"id":"c1a7b667-e32f-4b43-9ddf-e6ea628b7134","name":"Reception"}],"attachedViaUi":2,"planA":"f3bd19ea-4a0e-4855-9a91-a76019dfb4bf","planB":"5447b575-6177-4d8a-9ad8-6bcccf652e37","attachAttempts":[{"setup":"Ceremony","want":"f3bd19ea-4a0e-4855-9a91-a
+UX[ok] Venue editor Lock Position — Customer can unlock template-locked furniture via Lock Position.
+PASS [live-ui+persisted] furniture_unlocked_via_venue_editor_ui — {"unlockedViaUi":true,"id":"6ad8290d-e34b-4fd9-b8ca-44c43534cbdb"}
+UX[ok] First-use empty — Paths distinguished.
+PASS [live-ui] j3_fp_ra1_submit_without_preference — submitVisible=true
+PASS [live-ui+persisted] j3_fp_ra1_submit_persisted — [{"id":"d3d9f2bc-8e0f-4064-a522-7627cef4c57f","client_layout_status":"submitted"}]
+
+13/13 passed; UX blockers/p2=0

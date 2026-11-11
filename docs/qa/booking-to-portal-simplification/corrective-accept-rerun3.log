@@ -1,0 +1,22 @@
+PASS serving_sha — serving=7df38cd86352efde1c2c9a1acec2e4208f9f4f31 expected=7df38cd86352efde1c2c9a1acec2e4208f9f4f31
+PASS network_vendors — n=5
+PASS fixture — event=9c200402-5d76-4851-aa8e-ef3ffd823144 client=21d9fa35-7a0d-42ce-8697-69a9bb202cde
+PASS eo_editor_line_count — uiLines=7
+PASS eo_db_lines — dbLines=7 shared=null template=d73d9734-98d9-46a0-b54b-dccadb036150
+PASS eo_d02_library_repaired_or_populated — before=7 after=7
+PASS vendors_editor_open — open
+PASS vendors_recommendations_path — recommendations section
+PASS vendors_no_open_in_editor — no Open Vendors
+PASS vendors_db_assignments — assignments=3
+PASS vendors_db_recommendations — recommendations=1
+PASS questionnaire_no_false_unavailable — unavailableCount=0
+PASS questionnaire_selector_shows_name — Client Planning Questionnaire
+PASS questionnaire_preview_back — https://app.sandbox.hellotocheers.com/events/9c200402-5d76-4851-aa8e-ef3ffd823144/questionnaire-preview?kind=client_planning&from=event
+PASS questionnaire_preview_return — https://app.sandbox.hellotocheers.com/clients/21d9fa35-7a0d-42ce-8697-69a9bb202cde#questionnaires
+PASS no_invoice_side_effect — before=38 after=38
+{
+  "status": "GREEN",
+  "passed": 16,
+  "failed": 0,
+  "servingSha": "7df38cd86352efde1c2c9a1acec2e4208f9f4f31"
+}

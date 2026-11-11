@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { SettingsTabs } from "@/components/settings/settings-tabs";
 import { MigrationCenter } from "@/components/settings/migration-center";
+import { MigrationGuidancePanel } from "@/components/settings/migration-guidance-panel";
 import { SetupGuideLink } from "@/components/help/setup-guide-link";
 import { getSourceProfilesAction } from "@/app/(app)/settings/migration-actions";
 import { getSpaces, getCapacityRules } from "@/lib/availability/service";
@@ -11,7 +12,15 @@ import { getCurrentVenue } from "@/lib/venue/service";
 
 export const metadata: Metadata = { title: "Migration Center — Settings" };
 
-export default async function MigrationCenterPage() {
+export default async function MigrationCenterPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const params = await searchParams;
+  const sourceParam = params.source;
+  const initialSource = Array.isArray(sourceParam) ? sourceParam[0] ?? null : sourceParam ?? null;
+
   const [sourceProfiles, spaces, capacityRules, venue] = await Promise.all([
     getSourceProfilesAction(),
     getSpaces(),
@@ -25,17 +34,24 @@ export default async function MigrationCenterPage() {
   });
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Migration Center"
-        description="Bring your business with you from wherever it lives today. If we don't list your system, you can still import a CSV or spreadsheet."
+    <div className="htc-hospitality-page space-y-4 sm:space-y-6">
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
+        <PageHeader
+          title="Migration Center"
+          description="Bring over events, tours, date holds, calendar blocks, packages, documents, and booked-event invoices, payment schedules, and signed agreements — with review before anything is created. For a small contact or template list (CSV, Excel, Word, or PDF), use Import Data."
+        />
+      </div>
+      <SetupGuideLink
+        href="/help/what-should-i-set-up-before-i-start"
+        label="How to bring your business over"
       />
-      <SetupGuideLink href="/help/what-should-i-set-up-before-i-start" label="What Should I Set Up Before I Start?" />
+      <MigrationGuidancePanel />
       <SettingsTabs />
       <MigrationCenter
         sourceProfiles={sourceProfiles}
         cutover={cutover}
         venueId={venue?.id ?? ""}
+        initialSource={initialSource}
       />
     </div>
   );

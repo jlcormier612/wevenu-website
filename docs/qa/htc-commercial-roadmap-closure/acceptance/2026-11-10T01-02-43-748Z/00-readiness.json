@@ -1,0 +1,179 @@
+{
+  "founderReady": {
+    "status": 200,
+    "json": {
+      "ok": true,
+      "readiness": {
+        "mode": "founder_ready",
+        "ready": true,
+        "flagEnabled": true,
+        "missing": [],
+        "saasProductId": "prod_V4AgrDDqyO0YGF",
+        "diagnosticMessage": "Founder custom pricing (Phase 5) is ready."
+      },
+      "venue": {
+        "id": "f9427d5e-84f9-48bc-a9fa-8a2bcb95af7f",
+        "name": "[DISPOSABLE-P3-REHEARSAL] 1794243588",
+        "planKey": "growing",
+        "planName": "Celebrate",
+        "listAmountCents": 24900,
+        "stripeSubscriptionId": "sub_1UZvv7ErUqJH7nktxwGc9vmC",
+        "stripeCustomerId": "cus_Vb8ByVzSBbqWcS",
+        "subscriptionStatus": "active",
+        "currentPeriodEnd": null,
+        "listAmount": "$249"
+      },
+      "grants": [],
+      "groupEligible": false,
+      "holdActive": false,
+      "pendingTierUpgrade": null,
+      "appliedOffer": {
+        "source": "standard",
+        "label": "Standard catalog pricing",
+        "amountCents": 24900,
+        "amount": "$249"
+      },
+      "nextInvoicePreviewCents": 24900,
+      "nextInvoicePreview": "$249",
+      "nextInvoicePreviewSource": "stripe_test_preview",
+      "arrangements": []
+    }
+  },
+  "referralReady": {
+    "status": 200,
+    "json": {
+      "ok": true,
+      "readiness": {
+        "mode": "referral_ready",
+        "ready": true,
+        "flagEnabled": true,
+        "rewardIssueEnabled": true,
+        "missing": [],
+        "qualificationDays": 30,
+        "diagnosticMessage": "Refer a Venue is ready (submission, qualification, and reward issuance)."
+      },
+      "referrals": [
+        {
+          "id": "478c364a-c092-45ea-9ad7-ac09cd5ba04c",
+          "referringVenueId": "9336a6cb-6a49-4a38-82bc-ff3b2361e8a3",
+          "referringOrganizationId": null,
+          "submittedByUserId": null,
+          "submittedByEmail": "jennifer@hellotocheers.com",
+          "referredVenueName": "DISPOSABLE-P6-REF-1794272062269",
+          "referredCity": "Austin",
+          "referredState": "TX",
+          "referredWebsite": "https://p6-ref-1794272062269.test",
+          "referredWebsiteDomain": "p6-ref-1794272062269.test",
+          "referredContactEmail": "contact+p6-1794272062269@hellotocheers.com",
+          "referredContactName": "P6 Contact",
+          "referredContactRole": null,
+          "notes": null,
+          "status": "reward_issued",
+          "assignedOwnerEmail": null,
+          "linkedRelationshipId": null,
+          "linkedVenueId": "41fdc275-0a13-4d9f-b053-90bd70ab8789",
+          "isSelfReferral": false,
+          "isSameOrganization": false,
+          "isExistingPayingCustomer": false,
+          "isDuplicateClaim": false,
+          "blockedReason": null,
+          "programPolicyVersion": "referral_v1",
+          "qualificationDays": 30,
+          "audit": [
+            {
+              "at": "2026-11-10T00:54:23.479Z",
+              "by": "phase6-harness@hellotocheers.com",
+              "action": "attributed",
+              "referredVenueId": "41fdc275-0a13-4d9f-b053-90bd70ab8789"
+            },
+            {
+              "at": "2026-11-10T00:54:24.338Z",
+              "by": "phase6-harness@hellotocheers.com",
+              "action": "qualification_pending"
+            },
+            {
+              "at": "2026-11-10T00:54:24.917Z",
+              "by": "phase6-harness@hellotocheers.com",
+              "action": "reward_eligible",
+              "amountCents": 19900
+            },
+            {
+              "at": "2026-11-10T00:54:25.876Z",
+              "by": "phase6-harness@hellotocheers.com",
+              "action": "reward_issued"
+            }
+          ],
+          "metadata": {
+            "harness": "phase6",
+            "disposable": true
+          },
+          "createdAt": "2026-11-10T00:54:22.68399+00:00",
+          "updatedAt": "2026-11-10T00:54:26.372+00:00"
+        },
+        {
+          "id": "f77458fb-78ef-4af9-9889-11f92030a562",
+          "referringVenueId": "9336a6cb-6a49-4a38-82bc-ff3b2361e8a3",
+          "referringOrganizationId": null,
+          "submittedByUserId": null,
+          "submittedByEmail": "jennifer@hellotocheers.com",
+          "referredVenueName": "DISPOSABLE-P6-REF-1794271429189",
+          "referredCity": "Austin",
+          "referredState": "TX",
+          "referredWebsite": "https://p6-ref-1794271429189.test",
+          "referredWebsiteDomain": "p6-ref-1794271429189.test",
+          "referredContactEmail": "contact+p6-1794271429189@hellotocheers.com",
+          "referredContactName": "P6 Contact",
+          "referredContactRole": null,
+          "notes": null,
+          "status": "reward_issued",
+          "assignedOwnerEmail": null,
+          "linkedRelationshipId": null,
+          "linkedVenueId": "6d3abc3e-c323-4c30-be64-b3ab899b6110",
+          "isSelfReferral": false,
+          "isSameOrganization": false,
+          "isExistingPayingCustomer": false,
+          "isDuplicateClaim": false,
+          "blockedReason": null,
+          "programPolicyVersion": "referral_v1",
+          "qualificationDays": 30,
+          "audit": [
+            {
+              "at": "2026-11-10T00:43:50.334Z",
+              "by": "phase6-harness@hellotocheers.com",
+              "action": "attributed",
+              "referredVenueId": "6d3abc3e-c323-4c30-be64-b3ab899b6110"
+            },
+            {
+              "at": "2026-11-10T00:43:50.887Z",
+              "by": "phase6-harness@hellotocheers.com",
+              "action": "qualification_pending"
+            },
+            {
+              "at": "2026-11-10T00:43:51.350Z",
+              "by": "phase6-harness@hellotocheers.com",
+              "action": "reward_eligible",
+              "amountCents": 19900
+            },
+            {
+              "at": "2026-11-10T00:55:03.760Z",
+              "by": "scheduler",
+              "action": "reward_eligible",
+              "amountCents": 19900
+            },
+            {
+              "at": "2026-11-10T00:55:04.702Z",
+              "by": "scheduler",
+              "action": "reward_issued"
+            }
+          ],
+          "metadata": {
+            "harness": "phase6",
+            "disposable": true
+          },
+          "createdAt": "2026-11-10T00:43:49.574143+00:00",
+          "updatedAt": "2026-11-10T00:55:05.089+00:00"
+        }
+      ]
+    }
+  }
+}

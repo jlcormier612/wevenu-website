@@ -1,0 +1,56 @@
+{
+  "observedAt": "2026-10-11T22:20:05.336Z",
+  "expectSha": null,
+  "checks": [
+    {
+      "name": "runtime_dpl",
+      "pass": true,
+      "detail": "dpl=09745d75057b3fa2ee99c32e204937096ba4316a"
+    },
+    {
+      "name": "initial_signed_in",
+      "pass": true,
+      "detail": "url=https://app.sandbox.hellotocheers.com/dashboard"
+    },
+    {
+      "name": "switcher_visible",
+      "pass": true,
+      "detail": "header Switch venue"
+    },
+    {
+      "name": "target_membership_visible",
+      "pass": true,
+      "detail": "VSwitch B 1791757205337"
+    },
+    {
+      "name": "after_switch_not_blank",
+      "pass": false,
+      "detail": "url=https://app.sandbox.hellotocheers.com/onboarding/intake textLen=0 hasShell=false bodyChildren=20 snippet= consoleErrs=0 pageErrs=0"
+    },
+    {
+      "name": "after_switch_has_content",
+      "pass": false,
+      "detail": "url=https://app.sandbox.hellotocheers.com/onboarding/intake"
+    },
+    {
+      "name": "no_uncaught_pageerror",
+      "pass": true,
+      "detail": "none"
+    },
+    {
+      "name": "reload_recovers",
+      "pass": true,
+      "detail": "url=https://app.sandbox.hellotocheers.com/onboarding/intake textLen=1632 hasShell=true bodyChildren=14 snippet=OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\nClients\nVendors\n\nSCHEDULING\n\nCale"
+    },
+    {
+      "name": "switch_back_not_blank",
+      "pass": true,
+      "detail": "url=https://app.sandbox.hellotocheers.com/dashboard textLen=1510 hasShell=true bodyChildren=14 snippet=OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\nClients\nVendors\n\nSCHEDULING\n\nCale"
+    }
+  ],
+  "hardFail": [
+    "after_switch_not_blank",
+    "after_switch_has_content"
+  ],
+  "ok": false
+}

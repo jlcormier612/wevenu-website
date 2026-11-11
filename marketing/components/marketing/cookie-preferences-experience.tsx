@@ -8,9 +8,7 @@ import {
   writeMarketingAnalyticsConsent,
 } from "@shared/analytics";
 
-type CookiePrefs = MarketingCookiePrefs;
-
-const DEFAULT_PREFS: CookiePrefs = {
+const DEFAULT_PREFS: MarketingCookiePrefs = {
   necessary: true,
   analytics: false,
   marketing: false,
@@ -19,32 +17,45 @@ const DEFAULT_PREFS: CookiePrefs = {
 /**
  * Cookie preferences — calm self-serve controls stored locally.
  * Analytics toggle gates GA4 via MarketingGa4Provider (Phase 2C).
+ * Legacy `marketing` values in localStorage are preserved but not shown
+ * (no advertising pixel currently reads that flag).
  */
 export function CookiePreferencesExperience() {
-  const [prefs, setPrefs] = useState<CookiePrefs>(DEFAULT_PREFS);
+  const [analytics, setAnalytics] = useState(false);
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     try {
       const raw = window.localStorage.getItem(MARKETING_COOKIE_PREFS_KEY);
       if (raw) {
-        const parsed = JSON.parse(raw) as Partial<CookiePrefs>;
-        setPrefs({
-          necessary: true,
-          analytics: Boolean(parsed.analytics),
-          marketing: Boolean(parsed.marketing),
-        });
+        const parsed = JSON.parse(raw) as Partial<MarketingCookiePrefs>;
+        setAnalytics(Boolean(parsed.analytics));
       }
     } catch {
       // ignore malformed storage
     }
   }, []);
 
-  function save(next: CookiePrefs) {
-    setPrefs(next);
+  function save(nextAnalytics: boolean) {
+    let marketing = DEFAULT_PREFS.marketing;
+    try {
+      const raw = window.localStorage.getItem(MARKETING_COOKIE_PREFS_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as Partial<MarketingCookiePrefs>;
+        marketing = Boolean(parsed.marketing);
+      }
+    } catch {
+      // keep default marketing:false
+    }
+
+    const next: MarketingCookiePrefs = {
+      necessary: true,
+      analytics: nextAnalytics,
+      marketing,
+    };
+    setAnalytics(nextAnalytics);
     window.localStorage.setItem(MARKETING_COOKIE_PREFS_KEY, JSON.stringify(next));
-    // Keep analytics consent event in sync for the GA4 provider.
-    writeMarketingAnalyticsConsent(next.analytics);
+    writeMarketingAnalyticsConsent(nextAnalytics);
     setSaved(true);
     window.setTimeout(() => setSaved(false), 2500);
   }
@@ -60,7 +71,7 @@ export function CookiePreferencesExperience() {
         </h1>
         <p className="mt-8 text-base leading-[1.7] text-[var(--forest-sage)]/70 md:text-lg max-w-[65ch]">
           We use cookies carefully. Essential cookies keep the site and product working.
-          Everything else is your choice.
+          Analytics is optional and off by default.
         </p>
 
         <div className="mt-14 space-y-8">
@@ -72,15 +83,9 @@ export function CookiePreferencesExperience() {
           />
           <PreferenceRow
             title="Analytics"
-            description="Help us understand how people use Hello to Cheers in aggregate so we can improve the experience."
-            checked={prefs.analytics}
-            onChange={(analytics) => save({ ...prefs, analytics })}
-          />
-          <PreferenceRow
-            title="Marketing"
-            description="Used sparingly to understand whether our campaigns are helpful—never to sell personal profiles."
-            checked={prefs.marketing}
-            onChange={(marketing) => save({ ...prefs, marketing })}
+            description="Help us understand how people use Hello to Cheers in aggregate so we can improve the experience. Uses Google Analytics only when enabled and configured."
+            checked={analytics}
+            onChange={save}
           />
         </div>
 

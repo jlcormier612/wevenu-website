@@ -5,9 +5,15 @@ export type PackageItem = {
   description: string;
   quantity: number;
   unit: string | null;
+  /** Catalog Offering this inclusion stands for; null = text-only inclusion. */
+  offeringId?: string | null;
+  /** Quantity is per guest; the Event Order line uses quantity × guest count. */
+  perGuest?: boolean;
   sortOrder: number;
   createdAt: string;
 };
+
+export type PackageOfferRole = "primary" | "addon";
 
 export type Package = {
   id: string;
@@ -20,13 +26,21 @@ export type Package = {
   isActive: boolean;
   sortOrder: number;
   sourceMasterKey: string | null;
+  /** primary = choose-one package; addon = optional addition. */
+  offerRole: PackageOfferRole;
+  /** Null = all event types. */
+  eligibleEventTypes: string[] | null;
+  minGuestCount: number | null;
+  maxGuestCount: number | null;
+  /** Null = all spaces. */
+  eligibleSpaceIds: string[] | null;
   createdAt: string;
   updatedAt: string;
 };
 
 export type PackageWithItems = Package & { items: PackageItem[] };
 
-export type PackageItemInput = { description: string; quantity: string; unit: string };
+export type PackageItemInput = { description: string; quantity: string; unit: string; offeringId?: string | null; perGuest?: boolean };
 
 export type PackageInput = {
   name: string;

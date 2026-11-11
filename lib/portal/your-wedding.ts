@@ -6,6 +6,7 @@
  * No new progress formulas, RSVP analytics, or financial calculations.
  */
 
+import { formatMoneyDisplay } from "@/lib/money/format";
 import type { PortalSection } from "@/lib/portal/types";
 
 export type WeddingLaunchTone = "invite" | "active" | "complete";
@@ -23,11 +24,7 @@ export type WeddingLaunchModel = {
 };
 
 export function formatBudgetMoney(n: number): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  }).format(n);
+  return formatMoneyDisplay(n, "USD");
 }
 
 /** Existing website Studio % — completed sections / ALL_SECTIONS length. */

@@ -4,12 +4,8 @@ import * as React from "react";
 
 import Link from "next/link";
 
-import { CommunicationsReviewPanel } from "@/components/clients/communications-review-panel";
-import { EventExperienceReviewPanel } from "@/components/clients/event-experience-review-panel";
-import { FinancialReadinessPanel } from "@/components/clients/financial-readiness-panel";
-import { PreparePlanningPanel } from "@/components/clients/prepare-planning-panel";
 import { Button } from "@/components/ui/button";
-import type { BookingHandoffModel } from "@/lib/clients/booking-handoff";
+import { isBookingWorkspaceHref, type BookingHandoffModel } from "@/lib/clients/booking-handoff";
 import type { CommunicationsReviewModel } from "@/lib/clients/communications-review";
 import type { EventExperienceReviewModel } from "@/lib/clients/event-experience-review";
 import type { FinancialReadinessModel } from "@/lib/clients/financial-readiness";
@@ -84,59 +80,143 @@ function Confetti() {
   );
 }
 
-function PrepareChecklist({ handoff }: { handoff: BookingHandoffModel }) {
+type StepState = "done" | "next" | "later";
+
+function StepMarker({ index, state }: { index: number; state: StepState }) {
+  return (
+    <span
+      aria-hidden
+      className={
+        state === "done"
+          ? "flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-success/15 text-xs font-semibold text-success"
+          : state === "next"
+            ? "flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground"
+            : "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-border text-xs font-semibold text-muted-foreground"
+      }
+    >
+      {state === "done" ? "✓" : index}
+    </span>
+  );
+}
+
+function BookedNextSteps({
+  handoff,
+  financial,
+  communications,
+}: {
+  handoff: BookingHandoffModel;
+  financial: FinancialReadinessModel;
+  communications: CommunicationsReviewModel;
+}) {
+  const released = handoff.items.find((item) => item.key === "client_planning")?.complete ?? false;
+  const invitation = communications.rows.find((row) => row.key === "invitation");
+  const invited = invitation?.onFile ?? false;
+  const automated = communications.rows.find((row) => row.key === "automated_messages");
+  const steps: Array<{ key: string; title: string; detail: string; state: StepState }> = [
+    {
+      key: "event_setup",
+      title: "Set up their event",
+      detail: "Choose what the couple will see — planning, timeline, floor plans, and vendors.",
+      state: released ? "done" : "next",
+    },
+    {
+      key: "release",
+      title: "Release planning to the couple",
+      detail: released ? "Released." : "From Event setup, once it's ready.",
+      state: released ? "done" : "later",
+    },
+    {
+      key: "invite",
+      title: "Invite the couple",
+      detail: invited && invitation
+        ? invitation.detail
+        : "Last, after planning is released — an invitation can't be taken back.",
+      state: invited ? "done" : released ? "next" : "later",
+    },
+  ];
+
   return (
     <div
-      className="rounded-sm border px-6 py-5 text-left"
-      style={{ borderColor: "#D8A7AA40", background: "#FDF8F8" }}
+      className="rounded-lg border border-border bg-card px-5 py-5 text-left text-card-foreground shadow-sm"
+      data-testid="booked-next-steps"
     >
-      <p className="mb-4 text-xs font-medium uppercase tracking-widest" style={{ color: "#9ca3af" }}>
+      <p className="mb-4 text-xs font-medium uppercase tracking-widest text-muted-foreground">
         {handoff.prepareHeading}
       </p>
-      <ul className="space-y-2.5">
-        {handoff.items.map((item) => (
-          <li key={item.key} className="flex items-start gap-3 text-sm">
-            <span
-              className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-semibold"
-              style={
-                item.complete
-                  ? { background: "#D8A7AA20", color: "#5A3235" }
-                  : { background: "transparent", color: "#9ca3af" }
-              }
-            >
-              {item.complete ? "✓" : "○"}
-            </span>
+      <ol className="space-y-3.5">
+        {steps.map((step, i) => (
+          <li key={step.key} className="flex items-start gap-3" data-testid={`booked-step-${step.key}`}>
+            <StepMarker index={i + 1} state={step.state} />
             <div className="min-w-0 flex-1">
-              <p style={{ color: item.complete ? "#3D2F30" : "#9ca3af" }}>
-                {item.label}
+              <p className={step.state === "later" ? "text-sm font-medium text-muted-foreground" : "text-sm font-medium text-foreground"}>
+                {step.title}
               </p>
-              <p className="text-xs text-muted-foreground">{item.detail}</p>
+              <p className="text-xs text-muted-foreground">{step.detail}</p>
+              {step.key === "event_setup" && !released ? (
+                <Button className="mt-2.5" render={<Link href={handoff.primaryHref} />} data-testid="booked-continue-event-setup">
+                  {handoff.primaryLabel}
+                </Button>
+              ) : null}
             </div>
-            <Link
-              href={item.href}
-              className="shrink-0 text-xs font-medium underline-offset-2 hover:underline"
-              style={{ color: "#5A3235" }}
-            >
-              {item.actionLabel}
-            </Link>
           </li>
         ))}
-      </ul>
+      </ol>
+
+      <div className="mt-5 space-y-1.5 border-t border-border pt-4 text-xs" data-testid="booked-on-file">
+        <p className="font-medium uppercase tracking-widest text-muted-foreground">On file</p>
+        <ul className="space-y-1">
+          {financial.rows.map((row) => (
+            <li key={row.key} className="flex items-center gap-2">
+              <span
+                aria-hidden
+                className={
+                  row.onFile
+                    ? "flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-success/15 text-[10px] font-bold text-success"
+                    : "flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground"
+                }
+                data-testid={row.onFile ? "on-file-ok" : "on-file-missing"}
+              >
+                {row.onFile ? "✓" : "!"}
+              </span>
+              <span className="min-w-0 flex-1 text-foreground">
+                {row.label}: {row.detail}
+              </span>
+              {row.onFile || isBookingWorkspaceHref(row.href) ? null : (
+                <Link href={row.href} className="shrink-0 font-medium text-foreground underline-offset-2 hover:underline">
+                  {row.actionLabel}
+                </Link>
+              )}
+            </li>
+          ))}
+          {automated ? (
+            <li className="flex items-center gap-2">
+              <span aria-hidden className="text-muted-foreground">•</span>
+              <span className="min-w-0 flex-1 text-foreground">{automated.detail}</span>
+              {isBookingWorkspaceHref(automated.href) ? null : (
+                <Link href={automated.href} className="shrink-0 font-medium text-foreground underline-offset-2 hover:underline">
+                  {automated.actionLabel}
+                </Link>
+              )}
+            </li>
+          ) : null}
+        </ul>
+      </div>
     </div>
   );
 }
 
 export function BookingCelebration({
+  celebrate = false,
   client,
-  eventId,
-  eventDate,
-  eventType,
-  templates,
-  applications,
+  eventId: _eventId,
+  eventDate: _eventDate,
+  eventType: _eventType,
+  templates: _templates,
+  applications: _applications,
   handoff,
   financial,
   communications,
-  experience,
+  experience: _experience,
 }: {
   client: Client;
   eventId?: string | null;
@@ -148,6 +228,7 @@ export function BookingCelebration({
   financial: FinancialReadinessModel;
   communications: CommunicationsReviewModel;
   experience: EventExperienceReviewModel;
+  celebrate?: boolean;
 }) {
   const displayName = clientDisplayName(
     client.firstName,
@@ -166,7 +247,7 @@ export function BookingCelebration({
 
   return (
     <div className="relative flex min-h-[80vh] flex-col items-center justify-center px-4 py-16 text-center">
-      <Confetti />
+      {celebrate ? <Confetti /> : null}
 
       <div className="relative z-30 mx-auto max-w-xl space-y-8">
         <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-success/10 text-5xl select-none">
@@ -183,6 +264,17 @@ export function BookingCelebration({
           <p className="text-xl text-muted-foreground">
             {handoff.bookingLine}
           </p>
+          {client.leadId ? (
+            <p className="text-sm text-muted-foreground">
+              <Link
+                href={`/leads/${client.leadId}`}
+                className="hover:text-foreground hover:underline"
+                data-testid="view-original-lead"
+              >
+                View original lead
+              </Link>
+            </p>
+          ) : null}
         </div>
 
         {details.length > 0 && (
@@ -196,44 +288,14 @@ export function BookingCelebration({
           </div>
         )}
 
-        <PrepareChecklist handoff={handoff} />
+        <BookedNextSteps handoff={handoff} financial={financial} communications={communications} />
 
-        <PreparePlanningPanel
-          eventId={eventId ?? null}
-          eventDate={eventDate ?? null}
-          eventType={eventType ?? client.eventType}
-          templates={templates}
-          applications={applications}
-        />
-
-        <FinancialReadinessPanel financial={financial} />
-
-        <EventExperienceReviewPanel experience={experience} />
-
-        <CommunicationsReviewPanel communications={communications} />
-
-        <div className="space-y-3 border-t border-border pt-6">
-          <p className="text-sm italic text-muted-foreground">
-            {handoff.tagline}
-          </p>
-        </div>
+        <p className="text-sm text-muted-foreground">{handoff.tagline}</p>
 
         <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
-          <Button render={<Link href={handoff.primaryHref} />}>
-            {handoff.primaryLabel}
-          </Button>
-          {eventId && (
-            <Button variant="outline" render={<Link href={`/events/${eventId}`} />}>
-              Open Event
-            </Button>
-          )}
-          <Button
-            variant="ghost"
-            render={<Link href={`/clients/${client.id}`} />}
-            className="text-muted-foreground"
-          >
-            View Client
-          </Button>
+          {handoff.items.find((item) => item.key === "client_planning")?.complete ? (
+            <Button render={<Link href={handoff.primaryHref} />}>{handoff.primaryLabel}</Button>
+          ) : null}
           <Button
             variant="ghost"
             render={<Link href="/dashboard" />}

@@ -20,9 +20,21 @@
  * rather than adding scope here. This is a real, disclosed subset of the
  * ten Event Readiness dimensions, not silent partial coverage.
  */
+import {
+  contractAttentionHref,
+  paymentsAttentionHref,
+  requestsAttentionHref,
+} from "@/lib/luv/briefing-attention-links";
+import {
+  contractsAttentionDismissalKey,
+  paymentsAttentionDismissalKey,
+  requestsAttentionDismissalKey,
+} from "@/lib/dashboard-system/attention-identity";
+import { forensicCount, forensicTime } from "@/lib/dashboard/forensic-timing";
 import { createClient } from "@/integrations/supabase/server";
 import { getContracts } from "@/lib/contracts/repository";
 import { getInvoices } from "@/lib/invoices/repository";
+import { getAllLineItems, getSchedules } from "@/lib/payments/repository";
 import { getRequestsForVenue } from "@/lib/requests/service";
 import { computeContractsReadiness, computePaymentsReadiness, computeRequestsReadiness } from "@/lib/readiness/compute";
 import { coordinatorCelebrationMessage, type CelebrationType } from "@/lib/luv/celebrations";
@@ -32,6 +44,8 @@ import type { Request as PortalRequest } from "@/lib/requests/types";
 import type { BriefingItem, LuvBriefing } from "@/lib/luv/briefing-types";
 
 type DbClient = Awaited<ReturnType<typeof createClient>>;
+
+type EventRow = { id: string; name: string; event_date: string | null; client_id: string | null; status: string };
 
 function byEventId<T extends { eventId: string | null }>(rows: T[]): Map<string, T[]> {
   const map = new Map<string, T[]>();
@@ -48,21 +62,152 @@ function daysFromNow(days: number): string {
   return new Date(Date.now() + days * 86_400_000).toISOString();
 }
 
+function buildNeedsAttentionNow(input: {
+  events: EventRow[];
+  contracts: Contract[];
+  invoices: Invoice[];
+  requests: PortalRequest[];
+  scheduleLinesByEventId: Map<string, { id: string; status: string; dueDate: string | null; amount: number }[]>;
+}): BriefingItem[] {
+  const contractsByEvent = byEventId(input.contracts as (Contract & { eventId: string | null })[]);
+  const invoicesByEvent = byEventId(input.invoices as (Invoice & { eventId: string | null })[]);
+  const requestsByEvent = byEventId(input.requests as (PortalRequest & { eventId: string | null })[]);
+
+  const needsAttentionNow: BriefingItem[] = [];
+  for (const event of input.events) {
+    if (!event.client_id) continue;
+    const clientId = event.client_id;
+    const eventContracts = contractsByEvent.get(event.id) ?? [];
+    const eventInvoices = invoicesByEvent.get(event.id) ?? [];
+    const eventRequests = requestsByEvent.get(event.id) ?? [];
+    const eventScheduleLines = input.scheduleLinesByEventId.get(event.id) ?? [];
+
+    if (eventContracts.length > 0) {
+      const section = computeContractsReadiness(eventContracts);
+      if (section.status === "needs_attention") {
+        needsAttentionNow.push({
+          id: `briefing-contract-${event.id}`, eventId: event.id, eventName: event.name, eventDate: event.event_date,
+          label: section.label, detail: section.detail,
+          link: contractAttentionHref(eventContracts, clientId),
+          conditionKey: contractsAttentionDismissalKey(
+            event.id,
+            eventContracts.map((c) => ({ id: c.id, status: c.status })),
+          ),
+        });
+      }
+    }
+    if (eventInvoices.length > 0 || eventScheduleLines.length > 0) {
+      // Always pass schedule lines (possibly []) so invoice.due_date cannot
+      // override the payment-plan truth Event Readiness already certified.
+      const section = computePaymentsReadiness(eventInvoices, eventScheduleLines);
+      if (section.status === "needs_attention") {
+        needsAttentionNow.push({
+          id: `briefing-payments-${event.id}`, eventId: event.id, eventName: event.name, eventDate: event.event_date,
+          label: section.label, detail: section.detail,
+          link: paymentsAttentionHref(eventInvoices, clientId),
+          conditionKey: paymentsAttentionDismissalKey(event.id, eventScheduleLines),
+        });
+      }
+    }
+    if (eventRequests.length > 0) {
+      const section = computeRequestsReadiness(eventRequests);
+      if (section.status === "needs_attention") {
+        needsAttentionNow.push({
+          id: `briefing-requests-${event.id}`, eventId: event.id, eventName: event.name, eventDate: event.event_date,
+          label: section.label, detail: section.detail,
+          link: requestsAttentionHref(eventRequests, clientId),
+          conditionKey: requestsAttentionDismissalKey(
+            event.id,
+            eventRequests.map((r) => ({ id: r.id, status: r.status, dueDate: r.dueDate ?? null })),
+          ),
+        });
+      }
+    }
+  }
+  // Priority ordering is fixed per the design doc — needs_attention items
+  // are already filtered to that single status, so the only remaining,
+  // deliberately simple tiebreaker is event-date proximity.
+  needsAttentionNow.sort((a, b) => (a.eventDate ?? "9999").localeCompare(b.eventDate ?? "9999"));
+  return needsAttentionNow;
+}
+
+async function loadReadinessInputs(supabase: DbClient, venueId: string) {
+  const [eventsRes, contracts, invoices, requests, schedules, lineItems] = await Promise.all([
+    supabase.from("events").select("id, name, event_date, client_id, status")
+      .eq("venue_id", venueId).neq("status", "cancelled"),
+    getContracts(supabase, venueId),
+    getInvoices(supabase, venueId),
+    getRequestsForVenue(supabase, venueId),
+    getSchedules(supabase, venueId),
+    getAllLineItems(supabase, venueId),
+  ]);
+
+  const events = (eventsRes.data ?? []) as EventRow[];
+
+  // Same source Event Readiness uses: overdue comes from schedule lines,
+  // never from a draft/void invoice.due_date alone.
+  const linesByScheduleId = new Map<string, typeof lineItems>();
+  for (const line of lineItems) {
+    const list = linesByScheduleId.get(line.scheduleId) ?? [];
+    list.push(line);
+    linesByScheduleId.set(line.scheduleId, list);
+  }
+  const scheduleLinesByEventId = new Map<string, { id: string; status: string; dueDate: string | null; amount: number }[]>();
+  for (const schedule of schedules) {
+    if (!schedule.eventId) continue;
+    const lines = (linesByScheduleId.get(schedule.id) ?? []).map((l) => ({
+      id: l.id,
+      status: l.status,
+      dueDate: l.dueDate,
+      amount: l.amount,
+    }));
+    const existing = scheduleLinesByEventId.get(schedule.eventId) ?? [];
+    scheduleLinesByEventId.set(schedule.eventId, existing.concat(lines));
+  }
+
+  return {
+    events,
+    contracts: contracts as Contract[],
+    invoices: invoices as Invoice[],
+    requests: requests as PortalRequest[],
+    scheduleLinesByEventId,
+  };
+}
+
+/**
+ * Dashboard Focus path — Event Readiness / needsAttentionNow only.
+ * Does not load coming-up / celebrations / informational buckets, and does
+ * not write luv_briefing_views (no write-on-read for Dashboard GET).
+ */
+export async function getFocusNeedsAttentionBriefing(venueId: string): Promise<LuvBriefing> {
+  const supabase: DbClient = await createClient();
+  const readiness = await forensicTime("briefing_load_readiness_inputs", () =>
+    loadReadinessInputs(supabase, venueId),
+  );
+  forensicCount("briefing_events", readiness.events.length);
+  forensicCount("briefing_contracts", readiness.contracts.length);
+  forensicCount("briefing_invoices", readiness.invoices.length);
+  forensicCount("briefing_requests", readiness.requests.length);
+  forensicCount("briefing_schedule_event_keys", readiness.scheduleLinesByEventId.size);
+  const needsAttentionNow = buildNeedsAttentionNow(readiness);
+  forensicCount("briefing_needs_attention_built", needsAttentionNow.length);
+  return {
+    needsAttentionNow,
+    comingUpThisWeek: [],
+    resolvedSinceLastLooked: [],
+    informational: [],
+    generatedAt: new Date().toISOString(),
+  };
+}
+
 export async function getDailyBriefing(venueId: string): Promise<LuvBriefing> {
   const supabase: DbClient = await createClient();
   const today = new Date().toISOString().slice(0, 10);
   const weekOutIso = daysFromNow(7);
   const nowIso = new Date().toISOString();
 
-  const [
-    eventsRes, contracts, invoices, requests,
-    toursRes, holdsRes, viewRes,
-  ] = await Promise.all([
-    supabase.from("events").select("id, name, event_date, client_id, status")
-      .eq("venue_id", venueId).neq("status", "cancelled"),
-    getContracts(supabase, venueId),
-    getInvoices(supabase, venueId),
-    getRequestsForVenue(supabase, venueId),
+  const [readiness, toursRes, holdsRes, viewRes] = await Promise.all([
+    loadReadinessInputs(supabase, venueId),
     supabase.from("tour_appointments").select("id, contact_name, scheduled_at, status")
       .eq("venue_id", venueId).neq("status", "cancelled")
       .gte("scheduled_at", nowIso).lte("scheduled_at", weekOutIso),
@@ -72,55 +217,9 @@ export async function getDailyBriefing(venueId: string): Promise<LuvBriefing> {
     supabase.from("luv_briefing_views").select("last_viewed_at").eq("venue_id", venueId).maybeSingle<{ last_viewed_at: string }>(),
   ]);
 
-  type EventRow = { id: string; name: string; event_date: string | null; client_id: string | null; status: string };
-  const events = (eventsRes.data ?? []) as EventRow[];
+  const { events } = readiness;
   const eventById = new Map(events.map((e) => [e.id, e]));
-
-  // ---- Needs attention now (§4 item 1) ---------------------------------------
-  const contractsByEvent = byEventId(contracts as (Contract & { eventId: string | null })[]);
-  const invoicesByEvent = byEventId(invoices as (Invoice & { eventId: string | null })[]);
-  const requestsByEvent = byEventId(requests as (PortalRequest & { eventId: string | null })[]);
-
-  const needsAttentionNow: BriefingItem[] = [];
-  for (const event of events) {
-    if (!event.client_id) continue;
-    const link = `/clients/${event.client_id}`;
-    const eventContracts = contractsByEvent.get(event.id) ?? [];
-    const eventInvoices = invoicesByEvent.get(event.id) ?? [];
-    const eventRequests = requestsByEvent.get(event.id) ?? [];
-
-    if (eventContracts.length > 0) {
-      const section = computeContractsReadiness(eventContracts);
-      if (section.status === "needs_attention") {
-        needsAttentionNow.push({
-          id: `briefing-contract-${event.id}`, eventId: event.id, eventName: event.name, eventDate: event.event_date,
-          label: section.label, detail: section.detail, link,
-        });
-      }
-    }
-    if (eventInvoices.length > 0) {
-      const section = computePaymentsReadiness(eventInvoices);
-      if (section.status === "needs_attention") {
-        needsAttentionNow.push({
-          id: `briefing-payments-${event.id}`, eventId: event.id, eventName: event.name, eventDate: event.event_date,
-          label: section.label, detail: section.detail, link,
-        });
-      }
-    }
-    if (eventRequests.length > 0) {
-      const section = computeRequestsReadiness(eventRequests);
-      if (section.status === "needs_attention") {
-        needsAttentionNow.push({
-          id: `briefing-requests-${event.id}`, eventId: event.id, eventName: event.name, eventDate: event.event_date,
-          label: section.label, detail: section.detail, link,
-        });
-      }
-    }
-  }
-  // Priority ordering is fixed per the design doc — needs_attention items
-  // are already filtered to that single status, so the only remaining,
-  // deliberately simple tiebreaker is event-date proximity.
-  needsAttentionNow.sort((a, b) => (a.eventDate ?? "9999").localeCompare(b.eventDate ?? "9999"));
+  const needsAttentionNow = buildNeedsAttentionNow(readiness);
 
   // ---- Coming up this week (§4 item 2) ---------------------------------------
   const comingUpThisWeek: BriefingItem[] = [];
@@ -180,10 +279,6 @@ export async function getDailyBriefing(venueId: string): Promise<LuvBriefing> {
     .upsert({ venue_id: venueId, last_viewed_at: new Date().toISOString() }, { onConflict: "venue_id" });
 
   // ---- Informational (§4 item 4) ----------------------------------------------
-  // Everything else worth knowing that isn't urgent enough for #1 — kept
-  // minimal for this pass: upcoming events beyond this week, within the
-  // next 30 days, so the briefing doesn't go silent between "this week"
-  // and "distant future."
   const informational: BriefingItem[] = [];
   const monthOutIso = daysFromNow(30).slice(0, 10);
   for (const event of events) {

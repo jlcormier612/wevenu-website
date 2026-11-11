@@ -1,0 +1,23 @@
+{
+  "at": "2026-10-15T03:10:00.000Z",
+  "commit": "149b7f5fda1857b696de5fa1e91350bb5521cc0b",
+  "venueId": "05f16a15-1752-4855-8a3b-aad5c593d8d9",
+  "leadId": "09d26751-f184-461f-9cdb-8891b676cd61",
+  "ownerAuthEmail": "jlcormier612@gmail.com",
+  "assigneeEmail": "jyagnesak@yahoo.com",
+  "assigneeName": "Ellie Morgan",
+  "customerEmail": "jlcormier612@gmail.com",
+  "venuesEmail": "jlcormier612@gmail.com",
+  "note": "Owner and customer share jlcormier612@gmail.com in this fixture; owner is selected via owner_user_id→auth.users, not via customer/venues.email. Assignee Ellie is a distinct address.",
+  "liveRecipients": [
+    { "email": "jlcormier612@gmail.com", "role": "owner" },
+    { "email": "jyagnesak@yahoo.com", "role": "lead_assignee" }
+  ],
+  "matrix": {
+    "ownerAndAssignee": "pass",
+    "dedupeOwnerAssignee": "pass",
+    "optOut": "pass",
+    "customerAloneExcluded": "pass",
+    "venuesEmailNotSubstitute": "pass — resolver does not use venues.email"
+  }
+}

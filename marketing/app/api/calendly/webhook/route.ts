@@ -4,10 +4,7 @@ import {
   extractCalendlyInvitee,
   type CalendlyWebhookBody,
 } from "@/lib/calendly/parse";
-import {
-  verifyCalendlySignature,
-  verifySharedSecretHeader,
-} from "@/lib/calendly/verify";
+import { assertCalendlyWebhookAuth } from "@/lib/calendly/webhook-auth";
 import {
   syncCalendlyCanceledToRelationship,
   syncCalendlyCreatedToRelationship,
@@ -16,38 +13,33 @@ import {
 export const runtime = "nodejs";
 
 /**
- * Calendly webhook → shared Relationship store.
+ * Calendly webhook → shared Relationship store (marketing ECS / Vercel).
  *
  * Configure in Calendly Developer → Webhooks:
  *   URL:  https://<marketing-host>/api/calendly/webhook
  *   Events: invitee.created, invitee.canceled
  *
- * Auth (prefer signing key from the webhook subscription response):
+ * Auth (required — fail closed when unset; no CRM writes before auth):
  *   CALENDLY_WEBHOOK_SIGNING_KEY — verifies Calendly-Webhook-Signature
  * Optional fallback when signing key is unset:
  *   CALENDLY_WEBHOOK_SHARED_SECRET — require header x-calendly-webhook-secret
  */
 export async function POST(request: Request) {
   const rawBody = await request.text();
-  const signingKey = process.env.CALENDLY_WEBHOOK_SIGNING_KEY?.trim();
-  const sharedSecret = process.env.CALENDLY_WEBHOOK_SHARED_SECRET?.trim();
-
-  if (signingKey) {
-    const signature = request.headers.get("calendly-webhook-signature");
-    if (!verifyCalendlySignature(signature, rawBody, signingKey)) {
-      return NextResponse.json({ error: "Invalid signature." }, { status: 401 });
-    }
-  } else if (sharedSecret) {
-    if (!verifySharedSecretHeader(request, sharedSecret)) {
-      return NextResponse.json(
-        { error: "Invalid or missing webhook secret." },
-        { status: 401 },
+  const auth = assertCalendlyWebhookAuth({
+    signingKey: process.env.CALENDLY_WEBHOOK_SIGNING_KEY,
+    sharedSecret: process.env.CALENDLY_WEBHOOK_SHARED_SECRET,
+    signatureHeader: request.headers.get("calendly-webhook-signature"),
+    rawBody,
+    request,
+  });
+  if (!auth.ok) {
+    if (auth.status === 503) {
+      console.error(
+        "[calendly] webhook rejected — CALENDLY_WEBHOOK_SIGNING_KEY (or shared secret) unset",
       );
     }
-  } else {
-    console.warn(
-      "[calendly] CALENDLY_WEBHOOK_SIGNING_KEY unset — accepting unverified webhook (dev only).",
-    );
+    return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
 
   let body: CalendlyWebhookBody;

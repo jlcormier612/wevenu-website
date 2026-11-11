@@ -5,19 +5,25 @@ import { revalidatePath } from "next/cache";
 import {
   addCustomLine, addLineFromInventory, addLineFromOffering, addLineFromPackage, addSection,
   applyTemplateToEventOrder, ensureEventOrder, finalizeEventOrder, importPackageInclusions, removeLine, removeSection,
-  reopenEventOrder, setSectionFloorPlan, startOrApplyEventOrderTemplate, updateLine,
+  reopenEventOrder, replaceEventOrderFromTemplate, setSectionFloorPlan, setSectionFloorPlanSetup, startOrApplyEventOrderTemplate, updateLine,
 } from "@/lib/event-orders/service";
 import type {
   AddCustomLineInput, AddInventoryLineInput, AddLineResult, AddOfferingLineInput,
   AddSectionResult, EnsureEventOrderResult, EventOrderActionResult, UpdateLineInput,
 } from "@/lib/event-orders/types";
 import type { TemplateApplySelection } from "@/lib/event-order-templates/offerings";
+import {
+  sendEventOrderTemplate,
+  useEventOrderTemplate,
+} from "@/lib/event-order-templates/use-send";
+import type { ChoicesAnswers } from "@/lib/client-choices/types";
 import { createInvoice, linkInvoiceToEventOrder } from "@/lib/invoices/service";
 import type { CreateInvoiceResult, InvoiceActionResult as InvoiceOpResult } from "@/lib/invoices/types";
 import { getEventOrderPdfUrl, shareEventOrderWithClient } from "@/lib/event-orders/representation";
 
 function revalidateEvent(eventId: string) {
   revalidatePath(`/events/${eventId}`);
+  revalidatePath(`/clients/${eventId}`);
 }
 
 export async function ensureEventOrderAction(
@@ -51,6 +57,44 @@ export async function startOrApplyEventOrderTemplateAction(
   return result;
 }
 
+/** Overview setup — replace open Event Order contents from a Library Event Order template (no share/invoice). */
+export async function replaceEventOrderFromTemplateAction(
+  eventId: string,
+  templateId: string,
+): Promise<EnsureEventOrderResult | EventOrderActionResult> {
+  const result = await replaceEventOrderFromTemplate(eventId, templateId);
+  if (result.ok) revalidateEvent(eventId);
+  return result;
+}
+
+/** Use: fixed lines + optional venue-filled selectable groups → finalize (no client). */
+export async function useEventOrderTemplateAction(
+  eventId: string,
+  templateId: string,
+  opts?: {
+    lineSelections?: TemplateApplySelection[];
+    answers?: ChoicesAnswers;
+  },
+) {
+  const result = await useEventOrderTemplate(eventId, templateId, opts);
+  if (result.ok) revalidateEvent(eventId);
+  return result;
+}
+
+/** Send: fixed lines + freeze selectable groups for client portal. */
+export async function sendEventOrderTemplateAction(
+  eventId: string,
+  templateId: string,
+  opts?: {
+    lineSelections?: TemplateApplySelection[];
+    answers?: ChoicesAnswers;
+  },
+) {
+  const result = await sendEventOrderTemplate(eventId, templateId, opts);
+  if (result.ok) revalidateEvent(eventId);
+  return result;
+}
+
 export async function finalizeEventOrderAction(eventOrderId: string, eventId: string): Promise<EventOrderActionResult> {
   const result = await finalizeEventOrder(eventOrderId);
   if (result.ok) revalidateEvent(eventId);
@@ -72,6 +116,17 @@ export async function addSectionAction(eventOrderId: string, eventId: string, na
 export async function removeSectionAction(eventOrderId: string, eventId: string, sectionId: string, sectionName: string): Promise<EventOrderActionResult> {
   const result = await removeSection(eventOrderId, sectionId, sectionName);
   if (result.ok) revalidateEvent(eventId);
+  return result;
+}
+
+export async function setSectionFloorPlanSetupAction(
+  eventOrderId: string, eventId: string, sectionId: string, choice: "auto" | "none" | { setupId: string },
+): Promise<EventOrderActionResult> {
+  const result = await setSectionFloorPlanSetup(eventOrderId, sectionId, choice);
+  if (result.ok) {
+    revalidateEvent(eventId);
+    revalidatePath(`/events/${eventId}/floor-plans`);
+  }
   return result;
 }
 
@@ -140,11 +195,62 @@ export async function removeLineAction(eventOrderId: string, eventId: string, li
   return result;
 }
 
-/** Secondary: create draft invoice linked to EO. Not the primary EO action. */
+/**
+ * Create New Invoice for an Event Order.
+ * Reuses a non-void invoice already linked to this Event Order.
+ * Does not create or change a payment plan, and does not touch a booking invoice.
+ */
 export async function createInvoiceFromEventOrderAction(
   eventOrderId: string, eventId: string, clientId: string,
 ): Promise<CreateInvoiceResult> {
-  const result = await createInvoice({ clientId, eventId, notes: "", dueDate: "", eventOrderId });
+  const { getInvoicesForEventOrder, createAmendedInvoice } = await import("@/lib/invoices/service");
+  const { addToExistingPlan, invoiceToOpenForEventOrder } = await import(
+    "@/lib/client-choices/selections-billing"
+  );
+  const { SELECTIONS_INVOICE_DISPLAY_NAME } = await import("@/lib/invoices/display-name");
+  const invoices = await getInvoicesForEventOrder(eventOrderId);
+  const draft = invoiceToOpenForEventOrder(invoices, eventOrderId);
+  if (draft) {
+    revalidateEvent(eventId);
+    return { ok: true, invoiceId: draft.id };
+  }
+  // Sent/paid EO invoice exists → incremental draft for new charges only.
+  const plan = addToExistingPlan(invoices, eventOrderId);
+  if (plan.kind === "amend") {
+    const amended = await createAmendedInvoice(plan.invoiceId);
+    if (amended.ok) revalidateEvent(eventId);
+    return amended;
+  }
+  const result = await createInvoice({
+    clientId,
+    eventId,
+    notes: "",
+    dueDate: "",
+    eventOrderId,
+    displayName: SELECTIONS_INVOICE_DISPLAY_NAME,
+  });
+  if (result.ok) revalidateEvent(eventId);
+  return result;
+}
+
+/**
+ * Invoice new charges: open the EO draft, or create an incremental draft after
+ * a sent/paid EO invoice. Never links a booking invoice. Does not create a plan.
+ */
+export async function addSelectionsToExistingInvoiceAction(
+  eventOrderId: string, eventId: string,
+): Promise<CreateInvoiceResult> {
+  const { getInvoicesForEventOrder, createAmendedInvoice } = await import("@/lib/invoices/service");
+  const { addToExistingPlan } = await import("@/lib/client-choices/selections-billing");
+  const plan = addToExistingPlan(await getInvoicesForEventOrder(eventOrderId), eventOrderId);
+  if (plan.kind === "unavailable") {
+    return { ok: false, message: "No Event Order invoice to add new charges to." };
+  }
+  if (plan.kind === "open") {
+    revalidateEvent(eventId);
+    return { ok: true, invoiceId: plan.invoiceId };
+  }
+  const result = await createAmendedInvoice(plan.invoiceId);
   if (result.ok) revalidateEvent(eventId);
   return result;
 }
@@ -161,6 +267,51 @@ export async function shareEventOrderWithClientAction(eventOrderId: string, even
   return result;
 }
 
+/**
+ * Send to couple — lock this version (finalize when still open), then share:
+ * one email with the /order/{token} link. Never invoices.
+ */
+export async function sendEventOrderToCoupleAction(
+  eventOrderId: string, eventId: string, customMessage?: string,
+): Promise<EventOrderActionResult> {
+  const { getEventOrder } = await import("@/lib/event-orders/service");
+  const order = await getEventOrder(eventId);
+  if (!order || order.id !== eventOrderId) return { ok: false, message: "Event Order not found." };
+  const { eventOrderShareChoicesBlocker } = await import("@/lib/client-choices/service");
+  const blocked = await eventOrderShareChoicesBlocker(eventId, order.templateId);
+  if (blocked) return { ok: false, message: blocked };
+  if (order.status !== "finalized") {
+    const finalized = await finalizeEventOrder(eventOrderId);
+    if (!finalized.ok) return finalized;
+  }
+  const result = await shareEventOrderWithClient(eventOrderId, customMessage);
+  revalidateEvent(eventId);
+  return result;
+}
+
+/** What the couple will see on their Event Order link (venue Preview). */
+export async function getEventOrderDocumentPreviewAction(eventId: string) {
+  const { buildEventOrderDocumentPreview } = await import("@/lib/event-orders/couple-document-preview");
+  return buildEventOrderDocumentPreview(eventId);
+}
+
+/** Whether live EO lines diverge from the last share snapshot the couple still sees. */
+export async function evaluateEventOrderShareStaleAction(eventOrderId: string): Promise<{
+  hasBeenShared: boolean;
+  liveDiffersFromLastShare: boolean;
+}> {
+  const { evaluateEventOrderShareStale } = await import(
+    "@/lib/event-orders/share-consistency-service"
+  );
+  return evaluateEventOrderShareStale(eventOrderId);
+}
+
 export async function getEventOrderPdfUrlAction(eventOrderId: string) {
   return getEventOrderPdfUrl(eventOrderId);
+}
+
+/** Stock reserved by other events around this event's date, per Event Order item. Read-only. */
+export async function getEventOrderStockAction(eventId: string) {
+  const { getEventOrderStock } = await import("@/lib/inventory/reservations-service");
+  return getEventOrderStock(eventId);
 }

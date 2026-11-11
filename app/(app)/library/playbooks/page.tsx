@@ -1,55 +1,48 @@
 import type { Metadata } from "next";
 
 import { PlanningStarterExamples } from "@/components/playbooks/planning-starter-examples";
+import { PlaybookStarterPicker } from "@/components/playbooks/playbook-starter-picker";
+import { CollectionBackLink } from "@/components/library/collection-back-link";
+import { LibraryHowItWorks } from "@/components/library/library-guidance";
 import { PageHeader } from "@/components/shell/module-placeholder";
-import { PlanningCapabilitiesSection } from "@/components/settings/planning-capabilities-section";
 import { PlaybooksSection } from "@/components/settings/playbooks-section";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { getEvents } from "@/lib/events/service";
+import { ensurePlaybookStartersForCurrentVenue } from "@/lib/playbooks/provision";
 import { getTemplatesForLibrary } from "@/lib/playbooks/service";
-import { getCurrentVenue } from "@/lib/venue/service";
 
 export const metadata: Metadata = { title: "Planning Templates" };
 
 export default async function PlaybooksLibraryPage() {
-  const [templates, events, venue] = await Promise.all([
+  // Lazy-ensure platform starters for venues that missed initial provisioning.
+  await ensurePlaybookStartersForCurrentVenue();
+  const [templates, events] = await Promise.all([
     getTemplatesForLibrary(),
     getEvents(),
-    getCurrentVenue(),
   ]);
-  const planningCapabilities = {
-    timeline: venue?.planningTimelineEnabled ?? true,
-    floorPlan: venue?.planningFloorPlanEnabled ?? true,
-    seating: venue?.planningSeatingEnabled ?? true,
-    vendors: venue?.planningVendorsEnabled ?? true,
-  };
+  const activeTemplates = templates.filter((t) => !t.isArchived);
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Planning Templates"
-        description="Reusable checklists you refine once, then apply to each event. Preview any template to see what's inside — applying always creates that event's own editable copy."
-      />
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Planning capabilities</CardTitle>
-          <CardDescription>
-            Tell Hello to Cheers which planning surfaces your venue actually uses.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <PlanningCapabilitiesSection initial={planningCapabilities} />
-        </CardContent>
-      </Card>
+    <div className="htc-hospitality-page space-y-4 sm:space-y-6">
+      <CollectionBackLink href="/library" label="Templates" />
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
+        <PageHeader
+          title="Planning Templates"
+          description="Create reusable planning checklists once, then apply them to events. Templates can include the planning capabilities your venue has enabled in Settings."
+          actions={
+            <div className="flex flex-wrap items-center gap-2">
+              <PlaybookStarterPicker existingTemplates={activeTemplates} />
+              <PlaybookStarterPicker existingTemplates={activeTemplates} variant="import" />
+            </div>
+          }
+        />
+      </div>
+      <LibraryHowItWorks tone="calm">
+        Client Planning is what your clients see; Venue Planning is your internal team checklist. Checklist items are authored in the template editor — there is no separate catalog to manage. Both use Preview, Edit, and Use the same way. Turn planning tools on or off for your whole venue in Settings → Leads &amp; Booking.
+      </LibraryHowItWorks>
       <PlanningStarterExamples templates={templates} />
       <PlaybooksSection
         initialTemplates={templates}
         events={events.map((e) => ({ id: e.id, name: e.name, eventDate: e.eventDate }))}
+        headerCreate={false}
       />
     </div>
   );

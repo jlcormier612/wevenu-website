@@ -16,6 +16,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { inclusionUnitLabel } from "@/lib/commercial-proposals/inclusion-display";
 import { remainingAmount, suggestDepositAmount } from "@/lib/commercial-selections/constants";
 import { formatCurrency } from "@/lib/invoices/constants";
 import type { PackageWithItems } from "@/lib/packages/types";
@@ -103,7 +104,9 @@ export function SelectPackageSheet({
         router.refresh();
       } catch (err) {
         const message = err instanceof Error ? err.message : "";
-        if (/Failed to find Server Action|older or newer deployment/i.test(message)) {
+        // The browser error is "Server Action … was not found on the server."
+        // The server log says "Failed to find Server Action". Match both.
+        if (/Failed to find Server Action|was not found on the server|Server action not found|older or newer deployment/i.test(message)) {
           toast.error("The app was updated — reload this page and select the package again.");
         } else {
           toast.error("Could not save selected package. Reload and try again.");
@@ -166,8 +169,7 @@ export function SelectPackageSheet({
           )}
           {unpriced.length > 0 && (
             <p className="pt-2 text-xs text-muted-foreground">
-              {unpriced.length} Library package{unpriced.length === 1 ? "" : "s"} still need a price
-              before they can be selected.
+              {`${unpriced.length} Library package${unpriced.length === 1 ? "" : "s"} still need a price before they can be selected.`}
             </p>
           )}
         </div>
@@ -181,13 +183,16 @@ export function SelectPackageSheet({
             </div>
             {selected.items.length > 0 && (
               <ul className="space-y-1 text-xs text-muted-foreground">
-                {selected.items.map((item) => (
-                  <li key={item.id}>
-                    • {item.description}
-                    {item.quantity ? ` × ${item.quantity}` : ""}
-                    {item.unit ? ` ${item.unit}` : ""}
-                  </li>
-                ))}
+                {selected.items.map((item) => {
+                  const unit = inclusionUnitLabel(item.description, item.unit);
+                  return (
+                    <li key={item.id}>
+                      • {item.description}
+                      {item.quantity ? ` × ${item.quantity}` : ""}
+                      {unit ? ` ${unit}` : ""}
+                    </li>
+                  );
+                })}
               </ul>
             )}
             {initialPaymentRequired ? (
@@ -211,7 +216,7 @@ export function SelectPackageSheet({
             </div>
             ) : (
               <p className="text-xs text-muted-foreground">
-                No deposit is required to book. Agreement completion books this package.
+                No initial payment by default. You can still add one when setting up payments.
               </p>
             )}
             {error && <p className="text-sm text-destructive">{error}</p>}

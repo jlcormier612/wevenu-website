@@ -25,9 +25,11 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ChevronDown, ChevronUp, Mail } from "lucide-react";
 
 import { PromotionEditor } from "@/components/vendor-app/vendor-partnerships-list";
+import { HTC_NATIVE_SELECT_CLASS } from "@/lib/ui/native-select";
 import { getVendorActiveVenueAction } from "@/app/vendor/actions";
 import { formatEventDateRangeShort } from "@/lib/events/constants";
 import { vendorCategoryLabel } from "@/lib/vendors/constants";
@@ -88,16 +90,24 @@ export function VendorVenueHero({ initialVenue, partnerships, vendorCategory, al
   vendorCategory: string | null;
   allEvents: VendorEventListItem[];
 }) {
+  const router = useRouter();
   const [context, setContext] = React.useState(initialVenue);
   const [switching, setSwitching] = React.useState(false);
   const [showAllContacts, setShowAllContacts] = React.useState(false);
   const promoEditRef = React.useRef<HTMLButtonElement | null>(null);
 
+  React.useEffect(() => {
+    setContext(initialVenue);
+  }, [initialVenue]);
+
   async function switchVenue(venueId: string) {
     setSwitching(true);
     try {
       const next = await getVendorActiveVenueAction(venueId);
-      if (next) setContext(next);
+      if (next) {
+        setContext(next);
+        router.refresh();
+      }
     } finally {
       setSwitching(false);
     }
@@ -140,7 +150,11 @@ export function VendorVenueHero({ initialVenue, partnerships, vendorCategory, al
           <div className="flex items-center gap-2.5">
             {venue.logoUrl && (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={venue.logoUrl} alt="" className="h-8 w-8 rounded-full object-cover border border-white/40 shrink-0" />
+              <img
+                src={venue.logoUrl}
+                alt=""
+                className="h-8 w-8 shrink-0 rounded-full border border-white/40 bg-white/90 object-contain p-0.5"
+              />
             )}
             <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/70">Partnering with</span>
           </div>
@@ -156,7 +170,7 @@ export function VendorVenueHero({ initialVenue, partnerships, vendorCategory, al
             )}
             <span className="text-xs text-white/70">Partner since {formatPartnerSince(partnership.addedAt)}</span>
             {partnership.activeEventCount > 0 && (
-              <span className="text-xs text-white/70">· {partnership.activeEventCount} event{partnership.activeEventCount === 1 ? "" : "s"} together</span>
+              <span className="text-xs text-white/70">· {`${partnership.activeEventCount} event${partnership.activeEventCount === 1 ? "" : "s"} together`}</span>
             )}
           </div>
         </div>
@@ -170,7 +184,8 @@ export function VendorVenueHero({ initialVenue, partnerships, vendorCategory, al
             value={venue.id}
             disabled={switching}
             onChange={(e) => switchVenue(e.target.value)}
-            className="text-xs rounded-lg border border-border px-2 py-1.5 bg-background disabled:opacity-50"
+            className={`text-xs rounded-lg border border-border px-2 py-1.5 bg-background disabled:opacity-50 ${HTC_NATIVE_SELECT_CLASS}`}
+            aria-label="Switch venue partnership"
           >
             {partnerships.map((p) => <option key={p.venueId} value={p.venueId}>{p.venueName}</option>)}
           </select>
@@ -245,7 +260,7 @@ export function VendorVenueHero({ initialVenue, partnerships, vendorCategory, al
               {formatEventDateRangeShort(nextEvent.eventDate!, nextEvent.eventEndDate)}
             </p>
             <p className="mt-2 text-[10px] text-muted-foreground">
-              {upcomingAtVenue.length} upcoming event{upcomingAtVenue.length === 1 ? "" : "s"} together
+              {`${upcomingAtVenue.length} upcoming event${upcomingAtVenue.length === 1 ? "" : "s"} together`}
             </p>
             <p className="mt-1 text-[11px] font-medium text-primary">Open event →</p>
           </Link>

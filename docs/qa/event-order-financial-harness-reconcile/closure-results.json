@@ -1,0 +1,125 @@
+{
+  "capturedAt": "2026-10-25T19:34:48.648Z",
+  "image": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:b2377f578c48be0c226d5323c8a635cdd10c59b1",
+  "digest": "sha256:8902cc9488ea50ca5d2c768698dffbe3cccba2c6962c9a07970d3d57a6289c0d",
+  "expectedSha": "b2377f578c48be0c226d5323c8a635cdd10c59b1",
+  "note": "Correct EO payable after single-select conflict cleanup is live reconcile (≈$2194.31), not the prior drifted $2351.31 that included a duplicate Plated line.",
+  "eo": {
+    "id": "624eceef-5096-4288-b104-62daa3a82d11",
+    "revision": 23,
+    "status": "finalized"
+  },
+  "expectedPayable": {
+    "deliverySubtotal": 2381,
+    "billableSubtotal": 2061,
+    "includedOrNonBillable": 320,
+    "invoiceAdjustmentsSubtotal": 0,
+    "discountAmount": 0,
+    "taxAmount": 128.81,
+    "payableTotal": 2189.81
+  },
+  "invoice": {
+    "status": "sent",
+    "total": 2189.81,
+    "subtotal": 2061,
+    "tax": 128.81,
+    "freezeRev": 23
+  },
+  "schedule": {
+    "id": "5ddb68ba-d6f6-4b61-956a-0873b04f1cc1",
+    "total_amount": 2189.81
+  },
+  "dinners": [
+    {
+      "description": "Plated Dinner",
+      "amount": 85,
+      "is_included": false,
+      "provenance": "custom"
+    }
+  ],
+  "checks": [
+    {
+      "name": "serving-sha",
+      "pass": true,
+      "detail": "expected=b2377f578c48be0c226d5323c8a635cdd10c59b1 ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:b2377f578c48be0c226d5323c8a635cdd10c59b1"
+    },
+    {
+      "name": "serving-digest",
+      "pass": true,
+      "detail": "sha256:8902cc9488ea50ca5d2c768698dffbe3cccba2c6962c9a07970d3d57a6289c0d"
+    },
+    {
+      "name": "financial-fix-in-lineage",
+      "pass": true,
+      "detail": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:b2377f578c48be0c226d5323c8a635cdd10c59b1"
+    },
+    {
+      "name": "production-untouched",
+      "pass": true,
+      "detail": "sandbox only"
+    },
+    {
+      "name": "eo-single-plated-dinner",
+      "pass": true,
+      "detail": "[{\"id\":\"b6a5bac5-071a-41cb-b085-ae29d158fafe\",\"description\":\"Plated Dinner\",\"amount\":85,\"unit_price\":85,\"is_included\":false,\"provenance\":\"custom\"}]"
+    },
+    {
+      "name": "eo-no-billable-buffet",
+      "pass": true,
+      "detail": "[]"
+    },
+    {
+      "name": "eo-payable-computed",
+      "pass": true,
+      "detail": "{\"deliverySubtotal\":2381,\"billableSubtotal\":2061,\"includedOrNonBillable\":320,\"invoiceAdjustmentsSubtotal\":0,\"discountAmount\":0,\"taxAmount\":128.81,\"payableTotal\":2189.81}"
+    },
+    {
+      "name": "draft-shows-projected-payable",
+      "pass": true,
+      "detail": "$2,189.81 :: OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\n28\nClients\nVendors\n\nSCHEDULING\n\nCalendar\nTours\n4\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nLIBRARY\n\nTemplates\nDocuments\n\nFINANCIALS\n\nContracts\n13\nPayments\n14\n\nTO DO’S\n\nTask Center\nRequests\n\nYOUR VENUE\n\nSetup\nSettings\nGuidance\nVenue Guide\nReports\nHelp & Feedback\nJen's Fancy Venue\nSearch\n⌘K\n99+\nJ\njennifer@hellotocheers.com\nB2P / 96736-9a50 / Portal / Partner\n\n"
+    },
+    {
+      "name": "publish-path",
+      "pass": true,
+      "detail": "send"
+    },
+    {
+      "name": "invoice-published-sent",
+      "pass": true,
+      "detail": "{\"status\":\"sent\",\"total\":2189.81,\"freezeRev\":23,\"eoRev\":23}"
+    },
+    {
+      "name": "invoice-total-matches-eo-payable",
+      "pass": true,
+      "detail": "stored=2189.81 expected=2189.81"
+    },
+    {
+      "name": "invoice-frozen-eo-line-count",
+      "pass": true,
+      "detail": "frozen=9 billable=9"
+    },
+    {
+      "name": "invoice-not-tax-only",
+      "pass": true,
+      "detail": "{\"total\":2189.81,\"tax\":128.81}"
+    },
+    {
+      "name": "payment-plan-matches-payable",
+      "pass": true,
+      "detail": "schedule=2189.81 expected=2189.81"
+    },
+    {
+      "name": "portal-shows-payable",
+      "pass": true,
+      "detail": "expected=$2,189.81 body=INVOICE & PAYMENT PLAN\n\nJen's Fancy Venue\n\nINV-2026-4489C8\n\nEvent & Inventory Selections\n\nPrepared for\n\nB2P 96736-9a50 & Portal Partner\n\nB2P 96736-9a50 & Portal Partner · July 17, 2060\n\nTOTAL CONTRACTED\n\n$2,189.81\n\nPAID TO DATE\n\n$0\n\nBALANCE REMAINING\n\n$2,189.81\n\nAMOUNT DUE NOW\n\n$547.45\n\nInitial Payment · due October 23, 2026\n\nHow to pay\n\nJen's Fancy Venue accepts Check, Cash, ACH / bank transfer, and Other / manual.\n\nPlease remit payment by the method indicated on your invoice. If you have a que"
+    },
+    {
+      "name": "portal-rpc-matches-payable",
+      "pass": true,
+      "detail": "portal=2189.81 expected=2189.81"
+    }
+  ],
+  "passCount": 16,
+  "failCount": 0,
+  "pass": true
+}

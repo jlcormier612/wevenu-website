@@ -1,6 +1,8 @@
+import { formatDependsOnSummary } from "@/lib/event-order-templates/group-dependencies";
 import {
   formatTemplateOfferingPrice,
   linesForSection,
+  optionsForGroup,
   unsectionedLines,
 } from "@/lib/event-order-templates/offerings";
 import type { EventOrderTemplateWithDetails } from "@/lib/event-order-templates/types";
@@ -11,6 +13,7 @@ export function EventOrderTemplatePreviewView({
   template: EventOrderTemplateWithDetails;
 }) {
   const sections = [...template.sections].sort((a, b) => a.sortOrder - b.sortOrder);
+  const groups = [...(template.groups ?? [])].sort((a, b) => a.sortOrder - b.sortOrder);
 
   return (
     <article className="space-y-6 overflow-x-hidden">
@@ -23,11 +26,12 @@ export function EventOrderTemplatePreviewView({
           <p className="text-sm leading-relaxed text-muted-foreground">{template.description}</p>
         ) : null}
         <p className="text-xs text-muted-foreground">
-          A reusable template. Applying it to an event creates that event’s own structure — it is not itself a client commitment.
+          Commercial build sheet — fixed offerings and selectable groups. Use or Send creates the
+          event’s own Event Order; the template is not a commitment.
         </p>
       </header>
 
-      {sections.length === 0 && template.lines.length === 0 ? (
+      {sections.length === 0 && template.lines.length === 0 && groups.length === 0 ? (
         <p className="text-sm text-muted-foreground">No sections yet.</p>
       ) : (
         <div className="space-y-6">
@@ -42,7 +46,7 @@ export function EventOrderTemplatePreviewView({
                   <p className="text-sm text-muted-foreground">{section.guidance}</p>
                 ) : null}
                 {offerings.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No offerings in this section yet.</p>
+                  <p className="text-sm text-muted-foreground">No included offerings</p>
                 ) : (
                   <ul className="space-y-3">
                     {offerings.map((line) => (
@@ -72,6 +76,55 @@ export function EventOrderTemplatePreviewView({
                   </li>
                 ))}
               </ul>
+            </section>
+          ) : null}
+
+          {groups.length > 0 ? (
+            <section className="space-y-4">
+              <h2 className="font-heading text-sm font-semibold uppercase tracking-[0.14em] text-heading">
+                Choice groups
+              </h2>
+              {groups.map((g) => {
+                const opts = optionsForGroup(template.options ?? [], g.id);
+                return (
+                  <div key={g.id} className="space-y-2">
+                    <p className="text-sm font-medium text-heading">{g.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {g.selectionMode === "single" ? "Pick one" : "Pick many"}
+                      {g.minSelect > 0 ? " · required" : " · optional"}
+                    </p>
+                    <p className="text-xs font-medium text-heading">
+                      {formatDependsOnSummary(g.dependsOnOptionIds, template.options ?? [])}
+                    </p>
+                    {g.instructions ? (
+                      <p className="text-sm text-muted-foreground">{g.instructions}</p>
+                    ) : null}
+                    <ul className="space-y-2">
+                      {opts.length === 0 ? (
+                        <li className="text-sm text-muted-foreground">
+                          {(g.dependsOnOptionIds?.length ?? 0) > 0
+                            ? "No follow-up choices configured."
+                            : "No options yet."}
+                        </li>
+                      ) : (
+                        opts.map((o) => (
+                          <li key={o.id} className="border-b border-border/70 pb-2 last:border-0 text-sm">
+                            <span className="font-medium text-heading">{o.label}</span>
+                            <span className="ml-2 text-muted-foreground">
+                              {o.isIncluded
+                                ? "Included"
+                                : o.unitPrice != null
+                                  ? `$${o.unitPrice.toFixed(2)}`
+                                  : "Unpriced"}
+                              {o.isDefault ? " · Default" : ""}
+                            </span>
+                          </li>
+                        ))
+                      )}
+                    </ul>
+                  </div>
+                );
+              })}
             </section>
           ) : null}
         </div>

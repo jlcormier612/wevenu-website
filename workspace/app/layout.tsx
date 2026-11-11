@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { Cormorant_Garamond, Source_Sans_3 } from "next/font/google";
+import { Source_Sans_3 } from "next/font/google";
+import localFont from "next/font/local";
 
 import { ThemeProvider } from "@/components/providers/theme-provider";
 
@@ -11,10 +12,16 @@ const sourceSans = Source_Sans_3({
   weight: ["400", "500", "600", "700"],
 });
 
-const cormorant = Cormorant_Garamond({
+/**
+ * Heading face is vendored so Docker/CI builds do not call fonts.google.com.
+ * next/font/google multi-weight Cormorant fails intermittently in ECS image
+ * builds ("queries have exactly one entry"). Same file and variable as venue-app.
+ */
+const cormorant = localFont({
+  src: "./fonts/CormorantGaramond[wght].ttf",
   variable: "--font-heading",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: "400 700",
+  display: "swap",
 });
 
 export const metadata: Metadata = {

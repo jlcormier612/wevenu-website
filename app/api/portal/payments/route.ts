@@ -13,7 +13,24 @@
 
 import { NextResponse } from "next/server";
 import { createClient } from "@/integrations/supabase/server";
+import {
+  normalizeCommercialBookingPrefs,
+  VENUE_ACCEPTED_PAYMENT_METHODS,
+  type VenueAcceptedPaymentMethod,
+} from "@/lib/booking-journey/venue-prefs";
 import { selectCanonicalPaymentSchedules, type PortalPaymentScheduleLike } from "@/lib/portal/payment-schedules";
+import { venueToday } from "@/lib/venue/timezone";
+
+type PortalInvoicePayload = {
+  id: string;
+  invoiceNumber?: string;
+  displayName?: string | null;
+  dueDate?: string | null;
+  total?: number;
+  balanceDue?: number;
+  status?: string;
+  amendsInvoiceId?: string | null;
+};
 
 export async function GET(request: Request) {
   const token = new URL(request.url).searchParams.get("token") ?? "";
@@ -21,10 +38,92 @@ export async function GET(request: Request) {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("get_portal_payments", { p_token: token });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  const payload = (data ?? { schedules: [] }) as { schedules?: PortalPaymentScheduleLike[]; error?: string };
+  const payload = (data ?? { schedules: [] }) as {
+    schedules?: PortalPaymentScheduleLike[];
+    invoices?: PortalInvoicePayload[];
+    error?: string;
+  };
   if (payload.error) return NextResponse.json(payload);
+
+  let invoices: PortalInvoicePayload[] = Array.isArray(payload.invoices)
+    ? [...payload.invoices]
+    : [];
+
+  // Same readiness rule as get_portal_checkout_context — surface before Pay is clickable.
+  let onlinePaymentsReady = false;
+  let businessToday: string | null = null;
+  let offlinePaymentMethods: { value: string; label: string }[] = [];
+  let offlinePaymentInstructions: string | null = null;
+  try {
+    const { createAdminClient } = await import("@/integrations/supabase/admin");
+    const admin = createAdminClient();
+    const { data: session } = await admin
+      .from("client_portal_sessions")
+      .select("venue_id")
+      .eq("access_token", token)
+      .maybeSingle<{ venue_id: string }>();
+    if (session?.venue_id) {
+      const { data: venue } = await admin
+        .from("venues")
+        .select(
+          "stripe_account_id, stripe_onboarding_status, stripe_charges_enabled, timezone, commercial_booking_prefs",
+        )
+        .eq("id", session.venue_id)
+        .maybeSingle<{
+          stripe_account_id: string | null;
+          stripe_onboarding_status: string | null;
+          stripe_charges_enabled: boolean | null;
+          timezone: string | null;
+          commercial_booking_prefs: unknown;
+        }>();
+      onlinePaymentsReady = Boolean(
+        venue?.stripe_account_id &&
+          venue.stripe_onboarding_status === "connected" &&
+          venue.stripe_charges_enabled === true,
+      );
+      if (venue?.timezone) {
+        businessToday = venueToday(venue.timezone);
+      }
+      const prefs = normalizeCommercialBookingPrefs(venue?.commercial_booking_prefs);
+      offlinePaymentInstructions = prefs.clientPaymentInstructions;
+      const offline: VenueAcceptedPaymentMethod[] = prefs.acceptedPaymentMethods.filter(
+        (m) => m !== "online",
+      );
+      offlinePaymentMethods = offline.map((value) => ({
+        value,
+        label: VENUE_ACCEPTED_PAYMENT_METHODS.find((m) => m.value === value)?.label ?? value,
+      }));
+    }
+
+    // Enrich invoices with amendsInvoiceId so couple UI can distinguish incremental invoices.
+    if (invoices.length > 0) {
+      const ids = invoices.map((row) => row.id);
+      const { data: amendRows } = await admin
+        .from("invoices")
+        .select("id, amends_invoice_id")
+        .in("id", ids);
+      const byId = new Map(
+        (amendRows ?? []).map((row: { id: string; amends_invoice_id: string | null }) => [
+          row.id,
+          row.amends_invoice_id,
+        ]),
+      );
+      invoices = invoices.map((row) => ({
+        ...row,
+        amendsInvoiceId: byId.get(row.id) ?? row.amendsInvoiceId ?? null,
+      }));
+    }
+  } catch {
+    onlinePaymentsReady = false;
+  }
+
   return NextResponse.json({
     ...payload,
+    invoices,
     schedules: selectCanonicalPaymentSchedules(payload.schedules ?? []),
+    onlinePaymentsReady,
+    businessToday,
+    offlinePaymentMethods,
+    offlinePaymentInstructions,
   });
 }

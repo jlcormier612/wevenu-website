@@ -1,53 +1,59 @@
 /**
  * Dashboard application service (Sprint 7 — Today Dashboard).
  *
- * Fetches all widget data in three parallel queries (one for all leads,
- * one for open tasks with lead names, one for recent activities with lead
- * names) then filters and shapes client-side. No new DB tables needed.
+ * Phase 3A/3B: Dashboard GET is a read/assembly operation for Focus, Coming Up,
+ * Business Snapshot inputs, and live L1 sources. It must not manufacture
+ * venue-wide intelligence, run the broad observation engine, compute venue
+ * insights, or read/sync persisted recommendations on the critical path.
  * Server-only.
  */
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
-import { getLuvObservations } from "@/lib/luv/observations";
 import { getCommunicationObservations } from "@/lib/luv/communication-observations";
 import { getLuvSettings } from "@/lib/luv/settings";
-import { getVenueTrends, computeTrendObservations, computeStoryMode } from "@/lib/luv/trends-service";
-import { getVenueMemories, computeMemoryObservations } from "@/lib/luv/memory-service";
-import { getVenueInsights, computeInsightObservations } from "@/lib/luv/insights-service";
-import { getVenueHealthScore } from "@/lib/luv/health-service";
-import { getVenueRecommendations } from "@/lib/luv/recommendation-service";
-import { getLuvActionObservations, getPendingLuvActions, getLuvPerformanceObservations } from "@/lib/luv/action-service";
+import { getDismissedObservationIds } from "@/lib/luv/recommendation-service";
+import { filterVisibleObservations } from "@/lib/luv/observation-dismiss";
 import { getActivationScore, getNextPendingMilestone } from "@/lib/activation/service";
 import type { ActivationScore } from "@/lib/activation/types";
 import { GAP_COPY } from "@/lib/dashboard/gap-copy";
 import { computeSetupGapObservations } from "@/lib/luv/setup-observations";
-import { getDailyBriefing } from "@/lib/luv/briefing-service";
-import { getArticlesForGapKeys } from "@/lib/success-library/service";
-import { getNotificationPreferences } from "@/lib/notifications/preferences";
-import { isVenueReadyToInviteCouples } from "@/lib/setup-hub/service";
-import { refreshAllLeadScores, generateMomentumLanguage, getMomentumTier } from "@/lib/leads/scores";
-import { LEAD_STATUSES } from "@/lib/leads/constants";
+import { loadVenueReadiness } from "@/lib/luv/venue-readiness-load";
+import { readinessDashboardObservations } from "@/lib/luv/venue-readiness";
+import { getFocusNeedsAttentionBriefing } from "@/lib/luv/briefing-service";
+import { isOpenLeadLifecycle, TERMINAL_LEAD_LIFECYCLE_STATES } from "@/lib/leads/open-lifecycle";
 import type { Lead } from "@/lib/leads/types";
 import { getCurrentToursForLeads, EMPTY_TOUR, type LeadTourInfo } from "@/lib/leads/repository";
 import { getCurrentVenue } from "@/lib/venue/service";
-import { venueToday } from "@/lib/venue/timezone";
-import { getClientListFilterCounts } from "@/lib/clients/service";
-import { onlyBusinessReporting } from "@/lib/reporting/business-scope";
-import { clientDisplayName } from "@/lib/clients/constants";
-import { leadDisplayName } from "@/lib/leads/constants";
-import { resolveVenueNextSteps, VENUE_NEXT_STEPS_CANDIDATE_CAP } from "@/lib/dashboard/venue-next-steps";
+import { venueLocalToUtcIso, venueToday } from "@/lib/venue/timezone";
+import { comingUpHorizonEnd } from "@/lib/clients/list-filters";
+import { resolveDashboardGreetingFirstName } from "@/lib/dashboard/owner-greeting";
+import {
+  shouldIncludeDashboardSetupGapObservations,
+  shouldShowDashboardLuvIntro,
+} from "@/lib/dashboard/luv-intro-eligibility";
+import {
+  leadBelongsInFocusPopulation,
+  leadMatchesFocusTourRules,
+} from "@/lib/dashboard/focus-lead-membership";
+import { qualifiesAsStaleNewInquiryAttention } from "@/lib/dashboard/stale-inquiry-attention";
+import {
+  forensicCount,
+  forensicSetVenue,
+  forensicTime,
+} from "@/lib/dashboard/forensic-timing";
+import { isVenueReadyToInviteCouples } from "@/lib/setup-hub/service";
+import { getCurrentStaffMember } from "@/lib/team/service";
 import type {
-  ActivityItem,
   AttentionLead,
   DashboardData,
   DashboardEvent,
   DashboardPayment,
   OnboardingStatus,
   OnboardingStep,
-  PipelineStage,
   TaskItem,
 } from "@/lib/dashboard/types";
 import type { Venue } from "@/lib/venue/types";
+import type { ClientListFilterKey } from "@/lib/clients/list-filters";
 
 // ---- row types for embedded selects -----------------------------------------
 
@@ -61,6 +67,7 @@ type LeadRow = Record<string, unknown> & {
   inquiry_message: string | null; inquiry_date: string;
   next_action_text: string | null; next_action_due: string | null;
   follow_up_date: string | null; last_contacted_at: string | null;
+  first_booked_at: string | null; lost_at: string | null;
   created_at: string; updated_at: string;
 };
 
@@ -75,16 +82,22 @@ type DashTaskRow = {
   leads: EmbeddedLeadName;
 };
 
-type DashActivityRow = {
-  id: string; lead_id: string; type: string;
-  title: string; description: string | null; created_at: string;
-  leads: EmbeddedLeadName;
-};
+const LEAD_FOCUS_SELECT =
+  "id, venue_id, sales_stage, status, source, first_name, last_name, email, phone, partner_first_name, partner_last_name, partner_email, event_type, event_date, end_date, guest_count, estimated_budget, inquiry_message, inquiry_date, next_action_text, next_action_due, follow_up_date, last_contacted_at, first_booked_at, lost_at, created_at, updated_at, exclude_from_business_reporting, relationship_id";
+
+const EMPTY_CLIENT_COUNTS = {
+  all: 0,
+  coming_up: 0,
+  needs_attention: 0,
+  cancelled: 0,
+  past: 0,
+} as Record<ClientListFilterKey, number>;
 
 function mapLead(r: LeadRow, tour: LeadTourInfo = EMPTY_TOUR): Lead {
   const salesStage = (r.sales_stage ?? r.status) as Lead["salesStage"];
   return {
     id: r.id, venueId: r.venue_id, salesStage, status: salesStage,
+    pipelineStageId: null,
     source: r.source, firstName: r.first_name, lastName: r.last_name,
     email: r.email, phone: r.phone,
     preferredCommunicationChannels: [],
@@ -101,6 +114,11 @@ function mapLead(r: LeadRow, tour: LeadTourInfo = EMPTY_TOUR): Lead {
     relationshipId: (r.relationship_id as string | null) ?? null,
     excludeFromBusinessReporting: Boolean(r.exclude_from_business_reporting),
     intakeConfidence: null,
+    lostReason: null,
+    lostReasonDetail: null,
+    lostAt: r.lost_at,
+    firstBookedAt: r.first_booked_at,
+    venueSeenAt: null,
     createdAt: r.created_at, updatedAt: r.updated_at,
   };
 }
@@ -109,38 +127,6 @@ function embeddedName(row: EmbeddedLeadName): string {
   if (!row) return "Unknown lead";
   return [row.first_name, row.last_name].filter(Boolean).join(" ");
 }
-
-// ---- Client row types (dashboard queries) -----------------------------------
-
-type DashClientRow = {
-  id: string;
-  first_name: string;
-  last_name: string;
-  partner_first_name: string | null;
-  partner_last_name: string | null;
-  event_type: string | null;
-  event_date: string | null;
-  guest_count: number | null;
-  status: string;
-  created_at: string;
-};
-
-function mapDashClient(r: DashClientRow): {
-  id: string;
-  firstName: string;
-  lastName: string;
-  partnerFirstName: string | null;
-  partnerLastName: string | null;
-  status: string;
-} {
-  return {
-    id: r.id, firstName: r.first_name, lastName: r.last_name,
-    partnerFirstName: r.partner_first_name, partnerLastName: r.partner_last_name,
-    status: r.status,
-  };
-}
-
-const CLOSED = new Set(["booked", "lost", "won", "cancelled"]);
 
 function attentionReason(lead: Lead, today: string): string {
   if (lead.followUpDate && lead.followUpDate < today) {
@@ -154,16 +140,165 @@ function attentionReason(lead: Lead, today: string): string {
   return `New inquiry ${ageDays} day${ageDays === 1 ? "" : "s"} old — no follow-up scheduled`;
 }
 
+type FocusContractRow = { client_id: string | null; status: string | null };
+
+async function loadContractStatusByLeadId(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
+  venueId: string,
+  leadIds: string[],
+): Promise<Map<string, string>> {
+  const byLead = new Map<string, string>();
+  if (leadIds.length === 0) return byLead;
+  const { data: clientRows, error: clientError } = await supabase
+    .from("clients")
+    .select("id, lead_id")
+    .eq("venue_id", venueId)
+    .in("lead_id", leadIds);
+  if (clientError) throw clientError;
+  const clientToLead = new Map<string, string>();
+  for (const row of (clientRows ?? []) as { id: string; lead_id: string | null }[]) {
+    if (row.lead_id) clientToLead.set(row.id, row.lead_id);
+  }
+  const clientIds = [...clientToLead.keys()];
+  if (clientIds.length === 0) return byLead;
+  const { data, error } = await supabase
+    .from("contracts")
+    .select("client_id, status")
+    .eq("venue_id", venueId)
+    .in("client_id", clientIds)
+    .not("status", "in", "(cancelled,void)");
+  if (error) throw error;
+  const rank = (status: string | null): number => {
+    if (status === "signed") return 4;
+    if (status === "sent") return 3;
+    if (status === "draft") return 1;
+    return 0;
+  };
+  for (const row of (data ?? []) as FocusContractRow[]) {
+    if (!row.client_id || !row.status) continue;
+    const leadId = clientToLead.get(row.client_id);
+    if (!leadId) continue;
+    const prev = byLead.get(leadId);
+    if (!prev || rank(row.status) > rank(prev)) byLead.set(leadId, row.status);
+  }
+  return byLead;
+}
+
+function addDaysIso(isoDate: string, days: number): string {
+  const [y, m, d] = isoDate.split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d + days));
+  return `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, "0")}-${String(dt.getUTCDate()).padStart(2, "0")}`;
+}
+
+const TERMINAL_IN = `(${[...TERMINAL_LEAD_LIFECYCLE_STATES].join(",")})`;
+
+/**
+ * Load the smallest authoritative lead set for Focus membership.
+ * Follow-up rules via filtered open-lifecycle query; tour window via
+ * tour_appointments lead_ids — then union and re-apply exact membership.
+ */
+export async function loadFocusPopulationLeads(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
+  venueId: string,
+  timezone: string | null,
+  today: string,
+  twoDaysAgoMs: number,
+  twoWeeksOut: string,
+): Promise<Lead[]> {
+  const cutoffIso = new Date(twoDaysAgoMs).toISOString();
+  const tourWindowStart = venueLocalToUtcIso(today, "00:00", timezone);
+  const tourWindowEnd = venueLocalToUtcIso(addDaysIso(twoWeeksOut, 1), "00:00", timezone);
+
+  const followUpOr = [
+    `follow_up_date.lt.${today}`,
+    `follow_up_date.eq.${today}`,
+    `and(sales_stage.eq.new_inquiry,follow_up_date.is.null,created_at.lt.${cutoffIso})`,
+  ].join(",");
+
+  const { data: archivedRels } = await supabase
+    .from("venue_customer_relationships")
+    .select("id")
+    .eq("venue_id", venueId)
+    .not("archived_at", "is", null);
+  const archivedRelationshipIds = new Set(
+    ((archivedRels ?? []) as Array<{ id: string }>).map((r) => r.id),
+  );
+
+  const [followUpRes, tourRes] = await Promise.all([
+    supabase
+      .from("leads")
+      .select(LEAD_FOCUS_SELECT)
+      .eq("venue_id", venueId)
+      .not("sales_stage", "in", TERMINAL_IN)
+      .or(followUpOr),
+    supabase
+      .from("tour_appointments")
+      .select("lead_id")
+      .eq("venue_id", venueId)
+      .in("status", ["scheduled", "confirmed"])
+      .not("lead_id", "is", null)
+      .gte("scheduled_at", tourWindowStart)
+      .lt("scheduled_at", tourWindowEnd),
+  ]);
+
+  if (followUpRes.error) throw followUpRes.error;
+  if (tourRes.error) throw tourRes.error;
+
+  const byId = new Map<string, LeadRow>();
+  for (const row of (followUpRes.data ?? []) as LeadRow[]) {
+    const relId = (row as { relationship_id?: string | null }).relationship_id;
+    if (relId && archivedRelationshipIds.has(relId)) continue;
+    byId.set(row.id, row);
+  }
+
+  const tourLeadIds = [
+    ...new Set(
+      ((tourRes.data ?? []) as { lead_id: string | null }[])
+        .map((r) => r.lead_id)
+        .filter((id): id is string => Boolean(id)),
+    ),
+  ].filter((id) => !byId.has(id));
+
+  if (tourLeadIds.length > 0) {
+    const { data: tourLeads, error: tourLeadsError } = await supabase
+      .from("leads")
+      .select(LEAD_FOCUS_SELECT)
+      .eq("venue_id", venueId)
+      .in("id", tourLeadIds)
+      .not("sales_stage", "in", TERMINAL_IN);
+    if (tourLeadsError) throw tourLeadsError;
+    for (const row of (tourLeads ?? []) as LeadRow[]) {
+      const relId = (row as { relationship_id?: string | null }).relationship_id;
+      if (relId && archivedRelationshipIds.has(relId)) continue;
+      byId.set(row.id, row);
+    }
+  }
+
+  const rows = [...byId.values()];
+  const leadTours = await getCurrentToursForLeads(
+    supabase,
+    venueId,
+    rows.map((r) => r.id),
+  );
+  const leads = rows.map((r) => mapLead(r, leadTours.get(r.id) ?? EMPTY_TOUR));
+  return leads.filter((l) =>
+    leadBelongsInFocusPopulation(l, today, twoDaysAgoMs, twoWeeksOut),
+  );
+}
+
 // ---- main service function --------------------------------------------------
 
 export async function getDashboardData(): Promise<DashboardData | null> {
   if (!isSupabaseConfigured) return null;
-  const venue = await getCurrentVenue();
+  const venue = await forensicTime("auth_venue_resolution", () => getCurrentVenue());
   if (!venue) return null;
+  forensicSetVenue(venue.id);
+
   // Ready-to-invite is a Setup Hub declaration, not a dashboard wall.
-  // Still load operational dashboard data; checklist copy may reflect readiness.
-  const readyToInviteCouples = await isVenueReadyToInviteCouples(venue.id);
-  const supabase = await createClient();
+  // Loaded later in the parallel wave; checklist copy may reflect readiness.
+  const supabase = await forensicTime("create_client", () => createClient());
 
   // Venue-local calendar day, not UTC. Today's Focus vs Upcoming partitions
   // on this string, so an Eastern venue checking the dashboard after 8pm
@@ -171,144 +306,120 @@ export async function getDashboardData(): Promise<DashboardData | null> {
   // slice of Date.now() would report.
   const today = venueToday(venue.timezone);
   const twoDaysAgoMs = Date.now() - 48 * 60 * 60 * 1000;
-  const twoWeeksOut = new Date(Date.now() + 14 * 86_400_000).toISOString().slice(0, 10);
-  const sixtyDaysOut = new Date(Date.now() + 60 * 86_400_000).toISOString().slice(0, 10);
+  const twoWeeksOut = addDaysIso(today, 14);
+  const comingUpOut = comingUpHorizonEnd(today);
 
-  // Auto-mark overdue payments for this venue before the dashboard loads
-  // Auto-mark overdue (non-fatal — don't block dashboard load on failure)
+  // Auto-mark overdue (non-fatal — must not block first paint)
   void supabase.rpc("mark_overdue_payments", { p_venue_id: venue.id });
 
-  const [leadsRes, tasksRes, activityRes, clientsRes, eventsRes, paymentsRes, staffRes, clientListCounts, invitationsRes, portalSessionsRes, eventTasksRes, contractsRes] = await Promise.all([
-    supabase
-      .from("leads")
-      .select("id, venue_id, sales_stage, status, source, first_name, last_name, email, phone, partner_first_name, partner_last_name, partner_email, event_type, event_date, end_date, guest_count, estimated_budget, inquiry_message, inquiry_date, next_action_text, next_action_due, follow_up_date, last_contacted_at, created_at, updated_at, commitment_score, responsiveness_score, interest_score, exclude_from_business_reporting")
-      .eq("venue_id", venue.id)
-      .order("inquiry_date", { ascending: false }),
+  const emptyBriefing = {
+    needsAttentionNow: [],
+    comingUpThisWeek: [],
+    resolvedSinceLastLooked: [],
+    informational: [],
+    generatedAt: new Date().toISOString(),
+  };
 
-    supabase
-      .from("lead_tasks")
-      .select("*, leads(first_name, last_name)")
-      .eq("venue_id", venue.id)
-      .eq("completed", false)
-      .order("due_date", { ascending: true, nullsFirst: false })
-      .order("created_at", { ascending: true })
-      .limit(15),
+  const [
+    focusLeads,
+    tasksRes,
+    eventsRes,
+    paymentsRes,
+    currentStaff,
+    luvSettings,
+    briefing,
+  ] = await forensicTime("wave1_parallel_wall", () =>
+    Promise.all([
+      forensicTime("focus_population", () =>
+        loadFocusPopulationLeads(supabase, venue.id, venue.timezone, today, twoDaysAgoMs, twoWeeksOut),
+      ),
+      forensicTime("tasks_query", () =>
+        supabase
+          .from("lead_tasks")
+          .select("*, leads!inner(first_name, last_name)")
+          .eq("venue_id", venue.id)
+          .eq("completed", false)
+          .order("due_date", { ascending: true, nullsFirst: false })
+          .order("created_at", { ascending: true })
+          .limit(15),
+      ),
+      // Coming up source: events table only — real event_date, next 30 days.
+      forensicTime("events_query", () =>
+        supabase
+          .from("events")
+          .select("id, name, event_date, start_time, status, guest_count, client_id, exclude_from_business_reporting, clients(first_name, last_name, partner_first_name, partner_last_name)")
+          .eq("venue_id", venue.id)
+          .neq("status", "cancelled")
+          .gte("event_date", today)
+          .lte("event_date", comingUpOut)
+          .order("event_date", { ascending: true })
+          .limit(8),
+      ),
+      // Payment line items for today's dated Focus — not Coming up.
+      forensicTime("payments_query", () =>
+        supabase
+          .from("payment_line_items")
+          .select("id, schedule_id, label, amount, due_date, status, payment_schedules(title, client_id, clients(first_name, last_name))")
+          .eq("venue_id", venue.id)
+          .in("status", ["pending", "overdue"])
+          .not("due_date", "is", null)
+          .order("due_date", { ascending: true })
+          .limit(15),
+      ),
+      // Authenticated staff membership — greeting uses this person, not a preferred owner.
+      forensicTime("current_staff", () => getCurrentStaffMember(venue.id)),
+      forensicTime("luv_settings", () => getLuvSettings().catch(() => null)),
+      forensicTime("get_focus_briefing", () =>
+        getFocusNeedsAttentionBriefing(venue.id).catch(() => emptyBriefing),
+      ),
+    ]),
+  );
 
-    supabase
-      .from("lead_activities")
-      .select("*, leads(first_name, last_name)")
-      .eq("venue_id", venue.id)
-      .order("created_at", { ascending: false })
-      .limit(15),
-
-    // Clients for Your Next Steps portal lifecycle only (id/name/status).
-    // Not used for a "recent bookings" widget — that field was unused dead weight.
-    supabase
-      .from("clients")
-      .select("id, first_name, last_name, partner_first_name, partner_last_name, event_type, event_date, guest_count, status, created_at")
-      .eq("venue_id", venue.id)
-      .neq("status", "cancelled")
-      .order("created_at", { ascending: false })
-      .limit(200),
-
-
-    // Coming up source: events table only — real event_date, next 60 days.
-    // Never join payment lines, invoices, or other dated facts into this query.
-    supabase
-      .from("events")
-      .select("id, name, event_date, start_time, status, guest_count, client_id, exclude_from_business_reporting, clients(first_name, last_name, partner_first_name, partner_last_name)")
-      .eq("venue_id", venue.id)
-      .neq("status", "cancelled")
-      .gte("event_date", today)
-      .lte("event_date", sixtyDaysOut)
-      .order("event_date", { ascending: true })
-      .limit(8),
-
-    // Payment line items for Next Steps / today's dated Focus — not Coming up.
-    supabase
-      .from("payment_line_items")
-      .select("id, schedule_id, label, amount, due_date, status, payment_schedules(title, client_id, clients(first_name, last_name))")
-      .eq("venue_id", venue.id)
-      .in("status", ["pending", "overdue"])
-      .not("due_date", "is", null)
-      .order("due_date", { ascending: true })
-      .limit(15),
-
-    // Owner's name for the dashboard greeting
-    supabase
-      .from("venue_staff")
-      .select("full_name")
-      .eq("venue_id", venue.id)
-      .eq("is_owner", true)
-      .maybeSingle<{ full_name: string }>(),
-
-    // Same Clients operational-view counts the Clients page pills use.
-    // Upcoming is every future-or-today non-cancelled booked client — not
-    // a 60-day events-table window and not a confirmed-only subset.
-    getClientListFilterCounts(),
-
-    // Your Next Steps — portal lifecycle (invite vs unopened is one item per client)
-    supabase
-      .from("client_invitations")
-      .select("client_id, status, created_at")
-      .eq("venue_id", venue.id)
-      .order("created_at", { ascending: false }),
-
-    supabase
-      .from("client_portal_sessions")
-      .select("client_id, last_accessed_at")
-      .eq("venue_id", venue.id),
-
-    // Same open-task population as Task Center (pending/overdue/blocked, live events).
-    // Cap for dashboard Next Steps / open-task widgets — Task Center remains the full list.
-    supabase
-      .from("event_tasks")
-      .select(`
-        id, title, status, due_date, owner_type, event_id,
-        events (
-          id, name, status,
-          clients ( first_name, last_name, partner_first_name, partner_last_name )
-        )
-      `)
-      .eq("venue_id", venue.id)
-      .in("status", ["pending", "overdue", "blocked"])
-      .not("events.status", "in", "(cancelled,complete)")
-      .order("due_date", { ascending: true })
-      .limit(100),
-
-    supabase
-      .from("contracts")
-      .select("id, title, status, clients(first_name, last_name, partner_first_name, partner_last_name)")
-      .eq("venue_id", venue.id)
-      .in("status", ["draft", "sent"])
-      .limit(50),
-  ]);
-
-  if (leadsRes.error) throw leadsRes.error;
   if (tasksRes.error) throw tasksRes.error;
-  if (activityRes.error) throw activityRes.error;
-  if (clientsRes.error) throw clientsRes.error;
   if (eventsRes.error) throw eventsRes.error;
-  // payments error is non-fatal for the dashboard
 
-  const leadRows = leadsRes.data as LeadRow[];
-  const leadTours = await getCurrentToursForLeads(supabase, venue.id, leadRows.map((r) => r.id));
-  const leads = leadRows.map((r) => mapLead(r, leadTours.get(r.id) ?? EMPTY_TOUR));
+  forensicCount("focus_leads", focusLeads.length);
+  forensicCount("tasks_rows", (tasksRes.data ?? []).length);
+  forensicCount("events_rows", (eventsRes.data ?? []).length);
+  forensicCount("payments_rows", (paymentsRes.data ?? []).length);
+  forensicCount("briefing_needs_attention", briefing.needsAttentionNow.length);
+
+  const leads = focusLeads;
 
   // ---- Needs Attention -------------------------------------------------------
-  // Leads that are slipping: overdue follow-up OR stale "new" inquiry (>48h, no follow-up set)
   const businessLeads = leads.filter((l) => !l.excludeFromBusinessReporting);
-  const needsAttentionLeads = businessLeads.filter((l) => {
+  const staleInquiryCandidates = businessLeads.filter((l) => {
     const stage = l.salesStage ?? l.status;
-    if (CLOSED.has(stage)) return false;
-    if (l.followUpDate && l.followUpDate < today) return true; // overdue follow-up
-    if (
-      stage === "new_inquiry" &&
+    return (
+      isOpenLeadLifecycle(stage) &&
       !l.followUpDate &&
       new Date(l.createdAt).getTime() < twoDaysAgoMs
-    )
-      return true;
-    return false;
+    );
+  });
+  const contractByLeadId = await forensicTime("focus_contract_lifecycle", () =>
+    loadContractStatusByLeadId(
+      supabase,
+      venue.id,
+      staleInquiryCandidates.map((l) => l.id),
+    ),
+  );
+  const needsAttentionLeads = businessLeads.filter((l) => {
+    const stage = l.salesStage ?? l.status;
+    if (!isOpenLeadLifecycle(stage)) return false;
+    if (l.followUpDate && l.followUpDate < today) return true;
+    // Stage is membership for this copy pattern, never proof the lead is
+    // still an inquiry — lifecycle facts below can veto.
+    if (stage !== "new_inquiry") return false;
+    return qualifiesAsStaleNewInquiryAttention(
+      l,
+      {
+        firstBookedAt: l.firstBookedAt,
+        lostAt: l.lostAt,
+        contractStatus: contractByLeadId.get(l.id) ?? null,
+      },
+      today,
+      twoDaysAgoMs,
+    );
   });
 
   const needsAttention: AttentionLead[] = needsAttentionLeads
@@ -316,9 +427,8 @@ export async function getDashboardData(): Promise<DashboardData | null> {
     .map((l) => ({ ...l, reason: attentionReason(l, today) }));
 
   // ---- Follow-ups Due --------------------------------------------------------
-  // Leads with follow_up_date = today (not overdue — that goes in Needs Attention)
   const followupsDueAll = businessLeads.filter(
-    (l) => l.followUpDate === today && !CLOSED.has(l.salesStage ?? l.status),
+    (l) => l.followUpDate === today && isOpenLeadLifecycle(l.salesStage ?? l.status),
   );
   const followupsDue = followupsDueAll.slice(0, 8);
 
@@ -326,20 +436,11 @@ export async function getDashboardData(): Promise<DashboardData | null> {
   const upcomingTours = businessLeads
     .filter(
       (l) =>
-        l.tourDate &&
-        l.tourDate >= today &&
-        l.tourDate <= twoWeeksOut &&
-        !l.tourCompleted,
+        isOpenLeadLifecycle(l.salesStage ?? l.status) &&
+        leadMatchesFocusTourRules(l, today, twoWeeksOut),
     )
     .sort((a, b) => (a.tourDate ?? "").localeCompare(b.tourDate ?? ""))
     .slice(0, 8);
-
-  // ---- Pipeline Snapshot -----------------------------------------------------
-  const pipelineStages: PipelineStage[] = LEAD_STATUSES.map((s) => ({
-    status: s.value,
-    label: s.label,
-    count: businessLeads.filter((l) => (l.salesStage ?? l.status) === s.value).length,
-  }));
 
   // ---- Tasks -----------------------------------------------------------------
   const openTasks: TaskItem[] = (tasksRes.data as DashTaskRow[]).map((r) => ({
@@ -349,22 +450,6 @@ export async function getDashboardData(): Promise<DashboardData | null> {
     dueDate: r.due_date,
     leadName: embeddedName(r.leads),
   }));
-
-  // ---- Recent Activity -------------------------------------------------------
-  const recentActivity: ActivityItem[] = (
-    activityRes.data as DashActivityRow[]
-  ).map((r) => ({
-    id: r.id,
-    leadId: r.lead_id,
-    type: r.type,
-    title: r.title,
-    description: r.description,
-    createdAt: r.created_at,
-    leadName: embeddedName(r.leads),
-  }));
-
-  // ---- Client data (portal lifecycle for Your Next Steps) -------------------
-  const clients = (clientsRes.data as DashClientRow[]).map(mapDashClient);
 
   // ---- Upcoming events (from events table — canonical source) ---------------
   type DashEventRow = {
@@ -389,7 +474,6 @@ export async function getDashboardData(): Promise<DashboardData | null> {
     };
   });
 
-
   // ---- Payment dashboard data -----------------------------------------------
   type PaymentItemDash = {
     id: string; schedule_id: string; label: string; amount: number;
@@ -408,292 +492,138 @@ export async function getDashboardData(): Promise<DashboardData | null> {
   const overduePayments = allPaymentItems.filter((r) => r.status === "overdue" || (r.due_date < today && r.status === "pending")).map(mapDashPayment);
   const upcomingPayments = allPaymentItems.filter((r) => r.due_date >= today && r.status === "pending").slice(0, 8).map(mapDashPayment);
 
-  // ---- Your Next Steps (non-fatal extras; empty queue if a source fails) -----
-  type InvDashRow = { client_id: string; status: string; created_at: string };
-  const latestInvitation = new Map<string, InvDashRow>();
-  for (const row of (invitationsRes.error ? [] : (invitationsRes.data ?? [])) as InvDashRow[]) {
-    if (!latestInvitation.has(row.client_id)) latestInvitation.set(row.client_id, row);
-  }
-  const portalOpened = new Set(
-    ((portalSessionsRes.error ? [] : (portalSessionsRes.data ?? [])) as { client_id: string; last_accessed_at: string | null }[])
-      .filter((s) => s.last_accessed_at != null)
-      .map((s) => s.client_id),
-  );
-
-  type EventTaskDashRow = {
-    id: string;
-    title: string;
-    status: string;
-    due_date: string | null;
-    owner_type: string;
-    event_id: string;
-    events: {
-      id: string;
-      name: string;
-      status: string;
-      clients: {
-        first_name: string;
-        last_name: string;
-        partner_first_name: string | null;
-        partner_last_name: string | null;
-      } | null;
-    } | null;
-  };
-  const ownerType = (raw: string): "coordinator" | "team" | "couple" | "vendor" => {
-    if (raw === "team" || raw === "couple" || raw === "vendor") return raw;
-    return "coordinator";
-  };
-  const venueTasks = ((eventTasksRes.error ? [] : (eventTasksRes.data ?? [])) as unknown as EventTaskDashRow[]).map((t) => {
-    const couple = t.events?.clients;
-    return {
-      id: t.id,
-      title: t.title,
-      dueDate: t.due_date,
-      eventId: t.event_id,
-      eventName: t.events?.name ?? null,
-      clientName: couple
-        ? clientDisplayName(
-            couple.first_name,
-            couple.last_name,
-            couple.partner_first_name,
-            couple.partner_last_name,
-          )
-        : null,
-      ownerType: ownerType(t.owner_type),
-      status: t.status,
-    };
+  const ownerFirstName = resolveDashboardGreetingFirstName({
+    fullName: currentStaff?.name ?? null,
+    venueName: venue.name,
   });
 
-  type ContractDashRow = {
-    id: string;
-    title: string;
-    status: string;
-    clients: {
-      first_name: string;
-      last_name: string;
-      partner_first_name: string | null;
-      partner_last_name: string | null;
-    } | null;
-  };
-  const nextStepContracts = ((contractsRes.error ? [] : (contractsRes.data ?? [])) as unknown as ContractDashRow[])
-    .filter((c) => c.status === "draft" || c.status === "sent")
-    .map((c) => ({
-      id: c.id,
-      title: c.title,
-      status: c.status as "draft" | "sent",
-      clientName: c.clients
-        ? clientDisplayName(
-            c.clients.first_name,
-            c.clients.last_name,
-            c.clients.partner_first_name,
-            c.clients.partner_last_name,
-          )
-        : null,
-    }));
-
-  const leadFollowUps = [
-    ...needsAttentionLeads.map((l) => ({
-      id: l.id,
-      name: leadDisplayName(l.firstName, l.lastName, l.partnerFirstName, l.partnerLastName),
-      followUpDate: l.followUpDate,
-      isOverdue: !!(l.followUpDate && l.followUpDate < today) || !l.followUpDate,
-    })),
-    ...followupsDueAll.map((l) => ({
-      id: l.id,
-      name: leadDisplayName(l.firstName, l.lastName, l.partnerFirstName, l.partnerLastName),
-      followUpDate: l.followUpDate,
-      isOverdue: false,
-    })),
-  ];
-
-  // Fetched at the larger candidate cap, not VENUE_NEXT_STEPS_CAP — the
-  // Dashboard page excludes anything already shown in Today's Focus and
-  // THEN caps to 5, so overlap with Today's Focus can't quietly shrink
-  // what Your Next Steps actually shows below 5 real, distinct items.
-  const nextSteps = resolveVenueNextSteps({
-    today,
-    clients: clients.map((c) => {
-      const inv = latestInvitation.get(c.id);
-      return {
-        id: c.id,
-        status: c.status,
-        name: clientDisplayName(c.firstName, c.lastName, c.partnerFirstName, c.partnerLastName),
-        invitationSent: !!inv && (inv.status === "pending" || inv.status === "accepted"),
-        portalOpened: portalOpened.has(c.id),
-      };
-    }),
-    venueTasks,
-    leadFollowUps,
-    contracts: nextStepContracts,
-    payments: overduePayments.map((p) => ({
-      id: p.id,
-      scheduleId: p.scheduleId,
-      label: p.label,
-      dueDate: p.dueDate,
-      isOverdue: p.isOverdue,
-      clientName: p.clientName,
-    })),
-  }, VENUE_NEXT_STEPS_CANDIDATE_CAP).visible;
-
-  // Extract first name from "Jordan Rivera" → "Jordan"
-  const ownerFullName = staffRes.data?.full_name ?? null;
-  const ownerFirstName = ownerFullName ? ownerFullName.split(" ")[0] : null;
-
-  // Refresh all three lead scores (commitment, responsiveness, interest) — non-blocking
-  void refreshAllLeadScores(supabase, venue.id).catch(() => {});
-
-  // Luv observations + trend intelligence — non-blocking; return [] on error
-  const luvSettings = await getLuvSettings().catch(() => null);
-  const emptyBriefing = { needsAttentionNow: [], comingUpThisWeek: [], resolvedSinceLastLooked: [], informational: [], generatedAt: new Date().toISOString() };
-  const [luvObservationsRaw, communicationObservations, rawTrends, rawMemories, rawInsights, healthScore, recommendationsRaw, actionObservationsRaw, pendingActionObservationsRaw, performanceObservationsRaw, activationScore, nextPendingMilestone, notificationPrefs, briefing] = await Promise.all([
-    getLuvObservations(supabase, venue.id, today, luvSettings ?? undefined).catch(() => []),
-    getCommunicationObservations(supabase, venue.id).catch(() => []),
-    getVenueTrends().catch(() => null),
-    getVenueMemories().catch(() => null),
-    getVenueInsights().catch(() => null),
-    getVenueHealthScore().catch(() => null),
-    getVenueRecommendations().catch(() => []),
-    getLuvActionObservations().catch(() => []),
-    getPendingLuvActions().catch(() => []),
-    getLuvPerformanceObservations().catch(() => []),
-    getActivationScore(venue.id).catch(() => null),
-    getNextPendingMilestone(venue.id).catch(() => null),
-    getNotificationPreferences().catch(() => null),
-    getDailyBriefing(venue.id).catch(() => emptyBriefing),
-  ]);
-  // Communication and setup-gap observations respect the same
-  // observationsEnabled setting as every other Luv observation — Luv is
-  // one voice, not two. When off, return nothing so the Dashboard Luv
-  // card stays hidden (it also gates on luvObservationsEnabled below).
-  const setupGapObservations = activationScore ? computeSetupGapObservations(activationScore.checklist) : [];
-  const observationsOn = luvSettings?.observationsEnabled !== false;
-  const luvObservations = observationsOn
-    ? [...luvObservationsRaw, ...communicationObservations, ...setupGapObservations]
-    : [];
-  const showDigestCallout = !!notificationPrefs && notificationPrefs.dailyDigestEnabled && !notificationPrefs.digestIntroDismissed;
-  const trendObservations  = observationsOn && rawTrends   ? computeTrendObservations(rawTrends) : [];
-  const storyObservation   = observationsOn && rawTrends   ? computeStoryMode(rawTrends) : null;
-  const memoryObservations = observationsOn && rawMemories
-    ? computeMemoryObservations(rawMemories, new Date().getMonth() + 1)
-    : [];
-  const insightObservations = observationsOn && rawInsights ? computeInsightObservations(rawInsights) : [];
-  const recommendations = observationsOn ? recommendationsRaw : [];
-  const actionObservations = observationsOn ? actionObservationsRaw : [];
-  const pendingActionObservations = observationsOn ? pendingActionObservationsRaw : [];
-  const performanceObservations = observationsOn ? performanceObservationsRaw : [];
-
-  // Compute momentum segments from lead scores (post-refresh)
-  const { data: scoredLeads } = await onlyBusinessReporting(
-    supabase.from("leads")
-      .select("id, first_name, last_name, sales_stage, commitment_score, responsiveness_score, interest_score, last_contacted_at")
-      .eq("venue_id", venue.id)
-      .not("sales_stage", "in", "(booked,lost)")
-      .order("commitment_score", { ascending: false })
-      .limit(30),
+  // Live L1 sources only — no broad observation engine, no insights compute,
+  // no persisted-recommendation read. Contract/document families have no other
+  // current-GET source after that removal and are therefore omitted (not
+  // recreated). Setup-gap and readiness reuse the live calculations already
+  // required for guided setup / readiness. Communication reuses its existing
+  // observation calculation for the authorized L1 families.
+  const [
+    communicationObservationsRaw,
+    dismissedObservationIds,
+    activationScore,
+    venueReadiness,
+    nextPendingMilestone,
+    readyToInviteCouples,
+  ] = await forensicTime("wave2_parallel_wall", () =>
+    Promise.all([
+      forensicTime("get_communication_observations", () =>
+        getCommunicationObservations(supabase, venue.id).catch(() => []),
+      ),
+      forensicTime("dismissed_observation_ids", () =>
+        getDismissedObservationIds().catch(() => new Set<string>()),
+      ),
+      forensicTime("activation_score", () => getActivationScore(venue.id).catch(() => null)),
+      forensicTime("load_venue_readiness", () => loadVenueReadiness().catch(() => null)),
+      forensicTime("next_pending_milestone", () =>
+        getNextPendingMilestone(venue.id).catch(() => null),
+      ),
+      // Read-only. On failure, suppress setup guidance rather than inventing
+      // ready=false and contradicting a possible saved declaration. Never write.
+      forensicTime("ready_to_invite_couples", () =>
+        isVenueReadyToInviteCouples(venue.id).catch(() => true),
+      ),
+    ]),
   );
 
-  const heatingUp: { leadId: string; name: string; reason: string }[] = [];
-  const coolingOff: { leadId: string; name: string; reason: string }[] = [];
+  // Aggregate delivery celebration / failure-count cards removed from
+  // getCommunicationObservations (Health no longer exposes those lists).
+  const communicationObservations = communicationObservationsRaw.filter((obs) =>
+    obs.id.startsWith("comm-stale-unopened-"),
+  );
+  forensicCount("communication_observations", communicationObservations.length);
+  forensicCount("dismissed_ids", dismissedObservationIds.size);
 
-  for (const l of (scoredLeads ?? []) as { id: string; first_name: string; last_name: string; sales_stage: string; commitment_score: number; responsiveness_score: number; interest_score: number; last_contacted_at: string | null }[]) {
-    const name = [l.first_name, l.last_name].filter(Boolean).join(" ");
-    const daysAgo = l.last_contacted_at
-      ? Math.floor((Date.now() - new Date(l.last_contacted_at).getTime()) / 86_400_000)
-      : null;
-    const tier = getMomentumTier(l.commitment_score, l.responsiveness_score, l.interest_score, daysAgo, l.sales_stage);
-    const lang = generateMomentumLanguage(l.first_name, l.commitment_score, l.responsiveness_score, l.interest_score, daysAgo);
-    if (tier === "heating_up" && heatingUp.length < 4) heatingUp.push({ leadId: l.id, name, reason: lang ?? "Showing recent engagement." });
-    if (tier === "cooling_off" && coolingOff.length < 4) coolingOff.push({ leadId: l.id, name, reason: lang ?? "May need a follow-up." });
-  }
+  const setupGapObservations =
+    activationScore && shouldIncludeDashboardSetupGapObservations(readyToInviteCouples)
+      ? computeSetupGapObservations(activationScore.checklist)
+      : [];
+  const readinessObservations = venueReadiness ? readinessDashboardObservations(venueReadiness) : [];
+  const observationsOn = luvSettings?.observationsEnabled !== false;
+  // Preserve existing remaining-source order: communication, then setup-gap,
+  // then readiness. First eligible live L1 candidate still wins.
+  const luvObservations = observationsOn
+    ? filterVisibleObservations(
+        [...communicationObservations, ...setupGapObservations, ...readinessObservations],
+        dismissedObservationIds,
+      )
+    : [];
+  const insightObservations: typeof luvObservations = [];
+  const recommendations: import("@/lib/luv/recommendation-types").VenueRecommendation[] = [];
+
+  forensicCount("setup_gap_observations", setupGapObservations.length);
+  forensicCount("readiness_observations", readinessObservations.length);
+  forensicCount("luv_observations_visible", luvObservations.length);
+  forensicCount("insight_observations_visible", insightObservations.length);
 
   return {
     venueName: venue.name,
     ownerFirstName,
     todayIso: today,
-    nextSteps,
-    onboarding: await buildGuidedSetupChecklist(venue, activationScore, readyToInviteCouples),
+    onboarding: await forensicTime("guided_setup_checklist", () =>
+      buildGuidedSetupChecklist(venue, activationScore),
+    ),
     briefing,
     needsAttention,
     followupsDue,
     upcomingTours,
-    pipelineStages,
-    totalLeads: businessLeads.length,
-    activeLeadCount: businessLeads.filter((l) => !CLOSED.has(l.salesStage ?? l.status)).length,
-    newLeadCount: businessLeads.filter((l) => (l.salesStage ?? l.status) === "new_inquiry").length,
+    // Unused by current Dashboard page — keep type shape without venue-wide work.
+    pipelineStages: [],
+    totalLeads: 0,
+    activeLeadCount: 0,
+    newLeadCount: 0,
     openTasks,
     openTaskCount: (tasksRes.data as DashTaskRow[]).length,
-    recentActivity,
+    recentActivity: [],
     overduePayments,
     upcomingPayments,
     upcomingEvents,
-    upcomingEventCount: clientListCounts.coming_up,
-    clientListCounts,
+    upcomingEventCount: upcomingEvents.length,
+    clientListCounts: EMPTY_CLIENT_COUNTS,
     luvObservations,
-    trendObservations,
-    storyObservation,
-    memoryObservations,
+    trendObservations: [],
+    storyObservation: null,
+    memoryObservations: [],
     insightObservations,
-    healthScore,
+    healthScore: null,
     recommendations,
-    actionObservations,
-    pendingActionObservations,
-    performanceObservations,
-    momentumSegments: { heatingUp, coolingOff },
+    actionObservations: [],
+    pendingActionObservations: [],
+    performanceObservations: [],
+    momentumSegments: { heatingUp: [], coolingOff: [] },
     activationScore,
     nextPendingMilestone,
-    showDigestCallout,
-    // When false, Dashboard must not render the restrained Luv card at all —
-    // including aggregates and recommendations that would otherwise still speak.
     luvObservationsEnabled: observationsOn,
-    // Luv Experience Completion, Work Stream 5 — the one-time intro card.
-    // Guided Setup §1.1 (2026-07-22): the permanent luvIntroSeenAt flag is
-    // still the gate (never show it twice), but it's no longer sufficient
-    // on its own — a venue that's long past setup and simply never
-    // dismissed the card shouldn't have it resurface. Requires the venue
-    // to actually look new: still in the Activation Engine's "setup"
-    // phase, or created within the last two weeks (matches this file's
-    // own `twoWeeksOut` window elsewhere).
-    showLuvIntro: !venue.luvIntroSeenAt && (
-      activationScore?.phase === "setup" ||
-      Date.now() - new Date(venue.createdAt).getTime() < 14 * 86_400_000
-    ),
+    showLuvIntro: shouldShowDashboardLuvIntro({
+      readyToInviteCouples,
+      luvIntroSeenAt: venue.luvIntroSeenAt,
+      activationPhase: activationScore?.phase ?? null,
+      venueCreatedAt: venue.createdAt,
+    }),
   };
 }
 
-// ---- Getting Started onboarding ---------------------------------------------
-// Hospitality Success Platform, Guided Setup §1.1 (decided 2026-07-22): this
-// used to be a second, independent computation of "what's done, what's
-// missing" — its own ad hoc field/count checks, disagreeing in places with
-// the Activation Engine's own scoring. It's now a presentation layer over
-// Activation's own checklist (lib/activation/service.ts's getActivationScore,
-// backed by compute_venue_activation_score() in Postgres) — one computation,
-// with journey-voiced copy attached per item here. Companion voice, not
-// documentation: every line names the actual consequence of the gap, not
-// just the feature it's missing — "Luv says 'I'll walk through it with
-// you,' not 'here's an article.'"
-
 /**
- * Presentation layer over the Activation Engine's own checklist — see the
- * note above. No independent computation of "what's done" happens here.
- *
- * Continuous Setup Experience, Phase 6 (docs/continuous-setup-experience-
- * implementation-plan.md): this card is product-usage/engagement nudging,
- * not foundational setup — Setup Hub owns setup now. For a venue on the
- * legacy wizard path (setupCompleted), nothing changes here — this card
- * has always been their only "getting started" surface. For a venue on the
- * Setup Hub path, it stays hidden until readyToInviteCouples, so it can
- * never compete with Setup Hub as "the setup experience" — it only appears
- * once setup is actually done, as the plan's own "swap what gates the
- * dashboard's Activation card... to the new readiness field" describes.
+ * Presentation layer over the Activation Engine's own checklist.
+ * Articles are loaded only when the checklist card would actually show.
  */
-async function buildGuidedSetupChecklist(venue: Venue, activationScore: ActivationScore | null, readyToInviteCouples: boolean): Promise<OnboardingStatus> {
+async function buildGuidedSetupChecklist(venue: Venue, activationScore: ActivationScore | null): Promise<OnboardingStatus> {
   const items = activationScore?.checklist ?? [];
 
-  // Luv's Success Library §4.2 (2026-07-22) — a published article tagged
-  // for an incomplete gap becomes a secondary "read more" link. Looked up
-  // once, in bulk, not per step.
+  // Continuous Setup Experience: this card stays hidden (show: false).
+  // Skip Success Library I/O when the UI will not render the checklist.
+  const show = false;
   const incompleteKeys = items.filter((i) => !i.completed).map((i) => i.key);
-  const articlesByGapKey = await getArticlesForGapKeys(incompleteKeys).catch(() => new Map());
+  let articlesByGapKey = new Map<string, { title: string; slug: string }>();
+  if (show && incompleteKeys.length > 0) {
+    const { getArticlesForGapKeys } = await import("@/lib/success-library/service");
+    articlesByGapKey = await getArticlesForGapKeys(incompleteKeys).catch(() => new Map());
+  }
 
   const steps: OnboardingStep[] = [
     {
@@ -720,29 +650,17 @@ async function buildGuidedSetupChecklist(venue: Venue, activationScore: Activati
   ];
 
   const completedCount = steps.filter((s) => s.completed).length;
-  const allComplete = completedCount === steps.length;
-
-  // Luv's single highest-priority nudge — the top (highest-points) unresolved
-  // item in the checklist itself (which carries a stable `key` GAP_COPY is
-  // keyed by; the separate `gaps` array only carries display label text).
   const topGapItem = [...items].filter((i) => !i.completed).sort((a, b) => b.points - a.points)[0];
   const luvNudge = topGapItem ? (GAP_COPY[topGapItem.key]?.description ?? topGapItem.label) : null;
 
   return {
-    // Disappears entirely once every step is done — no lingering graduation
-    // card, so the dashboard reclaims that space rather than keeping a
-    // permanent "you're done" card on screen. Never shown at all on the
-    // Setup Hub path (setupCompleted false), graduated or not — its own
-    // copy ("You're X% set up," "ready to welcome its next couple," payment/
-    // usage milestones) is exactly the language Setup Hub replaced, and
-    // showing it post-graduation as a "nudge" still surfaces that language
-    // to a customer who should never see it. setupCompleted true is the
-    // legacy wizard path, unaffected by this addition. readyToInviteCouples
-    // is threaded through call sites for that reason alone, not used here.
-    show: false,
+    show,
     steps,
     completedCount,
     totalSteps: steps.length,
     luvNudge,
   };
 }
+
+/** Exported for Focus membership loaders / tests. */
+export { leadBelongsInFocusPopulation, leadMatchesFocusTourRules };

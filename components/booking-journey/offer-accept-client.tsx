@@ -11,6 +11,10 @@ import { ProposalArtifact } from "@/components/booking-journey/proposal-artifact
 import { Button } from "@/components/ui/button";
 import type { ProposalView } from "@/lib/booking-journey/proposal-view";
 
+/**
+ * Direct (Path B) package share link — venue already chose the package.
+ * Neutral "Review and accept" language — not a multi-option proposal.
+ */
 export function OfferAcceptClient({
   token,
   offer,
@@ -38,6 +42,8 @@ export function OfferAcceptClient({
     <ProposalArtifact
       proposal={offer}
       context="couple"
+      eyebrow="Review and accept"
+      previewAcceptLabel="Accept"
       acceptSlot={
         accepted ? undefined : (
           <Button type="button" size="lg" className="w-full" onClick={handleAccept} disabled={pending}>
@@ -47,7 +53,7 @@ export function OfferAcceptClient({
                 Accepting…
               </>
             ) : (
-              "Accept proposal"
+              "Accept"
             )}
           </Button>
         )

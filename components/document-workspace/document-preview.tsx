@@ -9,6 +9,7 @@ import { WorkspaceCategoryBadge, WorkspaceStatusBadge } from "@/components/docum
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { downloadFile } from "@/lib/download-file";
+import { documentSharingDirectionLabel } from "@/lib/documents/access";
 import { formatBytes } from "@/lib/documents/constants";
 import {
   downloadContractFinalPdfAction,
@@ -150,7 +151,7 @@ export function DocumentPreviewSheet({
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <WorkspaceCategoryBadge category={doc.category} />
-            <WorkspaceStatusBadge status={doc.status} experienceStatus={doc.experienceStatus} />
+            <WorkspaceStatusBadge status={doc.status} experienceStatus={doc.experienceStatus} docType={doc.docType} />
           </div>
         </SheetHeader>
 
@@ -179,7 +180,7 @@ export function DocumentPreviewSheet({
             <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Relationship</h3>
             <Row label="Relationship" value={doc.relationshipName} />
             <Row label="Event" value={doc.eventName} />
-            <Row label="Owner" value={doc.uploadedByType === "vendor" ? "Vendor" : "Venue"} />
+            <Row label="Owner" value={doc.originLabel ?? (doc.uploadedByType === "vendor" ? "Vendor" : "Venue")} />
             {doc.nextActionLabel && <Row label="Next" value={doc.nextActionLabel} />}
           </section>
 
@@ -211,7 +212,7 @@ export function DocumentPreviewSheet({
                     <Button size="sm" variant="outline" className="mt-1">Open signing link</Button>
                   </a>
                 )}
-                <a href={`/contracts/${doc.id}`} className="block">
+                <a href={doc.producerHref ?? `/contracts/${doc.id}`} className="block">
                   <Button size="sm" variant="ghost" className="mt-1">Open contract</Button>
                 </a>
               </>
@@ -259,7 +260,14 @@ export function DocumentPreviewSheet({
             )}
             {doc.docType === "document" && (
               <>
-                <Row label="Sharing" value={doc.isCoupleVisible ? "Shared with couple" : doc.isVendorVisible ? "Shared with vendors" : "Private"} />
+                <Row
+                  label="Sharing"
+                  value={documentSharingDirectionLabel({
+                    originLabel: doc.originLabel ?? (doc.uploadedByType === "vendor" ? "Vendor" : "Venue"),
+                    isCoupleVisible: doc.isCoupleVisible,
+                    isVendorVisible: doc.isVendorVisible,
+                  })}
+                />
                 {doc.isCompanionUpload && (
                   <p className="text-xs text-muted-foreground">
                     Uploaded file — not the authoritative signed contract or Final PDF. Deleting this file does not change the contract.
@@ -330,11 +338,6 @@ export function DocumentPreviewSheet({
             )}
           </section>
 
-          {/* Comments — future placeholder only, per the brief */}
-          <section className="space-y-2 opacity-50">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Comments</h3>
-            <p className="text-xs text-muted-foreground">Coming soon.</p>
-          </section>
         </div>
       </SheetContent>
     </Sheet>

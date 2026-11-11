@@ -1,0 +1,36 @@
+{
+  "sourceSpreadsheetColumns": [
+    {
+      "source": "Deposit $2000 paid 2025-06-01 check #CHK-1001",
+      "target": "scheduleLines[0] alreadyPaid + paidDate + paymentMethod + referenceNumber"
+    },
+    {
+      "source": "Progress $3000 paid 2025-12-15 ACH",
+      "target": "scheduleLines[1] alreadyPaid…"
+    },
+    {
+      "source": "Balance $3500 due 2026-11-01",
+      "target": "scheduleLines[2] alreadyPaid=false + dueDate"
+    },
+    {
+      "source": "Contract total $8500",
+      "target": "contractedTotal (+ packageName line)"
+    },
+    {
+      "source": "Currency",
+      "target": "schedule.currency default (not CSV-mapped today)"
+    },
+    {
+      "source": "Card processor txn id / Stripe charge",
+      "target": "NOT imported — offline mark only; stripe_* stay null"
+    },
+    {
+      "source": "QuickBooks payment id",
+      "target": "NOT imported"
+    },
+    {
+      "source": "Partial payment against one installment",
+      "target": "SUPPORTED via markItemPaid partial amounts in product UI; AC import marks full line paid when alreadyPaid=true"
+    }
+  ]
+}

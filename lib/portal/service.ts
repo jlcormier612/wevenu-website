@@ -6,6 +6,12 @@ import { getCurrentVenue } from "@/lib/venue/service";
 import { applyLiveVenueBrandingUrls } from "@/lib/venue/branding-assets";
 import { recordEngagementEvent } from "@/lib/activation/service";
 import { isInternalVerificationIdentity } from "@/lib/reporting/internal-verification";
+import {
+  applyAcceptedPackageToTasks,
+  hasAcceptedPackage,
+  isPackageChoiceTask,
+  PACKAGE_APPROVED_LABEL,
+} from "@/lib/playbooks/package-choice-task";
 import type { PortalContext, PortalSession, PortalTask, PortalTaskLink, PortalTimeline, PortalTimelineEntry, PortalTimelineSection, PortalVendorTask } from "@/lib/portal/types";
 
 // ---- Token resolution (uses server Supabase client; SECURITY DEFINER functions
@@ -25,16 +31,10 @@ export async function resolvePortalContext(token: string): Promise<PortalContext
     const { data: venueRow } = await admin
       .from("venues")
       .select(
-        "updated_at, planning_timeline_enabled, planning_floor_plan_enabled, planning_seating_enabled, planning_vendors_enabled",
+        "updated_at, planning_checklists_enabled, planning_timeline_enabled, planning_floor_plan_enabled, planning_seating_enabled, planning_vendors_enabled, planning_inventory_enabled, planning_event_order_enabled, planning_questionnaires_enabled",
       )
       .eq("id", ctx.venue.id)
-      .maybeSingle<{
-        updated_at: string;
-        planning_timeline_enabled: boolean | null;
-        planning_floor_plan_enabled: boolean | null;
-        planning_seating_enabled: boolean | null;
-        planning_vendors_enabled: boolean | null;
-      }>();
+      .maybeSingle();
     const { capabilitiesFromVenueRow } = await import("@/lib/playbooks/capabilities");
     ctx.venue = {
       ...ctx.venue,
@@ -72,7 +72,7 @@ export async function resolvePortalTasks(token: string): Promise<PortalTask[]> {
   const { data, error } = await supabase.rpc("get_portal_tasks", { p_token: token });
   if (error || !data || (data as Record<string, unknown>).error) return [];
   const rows = ((data as Record<string, unknown>).tasks ?? []) as Record<string, unknown>[];
-  return rows.filter((r) => !isInternalVerificationIdentity({ extraName: String(r.title ?? "") })).map((r) => {
+  const tasks = rows.filter((r) => !isInternalVerificationIdentity({ extraName: String(r.title ?? "") })).map((r): PortalTask => {
     const trigger = (r.autoCompleteTrigger as string | null | undefined) ?? null;
     // Defense in depth: never allow couple manual complete when a domain trigger owns it
     // (covers pre-migration RPC responses that still omit the policy).
@@ -98,6 +98,12 @@ export async function resolvePortalTasks(token: string): Promise<PortalTask[]> {
       milestoneName: (r.milestoneName as string) ?? "",
       milestoneKind: (r.milestoneKind as PortalTask["milestoneKind"]) ?? null,
       status: (r.status as PortalTask["status"]) ?? "pending",
+      progressState:
+        r.progressState === "not_started"
+        || r.progressState === "in_progress"
+        || r.progressState === "complete"
+          ? r.progressState
+          : null,
       isRequired: Boolean(r.isRequired),
       completedAt: (r.completedAt as string | null) ?? null,
       autoCompleteTrigger: trigger,
@@ -108,6 +114,17 @@ export async function resolvePortalTasks(token: string): Promise<PortalTask[]> {
       links,
     };
   });
+  if (!tasks.some(isPackageChoiceTask)) return tasks;
+  const admin = createAdminClient();
+  const { data: session } = await admin
+    .from("client_portal_sessions")
+    .select("venue_id, client_id")
+    .eq("access_token", token)
+    .maybeSingle<{ venue_id: string; client_id: string }>();
+  const accepted = session ? await hasAcceptedPackage(admin, session.venue_id, session.client_id) : false;
+  return applyAcceptedPackageToTasks(tasks, accepted).map((t) =>
+    t.packageApproved ? { ...t, description: `${PACKAGE_APPROVED_LABEL}.` } : t,
+  );
 }
 
 export async function resolvePortalVendorTasks(token: string): Promise<PortalVendorTask[]> {
@@ -244,9 +261,9 @@ export async function sharePortalTimelineWithVendor(
 }
 
 // The Client Timeline — the couple's own always-live view (their own
-// draft + venue items tagged wedding_party), through get_portal_run_of_show.
-// Never gated by the couple's own submission state. Venue staff-only
-// framework items (no wedding_party audience) stay out of the portal.
+// draft + venue items shared with Client), through get_portal_run_of_show.
+// Never gated by the couple's own submission state. Venue items without
+// the client audience stay out of the portal.
 export async function resolvePortalTimeline(token: string): Promise<PortalTimeline> {
   const empty: PortalTimeline = { sections: [], entries: [], lastSubmittedAt: null, hasUnpublishedChanges: false };
   if (!isSupabaseConfigured) return empty;

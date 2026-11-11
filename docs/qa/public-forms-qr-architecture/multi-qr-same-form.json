@@ -1,0 +1,20 @@
+{
+  "formId": "5f4ab426-6fca-4a5c-ab9d-924f9171c4b4",
+  "campaigns": [
+    {
+      "id": "70bb03ba-b3bb-4292-9ff5-f5e93b9116b9",
+      "name": "Wedding Expo — QA",
+      "code": "e56175492a291771",
+      "public_form_id": "5f4ab426-6fca-4a5c-ab9d-924f9171c4b4",
+      "destination_type": "public_form"
+    },
+    {
+      "id": "ccaade52-1a00-4cf2-baeb-7e35ee9f6174",
+      "name": "Wedding Expo — QA Booth",
+      "code": "9732092ffc252951",
+      "public_form_id": "5f4ab426-6fca-4a5c-ab9d-924f9171c4b4",
+      "destination_type": "public_form"
+    }
+  ],
+  "boothRedirect": "https://app.sandbox.hellotocheers.com/forms/35a56b1d565ff8d49287e1d2abb3870c?qr=ccaade52-1a00-4cf2-baeb-7e35ee9f6174"
+}

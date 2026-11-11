@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { SettingsTabs } from "@/components/settings/settings-tabs";
 import { WebsiteFormsSection } from "@/components/settings/website-forms-section";
-import { LeadIntakeHealthSection } from "@/components/settings/lead-intake-health-section";
 import { TourSettingsSection } from "@/components/settings/tour-settings-section";
 import { CommercialBookingPrefsSection } from "@/components/settings/commercial-booking-prefs-section";
+import { PlanningCapabilitiesSection } from "@/components/settings/planning-capabilities-section";
 import {
   Card,
   CardContent,
@@ -14,40 +15,70 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { DEFAULT_COMMERCIAL_BOOKING_PREFS } from "@/lib/booking-journey/venue-prefs";
+import { capabilitiesFromVenue } from "@/lib/playbooks/capabilities";
 import { getCurrentUserRole, getCurrentVenue } from "@/lib/venue/service";
-import { getIntakeHealthSummary } from "@/lib/lead-intake/monitoring";
+import { getEmailIntakeHealth } from "@/lib/lead-intake/email-intake-health";
 import { getEmailIntakeStatus } from "@/lib/lead-intake/email-status";
-import { getInquiryFormSettings } from "@/lib/inquiry-form/service";
+import { getInquiryFormSettings, getPublicInquiryFormConfig } from "@/lib/inquiry-form/service";
 import { getTourSettings } from "@/lib/tours/service";
 
 export const metadata: Metadata = { title: "Leads & Booking — Settings" };
 
 export default async function LeadsBookingSettingsPage() {
-  const [venue, intakeHealth, emailIntakeStatus, tourSettings, inquiryFormSettings, role] = await Promise.all([
-    getCurrentVenue(), getIntakeHealthSummary(), getEmailIntakeStatus(), getTourSettings(), getInquiryFormSettings(), getCurrentUserRole(),
+  const [venue, emailIntakeStatus, intakeHealth, tourSettings, inquiryFormSettings, role] = await Promise.all([
+    getCurrentVenue(), getEmailIntakeStatus(), getEmailIntakeHealth(), getTourSettings(), getInquiryFormSettings(), getCurrentUserRole(),
   ]);
+  const previewBaseConfig = venue?.embedKey
+    ? await getPublicInquiryFormConfig(venue.embedKey)
+    : null;
   const canEditInquiryForm = role === "owner" || role === "manager";
+  const planningCapabilities = capabilitiesFromVenue(venue);
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Leads & Booking"
-        description="Inquiry forms, lead sources, tour booking, and how you book couples."
-      />
+    <div className="htc-hospitality-page space-y-4 sm:space-y-6">
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
+        <PageHeader
+          title="Leads & Booking"
+          description="Inquiry forms, lead sources, tour booking, and how you book couples."
+        />
+      </div>
       <SettingsTabs />
 
       {venue && (
         <Card id="booking">
           <CardHeader>
-            <CardTitle className="text-base">How you book</CardTitle>
+            <CardTitle className="text-base">How you sell</CardTitle>
             <CardDescription>
-              Agreement method, deposit rules, and payment defaults for the commercial booking journey.
+              Agreement, initial payment, and payment collection defaults. Booked remains your decision.
             </CardDescription>
           </CardHeader>
           <CardContent>
             <CommercialBookingPrefsSection
               initial={venue.commercialBookingPrefs ?? DEFAULT_COMMERCIAL_BOOKING_PREFS}
             />
+          </CardContent>
+        </Card>
+      )}
+
+      {venue && (
+        <Card id="planning">
+          <CardHeader>
+            <CardTitle className="text-base">Planning tools</CardTitle>
+            <CardDescription>
+              Venue-wide choices for which capabilities belong in your normal post-booking event workflow.
+              Setup Profiles configure the starting templates for each enabled capability by event type.
+              Turning a capability off does not rewrite existing profiles or booked events.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <PlanningCapabilitiesSection initial={planningCapabilities} />
+            <p className="mt-4 text-sm text-muted-foreground">
+              <Link href="/settings/leads/setup-profiles" className="font-medium text-foreground underline underline-offset-2">
+                Setup Profiles
+              </Link>
+              {" "}
+              — tell Hello to Cheers how this venue normally operates. New events inherit the profile for their type.
+            </p>
           </CardContent>
         </Card>
       )}
@@ -70,23 +101,11 @@ export default async function LeadsBookingSettingsPage() {
                   : null
               }
               emailIntakeStatus={emailIntakeStatus}
+              intakeHealth={intakeHealth}
               inquiryFormSettings={inquiryFormSettings}
               canEditInquiryForm={canEditInquiryForm}
+              previewBaseConfig={previewBaseConfig}
             />
-          </CardContent>
-        </Card>
-      )}
-
-      {venue && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Lead Intake Health</CardTitle>
-            <CardDescription>
-              Every inquiry your venue receives — website, tour requests, and email intake — in one place.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <LeadIntakeHealthSection summary={intakeHealth} />
           </CardContent>
         </Card>
       )}

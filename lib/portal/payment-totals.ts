@@ -21,8 +21,11 @@ export type PortalScheduleTotals = {
 };
 
 function netCollected(line: PortalTotalsLine): number {
+  // Align with computeTotalPaid / computeNetPaid — planned/pending/failed/cancelled
+  // lines contribute $0; only qualifying collected statuses reduce balance.
   if (
     line.status !== "paid"
+    && line.status !== "partially_paid"
     && line.status !== "partially_refunded"
     && line.status !== "refunded"
   ) {

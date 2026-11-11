@@ -1,0 +1,2 @@
+clientEmail,eventDate,title,entryTime,dayOffset,audiences,forceImport,sourceId
+spec.ops.client@example.invalid,2026-10-30,Ceremony start,16:00,0,"venue,vendors",yes,spec-tl-001

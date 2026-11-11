@@ -1,13 +1,19 @@
 "use client";
 
 /**
- * TourScheduler — public tour booking experience.
+ * LEGACY / UNREACHABLE — do not use for live public tour booking.
+ *
+ * Live public `/book/[key]` uses `InquiryForm` with venue
+ * `accepted_inquiry_event_types` via `getPublicInquiryFormConfig`.
+ * This component is not imported by any app route; it retains a hardcoded
+ * event-type label list that is NOT the canonical venue-aware builder.
+ *
+ * If this surface is ever revived, replace the local EVENT_TYPES array with
+ * `buildVenueEventTypeOptions` + the venue's accepted inquiry types.
+ *
+ * TourScheduler — historical public tour booking experience.
  *
  * Flow: Date picker → Time slot grid → Contact form → Confirmation
- *
- * This is the "front door" for venue tours.
- * Design: clean, mobile-first, warm. Heritage Sage palette.
- * Every booking creates a lead in Hello to Cheers automatically.
  */
 
 import * as React from "react";
@@ -21,6 +27,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { TurnstileWidget } from "@/components/shared/turnstile-widget";
 import type { TourSlot, TourVenueInfo } from "@/lib/tours/types";
+import { formatPhoneDisplay } from "@/lib/sms/phone";
 
 // Venue Brand Experience Phase 1 — this is the public "front door" for
 // tours, so it's customer-facing (prospective couples, not staff). SAGE/
@@ -262,7 +269,7 @@ function Confirmation({ venueName, scheduledAt, duration, venuePhone, venueEmail
         <p className="text-sm text-muted-foreground">📅 {formatReadable(scheduledAt.slice(0, 10))}</p>
         <p className="text-sm text-muted-foreground">🕐 {formatTime(scheduledAt)} · {duration} minutes</p>
         {addressLine && <p className="text-sm text-muted-foreground">📍 {addressLine}</p>}
-        {venuePhone  && <p className="text-sm text-muted-foreground">📞 {venuePhone}</p>}
+        {venuePhone  && <p className="text-sm text-muted-foreground">📞 {formatPhoneDisplay(venuePhone)}</p>}
         {venueEmail  && <p className="text-sm text-muted-foreground">✉️ {venueEmail}</p>}
       </div>
 
@@ -336,9 +343,11 @@ export function TourScheduler({ tourKey, venue }: { tourKey: string; venue: Tour
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ key: tourKey, slotStart: selectedSlot.start, ...fields, guestCount: fields.guestCount ? parseInt(fields.guestCount) : null, turnstileToken, qrCampaignId }),
       });
-      const data = await res.json() as { ok: boolean; error?: string; scheduledAt?: string; duration?: number };
+      const data = await res.json() as { ok: boolean; error?: string; scheduledAt?: string; duration?: number; checkoutUrl?: string };
       if (!data.ok) { toast.error(data.error ?? "Could not complete booking. Please try again."); }
-      else { setConfirmation({ scheduledAt: data.scheduledAt!, duration: data.duration ?? venue.duration }); setStep("confirm"); }
+      else if (data.checkoutUrl) { window.location.assign(data.checkoutUrl); }
+      else if (data.scheduledAt) { setConfirmation({ scheduledAt: data.scheduledAt, duration: data.duration ?? venue.duration }); setStep("confirm"); }
+      else { toast.error("Your tour is not booked yet. Please complete the payment step."); }
     } catch { toast.error("Something went wrong. Please try again."); }
     finally { setSubmitting(false); }
   }

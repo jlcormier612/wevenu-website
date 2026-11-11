@@ -1,0 +1,220 @@
+[
+  {
+    "label": "documents-mobile",
+    "file": "evidence/documents-mobile.png",
+    "title": "Barn-master-floorplan",
+    "probe": {
+      "introBg": "#DCE8E0",
+      "introBorder": "5px rgb(68, 107, 86)",
+      "toolbarBg": "#FFFFFF",
+      "sectionBg": "#DCE8E0",
+      "rowBg": "#FFFFFF"
+    },
+    "viewport": "mobile",
+    "evidenceKind": "live-local"
+  },
+  {
+    "label": "documents-mobile-overflow-open",
+    "file": "evidence/documents-mobile-overflow-open.png",
+    "menuText": "ViewDetailsVersion History",
+    "viewport": "mobile",
+    "evidenceKind": "live-local"
+  },
+  {
+    "label": "documents-desktop",
+    "file": "evidence/documents-desktop.png",
+    "probe": {
+      "introBg": "#DCE8E0",
+      "rowBg": "#FFFFFF",
+      "desktopActions": true,
+      "mobileActions": false
+    },
+    "viewport": "desktop",
+    "evidenceKind": "live-local"
+  },
+  {
+    "label": "documents-tablet",
+    "file": "evidence/documents-tablet.png",
+    "desktopActions": true,
+    "viewport": "tablet",
+    "evidenceKind": "live-local"
+  },
+  {
+    "label": "reporting-overview-mobile",
+    "file": "evidence/reporting-overview-mobile.png",
+    "tabState": {
+      "activeLabel": "Overview",
+      "fullyVisible": true,
+      "canScrollLeft": false,
+      "canScrollRight": true,
+      "fadeLeft": false,
+      "fadeRight": true,
+      "moreBtn": true,
+      "prevBtn": false
+    },
+    "probe": {
+      "introBg": "#DCE8E0",
+      "introBorder": "5px rgb(68, 107, 86)",
+      "filterBg": "#F3F0E9"
+    },
+    "viewport": "mobile",
+    "evidenceKind": "live-local"
+  },
+  {
+    "label": "reporting-revenue-mobile",
+    "file": "evidence/reporting-revenue-mobile.png",
+    "tabState": {
+      "activeLabel": "Revenue",
+      "fullyVisible": true,
+      "canScrollLeft": true,
+      "canScrollRight": false,
+      "fadeLeft": true,
+      "fadeRight": false,
+      "moreBtn": false,
+      "prevBtn": true
+    },
+    "probe": {
+      "introBg": "#DCE8E0",
+      "introBorder": "5px rgb(68, 107, 86)",
+      "filterBg": "#F3F0E9"
+    },
+    "viewport": "mobile",
+    "evidenceKind": "live-local"
+  },
+  {
+    "label": "reporting-events-mobile",
+    "file": "evidence/reporting-events-mobile.png",
+    "tabState": {
+      "activeLabel": "Events",
+      "fullyVisible": true,
+      "canScrollLeft": true,
+      "canScrollRight": false,
+      "fadeLeft": true,
+      "fadeRight": false,
+      "moreBtn": false,
+      "prevBtn": true
+    },
+    "probe": {
+      "introBg": "#DCE8E0",
+      "introBorder": "5px rgb(68, 107, 86)",
+      "filterBg": "#F3F0E9"
+    },
+    "viewport": "mobile",
+    "evidenceKind": "live-local"
+  },
+  {
+    "label": "reporting-saved-mobile",
+    "file": "evidence/reporting-saved-mobile.png",
+    "tabState": {
+      "activeLabel": "Saved",
+      "fullyVisible": true,
+      "canScrollLeft": true,
+      "canScrollRight": false,
+      "fadeLeft": true,
+      "fadeRight": false,
+      "moreBtn": false,
+      "prevBtn": true
+    },
+    "probe": {
+      "introBg": "#DCE8E0",
+      "introBorder": "5px rgb(68, 107, 86)",
+      "filterBg": null
+    },
+    "viewport": "mobile",
+    "evidenceKind": "live-local"
+  },
+  {
+    "label": "reporting-desktop",
+    "file": "evidence/reporting-desktop.png",
+    "tabs": [
+      {
+        "label": "Overview",
+        "href": "/reporting?cb=1793662889266",
+        "active": "true"
+      },
+      {
+        "label": "Sales",
+        "href": "/reporting/sales?cb=1793662889266",
+        "active": "false"
+      },
+      {
+        "label": "Bookings",
+        "href": "/reporting/bookings?cb=1793662889266",
+        "active": "false"
+      },
+      {
+        "label": "Revenue",
+        "href": "/reporting/revenue?cb=1793662889266",
+        "active": "false"
+      },
+      {
+        "label": "Events",
+        "href": "/reporting/events?cb=1793662889266",
+        "active": "false"
+      },
+      {
+        "label": "Saved",
+        "href": "/reporting/saved",
+        "active": "false"
+      }
+    ],
+    "viewport": "desktop",
+    "evidenceKind": "live-local"
+  },
+  {
+    "label": "reporting-nav-interaction",
+    "file": "evidence/reporting-nav-interaction-saved-mobile.png",
+    "afterRevenue": {
+      "url": "/reporting/revenue",
+      "label": "Revenue",
+      "fullyVisible": true,
+      "fadeRight": false,
+      "fadeLeft": true
+    },
+    "afterSaved": {
+      "url": "/reporting/saved",
+      "label": "Saved",
+      "fullyVisible": true,
+      "fadeRight": false,
+      "fadeLeft": true
+    },
+    "viewport": "mobile",
+    "evidenceKind": "live-local"
+  },
+  {
+    "label": "library-documents-color-desktop",
+    "file": "evidence/library-documents-color-desktop.png",
+    "introBg": "#DCE8E0",
+    "introBorder": "5px rgb(68, 107, 86)",
+    "filterBg": null,
+    "viewport": "desktop",
+    "evidenceKind": "live-local"
+  },
+  {
+    "label": "library-documents-color-mobile",
+    "file": "evidence/library-documents-color-mobile.png",
+    "introBg": "#DCE8E0",
+    "introBorder": "5px rgb(68, 107, 86)",
+    "filterBg": null,
+    "viewport": "mobile",
+    "evidenceKind": "live-local"
+  },
+  {
+    "label": "reporting-bookings-color-desktop",
+    "file": "evidence/reporting-bookings-color-desktop.png",
+    "introBg": "#DCE8E0",
+    "introBorder": "5px rgb(68, 107, 86)",
+    "filterBg": "#F3F0E9",
+    "viewport": "desktop",
+    "evidenceKind": "live-local"
+  },
+  {
+    "label": "reporting-bookings-color-mobile",
+    "file": "evidence/reporting-bookings-color-mobile.png",
+    "introBg": "#DCE8E0",
+    "introBorder": "5px rgb(68, 107, 86)",
+    "filterBg": "#F3F0E9",
+    "viewport": "mobile",
+    "evidenceKind": "live-local"
+  }
+]

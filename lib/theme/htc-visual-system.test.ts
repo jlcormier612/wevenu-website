@@ -1,6 +1,5 @@
 /**
- * HTC visual system foundation — tokens + hospitality utilities.
- * Scoped for main+hospitality CSS restore (full Offerings catalog structure remains on the hospitality line).
+ * HTC visual system foundation — tokens + hospitality utilities (Clients/Offerings proof).
  */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -17,6 +16,8 @@ describe("HTC visual system foundation", () => {
   const doc = read("docs/design/htc-visual-system.md");
   const clientsPage = read("app/(app)/clients/page.tsx");
   const clientList = read("components/clients/client-list.tsx");
+  const offeringsPage = read("components/offerings/offerings-page-client.tsx");
+  const offeringsSection = read("components/offerings/offerings-library-section.tsx");
 
   it("documents surface hierarchy and locked palette roles", () => {
     assert.match(doc, /Warm neutral page canvas/);
@@ -50,7 +51,7 @@ describe("HTC visual system foundation", () => {
     );
   });
 
-  it("keeps white heading + toolbar + eucalyptus table header utilities", () => {
+  it("keeps white heading + toolbar + eucalyptus table header", () => {
     assert.match(css, /\.htc-staff \.htc-hospitality-heading[\s\S]*?background:\s*var\(--card\)/);
     assert.match(css, /\.htc-staff \.htc-hospitality-toolbar/);
     assert.match(css, /background:\s*var\(--htc-eucalyptus-surface\)/);
@@ -59,7 +60,38 @@ describe("HTC visual system foundation", () => {
     assert.match(clientsPage, /htc-hospitality-heading/);
   });
 
-  it("retains catalog major CSS hooks for hospitality surfaces", () => {
-    assert.match(css, /htc-catalog-(section|major)/);
+  it("structures Offerings catalog into section containers", () => {
+    assert.match(offeringsSection, /groupCatalogSections/);
+    assert.match(offeringsSection, /htc-catalog-section/);
+    assert.match(offeringsSection, /htc-catalog-major/);
+    assert.match(offeringsSection, /htc-catalog-category/);
+    assert.match(offeringsSection, /data-has-children/);
+    assert.match(css, /data-has-children="true"/);
+    assert.match(offeringsPage, /LibraryDependencyNote[\s\S]*tone="calm"/);
+    assert.doesNotMatch(offeringsPage, /tone="blush"/);
+    assert.doesNotMatch(offeringsPage, /tone="eucalyptus"/);
+  });
+
+  it("parent majors and categories stay white working rows with quiet left borders", () => {
+    const parentRule = css.slice(
+      css.indexOf('.htc-staff .htc-catalog-major[data-has-children="true"]'),
+      css.indexOf(".htc-staff .htc-catalog-major[data-standalone"),
+    );
+    assert.match(parentRule, /background:\s*var\(--card\)/);
+    assert.match(parentRule, /border-left-color:\s*var\(--htc-botanical\)/);
+    assert.doesNotMatch(parentRule, /background:\s*var\(--htc-eucalyptus-surface\)/);
+    const categoryRule = css.slice(
+      css.indexOf(".htc-staff .htc-catalog-category {"),
+      css.indexOf(".htc-staff .htc-catalog-item {"),
+    );
+    assert.match(categoryRule, /background:\s*var\(--card\)/);
+    assert.match(categoryRule, /border-left:\s*3px solid var\(--htc-eucalyptus\)/);
+    assert.doesNotMatch(categoryRule, /background:\s*var\(--htc-linen\)/);
+  });
+
+  it("remaps hospitality utilities under dark staff without warm canvas", () => {
+    const dark = css.slice(css.indexOf("/* Dark Mode — hospitality"));
+    assert.match(dark, /\.dark \.htc-staff \.htc-hospitality-page/);
+    assert.match(dark, /background:\s*var\(--background\)/);
   });
 });

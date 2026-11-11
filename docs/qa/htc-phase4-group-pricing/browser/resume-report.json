@@ -1,0 +1,66 @@
+{
+  "ok": true,
+  "steps": [
+    {
+      "name": "H_prop_a_stripe",
+      "at": "2026-11-09T22:47:29.137Z",
+      "subscriptionId": "sub_1Ua0PFErUqJH7nktG6NBEFXb",
+      "coupon": "htc_group_10_forever",
+      "previewTotal": 17910,
+      "previewDue": 17910,
+      "sameAnchor": 1794260833
+    },
+    {
+      "name": "H_prop_b_stripe",
+      "at": "2026-11-09T22:47:29.333Z",
+      "subscriptionId": "sub_1Ua1GUErUqJH7nktqmmVOnB3",
+      "coupon": "htc_group_10_forever",
+      "invoiceId": "in_1Ua1GSErUqJH7nktg0ZW4ZnU",
+      "invoicePaid": 17910
+    },
+    {
+      "name": "G_org",
+      "at": "2026-11-09T22:47:29.953Z",
+      "membershipCount": 2,
+      "adjustmentStatus": "applied",
+      "adjustmentCoupon": "htc_group_10_forever"
+    },
+    {
+      "name": "I_billing_a",
+      "at": "2026-11-09T22:47:46.039Z",
+      "url": "https://app.sandbox.hellotocheers.com/settings/billing",
+      "groupEligible": true,
+      "qualifying": 2,
+      "addAvailable": true,
+      "hasOrg": true,
+      "hasAddButton": true
+    },
+    {
+      "name": "I_billing_b",
+      "at": "2026-11-09T22:47:56.543Z",
+      "url": "https://app.sandbox.hellotocheers.com/settings/billing",
+      "groupEligible": true,
+      "orgId": "90efb537-aa7e-4302-8f38-1c4d6e196d99",
+      "sameOrg": true
+    },
+    {
+      "name": "J_crm",
+      "at": "2026-11-09T22:48:08.343Z",
+      "url": "https://workspace.sandbox.hellotocheers.com/organizations",
+      "hasDisposable": true,
+      "apiStatus": 200,
+      "orgCount": 1,
+      "ourOrg": {
+        "id": "90efb537-aa7e-4302-8f38-1c4d6e196d99",
+        "qualifyingVenueCount": 2,
+        "groupEligible": true,
+        "memberCount": 2
+      }
+    },
+    {
+      "name": "DONE",
+      "at": "2026-11-09T22:48:08.343Z",
+      "ok": true
+    }
+  ]
+}

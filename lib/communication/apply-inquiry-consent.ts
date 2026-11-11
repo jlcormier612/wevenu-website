@@ -26,18 +26,37 @@ export function shouldRecordInquirySmsConsent(
   return smsPermissionGranted === true && !!phone?.trim();
 }
 
+/**
+ * Prefer the submitted form phone; when the checkbox is checked but the form
+ * phone is blank, use the lead's on-file phone (existing-lead tour links).
+ */
+export function resolveConsentPhone(
+  formPhone: string | null | undefined,
+  fallbackPhone: string | null | undefined,
+): string {
+  const fromForm = formPhone?.trim() ?? "";
+  if (fromForm) return fromForm;
+  return fallbackPhone?.trim() ?? "";
+}
+
+export type ApplyInquiryCommunicationCaptureResult =
+  | { ok: true; consentRecorded: boolean }
+  | { ok: false; consentRecorded: false; message: string };
+
 export async function applyInquiryCommunicationCapture(input: {
   venueId: string;
   venueName: string;
   leadId: string;
   relationshipId: string | null;
   phone: string | null;
+  /** Lead/on-file phone when the public form field was left blank. */
+  fallbackPhone?: string | null;
   preferredChannels: unknown;
   smsPermissionGranted: boolean;
   embedKey?: string | null;
   /** Where the checkbox was shown — inquiry vs tour. */
   source?: typeof SMS_PERMISSION_SOURCE_INQUIRY_FORM | typeof SMS_PERMISSION_SOURCE_TOUR_FORM;
-}): Promise<void> {
+}): Promise<ApplyInquiryCommunicationCaptureResult> {
   const admin = createAdminClient();
   const prefs = parsePreferredCommunicationChannels(input.preferredChannels);
 
@@ -52,11 +71,26 @@ export async function applyInquiryCommunicationCapture(input: {
     }
   }
 
-  const phone = input.phone?.trim() ?? "";
-  if (!shouldRecordInquirySmsConsent(input.smsPermissionGranted, phone)) return;
+  const phone = resolveConsentPhone(input.phone, input.fallbackPhone);
+  if (!shouldRecordInquirySmsConsent(input.smsPermissionGranted, phone)) {
+    if (input.smsPermissionGranted === true) {
+      return {
+        ok: false,
+        consentRecorded: false,
+        message: "SMS consent was selected but no usable phone number was available to record it.",
+      };
+    }
+    return { ok: true, consentRecorded: false };
+  }
 
   const addressKey = normalizeSmsAddressKey(phone);
-  if (!addressKey) return;
+  if (!addressKey) {
+    return {
+      ok: false,
+      consentRecorded: false,
+      message: "SMS consent was selected but the phone number is not valid for texting.",
+    };
+  }
 
   const current = await getCommunicationPermission(admin, {
     venueId: input.venueId,
@@ -64,10 +98,16 @@ export async function applyInquiryCommunicationCapture(input: {
     addressKey,
   });
   // Never clear a provider block via a form checkbox.
-  if (current === "provider_blocked") return;
+  if (current === "provider_blocked") {
+    return {
+      ok: false,
+      consentRecorded: false,
+      message: "SMS consent could not be recorded because texting is blocked for this number.",
+    };
+  }
 
   const consentText = buildInquirySmsConsentText(input.venueName);
-  await upsertCommunicationPermission(admin, {
+  const upsert = await upsertCommunicationPermission(admin, {
     venueId: input.venueId,
     channel: "sms",
     rawAddress: phone,
@@ -85,6 +125,16 @@ export async function applyInquiryCommunicationCapture(input: {
       capturedAt: new Date().toISOString(),
     },
   });
+
+  if (!upsert.ok) {
+    return {
+      ok: false,
+      consentRecorded: false,
+      message: upsert.message ?? "Could not save SMS consent.",
+    };
+  }
+
+  return { ok: true, consentRecorded: true };
 }
 
 export function preferredChannelsFromBody(raw: unknown): PreferredCommunicationChannel[] {

@@ -1,0 +1,135 @@
+{
+  "globalCount": 0,
+  "globalTc": [],
+  "schedCount": 59,
+  "fancyConfirms": [
+    {
+      "id": "6816b2b0-679b-4b38-813c-f3a71f878aef",
+      "status": "confirmed",
+      "confirmed_at": "2026-10-05T17:55:56.78381+00:00",
+      "confirmation_source": "prospect_link",
+      "contact_name": "Joy Bannister & Brian Robicheaux",
+      "updated_at": "2026-10-06T16:13:56.359839+00:00"
+    },
+    {
+      "id": "24826219-17b7-411d-acc5-eb3d53b8b2e7",
+      "status": "completed",
+      "confirmed_at": "2026-10-05T02:56:47.881543+00:00",
+      "confirmation_source": "prospect_link",
+      "contact_name": "Jessica Beale",
+      "updated_at": "2026-10-05T07:20:05.226995+00:00"
+    },
+    {
+      "id": "8e05bde1-a190-4c7b-9a8c-872825957983",
+      "status": "completed",
+      "confirmed_at": "2026-10-03T20:53:35.778131+00:00",
+      "confirmation_source": "prospect_link",
+      "contact_name": "Wendy Davis",
+      "updated_at": "2026-10-05T02:57:41.24001+00:00"
+    },
+    {
+      "id": "ae439d52-d298-4d52-a779-17ff5e627c81",
+      "status": "completed",
+      "confirmed_at": "2026-10-02T21:56:35.249866+00:00",
+      "confirmation_source": "prospect_link",
+      "contact_name": "Minnie Mouse",
+      "updated_at": "2026-10-02T23:15:52.816558+00:00"
+    },
+    {
+      "id": "4b6183ca-d424-49e4-81be-2d93c4e09fb7",
+      "status": "completed",
+      "confirmed_at": "2026-10-01T16:15:01.133216+00:00",
+      "confirmation_source": "prospect_link",
+      "contact_name": "Miss Piggy",
+      "updated_at": "2026-10-01T22:40:51.738113+00:00"
+    },
+    {
+      "id": "2cb2438e-9aa7-413f-b9cb-22685cc901c3",
+      "status": "cancelled",
+      "confirmed_at": "2026-09-30T22:32:47.229099+00:00",
+      "confirmation_source": "prospect_link",
+      "contact_name": "TourGate E2E1790807465270",
+      "updated_at": "2026-10-01T02:10:18.064005+00:00"
+    },
+    {
+      "id": "46fd5d41-8ddd-43e0-804c-7b1d9d51d9c4",
+      "status": "completed",
+      "confirmed_at": "2026-09-30T21:13:20.577804+00:00",
+      "confirmation_source": "prospect_link",
+      "contact_name": "Lucy Peanut",
+      "updated_at": "2026-10-01T06:29:27.982369+00:00"
+    },
+    {
+      "id": "0bcbc51d-c918-4fdb-a31a-5419318e34b7",
+      "status": "completed",
+      "confirmed_at": "2026-09-29T20:38:40.373285+00:00",
+      "confirmation_source": "prospect_link",
+      "contact_name": "Rory Gilmore",
+      "updated_at": "2026-09-29T21:57:21.660504+00:00"
+    },
+    {
+      "id": "c4f18aea-24b5-40e8-87b5-693052c81941",
+      "status": "completed",
+      "confirmed_at": "2026-09-29T16:24:40.091184+00:00",
+      "confirmation_source": "prospect_link",
+      "contact_name": "Lorelei Gilmore",
+      "updated_at": "2026-09-29T21:57:21.660504+00:00"
+    },
+    {
+      "id": "64cce57b-8c88-442d-960d-ed61a91ceea1",
+      "status": "completed",
+      "confirmed_at": "2026-09-28T02:17:23.339114+00:00",
+      "confirmation_source": "prospect_link",
+      "contact_name": "Betty Rubble",
+      "updated_at": "2026-09-29T06:17:46.87153+00:00"
+    }
+  ],
+  "allPrefs": [
+    {
+      "venue_id": "bc3711ff-1b06-41ac-ab82-934ee16afa9b",
+      "pref_tour_scheduled": true,
+      "pref_tour_confirmed": true,
+      "updated_at": "2026-10-05T04:49:19.957689+00:00"
+    },
+    {
+      "venue_id": "f66ac9c3-bee7-4fb4-9a79-8793ed244162",
+      "pref_tour_scheduled": true,
+      "pref_tour_confirmed": true,
+      "updated_at": "2026-10-05T07:20:36.41898+00:00"
+    },
+    {
+      "venue_id": "7762bd10-47ab-45d0-84cb-973f8d16b68e",
+      "pref_tour_scheduled": false,
+      "pref_tour_confirmed": true,
+      "updated_at": "2026-10-05T07:20:37.305458+00:00"
+    },
+    {
+      "venue_id": "5f3b43f8-0c5d-43df-ae8a-5cd59806d30d",
+      "pref_tour_scheduled": true,
+      "pref_tour_confirmed": true,
+      "updated_at": "2026-10-06T02:30:24.540682+00:00"
+    },
+    {
+      "venue_id": "ebfeb3e7-cb95-44a4-9cbd-e0b2f2ff3803",
+      "pref_tour_scheduled": true,
+      "pref_tour_confirmed": false,
+      "updated_at": "2026-10-07T02:48:35.396802+00:00"
+    },
+    {
+      "venue_id": "a415ac52-cd74-42a6-8df7-7a8f6e71d080",
+      "pref_tour_scheduled": true,
+      "pref_tour_confirmed": true,
+      "updated_at": "2026-10-03T03:16:38.311909+00:00"
+    },
+    {
+      "venue_id": "05f16a15-1752-4855-8a3b-aad5c593d8d9",
+      "pref_tour_scheduled": true,
+      "pref_tour_confirmed": false,
+      "updated_at": "2026-10-11T22:45:31.740477+00:00"
+    }
+  ],
+  "mig071": {
+    "mig": null,
+    "error": "Could not find the table 'public.schema_migrations' in the schema cache"
+  }
+}

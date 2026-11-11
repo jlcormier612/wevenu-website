@@ -11,6 +11,11 @@ import { INQUIRY_API_ERRORS } from "@/lib/inquiry-form/constants";
 import { ingestLead } from "@/lib/lead-intake/pipeline";
 import { recordNotificationStatus } from "@/lib/lead-intake/attempt-log";
 import { parsePublicLeadRpcSuccess } from "@/lib/lead-intake/public-lead-rpc";
+import {
+  buildPublicIntakeThankYouEmail,
+  buildPublicIntakeVenueDetailBody,
+} from "@/lib/lead-intake/public-intake-emails";
+import { buildVenueNotificationEmail } from "@/lib/notifications/venue-notification-email";
 
 function clientIp(request: NextRequest): string | null {
   const forwarded = request.headers.get("x-forwarded-for");
@@ -46,10 +51,20 @@ export async function POST(request: NextRequest) {
   }
 
   const supabase = await createClient();
+  // The visitor session cannot insert lead_intake_attempts (RLS 42501).
+  // Tour booking and email intake already log with the admin client.
+  // Lead creation stays on the public RPC below, which is keyed by embed key.
+  const admin = createAdminClient();
   const ipAddress = clientIp(request);
 
   const { data: venueRows } = await supabase.rpc("get_venue_by_embed_key", { p_key: String(embedKey) });
-  const venue = venueRows?.[0] as { id: string; name: string; email: string | null } | undefined;
+  const venue = venueRows?.[0] as {
+    id: string;
+    name: string;
+    email: string | null;
+    logo_url?: string | null;
+    primary_color?: string | null;
+  } | undefined;
 
   if (!venue) {
     return NextResponse.json({ ok: false, message: "Invalid form key." }, { status: 400 });
@@ -61,7 +76,7 @@ export async function POST(request: NextRequest) {
   };
 
   const outcome = await ingestLead({
-    supabase,
+    supabase: admin,
     venueId: venue.id,
     source: "website",
     trustTier: "direct",
@@ -115,7 +130,6 @@ export async function POST(request: NextRequest) {
       }
       const leadId = String((data as { lead_id?: string }).lead_id ?? "").trim();
       if (!leadId) return { ok: false, error: "Lead created without a relationship." };
-      const admin = createAdminClient();
       const { data: leadRow } = await admin.from("leads").select("relationship_id")
         .eq("id", leadId).maybeSingle<{ relationship_id: string | null }>();
       if (!leadRow?.relationship_id) return { ok: false, error: "Lead created without a relationship." };
@@ -139,7 +153,7 @@ export async function POST(request: NextRequest) {
   // First-party prefs + SMS permission (independent of phone presence alone).
   try {
     const { applyInquiryCommunicationCapture } = await import("@/lib/communication/apply-inquiry-consent");
-    await applyInquiryCommunicationCapture({
+    const capture = await applyInquiryCommunicationCapture({
       venueId: venue.id,
       venueName: venue.name,
       leadId: outcome.leadId,
@@ -148,9 +162,17 @@ export async function POST(request: NextRequest) {
       preferredChannels: preferredCommunicationChannels,
       smsPermissionGranted: smsPermissionGranted === true || smsPermissionGranted === "true",
       embedKey: String(embedKey),
+      source: "inquiry_form",
     });
-  } catch {
+    if (!capture.ok) {
+      console.error("[public/inquire] SMS consent not recorded:", capture.message, {
+        leadId: outcome.leadId,
+        venueId: venue.id,
+      });
+    }
+  } catch (err) {
     // Lead already created — do not fail the inquiry if permission write fails.
+    console.error("[public/inquire] SMS consent capture failed:", err);
   }
 
   const inquirerName = `${firstName} ${lastName}`;
@@ -158,47 +180,63 @@ export async function POST(request: NextRequest) {
   const fromEmail = process.env.FROM_EMAIL ?? null;
 
   if (fromEmail) {
+    const thankYou = buildPublicIntakeThankYouEmail({
+      kind: "inquiry",
+      venueName: venue.name,
+      firstName: firstName ? String(firstName) : null,
+      brandSource: {
+        name: venue.name,
+        logo_url: venue.logo_url ?? null,
+        primary_color: venue.primary_color ?? null,
+      },
+    });
     sendEmail({
       to: inquirerEmail,
-      subject: `We received your inquiry — ${venue.name}`,
-      text: [
-        firstName ? `Thank you, ${firstName}!` : "Thank you!",
-        "",
-        `We've received your inquiry for ${venue.name}.`,
-        "",
-        "We'll be in touch soon.",
-      ].join("\n"),
+      subject: thankYou.subject,
+      text: thankYou.text,
+      html: thankYou.html,
       replyTo: fromEmail,
     }).then(
-      (result) => recordNotificationStatus(supabase, outcome.attemptId, result.ok ? "sent" : "failed"),
-      () => recordNotificationStatus(supabase, outcome.attemptId, "failed"),
+      (result) => {
+        if (!result.ok) console.error("[public/inquire] thank-you not accepted", result.code ?? "failed");
+        return recordNotificationStatus(admin, outcome.attemptId, result.ok ? "sent" : "failed", "inquirer");
+      },
+      () => recordNotificationStatus(admin, outcome.attemptId, "failed", "inquirer"),
     );
   } else {
-    void recordNotificationStatus(supabase, outcome.attemptId, "skipped");
+    void recordNotificationStatus(admin, outcome.attemptId, "skipped", "inquirer");
   }
 
   if (fromEmail && venue.email) {
+    const appOrigin = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+    const detailLines = buildPublicIntakeVenueDetailBody({
+      intro: `New inquiry received via ${venue.name}'s website form.`,
+      inquirerName,
+      inquirerEmail,
+      phone: phone ? String(phone) : null,
+      partnerLine: partnerFirst
+        ? `Partner: ${String(partnerFirst)} ${partnerLast ? String(partnerLast) : ""}`.trim()
+        : null,
+      eventType: eventType ? String(eventType) : null,
+      eventDate: eventDate ? String(eventDate) : null,
+      guestCount: guestCount != null ? Number(guestCount) : null,
+      estimatedBudget: estimatedBudget != null ? Number(estimatedBudget) : null,
+      inquiryMessage: inquiryMessage ? String(inquiryMessage) : null,
+    });
+    const venueEmail = buildVenueNotificationEmail({
+      title: `New inquiry from ${inquirerName}`,
+      body: detailLines,
+      link: `/leads/${outcome.leadId}`,
+      appOrigin,
+    });
     sendEmail({
       to: venue.email,
-      subject: `New inquiry: ${inquirerName}`,
-      text: [
-        `New inquiry received via ${venue.name}'s website form.`,
-        "",
-        `Name: ${inquirerName}`,
-        `Email: ${inquirerEmail}`,
-        phone ? `Phone: ${phone}` : null,
-        partnerFirst ? `Partner: ${partnerFirst} ${partnerLast ?? ""}`.trim() : null,
-        eventType ? `Event type: ${String(eventType)}` : null,
-        eventDate ? `Preferred event date: ${eventDate}` : null,
-        guestCount ? `Guests: ${guestCount}` : null,
-        estimatedBudget ? `Budget: $${Number(estimatedBudget).toLocaleString()}` : null,
-        inquiryMessage ? `\nMessage:\n${inquiryMessage}` : null,
-        "",
-        `View in Hello to Cheers: ${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/leads`,
-      ].filter(Boolean).join("\n"),
+      subject: venueEmail.subject,
+      text: venueEmail.text,
+      html: venueEmail.html,
     }).then(
-      (result) => recordNotificationStatus(supabase, outcome.attemptId, result.ok ? "sent" : "failed"),
-      () => recordNotificationStatus(supabase, outcome.attemptId, "failed"),
+      (result) => recordNotificationStatus(admin, outcome.attemptId, result.ok ? "sent" : "failed", "venue"),
+      () => recordNotificationStatus(admin, outcome.attemptId, "failed", "venue"),
     );
   }
 

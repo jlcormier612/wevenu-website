@@ -111,13 +111,20 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(destinationUrl);
     }
 
-    await connectQuickBooksAction({
+    const connected = await connectQuickBooksAction({
       realmId,
       accessToken: tokenData.access_token,
       refreshToken: tokenData.refresh_token,
       accessTokenExpiresIn: tokenData.expires_in ?? 3600,
       refreshTokenExpiresIn: tokenData.x_refresh_token_expires_in ?? 8_726_400,
     });
+    if (!connected.ok) {
+      destinationUrl.searchParams.set(
+        "quickbooks_error",
+        connected.message ?? "Could not save the QuickBooks connection.",
+      );
+      return NextResponse.redirect(destinationUrl);
+    }
 
     destinationUrl.searchParams.set("quickbooks_success", "1");
     return NextResponse.redirect(destinationUrl);

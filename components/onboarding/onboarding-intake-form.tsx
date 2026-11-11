@@ -7,13 +7,14 @@
 import * as React from "react";
 
 import {
+  APPOINTMENT_TYPE_OPTIONS,
   BRING_BUSINESS_OPTIONS,
   INQUIRY_SOURCE_OPTIONS,
+  type AppointmentTypeKey,
   type BringBusinessChoice,
   type InquirySourceKey,
   type OnboardingIntakeInput,
   type SpaceMode,
-  type TastingAppointmentChoice,
 } from "@/lib/onboarding/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,8 +23,8 @@ import { Textarea } from "@/components/ui/textarea";
 
 export type IntakePrefill = Partial<OnboardingIntakeInput> & {
   venueName?: string;
-  contactEmail?: string;
-  primaryContactName?: string;
+  /** When set, address fields are a suggestion (e.g. billing) — not verified venue location. */
+  addressSourceLabel?: string;
 };
 
 type Props = {
@@ -50,10 +51,6 @@ export function OnboardingIntakeForm({
   const [city, setCity] = React.useState(prefill.city ?? "");
   const [stateRegion, setStateRegion] = React.useState(prefill.stateRegion ?? "");
   const [postalCode, setPostalCode] = React.useState(prefill.postalCode ?? "");
-  const [primaryContactName, setPrimaryContactName] = React.useState(
-    prefill.primaryContactName ?? "",
-  );
-  const [contactEmail, setContactEmail] = React.useState(prefill.contactEmail ?? "");
   const [contactPhone, setContactPhone] = React.useState(prefill.contactPhone ?? "");
   const [website, setWebsite] = React.useState(prefill.website ?? "");
 
@@ -78,8 +75,16 @@ export function OnboardingIntakeForm({
   const [offersTours, setOffersTours] = React.useState<boolean | null>(
     typeof prefill.offersTours === "boolean" ? prefill.offersTours : null,
   );
-  const [tastingChoice, setTastingChoice] = React.useState<TastingAppointmentChoice | null>(
-    prefill.tastingAppointmentChoice ?? null,
+  const [offersTastingsOrAppointments, setOffersTastingsOrAppointments] = React.useState<boolean | null>(
+    typeof prefill.offersTastingsOrAppointments === "boolean"
+      ? prefill.offersTastingsOrAppointments
+      : null,
+  );
+  const [appointmentTypeKeys, setAppointmentTypeKeys] = React.useState<AppointmentTypeKey[]>(
+    prefill.appointmentTypeKeys ?? [],
+  );
+  const [appointmentTypesOther, setAppointmentTypesOther] = React.useState(
+    prefill.appointmentTypesOther ?? "",
   );
   const [inquirySources, setInquirySources] = React.useState<InquirySourceKey[]>(
     prefill.inquirySources ?? [],
@@ -95,6 +100,12 @@ export function OnboardingIntakeForm({
     );
   }
 
+  function toggleAppointmentType(key: AppointmentTypeKey) {
+    setAppointmentTypeKeys((prev) =>
+      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key],
+    );
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -104,10 +115,6 @@ export function OnboardingIntakeForm({
     }
     if (offersTours === null) {
       setError("Please tell us whether you offer tours.");
-      return;
-    }
-    if (!tastingChoice) {
-      setError("Please tell us about tastings or other appointments.");
       return;
     }
     if (inquirySources.length === 0) {
@@ -144,14 +151,22 @@ export function OnboardingIntakeForm({
       city: city.trim() || null,
       stateRegion: stateRegion.trim() || null,
       postalCode: postalCode.trim() || null,
-      primaryContactName: primaryContactName.trim() || null,
-      contactEmail: contactEmail.trim() || null,
+      // Person identity comes from the authenticated user + Owner invite flow —
+      // never re-ask the setup person for their own name/email here.
+      primaryContactName: null,
+      contactEmail: null,
       contactPhone: contactPhone.trim() || null,
       website: website.trim() || null,
       spaceMode,
       spaces,
       offersTours,
-      tastingAppointmentChoice: tastingChoice,
+      offersTastingsOrAppointments,
+      appointmentTypeKeys:
+        offersTastingsOrAppointments === true ? appointmentTypeKeys : [],
+      appointmentTypesOther:
+        offersTastingsOrAppointments === true && appointmentTypeKeys.includes("other")
+          ? appointmentTypesOther.trim() || null
+          : null,
       inquirySources,
       inquirySourcesOther: inquiryOther.trim() || null,
       bringBusinessChoice: bringBusiness,
@@ -168,22 +183,21 @@ export function OnboardingIntakeForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="mx-auto max-w-xl space-y-10 pb-16">
+    <form
+      onSubmit={handleSubmit}
+      className={
+        mode === "white_glove"
+          ? "mx-auto mt-5 max-w-xl space-y-8 pb-16 sm:mt-6 sm:space-y-9"
+          : "mx-auto max-w-xl space-y-10 pb-16"
+      }
+    >
       {mode === "white_glove" ? (
-        <header className="space-y-3">
+        <header className="space-y-2">
           <h1 className="font-heading text-3xl font-medium tracking-tight text-foreground">
-            Let&apos;s get your venue ready
+            Tell us about your venue
           </h1>
           <p className="text-sm leading-relaxed text-muted-foreground">
-            You&apos;ve chosen White Glove Setup. We&apos;ll build your Hello to Cheers
-            workspace using the information and materials you provide.
-          </p>
-          <p className="text-sm leading-relaxed text-muted-foreground">
-            You don&apos;t need to configure everything yourself.
-          </p>
-          <p className="text-sm leading-relaxed text-muted-foreground">
-            We&apos;ll let you know if we need you to make a decision we can&apos;t make for
-            you.
+            We&apos;ll let you know if we need a decision we can&apos;t make for you.
           </p>
         </header>
       ) : (
@@ -201,19 +215,18 @@ export function OnboardingIntakeForm({
       <section className="space-y-4">
         <h2 className="text-lg font-medium">Venue basics</h2>
         <Field label="Venue name" value={venueName} onChange={setVenueName} required />
+        {prefill.addressSourceLabel ? (
+          <p className="text-xs text-amber-900 rounded-md border border-amber-200 bg-amber-50 px-3 py-2">
+            {prefill.addressSourceLabel}
+          </p>
+        ) : null}
         <Field label="Address" value={addressLine1} onChange={setAddressLine1} />
         <div className="grid gap-3 sm:grid-cols-3">
           <Field label="City" value={city} onChange={setCity} />
           <Field label="State" value={stateRegion} onChange={setStateRegion} />
           <Field label="Postal code" value={postalCode} onChange={setPostalCode} />
         </div>
-        <Field
-          label="Primary owner/contact"
-          value={primaryContactName}
-          onChange={setPrimaryContactName}
-        />
-        <Field label="Contact email" value={contactEmail} onChange={setContactEmail} type="email" />
-        <Field label="Contact phone" value={contactPhone} onChange={setContactPhone} />
+        <Field label="Venue phone" value={contactPhone} onChange={setContactPhone} />
         {mode === "white_glove" ? (
           <Field label="Website" value={website} onChange={setWebsite} />
         ) : null}
@@ -319,31 +332,69 @@ export function OnboardingIntakeForm({
           ) : null}
         </div>
 
-        <div className="space-y-2 pt-2">
-          <p className="text-sm font-medium">Do you offer tastings or other appointments?</p>
-          {(
-            [
-              ["tastings", "Tastings"],
-              ["other_appointments", "Other appointments"],
-              ["both", "Both"],
-              ["neither", "Neither"],
-            ] as const
-          ).map(([value, label]) => (
-            <label key={value} className="flex items-center gap-2 text-sm">
+        <div className="space-y-2 pt-2" data-testid="appointments-other-than-tours">
+          <p className="text-sm font-medium">Do you offer appointments other than tours?</p>
+          <p className="text-xs text-muted-foreground">
+            For example, consultations, planning meetings, menu tastings, or final walkthroughs.
+          </p>
+          <div className="flex gap-4">
+            <label className="flex items-center gap-2 text-sm">
               <input
                 type="radio"
-                name="tastings"
-                checked={tastingChoice === value}
-                onChange={() => setTastingChoice(value)}
+                name="appointments-other-than-tours"
+                checked={offersTastingsOrAppointments === true}
+                onChange={() => setOffersTastingsOrAppointments(true)}
               />
-              {label}
+              Yes
             </label>
-          ))}
-          {tastingChoice && tastingChoice !== "neither" ? (
-            <p className="text-xs text-muted-foreground">
-              Scheduling details can be refined in your calendar settings when you&apos;re
-              ready.
-            </p>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="radio"
+                name="appointments-other-than-tours"
+                checked={offersTastingsOrAppointments === false}
+                onChange={() => {
+                  setOffersTastingsOrAppointments(false);
+                  setAppointmentTypeKeys([]);
+                  setAppointmentTypesOther("");
+                }}
+              />
+              No
+            </label>
+          </div>
+          {offersTastingsOrAppointments === true ? (
+            <div className="mt-3 space-y-3 rounded-md border border-border/80 bg-muted/10 p-3">
+              <div className="space-y-1">
+                <p className="text-sm font-medium">What types of appointments do you offer?</p>
+                <p className="text-xs text-muted-foreground">Select all that apply.</p>
+              </div>
+              {APPOINTMENT_TYPE_OPTIONS.map((opt) => (
+                <label key={opt.key} className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={appointmentTypeKeys.includes(opt.key)}
+                    onChange={() => toggleAppointmentType(opt.key)}
+                    data-testid={`appointment-type-${opt.key}`}
+                  />
+                  {opt.label}
+                </label>
+              ))}
+              {appointmentTypeKeys.includes("other") ? (
+                <div className="space-y-2">
+                  <Label htmlFor="appointment-types-other">Describe your other appointments</Label>
+                  <Textarea
+                    id="appointment-types-other"
+                    value={appointmentTypesOther}
+                    onChange={(e) => setAppointmentTypesOther(e.target.value)}
+                    rows={2}
+                    data-testid="appointment-types-other"
+                  />
+                </div>
+              ) : null}
+              <p className="text-xs text-muted-foreground">
+                This helps us understand how your venue works. It does not turn on booking or
+                create a calendar by itself.
+              </p>
+            </div>
           ) : null}
         </div>
       </section>

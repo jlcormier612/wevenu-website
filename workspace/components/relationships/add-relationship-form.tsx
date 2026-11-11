@@ -67,7 +67,7 @@ export function AddRelationshipForm() {
         <button
           type="button"
           onClick={() => setOpen(false)}
-          className="text-xs ws-muted hover:text-[var(--forest-sage)]"
+          className="text-xs ws-muted hover:text-foreground"
         >
           Cancel
         </button>
@@ -85,7 +85,7 @@ export function AddRelationshipForm() {
             id="notes"
             name="notes"
             rows={3}
-            className="mt-1 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_50%,transparent)] bg-[var(--true-white)] px-3 py-2 text-sm"
+            className="mt-1 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_50%,transparent)] bg-[var(--true-white)] px-3 py-2 text-sm text-foreground"
           />
         </div>
         <p className="text-xs ws-muted">Status defaults to Inquiry. Same email merges into one record.</p>
@@ -124,7 +124,7 @@ function Field({
         name={name}
         type={type}
         required={required}
-        className="mt-1 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_50%,transparent)] bg-[var(--true-white)] px-3 py-2 text-sm"
+        className="mt-1 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_50%,transparent)] bg-[var(--true-white)] px-3 py-2 text-sm text-foreground"
       />
     </div>
   );

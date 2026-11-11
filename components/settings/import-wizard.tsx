@@ -13,10 +13,11 @@ import {
   type EntityType, type FieldMapping, type ImportResult,
 } from "@/lib/import/types";
 import {
-  buildTemplateCsv, getSampleValue, validateRequiredFields, looksLikeHeaderRow, isSyntheticColumnHeaders,
+  buildTemplateCsv, getSampleValue, looksLikeHeaderRow, isSyntheticColumnHeaders,
   rowToClientInput, rowToLeadInput, rowToVendorInput, rowToInventoryInput, rowToPackageInput,
   loadSavedMapping, saveMapping,
 } from "@/lib/import/utils";
+import { classifyImportPreview } from "@/lib/import/preview-integrity";
 import {
   importCouplesAction, importLeadsAction, importVendorsAction, importInventoryAction, importPackagesAction,
   parseImportFileAction, parseImportTextAction, proposeFieldMappingAction,
@@ -29,11 +30,11 @@ import {
 type CsvRow = Record<string, string>;
 
 const ENTITY_META: Record<EntityType, { label: string; resultPath: string; description: string }> = {
-  couples:   { label: "Clients",   resultPath: "/clients",          description: "Import existing bookings as clients with linked events." },
-  leads:     { label: "Leads",     resultPath: "/leads",            description: "Import inquiries into your leads pipeline." },
+  couples:   { label: "Clients",   resultPath: "/clients",          description: "Import clients with contact details. Past event dates create a historical calendar Event; future dates stay on the client until you book (Migration Center event import or book from the client)." },
+  leads:     { label: "Leads",     resultPath: "/leads",            description: "Import inquiries into your leads pipeline. Historical imports stay quiet (no automations, new-lead alerts, or scheduled outreach)." },
   vendors:   { label: "Vendors",   resultPath: "/vendors",          description: "Import your existing vendor contacts and relationships." },
   inventory: { label: "Inventory Templates", resultPath: "/library/inventory", description: "Import your tables, chairs, decor, and other physical inventory." },
-  packages:  { label: "Package Templates",   resultPath: "/packages",  description: "Import your existing service packages and pricing." },
+  packages:  { label: "Package Templates",   resultPath: "/packages",  description: "Import package name, description, category, base price, and optional included line items (description|qty|unit). Inventory links are not imported." },
 };
 
 const NEXT_STEP: Record<EntityType, { cta: string; href: string; detail: string }> = {
@@ -60,7 +61,7 @@ const NEXT_STEP: Record<EntityType, { cta: string; href: string; detail: string 
   packages: {
     cta:    "Review your packages",
     href:   "/packages",
-    detail: "Double-check pricing and descriptions, then packages are ready to add to invoices.",
+    detail: "Confirm pricing and included items, then packages are ready to add to invoices.",
   },
 };
 
@@ -77,7 +78,9 @@ function StepEntitySelect({
     <div className="space-y-4">
       <div>
         <h2 className="text-base font-semibold text-foreground">What are you importing?</h2>
-        <p className="text-sm text-muted-foreground mt-1">Choose the type of data in your CSV file.</p>
+        <p className="text-sm text-muted-foreground mt-1">
+          Choose one list type. CSV, Excel, Word, PDF, and pasted text are supported on the next step.
+        </p>
       </div>
       {datedEventsMessage ? (
         <p className="text-xs text-amber-800 dark:text-amber-200">
@@ -444,6 +447,7 @@ function StepMapFields({
 
 function StepPreview({
   entity,
+  headers,
   rows,
   mapping,
   assisted,
@@ -452,6 +456,7 @@ function StepPreview({
   isPending,
 }: {
   entity: EntityType;
+  headers: string[];
   rows: CsvRow[];
   mapping: FieldMapping;
   assisted: boolean;
@@ -461,7 +466,9 @@ function StepPreview({
 }) {
   const fields = ENTITY_FIELDS[entity];
   const preview = rows.slice(0, 5);
-  const { readyCount, issueCount } = validateRequiredFields(fields, mapping, rows);
+  const summary = classifyImportPreview(entity, headers, mapping, rows);
+  const { readyCount, skipCount, warnCount, unmapped } = summary;
+  const previewStatuses = summary.rows.slice(0, 5);
 
   return (
     <div className="space-y-4">
@@ -469,7 +476,12 @@ function StepPreview({
         <h2 className="text-base font-semibold text-foreground">Preview</h2>
         <p className="text-sm text-muted-foreground mt-1">
           {readyCount} of {rows.length} rows are ready to import
-          {issueCount > 0 && <span className="text-destructive"> · {issueCount} have missing required fields (will be skipped)</span>}
+          {skipCount > 0 && (
+            <span className="text-destructive"> · {skipCount} will be skipped (see notes below)</span>
+          )}
+          {warnCount > 0 && (
+            <span className="text-amber-800 dark:text-amber-200"> · {warnCount} need your attention but will still import</span>
+          )}
         </p>
         {assisted && (
           <p className="text-xs text-primary mt-1.5 rounded-md bg-primary/5 px-2 py-1 inline-block">
@@ -478,10 +490,73 @@ function StepPreview({
         )}
       </div>
 
+      {unmapped.headers.length > 0 && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-950/30 px-3 py-2.5 space-y-1.5">
+          <p className="text-sm font-medium text-amber-950 dark:text-amber-100">
+            {unmapped.withData.length > 0
+              ? `${unmapped.withData.length} column${unmapped.withData.length === 1 ? "" : "s"} will not be imported`
+              : "Some columns are not mapped"}
+          </p>
+          <p className="text-xs text-amber-900/90 dark:text-amber-200/90">
+            Unmapped columns stay in your file but Hello to Cheers will not store them. Go back to mapping if any of these should fill a Hello to Cheers field. Columns with no matching field in Hello to Cheers cannot be imported.
+          </p>
+          {unmapped.withData.length > 0 && (
+            <p className="text-xs text-amber-950 dark:text-amber-100">
+              <span className="font-medium">Has data (will be lost):</span>{" "}
+              {unmapped.withData.join(", ")}
+            </p>
+          )}
+          {unmapped.empty.length > 0 && (
+            <p className="text-xs text-muted-foreground">
+              Empty in every row: {unmapped.empty.join(", ")}
+            </p>
+          )}
+        </div>
+      )}
+
+      {entity === "couples" && mapping.eventDate && (
+        <div className="rounded-lg border border-border bg-muted/40 px-3 py-2.5 space-y-1">
+          <p className="text-sm font-medium text-foreground">Past dates create historical Events</p>
+          <p className="text-xs text-muted-foreground">
+            Rows with a past event date create a historical calendar Event linked to the client (does not change future availability rules beyond what that Event records). Future event dates stay on the client only — book or use Migration Center event import for operational Events. No portal invitations are sent.
+          </p>
+        </div>
+      )}
+
+      {entity === "packages" && (
+        <div className="rounded-lg border border-border bg-muted/40 px-3 py-2.5 space-y-1">
+          <p className="text-sm font-medium text-foreground">Included line items</p>
+          <p className="text-xs text-muted-foreground">
+            Map &quot;Included Items&quot; as <span className="font-mono text-[11px]">description|qty|unit</span> entries separated by semicolons to create package line items. Inventory catalog links are not imported here.
+          </p>
+        </div>
+      )}
+
+      {summary.rows.some((r) => r.message) && (
+        <ul className="text-xs space-y-1 rounded-lg border border-border bg-muted/30 px-3 py-2 max-h-36 overflow-y-auto">
+          {summary.rows.filter((r) => r.message).slice(0, 40).map((r) => (
+            <li
+              key={r.rowNumber}
+              className={
+                r.disposition === "warn_ambiguous_name"
+                  ? "text-amber-800 dark:text-amber-200"
+                  : "text-destructive"
+              }
+            >
+              Row {r.rowNumber}: {r.message}
+            </li>
+          ))}
+          {summary.rows.filter((r) => r.message).length > 40 && (
+            <li className="text-muted-foreground">…and more in the full file</li>
+          )}
+        </ul>
+      )}
+
       <div className="overflow-x-auto rounded-xl border border-border">
         <table className="w-full text-xs">
           <thead>
             <tr className="border-b border-border bg-muted/50">
+              <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Status</th>
               {fields.filter((f) => mapping[f.key]).map((f) => (
                 <th key={f.key} className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">
                   {f.label}
@@ -491,11 +566,24 @@ function StepPreview({
           </thead>
           <tbody className="divide-y divide-border">
             {preview.map((row, i) => {
-              const missingRequired = fields
-                .filter((f) => f.required)
-                .some((f) => { const col = mapping[f.key]; return !col || !(row[col] ?? "").trim(); });
+              const status = previewStatuses[i];
+              const highlight =
+                status?.disposition === "skip_required"
+                || status?.disposition === "skip_invalid"
+                || status?.disposition === "skip_within_file_duplicate";
+              const warn = status?.disposition === "warn_ambiguous_name";
               return (
-                <tr key={i} className={missingRequired ? "bg-destructive/5" : ""}>
+                <tr
+                  key={i}
+                  className={highlight ? "bg-destructive/5" : warn ? "bg-amber-50 dark:bg-amber-950/20" : ""}
+                >
+                  <td className="px-3 py-2 whitespace-nowrap text-muted-foreground">
+                    {status?.disposition === "ready" && "Import"}
+                    {status?.disposition === "warn_ambiguous_name" && "Import (review)"}
+                    {status?.disposition === "skip_required" && "Skip — required"}
+                    {status?.disposition === "skip_invalid" && "Skip — invalid"}
+                    {status?.disposition === "skip_within_file_duplicate" && "Skip — duplicate"}
+                  </td>
                   {fields.filter((f) => mapping[f.key]).map((f) => (
                     <td key={f.key} className="px-3 py-2 text-foreground whitespace-nowrap max-w-[140px] truncate">
                       {(row[mapping[f.key]!] ?? "").trim() || (
@@ -604,7 +692,7 @@ function StepResults({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-sm font-medium text-foreground">
               <AlertCircle className="h-4 w-4 shrink-0 text-muted-foreground" />
-              {result.errors.length} row{result.errors.length !== 1 ? "s" : ""} not imported
+              {`${result.errors.length} row${result.errors.length !== 1 ? "s" : ""} not imported`}
             </div>
             <button
               type="button"
@@ -635,8 +723,8 @@ function StepResults({
       {result.imported > 0 && !venueId && !embedded && (() => {
         const next = NEXT_STEP[entity];
         return (
-          <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-wide text-primary">Recommended Next Step</p>
+          <div className="htc-surface-guidance space-y-2 p-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-heading">Recommended Next Step</p>
             <p className="text-sm font-medium text-foreground">{next.cta}</p>
             <p className="text-xs text-muted-foreground">{next.detail}</p>
             <Link
@@ -742,7 +830,104 @@ export function ImportWizard({
   const [mapping, setMapping]   = React.useState<FieldMapping>({});
   const [assisted, setAssisted] = React.useState(false);
   const [result, setResult]     = React.useState<ImportResult | null>(null);
+  const [seedNotice, setSeedNotice] = React.useState<string | null>(null);
+  const [seedBusy, setSeedBusy] = React.useState(false);
   const [pending, startTransition] = useTransition();
+
+  // White Glove: operator clicked "Use in Import Wizard" on a received material.
+  // Fetch via authorized signed URL and feed the existing parse path — no second upload.
+  React.useEffect(() => {
+    if (!venueId || typeof window === "undefined") return;
+    const key = `wg-seed-material:${venueId}`;
+    let raw: string | null = null;
+    try {
+      raw = sessionStorage.getItem(key);
+      if (raw) sessionStorage.removeItem(key);
+    } catch {
+      return;
+    }
+    if (!raw) return;
+    let seed: { materialId?: string; fileName?: string; entity?: EntityType };
+    try {
+      seed = JSON.parse(raw) as typeof seed;
+    } catch {
+      return;
+    }
+    if (!seed.materialId || !seed.entity) return;
+    const entityType = seed.entity;
+    setEntity(entityType);
+    setStep(1);
+    setSeedBusy(true);
+    setSeedNotice(`Loading ${seed.fileName ?? "uploaded material"}…`);
+    void (async () => {
+      try {
+        const metaRes = await fetch(
+          `/api/admin/onboarding/materials/${encodeURIComponent(seed.materialId!)}/file?format=json`,
+          { credentials: "include" },
+        );
+        const meta = (await metaRes.json()) as {
+          ok?: boolean;
+          signedUrl?: string;
+          fileName?: string;
+          contentType?: string | null;
+          error?: string;
+        };
+        if (!metaRes.ok || !meta.signedUrl) {
+          setSeedNotice(meta.error || "Could not load the uploaded material.");
+          return;
+        }
+        const fileRes = await fetch(meta.signedUrl);
+        if (!fileRes.ok) {
+          setSeedNotice("Could not download the uploaded material.");
+          return;
+        }
+        const blob = await fileRes.blob();
+        const name = meta.fileName || seed.fileName || "material";
+        const file = new File([blob], name, {
+          type: meta.contentType || blob.type || "application/octet-stream",
+        });
+        setSeedNotice(`Received file ready for ${ENTITY_META[entityType].label} import — reviewing…`);
+        const lower = name.toLowerCase();
+        if (lower.endsWith(".csv")) {
+          Papa.parse<CsvRow>(file, {
+            header: true,
+            skipEmptyLines: true,
+            complete(result) {
+              const headers = result.meta.fields ?? [];
+              if (headers.length === 0 || result.data.length === 0) {
+                setSeedNotice("That CSV has no usable rows.");
+                return;
+              }
+              handleParsed(headers, result.data, name, false);
+              setSeedNotice(
+                `Staged from White Glove material “${name}”. Review mapping before import — nothing is committed yet.`,
+              );
+            },
+            error(err) {
+              setSeedNotice(err.message);
+            },
+          });
+        } else {
+          const formData = new FormData();
+          formData.append("file", file);
+          const parsed = await parseImportFileAction(formData, entityType);
+          if (!parsed.ok) {
+            setSeedNotice(parsed.message);
+            return;
+          }
+          handleParsed(parsed.headers, parsed.rows as CsvRow[], name, parsed.assisted);
+          setSeedNotice(
+            `Staged from White Glove material “${name}”. Review mapping before import — nothing is committed yet.`,
+          );
+        }
+      } catch (err) {
+        setSeedNotice(err instanceof Error ? err.message : "Could not load material.");
+      } finally {
+        setSeedBusy(false);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- one-shot seed on mount
+  }, [venueId]);
 
   const { headers, rows } = React.useMemo(
     () => deriveHeadersRows(rawHeaders, rawRows, hasHeaderRow),
@@ -854,6 +1039,14 @@ export function ImportWizard({
   return (
     <div className="rounded-xl border border-border bg-card p-6">
       {showProgress && <ProgressBar step={step} total={totalSteps} />}
+      {seedNotice || seedBusy ? (
+        <p
+          className="mb-4 text-xs text-muted-foreground rounded-md border bg-muted/30 px-3 py-2"
+          data-testid="wg-import-seed-notice"
+        >
+          {seedBusy ? "Loading White Glove material…" : seedNotice}
+        </p>
+      ) : null}
       {datedEventsMessage && entity === "couples" ? (
         <p className="mb-4 text-xs text-amber-800 dark:text-amber-200">
           {datedEventsMessage} Clients without an event date can still be imported.
@@ -890,6 +1083,7 @@ export function ImportWizard({
       {step === 3 && entity && (
         <StepPreview
           entity={entity}
+          headers={headers}
           rows={rows}
           mapping={mapping}
           assisted={assisted}

@@ -3,12 +3,15 @@ import { notFound } from "next/navigation";
 
 import { EventBookingDateForm } from "@/components/events/event-booking-date-form";
 import { EventEditForm } from "@/components/events/event-edit-form";
+import { CollectionBackLink } from "@/components/library/collection-back-link";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getSpaces, getCapacityRules } from "@/lib/availability/service";
 import { effectiveMaxSimultaneousEvents } from "@/lib/availability/event-occupancy";
+import { getEventSpaceAssignments } from "@/lib/events/space-assignments";
+import { getClient } from "@/lib/clients/service";
 import { getEvent } from "@/lib/events/service";
-import { getCurrentUserRole } from "@/lib/venue/service";
+import { getCurrentUserRole, getCurrentVenue } from "@/lib/venue/service";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -21,22 +24,37 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function EditEventPage({ params }: Props) {
   const { id } = await params;
-  const [event, spaces, capacityRules, role] = await Promise.all([
-    getEvent(id), getSpaces(), getCapacityRules(), getCurrentUserRole(),
+  const [event, spaces, capacityRules, role, venue, assignments] = await Promise.all([
+    getEvent(id),
+    getSpaces(),
+    getCapacityRules(),
+    getCurrentUserRole(),
+    getCurrentVenue(),
+    getEventSpaceAssignments(id),
   ]);
   if (!event) notFound();
+  const ownerLeadId = event.clientId
+    ? (await getClient(event.clientId))?.leadId ?? undefined
+    : undefined;
   const canEditBookingDate = role === "owner" || role === "manager";
+  const spaceOperatingMode = venue?.spaceOperatingMode ?? "single";
+  const backHref = event.clientId ? `/clients/${event.clientId}` : `/events/${event.id}`;
+  const backLabel = event.clientId ? "Client" : event.name;
+
   return (
-    <div className="space-y-6">
-      <PageHeader title={`Edit · ${event.name}`} description="Update event details." />
-      <Card>
-        <CardHeader>
+    <div className="htc-hospitality-page space-y-5 sm:space-y-6" data-htc-phase12="event-edit">
+      <CollectionBackLink href={backHref} label={backLabel} />
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
+        <PageHeader title={`Edit · ${event.name}`} description="Update event details." />
+      </div>
+      <Card className="htc-working-card gap-0 py-0">
+        <CardHeader className="py-4">
           <CardTitle>Booking date</CardTitle>
           <CardDescription>
             Used for payments due at booking. Separate from the Event date.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="py-5">
           <EventBookingDateForm
             eventId={event.id}
             bookedAt={event.bookedAt}
@@ -44,13 +62,27 @@ export default async function EditEventPage({ params }: Props) {
           />
         </CardContent>
       </Card>
-      <Card>
-        <CardHeader>
+      <Card className="htc-working-card gap-0 py-0">
+        <CardHeader className="py-4">
           <CardTitle>Event details</CardTitle>
           <CardDescription>Changes are logged to the event activity timeline.</CardDescription>
         </CardHeader>
-        <CardContent>
-          <EventEditForm event={event} spaces={spaces} maxSimultaneousEvents={effectiveMaxSimultaneousEvents(capacityRules)} />
+        <CardContent className="py-5">
+          <EventEditForm
+            event={event}
+            spaces={spaces}
+            maxSimultaneousEvents={effectiveMaxSimultaneousEvents(capacityRules)}
+            spaceOperatingMode={spaceOperatingMode}
+            initialAssignments={assignments.map((a) => ({
+              useKey: a.useKey,
+              useLabel: a.useLabel,
+              spaceId: a.spaceId,
+              startTime: a.startTime ?? null,
+              endTime: a.endTime ?? null,
+              scheduledDate: a.scheduledDate ?? null,
+            }))}
+            excludeLeadId={ownerLeadId}
+          />
         </CardContent>
       </Card>
     </div>

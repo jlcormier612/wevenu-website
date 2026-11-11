@@ -97,7 +97,7 @@ export async function extractInquiryFromEmail(subject: string, body: string): Pr
         eventDate: str(parsed.eventDate),
         guestCount: num(parsed.guestCount),
         inquiryMessage: str(parsed.inquiryMessage),
-        confidenceScore: confidence === null ? 50 : Math.max(0, Math.min(100, confidence)),
+        confidenceScore: confidence === null ? null : Math.max(0, Math.min(100, confidence)),
         sourceData: { extracted_subject: subject },
       },
     };

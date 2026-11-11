@@ -1,8 +1,33 @@
 /**
  * Contract merge-field resolution.
- * Tokens left out of the map when values are unknown — never silently blanked.
+ *
+ * Advertised Smart Fields live in MERGE_FIELDS. Booking-backed operational
+ * keys (spaces, package, totals, payment, balance) always resolve from SoT.
+ * Removed keys (hours / ceremony / reception / coordinator) still always
+ * resolve with an honest value so older drafts never surface raw {{tokens}}.
  */
 import { formatContractDate } from "@/lib/contracts/constants";
+import {
+  CEREMONY_SPACE_UNLISTED,
+  RECEPTION_SPACE_UNLISTED,
+} from "@/lib/contracts/ceremony-reception-merge";
+import { EMPTY_EVENT_SPACES_LABEL } from "@/lib/contracts/event-spaces-merge";
+import {
+  formatBalanceRemaining,
+  formatCeremonyOrReceptionSummary,
+  formatRequiredClientPartyName,
+  formatVenueAccessHours,
+  MISSING_ADDITIONAL_ITEMS,
+  MISSING_BALANCE_REMAINING,
+  MISSING_CEREMONY_SUMMARY,
+  MISSING_CONTRACT_TOTAL,
+  MISSING_COORDINATOR_NAME,
+  MISSING_INCLUDED_ITEMS,
+  MISSING_PACKAGE_SECTION,
+  MISSING_PAYMENT_SCHEDULE,
+  MISSING_RECEPTION_SUMMARY,
+  MISSING_VENUE_ACCESS_HOURS,
+} from "@/lib/contracts/merge-extras";
 import { type MergeData } from "@/lib/shared-merge/tokens";
 
 export { mergeContent, extractTokens, type MergeData } from "@/lib/shared-merge/tokens";
@@ -15,45 +40,52 @@ export type MergeContext = {
   venueEmail?: string | null;
   clientFirstName: string;
   clientLastName: string;
-  partnerFirstName: string | null;
-  partnerLastName: string | null;
   clientEmail?: string | null;
   clientPhone?: string | null;
+  /**
+   * When set (Preview/Send with explicit required signers), becomes client_name.
+   * Message templates and single-primary resolution leave this unset.
+   */
+  requiredClientSignerNames?: string[] | null;
   eventName?: string | null;
   eventDate: string | null;
   eventType: string | null;
   guestCount: number | null;
   eventSpaces?: string | null;
   coordinatorName?: string | null;
-  venueAccessHours?: string | null;
-  ceremonySummary?: string | null;
-  receptionSummary?: string | null;
   packageSection?: string | null;
   includedItemsSummary?: string | null;
   additionalItemsSummary?: string | null;
   paymentScheduleSummary?: string | null;
   contractTotal?: string | null;
-  balanceRemaining?: string | null;
-  vendorsOnFile?: string | null;
   contractTitle: string;
+  venueAccessHours?: string | null;
+  ceremonySummary?: string | null;
+  receptionSummary?: string | null;
+  ceremonySpace?: string | null;
+  receptionSpace?: string | null;
+  /** Residual assignments only; empty string omits the starter section. */
+  additionalEventSpaces?: string | null;
+  /** Agreed rehearsal dinner date (YYYY-MM-DD); empty omits starter section. */
+  rehearsalDate?: string | null;
+  balanceRemaining?: string | null;
 };
 
 function setIfPresent(data: MergeData, key: string, value: string | null | undefined) {
   if (value != null && value !== "") data[key] = value;
 }
 
-/** Build the MergeData map. Optional tokens are omitted when unknown. */
+/** Build the MergeData map. Legacy operational keys always receive a value. */
 export function buildMergeData(ctx: MergeContext): MergeData {
   const today = new Date().toLocaleDateString("en-US", {
     month: "long", day: "numeric", year: "numeric",
   });
 
-  const primary = `${ctx.clientFirstName} ${ctx.clientLastName}`.trim();
-  const partner =
-    ctx.partnerFirstName || ctx.partnerLastName
-      ? `${ctx.partnerFirstName ?? ""} ${ctx.partnerLastName ?? ""}`.trim()
-      : null;
-  const clientName = partner ? `${primary} & ${partner}` : primary;
+  const primaryName = `${ctx.clientFirstName} ${ctx.clientLastName}`.trim();
+  const partyFromSigners = ctx.requiredClientSignerNames
+    ? formatRequiredClientPartyName(ctx.requiredClientSignerNames)
+    : "";
+  const clientName = partyFromSigners || primaryName;
 
   const eventTypePretty = ctx.eventType
     ? ctx.eventType.charAt(0).toUpperCase() +
@@ -63,15 +95,12 @@ export function buildMergeData(ctx: MergeContext): MergeData {
   const data: MergeData = {
     venue_name: ctx.venueName,
     client_name: clientName,
-    couple_name: clientName,
-    primary_contact_name: primary,
     today_date: today,
-    contract_title: ctx.contractTitle,
+    contract_title: ctx.contractTitle || "Agreement",
   };
 
   setIfPresent(data, "first_name", ctx.clientFirstName);
   setIfPresent(data, "last_name", ctx.clientLastName);
-  setIfPresent(data, "full_name", primary);
 
   setIfPresent(data, "venue_address", ctx.venueAddress);
   setIfPresent(data, "venue_phone", ctx.venuePhone);
@@ -82,18 +111,35 @@ export function buildMergeData(ctx: MergeContext): MergeData {
   data.event_date = ctx.eventDate ? formatContractDate(ctx.eventDate) : "Date to be confirmed";
   data.event_type = eventTypePretty || "Celebration";
   data.guest_count = ctx.guestCount != null ? String(ctx.guestCount) : "To be confirmed";
-  setIfPresent(data, "event_spaces", ctx.eventSpaces);
-  setIfPresent(data, "coordinator_name", ctx.coordinatorName);
-  setIfPresent(data, "venue_access_hours", ctx.venueAccessHours);
-  setIfPresent(data, "ceremony_summary", ctx.ceremonySummary);
-  setIfPresent(data, "reception_summary", ctx.receptionSummary);
-  setIfPresent(data, "package_section", ctx.packageSection);
-  setIfPresent(data, "included_items_summary", ctx.includedItemsSummary);
-  setIfPresent(data, "additional_items_summary", ctx.additionalItemsSummary);
-  setIfPresent(data, "payment_schedule_summary", ctx.paymentScheduleSummary);
-  setIfPresent(data, "contract_total", ctx.contractTotal);
-  setIfPresent(data, "balance_remaining", ctx.balanceRemaining);
-  setIfPresent(data, "vendors_on_file", ctx.vendorsOnFile);
+
+  // Always resolve advertised + legacy keys so drafts never show raw tokens.
+  data.event_spaces = ctx.eventSpaces?.trim() || EMPTY_EVENT_SPACES_LABEL;
+  data.coordinator_name = ctx.coordinatorName?.trim() || MISSING_COORDINATOR_NAME;
+  data.package_section = ctx.packageSection?.trim() || MISSING_PACKAGE_SECTION;
+  data.included_items_summary = ctx.includedItemsSummary?.trim() || MISSING_INCLUDED_ITEMS;
+  data.additional_items_summary = ctx.additionalItemsSummary?.trim() || MISSING_ADDITIONAL_ITEMS;
+  data.payment_schedule_summary = ctx.paymentScheduleSummary?.trim() || MISSING_PAYMENT_SCHEDULE;
+  data.contract_total = ctx.contractTotal?.trim() || MISSING_CONTRACT_TOTAL;
+  data.venue_access_hours = ctx.venueAccessHours?.trim() || MISSING_VENUE_ACCESS_HOURS;
+  data.ceremony_summary = ctx.ceremonySummary?.trim() || MISSING_CEREMONY_SUMMARY;
+  data.reception_summary = ctx.receptionSummary?.trim() || MISSING_RECEPTION_SUMMARY;
+  data.ceremony_space = ctx.ceremonySpace?.trim() || CEREMONY_SPACE_UNLISTED;
+  data.reception_space = ctx.receptionSpace?.trim() || RECEPTION_SPACE_UNLISTED;
+  // Empty → "" so the starter can omit the Additional Event Spaces section.
+  data.additional_event_spaces = ctx.additionalEventSpaces?.trim() || "";
+  // Empty → "" so the starter can omit the Rehearsal Date section.
+  data.rehearsal_date = ctx.rehearsalDate
+    ? formatContractDate(ctx.rehearsalDate)
+    : "";
+  data.balance_remaining = ctx.balanceRemaining?.trim() || MISSING_BALANCE_REMAINING;
 
   return data;
 }
+
+/** Re-export pure formatters for tests / callers. */
+export {
+  formatBalanceRemaining,
+  formatCeremonyOrReceptionSummary,
+  formatRequiredClientPartyName,
+  formatVenueAccessHours,
+};

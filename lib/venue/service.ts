@@ -9,13 +9,19 @@
 import { cache } from "react";
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
+import { normalizeVenuePhoneInput } from "@/lib/sms/phone";
 import * as repository from "@/lib/venue/repository";
 import type {
   Venue,
   VenueSetupErrors,
   VenueSetupInput,
 } from "@/lib/venue/types";
-import { validateStep, validateVenueSetup } from "@/lib/venue/validation";
+import {
+  isValidEmail,
+  validateGeneralSettings,
+  validateStep,
+  validateVenueSetup,
+} from "@/lib/venue/validation";
 import type {
   ProductVenueProfileFields,
   SyncVenueProfileReason,
@@ -110,13 +116,16 @@ export const getCurrentVenue = cache(async (): Promise<Venue | null> => {
  * (same source of truth used by RLS) — server actions call this for early,
  * good-error-message rejections; RLS is the backstop if this check is ever
  * bypassed or forgotten. See docs/trust-risk-register.md TR-G1.
+ *
+ * Request-scoped `cache()` — layout + page both call this on the same
+ * render; role cannot change mid-request. Never cross-request.
  */
-export async function getCurrentUserRole(): Promise<string | null> {
+export const getCurrentUserRole = cache(async (): Promise<string | null> => {
   if (!isSupabaseConfigured) return null;
   const supabase = await createClient();
   const { data } = await supabase.rpc("current_user_role");
   return (data as string | null) ?? null;
-}
+});
 
 /** True when the current user has a venue with setup completed. */
 export async function hasCompletedVenueSetup(): Promise<boolean> {
@@ -300,7 +309,7 @@ export async function getVenueSettings(): Promise<{
     name: venue.name,
     businessName: venue.businessName ?? "",
     email: venue.email ?? "",
-    phone: venue.phone ?? "",
+    phone: venue.phone ? normalizeVenuePhoneInput(venue.phone) : "",
     website: venue.website ?? "",
     addressLine1: venue.addressLine1 ?? "",
     addressLine2: venue.addressLine2 ?? "",
@@ -340,7 +349,7 @@ export async function saveVenueInfoSection(
       name: input.name.trim(),
       business_name: input.businessName.trim() || null,
       email: input.email.trim() || null,
-      phone: input.phone.trim() || null,
+      phone: normalizeVenuePhoneInput(input.phone) || null,
       website: normalizeUrl(input.website) || null,
       address_line1: input.addressLine1.trim() || null,
       address_line2: input.addressLine2.trim() || null,
@@ -417,24 +426,17 @@ export async function saveBrandSection(
   });
 }
 
-/** Save: owner name/title/email and general settings (currency, week start). */
+/** Save the General settings card: currency and week start only. */
 export async function saveOwnerSection(
   input: VenueSetupInput,
 ): Promise<SaveSectionResult> {
-  const errors = validateStep("owner", input);
+  const errors = validateGeneralSettings(input);
   if (Object.keys(errors).length > 0) return { ok: false, errors };
   return withVenue(async (supabase, venueId) => {
-    await Promise.all([
-      repository.updateOwnerStaff(supabase, venueId, {
-        full_name: input.ownerFullName.trim(),
-        title: input.ownerTitle.trim() || null,
-        email: input.ownerEmail.trim() || null,
-      }),
-      repository.updateVenueFields(supabase, venueId, {
-        currency: input.currency,
-        week_starts_on: input.weekStartsOn,
-      }),
-    ]);
+    await repository.updateVenueFields(supabase, venueId, {
+      currency: input.currency,
+      week_starts_on: input.weekStartsOn,
+    });
     pushVenueProfileToCrm(venueId, input, "settings");
     return { ok: true };
   });
@@ -492,6 +494,34 @@ export async function updateVenueStory(story: string): Promise<void> {
   await repository.updateVenueFields(supabase, venue.id, { story: story.trim() || null });
 }
 
+/**
+ * Optional venue-level contact representation (venues.email / venues.phone).
+ * Does not change Owner membership, authenticated identity, or email signatures.
+ */
+export async function saveVenueContactRepresentation(input: {
+  email: string;
+  phone: string;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!isSupabaseConfigured) return { ok: false, error: "Backend not configured." };
+  const email = input.email.trim().toLowerCase();
+  const phone = normalizeVenuePhoneInput(input.phone);
+  if (email && !isValidEmail(email)) {
+    return { ok: false, error: "Enter a valid venue contact email, or leave it blank." };
+  }
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Session expired. Please sign in again." };
+  const venue = await getCurrentVenue();
+  if (!venue) return { ok: false, error: "Venue not found." };
+  await repository.updateVenueFields(supabase, venue.id, {
+    email: email || null,
+    phone: phone || null,
+  });
+  return { ok: true };
+}
+
 /** Save: plain-text email signature/footer for outbound client emails. */
 export async function updateVenueEmailSignature(
   signature: string | null,
@@ -510,6 +540,33 @@ export async function updateVenueEmailSignature(
   return { ok: true };
 }
 
+/** Save: customer-facing email footer contact display preferences (active venue). */
+export async function updateVenueEmailFooterContactPrefs(input: {
+  signature?: string | null;
+  showSignature: boolean;
+  showEmail: boolean;
+  showPhone: boolean;
+}): Promise<{ ok: boolean; message?: string }> {
+  if (!isSupabaseConfigured) return { ok: false, message: "Backend not configured." };
+  const supabase = await createClient();
+  const venue = await getCurrentVenue();
+  if (!venue) return { ok: false, message: "Venue not found." };
+  const patch: Record<string, unknown> = {
+    email_footer_show_signature: Boolean(input.showSignature),
+    email_footer_show_email: Boolean(input.showEmail),
+    email_footer_show_phone: Boolean(input.showPhone),
+  };
+  if (input.signature !== undefined) {
+    const trimmed = (input.signature ?? "").trim();
+    if (trimmed.length > 2000) {
+      return { ok: false, message: "Signature is too long (max 2000 characters)." };
+    }
+    patch.email_signature = trimmed || null;
+  }
+  await repository.updateVenueFields(supabase, venue.id, patch);
+  return { ok: true };
+}
+
 /** Which optional planning surfaces this venue offers (Timeline, Floor Plan, etc.). */
 export async function updateVenuePlanningCapabilities(
   caps: import("@/lib/playbooks/capabilities").VenuePlanningCapabilities,
@@ -519,10 +576,14 @@ export async function updateVenuePlanningCapabilities(
   const venue = await getCurrentVenue();
   if (!venue) return { ok: false, message: "Venue not found." };
   await repository.updateVenueFields(supabase, venue.id, {
+    planning_checklists_enabled: caps.checklists,
     planning_timeline_enabled: caps.timeline,
     planning_floor_plan_enabled: caps.floorPlan,
     planning_seating_enabled: caps.seating,
     planning_vendors_enabled: caps.vendors,
+    planning_inventory_enabled: caps.inventory,
+    planning_event_order_enabled: caps.eventOrder,
+    planning_questionnaires_enabled: caps.questionnaires,
   });
   return { ok: true };
 }

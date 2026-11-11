@@ -1,0 +1,156 @@
+{
+  "status": "GREEN",
+  "servingSha": "7d2b60b07e51904b777eac00198a3ed38adee9fd",
+  "expectedSha": "7d2b60b07e51904b777eac00198a3ed38adee9fd",
+  "eventId": "ebf74f77-2944-474a-b735-48762ecb6842",
+  "clientId": "b4e2764b-be33-4579-89e3-0c8e4a6dd5be",
+  "before": {
+    "taskCount": 18,
+    "taskFingerprint": "028427eb-ceee-4278-a971-5dd5e838c1ce:pending:2060-06-17:couple|0ce06642-2f1b-4b92-820f-1487a0fa166e:pending:2060-07-17:team|1b076481-d8bf-4f1d-8f16-577857d04693:complete:2060-06-26:coordinator|2741aa30-f800-401c-a717-adf2628eba60:pending:2060-06-17:couple|4d1d2980-1c73-4bf5-9899-0e03e5264071:pending:2060-07-31:couple|51b29b09-d178-4af9-ad1c-68a9d81539ca:pending:2060-07-10:coordinator|6f1a8bad-e79c-43f0-8ba7-899c50ffee9a:pending:2060-06-17:couple|73ad3bc6-d49e-463a-9c55-a8add9cdbf38:pending:2060-07-03:coordinator|82a13537-3d06-4f12-8c11-083666107df8:pending:2060-05-18:couple|86b6f362-981b-4a6b-a7bb-977735bdcc82:pending:2060-04-18:couple|8eeb10ee-b280-45f3-b39f-29c0d150182f:pending:2060-07-03:coordinator|92639d90-7fc9-4dac-8488-8ef222839dfc:pending:2060-07-17:team|a5500f6d-2c0a-45f5-8b2b-02e701eaca05:pending:2060-07-20:coordinator|aa12f27c-5090-4fcd-a6f7-582897be09b1:pending:2060-07-03:vendor|d246e616-f3fd-41fa-ad4d-338b960322d4:pending:2060-06-02:couple|d8aebaaa-9c37-403b-9612-aed3fe9a4469:pending:2060-06-17:couple|f5a2eedb-c2e5-43d8-a638-bb2aba49828a:pending:2060-07-03:couple|f6e5cb9a-df3e-4f63-91eb-91a632fd7f7f:pending:2060-06-26:couple",
+    "operational": "18c943fb-9762-4383-948a-e0f82fa4f89f",
+    "coupleSelected": null,
+    "plans": 1,
+    "offers": 2,
+    "invoices": 38,
+    "invites": 1
+  },
+  "after": {
+    "taskFingerprint": "028427eb-ceee-4278-a971-5dd5e838c1ce:pending:2060-06-17:couple|0ce06642-2f1b-4b92-820f-1487a0fa166e:pending:2060-07-17:team|1b076481-d8bf-4f1d-8f16-577857d04693:complete:2060-06-26:coordinator|2741aa30-f800-401c-a717-adf2628eba60:pending:2060-06-17:couple|4d1d2980-1c73-4bf5-9899-0e03e5264071:pending:2060-07-31:couple|51b29b09-d178-4af9-ad1c-68a9d81539ca:pending:2060-07-10:coordinator|6f1a8bad-e79c-43f0-8ba7-899c50ffee9a:pending:2060-06-17:couple|73ad3bc6-d49e-463a-9c55-a8add9cdbf38:pending:2060-07-03:coordinator|82a13537-3d06-4f12-8c11-083666107df8:pending:2060-05-18:couple|86b6f362-981b-4a6b-a7bb-977735bdcc82:pending:2060-04-18:couple|8eeb10ee-b280-45f3-b39f-29c0d150182f:pending:2060-07-03:coordinator|92639d90-7fc9-4dac-8488-8ef222839dfc:pending:2060-07-17:team|a5500f6d-2c0a-45f5-8b2b-02e701eaca05:pending:2060-07-20:coordinator|aa12f27c-5090-4fcd-a6f7-582897be09b1:pending:2060-07-03:vendor|d246e616-f3fd-41fa-ad4d-338b960322d4:pending:2060-06-02:couple|d8aebaaa-9c37-403b-9612-aed3fe9a4469:pending:2060-06-17:couple|f5a2eedb-c2e5-43d8-a638-bb2aba49828a:pending:2060-07-03:couple|f6e5cb9a-df3e-4f63-91eb-91a632fd7f7f:pending:2060-06-26:couple",
+    "operational": "18c943fb-9762-4383-948a-e0f82fa4f89f",
+    "coupleSelected": null,
+    "plans": 1,
+    "offers": 2,
+    "invoices": 38,
+    "invites": 1
+  },
+  "passed": 25,
+  "failed": 0,
+  "checks": [
+    {
+      "name": "serving_sha",
+      "pass": true,
+      "detail": "serving=7d2b60b07e51904b777eac00198a3ed38adee9fd expected=7d2b60b07e51904b777eac00198a3ed38adee9fd"
+    },
+    {
+      "name": "fixture",
+      "pass": true,
+      "detail": "event=ebf74f77-2944-474a-b735-48762ecb6842 client=b4e2764b-be33-4579-89e3-0c8e4a6dd5be score=10"
+    },
+    {
+      "name": "planning_list_visible",
+      "pass": true,
+      "detail": "planning-task-list"
+    },
+    {
+      "name": "client_section_visible",
+      "pass": true,
+      "detail": "dbCouple=10"
+    },
+    {
+      "name": "client_task_in_client_section",
+      "pass": true,
+      "detail": "Complete your questionnaire"
+    },
+    {
+      "name": "couple_not_in_venue_section",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "name": "venue_section_visible",
+      "pass": true,
+      "detail": "dbVenue=7"
+    },
+    {
+      "name": "venue_task_in_venue_section",
+      "pass": true,
+      "detail": "Build timeline"
+    },
+    {
+      "name": "vendor_section_visible",
+      "pass": true,
+      "detail": "dbVendor=1"
+    },
+    {
+      "name": "planning_total_matches_db",
+      "pass": true,
+      "detail": "attr=18 db=18"
+    },
+    {
+      "name": "floor_tab_no_auto_designer_redirect",
+      "pass": true,
+      "detail": "https://app.sandbox.hellotocheers.com/clients/b4e2764b-be33-4579-89e3-0c8e4a6dd5be#floorplan"
+    },
+    {
+      "name": "floor_workspace_visible",
+      "pass": true,
+      "detail": "floor-plan-operational-workspace"
+    },
+    {
+      "name": "floor_selection_status_visible",
+      "pass": true,
+      "detail": "Using the only offered layout as the working layout (Barn-master-floorplan). The client has not separately confirmed a choice."
+    },
+    {
+      "name": "floor_no_false_client_selection",
+      "pass": true,
+      "detail": "no couple_selected"
+    },
+    {
+      "name": "designer_opened_explicitly",
+      "pass": true,
+      "detail": "https://app.sandbox.hellotocheers.com/events/ebf74f77-2944-474a-b735-48762ecb6842/floor-plans/18c943fb-9762-4383-948a-e0f82fa4f89f"
+    },
+    {
+      "name": "designer_back_label",
+      "pass": true,
+      "detail": "Back to Floor Plans"
+    },
+    {
+      "name": "designer_back_to_booking_floor",
+      "pass": true,
+      "detail": "https://app.sandbox.hellotocheers.com/clients/b4e2764b-be33-4579-89e3-0c8e4a6dd5be#playbook#floorplan"
+    },
+    {
+      "name": "no_redirect_loop_after_back",
+      "pass": true,
+      "detail": "https://app.sandbox.hellotocheers.com/clients/b4e2764b-be33-4579-89e3-0c8e4a6dd5be#playbook#floorplan"
+    },
+    {
+      "name": "tasks_unchanged",
+      "pass": true,
+      "detail": "fingerprint"
+    },
+    {
+      "name": "selection_unchanged",
+      "pass": true,
+      "detail": "b=null a=null"
+    },
+    {
+      "name": "operational_stable_or_ensured",
+      "pass": true,
+      "detail": "b=18c943fb-9762-4383-948a-e0f82fa4f89f a=18c943fb-9762-4383-948a-e0f82fa4f89f plans 1->1"
+    },
+    {
+      "name": "no_plan_duplication",
+      "pass": true,
+      "detail": "b=1 a=1"
+    },
+    {
+      "name": "offers_unchanged",
+      "pass": true,
+      "detail": "b=2 a=2"
+    },
+    {
+      "name": "no_invoice_side_effect",
+      "pass": true,
+      "detail": "b=38 a=38"
+    },
+    {
+      "name": "no_invite_side_effect",
+      "pass": true,
+      "detail": "b=1 a=1"
+    }
+  ],
+  "at": "2026-10-22T16:19:29.108Z"
+}

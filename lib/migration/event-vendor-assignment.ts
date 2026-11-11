@@ -76,7 +76,10 @@ async function resolveVendorId(
   );
   if (dup?.id) return { ok: true, vendorId: dup.id, createdVendor: false };
 
-  const input = {
+  // Full VendorInput — insertVendor / create_vendor_atomic call .trim() on
+  // string fields and pass isRequired/isInHouse through; incomplete objects
+  // crash the same way MC vendor commit did before toVendorInput was fixed.
+  const input: VendorInput = {
     businessName,
     category: n.category ?? "",
     contactName: n.contactName ?? "",
@@ -88,12 +91,14 @@ async function resolveVendorId(
     pinterestUrl: "",
     tiktokUrl: "",
     preferenceLevel: "recommended",
+    isRequired: false,
+    isInHouse: false,
     description: "",
     logoUrl: "",
     pricingTier: "",
     notes: "Imported via Bring Your Business for an active Event assignment.",
     specialPricingNote: "",
-  } as VendorInput;
+  };
   const vendorId = await vendorsRepo.insertVendor(client, venueId, input);
   return { ok: true, vendorId, createdVendor: true };
 }

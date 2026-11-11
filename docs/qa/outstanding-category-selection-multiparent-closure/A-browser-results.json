@@ -1,0 +1,174 @@
+{
+  "checks": [
+    {
+      "name": "serving_sha",
+      "pass": true,
+      "detail": "expected=ee0e78101957f078df7e7886032e814a350d802b ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:ee0e78101957f078df7e7886032e814a350d802b"
+    },
+    {
+      "name": "offerings_dropdown_has_decor",
+      "pass": true,
+      "detail": "Uncategorized | Bar | Catering | Ceremony | Client Requests & Special Notes | Client-Provided Items | Day-of Notes | Décor | Event Closeout | Event Overview | Event Schedule | Final Event Readiness | Florals | Payment Summary | Reception | Rentals | Room Setup | Services | Vendor Arrival & Load-In | Vendor Team"
+    },
+    {
+      "name": "offerings_dropdown_has_florals",
+      "pass": true,
+      "detail": "Uncategorized | Bar | Catering | Ceremony | Client Requests & Special Notes | Client-Provided Items | Day-of Notes | Décor | Event Closeout | Event Overview | Event Schedule | Final Event Readiness | Florals | Payment Summary | Reception | Rentals | Room Setup | Services | Vendor Arrival & Load-In | Vendor Team"
+    },
+    {
+      "name": "persisted_decor_category",
+      "pass": true,
+      "detail": "{\"id\":\"489f540c-a542-4ba1-96fb-ee7a3a6b9c68\",\"name\":\"Décor\"}"
+    },
+    {
+      "name": "catering_selected",
+      "pass": true,
+      "detail": "aria-pressed=true"
+    },
+    {
+      "name": "configure_after_continue",
+      "pass": true,
+      "detail": "https://app.sandbox.hellotocheers.com/library/event-order-templates/f3ded75e-8a67-4c40-b18f-0102c67edb5b"
+    },
+    {
+      "name": "return_to_package_categories",
+      "pass": true,
+      "detail": "Change package categories"
+    },
+    {
+      "name": "template_has_catering_and_custom",
+      "pass": true,
+      "detail": "Catering, ECI-ECIMVSMK2YI-Get Ready Inclusions"
+    },
+    {
+      "name": "custom_section_created_offering_category",
+      "pass": true,
+      "detail": "{\"id\":\"897fe6e5-6b1d-4849-98eb-8029ef728d6c\",\"name\":\"ECI-ECIMVSMK2YI-Get Ready Inclusions\",\"venue_id\":\"a415ac52-cd74-42a6-8df7-7a8f6e71d080\"}"
+    },
+    {
+      "name": "offerings_dropdown_has_custom_without_recreate",
+      "pass": true,
+      "detail": "Uncategorized | Bar | Catering | Ceremony | Client Requests & Special Notes | Client-Provided Items | Day-of Notes | Décor | ECI-ECIMVSMK2YI-Get Ready Inclusions | Event Closeout | Event Overview | Event Schedule | Final Event Readiness | Florals | Payment Summary | Reception | Rentals | Room Setup | Services | Vendor Arrival & Load-In | Vendor Team"
+    },
+    {
+      "name": "no_duplicate_custom_category_rows",
+      "pass": true,
+      "detail": "count=1"
+    },
+    {
+      "name": "removed_custom_section_from_template",
+      "pass": true,
+      "detail": "[{\"id\":\"ef840c8c-5aa9-42ca-8e82-e840db80fc63\",\"name\":\"Catering\"}]"
+    },
+    {
+      "name": "shared_category_survives_template_removal",
+      "pass": true,
+      "detail": "897fe6e5-6b1d-4849-98eb-8029ef728d6c"
+    },
+    {
+      "name": "mobile_package_categories_reachable",
+      "pass": true,
+      "detail": "390"
+    }
+  ],
+  "failed": 0,
+  "persisted": {
+    "run": "ECIMVSMK2YI",
+    "expectedSha": "ee0e78101957f078df7e7886032e814a350d802b",
+    "prefix": "ECI-ECIMVSMK2YI-",
+    "offeringsCategories": [
+      {
+        "id": "e42e3582-25ec-4fa0-9e24-20fa30c8d8e4",
+        "name": "Catering"
+      },
+      {
+        "id": "0cf0a2ab-8839-4181-89fd-74ad6ac8d821",
+        "name": "Bar"
+      },
+      {
+        "id": "75d029c1-f52c-418d-b3b7-b2b1507bc75e",
+        "name": "Services"
+      },
+      {
+        "id": "e6fd348a-fb15-4ba2-a46a-6675f123da8a",
+        "name": "Rentals"
+      },
+      {
+        "id": "f661f1d8-6c19-419f-bf6f-637a8afc2240",
+        "name": "Florals"
+      },
+      {
+        "id": "489f540c-a542-4ba1-96fb-ee7a3a6b9c68",
+        "name": "Décor"
+      },
+      {
+        "id": "81383454-483e-4b82-8d1a-828632d8f67c",
+        "name": "Event Overview"
+      },
+      {
+        "id": "ec23a617-9ede-4cf1-9fff-bfee31bfe00c",
+        "name": "Event Schedule"
+      },
+      {
+        "id": "2a0a9f65-d145-47ee-a748-2baf589b78a1",
+        "name": "Ceremony"
+      },
+      {
+        "id": "43b22838-c594-4088-9788-921c9ac6aac4",
+        "name": "Reception"
+      },
+      {
+        "id": "1aa37423-c615-403b-95e8-0332d6a5932b",
+        "name": "Room Setup"
+      },
+      {
+        "id": "28ead0f3-4ba3-4824-9027-8a7719dc22a8",
+        "name": "Vendor Team"
+      },
+      {
+        "id": "bd2ebb73-f11b-4de6-a592-23ef40ff25d4",
+        "name": "Vendor Arrival & Load-In"
+      },
+      {
+        "id": "28321acc-a672-4dd0-9507-902948b1ba2f",
+        "name": "Client Requests & Special Notes"
+      },
+      {
+        "id": "53edc21f-1d90-4bd4-8cf5-4489708b9ee6",
+        "name": "Client-Provided Items"
+      },
+      {
+        "id": "991c5c6c-0859-4ea6-b218-c67a775df919",
+        "name": "Payment Summary"
+      },
+      {
+        "id": "da2c0907-e2b4-4f10-8920-4a9b7dd4d0b8",
+        "name": "Final Event Readiness"
+      },
+      {
+        "id": "2eafedfe-0f0a-42bc-b31d-8d6869b58d66",
+        "name": "Day-of Notes"
+      },
+      {
+        "id": "ff151841-04d6-47a7-8a14-065239a3ad3e",
+        "name": "Event Closeout"
+      }
+    ],
+    "templateId": "f3ded75e-8a67-4c40-b18f-0102c67edb5b",
+    "sections": [
+      {
+        "id": "ef840c8c-5aa9-42ca-8e82-e840db80fc63",
+        "name": "Catering"
+      },
+      {
+        "id": "175e6cbb-47fd-4fa1-98be-9c5bf95ecec1",
+        "name": "ECI-ECIMVSMK2YI-Get Ready Inclusions"
+      }
+    ],
+    "customOfferingCategory": {
+      "id": "897fe6e5-6b1d-4849-98eb-8029ef728d6c",
+      "name": "ECI-ECIMVSMK2YI-Get Ready Inclusions",
+      "venue_id": "a415ac52-cd74-42a6-8df7-7a8f6e71d080"
+    }
+  }
+}

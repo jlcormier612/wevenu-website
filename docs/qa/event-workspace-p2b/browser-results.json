@@ -1,0 +1,122 @@
+{
+  "expectedSha": "3472492e436ac4e1f6f1dda4ad84f819323b770e",
+  "servingImage": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:3472492e436ac4e1f6f1dda4ad84f819323b770e",
+  "counts": {
+    "pass": 18,
+    "fail": 0,
+    "total": 18
+  },
+  "checks": [
+    {
+      "name": "serving-sha",
+      "pass": true,
+      "detail": "expected=3472492e436a ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:3472492e436ac4e1f6f1dda4ad84f819323b770e"
+    },
+    {
+      "name": "workflow-mounted",
+      "pass": true,
+      "detail": "event-commercial-workflow"
+    },
+    {
+      "name": "spine-one-path-copy",
+      "pass": true,
+      "detail": "Event Order workflow\n\nOne commercial path for this booked event: build the proposed order, wait for the couple's selections, create the Event Order from those selections, review and share the final order, then invoice. Inventory remains operational; billable amounts live on the Event Order and invoice.\n\n1. Build proposed order\n\nStart selectable packets and add fixed/included lines on the Event Ord"
+    },
+    {
+      "name": "step-build-present",
+      "pass": true,
+      "detail": "build"
+    },
+    {
+      "name": "step-awaiting-present",
+      "pass": true,
+      "detail": "awaiting"
+    },
+    {
+      "name": "step-review-present",
+      "pass": true,
+      "detail": "review"
+    },
+    {
+      "name": "step-order-present",
+      "pass": true,
+      "detail": "order"
+    },
+    {
+      "name": "step-invoice-present",
+      "pass": true,
+      "detail": "invoice"
+    },
+    {
+      "name": "choices-panel",
+      "pass": true,
+      "detail": "client-choices-panel"
+    },
+    {
+      "name": "choices-anchor",
+      "pass": true,
+      "detail": "event-order-choices"
+    },
+    {
+      "name": "order-anchor",
+      "pass": true,
+      "detail": "event-order-order"
+    },
+    {
+      "name": "strip-continuous-copy",
+      "pass": true,
+      "detail": "Commercial progress\n\nStatus chips for this event's Event Order path. Build selections and fixed lines below, apply couple submissions with Create / Update Event Order, then share the final order and invoice. Applying a template is not sharing; client submission is not venue confirmation; creating the Event Order does not change booking state. Inven"
+    },
+    {
+      "name": "strip-no-separate-workflows",
+      "pass": true,
+      "detail": "removed competing-workflows framing"
+    },
+    {
+      "name": "preview-dialog",
+      "pass": true,
+      "detail": "choices-preview-dialog"
+    },
+    {
+      "name": "preview-definition-view",
+      "pass": true,
+      "detail": "definition view preview mode"
+    },
+    {
+      "name": "submission-review-surface",
+      "pass": true,
+      "detail": "no submitted packet on fixture — review surface N/A"
+    },
+    {
+      "name": "create-or-update-cta",
+      "pass": true,
+      "detail": "no submitted packet — CTA N/A"
+    },
+    {
+      "name": "booking-status-unchanged",
+      "pass": true,
+      "detail": "before=confirmed after=confirmed"
+    }
+  ],
+  "persist": {
+    "choicesBefore": [
+      {
+        "id": "5df6f8f6-2aca-47e1-bda5-e255694ef9da",
+        "status": "finalized",
+        "event_order_id": "624eceef-5096-4288-b104-62daa3a82d11",
+        "applied_line_ids": [
+          "ab80bd61-5660-4cf4-98b2-bb5f14ea6135"
+        ],
+        "name": "Wedding Reception"
+      }
+    ],
+    "eventOrderBefore": {
+      "id": "624eceef-5096-4288-b104-62daa3a82d11",
+      "status": "finalized",
+      "shared_at": "2026-10-23T16:18:04.956+00:00"
+    },
+    "eventStatusBefore": "confirmed",
+    "eventStatusAfter": "confirmed"
+  },
+  "at": "2026-10-23T18:33:36.636Z"
+}

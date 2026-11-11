@@ -1,0 +1,37 @@
+{
+  "title": "Prepared Sandbox CFN wiring for CALENDLY_WEBHOOK_SIGNING_KEY",
+  "status": "UNAPPLIED \u2014 requires explicit infrastructure approval",
+  "endpoint_owner": "marketing ECS service (htc-sandbox-marketing) \u2192 /api/calendly/webhook",
+  "secret_name": "htc/${EnvironmentName}/calendly-webhook-signing-key",
+  "env_var": "CALENDLY_WEBHOOK_SIGNING_KEY",
+  "json_key": "value",
+  "value_from": "${CalendlyWebhookSigningKeySecret}:value::",
+  "placeholder": {
+    "value": ""
+  },
+  "notes": [
+    "Empty placeholder (not CHANGE_ME) so fail-closed app code stays 503 until put-secret-value",
+    "Populate via aws secretsmanager put-secret-value after Calendly webhook subscription is created",
+    "Do not use NEXT_PUBLIC_*, GitHub nonsecret vars, or committed files for the signing key",
+    "Add Ref CalendlyWebhookSigningKeySecret to EcsTaskExecutionRole ReadHtcSecrets Resource list",
+    "Add Secrets entry on MarketingTaskDefinition only (endpoint is marketing-owned)"
+  ],
+  "resources_to_add": {
+    "CalendlyWebhookSigningKeySecret": {
+      "Type": "AWS::SecretsManager::Secret",
+      "Properties": {
+        "Name": {
+          "Fn::Sub": "htc/${EnvironmentName}/calendly-webhook-signing-key"
+        },
+        "Description": "Calendly webhook signing key for marketing /api/calendly/webhook. Empty until populated out-of-band after webhook subscription create. Never commit the real value.",
+        "SecretString": "{\"value\":\"\"}"
+      }
+    }
+  },
+  "marketing_secret_entry": {
+    "Name": "CALENDLY_WEBHOOK_SIGNING_KEY",
+    "ValueFrom": {
+      "Fn::Sub": "${CalendlyWebhookSigningKeySecret}:value::"
+    }
+  }
+}

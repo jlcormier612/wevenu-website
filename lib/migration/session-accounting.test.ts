@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { formatSessionOutcomeSentence, summarizeSessionAccounting } from "@/lib/migration/session-accounting";
+import {
+  formatPartialImportGuidance,
+  formatSessionOutcomeSentence,
+  summarizeSessionAccounting,
+} from "@/lib/migration/session-accounting";
 
 const empty = {
   parsed: 0, normalized: 0, validated: 0, duplicate_exact: 0, duplicate_likely: 0,
@@ -24,5 +28,20 @@ describe("session outcome accounting copy", () => {
     const sentence = formatSessionOutcomeSentence(counts);
     assert.match(sentence, /1 needs attention/);
     assert.match(sentence, /1 imported/);
+  });
+
+  it("post-commit guidance is attention tone when some imported and some need review", () => {
+    const guidance = formatPartialImportGuidance({ ...empty, committed: 2, needs_review: 1 });
+    assert.equal(guidance.tone, "attention");
+    assert.match(guidance.headline, /Partly imported/i);
+    assert.match(guidance.detail, /2 imported/);
+    assert.match(guidance.detail, /1 needs attention/);
+    assert.doesNotMatch(guidance.headline, /^Import complete$/i);
+  });
+
+  it("post-commit guidance is success only when nothing remains unresolved", () => {
+    const guidance = formatPartialImportGuidance({ ...empty, committed: 3, skipped: 1 });
+    assert.equal(guidance.tone, "success");
+    assert.match(guidance.headline, /Import complete/i);
   });
 });

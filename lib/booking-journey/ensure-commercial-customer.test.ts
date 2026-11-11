@@ -13,19 +13,22 @@ describe("Commercial customer ensure (Lead → contract/payments)", () => {
     assert.doesNotMatch(src, /inviteClient/);
   });
 
-  it("convert never sets sales Booked; commercialOnly only gates dated Event space", () => {
+  it("convert never sets sales Booked and does not create an occupying event", () => {
     const src = readFileSync(resolve("lib/clients/service.ts"), "utf8");
     const fn = src.slice(src.indexOf("export async function convertLeadToClient"));
     assert.match(fn, /commercialOnly/);
     assert.doesNotMatch(fn, /updateLeadSalesStage/);
-    assert.match(fn, /createDatedEvent/);
-    assert.match(fn, /!commercialOnly \|\| Boolean\(spaceId\)/);
+    assert.doesNotMatch(fn, /insertClientWithDatedEvent/);
+    assert.match(fn, /does not create an occupying Event/);
   });
 
   it("Create contract preparation action exists", () => {
     const src = readFileSync(resolve("app/(app)/booking-journey/actions.ts"), "utf8");
+    const fn = src.slice(src.indexOf("export async function prepareCreateContractAction"));
     assert.match(src, /prepareCreateContractAction/);
     assert.match(src, /ensureCommercialCustomerForSelection/);
+    assert.match(fn, /selectionId/);
+    assert.doesNotMatch(fn.slice(0, 800), /status === "accepted"|proposal_id|proposalId/);
   });
 
   it("Set up payments ensures customer when clientId missing", () => {
@@ -39,7 +42,7 @@ describe("Commercial customer ensure (Lead → contract/payments)", () => {
     assert.doesNotMatch(panel, /Start the booking file first/i);
     assert.match(panel, /prepareCreateContractAction/);
     assert.match(panel, /setPaymentsOpen\(true\)/);
-    assert.match(panel, /do not need to start/);
+    assert.doesNotMatch(panel, /Open the booking file before/);
   });
 
   it("Create contract hard-navigates and catches stale Server Action failures", () => {
@@ -50,6 +53,7 @@ describe("Commercial customer ensure (Lead → contract/payments)", () => {
       /router\.push\(result\.href\);\s*router\.refresh\(\)/,
     );
     assert.match(panel, /Failed to find Server Action/);
+    assert.match(panel, /Server Action \.\* was not found/);
   });
 
   it("Lead detail fails fast instead of infinite loading skeleton", () => {
@@ -61,11 +65,11 @@ describe("Commercial customer ensure (Lead → contract/payments)", () => {
     assert.match(errorPage, /window\.location\.reload/);
   });
 
-  it("Start booking file copy keeps planning optional vs commercial", () => {
+  it("Start booking file prepares the workspace without reserving the date", () => {
     const detail = readFileSync(resolve("components/leads/lead-detail.tsx"), "utf8");
-    assert.match(detail, /not commercially Booked until/i);
-    assert.match(detail, /does not invite them to the portal/i);
-    assert.match(detail, /Client Planning/i);
+    assert.match(detail, /does not reserve their date/i);
+    assert.match(detail, /planning workspace/i);
+    assert.match(detail, /move the relationship to Booked/i);
   });
 
   it("couple offer accept path is public (not redirected to login)", () => {

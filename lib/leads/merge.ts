@@ -1,0 +1,754 @@
+/**
+ * Venue-controlled Merge Lead — preview + confirm (server only).
+ * Primary defaults to earliest created_at. Never hard-deletes.
+ * Atomic confirm via merge_leads_v1 RPC. No customer messages on merge.
+ *
+ * Client UI must import types/gate helpers from `@/lib/leads/merge-client`
+ * only — this module pulls venue/service → product-sync → Node fs.
+ */
+import { createClient } from "@/integrations/supabase/server";
+import { getCurrentVenue } from "@/lib/venue/service";
+import { leadDisplayName } from "@/lib/leads/constants";
+import { resolveInquiryMessageChoice } from "@/lib/leads/merge-inquiry-choice";
+import {
+  canAdvanceToMergeFinalConfirm,
+  hasUnresolvedMergeFieldConflicts,
+  type FieldDiff,
+  type MergeBlocker,
+  type MergeFieldKey,
+  type MergeLeadCard,
+  type MergePreview,
+  type MergeSearchCandidate,
+  type TourSummary,
+} from "@/lib/leads/merge-client";
+import { formatPhoneDisplay, normalizeVenuePhoneInput, phoneDigits } from "@/lib/sms/phone";
+
+export { KEEP_BOTH_INQUIRY_CHOICE, resolveInquiryMessageChoice } from "@/lib/leads/merge-inquiry-choice";
+export {
+  canAdvanceToMergeFinalConfirm,
+  fieldDiffShown,
+  hasUnresolvedMergeFieldConflicts,
+  type FieldDiff,
+  type MergeBlocker,
+  type MergeFieldKey,
+  type MergeLeadCard,
+  type MergePreview,
+  type MergeSearchCandidate,
+  type TourSummary,
+} from "@/lib/leads/merge-client";
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+const MERGE_SEARCH_SELECT =
+  "id, first_name, last_name, email, phone, partner_first_name, partner_last_name, partner_email, event_date, created_at, sales_stage";
+
+type MergeSearchRow = {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string | null;
+  phone: string | null;
+  partner_first_name: string | null;
+  partner_last_name: string | null;
+  partner_email: string | null;
+  event_date: string | null;
+  created_at: string;
+  sales_stage: string | null;
+};
+
+function mapSearchCandidate(row: MergeSearchRow): MergeSearchCandidate {
+  const partnerParts = [row.partner_first_name, row.partner_last_name].filter(Boolean);
+  return {
+    id: row.id,
+    displayName: leadDisplayName(
+      row.first_name,
+      row.last_name,
+      row.partner_first_name,
+      row.partner_last_name,
+    ),
+    email: row.email,
+    phone: row.phone,
+    partnerDisplayName: partnerParts.length ? partnerParts.join(" ") : null,
+    partnerEmail: row.partner_email,
+    eventDate: row.event_date,
+    createdAt: row.created_at,
+    salesStage: row.sales_stage,
+  };
+}
+
+/**
+ * Venue-scoped lead search for Merge Lead discovery.
+ * Read-only. Excludes the current lead and soft-merged secondaries.
+ * Does not merge — caller must select a candidate and confirm separately.
+ */
+export async function searchMergeLeadCandidates(
+  currentLeadId: string,
+  query: string,
+): Promise<{ ok: true; candidates: MergeSearchCandidate[] } | { ok: false; message: string }> {
+  const venue = await getCurrentVenue();
+  if (!venue) return { ok: false, message: "No venue found." };
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { ok: false, message: "Session expired. Please sign in again." };
+
+  const q = query.trim();
+  if (!q) return { ok: true, candidates: [] };
+  if (q.length < 2 && !UUID_RE.test(q)) {
+    return { ok: true, candidates: [] };
+  }
+
+  // Same ilike shape as getLeads / schedule relation search, plus phone + partner_email
+  // so venue users can find duplicates the way they talk about them.
+  const pattern = `%${q}%`;
+  const orClause = [
+    `first_name.ilike.${pattern}`,
+    `last_name.ilike.${pattern}`,
+    `email.ilike.${pattern}`,
+    `phone.ilike.${pattern}`,
+    `partner_first_name.ilike.${pattern}`,
+    `partner_last_name.ilike.${pattern}`,
+    `partner_email.ilike.${pattern}`,
+  ].join(",");
+
+  let qb = supabase
+    .from("leads")
+    .select(MERGE_SEARCH_SELECT)
+    .eq("venue_id", venue.id)
+    .is("merged_into_lead_id", null)
+    .neq("id", currentLeadId);
+
+  if (UUID_RE.test(q)) {
+    qb = qb.or(`id.eq.${q},${orClause}`);
+  } else {
+    qb = qb.or(orClause);
+  }
+
+  const { data, error } = await qb
+    .order("created_at", { ascending: false })
+    .limit(20);
+
+  if (error) {
+    return { ok: false, message: error.message || "Search failed." };
+  }
+
+  const candidates = ((data ?? []) as MergeSearchRow[])
+    .filter((row) => row.id !== currentLeadId)
+    .map(mapSearchCandidate);
+
+  return { ok: true, candidates };
+}
+
+export type ConfirmMergeInput = {
+  primaryId: string;
+  secondaryId: string;
+  primaryUpdatedAt: string;
+  secondaryUpdatedAt: string;
+  /** Final values for fields that need fill or conflict resolution */
+  fieldChoices: Partial<Record<MergeFieldKey, string | string[] | null>>;
+  /** Tour appointment ids to cancel (release slot) before reparent */
+  tourCancelIds: string[];
+};
+
+type LeadSnap = {
+  id: string;
+  venue_id: string;
+  first_name: string;
+  last_name: string;
+  email: string | null;
+  phone: string | null;
+  partner_first_name: string | null;
+  partner_last_name: string | null;
+  partner_email: string | null;
+  event_type: string | null;
+  event_date: string | null;
+  end_date: string | null;
+  guest_count: number | null;
+  estimated_budget: number | null;
+  inquiry_message: string | null;
+  next_action_text: string | null;
+  next_action_due: string | null;
+  follow_up_date: string | null;
+  planned_event_space_id: string | null;
+  assigned_staff_id: string | null;
+  source: string | null;
+  preferred_communication_channels: string[] | null;
+  sales_stage: string | null;
+  created_at: string;
+  updated_at: string;
+  merged_into_lead_id: string | null;
+};
+
+const FIELD_LABELS: Record<MergeFieldKey, string> = {
+  first_name: "First name",
+  last_name: "Last name",
+  email: "Email",
+  phone: "Phone",
+  partner_first_name: "Partner first name",
+  partner_last_name: "Partner last name",
+  partner_email: "Partner email",
+  event_type: "Event type",
+  event_date: "Event date",
+  end_date: "End date",
+  guest_count: "Guest count",
+  estimated_budget: "Estimated budget",
+  inquiry_message: "Inquiry message",
+  next_action_text: "Next action",
+  next_action_due: "Next action due",
+  follow_up_date: "Follow-up date",
+  planned_event_space_id: "Planned event space",
+  assigned_staff_id: "Assigned staff",
+  source: "Source",
+  preferred_communication_channels: "Preferred channels",
+};
+
+const SCALAR_KEYS: MergeFieldKey[] = [
+  "first_name", "last_name", "email", "phone",
+  "partner_first_name", "partner_last_name", "partner_email",
+  "event_type", "event_date", "end_date", "guest_count", "estimated_budget",
+  "inquiry_message", "next_action_text", "next_action_due", "follow_up_date",
+  "planned_event_space_id", "assigned_staff_id", "source",
+];
+
+function norm(v: unknown): string | null {
+  if (v == null) return null;
+  if (typeof v === "number") return String(v);
+  if (Array.isArray(v)) {
+    const joined = v.map(String).sort().join(",");
+    return joined || null;
+  }
+  const s = String(v).trim();
+  return s.length ? s : null;
+}
+
+function card(row: LeadSnap): MergeLeadCard {
+  return {
+    id: row.id,
+    displayName: leadDisplayName(row.first_name, row.last_name, row.partner_first_name, row.partner_last_name),
+    email: row.email,
+    phone: row.phone,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    salesStage: row.sales_stage,
+    source: row.source,
+    mergedIntoLeadId: row.merged_into_lead_id,
+  };
+}
+
+const FK_SPACE_KEY: MergeFieldKey = "planned_event_space_id";
+const FK_STAFF_KEY: MergeFieldKey = "assigned_staff_id";
+const UNNAMED_SPACE = "Unnamed event space";
+const UNKNOWN_STAFF = "Unknown staff member";
+
+/** Phones that share the same dialable digits are the same contact number despite formatting. */
+function phonesDigitEquivalent(a: string, b: string): boolean {
+  const da = phoneDigits(a);
+  const db = phoneDigits(b);
+  if (!da || !db) return false;
+  // Compare last 10 digits (US/Canada national number) when both are long enough.
+  if (da.length >= 10 && db.length >= 10) {
+    return da.slice(-10) === db.slice(-10);
+  }
+  return da === db;
+}
+
+function buildFieldDiffs(primary: LeadSnap, secondary: LeadSnap): FieldDiff[] {
+  const diffs: FieldDiff[] = [];
+  for (const key of SCALAR_KEYS) {
+    const p = norm(primary[key as keyof LeadSnap]);
+    const s = norm(secondary[key as keyof LeadSnap]);
+    const label = FIELD_LABELS[key];
+    if (!p && !s) continue;
+    if (!p && s) {
+      diffs.push({
+        key, kind: "fill", primaryValue: null, secondaryValue: s, secondaryDisplay: s, label,
+      });
+    } else if (p && s && (p === s || (key === "phone" && phonesDigitEquivalent(p, s)))) {
+      // Digit-equivalent phones: keep primary's stored form; display formats separately.
+      diffs.push({ key, kind: "same", value: p, valueDisplay: p, label });
+    } else if (p && s && p !== s) {
+      diffs.push({
+        key, kind: "conflict",
+        primaryValue: p, secondaryValue: s,
+        primaryDisplay: p, secondaryDisplay: s,
+        label,
+      });
+    } else {
+      diffs.push({ key, kind: "keep_primary", primaryValue: p, primaryDisplay: p, label });
+    }
+  }
+  const pCh = norm(primary.preferred_communication_channels);
+  const sCh = norm(secondary.preferred_communication_channels);
+  const chLabel = FIELD_LABELS.preferred_communication_channels;
+  if (!pCh && sCh) {
+    diffs.push({
+      key: "preferred_communication_channels",
+      kind: "fill",
+      primaryValue: null,
+      secondaryValue: sCh,
+      secondaryDisplay: sCh,
+      label: chLabel,
+    });
+  } else if (pCh && sCh && pCh !== sCh) {
+    diffs.push({
+      key: "preferred_communication_channels",
+      kind: "conflict",
+      primaryValue: pCh,
+      secondaryValue: sCh,
+      primaryDisplay: pCh,
+      secondaryDisplay: sCh,
+      label: chLabel,
+    });
+  }
+  return diffs;
+}
+
+type FkLabelMaps = {
+  spaces: Map<string, string>;
+  staff: Map<string, string>;
+};
+
+function collectFkIds(diffs: FieldDiff[]): { spaceIds: string[]; staffIds: string[] } {
+  const spaceIds = new Set<string>();
+  const staffIds = new Set<string>();
+  for (const d of diffs) {
+    const take = (key: MergeFieldKey, id: string | null | undefined) => {
+      if (!id) return;
+      if (key === FK_SPACE_KEY) spaceIds.add(id);
+      if (key === FK_STAFF_KEY) staffIds.add(id);
+    };
+    if (d.kind === "fill") take(d.key, d.secondaryValue);
+    else if (d.kind === "same") take(d.key, d.value);
+    else if (d.kind === "conflict") {
+      take(d.key, d.primaryValue);
+      take(d.key, d.secondaryValue);
+    } else if (d.kind === "keep_primary") take(d.key, d.primaryValue);
+  }
+  return { spaceIds: [...spaceIds], staffIds: [...staffIds] };
+}
+
+async function loadFkLabelMaps(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  venueId: string,
+  spaceIds: string[],
+  staffIds: string[],
+): Promise<FkLabelMaps> {
+  const spaces = new Map<string, string>();
+  const staff = new Map<string, string>();
+  await Promise.all([
+    spaceIds.length
+      ? supabase
+          .from("venue_spaces")
+          .select("id, name")
+          .eq("venue_id", venueId)
+          .in("id", spaceIds)
+          .then(({ data }) => {
+            for (const row of (data ?? []) as Array<{ id: string; name: string | null }>) {
+              const name = row.name?.trim();
+              spaces.set(row.id, name && name.length > 0 ? name : UNNAMED_SPACE);
+            }
+          })
+      : Promise.resolve(),
+    staffIds.length
+      ? supabase
+          .from("venue_staff")
+          .select("id, full_name")
+          .eq("venue_id", venueId)
+          .in("id", staffIds)
+          .then(({ data }) => {
+            for (const row of (data ?? []) as Array<{ id: string; full_name: string | null }>) {
+              const name = row.full_name?.trim();
+              staff.set(row.id, name && name.length > 0 ? name : UNKNOWN_STAFF);
+            }
+          })
+      : Promise.resolve(),
+  ]);
+  return { spaces, staff };
+}
+
+function fkDisplay(key: MergeFieldKey, id: string, maps: FkLabelMaps): string {
+  if (key === FK_SPACE_KEY) return maps.spaces.get(id) ?? UNNAMED_SPACE;
+  if (key === FK_STAFF_KEY) return maps.staff.get(id) ?? UNKNOWN_STAFF;
+  return id;
+}
+
+/** Replace FK UUID displays with authoritative names; keep underlying IDs unchanged. */
+function applyFkDisplays(diffs: FieldDiff[], maps: FkLabelMaps): FieldDiff[] {
+  return diffs.map((d) => {
+    if (d.key !== FK_SPACE_KEY && d.key !== FK_STAFF_KEY) return d;
+    if (d.kind === "fill") {
+      return { ...d, secondaryDisplay: fkDisplay(d.key, d.secondaryValue, maps) };
+    }
+    if (d.kind === "same") {
+      return { ...d, valueDisplay: fkDisplay(d.key, d.value, maps) };
+    }
+    if (d.kind === "conflict") {
+      return {
+        ...d,
+        primaryDisplay: fkDisplay(d.key, d.primaryValue, maps),
+        secondaryDisplay: fkDisplay(d.key, d.secondaryValue, maps),
+      };
+    }
+    if (d.kind === "keep_primary") {
+      return {
+        ...d,
+        primaryDisplay: d.primaryValue ? fkDisplay(d.key, d.primaryValue, maps) : null,
+      };
+    }
+    return d;
+  });
+}
+
+/** Venue-facing phone labels via shared formatter; *Value stays the stored string. */
+function applyPhoneDisplays(diffs: FieldDiff[]): FieldDiff[] {
+  return diffs.map((d) => {
+    if (d.key !== "phone") return d;
+    if (d.kind === "fill") {
+      return { ...d, secondaryDisplay: formatPhoneDisplay(d.secondaryValue) };
+    }
+    if (d.kind === "same") {
+      return { ...d, valueDisplay: formatPhoneDisplay(d.value) };
+    }
+    if (d.kind === "conflict") {
+      return {
+        ...d,
+        primaryDisplay: formatPhoneDisplay(d.primaryValue),
+        secondaryDisplay: formatPhoneDisplay(d.secondaryValue),
+      };
+    }
+    if (d.kind === "keep_primary") {
+      return {
+        ...d,
+        primaryDisplay: d.primaryValue ? formatPhoneDisplay(d.primaryValue) : null,
+      };
+    }
+    return d;
+  });
+}
+
+/** Persist phone using the same storage normalizer as lead create/update. */
+function phonePatchValue(raw: string): string {
+  return normalizeVenuePhoneInput(raw) || raw;
+}
+
+function pickDefaultPrimary(a: LeadSnap, b: LeadSnap): { primary: LeadSnap; secondary: LeadSnap; tied: boolean } {
+  const cmp = a.created_at.localeCompare(b.created_at);
+  if (cmp < 0) return { primary: a, secondary: b, tied: false };
+  if (cmp > 0) return { primary: b, secondary: a, tied: false };
+  // Identical created_at — require explicit choice
+  const byId = a.id.localeCompare(b.id);
+  if (byId <= 0) return { primary: a, secondary: b, tied: true };
+  return { primary: b, secondary: a, tied: true };
+}
+
+async function loadLeadPair(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  venueId: string,
+  leadAId: string,
+  leadBId: string,
+): Promise<{ a: LeadSnap | null; b: LeadSnap | null }> {
+  const { data } = await supabase
+    .from("leads")
+    .select(
+      "id,venue_id,first_name,last_name,email,phone,partner_first_name,partner_last_name,partner_email,event_type,event_date,end_date,guest_count,estimated_budget,inquiry_message,next_action_text,next_action_due,follow_up_date,planned_event_space_id,assigned_staff_id,source,preferred_communication_channels,sales_stage,created_at,updated_at,merged_into_lead_id",
+    )
+    .eq("venue_id", venueId)
+    .in("id", [leadAId, leadBId]);
+  const rows = (data ?? []) as LeadSnap[];
+  return {
+    a: rows.find((r) => r.id === leadAId) ?? null,
+    b: rows.find((r) => r.id === leadBId) ?? null,
+  };
+}
+
+export async function previewMergeLeads(
+  leadAId: string,
+  leadBId: string,
+  options?: { primaryId?: string },
+): Promise<MergePreview | { ok: false; message: string }> {
+  const venue = await getCurrentVenue();
+  if (!venue) return { ok: false, message: "No venue found." };
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { ok: false, message: "Session expired. Please sign in again." };
+
+  if (leadAId === leadBId) {
+    return { ok: false, message: "Choose two different leads to merge." };
+  }
+
+  const { a, b } = await loadLeadPair(supabase, venue.id, leadAId, leadBId);
+  if (!a || !b) {
+    return { ok: false, message: "One or both leads were not found in this venue." };
+  }
+
+  const blockers: MergeBlocker[] = [];
+  let primary: LeadSnap;
+  let secondary: LeadSnap;
+  let tied = false;
+  let primaryIsDefaultEarliest = true;
+
+  if (options?.primaryId) {
+    if (options.primaryId === a.id) {
+      primary = a;
+      secondary = b;
+      primaryIsDefaultEarliest = a.created_at <= b.created_at;
+    } else if (options.primaryId === b.id) {
+      primary = b;
+      secondary = a;
+      primaryIsDefaultEarliest = b.created_at <= a.created_at;
+    } else {
+      return { ok: false, message: "Primary lead must be one of the two selected leads." };
+    }
+    tied = a.created_at === b.created_at;
+  } else {
+    const picked = pickDefaultPrimary(a, b);
+    primary = picked.primary;
+    secondary = picked.secondary;
+    tied = picked.tied;
+  }
+
+  if (secondary.merged_into_lead_id) {
+    blockers.push({
+      code: "already_merged",
+      message: `The secondary lead was already merged into ${secondary.merged_into_lead_id}.`,
+    });
+  }
+  if (primary.merged_into_lead_id) {
+    blockers.push({
+      code: "primary_is_merged",
+      message: "The selected primary lead was itself merged into another lead. Open the surviving lead instead.",
+    });
+  }
+
+  const { count: protectionCount } = await supabase
+    .from("tour_protection_requests")
+    .select("id", { count: "exact", head: true })
+    .eq("venue_id", venue.id)
+    .in("lead_id", [primary.id, secondary.id]);
+  if ((protectionCount ?? 0) > 0) {
+    blockers.push({
+      code: "tour_protection",
+      message: "A tour protection request is linked to one of these leads. Resolve it before merging.",
+    });
+  }
+
+  const [{ count: notesOnSecondary }, { count: tasksOnSecondary }, { count: activitiesOnSecondary }, toursRes] =
+    await Promise.all([
+      supabase.from("lead_notes").select("id", { count: "exact", head: true }).eq("venue_id", venue.id).eq("lead_id", secondary.id),
+      supabase.from("lead_tasks").select("id", { count: "exact", head: true }).eq("venue_id", venue.id).eq("lead_id", secondary.id),
+      supabase.from("lead_activities").select("id", { count: "exact", head: true }).eq("venue_id", venue.id).eq("lead_id", secondary.id),
+      supabase
+        .from("tour_appointments")
+        .select("id, lead_id, status, scheduled_at, is_archived")
+        .eq("venue_id", venue.id)
+        .in("lead_id", [primary.id, secondary.id])
+        .order("scheduled_at", { ascending: true }),
+    ]);
+
+  const tours: TourSummary[] = ((toursRes.data ?? []) as Array<{
+    id: string; lead_id: string; status: string; scheduled_at: string | null; is_archived: boolean;
+  }>).map((t) => ({
+    id: t.id,
+    leadId: t.lead_id,
+    status: t.status,
+    scheduledAt: t.scheduled_at,
+    isArchived: t.is_archived,
+  }));
+
+  const occupying = tours.filter((t) => t.status === "scheduled" || t.status === "confirmed");
+  const occupyingOnBoth =
+    occupying.some((t) => t.leadId === primary.id) && occupying.some((t) => t.leadId === secondary.id);
+
+  const rawDiffs = buildFieldDiffs(primary, secondary);
+  const { spaceIds, staffIds } = collectFkIds(rawDiffs);
+  const fkMaps = await loadFkLabelMaps(supabase, venue.id, spaceIds, staffIds);
+  const fieldDiffs = applyPhoneDisplays(applyFkDisplays(rawDiffs, fkMaps));
+  const relatedSummary = [
+    `${notesOnSecondary ?? 0} note(s) on secondary will move to the primary lead`,
+    `${tasksOnSecondary ?? 0} task(s) on secondary will move to the primary lead`,
+    `${activitiesOnSecondary ?? 0} activity record(s) will move to the primary lead`,
+    `${tours.length} tour appointment(s) across both leads — appointments are reassociated, not recreated`,
+    "Communication history stays attributed; merge does not send messages or enroll sequences",
+    "Secondary lead is soft-marked as merged (not deleted) and redirects to the primary",
+  ];
+
+  return {
+    ok: true,
+    venueId: venue.id,
+    primary: card(primary),
+    secondary: card(secondary),
+    primaryIsDefaultEarliest,
+    needsExplicitPrimaryChoice: tied && !options?.primaryId,
+    fieldDiffs,
+    notesOnSecondary: notesOnSecondary ?? 0,
+    tasksOnSecondary: tasksOnSecondary ?? 0,
+    activitiesOnSecondary: activitiesOnSecondary ?? 0,
+    tours,
+    occupyingTourConflict: occupyingOnBoth,
+    blockers,
+    relatedSummary,
+  };
+}
+
+export async function confirmMergeLeads(
+  input: ConfirmMergeInput,
+): Promise<{ ok: true; primaryId: string; secondaryId: string; alreadyMerged?: boolean } | { ok: false; message: string }> {
+  const venue = await getCurrentVenue();
+  if (!venue) return { ok: false, message: "No venue found." };
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { ok: false, message: "Session expired. Please sign in again." };
+
+  // Revalidate preview assumptions against live rows before RPC
+  const preview = await previewMergeLeads(input.primaryId, input.secondaryId, {
+    primaryId: input.primaryId,
+  });
+  if (!preview.ok) return preview;
+  if (preview.blockers.length > 0) {
+    return { ok: false, message: preview.blockers.map((b) => b.message).join(" ") };
+  }
+  if (preview.needsExplicitPrimaryChoice) {
+    return { ok: false, message: "Created times match — choose which lead survives before confirming." };
+  }
+  if (preview.primary.id !== input.primaryId || preview.secondary.id !== input.secondaryId) {
+    return { ok: false, message: "Primary/secondary selection no longer matches. Refresh and try again." };
+  }
+  if (
+    preview.primary.updatedAt !== input.primaryUpdatedAt
+    || preview.secondary.updatedAt !== input.secondaryUpdatedAt
+  ) {
+    return { ok: false, message: "One of these leads changed since preview. Refresh and review again." };
+  }
+
+  // Conflicts require an explicit choice in fieldChoices
+  for (const diff of preview.fieldDiffs) {
+    if (diff.kind === "conflict" && !(diff.key in input.fieldChoices)) {
+      return { ok: false, message: `Choose a value for conflicting field: ${diff.label}.` };
+    }
+  }
+
+  // Two occupying tours: venue must cancel at least the extras they don't want,
+  // OR explicitly keep both (tourCancelIds empty is allowed — both reparent).
+  // Never auto-cancel. If they pass cancel ids, verify they belong to the pair.
+  const tourIds = new Set(preview.tours.map((t) => t.id));
+  for (const id of input.tourCancelIds) {
+    if (!tourIds.has(id)) {
+      return { ok: false, message: "A tour selected for cancellation is not part of this merge." };
+    }
+  }
+
+  const fieldPatch: Record<string, unknown> = {};
+  let preserveSecondaryInquiry = false;
+  for (const diff of preview.fieldDiffs) {
+    if (diff.kind === "fill") {
+      const chosen = input.fieldChoices[diff.key];
+      const raw = chosen !== undefined ? chosen : diff.secondaryValue;
+      fieldPatch[diff.key] = diff.key === "phone" && typeof raw === "string"
+        ? phonePatchValue(raw)
+        : raw;
+    } else if (diff.kind === "conflict") {
+      const chosen = input.fieldChoices[diff.key];
+      if (chosen === undefined || chosen === null || chosen === "") {
+        return { ok: false, message: `Choose a value for conflicting field: ${diff.label}.` };
+      }
+      if (diff.key === "inquiry_message") {
+        const resolved = resolveInquiryMessageChoice({
+          choice: typeof chosen === "string" ? chosen : String(chosen),
+          primaryValue: diff.primaryValue,
+          secondaryValue: diff.secondaryValue,
+        });
+        fieldPatch[diff.key] = resolved.primaryFieldValue;
+        preserveSecondaryInquiry = resolved.preserveSecondaryAsHistory;
+      } else if (diff.key === "phone" && typeof chosen === "string") {
+        // Choice still keys off the lead's stored string; persist via shared normalizer.
+        fieldPatch[diff.key] = phonePatchValue(chosen);
+      } else {
+        fieldPatch[diff.key] = chosen;
+      }
+    }
+  }
+
+  // preferred_communication_channels: if fill used comma string, expand to array
+  if (typeof fieldPatch.preferred_communication_channels === "string") {
+    fieldPatch.preferred_communication_channels = String(fieldPatch.preferred_communication_channels)
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
+
+  const audit = {
+    fieldChoices: input.fieldChoices,
+    tourCancelIds: input.tourCancelIds,
+    fills: preview.fieldDiffs.filter((d) => d.kind === "fill").map((d) => d.key),
+    conflicts: preview.fieldDiffs.filter((d) => d.kind === "conflict").map((d) => d.key),
+    preserveSecondaryInquiry,
+    actor: user.id,
+    at: new Date().toISOString(),
+  };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any).rpc("merge_leads_v1", {
+    p_venue_id: venue.id,
+    p_primary_id: input.primaryId,
+    p_secondary_id: input.secondaryId,
+    p_primary_updated_at: input.primaryUpdatedAt,
+    p_secondary_updated_at: input.secondaryUpdatedAt,
+    p_field_patch: fieldPatch,
+    p_tour_cancel_ids: input.tourCancelIds,
+    p_audit: audit,
+  });
+
+  if (error) {
+    return { ok: false, message: error.message || "Merge failed." };
+  }
+  const result = data as {
+    ok?: boolean;
+    error?: string;
+    alreadyMerged?: boolean;
+    primaryId?: string;
+    secondaryId?: string;
+    mergedInto?: string;
+  } | null;
+
+  if (!result?.ok) {
+    const code = result?.error ?? "unknown";
+    if (code === "stale") {
+      return { ok: false, message: "One of these leads changed since preview. Refresh and review again." };
+    }
+    if (code === "unauthorized") {
+      return { ok: false, message: "You do not have permission to merge leads for this venue." };
+    }
+    if (code === "tour_protection") {
+      return { ok: false, message: "A tour protection request blocks this merge." };
+    }
+    if (code === "secondary_already_merged") {
+      return { ok: false, message: `Secondary lead was already merged into ${result?.mergedInto ?? "another lead"}.` };
+    }
+    return { ok: false, message: `Merge blocked (${code}).` };
+  }
+
+  return {
+    ok: true,
+    primaryId: result.primaryId ?? input.primaryId,
+    secondaryId: result.secondaryId ?? input.secondaryId,
+    alreadyMerged: result.alreadyMerged === true,
+  };
+}
+
+/** Pure helpers exported for unit tests */
+export const mergeTestHelpers = {
+  buildFieldDiffs,
+  applyFkDisplays,
+  applyPhoneDisplays,
+  collectFkIds,
+  pickDefaultPrimary,
+  phonesDigitEquivalent,
+  phonePatchValue,
+  norm,
+  FIELD_LABELS,
+  UNNAMED_SPACE,
+  UNKNOWN_STAFF,
+  resolveInquiryMessageChoice,
+  hasUnresolvedMergeFieldConflicts,
+  canAdvanceToMergeFinalConfirm,
+};

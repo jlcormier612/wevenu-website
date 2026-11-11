@@ -1,0 +1,32 @@
+{
+  "image": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:4ef14218c5379f6e443a5b68e8e83689f90c979a",
+  "digest": "sha256:f3ba33aadb64461398c690cda13085b5a7456db80641ebf6f5da8f25b29c8902",
+  "expectedSha": "4ef14218",
+  "checks": [
+    {
+      "name": "serving-image",
+      "pass": true,
+      "detail": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:4ef14218c5379f6e443a5b68e8e83689f90c979a sha256:f3ba33aadb64461398c690cda13085b5a7456db80641ebf6f5da8f25b29c8902"
+    },
+    {
+      "name": "serving-sha",
+      "pass": true,
+      "detail": "expected=4ef14218"
+    },
+    {
+      "name": "exact-new-wording",
+      "pass": true,
+      "detail": "match"
+    },
+    {
+      "name": "forbidden-absent:not an automated schedule",
+      "pass": true,
+      "detail": "not an automated schedule"
+    },
+    {
+      "name": "forbidden-absent:Event Order are commercial workflows on ",
+      "pass": true,
+      "detail": "Event Order are commercial workflows on the Inventory"
+    }
+  ]
+}

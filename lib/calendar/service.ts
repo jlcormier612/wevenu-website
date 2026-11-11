@@ -3,10 +3,10 @@
  *
  * getCalendarData() aggregates venue-wide scheduled / reserved / blocked time
  * for one month. Calendar Slice 1 removed dated work (payments, follow-ups,
- * request dues, expirations) from this aggregation — those remain
- * on their owning surfaces and on Booking Schedule where appropriate.
+ * request dues, expirations) from this aggregation — those remain on their
+ * owning surfaces (Payments, Leads, Requests, Contracts, Documents, Planning).
  *
- * See lib/calendar/venue-calendar-scope.ts and lib/calendar/booking-schedule.ts.
+ * See lib/calendar/venue-calendar-scope.ts.
  */
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
@@ -19,8 +19,14 @@ import { isBookingPlaceholder } from "@/lib/availability/types";
 import type { ManualScheduleType, RecurrenceRule } from "@/lib/availability/types";
 import { durationInDays, expandOccurrenceStarts, occurrenceDates } from "@/lib/calendar/recurrence";
 import { calendarDatesForProtectedEvent } from "@/lib/calendar/event-display";
+import { projectAssignmentWindowsOntoCalendarDates } from "@/lib/calendar/event-assignment-projection";
 import { displayScheduleItemTimes } from "@/lib/calendar/schedule-item-times";
 import { toScheduleRelationOption, type ScheduleRelationRow } from "@/lib/calendar/schedule-relation-search";
+import {
+  blockedTimeDates,
+  projectTourAvailabilityExceptions,
+  type TourAvailabilityExceptionRow,
+} from "@/lib/calendar/tour-exception-projection";
 
 // Calendar Booking Placeholder — hold on availability, not a booked Event.
 function bookingPlaceholderSubtitle(guestCount: number | null, estimatedRevenue: number | string | null, convertedLeadId: string | null): string | null {
@@ -114,12 +120,13 @@ export async function getCalendarData(
 
   // Venue Calendar — scheduled things + availability only (no planning tasks).
   const [
-    eventsRes, tourItems, holdsRes, blocksRes,
+    eventsRes, tourItems, holdsRes, blocksRes, exceptionsRes,
   ] = await Promise.all([
-    // 1. Booked events
+    // 1. Official booked events only — pre-booking shells stay off the calendar.
     supabase.from("events")
       .select("id, name, event_date, event_end_date, start_time, event_type, status, client_id, space_id, clients(first_name, last_name), venue_spaces(name)")
       .eq("venue_id", venue.id)
+      .not("booked_at", "is", null)
       .neq("status", "cancelled")
       .lte("event_date", end)
       .or(`event_end_date.gte.${start},and(event_end_date.is.null,event_date.gte.${start})`),
@@ -136,7 +143,7 @@ export async function getCalendarData(
     // here, so an expired hold kept showing (and blocking) indefinitely
     // until a human manually released it.
     supabase.from("date_holds")
-      .select("id, title, hold_date, start_time, lead_id, leads(first_name, last_name)")
+      .select("id, title, hold_date, start_time, end_time, lead_id, space_id, leads(first_name, last_name)")
       .eq("venue_id", venue.id)
       .eq("status", "active")
       .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
@@ -152,30 +159,127 @@ export async function getCalendarData(
       .select("id, title, type, reason, start_date, end_date, is_all_day, start_time, end_time, recurrence_rule, recurrence_ends_on, recurrence_interval, recurrence_count, lead_id, client_id, leads!calendar_blocks_lead_id_fkey(first_name, last_name), clients(first_name, last_name), event_type, client_name, guest_count, estimated_revenue, converted_lead_id, schedule_item_type_id, blocks_availability")
       .eq("venue_id", venue.id)
       .or(`and(start_date.lte.${end},end_date.gte.${start},recurrence_rule.eq.none),and(recurrence_rule.neq.none,or(recurrence_ends_on.is.null,recurrence_ends_on.gte.${start}))`),
+
+    // Tour/date exceptions stay in tour_availability_exceptions. This read
+    // only projects them onto the calendar. One-time rows must overlap the
+    // month; annual rows are loaded whenever they can expand into the month.
+    supabase.from("tour_availability_exceptions")
+      .select("id, start_date, end_date, label, recurrence_rule")
+      .eq("venue_id", venue.id)
+      .or(
+        `and(recurrence_rule.eq.none,start_date.lte.${end},end_date.gte.${start}),recurrence_rule.eq.annual`,
+      ),
   ]);
 
   const items: CalendarItem[] = [];
 
-  // Events — one item per protected day in the visible range (Calendar is a
-  // view; occupancy still uses event_date through coalesce(event_end_date)).
-  for (const e of (eventsRes.data ?? []) as any[]) {
+  const eventRows = (eventsRes.data ?? []) as any[];
+  const eventIds = eventRows.map((e) => e.id as string).filter(Boolean);
+  const assignmentSpaceIds = new Map<string, string[]>();
+  const assignmentWindows = new Map<string, Array<{
+    spaceId: string;
+    useLabel: string | null;
+    startTime: string | null;
+    endTime: string | null;
+    scheduledDate: string | null;
+  }>>();
+  const assignmentSpaceNames = new Map<string, string>();
+  if (eventIds.length > 0) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: assignRows } = await (supabase.from("event_space_assignments") as any)
+      .select("event_id, space_id, use_label, start_time, end_time, scheduled_date")
+      .eq("venue_id", venue.id)
+      .in("event_id", eventIds);
+    for (const row of (assignRows ?? []) as {
+      event_id: string;
+      space_id: string;
+      use_label?: string | null;
+      start_time?: string | null;
+      end_time?: string | null;
+      scheduled_date?: string | null;
+    }[]) {
+      if (!row.event_id || !row.space_id) continue;
+      const list = assignmentSpaceIds.get(row.event_id) ?? [];
+      if (!list.includes(row.space_id)) list.push(row.space_id);
+      assignmentSpaceIds.set(row.event_id, list);
+      const windows = assignmentWindows.get(row.event_id) ?? [];
+      windows.push({
+        spaceId: row.space_id,
+        useLabel: row.use_label ?? null,
+        startTime: row.start_time?.slice(0, 5) ?? null,
+        endTime: row.end_time?.slice(0, 5) ?? null,
+        scheduledDate: row.scheduled_date ?? null,
+      });
+      assignmentWindows.set(row.event_id, windows);
+    }
+    const spaceIdsNeedingNames = [...new Set(
+      [...assignmentSpaceIds.values()].flat().filter(Boolean),
+    )];
+    if (spaceIdsNeedingNames.length > 0) {
+      const { data: spaceRows } = await supabase
+        .from("venue_spaces")
+        .select("id, name")
+        .eq("venue_id", venue.id)
+        .in("id", spaceIdsNeedingNames);
+      for (const row of (spaceRows ?? []) as { id: string; name: string }[]) {
+        assignmentSpaceNames.set(row.id, row.name);
+      }
+    }
+  }
+
+  // Events — component assignments land on their scheduled_date; protected
+  // day expansion remains for legacy rows without scheduled_date / untimed.
+  for (const e of eventRows) {
     const cn = e.clients ? `${e.clients.first_name} ${e.clients.last_name}` : null;
     const dates = calendarDatesForProtectedEvent(e.event_date, e.event_end_date ?? null, start, end);
+    const assigned = assignmentSpaceIds.get(e.id) ?? [];
+    const spaceIds = [...new Set([e.space_id, ...assigned].filter(Boolean))] as string[];
+    const windows = assignmentWindows.get(e.id) ?? [];
+    const typeStatusSubtitle = [e.status === "complete" ? "Completed" : null, e.event_type ? eventTypeLabel(e.event_type) : null]
+      .filter(Boolean)
+      .join(" · ") || null;
+    const projected = projectAssignmentWindowsOntoCalendarDates({
+      protectedDates: dates,
+      windows,
+    });
+    if (projected !== "untimed") {
+      for (const row of projected) {
+        // Component label is the primary title so May 9 is not misread as a
+        // single "Reception" / client-name-only row. Client stays in subtitle.
+        const clientLabel = cn ?? e.name;
+        items.push({
+          id: `event-${e.id}-${row.date}-${row.spaceId}-${row.index}`,
+          type: "event",
+          date: row.date,
+          title: row.useLabel?.trim() || clientLabel,
+          subtitle: [clientLabel, typeStatusSubtitle].filter(Boolean).join(" · ") || null,
+          time: row.startTime,
+          endTime: row.endTime,
+          link: `/events/${e.id}`,
+          eventId: e.id,
+          clientId: e.client_id ?? null,
+          spaceId: row.spaceId,
+          spaceName: assignmentSpaceNames.get(row.spaceId) ?? null,
+          spaceIds: [row.spaceId],
+        });
+      }
+      continue;
+    }
     for (const date of dates) {
       items.push({
         id: `event-${e.id}-${date}`,
         type: "event",
         date,
         title: cn ?? e.name,
-        subtitle: [e.status === "complete" ? "Completed" : null, e.event_type ? eventTypeLabel(e.event_type) : null]
-          .filter(Boolean)
-          .join(" · ") || null,
+        subtitle: typeStatusSubtitle,
         time: e.start_time?.slice(0, 5) ?? null,
+        endTime: e.end_time?.slice(0, 5) ?? null,
         link: `/events/${e.id}`,
         eventId: e.id,
         clientId: e.client_id ?? null,
         spaceId: e.space_id ?? null,
         spaceName: e.venue_spaces?.name ?? null,
+        spaceIds,
       });
     }
   }
@@ -200,9 +304,29 @@ export async function getCalendarData(
     }
   }
 
-  // Date holds
-  for (const h of (holdsRes.data ?? []) as any[]) {
+  // Date holds — resources from date_hold_spaces (empty = whole venue)
+  const holdRows = (holdsRes.data ?? []) as any[];
+  const holdIds = holdRows.map((h) => h.id as string).filter(Boolean);
+  const holdSpaceMap = new Map<string, string[]>();
+  if (holdIds.length > 0) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: holdSpaces } = await (supabase.from("date_hold_spaces") as any)
+      .select("hold_id, space_id")
+      .eq("venue_id", venue.id)
+      .in("hold_id", holdIds);
+    for (const row of (holdSpaces ?? []) as { hold_id: string; space_id: string }[]) {
+      if (!row.hold_id || !row.space_id) continue;
+      const list = holdSpaceMap.get(row.hold_id) ?? [];
+      if (!list.includes(row.space_id)) list.push(row.space_id);
+      holdSpaceMap.set(row.hold_id, list);
+    }
+  }
+  for (const h of holdRows) {
     const ln = h.leads ? `${h.leads.first_name} ${h.leads.last_name}` : null;
+    const fromJunction = holdSpaceMap.get(h.id) ?? [];
+    const spaceIds = fromJunction.length > 0
+      ? fromJunction
+      : (h.space_id ? [h.space_id as string] : []);
     items.push({
       id: `hold-${h.id}`,
       type: "date_hold",
@@ -210,7 +334,10 @@ export async function getCalendarData(
       title: h.title,
       subtitle: ln ? `Hold for ${ln}` : null,
       time: h.start_time?.slice(0, 5) ?? null,
+      endTime: h.end_time?.slice(0, 5) ?? null,
       link: h.lead_id ? `/leads/${h.lead_id}` : "/calendar",
+      spaceId: spaceIds.length === 1 ? spaceIds[0]! : (h.space_id ?? null),
+      spaceIds,
     });
   }
 
@@ -290,6 +417,13 @@ export async function getCalendarData(
       }
     }
   }
+
+  items.push(...projectTourAvailabilityExceptions({
+    exceptions: (exceptionsRes.data ?? []) as TourAvailabilityExceptionRow[],
+    rangeStart: start,
+    rangeEnd: end,
+    occupiedBlockedDates: blockedTimeDates(items),
+  }));
 
   // Sort by date then time
   items.sort((a, b) => {

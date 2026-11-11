@@ -1,0 +1,91 @@
+◇ injected env (0) from .env.local // tip: ⌘ enable debugging { debug: true }
+PASS serving_commit — c76096fa6e556faed945b1ea4817330e4f8c2dd1
+PASS row_present_rehearsal_dinner — visible
+PASS row_present_getting_ready — visible
+PASS row_present_ceremony — visible
+PASS row_present_cocktail_hour — visible
+PASS row_present_reception — visible
+PASS date_value_rehearsal_dinner — 2031-05-24
+PASS date_value_getting_ready — 2031-05-25
+PASS date_value_ceremony — 2031-05-25
+PASS date_value_cocktail_hour — 2031-05-25
+PASS date_value_reception — 2031-05-25
+PASS pre_submit_availability — clear
+PASS booking_created — {"id":"d6d060ce-95d0-47ab-93ec-a82ffd071e9a","event_date":"2031-05-24","event_end_date":"2031-05-25","status":"confirmed","booked_at":"2026-10-12"}
+PASS db_rehearsal_sat — 2031-05-24
+PASS db_getting_ready_sun — 2031-05-25
+PASS db_ceremony_sun — 2031-05-25
+PASS db_cocktail_sun — 2031-05-25
+PASS db_reception_sun — 2031-05-25
+PASS db_no_null_dates — ["2031-05-24","2031-05-25","2031-05-25","2031-05-25","2031-05-25"]
+PASS ui_saturday_group — Saturday, May 24, 2031 :: Guests
+
+Not recorded
+
+SATURDAY, MAY 24, 2031
+
+Rehearsal Dinner
+
+6:00 PM – 10:00 PM · Meadowbrook Barn
+
+SUNDAY, MAY 25, 2031
+
+Getting Ready
+
+2:00 PM – 4:00 PM · Meadowbrook Villa
+
+Ceremony
+
+4:00 PM – 5:00 PM · Brook Bridge
+
+Cocktail Hour
+
+5:00 PM – 6:00 PM · Meadow Lawn
+
+Reception
+
+6:00 PM – 10:00 PM
+PASS ui_sunday_group — Sunday, May 25, 2031
+PASS ui_no_date_not_set — clean
+PASS ui_390_groups — Guests
+
+Not recorded
+
+SATURDAY, MAY 24, 2031
+
+Rehearsal Dinner
+
+6:00 PM – 10:00 PM · Meadowbrook Barn
+
+SUNDAY, MAY 25, 2031
+
+Getting Ready
+
+2:00 PM – 4:00 PM · Meadowbrook Villa
+
+Ceremony
+
+4:00 PM – 5:00 PM · Brook Bridge
+
+Cocktail Hour
+
+5:00 PM – 6:00 PM · Meadow Lawn
+
+Reception
+
+6:00 PM – 10:00 PM
+PASS edit_prefill_reception — 2031-05-25
+PASS edit_cancel_no_persist — 2031-05-25
+PASS edit_save_time — 17:15:00
+PASS edit_preserves_others — others intact
+PASS edit_conflict_rejected — error shown
+PASS booking_status_unchanged — {"status":"confirmed","booked_at":"2026-10-12"}
+{
+  "ok": true,
+  "servingSha": "c76096fa6e556faed945b1ea4817330e4f8c2dd1",
+  "ids": {
+    "leadId": "abd03e52-f814-4f0c-9232-120bda8b699f",
+    "clientId": "470065b4-4cfe-4dd2-a6d1-9e264d228d90",
+    "eventId": "d6d060ce-95d0-47ab-93ec-a82ffd071e9a"
+  }
+}

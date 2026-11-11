@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { ContractTemplateList } from "@/components/contracts/contract-template-list";
+import { CollectionBackLink } from "@/components/library/collection-back-link";
+import { LibraryHowItWorks } from "@/components/library/library-guidance";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { Button } from "@/components/ui/button";
 import { ensureContractStartersForCurrentVenue } from "@/lib/contracts/provision";
@@ -15,14 +17,20 @@ export default async function ContractTemplatesLibraryPage() {
   await ensureContractStartersForCurrentVenue();
   const templates = await getTemplates(true);
   return (
-    <div className="htc-hospitality-page htc-hospitality-heading htc-hospitality-intro-accent space-y-6">
-      <PageHeader
-        title="Contract Templates"
-        description="Reusable agreements with event details filled in from Hello to Cheers. Signed agreements live under Contracts."
-        actions={
-          <Button render={<Link href="/contracts/templates/new" />}>+ New Template</Button>
-        }
-      />
+    <div className="htc-hospitality-page space-y-4 sm:space-y-6">
+      <CollectionBackLink href="/library" label="Templates" />
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
+        <PageHeader
+          title="Contract Templates"
+          description="Reusable agreements with event details filled in from Hello to Cheers. Signed agreements live under Contracts."
+          actions={
+            <Button render={<Link href="/contracts/templates/new" />}>+ New Template</Button>
+          }
+        />
+      </div>
+      <LibraryHowItWorks tone="calm">
+        Agreement text and fields are authored in the contract template editor. When you apply a template to an event, event details fill in automatically — there is no separate catalog to manage for contract content.
+      </LibraryHowItWorks>
 
       {templates.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-sm border border-dashed border-border bg-card/40 py-16 text-center">

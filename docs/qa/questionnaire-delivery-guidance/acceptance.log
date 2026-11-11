@@ -1,0 +1,22 @@
+PASS serving_sha — serving=eed873c32ce31e3d562daefbb76d4d68b76b847a expected=eed873c32ce31e3d562daefbb76d4d68b76b847a
+PASS fixture — client=b4e2764b-be33-4579-89e3-0c8e4a6dd5be event=ebf74f77-2944-474a-b735-48762ecb6842
+PASS guidance_visible — Questionnaire delivery
+
+You can request questionnaire information through planning tasks or automated messages where supported. If you've already requested the same information through one of those wo
+PASS guidance_avoids_duplicate_copy — Questionnaire delivery
+
+You can request questionnaire information through planning tasks or automated messages where supported. If you've already requested the same information through one of those workflows, you don't need to send a separate questionnaire request here. Use this 
+PASS guidance_does_not_claim_auto_send — ok
+PASS kind_tabs_visible — tabs
+PASS tab_switch_final_details — final_details
+PASS preview_opened — https://app.sandbox.hellotocheers.com/events/ebf74f77-2944-474a-b735-48762ecb6842/questionnaire-preview?kind=client_planning&from=event
+PASS questionnaires_unchanged — fingerprint
+PASS no_new_sent_questionnaires — b=4 a=4
+PASS no_invite_side_effect — b=34 a=34
+PASS no_notification_side_effect — b=3489 a=3489
+{
+  "status": "GREEN",
+  "passed": 12,
+  "failed": 0,
+  "servingSha": "eed873c32ce31e3d562daefbb76d4d68b76b847a"
+}

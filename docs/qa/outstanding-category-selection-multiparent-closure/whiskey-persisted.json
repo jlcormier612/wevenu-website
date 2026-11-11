@@ -1,0 +1,32 @@
+{
+  "servingNote": "display fix on ee0e7810; DB rows pre-existed",
+  "offering": {
+    "id": "2ab70492-a81e-449b-93fc-0016752d4d7c",
+    "name": "Whiskey",
+    "venue_id": "05f16a15-1752-4855-8a3b-aad5c593d8d9",
+    "parent_offering_id": "fb8172b5-a65e-4e58-a68e-0ec5f4120170",
+    "category_id": "7fd8ca5f-cc6f-4ac4-828b-26f6e4b4345b"
+  },
+  "links": [
+    {
+      "id": "b6839caa-33bf-431a-aefe-9de52cf3ee18",
+      "parent_offering_id": "fb8172b5-a65e-4e58-a68e-0ec5f4120170",
+      "created_at": "2026-10-28T21:08:24.806492+00:00"
+    },
+    {
+      "id": "5dfb2fb7-9ac5-4dc6-8f08-8ff100911e62",
+      "parent_offering_id": "31ad6dda-69fd-428b-b556-179375b1bf55",
+      "created_at": "2026-10-28T21:08:24.806492+00:00"
+    }
+  ],
+  "parents": [
+    {
+      "id": "31ad6dda-69fd-428b-b556-179375b1bf55",
+      "name": "Premium open bar"
+    },
+    {
+      "id": "fb8172b5-a65e-4e58-a68e-0ec5f4120170",
+      "name": "Guest Paid Bar Offering"
+    }
+  ]
+}

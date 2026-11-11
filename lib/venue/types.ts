@@ -113,6 +113,12 @@ export type Venue = {
   neutralColor: string;
   /** Plain-text signature/footer on outbound client emails. */
   emailSignature: string | null;
+  /** Customer-facing email footer: show signature text. */
+  emailFooterShowSignature: boolean;
+  /** Customer-facing email footer: show venue email. */
+  emailFooterShowEmail: boolean;
+  /** Customer-facing email footer: show venue phone (opt-in). */
+  emailFooterShowPhone: boolean;
   /** Optional public review URL shown after Post-Event Feedback Yes. */
   publicReviewUrl: string | null;
   currency: string;
@@ -130,6 +136,16 @@ export type Venue = {
   onboardingDismissed: boolean;
   luvIntroSeenAt: string | null;
   embedKey: string;   // public key for the venue's inquiry form — /form/{embedKey}
+  /** When true, an active date hold closes that date on the public availability calendar and inquiry form. */
+  holdBlocksAvailability: boolean;
+  /**
+   * When true, public inquiry / availability calendar keeps a date Available if
+   * at least one active Event Space can still take a full-day Event.
+   * Default false: a confirmed Event occupying the date closes it venue-wide.
+   */
+  allowSimultaneousPublicAvailability: boolean;
+  /** When true, tours may be scheduled during a booked event. Default false. */
+  allowToursDuringBookedEvents: boolean;
   leadEmailKey: string;   // Email Intake Engine — leads+{leadEmailKey}@{inbound domain}
   tourSchedulingEnabled: boolean;
   // Program 2 Phase 2B rollout flag — per docs/conversation-experience-cutover.md's
@@ -142,11 +158,15 @@ export type Venue = {
   // posture as conversationExperienceEnabled above. False leaves a venue's
   // Booking Workspace with no Event Order tab at all; nothing else changes.
   eventOrderEnabled: boolean;
-  /** Optional planning surfaces — not Playbook applications. Defaults true. */
+  /** Optional planning / setup surfaces — inclusion SoT for Setup Profiles. Defaults true. */
+  planningChecklistsEnabled: boolean;
   planningTimelineEnabled: boolean;
   planningFloorPlanEnabled: boolean;
   planningSeatingEnabled: boolean;
   planningVendorsEnabled: boolean;
+  planningInventoryEnabled: boolean;
+  planningEventOrderEnabled: boolean;
+  planningQuestionnairesEnabled: boolean;
   /** CRM Suspend / unpaid dunning hard-lock. Data is preserved when true. */
   accessDisabled: boolean;
   /** Mirrors accessDisabled today: active | suspended. */
@@ -158,6 +178,11 @@ export type Venue = {
    * Per-booking amounts/schedules may still override.
    */
   commercialBookingPrefs: VenueCommercialBookingPrefs;
+  /**
+   * single = one primary event space UX; multi = expose multi-space assignment,
+   * calendar space filter, and use-based controls. Venue setup choices drive UI.
+   */
+  spaceOperatingMode: "single" | "multi";
   createdAt: string;
   updatedAt: string;
 };

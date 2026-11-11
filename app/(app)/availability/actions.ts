@@ -4,7 +4,6 @@ import { revalidatePath } from "next/cache";
 
 import {
   checkAvailability,
-  convertHold,
   createBlock,
   createHold,
   createSpace,
@@ -16,6 +15,7 @@ import {
   releaseHold,
   saveCapacityRules,
   updateBlock_,
+  updateHold,
   updateSpace_,
 } from "@/lib/availability/service";
 import type {
@@ -26,6 +26,7 @@ import type {
   CreateHoldResult,
   CreateSpaceResult,
   DateHoldInput,
+  DateHoldUpdateInput,
   SpaceInput,
 } from "@/lib/availability/types";
 import { getScheduleRelationOption, searchScheduleRelationOptions } from "@/lib/calendar/service";
@@ -49,6 +50,24 @@ export async function deleteSpaceAction(spaceId: string): Promise<AvailabilityAc
   return result;
 }
 
+/** Venue setup choice: single vs multi physical-space operations. */
+export async function updateSpaceOperatingModeAction(
+  mode: "single" | "multi",
+): Promise<AvailabilityActionResult> {
+  const { createClient } = await import("@/integrations/supabase/server");
+  const { getCurrentVenue } = await import("@/lib/venue/service");
+  const { updateVenueFields } = await import("@/lib/venue/repository");
+  const venue = await getCurrentVenue();
+  if (!venue) return { ok: false, message: "No venue found." };
+  if (mode !== "single" && mode !== "multi") {
+    return { ok: false, message: "Invalid space operating mode." };
+  }
+  await updateVenueFields(await createClient(), venue.id, { space_operating_mode: mode });
+  revalidatePath("/settings/availability");
+  revalidatePath("/calendar");
+  return { ok: true };
+}
+
 export async function saveCapacityRulesAction(input: { maxSimultaneousEvents: number; maxSimultaneousTours: number; minTurnaroundHours: number }): Promise<AvailabilityActionResult> {
   const result = await saveCapacityRules(input);
   if (result.ok) revalidatePath("/settings/availability");
@@ -61,15 +80,15 @@ export async function createHoldAction(input: DateHoldInput): Promise<CreateHold
   return result;
 }
 
-export async function releaseHoldAction(holdId: string): Promise<AvailabilityActionResult> {
-  const result = await releaseHold(holdId);
+export async function updateHoldAction(holdId: string, input: DateHoldUpdateInput): Promise<AvailabilityActionResult> {
+  const result = await updateHold(holdId, input);
   if (result.ok) { revalidatePath("/calendar"); revalidatePath("/leads", "layout"); }
   return result;
 }
 
-export async function convertHoldAction(holdId: string): Promise<AvailabilityActionResult> {
-  const result = await convertHold(holdId);
-  if (result.ok) revalidatePath("/leads", "layout");
+export async function releaseHoldAction(holdId: string): Promise<AvailabilityActionResult> {
+  const result = await releaseHold(holdId);
+  if (result.ok) { revalidatePath("/calendar"); revalidatePath("/leads", "layout"); }
   return result;
 }
 
@@ -126,8 +145,11 @@ export async function checkAvailabilityAction(opts: {
   setupTime?: string;
   teardownTime?: string;
   spaceId?: string;
+  windows?: Array<{ spaceId: string; startTime?: string | null; endTime?: string | null }>;
   type: "event" | "tour";
   excludeId?: string;
+  excludeLeadId?: string;
+  purpose?: "booking" | "preferred_date";
 }): Promise<AvailabilityStatus> {
   return checkAvailability(opts);
 }

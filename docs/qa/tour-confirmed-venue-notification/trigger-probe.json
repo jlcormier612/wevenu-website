@@ -1,0 +1,23 @@
+{
+  "probedAt": "2026-10-16T01:47:34.758Z",
+  "method": "service-role UPDATE status cancelled→scheduled→confirmed; no app sendTourConfirmation; INSERT was cancelled to avoid tour_scheduled notify",
+  "tourId": "c02c3ebd-99d1-4346-a68c-4e0e66ac3fcf",
+  "leadId": "d87ac5dc-94fa-477a-9877-acbe2163bf2e",
+  "after": {
+    "id": "c02c3ebd-99d1-4346-a68c-4e0e66ac3fcf",
+    "status": "confirmed",
+    "confirmed_at": "2026-10-16T01:47:34.512+00:00",
+    "confirmation_source": "prospect_link"
+  },
+  "notificationsCreatedAfterSince": [
+    {
+      "id": "f2c8ad00-6102-4a68-b4e9-23cbcc159409",
+      "type": "tour_confirmed",
+      "title": "Tour confirmed — TrigProbe trig-probe-1792115253893",
+      "body": "Sep 12, 2028 at 11:00 AM · Confirmed by the guest",
+      "created_at": "2026-10-16T01:47:34.634321+00:00",
+      "needs_email": true
+    }
+  ],
+  "triggerAppearsToFire": true
+}

@@ -23,7 +23,13 @@ import type {
 } from "@/lib/migration/types";
 import type { NormalizedActiveCommitment, ActiveCommitmentScheduleLine } from "@/lib/migration/active-commitment-model";
 import { validateActiveCommitment } from "@/lib/migration/active-commitment-model";
+import { parsePackageIncludedItems } from "@/lib/import/package-items";
 import { MANUAL_SCHEDULE_TYPES, type ManualScheduleType, type RecurrenceRule } from "@/lib/availability/types";
+import {
+  isVenueGuestListImportRemoved,
+  VENUE_GUEST_LIST_IMPORT_REMOVED_MESSAGE,
+} from "@/lib/migration/venue-guest-list-import";
+import { splitName } from "@/lib/migration/sources/honeybook";
 
 function str(row: SourceRow, key: string): string | null {
   const v = row[key];
@@ -32,10 +38,48 @@ function str(row: SourceRow, key: string): string | null {
   return trimmed === "" ? null : trimmed;
 }
 
+function applyCombinedNameSplit(
+  combined: string,
+): { ok: true; firstName: string; lastName: string } | { ok: false; error: string } {
+  const split = splitName(combined);
+  if (!split.firstName) {
+    return { ok: false, error: "Missing a first and last name — every record needs at least one identifiable person." };
+  }
+  if (!split.confident) {
+    return {
+      ok: false,
+      error: `"${combined}" was split as first name "${split.firstName}", last name "${split.lastName}" — please confirm this is correct.`,
+    };
+  }
+  return { ok: true, firstName: split.firstName, lastName: split.lastName };
+}
+
 function normalizeClientLike(row: SourceRow): (NormalizedClientLike & { ok: true }) | { ok: false; error: string } {
-  const firstName = str(row, "firstName");
-  const lastName = str(row, "lastName");
-  if (!firstName || !lastName) {
+  let firstName = str(row, "firstName");
+  let lastName = str(row, "lastName");
+  // Field-mapping exposes a combined "name" slot for one-column exports
+  // (Couple Name, Full name). HoneyBook/Tripleseat adapters already split
+  // that shape; Another-system / generic must too or auto-mapped combined
+  // columns are reported as missing first/last after Bring in.
+  //
+  // Also: Suggest-with-Luv sometimes drops a combined column onto First name
+  // only (leaving Last name empty). Treat that the same as a combined name.
+  if (!firstName && !lastName) {
+    const combined = str(row, "name") ?? str(row, "fullName") ?? str(row, "clientName");
+    if (!combined) {
+      return { ok: false, error: "Missing a first and last name — every record needs at least one identifiable person." };
+    }
+    const split = applyCombinedNameSplit(combined);
+    if (!split.ok) return split;
+    firstName = split.firstName;
+    lastName = split.lastName;
+  } else if (firstName && !lastName) {
+    const combined = str(row, "name") ?? str(row, "fullName") ?? str(row, "clientName") ?? firstName;
+    const split = applyCombinedNameSplit(combined);
+    if (!split.ok) return split;
+    firstName = split.firstName;
+    lastName = split.lastName;
+  } else if (!firstName || !lastName) {
     return { ok: false, error: "Missing a first and last name — every record needs at least one identifiable person." };
   }
   return {
@@ -197,11 +241,19 @@ function normalizeRow(row: SourceRow, entityType: MigrationEntityType): Normaliz
   if (entityType === "package") {
     const name = str(row, "name");
     if (!name) return { ok: false, error: "Packages need a name." };
+    const itemsRaw = str(row, "includedItems") ?? str(row, "items") ?? str(row, "packageItems");
+    let includedItems: NormalizedPackageLike["includedItems"] = null;
+    if (itemsRaw) {
+      const parsed = parsePackageIncludedItems(itemsRaw);
+      if (!parsed.ok) return { ok: false, error: parsed.message };
+      includedItems = parsed.items;
+    }
     const normalized: NormalizedPackageLike = {
       name,
       description: str(row, "description"),
       basePrice: str(row, "basePrice") ?? str(row, "price"),
       category: str(row, "category"),
+      includedItems,
       sourceId: str(row, "sourceId") ?? str(row, "id") ?? str(row, "recordId"),
     };
     return { ok: true, entityType, normalized };
@@ -248,7 +300,7 @@ function normalizeRow(row: SourceRow, entityType: MigrationEntityType): Normaliz
   if (entityType === "payment") {
     return {
       ok: false,
-      error: "Use Active commitment (Event Order, invoice, and payment plan) — standalone payment rows are not imported alone.",
+      error: "Use Booked-event finances (invoice, payment schedule, and signed agreement) — standalone payment rows are not imported alone.",
     };
   }
   if (entityType === "document") {
@@ -282,7 +334,7 @@ function normalizeRow(row: SourceRow, entityType: MigrationEntityType): Normaliz
   if (entityType === "active_commitment") {
     const contractedTotal = str(row, "contractedTotal") ?? str(row, "total") ?? str(row, "contractTotal");
     if (!contractedTotal) {
-      return { ok: false, error: "Active commitments need a contractedTotal." };
+      return { ok: false, error: "Booked-event finances need a contractedTotal." };
     }
 
     const scheduleLines: ActiveCommitmentScheduleLine[] = [];
@@ -379,40 +431,9 @@ function normalizeRow(row: SourceRow, entityType: MigrationEntityType): Normaliz
     return { ok: true, entityType, normalized: normalized as unknown as Record<string, unknown> };
   }
 
-  if (entityType === "guest_list") {
-    const firstName = str(row, "firstName") ?? str(row, "guestFirstName");
-    if (!firstName) return { ok: false, error: "Guest rows need a firstName." };
-    const bool = (v: string | null | undefined) => ["yes", "true", "1"].includes((v ?? "").toLowerCase());
-    const splitTags = (v: string | null | undefined) =>
-      (v ?? "").split(/[,|;]/).map((t) => t.trim().toLowerCase()).filter(Boolean);
-    const normalized = {
-      eventId: str(row, "eventId"),
-      clientEmail: str(row, "clientEmail"),
-      clientId: str(row, "clientId"),
-      eventDate: str(row, "eventDate"),
-      firstName,
-      lastName: str(row, "lastName") ?? str(row, "guestLastName"),
-      email: str(row, "guestEmail"),
-      phone: str(row, "phone") ?? str(row, "guestPhone"),
-      household: str(row, "household") ?? str(row, "householdName"),
-      rsvpStatus: str(row, "rsvpStatus") ?? str(row, "rsvp"),
-      mealChoice: str(row, "mealChoice"),
-      dietaryRestrictions: str(row, "dietaryRestrictions") ?? str(row, "dietary"),
-      isChild: bool(str(row, "isChild")),
-      isWeddingParty: bool(str(row, "isWeddingParty")),
-      plusOne: bool(str(row, "plusOne")),
-      plusOneName: str(row, "plusOneName"),
-      dietaryTags: splitTags(str(row, "dietaryTags")),
-      accessibilityTags: splitTags(str(row, "accessibilityTags")),
-      accessibilityNotes: str(row, "accessibilityNotes"),
-      age: str(row, "age"),
-      highChairRequired: bool(str(row, "highChairRequired")),
-      childNotes: str(row, "childNotes"),
-      isVendorMeal: bool(str(row, "isVendorMeal")),
-      notes: str(row, "notes"),
-      sourceId: str(row, "sourceId") ?? str(row, "id") ?? str(row, "recordId"),
-    };
-    return { ok: true, entityType, normalized };
+  if (isVenueGuestListImportRemoved(entityType)) {
+    // Client-owned guest lists — venue Migration Center must not normalize PII rows.
+    return { ok: false, error: VENUE_GUEST_LIST_IMPORT_REMOVED_MESSAGE };
   }
 
   if (entityType === "event_vendor_assignment") {

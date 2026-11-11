@@ -1,0 +1,747 @@
+/**
+ * Product page Sections 1–2 — scoped to .htc-product.
+ * Typography matches homepage-v3 (Cormorant 400 / -0.02em) without altering homepage CSS.
+ */
+
+.htc-product {
+  --botanical: #446b56;
+  --eucalyptus: #dce8e0;
+  --blush: #f7e9eb;
+  --linen: #f3f0e9;
+  --canvas: #f8f7f3;
+  --white: #ffffff;
+  --charcoal: #24332b;
+  --muted: rgba(36, 51, 43, 0.68);
+  --line: rgba(36, 51, 43, 0.12);
+  --frame-shadow: 0 22px 48px -34px rgba(36, 51, 43, 0.38);
+  --phone-shadow: 0 18px 36px -26px rgba(36, 51, 43, 0.42);
+  color: var(--charcoal);
+}
+
+.htc-product .po-wrap {
+  width: min(1220px, calc(100% - 2.5rem));
+  margin-inline: auto;
+}
+
+.htc-product .po-wrap-wide {
+  width: min(1280px, calc(100% - 2rem));
+  margin-inline: auto;
+}
+
+.htc-product .po-kicker {
+  margin: 0 0 0.9rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--botanical);
+  font-weight: 600;
+}
+
+/* Match homepage .hero h1 / .journey-headline: weight 400, tracking -0.02em */
+.htc-product .po-title {
+  margin: 0 0 1rem;
+  font-family: var(--font-heading);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  font-size: clamp(2.15rem, 4.2vw, 3.35rem);
+  color: var(--charcoal);
+}
+
+.htc-product .po-lede {
+  margin: 0;
+  font-size: 1.0625rem;
+  line-height: 1.6;
+  color: var(--muted);
+  max-width: 52ch;
+}
+
+.htc-product .po-center {
+  text-align: center;
+}
+
+.htc-product .po-center .po-lede {
+  margin-inline: auto;
+}
+
+/* —— Section 1: Venue hero —— */
+.htc-product .po-hero {
+  background: var(--linen);
+  padding: 7.5rem 0 4.5rem;
+  overflow: hidden;
+}
+
+@media (min-width: 768px) {
+  .htc-product .po-hero {
+    padding: 8.5rem 0 5.75rem;
+  }
+}
+
+.htc-product .po-hero-copy {
+  max-width: 46rem;
+  margin: 0 auto 2.75rem;
+}
+
+.htc-product .po-hero .po-title {
+  font-size: clamp(2.625rem, 5vw, 4.25rem);
+  letter-spacing: -0.02em;
+  font-weight: 400;
+}
+
+.htc-product .po-hero-stage {
+  position: relative;
+  /* Use more horizontal width so desktop can sit left and phone right */
+  width: min(1240px, 100%);
+  margin: 0 auto;
+  /* Room for phone hanging below desktop; side pad so phone isn’t clipped */
+  padding: 0.75rem 2.75rem 4.75rem 0.15rem;
+}
+
+.htc-product .po-desktop-frame {
+  position: relative;
+  z-index: 1;
+  /* Shift desktop left — leave right of stage for the phone */
+  width: min(86%, 1040px);
+  margin-right: auto;
+  margin-left: 0;
+  background: var(--charcoal);
+  border: 3px solid var(--charcoal);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: var(--frame-shadow);
+}
+
+.htc-product .po-desktop-frame img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.htc-product .po-phone-frame {
+  position: absolute;
+  z-index: 2;
+  /* Sit further right with deliberate but lighter overlap on desktop */
+  right: 0.15rem;
+  bottom: 0.85rem;
+  width: min(32%, 268px);
+  background: var(--charcoal);
+  border: 2px solid var(--charcoal);
+  border-radius: 1.25rem;
+  padding: 0.38rem 0.3rem 0.42rem;
+  box-shadow: var(--phone-shadow);
+}
+
+.htc-product .po-phone-notch {
+  width: 36%;
+  height: 0.38rem;
+  margin: 0 auto 0.28rem;
+  border-radius: 999px;
+  background: #1a2420;
+}
+
+.htc-product .po-phone-screen {
+  border-radius: 0.95rem;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.htc-product .po-phone-screen img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+@media (max-width: 900px) {
+  .htc-product .po-hero-stage {
+    padding: 0.5rem 1.75rem 3.75rem 0.1rem;
+  }
+
+  .htc-product .po-desktop-frame {
+    width: min(88%, 920px);
+  }
+
+  .htc-product .po-phone-frame {
+    width: min(34%, 230px);
+    right: 0.1rem;
+    bottom: 0.5rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .htc-product .po-hero {
+    padding-top: 6.25rem;
+    /* Extra bottom room so the overlapping phone stays in-viewport */
+    padding-bottom: 4.25rem;
+  }
+
+  .htc-product .po-hero-copy {
+    margin-bottom: 1.75rem;
+  }
+
+  /*
+   * Keep the approved desktop+phone overlap on mobile.
+   * Prior stacked layout made the phone ~64%/240px (dominant) and
+   * diminished the desktop dashboard — restore desktop-first hierarchy.
+   */
+  .htc-product .po-hero-stage {
+    display: block;
+    width: 100%;
+    padding: 0 0.15rem 2.35rem 0;
+  }
+
+  .htc-product .po-desktop-frame {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    border-width: 2px;
+    border-radius: 10px;
+  }
+
+  .htc-product .po-phone-frame {
+    position: absolute;
+    z-index: 2;
+    /* Foreground accent — proportionately smaller than the desktop */
+    width: clamp(92px, 30vw, 118px);
+    right: 0.2rem;
+    bottom: 0.15rem;
+    margin: 0;
+    border-width: 2px;
+    border-radius: 1rem;
+    padding: 0.28rem 0.22rem 0.3rem;
+  }
+
+  .htc-product .po-phone-notch {
+    height: 0.28rem;
+    margin-bottom: 0.2rem;
+  }
+
+  .htc-product .po-phone-screen {
+    border-radius: 0.75rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .htc-product * {
+    scroll-behavior: auto !important;
+  }
+}
+
+/* —— Section 2: Connected experiences —— */
+.htc-product .po-connected {
+  background: var(--white);
+  padding: 6.5rem 0 5rem;
+  border-top: 1px solid var(--line);
+  scroll-margin-top: 6.5rem;
+}
+
+@media (min-width: 768px) {
+  .htc-product .po-connected {
+    padding: 7.5rem 0 6rem;
+  }
+}
+
+.htc-product .po-connected-intro {
+  max-width: 44rem;
+  margin: 0 auto 3.25rem;
+}
+
+.htc-product .po-showcase {
+  display: grid;
+  gap: 3.5rem;
+}
+
+@media (min-width: 960px) {
+  .htc-product .po-showcase {
+    gap: 4.75rem;
+  }
+}
+
+.htc-product .po-block {
+  display: grid;
+  gap: 1.75rem;
+  align-items: start;
+}
+
+@media (min-width: 960px) {
+  .htc-product .po-block {
+    /* Visual column larger so client Home reads at showcase scale */
+    grid-template-columns: minmax(0, 0.62fr) minmax(0, 1.38fr);
+    gap: 2.25rem;
+    align-items: start;
+  }
+
+  /* Reversed client hierarchy: imagery left (same visual weight), copy right */
+  .htc-product .po-block-vendor {
+    grid-template-columns: minmax(0, 1.38fr) minmax(0, 0.62fr);
+  }
+
+  .htc-product .po-block-vendor .po-block-copy {
+    order: 2;
+  }
+
+  .htc-product .po-block-vendor .po-block-visual {
+    order: 1;
+  }
+}
+
+.htc-product .po-block-copy .po-title {
+  font-size: clamp(1.85rem, 3vw, 2.55rem);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+}
+
+.htc-product .po-block-body {
+  margin: 0.85rem 0 0;
+  font-size: 1.02rem;
+  line-height: 1.62;
+  color: var(--muted);
+  max-width: 44ch;
+}
+
+/* Alternating rhythm: client eucalyptus surface, vendor white */
+.htc-product .po-block-client {
+  padding: 1.35rem 1.25rem 1.6rem;
+  border-radius: 1.25rem;
+  background: color-mix(in srgb, var(--eucalyptus) 42%, var(--white));
+}
+
+.htc-product .po-block-vendor {
+  padding: 1.35rem 1.25rem 1.6rem;
+  border-radius: 1.25rem;
+  background: var(--white);
+}
+
+@media (min-width: 960px) {
+  .htc-product .po-block-client,
+  .htc-product .po-block-vendor {
+    padding: 1.85rem 1.65rem 1.85rem;
+  }
+}
+
+.htc-product .po-client-visual {
+  position: relative;
+  /* Stack so the wide six-card crop stays full-width and readable */
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.95rem;
+  align-items: start;
+}
+
+.htc-product .po-shot-primary,
+.htc-product .po-shot-planning {
+  width: 100%;
+}
+
+.htc-product .po-shot-primary img,
+.htc-product .po-shot-planning img {
+  width: 100%;
+  height: auto;
+}
+
+.htc-product .po-shot {
+  margin: 0;
+  background: var(--linen);
+  border: 2px solid var(--charcoal);
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 14px 32px -28px rgba(36, 51, 43, 0.36);
+}
+
+.htc-product .po-shot-blush {
+  background: color-mix(in srgb, var(--blush) 40%, var(--linen));
+}
+
+.htc-product .po-shot img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.htc-product .po-shot figcaption {
+  display: none;
+}
+
+/* Match client stacked hierarchy: primary on top, secondary beneath, same width */
+.htc-product .po-vendor-visual {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.95rem;
+  align-items: start;
+}
+
+.htc-product .po-shot-vendor-primary,
+.htc-product .po-shot-overview {
+  width: 100%;
+}
+
+.htc-product .po-shot-vendor-primary {
+  border-color: color-mix(in srgb, var(--charcoal) 88%, var(--botanical));
+}
+
+.htc-product .po-shot-overview {
+  border-width: 2px;
+}
+
+.htc-product .po-shot-vendor-primary img,
+.htc-product .po-shot-overview img {
+  width: 100%;
+  height: auto;
+}
+
+/* Product journey follows white vendor on the approved warm linen (same as §1 hero).
+   Scoped class — does not alter homepage journey. */
+.product-journey-follow {
+  background: #f3f0e9;
+  --pj-charcoal: #2a2e2a;
+  --pj-charcoal-soft: #333833;
+  --pj-ivory: #f7f1e6;
+  --pj-ivory-deep: #efe6d6;
+}
+
+/* Journey intro + chapter body: darker warm charcoal (scoped). */
+.product-journey-follow .pj-headline,
+.product-journey-follow .journey-chapter h2 {
+  color: var(--pj-charcoal);
+}
+
+.product-journey-follow .pj-intro-headline {
+  /* Match chapter headline ink — sage read as thinner than charcoal siblings */
+  color: var(--pj-charcoal);
+  max-width: 100%;
+}
+
+.product-journey-follow .pj-body,
+.product-journey-follow .pj-body p {
+  color: var(--pj-charcoal-soft);
+}
+
+.product-journey-follow .pj-nav-active {
+  color: var(--pj-charcoal);
+}
+
+.product-journey-follow .pj-nav-past {
+  color: color-mix(in srgb, var(--pj-charcoal) 38%, transparent);
+}
+
+.product-journey-follow .pj-nav-upcoming {
+  color: color-mix(in srgb, var(--pj-charcoal) 46%, transparent);
+}
+
+/* ── Journey introduction ─────────────────────────────────────────── */
+.product-journey-follow .pj-intro-headline {
+  width: 100%;
+  max-width: 100%;
+  margin-inline: auto;
+  text-align: center;
+  font-size: clamp(2rem, 2.6vw + 0.85rem, 3.05rem); /* editorial ~48px at wide */
+  line-height: 1.14;
+  letter-spacing: -0.02em;
+  font-weight: 400; /* same Cormorant weight as chapter headlines */
+}
+
+.product-journey-follow .pj-intro-support {
+  margin-top: 1.5rem; /* ~24px */
+  text-align: center;
+}
+
+.product-journey-follow .pj-intro-nav {
+  margin-top: 2.75rem; /* ~44px */
+  padding-top: 0.75rem;
+}
+
+@media (min-width: 1280px) {
+  .product-journey-follow .pj-intro-headline {
+    font-size: clamp(2.65rem, 1.35vw + 1.55rem, 3.1rem);
+    line-height: 1.12;
+  }
+}
+
+@media (min-width: 1440px) {
+  .product-journey-follow .pj-intro-headline {
+    /* One line at wide desktop; editorial ~48–52px */
+    font-size: clamp(3rem, 0.85vw + 2.2rem, 3.25rem);
+  }
+}
+
+/* First chapter after intro — reduce empty band */
+.product-journey-follow#connected-journey {
+  padding-top: 0.5rem;
+}
+
+.product-journey-follow#connected-journey > .relative > .md\:pl-10 > div:first-child > .border-t {
+  padding-top: 2.5rem; /* ~40px act label */
+  margin-top: 0;
+}
+
+.product-journey-follow#connected-journey .journey-chapter:first-of-type,
+.product-journey-follow#connected-journey > .relative > .md\:pl-10 > div:first-child .journey-chapter {
+  padding-top: 1.75rem;
+}
+
+/* ── Composition: strict two-column ───────────────────────────────── */
+.product-journey-follow .pj-compose {
+  position: relative;
+  display: grid;
+  gap: 1.75rem;
+  width: 100%;
+  max-width: 100%;
+  overflow: visible;
+}
+
+.product-journey-follow .pj-compose-photo,
+.product-journey-follow .pj-compose-product {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.product-journey-follow .pj-photo--pair {
+  /* Match lifestyle stills (~3:2) so cover does not side-crop subjects */
+  aspect-ratio: 3 / 2;
+}
+
+.product-journey-follow .pj-photo--immersive {
+  line-height: 0;
+}
+
+.product-journey-follow .pj-photo-img--celebration {
+  display: block;
+  width: 100%;
+  height: auto;
+  filter: brightness(0.985) contrast(1.035) saturate(1.07) sepia(0.06);
+}
+
+.product-journey-follow .pj-product-frame {
+  overflow: visible;
+  border-radius: 0.2rem;
+  border: 1px solid var(--pj-ivory-deep);
+  background: #fffcf7;
+  box-shadow:
+    0 1px 0 color-mix(in srgb, var(--pj-ivory) 80%, transparent),
+    0 18px 42px -28px rgba(47, 52, 42, 0.38),
+    0 8px 18px -14px rgba(47, 52, 42, 0.18);
+}
+
+.product-journey-follow .pj-product-img {
+  display: block;
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  object-position: left top;
+}
+
+.product-journey-follow .pj-product-caption {
+  margin: 0.75rem auto 0;
+  max-width: 34rem;
+  text-align: center;
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  color: color-mix(in srgb, var(--pj-charcoal-soft) 62%, transparent);
+}
+
+.product-journey-follow .pj-product--portrait {
+  width: 100%;
+  max-width: 22rem;
+  margin-inline: auto;
+}
+
+@media (min-width: 768px) {
+  .product-journey-follow .pj-compose {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 2.25rem; /* ~36px */
+    align-items: center;
+  }
+
+  .product-journey-follow .pj-compose--product-first .pj-compose-product {
+    order: 1;
+  }
+
+  .product-journey-follow .pj-compose--product-first .pj-compose-photo {
+    order: 2;
+  }
+
+  .product-journey-follow .pj-photo--pair {
+    aspect-ratio: 3 / 2;
+  }
+
+  /* Ch1 / Ch2 only — very small boundary kiss; never face-covering */
+  .product-journey-follow .pj-compose--photo-first .pj-product-overlap--subtle {
+    position: relative;
+    z-index: 2;
+    margin-left: -0.75rem;
+  }
+
+  .product-journey-follow .pj-compose--product-first .pj-product-overlap--subtle {
+    position: relative;
+    z-index: 2;
+    margin-right: -0.75rem;
+  }
+
+  .product-journey-follow .pj-product-overlap--none {
+    margin: 0;
+  }
+
+  /* Portrait frame reserved; Ch03/Ch06 now use landscape column fill.
+     Do not apply global portrait caps to approved landscape chapters. */
+  .product-journey-follow .pj-product--portrait {
+    max-width: min(100%, 22rem);
+  }
+
+  .product-journey-follow .pj-compose--photo-first .pj-product--portrait,
+  .product-journey-follow .pj-compose--product-first .pj-product--portrait {
+    margin-inline: auto;
+  }
+
+  .product-journey-follow .pj-compose .pj-product--portrait .pj-product-img {
+    max-height: 24rem;
+    width: 100%;
+    height: auto;
+    object-fit: contain;
+  }
+
+  /* Ch01 — never let subtle overlap clip the Pipeline heading */
+  .product-journey-follow #ch-first-hello .pj-product-overlap--subtle,
+  .product-journey-follow #ch-first-hello .pj-product {
+    margin-left: 0;
+  }
+
+  .product-journey-follow #ch-first-hello .pj-product-img {
+    aspect-ratio: auto; /* ignore Next width/height attr box */
+    width: 100%;
+    height: auto;
+    object-fit: contain;
+    object-position: left top;
+  }
+
+  /*
+   * Ch03 — Website Studio only:
+   * Full-length UI (cards + Your Sections) at a readable column scale.
+   * Width-driven sizing (not a tiny max-height) so lower content stays visible.
+   */
+  .product-journey-follow #ch-their-way .pj-compose {
+    align-items: center;
+  }
+
+  .product-journey-follow #ch-their-way .pj-product {
+    width: 100%;
+    max-width: 19.5rem; /* ~312px — readable, not column-filling magnify */
+    margin-inline: auto;
+  }
+
+  .product-journey-follow #ch-their-way .pj-product-img {
+    display: block;
+    aspect-ratio: auto; /* critical: Next 1200×900 attrs were forcing a short box */
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    max-height: none;
+    object-fit: contain;
+    object-position: top center;
+  }
+
+  /*
+   * Ch06 — Day-of Sheet only (approved sizing — leave as-is).
+   * Keep full document; reduce display size to ~10–20% taller than photo.
+   */
+  .product-journey-follow #ch-day-arrives .pj-compose {
+    align-items: center;
+  }
+
+  .product-journey-follow #ch-day-arrives .pj-product {
+    width: fit-content;
+    max-width: 100%;
+    margin-inline: auto;
+  }
+
+  .product-journey-follow #ch-day-arrives .pj-product-img {
+    display: block;
+    width: auto;
+    max-width: 100%;
+    height: auto;
+    max-height: 26rem; /* ~416px ≈ 1.17× photo */
+    object-fit: contain;
+  }
+
+  /* Ch05 — allow tasks panel taller than photo when needed */
+  .product-journey-follow #ch-partnerships .pj-compose {
+    align-items: center;
+  }
+}
+
+@media (min-width: 1024px) {
+  .product-journey-follow .pj-compose {
+    gap: 2.75rem; /* ~44px */
+  }
+
+  .product-journey-follow .pj-compose--photo-first .pj-product-overlap--subtle {
+    margin-left: -1rem;
+  }
+
+  .product-journey-follow .pj-compose--product-first .pj-product-overlap--subtle {
+    margin-right: -1rem;
+  }
+
+  .product-journey-follow .pj-product--portrait {
+    max-width: min(100%, 26rem);
+  }
+}
+
+/* Mobile: stack photo then product; no overlap */
+@media (max-width: 767px) {
+  .product-journey-follow .pj-compose-photo {
+    order: 1;
+  }
+
+  .product-journey-follow .pj-compose-product {
+    order: 2;
+  }
+
+  .product-journey-follow .pj-product-overlap--subtle {
+    margin: 0 !important;
+  }
+
+  .product-journey-follow .pj-product--portrait {
+    max-width: 18.5rem;
+  }
+
+  .product-journey-follow .pj-intro-support {
+    margin-top: 1.25rem;
+  }
+
+  .product-journey-follow .pj-intro-nav {
+    margin-top: 2rem;
+  }
+
+  /* Ch03 only — readable full studio on small screens */
+  .product-journey-follow #ch-their-way .pj-product {
+    width: 100%;
+    max-width: 18rem;
+    margin-inline: auto;
+  }
+
+  .product-journey-follow #ch-their-way .pj-product-img {
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    max-height: none;
+    margin-inline: auto;
+  }
+
+  /* Ch06 mobile — preserve approved scale */
+  .product-journey-follow #ch-day-arrives .pj-product {
+    width: fit-content;
+    max-width: 100%;
+    margin-inline: auto;
+  }
+
+  .product-journey-follow #ch-day-arrives .pj-product-img {
+    width: auto;
+    max-width: min(100%, 17.5rem);
+    max-height: 24rem;
+    height: auto;
+    margin-inline: auto;
+  }
+}

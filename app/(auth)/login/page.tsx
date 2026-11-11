@@ -3,6 +3,7 @@ import type { CSSProperties } from "react";
 
 import { LoginForm } from "@/components/auth/login-form";
 import { Wordmark } from "@/components/brand/wordmark";
+import { safeLoginEmailPrefill } from "@/lib/auth/login-email-prefill";
 import {
   Card,
   CardContent,
@@ -31,21 +32,33 @@ const LIGHT_THEME_VARS = {
   "--popover": "var(--true-white)",
   "--popover-foreground": "var(--black)",
   "--heading": "var(--forest-sage)",
-  "--muted-foreground": "color-mix(in oklch, var(--forest-sage) 70%, transparent)",
+  "--muted": "var(--natural-cream)",
+  "--muted-foreground": "color-mix(in oklch, var(--forest-sage) 80%, transparent)",
+  "--secondary": "var(--natural-cream)",
+  "--secondary-foreground": "var(--forest-sage)",
+  "--primary": "var(--heritage-sage)",
+  "--primary-foreground": "var(--true-white)",
+  "--accent": "var(--soft-sage)",
+  "--accent-foreground": "var(--forest-sage)",
   "--border": "var(--taupe-light)",
   "--input": "var(--taupe-light)",
   "--ring": "var(--heritage-sage)",
 } as CSSProperties;
 
-type Props = { searchParams: Promise<{ next?: string; activated?: string }> };
+type Props = {
+  searchParams: Promise<{ next?: string; activated?: string; email?: string; reset?: string }>;
+};
 
 export default async function LoginPage({ searchParams }: Props) {
-  const { next, activated } = await searchParams;
+  const { next, activated, email, reset } = await searchParams;
   const justActivated = activated === "1";
+  const justReset = reset === "1";
   const nextPath = next || (justActivated ? "/setup-hub" : undefined);
+  const defaultEmail = safeLoginEmailPrefill(email);
 
   return (
     <main
+      data-theme-lock="light"
       className="flex min-h-svh flex-col items-center justify-center px-4 py-12"
       style={{
         // Plain --linen — and even a --taupe-light mix, tried previously —
@@ -69,15 +82,27 @@ export default async function LoginPage({ searchParams }: Props) {
               {justActivated ? "Welcome to Hello to Cheers" : "Welcome back"}
             </CardTitle>
             <CardDescription>
-              {nextPath?.startsWith("/vendor")
-                ? "Sign in to continue to your vendor invitation or portal."
-                : nextPath?.startsWith("/client") || nextPath?.startsWith("/p/")
-                  ? "Sign in to continue to your planning workspace."
-                  : "Sign in to your Hello to Cheers workspace to continue."}
+              {justActivated
+                ? defaultEmail
+                  ? `Sign in with ${defaultEmail} — the email used for this purchase — to open your new venue. If another account was signed in on this device, it has been signed out.`
+                  : "Sign in with the email used for this purchase to open your new venue. If another account was signed in on this device, it has been signed out."
+                : nextPath?.startsWith("/vendor")
+                  ? "Sign in to continue to your vendor invitation or portal."
+                  : nextPath?.startsWith("/client") || nextPath?.startsWith("/p/")
+                    ? "Sign in to continue to your planning workspace."
+                    : "Sign in to your Hello to Cheers workspace to continue."}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <LoginForm next={nextPath} />
+            {justReset ? (
+              <p
+                role="status"
+                className="mb-4 rounded-md border border-[color-mix(in_srgb,var(--heritage-sage)_35%,transparent)] bg-[color-mix(in_srgb,var(--soft-sage)_35%,transparent)] px-3 py-2 text-sm text-foreground"
+              >
+                Your password was updated. Sign in with your new password.
+              </p>
+            ) : null}
+            <LoginForm next={nextPath} defaultEmail={defaultEmail} />
           </CardContent>
         </Card>
 

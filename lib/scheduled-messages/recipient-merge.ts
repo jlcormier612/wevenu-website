@@ -1,0 +1,45 @@
+/**
+ * Recipient-specific merge perspective for each email destination.
+ * client_name is always the primary client contact. first_name / last_name
+ * address the person receiving this send. Partner_* is not a Smart Field.
+ */
+import type { MergeContext } from "@/lib/message-templates/merge";
+import type { EmailDestinationRole } from "@/lib/scheduled-messages/email-destinations";
+
+function present(value: string | null | undefined): string | null {
+  const t = value?.trim();
+  return t ? t : null;
+}
+
+/**
+ * Build merge context for the person receiving the message.
+ * role=primary → self is primary person; partner_* is partner.
+ * role=partner → self is partner; partner_* is the primary person.
+ */
+export function mergeContextForEmailDestination(
+  base: MergeContext,
+  role: EmailDestinationRole,
+): MergeContext {
+  const primaryFirst = present(base.clientFirstName);
+  const primaryLast = present(base.clientLastName);
+  const partnerFirst = present(base.partnerFirstName);
+  const partnerLast = present(base.partnerLastName);
+
+  if (role === "primary") {
+    return {
+      ...base,
+      clientFirstName: primaryFirst,
+      clientLastName: primaryLast,
+      partnerFirstName: partnerFirst,
+      partnerLastName: partnerLast,
+    };
+  }
+
+  return {
+    ...base,
+    clientFirstName: partnerFirst,
+    clientLastName: partnerLast,
+    partnerFirstName: primaryFirst,
+    partnerLastName: primaryLast,
+  };
+}

@@ -18,6 +18,11 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useSyncedState } from "@/lib/hooks/use-synced-state";
 import { DAYS_OF_WEEK } from "@/lib/venue/constants";
+import {
+  formatTourBlockedDateSpan,
+  tourBlockedRecurrenceLabel,
+  type TourBlockedRecurrence,
+} from "@/lib/tours/blocked-date-recurrence";
 import type {
   TourAvailabilityException,
   TourAvailabilityWindow,
@@ -54,7 +59,12 @@ export function TourAvailabilityEditor({
   const [justSavedWindows, setJustSavedWindows] = React.useState(false);
 
   const [exceptions, setExceptions] = useSyncedState(initialExceptions);
-  const [newException, setNewException] = React.useState({ startDate: "", endDate: "", label: "" });
+  const [newException, setNewException] = React.useState<{
+    startDate: string;
+    endDate: string;
+    label: string;
+    recurrenceRule: TourBlockedRecurrence;
+  }>({ startDate: "", endDate: "", label: "", recurrenceRule: "none" });
   const [savingException, startSaveException] = React.useTransition();
 
   const windowsDirty = JSON.stringify(windows) !== windowsBaseline;
@@ -121,14 +131,26 @@ export function TourAvailabilityEditor({
     }
     startSaveException(async () => {
       const result = await addTourAvailabilityExceptionAction({
-        startDate: newException.startDate, endDate, label: newException.label,
+        startDate: newException.startDate,
+        endDate,
+        label: newException.label,
+        recurrenceRule: newException.recurrenceRule,
       });
       if (result.ok) {
-        toast.success("Blocked date added.");
+        toast.success(
+          newException.recurrenceRule === "annual"
+            ? "Recurring blocked date added."
+            : "Blocked date added.",
+        );
+        const persistedId = result.id;
         setExceptions((prev) => [...prev, {
-          id: crypto.randomUUID(), startDate: newException.startDate, endDate, label: newException.label.trim() || null,
+          id: persistedId,
+          startDate: newException.startDate,
+          endDate,
+          label: newException.label.trim() || null,
+          recurrenceRule: newException.recurrenceRule,
         }].sort((a, b) => a.startDate.localeCompare(b.startDate)));
-        setNewException({ startDate: "", endDate: "", label: "" });
+        setNewException({ startDate: "", endDate: "", label: "", recurrenceRule: "none" });
         onAvailabilityChanged?.();
       } else {
         toast.error("Could not add blocked date.");
@@ -163,7 +185,7 @@ export function TourAvailabilityEditor({
       <div className="space-y-3">
         <div>
           <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Weekly Availability</Label>
-          <p className="text-xs text-muted-foreground">Set the days and hours tours can be booked. Add more than one window per day if you want a midday gap.</p>
+          <p className="text-xs text-muted-foreground">Set the days and hours tours can be booked. Add more than one window per day if you want a midday gap. Removing a window or turning a day off stays on this form until you click Save changes.</p>
         </div>
         <div className="space-y-2">
           {MONDAY_FIRST_DAYS.map((day) => {
@@ -183,7 +205,7 @@ export function TourAvailabilityEditor({
                         <Input type="time" value={w.startTime} onChange={(e) => updateWindow(w.key, { startTime: e.target.value })} className="w-32" aria-label={`${day.label} window start`} />
                         <span className="text-sm text-muted-foreground">to</span>
                         <Input type="time" value={w.endTime} onChange={(e) => updateWindow(w.key, { endTime: e.target.value })} className="w-32" aria-label={`${day.label} window end`} />
-                        <button type="button" onClick={() => removeWindow(w.key)} className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-destructive" aria-label="Remove window">
+                        <button type="button" onClick={() => removeWindow(w.key)} className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-destructive" aria-label="Remove window from this form — Save changes to apply" title="Removes this window from the form. Click Save changes to apply.">
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
                       </div>
@@ -213,41 +235,73 @@ export function TourAvailabilityEditor({
       <div className="space-y-3">
         <div>
           <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Blocked Dates</Label>
-          <p className="text-xs text-muted-foreground">Holidays, venue closures, or any date range tours shouldn&apos;t be offered — regardless of your weekly schedule above.</p>
+          <p className="text-xs text-muted-foreground">Holidays, venue closures, or any date range tours shouldn&apos;t be offered — regardless of your weekly schedule above. Removing a blocked date is saved immediately.</p>
         </div>
         {exceptions.length === 0 && (
           <p className="text-xs text-muted-foreground italic">No blocked dates yet.</p>
         )}
         {exceptions.length > 0 && (
           <div className="space-y-1.5">
-            {exceptions.map((exc) => (
-              <div key={exc.id} className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2 text-sm">
-                <div>
-                  <span className="font-medium text-heading">
-                    {exc.startDate === exc.endDate ? exc.startDate : `${exc.startDate} – ${exc.endDate}`}
-                  </span>
-                  {exc.label && <span className="ml-2 text-muted-foreground">{exc.label}</span>}
+            {exceptions.map((exc) => {
+              const rule = exc.recurrenceRule ?? "none";
+              const everyYear = tourBlockedRecurrenceLabel(rule);
+              return (
+                <div key={exc.id} className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2 text-sm">
+                  <div>
+                    <p className="font-medium text-heading">
+                      {formatTourBlockedDateSpan(exc.startDate, exc.endDate, rule)}
+                    </p>
+                    {exc.label ? (
+                      <p className="text-muted-foreground">{exc.label}</p>
+                    ) : null}
+                    {everyYear ? (
+                      <p className="text-xs text-muted-foreground">{everyYear}</p>
+                    ) : null}
+                  </div>
+                  <button type="button" onClick={() => handleRemoveException(exc.id)} className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-destructive" aria-label="Remove blocked date now" title="Removes this blocked date immediately." disabled={savingException}>
+                    <X className="h-3.5 w-3.5" />
+                  </button>
                 </div>
-                <button type="button" onClick={() => handleRemoveException(exc.id)} className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-destructive" aria-label="Remove blocked date" disabled={savingException}>
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
-        <div className="flex flex-wrap items-end gap-2 rounded-lg border border-dashed border-border p-3">
-          <div className="space-y-1">
-            <Label className="text-[10px] text-muted-foreground">Start date</Label>
-            <Input type="date" value={newException.startDate} onChange={(e) => setNewException((p) => ({ ...p, startDate: e.target.value }))} className="w-40" />
+        <div className="space-y-3 rounded-lg border border-dashed border-border p-3">
+          <div className="flex flex-wrap items-end gap-2">
+            <div className="space-y-1">
+              <Label className="text-[10px] text-muted-foreground">Start date</Label>
+              <Input type="date" value={newException.startDate} onChange={(e) => setNewException((p) => ({ ...p, startDate: e.target.value }))} className="w-40" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[10px] text-muted-foreground">End date <span className="font-normal">(optional)</span></Label>
+              <Input type="date" value={newException.endDate} onChange={(e) => setNewException((p) => ({ ...p, endDate: e.target.value }))} className="w-40" />
+            </div>
+            <div className="min-w-[160px] flex-1 space-y-1">
+              <Label className="text-[10px] text-muted-foreground">Label <span className="font-normal">(optional)</span></Label>
+              <Input value={newException.label} onChange={(e) => setNewException((p) => ({ ...p, label: e.target.value }))} placeholder="Christmas, Staff retreat…" />
+            </div>
           </div>
-          <div className="space-y-1">
-            <Label className="text-[10px] text-muted-foreground">End date <span className="font-normal">(optional)</span></Label>
-            <Input type="date" value={newException.endDate} onChange={(e) => setNewException((p) => ({ ...p, endDate: e.target.value }))} className="w-40" />
-          </div>
-          <div className="min-w-[160px] flex-1 space-y-1">
-            <Label className="text-[10px] text-muted-foreground">Label <span className="font-normal">(optional)</span></Label>
-            <Input value={newException.label} onChange={(e) => setNewException((p) => ({ ...p, label: e.target.value }))} placeholder="Christmas, Staff retreat…" />
-          </div>
+          <fieldset className="space-y-1.5">
+            <legend className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Repeats</legend>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="radio"
+                name="blocked-date-repeats"
+                checked={newException.recurrenceRule === "none"}
+                onChange={() => setNewException((p) => ({ ...p, recurrenceRule: "none" }))}
+              />
+              Does not repeat
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="radio"
+                name="blocked-date-repeats"
+                checked={newException.recurrenceRule === "annual"}
+                onChange={() => setNewException((p) => ({ ...p, recurrenceRule: "annual" }))}
+              />
+              Every year
+            </label>
+          </fieldset>
           <Button type="button" size="sm" onClick={handleAddException} disabled={savingException}>
             <Plus className="mr-1 h-3.5 w-3.5" /> Add
           </Button>

@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 
 import { isInquiryKind, submitInquiry } from "@/lib/inquiries/service";
+import {
+  isHoneypotTriggered,
+  sanitizeInquiryFields,
+} from "@/lib/inquiries/spam";
 
 export const runtime = "nodejs";
 
@@ -14,6 +18,7 @@ export async function POST(request: Request) {
     const body = (await request.json()) as {
       kind?: string;
       fields?: Record<string, string>;
+      idempotencyKey?: string;
     };
 
     if (!body.kind || !isInquiryKind(body.kind)) {
@@ -22,6 +27,14 @@ export async function POST(request: Request) {
     if (!body.fields || typeof body.fields !== "object") {
       return NextResponse.json({ error: "Missing fields." }, { status: 400 });
     }
+
+    // Silent success for honeypot fills — do not tip off bots or create CRM/email side effects.
+    if (isHoneypotTriggered(body.fields)) {
+      console.info("[inquiries] honeypot rejected", { kind: body.kind });
+      return NextResponse.json({ ok: true, id: "ignored" });
+    }
+
+    const fields = sanitizeInquiryFields(body.fields);
 
     if (body.kind === "welcome_back_request") {
       const required = [
@@ -33,7 +46,7 @@ export async function POST(request: Request) {
         "phone",
       ] as const;
       for (const key of required) {
-        if (!body.fields[key]?.trim()) {
+        if (!fields[key]?.trim()) {
           return NextResponse.json(
             { error: "Please complete all required fields." },
             { status: 400 },
@@ -43,7 +56,7 @@ export async function POST(request: Request) {
     }
 
     if (body.kind === "newsletter") {
-      if (!body.fields.email?.trim()) {
+      if (!fields.email?.trim()) {
         return NextResponse.json({ error: "Email is required." }, { status: 400 });
       }
     }
@@ -53,12 +66,12 @@ export async function POST(request: Request) {
       body.kind === "walkthrough" ||
       body.kind === "support"
     ) {
-      const firstName = body.fields.firstName?.trim() || "";
-      const lastName = body.fields.lastName?.trim() || "";
-      const email = body.fields.email?.trim() || "";
-      const venue = (body.fields.venue || body.fields.venueName)?.trim() || "";
+      const firstName = fields.firstName?.trim() || "";
+      const lastName = fields.lastName?.trim() || "";
+      const email = fields.email?.trim() || "";
+      const venue = (fields.venue || fields.venueName)?.trim() || "";
       // Prefer first/last; accept legacy combined `name` if first/last absent.
-      const legacyName = body.fields.name?.trim() || "";
+      const legacyName = fields.name?.trim() || "";
       const hasName = (firstName && lastName) || legacyName;
       if (!hasName || !email || !venue) {
         return NextResponse.json(
@@ -66,17 +79,22 @@ export async function POST(request: Request) {
           { status: 400 },
         );
       }
-      if (firstName && lastName && !body.fields.name?.trim()) {
-        body.fields.name = `${firstName} ${lastName}`;
+      if (firstName && lastName && !fields.name?.trim()) {
+        fields.name = `${firstName} ${lastName}`;
       }
     }
 
     const submission = await submitInquiry({
       kind: body.kind,
-      fields: body.fields,
+      fields,
+      idempotencyKey: body.idempotencyKey,
     });
 
-    return NextResponse.json({ ok: true, id: submission.id });
+    return NextResponse.json({
+      ok: true,
+      id: submission.id,
+      ...(submission.replayed ? { replayed: true } : {}),
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unable to submit.";
     return NextResponse.json({ error: message }, { status: 500 });

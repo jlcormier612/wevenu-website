@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DESIGN PROPOSAL ONLY — Calendar desktop</title>
+  <link rel="stylesheet" href="./_proposal.css" />
+</head>
+<body>
+  <div class="banner">DESIGN PROPOSAL ONLY — NOT LIVE APPLICATION</div>
+  <div class="page">
+    <p class="caption">Phase 11C proposal based on live Calendar structure (Month + schedule panel). Taxonomy dots unchanged.</p>
+    <section class="intro">
+      <h1>Calendar</h1>
+      <p>Your venue’s schedule — events, appointments, holds, and blocked time.</p>
+      <div class="intro-actions">
+        <button class="btn btn-primary" type="button">+ Add Schedule Item</button>
+        <button class="btn btn-outline" type="button">Print / Export</button>
+      </div>
+    </section>
+
+    <div class="toolbar">
+      <div class="nav-group">
+        <button class="chip" type="button">‹</button>
+        <button class="chip active" type="button">November 2026</button>
+        <button class="chip" type="button">›</button>
+        <button class="chip" type="button">Today</button>
+      </div>
+      <div class="switcher">
+        <button class="chip active" type="button">Month</button>
+        <button class="chip" type="button">Week</button>
+        <button class="chip" type="button">Day</button>
+        <button class="chip" type="button">Month list</button>
+      </div>
+    </div>
+
+    <div class="filters">
+      <span class="filter on"><span class="dot" style="background:var(--cal-event)"></span> Event</span>
+      <span class="filter on"><span class="dot" style="background:var(--cal-tour)"></span> Tour</span>
+      <span class="filter on"><span class="dot" style="background:var(--cal-appointment)"></span> Appointment</span>
+      <span class="filter on"><span class="dot" style="background:var(--cal-hold)"></span> Hold</span>
+      <span class="filter on"><span class="dot" style="background:var(--cal-blocked)"></span> Blocked Time</span>
+    </div>
+
+    <div class="legend">
+      <span><span class="dot" style="background:var(--cal-event)"></span> Event</span>
+      <span><span class="dot" style="background:var(--cal-tour)"></span> Tour</span>
+      <span><span class="dot" style="background:var(--cal-appointment)"></span> Appointment</span>
+      <span><span class="dot" style="background:var(--cal-hold)"></span> Hold</span>
+      <span><span class="dot" style="background:var(--cal-blocked)"></span> Blocked Time</span>
+    </div>
+
+    <div class="grid-wrap">
+      <div class="month">
+        <div class="weekdays">
+          <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+        </div>
+        <div class="days">
+          <div class="day out"></div><div class="day out"></div><div class="day out"></div><div class="day out"></div><div class="day out"></div><div class="day out"></div>
+          <div class="day"><div class="num">1</div></div>
+          <div class="day selected"><div class="num today">2</div><div class="dots"><span class="dot" style="background:var(--cal-tour)"></span><span class="dot" style="background:var(--cal-event)"></span></div></div>
+          <div class="day"><div class="num">3</div><div class="dots"><span class="dot" style="background:var(--cal-appointment)"></span></div></div>
+          <div class="day"><div class="num">4</div></div>
+          <div class="day"><div class="num">5</div><div class="dots"><span class="dot" style="background:var(--cal-hold)"></span></div></div>
+          <div class="day"><div class="num">6</div></div>
+          <div class="day"><div class="num">7</div><div class="dots"><span class="dot" style="background:var(--cal-blocked)"></span></div></div>
+          <div class="day"><div class="num">8</div></div>
+          <div class="day"><div class="num">9</div><div class="dots"><span class="dot" style="background:var(--cal-event)"></span><span class="dot" style="background:var(--cal-tour)"></span></div></div>
+          <div class="day"><div class="num">10</div></div>
+          <div class="day"><div class="num">11</div></div>
+          <div class="day"><div class="num">12</div><div class="dots"><span class="dot" style="background:var(--cal-appointment)"></span></div></div>
+          <div class="day"><div class="num">13</div></div>
+          <div class="day"><div class="num">14</div></div>
+        </div>
+      </div>
+      <aside class="schedule">
+        <h2>Monday, Nov 2</h2>
+        <div class="schedule-body">
+          <div class="item"><span class="dot" style="background:var(--cal-tour);margin-top:5px"></span><div><strong>Tour</strong><div>10:00 AM · Avery Chen</div></div></div>
+          <div class="item"><span class="dot" style="background:var(--cal-event);margin-top:5px"></span><div><strong>Event</strong><div>All day · Rivera Wedding</div></div></div>
+        </div>
+      </aside>
+    </div>
+
+    <div class="note">Availability guidance stays calm blue — informational only, not a taxonomy color.</div>
+  </div>
+</body>
+</html>

@@ -10,76 +10,59 @@
  */
 import * as React from "react";
 
-import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { CalendarDays } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { FilterBar, ItemRow, PerspectiveSwitcher } from "@/components/calendar/calendar-shared";
-import { activePerspectiveId, applyPerspectiveLinkOverrides } from "@/components/calendar/perspectives";
+import { FilterBar, ItemRow } from "@/components/calendar/calendar-shared";
 import { useCalendarFilters } from "@/components/calendar/use-calendar-filters";
 import type { CalendarItem } from "@/lib/calendar/types";
 
 export function DayView({
-  date, items, today, onEditBlock, onDeleteBlock, deletingId, deletePending, tastingEnabled = false,
+  date, items, today, onEditBlock, onViewBlock, onDeleteBlock, deletingId, deletePending, tastingEnabled = false,
+  showSpaceFilter = false,
+  venueSpaces = [],
 }: {
   date: string;
   items: CalendarItem[];
   today: string;
   onEditBlock?: (blockId: string) => void;
+  onViewBlock?: (blockId: string) => void;
   onDeleteBlock?: (blockId: string) => void;
   deletingId?: string | null;
   deletePending?: boolean;
   tastingEnabled?: boolean;
+  showSpaceFilter?: boolean;
+  venueSpaces?: Array<{ id: string; name: string; isActive?: boolean }>;
 }) {
-  const router = useRouter();
-  const { filters, setFilters, filteredItems, presentTypes, staffOptions, spaceOptions } = useCalendarFilters(items);
-  const displayItems = applyPerspectiveLinkOverrides(filteredItems, activePerspectiveId(filters, tastingEnabled));
-  const [y, m, d] = date.split("-").map(Number);
-  const dateObj = new Date(y, m - 1, d);
-  const label = dateObj.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+  const { filters, setFilters, filteredItems, presentTypes, staffOptions, spaceOptions } = useCalendarFilters(
+    items,
+    undefined,
+    { showSpaceFilter, venueSpaces },
+  );
+  const displayItems = filteredItems;
   const dayItems = displayItems.filter((it) => it.date === date)
     .sort((a, b) => (a.time ?? "99:99") < (b.time ?? "99:99") ? -1 : 1);
 
-  function navigate(deltaDays: number) {
-    const next = new Date(dateObj);
-    next.setDate(next.getDate() + deltaDays);
-    const nextIso = `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, "0")}-${String(next.getDate()).padStart(2, "0")}`;
-    router.push(`/calendar?view=day&date=${nextIso}`);
-  }
-
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-2">
-          <Button type="button" variant="outline" size="icon" onClick={() => navigate(-1)} aria-label="Previous day">
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <h2 className="font-heading text-lg font-medium text-heading min-w-[260px] text-center">{label}</h2>
-          <Button type="button" variant="outline" size="icon" onClick={() => navigate(1)} aria-label="Next day">
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-        {date !== today && (
-          <Button type="button" variant="ghost" size="sm" onClick={() => router.push(`/calendar?view=day&date=${today}`)}>
-            Today
-          </Button>
-        )}
-      </div>
-
-      <PerspectiveSwitcher filters={filters} onChange={setFilters} tastingEnabled={tastingEnabled} />
-      <FilterBar filters={filters} onChange={setFilters} presentTypes={presentTypes} staffOptions={staffOptions} spaceOptions={spaceOptions} />
+    <div className="htc-calendar-day" data-cal-day="">
+      {/* Date navigation lives in the shared Phase 11C linen toolbar (calendar-view). */}
+      <FilterBar filters={filters} onChange={setFilters} presentTypes={presentTypes} staffOptions={staffOptions} spaceOptions={spaceOptions} items={items} />
 
       {dayItems.length === 0 ? (
-        <p className="text-sm text-muted-foreground py-12 text-center">Nothing scheduled.</p>
+        <div data-cal-day-empty="">
+          <CalendarDays className="mx-auto mb-2 h-7 w-7 text-muted-foreground" aria-hidden />
+          <p>Nothing scheduled for this day. Add a schedule item, or book a tour from Tours.</p>
+        </div>
       ) : (
-        <div className="space-y-2 max-w-2xl">
-          {dayItems.map((item) => (
-            <ItemRow
-              key={item.id} item={item}
-              onEditBlock={onEditBlock} onDeleteBlock={onDeleteBlock}
-              deleting={!!deletePending && deletingId === item.rawId}
-            />
-          ))}
+        <div data-cal-day-board="">
+          <div className="space-y-2">
+            {dayItems.map((item) => (
+              <ItemRow
+                key={item.id} item={item}
+                onEditBlock={onEditBlock} onViewBlock={onViewBlock} onDeleteBlock={onDeleteBlock}
+                deleting={!!deletePending && deletingId === item.rawId}
+              />
+            ))}
+          </div>
         </div>
       )}
     </div>

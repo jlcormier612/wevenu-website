@@ -53,12 +53,12 @@ export default async function CommunicationsAutomationSettingsPage() {
   const textingNumberDisplay = textingSetup?.statusPanel.textingNumber.label ?? null;
 
   return (
-    <div className="htc-hospitality-page space-y-6">
+    <div className="htc-hospitality-page space-y-4 sm:space-y-6">
       <div className="htc-hospitality-heading htc-hospitality-intro-accent">
-      <PageHeader
-        title="Communications & Automation"
-        description="Notifications, follow-ups, texting, and Luv."
-      />
+        <PageHeader
+          title="Communications & Automation"
+          description="Notifications, follow-ups, texting, and Luv."
+        />
       </div>
       <SettingsTabs />
 
@@ -80,6 +80,9 @@ export default async function CommunicationsAutomationSettingsPage() {
             venueEmail={venue?.email ?? null}
             venuePhone={venue?.phone ?? null}
             emailSignature={venue?.emailSignature ?? null}
+            emailFooterShowSignature={venue?.emailFooterShowSignature ?? true}
+            emailFooterShowEmail={venue?.emailFooterShowEmail ?? true}
+            emailFooterShowPhone={venue?.emailFooterShowPhone ?? false}
             emailConfigured={isEmailConfigured()}
             smsConfigured={smsConfigured}
             textingNumberDisplay={
@@ -111,7 +114,11 @@ export default async function CommunicationsAutomationSettingsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <NotificationsSection initialStats={notifStats} emailConfigured={isEmailConfigured()} />
+          <NotificationsSection
+            initialStats={notifStats}
+            emailConfigured={isEmailConfigured()}
+            venueTimezone={venue?.timezone ?? null}
+          />
         </CardContent>
       </Card>
 

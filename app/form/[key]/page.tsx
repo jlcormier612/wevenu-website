@@ -11,7 +11,7 @@ import type { InquiryMode } from "@/lib/inquiry-form/types";
 
 type Props = {
   params: Promise<{ key: string }>;
-  searchParams: Promise<{ mode?: string }>;
+  searchParams: Promise<{ mode?: string; date?: string }>;
 };
 
 function resolveModeParam(mode: string | undefined): InquiryMode | null {
@@ -31,15 +31,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function PublicFormPage({ params, searchParams }: Props) {
   const { key } = await params;
-  const { mode } = await searchParams;
+  const { mode, date } = await searchParams;
   const config = await getPublicInquiryFormConfig(key);
   if (!config) notFound();
+  const initialEventDate = /^\d{4}-\d{2}-\d{2}$/.test(date ?? "") ? date : undefined;
 
   return (
     <InquiryForm
       embedKey={key}
       config={config}
       initialMode={resolveModeParam(mode)}
+      initialEventDate={initialEventDate}
     />
   );
 }

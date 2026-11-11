@@ -11,15 +11,10 @@
 import * as React from "react";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { FilterBar, formatTime, ItemRow, PerspectiveSwitcher, resolveItemMeta } from "@/components/calendar/calendar-shared";
-import { activePerspectiveId, applyPerspectiveLinkOverrides } from "@/components/calendar/perspectives";
+import { FilterBar, formatTime, ItemRow, resolveItemMeta } from "@/components/calendar/calendar-shared";
 import { useCalendarFilters } from "@/components/calendar/use-calendar-filters";
 import type { CalendarItem } from "@/lib/calendar/types";
-import { cn } from "@/lib/utils";
 
 const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
@@ -28,21 +23,29 @@ function toIso(d: Date): string {
 }
 
 export function WeekView({
-  weekStart, items, today, onEditBlock, onDeleteBlock, deletingId, deletePending, tastingEnabled = false,
+  weekStart, items, today, onEditBlock, onViewBlock, onDeleteBlock, deletingId, deletePending, tastingEnabled = false,
+  showSpaceFilter = false,
+  venueSpaces = [],
 }: {
   /** ISO date of this week's Sunday. */
   weekStart: string;
   items: CalendarItem[];
   today: string;
   onEditBlock?: (blockId: string) => void;
+  onViewBlock?: (blockId: string) => void;
   onDeleteBlock?: (blockId: string) => void;
   deletingId?: string | null;
   deletePending?: boolean;
   tastingEnabled?: boolean;
+  showSpaceFilter?: boolean;
+  venueSpaces?: Array<{ id: string; name: string; isActive?: boolean }>;
 }) {
-  const router = useRouter();
-  const { filters, setFilters, filteredItems, presentTypes, staffOptions, spaceOptions } = useCalendarFilters(items);
-  const displayItems = applyPerspectiveLinkOverrides(filteredItems, activePerspectiveId(filters, tastingEnabled));
+  const { filters, setFilters, filteredItems, presentTypes, staffOptions, spaceOptions } = useCalendarFilters(
+    items,
+    undefined,
+    { showSpaceFilter, venueSpaces },
+  );
+  const displayItems = filteredItems;
   const [y, m, d] = weekStart.split("-").map(Number);
   const start = new Date(y, m - 1, d);
 
@@ -55,54 +58,28 @@ export function WeekView({
     return { date, dateStr, dayItems };
   });
 
-  function navigate(deltaWeeks: number) {
-    const next = new Date(start);
-    next.setDate(next.getDate() + deltaWeeks * 7);
-    router.push(`/calendar?view=week&weekStart=${toIso(next)}`);
-  }
-
-  const rangeLabel = `${start.toLocaleDateString("en-US", { month: "short", day: "numeric" })} – ${days[6].date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
-  const isCurrentWeek = days.some((d) => d.dateStr === today);
-
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-2">
-          <Button type="button" variant="outline" size="icon" onClick={() => navigate(-1)} aria-label="Previous week">
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <h2 className="font-heading text-lg font-medium text-heading min-w-[220px] text-center">{rangeLabel}</h2>
-          <Button type="button" variant="outline" size="icon" onClick={() => navigate(1)} aria-label="Next week">
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-        {!isCurrentWeek && (
-          <Button type="button" variant="ghost" size="sm" onClick={() => router.push(`/calendar?view=week&weekStart=${today}`)}>
-            Today
-          </Button>
-        )}
-      </div>
+    <div className="htc-calendar-week" data-cal-week="">
+      {/* Date navigation lives in the shared Phase 11C linen toolbar (calendar-view). */}
+      <FilterBar filters={filters} onChange={setFilters} presentTypes={presentTypes} staffOptions={staffOptions} spaceOptions={spaceOptions} items={items} />
 
-      <PerspectiveSwitcher filters={filters} onChange={setFilters} tastingEnabled={tastingEnabled} />
-      <FilterBar filters={filters} onChange={setFilters} presentTypes={presentTypes} staffOptions={staffOptions} spaceOptions={spaceOptions} />
-
-      <div className="grid gap-3 md:grid-cols-7">
+      <div data-cal-week-grid="">
         {days.map(({ date, dateStr, dayItems }) => (
-          <div key={dateStr} className={cn(
-            "rounded-sm border border-border p-2 space-y-2 min-h-[140px]",
-            dateStr === today && "ring-1 ring-inset ring-primary/30 bg-primary/5",
-          )}>
-            <div className="text-center">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                {DAY_NAMES[date.getDay()].slice(0, 3)}
-              </p>
-              <p className={cn("text-sm font-medium", dateStr === today ? "text-primary" : "text-foreground")}>
-                {date.getDate()}
-              </p>
-            </div>
+          <div
+            key={dateStr}
+            data-cal-week-day=""
+            data-today={dateStr === today ? "true" : "false"}
+          >
+            <p data-cal-week-day-name="">{DAY_NAMES[date.getDay()].slice(0, 3)}</p>
+            <p
+              data-cal-week-day-num=""
+              data-today={dateStr === today ? "true" : "false"}
+            >
+              {date.getDate()}
+            </p>
             <div className="space-y-1.5">
               {dayItems.length === 0 && (
-                <p className="text-center text-[11px] text-muted-foreground py-2">—</p>
+                <p data-cal-week-empty="">Nothing scheduled</p>
               )}
               {dayItems.map((item) => {
                 const meta = resolveItemMeta(item);
@@ -111,7 +88,7 @@ export function WeekView({
                   <Link
                     key={item.id}
                     href={item.link}
-                    className="flex items-start gap-1.5 rounded-md border border-border/60 bg-card p-1.5 hover:bg-muted/40 transition-colors"
+                    data-cal-week-event=""
                   >
                     <Icon className="mt-0.5 h-3 w-3 shrink-0" style={{ color: meta.dotColor }} />
                     <div className="min-w-0 flex-1">
@@ -132,13 +109,13 @@ export function WeekView({
 
       {/* Full item detail for whichever day has the most going on, reusing the same row rendering as Month view's day detail — same identity, tighter window. */}
       {days.some((d) => d.dayItems.length > 0) && (
-        <div className="space-y-2">
-          <p className="text-sm font-medium text-heading">This week, in full</p>
+        <div data-cal-week-full="">
+          <p data-cal-week-full-title="">This week, in full</p>
           <div className="space-y-2">
             {days.flatMap((d) => d.dayItems).map((item) => (
               <ItemRow
                 key={item.id} item={item} showDate
-                onEditBlock={onEditBlock} onDeleteBlock={onDeleteBlock}
+                onEditBlock={onEditBlock} onViewBlock={onViewBlock} onDeleteBlock={onDeleteBlock}
                 deleting={!!deletePending && deletingId === item.rawId}
               />
             ))}

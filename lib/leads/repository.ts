@@ -4,9 +4,13 @@
  * Maps snake_case rows to camelCase domain types. Server-only.
  */
 import { createClient } from "@/integrations/supabase/server";
+import { normalizeEventType } from "@/lib/event-types/canonical";
+import { normalizeVenuePhoneInput } from "@/lib/sms/phone";
 import { identityRpcFields } from "@/lib/identity/decision";
 import { LeadTourWriteError, resolveLeadTourWrite } from "@/lib/leads/relationship-tour";
+import type { ExistingLeadTour } from "@/lib/leads/relationship-tour";
 import { TourCapacityWriteError, tourCapacityFailureFromUnknown } from "@/lib/tours/occupancy";
+import { actualOccurrenceIsFuture, FUTURE_ACTUAL_OCCURRENCE_MESSAGE } from "@/lib/tours/occurrence-clock";
 import { getVenueTimezone, utcToVenueLocalParts, venueLocalToUtcIso } from "@/lib/venue/timezone";
 import type {
   Lead,
@@ -37,35 +41,80 @@ export type LeadTourInfo = {
   tourTime: string | null;
   tourCompleted: boolean;
   tourNotes: string | null;
+  tourScheduledDate: string | null;
+  tourScheduledTime: string | null;
+  tourActualDate: string | null;
+  tourActualTime: string | null;
+  tourCompletedAt: string | null;
 };
 
-export const EMPTY_TOUR: LeadTourInfo = { tourDate: null, tourTime: null, tourCompleted: false, tourNotes: null };
+export const EMPTY_TOUR: LeadTourInfo = {
+  tourDate: null,
+  tourTime: null,
+  tourCompleted: false,
+  tourNotes: null,
+  tourScheduledDate: null,
+  tourScheduledTime: null,
+  tourActualDate: null,
+  tourActualTime: null,
+  tourCompletedAt: null,
+};
 
-type TourAppointmentRow = { lead_id?: string | null; scheduled_at: string; status: string; notes: string | null };
+type TourAppointmentRow = {
+  id?: string;
+  lead_id?: string | null;
+  scheduled_at: string | null;
+  actual_occurred_at?: string | null;
+  completed_at?: string | null;
+  origin?: string | null;
+  status: string;
+  notes: string | null;
+};
 
 function tourInfoFromAppointment(row: TourAppointmentRow | null | undefined, timezone: string | null): LeadTourInfo {
   if (!row) return EMPTY_TOUR;
-  const { date, time } = utcToVenueLocalParts(row.scheduled_at, timezone);
+  const scheduledParts = row.scheduled_at ? utcToVenueLocalParts(row.scheduled_at, timezone) : null;
+  const actualParts = row.actual_occurred_at ? utcToVenueLocalParts(row.actual_occurred_at, timezone) : null;
+  const clockIso =
+    row.origin === "walk_in" || !row.scheduled_at || (row.status === "completed" && row.actual_occurred_at)
+      ? row.actual_occurred_at
+      : row.scheduled_at;
+  const displayParts = clockIso ? utcToVenueLocalParts(clockIso, timezone) : null;
   return {
-    tourDate: date,
-    tourTime: time,
+    tourDate: displayParts?.date ?? null,
+    tourTime: displayParts?.time ?? null,
     tourCompleted: row.status === "completed",
     tourNotes: row.notes,
+    tourScheduledDate: scheduledParts?.date ?? null,
+    tourScheduledTime: scheduledParts?.time ?? null,
+    tourActualDate: actualParts?.date ?? null,
+    tourActualTime: actualParts?.time ?? null,
+    tourCompletedAt: row.completed_at ?? null,
   };
 }
 
-/** The most recent non-cancelled tour appointment for a single lead. */
+type LeadTourRow = TourAppointmentRow & { id: string };
+
+/** Prefer occupying upcoming/confirmed over completed; then latest clock. */
+function pickCurrentTourRow(rows: LeadTourRow[]): LeadTourRow | null {
+  if (rows.length === 0) return null;
+  const occupying = rows.filter((r) => r.status === "scheduled" || r.status === "confirmed");
+  const pool = occupying.length > 0 ? occupying : rows;
+  const clock = (r: LeadTourRow) => r.scheduled_at ?? r.actual_occurred_at ?? "";
+  return [...pool].sort((a, b) => clock(b).localeCompare(clock(a)))[0] ?? null;
+}
+
+/** The most relevant non-cancelled tour appointment for a single lead. */
 export async function getCurrentTourForLead(client: DbClient, venueId: string, leadId: string): Promise<LeadTourInfo> {
   const [{ data }, timezone] = await Promise.all([
     client.from("tour_appointments")
-      .select("scheduled_at, status, notes")
+      .select("id, scheduled_at, actual_occurred_at, completed_at, origin, status, notes")
       .eq("venue_id", venueId).eq("lead_id", leadId)
-      .neq("status", "cancelled")
-      .order("scheduled_at", { ascending: false })
-      .limit(1).maybeSingle<TourAppointmentRow>(),
+      .neq("status", "cancelled"),
     getVenueTimezone(client, venueId),
   ]);
-  return tourInfoFromAppointment(data, timezone);
+  const row = pickCurrentTourRow((data ?? []) as LeadTourRow[]);
+  return tourInfoFromAppointment(row, timezone);
 }
 
 /** Batch version for list views — one query for many leads instead of N+1. */
@@ -74,83 +123,241 @@ export async function getCurrentToursForLeads(client: DbClient, venueId: string,
   if (leadIds.length === 0) return map;
   const [{ data }, timezone] = await Promise.all([
     client.from("tour_appointments")
-      .select("lead_id, scheduled_at, status, notes")
+      .select("id, lead_id, scheduled_at, actual_occurred_at, completed_at, origin, status, notes")
       .eq("venue_id", venueId).in("lead_id", leadIds)
-      .neq("status", "cancelled")
-      .order("scheduled_at", { ascending: false }),
+      .neq("status", "cancelled"),
     getVenueTimezone(client, venueId),
   ]);
-  for (const row of (data ?? []) as TourAppointmentRow[]) {
-    if (!row.lead_id || map.has(row.lead_id)) continue; // rows are ordered desc, so the first one seen per lead is the most recent
-    map.set(row.lead_id, tourInfoFromAppointment(row, timezone));
+  const byLead = new Map<string, LeadTourRow[]>();
+  for (const row of (data ?? []) as LeadTourRow[]) {
+    if (!row.lead_id) continue;
+    const list = byLead.get(row.lead_id) ?? [];
+    list.push(row);
+    byLead.set(row.lead_id, list);
+  }
+  for (const [leadId, rows] of byLead) {
+    map.set(leadId, tourInfoFromAppointment(pickCurrentTourRow(rows), timezone));
   }
   return map;
 }
 
+async function loadExistingLeadTour(
+  client: DbClient,
+  venueId: string,
+  leadId: string,
+): Promise<ExistingLeadTour | null> {
+  const { data } = await client.from("tour_appointments")
+    .select("id, scheduled_at, actual_occurred_at, completed_at, origin, status")
+    .eq("venue_id", venueId).eq("lead_id", leadId)
+    .neq("status", "cancelled");
+  const row = pickCurrentTourRow((data ?? []) as LeadTourRow[]);
+  if (!row) return null;
+  return {
+    id: row.id,
+    status: row.status,
+    scheduledAt: row.scheduled_at,
+    origin: row.origin ?? "scheduled",
+  };
+}
+
+async function venueTourDurationMinutes(client: DbClient, venueId: string): Promise<{ timezone: string | null; durationMinutes: number }> {
+  const { data: venueRow } = await client.from("venues")
+    .select("timezone, tour_duration_minutes")
+    .eq("id", venueId)
+    .maybeSingle<{ timezone: string | null; tour_duration_minutes: number | null }>();
+  const durationMinutes = Number(venueRow?.tour_duration_minutes);
+  if (!Number.isFinite(durationMinutes) || durationMinutes <= 0) {
+    throw new Error("This venue does not have a tour duration configured.");
+  }
+  return { timezone: venueRow?.timezone ?? null, durationMinutes };
+}
+
+export type LeadTourApplyResult =
+  | { ok: true }
+  | { ok: false; kind: "reject"; message: string }
+  | { ok: false; kind: "capacity"; message: string };
+
 /**
- * Create or update the lead's tour appointment from the relationship-card
- * form. A scheduled Tour requires both date and time — date-only is refused,
- * never stored as a fabricated noon timestamp. Clearing the date cancels the
- * existing appointment rather than deleting history.
+ * Apply a Relationship-card tour intent. Does not write follow-up fields.
+ * Future-schedule is the only path that enforces capacity.
+ */
+export async function applyLeadTourWrite(
+  client: DbClient,
+  venueId: string,
+  leadId: string,
+  input: {
+    tourDate: string;
+    tourTime: string;
+    tourCompleted: boolean;
+    tourNotes: string;
+    tourActualDate?: string;
+    tourActualTime?: string;
+  },
+): Promise<LeadTourApplyResult> {
+  const existing = await loadExistingLeadTour(client, venueId, leadId);
+  // First pass without timezone handles reject / clear / complete / walk-in.
+  // future_schedule is re-resolved with venueTimezone so an unchanged slot
+  // becomes noop (preserves confirmed) instead of rewriting status.
+  let decision = resolveLeadTourWrite({ ...input, existing });
+
+  if (decision.action === "reject") {
+    return { ok: false, kind: "reject", message: decision.message };
+  }
+  if (decision.action === "noop") return { ok: true };
+
+  if (decision.action === "clear") {
+    if (existing && (existing.status === "scheduled" || existing.status === "confirmed")) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (client.from("tour_appointments") as any).update({ status: "cancelled" }).eq("id", existing.id);
+    }
+    return { ok: true };
+  }
+
+  const { timezone, durationMinutes } = await venueTourDurationMinutes(client, venueId);
+
+  if (decision.action === "future_schedule") {
+    decision = resolveLeadTourWrite({ ...input, existing, venueTimezone: timezone });
+    if (decision.action === "noop") return { ok: true };
+    if (decision.action !== "future_schedule") {
+      // Same-slot path only flips to noop; other actions are unexpected here.
+      return { ok: true };
+    }
+  }
+
+  if (decision.action === "future_schedule") {
+    const scheduledAt = venueLocalToUtcIso(decision.tourDate, decision.tourTime, timezone);
+    if (existing && (existing.status === "scheduled" || existing.status === "confirmed")) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (client.from("tour_appointments") as any).update({
+        scheduled_at: scheduledAt,
+        duration_minutes: durationMinutes,
+        status: "scheduled",
+        notes: decision.notes || null,
+        origin: "scheduled",
+        completed_at: null,
+      }).eq("id", existing.id);
+      if (error) {
+        const fail = tourCapacityFailureFromUnknown(error);
+        if (fail) return { ok: false, kind: "capacity", message: fail.message };
+        throw error;
+      }
+      return { ok: true };
+    }
+    const { error } = await client.from("tour_appointments").insert({
+      venue_id: venueId,
+      lead_id: leadId,
+      scheduled_at: scheduledAt,
+      duration_minutes: durationMinutes,
+      status: "scheduled",
+      notes: decision.notes || null,
+      origin: "scheduled",
+    });
+    if (error) {
+      const fail = tourCapacityFailureFromUnknown(error);
+      if (fail) return { ok: false, kind: "capacity", message: fail.message };
+      throw error;
+    }
+    return { ok: true };
+  }
+
+  if (decision.action === "complete_without_actual") {
+    // Administrative completion. Do not copy scheduled_at into actual_occurred_at.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (client.from("tour_appointments") as any).update({
+      status: "completed",
+      completed_at: new Date().toISOString(),
+      notes: decision.notes || null,
+    }).eq("id", decision.appointmentId);
+    if (error) throw error;
+    return { ok: true };
+  }
+
+  if (decision.action === "notes_only") {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (client.from("tour_appointments") as any).update({
+      notes: decision.notes || null,
+    }).eq("id", decision.appointmentId);
+    if (error) throw error;
+    return { ok: true };
+  }
+
+  if (decision.action === "complete_scheduled") {
+    // Completion-state + actual clock. Never rewrite scheduled_at.
+    // No capacity check. Writes actual_occurred_at so recency cannot
+    // fall back to a future booked slot (Oct 4 / -69h).
+    const actualOccurredAt = venueLocalToUtcIso(decision.actualDate, decision.actualTime, timezone);
+    if (actualOccurrenceIsFuture(actualOccurredAt)) {
+      return { ok: false, kind: "reject", message: FUTURE_ACTUAL_OCCURRENCE_MESSAGE };
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (client.from("tour_appointments") as any).update({
+      status: "completed",
+      completed_at: new Date().toISOString(),
+      actual_occurred_at: actualOccurredAt,
+      notes: decision.notes || null,
+    }).eq("id", decision.appointmentId);
+    if (error) throw error;
+    return { ok: true };
+  }
+
+  if (decision.action === "actual_only") {
+    const actualOccurredAt = venueLocalToUtcIso(decision.actualDate, decision.actualTime, timezone);
+    if (actualOccurrenceIsFuture(actualOccurredAt)) {
+      return { ok: false, kind: "reject", message: FUTURE_ACTUAL_OCCURRENCE_MESSAGE };
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (client.from("tour_appointments") as any).update({
+      actual_occurred_at: actualOccurredAt,
+      notes: decision.notes || null,
+    }).eq("id", decision.appointmentId);
+    if (error) throw error;
+    return { ok: true };
+  }
+
+  if (decision.action === "walk_in") {
+    const actualOccurredAt = venueLocalToUtcIso(decision.actualDate, decision.actualTime, timezone);
+    if (actualOccurrenceIsFuture(actualOccurredAt)) {
+      return { ok: false, kind: "reject", message: FUTURE_ACTUAL_OCCURRENCE_MESSAGE };
+    }
+    // Walk-in MUST create a NEW row and never update an existing scheduled/confirmed appointment.
+    const { error } = await client.from("tour_appointments").insert({
+      venue_id: venueId,
+      lead_id: leadId,
+      scheduled_at: null,
+      actual_occurred_at: actualOccurredAt,
+      duration_minutes: durationMinutes,
+      status: "completed",
+      completed_at: new Date().toISOString(),
+      notes: decision.notes || null,
+      origin: "walk_in",
+    });
+    if (error) throw error;
+    return { ok: true };
+  }
+
+  return { ok: true };
+}
+
+/**
+ * Thin wrapper for older call sites — prefer applyLeadTourWrite.
  */
 export async function upsertLeadTour(
   client: DbClient,
   venueId: string,
   leadId: string,
-  input: { tourDate: string; tourTime: string; tourCompleted: boolean; tourNotes: string },
+  input: {
+    tourDate: string;
+    tourTime: string;
+    tourCompleted: boolean;
+    tourNotes: string;
+    tourActualDate?: string;
+    tourActualTime?: string;
+  },
 ): Promise<void> {
-  const { data: existing } = await client.from("tour_appointments")
-    .select("id").eq("venue_id", venueId).eq("lead_id", leadId)
-    .neq("status", "cancelled")
-    .order("scheduled_at", { ascending: false }).limit(1).maybeSingle<{ id: string }>();
-
-  const decision = resolveLeadTourWrite(input);
-  if (decision.action === "reject") {
-    throw new LeadTourWriteError(decision.message);
-  }
-  if (decision.action === "clear") {
-    if (existing) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (client.from("tour_appointments") as any).update({ status: "cancelled" }).eq("id", existing.id);
-    }
-    return;
-  }
-
-  const { data: venueRow } = await client.from("venues")
-    .select("timezone, tour_duration_minutes")
-    .eq("id", venueId)
-    .maybeSingle<{ timezone: string | null; tour_duration_minutes: number | null }>();
-  const timezone = venueRow?.timezone ?? null;
-  const durationMinutes = Number(venueRow?.tour_duration_minutes);
-  if (!Number.isFinite(durationMinutes) || durationMinutes <= 0) {
-    throw new Error("This venue does not have a tour duration configured.");
-  }
-  const scheduledAt = venueLocalToUtcIso(decision.tourDate, decision.tourTime, timezone);
-  const status = input.tourCompleted ? "completed" : "scheduled";
-  const completedAt = input.tourCompleted ? new Date().toISOString() : null;
-
-  if (existing) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (client.from("tour_appointments") as any).update({
-      scheduled_at: scheduledAt, duration_minutes: durationMinutes, status,
-      notes: input.tourNotes.trim() || null, completed_at: completedAt,
-    }).eq("id", existing.id);
-    if (error) {
-      const fail = tourCapacityFailureFromUnknown(error);
-      if (fail) throw new TourCapacityWriteError(fail.code, fail.message);
-      throw error;
-    }
-  } else {
-    const { error } = await client.from("tour_appointments").insert({
-      venue_id: venueId, lead_id: leadId, scheduled_at: scheduledAt,
-      duration_minutes: durationMinutes, status,
-      notes: input.tourNotes.trim() || null, completed_at: completedAt,
-    });
-    if (error) {
-      const fail = tourCapacityFailureFromUnknown(error);
-      if (fail) throw new TourCapacityWriteError(fail.code, fail.message);
-      throw error;
-    }
+  const result = await applyLeadTourWrite(client, venueId, leadId, input);
+  if (!result.ok) {
+    if (result.kind === "reject") throw new LeadTourWriteError(result.message);
+    throw new TourCapacityWriteError("tour_at_capacity", result.message);
   }
 }
 
@@ -161,6 +368,7 @@ type LeadRow = {
   venue_id: string;
   sales_stage: string | null;
   status: string | null;
+  pipeline_stage_id: string | null;
   source: string | null;
   first_name: string;
   last_name: string;
@@ -172,10 +380,12 @@ type LeadRow = {
   partner_email: string | null;
   event_type: string | null;
   event_date: string | null;
+  planned_event_space_id?: string | null;
   end_date: string | null;
   guest_count: number | null;
   estimated_budget: number | null;
   inquiry_message: string | null;
+  inquiry_message_origin?: string | null;
   inquiry_date: string;
   // Sprint 6 relationship fields
   next_action_text: string | null;
@@ -190,6 +400,14 @@ type LeadRow = {
   relationship_id: string | null;
   intake_confidence: number | null;
   exclude_from_business_reporting?: boolean;
+  lost_reason?: string | null;
+  lost_reason_detail?: string | null;
+  lost_at?: string | null;
+  first_booked_at?: string | null;
+  venue_seen_at?: string | null;
+  assigned_staff_id?: string | null;
+  merged_into_lead_id?: string | null;
+  merged_at?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -208,9 +426,14 @@ type TaskRow = {
   id: string; venue_id: string; lead_id: string;
   title: string; due_date: string | null;
   completed: boolean; completed_at: string | null; created_at: string;
+  assigned_to_staff_id?: string | null;
+  assignee?: { full_name: string } | null | { full_name: string }[];
 };
 
 function resolveSalesStage(r: LeadRow): SalesStage {
+  // Cancelled is terminal and outside the seven sales columns. Preserve it
+  // so a legacy status (won/cancelled) cannot paint the lead back as Booked.
+  if (r.sales_stage === "cancelled") return "cancelled" as SalesStage;
   if (r.sales_stage && isSalesStage(r.sales_stage)) return r.sales_stage;
   if (r.status) return migrateLegacyStatusToSalesStage(r.status, false);
   return "new_inquiry";
@@ -224,16 +447,25 @@ function mapLead(r: LeadRow, tour: LeadTourInfo = EMPTY_TOUR): Lead {
     : [];
   return {
     id: r.id, venueId: r.venue_id, salesStage, status: salesStage, source: r.source,
+    pipelineStageId: r.pipeline_stage_id ?? null,
     firstName: r.first_name, lastName: r.last_name, email: r.email, phone: r.phone,
     preferredCommunicationChannels: prefs,
     partnerFirstName: r.partner_first_name, partnerLastName: r.partner_last_name,
     partnerEmail: r.partner_email, eventType: r.event_type, eventDate: r.event_date,
+    plannedEventSpaceId: r.planned_event_space_id ?? null,
     endDate: r.end_date, guestCount: r.guest_count, estimatedBudget: r.estimated_budget,
-    inquiryMessage: r.inquiry_message, inquiryDate: r.inquiry_date,
+    inquiryMessage: r.inquiry_message,
+    inquiryMessageOrigin: (r.inquiry_message_origin === "customer" || r.inquiry_message_origin === "venue" || r.inquiry_message_origin === "unknown")
+      ? r.inquiry_message_origin
+      : "unknown",
+    inquiryDate: r.inquiry_date,
     nextActionText: r.next_action_text, nextActionDue: r.next_action_due,
     followUpDate: r.follow_up_date, lastContactedAt: r.last_contacted_at,
     tourDate: tour.tourDate, tourTime: tour.tourTime,
     tourCompleted: tour.tourCompleted, tourNotes: tour.tourNotes,
+    tourScheduledDate: tour.tourScheduledDate, tourScheduledTime: tour.tourScheduledTime,
+    tourActualDate: tour.tourActualDate, tourActualTime: tour.tourActualTime,
+    tourCompletedAt: tour.tourCompletedAt,
     commitmentScore: r.commitment_score ?? 0,
     responsivenessScore: r.responsiveness_score ?? 0,
     interestScore: r.interest_score ?? 0,
@@ -242,6 +474,14 @@ function mapLead(r: LeadRow, tour: LeadTourInfo = EMPTY_TOUR): Lead {
     relationshipId: r.relationship_id ?? null,
     intakeConfidence: r.intake_confidence ?? null,
     excludeFromBusinessReporting: r.exclude_from_business_reporting ?? false,
+    lostReason: r.lost_reason ?? null,
+    lostReasonDetail: r.lost_reason_detail ?? null,
+    lostAt: r.lost_at ?? null,
+    firstBookedAt: r.first_booked_at ?? null,
+    venueSeenAt: r.venue_seen_at ?? null,
+    assignedStaffId: r.assigned_staff_id ?? null,
+    mergedIntoLeadId: r.merged_into_lead_id ?? null,
+    mergedAt: r.merged_at ?? null,
     createdAt: r.created_at, updatedAt: r.updated_at,
   };
 }
@@ -259,9 +499,15 @@ function mapNote(r: NoteRow): LeadNote {
 }
 
 function mapTask(r: TaskRow): LeadTask {
-  return { id: r.id, venueId: r.venue_id, leadId: r.lead_id,
+  const assigneeRaw = r.assignee;
+  const assignee = Array.isArray(assigneeRaw) ? assigneeRaw[0] : assigneeRaw;
+  return {
+    id: r.id, venueId: r.venue_id, leadId: r.lead_id,
     title: r.title, dueDate: r.due_date, completed: r.completed,
-    completedAt: r.completed_at, createdAt: r.created_at };
+    completedAt: r.completed_at, createdAt: r.created_at,
+    assignedToStaffId: r.assigned_to_staff_id ?? null,
+    assigneeName: assignee?.full_name ?? null,
+  };
 }
 
 // ---- list / single ----------------------------------------------------------
@@ -269,13 +515,25 @@ function mapTask(r: TaskRow): LeadTask {
 export async function getLeads(
   client: DbClient,
   venueId: string,
-  filters?: { q?: string; status?: string },
+  filters?: { q?: string; status?: string; includeArchived?: boolean },
 ): Promise<Lead[]> {
-  let q = client.from("leads").select("*").eq("venue_id", venueId);
+  let q = client.from("leads").select("*").eq("venue_id", venueId).is("merged_into_lead_id", null);
   if (filters?.status) q = q.eq("sales_stage", filters.status);
   if (filters?.q) {
     const term = `%${filters.q}%`;
     q = q.or(`first_name.ilike.${term},last_name.ilike.${term},email.ilike.${term},partner_first_name.ilike.${term},partner_last_name.ilike.${term}`);
+  }
+  // Active surfaces exclude archived relationships (relationship-level Archive).
+  if (!filters?.includeArchived) {
+    const { data: archived } = await client
+      .from("venue_customer_relationships")
+      .select("id")
+      .eq("venue_id", venueId)
+      .not("archived_at", "is", null);
+    const archivedIds = ((archived ?? []) as Array<{ id: string }>).map((r) => r.id);
+    if (archivedIds.length > 0) {
+      q = q.not("relationship_id", "in", `(${archivedIds.join(",")})`);
+    }
   }
   const { data, error } = await q.order("inquiry_date", { ascending: false }).order("created_at", { ascending: false });
   if (error) throw error;
@@ -292,7 +550,7 @@ export async function getLead(
   const [leadRes, notesRes, tasksRes, activitiesRes, clientRes] = await Promise.all([
     client.from("leads").select("*").eq("id", leadId).eq("venue_id", venueId).maybeSingle<LeadRow>(),
     client.from("lead_notes").select("*").eq("lead_id", leadId).order("created_at", { ascending: false }),
-    client.from("lead_tasks").select("*").eq("lead_id", leadId)
+    client.from("lead_tasks").select("*, assignee:assigned_to_staff_id ( full_name )").eq("lead_id", leadId)
       .order("completed", { ascending: true })
       .order("due_date", { ascending: true, nullsFirst: false })
       .order("created_at", { ascending: true }),
@@ -367,17 +625,18 @@ export async function insertLead(
       firstName: input.firstName.trim(),
       lastName: input.lastName.trim(),
       email: input.email.trim(),
-      phone: input.phone.trim(),
+      phone: normalizeVenuePhoneInput(input.phone),
       partnerFirstName: input.partnerFirstName.trim(),
       partnerLastName: input.partnerLastName.trim(),
       partnerEmail: input.partnerEmail.trim(),
-      eventType: input.eventType,
+      eventType: normalizeEventType(input.eventType) ?? (input.eventType.trim() || null),
       eventDate: input.eventDate,
       endDate: input.endDate,
       guestCount: input.guestCount,
       estimatedBudget: input.estimatedBudget,
       source: input.source,
       inquiryMessage: input.inquiryMessage.trim(),
+      inquiryMessageOrigin: input.inquiryMessageOrigin ?? "unknown",
       inquiryDate: input.inquiryDate,
       // Lead Intake architecture: leads.source is now a real, enforced
       // vocabulary — a CSV row's free-text source that didn't match one is
@@ -412,12 +671,13 @@ export async function findActiveDuplicate(
 ): Promise<{ id: string } | null> {
   let q = client.from("leads").select("id")
     .eq("venue_id", venueId)
-    .not("sales_stage", "in", "(booked,lost)");
+    .not("sales_stage", "in", "(booked,lost,cancelled)");
   const trimmedEmail = email.trim();
   q = trimmedEmail
     ? q.ilike("email", trimmedEmail)
     : q.ilike("first_name", firstName.trim()).ilike("last_name", lastName.trim());
-  const { data } = await q.limit(1).maybeSingle<{ id: string }>();
+  const { data, error } = await q.limit(1).maybeSingle<{ id: string }>();
+  if (error) throw error;
   return data ?? null;
 }
 
@@ -426,10 +686,30 @@ export async function updateLeadSalesStage(
   venueId: string,
   leadId: string,
   salesStage: SalesStage,
+  pipelineStageId?: string | null,
+  lost?: { reason: string; detail: string | null } | null,
 ): Promise<void> {
+  const patch: Record<string, unknown> = {
+    sales_stage: salesStage,
+  };
+  if (pipelineStageId !== undefined) {
+    patch.pipeline_stage_id = pipelineStageId;
+  }
+  if (salesStage === "lost") {
+    if (lost) {
+      patch.lost_reason = lost.reason;
+      patch.lost_reason_detail = lost.detail;
+      patch.lost_at = new Date().toISOString();
+    }
+  } else {
+    // Leaving Lost clears the reason so a later re-open is clean.
+    patch.lost_reason = null;
+    patch.lost_reason_detail = null;
+    patch.lost_at = null;
+  }
   const { error } = await client
     .from("leads")
-    .update({ sales_stage: salesStage })
+    .update(patch)
     .eq("id", leadId)
     .eq("venue_id", venueId);
   if (error) throw error;
@@ -495,8 +775,9 @@ export async function insertTask(
       lead_id: leadId,
       title: input.title.trim(),
       due_date: input.dueDate || null,
+      assigned_to_staff_id: input.assignedToStaffId?.trim() || null,
     })
-    .select()
+    .select("*, assignee:assigned_to_staff_id ( full_name )")
     .single<TaskRow>();
   if (error) throw error;
   return mapTask(data);
@@ -550,11 +831,11 @@ export async function updateLeadInfo(
     first_name: input.firstName.trim(),
     last_name: input.lastName.trim(),
     email: input.email.trim() || null,
-    phone: input.phone.trim() || null,
+    phone: normalizeVenuePhoneInput(input.phone) || null,
     partner_first_name: input.partnerFirstName.trim() || null,
     partner_last_name: input.partnerLastName.trim() || null,
     partner_email: input.partnerEmail.trim() || null,
-    event_type: input.eventType || null,
+    event_type: normalizeEventType(input.eventType) ?? (input.eventType.trim() || null),
     event_date: input.eventDate || null,
     end_date: input.endDate || null,
     guest_count: input.guestCount.trim() ? parseInt(input.guestCount, 10) : null,
@@ -563,6 +844,7 @@ export async function updateLeadInfo(
       : null,
     source: input.source || null,
     inquiry_message: input.inquiryMessage.trim() || null,
+    inquiry_message_origin: input.inquiryMessageOrigin ?? "unknown",
     inquiry_date: input.inquiryDate || null,
   };
 
@@ -571,8 +853,8 @@ export async function updateLeadInfo(
   // to book an Event, it becomes the sole canonical writer for
   // guest_count/event_type/event_date. Defense-in-depth against a stale
   // form bypassing the read-only UI, same guard as updateClientInfo.
-  const { data: convertedClient } = await client.from("clients").select("id")
-    .eq("lead_id", leadId).eq("venue_id", venueId).maybeSingle<{ id: string }>();
+  const { data: convertedClient } = await client.from("clients").select("id, relationship_id")
+    .eq("lead_id", leadId).eq("venue_id", venueId).maybeSingle<{ id: string; relationship_id: string | null }>();
   if (convertedClient) {
     const { data: linkedEvent } = await client.from("events").select("id")
       .eq("client_id", convertedClient.id).eq("venue_id", venueId).maybeSingle<{ id: string }>();
@@ -583,9 +865,146 @@ export async function updateLeadInfo(
     }
   }
 
+  const { data: beforeLead } = await client
+    .from("leads")
+    .select("email")
+    .eq("id", leadId)
+    .eq("venue_id", venueId)
+    .maybeSingle<{ email: string | null }>();
+  const previousEmail = beforeLead?.email?.trim() || null;
+
   const { error } = await client
     .from("leads")
     .update(row)
+    .eq("id", leadId)
+    .eq("venue_id", venueId);
+  if (error) throw error;
+
+  // Same customer after convert/ensure: keep the linked clients row on the
+  // current identity. Do not insert a second client. Event fields stay on
+  // the Event once one exists.
+  if (convertedClient) {
+    const { linkedClientIdentityPatch } = await import("@/lib/clients/contact-edit");
+    const { error: clientError } = await client
+      .from("clients")
+      .update(linkedClientIdentityPatch({
+        firstName: input.firstName,
+        lastName: input.lastName,
+        email: input.email,
+        phone: input.phone,
+        partnerFirstName: input.partnerFirstName,
+        partnerLastName: input.partnerLastName,
+        partnerEmail: input.partnerEmail,
+      }))
+      .eq("id", convertedClient.id)
+      .eq("venue_id", venueId);
+    if (clientError) throw clientError;
+  }
+
+  // Keep the enduring relationship contact in sync. Scheduled sends read
+  // venue_customer_relationships.email at delivery. A new conversation
+  // message uses the newest client, lead, or relationship email. After a
+  // quiet commercial ensure the relationship may live on the client while
+  // the lead.relationship_id is still null — use either, and heal the lead link.
+  const { data: leadRel } = await client
+    .from("leads")
+    .select("relationship_id")
+    .eq("id", leadId)
+    .eq("venue_id", venueId)
+    .maybeSingle<{ relationship_id: string | null }>();
+  const relationshipId = leadRel?.relationship_id ?? convertedClient?.relationship_id ?? null;
+  if (relationshipId) {
+    const { relationshipContactPatch } = await import("@/lib/clients/contact-edit");
+    const { error: relError } = await client
+      .from("venue_customer_relationships")
+      .update(relationshipContactPatch({
+        firstName: input.firstName,
+        lastName: input.lastName,
+        email: input.email,
+      }))
+      .eq("id", relationshipId)
+      .eq("venue_id", venueId);
+    if (relError) throw relError;
+    if (!leadRel?.relationship_id) {
+      const { error: healError } = await client
+        .from("leads")
+        .update({ relationship_id: relationshipId })
+        .eq("id", leadId)
+        .eq("venue_id", venueId);
+      if (healError) throw healError;
+    }
+
+    // Other client rows on this relationship can still hold the address
+    // that was just replaced. Update those copies only. A different primary
+    // email, including a partner stored separately, stays put.
+    const nextEmail = input.email.trim();
+    if (
+      previousEmail
+      && nextEmail
+      && previousEmail.toLowerCase() !== nextEmail.toLowerCase()
+    ) {
+      const { data: siblings } = await client
+        .from("clients")
+        .select("id, email")
+        .eq("relationship_id", relationshipId)
+        .eq("venue_id", venueId);
+      const staleIds = (siblings ?? [])
+        .filter((row) => {
+          const email = (row as { email: string | null }).email?.trim().toLowerCase();
+          return email === previousEmail.toLowerCase() && (row as { id: string }).id !== convertedClient?.id;
+        })
+        .map((row) => (row as { id: string }).id);
+      if (staleIds.length > 0) {
+        const { linkedClientIdentityPatch: siblingPatch } = await import("@/lib/clients/contact-edit");
+        const { error: siblingError } = await client
+          .from("clients")
+          .update(siblingPatch({
+            firstName: input.firstName,
+            lastName: input.lastName,
+            email: input.email,
+            phone: input.phone,
+            partnerFirstName: input.partnerFirstName,
+            partnerLastName: input.partnerLastName,
+            partnerEmail: input.partnerEmail,
+          }))
+          .in("id", staleIds)
+          .eq("venue_id", venueId);
+        if (siblingError) throw siblingError;
+      }
+    }
+  }
+
+  // Keep attached tour snapshots on the same identity as the Lead. Reminders
+  // read tour_appointments.contact_email at send time; the column must follow
+  // the saved lead email. Already-sent messages are not rewritten.
+  const { tourContactNameFromLeadIdentity } = await import("@/lib/tours/contact-display");
+  const tourContactName = tourContactNameFromLeadIdentity({
+    firstName: input.firstName,
+    lastName: input.lastName,
+    partnerFirstName: input.partnerFirstName,
+    partnerLastName: input.partnerLastName,
+  });
+  const { error: tourNameError } = await client
+    .from("tour_appointments")
+    .update({
+      contact_name: tourContactName,
+      contact_email: input.email.trim() || null,
+    })
+    .eq("lead_id", leadId)
+    .eq("venue_id", venueId);
+  if (tourNameError) throw tourNameError;
+}
+
+/** Persist the inquiry's planned Event Space. Does not create an Event. */
+export async function setPlannedEventSpace(
+  client: DbClient,
+  venueId: string,
+  leadId: string,
+  spaceId: string | null,
+): Promise<void> {
+  const { error } = await client
+    .from("leads")
+    .update({ planned_event_space_id: spaceId })
     .eq("id", leadId)
     .eq("venue_id", venueId);
   if (error) throw error;
@@ -593,20 +1012,32 @@ export async function updateLeadInfo(
 
 /**
  * Update the relationship-management fields (next action, follow-up, tour,
- * etc.). Tour fields no longer write to the leads table directly — they
- * upsert the lead's canonical tour_appointments row instead (Program 2
- * Phase 1a), so a manually-scheduled tour and a publicly-booked one are the
- * same kind of record regardless of entry point.
+ * etc.). Follow-up fields always persist when valid. Tour scheduling is a
+ * separate intent: capacity failure returns a structured tour conflict and
+ * does not roll back the follow-up write. Date-only remains a tour reject
+ * before either write.
  */
 export async function updateRelationshipFields(
   client: DbClient,
   venueId: string,
   leadId: string,
   input: RelationshipInput,
-): Promise<void> {
-  const tourDecision = resolveLeadTourWrite(input);
-  if (tourDecision.action === "reject") {
-    throw new LeadTourWriteError(tourDecision.message);
+): Promise<{ tourConflict?: { message: string } }> {
+  // Date-only is a tour rejection — refuse before any write (locked E5).
+  // Preview omits venueTimezone: reject/clear detection does not need it.
+  // Same-slot → noop is enforced inside the tour apply that follows the lead UPDATE.
+  const previewExisting = await loadExistingLeadTour(client, venueId, leadId);
+  const preview = resolveLeadTourWrite({
+    tourDate: input.tourDate,
+    tourTime: input.tourTime,
+    tourCompleted: input.tourCompleted,
+    tourNotes: input.tourNotes,
+    tourActualDate: input.tourActualDate,
+    tourActualTime: input.tourActualTime,
+    existing: previewExisting,
+  });
+  if (preview.action === "reject") {
+    throw new LeadTourWriteError(preview.message);
   }
 
   const { error } = await client
@@ -621,10 +1052,55 @@ export async function updateRelationshipFields(
     .eq("venue_id", venueId);
   if (error) throw error;
 
-  await upsertLeadTour(client, venueId, leadId, {
-    tourDate: input.tourDate, tourTime: input.tourTime,
-    tourCompleted: input.tourCompleted, tourNotes: input.tourNotes,
+  const tourResult = await applyLeadTourWrite(client, venueId, leadId, {
+    tourDate: input.tourDate,
+    tourTime: input.tourTime,
+    tourCompleted: input.tourCompleted,
+    tourNotes: input.tourNotes,
+    tourActualDate: input.tourActualDate,
+    tourActualTime: input.tourActualTime,
   });
+  if (!tourResult.ok) {
+    if (tourResult.kind === "reject") {
+      throw new LeadTourWriteError(tourResult.message);
+    }
+    return { tourConflict: { message: tourResult.message } };
+  }
+  return {};
+}
+
+/** Outstanding relationship action only — does not touch tour or last contacted. */
+export async function getOutstandingFollowUp(
+  client: DbClient,
+  venueId: string,
+  leadId: string,
+): Promise<{ nextActionText: string | null; followUpDate: string | null } | null> {
+  const { data, error } = await client
+    .from("leads")
+    .select("next_action_text, follow_up_date")
+    .eq("id", leadId)
+    .eq("venue_id", venueId)
+    .maybeSingle<{ next_action_text: string | null; follow_up_date: string | null }>();
+  if (error) throw error;
+  if (!data) return null;
+  return { nextActionText: data.next_action_text, followUpDate: data.follow_up_date };
+}
+
+export async function updateOutstandingFollowUp(
+  client: DbClient,
+  venueId: string,
+  leadId: string,
+  input: { nextActionText: string | null; followUpDate: string | null },
+): Promise<void> {
+  const { error } = await client
+    .from("leads")
+    .update({
+      next_action_text: input.nextActionText,
+      follow_up_date: input.followUpDate,
+    })
+    .eq("id", leadId)
+    .eq("venue_id", venueId);
+  if (error) throw error;
 }
 
 /** Edit an existing note's body. */
@@ -642,19 +1118,94 @@ export async function updateNote(
   if (error) throw error;
 }
 
-/** Edit an existing task's title and/or due date. */
+/** Edit an existing task's title, due date, and/or assignee. */
 export async function updateTask(
   client: DbClient,
   venueId: string,
   taskId: string,
-  input: { title: string; dueDate: string },
+  input: { title: string; dueDate: string; assignedToStaffId?: string | null },
 ): Promise<void> {
+  const patch: Record<string, unknown> = {
+    title: input.title.trim(),
+    due_date: input.dueDate || null,
+  };
+  if (input.assignedToStaffId !== undefined) {
+    patch.assigned_to_staff_id = input.assignedToStaffId?.trim() || null;
+  }
   const { error } = await client
     .from("lead_tasks")
-    .update({ title: input.title.trim(), due_date: input.dueDate || null })
+    .update(patch)
     .eq("id", taskId)
     .eq("venue_id", venueId);
   if (error) throw error;
+}
+
+/**
+ * Move open one-off venue lead tasks onto an event as canonical event_tasks,
+ * preserving ids so Task Center / workspace views stay one record.
+ */
+export async function migrateLeadTasksToEvent(
+  client: DbClient,
+  venueId: string,
+  leadId: string,
+  eventId: string,
+  eventDate: string,
+): Promise<number> {
+  const { data: rows, error } = await client
+    .from("lead_tasks")
+    .select("id, title, due_date, completed, completed_at, assigned_to_staff_id")
+    .eq("venue_id", venueId)
+    .eq("lead_id", leadId);
+  if (error) throw error;
+  if (!rows?.length) return 0;
+
+  let moved = 0;
+  for (const row of rows as {
+    id: string;
+    title: string;
+    due_date: string | null;
+    completed: boolean;
+    completed_at: string | null;
+    assigned_to_staff_id: string | null;
+  }[]) {
+    const dueDate = row.due_date || eventDate || new Date().toISOString().slice(0, 10);
+    const { error: insertError } = await client.from("event_tasks").insert({
+      id: row.id,
+      venue_id: venueId,
+      event_id: eventId,
+      title: row.title,
+      description: null,
+      owner_type: "coordinator",
+      visibility: "coordinator_only",
+      due_date: dueDate,
+      days_offset: 0,
+      due_date_locked: true,
+      category: "custom",
+      is_required: true,
+      status: row.completed ? "complete" : "pending",
+      completed_at: row.completed_at,
+      assigned_to_staff_id: row.assigned_to_staff_id,
+      sort_order: 0,
+    });
+    if (insertError) {
+      // Id collision or schema drift — skip rather than fail conversion.
+      console.error("migrateLeadTasksToEvent insert failed:", insertError.message);
+      continue;
+    }
+    const { error: deleteError } = await client
+      .from("lead_tasks")
+      .delete()
+      .eq("id", row.id)
+      .eq("venue_id", venueId);
+    if (deleteError) {
+      console.error("migrateLeadTasksToEvent delete failed:", deleteError.message);
+      // Roll back the event_task copy so we do not duplicate.
+      await client.from("event_tasks").delete().eq("id", row.id).eq("venue_id", venueId);
+      continue;
+    }
+    moved += 1;
+  }
+  return moved;
 }
 
 /** Log an activity record from the service layer (notes, tasks, relationship events). */

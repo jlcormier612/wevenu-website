@@ -30,6 +30,8 @@ export function TrendChart({
   barColor?: string;
 }) {
   if (data.length === 0) return null;
+  // All-zero series is an empty state — avoid a lone "$0 / Nov" blip with no bars.
+  if (data.every((d) => d.value === 0)) return null;
   const max = Math.max(...data.map((d) => d.value), 1);
   // More than ~14 points and every label would collide — thin them out,
   // the bars themselves still render for every point.

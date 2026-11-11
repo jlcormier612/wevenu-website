@@ -94,7 +94,7 @@ export function StaffLegalAcceptance({
           <h1 className="mt-3 font-heading text-2xl font-medium tracking-tight text-[var(--forest-sage)] sm:text-[1.75rem]">
             {heading}
           </h1>
-          <p className="mt-3 text-sm leading-relaxed text-[color-mix(in_oklch,var(--forest-sage)_75%,transparent)]">
+          <p className="mt-3 text-sm leading-relaxed text-[color-mix(in_oklch,var(--forest-sage)_80%,transparent)]">
             {body}
           </p>
 
@@ -110,13 +110,13 @@ export function StaffLegalAcceptance({
                   >
                     {doc.title}
                   </a>
-                  <span className="ml-2 text-xs text-[color-mix(in_oklch,var(--forest-sage)_55%,transparent)]">
+                  <span className="ml-2 text-xs text-[color-mix(in_oklch,var(--forest-sage)_70%,transparent)]">
                     v{doc.version}
                   </span>
                 </li>
               ))
             ) : (
-              <li className="text-[color-mix(in_oklch,var(--forest-sage)_70%,transparent)]">
+              <li className="text-[color-mix(in_oklch,var(--forest-sage)_80%,transparent)]">
                 Required legal documents are not available yet. Please try again
                 shortly.
               </li>

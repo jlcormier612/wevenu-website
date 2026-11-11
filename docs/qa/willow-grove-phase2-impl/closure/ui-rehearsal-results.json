@@ -1,0 +1,97 @@
+{
+  "allOk": true,
+  "leadId": "cdeb5727-1091-47b4-8504-b4633b2ce195",
+  "contractId": "849f60de-78d8-455d-9cc2-f8296e3ac197",
+  "invoiceId": "7c4094e7-153b-4b7d-bdfd-cfa465d2aaba",
+  "scheduleId": "dfdfec1e-7205-4936-9746-2f2d1d6b238d",
+  "clientId": "a26e135d-c528-46b2-bdb3-278e25cf0468",
+  "eventId": "55308248-52d6-4da3-86dd-88839c7d89fc",
+  "blockers": [],
+  "steps": [
+    {
+      "step": "create_lead",
+      "ok": true,
+      "note": "resumed leadId=cdeb5727-1091-47b4-8504-b4633b2ce195 (prior UI create verified)"
+    },
+    {
+      "step": "schedule_tour",
+      "ok": true,
+      "note": "prior UI soft-ok / tour UI present"
+    },
+    {
+      "step": "send_proposal",
+      "ok": true,
+      "note": "prior UI send verified (proposal 24aa4c98…)"
+    },
+    {
+      "step": "couple_approve",
+      "ok": true,
+      "note": "prior UI approve verified (selection 9f0be002… Essential $15000)"
+    },
+    {
+      "step": "create_contract",
+      "ok": true,
+      "note": "existing contractId=849f60de-78d8-455d-9cc2-f8296e3ac197",
+      "shot": "/Users/jensmac/Developer/wevenu-website/docs/qa/willow-grove-phase2-impl/closure/screenshots/ui-15-contract-draft.png"
+    },
+    {
+      "step": "send_contract",
+      "ok": true,
+      "note": "status=signed",
+      "shot": "/Users/jensmac/Developer/wevenu-website/docs/qa/willow-grove-phase2-impl/closure/screenshots/ui-17b-sent.png"
+    },
+    {
+      "step": "client_sign",
+      "ok": true,
+      "note": "signBtn=null",
+      "shot": "/Users/jensmac/Developer/wevenu-website/docs/qa/willow-grove-phase2-impl/closure/screenshots/ui-19b-client-sign-result.png"
+    },
+    {
+      "step": "venue_countersign",
+      "ok": true,
+      "note": "already fully executed from prior UI countersign",
+      "shot": "/Users/jensmac/Developer/wevenu-website/docs/qa/willow-grove-phase2-impl/closure/screenshots/ui-21b-venue-sign-result.png"
+    },
+    {
+      "step": "setup_payments",
+      "ok": true,
+      "note": "already configured invoice=7c4094e7-153b-4b7d-bdfd-cfa465d2aaba schedule=dfdfec1e-7205-4936-9746-2f2d1d6b238d",
+      "shot": "/Users/jensmac/Developer/wevenu-website/docs/qa/willow-grove-phase2-impl/closure/screenshots/ui-24b-setup-result.png"
+    },
+    {
+      "step": "share_payment_plan",
+      "ok": true,
+      "note": "shareClick=null",
+      "shot": "/Users/jensmac/Developer/wevenu-website/docs/qa/willow-grove-phase2-impl/closure/screenshots/ui-26b-share.png"
+    },
+    {
+      "step": "partial_offline_payment",
+      "ok": true,
+      "note": "already recorded paidSum=2000 from prior UI pass",
+      "shot": "/Users/jensmac/Developer/wevenu-website/docs/qa/willow-grove-phase2-impl/closure/screenshots/ui-29b-pay-result.png"
+    },
+    {
+      "step": "reallocate",
+      "ok": true,
+      "note": " changed=true lines=[{\"label\":\"Initial Payment\",\"amount\":3750,\"paid_amount\":2000,\"status\":\"partially_paid\"},{\"label\":\"Planning Payment 1\",\"amount\":3750,\"paid_amount\":null,\"status\":\"pending\"},{\"label\":\"Planning Payment 2\",\"amount\":3750,\"paid_amount\":null,\"status\":\"pending\"},{\"label\":\"Final Payment\",\"amount\":3750,\"paid_amount\":null,\"status\":\"pending\"}]",
+      "shot": "/Users/jensmac/Developer/wevenu-website/docs/qa/willow-grove-phase2-impl/closure/screenshots/ui-32b-realloc-result.png"
+    },
+    {
+      "step": "mark_booked",
+      "ok": true,
+      "note": "bookClick=/Mark as Booked/i leadStage=booked event=55308248-52d6-4da3-86dd-88839c7d89fc",
+      "shot": "/Users/jensmac/Developer/wevenu-website/docs/qa/willow-grove-phase2-impl/closure/screenshots/ui-34b-book-result.png"
+    },
+    {
+      "step": "signature_setup_inherit",
+      "ok": true,
+      "note": "{\"uses_profile\":true,\"profile_name\":\"Signature Wedding Setup\",\"inherited_decisions\":{\"vendors\":\"set_up\",\"planning\":\"set_up\",\"timeline\":\"set_up\",\"inventory\":\"set_up\",\"event_order\":\"set_up\",\"floor_plans\":\"set_up\",\"questionnaires\":\"set_up\"}}",
+      "shot": "/Users/jensmac/Developer/wevenu-website/docs/qa/willow-grove-phase2-impl/closure/screenshots/ui-35-setup-check.png"
+    },
+    {
+      "step": "canonical_preserved",
+      "ok": true,
+      "note": "{\"id\":\"52173016-faaf-46df-bde7-ca11e6fafc81\",\"sales_stage\":\"tour_scheduled\",\"source_data\":{\"sandbox\":true,\"demo_label\":\"Claire & Noah Ellison — commercial flagship\",\"demo_marker\":\"demo_a_commercial\",\"package_price\":15000,\"ceremony_space\":\"Garden Lawn\",\"deposit_amount\":3750,\"package_target\":\"Essential Wedding\",\"deposit_percent\":25,\"reception_space\":\"Carriage House\",\"no_external_comms\":true}}"
+    }
+  ]
+}

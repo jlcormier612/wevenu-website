@@ -1,0 +1,21 @@
+PASS serving_sha — serving=a9bd5903cf1baae14a72b0e2e0898d7b837c552d expected=a9bd5903cf1baae14a72b0e2e0898d7b837c552d
+PASS network_eligible — n=5
+PASS fixture — event=5cd0be77-ec99-48c6-a86b-7235b3a65f76 client=e4a6a755-a0d2-4e3c-b5f0-9f099355545a other=480628b3-e7a7-48a0-9c84-25b14bd93a26
+PASS inventory_badge_included — badge=Included
+PASS questionnaires_absent_from_setup — setupCards=0
+PASS questionnaires_nav_order — tabs=Overview | Planning | Timeline | Floor Plans | Vendors | Inventory | Event Order | Questionnaires | Documents | Payments | Conversation | Activity | Internal notes
+PASS questionnaires_tab_opens — https://app.sandbox.hellotocheers.com/clients/e4a6a755-a0d2-4e3c-b5f0-9f099355545a#questionnaires
+PASS vendors_inherited_full_list — eventRecs=4 eligibleNetwork=5
+PASS vendors_source_vs_event — covered=4/5 eventRecs=4
+PASS vendors_editor_shows_list — listVisible=true
+PASS vendors_exclude_event_only — excluded=42a8d273-f738-4f3c-bdcd-f2a5a237e1b3 remaining=3
+PASS vendors_network_untouched — status=active pref=preferred
+PASS vendors_other_event_unchanged — before=0 after=0
+PASS vendors_assignments_independent — assignments=2
+PASS no_invoice_side_effect — before=38 after=38
+{
+  "status": "GREEN",
+  "passed": 15,
+  "failed": 0,
+  "servingSha": "a9bd5903cf1baae14a72b0e2e0898d7b837c552d"
+}

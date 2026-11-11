@@ -1,0 +1,22 @@
+[
+  {
+    "step": "docs-loaded",
+    "openCount": 4,
+    "url": "http://127.0.0.1:3000/p/5148cbd1ff6bda7594d03c1479f3868aeaf9b4df73cc6dacec46de0fe970e977?view=documents"
+  },
+  {
+    "step": "contract-open",
+    "viewerVisible": true,
+    "printVisible": true,
+    "downloadVisible": true,
+    "downloadLabel": "Download PDF",
+    "frameCount": 1
+  },
+  {
+    "step": "invoice-open",
+    "viewerVisible": true,
+    "printVisible": true,
+    "downloadLabel": "Save as PDF",
+    "frameSrc": "/portal/invoices/6cb0ceb4-d50f-4481-a8c2-310b1e72d19b/print?token=5148cbd1ff6bda7594d03c1479f3868aeaf9b4df73cc6dacec46de0fe970e977"
+  }
+]

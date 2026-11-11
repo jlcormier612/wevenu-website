@@ -5,6 +5,7 @@
  * Object positions (x, y) are the center of the object in that space.
  */
 
+import type { ClientLayoutStatus } from "@/lib/floor-plans/client-layout-review";
 import type { InventoryShape } from "@/lib/inventory/types";
 
 export type ObjectType =
@@ -19,8 +20,11 @@ export type ObjectType =
   | "text_label"
   | "other";
 
-// Share for Seating uses view | hidden. The reserved 'edit' value was never
-// written by application code and is retired.
+// Seating access uses view | hidden. After layout assignment/selection,
+// client_access is set to view automatically (couple can seat guests).
+// Element move/add permissions use floor_plan_objects.locked and
+// floor_plans.couple_may_add_tables — not a client_access='edit' value
+// (that reserved value was retired).
 export type FloorPlanClientAccess = "view" | "hidden";
 
 // Display-only — canvas units are always inches internally (an Inventory
@@ -39,6 +43,8 @@ export type FloorPlan = {
   id: string;
   venueId: string;
   eventId: string;
+  /** Set when the plan is prepared on the client before Booked. */
+  clientId?: string | null;
   name: string;
   spaceId: string | null;
   clientAccess: FloorPlanClientAccess;
@@ -68,6 +74,13 @@ export type FloorPlan = {
   // — placement stays open before, during, and after Ready (customer language;
   // column remains finalized_at). Not an immutability lock.
   finalizedAt: string | null;
+  /** When false, portal cannot add tables (server-enforced). */
+  coupleMayAddTables: boolean;
+  /** Couple collaboration review status on the working layout. */
+  clientLayoutStatus: ClientLayoutStatus;
+  clientSubmittedAt: string | null;
+  clientReviewNote: string | null;
+  clientReviewedAt: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -178,6 +191,8 @@ export type UpdateObjectInput = {
   notes?: string | null;
   locked?: boolean;
   displayShape?: DisplayShape | null;
+  /** Explicit inventory link — null clears. Never inferred from label. */
+  inventoryItemId?: string | null;
 };
 
 export type ReorderDirection = "forward" | "backward";

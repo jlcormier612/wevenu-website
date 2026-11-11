@@ -1,0 +1,57 @@
+{
+  "at": "2026-10-15T02:45:00.000Z",
+  "servingSha": "d4e85aaf8987b50b1f030c6855b264d6d3a52216",
+  "taskDefinition": "htc-sandbox-venue-app:754",
+  "venue": {
+    "id": "05f16a15-1752-4855-8a3b-aad5c593d8d9",
+    "name": "Meadowbrook Valley Venue",
+    "email": "jlcormier612@gmail.com"
+  },
+  "lead": {
+    "id": "09d26751-f184-461f-9cdb-8891b676cd61",
+    "name": "Rory Gilmore",
+    "email": "jlcormier612@gmail.com",
+    "sales_stage": "tour_scheduled",
+    "venue_seen_at": "2026-10-14T03:20:28.526+00:00"
+  },
+  "conversation": {
+    "id": "dcba7cbc-77d7-4707-ac0d-e615016c186f",
+    "venue_unread": 0,
+    "needs_response": true,
+    "last_message_at": "2026-10-15T02:01:29.53846+00:00",
+    "inbox_owner_lead_id": "09d26751-f184-461f-9cdb-8891b676cd61"
+  },
+  "inboundMessage": {
+    "id": "07df6ca5-5bfe-4346-9b9a-77886eb75118",
+    "sender_type": "lead_or_client",
+    "channel": "email",
+    "sent_at": "2026-10-15T02:01:29.53846+00:00",
+    "venue_read_at": "2026-10-15T02:01:41.198551+00:00",
+    "status": "received",
+    "bodyExcerpt": "Can I come in tonight instead - we are right down the road?"
+  },
+  "notification": {
+    "id": "101cc67d-5358-45d3-ba7c-ebf0e2b136a5",
+    "type": "message_received",
+    "title": "New message from Rory Gilmore",
+    "needs_email": true,
+    "emailed_at": "2026-10-15T02:30:04.61+00:00",
+    "read_at": null,
+    "link": "/leads/09d26751-f184-461f-9cdb-8891b676cd61#messages"
+  },
+  "notificationLog": {
+    "id": "4788c231-e406-4d3e-bdb1-e6a76b79b2cf",
+    "recipient_email": "jlcormier612@gmail.com",
+    "status": "sent",
+    "provider_message_id": "01a13d65-31da-746f-844d-f53f72d6d307",
+    "sent_at": "2026-10-15T02:30:04.566+00:00",
+    "delivered_at": null
+  },
+  "preference": {
+    "pref_message_received": true
+  },
+  "emailDeliveryStage": "provider_accepted_delivery_unconfirmed",
+  "latencyMinutes": 28.58,
+  "codeChanges": false,
+  "productionUntouched": true
+}

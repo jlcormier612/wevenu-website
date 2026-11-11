@@ -1,0 +1,44 @@
+{
+  "run": "OMPMVSMKZOA",
+  "expectedSha": "ee0e78101957f078df7e7886032e814a350d802b",
+  "prefix": "OMP-OMPMVSMKZOA-",
+  "majors": {
+    "plated": {
+      "id": "1a607dc5-37ff-4533-a4c6-a2a2f9b321a1",
+      "name": "OMP-OMPMVSMKZOA-Plated Dinner"
+    },
+    "buffet": {
+      "id": "08e24571-79dd-41ce-831d-f5e685ebfc61",
+      "name": "OMP-OMPMVSMKZOA-Buffet Dinner"
+    }
+  },
+  "cheesecake": {
+    "id": "e1c64a2e-f683-4788-8162-a2ae0bb9e89e",
+    "name": "OMP-OMPMVSMKZOA-Cheesecake",
+    "parent_offering_id": "08e24571-79dd-41ce-831d-f5e685ebfc61",
+    "description": null,
+    "parentIds": [
+      "08e24571-79dd-41ce-831d-f5e685ebfc61",
+      "1a607dc5-37ff-4533-a4c6-a2a2f9b321a1"
+    ]
+  },
+  "template": {
+    "id": "6e94452d-7f0a-4f90-8431-1ee9f3ed6261",
+    "cakeOptions": [
+      {
+        "id": "ac9031b9-ad0e-42e9-9a0b-877396d8b6f9",
+        "group_id": "d3482c04-a8cd-454f-a105-eae954e7f560",
+        "offering_id": "e1c64a2e-f683-4788-8162-a2ae0bb9e89e",
+        "unit_price": 8,
+        "label": "OMP-OMPMVSMKZOA-Cheesecake"
+      },
+      {
+        "id": "52d67e67-3328-440c-903b-74f8e67522dd",
+        "group_id": "6c307b06-8bd2-4bbe-b6a9-f18eaaad5a11",
+        "offering_id": "e1c64a2e-f683-4788-8162-a2ae0bb9e89e",
+        "unit_price": 6,
+        "label": "OMP-OMPMVSMKZOA-Cheesecake"
+      }
+    ]
+  }
+}

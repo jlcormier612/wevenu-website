@@ -31,3 +31,16 @@ export function formatPhoneDisplay(phone: string): string {
   }
   return e164;
 }
+
+/**
+ * Normalize a venue-entered phone for storage.
+ * Valid US/Canada numbers become human-readable display form; E.164 send still works via toE164.
+ * Empty stays empty. Unparseable values are trimmed but not invented.
+ */
+export function normalizeVenuePhoneInput(raw: string | null | undefined): string {
+  const trimmed = (raw ?? "").trim();
+  if (!trimmed) return "";
+  const e164 = toE164(trimmed);
+  if (!e164) return trimmed;
+  return formatPhoneDisplay(e164);
+}

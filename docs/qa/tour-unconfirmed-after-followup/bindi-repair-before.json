@@ -1,0 +1,19 @@
+{
+  "observedAt": "2026-10-16T03:17:30.967Z",
+  "tour": {
+    "id": "555060cd-a188-4e2a-ae42-f0da64396e50",
+    "venue_id": "05f16a15-1752-4855-8a3b-aad5c593d8d9",
+    "lead_id": "5d33fcbe-e6c7-4163-9b5e-29db3389efca",
+    "scheduled_at": "2026-10-18T19:00:00+00:00",
+    "status": "confirmed",
+    "confirmed_at": "2026-10-16T03:13:51.193123+00:00",
+    "confirmation_source": "prospect_link",
+    "confirmation_requested_at": "2026-10-16T02:59:47.642+00:00",
+    "is_archived": false,
+    "cancellation_reason": null,
+    "updated_at": "2026-10-16T03:13:51.193123+00:00",
+    "created_at": "2026-10-16T02:54:34.842433+00:00",
+    "origin": "scheduled",
+    "contact_name": "Bindi Lulu"
+  }
+}

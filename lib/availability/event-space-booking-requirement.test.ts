@@ -4,13 +4,13 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 describe("Start booking file Event Space requirement", () => {
-  it("requires Event Space only when venue allows overlapping events and Lead has a date", () => {
+  it("requires Event Space on Booked when the venue allows overlapping events and the Lead has a date", () => {
     const detail = readFileSync(resolve("components/leads/lead-detail.tsx"), "utf8");
     assert.match(
       detail,
-      /spacesRequired = maxSimultaneousEvents >= 2 && !!lead\.eventDate && !lead\.linkedClientId/,
+      /spaceNeededForBooked = maxSimultaneousEvents >= 2 && !!lead\.eventDate/,
     );
-    assert.match(detail, /Assign an Event Space before starting the booking file/);
+    assert.match(detail, /Assign an Event Space before moving to Booked/);
     assert.match(detail, /Add an Event Space in Availability settings/);
   });
 

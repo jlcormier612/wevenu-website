@@ -28,10 +28,42 @@ describe("Wedding Venue Agreement starter", () => {
     assert.ok(hits.length > 5);
   });
 
-  it("blocks send-facing content that still has placeholders", () => {
+  it("warns on send-facing content that still has placeholders", () => {
     const result = assertCustomerSafeContractContent(WEDDING_VENUE_AGREEMENT_CONTENT);
     assert.equal(result.ok, false);
     if (!result.ok) assert.ok(result.placeholders.length > 0);
+  });
+
+  it("returns STARTER_POLICY_PLACEHOLDERS when only placeholders remain", () => {
+    const result = assertCustomerSafeContractContent(
+      "Add your venue's approved cancellation and rescheduling policy here.",
+    );
+    assert.equal(result.ok, false);
+    if (!result.ok) {
+      assert.equal(result.code, "STARTER_POLICY_PLACEHOLDERS");
+      assert.match(result.message, /starter policy placeholders/);
+      assert.equal(result.unresolvedTokens.length, 0);
+    }
+  });
+
+  it("allows placeholders when the venue acknowledges the warning", () => {
+    const result = assertCustomerSafeContractContent(
+      "Add your venue's approved cancellation and rescheduling policy here.",
+      { allowPlaceholders: true },
+    );
+    assert.equal(result.ok, true);
+  });
+
+  it("still hard-blocks unresolved tokens even when placeholders are acknowledged", () => {
+    const result = assertCustomerSafeContractContent(
+      "Add your venue's approved cancellation and rescheduling policy here.\n{{unknown_token}}",
+      { allowPlaceholders: true },
+    );
+    assert.equal(result.ok, false);
+    if (!result.ok) {
+      assert.equal(result.code, undefined);
+      assert.match(result.message, /Unresolved details/);
+    }
   });
 
   it("allows content after placeholders are replaced and tokens merged", () => {
@@ -46,42 +78,55 @@ describe("Wedding Venue Agreement starter", () => {
       venueEmail: "h@example.com",
       clientFirstName: "Ada",
       clientLastName: "Lovelace",
-      partnerFirstName: "Charles",
-      partnerLastName: "Babbage",
       clientEmail: "a@example.com",
       clientPhone: "555",
       eventName: "Ada & Charles",
       eventDate: "2027-06-12",
       eventType: "wedding",
       guestCount: 120,
-      eventSpaces: "Ballroom",
-      coordinatorName: "Jordan",
-      venueAccessHours: "Start 2:00 PM · End 11:00 PM",
-      ceremonySummary: "Garden · 3:00 PM",
-      receptionSummary: "Ballroom · 5:00 PM",
-      packageSection: "Classic Wedding Package",
-      includedItemsSummary: "• Tables",
-      additionalItemsSummary: "• Extra hour",
-      paymentScheduleSummary: "• Deposit $1,000",
-      contractTotal: "$10,000",
-      balanceRemaining: "$9,000",
-      vendorsOnFile: "• Florist",
       contractTitle: "Wedding Venue Agreement",
     });
     const merged = mergeContent(filledPolicies, data);
     const result = assertCustomerSafeContractContent(merged);
     assert.equal(result.ok, true);
     assert.match(merged, /Garden Hall/);
+    assert.match(merged, /Ada Lovelace/);
+    assert.doesNotMatch(merged, /Charles Babbage/);
     assert.equal(merged.includes("{{"), false);
+    assert.equal(data.client_name, "Ada Lovelace");
+    assert.equal(data.couple_name, undefined);
+    assert.equal(data.primary_contact_name, undefined);
+    assert.equal(data.full_name, undefined);
+    assert.equal(data.partner_name, undefined);
+    assert.doesNotMatch(WEDDING_VENUE_AGREEMENT_CONTENT, /\{\{venue_access_hours\}\}/);
+    assert.doesNotMatch(WEDDING_VENUE_AGREEMENT_CONTENT, /\{\{ceremony_summary\}\}/);
+    assert.doesNotMatch(WEDDING_VENUE_AGREEMENT_CONTENT, /\{\{reception_summary\}\}/);
+    assert.doesNotMatch(WEDDING_VENUE_AGREEMENT_CONTENT, /\{\{coordinator_name\}\}/);
+    assert.doesNotMatch(WEDDING_VENUE_AGREEMENT_CONTENT, /\{\{event_spaces\}\}/);
+    assert.match(WEDDING_VENUE_AGREEMENT_CONTENT, /\{\{ceremony_space\}\}/);
+    assert.match(WEDDING_VENUE_AGREEMENT_CONTENT, /\{\{reception_space\}\}/);
+    assert.match(WEDDING_VENUE_AGREEMENT_CONTENT, /\{\{additional_event_spaces\}\}/);
+    assert.match(WEDDING_VENUE_AGREEMENT_CONTENT, /\{\{package_section\}\}/);
+    assert.match(WEDDING_VENUE_AGREEMENT_CONTENT, /\{\{contract_total\}\}/);
+    assert.match(WEDDING_VENUE_AGREEMENT_CONTENT, /\{\{payment_schedule_summary\}\}/);
+    assert.match(WEDDING_VENUE_AGREEMENT_CONTENT, /\{\{balance_remaining\}\}/);
+    assert.match(WEDDING_VENUE_AGREEMENT_CONTENT, /\{\{included_items_summary\}\}/);
+    assert.doesNotMatch(WEDDING_VENUE_AGREEMENT_CONTENT, /\{\{vendors_on_file\}\}/);
+    assert.doesNotMatch(
+      WEDDING_VENUE_AGREEMENT_CONTENT,
+      /Add your venue's approved ceremony timing and location language/,
+    );
+    assert.doesNotMatch(
+      WEDDING_VENUE_AGREEMENT_CONTENT,
+      /Add your venue's approved reception timing and location language/,
+    );
   });
 
-  it("exposes first/last/full name merge tokens from client columns", () => {
+  it("exposes first/last/client name from the primary client contact", () => {
     const data = buildMergeData({
       venueName: "Garden Hall",
       clientFirstName: "Ada",
       clientLastName: "Lovelace",
-      partnerFirstName: null,
-      partnerLastName: null,
       eventDate: "2027-06-12",
       eventType: "wedding",
       guestCount: 80,
@@ -89,7 +134,7 @@ describe("Wedding Venue Agreement starter", () => {
     });
     assert.equal(data.first_name, "Ada");
     assert.equal(data.last_name, "Lovelace");
-    assert.equal(data.full_name, "Ada Lovelace");
+    assert.equal(data.client_name, "Ada Lovelace");
     assert.equal(mergeContent("Dear {{first_name}},", data), "Dear Ada,");
   });
 });

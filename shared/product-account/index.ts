@@ -33,10 +33,28 @@ export type UpsertEnrollmentInput = {
   onboardingType: OnboardingType;
   /** Absent for white_glove — matches existing behavior (no activation URL). */
   activationToken?: string | null;
+  /** Same-name new session. Persist the session and do not provision. */
+  purchaseHold?: boolean;
+  /** Set welcome_email_sent_at only after the transport reports sent. */
+  recordWelcomeEmailSent?: boolean;
+  /** Claim the per-session send so a crash or overlap does not double-send. */
+  claimWelcomeEmail?: boolean;
+  /** Release a claim when the transport did not succeed. */
+  releaseWelcomeEmailClaim?: boolean;
 };
 
 export type UpsertEnrollmentResult =
-  | { ok: true; id: string; status: "pending" | "provisioned" | "activated" }
+  | {
+      ok: true;
+      id: string;
+      status: "pending" | "provisioned" | "activated";
+      welcomeEmailSentAt?: string | null;
+      welcomeEmailClaimedAt?: string | null;
+      purchaseHold?: boolean;
+      claimed?: boolean;
+      venueId?: string | null;
+      activationToken?: string | null;
+    }
   | { ok: false; error: string };
 
 export type ProvisionEnrollmentResult =
@@ -58,6 +76,8 @@ export type EnrollmentLookupResult =
       ok: true;
       found: true;
       venueName: string;
+      /** Purchaser email for login prefill only — never authorization. */
+      ownerEmail: string | null;
       onboardingType: OnboardingType;
       status: "pending" | "provisioned" | "activated";
       /** Same value the welcome email links to; null for white_glove until handoff. */
@@ -72,7 +92,17 @@ export type EnrollmentLookupResult =
 export type TokenLookupResult =
   | { ok: true; found: false }
   | { ok: true; found: true; reason: "already_activated" | "expired" }
-  | { ok: true; found: true; reason: "valid"; id: string; venueName: string; ownerEmail: string }
+  | {
+      ok: true;
+      found: true;
+      reason: "valid";
+      id: string;
+      venueName: string;
+      ownerEmail: string;
+      ownerFirstName?: string | null;
+      ownerLastName?: string | null;
+      alreadyHasLogin?: boolean;
+    }
   | { ok: false; error: string };
 
 function baseUrl(): string {
@@ -130,6 +160,13 @@ export async function provisionVenueEnrollment(
 export async function activateVenueAccount(input: {
   token: string;
   password: string;
+  /** Required. Never omit — missing ownership choice must fail closed. */
+  purchaserIsOwner: boolean;
+  /** Required affirmative Terms + Privacy acknowledgment from Activate UI. */
+  legalAccepted: true;
+  invitedOwnerName?: string | null;
+  invitedOwnerEmail?: string | null;
+  inviteOwnerNow?: boolean;
 }): Promise<ActivateAccountResult> {
   return postInternal<ActivateAccountResult>("/api/internal/enrollment/activate", input);
 }

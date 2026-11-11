@@ -1,0 +1,99 @@
+PASS Serving expected SHA — image=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:020b6f0bc8b7288cf8e10ef6ce117367530cf0f4 expected=020b6f0bc8b7
+PASS A Setup Profiles: starting inventory template label — Starting inventory template
+Select a starting inventory template…
+Standard Wedding — Ceremony + Reception
+Standard Wedding — Reception Only
+TemplatesMethodology Empty Inventory
+
+Configured starting point: Standard Weddin
+PASS A Setup Profiles: starting Event Order template label — Starting Event Order template
+Select a starting Event Order template…
+Ceremony + Reception
+Wedding Reception
+
+Configured starting point: Ceremony + Reception. When a client is booked with this profile, the Event Order dr
+PASS A Setup Profiles: no Send/Create Invoice CTAs in profile form — profile form
+PASS B Setup panel present with readiness narrative — Event setup
+
+Using: Standard Wedding Setup
+
+Review your event's standard setup, make any event-specific changes, and release the prepared experience to the client portal. Invite the client separately when you're ready. Questionnaires use authorized send when staff choose — not an automated schedule. Inventory and Event
+PASS B Setup has no Send-as-EO / Share / Create Invoice buttons — setup CTAs
+PASS B Release copy denies Inventory/EO share and invoice create — Client portal released
+
+The prepared experience is released. You can still manage every area from its workspace tab. Re-running release is safe: it does not invite the client, send questionnaires, share Inventory or the Event Order, or create invoices.
+
+Release to client portal a
+PASS B Open Inventory deep link reaches Inventory tab — https://app.sandbox.hellotocheers.com/clients/b4e2764b-be33-4579-89e3-0c8e4a6dd5be#inventory
+PASS B Open Event Order reaches commercial workspace strip — https://app.sandbox.hellotocheers.com/clients/b4e2764b-be33-4579-89e3-0c8e4a6dd5be#event-order
+PASS C Commercial strip still present (C3/C4) — strip
+PASS C Checklist still present (C4) — checklist
+PASS D Portal inventory reachable — B2P & Portal
+
+·
+
+Jen's Fancy Venue
+
+Jul 17, 2060
+
+Export my data
+5
+🏠
+Home
+✅
+Tasks
+9
+🕒
+Timeline
+📁
+Docs
+🗺️
+Floor Plan
+
+PASS D Portal event-order reachable — B2P & Portal
+
+·
+
+Jen's Fancy Venue
+
+Jul 17, 2060
+
+Export my data
+5
+🏠
+Home
+✅
+Tasks
+9
+🕒
+Timeline
+📁
+Docs
+🗺️
+Floor Plan
+
+PASS D Portal choices reachable — B2P & Portal
+
+·
+
+Jen's Fancy Venue
+
+Jul 17, 2060
+
+Export my data
+5
+🏠
+Home
+✅
+Tasks
+9
+🕒
+Timeline
+📁
+Docs
+🗺️
+Floor Plan
+
+PASS E Setup panel usable at 390 without Send-as-EO — 390
+PASS F No duplicate inventory/EO rows from C6 navigation — inv 1->1 eo 1->1
+ALL PASS 16/16

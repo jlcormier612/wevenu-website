@@ -22,3 +22,12 @@
 0 * * * *    /app/invoke.sh facebook-reconcile-process "$VENUE_APP_BASE_URL/api/facebook/reconcile/process"
 0 * * * *    /app/invoke.sh saved-reports-process "$VENUE_APP_BASE_URL/api/saved-reports/process"
 */10 * * * * /app/invoke.sh workspace-cron-automations "$WORKSPACE_BASE_URL/api/cron/automations"
+# Phase 3 SaaS tier-upgrade population cycle (evaluate → notice → apply).
+# Daily 06:15 UTC; 180s curl budget for Stripe Test retrieves across Sandbox venues.
+15 6 * * * /app/invoke.sh tier-upgrades-process "$VENUE_APP_BASE_URL/api/internal/pricing/tier-upgrades/process" 180
+# Phase 5 founder custom pricing — activate scheduled / expire arrangements.
+# Hourly; short budget (Stripe Test coupon/price apply for due rows only).
+20 * * * * /app/invoke.sh founder-arrangements-process "$VENUE_APP_BASE_URL/api/internal/pricing/founder-arrangements/process" 120
+# Phase 6 Refer a Venue — qualification evaluation + optional reward issuance/reconcile.
+# Hourly at :35; isolated from Phase 3/4/5 ticks.
+35 * * * * /app/invoke.sh referrals-process "$VENUE_APP_BASE_URL/api/internal/pricing/referrals/process" 120

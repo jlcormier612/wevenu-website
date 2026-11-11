@@ -1,0 +1,66 @@
+{
+  "expectedSha": "1061b7da46cbd2e8bbac31fb3d805f38e61eafd8",
+  "servingSha": "1061b7da46cbd2e8bbac31fb3d805f38e61eafd8",
+  "eventId": "4ed4d7fb-a301-42eb-8dc6-6b76a872f8e8",
+  "clientId": "0f554bb0-9766-4dd2-a4c1-fdd2bcd1e001",
+  "passed": 11,
+  "failed": 0,
+  "green": true,
+  "checks": [
+    {
+      "name": "db_insurance_task_complete",
+      "pass": true,
+      "detail": "{\"id\":\"f5778f89-60ee-43dd-8755-f9f200df8b43\",\"status\":\"complete\",\"completed_at\":\"2026-10-22T17:49:34.537+00:00\"}"
+    },
+    {
+      "name": "db_couple_insurance_persisted",
+      "pass": true,
+      "detail": "{\"id\":\"fa395859-7f7c-4898-a86c-bb27b12e6a0f\",\"source_type\":\"insurance\",\"share_with_venue\":true,\"file_url\":\"https://wvpsldwwjqdannqasrdf.supabase.co/storage/v1/object/public/client-media/05f16a15-1752-4855-8a3b-aad5c593d8d9/0f554bb0-9766-4dd2-a4c1-fdd2bcd1e001/document-1792691373583.png\"}"
+    },
+    {
+      "name": "db_payment_schedule_matches_screenshot",
+      "pass": true,
+      "detail": "[{\"label\":\"Initial Payment\",\"status\":\"paid\",\"amount\":3750,\"paid_at\":\"2026-10-22T00:00:00+00:00\",\"payment_method\":\"cash\",\"quickbooks_sync_status\":\"pending\"},{\"label\":\"Planning Payment 1\",\"status\":\"pending\",\"amount\":3750,\"paid_at\":null,\"payment_method\":null,\"quickbooks_sync_status\":\"not_synced\"},{\"label\":\"Planning Payment 2\",\"status\":\"pending\",\"amount\":3750,\"paid_at\":null,\"payment_method\":null,\"quickbooks_sync_status\":\"not_synced\"},{\"label\":\"Final Payment\",\"status\":\"pending\",\"amount\":3750,\"paid_at\":null,\"payment_method\":null,\"quickbooks_sync_status\":\"not_synced\"}]"
+    },
+    {
+      "name": "serving_sha",
+      "pass": true,
+      "detail": "serving=1061b7da46cbd2e8bbac31fb3d805f38e61eafd8 expected=1061b7da46cbd2e8bbac31fb3d805f38e61eafd8"
+    },
+    {
+      "name": "venue_insurance_in_completed",
+      "pass": true,
+      "detail": "Delete\nBookings\nBindi Lulu & Jake Paws\nView original lead\nBooked\nCancel event\nEdit event\nDay-of Sheet\n\nOctober 24, 2027\n\nSunday · In 366 days\n\nBooked\nEdit schedule\n\nDay-of schedule\n\n4:00 PM – 10:00 PM\n\nGuests\n\n50 guests\n\nSUNDAY, OCT 24, 2027\n\nCeremony\n\n4:00 PM – 5:00 PM · Meadow Lawn\n\nReception\n\n5:00 PM – 10:00 PM · Meadow Lawn\n\nTeam assignment\nThe person responsible for this booked event. This can differ from who handled the lead.\nEvent owner\nJennifer Cormier\nEdit/Save\nAdditional event staff\nNames working this event who are not the assigned owner.\n\nNo additional staff assigned.\n\nAdd team member\nOverview\nPlanning\nTimeline\nFloor Plans\nVendors\nInventory\nEvent Order\nQuestionnaires\nDocuments\n1\nPayments\n1\nConversation\nActivity\nInternal notes\nLuv\nPlanning\nManage the client checklist and your venue's internal task list. Client tasks are shared through portal release; venue tasks remain internal"
+    },
+    {
+      "name": "venue_insurance_not_in_upcoming_block",
+      "pass": true,
+      "detail": "UPCOMING (7)\n\nComplete your questionnaire\n\nPlanning\n·\nClient\n·\nClient completes\n·\n90 days before · Jul 26\n\nAuto-completes on trigger\n\nCreate Request\nWaive\n\nChoose your vendorsOPTIONAL\n\nPlanning\n·\nClient\n·\nClient completes\n·\n45 days before · Sep 9\n\nAuto-completes on trigger\n\nCreate Request\nWaive\n\nSubmit your guest count\n\nPlanning\n·\nClient\n·\nClient completes\n·\n30 days before · Sep 24\n\nAuto-completes on trigger\n\nCreate Request\nWaive\n\nFinal payment\n\nFinancial\n·\nClient\n·\nClient completes\n·\n30 days before · Sep 24\n\nAuto-completes on trigger\n\nCreate Request\nWaive\n\nSubmit your seating plan\n\nPlanning\n·\nClient\n·\nClient completes\n·\n21 days before · Oct 3\n\nAuto-completes on trigger\n\nCreate Request\nWaive"
+    },
+    {
+      "name": "venue_documents_shows_insurance",
+      "pass": true,
+      "detail": "Delete\nBookings\nBindi Lulu & Jake Paws\nView original lead\nBooked\nCancel event\nEdit event\nDay-of Sheet\n\nOctober 24, 2027\n\nSunday · In 366 days\n\nBooked\nEdit schedule\n\nDay-of schedule\n\n4:00 PM – 10:00 PM\n\nGuests\n\n50 guests\n\nSUNDAY, OCT 24, 2027\n\nCeremony\n\n4:00 PM – 5:00 PM · Meadow Lawn\n\nReception\n\n5:00 PM – 10:00 PM · Meadow Lawn\n\nTeam assignment\nThe person responsible for this booked event. This can differ from who handled the lead.\nEvent owner\nJennifer Cormier\nEdit/Save\nAdditional event staff\nNames working this event who are not the assigned owner.\n\nNo additional staff assigned.\n\nAdd team member\nOverview\nPlanning\nTimeline\nFloor Plans\nVendors\nInventory\nEvent Order\nQuestionnaires\nDocuments\n1\nPayments\n1\nConversation\nActivity\nInternal notes\nLuv\nTemplates\nReusable templates your venue can send for this booking.\n\nContract\n\n1 template available: Wedding Venue Agreement\n\nSend a Contract\n\nQuestio"
+    },
+    {
+      "name": "venue_payments_show_schedule",
+      "pass": true,
+      "detail": "Delete\nBookings\nBindi Lulu & Jake Paws\nView original lead\nBooked\nCancel event\nEdit event\nDay-of Sheet\n\nOctober 24, 2027\n\nSunday · In 366 days\n\nBooked\nEdit schedule\n\nDay-of schedule\n\n4:00 PM – 10:00 PM\n\nGuests\n\n50 guests\n\nSUNDAY, OCT 24, 2027\n\nCeremony\n\n4:00 PM – 5:00 PM · Meadow Lawn\n\nReception\n\n5:00 PM – 10:00 PM · Meadow Lawn\n\nTeam assignment\nThe person responsible for this booked event. This can differ from who handled the lead.\nEvent owner\nJennifer Cormier\nEdit/Save\nAdditional event staff\nNames working this event who are not the assigned owner.\n\nNo additional staff assigned.\n\nAdd team member\nOverview\nPlanning\nTimeline\nFloor Plans\nVendors\nInventory\nEvent Order\nQuestionnaires\nDocuments\n1\nPayments\n1\nConversation\nActivity\nInternal notes\nLuv\nPayments\nFinancial summary for this event.\n+ New "
+    },
+    {
+      "name": "db_insurance_document_registered",
+      "pass": true,
+      "detail": "{\"docsBefore\":1,\"docsAfter\":1,\"insDocs\":[{\"id\":\"404fd5eb-409d-4bc8-8244-4a0f5a834f89\",\"name\":\"Essential Wedding · Proposal · Hello to Cheers\",\"category\":\"insurance\",\"storage_url\":\"https://wvpsldwwjqdannqasrdf.supabase.co/storage/v1/object/public/client-media/05f16a15-1752-4855-8a3b-aad5c593d8d9/0f554bb0-9766-4dd2-a4c1-fdd2bcd1e001/document-1792691373583.png\",\"notes\":\"Couple event insurance proof (couple_document:fa395859-7f7c-4898-a86c-bb27b12e6a0f)\",\"event_id\":\"4ed4d7fb-a301-42eb-8dc6-6b76a872f8e8\"}]}"
+    },
+    {
+      "name": "db_no_duplicate_insurance_docs",
+      "pass": true,
+      "detail": "count=1"
+    },
+    {
+      "name": "db_task_still_complete_after_refresh",
+      "pass": true,
+      "detail": "{\"status\":\"complete\",\"completed_at\":\"2026-10-22T17:49:34.537+00:00\"}"
+    }
+  ]
+}

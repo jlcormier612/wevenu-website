@@ -1,0 +1,288 @@
+{
+  "pass": 38,
+  "fail": 0,
+  "checks": [
+    {
+      "name": "serving_sha",
+      "pass": true,
+      "detail": "expected=f07b838f9f0a6dc51d5fe47c85f687eafe1420c8 ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:f07b838f9f0a6dc51d5fe47c85f687eafe1420c8",
+      "kind": "deploy",
+      "scenario": ""
+    },
+    {
+      "name": "portal_setup_no_inv_eo_toggles",
+      "pass": true,
+      "detail": "OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\n99+\nClients\nVendors\n\nSCHEDULING\n\nCalendar\nTours\n22\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nLIBRARY\n\nTemplates\nDocuments\n\nFINANCIALS\n\nContracts\n17\nPayments\n14\n\nTO DO’S\n\nTask Center\nRequests\n\nYOUR VENUE\n\nSetup\nSettings\nGuidance\nVenue Guide\nReports\nHelp & Feedb",
+      "kind": "usability",
+      "scenario": "setup"
+    },
+    {
+      "name": "A_prebooking_client_not_booked",
+      "pass": true,
+      "detail": "{\"client\":{\"id\":\"adaa1f93-97f8-4064-b50c-7bd8f45f9afb\",\"relationship_id\":\"2c5acc98-53a6-45b5-9fdf-1a48a930025c\",\"status\":\"planning\",\"email\":\"InvPre-lifecyclemvswtkiq@hellotocheers-test.invalid\"},\"event\":{\"id\":\"34e4ca1c-8005-49bb-993d-08fd77a3b865\",\"booked_at\":null,\"status\":\"confirmed\"}}",
+      "kind": "fixture",
+      "scenario": "A"
+    },
+    {
+      "name": "A_share_enabled_after_select",
+      "pass": true,
+      "detail": "share",
+      "kind": "usability",
+      "scenario": "A"
+    },
+    {
+      "name": "A_share_persisted_select_mode",
+      "pass": true,
+      "detail": "{\"status\":\"shared\",\"collaboration_mode\":\"select\"}",
+      "kind": "persisted",
+      "scenario": "A"
+    },
+    {
+      "name": "A_share_email_recorded",
+      "pass": true,
+      "detail": "[{\"id\":\"d21ed11c-145f-4083-b047-6a1822a05a3f\",\"status\":\"accepted\",\"provider_id\":\"01a1856f-e203-7801-959b-6da0b2bc4702\",\"channel_metadata\":{\"sourceId\":\"34e4ca1c-8005-49bb-993d-08fd77a3b865\",\"automated\":true,\"sourceType\":\"event_inventory_shared\"},\"body\":\"We've shared inventory choices for LC-LIFECYCLEMVSWTKIQ-Inv Wedding. Please open Inventory, choose any additional items we marked for selection, and submit.\\n\\nhttps://app.sandbox.hellotocheers.com/p/inv_lifecyclemvswtkiq_e19a89447491f9e5?view=inventory#inventory\",\"sent_at\":\"2026-10-29T02:14:24.681956+00:00\",\"conversation_id\":\"e5858c58-df32-4370-bd14-42135532cfd5\"}]",
+      "kind": "email",
+      "scenario": "A"
+    },
+    {
+      "name": "A_portal_session_for_link",
+      "pass": true,
+      "detail": "inv_lifecyclemvswtkiq_e1",
+      "kind": "persisted",
+      "scenario": "A"
+    },
+    {
+      "name": "A_link_opens_inventory_not_invoice",
+      "pass": true,
+      "detail": "InvPre\n\n·\n\nJen's Fancy Venue\n\nSep 14, 2028\n\nExport my data\n1\n🏠\nHome\n✅\nTasks\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n🪑\nInventory\n1\n💳\nPayments\n💬\nMessages\n1\n🏛️\nGuide\n🤝\nVendors\nYour inventory choices\n\nView the items your venue has listed for your event, including package-included items and available add-ons.\n\nSave a draft anytime. Submit when you’re ready — your venue will review before anything is confirmed.\n\nReady for your choices\n\nPACKAGE-INCLUDED\n\nLC-LIFECYCLEMVSWTKIQ-Included Linen\n\nIncluded —",
+      "kind": "portal",
+      "scenario": "A"
+    },
+    {
+      "name": "A_submit_control_present",
+      "pass": true,
+      "detail": "submit",
+      "kind": "usability",
+      "scenario": "A"
+    },
+    {
+      "name": "A_response_persisted_submitted",
+      "pass": true,
+      "detail": "{\"status\":\"submitted\"}",
+      "kind": "persisted",
+      "scenario": "A"
+    },
+    {
+      "name": "A_venue_sees_submitted",
+      "pass": true,
+      "detail": "OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\n99+\nClients\nVendors\n\nSCHEDULING\n\nCalendar\nTours\n22\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nLIBRARY\n\nTemplates\nDocuments\n\nFINANCIALS\n\nContracts\n17\nPayments\n14\n\nTO DO’S\n\nTask Center\nRequests\n\nYOUR VENUE\n\nSetup\nSettings\nGuidance\nVenue Guide\nReports\nHelp & Feedback\nJen's Fancy Venue\nSearch\n⌘K\n99+\nJ\njennifer@hellotocheers.com\nDelete\nBookings\nIN\nLC-LIFECYCLEMVSW",
+      "kind": "usability",
+      "scenario": "A"
+    },
+    {
+      "name": "A_confirm_via_ui",
+      "pass": true,
+      "detail": "{\"status\":\"confirmed\"}",
+      "kind": "persisted",
+      "scenario": "A"
+    },
+    {
+      "name": "A_finalize_locked",
+      "pass": true,
+      "detail": "{\"status\":\"finalized\",\"finalized_at\":\"2026-10-29T02:14:46.156+00:00\"}",
+      "kind": "persisted",
+      "scenario": "A"
+    },
+    {
+      "name": "A_duplicate_finalize_idempotent",
+      "pass": true,
+      "detail": "{\"status\":\"finalized\",\"finalized_at\":\"2026-10-29T02:14:46.156+00:00\"}",
+      "kind": "persisted",
+      "scenario": "D"
+    },
+    {
+      "name": "A_finalize_email_attempt",
+      "pass": true,
+      "detail": "[{\"id\":\"eafb5840-83c2-49bd-8ee3-fed19c4259af\",\"status\":\"accepted\",\"provider_id\":\"01a18570-3a57-7549-91c2-3dd8d930ce88\",\"channel_metadata\":{\"sourceId\":\"e8c5e199-6954-4679-8060-09107bb704b7\",\"automated\":true,\"sourceType\":\"event_inventory_finalized\"},\"body\":\"Hi InvPre,\\n\\nJen's Fancy Venue reviewed and finalized your Inventory Agreement for LC-LIFECYCLEMVSWTKIQ-Inv Wedding.\\n\\nThe agreed inventory is now locked. Open it anytime from Documents or this link:\\nhttps://app.sandbox.hellotocheers.com/p/inv_lifecyclemvswtkiq_e19a89447491f9e5?view=inventory#inventory\\n\\nJen's Fancy Venue\",\"sent_at\":\"2026-10-29T02:14:47.306954+00:00\",\"conversation_id\":\"e5858c58-df32-4370-bd14-42135532cfd5\"}]",
+      "kind": "email",
+      "scenario": "A"
+    },
+    {
+      "name": "A_finalize_email_not_false_delivered_on_fail",
+      "pass": true,
+      "detail": "[{\"id\":\"eafb5840-83c2-49bd-8ee3-fed19c4259af\",\"status\":\"accepted\",\"provider_id\":\"01a18570-3a57-7549-91c2-3dd8d930ce88\",\"channel_metadata\":{\"sourceId\":\"e8c5e199-6954-4679-8060-09107bb704b7\",\"automated\":true,\"sourceType\":\"event_inventory_finalized\"},\"body\":\"Hi InvPre,\\n\\nJen's Fancy Venue reviewed and finalized your Inventory Agreement for LC-LIFECYCLEMVSWTKIQ-Inv Wedding.\\n\\nThe agreed inventory is now locked. Open it anytime from Documents or this link:\\nhttps://app.sandbox.hellotocheers.com/p/inv_lifecyclemvswtkiq_e19a89447491f9e5?view=inventory#inventory\\n\\nJen's Fancy Venue\",\"sent_at\":\"2026-10-29T02:14:47.306954+00:00\",\"conversation_id\":\"e5858c58-df32-4370-bd14-42135532cfd5\"}]",
+      "kind": "email",
+      "scenario": "D"
+    },
+    {
+      "name": "A_portal_notification_persisted",
+      "pass": true,
+      "detail": "{\"id\":\"c9b83582-c4d5-4c67-88f1-3a1f6321991c\",\"title\":\"Inventory Agreement finalized\",\"body\":\"Jen's Fancy Venue approved your Inventory Agreement for LC-LIFECYCLEMVSWTKIQ-Inv Wedding. It is locked in Documents.\",\"created_at\":\"2026-10-29T02:14:47.713446+00:00\",\"type\":\"new_message\"}",
+      "kind": "portal",
+      "scenario": "A"
+    },
+    {
+      "name": "A_venue_documents_shows_inventory_agreement",
+      "pass": true,
+      "detail": "OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\n99+\nClients\nVendors\n\nSCHEDULING\n\nCalendar\nTours\n22\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nLIBRARY\n\nTemplates\nDocuments\n\nFINANCIALS\n\nContracts\n17\nPayments\n14\n\nTO DO’S\n\nTask Center\nRequests\n\nYOUR VENUE\n\nSetup\nSettings\nGuidance\nVenue Guide\nReports\nHelp & Feedback\nJen's Fancy Venue\nSearch\n⌘K\n99+\nJ\njennifer@hellotocheers.com\nDelete\nBookings\nIN\nLC-LIFECYCLEMVSWTKIQ-Inv Wedding\nCancel event\nEdit event\nDay-of Sheet\n\nSeptember 14, 2028\n\nThursday · In 686 days\n\nT",
+      "kind": "usability",
+      "scenario": "A"
+    },
+    {
+      "name": "A_venue_documents_finalized_row",
+      "pass": true,
+      "detail": "{\"id\":\"e8c5e199-6954-4679-8060-09107bb704b7\",\"status\":\"finalized\",\"finalized_at\":\"2026-10-29T02:14:46.156+00:00\"}",
+      "kind": "persisted",
+      "scenario": "A"
+    },
+    {
+      "name": "A_couple_documents_shows_inventory",
+      "pass": true,
+      "detail": "InvPre\n\n·\n\nJen's Fancy Venue\n\nSep 14, 2028\n\nExport my data\n2\n🏠\nHome\n✅\nTasks\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n💳\nPayments\n💬\nMessages\n2\n🏛️\nGuide\n🤝\nVendors\nDocuments\n\nContracts, invoices, questionnaires, your Event Order, receipts, and anything your venue or vendors share — all in one place.\n\nEvent insurance\nShare with venue\n+ Upload document\nInventory Agreement\n🪑\nInventory Agreement\nFinalized\nInventory Agreement\n· Locked Oct 28, 2026\nOpen →\nJen's Fancy Venue\n💗",
+      "kind": "portal",
+      "scenario": "A"
+    },
+    {
+      "name": "A_finalized_stable_after_template_edit",
+      "pass": true,
+      "detail": "[{\"name\":\"LC-LIFECYCLEMVSWTKIQ-Included Linen\"},{\"name\":\"LC-LIFECYCLEMVSWTKIQ-Dance Floor\"},{\"name\":\"LC-LIFECYCLEMVSWTKIQ-DJ Table\"}]",
+      "kind": "persisted",
+      "scenario": "D"
+    },
+    {
+      "name": "D_invalid_token_blocks_inventory",
+      "pass": true,
+      "detail": "💗\n\nThis link has expired or is no longer active.\n\nPlease contact your venue coordinator for an updated link to your wedding workspace.",
+      "kind": "security",
+      "scenario": "D"
+    },
+    {
+      "name": "B_choices_seeded_as_sent",
+      "pass": true,
+      "detail": "sent",
+      "kind": "fixture",
+      "scenario": "B"
+    },
+    {
+      "name": "B_link_opens_choices_not_invoice",
+      "pass": true,
+      "detail": "EoPre\n\n·\n\nJen's Fancy Venue\n\nSep 14, 2028\n\nExport my data\n🏠\nHome\n✅\nTasks\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n✅\nChoices\n1\n💳\nPayments\n💬\nMessages\n🏛️\nGuide\n🤝\nVendors\nYour Choices\n\nSelect options your venue asked for. Submitting sends them for review — it is not a payment.\n\nLC-LIFECYCLEMVSWTKIQ-Dinner selections · Awaiting Client\nDinner style\n\nPick one · required — 0 of 1 selected\n\nPick one · required — 0 of 1 selected\n\nChoose one dinner style: Plated Dinner or Buffet Style Dinner.\n\nPlated Dinner",
+      "kind": "portal",
+      "scenario": "B"
+    },
+    {
+      "name": "B_submit_control_present",
+      "pass": true,
+      "detail": "submit",
+      "kind": "usability",
+      "scenario": "B"
+    },
+    {
+      "name": "B_response_persisted",
+      "pass": true,
+      "detail": "{\"status\":\"submitted\",\"answers\":{\"g-dinner\":{\"optionIds\":[\"o-plated\"]},\"g-plated\":{\"optionIds\":[\"o-chicken\"]}}}",
+      "kind": "persisted",
+      "scenario": "B"
+    },
+    {
+      "name": "B_venue_finalize_control",
+      "pass": true,
+      "detail": "finalize btn",
+      "kind": "usability",
+      "scenario": "B"
+    },
+    {
+      "name": "B_choices_finalized",
+      "pass": true,
+      "detail": "{\"status\":\"finalized\",\"finalized_at\":\"2026-10-29T02:16:06.054+00:00\",\"applied_line_ids\":[\"b75f17cd-4ddf-41a2-b084-7098043c2c61\",\"273a1e61-ea16-44b1-b2df-2d13af5721da\"]}",
+      "kind": "persisted",
+      "scenario": "B"
+    },
+    {
+      "name": "B_finalize_email_attempt",
+      "pass": true,
+      "detail": "[{\"id\":\"ca9f5a0f-0c39-483c-b7c8-87374170eefe\",\"status\":\"accepted\",\"provider_id\":\"01a18571-7253-748c-893e-fc1ac6f88e4a\",\"channel_metadata\":{\"sourceId\":\"08815715-5845-4248-b829-826257932f9e\",\"automated\":true,\"sourceType\":\"client_choices_finalized\"},\"body\":\"Hi EoPre,\\n\\nJen's Fancy Venue reviewed and finalized LC-LIFECYCLEMVSWTKIQ-Dinner selections for LC-LIFECYCLEMVSWTKIQ-EO Wedding.\\n\\nYour approved selections are locked. Open them from Documents or this link:\\nhttps://app.sandbox.hellotocheers.com/p/eo_lifecyclemvswtkiq_045361bf18db?view=choices#choices\\n\\nJen's Fancy Venue\",\"sent_at\":\"2026-10-29T02:16:07.22083+00:00\",\"conversation_id\":\"4dc88f56-6c2d-425e-9051-4d586fbc5e99\"}]",
+      "kind": "email",
+      "scenario": "B"
+    },
+    {
+      "name": "B_portal_notification_persisted",
+      "pass": true,
+      "detail": "{\"id\":\"73faad48-9b8d-4cb0-855e-bfd6b79cd81c\",\"title\":\"Event Order selections finalized\",\"body\":\"Jen's Fancy Venue approved LC-LIFECYCLEMVSWTKIQ-Dinner selections for LC-LIFECYCLEMVSWTKIQ-EO Wedding. They are locked in Documents.\",\"created_at\":\"2026-10-29T02:16:07.564958+00:00\",\"type\":\"new_message\"}",
+      "kind": "portal",
+      "scenario": "B"
+    },
+    {
+      "name": "B_venue_documents_client_choices",
+      "pass": true,
+      "detail": "{\"id\":\"08815715-5845-4248-b829-826257932f9e\",\"status\":\"finalized\",\"finalized_at\":\"2026-10-29T02:16:06.054+00:00\"}",
+      "kind": "persisted",
+      "scenario": "B"
+    },
+    {
+      "name": "B_venue_documents_event_order_present",
+      "pass": true,
+      "detail": "{\"id\":\"61e9a01c-ae54-4297-9e56-a0a0026e2506\",\"status\":\"open\",\"shared_at\":null}",
+      "kind": "persisted",
+      "scenario": "B"
+    },
+    {
+      "name": "B_venue_documents_ui",
+      "pass": true,
+      "detail": "OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\n99+\nClients\nVendors\n\nSCHEDULING\n\nCalendar\nTours\n22\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nLIBRARY\n\nTemplates\nDocuments\n\nFINANCIALS\n\nContracts\n17\nPayments\n14\n\nTO DO’S\n\nTask Center\nRequests\n\nYOUR VENUE\n\nSetup\nSettings\nGuidance\nVenue Guide\nReports\nHelp & Feedback\nJen's Fancy Venue\nSearch\n⌘K\n99+\nJ\njennifer@hellotocheers.com\nDelete\nBookings\nEO\nLC-LIFECYCLEMVSW",
+      "kind": "usability",
+      "scenario": "B"
+    },
+    {
+      "name": "C_portal_inventory_entry",
+      "pass": true,
+      "detail": "Booked\n\n·\n\nJen's Fancy Venue\n\nSep 14, 2028\n\nExport my data\n1\n🏠\nHome\n✅\nTasks\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n🪑\nInventory\n1\n💳\nPayments\n💬\nMessages\n1\n🏛️\nGuide\n🤝\nVendors\nYour inventory choices\n\nView the items your venue has listed for your event, including package-included items and available add-ons.\n\nSave a draft anytime. Submit when you’re ready — your venue will review before anything is c",
+      "kind": "portal",
+      "scenario": "C"
+    },
+    {
+      "name": "C_booked_inventory_finalized",
+      "pass": true,
+      "detail": "{\"status\":\"finalized\"}",
+      "kind": "persisted",
+      "scenario": "C"
+    },
+    {
+      "name": "C_booked_choices_finalized",
+      "pass": true,
+      "detail": "{\"status\":\"finalized\"}",
+      "kind": "persisted",
+      "scenario": "C"
+    },
+    {
+      "name": "C_no_portal_setup_dependency",
+      "pass": true,
+      "detail": "workflows completed without planning_inventory/event_order capability toggles",
+      "kind": "usability",
+      "scenario": "C"
+    },
+    {
+      "name": "A_mobile_390_usable",
+      "pass": true,
+      "detail": "overflowX=0",
+      "kind": "usability",
+      "scenario": "A"
+    }
+  ],
+  "persisted": {
+    "run": "LIFECYCLEMVSWTKIQ",
+    "expectedSha": "f07b838f9f0a6dc51d5fe47c85f687eafe1420c8",
+    "scenarioA": {
+      "clientId": "adaa1f93-97f8-4064-b50c-7bd8f45f9afb",
+      "eventId": "34e4ca1c-8005-49bb-993d-08fd77a3b865",
+      "invId": "e8c5e199-6954-4679-8060-09107bb704b7",
+      "invUrl": "https://app.sandbox.hellotocheers.com/p/inv_lifecyclemvswtkiq_e19a89447491f9e5?view=inventory#inventory"
+    },
+    "scenarioB": {
+      "clientId": "daf5d38a-5bc4-460c-8cee-7e679a433460",
+      "eventId": "6e00d2b0-089c-4191-9eed-b277d6839f9c",
+      "choicesId": "08815715-5845-4248-b829-826257932f9e",
+      "choicesUrl": "https://app.sandbox.hellotocheers.com/p/eo_lifecyclemvswtkiq_045361bf18db?view=choices#choices"
+    }
+  }
+}

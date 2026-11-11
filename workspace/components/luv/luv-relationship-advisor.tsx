@@ -16,7 +16,7 @@ const SEVERITY_LABEL: Record<LuvSeverity, string> = {
 function severityTone(severity: LuvSeverity): string {
   switch (severity) {
     case "urgent":
-      return "text-[var(--forest-sage)]";
+      return "text-foreground";
     case "attention":
       return "text-[var(--heritage-sage)]";
     case "info":

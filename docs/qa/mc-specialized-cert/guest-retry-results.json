@@ -1,0 +1,69 @@
+{
+  "expectSha": "df26942e",
+  "venueId": "1b3028f8-a9da-4d27-a1ee-31c43051323d",
+  "passed": 10,
+  "failed": 0,
+  "checks": [
+    {
+      "group": "setup",
+      "name": "fixture_venue",
+      "pass": true,
+      "detail": "1b3028f8"
+    },
+    {
+      "group": "setup",
+      "name": "runtime_dpl",
+      "pass": true,
+      "detail": "dpl=df26942e75993fd0d8255703bc6cb20b81f747b0 expectPrefix=df26942e"
+    },
+    {
+      "group": "parent",
+      "name": "ui_client",
+      "pass": true,
+      "detail": "committed=true"
+    },
+    {
+      "group": "parent",
+      "name": "ui_event",
+      "pass": true,
+      "detail": "committed=true"
+    },
+    {
+      "group": "special",
+      "name": "ui_guest_list",
+      "pass": true,
+      "detail": "committed=true"
+    },
+    {
+      "group": "special",
+      "name": "ui_guest_orphan_review",
+      "pass": true,
+      "detail": "OVERVIEW Dashboard YOUR RELATIONSHIPS Leads Clients Vendors SCHEDULING Calendar Tours COMMUNICATION Inbox Automations LIBRARY Templates Documents FINA"
+    },
+    {
+      "group": "db",
+      "name": "guests_linked",
+      "pass": true,
+      "detail": "n=2 named=2 names=GuestAda,GuestBen"
+    },
+    {
+      "group": "db",
+      "name": "orphan_guest_absent",
+      "pass": true,
+      "detail": "names=GuestAda,GuestBen"
+    },
+    {
+      "group": "side",
+      "name": "no_invitations",
+      "pass": true,
+      "detail": "invites=0"
+    },
+    {
+      "group": "db",
+      "name": "prior_document_on_event_reconciled",
+      "pass": true,
+      "detail": "docs=Spec Contract|floor-main-space|spec-client.csv|spec-event.csv|spec-vendor.csv|spec-guests.csv|spec-guests-orphan.csv|spec-assignments.csv|spec-timeline.csv|spec-timeline-far.csv|spec-document.csv|spec-commitment.csv"
+    }
+  ],
+  "at": "2026-10-20T18:48:34.911Z"
+}

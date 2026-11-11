@@ -1,0 +1,369 @@
+{
+  "ok": true,
+  "readiness": {
+    "mode": "founder_ready",
+    "ready": true,
+    "flagEnabled": true,
+    "missing": [],
+    "saasProductId": "prod_V4AgrDDqyO0YGF",
+    "diagnosticMessage": "Founder custom pricing (Phase 5) is ready."
+  },
+  "venue": {
+    "id": "9336a6cb-6a49-4a38-82bc-ff3b2361e8a3",
+    "name": "[DISPOSABLE-P3-CANCEL] 1794244329",
+    "planKey": "starter",
+    "planName": "Gather",
+    "listAmountCents": 19900,
+    "stripeSubscriptionId": "sub_1UZw74ErUqJH7nkta71f0YMw",
+    "stripeCustomerId": "cus_Vb8Ng5wqMg59Z5",
+    "subscriptionStatus": "active",
+    "currentPeriodEnd": null,
+    "listAmount": "$199"
+  },
+  "grants": [],
+  "groupEligible": false,
+  "holdActive": false,
+  "pendingTierUpgrade": null,
+  "appliedOffer": {
+    "source": "standard",
+    "label": "Standard catalog pricing",
+    "amountCents": 19900,
+    "amount": "$199"
+  },
+  "nextInvoicePreviewCents": 19900,
+  "nextInvoicePreview": "$199",
+  "nextInvoicePreviewSource": "stripe_test_preview",
+  "arrangements": [
+    {
+      "id": "a0133bb5-e86d-4c4d-82b6-e44a145795c5",
+      "kind": "tier_freeze",
+      "status": "ended",
+      "percentOff": null,
+      "amountOffCents": null,
+      "fixedRateCents": null,
+      "frozenListAmountCents": null,
+      "planScope": "all",
+      "survivesTierChange": true,
+      "preventsTierUpgrade": true,
+      "protectsBaseRate": false,
+      "effectiveAt": "2026-11-09T23:41:14+00:00",
+      "expiresAt": "2026-11-12T23:41:14+00:00",
+      "durationBillingCycles": null,
+      "reason": "Phase 5 rerun tier freeze",
+      "internalNotes": null,
+      "customerFacingLabel": null,
+      "createdByEmail": "jennifer@hellotocheers.com",
+      "reconciliationStatus": "pending",
+      "expectedRecurringAmountCents": 19900,
+      "expectedRecurringAmount": "$199",
+      "lastReconcileError": null,
+      "lastReconciledAt": null,
+      "stripeCouponId": null,
+      "stripePriceId": null,
+      "audit": [
+        {
+          "at": "2026-11-09T23:41:15.523Z",
+          "by": "jennifer@hellotocheers.com",
+          "kind": "tier_freeze",
+          "action": "created",
+          "status": "active"
+        },
+        {
+          "at": "2026-11-09T23:41:16.533Z",
+          "by": "jennifer@hellotocheers.com",
+          "action": "ended",
+          "reason": "Phase 5 rerun tf cleanup"
+        }
+      ],
+      "createdAt": "2026-11-09T23:41:15.549295+00:00"
+    },
+    {
+      "id": "4fea2ff0-50ba-42db-a9f2-33b88aa45f06",
+      "kind": "fixed_rate",
+      "status": "ended",
+      "percentOff": null,
+      "amountOffCents": null,
+      "fixedRateCents": 14900,
+      "frozenListAmountCents": null,
+      "planScope": "all",
+      "survivesTierChange": true,
+      "preventsTierUpgrade": false,
+      "protectsBaseRate": false,
+      "effectiveAt": "2026-11-09T23:41:10+00:00",
+      "expiresAt": null,
+      "durationBillingCycles": null,
+      "reason": "Phase 5 rerun fixed",
+      "internalNotes": null,
+      "customerFacingLabel": "Special pricing",
+      "createdByEmail": "jennifer@hellotocheers.com",
+      "reconciliationStatus": "pending",
+      "expectedRecurringAmountCents": 14900,
+      "expectedRecurringAmount": "$149",
+      "lastReconcileError": null,
+      "lastReconciledAt": "2026-11-09T23:41:12.591+00:00",
+      "stripeCouponId": null,
+      "stripePriceId": "price_1Ua1xCErUqJH7nkt661ug3Zp",
+      "audit": [
+        {
+          "at": "2026-11-09T23:41:10.984Z",
+          "by": "jennifer@hellotocheers.com",
+          "kind": "fixed_rate",
+          "action": "created",
+          "status": "active"
+        },
+        {
+          "at": "2026-11-09T23:41:12.591Z",
+          "error": null,
+          "action": "reconciled",
+          "deferred": false
+        },
+        {
+          "at": "2026-11-09T23:41:13.613Z",
+          "by": "jennifer@hellotocheers.com",
+          "action": "ended",
+          "reason": "Phase 5 rerun fixed cleanup"
+        }
+      ],
+      "createdAt": "2026-11-09T23:41:11.004214+00:00"
+    },
+    {
+      "id": "b054c96d-6020-4665-ab20-a09621cf99a8",
+      "kind": "percent_off",
+      "status": "ended",
+      "percentOff": 15,
+      "amountOffCents": null,
+      "fixedRateCents": null,
+      "frozenListAmountCents": null,
+      "planScope": "all",
+      "survivesTierChange": true,
+      "preventsTierUpgrade": false,
+      "protectsBaseRate": false,
+      "effectiveAt": "2026-11-09T23:41:02+00:00",
+      "expiresAt": null,
+      "durationBillingCycles": null,
+      "reason": "Phase 5 rerun percent create",
+      "internalNotes": null,
+      "customerFacingLabel": "Special pricing",
+      "createdByEmail": "jennifer@hellotocheers.com",
+      "reconciliationStatus": "pending",
+      "expectedRecurringAmountCents": 16915,
+      "expectedRecurringAmount": "$169.15",
+      "lastReconcileError": null,
+      "lastReconciledAt": "2026-11-09T23:41:05.098+00:00",
+      "stripeCouponId": "htc_fnd_pct_15_b054c96d60204665ab",
+      "stripePriceId": "price_1UZj6YErUqJH7nktmVMM7sgB",
+      "audit": [
+        {
+          "at": "2026-11-09T23:41:03.889Z",
+          "by": "jennifer@hellotocheers.com",
+          "kind": "percent_off",
+          "action": "created",
+          "status": "active"
+        },
+        {
+          "at": "2026-11-09T23:41:05.098Z",
+          "error": null,
+          "action": "reconciled",
+          "deferred": false
+        },
+        {
+          "at": "2026-11-09T23:41:07.970Z",
+          "by": "jennifer@hellotocheers.com",
+          "action": "ended",
+          "reason": "Phase 5 rerun end clear proof"
+        }
+      ],
+      "createdAt": "2026-11-09T23:41:03.92594+00:00"
+    },
+    {
+      "id": "520114d4-3ab7-4bf6-bdf0-9835962cd090",
+      "kind": "percent_off",
+      "status": "ended",
+      "percentOff": 15,
+      "amountOffCents": null,
+      "fixedRateCents": null,
+      "frozenListAmountCents": null,
+      "planScope": "all",
+      "survivesTierChange": true,
+      "preventsTierUpgrade": false,
+      "protectsBaseRate": false,
+      "effectiveAt": "2026-11-09T23:28:19+00:00",
+      "expiresAt": null,
+      "durationBillingCycles": null,
+      "reason": "Phase 5 Stripe proof",
+      "internalNotes": null,
+      "customerFacingLabel": "Special pricing",
+      "createdByEmail": "jennifer@hellotocheers.com",
+      "reconciliationStatus": "pending",
+      "expectedRecurringAmountCents": 16915,
+      "expectedRecurringAmount": "$169.15",
+      "lastReconcileError": null,
+      "lastReconciledAt": "2026-11-09T23:28:22.179+00:00",
+      "stripeCouponId": "htc_fnd_pct_15_520114d43ab74bf6bd",
+      "stripePriceId": "price_1UZj6YErUqJH7nktmVMM7sgB",
+      "audit": [
+        {
+          "at": "2026-11-09T23:28:20.884Z",
+          "by": "jennifer@hellotocheers.com",
+          "kind": "percent_off",
+          "action": "created",
+          "status": "active"
+        },
+        {
+          "at": "2026-11-09T23:28:22.179Z",
+          "error": null,
+          "action": "reconciled",
+          "deferred": false
+        },
+        {
+          "at": "2026-11-09T23:28:23.934Z",
+          "by": "jennifer@hellotocheers.com",
+          "action": "ended",
+          "reason": "stripe proof cleanup"
+        }
+      ],
+      "createdAt": "2026-11-09T23:28:20.913276+00:00"
+    },
+    {
+      "id": "e7298ce5-0639-421e-a9ce-364c046b7335",
+      "kind": "tier_freeze",
+      "status": "ended",
+      "percentOff": null,
+      "amountOffCents": null,
+      "fixedRateCents": null,
+      "frozenListAmountCents": null,
+      "planScope": "all",
+      "survivesTierChange": true,
+      "preventsTierUpgrade": true,
+      "protectsBaseRate": false,
+      "effectiveAt": "2026-11-09T23:27:27+00:00",
+      "expiresAt": "2026-11-12T23:27:27+00:00",
+      "durationBillingCycles": null,
+      "reason": "Phase 5 tier freeze clean",
+      "internalNotes": null,
+      "customerFacingLabel": null,
+      "createdByEmail": "jennifer@hellotocheers.com",
+      "reconciliationStatus": "pending",
+      "expectedRecurringAmountCents": 19900,
+      "expectedRecurringAmount": "$199",
+      "lastReconcileError": null,
+      "lastReconciledAt": null,
+      "stripeCouponId": null,
+      "stripePriceId": null,
+      "audit": [
+        {
+          "at": "2026-11-09T23:27:28.300Z",
+          "by": "jennifer@hellotocheers.com",
+          "kind": "tier_freeze",
+          "action": "created",
+          "status": "active"
+        },
+        {
+          "at": "2026-11-09T23:27:29.187Z",
+          "by": "jennifer@hellotocheers.com",
+          "action": "ended",
+          "reason": "tf cleanup"
+        }
+      ],
+      "createdAt": "2026-11-09T23:27:28.319077+00:00"
+    },
+    {
+      "id": "6004daba-edbb-4320-bec4-d89e8a19f1a6",
+      "kind": "fixed_rate",
+      "status": "ended",
+      "percentOff": null,
+      "amountOffCents": null,
+      "fixedRateCents": 14900,
+      "frozenListAmountCents": null,
+      "planScope": "all",
+      "survivesTierChange": true,
+      "preventsTierUpgrade": false,
+      "protectsBaseRate": false,
+      "effectiveAt": "2026-11-09T23:27:23+00:00",
+      "expiresAt": null,
+      "durationBillingCycles": null,
+      "reason": "Phase 5 fixed clean acceptance",
+      "internalNotes": null,
+      "customerFacingLabel": "Special pricing",
+      "createdByEmail": "jennifer@hellotocheers.com",
+      "reconciliationStatus": "pending",
+      "expectedRecurringAmountCents": 14900,
+      "expectedRecurringAmount": "$149",
+      "lastReconcileError": null,
+      "lastReconciledAt": "2026-11-09T23:27:25.256+00:00",
+      "stripeCouponId": null,
+      "stripePriceId": "price_1Ua1xCErUqJH7nkt661ug3Zp",
+      "audit": [
+        {
+          "at": "2026-11-09T23:27:24.230Z",
+          "by": "jennifer@hellotocheers.com",
+          "kind": "fixed_rate",
+          "action": "created",
+          "status": "active"
+        },
+        {
+          "at": "2026-11-09T23:27:25.256Z",
+          "error": null,
+          "action": "reconciled",
+          "deferred": false
+        },
+        {
+          "at": "2026-11-09T23:27:26.326Z",
+          "by": "jennifer@hellotocheers.com",
+          "action": "ended",
+          "reason": "fixed cleanup"
+        }
+      ],
+      "createdAt": "2026-11-09T23:27:24.275188+00:00"
+    },
+    {
+      "id": "59b2938f-338a-4894-b964-3b1dbd1ece10",
+      "kind": "percent_off",
+      "status": "ended",
+      "percentOff": 15,
+      "amountOffCents": null,
+      "fixedRateCents": null,
+      "frozenListAmountCents": null,
+      "planScope": "all",
+      "survivesTierChange": true,
+      "preventsTierUpgrade": false,
+      "protectsBaseRate": false,
+      "effectiveAt": "2026-11-09T23:27:18+00:00",
+      "expiresAt": null,
+      "durationBillingCycles": null,
+      "reason": "Phase 5 clean-venue acceptance",
+      "internalNotes": null,
+      "customerFacingLabel": "Special pricing",
+      "createdByEmail": "jennifer@hellotocheers.com",
+      "reconciliationStatus": "pending",
+      "expectedRecurringAmountCents": 16915,
+      "expectedRecurringAmount": "$169.15",
+      "lastReconcileError": null,
+      "lastReconciledAt": "2026-11-09T23:27:20.546+00:00",
+      "stripeCouponId": "htc_fnd_pct_15_59b2938f338a4894b9",
+      "stripePriceId": "price_1UZj6YErUqJH7nktmVMM7sgB",
+      "audit": [
+        {
+          "at": "2026-11-09T23:27:19.312Z",
+          "by": "jennifer@hellotocheers.com",
+          "kind": "percent_off",
+          "action": "created",
+          "status": "active"
+        },
+        {
+          "at": "2026-11-09T23:27:20.546Z",
+          "error": null,
+          "action": "reconciled",
+          "deferred": false
+        },
+        {
+          "at": "2026-11-09T23:27:22.421Z",
+          "by": "jennifer@hellotocheers.com",
+          "action": "ended",
+          "reason": "Phase 5 clean acceptance cleanup"
+        }
+      ],
+      "createdAt": "2026-11-09T23:27:19.33676+00:00"
+    }
+  ]
+}

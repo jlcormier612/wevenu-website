@@ -1,0 +1,2 @@
+clientEmail,eventDate,vendorBusinessName,category,vendorEmail,arrivalTime,setupLocation,sourceId
+spec.ops.client@example.invalid,2026-10-30,SpecOps Catering Co,Caterer,spec.caterer@example.invalid,14:00,Ballroom,spec-asg-001

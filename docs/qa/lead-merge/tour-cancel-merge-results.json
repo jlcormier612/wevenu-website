@@ -1,0 +1,46 @@
+{
+  "pass": 8,
+  "fail": 0,
+  "checks": [
+    {
+      "name": "leads",
+      "pass": true,
+      "detail": "0961ed0d-01c7-4b19-986d-d0d079395efd/f411cfe9-f5c4-4c1e-a019-f9f083b164af"
+    },
+    {
+      "name": "two_tours",
+      "pass": true,
+      "detail": "keep=699478dd-412d-4a15-9b02-01ddc4a4490e cancel=ebd3ab84-e47b-47a9-87cc-0d2a01905697"
+    },
+    {
+      "name": "preview_lists_both_tours",
+      "pass": true,
+      "detail": "section ok"
+    },
+    {
+      "name": "cancel_checkboxes",
+      "pass": true,
+      "detail": "count=2"
+    },
+    {
+      "name": "merged_nav",
+      "pass": true,
+      "detail": "https://app.sandbox.hellotocheers.com/leads/0961ed0d-01c7-4b19-986d-d0d079395efd"
+    },
+    {
+      "name": "kept_tour_active",
+      "pass": true,
+      "detail": "{\"id\":\"699478dd-412d-4a15-9b02-01ddc4a4490e\",\"lead_id\":\"0961ed0d-01c7-4b19-986d-d0d079395efd\",\"status\":\"scheduled\"}"
+    },
+    {
+      "name": "cancelled_via_merge",
+      "pass": true,
+      "detail": "{\"id\":\"ebd3ab84-e47b-47a9-87cc-0d2a01905697\",\"lead_id\":\"0961ed0d-01c7-4b19-986d-d0d079395efd\",\"status\":\"cancelled\"}"
+    },
+    {
+      "name": "slot_released_rebookable",
+      "pass": true,
+      "detail": "e6b2220c-dbc9-433b-9969-fd5a495cc17a"
+    }
+  ]
+}

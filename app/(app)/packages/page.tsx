@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 
 import Link from "next/link";
-import { Plus } from "lucide-react";
 
+import { CollectionBackLink } from "@/components/library/collection-back-link";
+import { LibraryHowItWorks } from "@/components/library/library-guidance";
 import { PackageList } from "@/components/packages/package-list";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { Button } from "@/components/ui/button";
@@ -23,16 +24,22 @@ export default async function PackagesPage() {
     .filter((k) => !presentKeys.has(k)) as PackageStarterMasterKey[];
 
   return (
-    <div className="htc-hospitality-page space-y-6">
-      <div className="htc-hospitality-heading htc-hospitality-intro-accent flex items-start justify-between gap-4">
+    <div className="htc-hospitality-page space-y-4 sm:space-y-6">
+      <CollectionBackLink href="/library" label="Templates" />
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
         <PageHeader
           title="Packages"
-          description="Define your venue offerings. Customize starters, set pricing, then use them on invoices and Event Orders."
+          description="Priced sales packages with inclusions for booking and Selected Package snapshots. Distinct from Event Order Templates (delivery build sheets) — this is not where you author or send an Event Order."
+          actions={
+            <Button type="button" render={<Link href="/packages/new" />}>
+              + New Package
+            </Button>
+          }
         />
-        <Button type="button" render={<Link href="/packages/new" />} className="shrink-0">
-          <Plus className="mr-1 h-4 w-4" /> Add Package
-        </Button>
       </div>
+      <LibraryHowItWorks tone="calm">
+        Package names, pricing, and inclusion lines are authored here for what you sell. Inclusions are written on the package itself — they are not selected from the Offerings catalog. Archiving hides a package from the active list without sending anything to a client. For event delivery lists and client choice groups, use Event Order Templates.
+      </LibraryHowItWorks>
       <PackageList initialPackages={packages} missingStarterKeys={missingStarterKeys} />
     </div>
   );

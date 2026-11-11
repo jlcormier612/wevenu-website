@@ -9,6 +9,9 @@ type PrefKey = keyof Pick<NotificationPreferences,
   | "prefNewLead"
   | "prefMessageReceived"
   | "prefClientSubmittedInfo"
+  | "prefTourScheduled"
+  | "prefTourConfirmed"
+  | "prefProposalAccepted"
   | "prefPaymentFailed"
   | "prefPaymentOverdue"
   | "prefPaymentReceived"
@@ -50,6 +53,24 @@ const BUCKETS: { title: string; rows: PrefRow[] }[] = [
         emoji: "📋",
         label: "Client submitted important information",
         desc:  "A client submits their final details or planning questionnaire.",
+      },
+      {
+        key:   "prefTourScheduled",
+        emoji: "🗓️",
+        label: "Tour scheduled",
+        desc:  "A new tour is scheduled with a client or lead.",
+      },
+      {
+        key:   "prefTourConfirmed",
+        emoji: "✅",
+        label: "Tour confirmed",
+        desc:  "A client or lead confirms their scheduled tour.",
+      },
+      {
+        key:   "prefProposalAccepted",
+        emoji: "🎉",
+        label: "Proposal accepted",
+        desc:  "A client accepts a proposal.",
       },
     ],
   },

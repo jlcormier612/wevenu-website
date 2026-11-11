@@ -1,0 +1,42 @@
+{
+  "run": "INVSHRMVSRL4YZ",
+  "expectedSha": "6f06bf08bb181910e93788c51cfcb23a7ef32afc",
+  "prefix": "INVSHR-INVSHRMVSRL4YZ-",
+  "eventId": "9bee959c-1917-4908-b8a6-f577312ebc24",
+  "items": [
+    {
+      "id": "24344d21-3866-49dd-a9cb-d811a66d0098",
+      "name": "INVSHR-INVSHRMVSRL4YZ-Included Linen",
+      "is_included": true,
+      "unit_price": null,
+      "client_selectable": false
+    },
+    {
+      "id": "d7e846d8-766a-4c34-9103-8c8e33ef4720",
+      "name": "INVSHR-INVSHRMVSRL4YZ-Dance Floor",
+      "is_included": false,
+      "unit_price": 150,
+      "client_selectable": false
+    },
+    {
+      "id": "652482de-5735-4bbc-a3a5-8e9213be0a4a",
+      "name": "INVSHR-INVSHRMVSRL4YZ-DJ Band Table",
+      "is_included": false,
+      "unit_price": 200,
+      "client_selectable": false
+    }
+  ],
+  "reviewUrl": "https://app.sandbox.hellotocheers.com/p/9f404659d854a347f53f5ebe25b5c0c47558d7b7b7f7618f97c949e38a3e3e84?view=inventory#inventory",
+  "sessionsAfter": [
+    {
+      "access_token": "9f404659d854a347f53f5ebe25b5c0c47558d7b7b7f7618f97c949e38a3e3e84",
+      "access_level": "couple",
+      "label": "Couple"
+    },
+    {
+      "access_token": "invshr_fin_invshrmvsrl4yz_5d48f692",
+      "access_level": "financial",
+      "label": "Payment"
+    }
+  ]
+}

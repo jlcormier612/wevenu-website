@@ -7,6 +7,16 @@
  *   Stage 1 "new"       — warm guidance, zero conclusions
  *   Stage 2 "observing" — factual observations, no scores
  *   Stage 3 "insights"  — dimension dots + momentum summary
+ *
+ * Authoritative lifecycle facts (contract / Booked) override weak score
+ * language so a signed relationship is never described as "Still early".
+ *
+ * Authoritative FollowUpTourState (upcoming / completed) prevents a real
+ * tour milestone from being erased by the young-lead heuristic — without
+ * inventing tour sentiment or recommending outreach that contradicts SILENCE.
+ *
+ * Human-facing name+verb copy must be built in string helpers. Adjacent
+ * JSX interpolation plus a following verb drops the space (Wilma/Wendy class).
  */
 
 import { LuvHeart } from "@/components/dashboard/luv-widget";
@@ -14,10 +24,30 @@ import {
   generateMomentumLanguage,
   getConfidenceStage,
   getObservations,
-  scoreDescriptor,
+  newLeadBeginningSentence,
+  stillEarlySentence,
+  upcomingTourThoughtsSentence,
 } from "@/lib/leads/momentum";
+import { venueFacingCompletedTourThoughts } from "@/lib/luv/venue-facing-tour-thoughts";
+import {
+  snapshotCommitmentDescriptor,
+  snapshotForcesInsightsStage,
+  snapshotInterestDescriptor,
+  snapshotResponsivenessDescriptor,
+  type SnapshotLifecycleFacts,
+} from "@/lib/leads/snapshot-lifecycle";
+import type { FollowUpTourState } from "@/lib/luv/follow-up-workflow-context";
 
 const DUSTY_ROSE = "#D8A7AA";
+
+const EMPTY_LIFECYCLE: SnapshotLifecycleFacts = {
+  isBooked: false,
+  contractStatus: null,
+  venueSigned: false,
+  requiredClientTotal: 1,
+  requiredClientSigned: 0,
+  proposalSent: false,
+};
 
 // ── Shared card shell ──────────────────────────────────────────────────────────
 
@@ -66,12 +96,76 @@ function NewInquiryView({ firstName }: { firstName: string }) {
       <div className="space-y-1.5">
         <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">New Lead</p>
         <p className="text-sm text-heading leading-relaxed">
-          {firstName} is just beginning their planning journey. There isn&apos;t enough activity yet for me to draw any conclusions.
+          {newLeadBeginningSentence(firstName)}
         </p>
       </div>
 
       <LuvCallout>
         No action needed yet — but leads who receive a warm, personal response early on tend to engage more deeply. This is a great moment to introduce yourself and share what makes your venue special.
+      </LuvCallout>
+    </LuvCard>
+  );
+}
+
+// ── Tour milestone (quiet, factual — no invented sentiment) ───────────────────
+
+function CompletedTourView({
+  firstName,
+  internalTourNotes,
+}: {
+  firstName: string;
+  internalTourNotes?: string | null;
+}) {
+  return (
+    <LuvCard>
+      <LuvCardHeader />
+
+      <div className="space-y-1.5">
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Tour on record</p>
+        <p className="text-sm text-heading leading-relaxed">
+          {venueFacingCompletedTourThoughts(firstName, internalTourNotes)}
+        </p>
+      </div>
+
+      <LuvCallout>
+        No outreach needed from me right now — I&apos;ll speak up if a concrete customer question or request needs a reply.
+      </LuvCallout>
+    </LuvCard>
+  );
+}
+
+function UpcomingTourView({
+  firstName,
+  scheduledAt,
+}: {
+  firstName: string;
+  scheduledAt: string;
+}) {
+  const when = (() => {
+    try {
+      return new Date(scheduledAt).toLocaleString("en-US", {
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+      });
+    } catch {
+      return null;
+    }
+  })();
+  return (
+    <LuvCard>
+      <LuvCardHeader />
+
+      <div className="space-y-1.5">
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Tour scheduled</p>
+        <p className="text-sm text-heading leading-relaxed">
+          {upcomingTourThoughtsSentence(firstName, when)}
+        </p>
+      </div>
+
+      <LuvCallout>
+        Treat this as an upcoming visit — not a completed tour, and not a brand-new inquiry with no history.
       </LuvCallout>
     </LuvCard>
   );
@@ -111,7 +205,7 @@ function ObservingView({
           </ul>
         ) : (
           <p className="text-sm text-muted-foreground leading-relaxed">
-            It&apos;s still early. I&apos;ll share more as {firstName} engages.
+            {stillEarlySentence(firstName)}
           </p>
         )}
       </div>
@@ -158,12 +252,14 @@ function InsightsView({
   responsivenessScore,
   commitmentScore,
   daysSinceContact,
+  lifecycle,
 }: {
   firstName: string;
   interestScore: number;
   responsivenessScore: number;
   commitmentScore: number;
   daysSinceContact: number | null;
+  lifecycle: SnapshotLifecycleFacts;
 }) {
   const summary = generateMomentumLanguage(firstName, commitmentScore, responsivenessScore, interestScore, daysSinceContact);
 
@@ -172,9 +268,24 @@ function InsightsView({
       <LuvCardHeader label="Relationship Snapshot" />
 
       <div>
-        <DimensionRow label="Interest" score={interestScore} descriptor={scoreDescriptor("interest", interestScore)} color="#C7A66A" />
-        <DimensionRow label="Responsiveness" score={responsivenessScore} descriptor={scoreDescriptor("responsiveness", responsivenessScore)} color="#5D6F5D" />
-        <DimensionRow label="Commitment" score={commitmentScore} descriptor={scoreDescriptor("commitment", commitmentScore)} color="#B9D1C2" />
+        <DimensionRow
+          label="Interest"
+          score={interestScore}
+          descriptor={snapshotInterestDescriptor(lifecycle, interestScore)}
+          color="#C7A66A"
+        />
+        <DimensionRow
+          label="Responsiveness"
+          score={responsivenessScore}
+          descriptor={snapshotResponsivenessDescriptor(responsivenessScore)}
+          color="#5D6F5D"
+        />
+        <DimensionRow
+          label="Commitment"
+          score={commitmentScore}
+          descriptor={snapshotCommitmentDescriptor(lifecycle, commitmentScore)}
+          color="#B9D1C2"
+        />
       </div>
 
       {summary && <LuvCallout>{summary}</LuvCallout>}
@@ -191,6 +302,9 @@ export function LeadMomentumCard({
   interestScore,
   lastContactedAt,
   createdAt,
+  lifecycle = EMPTY_LIFECYCLE,
+  tour = { kind: "none" },
+  internalTourNotes = null,
 }: {
   firstName: string;
   commitmentScore: number;
@@ -198,6 +312,12 @@ export function LeadMomentumCard({
   interestScore: number;
   lastContactedAt?: string | null;
   createdAt?: string | null;
+  /** Authoritative contract / Booked facts — presentation precedence only. */
+  lifecycle?: SnapshotLifecycleFacts;
+  /** Authoritative tour workflow state from tour_appointments. */
+  tour?: FollowUpTourState;
+  /** Venue-private tour_appointments.notes — never for customer drafts. */
+  internalTourNotes?: string | null;
 }) {
   const daysSince = lastContactedAt
     ? Math.floor((Date.now() - new Date(lastContactedAt).getTime()) / 86_400_000)
@@ -209,7 +329,54 @@ export function LeadMomentumCard({
 
   const stage = getConfidenceStage(interestScore, responsivenessScore, commitmentScore);
 
+  // Contract / booked / authoritative proposal-sent force insights — never
+  // describe those relationships with "new" / "just beginning" shells.
+  // Real tour milestones still win over proposal-only when there is no
+  // stronger contract/booked fact (tour is a concrete visit milestone).
+  const lifecycleMilestoneForcesInsights = snapshotForcesInsightsStage(lifecycle);
+  const proposalOnly =
+    lifecycle.proposalSent === true
+    && !lifecycle.isBooked
+    && !lifecycle.contractStatus;
+
+  if (lifecycleMilestoneForcesInsights && !proposalOnly) {
+    return (
+      <InsightsView
+        firstName={firstName}
+        interestScore={interestScore}
+        responsivenessScore={responsivenessScore}
+        commitmentScore={commitmentScore}
+        daysSinceContact={daysSince}
+        lifecycle={lifecycle}
+      />
+    );
+  }
+
+  // Real tour milestone > young-lead heuristic. Never Stage-1 NEW for
+  // upcoming/completed tours; never invent sentiment about the visit.
+  if (tour.kind === "completed") {
+    return <CompletedTourView firstName={firstName} internalTourNotes={internalTourNotes} />;
+  }
+  if (tour.kind === "upcoming") {
+    return <UpcomingTourView firstName={firstName} scheduledAt={tour.scheduledAt} />;
+  }
+
+  // Authoritative proposal sent (no tour / no contract) — never "New Lead".
+  if (proposalOnly || lifecycleMilestoneForcesInsights) {
+    return (
+      <InsightsView
+        firstName={firstName}
+        interestScore={interestScore}
+        responsivenessScore={responsivenessScore}
+        commitmentScore={commitmentScore}
+        daysSinceContact={daysSince}
+        lifecycle={lifecycle}
+      />
+    );
+  }
+
   // Force "new" stage if the lead is very young regardless of score thresholds
+  // (only for relationships with no upcoming/completed tour).
   const effectiveStage = (daysOld !== null && daysOld <= 3 && stage === "observing") ? "new" : stage;
 
   if (effectiveStage === "new") {
@@ -235,6 +402,7 @@ export function LeadMomentumCard({
       responsivenessScore={responsivenessScore}
       commitmentScore={commitmentScore}
       daysSinceContact={daysSince}
+      lifecycle={lifecycle}
     />
   );
 }

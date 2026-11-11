@@ -48,9 +48,12 @@ function hasEventKey(
  */
 export async function bindCrmProductVenueId(input: {
   productVenueId: string;
+  /** Purchase relationship chosen by session/subscription match. Wins over email. */
+  relationshipId?: string | null;
   ownerEmail?: string | null;
   stripeCustomerId?: string | null;
   stripeSubscriptionId?: string | null;
+  stripeCheckoutSessionId?: string | null;
 }): Promise<{ ok: true; relationshipId: string; alreadyBound: boolean } | { ok: false; reason: string }> {
   const productVenueId = input.productVenueId.trim();
   if (!productVenueId) return { ok: false, reason: "missing_venue_id" };
@@ -60,20 +63,32 @@ export async function bindCrmProductVenueId(input: {
       store.relationships.find((r) => r.productSync?.venueId?.trim() === productVenueId) ??
       null;
 
-    if (!relationship && input.ownerEmail?.trim()) {
-      const email = input.ownerEmail.trim().toLowerCase();
-      relationship =
-        store.relationships.find((r) => r.owner.email?.trim().toLowerCase() === email) ?? null;
+    if (!relationship && input.relationshipId?.trim()) {
+      const id = input.relationshipId.trim();
+      relationship = store.relationships.find((r) => r.id === id) ?? null;
     }
-    if (!relationship && input.stripeCustomerId?.trim()) {
-      const cid = input.stripeCustomerId.trim();
+    if (!relationship && input.stripeCheckoutSessionId?.trim()) {
+      const sessionId = input.stripeCheckoutSessionId.trim();
       relationship =
-        store.relationships.find((r) => r.stripeCustomerId?.trim() === cid) ?? null;
+        store.relationships.find((r) => r.stripeCheckoutSessionId?.trim() === sessionId) ??
+        null;
     }
     if (!relationship && input.stripeSubscriptionId?.trim()) {
       const sid = input.stripeSubscriptionId.trim();
       relationship =
         store.relationships.find((r) => r.stripeSubscriptionId?.trim() === sid) ?? null;
+    }
+    if (!relationship && input.stripeCustomerId?.trim()) {
+      const cid = input.stripeCustomerId.trim();
+      const matches = store.relationships.filter((r) => r.stripeCustomerId?.trim() === cid);
+      if (matches.length === 1) relationship = matches[0];
+    }
+    if (!relationship && input.ownerEmail?.trim()) {
+      const email = input.ownerEmail.trim().toLowerCase();
+      const matches = store.relationships.filter(
+        (r) => r.owner.email?.trim().toLowerCase() === email,
+      );
+      if (matches.length === 1) relationship = matches[0];
     }
 
     if (!relationship) return null;

@@ -125,7 +125,7 @@ export async function POST(
 
   return NextResponse.json({
     ok: true,
-    loginUrl: productPostActivationLoginUrl(),
+    loginUrl: productPostActivationLoginUrl(result.relationship.owner.email),
     venueName: result.relationship.venue.name,
   });
 }

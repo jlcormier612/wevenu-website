@@ -1,0 +1,268 @@
+PASS Serving expected SHA — image=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:dfabcca2107558710b72a9c6efd650c7733ad174 expected=dfabcca21075
+PASS A Setup Profiles: Event Order template label — Starting Event Order template
+Select a starting Event Order template…
+Ceremony + Reception
+Wedding Reception
+
+Configured starting point: Ceremony + Reception. When a client is booked with this profile, the Event Order draft is prepared automatically from this Event Order template. It is not shared, 
+PASS A Setup Profiles: inventory template label — Starting inventory template
+Select a starting inventory template…
+Standard Wedding — Ceremony + Reception
+Standard Wedding — Reception Only
+TemplatesMethodology Empty Inventory
+
+Configured starting point: Standard Wedding — Ceremony + Reception. When a client is booked with this profile, the event i
+PASS A Setup Profiles: no starting package option — old package option absent
+PASS A Setup Profiles: no starting offering option — old offering option absent
+PASS D Library: Packages distinct from Event Order Templates — Packages card copy present
+PASS D Inventory Templates: apply ≠ share copy — OVERVIEW
+
+Dashboard
+
+YOUR RELATIONSHIPS
+
+Leads
+Clients
+Vendors
+
+SCHEDULING
+
+Calendar
+Tours
+
+COMMUNICATION
+
+Inbox
+Automations
+
+LIBRARY
+
+Templates
+Documents
+
+FINANCIALS
+
+Contracts
+Payments
+
+TO DO’S
+
+Task Center
+Requests
+
+YOUR VENUE
+
+Setup
+Settings
+Guidance
+Venue Guide
+Reports
+Help 
+PASS B Overview: readiness narrative for Inventory/EO — Event setup
+
+Using: Standard Wedding Setup
+
+Review your event's standard setup, make any event-specific changes, and release the prepared experience to the client portal. Invite the client separately when you're ready. Questionnaires use authorized send when staff choose — not an automated schedule. Inventory and Event Order rows here are readiness for portal release — share, client choices, finalize, and invoice run from the event Inventory and Event Order tabs.
+
+0 need a decision · 6 included 
+PASS B Open Inventory navigates to inventory tab — https://app.sandbox.hellotocheers.com/clients/b4e2764b-be33-4579-89e3-0c8e4a6dd5be#inventory
+PASS B Open Event Order reaches commercial workspace — strip=1 url=https://app.sandbox.hellotocheers.com/clients/b4e2764b-be33-4579-89e3-0c8e4a6dd5be#event-order
+PASS C Commercial workspace intro present — Commercial workspace
+
+Event-level home for commercial progress. Inventory selection and client-selectable choices are separate workflows. Applying a template is not sharing an Event Order; client submission is not venue confirmation; finalizing is distinct from sharing; invoice and payment plan follow after the agreed Event Order. Use the chips to open the existing workflow — actions stay on those
+PASS C Intro: Inventory tab + no invoice from setup — Commercial workspace
+
+Event-level home for commercial progress. Inventory selection and client-selectable choices are separate workflows. Applying a template is not sharing an Event Order; client submission is not venue confirmation; finalizing is distinct from sharing; invoice and payment plan foll
+PASS C Client selections panel present (choices runtime) — count=1
+PASS C Event Order panel present — count=5
+PASS C Inventory tab available — OVERVIEW
+
+Dashboard
+
+YOUR RELATIONSHIPS
+
+Leads
+28
+Clients
+Vendors
+
+SCHEDULING
+
+Calendar
+Tours
+4
+
+COMMUNICATION
+
+Inbox
+Automations
+
+LIBRARY
+
+Templates
+Documents
+
+FINANCIALS
+
+Contracts
+13
+Payments
+13
+
+T
+PASS C Inventory tab remains separate from Event Order — inventory workspace without commercial EO strip
+PASS E Payments tab intact — OVERVIEW
+
+Dashboard
+
+YOUR RELATIONSHIPS
+
+Leads
+28
+Clients
+Vendors
+
+SCHEDULING
+
+Calendar
+Tours
+4
+
+COMMUNICATION
+
+Inbox
+Automations
+
+LIBRARY
+
+Templates
+Documents
+
+FINANCIALS
+
+Contracts
+13
+Payments
+13
+
+T
+PASS E Event Order retains invoice / payment language — finance handoff copy/controls visible without sending
+PASS E Portal section inventory reachable — B2P & Portal
+
+·
+
+Jen's Fancy Venue
+
+Jul 17, 2060
+
+Export my data
+5
+🏠
+Home
+✅
+Tasks
+9
+🕒
+Timeline
+📁
+Docs
+🗺️
+Floor Plan
+🪑
+Inventory
+1
+📋
+Order
+✅
+Choices
+💳
+Payments
+💬
+Messages
+🏛️
+Guide
+🤝
+Vendors
+Loading…
+Jen's Fancy 
+PASS E Portal section event-order reachable — B2P & Portal
+
+·
+
+Jen's Fancy Venue
+
+Jul 17, 2060
+
+Export my data
+5
+🏠
+Home
+✅
+Tasks
+9
+🕒
+Timeline
+📁
+Docs
+🗺️
+Floor Plan
+🪑
+Inventory
+1
+📋
+Order
+1
+✅
+Choices
+💳
+Payments
+💬
+Messages
+🏛️
+Guide
+🤝
+Vendors
+What you're receivi
+PASS E Portal section choices reachable — B2P & Portal
+
+·
+
+Jen's Fancy Venue
+
+Jul 17, 2060
+
+Export my data
+5
+🏠
+Home
+✅
+Tasks
+9
+🕒
+Timeline
+📁
+Docs
+🗺️
+Floor Plan
+🪑
+Inventory
+1
+📋
+Order
+1
+✅
+Choices
+💳
+Payments
+💬
+Messages
+1
+🏛️
+Guide
+🤝
+Vendors
+Your Choices
+
+Sel
+PASS C Commercial intro visible at 390 — 390 viewport
+ALL PASS 22/22

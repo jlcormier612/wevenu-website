@@ -13,7 +13,6 @@ import {
   Lock,
   Pencil,
   RotateCcw,
-  Send,
   Trash2,
   X,
 } from "lucide-react";
@@ -34,12 +33,16 @@ import {
 } from "@/app/(app)/contracts/actions";
 import { SignForm } from "@/app/sign/[token]/sign-form";
 import { ArtifactReviewOverlay } from "@/components/artifacts/artifact-review-overlay";
+import { ContractBuilder } from "@/components/contracts/contract-builder";
 import { ContractStatusBadge } from "@/components/contracts/contract-status-badge";
 import { ContractSigningArtifact } from "@/components/contracts/contract-signing-artifact";
+import { StarterPolicyPlaceholderDialog } from "@/components/contracts/starter-policy-placeholder-dialog";
 import { BusinessAssetActionRow, BusinessAssetHeader } from "@/components/business-assets/asset-header";
+import { ContextualLuvObservationsPanel } from "@/components/luv/contextual-observations-panel";
+import type { LuvObservation } from "@/lib/luv/types";
 import type { WaitingOn } from "@/components/business-assets/waiting-state";
 import { ActivityTimeline } from "@/components/leads/activity-timeline";
-import { ShareDialog } from "@/components/sharing/share-dialog";
+import { ContractResendDialog } from "@/components/contracts/contract-resend-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -49,12 +52,15 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { formatContractDate } from "@/lib/contracts/constants";
+import { venueCalendarDateFromValue } from "@/lib/venue/timezone";
 import { resolveContractBrandPresentation, type ContractBrandingSnapshot } from "@/lib/contracts/branding";
+import { renderExecutedContractContent } from "@/lib/contracts/executed-content";
 import {
   anyClientHasSigned,
   CONTRACT_SIGNATURE_CONSENT_TEXT,
   deriveContractSigningUiState,
 } from "@/lib/contracts/signers";
+import { resolveContractBackNavigation, resolveContractSetupPaymentsHref } from "@/lib/contracts/return-path";
 import type { ContractStatus, ContractWithDetails } from "@/lib/contracts/types";
 import {
   formatVersionLabel,
@@ -62,6 +68,8 @@ import {
   type ContractVersionEntry,
 } from "@/lib/contracts/version-lineage";
 import { buildMergeData, mergeContent } from "@/lib/message-templates/merge";
+import type { Client } from "@/lib/clients/types";
+import type { ClientContact } from "@/lib/contacts/types";
 
 const CONTRACT_WAITING_ON: Record<ContractStatus, WaitingOn> = {
   draft: "venue", sent: "client", signed: "completed", cancelled: "none", expired: "none",
@@ -71,22 +79,40 @@ export function ContractDetail({
   contract,
   finalized,
   venueName,
+  venueTimezone = null,
   venueBrand = null,
   versionFamily = [],
   initialReview = false,
+  draftClients = [],
+  contactsByClientId = {},
+  contextualObservations = [],
+  returnTo = null,
+  leadId = null,
+  relationshipBooked = false,
 }: {
   contract: ContractWithDetails;
   finalized: boolean;
   venueName: string;
+  venueTimezone?: string | null;
   venueBrand?: ContractBrandingSnapshot | null;
   versionFamily?: ContractVersionEntry[];
   initialReview?: boolean;
+  draftClients?: Client[];
+  contactsByClientId?: Record<string, ClientContact[]>;
+  contextualObservations?: LuvObservation[];
+  /** Originating workflow path (Lead / Client Workspace / Contracts). */
+  returnTo?: string | null;
+  /** Originating lead when commercial customer came from a lead journey. */
+  leadId?: string | null;
+  /** True when events.booked_at is set — venue booking rule satisfied. */
+  relationshipBooked?: boolean;
 }) {
   const router = useRouter();
   const [editing, setEditing] = React.useState(false);
-  const [reviewOpen, setReviewOpen] = React.useState(initialReview);
+  const [reviewOpen, setReviewOpen] = React.useState(initialReview && contract.status !== "draft");
   const [releaseMessage, setReleaseMessage] = React.useState("");
   const [sendPending, startSend] = React.useTransition();
+  const [placeholderWarningOpen, setPlaceholderWarningOpen] = React.useState(false);
   const [editTitle, setEditTitle] = React.useState(contract.title);
   const [editContent, setEditContent] = React.useState(contract.content);
   const [savePending, startSave] = React.useTransition();
@@ -117,33 +143,39 @@ export function ContractDetail({
     expiresAt: contract.expiresAt,
   });
 
-  const primaryClientSigner = requiredClients[0];
-
-  const shareRecipient = {
-    name: primaryClientSigner?.signerName ?? contract.clientName ?? "the client",
-    contact: primaryClientSigner?.signerEmail ?? contract.clientEmail,
-    relationshipLabel: "Client",
-  };
   const shareMergeData = buildMergeData({ venueName, clientName: contract.clientName ?? "", coordinatorName: venueName, eventDate: contract.eventDate });
-  const shareDefaultMessage = mergeContent(
+  const resendDefaultMessage = mergeContent(
     `{{venue_name}} has sent you "${contract.title}" to review and sign.`,
     shareMergeData,
   );
 
-  const canEditContent = contract.status === "draft" && !venueSigned && !clientSigned;
+  const canEditContent =
+    (contract.status === "draft" || contract.status === "sent") && !clientSigned;
   /**
-   * Reopen-for-editing is retired after venue signature (content immutable).
-   * Kept false so the action cannot circumvent DB immutability by clearing venue signed_at.
+   * Reopen-for-editing is retired after a client signature (content immutable).
+   * Kept false so the action cannot circumvent DB immutability.
    */
   const canReopen = false;
-  /** Create New Version once venue signature locks content (released / partial / fully signed). */
+  /** Create New Version once a client signature locks content (or fully executed). */
   const canCreateNewVersion = venueSigned || clientSigned || contract.status === "signed";
+  const awaitingVenueSignature =
+    contract.status === "sent" && !venueSigned && requiredClients.length > 0
+      ? requiredClientSigned >= requiredClients.length
+      : contract.status === "sent" && !venueSigned && clientSigned;
 
   const currentVersion = versionFamily.find((v) => v.current) ?? null;
   const basedOn = currentVersion?.amendsContractId
     ? versionFamily.find((v) => v.id === currentVersion.amendsContractId) ?? null
     : null;
   const versionNumber = currentVersion?.versionNumber ?? 1;
+  /** Multi-version lineage or an amend parent — keep the history card. */
+  const hasMeaningfulVersionHistory = versionFamily.length > 1 || Boolean(basedOn);
+  /** Fully executed V1 alone: fold "Version 1" into Signatures; drop the redundant card. */
+  const isFullyExecutedSingleVersion =
+    contract.status === "signed" && !hasMeaningfulVersionHistory;
+  const showStandaloneVersionHistory =
+    hasMeaningfulVersionHistory ||
+    ((versionFamily.length > 0 || Boolean(basedOn)) && !isFullyExecutedSingleVersion);
 
   function handleSaveEdit() {
     startSave(async () => {
@@ -191,7 +223,7 @@ export function ContractDetail({
   function handleReopen() {
     if (!confirm(
       "Reopen this contract for editing?\n\n"
-      + "No client has signed yet. You'll need to sign for the venue again and release it afterward.",
+      + "After any signature, content cannot be reopened in place. Use Create New Version instead.",
     )) return;
     startReopen(async () => {
       const result = await reopenContractForEditingAction(contract.id);
@@ -247,7 +279,13 @@ export function ContractDetail({
     startVenueSign(async () => {
       const result = await venueSignContractAction(contract.id, venueSignerName, venueConsent);
       if (result.ok) {
-        toast.success("Signed by venue. Ready to release to the client.");
+        if (result.newlyBooked && result.clientId) {
+          const qs = new URLSearchParams();
+          if (result.eventId) qs.set("eventId", result.eventId);
+          window.location.href = `/clients/${result.clientId}/booked?${qs.toString()}`;
+          return;
+        }
+        toast.success("Signed by venue. Contract is fully executed.");
         setShowVenueSign(false);
         router.refresh();
       } else {
@@ -265,16 +303,25 @@ export function ContractDetail({
     });
   }
 
-  function handleSendForSignature() {
+  function handleSendToClient(acknowledgePlaceholders = false) {
     startSend(async () => {
-      const result = await sendContractAction(contract.id, releaseMessage);
+      const result = await sendContractAction(
+        contract.id,
+        releaseMessage,
+        acknowledgePlaceholders ? { acknowledgePlaceholders: true } : undefined,
+      );
       if (result.ok) {
-        toast.success("Contract sent for signature.");
+        toast.success("Contract sent to the client for review.");
+        setPlaceholderWarningOpen(false);
         setReviewOpen(false);
         router.refresh();
-      } else {
-        toast.error(result.message ?? "Could not send for signature.");
+        return;
       }
+      if (result.code === "STARTER_POLICY_PLACEHOLDERS") {
+        setPlaceholderWarningOpen(true);
+        return;
+      }
+      toast.error(result.message ?? "Could not send to the client.");
     });
   }
 
@@ -284,16 +331,31 @@ export function ContractDetail({
     return { expired, text: expired ? `Expired ${Math.abs(days)}d ago` : `Expires ${formatContractDate(contract.expiresAt!)}`, soon: !expired && days <= 14 };
   })() : null;
 
+  const backNav = resolveContractBackNavigation({
+    returnTo,
+    clientId: contract.clientId,
+    clientName: contract.clientName,
+    leadId,
+    relationshipBooked,
+  });
+  const setupPaymentsHref = resolveContractSetupPaymentsHref({
+    returnTo,
+    leadId,
+    clientId: contract.clientId,
+    relationshipBooked,
+  });
+
   return (
     <div className="space-y-6">
+      <ContextualLuvObservationsPanel observations={contextualObservations} />
       {contract.executionOrigin === "external" ? (
         <div className="rounded-lg border border-border bg-muted/30 px-3 py-2.5 text-sm text-muted-foreground">
           This agreement was executed outside Hello to Cheers. It is recorded as signed for operations, but Hello to Cheers did not collect e-signatures for it. Use the attached Event document as the original signed file.
         </div>
       ) : null}
       <BusinessAssetHeader
-        backHref="/contracts"
-        backLabel="Contracts"
+        backHref={backNav.href}
+        backLabel={backNav.label}
         whatIsThis="Contract"
         title={contract.title}
         status={
@@ -307,7 +369,7 @@ export function ContractDetail({
               requiredClientSigned={requiredClientSigned}
               expiresAt={contract.expiresAt}
             />
-            {(venueSigned || clientSigned || contract.status === "signed" || finalized) && (
+            {(clientSigned || contract.status === "signed" || finalized) && (
               <Badge variant="muted"><Lock className="mr-1 h-3 w-3" />Locked</Badge>
             )}
             {finalized && (
@@ -315,27 +377,21 @@ export function ContractDetail({
             )}
           </div>
         }
-        waitingOn={CONTRACT_WAITING_ON[contract.status]}
+        waitingOn={awaitingVenueSignature ? "venue" : CONTRACT_WAITING_ON[contract.status]}
         lastUpdated={formatContractDate(contract.updatedAt.slice(0, 10))}
         relationship={contract.clientName ? { name: contract.clientName, href: `/clients/${contract.clientId}` } : null}
         primaryAction={
-          contract.status === "draft" && !venueSigned ? (
+          contract.status === "draft" ? null : awaitingVenueSignature ? (
             <Button size="sm" onClick={() => setShowVenueSign(true)}>
               <Pencil className="mr-1 h-3.5 w-3.5" />Sign as venue
             </Button>
-          ) : contract.status === "draft" && venueSigned ? (
-            <Button size="sm" onClick={() => { setReleaseMessage(shareDefaultMessage); setReviewOpen(true); }}>
-              <Send className="mr-1 h-3.5 w-3.5" />Review contract
-            </Button>
           ) : contract.status === "sent" ? (
-            <ShareDialog
+            <ContractResendDialog
               trigger={<Button size="sm" variant="outline"><RotateCcw className="mr-1 h-3.5 w-3.5" />Resend</Button>}
               title="Resend Contract"
-              recipient={shareRecipient}
-              whatHappensNext="They'll get another copy of their signing link — nothing about the contract changes."
-              defaultMessage={shareDefaultMessage}
-              sendLabel="Resend"
-              onSend={async (message) => resendContractAction(contract.id, message)}
+              signers={signers}
+              defaultMessage={resendDefaultMessage}
+              onResend={async (message, signerIds) => resendContractAction(contract.id, message, signerIds)}
               onSent={() => router.refresh()}
             />
           ) : contract.status === "signed" && !finalized ? (
@@ -349,14 +405,24 @@ export function ContractDetail({
           ) : null
         }
       />
-      {contract.status === "draft" && venueSigned && (
+      {contract.status === "draft" && (
         <p className="text-xs text-muted-foreground">
-          Status: Ready to send — release to the client when you&apos;re ready. This does not collect a deposit or mark them Booked.
+          Status: Draft — prepare the agreement, then send it to the client for review. This does not collect a deposit or mark them Booked.
+        </p>
+      )}
+      {contract.status === "sent" && !awaitingVenueSignature && (
+        <p className="text-xs text-muted-foreground">
+          Status: Sent to Client — the client is reviewing. You can still edit until they sign.
+        </p>
+      )}
+      {awaitingVenueSignature && (
+        <p className="text-xs text-muted-foreground">
+          Status: Awaiting Venue Signature — the client has signed. Review their signed version, then countersign. To make substantive changes instead, use Create New Version.
         </p>
       )}
       {contract.status === "signed" && !finalized && (
         <p className="text-xs text-muted-foreground">
-          Fully signed means all required signatures are complete. Finalize Contract generates the official PDF — separate from payment or booking.
+          Fully Executed means both parties have signed. Finalize Contract generates the official PDF — separate from payment or booking.
         </p>
       )}
       {expiry && (
@@ -364,19 +430,9 @@ export function ContractDetail({
       )}
       <BusinessAssetActionRow
         secondary={<>
-          {canEditContent && (
+          {canEditContent && contract.status !== "draft" && (
             <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
               <Pencil className="mr-1 h-3.5 w-3.5" /> Edit
-            </Button>
-          )}
-          {contract.status === "draft" && !venueSigned && (
-            <Button variant="outline" size="sm" onClick={() => setReviewOpen(true)}>
-              Review contract
-            </Button>
-          )}
-          {contract.status === "draft" && venueSigned && (
-            <Button variant="outline" size="sm" onClick={handleWithdrawVenueSign} disabled={withdrawPending}>
-              {withdrawPending ? <><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />Withdrawing…</> : "Withdraw signature"}
             </Button>
           )}
           {canReopen && (
@@ -404,13 +460,13 @@ export function ContractDetail({
         </>}
       />
 
-      {/* Venue sign form — same content the client will see */}
-      {showVenueSign && contract.status === "draft" && !venueSigned && (
+      {/* Venue countersign — after client has signed */}
+      {showVenueSign && awaitingVenueSignature && (
         <Card className="border-primary/30">
           <CardHeader>
             <CardTitle className="text-base">Sign as venue</CardTitle>
             <CardDescription>
-              Review the agreement below, then sign. Release to the client is only available after this step.
+              Review the exact version the client signed, then countersign to fully execute the agreement.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -449,39 +505,56 @@ export function ContractDetail({
 
       {/* Signers status */}
       {signers.length > 0 && (
-        <Card>
+        <Card data-testid="contract-signatures-card">
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">Signatures</CardTitle>
-            <CardDescription>{uiState.label}</CardDescription>
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 space-y-1">
+                <CardTitle className="text-base">Signatures</CardTitle>
+                <CardDescription>{uiState.label}</CardDescription>
+              </div>
+              {isFullyExecutedSingleVersion ? (
+                <p
+                  className="shrink-0 text-xs font-medium text-muted-foreground"
+                  data-testid="contract-version-compact"
+                >
+                  {formatVersionLabel(versionNumber)}
+                </p>
+              ) : null}
+            </div>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
-            {venueSigner && (
-              <div className="flex justify-between gap-4">
-                <span>Venue{venueSigner.signerName ? ` — ${venueSigner.signerName}` : ""}</span>
-                <span className="text-muted-foreground">
-                  {venueSigner.signedAt
-                    ? `Signed ${formatContractDate(venueSigner.signedAt.slice(0, 10))}`
-                    : "Awaiting venue signature"}
-                </span>
-              </div>
-            )}
             {clientSigners.map((s) => (
               <div key={s.id} className="flex justify-between gap-4">
                 <span>{s.signerName ?? "Client"}{s.signerEmail ? ` (${s.signerEmail})` : ""}</span>
                 <span className="text-muted-foreground">
                   {s.signedAt
-                    ? `Signed ${formatContractDate(s.signedAt.slice(0, 10))}`
-                    : contract.status === "sent" ? "Awaiting signature" : "Not yet released"}
+                    ? `Signed ${formatContractDate(venueCalendarDateFromValue(s.signedAt, venueTimezone))}`
+                    : contract.status === "sent" ? "Awaiting signature" : "Not yet sent"}
                 </span>
               </div>
             ))}
+            {venueSigner && (
+              <div className="flex justify-between gap-4">
+                <span>Venue{venueSigner.signerName ? ` — ${venueSigner.signerName}` : ""}</span>
+                <span className="text-muted-foreground">
+                  {venueSigner.signedAt
+                    ? `Signed ${formatContractDate(venueCalendarDateFromValue(venueSigner.signedAt, venueTimezone))}`
+                    : awaitingVenueSignature
+                      ? "Awaiting venue signature"
+                      : contract.status === "sent"
+                        ? "Signs after the client"
+                        : "Signs after the client"}
+                </span>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
 
-      {/* Version lineage — derived from amends_contract_id */}
-      {(versionFamily.length > 0 || basedOn) && (
-        <Card>
+      {/* Version lineage — derived from amends_contract_id.
+          Fully executed Version 1 alone is shown compactly on Signatures instead. */}
+      {showStandaloneVersionHistory && (
+        <Card data-testid="contract-version-history-card">
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Version history</CardTitle>
             <CardDescription>
@@ -512,6 +585,13 @@ export function ContractDetail({
                         {formatVersionLabel(v.versionNumber)} · {statusLabelForVersion(v)}
                       </a>
                     )}
+                    <div className="mt-0.5 text-xs text-muted-foreground">
+                      Created {formatContractDate(v.createdAt.slice(0, 10))}
+                      {v.signedAt
+                        ? ` · Signed ${formatContractDate(venueCalendarDateFromValue(v.signedAt, venueTimezone))}`
+                        : null}
+                      {v.finalized ? " · Finalized" : null}
+                    </div>
                   </div>
                   <div className="flex shrink-0 items-center gap-1.5">
                     {v.locked && <Badge variant="muted"><Lock className="mr-1 h-3 w-3" />Locked</Badge>}
@@ -563,28 +643,22 @@ export function ContractDetail({
               </span>
               <div>
                 <p className="text-sm font-medium text-foreground">
-                  Fully signed{contract.signerName ? ` — last signature by ${contract.signerName}` : ""}
-                  {contract.signedAt ? ` on ${formatContractDate(contract.signedAt.slice(0, 10))}` : ""}
+                  Fully Executed{contract.signerName ? ` — last signature by ${contract.signerName}` : ""}
+                  {contract.signedAt ? ` on ${formatContractDate(venueCalendarDateFromValue(contract.signedAt, venueTimezone))}` : ""}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Agreement fully signed. Next: collect the deposit if you haven&apos;t already. Booking isn&apos;t complete until the deposit is paid.
+                  Agreement fully signed. You can now set up or review payment arrangements. When you&apos;re ready to confirm the booking, use Mark as Booked in the lead workspace — signing and payment do not book automatically.
                   {finalized
                     ? " The final PDF is ready to download."
                     : " Finalize Contract generates the official PDF — it does not collect payment."}
                 </p>
               </div>
             </div>
-            {contract.clientId && (
+            {setupPaymentsHref && (
               <Button
                 size="sm"
                 render={
-                  <Link
-                    href={
-                      contract.eventId
-                        ? `/clients/${contract.clientId}?setupPayments=1`
-                        : `/clients/${contract.clientId}`
-                    }
-                  />
+                  <Link href={setupPaymentsHref} />
                 }
               >
                 Set up payments
@@ -594,8 +668,28 @@ export function ContractDetail({
         </Card>
       )}
 
+      {contract.status === "draft" && (
+        <ContractBuilder
+          mode="draft"
+          templates={[]}
+          clients={draftClients}
+          contactsByClientId={contactsByClientId}
+          draft={{
+            contractId: contract.id,
+            title: contract.title,
+            content: contract.content,
+            clientId: contract.clientId,
+            eventId: contract.eventId ?? "",
+            clientName: contract.clientName,
+            expectedUpdatedAt: contract.updatedAt,
+          }}
+          signers={signers}
+          venueBrand={venueBrand}
+        />
+      )}
+
       {/* Contract document */}
-      {editing ? (
+      {contract.status !== "draft" && editing ? (
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -617,7 +711,7 @@ export function ContractDetail({
             <Textarea value={editContent} onChange={(e) => setEditContent(e.target.value)} rows={28} className="font-mono text-sm" />
           </CardContent>
         </Card>
-      ) : (
+      ) : contract.status !== "draft" ? (
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Contract Document</CardTitle>
@@ -625,17 +719,21 @@ export function ContractDetail({
               {finalized
                 ? "This is a copy of the signed content. The final PDF (above) is the official record."
                 : contract.status === "signed"
-                  ? "Signed agreement — not yet finalized."
-                  : "Review before sending for signature."}
+                  ? "Fully Executed — both parties have signed. Finalize to generate the official PDF."
+                  : clientSigned && !venueSigned
+                    ? "Client-signed version — content is locked. Countersign below, or Create New Version for substantive changes."
+                    : "Sent to Client — they are reviewing. You can still edit until they sign."}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="rounded-lg border border-border bg-background p-6 font-sans text-sm text-foreground whitespace-pre-wrap leading-relaxed">
-              {contract.content}
+              {contract.status === "signed"
+                ? renderExecutedContractContent(contract.content, signers, { status: contract.status })
+                : contract.content}
             </div>
           </CardContent>
         </Card>
-      )}
+      ) : null}
 
       {/* Activity */}
       {contract.activities.length > 0 && (
@@ -653,21 +751,21 @@ export function ContractDetail({
         title={contract.title}
         onBack={() => setReviewOpen(false)}
         primary={
-          contract.status === "draft" && venueSigned ? (
-            <Button size="sm" onClick={handleSendForSignature} disabled={sendPending}>
+          contract.status === "draft" ? (
+            <Button size="sm" onClick={() => handleSendToClient()} disabled={sendPending}>
               {sendPending ? (
                 <>
                   <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
                   Sending…
                 </>
               ) : (
-                "Send for signature"
+                "Send to Client"
               )}
             </Button>
           ) : undefined
         }
         footer={
-          contract.status === "draft" && venueSigned ? (
+          contract.status === "draft" ? (
             <div className="space-y-2">
               <Label htmlFor="contract-release-message" className="text-xs text-muted-foreground">
                 Message to the couple (optional)
@@ -680,20 +778,30 @@ export function ContractDetail({
                 className="text-sm"
               />
             </div>
-          ) : contract.status === "draft" && !venueSigned ? (
-            <p className="text-sm text-muted-foreground">
-              Sign as the venue on the contract page before sending for signature. Reviewing does not send or sign.
-            </p>
           ) : null
         }
       >
         <ContractSigningArtifact
           title={contract.title}
-          content={contract.content}
+          content={
+            contract.status === "signed"
+              ? renderExecutedContractContent(contract.content, signers, { status: contract.status })
+              : contract.content
+          }
           brand={resolveContractBrandPresentation(contract.brandingSnapshot, venueBrand)}
-          signatureSlot={<SignForm preview />}
+          signatureSlot={contract.status === "signed" ? undefined : <SignForm preview />}
         />
       </ArtifactReviewOverlay>
+
+      <StarterPolicyPlaceholderDialog
+        open={placeholderWarningOpen}
+        pending={sendPending}
+        onGoBack={() => {
+          setPlaceholderWarningOpen(false);
+          setReviewOpen(false);
+        }}
+        onSendAnyway={() => handleSendToClient(true)}
+      />
     </div>
   );
 }

@@ -55,6 +55,18 @@
       ],
       "@shared/analytics/*": [
         "../shared/analytics/*"
+      ],
+      "@shared/brand": [
+        "../shared/brand/logo.ts"
+      ],
+      "@shared/brand/*": [
+        "../shared/brand/*"
+      ],
+      "@shared/pricing": [
+        "../shared/pricing/index.ts"
+      ],
+      "@shared/pricing/*": [
+        "../shared/pricing/*"
       ]
     }
   },

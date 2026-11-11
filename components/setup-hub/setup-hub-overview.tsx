@@ -9,17 +9,30 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { BringYourBusinessChoices } from "@/components/setup-hub/bring-your-business-choices";
 import { SetupReadiness } from "@/components/setup-hub/setup-readiness";
-import { OperationalReadinessCard } from "@/components/setup-hub/operational-readiness-card";
+import { SetupConciergeCard } from "@/components/setup-hub/setup-concierge-card";
 import { StageAcknowledgeButton } from "@/components/setup-hub/stage-acknowledge-button";
 import {
   markStageReviewedAction,
   setYourTeamSoloAction,
 } from "@/app/(app)/setup-hub/actions";
 import { STAGE_COPY } from "@/lib/setup-hub/stage-copy";
+import {
+  isBringYourBusinessComplete,
+  isCalendarAvailabilityComplete,
+  isClientExperienceComplete,
+  isFinancialsComplete,
+  isYourOfferingsComplete,
+  isYourPeopleComplete,
+  isYourVenueComplete,
+  type YourVenueFacts,
+} from "@/lib/setup-hub/stage-completion";
+import { contiguousSetupStageRuns } from "@/lib/setup-hub/stage-section-runs";
 import { evaluateCutoverPrerequisites } from "@/lib/setup-hub/bring-your-business";
 import type { SetupReadyCounts } from "@/lib/venue/service";
 import type { LeadCaptureStageStatus, SetupHubState } from "@/lib/setup-hub/types";
-import type { OperationalReadiness } from "@/lib/operational-readiness/types";
+import type { SetupConciergeEntry } from "@/lib/setup-concierge/types";
+import type { SpaceOperatingMode } from "@/lib/venue-spaces/uses";
+import type { BringBusinessChoice } from "@/lib/onboarding/types";
 
 type StageRow = {
   key: keyof typeof STAGE_COPY;
@@ -44,14 +57,18 @@ export function SetupHubOverview({
   spacesCount,
   hasCapacityRules,
   tourSchedulingEnabled,
-  hasImportedData,
+  hasMigrationImport,
   readyCounts,
   uploadedMaterialsCount,
-  activeTeamCount,
+  deliberateTeamActionCount,
   stripeConnected,
   quickbooksConnected,
-  operationalReadiness,
+  setupConcierge,
   maxSimultaneousEvents,
+  spaceOperatingMode,
+  yourVenueFacts,
+  intakeBringBusinessChoice = null,
+  setupProfileCount = 0,
 }: {
   venueName: string;
   ownerFirstName: string | null;
@@ -60,35 +77,56 @@ export function SetupHubOverview({
   spacesCount: number;
   hasCapacityRules: boolean;
   tourSchedulingEnabled: boolean;
-  hasImportedData: boolean;
+  /** Migration Center import with durable rows — not spreadsheet/HQ ad-hoc batches. */
+  hasMigrationImport: boolean;
   readyCounts: SetupReadyCounts;
   /** Raw files brought over during setup (contracts/wording/checklists uploaded as-is), not yet turned into a Contract/Message Template/Playbook — the "you brought this over, now what?" nudge on Client Experience. */
   uploadedMaterialsCount: number;
-  activeTeamCount: number;
+  /** Active venue_staff rows created via Team/Owners (invited_by set). */
+  deliberateTeamActionCount: number;
   stripeConnected: boolean;
   quickbooksConnected: boolean;
-  operationalReadiness?: OperationalReadiness | null;
+  setupConcierge?: SetupConciergeEntry | null;
   maxSimultaneousEvents?: number | null;
+  spaceOperatingMode: SpaceOperatingMode | null;
+  yourVenueFacts: YourVenueFacts;
+  intakeBringBusinessChoice?: BringBusinessChoice | null;
+  /** Venue Setup Profiles — 0 means Library starters are not yet wired to event types. */
+  setupProfileCount?: number;
 }) {
-  const yourVenueDone = !!hubState?.yourVenueReviewedAt;
-  const calendarDone = !!hubState?.calendarAvailabilityReviewedAt;
+  const yourVenueDone = isYourVenueComplete(yourVenueFacts);
+  const calendarDone = isCalendarAvailabilityComplete({ spaceOperatingMode, spacesCount });
   const bybPath = hubState?.bringYourBusinessPath ?? null;
-  const bringYourBusinessDone = hasImportedData || bybPath === "individual" || bybPath === "skipped";
+  const bringYourBusinessDone = isBringYourBusinessComplete({
+    hasMigrationImport,
+    path: bybPath,
+  });
   const calendarReadyHint = evaluateCutoverPrerequisites({
     spacesCount,
     hasCapacityRules,
     maxSimultaneousEvents,
   }).message;
-  const offeringsCount = readyCounts.packages + readyCounts.inventory;
-  const offeringsDone = offeringsCount > 0 || !!hubState?.yourOfferingsReviewedAt;
+  const offeringsDone = isYourOfferingsComplete({
+    authoredPackageCount: readyCounts.packages,
+    authoredInventoryCount: readyCounts.inventory,
+    reviewedAt: hubState?.yourOfferingsReviewedAt,
+  });
   const clientExperienceCount =
     readyCounts.contractTemplates + readyCounts.communicationTemplates +
     readyCounts.questionnaireTemplates + readyCounts.playbookTemplates;
-  const clientExperienceDone = clientExperienceCount > 0 || !!hubState?.clientExperienceReviewedAt;
+  const clientExperienceDone = isClientExperienceComplete({
+    authoredTemplateCount: clientExperienceCount,
+    reviewedAt: hubState?.clientExperienceReviewedAt,
+  });
   const yourTeamSolo = !!hubState?.yourTeamSoloConfirmedAt;
-  const yourTeamDone = activeTeamCount > 0 || yourTeamSolo;
-  const financialsReviewed = !!hubState?.financialsReviewedAt;
-  const financialsDone = stripeConnected || financialsReviewed;
+  const yourTeamDone = isYourPeopleComplete({
+    deliberateTeamActionCount,
+    soloConfirmed: yourTeamSolo,
+  });
+  const financialsDone = isFinancialsComplete({
+    stripeConnected,
+    reviewedAt: hubState?.financialsReviewedAt,
+  });
 
   const toursLabel = tourSchedulingEnabled ? "offered" : "Not offered";
 
@@ -99,14 +137,10 @@ export function SetupHubOverview({
       href: STAGE_COPY["your-venue"].destinationHref,
       hrefLabel: STAGE_COPY["your-venue"].destinationLabel,
       status: yourVenueDone ? "complete" : null,
-      detail: yourVenueDone ? "You've looked this over." : "Take a look whenever you're ready.",
+      detail: yourVenueDone
+        ? "Venue name, contact details, business hours, logo, hero image, and brand colors are in place."
+        : "Open Business & Brand to finish the details this card names.",
       required: STAGE_COPY["your-venue"].required,
-      action: !yourVenueDone ? (
-        <StageAcknowledgeButton
-          action={() => markStageReviewedAction("your-venue")}
-          label="This looks good for now"
-        />
-      ) : undefined,
     },
     {
       key: "calendar-availability",
@@ -116,31 +150,26 @@ export function SetupHubOverview({
       status: calendarDone ? "complete" : null,
       detail: `${spacesCount} space${spacesCount === 1 ? "" : "s"} · Scheduling capacity ${hasCapacityRules ? "set" : "using defaults"} · Tours ${toursLabel}.`,
       required: STAGE_COPY["calendar-availability"].required,
-      action: !calendarDone ? (
-        <StageAcknowledgeButton
-          action={() => markStageReviewedAction("calendar-availability")}
-          label="I've thought this through"
-        />
-      ) : undefined,
     },
     {
       key: "bring-your-business",
       title: "Bring Your Business",
       status: bringYourBusinessDone ? "complete" : "not_started",
-      detail: hasImportedData
-        ? "Your existing data has been brought in."
+      detail: hasMigrationImport
+        ? "Your existing data has been brought in through Migration Center."
         : bybPath === "individual"
           ? "You're adding things yourself — that's the plan."
           : bybPath === "skipped"
             ? "Starting fresh for now — that's the plan."
-            : "Nothing brought in yet.",
+            : "Nothing decided yet — import, add things yourself, or skip for now.",
       required: STAGE_COPY["bring-your-business"].required,
       customActions: (
         <BringYourBusinessChoices
           done={bringYourBusinessDone}
-          hasImportedData={hasImportedData}
+          hasImportedData={hasMigrationImport}
           path={bybPath}
           calendarReadyHint={calendarReadyHint}
+          intakeBringBusinessChoice={intakeBringBusinessChoice}
         />
       ),
     },
@@ -167,8 +196,13 @@ export function SetupHubOverview({
       status: clientExperienceDone ? "complete" : null,
       detail: `${clientExperienceCount} item${clientExperienceCount === 1 ? "" : "s"} of your own across contracts, questionnaires, messages, and planning guides.`
         + (uploadedMaterialsCount > 0
-          ? ` You also brought over ${uploadedMaterialsCount} file${uploadedMaterialsCount === 1 ? "" : "s"} during setup — head to Library to turn the ones that matter into templates.`
-          : ""),
+          ? ` You also brought over ${uploadedMaterialsCount} file${uploadedMaterialsCount === 1 ? "" : "s"} during setup — head to Library to turn the ${uploadedMaterialsCount === 1 ? "one that matters" : "ones that matter"} into templates.`
+          : "")
+        + (setupProfileCount === 0
+          ? " Library starters are ready to customize — open Setup Profiles to choose what weddings (and later other event types) should inherit. Wedding starters are not applied to non-wedding bookings until you configure them."
+          : setupProfileCount === 1
+            ? " One Setup Profile is in place — confirm it covers the event types you accept; other types stay unconfigured until you add them."
+            : ""),
       required: STAGE_COPY["client-experience"].required,
       action: !clientExperienceDone ? (
         <StageAcknowledgeButton
@@ -196,11 +230,11 @@ export function SetupHubOverview({
       href: STAGE_COPY["your-team"].destinationHref,
       hrefLabel: STAGE_COPY["your-team"].destinationLabel,
       status: yourTeamDone ? "complete" : null,
-      detail: activeTeamCount > 0
-        ? `${activeTeamCount} team member${activeTeamCount === 1 ? "" : "s"} with you here.`
+      detail: deliberateTeamActionCount > 0
+        ? "You've invited or recorded the people who need their own access."
         : yourTeamSolo
           ? "Running things solo for now — that's the plan."
-          : "Just you here so far. Solo is fine whenever you're ready to say so.",
+          : "Decide whether anyone else needs access — or say you're running solo.",
       required: STAGE_COPY["your-team"].required,
       action: !yourTeamDone ? (
         <StageAcknowledgeButton action={setYourTeamSoloAction} label="It's just me for now" />
@@ -208,7 +242,7 @@ export function SetupHubOverview({
     },
     {
       key: "financials",
-      title: "Online payments",
+      title: "Online Payments",
       href: STAGE_COPY.financials.destinationHref,
       hrefLabel: STAGE_COPY.financials.destinationLabel,
       status: financialsDone ? "complete" : null,
@@ -225,8 +259,8 @@ export function SetupHubOverview({
 
   return (
     <div className="space-y-6">
-      <div className="space-y-2">
-        <p className="text-sm text-muted-foreground">
+      <div className="htc-surface-guidance space-y-2 px-4 py-3" data-testid="setup-hub-orientation">
+        <p className="text-sm text-foreground">
           {ownerFirstName ? `${ownerFirstName}, here` : "Here"}&apos;s what helps {venueName} feel ready for real clients. Work in any order that makes sense — leave and come back anytime.
         </p>
         {!bringYourBusinessDone ? (
@@ -234,69 +268,88 @@ export function SetupHubOverview({
             Already have clients elsewhere? Importing is one path — adding things yourself or starting fresh are equally fine.
           </p>
         ) : null}
+        {setupProfileCount === 0 && readyCounts.playbookTemplates > 0 ? (
+          <p className="text-sm text-muted-foreground" data-testid="setup-hub-no-profile-guidance">
+            Your Library already has planning starters. Open{" "}
+            <Link href="/settings/leads/setup-profiles" className="underline underline-offset-2 hover:text-foreground">
+              Setup Profiles
+            </Link>{" "}
+            to tell Hello to Cheers how weddings should start. Other event types stay unconfigured until you add them — wedding content is never applied automatically to non-wedding bookings.
+          </p>
+        ) : null}
       </div>
-      <div className="space-y-3">
-        {stages.map((s) => {
-          const copy = STAGE_COPY[s.key];
-          return (
-            <Card key={s.key}>
-              <CardContent className="space-y-3 py-4">
-                <div className="flex items-start gap-3">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border">
-                    {s.status === "complete" && <Check className="h-4 w-4 text-primary" />}
-                  </div>
-                  <div className="min-w-0 flex-1 space-y-2">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="text-sm font-medium text-heading">{s.title}</p>
-                      {s.status === "complete" && <Badge variant="outline">Set up</Badge>}
-                      {!s.required && <Badge variant="outline">Optional</Badge>}
-                    </div>
-                    {copy && (
-                      <div className="space-y-1 text-sm text-muted-foreground">
-                        <p>{copy.what}</p>
-                        <p>{copy.why}</p>
-                        <p>{copy.whatToDo}</p>
+      <SetupConciergeCard entry={setupConcierge ?? null} />
+      {/*
+        Phase 9 Option A — eucalyptus section labels over contiguous completion runs.
+        Stage order is preserved; headings reuse readiness copy and only describe
+        the cards beneath each band (never ready_to_invite_couples).
+      */}
+      <div className="htc-setup-stage-list space-y-4" data-htc-phase9="setup-stages">
+        {contiguousSetupStageRuns(stages).map((run) => (
+          <section key={`${run.bucket}-${run.stages[0]?.key}`} className="space-y-3">
+            <h2 className="htc-setup-stage-section-label">{run.heading}</h2>
+            {run.stages.map((s) => {
+              const copy = STAGE_COPY[s.key];
+              return (
+                <Card key={s.key}>
+                  <CardContent className="space-y-3 py-4">
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border">
+                        {s.status === "complete" && <Check className="h-4 w-4 text-primary" />}
                       </div>
-                    )}
-                    <p className="text-xs text-muted-foreground">{s.detail}</p>
-                    {s.customActions ? (
-                      s.customActions
-                    ) : (
-                      <div className="flex flex-wrap items-center gap-3 pt-1">
-                        {s.href && s.hrefLabel ? (
-                          <Link
-                            href={s.href}
-                            className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
-                          >
-                            {s.hrefLabel}
-                            <ChevronRight className="h-3 w-3" />
-                          </Link>
-                        ) : null}
-                        {s.action}
-                        {copy?.helpHref && copy.helpTitle && (
-                          <Link
-                            href={copy.helpHref}
-                            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground hover:underline"
-                          >
-                            <HelpCircle className="h-3 w-3" />
-                            {copy.helpTitle}
-                          </Link>
+                      <div className="min-w-0 flex-1 space-y-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="text-sm font-medium text-heading">{s.title}</p>
+                          {s.status === "complete" && <Badge variant="outline" className="htc-badge-active">Set up</Badge>}
+                          {!s.required && <Badge variant="outline">Optional</Badge>}
+                        </div>
+                        {copy && (
+                          <div className="space-y-1 text-sm text-muted-foreground">
+                            <p>{copy.what}</p>
+                            <p>{copy.why}</p>
+                            <p>{copy.whatToDo}</p>
+                          </div>
+                        )}
+                        <p className="text-xs text-muted-foreground">{s.detail}</p>
+                        {s.customActions ? (
+                          s.customActions
+                        ) : (
+                          <div className="flex flex-wrap items-center gap-3 pt-1">
+                            {s.href && s.hrefLabel ? (
+                              <Link
+                                href={s.href}
+                                className="htc-setup-quiet-action inline-flex items-center gap-1 rounded-md border border-[color:var(--htc-eucalyptus)] bg-[var(--htc-eucalyptus-surface)] px-2.5 py-1.5 text-xs font-medium text-heading"
+                              >
+                                {s.hrefLabel}
+                                <ChevronRight className="h-3 w-3" />
+                              </Link>
+                            ) : null}
+                            {s.action}
+                            {copy?.helpHref && copy.helpTitle && (
+                              <Link
+                                href={copy.helpHref}
+                                className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground hover:underline"
+                              >
+                                <HelpCircle className="h-3 w-3" />
+                                {copy.helpTitle}
+                              </Link>
+                            )}
+                          </div>
                         )}
                       </div>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </section>
+        ))}
       </div>
       <SetupReadiness
         stages={stages.map(({ title, status, detail, required }) => ({ title, status, detail, required }))}
         readyToInviteCouples={hubState?.readyToInviteCouples ?? false}
         readyToInviteCouplesAt={hubState?.readyToInviteCouplesAt ?? null}
       />
-      <OperationalReadinessCard readiness={operationalReadiness ?? null} />
     </div>
   );
 }

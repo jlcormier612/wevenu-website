@@ -14,13 +14,27 @@ export type { ExperienceStatus, NextActor };
 export const EXPERIENCE_STATUS_LABEL: Record<ExperienceStatus, string> = {
   draft: "Draft",
   in_progress: "In Progress",
-  with_someone: "With Someone",
+  /** Internal key kept; customer-facing copy is Waiting on Client everywhere. */
+  with_someone: "Waiting on Client",
   review: "Review",
   changes_requested: "Changes Requested",
   complete: "Complete",
   final: "Final",
   none: "",
 };
+
+/**
+ * Badge copy for Documents WorkspaceStatusBadge.
+ * Internal `with_someone` is never shown as "With Someone" — canonical
+ * customer-facing label is "Waiting on Client" for every producer type
+ * (questionnaires, contracts, invoices, event orders, client choices).
+ */
+export function experienceBadgeLabel(
+  experienceStatus: ExperienceStatus,
+  _docType?: WorkspaceDocType,
+): string {
+  return EXPERIENCE_STATUS_LABEL[experienceStatus];
+}
 
 export type ExperienceView = {
   experienceStatus: ExperienceStatus;
@@ -43,6 +57,10 @@ export function describeExperience(input: {
   isCompanionUpload?: boolean;
   hasFinalArtifact?: boolean;
   relationshipName?: string | null;
+  /** Contract signing progress — distinguishes Sent to Client vs Awaiting Venue. */
+  venueSigned?: boolean;
+  requiredClientTotal?: number;
+  requiredClientSigned?: number;
 }): ExperienceView {
   const who = coupleNameSuffix(input.relationshipName ?? null);
 
@@ -153,6 +171,19 @@ export function describeExperience(input: {
       };
     }
     if (status === "sent") {
+      const total = Math.max(1, input.requiredClientTotal ?? 1);
+      const clientSigned = input.requiredClientSigned ?? 0;
+      const awaitingVenue = clientSigned >= total && !input.venueSigned;
+      if (awaitingVenue) {
+        return {
+          experienceStatus: "review",
+          nextActor: "venue",
+          nextActionLabel: "Venue to countersign",
+          filterStatus: "action_needed",
+          producerHref: `/contracts/${input.id}`,
+          artifactAuthority: "working_record",
+        };
+      }
       return {
         experienceStatus: "with_someone",
         nextActor: "couple",
@@ -250,6 +281,59 @@ export function describeExperience(input: {
       experienceStatus: "in_progress",
       nextActor: "venue",
       nextActionLabel: "Venue to complete",
+      filterStatus: "in_progress",
+      producerHref: input.eventId ? `/events/${input.eventId}` : null,
+      artifactAuthority: "working_record",
+    };
+  }
+
+  if (input.docType === "client_choices") {
+    const status = input.rawStatus ?? "";
+    const who = input.relationshipName?.trim() || "Client";
+    if (status === "finalized") {
+      return {
+        experienceStatus: "final",
+        nextActor: null,
+        nextActionLabel: null,
+        filterStatus: "complete",
+        producerHref: input.eventId ? `/events/${input.eventId}` : null,
+        artifactAuthority: "working_record",
+      };
+    }
+    if (status === "submitted" || status === "resubmitted") {
+      return {
+        experienceStatus: "review",
+        nextActor: "venue",
+        nextActionLabel: "Venue to review",
+        filterStatus: "action_needed",
+        producerHref: input.eventId ? `/events/${input.eventId}` : null,
+        artifactAuthority: "working_record",
+      };
+    }
+    if (status === "changes_requested") {
+      return {
+        experienceStatus: "changes_requested",
+        nextActor: "couple",
+        nextActionLabel: `${who} to update`,
+        filterStatus: "action_needed",
+        producerHref: input.eventId ? `/events/${input.eventId}` : null,
+        artifactAuthority: "working_record",
+      };
+    }
+    if (status === "sent" || status === "in_progress") {
+      return {
+        experienceStatus: "with_someone",
+        nextActor: "couple",
+        nextActionLabel: `${who} to complete`,
+        filterStatus: "action_needed",
+        producerHref: input.eventId ? `/events/${input.eventId}` : null,
+        artifactAuthority: "working_record",
+      };
+    }
+    return {
+      experienceStatus: "draft",
+      nextActor: "venue",
+      nextActionLabel: "Venue to send",
       filterStatus: "in_progress",
       producerHref: input.eventId ? `/events/${input.eventId}` : null,
       artifactAuthority: "working_record",

@@ -1,0 +1,12 @@
+PASS patio_cocktail_only — {"id":"f6df6024-e6a0-4df8-b391-27f2eae61238","name":"Stone Patio","permitted_uses":["cocktail_hour"]}
+PASS ballroom_present — 8982b7e5-8122-42f1-a56b-7eaf7920d968
+PASS valid_cocktail_on_patio — ok
+PASS seed_persisted — [{"use_key":"cocktail_hour","space_id":"f6df6024-e6a0-4df8-b391-27f2eae61238"}]
+PASS invalid_reception_rejected — permitted_use Stone Patio cannot be used for Reception. Choose a space that allows this use, or update the space’s permitted uses in Availability settings.
+PASS invalid_did_not_persist — [{"use_key":"cocktail_hour","space_id":"f6df6024-e6a0-4df8-b391-27f2eae61238"}]
+PASS valid_barn_reception — ok
+PASS simultaneous_barn_ballroom — A=ok B=ok
+PASS same_space_conflict — This space is already booked for "PUE-PUEMVSBA4RC-SimA" at an overlapping time.
+PASS capacity_config_scoped — max=3 venue=a415ac52-cd74-42a6-8df7-7a8f6e71d080
+PASS fancy_spaces_venue_scoped — Ballroom/Lakeside count on Fancy=2; other venue rules sample=[{"venue_id":"5c84e74e-355d-4ce1-9e6b-913a9267f543","max_simultaneous_events":1},{"venue_id":"31ea4816-a5fb-4337-96c7-e2bd3d2c5c5a","max_simultaneous_events":2},{"venue_id":"5f3b43f8-0c5d-43df-ae8a-5cd59806d30d","max_simultaneous_events":3}]
+VERDICT=GREEN

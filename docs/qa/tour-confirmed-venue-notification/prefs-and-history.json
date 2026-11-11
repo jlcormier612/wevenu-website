@@ -1,0 +1,29 @@
+{
+  "meadowPrefs": {
+    "pref_tour_scheduled": true,
+    "pref_tour_confirmed": false,
+    "updated_at": "2026-10-11T22:45:31.740477+00:00"
+  },
+  "fancyPrefs": {
+    "venue_id": "a415ac52-cd74-42a6-8df7-7a8f6e71d080",
+    "pref_tour_scheduled": true,
+    "pref_tour_confirmed": true,
+    "updated_at": "2026-10-03T03:16:38.311909+00:00"
+  },
+  "meadowTourConfirmedAllTimeCount": 0,
+  "meadowTourConfirmedSamples": [],
+  "fancyTourConfirmedCount": 0,
+  "fancyTourConfirmedSamples": [],
+  "aroundGinaConfirmWindow": [
+    {
+      "id": "1ccf88bf-b2e2-4f34-b785-bc6801ee1fc9",
+      "type": "tour_scheduled",
+      "title": "New tour scheduled — Gina Palo",
+      "created_at": "2026-10-16T01:39:23.163294+00:00",
+      "needs_email": true,
+      "emailed_at": null,
+      "link": "/leads/26bd6fba-b10b-4db2-a97d-10df4719ab29"
+    }
+  ],
+  "notificationLogNearConfirm": []
+}

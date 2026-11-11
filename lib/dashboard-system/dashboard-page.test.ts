@@ -1,43 +1,73 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, it } from "node:test";
 
 const page = readFileSync(resolve("app/(app)/dashboard/page.tsx"), "utf8");
 const service = readFileSync(resolve("lib/dashboard/service.ts"), "utf8");
 const nav = readFileSync(resolve("lib/navigation.ts"), "utf8");
+const engine = readFileSync(resolve("lib/dashboard-system/decision-engine.ts"), "utf8");
 
 describe("Dashboard page information architecture", () => {
   it("renders Today's Focus with the NOW definition", () => {
     assert.match(page, /title="Today's Focus"/);
+    assert.match(page, /FocusAttentionRow/);
+    assert.match(page, /filterDismissedFocusItems/);
     assert.match(page, /What requires attention today/);
+    assert.match(page, /headerBand="eucalyptus"/);
     assert.doesNotMatch(page, /title="Morning Briefing"/);
     assert.doesNotMatch(page, /title="Today's Attention"/);
   });
 
-  it("places Luv after Today's Focus and before Coming up", () => {
+  it("wraps the page in hospitality canvas and heading card", () => {
+    assert.match(page, /htc-hospitality-page/);
+    assert.match(page, /htc-hospitality-heading/);
+  });
+
+  it("places sections in Greeting → Snapshot → Focus → Luv → Coming up → Reports order", () => {
+    const greeting = page.indexOf("<Greeting");
+    const snap = page.indexOf("<BusinessSnapshotSection");
     const focus = page.indexOf('title="Today\'s Focus"');
     const luv = page.indexOf("{luvEntry &&");
     const upcoming = page.indexOf('title="Coming up"');
-    assert.ok(focus >= 0 && luv > focus && upcoming > luv, "Luv sits between Today's Focus and Coming up");
+    const reports = page.indexOf(">View Reports<");
+    assert.ok(
+      greeting >= 0 &&
+        snap > greeting &&
+        focus > snap &&
+        luv > focus &&
+        upcoming > luv &&
+        reports > upcoming,
+      "Dashboard sections must follow Greeting → Snapshot → Focus → Luv → Coming up → Reports",
+    );
   });
 
-  it("dedupes Your Next Steps against Today's Focus", () => {
-    assert.match(page, /excludeTodayFocusFromNextSteps/);
-    assert.match(page, /YourNextStepsCard/);
-    const nextStepsCard = readFileSync(resolve("components/dashboard/getting-started.tsx"), "utf8");
-    assert.match(nextStepsCard, /What you should do next after today's urgent work/);
+  it("does not render Your Next Steps", () => {
+    assert.doesNotMatch(page, /YourNextStepsCard/);
+    assert.doesNotMatch(page, /Your Next Steps/);
+    assert.doesNotMatch(page, /excludeTodayFocusFromNextSteps/);
+    assert.doesNotMatch(page, /what you should do next after today's urgent work/i);
+    assert.equal(existsSync(resolve("components/dashboard/getting-started.tsx")), false);
+    assert.equal(existsSync(resolve("lib/dashboard/venue-next-steps.ts")), false);
+    assert.doesNotMatch(service, /resolveVenueNextSteps/);
+    assert.doesNotMatch(service, /nextSteps,/);
+    assert.doesNotMatch(service, /from\("event_tasks"\)/);
   });
 
-  it("suppresses Coming up by cross-section entity identity, not only by date", () => {
+  it("suppresses Coming up by cross-section entity identity from Focus only", () => {
     assert.match(page, /excludeByCrossSectionSubject/);
     assert.match(page, /collectCrossSectionSubjects/);
-    assert.match(page, /claimedSubjects\.add\(step\.subjectKey\)/);
+    assert.doesNotMatch(page, /claimedSubjects\.add\(step\.subjectKey\)/);
   });
 
   it("defines Coming up as awareness, not a second task queue", () => {
     assert.match(page, /title="Coming up"/);
-    assert.match(page, /Events in the next 60 days/);
+    assert.match(page, /Events in the next 30 days/);
+  });
+
+  it("Coming up uses a calm-blue guidance shell", () => {
+    assert.match(page, /title="Coming up"[\s\S]*?className="htc-surface-guidance"/);
+    assert.doesNotMatch(page, /title="Coming up"[\s\S]*?htc-linen/);
   });
 
   it("removes the Quick Actions section and does not add Bookings nav", () => {
@@ -49,23 +79,29 @@ describe("Dashboard page information architecture", () => {
     assert.match(page, /\+ New Lead/);
   });
 
-  it("does not render a Payments to Watch snapshot card", () => {
+  it("renders the locked Business Snapshot cards, not legacy KPI tiles", () => {
+    assert.match(page, /BusinessSnapshotSection/);
     assert.doesNotMatch(page, /label="Payments to Watch"/);
     assert.doesNotMatch(page, /getPaymentsToWatchSummary/);
-    assert.doesNotMatch(page, /Business Snapshot/);
     assert.doesNotMatch(page, /label="Active Leads"/);
     assert.doesNotMatch(page, /label="Coming up"/);
     assert.match(page, /title="Coming up"/);
     assert.doesNotMatch(page, /\/payments\?filter=attention/);
     assert.doesNotMatch(page, /\/leads\?attention=active/);
-    assert.doesNotMatch(page, /clientListFilterHref\("coming_up"\)/);
     assert.doesNotMatch(page, /label="Venue Health"/);
     assert.doesNotMatch(page, /getVenueHealth/);
   });
 
+  it("does not render the morning priorities email banner", () => {
+    assert.doesNotMatch(page, /DigestCallout/);
+    assert.doesNotMatch(page, /showDigestCallout/);
+    assert.doesNotMatch(page, /morning email each day with your priorities/);
+    assert.doesNotMatch(service, /showDigestCallout/);
+    assert.doesNotMatch(service, /getNotificationPreferences/);
+  });
+
   it("Coming up classifies events only — not the mixed dated stream", () => {
     assert.match(page, /classifyUpcomingItems/);
-    const engine = readFileSync(resolve("lib/dashboard-system/decision-engine.ts"), "utf8");
     const fn = engine.slice(engine.indexOf("export function classifyUpcomingItems"));
     const end = fn.indexOf("export function classifyTodayDatedItems");
     const body = end >= 0 ? fn.slice(0, end) : fn;
@@ -77,12 +113,21 @@ describe("Dashboard page information architecture", () => {
   });
 
   it("Today's Focus still uses Event Readiness payment/invoice attention", () => {
-    const engine = readFileSync(resolve("lib/dashboard-system/decision-engine.ts"), "utf8");
     const fn = engine.slice(engine.indexOf("export function classifyDashboardItems"));
     const end = fn.indexOf("function classifyDatedItems");
     const body = end >= 0 ? fn.slice(0, end) : fn;
     assert.match(body, /data\.briefing\.needsAttentionNow/);
     assert.doesNotMatch(body, /for \(const .* of data\.overduePayments\)/);
+  });
+
+  it("Today's Focus deep-links to owning action surfaces", () => {
+    const fn = engine.slice(engine.indexOf("export function classifyDashboardItems"));
+    const end = fn.indexOf("function classifyDatedItems");
+    const body = end >= 0 ? fn.slice(0, end) : fn;
+    assert.match(body, /\/leads\/\$\{lead\.id\}\?tab=messages/);
+    assert.match(body, /\/leads\/\$\{task\.leadId\}\?tab=tasks/);
+    assert.match(body, /href: `\/tours`/);
+    assert.match(body, /href: item\.link/);
   });
 
   it("Payments list attention filter is unchanged", () => {
@@ -96,7 +141,7 @@ describe("Dashboard page information architecture", () => {
   });
 });
 
-describe("Dashboard Coming up is the Clients Coming-up (60-day) population", () => {
+describe("Dashboard Coming up is the Clients Coming-up (30-day) population", () => {
   it("counts through getClientListFilterCounts.coming_up, not all-future Upcoming", () => {
     assert.match(service, /getClientListFilterCounts/);
     assert.match(service, /upcomingEventCount: clientListCounts\.coming_up/);
@@ -104,21 +149,10 @@ describe("Dashboard Coming up is the Clients Coming-up (60-day) population", () 
 
   it("loads Coming up events from the events table, not payment lines", () => {
     assert.match(service, /from\("events"\)/);
-    assert.match(service, /\.lte\("event_date", sixtyDaysOut\)/);
+    assert.match(service, /\.lte\("event_date", comingUpOut\)/);
     const eventsBlock = service.slice(service.indexOf("Coming up source"), service.indexOf("Payment line items"));
     assert.match(eventsBlock, /from\("events"\)/);
     assert.doesNotMatch(eventsBlock, /payment_line_items/);
     assert.doesNotMatch(eventsBlock, /payment_schedules/);
-  });
-});
-
-describe("Dashboard Your Next Steps", () => {
-  it("resolves the venue queue from event_tasks and portal lifecycle, not activation copy", () => {
-    assert.match(service, /resolveVenueNextSteps/);
-    assert.match(service, /nextSteps,/);
-    assert.match(service, /from\("event_tasks"\)/);
-    assert.match(service, /from\("client_invitations"\)/);
-    assert.match(service, /from\("client_portal_sessions"\)/);
-    assert.doesNotMatch(service, /Build momentum/);
   });
 });

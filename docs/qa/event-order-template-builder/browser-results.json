@@ -1,0 +1,77 @@
+{
+  "pass": true,
+  "image": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:e7f7178e1f4621561a395862470da12d2eac800d",
+  "digest": "sha256:85ce9adae5ddf30e8e428d455bdbc10e6e57c75dff121078386c0ce05c2ffa73",
+  "expectedSha": "e7f7178e1f4621561a395862470da12d2eac800d",
+  "templateId": "d73d9734-98d9-46a0-b54b-dccadb036150",
+  "cateringSectionId": "a2f36af6-3434-4dd6-9094-a75ef907712c",
+  "emptyDependentId": "7a0eb11a-d4b7-43fd-b780-9045867af4ef",
+  "checks": [
+    {
+      "name": "serving-sha",
+      "pass": true,
+      "detail": "expected=e7f7178e1f4621561a395862470da12d2eac800d ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:e7f7178e1f4621561a395862470da12d2eac800d"
+    },
+    {
+      "name": "serving-digest",
+      "pass": true,
+      "detail": "sha256:85ce9adae5ddf30e8e428d455bdbc10e6e57c75dff121078386c0ce05c2ffa73"
+    },
+    {
+      "name": "fixture-template",
+      "pass": true,
+      "detail": "{\"templateId\":\"d73d9734-98d9-46a0-b54b-dccadb036150\",\"cateringSectionId\":\"a2f36af6-3434-4dd6-9094-a75ef907712c\",\"emptyDependentId\":\"7a0eb11a-d4b7-43fd-b780-9045867af4ef\"}"
+    },
+    {
+      "name": "persisted-catering-groups",
+      "pass": true,
+      "detail": "{\"groupCount\":3,\"optionCount\":5}"
+    },
+    {
+      "name": "ui-section-nav",
+      "pass": true,
+      "detail": "eo-template-section-nav"
+    },
+    {
+      "name": "ui-catering-workspace",
+      "pass": true,
+      "detail": "1"
+    },
+    {
+      "name": "ui-incomplete-dependent-visible",
+      "pass": true,
+      "detail": "branch=1 banner=1"
+    },
+    {
+      "name": "ui-nested-branches",
+      "pass": true,
+      "detail": "nestedCards=2"
+    },
+    {
+      "name": "ui-categorized-offering-picker",
+      "pass": true,
+      "detail": "1"
+    },
+    {
+      "name": "ui-offering-filter-preferred-default",
+      "pass": true,
+      "detail": "value=preferred"
+    },
+    {
+      "name": "ui-client-preview",
+      "pass": true,
+      "detail": "eo-template-client-preview"
+    },
+    {
+      "name": "ui-section-switch-hides-other",
+      "pass": true,
+      "detail": "cateringVisible=false"
+    },
+    {
+      "name": "ui-reload-nav-persists",
+      "pass": true,
+      "detail": "nav after reload"
+    }
+  ],
+  "at": "2026-10-25T22:51:02.095Z"
+}

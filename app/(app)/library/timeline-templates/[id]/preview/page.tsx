@@ -32,6 +32,7 @@ export default async function TimelineTemplatePreviewPage({ params }: Props) {
       caption="Timeline template preview — activities and sequence. Clients see a working timeline after you apply this to an event."
       editHref={`/library/timeline-templates/${template.id}`}
       libraryHref="/library/timeline-templates"
+      libraryLabel="Timeline Templates"
       contentMaxWidthClassName="max-w-xl"
     >
       <div className="space-y-4 pb-10">

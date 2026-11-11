@@ -1,0 +1,153 @@
+PASS Serving expected SHA — image=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:c1b210d3fb4155d6dc68b1853f1581d244e03cba expected=c1b210d3fb41
+PASS Checklist present — progress checklist
+PASS Checklist step draft — complete
+PASS Checklist step engagement — complete
+PASS Checklist step order_agreed — complete
+PASS Checklist step invoiced — complete
+PASS Path wiring copy (fixed EO vs Send vs Inventory/Choices) — Fixed Event Order (no choice groups): Library Use / Apply → Finalize → Share on Event Order. Library Send is only for templates with choice groups. Inventory selection runs on the Inventory tab; Your Choices runs in Client selections below.
+PASS Strip has no Share/Finalize/Send authoritative controls — deep-link only
+PASS A Library EO Templates: Use vs Send guidance present — OVERVIEW
+
+Dashboard
+
+YOUR RELATIONSHIPS
+
+Leads
+28
+Clients
+Vendors
+
+SCHEDULING
+
+Calendar
+Tours
+4
+
+COMMUNICATION
+
+Inbox
+Automations
+
+LIBRARY
+
+Templates
+Documents
+
+FINANCIALS
+
+Contracts
+13
+Payments
+13
+
+TO DO’S
+
+Task Center
+
+PASS A Library retains Use actions for templates — use=2 send=1
+PASS A Event Order panel keeps Finalize/Share (authoritative, not on strip) — finalize=true shareish=true eoDb=finalized/shared
+PASS A Checklist reflects finalized+shared EO from DB — order_agreed=complete engagement=complete
+PASS B1 Open Inventory reaches inventory workspace — https://app.sandbox.hellotocheers.com/clients/b4e2764b-be33-4579-89e3-0c8e4a6dd5be?tab=event-order#inventory
+PASS B1 Inventory chip matches persisted status (submit ≠ confirm) — db=shared chip=Inventory
+· Awaiting client
+PASS B2 Choices anchor keeps client_choices panel (separate from inventory) — Client selections
+Optional choice packets from Event Order Templates (menus, add-ons, rentals). The Event Order below can already include venue-authored lines — those are not client submissions. Client drafts stay editab
+PASS B2 Choice rows exist without merging into inventory runtime — choiceCount=1 inventoryStatus=shared
+PASS D Invoice anchor reaches EO invoice link (no strip Create) — invoice handoff UI
+PASS E Portal inventory reachable (client role) — B2P & Portal
+
+·
+
+Jen's Fancy Venue
+
+Jul 17, 2060
+
+Export my data
+5
+🏠
+Home
+✅
+Tasks
+9
+🕒
+Timeline
+📁
+Docs
+🗺️
+Floor Plan
+🪑
+Inventory
+1
+📋
+Order
+1
+✅
+Choices
+💳
+P
+PASS E Portal event-order reachable (client role) — B2P & Portal
+
+·
+
+Jen's Fancy Venue
+
+Jul 17, 2060
+
+Export my data
+5
+🏠
+Home
+✅
+Tasks
+9
+🕒
+Timeline
+📁
+Docs
+🗺️
+Floor Plan
+🪑
+Inventory
+1
+📋
+Order
+1
+✅
+Choices
+💳
+P
+PASS E Portal choices reachable (client role) — B2P & Portal
+
+·
+
+Jen's Fancy Venue
+
+Jul 17, 2060
+
+Export my data
+5
+🏠
+Home
+✅
+Tasks
+9
+🕒
+Timeline
+📁
+Docs
+🗺️
+Floor Plan
+🪑
+Inventory
+1
+📋
+Order
+1
+✅
+Choices
+💳
+P
+PASS C3 chips still present — chips
+PASS Checklist visible at 390 — 390
+PASS No duplicate inventory/choices/EO lines/tasks from C4 navigation — inv 1->1 lines 44->44 choices 1->1 tasks 19->19
+ALL PASS 23/23

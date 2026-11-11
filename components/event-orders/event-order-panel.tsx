@@ -7,9 +7,11 @@ import { toast } from "sonner";
 
 import {
   addSectionAction, applyEventOrderTemplateAction, ensureEventOrderAction, finalizeEventOrderAction, getEventOrderPdfUrlAction,
-  removeLineAction, removeSectionAction, reopenEventOrderAction, setSectionFloorPlanAction,
+  getEventOrderStockAction, removeLineAction, removeSectionAction, reopenEventOrderAction, setSectionFloorPlanSetupAction,
   shareEventOrderWithClientAction,
 } from "@/app/(app)/events/[id]/event-order-actions";
+import { ensureClientEventOrderAction } from "@/app/(app)/clients/planning-actions";
+import { listSetupsWithMembersAction } from "@/app/(app)/events/[id]/floor-plan-actions";
 import { getEventOrderTemplateDetailAction } from "@/app/(app)/library/event-order-templates/actions";
 import { ApplyEventOrderTemplateSheet } from "@/components/event-order-templates/apply-event-order-template-sheet";
 import { AddLineSheet } from "@/components/event-orders/add-line-sheet";
@@ -28,16 +30,28 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { DISPLAY_STATUS_LABEL, PROVENANCE_LABEL, eventOrderDisplayStatus, formatMoney, formatOptionalMoney } from "@/lib/event-orders/constants";
+import { DISPLAY_STATUS_LABEL, eventOrderDisplayStatus, formatMoney, formatOptionalMoney } from "@/lib/event-orders/constants";
+import { boundHeadcountForApply } from "@/lib/events/headcount";
 import { eventOrderRequiresZeroTotalWarning } from "@/lib/event-orders/zero-total-warning";
+import { packageLinesIgnoreHeadcount } from "@/lib/event-orders/seed-package-inclusions";
+import {
+  NO_COUPLE_CHOICES_MESSAGE, coupleChoicePreview, pickActiveChoices,
+} from "@/lib/client-choices/couple-choice-preview";
+import type { ClientChoicesWithHistory } from "@/lib/client-choices/types";
+import { eventOrderChargeSplit } from "@/lib/client-choices/unbilled-delta";
 import type { EventOrderDisplayStatus, EventOrderLine, EventOrderSection, EventOrderWithDetails } from "@/lib/event-orders/types";
 import type { EventOrderTemplate, EventOrderTemplateWithDetails } from "@/lib/event-order-templates/types";
+import { matchChoiceGroupsToSections, splitSetupLines, staffLineNotesLabel } from "@/lib/event-orders/document-view";
+import { resolveSectionSetup } from "@/lib/floor-plans/required-vs-placed";
+import { stockSentence } from "@/lib/inventory/reservations";
+import type { EventOrderStock } from "@/lib/inventory/reservations-service";
 import type { FloorPlan } from "@/lib/floor-plans/types";
 import type { InventoryItem } from "@/lib/inventory/types";
 import type { Invoice } from "@/lib/invoices/types";
 import { buildMergeData, mergeContent } from "@/lib/message-templates/merge";
 import type { Offering } from "@/lib/offerings/types";
 import type { Package, PackageWithItems } from "@/lib/packages/types";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 const STATUS_VARIANT: Record<EventOrderDisplayStatus, "outline" | "accent" | "muted"> = {
@@ -48,14 +62,17 @@ type EventOrderOverview = {
   eventName?: string | null;
   eventDate: string | null;
   eventType?: string | null;
+  /** Estimated guest count. */
   guestCount: number | null;
+  /** Optional Guaranteed — used with Estimated for new apply/seed (B1). */
+  guaranteedGuestCount?: number | null;
   spaceName: string | null;
   ceremonyStartTime: string | null;
   receptionStartTime: string | null;
 };
 
 function LineRow({
-  line, sections, eventOrderId, eventId, canEdit, onRemove, removing,
+  line, sections, eventOrderId, eventId, canEdit, onRemove, removing, inventoryName, stock,
 }: {
   line: EventOrderLine;
   sections: EventOrderSection[];
@@ -64,22 +81,41 @@ function LineRow({
   canEdit: boolean;
   onRemove: () => void;
   removing: boolean;
+  inventoryName?: string | null;
+  stock?: { text: string; short: boolean } | null;
 }) {
+  const notesLabel = staffLineNotesLabel(line.notes);
   return (
-    <div className="grid grid-cols-1 gap-2 border-b border-border py-3 last:border-0 sm:grid-cols-[1fr_auto_auto_auto_auto] sm:items-center sm:gap-2 text-sm">
+    <div
+      className="grid grid-cols-1 gap-2 border-b border-border py-3 last:border-0 sm:grid-cols-[1fr_auto_auto_auto_auto] sm:items-center sm:gap-2 text-sm"
+      data-testid="eo-line"
+      data-provenance={line.provenance}
+    >
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-foreground">{line.description}</span>
-          <Badge variant={line.isIncluded ? "muted" : "accent"} className="text-[10px]">
-            {line.isIncluded ? "Included" : "Additional"}
-          </Badge>
-          <span className="text-[10px] uppercase tracking-wide text-muted-foreground">{PROVENANCE_LABEL[line.provenance]}</span>
+          {line.isIncluded ? (
+            <span className="text-[10px] text-muted-foreground" data-testid="eo-line-included-extra">Included · $0 extra</span>
+          ) : null}
         </div>
-        {(line.notes || line.unit) && (
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            {[line.unit ? `Unit: ${line.unit}` : null, line.notes].filter(Boolean).join(" · ")}
+        {(notesLabel || line.unit || inventoryName) && (
+          <p className="mt-0.5 text-xs text-muted-foreground" data-testid="eo-line-meta">
+            {[
+              line.unit ? `Unit: ${line.unit}` : null,
+              inventoryName ? `Uses inventory: ${inventoryName}` : null,
+              notesLabel,
+            ].filter(Boolean).join(" · ")}
           </p>
         )}
+        {stock ? (
+          <p
+            className={`mt-0.5 text-xs ${stock.short ? "text-amber-800" : "text-muted-foreground"}`}
+            data-testid="eo-line-stock"
+            data-short={stock.short ? "true" : "false"}
+          >
+            {stock.text}
+          </p>
+        ) : null}
       </div>
       <span className="text-muted-foreground sm:text-right sm:w-14">{line.quantity}×</span>
       <span className="text-muted-foreground sm:text-right sm:w-20">{formatOptionalMoney(line.unitPrice)}</span>
@@ -94,6 +130,111 @@ function LineRow({
         </div>
       )}
     </div>
+  );
+}
+
+type CouplePreview = ReturnType<typeof coupleChoicePreview>;
+type CoupleGroup = Extract<CouplePreview, { groups: unknown }>["groups"][number];
+
+/** Source line + any choice groups that don't belong to an Event Order section. */
+function CoupleWillChooseSection({
+  loading, preview, unmatched,
+}: {
+  loading: boolean;
+  preview: CouplePreview;
+  unmatched: CoupleGroup[];
+}) {
+  const showSelected = preview.kind === "packet" && preview.showAnswers;
+  return (
+    <div className="space-y-2" data-testid="eo-couple-will-choose">
+      {loading ? (
+        <p className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading this Event Order&apos;s template…
+        </p>
+      ) : preview.kind === "none" ? (
+        <p className="text-xs text-muted-foreground" data-testid="eo-couple-will-choose-empty">
+          {NO_COUPLE_CHOICES_MESSAGE}
+        </p>
+      ) : (
+        <>
+          <p className="text-xs text-muted-foreground" data-testid="eo-couple-will-choose-source" data-source={preview.kind}>
+            {preview.kind === "packet"
+              ? `Couple choices from “${preview.name}” · ${preview.statusLabel}.`
+              : `Couple choices from template “${preview.templateName}” — not sent yet.`}
+          </p>
+          {unmatched.length > 0 ? (
+            <div className="space-y-2">
+              <p className="text-sm font-semibold text-heading">The couple will choose</p>
+              <ul className="space-y-2">
+                {unmatched.map((group) => (
+                  <CoupleChoiceGroupCard key={group.id} group={group} showSelected={showSelected} />
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </>
+      )}
+    </div>
+  );
+}
+
+function useCoupleChoicePreview(eventOrder: EventOrderWithDetails | null, choices: ClientChoicesWithHistory[]) {
+  const hasActivePacket = pickActiveChoices(choices) != null;
+  const templateId = hasActivePacket || !eventOrder ? null : eventOrder.templateId;
+  const [templateDetail, setTemplateDetail] = React.useState<EventOrderTemplateWithDetails | null>(null);
+  const [loadedTemplateId, setLoadedTemplateId] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (!templateId) return;
+    let cancelled = false;
+    void getEventOrderTemplateDetailAction(templateId).then((detail) => {
+      if (cancelled) return;
+      setTemplateDetail(detail);
+      setLoadedTemplateId(templateId);
+    });
+    return () => { cancelled = true; };
+  }, [templateId]);
+
+  const loading = Boolean(templateId) && loadedTemplateId !== templateId;
+  const preview = coupleChoicePreview({
+    choices,
+    eventOrderTemplate: templateId && loadedTemplateId === templateId ? templateDetail : null,
+  });
+  return { loading, preview };
+}
+
+function CoupleChoiceGroupCard({ group, showSelected }: { group: CoupleGroup; showSelected: boolean }) {
+  return (
+    <li className="htc-surface-guidance space-y-1.5 p-3" data-testid="eo-couple-choice-group" data-group-id={group.id}>
+      <div className="flex flex-wrap items-baseline gap-x-2">
+        <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Couple chooses</span>
+        <span className="text-sm font-medium text-heading">{group.name}</span>
+        <span className="text-xs text-muted-foreground" data-testid="eo-couple-choice-rule">
+          {group.ruleLabel}
+          {group.allowQuantity ? " · quantity per option" : ""}
+          {group.shownWhen.length > 0 ? ` · only if ${group.shownWhen.map((l) => `“${l}”`).join(" or ")}` : ""}
+        </span>
+      </div>
+      {group.options.length === 0 ? (
+        <p className="text-xs text-muted-foreground">No options configured.</p>
+      ) : (
+        <ul className="space-y-1">
+          {group.options.map((opt) => (
+            <li key={opt.id} className="flex flex-wrap items-baseline justify-between gap-x-3 text-sm" data-testid="eo-couple-choice-option" data-option-id={opt.id}>
+              <span className="text-foreground">
+                {opt.label}
+                {showSelected && opt.chosen ? (
+                  <span className="ml-2 text-[10px] font-medium uppercase tracking-wide text-primary">
+                    Selected{opt.chosenQuantity != null ? ` ×${opt.chosenQuantity}` : ""}
+                  </span>
+                ) : null}
+              </span>
+              <span className="text-xs text-muted-foreground">{opt.priceLabel}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </li>
   );
 }
 
@@ -131,54 +272,105 @@ function AddSectionInline({ eventOrderId, eventId, disabled }: { eventOrderId: s
   );
 }
 
+type SetupOption = { id: string; name: string };
+
+function useEventOrderStock(eventId: string | null | undefined, linesKey: string): EventOrderStock | null {
+  const [stock, setStock] = React.useState<EventOrderStock | null>(null);
+  React.useEffect(() => {
+    if (!eventId) return;
+    let cancelled = false;
+    void getEventOrderStockAction(eventId).then((s) => { if (!cancelled) setStock(s); }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [eventId, linesKey]);
+  return stock;
+}
+
+function useEventFloorPlanSetups(eventId: string | null | undefined): SetupOption[] {
+  const [setups, setSetups] = React.useState<SetupOption[]>([]);
+  React.useEffect(() => {
+    if (!eventId) return;
+    let cancelled = false;
+    void listSetupsWithMembersAction(eventId).then((rows) => {
+      if (!cancelled) setSetups(rows.map((r) => ({ id: r.id, name: r.name })));
+    });
+    return () => { cancelled = true; };
+  }, [eventId]);
+  return setups;
+}
+
 /**
- * Phase 4 — which Floor Plan (if any) this Section reconciles against.
- * Purely an Event Order authoring choice: Event Order owns which Floor Plan
- * a Section corresponds to; this never creates, edits, or reads placement
- * data on the Floor Plan itself. Hidden entirely when the event has no
- * Floor Plans at all, so a booking that doesn't use Floor Plans sees
- * nothing new here.
+ * Which floor plan setup this section's items are compared with. Comparison
+ * only — never changes lines or the couple's copy. Shown on sections that
+ * hold floor-plan items, or that already carry a venue choice.
  */
-function SectionFloorPlanLink({
-  eventOrderId, eventId, section, floorPlans, disabled,
+function SectionSetupLink({
+  eventOrderId, eventId, section, setups, hasFloorPlanItems, floorPlans,
 }: {
-  eventOrderId: string; eventId: string; section: EventOrderSection; floorPlans: FloorPlan[]; disabled: boolean;
+  eventOrderId: string; eventId: string; section: EventOrderSection; setups: SetupOption[]; hasFloorPlanItems: boolean; floorPlans: FloorPlan[];
 }) {
   const [pending, startTransition] = React.useTransition();
-  if (floorPlans.length === 0) return null;
+  const resolution = resolveSectionSetup(
+    section,
+    setups.map((s) => ({ ...s, memberPlanIds: [], operationalPlanId: null })),
+  );
+  const explicit = Boolean(section.notOnFloorPlan || section.floorPlanSetupId || section.floorPlanId);
+  if (!hasFloorPlanItems && !explicit) return null;
 
+  const autoLabel = resolution.kind === "setup" && resolution.how !== "chosen"
+    ? `Floor plan: ${resolution.setupName} (matched by name)`
+    : resolution.kind === "plan"
+      ? `Floor plan: ${floorPlans.find((p) => p.id === resolution.planId)?.name ?? "linked layout"}`
+      : setups.length === 0
+      ? "Floor plan: every layout"
+      : "Floor plan: no matching setup";
+  const value = section.notOnFloorPlan ? "none" : section.floorPlanSetupId ? `setup:${section.floorPlanSetupId}` : "auto";
   const options = [
-    { value: "none", label: "No floor plan linked" },
-    ...floorPlans.map((p) => ({ value: p.id, label: p.name })),
+    { value: "auto", label: autoLabel },
+    ...setups.map((s) => ({ value: `setup:${s.id}`, label: `Floor plan: ${s.name}` })),
+    { value: "none", label: "Not on a floor plan" },
   ];
+  const unmatched = resolution.kind === "every_layout" && resolution.reason === "unmatched" && hasFloorPlanItems;
 
-  function handleChange(value: string) {
+  function handleChange(next: string) {
+    const choice = next === "auto" ? "auto" as const : next === "none" ? "none" as const : { setupId: next.slice("setup:".length) };
     startTransition(async () => {
-      const result = await setSectionFloorPlanAction(eventOrderId, eventId, section.id, value === "none" ? null : value);
-      if (!result.ok) toast.error(result.message ?? "Could not link floor plan.");
+      const result = await setSectionFloorPlanSetupAction(eventOrderId, eventId, section.id, choice);
+      if (!result.ok) toast.error(result.message ?? "Could not save the floor plan setup.");
     });
   }
 
   return (
-    <Select value={section.floorPlanId ?? "none"} onValueChange={handleChange} items={options} disabled={disabled || pending}>
-      <SelectTrigger className="h-7 w-auto gap-1 border-none bg-transparent px-2 text-xs text-muted-foreground hover:text-foreground">
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        {options.map((o) => (
-          <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+    <>
+      <Select value={value} onValueChange={(v) => { if (v) handleChange(v); }} items={options} disabled={pending}>
+        <SelectTrigger
+          className={`h-7 w-auto gap-1 border-none bg-transparent px-2 text-xs hover:text-foreground ${unmatched ? "text-amber-800" : "text-muted-foreground"}`}
+          data-testid={`eo-section-setup-${section.id}`}
+        >
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((o) => (
+            <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </>
   );
 }
 
 export function EventOrderPanel({
-  eventId, clientId, clientName, clientEmail, venueName, eventOrder, packages, packagesWithItems = [],
-  selectedPackageName = null, offerings = [], inventoryItems, invoices, floorPlans, overview,
+  eventId, planningClientId = null, clientId, clientName, clientEmail, venueName, eventOrder, packages, packagesWithItems = [],
+  selectedPackageName = null, offerings = [], inventoryItems, invoices, bookingCommitmentInvoiceIds = [], floorPlans, overview,
   templates = [],
+  linkedScheduleId = null,
+  preferredTemplateId = null,
+  shareCommitmentStale = false,
+  choices = [],
+  guestCount = null,
+  actionsOwnedByJourney = false,
 }: {
   eventId: string;
+  planningClientId?: string | null;
   clientId: string | null;
   clientName?: string | null;
   clientEmail?: string | null;
@@ -190,14 +382,38 @@ export function EventOrderPanel({
   offerings?: Offering[];
   inventoryItems: InventoryItem[];
   invoices: Invoice[];
+  bookingCommitmentInvoiceIds?: string[];
   floorPlans: FloorPlan[];
   overview?: EventOrderOverview | null;
   templates?: EventOrderTemplate[];
+  /** Payment schedule already attached to the EO-linked invoice, if any. */
+  linkedScheduleId?: string | null;
+  /** Setup Profile starting Event Order template — preselect only; does not auto-create. */
+  preferredTemplateId?: string | null;
+  /** Live lines differ from the last share the couple still sees. */
+  shareCommitmentStale?: boolean;
+  /** Event selection packets (already loaded by the page) for the read-only couple-choice preview. */
+  choices?: ClientChoicesWithHistory[];
+  /** Guest count when there is no event overview (client planning Event Order). */
+  guestCount?: number | null;
+  /**
+   * When true (Event Order tab journey), Send / Invoice CTAs live on the lead-card
+   * rows — hide competing Finalize, Share, and Create invoice controls here.
+   */
+  actionsOwnedByJourney?: boolean;
 }) {
   const router = useRouter();
+  // B1: new apply/seed uses Guaranteed ?? Estimated. Existing lines are not recalced.
+  const applyGuestCount = overview
+    ? boundHeadcountForApply(overview.guestCount, overview.guaranteedGuestCount)
+    : guestCount;
+  const chargeSplit = eventOrderChargeSplit(eventOrder?.lines ?? []);
+  const scopeId = eventId || planningClientId || "";
+  const preBooking = Boolean(planningClientId) && !eventId;
   const [starting, startStarting] = React.useTransition();
   const [applying, startApplying] = React.useTransition();
-  const [templateId, setTemplateId] = React.useState("blank");
+  const preferredExists = Boolean(preferredTemplateId && templates.some((t) => t.id === preferredTemplateId));
+  const [templateId, setTemplateId] = React.useState(preferredExists ? preferredTemplateId! : "blank");
   const [lifecyclePending, startLifecycle] = React.useTransition();
   const [downloading, startDownload] = React.useTransition();
   const [removingId, setRemovingId] = React.useState<string | null>(null);
@@ -210,6 +426,34 @@ export function EventOrderPanel({
   const [applyTemplate, setApplyTemplate] = React.useState<EventOrderTemplateWithDetails | null>(null);
 
   function refresh() { router.refresh(); }
+  const couple = useCoupleChoicePreview(eventOrder, choices);
+  const floorPlanSetups = useEventFloorPlanSetups(eventOrder?.eventId ?? (eventId || null));
+  const eventOrderStock = useEventOrderStock(
+    eventOrder?.eventId ?? null,
+    eventOrder?.lines.map((l) => `${l.id}:${l.quantity}:${l.inventoryItemId ?? ""}:${l.offeringId ?? ""}`).join("|") ?? "",
+  );
+
+  // Profile-configured Event Order should already exist after booking / prepare-release.
+  // Recover once so this tab is an editor, not a second setup wizard.
+  // Also re-enter ensure when an open EO already exists so booking Selected Package
+  // inclusions can seed (idempotent; does not recreate the order).
+  const ensuredRef = React.useRef(false);
+  React.useEffect(() => {
+    if (preBooking || !eventId || ensuredRef.current) return;
+    if (!eventOrder && !preferredExists) return;
+    ensuredRef.current = true;
+    let cancelled = false;
+    void (async () => {
+      const result = await ensureEventOrderAction(
+        eventId,
+        preferredExists ? preferredTemplateId : (eventOrder?.templateId ?? null),
+      );
+      if (cancelled) return;
+      if (!result.ok) toast.error(result.message ?? "Could not prepare Event Order.");
+      else refresh();
+    })();
+    return () => { cancelled = true; };
+  }, [eventOrder, preferredExists, preferredTemplateId, preBooking, eventId]);
 
   // Work Package D5E — unified Share experience.
   const shareRecipient = clientName ? { name: clientName, contact: clientEmail ?? null, relationshipLabel: "Client" } : null;
@@ -220,13 +464,16 @@ export function EventOrderPanel({
   const shareDefaultMessage = mergeContent("We've shared your Event Order for {{event_date}}. Please review it when you have a chance.", shareMergeData);
 
   async function runFinalize(eventOrderId: string) {
-    const result = await finalizeEventOrderAction(eventOrderId, eventId);
+    const result = await finalizeEventOrderAction(eventOrderId, scopeId);
     if (!result.ok) toast.error(result.message ?? "Could not finalize.");
-    else toast.success("Event Order finalized.");
+    else {
+      toast.success("Event Order finalized.");
+      refresh();
+    }
   }
 
   async function runShare(eventOrderId: string, message: string) {
-    const result = await shareEventOrderWithClientAction(eventOrderId, eventId, message);
+    const result = await shareEventOrderWithClientAction(eventOrderId, scopeId, message);
     if (result.ok) toast.success("Shared with client.");
     return result;
   }
@@ -275,14 +522,30 @@ export function EventOrderPanel({
   }
 
   if (!eventOrder) {
+    if (preferredExists && !preBooking) {
+      return (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Event Order</CardTitle>
+            <CardDescription>
+              Preparing a draft from this event&apos;s starting template. The couple sees nothing until you send it.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              <p className="text-xs text-muted-foreground">Preparing Event Order draft…</p>
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
     return (
-      <Card>
+      <Card data-testid="eo-empty-start">
         <CardHeader>
           <CardTitle className="text-base">Event Order</CardTitle>
           <CardDescription>
-            What this event is receiving.
-            <br />
-            Not your invoice, contract, or task list.
+            Pick a template or start blank below. The couple sees nothing until you send it.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -293,13 +556,14 @@ export function EventOrderPanel({
               </p>
             )}
             <p className="max-w-md text-sm text-muted-foreground">
-              Optional — use when you need a detailed delivery list. Package-only events can skip this.
-              Templates copy selected sections and offerings into this event. That snapshot is not an invoice, contract, or payment.
+              A template fills in sections and offerings for this event. You can edit the draft before you send it.
             </p>
             <div className="flex w-full flex-col items-stretch gap-2 sm:flex-row sm:items-center">
               <Button type="button" size="sm" disabled={starting}
                 onClick={() => startStarting(async () => {
-                  const result = await ensureEventOrderAction(eventId, null);
+                  const result = preBooking
+                    ? await ensureClientEventOrderAction(planningClientId!, null)
+                    : await ensureEventOrderAction(eventId, null);
                   if (!result.ok) toast.error(result.message ?? "Could not start Event Order.");
                   else refresh();
                 })}>
@@ -345,11 +609,14 @@ export function EventOrderPanel({
               onOpenChange={setApplyOpen}
               template={applyTemplate}
               pending={applying}
+              guestCount={applyGuestCount}
               onApply={async (selections) => {
                 if (!applyTemplate) return;
                 await new Promise<void>((resolve) => {
                   startApplying(async () => {
-                    const result = await ensureEventOrderAction(eventId, applyTemplate.id, selections);
+                    const result = preBooking
+                      ? await ensureClientEventOrderAction(planningClientId!, applyTemplate.id, selections)
+                      : await ensureEventOrderAction(eventId, applyTemplate.id, selections);
                     if (!result.ok) toast.error(result.message ?? "Could not start Event Order.");
                     else {
                       setApplyOpen(false);
@@ -373,10 +640,56 @@ export function EventOrderPanel({
   const displayStatus = eventOrderDisplayStatus(order);
   const isFinalized = order.status === "finalized";
   const unsectioned = order.lines.filter((l) => !l.sectionId);
+  const inventoryNameById = new Map(inventoryItems.map((i) => [i.id, i.printableName || i.name]));
+  const unsectionedSplit = splitSetupLines(unsectioned);
+  const coupleGroups = couple.preview.kind === "none" ? [] : couple.preview.groups;
+  const groupPlacement = matchChoiceGroupsToSections(coupleGroups, order.sections);
+  const showSelectedChoices = couple.preview.kind === "packet" && couple.preview.showAnswers;
+  const floorPlanItemIds = new Set(inventoryItems.filter((i) => i.availableForFloorPlans).map((i) => i.id));
+  const offeringItemById = new Map(offerings.map((o) => [o.id, o.inventoryItemId]));
+  function sectionHasFloorPlanItems(sectionId: string): boolean {
+    return order.lines.some((l) => {
+      if (l.sectionId !== sectionId) return false;
+      const itemId = l.inventoryItemId ?? (l.offeringId ? offeringItemById.get(l.offeringId) : null);
+      return Boolean(itemId && floorPlanItemIds.has(itemId));
+    });
+  }
+  function sectionUnmatched(section: EventOrderSection): boolean {
+    if (!order.eventId || floorPlanSetups.length === 0 || !sectionHasFloorPlanItems(section.id)) return false;
+    const r = resolveSectionSetup(
+      section,
+      floorPlanSetups.map((x) => ({ ...x, memberPlanIds: [], operationalPlanId: null })),
+    );
+    return r.kind === "every_layout" && r.reason === "unmatched";
+  }
+
+  function lineStock(line: EventOrderLine): { text: string; short: boolean } | null {
+    if (!eventOrderStock?.date) return null;
+    const itemId = line.inventoryItemId ?? (line.offeringId ? offeringItemById.get(line.offeringId) : null);
+    const s = itemId ? eventOrderStock.items.find((i) => i.itemId === itemId) : undefined;
+    return s ? { text: stockSentence(s, eventOrderStock.date), short: s.short > 0 } : null;
+  }
+
+  function renderLine(line: EventOrderLine) {
+    return (
+      <LineRow
+        key={line.id}
+        line={line}
+        sections={order.sections}
+        eventOrderId={order.id}
+        eventId={scopeId}
+        canEdit={!isFinalized}
+        inventoryName={line.inventoryItemId ? inventoryNameById.get(line.inventoryItemId) : null}
+        stock={lineStock(line)}
+        removing={removingId === line.id}
+        onRemove={() => handleRemoveLine(line)}
+      />
+    );
+  }
 
   async function handleRemoveLine(line: EventOrderLine) {
     setRemovingId(line.id);
-    const result = await removeLineAction(order.id, eventId, line.id, line.description);
+    const result = await removeLineAction(order.id, scopeId, line.id, line.description);
     setRemovingId(null);
     if (!result.ok) toast.error(result.message ?? "Could not remove line.");
   }
@@ -384,7 +697,7 @@ export function EventOrderPanel({
   async function handleRemoveSection(sectionId: string, name: string) {
     if (!confirm(`Remove "${name}"? Its lines will stay, unsectioned.`)) return;
     setRemovingSectionId(sectionId);
-    const result = await removeSectionAction(order.id, eventId, sectionId, name);
+    const result = await removeSectionAction(order.id, scopeId, sectionId, name);
     setRemovingSectionId(null);
     if (!result.ok) toast.error(result.message ?? "Could not remove section.");
   }
@@ -404,10 +717,16 @@ export function EventOrderPanel({
           }
           lastUpdated={new Date(eventOrder.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
           primaryAction={
-            !isFinalized ? (
+            preBooking || actionsOwnedByJourney
+              ? (isFinalized && eventOrder.sharedAt ? (
+                <Button type="button" size="sm" disabled={downloading} onClick={() => handleDownload(eventOrder.id)}>
+                  {downloading ? <><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />Opening…</> : "Download PDF"}
+                </Button>
+              ) : undefined)
+              : !isFinalized ? (
               <Button type="button" size="sm" disabled={lifecyclePending || (eventOrder.lines.length === 0)}
                 onClick={() => requestFinalize(eventOrder.id, eventOrder.total, eventOrder.lines.length)}>
-                {lifecyclePending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Finalize"}
+                {lifecyclePending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Finalize Event Order"}
               </Button>
             ) : eventOrder.sharedAt ? (
               <Button type="button" size="sm" disabled={downloading} onClick={() => handleDownload(eventOrder.id)}>
@@ -431,26 +750,46 @@ export function EventOrderPanel({
             )
           }
         />
-        <p className="text-xs text-muted-foreground -mt-1">
-          What this event is receiving. Delivery subtotal (for reference):{" "}
-          <span className="font-medium text-foreground">{formatMoney(eventOrder.total)}</span>
-          {" "}— amount due is on Invoice / Payments.
+        <p className="text-xs text-muted-foreground -mt-1" data-testid="eo-additional-extra-total">
+          New charges <span className="font-medium text-foreground">{formatMoney(chargeSplit.newCharges)}</span>
+          {chargeSplit.coveredByPackage > 0 ? (
+            <>{" · "}Covered by package{" "}<span className="font-medium text-foreground">{formatMoney(chargeSplit.coveredByPackage)}</span></>
+          ) : null}
+          {selectedPackageName ? <>{" · "}Package <span className="font-medium text-foreground">{selectedPackageName}</span></> : null}
         </p>
-        {selectedPackageName && (
+        {preBooking && (
           <p className="text-xs text-muted-foreground -mt-1">
-            Package context: <span className="font-medium text-foreground">{selectedPackageName}</span> (commercial purchase — not this Event Order)
+            Finalize, share with the client, and the invoice link wait until this relationship is Booked. They describe the booked occasion.
           </p>
         )}
-        {!isFinalized && eventOrder.sharedAt && (
-          <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-foreground">
-            Clients still see the shared version from{" "}
-            {new Date(eventOrder.sharedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}.
-            Re-share when you are ready to publish revisions.
+        {eventOrder.sharedAt && (shareCommitmentStale || !isFinalized) && (
+          <div
+            className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-foreground space-y-1"
+            data-testid="event-order-share-stale-banner"
+            role="status"
+          >
+            <p>
+              The couple still sees the copy shared{" "}
+              {new Date(eventOrder.sharedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+              {shareCommitmentStale
+                ? ", which no longer matches these lines. Re-share before invoicing."
+                : ". Re-share when you're ready to publish changes."}
+            </p>
           </div>
+        )}
+        {!preBooking && !isFinalized && templates.length > 0 && packageLinesIgnoreHeadcount(eventOrder.lines) && (
+          <p
+            className="rounded-md border border-border bg-muted/30 px-3 py-2 text-xs text-foreground"
+            data-testid="event-order-package-headcount-banner"
+            role="status"
+          >
+            Package inclusions are fixed quantities. If catering should follow the Guaranteed
+            headcount, use Apply a template below with a per-person template.
+          </p>
         )}
         {isFinalized && (
           <div className="flex items-center gap-2 -mt-1">
-            {eventOrder.sharedAt && (
+            {eventOrder.sharedAt && !actionsOwnedByJourney && (
               <>
                 <Button type="button" variant="ghost" size="sm" onClick={() => requestShareDialog("update")}>Update Shared Copy</Button>
                 <ShareDialog
@@ -468,7 +807,7 @@ export function EventOrderPanel({
             )}
             <Button type="button" variant="ghost" size="sm" className="text-muted-foreground" disabled={lifecyclePending}
               onClick={() => startLifecycle(async () => {
-                const result = await reopenEventOrderAction(eventOrder.id, eventId);
+                const result = await reopenEventOrderAction(eventOrder.id, scopeId);
                 if (!result.ok) toast.error(result.message ?? "Could not reopen.");
                 else refresh();
               })}>
@@ -479,54 +818,85 @@ export function EventOrderPanel({
         {eventOrder.sharedAt && isFinalized && (
           <p className="text-xs text-muted-foreground -mt-1">
             Shared with client {new Date(eventOrder.sharedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}.
-            Re-sharing publishes a new frozen copy for the client.
           </p>
         )}
-        {clientId && (
+        {clientId && !preBooking && !actionsOwnedByJourney && (
           <div className="pt-3 mt-3 border-t border-border/60">
-            <EventOrderInvoiceLink eventOrderId={eventOrder.id} eventId={eventId} clientId={clientId} invoices={invoices} />
+            <EventOrderInvoiceLink
+              eventOrderId={eventOrder.id}
+              eventId={scopeId}
+              clientId={clientId}
+              invoices={invoices}
+              bookingCommitmentInvoiceIds={bookingCommitmentInvoiceIds}
+              hasPricedContent={eventOrder.total > 0}
+              linkedScheduleId={linkedScheduleId}
+            />
           </div>
         )}
       </CardHeader>
       <CardContent className="space-y-6">
         {(overview || clientName || venueName) && (
-          <div className="rounded-lg border border-border bg-muted/20 p-4 space-y-3">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Event Overview</p>
-            <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
-              {(overview?.eventName || clientName) && (
-                <div><span className="text-muted-foreground">Event </span><span className="font-medium text-foreground">{overview?.eventName || clientName}</span></div>
-              )}
-              {clientName && (
-                <div><span className="text-muted-foreground">Client </span><span className="font-medium text-foreground">{clientName}</span></div>
-              )}
-              {overview?.eventDate && (
-                <div><span className="text-muted-foreground">Date </span><span className="font-medium text-foreground">{new Date(overview.eventDate + "T12:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</span></div>
-              )}
-              {overview?.guestCount != null && (
-                <div><span className="text-muted-foreground">Guests </span><span className="font-medium text-foreground">{overview.guestCount}</span></div>
-              )}
-              {overview?.spaceName && (
-                <div><span className="text-muted-foreground">Spaces </span><span className="font-medium text-foreground">{overview.spaceName}</span></div>
-              )}
-            </div>
-            <p className="text-xs text-muted-foreground">Drawn from the event booking — edit those details on Overview, not here.</p>
+          <div className="flex flex-wrap gap-x-6 gap-y-2 rounded-lg border border-border bg-card px-4 py-3 text-sm" data-testid="eo-overview">
+            {(overview?.eventName || clientName) && (
+              <div>
+                <span className="text-muted-foreground">Event </span>
+                {eventId ? (
+                  <Link href={`/events/${eventId}`} className="htc-record-link font-medium">{overview?.eventName || clientName}</Link>
+                ) : (
+                  <span className="font-medium text-foreground">{overview?.eventName || clientName}</span>
+                )}
+              </div>
+            )}
+            {clientName && (
+              <div>
+                <span className="text-muted-foreground">Client </span>
+                {(clientId || planningClientId) ? (
+                  <Link href={`/clients/${clientId || planningClientId}`} className="htc-record-link font-medium">{clientName}</Link>
+                ) : (
+                  <span className="font-medium text-foreground">{clientName}</span>
+                )}
+              </div>
+            )}
+            {overview?.eventDate && (
+              <div><span className="text-muted-foreground">Date </span><span className="font-medium text-foreground">{new Date(overview.eventDate + "T12:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</span></div>
+            )}
+            {applyGuestCount != null && (
+              <div><span className="text-muted-foreground">Guests </span><span className="font-medium text-foreground">{applyGuestCount}</span></div>
+            )}
+            {overview?.spaceName && (
+              <div><span className="text-muted-foreground">Spaces </span><span className="font-medium text-foreground">{overview.spaceName}</span></div>
+            )}
           </div>
         )}
 
+        {!preBooking && (
+          <CoupleWillChooseSection loading={couple.loading} preview={couple.preview} unmatched={groupPlacement.unmatched} />
+        )}
+
         {eventOrder.sections.map((section) => {
-          const lines = eventOrder.lines.filter((l) => l.sectionId === section.id);
+          const { main, setup } = splitSetupLines(eventOrder.lines.filter((l) => l.sectionId === section.id));
+          const sectionGroups = groupPlacement.bySectionId.get(section.id) ?? [];
           return (
-            <div key={section.id} className="space-y-2">
+            <div key={section.id} className="space-y-2" data-testid="eo-section" data-section-id={section.id}>
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-1">
                   <p className="text-sm font-semibold text-heading">{section.name}</p>
-                  <SectionFloorPlanLink eventOrderId={eventOrder.id} eventId={eventId} section={section} floorPlans={floorPlans} disabled={isFinalized} />
+                  {order.eventId ? (
+                    <SectionSetupLink
+                      eventOrderId={eventOrder.id}
+                      eventId={order.eventId}
+                      section={section}
+                      setups={floorPlanSetups}
+                      hasFloorPlanItems={sectionHasFloorPlanItems(section.id)}
+                      floorPlans={floorPlans}
+                    />
+                  ) : null}
                 </div>
                 <div className="flex items-center gap-2">
                   {!isFinalized && (
                     <AddLineSheet
                       eventOrderId={eventOrder.id}
-                      eventId={eventId}
+                      eventId={scopeId}
                       sectionId={section.id}
                       offerings={offerings}
                       packages={packages}
@@ -543,102 +913,99 @@ export function EventOrderPanel({
                   )}
                 </div>
               </div>
-              {lines.length === 0 ? (
-                <p className="text-xs text-muted-foreground py-2">No items in this section yet.</p>
-              ) : (
-                <div>
-                  {lines.map((line) => (
-                    <LineRow
-                      key={line.id}
-                      line={line}
-                      sections={eventOrder.sections}
-                      eventOrderId={eventOrder.id}
-                      eventId={eventId}
-                      canEdit={!isFinalized}
-                      removing={removingId === line.id}
-                      onRemove={() => handleRemoveLine(line)}
-                    />
+              {sectionUnmatched(section) ? (
+                <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900" data-testid={`eo-section-setup-unmatched-${section.id}`}>
+                  &ldquo;{section.name}&rdquo; doesn&apos;t match a floor plan setup by name, so its items are counted on every layout. Pick the setup it belongs to above, or choose &ldquo;Not on a floor plan&rdquo;.
+                </p>
+              ) : null}
+              {main.length === 0 && setup.length === 0 && sectionGroups.length === 0 ? (
+                <p className="text-xs text-muted-foreground py-2">No items yet.</p>
+              ) : null}
+              {main.length > 0 ? <div>{main.map(renderLine)}</div> : null}
+              {sectionGroups.length > 0 ? (
+                <ul className="space-y-2">
+                  {sectionGroups.map((group) => (
+                    <CoupleChoiceGroupCard key={group.id} group={group} showSelected={showSelectedChoices} />
                   ))}
-                </div>
-              )}
+                </ul>
+              ) : null}
+              {setup.length > 0 ? (
+                <details className="rounded-md border border-border/70 px-3 py-2" data-testid="eo-included-setup-items">
+                  <summary className="cursor-pointer text-xs font-medium text-muted-foreground">
+                    Included setup items ({setup.length})
+                  </summary>
+                  <div className="mt-1">{setup.map(renderLine)}</div>
+                </details>
+              ) : null}
             </div>
           );
         })}
 
-        <div className="space-y-2">
-          {eventOrder.sections.length > 0 && <p className="text-sm font-semibold text-heading">General</p>}
-          {unsectioned.length === 0 ? (
-            eventOrder.sections.length > 0 && <p className="text-xs text-muted-foreground py-2">Nothing unsectioned.</p>
-          ) : (
-            <div>
-              {unsectioned.map((line) => (
-                <LineRow
-                  key={line.id}
-                  line={line}
-                  sections={eventOrder.sections}
-                  eventOrderId={eventOrder.id}
-                  eventId={eventId}
-                  canEdit={!isFinalized}
-                  removing={removingId === line.id}
-                  onRemove={() => handleRemoveLine(line)}
-                />
-              ))}
-            </div>
-          )}
-          {eventOrder.lines.length === 0 && eventOrder.sections.length === 0 && (
-            <p className="text-sm text-muted-foreground py-4 text-center">Nothing added yet. Add items from Offerings, or add sections first.</p>
-          )}
-        </div>
-
-        {!isFinalized && templates.length > 0 && (
-          <div className="flex w-full min-w-0 flex-col gap-2 rounded-md border border-border/70 p-3">
-            <p className="text-sm text-muted-foreground">Apply a template to add sections and selected offerings. Existing lines stay as they are.</p>
-            <div className="flex w-full min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-              <Select
-                value={templateId}
-                onValueChange={setTemplateId}
-                items={[{ value: "blank", label: "Choose a template…" }, ...templates.map((t) => ({
-                  value: t.id,
-                  label: t.name,
-                }))]}
-              >
-                <SelectTrigger className="w-full min-w-0 sm:max-w-xs"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="blank">Choose a template…</SelectItem>
-                  {templates.map((t) => (
-                    <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button type="button" variant="outline" size="sm" disabled={starting || templateId === "blank"}
-                onClick={() => startStarting(async () => {
-                  const detail = await getEventOrderTemplateDetailAction(templateId);
-                  if (!detail) {
-                    toast.error("Could not load that template.");
-                    return;
-                  }
-                  setApplyTemplate(detail);
-                  setApplyOpen(true);
-                })}>
-                Apply a template
-              </Button>
-            </div>
+        {(unsectionedSplit.main.length > 0 || unsectionedSplit.setup.length > 0) && (
+          <div className="space-y-2">
+            {eventOrder.sections.length > 0 && <p className="text-sm font-semibold text-heading">General</p>}
+            {unsectionedSplit.main.length > 0 ? <div>{unsectionedSplit.main.map(renderLine)}</div> : null}
+            {unsectionedSplit.setup.length > 0 ? (
+              <details className="rounded-md border border-border/70 px-3 py-2" data-testid="eo-included-setup-items">
+                <summary className="cursor-pointer text-xs font-medium text-muted-foreground">
+                  Included setup items ({unsectionedSplit.setup.length})
+                </summary>
+                <div className="mt-1">{unsectionedSplit.setup.map(renderLine)}</div>
+              </details>
+            ) : null}
           </div>
+        )}
+        {eventOrder.lines.length === 0 && eventOrder.sections.length === 0 && (
+          <p className="text-sm text-muted-foreground py-4 text-center">Nothing added yet. Add items from Offerings, or add sections first.</p>
         )}
 
         {!isFinalized && (
           <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-border/60">
-            <AddSectionInline eventOrderId={eventOrder.id} eventId={eventId} disabled={lifecyclePending} />
-            <AddLineSheet
-              eventOrderId={eventOrder.id}
-              eventId={eventId}
-              sectionId={null}
-              offerings={offerings}
-              packages={packages}
-              packagesWithItems={packagesWithItems}
-              inventoryItems={inventoryItems}
-              onAdded={() => refresh()}
-            />
+            <div className="flex flex-wrap items-center gap-2">
+              <AddSectionInline eventOrderId={eventOrder.id} eventId={scopeId} disabled={lifecyclePending} />
+              <AddLineSheet
+                eventOrderId={eventOrder.id}
+                eventId={scopeId}
+                sectionId={null}
+                offerings={offerings}
+                packages={packages}
+                packagesWithItems={packagesWithItems}
+                inventoryItems={inventoryItems}
+                onAdded={() => refresh()}
+              />
+            </div>
+            {templates.length > 0 && (
+              <div className="flex w-full min-w-0 flex-col gap-2 sm:w-auto sm:flex-row sm:items-center" data-testid="eo-apply-template">
+                <Select
+                  value={templateId}
+                  onValueChange={setTemplateId}
+                  items={[{ value: "blank", label: "Choose a template…" }, ...templates.map((t) => ({
+                    value: t.id,
+                    label: t.name,
+                  }))]}
+                >
+                  <SelectTrigger className="w-full min-w-0 sm:w-56"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="blank">Choose a template…</SelectItem>
+                    {templates.map((t) => (
+                      <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button type="button" variant="outline" size="sm" disabled={starting || templateId === "blank"}
+                  onClick={() => startStarting(async () => {
+                    const detail = await getEventOrderTemplateDetailAction(templateId);
+                    if (!detail) {
+                      toast.error("Could not load that template.");
+                      return;
+                    }
+                    setApplyTemplate(detail);
+                    setApplyOpen(true);
+                  })}>
+                  Apply a template
+                </Button>
+              </div>
+            )}
           </div>
         )}
 
@@ -658,11 +1025,12 @@ export function EventOrderPanel({
       onOpenChange={setApplyOpen}
       template={applyTemplate}
       pending={applying}
+      guestCount={applyGuestCount}
       onApply={async (selections) => {
         if (!applyTemplate) return;
         await new Promise<void>((resolve) => {
           startApplying(async () => {
-            const result = await applyEventOrderTemplateAction(order.id, eventId, applyTemplate.id, selections);
+            const result = await applyEventOrderTemplateAction(order.id, scopeId, applyTemplate.id, selections);
             if (!result.ok) toast.error(result.message ?? "Could not apply this template.");
             else {
               setApplyOpen(false);

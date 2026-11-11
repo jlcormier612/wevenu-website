@@ -1,0 +1,96 @@
+{
+  "at": "2026-10-12T02:28:00.000Z",
+  "tip": "553c8687dd19e1d5196c94fe07b9957cecabec70",
+  "ecsImage": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:553c8687dd19e1d5196c94fe07b9957cecabec70",
+  "taskDefinition": "htc-sandbox-venue-app:672",
+  "projectRef": "wvpsldwwjqdannqasrdf",
+  "health": {
+    "ok": true,
+    "checks": {
+      "env": "ok",
+      "supabase": "ok"
+    }
+  },
+  "fixAncestry": {
+    "efd12db6_auth_amp": true,
+    "459d63fc_crm": true,
+    "8e4f911e_blocked_dates": true,
+    "553c8687_ellie_tour": true
+  },
+  "authRetryable24hSum": 0,
+  "albRequestCount7dSum": 201462,
+  "albApproxPerDay": 28780,
+  "albTarget5xx24hSum": 1064,
+  "sandboxCounts": {
+    "venues": 108,
+    "clients": 131,
+    "leads": 108,
+    "events": 55,
+    "authUsers": 114
+  },
+  "alarms": {
+    "count": 12,
+    "names": [
+      "htc-sandbox-alb-target-5xx",
+      "htc-sandbox-auth-retryable-spike",
+      "htc-sandbox-crm-contention-spike",
+      "htc-sandbox-health-supabase-down",
+      "htc-sandbox-ops-alert-email-failures",
+      "htc-sandbox-resend-daily-usage-high",
+      "htc-sandbox-resend-monthly-usage-high",
+      "htc-sandbox-resend-provider-limit",
+      "htc-sandbox-resend-usage-canary-down",
+      "htc-sandbox-sns-notifications-failed",
+      "htc-sandbox-supabase-restriction-signal",
+      "htc-sandbox-venue-unhealthy-hosts"
+    ],
+    "monthlyUsageState": "ALARM"
+  },
+  "sns": {
+    "topic": "arn:aws:sns:us-east-1:405254329873:htc-sandbox-ops-alerts",
+    "sqsSubscription": "Confirmed",
+    "lambdaEmailFanout": "Confirmed",
+    "emailSubscription": "PendingConfirmation",
+    "emailEndpoint": "jennifer@hellotocheers.com",
+    "notificationsFailed24hSum": 2,
+    "notificationsDelivered24hSum": 26
+  },
+  "humanNotification": {
+    "channel": "SNS → Lambda htc-sandbox-ops-alert-email → Resend",
+    "recipient": "jennifer@hellotocheers.com",
+    "alarmDelivered": true,
+    "okDelivered": true,
+    "monthlyUsageAlarmDelivered": true,
+    "evidence": "ops-alert-verify.json"
+  },
+  "canary": {
+    "healthFunction": "htc-sandbox-health-canary",
+    "healthSchedule": "rate(5 minutes) ENABLED",
+    "healthInvokeOk": true,
+    "resendUsageFunction": "htc-sandbox-resend-usage-canary",
+    "resendUsageSchedule": "rate(15 minutes) ENABLED",
+    "resendUsageInvokeOk": true
+  },
+  "resend": {
+    "secretPresent": "htc/sandbox/resend-api-key",
+    "usageApi": "GET /usage OK",
+    "daily": { "used": 33, "limit": 100 },
+    "monthly": { "used": 2263, "limit": 3000, "pct": 75.43 },
+    "rateLimitPerSecond": 10,
+    "domains": {
+      "hellotocheers.com": "verified sending enabled",
+      "replies.hellotocheers.com": "verified receiving"
+    },
+    "appClassification": "lib/email/resend-failure.ts",
+    "planNameFromApi": null,
+    "allowanceShape": "matches Free 100/day 3000/month"
+  },
+  "supabaseUsageSpendCap": "OWNER — Dashboard B1–B10 (no SUPABASE_ACCESS_TOKEN)",
+  "customerTrafficReadiness": "YELLOW",
+  "safety": {
+    "productionUntouched": true,
+    "billingUntouched": true,
+    "spendCapUntouched": true,
+    "noCustomerCommsTests": true
+  }
+}

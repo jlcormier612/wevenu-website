@@ -1,0 +1,84 @@
+{
+  "status": 200,
+  "json": {
+    "ok": true,
+    "reward": {
+      "id": "f8322a5c-fb3f-4337-8860-70c9376bc0f6",
+      "referralId": "f77458fb-78ef-4af9-9889-11f92030a562",
+      "attributionId": "064475c2-9953-4a0e-83b5-dfb669c63b7a",
+      "referringVenueId": "9336a6cb-6a49-4a38-82bc-ff3b2361e8a3",
+      "referringStripeSubscriptionId": "sub_1UZw74ErUqJH7nkta71f0YMw",
+      "referringStripeCustomerId": "cus_Vb8Ng5wqMg59Z5",
+      "referredVenueId": "6d3abc3e-c323-4c30-be64-b3ab899b6110",
+      "qualifyingInvoiceId": "in_fake_p6_1794271429189",
+      "eligibilityAt": "2026-11-10T00:43:51.35+00:00",
+      "rewardAmountCents": 19900,
+      "currency": "usd",
+      "valuationAt": "2026-11-10T00:43:51.35+00:00",
+      "valuationPlanKey": "starter",
+      "valuationListAmountCents": 19900,
+      "valuationSource": "standard",
+      "valuationSnapshot": {
+        "excludes": [
+          "tax",
+          "white_glove",
+          "one_time_fees",
+          "prior_referral_credits",
+          "referred_venue_price"
+        ],
+        "valuedAt": "2026-11-10T00:43:51.350Z",
+        "winnerId": "standard",
+        "candidates": [
+          {
+            "id": "standard",
+            "label": "Standard catalog pricing",
+            "source": "standard",
+            "expectedAmountCents": 19900
+          }
+        ],
+        "winnerLabel": "Standard catalog pricing",
+        "winnerSource": "standard",
+        "baseListAmountCents": 19900,
+        "expectedAmountCents": 19900
+      },
+      "status": "approved",
+      "approvedByEmail": "phase6-harness@hellotocheers.com",
+      "approvedAt": "2026-11-10T00:43:52.088+00:00",
+      "approvalNotes": "Phase 6 harness approval",
+      "rejectedByEmail": null,
+      "rejectedAt": null,
+      "rejectionReason": null,
+      "stripeInvoiceItemId": null,
+      "stripeCreditIdempotencyKey": null,
+      "issuedAt": null,
+      "appliedInvoiceId": null,
+      "appliedAt": null,
+      "lastError": null,
+      "retryCount": 0,
+      "audit": [
+        {
+          "at": "2026-11-10T00:43:51.234Z",
+          "action": "created",
+          "status": "pending_qualification"
+        },
+        {
+          "at": "2026-11-10T00:43:51.350Z",
+          "by": "phase6-harness@hellotocheers.com",
+          "action": "valued_eligible",
+          "amountCents": 19900
+        },
+        {
+          "at": "2026-11-10T00:43:52.088Z",
+          "by": "phase6-harness@hellotocheers.com",
+          "action": "approved"
+        }
+      ],
+      "metadata": {
+        "customerAtEligibility": "cus_Vb8Ng5wqMg59Z5",
+        "subscriptionAtEligibility": "sub_1UZw74ErUqJH7nkta71f0YMw"
+      },
+      "createdAt": "2026-11-10T00:43:51.258922+00:00",
+      "updatedAt": "2026-11-10T00:43:52.12+00:00"
+    }
+  }
+}

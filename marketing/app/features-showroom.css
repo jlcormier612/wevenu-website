@@ -1,0 +1,1782 @@
+/**
+ * Features Showroom — Phase 1 concepts + Phase 2 Linen hybrid refinement.
+ * Scoped to .htc-showroom-linen / .htc-showroom-botanical.
+ * Does not alter Homepage, Product, or Our Story styles.
+ */
+
+.htc-showroom {
+  --fs-botanical: #446b56;
+  --fs-botanical-deep: #355544;
+  --fs-eucalyptus: #dce8e0;
+  --fs-linen: #f3f0e9;
+  --fs-canvas: #f8f7f3;
+  --fs-ivory: #fefefc;
+  --fs-white: #ffffff;
+  --fs-charcoal: #24332b;
+  --fs-muted: rgba(36, 51, 43, 0.68);
+  --fs-line: rgba(36, 51, 43, 0.12);
+  --fs-blush: #f7e9eb;
+  --fs-ease: ease-out;
+  --fs-motion: 220ms;
+  color: var(--fs-charcoal);
+}
+
+/* Preview-only chrome (concept comparison routes) */
+.fs-preview-linen {
+  background: var(--fs-canvas, #f8f7f3);
+  min-height: 100%;
+}
+
+.fs-preview-botanical {
+  background: #2f4639;
+  min-height: 100%;
+}
+
+.fs-preview-bar {
+  padding: 7.5rem 0 1.25rem;
+}
+
+.fs-preview-bar-inner {
+  width: min(1220px, calc(100% - 2rem));
+  margin-inline: auto;
+  display: grid;
+  gap: 1.25rem;
+}
+
+.fs-preview-eyebrow {
+  margin: 0 0 0.55rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: #446b56;
+}
+
+.fs-preview-botanical .fs-preview-eyebrow {
+  color: #dce8e0;
+}
+
+.fs-preview-title {
+  margin: 0;
+  font-family: var(--font-heading), Georgia, serif;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  font-size: clamp(1.65rem, 3vw, 2.2rem);
+  line-height: 1.15;
+  color: #24332b;
+}
+
+.fs-preview-botanical .fs-preview-title {
+  color: #fefefc;
+}
+
+.fs-preview-subtitle,
+.fs-preview-note {
+  margin: 0.45rem 0 0;
+  max-width: 52ch;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: rgba(36, 51, 43, 0.68);
+}
+
+.fs-preview-botanical .fs-preview-subtitle,
+.fs-preview-botanical .fs-preview-note {
+  color: rgba(254, 254, 252, 0.72);
+}
+
+.fs-preview-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem 1rem;
+}
+
+.fs-preview-link {
+  font-size: 0.88rem;
+  color: #446b56;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.fs-preview-botanical .fs-preview-link {
+  color: #dce8e0;
+}
+
+.fs-preview-link.is-emphasis {
+  font-weight: 600;
+}
+
+@media (min-width: 900px) {
+  .fs-preview-bar-inner {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    width: min(1280px, calc(100% - 2.5rem));
+  }
+
+  .fs-preview-links {
+    justify-content: flex-end;
+    max-width: 16rem;
+  }
+}
+
+/* Compact preview chrome when Phase 3A hero is present */
+.fs-preview-bar.is-compact {
+  padding: 6.35rem 0 0.55rem;
+}
+
+.fs-preview-with-hero .fs-preview-title {
+  font-size: clamp(1.2rem, 2.4vw, 1.75rem);
+}
+
+.fs-preview-with-hero .fs-preview-subtitle {
+  font-size: 0.88rem;
+}
+
+@media (max-width: 899px) {
+  .fs-preview-bar.is-compact .fs-preview-subtitle {
+    display: none;
+  }
+
+  .fs-preview-bar.is-compact {
+    padding: 6.1rem 0 0.35rem;
+  }
+}
+
+.fs-page-linen .htc-showroom-linen,
+.fs-preview-with-hero .htc-showroom-linen {
+  padding-top: 0;
+  background: var(--fs-canvas);
+}
+
+/* ── Phase 3A — Features editorial split hero ────────────────────── */
+
+.fs-features-hero {
+  --fs-botanical: #446b56;
+  --fs-botanical-deep: #355544;
+  --fs-eucalyptus: #dce8e0;
+  --fs-linen: #f3f0e9;
+  --fs-canvas: #f8f7f3;
+  --fs-ivory: #fefefc;
+  --fs-charcoal: #24332b;
+  --fs-muted: rgba(36, 51, 43, 0.68);
+  --fs-line: rgba(36, 51, 43, 0.12);
+  /* Warm Champagne Linen — visible beige, not off-white */
+  background: #ede5d9;
+  padding: 0.85rem 0 0;
+  color: var(--fs-charcoal);
+}
+
+.fs-features-hero-inner {
+  width: min(1220px, calc(100% - 2rem));
+  margin-inline: auto;
+  display: grid;
+  gap: 1.35rem;
+  align-items: center;
+}
+
+.fs-features-hero-copy {
+  display: grid;
+  gap: 0.85rem;
+  max-width: 34rem;
+  padding: 0.15rem 0 0.1rem;
+}
+
+.fs-features-hero-eyebrow {
+  margin: 0;
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--fs-botanical);
+}
+
+.fs-features-hero-headline {
+  margin: 0;
+  font-family: var(--font-heading), Georgia, serif;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 1.08;
+  font-size: clamp(2.15rem, 7.2vw, 3.55rem);
+  color: var(--fs-charcoal);
+  /* Wide enough for “So much more” / “than meets” / “the eye.” — not four lines. */
+  max-width: 13ch;
+}
+
+.fs-features-hero-headline-tail {
+  white-space: nowrap;
+}
+
+@media (max-width: 360px) {
+  .fs-features-hero-headline-tail {
+    white-space: normal;
+  }
+}
+
+.fs-features-hero-body {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.65;
+  color: var(--fs-muted);
+  max-width: 38ch;
+}
+
+.fs-features-hero-explore {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 0.15rem 0 0;
+  margin-top: 0.35rem;
+  width: fit-content;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  font: inherit;
+  font-family: var(--font-heading), Georgia, serif;
+  font-size: 1.08rem;
+  letter-spacing: -0.01em;
+  color: var(--fs-botanical-deep);
+  cursor: pointer;
+  border-bottom: 1px solid color-mix(in srgb, var(--fs-botanical) 35%, transparent);
+  transition:
+    opacity 220ms ease-out,
+    border-color 220ms ease-out;
+}
+
+.fs-features-hero-explore:hover {
+  opacity: 0.88;
+  border-color: var(--fs-botanical);
+}
+
+.fs-features-hero-explore:focus-visible {
+  outline: 2px solid var(--fs-botanical);
+  outline-offset: 4px;
+  border-radius: 0.1rem;
+}
+
+.fs-features-hero-explore-arrow {
+  font-size: 0.95rem;
+  line-height: 1;
+  transform: translateY(1px);
+}
+
+.fs-features-hero-visual {
+  margin: 0;
+  min-width: 0;
+}
+
+.fs-features-hero-frame {
+  position: relative;
+  overflow: hidden;
+  border-radius: 0.2rem;
+  border: 1px solid color-mix(in srgb, var(--fs-botanical) 12%, var(--fs-line));
+  background: var(--fs-linen);
+  box-shadow:
+    0 1px 0 color-mix(in srgb, white 70%, transparent),
+    0 26px 50px -36px rgba(36, 51, 43, 0.4);
+  aspect-ratio: 16 / 10.5;
+  max-height: 15.5rem;
+}
+
+@media (min-width: 900px) {
+  .fs-features-hero-frame {
+    max-height: none;
+  }
+}
+
+.fs-features-hero-frame::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: linear-gradient(
+    180deg,
+    var(--fs-botanical) 0%,
+    color-mix(in srgb, var(--fs-botanical) 45%, var(--fs-eucalyptus)) 100%
+  );
+  pointer-events: none;
+}
+
+.fs-features-hero-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 40%;
+  display: block;
+}
+
+.fs-features-hero-bridge {
+  width: min(1220px, calc(100% - 2rem));
+  margin: 1.75rem auto 0.35rem;
+  display: flex;
+  justify-content: center;
+}
+
+.fs-features-hero-bridge-rule {
+  display: block;
+  width: min(7.5rem, 28%);
+  height: 1px;
+  background: color-mix(in srgb, var(--fs-botanical) 42%, transparent);
+}
+
+@media (min-width: 900px) {
+  .fs-features-hero {
+    padding: 1.75rem 0 0;
+  }
+
+  .fs-features-hero-inner {
+    width: min(1280px, calc(100% - 2.5rem));
+    grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+    gap: 3rem;
+    align-items: center;
+    min-height: min(32rem, 70vh);
+  }
+
+  .fs-features-hero-copy {
+    gap: 1.15rem;
+    padding-right: 0.5rem;
+  }
+
+  .fs-features-hero-headline {
+    font-size: clamp(2.85rem, 4.2vw, 3.85rem);
+    max-width: 13ch;
+  }
+
+  .fs-features-hero-body {
+    font-size: 1.08rem;
+    max-width: 40ch;
+  }
+
+  .fs-features-hero-frame {
+    aspect-ratio: 5 / 4;
+    max-height: 34rem;
+  }
+
+  .fs-features-hero-bridge {
+    width: min(1280px, calc(100% - 2.5rem));
+    margin-top: 2.15rem;
+    margin-bottom: 0.15rem;
+  }
+}
+
+@media (min-width: 1100px) {
+  .fs-features-hero-inner {
+    gap: 3.5rem;
+  }
+
+  .fs-features-hero-frame {
+    aspect-ratio: 4 / 3.15;
+  }
+}
+
+.htc-showroom * {
+  box-sizing: border-box;
+}
+
+.htc-showroom .fs-shell {
+  width: min(1220px, calc(100% - 2rem));
+  margin-inline: auto;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.htc-showroom .fs-intro {
+  display: none;
+}
+
+.htc-showroom .fs-layout {
+  display: grid;
+  /* minmax(0,1fr) prevents grid children from expanding past the shell */
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1.75rem;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.htc-showroom .fs-mobile-nav {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.htc-showroom .fs-mobile-label {
+  margin: 0;
+  font-size: 0.72rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.htc-showroom .fs-mobile-select {
+  appearance: none;
+  width: 100%;
+  border-radius: 0.35rem;
+  border: 1px solid var(--fs-line);
+  padding: 0.85rem 1rem;
+  font: inherit;
+  font-size: 0.95rem;
+  line-height: 1.35;
+  background-position: right 0.9rem center;
+  background-repeat: no-repeat;
+  background-size: 0.75rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23446b56' d='M1.2 1.2 6 6l4.8-4.8'/%3E%3C/svg%3E");
+  padding-right: 2.4rem;
+}
+
+.htc-showroom .fs-mobile-select:focus-visible {
+  outline: 2px solid var(--fs-botanical);
+  outline-offset: 2px;
+}
+
+.htc-showroom .fs-nav {
+  display: none;
+}
+
+.htc-showroom .fs-nav-kicker {
+  margin: 0 0 0.85rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.htc-showroom .fs-nav-list {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.htc-showroom .fs-nav-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.65rem;
+  align-items: start;
+  text-align: left;
+  width: 100%;
+  border: 1px solid transparent;
+  border-radius: 0.35rem;
+  padding: 0.85rem 0.95rem;
+  cursor: pointer;
+  transition:
+    background-color var(--fs-motion) var(--fs-ease),
+    border-color var(--fs-motion) var(--fs-ease),
+    color var(--fs-motion) var(--fs-ease),
+    box-shadow var(--fs-motion) var(--fs-ease);
+}
+
+.htc-showroom .fs-nav-item:focus-visible {
+  outline: 2px solid var(--fs-botanical);
+  outline-offset: 2px;
+}
+
+.htc-showroom .fs-nav-index {
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+  line-height: 1.6;
+  color: color-mix(in srgb, var(--fs-botanical) 55%, transparent);
+  padding-top: 0.12rem;
+}
+
+.htc-showroom .fs-nav-copy {
+  display: grid;
+  gap: 0.18rem;
+  min-width: 0;
+}
+
+.htc-showroom .fs-nav-category {
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  line-height: 1.3;
+}
+
+.htc-showroom .fs-nav-title {
+  font-family: var(--font-heading), Georgia, serif;
+  font-size: 1.15rem;
+  font-weight: 400;
+  letter-spacing: -0.015em;
+  line-height: 1.2;
+}
+
+.htc-showroom .fs-stage {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1.35rem;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.htc-showroom .fs-stage > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+#features-showroom {
+  scroll-margin-top: 6.5rem;
+}
+
+.htc-showroom .fs-header {
+  display: grid;
+  gap: 0.7rem;
+  max-width: min(42rem, 100%);
+  width: 100%;
+}
+
+.htc-showroom .fs-eyebrow {
+  margin: 0;
+  font-size: 0.72rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--fs-botanical);
+}
+
+.htc-showroom .fs-headline {
+  margin: 0;
+  font-family: var(--font-heading), Georgia, serif;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 1.08;
+  font-size: clamp(2rem, 3.6vw, 2.85rem);
+  overflow-wrap: break-word;
+  text-wrap: balance;
+  max-width: 100%;
+}
+
+.htc-showroom .fs-explanation {
+  margin: 0;
+  font-size: 1.02rem;
+  line-height: 1.65;
+  color: var(--fs-muted);
+  max-width: min(54ch, 100%);
+  overflow-wrap: break-word;
+  text-wrap: pretty;
+}
+
+.htc-showroom .fs-exhibit {
+  margin: 0;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.htc-showroom .fs-frame {
+  margin: 0;
+  overflow: hidden;
+  border-radius: 0.2rem;
+  border: 1px solid var(--fs-line);
+  background: var(--fs-white);
+  box-shadow: 0 22px 48px -34px rgba(36, 51, 43, 0.38);
+}
+
+.htc-showroom .fs-chrome {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.55rem 0.75rem;
+  border-bottom: 1px solid var(--fs-line);
+  background: color-mix(in srgb, var(--fs-linen) 70%, white);
+}
+
+.htc-showroom .fs-chrome > span {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--fs-botanical) 28%, var(--fs-linen));
+}
+
+.htc-showroom .fs-chrome-url {
+  margin-left: 0.45rem;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.68rem;
+  letter-spacing: 0.02em;
+  color: var(--fs-muted);
+}
+
+.htc-showroom .fs-shot {
+  position: relative;
+  background: var(--fs-canvas);
+  aspect-ratio: 16 / 10;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.htc-showroom .fs-shot-img {
+  width: 100%;
+  max-width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: left top;
+  display: block;
+}
+
+.htc-showroom .fs-shot.is-contain {
+  background:
+    linear-gradient(
+      165deg,
+      color-mix(in srgb, var(--fs-linen) 88%, white) 0%,
+      color-mix(in srgb, var(--fs-eucalyptus) 35%, var(--fs-linen)) 100%
+    );
+}
+
+.htc-showroom .fs-shot.is-contain .fs-shot-img {
+  object-fit: contain;
+  object-position: center center;
+}
+
+.htc-showroom .fs-shot.is-device {
+  aspect-ratio: auto;
+  min-height: 24rem;
+  max-height: min(56rem, 92vh);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 1.15rem 1rem 1.35rem;
+  overflow: auto;
+  background:
+    linear-gradient(
+      165deg,
+      #ede5d9 0%,
+      color-mix(in srgb, var(--fs-linen) 70%, #e9e0d4) 100%
+    );
+}
+
+.htc-showroom .fs-shot.is-device .fs-shot-img {
+  width: min(20.5rem, 72%);
+  height: auto;
+  max-width: 100%;
+  object-fit: contain;
+  object-position: top center;
+  border-radius: 1.15rem;
+  border: 1px solid color-mix(in srgb, var(--fs-botanical) 16%, transparent);
+  box-shadow:
+    0 1px 0 color-mix(in srgb, white 70%, transparent),
+    0 22px 40px -28px rgba(36, 51, 43, 0.45);
+}
+
+.htc-showroom .fs-caption {
+  display: none;
+}
+
+.htc-showroom .fs-caption-detail {
+  display: none;
+}
+
+.htc-showroom .fs-rail {
+  display: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .htc-showroom .fs-shot-img {
+    animation: fs-fade var(--fs-motion) var(--fs-ease) both;
+  }
+}
+
+@keyframes fs-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.htc-showroom .fs-featured-label {
+  margin: 0 0 0.35rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--fs-botanical);
+}
+
+.htc-showroom .fs-featured-hint {
+  display: none;
+}
+
+.htc-showroom .fs-featured {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.htc-showroom .fs-featured-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.55rem;
+  width: 100%;
+  min-width: 0;
+}
+
+.htc-showroom .fs-featured-item {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  text-align: left;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  align-items: start;
+  padding: 0.85rem 0.95rem;
+  border-radius: 0.3rem;
+  border: 1px solid var(--fs-line);
+  background: transparent;
+  cursor: pointer;
+  transition:
+    border-color var(--fs-motion) var(--fs-ease),
+    background-color var(--fs-motion) var(--fs-ease),
+    box-shadow var(--fs-motion) var(--fs-ease);
+}
+
+.htc-showroom .fs-featured-item:hover {
+  border-color: color-mix(in srgb, var(--fs-botanical) 35%, transparent);
+}
+
+.htc-showroom .fs-featured-item:focus-visible {
+  outline: 2px solid var(--fs-botanical);
+  outline-offset: 2px;
+}
+
+.htc-showroom .fs-featured-item.is-active {
+  border-color: color-mix(in srgb, var(--fs-botanical) 45%, transparent);
+  background: color-mix(in srgb, var(--fs-eucalyptus) 55%, white);
+  box-shadow: inset 3px 0 0 var(--fs-botanical);
+}
+
+.htc-showroom .fs-featured-marker {
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--fs-botanical) 55%, transparent);
+  padding-top: 0.28rem;
+}
+
+.htc-showroom .fs-featured-copy {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.htc-showroom .fs-featured-name {
+  font-family: var(--font-heading), Georgia, serif;
+  font-size: 1.05rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--fs-charcoal);
+}
+
+.htc-showroom .fs-featured-detail {
+  font-size: 0.92rem;
+  line-height: 1.5;
+  color: var(--fs-muted);
+}
+
+.htc-showroom .fs-featured-lens {
+  display: none;
+}
+
+.htc-showroom .fs-benefit {
+  margin: 0;
+  padding: 1rem 1.1rem;
+  border-left: 2px solid color-mix(in srgb, var(--fs-botanical) 45%, transparent);
+  background: color-mix(in srgb, var(--fs-eucalyptus) 35%, transparent);
+  font-size: 0.98rem;
+  line-height: 1.6;
+  color: var(--fs-charcoal);
+  max-width: 58ch;
+}
+
+.htc-showroom .fs-email-showcase {
+  margin-top: 0.15rem;
+  padding: 1.85rem 0 0.55rem;
+  border-top: 1px solid color-mix(in srgb, var(--fs-line, #ddd6cb) 80%, transparent);
+}
+
+.htc-showroom .fs-email-showcase-intro {
+  display: grid;
+  gap: 0.75rem;
+  max-width: 42rem;
+  margin-bottom: 1.35rem;
+}
+
+.htc-showroom .fs-email-showcase-headline {
+  margin: 0;
+  font-family: var(--font-heading), Georgia, serif;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 1.18;
+  font-size: clamp(1.45rem, 2.8vw, 1.95rem);
+  color: var(--fs-charcoal);
+  text-wrap: balance;
+}
+
+.htc-showroom .fs-email-showcase-lede {
+  margin: 0;
+  font-size: 1.02rem;
+  line-height: 1.65;
+  color: var(--fs-muted);
+  max-width: 52ch;
+  text-wrap: pretty;
+}
+
+.htc-showroom .fs-email-showcase-grid {
+  display: grid;
+  gap: 1.35rem;
+}
+
+.htc-showroom .fs-email-example {
+  margin: 0;
+  display: grid;
+  gap: 0.7rem;
+}
+
+.htc-showroom .fs-email-example-kicker {
+  margin: 0;
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--fs-botanical);
+}
+
+.htc-showroom .fs-email-example-frame {
+  overflow: hidden;
+  border-radius: 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--fs-line, #ddd6cb) 92%, transparent);
+  background: #fff;
+  box-shadow: 0 14px 34px rgba(36, 51, 43, 0.06);
+}
+
+.htc-showroom .fs-email-example-img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+  object-fit: contain;
+  object-position: center top;
+  background: #f7f5f0;
+}
+
+.htc-showroom .fs-email-example-caption {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: var(--fs-charcoal);
+  max-width: 36ch;
+  text-wrap: pretty;
+}
+
+@media (min-width: 900px) {
+  .htc-showroom .fs-email-showcase {
+    padding-top: 2.1rem;
+  }
+
+  .htc-showroom .fs-email-showcase-intro {
+    margin-bottom: 1.55rem;
+  }
+
+  .htc-showroom .fs-email-showcase-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.5rem 1.65rem;
+    align-items: start;
+  }
+}
+
+.htc-showroom .fs-collection-spotlight {
+  display: grid;
+  gap: 1.75rem;
+  margin-top: 0.35rem;
+  padding: 1.75rem 0 0.35rem;
+  border-top: 1px solid color-mix(in srgb, var(--fs-line, #ddd6cb) 80%, transparent);
+}
+
+.htc-showroom .fs-collection-spotlight-copy {
+  display: grid;
+  gap: 0.85rem;
+  max-width: 36rem;
+}
+
+.htc-showroom .fs-collection-spotlight-eyebrow {
+  margin: 0;
+  font-size: 0.68rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--fs-botanical);
+}
+
+.htc-showroom .fs-collection-spotlight-headline {
+  margin: 0;
+  font-family: var(--font-heading), Georgia, serif;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  font-size: clamp(1.55rem, 3.2vw, 2.15rem);
+  color: var(--fs-charcoal);
+  max-width: 18ch;
+}
+
+.htc-showroom .fs-collection-spotlight-body {
+  display: grid;
+  gap: 0.9rem;
+  max-width: 48ch;
+}
+
+.htc-showroom .fs-collection-spotlight-body p {
+  margin: 0;
+  font-size: 1.02rem;
+  line-height: 1.65;
+  color: var(--fs-muted);
+}
+
+.htc-showroom .fs-collection-spotlight-figure {
+  margin: 0;
+}
+
+.htc-showroom .fs-collection-spotlight-frame {
+  overflow: hidden;
+  border-radius: 0.65rem;
+  border: 1px solid color-mix(in srgb, var(--fs-line, #ddd6cb) 90%, transparent);
+  background: #fff;
+  box-shadow: 0 18px 40px rgba(36, 51, 43, 0.07);
+}
+
+.htc-showroom .fs-collection-spotlight-img {
+  display: block;
+  width: 100%;
+  height: auto;
+  object-fit: cover;
+  object-position: center top;
+}
+
+@media (min-width: 900px) {
+  .htc-showroom .fs-collection-spotlight {
+    grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+    align-items: center;
+    gap: 2.25rem;
+    padding-top: 2rem;
+  }
+}
+
+.htc-showroom .fs-inventory-toggle {
+  appearance: none;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0.15rem 0;
+  margin: 0;
+  font: inherit;
+  font-size: 0.92rem;
+  letter-spacing: 0.01em;
+  color: var(--fs-botanical);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.28em;
+  cursor: pointer;
+}
+
+.htc-showroom .fs-inventory-toggle:hover {
+  opacity: 0.9;
+  text-decoration-thickness: 1.5px;
+}
+
+.htc-showroom .fs-inventory-toggle:focus-visible {
+  outline: 2px solid var(--fs-botanical);
+  outline-offset: 4px;
+  border-radius: 0.15rem;
+}
+
+.htc-showroom .fs-inventory-panel {
+  margin-top: 1rem;
+  display: none;
+  padding: 1.15rem 1.2rem;
+  border: 1px solid var(--fs-line);
+  border-radius: 0.3rem;
+  background: color-mix(in srgb, var(--fs-linen) 55%, white);
+}
+
+.htc-showroom .fs-inventory-panel.is-open {
+  display: block;
+}
+
+.htc-showroom .fs-inventory-lede {
+  display: none;
+}
+
+.htc-showroom .fs-inventory-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.25rem;
+}
+
+.htc-showroom .fs-inventory-heading {
+  margin: 0 0 0.55rem;
+  font-family: var(--font-heading), Georgia, serif;
+  font-size: 1.05rem;
+  font-weight: 500;
+  color: var(--fs-charcoal);
+}
+
+.htc-showroom .fs-inventory-items {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.htc-showroom .fs-inventory-items li {
+  position: relative;
+  padding-left: 0.95rem;
+  font-size: 0.92rem;
+  line-height: 1.45;
+  color: var(--fs-muted);
+}
+
+.htc-showroom .fs-inventory-items li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.55em;
+  width: 0.35rem;
+  height: 0.35rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--fs-botanical) 55%, transparent);
+}
+
+/* ── Concept A / Phase 2 hybrid — The Linen Gallery ──────────────── */
+
+.htc-showroom-linen {
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--fs-eucalyptus) 28%, var(--fs-canvas)) 0%,
+      var(--fs-canvas) 9rem,
+      var(--fs-canvas) 100%
+    );
+  padding: 0.35rem 0 2.5rem;
+}
+
+.htc-showroom-linen .fs-intro {
+  display: grid;
+  gap: 0.65rem;
+  margin: 0 0 1.5rem;
+  max-width: 40rem;
+  /* Sticky site header ~5.2rem–6rem; keep Explore-the-collection landing readable */
+  scroll-margin-top: 7.25rem;
+}
+
+.htc-showroom-linen .fs-intro-rule {
+  width: 2.75rem;
+  height: 2px;
+  background: var(--fs-botanical);
+  border-radius: 999px;
+}
+
+.htc-showroom-linen .fs-intro-kicker {
+  margin: 0;
+  font-size: 0.7rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--fs-botanical);
+}
+
+.htc-showroom-linen .fs-intro-title {
+  margin: 0;
+  font-family: var(--font-heading), Georgia, serif;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 1.12;
+  font-size: clamp(1.85rem, 3.2vw, 2.45rem);
+  color: var(--fs-charcoal);
+}
+
+.htc-showroom-linen .fs-intro-lede {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.65;
+  color: var(--fs-muted);
+  max-width: 48ch;
+}
+
+.htc-showroom-linen .fs-layout {
+  position: relative;
+  background: var(--fs-ivory);
+  border: 1px solid color-mix(in srgb, var(--fs-botanical) 12%, var(--fs-line));
+  border-radius: 0.4rem;
+  padding: 1.15rem;
+  box-shadow:
+    0 1px 0 color-mix(in srgb, white 70%, transparent),
+    0 24px 50px -38px rgba(36, 51, 43, 0.34);
+  overflow: hidden;
+  min-width: 0;
+  max-width: 100%;
+}
+
+@media (max-width: 640px) {
+  .htc-showroom-linen .fs-layout {
+    padding: 0.85rem;
+  }
+
+  .htc-showroom-linen .fs-headline {
+    font-size: clamp(1.65rem, 7.2vw, 2.05rem);
+  }
+
+  .htc-showroom-linen .fs-exhibit {
+    padding: 0.4rem;
+  }
+
+  .htc-showroom .fs-shell {
+    width: min(1220px, calc(100% - 1.5rem));
+  }
+}
+
+/* Restrained botanical edge — exhibition accent, not a dark surround */
+.htc-showroom-linen .fs-layout::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: linear-gradient(
+    180deg,
+    var(--fs-botanical) 0%,
+    color-mix(in srgb, var(--fs-botanical) 55%, var(--fs-eucalyptus)) 100%
+  );
+}
+
+.htc-showroom-linen .fs-mobile-label {
+  color: var(--fs-botanical);
+}
+
+.htc-showroom-linen .fs-mobile-select {
+  background-color: var(--fs-linen);
+  color: var(--fs-charcoal);
+  border-color: color-mix(in srgb, var(--fs-botanical) 16%, transparent);
+}
+
+.htc-showroom-linen .fs-nav-kicker {
+  color: var(--fs-botanical);
+}
+
+.htc-showroom-linen .fs-nav-item {
+  background: transparent;
+  color: var(--fs-charcoal);
+  border-radius: 0.25rem;
+}
+
+.htc-showroom-linen .fs-nav-category {
+  color: var(--fs-muted);
+}
+
+.htc-showroom-linen .fs-nav-item:hover {
+  background: color-mix(in srgb, var(--fs-eucalyptus) 35%, var(--fs-linen));
+}
+
+.htc-showroom-linen .fs-nav-item.is-active {
+  background: color-mix(in srgb, var(--fs-eucalyptus) 48%, var(--fs-linen));
+  border-color: transparent;
+  box-shadow: inset 3px 0 0 var(--fs-botanical);
+}
+
+.htc-showroom-linen .fs-nav-item.is-active .fs-nav-index,
+.htc-showroom-linen .fs-nav-item.is-active .fs-nav-title {
+  color: var(--fs-botanical-deep);
+}
+
+.htc-showroom-linen .fs-headline {
+  color: var(--fs-charcoal);
+  font-size: clamp(2.15rem, 3.8vw, 3.05rem);
+}
+
+.htc-showroom-linen .fs-exhibit {
+  padding: 0.55rem;
+  border-radius: 0.35rem;
+  background:
+    linear-gradient(
+      165deg,
+      color-mix(in srgb, var(--fs-eucalyptus) 55%, var(--fs-linen)) 0%,
+      var(--fs-linen) 100%
+    );
+  border: 1px solid color-mix(in srgb, var(--fs-botanical) 10%, transparent);
+}
+
+.htc-showroom-linen .fs-frame {
+  background: var(--fs-white);
+  border-color: color-mix(in srgb, var(--fs-botanical) 14%, transparent);
+  box-shadow:
+    0 1px 0 color-mix(in srgb, white 80%, transparent),
+    0 28px 55px -36px rgba(36, 51, 43, 0.42);
+}
+
+.htc-showroom-linen .fs-chrome {
+  background: color-mix(in srgb, var(--fs-linen) 82%, white);
+}
+
+.htc-showroom-linen .fs-shot {
+  aspect-ratio: 16 / 9.6;
+  min-height: 14rem;
+}
+
+.htc-showroom-linen .fs-exhibit.is-visual-gallery .fs-shot {
+  aspect-ratio: 16 / 10.2;
+  min-height: 16rem;
+}
+
+.htc-showroom-linen .fs-caption {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.7rem;
+  align-items: baseline;
+  padding: 0.7rem 0.9rem 0.8rem;
+  border-top: 1px solid var(--fs-line);
+  background: color-mix(in srgb, var(--fs-ivory) 70%, var(--fs-linen));
+}
+
+.htc-showroom-linen .fs-exhibit.is-visual-gallery .fs-caption {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.2rem 0.7rem;
+  align-items: baseline;
+  padding: 0.85rem 1rem 0.95rem;
+}
+
+.htc-showroom-linen .fs-caption-label {
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--fs-botanical);
+}
+
+.htc-showroom-linen .fs-caption-value {
+  font-family: var(--font-heading), Georgia, serif;
+  font-size: 1rem;
+  letter-spacing: -0.01em;
+  color: var(--fs-charcoal);
+}
+
+.htc-showroom-linen .fs-exhibit.is-visual-gallery .fs-caption-value {
+  font-size: 1.12rem;
+}
+
+.htc-showroom-linen .fs-caption-detail {
+  display: block;
+  grid-column: 1 / -1;
+  margin-top: 0.15rem;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  color: var(--fs-muted);
+  max-width: 62ch;
+}
+
+.htc-showroom-linen .fs-rail {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 0.95rem;
+}
+
+.htc-showroom-linen .fs-rail-label {
+  margin: 0;
+  font-size: 0.7rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--fs-botanical);
+}
+
+.htc-showroom-linen .fs-rail-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.htc-showroom-linen .fs-rail-item {
+  display: grid;
+  gap: 0.45rem;
+  width: 100%;
+  padding: 0.4rem;
+  border: 1px solid color-mix(in srgb, var(--fs-botanical) 12%, transparent);
+  border-radius: 0.3rem;
+  background: color-mix(in srgb, var(--fs-linen) 55%, white);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color var(--fs-motion) var(--fs-ease),
+    background-color var(--fs-motion) var(--fs-ease),
+    box-shadow var(--fs-motion) var(--fs-ease);
+}
+
+.htc-showroom-linen .fs-rail-item:hover {
+  background: color-mix(in srgb, var(--fs-eucalyptus) 28%, white);
+  border-color: color-mix(in srgb, var(--fs-botanical) 22%, transparent);
+}
+
+.htc-showroom-linen .fs-rail-item:focus-visible {
+  outline: 2px solid var(--fs-botanical);
+  outline-offset: 2px;
+}
+
+.htc-showroom-linen .fs-rail-item.is-active {
+  background: color-mix(in srgb, var(--fs-eucalyptus) 48%, var(--fs-ivory));
+  border-color: color-mix(in srgb, var(--fs-botanical) 28%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--fs-botanical) 18%, transparent);
+}
+
+.htc-showroom-linen .fs-rail-thumb {
+  display: block;
+  overflow: hidden;
+  border-radius: 0.18rem;
+  aspect-ratio: 16 / 10;
+  background:
+    linear-gradient(
+      165deg,
+      color-mix(in srgb, var(--fs-eucalyptus) 40%, var(--fs-linen)) 0%,
+      var(--fs-linen) 100%
+    );
+}
+
+.htc-showroom-linen .fs-rail-thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: left top;
+  display: block;
+}
+
+.htc-showroom-linen .fs-rail-thumb-img.is-contain {
+  object-fit: contain;
+  object-position: center center;
+}
+
+.htc-showroom-linen .fs-rail-name {
+  display: block;
+  padding: 0 0.15rem 0.15rem;
+  font-family: var(--font-heading), Georgia, serif;
+  font-size: 0.92rem;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  color: var(--fs-charcoal);
+  overflow-wrap: anywhere;
+  hyphens: auto;
+}
+
+.htc-showroom-linen .fs-rail-item.is-active .fs-rail-name {
+  color: var(--fs-botanical-deep);
+}
+
+.htc-showroom-linen .fs-featured-hint {
+  display: block;
+  margin: 0 0 0.9rem;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--fs-muted);
+  max-width: 48ch;
+}
+
+.htc-showroom-linen .fs-featured-list {
+  gap: 0;
+  border-top: 1px solid color-mix(in srgb, var(--fs-botanical) 12%, transparent);
+}
+
+.htc-showroom-linen .fs-featured-item {
+  border: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--fs-botanical) 10%, transparent);
+  border-radius: 0;
+  padding: 1rem 0.35rem 1rem 0.15rem;
+  background: transparent;
+  box-shadow: none;
+}
+
+.htc-showroom-linen .fs-featured-item:hover {
+  background: color-mix(in srgb, var(--fs-eucalyptus) 22%, transparent);
+  border-color: color-mix(in srgb, var(--fs-botanical) 10%, transparent);
+}
+
+.htc-showroom-linen .fs-featured-item.is-active {
+  background: color-mix(in srgb, var(--fs-eucalyptus) 52%, var(--fs-ivory));
+  box-shadow: inset 3px 0 0 var(--fs-botanical);
+  border-color: color-mix(in srgb, var(--fs-botanical) 10%, transparent);
+}
+
+.htc-showroom-linen .fs-featured-item.is-static {
+  cursor: default;
+  opacity: 0.92;
+}
+
+.htc-showroom-linen .fs-featured-item.is-static:hover {
+  background: transparent;
+}
+
+.htc-showroom-linen .fs-featured-name {
+  font-size: 1.12rem;
+  font-weight: 400;
+}
+
+.htc-showroom-linen .fs-featured-item.is-active .fs-featured-name {
+  color: var(--fs-botanical-deep);
+}
+
+.htc-showroom-linen .fs-featured-lens {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 0.2rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--fs-botanical);
+  opacity: 0.72;
+}
+
+.htc-showroom-linen .fs-featured-item.is-active .fs-featured-lens {
+  opacity: 1;
+}
+
+.htc-showroom-linen .fs-benefit {
+  max-width: none;
+  padding: 1.1rem 1.25rem;
+  border-left: 0;
+  border-top: 2px solid var(--fs-botanical);
+  background:
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--fs-eucalyptus) 55%, var(--fs-linen)) 0%,
+      color-mix(in srgb, var(--fs-linen) 70%, white) 100%
+    );
+  font-family: var(--font-heading), Georgia, serif;
+  font-size: 1.12rem;
+  line-height: 1.55;
+  letter-spacing: -0.01em;
+}
+
+.htc-showroom-linen .fs-inventory-toggle {
+  font-family: var(--font-heading), Georgia, serif;
+  font-size: 1.08rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--fs-botanical);
+  text-decoration: none;
+  border-bottom: 1px solid color-mix(in srgb, var(--fs-botanical) 38%, transparent);
+  padding: 0.2rem 0 0.12rem;
+  transition:
+    opacity 180ms ease-out,
+    border-bottom-color 180ms ease-out,
+    color 180ms ease-out;
+}
+
+.htc-showroom-linen .fs-inventory-toggle:hover {
+  opacity: 1;
+  border-bottom-color: var(--fs-botanical);
+}
+
+.htc-showroom-linen .fs-inventory-toggle:focus-visible {
+  outline: 2px solid var(--fs-botanical);
+  outline-offset: 4px;
+}
+
+.htc-showroom-linen .fs-inventory-panel {
+  margin-top: 1.15rem;
+  padding: 1.35rem 1.3rem 1.4rem;
+  background: color-mix(in srgb, var(--fs-linen) 72%, white);
+  border-color: color-mix(in srgb, var(--fs-botanical) 12%, transparent);
+  border-radius: 0.3rem;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 65%, transparent);
+}
+
+.htc-showroom-linen .fs-inventory-lede {
+  display: block;
+  margin: 0 0 1.15rem;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  color: var(--fs-muted);
+  max-width: 48ch;
+}
+
+.htc-showroom-linen .fs-inventory-heading {
+  font-size: 1.12rem;
+  font-weight: 400;
+  color: var(--fs-botanical-deep);
+  padding-bottom: 0.45rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--fs-botanical) 14%, transparent);
+  margin-bottom: 0.7rem;
+}
+
+.htc-showroom-linen .fs-inventory-items {
+  gap: 0.5rem;
+}
+
+.htc-showroom-linen .fs-inventory-items li {
+  padding-left: 0;
+  color: var(--fs-charcoal);
+  opacity: 0.78;
+}
+
+.htc-showroom-linen .fs-inventory-items li::before {
+  display: none;
+}
+
+/* ── Concept B — The Botanical Gallery (preserved) ───────────────── */
+
+.htc-showroom-botanical {
+  background:
+    radial-gradient(120% 80% at 10% 0%, color-mix(in srgb, var(--fs-botanical) 82%, #1f3329), transparent 55%),
+    linear-gradient(165deg, var(--fs-botanical-deep) 0%, var(--fs-botanical) 55%, #3d6150 100%);
+  padding: 1.35rem 0 2.15rem;
+  color: var(--fs-ivory);
+}
+
+.htc-showroom-botanical .fs-layout {
+  background: color-mix(in srgb, #2f4a3c 55%, transparent);
+  border: 1px solid color-mix(in srgb, white 14%, transparent);
+  border-radius: 0.4rem;
+  padding: 1.15rem;
+  backdrop-filter: blur(4px);
+}
+
+.htc-showroom-botanical .fs-mobile-label,
+.htc-showroom-botanical .fs-nav-kicker,
+.htc-showroom-botanical .fs-eyebrow,
+.htc-showroom-botanical .fs-featured-label {
+  color: var(--fs-eucalyptus);
+}
+
+.htc-showroom-botanical .fs-mobile-select {
+  background-color: color-mix(in srgb, var(--fs-linen) 92%, white);
+  color: var(--fs-charcoal);
+  border-color: color-mix(in srgb, white 20%, transparent);
+}
+
+.htc-showroom-botanical .fs-nav-item {
+  color: color-mix(in srgb, var(--fs-ivory) 88%, transparent);
+  border-color: transparent;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.htc-showroom-botanical .fs-nav-index {
+  display: none;
+}
+
+.htc-showroom-botanical .fs-nav-category {
+  color: color-mix(in srgb, var(--fs-eucalyptus) 78%, transparent);
+}
+
+.htc-showroom-botanical .fs-nav-item:hover {
+  background: color-mix(in srgb, white 8%, transparent);
+}
+
+.htc-showroom-botanical .fs-nav-item.is-active {
+  background: color-mix(in srgb, var(--fs-linen) 94%, white);
+  color: var(--fs-charcoal);
+  border-color: transparent;
+  box-shadow: 0 10px 24px -18px rgba(0, 0, 0, 0.45);
+}
+
+.htc-showroom-botanical .fs-nav-item.is-active .fs-nav-category {
+  color: var(--fs-botanical);
+}
+
+.htc-showroom-botanical .fs-nav-item.is-active .fs-nav-title {
+  color: var(--fs-botanical-deep);
+}
+
+.htc-showroom-botanical .fs-nav-item:focus-visible {
+  outline-color: var(--fs-eucalyptus);
+}
+
+.htc-showroom-botanical .fs-headline {
+  color: var(--fs-ivory);
+}
+
+.htc-showroom-botanical .fs-explanation {
+  color: color-mix(in srgb, var(--fs-ivory) 78%, transparent);
+}
+
+.htc-showroom-botanical .fs-frame {
+  background: var(--fs-ivory);
+  border-color: color-mix(in srgb, white 28%, transparent);
+  box-shadow: 0 26px 50px -30px rgba(0, 0, 0, 0.55);
+}
+
+.htc-showroom-botanical .fs-chrome {
+  background: var(--fs-linen);
+}
+
+.htc-showroom-botanical .fs-featured-item {
+  grid-template-columns: minmax(0, 1fr);
+  border-color: color-mix(in srgb, white 16%, transparent);
+  background: color-mix(in srgb, white 6%, transparent);
+}
+
+.htc-showroom-botanical .fs-featured-marker,
+.htc-showroom-botanical .fs-featured-lens {
+  display: none;
+}
+
+.htc-showroom-botanical .fs-featured-item:hover {
+  border-color: color-mix(in srgb, var(--fs-eucalyptus) 45%, transparent);
+  background: color-mix(in srgb, white 10%, transparent);
+}
+
+.htc-showroom-botanical .fs-featured-item.is-active {
+  background: var(--fs-linen);
+  border-color: transparent;
+  box-shadow: inset 3px 0 0 var(--fs-eucalyptus);
+}
+
+.htc-showroom-botanical .fs-featured-name {
+  color: inherit;
+}
+
+.htc-showroom-botanical .fs-featured-item.is-active .fs-featured-name {
+  color: var(--fs-charcoal);
+}
+
+.htc-showroom-botanical .fs-featured-detail {
+  color: color-mix(in srgb, var(--fs-ivory) 72%, transparent);
+}
+
+.htc-showroom-botanical .fs-featured-item.is-active .fs-featured-detail {
+  color: var(--fs-muted);
+}
+
+.htc-showroom-botanical .fs-benefit {
+  background: color-mix(in srgb, var(--fs-linen) 16%, transparent);
+  border-left-color: var(--fs-eucalyptus);
+  color: color-mix(in srgb, var(--fs-ivory) 92%, transparent);
+}
+
+.htc-showroom-botanical .fs-inventory-toggle {
+  color: var(--fs-eucalyptus);
+}
+
+.htc-showroom-botanical .fs-inventory-toggle:focus-visible {
+  outline-color: var(--fs-eucalyptus);
+}
+
+.htc-showroom-botanical .fs-inventory-panel {
+  background: color-mix(in srgb, var(--fs-linen) 94%, white);
+  border-color: transparent;
+  color: var(--fs-charcoal);
+}
+
+.htc-showroom-botanical .fs-inventory-heading {
+  color: var(--fs-botanical-deep);
+}
+
+.htc-showroom-botanical .fs-inventory-items li {
+  color: var(--fs-muted);
+}
+
+.htc-showroom-botanical .fs-inventory-items li::before {
+  background: var(--fs-botanical);
+}
+
+/* ── Desktop layout ──────────────────────────────────────────────── */
+
+@media (min-width: 900px) {
+  .htc-showroom .fs-mobile-nav {
+    display: none;
+  }
+
+  .htc-showroom .fs-nav {
+    display: block;
+  }
+
+  .htc-showroom .fs-layout {
+    grid-template-columns: minmax(220px, 270px) minmax(0, 1fr);
+    gap: 1.75rem;
+    align-items: start;
+    padding: 1.35rem;
+  }
+
+  .htc-showroom-linen .fs-layout {
+    grid-template-columns: minmax(240px, 280px) minmax(0, 1fr);
+    gap: 2rem;
+    padding: 1.5rem 1.5rem 1.5rem 1.65rem;
+  }
+
+  .htc-showroom-linen .fs-nav {
+    position: sticky;
+    top: 6.5rem;
+    background:
+      linear-gradient(
+        180deg,
+        color-mix(in srgb, var(--fs-linen) 92%, var(--fs-eucalyptus)) 0%,
+        var(--fs-linen) 100%
+      );
+    border-radius: 0.3rem;
+    padding: 1.1rem 0.8rem;
+    border: 1px solid color-mix(in srgb, var(--fs-botanical) 12%, transparent);
+  }
+
+  .htc-showroom-botanical .fs-nav {
+    background: color-mix(in srgb, #24382e 55%, transparent);
+    border-radius: 0.35rem;
+    padding: 1rem 0.75rem;
+    border: 1px solid color-mix(in srgb, white 10%, transparent);
+  }
+
+  .htc-showroom-botanical .fs-featured-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  /*
+   * Balanced inventory groups: equal-width columns that wrap naturally.
+   * Avoids forcing an odd last group (e.g. Sales “Move work forward”) into a
+   * full-width row under two uneven columns.
+   */
+  .htc-showroom .fs-inventory-grid {
+    grid-template-columns: repeat(auto-fit, minmax(15.5rem, 1fr));
+    gap: 1.5rem 2rem;
+    align-items: start;
+  }
+
+  .htc-showroom-linen .fs-shot {
+    min-height: 22rem;
+  }
+
+  .htc-showroom-linen .fs-exhibit.is-visual-gallery .fs-shot {
+    min-height: 26rem;
+  }
+
+  .htc-showroom-linen .fs-exhibit.is-visual-gallery .fs-shot.is-device {
+    min-height: 30rem;
+    max-height: min(46rem, 82vh);
+  }
+
+  .htc-showroom-linen .fs-rail-list {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+}
+
+@media (min-width: 1100px) {
+  .htc-showroom .fs-shell {
+    width: min(1280px, calc(100% - 2.5rem));
+  }
+
+  .htc-showroom-linen .fs-layout {
+    gap: 2.15rem;
+    padding: 1.65rem 1.7rem 1.7rem 1.85rem;
+  }
+
+  .htc-showroom-linen .fs-intro {
+    margin-bottom: 1.75rem;
+  }
+
+  .htc-showroom-linen .fs-exhibit.is-visual-gallery .fs-shot {
+    min-height: 28rem;
+  }
+}

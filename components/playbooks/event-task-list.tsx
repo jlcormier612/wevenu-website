@@ -18,9 +18,10 @@ import {
   updateEventTaskDaysOffsetAction, updateEventTaskDueDateAction, updateEventTaskNotesAction,
   updateEventTaskScheduleAction,
 } from "@/app/(app)/playbooks/actions";
+import { sendQuestionnaireAction } from "@/app/(app)/events/[id]/questionnaire-actions";
 import { DueDateComposer } from "@/components/playbooks/due-date-composer";
 import { PlaybookApplyPreviewSheet } from "@/components/playbooks/playbook-apply-preview-sheet";
-import { BusinessAssetHeader } from "@/components/business-assets/asset-header";
+import { ShareDialog } from "@/components/sharing/share-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -32,20 +33,42 @@ import {
 import { useSyncedState } from "@/lib/hooks/use-synced-state";
 import { sortByDueDateAsc } from "@/lib/tasks/group-by-completion";
 import {
-  categoryColor, categoryLabel, directionForOffset, formatClientPlanningTitle, formatEventRelativeDue,
-  formatScheduledTime, isScheduledActivity, offsetForDirection,
+  categoryLabel, categoryLabelStyle, directionForOffset, formatClientPlanningTitle, formatEventRelativeDue,
+  formatRequiredTaskProgress, formatScheduledTime, isScheduledActivity, offsetForDirection,
   PLAYBOOK_KINDS, STATUS_CONFIG, TASK_VISIBILITY, taskActionHref, taskActionLabel,
 } from "@/lib/playbooks/constants";
+import {
+  groupTasksByResponsibility,
+  TASK_RESPONSIBILITY_LABEL,
+  type TaskResponsibility,
+} from "@/lib/playbooks/task-responsibility";
+import {
+  INTERNAL_NOTES_PRIVACY_HINT,
+  internalNotesLabel,
+} from "@/lib/notes/internal-notes-copy";
 import { applyPreviewKindCopy } from "@/lib/playbooks/apply-preview";
+import { PACKAGE_APPROVED_LABEL } from "@/lib/playbooks/package-choice-task";
 import type { DueDateDirection } from "@/lib/playbooks/constants";
+import {
+  isQuestionnaireLinkedTask,
+  questionnaireKindForPlanningTask,
+} from "@/lib/playbooks/questionnaire-task-kind";
 import type {
   EventPlaybookApplication, EventTask, EventTaskContextLink, EventReadiness, PlaybookKind, PlaybookTemplateWithStats, TaskContact,
 } from "@/lib/playbooks/types";
 import type { Document } from "@/lib/documents/types";
+import { buildMergeData, mergeContent } from "@/lib/message-templates/merge";
+import { kindLabel } from "@/lib/questionnaire-family/definitions";
 import { STATUS_LABELS as REQUEST_STATUS_LABELS } from "@/lib/requests/constants";
 import type { Request } from "@/lib/requests/types";
 import type { TimelineEntry } from "@/lib/timeline/types";
 import { cn } from "@/lib/utils";
+
+const QUESTIONNAIRE_SHARE_BODY: Record<string, string> = {
+  client_planning: "Your Client Planning Questionnaire for {{event_name}} is ready. We already have your booking basics — this helps us learn more about your plans.",
+  final_details: "Your Final Details form for {{event_name}} is ready. Please confirm what's still correct and fill in anything that's still open.",
+  post_event_feedback: "Thank you for celebrating with us. When you have a moment, we'd love your Post-Event Feedback about how everything felt.",
+};
 
 export type LinkableConversationMessage = { id: string; label: string; detail: string };
 export type StaffOption = { id: string; name: string };
@@ -87,7 +110,7 @@ function ContextLinkRow({ link, eventId, onRemove, removing }: { link: EventTask
       <Icon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
       <div className="min-w-0 flex-1">
         {label}
-        {link.detail && <p className="truncate text-[11px] text-muted-foreground">{link.detail}</p>}
+        {link.detail && <p className="truncate text-xs text-muted-foreground">{link.detail}</p>}
       </div>
       <button type="button" onClick={onRemove} disabled={removing} className="shrink-0 rounded p-0.5 text-muted-foreground hover:text-destructive" aria-label="Remove">
         {removing ? <Loader2 className="h-3 w-3 animate-spin" /> : <X className="h-3 w-3" />}
@@ -174,7 +197,7 @@ function TaskDueSection({ task, eventId, eventDate }: { task: EventTask; eventId
 
   return (
     <div className="space-y-1.5">
-      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Due</p>
+      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Due</p>
       {!useAbsolute ? (
         <DueDateComposer
           size="sm"
@@ -193,7 +216,7 @@ function TaskDueSection({ task, eventId, eventDate }: { task: EventTask; eventId
       <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
-          className="text-[11px] text-muted-foreground underline-offset-2 hover:underline"
+          className="text-xs text-muted-foreground underline-offset-2 hover:underline"
           onClick={() => setUseAbsolute((v) => !v)}
         >
           {useAbsolute ? "Use days before/after event instead" : "Set a specific calendar date"}
@@ -205,7 +228,7 @@ function TaskDueSection({ task, eventId, eventDate }: { task: EventTask; eventId
         )}
       </div>
       {task.dueDateLocked && (
-        <p className="text-[10px] text-muted-foreground">Fixed date — won&apos;t move if the event date changes.</p>
+        <p className="text-xs text-muted-foreground">Fixed date — won&apos;t move if the event date changes.</p>
       )}
     </div>
   );
@@ -250,7 +273,7 @@ function TaskScheduleSection({ task, eventId }: { task: EventTask; eventId: stri
 
   return (
     <div className="space-y-1.5">
-      <label className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground cursor-pointer">
+      <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground cursor-pointer">
         <Checkbox checked={enabled} onCheckedChange={(v) => handleToggle(v === true)} />
         Scheduled Activity
       </label>
@@ -295,7 +318,7 @@ function TaskAssignmentSection({ task, eventId, staffOptions }: { task: EventTas
 
   return (
     <div className="space-y-1">
-      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Assigned To</p>
+      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Assigned To</p>
       <div className="flex items-center gap-1.5">
         <Select value={staffId} onValueChange={handleChange} items={options}>
           <SelectTrigger className="h-7 w-48 text-xs"><SelectValue placeholder="Unassigned" /></SelectTrigger>
@@ -370,7 +393,7 @@ function TaskDetailPanel({
       <TaskDueSection task={task} eventId={eventId} eventDate={eventDate} />
 
       <div className="space-y-1">
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           {isVenue ? "Related Context" : "Helpful Information"}
         </p>
         {visibleLinks.length === 0 && <p className="text-xs text-muted-foreground">Nothing attached yet.</p>}
@@ -397,10 +420,11 @@ function TaskDetailPanel({
 
       {isVenue && (
         <div className="space-y-1">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Internal Notes</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{internalNotesLabel("task")}</p>
+          <p className="text-xs text-muted-foreground">{INTERNAL_NOTES_PRIVACY_HINT}</p>
           <Textarea
             value={notes} onChange={(e) => setNotes(e.target.value)} rows={2}
-            placeholder="Notes for your team — never shown to the client."
+            placeholder="Operational notes…"
             className="text-xs"
           />
           {notes !== (task.notes ?? "") && (
@@ -417,9 +441,10 @@ function TaskDetailPanel({
 // ---- Task row -----------------------------------------------------------------
 
 function TaskRow({
-  task, kind, eventId, eventDate, clientId, clientName, request, expanded, onToggleExpand, onUpdate, contextLinks, contact, documents, timelineEntries, conversationMessages, staffOptions,
+  task, kind, eventId, eventDate, clientId, clientName, clientEmail, eventName, venueName, request, expanded, onToggleExpand, onUpdate, contextLinks, contact, documents, timelineEntries, conversationMessages, staffOptions,
 }: {
   task: EventTask; kind: PlaybookKind; eventId: string; eventDate: string; clientId: string | null; clientName: string | null;
+  clientEmail: string | null; eventName: string; venueName: string;
   request: Request | null; expanded: boolean; onToggleExpand: () => void;
   onUpdate: (id: string, status: EventTask["status"]) => void;
   contextLinks: EventTaskContextLink[]; contact: TaskContact | null;
@@ -432,10 +457,30 @@ function TaskRow({
   const cfg = STATUS_CONFIG[task.status];
   const Icon = STATUS_ICONS[task.status];
   const isComplete = task.status === "complete";
+  const isWaived = task.status === "waived";
+  const isClosed = isComplete || isWaived;
+  const questionnaireTask = isQuestionnaireLinkedTask(task);
+  const questionnaireKind = questionnaireTask ? questionnaireKindForPlanningTask(task) : null;
+  const shareRecipient = clientName
+    ? { name: clientName, contact: clientEmail, relationshipLabel: "Client" as const }
+    : null;
+  const shareDefaultMessage = questionnaireKind
+    ? mergeContent(
+      QUESTIONNAIRE_SHARE_BODY[questionnaireKind] ?? QUESTIONNAIRE_SHARE_BODY.client_planning,
+      buildMergeData({
+        venueName,
+        clientName: clientName ?? "",
+        coordinatorName: venueName,
+        eventDate: null,
+        eventName,
+      }),
+    )
+    : "";
 
   function handleComplete() {
+    if (isWaived) return;
     startAction(async () => {
-      const result = await completeTaskAction(task.id, eventId);
+      const result = await completeTaskAction(task.id, eventId, clientId);
       if (result.ok) { onUpdate(task.id, "complete"); celebrateCompletion(kind, task.title); }
       else toast.error(result.message ?? "Could not complete task.");
     });
@@ -463,9 +508,9 @@ function TaskRow({
     });
   }
 
-  // Request Framework integration: a task may optionally create a Request
-  // when it needs client participation. Independent lifecycles — creating
-  // or completing a Request never changes this task's own status.
+  // Request Framework: for non-questionnaire tasks that need generic client
+  // participation. Questionnaire-linked tasks send the real form instead —
+  // creating a Request never delivers the questionnaire.
   async function handleCreateRequest() {
     if (!clientId) { toast.error("This task has no linked client to request from."); return; }
     setCreatingRequest(true);
@@ -479,9 +524,23 @@ function TaskRow({
     else toast.error(result.message ?? "Could not create request.");
   }
 
+  async function handleSendQuestionnaire(message: string) {
+    if (!clientEmail || !questionnaireKind) {
+      return { ok: false, message: "Add their email to the client record first." };
+    }
+    const result = await sendQuestionnaireAction(
+      eventId, clientEmail, clientName ?? "there", eventName, undefined, message, questionnaireKind,
+    );
+    if (result.ok) {
+      toast.success("Questionnaire sent to client.");
+      router.refresh();
+    }
+    return result;
+  }
+
   return (
-    <div className="border-b border-border/50 last:border-0">
-      <div className="group flex items-start gap-3 py-3">
+    <div className="mx-2 mb-1.5 rounded-md border border-border/60 bg-card last:mb-2">
+      <div className="group flex items-start gap-3 px-2.5 py-3">
         <button type="button" onClick={onToggleExpand} className="mt-0.5 shrink-0 text-muted-foreground hover:text-foreground" aria-label="Expand">
           {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
         </button>
@@ -493,19 +552,24 @@ function TaskRow({
         <button type="button" onClick={onToggleExpand} className="min-w-0 flex-1 space-y-0.5 text-left">
           <p className={`text-sm font-medium ${isComplete ? "text-muted-foreground line-through" : "text-heading"}`}>
             {task.title}
-            {!task.isRequired && <span className="ml-1.5 text-[10px] font-normal text-muted-foreground uppercase tracking-wide">optional</span>}
+            {isWaived && (
+              <span className="ml-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Waived
+              </span>
+            )}
+            {!task.isRequired && <span className="ml-1.5 text-xs font-normal text-muted-foreground uppercase tracking-wide">optional</span>}
             {/* Wedding-Day Visibility (Planning Execution — Release
                 Completion) — same milestone_kind get_wedding_day_ops
                 already reads; this is the first place a coordinator sees
                 it while planning, not only after opening Wedding Day Ops. */}
             {task.milestoneKind === "event_day" && (
-              <span className="ml-1.5 inline-flex items-center gap-0.5 rounded-full bg-primary px-1.5 py-0.5 text-[9px] font-semibold text-primary-foreground align-middle">
+              <span className="ml-1.5 inline-flex items-center gap-0.5 rounded-full bg-primary px-1.5 py-0.5 text-xs font-semibold text-primary-foreground align-middle">
                 💍 Wedding Day
               </span>
             )}
           </p>
-          <div className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
-            <span style={{ color: categoryColor(task.category) }}>{categoryLabel(task.category)}</span>
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm text-muted-foreground">
+            <span {...categoryLabelStyle(task.category)}>{categoryLabel(task.category)}</span>
             <span>·</span>
             <span>{task.ownerType === "couple" ? "Client" : task.ownerType === "vendor" ? "Vendor" : "Coordinator"}</span>
             <span>·</span>
@@ -532,8 +596,25 @@ function TaskRow({
             )}
             {contextLinks.length > 0 && <><span>·</span><span>{contextLinks.length} attached</span></>}
           </div>
+          {(task.autoCompleteTrigger === "vendor_selected" || task.autoCompleteTrigger === "questionnaire_submitted")
+            && !isComplete && task.progressState === "in_progress" && (
+            <p className="text-xs font-medium text-amber-900 dark:text-amber-100">
+              Submitted — needs venue review
+            </p>
+          )}
+          {task.packageApproved && (
+            <p className="text-xs text-muted-foreground" data-testid="task-package-approved">
+              Done — {PACKAGE_APPROVED_LABEL.toLowerCase()}
+            </p>
+          )}
           {task.autoCompleteTrigger && !isComplete && (
-            <p className="text-[10px] text-muted-foreground italic">Auto-completes on trigger</p>
+            <p className="text-xs text-muted-foreground italic">
+              {task.autoCompleteTrigger === "vendor_selected"
+                ? "Couple submit = needs review — mark complete when the vendor team is confirmed"
+                : task.autoCompleteTrigger === "questionnaire_submitted"
+                  ? "Couple submit = needs review — mark complete when you finish questionnaire review"
+                  : "Auto-completes on trigger"}
+            </p>
           )}
           {request && (
             <p className="text-xs text-muted-foreground">
@@ -554,37 +635,62 @@ function TaskRow({
           </Button>
         )}
 
-        {!isComplete && task.actionType && (
+        {!isClosed && (task.actionType || questionnaireTask) && (
           // Navigation into the platform, not a static checklist item — "Choose
           // a florist" opens the Vendor Library, etc. (Vendor Management —
           // Next Iteration, 2026-07-10). Always visible, not hover-only, since
           // it's the primary way a task gets done, not a secondary management action.
+          // Questionnaire-linked seed tasks may only have auto_complete_trigger set.
           <Button
             size="sm" variant="outline" className="h-7 px-2 text-xs shrink-0"
-            render={<Link href={taskActionHref(task.actionType, eventId) ?? "#"} />}
+            render={<Link href={taskActionHref(task.actionType ?? "questionnaire", eventId) ?? "#"} />}
           >
-            {taskActionLabel(task.actionType, task.actionLabel)}
+            {taskActionLabel(task.actionType ?? "questionnaire", task.actionLabel)}
             <ArrowUpRight className="h-3 w-3" />
           </Button>
         )}
 
-        {!isComplete && (
+        {!isClosed && questionnaireTask && (
+          <ShareDialog
+            trigger={(
+              <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-xs shrink-0" disabled={!clientEmail}>
+                Send to client
+              </Button>
+            )}
+            title={`Send ${questionnaireKind ? kindLabel(questionnaireKind) : "questionnaire"} to client`}
+            recipient={shareRecipient}
+            whatHappensNext="Emails the client a secure link to the questionnaire for this event. Progress updates from the real form — not a separate request record."
+            defaultMessage={shareDefaultMessage}
+            sendLabel="Send to client"
+            onSend={handleSendQuestionnaire}
+          />
+        )}
+
+        {!isClosed && (
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-            {!request && (
+            {!request && !questionnaireTask && (
               <Button type="button" size="sm" variant="ghost" onClick={handleCreateRequest} disabled={creatingRequest} className="h-7 px-2 text-xs text-muted-foreground">
                 {creatingRequest ? <Loader2 className="h-3 w-3 animate-spin" /> : "Create Request"}
               </Button>
             )}
-            <Button type="button" size="sm" variant="outline" onClick={handleComplete} disabled={pending} className="h-7 px-2 text-xs">
+            <Button type="button" size="sm" variant="outline" onClick={handleComplete} disabled={pending} className="h-7 px-2 text-xs" aria-label="Mark complete">
               {pending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
             </Button>
             <Button type="button" size="sm" variant="ghost" onClick={handleWaive} disabled={pending} className="h-7 px-2 text-xs text-muted-foreground">
-              {task.status === "waived" ? "Restore" : "Waive"}
+              Waive
             </Button>
           </div>
         )}
 
-        {isComplete && (
+        {isWaived && (
+          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+            <Button type="button" size="sm" variant="ghost" onClick={handleWaive} disabled={pending} className="h-7 px-2 text-xs text-muted-foreground">
+              {pending ? <Loader2 className="h-3 w-3 animate-spin" /> : "Restore"}
+            </Button>
+          </div>
+        )}
+
+        {isComplete && !task.packageApproved && (
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
             <Button type="button" size="sm" variant="ghost" onClick={handleReopen} disabled={pending} className="h-7 px-2 text-xs text-muted-foreground">
               {pending ? <Loader2 className="h-3 w-3 animate-spin" /> : "Reopen"}
@@ -630,6 +736,7 @@ function TaskRow({
 export function PlaybookApplyRow({
   kind, eventId, clientId, eventDate, eventName, clientName, eventType, templates, application, readiness, onApplied,
   preselectTemplateId,
+  preferOverviewRelease = false,
 }: {
   kind: PlaybookKind;
   eventId: string;
@@ -644,12 +751,25 @@ export function PlaybookApplyRow({
   onApplied: () => void;
   /** Preselect the venue's default template for this kind/event type, when one exists — falls back to today's behavior (first template) when not given. */
   preselectTemplateId?: string;
+  /** When true, Client Planning draft is released from Overview — not a second Release CTA here. */
+  preferOverviewRelease?: boolean;
 }) {
   const meta = PLAYBOOK_KINDS.find((k) => k.value === kind)!;
-  const [selectedTemplate, setSelectedTemplate] = React.useState(preselectTemplateId ?? templates[0]?.id ?? "");
+  const preferred =
+    preselectTemplateId && templates.some((t) => t.id === preselectTemplateId)
+      ? preselectTemplateId
+      : templates[0]?.id ?? "";
+  const [selectedTemplate, setSelectedTemplate] = React.useState(preferred);
   const [releasing, startRelease] = React.useTransition();
   const [removing, startRemove] = React.useTransition();
   const [previewOpen, setPreviewOpen] = React.useState(false);
+  const preferredTemplate = templates.find((t) => t.id === preselectTemplateId);
+
+  React.useEffect(() => {
+    if (preferred && preferred !== selectedTemplate && !application) {
+      setSelectedTemplate(preferred);
+    }
+  }, [preferred, application]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleEditDraft() {
     document.getElementById("planning-task-list")?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -658,7 +778,7 @@ export function PlaybookApplyRow({
   function handleRelease() {
     if (!clientId) return;
     const label = clientName ?? "your client";
-    if (!confirm(`Release Client Planning to ${label}? They'll be able to see and complete these tasks, reminders will start going out, and they'll receive their invitation email if an email address is on file.`)) return;
+    if (!confirm(`Release Client Planning to ${label}? They'll be able to see and complete these tasks, and reminders will start going out. This does not send an invitation email — invite them separately when you're ready.`)) return;
     startRelease(async () => {
       const result = await releasePlaybookAction(eventId, clientId, clientName ?? "");
       if (result.ok) { toast.success(result.message ?? "Client Planning released."); onApplied(); }
@@ -698,24 +818,28 @@ export function PlaybookApplyRow({
 
     if (isDraft) {
       return (
-        <div className="rounded-lg border border-dashed border-warning-foreground/30 bg-warning/5 px-3 py-2">
+        <div className="rounded-lg border border-dashed border-warning-foreground/30 bg-card px-3 py-2">
           <div className="flex items-center gap-2">
             <span className="text-sm">{meta.emoji}</span>
             <p className="text-xs text-muted-foreground flex-1">
               <span className="font-medium text-heading">For your couple:</span> {displayTitle} — draft, not yet visible to {clientName ?? "your couple"}
             </p>
-            <Badge variant="warning" className="text-[10px] shrink-0">Draft</Badge>
+            <Badge className="htc-badge-active text-xs shrink-0">Draft</Badge>
           </div>
           {readiness && (
-            <p className="mt-1.5 pl-6 text-[11px] text-muted-foreground">{readiness.completedRequired} of {readiness.totalRequired} tasks</p>
+            <p className="mt-1.5 pl-6 text-xs text-muted-foreground" data-testid="planning-required-progress">
+              {formatRequiredTaskProgress(readiness)}
+            </p>
           )}
           <div className="mt-2 pl-6 flex flex-wrap items-center gap-2">
             <Button type="button" size="sm" variant="outline" onClick={handleEditDraft} className="h-7 px-2 text-xs">
               Edit this event&apos;s checklist
             </Button>
-            <Button type="button" size="sm" onClick={handleRelease} disabled={releasing} className="h-7 px-2 text-xs">
-              {releasing ? <Loader2 className="h-3 w-3 animate-spin" /> : `Release to ${clientName ?? "Client"}`}
-            </Button>
+            {!preferOverviewRelease ? (
+              <Button type="button" size="sm" onClick={handleRelease} disabled={releasing} className="h-7 px-2 text-xs">
+                {releasing ? <Loader2 className="h-3 w-3 animate-spin" /> : `Release to ${clientName ?? "Client"}`}
+              </Button>
+            ) : null}
             <Button
               type="button"
               size="sm"
@@ -726,8 +850,11 @@ export function PlaybookApplyRow({
             >
               {removing ? <Loader2 className="h-3 w-3 animate-spin" /> : "Remove Planning / Start Over"}
             </Button>
-            <p className="w-full text-[11px] text-muted-foreground">
+            <p className="w-full text-xs text-muted-foreground">
               You&apos;re editing this event&apos;s copy — changes here don&apos;t update the Library template.
+              {preferOverviewRelease
+                ? " When the checklist is ready, return to Overview and use Release to client portal. That does not send an invitation."
+                : " Release makes the checklist visible in their portal; it does not send an invitation email."}
             </p>
           </div>
         </div>
@@ -735,13 +862,13 @@ export function PlaybookApplyRow({
     }
 
     return (
-      <div className="rounded-lg border border-border bg-muted/20 px-3 py-2">
+      <div className="rounded-lg border border-border bg-card px-3 py-2">
         <div className="flex items-center gap-2">
           <span className="text-sm">{meta.emoji}</span>
           <p className="text-xs text-muted-foreground flex-1">
             <span className="font-medium text-heading">{meta.label}:</span> {displayTitle} applied
           </p>
-          <Badge variant="muted" className="text-[10px] shrink-0">
+          <Badge className="htc-badge-active text-xs shrink-0">
             {kind === "client" && application.releasedAt
               ? `Released ${new Date(application.releasedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
               : "Active"}
@@ -754,10 +881,12 @@ export function PlaybookApplyRow({
                 <div className="h-1.5 flex-1 max-w-[120px] rounded-full bg-border overflow-hidden">
                   <div className="h-full bg-primary" style={{ width: `${readiness.score}%` }} />
                 </div>
-                <span className="text-[11px] text-muted-foreground">{readiness.completedRequired} of {readiness.totalRequired} complete</span>
+                <span className="text-xs text-muted-foreground" data-testid="planning-required-progress">
+                  {formatRequiredTaskProgress(readiness)}
+                </span>
               </>
             ) : (
-              <span className={cn("text-[11px] font-medium", needsAttention === 0 ? "text-success" : "text-warning-foreground")}>
+              <span className={cn("text-xs font-medium", needsAttention === 0 ? "text-success" : "text-warning-foreground")}>
                 {needsAttention === 0 ? "On track" : `${needsAttention} task${needsAttention === 1 ? "" : "s"} need attention`}
               </span>
             )}
@@ -778,7 +907,7 @@ export function PlaybookApplyRow({
           </div>
         )}
         {kind === "client" && application.releasedAt && (
-          <p className="mt-1.5 pl-6 text-[11px] text-muted-foreground">
+          <p className="mt-1.5 pl-6 text-xs text-muted-foreground">
             Released Client Planning can&apos;t be removed wholesale — edit individual tasks below.
           </p>
         )}
@@ -794,7 +923,7 @@ export function PlaybookApplyRow({
   // thing on screen with no way to act on it.
   if (templates.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed border-border px-3 py-2">
+      <div className="rounded-lg border border-dashed border-border bg-card px-3 py-2">
         <div className="flex items-center gap-2">
           <span className="text-sm">{meta.emoji}</span>
           <p className="text-xs text-muted-foreground flex-1">
@@ -814,14 +943,21 @@ export function PlaybookApplyRow({
   // before committing a copy onto the event.
   const selectedStats = templates.find((t) => t.id === selectedTemplate);
   const kindCopy = applyPreviewKindCopy(kind);
+  const emptyState = preferredTemplate
+    ? `Configured ${kind === "venue" ? "team" : "couple"} checklist "${preferredTemplate.name}" is not on this event yet.`
+    : kindCopy.emptyState;
 
   return (
-    <div className="rounded-lg border border-dashed border-border px-3 py-2">
+    <div className="rounded-lg border border-dashed border-border bg-card px-3 py-2">
       <div className="flex items-center gap-2">
         <span className="text-sm">{meta.emoji}</span>
         <div className="min-w-0 flex-1">
-          <p className="text-xs text-muted-foreground">{kindCopy.emptyState}</p>
-          <p className="text-[11px] text-muted-foreground/90 line-clamp-2">{kindCopy.explanation}</p>
+          <p className="text-xs text-muted-foreground">{emptyState}</p>
+          <p className="text-xs text-muted-foreground/90 line-clamp-2">
+            {preferredTemplate
+              ? `Preview and apply "${preferredTemplate.name}" for this event, or choose a different valid template. This creates an event-specific copy — Library templates stay unchanged.`
+              : kindCopy.explanation}
+          </p>
         </div>
         <Select value={selectedTemplate} onValueChange={setSelectedTemplate} items={templates.map((t) => ({ value: t.id, label: t.name }))}>
           <SelectTrigger className="h-7 w-40 text-xs shrink-0"><SelectValue /></SelectTrigger>
@@ -844,7 +980,7 @@ export function PlaybookApplyRow({
         </Button>
       </div>
       {selectedStats && (
-        <p className="mt-1 pl-6 text-[11px] text-muted-foreground">
+        <p className="mt-1 pl-6 text-xs text-muted-foreground">
           {selectedStats.milestoneCount} milestone{selectedStats.milestoneCount === 1 ? "" : "s"} · {selectedStats.taskCount} task{selectedStats.taskCount === 1 ? "" : "s"} — preview to see what&apos;s included before applying
         </p>
       )}
@@ -854,7 +990,8 @@ export function PlaybookApplyRow({
           onOpenChange={setPreviewOpen}
           templateId={selectedTemplate}
           kind={kind}
-          eventId={eventId}
+          eventId={eventId || undefined}
+          clientId={clientId ?? undefined}
           eventDate={eventDate}
           onApplied={onApplied}
         />
@@ -906,6 +1043,8 @@ export function EventTaskList({
   eventDate,
   eventName,
   clientName,
+  clientEmail = null,
+  venueName = "Your venue",
   eventType,
   initialTasks,
   readinessByKind,
@@ -918,12 +1057,17 @@ export function EventTaskList({
   linkableConversationMessages,
   requestsByTaskId = {},
   staffOptions = [],
+  preferOverviewRelease = false,
+  preferredClientTemplateId = null,
+  preferredVenueTemplateId = null,
 }: {
   eventId: string;
   clientId: string | null;
   eventDate: string;
   eventName: string;
   clientName: string | null;
+  clientEmail?: string | null;
+  venueName?: string;
   eventType: string | null;
   initialTasks: EventTask[];
   readinessByKind: { client: EventReadiness | null; venue: EventReadiness | null };
@@ -936,6 +1080,9 @@ export function EventTaskList({
   linkableConversationMessages: LinkableConversationMessage[];
   requestsByTaskId?: Record<string, Request>;
   staffOptions?: StaffOption[];
+  preferOverviewRelease?: boolean;
+  preferredClientTemplateId?: string | null;
+  preferredVenueTemplateId?: string | null;
 }) {
   const router = useRouter();
   // useSyncedState (not a plain useState(initialTasks)) — applying a
@@ -951,11 +1098,14 @@ export function EventTaskList({
     router.refresh();
   }
 
-  const clientTasks = tasks.filter((t) => t.ownerType === "couple");
+  const byResponsibility = groupTasksByResponsibility(tasks);
+  const clientTasks = byResponsibility.client;
+  const venueTasks = byResponsibility.venue;
+  const vendorTasks = byResponsibility.vendor;
   const byDue = (list: EventTask[]) =>
     sortByDueDateAsc(list, (t) => t.dueDate);
   const overdue   = byDue(tasks.filter((t) => t.status === "overdue"));
-  const pending   = byDue(tasks.filter((t) => t.status === "pending"));
+  const pending   = byDue(tasks.filter((t) => t.status === "pending" || t.status === "blocked"));
   const complete  = byDue(tasks.filter((t) => t.status === "complete"));
   const waived    = byDue(tasks.filter((t) => t.status === "waived"));
 
@@ -964,7 +1114,9 @@ export function EventTaskList({
     return (
       <TaskRow
         key={task.id} task={task} kind={kind} eventId={eventId} eventDate={eventDate}
-        clientId={clientId} clientName={clientName} request={requestsByTaskId[task.id] ?? null}
+        clientId={clientId} clientName={clientName} clientEmail={clientEmail ?? null}
+        eventName={eventName} venueName={venueName}
+        request={requestsByTaskId[task.id] ?? null}
         expanded={expandedId === task.id}
         onToggleExpand={() => setExpandedId((p) => p === task.id ? null : task.id)}
         onUpdate={handleUpdate}
@@ -976,12 +1128,50 @@ export function EventTaskList({
     );
   };
 
-  const renderGroup = (groupTasks: EventTask[], label: string, show: boolean) => !show || groupTasks.length === 0 ? null : (
+  const renderStatusGroup = (groupTasks: EventTask[], label: string, show: boolean) => !show || groupTasks.length === 0 ? null : (
     <div className="space-y-0">
-      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground py-2">{label} ({groupTasks.length})</p>
-      {groupTasks.map(renderTaskRow)}
+      {label === "Completed" || label === "Overdue" ? (
+        <p className="htc-hospitality-section-label rounded-none border-x-0 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide">
+          {label} ({groupTasks.length})
+        </p>
+      ) : (
+        <p className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          {label} ({groupTasks.length})
+        </p>
+      )}
+      <div className="space-y-0 px-1 pb-1">
+        {groupTasks.map(renderTaskRow)}
+      </div>
     </div>
   );
+
+  const renderResponsibilitySection = (key: TaskResponsibility, sectionTasks: EventTask[]) => {
+    if (sectionTasks.length === 0) return null;
+    const sectionOverdue = byDue(sectionTasks.filter((t) => t.status === "overdue"));
+    const sectionPending = byDue(sectionTasks.filter((t) => t.status === "pending" || t.status === "blocked"));
+    const sectionComplete = byDue(sectionTasks.filter((t) => t.status === "complete"));
+    const sectionWaived = byDue(sectionTasks.filter((t) => t.status === "waived"));
+    return (
+      <section
+        key={key}
+        className="overflow-hidden rounded-lg border border-border bg-card"
+        data-testid={`planning-responsibility-${key}`}
+        data-responsibility={key}
+        data-task-count={sectionTasks.length}
+      >
+        <h3 className="htc-hospitality-section-label rounded-none border-x-0 border-t-0 px-3 py-2 text-sm font-semibold">
+          {TASK_RESPONSIBILITY_LABEL[key]}
+          <span className="ml-1.5 text-xs font-normal text-muted-foreground">({sectionTasks.length})</span>
+        </h3>
+        <div className="space-y-1 py-1">
+          {renderStatusGroup(sectionOverdue, "Overdue", true)}
+          {renderStatusGroup(sectionPending, "Upcoming", true)}
+          {renderStatusGroup(sectionComplete, "Completed", true)}
+          {renderStatusGroup(sectionWaived, "Waived", sectionWaived.length > 0)}
+        </div>
+      </section>
+    );
+  };
 
   // Business Asset Experience Consolidation (BA4B, Step 5) — INTENTIONAL
   // DIFFERENCE, not an oversight: unlike Contracts/Invoices/etc., a Task
@@ -992,35 +1182,44 @@ export function EventTaskList({
   // be inventing state that doesn't exist. The header below shows real,
   // already-computed counts instead, and "Review Tasks" scrolls to the
   // existing list rather than adding a new action.
-  const mostRecentUpdate = tasks.length > 0
-    ? tasks.reduce((latest, t) => t.updatedAt > latest ? t.updatedAt : latest, tasks[0].updatedAt)
-    : null;
   const openCount = overdue.length + pending.length;
+  const listCount = overdue.length + pending.length + complete.length + waived.length;
 
   return (
     <div className="space-y-4">
-      <BusinessAssetHeader
-        compact
-        whatIsThis="Task List"
-        title="Task List"
-        status={
-          tasks.length === 0
-            ? <Badge variant="muted">No tasks yet</Badge>
-            : openCount === 0
-              ? <Badge variant="success">All complete</Badge>
-              : <Badge variant={overdue.length > 0 ? "destructive" : "default"}>{openCount} open{overdue.length > 0 ? ` · ${overdue.length} overdue` : ""}</Badge>
-        }
-        lastUpdated={mostRecentUpdate ? new Date(mostRecentUpdate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—"}
-        relationship={eventName ? { name: eventName } : null}
-        primaryAction={tasks.length > 0 && (
+      {/* Status + review only — tab shell already provides the Planning Tasks title. */}
+      <div className="flex flex-wrap items-center justify-end gap-2" data-testid="planning-task-status-row">
+        {tasks.length === 0 ? (
+          <Badge className="htc-badge-active">No tasks yet</Badge>
+        ) : openCount === 0 ? (
+          <Badge className="htc-badge-active" data-testid="task-list-status">
+            {waived.length > 0 && complete.length === 0
+              ? `${waived.length} waived · none open`
+              : waived.length > 0
+                ? `${complete.length} completed · ${waived.length} waived`
+                : "All complete"}
+          </Badge>
+        ) : (
+          <Badge
+            variant={overdue.length > 0 ? "destructive" : "outline"}
+            className={overdue.length > 0 ? undefined : "htc-badge-active"}
+            data-testid="task-list-status"
+          >
+            {openCount} open{overdue.length > 0 ? ` · ${overdue.length} overdue` : ""}
+            {complete.length + waived.length > 0
+              ? ` · ${complete.length} completed${waived.length > 0 ? ` · ${waived.length} waived` : ""}`
+              : ""}
+          </Badge>
+        )}
+        {tasks.length > 0 ? (
           <Button type="button" variant="outline" size="sm"
             onClick={() => document.getElementById("planning-task-list")?.scrollIntoView({ behavior: "smooth" })}>
             Review Tasks
           </Button>
-        )}
-      />
+        ) : null}
+      </div>
       {/* Two independent planning systems — never merged into one status */}
-      <div className="space-y-2">
+      <div className="space-y-2" id="planning-edit" data-testid="planning-edit">
         {PLAYBOOK_KINDS.map((k) => (
           <PlaybookApplyRow
             key={k.value}
@@ -1035,12 +1234,18 @@ export function EventTaskList({
             application={applications.find((a) => a.kind === k.value)}
             readiness={k.value === "client" ? readinessByKind.client : readinessByKind.venue}
             onApplied={() => router.refresh()}
+            preferOverviewRelease={preferOverviewRelease}
+            preselectTemplateId={
+              k.value === "client"
+                ? preferredClientTemplateId ?? undefined
+                : preferredVenueTemplateId ?? undefined
+            }
           />
         ))}
       </div>
 
       {clientTasks.length > 0 && (
-        <div className="rounded-lg border border-border/60 bg-muted/10 px-3 py-2">
+        <div className="rounded-lg border border-border/60 bg-card px-3 py-2">
           <MilestoneStepper tasks={clientTasks} />
         </div>
       )}
@@ -1048,17 +1253,28 @@ export function EventTaskList({
       {/* "Edit Draft" (in PlaybookApplyRow, above) scrolls here — a Draft
           Client Planning checklist is reviewed and edited in this same list,
           not a separate surface (Draft → Release workflow, 2026-07-10). */}
-      <div id="planning-task-list">
+      <div
+        id="planning-task-list"
+        data-testid="planning-task-list"
+        data-total-tasks={tasks.length}
+        data-listed-tasks={listCount}
+        data-client-tasks={clientTasks.length}
+        data-venue-tasks={venueTasks.length}
+        data-vendor-tasks={vendorTasks.length}
+        data-completed={complete.length}
+        data-waived={waived.length}
+        data-open={openCount}
+        className="space-y-3"
+      >
         {tasks.length === 0 ? (
           <p className="text-xs text-muted-foreground text-center py-8">
             Apply a Client Planning or Venue Planning checklist above to generate tasks automatically with real due dates.
           </p>
         ) : (
           <>
-            {renderGroup(overdue,  "Overdue",  true)}
-            {renderGroup(pending,  "Upcoming", true)}
-            {renderGroup(complete, "Completed", true)}
-            {renderGroup(waived,   "Waived",   waived.length > 0)}
+            {renderResponsibilitySection("client", clientTasks)}
+            {renderResponsibilitySection("venue", venueTasks)}
+            {renderResponsibilitySection("vendor", vendorTasks)}
           </>
         )}
       </div>

@@ -1,0 +1,459 @@
+PASS serving-sha — ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:a68e8e9798b960f41f9058f50c62edb9c84f6ff1
+PASS serving-digest — sha256:535134b1609fdef6339a42aff8a3cb691500bcaab19b4e1caff54e70f9b4272a
+PASS fixture-booked — {"id":"ebf74f77-2944-474a-b735-48762ecb6842","status":"confirmed","booked_at":"2026-10-22","client_id":"b4e2764b-be33-4579-89e3-0c8e4a6dd5be","venue_id":"a415ac52-cd74-42a6-8df7-7a8f6e71d080"}
+PASS isolated-to-financial-session-only — financial=true coupleOrPlanningRemoved=5 createdFinancial=false
+PASS venue-workspace-landed — https://app.sandbox.hellotocheers.com/clients/b4e2764b-be33-4579-89e3-0c8e4a6dd5be#event-order-choices
+PASS stages-not-collapsed-details — choices=SECTION order=SECTION
+PASS template-select-visible — choices-template-select
+PASS rh-template-preview-visible — choices-template-preview
+PASS journey-no-generic-view — <h2 class="text-xs font-medium uppercase tracking-widest text-muted-foreground">Event Order</h2><p class="mt-2 text-sm font-medium text-heading">Commercial journey for this booked event</p><p class="m
+PASS prepare-or-active-packet — choices-start-selections
+PASS event-order-document-stage-visible — event-order-order
+PASS start-selections-did-not-error — Selection request prepared.
+PASS preview-dialog — ArtifactReviewOverlay
+PASS send-cta — count=1 body=Client selections
+Choose an Event Order template, review the complete offering, then send a selection request. Same composer pattern as Package/Proposal — sending does not finalize the Event Order or create an invoice.
+Event Order template
+Ceremony + Reception
+Wedding Reception
+Manage templates
+
+Ceremony + Reception
+
+Draft · Venue to act
+
+No selections yet
+
+Preview selection request
+S
+PASS share-dialog — ShareDialog
+PASS send-finished — Selection request email submitted to b2p-simp-1792642396736@hellotocheers-test.invalid. Delivery is confirmed separately.
+PASS selection-send-does-not-change-eo-shared-at — before=2026-10-24T02:24:06.106+00:00 after=2026-10-24T02:24:06.106+00:00
+PASS selection-send-does-not-set-client-agreed — {"before":null,"after":null}
+PASS selection-send-does-not-finalize-eo — before=finalized/2026-10-25T20:06:14.022+00:00 after=finalized/2026-10-25T20:06:14.022+00:00
+PASS selection-send-does-not-create-invoice — before=1 after=1
+PASS selection-send-does-not-change-booking — {"before":{"id":"ebf74f77-2944-474a-b735-48762ecb6842","status":"confirmed","booked_at":"2026-10-22"},"after":{"id":"ebf74f77-2944-474a-b735-48762ecb6842","status":"confirmed","booked_at":"2026-10-22"}}
+PASS generated-selection-url — https://app.sandbox.hellotocheers.com/p/[redacted]?view=choices#choices
+PASS selection-url-not-financial-token — token differs from financial session
+PASS selection-link-renders-form — B2P & Portal
+
+·
+
+Jen's Fancy Venue
+
+Jul 17, 2060
+
+Export my data
+9+
+🏠
+Home
+✅
+Tasks
+9+
+🕒
+Timeline
+📁
+Docs
+🗺️
+Floor Plan
+🪑
+Inventory
+1
+📋
+Order
+1
+✅
+Choices
+1
+💳
+Payments
+1
+💬
+Messages
+9+
+🏛️
+Guide
+🤝
+Vendors
+Your Choices
+
+Select options your venue asked for. Submitting sends them for review — it is not a payment.
+
+Ceremony + Reception
+Ceremony + Reception
+Ceremony + Reception
+Ceremony + Receptio
+PASS selection-submitted-ui — B2P & Portal
+
+·
+
+Jen's Fancy Venue
+
+Jul 17, 2060
+
+Export my data
+9+
+🏠
+Home
+✅
+Tasks
+9+
+🕒
+Timeline
+📁
+Docs
+🗺️
+Floor Plan
+🪑
+Inventory
+1
+📋
+Order
+1
+✅
+Choices
+1
+💳
+Payments
+1
+💬
+Messages
+9+
+🏛️
+Guide
+🤝
+Vendors
+Your Choices
+
+Select options y
+PASS selection-submit-does-not-change-eo-shared-at — beforeSend=2026-10-24T02:24:06.106+00:00 afterSubmit=2026-10-24T02:24:06.106+00:00
+PASS selection-submit-does-not-accept-eo — {"client_agreed_at":null}
+PASS selection-submit-does-not-finalize-eo — before=2026-10-25T20:06:14.022+00:00 after=2026-10-25T20:06:14.022+00:00
+PASS selection-form-shows-offering-context — B2P & Portal
+
+·
+
+Jen's Fancy Venue
+
+Jul 17, 2060
+
+Export my data
+9+
+🏠
+Home
+✅
+Tasks
+9+
+🕒
+Timeline
+📁
+Docs
+🗺️
+Floor Plan
+🪑
+Inventory
+1
+📋
+Order
+1
+✅
+Choices
+1
+💳
+Payments
+1
+💬
+Messages
+9+
+🏛️
+Guide
+🤝
+Vendors
+Your Choices
+
+Select options your venue asked for. Submitting sends them for review — it i
+PASS selection-persisted — [{"id":"3c2523e7-ce37-46a2-93b8-346bb8b0c68c","status":"submitted"},{"id":"cdff48e3-8e55-46b7-a877-d39b585cf324","status":"finalized"},{"id":"d6809923-5735-415d-b00d-1204b4f64174","status":"finalized"}]
+PASS no-invoice-on-submit — 1→1
+PASS invoice-link-still-invoice — INVOICE & PAYMENT PLAN
+
+Jen's Fancy Venue
+
+INV-2026-4489C8
+
+Event & Inventory Selections
+
+Prepared for
+
+B2P 96736-9a50 & Portal Partner
+
+B2P 96736-9a50 & Portal Partner · July 17, 2060
+
+TOTAL CONTRACTED
+
+$2,189.81
+
+PAID TO DATE
+
+$0
+
+BALANCE REMAINING
+
+$2,189.81
+
+AMOUNT DUE NOW
+
+$547.45
+
+Initial Paym
+PASS financial-token-ignores-choices-view — INVOICE & PAYMENT PLAN
+
+Jen's Fancy Venue
+
+INV-2026-4489C8
+
+Event & Inventory Selections
+
+Prepared for
+
+B2P 96736-9a50 & Portal Partner
+
+B2P 96736-9a50 & Portal Partner · July 17, 2060
+
+TOTAL CONTRACTED
+
+$2,189.81
+
+PAID TO DATE
+
+$0
+
+BALANCE REMAINING
+
+$2,189.81
+
+AMOUNT DUE NOW
+
+$547.45
+
+Initial Paym
+PASS create-event-order-cta — count=1 Client selections
+Choose an Event Order template, review the complete offering, then send a selection request. Same composer pattern as Package/Proposal — sending does not finalize the Event Order or create an invoice.
+Event Order template
+Ceremony + Reception
+Wedding Reception
+Manage templates
+
+Ceremony + Reception
+
+Client Submitted · Venue to act · Couple submission (not yet on Event Ord
+PASS event-order-document-visible — Event Order document
+
+EVENT ORDER
+
+Event Order
+Owner: Venue
+·
+Updated Oct 25, 2026
+Amended · v25
+Finalize Event Order
+
+What this event is receiving. Delivery subtotal (for reference): $2,381 — amount due is on Invoice / Payments.
+
+Clients still see the shared version from Oct 23, 2026. Re-share when you are ready to publish revisions.
+Amount due lives on
+Event & Inventory Selections INV-2026-4489C
+PASS event-order-lines-present — n=42 status=open
+PASS event-order-no-duplicate-line-ids — ids=42
+PASS event-order-finalized-or-already — {"status":"finalized","shared_at":"2026-10-24T02:24:06.106+00:00","client_agreed_at":null}
+PASS finalize-does-not-auto-accept — {"client_agreed_at":null}
+PASS event-order-shared-via-explicit-share-or-preexisting — {"shared_at":"2026-10-24T02:24:06.106+00:00","preexisting":true,"performedExplicitShare":false}
+PASS eo-invoice-present-or-existing — eoLinked=1 invoices 1→1
+PASS no-duplicate-invoice-burst — 1→1
+invoice-resync-after-eo-drift status=draft liveRev=26 freezeRev=25
+PASS eo-delivery-not-assumed-payable — {"deliverySubtotal":2381,"billableSubtotal":2061,"includedOrNonBillable":320,"invoiceAdjustmentsSubtotal":0,"discountAmount":0,"taxAmount":128.81,"payableTotal":2189.81}
+PASS eo-payable-equals-billable-plus-tax-minus-discount — {"deliverySubtotal":2381,"billableSubtotal":2061,"includedOrNonBillable":320,"invoiceAdjustmentsSubtotal":0,"discountAmount":0,"taxAmount":128.81,"payableTotal":2189.81}
+PASS expected-payable-from-billable-plus-adjustments — payable=2189.81 billable=2061 tax=128.81
+PASS invoice-detail-shows-projected-payable — $2,189.81 :: OVERVIEW
+
+Dashboard
+
+YOUR RELATIONSHIPS
+
+Leads
+28
+Clients
+Vendors
+
+SCHEDULING
+
+Calendar
+Tours
+4
+
+COMMUNICATION
+
+Inbox
+Automations
+
+LIBRARY
+
+Templates
+Documents
+
+FINANCIALS
+
+Contracts
+13
+Payments
+14
+
+TO DO’S
+
+Task Center
+Requests
+
+YOUR VENUE
+
+Setup
+Settings
+Guidance
+Venue Guide
+Reports
+Help & Feedback
+Jen's Fancy Venue
+Search
+⌘K
+99+
+J
+jennifer@hellotocheers.com
+B2P / 96736-9a50 / Porta
+PASS invoice-published-sent — {"id":"4489c869-38fd-4ae1-8cad-cc7043d1d527","status":"sent","total":2189.81,"subtotal":2061,"tax_amount":128.81,"balance_due":2189.81,"event_order_revision_at_freeze":26}
+PASS invoice-frozen-eo-line-count — frozen=9 billable=9
+PASS invoice-total-matches-expected-payable — stored=2189.81 expected=2189.81
+PASS invoice-not-tax-only-after-send — {"id":"4489c869-38fd-4ae1-8cad-cc7043d1d527","status":"sent","total":2189.81,"subtotal":2061,"tax_amount":128.81,"balance_due":2189.81,"event_order_revision_at_freeze":26}
+PASS payment-plan-reconciles-to-expected-payable — schedule=2189.81 expected=2189.81 lines=4
+PASS no-duplicate-invoice-after-send — 1→1
+PASS portal-shows-expected-payable — expected=$2,189.81 body=INVOICE & PAYMENT PLAN
+
+Jen's Fancy Venue
+
+INV-2026-4489C8
+
+Event & Inventory Selections
+
+Prepared for
+
+B2P 96736-9a50 & Portal Partner
+
+B2P 96736-9a50 & Portal Partner · July 17, 2060
+
+TOTAL CONTRACTED
+
+$2,189.81
+
+PAID TO DATE
+
+$0
+
+BALANCE REMAINING
+
+$2,189.81
+
+AMOUNT DUE NOW
+
+$547.45
+
+Initial Payment · due October 23, 2026
+
+How to pay
+
+Jen's Fancy Venue accepts Check, Cas
+PASS portal-shows-installment-schedule — INVOICE & PAYMENT PLAN
+
+Jen's Fancy Venue
+
+INV-2026-4489C8
+
+Event & Inventory Selections
+
+Prepared for
+
+B2P 96736-9a50 & Portal Partner
+
+B2P 96736-9a50 & Portal Partner · July 17, 2060
+
+TOTAL CONTRACTED
+
+$2,189.81
+
+PAID TO DATE
+
+$0
+
+BALANCE REMAINING
+
+$2,189.81
+
+AMOUNT DUE NOW
+
+$547.45
+
+Initial Payment · due October 23, 2026
+
+How to pay
+
+Jen's Fancy Venue accepts Check, Cash, ACH / bank transfer, 
+PASS portal-rpc-returns-published-financials — {"schedules":1,"invoices":1}
+PASS portal-rpc-total-matches-payable — portal=2189.81 expected=2189.81
+PASS repeat-create-does-not-duplicate-invoice — 1→1
+PASS documents-show-event-order-or-invoice — B2P & Portal
+
+·
+
+Jen's Fancy Venue
+
+Jul 17, 2060
+
+Export my data
+9+
+🏠
+Home
+✅
+Tasks
+9+
+🕒
+Timeline
+📁
+Docs
+🗺️
+Floor Plan
+🪑
+Inventory
+1
+📋
+Order
+1
+💳
+Payments
+1
+💬
+Messages
+9+
+🏛️
+Guide
+🤝
+Vendors
+Documents
+
+Contracts, invoices, questionnaires, your Event Order, receipts, and anything your venue or vendors share — all in one place.
+
+Event insurance
+Share with venue
++ Upload document
+Event Order
+�
+PASS booking-unchanged — {"status":"confirmed","booked_at":"2026-10-22"}
+PASS restore-portal-sessions — restored=5
+PASS serving-sha-unchanged-during-run — 405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:a68e8e9798b960f41f9058f50c62edb9c84f6ff1
+
+GREEN 61/61

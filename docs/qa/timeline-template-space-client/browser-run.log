@@ -1,0 +1,51 @@
+PASS Serving expected SHA — 405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:df95f7c4c17a3e522396df98df818754994d37b6
+PASS Template↔space association persists — {"id":"ee269ba0-e49a-4ea1-a08c-6aa82386f576","space_id":"40f81c67-199d-47f8-bf7d-79c118e34198","event_type":"wedding","name":"QA-TS-TS3776"}
+PASS Space assignment drives default preselect — preselect=ee269ba0-e49a-4ea1-a08c-6aa82386f576 tpl=ee269ba0-e49a-4ea1-a08c-6aa82386f576 otherSpace=undefined
+PASS Library explains apply/share path (no direct client send) — explains=true noSend=true
+PASS Library lists fixture template — sees=true
+PASS Template editor shows space context — OVERVIEW
+
+Dashboard
+
+YOUR RELATIONSHIPS
+
+Leads
+28
+Clients
+Vendors
+
+SCHEDULING
+
+Calendar
+Tours
+4
+
+COMMUNICATION
+
+Inbox
+Automations
+
+LIBRARY
+
+Templates
+Documents
+
+FINANCIALS
+
+Contracts
+13
+Payments
+13
+
+T
+PASS Event edit does not mutate master template — tplTitle=QA-TS-TS3776-item
+PASS Share with couple UI — already shared or button absent; audiences forced client
+PASS Client portal sees event-specific timeline — sees=true noTplNote=true
+PASS Invalid portal token cannot access timeline — 💗
+
+This link has expired or is no longer active.
+
+Please contact your venue coordinator for an updated link to your wed
+PASS Cleanup — deleted QA-TS fixtures
+
+11 PASS / 0 FAIL / 0 BLOCKED

@@ -5,6 +5,9 @@
  * structured rows is Luv's job (see lib/luv/import-assist.ts), not this
  * module's (Vendor Management — Next Iteration, 2026-07-10).
  */
+import fs from "node:fs";
+import path from "node:path";
+import { pathToFileURL } from "node:url";
 import ExcelJS from "exceljs";
 
 export type ParsedTable = { headers: string[]; rows: Record<string, string>[] };
@@ -71,12 +74,53 @@ export async function extractDocxText(buffer: Buffer): Promise<string> {
   return result.value;
 }
 
+/** Strip pdf-parse page footers so image-only PDFs aren't treated as readable text. */
+export function normalizeExtractedPdfText(text: string): string {
+  return text.replace(/--\s*\d+\s+of\s+\d+\s*--/gi, "").trim();
+}
+
+/**
+ * pdf-parse → pdfjs needs browser geometry globals. Node 22 Alpine (Sandbox
+ * venue-app) does not define DOMMatrix; without a stub, Import Data PDF
+ * uploads fail with "ReferenceError: DOMMatrix is not defined" and never
+ * reach mapping. Text extraction only needs the constructor to exist.
+ */
+export function ensurePdfJsDomPolyfills(): void {
+  const g = globalThis as Record<string, unknown>;
+  if (typeof g.DOMMatrix !== "undefined") return;
+  // Minimal stub — pdfjs only needs the constructor present in Node.
+  // Assigned via Record so TypeScript does not require the full DOMMatrix API.
+  g.DOMMatrix = class {
+    a = 1; b = 0; c = 0; d = 1; e = 0; f = 0;
+    constructor(_init?: string | number[]) {}
+    multiplySelf() { return this; }
+    invertSelf() { return this; }
+    translateSelf() { return this; }
+    scaleSelf() { return this; }
+    rotateSelf() { return this; }
+  };
+}
+
+function resolvePdfParseWorkerSrc(): string | null {
+  const candidates = [
+    path.join(process.cwd(), "public", "pdf-parse.worker.mjs"),
+    path.join(process.cwd(), "public", "pdf.worker.min.mjs"),
+  ];
+  for (const file of candidates) {
+    if (fs.existsSync(file)) return pathToFileURL(file).href;
+  }
+  return null;
+}
+
 export async function extractPdfText(buffer: Buffer): Promise<string> {
+  ensurePdfJsDomPolyfills();
   const { PDFParse } = await import("pdf-parse");
+  const workerSrc = resolvePdfParseWorkerSrc();
+  if (workerSrc) PDFParse.setWorker(workerSrc);
   const parser = new PDFParse({ data: buffer });
   try {
     const result = await parser.getText();
-    return result.text;
+    return normalizeExtractedPdfText(result.text ?? "");
   } finally {
     await parser.destroy();
   }

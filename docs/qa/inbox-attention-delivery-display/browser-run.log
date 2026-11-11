@@ -1,0 +1,14 @@
+PASS Serving expected SHA — image=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:8d9eb28bdef67382657666edae04e26b3f3b86ab expected=8d9eb28bdef6
+PASS Attention count readable — count=50 text=50 need your attention
+PASS Attention card is a link to filtered history — tag=A href=/messaging/health?attention=1
+PASS Attention card has accessible label — aria=50 messages need your attention. View delivery failures.
+PASS Keyboard focus reaches attention control — {"tag":"A","outline":"none rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgb(93, 111, 93) 0px 0px 0px 2px, rgba(0, 0, 0, 0) 0px 0px 0px 0px","aria":"50 messages need your attention. View delivery failures.","testId":"attention-stat-card"}
+PASS Click opens attention filter — https://app.sandbox.hellotocheers.com/messaging/health?attention=1
+PASS Filtered heading present — heading
+PASS Filtered list has rows — rows=20
+PASS Filtered rows are failure statuses only — statuses=["failed","failed","failed","failed","failed","failed","failed","failed","failed","failed","failed","failed"]
+PASS Load more reveals additional rows — before=20 after=40
+PASS Couldn't deliver text not horizontally clipped — {"sampleCount":8,"couldnt":[{"text":"❌ Couldn't deliver Your message couldn't be delivered.","overflowX":false,"overflowY":false,"labelOverflow":false},{"text":"❌ Couldn't deliver Your message couldn't be delivered.","overflowX":false,"overflowY":false,"labelOverflow":false},{"text":"❌ Couldn't deliver Your message couldn't be delivered.","overflowX":false,"overflowY":false,"labelOverflow":false},{"text":"❌ Couldn't deliver Your message couldn't be delivered.","overflowX":false,"overflowY":false,"labelOverflow":false},{"text":"❌ Couldn't deliver Your message couldn't be delivered.","overflowX":false,"overflowY":false,"labelOverflow":false},{"text":"❌ Couldn't deliver Your message couldn't be delivered.","overflowX":false,"overflowY":false,"labelOverflow":false},{"text":"❌ Couldn't deliver Your message couldn't be delivered.","overflowX":false,"overflowY":false,"labelOverflow":false},{"text":"❌ Couldn't deliver Your message couldn't be delivered.","overflowX":false,"overflowY":false,"labelOverflow":false}],"anyClip":false}
+PASS Narrow viewport failure text not clipped — [{"text":"❌ Couldn't deliver Your message couldn't be delivered.","overflowX":false,"clientWidth":150,"scrollWidth":150},{"text":"❌ Couldn't deliver Your message couldn't be delivered.","overflowX":false,"clientWidth":150,"scrollWidth":150},{"text":"❌ Couldn't deliver Your message couldn't be delivered.","overflowX":false,"clientWidth":150,"scrollWidth":150},{"text":"❌ Couldn't deliver Your message couldn't be delivered.","overflowX":false,"clientWidth":150,"scrollWidth":150}]
+
+ALL CHECKS PASSED

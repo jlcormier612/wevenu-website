@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=390" />
+  <title>PROPOSAL — Reports Overview Mobile</title>
+  <link rel="stylesheet" href="_shared.css" />
+  <style>
+    body { max-width: 390px; margin: 0 auto; border-left: 1px solid #ddd; border-right: 1px solid #ddd; min-height: 100vh; }
+    .stage-grid, .grid, .grid-3 { grid-template-columns: 1fr; }
+  </style>
+</head>
+<body>
+  <div class="banner"><strong>DESIGN PROPOSAL ONLY</strong> — Phase 11B mobile</div>
+  <div class="shell">
+    <div class="intro"><h1>Reports</h1><p>How your business is doing.</p></div>
+    <div class="tabs">
+      <span class="tab active">Overview</span><span class="tab">Sales</span><span class="tab">Bookings</span><span class="tab">Revenue</span>
+    </div>
+    <div class="filter"><span class="chip on">This month</span><span class="chip">Last month</span></div>
+    <div class="funnel">
+      <h2>How the business moved</h2>
+      <div class="stage-grid">
+        <div class="stage sales"><div class="l">Leads</div><div class="v">42</div></div>
+        <div class="stage sales"><div class="l">Tours</div><div class="v">18</div></div>
+        <div class="stage bookings"><div class="l">Bookings</div><div class="v">9</div></div>
+        <div class="stage money"><div class="l">Contracted</div><div class="v">$86k</div></div>
+        <div class="stage money"><div class="l">Collected</div><div class="v">$41k</div></div>
+        <div class="stage owed"><div class="l">Outstanding</div><div class="v">$45k</div></div>
+      </div>
+    </div>
+    <div class="grid">
+      <div class="kpi tone-sales"><div class="head">Leads</div><div class="body"><p class="value">42</p><p class="delta good">↑ 12% vs prior</p></div></div>
+      <div class="kpi tone-bookings"><div class="head">Bookings</div><div class="body"><p class="value">9</p><p class="delta good">↑ 1 vs prior</p></div></div>
+      <div class="kpi tone-money"><div class="head">Collected</div><div class="body"><p class="value">$41,200</p><p class="delta good">↑ 14% vs prior</p></div></div>
+      <div class="kpi tone-owed"><div class="head">Outstanding</div><div class="body"><p class="value">$45,200</p><p class="delta bad">↑ 6% vs prior</p></div></div>
+    </div>
+  </div>
+</body>
+</html>

@@ -10,6 +10,11 @@ import * as React from "react";
 import type { CalendarItem, CalendarItemType } from "@/lib/calendar/types";
 import type { ManualScheduleType } from "@/lib/availability/types";
 import { sanitizeVenueCalendarFilters, isVenueCalendarItemType } from "@/lib/calendar/venue-calendar-scope";
+import {
+  calendarItemMatchesSpace,
+  calendarSpaceOptionsFromVenueSpaces,
+  normalizeCalendarSpaceFilterId,
+} from "@/lib/calendar/space-filter";
 
 export type CalendarFilterState = {
   types: CalendarItemType[] | null; // null = "all types," never persisted as an explicit exclusion list
@@ -26,8 +31,10 @@ export type CalendarFilterState = {
 
 export const UNASSIGNED = "__unassigned__";
 
-/** Shared across Month/Week/Day/Agenda — do not per-view-key this. */
-export const CALENDAR_FILTER_STORAGE_KEY = "shared";
+/** Shared across Month/Week/Day/Agenda — do not per-view-key this.
+ *  Bumped to taxonomy-v1 so pre-retirement perspective presets in localStorage
+ *  cannot leave the Calendar stuck on a Sales/Planning/etc. filter set. */
+export const CALENDAR_FILTER_STORAGE_KEY = "shared-taxonomy-v1";
 
 const STORAGE_PREFIX = "wevenu-calendar-filters:";
 
@@ -47,7 +54,7 @@ function loadSaved(key: string): CalendarFilterState | null {
     return sanitizeVenueCalendarFilters({
       types: parsed.types ?? null,
       staffId: parsed.staffId ?? null,
-      spaceId: parsed.spaceId ?? null,
+      spaceId: normalizeCalendarSpaceFilterId(parsed.spaceId ?? null),
       manualTypes: parsed.manualTypes ?? null,
     });
   } catch {
@@ -59,20 +66,42 @@ function loadSaved(key: string): CalendarFilterState | null {
  * @param storageKey Ignored for persistence (always CALENDAR_FILTER_STORAGE_KEY).
  * Kept optional so call sites can stay readable; pass-through values are
  * normalized to the shared key.
+ * @param options.showSpaceFilter When false (single-space venues), hide the
+ * space filter and clear any persisted spaceId. Availability engine is separate.
+ * @param options.venueSpaces Configured physical spaces — filter lists these,
+ * not only spaces that already have items this month.
  */
-export function useCalendarFilters(items: CalendarItem[], _storageKey?: string) {
+export function useCalendarFilters(
+  items: CalendarItem[],
+  _storageKey?: string,
+  options?: {
+    showSpaceFilter?: boolean;
+    venueSpaces?: Array<{ id: string; name: string; isActive?: boolean }>;
+  },
+) {
+  const showSpaceFilter = options?.showSpaceFilter === true;
+  const venueSpaces = options?.venueSpaces ?? [];
   const storageKey = CALENDAR_FILTER_STORAGE_KEY;
   const [filters, setFiltersState] = React.useState<CalendarFilterState>(
     () => loadSaved(storageKey) ?? EMPTY_FILTERS,
   );
 
+  React.useEffect(() => {
+    if (!showSpaceFilter && filters.spaceId) {
+      setFiltersState((prev) => ({ ...prev, spaceId: null }));
+    }
+  }, [showSpaceFilter, filters.spaceId]);
+
   const setFilters = React.useCallback((next: CalendarFilterState) => {
-    const sanitized = sanitizeVenueCalendarFilters(next);
+    const sanitized = sanitizeVenueCalendarFilters({
+      ...(showSpaceFilter ? next : { ...next, spaceId: null }),
+      spaceId: showSpaceFilter ? normalizeCalendarSpaceFilterId(next.spaceId) : null,
+    });
     setFiltersState(sanitized);
     if (typeof window !== "undefined") {
       window.localStorage.setItem(STORAGE_PREFIX + storageKey, JSON.stringify(sanitized));
     }
-  }, [storageKey]);
+  }, [storageKey, showSpaceFilter]);
 
   const presentTypes = React.useMemo(
     () => [...new Set(items.map((i) => i.type))].filter(isVenueCalendarItemType),
@@ -84,10 +113,13 @@ export function useCalendarFilters(items: CalendarItem[], _storageKey?: string) 
     return [...map.entries()];
   }, [items]);
   const spaceOptions = React.useMemo(() => {
+    if (!showSpaceFilter) return [] as [string, string][];
+    const fromVenue = calendarSpaceOptionsFromVenueSpaces(venueSpaces);
+    if (fromVenue.length > 0) return fromVenue.map((s) => [s.id, s.name] as [string, string]);
     const map = new Map<string, string>();
     for (const i of items) if (i.spaceId) map.set(i.spaceId, i.spaceName ?? "Unnamed space");
     return [...map.entries()];
-  }, [items]);
+  }, [items, showSpaceFilter, venueSpaces]);
 
   const filteredItems = React.useMemo(() => items.filter((i) => {
     if (filters.types && !filters.types.includes(i.type)) return false;
@@ -96,11 +128,7 @@ export function useCalendarFilters(items: CalendarItem[], _storageKey?: string) 
         if (i.assignedToStaffId) return false;
       } else if (i.assignedToStaffId !== filters.staffId) return false;
     }
-    if (filters.spaceId) {
-      if (filters.spaceId === UNASSIGNED) {
-        if (i.spaceId) return false;
-      } else if (i.spaceId !== filters.spaceId) return false;
-    }
+    if (showSpaceFilter && !calendarItemMatchesSpace(i, filters.spaceId)) return false;
     // Only narrows calendar_block items — every other type has no
     // manualType of its own and is unaffected, exactly like staffId/spaceId
     // narrow only the items that carry them.
@@ -108,7 +136,7 @@ export function useCalendarFilters(items: CalendarItem[], _storageKey?: string) 
       if (!i.manualType || !filters.manualTypes.includes(i.manualType)) return false;
     }
     return true;
-  }), [items, filters]);
+  }), [items, filters, showSpaceFilter]);
 
   return { filters, setFilters, filteredItems, presentTypes, staffOptions, spaceOptions };
 }

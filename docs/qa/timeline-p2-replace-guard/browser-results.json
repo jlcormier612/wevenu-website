@@ -1,0 +1,97 @@
+{
+  "run": "P2R65155",
+  "expected": "8703267e6cf9dd3be7afb598fafcce0fc5ccefc1",
+  "failed": 0,
+  "checks": [
+    {
+      "name": "serving-sha",
+      "pass": true,
+      "detail": "expected=8703267e6cf9dd3be7afb598fafcce0fc5ccefc1 ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:8703267e6cf9dd3be7afb598fafcce0fc5ccefc1"
+    },
+    {
+      "name": "health",
+      "pass": true,
+      "detail": "{\"ok\":true,\"checks\":{\"env\":\"ok\",\"supabase\":\"ok\"}}"
+    },
+    {
+      "name": "html-dpl",
+      "pass": true,
+      "detail": "dpl=8703267e6cf9dd3be7afb598fafcce0fc5ccefc1"
+    },
+    {
+      "name": "empty-replace-succeeds",
+      "pass": true,
+      "detail": "{\"rpc\":{\"ok\":true,\"eventId\":\"2916cf47-22c4-4b88-9d1a-5abe1e3c7322\",\"inserted\":1},\"venueCount\":1}"
+    },
+    {
+      "name": "manual-venue-blocks-no-delete",
+      "pass": true,
+      "detail": "{\"rpc\":{\"ok\":false,\"error\":\"venue_owned_entries_exist\",\"message\":\"This event already has venue timeline items, including items added from the schedule. Replacing the template would remove that work.\\n\\nTo keep your existing items, add items from a template on the Timeline tab instead.\\n\\nA safer replace option isn’t available yet.\"},\"beforeManual\":1,\"afterManual\":1,\"still\":{\"id\":\"451a34db-d17d-4205-949e-75f70f4f0cf8\",\"title\":\"P2R-P2R65155-manual\"}}"
+    },
+    {
+      "name": "schedule-derived-blocks",
+      "pass": true,
+      "detail": "{\"rpc\":{\"ok\":false,\"error\":\"venue_owned_entries_exist\",\"message\":\"This event already has venue timeline items, including items added from the schedule. Replacing the template would remove that work.\\n\\nTo keep your existing items, add items from a template on the Timeline tab instead.\\n\\nA safer replace option isn’t available yet.\"},\"schedStill\":1}"
+    },
+    {
+      "name": "locked-venue-blocks",
+      "pass": true,
+      "detail": "{\"ok\":false,\"error\":\"venue_owned_entries_exist\",\"message\":\"This event already has venue timeline items, including items added from the schedule. Replacing the template would remove that work.\\n\\nTo keep your existing items, add items from a template on the Timeline tab instead.\\n\\nA safer replace option isn’t available yet.\"}"
+    },
+    {
+      "name": "couple-only-allows-and-preserves",
+      "pass": true,
+      "detail": "{\"rpc\":{\"ok\":true,\"eventId\":\"5cc6b744-b7d4-45d5-9687-5165407b0cfa\",\"inserted\":1},\"coupleStill\":{\"id\":\"24965e66-18d2-4a69-8025-7db48aaa7190\",\"owner\":\"client\"},\"venueAfterCouple\":1,\"clientAfterCouple\":1}"
+    },
+    {
+      "name": "mixed-blocks-unchanged",
+      "pass": true,
+      "detail": "{\"rpc\":{\"ok\":false,\"error\":\"venue_owned_entries_exist\",\"message\":\"This event already has venue timeline items, including items added from the schedule. Replacing the template would remove that work.\\n\\nTo keep your existing items, add items from a template on the Timeline tab instead.\\n\\nA safer replace option isn’t available yet.\"},\"mixBeforeV\":1,\"mixBeforeC\":1}"
+    },
+    {
+      "name": "seed-release-for-eligibility",
+      "pass": true,
+      "detail": "{\"ok\":true,\"releaseId\":\"bc13bec4-172c-44d0-802b-76fed9fb25c3\",\"entryCount\":1,\"releasedAt\":\"2026-10-27T01:39:24.402957+00:00\",\"heldOutCount\":0,\"priorReleaseId\":null,\"idempotentReplay\":false}"
+    },
+    {
+      "name": "release-only-working-empty-allows",
+      "pass": true,
+      "detail": "{\"rpc\":{\"ok\":true,\"eventId\":\"63d93a1a-9812-451f-b36d-9f31f7721de5\",\"inserted\":1},\"pointerBefore\":\"bc13bec4-172c-44d0-802b-76fed9fb25c3\",\"pointerAfter\":\"bc13bec4-172c-44d0-802b-76fed9fb25c3\"}"
+    },
+    {
+      "name": "cross-venue-denied",
+      "pass": true,
+      "detail": "{\"ok\":false,\"error\":\"event_not_found\",\"message\":\"Event not found.\"}"
+    },
+    {
+      "name": "bulk-delete-helper-refuses",
+      "pass": true,
+      "detail": "{\"ok\":false,\"error\":\"venue_owned_entries_exist\",\"message\":\"This event already has venue timeline items, including items added from the schedule. Replacing the template would remove that work.\\n\\nTo keep your existing items, add items from a template on the Timeline tab instead.\\n\\nA safer replace option isn’t available yet.\"}"
+    },
+    {
+      "name": "concurrency-model",
+      "pass": true,
+      "detail": "replace locks events row FOR UPDATE; eligible path never DELETEs venue-owned rows so concurrent schedule-sync inserts cannot be wiped by replace"
+    },
+    {
+      "name": "atomic-invalid-item-no-partial",
+      "pass": true,
+      "detail": "{\"rpc\":null,\"atomErr\":\"Every template item needs a title.\",\"atomCount\":0}"
+    },
+    {
+      "name": "additive-path-not-replace",
+      "pass": true,
+      "detail": "{\"stillBlocked\":{\"ok\":false,\"error\":\"venue_owned_entries_exist\",\"message\":\"This event already has venue timeline items, including items added from the schedule. Replacing the template would remove that work.\\n\\nTo keep your existing items, add items from a template on the Timeline tab instead.\\n\\nA safer replace option isn’t available yet.\"},\"beforeAdd\":1}"
+    },
+    {
+      "name": "browser-blocked-guidance",
+      "pass": true,
+      "detail": "applyBtn=0 toast="
+    },
+    {
+      "name": "cleanup",
+      "pass": true,
+      "detail": "fixtures=9"
+    }
+  ]
+}

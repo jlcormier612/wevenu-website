@@ -1,0 +1,107 @@
+{
+  "at": "2026-10-28T16:26:03.455Z",
+  "run": "RCSMVSBSQHT",
+  "expectedSha": "0b3838d38aadeeda9b7a5cb22905d17f3fbb04f3",
+  "image": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:0b3838d38aadeeda9b7a5cb22905d17f3fbb04f3",
+  "clientCount": 186,
+  "syntheticClientId": "e28eded5-b826-4518-8cc9-fca0350d58e8",
+  "createdRequestId": "7b7e4fca-40af-4833-bb2d-10f077634aa2",
+  "checks": [
+    {
+      "name": "serving_sha",
+      "pass": true,
+      "detail": "expected=0b3838d38aadeeda9b7a5cb22905d17f3fbb04f3 ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:0b3838d38aadeeda9b7a5cb22905d17f3fbb04f3"
+    },
+    {
+      "name": "large_client_list",
+      "pass": true,
+      "detail": "fancyClients=186"
+    },
+    {
+      "name": "synthetic_client",
+      "pass": true,
+      "detail": "e28eded5-b826-4518-8cc9-fca0350d58e8"
+    },
+    {
+      "name": "picker_present",
+      "pass": true,
+      "detail": "request-client-picker"
+    },
+    {
+      "name": "no_unbounded_select",
+      "pass": true,
+      "detail": "legacy select gone"
+    },
+    {
+      "name": "submit_disabled_without_client",
+      "pass": true,
+      "detail": "needs client"
+    },
+    {
+      "name": "empty_search_hint",
+      "pass": true,
+      "detail": "hint=1"
+    },
+    {
+      "name": "no_results_copy",
+      "pass": true,
+      "detail": "empty state"
+    },
+    {
+      "name": "partial_name_hit",
+      "pass": true,
+      "detail": "e28eded5-b826-4518-8cc9-fca0350d58e8"
+    },
+    {
+      "name": "partner_name_hit",
+      "pass": true,
+      "detail": "Quinn Partnerf9e9"
+    },
+    {
+      "name": "selection_shown",
+      "pass": true,
+      "detail": "Rory RcsRCSMVSBSQHT & Quinn Partnerf9e9"
+    },
+    {
+      "name": "cleared",
+      "pass": true,
+      "detail": "cleared"
+    },
+    {
+      "name": "title_preserved",
+      "pass": true,
+      "detail": "RCS RCSMVSBSQHT Title"
+    },
+    {
+      "name": "description_preserved",
+      "pass": true,
+      "detail": "Keep me RCSMVSBSQHT"
+    },
+    {
+      "name": "submit_disabled_after_clear",
+      "pass": true,
+      "detail": "needs client again"
+    },
+    {
+      "name": "request_persisted_correct_client",
+      "pass": true,
+      "detail": "{\"id\":\"7b7e4fca-40af-4833-bb2d-10f077634aa2\",\"client_id\":\"e28eded5-b826-4518-8cc9-fca0350d58e8\",\"title\":\"RCS RCSMVSBSQHT Title\",\"venue_id\":\"a415ac52-cd74-42a6-8df7-7a8f6e71d080\"}"
+    },
+    {
+      "name": "foreign_venue_excluded",
+      "pass": true,
+      "detail": "foreign=132c1553-9738-4ef6-9538-e83fcb863641"
+    },
+    {
+      "name": "narrow_no_overflow",
+      "pass": true,
+      "detail": "overflow=false"
+    },
+    {
+      "name": "narrow_picker_open",
+      "pass": true,
+      "detail": "search visible"
+    }
+  ],
+  "ok": true
+}

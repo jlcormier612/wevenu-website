@@ -14,15 +14,19 @@ const ROOT = join(process.cwd());
 
 function base(over: Partial<LuvHomeSuggestionInput> = {}): LuvHomeSuggestionInput {
   return {
+    venueName: "Jen's Fancy Venue",
+    hasEvent: true,
     daysUntil: 300,
+    eventDateLabel: "June 21, 2027",
     guestTotal: 10,
     guestAttending: 0,
     readiness: 40,
-    bracket: "9-12",
     totalThisWeek: 0,
     questionnaireOpen: false,
     venueAttentionCount: 0,
-    dayOfMonth: 2,
+    contractAwaitingSignature: false,
+    contractFullyExecuted: false,
+    nextPayment: null,
     ...over,
   };
 }
@@ -59,17 +63,14 @@ describe("Preferred Vendors capability gating", () => {
     assert.match(caps, /case "vendors":\s*return caps\.vendors/);
   });
 
-  it("Luv milestone CTA to vendors is suppressed when vendors capability is off", () => {
+  it("Luv does not invent a vendors milestone when capability is off", () => {
+    // Legacy bank key retained only for destination metadata; resolver no longer emits it.
     assert.equal(NEXT_MILESTONE_BY_BRACKET["9-12"].destination, "vendors");
-
-    const on = resolveLuvHomeSuggestion(base());
-    assert.equal(on.kind, "milestone");
-    assert.equal(on.destination, "vendors");
 
     const off = resolveLuvHomeSuggestion(
       base({ disabledDestinations: ["vendors"] }),
     );
     assert.notEqual(off.destination, "vendors");
-    assert.equal(off.kind, "social_proof");
+    assert.doesNotMatch(off.message, /most couples|choosing .*venue/i);
   });
 });

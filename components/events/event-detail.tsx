@@ -6,32 +6,44 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
-  Calendar,
-  Clock,
   FileDown,
-  MessageSquare,
+  MoreHorizontal,
   Pencil,
   Printer,
-  Users,
-  Wrench,
 } from "lucide-react";
 import { toast } from "sonner";
 
-import { updateEventStatusAction } from "@/app/(app)/events/[id]/actions";
+import { setEventAssignedStaffAction, updateEventStatusAction, returnClientToBookedAction } from "@/app/(app)/events/[id]/actions";
+import { StaffAssignmentField } from "@/components/team/staff-assignment-field";
+import { getBookingConfirmationDraftForClientAction } from "@/app/(app)/leads/[id]/actions";
+import { PipelineBookedConfirmDialog } from "@/components/leads/pipeline-booked-confirm-dialog";
+import { EditBookingScheduleDialog } from "@/components/events/edit-booking-schedule-dialog";
+import type { BookingConfirmationDraft } from "@/lib/booking-journey/confirmation-draft";
+import type { ConfirmedBookingOccupancy } from "@/lib/booking-journey/confirmed-occupancy";
+import type { EventSpaceAssignmentInput } from "@/lib/venue-spaces/assignments";
 import { sendAnniversaryMessageAction } from "@/app/(app)/events/[id]/anniversary-actions";
-import { BookingOverviewSummary } from "@/components/events/booking-overview-summary";
-import { EventReadinessCard } from "@/components/events/event-readiness-card";
 import { QuestionnaireFamilyPanel } from "@/components/events/questionnaire-family-panel";
-import { PortalLinkWidget } from "@/components/portal/portal-link-widget";
 import type { EventReadinessSummary } from "@/lib/readiness/types";
-import { BookingSetupCard } from "@/components/events/booking-setup-card";
-import { TimelineSetupCard } from "@/components/events/timeline-setup-card";
+import { EventSetupPanel } from "@/components/events/event-setup-panel";
+import { NeedsAttentionList } from "@/components/events/needs-attention";
+import { selectOverviewExceptions, type EventSetupState, type SetupStepKey } from "@/lib/event-setup/state";
 import { EventFeedbackSection } from "@/components/events/event-feedback-section";
 import { EventNotesSection } from "@/components/events/event-notes-section";
+import type { InternalNoteRollupItem } from "@/lib/notes/internal-notes-rollup";
 import { EventStatusBadge } from "@/components/events/event-status-badge";
-import { EventTeamSection } from "@/components/events/event-team-section";
-import { EventVendorsSection } from "@/components/events/vendors/event-vendors-section";
 import { EventVendorRecommendationsSection } from "@/components/events/vendors/event-vendor-recommendations-section";
+import { EventVendorsSection } from "@/components/events/vendors/event-vendors-section";
+import { RelationshipPhotoAvatar } from "@/components/relationship-photos/relationship-photo-avatar";
+import { updateDraftStatusAction } from "@/app/(app)/leads/[id]/luv-actions";
+import { LuvHeart } from "@/components/dashboard/luv-widget";
+import { ContextualLuvObservationsPanel } from "@/components/luv/contextual-observations-panel";
+import { LuvDraftPanel } from "@/components/luv/luv-draft-panel";
+import type { LuvDraft } from "@/lib/luv/drafts";
+import { draftStatusAfterSuccessfulSend } from "@/lib/luv/draft-status";
+import { luvPanelDescription } from "@/lib/luv/luv-panel-copy";
+import type { LuvObservation } from "@/lib/luv/types";
+import type { LeadWithDetails } from "@/lib/leads/types";
+import { VenueVendorDirectorySummary } from "@/components/events/vendors/venue-vendor-directory-summary";
 import type { EventVendorRecommendation } from "@/lib/vendor-recommendations/types";
 import { TimelineView } from "@/components/events/timeline/timeline-view";
 import { FloorPlanWorkspace } from "@/components/events/floor-plan-workspace";
@@ -39,49 +51,66 @@ import type { FloorPlanTemplate } from "@/lib/floor-plan-templates/types";
 import type { EventFloorPlanOfferWithTemplate } from "@/lib/floor-plan-offers/types";
 import type { VenueSpace } from "@/lib/availability/types";
 import { BookingDocumentsTab } from "@/components/events/booking-documents-tab";
-import { RequestSummaryCard } from "@/components/events/request-summary-card";
 import { EventTaskList } from "@/components/playbooks/event-task-list";
 import type { LinkableConversationMessage } from "@/components/playbooks/event-task-list";
 import type { TimelineEntry, TimelineEntryAttachment, TimelineEntryLink, TimelineRelatedLink, TimelineSection } from "@/lib/timeline/types";
 import { InvoiceStatusBadge } from "@/components/invoices/invoice-status-badge";
-import { BookingJourneyPanel } from "@/components/booking-journey/booking-journey-panel";
 import { SetupPaymentsSheet } from "@/components/booking-journey/setup-payments-sheet";
 import type { BookingJourneyModel } from "@/lib/booking-journey/model";
+import { venueToday } from "@/lib/venue/timezone";
+import { eventTypeLabel } from "@/lib/event-types/canonical";
 import type { CommercialSelection } from "@/lib/commercial-selections/types";
 import type { PackageWithItems } from "@/lib/packages/types";
 import { CreateRetainerSheet } from "@/components/payments/create-retainer-sheet";
-import { EventOrderPanel } from "@/components/event-orders/event-order-panel";
+import { EventCommercialWorkflow } from "@/components/event-orders/event-commercial-workflow";
+import { eventOrderOverviewSummary } from "@/lib/event-orders/event-order-journey";
+import type { CommercialNavTarget } from "@/lib/event-orders/commercial-status";
 import type { EventOrderWithDetails } from "@/lib/event-orders/types";
 import type { InventoryItem } from "@/lib/inventory/types";
 import type { Package } from "@/lib/packages/types";
 import { EventInventoryPanel } from "@/components/event-inventory/event-inventory-panel";
 import { RelationshipConversationTab } from "@/components/conversations/relationship-conversation-tab";
 import { ActivityTimelineView } from "@/components/conversations/activity-timeline";
+import { RelationshipTabShell } from "@/components/relationship/relationship-tab-shell";
 import type { ConversationMessage } from "@/lib/conversations/types";
 import type { ClientStatus } from "@/lib/clients/types";
 import { Button } from "@/components/ui/button";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   Card, CardContent, CardDescription, CardHeader, CardTitle,
 } from "@/components/ui/card";
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatCurrency } from "@/lib/invoices/constants";
+import { invoiceHumanLabel } from "@/lib/invoices/display-name";
 import type { Invoice } from "@/lib/invoices/types";
+import type { SelectionsFinancialImpact } from "@/lib/client-choices/selections-billing";
 import type { Document } from "@/lib/documents/types";
 import type { WorkspaceDocument } from "@/lib/document-workspace/types";
+import {
+  INTERNAL_NOTES_LABEL,
+  INTERNAL_NOTES_PRIVACY_HINT,
+} from "@/lib/notes/internal-notes-copy";
 import type { Questionnaire, QuestionnaireActivity } from "@/lib/events/questionnaire";
 import type { QuestionnaireTemplate } from "@/lib/questionnaire-templates/service";
 // QuestionnaireFamilyPanel replaces the single FinalDetailsForm surface.
 import type { EventPlaybookApplication, EventReadiness, EventTask, EventTaskContextLink, PlaybookTemplateWithStats, TaskContact } from "@/lib/playbooks/types";
 import type { TimelineTemplateWithStats } from "@/lib/timeline-templates/types";
 import {
-  EVENT_STATUSES,
   daysUntil,
   formatEventDateRange,
-  formatTime,
 } from "@/lib/events/constants";
+import {
+  componentDisplayLabel,
+  formatComponentTimeRange,
+  formatDayOfBookingWindow,
+  groupBookingSummaryByDate,
+  type BookingSummaryComponent,
+} from "@/lib/events/booking-summary";
 import type { EventWithDetails } from "@/lib/events/types";
 
 // ---- Anniversary Banner (shown on anniversary milestones) ------------------
@@ -135,8 +164,23 @@ function AnniversaryBanner({ eventId, ordinal }: { eventId: string; ordinal: str
 
 // ---- Event Date Hero (client-side for live countdown) ----------------------
 
-function EventHeroCard({ event }: { event: EventWithDetails }) {
+function EventHeroCard({
+  event,
+  spaceLine,
+  scheduleComponents = null,
+  editableAssignments = null,
+  spaces = [],
+  clientId = null,
+}: {
+  event: EventWithDetails;
+  spaceLine: string | null;
+  scheduleComponents?: BookingSummaryComponent[] | null;
+  editableAssignments?: EventSpaceAssignmentInput[] | null;
+  spaces?: VenueSpace[];
+  clientId?: string | null;
+}) {
   const [countdown, setCountdown] = React.useState<string>("");
+  const [editOpen, setEditOpen] = React.useState(false);
   React.useEffect(() => {
     const days = daysUntil(event.eventDate);
     if (days === 0) setCountdown("Today");
@@ -156,50 +200,175 @@ function EventHeroCard({ event }: { event: EventWithDetails }) {
   const days = daysUntil(event.eventDate);
   const urgent = days >= 0 && days <= 14;
 
+  const dayGroups = scheduleComponents && scheduleComponents.length > 0
+    ? groupBookingSummaryByDate(scheduleComponents)
+    : [];
+  const useComponentSchedule = dayGroups.length > 0;
+  const canEditSchedule = Boolean(
+    editableAssignments
+    && editableAssignments.length > 0
+    && spaces.length > 0
+    && event.bookedAt,
+  );
+
+  const dayOfWindow = formatDayOfBookingWindow({
+    startTime: event.startTime,
+    endTime: event.endTime,
+    setupTime: event.setupTime,
+    teardownTime: event.teardownTime,
+    multiDay,
+  });
+  const timeLabel = dayOfWindow ?? "All day";
+
   return (
-    <Card className="border-primary/20 bg-primary/5">
-      <CardContent className="py-8 text-center space-y-3">
-        <p className="font-heading text-5xl font-medium tracking-tight text-heading">
-          {formatEventDateRange(event.eventDate, event.eventEndDate)}
-        </p>
-        <p className="text-muted-foreground">
-          {multiDay ? `${dayName} – ${endDayName}` : dayName}
-          {countdown ? (
-            <span className={urgent ? " · font-semibold text-destructive" : " · text-muted-foreground"}>
-              {" "}· {countdown}
-            </span>
-          ) : null}
-        </p>
-        {/* Day-of schedule row (multi-day: overall booking window, not daily hours) */}
-        <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 pt-2 text-sm text-muted-foreground">
-          {event.startTime && (
-            <span
-              className="flex items-center gap-1"
-              title={multiDay ? "Overall booking window — not the hour-by-hour schedule for each day" : undefined}
-            >
-              <Clock className="h-3.5 w-3.5" />
-              {event.setupTime ? `Setup ${formatTime(event.setupTime)} · ` : ""}
-              {multiDay ? "Overall " : ""}
-              {formatTime(event.startTime)}
-              {event.endTime ? ` → ${formatTime(event.endTime)}` : ""}
-            </span>
-          )}
-          {event.guestCount != null && (
-            <>
-              {event.startTime && <span className="text-border">·</span>}
-              <span className="flex items-center gap-1">
-                <Users className="h-3.5 w-3.5" />
-                {event.guestCount.toLocaleString()} guests
-              </span>
-            </>
-          )}
-          {event.teardownTime && (
-            <>
-              <span className="text-border">·</span>
-              <span>Teardown {formatTime(event.teardownTime)}</span>
-            </>
-          )}
+    <Card
+      size="sm"
+      className="htc-surface-summary htc-surface-summary-pale gap-3 ring-0 shadow-none self-start"
+      data-testid="event-booking-summary"
+    >
+      <CardContent className="flex flex-col text-left">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1 space-y-0">
+            {eventTypeLabel(event.eventType) ? (
+              <p
+                className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                data-testid="event-booking-summary-type"
+              >
+                {eventTypeLabel(event.eventType)}
+              </p>
+            ) : null}
+            <p className="font-heading text-2xl font-medium tracking-tight text-heading leading-tight">
+              {formatEventDateRange(event.eventDate, event.eventEndDate)}
+            </p>
+            <p className="text-sm leading-snug text-muted-foreground">
+              {multiDay ? `${dayName} – ${endDayName}` : dayName}
+              {countdown ? (
+                <span className={urgent ? " font-semibold text-destructive" : ""}>
+                  {" "}· {countdown}
+                </span>
+              ) : null}
+            </p>
+          </div>
+          <div className="flex shrink-0 flex-col items-end gap-2">
+            <EventStatusBadge status={event.status} bookedAt={event.bookedAt} />
+            {canEditSchedule ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                data-testid="edit-booking-schedule"
+                onClick={() => setEditOpen(true)}
+              >
+                <Pencil className="mr-1 h-3.5 w-3.5" />
+                Edit schedule
+              </Button>
+            ) : null}
+          </div>
         </div>
+
+        {canEditSchedule && editableAssignments ? (
+          <EditBookingScheduleDialog
+            open={editOpen}
+            onOpenChange={setEditOpen}
+            eventId={event.id}
+            clientId={clientId}
+            eventType={event.eventType}
+            eventDate={event.eventDate}
+            eventEndDate={event.eventEndDate}
+            spaces={spaces}
+            assignments={editableAssignments}
+          />
+        ) : null}
+
+        {useComponentSchedule ? (
+          <div className="mt-3 space-y-3" data-testid="event-booking-component-schedule">
+            {dayOfWindow ? (
+              <div className="min-w-0" data-testid="event-day-of-booking-window">
+                <p className="text-xs text-muted-foreground">
+                  {multiDay ? "Overall booking window" : "Day-of schedule"}
+                </p>
+                <p
+                  className="mt-0.5 text-sm leading-snug text-foreground"
+                  title={
+                    multiDay
+                      ? "Overall booking window — not the hour-by-hour schedule for each day"
+                      : undefined
+                  }
+                >
+                  {dayOfWindow}
+                </p>
+              </div>
+            ) : null}
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground">Estimated</p>
+              <p className="mt-0.5 text-sm leading-snug text-foreground">
+                {event.guestCount != null ? `${event.guestCount.toLocaleString()} guests` : "Not recorded"}
+              </p>
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground">Guaranteed</p>
+              <p className="mt-0.5 text-sm leading-snug text-foreground">
+                {event.guaranteedGuestCount != null
+                  ? `${event.guaranteedGuestCount.toLocaleString()} guests`
+                  : "Not set"}
+              </p>
+            </div>
+            {dayGroups.map((group) => (
+              <div key={group.date ?? "unset"} className="min-w-0 space-y-1.5">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  {group.label}
+                </p>
+                <ul className="space-y-1.5">
+                  {group.components.map((c, i) => (
+                    <li
+                      key={`${c.useKey}-${i}`}
+                      className="rounded-md border border-border/50 bg-card px-2.5 py-1.5 text-sm"
+                      data-testid={`booking-component-${c.useKey}`}
+                    >
+                      <p className="font-medium leading-snug text-heading">
+                        {componentDisplayLabel(c)}
+                      </p>
+                      <p className="mt-0.5 leading-snug text-muted-foreground">
+                        {formatComponentTimeRange(c.startTime, c.endTime)}
+                        {" · "}
+                        {c.spaceName?.trim() || "Space not set"}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <dl className="mt-2.5 grid flex-1 grid-cols-1 content-start gap-x-4 gap-y-2 text-sm sm:grid-cols-2 lg:grid-cols-3">
+            <div className="min-w-0" data-testid="event-day-of-booking-window">
+              <dt className="text-xs text-muted-foreground">
+                {multiDay ? "Overall booking window" : "Time"}
+              </dt>
+              <dd className="mt-0.5 leading-snug text-foreground">{timeLabel}</dd>
+            </div>
+            <div className="min-w-0">
+              <dt className="text-xs text-muted-foreground">Estimated</dt>
+              <dd className="mt-0.5 leading-snug text-foreground">
+                {event.guestCount != null ? `${event.guestCount.toLocaleString()} guests` : "Not recorded"}
+              </dd>
+            </div>
+            <div className="min-w-0">
+              <dt className="text-xs text-muted-foreground">Guaranteed</dt>
+              <dd className="mt-0.5 leading-snug text-foreground">
+                {event.guaranteedGuestCount != null
+                  ? `${event.guaranteedGuestCount.toLocaleString()} guests`
+                  : "Not set"}
+              </dd>
+            </div>
+            <div className="min-w-0 sm:col-span-2 lg:col-span-1">
+              <dt className="text-xs text-muted-foreground">Spaces</dt>
+              <dd className="mt-0.5 whitespace-pre-line leading-snug text-foreground">
+                {spaceLine?.trim() || "No space assigned"}
+              </dd>
+            </div>
+          </dl>
+        )}
       </CardContent>
     </Card>
   );
@@ -237,7 +406,6 @@ export function EventDetail({
   vendorDocuments = [],
   workspaceDocuments = [],
   pinnedDocumentKeys = [],
-  recentDocumentEntries = [],
   questionnaire = null,
   questionnaires = [],
   questionnaireTemplates = [],
@@ -263,14 +431,18 @@ export function EventDetail({
   conversationId = null,
   conversationMessages = [],
   spaceName = null,
+  spaceAssignmentsDisplay = null,
+  scheduleComponents = null,
+  editableSpaceAssignments = null,
   venueName = "Your venue",
-  clientStatus = null,
+  clientStatus: _clientStatus = null,
   contractTemplates = [],
   contracts = [],
   floorPlanTemplates = [],
   floorPlanOffers = [],
   spaces = [],
   inventoryUsage = [],
+  floorPlanSeatCounts = {},
   floorPlanCanEdit = true,
   floorPlanCanDelete = true,
   teamMembers = [],
@@ -281,14 +453,31 @@ export function EventDetail({
   eventInventory = null,
   inventoryTemplates = [],
   eventOrderTemplates = [],
+  clientChoices = [],
+  financialImpact = null,
+  bookingCommitmentInvoiceIds = [],
+  linkedScheduleId = null,
   requestsByTaskId = {},
-  requests = [],
+  requests: _requests = [],
   readinessSummary,
   originatingLeadId = null,
+  relationshipContact = null,
+  leadNotes: _leadNotes = [],
+  internalNoteItems = [],
   bookingJourney = null,
   packagesWithItems = [],
   selectedPackage = null,
   openSetupPayments = false,
+  photoUrl = null,
+  venueTimezone = null,
+  contextualObservations = [],
+  luvLead = null,
+  luvDrafts = [],
+  followUpDraftCapable = true,
+  followUpDraftIneligibleReason = null,
+  followUpProactiveRecommended = true,
+  eventSetup = { decisions: {}, collapsedAt: null },
+  applicableSetupSteps = [],
 }: {
   event: EventWithDetails;
   availableVendors?: import("@/lib/vendors/types").Vendor[];
@@ -297,7 +486,6 @@ export function EventDetail({
   vendorDocuments?: (Document & { vendorName: string | null })[];
   workspaceDocuments?: WorkspaceDocument[];
   pinnedDocumentKeys?: string[];
-  recentDocumentEntries?: [string, string][];
   questionnaire?: Questionnaire | null;
   questionnaires?: Questionnaire[];
   questionnaireTemplates?: QuestionnaireTemplate[];
@@ -323,6 +511,10 @@ export function EventDetail({
   conversationId?: string | null;
   conversationMessages?: ConversationMessage[];
   spaceName?: string | null;
+  spaceAssignmentsDisplay?: string | null;
+  scheduleComponents?: BookingSummaryComponent[] | null;
+  /** Full assignment inputs for post-booking Edit schedule. */
+  editableSpaceAssignments?: EventSpaceAssignmentInput[] | null;
   venueName?: string;
   clientStatus?: ClientStatus | null;
   contractTemplates?: import("@/lib/contracts/types").ContractTemplate[];
@@ -331,6 +523,8 @@ export function EventDetail({
   floorPlanOffers?: EventFloorPlanOfferWithTemplate[];
   spaces?: VenueSpace[];
   inventoryUsage?: import("@/lib/inventory/types").InventoryUsage[];
+  /** Phase 2 — guest_seat_assignments counts by floor_plan_id for Case B/C. */
+  floorPlanSeatCounts?: Record<string, number>;
   /** Floor plan permissions — Staff view-only; Coordinator cannot delete plans. */
   floorPlanCanEdit?: boolean;
   floorPlanCanDelete?: boolean;
@@ -344,39 +538,127 @@ export function EventDetail({
   inventoryTemplates?: import("@/lib/event-inventory/types").InventoryTemplate[];
   // D7A — Event Order Templates. Same additive, non-feature-flagged shape as inventoryTemplates above.
   eventOrderTemplates?: import("@/lib/event-order-templates/types").EventOrderTemplate[];
+  clientChoices?: import("@/lib/client-choices/types").ClientChoicesWithHistory[];
+  financialImpact?: SelectionsFinancialImpact | null;
+  bookingCommitmentInvoiceIds?: string[];
+  /** Payment schedule already attached to the EO-linked invoice, if any. */
+  linkedScheduleId?: string | null;
   requestsByTaskId?: Record<string, import("@/lib/requests/types").Request>;
   requests?: import("@/lib/requests/types").Request[];
   readinessSummary: EventReadinessSummary;
-  // Sales → Booking Journey walkthrough — before this, nothing on the
-  // Client Workspace pointed back to the inquiry it came from, so the
-  // Lead's own activity history (status changes, prior notes) had no
-  // reachable path once converted, even though it was never deleted.
+  // Canonical clients.lead_id → /leads/{id}. "View original lead" keeps the
+  // inquiry record reachable after Booked; the lead row is never deleted.
   originatingLeadId?: string | null;
+  relationshipContact?: {
+    clientId: string;
+    firstName: string | null;
+    lastName: string | null;
+    partnerFirstName: string | null;
+    partnerLastName: string | null;
+    phone: string | null;
+    email: string | null;
+    partnerEmail: string | null;
+    source: string | null;
+    inquiryMessage: string | null;
+    inquiryMessageOrigin?: string | null;
+  } | null;
+  leadNotes?: { id: string; body: string; createdAt: string }[];
+  internalNoteItems?: InternalNoteRollupItem[];
   bookingJourney?: BookingJourneyModel | null;
   packagesWithItems?: PackageWithItems[];
   selectedPackage?: CommercialSelection | null;
   openSetupPayments?: boolean;
+  photoUrl?: string | null;
+  venueTimezone?: string | null;
+  contextualObservations?: LuvObservation[];
+  /** Originating lead — booked Luv drafting reuses the Lead Luv lifecycle. */
+  luvLead?: LeadWithDetails | null;
+  luvDrafts?: LuvDraft[];
+  followUpDraftCapable?: boolean;
+  followUpDraftIneligibleReason?: string | null;
+  followUpProactiveRecommended?: boolean;
+  eventSetup?: EventSetupState;
+  applicableSetupSteps?: SetupStepKey[];
 }) {
   const router = useRouter();
   const [statusPending, startStatus] = React.useTransition();
+  const [returnBookedOpen, setReturnBookedOpen] = React.useState(false);
+  const [returnDraft, setReturnDraft] = React.useState<BookingConfirmationDraft | null>(null);
+  const [returnDraftError, setReturnDraftError] = React.useState<string | null>(null);
   const [activeTab, setActiveTab] = React.useState(openSetupPayments ? "invoice" : "overview");
   const [setupPaymentsOpen, setSetupPaymentsOpen] = React.useState(openSetupPayments);
+  const [messagePrefill, setMessagePrefill] = React.useState<{ subject: string; body: string } | null>(null);
+  const [activeLuvDraftId, setActiveLuvDraftId] = React.useState<string | null>(null);
+  const [completedLuvDraftId, setCompletedLuvDraftId] = React.useState<string | null>(null);
+  const [luvDraftRequest, setLuvDraftRequest] = React.useState(0);
+  const draftCapable = followUpDraftCapable;
+  // Soft-nav / searchParam arrival: openSetupPayments is a prop, not only mount state.
+  // Contract "Set up payments" and ?setupPayments=1 must open Payments even when
+  // EventDetail was already mounted on another tab (e.g. Documents → contract → back).
+  React.useEffect(() => {
+    if (!openSetupPayments) return;
+    setActiveTab("invoice");
+    if (typeof window !== "undefined") {
+      const hash = window.location.hash.replace("#", "");
+      if (hash !== "invoice") {
+        window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}#invoice`);
+      }
+    }
+    // Sheet only applies when there is no invoice yet; otherwise Payments tab is enough.
+    if (invoices.length > 0) {
+      setSetupPaymentsOpen(false);
+      return;
+    }
+    if (selectedPackage) {
+      setSetupPaymentsOpen(true);
+    } else {
+      setSetupPaymentsOpen(false);
+      toast.error("Select a package under Commercial before setting up payments.");
+    }
+  }, [openSetupPayments, selectedPackage, invoices.length]);
+
   // useLayoutEffect so /clients/{id}#documents selects Documents before paint
   // (avoids Overview flash after /events/{id}#documents → booking replace).
   React.useLayoutEffect(() => {
     const syncFromHash = () => {
+      const params = new URLSearchParams(window.location.search);
+      // Contract / deep-link payment setup wins over stale tab hashes.
+      if (params.get("setupPayments") === "1") {
+        setActiveTab("invoice");
+        return;
+      }
       const hash = window.location.hash.replace("#", "");
-      const tabParam = new URLSearchParams(window.location.search).get("tab");
-      const tab = hash || (tabParam ? (tabParam === "final-details" ? "documents" : tabParam === "conversation" ? "messages" : tabParam) : "");
-      if (tab === "questionnaires") {
+      const tabParam = params.get("tab");
+      const raw = hash || (tabParam ? (tabParam === "final-details" ? "documents" : tabParam === "conversation" ? "messages" : tabParam) : "");
+      // Planning Overview deep links land on the Planning workspace + scroll target.
+      if (raw === "planning-task-list" || raw === "planning-edit") {
         setActiveTab("playbook");
         requestAnimationFrame(() => {
-          document.getElementById("questionnaires")?.scrollIntoView({ behavior: "smooth", block: "start" });
+          window.setTimeout(() => {
+            document.getElementById(raw)?.scrollIntoView({ behavior: "smooth", block: "start" });
+          }, 80);
         });
-      } else if (tab) setActiveTab(tab);
+        return;
+      }
+      // C3 commercial workspace anchors stay on the event-order tab (do not treat as tab ids).
+      if (
+        raw === "event-order-choices"
+        || raw === "event-order-order"
+        || raw === "event-order-invoice"
+      ) {
+        setActiveTab("event-order");
+        requestAnimationFrame(() => {
+          window.setTimeout(() => {
+            document.getElementById(raw)?.scrollIntoView({ behavior: "smooth", block: "start" });
+          }, 80);
+        });
+        return;
+      }
+      const tab = raw === "team" ? "overview" : raw;
+      if (tab) setActiveTab(tab);
       // Vendor-thread deep links: /events/{id}?conversation=… → /clients/…?conversation=…
       // Open Vendors when a thread id is present and no Conversation/hash was supplied.
-      else if (new URLSearchParams(window.location.search).get("conversation")) {
+      else if (params.get("conversation")) {
         setActiveTab("vendors");
       }
     };
@@ -412,55 +694,232 @@ export function EventDetail({
     });
   }
 
-  const multiDay = Boolean(event.eventEndDate && event.eventEndDate !== event.eventDate);
+  function handleUseLuvDraft(draftId: string, subject: string | null, body: string) {
+    setActiveLuvDraftId(draftId);
+    setMessagePrefill({ subject: subject ?? "", body });
+    setActiveTab("messages");
+    window.location.hash = "messages";
+  }
+
+  async function handleLuvDraftSendSuccess() {
+    if (!activeLuvDraftId || !luvLead) return;
+    const id = activeLuvDraftId;
+    setActiveLuvDraftId(null);
+    await updateDraftStatusAction(
+      id,
+      luvLead.id,
+      draftStatusAfterSuccessfulSend(),
+      luvLead.linkedClientId ?? event.clientId,
+    );
+    setCompletedLuvDraftId(id);
+  }
+
+  async function handleAuthoritativeConversationSendSuccess() {
+    await handleLuvDraftSendSuccess();
+    router.refresh();
+  }
+
+  const bookedTabTriggerClass =
+    "h-9 w-full justify-center whitespace-nowrap px-1 py-1.5 text-center text-[11px] sm:px-1.5 sm:text-sm";
 
   return (
     <div className="space-y-5">
+      <PipelineBookedConfirmDialog
+        open={returnBookedOpen}
+        confirming={statusPending}
+        draft={returnDraft}
+        loadError={returnDraftError}
+        onCancel={() => {
+          setReturnBookedOpen(false);
+          setReturnDraft(null);
+          setReturnDraftError(null);
+        }}
+        onConfirm={(occupancy: ConfirmedBookingOccupancy) => {
+          const clientId = event.clientId;
+          if (!clientId) return;
+          startStatus(async () => {
+            const result = await returnClientToBookedAction(clientId, occupancy);
+            if (result.ok) {
+              setReturnBookedOpen(false);
+              toast.success("Returned to Booked.");
+              router.refresh();
+            } else {
+              toast.error(result.message ?? "Could not return to Booked.");
+            }
+          });
+        }}
+      />
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1.5">
           <Button variant="ghost" size="sm" className="-ml-2 text-muted-foreground" render={<Link href="/clients" />}>
             <ArrowLeft className="mr-1 h-3.5 w-3.5" /> Bookings
           </Button>
-          <h1 className="font-heading text-2xl font-medium text-heading">{event.name}</h1>
+          <div className="flex items-center gap-3">
+            <RelationshipPhotoAvatar
+              photoUrl={photoUrl}
+              name={relationshipContact
+                ? [relationshipContact.firstName, relationshipContact.partnerFirstName].filter(Boolean).join(" & ") || event.name
+                : (event.clientName ?? event.name)}
+            />
+            <h1 className="font-heading text-2xl font-medium text-heading">{event.name}</h1>
+          </div>
           {originatingLeadId && (
             <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-              <Link href={`/leads/${originatingLeadId}`} className="hover:text-foreground hover:underline">
-                View original inquiry
+              <Link
+                href={`/leads/${originatingLeadId}`}
+                className="htc-record-link"
+                data-testid="view-original-lead"
+              >
+                View original lead
               </Link>
             </div>
           )}
         </div>
 
-        <div className="flex shrink-0 items-center gap-2">
-          <EventStatusBadge status={event.status} />
-          <DropdownMenu>
-            <DropdownMenuTrigger render={<Button variant="outline" size="sm" disabled={statusPending} />}>
-              Change status
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {EVENT_STATUSES.map((s) => (
-                <DropdownMenuItem key={s.value} disabled={s.value === event.status} onClick={() => handleStatusChange(s.value)}>
-                  {s.label}
-                  <span className="ml-auto pl-4 text-xs text-muted-foreground">{s.description}</span>
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <Button variant="outline" size="sm" render={<Link href={`/events/${event.id}/edit`} />}>
-            <Pencil className="mr-1 h-3.5 w-3.5" /> Edit
-          </Button>
-          <Button variant="outline" size="sm" render={<Link href={`/events/${event.id}/day-sheet`} />}>
-            <Printer className="mr-1 h-3.5 w-3.5" /> Day-of Sheet
-          </Button>
-          <Button variant="outline" size="sm" render={<Link href={`/calendar/booking/${event.id}`} />}>
-            <Calendar className="mr-1 h-3.5 w-3.5" /> Booking Schedule
-          </Button>
-          {daysUntil(event.eventDate) === 0 && (
-            <Button size="sm" render={<Link href={`/events/${event.id}/today`} />}
-              style={{ background: "#5D6F5D", color: "white" }}>
-              ✦ Today&apos;s Dashboard
+        <div
+          className="flex w-full min-w-0 flex-col gap-2 sm:w-auto sm:shrink-0 sm:flex-row sm:items-center sm:gap-2"
+          data-testid="event-header-actions"
+        >
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <EventStatusBadge status={event.status} bookedAt={event.bookedAt} />
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-11 min-h-11 sm:h-8 sm:min-h-0"
+              render={<Link href={`/events/${event.id}/edit`} />}
+              data-testid="event-action-edit"
+            >
+              <Pencil className="mr-1 h-3.5 w-3.5" /> Edit event
             </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-11 min-h-11 sm:h-8 sm:min-h-0"
+              render={<Link href={`/events/${event.id}/day-sheet`} />}
+              data-testid="event-action-day-sheet"
+            >
+              <Printer className="mr-1 h-3.5 w-3.5" /> Day-of Sheet
+            </Button>
+            {/* Desktop: keep Cancel / Return / Today inline */}
+            {event.status !== "cancelled" && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="hidden h-8 sm:inline-flex"
+                disabled={statusPending}
+                data-testid="event-action-cancel"
+                onClick={() => {
+                  if (!confirm("Cancel this event? It leaves the active client list. History, contracts, and payments stay.")) return;
+                  handleStatusChange("cancelled");
+                }}
+              >
+                Cancel event
+              </Button>
+            )}
+            {event.status === "cancelled" && event.bookedAt && event.clientId && (
+              <Button
+                size="sm"
+                className="hidden h-8 sm:inline-flex"
+                disabled={statusPending}
+                data-testid="event-action-return-booked"
+                onClick={() => {
+                  const clientId = event.clientId;
+                  if (!clientId) return;
+                  setReturnDraft(null);
+                  setReturnDraftError(null);
+                  setReturnBookedOpen(true);
+                  void getBookingConfirmationDraftForClientAction(clientId).then((loaded) => {
+                    if (!loaded.ok) {
+                      setReturnDraftError(loaded.message);
+                      return;
+                    }
+                    setReturnDraft(loaded.draft);
+                  });
+                }}
+              >
+                Return to Booked
+              </Button>
+            )}
+            {daysUntil(event.eventDate) === 0 && (
+              <Button
+                size="sm"
+                className="hidden h-8 sm:inline-flex"
+                render={<Link href={`/events/${event.id}/today`} />}
+                style={{ background: "#5D6F5D", color: "white" }}
+                data-testid="event-action-today-dashboard"
+              >
+                ✦ Today&apos;s Dashboard
+              </Button>
+            )}
+          </div>
+          {/* Mobile: less-frequent actions in an accessible overflow menu */}
+          {(event.status !== "cancelled" ||
+            (event.status === "cancelled" && !!event.bookedAt && !!event.clientId) ||
+            daysUntil(event.eventDate) === 0) && (
+            <div className="sm:hidden">
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  render={
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-11 min-h-11 w-full justify-center"
+                      data-testid="event-action-more"
+                    />
+                  }
+                >
+                  <MoreHorizontal className="mr-1 h-4 w-4" aria-hidden />
+                  More actions
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="min-w-48">
+                  {event.status !== "cancelled" ? (
+                    <DropdownMenuItem
+                      disabled={statusPending}
+                      data-testid="event-action-cancel-menu"
+                      onClick={() => {
+                        if (!confirm("Cancel this event? It leaves the active client list. History, contracts, and payments stay.")) return;
+                        handleStatusChange("cancelled");
+                      }}
+                    >
+                      Cancel event
+                    </DropdownMenuItem>
+                  ) : null}
+                  {event.status === "cancelled" && event.bookedAt && event.clientId ? (
+                    <DropdownMenuItem
+                      disabled={statusPending}
+                      data-testid="event-action-return-booked-menu"
+                      onClick={() => {
+                        const clientId = event.clientId;
+                        if (!clientId) return;
+                        setReturnDraft(null);
+                        setReturnDraftError(null);
+                        setReturnBookedOpen(true);
+                        void getBookingConfirmationDraftForClientAction(clientId).then((loaded) => {
+                          if (!loaded.ok) {
+                            setReturnDraftError(loaded.message);
+                            return;
+                          }
+                          setReturnDraft(loaded.draft);
+                        });
+                      }}
+                    >
+                      Return to Booked
+                    </DropdownMenuItem>
+                  ) : null}
+                  {daysUntil(event.eventDate) === 0 ? (
+                    <DropdownMenuItem
+                      data-testid="event-action-today-dashboard-menu"
+                      onClick={() => {
+                        router.push(`/events/${event.id}/today`);
+                      }}
+                    >
+                      Today&apos;s Dashboard
+                    </DropdownMenuItem>
+                  ) : null}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           )}
         </div>
       </div>
@@ -492,212 +951,344 @@ export function EventDetail({
         ) : null;
       })()}
 
-      {/* ── Event Date Hero ────────────────────────────────────────────── */}
-      <EventHeroCard event={event} />
+      {/* ── Booking + staffing (compact upper region) ─────────────────── */}
+      <div
+        data-testid="client-booking-staff-region"
+        className="grid items-start gap-3 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]"
+      >
+        <EventHeroCard
+          event={event}
+          spaceLine={spaceAssignmentsDisplay ?? spaceName}
+          scheduleComponents={scheduleComponents}
+          editableAssignments={editableSpaceAssignments}
+          spaces={spaces}
+          clientId={event.clientId}
+        />
+        <div
+          data-testid="client-staffing-column"
+          className="flex min-w-0 flex-col gap-3"
+        >
+          <div
+            className="htc-surface-working px-3 py-2.5 sm:px-3.5 sm:py-3"
+            data-testid="event-staff-assignment"
+            id="event-team-roster"
+          >
+            <p className="mb-2 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+              Team assignment
+            </p>
+            <div
+              data-testid="event-team-assignment-row"
+              className="min-w-0"
+            >
+              <StaffAssignmentField
+                compact
+                label="Event owner"
+                staff={(teamMembers ?? []).map((member) => ({ id: member.id, name: member.name }))}
+                value={event.assignedStaffId ?? null}
+                testId="event-owner-assignment"
+                onSave={(staffId) => setEventAssignedStaffAction(event.id, staffId)}
+              />
+            </div>
+          </div>
+          <Card size="sm" className="htc-surface-working gap-2" id="questionnaires-card" data-testid="event-questionnaires-card">
+            <CardHeader className="gap-0.5">
+              <CardTitle className="text-base">Questionnaires</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p
+                className="htc-surface-guidance-compact text-xs leading-snug text-muted-foreground"
+                data-testid="event-questionnaires-guidance"
+              >
+                Choose and send your prepared information/feedback-gathering questionnaires when ready — separate from the client portal release process. Schedule them or send now — your choice!
+              </p>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                data-testid="open-questionnaires-card"
+                onClick={() => {
+                  setActiveTab("questionnaires");
+                  window.location.hash = "questionnaires";
+                }}
+              >
+                Open Questionnaires
+              </Button>
+            </CardContent>
+          </Card>
+          <Card size="sm" className="htc-surface-working gap-2" id="inventory-event-order-card" data-testid="event-inventory-event-order-card">
+            <CardHeader className="gap-0.5">
+              <CardTitle className="text-base">Inventory &amp; Event Order</CardTitle>
+              <CardDescription className="text-xs leading-snug" data-testid="event-order-overview-summary">
+                {eventOrderOverviewSummary({
+                  choices: clientChoices ?? [],
+                  eventOrder: eventOrder
+                    ? {
+                        status: eventOrder.status,
+                        sharedAt: eventOrder.sharedAt,
+                        clientAgreedAt: eventOrder.clientAgreedAt ?? null,
+                        clientAgreedRevision: eventOrder.clientAgreedRevision ?? null,
+                        revision: eventOrder.revision,
+                      }
+                    : null,
+                  hasEoInvoice: Boolean(eventOrder && invoices.some(
+                    (inv) => inv.eventOrderId === eventOrder.id && inv.status !== "void"
+                      && !(bookingCommitmentInvoiceIds ?? []).includes(inv.id),
+                  )),
+                  unbilledAmount: financialImpact?.unbilledAmount ?? 0,
+                  hasPaymentPlan: Boolean(linkedScheduleId),
+                })}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                size="sm"
+                data-testid="open-event-order-card"
+                onClick={() => {
+                  setActiveTab("event-order");
+                  window.location.hash = "event-order";
+                }}
+              >
+                Open Event Order
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                data-testid="open-inventory-card"
+                onClick={() => {
+                  setActiveTab("inventory");
+                  window.location.hash = "inventory";
+                }}
+              >
+                Open Inventory
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
 
       {/* ── Tabs ──────────────────────────────────────────────────────── */}
       {/* URL-hash addressable so an Interactive Planning Task can navigate
           straight to the right tab (e.g. #vendors) — "tasks become
           navigation into the platform," Vendor Management Next Iteration,
           2026-07-10 — rather than just landing on the event and leaving the
-          coordinator to find the right tab themselves. */}
+          coordinator to find the right tab themselves.
+          Questionnaires / Inventory / Event Order remain hash-addressable
+          TabsContent destinations opened from workspace cards (not tab rows). */}
       <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v as string); window.location.hash = v as string; }}>
-        <TabsList className="flex-wrap">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="playbook">
-            Planning
-            {eventTasks.filter((t) => t.status === "overdue").length > 0 && (
-              <span className="ml-1 rounded-full bg-destructive/15 px-1.5 py-0.5 text-[10px] font-semibold text-destructive">{eventTasks.filter((t) => t.status === "overdue").length}</span>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="timeline">
-            Timeline
-            {event.timeline.length > 0 && (
-              <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{event.timeline.length}</span>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="floorplan">
-            Floor Plans
-            {event.floorPlans.length > 0 && (
-              <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{event.floorPlans.length}</span>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="documents">
-            Documents
-            {documents.length > 0 && <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{documents.length}</span>}
-          </TabsTrigger>
-          <TabsTrigger value="vendors">
-            Vendors
-            {event.vendorAssignments.length > 0 && (
-              <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
-                {event.vendorAssignments.length}
-              </span>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="event-order">
-            Event Order
-            {eventOrder && eventOrder.lines.length > 0 && (
-              <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{eventOrder.lines.length}</span>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="inventory">
-            Inventory
-            {eventInventory && eventInventory.items.length > 0 && (
-              <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{eventInventory.items.length}</span>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="invoice">
-            Payments
-            {invoices.length > 0 && <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{invoices.length}</span>}
-          </TabsTrigger>
-          <TabsTrigger value="messages">Conversation</TabsTrigger>
-          <TabsTrigger value="activity">Activity</TabsTrigger>
-          <TabsTrigger value="notes">
-            Notes
-            {event.notes.length > 0 && (
-              <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{event.notes.length}</span>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="team">
-            Team
-            {event.team.length > 0 && (
-              <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{event.team.length}</span>
-            )}
-          </TabsTrigger>
+        {/* Row 1 planning setup (5) · Row 2 day-to-day (6). Fixed semantic grouping. */}
+        <div className="space-y-1.5" data-testid="booked-workspace-tab-nav">
+          <div className="w-full overflow-x-auto">
+            <TabsList
+              data-testid="booked-tab-row-1"
+              className="grid h-auto w-full min-w-[36rem] grid-cols-5 gap-0.5"
+            >
+              <TabsTrigger value="overview" className={bookedTabTriggerClass}>Planning Overview</TabsTrigger>
+              <TabsTrigger value="playbook" className={bookedTabTriggerClass}>Planning Tasks</TabsTrigger>
+              <TabsTrigger value="timeline" className={bookedTabTriggerClass}>Timeline</TabsTrigger>
+              <TabsTrigger value="floorplan" className={bookedTabTriggerClass}>Floor Plans</TabsTrigger>
+              <TabsTrigger value="vendors" className={bookedTabTriggerClass}>Vendors</TabsTrigger>
+            </TabsList>
+          </div>
+          <div className="w-full overflow-x-auto">
+            <TabsList
+              data-testid="booked-tab-row-2"
+              className="grid h-auto w-full min-w-[36rem] grid-cols-6 gap-0.5"
+            >
+              <TabsTrigger value="documents" className={bookedTabTriggerClass}>
+                Documents
+                {documents.length > 0 && <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{documents.length}</span>}
+              </TabsTrigger>
+              <TabsTrigger value="invoice" className={bookedTabTriggerClass}>
+                Payments
+                {invoices.length > 0 && <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{invoices.length}</span>}
+              </TabsTrigger>
+              <TabsTrigger value="messages" className={bookedTabTriggerClass}>Conversation</TabsTrigger>
+              <TabsTrigger value="activity" className={bookedTabTriggerClass}>Activity</TabsTrigger>
+              <TabsTrigger value="notes" className={bookedTabTriggerClass}>
+                {INTERNAL_NOTES_LABEL}
+                {internalNoteItems.length > 0 && (
+                  <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{internalNoteItems.length}</span>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="luv" className={`${bookedTabTriggerClass} gap-1`}>
+                <LuvHeart size={12} /> Luv
+              </TabsTrigger>
+            </TabsList>
+          </div>
           {daysUntil(event.eventDate) < 0 && (
-            <TabsTrigger value="feedback">Feedback</TabsTrigger>
+            <div className="w-full overflow-x-auto">
+              <TabsList className="inline-flex h-auto w-auto min-w-0">
+                <TabsTrigger value="feedback" className={bookedTabTriggerClass}>Feedback</TabsTrigger>
+              </TabsList>
+            </div>
           )}
-        </TabsList>
+        </div>
 
         {/* ── Overview ──────────────────────────────────────────────── */}
         <TabsContent value="overview" className="space-y-4">
-          {bookingJourney && (
-            <BookingJourneyPanel
-              journey={bookingJourney}
-              packages={packagesWithItems}
-              leadId={originatingLeadId ?? undefined}
-              clientId={event.clientId ?? undefined}
-              eventId={event.id}
-              eventDate={event.eventDate}
-            />
-          )}
-          <EventReadinessCard
-            summary={readinessSummary}
-            portalToken={portalToken}
-            onNavigateTab={(tab) => { setActiveTab(tab); window.location.hash = tab; }}
+          <div id="requests-summary-card" />
+          <ContextualLuvObservationsPanel
+            observations={contextualObservations}
+            currentPath={event.clientId ? `/clients/${event.clientId}` : undefined}
+            onSameRecordDraft={
+              luvLead
+                ? () => {
+                    setActiveTab("luv");
+                    window.location.hash = "luv";
+                    setLuvDraftRequest((n) => n + 1);
+                  }
+                : undefined
+            }
+            sameRecordDraftEligible={draftCapable}
+            sameRecordDraftIneligibleReason={followUpDraftIneligibleReason ?? undefined}
           />
-          {clientStatus && (
-            <BookingOverviewSummary
-              clientName={event.clientName} eventType={event.eventType} eventDate={event.eventDate}
-              spaceName={spaceName} guestCount={event.guestCount} guestCountSubmission={event.guestCountSubmission} clientStatus={clientStatus}
-              readinessByKind={readinessByKind}
-              invoices={invoices}
-              paymentScheduleLines={bookingJourney?.paymentLines ?? null}
-              timeline={event.timeline ?? []}
-              vendorAssignments={event.vendorAssignments} vendorRecommendations={vendorRecommendations}
-              conversationMessages={conversationMessages}
-              documents={documents}
-            />
-          )}
-          {event.clientId && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Client portal</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <PortalLinkWidget
-                  clientId={event.clientId}
-                  coupleName={event.clientName?.trim() || "your client"}
-                />
-              </CardContent>
-            </Card>
-          )}
-          <div id="requests-summary-card">
-            <RequestSummaryCard requests={requests} />
-          </div>
-          <BookingSetupCard
-            eventId={event.id} clientId={event.clientId} eventDate={event.eventDate} eventName={event.name}
-            clientName={event.clientName} eventType={event.eventType}
-            templates={playbookTemplates} applications={playbookApplications} readinessByKind={readinessByKind}
-            onApplied={() => router.refresh()}
+          <EventSetupPanel
+            eventId={event.id}
+            clientId={event.clientId}
+            eventDate={event.eventDate}
+            eventEndDate={event.eventEndDate}
+            eventName={event.name}
+            clientName={event.clientName}
+            clientEmail={coupleEmail}
+            eventType={event.eventType}
+            spaceId={event.spaceId}
+            eventStartTime={event.startTime}
+            hasTimeline={(event.timeline ?? []).length > 0}
+            timelineItemCount={(event.timeline ?? []).length}
+            state={eventSetup}
+            applicableSteps={applicableSetupSteps}
+            playbookTemplates={playbookTemplates}
+            playbookApplications={playbookApplications}
+            readinessByKind={readinessByKind}
+            timelineTemplates={timelineTemplates}
+            timelineEntries={event.timeline ?? []}
+            questionnaires={(questionnaires.length > 0 ? questionnaires : (questionnaire ? [questionnaire] : [])).map((q) => ({
+              kind: q.kind,
+              status: q.status,
+              templateId: q.templateId ?? null,
+            }))}
+            vendorRecommendationCount={vendorRecommendations.length}
+            floorPlanOfferCount={floorPlanOffers.filter((o) => o.isOffered).length}
+            operationalFloorPlanCount={(event.floorPlans ?? []).length}
+            preferredFloorPlanName={
+              (() => {
+                const preferredId = eventSetup.inheritedTemplateRefs?.defaultFloorPlanTemplateId;
+                if (!preferredId) return floorPlanOffers.find((o) => o.isOffered)?.templateName ?? null;
+                return floorPlanOffers.find((o) => o.floorPlanTemplateId === preferredId)?.templateName
+                  ?? floorPlanTemplates.find((t) => t.id === preferredId)?.name
+                  ?? null;
+              })()
+            }
+            floorPlanTemplates={floorPlanTemplates}
+            floorPlanOffers={floorPlanOffers}
+            operationalFloorPlans={(event.floorPlans ?? []).map((fp) => ({ id: fp.id, name: fp.name }))}
+            coupleSelectedFloorPlanId={event.coupleSelectedFloorPlanId ?? null}
+            vendorRecommendations={vendorRecommendations}
+            availableVendors={availableVendors}
+            vendorAssignments={(event.vendorAssignments ?? []).map((a) => ({
+              id: a.id,
+              vendorId: a.vendorId,
+              vendorName: a.vendorName ?? "Vendor",
+              vendorCategory: a.vendorCategory ?? null,
+              vendorPhone: a.vendorPhone ?? null,
+            }))}
+            hasEventInventory={Boolean(eventInventory)}
+            eventOrder={eventOrder ? { status: eventOrder.status, sharedAt: eventOrder.sharedAt, templateId: eventOrder.templateId ?? null } : null}
+            eventInventory={eventInventory}
+            inventoryTemplates={inventoryTemplates}
+            eventOrderDetails={eventOrder}
+            eventOrderTemplates={eventOrderTemplates}
+            eventTasks={eventTasks}
+            templateNames={{
+              planning: playbookTemplates.find((t) => t.id === eventSetup.inheritedTemplateRefs?.planningPlaybookTemplateId)?.name
+                ?? playbookApplications.find((a) => a.kind === "client")?.templateName
+                ?? null,
+              timeline: timelineTemplates.find((t) => t.id === eventSetup.inheritedTemplateRefs?.timelineTemplateId)?.name ?? null,
+              inventory: inventoryTemplates.find((t) => t.id === eventSetup.inheritedTemplateRefs?.inventoryTemplateId)?.name ?? null,
+              eventOrder: eventOrderTemplates.find((t) => t.id === eventSetup.inheritedTemplateRefs?.eventOrderTemplateId)?.name ?? null,
+            }}
+            onNavigateTab={(tab) => {
+              const [baseTab, anchor] = tab.includes("#") ? tab.split("#") as [string, string] : [tab, ""];
+              setActiveTab(baseTab);
+              window.location.hash = anchor || baseTab;
+              if (anchor) {
+                requestAnimationFrame(() => {
+                  window.setTimeout(() => {
+                    document.getElementById(anchor)?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  }, 80);
+                });
+              }
+            }}
           />
-          <TimelineSetupCard
-            eventId={event.id} eventType={event.eventType} spaceId={event.spaceId} eventStartTime={event.startTime}
-            templates={timelineTemplates} hasTimeline={(event.timeline ?? []).length > 0}
-            onApplied={() => router.refresh()}
+          <NeedsAttentionList
+            items={selectOverviewExceptions(readinessSummary.sections, questionnaires)}
+            onOpen={(item) => {
+              const { nav } = item;
+              if (nav.kind === "tab") {
+                setActiveTab(nav.tab);
+                window.location.hash = nav.tab;
+              } else if (nav.kind === "link") {
+                router.push(nav.href);
+              } else if (nav.kind === "portal") {
+                if (!portalToken) return;
+                window.open(`/p/${portalToken}#${nav.section}`, "_blank", "noopener,noreferrer");
+              } else if (nav.kind === "scroll") {
+                document.getElementById(nav.elementId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+              }
+            }}
           />
-          <Card>
-            <CardHeader><CardTitle className="text-base">Event summary</CardTitle></CardHeader>
-            <CardContent className="space-y-3">
-                {[
-                  { icon: Calendar, label: "Date", value: formatEventDateRange(event.eventDate, event.eventEndDate) },
-                  { icon: Clock, label: multiDay ? "Overall start" : "Start", value: formatTime(event.startTime) },
-                  { icon: Clock, label: multiDay ? "Overall end" : "End", value: formatTime(event.endTime) },
-                  { icon: Wrench, label: "Setup", value: formatTime(event.setupTime) },
-                  { icon: Wrench, label: "Teardown", value: formatTime(event.teardownTime) },
-                  { icon: Users, label: "Guests", value: event.guestCount != null ? `${event.guestCount.toLocaleString()}` : null },
-                ].filter((r) => r.value).map(({ icon: Icon, label, value }) => (
-                  <div key={label} className="flex items-start gap-3">
-                    <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
-                      <Icon className="h-3.5 w-3.5" />
-                    </span>
-                    <div>
-                      <p className="text-xs text-muted-foreground">{label}</p>
-                      <p className="text-sm font-medium text-foreground">{value}</p>
-                    </div>
-                  </div>
-                ))}
-                {!event.startTime && !event.guestCount && (
-                  <p className="text-sm text-muted-foreground">
-                    No schedule details yet.{" "}
-                    <Link href={`/events/${event.id}/edit`} className="font-medium text-primary hover:underline">
-                      Add details →
-                    </Link>
-                  </p>
-                )}
-            </CardContent>
-          </Card>
+          {relationshipContact ? (
+            <p className="text-sm text-muted-foreground">
+              <Link href={`/clients/${relationshipContact.clientId}/edit`} className="htc-record-link font-medium">
+                Edit contact
+              </Link>
+            </p>
+          ) : null}
         </TabsContent>
 
         {/* ── Playbook ─────────────────────────────────────────────── */}
         <TabsContent value="playbook">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Planning</CardTitle>
-              <CardDescription>All tasks for this event, organized by section and due date. Tasks auto-complete as work is done.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <EventTaskList
-                eventId={event.id}
-                clientId={event.clientId}
-                eventDate={event.eventDate}
-                eventName={event.name}
-                clientName={event.clientName}
-                eventType={event.eventType}
-                initialTasks={eventTasks}
-                readinessByKind={readinessByKind}
-                templates={playbookTemplates}
-                applications={playbookApplications}
-                contextLinksByTask={contextLinksByTask}
-                taskContacts={taskContacts}
-                linkableDocuments={linkableDocuments}
-                linkableTimelineEntries={linkableTimelineEntries}
-                linkableConversationMessages={linkableConversationMessages}
-                requestsByTaskId={requestsByTaskId}
-                staffOptions={teamMembers.map((m) => ({ id: m.id, name: m.name }))}
-              />
-            </CardContent>
-          </Card>
+          <RelationshipTabShell
+            title="Planning Tasks"
+            description="Manage the client checklist and your venue's internal task list. Client tasks are shared through portal release; venue tasks remain internal."
+            testId="event-planning-tab"
+          >
+            <EventTaskList
+              eventId={event.id}
+              clientId={event.clientId}
+              eventDate={event.eventDate}
+              eventName={event.name}
+              clientName={event.clientName}
+              clientEmail={coupleEmail}
+              venueName={venueName}
+              eventType={event.eventType}
+              initialTasks={eventTasks}
+              readinessByKind={readinessByKind}
+              templates={playbookTemplates}
+              applications={playbookApplications}
+              contextLinksByTask={contextLinksByTask}
+              taskContacts={taskContacts}
+              linkableDocuments={linkableDocuments}
+              linkableTimelineEntries={linkableTimelineEntries}
+              linkableConversationMessages={linkableConversationMessages}
+              requestsByTaskId={requestsByTaskId}
+              staffOptions={teamMembers.map((m) => ({ id: m.id, name: m.name }))}
+              preferOverviewRelease={Boolean(eventSetup.usesProfile)}
+              preferredClientTemplateId={eventSetup.inheritedTemplateRefs?.planningPlaybookTemplateId ?? null}
+              preferredVenueTemplateId={eventSetup.inheritedTemplateRefs?.venuePlanningPlaybookTemplateId ?? null}
+            />
+          </RelationshipTabShell>
+        </TabsContent>
 
-          {/* Questionnaire Family — Client Planning, Final Details, Post-Event Feedback */}
-          <Card className="mt-4" id="questionnaires">
-            <CardHeader>
-              <CardTitle className="text-base">Questionnaires</CardTitle>
-              <CardDescription>
-                Client Planning Questionnaire, Final Details, and Post-Event Feedback — create a draft from the Library, review as the client, then send when ready.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
+        <TabsContent value="questionnaires">
+          <RelationshipTabShell
+            title="Questionnaires"
+            description="Collect the information you need from clients when the timing is right by sending your prepared questionnaires here."
+            testId="event-questionnaires-tab"
+          >
+            <div id="questionnaires">
               <QuestionnaireFamilyPanel
                 eventId={event.id}
                 questionnaires={questionnaires.length > 0 ? questionnaires : (questionnaire ? [questionnaire] : [])}
@@ -712,87 +1303,84 @@ export function EventDetail({
                 eventName={event.name}
                 venueName={venueName}
               />
-            </CardContent>
-          </Card>
+            </div>
+          </RelationshipTabShell>
         </TabsContent>
 
         {/* ── Timeline ──────────────────────────────────────────────── */}
         <TabsContent value="timeline">
-          <Card>
-            <CardHeader>
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <CardTitle className="text-base">Timeline</CardTitle>
-                  <CardDescription>
-                    The moment-by-moment schedule your team needs to run the day.
-                  </CardDescription>
-                </div>
-                <div className="flex shrink-0 items-center gap-2">
-                  <Button
-                    variant="outline" size="sm"
-                    render={<Link href={`/events/${event.id}/timeline-print`} target="_blank" rel="noopener noreferrer" />}
-                  >
-                    <Printer className="mr-1.5 h-3.5 w-3.5" />Print Timeline
-                  </Button>
-                  <Button
-                    variant="outline" size="sm"
-                    render={<Link href={`/events/${event.id}/timeline-print`} target="_blank" rel="noopener noreferrer" />}
-                  >
-                    <FileDown className="mr-1.5 h-3.5 w-3.5" />Export Timeline (PDF)
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <TimelineView
-                eventId={event.id}
-                venueId={event.venueId}
-                eventStartTime={event.startTime}
-                eventDate={event.eventDate}
-                eventEndDate={event.eventEndDate}
-                initialEntries={event.timeline ?? []}
-                initialSections={timelineSections}
-                initialLinksByEntry={timelineLinksByEntry}
-                initialAttachmentsByEntry={timelineAttachmentsByEntry}
-                availableDocuments={documents}
-                initialRelatedLinksByEntry={timelineRelatedLinksByEntry}
-                eventTasks={eventTasks}
-                vendorAssignments={event.vendorAssignments}
-                floorPlans={event.floorPlans}
-                conversationId={conversationId}
-                invoices={invoices}
-                teamMembers={teamMembers}
-                timelineTemplates={timelineTemplates}
-              />
-            </CardContent>
-          </Card>
+          <RelationshipTabShell
+            title="Timeline"
+            description="Manage the event schedule, then share it with the client through portal release or the existing explicit sharing workflow."
+            testId="event-timeline-tab"
+            actions={
+              <>
+                <Button
+                  variant="outline" size="sm"
+                  render={<Link href={`/events/${event.id}/timeline-print`} target="_blank" rel="noopener noreferrer" />}
+                >
+                  <Printer className="mr-1.5 h-3.5 w-3.5" />Print Timeline
+                </Button>
+                <Button
+                  variant="outline" size="sm"
+                  render={<Link href={`/events/${event.id}/timeline-print`} target="_blank" rel="noopener noreferrer" />}
+                >
+                  <FileDown className="mr-1.5 h-3.5 w-3.5" />Export Timeline (PDF)
+                </Button>
+              </>
+            }
+          >
+            <TimelineView
+              eventId={event.id}
+              venueId={event.venueId}
+              eventStartTime={event.startTime}
+              dayOfEndTime={event.endTime}
+              dayOfSetupTime={event.setupTime}
+              dayOfTeardownTime={event.teardownTime}
+              eventDate={event.eventDate}
+              eventEndDate={event.eventEndDate}
+              initialEntries={event.timeline ?? []}
+              initialSections={timelineSections}
+              initialLinksByEntry={timelineLinksByEntry}
+              initialAttachmentsByEntry={timelineAttachmentsByEntry}
+              availableDocuments={documents}
+              initialRelatedLinksByEntry={timelineRelatedLinksByEntry}
+              eventTasks={eventTasks}
+              vendorAssignments={event.vendorAssignments}
+              floorPlans={event.floorPlans}
+              conversationId={conversationId}
+              invoices={invoices}
+              teamMembers={teamMembers}
+              timelineTemplates={timelineTemplates}
+            />
+          </RelationshipTabShell>
         </TabsContent>
 
         {/* ── Floor Plans ───────────────────────────────────────────── */}
         <TabsContent value="floorplan">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Floor Plans</CardTitle>
-              <CardDescription>
-                These floor plans belong to this booking.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <FloorPlanWorkspace
-                eventId={event.id}
-                floorPlans={event.floorPlans}
-                templates={floorPlanTemplates}
-                offers={floorPlanOffers}
-                spaces={spaces}
-                eventSpaceId={event.spaceId}
-                operationalFloorPlanId={event.operationalFloorPlanId}
-                coupleSelectedFloorPlanId={event.coupleSelectedFloorPlanId}
-                inventoryUsage={inventoryUsage}
-                canEdit={floorPlanCanEdit}
-                canDelete={floorPlanCanDelete}
-              />
-            </CardContent>
-          </Card>
+          <RelationshipTabShell
+            title="Floor Plans"
+            description="Arrange furniture for this event. Add a layout, place items, then share when the couple should see it."
+            testId="event-floorplan-tab"
+          >
+            <FloorPlanWorkspace
+              eventId={event.id}
+              floorPlans={event.floorPlans}
+              templates={floorPlanTemplates}
+              offers={floorPlanOffers}
+              spaces={spaces}
+              eventSpaceId={event.spaceId}
+              operationalFloorPlanId={event.operationalFloorPlanId}
+              coupleSelectedFloorPlanId={event.coupleSelectedFloorPlanId}
+              couplePreferenceStatus={event.couplePreferenceStatus ?? null}
+              coupleApprovedFloorPlanId={event.coupleApprovedFloorPlanId ?? null}
+              seatingInUseFloorPlanId={event.seatingInUseFloorPlanId ?? null}
+              seatCounts={floorPlanSeatCounts}
+              inventoryUsage={inventoryUsage}
+              canEdit={floorPlanCanEdit}
+              canDelete={floorPlanCanDelete}
+            />
+          </RelationshipTabShell>
         </TabsContent>
 
         {/* ── Documents ────────────────────────────────────────────── */}
@@ -802,22 +1390,41 @@ export function EventDetail({
             vendorDocuments={vendorDocuments}
             workspaceDocuments={workspaceDocuments}
             pinnedDocumentKeys={pinnedDocumentKeys}
-            recentDocumentEntries={recentDocumentEntries}
             contractTemplates={contractTemplates} contracts={contracts} questionnaire={questionnaire}
             eventId={event.id} eventName={event.name} coupleEmail={coupleEmail} coupleName={event.clientName}
+            returnTo={event.clientId ? `/clients/${event.clientId}` : undefined}
           />
         </TabsContent>
 
         {/* ── Vendors ────────────────────────────────────────────────── */}
         <TabsContent value="vendors" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Recommended to {event.clientName || "the Client"}</CardTitle>
+          <RelationshipTabShell
+            title="Vendors"
+            description="Preferred, recommended, and required classifications come from your Vendor Network. Assign who works this booking below."
+            testId="event-vendors-tab"
+          >
+          <Card className="htc-working-card htc-working-card-guidance gap-0 py-0">
+            <CardHeader className="py-4">
+              <CardTitle>Vendor Network</CardTitle>
               <CardDescription>
-                Vendors from your Library, suggested for this client to consider. They&apos;ll see these in their portal and can choose one — you&apos;ll see their pick here immediately.
+                Preferred, recommended, and required classifications come from your Vendor Network.
+                Eligible vendors are available for client discovery by default.
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="py-5">
+              <VenueVendorDirectorySummary vendors={availableVendors} />
+            </CardContent>
+          </Card>
+
+          <Card className="htc-working-card htc-working-card-guidance gap-0 py-0">
+            <CardHeader className="py-4">
+              <CardTitle>Optional highlights for this event</CardTitle>
+              <CardDescription>
+                Suggest Vendor Network options for the client to consider. Separate from who is
+                assigned to work this booking.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="py-5">
               <EventVendorRecommendationsSection
                 eventId={event.id}
                 clientName={event.clientName}
@@ -827,14 +1434,15 @@ export function EventDetail({
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Assigned to This Event</CardTitle>
+          <Card className="htc-working-card htc-working-card-guidance gap-0 py-0">
+            <CardHeader className="py-4">
+              <CardTitle>Assigned to This Event</CardTitle>
               <CardDescription>
-                Who is operationally confirmed and working this event, and when they arrive — separate from what&apos;s recommended to the client above.
+                Who is operationally confirmed and working this event, and when they arrive.
+                Required vendors keep their existing Vendor Network assignment behavior.
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="py-5">
               <EventVendorsSection
                 eventId={event.id}
                 initialAssignments={event.vendorAssignments}
@@ -843,30 +1451,69 @@ export function EventDetail({
               />
             </CardContent>
           </Card>
+          </RelationshipTabShell>
         </TabsContent>
 
-        {/* ── Event Order ──────────────────────────────────────────── */}
+        {/* ── Event Order (canonical commercial workspace; P2-B composed) ─ */}
         <TabsContent value="event-order">
-          <EventOrderPanel
+          <EventCommercialWorkflow
+            stripInput={{
+              eventInventory: eventInventory
+                ? { status: eventInventory.status }
+                : null,
+              clientChoices: clientChoices ?? [],
+              eventOrder: eventOrder
+                ? { status: eventOrder.status, sharedAt: eventOrder.sharedAt }
+                : null,
+              invoices: invoices ?? [],
+              eventOrderId: eventOrder?.id ?? null,
+              linkedScheduleId,
+              bookingCommitmentInvoiceIds,
+            }}
+            onNavigate={(target: CommercialNavTarget) => {
+              if (target.kind === "href") {
+                router.push(target.href);
+                return;
+              }
+              setActiveTab(target.tab);
+              window.location.hash = target.anchor || target.tab;
+              if (target.anchor) {
+                requestAnimationFrame(() => {
+                  window.setTimeout(() => {
+                    document.getElementById(target.anchor!)?.scrollIntoView({
+                      behavior: "smooth",
+                      block: "start",
+                    });
+                  }, 80);
+                });
+              }
+            }}
             eventId={event.id}
+            eventOrderTemplates={eventOrderTemplates}
+            choices={clientChoices}
+            financialImpact={financialImpact}
+            eventOrder={eventOrder}
             clientId={event.clientId}
             clientName={event.clientName}
             clientEmail={coupleEmail}
             venueName={venueName}
-            eventOrder={eventOrder}
             packages={packages}
             packagesWithItems={packagesWithItems}
             selectedPackageName={selectedPackage?.name ?? null}
             offerings={offerings}
             inventoryItems={inventoryItems}
             invoices={invoices}
+            bookingCommitmentInvoiceIds={bookingCommitmentInvoiceIds}
+            linkedScheduleId={linkedScheduleId}
             floorPlans={event.floorPlans}
             templates={eventOrderTemplates}
+            preferredTemplateId={eventSetup.inheritedTemplateRefs?.eventOrderTemplateId ?? null}
             overview={{
               eventName: event.name,
               eventDate: event.eventDate,
               eventType: event.eventType,
               guestCount: event.guestCount,
+              guaranteedGuestCount: event.guaranteedGuestCount,
               spaceName,
               ceremonyStartTime: questionnaire?.ceremonyStartTime ?? null,
               receptionStartTime: questionnaire?.receptionStartTime ?? null,
@@ -876,37 +1523,40 @@ export function EventDetail({
 
         {/* ── Event Inventory ──────────────────────────────────────── */}
         <TabsContent value="inventory">
-          <EventInventoryPanel eventId={event.id} eventInventory={eventInventory} templates={inventoryTemplates} catalogItems={inventoryItems} />
+          <EventInventoryPanel
+            eventId={event.id}
+            eventInventory={eventInventory}
+            templates={inventoryTemplates}
+            catalogItems={inventoryItems}
+            preferredTemplateId={eventSetup.inheritedTemplateRefs?.inventoryTemplateId ?? null}
+          />
         </TabsContent>
 
         {/* ── Invoice / Payments ────────────────────────────────────── */}
         <TabsContent value="invoice">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <CardTitle className="text-base">Payments</CardTitle>
-                  <CardDescription>Financial summary for this event.</CardDescription>
-                </div>
-                {invoices.length > 0 && (
-                  <Button type="button" size="sm"
-                    render={<Link href={`/invoices/new?eventId=${event.id}${event.clientId ? `&clientId=${event.clientId}` : ""}`} />}>
-                    + New Invoice
-                  </Button>
-                )}
-              </div>
-            </CardHeader>
-            <CardContent>
-              {invoices.length === 0 ? (
-                <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
-                  <p className="text-sm text-muted-foreground">No invoice yet.</p>
+          <RelationshipTabShell
+            title="Payments"
+            description="Financial summary for this event."
+            testId="event-payments-tab"
+            actions={
+              invoices.length > 0 ? (
+                <Button type="button" size="sm"
+                  render={<Link href={`/invoices/new?eventId=${event.id}${event.clientId ? `&clientId=${event.clientId}` : ""}`} />}>
+                  + New Invoice
+                </Button>
+              ) : null
+            }
+            empty={
+              invoices.length === 0 ? (
+                <>
+                  <p className="text-sm font-medium text-heading">No invoice yet</p>
                   {selectedPackage ? (
                     <>
                       <Button type="button" size="sm" onClick={() => setSetupPaymentsOpen(true)}>
                         Set up payments
                       </Button>
-                      <details className="text-left w-full max-w-sm mx-auto">
-                        <summary className="cursor-pointer text-xs text-muted-foreground text-center">More options</summary>
+                      <details className="w-full max-w-sm text-left">
+                        <summary className="cursor-pointer text-center text-xs text-muted-foreground">More options</summary>
                         <div className="mt-3 flex flex-col items-center gap-2">
                           {event.clientId && <CreateRetainerSheet eventId={event.id} clientId={event.clientId} />}
                           <Button type="button" variant="outline" size="sm"
@@ -921,13 +1571,20 @@ export function EventDetail({
                         selection={selectedPackage}
                         clientId={event.clientId ?? undefined}
                         eventId={event.id}
+                        eventDate={event.eventDate}
                         leadId={originatingLeadId ?? undefined}
+                        remainingBalanceMode={bookingJourney?.prefs.remainingBalanceMode ?? null}
+                        defaultScheduleStructure={
+                          bookingJourney?.prefs.defaultSchedulePresetId ?? "deposit_remaining"
+                        }
+                        customSchedule={bookingJourney?.prefs.defaultCustomSchedule ?? null}
+                        today={venueToday(venueTimezone)}
                       />
                     </>
                   ) : (
                     <>
-                      <p className="text-xs text-muted-foreground max-w-sm">
-                        Select a package on the Booking Journey first for the guided payment setup, or use an advanced option below.
+                      <p className="max-w-sm text-xs text-muted-foreground">
+                        Select a package under Commercial first for the guided payment setup, or use an advanced option below.
                       </p>
                       <div className="flex flex-wrap items-center justify-center gap-2">
                         {event.clientId && <CreateRetainerSheet eventId={event.id} clientId={event.clientId} />}
@@ -938,30 +1595,38 @@ export function EventDetail({
                       </div>
                     </>
                   )}
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {invoices.map((inv) => (
-                    <Link key={inv.id} href={`/invoices/${inv.id}`}
-                      className="flex items-center justify-between gap-4 rounded-lg border border-border bg-card px-4 py-3 hover:bg-muted/30 transition-colors">
-                      <div className="space-y-0.5 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className="text-sm font-medium text-heading">{inv.invoiceNumber}</p>
-                          <InvoiceStatusBadge status={inv.status} />
-                        </div>
+                </>
+              ) : undefined
+            }
+          >
+            {invoices.length > 0 ? (
+              <div className="space-y-2">
+                {invoices.map((inv) => (
+                  <Link
+                    key={inv.id}
+                    href={`/invoices/${inv.id}`}
+                    className="htc-working-row flex items-center justify-between gap-4 rounded-lg border border-border bg-card px-4 py-3"
+                  >
+                    <div className="min-w-0 space-y-0.5">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-sm font-medium text-heading">
+                          {invoiceHumanLabel({ displayName: inv.displayName, invoiceNumber: inv.invoiceNumber })}
+                        </p>
+                        <p className="text-xs text-muted-foreground">{inv.invoiceNumber}</p>
+                        <InvoiceStatusBadge status={inv.status} />
                       </div>
-                      <div className="text-right shrink-0">
-                        <p className="text-sm font-semibold text-heading">{formatCurrency(inv.total)}</p>
-                        {inv.balanceDue > 0 && inv.status !== "paid" && (
-                          <p className="text-xs text-destructive">{formatCurrency(inv.balanceDue)} due</p>
-                        )}
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <p className="text-sm font-semibold text-heading">{formatCurrency(inv.total)}</p>
+                      {inv.balanceDue > 0 && inv.status !== "paid" && (
+                        <p className="text-xs text-destructive">{formatCurrency(inv.balanceDue)} due</p>
+                      )}
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            ) : null}
+          </RelationshipTabShell>
         </TabsContent>
 
         {/* ── Messages ─────────────────────────────────────────────── */}
@@ -970,44 +1635,72 @@ export function EventDetail({
             conversationId={conversationId}
             leadId={originatingLeadId}
             clientId={event.clientId}
+            initialBody={messagePrefill?.body}
+            initialSubject={messagePrefill?.subject}
+            onAuthoritativeSendSuccess={handleAuthoritativeConversationSendSuccess}
           />
         </TabsContent>
 
         {/* ── Activity — RC2, Milestone 4: the relationship's audit trail ── */}
         <TabsContent value="activity">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Activity</CardTitle>
-              <CardDescription>What happened, in order — the Conversation tab has what was said.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ActivityTimelineView leadId={originatingLeadId} clientId={event.clientId} />
-            </CardContent>
-          </Card>
+          <RelationshipTabShell
+            title="Activity"
+            description="What happened, in order — the Conversation tab has what was said."
+            testId="event-activity-tab"
+          >
+            <ActivityTimelineView leadId={originatingLeadId} clientId={event.clientId} />
+          </RelationshipTabShell>
         </TabsContent>
 
-        {/* ── Notes ──────────────────────────────────────────────────── */}
+        {/* ── Internal notes ─────────────────────────────────────────── */}
         <TabsContent value="notes">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Notes</CardTitle>
-              <CardDescription>Operational notes for this event. Not visible to clients.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <EventNotesSection eventId={event.id} initialNotes={event.notes} />
-            </CardContent>
-          </Card>
+          <RelationshipTabShell
+            title={INTERNAL_NOTES_LABEL}
+            description={INTERNAL_NOTES_PRIVACY_HINT}
+            testId="event-notes-tab"
+          >
+            <EventNotesSection eventId={event.id} items={internalNoteItems} venueTimezone={venueTimezone} />
+          </RelationshipTabShell>
         </TabsContent>
 
-        {/* ── Team ───────────────────────────────────────────────────── */}
-        <TabsContent value="team">
+        {/* ── Luv — same drafting surface as Lead, booked client/event context ── */}
+        <TabsContent value="luv">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Event Team</CardTitle>
-              <CardDescription>Internal staff assigned to work this event.</CardDescription>
+              <CardTitle className="text-base flex items-center gap-1.5">
+                <LuvHeart size={14} /> Luv
+              </CardTitle>
+              <CardDescription>
+                {luvLead
+                  ? luvPanelDescription({
+                      draftCapable,
+                      proactiveRecommended: followUpProactiveRecommended,
+                      capabilityBlockReason: followUpDraftIneligibleReason,
+                    })
+                  : "Luv drafting needs the originating lead link for this booking."}
+              </CardDescription>
             </CardHeader>
-            <CardContent>
-              <EventTeamSection eventId={event.id} initialTeam={event.team} />
+            <CardContent className="space-y-4">
+              <ContextualLuvObservationsPanel
+                observations={contextualObservations}
+                emptyHint="There's nothing Luv needs to flag for this booking right now."
+              />
+              {luvLead ? (
+                <LuvDraftPanel
+                  lead={luvLead}
+                  initialDrafts={luvDrafts}
+                  onUseDraft={handleUseLuvDraft}
+                  completedDraftId={completedLuvDraftId}
+                  followUpDraftEligible={draftCapable}
+                  followUpDraftIneligibleReason={followUpDraftIneligibleReason}
+                  externalDraftRequest={luvDraftRequest}
+                  showContextualObservations={false}
+                />
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Ask Luv to draft is unavailable until this booking is linked to its original lead.
+                </p>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

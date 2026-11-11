@@ -39,6 +39,15 @@ export async function scheduleMessageForConversation(
     const relationshipId = await getRelationshipIdForConversation(supabase, conversationId);
     if (!relationshipId) return { ok: false, message: "Couldn't find who this conversation belongs to." } as ScheduleMessageResult;
 
+    if (channel === "sms") {
+      const { getConversationComposeFacts } = await import("@/lib/conversations/repository");
+      const { isTextingConversationKind, TEXTING_KIND_BLOCKED_MESSAGE } = await import("@/lib/conversations/texting");
+      const facts = await getConversationComposeFacts(supabase, conversationId);
+      if (!isTextingConversationKind(facts?.conversationKind)) {
+        return { ok: false, message: TEXTING_KIND_BLOCKED_MESSAGE } as ScheduleMessageResult;
+      }
+    }
+
     // Refuse to queue SMS/email that would be hard-blocked at send time.
     if (channel === "sms" || channel === "email") {
       const { getConversationRecipientPhone, getConversationRecipientEmail } = await import("@/lib/conversations/repository");

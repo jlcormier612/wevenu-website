@@ -78,13 +78,14 @@ export function CoupleLegalWelcome({
 
   return (
     <div
+      data-theme-lock="light"
       className="flex min-h-svh flex-col items-center justify-center px-4 py-12"
       style={{
         background: `linear-gradient(165deg, ${HTC_NEUTRAL} 0%, color-mix(in srgb, ${ROSE} 18%, ${HTC_NEUTRAL}) 48%, ${HTC_NEUTRAL} 100%)`,
       }}
     >
       <div
-        className="w-full max-w-md rounded-2xl border bg-white/90 px-7 py-9 shadow-[0_18px_50px_-28px_rgba(92,83,72,0.35)] backdrop-blur-sm sm:px-9 sm:py-10"
+        className="w-full max-w-md rounded-2xl border bg-[var(--true-white)]/90 px-7 py-9 shadow-[0_18px_50px_-28px_rgba(92,83,72,0.35)] backdrop-blur-sm sm:px-9 sm:py-10"
         style={{ borderColor: "color-mix(in srgb, #DED6CA 80%, transparent)" }}
       >
         <p
@@ -159,7 +160,7 @@ export function CoupleLegalWelcome({
             checked={checked}
             onChange={(e) => setChecked(e.target.checked)}
             disabled={pending || !docsReady}
-            className="mt-0.5 size-4 shrink-0 rounded border-[#DED6CA]"
+            className="mt-0.5 size-4 shrink-0 rounded border-border"
             style={{ accentColor: HTC_PRIMARY }}
           />
           <span>

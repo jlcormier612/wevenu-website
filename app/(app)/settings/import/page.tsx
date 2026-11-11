@@ -32,23 +32,46 @@ export default async function ImportPage({
   });
 
   return (
-    <div className="htc-hospitality-page space-y-6 max-w-3xl">
+    <div className="htc-hospitality-page space-y-4 sm:space-y-6 max-w-3xl">
       <div className="htc-hospitality-heading htc-hospitality-intro-accent space-y-1.5">
         <h1 className="text-xl font-bold text-foreground">Import Data</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Bring your existing clients, leads, and vendors into Hello to Cheers from any CSV export.
-          This is for a small, clean list. If you're bringing over a real calendar of tours, holds,
-          or booked events, use{" "}
-          <Link href="/settings/migration" className="font-medium text-primary hover:underline">
-            Migration Center
-          </Link>{" "}
-          instead.
+          Bring a small, clean list of clients, leads, vendors, inventory templates, or package
+          templates into Hello to Cheers. Import from CSV, Excel, Word, PDF, or a pasted list, then
+          map your columns before anything is saved.
         </p>
-        <SetupGuideLink href="/help/what-should-i-set-up-before-i-start" label="What Should I Set Up Before I Start?" />
+        <SetupGuideLink
+          href="/help/what-should-i-set-up-before-i-start"
+          label="How to bring your business over"
+        />
       </div>
       <Suspense fallback={null}>
         <ImportHealthWidget />
       </Suspense>
+      <div
+        className="htc-import-cutover-pointer rounded-sm border px-4 py-3 space-y-2"
+        data-testid="import-cutover-pointer"
+      >
+        <h2 className="text-sm font-semibold text-foreground">
+          Bringing over existing bookings or financial records?
+        </h2>
+        <p className="text-xs text-muted-foreground">
+          Use{" "}
+          <Link href="/settings/migration" className="font-medium text-primary hover:underline">
+            Migration Center
+          </Link>{" "}
+          for events, tours, date holds, calendar blocks, and for invoices, payment schedules, and
+          signed agreements on booked events.
+        </p>
+        <p className="text-xs text-muted-foreground">
+          For dated events, set up{" "}
+          <Link href="/settings/availability" className="font-medium text-primary hover:underline">
+            Calendar &amp; Availability
+          </Link>{" "}
+          first. Migration Center walks you through booked-event finances after the client and event
+          are in Hello to Cheers.
+        </p>
+      </div>
       <ImportWizard initialEntity={initialEntity} cutover={cutover} />
     </div>
   );

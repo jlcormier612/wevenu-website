@@ -3,15 +3,22 @@ import { notFound } from "next/navigation";
 
 import { InvoiceDetail } from "@/components/invoices/invoice-detail";
 import { isEmailConfigured } from "@/lib/email/send";
+import { createAdminClient } from "@/integrations/supabase/admin";
 import { resolveAmountDueNow } from "@/lib/invoices/amount-due-now";
+import { hasSuccessfulPaymentRequestSend } from "@/lib/invoices/outbound";
 import { getEventOrderDrift, getInvoice } from "@/lib/invoices/service";
 import { getPackages } from "@/lib/packages/service";
 import {
   computeCancelledPlanAmount,
+  computeInvoiceBalanceDue,
   computeNetPaid,
 } from "@/lib/payments/invoice-balance";
 import { getPaymentSchedule, getPaymentSchedules } from "@/lib/payments/service";
+import { safeInvoiceReturnPath } from "@/lib/invoices/return-path";
 import { safePaymentScheduleReturnPath } from "@/lib/payments/starters";
+import { getClient } from "@/lib/clients/service";
+import { getCurrentVenue } from "@/lib/venue/service";
+import { venueToday } from "@/lib/venue/timezone";
 
 type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ returnTo?: string }> };
 
@@ -25,17 +32,24 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function InvoiceDetailPage({ params, searchParams }: Props) {
   const { id } = await params;
   const { returnTo: returnToRaw } = await searchParams;
-  const [invoice, packages, scheduleSummaries] = await Promise.all([
+  const [invoice, packages, scheduleSummaries, venue] = await Promise.all([
     getInvoice(id),
     getPackages(true),
     getPaymentSchedules(),
+    getCurrentVenue(),
   ]);
-  if (!invoice) notFound();
-  const returnTo = safePaymentScheduleReturnPath(returnToRaw);
+  if (!invoice || !venue) notFound();
+  const returnTo = safeInvoiceReturnPath(returnToRaw);
+  const returnToPaymentSchedule = safePaymentScheduleReturnPath(returnToRaw);
   const linkedSummary = scheduleSummaries.find((s) => s.invoiceId === invoice.id) ?? null;
   const linked = linkedSummary ? await getPaymentSchedule(linkedSummary.id) : null;
+  // Authoritative balance = total − cancelled − net retained (same as DB trigger + reconcile).
+  const balanceDue = linked
+    ? computeInvoiceBalanceDue(invoice.total, linked.lineItems)
+    : invoice.balanceDue;
+  const invoiceView = { ...invoice, balanceDue };
   const amountDueNow = resolveAmountDueNow({
-    balanceDue: invoice.balanceDue,
+    balanceDue,
     scheduleLines: linked
       ? linked.lineItems.map((i) => ({
           amount: i.amount,
@@ -46,22 +60,62 @@ export default async function InvoiceDetailPage({ params, searchParams }: Props)
           sortOrder: i.sortOrder,
         }))
       : null,
+    today: venueToday(venue.timezone),
   });
   const paidToDate = linked ? computeNetPaid(linked.lineItems) : null;
   const cancelledPlanAmount = linked ? computeCancelledPlanAmount(linked.lineItems) : 0;
   // Booking Financial Architecture Phase 3b — null for any invoice that
   // isn't sent+Event-Order-linked, or that has no undismissed drift.
   const eventOrderDrift = await getEventOrderDrift(id);
+  const paymentRequestAlreadySent = await hasSuccessfulPaymentRequestSend(
+    createAdminClient(),
+    { venueId: venue.id, invoiceId: invoice.id },
+  );
+  const linkedClient = invoice.clientId ? await getClient(invoice.clientId) : null;
+  const leadId = linkedClient?.leadId ?? null;
+  const relationshipBooked = Boolean(invoice.bookedAt);
   return (
     <InvoiceDetail
-      invoice={invoice}
+      invoice={invoiceView}
       packages={packages}
       eventOrderDrift={eventOrderDrift}
       emailConfigured={isEmailConfigured()}
-      returnToPaymentSchedule={returnTo}
+      returnTo={returnTo}
+      leadId={leadId}
+      relationshipBooked={relationshipBooked}
+      returnToPaymentSchedule={returnToPaymentSchedule}
       amountDueNow={amountDueNow}
       paidToDate={paidToDate}
       cancelledPlanAmount={cancelledPlanAmount}
+      venue={venue}
+      paymentRequestAlreadySent={paymentRequestAlreadySent}
+      linkedScheduleId={linked?.id ?? null}
+      scheduleLines={
+        linked
+          ? linked.lineItems.map((i) => ({
+              id: i.id,
+              label: i.label,
+              amount: i.amount,
+              dueDate: i.dueDate,
+              status: i.status,
+              obligationKind: i.obligationKind,
+              paidAmount: i.paidAmount,
+              stripeCheckoutSessionId: i.stripeCheckoutSessionId,
+              stripePaymentIntentId: i.stripePaymentIntentId,
+            }))
+          : null
+      }
+      scheduleNotes={linked?.notes ?? null}
+      scheduleTiming={
+        linked
+          ? {
+              eventDate: invoiceView.eventDate,
+              bookingDate: invoiceView.bookedAt,
+              executedAt: null,
+              today: venueToday(venue.timezone),
+            }
+          : null
+      }
     />
   );
 }

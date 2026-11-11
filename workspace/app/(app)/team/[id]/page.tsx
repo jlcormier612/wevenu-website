@@ -205,7 +205,7 @@ export default async function TeamMemberPage({
               <input
                 name="title"
                 defaultValue={member.title}
-                className="mt-2 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2.5 text-sm outline-none focus:border-[var(--heritage-sage)]"
+                className="mt-2 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2.5 text-sm outline-none focus:border-[var(--heritage-sage)] text-foreground"
               />
             </label>
             <label className="block text-sm">
@@ -213,7 +213,7 @@ export default async function TeamMemberPage({
               <select
                 name="role"
                 defaultValue={member.role}
-                className="mt-2 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2.5 text-sm outline-none focus:border-[var(--heritage-sage)]"
+                className="mt-2 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2.5 text-sm outline-none focus:border-[var(--heritage-sage)] text-foreground"
               >
                 {TEAM_ROLES.map((r) => (
                   <option key={r} value={r}>
@@ -227,7 +227,7 @@ export default async function TeamMemberPage({
               <select
                 name="availability"
                 defaultValue={member.availability}
-                className="mt-2 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2.5 text-sm outline-none focus:border-[var(--heritage-sage)]"
+                className="mt-2 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2.5 text-sm outline-none focus:border-[var(--heritage-sage)] text-foreground"
               >
                 {Object.entries(AVAILABILITY_LABELS).map(([k, label]) => (
                   <option key={k} value={k}>
@@ -241,7 +241,7 @@ export default async function TeamMemberPage({
               <select
                 name="commissionPlanId"
                 defaultValue={member.commissionPlanId ?? ""}
-                className="mt-2 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2.5 text-sm outline-none focus:border-[var(--heritage-sage)]"
+                className="mt-2 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2.5 text-sm outline-none focus:border-[var(--heritage-sage)] text-foreground"
               >
                 <option value="">None</option>
                 {plans.map((p) => (
@@ -257,7 +257,7 @@ export default async function TeamMemberPage({
                 name="territory"
                 defaultValue={member.territory ?? ""}
                 placeholder="e.g. Southeast"
-                className="mt-2 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2.5 text-sm outline-none focus:border-[var(--heritage-sage)]"
+                className="mt-2 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2.5 text-sm outline-none focus:border-[var(--heritage-sage)] text-foreground"
               />
             </label>
             <div className="sm:col-span-2">

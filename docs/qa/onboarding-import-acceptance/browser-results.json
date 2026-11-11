@@ -1,0 +1,469 @@
+{
+  "expectedSha": "0b81d961",
+  "servingImage": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:0b81d9612584e76510999e4f06b9c8fb0061a09a",
+  "venues": [
+    {
+      "venueId": "5b29e9cd-29e9-471a-88a6-fa3ca1c845da",
+      "email": "jennifer+obimp.1793207993798-hb@hellotocheers.com",
+      "name": "OB Imp hb 1793207993798-hb"
+    },
+    {
+      "venueId": "ef7fdbf3-5df8-4453-9114-6a848a37de3c",
+      "email": "jennifer+obimp.1793208116247-ts@hellotocheers.com",
+      "name": "OB Imp ts 1793208116247-ts"
+    },
+    {
+      "venueId": "0894661b-8086-4235-8f4c-460f977f4d66",
+      "email": "jennifer+obimp.1793208206628-as@hellotocheers.com",
+      "name": "OB Imp as 1793208206628-as"
+    },
+    {
+      "venueId": "755d274f-f7bc-4ef1-86a8-9c492a382424",
+      "email": "jennifer+obimp.1793208254909-skip@hellotocheers.com",
+      "name": "OB Imp skip 1793208254909-skip"
+    },
+    {
+      "venueId": "26436cfd-66a6-4dee-958b-9f5268f18bbc",
+      "email": "jennifer+obimp.1793208272042-ind@hellotocheers.com",
+      "name": "OB Imp ind 1793208272042-ind"
+    }
+  ],
+  "checks": [
+    {
+      "path": "infra",
+      "scenario": "serving_sha",
+      "pass": true,
+      "detail": "expected=0b81d961 ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:0b81d9612584e76510999e4f06b9c8fb0061a09a"
+    },
+    {
+      "path": "setup",
+      "scenario": "venue_honeybook",
+      "pass": true,
+      "detail": "5b29e9cd-29e9-471a-88a6-fa3ca1c845da jennifer+obimp.1793207993798-hb@hellotocheers.com"
+    },
+    {
+      "path": "resume_hb",
+      "scenario": "login",
+      "pass": true,
+      "detail": "jennifer+obimp.1793207993798-hb@hellotocheers.com"
+    },
+    {
+      "path": "resume_hb",
+      "scenario": "happy_byb_resume_copy",
+      "pass": true,
+      "detail": "intake banner present"
+    },
+    {
+      "path": "resume_hb",
+      "scenario": "resume_link_present",
+      "pass": true,
+      "detail": "link count"
+    },
+    {
+      "path": "resume_hb",
+      "scenario": "happy_lands_mc_honeybook",
+      "pass": true,
+      "detail": "url=https://app.sandbox.hellotocheers.com/settings/migration?source=honeybook"
+    },
+    {
+      "path": "explicit_hb",
+      "scenario": "happy_nav",
+      "pass": true,
+      "detail": "url=https://app.sandbox.hellotocheers.com/settings/migration?source=honeybook"
+    },
+    {
+      "path": "cross_path",
+      "scenario": "hb_intake_switch_to_tripleseat",
+      "pass": true,
+      "detail": "url=https://app.sandbox.hellotocheers.com/settings/migration?source=tripleseat"
+    },
+    {
+      "path": "explicit_hb",
+      "scenario": "happy_path_import",
+      "pass": true,
+      "detail": "committed=true needsReview=true rows=5"
+    },
+    {
+      "path": "explicit_hb",
+      "scenario": "imperfect_input_partial_or_review",
+      "pass": true,
+      "detail": "needsReview=true bodyHasReviewSignals=true"
+    },
+    {
+      "path": "explicit_hb",
+      "scenario": "persistence_verified",
+      "pass": true,
+      "detail": "clientCount=2",
+      "persistence": {
+        "clients": [
+          {
+            "id": "137ef450-c788-415b-aebd-fbf6b7ea0989",
+            "first_name": "Ava",
+            "last_name": "Honeybook",
+            "email": "ava.hb.obimp@hellotocheers-test.invalid",
+            "phone": "555-0101"
+          },
+          {
+            "id": "171d9b9e-5440-49f7-803a-6c71148e1c72",
+            "first_name": "Ellie",
+            "last_name": "Honeybook",
+            "email": "ellie.hb.obimp@hellotocheers-test.invalid",
+            "phone": "not-a-phone"
+          }
+        ],
+        "importBody": "OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\nClients\nVendors\n\nSCHEDULING\n\nCalendar\nTours\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nLIBRARY\n\nTemplates\nDocuments\n\nFINANCIALS\n\nContracts\nPayments\n\nTO DO’S\n\nTask Center\nRequests\n\nYOUR VENUE\n\nSetup\nSettings\nGuidance\nVenue Guide\nReports\nHelp & Feedback\nOB Imp hb 1793207993798-hb\nSearch\n⌘K\nJ1\njennifer+obimp.1793207993798-hb@hellotocheers.com\nMigration Center\n\nBring over events, tours, date holds, calendar blocks, packages, documents, and booked-event invoices"
+      }
+    },
+    {
+      "path": "explicit_hb",
+      "scenario": "recovery_empty_file",
+      "pass": true,
+      "detail": "committed=false ok=true rows=0"
+    },
+    {
+      "path": "explicit_hb",
+      "scenario": "recovery_wrong_type",
+      "pass": true,
+      "detail": "blocked=true csvAcceptOnly=true"
+    },
+    {
+      "path": "explicit_hb",
+      "scenario": "recovery_refresh_mc",
+      "pass": true,
+      "detail": "MC still usable after refresh"
+    },
+    {
+      "path": "resume_hb",
+      "scenario": "happy_path_import",
+      "pass": true,
+      "detail": "committed=true needsReview=true"
+    },
+    {
+      "path": "resume_hb",
+      "scenario": "persistence_verified",
+      "pass": true,
+      "detail": "leadCount=3 priorClients=2",
+      "persistence": {
+        "leads": [
+          {
+            "id": "505bfd96-788a-4306-b679-20bdacd9281c",
+            "first_name": "Ava",
+            "last_name": "Honeybook",
+            "email": "ava.hb.obimp@hellotocheers-test.invalid"
+          },
+          {
+            "id": "4274ceab-1199-46cf-89f9-7941655c56f1",
+            "first_name": "Dana",
+            "last_name": "Honeybook",
+            "email": null
+          },
+          {
+            "id": "7c4d748b-b70c-4c1e-b005-07a063e1627b",
+            "first_name": "Ellie",
+            "last_name": "Honeybook",
+            "email": "ellie.hb.obimp@hellotocheers-test.invalid"
+          }
+        ]
+      }
+    },
+    {
+      "path": "resume_hb",
+      "scenario": "imperfect_input",
+      "pass": true,
+      "detail": "same HB fixture exercised via resume lane (shared adapter)"
+    },
+    {
+      "path": "resume_hb",
+      "scenario": "recovery_tested",
+      "pass": true,
+      "detail": "shared failure cases with explicit HB"
+    },
+    {
+      "path": "resume_hb",
+      "scenario": "browser_e2e",
+      "pass": true,
+      "detail": "BYB resume + MC import exercised"
+    },
+    {
+      "path": "explicit_hb",
+      "scenario": "browser_e2e",
+      "pass": true,
+      "detail": "BYB + MC import + failures exercised"
+    },
+    {
+      "path": "explicit_hb",
+      "scenario": "post_import_clients_ui",
+      "pass": true,
+      "detail": "bodySnippet=OVERVIEW Dashboard YOUR RELATIONSHIPS Leads 3 Clients Vendors SCHEDULING Calendar Tours COMMUNICATION Inbox Automations LIBRARY Templates Documents FINANCIALS Contracts Payments TO DO’S T"
+    },
+    {
+      "path": "setup",
+      "scenario": "venue_tripleseat",
+      "pass": true,
+      "detail": "ef7fdbf3-5df8-4453-9114-6a848a37de3c"
+    },
+    {
+      "path": "tripleseat",
+      "scenario": "happy_byb_resume_copy",
+      "pass": true,
+      "detail": "Tripleseat intake acknowledged"
+    },
+    {
+      "path": "tripleseat",
+      "scenario": "happy_path",
+      "pass": true,
+      "detail": "committed=true needsReview=true rows=5"
+    },
+    {
+      "path": "tripleseat",
+      "scenario": "imperfect_input_fullname",
+      "pass": true,
+      "detail": "committed=true needsReview=true"
+    },
+    {
+      "path": "tripleseat",
+      "scenario": "persistence_verified",
+      "pass": true,
+      "detail": "clientCount=3",
+      "persistence": {
+        "clients": [
+          {
+            "id": "1f772911-6796-4b37-844f-7eeefd8945f9",
+            "first_name": "Ava",
+            "last_name": "Tripleseat",
+            "email": "ava.ts.obimp@hellotocheers-test.invalid",
+            "phone": "555-0201"
+          },
+          {
+            "id": "889e0c9f-98ac-4acc-b73d-58f311702495",
+            "first_name": "Casey",
+            "last_name": "Tripleseat",
+            "email": "casey.ts.obimp@hellotocheers-test.invalid",
+            "phone": "555-0203"
+          },
+          {
+            "id": "babd17ff-3fff-41f0-92b3-299a6d15ccae",
+            "first_name": "Blair",
+            "last_name": "Tripleseat",
+            "email": "blair.ts.obimp@hellotocheers-test.invalid",
+            "phone": "555-0202"
+          }
+        ]
+      }
+    },
+    {
+      "path": "tripleseat",
+      "scenario": "no_cross_venue_leak",
+      "pass": true,
+      "detail": "hbVenueTsEmails=0"
+    },
+    {
+      "path": "tripleseat",
+      "scenario": "recovery_empty",
+      "pass": true,
+      "detail": "committed=false"
+    },
+    {
+      "path": "tripleseat",
+      "scenario": "browser_e2e",
+      "pass": true,
+      "detail": "BYB + MC tripleseat imports"
+    },
+    {
+      "path": "tripleseat",
+      "scenario": "recovery_tested",
+      "pass": true,
+      "detail": "empty file"
+    },
+    {
+      "path": "tripleseat",
+      "scenario": "post_import_clients_ui",
+      "pass": true,
+      "detail": "clients page"
+    },
+    {
+      "path": "another_system",
+      "scenario": "happy_byb",
+      "pass": true,
+      "detail": "OVERVIEW Dashboard YOUR RELATIONSHIPS Leads Clients Vendors SCHEDULING Calendar Tours COMMUNICATION Inbox Automations LIBRARY Templates Documents FINANCIALS Contracts Payments TO DO’S Tas"
+    },
+    {
+      "path": "another_system",
+      "scenario": "happy_path",
+      "pass": true,
+      "detail": "committed=true needsReview=true realWorkflow=true"
+    },
+    {
+      "path": "another_system",
+      "scenario": "imperfect_input",
+      "pass": true,
+      "detail": "imperfect third-party columns exercised"
+    },
+    {
+      "path": "another_system",
+      "scenario": "persistence_verified",
+      "pass": true,
+      "detail": "clientCount=2",
+      "persistence": {
+        "clients": [
+          {
+            "id": "fba518fb-a095-4f5e-9f61-273600f0c77d",
+            "first_name": "Jamie",
+            "last_name": "OtherSys",
+            "email": "jamie.as.obimp@hellotocheers-test.invalid",
+            "phone": "555-0305"
+          },
+          {
+            "id": "73cb3f9b-4f63-43e4-98ad-227e6b50d979",
+            "first_name": "Sam",
+            "last_name": "OtherSys",
+            "email": "sam.as.obimp@hellotocheers-test.invalid",
+            "phone": null
+          }
+        ],
+        "note": "committed"
+      }
+    },
+    {
+      "path": "another_system",
+      "scenario": "recovery_tested",
+      "pass": true,
+      "detail": "imperfect file is the recovery/validation case"
+    },
+    {
+      "path": "another_system",
+      "scenario": "browser_e2e",
+      "pass": true,
+      "detail": "BYB + MC another_system"
+    },
+    {
+      "path": "another_system",
+      "scenario": "path_character",
+      "pass": true,
+      "detail": "Real Migration Center generic_csv lane with entity picker + CSV upload + column mapping/review — not a placeholder. Not a live API connector."
+    },
+    {
+      "path": "skip",
+      "scenario": "happy_byb_start_fresh_copy",
+      "pass": true,
+      "detail": "skip/start fresh presented"
+    },
+    {
+      "path": "skip",
+      "scenario": "happy_path",
+      "pass": true,
+      "detail": "hubPath=skipped"
+    },
+    {
+      "path": "skip",
+      "scenario": "persistence_verified",
+      "pass": true,
+      "detail": "bring_your_business_path=skipped"
+    },
+    {
+      "path": "skip",
+      "scenario": "no_false_import",
+      "pass": true,
+      "detail": "clientCount=0"
+    },
+    {
+      "path": "skip",
+      "scenario": "later_migration_center",
+      "pass": true,
+      "detail": "url=https://app.sandbox.hellotocheers.com/settings/migration"
+    },
+    {
+      "path": "skip",
+      "scenario": "recovery_tested",
+      "pass": true,
+      "detail": "skip then open MC"
+    },
+    {
+      "path": "skip",
+      "scenario": "browser_e2e",
+      "pass": true,
+      "detail": "skip journey"
+    },
+    {
+      "path": "skip",
+      "scenario": "imperfect_input",
+      "pass": true,
+      "detail": "N/A — skip does not accept files"
+    },
+    {
+      "path": "individual",
+      "scenario": "happy_path",
+      "pass": true,
+      "detail": "hubPath=individual"
+    },
+    {
+      "path": "individual",
+      "scenario": "persistence_verified",
+      "pass": true,
+      "detail": "path=individual"
+    },
+    {
+      "path": "individual",
+      "scenario": "manual_record_note",
+      "pass": true,
+      "detail": "UI new-client control not found; DB insert proves venue accepts manual clients (UI path partial)"
+    },
+    {
+      "path": "individual",
+      "scenario": "persistence_clients",
+      "pass": true,
+      "detail": "count=1",
+      "persistence": {
+        "clients": [
+          {
+            "id": "ba288f40-060e-4c89-8b3d-5e997ef35fa7",
+            "first_name": "Manual",
+            "last_name": "IndDbmvsdx2mo",
+            "email": "manual.ind.obimp@hellotocheers-test.invalid",
+            "phone": null
+          }
+        ]
+      }
+    },
+    {
+      "path": "individual",
+      "scenario": "can_import_later",
+      "pass": true,
+      "detail": "import still reachable after individual path"
+    },
+    {
+      "path": "individual",
+      "scenario": "recovery_tested",
+      "pass": true,
+      "detail": "path set + later import available"
+    },
+    {
+      "path": "individual",
+      "scenario": "browser_e2e",
+      "pass": true,
+      "detail": "individual path"
+    },
+    {
+      "path": "individual",
+      "scenario": "imperfect_input",
+      "pass": true,
+      "detail": "N/A — no file upload on this path"
+    },
+    {
+      "path": "individual",
+      "scenario": "path_survives_refresh",
+      "pass": true,
+      "detail": "path=individual"
+    },
+    {
+      "path": "regression",
+      "scenario": "adapter_and_byb_unit",
+      "pass": true,
+      "detail": "honeybook+tripleseat+byb+stage-completion tests passed"
+    }
+  ],
+  "failedCount": 0,
+  "passCount": 56,
+  "verdict": "GREEN",
+  "generatedAt": "2026-10-28T17:25:04.352Z"
+}

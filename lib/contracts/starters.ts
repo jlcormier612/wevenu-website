@@ -6,6 +6,11 @@
  * policy language. Venue-owned sections use explicit placeholders.
  *
  * Masters are code fixtures. Venue Library copies are independent rows.
+ *
+ * Smart Fields in this body must be a subset of MERGE_FIELDS (approved catalog).
+ * Booking-backed fields (spaces, ceremony/reception space, package, totals,
+ * payment) stay as tokens. Venue Access / Event Hours and policy sections use
+ * venue-owned placeholders — no reliable SoT for those.
  */
 
 import { extractTokens } from "@/lib/shared-merge/tokens";
@@ -21,9 +26,9 @@ export const WEDDING_VENUE_AGREEMENT_DESCRIPTION =
   "A professionally structured starting point for your venue agreement. Add your venue's approved policies and terms, then customize it to make it your own.";
 
 /**
- * Starter body. Tokens use real supported merge fields.
+ * Starter body. Tokens use only the approved customer-facing Smart Field catalog.
  * Policy sections deliberately use the same "Add your venue's approved … here."
- * pattern so send-time safety can block untouched placeholders.
+ * pattern so send-time safety can warn on untouched placeholders.
  */
 export const WEDDING_VENUE_AGREEMENT_CONTENT = `Wedding Venue Agreement
 
@@ -50,8 +55,6 @@ Event
 Event Date: {{event_date}}
 Event Type: {{event_type}}
 Guest Count: {{guest_count}}
-Event Spaces: {{event_spaces}}
-Coordinator: {{coordinator_name}}
 
 ────────────────────────────────
 EVENT SCHEDULE
@@ -59,29 +62,31 @@ EVENT SCHEDULE
 Event Date
 {{event_date}}
 
+Rehearsal Date
+{{rehearsal_date}}
+
 Venue Access / Event Hours
-{{venue_access_hours}}
+Add your venue's approved access hours and event-day timing language here.
+
+Venue
+{{venue_name}}
 
 Ceremony
-{{ceremony_summary}}
+{{ceremony_space}}
 
 Reception
-{{reception_summary}}
+{{reception_space}}
 
-Event Spaces
-{{event_spaces}}
-
-────────────────────────────────
-VENUE & EVENT SPACES
-────────────────────────────────
-The event will take place at {{venue_name}} using the spaces included in the booking.
-
-{{event_spaces}}
+Additional Event Spaces
+{{additional_event_spaces}}
 
 ────────────────────────────────
 SERVICES & PACKAGE
 ────────────────────────────────
 {{package_section}}
+
+Total contracted amount
+{{contract_total}}
 
 ────────────────────────────────
 INCLUDED ITEMS & SERVICES
@@ -93,14 +98,14 @@ Additional / Optional
 {{additional_items_summary}}
 
 ────────────────────────────────
-PAYMENT SCHEDULE
+PAYMENT
 ────────────────────────────────
 {{payment_schedule_summary}}
 
 Total contracted amount
 {{contract_total}}
 
-Balance
+Balance remaining
 {{balance_remaining}}
 
 ────────────────────────────────
@@ -136,8 +141,6 @@ Add your venue's approved description of venue responsibilities and included ser
 VENDORS & OUTSIDE SERVICES
 ────────────────────────────────
 Add your venue's approved vendor and outside-service policy here.
-
-{{vendors_on_file}}
 
 ────────────────────────────────
 FOOD & BEVERAGE
@@ -233,7 +236,7 @@ export function getContractStarterMaster(key: string): ContractStarterMaster | u
   return CONTRACT_STARTER_MASTERS.find((m) => m.key === key);
 }
 
-/** Detect untouched venue-policy placeholder sentences. */
+/** Detect untouched venue-policy placeholders. */
 export function findUntouchedPolicyPlaceholders(content: string): string[] {
   const matches = content.match(
     new RegExp(`${VENUE_POLICY_PLACEHOLDER_MARKER}[^.\\n]*\\.`, "gi"),
@@ -241,13 +244,35 @@ export function findUntouchedPolicyPlaceholders(content: string): string[] {
   return matches ? [...new Set(matches.map((m) => m.trim()))] : [];
 }
 
+export const STARTER_POLICY_PLACEHOLDERS_CODE = "STARTER_POLICY_PLACEHOLDERS" as const;
+
+export const STARTER_POLICY_PLACEHOLDERS_MESSAGE =
+  "This agreement still contains starter policy placeholders. Replace them with your venue's approved language before sending to a client.";
+
+export type CustomerSafeContractContentOptions = {
+  /** Venue-acknowledged send: placeholders remain a warning, not a hard block. */
+  allowPlaceholders?: boolean;
+};
+
+export type CustomerSafeContractContentResult =
+  | { ok: true }
+  | {
+      ok: false;
+      message: string;
+      unresolvedTokens: string[];
+      placeholders: string[];
+      code?: typeof STARTER_POLICY_PLACEHOLDERS_CODE;
+    };
+
 export function assertCustomerSafeContractContent(
   content: string,
-): { ok: true } | { ok: false; message: string; unresolvedTokens: string[]; placeholders: string[] } {
+  options?: CustomerSafeContractContentOptions,
+): CustomerSafeContractContentResult {
   const unresolvedTokens = extractTokens(content);
   const placeholders = findUntouchedPolicyPlaceholders(content);
+  const allowPlaceholders = options?.allowPlaceholders === true;
 
-  if (unresolvedTokens.length === 0 && placeholders.length === 0) {
+  if (unresolvedTokens.length === 0 && (placeholders.length === 0 || allowPlaceholders)) {
     return { ok: true };
   }
 
@@ -255,15 +280,14 @@ export function assertCustomerSafeContractContent(
   if (unresolvedTokens.length > 0) {
     parts.push(`Unresolved details still need values: ${unresolvedTokens.map((t) => `{{${t}}}`).join(", ")}.`);
   }
-  if (placeholders.length > 0) {
-    parts.push(
-      "This agreement still contains starter policy placeholders. Replace them with your venue's approved language before sending to a client.",
-    );
+  if (placeholders.length > 0 && !allowPlaceholders) {
+    parts.push(STARTER_POLICY_PLACEHOLDERS_MESSAGE);
   }
   return {
     ok: false,
     message: parts.join(" "),
     unresolvedTokens,
     placeholders,
+    ...(unresolvedTokens.length === 0 ? { code: STARTER_POLICY_PLACEHOLDERS_CODE } : {}),
   };
 }

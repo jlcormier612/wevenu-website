@@ -5,6 +5,7 @@ import {
   deriveVersionNumber,
   statusLabelForVersion,
 } from "@/lib/contracts/version-lineage";
+import { documentFileOriginLabel } from "@/lib/documents/access";
 
 /** Raw shape returned by get_venue_documents() — one row per producer leg, already jsonb_build_object'd in SQL. */
 export type WorkspaceRawRow = {
@@ -29,11 +30,14 @@ export type WorkspaceRawRow = {
   uploadedByType: "venue" | "vendor";
   amount?: number | null;
   balanceDue?: number | null;
+  invoiceNumber?: string | null;
   signToken?: string | null;
   signedAt?: string | null;
   createdAt: string;
   updatedAt: string;
   hasFinalArtifact?: boolean;
+  /** Questionnaire family kind when the RPC includes it (post kind-name migration). */
+  kind?: string | null;
 };
 
 // Vendor-sourced files are grouped under "Vendor Documents" regardless of
@@ -48,6 +52,7 @@ export function mapCategory(row: WorkspaceRawRow): WorkspaceCategory {
     case "floor_plan": return "Floor Plans";
     case "questionnaire": return "Questionnaires";
     case "event_order": return "Planning";
+    case "client_choices": return "Planning";
     case "document":
       switch (row.category) {
         case "contract": return "Contracts";
@@ -98,6 +103,12 @@ export function normalizeWorkspaceDocument(row: WorkspaceRawRow): WorkspaceDocum
         ? null
         : row.fileUrl;
 
+  const originLabel = documentFileOriginLabel({
+    uploadedByType: row.uploadedByType,
+    // Raw RPC fileUrl is storage_url before authorized rewrite.
+    storageUrl: row.docType === "document" ? row.fileUrl : null,
+  });
+
   return {
     docType: row.docType,
     id: row.id,
@@ -119,8 +130,10 @@ export function normalizeWorkspaceDocument(row: WorkspaceRawRow): WorkspaceDocum
     isCoupleVisible: !!row.isCoupleVisible,
     isVendorVisible: !!row.isVendorVisible,
     uploadedByType: row.uploadedByType,
+    originLabel,
     amount: row.amount ?? null,
     balanceDue: row.balanceDue ?? null,
+    invoiceNumber: row.invoiceNumber ?? null,
     signToken: row.signToken ?? null,
     signedAt: row.signedAt ?? null,
     createdAt: row.createdAt,
@@ -149,6 +162,10 @@ export function applyContractVersionLineage(
     createdAt: string;
     signedAt: string | null;
     finalized?: boolean;
+    venueSigned?: boolean;
+    anyClientSigned?: boolean;
+    requiredClientTotal?: number;
+    requiredClientSigned?: number;
   }[],
 ): WorkspaceDocument[] {
   if (lineageNodes.length === 0) return docs;
@@ -169,6 +186,9 @@ export function applyContractVersionLineage(
       id: doc.id,
       hasFinalArtifact: finalized,
       relationshipName: doc.relationshipName,
+      venueSigned: node.venueSigned,
+      requiredClientTotal: node.requiredClientTotal,
+      requiredClientSigned: node.requiredClientSigned,
     });
     const versions: WorkspaceVersion[] = family.map((v) => ({
       versionNumber: v.versionNumber,

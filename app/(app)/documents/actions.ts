@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { deleteDocument, replaceDocumentFile, saveDocument, saveVenueDocument, updateDocument } from "@/lib/documents/service";
+import { venueLibraryDocumentPath } from "@/lib/documents/storage-path";
 import type {
   CreateDocumentResult,
   Document,
@@ -10,6 +11,7 @@ import type {
   DocumentEntityType,
   DocumentUploadPayload,
 } from "@/lib/documents/types";
+import { getCurrentVenue } from "@/lib/venue/service";
 
 function entityPath(entityType: DocumentEntityType, entityId: string): string {
   const map: Record<DocumentEntityType, string> = {
@@ -32,6 +34,19 @@ export async function saveDocumentAction(payload: DocumentUploadPayload & { enti
 // editor) revalidate their own path after a successful upload.
 export async function saveVenueDocumentAction(payload: DocumentUploadPayload): Promise<CreateDocumentResult> {
   return saveVenueDocument(payload);
+}
+
+// Venue-level uploaders run in the browser, where the venue id isn't in scope,
+// but the documents bucket refuses any object whose first path segment isn't
+// the caller's venue (see lib/documents/storage-path.ts). Resolving the path
+// here reads the venue from the session instead of trusting a prop, so an
+// uploader cannot be handed a stale or foreign id.
+export async function venueDocumentUploadPathAction(
+  fileName: string,
+): Promise<{ ok: true; storagePath: string } | { ok: false; message: string }> {
+  const venue = await getCurrentVenue();
+  if (!venue) return { ok: false, message: "No venue found." };
+  return { ok: true, storagePath: venueLibraryDocumentPath(venue.id, fileName) };
 }
 
 export async function updateDocumentAction(

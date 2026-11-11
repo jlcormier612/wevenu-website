@@ -1,0 +1,225 @@
+{
+  "at": "2026-10-14T03:37:37.836Z",
+  "expectedSha": "9a3ea2793187521381256a682b67794a1f3247fd",
+  "servingImage": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:9a3ea2793187521381256a682b67794a1f3247fd",
+  "pass": true,
+  "checks": [
+    {
+      "name": "Serving expected SHA",
+      "pass": true,
+      "detail": "image=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:9a3ea2793187521381256a682b67794a1f3247fd expected=9a3ea2793187"
+    },
+    {
+      "name": "place_visible_1280",
+      "pass": true,
+      "detail": "Place hold CTA"
+    },
+    {
+      "name": "form_below_controls_1280",
+      "pass": true,
+      "detail": "ownerBottom=332 formTop=345"
+    },
+    {
+      "name": "form_not_right_column_1280",
+      "pass": true,
+      "detail": "ownerRight=655 formLeft=324"
+    },
+    {
+      "name": "form_left_aligned_1280",
+      "pass": true,
+      "detail": "formLeftAligned=true formW=612"
+    },
+    {
+      "name": "form_sensible_width_1280",
+      "pass": true,
+      "detail": "width=612 cardW=932"
+    },
+    {
+      "name": "cancel_closes_1280",
+      "pass": true,
+      "detail": "form closed without Place Hold"
+    },
+    {
+      "name": "place_visible_390",
+      "pass": true,
+      "detail": "Place hold CTA"
+    },
+    {
+      "name": "form_below_controls_390",
+      "pass": true,
+      "detail": "ownerBottom=428 formTop=471"
+    },
+    {
+      "name": "form_not_right_column_390",
+      "pass": true,
+      "detail": "ownerRight=359 formLeft=31"
+    },
+    {
+      "name": "form_left_aligned_390",
+      "pass": true,
+      "detail": "formLeftAligned=true formW=329"
+    },
+    {
+      "name": "form_sensible_width_390",
+      "pass": true,
+      "detail": "width=329 cardW=356"
+    },
+    {
+      "name": "cancel_closes_390",
+      "pass": true,
+      "detail": "form closed without Place Hold"
+    }
+  ],
+  "desktop": {
+    "collapsed": {
+      "card": {
+        "top": 240,
+        "left": 306,
+        "bottom": 350,
+        "right": 1238,
+        "width": 932,
+        "height": 111
+      },
+      "row": {
+        "top": 285,
+        "left": 324,
+        "bottom": 332,
+        "right": 1220,
+        "width": 896,
+        "height": 47
+      },
+      "owner": {
+        "top": 285,
+        "left": 324,
+        "bottom": 332,
+        "right": 655,
+        "width": 331,
+        "height": 47
+      },
+      "place": {
+        "top": 285,
+        "left": 741,
+        "bottom": 332,
+        "right": 849,
+        "width": 108,
+        "height": 47
+      },
+      "form": null,
+      "formLeftAligned": null,
+      "hasHoldTitle": false
+    },
+    "expanded": {
+      "card": {
+        "top": 240,
+        "left": 306,
+        "bottom": 1049,
+        "right": 1238,
+        "width": 932,
+        "height": 809
+      },
+      "row": {
+        "top": 285,
+        "left": 324,
+        "bottom": 1031,
+        "right": 1220,
+        "width": 896,
+        "height": 745
+      },
+      "owner": {
+        "top": 285,
+        "left": 324,
+        "bottom": 332,
+        "right": 655,
+        "width": 331,
+        "height": 47
+      },
+      "place": null,
+      "form": {
+        "top": 345,
+        "left": 324,
+        "bottom": 1031,
+        "right": 936,
+        "width": 612,
+        "height": 686
+      },
+      "formLeftAligned": true,
+      "hasHoldTitle": true
+    }
+  },
+  "mobile": {
+    "collapsed": {
+      "card": {
+        "top": 340,
+        "left": 17,
+        "bottom": 502,
+        "right": 373,
+        "width": 356,
+        "height": 162
+      },
+      "row": {
+        "top": 382,
+        "left": 31,
+        "bottom": 488,
+        "right": 359,
+        "width": 329,
+        "height": 106
+      },
+      "owner": {
+        "top": 382,
+        "left": 31,
+        "bottom": 428,
+        "right": 359,
+        "width": 329,
+        "height": 47
+      },
+      "place": {
+        "top": 441,
+        "left": 91,
+        "bottom": 488,
+        "right": 199,
+        "width": 108,
+        "height": 47
+      },
+      "form": null,
+      "formLeftAligned": null,
+      "hasHoldTitle": false
+    },
+    "expanded": {
+      "card": {
+        "top": 340,
+        "left": 17,
+        "bottom": 1380,
+        "right": 373,
+        "width": 356,
+        "height": 1040
+      },
+      "row": {
+        "top": 382,
+        "left": 31,
+        "bottom": 1366,
+        "right": 359,
+        "width": 329,
+        "height": 984
+      },
+      "owner": {
+        "top": 382,
+        "left": 31,
+        "bottom": 428,
+        "right": 359,
+        "width": 329,
+        "height": 47
+      },
+      "place": null,
+      "form": {
+        "top": 471,
+        "left": 31,
+        "bottom": 1366,
+        "right": 359,
+        "width": 329,
+        "height": 895
+      },
+      "formLeftAligned": true,
+      "hasHoldTitle": true
+    }
+  }
+}

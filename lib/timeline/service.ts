@@ -13,6 +13,9 @@ import type {
   AddSectionResult,
   DuplicateSectionResult,
   TimelineActionResult,
+  PersistedTimelineDraft,
+  TimelineDraftBatchInput,
+  TimelineDraftBatchResult,
   TimelineEntry,
   TimelineEntryAttachment,
   TimelineEntryInput,
@@ -41,14 +44,44 @@ export async function getTimelineEntries(eventId: string): Promise<TimelineEntry
   if (!isSupabaseConfigured) return [];
   const venue = await getCurrentVenue();
   if (!venue) return [];
-  return repo.getTimelineEntries(await createClient(), venue.id, eventId);
+  const supabase = await createClient();
+  // Schedule reconciliation runs on booked-schedule save only. Opening Timeline must not write.
+  return repo.getTimelineEntries(supabase, venue.id, eventId);
 }
 
 export async function addEntry(eventId: string, input: TimelineEntryInput): Promise<AddEntryResult> {
   if (!input.title.trim()) return { ok: false, errors: { title: "Title is required." } };
   const result = await withVenue(async (supabase, venueId) => {
-    const entry = await repo.insertEntry(supabase, venueId, eventId, input);
-    return { ok: true, entry } as AddEntryResult;
+    try {
+      const entry = await repo.insertEntry(supabase, venueId, eventId, input);
+      return { ok: true, entry } as AddEntryResult;
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Could not save this item.";
+      if (message.includes("cannot share with")) return { ok: false, message };
+      throw e;
+    }
+  });
+  return result as AddEntryResult;
+}
+
+export async function getClientTimelineEntries(clientId: string): Promise<TimelineEntry[]> {
+  if (!isSupabaseConfigured) return [];
+  const venue = await getCurrentVenue();
+  if (!venue) return [];
+  return repo.getClientTimelineEntries(await createClient(), venue.id, clientId);
+}
+
+export async function addClientEntry(clientId: string, input: TimelineEntryInput): Promise<AddEntryResult> {
+  if (!input.title.trim()) return { ok: false, errors: { title: "Title is required." } };
+  const result = await withVenue(async (supabase, venueId) => {
+    try {
+      const entry = await repo.insertClientEntry(supabase, venueId, clientId, input);
+      return { ok: true, entry } as AddEntryResult;
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Could not save this item.";
+      if (message.includes("cannot share with")) return { ok: false, message };
+      throw e;
+    }
   });
   return result as AddEntryResult;
 }
@@ -56,8 +89,20 @@ export async function addEntry(eventId: string, input: TimelineEntryInput): Prom
 export async function updateEntry(entryId: string, input: TimelineEntryInput): Promise<TimelineActionResult> {
   if (!input.title.trim()) return { ok: false, errors: { title: "Title is required." } };
   const result = await withVenue(async (supabase, venueId) => {
-    await repo.updateEntry(supabase, venueId, entryId, input);
-    return { ok: true } as TimelineActionResult;
+    try {
+      await repo.updateEntry(supabase, venueId, entryId, input);
+      return { ok: true } as TimelineActionResult;
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Could not save this item.";
+      if (
+        message.includes("cannot share with")
+        || message.includes("belongs to the couple")
+        || message.includes("stays locked because its content differs")
+      ) {
+        return { ok: false, message };
+      }
+      throw e;
+    }
   });
   return result as TimelineActionResult;
 }
@@ -69,6 +114,79 @@ export async function deleteEntry(entryId: string): Promise<TimelineActionResult
     return { ok: true } as TimelineActionResult;
   });
   return result as TimelineActionResult;
+}
+
+/**
+ * Persist a multi-row Timeline setup draft in one venue-scoped call.
+ * Deletes → updates → inserts (sequential). Not a DB transaction; on failure
+ * earlier ops may have committed — caller keeps the draft for retry.
+ * No-op when both lists are empty (no duplicate mutations).
+ */
+export async function saveEventTimelineDraft(
+  eventId: string,
+  draft: TimelineDraftBatchInput,
+): Promise<TimelineDraftBatchResult> {
+  const deleteIds = [...new Set(draft.deleteIds.filter(Boolean))];
+  const upserts = draft.upserts ?? [];
+  if (deleteIds.length === 0 && upserts.length === 0) {
+    return { ok: true, deleted: 0, updated: 0, created: 0, createdIds: [], persisted: [] };
+  }
+
+  for (const row of upserts) {
+    if (!row.title.trim()) {
+      return { ok: false, message: "Every timeline item needs a title.", errors: { title: "Title is required." } };
+    }
+  }
+
+  const result = await withVenue(async (supabase, venueId) => {
+    let deleted = 0;
+    let updated = 0;
+    let created = 0;
+    const createdIds: string[] = [];
+    const persisted: PersistedTimelineDraft[] = [];
+
+    for (const id of deleteIds) {
+      const outcome = await repo.deleteEntry(supabase, venueId, id);
+      if (!outcome.ok) {
+        return { ok: false, message: outcome.message } as TimelineDraftBatchResult;
+      }
+      deleted += 1;
+    }
+
+    for (const row of upserts) {
+      const input: TimelineEntryInput = {
+        title: row.title,
+        description: row.description ?? "",
+        entryTime: row.entryTime ?? "",
+        dayOffset: row.dayOffset ?? 0,
+      };
+      const existingId = row.id && !row.id.startsWith("new:") ? row.id : null;
+      if (existingId) {
+        try {
+          const saved = await repo.updateEntry(supabase, venueId, existingId, input);
+          persisted.push({ id: existingId, dayOffset: saved.dayOffset, entryTime: saved.entryTime });
+          updated += 1;
+        } catch (e) {
+          const message = e instanceof Error ? e.message : "Could not save this item.";
+          return { ok: false, message } as TimelineDraftBatchResult;
+        }
+      } else {
+        try {
+          const entry = await repo.insertEntry(supabase, venueId, eventId, input);
+          created += 1;
+          createdIds.push(entry.id);
+          persisted.push({ id: entry.id, dayOffset: entry.dayOffset, entryTime: entry.entryTime });
+        } catch (e) {
+          const message = e instanceof Error ? e.message : "Could not add this item.";
+          return { ok: false, message } as TimelineDraftBatchResult;
+        }
+      }
+    }
+
+    return { ok: true, deleted, updated, created, createdIds, persisted } as TimelineDraftBatchResult;
+  });
+
+  return result as TimelineDraftBatchResult;
 }
 
 export async function shiftEntriesAfter(
@@ -113,7 +231,56 @@ export async function applyTemplate(
   return result as TimelineActionResult;
 }
 
-// ---- Sections ------------------------------------------------------------------
+export type ShareTimelineWithCoupleResult = TimelineActionResult & {
+  sharedCount?: number;
+  alreadySharedCount?: number;
+  venueOwnedCount?: number;
+};
+
+/**
+ * P1b: create an immutable venue→couple timeline release (not live audience tags).
+ * Distinct from applying a template and from sending email/SMS.
+ */
+export async function shareTimelineWithCouple(
+  eventId: string,
+): Promise<ShareTimelineWithCoupleResult> {
+  const { releaseVenueTimelineForPrepare } = await import("@/lib/timeline/release-service");
+  const released = await releaseVenueTimelineForPrepare(eventId);
+  if (!released.ok) {
+    return { ok: false, message: released.message };
+  }
+  return {
+    ok: true,
+    sharedCount: released.entryCount ?? 0,
+    alreadySharedCount: 0,
+    venueOwnedCount: released.entryCount ?? 0,
+  };
+}
+
+export async function shareClientTimelineWithCouple(
+  clientId: string,
+): Promise<ShareTimelineWithCoupleResult> {
+  const result = await withVenue(async (supabase, venueId) => {
+    const counts = await repo.shareClientVenueTimelineWithCouple(supabase, venueId, clientId);
+    if (counts.venueOwnedCount === 0) {
+      return { ok: false, message: "Add timeline items before sharing with the couple." } as ShareTimelineWithCoupleResult;
+    }
+    return { ok: true, ...counts } as ShareTimelineWithCoupleResult;
+  });
+  return result as ShareTimelineWithCoupleResult;
+}
+
+export async function applyClientStarterTemplate(
+  clientId: string, templateId: string, eventStartTime: string | null,
+): Promise<TimelineActionResult> {
+  const template = TIMELINE_TEMPLATES.find((t) => t.id === templateId);
+  if (!template) return { ok: false, message: "Template not found." };
+  const result = await withVenue(async (supabase, venueId) => {
+    await repo.applyTemplateToClient(supabase, venueId, clientId, template, eventStartTime);
+    return { ok: true } as TimelineActionResult;
+  });
+  return result as TimelineActionResult;
+}
 
 export async function getSections(eventId: string): Promise<TimelineSection[]> {
   if (!isSupabaseConfigured) return [];
@@ -122,10 +289,26 @@ export async function getSections(eventId: string): Promise<TimelineSection[]> {
   return repo.getSections(await createClient(), venue.id, eventId);
 }
 
+export async function getClientSections(clientId: string): Promise<TimelineSection[]> {
+  if (!isSupabaseConfigured) return [];
+  const venue = await getCurrentVenue();
+  if (!venue) return [];
+  return repo.getClientSections(await createClient(), venue.id, clientId);
+}
+
 export async function addSection(eventId: string, name: string, sortOrder: number): Promise<AddSectionResult> {
   if (!name.trim()) return { ok: false, message: "Section name is required." };
   const result = await withVenue(async (supabase, venueId) => {
     const section = await repo.insertSection(supabase, venueId, eventId, name, sortOrder);
+    return { ok: true, section } as AddSectionResult;
+  });
+  return result as AddSectionResult;
+}
+
+export async function addClientSection(clientId: string, name: string, sortOrder: number): Promise<AddSectionResult> {
+  if (!name.trim()) return { ok: false, message: "Section name is required." };
+  const result = await withVenue(async (supabase, venueId) => {
+    const section = await repo.insertClientSection(supabase, venueId, clientId, name, sortOrder);
     return { ok: true, section } as AddSectionResult;
   });
   return result as AddSectionResult;
@@ -146,6 +329,18 @@ export async function setSectionClientCanAdd(sectionId: string, clientCanAdd: bo
     return { ok: true } as TimelineActionResult;
   });
   return result as TimelineActionResult;
+}
+
+/** Ensure the event has a couple-editable “Your additions” section. */
+export async function ensureCoupleAdditionsSectionForEvent(
+  eventId: string,
+): Promise<AddSectionResult> {
+  const result = await withVenue(async (supabase, venueId) => {
+    const { ensureCoupleAdditionsSection } = await import("@/lib/timeline/couple-additions");
+    const section = await ensureCoupleAdditionsSection(supabase, venueId, eventId);
+    return { ok: true, section } as AddSectionResult;
+  });
+  return result as AddSectionResult;
 }
 
 export async function deleteSection(sectionId: string): Promise<TimelineActionResult> {

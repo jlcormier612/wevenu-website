@@ -1,0 +1,17 @@
+{
+  "event": {
+    "id": "ebf74f77-2944-474a-b735-48762ecb6842",
+    "guest_count": 88,
+    "space_id": "3b36ec69-b17d-4351-8186-68d96dd6dfe7"
+  },
+  "space": {
+    "id": "3b36ec69-b17d-4351-8186-68d96dd6dfe7",
+    "name": "Barn",
+    "capacity": 150
+  },
+  "seats": 170,
+  "tables": 25,
+  "guest": 88,
+  "surplus": 82,
+  "plan": "18c943fb-9762-4383-948a-e0f82fa4f89f"
+}

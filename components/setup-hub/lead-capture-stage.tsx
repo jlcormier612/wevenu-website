@@ -2,25 +2,23 @@
 
 import * as React from "react";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, Globe, Mail, QrCode, Send, Users } from "lucide-react";
 import { toast } from "sonner";
 
 import { markChannelConfiguredAction, markChannelVerifiedAction, setLeadCapturePathAction } from "@/app/(app)/setup-hub/actions";
-import { FacebookConnectSection } from "@/components/settings/facebook-connect-section";
-import { LeadIntakeHealthSection } from "@/components/settings/lead-intake-health-section";
 import { TourSettingsSection } from "@/components/settings/tour-settings-section";
 import { WebsiteFormsSection } from "@/components/settings/website-forms-section";
 import { QrCampaignList } from "@/components/qr-campaigns/qr-campaign-list";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import type { FacebookConnection, FacebookLeadForm, FacebookLeadLogEntry } from "@/lib/facebook/types";
-import type { IntakeHealthSummary } from "@/lib/lead-intake/monitoring";
 import type { EmailIntakeStatus } from "@/lib/lead-intake/email-status";
 import type { QrCampaign, QrCampaignAnalytics } from "@/lib/qr-campaigns/types";
 import type { InquiryFormSettings } from "@/lib/inquiry-form/types";
 import type { LeadCaptureChannelKey, LeadCaptureStageStatus } from "@/lib/setup-hub/types";
+import { publicTourSchedulingPath } from "@/lib/tours/public-link";
 import type { TourAvailabilityException, TourAvailabilityWindow, TourSettings } from "@/lib/tours/types";
 
 function ChannelBadge({ configuredAt, verifiedAt, hasVerification }: { configuredAt: string | null; verifiedAt: string | null; hasVerification: boolean }) {
@@ -81,13 +79,11 @@ function ChannelActions({
 }
 
 export function LeadCaptureStage({
-  venueId, embedKey, appUrl, leadEmailAddress, emailIntakeStatus,
+  embedKey, appUrl, leadEmailAddress, emailIntakeStatus,
   tourSettings, tourWindows, tourExceptions, tourAvailabilityLoadError,
-  facebookConnection, facebookLeadForms, facebookLog, facebookConnectUrl,
-  qrCampaigns, qrAnalytics, intakeHealth, stageStatus,
+  qrCampaigns, qrAnalytics, stageStatus,
   inquiryFormSettings = null, canEditInquiryForm = true,
 }: {
-  venueId: string;
   embedKey: string;
   appUrl: string;
   leadEmailAddress: string | null;
@@ -96,13 +92,8 @@ export function LeadCaptureStage({
   tourWindows: TourAvailabilityWindow[];
   tourExceptions: TourAvailabilityException[];
   tourAvailabilityLoadError?: string | null;
-  facebookConnection: FacebookConnection | null;
-  facebookLeadForms: FacebookLeadForm[];
-  facebookLog: FacebookLeadLogEntry[];
-  facebookConnectUrl?: string | null;
   qrCampaigns: QrCampaign[];
   qrAnalytics: QrCampaignAnalytics[];
-  intakeHealth: IntakeHealthSummary;
   stageStatus: LeadCaptureStageStatus | null;
   inquiryFormSettings?: InquiryFormSettings | null;
   canEditInquiryForm?: boolean;
@@ -110,7 +101,6 @@ export function LeadCaptureStage({
   const router = useRouter();
   const [path, setPath] = React.useState(stageStatus?.path ?? null);
   const [pathPending, startPathTransition] = React.useTransition();
-  const [showOtherSources, setShowOtherSources] = React.useState(false);
 
   const channelState = React.useCallback(
     (channel: LeadCaptureChannelKey) => stageStatus?.channels.find((c) => c.channel === channel) ?? { configuredAt: null, verifiedAt: null },
@@ -140,7 +130,7 @@ export function LeadCaptureStage({
         <CardHeader>
           <p className="text-sm font-medium text-heading">How do you want new inquiries to reach Hello to Cheers?</p>
           <p className="text-sm text-muted-foreground">
-            You don&apos;t need every channel below — just a workable way for new couples to reach you. The website inquiry form is the easiest place to start for most venues; it automatically brings every submission straight into Hello to Cheers.
+            Pick a workable path for your venue. The website inquiry form is the easiest place to start for most venues.
           </p>
         </CardHeader>
         <CardContent className="flex flex-col gap-3 sm:flex-row">
@@ -169,12 +159,12 @@ export function LeadCaptureStage({
 
       {path === "automated" && (
         <>
-          {/* Website Form (bundles Email Intake) */}
+          {/* Website */}
           <Card>
             <CardHeader className="flex-row items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <Globe className="h-4 w-4 text-muted-foreground" />
-                <p className="text-sm font-medium text-heading">Website Form</p>
+                <p className="text-sm font-medium text-heading">Website</p>
               </div>
               <ChannelBadge configuredAt={website.configuredAt} verifiedAt={website.verifiedAt} hasVerification />
             </CardHeader>
@@ -201,13 +191,13 @@ export function LeadCaptureStage({
             </CardContent>
           </Card>
 
-          {/* Tour Booking */}
+          {/* Tour requests */}
           {tourSettings && (
             <Card>
               <CardHeader className="flex-row items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <Users className="h-4 w-4 text-muted-foreground" />
-                  <p className="text-sm font-medium text-heading">Tour Booking</p>
+                  <p className="text-sm font-medium text-heading">Tour requests</p>
                 </div>
                 <ChannelBadge configuredAt={tour.configuredAt} verifiedAt={tour.verifiedAt} hasVerification />
               </CardHeader>
@@ -219,48 +209,55 @@ export function LeadCaptureStage({
                   <p className="text-xs text-muted-foreground">{tourWindows.length} availability window{tourWindows.length === 1 ? "" : "s"}, {tourExceptions.length} exception{tourExceptions.length === 1 ? "" : "s"} — manage full availability from Settings.</p>
                 )}
                 <ChannelActions channel="tour_booking" configuredAt={tour.configuredAt} verifiedAt={tour.verifiedAt} hasVerification
-                  testHref={tourSettings.tourEmbedKey ? `${appUrl}/book/${tourSettings.tourEmbedKey}` : undefined} onChanged={onChanged} />
+                  testHref={(() => {
+                    const path = publicTourSchedulingPath(tourSettings.tourEmbedKey);
+                    return path ? `${appUrl}${path}` : undefined;
+                  })()} onChanged={onChanged} />
               </CardContent>
             </Card>
           )}
 
-          {/* Other Sources — progressively disclosed */}
-          {!showOtherSources ? (
-            <Button type="button" variant="ghost" size="sm" onClick={() => setShowOtherSources(true)}>
-              Other lead sources — QR campaigns, Facebook/Instagram, manual entry
-            </Button>
-          ) : (
-            <Card id="other-lead-sources">
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <QrCode className="h-4 w-4 text-muted-foreground" />
-                  <p className="text-sm font-medium text-heading">Other Lead Sources</p>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Manage every other way inquiries reach Hello to Cheers. Facebook / Instagram Lead Ads uses your existing Meta connection — connect once, then choose which forms create leads.
-                </p>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div>
-                  <p className="text-sm font-medium text-heading mb-2">Facebook / Instagram Lead Ads</p>
-                  <FacebookConnectSection venueId={venueId} connection={facebookConnection} leadForms={facebookLeadForms} recentLog={facebookLog} connectUrl={facebookConnectUrl ?? null} />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-heading mb-2">QR Campaigns</p>
-                  <QrCampaignList initialCampaigns={qrCampaigns} analytics={qrAnalytics} appUrl={appUrl} />
-                </div>
-              </CardContent>
-            </Card>
-          )}
+          {/* Facebook / Instagram */}
+          <Card>
+            <CardHeader className="flex-row items-center gap-2">
+              <p className="text-sm font-medium text-heading">Facebook / Instagram</p>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Connect Facebook and Instagram to bring Lead Ads into your Leads pipeline.
+              </p>
+              <Button type="button" size="sm" variant="outline" render={<Link href="/settings/integrations" />}>
+                Open Meta integration
+              </Button>
+            </CardContent>
+          </Card>
 
-          {/* Verify It Works */}
+          {/* QR campaigns */}
+          <Card>
+            <CardHeader className="flex-row items-center gap-2">
+              <div className="flex items-center gap-2">
+                <QrCode className="h-4 w-4 text-muted-foreground" />
+                <p className="text-sm font-medium text-heading">QR campaigns</p>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Use QR codes on bridal-show materials, brochures, signs, and other marketing.
+              </p>
+              <QrCampaignList initialCampaigns={qrCampaigns} analytics={qrAnalytics} appUrl={appUrl} />
+            </CardContent>
+          </Card>
+
+          {/* Manual entry */}
           <Card>
             <CardHeader>
-              <p className="text-sm font-medium text-heading">Verify It Works</p>
-              <p className="text-xs text-muted-foreground">The last 7 days of inquiries across every channel above.</p>
+              <p className="text-sm font-medium text-heading">Manual entry</p>
             </CardHeader>
             <CardContent>
-              <LeadIntakeHealthSection summary={intakeHealth} />
+              <p className="text-sm text-muted-foreground">
+                Add a Lead yourself from{" "}
+                <Link href="/leads/new" className="text-primary hover:underline">Relationships → Leads</Link>.
+              </p>
             </CardContent>
           </Card>
         </>

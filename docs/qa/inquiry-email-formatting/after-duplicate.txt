@@ -1,0 +1,9 @@
+Possible duplicate inquiry
+
+Possible match: Alice Gate
+Email: alice@example.com
+Status: New Inquiry
+Matched by: email
+
+View this lead
+https://app.sandbox.hellotocheers.com/leads/bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb

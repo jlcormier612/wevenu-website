@@ -1,0 +1,11 @@
+PASS Serving expected SHA — 405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:d4e85aaf8987b50b1f030c6855b264d6d3a52216
+PASS Tour completed — {"status":"completed","actual":"2026-10-14T22:00:00+00:00","completed":"2026-10-15T02:23:41.067+00:00"}
+PASS Completed-tour decision is silence (not stale unanswered ACTION) — mode=silence
+PASS No stale unanswered assertion in decision payload — silence
+PASS Genuine post-tour question still actionable — actionable
+PASS Conversation unread/needs_response untouched by evaluator (read-only check) — {"venue_unread":0,"needs_response":true}
+PASS Original early-arrival message still persisted — 2026-10-15T02:01:29.53846+00:00
+PASS Tour outcome notes still persisted — They loved the venue - want to book the whole space for the weekend.
+{
+  "allPass": true
+}

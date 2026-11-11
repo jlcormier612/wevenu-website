@@ -1,0 +1,135 @@
+PASS serving-sha — expected=8321cc0b804a90ba786dce3f0faec4d241944574 ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:8321cc0b804a90ba786dce3f0faec4d241944574
+PASS health — {"ok":true,"checks":{"env":"ok","supabase":"ok"}}
+PASS html-dpl — dpl=8321cc0b804a90ba786dce3f0faec4d241944574
+PASS cutover-still-72 — cutover=72 pointed=72
+PASS never-released-portal-empty-venue — {"venue":0,"titles":[]}
+PASS preview-working-ahead-fields — {"ahead":false,"hasPrior":false}
+PASS first-release — {"ok":true,"releaseId":"65f5aaea-8fa8-4164-9bd6-0e37846b69bd","entryCount":1,"releasedAt":"2026-10-27T00:03:06.575363+00:00","heldOutCount":0,"priorReleaseId":null,"idempotentReplay":false}
+PASS summary-in-sync-after-release — {"ahead":false,"fp":"71170673dfb995e0829e849088adde13","last":"71170673dfb995e0829e849088adde13"}
+PASS portal-has-original-link — link=https://example.com/p1b-original
+PASS snapshot-link-immutable — after=https://example.com/p1b-original
+PASS portal-has-original-attachment — {"id":"ec37e8a2-452b-4600-bb19-86098a28db4a","url":"https://example.com/p1b-attach-original.pdf","name":"P1BG-P1BG6ADFEA35-attach-original"}
+PASS snapshot-attachment-immutable — {"id":"ec37e8a2-452b-4600-bb19-86098a28db4a","url":"https://example.com/p1b-attach-original.pdf","name":"P1BG-P1BG6ADFEA35-attach-original"}
+PASS summary-ahead-after-edit — {"ahead":true}
+PASS mid-txn-fault-raised — {"faultErr":"SANDBOX_VENUE_TIMELINE_RELEASE_FORCE_FAIL after insert before pointer","faultData":null}
+PASS mid-txn-preserves-pointer — {"before":{"active_venue_timeline_release_id":"65f5aaea-8fa8-4164-9bd6-0e37846b69bd"},"after":{"active_venue_timeline_release_id":"65f5aaea-8fa8-4164-9bd6-0e37846b69bd"}}
+PASS mid-txn-no-partial-release — before=1 after=1
+PASS mid-txn-prior-snapshot-unchanged — {"before":"2026-10-27T00:03:06.575363+00:00","after":"2026-10-27T00:03:06.575363+00:00"}
+PASS mid-txn-portal-unchanged — ["P1BG-P1BG6ADFEA35-doors"]
+PASS release-after-fault-ok — {"ok":true,"releaseId":"cf8a3548-1d7a-4908-adda-ab1a1a9484e9","entryCount":1,"releasedAt":"2026-10-27T00:03:07.870061+00:00","heldOutCount":0,"priorReleaseId":"65f5aaea-8fa8-4164-9bd6-0e37846b69bd","idempotentReplay":false}
+PASS concurrent-same-key-one-release — {"a":{"ok":true,"releaseId":"bad820c9-5b8a-4b9a-966f-1180d01e9495","entryCount":2,"releasedAt":"2026-10-27T00:03:08.395963+00:00","heldOutCount":0,"priorReleaseId":"cf8a3548-1d7a-4908-adda-ab1a1a9484e9","idempotentReplay":false},"b":{"ok":true,"releaseId":"bad820c9-5b8a-4b9a-966f-1180d01e9495","idempotentReplay":true},"beforeConc":2,"afterConc":3}
+PASS concurrent-same-key-pointer-valid — {"active_venue_timeline_release_id":"bad820c9-5b8a-4b9a-966f-1180d01e9495"}
+PASS concurrent-portal-consistent — ["P1BG-P1BG6ADFEA35-doors","P1BG-P1BG6ADFEA35-toast"]
+PASS concurrent-diff-keys-consistent — {"da":{"ok":true,"releaseId":"07bee837-b2bf-4958-8707-9952eb80e440","entryCount":3,"releasedAt":"2026-10-27T00:03:08.899138+00:00","heldOutCount":0,"priorReleaseId":"bad820c9-5b8a-4b9a-966f-1180d01e9495","idempotentReplay":false},"db":{"ok":true,"releaseId":"7c68bdf2-8517-440a-96f3-15e4b92c07e5","entryCount":3,"releasedAt":"2026-10-27T00:03:08.917208+00:00","heldOutCount":0,"priorReleaseId":"07bee837-b2bf-4958-8707-9952eb80e440","idempotentReplay":false},"beforeDiff":3,"after
+PASS concurrent-diff-keys-pointer-complete — {"pointer":{"active_venue_timeline_release_id":"7c68bdf2-8517-440a-96f3-15e4b92c07e5"},"entry_count":3}
+PASS concurrent-edit-stale-rejected — {"ok":false,"error":"stale_preview","message":"The working timeline changed since you reviewed the preview. Review again before sharing."}
+PASS cross-venue-preview-denied — {"ok":false,"error":"event_not_found"}
+PASS cross-venue-confirm-denied — {"ok":false,"error":"event_not_found"}
+PASS cross-venue-fancy-unaffected — {"active_venue_timeline_release_id":"7c68bdf2-8517-440a-96f3-15e4b92c07e5"}
+PASS browser-prepare-control — prepare=1 panel=1 url=https://app.sandbox.hellotocheers.com/clients/95e9b67d-8624-474c-9690-28240f98457b body=OVERVIEW
+
+Dashboard
+
+YOUR RELATIONSHIPS
+
+Leads
+85
+Clients
+Vendors
+
+SCHEDULING
+
+Calendar
+Tours
+22
+
+COMMUNICATION
+
+Inbox
+Automations
+
+LIBRARY
+
+Templates
+Documents
+
+FINANCIALS
+
+Contracts
+13
+Payments
+14
+
+TO DO’S
+
+Task Center
+Requests
+
+YOUR VENUE
+
+Setup
+Settings
+Guidance
+Venue Guide
+Reports
+Help & Feedback
+Jen's Fancy Venue
+Search
+⌘K
+99+
+J
+jennifer@hellotocheers.com
+Delete
+PASS browser-prepare-release-persisted — before=5 after=6 pointerBefore=7c68bdf2-8517-440a-96f3-15e4b92c07e5 pointerAfter=f4da5ea5-265c-4f9d-b50e-5846e6f4433f
+PASS browser-prepare-portal-updated — ["P1BG-P1BG6ADFEA35-doors-PREP","P1BG-P1BG6ADFEA35-toast","P1BG-P1BG6ADFEA35-sparkler"]
+PASS browser-prepare-truthful-feedback — OVERVIEW
+
+Dashboard
+
+YOUR RELATIONSHIPS
+
+Leads
+85
+Clients
+Vendors
+
+SCHEDULING
+
+Calendar
+Tours
+22
+
+COMMUNICATION
+
+Inbox
+Automations
+
+LIBRARY
+
+Templates
+Documents
+
+FINANCIALS
+
+Contracts
+13
+Payments
+14
+
+TO DO’S
+
+Task Center
+Requests
+
+YOUR VENUE
+
+Setup
+Settings
+Guidance
+Venue Guide
+Reports
+Help & Feedba
+PASS browser-summary-not-always-ahead — rpcAhead=false shareBtn=1 line=Shared with the couple · Just now url=https://app.sandbox.hellotocheers.com/clients/95e9b67d-8624-474c-9690-28240f98457b#timeline
+PASS cleanup — fixtures=2
+
+34 pass / 0 fail (run P1BG6ADFEA35)

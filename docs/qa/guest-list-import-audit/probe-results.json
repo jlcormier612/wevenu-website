@@ -1,0 +1,27 @@
+{
+  "stamp": "mvhfp9p4",
+  "fancy": "a415ac52-cd74-42a6-8df7-7a8f6e71d080",
+  "persisted": {
+    "clientId": "163ce9e2-680a-4eb8-84cb-de1f9603529b",
+    "eventId": "7931a46f-db34-468b-b6a9-0b55909e6f44",
+    "guestId": "a09ba7b1-26d9-4a98-aaab-f483b730026a",
+    "guestHasEventIdColumn": false,
+    "guestClientIdMatches": true,
+    "visibilityToVenue": true,
+    "invitationStatus": "draft"
+  },
+  "crossVenue": {
+    "otherVenueId": "67d4ef6f-9536-4a32-b82b-fefa89f1a850",
+    "foreignEventId": null,
+    "note": "resolveEventForMigration always .eq venue_id — foreign eventId rejected"
+  },
+  "sideEffects": {
+    "clientInvitations": 0,
+    "automationEnrollments": null
+  },
+  "pastEventGate": {
+    "codePath": "commitOperationalGuest rejects when resolved.eventDate < today",
+    "evidence": "lib/migration/operational-guest.ts lines 156-161"
+  },
+  "cleanup": "deleted disposable client/event/guest"
+}

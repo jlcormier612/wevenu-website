@@ -31,9 +31,12 @@ const DEFAULTS: LuvSettings = {
 
 /** Canonical tone instructions reused by coordinator drafts and Luv Ask. */
 export const LUV_TONE_INSTRUCTION: Record<LuvSettings["preferredTone"], string> = {
-  warm: "Write in a warm, friendly, personal tone — like a real person at a boutique venue who genuinely cares.",
-  professional: "Write in a professional, polished, and respectful tone appropriate for a business context.",
-  formal: "Write in a formal, precise tone — best for corporate clients or high-profile events.",
+  warm:
+    "Write in a warm & friendly style: personable, approachable, and conversational — warm without becoming cheesy or overly enthusiastic.",
+  professional:
+    "Write in a professional style: polished, courteous, and confident — business-appropriate without sounding cold or robotic.",
+  formal:
+    "Write in a formal style: more structured, precise, and formal while remaining clear and respectful.",
 };
 
 export function normalizePreferredTone(value: string | null | undefined): LuvSettings["preferredTone"] {

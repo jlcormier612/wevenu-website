@@ -4,29 +4,32 @@ import Link from "next/link";
 import { ContractList } from "@/components/contracts/contract-list";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { Button } from "@/components/ui/button";
-import { getContracts } from "@/lib/contracts/service";
+import { getContractsForWorkflowList } from "@/lib/contracts/service";
 
 export const metadata: Metadata = { title: "Contracts" };
 
-export default async function ContractsPage() {
-  const contracts = await getContracts();
+type Props = { searchParams: Promise<{ filter?: string }> };
+
+export default async function ContractsPage({ searchParams }: Props) {
+  const { filter } = await searchParams;
+  const contracts = await getContractsForWorkflowList();
   return (
-    <div className="htc-hospitality-page space-y-6">
+    <div className="htc-hospitality-page space-y-4 sm:space-y-6" data-htc-phase8="contracts">
       <div className="htc-hospitality-heading htc-hospitality-intro-accent">
-      <PageHeader
-        title="Contracts"
-        description="Prepare, send, and track agreements with your clients."
-        actions={
-          <div className="flex items-center gap-2">
-            <Button variant="outline" render={<Link href="/contracts/templates" />}>
-              Templates
-            </Button>
-            <Button render={<Link href="/contracts/new" />}>+ New Contract</Button>
-          </div>
-        }
-      />
+        <PageHeader
+          title="Contracts"
+          description="Which contracts need something from me?"
+          actions={
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="outline" render={<Link href="/library/contracts" />}>
+                Templates
+              </Button>
+              <Button render={<Link href="/contracts/new" />}>+ New Contract</Button>
+            </div>
+          }
+        />
       </div>
-      <ContractList contracts={contracts} />
+      <ContractList contracts={contracts} initialFilter={filter} />
     </div>
   );
 }

@@ -1,0 +1,57 @@
+{
+  "expectedSha": "591b2493db49eba1d1806edfbdfd5c3dda66fd68",
+  "servingImage": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:591b2493db49eba1d1806edfbdfd5c3dda66fd68",
+  "counts": {
+    "pass": 9,
+    "fail": 0,
+    "total": 9
+  },
+  "checks": [
+    {
+      "name": "serving-sha",
+      "pass": true,
+      "detail": "expected=591b2493db49 ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:591b2493db49eba1d1806edfbdfd5c3dda66fd68"
+    },
+    {
+      "name": "row1-labels",
+      "pass": true,
+      "detail": "Planning Overview\nPlanning Tasks\nTimeline\nFloor Plans\nVendors"
+    },
+    {
+      "name": "row2-labels",
+      "pass": true,
+      "detail": "Documents\nPayments\n1\nConversation\nActivity\nInternal notes\n1\nLuv"
+    },
+    {
+      "name": "questionnaires-card",
+      "pass": true,
+      "detail": "present"
+    },
+    {
+      "name": "inventory-eo-card",
+      "pass": true,
+      "detail": "present"
+    },
+    {
+      "name": "card-opens-event-order",
+      "pass": true,
+      "detail": "https://app.sandbox.hellotocheers.com/clients/b4e2764b-be33-4579-89e3-0c8e4a6dd5be#event-order"
+    },
+    {
+      "name": "deep-link-event-order-choices",
+      "pass": true,
+      "detail": "https://app.sandbox.hellotocheers.com/clients/b4e2764b-be33-4579-89e3-0c8e4a6dd5be#event-order-choices"
+    },
+    {
+      "name": "deep-link-questionnaires",
+      "pass": true,
+      "detail": "https://app.sandbox.hellotocheers.com/clients/b4e2764b-be33-4579-89e3-0c8e4a6dd5be#questionnaires"
+    },
+    {
+      "name": "couple-nav-inventory-order-gated",
+      "pass": true,
+      "detail": "navHasInventory=true navHasOrder=true (shared fixtures may still show; passive-only hide is the P2-A contract)"
+    }
+  ],
+  "at": "2026-10-23T18:15:41.057Z"
+}

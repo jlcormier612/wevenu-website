@@ -15,7 +15,7 @@ import { toast } from "sonner";
 import { addTimelineStarterAgainAction } from "@/app/(app)/library/timeline-templates/actions";
 import { applyTimelineTemplateAction } from "@/app/(app)/timeline-templates/booking-actions";
 import {
-  deleteTemplateAction, duplicateTemplateAction, renameTemplateAction, setTemplateArchivedAction, setTemplateDefaultAction,
+  deleteTemplateAction, duplicateTemplateAction, setTemplateArchivedAction, setTemplateDefaultAction,
 } from "@/app/(app)/timeline-templates/actions";
 import { LIBRARY_LABELS, archiveToggleLabel } from "@/components/library/labels";
 import { LibraryArchivedSection } from "@/components/library/library-archived-section";
@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { TimelineTemplateDetailsSheet } from "@/components/timeline-templates/timeline-template-details-sheet";
 import { TimelineTemplateStarterPicker } from "@/components/timeline-templates/timeline-template-starter-picker";
 import type { VenueSpace } from "@/lib/availability/types";
 import { eventTypeLabel, formatRelative } from "@/lib/leads/constants";
@@ -136,7 +137,7 @@ function UseTimelineSheet({
               <p><span className="text-muted-foreground">Template</span> · {template.name}</p>
               <p><span className="text-muted-foreground">Event</span> · {selected.name}</p>
             </div>
-            <ul className="list-disc space-y-1.5 pl-5 text-sm text-muted-foreground">
+            <ul className="htc-surface-guidance-compact list-disc space-y-1.5 px-3 py-2.5 pl-8 text-sm text-muted-foreground">
               <li>Adds this template&apos;s activities to the event&apos;s Timeline.</li>
               <li>If the Timeline already has items, these are added alongside them.</li>
               <li>Does not send email, SMS, or portal notifications.</li>
@@ -203,25 +204,35 @@ function TemplateCard({
 }) {
   const eventType = template.eventType ? eventTypeLabel(template.eventType) : "Any event type";
 
+  const isStarter = Boolean(template.sourceMasterKey);
   const primaryActions = archivedView
     ? [
         { id: "preview", label: LIBRARY_LABELS.preview, href: `/library/timeline-templates/${template.id}/preview`, emphasis: "preview" as const },
         { id: "restore", label: LIBRARY_LABELS.restore, onClick: onArchiveToggle, emphasis: "edit" as const, disabled: busy },
       ]
-    : [
-        { id: "preview", label: LIBRARY_LABELS.preview, href: `/library/timeline-templates/${template.id}/preview`, emphasis: "preview" as const },
-        { id: "edit", label: LIBRARY_LABELS.edit, href: `/library/timeline-templates/${template.id}`, emphasis: "edit" as const },
-        { id: "use", label: LIBRARY_LABELS.useTimeline, onClick: onUse, emphasis: "use" as const },
-      ];
+    : isStarter
+      ? [
+          { id: "preview", label: LIBRARY_LABELS.preview, href: `/library/timeline-templates/${template.id}/preview`, emphasis: "preview" as const },
+          // Customize is the safe primary for starters — Duplicate was easy to miss in overflow.
+          { id: "customize", label: LIBRARY_LABELS.customize, onClick: onDuplicate, emphasis: "edit" as const, disabled: busy },
+          { id: "edit", label: LIBRARY_LABELS.edit, href: `/library/timeline-templates/${template.id}`, emphasis: "edit" as const },
+          { id: "use", label: LIBRARY_LABELS.useTimeline, onClick: onUse, emphasis: "use" as const },
+        ]
+      : [
+          { id: "preview", label: LIBRARY_LABELS.preview, href: `/library/timeline-templates/${template.id}/preview`, emphasis: "preview" as const },
+          { id: "edit", label: LIBRARY_LABELS.edit, href: `/library/timeline-templates/${template.id}`, emphasis: "edit" as const },
+          { id: "use", label: LIBRARY_LABELS.useTimeline, onClick: onUse, emphasis: "use" as const },
+        ];
 
   return (
     <LibraryAssetCard
       layout="row"
       title={template.name}
-      isStarter={Boolean(template.sourceMasterKey)}
+      isStarter={isStarter}
       isArchived={template.isArchived}
       badges={
         <>
+          {!isStarter && <Badge variant="outline" className="text-[10px]">{LIBRARY_LABELS.yourTemplate}</Badge>}
           <Badge variant="outline" className="text-[10px]">{eventType}</Badge>
           {template.spaceName && <Badge variant="accent" className="text-[10px]">{template.spaceName}</Badge>}
           {template.isDefault && <Badge variant="muted" className="text-[10px]">Default</Badge>}
@@ -231,8 +242,10 @@ function TemplateCard({
       primaryActions={primaryActions}
       overflowPending={busy}
       overflowItems={archivedView ? [] : [
-        { id: "duplicate", label: LIBRARY_LABELS.duplicate, onClick: onDuplicate },
-        { id: "rename", label: "Rename", onClick: onRename },
+        ...(isStarter
+          ? []
+          : [{ id: "duplicate", label: LIBRARY_LABELS.duplicate, onClick: onDuplicate }]),
+        { id: "rename", label: LIBRARY_LABELS.editDetails, onClick: onRename },
         ...(!template.isDefault ? [{ id: "default", label: "Set as Default", onClick: onSetDefault }] : []),
         { id: "archive", label: LIBRARY_LABELS.archive, onClick: onArchiveToggle, separatorBefore: true },
         {
@@ -257,15 +270,19 @@ function TemplateCard({
 
 export function TimelineTemplatesSection({
   initialTemplates, spaces, missingStarterKeys = [], events = [],
+  headerCreate = true,
 }: {
   initialTemplates: TimelineTemplateWithStats[];
   spaces: VenueSpace[];
   missingStarterKeys?: TimelineStarterMasterKey[];
   events?: TimelineEventOption[];
+  /** When false, PageHeader owns + New Template — only show StarterMenu here. */
+  headerCreate?: boolean;
 }) {
   const [templates, setTemplates] = React.useState(initialTemplates);
   const [busyId, setBusyId] = React.useState<string | null>(null);
   const [using, setUsing] = React.useState<TimelineTemplateWithStats | null>(null);
+  const [detailsTemplate, setDetailsTemplate] = React.useState<TimelineTemplateWithStats | null>(null);
   const [deleting, setDeleting] = React.useState<TimelineTemplateWithStats | null>(null);
   const [deletePending, setDeletePending] = React.useState(false);
   const router = useRouter();
@@ -281,18 +298,24 @@ export function TimelineTemplatesSection({
   }
 
   async function handleDuplicate(id: string, name: string) {
-    const result = await withBusy(id, () => duplicateTemplateAction(id, `${name} (Copy)`));
+    const suggested = name.replace(/\s*\(Copy\)\s*$/i, "").trim() || name;
+    const result = await withBusy(id, () =>
+      duplicateTemplateAction(id, `${suggested} — ${new Date().getFullYear()}`),
+    );
     if (result.ok) {
-      toast.success("Template duplicated.");
-      router.push(`/library/timeline-templates/${(result as { templateId?: string }).templateId}`);
+      const templateId = (result as { templateId?: string }).templateId;
+      toast.success(
+        templates.find((t) => t.id === id)?.sourceMasterKey
+          ? "Created your venue’s copy. The original starter is unchanged."
+          : "Template duplicated.",
+      );
+      if (templateId) router.push(`/library/timeline-templates/${templateId}`);
+      else router.refresh();
     }
   }
 
-  async function handleRename(id: string, currentName: string) {
-    const name = window.prompt("Rename template", currentName);
-    if (!name || !name.trim() || name.trim() === currentName) return;
-    const result = await withBusy(id, () => renameTemplateAction(id, name.trim()));
-    if (result.ok) setTemplates((p) => p.map((t) => (t.id === id ? { ...t, name: name.trim() } : t)));
+  function handleEditDetails(template: TimelineTemplateWithStats) {
+    setDetailsTemplate(template);
   }
 
   async function handleSetDefault(id: string, template: TimelineTemplateWithStats) {
@@ -339,10 +362,12 @@ export function TimelineTemplatesSection({
       <div className="rounded-sm border border-dashed border-border py-10 text-center space-y-3">
         <Sparkles className="h-8 w-8 text-muted-foreground mx-auto" />
         <p className="text-sm font-medium text-heading">No timeline templates yet</p>
-        <p className="text-xs text-muted-foreground">Reusable day-of schedules a venue builds once and applies to any booking.</p>
+        <p className="text-xs text-muted-foreground">Reusable day-of schedules you build once and apply to any booking.</p>
         <div className="flex justify-center gap-2 pt-1 flex-wrap">
           <StarterMenu missingKeys={missingStarterKeys} />
-          <TimelineTemplateStarterPicker existingTemplates={templates} spaces={spaces} />
+          {headerCreate ? (
+            <TimelineTemplateStarterPicker existingTemplates={templates} spaces={spaces} />
+          ) : null}
         </div>
       </div>
     );
@@ -352,7 +377,7 @@ export function TimelineTemplatesSection({
     return (
       <TemplateCard
         key={t.id} template={t} busy={busyId === t.id} archivedView={archivedView}
-        onRename={() => handleRename(t.id, t.name)}
+        onRename={() => handleEditDetails(t)}
         onDuplicate={() => handleDuplicate(t.id, t.name)}
         onSetDefault={() => handleSetDefault(t.id, t)}
         onArchiveToggle={() => handleArchiveToggle(t.id, t.isArchived)}
@@ -366,11 +391,10 @@ export function TimelineTemplatesSection({
     <div className="space-y-4">
       <div className="flex justify-end gap-2 flex-wrap">
         <StarterMenu missingKeys={missingStarterKeys} />
-        <TimelineTemplateStarterPicker existingTemplates={active} spaces={spaces} />
+        {headerCreate ? (
+          <TimelineTemplateStarterPicker existingTemplates={active} spaces={spaces} />
+        ) : null}
       </div>
-      <p className="text-xs text-muted-foreground">
-        Edit reusable timelines here. Applying a timeline to a booking happens on the event — never as a client send from the Library.
-      </p>
       {active.length === 0 ? (
         <p className="text-sm text-muted-foreground py-8 text-center">No active timeline templates.</p>
       ) : (
@@ -389,6 +413,16 @@ export function TimelineTemplatesSection({
         open={!!using}
         onOpenChange={(o) => { if (!o) setUsing(null); }}
       />
+      {detailsTemplate ? (
+        <TimelineTemplateDetailsSheet
+          template={detailsTemplate}
+          spaces={spaces}
+          open={!!detailsTemplate}
+          onOpenChange={(o) => {
+            if (!o) setDetailsTemplate(null);
+          }}
+        />
+      ) : null}
       <LibraryDeleteConfirmDialog
         open={!!deleting}
         itemName={deleting?.name ?? ""}

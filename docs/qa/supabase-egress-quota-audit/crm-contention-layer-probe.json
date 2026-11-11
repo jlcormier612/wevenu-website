@@ -1,0 +1,51 @@
+{
+  "at": "2026-10-11T20:32:58.605Z",
+  "profile": {
+    "label": "lock_profile",
+    "ms": 594,
+    "ok": true,
+    "result": {
+      "proname": "htc_crm_replace_store",
+      "has_try_lock": true,
+      "prosrc_chars": 5194,
+      "has_store_busy": true,
+      "has_lock_timeout": true,
+      "has_blocking_lock": false,
+      "has_statement_timeout": true
+    }
+  },
+  "load": {
+    "label": "load",
+    "ms": 415,
+    "ok": true,
+    "result": {
+      "version": 6786
+    }
+  },
+  "assertStale": {
+    "label": "assert_expected_stale",
+    "ms": 125108,
+    "ok": false,
+    "error": "upstream request timeout"
+  },
+  "assertMatch": {
+    "label": "assert_expected_match",
+    "ms": 1240,
+    "ok": true,
+    "result": {
+      "ok": true,
+      "matched": true,
+      "version": 6786
+    }
+  },
+  "replaceStale": {
+    "label": "replace_stale_aborted_12s",
+    "ms": 12004,
+    "ok": false,
+    "error": "client_abort_12000ms"
+  },
+  "interpretation": {
+    "tinyAssertFastConflict": false,
+    "replaceStillHangsPast12s": true
+  }
+}

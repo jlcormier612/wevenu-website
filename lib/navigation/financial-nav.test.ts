@@ -23,7 +23,7 @@ describe("financial nav role filter", () => {
 
   it("filters Financials section for staff but keeps Contracts", () => {
     const filtered = filterNavSectionsForRole(NAV_SECTIONS, "staff");
-    const financials = filtered.find((s) => s.label === "Financials");
+    const financials = filtered.find((s) => s.id === "financials");
     assert.ok(financials);
     assert.deepEqual(
       financials!.items.map((i) => i.href),
@@ -31,11 +31,38 @@ describe("financial nav role filter", () => {
     );
   });
 
-  it("does not change Financials for coordinator", () => {
-    const filtered = filterNavSectionsForRole(NAV_SECTIONS, "coordinator");
-    const financials = filtered.find((s) => s.label === "Financials");
+  it("keys the filter off the stable id, not the label", () => {
+    // Renaming the section must not disable the staff restriction.
+    const renamed = NAV_SECTIONS.map((s) =>
+      s.id === "financials" ? { ...s, label: "Money" } : s,
+    );
+    const financials = filterNavSectionsForRole(renamed, "staff")
+      .find((s) => s.id === "financials");
     assert.ok(financials);
-    assert.ok(financials!.items.some((i) => i.href === "/invoices"));
-    assert.ok(financials!.items.some((i) => i.href === "/payments"));
+    assert.deepEqual(financials!.items.map((i) => i.href), ["/contracts"]);
+  });
+
+  it("leaves every other section untouched", () => {
+    const filtered = filterNavSectionsForRole(NAV_SECTIONS, "staff");
+    assert.deepEqual(
+      filtered.filter((s) => s.id !== "financials").map((s) => s.id),
+      NAV_SECTIONS.filter((s) => s.id !== "financials").map((s) => s.id),
+    );
+  });
+
+  it("does not hide remaining Financials destinations for coordinator", () => {
+    const filtered = filterNavSectionsForRole(NAV_SECTIONS, "coordinator");
+    const financials = filtered.find((s) => s.id === "financials");
+    assert.ok(financials);
+    assert.deepEqual(
+      financials!.items.map((i) => i.href),
+      ["/contracts", "/payments"],
+    );
+    assert.equal(canAccessFinancialNavHref("coordinator", "/invoices"), true);
+  });
+
+  it("hides payments even when the href carries an attention query", () => {
+    assert.equal(canAccessFinancialNavHref("staff", "/payments?filter=attention"), false);
+    assert.equal(canAccessFinancialNavHref("staff", "/payments?filter=all"), false);
   });
 });

@@ -72,11 +72,37 @@ export async function getVendorActiveVenue(venueId?: string): Promise<VendorActi
   if (!vendorUser) return null;
   const supabase = await createClient();
 
-  const { data, error } = await supabase.rpc("get_vendor_active_venue", { p_venue_id: venueId ?? null });
+  // Preference cookie restores the lightweight switcher across refresh /
+  // navigation. RPC still rejects venues the vendor does not own.
+  const { readVendorActiveVenueCookie, clearVendorActiveVenueCookie } = await import(
+    "@/lib/vendor-partnerships/active-venue-cookie"
+  );
+  const preferred = venueId ?? (await readVendorActiveVenueCookie());
+
+  const { data, error } = await supabase.rpc("get_vendor_active_venue", {
+    p_venue_id: preferred ?? null,
+  });
   if (error) return null;
   const result = data as VendorActiveVenueContext | { error: string };
-  if (!result || "error" in result) return null;
+  if (!result || "error" in result) {
+    // Stale preference (relationship removed) — clear and fall back once.
+    if (preferred && !venueId) {
+      await clearVendorActiveVenueCookie();
+      const { data: fallback, error: fallbackError } = await supabase.rpc("get_vendor_active_venue", {
+        p_venue_id: null,
+      });
+      if (fallbackError) return null;
+      const fb = fallback as VendorActiveVenueContext | { error: string };
+      if (!fb || "error" in fb) return null;
+      return decorateActiveVenue(fb);
+    }
+    return null;
+  }
 
+  return decorateActiveVenue(result);
+}
+
+async function decorateActiveVenue(result: NonNullable<VendorActiveVenueContext>) {
   const admin = createAdminClient();
   const { data: venueRow } = await admin
     .from("venues")

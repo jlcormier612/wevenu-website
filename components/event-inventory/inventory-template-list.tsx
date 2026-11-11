@@ -3,33 +3,44 @@
 import * as React from "react";
 
 import { useRouter } from "next/navigation";
-import { Archive, ArchiveRestore, BookPlus, Loader2, Trash2 } from "lucide-react";
+import { Archive, ArchiveRestore, BookPlus, Copy, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import {
   addInventoryTemplateStarterAgainAction,
   createInventoryTemplateAction,
   deleteInventoryTemplateAction,
+  duplicateInventoryTemplateAction,
   ensureEventInventoryAction,
+  getInventoryTemplateDetailAction,
+  sendInventoryTemplateAction,
   setInventoryTemplateArchivedAction,
 } from "@/app/(app)/events/[id]/event-inventory-actions";
 import { LIBRARY_LABELS, archiveToggleLabel } from "@/components/library/labels";
+import { IncompleteTemplateWarningDialog } from "@/components/library/incomplete-template-warning-dialog";
 import { LibraryArchivedSection } from "@/components/library/library-archived-section";
 import { LibraryAssetCard } from "@/components/library/library-asset-card";
 import { LibraryDeleteConfirmDialog } from "@/components/library/library-delete-confirm-dialog";
+import {
+  TemplateApplyTargetPicker,
+  type TemplateApplyClientGroup,
+  type TemplateApplyEventTarget,
+} from "@/components/library/template-apply-target-picker";
 import { partitionArchived } from "@/components/library/partition-archived";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import type { InventoryTemplate } from "@/lib/event-inventory/types";
+import { isInventoryTemplateUnfinished } from "@/lib/library/template-readiness";
 import { INVENTORY_TEMPLATE_STARTER_MASTERS, type InventoryTemplateStarterKey } from "@/lib/inventory/starters";
 import { formatRelative } from "@/lib/leads/constants";
 
-function CreateTemplateSheet() {
+export function NewInventoryTemplateButton() {
   const [open, setOpen] = React.useState(false);
   const [name, setName] = React.useState("");
   const [description, setDescription] = React.useState("");
@@ -110,32 +121,69 @@ function StarterMenu({ missingKeys }: { missingKeys: InventoryTemplateStarterKey
 
 type UseStep = "pick" | "confirm";
 
-function UseInventoryTemplateSheet({
+function UseOrSendInventoryTemplateSheet({
   template,
-  events,
+  clientGroups,
   open,
   onOpenChange,
+  mode,
 }: {
   template: InventoryTemplate | null;
-  events: { id: string; name: string; eventDate: string }[];
+  clientGroups: TemplateApplyClientGroup[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  mode: "use" | "send";
 }) {
   const router = useRouter();
-  const [q, setQ] = React.useState("");
   const [step, setStep] = React.useState<UseStep>("pick");
-  const [selected, setSelected] = React.useState<{ id: string; name: string; eventDate: string } | null>(null);
+  const [selected, setSelected] = React.useState<TemplateApplyEventTarget | null>(null);
   const [pending, startTransition] = React.useTransition();
+  const [itemCount, setItemCount] = React.useState<number | null>(null);
+  const [warnOpen, setWarnOpen] = React.useState(false);
 
   React.useEffect(() => {
-    if (open) { setStep("pick"); setSelected(null); setQ(""); }
+    if (open) {
+      setStep("pick");
+      setSelected(null);
+      setItemCount(null);
+      setWarnOpen(false);
+    }
   }, [open]);
 
-  const filtered = events.filter((e) => !q.trim() || e.name.toLowerCase().includes(q.trim().toLowerCase()));
-
-  function apply() {
-    if (!selected || !template) return;
+  function pickEvent(ev: TemplateApplyEventTarget) {
+    if (!template) return;
+    setSelected(ev);
+    setStep("confirm");
     startTransition(async () => {
+      const detail = await getInventoryTemplateDetailAction(template.id);
+      setItemCount(detail?.items.length ?? 0);
+    });
+  }
+
+  function requestApply() {
+    if (!selected || !template || itemCount == null) return;
+    if (isInventoryTemplateUnfinished(itemCount)) {
+      setWarnOpen(true);
+      return;
+    }
+    runApply();
+  }
+
+  function runApply() {
+    if (!selected || !template) return;
+    setWarnOpen(false);
+    startTransition(async () => {
+      if (mode === "send") {
+        const result = await sendInventoryTemplateAction(selected.id, template.id);
+        if (result.ok) {
+          toast.success("Inventory set up and shared with the client.");
+          router.push(`/events/${selected.id}#inventory`);
+          onOpenChange(false);
+        } else {
+          toast.error(result.message ?? "Could not send inventory.");
+        }
+        return;
+      }
       const result = await ensureEventInventoryAction(selected.id, template.id);
       if (result.ok) {
         toast.success("Inventory set up on the event.");
@@ -147,75 +195,81 @@ function UseInventoryTemplateSheet({
     });
   }
 
+  const title = mode === "send" ? LIBRARY_LABELS.sendToClient : "Use Template";
+  const confirmCta = mode === "send"
+    ? (pending ? "Sending…" : "Send to client")
+    : (pending ? "Setting up…" : "Use Template");
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
         <SheetHeader className="mb-4">
-          <SheetTitle>Use Template</SheetTitle>
+          <SheetTitle>{title}</SheetTitle>
           {step === "pick" ? (
             <p className="text-sm text-muted-foreground">
-              Choose an event. This starts that event&apos;s inventory list from
-              &ldquo;{template?.name}&rdquo;.
+              {mode === "send"
+                ? <>Choose a client event to apply &ldquo;{template?.name}&rdquo; and share for portal review. You will land on that event&apos;s Inventory tab.</>
+                : <>Choose a client. This starts that booking&apos;s inventory draft from &ldquo;{template?.name}&rdquo; without sharing.</>}
             </p>
           ) : (
-            <p className="text-sm text-muted-foreground">Confirm before setting up inventory.</p>
+            <p className="text-sm text-muted-foreground">
+              {mode === "send"
+                ? "Applies the template if needed and shares the event inventory for the couple to review. Does not create an invoice."
+                : "Confirm before applying this list to the event. Does not share with the couple."}
+            </p>
           )}
         </SheetHeader>
 
         {step === "pick" ? (
-          <>
-            <Input placeholder="Search events…" value={q} onChange={(e) => setQ(e.target.value)} className="mb-3" />
-            {filtered.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-8 text-center">No events found.</p>
-            ) : (
-              <ul className="space-y-1">
-                {filtered.map((ev) => (
-                  <li key={ev.id}>
-                    <button
-                      type="button"
-                      disabled={pending}
-                      onClick={() => { setSelected(ev); setStep("confirm"); }}
-                      className="w-full rounded-md border border-border px-3 py-2.5 text-left hover:bg-muted/40 disabled:opacity-50"
-                    >
-                      <p className="text-sm font-medium text-heading">{ev.name}</p>
-                      <p className="text-xs text-muted-foreground">{ev.eventDate}</p>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </>
+          <TemplateApplyTargetPicker
+            groups={clientGroups}
+            disabled={pending}
+            onSelectEvent={pickEvent}
+          />
         ) : selected && template && (
           <div className="space-y-4">
             <div className="rounded-md border border-border bg-muted/30 p-4 space-y-2 text-sm">
               <p><span className="text-muted-foreground">Template</span> · {template.name}</p>
-              <p><span className="text-muted-foreground">Event</span> · {selected.name}</p>
+              <p><span className="text-muted-foreground">Client</span> · {selected.clientDisplayName}</p>
+              <p><span className="text-muted-foreground">Event</span> · {selected.name} · {selected.eventDate}</p>
             </div>
             <ul className="list-disc space-y-1.5 pl-5 text-sm text-muted-foreground">
               <li>Starts this event&apos;s inventory list from this template&apos;s items.</li>
               <li>If this event already has an inventory list, this opens it instead — it never overwrites existing work.</li>
-              <li>Does not send email, SMS, or portal notifications.</li>
+              {mode === "send" ? (
+                <li>Shares the list to the client portal for review (read-only). Billable items still use Event Order / Invoice.</li>
+              ) : (
+                <li>Does not send email, SMS, or portal notifications.</li>
+              )}
             </ul>
             <div className="flex justify-end gap-2 pt-2">
               <Button type="button" variant="outline" disabled={pending} onClick={() => setStep("pick")}>Back</Button>
-              <Button type="button" disabled={pending} onClick={apply}>
-                {pending ? <><Loader2 className="mr-1.5 h-4 w-4 animate-spin" />Setting up…</> : "Use Template"}
+              <Button type="button" disabled={pending || itemCount == null} onClick={requestApply}>
+                {pending ? <><Loader2 className="mr-1.5 h-4 w-4 animate-spin" />{confirmCta}</> : confirmCta}
               </Button>
             </div>
           </div>
         )}
+        <IncompleteTemplateWarningDialog
+          open={warnOpen}
+          pending={pending}
+          onGoBack={() => setWarnOpen(false)}
+          onApplyAnyway={runApply}
+        />
       </SheetContent>
     </Sheet>
   );
 }
 
 function TemplateCard({
-  template, archivedView, onUse, onDelete,
+  template, archivedView, onUse, onSend, onDelete, onDuplicate,
 }: {
   template: InventoryTemplate;
   archivedView?: boolean;
   onUse: () => void;
+  onSend: () => void;
   onDelete: () => void;
+  onDuplicate: () => void;
 }) {
   const [pending, startTransition] = React.useTransition();
   function toggleArchive() {
@@ -225,6 +279,7 @@ function TemplateCard({
       else toast.success(template.isArchived ? "Template restored." : "Template archived.");
     });
   }
+  const isStarter = Boolean(template.sourceMasterKey);
   return (
     <LibraryAssetCard
       layout="row"
@@ -232,8 +287,9 @@ function TemplateCard({
       description={template.description}
       meta={`Updated ${formatRelative(template.updatedAt)}`}
       href={archivedView ? undefined : `/library/inventory-templates/${template.id}`}
-      isStarter={Boolean(template.sourceMasterKey)}
+      isStarter={isStarter}
       isArchived={template.isArchived}
+      badges={!isStarter ? <Badge variant="outline" className="text-[10px]">{LIBRARY_LABELS.yourTemplate}</Badge> : undefined}
       primaryActions={archivedView
         ? [
             { id: "preview", label: LIBRARY_LABELS.preview, href: `/library/inventory-templates/${template.id}/preview`, emphasis: "preview" },
@@ -241,11 +297,29 @@ function TemplateCard({
           ]
         : [
             { id: "preview", label: LIBRARY_LABELS.preview, href: `/library/inventory-templates/${template.id}/preview`, emphasis: "preview" },
-            { id: "edit", label: LIBRARY_LABELS.edit, href: `/library/inventory-templates/${template.id}`, emphasis: "edit" },
+            ...(isStarter
+              ? [
+                  // Customize = venue-owned copy. Edit = same template detail editor as
+                  // venue-owned rows (not a separate "activities" workflow).
+                  { id: "customize", label: LIBRARY_LABELS.customize, onClick: onDuplicate, emphasis: "edit" as const },
+                  { id: "edit", label: LIBRARY_LABELS.edit, href: `/library/inventory-templates/${template.id}`, emphasis: "edit" as const },
+                ]
+              : [
+                  { id: "edit", label: LIBRARY_LABELS.edit, href: `/library/inventory-templates/${template.id}`, emphasis: "edit" as const },
+                ]),
             { id: "use", label: LIBRARY_LABELS.useTemplate, onClick: onUse, emphasis: "use" },
+            { id: "send", label: LIBRARY_LABELS.sendToClient, onClick: onSend, emphasis: "use" },
           ]}
       overflowPending={pending}
       overflowItems={archivedView ? [] : [
+        ...(!isStarter
+          ? [{
+              id: "duplicate",
+              label: LIBRARY_LABELS.duplicate,
+              onClick: onDuplicate,
+              icon: <Copy className="mr-2 h-3.5 w-3.5" />,
+            }]
+          : []),
         {
           id: "archive",
           label: archiveToggleLabel(template.isArchived),
@@ -270,14 +344,19 @@ function TemplateCard({
 export function InventoryTemplateList({
   templates,
   missingStarterKeys = [],
-  events = [],
+  clientGroups = [],
+  headerCreate = true,
 }: {
   templates: InventoryTemplate[];
   missingStarterKeys?: InventoryTemplateStarterKey[];
-  events?: { id: string; name: string; eventDate: string }[];
+  clientGroups?: TemplateApplyClientGroup[];
+  /** When false, PageHeader owns + New Template. */
+  headerCreate?: boolean;
 }) {
+  const router = useRouter();
   const { active, archived } = partitionArchived(templates, (t) => t.isArchived);
   const [using, setUsing] = React.useState<InventoryTemplate | null>(null);
+  const [sending, setSending] = React.useState<InventoryTemplate | null>(null);
   const [deleting, setDeleting] = React.useState<InventoryTemplate | null>(null);
   const [deletePending, setDeletePending] = React.useState(false);
 
@@ -299,7 +378,19 @@ export function InventoryTemplateList({
       <TemplateCard
         key={t.id} template={t} archivedView={archivedView}
         onUse={() => setUsing(t)}
+        onSend={() => setSending(t)}
         onDelete={() => setDeleting(t)}
+        onDuplicate={() => {
+          void (async () => {
+            const result = await duplicateInventoryTemplateAction(t.id, `${t.name} (Copy)`);
+            if (result.ok) {
+              toast.success("Template duplicated.");
+              router.push(`/library/inventory-templates/${result.templateId}`);
+            } else {
+              toast.error(result.message ?? result.errors?.name ?? "Could not duplicate.");
+            }
+          })();
+        }}
       />
     );
   }
@@ -308,11 +399,8 @@ export function InventoryTemplateList({
     <div className="space-y-4">
       <div className="flex justify-end gap-2 flex-wrap">
         <StarterMenu missingKeys={missingStarterKeys} />
-        <CreateTemplateSheet />
+        {headerCreate ? <NewInventoryTemplateButton /> : null}
       </div>
-      <p className="text-xs text-muted-foreground">
-        Templates are reusable packing lists. Applying one to an event happens on the booking — not as a client send from the Library.
-      </p>
       {templates.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-sm border border-dashed border-border bg-card/40 py-16 text-center">
           <p className="font-heading text-lg font-medium text-heading">No inventory templates yet</p>
@@ -334,11 +422,19 @@ export function InventoryTemplateList({
           </LibraryArchivedSection>
         </>
       )}
-      <UseInventoryTemplateSheet
+      <UseOrSendInventoryTemplateSheet
+        mode="use"
         template={using}
-        events={events}
+        clientGroups={clientGroups}
         open={!!using}
         onOpenChange={(o) => { if (!o) setUsing(null); }}
+      />
+      <UseOrSendInventoryTemplateSheet
+        mode="send"
+        template={sending}
+        clientGroups={clientGroups}
+        open={!!sending}
+        onOpenChange={(o) => { if (!o) setSending(null); }}
       />
       <LibraryDeleteConfirmDialog
         open={!!deleting}

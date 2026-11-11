@@ -39,17 +39,25 @@ export type PublicInquiryVenue = {
   logoUrl: string | null;
   primaryColor: string;
   secondaryColor: string;
+  accentColor: string;
+  neutralColor: string;
   email: string | null;
   phone: string | null;
   addressLine1: string | null;
   city: string | null;
   stateRegion: string | null;
+  /** IANA zone for tour confirmation display. */
+  timezone: string | null;
 };
 
 export type PublicInquiryFormConfig = {
   venue: PublicInquiryVenue;
   tourSchedulingEnabled: boolean;
   tourEmbedKey: string | null;
+  /** Eligible public protection only. Never Stripe account identifiers. */
+  tourProtectionRequired: boolean;
+  tourProtectionKind: "setup" | "fee" | null;
+  tourProtectionFeeCents: number | null;
   inquiryEventDateMode: InquiryEventDateMode;
   inquiryFormFields: InquiryFormFieldsConfig;
   /** Subset of PUBLIC_INQUIRY_EVENT_TYPES this venue accepts. Never empty. */
@@ -93,4 +101,5 @@ export type TourBookingConfirmation = {
   addressLine1: string | null;
   city: string | null;
   stateRegion: string | null;
+  timezone: string | null;
 };

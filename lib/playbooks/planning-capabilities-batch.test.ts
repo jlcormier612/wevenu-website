@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import {
+  DEFAULT_PLANNING_CAPABILITIES,
   capabilityRequiredByTask,
   filterTasksForVenueCapabilities,
   isPortalSectionEnabledByCapabilities,
@@ -19,18 +20,17 @@ import {
 } from "@/lib/portal/unified-tasks";
 import type { PortalTask } from "@/lib/portal/types";
 
-const ALL_ON: VenuePlanningCapabilities = {
-  timeline: true,
-  floorPlan: true,
-  seating: true,
-  vendors: true,
-};
+const ALL_ON: VenuePlanningCapabilities = { ...DEFAULT_PLANNING_CAPABILITIES };
 
 const ALL_OFF: VenuePlanningCapabilities = {
+  checklists: false,
   timeline: false,
   floorPlan: false,
   seating: false,
   vendors: false,
+  inventory: false,
+  eventOrder: false,
+  questionnaires: false,
 };
 
 describe("PLAN-02/03 planning capabilities", () => {
@@ -55,6 +55,14 @@ describe("PLAN-02/03 planning capabilities", () => {
       capabilityRequiredByTask({ autoCompleteTrigger: "timeline_created", actionType: null }),
       "timeline",
     );
+    assert.equal(
+      capabilityRequiredByTask({ autoCompleteTrigger: "questionnaire_submitted", actionType: null }),
+      "questionnaires",
+    );
+    assert.equal(
+      capabilityRequiredByTask({ autoCompleteTrigger: null, actionType: "questionnaire" }),
+      "questionnaires",
+    );
   });
 
   it("filters starter tasks when capabilities are disabled (does not make remaining tasks optional)", () => {
@@ -67,7 +75,7 @@ describe("PLAN-02/03 planning capabilities", () => {
       })),
       ALL_OFF,
     );
-    assert.ok(!clientFiltered.some((t) => /vendor|seating|timeline/i.test(t.title)));
+    assert.ok(!clientFiltered.some((t) => /vendor|seating|timeline|questionnaire/i.test(t.title)));
     const seatingRequired = STANDARD_CLIENT_PLANNING_TASKS.find((t) =>
       t.autoCompleteTrigger === "seating_submitted",
     );
@@ -85,7 +93,8 @@ describe("PLAN-02/03 planning capabilities", () => {
       { ...ALL_ON, floorPlan: false, timeline: false },
     );
     assert.ok(!venueFiltered.some((t) => /floor plan|timeline/i.test(t.title)));
-    assert.ok(venueFiltered.some((t) => t.title === "Send contract" && t.isRequired));
+    assert.ok(!venueFiltered.some((t) => t.title === "Send contract"));
+    assert.ok(venueFiltered.some((t) => t.title === "Confirm rentals" && t.isRequired));
   });
 
   it("hides incomplete couple tasks for disabled capabilities but keeps completed", () => {
@@ -111,6 +120,35 @@ describe("PLAN-02/03 planning capabilities", () => {
     assert.equal(isPortalSectionEnabledByCapabilities("seating", ALL_OFF), false);
     assert.equal(isPortalSectionEnabledByCapabilities("vendors", ALL_OFF), false);
     assert.equal(isPortalSectionEnabledByCapabilities("tasks", ALL_OFF), true);
+    // Commercial document workflows stay available regardless of planning toggles.
+    assert.equal(isPortalSectionEnabledByCapabilities("inventory", ALL_OFF), true);
+    assert.equal(isPortalSectionEnabledByCapabilities("event-order", ALL_OFF), true);
+  });
+
+  it("Timeline OFF → Home must not render Timeline CTA / TimelineCard", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { resolve } = await import("node:path");
+    const shell = readFileSync(resolve("components/portal/portal-shell.tsx"), "utf8");
+
+    // Capability helper is the single gate for portal Timeline surfaces.
+    assert.equal(isPortalSectionEnabledByCapabilities("timeline", { ...ALL_ON, timeline: false }), false);
+    assert.equal(isPortalSectionEnabledByCapabilities("timeline", ALL_ON), true);
+
+    // Overview derives timelineEnabled from the shared capability helper.
+    assert.match(
+      shell,
+      /const timelineEnabled = isPortalSectionEnabledByCapabilities\(\s*"timeline",\s*planningCapabilities,\s*\)/,
+    );
+    // Hero "View Timeline" is wrapped in timelineEnabled (not hard-coded).
+    assert.match(shell, /\{timelineEnabled && \(/);
+    assert.match(shell, /onNavigate\("timeline"\)[\s\S]{0,200}View Timeline/);
+
+    // WorkingWithYourVenue TimelineCard is capability-gated (🕒 Timeline + View Timeline).
+    assert.match(
+      shell,
+      /\{isPortalSectionEnabledByCapabilities\("timeline", planningCapabilities\) && \(\s*<TimelineCard/,
+    );
+    assert.match(shell, /🕒 Timeline/);
   });
 
   it("omits disabled capabilities from Event Readiness sections", () => {
@@ -219,6 +257,42 @@ describe("PLAN-04 couple Tasks milestone grouping", () => {
     assert.ok(!list.some((i) => i.title.includes("seating")));
     assert.ok(!list.some((i) => i.kind === "timeline"));
     assert.ok(list.some((i) => i.title.includes("Guest count")));
+  });
+});
+
+describe("Planning capabilities Settings IA", () => {
+  it("lives in Settings → Leads & Booking, not Planning Templates", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { resolve } = await import("node:path");
+    const playbooks = readFileSync(resolve("app/(app)/library/playbooks/page.tsx"), "utf8");
+    assert.doesNotMatch(playbooks, /PlanningCapabilitiesSection/);
+    assert.doesNotMatch(playbooks, /Planning capabilities/);
+    assert.match(playbooks, /Create reusable planning checklists once/);
+    assert.match(playbooks, /Settings → Leads/);
+
+    const leads = readFileSync(resolve("app/(app)/settings/leads/page.tsx"), "utf8");
+    assert.match(leads, /PlanningCapabilitiesSection/);
+    assert.match(leads, /id="planning"/);
+    assert.match(leads, /Planning tools/);
+
+    const section = readFileSync(resolve("components/settings/planning-capabilities-section.tsx"), "utf8");
+    assert.match(section, /Choose what Hello to Cheers includes in your standard event setup/);
+    assert.match(section, /Save planning settings/);
+    assert.doesNotMatch(section, /planning surfaces/);
+
+    const caps = readFileSync(resolve("lib/playbooks/capabilities.ts"), "utf8");
+    assert.match(caps, /Vendor Network/);
+    assert.match(caps, /Planning checklists/);
+    assert.match(caps, /couple.s portal/);
+    assert.match(caps, /separate from Floor plans/);
+  });
+
+  it("preferred-vendors navigation respects vendors capability", async () => {
+    const { shouldOfferPreferredVendorsNavigation } = await import(
+      "@/lib/portal/preferred-vendors-surfaces"
+    );
+    assert.equal(shouldOfferPreferredVendorsNavigation({ vendors: true }), true);
+    assert.equal(shouldOfferPreferredVendorsNavigation({ vendors: false }), false);
   });
 });
 

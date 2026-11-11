@@ -18,7 +18,8 @@
 # an unverified source — the aptible/supercronic project does not publish
 # a separate checksums file for this release.
 
-FROM alpine:3.20
+# Official Alpine via AWS Public ECR — same library tag, avoids Hub 429s.
+FROM public.ecr.aws/docker/library/alpine:3.20
 
 RUN apk add --no-cache curl ca-certificates \
     && curl -fsSL -o /usr/local/bin/supercronic \

@@ -1,0 +1,142 @@
+PASS Serving expected SHA — image=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:c1b210d3fb4155d6dc68b1853f1581d244e03cba expected=c1b210d3fb41
+PASS DB: EO shared/finalized without inventing invoice-from-share rule — eo=624eceef-5096-4288-b104-62daa3a82d11 status=finalized shared_at=2026-10-23T00:26:09.17+00:00 linkedInvoices=1
+PASS DB: EO-linked invoice is a distinct persisted record when present — [{"id":"4489c869-38fd-4ae1-8cad-cc7043d1d527","status":"draft","number":"INV-2026-4489C8"}]
+PASS DB freeze: sent EO invoice has frozen lines + revision marker — {"status":"sent","freezeRev":1,"eoRev":1,"frozen":1}
+PASS C3/C4 strip still present — strip
+PASS Checklist invoiced step present — complete
+PASS Invoice chip matches persisted EO-linked status — chip=Invoice
+· Draft db=draft
+PASS Checklist invoiced complete when EO-linked invoice exists — state=complete
+PASS EO invoice handoff block present — Amount due lives on
+Event & Inventory Selections INV-2026-4489C8
+Draft
+Open Invoice
+Open Payment Plan
+
+Event Order is not an invoice. The payment plan total always follows this invoice.
+PASS Create vs linked: Open Invoice shown (no second Create when linked) — Amount due lives on
+Event & Inventory Selections INV-2026-4489C8
+Draft
+Open Invoice
+Open Payment Plan
+
+Event Order is not an invoice. The payment plan total always follows this invoice.
+PASS Payment plan attaches to invoice (Create or Open plan control) — Amount due lives on
+Event & Inventory Selections INV-2026-4489C8
+Draft
+Open Invoice
+Open Payment Plan
+
+Event Order is not an invoice. The payment plan total always follows this invoice.
+PASS Invoice detail opens for EO-linked draft — OVERVIEW
+
+Dashboard
+
+YOUR RELATIONSHIPS
+
+Leads
+28
+Clients
+Vendors
+
+SCHEDULING
+
+Calendar
+Tours
+4
+
+COMMUNICATION
+
+Inbox
+Automations
+
+LIBRARY
+
+Templates
+Documents
+
+FINANCIALS
+
+Contracts
+13
+Payments
+13
+
+T
+PASS Invoice detail has no accidental auto-send in this session — read-only open
+PASS Payment plan builder requires invoiceId (Invoice → Plan) — https://app.sandbox.hellotocheers.com/payments/new?invoiceId=4489c869-38fd-4ae1-8cad-cc7043d1d527
+PASS Builder does not claim Event Order is the payment plan source — OVERVIEW
+
+Dashboard
+
+YOUR RELATIONSHIPS
+
+Leads
+28
+Clients
+Vendors
+
+SCHEDULING
+
+Calendar
+Tours
+4
+
+COMMUNICATION
+
+Inbox
+Automations
+
+LIBRARY
+
+Templates
+Documents
+
+FINANCIALS
+
+Contracts
+13
+Payments
+13
+
+T
+PASS Sent EO invoice page loads (freeze already applied) — OVERVIEW
+
+Dashboard
+
+YOUR RELATIONSHIPS
+
+Leads
+28
+Clients
+Vendors
+
+SCHEDULING
+
+Calendar
+Tours
+4
+
+COMMUNICATION
+
+Inbox
+Automations
+
+LIBRARY
+
+Templates
+Documents
+
+FINANCIALS
+
+Contracts
+13
+Payments
+13
+
+T
+PASS Sent invoice shows frozen line description from DB — desc=Plated dinner service
+PASS Strip has no Create Invoice / Send invoice controls — navigation only
+PASS Finance checklist visible at 390 — 390
+PASS No duplicate invoices/schedules/frozen lines from C5 navigation — inv 1->1 sched 1->1 frozen 1->1
+ALL PASS 20/20

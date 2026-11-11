@@ -1,0 +1,37 @@
+{
+  "eo": {
+    "id": "624eceef-5096-4288-b104-62daa3a82d11",
+    "revision": 23,
+    "status": "finalized"
+  },
+  "dinners": [
+    {
+      "id": "b6a5bac5-071a-41cb-b085-ae29d158fafe",
+      "description": "Plated Dinner",
+      "amount": 85,
+      "unit_price": 85,
+      "is_included": false,
+      "provenance": "custom"
+    }
+  ],
+  "invoice": {
+    "status": "sent",
+    "total": 2189.81,
+    "subtotal": 2061,
+    "tax": 128.81,
+    "freezeRev": 23
+  },
+  "schedule": {
+    "id": "5ddb68ba-d6f6-4b61-956a-0873b04f1cc1",
+    "total_amount": 2189.81
+  },
+  "expectedPayable": {
+    "deliverySubtotal": 2381,
+    "billableSubtotal": 2061,
+    "includedOrNonBillable": 320,
+    "invoiceAdjustmentsSubtotal": 0,
+    "discountAmount": 0,
+    "taxAmount": 128.81,
+    "payableTotal": 2189.81
+  }
+}

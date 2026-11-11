@@ -8,6 +8,7 @@
  * See lib/communication/mode.ts for COMMUNICATION_MODE.
  */
 
+import { translateSmsFailure } from "@/lib/communication/failure-messages";
 import { getCommunicationMode, sandboxPhoneRecipient } from "@/lib/communication/mode";
 import { resolveVenueTwilioForSend } from "@/lib/sms/venue-twilio-resolve";
 import { twilioRestBasicAuth } from "@/lib/sms/venue-twilio-secrets";
@@ -27,6 +28,13 @@ export type SmsPayload = {
    * Never set this for lead/client/vendor outbound SMS/MMS.
    */
   skipPermissionCheck?: boolean;
+  /**
+   * Ordinary outbound (default) requires opted_in.
+   * sms_consent_request may send while not_opted_in so the venue can ask
+   * the contact to reply START — still blocked when opted_out / provider_blocked.
+   * Does not grant permission by itself.
+   */
+  purpose?: "outbound" | "sms_consent_request";
 };
 
 export type SmsSendResult =
@@ -85,6 +93,8 @@ export async function sendSms(payload: SmsPayload): Promise<SmsSendResult> {
 
   // Hard stop for opted_out / provider_blocked at the Twilio boundary so no
   // automation, retry, or API path can bypass Inbox/scheduled checks.
+  // Ordinary SMS still requires opted_in; sms_consent_request is the only
+  // not_opted_in exception (solicitation that still requires START).
   if (!payload.skipPermissionCheck) {
     const { createAdminClient } = await import("@/integrations/supabase/admin");
     const { assertChannelAllowed } = await import("@/lib/communication/permissions");
@@ -92,6 +102,7 @@ export async function sendSms(payload: SmsPayload): Promise<SmsSendResult> {
       venueId: payload.venueId,
       channel: "sms",
       rawAddress: payload.to,
+      purpose: payload.purpose === "sms_consent_request" ? "sms_consent_request" : "outbound",
     });
     if (!allowed.ok) return { ok: false, message: allowed.message };
   }
@@ -135,9 +146,25 @@ export async function sendSms(payload: SmsPayload): Promise<SmsSendResult> {
     },
   );
 
-  const data = await res.json().catch(() => null) as { sid?: string; message?: string } | null;
+  const data = await res.json().catch(() => null) as { sid?: string; message?: string; code?: number } | null;
   if (!res.ok) {
-    return { ok: false, message: data?.message ?? `Text send failed (${res.status}).` };
+    const providerMessage = data?.message ?? `Text send failed (${res.status}).`;
+    console.error("SMS provider send failed", {
+      httpStatus: res.status,
+      providerCode: data?.code ?? null,
+      providerMessage,
+      accountSid: account.twilioAccountSid,
+      venueId: payload.venueId,
+    });
+    const translated = translateSmsFailure(`${data?.code ?? ""} ${providerMessage}`);
+    const genericDelivery = "Your message couldn't be delivered.";
+    return {
+      ok: false,
+      message:
+        translated === genericDelivery
+          ? "Your message couldn’t be sent. Please try again."
+          : translated,
+    };
   }
   return {
     ok: true,

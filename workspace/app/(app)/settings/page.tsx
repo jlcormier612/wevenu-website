@@ -48,7 +48,7 @@ export default async function SettingsPage() {
       <Panel title="Signed in">
         <p className="mb-4 text-sm leading-relaxed ws-muted">
           You are signed in as{" "}
-          <span className="font-medium text-[var(--forest-sage)]">
+          <span className="font-medium text-foreground">
             {sessionUser?.name ?? "—"}
           </span>
           {sessionUser ? ` (${ROLE_LABELS[sessionUser.role]})` : null}.
@@ -56,7 +56,7 @@ export default async function SettingsPage() {
             <>
               {" "}
               Currently impersonating{" "}
-              <span className="font-medium text-[var(--forest-sage)]">{actor.name}</span> —
+              <span className="font-medium text-foreground">{actor.name}</span> —
               nav and permissions follow their role.
             </>
           ) : (
@@ -167,11 +167,11 @@ export default async function SettingsPage() {
           File-based sessions under{" "}
           <code className="rounded-sm bg-[var(--warm-gray)] px-1.5 py-0.5">workspace/.data/</code>
           . Passwords are scrypt-hashed — not production SSO. Demo login:{" "}
-          <code className="rounded-sm bg-[var(--warm-gray)] px-1.5 py-0.5 text-[var(--forest-sage)]">
+          <code className="rounded-sm bg-[var(--warm-gray)] px-1.5 py-0.5 text-foreground">
             {DEMO_LOGIN.email}
           </code>{" "}
           /{" "}
-          <code className="rounded-sm bg-[var(--warm-gray)] px-1.5 py-0.5 text-[var(--forest-sage)]">
+          <code className="rounded-sm bg-[var(--warm-gray)] px-1.5 py-0.5 text-foreground">
             {DEMO_LOGIN.password}
           </code>
           . Owner/Admin impersonate from a teammate&apos;s profile — there is no global View

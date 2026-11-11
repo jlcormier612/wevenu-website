@@ -1,0 +1,110 @@
+{
+  "runId": "OP2555",
+  "expectedSha": "c5bdafc029ca9ee0a3ad356e96131e30bd1b96bd",
+  "servingImage": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:c5bdafc029ca9ee0a3ad356e96131e30bd1b96bd",
+  "dropdownOptions": 13,
+  "counts": {
+    "PASS": 19,
+    "FAIL": 0,
+    "BLOCKED": 0,
+    "total": 19
+  },
+  "checks": [
+    {
+      "name": "Serving expected SHA",
+      "outcome": "PASS",
+      "detail": "image=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:c5bdafc029ca9ee0a3ad356e96131e30bd1b96bd expected=c5bdafc029ca"
+    },
+    {
+      "name": "Fixture tasks created",
+      "outcome": "PASS",
+      "detail": "count=13"
+    },
+    {
+      "name": "Library playbook editor reachable",
+      "outcome": "PASS",
+      "detail": "https://app.sandbox.hellotocheers.com/library/playbooks/b2808150-67cb-4900-9cf2-eb5c10c3123e/preview"
+    },
+    {
+      "name": "RPC get_portal_tasks returns fixtures",
+      "outcome": "PASS",
+      "detail": "count=13 err= run=OP2555 total=24 sample=[{\"id\":\"24fdd60f-fc66-476e-9948-52553250b0c5\",\"links\":[],\"title\":\"QAOPENS-OP2555-none\",\"status\":\"pending\",\"canUndo\":false,\"dueDate\":\"2060-07-17\",\"category\":\"planning\",\"ownerType\":\"couple\",\"actionType\":null,\"daysOffset\":-14,\"isRequired\":false,\"visibility\":\"client_owned\",\"actionLabel\":null,\"canComplete\":true,\"completedAt\":null,\"description\":\"checklist only\",\"milestoneKind\":null,\"milestoneName\":\"QA Opens\",\"autoCompleteTrigger\":null},{\"id\":\"bb7bb450-be45-4ebe-aa93-ae1d5483148d\",\"links\":[],\"title\":\"QAOPENS-OP2555-vendor_library\",\"status\":\"pending\",\"canUndo\":false,\"dueDate\":\"2060-07-17\",\"category\":\"planning\",\"ownerType\":\"couple\",\"actionType\":\"vendor_library\",\"daysOffset\":-14,\"isRequired\":false,\"visibility\":\"client_owned\",\"actionLabel\":\"QA-BTN-vendor_library\",\"canComplete\":true,\"completedAt\":null,\"description\":\"opens vendor_library\",\"milestoneKind\":null,\"milestoneName\":\"QA Opens\",\"autoCompleteTrigger\":null}]"
+    },
+    {
+      "name": "Portal checklist-only task visible",
+      "outcome": "PASS",
+      "detail": "count=1"
+    },
+    {
+      "name": "Portal click vendor_library",
+      "outcome": "PASS",
+      "detail": "hash=vendors expected=vendors cueOk=true"
+    },
+    {
+      "name": "Portal click payments",
+      "outcome": "PASS",
+      "detail": "hash=payments expected=payments cueOk=true"
+    },
+    {
+      "name": "Portal click documents",
+      "outcome": "PASS",
+      "detail": "hash=documents expected=documents cueOk=true"
+    },
+    {
+      "name": "Portal click guest_list",
+      "outcome": "PASS",
+      "detail": "hash=guests expected=guests cueOk=true"
+    },
+    {
+      "name": "Portal click questionnaire",
+      "outcome": "PASS",
+      "detail": "hash=questionnaire/form expected=questionnaire cueOk=true"
+    },
+    {
+      "name": "Portal click contract",
+      "outcome": "PASS",
+      "detail": "hash=documents/sign expected=documents cueOk=true"
+    },
+    {
+      "name": "Portal click timeline",
+      "outcome": "PASS",
+      "detail": "hash=timeline expected=timeline cueOk=true"
+    },
+    {
+      "name": "Portal click floor_plan",
+      "outcome": "PASS",
+      "detail": "hash=floor_plans expected=floor_plans cueOk=true"
+    },
+    {
+      "name": "Portal click event_order",
+      "outcome": "PASS",
+      "detail": "hash=event-order expected=event-order cueOk=true"
+    },
+    {
+      "name": "Portal click client_choices",
+      "outcome": "PASS",
+      "detail": "hash=choices/form expected=choices cueOk=true"
+    },
+    {
+      "name": "Portal click event_details",
+      "outcome": "PASS",
+      "detail": "hash=overview expected=overview cueOk=true"
+    },
+    {
+      "name": "Portal click wedding_website",
+      "outcome": "PASS",
+      "detail": "hash=website expected=website cueOk=true"
+    },
+    {
+      "name": "Venue staff Opens destination (questionnaire href)",
+      "outcome": "PASS",
+      "detail": "href=/events/ebf74f77-2944-474a-b735-48762ecb6842#questionnaires url=https://app.sandbox.hellotocheers.com/clients/b4e2764b-be33-4579-89e3-0c8e4a6dd5be#questionnaires"
+    },
+    {
+      "name": "Cleanup fixture tasks",
+      "outcome": "PASS",
+      "detail": "deleted"
+    }
+  ],
+  "at": "2026-10-23T16:23:57.534Z"
+}

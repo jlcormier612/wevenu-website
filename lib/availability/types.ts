@@ -8,6 +8,8 @@ export type VenueSpace = {
   name: string;
   description: string | null;
   capacity: number | null;
+  /** Venue-configured uses this physical space may serve. Empty = unrestricted. */
+  permittedUses: string[];
   isActive: boolean;
   sortOrder: number;
   createdAt: string;
@@ -30,19 +32,36 @@ export type DateHold = {
   id: string;
   venueId: string;
   leadId: string | null;
+  /** Legacy single-space mirror: set when exactly one space; null for whole venue or multi. */
   spaceId: string | null;
+  /** Spaces protected by this hold. Empty = whole venue. */
+  spaceIds: string[];
   title: string;
+  /** Inclusive start date (YYYY-MM-DD). */
   holdDate: string;
+  /**
+   * Inclusive end date (YYYY-MM-DD). Equals holdDate for single-day / legacy holds.
+   * All-day Fri–Sun: holdDate=Friday, endDate=Sunday.
+   */
+  endDate: string;
+  /** Null start+end = all-day / date-range reservation for each day in [holdDate, endDate]. */
   startTime: string | null;
   endTime: string | null;
   status: HoldStatus;
   expiresAt: string | null;
   notes: string | null;
+  /**
+   * Optional explicit link to lead_event_space_preferences (e.g. rehearsal dinner).
+   * Holds never invent contract components by themselves.
+   */
+  preferenceId: string | null;
   createdAt: string;
   updatedAt: string;
   // Embedded
   leadName: string | null;
   spaceName: string | null;
+  /** Names for spaceIds (calendar / hold card). */
+  spaceNames: string[];
 };
 
 export type BlockReason =
@@ -161,6 +180,8 @@ export type SpaceInput = {
   description: string;
   capacity: string;
   isActive: boolean;
+  /** Venue-configured permitted uses (keys). Empty = unrestricted. */
+  permittedUses?: string[];
 };
 
 export type CapacityRulesInput = {
@@ -171,13 +192,37 @@ export type CapacityRulesInput = {
 
 export type DateHoldInput = {
   leadId: string;
+  /**
+   * Spaces to protect. Empty / omitted = whole venue.
+   * Legacy `spaceId` is accepted when spaceIds is empty.
+   */
+  spaceIds?: string[];
+  /** @deprecated Prefer spaceIds. Single-space compat. */
   spaceId: string;
   title: string;
   holdDate: string;
+  /** Inclusive end; defaults to holdDate when omitted. */
+  endDate?: string;
   startTime: string;
   endTime: string;
   expiresAt: string;
   notes: string;
+  /** Optional explicit link to a lead event-space preference component. */
+  preferenceId?: string | null;
+};
+
+/** In-place edit. Omitting title / expiresAt preserves the stored values. Never writes notes. */
+export type DateHoldUpdateInput = {
+  leadId: string;
+  spaceIds?: string[];
+  spaceId: string;
+  holdDate: string;
+  endDate?: string;
+  startTime: string;
+  endTime: string;
+  title?: string;
+  expiresAt?: string;
+  preferenceId?: string | null;
 };
 
 export type CalendarBlockInput = {

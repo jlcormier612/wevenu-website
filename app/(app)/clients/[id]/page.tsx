@@ -1,30 +1,56 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 import { DeleteClientRecordButton } from "@/components/clients/delete-client-record-button";
+import { PreparingMessagesDeepLink } from "@/components/clients/preparing-messages-deep-link";
+import { BookingJourneyPanel } from "@/components/booking-journey/booking-journey-panel";
+import { EventTaskList } from "@/components/playbooks/event-task-list";
+import { TimelineView } from "@/components/events/timeline/timeline-view";
+import { FloorPlanWorkspace } from "@/components/events/floor-plan-workspace";
+import { EventOrderPanel } from "@/components/event-orders/event-order-panel";
+import { EventVendorsSection } from "@/components/events/vendors/event-vendors-section";
+import { VenueVendorDirectorySummary } from "@/components/events/vendors/venue-vendor-directory-summary";
+import { getClientTasks } from "@/lib/playbooks/service";
+import { getClientTimelineEntries, getClientSections } from "@/lib/timeline/service";
+import { getFloorPlansForClient, getFloorPlanSeatCountsForEvent } from "@/lib/floor-plans/service";
+import { getEventOrderForClient } from "@/lib/event-orders/service";
+import { getClientVendorAssignments } from "@/lib/vendors/service";
+import { DocumentWorkspace } from "@/components/document-workspace/document-workspace";
 import { EventDetail } from "@/components/events/event-detail";
+import { buildInternalNotesRollup } from "@/lib/notes/internal-notes-rollup";
 import type { LinkableConversationMessage } from "@/components/playbooks/event-task-list";
 import { PageHeader } from "@/components/shell/module-placeholder";
-import { Button } from "@/components/ui/button";
-import { getSpaces } from "@/lib/availability/service";
+import { getHolds, getSpaces } from "@/lib/availability/service";
+import { workspaceDateText } from "@/lib/availability/workspace-date-language";
 import { clientDisplayName } from "@/lib/clients/constants";
 import { getClient } from "@/lib/clients/service";
 import { getConversation, getConversationIdForRelationship } from "@/lib/conversations/service";
 import type { ConversationMessage } from "@/lib/conversations/types";
-import { getContracts, getTemplates as getContractTemplates } from "@/lib/contracts/service";
+import {
+  getContractsForClientOrEvent,
+  getTemplatesMetadata as getContractTemplates,
+} from "@/lib/contracts/service";
 import { getDocuments, getEventDocumentsFromVendors } from "@/lib/documents/service";
-import { getPinnedDocumentKeys, getRecentInteractionMap, getVenueWorkspaceDocuments } from "@/lib/document-workspace/service";
+import { getPinnedDocumentKeys, getVenueWorkspaceDocuments } from "@/lib/document-workspace/service";
 import { getEvent } from "@/lib/events/service";
+import { getEventSpaceAssignments } from "@/lib/events/space-assignments";
+import { formatEventSpaceAssignmentsDisplay } from "@/lib/venue-spaces/uses";
 import { getQuestionnaires, getQuestionnaireActivities } from "@/lib/events/questionnaire";
+import { ensureQuestionnaireFamilyForCurrentVenue } from "@/lib/questionnaire-family/provision";
 import { getTemplates as getQuestionnaireTemplates } from "@/lib/questionnaire-templates/service";
 import { getTemplates as getFloorPlanTemplates } from "@/lib/floor-plan-templates/service";
 import { getEventFloorPlanOffers } from "@/lib/floor-plan-offers/service";
 import { getGuestReadinessSummary } from "@/lib/guests/service";
 import { getUsageForEvent } from "@/lib/inventory/service";
-import { getInvoices } from "@/lib/invoices/service";
+import { getInvoiceLineMarkers, getInvoicesForClientOrEvent } from "@/lib/invoices/service";
 import {
-  getEventPlaybookApplications, getEventTaskContextLinksForEvent, getEventTaskReadinessByKind,
+  frozenEventOrderLineIds,
+  packageBookingCommitmentInvoiceIds,
+} from "@/lib/invoices/booking-commitment";
+import { buildSelectionsFinancialImpact } from "@/lib/client-choices/selections-billing";
+import { getPaymentSchedules } from "@/lib/payments/service";
+import {
+  getEventPlaybookApplications, getClientPlaybookApplications, getEventTaskContextLinksForEvent, getEventTaskReadinessByKind,
   getEventTasks, getTaskContactsByStaffIds, getTemplatesForLibrary,
 } from "@/lib/playbooks/service";
 import { getPortalSessions } from "@/lib/portal/service";
@@ -37,22 +63,37 @@ import {
   getEntryAttachmentsForEvent, getEntryLinksForEvent, getRelatedLinksForEvent, getSections, getTimelineEntries,
 } from "@/lib/timeline/service";
 import { getTemplatesForLibrary as getTimelineTemplatesForLibrary } from "@/lib/timeline-templates/service";
+import { LEAD_SOURCES } from "@/lib/leads/constants";
 import { createClient } from "@/integrations/supabase/server";
 import { getCurrentUserRole, getCurrentVenue } from "@/lib/venue/service";
 import {
   canDeleteFloorPlanRows,
   canEditFloorPlans,
 } from "@/lib/floor-plans/authorize";
-import { getEventRecommendations } from "@/lib/vendor-recommendations/service";
+import { getOrEnsureEventRecommendations } from "@/lib/vendor-recommendations/service";
 import { getVendors } from "@/lib/vendors/service";
 import { getEventOrder } from "@/lib/event-orders/service";
 import { getTemplates as getEventOrderTemplates } from "@/lib/event-order-templates/service";
+import {
+  getClientChoices,
+  listClientChoicesForEvent,
+} from "@/lib/client-choices/service";
 import { listActiveOfferings } from "@/lib/offerings/service";
 import { getPackages, getPackagesWithItems } from "@/lib/packages/service";
+import { bookingCelebrationPending } from "@/lib/booking-journey/booking-celebration";
 import { loadBookingJourneyForClient } from "@/lib/booking-journey/load";
 import { getActiveSelectedPackageForClient } from "@/lib/commercial-selections/service";
 import { getItems as getInventoryItems } from "@/lib/inventory/service";
 import { getEventInventory, getTemplates as getInventoryTemplates } from "@/lib/event-inventory/service";
+import { getRelationshipPhotoForVenue } from "@/lib/relationship-photos/service";
+import { RelationshipPhotoAvatar } from "@/components/relationship-photos/relationship-photo-avatar";
+import { getContextualObservationsForRecord } from "@/lib/luv/contextual-record";
+import { getDraftsForLead } from "@/lib/luv/drafts";
+import { loadLeadFollowUpPresentation } from "@/lib/luv/follow-up-presentation";
+import { getLead } from "@/lib/leads/service";
+import { loadEventSetup } from "@/lib/event-setup/service";
+import { applicableSetupSteps } from "@/lib/event-setup/state";
+import { capabilitiesFromVenue } from "@/lib/playbooks/capabilities";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -79,120 +120,347 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
   if (!client) notFound();
 
   if (!client.linkedEventId) {
-    // Rare: a booked client with no event yet (no event date set at
-    // booking time). Reuses the exact "create event" affordance the old
-    // Client page offered, rather than a new workflow.
     const displayName = clientDisplayName(client.firstName, client.lastName, client.partnerFirstName, client.partnerLastName);
+    // Slice 2 — photo is independent of the rest of the unbooked workspace reads.
+    const [
+      photo, journey, packagesWithItems, packageList, templates, applications, tasks,
+      timelineEntries, timelineSections, timelineTemplates, venue, spaces,
+      floorPlans, floorPlanTemplates, vendors, vendorAssignments, eventOrder, eventOrderTemplates,
+      offerings, inventoryItems, staffRole, dateHolds,
+      workspaceDocuments, pinnedDocumentKeys,
+    ] = await Promise.all([
+      client.relationshipId
+        ? getRelationshipPhotoForVenue(client.relationshipId)
+        : Promise.resolve(null),
+      loadBookingJourneyForClient({
+        clientId: client.id,
+        eventId: null,
+        leadId: client.leadId,
+      }),
+      getPackagesWithItems(true),
+      getPackages(true),
+      getTemplatesForLibrary(),
+      getClientPlaybookApplications(client.id),
+      getClientTasks(client.id),
+      getClientTimelineEntries(client.id),
+      getClientSections(client.id),
+      getTimelineTemplatesForLibrary(),
+      getCurrentVenue(),
+      getSpaces(),
+      getFloorPlansForClient(client.id),
+      getFloorPlanTemplates(),
+      getVendors(),
+      getClientVendorAssignments(client.id),
+      getEventOrderForClient(client.id),
+      getEventOrderTemplates(),
+      listActiveOfferings(),
+      getInventoryItems(),
+      getCurrentUserRole(),
+      client.leadId ? getHolds({ leadId: client.leadId }) : Promise.resolve([]),
+      getVenueWorkspaceDocuments({ clientId: client.id }),
+      getPinnedDocumentKeys(),
+    ]);
+    const activeTimelineTemplates = timelineTemplates.filter((t) => !t.isArchived);
+    const activePlaybookTemplates = templates.filter((t) => !t.isArchived);
     return (
-      <div className="space-y-6">
+      <div className="space-y-8">
+        <PreparingMessagesDeepLink leadId={client.leadId} />
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <PageHeader title={displayName} description="This booking doesn't have an event workspace yet." />
+          <div className="flex items-center gap-3">
+            <RelationshipPhotoAvatar photoUrl={photo?.displayedPhotoUrl ?? null} name={displayName} size="lg" />
+            <PageHeader
+              title={displayName}
+              description="You are preparing this client's planning workspace. Preparing the workspace does not reserve their date."
+            />
+          </div>
           <DeleteClientRecordButton clientId={client.id} fallbackName={displayName} />
         </div>
-        <div className="flex flex-col items-center justify-center rounded-sm border border-dashed border-border bg-card/40 py-16 text-center">
-          <p className="font-heading text-lg font-medium text-heading">No event yet</p>
-          <p className="mt-1 mb-4 text-sm text-muted-foreground">Add an event date to open the full workspace.</p>
-          <Button render={<Link href={`/events/new?clientId=${client.id}`} />}>+ Create Event</Button>
-        </div>
+        <p className="text-sm text-muted-foreground" data-testid="client-date-state">
+          {workspaceDateText({
+            eventDate: client.eventDate,
+            booked: false,
+            holds: dateHolds,
+            leadId: client.leadId,
+          })}
+        </p>
+        <BookingJourneyPanel
+          journey={journey}
+          packages={packagesWithItems}
+          leadId={client.leadId ?? undefined}
+          clientId={client.id}
+          eventDate={client.eventDate}
+          venueTimezone={venue?.timezone ?? null}
+          workspaceReturnTo={`/clients/${client.id}`}
+        />
+        <section id="documents" className="space-y-3">
+          <DocumentWorkspace
+            title="Documents"
+            description="Files for this client while you prepare the workspace. Booking does not move them onto a different event."
+            documents={workspaceDocuments}
+            initialPinnedKeys={[...pinnedDocumentKeys]}
+            uploadTarget={{ entityType: "client", entityId: client.id, venueId: client.venueId }}
+            returnTo={`/clients/${client.id}`}
+          />
+        </section>
+        <section className="space-y-3">
+          <h2 className="text-base font-semibold text-heading">Checklists</h2>
+          <EventTaskList
+            eventId=""
+            clientId={client.id}
+            eventDate={client.eventDate ?? ""}
+            eventName={displayName}
+            clientName={displayName}
+            eventType={client.eventType}
+            initialTasks={tasks}
+            readinessByKind={{ client: null, venue: null }}
+            templates={activePlaybookTemplates}
+            applications={applications}
+            contextLinksByTask={{}}
+            taskContacts={{}}
+            linkableDocuments={[]}
+            linkableTimelineEntries={timelineEntries}
+            linkableConversationMessages={[]}
+            staffOptions={[]}
+          />
+        </section>
+        <section id="timeline" className="space-y-3">
+          <h2 className="text-base font-semibold text-heading">Timeline</h2>
+          <p className="text-sm text-muted-foreground">
+            Draft the day before you book. This does not reserve the preferred date.
+          </p>
+          <TimelineView
+            eventId=""
+            planningClientId={client.id}
+            venueId={venue?.id ?? ""}
+            eventStartTime={null}
+            eventDate={client.eventDate}
+            initialEntries={timelineEntries}
+            initialSections={timelineSections}
+            timelineTemplates={activeTimelineTemplates}
+          />
+        </section>
+        <section id="floorplan" className="space-y-3">
+          <h2 className="text-base font-semibold text-heading">Floor plans</h2>
+          <p className="text-sm text-muted-foreground">
+            Sketch the room before you book. Sharing a plan with the couple, and choosing the plan for the day, wait until this relationship is Booked.
+          </p>
+          <FloorPlanWorkspace
+            eventId=""
+            planningClientId={client.id}
+            floorPlans={floorPlans}
+            templates={floorPlanTemplates}
+            spaces={spaces}
+            eventSpaceId={null}
+            canEdit={canEditFloorPlans(staffRole)}
+            canDelete={canDeleteFloorPlanRows(staffRole)}
+          />
+        </section>
+        <section id="event-order" className="space-y-3">
+          <h2 className="text-base font-semibold text-heading">Event order</h2>
+          <p className="text-sm text-muted-foreground">
+            Prepare what this event would include. Starting an event order does not book the date.
+          </p>
+          <EventOrderPanel
+            eventId=""
+            planningClientId={client.id}
+            clientId={client.id}
+            clientName={displayName}
+            clientEmail={client.email}
+            venueName={venue?.name}
+            eventOrder={eventOrder}
+            packages={packageList}
+            packagesWithItems={packagesWithItems}
+            offerings={offerings}
+            inventoryItems={inventoryItems}
+            invoices={[]}
+            floorPlans={floorPlans}
+            templates={eventOrderTemplates}
+            guestCount={client.guestCount}
+          />
+        </section>
+        <section id="vendors" className="space-y-3">
+          <h2 className="text-base font-semibold text-heading">Vendors</h2>
+          <div className="space-y-2">
+            <h3 className="text-sm font-semibold text-heading">Vendor directory</h3>
+            <VenueVendorDirectorySummary vendors={vendors} />
+          </div>
+          <div className="space-y-2">
+            <h3 className="text-sm font-semibold text-heading">Assigned to this event</h3>
+            <p className="text-sm text-muted-foreground">
+              Who you expect to work this event. Separate from the directory above. Assigning a vendor now does not reserve the date or tell them the event is booked.
+            </p>
+          <EventVendorsSection
+            eventId=""
+            planningClientId={client.id}
+            initialAssignments={vendorAssignments}
+            availableVendors={vendors}
+          />
+          </div>
+        </section>
+        <p className="text-sm text-muted-foreground">
+          Questionnaires stay unavailable until this relationship is Booked. They describe the booked occasion, not the preparation.
+        </p>
       </div>
     );
   }
 
+  if (await bookingCelebrationPending(client.linkedEventId)) {
+    redirect(`/clients/${client.id}/booked?eventId=${client.linkedEventId}`);
+  }
+
   const eventId = client.linkedEventId;
+  // Slice 2 — collapse the Wave A → Wave B serial barrier.
+  // Independent reads still fan out together. Dependent reads chain from their
+  // parent promise so they start as soon as that parent resolves, overlapping
+  // remaining siblings instead of waiting for every Wave A call to finish.
+  // Data dependencies (invoice ids → markers, choice-list → choices, tasks →
+  // contacts/requests, venue+contracts → Luv observations, conversation id →
+  // messages) are preserved — only the artificial full-wave wait is removed.
+  // Venue-wide catalogs (packages/offerings/inventory) stay for a later slice;
+  // Slice 3A scopes contracts (client|event, no content) + template metadata.
+  // Luv observations are record-scoped inside getContextualObservationsForRecord.
+
+  // Slice 3B — scope invoices to this client OR event (same semantics as the
+  // former venue-wide load + app-side filter).
+  const eventInvoicesPromise = getInvoicesForClientOrEvent(id, eventId);
+  const invoiceLineMarkersPromise = eventInvoicesPromise.then((eventInvoices) =>
+    getInvoiceLineMarkers(eventInvoices.map((inv) => inv.id)),
+  );
+
+  const questionnairesPromise = getQuestionnaires(eventId);
+  const activityListsPromise = questionnairesPromise.then((questionnaires) =>
+    Promise.all(questionnaires.map(async (q) => [q.id, await getQuestionnaireActivities(q.id)] as const)),
+  );
+
+  const eventTasksPromise = getEventTasks(eventId);
+  const requestsByIdsPromise = eventTasksPromise.then((eventTasks) => {
+    const requestIds = eventTasks.map((t) => t.requestId).filter((v): v is string => !!v);
+    return getRequestsByIds(requestIds);
+  });
+  const taskContactsPromise = eventTasksPromise.then((eventTasks) =>
+    getTaskContactsByStaffIds(eventTasks.map((t) => t.assignedToStaffId)),
+  );
+
+  const clientChoicesListPromise = listClientChoicesForEvent(eventId);
+  const clientChoicesRawPromise = clientChoicesListPromise.then((list) =>
+    Promise.all(list.map((c) => getClientChoices(c.id))),
+  );
+
+  const venuePromise = getCurrentVenue();
+  // teamMembers only needs venue id — start via cached getCurrentVenue, not after
+  // the full independent batch (was Wave B only because venue lived in Wave A).
+  const teamMembersPromise = venuePromise.then((v) => (v ? getTeamMembers(v.id) : []));
+
+  // Slice 3A — scope contracts to this client OR event; omit full content.
+  const contractsPromise = getContractsForClientOrEvent(id, eventId);
+  const contextualObservationsPromise = Promise.all([venuePromise, contractsPromise]).then(
+    ([venue, contracts]) =>
+      venue
+        ? getContextualObservationsForRecord(venue.id, venue.timezone, {
+            eventId,
+            clientId: id,
+            contractIds: contracts.map((c) => c.id),
+          })
+        : Promise.resolve([]),
+  );
+
+  // Booked Luv tab reuses the originating lead's drafting lifecycle (same engine as Lead Luv).
+  const luvLeadBundlePromise = client.leadId
+    ? (async () => {
+        const lead = await getLead(client.leadId!);
+        if (!lead) {
+          return {
+            luvLead: null,
+            luvDrafts: [],
+            followUpDraftCapable: false,
+            followUpDraftIneligibleReason: "This booking has no linked lead for Luv drafting.",
+            followUpProactiveRecommended: false,
+          };
+        }
+        const [luvDrafts, followUpPresentation] = await Promise.all([
+          getDraftsForLead(lead.id),
+          loadLeadFollowUpPresentation(lead),
+        ]);
+        return {
+          luvLead: lead,
+          luvDrafts,
+          followUpDraftCapable: followUpPresentation.draftCapable,
+          followUpDraftIneligibleReason: followUpPresentation.draftIneligibleReason,
+          followUpProactiveRecommended: followUpPresentation.proactiveRecommended,
+        };
+      })()
+    : Promise.resolve({
+        luvLead: null,
+        luvDrafts: [] as Awaited<ReturnType<typeof getDraftsForLead>>,
+        followUpDraftCapable: false,
+        followUpDraftIneligibleReason: "This booking has no linked lead for Luv drafting.",
+        followUpProactiveRecommended: false,
+      });
+
+  // Lead extras own their createClient — no serial createClient ahead of the batch.
+  // Contact email/phone/partnerEmail come from cached getClient (duplicate clients
+  // select removed).
+  const leadExtrasPromise = client.leadId
+    ? (async () => {
+        const supabase = await createClient();
+        const [leadRes, noteRes, tourRes] = await Promise.all([
+          supabase
+            .from("leads")
+            .select("source, inquiry_message, inquiry_message_origin, created_at")
+            .eq("id", client.leadId!)
+            .maybeSingle<{
+              source: string | null;
+              inquiry_message: string | null;
+              inquiry_message_origin: string | null;
+              created_at: string;
+            }>(),
+          supabase
+            .from("lead_notes")
+            .select("id, body, created_at, updated_at")
+            .eq("lead_id", client.leadId!)
+            .order("created_at", { ascending: false }),
+          supabase
+            .from("tour_appointments")
+            .select("id, notes, created_at, completed_at, actual_occurred_at, scheduled_at")
+            .eq("lead_id", client.leadId!),
+        ]);
+        return { leadRow: leadRes.data, noteRows: noteRes.data, tourRows: tourRes.data };
+      })()
+    : Promise.resolve({ leadRow: null, noteRows: null, tourRows: null });
+
   const [
-    event, availableVendors, allInvoices, documents, vendorDocuments, workspaceDocuments, pinnedDocumentKeys, recentDocumentEntries, questionnaires, eventTasks, allPlaybookTemplates,
+    event, availableVendors, eventInvoices, documents, vendorDocuments, workspaceDocuments, pinnedDocumentKeys, questionnaires, eventTasks, allPlaybookTemplates,
     playbookApplications, readinessByKind, contextLinksByTask, timelineEntries, venue, vendorRecommendations,
-    spaces, contractTemplates, allContracts, allTimelineTemplates,
+    spaces, contractTemplates, contracts, allTimelineTemplates,
     timelineSections, timelineLinksByEntry, timelineAttachmentsByEntry, timelineRelatedLinksByEntry,
-    floorPlanTemplates, inventoryUsage, eventInventory, inventoryTemplates, inventoryCatalogItems,
+    floorPlanTemplates, inventoryUsage, floorPlanSeatCounts, eventInventory, inventoryTemplates, inventoryCatalogItems,
+    staffRole, questionnaireTemplates, floorPlanOffers, spaceAssignments, sessions,
+    guestSummary, seatingSummary,
+    eventOrder, packages, eventOrderTemplates, packagesWithItems, selectedPackage, bookingJourney, offerings, paymentSchedules,
+    eventRequests, photo, leadExtras, conversationBundle,
+    invoiceLineMarkers, activityLists, requestsById, taskContacts, teamMembers, clientChoicesRaw, contextualObservations,
+    luvLeadBundle,
   ] = await Promise.all([
-    getEvent(eventId), getVendors(), getInvoices({}), getDocuments("event", eventId), getEventDocumentsFromVendors(eventId),
-    getVenueWorkspaceDocuments({ eventId }), getPinnedDocumentKeys().then((s) => [...s]), getRecentInteractionMap().then((m) => [...m.entries()]),
-    getQuestionnaires(eventId),
-    getEventTasks(eventId), getTemplatesForLibrary(), getEventPlaybookApplications(eventId), getEventTaskReadinessByKind(eventId),
-    getEventTaskContextLinksForEvent(eventId), getTimelineEntries(eventId), getCurrentVenue(), getEventRecommendations(eventId),
-    getSpaces(), getContractTemplates(), getContracts(), getTimelineTemplatesForLibrary(),
+    getEvent(eventId), getVendors(), eventInvoicesPromise, getDocuments("event", eventId), getEventDocumentsFromVendors(eventId),
+    getVenueWorkspaceDocuments({ eventId, clientId: id }), getPinnedDocumentKeys().then((s) => [...s]),
+    questionnairesPromise,
+    eventTasksPromise, getTemplatesForLibrary(), getEventPlaybookApplications(eventId), getEventTaskReadinessByKind(eventId),
+    getEventTaskContextLinksForEvent(eventId), getTimelineEntries(eventId), venuePromise, getOrEnsureEventRecommendations(eventId),
+    getSpaces(), getContractTemplates(), contractsPromise, getTimelineTemplatesForLibrary(),
     getSections(eventId), getEntryLinksForEvent(eventId), getEntryAttachmentsForEvent(eventId), getRelatedLinksForEvent(eventId),
-    getFloorPlanTemplates(), getUsageForEvent(eventId),
+    getFloorPlanTemplates(), getUsageForEvent(eventId), getFloorPlanSeatCountsForEvent(eventId),
     // D5A — Event Inventory is not feature-flagged (unlike Event Order):
     // it's additive to the venue-wide catalog every venue already has.
     getEventInventory(eventId), getInventoryTemplates(), getInventoryItems(),
-  ]);
-  if (!event) notFound();
-  const staffRole = await getCurrentUserRole();
-  const floorPlanCanEdit = canEditFloorPlans(staffRole);
-  const floorPlanCanDelete = canDeleteFloorPlanRows(staffRole);
-  // D5D — additive templates + activity logs for each working form.
-  const questionnaire = questionnaires.find((q) => q.kind === "final_details") ?? questionnaires[0] ?? null;
-  const [questionnaireTemplates, activityLists] = await Promise.all([
-    getQuestionnaireTemplates(),
-    Promise.all(questionnaires.map(async (q) => [q.id, await getQuestionnaireActivities(q.id)] as const)),
-  ]);
-  const questionnaireActivitiesById = Object.fromEntries(activityLists);
-  const questionnaireActivities = questionnaire ? (questionnaireActivitiesById[questionnaire.id] ?? []) : [];
-  const floorPlanOffers = await getEventFloorPlanOffers(eventId);
-  // Archived templates aren't valid choices for applying to a booking —
-  // same exclusion the old getTemplates() applied by default.
-  const playbookTemplates = allPlaybookTemplates.filter((t) => !t.isArchived);
-  const timelineTemplates = allTimelineTemplates.filter((t) => !t.isArchived);
-  const eventInvoices = allInvoices.filter((inv) => inv.eventId === eventId || inv.clientId === id);
-  const spaceName = spaces.find((s) => s.id === event.spaceId)?.name ?? null;
-  const contracts = allContracts.filter((c) => c.eventId === eventId || c.clientId === id);
-
-  // Request Framework integration: tasks may optionally link to a Request.
-  // Independent lifecycle — this only resolves current status/due date for
-  // display, it never affects task completion.
-  const requestIds = eventTasks.map((t) => t.requestId).filter((v): v is string => !!v);
-  const [requestsById, eventRequests] = await Promise.all([getRequestsByIds(requestIds), getRequests({ eventId })]);
-  const requestsByTaskId: Record<string, Request> = {};
-  for (const task of eventTasks) {
-    if (task.requestId && requestsById[task.requestId]) requestsByTaskId[task.id] = requestsById[task.requestId];
-  }
-
-  const taskContacts = await getTaskContactsByStaffIds(eventTasks.map((t) => t.assignedToStaffId));
-  const teamMembers = venue ? await getTeamMembers(venue.id) : [];
-
-  // Same pattern as the old /events/[id]/page.tsx: resolve email + relationship
-  // id directly (event.clientId doesn't carry these), for Messages and the
-  // anniversary/final-details send-to-couple flows.
-  const supabase = await createClient();
-  const { data: cl } = await supabase.from("clients").select("email, relationship_id").eq("id", id)
-    .maybeSingle<{ email: string | null; relationship_id: string | null }>();
-  const coupleEmail = cl?.email ?? null;
-
-  let linkableConversationMessages: LinkableConversationMessage[] = [];
-  let conversationMessages: ConversationMessage[] = [];
-  let conversationId: string | null = null;
-  if (cl?.relationship_id) {
-    conversationId = await getConversationIdForRelationship(cl.relationship_id);
-    if (conversationId) {
-      const conversation = await getConversation(conversationId);
-      conversationMessages = conversation?.messages ?? [];
-      linkableConversationMessages = conversationMessages.map((m) => ({
-        id: m.id,
-        label: m.channel === "internal_note" ? "Internal Note" : "Conversation",
-        detail: m.body.length > 80 ? `${m.body.slice(0, 80)}…` : m.body,
-      }));
-    }
-  }
-  const sessions = await getPortalSessions(id);
-  // Prefer a non-financial session — a 'financial' session's own RPCs
-  // (e.g. get_seating_data) deliberately return zeroed-out stats for that
-  // access level, and it's also the wrong link to hand a coordinator who
-  // just wants "open the couple's portal."
-  const portalSession = sessions.find((s) => s.accessLevel !== "financial") ?? sessions[0] ?? null;
-  const portalToken = portalSession?.accessToken ?? null;
-
-  // Event Readiness — Phase 1: Platform Integration. Two small, additive
-  // reads alongside everything already fetched above; every other
-  // capability's readiness is computed from data already on this page.
-  const [guestSummary, seatingSummary] = await Promise.all([
+    getCurrentUserRole(),
+    // Ensure Library starters exist before category selectors render — do not
+    // depend on visiting Library or sending another questionnaire first.
+    ensureQuestionnaireFamilyForCurrentVenue().then(() => getQuestionnaireTemplates()),
+    getEventFloorPlanOffers(eventId),
+    getEventSpaceAssignments(eventId),
+    getPortalSessions(id),
     getGuestReadinessSummary(id),
     getSeatingReadinessSummary(null, eventId),
-  ]);
-
-  // Event Order is always available (optional by use). No feature gate.
-  const [eventOrder, packages, eventOrderTemplates, packagesWithItems, selectedPackage, bookingJourney, offerings] = await Promise.all([
     getEventOrder(eventId),
     getPackages(),
     getEventOrderTemplates(),
@@ -204,7 +472,205 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
       leadId: client.leadId,
     }),
     listActiveOfferings(),
+    getPaymentSchedules(),
+    getRequests({ eventId }),
+    client.relationshipId
+      ? getRelationshipPhotoForVenue(client.relationshipId)
+      : Promise.resolve(null),
+    leadExtrasPromise,
+    // Conversation: relationship → conversation id → messages (inner serial only).
+    (async (): Promise<{ conversationId: string | null; messages: ConversationMessage[] }> => {
+      const relationshipId = client.relationshipId;
+      if (!relationshipId) return { conversationId: null, messages: [] };
+      const conversationId = await getConversationIdForRelationship(relationshipId);
+      if (!conversationId) return { conversationId: null, messages: [] };
+      const conversation = await getConversation(conversationId);
+      return { conversationId, messages: conversation?.messages ?? [] };
+    })(),
+    invoiceLineMarkersPromise,
+    activityListsPromise,
+    requestsByIdsPromise,
+    taskContactsPromise,
+    teamMembersPromise,
+    // clientChoicesListPromise is started above; only the dependent raw payload is awaited here.
+    clientChoicesRawPromise,
+    contextualObservationsPromise,
+    luvLeadBundlePromise,
   ]);
+  if (!event) notFound();
+  const floorPlanCanEdit = canEditFloorPlans(staffRole);
+  const floorPlanCanDelete = canDeleteFloorPlanRows(staffRole);
+  // D5D — additive templates + activity logs for each working form.
+  const questionnaire = questionnaires.find((q) => q.kind === "final_details") ?? questionnaires[0] ?? null;
+  // Archived templates aren't valid choices for applying to a booking —
+  // same exclusion the old getTemplates() applied by default.
+  const playbookTemplates = allPlaybookTemplates.filter((t) => !t.isArchived);
+  const timelineTemplates = allTimelineTemplates.filter((t) => !t.isArchived);
+
+  const bookingCommitmentInvoiceIds = packageBookingCommitmentInvoiceIds(invoiceLineMarkers);
+  const frozenLineIds = frozenEventOrderLineIds(
+    invoiceLineMarkers,
+    eventInvoices.filter((inv) => inv.status !== "void").map((inv) => inv.id),
+  );
+  const spaceName = spaces.find((s) => s.id === event.spaceId)?.name ?? null;
+  const spaceAssignmentsDisplay = formatEventSpaceAssignmentsDisplay(
+    spaceAssignments.map((a) => ({
+      useKey: a.useKey,
+      useLabel: a.useLabel,
+      spaceName: a.spaceName ?? spaces.find((s) => s.id === a.spaceId)?.name ?? "—",
+    })),
+  );
+  const scheduleComponents = spaceAssignments.map((a) => ({
+    useKey: a.useKey,
+    useLabel: a.useLabel,
+    spaceName: a.spaceName ?? spaces.find((s) => s.id === a.spaceId)?.name ?? null,
+    scheduledDate: a.scheduledDate ?? null,
+    startTime: a.startTime ?? null,
+    endTime: a.endTime ?? null,
+    sortOrder: a.sortOrder,
+  }));
+  const editableSpaceAssignments = spaceAssignments.map((a) => ({
+    useKey: a.useKey,
+    useLabel: a.useLabel,
+    spaceId: a.spaceId,
+    startTime: a.startTime ?? null,
+    endTime: a.endTime ?? null,
+    scheduledDate: a.scheduledDate ?? null,
+  }));
+
+  const questionnaireActivitiesById = Object.fromEntries(activityLists);
+  const questionnaireActivities = questionnaire ? (questionnaireActivitiesById[questionnaire.id] ?? []) : [];
+
+  // Request Framework integration: tasks may optionally link to a Request.
+  // Independent lifecycle — this only resolves current status/due date for
+  // display, it never affects task completion.
+  const requestsByTaskId: Record<string, Request> = {};
+  for (const task of eventTasks) {
+    if (task.requestId && requestsById[task.requestId]) requestsByTaskId[task.id] = requestsById[task.requestId];
+  }
+
+  const coupleEmail = client.email ?? null;
+
+  let relationshipContact: {
+    clientId: string;
+    firstName: string | null;
+    lastName: string | null;
+    partnerFirstName: string | null;
+    partnerLastName: string | null;
+    phone: string | null;
+    email: string | null;
+    partnerEmail: string | null;
+    source: string | null;
+    inquiryMessage: string | null;
+    inquiryMessageOrigin?: string | null;
+  } | null = null;
+  let leadNotes: { id: string; body: string; createdAt: string; updatedAt?: string }[] = [];
+  if (client.leadId) {
+    const leadRow = leadExtras.leadRow;
+    const sourceLabel = leadRow?.source
+      ? (LEAD_SOURCES.find((s) => s.value === leadRow.source)?.label ?? leadRow.source)
+      : null;
+    relationshipContact = {
+      clientId: client.id,
+      firstName: client.firstName,
+      lastName: client.lastName,
+      partnerFirstName: client.partnerFirstName,
+      partnerLastName: client.partnerLastName,
+      phone: client.phone || null,
+      email: client.email || null,
+      partnerEmail: client.partnerEmail || null,
+      source: sourceLabel,
+      inquiryMessage: leadRow?.inquiry_message ?? null,
+      inquiryMessageOrigin: leadRow?.inquiry_message_origin ?? "unknown",
+    };
+    leadNotes = ((leadExtras.noteRows ?? []) as { id: string; body: string; created_at: string; updated_at?: string }[]).map((n) => ({
+      id: n.id,
+      body: n.body,
+      createdAt: n.created_at,
+      updatedAt: n.updated_at,
+    }));
+  } else {
+    relationshipContact = {
+      clientId: client.id,
+      firstName: client.firstName,
+      lastName: client.lastName,
+      partnerFirstName: client.partnerFirstName,
+      partnerLastName: client.partnerLastName,
+      phone: client.phone || null,
+      email: client.email || null,
+      partnerEmail: client.partnerEmail || null,
+      source: null,
+      inquiryMessage: null,
+    };
+  }
+
+  const conversationId = conversationBundle.conversationId;
+  const conversationMessages = conversationBundle.messages;
+  const internalNoteItems = buildInternalNotesRollup({
+    inquiry: client.leadId && leadExtras.leadRow
+      ? {
+          leadId: client.leadId,
+          body: leadExtras.leadRow.inquiry_message,
+          origin: leadExtras.leadRow.inquiry_message_origin,
+          createdAt: leadExtras.leadRow.created_at,
+        }
+      : null,
+    tours: ((leadExtras.tourRows ?? []) as Array<{
+      id: string;
+      notes: string | null;
+      created_at: string;
+      completed_at: string | null;
+      actual_occurred_at: string | null;
+      scheduled_at: string | null;
+    }>).map((t) => ({
+      id: t.id,
+      notes: t.notes,
+      createdAt: t.created_at,
+      completedAt: t.completed_at,
+      actualOccurredAt: t.actual_occurred_at,
+      scheduledAt: t.scheduled_at,
+    })),
+    leadNotes,
+    eventNotes: event.notes,
+    clientNotes: client.notes,
+    clientRecordNotes: {
+      clientId: client.id,
+      body: client.internalNotes,
+      createdAt: client.createdAt,
+    },
+    conversationNotes: conversationMessages
+      .filter((m) => m.channel === "internal_note")
+      .map((m) => ({ id: m.id, body: m.body, sentAt: m.sentAt })),
+  });
+  const linkableConversationMessages: LinkableConversationMessage[] = conversationMessages.map((m) => ({
+    id: m.id,
+    label: m.channel === "internal_note" ? "Internal Note" : "Conversation",
+    detail: m.body.length > 80 ? `${m.body.slice(0, 80)}…` : m.body,
+  }));
+
+  // Prefer a non-financial session — a 'financial' session's own RPCs
+  // (e.g. get_seating_data) deliberately return zeroed-out stats for that
+  // access level, and it's also the wrong link to hand a coordinator who
+  // just wants "open the couple's portal."
+  const portalSession = sessions.find((s) => s.accessLevel !== "financial") ?? null;
+  const portalToken = portalSession?.accessToken ?? null;
+
+  const eoLinkedInvoice = eventOrder
+    ? eventInvoices.find((inv) => inv.eventOrderId === eventOrder.id && inv.status === "draft")
+      ?? eventInvoices.find((inv) => inv.eventOrderId === eventOrder.id && inv.status !== "void")
+      ?? null
+    : null;
+  const eoLinkedScheduleId = eoLinkedInvoice
+    ? (paymentSchedules.find((s) => s.invoiceId === eoLinkedInvoice.id)?.id ?? null)
+    : null;
+  const clientChoices = clientChoicesRaw.filter((c): c is NonNullable<typeof c> => !!c);
+  const financialImpact = buildSelectionsFinancialImpact({
+    eventOrderId: eventOrder?.id ?? null,
+    clientId: event.clientId,
+    lines: eventOrder?.lines ?? [],
+    invoices: eventInvoices,
+    frozenEventOrderLineIds: frozenLineIds,
+  });
   // Shared catalog fetch for Event Order Add-from-Inventory and Event Inventory.
   const inventoryItems = inventoryCatalogItems;
   const readinessSummary = buildEventReadiness({
@@ -214,17 +680,12 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
     contracts, invoices: eventInvoices, documents,
     conversationMessages,
     paymentScheduleLines: bookingJourney.paymentLines,
-    planningCapabilities: venue
-      ? {
-          timeline: venue.planningTimelineEnabled,
-          floorPlan: venue.planningFloorPlanEnabled,
-          seating: venue.planningSeatingEnabled,
-          vendors: venue.planningVendorsEnabled,
-        }
-      : undefined,
+    planningCapabilities: venue ? capabilitiesFromVenue(venue) : undefined,
   });
 
   const workspaceName = clientDisplayName(client.firstName, client.lastName, client.partnerFirstName, client.partnerLastName);
+  const eventSetup = await loadEventSetup(event.id);
+  const setupSteps = applicableSetupSteps(capabilitiesFromVenue(venue));
   return (
     <div className="space-y-3">
       <div className="flex justify-end">
@@ -235,8 +696,10 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
       vendorDocuments={vendorDocuments}
       workspaceDocuments={workspaceDocuments}
       pinnedDocumentKeys={pinnedDocumentKeys}
-      recentDocumentEntries={recentDocumentEntries}
       originatingLeadId={client.leadId}
+      relationshipContact={relationshipContact}
+      leadNotes={leadNotes}
+      internalNoteItems={internalNoteItems}
       questionnaire={questionnaire} questionnaires={questionnaires} questionnaireTemplates={questionnaireTemplates} questionnaireActivities={questionnaireActivities} questionnaireActivitiesById={questionnaireActivitiesById}
       coupleEmail={coupleEmail} eventTasks={eventTasks}
       playbookTemplates={playbookTemplates} playbookApplications={playbookApplications}
@@ -248,13 +711,18 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
       linkableConversationMessages={linkableConversationMessages} vendorRecommendations={vendorRecommendations}
       portalToken={portalToken}
       conversationId={conversationId}
-      conversationMessages={conversationMessages} spaceName={spaceName} venueName={venue?.name ?? "Your venue"} clientStatus={client.status}
+      conversationMessages={conversationMessages} spaceName={spaceName}
+      spaceAssignmentsDisplay={spaceAssignmentsDisplay}
+      scheduleComponents={scheduleComponents}
+      editableSpaceAssignments={editableSpaceAssignments}
+      venueName={venue?.name ?? "Your venue"} clientStatus={client.status}
       contractTemplates={contractTemplates} contracts={contracts}
       floorPlanTemplates={floorPlanTemplates} spaces={spaces}
       floorPlanOffers={floorPlanOffers}
       floorPlanCanEdit={floorPlanCanEdit}
       floorPlanCanDelete={floorPlanCanDelete}
       inventoryUsage={inventoryUsage}
+      floorPlanSeatCounts={floorPlanSeatCounts}
       teamMembers={teamMembers}
       requestsByTaskId={requestsByTaskId}
       requests={eventRequests}
@@ -266,10 +734,24 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
       eventInventory={eventInventory}
       inventoryTemplates={inventoryTemplates}
       eventOrderTemplates={eventOrderTemplates}
+      clientChoices={clientChoices}
+      financialImpact={financialImpact}
+      bookingCommitmentInvoiceIds={bookingCommitmentInvoiceIds}
+      linkedScheduleId={eoLinkedScheduleId}
       packagesWithItems={packagesWithItems}
       bookingJourney={bookingJourney}
       selectedPackage={selectedPackage}
       openSetupPayments={sp.setupPayments === "1"}
+      photoUrl={photo?.displayedPhotoUrl ?? null}
+      venueTimezone={venue?.timezone ?? null}
+      contextualObservations={contextualObservations}
+      luvLead={luvLeadBundle.luvLead}
+      luvDrafts={luvLeadBundle.luvDrafts}
+      followUpDraftCapable={luvLeadBundle.followUpDraftCapable}
+      followUpDraftIneligibleReason={luvLeadBundle.followUpDraftIneligibleReason}
+      followUpProactiveRecommended={luvLeadBundle.followUpProactiveRecommended}
+      eventSetup={eventSetup}
+      applicableSetupSteps={setupSteps}
     />
     </div>
   );

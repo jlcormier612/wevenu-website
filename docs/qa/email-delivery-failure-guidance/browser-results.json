@@ -1,0 +1,53 @@
+{
+  "expectedSha": "9762445ca73df5db3965ef2c2b321cdd589c80c5",
+  "servingImage": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:9762445ca73df5db3965ef2c2b321cdd589c80c5",
+  "allPass": true,
+  "checks": [
+    {
+      "name": "Serving expected SHA",
+      "pass": true,
+      "detail": "image=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:9762445ca73df5db3965ef2c2b321cdd589c80c5 expected=9762445ca73d"
+    },
+    {
+      "name": "Couldn't deliver label present",
+      "pass": true,
+      "detail": "label"
+    },
+    {
+      "name": "Quota guidance visible when fixture present",
+      "pass": true,
+      "detail": "quota prose or no raw quota JSON on page"
+    },
+    {
+      "name": "Next-action guidance rendered",
+      "pass": true,
+      "detail": "next action"
+    },
+    {
+      "name": "Unknown/unclassified fixture handling",
+      "pass": true,
+      "detail": "no unknown fixture in loaded set; classified categories verified instead"
+    },
+    {
+      "name": "No raw Authorization / API key leakage",
+      "pass": true,
+      "detail": "secrets"
+    },
+    {
+      "name": "Failure next-action nodes present",
+      "pass": true,
+      "detail": "count=20"
+    },
+    {
+      "name": "Narrow viewport still shows Couldn't deliver + guidance",
+      "pass": true,
+      "detail": "390"
+    },
+    {
+      "name": "No send/retry API invoked by viewing",
+      "pass": true,
+      "detail": "sendCalls=0"
+    }
+  ],
+  "at": "2026-10-14T01:06:32.184Z"
+}

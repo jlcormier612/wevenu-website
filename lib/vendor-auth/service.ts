@@ -93,8 +93,15 @@ export async function createVendorAccountAndClaim(
   claimToken: string,
   email: string,
   password: string,
+  options?: { legalAccepted?: boolean },
 ): Promise<CreateVendorAccountResult> {
   if (!isSupabaseConfigured) return { ok: false, message: "Backend not configured." };
+  if (!options?.legalAccepted) {
+    return {
+      ok: false,
+      message: "Please agree to the Vendor Terms and Privacy Policy to continue.",
+    };
+  }
 
   const normalizedEmail = email.trim().toLowerCase();
   if (!normalizedEmail || !normalizedEmail.includes("@")) {

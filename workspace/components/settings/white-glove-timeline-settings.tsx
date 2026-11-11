@@ -73,7 +73,7 @@ export function WhiteGloveTimelineSettingsForm({
           Save
         </button>
       ) : null}
-      {message ? <p className="w-full text-sm text-[var(--forest-sage)]">{message}</p> : null}
+      {message ? <p className="w-full text-sm text-foreground">{message}</p> : null}
     </form>
   );
 }

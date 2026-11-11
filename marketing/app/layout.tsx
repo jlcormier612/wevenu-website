@@ -25,13 +25,46 @@ const greatVibes = Great_Vibes({
   weight: "400",
 });
 
+const siteUrl = (
+  process.env.NEXT_PUBLIC_SITE_URL?.trim() ||
+  process.env.NEXT_PUBLIC_MARKETING_URL?.trim() ||
+  "https://hellotocheers.com"
+).replace(/\/$/, "");
+
+const defaultDescription =
+  "Hello to Cheers — wedding and event venue management software with big capabilities and beautiful simplicity. Run your venue, plan exceptional events, and keep your team, clients, and vendors connected.";
+
+/** Dedicated 1200×630 share image (not the logo). New filename busts Facebook image-URL cache. */
+const ogImage = {
+  url: "/marketing/og-share-hospitality-prep.jpg",
+  width: 1200,
+  height: 630,
+  alt: "A venue coordinator preparing a wedding reception tablescape before guests arrive",
+  type: "image/jpeg" as const,
+};
+
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: {
     default: "Hello to Cheers",
     template: "%s · Hello to Cheers",
   },
-  description:
-    "Hello to Cheers — the calm, elegant operating system for independent wedding and event venues.",
+  description: defaultDescription,
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    siteName: "Hello to Cheers",
+    title: "Hello to Cheers",
+    description: defaultDescription,
+    url: "/",
+    images: [ogImage],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Hello to Cheers",
+    description: defaultDescription,
+    images: [ogImage.url],
+  },
 };
 
 export default function RootLayout({

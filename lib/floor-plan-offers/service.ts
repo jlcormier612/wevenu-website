@@ -45,9 +45,55 @@ export async function upsertEventFloorPlanOffer(
   if (!input.templateId) return { ok: false, message: "Template is required." };
   const result = await withVenueEditor(async (supabase, venueId) => {
     const offerId = await repo.upsertOffer(supabase, venueId, eventId, input);
+    const { ensureWorkingLayoutForEvent } = await import("@/lib/floor-plans/ensure-working-layout");
+    await ensureWorkingLayoutForEvent(supabase, venueId, eventId, {
+      preferredTemplateId: input.templateId,
+    });
     return { ok: true as const, offerId };
   });
   return result as { ok: true; offerId: string } | FloorPlanActionResult;
+}
+
+/**
+ * Overview setup — recover event floor-plan offers from configured template ids.
+ * Idempotent: if any offer rows already exist for the event, returns without
+ * creating more offers. After offers exist, ensures a working (operational)
+ * layout is initialized from the sole/preferred offer when missing.
+ */
+export async function ensureEventFloorPlanOffers(
+  eventId: string,
+  templateIds: string[],
+  preferredId: string | null = null,
+): Promise<{ ok: true; created: number } | FloorPlanActionResult> {
+  const selected = new Set(templateIds.filter(Boolean));
+  if (preferredId) selected.add(preferredId);
+  if (selected.size === 0) {
+    return { ok: false, message: "No floor-plan layouts are configured to recover." };
+  }
+  const result = await withVenueEditor(async (supabase, venueId) => {
+    const existing = await repo.listOffersForEvent(supabase, venueId, eventId);
+    let created = 0;
+    if (existing.length === 0) {
+      const ordered = [
+        ...(preferredId && selected.has(preferredId) ? [preferredId] : []),
+        ...[...selected].filter((id) => id !== preferredId),
+      ];
+      for (let i = 0; i < ordered.length; i += 1) {
+        await repo.upsertOffer(supabase, venueId, eventId, {
+          templateId: ordered[i]!,
+          sortOrder: i,
+          isOffered: true,
+        });
+      }
+      created = ordered.length;
+    }
+    const { ensureWorkingLayoutForEvent } = await import("@/lib/floor-plans/ensure-working-layout");
+    await ensureWorkingLayoutForEvent(supabase, venueId, eventId, {
+      preferredTemplateId: preferredId,
+    });
+    return { ok: true as const, created };
+  });
+  return result as { ok: true; created: number } | FloorPlanActionResult;
 }
 
 export async function updateEventFloorPlanOffer(
@@ -69,7 +115,24 @@ export async function updateEventFloorPlanOffer(
 /** Withdraw from chooser — does not clear selection or delete event clone. */
 export async function withdrawEventFloorPlanOffer(offerId: string): Promise<FloorPlanActionResult> {
   const result = await withVenueEditor(async (supabase, venueId) => {
+    const { data: offer } = await supabase
+      .from("event_floor_plan_offers")
+      .select("id, event_id, floor_plan_template_id")
+      .eq("id", offerId)
+      .eq("venue_id", venueId)
+      .maybeSingle<{ id: string; event_id: string; floor_plan_template_id: string }>();
     await repo.withdrawOffer(supabase, venueId, offerId);
+    if (offer) {
+      const { markPreferenceWithdrawnIfOfferClone } = await import(
+        "@/lib/floor-plans/preference-service"
+      );
+      await markPreferenceWithdrawnIfOfferClone(
+        supabase,
+        venueId,
+        offer.event_id,
+        offer.floor_plan_template_id,
+      );
+    }
     return { ok: true } as FloorPlanActionResult;
   });
   return result as FloorPlanActionResult;

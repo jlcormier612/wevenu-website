@@ -1,35 +1,30 @@
 import type { Metadata } from "next";
 
-import { PageHeader } from "@/components/shell/module-placeholder";
-import { QrCampaignList } from "@/components/qr-campaigns/qr-campaign-list";
-import { QrStarterExamples } from "@/components/qr-campaigns/qr-starter-examples";
+import { QrCampaignsPageClient } from "@/components/qr-campaigns/qr-campaigns-page-client";
 import { ensureQrStartersForCurrentVenue } from "@/lib/qr-campaigns/provision";
 import { getQrCampaignAnalytics, getQrCampaigns } from "@/lib/qr-campaigns/service";
+import { listPublishedPublicFormsForPicker } from "@/lib/public-forms/service";
 
 export const metadata: Metadata = { title: "QR Campaigns" };
 
 export default async function QrCampaignsPage() {
   await ensureQrStartersForCurrentVenue();
-  const [campaigns, analytics] = await Promise.all([
+  const [campaigns, analytics, publishedPublicForms] = await Promise.all([
     getQrCampaigns(true),
     getQrCampaignAnalytics(),
+    listPublishedPublicFormsForPicker(),
   ]);
   const existingMasterKeys = campaigns
     .map((c) => c.sourceMasterKey)
     .filter((k): k is string => Boolean(k));
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="QR Campaigns"
-        description="Generate a QR code for a bridal show, brochure, or front-gate sign — every scan can become a lead automatically."
-      />
-      <QrStarterExamples existingMasterKeys={existingMasterKeys} />
-      <QrCampaignList
-        initialCampaigns={campaigns}
-        analytics={analytics}
-        appUrl={process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}
-      />
-    </div>
+    <QrCampaignsPageClient
+      campaigns={campaigns}
+      analytics={analytics}
+      appUrl={process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}
+      publishedPublicForms={publishedPublicForms}
+      existingMasterKeys={existingMasterKeys}
+    />
   );
 }

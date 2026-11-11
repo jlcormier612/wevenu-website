@@ -9,6 +9,7 @@ import {
   FLOOR_PLAN_DELETE_DENIED,
   FLOOR_PLAN_EDIT_DENIED,
 } from "@/lib/floor-plans/authorize";
+import { venueMayReviewSubmission } from "@/lib/floor-plans/client-layout-review";
 import * as repo from "@/lib/floor-plans/repository";
 import * as templatesRepo from "@/lib/floor-plan-templates/repository";
 import type {
@@ -66,6 +67,16 @@ async function withVenuePlanDeleter<T>(
 }
 
 /** The Booking Floor Plan Workspace's card grid — every floor plan this booking owns. */
+/** Phase 2 — seating assignment counts per floor plan on an event. */
+export async function getFloorPlanSeatCountsForEvent(
+  eventId: string,
+): Promise<Record<string, number>> {
+  if (!isSupabaseConfigured) return {};
+  const venue = await getCurrentVenue();
+  if (!venue) return {};
+  return repo.countGuestSeatAssignmentsForEvent(await createClient(), venue.id, eventId);
+}
+
 export async function getFloorPlansByEvent(eventId: string): Promise<FloorPlan[]> {
   if (!isSupabaseConfigured) return [];
   const venue = await getCurrentVenue();
@@ -93,11 +104,35 @@ export async function getAllFloorPlans(): Promise<FloorPlan[]> {
   return repo.getAllFloorPlans(await createClient(), venue.id);
 }
 
+/**
+ * First layout created on an event with no working layout becomes the working layout.
+ * Matches sole-offer seed behavior so Additional-layout first-use does not leave the
+ * owner looking at a grid with no designated working layout. Never retargets an
+ * already-set operational pointer; does not share, set preference, or open seating.
+ */
+async function seedWorkingLayoutIfUnset(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  venueId: string,
+  eventId: string,
+  floorPlanId: string,
+): Promise<void> {
+  const { data: event } = await supabase
+    .from("events")
+    .select("operational_floor_plan_id")
+    .eq("id", eventId)
+    .eq("venue_id", venueId)
+    .maybeSingle<{ operational_floor_plan_id: string | null }>();
+  if (event && !event.operational_floor_plan_id) {
+    await repo.setEventOperationalFloorPlan(supabase, venueId, eventId, floorPlanId);
+  }
+}
+
 /** "Blank Floor Plan" — a booking may hold many; each gets its own name and optional venue space. */
 export async function createFloorPlan(eventId: string, name = "Floor Plan", spaceId: string | null = null): Promise<CreateFloorPlanResult> {
   if (!name.trim()) return { ok: false, message: "Floor plan name is required." };
   const result = await withVenueEditor(async (supabase, venueId) => {
     const floorPlanId = await repo.createFloorPlan(supabase, venueId, eventId, name.trim(), spaceId);
+    await seedWorkingLayoutIfUnset(supabase, venueId, eventId, floorPlanId);
     await triggerAutoComplete(supabase, venueId, eventId, "floor_plan_created", "floor_plan", floorPlanId);
     return { ok: true, floorPlanId } as CreateFloorPlanResult;
   });
@@ -130,6 +165,7 @@ export async function applyTemplate(eventId: string, templateId: string, name: s
       roomWidthFt: template.roomWidthFt, roomDepthFt: template.roomDepthFt, measurementUnit: template.measurementUnit,
     });
     await repo.insertObjects(supabase, venueId, floorPlanId, objects);
+    await seedWorkingLayoutIfUnset(supabase, venueId, eventId, floorPlanId);
     await triggerAutoComplete(supabase, venueId, eventId, "floor_plan_created", "floor_plan", floorPlanId);
 
     return { ok: true, floorPlanId } as CreateFloorPlanResult;
@@ -142,7 +178,56 @@ export async function duplicateFloorPlan(eventId: string, sourceFloorPlanId: str
   if (!name.trim()) return { ok: false, message: "Floor plan name is required." };
   const result = await withVenueEditor(async (supabase, venueId) => {
     const floorPlanId = await repo.duplicateFloorPlanInto(supabase, venueId, eventId, sourceFloorPlanId, name, spaceId);
+    await seedWorkingLayoutIfUnset(supabase, venueId, eventId, floorPlanId);
     await triggerAutoComplete(supabase, venueId, eventId, "floor_plan_created", "floor_plan", floorPlanId);
+    return { ok: true, floorPlanId } as CreateFloorPlanResult;
+  });
+  return result as CreateFloorPlanResult;
+}
+
+export async function getFloorPlansForClient(clientId: string): Promise<FloorPlan[]> {
+  if (!isSupabaseConfigured) return [];
+  const venue = await getCurrentVenue();
+  if (!venue) return [];
+  return repo.getFloorPlansByClient(await createClient(), venue.id, clientId);
+}
+
+export async function createFloorPlanForClient(clientId: string, name = "Floor Plan", spaceId: string | null = null): Promise<CreateFloorPlanResult> {
+  if (!name.trim()) return { ok: false, message: "Floor plan name is required." };
+  const result = await withVenueEditor(async (supabase, venueId) => {
+    const floorPlanId = await repo.createFloorPlanForClient(supabase, venueId, clientId, name.trim(), spaceId);
+    return { ok: true, floorPlanId } as CreateFloorPlanResult;
+  });
+  return result as CreateFloorPlanResult;
+}
+
+export async function applyTemplateForClient(clientId: string, templateId: string, name: string, spaceId: string | null): Promise<CreateFloorPlanResult> {
+  if (!name.trim()) return { ok: false, message: "Floor plan name is required." };
+  const result = await withVenueEditor(async (supabase, venueId) => {
+    const template = await templatesRepo.getTemplate(supabase, venueId, templateId);
+    if (!template) return { ok: false, message: "Template not found." } as CreateFloorPlanResult;
+    const objects = await templatesRepo.getObjects(supabase, venueId, templateId);
+    const floorPlanId = await repo.createFloorPlanForClient(supabase, venueId, clientId, name.trim(), spaceId, templateId);
+    if (template.backgroundImageUrl || template.backgroundDocumentId) {
+      await repo.updateFloorPlanBackground(
+        supabase, venueId, floorPlanId,
+        template.backgroundImageUrl, template.backgroundImageOpacity,
+        template.backgroundDocumentId,
+      );
+    }
+    await repo.updateFloorPlanRoomSettings(supabase, venueId, floorPlanId, {
+      roomWidthFt: template.roomWidthFt, roomDepthFt: template.roomDepthFt, measurementUnit: template.measurementUnit,
+    });
+    await repo.insertObjects(supabase, venueId, floorPlanId, objects);
+    return { ok: true, floorPlanId } as CreateFloorPlanResult;
+  });
+  return result as CreateFloorPlanResult;
+}
+
+export async function duplicateFloorPlanForClient(clientId: string, sourceFloorPlanId: string, name: string, spaceId: string | null): Promise<CreateFloorPlanResult> {
+  if (!name.trim()) return { ok: false, message: "Floor plan name is required." };
+  const result = await withVenueEditor(async (supabase, venueId) => {
+    const floorPlanId = await repo.duplicateFloorPlanInto(supabase, venueId, clientId, sourceFloorPlanId, name, spaceId);
     return { ok: true, floorPlanId } as CreateFloorPlanResult;
   });
   return result as CreateFloorPlanResult;
@@ -263,6 +348,65 @@ export async function getVendorFloorPlan(planId: string): Promise<VendorFloorPla
 export async function setFinalized(planId: string, finalized: boolean): Promise<FloorPlanActionResult> {
   const result = await withVenueEditor(async (supabase, venueId) => {
     await repo.setFloorPlanFinalized(supabase, venueId, planId, finalized);
+    return { ok: true } as FloorPlanActionResult;
+  });
+  return result as FloorPlanActionResult;
+}
+
+/** Venue: whether the couple may add tables on this working layout. */
+export async function setCoupleMayAddTables(
+  planId: string,
+  coupleMayAddTables: boolean,
+): Promise<FloorPlanActionResult> {
+  const result = await withVenueEditor(async (supabase, venueId) => {
+    await repo.setFloorPlanCoupleMayAddTables(supabase, venueId, planId, coupleMayAddTables);
+    return { ok: true } as FloorPlanActionResult;
+  });
+  return result as FloorPlanActionResult;
+}
+
+/** Venue: approve a client-submitted working layout (locks further couple placement). */
+export async function approveClientFloorPlanLayout(planId: string): Promise<FloorPlanActionResult> {
+  const result = await withVenueEditor(async (supabase, venueId) => {
+    const plan = await repo.getFloorPlan(supabase, venueId, planId);
+    if (!plan) return { ok: false, message: "Floor plan not found." } as FloorPlanActionResult;
+    if (!venueMayReviewSubmission({ clientLayoutStatus: plan.clientLayoutStatus })) {
+      return {
+        ok: false,
+        message: "There is no client submission waiting for review on this layout.",
+      } as FloorPlanActionResult;
+    }
+    await repo.setFloorPlanClientLayoutReview(supabase, venueId, planId, {
+      clientLayoutStatus: "approved",
+      clientReviewNote: null,
+    });
+    return { ok: true } as FloorPlanActionResult;
+  });
+  return result as FloorPlanActionResult;
+}
+
+/** Venue: ask the couple to update the submitted layout. */
+export async function requestClientFloorPlanChanges(
+  planId: string,
+  note: string,
+): Promise<FloorPlanActionResult> {
+  const trimmed = note.trim();
+  if (!trimmed) {
+    return { ok: false, message: "Add a short note so the couple knows what to change." };
+  }
+  const result = await withVenueEditor(async (supabase, venueId) => {
+    const plan = await repo.getFloorPlan(supabase, venueId, planId);
+    if (!plan) return { ok: false, message: "Floor plan not found." } as FloorPlanActionResult;
+    if (!venueMayReviewSubmission({ clientLayoutStatus: plan.clientLayoutStatus })) {
+      return {
+        ok: false,
+        message: "There is no client submission waiting for review on this layout.",
+      } as FloorPlanActionResult;
+    }
+    await repo.setFloorPlanClientLayoutReview(supabase, venueId, planId, {
+      clientLayoutStatus: "changes_requested",
+      clientReviewNote: trimmed.slice(0, 2000),
+    });
     return { ok: true } as FloorPlanActionResult;
   });
   return result as FloorPlanActionResult;

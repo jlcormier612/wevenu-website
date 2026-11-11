@@ -33,11 +33,11 @@ export default async function LoginPage({
 
         <p className="mt-6 text-center text-xs leading-relaxed ws-muted">
           Demo:{" "}
-          <code className="rounded-sm bg-[var(--warm-gray)] px-1.5 py-0.5 text-[var(--forest-sage)]">
+          <code className="rounded-sm bg-[var(--warm-gray)] px-1.5 py-0.5 text-foreground">
             {DEMO_LOGIN.email}
           </code>{" "}
           /{" "}
-          <code className="rounded-sm bg-[var(--warm-gray)] px-1.5 py-0.5 text-[var(--forest-sage)]">
+          <code className="rounded-sm bg-[var(--warm-gray)] px-1.5 py-0.5 text-foreground">
             {DEMO_LOGIN.password}
           </code>
         </p>

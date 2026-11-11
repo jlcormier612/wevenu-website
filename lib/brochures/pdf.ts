@@ -11,8 +11,9 @@
  * "always render current data" is the correct behavior, not a gap.
  */
 import * as React from "react";
-import { Document, Page, Text, View, Image, StyleSheet, Font, renderToBuffer } from "@react-pdf/renderer";
+import { Document, Page, Text, View, Image, Link, StyleSheet, Font, renderToBuffer } from "@react-pdf/renderer";
 import { resolvePdfBrandColors } from "@/lib/collateral/pdf-brand";
+import { publicAppOrigin } from "@/lib/env";
 import type { BrochureRenderData } from "@/lib/brochures/types";
 
 Font.registerHyphenationCallback((word) => [word]);
@@ -56,17 +57,18 @@ function BrochurePdfDocument({ data }: { data: BrochureRenderData }) {
   const contactLine = [venue.email, venue.phone, venue.website].filter(Boolean).join("  ·  ");
   const welcomeText = brochure.welcomeText || venue.story || "";
   const sectionHeadStyle = [styles.sectionHead, { color: brand.secondary, borderBottomWidth: 1, borderBottomColor: brand.secondary, paddingBottom: 4 }];
+  const pageStyle = [styles.page, { backgroundColor: brand.neutral }];
 
   return (
     React.createElement(Document, { title: brochure.name, author: venueDisplayName },
-      React.createElement(Page, { size: "LETTER", style: styles.page },
+      React.createElement(Page, { size: "LETTER", style: pageStyle },
         React.createElement(View, { style: [styles.header, { borderBottomColor: brand.primary }] },
           React.createElement(View, { style: styles.venueBlock },
             venue.logoUrl ? React.createElement(Image, { src: venue.logoUrl, style: styles.logo }) : null,
-            React.createElement(Text, { style: styles.venueName }, venueDisplayName),
+            React.createElement(Text, { style: [styles.venueName, { color: brand.secondary }] }, venueDisplayName),
           ),
           React.createElement(View, { style: styles.titleBlock },
-            React.createElement(Text, { style: styles.title }, brochure.name),
+            React.createElement(Text, { style: [styles.title, { color: brand.secondary }] }, brochure.name),
           ),
         ),
 
@@ -102,13 +104,13 @@ function BrochurePdfDocument({ data }: { data: BrochureRenderData }) {
             React.createElement(View, { style: styles.packageRow },
               React.createElement(Text, { style: styles.packageName }, packages[0].name),
               packages[0].description ? React.createElement(Text, { style: styles.packageDescription }, packages[0].description) : null,
-              React.createElement(Text, { style: styles.packagePrice }, fmtMoney(packages[0].basePrice)),
+              React.createElement(Text, { style: [styles.packagePrice, { color: brand.accent }] }, fmtMoney(packages[0].basePrice)),
             ),
           ),
           ...packages.slice(1).map((p, i) => React.createElement(View, { key: i, style: styles.packageRow, wrap: false },
             React.createElement(Text, { style: styles.packageName }, p.name),
             p.description ? React.createElement(Text, { style: styles.packageDescription }, p.description) : null,
-            React.createElement(Text, { style: styles.packagePrice }, fmtMoney(p.basePrice)),
+            React.createElement(Text, { style: [styles.packagePrice, { color: brand.accent }] }, fmtMoney(p.basePrice)),
           )),
         ) : null,
 
@@ -129,6 +131,14 @@ function BrochurePdfDocument({ data }: { data: BrochureRenderData }) {
         brochure.closingText ? React.createElement(View, { wrap: false },
           React.createElement(Text, { style: sectionHeadStyle }, "Next Steps"),
           React.createElement(Text, { style: styles.closingText }, brochure.closingText),
+        ) : null,
+
+        data.availabilityPath ? React.createElement(View, { wrap: false },
+          React.createElement(Text, { style: sectionHeadStyle }, "Available dates"),
+          React.createElement(Text, { style: styles.bodyText }, "Check which dates are currently available. This link always shows current availability."),
+          React.createElement(Link, { src: `${publicAppOrigin()}${data.availabilityPath}` },
+            React.createElement(Text, { style: styles.bodyText }, `${publicAppOrigin()}${data.availabilityPath}`),
+          ),
         ) : null,
 
         React.createElement(View, { style: styles.footer, fixed: true },

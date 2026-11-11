@@ -13,6 +13,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/integrations/supabase/server";
 import { sendEmail } from "@/lib/email/send";
+import { buildPortalParticipantInviteEmail } from "@/lib/portal/participant-invite-email";
 import { resolvePortalContext } from "@/lib/portal/service";
 import { publicAppOrigin } from "@/lib/env";
 
@@ -60,29 +61,21 @@ export async function POST(request: Request) {
       const baseUrl = publicAppOrigin();
       const acceptUrl = `${baseUrl}/client/accept-participant?token=${data.inviteToken}`;
       const ctx = await resolvePortalContext(token);
-      const venueColor = ctx?.venue.primaryColor ?? "#5D6F5D";
+      const emailBodies = buildPortalParticipantInviteEmail({
+        firstName: firstName.trim(),
+        coupleName: String(preview.coupleName ?? ""),
+        venueName: String(preview.venueName ?? ctx?.venue.name ?? "your venue"),
+        acceptUrl,
+        brandSource: ctx?.venue ?? {
+          name: String(preview.venueName ?? "Your venue"),
+          primaryColor: "#5D6F5D",
+        },
+      });
       await sendEmail({
         to: email.trim(),
-        subject: `${preview.coupleName} invited you to their planning workspace`,
-        text: [
-          `Hi ${firstName.trim()},`,
-          "",
-          `${preview.coupleName} invited you to help plan their celebration with ${preview.venueName}.`,
-          "",
-          "By accepting this invitation, you will be asked to review and accept the applicable Hello to Cheers Terms and Privacy Policy before accessing your workspace.",
-          "",
-          "Create your account here:",
-          acceptUrl,
-          "",
-          "This link is personal to you — please don't share it.",
-        ].join("\n"),
-        html: [
-          `<p>Hi ${firstName.trim()},</p>`,
-          `<p>${preview.coupleName} invited you to help plan their celebration with ${preview.venueName}.</p>`,
-          `<p>By accepting this invitation, you will be asked to review and accept the applicable Hello to Cheers Terms and Privacy Policy before accessing your workspace.</p>`,
-          `<p><a href="${acceptUrl}" style="background:${venueColor};color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;display:inline-block;">Create Your Account</a></p>`,
-          `<p style="color:#888;font-size:12px;">This link is personal to you — please don't share it.</p>`,
-        ].join(""),
+        subject: emailBodies.subject,
+        text: emailBodies.text,
+        html: emailBodies.html,
       });
     }
   }

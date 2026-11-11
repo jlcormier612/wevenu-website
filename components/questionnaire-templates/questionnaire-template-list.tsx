@@ -22,7 +22,7 @@ import {
   provisionMissingQuestionnaireStartersAction,
   setQuestionnaireTemplateArchivedAction,
 } from "@/app/(app)/events/[id]/questionnaire-actions";
-import { LIBRARY_LABELS, archiveToggleLabel } from "@/components/library/labels";
+import { LIBRARY_LABELS, archiveToggleLabel, starterInsertLabel } from "@/components/library/labels";
 import { LibraryArchivedSection } from "@/components/library/library-archived-section";
 import { LibraryAssetCard } from "@/components/library/library-asset-card";
 import { LibraryDeleteConfirmDialog } from "@/components/library/library-delete-confirm-dialog";
@@ -50,7 +50,7 @@ export type QuestionnaireEventOption = {
   eventDate: string;
 };
 
-function NewQuestionnaireSheet() {
+export function NewQuestionnaireSheet() {
   const router = useRouter();
   const masterDefault = getQuestionnaireMasterByKind("final_details");
   const [open, setOpen] = React.useState(false);
@@ -86,7 +86,7 @@ function NewQuestionnaireSheet() {
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger render={<Button />}>+ New questionnaire</SheetTrigger>
+      <SheetTrigger render={<Button />}>+ New Template</SheetTrigger>
       <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
         <SheetHeader className="mb-6">
           <SheetTitle>New questionnaire</SheetTitle>
@@ -248,9 +248,16 @@ function UseQuestionnaireSheet({
   );
 }
 
-function StarterMenu({ missingKeys }: { missingKeys: string[] }) {
+export function QuestionnaireStarterMenu({
+  missingKeys,
+  presentKeys = [],
+}: {
+  missingKeys: string[];
+  presentKeys?: string[];
+}) {
   const router = useRouter();
   const [pending, startTransition] = React.useTransition();
+  const present = new Set(presentKeys);
 
   return (
     <DropdownMenu>
@@ -274,7 +281,7 @@ function StarterMenu({ missingKeys }: { missingKeys: string[] }) {
             if (r.ok) { toast.success("Starter added — your earlier customizations were left alone."); router.refresh(); }
             else toast.error(r.message ?? "Could not add starter.");
           })}>
-            Add {m.name} again
+            {starterInsertLabel(m.name, present.has(m.key))}
           </DropdownMenuItem>
         ))}
       </DropdownMenuContent>
@@ -300,6 +307,7 @@ function TemplateCard({
     getQuestionnaireMasterByKind(template.kind).fields.length + template.customFields.length
   );
 
+  const isStarter = Boolean(template.sourceMasterKey);
   const primaryActions = archivedView
     ? [
         {
@@ -326,12 +334,40 @@ function TemplateCard({
           href: `/library/questionnaire-templates/${template.id}/preview`,
           emphasis: "preview" as const,
         },
-        {
-          id: "edit",
-          label: LIBRARY_LABELS.edit,
-          href: `/library/questionnaire-templates/${template.id}`,
-          emphasis: "edit" as const,
-        },
+        ...(isStarter
+          ? [
+              {
+                id: "customize",
+                label: LIBRARY_LABELS.customize,
+                onClick: () => startTransition(async () => {
+                  const suggested = template.name.replace(/\s*\(Copy\)\s*$/i, "").trim() || template.name;
+                  const result = await duplicateQuestionnaireTemplateAction(
+                    template.id,
+                    `${suggested} — ${new Date().getFullYear()}`,
+                  );
+                  if (result.ok) {
+                    toast.success("Created your venue’s copy. The original starter is unchanged.");
+                    if (result.templateId) router.push(`/library/questionnaire-templates/${result.templateId}`);
+                    else router.refresh();
+                  } else toast.error(result.message ?? "Could not customize.");
+                }),
+                emphasis: "edit" as const,
+              },
+              {
+                id: "edit",
+                label: LIBRARY_LABELS.edit,
+                href: `/library/questionnaire-templates/${template.id}`,
+                emphasis: "edit" as const,
+              },
+            ]
+          : [
+              {
+                id: "edit",
+                label: LIBRARY_LABELS.edit,
+                href: `/library/questionnaire-templates/${template.id}`,
+                emphasis: "edit" as const,
+              },
+            ]),
         {
           id: "use",
           label: LIBRARY_LABELS.useQuestionnaire,
@@ -347,25 +383,32 @@ function TemplateCard({
         title={template.name}
         description={template.description}
         meta={`${count} questions · Updated ${formatRelative(template.updatedAt)}`}
-        isStarter={Boolean(template.sourceMasterKey)}
+        isStarter={isStarter}
         isArchived={template.isArchived}
-        badges={<Badge variant="muted" className="text-[10px]">{kindLabel(template.kind)}</Badge>}
+        badges={
+          <>
+            {!isStarter && <Badge variant="outline" className="text-[10px]">{LIBRARY_LABELS.yourTemplate}</Badge>}
+            <Badge variant="outline" className="htc-badge-active text-[10px]">{kindLabel(template.kind)}</Badge>
+          </>
+        }
         primaryActions={primaryActions}
         overflowPending={pending}
         overflowItems={archivedView ? [] : [
-          {
-            id: "duplicate",
-            label: LIBRARY_LABELS.duplicate,
-            onClick: () => startTransition(async () => {
-              const result = await duplicateQuestionnaireTemplateAction(template.id, `${template.name} (Copy)`);
-              if (result.ok) {
-                toast.success("Duplicated.");
-                if (result.templateId) router.push(`/library/questionnaire-templates/${result.templateId}`);
-                else router.refresh();
-              } else toast.error(result.message ?? "Could not duplicate.");
-            }),
-            icon: <Copy className="mr-2 h-3.5 w-3.5" />,
-          },
+          ...(!isStarter
+            ? [{
+                id: "duplicate",
+                label: LIBRARY_LABELS.duplicate,
+                onClick: () => startTransition(async () => {
+                  const result = await duplicateQuestionnaireTemplateAction(template.id, `${template.name} (Copy)`);
+                  if (result.ok) {
+                    toast.success("Duplicated.");
+                    if (result.templateId) router.push(`/library/questionnaire-templates/${result.templateId}`);
+                    else router.refresh();
+                  } else toast.error(result.message ?? "Could not duplicate.");
+                }),
+                icon: <Copy className="mr-2 h-3.5 w-3.5" />,
+              }]
+            : []),
           {
             id: "archive",
             label: archiveToggleLabel(template.isArchived),
@@ -407,15 +450,19 @@ export function QuestionnaireTemplateList({
   templates,
   missingStarterKeys = [],
   events = [],
+  headerCreate = true,
 }: {
   templates: QuestionnaireTemplate[];
   missingStarterKeys?: string[];
   events?: QuestionnaireEventOption[];
+  /** When false, PageHeader owns + New Template / starters. */
+  headerCreate?: boolean;
 }) {
   const router = useRouter();
   const { active, archived } = partitionArchived(templates, (t) => t.isArchived);
   const [deleting, setDeleting] = React.useState<QuestionnaireTemplate | null>(null);
   const [deletePending, setDeletePending] = React.useState(false);
+  const presentKeys = templates.map((t) => t.sourceMasterKey).filter((k): k is string => Boolean(k));
 
   async function handleDeleteConfirmed() {
     if (!deleting) return;
@@ -433,10 +480,12 @@ export function QuestionnaireTemplateList({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap justify-end gap-2">
-        <StarterMenu missingKeys={missingStarterKeys} />
-        <NewQuestionnaireSheet />
-      </div>
+      {headerCreate ? (
+        <div className="flex flex-wrap justify-end gap-2">
+          <QuestionnaireStarterMenu missingKeys={missingStarterKeys} presentKeys={presentKeys} />
+          <NewQuestionnaireSheet />
+        </div>
+      ) : null}
       {templates.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-sm border border-dashed border-border bg-card/40 py-16 text-center">
           <p className="font-heading text-lg font-medium text-heading">No questionnaires yet</p>

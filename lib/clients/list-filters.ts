@@ -1,34 +1,52 @@
 /**
- * Canonical Client list filters — the same population for Clients pills
- * and any Dashboard metric that navigates into those views.
+ * Canonical Client list buckets.
  *
- * Definitions live here once. Do not re-implement "Upcoming" (or the
- * other operational views) in dashboard-specific query code.
+ * All Bookings is the active working population (booked, not cancelled, not past).
+ * Coming up is a date subset of that population (today through the next 30 days).
+ * Needs Attention is an action subset of that population and can overlap Coming up.
+ * Cancelled and Past are historical views, opened only by those buckets.
+ * They are not five mutually exclusive lifecycle states.
  */
 export type ClientListFilterKey =
   | "all"
-  | "upcoming"
   | "coming_up"
-  | "wedding_week"
   | "needs_attention"
+  | "cancelled"
   | "past"
-  | "cancelled";
+  /** Luv portal-activation handoff — deep-link only, not a sticky list pill. */
+  | "portal_activation";
 
-export const CLIENT_LIST_FILTERS: { key: ClientListFilterKey; label: string }[] = [
-  { key: "all", label: "All" },
-  { key: "upcoming", label: "Upcoming" },
+/** Filters shown as Clients list pills. portal_activation is deep-link only. */
+export const CLIENT_LIST_FILTERS: { key: Exclude<ClientListFilterKey, "portal_activation">; label: string }[] = [
+  { key: "all", label: "All Bookings" },
   { key: "coming_up", label: "Coming up" },
-  { key: "wedding_week", label: "Wedding Week" },
   { key: "needs_attention", label: "Needs Attention" },
-  { key: "past", label: "Past" },
   { key: "cancelled", label: "Cancelled" },
+  { key: "past", label: "Past" },
 ];
 
-/** Near-term horizon for Dashboard "Coming up" — same 60-day window the
- *  dashboard events query uses (lib/dashboard/service.ts). */
-export const COMING_UP_HORIZON_DAYS = 60;
+/** Coming up is today through the next 30 calendar days, inclusive. */
+export const COMING_UP_HORIZON_DAYS = 30;
 
-const FILTER_KEYS = new Set<string>(CLIENT_LIST_FILTERS.map((f) => f.key));
+const FILTER_KEYS = new Set<string>([
+  ...CLIENT_LIST_FILTERS.map((f) => f.key),
+  "portal_activation",
+]);
+
+/** Old Client-list URLs and saved chips. They are not buckets anymore. */
+const LEGACY_FILTERS: Record<string, ClientListFilterKey> = {
+  upcoming: "all",
+  wedding_week: "coming_up",
+  booked_business: "all",
+};
+
+export function isPortalActivationFilter(key: ClientListFilterKey): boolean {
+  return key === "portal_activation";
+}
+
+export function clientListPortalActivationHref(): string {
+  return "/clients?filter=portal_activation";
+}
 
 /** Minimum client shape the operational views need — Clients rows or dashboard client rows. */
 export type ClientListFilterRecord = {
@@ -41,23 +59,19 @@ export type ClientListFilterRecord = {
 export type ClientListFilterContext = {
   /** Venue-local calendar day, YYYY-MM-DD. */
   today: string;
-  /** Inclusive end of Wedding Week (today + 7 days), YYYY-MM-DD. */
-  weekOut: string;
   /** Inclusive end of Coming up (today + COMING_UP_HORIZON_DAYS), YYYY-MM-DD. */
   comingUpOut: string;
   attentionClientIds: ReadonlySet<string>;
+  /**
+   * Authoritative Booked client IDs (current ∪ past). Not events.booked_at.
+   * When present, All Bookings / Coming up / Needs Attention / Past are
+   * drawn from this set. Cancelled is status, because cancellation removes
+   * the id from this set while keeping the relationship.
+   */
+  bookedClientIds?: ReadonlySet<string>;
 };
 
-/**
- * Inclusive end of the Wedding Week window. Same calendar-day arithmetic
- * the Clients list has always used: today + 7 days in UTC date space
- * (event dates are date-only strings, not timestamps).
- */
-export function weddingWeekEnd(today: string): string {
-  return addDaysIso(today, 7);
-}
-
-/** Inclusive end of the Dashboard Coming up window (today + 60 days). */
+/** Inclusive end of Coming up (today + 30 calendar days). */
 export function comingUpHorizonEnd(today: string): string {
   return addDaysIso(today, COMING_UP_HORIZON_DAYS);
 }
@@ -69,7 +83,9 @@ function addDaysIso(today: string, days: number): string {
 }
 
 export function parseClientListFilter(value: string | null | undefined): ClientListFilterKey | null {
-  if (!value || !FILTER_KEYS.has(value)) return null;
+  if (!value) return null;
+  if (LEGACY_FILTERS[value]) return LEGACY_FILTERS[value];
+  if (!FILTER_KEYS.has(value)) return null;
   return value as ClientListFilterKey;
 }
 
@@ -77,12 +93,21 @@ export function clientListFilterHref(key: ClientListFilterKey): string {
   return `/clients?filter=${key}`;
 }
 
-/**
- * Upcoming = booked client with an event date on or after today, not cancelled.
- * Planning / Confirmed / Complete / any non-cancelled status all count.
- * Coming up = same population restricted to the next COMING_UP_HORIZON_DAYS
- * (Dashboard attention card + destination).
- */
+function isBookedClient(client: ClientListFilterRecord, ctx: ClientListFilterContext): boolean {
+  if (client.status === "cancelled") return false;
+  if (ctx.bookedClientIds) return ctx.bookedClientIds.has(client.id);
+  return true;
+}
+
+function isPastBooking(client: ClientListFilterRecord, ctx: ClientListFilterContext): boolean {
+  return isBookedClient(client, ctx) && !!client.eventDate && client.eventDate < ctx.today;
+}
+
+/** Active working population: booked, not cancelled, and not a past event date. */
+function isAllBooking(client: ClientListFilterRecord, ctx: ClientListFilterContext): boolean {
+  return isBookedClient(client, ctx) && !isPastBooking(client, ctx);
+}
+
 export function clientMatchesListFilter(
   client: ClientListFilterRecord,
   key: ClientListFilterKey,
@@ -90,38 +115,31 @@ export function clientMatchesListFilter(
 ): boolean {
   switch (key) {
     case "all":
-      return client.status !== "cancelled";
-    case "upcoming":
-      return client.status !== "cancelled" && !!client.eventDate && client.eventDate >= ctx.today;
+      return isAllBooking(client, ctx);
     case "coming_up":
       return (
-        !client.excludeFromBusinessReporting &&
-        client.status !== "cancelled" &&
-        !!client.eventDate &&
-        client.eventDate >= ctx.today &&
-        client.eventDate <= ctx.comingUpOut
-      );
-    case "wedding_week":
-      return (
-        client.status !== "cancelled" &&
-        !!client.eventDate &&
-        client.eventDate >= ctx.today &&
-        client.eventDate <= ctx.weekOut
+        isAllBooking(client, ctx)
+        && !!client.eventDate
+        && client.eventDate >= ctx.today
+        && client.eventDate <= ctx.comingUpOut
       );
     case "needs_attention":
-      return client.status !== "cancelled" && ctx.attentionClientIds.has(client.id);
+      return isAllBooking(client, ctx) && ctx.attentionClientIds.has(client.id);
     case "past":
-      return client.status !== "cancelled" && !!client.eventDate && client.eventDate < ctx.today;
+      return isPastBooking(client, ctx);
     case "cancelled":
       return client.status === "cancelled";
+    case "portal_activation":
+      // Current Booked couples only — same population as the portal-open milestone.
+      return isAllBooking(client, ctx);
   }
 }
 
 export function countClientListFilters(
   clients: ClientListFilterRecord[],
   ctx: ClientListFilterContext,
-): Record<ClientListFilterKey, number> {
-  const counts = {} as Record<ClientListFilterKey, number>;
+): Record<Exclude<ClientListFilterKey, "portal_activation">, number> {
+  const counts = {} as Record<Exclude<ClientListFilterKey, "portal_activation">, number>;
   for (const { key } of CLIENT_LIST_FILTERS) {
     counts[key] = clients.filter((c) => clientMatchesListFilter(c, key, ctx)).length;
   }

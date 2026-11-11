@@ -47,7 +47,10 @@ export type MigrationEntityType =
   | "key_date"
   /** Event Order + Invoice + Payment Schedule + optional external contract/docs. */
   | "active_commitment"
-  /** Operational couple_guests for an active/future Event. */
+  /**
+   * Historical vocabulary only — venue Migration Center must not import
+   * guest_list. Individual guests are client-owned; see venue-guest-list-import.ts.
+   */
   | "guest_list"
   /** Event ↔ Vendor assignment on an active/future Event. */
   | "event_vendor_assignment"
@@ -225,6 +228,8 @@ export type NormalizedPackageLike = {
   description?: string | null;
   basePrice?: string | null;
   category?: string | null;
+  /** Optional composition lines (description/qty/unit) — not inventory FKs. */
+  includedItems?: Array<{ description: string; quantity: string; unit: string }> | null;
   sourceId?: string | null;
 };
 

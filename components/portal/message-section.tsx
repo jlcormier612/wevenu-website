@@ -209,6 +209,8 @@ export function PortalMessageSection({
   const [isDragging, setIsDragging] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const bottomRef    = React.useRef<HTMLDivElement>(null);
+  const listRef      = React.useRef<HTMLDivElement>(null);
+  const initialScrollDone = React.useRef(false);
 
   const load = React.useCallback(async () => {
     // Default markRead clears venue/system unread for this conversation view.
@@ -216,7 +218,11 @@ export function PortalMessageSection({
     if (res.ok) {
       const d = await res.json() as PortalThread;
       setThreadId(d.thread_id);
-      setMessages(d.messages ?? []);
+      // Chronological: oldest → newest (API already returns sent_at asc).
+      const next = [...(d.messages ?? [])].sort(
+        (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+      );
+      setMessages(next);
       onConversationViewed?.();
     }
     setLoading(false);
@@ -224,9 +230,23 @@ export function PortalMessageSection({
 
   React.useEffect(() => { void load(); }, [load]);
 
-  React.useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages.length]);
+  /** Pin viewport to the latest message inside the scrollport (not the page). */
+  const scrollToLatest = React.useCallback((behavior: ScrollBehavior) => {
+    const el = listRef.current;
+    if (!el) return;
+    if (behavior === "smooth") {
+      el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+    } else {
+      el.scrollTop = el.scrollHeight;
+    }
+  }, []);
+
+  React.useLayoutEffect(() => {
+    if (loading || messages.length === 0) return;
+    const behavior = initialScrollDone.current ? "smooth" : "auto";
+    scrollToLatest(behavior);
+    initialScrollDone.current = true;
+  }, [loading, messages.length, scrollToLatest]);
 
   // ── Upload ────────────────────────────────────────────────────────────────
 
@@ -382,8 +402,8 @@ export function PortalMessageSection({
         </div>
       </div>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-2">
+      {/* Messages — oldest at top, newest at bottom; open scrolled to latest */}
+      <div ref={listRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-2" data-testid="portal-message-list">
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <div className="h-5 w-5 rounded-full border-2 animate-spin" style={{ borderColor: "#DDD9D2", borderTopColor: SAGE }} />

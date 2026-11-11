@@ -1,0 +1,185 @@
+{
+  "base": "https://sandbox.hellotocheers.com",
+  "results": [
+    {
+      "id": "embed",
+      "viewport": "desktop",
+      "ok": true,
+      "notes": [
+        "coming=false",
+        "iframe=1"
+      ]
+    },
+    {
+      "id": "cta-/",
+      "viewport": "desktop",
+      "ok": true,
+      "notes": [
+        "count=5",
+        "/walkthrough",
+        "/walkthrough",
+        "/walkthrough"
+      ]
+    },
+    {
+      "id": "cta-/pricing",
+      "viewport": "desktop",
+      "ok": true,
+      "notes": [
+        "count=4",
+        "/walkthrough",
+        "/walkthrough",
+        "/walkthrough"
+      ]
+    },
+    {
+      "id": "cta-/product",
+      "viewport": "desktop",
+      "ok": true,
+      "notes": [
+        "count=4",
+        "/walkthrough",
+        "/walkthrough",
+        "/walkthrough"
+      ]
+    },
+    {
+      "id": "cta-/features",
+      "viewport": "desktop",
+      "ok": true,
+      "notes": [
+        "count=4",
+        "/walkthrough",
+        "/walkthrough",
+        "/walkthrough"
+      ]
+    },
+    {
+      "id": "cta-/our-story",
+      "viewport": "desktop",
+      "ok": true,
+      "notes": [
+        "count=4",
+        "/walkthrough",
+        "/walkthrough",
+        "/walkthrough"
+      ]
+    },
+    {
+      "id": "cta-/contact",
+      "viewport": "desktop",
+      "ok": true,
+      "notes": [
+        "count=3",
+        "/walkthrough",
+        "/walkthrough",
+        "/walkthrough"
+      ]
+    },
+    {
+      "id": "embed",
+      "viewport": "mobile",
+      "ok": true,
+      "notes": [
+        "coming=false",
+        "iframe=1"
+      ]
+    },
+    {
+      "id": "cta-/",
+      "viewport": "mobile",
+      "ok": true,
+      "notes": [
+        "count=4",
+        "/walkthrough",
+        "/walkthrough",
+        "/walkthrough"
+      ]
+    },
+    {
+      "id": "cta-/pricing",
+      "viewport": "mobile",
+      "ok": true,
+      "notes": [
+        "count=3",
+        "/walkthrough",
+        "/walkthrough",
+        "/walkthrough"
+      ]
+    },
+    {
+      "id": "cta-/product",
+      "viewport": "mobile",
+      "ok": true,
+      "notes": [
+        "count=3",
+        "/walkthrough",
+        "/walkthrough",
+        "/walkthrough"
+      ]
+    },
+    {
+      "id": "cta-/features",
+      "viewport": "mobile",
+      "ok": true,
+      "notes": [
+        "count=3",
+        "/walkthrough",
+        "/walkthrough",
+        "/walkthrough"
+      ]
+    },
+    {
+      "id": "cta-/our-story",
+      "viewport": "mobile",
+      "ok": true,
+      "notes": [
+        "count=3",
+        "/walkthrough",
+        "/walkthrough",
+        "/walkthrough"
+      ]
+    },
+    {
+      "id": "cta-/contact",
+      "viewport": "mobile",
+      "ok": true,
+      "notes": [
+        "count=2",
+        "/walkthrough",
+        "/walkthrough"
+      ]
+    },
+    {
+      "id": "unsigned",
+      "ok": true,
+      "notes": [
+        "status=503",
+        "body={\"error\":\"Webhook not configured.\"}"
+      ]
+    },
+    {
+      "id": "bad-signature-header",
+      "ok": true,
+      "notes": [
+        "status=503",
+        "body={\"error\":\"Webhook not configured.\"}"
+      ]
+    },
+    {
+      "id": "empty-unsigned",
+      "ok": true,
+      "notes": [
+        "status=503",
+        "body={\"error\":\"Webhook not configured.\"}"
+      ]
+    },
+    {
+      "id": "probe-email",
+      "ok": true,
+      "notes": [
+        "email=failclosed-1794363225192@example.com"
+      ]
+    }
+  ]
+}

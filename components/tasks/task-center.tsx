@@ -20,10 +20,11 @@ import {
 import { toast } from "sonner";
 
 import { completeTaskAction, setTaskStatusAction } from "@/app/(app)/playbooks/actions";
+import { setTaskCompletedAction } from "@/app/(app)/leads/[id]/actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { categoryColor, categoryLabel, formatEventRelativeDue } from "@/lib/playbooks/constants";
+import { categoryLabel, categoryLabelStyle, formatEventRelativeDue } from "@/lib/playbooks/constants";
 import {
   matchEventsForFind,
   UPCOMING_DO_PREVIEW,
@@ -47,6 +48,9 @@ export type TaskRow = {
   assigned_to_staff_id: string | null;
   assignee: { full_name: string } | null;
   milestone_kind: string | null;
+  /** Canonical venue task backing store. Default event_task for playbook rows. */
+  record_kind?: "event_task" | "lead_task";
+  lead_id?: string | null;
   events: {
     id: string;
     name: string;
@@ -69,7 +73,7 @@ const PERSPECTIVES: { id: Perspective; label: string }[] = [
 ];
 
 const STATUS_ICON = {
-  overdue:  <AlertTriangle className="h-3.5 w-3.5 text-destructive shrink-0" aria-hidden />,
+  overdue:  <AlertTriangle className="htc-task-overdue-ink h-3.5 w-3.5 shrink-0" aria-hidden />,
   pending:  <Clock className="h-3.5 w-3.5 text-muted-foreground shrink-0" aria-hidden />,
   complete: <Check className="h-3.5 w-3.5 text-success shrink-0" aria-hidden />,
 };
@@ -106,19 +110,31 @@ function DoTaskItem({
   task, onComplete, onWaive, completing, waiving,
 }: {
   task: TaskRow;
-  onComplete: (id: string, eventId: string) => void;
-  onWaive: (id: string, eventId: string) => void;
+  onComplete: (task: TaskRow) => void;
+  onWaive: (task: TaskRow) => void;
   completing: string | null;
   waiving: string | null;
 }) {
   const isActing = completing === task.id || waiving === task.id;
   const { eventId, couple, eventDate } = eventMeta(task);
+  const isLeadTask = task.record_kind === "lead_task";
+  const openHref = isLeadTask && task.lead_id
+    ? `/leads/${task.lead_id}?tab=tasks`
+    : eventId
+      ? `/events/${eventId}`
+      : null;
 
   return (
-    <div className="group flex items-start gap-3 py-3 last:border-0 border-b border-border/40">
+    <div className="htc-task-row group flex items-start gap-3 py-3">
       <div className="mt-0.5 shrink-0">{STATUS_ICON[task.computedStatus]}</div>
       <div className="flex-1 min-w-0 space-y-0.5">
-        <p className="text-sm font-medium text-heading truncate">{task.title}</p>
+        {openHref ? (
+          <Link href={openHref} className="htc-record-link text-sm font-medium truncate block max-w-full">
+            {task.title}
+          </Link>
+        ) : (
+          <p className="text-sm font-medium text-heading truncate">{task.title}</p>
+        )}
         <div className="flex items-center gap-2 flex-wrap text-xs text-muted-foreground">
           {(couple || eventDate) && (
             <span className="truncate max-w-[14rem] text-heading/80">
@@ -126,11 +142,13 @@ function DoTaskItem({
             </span>
           )}
           <span aria-hidden>·</span>
-          <span style={{ color: categoryColor(task.category as import("@/lib/playbooks/types").TaskCategory) }}>
-            {categoryLabel(task.category as import("@/lib/playbooks/types").TaskCategory)}
+          <span {...(isLeadTask
+            ? {}
+            : categoryLabelStyle(task.category as import("@/lib/playbooks/types").TaskCategory))}>
+            {isLeadTask ? "Lead" : categoryLabel(task.category as import("@/lib/playbooks/types").TaskCategory)}
           </span>
           <span aria-hidden>·</span>
-          <span className={task.computedStatus === "overdue" ? "text-destructive font-medium" : ""}>
+          <span className={task.computedStatus === "overdue" ? "htc-task-overdue-ink font-medium" : ""}>
             {formatDue(task)}
           </span>
           {task.owner_type === "vendor" && (
@@ -154,19 +172,21 @@ function DoTaskItem({
       </div>
       <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus-within:opacity-100 transition-opacity shrink-0">
         <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-xs"
-          disabled={isActing} onClick={() => onComplete(task.id, eventId)}
+          disabled={isActing} onClick={() => onComplete(task)}
           aria-label={`Mark complete: ${task.title}`}>
           {completing === task.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
         </Button>
-        <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-xs text-muted-foreground"
-          disabled={isActing} onClick={() => onWaive(task.id, eventId)}
-          aria-label={`Waive: ${task.title}`}>
-          Waive
-        </Button>
-        {eventId && (
+        {!isLeadTask && (
+          <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-xs text-muted-foreground"
+            disabled={isActing} onClick={() => onWaive(task)}
+            aria-label={`Waive: ${task.title}`}>
+            Waive
+          </Button>
+        )}
+        {openHref && (
           <Button type="button" size="sm" variant="ghost" className="h-7 w-7 p-0"
-            render={<Link href={`/events/${eventId}`} />}
-            aria-label={`Open event for ${couple || task.title}`}>
+            render={<Link href={openHref} />}
+            aria-label={`Open ${isLeadTask ? "lead" : "event"} for ${couple || task.title}`}>
             <ChevronRight className="h-3.5 w-3.5" />
           </Button>
         )}
@@ -182,18 +202,24 @@ function WatchTaskItem({ task }: { task: TaskRow }) {
     : "Coming up soon for this couple";
 
   return (
-    <div className="flex items-start gap-3 py-3 last:border-0 border-b border-border/40">
+    <div className="htc-task-row flex items-start gap-3 py-3">
       <div className="mt-0.5 shrink-0" aria-hidden>
         {task.computedStatus === "overdue"
-          ? <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
+          ? <AlertTriangle className="htc-task-overdue-ink h-3.5 w-3.5" />
           : <Eye className="h-3.5 w-3.5 text-muted-foreground" />}
       </div>
       <div className="flex-1 min-w-0 space-y-0.5">
-        <p className="text-sm font-medium text-heading truncate">{task.title}</p>
+        {eventId ? (
+          <Link href={`/events/${eventId}`} className="htc-record-link text-sm font-medium truncate block max-w-full">
+            {task.title}
+          </Link>
+        ) : (
+          <p className="text-sm font-medium text-heading truncate">{task.title}</p>
+        )}
         <p className="text-xs text-muted-foreground truncate">
           {[couple, eventDate].filter(Boolean).join(" · ")}
           <span aria-hidden> · </span>
-          <span className={task.computedStatus === "overdue" ? "text-destructive font-medium" : ""}>
+          <span className={task.computedStatus === "overdue" ? "htc-task-overdue-ink font-medium" : ""}>
             {formatDue(task)}
           </span>
         </p>
@@ -210,36 +236,40 @@ function WatchTaskItem({ task }: { task: TaskRow }) {
 }
 
 function EventGroup({
-  eventName, couple, eventId, tasks, mode, onComplete, onWaive, completing, waiving,
+  eventName, couple, eventId, tasks, mode, onComplete, onWaive, completing, waiving, href,
 }: {
   eventName: string;
   couple: string;
   eventId: string;
   tasks: TaskRow[];
   mode: "do" | "watch";
-  onComplete?: (id: string, eventId: string) => void;
-  onWaive?: (id: string, eventId: string) => void;
+  onComplete?: (task: TaskRow) => void;
+  onWaive?: (task: TaskRow) => void;
   completing?: string | null;
   waiving?: string | null;
+  href?: string | null;
 }) {
+  const openHref = href ?? (eventId ? `/events/${eventId}` : null);
   return (
     <div className={cn(
-      "rounded-sm border bg-card",
+      "htc-task-event-group overflow-hidden rounded-sm border bg-card",
       mode === "watch" ? "border-border/80 border-l-[3px] border-l-sky-600/70" : "border-border",
     )}>
-      <div className="flex items-center justify-between gap-2 px-4 py-2.5 border-b border-border/50">
+      <div className="htc-task-event-group-header flex items-center justify-between gap-2 px-4 py-2.5">
         <div className="min-w-0">
           <p className="text-xs font-semibold text-heading truncate">{couple || eventName}</p>
           <p className="text-[10px] text-muted-foreground">
             {tasks.length} {mode === "watch" ? "to watch" : `task${tasks.length !== 1 ? "s" : ""}`}
           </p>
         </div>
-        <Button type="button" size="sm" variant="ghost" className="h-7 text-xs shrink-0 text-muted-foreground"
-          render={<Link href={`/events/${eventId}`} />}>
-          View event →
-        </Button>
+        {openHref && (
+          <Button type="button" size="sm" variant="ghost" className="h-7 text-xs shrink-0 text-muted-foreground"
+            render={<Link href={openHref} />}>
+            {href?.includes("/leads/") ? "View lead →" : "View event →"}
+          </Button>
+        )}
       </div>
-      <div className="px-4">
+      <div className="htc-task-event-group-body px-4">
         {mode === "watch"
           ? tasks.map((t) => <WatchTaskItem key={t.id} task={t} />)
           : tasks.map((t) => (
@@ -259,18 +289,18 @@ function StaffGroup({
 }: {
   staffName: string;
   tasks: TaskRow[];
-  onComplete: (id: string, eventId: string) => void;
-  onWaive: (id: string, eventId: string) => void;
+  onComplete: (task: TaskRow) => void;
+  onWaive: (task: TaskRow) => void;
   completing: string | null;
   waiving: string | null;
 }) {
   return (
-    <div className="rounded-sm border border-border bg-card">
-      <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border/50">
+    <div className="htc-task-event-group overflow-hidden rounded-sm border border-border bg-card">
+      <div className="htc-task-event-group-header flex items-center gap-2 px-4 py-2.5">
         <p className="text-xs font-semibold text-heading truncate">{staffName}</p>
         <p className="text-[10px] text-muted-foreground">{tasks.length} task{tasks.length !== 1 ? "s" : ""}</p>
       </div>
-      <div className="px-4">
+      <div className="htc-task-event-group-body px-4">
         {tasks.map((t) => (
           <DoTaskItem key={t.id} task={t} onComplete={onComplete} onWaive={onWaive}
             completing={completing} waiving={waiving} />
@@ -288,8 +318,8 @@ function DoSection({
   icon: React.ReactNode;
   tasks: TaskRow[];
   priority?: "high" | "normal";
-  onComplete: (id: string, eventId: string) => void;
-  onWaive: (id: string, eventId: string) => void;
+  onComplete: (task: TaskRow) => void;
+  onWaive: (task: TaskRow) => void;
   completing: string | null;
   waiving: string | null;
   collapsed?: boolean;
@@ -301,7 +331,7 @@ function DoSection({
   const visible = previewLimit && !showAll ? tasks.slice(0, previewLimit) : tasks;
   const hiddenCount = tasks.length - visible.length;
 
-  const byEvent = new Map<string, { name: string; couple: string; tasks: TaskRow[] }>();
+  const byEvent = new Map<string, { name: string; couple: string; href: string | null; tasks: TaskRow[] }>();
   const byStaff = new Map<string, { name: string; tasks: TaskRow[] }>();
   for (const t of visible) {
     if (groupBy === "staff") {
@@ -311,15 +341,20 @@ function DoSection({
       }
       byStaff.get(staffId)!.tasks.push(t);
     } else {
-      const eventId = t.events?.id ?? "no-event";
-      if (!byEvent.has(eventId)) {
-        byEvent.set(eventId, {
-          name: t.events?.name ?? "Unknown event",
+      const groupKey = t.record_kind === "lead_task" && t.lead_id
+        ? `lead:${t.lead_id}`
+        : (t.events?.id ?? "no-event");
+      if (!byEvent.has(groupKey)) {
+        byEvent.set(groupKey, {
+          name: t.events?.name ?? "Lead",
           couple: coupleName(t.events?.clients ?? null),
+          href: t.record_kind === "lead_task" && t.lead_id
+            ? `/leads/${t.lead_id}?tab=tasks`
+            : (t.events?.id ? `/events/${t.events.id}` : null),
           tasks: [],
         });
       }
-      byEvent.get(eventId)!.tasks.push(t);
+      byEvent.get(groupKey)!.tasks.push(t);
     }
   }
 
@@ -340,9 +375,9 @@ function DoSection({
         className="flex items-center gap-2 mb-3 w-full text-left group"
         aria-expanded={open}>
         {icon}
-        <span className={`text-sm font-semibold ${priority === "high" ? "text-destructive" : "text-heading"}`}>{title}</span>
+        <span className={`text-sm font-semibold ${priority === "high" ? "htc-task-overdue-ink" : "text-heading"}`}>{title}</span>
         <span className={`text-xs rounded-full px-2 py-0.5 font-semibold ${
-          priority === "high" ? "bg-destructive/10 text-destructive" : "bg-muted text-muted-foreground"
+          priority === "high" ? "htc-task-overdue-count" : "bg-muted text-muted-foreground"
         }`}>{tasks.length}</span>
         <span className="text-xs text-muted-foreground ml-auto group-hover:text-foreground">{open ? "Hide" : "Show"}</span>
       </button>
@@ -357,7 +392,7 @@ function DoSection({
               ))
             : [...byEvent.entries()].map(([eventId, group]) => (
                 <EventGroup key={eventId} eventId={eventId} eventName={group.name} couple={group.couple}
-                  tasks={group.tasks} mode="do"
+                  tasks={group.tasks} mode="do" href={group.href}
                   onComplete={onComplete} onWaive={onWaive}
                   completing={completing} waiving={waiving} />
               ))}
@@ -469,19 +504,22 @@ export function TaskCenter({
     setRemovedIds((prev) => new Set(prev).add(id));
   }
 
-  async function handleComplete(taskId: string, eventId: string) {
-    setCompleting(taskId);
-    const result = await completeTaskAction(taskId, eventId);
+  async function handleComplete(task: TaskRow) {
+    setCompleting(task.id);
+    const result = task.record_kind === "lead_task"
+      ? await setTaskCompletedAction(task.id, true, task.lead_id ?? undefined, task.title)
+      : await completeTaskAction(task.id, task.events?.id ?? "");
     setCompleting(null);
-    if (result.ok) { removeDoTask(taskId); toast.success("Task complete."); router.refresh(); }
-    else toast.error(result.message ?? "Could not complete task.");
+    if (result.ok) { removeDoTask(task.id); toast.success("Task complete."); router.refresh(); }
+    else toast.error(("message" in result ? result.message : null) ?? "Could not complete task.");
   }
 
-  async function handleWaive(taskId: string, eventId: string) {
-    setWaiving(taskId);
-    const result = await setTaskStatusAction(taskId, eventId, "waived");
+  async function handleWaive(task: TaskRow) {
+    if (task.record_kind === "lead_task") return;
+    setWaiving(task.id);
+    const result = await setTaskStatusAction(task.id, task.events?.id ?? "", "waived");
     setWaiving(null);
-    if (result.ok) { removeDoTask(taskId); }
+    if (result.ok) { removeDoTask(task.id); }
     else toast.error("Could not waive task.");
   }
 
@@ -542,7 +580,7 @@ export function TaskCenter({
               window.setTimeout(() => setFindMenuOpen(false), 150);
             }}
             placeholder="Search by couple or event name…"
-            className="pl-8 h-9"
+            className="h-9 border-[color:var(--htc-border-warm)] bg-card pl-8"
             autoComplete="off"
             aria-expanded={findMenuOpen}
             aria-controls="task-center-find-results"
@@ -620,8 +658,8 @@ export function TaskCenter({
             className={cn(
               "flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed",
               perspective === p.id
-                ? "border-transparent bg-primary text-primary-foreground"
-                : "border-border text-muted-foreground hover:text-foreground hover:border-ring",
+                ? "border-primary bg-primary text-primary-foreground"
+                : "border-border bg-card text-heading hover:border-ring",
             )}
           >
             {p.label}
@@ -667,17 +705,23 @@ export function TaskCenter({
         )}
 
         {hasAnyDoTasks && doImmediate === 0 && doUpcomingCount > 0 && !myWorkEmpty && (
-          <div className="rounded-sm border border-border bg-muted/30 px-4 py-3">
+          <div
+            className="htc-task-center-plate-clear rounded-sm border px-4 py-3"
+            data-testid="task-center-plate-clear"
+          >
             <p className="text-sm font-medium text-heading">Nothing on your plate today</p>
             <p className="text-xs text-muted-foreground">Here&apos;s what&apos;s coming up across your events.</p>
           </div>
         )}
 
         {doImmediate > 0 && (
-          <div className="rounded-sm border border-destructive/30 bg-destructive/5 px-4 py-3 flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4 text-destructive shrink-0" aria-hidden />
-            <p className="text-sm font-medium text-destructive">
-              {doImmediate} item{doImmediate !== 1 ? "s" : ""} need attention on your team&apos;s list
+          <div
+            className="htc-task-overdue-banner rounded-sm border px-4 py-3 flex items-center gap-2"
+            data-testid="task-center-overdue-banner"
+          >
+            <AlertTriangle className="htc-task-overdue-ink h-4 w-4 shrink-0" aria-hidden />
+            <p className="htc-task-overdue-ink text-sm font-medium">
+              {`${doImmediate} item${doImmediate !== 1 ? "s" : ""} need attention on your team's list`}
             </p>
           </div>
         )}
@@ -685,7 +729,7 @@ export function TaskCenter({
         {(hasAnyDoTasks || eventFilterId) && !myWorkEmpty && (
           <>
             <DoSection
-              title="Overdue" icon={<AlertTriangle className="h-4 w-4 text-destructive shrink-0" aria-hidden />}
+              title="Overdue" icon={<AlertTriangle className="htc-task-overdue-ink h-4 w-4 shrink-0" aria-hidden />}
               tasks={scopedDo.overdue}
               priority="high" onComplete={handleComplete} onWaive={handleWaive}
               completing={completing} waiving={waiving} groupBy={groupBy}
@@ -735,7 +779,7 @@ export function TaskCenter({
         ) : (
           <>
             {doImmediate === 0 && doUpcomingCount === 0 && (
-              <div className="rounded-sm border border-sky-700/20 bg-sky-50/50 dark:bg-sky-950/20 px-4 py-3">
+              <div className="htc-surface-guidance px-4 py-3">
                 <p className="text-sm font-medium text-heading">Your team&apos;s clear — a few clients need watching</p>
               </div>
             )}

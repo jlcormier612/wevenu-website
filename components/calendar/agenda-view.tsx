@@ -11,47 +11,36 @@
  */
 import * as React from "react";
 
-import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { CalendarDays } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { FilterBar, ItemRow, MonthYearPicker, PerspectiveSwitcher } from "@/components/calendar/calendar-shared";
-import { activePerspectiveId, applyPerspectiveLinkOverrides } from "@/components/calendar/perspectives";
+import { FilterBar, ItemRow } from "@/components/calendar/calendar-shared";
 import { useCalendarFilters } from "@/components/calendar/use-calendar-filters";
 import type { CalendarItem } from "@/lib/calendar/types";
-import { cn } from "@/lib/utils";
 
 export function AgendaView({
-  items, today, year, month, onEditBlock, onDeleteBlock, deletingId, deletePending, tastingEnabled = false,
+  items, today, year, month, onEditBlock, onViewBlock, onDeleteBlock, deletingId, deletePending, tastingEnabled = false,
+  showSpaceFilter = false,
+  venueSpaces = [],
 }: {
   items: CalendarItem[];
   today: string;
   year: number;
   month: number;
   onEditBlock?: (blockId: string) => void;
+  onViewBlock?: (blockId: string) => void;
   onDeleteBlock?: (blockId: string) => void;
   deletingId?: string | null;
   deletePending?: boolean;
   tastingEnabled?: boolean;
+  showSpaceFilter?: boolean;
+  venueSpaces?: Array<{ id: string; name: string; isActive?: boolean }>;
 }) {
-  const router = useRouter();
-  const { filters, setFilters, filteredItems, presentTypes, staffOptions, spaceOptions } = useCalendarFilters(items);
-  const displayItems = applyPerspectiveLinkOverrides(filteredItems, activePerspectiveId(filters, tastingEnabled));
-
-  // Same ±1-month semantics as the "ArrowLeft"/"ArrowRight" keyboard
-  // shortcut already uses for this view (calendar-view.tsx) — the on-screen
-  // controls this adds are a second way to trigger the identical navigation,
-  // not a new one.
-  function navigate(delta: number) {
-    let newMonth = month + delta;
-    let newYear = year;
-    if (newMonth > 12) { newMonth = 1; newYear++; }
-    if (newMonth < 1)  { newMonth = 12; newYear--; }
-    router.push(`/calendar?view=agenda&year=${newYear}&month=${newMonth}`);
-  }
-
-  const [todayYear, todayMonth] = today.split("-").map(Number);
-  const isCurrentWindow = year === todayYear && month === todayMonth;
+  const { filters, setFilters, filteredItems, presentTypes, staffOptions, spaceOptions } = useCalendarFilters(
+    items,
+    undefined,
+    { showSpaceFilter, venueSpaces },
+  );
+  const displayItems = filteredItems;
 
   const upcoming = displayItems.filter((i) => i.date >= today);
   const byDate = React.useMemo(() => {
@@ -64,50 +53,35 @@ export function AgendaView({
   }, [upcoming]);
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-2">
-          <Button type="button" variant="outline" size="icon" onClick={() => navigate(-1)} aria-label="Previous month">
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <MonthYearPicker
-            year={year}
-            month={month}
-            onChange={(y, m) => router.push(`/calendar?view=agenda&year=${y}&month=${m}`)}
-          />
-          <Button type="button" variant="outline" size="icon" onClick={() => navigate(1)} aria-label="Next month">
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-        {!isCurrentWindow && (
-          <Button type="button" variant="ghost" size="sm" onClick={() => router.push(`/calendar?view=agenda&year=${todayYear}&month=${todayMonth}`)}>
-            Today
-          </Button>
-        )}
-      </div>
-
-      <PerspectiveSwitcher filters={filters} onChange={setFilters} tastingEnabled={tastingEnabled} />
-      <FilterBar filters={filters} onChange={setFilters} presentTypes={presentTypes} staffOptions={staffOptions} spaceOptions={spaceOptions} />
+    <div className="htc-calendar-agenda" data-cal-agenda="">
+      {/* Date navigation lives in the shared Phase 11C linen toolbar (calendar-view). */}
+      <FilterBar filters={filters} onChange={setFilters} presentTypes={presentTypes} staffOptions={staffOptions} spaceOptions={spaceOptions} items={items} />
 
       {byDate.length === 0 ? (
-        <p className="text-sm text-muted-foreground py-12 text-center">Nothing upcoming in this window.</p>
+        <div data-cal-agenda-empty="">
+          <CalendarDays className="mx-auto mb-2 h-7 w-7 text-muted-foreground" aria-hidden />
+          <p>Nothing upcoming in this window.</p>
+        </div>
       ) : (
-        <div className="space-y-5">
+        <div data-cal-agenda-groups="">
           {byDate.map(([date, dateItems]) => {
             const [y, m, d] = date.split("-").map(Number);
             const label = new Date(y, m - 1, d).toLocaleDateString("en-US", {
               weekday: "long", month: "long", day: "numeric",
             });
             return (
-              <div key={date} className="space-y-2">
-                <p className={cn("text-xs font-semibold uppercase tracking-wide", date === today ? "text-primary" : "text-muted-foreground")}>
+              <div key={date} data-cal-agenda-group="">
+                <p
+                  data-cal-agenda-date=""
+                  data-today={date === today ? "true" : "false"}
+                >
                   {date === today ? `Today — ${label}` : label}
                 </p>
-                <div className="space-y-2">
+                <div data-cal-agenda-items="">
                   {dateItems.map((item) => (
                     <ItemRow
                       key={item.id} item={item}
-                      onEditBlock={onEditBlock} onDeleteBlock={onDeleteBlock}
+                      onEditBlock={onEditBlock} onViewBlock={onViewBlock} onDeleteBlock={onDeleteBlock}
                       deleting={!!deletePending && deletingId === item.rawId}
                     />
                   ))}

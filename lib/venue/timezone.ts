@@ -35,6 +35,77 @@ export function venueToday(timezone: string | null, now: Date = new Date()): str
   return utcToVenueLocalParts(now.toISOString(), timezone).date;
 }
 
+/**
+ * Customer-facing date and time for a stored tour instant.
+ * Always uses the venue IANA zone — never the visitor or server clock.
+ *
+ * Canonical human-facing path for tour/event instants. Do not display
+ * `utcToVenueLocalParts().time` (24h machine clock) in ordinary UI.
+ */
+export function formatVenueLocalTourDisplay(
+  scheduledAt: string,
+  timezone: string | null,
+): { dateLabel: string; timeLabel: string } {
+  const timeZone = timezone || DEFAULT_TIMEZONE;
+  const instant = new Date(scheduledAt);
+  return {
+    dateLabel: instant.toLocaleDateString("en-US", {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+      timeZone,
+    }),
+    timeLabel: instant.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+      timeZone,
+    }),
+  };
+}
+
+/**
+ * Convert a venue-local 24h wall clock ("16:30" from utcToVenueLocalParts /
+ * leads.tour_time) into ordinary customer/staff display ("4:30 PM").
+ * Does not reinterpret timezone — the string is already venue-local.
+ */
+export function formatVenueLocalClock(time24: string | null | undefined): string {
+  if (!time24) return "";
+  const m = /^(\d{1,2}):(\d{2})(?::\d{2})?/.exec(time24.trim());
+  if (!m) return time24.trim();
+  let hour = Number(m[1]);
+  const minute = m[2]!;
+  if (!Number.isFinite(hour) || hour < 0 || hour > 23) return time24.trim();
+  const ampm = hour >= 12 ? "PM" : "AM";
+  hour = hour % 12;
+  if (hour === 0) hour = 12;
+  return `${hour}:${minute} ${ampm}`;
+}
+
+/**
+ * Calendar date (YYYY-MM-DD) for a stored timestamptz, in the venue zone.
+ * Date-only values ("YYYY-MM-DD") are returned unchanged — do not timezone-shift them.
+ */
+export function venueCalendarDateFromValue(
+  value: string | null | undefined,
+  timezone: string | null,
+): string {
+  if (!value?.trim()) return "";
+  const trimmed = value.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
+  return utcToVenueLocalParts(trimmed, timezone).date;
+}
+
+/** Short human date for venue-local calendar dates ("Sep 27, 2026"). */
+export function formatVenueLocalShortDate(isoDate: string | null | undefined): string {
+  if (!isoDate) return "";
+  const day = isoDate.slice(0, 10);
+  const d = new Date(`${day}T12:00:00`);
+  if (Number.isNaN(d.getTime())) return isoDate;
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
 /** A stored UTC instant, resolved to the venue's own local date/time for display. */
 export function utcToVenueLocalParts(isoTimestamp: string, timezone: string | null): { date: string; time: string } {
   const tz = timezone || DEFAULT_TIMEZONE;

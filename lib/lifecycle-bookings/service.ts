@@ -215,6 +215,25 @@ export async function recordLifecycleBooking(
         .eq("id", clientId)
         .eq("venue_id", input.venueId)
         .is("lifecycle_booked_at", null);
+
+      // Lifecycle booking moves the venue_couple thread to client ownership.
+      const { data: clientRel } = await client
+        .from("clients")
+        .select("relationship_id")
+        .eq("id", clientId)
+        .eq("venue_id", input.venueId)
+        .maybeSingle<{ relationship_id: string | null }>();
+      if (clientRel?.relationship_id) {
+        const { setVenueCoupleInboxOwner } = await import(
+          "@/lib/conversations/inbox-ownership-write"
+        );
+        await setVenueCoupleInboxOwner(client, {
+          venueId: input.venueId,
+          relationshipId: clientRel.relationship_id,
+          ownerKind: "client",
+          clientId,
+        });
+      }
     }
   } else if (eventKind === "first_booked" && clientId) {
     // Date unknown — still stamp origin so the client is a Booking, not a period row.

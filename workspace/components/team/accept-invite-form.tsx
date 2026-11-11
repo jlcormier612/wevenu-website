@@ -23,7 +23,7 @@ export function AcceptInviteForm({
     <form action={action} className="mt-8 space-y-4">
       <input type="hidden" name="token" value={token} />
       <div className="rounded-sm border border-[color-mix(in_srgb,var(--taupe-light)_80%,transparent)] bg-[var(--warm-gray)]/40 px-4 py-3 text-sm">
-        <p className="font-medium text-[var(--forest-sage)]">{name}</p>
+        <p className="font-medium text-foreground">{name}</p>
         <p className="ws-muted">{email}</p>
         <p className="mt-1 text-xs ws-muted">Role: {ROLE_LABELS[role]}</p>
       </div>
@@ -40,7 +40,7 @@ export function AcceptInviteForm({
           required
           minLength={8}
           autoComplete="new-password"
-          className="mt-2 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2.5 text-sm outline-none focus:border-[var(--heritage-sage)]"
+          className="mt-2 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2.5 text-sm outline-none focus:border-[var(--heritage-sage)] text-foreground"
         />
       </label>
       <label className="block">
@@ -51,7 +51,7 @@ export function AcceptInviteForm({
           required
           minLength={8}
           autoComplete="new-password"
-          className="mt-2 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2.5 text-sm outline-none focus:border-[var(--heritage-sage)]"
+          className="mt-2 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2.5 text-sm outline-none focus:border-[var(--heritage-sage)] text-foreground"
         />
       </label>
       <button

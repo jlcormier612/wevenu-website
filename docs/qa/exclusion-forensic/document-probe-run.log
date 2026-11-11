@@ -1,0 +1,8 @@
+PASS normalize_missing_storage_rejected — Documents need a file name plus storagePath and storageUrl from an uploaded file.
+PASS normalize_key_date_retired — Key Dates have been retired and can no longer be imported.
+PASS normalize_payment_redirects — Use Active commitment (Event Order, invoice, and payment plan) — standalone payment rows are not imported alone.
+PASS storage_object_absent — listed=0 err=undefined
+PASS db_row_created_without_storage_object — doc=e7139ed8 path=d25100dd-bff3-47f9-adb6-29c0fb5ead11/migration-cert/does-not-exist-1792526928475.pdf
+PASS download_fails_for_missing_object — Object not found
+
+6 passed, 0 failed

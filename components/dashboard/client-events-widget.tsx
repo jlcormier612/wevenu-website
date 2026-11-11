@@ -30,12 +30,12 @@ export function ClientEventsWidget({
     <AttentionList
       icon={<CalendarDays className="h-4 w-4 text-primary" />}
       title="Upcoming Events"
-      description="Confirmed events in the next 60 days."
+      description="Confirmed events in the next 30 days."
       items={events}
       getKey={(event) => event.id}
       emptyState={
         <div className="py-6 text-center space-y-2">
-          <p className="text-sm font-medium text-heading">No events in the next 60 days</p>
+          <p className="text-sm font-medium text-heading">No events in the next 30 days</p>
           <p className="text-xs text-muted-foreground">
             Add an event date to a client record to track it here.
           </p>

@@ -1,0 +1,16 @@
+{
+  "results": [
+    {
+      "name": "automations-new-desktop",
+      "ok": true,
+      "file": "automations-new-desktop.png",
+      "path": "/communication/series/new"
+    },
+    {
+      "name": "automations-edit-desktop",
+      "ok": true,
+      "file": "automations-edit-desktop.png",
+      "path": "/communication/series/25476d11-0a23-44ff-9909-454cf345a059/edit"
+    }
+  ]
+}

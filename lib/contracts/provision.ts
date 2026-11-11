@@ -5,14 +5,48 @@
 import { createClient } from "@/integrations/supabase/server";
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/env";
+import { REMOVED_MERGE_FIELD_KEYS } from "@/lib/contracts/constants";
+import { applyCtr01ContentRefresh } from "@/lib/contracts/ctr01-refresh";
 import {
   CONTRACT_STARTER_MASTERS,
   getContractStarterMaster,
+  WEDDING_VENUE_AGREEMENT_CONTENT,
   type ContractStarterMasterKey,
 } from "@/lib/contracts/starters";
 import { getCurrentVenue } from "@/lib/venue/service";
 
 type DbClient = Awaited<ReturnType<typeof createClient>> | ReturnType<typeof createAdminClient>;
+
+/** Booking-backed tokens the current CTR-01 master must advertise. */
+export const REQUIRED_CTR01_SMART_FIELDS = [
+  "ceremony_space",
+  "reception_space",
+  "additional_event_spaces",
+  "package_section",
+  "included_items_summary",
+  "additional_items_summary",
+  "payment_schedule_summary",
+  "contract_total",
+  "balance_remaining",
+] as const;
+
+/** True when template content still advertises removed Smart Field tokens. */
+export function starterContentHasRemovedSmartFields(content: string): boolean {
+  return REMOVED_MERGE_FIELD_KEYS.some((key) => content.includes(`{{${key}}}`));
+}
+
+/** Diagnostics only — missing tokens alone must never authorize a rewrite. */
+export function starterContentNeedsSupportedSmartFieldRestore(content: string): boolean {
+  return REQUIRED_CTR01_SMART_FIELDS.some((key) => !content.includes(`{{${key}}}`));
+}
+
+/**
+ * @deprecated Do not use for rewrite authorization. Prefer applyCtr01ContentRefresh.
+ * Kept as a thin wrapper so older tests that only checked "would refresh?" can migrate.
+ */
+export function starterContentShouldRefreshFromMaster(content: string): boolean {
+  return applyCtr01ContentRefresh(content).action !== "none";
+}
 
 async function insertStarter(client: DbClient, venueId: string, name: string, description: string, content: string, sourceMasterKey: string, isDefault: boolean) {
   if (isDefault) {
@@ -33,15 +67,31 @@ async function insertStarter(client: DbClient, venueId: string, name: string, de
 export async function provisionContractStarters(
   client: DbClient,
   venueId: string,
-): Promise<{ created: string[]; skipped: string[] }> {
+): Promise<{ created: string[]; skipped: string[]; refreshed: string[] }> {
   const created: string[] = [];
   const skipped: string[] = [];
+  const refreshed: string[] = [];
 
   for (const master of CONTRACT_STARTER_MASTERS) {
     const { data: byKey } = await client.from("contract_templates")
-      .select("id").eq("venue_id", venueId).eq("source_master_key", master.key).limit(1).maybeSingle();
+      .select("id, content").eq("venue_id", venueId).eq("source_master_key", master.key).limit(1).maybeSingle();
     if (byKey) {
-      skipped.push(master.key);
+      // Exact prior platform body → full master. Exact stock Ceremony/Reception
+      // block on an otherwise customized body → surgical only. Never refresh
+      // merely because tokens are missing or source_master_key is set.
+      const { action, content: next } = applyCtr01ContentRefresh(byKey.content ?? "");
+      if (action !== "none" && next !== (byKey.content ?? "")) {
+        const { error } = await client
+          .from("contract_templates")
+          .update({ content: next })
+          .eq("id", byKey.id)
+          .eq("venue_id", venueId)
+          .eq("source_master_key", master.key);
+        if (error) throw error;
+        refreshed.push(master.key);
+      } else {
+        skipped.push(master.key);
+      }
       continue;
     }
 
@@ -60,7 +110,7 @@ export async function provisionContractStarters(
     await insertStarter(client, venueId, master.name, master.description, master.content, master.key, makeDefault);
     created.push(master.key);
   }
-  return { created, skipped };
+  return { created, skipped, refreshed };
 }
 
 export async function seedContractStarters(venueId: string): Promise<void> {
@@ -69,13 +119,21 @@ export async function seedContractStarters(venueId: string): Promise<void> {
 }
 
 export async function ensureContractStartersForCurrentVenue(): Promise<{
-  ok: boolean; created: string[]; skipped: string[]; message?: string;
+  ok: boolean; created: string[]; skipped: string[]; refreshed: string[]; message?: string;
 }> {
-  if (!isSupabaseConfigured) return { ok: false, created: [], skipped: [], message: "Backend not configured." };
+  if (!isSupabaseConfigured) {
+    return { ok: false, created: [], skipped: [], refreshed: [], message: "Backend not configured." };
+  }
   const venue = await getCurrentVenue();
-  if (!venue) return { ok: false, created: [], skipped: [], message: "No venue found." };
-  const result = await provisionContractStarters(await createClient(), venue.id);
-  return { ok: true, ...result };
+  if (!venue) return { ok: false, created: [], skipped: [], refreshed: [], message: "No venue found." };
+  try {
+    const result = await provisionContractStarters(await createClient(), venue.id);
+    return { ok: true, ...result };
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Could not ensure contract starters.";
+    console.error("[ensureContractStartersForCurrentVenue]", message);
+    return { ok: false, created: [], skipped: [], refreshed: [], message };
+  }
 }
 
 export async function addContractStarterAgain(
@@ -108,4 +166,9 @@ export async function addContractStarterAgain(
   } catch (e) {
     return { ok: false, message: e instanceof Error ? e.message : "Could not add starter." };
   }
+}
+
+/** Current master must advertise every required booking-backed Smart Field. */
+export function currentCtr01MasterHasRequiredSmartFields(): boolean {
+  return !starterContentNeedsSupportedSmartFieldRestore(WEDDING_VENUE_AGREEMENT_CONTENT);
 }

@@ -1,0 +1,117 @@
+{
+  "expected": "97efb6658fdd34188dace69de887088cd0d64200",
+  "checks": [
+    {
+      "name": "serving_commit",
+      "pass": true,
+      "detail": "97efb6658fdd34188dace69de887088cd0d64200"
+    },
+    {
+      "name": "db_bakers_approved_unclaimed",
+      "pass": true,
+      "detail": "{\"preference_level\":\"standard\",\"status\":\"active\",\"vendors\":{\"is_claimed\":false,\"business_name\":\"Baker's Dozen\"}}"
+    },
+    {
+      "name": "db_nails_approved_unclaimed",
+      "pass": true,
+      "detail": "{\"preference_level\":\"standard\",\"status\":\"active\",\"vendors\":{\"is_claimed\":false,\"business_name\":\"Nail Studio\"}}"
+    },
+    {
+      "name": "fancy_cuppity_unaffected",
+      "pass": true,
+      "detail": "{\"preference_level\":\"preferred\",\"status\":\"active\",\"vendors\":{\"is_claimed\":true,\"business_name\":\"Cuppity Cakes\"}}"
+    },
+    {
+      "name": "active_venue_meadowbrook",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "name": "list_shows_approved_badges",
+      "pass": true,
+      "detail": "Approved count≈2"
+    },
+    {
+      "name": "list_shows_bakers",
+      "pass": true,
+      "detail": "name"
+    },
+    {
+      "name": "list_shows_nails",
+      "pass": true,
+      "detail": "name"
+    },
+    {
+      "name": "list_shows_not_claimed",
+      "pass": true,
+      "detail": "claim column"
+    },
+    {
+      "name": "list_shows_preferred_peer",
+      "pass": true,
+      "detail": "Cuppity preferred"
+    },
+    {
+      "name": "list_shows_recommended_peer",
+      "pass": true,
+      "detail": "Harah recommended"
+    },
+    {
+      "name": "reload_still_shows_approved",
+      "pass": true,
+      "detail": "Approved count≈2"
+    },
+    {
+      "name": "runtime_stayed_expected",
+      "pass": true,
+      "detail": "97efb6658fdd34188dace69de887088cd0d64200"
+    }
+  ],
+  "dbProof": {
+    "meadowbrook": [
+      {
+        "preference_level": "preferred",
+        "status": "active",
+        "vendors": {
+          "is_claimed": false,
+          "business_name": "Cuppity Cakes"
+        }
+      },
+      {
+        "preference_level": "standard",
+        "status": "active",
+        "vendors": {
+          "is_claimed": false,
+          "business_name": "Baker's Dozen"
+        }
+      },
+      {
+        "preference_level": "recommended",
+        "status": "active",
+        "vendors": {
+          "is_claimed": false,
+          "business_name": "Harah's Hair"
+        }
+      },
+      {
+        "preference_level": "standard",
+        "status": "active",
+        "vendors": {
+          "is_claimed": false,
+          "business_name": "Nail Studio"
+        }
+      }
+    ],
+    "fancyCuppity": {
+      "preference_level": "preferred",
+      "status": "active",
+      "vendors": {
+        "is_claimed": true,
+        "business_name": "Cuppity Cakes"
+      }
+    }
+  },
+  "deploymentIds": [
+    "97efb6658fdd34188dace69de887088cd0d64200"
+  ]
+}

@@ -1,0 +1,77 @@
+{
+  "expectedSha": "80d9984d5b0ccf407c2f512f6246bfdbd08d928f",
+  "servingImage": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:80d9984d5b0ccf407c2f512f6246bfdbd08d928f",
+  "counts": {
+    "pass": 12,
+    "fail": 0,
+    "total": 12
+  },
+  "checks": [
+    {
+      "name": "serving-sha",
+      "pass": true,
+      "detail": "expected=80d9984d5b0c ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:80d9984d5b0ccf407c2f512f6246bfdbd08d928f"
+    },
+    {
+      "name": "journey-present",
+      "pass": true,
+      "detail": "stage0 journey retained"
+    },
+    {
+      "name": "no-competing-strip",
+      "pass": true,
+      "detail": "strip still demoted"
+    },
+    {
+      "name": "send-cta-present",
+      "pass": true,
+      "detail": "count=1 bodyHasSend=true"
+    },
+    {
+      "name": "share-dialog",
+      "pass": true,
+      "detail": "ShareDialog open"
+    },
+    {
+      "name": "portal-status-sent",
+      "pass": true,
+      "detail": "before=draft after=sent"
+    },
+    {
+      "name": "email-activity",
+      "pass": true,
+      "detail": "types=email_submitted,sent,created"
+    },
+    {
+      "name": "email-outcome-truthful",
+      "pass": true,
+      "detail": "provider accepted (submitted) — not claiming inbox delivery"
+    },
+    {
+      "name": "outbound-or-activity",
+      "pass": true,
+      "detail": "outboundMatches=0 activityOk=true"
+    },
+    {
+      "name": "preview-dialog",
+      "pass": true,
+      "detail": "preview open"
+    },
+    {
+      "name": "preview-no-activity-bump",
+      "pass": true,
+      "detail": "before=40 after=40"
+    },
+    {
+      "name": "booking-status-unchanged",
+      "pass": true,
+      "detail": "before=confirmed after=confirmed"
+    }
+  ],
+  "persist": {
+    "eventStatusBefore": "confirmed",
+    "eventStatusAfter": "confirmed",
+    "clientId": "b4e2764b-be33-4579-89e3-0c8e4a6dd5be"
+  },
+  "at": "2026-10-23T21:01:28.311Z"
+}

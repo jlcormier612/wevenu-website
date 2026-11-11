@@ -38,7 +38,7 @@ export function getGuestObservations(
   }
 
   if (stats.total >= 10 && stats.total < 50) {
-    obs.push({ id: "count-growing", text: `You have ${stats.total} guests so far. Most couples end up inviting 125–175 — plenty of room to grow or keep it intimate.`, kind: "info" });
+    obs.push({ id: "count-growing", text: `You have ${stats.total} guests on your list so far — keep shaping it whenever you're ready.`, kind: "info" });
   } else if (stats.total >= 200) {
     obs.push({ id: "large-celebration", text: `${stats.total} guests is a beautiful celebration. Make sure your seating plan and meal selections are current with your venue.`, kind: "nudge" });
   }
@@ -135,9 +135,8 @@ export function getOverviewObservation(
   if (daysUntil > 0 && daysUntil <= 90 && (guestStats?.attending ?? 0) === 0 && (guestStats?.total ?? 0) > 10) {
     return { id: "no-rsvps", text: `No RSVPs confirmed yet with ${daysUntil} days out. Sending a reminder helps your venue finalize catering counts.`, kind: "nudge" };
   }
-  if (daysUntil > 180 && (guestStats?.total ?? 0) === 0) {
-    return { id: "early-and-empty", text: `You have plenty of time — ${daysUntil} days. Starting with your guest list is usually the first big step.`, kind: "info" };
-  }
+  // Do not invent "first big step" wedding-planning advice — guest list emptiness
+  // is handled by Luv Home from known portal facts when appropriate.
   return null;
 }
 

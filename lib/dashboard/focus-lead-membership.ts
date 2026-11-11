@@ -1,0 +1,87 @@
+/**
+ * Dashboard Focus lead membership — locked product rules.
+ *
+ * Include:
+ * - open-lifecycle + overdue follow-up
+ * - open-lifecycle + follow-up due today
+ * - open-lifecycle stale inquiry older than 48h with no follow-up,
+ *   still in early lifecycle (sales_stage is membership only; contract /
+ *   booked / lost evidence veto the "new inquiry" copy)
+ * - non-completed tours from today through today + 14 days
+ *
+ * Exclude: terminal leads. No arbitrary LIMIT.
+ */
+import { isOpenLeadLifecycle } from "@/lib/leads/open-lifecycle";
+
+export function leadMatchesFocusFollowUpRules(
+  lead: {
+    salesStage?: string | null;
+    status?: string | null;
+    followUpDate?: string | null;
+    createdAt: string;
+  },
+  today: string,
+  twoDaysAgoMs: number,
+): boolean {
+  const stage = lead.salesStage ?? lead.status;
+  if (!isOpenLeadLifecycle(stage)) return false;
+  if (lead.followUpDate && lead.followUpDate < today) return true;
+  if (lead.followUpDate === today) return true;
+  if (
+    stage === "new_inquiry" &&
+    !lead.followUpDate &&
+    new Date(lead.createdAt).getTime() < twoDaysAgoMs
+  ) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Explicit completion (status completed) is the only reason a tour leaves
+ * upcoming work. A scheduled time that has already passed does not.
+ */
+export function tourIsExplicitlyCompleted(tour: { tourCompleted?: boolean | null }): boolean {
+  return tour.tourCompleted === true;
+}
+
+export function leadMatchesFocusTourRules(
+  tour: { tourDate: string | null; tourCompleted: boolean },
+  today: string,
+  twoWeeksOut: string,
+): boolean {
+  return Boolean(
+    tour.tourDate &&
+      tour.tourDate >= today &&
+      tour.tourDate <= twoWeeksOut &&
+      !tourIsExplicitlyCompleted(tour),
+  );
+}
+
+/** Today's schedule / Luv calendar count. Completed tours are not remaining work. */
+export function leadCountsOnTodaySchedule(
+  tour: { tourDate: string | null; tourCompleted?: boolean | null },
+  today: string,
+): boolean {
+  return Boolean(tour.tourDate === today && !tourIsExplicitlyCompleted(tour));
+}
+
+/** Whether a lead belongs in the Focus-authoritative load set. */
+export function leadBelongsInFocusPopulation(
+  lead: {
+    salesStage?: string | null;
+    status?: string | null;
+    followUpDate?: string | null;
+    createdAt: string;
+    tourDate: string | null;
+    tourCompleted: boolean;
+  },
+  today: string,
+  twoDaysAgoMs: number,
+  twoWeeksOut: string,
+): boolean {
+  // Locked Phase 3A: terminal leads are excluded from Focus entirely.
+  if (!isOpenLeadLifecycle(lead.salesStage ?? lead.status)) return false;
+  if (leadMatchesFocusFollowUpRules(lead, today, twoDaysAgoMs)) return true;
+  return leadMatchesFocusTourRules(lead, today, twoWeeksOut);
+}

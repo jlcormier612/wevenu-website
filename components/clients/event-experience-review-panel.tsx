@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { isBookingWorkspaceHref } from "@/lib/clients/booking-handoff";
 import type { EventExperienceReviewModel } from "@/lib/clients/event-experience-review";
 
 export function EventExperienceReviewPanel({
@@ -36,13 +37,15 @@ export function EventExperienceReviewPanel({
               <p style={{ color: "#3D2F30" }}>{row.label}</p>
               <p className="text-xs text-muted-foreground">{row.detail}</p>
             </div>
-            <Link
-              href={row.href}
-              className="shrink-0 text-xs font-medium underline-offset-2 hover:underline"
-              style={{ color: "#5A3235" }}
-            >
-              {row.actionLabel}
-            </Link>
+            {isBookingWorkspaceHref(row.href) ? null : (
+              <Link
+                href={row.href}
+                className="shrink-0 text-xs font-medium underline-offset-2 hover:underline"
+                style={{ color: "#5A3235" }}
+              >
+                {row.actionLabel}
+              </Link>
+            )}
           </li>
         ))}
       </ul>

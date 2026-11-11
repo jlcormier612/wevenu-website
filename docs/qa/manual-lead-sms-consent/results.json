@@ -1,0 +1,93 @@
+{
+  "defect": "RCJ-SMS-CONSENT-ACQUISITION",
+  "title": "Manually added Lead had no venue path to request SMS consent",
+  "verdict": "GREEN",
+  "production_untouched": true,
+  "runtime": {
+    "commit": "5988c8d9237398e17b4b2443b32b31795dda9245",
+    "deploy": "https://github.com/jlcormier612/wevenu-website/actions/runs/35807014604",
+    "taskDefinition": "htc-sandbox-venue-app:352",
+    "image": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:5988c8d9237398e17b4b2443b32b31795dda9245",
+    "rolloutState": "COMPLETED"
+  },
+  "venue_used_for_sms_e2e": {
+    "id": "31ea4816-a5fb-4337-96c7-e2bd3d2c5c5a",
+    "name": "Texting E2E Disposable 1790024905116",
+    "reason": "Jen's Fancy Venue Twilio status is pending_compliance (not send-ready). SMS send proof required a ready venue_twilio_accounts row.",
+    "jen_fancy_note": "Inquiry date / Inquiry message labeling already proved on Jen Fancy (4683f1df / cf78ff0b). Consent acquisition E2E used texting-ready disposable venue."
+  },
+  "lead": {
+    "id": "874faf76-9580-4796-8344-3948b912c66c",
+    "relationship_id": "e8699c80-1f40-4b2c-a5ac-122d68aecf7f",
+    "phone": "(615) 555-0922",
+    "address_key": "16155550922",
+    "inquiry_date": "2026-09-22",
+    "inquiry_message": "CONSENT-E2E-INQUIRY-MSG-20260922",
+    "url": "https://app.sandbox.hellotocheers.com/leads/874faf76-9580-4796-8344-3948b912c66c"
+  },
+  "A_inquiry": {
+    "inquiry_date_defaults_to_venue_local_today": true,
+    "venue_timezone": "America/New_York",
+    "form_label": "Inquiry message",
+    "placeholder": "Capture the message or details they shared when they first contacted you.",
+    "persisted_to_leads.inquiry_message": true,
+    "appears_under_Inquiry_details_Message": true,
+    "not_in_lead_notes": true,
+    "ui_internal_notes_empty": "No notes yet. Add one above.",
+    "survives_reload": true
+  },
+  "B_sms_consent": {
+    "initial_status": "not_opted_in",
+    "ui_action": "Request text permission",
+    "after_request": {
+      "status": "not_opted_in",
+      "source": "sms_consent_request",
+      "consent_text": null,
+      "languageVersion": "htc_sms_consent_request_v1",
+      "providerId": "SM72cfbe402d14450651e6eeafd1ce03db",
+      "providerAccountSid": "ACadc…(sandbox texting E2E subaccount)",
+      "requestText": "Texting E2E Disposable 1790024905116 would like to text you about your inquiry, tour, or event. Reply START to agree to receive texts. Message and data rates may apply. Reply STOP to opt out. Reply HELP for help.",
+      "ui_pending": "Text permission requested — waiting for them to reply START",
+      "ordinary_sms_still_blocked": true
+    },
+    "provider": {
+      "sid": "SM72cfbe402d14450651e6eeafd1ce03db",
+      "api_accepted": true,
+      "to": "+16155550922",
+      "from": "+16812721352",
+      "carrier_status": "undelivered",
+      "error_code": 30034,
+      "note": "Fictional 555 test number — Twilio accepted the send (SID issued); carrier could not deliver. Compliant body verified via Twilio GET. Account SID redacted from this file for push protection."
+    },
+    "recipient_affirmative_action": {
+      "method": "Signed Twilio sms-inbound webhook OptOutType=START From=+16155550922",
+      "http": 200,
+      "result_status": "opted_in",
+      "result_source": "twilio_start"
+    },
+    "after_start": {
+      "status": "opted_in",
+      "ui": "Text messages: ● Allowed",
+      "ordinary_assertChannelAllowed": { "ok": true, "status": "opted_in" },
+      "consent_request_purpose_refused_when_already_opted_in": true,
+      "request_button_hidden": true
+    }
+  },
+  "architecture": {
+    "reused": [
+      "communication_permissions",
+      "assertChannelAllowed purpose sms_consent_request (narrow not_opted_in exception)",
+      "sendSms",
+      "START/STOP inbound keywords",
+      "buildSmsConsentRequestText + SMS_CONSENT_REQUEST_LANGUAGE_VERSION"
+    ],
+    "did_not_create_second_consent_system": true,
+    "did_not_weaken_ordinary_outbound_gate": true,
+    "request_does_not_grant_opted_in": true
+  },
+  "focused_tests": {
+    "command": "npx tsx --test lib/communication/sms-consent.test.ts lib/communication/permissions.test.ts lib/communication/request-sms-consent.test.ts lib/leads/create-initial-lead-input.test.ts",
+    "pass": 19,
+    "fail": 0
+  }
+}

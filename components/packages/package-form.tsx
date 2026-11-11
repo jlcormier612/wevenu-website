@@ -99,7 +99,7 @@ export function PackageForm({ existing }: { existing?: PackageWithItems }) {
 
       <div className="flex items-center justify-end gap-3 pt-2">
         <LibrarySaveStatus status={pending ? "saving" : dirty ? "dirty" : "idle"} model="explicit" className="mr-auto" />
-        <Button type="button" variant="outline" onClick={() => { if (confirmLeave()) router.back(); }} disabled={pending}>Cancel</Button>
+        <Button type="button" variant="outline" onClick={() => { if (confirmLeave()) router.push("/packages"); }} disabled={pending}>Cancel</Button>
         <Button type="button" onClick={handleSubmit} disabled={pending || (!!existing && !dirty)}>
           {pending ? <><Loader2 className="mr-1 h-4 w-4 animate-spin" />Saving…</> : existing ? "Save changes" : "Create Package"}
         </Button>

@@ -271,7 +271,7 @@ export function LibraryExperience({
               className={
                 tab === t.id
                   ? "rounded-sm bg-[var(--forest-sage)] px-3 py-1.5 text-sm text-[var(--true-white)]"
-                  : "rounded-sm bg-[var(--true-white)] px-3 py-1.5 text-sm ring-1 ring-[color-mix(in_srgb,var(--taupe-medium)_50%,transparent)]"
+                  : "rounded-sm bg-[var(--true-white)] px-3 py-1.5 text-sm ring-1 ring-[color-mix(in_srgb,var(--taupe-medium)_50%,transparent)] text-foreground"
               }
             >
               {t.label}

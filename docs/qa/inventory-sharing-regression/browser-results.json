@@ -1,0 +1,125 @@
+{
+  "checks": [
+    {
+      "name": "serving_sha",
+      "pass": true,
+      "detail": "expected=6f06bf08bb181910e93788c51cfcb23a7ef32afc ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:6f06bf08bb181910e93788c51cfcb23a7ef32afc",
+      "kind": "deploy"
+    },
+    {
+      "name": "picker_rejects_financial_only",
+      "pass": true,
+      "detail": "null",
+      "kind": "unit"
+    },
+    {
+      "name": "review_url_has_view_query",
+      "pass": true,
+      "detail": "https://app.sandbox.hellotocheers.com/p/abc?view=inventory#inventory",
+      "kind": "unit"
+    },
+    {
+      "name": "ursula_financial_token_is_invoice_shell",
+      "pass": true,
+      "detail": "title=Invoice & Payment Plan — Meadowbrook Valley Venue",
+      "kind": "reproduce"
+    },
+    {
+      "name": "share_for_selection_disabled_until_select",
+      "pass": true,
+      "detail": "disabled=true reasonVisible=true",
+      "kind": "usability"
+    },
+    {
+      "name": "share_for_selection_enabled_after_select",
+      "pass": true,
+      "detail": "disabled=false",
+      "kind": "usability"
+    },
+    {
+      "name": "share_creates_or_uses_couple_session",
+      "pass": true,
+      "detail": "[{\"accessToken\":\"9f404659d854a347f53f5ebe25b5c0c47558d7b7b7f7618f97c949e38a3e3e84\",\"accessLevel\":\"couple\",\"label\":\"Couple\"},{\"accessToken\":\"invshr_fin_invshrmvsrl4yz_5d48f692\",\"accessLevel\":\"financial\",\"label\":\"Payment\"}]",
+      "kind": "persisted"
+    },
+    {
+      "name": "couple_inventory_url_not_invoice_shell",
+      "pass": true,
+      "detail": "title=InvShare — Jen's Fancy Venue text=InvShare\n\n·\n\nJen's Fancy Venue\n\nFeb 18, 2028\n\nExport my data\n🏠\nHome\n✅\nTasks\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n🪑\nInventory\n1\n💳\nPayments\n💬\nMessages\n🏛️\nGuide\n🤝\nVendors\nYour inventory choices\n\nView the items your venue has listed for your event, including package-included items and available add-",
+      "kind": "browser"
+    },
+    {
+      "name": "couple_sees_inventory_items",
+      "pass": true,
+      "detail": "InvShare\n\n·\n\nJen's Fancy Venue\n\nFeb 18, 2028\n\nExport my data\n🏠\nHome\n✅\nTasks\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n🪑\nInventory\n1\n💳\nPayments\n💬\nMessages\n🏛️\nGuide\n🤝\nVendors\nYour inventory choices\n\nView the items your venue has listed for your event, including package-included items and available add-ons.\n\nSave a draft anytime. Submit when you’re ready — your venue will review before anything is confirmed.\n\nReady for your choices\n\nPACKAGE-INCLUDED\n\nINVSHR-INVSHRMVSRL4YZ-Included Linen\n\nIncluded — ",
+      "kind": "browser"
+    },
+    {
+      "name": "portal_api_select_mode_with_priced_items",
+      "pass": true,
+      "detail": "{\"mode\":\"select\",\"items\":[{\"name\":\"INVSHR-INVSHRMVSRL4YZ-Included Linen\",\"sel\":false,\"price\":null,\"included\":true},{\"name\":\"INVSHR-INVSHRMVSRL4YZ-Dance Floor\",\"sel\":true,\"price\":150,\"included\":false},{\"name\":\"INVSHR-INVSHRMVSRL4YZ-DJ Band Table\",\"sel\":true,\"price\":200,\"included\":false}]}",
+      "kind": "api"
+    },
+    {
+      "name": "mobile_390_not_invoice_shell",
+      "pass": true,
+      "detail": "InvShare — Jen's Fancy Venue",
+      "kind": "browser"
+    },
+    {
+      "name": "genuine_invoice_link_still_payment_shell",
+      "pass": true,
+      "detail": "Invoice & Payment Plan — Jen's Fancy Venue",
+      "kind": "browser"
+    },
+    {
+      "name": "bad_token_no_inventory_leak",
+      "pass": true,
+      "detail": "{\"status\":200,\"body\":{\"inventory\":null}}",
+      "kind": "security"
+    }
+  ],
+  "failed": 0,
+  "persisted": {
+    "run": "INVSHRMVSRL4YZ",
+    "expectedSha": "6f06bf08bb181910e93788c51cfcb23a7ef32afc",
+    "prefix": "INVSHR-INVSHRMVSRL4YZ-",
+    "eventId": "9bee959c-1917-4908-b8a6-f577312ebc24",
+    "items": [
+      {
+        "id": "24344d21-3866-49dd-a9cb-d811a66d0098",
+        "name": "INVSHR-INVSHRMVSRL4YZ-Included Linen",
+        "is_included": true,
+        "unit_price": null,
+        "client_selectable": false
+      },
+      {
+        "id": "d7e846d8-766a-4c34-9103-8c8e33ef4720",
+        "name": "INVSHR-INVSHRMVSRL4YZ-Dance Floor",
+        "is_included": false,
+        "unit_price": 150,
+        "client_selectable": false
+      },
+      {
+        "id": "652482de-5735-4bbc-a3a5-8e9213be0a4a",
+        "name": "INVSHR-INVSHRMVSRL4YZ-DJ Band Table",
+        "is_included": false,
+        "unit_price": 200,
+        "client_selectable": false
+      }
+    ],
+    "reviewUrl": "https://app.sandbox.hellotocheers.com/p/9f404659d854a347f53f5ebe25b5c0c47558d7b7b7f7618f97c949e38a3e3e84?view=inventory#inventory",
+    "sessionsAfter": [
+      {
+        "access_token": "9f404659d854a347f53f5ebe25b5c0c47558d7b7b7f7618f97c949e38a3e3e84",
+        "access_level": "couple",
+        "label": "Couple"
+      },
+      {
+        "access_token": "invshr_fin_invshrmvsrl4yz_5d48f692",
+        "access_level": "financial",
+        "label": "Payment"
+      }
+    ]
+  }
+}

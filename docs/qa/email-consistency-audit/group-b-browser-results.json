@@ -1,0 +1,54 @@
+{
+  "at": "2026-10-15T00:09:11.729Z",
+  "expectedSha": "3fe94472f245480cdc3135e6120be009d1887ec2",
+  "servingImage": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:3fe94472f245480cdc3135e6120be009d1887ec2",
+  "checks": [
+    {
+      "name": "Serving expected SHA",
+      "pass": true,
+      "detail": "image=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:3fe94472f245480cdc3135e6120be009d1887ec2 expected=3fe94472f245"
+    },
+    {
+      "name": "D4 HTML shell + dual CTAs",
+      "pass": true,
+      "detail": "subject=Tour protection completed — time no longer available"
+    },
+    {
+      "name": "D4 text parity essentials",
+      "pass": true,
+      "detail": "tours + lead URLs labeled in text"
+    },
+    {
+      "name": "D6 HTC shell + report link",
+      "pass": true,
+      "detail": "href=https://app.sandbox.hellotocheers.com/reporting/sales?range=last_7_days"
+    },
+    {
+      "name": "Group A thank-you helper preserved",
+      "pass": true,
+      "detail": "buildPublicIntakeThankYouEmail still returns branded HTML"
+    },
+    {
+      "name": "Fancy login",
+      "pass": true,
+      "detail": "jennifer@hellotocheers.com"
+    },
+    {
+      "name": "CTA destination /tours loads",
+      "pass": true,
+      "detail": "url=https://app.sandbox.hellotocheers.com/tours"
+    },
+    {
+      "name": "CTA destination /reporting/sales loads",
+      "pass": true,
+      "detail": "url=https://app.sandbox.hellotocheers.com/reporting/sales?range=last_7_days"
+    },
+    {
+      "name": "CTA destination /leads/{id} loads",
+      "pass": true,
+      "detail": "url=https://app.sandbox.hellotocheers.com/leads/e76ff28e-33aa-48d2-aaac-78f7ddf7bdca"
+    }
+  ],
+  "allPass": true,
+  "noSends": true
+}

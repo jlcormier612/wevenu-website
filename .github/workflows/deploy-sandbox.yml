@@ -128,11 +128,66 @@ jobs:
             exit 1
           fi
 
+      # Docker Hub anonymous pulls/metadata frequently 429 on GitHub-hosted
+      # runners. Prefer our private ECR mirror of the official library tags
+      # (seeded once into htc-ci-bases after OIDC login), then fall back to
+      # AWS Public ECR with bounded backoff. Never invent untrusted mirrors.
+      - name: Prefetch base images (private ECR, then Public ECR)
+        run: |
+          set -euo pipefail
+          REGISTRY="${{ steps.ecr-login.outputs.registry }}"
+          retry_pull() {
+            local image="$1"
+            local local_tag="$2"
+            local attempt=1
+            local delay=5
+            while [ "$attempt" -le 5 ]; do
+              echo "Pull attempt $attempt/5: $image"
+              if docker pull "$image"; then
+                docker tag "$image" "$local_tag"
+                echo "Tagged $image -> $local_tag"
+                return 0
+              fi
+              echo "Pull failed for $image; sleeping ${delay}s before retry"
+              sleep "$delay"
+              attempt=$((attempt + 1))
+              delay=$((delay * 2))
+            done
+            return 1
+          }
+          pull_base() {
+            local private_tag="$1"
+            local public_image="$2"
+            # local_tag MUST match Dockerfile FROM exactly. BuildKit resolves
+            # by that reference; a short tag like node:22-alpine does not
+            # satisfy FROM public.ecr.aws/docker/library/node:22-alpine and
+            # the build still hits Public ECR (429) even after a private hit.
+            local local_tag="$public_image"
+            if docker pull "${REGISTRY}/htc-ci-bases:${private_tag}"; then
+              docker tag "${REGISTRY}/htc-ci-bases:${private_tag}" "$local_tag"
+              echo "Using private ECR base ${private_tag} -> ${local_tag}"
+              return 0
+            fi
+            echo "Private ECR miss for ${private_tag}; falling back to Public ECR"
+            if retry_pull "$public_image" "$local_tag"; then
+              # Refresh private mirror for the next rate-limited window.
+              docker tag "$local_tag" "${REGISTRY}/htc-ci-bases:${private_tag}"
+              docker push "${REGISTRY}/htc-ci-bases:${private_tag}" || true
+              return 0
+            fi
+            echo "::error::Failed to pull ${local_tag} from private and Public ECR"
+            return 1
+          }
+          pull_base node-22-alpine public.ecr.aws/docker/library/node:22-alpine
+          pull_base alpine-3.20 public.ecr.aws/docker/library/alpine:3.20
+
       - name: Build
         env:
           BUILD_ARGS: ${{ matrix.build_args }}
           IMAGE_URI: ${{ steps.ecr-login.outputs.registry }}/${{ matrix.repo_var }}:${{ github.sha }}
+          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
         run: |
+          set -euo pipefail
           ARGS=()
           while IFS= read -r line || [ -n "$line" ]; do
             if [ -z "$line" ]; then
@@ -147,9 +202,53 @@ jobs:
             ARGS+=(
               --build-arg "NEXT_PUBLIC_SUPABASE_URL=${{ vars.NEXT_PUBLIC_SUPABASE_URL }}"
               --build-arg "NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}"
+              --build-arg "NEXT_DEPLOYMENT_ID=${{ github.sha }}"
             )
           fi
-          docker build -f "${{ matrix.dockerfile }}" -t "$IMAGE_URI" "${ARGS[@]}" .
+          # Marketing NEXT_PUBLIC_* must also be passed on argv. Matrix BUILD_ARGS
+          # can arrive empty for optional vars when exported as a step env blob
+          # (same class of drop as venue-app Supabase above). Last --build-arg wins.
+          if [ "${{ matrix.name }}" = "marketing" ]; then
+            CALENDLY_LEN_PROBE="${{ vars.NEXT_PUBLIC_CALENDLY_URL }}"
+            ARGS+=(
+              --build-arg "NEXT_PUBLIC_CALENDLY_URL=${{ vars.NEXT_PUBLIC_CALENDLY_URL }}"
+              --build-arg "NEXT_PUBLIC_GA4_MEASUREMENT_ID=${{ vars.NEXT_PUBLIC_GA4_MEASUREMENT_ID }}"
+            )
+            echo "Marketing bake: NEXT_PUBLIC_CALENDLY_URL length=${#CALENDLY_LEN_PROBE}"
+            if [ -z "$CALENDLY_LEN_PROBE" ]; then
+              echo "::warning::NEXT_PUBLIC_CALENDLY_URL is empty — /walkthrough will show scheduling fallback"
+            fi
+          fi
+          # Rewrite Public ECR library FROM -> private htc-ci-bases so BuildKit
+          # never loads metadata from public.ecr.aws (HTTP 429). Committed
+          # Dockerfiles are left unchanged; only the temp build file is used.
+          REWRITTEN="$(mktemp)"
+          ./scripts/ci/rewrite-sandbox-dockerfile-bases.sh \
+            "${{ matrix.dockerfile }}" \
+            "$REWRITTEN" \
+            "$ECR_REGISTRY"
+          if grep -E '^FROM[[:space:]]+public\.ecr\.aws/docker/library/' "$REWRITTEN"; then
+            echo "::error::rewritten Dockerfile still references public.ecr.aws/docker/library"
+            exit 1
+          fi
+          # Prefer prefetched private bases; still retry the build itself for
+          # non-Hub transient builder failures.
+          attempt=1
+          delay=10
+          while [ "$attempt" -le 3 ]; do
+            echo "Build attempt $attempt/3 for ${{ matrix.name }} (private base FROM)"
+            if docker build --pull=false -f "$REWRITTEN" -t "$IMAGE_URI" "${ARGS[@]}" .; then
+              rm -f "$REWRITTEN"
+              exit 0
+            fi
+            echo "Build failed; sleeping ${delay}s before retry"
+            sleep "$delay"
+            attempt=$((attempt + 1))
+            delay=$((delay * 2))
+          done
+          rm -f "$REWRITTEN"
+          echo "::error::docker build failed for ${{ matrix.name }} after 3 attempts"
+          exit 1
 
       - name: Push
         env:
@@ -230,18 +329,36 @@ jobs:
               "ParameterKey=CertificateArn,ParameterValue=${{ vars.CERTIFICATE_ARN }}" \
               "ParameterKey=FromEmailAddress,ParameterValue=Hello to Cheers <jennifer@hellotocheers.com>" \
               "ParameterKey=EmailReplyTo,ParameterValue=jennifer@hellotocheers.com" \
+              "ParameterKey=InquiryNotifyEmail,ParameterValue=jennifer@hellotocheers.com" \
               "ParameterKey=SupabaseUrl,ParameterValue=${{ vars.NEXT_PUBLIC_SUPABASE_URL }}" \
               "ParameterKey=SupabaseAnonKey,ParameterValue=${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" \
               "ParameterKey=ResendInboundAddress,ParameterValue=${{ vars.RESEND_INBOUND_ADDRESS }}" \
               "ParameterKey=CronSecret,ParameterValue=${{ secrets.CRON_SECRET }}" \
               "ParameterKey=NotificationsSecret,ParameterValue=${{ vars.NEXT_PUBLIC_NOTIFICATIONS_SECRET }}" \
+              "ParameterKey=CommunicationMode,ParameterValue=real" \
               "ParameterKey=StripePriceStarter,ParameterValue=price_1U42LNErUqJH7nktdpRin9ev" \
               "ParameterKey=StripePriceGrowing,ParameterValue=price_1U5rfoErUqJH7nkts2RnCCtg" \
               "ParameterKey=StripePriceGrowingFounder,ParameterValue=price_1U5rfoErUqJH7nktxJONRlCq" \
               "ParameterKey=StripePriceProfessional,ParameterValue=price_1U5rfpErUqJH7nktREPKO5zo" \
               "ParameterKey=StripePriceProfessionalFounder,ParameterValue=price_1U5rfqErUqJH7nktQg0wIXla" \
               "ParameterKey=StripePriceWhiteGlove,ParameterValue=price_1U5rfrErUqJH7nktV23SeLsM" \
-              "ParameterKey=StripeFoundingCouponId,ParameterValue=FOUNDING100"
+              "ParameterKey=StripeFoundingCouponId,ParameterValue=FOUNDING100" \
+              "ParameterKey=StripePriceGather199,ParameterValue=price_1UZj6YErUqJH7nktmVMM7sgB" \
+              "ParameterKey=StripeFoundingPercentCouponId,ParameterValue=32aTTfXi" \
+              "ParameterKey=PricingLaunchV1,ParameterValue=true" \
+              "ParameterKey=StripeWevenPercentCouponId,ParameterValue=6d2PFuDb" \
+              "ParameterKey=StripePriceWhiteGloveWeven,ParameterValue=price_1UZk1EErUqJH7nkt4lWfvbIT" \
+              "ParameterKey=PricingWevenV1,ParameterValue=true" \
+              "ParameterKey=StripeGroupPercentCouponId,ParameterValue=htc_group_10_forever" \
+              "ParameterKey=PricingGroupV1,ParameterValue=true" \
+              "ParameterKey=StripeSaasProductId,ParameterValue=prod_V4AgrDDqyO0YGF" \
+              "ParameterKey=PricingFounderV1,ParameterValue=true" \
+              "ParameterKey=ReferralProgramV1,ParameterValue=true" \
+              "ParameterKey=ReferralRewardIssue,ParameterValue=true" \
+              "ParameterKey=ReferralQualificationDays,ParameterValue=30" \
+              "ParameterKey=PricingTierUpgradeStore,ParameterValue=postgres" \
+              "ParameterKey=TierUpgradeApplyStripe,ParameterValue=true" \
+              "ParameterKey=TierUpgradeSendNotice,ParameterValue=true"
 
           for _ in $(seq 1 40); do
             st=$(aws cloudformation describe-change-set --stack-name "$STACK" --change-set-name "$CS" --query Status --output text)
@@ -317,11 +434,13 @@ jobs:
               CertificateArn="${{ vars.CERTIFICATE_ARN }}" \
               FromEmailAddress="Hello to Cheers <jennifer@hellotocheers.com>" \
               EmailReplyTo=jennifer@hellotocheers.com \
+              InquiryNotifyEmail=jennifer@hellotocheers.com \
               SupabaseUrl="${{ vars.NEXT_PUBLIC_SUPABASE_URL }}" \
               SupabaseAnonKey="${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" \
               ResendInboundAddress="${{ vars.RESEND_INBOUND_ADDRESS }}" \
               CronSecret="${{ secrets.CRON_SECRET }}" \
               NotificationsSecret="${{ vars.NEXT_PUBLIC_NOTIFICATIONS_SECRET }}" \
+              CommunicationMode=real \
               StripePriceStarter=price_1U42LNErUqJH7nktdpRin9ev \
               StripePriceGrowing=price_1U5rfoErUqJH7nkts2RnCCtg \
               StripePriceGrowingFounder=price_1U5rfoErUqJH7nktxJONRlCq \
@@ -329,6 +448,22 @@ jobs:
               StripePriceProfessionalFounder=price_1U5rfqErUqJH7nktQg0wIXla \
               StripePriceWhiteGlove=price_1U5rfrErUqJH7nktV23SeLsM \
               StripeFoundingCouponId=FOUNDING100 \
+              StripePriceGather199=price_1UZj6YErUqJH7nktmVMM7sgB \
+              StripeFoundingPercentCouponId=32aTTfXi \
+              PricingLaunchV1=true \
+              StripeWevenPercentCouponId=6d2PFuDb \
+              StripePriceWhiteGloveWeven=price_1UZk1EErUqJH7nkt4lWfvbIT \
+              PricingWevenV1=true \
+              StripeGroupPercentCouponId=htc_group_10_forever \
+              PricingGroupV1=true \
+              StripeSaasProductId=prod_V4AgrDDqyO0YGF \
+              PricingFounderV1=true \
+              ReferralProgramV1=true \
+              ReferralRewardIssue=true \
+              ReferralQualificationDays=30 \
+              PricingTierUpgradeStore=postgres \
+              TierUpgradeApplyStripe=true \
+              TierUpgradeSendNotice=true \
             --capabilities CAPABILITY_NAMED_IAM \
             --role-arn "${{ vars.CFN_EXECUTION_ROLE_ARN }}" \
             --no-fail-on-empty-changeset
@@ -350,6 +485,63 @@ jobs:
           aws ecs wait services-stable \
             --cluster htc-sandbox \
             --services htc-sandbox-venue-app htc-sandbox-marketing htc-sandbox-workspace htc-sandbox-scheduler
+
+      # The venue app sends real email unless COMMUNICATION_MODE says
+      # otherwise (lib/communication/mode.ts), so a revision without it
+      # emails the staff inbox on the next notification cron. Proves the
+      # stack parameter, the deployed template wiring, and that every running
+      # venue-app task uses the stack-registered revision. The deploy role has
+      # no ecs:DescribeTaskDefinition, so the revision is matched via stack events.
+      - name: Verify venue-app email mode is real
+        env:
+          STACK: ${{ vars.CFN_STACK_NAME }}
+        run: |
+          mode=$(aws cloudformation describe-stacks --stack-name "$STACK" \
+            --query "Stacks[0].Parameters[?ParameterKey=='CommunicationMode'].ParameterValue" --output text)
+          if [ "$mode" != "real" ]; then
+            echo "::error::Stack CommunicationMode is '$mode', expected 'real'."
+            exit 1
+          fi
+
+          aws cloudformation get-template --stack-name "$STACK" --query TemplateBody --output json > /tmp/deployed-template.json
+          python3 <<'PY'
+          import json, sys
+          body = json.load(open("/tmp/deployed-template.json"))
+          if isinstance(body, str):
+              body = json.loads(body)
+          env = body["Resources"]["VenueAppTaskDefinition"]["Properties"]["ContainerDefinitions"][0].get("Environment", [])
+          if {"Name": "COMMUNICATION_MODE", "Value": {"Ref": "CommunicationMode"}} not in env:
+              print("::error::Deployed VenueAppTaskDefinition does not set COMMUNICATION_MODE from CommunicationMode.")
+              sys.exit(1)
+          PY
+
+          # Updates replace the task definition and report the new revision as
+          # UPDATE_COMPLETE. The CLI applies --query per page of events, so take
+          # the newest match from the combined output instead of indexing.
+          stack_td=$(aws cloudformation describe-stack-events --stack-name "$STACK" \
+            --query "StackEvents[?LogicalResourceId=='VenueAppTaskDefinition' && (ResourceStatus=='UPDATE_COMPLETE' || ResourceStatus=='CREATE_COMPLETE')].PhysicalResourceId" --output text \
+            | tr '\t' '\n' | awk '/task-definition\// && !found { print; found = 1 }')
+          svc_td=$(aws ecs describe-services --cluster htc-sandbox --services htc-sandbox-venue-app \
+            --query "services[0].taskDefinition" --output text)
+          if [ -z "$stack_td" ] || [ "$stack_td" = "None" ] || [ "$svc_td" != "$stack_td" ]; then
+            echo "::error::venue-app service runs '$svc_td', not the stack-registered '$stack_td'."
+            exit 1
+          fi
+
+          # ecs:ListTasks is not granted on the task resource, so prove every
+          # running task is on this revision from the service's deployments.
+          deployments=$(aws ecs describe-services --cluster htc-sandbox --services htc-sandbox-venue-app \
+            --query "services[0].deployments[].[taskDefinition,rolloutState,runningCount,desiredCount]" --output text)
+          if [ "$(printf '%s\n' "$deployments" | wc -l)" -ne 1 ]; then
+            echo "::error::venue-app has more than one deployment: $deployments"
+            exit 1
+          fi
+          read -r dep_td dep_state dep_running dep_desired <<< "$deployments"
+          if [ "$dep_td" != "$svc_td" ] || [ "$dep_state" != "COMPLETED" ] || [ "$dep_running" -lt 1 ] || [ "$dep_running" != "$dep_desired" ]; then
+            echo "::error::venue-app deployment is not fully on $svc_td: $deployments"
+            exit 1
+          fi
+          echo "venue-app COMMUNICATION_MODE=real on $svc_td ($dep_running/$dep_desired tasks)"
 
       - name: Verify ALB endpoints
         run: |

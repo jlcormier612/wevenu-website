@@ -76,17 +76,17 @@ export function VendorMessagesInbox({ conversations }: { conversations: VendorCo
       </div>
 
       {conversations.length === 0 ? (
-        <div className="rounded-sm border border-dashed border-border py-14 text-center">
+        <div data-vendor-empty="framed" className="htc-vendor-empty-framed py-14 text-center">
           <p className="text-sm font-medium text-foreground">No messages yet</p>
-          <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
+          <p className="mx-auto mt-1 max-w-sm text-xs text-muted-foreground">
             When a couple contacts you about an event — or a venue assigns you — conversations appear here.
           </p>
         </div>
       ) : conversations.every((c) => c.contactUnread === 0) ? (
         <>
-          <div className="rounded-sm border border-dashed border-border py-6 text-center">
+          <div data-vendor-empty="framed" className="htc-vendor-empty-framed py-6 text-center">
             <p className="text-sm font-medium text-foreground">You&apos;re all caught up</p>
-            <p className="text-xs text-muted-foreground mt-1">No messages need a reply right now.</p>
+            <p className="mt-1 text-xs text-muted-foreground">No messages need a reply right now.</p>
           </div>
           <div className="rounded-sm border border-border bg-card divide-y divide-border overflow-hidden">
             {conversations.map((c) => (

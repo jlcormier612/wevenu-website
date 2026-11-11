@@ -18,15 +18,25 @@
 import { NextResponse } from "next/server";
 
 import { cronUnauthorizedResponse, isCronAuthorized, isManualSecretAuthorized } from "@/lib/auth/cron-auth";
+import { processDueQuestionnaireScheduledSends } from "@/lib/events/questionnaire-scheduled-send";
 import { processDueScheduledMessages } from "@/lib/scheduled-messages/processor";
+
+async function runScheduledProcessors() {
+  const messages = await processDueScheduledMessages();
+  const questionnaires = await processDueQuestionnaireScheduledSends();
+  return { messages, questionnaires };
+}
 
 export async function GET(request: Request) {
   if (!isCronAuthorized(request)) {
     return cronUnauthorizedResponse();
   }
   try {
-    const result = await processDueScheduledMessages();
-    console.log(`[cron] scheduled sends processed: ${result.sent} sent, ${result.failed} failed`);
+    const result = await runScheduledProcessors();
+    console.log(
+      `[cron] scheduled sends processed: messages ${result.messages.sent} sent / ${result.messages.failed} failed; `
+      + `questionnaires ${result.questionnaires.sent} sent / ${result.questionnaires.failed} failed`,
+    );
     return NextResponse.json(result);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
@@ -40,7 +50,7 @@ export async function POST(request: Request) {
     return cronUnauthorizedResponse();
   }
   try {
-    const result = await processDueScheduledMessages();
+    const result = await runScheduledProcessors();
     return NextResponse.json(result);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";

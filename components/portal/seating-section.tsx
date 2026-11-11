@@ -26,6 +26,7 @@ import { FloorPlanShapeSvg, DISPLAY_SHAPE_STYLE } from "@/components/floor-plan/
 import { celebrateLuv } from "@/lib/luv/celebrate";
 import { coupleCelebrationMessage } from "@/lib/luv/celebrations";
 import { getSeatingObservation } from "@/lib/luv/portal-observations";
+import { HTC_NATIVE_SELECT_CLASS } from "@/lib/ui/native-select";
 import {
   ACCESSIBILITY_LABELS, DIETARY_EMOJI, MEAL_EMOJI,
   type SeatingData, type SeatingTable, type SeatingGuest, type SeatingSuggestionHousehold,
@@ -542,12 +543,12 @@ function GuestWorkspacePanel({
       <div className="flex-1 overflow-y-auto">
         {needsReassignmentCount > 0 && (
           <div className="mx-4 mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-            {needsReassignmentCount} guest{needsReassignmentCount === 1 ? "" : "s"} need{needsReassignmentCount === 1 ? "s" : ""} a new table — their table was removed from the Floor Plan.
+            {`${needsReassignmentCount} guest${needsReassignmentCount === 1 ? "" : "s"} need${needsReassignmentCount === 1 ? "s" : ""} a new table — their table was removed from the Floor Plan.`}
           </div>
         )}
         {unconvertedPlusOnesCount > 0 && (
           <div className="mx-4 mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-            {unconvertedPlusOnesCount} plus-one{unconvertedPlusOnesCount === 1 ? "" : "s"} {unconvertedPlusOnesCount === 1 ? "has" : "have"} a name but no seat — convert them to a full guest before the floor plan can seat them.
+            {`${unconvertedPlusOnesCount} plus-one${unconvertedPlusOnesCount === 1 ? "" : "s"} ${unconvertedPlusOnesCount === 1 ? "has" : "have"} a name but no seat — convert them to a full guest before the floor plan can seat them.`}
           </div>
         )}
 
@@ -677,10 +678,10 @@ function SelectionBar({
 }) {
   return (
     <div className="mx-4 mt-3 flex items-center gap-2 flex-wrap rounded-lg border border-primary/30 bg-primary/5 px-3 py-2">
-      <span className="text-xs font-medium text-foreground">{count} guest{count === 1 ? "" : "s"} selected</span>
+      <span className="text-xs font-medium text-foreground">{`${count} guest${count === 1 ? "" : "s"} selected`}</span>
       <select
         value={selectedTableId ?? ""} onChange={(e) => onChangeTable(e.target.value)}
-        className="h-7 rounded-md border border-border bg-card px-2 text-xs"
+        className={`h-7 rounded-md border border-border bg-card px-2 text-xs ${HTC_NATIVE_SELECT_CLASS}`}
       >
         <option value="">Choose a table…</option>
         {tables.map((t) => <option key={t.id} value={t.id}>{t.label ?? "Table"}</option>)}
@@ -727,7 +728,7 @@ function SeatingDashboard({ data, onContinue }: { data: SeatingData; onContinue:
 
       {data.needsReassignment.length > 0 && (
         <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-4 max-w-xs">
-          {data.needsReassignment.length} guest{data.needsReassignment.length === 1 ? "" : "s"} need a new table since their table was removed.
+          {`${data.needsReassignment.length} guest${data.needsReassignment.length === 1 ? "" : "s"} need a new table since their table was removed.`}
         </p>
       )}
 
@@ -1138,7 +1139,7 @@ export default function SeatingSection({ token }: { token: string }) {
           )}
           {strandedCount > 0 && (
             <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-4 max-w-xs mx-auto">
-              {strandedCount} guest{strandedCount === 1 ? "" : "s"} will need a new table once seating reopens.
+              {`${strandedCount} guest${strandedCount === 1 ? "" : "s"} will need a new table once seating reopens.`}
             </p>
           )}
         </div>
@@ -1237,7 +1238,7 @@ export default function SeatingSection({ token }: { token: string }) {
             On phones, choose a guest and a table — no drag required.
           </p>
           <select
-            className="w-full text-sm border border-border rounded-lg px-2 py-2 bg-background"
+            className={`w-full text-sm border border-border rounded-lg px-2 py-2 bg-background ${HTC_NATIVE_SELECT_CLASS}`}
             value={mobileAssignGuestId ?? ""}
             onChange={(e) => setMobileAssignGuestId(e.target.value || null)}
             aria-label="Guest to seat"
@@ -1250,7 +1251,7 @@ export default function SeatingSection({ token }: { token: string }) {
             ))}
           </select>
           <select
-            className="w-full text-sm border border-border rounded-lg px-2 py-2 bg-background"
+            className={`w-full text-sm border border-border rounded-lg px-2 py-2 bg-background ${HTC_NATIVE_SELECT_CLASS}`}
             value={selectedTableId ?? ""}
             onChange={(e) => setSelectedTableId(e.target.value || null)}
             aria-label="Table"
@@ -1295,7 +1296,7 @@ export default function SeatingSection({ token }: { token: string }) {
           <svg
             viewBox={`0 0 ${canvasWidth} ${canvasHeight}`}
             style={{ width: "100%", maxWidth: canvasWidth, height: "auto" }}
-            className="bg-white border border-border rounded-lg"
+            className="bg-card border border-border rounded-lg"
             onClick={() => setSelectedTableId(null)}
           >
             {data.floorPlan.backgroundImageUrl && (

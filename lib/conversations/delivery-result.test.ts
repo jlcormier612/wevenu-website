@@ -30,7 +30,21 @@ describe("acceptOutboundEmail", () => {
   it("preserves translated provider failures", () => {
     const accepted = acceptOutboundEmail({ ok: false, message: "422 invalid `to` field" });
     assert.equal(accepted.ok, false);
-    if (!accepted.ok) assert.equal(accepted.message, "This email address appears invalid.");
+    if (!accepted.ok) {
+      assert.match(accepted.message, /not valid|rejected/i);
+      assert.doesNotMatch(accepted.message, /couldn't be delivered/i);
+    }
+  });
+
+  it("does not re-translate already-classified SendResult codes", () => {
+    const accepted = acceptOutboundEmail({
+      ok: false,
+      message: "The email provider rejected this send because a sending quota was reached. The message was not accepted for delivery.",
+      code: "quota",
+      retryUnsafe: true,
+    });
+    assert.equal(accepted.ok, false);
+    if (!accepted.ok) assert.match(accepted.message, /quota/i);
   });
 });
 

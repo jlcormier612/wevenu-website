@@ -1,0 +1,2246 @@
+/* Phase 3B homepage — scoped palette & section rhythm (does not restyle site chrome). */
+
+.htc-home {
+  --botanical: #446b56;
+  --eucalyptus: #dce8e0;
+  --blush: #f7e9eb;
+  --canvas: #f8f7f3;
+  --linen: #f3f0e9;
+  --calm-blue: #eaf1f7;
+  --white: #ffffff;
+  --charcoal: #24332b;
+  --muted: rgba(36, 51, 43, 0.68);
+  --line: rgba(36, 51, 43, 0.12);
+  --shadow: 0 36px 72px -44px rgba(36, 51, 43, 0.42);
+  color: var(--charcoal);
+  background: var(--canvas);
+}
+
+.htc-home .wrap {
+  width: min(1180px, calc(100% - 2.5rem));
+  margin-inline: auto;
+}
+
+.htc-home .wrap-wide {
+  width: min(1220px, calc(100% - 2rem));
+  margin-inline: auto;
+}
+
+.htc-home .kicker {
+  font-size: 0.75rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--botanical);
+  font-weight: 600;
+  margin: 0 0 0.85rem;
+}
+
+.htc-home .section-title {
+  font-family: var(--font-heading);
+  font-weight: 550;
+  letter-spacing: -0.025em;
+  line-height: 1.05;
+  margin: 0 0 1rem;
+  font-size: clamp(2.1rem, 4vw, 3.25rem);
+  color: var(--charcoal);
+}
+
+.htc-home .section-lede {
+  font-size: 1.0625rem;
+  color: var(--muted);
+  margin: 0 0 1.25rem;
+  max-width: 48ch;
+  line-height: 1.55;
+}
+
+.htc-home .section-body {
+  font-size: 1.02rem;
+  color: var(--muted);
+  margin: 0 0 1.15rem;
+  max-width: 56ch;
+  line-height: 1.6;
+}
+
+.htc-home .center .section-body {
+  margin-inline: auto;
+}
+
+.htc-home .section-closing {
+  margin: 2rem 0 0;
+  font-family: var(--font-heading);
+  font-size: clamp(1.2rem, 2.2vw, 1.55rem);
+  color: var(--botanical);
+  font-weight: 550;
+  letter-spacing: -0.015em;
+  max-width: 40ch;
+  line-height: 1.3;
+}
+
+.htc-home .center.section-closing,
+.htc-home .section-closing.center {
+  margin-inline: auto;
+  text-align: center;
+}
+
+.htc-home .center {
+  text-align: center;
+}
+
+.htc-home .center .section-lede {
+  margin-inline: auto;
+}
+
+.htc-home .btn-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.htc-home .center .btn-row {
+  justify-content: center;
+}
+
+.htc-home .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 0.85rem 1.35rem;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  border: 1px solid transparent;
+  text-decoration: none;
+  transition: background-color 0.2s ease-out, border-color 0.2s ease-out, color 0.2s ease-out;
+}
+
+.htc-home .btn-primary {
+  background: var(--botanical);
+  color: var(--white);
+}
+
+.htc-home .btn-primary:hover {
+  background: color-mix(in srgb, var(--botanical) 88%, black);
+}
+
+.htc-home .btn-secondary {
+  background: rgba(255, 255, 255, 0.78);
+  border-color: rgba(68, 107, 86, 0.3);
+  color: var(--charcoal);
+}
+
+.htc-home .btn-secondary:hover {
+  border-color: rgba(68, 107, 86, 0.5);
+}
+
+.htc-home .btn-ghost {
+  color: var(--muted);
+  padding-inline: 0.5rem;
+}
+
+.htc-home .btn-ghost:hover {
+  color: var(--botanical);
+}
+
+.htc-home .btn-lg {
+  padding: 0.95rem 1.6rem;
+}
+
+.htc-home .btn-on-dark.btn-primary {
+  background: var(--white);
+  color: var(--botanical);
+}
+
+.htc-home .btn-on-dark.btn-secondary {
+  border-color: rgba(255, 255, 255, 0.35);
+  color: var(--white);
+  background: transparent;
+}
+
+.htc-home .chrome {
+  display: flex;
+  gap: 0.45rem;
+  align-items: center;
+  padding: 0.7rem 0.9rem;
+  background: linear-gradient(180deg, #f7f4ee, #efeae2);
+  border-bottom: 1px solid var(--line);
+}
+
+.htc-home .chrome i {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: #d2c8ba;
+  display: block;
+}
+
+.htc-home .chrome .url {
+  margin-left: 0.5rem;
+  flex: 1;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 0.35rem 0.75rem;
+  font-size: 0.6875rem;
+  color: var(--muted);
+}
+
+.htc-home .product-frame {
+  background: var(--white);
+  border: 1px solid rgba(36, 51, 43, 0.14);
+  border-radius: 1.25rem 1.25rem 0 0;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+
+.htc-home .product-frame img {
+  width: 100%;
+  display: block;
+}
+
+.htc-home .phone-frame {
+  background: #24332b;
+  border-radius: 2rem;
+  padding: 0.65rem 0.5rem 0.9rem;
+  box-shadow: 0 28px 56px -28px rgba(36, 51, 43, 0.55);
+}
+
+.htc-home .phone-frame .notch {
+  width: 5rem;
+  height: 0.85rem;
+  border-radius: 0.75rem;
+  background: #1a2420;
+  margin: 0 auto 0.5rem;
+}
+
+.htc-home .phone-frame .screen {
+  border-radius: 1.35rem;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.htc-home .phone-frame img {
+  width: 100%;
+  display: block;
+}
+
+/* —— Hero (editorial photography) —— */
+.htc-home .hero {
+  background: #f3f0e9;
+  color: #24332b;
+  overflow: hidden;
+  padding: 0 0 5rem;
+}
+
+.htc-home .hero-inner {
+  width: min(1280px, calc(100% - 2.5rem));
+  margin-inline: auto;
+  padding-top: 4rem;
+}
+
+.htc-home .hero-copy {
+  text-align: center;
+  margin: 0 auto;
+  max-width: 56.25rem;
+}
+
+.htc-home .hero-eyebrow {
+  margin: 0 0 1.375rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: #24332b;
+  text-align: center;
+}
+
+.htc-home .hero h1 {
+  font-family: var(--font-heading);
+  font-size: clamp(2.625rem, 5vw, 4.25rem);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  margin: 0 auto 1.5rem;
+  font-weight: 400;
+  color: #24332b;
+  text-align: center;
+  max-width: 56.25rem;
+}
+
+.htc-home .hero-lede {
+  font-size: 1.125rem;
+  line-height: 1.6;
+  color: #24332b;
+  margin: 0 auto 1.875rem;
+  max-width: 45rem;
+  text-align: center;
+}
+
+.htc-home .hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 0.875rem;
+  margin: 0 auto 3.375rem;
+}
+
+.htc-home .hero-actions .btn {
+  height: 3rem;
+  padding: 0 1.625rem;
+  border-radius: 999px;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  box-sizing: border-box;
+}
+
+.htc-home .hero-actions .btn-primary {
+  background: #446b56;
+  color: #ffffff;
+  border-color: #446b56;
+}
+
+.htc-home .hero-actions .btn-primary:hover {
+  background: color-mix(in srgb, #446b56 88%, black);
+}
+
+.htc-home .hero-actions .btn-primary:focus-visible {
+  outline: 2px solid #446b56;
+  outline-offset: 3px;
+}
+
+.htc-home .hero-actions .btn-secondary {
+  background: #ffffff;
+  border: 1px solid rgba(36, 51, 43, 0.22);
+  color: #24332b;
+}
+
+.htc-home .hero-actions .btn-secondary:hover {
+  border-color: rgba(36, 51, 43, 0.4);
+  background: color-mix(in srgb, #ffffff 88%, #e8ebe4);
+}
+
+.htc-home .hero-actions .btn-secondary:focus-visible {
+  outline: 2px solid #24332b;
+  outline-offset: 3px;
+}
+
+.htc-home .hero-photo {
+  position: relative;
+  margin: 0;
+  width: 100%;
+  max-width: 1280px;
+  aspect-ratio: 1.95 / 1;
+  border-radius: 11px;
+  overflow: hidden;
+  background: #e8e4db;
+}
+
+.htc-home .hero-photo img {
+  object-fit: cover;
+  object-position: 42% 45%;
+}
+
+/* —— §2 Connected Journey (editorial photography) —— */
+.htc-home .journey {
+  background: #ffffff;
+  color: #24332b;
+  padding: 6.5rem 0 7rem;
+}
+
+.htc-home .journey-inner {
+  width: min(1280px, calc(100% - 2.5rem));
+  margin-inline: auto;
+}
+
+.htc-home .journey-intro {
+  text-align: center;
+  max-width: 62.5rem;
+  margin: 0 auto;
+}
+
+.htc-home .journey-eyebrow {
+  margin: 0;
+  font-size: 0.75rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: #24332b;
+  text-align: center;
+}
+
+.htc-home .journey-headline {
+  font-family: var(--font-heading);
+  font-size: 3.625rem;
+  font-weight: 400;
+  line-height: 1.08;
+  color: #24332b;
+  margin: 1.125rem auto 0;
+  max-width: 62.5rem;
+  text-align: center;
+  text-wrap: balance;
+}
+
+.htc-home .journey-lede {
+  margin: 1.5rem auto 0;
+  max-width: 47.5rem;
+  text-align: center;
+}
+
+.htc-home .journey-lede p {
+  margin: 0;
+  font-size: 1.0625rem;
+  line-height: 1.65;
+  color: #24332b;
+  text-wrap: pretty;
+}
+
+.htc-home .journey-lede p + p {
+  margin-top: 0.75rem;
+}
+
+.htc-home .journey-moments {
+  list-style: none;
+  margin: 3.375rem 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.htc-home .journey-moment {
+  margin: 0;
+  min-width: 0;
+}
+
+.htc-home .journey-photo {
+  position: relative;
+  margin: 0;
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  border-radius: 9px;
+  overflow: hidden;
+  background: #f3f0e9;
+}
+
+.htc-home .journey-photo img {
+  object-fit: cover;
+}
+
+.htc-home .journey-pos-a {
+  object-position: 50% 18%;
+}
+
+.htc-home .journey-pos-b {
+  object-position: 50% 42%;
+}
+
+.htc-home .journey-pos-c {
+  object-position: 48% 32%;
+}
+
+.htc-home .journey-caption-title {
+  font-family: var(--font-heading);
+  font-size: 1.6875rem;
+  font-weight: 400;
+  line-height: 1.15;
+  color: #24332b;
+  margin: 1.125rem 0 0;
+  text-align: left;
+  text-wrap: balance;
+}
+
+.htc-home .journey-caption-body {
+  margin: 0.3125rem 0 0;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: #24332b;
+  text-align: left;
+  text-wrap: pretty;
+}
+
+.htc-home .journey-stages {
+  list-style: none;
+  margin: 4.125rem 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  position: relative;
+  width: 100%;
+  max-width: 52rem;
+  margin-inline: auto;
+}
+
+.htc-home .journey-stages::before {
+  content: "";
+  position: absolute;
+  top: 0.9375rem;
+  left: 10%;
+  width: 80%;
+  height: 1px;
+  background: rgba(36, 51, 43, 0.16);
+  z-index: 0;
+}
+
+.htc-home .journey-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  z-index: 1;
+  text-align: center;
+}
+
+.htc-home .journey-marker {
+  width: 1.875rem;
+  height: 1.875rem;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: #f3f0e9;
+  color: #24332b;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.htc-home .journey-stage:first-child .journey-marker,
+.htc-home .journey-stage:last-child .journey-marker {
+  background: #dce8e0;
+}
+
+.htc-home .journey-stage-label {
+  margin-top: 0.75rem;
+  font-size: 0.875rem;
+  color: #24332b;
+  line-height: 1.3;
+}
+
+.htc-home .journey-closing {
+  font-family: var(--font-heading);
+  font-size: 1.75rem;
+  font-weight: 400;
+  color: #24332b;
+  text-align: center;
+  max-width: 47.5rem;
+  margin: 3.25rem auto 0;
+  line-height: 1.25;
+  text-wrap: balance;
+}
+
+/* —— §3 Your Venue. Your Way. (editorial split) —— */
+.htc-home .personalize {
+  background: #f3f0e9;
+  color: #24332b;
+  padding: 7rem 0;
+}
+
+.htc-home .personalize-inner {
+  width: min(1280px, calc(100% - 2.5rem));
+  margin-inline: auto;
+  display: grid;
+  grid-template-columns: minmax(0, 0.48fr) minmax(0, 0.52fr);
+  gap: 4.75rem;
+  align-items: center;
+}
+
+.htc-home .personalize-photo {
+  position: relative;
+  margin: 0;
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  max-height: 640px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #e8e4db;
+}
+
+.htc-home .personalize-photo-img {
+  object-fit: cover;
+  object-position: 50% 42%;
+}
+
+.htc-home .personalize-copy {
+  max-width: 33.75rem;
+  text-align: left;
+}
+
+.htc-home .personalize-eyebrow {
+  margin: 0 0 1.125rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: #24332b;
+}
+
+.htc-home .personalize-headline {
+  font-family: var(--font-heading);
+  font-size: 3.625rem;
+  font-weight: 400;
+  line-height: 1.08;
+  color: #24332b;
+  margin: 0 0 1.75rem;
+  text-wrap: balance;
+}
+
+.htc-home .personalize-body p {
+  margin: 0;
+  font-size: 1.0625rem;
+  line-height: 1.7;
+  color: #24332b;
+  text-wrap: pretty;
+}
+
+.htc-home .personalize-body p + p {
+  margin-top: 1.375rem;
+}
+
+/* —— §4 Operations (panoramic + four equal pillars) —— */
+.htc-home .operations {
+  background: #ffffff;
+  color: #24332b;
+  padding: 7rem 0 7.5rem;
+}
+
+.htc-home .operations-inner {
+  width: min(1280px, calc(100% - 2.5rem));
+  margin-inline: auto;
+}
+
+.htc-home .operations-intro {
+  text-align: center;
+  max-width: 62.5rem;
+  margin: 0 auto;
+}
+
+.htc-home .operations-eyebrow {
+  margin: 0 0 1.125rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: #24332b;
+}
+
+.htc-home .operations-headline {
+  font-family: var(--font-heading);
+  font-size: 3.75rem;
+  font-weight: 400;
+  line-height: 1.08;
+  color: #24332b;
+  margin: 0 auto;
+  max-width: 62.5rem;
+  text-wrap: balance;
+}
+
+.htc-home .operations-lede {
+  margin: 1.5rem auto 0;
+  max-width: 47.5rem;
+  font-size: 1.125rem;
+  line-height: 1.65;
+  color: #24332b;
+  text-wrap: pretty;
+}
+
+.htc-home .operations-photo {
+  position: relative;
+  margin: 3.375rem 0 0;
+  width: 100%;
+  aspect-ratio: 2 / 1;
+  max-height: 580px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #f3f0e9;
+}
+
+.htc-home .operations-photo-img {
+  object-fit: cover;
+  object-position: center center;
+}
+
+.htc-home .operations-pillars {
+  margin: 4.5rem 0 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 4.5rem;
+  row-gap: 3.25rem;
+}
+
+.htc-home .operations-pillar {
+  margin: 0;
+  padding-top: 0;
+  border-top: 1px solid #d9d6ce;
+}
+
+.htc-home .operations-pillar-n {
+  display: block;
+  margin-top: 1.25rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #8b947f;
+  line-height: 1;
+}
+
+.htc-home .operations-pillar-title {
+  font-family: var(--font-heading);
+  font-size: 2.125rem;
+  font-weight: 400;
+  line-height: 1.12;
+  color: #24332b;
+  margin: 0.625rem 0 0;
+  text-wrap: balance;
+}
+
+.htc-home .operations-pillar-body {
+  margin: 0.75rem 0 0;
+  font-size: 1rem;
+  line-height: 1.65;
+  color: #24332b;
+  max-width: 55ch;
+  text-wrap: pretty;
+}
+
+.htc-home .operations-bridge {
+  margin: 4rem auto 0;
+  max-width: 36rem;
+  text-align: center;
+  padding-top: 2.5rem;
+  border-top: 1px solid #d9d6ce;
+}
+
+.htc-home .operations-bridge-headline {
+  font-family: var(--font-heading);
+  font-size: clamp(1.65rem, 2.4vw, 2rem);
+  font-weight: 400;
+  line-height: 1.2;
+  color: #24332b;
+  margin: 0;
+  text-wrap: balance;
+}
+
+.htc-home .operations-bridge-body {
+  margin: 0.85rem auto 0;
+  max-width: 34rem;
+  font-size: 1.0625rem;
+  line-height: 1.65;
+  color: #24332b;
+  text-wrap: pretty;
+}
+
+.htc-home .operations-bridge .btn {
+  margin-top: 1.5rem;
+}
+
+/* —— §5 Ecosystem (three audience editorial portraits) —— */
+.htc-home .ecosystem {
+  background: #f3f0e9;
+  color: #24332b;
+  padding: 7rem 0;
+}
+
+.htc-home .ecosystem-inner {
+  width: min(1280px, calc(100% - 2.5rem));
+  margin-inline: auto;
+}
+
+.htc-home .ecosystem-intro {
+  text-align: center;
+  max-width: 65.625rem;
+  margin: 0 auto;
+}
+
+.htc-home .ecosystem-eyebrow {
+  margin: 0 0 1.125rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: #24332b;
+}
+
+.htc-home .ecosystem-headline {
+  font-family: var(--font-heading);
+  font-size: 3.75rem;
+  font-weight: 400;
+  line-height: 1.08;
+  color: #24332b;
+  margin: 0 auto;
+  max-width: 65.625rem;
+  text-wrap: balance;
+}
+
+.htc-home .ecosystem-lede {
+  margin: 1.5rem auto 0;
+  max-width: 47.5rem;
+  font-size: 1.0625rem;
+  line-height: 1.65;
+  color: #24332b;
+  text-wrap: pretty;
+}
+
+.htc-home .ecosystem-profiles {
+  list-style: none;
+  margin: 3.625rem 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.75rem;
+}
+
+.htc-home .ecosystem-profile {
+  margin: 0;
+  min-width: 0;
+}
+
+.htc-home .ecosystem-photo {
+  position: relative;
+  margin: 0;
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  border-radius: 9px;
+  overflow: hidden;
+  background: #e8e4db;
+}
+
+.htc-home .ecosystem-photo img {
+  object-fit: cover;
+}
+
+.htc-home .ecosystem-pos-venue {
+  object-position: 50% 28%;
+}
+
+.htc-home .ecosystem-pos-client {
+  object-position: 50% 32%;
+}
+
+.htc-home .ecosystem-pos-vendor {
+  object-position: 48% 36%;
+}
+
+.htc-home .ecosystem-copy {
+  margin-top: 1.375rem;
+  text-align: left;
+}
+
+.htc-home .ecosystem-role {
+  margin: 0;
+  font-size: 0.6875rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: #24332b;
+}
+
+.htc-home .ecosystem-profile-title {
+  font-family: var(--font-heading);
+  font-size: 1.875rem;
+  font-weight: 400;
+  line-height: 1.12;
+  color: #24332b;
+  margin: 0.625rem 0 0;
+  text-wrap: balance;
+}
+
+.htc-home .ecosystem-profile-body {
+  margin: 0.75rem 0 0;
+  font-size: 1rem;
+  line-height: 1.65;
+  color: #24332b;
+  text-wrap: pretty;
+}
+
+.htc-home .ecosystem-divider {
+  margin: 4.75rem auto 0;
+  width: min(100%, 12rem);
+  border: 0;
+  border-top: 1px solid #d9d6ce;
+}
+
+.htc-home .ecosystem-closing {
+  margin: 1.75rem auto 0;
+  max-width: 56.25rem;
+  text-align: center;
+  font-family: var(--font-heading);
+  font-size: 2.375rem;
+  font-weight: 400;
+  line-height: 1.12;
+  color: #24332b;
+  text-wrap: balance;
+}
+
+/* —— §6 Capabilities (editorial typographic index) —— */
+.htc-home .capabilities {
+  background: #ffffff;
+  color: #24332b;
+  padding: 7rem 0;
+}
+
+.htc-home .capabilities-inner {
+  width: min(1280px, calc(100% - 2.5rem));
+  margin-inline: auto;
+}
+
+.htc-home .capabilities-intro {
+  text-align: center;
+  max-width: 65.625rem;
+  margin: 0 auto;
+}
+
+.htc-home .capabilities-eyebrow {
+  margin: 0 0 1.125rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: #24332b;
+}
+
+.htc-home .capabilities-headline {
+  font-family: var(--font-heading);
+  font-size: 3.75rem;
+  font-weight: 400;
+  line-height: 1.08;
+  color: #24332b;
+  margin: 0 auto;
+  max-width: 65.625rem;
+  text-wrap: balance;
+}
+
+.htc-home .capabilities-lede {
+  margin: 1.5rem auto 0;
+  max-width: 45rem;
+  font-size: 1.0625rem;
+  line-height: 1.65;
+  color: #24332b;
+  text-wrap: pretty;
+}
+
+.htc-home .capabilities-index {
+  list-style: none;
+  margin: 4rem 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(4, auto);
+  grid-auto-flow: column;
+  column-gap: 5.25rem;
+  row-gap: 2.125rem;
+}
+
+.htc-home .capabilities-entry {
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid #d9d6ce;
+  min-width: 0;
+}
+
+.htc-home .capabilities-category {
+  margin: 1.25rem 0 0;
+  font-size: 0.6875rem;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: #8b947f;
+}
+
+.htc-home .capabilities-entry-title {
+  font-family: var(--font-heading);
+  font-size: 2.125rem;
+  font-weight: 400;
+  line-height: 1.12;
+  color: #24332b;
+  margin: 0.625rem 0 0;
+  text-wrap: balance;
+}
+
+.htc-home .capabilities-entry-body {
+  margin: 0.75rem 0 0;
+  font-size: 1rem;
+  line-height: 1.65;
+  color: #24332b;
+  max-width: 54ch;
+  text-wrap: pretty;
+}
+
+.htc-home .capabilities-cta {
+  margin-top: 4rem;
+  display: flex;
+  justify-content: center;
+}
+
+.htc-home .capabilities-cta .btn {
+  min-height: 3rem;
+  padding-inline: 1.75rem;
+}
+
+/* Preserved interactive explorer styles (component retained; unused on homepage §6) */
+.htc-home .explorer {
+  margin-top: 1.75rem;
+}
+
+.htc-home .explorer-shell {
+  display: grid;
+  grid-template-columns: minmax(15rem, 0.42fr) minmax(0, 1fr);
+  gap: 1.15rem;
+  align-items: start;
+}
+
+.htc-home .explorer-tabs {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.htc-home .explorer-tab {
+  text-align: left;
+  border-radius: 0.95rem;
+  border: 1px solid transparent;
+  background: transparent;
+  padding: 0.85rem 0.95rem;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  transition: background-color 0.18s ease-out, border-color 0.18s ease-out;
+}
+
+.htc-home .explorer-tab:hover {
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.htc-home .explorer-tab:focus-visible {
+  outline: 2px solid var(--botanical);
+  outline-offset: 2px;
+}
+
+.htc-home .explorer-tab.is-active {
+  background: var(--white);
+  border-color: var(--line);
+  box-shadow: 0 16px 32px -28px rgba(36, 51, 43, 0.45);
+}
+
+.htc-home .explorer-tab-title {
+  display: block;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--charcoal);
+  margin-bottom: 0.2rem;
+}
+
+.htc-home .explorer-tab-body {
+  display: block;
+  font-size: 0.8125rem;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.htc-home .explorer-panel {
+  min-width: 0;
+}
+
+.htc-home .explorer-shot img,
+.htc-home .explorer-img {
+  width: 100%;
+  display: block;
+  max-height: 26rem;
+  object-fit: cover;
+  object-position: top center;
+  background: #f3f0e9;
+}
+
+.htc-home .explorer-caption {
+  margin: 0.85rem 0 0;
+  display: grid;
+  gap: 0.2rem;
+}
+
+.htc-home .explorer-caption strong {
+  color: var(--charcoal);
+  font-size: 0.95rem;
+}
+
+.htc-home .explorer-caption span {
+  color: var(--muted);
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+
+.htc-home .explorer-mobile-select {
+  display: none;
+  margin-bottom: 1rem;
+}
+
+.htc-home .explorer-mobile-select label {
+  display: block;
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--botanical);
+  font-weight: 600;
+  margin-bottom: 0.45rem;
+}
+
+.htc-home .explorer-mobile-select select {
+  width: 100%;
+  border-radius: 0.85rem;
+  border: 1px solid var(--line);
+  background: var(--white);
+  padding: 0.85rem 1rem;
+  font: inherit;
+  color: var(--charcoal);
+}
+
+.htc-home .feature-foot {
+  margin-top: 1.5rem;
+  display: flex;
+  justify-content: center;
+}
+
+/* —— §7 Getting Started (editorial split: copy left, photo right) —— */
+.htc-home .getting-started {
+  background: var(--white);
+  color: #24332b;
+  padding: 7rem 0;
+}
+
+.htc-home .getting-started-inner {
+  width: min(1280px, calc(100% - 2.5rem));
+  margin-inline: auto;
+  display: grid;
+  grid-template-columns: minmax(0, 0.53fr) minmax(0, 0.47fr);
+  gap: 4.5rem;
+  align-items: start;
+}
+
+.htc-home .getting-started-copy {
+  max-width: 36rem;
+  text-align: left;
+}
+
+.htc-home .getting-started-eyebrow {
+  margin: 0 0 1.25rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: #24332b;
+}
+
+.htc-home .getting-started-headline {
+  font-family: var(--font-heading);
+  font-size: 3.625rem;
+  font-weight: 400;
+  line-height: 1.07;
+  color: #24332b;
+  margin: 0;
+  text-wrap: balance;
+}
+
+.htc-home .getting-started-subhead {
+  font-family: var(--font-heading);
+  font-size: 1.875rem;
+  font-weight: 400;
+  line-height: 1.2;
+  color: #446b56;
+  margin: 1.125rem 0 0;
+  text-wrap: balance;
+}
+
+.htc-home .getting-started-lede {
+  margin: 1.5rem 0 0;
+  font-size: 1.0625rem;
+  line-height: 1.65;
+  color: #24332b;
+  text-wrap: pretty;
+}
+
+.htc-home .getting-started-benefits {
+  list-style: none;
+  margin: 1.75rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0;
+}
+
+.htc-home .getting-started-benefit {
+  margin: 0;
+  padding: 1.25rem 0 0;
+  border-top: 1px solid #d9d6ce;
+}
+
+.htc-home .getting-started-benefit + .getting-started-benefit {
+  margin-top: 1.25rem;
+}
+
+.htc-home .getting-started-benefit-title {
+  margin: 0;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  line-height: 1.3;
+  color: #24332b;
+  text-wrap: balance;
+}
+
+.htc-home .getting-started-benefit-body {
+  margin: 0.375rem 0 0;
+  font-size: 0.96875rem;
+  line-height: 1.6;
+  color: #24332b;
+  text-wrap: pretty;
+}
+
+.htc-home .getting-started-cta {
+  margin-top: 1.875rem;
+}
+
+.htc-home .getting-started-cta .btn {
+  min-height: 3rem;
+  padding-inline: 1.75rem;
+}
+
+.htc-home .getting-started-photo {
+  position: relative;
+  margin: 0;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  max-height: 620px;
+  border-radius: 11px;
+  overflow: hidden;
+  background: #e8e4db;
+}
+
+.htc-home .getting-started-photo-img {
+  object-fit: cover;
+  object-position: 52% 48%;
+}
+
+/* —— §8 Our First Friends (editorial split: story left, photo right) —— */
+.htc-home .first-friends {
+  background: var(--linen);
+  color: #24332b;
+  padding: 7rem 0;
+}
+
+.htc-home .first-friends-inner {
+  width: min(1280px, calc(100% - 2.5rem));
+  margin-inline: auto;
+  display: grid;
+  grid-template-columns: minmax(0, 0.46fr) minmax(0, 0.54fr);
+  gap: 4.75rem;
+  align-items: center;
+}
+
+.htc-home .first-friends-copy {
+  max-width: 33.125rem;
+  text-align: left;
+}
+
+.htc-home .first-friends-eyebrow {
+  margin: 0 0 1.25rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: #24332b;
+}
+
+.htc-home .first-friends-headline {
+  font-family: var(--font-heading);
+  font-size: 3.625rem;
+  font-weight: 400;
+  line-height: 1.08;
+  color: #24332b;
+  margin: 0;
+  text-wrap: balance;
+}
+
+.htc-home .first-friends-body {
+  margin-top: 1.5rem;
+}
+
+.htc-home .first-friends-body p {
+  margin: 0;
+  font-size: 1.0625rem;
+  line-height: 1.65;
+  color: #24332b;
+  text-wrap: pretty;
+}
+
+.htc-home .first-friends-body p + p {
+  margin-top: 1.25rem;
+}
+
+.htc-home .first-friends-closing {
+  margin: 1.5rem 0 0;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.45;
+  color: #446b56;
+  letter-spacing: 0.01em;
+}
+
+.htc-home .first-friends-link {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 1.25rem;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: #446b56;
+  text-decoration: underline;
+  text-underline-offset: 0.22em;
+  text-decoration-thickness: 1px;
+}
+
+.htc-home .first-friends-link:hover {
+  color: color-mix(in srgb, #446b56 82%, black);
+}
+
+.htc-home .first-friends-link:focus-visible {
+  outline: 2px solid #446b56;
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+.htc-home .first-friends-photo {
+  margin: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.htc-home .first-friends-caption {
+  margin: 0 0 0.875rem;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: #446b56;
+  text-align: left;
+}
+
+.htc-home .first-friends-photo-frame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 3 / 2;
+  border-radius: 11px;
+  overflow: hidden;
+  background: #f3f0e9;
+}
+
+.htc-home .first-friends-photo-img {
+  object-fit: cover;
+  object-position: 50% 48%;
+}
+
+/* —— §9 Invitation (centered final CTA) —— */
+.htc-home .invitation {
+  background: var(--white);
+  color: #24332b;
+  padding: 6.5rem 0 7rem;
+  text-align: center;
+}
+
+.htc-home .invitation-inner {
+  width: min(56.25rem, calc(100% - 2.5rem));
+  margin-inline: auto;
+}
+
+.htc-home .invitation-eyebrow {
+  margin: 0 0 1.75rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-weight: 500;
+  color: #24332b;
+}
+
+.htc-home .invitation-headline {
+  font-family: var(--font-heading);
+  font-size: 3.75rem;
+  font-weight: 400;
+  line-height: 1.1;
+  color: #24332b;
+  margin: 0 auto;
+  max-width: 53.125rem;
+  text-wrap: balance;
+}
+
+.htc-home .invitation-body {
+  margin: 1.75rem auto 0;
+  max-width: 46.25rem;
+}
+
+.htc-home .invitation-body p {
+  margin: 0;
+  font-size: 1.125rem;
+  line-height: 1.6;
+  color: #24332b;
+  text-wrap: pretty;
+}
+
+.htc-home .invitation-body p + p {
+  margin-top: 1.125rem;
+}
+
+.htc-home .invitation-cta {
+  margin-top: 2.25rem;
+  display: flex;
+  justify-content: center;
+}
+
+.htc-home .invitation-cta .btn {
+  min-height: 3.25rem;
+  padding-inline: 2rem;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.htc-home .invitation-cta .btn:focus-visible {
+  outline: 2px solid #446b56;
+  outline-offset: 3px;
+}
+
+.htc-home .invitation-note {
+  margin: 1.125rem auto 0;
+  max-width: 28rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: rgba(36, 51, 43, 0.68);
+  text-wrap: pretty;
+}
+
+/* —— Responsive —— */
+@media (max-width: 1100px) {
+  .htc-home .explorer-shell {
+    grid-template-columns: minmax(13rem, 0.38fr) minmax(0, 1fr);
+  }
+}
+
+/* Tablet hero (~768) */
+@media (max-width: 900px) {
+  .htc-home .hero {
+    padding-bottom: 4rem;
+  }
+
+  .htc-home .hero-inner {
+    width: calc(100% - 4rem);
+    padding-top: 3.25rem;
+  }
+
+  .htc-home .hero h1 {
+    font-size: 3.25rem;
+  }
+
+  .htc-home .hero-lede {
+    font-size: 1.0625rem;
+  }
+
+  .htc-home .hero-photo {
+    aspect-ratio: 4 / 3;
+  }
+
+  .htc-home .hero-photo img {
+    object-position: 28% 42%;
+  }
+}
+
+@media (max-width: 860px) {
+  .htc-home .explorer-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .htc-home .explorer-tabs {
+    display: none;
+  }
+
+  .htc-home .explorer-mobile-select {
+    display: block;
+  }
+
+
+  .htc-home .btn {
+    min-height: 2.85rem;
+  }
+}
+
+/* §2 / §3 tablet */
+@media (max-width: 900px) {
+  .htc-home .journey {
+    padding: 5rem 0;
+  }
+
+  .htc-home .journey-inner {
+    width: calc(100% - 4rem);
+  }
+
+  .htc-home .journey-headline {
+    font-size: 2.875rem;
+  }
+
+  .htc-home .journey-lede p {
+    font-size: 1rem;
+  }
+
+  .htc-home .journey-caption-title {
+    font-size: 1.4rem;
+  }
+
+  .htc-home .operations {
+    padding: 5rem 0;
+  }
+
+  .htc-home .operations-inner {
+    width: calc(100% - 4rem);
+  }
+
+  .htc-home .operations-headline {
+    font-size: 2.875rem;
+  }
+
+  .htc-home .operations-lede {
+    font-size: 1.0625rem;
+  }
+
+  .htc-home .operations-photo {
+    aspect-ratio: 16 / 9;
+    max-height: none;
+  }
+
+  .htc-home .operations-pillars {
+    column-gap: 2.5rem;
+    row-gap: 2.5rem;
+    margin-top: 3.25rem;
+  }
+
+  .htc-home .operations-bridge {
+    margin-top: 3.25rem;
+    padding-top: 2rem;
+  }
+
+  .htc-home .operations-pillar-title {
+    font-size: 1.875rem;
+  }
+
+  .htc-home .personalize {
+    padding: 5rem 0;
+  }
+
+  .htc-home .personalize-inner {
+    width: calc(100% - 4rem);
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .htc-home .personalize-copy {
+    display: contents;
+    max-width: none;
+  }
+
+  .htc-home .personalize-eyebrow {
+    order: 1;
+    margin-bottom: 1rem;
+  }
+
+  .htc-home .personalize-headline {
+    order: 2;
+    font-size: 2.875rem;
+    margin-bottom: 1.75rem;
+  }
+
+  .htc-home .personalize-photo {
+    order: 3;
+    width: min(100%, 28rem);
+    max-height: 480px;
+    justify-self: center;
+    margin-bottom: 1.75rem;
+  }
+
+  .htc-home .personalize-body {
+    order: 4;
+    max-width: 100%;
+  }
+
+  .htc-home .personalize-body p {
+    font-size: 1rem;
+  }
+
+  .htc-home .ecosystem {
+    padding: 5rem 0;
+  }
+
+  .htc-home .ecosystem-inner {
+    width: calc(100% - 4rem);
+  }
+
+  .htc-home .ecosystem-headline {
+    font-size: 2.875rem;
+  }
+
+  .htc-home .ecosystem-lede {
+    font-size: 1rem;
+  }
+
+  .htc-home .ecosystem-profiles {
+    grid-template-columns: 1fr;
+    gap: 2.5rem;
+    margin-top: 3rem;
+  }
+
+  .htc-home .ecosystem-profile {
+    display: grid;
+    grid-template-columns: minmax(0, 0.42fr) minmax(0, 0.58fr);
+    gap: 2rem;
+    align-items: center;
+  }
+
+  .htc-home .ecosystem-photo {
+    aspect-ratio: 4 / 5;
+  }
+
+  .htc-home .ecosystem-copy {
+    margin-top: 0;
+  }
+
+  .htc-home .ecosystem-profile-title {
+    font-size: 1.75rem;
+  }
+
+  .htc-home .ecosystem-divider {
+    margin-top: 3.5rem;
+  }
+
+  .htc-home .ecosystem-closing {
+    font-size: 1.875rem;
+    margin-top: 1.5rem;
+  }
+
+  .htc-home .capabilities {
+    padding: 5rem 0;
+  }
+
+  .htc-home .capabilities-inner {
+    width: calc(100% - 4rem);
+  }
+
+  .htc-home .capabilities-headline {
+    font-size: 2.875rem;
+  }
+
+  .htc-home .capabilities-lede {
+    font-size: 1rem;
+  }
+
+  .htc-home .capabilities-index {
+    margin-top: 3.25rem;
+    grid-template-columns: 1fr;
+    grid-template-rows: none;
+    grid-auto-flow: row;
+    column-gap: 0;
+    row-gap: 2rem;
+  }
+
+  .htc-home .capabilities-entry-title {
+    font-size: 1.9375rem;
+  }
+
+  .htc-home .capabilities-cta {
+    margin-top: 3.25rem;
+  }
+
+  .htc-home .getting-started {
+    padding: 5rem 0;
+  }
+
+  .htc-home .getting-started-inner {
+    width: calc(100% - 4rem);
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .htc-home .getting-started-copy {
+    display: contents;
+    max-width: none;
+  }
+
+  .htc-home .getting-started-eyebrow {
+    order: 1;
+    margin-bottom: 1.125rem;
+  }
+
+  .htc-home .getting-started-headline {
+    order: 2;
+    font-size: 2.875rem;
+  }
+
+  .htc-home .getting-started-subhead {
+    order: 3;
+    font-size: 1.6875rem;
+    margin-top: 1rem;
+  }
+
+  .htc-home .getting-started-lede {
+    order: 4;
+    font-size: 1rem;
+    margin-top: 1.375rem;
+  }
+
+  .htc-home .getting-started-photo {
+    order: 5;
+    width: 100%;
+    max-height: none;
+    aspect-ratio: 4 / 3;
+    margin: 2rem 0 0;
+  }
+
+  .htc-home .getting-started-benefits {
+    order: 6;
+    margin-top: 2.25rem;
+  }
+
+  .htc-home .getting-started-cta {
+    order: 7;
+    margin-top: 1.75rem;
+  }
+
+  .htc-home .first-friends {
+    padding: 5rem 0;
+  }
+
+  .htc-home .first-friends-inner {
+    width: calc(100% - 4rem);
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .htc-home .first-friends-copy {
+    display: contents;
+    max-width: none;
+  }
+
+  .htc-home .first-friends-eyebrow {
+    order: 1;
+    margin-bottom: 1.125rem;
+  }
+
+  .htc-home .first-friends-headline {
+    order: 2;
+    font-size: 2.875rem;
+  }
+
+  .htc-home .first-friends-body {
+    order: 3;
+    margin-top: 1.375rem;
+  }
+
+  .htc-home .first-friends-body p {
+    font-size: 1rem;
+  }
+
+  .htc-home .first-friends-closing {
+    order: 4;
+    margin-top: 1.375rem;
+  }
+
+  .htc-home .first-friends-link {
+    order: 5;
+    margin-top: 1rem;
+  }
+
+  .htc-home .first-friends-photo {
+    order: 6;
+    width: 100%;
+    margin-top: 2.25rem;
+  }
+
+  .htc-home .invitation {
+    padding: 5rem 0;
+  }
+
+  .htc-home .invitation-inner {
+    width: calc(100% - 4rem);
+  }
+
+  .htc-home .invitation-headline {
+    font-size: 2.875rem;
+  }
+
+  .htc-home .invitation-body p {
+    font-size: 1.0625rem;
+  }
+}
+
+/* §2 / §5 / §6 / §7 / §8 / §9 mobile */
+@media (max-width: 640px) {
+  .htc-home .journey {
+    padding: 4rem 0;
+  }
+
+  .htc-home .journey-inner {
+    width: calc(100% - 2.5rem);
+  }
+
+  .htc-home .journey-headline {
+    font-size: 2.375rem;
+  }
+
+  .htc-home .journey-lede {
+    max-width: 100%;
+  }
+
+  .htc-home .journey-lede p {
+    font-size: 1rem;
+  }
+
+  .htc-home .journey-moments {
+    grid-template-columns: 1fr;
+    gap: 1.875rem;
+    margin-top: 2.125rem;
+  }
+
+  .htc-home .journey-photo {
+    aspect-ratio: 4 / 3;
+  }
+
+  .htc-home .journey-pos-a {
+    object-position: 50% 22%;
+  }
+
+  .htc-home .journey-pos-b {
+    object-position: 50% 45%;
+  }
+
+  .htc-home .journey-pos-c {
+    object-position: 50% 35%;
+  }
+
+  .htc-home .journey-caption-title {
+    font-size: 1.5rem;
+  }
+
+  .htc-home .journey-stages {
+    grid-template-columns: 1fr;
+    gap: 0;
+    max-width: 16rem;
+    margin-top: 3rem;
+  }
+
+  .htc-home .journey-stages::before {
+    top: 0.9375rem;
+    bottom: 0.9375rem;
+    left: 0.9375rem;
+    width: 1px;
+    height: auto;
+  }
+
+  .htc-home .journey-stage {
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 0.85rem;
+    min-height: 2.75rem;
+  }
+
+  .htc-home .journey-stage-label {
+    margin-top: 0;
+    text-align: left;
+  }
+
+  .htc-home .journey-closing {
+    font-size: 1.5rem;
+    margin-top: 2.75rem;
+    max-width: 100%;
+  }
+
+  .htc-home .personalize {
+    padding: 4rem 0 4.5rem;
+  }
+
+  .htc-home .personalize-inner {
+    width: calc(100% - 2.5rem);
+  }
+
+  .htc-home .personalize-eyebrow {
+    font-size: 0.6875rem;
+    margin-bottom: 0.9rem;
+  }
+
+  .htc-home .personalize-headline {
+    font-size: 2.375rem;
+    line-height: 1.08;
+    margin-bottom: 1.75rem;
+  }
+
+  .htc-home .personalize-photo {
+    width: 100%;
+    max-height: none;
+    aspect-ratio: 4 / 5;
+    border-radius: 9px;
+    margin-bottom: 1.75rem;
+  }
+
+  .htc-home .personalize-photo-img {
+    object-position: 50% 40%;
+  }
+
+  .htc-home .personalize-body p {
+    font-size: 1rem;
+    line-height: 1.65;
+  }
+
+  .htc-home .personalize-body p + p {
+    margin-top: 1.25rem;
+  }
+
+  .htc-home .operations {
+    padding: 4.25rem 0 4.75rem;
+  }
+
+  .htc-home .operations-inner {
+    width: calc(100% - 2.5rem);
+  }
+
+  .htc-home .operations-headline {
+    font-size: 2.375rem;
+  }
+
+  .htc-home .operations-lede {
+    font-size: 1rem;
+    max-width: 100%;
+  }
+
+  .htc-home .operations-photo {
+    margin-top: 2.125rem;
+    aspect-ratio: 4 / 3;
+    max-height: none;
+  }
+
+  .htc-home .operations-pillars {
+    grid-template-columns: 1fr;
+    gap: 1.875rem;
+    margin-top: 2.75rem;
+  }
+
+  .htc-home .operations-pillar-title {
+    font-size: 1.8125rem;
+  }
+
+  .htc-home .operations-pillar-body {
+    font-size: 1rem;
+    max-width: 100%;
+  }
+
+  .htc-home .operations-bridge {
+    margin-top: 2.75rem;
+    padding-top: 1.75rem;
+  }
+
+  .htc-home .operations-bridge-headline {
+    font-size: 1.625rem;
+  }
+
+  .htc-home .operations-bridge-body {
+    font-size: 1rem;
+  }
+
+  .htc-home .ecosystem {
+    padding: 4.25rem 0 4.75rem;
+  }
+
+  .htc-home .ecosystem-inner {
+    width: calc(100% - 2.5rem);
+  }
+
+  .htc-home .ecosystem-eyebrow {
+    margin-bottom: 1rem;
+  }
+
+  .htc-home .ecosystem-headline {
+    font-size: 2.375rem;
+  }
+
+  .htc-home .ecosystem-lede {
+    font-size: 1rem;
+    max-width: 100%;
+  }
+
+  .htc-home .ecosystem-profiles {
+    margin-top: 2.25rem;
+    gap: 2.25rem;
+  }
+
+  .htc-home .ecosystem-profile {
+    display: block;
+  }
+
+  .htc-home .ecosystem-photo {
+    aspect-ratio: 4 / 3;
+  }
+
+  .htc-home .ecosystem-copy {
+    margin-top: 1.25rem;
+  }
+
+  .htc-home .ecosystem-profile-title {
+    font-size: 1.8125rem;
+  }
+
+  .htc-home .ecosystem-profile-body {
+    font-size: 1rem;
+  }
+
+  .htc-home .ecosystem-divider {
+    margin-top: 3rem;
+  }
+
+  .htc-home .ecosystem-closing {
+    font-size: 1.8125rem;
+    line-height: 1.15;
+    margin-top: 1.25rem;
+    max-width: 100%;
+  }
+
+  .htc-home .capabilities {
+    padding: 4.25rem 0 4.75rem;
+  }
+
+  .htc-home .capabilities-inner {
+    width: calc(100% - 2.5rem);
+  }
+
+  .htc-home .capabilities-headline {
+    font-size: 2.375rem;
+  }
+
+  .htc-home .capabilities-lede {
+    font-size: 1rem;
+    max-width: 100%;
+  }
+
+  .htc-home .capabilities-index {
+    margin-top: 2.75rem;
+    row-gap: 1.75rem;
+  }
+
+  .htc-home .capabilities-category {
+    font-size: 0.625rem;
+    margin-top: 1.125rem;
+  }
+
+  .htc-home .capabilities-entry-title {
+    font-size: 1.8125rem;
+  }
+
+  .htc-home .capabilities-entry-body {
+    font-size: 0.96875rem;
+    line-height: 1.6;
+    max-width: 100%;
+  }
+
+  .htc-home .capabilities-cta {
+    margin-top: 2.75rem;
+  }
+
+  .htc-home .getting-started {
+    padding: 4.25rem 0 4.75rem;
+  }
+
+  .htc-home .getting-started-inner {
+    width: calc(100% - 2.5rem);
+  }
+
+  .htc-home .getting-started-eyebrow {
+    margin-bottom: 1rem;
+  }
+
+  .htc-home .getting-started-headline {
+    font-size: 2.375rem;
+  }
+
+  .htc-home .getting-started-subhead {
+    font-size: 1.5625rem;
+  }
+
+  .htc-home .getting-started-lede {
+    font-size: 1rem;
+  }
+
+  .htc-home .getting-started-photo {
+    aspect-ratio: 4 / 3;
+    border-radius: 10px;
+    margin-top: 1.75rem;
+  }
+
+  .htc-home .getting-started-photo-img {
+    object-position: 48% 45%;
+  }
+
+  .htc-home .getting-started-benefits {
+    margin-top: 2rem;
+  }
+
+  .htc-home .getting-started-benefit {
+    padding-top: 1.125rem;
+  }
+
+  .htc-home .getting-started-benefit + .getting-started-benefit {
+    margin-top: 1.125rem;
+  }
+
+  .htc-home .getting-started-benefit-title {
+    font-size: 1rem;
+  }
+
+  .htc-home .getting-started-benefit-body {
+    font-size: 0.96875rem;
+  }
+
+  .htc-home .getting-started-cta {
+    margin-top: 1.625rem;
+  }
+
+  .htc-home .first-friends {
+    padding: 4.25rem 0 4.75rem;
+  }
+
+  .htc-home .first-friends-inner {
+    width: calc(100% - 2.5rem);
+  }
+
+  .htc-home .first-friends-eyebrow {
+    margin-bottom: 1rem;
+  }
+
+  .htc-home .first-friends-headline {
+    font-size: 2.375rem;
+  }
+
+  .htc-home .first-friends-body {
+    margin-top: 1.25rem;
+  }
+
+  .htc-home .first-friends-body p {
+    font-size: 1rem;
+    line-height: 1.65;
+  }
+
+  .htc-home .first-friends-body p + p {
+    margin-top: 1.125rem;
+  }
+
+  .htc-home .first-friends-closing {
+    font-size: 0.8125rem;
+    margin-top: 1.25rem;
+  }
+
+  .htc-home .first-friends-link {
+    margin-top: 0.875rem;
+    font-size: 0.9375rem;
+  }
+
+  .htc-home .first-friends-photo {
+    margin-top: 1.875rem;
+  }
+
+  .htc-home .first-friends-photo-frame {
+    border-radius: 10px;
+  }
+
+  .htc-home .invitation {
+    padding: 4.5rem 0 5rem;
+  }
+
+  .htc-home .invitation-inner {
+    width: calc(100% - 2.5rem);
+  }
+
+  .htc-home .invitation-eyebrow {
+    margin-bottom: 1.5rem;
+  }
+
+  .htc-home .invitation-headline {
+    font-size: 2.375rem;
+  }
+
+  .htc-home .invitation-body {
+    margin-top: 1.5rem;
+  }
+
+  .htc-home .invitation-body p {
+    font-size: 1rem;
+    line-height: 1.6;
+  }
+
+  .htc-home .invitation-cta {
+    margin-top: 2rem;
+  }
+
+  .htc-home .invitation-note {
+    margin-top: 1rem;
+    max-width: 22rem;
+  }
+}
+
+/* Mobile hero (~390) */
+@media (max-width: 640px) {
+  .htc-home .hero {
+    padding-bottom: 3.5rem;
+  }
+
+  .htc-home .hero-inner {
+    width: calc(100% - 2.5rem);
+    padding-top: 2.625rem;
+  }
+
+  .htc-home .hero-eyebrow {
+    font-size: 0.6875rem;
+    margin-bottom: 1rem;
+  }
+
+  .htc-home .hero h1 {
+    font-size: 2.625rem;
+    line-height: 1.08;
+    margin-bottom: 1.125rem;
+  }
+
+  .htc-home .hero-lede {
+    font-size: 1rem;
+    line-height: 1.55;
+    max-width: 100%;
+    margin-bottom: 1.5rem;
+  }
+
+  .htc-home .hero-actions {
+    flex-direction: column;
+    width: 100%;
+    gap: 0.625rem;
+    margin-bottom: 0;
+  }
+
+  .htc-home .hero-actions .btn {
+    width: 100%;
+  }
+
+  .htc-home .hero-photo {
+    margin-top: 2.25rem;
+    aspect-ratio: 4 / 5;
+    border-radius: 10px;
+  }
+
+  .htc-home .hero-photo img {
+    object-position: 18% 40%;
+  }
+}
+
+@media (max-width: 360px) {
+  .htc-home .wrap,
+  .htc-home .wrap-wide {
+    width: calc(100% - 1.5rem);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .htc-home .btn {
+    transition: none;
+  }
+}

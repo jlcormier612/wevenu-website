@@ -76,14 +76,44 @@ export function formatTemplateOfferingPrice(line: Pick<
   return `${money} · Flat`;
 }
 
-export function defaultApplySelections(lines: EventOrderTemplateLine[]): TemplateApplySelection[] {
+/** Per-person lines start at the event's guest count when it is known. */
+export function startingQuantityForLine(
+  line: Pick<EventOrderTemplateLine, "pricingModel" | "quantity">,
+  guestCount?: number | null,
+): number {
+  if (normalizeTemplatePricingModel(line.pricingModel) === "per_person" && guestCount && guestCount > 0) {
+    return guestCount;
+  }
+  return line.quantity > 0 ? line.quantity : 1;
+}
+
+export function defaultApplySelections(
+  lines: EventOrderTemplateLine[],
+  guestCount?: number | null,
+): TemplateApplySelection[] {
   const allUnpriced = lines.every(
     (l) => normalizeTemplatePricingModel(l.pricingModel) === "none" || l.unitPrice == null,
   );
   return lines.map((l) => ({
     lineId: l.id,
     selected: allUnpriced || l.includedByDefault,
-    quantity: l.quantity > 0 ? l.quantity : 1,
+    quantity: startingQuantityForLine(l, guestCount),
+  }));
+}
+
+/**
+ * Setup Profile / package switch materializes the full package onto the event.
+ * Every offering is copied; `includedByDefault` still drives Included vs Additional
+ * via snapshotTemplateOfferingForEvent — optionals are not treated as committed.
+ */
+export function packageStartingSelections(
+  lines: EventOrderTemplateLine[],
+  guestCount?: number | null,
+): TemplateApplySelection[] {
+  return lines.map((l) => ({
+    lineId: l.id,
+    selected: true,
+    quantity: startingQuantityForLine(l, guestCount),
   }));
 }
 
@@ -269,6 +299,24 @@ export function linesForSection(
 export function unsectionedLines(lines: EventOrderTemplateLine[]): EventOrderTemplateLine[] {
   return lines
     .filter((l) => !l.sectionId)
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+}
+
+export function groupsForSection<T extends { sectionId: string | null; sortOrder: number }>(
+  groups: T[],
+  sectionId: string | null,
+): T[] {
+  return groups
+    .filter((g) => (sectionId == null ? g.sectionId == null : g.sectionId === sectionId))
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+}
+
+export function optionsForGroup<T extends { groupId: string; sortOrder: number }>(
+  options: T[],
+  groupId: string,
+): T[] {
+  return options
+    .filter((o) => o.groupId === groupId)
     .sort((a, b) => a.sortOrder - b.sortOrder);
 }
 

@@ -14,8 +14,13 @@ import * as repo from "@/lib/payments/repository";
 import { computePaymentsReadiness } from "@/lib/readiness/compute";
 import type { Invoice } from "@/lib/invoices/types";
 import {
+  type AdjustableDraftLine,
+  previewAdjustRemainingPlan,
+} from "@/lib/payments/adjust-remaining-plan";
+import {
   computeTotalPaid,
   deriveScheduleStatus,
+  paymentPlanOverview,
   SCHEDULE_PRESETS,
 } from "@/lib/payments/constants";
 import {
@@ -47,9 +52,15 @@ import {
   validateMarkPaidInput,
   validateScheduleInput,
 } from "@/lib/payments/validation";
-import { getCurrentVenue, getCurrentUserRole } from "@/lib/venue/service";
+import {
+  installmentRemainingAmount,
+  selectCurrentUnpaidInstallment,
+} from "@/lib/payments/manual-installment";
+import { getCurrentUserRole, getCurrentVenue } from "@/lib/venue/service";
+import { getVenueTimezone, venueToday } from "@/lib/venue/timezone";
 import { recordEngagementEvent } from "@/lib/activation/service";
 import { enqueueQuickBooksSync } from "@/lib/quickbooks/queue";
+import type { OfflinePaymentRecordResult } from "@/lib/payments/types";
 
 async function withVenue<T>(
   fn: (supabase: Awaited<ReturnType<typeof createClient>>, venueId: string) => Promise<T>,
@@ -85,6 +96,8 @@ export async function getPaymentSchedules(): Promise<PaymentScheduleSummary[]> {
       totalPaid,
       balance: s.totalAmount - totalPaid,
       overdueCount,
+      refundedCount: items.filter((i) => i.status === "refunded").length,
+      partiallyRefundedCount: items.filter((i) => i.status === "partially_refunded").length,
       pendingCount: items.filter((i) => i.status === "pending").length,
       scheduleStatus: deriveScheduleStatus(items),
     } as PaymentScheduleSummary;
@@ -173,9 +186,17 @@ export async function createPaymentSchedule(
         message: "A payment schedule already exists for this invoice. Open it to edit or regenerate instead of creating another.",
       } as CreateScheduleResult;
     }
-    const totalAmount = invoice.total;
+    // Draft EO-linked invoices store total=0 until freeze-on-send; getInvoice
+    // projects billable Event Order lines — same total the Invoice UI and
+    // Payment Plan Builder display. Never reconcile against the stale 0 row.
+    const projected = await getInvoice(input.invoiceId);
+    const totalAmount = projected?.total ?? invoice.total;
     const eventDate = invoice.eventDate;
     const bookingDate = invoice.bookedAt;
+    const venueForTz = await getCurrentVenue();
+    const today = venueForTz
+      ? venueToday(venueForTz.timezone)
+      : new Date().toISOString().slice(0, 10);
 
     const hasBuilderLines = Array.isArray(builderLines) && builderLines.length > 0;
     if (hasBuilderLines) {
@@ -249,7 +270,11 @@ export async function createPaymentSchedule(
         for (let i = 0; i < preset.items.length; i++) {
           const pi = preset.items[i];
           const amt = amounts[i] ?? 0;
-          const dueDate = resolvePresetItemDueDate(pi, { eventDate, bookingDate }) ?? undefined;
+          const dueDate = resolvePresetItemDueDate(pi, {
+            eventDate,
+            bookingDate,
+            today,
+          }) ?? undefined;
           const item = await repo.insertLineItem(supabase, venueId, scheduleId, {
             label: pi.label, amount: String(amt), dueDate: dueDate ?? "",
             obligationKind: pi.obligationKind,
@@ -426,9 +451,34 @@ export async function createRetainerInvoiceAndSchedule(input: {
 
 // ---- line items -------------------------------------------------------------
 
+const PLAN_LOCKED_MESSAGE =
+  "Payments have already been requested or collected. Historical installments cannot be replaced.";
+
+async function assertSchedulePlanEditable(scheduleId: string): Promise<PaymentActionResult | null> {
+  const ctx = await scheduleInvoiceTotal(scheduleId);
+  if ("ok" in ctx) {
+    // Unlinked schedules remain editable (no issued invoice activity signal).
+    if (
+      ctx.ok === false &&
+      "message" in ctx &&
+      ctx.message === "This payment plan isn't linked to an invoice."
+    ) {
+      return null;
+    }
+    return ctx;
+  }
+  const { scheduleHasPaymentActivity } = await import("@/lib/payments/reconcile-commitment");
+  if (scheduleHasPaymentActivity(ctx.schedule.lineItems, ctx.invoiceStatus)) {
+    return { ok: false, message: PLAN_LOCKED_MESSAGE };
+  }
+  return null;
+}
+
 export async function addLineItem(scheduleId: string, input: LineItemInput): Promise<AddLineItemResult> {
   const errors = validateLineItemInput(input, { requireObligationKind: true });
   if (Object.keys(errors).length > 0) return { ok: false, errors, message: errors.obligationKind ?? errors.label };
+  const locked = await assertSchedulePlanEditable(scheduleId);
+  if (locked) return locked as AddLineItemResult;
   const result = await withVenue(async (supabase, venueId) => {
     // Get current max sort_order
     const { data } = await supabase.from("payment_line_items")
@@ -452,6 +502,8 @@ export async function addLineItem(scheduleId: string, input: LineItemInput): Pro
 export async function updateLineItem_(itemId: string, scheduleId: string, input: LineItemInput): Promise<PaymentActionResult> {
   const errors = validateLineItemInput(input, { requireObligationKind: false });
   if (Object.keys(errors).length > 0) return { ok: false, errors };
+  const locked = await assertSchedulePlanEditable(scheduleId);
+  if (locked) return locked;
   const result = await withVenue(async (supabase, venueId) => {
     const outcome = await repo.updateLineItem(supabase, venueId, itemId, input);
     if (!outcome.ok) return { ok: false, message: outcome.message } as PaymentActionResult;
@@ -460,25 +512,236 @@ export async function updateLineItem_(itemId: string, scheduleId: string, input:
   return result as PaymentActionResult;
 }
 
+/**
+ * List open installments for an invoice's linked schedule — for the deliberate
+ * offline recording dialog. Never records money by itself.
+ */
+export async function listInvoiceOfflineInstallments(invoiceId: string): Promise<
+  | {
+      ok: true;
+      scheduleId: string;
+      installments: Array<{
+        id: string;
+        label: string;
+        status: string;
+        amount: number;
+        paidAmount: number | null;
+        remaining: number;
+        dueDate: string | null;
+      }>;
+      defaultItemId: string | null;
+    }
+  | { ok: false; message: string }
+> {
+  if (!isSupabaseConfigured) return { ok: false, message: "Backend not configured." };
+  const venue = await getCurrentVenue();
+  if (!venue) return { ok: false, message: "No venue found." };
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { ok: false, message: "Session expired." };
+  const venueId = venue.id;
+
+  const { data: scheduleRaw } = await supabase.from("payment_schedules")
+    .select("id")
+    .eq("invoice_id", invoiceId)
+    .eq("venue_id", venueId)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  const schedule = scheduleRaw as { id: string } | null;
+  if (!schedule) {
+    return { ok: false, message: "This invoice has no payment schedule to record against." };
+  }
+  const { data: lines } = await supabase.from("payment_line_items")
+    .select("id, label, status, due_date, amount, paid_amount, stripe_payment_intent_id, sort_order")
+    .eq("schedule_id", schedule.id)
+    .eq("venue_id", venueId)
+    .order("sort_order", { ascending: true });
+  const mapped = ((lines ?? []) as Array<{
+    id: string;
+    label: string;
+    status: string;
+    due_date: string | null;
+    amount: number;
+    paid_amount: number | null;
+    stripe_payment_intent_id: string | null;
+  }>).map((l) => ({
+    id: l.id,
+    label: l.label,
+    status: l.status,
+    amount: Number(l.amount),
+    paidAmount: l.paid_amount != null ? Number(l.paid_amount) : null,
+    remaining: installmentRemainingAmount({
+      amount: Number(l.amount),
+      status: l.status,
+      paidAmount: l.paid_amount,
+    }),
+    dueDate: l.due_date,
+    stripePaymentIntentId: l.stripe_payment_intent_id,
+  }));
+  const open = mapped.filter((l) => l.remaining > 0 && !l.stripePaymentIntentId);
+  const picked = selectCurrentUnpaidInstallment(
+    mapped.map((l) => ({
+      id: l.id,
+      status: l.status,
+      dueDate: l.dueDate,
+      amount: l.amount,
+      paidAmount: l.paidAmount,
+      label: l.label,
+      stripePaymentIntentId: l.stripePaymentIntentId,
+    })),
+  );
+  return {
+    ok: true,
+    scheduleId: schedule.id,
+    installments: open.map(({ stripePaymentIntentId: _s, ...rest }) => rest),
+    defaultItemId: picked?.id ?? open[0]?.id ?? null,
+  };
+}
+
+/**
+ * Record offline payment against an EXPLICIT installment.
+ * Never auto-advances to a different installment.
+ */
+export async function recordOfflineInstallmentPayment(input: {
+  invoiceId?: string | null;
+  scheduleId: string;
+  itemId: string;
+  paidAmount: string;
+  paymentMethod: string;
+  referenceNumber?: string;
+  paidDate: string;
+  notes?: string;
+  idempotencyKey?: string;
+}): Promise<PaymentActionResult> {
+  return markLineItemPaid(input.itemId, input.scheduleId, {
+    paidAmount: input.paidAmount,
+    paymentMethod: input.paymentMethod,
+    referenceNumber: input.referenceNumber ?? "",
+    paidDate: input.paidDate,
+    notes: input.notes?.trim()
+      ? input.notes
+      : "Recorded manually (offline collection).",
+    idempotencyKey: input.idempotencyKey,
+  });
+}
+
+/**
+ * @deprecated Silent one-click recording. Use recordOfflineInstallmentPayment
+ * with an explicit installment selection. Kept only for compile-time callers
+ * during migration — always returns an error directing to the deliberate flow.
+ */
+export async function recordInvoiceInstallmentReceived(
+  _invoiceId: string,
+): Promise<PaymentActionResult> {
+  return {
+    ok: false,
+    message:
+      "Choose the installment, amount, method, and date before recording a payment.",
+  };
+}
+
+async function buildOfflineRecordSummary(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  venueId: string,
+  scheduleId: string,
+  marked: {
+    amountRecorded: number;
+    newStatus: "partially_paid" | "paid";
+    installmentRemaining: number;
+    label: string;
+    alreadyRecorded?: boolean;
+  },
+  itemId: string,
+): Promise<OfflinePaymentRecordResult> {
+  const { data: schRaw } = await supabase.from("payment_schedules")
+    .select("invoice_id")
+    .eq("id", scheduleId)
+    .eq("venue_id", venueId)
+    .maybeSingle();
+  const sch = schRaw as { invoice_id: string | null } | null;
+  const { data: lines } = await supabase.from("payment_line_items")
+    .select("status, amount, paid_amount")
+    .eq("schedule_id", scheduleId)
+    .eq("venue_id", venueId);
+  const items = ((lines ?? []) as Array<{
+    status: string;
+    amount: number;
+    paid_amount: number | null;
+  }>).map((l) => ({
+    status: l.status as PaymentLineItem["status"],
+    amount: Number(l.amount),
+    paidAmount: l.paid_amount != null ? Number(l.paid_amount) : null,
+  }));
+  let invoiceStatus: string | null = null;
+  let invoiceBalanceDue: number | null = null;
+  if (sch?.invoice_id) {
+    const { data: invRaw } = await supabase.from("invoices")
+      .select("status, balance_due")
+      .eq("id", sch.invoice_id)
+      .eq("venue_id", venueId)
+      .maybeSingle();
+    const inv = invRaw as { status: string; balance_due: number } | null;
+    invoiceStatus = inv?.status ?? null;
+    invoiceBalanceDue = inv != null ? Number(inv.balance_due) : null;
+  }
+  const plan = paymentPlanOverview({
+    invoiceStatus,
+    items,
+  });
+  return {
+    itemId,
+    itemLabel: marked.label,
+    amountRecorded: marked.amountRecorded,
+    installmentStatus: marked.newStatus,
+    installmentRemaining: marked.installmentRemaining,
+    invoiceStatus,
+    invoiceBalanceDue,
+    planPaidInstallments: plan.paidInstallments,
+    planTotalInstallments: plan.totalInstallments,
+    planPaidAmount: plan.paidAmount,
+    planRemainingAmount: plan.remainingAmount,
+    alreadyRecorded: marked.alreadyRecorded,
+  };
+}
+
 export async function markLineItemPaid(itemId: string, scheduleId: string, input: MarkPaidInput): Promise<PaymentActionResult> {
   const errors = validateMarkPaidInput(input);
   if (Object.keys(errors).length > 0) return { ok: false, errors };
   const result = await withVenue(async (supabase, venueId) => {
     const marked = await repo.markItemPaid(supabase, venueId, itemId, input);
     if (!marked.ok) return marked as PaymentActionResult;
-    await cancelRemindersForPaymentLineItem(supabase, venueId, itemId);
-    const amount = parseFloat(input.paidAmount.replace(/[$,]/g, ""));
-    await repo.insertPaymentActivity(supabase, venueId, scheduleId, "payment_received",
-      `Payment received: $${amount.toLocaleString()}`,
-      input.paymentMethod ? `Via ${input.paymentMethod}` : undefined);
-    void enqueueQuickBooksSync(venueId, "payment", itemId, { paidAmount: amount });
 
-    // Reconcile the linked invoice's balance_due, if any
+    const amountRecorded = marked.amountRecorded;
+    const alreadyRecorded = Boolean(marked.alreadyRecorded);
+
+    // Reconcile always — even on idempotent retry — so UI sees current balances.
     const { data: sch } = await supabase.from("payment_schedules")
       .select("invoice_id, event_id").eq("id", scheduleId).maybeSingle<{ invoice_id: string | null; event_id: string | null }>();
     if (sch?.invoice_id) {
       await repo.reconcileInvoiceBalance(supabase, venueId, sch.invoice_id);
     }
+
+    if (alreadyRecorded || amountRecorded <= 0) {
+      const offlineRecord = await buildOfflineRecordSummary(
+        supabase, venueId, scheduleId, marked, itemId,
+      );
+      return { ok: true, offlineRecord } as PaymentActionResult;
+    }
+
+    await cancelRemindersForPaymentLineItem(supabase, venueId, itemId);
+    await repo.insertPaymentActivity(
+      supabase,
+      venueId,
+      scheduleId,
+      "payment_received",
+      `Payment received: $${amountRecorded.toLocaleString()}`,
+      input.paymentMethod
+        ? `Via ${input.paymentMethod} · ${marked.label}`
+        : marked.label,
+    );
+    void enqueueQuickBooksSync(venueId, "payment", itemId, { paidAmount: amountRecorded });
+
     // "Pay final payment"-style Planning tasks complete themselves the
     // moment a payment actually lands — this was previously only logged as
     // an activity string, never wired (Vendor Management — Next Iteration,
@@ -491,6 +754,7 @@ export async function markLineItemPaid(itemId: string, scheduleId: string, input
     }
 
     // Payment.Received → Client Automations + commercial booked stamp.
+    let bookingCelebration: { clientId: string; eventId: string } | undefined;
     {
       const { data: scheduleClient } = await supabase.from("payment_schedules")
         .select("client_id, event_id").eq("id", scheduleId)
@@ -506,13 +770,6 @@ export async function markLineItemPaid(itemId: string, scheduleId: string, input
         actor: { type: "staff", id: null, name: null },
         payload: { scheduleId, eventId: scheduleClient?.event_id ?? sch?.event_id ?? null },
       });
-      if (scheduleClient?.client_id) {
-        const { maybeStampCommercialBookedAt } = await import("@/lib/booking-journey/stamp-commercial-booked-at");
-        await maybeStampCommercialBookedAt(supabase, venueId, {
-          clientId: scheduleClient.client_id,
-          eventId: scheduleClient.event_id ?? sch?.event_id ?? null,
-        });
-      }
     }
 
     void recordEngagementEvent({
@@ -562,7 +819,10 @@ export async function markLineItemPaid(itemId: string, scheduleId: string, input
       }
     }
 
-    return { ok: true, celebrated, obligationCelebrated } as PaymentActionResult;
+    const offlineRecord = await buildOfflineRecordSummary(
+      supabase, venueId, scheduleId, marked, itemId,
+    );
+    return { ok: true, celebrated, obligationCelebrated, bookingCelebration, offlineRecord } as PaymentActionResult;
   });
   return result as PaymentActionResult;
 }
@@ -580,9 +840,13 @@ export async function refundLineItem_(
   reason?: string,
 ): Promise<PaymentActionResult> {
   const result = await withVenue(async (supabase, venueId) => {
-    const role = await getCurrentUserRole();
-    if (role !== "owner") {
-      return { ok: false, message: "Only the venue Owner can issue a refund." } as PaymentActionResult;
+    const { requireCapability } = await import("@/lib/authorization/membership");
+    const gate = await requireCapability(
+      "payments.refund",
+      "You do not have permission to issue refunds.",
+    );
+    if (!gate.ok) {
+      return { ok: false, message: gate.error } as PaymentActionResult;
     }
 
     // Stripe Connect (Sprint 4): a payment collected through Stripe must
@@ -610,7 +874,13 @@ export async function refundLineItem_(
       outcome.newStatus === "refunded" ? "refunded" : "partially_refunded",
       `Refund issued: $${refundAmount.toLocaleString()}`,
       reason?.trim() || undefined);
-    void enqueueQuickBooksSync(venueId, "refund", itemId, { refundAmount, reason });
+    // Payload uses cumulative refunded total so successive partials enqueue
+    // distinct work; syncRefund still reads the latest ledger at dispatch.
+    void enqueueQuickBooksSync(venueId, "refund", itemId, {
+      refundedAmount: outcome.newRefundedTotal,
+      paidAmount: outcome.paidAmount,
+      reason: reason?.trim() || null,
+    });
 
     const { data: sch } = await supabase.from("payment_schedules")
       .select("invoice_id").eq("id", scheduleId).maybeSingle<{ invoice_id: string | null }>();
@@ -634,6 +904,8 @@ export async function cancelLineItem_(itemId: string): Promise<PaymentActionResu
     if (item.status === "paid" || item.status === "partially_refunded" || item.status === "refunded" || item.status === "processing") {
       return { ok: false, message: "Only an unpaid installment can be cancelled." } as PaymentActionResult;
     }
+    const locked = await assertSchedulePlanEditable(item.schedule_id);
+    if (locked) return locked as PaymentActionResult;
 
     await repo.cancelLineItem(supabase, venueId, itemId);
     await repo.syncScheduleTotalFromActiveLines(supabase, venueId, item.schedule_id);
@@ -694,13 +966,17 @@ export async function deletePaymentSchedule(scheduleId: string): Promise<Payment
 // with nothing to compare against is never "Needs Review," it just has
 // nothing to check.
 
-async function scheduleInvoiceTotal(scheduleId: string): Promise<{ schedule: PaymentScheduleWithDetails; invoiceTotal: number } | PaymentActionResult> {
+async function scheduleInvoiceTotal(scheduleId: string): Promise<{
+  schedule: PaymentScheduleWithDetails;
+  invoiceTotal: number;
+  invoiceStatus: string;
+} | PaymentActionResult> {
   const schedule = await getPaymentSchedule(scheduleId);
   if (!schedule) return { ok: false, message: "Payment schedule not found." };
   if (!schedule.invoiceId) return { ok: false, message: "This payment plan isn't linked to an invoice." };
   const invoice = await getInvoice(schedule.invoiceId);
   if (!invoice) return { ok: false, message: "Linked invoice not found." };
-  return { schedule, invoiceTotal: invoice.total };
+  return { schedule, invoiceTotal: invoice.total, invoiceStatus: invoice.status };
 }
 
 /** "Keep Existing Schedule" — the plan is fine as-is; records which invoice total was reviewed so a later, real change still re-surfaces Needs Review. */
@@ -768,6 +1044,7 @@ export async function regeneratePaymentSchedule(scheduleId: string, presetId: st
         const dueDate = resolvePresetItemDueDate(pi, {
           eventDate: schedule.eventDate,
           bookingDate: schedule.bookedAt,
+          today: new Date().toISOString().slice(0, 10),
         }) ?? undefined;
         const item = await repo.insertLineItem(supabase, venueId, scheduleId, {
           label: pi.label, amount: String(amt), dueDate: dueDate ?? "",
@@ -799,4 +1076,226 @@ export async function addReviewInstallment(scheduleId: string, input: LineItemIn
     return { ok: true, item: addResult.item } as AddLineItemResult;
   });
   return result as AddLineItemResult;
+}
+
+export type ReplaceScheduleLinesInput = {
+  label: string;
+  amount: string;
+  dueDate: string;
+  obligationKind: PaymentObligationKind;
+};
+
+/**
+ * Replace pending lines on a schedule with builder output.
+ * Refuses if any payment has been requested or collected.
+ */
+export async function replacePendingScheduleLines(
+  scheduleId: string,
+  lines: ReplaceScheduleLinesInput[],
+): Promise<PaymentActionResult> {
+  const ctx = await scheduleInvoiceTotal(scheduleId);
+  if ("ok" in ctx) return ctx;
+  const { schedule, invoiceTotal, invoiceStatus } = ctx;
+  const { scheduleHasPaymentActivity, planTotalsReconcile, roundMoney } =
+    await import("@/lib/payments/reconcile-commitment");
+  if (scheduleHasPaymentActivity(schedule.lineItems, invoiceStatus)) {
+    return { ok: false, message: "Payments have already been requested or collected. Historical installments cannot be replaced." };
+  }
+  const scheduled = roundMoney(lines.reduce((s, l) => s + (parseFloat(l.amount.replace(/[$,]/g, "")) || 0), 0));
+  if (!planTotalsReconcile(scheduled, invoiceTotal)) {
+    return { ok: false, message: "Payment schedule must reconcile to the current booking commitment before saving." };
+  }
+  const result = await withVenue(async (supabase, venueId) => {
+    await repo.deleteUnresolvedLineItems(supabase, venueId, scheduleId);
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i]!;
+      await repo.insertLineItem(supabase, venueId, scheduleId, {
+        label: line.label,
+        amount: line.amount,
+        dueDate: line.dueDate,
+        obligationKind: line.obligationKind,
+      }, i);
+    }
+    await repo.updateScheduleTotalAmount(supabase, venueId, scheduleId, invoiceTotal);
+    await repo.setAcknowledgedInvoiceTotal(supabase, venueId, scheduleId, invoiceTotal);
+    await repo.insertPaymentActivity(
+      supabase, venueId, scheduleId, "schedule_rebuilt",
+      "Payment plan updated to match the current booking commitment.",
+    );
+    return { ok: true } as PaymentActionResult;
+  });
+  return result as PaymentActionResult;
+}
+
+/**
+ * After an invoice line/commitment change: auto-recalc safe presets, or
+ * leave a visible needs-review mismatch. Never mutates requested/paid lines.
+ */
+export async function syncPaymentPlanToInvoiceCommitment(invoiceId: string): Promise<void> {
+  const { classifyCommitmentReconcile, recalculateLineAmounts, scheduleHasPaymentActivity } =
+    await import("@/lib/payments/reconcile-commitment");
+  await withVenue(async (supabase, venueId) => {
+    const invoice = await repo.getInvoiceSummaryForSchedule(supabase, venueId, invoiceId);
+    if (!invoice) return { ok: true } as PaymentActionResult;
+    const projected = await getInvoice(invoiceId);
+    const commitmentTotal = projected?.total ?? invoice.total;
+    const { data: scheduleRow } = await supabase.from("payment_schedules")
+      .select("id")
+      .eq("venue_id", venueId)
+      .eq("invoice_id", invoiceId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle<{ id: string }>();
+    if (!scheduleRow) return { ok: true } as PaymentActionResult;
+    const schedule = await repo.getSchedule(supabase, venueId, scheduleRow.id);
+    if (!schedule) return { ok: true } as PaymentActionResult;
+
+    const pending = schedule.lineItems.filter((l) => l.status === "pending" || l.status === "overdue");
+    const lineSum = pending.reduce((s, l) => s + l.amount, 0);
+    const decision = classifyCommitmentReconcile({
+      scheduleTotal: lineSum,
+      commitmentTotal,
+      lineAmounts: pending.map((l) => l.amount),
+      hasActivity: scheduleHasPaymentActivity(schedule.lineItems, invoice.status),
+    });
+    if (decision.kind === "current" && Math.abs(schedule.totalAmount - commitmentTotal) > 0.02) {
+      await repo.updateScheduleTotalAmount(supabase, venueId, schedule.id, commitmentTotal);
+      return { ok: true } as PaymentActionResult;
+    }
+    if (decision.kind !== "auto_recalc") return { ok: true } as PaymentActionResult;
+
+    const nextAmounts = recalculateLineAmounts({
+      previousAmounts: pending.map((l) => l.amount),
+      previousTotal: decision.previousTotal,
+      nextTotal: decision.nextTotal,
+    });
+    for (let i = 0; i < pending.length; i++) {
+      const line = pending[i]!;
+      await repo.updateLineItem(supabase, venueId, line.id, {
+        label: line.label,
+        amount: String(nextAmounts[i] ?? line.amount),
+        dueDate: line.dueDate ?? "",
+        obligationKind: line.obligationKind ?? undefined,
+      });
+    }
+    await repo.updateScheduleTotalAmount(supabase, venueId, schedule.id, commitmentTotal);
+    await repo.insertPaymentActivity(
+      supabase, venueId, schedule.id, "schedule_recalculated",
+      `Payment plan recalculated for the new commitment of ${commitmentTotal}.`,
+    );
+    return { ok: true } as PaymentActionResult;
+  });
+}
+
+/**
+ * Adjust remaining unpaid installments on an issued invoice's plan.
+ * Preserves paid / refunded / cancelled / processing rows and recorded receipts.
+ * Closes partially_paid shortfalls (amount → paid_amount, status → paid) so the
+ * outstanding balance can be redistributed without inventing collections.
+ */
+export async function adjustRemainingPaymentPlan(
+  scheduleId: string,
+  proposedRemaining: AdjustableDraftLine[],
+): Promise<PaymentActionResult & { preview?: ReturnType<typeof previewAdjustRemainingPlan> }> {
+  const schedule = await getPaymentSchedule(scheduleId);
+  if (!schedule) return { ok: false, message: "Payment schedule not found." };
+  if (!schedule.invoiceId) {
+    return { ok: false, message: "This payment plan isn't linked to an invoice." };
+  }
+  const invoice = await getInvoice(schedule.invoiceId);
+  if (!invoice) return { ok: false, message: "Linked invoice not found." };
+  if (invoice.status !== "sent" && invoice.status !== "partially_paid") {
+    return {
+      ok: false,
+      message:
+        invoice.status === "void"
+          ? "A voided invoice's payment plan cannot be adjusted."
+          : "Adjust the remaining plan only on a sent or partially paid invoice.",
+    };
+  }
+
+  const preview = previewAdjustRemainingPlan({
+    invoiceTotal: invoice.total,
+    balanceDue: invoice.balanceDue,
+    lines: schedule.lineItems,
+    proposedRemaining,
+  });
+  if (!preview.ok) {
+    return { ok: false, message: preview.message ?? "Remaining installments do not reconcile.", preview };
+  }
+
+  const result = await withVenue(async (supabase, venueId) => {
+    const partialIds = schedule.lineItems
+      .filter((l) => l.status === "partially_paid")
+      .map((l) => l.id);
+    const closed = await repo.closePartialInstallmentShortfalls(supabase, venueId, scheduleId);
+    for (const itemId of partialIds) {
+      await cancelRemindersForPaymentLineItem(supabase, venueId, itemId);
+    }
+    await repo.deleteUnresolvedLineItems(supabase, venueId, scheduleId);
+
+    const { data: maxSort } = await supabase.from("payment_line_items")
+      .select("sort_order")
+      .eq("schedule_id", scheduleId)
+      .order("sort_order", { ascending: false })
+      .limit(1);
+    let nextSort = ((maxSort?.[0] as { sort_order?: number } | undefined)?.sort_order ?? -1) + 1;
+
+    for (const line of preview.proposedRemaining) {
+      const item = await repo.insertLineItem(supabase, venueId, scheduleId, {
+        label: line.label,
+        amount: String(line.amount),
+        dueDate: line.dueDate ?? "",
+        obligationKind: line.obligationKind ?? undefined,
+      }, nextSort++);
+      await bindFinalPaymentTaskToLine(
+        supabase, venueId, schedule.eventId, item.id, line.obligationKind,
+      );
+      if (line.dueDate) {
+        const cadence = await getReminderCadence();
+        await createRemindersForPaymentLineItem(supabase, venueId, item.id, line.dueDate, cadence);
+      }
+    }
+
+    await repo.updateScheduleTotalAmount(supabase, venueId, scheduleId, invoice.total);
+    await repo.setAcknowledgedInvoiceTotal(supabase, venueId, scheduleId, invoice.total);
+    await repo.insertPaymentActivity(
+      supabase,
+      venueId,
+      scheduleId,
+      "remaining_plan_adjusted",
+      closed > 0
+        ? `Remaining payment plan adjusted. $${closed.toFixed(2)} of partial-installment shortfall redistributed. Recorded payments unchanged.`
+        : `Remaining payment plan adjusted across ${preview.proposedRemaining.length} installment(s). Recorded payments unchanged.`,
+    );
+    return { ok: true, preview } as PaymentActionResult & { preview: typeof preview };
+  });
+  return result as PaymentActionResult & { preview?: typeof preview };
+}
+
+/** Load adjust preview without writing — for the venue dialog. */
+export async function previewRemainingPaymentPlanAdjustment(
+  scheduleId: string,
+  proposedRemaining: AdjustableDraftLine[],
+): Promise<
+  | { ok: true; preview: ReturnType<typeof previewAdjustRemainingPlan> }
+  | { ok: false; message: string; preview?: ReturnType<typeof previewAdjustRemainingPlan> }
+> {
+  const schedule = await getPaymentSchedule(scheduleId);
+  if (!schedule) return { ok: false, message: "Payment schedule not found." };
+  if (!schedule.invoiceId) {
+    return { ok: false, message: "This payment plan isn't linked to an invoice." };
+  }
+  const invoice = await getInvoice(schedule.invoiceId);
+  if (!invoice) return { ok: false, message: "Linked invoice not found." };
+  const preview = previewAdjustRemainingPlan({
+    invoiceTotal: invoice.total,
+    balanceDue: invoice.balanceDue,
+    lines: schedule.lineItems,
+    proposedRemaining,
+  });
+  if (!preview.ok) {
+    return { ok: false, message: preview.message ?? "Could not preview.", preview };
+  }
+  return { ok: true, preview };
 }

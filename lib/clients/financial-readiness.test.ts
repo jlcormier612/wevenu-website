@@ -130,9 +130,11 @@ describe("Phase 4 financial readiness seams", () => {
     assert.match(page, /getPaymentSchedules/);
     assert.match(page, /getPaymentSchedule/);
     const celebration = readFileSync(resolve("components/clients/booking-celebration.tsx"), "utf8");
-    assert.match(celebration, /FinancialReadinessPanel/);
+    assert.match(celebration, /BookedNextSteps/);
+    assert.match(celebration, /financial\.rows/);
+    assert.doesNotMatch(celebration, /FinancialReadinessPanel|EventExperienceReviewPanel|CommunicationsReviewPanel/);
     assert.match(celebration, /eventTypeLabel/);
-    assert.match(celebration, /PreparePlanningPanel/);
+    assert.doesNotMatch(celebration, /PreparePlanningPanel/);
   });
 
   it("skip is presentation-only and does not write a financial status", () => {

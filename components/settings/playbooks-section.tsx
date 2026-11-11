@@ -17,7 +17,9 @@ import { Sparkles, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import {
-  deleteTemplateAction, duplicateTemplateAction, renameTemplateAction,
+  createStandardClientPlanningTemplateAction,
+  createStandardVenueWorkflowTemplateAction,
+  deleteTemplateAction, duplicateTemplateAction,
   setTemplateArchivedAction, setTemplateDefaultAction,
 } from "@/app/(app)/playbooks/actions";
 import { LIBRARY_LABELS, archiveToggleLabel } from "@/components/library/labels";
@@ -32,8 +34,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { PlaybookApplyPreviewSheet } from "@/components/playbooks/playbook-apply-preview-sheet";
 import { PlaybookStarterPicker } from "@/components/playbooks/playbook-starter-picker";
+import { PlaybookTemplateDetailsSheet } from "@/components/playbooks/playbook-template-details-sheet";
 import { EVENT_TYPES, eventTypeLabel, formatRelative } from "@/lib/leads/constants";
 import { PLAYBOOK_KINDS, playbookKindLabel } from "@/lib/playbooks/constants";
+import { isStandardPlanningMasterKey } from "@/lib/playbooks/planning-starter-visibility";
 import type { PlaybookTemplateWithStats } from "@/lib/playbooks/types";
 
 const OTHER_EVENT_TYPE = { value: "__other__", label: "Other" };
@@ -132,12 +136,13 @@ function UsePlaybookFlow({
 }
 
 function TemplateCard({
-  template, busy, onRename, onDuplicate, onSetDefault, onArchiveToggle, onDelete, onUse, archivedView,
+  template, busy, onEditDetails, onDuplicate, onAddAnotherCopy, onSetDefault, onArchiveToggle, onDelete, onUse, archivedView,
 }: {
   template: PlaybookTemplateWithStats;
   busy: boolean;
-  onRename: () => void;
+  onEditDetails: () => void;
   onDuplicate: () => void;
+  onAddAnotherCopy?: () => void;
   onSetDefault: () => void;
   onArchiveToggle: () => void;
   onDelete: () => void;
@@ -145,26 +150,36 @@ function TemplateCard({
   archivedView?: boolean;
 }) {
   const eventType = template.eventType ? eventTypeLabel(template.eventType) : "All event types";
+  const isStarter = Boolean(template.sourceMasterKey);
 
   const primaryActions = archivedView
     ? [
         { id: "preview", label: LIBRARY_LABELS.preview, href: `/library/playbooks/${template.id}/preview`, emphasis: "preview" as const },
         { id: "restore", label: LIBRARY_LABELS.restore, onClick: onArchiveToggle, emphasis: "edit" as const, disabled: busy },
       ]
-    : [
-        { id: "preview", label: LIBRARY_LABELS.preview, href: `/library/playbooks/${template.id}/preview`, emphasis: "preview" as const },
-        { id: "edit", label: LIBRARY_LABELS.edit, href: `/library/playbooks/${template.id}`, emphasis: "edit" as const },
-        { id: "use", label: LIBRARY_LABELS.useTemplate, onClick: onUse, emphasis: "use" as const },
-      ];
+    : isStarter
+      ? [
+          { id: "preview", label: LIBRARY_LABELS.preview, href: `/library/playbooks/${template.id}/preview`, emphasis: "preview" as const },
+          // Customize duplicates this Library row into a venue-owned copy (safe primary).
+          { id: "customize", label: LIBRARY_LABELS.customize, onClick: onDuplicate, emphasis: "edit" as const, disabled: busy },
+          { id: "edit", label: LIBRARY_LABELS.edit, href: `/library/playbooks/${template.id}`, emphasis: "edit" as const },
+          { id: "use", label: LIBRARY_LABELS.useTemplate, onClick: onUse, emphasis: "use" as const },
+        ]
+      : [
+          { id: "preview", label: LIBRARY_LABELS.preview, href: `/library/playbooks/${template.id}/preview`, emphasis: "preview" as const },
+          { id: "edit", label: LIBRARY_LABELS.edit, href: `/library/playbooks/${template.id}`, emphasis: "edit" as const },
+          { id: "use", label: LIBRARY_LABELS.useTemplate, onClick: onUse, emphasis: "use" as const },
+        ];
 
   return (
     <LibraryAssetCard
       layout="row"
       title={template.name}
-      isStarter={Boolean(template.sourceMasterKey)}
+      isStarter={isStarter}
       isArchived={template.isArchived}
       badges={
         <>
+          {!isStarter && <Badge variant="outline" className="text-[10px]">{LIBRARY_LABELS.yourTemplate}</Badge>}
           <Badge variant="outline" className="text-[10px]">{eventType}</Badge>
           <Badge variant="accent" className="text-[10px]">{playbookKindLabel(template.kind)}</Badge>
           {template.isDefault && <Badge variant="muted" className="text-[10px]">Default</Badge>}
@@ -174,8 +189,14 @@ function TemplateCard({
       primaryActions={primaryActions}
       overflowPending={busy}
       overflowItems={archivedView ? [] : [
-        { id: "duplicate", label: LIBRARY_LABELS.duplicate, onClick: onDuplicate },
-        { id: "rename", label: "Rename", onClick: onRename },
+        ...(!isStarter
+          ? [{ id: "duplicate", label: LIBRARY_LABELS.duplicate, onClick: onDuplicate }]
+          : []),
+        // Distinct from Duplicate: re-provisions fresh content from the Hello to Cheers master recipe.
+        ...(onAddAnotherCopy
+          ? [{ id: "add-another-copy", label: LIBRARY_LABELS.addAnotherCopy, onClick: onAddAnotherCopy }]
+          : []),
+        { id: "details", label: LIBRARY_LABELS.editDetails, onClick: onEditDetails },
         ...(!template.isDefault ? [{ id: "default", label: "Set as Default", onClick: onSetDefault }] : []),
         { id: "archive", label: archiveToggleLabel(template.isArchived), onClick: onArchiveToggle, separatorBefore: true },
         {
@@ -188,8 +209,13 @@ function TemplateCard({
 }
 
 export function PlaybooksSection({
-  initialTemplates, events = [],
-}: { initialTemplates: PlaybookTemplateWithStats[]; events?: PlaybookEventOption[] }) {
+  initialTemplates, events = [], headerCreate = true,
+}: {
+  initialTemplates: PlaybookTemplateWithStats[];
+  events?: PlaybookEventOption[];
+  /** When false, PageHeader owns + New Template / Import. */
+  headerCreate?: boolean;
+}) {
   const router = useRouter();
   const [templates, setTemplates] = React.useState(initialTemplates);
   const [busyId, setBusyId] = React.useState<string | null>(null);
@@ -197,6 +223,7 @@ export function PlaybooksSection({
   const [kindFilter, setKindFilter] = React.useState<KindFilter>("all");
   const [sort, setSort] = React.useState<SortKey>("updated");
   const [using, setUsing] = React.useState<PlaybookTemplateWithStats | null>(null);
+  const [detailsTemplate, setDetailsTemplate] = React.useState<PlaybookTemplateWithStats | null>(null);
   const [deleting, setDeleting] = React.useState<PlaybookTemplateWithStats | null>(null);
   const [deletePending, setDeletePending] = React.useState(false);
 
@@ -222,19 +249,34 @@ export function PlaybooksSection({
     }
   }
 
-  async function handleDuplicate(id: string, name: string) {
-    const result = await withBusy(id, () => duplicateTemplateAction(id, `${name} (Copy)`));
+  async function handleDuplicate(id: string, name: string, opts?: { customize?: boolean }) {
+    const suggested = opts?.customize
+      ? `${name.replace(/\s*\(Starter\)\s*$/i, "").trim() || name} — ${new Date().getFullYear()}`
+      : `${name} (Copy)`;
+    const result = await withBusy(id, () => duplicateTemplateAction(id, suggested));
     if (result.ok) {
-      toast.success("Template duplicated.");
+      toast.success(
+        opts?.customize
+          ? "Created your venue’s copy. The original starter is unchanged."
+          : "Template duplicated.",
+      );
       router.push(`/library/playbooks/${(result as { templateId?: string }).templateId}`);
     }
   }
 
-  async function handleRename(id: string, currentName: string) {
-    const name = window.prompt("Rename template", currentName);
-    if (!name || !name.trim() || name.trim() === currentName) return;
-    const result = await withBusy(id, () => renameTemplateAction(id, name.trim()));
-    if (result.ok) setTemplates((p) => p.map((t) => (t.id === id ? { ...t, name: name.trim() } : t)));
+  async function handleAddAnotherCopy(template: PlaybookTemplateWithStats) {
+    if (!isStandardPlanningMasterKey(template.sourceMasterKey)) return;
+    const masterKey = template.sourceMasterKey;
+    // Distinct from Duplicate: inserts fresh master recipe content (not a clone of this row).
+    const result = await withBusy(template.id, () =>
+      masterKey === "PB-CLIENT-01"
+        ? createStandardClientPlanningTemplateAction()
+        : createStandardVenueWorkflowTemplateAction(),
+    );
+    if (result.ok) {
+      toast.success("Added a fresh Hello to Cheers planning copy — opening the editor.");
+      router.push(`/library/playbooks/${(result as { templateId?: string }).templateId}`);
+    }
   }
 
   async function handleSetDefault(id: string, template: PlaybookTemplateWithStats) {
@@ -274,10 +316,12 @@ export function PlaybooksSection({
         <Sparkles className="h-8 w-8 text-muted-foreground mx-auto" />
         <p className="text-sm font-medium text-heading">No planning templates yet</p>
         <p className="text-xs text-muted-foreground">Client Planning and Venue Planning are two separate checklists — start with whichever you need first.</p>
-        <div className="flex justify-center gap-2 pt-1">
-          <PlaybookStarterPicker existingTemplates={templates} />
-          <PlaybookStarterPicker existingTemplates={templates} variant="import" />
-        </div>
+        {headerCreate ? (
+          <div className="flex justify-center gap-2 pt-1">
+            <PlaybookStarterPicker existingTemplates={templates} />
+            <PlaybookStarterPicker existingTemplates={templates} variant="import" />
+          </div>
+        ) : null}
       </div>
     );
   }
@@ -287,7 +331,7 @@ export function PlaybooksSection({
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-2">
           <Select value={eventTypeFilter} onValueChange={(v) => setEventTypeFilter(v as EventTypeFilter)} items={[{ value: "all", label: "All Event Types" }, ...EVENT_TYPES, OTHER_EVENT_TYPE]}>
-            <SelectTrigger className="h-9 w-44 text-sm border-border">
+            <SelectTrigger className="h-9 w-44 bg-white text-sm border-border">
               <SelectValue placeholder="All Event Types" />
             </SelectTrigger>
             <SelectContent>
@@ -297,7 +341,7 @@ export function PlaybooksSection({
             </SelectContent>
           </Select>
           <Select value={kindFilter} onValueChange={(v) => setKindFilter(v as KindFilter)} items={[{ value: "all", label: "All Template Types" }, ...PLAYBOOK_KINDS]}>
-            <SelectTrigger className="h-9 w-48 text-sm border-border">
+            <SelectTrigger className="h-9 w-48 bg-white text-sm border-border">
               <SelectValue placeholder="All Template Types" />
             </SelectTrigger>
             <SelectContent>
@@ -307,7 +351,7 @@ export function PlaybooksSection({
           </Select>
         </div>
         <Select value={sort} onValueChange={(v) => setSort(v as SortKey)} items={SORT_OPTIONS}>
-          <SelectTrigger className="h-9 w-44 text-sm border-border">
+          <SelectTrigger className="h-9 w-44 bg-white text-sm border-border">
             <SelectValue placeholder="Last Updated" />
           </SelectTrigger>
           <SelectContent>
@@ -327,8 +371,13 @@ export function PlaybooksSection({
                 {active.map((t) => (
                   <TemplateCard
                     key={t.id} template={t} busy={busyId === t.id}
-                    onRename={() => handleRename(t.id, t.name)}
-                    onDuplicate={() => handleDuplicate(t.id, t.name)}
+                    onEditDetails={() => setDetailsTemplate(t)}
+                    onDuplicate={() => handleDuplicate(t.id, t.name, { customize: Boolean(t.sourceMasterKey) })}
+                    onAddAnotherCopy={
+                      isStandardPlanningMasterKey(t.sourceMasterKey)
+                        ? () => handleAddAnotherCopy(t)
+                        : undefined
+                    }
                     onSetDefault={() => handleSetDefault(t.id, t)}
                     onArchiveToggle={() => handleArchiveToggle(t.id, t.isArchived)}
                     onDelete={() => setDeleting(t)}
@@ -342,7 +391,7 @@ export function PlaybooksSection({
                 {archived.map((t) => (
                   <TemplateCard
                     key={t.id} template={t} busy={busyId === t.id} archivedView
-                    onRename={() => handleRename(t.id, t.name)}
+                    onEditDetails={() => setDetailsTemplate(t)}
                     onDuplicate={() => handleDuplicate(t.id, t.name)}
                     onSetDefault={() => handleSetDefault(t.id, t)}
                     onArchiveToggle={() => handleArchiveToggle(t.id, t.isArchived)}
@@ -356,10 +405,12 @@ export function PlaybooksSection({
         );
       })()}
 
-      <div className="flex gap-2 pt-2 border-t border-border/60">
-        <PlaybookStarterPicker existingTemplates={templates.filter((t) => !t.isArchived)} compact />
-        <PlaybookStarterPicker existingTemplates={templates.filter((t) => !t.isArchived)} compact variant="import" />
-      </div>
+      {headerCreate ? (
+        <div className="flex gap-2 pt-2 border-t border-border/60">
+          <PlaybookStarterPicker existingTemplates={templates.filter((t) => !t.isArchived)} compact />
+          <PlaybookStarterPicker existingTemplates={templates.filter((t) => !t.isArchived)} compact variant="import" />
+        </div>
+      ) : null}
 
       <UsePlaybookFlow
         template={using}
@@ -367,6 +418,15 @@ export function PlaybooksSection({
         open={!!using}
         onOpenChange={(o) => { if (!o) setUsing(null); }}
       />
+      {detailsTemplate ? (
+        <PlaybookTemplateDetailsSheet
+          template={detailsTemplate}
+          open={!!detailsTemplate}
+          onOpenChange={(o) => {
+            if (!o) setDetailsTemplate(null);
+          }}
+        />
+      ) : null}
       <LibraryDeleteConfirmDialog
         open={!!deleting}
         itemName={deleting?.name ?? ""}

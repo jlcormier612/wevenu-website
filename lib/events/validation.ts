@@ -13,7 +13,13 @@ export function validateEventInput(input: EventInput): EventErrors {
   }
   if (input.guestCount.trim()) {
     const n = Number(input.guestCount);
-    if (!Number.isInteger(n) || n < 0) errors.guestCount = "Guest count must be a whole number.";
+    if (!Number.isInteger(n) || n < 0) errors.guestCount = "Estimated guest count must be a whole number.";
+  }
+  if ((input.guaranteedGuestCount ?? "").trim()) {
+    const n = Number(input.guaranteedGuestCount);
+    if (!Number.isInteger(n) || n < 0) {
+      errors.guaranteedGuestCount = "Guaranteed guest count must be a whole number.";
+    }
   }
   if (input.startTime && input.endTime && input.endTime <= input.startTime)
     errors.endTime = "End time must be after start time.";

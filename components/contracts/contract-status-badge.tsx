@@ -12,7 +12,7 @@ const STATUS_VARIANT: Record<ContractStatus, BadgeVariant> = {
 
 /**
  * Progressive human-facing status. Prefer signing summary when provided so
- * Draft vs Ready to send is honest; fall back to coarse status labels.
+ * Draft vs Sent to Client vs Awaiting Venue Signature is honest; fall back to coarse status labels.
  */
 export function ContractStatusBadge({
   status,

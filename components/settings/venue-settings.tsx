@@ -21,10 +21,22 @@ import { Input } from "@/components/ui/input";
 import {
   BrandStep,
   BusinessHoursStep,
-  OwnerStep,
   VenueDetailsStep,
   VenueInfoStep,
 } from "@/components/setup/setup-steps";
+import { VenueOwnersSection } from "@/components/settings/venue-owners-section";
+import type { ActorOwnersClarity } from "@/lib/team/owner-display";
+import type { StaffMember } from "@/lib/team/types";
+import { CURRENCIES, WEEK_START_OPTIONS } from "@/lib/venue/constants";
+import { sectionSaveNotice } from "@/lib/venue/validation";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -40,6 +52,27 @@ import type {
   VenueSetupErrors,
   VenueSetupInput,
 } from "@/lib/venue/types";
+
+function focusRenderedError(key: string) {
+  const id = key.startsWith("hours.")
+    ? `hours-${key.slice("hours.".length)}-open`
+    : key === "currency"
+      ? "settings-currency"
+      : key === "weekStartsOn"
+        ? "settings-week-start"
+        : key;
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.scrollIntoView({ block: "center" });
+  const target =
+    el instanceof HTMLInputElement ||
+    el instanceof HTMLButtonElement ||
+    el instanceof HTMLTextAreaElement ||
+    el instanceof HTMLSelectElement
+      ? el
+      : el.querySelector<HTMLElement>("input, button, select, textarea");
+  target?.focus();
+}
 
 // ---- Section wrapper --------------------------------------------------------
 
@@ -96,10 +129,20 @@ export function VenueSettings({
   initial,
   venueId,
   publicReviewUrl: initialReviewUrl = "",
+  owners = [],
+  actorIsOwner = false,
+  actorCanManageOwners,
+  actorStaffId = null,
+  actorClarity = null,
 }: {
   initial: VenueSetupInput;
   venueId: string;
   publicReviewUrl?: string;
+  owners?: StaffMember[];
+  actorIsOwner?: boolean;
+  actorCanManageOwners?: boolean;
+  actorStaffId?: string | null;
+  actorClarity?: ActorOwnersClarity | null;
 }) {
   const [input, setInput] = React.useState<VenueSetupInput>(initial);
   const [publicReviewUrl, setPublicReviewUrl] = React.useState(initialReviewUrl);
@@ -139,9 +182,10 @@ export function VenueSettings({
 
   const stepProps = { input, errors, set, setHour };
 
-  /** Dispatch a server action, surface errors or toast on success. */
+  /** Dispatch a server action, surface the validator's own message, and move to a rendered field. */
   async function save(
     action: (inp: VenueSetupInput) => Promise<SaveSectionResult>,
+    renders: (key: string) => boolean,
   ): Promise<void> {
     const result = await action(input);
     if (result.ok) {
@@ -151,7 +195,14 @@ export function VenueSettings({
     if (result.errors && Object.keys(result.errors).length > 0) {
       setErrors((prev) => ({ ...prev, ...result.errors }));
     }
-    toast.error(result.message ?? "Please fix the highlighted fields.");
+    const notice = sectionSaveNotice(result.errors, renders, result.message);
+    if (notice.focusKey) {
+      const focusKey = notice.focusKey;
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => focusRenderedError(focusKey));
+      });
+    }
+    toast.error(notice.toast);
   }
 
   return (
@@ -160,7 +211,7 @@ export function VenueSettings({
       <SettingsSection
         title="Venue information"
         description="Name, business name, contact details, and address."
-        onSave={() => save(saveVenueInfoAction)}
+        onSave={() => save(saveVenueInfoAction, (key) => ["name", "email", "website"].includes(key))}
       >
         <VenueInfoStep {...stepProps} />
       </SettingsSection>
@@ -169,7 +220,11 @@ export function VenueSettings({
       <SettingsSection
         title="Venue profile"
         description="Type, capacity, and the time zone your venue runs on."
-        onSave={() => save(saveVenueProfileAction)}
+        onSave={() =>
+          save(saveVenueProfileAction, (key) =>
+            ["venueType", "capacity", "timezone"].includes(key),
+          )
+        }
       >
         <VenueDetailsStep {...stepProps} />
       </SettingsSection>
@@ -178,7 +233,7 @@ export function VenueSettings({
       <SettingsSection
         title="Business hours"
         description="When your venue is open for business. These are your venue's general business hours — when your venue is open and available for business. Your tour availability is set separately, so you don't need to schedule tour times here."
-        onSave={() => save(saveBusinessHoursAction)}
+        onSave={() => save(saveBusinessHoursAction, (key) => key.startsWith("hours."))}
       >
         <BusinessHoursStep {...stepProps} />
       </SettingsSection>
@@ -197,8 +252,9 @@ export function VenueSettings({
             bucket="uploads"
             path={`${venueId}/logo`}
             label="Logo"
-            hint="Square format works best (it appears in a circle on the couple portal). Preview fills the frame the same way. PNG, SVG or JPG, up to 5 MB."
-            objectFit="cover"
+            hint="Shown small in navigation and as a circle on the couple portal. Square or centered marks work best; wide wordmarks stay fully visible (letterboxed) rather than cropped. PNG, SVG, or JPG, up to 5 MB."
+            objectFit="contain"
+            showLogoSizePreviews
             onUpload={async (url) => {
               set("logoUrl", url);
               await updateLogoAction(url);
@@ -286,18 +342,94 @@ export function VenueSettings({
       <SettingsSection
         title="Brand colors"
         description="Used on emails, proposals, contracts, brochures, and other materials you send to clients — not on the Hello to Cheers app screens."
-        onSave={() => save(saveBrandAction)}
+        onSave={() =>
+          save(saveBrandAction, (key) =>
+            ["primaryColor", "secondaryColor", "accentColor", "neutralColor"].includes(key),
+          )
+        }
       >
         <BrandStep {...stepProps} />
       </SettingsSection>
 
-      {/* 5 — Owner profile and general settings */}
+      {/* Owners — relocated from Team invite; same venue_staff.is_owner path */}
+      <VenueOwnersSection
+        initialOwners={owners}
+        actorIsOwner={actorIsOwner}
+        actorCanManageOwners={actorCanManageOwners ?? actorIsOwner}
+        actorStaffId={actorStaffId}
+        actorClarity={actorClarity}
+      />
+
+      {/* General settings (currency / week) — owner profile fields no longer edited here */}
       <SettingsSection
-        title="Owner & general settings"
-        description="Owner profile, currency, and week configuration."
-        onSave={() => save(saveOwnerAction)}
+        title="General settings"
+        description="Currency and week configuration for this venue."
+        onSave={() =>
+          save(saveOwnerAction, (key) => ["currency", "weekStartsOn"].includes(key))
+        }
       >
-        <OwnerStep {...stepProps} />
+        <div className="grid gap-5 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label htmlFor="settings-currency" className="text-xs">
+              Currency
+            </Label>
+            <Select
+              value={input.currency}
+              onValueChange={(v) => set("currency", v)}
+              items={Object.fromEntries(CURRENCIES.map((c) => [c.value, c.label]))}
+            >
+              <SelectTrigger
+                id="settings-currency"
+                aria-invalid={errors.currency ? true : undefined}
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {CURRENCIES.map((c) => (
+                  <SelectItem key={c.value} value={c.value}>
+                    {c.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {errors.currency ? (
+              <p role="alert" className="text-xs text-foreground">
+                {errors.currency}
+              </p>
+            ) : null}
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="settings-week-start" className="text-xs">
+              Week starts on
+            </Label>
+            <Select
+              value={String(input.weekStartsOn)}
+              onValueChange={(v) => set("weekStartsOn", Number(v))}
+              items={Object.fromEntries(
+                WEEK_START_OPTIONS.map((o) => [o.value, o.label]),
+              )}
+            >
+              <SelectTrigger
+                id="settings-week-start"
+                aria-invalid={errors.weekStartsOn ? true : undefined}
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {WEEK_START_OPTIONS.map((o) => (
+                  <SelectItem key={o.value} value={o.value}>
+                    {o.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {errors.weekStartsOn ? (
+              <p role="alert" className="text-xs text-foreground">
+                {errors.weekStartsOn}
+              </p>
+            ) : null}
+          </div>
+        </div>
       </SettingsSection>
     </div>
   );

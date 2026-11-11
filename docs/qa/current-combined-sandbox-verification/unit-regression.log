@@ -1,0 +1,124 @@
+▶ optionCatalogLinkStatus
+  ✔ marks template-only when offering_id is null (1.763125ms)
+  ✔ shows catalog name and label difference (0.913833ms)
+  ✔ preserves archived link with clear status (0.293584ms)
+  ✔ does not unlink when offering missing from loaded catalog (0.163125ms)
+✔ optionCatalogLinkStatus (4.673917ms)
+▶ attach / clear / edit preserving snapshot
+  ✔ attaches offering_id without changing label or price (0.210125ms)
+  ✔ clears offering link and keeps template-only snapshots (0.087208ms)
+  ✔ edits label without losing offering link (0.075791ms)
+  ✔ new-option draft may snapshot catalog price once; attach path does not refresh (0.120125ms)
+✔ attach / clear / edit preserving snapshot (1.423458ms)
+▶ picker and no name-based attach
+  ✔ excludes archived offerings from attach picker (0.85025ms)
+  ✔ module source has no name-based attach helper (24.851791ms)
+✔ picker and no name-based attach (25.828208ms)
+▶ freeze / provenance carry-through
+  ✔ selection freeze retains offeringId for catalog-backed options and null for template-only (0.821667ms)
+✔ freeze / provenance carry-through (0.934083ms)
+▶ resolveSelectedOptions / financial delta
+  ✔ price-neutral included swap has $0 delta (7.085292ms)
+  ✔ add-on produces financial delta (4.340625ms)
+  ✔ multiple add-ons sum (3.338625ms)
+✔ resolveSelectedOptions / financial delta (17.919375ms)
+▶ conflictingSingleSelectLineIds
+  ✔ clears all option labels in an answered single-select group (5.452709ms)
+  ✔ does not clear multi-select option labels when only single-select is answered (0.119333ms)
+  ✔ ignores single-select groups with no answer (0.075458ms)
+✔ conflictingSingleSelectLineIds (5.767583ms)
+▶ conditional choice groups
+  ✔ 1. required parent cannot be skipped (0.818459ms)
+  ✔ 2. Plated reveals only plated child groups (0.263958ms)
+  ✔ 3. Buffet reveals only buffet child groups (0.09575ms)
+  ✔ 4. switching Plated → Buffet deactivates plated-only selections (0.81725ms)
+  ✔ 5. switching Buffet → Plated deactivates buffet-only selections (0.06475ms)
+  ✔ 6. inactive children cannot remain billable (0.1635ms)
+  ✔ 7. Bar parent/child behaves equivalently (0.099333ms)
+  ✔ 8. parent + child prices are not double-counted beyond selected lines (0.801708ms)
+  ✔ 9. required child blocks submit when active and unanswered (0.122417ms)
+  ✔ 10. hidden required child does not block submit (0.119417ms)
+  ✔ 11. orphan answers on inactive children are rejected without reconcile (0.088375ms)
+  ✔ 12. nested children render immediately after parent in visible order (0.092625ms)
+✔ conditional choice groups (4.433083ms)
+▶ validateChoicesAnswers
+  ✔ rejects submit with no dinner selection (0.7075ms)
+  ✔ rejects two dinners in a pick-one group (0.089083ms)
+  ✔ allows dinner only (arbor optional declined) (0.066583ms)
+  ✔ allows dinner + arbor (0.066334ms)
+  ✔ rejects unknown option ids (0.064875ms)
+  ✔ skips inactive required dependents and rejects orphan child answers (0.144708ms)
+✔ validateChoicesAnswers (1.883709ms)
+▶ formatDependsOnSummary
+  ✔ reports Always shown when there are no dependencies (0.601542ms)
+  ✔ renders a single parent option label (0.087958ms)
+  ✔ renders multiple activating parents with or (0.069125ms)
+✔ formatDependsOnSummary (3.315584ms)
+▶ parentOptionCandidates / sanitizeDependsOnOptionIds
+  ✔ lists options from other groups only (8.154292ms)
+  ✔ sanitizes add: keeps valid ids, drops unknown and self-group ids (0.241875ms)
+  ✔ supports removing a dependency by omitting it (0.090709ms)
+✔ parentOptionCandidates / sanitizeDependsOnOptionIds (8.7905ms)
+▶ isDependentGroup
+  ✔ distinguishes gated vs always-on groups (2.530958ms)
+✔ isDependentGroup (2.628875ms)
+▶ persistence + freeze + preview semantics
+  ✔ serializes dependsOnOptionIds into the selection freeze (0.251958ms)
+  ✔ reload shape retains configured dependency (round-trip via template model) (0.204333ms)
+  ✔ preview: child hidden until parent selected; visible after (0.314958ms)
+  ✔ honest-empty dependent group stays active with zero options (0.283917ms)
+  ✔ regression: groups without dependencies remain always visible (0.097166ms)
+✔ persistence + freeze + preview semantics (1.284833ms)
+▶ selectionDefinitionFromEventOrderTemplate
+  ✔ freezes sections, fixed lines, groups, and options into ChoicesDefinition shape (1.424208ms)
+  ✔ zeros unitPrice for included options (0.110958ms)
+✔ selectionDefinitionFromEventOrderTemplate (3.028541ms)
+▶ defaultAnswersFromEventOrderTemplate
+  ✔ pre-selects isDefault options; single mode takes first default only (0.195458ms)
+  ✔ omits groups with no defaults (0.102125ms)
+✔ defaultAnswersFromEventOrderTemplate (0.558334ms)
+▶ selectionDefinitionNeedsHydration
+  ✔ detects legacy packets missing fixedLines while the template still has lines (0.117834ms)
+  ✔ is false once fixedLines (and groups) are frozen (0.076125ms)
+  ✔ detects missing groups/options when the template has selectable offerings (0.085625ms)
+✔ selectionDefinitionNeedsHydration (0.383458ms)
+▶ pruneAnswersToDefinition
+  ✔ drops answers for removed groups and unknown option ids (0.163709ms)
+✔ pruneAnswersToDefinition (0.223875ms)
+▶ templateHasSelectableGroups
+  ✔ is true when groups exist (0.094375ms)
+  ✔ is false for fixed-only templates (0.081791ms)
+✔ templateHasSelectableGroups (0.227666ms)
+▶ Phase 1 migration presence
+  ✔ ships event_order_template_groups / options and client_choices.event_order_template_id (6.445542ms)
+✔ Phase 1 migration presence (6.493959ms)
+▶ EO starter commercial semantics
+  ✔ 1. canonical masters ship included lines + choice groups (not flat-only) (0.721333ms)
+  ✔ 2. EO-D-02: Plated and Buffet are mutually exclusive required dinner options (0.896667ms)
+  ✔ 3. EO-D-02: Arbor is optional paid add-on, not included/fixed (0.101125ms)
+  ✔ 4. EO-D-02: bar package is optional (couple may decline); not contradictory multi-select packages (0.079959ms)
+  ✔ 5. included ceremony/services are fixed included lines; package apply selects only those (0.2325ms)
+  ✔ 6. optional unselected options do not become billable lines (0.255167ms)
+  ✔ 7. required pick-one cannot select two dinners in a single-mode answer set (0.118084ms)
+  ✔ 8. legacy flat fingerprint detects uncustomized copies only (0.12075ms)
+  ✔ 9. EO-D-01 dinner + bar are required pick-one; rentals optional multi (0.145166ms)
+  ✔ 10. provision upgrades legacy flats and preserves customized; load path uses ensure (0.389708ms)
+  ✔ 11. included-only defaults: defaultApplySelections selects included fixed lines only (0.105959ms)
+  ✔ 12. dinner/bar parent groups ship empty dependent scaffolds (no invented menu items) (0.15025ms)
+  ✔ 13. provision resolves dependsOnOptionNames and additive scaffolding (0.537167ms)
+✔ EO starter commercial semantics (4.812916ms)
+▶ object identity — placement vs item type
+  ✔ treats C1/T6 as placement ids, not item names (0.851833ms)
+  ✔ numbers cocktail and round placements with distinct prefixes (0.255292ms)
+  ✔ suggests 4 seats for cocktail and size-based seats for rounds (0.091583ms)
+  ✔ resolves item type from inventory, then shape — never from placement id (0.109208ms)
+  ✔ reports unlinked honestly without inventing a relationship (0.118542ms)
+✔ object identity — placement vs item type (2.256458ms)
+ℹ tests 76
+ℹ suites 20
+ℹ pass 76
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 569.601333

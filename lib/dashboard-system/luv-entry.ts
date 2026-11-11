@@ -2,18 +2,37 @@
  * What Luv says on the Dashboard.
  *
  * Luv's Dashboard role is interpretation, not reporting. Today's Focus already
- * lists the work; if Luv restates a row from it — "Sara Parker has a tour today
- * at 11:00 AM" directly beneath a Today's Focus row saying the same thing — the
- * Dashboard has spent two sections on one fact and Luv has contributed nothing.
+ * lists the work; if Luv restates a row from it — or reproduces a Leads list
+ * filter the owner can already open — the Dashboard has spent two sections on
+ * one fact and Luv has contributed nothing.
  *
- * So this picks, in order of how much interpretation it adds:
- *   1. a recommendation (already advice plus an action),
- *   2. an observation about something NOT already in Today's Focus,
- *   3. failing both, an aggregate read of Today's Focus itself — the insight
- *      layer over those rows rather than a repeat of any one of them.
+ * Product Lock (attention model): Dashboard may surface only Level-1 —
+ * globally pertinent, timely, actionable intelligence. Single-record /
+ * lead-specific (Level-3) observations remain computed for lower surfaces;
+ * they must not win the one global Dashboard card.
+ *
+ * Locked L1 trust: a candidate may occupy the Dashboard card only while its
+ * authoritative supporting facts are valid on the current GET. Persisted
+ * recommendations and insight_* rows are not revalidated on GET, so they
+ * cannot occupy L1.
+ *
+ * So this picks:
+ *   1. a valid live Level-1 observation whose facts were established on this GET
+ *      and which is not already in Today's Focus,
+ *   2. failing that, an aggregate read of Today's Focus — except when that
+ *      aggregate would only restate lead follow-ups already listed (and the
+ *      Leads page already owns that queue),
+ *   3. otherwise no L1 card.
  */
 import type { ClassifiedItem } from "@/lib/dashboard-system/decision-engine";
+import {
+  forensicRecordL1,
+  sanitizeObservationFamily,
+} from "@/lib/dashboard/forensic-timing";
 import type { VenueRecommendation } from "@/lib/luv/recommendation-types";
+import { isRecommendationActiveForDisplay } from "@/lib/luv/recommendation-visibility";
+import { isPhase5SpotPatternRecommendation } from "@/lib/luv/spot-patterns";
+import { TOUR_FOLLOWUP_PATTERN_TYPE } from "@/lib/luv/tour-followup-pattern";
 import type { LuvObservation } from "@/lib/luv/types";
 
 export type LuvDashboardEntry = {
@@ -25,6 +44,8 @@ export type LuvDashboardEntry = {
   actionHref: string;
   /** When set, the Dashboard card can permanently dismiss this recommendation. */
   dismissRecommendationId?: string;
+  /** When set, the Dashboard card can permanently dismiss this computed observation. */
+  dismissObservationId?: string;
 };
 
 type Aggregate = { summary: (count: number) => string; suggestion: string; actionLabel: string; href: string };
@@ -33,20 +54,16 @@ type Aggregate = { summary: (count: number) => string; suggestion: string; actio
  * Aggregate voice per publishing domain. Phrased as something the app can
  * actually do — Luv offers to take the owner to the work, and does not promise
  * to perform an action (drafting, sending) that no Dashboard control performs.
+ *
+ * Leads are intentionally omitted: aggregating Focus lead rows into a
+ * "/leads?attention=stale_contact" CTA duplicates Today's Focus and the Leads
+ * filter rather than interpreting anything new.
+ *
+ * Tasks are not count-aggregated ("N tasks are past due") — that restates
+ * Focus. When Tasks dominate and no other L1 wins, `interpretOverdueTaskPriority`
+ * may still offer a prioritized next step from Focus facts.
  */
 const DOMAIN_AGGREGATE: Record<string, Aggregate> = {
-  Leads: {
-    summary: (n) => `${countWord(n, "lead")} ${n === 1 ? "has" : "have"} been waiting for follow-up.`,
-    suggestion: "Want to work through them?",
-    actionLabel: "Review inquiries",
-    href: "/leads?attention=stale_contact",
-  },
-  Tasks: {
-    summary: (n) => `${countWord(n, "task")} ${n === 1 ? "is" : "are"} past due.`,
-    suggestion: "Want to clear them?",
-    actionLabel: "Open tasks",
-    href: "/tasks",
-  },
   "Event Readiness": {
     summary: (n) => `${countWord(n, "booking")} ${n === 1 ? "has" : "have"} something still outstanding.`,
     suggestion: "Want to see what's missing?",
@@ -94,6 +111,113 @@ function firstCta(recommendation: VenueRecommendation): { label: string; href: s
   return cta ? { label: cta.label, href: cta.target } : null;
 }
 
+/** Recommendations that only restate the Leads stale-contact filter. */
+export function isLeadsFilterDuplicateRecommendation(rec: VenueRecommendation): boolean {
+  if (rec.type === "lead_followup") return true;
+  return rec.ctas.some(
+    (c) => c.type === "navigate" && /\/leads\?attention=stale_contact/.test(c.target),
+  );
+}
+
+/**
+ * V2 tour follow-up pattern CTA is /tours (Past completed tours). Today's Focus
+ * Calendar items also link to /tours for *today's upcoming* schedule — that is
+ * not the same actionable work, so do not treat them as Focus duplicates.
+ */
+export function isTourFollowupPatternRecommendation(rec: VenueRecommendation): boolean {
+  return rec.type === TOUR_FOLLOWUP_PATTERN_TYPE;
+}
+
+/** Individual V1 tour-no-followup cards — superseded by the venue-level pattern when active. */
+export function isTourNoFollowupObservation(obs: LuvObservation): boolean {
+  return obs.id.startsWith("tour-no-followup-");
+}
+
+/** Single-lead upcoming-tour prep — lead/tour context, never the global Dashboard card. */
+export function isTourUpcomingObservation(obs: LuvObservation): boolean {
+  return obs.id.startsWith("tour-upcoming-");
+}
+
+/**
+ * Href that addresses one lead / event / client / contract / invoice / payment /
+ * request record. Those destinations are Level-3 workflow/record context.
+ */
+const RECORD_SCOPED_PATH =
+  /^\/(leads|events|clients|contracts|invoices|payments|requests)\/[0-9a-f-]{8,}/i;
+
+export function isRecordScopedHref(href: string): boolean {
+  return RECORD_SCOPED_PATH.test(subject(href));
+}
+
+/**
+ * Level-1 observations are globally pertinent for the one Dashboard card.
+ * Level-3 (single-record) observations stay available elsewhere — they are
+ * not deleted; they simply cannot occupy the Dashboard slot.
+ */
+export function isDashboardLevel1Observation(obs: LuvObservation): boolean {
+  if (isTourUpcomingObservation(obs)) return false;
+  if (isTourNoFollowupObservation(obs)) return false;
+  if (obs.id.startsWith("tour-no-show-")) return false;
+
+  // Contextual intelligence S1–S4 — record/workflow L3 only (never Dashboard L1).
+  if (obs.id.startsWith("event-contract-unsigned-")) return false;
+  if (obs.id.startsWith("event-payment-attention-")) return false;
+  if (obs.id.startsWith("inquiry-unattended-")) return false;
+
+  // Locked live L1 families (explicit allowlist). insight_* is inferential
+  // and is never established as current on GET.
+  if (obs.id.startsWith("insight_")) return false;
+  if (obs.id.startsWith("setup-gap-")) return true;
+  if (obs.id.startsWith("venue-readiness-")) return true;
+  // Aggregate delivery summaries (comm-all-delivered / comm-recent-failures)
+  // are no longer emitted — see lib/luv/communication-observations.ts.
+
+  const primaryHref = obs.recommendation?.link ?? obs.link;
+  if (isRecordScopedHref(primaryHref) || isRecordScopedHref(obs.link)) return false;
+
+  // Qualifying non-record-scoped communication / contract / document families.
+  // Dashboard GET only assembles these when a current live source already
+  // produced them. Record-scoped members stay Level-3.
+  if (obs.id.startsWith("comm-stale-unopened-")) return true;
+  if (obs.id.startsWith("contract-")) return true;
+  if (obs.id.startsWith("doc-")) return true;
+  return false;
+}
+
+/**
+ * Level-1 recommendations: venue-wide patterns and setup/guide gaps.
+ * A recommendation whose only navigate CTA is a single record is Level-3.
+ */
+export function isDashboardLevel1Recommendation(rec: VenueRecommendation): boolean {
+  // Phase 5 Spot Patterns are L2 workflow intelligence only — never Dashboard L1.
+  // Locked L1 trust: persisted recommendations are not revalidated on GET.
+  // A stored row is not a current supporting fact.
+  if (isPhase5SpotPatternRecommendation(rec)) return false;
+  if (isTourFollowupPatternRecommendation(rec)) return false;
+  if (rec.type.startsWith("client_ask_gap_")) return false;
+  if (rec.type === "inquiry_reactivation" || rec.type === "seasonal_prep") return false;
+  void rec;
+  return false;
+}
+
+/**
+ * While the venue-level pattern is visible OR recently dismissed, individual
+ * tour-no-followup observations are the same actionable work. Surfacing them
+ * after X makes the V2 dismiss feel like it failed on refresh.
+ */
+export function shouldSuppressTourNoFollowupObservations(
+  recommendations: readonly VenueRecommendation[],
+): boolean {
+  return recommendations.some((rec) => {
+    if (!isTourFollowupPatternRecommendation(rec)) return false;
+    // Active pattern, or same row still in the 7-day dismiss cooldown.
+    return (
+      isRecommendationActiveForDisplay(rec) ||
+      Boolean(rec.dismissedAt && !isRecommendationActiveForDisplay(rec))
+    );
+  });
+}
+
 /**
  * The insight layer over Today's Focus: reads the largest group of work in it
  * and says what it means, rather than repeating its rows.
@@ -125,6 +249,45 @@ export function aggregateFocusEntry(focusItems: ClassifiedItem[]): LuvDashboardE
   };
 }
 
+/**
+ * When overdue Tasks already appear in Today's Focus, do not restate the count.
+ * Instead pick the most time-sensitive overdue task (oldest due date) and offer
+ * that as a prioritized next step — interpretation Focus does not provide.
+ *
+ * Requires ≥2 overdue Focus Tasks with due dates so the priority is meaningful
+ * (a single listed task needs no ranking). Uses only Focus-published facts.
+ */
+export function interpretOverdueTaskPriority(
+  focusItems: ClassifiedItem[],
+): LuvDashboardEntry | null {
+  const tasks = focusItems.filter(
+    (i) =>
+      i.domain === "Tasks"
+      && i.rightLabel === "Overdue"
+      && typeof i.sortDate === "string"
+      && i.sortDate.length > 0
+      && i.label.trim().length > 0
+      && /\/leads\/[^/?#]+/i.test(i.href),
+  );
+  if (tasks.length < 2) return null;
+
+  const ranked = [...tasks].sort((a, b) => {
+    const da = a.sortDate!;
+    const db = b.sortDate!;
+    if (da !== db) return da < db ? -1 : 1;
+    return focusItems.indexOf(a) - focusItems.indexOf(b);
+  });
+  const pick = ranked[0]!;
+  const leadBit = pick.detail?.trim() ? ` for ${pick.detail.trim()}` : "";
+  return {
+    message:
+      `Among your overdue tasks, “${pick.label.trim()}”${leadBit} looks most time-sensitive.`,
+    suggestion: "Want to start there?",
+    actionLabel: "Open task",
+    actionHref: pick.href,
+  };
+}
+
 export function selectLuvDashboardEntry({
   focusItems,
   observations,
@@ -135,13 +298,28 @@ export function selectLuvDashboardEntry({
   recommendations: VenueRecommendation[];
 }): LuvDashboardEntry | null {
   const focusSubjects = new Set(focusItems.map((i) => subject(i.href)));
+  const suppressTourNoFollowup = shouldSuppressTourNoFollowupObservations(recommendations);
 
-  // 1. A recommendation is already interpretation plus an action, so it leads —
-  //    unless it points at a row Today's Focus is displaying anyway.
+  // 1. Persisted recommendations are not current L1 sources. The loop remains
+  //    so a stored row can never occupy the card merely because it exists.
   for (const rec of recommendations) {
+    if (!isRecommendationActiveForDisplay(rec)) continue;
+    if (isLeadsFilterDuplicateRecommendation(rec)) continue;
+    if (!isDashboardLevel1Recommendation(rec)) continue;
     const cta = firstCta(rec);
-    if (cta && focusItems.some((i) => pointsAtSameFocusRow(cta.href, i.href))) continue;
     if (!cta) continue;
+    if (
+      !isTourFollowupPatternRecommendation(rec) &&
+      focusItems.some((i) => pointsAtSameFocusRow(cta.href, i.href))
+    ) {
+      continue;
+    }
+    forensicRecordL1({
+      source: "recommendation",
+      type: rec.type,
+      candidate: rec.type,
+      path: "selectLuvDashboardEntry.recommendation",
+    });
     return {
       message: rec.title,
       suggestion: rec.body || null,
@@ -151,17 +329,61 @@ export function selectLuvDashboardEntry({
     };
   }
 
-  // 2. An observation, but only about something Today's Focus is not covering.
+  // 2. A valid live Level-1 observation, but only about something Today's Focus is not covering.
+  //    Suppress individual tour-no-followup cards while the venue-level pattern
+  //    is active or recently dismissed (same work as the V2 recommendation).
+  //    Level-3 / single-record observations never win this slot.
   for (const obs of observations) {
+    if (!isDashboardLevel1Observation(obs)) continue;
+    if (suppressTourNoFollowup && isTourNoFollowupObservation(obs)) continue;
     if (focusSubjects.has(subject(obs.link))) continue;
+    const family = sanitizeObservationFamily(obs.id);
+    forensicRecordL1({
+      source: "observation",
+      type: family,
+      candidate: family,
+      path: "selectLuvDashboardEntry.observation",
+    });
     return {
       message: obs.message,
-      suggestion: obs.recommendation?.label ?? obs.detail ?? null,
+      // Descriptive copy only — never reuse the CTA label as the suggestion.
+      suggestion: obs.detail ?? null,
       actionLabel: obs.actionLabel ?? "View",
       actionHref: obs.recommendation?.link ?? obs.link,
+      dismissObservationId: obs.id,
     };
   }
 
-  // 3. Everything Luv had to say is already on screen — so interpret it instead.
-  return aggregateFocusEntry(focusItems);
+  // 3. Interpret Focus when that interpretation is not a Leads-filter restatement.
+  const aggregate = aggregateFocusEntry(focusItems);
+  if (aggregate) {
+    forensicRecordL1({
+      source: "focus_aggregate",
+      type: aggregate.actionHref,
+      candidate: aggregate.actionHref,
+      path: "selectLuvDashboardEntry.focus_aggregate",
+    });
+    return aggregate;
+  }
+
+  // 4. Overdue Tasks already listed — prioritize the most time-sensitive one
+  //    instead of restating the count or going silent by default.
+  const tasksPriority = interpretOverdueTaskPriority(focusItems);
+  if (tasksPriority) {
+    forensicRecordL1({
+      source: "focus_aggregate",
+      type: "tasks_priority",
+      candidate: tasksPriority.actionHref,
+      path: "selectLuvDashboardEntry.tasks_priority",
+    });
+    return tasksPriority;
+  }
+
+  forensicRecordL1({
+    source: "NONE",
+    type: null,
+    candidate: null,
+    path: "selectLuvDashboardEntry.none",
+  });
+  return null;
 }

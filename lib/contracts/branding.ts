@@ -4,6 +4,13 @@
  * without a snapshot keep live venue branding (no silent backfill).
  */
 import type { Venue } from "@/lib/venue/types";
+import { formatPhoneDisplay } from "@/lib/sms/phone";
+
+function displayPhone(phone: string | null | undefined): string | null {
+  const trimmed = phone?.trim() || "";
+  if (!trimmed) return null;
+  return formatPhoneDisplay(trimmed);
+}
 
 /** Fields the Contract sign page and Contract PDF actually consume. */
 export type ContractBrandingSnapshot = {
@@ -31,6 +38,7 @@ export function captureContractBrandingSnapshot(venue: Venue): ContractBrandingS
     accentColor: venue.accentColor,
     neutralColor: venue.neutralColor,
     email: venue.email,
+    // Snapshot stores the venue's persisted phone; presentation formats at resolve time.
     phone: venue.phone,
     website: venue.website,
     addressLine1: venue.addressLine1,
@@ -42,6 +50,7 @@ export function captureContractBrandingSnapshot(venue: Venue): ContractBrandingS
  * Prefer frozen snapshot fields when present; otherwise live venue.
  * Used by the sign page and PDF generator — never invents defaults beyond
  * what the caller already applied for missing live venue data.
+ * Phone is formatted for human display; storage/snapshot values stay unchanged.
  */
 export function resolveContractBrandPresentation(
   snapshot: ContractBrandingSnapshot | null | undefined,
@@ -60,20 +69,27 @@ export function resolveContractBrandPresentation(
     addressLine2?: string | null;
   } | null | undefined,
 ): ContractBrandingSnapshot | null {
-  if (snapshot) return snapshot;
-  if (!venue) return null;
+  const base = snapshot
+    ? snapshot
+    : venue
+      ? {
+          name: venue.name ?? "",
+          businessName: venue.businessName ?? null,
+          logoUrl: venue.logoUrl ?? null,
+          primaryColor: venue.primaryColor ?? "#5D6F5D",
+          secondaryColor: venue.secondaryColor ?? "#4F5F4F",
+          accentColor: venue.accentColor ?? "#B8AEA1",
+          neutralColor: venue.neutralColor ?? "#F7F5F1",
+          email: venue.email ?? null,
+          phone: venue.phone ?? null,
+          website: venue.website ?? null,
+          addressLine1: venue.addressLine1 ?? null,
+          addressLine2: venue.addressLine2 ?? null,
+        }
+      : null;
+  if (!base) return null;
   return {
-    name: venue.name ?? "",
-    businessName: venue.businessName ?? null,
-    logoUrl: venue.logoUrl ?? null,
-    primaryColor: venue.primaryColor ?? "#5D6F5D",
-    secondaryColor: venue.secondaryColor ?? "#4F5F4F",
-    accentColor: venue.accentColor ?? "#B8AEA1",
-    neutralColor: venue.neutralColor ?? "#F7F5F1",
-    email: venue.email ?? null,
-    phone: venue.phone ?? null,
-    website: venue.website ?? null,
-    addressLine1: venue.addressLine1 ?? null,
-    addressLine2: venue.addressLine2 ?? null,
+    ...base,
+    phone: displayPhone(base.phone),
   };
 }

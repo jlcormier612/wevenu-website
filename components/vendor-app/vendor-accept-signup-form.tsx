@@ -6,6 +6,7 @@ import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { useFormStatus } from "react-dom";
 
 import { createVendorAccountAndClaimAction } from "@/app/vendor/actions";
+import { SignupLegalConsent } from "@/components/auth/signup-legal-consent";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -108,6 +109,7 @@ export function VendorAcceptSignupForm({
           minLength={8}
         />
       </div>
+      <SignupLegalConsent audience="vendor" />
       {errorMessage ? (
         <p
           role="alert"

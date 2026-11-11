@@ -25,7 +25,7 @@ export function SeriesStatusToggle({ seriesId, status }: { seriesId: string; sta
       if (result.ok) {
         toast.success(
           next === "active"
-            ? "Automation resumed — new people can join and scheduled messages can send again."
+            ? "Automation resumed — new people can enter this automation and scheduled messages can send again."
             : "Automation paused for everyone.",
         );
         setConfirmPause(false);

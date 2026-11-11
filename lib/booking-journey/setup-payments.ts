@@ -11,6 +11,10 @@ import {
   updateInvoiceStatus,
 } from "@/lib/invoices/service";
 import { SCHEDULE_PRESETS } from "@/lib/payments/constants";
+import {
+  applyCustomScheduleToTotal,
+  type CustomScheduleTemplate,
+} from "@/lib/payments/custom-default-schedule";
 import { allocatePresetAmounts } from "@/lib/payments/starters";
 import { createPaymentSchedule, addLineItem, deletePaymentSchedule } from "@/lib/payments/service";
 import type { PaymentObligationKind } from "@/lib/payments/types";
@@ -36,9 +40,14 @@ export type SetupPaymentsInput = {
    * Schedule structure:
    * - omit / "deposit_remaining" — deposit + final remaining
    * - "full" — one full-payment (deposit) line for the commitment
+   * - "custom" — venue default Custom template (percentage or dollar)
    * - a SCHEDULE_PRESETS id — deposit override + remaining installments from preset
    */
   scheduleStructure?: string | null;
+  /** Required when scheduleStructure is "custom" and no builderLines. */
+  customSchedule?: CustomScheduleTemplate | null;
+  /** Explicit builder lines from the full payment-plan builder. */
+  builderLines?: ScheduleLineDraft[] | null;
 };
 
 /** Pure: resolve deposit (today) + remaining due dates for guided setup. */
@@ -76,6 +85,7 @@ export type ScheduleLineDraft = {
 /**
  * Build schedule lines that reconcile exactly to the commitment total.
  * Catalog presets are starting points; the deposit amount is the booking commitment.
+ * Custom applies the venue DEFAULT template from the commercial total (no deposit override).
  */
 export function buildGuidedScheduleLines(input: {
   total: number;
@@ -84,11 +94,32 @@ export function buildGuidedScheduleLines(input: {
   remainingDueDate: string | null;
   eventDate?: string | null;
   scheduleStructure?: string | null;
+  customSchedule?: CustomScheduleTemplate | null;
 }): { ok: true; lines: ScheduleLineDraft[] } | { ok: false; message: string } {
   const total = roundMoney(input.total);
   const deposit = roundMoney(input.deposit);
   const remaining = remainingAmount(total, deposit);
   const structure = input.scheduleStructure?.trim() || "deposit_remaining";
+
+  if (structure === "custom") {
+    if (!input.customSchedule) {
+      return {
+        ok: false,
+        message:
+          "Configure a Custom payment schedule in Settings before using it on a booking.",
+      };
+    }
+    const applied = applyCustomScheduleToTotal({
+      template: input.customSchedule,
+      total,
+      today: input.today,
+      eventDate: input.eventDate,
+      remainingDueDate: input.remainingDueDate,
+      bookingDate: input.today,
+    });
+    if (!applied.ok) return applied;
+    return { ok: true, lines: applied.lines };
+  }
 
   if (structure === "full" || remaining <= 0) {
     return {
@@ -252,50 +283,142 @@ export async function runSetupPaymentsFromSelection(
     return { ok: false, message: "Enter a valid deposit amount." };
   }
   const remaining = remainingAmount(total, deposit);
-  const dueDates = resolveGuidedSetupDueDates({
-    depositAmount: deposit,
-    remainingAmount: remaining,
-    today: deps.today,
-    eventDate: input.eventDate,
-    remainingDueDate: input.remainingDueDate,
-  });
-  if (!dueDates.ok) return dueDates;
+  const hasBuilderLines = Array.isArray(input.builderLines) && input.builderLines.length > 0;
+  const isCustom = input.scheduleStructure === "custom" || hasBuilderLines;
 
-  const scheduleLines = buildGuidedScheduleLines({
-    total,
-    deposit,
-    today: deps.today,
-    remainingDueDate: dueDates.remainingDueDate,
-    eventDate: input.eventDate,
-    scheduleStructure: input.scheduleStructure,
-  });
+  // Custom schedules resolve due dates from timing rules; still need an event/
+  // remaining anchor when any line uses before_event.
+  let remainingDueDate = input.remainingDueDate ?? null;
+  let depositDueDate = deps.today;
+  if (hasBuilderLines) {
+    remainingDueDate = input.remainingDueDate ?? input.eventDate ?? null;
+    depositDueDate = input.builderLines![0]?.dueDate || deps.today;
+  } else if (!isCustom) {
+    const dueDates = resolveGuidedSetupDueDates({
+      depositAmount: deposit,
+      remainingAmount: remaining,
+      today: deps.today,
+      eventDate: input.eventDate,
+      remainingDueDate: input.remainingDueDate,
+    });
+    if (!dueDates.ok) return dueDates;
+    remainingDueDate = dueDates.remainingDueDate;
+    depositDueDate = dueDates.depositDueDate;
+  } else if (!(input.eventDate?.trim() || input.remainingDueDate?.trim())) {
+    // Percentage/dollar custom with before_event lines need an anchor.
+    const needsEvent = (input.customSchedule?.items ?? []).some(
+      (it) => it.timing.type === "before_event",
+    );
+    if (needsEvent) {
+      return {
+        ok: false,
+        message:
+          "Set a due date for the remaining balance (or add the event date) before setting up payments.",
+      };
+    }
+  }
+
+  const scheduleLines = hasBuilderLines
+    ? { ok: true as const, lines: input.builderLines! }
+    : buildGuidedScheduleLines({
+        total,
+        deposit,
+        today: deps.today,
+        remainingDueDate,
+        eventDate: input.eventDate,
+        scheduleStructure: input.scheduleStructure,
+        customSchedule: input.customSchedule,
+      });
   if (!scheduleLines.ok) return scheduleLines;
+  const scheduledSum = roundMoney(scheduleLines.lines.reduce((s, l) => s + l.amount, 0));
+  if (Math.abs(scheduledSum - total) > 0.005) {
+    return { ok: false, message: "Payment schedule must reconcile to the commitment total." };
+  }
+
+  // For Custom, the first deposit-kind line is the initial payment amount.
+  if (isCustom) {
+    const depositLine = scheduleLines.lines.find((l) => l.obligationKind === "deposit")
+      ?? scheduleLines.lines[0];
+    deposit = depositLine?.amount ?? deposit;
+    depositDueDate = depositLine?.dueDate ?? deps.today;
+  }
 
   let invoiceId: string | null = null;
   let scheduleId: string | null = null;
 
   try {
+    const { defaultInvoiceDisplayName } = await import("@/lib/invoices/display-name");
+    const depositLine = scheduleLines.lines.find((l) => l.obligationKind === "deposit")
+      ?? scheduleLines.lines[0];
     const invoiceResult = await deps.createInvoice({
       clientId: input.clientId,
       eventId: input.eventId ?? "",
       notes: commitmentNotes(selection.name),
-      dueDate: dueDates.depositDueDate,
+      dueDate: depositDueDate,
+      displayName: defaultInvoiceDisplayName({
+        obligationKind: depositLine?.obligationKind ?? "deposit",
+        scheduleLabel: depositLine?.label,
+        packageName: selection.name,
+      }),
     });
     if (!invoiceResult.ok) {
       return { ok: false, message: invoiceResult.message ?? "Could not create the invoice." };
     }
     invoiceId = invoiceResult.invoiceId;
 
+    // Inherit Selected Package financial terms — do not recompute from venue defaults.
+    const packageAmount = roundMoney(
+      selection.packageAmount > 0 ? selection.packageAmount : selection.totalAmount,
+    );
     const lineResult = await deps.addInvoiceLine(invoiceId, {
       type: "package",
       description: selection.name,
       quantity: "1",
-      unitPrice: String(total),
+      unitPrice: String(packageAmount),
       packageId: selection.sourcePackageId ?? "",
     });
     if (!lineResult.ok) {
       await deps.compensate(invoiceId, null);
       return { ok: false, message: lineResult.message ?? "Could not add the package line." };
+    }
+    if (selection.discountAmount > 0) {
+      const disc = await deps.addInvoiceLine(invoiceId, {
+        type: "discount",
+        description:
+          selection.discountType === "percent" && selection.discountValue != null
+            ? `Discount (${selection.discountValue}%)`
+            : "Discount",
+        quantity: "1",
+        unitPrice: String(selection.discountAmount),
+        packageId: "",
+        discountType: selection.discountType === "percent" ? "percent" : "fixed",
+        discountValue:
+          selection.discountType === "percent" && selection.discountValue != null
+            ? String(selection.discountValue)
+            : String(selection.discountAmount),
+      });
+      if (!disc.ok) {
+        await deps.compensate(invoiceId, null);
+        return { ok: false, message: disc.message ?? "Could not add the discount line." };
+      }
+    }
+    if (selection.taxApplied && selection.taxAmount > 0) {
+      const tax = await deps.addInvoiceLine(invoiceId, {
+        type: "tax",
+        description:
+          selection.taxRatePercent != null
+            ? `Tax (${selection.taxRatePercent}%)`
+            : "Tax",
+        quantity: "1",
+        unitPrice: String(selection.taxAmount),
+        packageId: "",
+        taxRatePercent:
+          selection.taxRatePercent != null ? String(selection.taxRatePercent) : undefined,
+      });
+      if (!tax.ok) {
+        await deps.compensate(invoiceId, null);
+        return { ok: false, message: tax.message ?? "Could not add the tax line." };
+      }
     }
 
     const scheduleResult = await deps.createPaymentSchedule(
@@ -392,7 +515,18 @@ async function findRecoverableCommitment(
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle<{ id: string }>();
-    if (!schedule) continue;
+    if (!schedule) {
+      // Interrupted create: a never-sent draft with no plan. RLS limits delete to Owner/Manager.
+      if (inv.status === "draft") {
+        await supabase
+          .from("invoices")
+          .delete()
+          .eq("venue_id", venue.id)
+          .eq("id", inv.id)
+          .eq("status", "draft");
+      }
+      continue;
+    }
 
     return { invoiceId: inv.id, scheduleId: schedule.id };
   }
@@ -444,8 +578,14 @@ export async function setupPaymentsFromSelection(
   const today = await resolveTodayForVenue();
   const eventDate = input.eventDate ?? (await resolveEventDate(input.eventId));
 
+  let customSchedule = input.customSchedule ?? null;
+  if (input.scheduleStructure === "custom" && !customSchedule) {
+    const venue = await getCurrentVenue();
+    customSchedule = venue?.commercialBookingPrefs?.defaultCustomSchedule ?? null;
+  }
+
   return runSetupPaymentsFromSelection(
-    { ...input, eventDate },
+    { ...input, eventDate, customSchedule },
     {
       getSelection: getSelectedPackage,
       findRecoverable: findRecoverableCommitment,

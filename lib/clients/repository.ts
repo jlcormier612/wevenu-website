@@ -3,6 +3,7 @@
  */
 import { occupancyFailureFromUnknown, OccupancyWriteError, calendarBlockFailureFromUnknown, CalendarBlockWriteError } from "@/lib/availability/event-occupancy";
 import { createClient } from "@/integrations/supabase/server";
+import { normalizeVenuePhoneInput } from "@/lib/sms/phone";
 import type {
   Client,
   ClientActivity,
@@ -11,6 +12,8 @@ import type {
   ClientStatus,
   ClientWithDetails,
 } from "@/lib/clients/types";
+import { relationshipContactPatch } from "@/lib/clients/contact-edit";
+import { isSelectableForNewContract } from "@/lib/clients/contract-picker";
 import { identityRpcFields } from "@/lib/identity/decision";
 
 type DbClient = Awaited<ReturnType<typeof createClient>>;
@@ -51,31 +54,131 @@ const mapAct  = (r: ActRow):  ClientActivity => ({ id: r.id, venueId: r.venue_id
 
 // ---- queries ----------------------------------------------------------------
 
-export async function getClients(client: DbClient, venueId: string, filters?: { q?: string; status?: string }): Promise<Client[]> {
+export async function getClients(
+  client: DbClient,
+  venueId: string,
+  filters?: { q?: string; status?: string; includeArchived?: boolean },
+): Promise<Client[]> {
   let q = client.from("clients").select("*").eq("venue_id", venueId);
   if (filters?.status) q = q.eq("status", filters.status);
   if (filters?.q) {
     const term = `%${filters.q}%`;
     q = q.or(`first_name.ilike.${term},last_name.ilike.${term},email.ilike.${term},partner_first_name.ilike.${term},partner_last_name.ilike.${term}`);
   }
+  if (!filters?.includeArchived) {
+    const { data: archived } = await client
+      .from("venue_customer_relationships")
+      .select("id")
+      .eq("venue_id", venueId)
+      .not("archived_at", "is", null);
+    const archivedIds = ((archived ?? []) as Array<{ id: string }>).map((r) => r.id);
+    if (archivedIds.length > 0) {
+      q = q.not("relationship_id", "in", `(${archivedIds.join(",")})`);
+    }
+  }
   const { data, error } = await q.order("event_date", { ascending: true, nullsFirst: false });
   if (error) throw error;
   return (data as ClientRow[]).map(mapClient);
 }
 
-export async function getClientAttentionFlags(client: DbClient, venueId: string): Promise<Set<string>> {
-  const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
-  const today = new Date().toISOString().slice(0, 10);
+/**
+ * Clients eligible for a NEW contract. State/relationship filter only —
+ * not a name-string hide. getClients() remains the unfiltered CRM list.
+ */
+export async function getSelectableContractClients(
+  client: DbClient,
+  venueId: string,
+): Promise<Client[]> {
+  const { data, error } = await client
+    .from("clients")
+    .select("*")
+    .eq("venue_id", venueId)
+    .order("event_date", { ascending: true, nullsFirst: false });
+  if (error) throw error;
+  const rows = (data as ClientRow[]).map(mapClient);
+  if (rows.length === 0) return [];
 
-  const [overdue, unsignedContracts] = await Promise.all([
+  const ids = rows.map((r) => r.id);
+  const leadIds = [...new Set(rows.map((r) => r.leadId).filter((id): id is string => !!id))];
+
+  const [leadsRes, eventsRes, contractsRes, plansRes] = await Promise.all([
+    leadIds.length > 0
+      ? client.from("leads").select("id, sales_stage").eq("venue_id", venueId).in("id", leadIds)
+      : Promise.resolve({ data: [] as { id: string; sales_stage: string | null }[], error: null }),
+    client.from("events").select("client_id").eq("venue_id", venueId).in("client_id", ids),
+    client.from("contracts").select("client_id").eq("venue_id", venueId).in("client_id", ids),
+    client.from("payment_schedules").select("client_id").eq("venue_id", venueId).in("client_id", ids),
+  ]);
+  if (leadsRes.error) throw leadsRes.error;
+  if (eventsRes.error) throw eventsRes.error;
+  if (contractsRes.error) throw contractsRes.error;
+  if (plansRes.error) throw plansRes.error;
+
+  const leadStage = new Map(
+    ((leadsRes.data ?? []) as { id: string; sales_stage: string | null }[])
+      .map((l) => [l.id, l.sales_stage]),
+  );
+  const withEvent = new Set(
+    ((eventsRes.data ?? []) as { client_id: string | null }[])
+      .map((e) => e.client_id)
+      .filter((id): id is string => !!id),
+  );
+  const withContract = new Set(
+    ((contractsRes.data ?? []) as { client_id: string | null }[])
+      .map((c) => c.client_id)
+      .filter((id): id is string => !!id),
+  );
+  const withPlan = new Set(
+    ((plansRes.data ?? []) as { client_id: string | null }[])
+      .map((p) => p.client_id)
+      .filter((id): id is string => !!id),
+  );
+
+  return rows.filter((row) => isSelectableForNewContract({
+    id: row.id,
+    status: row.status,
+    excludeFromBusinessReporting: row.excludeFromBusinessReporting,
+    leadId: row.leadId,
+    leadSalesStage: row.leadId ? (leadStage.get(row.leadId) ?? null) : null,
+    hasEvent: withEvent.has(row.id),
+    hasContract: withContract.has(row.id),
+    hasPaymentSchedule: withPlan.has(row.id),
+  }));
+}
+
+/**
+ * Concrete unresolved actions for Needs Attention.
+ * Not unread, and not an unsigned contract by itself.
+ *
+ * - past-due payment
+ * - past-due required event task (incomplete)
+ * - inbound message that still needs a response (`conversations.needs_response`)
+ *
+ * Opening a message does not clear `needs_response`. A reply or an explicit
+ * "No response needed" does. A later qualifying inbound message sets it again.
+ */
+export async function getClientAttentionFlags(
+  client: DbClient,
+  venueId: string,
+  today: string,
+): Promise<Set<string>> {
+  const [overdue, overdueTasks, needsResponse] = await Promise.all([
     client.from("payment_line_items")
-      .select("due_date, status, payment_schedules!inner(client_id)")
+      .select("payment_schedules!inner(client_id)")
       .eq("venue_id", venueId)
       .or(`status.eq.overdue,and(status.eq.pending,due_date.lt.${today})`),
-    client.from("contracts")
-      .select("client_id")
-      .eq("venue_id", venueId).eq("status", "sent")
-      .not("sent_at", "is", null).lt("sent_at", threeDaysAgo),
+    client.from("event_tasks")
+      .select("event_id")
+      .eq("venue_id", venueId)
+      .eq("is_required", true)
+      .lt("due_date", today)
+      .is("completed_at", null)
+      .not("status", "in", "(complete,waived)"),
+    client.from("conversations")
+      .select("relationship_id")
+      .eq("venue_id", venueId)
+      .eq("needs_response", true)
+      .not("relationship_id", "is", null),
   ]);
 
   const flagged = new Set<string>();
@@ -84,9 +187,37 @@ export async function getClientAttentionFlags(client: DbClient, venueId: string)
     const schedule = Array.isArray(row.payment_schedules) ? row.payment_schedules[0] : row.payment_schedules;
     if (schedule?.client_id) flagged.add(schedule.client_id);
   }
-  for (const row of (unsignedContracts.data ?? []) as { client_id: string | null }[]) {
-    if (row.client_id) flagged.add(row.client_id);
+
+  const eventIds = [...new Set(
+    ((overdueTasks.data ?? []) as { event_id: string | null }[])
+      .map((row) => row.event_id)
+      .filter((id): id is string => !!id),
+  )];
+  if (eventIds.length > 0) {
+    const { data: events } = await client
+      .from("events")
+      .select("client_id")
+      .eq("venue_id", venueId)
+      .in("id", eventIds);
+    for (const row of (events ?? []) as { client_id: string | null }[]) {
+      if (row.client_id) flagged.add(row.client_id);
+    }
   }
+
+  const relationshipIds = [...new Set(
+    ((needsResponse.data ?? []) as { relationship_id: string | null }[])
+      .map((row) => row.relationship_id)
+      .filter((id): id is string => !!id),
+  )];
+  if (relationshipIds.length > 0) {
+    const { data: clients } = await client
+      .from("clients")
+      .select("id")
+      .eq("venue_id", venueId)
+      .in("relationship_id", relationshipIds);
+    for (const row of (clients ?? []) as { id: string }[]) flagged.add(row.id);
+  }
+
   return flagged;
 }
 
@@ -129,7 +260,7 @@ function toClientRow(venueId: string, input: ClientInput, leadId?: string | null
     first_name: input.firstName.trim(),
     last_name: input.lastName.trim(),
     email: input.email.trim() || null,
-    phone: input.phone.trim() || null,
+    phone: normalizeVenuePhoneInput(input.phone) || null,
     partner_first_name: input.partnerFirstName.trim() || null,
     partner_last_name: input.partnerLastName.trim() || null,
     partner_email: input.partnerEmail.trim() || null,
@@ -161,7 +292,8 @@ export async function findActiveDuplicateClient(
   q = trimmedEmail
     ? q.ilike("email", trimmedEmail)
     : q.ilike("first_name", firstName.trim()).ilike("last_name", lastName.trim());
-  const { data } = await q.limit(1).maybeSingle<{ id: string }>();
+  const { data, error } = await q.limit(1).maybeSingle<{ id: string }>();
+  if (error) throw error;
   return data ?? null;
 }
 
@@ -171,7 +303,7 @@ function clientAtomicPayload(input: ClientInput, leadId?: string | null, histori
     firstName: input.firstName.trim(),
     lastName: input.lastName.trim(),
     email: input.email.trim(),
-    phone: input.phone.trim(),
+    phone: normalizeVenuePhoneInput(input.phone),
     partnerFirstName: input.partnerFirstName.trim(),
     partnerLastName: input.partnerLastName.trim(),
     partnerEmail: input.partnerEmail.trim(),
@@ -278,6 +410,12 @@ export async function insertClientWithDatedEvent(
 export async function updateClientInfo(client: DbClient, venueId: string, clientId: string, input: ClientInput): Promise<void> {
   const row = toClientRow(venueId, input);
 
+  const { data: existing } = await client.from("clients")
+    .select("relationship_id")
+    .eq("id", clientId)
+    .eq("venue_id", venueId)
+    .maybeSingle<{ relationship_id: string | null }>();
+
   // Commitment Alignment Sprint (docs/commitment-lifecycle-architecture.md
   // §9, Booking Financial item C) — once an Event exists, it becomes the
   // sole canonical writer for guest_count/event_type/event_date. The edit
@@ -289,6 +427,16 @@ export async function updateClientInfo(client: DbClient, venueId: string, client
     delete row.event_type;
     delete row.event_date;
     delete row.guest_count;
+  }
+
+  // Same relationship row. Do not insert a second one, and do not write
+  // inquiry or source — those stay on the historical lead.
+  if (existing?.relationship_id) {
+    const { error: relError } = await client.from("venue_customer_relationships")
+      .update(relationshipContactPatch(input))
+      .eq("id", existing.relationship_id)
+      .eq("venue_id", venueId);
+    if (relError) throw relError;
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

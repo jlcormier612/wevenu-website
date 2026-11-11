@@ -2,13 +2,27 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { DeleteTemplateButton } from "@/components/communication/delete-template-button";
+import { MessageStarterEditGate } from "@/components/communication/message-starter-edit-gate";
 import { TemplateForm } from "@/components/communication/template-form";
+import { CollectionBackLink } from "@/components/library/collection-back-link";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getVenueDocuments } from "@/lib/documents/service";
 import { getTemplate, getTemplateAttachments } from "@/lib/message-templates/service";
 
-type Props = { params: Promise<{ id: string }> };
+type Props = {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ returnTo?: string }>;
+};
+
+function safeReturnTo(raw: string | undefined): string | null {
+  if (!raw) return null;
+  const path = raw.startsWith("/") ? raw : null;
+  if (!path) return null;
+  if (!path.startsWith("/communication/")) return null;
+  if (path.includes("//") || path.includes("\\")) return null;
+  return path;
+}
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
@@ -16,28 +30,54 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return { title: t ? `Edit · ${t.name}` : "Edit Template" };
 }
 
-export default async function EditMessageTemplatePage({ params }: Props) {
+export default async function EditMessageTemplatePage({ params, searchParams }: Props) {
   const { id } = await params;
+  const sp = await searchParams;
+  const returnTo = safeReturnTo(sp.returnTo);
   const template = await getTemplate(id);
   if (!template) notFound();
+
+  const isStarter = Boolean(template.sourceMasterKey);
+
+  if (isStarter) {
+    return (
+      <div className="space-y-6">
+        <CollectionBackLink href={returnTo ?? "/communication/templates"} label="Message Templates" />
+        <PageHeader
+          title={template.name}
+          description="Hello to Cheers starter — customize to create your venue’s editable copy."
+        />
+        <MessageStarterEditGate templateId={template.id} templateName={template.name} />
+      </div>
+    );
+  }
+
   const [attachments, venueDocuments] = await Promise.all([
     getTemplateAttachments(id),
     getVenueDocuments(),
   ]);
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title={`Edit · ${template.name}`}
-        description="Update the template content and merge fields."
-        actions={<DeleteTemplateButton templateId={template.id} templateName={template.name} />}
-      />
-      <Card>
-        <CardHeader>
+    <div className="htc-hospitality-page space-y-5 sm:space-y-6" data-htc-phase12="message-template-edit">
+      <CollectionBackLink href={returnTo ?? "/communication/templates"} label="Message Templates" />
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
+        <PageHeader
+          title={`Edit · ${template.name}`}
+          description="Update the template content and merge fields."
+          actions={<DeleteTemplateButton templateId={template.id} templateName={template.name} />}
+        />
+      </div>
+      <Card className="htc-working-card htc-working-card-guidance gap-0 py-0">
+        <CardHeader className="py-4">
           <CardTitle>Template editor</CardTitle>
           <CardDescription>Changes take effect the next time this template is used.</CardDescription>
         </CardHeader>
-        <CardContent>
-          <TemplateForm template={template} attachments={attachments} venueDocuments={venueDocuments} />
+        <CardContent className="py-5">
+          <TemplateForm
+            template={template}
+            attachments={attachments}
+            venueDocuments={venueDocuments}
+            returnTo={returnTo}
+          />
         </CardContent>
       </Card>
     </div>

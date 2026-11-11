@@ -5,7 +5,10 @@
  */
 
 import type { OnboardingType } from "@/lib/marketing/enrollment";
-import { PRICING_PAGE, type SubscriptionPlanId } from "@/lib/marketing/pricing-page";
+import {
+  getPricingPage,
+  type SubscriptionPlanId,
+} from "@/lib/marketing/pricing-page";
 
 export type OnboardingPackage = {
   id: OnboardingType;
@@ -21,13 +24,33 @@ export type OnboardingPackage = {
   defaultSelected: boolean;
 };
 
+/** Phase 2 ready — promises 20% Weven discount at Checkout. */
 export const ONBOARDING_SELECTION_COPY = {
   title: "How would you like to get started?",
   intro: [] as const,
   welcomeBack: {
-    prompt: "Have we celebrated together before?",
-    checkboxLabel: "My venue was part of the Weven family.",
+    prompt: "Were you a Weven customer?",
+    body: "We'd love to welcome you back! Former Weven venue customers receive 20% off their Hello to Cheers subscription for life.",
+    checkboxLabel: "Yes, my venue was a Weven customer.",
+    support:
+      "We'll apply your discount now and confirm your eligibility afterward. No need to wait to get started.",
+    appliedBanner: "Welcome back. Your former Weven customer discount is applied.",
   },
+  whiteGloveWevenPriceLabel: "+$399 one-time",
+} as const;
+
+/** Phase 2 off — keep the self-ID checkbox as a CRM flag without advertising 20%. */
+export const ONBOARDING_SELECTION_COPY_LEGACY = {
+  title: "How would you like to get started?",
+  intro: [] as const,
+  welcomeBack: {
+    prompt: "Have we celebrated together before?",
+    body: null as string | null,
+    checkboxLabel: "My venue was part of the Weven family.",
+    support: null as string | null,
+    appliedBanner: null as string | null,
+  },
+  whiteGloveWevenPriceLabel: "+$499 one-time",
 } as const;
 
 /**
@@ -73,6 +96,6 @@ export function getDefaultOnboardingType(): OnboardingType {
 
 /** Display name for a subscription plan (e.g. Celebrate). */
 export function getPlanDisplayName(planId: SubscriptionPlanId | string): string {
-  const plan = PRICING_PAGE.plans.find((entry) => entry.id === planId);
+  const plan = getPricingPage().plans.find((entry) => entry.id === planId);
   return plan?.name ?? planId;
 }

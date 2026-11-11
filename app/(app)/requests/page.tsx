@@ -26,12 +26,14 @@ export default async function RequestsPage() {
   ]);
 
   return (
-    <div className="htc-hospitality-page space-y-6">
+    <div className="htc-hospitality-page space-y-5 sm:space-y-6" data-htc-phase12="requests">
       <div className="htc-hospitality-heading htc-hospitality-intro-accent">
-        <h1 className="text-2xl font-semibold">Requests</h1>
-        <p className="text-sm text-muted-foreground">
-          Everything you&apos;ve asked a couple or vendor to do, across every booking — assign it, track it, and see where it stands.
-        </p>
+        <div>
+          <h1 className="font-heading text-3xl font-medium tracking-tight text-heading">Requests</h1>
+          <p className="mt-1 max-w-2xl text-[0.95rem] leading-relaxed text-muted-foreground">
+            Everything you&apos;ve asked a couple or vendor to do, across every booking — assign it, track it, and see where it stands.
+          </p>
+        </div>
       </div>
       <RequestManager initialRequests={requests} clients={clients} teamMembers={teamMembers} />
     </div>

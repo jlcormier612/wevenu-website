@@ -18,6 +18,7 @@ export type ActivityType =
   | "task_completed"
   | "tour_scheduled"
   | "follow_up_set"
+  | "follow_up_completed"
   | "last_contacted"
   | "lead_updated"
   | "relationship_updated";
@@ -27,6 +28,12 @@ export type Lead = {
   venueId: string;
   /** Authoritative Sales Pipeline stage (seven fixed stages). */
   salesStage: SalesStage;
+  /**
+   * Venue-facing pipeline stage from the active Pipeline Template.
+   * Null when the lead has not been placed on a custom stage yet — UI
+   * derives display from salesStage + the active template.
+   */
+  pipelineStageId: string | null;
   /**
    * @deprecated Alias of salesStage for transitional call sites.
    * Prefer salesStage.
@@ -44,10 +51,20 @@ export type Lead = {
   partnerEmail: string | null;
   eventType: string | null;
   eventDate: string | null; // ISO "YYYY-MM-DD"
+  /**
+   * Venue's planned Event Space for this inquiry before a real Event exists.
+   * Not occupancy. Null when unset. Optional so existing fixtures stay valid.
+   */
+  plannedEventSpaceId?: string | null;
   endDate: string | null;
   guestCount: number | null;
   estimatedBudget: number | null;
   inquiryMessage: string | null;
+  /**
+   * Durable authorship of inquiryMessage. Never inferred from source/trustTier.
+   * Missing/legacy is treated as unknown.
+   */
+  inquiryMessageOrigin?: import("@/lib/leads/inquiry-message-origin").InquiryMessageOrigin;
   inquiryDate: string;
   // Sprint 6 — relationship fields
   nextActionText: string | null;
@@ -58,6 +75,14 @@ export type Lead = {
   tourTime: string | null;
   tourCompleted: boolean;
   tourNotes: string | null;
+  /** Booked appointment wall date (venue-local), when a scheduled row exists. */
+  tourScheduledDate?: string | null;
+  tourScheduledTime?: string | null;
+  /** Physical occurrence wall date (venue-local), when known. */
+  tourActualDate?: string | null;
+  tourActualTime?: string | null;
+  /** When staff marked the tour completed (ISO timestamptz). */
+  tourCompletedAt?: string | null;
   commitmentScore: number;      // 0–100, computed from milestone data
   responsivenessScore: number;  // 0–100, computed from message reply patterns
   interestScore: number;        // 0–100, computed from time-decayed signal events
@@ -68,6 +93,27 @@ export type Lead = {
   excludeFromBusinessReporting?: boolean;
   /** 0-100, set only for assisted/extracted sources (e.g. email-parsed) — Lead Intake architecture. Null for directly-submitted or manually-entered leads. */
   intakeConfidence: number | null;
+  /** Structured Lost reason when sales_stage is lost. */
+  lostReason: string | null;
+  /** Optional detail; required when lostReason is other. */
+  lostReasonDetail: string | null;
+  /** When the lead was marked Lost. */
+  lostAt: string | null;
+  /**
+   * Authoritative Booked stamp from bookClient / venue Booked decision.
+   * Null means not Booked — sales_stage alone must never invent Booked.
+   */
+  firstBookedAt: string | null;
+  /**
+   * When venue staff last acknowledged this lead for nav attention.
+   * Null = unseen open-lead attention candidate.
+   */
+  venueSeenAt: string | null;
+  /** Optional sales owner. Independent of the booked event assignee. */
+  assignedStaffId?: string | null;
+  /** When set, this lead was soft-merged into another; prefer redirecting there. */
+  mergedIntoLeadId?: string | null;
+  mergedAt?: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -90,6 +136,8 @@ export type LeadTask = {
   completed: boolean;
   completedAt: string | null;
   createdAt: string;
+  assignedToStaffId: string | null;
+  assigneeName: string | null;
 };
 
 export type LeadActivity = {
@@ -133,6 +181,8 @@ export type LeadInput = {
   estimatedBudget: string;
   source: string;
   inquiryMessage: string;
+  /** Set only on trusted write paths — never accepted from the New Lead form as customer. */
+  inquiryMessageOrigin?: import("@/lib/leads/inquiry-message-origin").InquiryMessageOrigin;
   inquiryDate: string;
   /** Set by CSV import when the spreadsheet's source text didn't match a registered source — preserves the original label since `source` itself falls back to "other". */
   originalSourceLabel?: string | null;
@@ -146,8 +196,12 @@ export type RelationshipInput = {
   nextActionDue: string;
   followUpDate: string;
   lastContactedAt: string;
+  /** Scheduled appointment date (venue-local). Not rewritten on complete. */
   tourDate: string;
   tourTime: string;
+  /** Actual occurrence — used when completing or editing a completed tour. */
+  tourActualDate: string;
+  tourActualTime: string;
   tourCompleted: boolean;
   tourNotes: string;
 };
@@ -157,10 +211,12 @@ export type LeadErrors = Record<string, string>;
 export type TaskInput = {
   title: string;
   dueDate: string;
+  /** Venue staff assignee — required for Task Center My Work / By Person. */
+  assignedToStaffId?: string | null;
 };
 
 export type LeadActionResult =
-  | { ok: true }
+  | { ok: true; tourConflict?: { message: string }; automationWarning?: string }
   | { ok: false; errors?: LeadErrors; message?: string };
 
 export type CreateLeadResult =

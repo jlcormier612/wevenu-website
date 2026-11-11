@@ -55,7 +55,8 @@ describe("Phase 3 write-path seams", () => {
       clientsService.indexOf("export async function convertLeadToClient"),
       clientsService.indexOf("export async function updateClientInfo"),
     );
-    assert.match(convert, /insertClientWithDatedEvent\(/);
+    assert.doesNotMatch(convert, /insertClientWithDatedEvent\(/);
+    assert.match(convert, /insertClient\(/);
     assert.doesNotMatch(convert, /assert_event_availability/);
     const core = clientsService.slice(
       clientsService.indexOf("async function createClientCore"),
@@ -74,24 +75,25 @@ describe("Phase 3 write-path seams", () => {
     assert.doesNotMatch(eventsService, /checkEventSpaceConflict/);
     assert.doesNotMatch(eventsService, /assert_event_availability/);
     assert.match(eventsService, /occupancyActionFailure/);
-    assert.match(eventsService, /repo\.insertEvent\(/);
+    const create = eventsService.slice(
+      eventsService.indexOf("export async function createEvent"),
+      eventsService.indexOf("export async function updateEvent_"),
+    );
+    assert.match(create, /bookClient/);
+    assert.doesNotMatch(create, /repo\.insertEvent\(/);
+    assert.doesNotMatch(create, /status: "cancelled"/);
     assert.match(eventsService, /repo\.updateEvent\(/);
     assert.match(eventsService, /repo\.updateEventStatus\(/);
   });
 
-  it("existing-Client Book This Lead retry returns or creates the Event", () => {
+  it("existing client conversion returns the event and does not create one", () => {
     const convert = clientsService.slice(
       clientsService.indexOf("export async function convertLeadToClient"),
       clientsService.indexOf("export async function updateClientInfo"),
     );
     assert.match(convert, /getEventIdForClient/);
-    assert.match(convert, /autoCreateEvent\(/);
-    assert.match(convert, /startTime: input\.ceremonyTime/);
-    const auto = clientsService.slice(
-      clientsService.indexOf("async function autoCreateEvent"),
-      clientsService.indexOf("function datedEventFromClient"),
-    );
-    assert.match(auto, /startTime: opts\.startTime \?\? ""/);
-    assert.doesNotMatch(auto, /ceremonyTime: ""/);
+    assert.doesNotMatch(convert, /autoCreateEvent\(/);
+    assert.doesNotMatch(convert, /insertClientWithDatedEvent\(/);
+    assert.doesNotMatch(clientsService, /async function autoCreateEvent/);
   });
 });

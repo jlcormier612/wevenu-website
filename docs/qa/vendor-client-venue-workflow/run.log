@@ -1,0 +1,19 @@
+PASS serving_sha — serving=0cbc2df7b5cd1f9cd3375e9eb23ccfa42ff59393 expected=0cbc2df7b5cd1f9cd3375e9eb23ccfa42ff59393
+PASS rpc_optional_vs_required_split — {"optional":["Baker's Dozen","Harah's Hair"],"required":["Cuppity Cakes"]}
+PASS portal_required_section_shows_cuppity — REQUIRED FOR YOUR EVENT | Cuppity Cakes | Required for your event
+PASS portal_tab_count_matches_optional_cards — Recommended for You (2)
+PASS portal_does_not_count_required_in_recommended_tab — Recommended for You (2)
+PASS pick_visible_when_not_confirmed — selectVisible=true
+PASS private_pick_persists_without_selected_at — {"id":"f71e0fa4-a6c9-4387-880f-548df220f4b3","picked_at":"2026-10-22T20:53:14.765523+00:00","selected_at":null,"vendor_id":"42a8d273-f738-4f3c-bdcd-f2a5a237e1b3"}
+PASS inquiry_to_claimed_vendor_persists — {"ok":true,"created":true,"messageId":"841a60f3-9a25-403f-a3e8-25e0c73d9776","conversationId":"286b293e-f813-4c9c-a720-6fe5bdd26540"}
+PASS inquiry_message_row_exists — {"rows":[{"id":"841a60f3-9a25-403f-a3e8-25e0c73d9776","body":"Sandbox QA — are you available for our date?","sender_type":"lead_or_client","conversation_id":"286b293e-f813-4c9c-a720-6fe5bdd26540"}]}
+PASS anon_cannot_read_inquiry_conversation_directly — {"data":null}
+PASS unclaimed_inquiry_rejected_by_design — Meadowbrook Harah is_claimed=false; start_portal_vendor_inquiry returns vendor_unclaimed (probed earlier)
+PASS submit_vendor_list_ok — {"ok":true,"eventId":"ea7933ba-ddb2-49d3-973c-2b76a674e42d","venueId":"a415ac52-cd74-42a6-8df7-7a8f6e71d080","celebrated":true,"submissionId":"ca66049d-0401-4eaa-8c32-cead8e04c15f","newlyAssigned":[{"vendorId":"42a8d273-f738-4f3c-bdcd-f2a5a237e1b3","assignmentId":"2cec203d-c0a1-4
+PASS submit_sets_selected_at — {"vendor_id":"42a8d273-f738-4f3c-bdcd-f2a5a237e1b3","picked_at":"2026-10-22T20:53:14.765523+00:00","selected_at":"2026-10-22T20:53:17.976757+00:00"}
+PASS event_assignments_include_required_and_submitted — [{"id":"2cec203d-c0a1-4561-b149-4347d2a9b7e2","vendor_id":"42a8d273-f738-4f3c-bdcd-f2a5a237e1b3"},{"id":"3ae7f13a-67b5-4327-9400-dffa56ad4616","vendor_id":"891899a8-8521-4be0-9dfa-3bcba3077c54"}]
+PASS resubmit_idempotent_no_duplicate_harah_assignment — {"assignCount":1,"submit2":{"ok":true,"eventId":"ea7933ba-ddb2-49d3-973c-2b76a674e42d","venueId":"a415ac52-cd74-42a6-8df7-7a8f6e71d080","celebrated":false,"submissionId":"86135400-9925-42c9-b035-c65bca058a55","newlyAssigned":[],"selectedCount":1,"removalRequests":[{"vendorId":"89
+PASS venue_can_see_submitted_selections — [{"vendor_id":"42a8d273-f738-4f3c-bdcd-f2a5a237e1b3","selected_at":"2026-10-22T20:53:17.976757+00:00"}]
+PASS portal_shows_chosen_after_submit — On your team | Harah's Hair· booked | Harah's Hair | On your team
+
+GREEN passed=17 failed=0

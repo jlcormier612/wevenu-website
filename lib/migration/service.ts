@@ -15,7 +15,7 @@ import { isSupabaseConfigured } from "@/lib/env";
 import { createClientForVenue, createClient_ } from "@/lib/clients/service";
 import { createLead, createLeadForVenue } from "@/lib/leads/service";
 import { createVendor, createVendorForVenue } from "@/lib/vendors/service";
-import { createPackage, createPackageForVenue } from "@/lib/packages/service";
+import { addPackageItems, addPackageItemsForVenue, createPackage, createPackageForVenue } from "@/lib/packages/service";
 import * as availRepo from "@/lib/availability/repository";
 import * as eventsRepo from "@/lib/events/repository";
 import { isAppointmentCatalogBuiltinKey } from "@/lib/calendar/schedule-item-catalog";
@@ -57,7 +57,8 @@ import * as documentsRepo from "@/lib/documents/repository";
 import { dedupe, findBySourceId } from "@/lib/migration/dedupe";
 import { fetchAllPages } from "@/lib/migration/pagination";
 import { getSourceAdapter } from "@/lib/migration/source-profiles";
-import { createImportBatch, createImportBatchForVenue, finalizeImportBatch, stampImportBatch } from "@/lib/import/batches";
+import { acceptCreatedImportRow, compensateUntrackedImportRow, createImportBatch, createImportBatchForVenue, finalizeImportBatch } from "@/lib/import/batches";
+import { IMPORT_BATCH_RECORD_NOT_CREATED, IMPORT_DUPLICATE_CHECK_FAILED } from "@/lib/import/historical-guard";
 import { resolveClientIdByEmail, resolveLeadIdByEmail, resolveSpaceId } from "@/lib/migration/resolve-refs";
 import type {
   CommitOutcome,
@@ -86,9 +87,9 @@ import {
   type NormalizedActiveCommitment,
 } from "@/lib/migration/active-commitment";
 import {
-  commitOperationalGuest,
-  type NormalizedGuestListEntry,
-} from "@/lib/migration/operational-guest";
+  isVenueGuestListImportRemoved,
+  VENUE_GUEST_LIST_IMPORT_REMOVED_MESSAGE,
+} from "@/lib/migration/venue-guest-list-import";
 import {
   commitEventVendorAssignmentQuietly,
   type NormalizedEventVendorAssignment,
@@ -99,6 +100,7 @@ import {
   type NormalizedTimelineEntry,
 } from "@/lib/migration/operational-timeline";
 import type { DocumentCategory } from "@/lib/documents/types";
+import { assertMigrationDocumentStorageExists } from "@/lib/migration/document-storage-guard";
 
 type AnyDbClient = Awaited<ReturnType<typeof createClient>> | ReturnType<typeof createAdminClient>;
 
@@ -169,6 +171,9 @@ export async function listSessionsForCurrentVenue(): Promise<MigrationSession[]>
 export async function addRows(
   client: AnyDbClient, session: MigrationSession, entityType: MigrationEntityType, rows: SourceRow[],
 ): Promise<{ added: number }> {
+  if (isVenueGuestListImportRemoved(entityType)) {
+    throw new Error(VENUE_GUEST_LIST_IMPORT_REMOVED_MESSAGE);
+  }
   const adapter = getSourceAdapter(session.sourceKey);
   const toInsert = rows.map((row, i) => ({ sourceRowRef: `row ${i + 1}`, rawPayload: row as Record<string, unknown> }));
   const inserted = await repo.insertRecords(client, session.id, session.venueId, entityType, toInsert);
@@ -283,7 +288,16 @@ export async function runDedupe(client: AnyDbClient, session: MigrationSession):
       continue;
     }
 
-    const result = await dedupe(client, session.venueId, record.targetEntityType, record.normalizedPayload);
+    let result;
+    try {
+      result = await dedupe(client, session.venueId, record.targetEntityType, record.normalizedPayload);
+    } catch {
+      await repo.updateRecord(client, record.id, {
+        status: "needs_review",
+        validationErrors: [IMPORT_DUPLICATE_CHECK_FAILED],
+      });
+      continue;
+    }
     if (result.matchType === "exact") {
       await repo.updateRecord(client, record.id, {
         status: "duplicate_exact", matchType: "exact",
@@ -420,7 +434,7 @@ export async function getSessionSummary(client: AnyDbClient, session: MigrationS
 
 const COMMITTABLE_ENTITY_TYPES: MigrationEntityType[] = [
   "calendar_block", "date_hold", "vendor", "lead", "client", "package", "event", "tour",
-  "document", "active_commitment", "guest_list", "event_vendor_assignment", "timeline_entry",
+  "document", "active_commitment", "event_vendor_assignment", "timeline_entry",
   "floor_plan",
 ];
 
@@ -471,13 +485,30 @@ function toLeadInput(n: NormalizedLeadLike): LeadInput {
 }
 
 function toVendorInput(n: NormalizedVendorLike): VendorInput {
+  // Full VendorInput — createVendor / upsertVenueRelationship call .trim() on
+  // every string field; omitting notes/description/etc. threw during MC commit
+  // ("Cannot read properties of undefined (reading 'trim')") and left vendors
+  // stuck in needs_review with zero venue relationships.
   return {
-    businessName: n.businessName, category: n.category ?? "", contactName: n.contactName ?? "",
-    email: n.email ?? "", phone: n.phone ?? "", websiteUrl: n.websiteUrl ?? "",
-    instagramUrl: "", facebookUrl: "", pinterestUrl: "", tiktokUrl: "",
+    businessName: n.businessName,
+    category: n.category ?? "",
+    contactName: n.contactName ?? "",
+    email: n.email ?? "",
+    phone: n.phone ?? "",
+    websiteUrl: n.websiteUrl ?? "",
+    instagramUrl: "",
+    facebookUrl: "",
+    pinterestUrl: "",
+    tiktokUrl: "",
     preferenceLevel: "recommended",
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } as any;
+    isRequired: false,
+    isInHouse: false,
+    description: "",
+    logoUrl: "",
+    pricingTier: "",
+    notes: n.notes ?? "",
+    specialPricingNote: "",
+  };
 }
 
 const STALE_CLAIM_MS = 5 * 60 * 1000;
@@ -492,7 +523,19 @@ const STALE_CLAIM_MS = 5 * 60 * 1000;
  * error path would have said.
  */
 function unexpectedCommitErrorMessage(err: unknown): string {
-  const detail = err instanceof Error ? err.message : String(err);
+  let detail: string;
+  if (err instanceof Error) {
+    detail = err.message;
+  } else if (err && typeof err === "object" && "message" in err && (err as { message: unknown }).message != null) {
+    // PostgrestError-like objects are not always `instanceof Error`.
+    detail = String((err as { message: unknown }).message);
+  } else {
+    try {
+      detail = JSON.stringify(err);
+    } catch {
+      detail = String(err);
+    }
+  }
   return `An unexpected error interrupted this import attempt (${detail}). The record was not created — try again, or exclude it if it keeps failing.`;
 }
 
@@ -518,11 +561,23 @@ export async function commitSession(client: AnyDbClient, session: MigrationSessi
       const batchEntityType = BATCH_ENTITY[entityType];
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const batchClient = client as any;
-      const batchId = batchEntityType
+      const batch = batchEntityType
         ? (session.createdByType === "hq_staff"
           ? await createImportBatchForVenue(batchClient, session.venueId, batchEntityType, session.sourceKey, candidates.length, actorId ?? "unknown", session.engagementId, session.id)
           : await createImportBatch(session.venueId, batchEntityType, session.sourceKey, candidates.length, batchClient, session.id))
         : null;
+      if (batchEntityType && (!batch || !batch.ok)) {
+        for (const candidate of candidates) {
+          await repo.updateRecord(client, candidate.id, {
+            status: "needs_review",
+            validationErrors: [IMPORT_BATCH_RECORD_NOT_CREATED],
+            ...CLEAR_MATCH_METADATA,
+          });
+          outcome.failed++;
+        }
+        continue;
+      }
+      const batchId = batch && batch.ok ? batch.id : null;
 
       const createdIds: string[] = [];
       let claimedCount = 0;
@@ -552,6 +607,25 @@ export async function commitSession(client: AnyDbClient, session: MigrationSessi
         try {
           const result = await commitOneRecord(client, session, entityType, record);
           if (result.ok) {
+            if (batchEntityType && batchId) {
+              const accepted = await acceptCreatedImportRow({
+                entityType: batchEntityType,
+                batchId,
+                createdId: result.entityId,
+                venueId: session.venueId,
+                rowNumber: 0,
+                client: batchClient,
+              });
+              if (!accepted.accepted) {
+                await repo.updateRecord(client, record.id, {
+                  status: "needs_review",
+                  validationErrors: [accepted.error.message],
+                  ...CLEAR_MATCH_METADATA,
+                });
+                outcome.failed++;
+                continue;
+              }
+            }
             await repo.updateRecord(client, record.id, {
               status: "committed",
               createdEntityId: result.entityId,
@@ -582,7 +656,6 @@ export async function commitSession(client: AnyDbClient, session: MigrationSessi
         }
       }
       if (claimedCount === 0) continue;
-      if (batchEntityType && createdIds.length > 0) await stampImportBatch(batchEntityType, batchId, createdIds, batchClient);
       await finalizeImportBatch(batchId, { imported: createdIds.length, skipped: 0, errors: claimedCount - createdIds.length }, batchClient);
     }
   } catch (err) {
@@ -657,6 +730,7 @@ export async function retryOwnRecord(
   }
 
   let result: { ok: true; entityId: string } | { ok: false; error: string };
+  let committedOk = false;
   try {
     try {
       result = await commitOneRecord(actor.client, session, record.targetEntityType, record);
@@ -665,13 +739,50 @@ export async function retryOwnRecord(
       result = { ok: false, error: unexpectedCommitErrorMessage(err) };
     }
     if (result.ok) {
-      await repo.updateRecord(actor.client, record.id, {
-        status: "committed",
-        createdEntityId: result.entityId,
-        committedAt: new Date().toISOString(),
-        validationErrors: null,
-        ...CLEAR_MATCH_METADATA,
-      });
+      const batchEntityType = BATCH_ENTITY[record.targetEntityType];
+      let associationError: string | null = null;
+      if (batchEntityType) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const batchClient = actor.client as any;
+        const batch = session.createdByType === "hq_staff"
+          ? await createImportBatchForVenue(batchClient, session.venueId, batchEntityType, session.sourceKey, 1, actor.createdBy ?? "unknown", session.engagementId, session.id)
+          : await createImportBatch(session.venueId, batchEntityType, session.sourceKey, 1, batchClient, session.id);
+        if (!batch.ok) {
+          await compensateUntrackedImportRow(batchEntityType, result.entityId, session.venueId, batchClient);
+          associationError = IMPORT_BATCH_RECORD_NOT_CREATED;
+        } else {
+          const accepted = await acceptCreatedImportRow({
+            entityType: batchEntityType,
+            batchId: batch.id,
+            createdId: result.entityId,
+            venueId: session.venueId,
+            rowNumber: 0,
+            client: batchClient,
+          });
+          if (!accepted.accepted) {
+            associationError = accepted.error.message;
+          } else {
+            await finalizeImportBatch(batch.id, { imported: 1, skipped: 0, errors: 0 }, batchClient);
+          }
+        }
+      }
+      if (associationError) {
+        await repo.updateRecord(actor.client, record.id, {
+          status: "needs_review",
+          validationErrors: [associationError],
+          ...CLEAR_MATCH_METADATA,
+        });
+        result = { ok: false, error: associationError };
+      } else {
+        committedOk = true;
+        await repo.updateRecord(actor.client, record.id, {
+          status: "committed",
+          createdEntityId: result.entityId,
+          committedAt: new Date().toISOString(),
+          validationErrors: null,
+          ...CLEAR_MATCH_METADATA,
+        });
+      }
     } else {
       await repo.updateRecord(actor.client, record.id, {
         status: "needs_review",
@@ -689,9 +800,9 @@ export async function retryOwnRecord(
   const stillUnresolvedAfter = allRecordsAfter.filter((r) => UNRESOLVED_STATUSES.includes(r.status)).length;
   const inFlightAfter = await repo.countInFlightClaims(actor.client, session.id);
   const retryOutcome: CommitOutcome = {
-    committed: result.ok ? 1 : 0,
+    committed: committedOk ? 1 : 0,
     skipped: 0,
-    failed: result.ok ? 0 : 1,
+    failed: committedOk ? 0 : 1,
   };
   await repo.updateSessionStatus(
     actor.client,
@@ -718,6 +829,9 @@ export async function addRowsToOwnSession(
   if (entityType === "floor_plan") {
     const role = await getCurrentUserRole();
     if (!canEditFloorPlans(role)) return { ok: false, message: FLOOR_PLAN_EDIT_DENIED };
+  }
+  if (isVenueGuestListImportRemoved(entityType)) {
+    return { ok: false, message: VENUE_GUEST_LIST_IMPORT_REMOVED_MESSAGE };
   }
   const result = await addRows(actor.client, session, entityType, rows);
   return { ok: true, ...result };
@@ -959,7 +1073,10 @@ async function commitOneRecord(
   try {
     if (entityType === "client") {
       const n = record.normalizedPayload as unknown as NormalizedClientLike & { importAsHistoricalRecord?: boolean };
-      const asHistorical = !!n.importAsHistoricalRecord && isPastEventDate(n.eventDate);
+      // Past event dates always create a historical Event. The
+      // importAsHistoricalRecord flag is still set by approve_historical for
+      // availability-conflict review, but any past date commits as historical.
+      const asHistorical = isPastEventDate(n.eventDate);
       const requiresSpace = !asHistorical && !!n.eventDate && await venueRequiresEventSpace(client, session.venueId);
       const space = await resolveSpaceId(client, session.venueId, n.spaceId, n.spaceName);
       if (requiresSpace) {
@@ -1008,6 +1125,15 @@ async function commitOneRecord(
         ? await createPackageForVenue(session.venueId, input)
         : await createPackage(input);
       if (!result.ok) return { ok: false, error: result.message ?? "Could not create package." };
+      const items = n.includedItems ?? [];
+      if (items.length > 0) {
+        const itemsResult = isAdmin
+          ? await addPackageItemsForVenue(session.venueId, result.packageId, items)
+          : await addPackageItems(result.packageId, items);
+        if (!itemsResult.ok) {
+          return { ok: false, error: itemsResult.message ?? "Package created but included items could not be saved." };
+        }
+      }
       return { ok: true, entityId: result.packageId };
     }
     if (entityType === "calendar_block") {
@@ -1143,14 +1269,41 @@ async function commitOneRecord(
         setupTime: n.setupTime ?? "",
         teardownTime: n.teardownTime ?? "",
         guestCount: n.guestCount ?? "",
+        guaranteedGuestCount: "",
         clientId: clientRef.clientId,
         spaceId: space.ok ? (space.spaceId ?? "") : "",
       };
-      const eventId = await eventsRepo.insertEvent(
-        client, session.venueId, input,
-        asHistorical ? { status: "complete" } : undefined,
-      );
-      return { ok: true, entityId: eventId };
+      if (asHistorical) {
+        const eventId = await eventsRepo.insertEvent(
+          client, session.venueId, input,
+          { status: "complete", bookedAt: n.eventDate },
+        );
+        return { ok: true, entityId: eventId };
+      }
+      if (!clientRef.clientId) {
+        return { ok: false, error: "An event is created only when a relationship is booked. Import the client as already booked." };
+      }
+      const { bookClient } = await import("@/lib/booking-journey/book-client");
+      const booked = await bookClient(client, {
+        venueId: session.venueId,
+        clientId: clientRef.clientId,
+        source: "manual",
+        spaceId: input.spaceId,
+        lifecycleOrigin: "import",
+        event: {
+          name: input.name,
+          eventType: input.eventType,
+          eventDate: input.eventDate,
+          eventEndDate: input.eventEndDate,
+          startTime: input.startTime,
+          endTime: input.endTime,
+          setupTime: input.setupTime,
+          teardownTime: input.teardownTime,
+          guestCount: input.guestCount,
+        },
+      });
+      if (!booked.ok) return { ok: false, error: booked.message };
+      return { ok: true, entityId: booked.eventId };
     }
     if (entityType === "key_date") {
       // Product retired: do not create new client_key_dates via Migration Center.
@@ -1186,6 +1339,9 @@ async function commitOneRecord(
       } else {
         entityId = clientId!;
       }
+      // Refuse metadata-only "success" when the referenced object is missing.
+      const storageOk = await assertMigrationDocumentStorageExists(n.storagePath);
+      if (!storageOk.ok) return storageOk;
       const documentId = await documentsRepo.insertDocument(client, session.venueId, {
         entityType: entityScope,
         entityId,
@@ -1210,10 +1366,11 @@ async function commitOneRecord(
       return { ok: true, entityId: result.eventId };
     }
     if (entityType === "guest_list") {
-      const n = record.normalizedPayload as unknown as NormalizedGuestListEntry;
-      const result = await commitOperationalGuest(client, session.venueId, n);
-      if (!result.ok) return { ok: false, error: result.error };
-      return { ok: true, entityId: result.guestId };
+      // Product: individual guests are client-owned. Venue Migration Center
+      // must not write couple_guests / couple_households or force visibility.
+      // Stale sessions / forged entity types are rejected here — no admin
+      // client, no commitOperationalGuest, no visibility_to_venue change.
+      return { ok: false, error: VENUE_GUEST_LIST_IMPORT_REMOVED_MESSAGE };
     }
     if (entityType === "event_vendor_assignment") {
       const n = record.normalizedPayload as unknown as NormalizedEventVendorAssignment;

@@ -8,6 +8,7 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { updateLeadInfoAction } from "@/app/(app)/leads/[id]/actions";
+import { ConflictWarning } from "@/components/availability/conflict-warning";
 import { Field } from "@/components/setup/field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,8 +21,20 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
-import { EVENT_TYPES, LEAD_SOURCES, eventTypeLabel, formatDate } from "@/lib/leads/constants";
+import type { VenueEventTypeOption } from "@/lib/event-types/venue-options";
+import {
+  LEAD_SOURCES,
+  eventTypeLabel,
+  formatCurrency,
+  formatDate,
+  formatMoneyInputDisplay,
+  parseMoneyInput,
+} from "@/lib/leads/constants";
 import type { Lead, LeadErrors, LeadInput, LeadWithDetails } from "@/lib/leads/types";
+import {
+  inquiryMessageDisplayHint,
+  inquiryMessageDisplayLabel,
+} from "@/lib/leads/inquiry-message-origin";
 
 /**
  * Commitment Alignment Sprint (docs/commitment-lifecycle-architecture.md
@@ -56,35 +69,60 @@ function leadToInput(lead: Lead): LeadInput {
     eventDate: lead.eventDate ?? "",
     endDate: lead.endDate ?? "",
     guestCount: lead.guestCount != null ? String(lead.guestCount) : "",
-    estimatedBudget: lead.estimatedBudget != null ? String(lead.estimatedBudget) : "",
+    estimatedBudget: lead.estimatedBudget != null ? formatCurrency(lead.estimatedBudget) : "",
     source: lead.source ?? "",
     inquiryMessage: lead.inquiryMessage ?? "",
     inquiryDate: lead.inquiryDate,
   };
 }
 
-export function LeadEditForm({ lead }: { lead: LeadWithDetails }) {
+export function LeadEditForm({
+  lead,
+  eventTypeOptions,
+}: {
+  lead: LeadWithDetails;
+  eventTypeOptions: VenueEventTypeOption[];
+}) {
   const router = useRouter();
   const [input, setInput] = React.useState<LeadInput>(() => leadToInput(lead));
+  const inputRef = React.useRef(input);
   const [errors, setErrors] = React.useState<LeadErrors>({});
   const [pending, startTransition] = React.useTransition();
 
   const set = <K extends keyof LeadInput>(key: K, value: LeadInput[K]) => {
-    setInput((prev) => ({ ...prev, [key]: value }));
-    setErrors((prev) => { const next = { ...prev }; delete next[key]; return next; });
+    const next = { ...inputRef.current, [key]: value };
+    inputRef.current = next;
+    setInput(next);
+    setErrors((prev) => { const nextErrors = { ...prev }; delete nextErrors[key]; return nextErrors; });
   };
 
+  const selectedEventTypeOption = eventTypeOptions.find((o) => o.value === input.eventType);
+  const eventTypeHint = selectedEventTypeOption?.isLegacyCurrent
+    ? selectedEventTypeOption.description
+    : undefined;
+
   function handleSubmit() {
+    const current = inputRef.current;
     startTransition(async () => {
-      const result = await updateLeadInfoAction(lead.id, input);
-      if (result.ok) {
-        toast.success("Lead updated.");
-        router.push(`/leads/${lead.id}`);
-        router.refresh();
-        return;
+      try {
+        const result = await updateLeadInfoAction(lead.id, current);
+        if (result.ok) {
+          toast.success("Lead updated.");
+          // Soft replace only — hard reload is not required and can drop Lead
+          // context if graduation/session gates re-run against a blank path.
+          router.replace(`/leads/${lead.id}`);
+          return;
+        }
+        if (result.errors) setErrors(result.errors);
+        toast.error(result.message ?? "Please fix the highlighted fields.");
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "";
+        if (/Failed to find Server Action|older or newer deployment/i.test(message)) {
+          toast.error("The app was updated. Stay on this page, reload once, then save again.");
+        } else {
+          toast.error(message.trim() || "Could not save. Stay on this Lead and try again.");
+        }
       }
-      if (result.errors) setErrors(result.errors);
-      toast.error(result.message ?? "Please fix the highlighted fields.");
     });
   }
 
@@ -137,11 +175,11 @@ export function LeadEditForm({ lead }: { lead: LeadWithDetails }) {
           {lead.linkedEventId ? (
             <ManagedOnEventField label="Event type" value={eventTypeLabel(input.eventType)} eventId={lead.linkedEventId} />
           ) : (
-            <Field label="Event type" htmlFor="et">
-              <Select value={input.eventType} onValueChange={(v) => set("eventType", v)} items={EVENT_TYPES}>
+            <Field label="Event type" htmlFor="et" error={errors.eventType} hint={eventTypeHint}>
+              <Select value={input.eventType} onValueChange={(v) => set("eventType", v)} items={eventTypeOptions}>
                 <SelectTrigger id="et"><SelectValue placeholder="Select a type" /></SelectTrigger>
                 <SelectContent>
-                  {EVENT_TYPES.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                  {eventTypeOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
                 </SelectContent>
               </Select>
             </Field>
@@ -154,6 +192,15 @@ export function LeadEditForm({ lead }: { lead: LeadWithDetails }) {
             </Field>
           )}
         </div>
+        {input.eventDate && !lead.linkedEventId ? (
+          <ConflictWarning
+            date={input.eventDate}
+            endDate={input.endDate || undefined}
+            type="event"
+            excludeLeadId={lead.id}
+            purpose="preferred_date"
+          />
+        ) : null}
         <div className="grid gap-4 sm:grid-cols-2">
           {lead.linkedEventId ? (
             <ManagedOnEventField label="Estimated guests" value={input.guestCount} eventId={lead.linkedEventId} />
@@ -163,7 +210,15 @@ export function LeadEditForm({ lead }: { lead: LeadWithDetails }) {
             </Field>
           )}
           <Field label="Estimated budget (USD)" htmlFor="eb" error={errors.estimatedBudget}>
-            <Input id="eb" value={input.estimatedBudget} onChange={(e) => set("estimatedBudget", e.target.value)} placeholder="10,000" />
+            <Input
+              id="eb"
+              value={input.estimatedBudget}
+              onChange={(e) => set("estimatedBudget", e.target.value)}
+              onBlur={() => set("estimatedBudget", formatMoneyInputDisplay(input.estimatedBudget))}
+              onFocus={() => set("estimatedBudget", parseMoneyInput(input.estimatedBudget))}
+              placeholder="$20,000"
+              inputMode="decimal"
+            />
           </Field>
         </div>
       </div>
@@ -185,9 +240,17 @@ export function LeadEditForm({ lead }: { lead: LeadWithDetails }) {
             <Input id="iqd" type="date" value={input.inquiryDate} onChange={(e) => set("inquiryDate", e.target.value)} />
           </Field>
         </div>
-        <Field label="Message / notes" htmlFor="msg">
+        <Field
+          label={inquiryMessageDisplayLabel(lead.inquiryMessageOrigin)}
+          htmlFor="msg"
+          hint={inquiryMessageDisplayHint(lead.inquiryMessageOrigin) ?? undefined}
+        >
           <Textarea id="msg" value={input.inquiryMessage} rows={4}
-            placeholder="Notes from the initial inquiry…"
+            placeholder={
+              lead.inquiryMessageOrigin === "customer"
+                ? "Customer-authored inquiry text."
+                : "Private venue notes — not the customer's original inquiry."
+            }
             onChange={(e) => set("inquiryMessage", e.target.value)} />
         </Field>
       </div>

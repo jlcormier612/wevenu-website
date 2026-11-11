@@ -10,7 +10,7 @@ import {
   UserRound,
 } from "lucide-react";
 
-import { useSetupReadyCounts } from "@/components/setup/setup-migration-steps";
+import { getLeadCaptureStepDataAction, getSetupReadyCountsAction } from "@/app/setup/actions";
 
 import { Field, SummaryRow } from "@/components/setup/field";
 import { Button } from "@/components/ui/button";
@@ -25,7 +25,9 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
+import { inkOn, readableInk } from "@/lib/theme/public-form-surface";
 import { cn } from "@/lib/utils";
+import { normalizeVenuePhoneInput } from "@/lib/sms/phone";
 import {
   CURRENCIES,
   DAYS_OF_WEEK,
@@ -40,11 +42,11 @@ import type {
   VenueSetupInput,
 } from "@/lib/venue/types";
 import { type SetupStepId } from "@/lib/venue/validation";
-import { getLeadCaptureStepDataAction } from "@/app/setup/actions";
 import { WebsiteFormsSection } from "@/components/settings/website-forms-section";
 import type { Venue } from "@/lib/venue/types";
 import type { EmailIntakeStatus } from "@/lib/lead-intake/email-status";
 import type { InquiryFormSettings } from "@/lib/inquiry-form/types";
+import type { SetupReadyCounts } from "@/lib/venue/service";
 
 /**
  * Shared onboarding guidance (2026-08-17) — every step tells the venue what
@@ -175,6 +177,7 @@ function TextField({
   label,
   value,
   onChange,
+  onBlur,
   error,
   hint,
   type = "text",
@@ -188,6 +191,7 @@ function TextField({
   label: string;
   value: string;
   onChange: (v: string) => void;
+  onBlur?: () => void;
   error?: string;
   hint?: string;
   type?: string;
@@ -215,6 +219,7 @@ function TextField({
         inputMode={inputMode}
         aria-invalid={error ? true : undefined}
         onChange={(e) => onChange(e.target.value)}
+        onBlur={onBlur}
       />
     </Field>
   );
@@ -272,12 +277,10 @@ function SelectField({
 // Pre-Launch Commercial Readiness, Initiative 1 (2026-08-03) — replaces the
 // old two-screen Welcome→Origin sequence with one combined "Welcome. Let's
 // get your venue ready." screen offering exactly the two paths the
-// initiative specifies. The "where specifically are you coming from" detail
-// (Weven / another platform / spreadsheets / files) moved to the Bring Your
-// Business stage's own source picker, where the initiative's Part 4 actually
-// asks for it — this screen only needs to know fresh-start vs. bringing a
-// business, so onboarding_persona is set to "new" or "switching" here and
-// may be refined to "weven_returning" later if Weven is picked as a source.
+// initiative specifies. Setup Hub now owns Bring Your Business source
+// continuity from intake (HoneyBook / Tripleseat / another system / start
+// fresh). This screen only distinguishes a fresh start from bringing a
+// business, so onboarding_persona is set to "new" or "switching" here.
 // Deliberately outside SETUP_STEPS, like before — no field validation, and
 // nothing to persist until a real venue row exists.
 
@@ -386,20 +389,25 @@ export function VenueInfoStep({ input, errors, set }: StepProps) {
       <div className="grid gap-5 sm:grid-cols-2">
         <TextField
           id="email"
-          label="Email"
+          label="Venue contact email"
           type="email"
           value={input.email}
           onChange={(v) => set("email", v)}
           error={errors.email}
+          hint="Optional. Used for couple-facing and venue communications — not the logged-in person's login email."
           placeholder="hello@wildflower.com"
           autoComplete="email"
         />
         <TextField
           id="phone"
-          label="Phone"
+          label="Venue phone"
           type="tel"
           value={input.phone}
           onChange={(v) => set("phone", v)}
+          onBlur={() => {
+            const next = normalizeVenuePhoneInput(input.phone);
+            if (next !== input.phone) set("phone", next);
+          }}
           placeholder="(555) 123-4567"
           autoComplete="tel"
         />
@@ -536,6 +544,7 @@ export function BusinessHoursStep({ input, errors, setHour }: StepProps) {
               {h.isOpen ? (
                 <div className="flex items-center gap-2">
                   <Input
+                    id={`hours-${day.value}-open`}
                     type="time"
                     value={h.openTime}
                     aria-label={`${day.label} opening time`}
@@ -584,13 +593,56 @@ const COLOR_ROLES: {
   { key: "neutralColor",   label: "Neutral",    hint: "Soft background tone on client-facing materials" },
 ];
 
+const BRAND_READABILITY_NOTE =
+  "Your brand colors stay yours. On proposals and other client pages, Hello to Cheers automatically keeps text readable if a color would be hard to see.";
+
+function BrandPreviewChip({
+  primary,
+  secondary,
+  accent,
+  neutral,
+  name,
+}: {
+  primary: string;
+  secondary: string;
+  accent: string;
+  neutral: string;
+  name: string;
+}) {
+  const onPrimary = inkOn(primary);
+  const chipInk = readableInk(primary, neutral);
+  return (
+    <>
+      <span
+        className="ml-2 rounded-lg px-4 py-2 text-sm font-medium shadow-sm"
+        style={{ backgroundColor: primary, color: onPrimary }}
+      >
+        {name}
+      </span>
+      <span
+        className="rounded-md px-3 py-1.5 text-xs font-medium border"
+        style={{
+          backgroundColor: neutral,
+          borderColor: accent,
+          color: chipInk,
+        }}
+      >
+        Upcoming event
+      </span>
+      <span className="text-[10px] text-muted-foreground" style={{ color: readableInk(secondary, neutral) }}>
+        Sample heading
+      </span>
+    </>
+  );
+}
+
 export function BrandStep({ input, errors, set }: StepProps) {
   return (
     <div className="space-y-6">
       {/* 4-color palette */}
       <div className="grid gap-5 sm:grid-cols-2">
         {COLOR_ROLES.map(({ key, label, hint }) => (
-          <Field key={key} label={label} hint={hint} error={errors[key]}>
+          <Field key={key} id={key} label={label} hint={hint} error={errors[key]}>
             <ColorPickerTrigger
               value={input[key]}
               onChange={(v) => set(key, v)}
@@ -598,6 +650,7 @@ export function BrandStep({ input, errors, set }: StepProps) {
           </Field>
         ))}
       </div>
+      <p className="text-sm text-muted-foreground">{BRAND_READABILITY_NOTE}</p>
 
       {/* Live preview strip */}
       <div className="rounded-lg border border-border p-4 space-y-3">
@@ -614,22 +667,13 @@ export function BrandStep({ input, errors, set }: StepProps) {
               <span className="text-[10px] text-muted-foreground">{label}</span>
             </div>
           ))}
-          <span
-            className="ml-2 rounded-lg px-4 py-2 text-sm font-medium text-white shadow-sm"
-            style={{ backgroundColor: input.primaryColor }}
-          >
-            {input.name.trim() || "Your venue"}
-          </span>
-          <span
-            className="rounded-md px-3 py-1.5 text-xs font-medium border"
-            style={{
-              backgroundColor: input.neutralColor,
-              borderColor: input.accentColor,
-              color: input.primaryColor,
-            }}
-          >
-            Upcoming event
-          </span>
+          <BrandPreviewChip
+            primary={input.primaryColor}
+            secondary={input.secondaryColor}
+            accent={input.accentColor}
+            neutral={input.neutralColor}
+            name={input.name.trim() || "Your venue"}
+          />
         </div>
         <p className="text-xs text-muted-foreground">
           Your logo can be added anytime from Settings after setup.
@@ -649,8 +693,9 @@ export function OwnerStep({ input, errors, set }: StepProps) {
           <UserRound className="h-4.5 w-4.5" />
         </span>
         <p className="text-sm text-muted-foreground">
-          You&apos;ll be recorded as the venue owner. You can add more staff
-          later.
+          Confirm who owns this venue. If you are setting this up for someone
+          else, enter their name and email — do not re-enter yourself unless you
+          are an owner.
         </p>
       </div>
       <TextField
@@ -784,6 +829,14 @@ function ReviewSection({
 // ---- Ready to Go summary (Pre-Launch Commercial Readiness, Initiative 1, 2026-08-03) ----
 // Real counts only — queried live via getSetupReadyCountsAction. A domain
 // with 0 is simply omitted, never shown as a fabricated accomplishment.
+
+function useSetupReadyCounts() {
+  const [counts, setCounts] = React.useState<SetupReadyCounts | null>(null);
+  React.useEffect(() => {
+    void getSetupReadyCountsAction().then(setCounts);
+  }, []);
+  return counts;
+}
 
 function ReadyToGoSummary({ ownerFirstName }: { ownerFirstName: string }) {
   const counts = useSetupReadyCounts();

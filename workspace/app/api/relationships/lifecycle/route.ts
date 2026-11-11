@@ -36,7 +36,13 @@ type Action =
   | "tick_dunning"
   | "tick_renewals"
   | "refresh_health"
-  | "save_implementation_notes";
+  | "save_implementation_notes"
+  | "founder_extend_access"
+  | "founder_clear_override"
+  | "founder_pause_suspend"
+  | "founder_retention_hold"
+  | "founder_security_lock"
+  | "get_entitlement";
 
 function marketingBaseUrl(): string {
   return (
@@ -73,6 +79,10 @@ export async function POST(request: Request) {
     foundingMember?: boolean;
     implementationNotes?: string;
     implementationAssets?: Record<string, string>;
+    accessOverrideUntil?: string;
+    pauseBillingSuspend?: boolean;
+    retentionHold?: boolean;
+    manualSecurityLock?: boolean;
   };
 
   const action = body.action;
@@ -121,9 +131,26 @@ export async function POST(request: Request) {
       let checkoutUrl: string;
       let sessionId: string | null = null;
       try {
+        // Marketing Checkout only reuses an existing Stripe Customer when this
+        // server-to-server call presents PRODUCT_SYNC_API_KEY. The operator is
+        // already authorized via edit_relationships; the relationship row (and
+        // its stripeCustomerId) is loaded server-side — never from the browser.
+        const syncKey = process.env.PRODUCT_SYNC_API_KEY?.trim() || "";
+        if (!syncKey) {
+          return NextResponse.json(
+            {
+              error:
+                "PRODUCT_SYNC_API_KEY is not configured — cannot authorize CRM Checkout.",
+            },
+            { status: 503 },
+          );
+        }
         const res = await fetch(`${marketingBaseUrl()}/api/stripe/checkout`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${syncKey}`,
+          },
           body: JSON.stringify({
             plan: planTier,
             venue_name: relationship.venue.name,
@@ -468,6 +495,126 @@ export async function POST(request: Request) {
         lastTeamActivityAt: new Date().toISOString(),
       });
       return NextResponse.json({ ok: true, relationship: updated });
+    }
+
+    case "get_entitlement": {
+      if (!(await actorCan("manage_product_sync")) && !(await actorCan("view_finance"))) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+      const base = (
+        process.env.PRODUCT_API_BASE_URL?.trim() || ""
+      ).replace(/\/$/, "");
+      const key = process.env.PRODUCT_SYNC_API_KEY?.trim() || "";
+      if (!base || !key) {
+        return NextResponse.json({
+          ok: true,
+          stripe: {
+            customerId: relationship.stripeCustomerId ?? null,
+            subscriptionId: relationship.stripeSubscriptionId ?? null,
+            paymentStatus: relationship.paymentStatus ?? null,
+          },
+          dunning: relationship.dunning ?? null,
+          product: null,
+          note: "PRODUCT_API_BASE_URL unset — showing CRM facts only",
+        });
+      }
+      const res = await fetch(`${base}/api/internal/product-access/entitlement`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${key}`,
+        },
+        body: JSON.stringify({
+          action: "get",
+          venueId: relationship.productSync?.venueId ?? null,
+          ownerEmail: relationship.owner.email ?? null,
+          stripeCustomerId: relationship.stripeCustomerId ?? null,
+          relationshipId,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      return NextResponse.json({
+        ok: res.ok,
+        stripe: {
+          customerId: relationship.stripeCustomerId ?? null,
+          subscriptionId: relationship.stripeSubscriptionId ?? null,
+        },
+        dunning: relationship.dunning ?? null,
+        product: data,
+      });
+    }
+
+    case "founder_extend_access":
+    case "founder_clear_override":
+    case "founder_pause_suspend":
+    case "founder_retention_hold":
+    case "founder_security_lock": {
+      if (!(await actorCan("manage_product_sync"))) {
+        return NextResponse.json({ error: "Owner/Admin only" }, { status: 403 });
+      }
+      const reason = String(body.reason || "").trim();
+      if (!reason) {
+        return NextResponse.json(
+          { error: "A reason is required for founder overrides." },
+          { status: 400 },
+        );
+      }
+      const { applyFounderOverrideRemote } = await import(
+        "@shared/product-sync/entitlement-sync"
+      );
+      const payload: Parameters<typeof applyFounderOverrideRemote>[0] = {
+        venueId: relationship.productSync?.venueId ?? null,
+        ownerEmail: relationship.owner.email ?? null,
+        relationshipId,
+        stripeCustomerId: relationship.stripeCustomerId ?? null,
+        actorId: actor.id,
+        actorLabel: actor.name || actor.email || actor.id,
+        reason,
+        dunningStartedAt: relationship.dunning?.startedAt ?? null,
+        dunningClearedAt: relationship.dunning?.clearedAt ?? null,
+      };
+      if (action === "founder_extend_access") {
+        const until = String(body.accessOverrideUntil || "").trim();
+        if (!until) {
+          return NextResponse.json(
+            { error: "accessOverrideUntil (ISO date) is required" },
+            { status: 400 },
+          );
+        }
+        payload.accessOverrideUntil = new Date(until).toISOString();
+      }
+      if (action === "founder_clear_override") {
+        payload.clearOverride = true;
+        payload.pauseBillingSuspend = false;
+      }
+      if (action === "founder_pause_suspend") {
+        payload.pauseBillingSuspend = body.pauseBillingSuspend !== false;
+      }
+      if (action === "founder_retention_hold") {
+        payload.retentionHold = body.retentionHold !== false;
+        payload.retentionHoldReason = reason;
+      }
+      if (action === "founder_security_lock") {
+        payload.manualSecurityLock = body.manualSecurityLock === true;
+        payload.manualSecurityLockReason = reason;
+      }
+      const result = await applyFounderOverrideRemote(payload);
+      // Timeline breadcrumb in CRM (access-only — Stripe unchanged).
+      const { appendTimelineEvent } = await import("@shared/relationships");
+      await appendTimelineEvent(relationshipId, {
+        type: "note_added",
+        title: `Founder override: ${action}`,
+        body: `${reason} · ${result.detail}`,
+        occurredAt: new Date().toISOString(),
+        actorId: actor.id,
+        meta: {
+          founder_action: action,
+          access_only: true,
+          stripe_unchanged: true,
+          ok: result.ok,
+        },
+      });
+      return NextResponse.json({ ok: result.ok, result });
     }
 
     default:

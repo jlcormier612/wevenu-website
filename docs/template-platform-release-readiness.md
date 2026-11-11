@@ -134,7 +134,7 @@ Answered in full by the Lifecycle table: **zero bulk operations exist anywhere i
 | System | Connects to | Status |
 |---|---|---|
 | Playbooks | Events, Tasks, Calendar, Notifications, Timeline (context links), Wedding Day, Readiness | Deep, correct, verified across three prior audits |
-| Timeline Templates | Timeline, Calendar (Booking Schedule), Wedding Day | Deep, correct, verified |
+| Timeline Templates | Timeline, Wedding Day | Deep, correct, verified |
 | Floor Plan Templates | Floor Plans, Seating, Inventory, Wedding Day, Readiness | Deep, correct, verified |
 | Packages | Invoices (line items) | Real, working, verified this pass |
 | Contract Templates | Contracts (generation) | Real, working, verified this pass |

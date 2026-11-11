@@ -18,7 +18,8 @@ import {
 import { toast } from "sonner";
 
 import {
-  cancelScheduledMessageAction, getActiveEnrollmentsForConversationAction, getConversationAction,
+  cancelScheduledMessageAction, clearConversationNeedsResponseAction,
+  getActiveEnrollmentsForConversationAction, getConversationAction,
   getRelationshipContextAction, getScheduledForConversationAction, setConversationAssignedStaffAction,
 } from "@/app/(app)/messaging/actions";
 import {
@@ -34,6 +35,15 @@ import {
   latestMeaningfulFromMessages,
 } from "@/lib/conversations/inbox-attention";
 import { conversationHeaderOrientation } from "@/lib/conversations/inbox-header";
+import { scrollWorkspaceMainToElement } from "@/lib/conversations/page-flow-scroll";
+import { linkifyMessageBody } from "@/lib/conversations/message-body-links";
+import {
+  conversationMessageChannelLabel,
+  conversationMessagePreview,
+  conversationMessageSenderLabel,
+  isConversationMessageExpanded,
+  latestConversationMessageId,
+} from "@/lib/conversations/message-disclosure";
 import { SENDABLE_CHANNEL_LABEL } from "@/lib/conversations/channels";
 import {
   mergeSentAckIntoMessages,
@@ -109,6 +119,7 @@ function RecoveryActions({
     status: msg.status,
     leadId,
     clientId,
+    failureReason: msg.failureReason,
   });
   if (actions.length === 0) return null;
 
@@ -245,19 +256,62 @@ function AutomatedBadge({ isVenue }: { isVenue: boolean }) {
   );
 }
 
+function CollapsedMessageRow({
+  msg, onExpand,
+}: {
+  msg: ConversationMessage;
+  onExpand: () => void;
+}) {
+  const isVenue = msg.senderType === "venue_staff" || msg.senderType === "system";
+  const preview = msg.body
+    ? conversationMessagePreview(msg.body)
+    : msg.attachments.length > 0
+      ? (msg.channel === "sms" ? "Photo or file" : "Attachment")
+      : "(no text)";
+  return (
+    <button
+      type="button"
+      onClick={onExpand}
+      aria-expanded={false}
+      className={`flex w-full max-w-[min(42rem,88%)] flex-col gap-0.5 rounded-lg border border-border/70 bg-card px-3 py-2 text-left transition-colors hover:bg-muted/40 ${
+        isVenue ? "ml-auto" : "mr-auto"
+      }`}
+    >
+      <span className="flex min-w-0 items-center gap-1.5 text-[11px] font-medium text-heading">
+        <ChannelIcon channel={msg.channel} />
+        <span className="truncate">{conversationMessageSenderLabel(msg)}</span>
+        <span className="text-muted-foreground font-normal">·</span>
+        <span className="shrink-0 text-muted-foreground font-normal">
+          {conversationMessageChannelLabel(msg.channel)}
+        </span>
+        <span className="ml-auto shrink-0 text-muted-foreground font-normal">
+          {formatTime(msg.sentAt)}
+        </span>
+      </span>
+      <span className="truncate text-xs text-muted-foreground">{preview}</span>
+    </button>
+  );
+}
+
 function Bubble({
-  msg, leadId, clientId, eventId, onPrefill, onCreateTask,
+  msg, leadId, clientId, eventId, expanded, isLatest, onToggleExpand, onPrefill, onCreateTask,
 }: {
   msg: ConversationMessage;
   leadId: string | null;
   clientId: string | null;
   eventId: string | null;
+  expanded: boolean;
+  isLatest: boolean;
+  onToggleExpand: () => void;
   onPrefill: (body: string, channel: ConversationChannel) => void;
   onCreateTask: (msg: ConversationMessage) => void;
 }) {
   // Delivery badges only for provider-backed outbound (email/SMS). Portal /
   // notes / system-without-status must never imply delivery success.
   const isVenue = msg.senderType === "venue_staff" || msg.senderType === "system";
+  if (!expanded) {
+    return <CollapsedMessageRow msg={msg} onExpand={onToggleExpand} />;
+  }
   const delivery = resolveDeliveryDisplay({
     status: msg.status,
     channel: msg.channel,
@@ -274,10 +328,40 @@ function Bubble({
           isVenue ? "bg-primary text-primary-foreground rounded-br-sm" : "bg-muted text-foreground rounded-bl-sm"
         } ${failed ? "ring-1 ring-destructive/50" : ""}`}
       >
-        {msg.senderType === "system" && (
-          <div className="mb-1"><AutomatedBadge isVenue={isVenue} /></div>
+        <div className={`mb-1 flex items-center gap-2 ${isVenue ? "justify-end" : "justify-start"}`}>
+          {msg.senderType === "system" && <AutomatedBadge isVenue={isVenue} />}
+          {isLatest && (
+            <span
+              className={`text-[9px] font-medium uppercase tracking-wide ${
+                isVenue ? "text-primary-foreground/70" : "text-muted-foreground"
+              }`}
+            >
+              Latest
+            </span>
+          )}
+          {!isLatest && (
+            <button
+              type="button"
+              onClick={onToggleExpand}
+              aria-expanded
+              className={`text-[10px] underline-offset-2 hover:underline ${
+                isVenue ? "text-primary-foreground/70" : "text-muted-foreground"
+              }`}
+            >
+              Collapse
+            </button>
+          )}
+        </div>
+        {msg.body && (
+          <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
+            {linkifyMessageBody(
+              msg.body,
+              isVenue
+                ? "underline underline-offset-2 break-all text-primary-foreground"
+                : "underline underline-offset-2 break-all text-primary",
+            )}
+          </p>
         )}
-        {msg.body && <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{msg.body}</p>}
         {!msg.body && msg.attachments.length > 0 && (
           <p className="italic opacity-80">{msg.channel === "sms" ? "Photo or file" : "Attachment"}</p>
         )}
@@ -349,7 +433,7 @@ const NO_ASSIGNEE = "__none__";
 
 export function ConversationThread({
   conversationId, onBack, showHeader = true, summary, teamMembers = [], initialBody, initialSubject,
-  onInboxOpened, onInboxSent, flow = "contained",
+  onInboxOpened, onInboxSent, onNeedsResponseCleared, onAuthoritativeSendSuccess, flow = "contained",
 }: {
   conversationId: string;
   onBack?: () => void;
@@ -375,16 +459,30 @@ export function ConversationThread({
    */
   initialBody?: string;
   initialSubject?: string;
-  /** Inbox list sync — called once after messages load (marks read + needs response). */
+  /** Inbox list sync — after open: unread cleared; Needs Response unchanged (persisted). */
   onInboxOpened?: (needsResponse: boolean) => void;
   /** Inbox list sync — after a successful venue send. */
   onInboxSent?: (latestMessage: ConversationMessagePreview, needsResponse: boolean) => void;
+  /** Called after explicit "No response needed" succeeds. */
+  onNeedsResponseCleared?: () => void;
+  /**
+   * After ConversationCompose confirms an authoritative send (not failure /
+   * indeterminate). Lead Luv drafts use this to leave PENDING REVIEW.
+   */
+  onAuthoritativeSendSuccess?: () => Promise<void> | void;
 }) {
   const [messages, setMessages] = React.useState<ConversationMessage[] | null>(null);
+  /** Older messages the venue explicitly expanded; latest is always expanded. */
+  const [manuallyExpandedIds, setManuallyExpandedIds] = React.useState<Set<string>>(() => new Set());
+  const [needsResponse, setNeedsResponse] = React.useState<boolean>(
+    () => Boolean(summary?.needsResponse),
+  );
+  const [clearingNeedsResponse, setClearingNeedsResponse] = React.useState(false);
   const bottomRef = React.useRef<HTMLDivElement>(null);
+  const topRef = React.useRef<HTMLDivElement>(null);
   const scrollRef = React.useRef<HTMLDivElement>(null);
-  /** Stick to newest unless the user scrolls up into history. */
-  const stickToBottomRef = React.useRef(true);
+  /** Stick to newest (top) unless the user scrolls down into history. */
+  const stickToNewestRef = React.useRef(true);
   const initialScrollDoneRef = React.useRef(false);
   const [scheduled, setScheduled] = React.useState<ScheduledMessage[]>([]);
   const [prefill, setPrefill] = React.useState<{ body: string; channel: ConversationChannel; nonce: number } | null>(null);
@@ -445,17 +543,24 @@ export function ConversationThread({
   React.useEffect(() => {
     let cancelled = false;
     openedNotifiedRef.current = false;
-    stickToBottomRef.current = true;
+    stickToNewestRef.current = true;
     initialScrollDoneRef.current = false;
     setMessages(null);
+    setManuallyExpandedIds(new Set());
     void getConversationAction(conversationId)
       .then((detail) => {
         if (cancelled) return;
         const next = detail?.messages ?? [];
         setMessages(next);
+        const persistedNeeds =
+          typeof detail?.needsResponse === "boolean"
+            ? detail.needsResponse
+            : conversationNeedsResponse(latestMeaningfulFromMessages(next));
+        setNeedsResponse(persistedNeeds);
         if (!openedNotifiedRef.current) {
           openedNotifiedRef.current = true;
-          onInboxOpenedRef.current?.(conversationNeedsResponse(latestMeaningfulFromMessages(next)));
+          // Open clears unread only — pass persisted Needs Response unchanged.
+          onInboxOpenedRef.current?.(persistedNeeds);
         }
       })
       .catch(() => {
@@ -474,24 +579,27 @@ export function ConversationThread({
     };
   }, [conversationId]);
 
-  const scrollMessagesToBottom = React.useCallback((behavior: ScrollBehavior) => {
-    const el = flow === "contained" ? scrollRef.current : null;
-    if (!el) {
-      bottomRef.current?.scrollIntoView({ behavior, block: "end" });
+  const scrollMessagesToNewest = React.useCallback((behavior: ScrollBehavior) => {
+    if (flow === "contained") {
+      const el = scrollRef.current;
+      if (!el) return;
+      if (behavior === "smooth") {
+        el.scrollTo({ top: 0, behavior: "smooth" });
+      } else {
+        el.scrollTop = 0;
+      }
       return;
     }
-    if (behavior === "smooth") {
-      el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
-    } else {
-      el.scrollTop = el.scrollHeight;
-    }
+    // Page flow (Inbox): scroll only `[data-workspace-main]`. Never
+    // `scrollIntoView` — that pulls main under the sticky workspace header
+    // and leaves a header-sized white gap at the bottom of the viewport.
+    scrollWorkspaceMainToElement(topRef.current, behavior);
   }, [flow]);
 
   function handleMessagesScroll() {
     const el = scrollRef.current;
     if (!el) return;
-    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
-    stickToBottomRef.current = distanceFromBottom < 96;
+    stickToNewestRef.current = el.scrollTop < 96;
   }
 
   // In `page` flow the thread has no scrollport of its own, so "am I still at
@@ -504,33 +612,43 @@ export function ConversationThread({
     }
     if (!host) return;
     const onScroll = () => {
-      const distanceFromBottom = host!.scrollHeight - host!.scrollTop - host!.clientHeight;
-      stickToBottomRef.current = distanceFromBottom < 96;
+      stickToNewestRef.current = host!.scrollTop < 96;
     };
     host.addEventListener("scroll", onScroll, { passive: true });
     return () => host?.removeEventListener("scroll", onScroll);
   }, [flow]);
 
-  // Open at newest; keep sticking only while the user is at (or near) the bottom.
+  // Open at newest (top); keep sticking only while the user is near the top.
   React.useLayoutEffect(() => {
     if (messages === null) return;
     if (!initialScrollDoneRef.current) {
-      scrollMessagesToBottom("auto");
+      scrollMessagesToNewest("auto");
       initialScrollDoneRef.current = true;
-      stickToBottomRef.current = true;
+      stickToNewestRef.current = true;
       return;
     }
-    if (stickToBottomRef.current) {
-      scrollMessagesToBottom("smooth");
+    if (stickToNewestRef.current) {
+      scrollMessagesToNewest("smooth");
     }
-  }, [messages, scrollMessagesToBottom]);
+  }, [messages, scrollMessagesToNewest]);
 
   async function handleSent(ack?: SentMessageAck) {
+    try {
+      await onAuthoritativeSendSuccess?.();
+    } catch {
+      // Draft completion must not block conversation refresh after a real send.
+    }
     try {
       const detail = await getConversationAction(conversationId);
       const next = detail?.messages ?? [];
       setMessages(next);
-      const last = next[next.length - 1];
+      const persistedNeeds =
+        typeof detail?.needsResponse === "boolean"
+          ? detail.needsResponse
+          : conversationNeedsResponse(latestMeaningfulFromMessages(next));
+      setNeedsResponse(persistedNeeds);
+      // Newest-first: the latest message is at index 0.
+      const last = next[0];
       if (last && onInboxSentRef.current) {
         const preview: ConversationMessagePreview = {
           body: last.body,
@@ -538,12 +656,13 @@ export function ConversationThread({
           sentAt: last.sentAt,
           channel: last.channel,
         };
-        onInboxSentRef.current(preview, conversationNeedsResponse(latestMeaningfulFromMessages(next)));
+        onInboxSentRef.current(preview, persistedNeeds);
       }
     } catch {
       // Post-send refresh failed — reconcile from authoritative ack when present.
       if (ack) {
         setMessages((prev) => mergeSentAckIntoMessages(prev, ack));
+        setNeedsResponse(false);
         if (onInboxSentRef.current) {
           const channel = (ack.channel as ConversationChannel) || "email";
           const preview: ConversationMessagePreview = {
@@ -557,6 +676,19 @@ export function ConversationThread({
       } else {
         setMessages((prev) => prev ?? []);
       }
+    }
+  }
+
+  async function handleNoResponseNeeded() {
+    if (clearingNeedsResponse) return;
+    setClearingNeedsResponse(true);
+    try {
+      const result = await clearConversationNeedsResponseAction(conversationId);
+      if (!result.ok) return;
+      setNeedsResponse(false);
+      onNeedsResponseCleared?.();
+    } finally {
+      setClearingNeedsResponse(false);
     }
   }
 
@@ -627,6 +759,16 @@ export function ConversationThread({
                   <span className="text-xs text-muted-foreground">Conversation</span>
                 )}
                 <div className="min-w-0 flex-1" />
+                {needsResponse && (
+                  <button
+                    type="button"
+                    disabled={clearingNeedsResponse}
+                    onClick={() => void handleNoResponseNeeded()}
+                    className="shrink-0 rounded-lg border border-border px-2 py-1 text-[11px] font-medium text-muted-foreground hover:bg-muted/40 hover:text-foreground disabled:opacity-50"
+                  >
+                    {clearingNeedsResponse ? "Updating…" : "No response needed"}
+                  </button>
+                )}
                 <select
                   aria-label="Assigned coordinator" value={assignedStaffId}
                   onChange={(e) => handleAssignedStaffChange(e.target.value)}
@@ -657,24 +799,45 @@ export function ConversationThread({
         ) : messages.length === 0 ? (
           <p className="text-xs text-muted-foreground">No messages yet — say hello.</p>
         ) : (
-          grouped.map((g) => (
-            <div key={g.label}>
-              <DateSep label={g.label} />
-              <div className="space-y-2">
-                {g.msgs.map((m) => (
-                  <Bubble
-                    key={m.id}
-                    msg={m}
-                    leadId={summary?.leadId ?? null}
-                    clientId={summary?.clientId ?? null}
-                    eventId={docsEventId}
-                    onPrefill={prefillFromFailed}
-                    onCreateTask={createFollowUpTask}
-                  />
-                ))}
+          <>
+            <div ref={topRef} />
+            {grouped.map((g) => (
+              <div key={g.label}>
+                <DateSep label={g.label} />
+                <div className="space-y-2">
+                  {g.msgs.map((m) => {
+                    const latestId = latestConversationMessageId(messages);
+                    const expanded = isConversationMessageExpanded(
+                      m.id,
+                      latestId,
+                      manuallyExpandedIds,
+                    );
+                    return (
+                      <Bubble
+                        key={m.id}
+                        msg={m}
+                        leadId={summary?.leadId ?? null}
+                        clientId={summary?.clientId ?? null}
+                        eventId={docsEventId}
+                        expanded={expanded}
+                        isLatest={m.id === latestId}
+                        onToggleExpand={() => {
+                          setManuallyExpandedIds((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(m.id)) next.delete(m.id);
+                            else next.add(m.id);
+                            return next;
+                          });
+                        }}
+                        onPrefill={prefillFromFailed}
+                        onCreateTask={createFollowUpTask}
+                      />
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          ))
+            ))}
+          </>
         )}
         <div ref={bottomRef} />
       </div>

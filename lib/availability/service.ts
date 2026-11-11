@@ -13,6 +13,7 @@ import type {
   CreateSpaceResult,
   DateHold,
   DateHoldInput,
+  DateHoldUpdateInput,
   SpaceInput,
   VenueCapacityRules,
   VenueSpace,
@@ -34,6 +35,36 @@ function isCatalogOrSystemWritableType(type: import("@/lib/availability/types").
   return isBookingPlaceholder(type)
     || type === "custom"
     || isAppointmentCatalogBuiltinKey(type);
+}
+
+async function gateResolvedBookingEventType(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  venueId: string,
+  args: {
+    isBooking: boolean;
+    mode: "create" | "update";
+    previousEventType?: string | null;
+    nextEventType: string | null | undefined;
+  },
+): Promise<AvailabilityActionResult> {
+  if (!args.isBooking) return { ok: true };
+  const { data: venueRow } = await supabase
+    .from("venues")
+    .select("accepted_inquiry_event_types")
+    .eq("id", venueId)
+    .maybeSingle<{ accepted_inquiry_event_types: unknown }>();
+  const { gateBookingPlaceholderEventType } = await import(
+    "@/lib/event-types/assert-accepted"
+  );
+  const gated = gateBookingPlaceholderEventType({
+    isBooking: true,
+    mode: args.mode,
+    previousEventType: args.previousEventType,
+    nextEventType: args.nextEventType,
+    acceptedRaw: venueRow?.accepted_inquiry_event_types,
+  });
+  if (!gated.ok) return { ok: false, message: gated.error };
+  return { ok: true };
 }
 
 async function withVenue<T>(
@@ -109,27 +140,219 @@ export async function getHolds(opts?: { leadId?: string; activeOnly?: boolean })
   return repo.getHolds(await createClient(), venue.id, opts);
 }
 
+type HoldPlacementInput = {
+  leadId: string;
+  spaceIds?: string[];
+  spaceId: string;
+  holdDate: string;
+  endDate?: string;
+  startTime: string;
+  endTime: string;
+};
+
+function eachInclusiveDate(start: string, end: string): string[] {
+  const out: string[] = [];
+  const cur = new Date(`${start}T12:00:00`);
+  const stop = new Date(`${end}T12:00:00`);
+  if (Number.isNaN(cur.getTime()) || Number.isNaN(stop.getTime()) || cur > stop) {
+    return start ? [start] : [];
+  }
+  while (cur <= stop) {
+    const y = cur.getFullYear();
+    const m = String(cur.getMonth() + 1).padStart(2, "0");
+    const d = String(cur.getDate()).padStart(2, "0");
+    out.push(`${y}-${m}-${d}`);
+    cur.setDate(cur.getDate() + 1);
+  }
+  return out;
+}
+
+async function assertHoldPlacement(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  venueId: string,
+  input: HoldPlacementInput,
+  opts?: { excludeHoldId?: string },
+): Promise<AvailabilityActionResult> {
+  const {
+    holdProtectsAvailability,
+    holdSpaceIds,
+    holdsConflictWithEachOther,
+    otherActiveHoldsForPlacement,
+  } = await import("@/lib/availability/hold-occupancy");
+  const { effectiveMaxSimultaneousEvents } = await import(
+    "@/lib/availability/event-occupancy"
+  );
+
+  const endDate = input.endDate && input.endDate >= input.holdDate
+    ? input.endDate
+    : input.holdDate;
+  const candidateSpaces = holdSpaceIds({
+    spaceIds: input.spaceIds,
+    spaceId: input.spaceId,
+  });
+  const candidate = {
+    id: "candidate",
+    leadId: input.leadId || null,
+    holdDate: input.holdDate,
+    endDate,
+    startTime: input.startTime || null,
+    endTime: input.endTime || null,
+    spaceIds: candidateSpaces,
+  };
+
+  const rules = await repo.getCapacityRules(supabase, venueId);
+  const effectiveMax = effectiveMaxSimultaneousEvents(rules);
+
+  const activeOverlapping = otherActiveHoldsForPlacement(
+    (await repo.getHolds(supabase, venueId, { activeOnly: true }))
+      .filter((hold) => holdProtectsAvailability(hold)),
+    input.holdDate,
+    opts?.excludeHoldId,
+    endDate,
+  );
+  for (const other of activeOverlapping) {
+    if (holdsConflictWithEachOther(candidate, {
+      id: other.id,
+      leadId: other.leadId,
+      holdDate: other.holdDate,
+      endDate: other.endDate,
+      startTime: other.startTime,
+      endTime: other.endTime,
+      spaceIds: other.spaceIds,
+    }, effectiveMax)) {
+      return {
+        ok: false,
+        message: "That space and date range overlaps another active hold.",
+      };
+    }
+  }
+
+  const spacesToCheck = candidateSpaces.length > 0 ? candidateSpaces : [undefined];
+  for (const date of eachInclusiveDate(input.holdDate, endDate)) {
+    for (const spaceId of spacesToCheck) {
+      const status = await repo.checkAvailability(supabase, venueId, {
+        date,
+        startTime: input.startTime || undefined,
+        endTime: input.endTime || undefined,
+        spaceId,
+        type: "event",
+        purpose: spaceId ? "booking" : "preferred_date",
+        excludeLeadId: input.leadId || undefined,
+      });
+      const hardEventConflict = status.conflicts.some(
+        (c) => c.severity === "error" && (
+          c.type === "event_capacity_full"
+          || c.type === "event_occupancy"
+          || c.type === "space_booked"
+          || c.type === "calendar_blocked"
+          || c.type === "event_turnaround"
+        ),
+      );
+      if (hardEventConflict) {
+        return {
+          ok: false,
+          message: status.conflicts.find((c) => c.severity === "error")?.message
+            ?? "That date is not available for a hold.",
+        };
+      }
+    }
+  }
+
+  return { ok: true };
+}
+
+async function holdInputWithVenueExpiration<T extends { expiresAt?: string | null }>(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  venueId: string,
+  input: T,
+): Promise<T> {
+  if (input.expiresAt === undefined) return input;
+  const { holdExpirationInstant } = await import("@/lib/availability/hold-expiration");
+  const { getVenueTimezone } = await import("@/lib/venue/timezone");
+  const timezone = await getVenueTimezone(supabase, venueId);
+  return {
+    ...input,
+    expiresAt: holdExpirationInstant(input.expiresAt, timezone) ?? "",
+  };
+}
+
 export async function createHold(input: DateHoldInput): Promise<CreateHoldResult> {
   if (!input.holdDate) return { ok: false, message: "Hold date is required." };
   if (!input.title.trim()) return { ok: false, message: "Title is required." };
+  const endDate = input.endDate && input.endDate >= input.holdDate
+    ? input.endDate
+    : input.holdDate;
+  if (input.endDate && input.endDate < input.holdDate) {
+    return { ok: false, message: "End date must be on or after the start date." };
+  }
   const result = await withVenue(async (supabase, venueId) => {
-    const holdId = await repo.insertHold(supabase, venueId, input);
+    const resolved = await holdInputWithVenueExpiration(supabase, venueId, {
+      ...input,
+      endDate,
+    });
+    const asserted = await assertHoldPlacement(supabase, venueId, resolved);
+    if (!asserted.ok) return asserted as CreateHoldResult;
+    const holdId = await repo.insertHold(supabase, venueId, resolved);
     return { ok: true, holdId } as CreateHoldResult;
   });
   return result as CreateHoldResult;
 }
 
-export async function releaseHold(holdId: string): Promise<AvailabilityActionResult> {
+export async function updateHold(holdId: string, input: DateHoldUpdateInput): Promise<AvailabilityActionResult> {
+  if (!input.holdDate) return { ok: false, message: "Hold date is required." };
+  if (input.endDate && input.endDate < input.holdDate) {
+    return { ok: false, message: "End date must be on or after the start date." };
+  }
+  if (input.title !== undefined && !input.title.trim()) {
+    return { ok: false, message: "Title is required." };
+  }
   const result = await withVenue(async (supabase, venueId) => {
-    await repo.updateHoldStatus(supabase, venueId, holdId, "released");
+    const existing = await repo.getHold(supabase, venueId, holdId);
+    if (!existing) return { ok: false, message: "Hold not found." } as AvailabilityActionResult;
+    const { holdProtectsAvailability } = await import("@/lib/availability/hold-occupancy");
+    const currentlyProtects = existing.status === "active" && holdProtectsAvailability(existing);
+    // Converted holds stay historical. Expired / released / elapsed-active rows
+    // may be reactivated by saving a configuration that will protect again.
+    if (existing.status === "converted") {
+      return { ok: false, message: "A converted hold cannot be edited. Place a new hold if needed." } as AvailabilityActionResult;
+    }
+    if (!currentlyProtects && existing.status !== "expired" && existing.status !== "released" && existing.status !== "active") {
+      return { ok: false, message: "Only an active or reactivatable hold can be edited." } as AvailabilityActionResult;
+    }
+    if ((existing.leadId || "") !== (input.leadId || "")) {
+      return { ok: false, message: "That hold does not belong to this lead." } as AvailabilityActionResult;
+    }
+    const endDate = input.endDate && input.endDate >= input.holdDate
+      ? input.endDate
+      : input.holdDate;
+    const resolved = await holdInputWithVenueExpiration(supabase, venueId, {
+      ...input,
+      endDate,
+    });
+    if (!currentlyProtects) {
+      const expires = resolved.expiresAt?.trim() || null;
+      const willProtect = !expires || Date.parse(expires) > Date.now();
+      if (!willProtect) {
+        return {
+          ok: false,
+          message: "Set a future auto-release date (or clear it) to reactivate this hold.",
+        } as AvailabilityActionResult;
+      }
+    }
+    const asserted = await assertHoldPlacement(supabase, venueId, resolved, { excludeHoldId: holdId });
+    if (!asserted.ok) return asserted;
+    await repo.updateHold(supabase, venueId, holdId, resolved);
+    if (!currentlyProtects) {
+      await repo.updateHoldStatus(supabase, venueId, holdId, "active");
+    }
     return { ok: true } as AvailabilityActionResult;
   });
   return result as AvailabilityActionResult;
 }
 
-export async function convertHold(holdId: string): Promise<AvailabilityActionResult> {
+export async function releaseHold(holdId: string): Promise<AvailabilityActionResult> {
   const result = await withVenue(async (supabase, venueId) => {
-    await repo.updateHoldStatus(supabase, venueId, holdId, "converted");
+    await repo.updateHoldStatus(supabase, venueId, holdId, "released");
     return { ok: true } as AvailabilityActionResult;
   });
   return result as AvailabilityActionResult;
@@ -186,6 +409,12 @@ export async function createBlock(input: CalendarBlockInput): Promise<{ ok: true
       scheduleItemTypeId: input.scheduleItemTypeId,
     });
     if (!resolved.ok) return resolved;
+    const eventTypeGate = await gateResolvedBookingEventType(supabase, venueId, {
+      isBooking: isBookingPlaceholder(resolved.resolved.type),
+      mode: "create",
+      nextEventType: input.eventType,
+    });
+    if (!eventTypeGate.ok) return eventTypeGate;
     const blockId = await repo.insertBlock(supabase, venueId, {
       ...input,
       type: resolved.resolved.type,
@@ -249,6 +478,14 @@ export async function updateBlock_(blockId: string, input: CalendarBlockInput): 
     });
     if (!resolved.ok) return resolved;
 
+    const eventTypeGate = await gateResolvedBookingEventType(supabase, venueId, {
+      isBooking: isBookingPlaceholder(resolved.resolved.type),
+      mode: "update",
+      previousEventType: isBookingPlaceholder(existing.type) ? existing.eventType : null,
+      nextEventType: input.eventType,
+    });
+    if (!eventTypeGate.ok) return eventTypeGate;
+
     await repo.updateBlock(supabase, venueId, blockId, {
       ...input,
       type: resolved.resolved.type,
@@ -290,8 +527,11 @@ export async function checkAvailability(opts: {
   setupTime?: string;
   teardownTime?: string;
   spaceId?: string;
+  windows?: Array<{ spaceId: string; startTime?: string | null; endTime?: string | null }>;
   type: "event" | "tour";
   excludeId?: string;
+  excludeLeadId?: string;
+  purpose?: "booking" | "preferred_date";
 }): Promise<AvailabilityStatus> {
   if (!isSupabaseConfigured) return { available: true, conflicts: [] };
   const venue = await getCurrentVenue();

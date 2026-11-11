@@ -1,0 +1,87 @@
+{
+  "status": "GREEN",
+  "servingSha": "592a69b513685876d3efe3cab708d6af822632da",
+  "expectedSha": "592a69b513685876d3efe3cab708d6af822632da",
+  "eventId": "ebf74f77-2944-474a-b735-48762ecb6842",
+  "clientId": "b4e2764b-be33-4579-89e3-0c8e4a6dd5be",
+  "passed": 15,
+  "failed": 0,
+  "checks": [
+    {
+      "name": "serving_sha",
+      "pass": true,
+      "detail": "serving=592a69b513685876d3efe3cab708d6af822632da expected=592a69b513685876d3efe3cab708d6af822632da"
+    },
+    {
+      "name": "fixture",
+      "pass": true,
+      "detail": "event=ebf74f77-2944-474a-b735-48762ecb6842 client=b4e2764b-be33-4579-89e3-0c8e4a6dd5be"
+    },
+    {
+      "name": "event_order_badge_included",
+      "pass": true,
+      "detail": "badge=Included"
+    },
+    {
+      "name": "preview_client-planning_shell",
+      "pass": true,
+      "detail": "mark=true h1=true cream=0 luminance=0.355 color=rgb(79, 95, 79)"
+    },
+    {
+      "name": "preview_client-planning_back_overview",
+      "pass": true,
+      "detail": "href=/clients/b4e2764b-be33-4579-89e3-0c8e4a6dd5be#overview url=https://app.sandbox.hellotocheers.com/clients/b4e2764b-be33-4579-89e3-0c8e4a6dd5be#overview"
+    },
+    {
+      "name": "preview_client-planning_back_questionnaires",
+      "pass": true,
+      "detail": "href=/clients/b4e2764b-be33-4579-89e3-0c8e4a6dd5be#questionnaires url=https://app.sandbox.hellotocheers.com/clients/b4e2764b-be33-4579-89e3-0c8e4a6dd5be#questionnaires"
+    },
+    {
+      "name": "preview_final-details_shell",
+      "pass": true,
+      "detail": "mark=true h1=true cream=0 luminance=0.355 color=rgb(79, 95, 79)"
+    },
+    {
+      "name": "preview_final-details_back_overview",
+      "pass": true,
+      "detail": "href=/clients/b4e2764b-be33-4579-89e3-0c8e4a6dd5be#overview url=https://app.sandbox.hellotocheers.com/clients/b4e2764b-be33-4579-89e3-0c8e4a6dd5be#overview"
+    },
+    {
+      "name": "preview_final-details_back_questionnaires",
+      "pass": true,
+      "detail": "href=/clients/b4e2764b-be33-4579-89e3-0c8e4a6dd5be#questionnaires url=https://app.sandbox.hellotocheers.com/clients/b4e2764b-be33-4579-89e3-0c8e4a6dd5be#questionnaires"
+    },
+    {
+      "name": "preview_post-event_shell",
+      "pass": true,
+      "detail": "mark=true h1=true cream=0 luminance=0.355 color=rgb(79, 95, 79)"
+    },
+    {
+      "name": "preview_post-event_back_overview",
+      "pass": true,
+      "detail": "href=/clients/b4e2764b-be33-4579-89e3-0c8e4a6dd5be#overview url=https://app.sandbox.hellotocheers.com/clients/b4e2764b-be33-4579-89e3-0c8e4a6dd5be#overview"
+    },
+    {
+      "name": "preview_post-event_back_questionnaires",
+      "pass": true,
+      "detail": "href=/clients/b4e2764b-be33-4579-89e3-0c8e4a6dd5be#questionnaires url=https://app.sandbox.hellotocheers.com/clients/b4e2764b-be33-4579-89e3-0c8e4a6dd5be#questionnaires"
+    },
+    {
+      "name": "questionnaire_persistence_unchanged",
+      "pass": true,
+      "detail": "before=1 after=1"
+    },
+    {
+      "name": "event_order_state_unchanged",
+      "pass": true,
+      "detail": "before=open/null after=open/null"
+    },
+    {
+      "name": "no_invoice_side_effect",
+      "pass": true,
+      "detail": "before=38 after=38"
+    }
+  ],
+  "at": "2026-10-22T06:02:57.645Z"
+}

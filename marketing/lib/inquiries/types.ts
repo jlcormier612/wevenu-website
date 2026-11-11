@@ -18,11 +18,18 @@ export type InquirySubmission = {
   label: string;
   createdAt: string;
   fields: Record<string, string>;
+  /** True when a retry replayed an already-ingested sourceId (no new notify). */
+  replayed?: boolean;
 };
 
 export type SubmitInquiryInput = {
   kind: InquiryKind;
   fields: Record<string, string>;
+  /**
+   * Client-generated UUID for a single submit attempt.
+   * Retries with the same key must not create duplicate CRM/notify side effects.
+   */
+  idempotencyKey?: string | null;
 };
 
 export function inquiryLabel(kind: InquiryKind): string {

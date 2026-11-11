@@ -30,20 +30,27 @@ describe("Help & Guides final IA", () => {
     assert.match(HELP_GUIDES_TAGLINE, /start with Getting Started if you're new here/);
   });
 
-  it("publishes all 31 editorial articles with none blocked", () => {
-    assert.equal(FINAL_HELP_ARTICLES.length, 31);
-    assert.equal(PUBLISHABLE_HELP_ARTICLES.length, 31);
+  it("publishes all 36 staff editorial articles with none blocked", () => {
+    assert.equal(PUBLISHABLE_HELP_ARTICLES.length, 36);
     assert.equal(BLOCKED_HELP_ARTICLES.length, 0);
-    assert.ok(FINAL_HELP_ARTICLES.every((a) => !a.blocked));
+    assert.ok(PUBLISHABLE_HELP_ARTICLES.every((a) => !a.blocked));
+    assert.ok(PUBLISHABLE_HELP_ARTICLES.every((a) => (a.audience ?? "staff") !== "couple"));
+    // Couple-portal how-tos live in the same canonical array but stay out of staff publish.
+    assert.ok(FINAL_HELP_ARTICLES.length > 36);
+    assert.ok(FINAL_HELP_ARTICLES.some((a) => a.audience === "couple"));
   });
 
-  it("keeps exact titles for every editorial article", () => {
-    const titles = FINAL_HELP_ARTICLES.map((a) => a.title);
+  it("keeps exact titles for every staff publishable article", () => {
+    const titles = PUBLISHABLE_HELP_ARTICLES.map((a) => a.title);
     assert.ok(titles.includes("Getting Started: Your First Morning"));
     assert.ok(titles.includes("How Should I Read My Reports?"));
     assert.ok(titles.includes("What Happens After an Event?"));
-    assert.equal(new Set(titles).size, 31);
-    assert.equal(new Set(FINAL_HELP_ARTICLES.map((a) => a.slug)).size, 31);
+    assert.ok(titles.includes("How to Connect Stripe for Online Payments"));
+    assert.ok(titles.includes("How to Connect QuickBooks Online"));
+    assert.ok(titles.includes("How to Connect Facebook & Instagram Lead Ads"));
+    assert.ok(titles.includes("How Texting Setup Works"));
+    assert.equal(new Set(titles).size, 36);
+    assert.equal(new Set(PUBLISHABLE_HELP_ARTICLES.map((a) => a.slug)).size, 36);
   });
 
   it("does not publish stale Reporting or Booking language in publishable bodies", () => {
@@ -57,16 +64,40 @@ describe("Help & Guides final IA", () => {
     assert.match(reports.body, /Contracted, Collected, and Outstanding/);
     const leadClient = PUBLISHABLE_HELP_ARTICLES.find((a) => a.slug === "whats-the-difference-between-a-lead-and-a-client");
     assert.ok(leadClient);
-    assert.match(leadClient.body, /Booked does not automatically mean the contract is signed/);
+    assert.match(leadClient.body, /A \*\*Client\*\* is a Lead who has become a booking/);
+    assert.match(leadClient.body, /You decide what "booked" means for your venue/);
+    assert.doesNotMatch(leadClient.body, /client\/event workspace/);
+    assert.doesNotMatch(leadClient.body, /Booked does not automatically mean the contract is signed/);
+  });
+
+  it("Task Center article names current My Work / By Person / All Team Work lenses", () => {
+    const article = PUBLISHABLE_HELP_ARTICLES.find((a) => a.slug === "how-does-task-center-work");
+    assert.ok(article);
+    assert.match(article.body, /\*\*My Work\*\*/);
+    assert.match(article.body, /\*\*By Person\*\*/);
+    assert.match(article.body, /\*\*All Team Work\*\*/);
+    assert.doesNotMatch(article.body, /My Tasks/);
+
+    // The published row wins over the editorial source, so the copy correction
+    // only reaches the live article if the companion migration carries it too.
+    const sql = readFileSync(
+      join(process.cwd(), "supabase/migrations/20261412800000_help_task_center_lenses_copy.sql"),
+      "utf8",
+    );
+    assert.match(sql, /how-does-task-center-work/);
+    assert.match(sql, /\*\*My Work\*\*/);
+    assert.match(sql, /\*\*By Person\*\*/);
+    assert.match(sql, /\*\*All Team Work\*\*/);
+    assert.doesNotMatch(sql, /insert into public\.success_library_articles/);
   });
 
   it("matches expected publishable counts per category", () => {
     const expected: Record<string, number> = {
       "Getting Started": 2,
       "Your Venue": 2,
-      "Finding & Booking Clients": 4,
-      "Working With Clients": 2,
-      "Contracts & Payments": 5,
+      "Finding & Booking Clients": 6,
+      "Working With Clients": 3,
+      "Contracts & Payments": 7,
       "Building the Event": 3,
       "Planning the Event": 7,
       Vendors: 1,
@@ -97,20 +128,98 @@ describe("Help & Guides final IA", () => {
     assert.match(pay.body, /Stripe/);
   });
 
-  it("migration publishes all 31 final slugs and omits stale paths", () => {
+  it("historical seed published 31 slugs and omitted the later Date Availability article", () => {
     const sql = readFileSync(
       join(process.cwd(), "supabase/migrations/20261386000000_help_guides_final_content.sql"),
       "utf8",
     );
     assert.match(sql, /delete from public\.success_library_articles/);
-    for (const a of FINAL_HELP_ARTICLES) {
+    const laterEditorialSlugs = new Set([
+      "how-does-date-availability-work",
+      "how-to-connect-stripe-for-online-payments",
+      "how-to-connect-quickbooks-online",
+      "how-to-connect-facebook-instagram-lead-ads",
+      "how-texting-setup-works",
+    ]);
+    const historical = PUBLISHABLE_HELP_ARTICLES.filter((a) => !laterEditorialSlugs.has(a.slug));
+    for (const a of historical) {
       assert.match(sql, new RegExp(`'${a.slug.replace(/-/g, "\\-")}'`));
     }
+    // Couple-only portal articles must not appear in the staff seed migration.
+    assert.doesNotMatch(sql, /couple-finding-documents/);
+    assert.doesNotMatch(sql, /couple-review-sign-contract/);
     assert.doesNotMatch(sql, /Your Venue → Settings → Tour Scheduling/);
     assert.doesNotMatch(sql, /Your Venue → Settings → Payments(?![\w])/);
     // Allow "Payments" in other contexts; forbid the exact stale Settings path.
     assert.doesNotMatch(sql, /Settings → Payments/);
     assert.match(sql, /Availability & Capacity/);
     assert.match(sql, /Financials & Integrations/);
+  });
+
+  it("lead/client booking terminology migration uses approved venue-centric copy", () => {
+    const sql = readFileSync(
+      join(
+        process.cwd(),
+        "supabase/migrations/20261401700000_help_lead_client_booking_terminology.sql",
+      ),
+      "utf8",
+    );
+    assert.match(sql, /whats-the-difference-between-a-lead-and-a-client/);
+    assert.match(sql, /A \*\*Client\*\* is a Lead who has become a booking/);
+    assert.match(sql, /You decide what "booked" means for your venue/);
+    assert.doesNotMatch(sql, /client\/event workspace/);
+  });
+
+  it("Vendors article describes invite, portal ownership, and shared event context", () => {
+    const vendors = FINAL_HELP_ARTICLES.filter(
+      (a) => a.title === "How Do Vendors Work in Hello to Cheers?",
+    );
+    assert.equal(vendors.length, 1);
+    const body = vendors[0].body;
+    assert.match(body, /Vendors can be invited into Hello to Cheers/);
+    assert.match(body, /their own portal/);
+    assert.match(body, /Vendor = owns their information/);
+    assert.match(body, /when appropriate/);
+    assert.doesNotMatch(body, /three layers/);
+    assert.doesNotMatch(body, /\bdirectory\b/i);
+    assert.doesNotMatch(body, /system of record|domain model|synchronization/i);
+
+    const sql = readFileSync(
+      join(process.cwd(), "supabase/migrations/20261402300000_help_vendors_portal_guidance.sql"),
+      "utf8",
+    );
+    assert.match(sql, /how-do-vendors-work-in-hello-to-cheers/);
+    assert.match(sql, /Vendor = owns their information/);
+    assert.doesNotMatch(sql, /insert into public\.success_library_articles/);
+  });
+
+  it("Guidance Library copy uses templates, not definitions, in the two package-difference articles", () => {
+    const inventory = FINAL_HELP_ARTICLES.find(
+      (a) => a.slug === "whats-the-difference-between-a-package-inventory-and-an-inventory-template",
+    );
+    const payment = FINAL_HELP_ARTICLES.find(
+      (a) => a.slug === "whats-the-difference-between-a-package-payment-schedule-and-payment",
+    );
+    assert.ok(inventory);
+    assert.ok(payment);
+    assert.match(inventory.body, /\*\*Library = reusable templates\.\*\*/);
+    assert.doesNotMatch(inventory.body, /\bdefinitions?\b/i);
+    assert.match(payment.body, /The Library holds reusable templates such as Packages/);
+    assert.match(
+      payment.body,
+      /changing a reusable Library template should not silently rewrite/,
+    );
+    assert.doesNotMatch(payment.body, /\bdefinitions?\b/i);
+
+    const sql = readFileSync(
+      join(
+        process.cwd(),
+        "supabase/migrations/20261402200000_help_guidance_library_templates_copy.sql",
+      ),
+      "utf8",
+    );
+    assert.match(sql, /Library = reusable templates/);
+    assert.match(sql, /holds reusable templates such as Packages/);
+    assert.match(sql, /reusable Library template should not silently rewrite/);
   });
 });

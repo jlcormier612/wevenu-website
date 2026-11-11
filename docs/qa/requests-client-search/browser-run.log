@@ -1,0 +1,20 @@
+PASS serving_sha — expected=0b3838d38aadeeda9b7a5cb22905d17f3fbb04f3 ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:0b3838d38aadeeda9b7a5cb22905d17f3fbb04f3
+PASS large_client_list — fancyClients=186
+PASS synthetic_client — e28eded5-b826-4518-8cc9-fca0350d58e8
+PASS picker_present — request-client-picker
+PASS no_unbounded_select — legacy select gone
+PASS submit_disabled_without_client — needs client
+PASS empty_search_hint — hint=1
+PASS no_results_copy — empty state
+PASS partial_name_hit — e28eded5-b826-4518-8cc9-fca0350d58e8
+PASS partner_name_hit — Quinn Partnerf9e9
+PASS selection_shown — Rory RcsRCSMVSBSQHT & Quinn Partnerf9e9
+PASS cleared — cleared
+PASS title_preserved — RCS RCSMVSBSQHT Title
+PASS description_preserved — Keep me RCSMVSBSQHT
+PASS submit_disabled_after_clear — needs client again
+PASS request_persisted_correct_client — {"id":"7b7e4fca-40af-4833-bb2d-10f077634aa2","client_id":"e28eded5-b826-4518-8cc9-fca0350d58e8","title":"RCS RCSMVSBSQHT Title","venue_id":"a415ac52-cd74-42a6-8df7-7a8f6e71d080"}
+PASS foreign_venue_excluded — foreign=132c1553-9738-4ef6-9538-e83fcb863641
+PASS narrow_no_overflow — overflow=false
+PASS narrow_picker_open — search visible
+VERDICT=GREEN

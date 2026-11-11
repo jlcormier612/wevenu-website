@@ -16,7 +16,7 @@
 import * as React from "react";
 
 import { useRouter } from "next/navigation";
-import { Loader2, Wand2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -34,8 +34,8 @@ import type { MessageTemplate, MessageTemplateCategory } from "@/lib/message-tem
 
 const CHANNEL_OPTIONS: { value: ImportChannel; label: string }[] = [
   { value: "email", label: "Email only" },
-  { value: "sms", label: "Text (SMS) only" },
-  { value: "both", label: "Both — propose an SMS version too" },
+  { value: "sms", label: "Text only" },
+  { value: "both", label: "Both — propose a Text version too" },
 ];
 
 type StarterChoice = "existing" | "scratch" | "import";
@@ -101,7 +101,7 @@ export function MessageTemplateStarterPicker({
   return (
     <Sheet open={open} onOpenChange={(v) => { setOpen(v); if (!v) reset(); }}>
       <SheetTrigger render={<Button type="button" variant={variant === "import" ? "outline" : "default"} />}>
-        {variant === "import" ? "Import Messages" : <><Wand2 className="mr-1.5 h-4 w-4" />New Template</>}
+        {variant === "import" ? "Import" : "+ New Template"}
       </SheetTrigger>
       <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
         <SheetHeader className="mb-6">

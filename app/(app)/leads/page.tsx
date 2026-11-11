@@ -3,39 +3,81 @@ import Link from "next/link";
 import { GitBranch } from "lucide-react";
 
 import { LeadList } from "@/components/leads/lead-list";
+import {
+  LEADS_SPOT_PATTERN_TYPES,
+  SpotPatternRecommendationsPanel,
+} from "@/components/luv/spot-pattern-recommendations";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { Button } from "@/components/ui/button";
+import { loadBookedMembershipSets } from "@/lib/booking-journey/booked-membership";
 import { ensureStandardSalesPipelineForCurrentVenue, getLeads } from "@/lib/leads/service";
+import { loadLeadMessageAttentionMap } from "@/lib/leads/message-attention";
+import { getUnattendedInquiryLeadIdsForCurrentVenue } from "@/lib/luv/unattended-inquiry-population";
+import { UNATTENDED_INQUIRY_ATTENTION } from "@/lib/luv/unattended-inquiry";
+import { createClient } from "@/integrations/supabase/server";
+import { isSupabaseConfigured } from "@/lib/env";
 
 export const metadata: Metadata = { title: "Leads" };
 
-type Props = { searchParams: Promise<{ attention?: string }> };
+type Props = { searchParams: Promise<{ attention?: string; view?: string }> };
 
 export default async function LeadsPage({ searchParams }: Props) {
   await ensureStandardSalesPipelineForCurrentVenue();
-  const leads = await getLeads();
-  const { attention } = await searchParams;
-  const initialAttention =
-    attention === "stale_contact" ? "stale_contact" as const
-    : attention === "active" ? "active" as const
+  const [leads, bookedMembership] = await Promise.all([
+    getLeads(),
+    loadBookedMembershipSets(),
+  ]);
+  const { attention, view } = await searchParams;
+  const initialOutcome = view === "lost" ? "lost" as const : "active" as const;
+  const initialAttention = initialOutcome === "lost"
+    ? null
+    : attention === "stale_contact" ? "stale_contact" as const
+    : attention === "open" ? "open" as const
+    : attention === "active" ? "open" as const
+    : attention === "unseen" ? "unseen" as const
+    : attention === UNATTENDED_INQUIRY_ATTENTION ? "unattended_inquiry" as const
     : null;
+  const unattendedInquiryLeadIds = initialAttention === "unattended_inquiry"
+    ? await getUnattendedInquiryLeadIdsForCurrentVenue()
+    : [];
+  const messageAttentionByLeadId: Record<string, { conversationId: string; href: string }> = {};
+  if (isSupabaseConfigured && leads.length > 0) {
+    const supabase = await createClient();
+    const map = await loadLeadMessageAttentionMap(
+      supabase,
+      leads.map((l) => ({ id: l.id, relationshipId: l.relationshipId })),
+    );
+    for (const [id, attention] of map) {
+      messageAttentionByLeadId[id] = attention;
+    }
+  }
   return (
-    <div className="htc-hospitality-page htc-hospitality-heading htc-hospitality-intro-accent space-y-6">
-      <PageHeader
-        title="Leads"
-        description="Manage leads and track them through your pipeline."
-        actions={
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" render={<Link href="/library/pipeline-templates" />}>
-              <GitBranch className="mr-1.5 h-3.5 w-3.5" />Pipeline Templates
-            </Button>
-            <Button variant="outline" size="sm" render={<Link href="/leads/pipeline" />}>Board view</Button>
-            <Button variant="outline" render={<Link href="/settings/import?type=leads" />}>Import Leads</Button>
-            <Button render={<Link href="/leads/new" />}>+ New Lead</Button>
-          </div>
-        }
+    <div className="htc-hospitality-page space-y-4 sm:space-y-6">
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
+        <PageHeader
+          title="Leads"
+          description="Active sales opportunities. All is that population. Booked and Lost stay visible as outcomes and are not included in All."
+          actions={
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="ghost" size="sm" render={<Link href="/library/pipeline-templates" />}>
+                <GitBranch className="mr-1.5 h-3.5 w-3.5" />Customize Pipeline
+              </Button>
+              <Button variant="outline" size="sm" render={<Link href="/leads/pipeline" />}>Board View</Button>
+              <Button variant="outline" render={<Link href="/settings/import?type=leads" />}>Import Leads</Button>
+              <Button render={<Link href="/leads/new" />}>+ New Lead</Button>
+            </div>
+          }
+        />
+      </div>
+      <SpotPatternRecommendationsPanel types={LEADS_SPOT_PATTERN_TYPES} />
+      <LeadList
+        leads={leads}
+        initialAttention={initialAttention}
+        initialOutcome={initialOutcome}
+        unattendedInquiryLeadIds={unattendedInquiryLeadIds}
+        currentBookedCount={bookedMembership.currentClientIds.size}
+        messageAttentionByLeadId={messageAttentionByLeadId}
       />
-      <LeadList leads={leads} initialAttention={initialAttention} />
     </div>
   );
 }

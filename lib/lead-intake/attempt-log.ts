@@ -14,6 +14,17 @@ export type IntakeAttemptStatus =
   | "rejected_invalid"
   | "error";
 
+export type IntakeAttemptInsert =
+  | { status: "inserted"; id: string }
+  | { status: "conflict" }
+  | { status: "failed" };
+
+export function isIntakeExternalRefConflict(error: { code?: string; message?: string } | null | undefined): boolean {
+  if (!error) return false;
+  if (error.code === "23505") return true;
+  return /duplicate key|unique constraint|lead_intake_attempts_external_ref/i.test(error.message ?? "");
+}
+
 export async function logIntakeAttempt(
   supabase: AnyDbClient,
   params: {
@@ -25,7 +36,7 @@ export async function logIntakeAttempt(
     ipAddress?: string | null;
     externalRef?: string | null;
   },
-): Promise<string | null> {
+): Promise<IntakeAttemptInsert> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = (await (supabase.from("lead_intake_attempts") as any)
     .insert({
@@ -39,12 +50,13 @@ export async function logIntakeAttempt(
       external_ref: params.externalRef ?? null,
     })
     .select("id")
-    .single()) as { data: { id: string } | null; error: { message: string } | null };
+    .single()) as { data: { id: string } | null; error: { code?: string; message: string } | null };
   if (error || !data) {
+    if (isIntakeExternalRefConflict(error)) return { status: "conflict" };
     console.error("logIntakeAttempt failed:", error);
-    return null;
+    return { status: "failed" };
   }
-  return data.id;
+  return { status: "inserted", id: data.id };
 }
 
 /**
@@ -58,6 +70,22 @@ export async function logIntakeAttempt(
  * BEFORE logIntakeAttempt so a redelivery short-circuits before any of
  * that happens.
  */
+export async function findAttemptByExternalRef(
+  supabase: AnyDbClient,
+  source: string,
+  externalRef: string,
+): Promise<{ attemptId: string; status: IntakeAttemptStatus; leadId: string | null; relationshipId: string | null } | null> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data } = await (supabase.from("lead_intake_attempts") as any)
+    .select("id, status, lead_id, relationship_id")
+    .eq("source", source)
+    .eq("external_ref", externalRef)
+    .maybeSingle();
+  const row = data as { id: string; status: IntakeAttemptStatus; lead_id: string | null; relationship_id: string | null } | null;
+  if (!row) return null;
+  return { attemptId: row.id, status: row.status, leadId: row.lead_id, relationshipId: row.relationship_id };
+}
+
 export async function findAcceptedAttemptByExternalRef(
   supabase: AnyDbClient,
   source: string,
@@ -103,16 +131,34 @@ export async function markIntakeAttempt(
   if (error) console.error("markIntakeAttempt failed:", error);
 }
 
-/** Records a notification send's outcome without otherwise touching the attempt's status. */
+export type IntakeNotificationStatus = "sent" | "failed" | "skipped";
+
+/**
+ * Which send this outcome belongs to.
+ * - inquirer: couple thank-you / confirmation. Never writes the venue column.
+ * - venue: venue notice. Also mirrors onto notification_status, which remains
+ *   the historical "did the venue find out" field and must not be raced by the thank-you.
+ * - single: one notification for the attempt (tour booking). Writes notification_status only.
+ */
+export type IntakeNotificationTarget = "inquirer" | "venue" | "single";
+
+/** Records one notification send without overwriting a different send's result. */
 export async function recordNotificationStatus(
   supabase: AnyDbClient,
   attemptId: string | null,
-  status: "sent" | "failed" | "skipped",
+  status: IntakeNotificationStatus,
+  target: IntakeNotificationTarget = "single",
 ): Promise<void> {
   if (!attemptId) return;
+  const update: Record<string, IntakeNotificationStatus> =
+    target === "inquirer"
+      ? { inquirer_notification_status: status }
+      : target === "venue"
+        ? { venue_notification_status: status, notification_status: status }
+        : { notification_status: status };
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (supabase.from("lead_intake_attempts") as any)
-    .update({ notification_status: status })
+    .update(update)
     .eq("id", attemptId);
   if (error) console.error("recordNotificationStatus failed:", error);
 }

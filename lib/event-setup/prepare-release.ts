@@ -1,0 +1,226 @@
+/**
+ * Prepare and release portal — one venue action after optional event edits.
+ *
+ * Releases client-facing planning and shares the timeline when present.
+ * Does NOT invite, send questionnaires, create invoices, or create/share
+ * inventory/Event Order. Commercial drafts are initiated only from the
+ * event commercial workspace / Library, never from Setup release.
+ */
+import { createClient } from "@/integrations/supabase/server";
+import { getCurrentVenue } from "@/lib/venue/service";
+import { eventSetupFromColumns } from "@/lib/event-setup/profile";
+import { parseTemplateRefs } from "@/lib/event-setup/template-refs";
+import { effectiveSetupDecision } from "@/lib/event-setup/state";
+import { capabilitiesFromVenue } from "@/lib/playbooks/capabilities";
+
+export type PrepareReleaseResult =
+  | { ok: true; message: string; releasedPlanning: boolean; sharedTimeline: boolean }
+  | { ok: false; message: string };
+
+export async function prepareAndReleasePortal(
+  eventId: string,
+  clientId: string,
+  coupleName: string,
+): Promise<PrepareReleaseResult> {
+  const venue = await getCurrentVenue();
+  if (!venue) return { ok: false, message: "No venue found." };
+  const caps = capabilitiesFromVenue(venue);
+  const supabase = await createClient();
+
+  const { data: event, error: eventError } = await supabase
+    .from("events")
+    .select("id, event_date, venue_id")
+    .eq("id", eventId)
+    .eq("venue_id", venue.id)
+    .maybeSingle<{ id: string; event_date: string | null; venue_id: string }>();
+  if (eventError || !event) return { ok: false, message: "Event not found." };
+
+  const { data: setupRow } = await supabase
+    .from("event_setup_states")
+    .select("*")
+    .eq("event_id", eventId)
+    .eq("venue_id", venue.id)
+    .maybeSingle();
+  const setup = setupRow ? eventSetupFromColumns(setupRow as never) : null;
+  const refs = parseTemplateRefs(setup?.inheritedTemplateRefs ?? {});
+
+  // Release client planning when a draft exists (idempotent if already released).
+  let releasedPlanning = false;
+  const { data: clientApp } = await supabase
+    .from("event_playbook_applications")
+    .select("id, released_at, kind")
+    .eq("event_id", eventId)
+    .eq("venue_id", venue.id)
+    .eq("kind", "client")
+    .maybeSingle<{ id: string; released_at: string | null; kind: string }>();
+
+  if (clientApp && !clientApp.released_at) {
+    const { releasePlaybookApplication } = await import("@/lib/playbooks/service");
+    const released = await releasePlaybookApplication(eventId, clientId, coupleName);
+    if (!released.ok) {
+      return { ok: false, message: released.message ?? "Could not release Client Planning." };
+    }
+    releasedPlanning = true;
+  } else if (clientApp?.released_at) {
+    releasedPlanning = true;
+  } else if (caps.checklists && refs.planningPlaybookTemplateId && event.event_date) {
+    // Apply then release if profile had a checklist but booking somehow skipped it.
+    const { applyPlaybookToEvent, releasePlaybookApplication } = await import("@/lib/playbooks/service");
+    const applied = await applyPlaybookToEvent(eventId, refs.planningPlaybookTemplateId, event.event_date);
+    if (!applied.ok && !/already has/i.test(applied.message ?? "")) {
+      return { ok: false, message: applied.message ?? "Could not apply Client Planning." };
+    }
+    const released = await releasePlaybookApplication(eventId, clientId, coupleName);
+    if (!released.ok) {
+      return { ok: false, message: released.message ?? "Could not release Client Planning." };
+    }
+    releasedPlanning = true;
+  }
+
+  // Recover venue/internal checklist when Included snapshot has a ref but booking missed it.
+  // Venue applications stay internal — never portal-released here.
+  const { data: venueApp } = await supabase
+    .from("event_playbook_applications")
+    .select("id")
+    .eq("event_id", eventId)
+    .eq("venue_id", venue.id)
+    .eq("kind", "venue")
+    .limit(1);
+  if (
+    caps.checklists
+    && (!venueApp || venueApp.length === 0)
+    && refs.venuePlanningPlaybookTemplateId
+    && event.event_date
+  ) {
+    try {
+      const { applyPlaybookToEvent } = await import("@/lib/playbooks/service");
+      const applied = await applyPlaybookToEvent(
+        eventId,
+        refs.venuePlanningPlaybookTemplateId,
+        event.event_date,
+      );
+      if (!applied.ok && !/already has/i.test(applied.message ?? "")) {
+        return { ok: false, message: applied.message ?? "Could not apply Venue Planning." };
+      }
+    } catch (err) {
+      console.error("prepareAndReleasePortal venue playbook failed:", err);
+      return { ok: false, message: "Could not apply Venue Planning checklist." };
+    }
+  }
+
+  // Ensure portal session exists even when planning was already released.
+  try {
+    const { getPortalSessions, createPortalSession } = await import("@/lib/portal/service");
+    const sessions = await getPortalSessions(clientId);
+    if (sessions.length === 0) await createPortalSession(clientId, coupleName);
+  } catch (err) {
+    console.error("prepareAndReleasePortal portal session failed:", err);
+  }
+
+  // Timeline: apply starting template if missing, then share with the couple.
+  let sharedTimeline = false;
+  const timelineDecision = setup ? effectiveSetupDecision(setup, "timeline") : null;
+  if (caps.timeline && timelineDecision !== "skipped") {
+    const { data: entries } = await supabase
+      .from("timeline_entries")
+      .select("id")
+      .eq("event_id", eventId)
+      .limit(1);
+    if ((!entries || entries.length === 0) && refs.timelineTemplateId) {
+      try {
+        const { data: eventTimes } = await supabase
+          .from("events")
+          .select("start_time")
+          .eq("id", eventId)
+          .eq("venue_id", venue.id)
+          .maybeSingle<{ start_time: string | null }>();
+        const { applyTimelineTemplateToEvent } = await import("@/lib/timeline-templates/apply");
+        await applyTimelineTemplateToEvent(eventId, refs.timelineTemplateId, eventTimes?.start_time ?? null);
+      } catch (err) {
+        console.error("prepareAndReleasePortal timeline apply failed:", err);
+        return { ok: false, message: "Could not apply the starting timeline." };
+      }
+    }
+    const { data: afterEntries } = await supabase
+      .from("timeline_entries")
+      .select("id")
+      .eq("event_id", eventId)
+      .limit(1);
+    if (afterEntries && afterEntries.length > 0) {
+      try {
+        const { releaseVenueTimelineForPrepare } = await import("@/lib/timeline/release-service");
+        const shared = await releaseVenueTimelineForPrepare(eventId);
+        if (shared.ok === false) {
+          console.error("prepareAndReleasePortal timeline release:", shared.message);
+        } else {
+          sharedTimeline = true;
+        }
+      } catch (err) {
+        console.error("prepareAndReleasePortal timeline release failed:", err);
+      }
+    }
+  }
+
+  // Floor-plan offers: ensure configured options exist when Included.
+  const floorDecision = setup ? effectiveSetupDecision(setup, "floor_plans") : null;
+  if (caps.floorPlan && floorDecision === "set_up") {
+    const preferred = refs.defaultFloorPlanTemplateId ?? null;
+    const selected = new Set(refs.floorPlanTemplateIds ?? []);
+    if (preferred) selected.add(preferred);
+    if (selected.size > 0) {
+      const { data: existingOffers } = await supabase
+        .from("event_floor_plan_offers")
+        .select("id")
+        .eq("event_id", eventId)
+        .eq("venue_id", venue.id)
+        .limit(1);
+      if (!existingOffers || existingOffers.length === 0) {
+        try {
+          const { upsertOffer } = await import("@/lib/floor-plan-offers/repository");
+          const ordered = [
+            ...(preferred ? [preferred] : []),
+            ...[...selected].filter((id) => id !== preferred),
+          ];
+          for (let i = 0; i < ordered.length; i += 1) {
+            await upsertOffer(supabase, venue.id, eventId, {
+              templateId: ordered[i]!,
+              sortOrder: i,
+              isOffered: true,
+            });
+          }
+        } catch (err) {
+          console.error("prepareAndReleasePortal floor-plan offers failed:", err);
+        }
+      }
+      try {
+        const { ensureWorkingLayoutForEvent } = await import("@/lib/floor-plans/ensure-working-layout");
+        await ensureWorkingLayoutForEvent(supabase, venue.id, eventId, {
+          preferredTemplateId: preferred,
+        });
+      } catch (err) {
+        console.error("prepareAndReleasePortal working floor plan failed:", err);
+      }
+    }
+  }
+
+  // Persist a prepare stamp on setup state when the column exists; ignore if absent.
+  try {
+    await supabase
+      .from("event_setup_states")
+      .update({
+        collapsed_at: new Date().toISOString(),
+      })
+      .eq("event_id", eventId)
+      .eq("venue_id", venue.id);
+  } catch {
+    /* non-blocking */
+  }
+
+  return {
+    ok: true,
+    releasedPlanning,
+    sharedTimeline,
+    message:
+      "Portal content is prepared and released for this event. Questionnaires are not sent by this action — staff send them with an authorized send when ready. Inventory selection and Event Order are commercial workflows — initiate them from the event Inventory and Event Order tabs (not Setup). Invite the client separately when you are ready — this did not send an invitation or create an invoice.",
+  };
+}

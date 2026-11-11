@@ -1,0 +1,104 @@
+{
+  "expectedSha": "c2f4c39d6313118ffa5fa1114127d0f821bcced7",
+  "servingImage": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:c2f4c39d6313118ffa5fa1114127d0f821bcced7",
+  "servingDigest": "sha256:cb8ef4f22277e6072074ab1d88d71a7f2abfb98ece2d1cb9baaf9d66cf9085c0",
+  "leadId": "907693d8-2694-4bd4-8de7-1fcbfd748848",
+  "counts": {
+    "pass": 18,
+    "fail": 0,
+    "total": 18
+  },
+  "checks": [
+    {
+      "name": "serving-sha",
+      "pass": true,
+      "detail": "expected=c2f4c39d6313 ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:c2f4c39d6313118ffa5fa1114127d0f821bcced7"
+    },
+    {
+      "name": "fixture-lead",
+      "pass": true,
+      "detail": "leadId=907693d8-2694-4bd4-8de7-1fcbfd748848"
+    },
+    {
+      "name": "desktop-sales-section-present",
+      "pass": true,
+      "detail": "salesH=117.875 rowH=66.875"
+    },
+    {
+      "name": "desktop-sales-compact-height",
+      "pass": true,
+      "detail": "height=117.875"
+    },
+    {
+      "name": "desktop-owner-present",
+      "pass": true,
+      "detail": "staff assignment"
+    },
+    {
+      "name": "desktop-hold-band",
+      "pass": true,
+      "detail": "date-hold-compact-band"
+    },
+    {
+      "name": "desktop-divider",
+      "pass": true,
+      "detail": "owner-hold divider"
+    },
+    {
+      "name": "desktop-owner-hold-same-row",
+      "pass": true,
+      "detail": "owner={\"x\":321.875,\"y\":312.96875,\"w\":330.96875,\"h\":34} hold={\"x\":704.84375,\"y\":312.96875,\"w\":516.78125,\"h\":34} midDelta=0"
+    },
+    {
+      "name": "protection-status-visible",
+      "pass": true,
+      "detail": "unprotected=true active=false headline=Not protected"
+    },
+    {
+      "name": "unprotected-copy",
+      "pass": true,
+      "detail": "Not protected"
+    },
+    {
+      "name": "unprotected-detail",
+      "pass": true,
+      "detail": "No active hold is protecting this event date."
+    },
+    {
+      "name": "place-hold-cta",
+      "pass": true,
+      "detail": "place=1"
+    },
+    {
+      "name": "management-row",
+      "pass": true,
+      "detail": "PIPELINE STAGE\n\nNew Inquiry\nChange stage\nEdit\nMerge lead\nDelete\nArchive"
+    },
+    {
+      "name": "next-actions-row",
+      "pass": true,
+      "detail": "Schedule Tour\nStart booking file"
+    },
+    {
+      "name": "desktop-no-horizontal-overflow",
+      "pass": true,
+      "detail": "{\"scrollWidth\":932,\"clientWidth\":932}"
+    },
+    {
+      "name": "narrow-sales-present",
+      "pass": true,
+      "detail": "salesH=156.125"
+    },
+    {
+      "name": "narrow-no-page-overflow",
+      "pass": true,
+      "detail": "{\"scrollWidth\":390,\"clientWidth\":390}"
+    },
+    {
+      "name": "narrow-actions-readable",
+      "pass": true,
+      "detail": "rows present at 390"
+    }
+  ],
+  "at": "2026-10-23T22:23:19.462Z"
+}

@@ -1,0 +1,14 @@
+{
+  "rootCause": "Vendor portal uses isolated cookie jar sb-<ref>-vendor-auth-token via createVendorClient(). Prior Phase 2 probe set the staff venue cookie sb-<ref>-auth-token, so getVendorUser() saw no vendor session and redirected to /vendor/login. Not an auth defect or missing membership — demo session/cookie scope mismatch.",
+  "classification": "Session/cookie issue (demo harness) — legitimate vendor_users membership already present for lila@floraandbranch.example",
+  "vendorCookie": "sb-wvpsldwwjqdannqasrdf-vendor-auth-token",
+  "dashboardUrl": "https://app.sandbox.hellotocheers.com/vendor/dashboard",
+  "dashSnippet": "Flora & Branch\n\nFlorist\n\nHome\nEvents\nMessages\nDocuments\nProfile\nSwitch workspace\nGive feedback\nChange password\nSign out\n3\nGood evening, Lila.\n\nFriday, November 6\n\nWelcome! I'm Luv. I'll help you stay ahead of messages, tasks, and event details from your venues.\n\nSee today's briefing →\nPARTNERING WITH\n\nThe Willow Grove\n\nFlorist Partner\n\nPreferred Vendor\nPartner since November 2026\n· 2 events together\n\n👋 Venue Contact\n\nEB\n\nElena Brooks\n\nOwner\n\nEmail\n+1 more contact\n\n🎁 Current Promotion\n\nWhat couples see on your profile at The Willow Grove.\n\n🎁 Preferred florist at The Willow Grove\n\nEdit promotion →\n\n📅 Next Event\n\nAutumn Grove Dinner\n\nSun, Nov 22\n\n2 upcoming events together\n\nOpen event →\n\nToday's briefing\n2 need attention\n\nLuv is keeping an eye on what matters for your events.\n\nNEEDS YOU NOW (2)\n\nNew event assignment — review details\n\nOlivia & James · The Willow Grove · Nov 4\n\nNew event assignment — review details\n\nAmelia & Ben · The Willow Grove · Nov 4\n\nWORTH KNOWING (1)\n\nNo COI on f",
+  "eventsSnippet": "Flora & Branch\n\nFlorist\n\nHome\nEvents\nMessages\nDocuments\nProfile\nSwitch workspace\nGive feedback\nChange password\nSign out\n3\nEvents\nUPCOMING\n\nOlivia & James Hayes Wedding\n\nThe Willow Grove\n\nSat, May 20\n\nArrival 1:30 PM\n\nUpcoming\n\nAutumn Grove Dinner\n\nThe Willow Grove\n\nSun, Nov 22\n\nArrival 2:00 PM\n\nUpcoming",
+  "hayesSnippet": "Flora & Branch\n\nFlorist\n\nHome\nEvents\nMessages\nDocuments\nProfile\nSwitch workspace\nGive feedback\nChange password\nSign out\n3\nDocument Library\n\nReusable files you attach to events.\n\nReusable files (COIs, W-9s, rate cards) you store here to then share with both venues and clients when needed.\n\nUpload\n\nNo documents yet\n\nUpload COIs, W-9s, and rate cards here so you can share them with venues and clients when an event needs them.",
+  "showsHayes": true,
+  "showsSharedPlanning": true,
+  "exposesVenuePrivateNotes": false,
+  "exposesFinancials": false,
+  "showsFloorPlan": false
+}

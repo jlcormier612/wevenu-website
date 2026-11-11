@@ -1,0 +1,99 @@
+{
+  "verdict": "GREEN",
+  "expectedSha": "23e59a03c22202a8c7c7ccc58f89f0eeed9a7281",
+  "passed": 18,
+  "failed": 0,
+  "checks": [
+    {
+      "name": "serving_sha",
+      "pass": true,
+      "detail": "serving=23e59a03c22202a8c7c7ccc58f89f0eeed9a7281 expected=23e59a03c22202a8c7c7ccc58f89f0eeed9a7281"
+    },
+    {
+      "name": "templates_available",
+      "pass": true,
+      "detail": "[{\"id\":\"c680cc72-872d-4dab-9bc0-815fefb35251\",\"name\":\"Standard Wedding — Ceremony + Reception\"},{\"id\":\"026fb633-2dce-4c73-87c8-144bb29a0318\",\"name\":\"Standard Wedding — Reception Only\"},{\"id\":\"3d4e11ef-7de7-495b-8fc7-b2eaf59584c3\",\"name\":\"Barn-master-floorplan\"}]"
+    },
+    {
+      "name": "zero_offers_waiting",
+      "pass": true,
+      "detail": "{\"ok\":true,\"reason\":\"no_offers\",\"floorPlanId\":null,\"autoAssigned\":false}"
+    },
+    {
+      "name": "zero_offers_portal_waiting_ui",
+      "pass": true,
+      "detail": "Waiting on a layout"
+    },
+    {
+      "name": "sole_offer_auto_assigned",
+      "pass": true,
+      "detail": "{\"ok\":true,\"reason\":\"sole_offer\",\"offerId\":\"3e36bd37-0a5c-4790-8cd9-56b45232a9ad\",\"floorPlanId\":\"ada6d039-3c8d-4dba-8065-d4a5efbe9e82\",\"autoAssigned\":true}"
+    },
+    {
+      "name": "sole_assign_idempotent",
+      "pass": true,
+      "detail": "{\"ensureSoleAgain\":{\"ok\":true,\"reason\":\"already_selected\",\"floorPlanId\":\"ada6d039-3c8d-4dba-8065-d4a5efbe9e82\",\"autoAssigned\":false},\"planCount\":1}"
+    },
+    {
+      "name": "sole_shared_and_seating_open",
+      "pass": true,
+      "detail": "{\"id\":\"ada6d039-3c8d-4dba-8065-d4a5efbe9e82\",\"shared_with_couple\":true,\"client_access\":\"view\",\"source_template_id\":\"026fb633-2dce-4c73-87c8-144bb29a0318\"}"
+    },
+    {
+      "name": "couple_move_unlocked",
+      "pass": true,
+      "detail": "{\"moveOk\":{\"x\":400,\"y\":48,\"ok\":true,\"objectId\":\"75a7729f-ff52-4ac0-a662-eb5f6acda140\"},\"afterMove\":{\"x\":400,\"y\":48}}"
+    },
+    {
+      "name": "couple_move_locked_rejected",
+      "pass": true,
+      "detail": "{\"moveLocked\":{\"ok\":false,\"error\":\"object_locked\"},\"afterLocked\":{\"x\":360,\"y\":90}}"
+    },
+    {
+      "name": "couple_add_table",
+      "pass": true,
+      "detail": "{\"ok\":true,\"label\":\"Table\",\"width\":72,\"height\":72,\"capacity\":8,\"objectId\":\"6e8922a3-1601-4bce-a577-2cc1f5131982\",\"objectType\":\"table_round\",\"inventoryItemId\":null}"
+    },
+    {
+      "name": "seating_without_venue_share_gate",
+      "pass": true,
+      "detail": "{\"seat\":true,\"seats\":[{\"id\":\"6a545915-edcb-4dfe-a7aa-3a2328d71353\",\"table_object_id\":\"6e8922a3-1601-4bce-a577-2cc1f5131982\"}]}"
+    },
+    {
+      "name": "move_preserves_assignment",
+      "pass": true,
+      "detail": "[{\"table_object_id\":\"6e8922a3-1601-4bce-a577-2cc1f5131982\"}]"
+    },
+    {
+      "name": "ready_blocks_couple_move",
+      "pass": true,
+      "detail": "{\"ok\":false,\"error\":\"plan_ready\"}"
+    },
+    {
+      "name": "sole_portal_skips_chooser",
+      "pass": true,
+      "detail": "Your Floor Plan | Ready for the event | Ready for the event | Ready for the event"
+    },
+    {
+      "name": "invalid_token_denied",
+      "pass": true,
+      "detail": "{\"ok\":false,\"error\":\"invalid_token\"}"
+    },
+    {
+      "name": "multi_needs_selection",
+      "pass": true,
+      "detail": "{\"ok\":true,\"reason\":\"needs_selection\",\"floorPlanId\":null,\"autoAssigned\":false}"
+    },
+    {
+      "name": "multi_select_shares_and_seating",
+      "pass": true,
+      "detail": "{\"selectB\":{\"ok\":true,\"offerId\":\"51b6b052-f85b-4ccc-bd18-df1a048b90c0\",\"templateId\":\"c680cc72-872d-4dab-9bc0-815fefb35251\",\"floorPlanId\":\"4574f3e5-3a69-4e02-a9db-5675523d8080\",\"autoAssigned\":false},\"multiPlan\":{\"shared_with_couple\":true,\"client_access\":\"view\",\"source_template_id\":\"c680cc72-872d-4dab-9bc0-815fefb35251\"}}"
+    },
+    {
+      "name": "multi_portal_working_after_select",
+      "pass": true,
+      "detail": "Your Floor Plan | Seating is available"
+    }
+  ],
+  "at": "2026-10-22T21:47:56.022Z"
+}

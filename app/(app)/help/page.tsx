@@ -13,7 +13,7 @@ export default async function HelpGuidesHomePage() {
   const visible = categories.filter((cat) => cat.articles.length > 0);
 
   return (
-    <div className="htc-hospitality-page space-y-8 max-w-3xl">
+    <div className="htc-hospitality-page space-y-4 sm:space-y-6 max-w-3xl">
       <div className="htc-hospitality-heading htc-hospitality-intro-accent">
         <h1 className="text-xl font-bold text-foreground flex items-center gap-2">
           <BookOpen className="h-5 w-5 text-muted-foreground" aria-hidden />
@@ -34,14 +34,14 @@ export default async function HelpGuidesHomePage() {
               ) : null}
             </div>
 
-            <div className="htc-surface-working divide-y divide-border rounded-sm">
+            <div className="htc-help-article-list rounded-sm border border-border divide-y divide-border">
               {cat.articles.map((a) => (
                 <Link
                   key={a.slug}
                   href={`/help/${a.slug}`}
-                  className="block px-4 py-3 text-sm font-medium text-foreground hover:bg-muted/40 transition-colors"
+                  className="htc-help-article-row block px-4 py-3 text-sm font-medium transition-colors"
                 >
-                  {a.title}
+                  <span className="htc-record-link">{a.title}</span>
                 </Link>
               ))}
             </div>

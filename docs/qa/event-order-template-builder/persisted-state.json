@@ -1,0 +1,76 @@
+{
+  "templateId": "d73d9734-98d9-46a0-b54b-dccadb036150",
+  "cateringSectionId": "a2f36af6-3434-4dd6-9094-a75ef907712c",
+  "groups": [
+    {
+      "id": "fa1636a6-a392-40d7-b3cb-a48cfcaec3e7",
+      "name": "Dinner service",
+      "section_id": "a2f36af6-3434-4dd6-9094-a75ef907712c",
+      "depends_on_option_ids": [],
+      "selection_mode": "single",
+      "min_select": 1
+    },
+    {
+      "id": "7a0eb11a-d4b7-43fd-b780-9045867af4ef",
+      "name": "Plated dinner details",
+      "section_id": "a2f36af6-3434-4dd6-9094-a75ef907712c",
+      "depends_on_option_ids": [
+        "4bf926c2-fd3a-44e6-9ea8-eb8ce67ab6c9"
+      ],
+      "selection_mode": "single",
+      "min_select": 0
+    },
+    {
+      "id": "2f6a3767-a0cd-4d3a-9f53-eb435f10065f",
+      "name": "Buffet dinner details",
+      "section_id": "a2f36af6-3434-4dd6-9094-a75ef907712c",
+      "depends_on_option_ids": [
+        "c629b92b-132e-4d00-bc96-0e315df55f89"
+      ],
+      "selection_mode": "single",
+      "min_select": 0
+    }
+  ],
+  "optionsSample": [
+    {
+      "id": "5b59b659-9bcd-4c96-82bc-f1334d62df8f",
+      "group_id": "dfd30bd7-bbc4-49f1-aca1-a00a35a5edd1",
+      "label": "Arbor",
+      "offering_id": null,
+      "unit_price": 350,
+      "is_included": false
+    },
+    {
+      "id": "4bf926c2-fd3a-44e6-9ea8-eb8ce67ab6c9",
+      "group_id": "fa1636a6-a392-40d7-b3cb-a48cfcaec3e7",
+      "label": "Plated Dinner",
+      "offering_id": null,
+      "unit_price": 85,
+      "is_included": false
+    },
+    {
+      "id": "c629b92b-132e-4d00-bc96-0e315df55f89",
+      "group_id": "fa1636a6-a392-40d7-b3cb-a48cfcaec3e7",
+      "label": "Buffet Dinner",
+      "offering_id": null,
+      "unit_price": 72,
+      "is_included": false
+    },
+    {
+      "id": "e4794273-22a0-43de-ae2c-345e64b94801",
+      "group_id": "6cef4198-ae9c-48d1-abd6-4db051a2ed57",
+      "label": "Beer & Wine",
+      "offering_id": null,
+      "unit_price": 28,
+      "is_included": false
+    },
+    {
+      "id": "e5673c82-3332-4ead-89fc-e13373080978",
+      "group_id": "8bad2c52-32dd-4882-b6ce-1119c56883a0",
+      "label": "Chiavari Chair",
+      "offering_id": null,
+      "unit_price": 8,
+      "is_included": false
+    }
+  ]
+}

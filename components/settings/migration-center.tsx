@@ -19,6 +19,7 @@
  */
 import * as React from "react";
 import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 import Papa from "papaparse";
 import { AlertTriangle, CheckCircle2, Download, FileText, Loader2, Sparkles, Upload } from "lucide-react";
 import { toast } from "sonner";
@@ -34,11 +35,14 @@ import {
   attachMigrationSourceFileAction,
   commitMigrationSessionAction,
   commitReviewedActiveCommitmentAction,
+  executeImportSessionCleanupAction,
   getMigrationSessionRecordsAction,
   getMigrationSessionResumeStateAction,
   getMigrationSessionSourceFilesAction,
   getMigrationVendorMatchLabelsAction,
   listMigrationSessionsAction,
+  migrationArtifactUploadPathAction,
+  previewImportSessionCleanupAction,
   proposeActiveCommitmentFromFileAction,
   proposeActiveCommitmentFromTextAction,
   proposeMigrationFieldMappingAction,
@@ -49,6 +53,7 @@ import {
 } from "@/app/(app)/settings/migration-actions";
 import { ActiveCommitmentReview } from "@/components/settings/active-commitment-review";
 import { FloorPlanMigrationImport } from "@/components/settings/floor-plan-migration-import";
+import { venueFileHref } from "@/lib/documents/access";
 import type { NormalizedActiveCommitment } from "@/lib/migration/active-commitment-model";
 import { isHistoricalRecordEligibleError, isLiveAvailabilityConflictError, HISTORICAL_RECORD_ELIGIBLE, HISTORICAL_RECORD_LABEL } from "@/lib/migration/historical-record";
 import {
@@ -56,20 +61,25 @@ import {
   LEGACY_CONFLICT_BADGE_LABEL,
   needsReviewBadgeLabel,
 } from "@/lib/migration/review-display";
-import { formatSessionOutcomeSentence } from "@/lib/migration/session-accounting";
+import { formatPartialImportGuidance, formatSessionOutcomeSentence } from "@/lib/migration/session-accounting";
 import {
+  DEFAULT_SOURCE_SELECTION_LANE,
+  IMPORT_HISTORY_COPY,
   MIGRATION_CENTER_INTRO,
   SOURCE_SELECTION_LANES,
+  laneAllowsImport,
   laneForRecognizedSource,
+  laneFromSourceQuery,
   namedSourceProfiles,
   sourceHistoryLabel,
   sourceKeyForLane,
   sourceSelectionGuidance,
   type SourceSelectionLane,
 } from "@/lib/migration/source-selection";
+import { autoMapHeaders } from "@/lib/migration/auto-map-headers";
 import { recognizeSource } from "@/lib/migration/source-profiles";
 import type {
-  MigrationEntityType, MigrationRecord, MigrationSession, SessionResumeState, SessionSourceFile, SessionSummary, SourceProfile,
+  MigrationEntityType, MigrationRecord, MigrationSession, SessionResumeState, SessionSourceFile, SessionSummary, SourceKey, SourceProfile,
 } from "@/lib/migration/types";
 import type { CutoverPrerequisite } from "@/lib/setup-hub/bring-your-business";
 import { BRING_YOUR_BUSINESS_ROUTES } from "@/lib/setup-hub/bring-your-business";
@@ -81,22 +91,22 @@ const ENTITY_LABEL: Record<MigrationEntityType, string> = {
   lead: "Leads (open inquiries)",
   vendor: "Vendors",
   event: "Events (standalone)",
-  payment: "Payments (use Active commitment)",
+  payment: "Payments (use Booked-event finances below)",
   document: "Documents (contracts & files on Events/Clients)",
   calendar_block: "Calendar blocks (incl. recurring)",
   date_hold: "Date holds",
   tour: "Tours / appointments",
   package: "Packages",
   key_date: "Key dates (historical — no longer importable)",
-  active_commitment: "Active commitment (Event Order, invoice, payments, signed agreement)",
-  guest_list: "Guest list (operational couple guests on an active Event)",
+  active_commitment: "Booked-event finances (invoice, payments, signed agreement)",
+  guest_list: "Guest list (client-owned — not importable via venue Migration Center)",
   event_vendor_assignment: "Event vendor assignments (photographer, caterer, …)",
   timeline_entry: "Timeline entries (near-event / finalized day-of)",
   floor_plan: "Floor plans (Space masters, event layouts, reference files)",
 };
 const COMMITTABLE_ENTITIES: MigrationEntityType[] = [
   "calendar_block", "date_hold", "client", "lead", "vendor", "package", "event", "tour",
-  "document", "active_commitment", "guest_list", "event_vendor_assignment", "timeline_entry",
+  "document", "active_commitment", "event_vendor_assignment", "timeline_entry",
   "floor_plan",
 ];
 
@@ -119,7 +129,7 @@ const FIELD_KEYS_BY_ENTITY: Record<MigrationEntityType, { key: string; label: st
     { key: "teardownTime", label: "Teardown time (HH:MM)", required: false },
     { key: "spaceName", label: "Event space name", required: false },
     { key: "spaceId", label: "Event space id (if you have it)", required: false },
-    { key: "internalNotes", label: "Notes", required: false },
+    { key: "internalNotes", label: "Internal notes", required: false },
     { key: "sourceId", label: "Their own record ID (if the export has one)", required: false },
   ],
   lead: [
@@ -182,6 +192,7 @@ const FIELD_KEYS_BY_ENTITY: Record<MigrationEntityType, { key: string; label: st
     { key: "description", label: "Description", required: false },
     { key: "basePrice", label: "Base price", required: false },
     { key: "category", label: "Category", required: false },
+    { key: "includedItems", label: "Included Items (desc|qty|unit; …)", required: false },
     { key: "sourceId", label: "Their own record ID", required: false },
   ],
   event: [
@@ -410,10 +421,13 @@ export function MigrationCenter({
   sourceProfiles,
   cutover,
   venueId,
+  initialSource = null,
 }: {
   sourceProfiles: SourceProfile[];
   cutover: CutoverPrerequisite;
   venueId: string;
+  /** URL `?source=` — first-class lane including starting_fresh / honeybook / … */
+  initialSource?: string | null;
 }) {
   const [sessions, setSessions] = React.useState<MigrationSession[]>([]);
   const [activeSessionId, setActiveSessionId] = React.useState<string | null>(null);
@@ -424,9 +438,15 @@ export function MigrationCenter({
   const [loading, startLoading] = React.useTransition();
   const [starting, setStarting] = React.useState(false);
 
+  const router = useRouter();
+  const pathname = usePathname();
   const namedProfiles = React.useMemo(() => namedSourceProfiles(sourceProfiles), [sourceProfiles]);
-  const [lane, setLane] = React.useState<SourceSelectionLane>("another_system");
+  const [lane, setLaneState] = React.useState<SourceSelectionLane>(() =>
+    laneFromSourceQuery(initialSource),
+  );
+  const allowsImport = laneAllowsImport(lane);
   const sourceKey = sourceKeyForLane(lane);
+  const importSourceKey: SourceKey = sourceKey ?? "generic_csv";
   const [entityType, setEntityType] = React.useState<MigrationEntityType>("client");
   const [headers, setHeaders] = React.useState<string[]>([]);
   const [rows, setRows] = React.useState<CsvRow[]>([]);
@@ -438,10 +458,59 @@ export function MigrationCenter({
   const [smartNotes, setSmartNotes] = React.useState<string[]>([]);
   const [smartWorking, setSmartWorking] = React.useState(false);
   const [commitmentDraft, setCommitmentDraft] = React.useState<NormalizedActiveCommitment | null>(null);
+  const [cleanupPreview, setCleanupPreview] = React.useState<{
+    eligibleCount: number;
+    overridableCount: number;
+    blockedCount: number;
+    alreadyGoneCount: number;
+    warnings: string[];
+    targets: Array<{
+      recordId: string;
+      entityType: string;
+      entityId: string;
+      disposition: string;
+      reason: string;
+      nextStep: string;
+      label: string;
+      consequences: string[];
+    }>;
+  } | null>(null);
+  const [cleanupOverrides, setCleanupOverrides] = React.useState<Set<string>>(new Set());
+  const [cleanupResult, setCleanupResult] = React.useState<{
+    deleted: number;
+    blocked: number;
+    skipped: number;
+    alreadyGone: number;
+    failed: number;
+    unresolved: number;
+    summary: string;
+    items: Array<{ entityType: string; label?: string; outcome: string; message: string; entityId: string }>;
+  } | null>(null);
+  const [cleanupWorking, setCleanupWorking] = React.useState(false);
   const smartFileRef = React.useRef<HTMLInputElement>(null);
 
-  const selectedProfile = sourceProfiles.find((p) => p.key === sourceKey) ?? sourceProfiles[0];
-  const guidance = sourceSelectionGuidance(lane, selectedProfile ?? null);
+  const setLane = React.useCallback(
+    (next: SourceSelectionLane) => {
+      setLaneState(next);
+      if (next === DEFAULT_SOURCE_SELECTION_LANE) {
+        router.replace(pathname, { scroll: false });
+      } else {
+        router.replace(`${pathname}?source=${encodeURIComponent(next)}`, { scroll: false });
+      }
+    },
+    [pathname, router],
+  );
+
+  React.useEffect(() => {
+    const fromQuery = laneFromSourceQuery(initialSource);
+    setLaneState((current) => (current === fromQuery ? current : fromQuery));
+  }, [initialSource]);
+
+  const selectedProfile =
+    (sourceKey ? sourceProfiles.find((p) => p.key === sourceKey) : null) ??
+    sourceProfiles.find((p) => p.key === "generic_csv") ??
+    sourceProfiles[0];
+  const guidance = sourceSelectionGuidance(lane, allowsImport ? selectedProfile ?? null : null);
   const activeSession = sessions.find((s) => s.id === activeSessionId) ?? null;
 
   const refreshSessions = React.useCallback(() => {
@@ -452,6 +521,8 @@ export function MigrationCenter({
 
   const openSession = React.useCallback((sessionId: string) => {
     setActiveSessionId(sessionId);
+    setCleanupPreview(null);
+    setCleanupOverrides(new Set());
     startLoading(async () => {
       const [resumeState, files] = await Promise.all([
         getMigrationSessionResumeStateAction(sessionId),
@@ -487,12 +558,9 @@ export function MigrationCenter({
         setHeaders(hs);
         setRows(results.data);
         const fields = FIELD_KEYS_BY_ENTITY[entityType];
-        const auto: Record<string, string> = {};
-        for (const f of fields) {
-          const found = hs.find((h) => h.trim().toLowerCase() === f.label.toLowerCase() || h.trim().toLowerCase() === f.key.toLowerCase());
-          if (found) auto[f.key] = found;
-        }
-        setMapping(auto);
+        // Compact + alias match so Tripleseat first_name / HoneyBook Name /
+        // third-party "E-mail Address" auto-map without forcing Luv or manual work.
+        setMapping(autoMapHeaders(hs, fields));
 
         // Best-effort recognition only — never forces a source; venue can keep
         // "another system" / manual mapping. Uses existing recognizeSource().
@@ -529,9 +597,16 @@ export function MigrationCenter({
         return;
       }
       const next = { ...mapping };
+      const usedHeaders = new Set(Object.values(next).filter(Boolean));
       let filled = 0;
       for (const [key, header] of Object.entries(result.mapping)) {
-        if (!next[key] && header) { next[key] = header; filled++; }
+        // Never steal a header already mapped to another field (e.g. Luv
+        // proposing Couple Name onto First name when Full name already has it).
+        if (!next[key] && header && !usedHeaders.has(header)) {
+          next[key] = header;
+          usedHeaders.add(header);
+          filled++;
+        }
       }
       if (filled === 0) {
         toast.info("Luv didn't find any new matches beyond what's already mapped.");
@@ -542,30 +617,46 @@ export function MigrationCenter({
     });
   }
 
-  async function uploadSourceFile(sessionId: string, file: File) {
+  // Keeps the original file the venue imported from, as an ordinary venue-level
+  // Document linked to this session — not a parallel storage system.
+  //
+  // This reports back instead of toasting. Retaining the original and importing
+  // the rows are two different promises: the rows were already parsed in the
+  // browser before this runs, so a storage failure here says nothing about
+  // whether the import worked. The old message asserted both at once, and
+  // asserted the import half before the rows had even been sent.
+  async function uploadSourceFile(
+    sessionId: string,
+    file: File,
+  ): Promise<{ ok: true } | { ok: false; message: string }> {
     try {
+      const pathResult = await migrationArtifactUploadPathAction(sessionId, file.name);
+      if (!pathResult.ok) return pathResult;
+      const fullPath = pathResult.storagePath;
       const supabase = createClient();
-      const docId = crypto.randomUUID();
-      const ext = file.name.split(".").pop()?.toLowerCase() ?? "csv";
-      // Same storage architecture components/document-workspace/upload-
-      // button.tsx already uses (the `documents` bucket, an unguessable
-      // random path) — a migration source file is stored as an ordinary,
-      // venue-level document, not a parallel storage system. sessionId and
-      // docId are both random UUIDs, so this path is not enumerable —
-      // matching every other document in this bucket's own security model.
-      const fullPath = `migration/${sessionId}/${docId}.${ext}`;
       const { error: uploadError } = await supabase.storage.from("documents").upload(fullPath, file, { upsert: false, contentType: file.type });
-      if (uploadError) { toast.error("Could not save the original file, but your data was still read and imported."); return; }
+      if (uploadError) return { ok: false, message: uploadError.message };
       const { data: urlData } = supabase.storage.from("documents").getPublicUrl(fullPath);
-      await attachMigrationSourceFileAction(sessionId, {
+      const attached = await attachMigrationSourceFileAction(sessionId, {
         fileName: file.name, fileSize: file.size, mimeType: file.type, storagePath: fullPath, storageUrl: urlData.publicUrl,
       });
-    } catch {
-      toast.error("Could not save the original file, but your data was still read and imported.");
+      if (!attached.ok) {
+        // Same rollback the other document uploaders do — never leave a stored
+        // object with no row pointing at it.
+        await supabase.storage.from("documents").remove([fullPath]);
+        return { ok: false, message: attached.message };
+      }
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, message: err instanceof Error ? err.message : "Unknown error." };
     }
   }
 
   async function handleStartAndUpload() {
+    if (!allowsImport) {
+      toast.error("Choose where you're moving from, or select I'm starting from scratch if you don't need to import yet.");
+      return;
+    }
     if (eventImportBlocked) {
       toast.error(cutover.message ?? "Add Event Spaces before importing dated Events.");
       return;
@@ -573,9 +664,13 @@ export function MigrationCenter({
     if (rows.length === 0) { toast.error("Choose a file first."); return; }
     setStarting(true);
     try {
-      const started = await startMigrationSessionAction(sourceKey);
+      const started = await startMigrationSessionAction(importSourceKey);
       if (!started.ok) { toast.error(started.message); return; }
-      if (pendingFile) await uploadSourceFile(started.session.id, pendingFile);
+      const sourceFile = pendingFile;
+      // Map + stage rows before source-file retention. Retention is a separate
+      // promise (keep a copy in history); a slow/hung storage upload must not
+      // block duplicate review or commit — white-glove operators were stuck on
+      // "Working…" with zero sessions when documents upload stalled.
       const sourceRows = rows.map((row) => {
         const mapped: Record<string, string | null> = {};
         for (const [key, col] of Object.entries(mapping)) mapped[key] = (row[col] ?? "").trim() || null;
@@ -586,6 +681,16 @@ export function MigrationCenter({
       const deduped = await runMigrationDedupeAction(started.session.id);
       if (!deduped.ok) { toast.error(deduped.message); return; }
       toast.success("Files recognized and checked for duplicates — review below.");
+      const retained = sourceFile ? await uploadSourceFile(started.session.id, sourceFile) : null;
+      // Said only now, when the import outcome is actually known, and only
+      // about the half that failed. The reason goes to the console for support
+      // rather than into a sentence a coordinator has to decode.
+      if (sourceFile && retained && !retained.ok) {
+        console.error("Migration source file retention failed:", retained.message);
+        toast.warning(
+          `Your rows were imported, but we couldn't keep a copy of ${sourceFile.name}. It won't be listed under "Original file", so hold on to your own copy.`,
+        );
+      }
       setRows([]); setHeaders([]); setMapping({}); setPendingFile(null);
       if (fileRef.current) fileRef.current.value = "";
       refreshSessions();
@@ -630,10 +735,85 @@ export function MigrationCenter({
     startLoading(async () => {
       const result = await commitMigrationSessionAction(sessionId);
       if (!result.ok) { toast.error(result.message); return; }
-      toast.success(`Imported ${result.outcome.committed}, skipped ${result.outcome.skipped}${result.outcome.failed ? `, ${result.outcome.failed} need another look` : ""}.`);
+      // Toast from the real post-commit session summary — never celebrate
+      // "success" while unresolved records remain (including ones that were
+      // already needs_review before this commit pass).
+      const resumeState = await getMigrationSessionResumeStateAction(sessionId);
+      if (resumeState) {
+        const guidance = formatPartialImportGuidance(resumeState.summary.counts);
+        if (guidance.tone === "attention") toast.message(`${guidance.headline}. ${guidance.detail}`);
+        else toast.success(guidance.detail);
+      } else {
+        const failedNote = result.outcome.failed
+          ? `, ${result.outcome.failed} need another look`
+          : "";
+        const line = `Imported ${result.outcome.committed}, skipped ${result.outcome.skipped}${failedNote}.`;
+        if (result.outcome.failed > 0) toast.message(line);
+        else toast.success(line);
+      }
       openSession(sessionId);
       refreshSessions();
     });
+  }
+
+  async function handlePreviewCleanup(sessionId: string) {
+    setCleanupWorking(true);
+    setCleanupResult(null);
+    setCleanupOverrides(new Set());
+    try {
+      const result = await previewImportSessionCleanupAction(sessionId);
+      if (!result.ok) {
+        toast.error(result.message);
+        setCleanupPreview(null);
+        return;
+      }
+      setCleanupPreview(result.preview);
+    } finally {
+      setCleanupWorking(false);
+    }
+  }
+
+  function toggleCleanupOverride(recordId: string) {
+    setCleanupOverrides((prev) => {
+      const next = new Set(prev);
+      if (next.has(recordId)) next.delete(recordId);
+      else next.add(recordId);
+      return next;
+    });
+  }
+
+  async function handleExecuteCleanup(sessionId: string) {
+    if (!cleanupPreview) return;
+    const removeCount = cleanupPreview.eligibleCount + cleanupOverrides.size;
+    if (removeCount === 0) return;
+    const blockedNote = cleanupPreview.blockedCount > 0
+      ? `\n${cleanupPreview.blockedCount} blocked record${cleanupPreview.blockedCount === 1 ? "" : "s"} will stay — see the reasons listed.`
+      : "";
+    const overrideNote = cleanupOverrides.size > 0
+      ? `\n${cleanupOverrides.size} warned record${cleanupOverrides.size === 1 ? "" : "s"} you selected will also be removed (including any later edits).`
+      : "";
+    const confirmed = window.confirm(
+      `Remove ${removeCount} record${removeCount === 1 ? "" : "s"} from this import?${overrideNote}${blockedNote}\n\n` +
+      `This is not a full Undo — only attributed records you chose are removed.`,
+    );
+    if (!confirmed) return;
+    setCleanupWorking(true);
+    try {
+      const result = await executeImportSessionCleanupAction(sessionId, [...cleanupOverrides]);
+      if (!result.ok) {
+        toast.error(result.message);
+        return;
+      }
+      setCleanupPreview(null);
+      setCleanupOverrides(new Set());
+      if (result.unresolved > 0 || result.failed > 0) toast.message(result.summary);
+      else toast.success(result.summary);
+      openSession(sessionId);
+      refreshSessions();
+      setCleanupResult(result);
+    } finally {
+      setCleanupWorking(false);
+    }
   }
 
   async function handleSmartActiveCommitmentFromText() {
@@ -683,14 +863,14 @@ export function MigrationCenter({
     if (!commitmentDraft) return;
     setSmartWorking(true);
     try {
-      const result = await commitReviewedActiveCommitmentAction(sourceKey, commitmentDraft);
+      const result = await commitReviewedActiveCommitmentAction(importSourceKey, commitmentDraft);
       if (!result.ok) {
         toast.error("message" in result ? result.message : "Could not import this commitment.");
         return;
       }
       toast.success(
         result.outcome.committed > 0
-          ? "Active commitment imported into Hello to Cheers."
+          ? "Booked-event finances imported into Hello to Cheers."
           : `Imported ${result.outcome.committed}, skipped ${result.outcome.skipped}${result.outcome.failed ? `, ${result.outcome.failed} need another look` : ""}.`,
       );
       setCommitmentDraft(null);
@@ -703,6 +883,10 @@ export function MigrationCenter({
   }
 
   const pendingCommitCount = resume ? resume.summary.counts.validated + resume.summary.counts.approved : 0;
+  const partialGuidance =
+    resume && (resume.state === "needs_review" || resume.state === "partially_done")
+      ? formatPartialImportGuidance(resume.summary.counts)
+      : null;
   const datedEventsBlocked = !cutover.readyForDatedEvents && (entityType === "event" || entityType === "client");
   const eventImportBlocked = !cutover.readyForDatedEvents && entityType === "event";
 
@@ -736,11 +920,13 @@ export function MigrationCenter({
             </RadioGroup>
           </div>
 
-          <div className="rounded-lg border border-border bg-muted/30 px-3 py-2.5">
+          <div className="htc-surface-guidance space-y-1 px-3 py-2.5">
             <p className="text-sm font-medium text-heading">{guidance.headline}</p>
             <p className="mt-1 text-xs text-muted-foreground leading-relaxed">{guidance.body}</p>
           </div>
 
+          {allowsImport ? (
+          <>
           <div className="space-y-1.5">
             <p className="text-xs font-medium text-heading">What are you bringing over?</p>
             <Select value={entityType} onValueChange={(v) => setEntityType(v as MigrationEntityType)} items={COMMITTABLE_ENTITIES.map((e) => ({ value: e, label: ENTITY_LABEL[e] }))}>
@@ -750,13 +936,16 @@ export function MigrationCenter({
           </div>
 
           {entityType === "active_commitment" ? (
-            <div className="space-y-3 rounded-lg border border-border bg-muted/20 px-3 py-3">
+            <div className="htc-surface-guidance space-y-3 px-3 py-3">
               <div className="space-y-1">
-                <p className="text-sm font-medium text-heading">Smart Import — active booked Event</p>
+                <p className="text-sm font-medium text-heading">
+                  Booked-event finances — invoice, payments, signed agreement
+                </p>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Upload the signed PDF/DOCX (preferred) or paste booking text. Hello to Cheers extracts a proposal,
-                  retains the original file, and shows a full financial review before anything is created.
-                  Import the Client and Event first when they are not already in HTC.
+                  Use this when a booking already has money terms or a signed agreement outside Hello to
+                  Cheers. Upload the signed PDF/DOCX (preferred) or paste booking text. Hello to Cheers
+                  proposes an invoice, payment schedule, and agreement for you to review — nothing is
+                  created until you confirm. Import the client and event first if they are not already here.
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
@@ -803,11 +992,54 @@ export function MigrationCenter({
             </div>
           ) : null}
 
-          <div className="rounded-lg border border-dashed border-border p-4">
-            <input ref={fileRef} type="file" accept=".csv" onChange={handleFile} className="text-sm" disabled={eventImportBlocked} />
-            <p className="mt-1 text-[11px] text-muted-foreground">
-              CSV export from {lane === "honeybook" || lane === "tripleseat" ? selectedProfile.displayName : "your current system"}.
-              We&apos;ll keep a copy of this file with your migration history. This never connects to or logs into another platform on your behalf.
+          {entityType === "document" ? (
+            <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5 text-xs text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
+              Document CSV rows link files that are <span className="font-medium">already in Hello to Cheers storage</span>.
+              Each row needs <span className="font-medium">fileName</span>, <span className="font-medium">storagePath</span>, and{" "}
+              <span className="font-medium">storageUrl</span> from an uploaded object. Missing paths are rejected — a database
+              row alone is not a migrated file. For contracts with booking financials, prefer{" "}
+              <span className="font-medium">Booked-event finances</span> (upload PDF/DOCX). Floor plans have their own uploader below.
+            </div>
+          ) : null}
+
+          <div className="rounded-lg border border-dashed border-border p-4 space-y-2">
+            <p className="text-xs font-medium text-heading">CSV files</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={eventImportBlocked}
+                onClick={() => fileRef.current?.click()}
+              >
+                <Upload className="mr-1.5 h-3.5 w-3.5" />
+                Choose file
+              </Button>
+              <input
+                ref={fileRef}
+                type="file"
+                accept=".csv"
+                onChange={handleFile}
+                className="sr-only"
+                disabled={eventImportBlocked}
+              />
+              <p className="text-xs text-muted-foreground">
+                {pendingFile ? pendingFile.name : "CSV"}
+              </p>
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Upload a CSV export from {lane === "honeybook" || lane === "tripleseat" ? selectedProfile.displayName : "your current system"}.
+              We&apos;ll keep a copy of this file with your import history. This never connects to or logs into another platform on your behalf.
+            </p>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              Have an Excel spreadsheet or another supported file?{" "}
+              <Link
+                href={BRING_YOUR_BUSINESS_ROUTES.spreadsheetImport}
+                className="font-medium text-heading underline underline-offset-2"
+              >
+                Use Import Wizard
+              </Link>
+              {" "}for Excel (.xlsx/.xls), Word (.docx), or PDF.
             </p>
           </div>
 
@@ -841,6 +1073,8 @@ export function MigrationCenter({
               </div>
             </div>
           )}
+          </>
+          ) : null}
         </CardContent>
       </Card>
 
@@ -866,7 +1100,11 @@ export function MigrationCenter({
               <div className="space-y-1.5">
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Original file{sourceFiles.length === 1 ? "" : "s"}</p>
                 {sourceFiles.map((f) => (
-                  <a key={f.documentId} href={f.storageUrl} target="_blank" rel="noopener noreferrer"
+                  // Through the authorized route, not the stored URL: the
+                  // documents bucket is private, so the stored public URL
+                  // resolves to nothing. Same href every other Documents
+                  // surface uses.
+                  <a key={f.documentId} href={venueFileHref(f.documentId)} target="_blank" rel="noopener noreferrer"
                     className="flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm hover:bg-muted/20">
                     <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
                     <span className="min-w-0 flex-1 truncate">{f.fileName}</span>
@@ -888,6 +1126,16 @@ export function MigrationCenter({
 
             {resume?.state === "empty" && (
               <p className="text-sm text-muted-foreground">Nothing was recognized from this upload yet.</p>
+            )}
+
+            {partialGuidance && (
+              <div
+                className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 text-sm text-foreground"
+                data-migration-outcome="needs-attention"
+              >
+                <p className="font-medium text-heading">{partialGuidance.headline}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{partialGuidance.detail}</p>
+              </div>
             )}
 
             {(resume?.state === "needs_review" || resume?.state === "partially_done") && decisionRecords.length > 0 && (
@@ -960,14 +1208,132 @@ export function MigrationCenter({
                 Everything from this file has been resolved — {outcomeSentence(resume.summary)}.
               </div>
             )}
+
+            {(resume?.state === "done" || resume?.state === "partially_done") &&
+              (activeSession?.status === "committed" || activeSession?.status === "partially_committed" || activeSession?.status === "failed") &&
+              (resume.summary.counts.committed > 0) && (
+              <div className="space-y-3 rounded-lg border border-dashed border-border p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium text-heading">Import cleanup</p>
+                    <p className="text-xs text-muted-foreground">
+                      Remove records this import created. Ready-to-remove rows go first; warned rows need your choice;
+                      blocked rows stay with a clear next step. This is not a full Undo.
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={cleanupWorking || loading}
+                    onClick={() => handlePreviewCleanup(activeSession.id)}
+                  >
+                    {cleanupWorking && !cleanupPreview ? (
+                      <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />Reviewing…</>
+                    ) : (
+                      "Review what can be removed"
+                    )}
+                  </Button>
+                </div>
+
+                {cleanupPreview && (
+                  <div className="space-y-2 text-xs">
+                    <p className="text-foreground">
+                      {cleanupPreview.eligibleCount} ready · {cleanupPreview.overridableCount} need your choice · {cleanupPreview.blockedCount} blocked · {cleanupPreview.alreadyGoneCount} already gone
+                    </p>
+                    {cleanupPreview.warnings.map((w) => (
+                      <p key={w} className="text-muted-foreground">{w}</p>
+                    ))}
+                    <div className="max-h-64 space-y-2 overflow-y-auto rounded border border-border bg-muted/10 p-2">
+                      {cleanupPreview.targets.map((t) => {
+                        const selected = cleanupOverrides.has(t.recordId);
+                        return (
+                          <div key={t.recordId} className="space-y-1 border-b border-border/60 pb-2 last:border-0 last:pb-0">
+                            <div className="flex items-start gap-2">
+                              {t.disposition === "overridable" ? (
+                                <input
+                                  type="checkbox"
+                                  className="mt-0.5"
+                                  checked={selected}
+                                  onChange={() => toggleCleanupOverride(t.recordId)}
+                                  aria-label={`Also remove ${t.label}`}
+                                />
+                              ) : (
+                                <span className="mt-0.5 w-3.5 shrink-0" />
+                              )}
+                              <div className="min-w-0 flex-1">
+                                <p className="text-foreground">
+                                  <span className="font-medium">{t.label}</span>
+                                  <span className="text-muted-foreground"> · {t.entityType}</span>
+                                </p>
+                                <p className="text-muted-foreground">{t.reason}</p>
+                                {t.consequences.length > 0 && selected && (
+                                  <ul className="mt-1 list-disc pl-4 text-amber-700 dark:text-amber-400">
+                                    {t.consequences.map((c) => <li key={c}>{c}</li>)}
+                                  </ul>
+                                )}
+                                {t.disposition === "blocked" && (
+                                  <p className="mt-0.5 text-amber-700 dark:text-amber-400">Next: {t.nextStep}</p>
+                                )}
+                              </div>
+                              <span className={
+                                t.disposition === "eligible" ? "text-success shrink-0"
+                                  : t.disposition === "already_gone" ? "text-muted-foreground shrink-0"
+                                  : t.disposition === "overridable" ? "text-amber-600 shrink-0"
+                                  : "text-destructive shrink-0"
+                              }>
+                                {t.disposition === "eligible" ? "Ready"
+                                  : t.disposition === "already_gone" ? "Gone"
+                                  : t.disposition === "overridable" ? (selected ? "Will remove" : "Your choice")
+                                  : "Blocked"}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="flex justify-end gap-2">
+                      <Button size="sm" variant="ghost" disabled={cleanupWorking} onClick={() => { setCleanupPreview(null); setCleanupOverrides(new Set()); }}>
+                        Cancel
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        disabled={cleanupWorking || (cleanupPreview.eligibleCount + cleanupOverrides.size) === 0}
+                        onClick={() => handleExecuteCleanup(activeSession.id)}
+                      >
+                        {cleanupWorking ? (
+                          <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />Removing…</>
+                        ) : (
+                          `Remove ${cleanupPreview.eligibleCount + cleanupOverrides.size}`
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {cleanupResult && (
+                  <div className="space-y-1 text-xs text-foreground">
+                    <p>{cleanupResult.summary}</p>
+                    <p className="text-muted-foreground">
+                      {cleanupResult.deleted} removed · {cleanupResult.blocked} blocked · {cleanupResult.skipped} left as chosen · {cleanupResult.failed} failed · {cleanupResult.alreadyGone} already gone
+                    </p>
+                    {cleanupResult.items.filter((i) => i.outcome === "failed" || i.outcome === "blocked").slice(0, 12).map((i) => (
+                      <p key={`${i.entityId}-${i.outcome}`} className="text-muted-foreground">
+                        {i.label ?? i.entityType}: {i.message}
+                      </p>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
 
-      {venueId ? (
+      {venueId && allowsImport ? (
         <FloorPlanMigrationImport
           venueId={venueId}
-          sourceKey={sourceKey}
+          sourceKey={importSourceKey}
           onSessionReady={(id) => {
             setActiveSessionId(id);
             openSession(id);
@@ -980,12 +1346,12 @@ export function MigrationCenter({
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">History</CardTitle>
-          <CardDescription>Every migration you've started, with what happened — leave and come back any time.</CardDescription>
+          <CardTitle className="text-base">{IMPORT_HISTORY_COPY.title}</CardTitle>
+          <CardDescription>{IMPORT_HISTORY_COPY.description}</CardDescription>
         </CardHeader>
         <CardContent>
           {sessions.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No migrations started yet.</p>
+            <p className="text-sm text-muted-foreground">{IMPORT_HISTORY_COPY.empty}</p>
           ) : (
             <div className="space-y-1.5">
               {sessions.map((s) => {

@@ -1,0 +1,2 @@
+clientEmail,eventDate,title,entryTime,forceImport,sourceId
+spec.ops.client@example.invalid,2026-12-19,Too far rehearsal,10:00,no,spec-tl-far

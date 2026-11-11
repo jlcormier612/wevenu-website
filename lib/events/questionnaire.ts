@@ -7,6 +7,8 @@
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { sendEmail } from "@/lib/email/send";
+import { wrapConversationMessageHtml } from "@/lib/email/conversation-brand";
+import { emailBrandFromVenue } from "@/lib/email/venue-brand";
 import { kindLabel, getQuestionnaireMasterByKind, masterIncludedFieldIds, masterRequiredFieldIds, type QuestionnaireKind } from "@/lib/questionnaire-family/definitions";
 import {
   sanitizeCustomFields,
@@ -54,6 +56,10 @@ export type Questionnaire = {
   submittedAt: string | null;
   changesRequestedNote: string | null;
   changesRequestedAt: string | null;
+  scheduledSendAt: string | null;
+  scheduledSendStatus: "scheduled" | "sending" | "sent" | "failed" | "cancelled" | null;
+  scheduledSendMessage: string | null;
+  scheduledSendError: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -74,6 +80,10 @@ type QRow = {
   submitted_at: string | null;
   changes_requested_note?: string | null;
   changes_requested_at?: string | null;
+  scheduled_send_at?: string | null;
+  scheduled_send_status?: string | null;
+  scheduled_send_message?: string | null;
+  scheduled_send_error?: string | null;
   created_at: string; updated_at: string;
 };
 
@@ -101,6 +111,10 @@ function mapQ(r: QRow): Questionnaire {
     submittedAt: r.submitted_at,
     changesRequestedNote: r.changes_requested_note ?? null,
     changesRequestedAt: r.changes_requested_at ?? null,
+    scheduledSendAt: r.scheduled_send_at ?? null,
+    scheduledSendStatus: (r.scheduled_send_status as Questionnaire["scheduledSendStatus"]) ?? null,
+    scheduledSendMessage: r.scheduled_send_message ?? null,
+    scheduledSendError: r.scheduled_send_error ?? null,
     createdAt: r.created_at, updatedAt: r.updated_at,
   };
 }
@@ -175,6 +189,20 @@ const SHARE_DEFAULTS: Record<QuestionnaireKind, { subject: string; body: string 
   },
 };
 
+type VenueEmailBits = {
+  id: string;
+  name: string;
+  email?: string | null;
+  logoUrl?: string | null;
+  primaryColor?: string | null;
+  emailSignature?: string | null;
+  phone?: string | null;
+  emailFooterShowSignature?: boolean | null;
+  emailFooterShowEmail?: boolean | null;
+  emailFooterShowPhone?: boolean | null;
+};
+
+/** Session-bound send — used by staff Share / Send now. */
 export async function sendQuestionnaireToCouple(
   eventId: string,
   coupleEmail: string,
@@ -188,36 +216,69 @@ export async function sendQuestionnaireToCouple(
   const venue = await getCurrentVenue();
   if (!venue) return { ok: false, message: "No venue found." };
   const supabase = await createClient();
+  return sendQuestionnaireToCoupleForVenue(
+    supabase,
+    venue.id,
+    eventId,
+    coupleEmail,
+    coupleName,
+    eventName,
+    threadId,
+    customMessage,
+    kind,
+    venue,
+  );
+}
 
+/**
+ * Venue-scoped send used by staff actions and the scheduled-send cron.
+ * Resolves form link + status/activity the same way for both paths.
+ */
+type QuestionnaireDb = Awaited<ReturnType<typeof createClient>>;
+
+export async function sendQuestionnaireToCoupleForVenue(
+  supabase: QuestionnaireDb,
+  venueId: string,
+  eventId: string,
+  coupleEmail: string,
+  coupleName: string,
+  eventName: string,
+  threadId?: string,
+  customMessage?: string,
+  kind: QuestionnaireKind = "final_details",
+  venueBits?: VenueEmailBits | null,
+): Promise<{ ok: boolean; formUrl?: string; message?: string }> {
   const { data: existing } = await supabase.from("event_questionnaires")
-    .select("id, access_key, status").eq("event_id", eventId).eq("venue_id", venue.id).eq("kind", kind)
-    .maybeSingle<{ id: string; access_key: string; status: string }>();
-  const isResend = existing ? existing.status !== "draft" : false;
+    .select("id, access_key, status").eq("event_id", eventId).eq("venue_id", venueId).eq("kind", kind)
+    .maybeSingle();
+  const existingRow = existing as { id: string; access_key: string; status: string } | null;
+  const isResend = existingRow ? existingRow.status !== "draft" : false;
 
   let accessKey: string;
-  if (existing) {
-    accessKey = existing.access_key;
+  if (existingRow) {
+    accessKey = existingRow.access_key;
   } else {
     const master = getQuestionnaireMasterByKind(kind);
     const { data: created } = await supabase.from("event_questionnaires")
       .insert({
-        venue_id: venue.id,
+        venue_id: venueId,
         event_id: eventId,
         kind,
         included_fields: masterIncludedFieldIds(master),
         required_fields: masterRequiredFieldIds(master),
       })
-      .select("access_key").single<{ access_key: string }>();
-    if (!created) return { ok: false, message: "Could not create the form." };
-    accessKey = created.access_key;
+      .select("access_key").single();
+    const createdRow = created as { access_key: string } | null;
+    if (!createdRow) return { ok: false, message: "Could not create the form." };
+    accessKey = createdRow.access_key;
   }
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
   const formUrl = `${appUrl}/questionnaire/${accessKey}`;
 
   const patch: Record<string, unknown> = {
-    status: existing?.status === "submitted" || existing?.status === "resubmitted" || existing?.status === "complete" || existing?.status === "changes_requested" || existing?.status === "in_progress"
-      ? existing.status
+    status: existingRow?.status === "submitted" || existingRow?.status === "resubmitted" || existingRow?.status === "complete" || existingRow?.status === "changes_requested" || existingRow?.status === "in_progress"
+      ? existingRow.status
       : "sent",
     sent_at: new Date().toISOString(),
     kind,
@@ -225,35 +286,52 @@ export async function sendQuestionnaireToCouple(
   if (threadId) patch.thread_id = threadId;
   const { data: sentRow } = await supabase.from("event_questionnaires")
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .update(patch as any).eq("event_id", eventId).eq("venue_id", venue.id).eq("kind", kind)
-    .select("id").maybeSingle<{ id: string }>();
-  if (sentRow) {
+    .update(patch as any).eq("event_id", eventId).eq("venue_id", venueId).eq("kind", kind)
+    .select("id").maybeSingle();
+  const sent = sentRow as { id: string } | null;
+  if (sent) {
     await logActivity(
-      supabase, venue.id, sentRow.id,
+      supabase, venueId, sent.id,
       isResend ? "resent" : "sent",
       isResend ? `Resent ${kindLabel(kind)}` : `Sent ${kindLabel(kind)}`,
     );
   }
 
+  let venueSource: VenueEmailBits | Record<string, unknown> | null = venueBits ?? null;
+  if (!venueSource) {
+    const { data } = await supabase.from("venues")
+      .select("id, name, email, logo_url, primary_color, email_signature, phone, email_footer_show_signature, email_footer_show_email, email_footer_show_phone")
+      .eq("id", venueId)
+      .maybeSingle();
+    if (!data) return { ok: false, formUrl, message: "Venue not found for send." };
+    venueSource = data as Record<string, unknown>;
+  }
+
+  const venueName = String((venueSource as { name?: string }).name ?? "Your venue");
+  const venueEmail = (venueSource as { email?: string | null }).email ?? null;
+
   const share = SHARE_DEFAULTS[kind];
   const defaultText = share.body.replace(/\{\{event\}\}/g, eventName);
 
   if (process.env.RESEND_API_KEY && process.env.FROM_EMAIL) {
+    const text = [
+      `Hi ${coupleName},`,
+      "",
+      customMessage?.trim() || defaultText,
+      "",
+      formUrl,
+      "",
+      `Everything goes directly to ${venueName} — no PDFs, no attachments.`,
+      "",
+      venueName,
+    ].join("\n");
+    const brand = emailBrandFromVenue(venueSource as never);
     const emailResult = await sendEmail({
       to: coupleEmail,
       subject: share.subject.replace(/\{\{event\}\}/g, eventName),
-      text: [
-        `Hi ${coupleName},`,
-        "",
-        customMessage?.trim() || defaultText,
-        "",
-        formUrl,
-        "",
-        `Everything goes directly to ${venue.name} — no PDFs, no attachments.`,
-        "",
-        venue.name,
-      ].join("\n"),
-      replyTo: venue.email ?? undefined,
+      text,
+      html: wrapConversationMessageHtml(brand, text),
+      replyTo: venueEmail ?? undefined,
     });
     if (!emailResult.ok) {
       return { ok: false, formUrl, message: `The form link was created, but the email couldn't be sent: ${emailResult.message}` };
@@ -464,6 +542,14 @@ export async function completeQuestionnaire(
   if (error) return { ok: false, message: error.message };
   if (!data) return { ok: false, message: "Only a submitted form can be marked complete." };
   await logActivity(supabase, venue.id, data.id, "completed", `${kindLabel(kind)} marked complete`, "Coordinator completed review");
+
+  // Finish line for questionnaire_submitted planning tasks — submit only advances
+  // to needs-review; venue Mark Complete satisfies the auto-complete trigger.
+  try {
+    const { triggerAutoComplete } = await import("@/lib/playbooks/service");
+    await triggerAutoComplete(supabase, venue.id, eventId, "questionnaire_submitted");
+  } catch { /* non-blocking */ }
+
   return { ok: true };
 }
 

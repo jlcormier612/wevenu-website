@@ -12,11 +12,16 @@
 import { createClient } from "@supabase/supabase-js";
 
 import { sendEmail } from "@/lib/email/send";
+import { buildVenueNotificationEmail } from "@/lib/notifications/venue-notification-email";
 import { wrapConversationMessageHtml } from "@/lib/email/conversation-brand";
 import { appendEmailSignatureText, emailBrandFromVenue } from "@/lib/email/venue-brand";
 import { recordExternalClientOutbound } from "@/lib/conversations/record-external-outbound";
+import { applyReminderScope } from "@/lib/notifications/reminder-scope";
+import { nextRecurringReminderAt } from "@/lib/notifications/schedule-times";
+import { resolveMessageReceivedRecipients } from "@/lib/notifications/message-received-recipients";
 import type { ProcessResult } from "@/lib/notifications/types";
 import { cadenceIntervalDays, type CadenceLabel } from "@/lib/notifications/obligations";
+import { getVenueTimezone } from "@/lib/venue/timezone";
 
 const BATCH_SIZE = 50;
 
@@ -25,12 +30,6 @@ function getServiceClient() {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) throw new Error("Missing SUPABASE_SERVICE_ROLE_KEY for obligation engine.");
   return createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
-}
-
-function offsetDatetime(datetimeStr: string, days: number): string {
-  const d = new Date(datetimeStr);
-  d.setDate(d.getDate() + days);
-  return d.toISOString();
 }
 
 // ── Client-facing: payment/contract reminder sends + recurrence ────────────
@@ -49,20 +48,37 @@ type ContractReminderRow = {
   contracts: { id: string; title: string; status: string; expires_at: string | null; client_id: string | null; sign_token: string } | null;
 };
 
-export async function processObligationReminders(): Promise<ProcessResult> {
+/**
+ * Same scope as task reminders. Cron calls with no args. When both
+ * reminderIds and venueId are set, a row must match both. An empty
+ * reminderIds array does not filter by id.
+ */
+export type ObligationReminderScope = {
+  reminderIds?: string[];
+  venueId?: string;
+};
+
+export async function processObligationReminders(
+  scope?: ObligationReminderScope,
+): Promise<ProcessResult> {
   const result: ProcessResult = { processed: 0, sent: 0, failed: 0, skipped: 0, errors: [] };
   const supabase = getServiceClient();
   const now = new Date().toISOString();
 
-  await processPaymentReminders(supabase, now, result);
-  await processContractReminders(supabase, now, result);
+  await processPaymentReminders(supabase, now, result, scope);
+  await processContractReminders(supabase, now, result, scope);
 
   return result;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function processPaymentReminders(supabase: any, now: string, result: ProcessResult): Promise<void> {
-  const { data: reminders, error } = await supabase
+async function processPaymentReminders(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
+  now: string,
+  result: ProcessResult,
+  scope?: ObligationReminderScope,
+): Promise<void> {
+  let query = supabase
     .from("task_reminders")
     .select(`
       id, venue_id, payment_line_item_id, reminder_type, scheduled_for, after_due_recur_interval_days,
@@ -73,6 +89,10 @@ async function processPaymentReminders(supabase: any, now: string, result: Proce
     .lte("scheduled_for", now)
     .order("scheduled_for")
     .limit(BATCH_SIZE);
+
+  query = applyReminderScope(query, scope);
+
+  const { data: reminders, error } = await query;
 
   if (error) { result.errors.push(`Payment reminder fetch error: ${error.message}`); return; }
   if (!reminders?.length) return;
@@ -98,8 +118,9 @@ async function processPaymentReminders(supabase: any, now: string, result: Proce
         .select("first_name, partner_first_name, email").eq("id", schedule.client_id).maybeSingle();
       if (!client?.email) { result.skipped++; continue; }
 
+      const { VENUE_EMAIL_BRAND_SELECT } = await import("@/lib/email/venue-brand");
       const { data: venue } = await supabase.from("venues")
-        .select("name, logo_url, primary_color, email_signature, email, phone")
+        .select(VENUE_EMAIL_BRAND_SELECT)
         .eq("id", reminder.venue_id)
         .maybeSingle();
       const brand = emailBrandFromVenue(venue);
@@ -117,12 +138,17 @@ async function processPaymentReminders(supabase: any, now: string, result: Proce
         : `This is a reminder that your payment of ${amountLabel} for ${item.label} is due ${dueLabel}.`;
 
       const html = wrapConversationMessageHtml(brand, text);
+      const { resolveVenueCoupleThreadId } = await import("@/lib/conversations/resolve-couple-thread");
+      const threadId = await resolveVenueCoupleThreadId(supabase, reminder.venue_id, {
+        clientId: schedule.client_id,
+      });
       const sendResult = await sendEmail({
         to: client.email,
         subject,
         text: appendEmailSignatureText(text, brand),
         html,
         replyTo: venue?.email ?? undefined,
+        threadId: threadId ?? undefined,
       });
       if (!sendResult.ok) throw new Error(sendResult.message);
 
@@ -150,10 +176,15 @@ async function processPaymentReminders(supabase: any, now: string, result: Proce
       // Recurrence: only "overdue"-phase rows carry an interval, and only
       // while the item is still genuinely unpaid.
       if (reminder.after_due_recur_interval_days && item.status === "pending") {
+        const timezone = await getVenueTimezone(supabase, reminder.venue_id);
         await supabase.from("task_reminders").insert({
           venue_id: reminder.venue_id, payment_line_item_id: item.id,
           reminder_type: "overdue", notify_role: "couple",
-          scheduled_for: offsetDatetime(now, reminder.after_due_recur_interval_days),
+          scheduled_for: nextRecurringReminderAt(
+            reminder.scheduled_for,
+            reminder.after_due_recur_interval_days,
+            timezone,
+          ),
           after_due_recur_interval_days: reminder.after_due_recur_interval_days,
         });
       }
@@ -166,9 +197,14 @@ async function processPaymentReminders(supabase: any, now: string, result: Proce
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function processContractReminders(supabase: any, now: string, result: ProcessResult): Promise<void> {
-  const { data: reminders, error } = await supabase
+async function processContractReminders(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
+  now: string,
+  result: ProcessResult,
+  scope?: ObligationReminderScope,
+): Promise<void> {
+  let query = supabase
     .from("task_reminders")
     .select(`
       id, venue_id, contract_id, reminder_type, scheduled_for, after_due_recur_interval_days,
@@ -179,6 +215,10 @@ async function processContractReminders(supabase: any, now: string, result: Proc
     .lte("scheduled_for", now)
     .order("scheduled_for")
     .limit(BATCH_SIZE);
+
+  query = applyReminderScope(query, scope);
+
+  const { data: reminders, error } = await query;
 
   if (error) { result.errors.push(`Contract reminder fetch error: ${error.message}`); return; }
   if (!reminders?.length) return;
@@ -198,8 +238,9 @@ async function processContractReminders(supabase: any, now: string, result: Proc
       const { data: client } = await supabase.from("clients").select("email").eq("id", contract.client_id).maybeSingle();
       if (!client?.email) { result.skipped++; continue; }
 
+      const { VENUE_EMAIL_BRAND_SELECT } = await import("@/lib/email/venue-brand");
       const { data: venue } = await supabase.from("venues")
-        .select("name, logo_url, primary_color, email_signature, email, phone")
+        .select(VENUE_EMAIL_BRAND_SELECT)
         .eq("id", reminder.venue_id)
         .maybeSingle();
       const brand = emailBrandFromVenue(venue);
@@ -210,12 +251,17 @@ async function processContractReminders(supabase: any, now: string, result: Proc
       const text = `${venueName} is waiting on your signature for "${contract.title}". You can review and sign here: ${signUrl}`;
 
       const html = wrapConversationMessageHtml(brand, text);
+      const { resolveVenueCoupleThreadId } = await import("@/lib/conversations/resolve-couple-thread");
+      const threadId = await resolveVenueCoupleThreadId(supabase, reminder.venue_id, {
+        clientId: contract.client_id,
+      });
       const sendResult = await sendEmail({
         to: client.email,
         subject,
         text: appendEmailSignatureText(text, brand),
         html,
         replyTo: venue?.email ?? undefined,
+        threadId: threadId ?? undefined,
       });
       if (!sendResult.ok) throw new Error(sendResult.message);
 
@@ -356,23 +402,119 @@ export async function processObligationTransitions(): Promise<ProcessResult> {
 
 // ── Venue-facing: dispatch real emails for preference-enabled notifications ──
 
-export async function processVenueNotificationEmails(): Promise<ProcessResult> {
+type VenueNotificationEmailRow = {
+  id: string;
+  venue_id: string;
+  type: string;
+  title: string;
+  body: string | null;
+  link: string | null;
+};
+
+async function alreadyLoggedRecipient(
+  supabase: ReturnType<typeof getServiceClient>,
+  notificationId: string,
+  recipientEmail: string,
+): Promise<boolean> {
+  const { data } = await supabase
+    .from("notification_log")
+    .select("id")
+    .eq("source_type", "system")
+    .eq("source_id", notificationId)
+    .eq("recipient_email", recipientEmail)
+    .eq("channel", "email")
+    .eq("status", "sent")
+    .limit(1)
+    .maybeSingle();
+  return Boolean(data?.id);
+}
+
+async function dispatchMessageReceivedEmail(
+  supabase: ReturnType<typeof getServiceClient>,
+  row: VenueNotificationEmailRow,
+  result: ProcessResult,
+): Promise<void> {
+  const recipients = await resolveMessageReceivedRecipients(supabase as never, row);
+  if (recipients.length === 0) {
+    // No inventable owner/assignee email — mark done (same safe skip as missing venues.email).
+    await supabase.from("venue_notifications").update({ emailed_at: new Date().toISOString() }).eq("id", row.id);
+    result.skipped++;
+    return;
+  }
+
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const email = buildVenueNotificationEmail({
+    title: row.title,
+    body: row.body,
+    link: row.link,
+    appOrigin: baseUrl,
+  });
+  const text = email.text;
+
+  for (const recipient of recipients) {
+    if (await alreadyLoggedRecipient(supabase, row.id, recipient.email)) {
+      continue;
+    }
+    const sendResult = await sendEmail({
+      to: recipient.email,
+      subject: email.subject,
+      text,
+      html: email.html,
+    });
+    if (!sendResult.ok) throw new Error(sendResult.message);
+
+    await supabase.from("notification_log").insert({
+      venue_id: row.venue_id,
+      source_type: "system",
+      source_id: row.id,
+      // notification_log.recipient_role check: coordinator | couple | vendor | team
+      recipient_role: recipient.role === "owner" ? "team" : "coordinator",
+      recipient_email: recipient.email,
+      channel: "email",
+      status: "sent",
+      subject: row.title,
+      body_preview: text.slice(0, 500),
+      provider_message_id: sendResult.method === "resend" ? sendResult.providerId ?? null : null,
+      sent_at: new Date().toISOString(),
+    });
+  }
+
+  await supabase.from("venue_notifications").update({ emailed_at: new Date().toISOString() }).eq("id", row.id);
+  result.sent++;
+}
+
+export async function processVenueNotificationEmails(options?: {
+  /** When set, only process this venue (prompt inbound dispatch). */
+  venueId?: string;
+  /** When set, only these notification types (e.g. message_received). */
+  types?: string[];
+}): Promise<ProcessResult> {
   const result: ProcessResult = { processed: 0, sent: 0, failed: 0, skipped: 0, errors: [] };
   const supabase = getServiceClient();
 
-  const { data: rows, error } = await supabase
+  let query = supabase
     .from("venue_notifications")
     .select("id, venue_id, type, title, body, link")
     .eq("needs_email", true)
     .is("emailed_at", null)
     .limit(BATCH_SIZE);
 
+  if (options?.venueId) query = query.eq("venue_id", options.venueId);
+  if (options?.types?.length) query = query.in("type", options.types);
+
+  const { data: rows, error } = await query;
+
   if (error) { result.errors.push(`Venue notification fetch error: ${error.message}`); return result; }
   if (!rows?.length) return result;
 
-  for (const row of rows as { id: string; venue_id: string; type: string; title: string; body: string | null; link: string | null }[]) {
+  for (const row of rows as VenueNotificationEmailRow[]) {
     result.processed++;
     try {
+      if (row.type === "message_received") {
+        await dispatchMessageReceivedEmail(supabase, row, result);
+        continue;
+      }
+
       const { data: venue } = await supabase.from("venues").select("email, name").eq("id", row.venue_id).maybeSingle();
       if (!venue?.email) {
         // Nothing to email — mark done so this row doesn't get retried forever.
@@ -382,10 +524,20 @@ export async function processVenueNotificationEmails(): Promise<ProcessResult> {
       }
 
       const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-      const linkLine = row.link ? `\n\n${baseUrl}${row.link}` : "";
-      const text = `${row.body ?? ""}${linkLine}`;
+      const email = buildVenueNotificationEmail({
+        title: row.title,
+        body: row.body,
+        link: row.link,
+        appOrigin: baseUrl,
+      });
+      const text = email.text;
 
-      const sendResult = await sendEmail({ to: venue.email, subject: row.title, text });
+      const sendResult = await sendEmail({
+        to: venue.email,
+        subject: email.subject,
+        text,
+        html: email.html,
+      });
       if (!sendResult.ok) throw new Error(sendResult.message);
 
       await supabase.from("notification_log").insert({
@@ -407,4 +559,13 @@ export async function processVenueNotificationEmails(): Promise<ProcessResult> {
   }
 
   return result;
+}
+
+/**
+ * Decision B — prompt processing for inbound New Message emails.
+ * Same dispatcher as the cron path; scoped to one venue's pending
+ * message_received rows so the 30-minute cron is catch-up only.
+ */
+export async function dispatchPendingMessageReceivedEmails(venueId: string): Promise<ProcessResult> {
+  return processVenueNotificationEmails({ venueId, types: ["message_received"] });
 }

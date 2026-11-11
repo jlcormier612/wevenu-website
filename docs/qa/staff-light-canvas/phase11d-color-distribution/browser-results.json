@@ -1,0 +1,179 @@
+[
+  {
+    "label": "lead-detail",
+    "viewport": "desktop",
+    "path": "/leads/6cf4f9a0-66b8-4e6f-8afa-b5d2e7327b2d",
+    "venueId": "a415ac52-cd74-42a6-8df7-7a8f6e71d080",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11d-color-distribution/evidence/lead-detail-desktop.png",
+    "overflowX": false,
+    "canvasBg": "#F8F7F3",
+    "surfaces": [
+      {
+        "sel": "[data-testid=\"lead-sales-availability\"]",
+        "bg": "#F3F0E9",
+        "border": "#E6E3DC"
+      },
+      null,
+      {
+        "sel": "[data-testid=\"lead-contact-card\"]",
+        "bg": "#FFFFFF",
+        "border": null
+      },
+      {
+        "sel": ".htc-lead-tour-personal-link",
+        "bg": "#EAF1F7",
+        "border": "#D5E1EB"
+      }
+    ]
+  },
+  {
+    "label": "booking-workspace",
+    "viewport": "desktop",
+    "path": "/clients/49aba826-0bd3-4891-ac9f-02a18b2b6962",
+    "venueId": "a415ac52-cd74-42a6-8df7-7a8f6e71d080",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11d-color-distribution/evidence/booking-workspace-desktop.png",
+    "overflowX": false,
+    "canvasBg": "#F8F7F3",
+    "surfaces": [
+      {
+        "sel": "[data-testid=\"event-booking-summary\"]",
+        "bg": "#DCE8E0",
+        "border": null
+      },
+      {
+        "sel": "[data-testid=\"event-staff-assignment\"]",
+        "bg": "#F3F0E9",
+        "border": "#E6E3DC"
+      },
+      {
+        "sel": "[data-testid=\"event-questionnaires-guidance\"]",
+        "bg": "#EAF1F7",
+        "border": "#D5E1EB"
+      },
+      {
+        "sel": "[data-testid=\"event-inventory-event-order-card\"]",
+        "bg": "#FFFFFF",
+        "border": null
+      },
+      null
+    ]
+  },
+  {
+    "label": "lead-detail",
+    "viewport": "mobile-390",
+    "path": "/leads/6cf4f9a0-66b8-4e6f-8afa-b5d2e7327b2d",
+    "venueId": "a415ac52-cd74-42a6-8df7-7a8f6e71d080",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11d-color-distribution/evidence/lead-detail-mobile-390.png",
+    "overflowX": false,
+    "canvasBg": "#F8F7F3",
+    "surfaces": [
+      {
+        "sel": "[data-testid=\"lead-sales-availability\"]",
+        "bg": "#F3F0E9",
+        "border": "#E6E3DC"
+      },
+      null,
+      {
+        "sel": "[data-testid=\"lead-contact-card\"]",
+        "bg": "#FFFFFF",
+        "border": null
+      },
+      {
+        "sel": ".htc-lead-tour-personal-link",
+        "bg": "#EAF1F7",
+        "border": "#D5E1EB"
+      }
+    ]
+  },
+  {
+    "label": "booking-workspace",
+    "viewport": "mobile-390",
+    "path": "/clients/49aba826-0bd3-4891-ac9f-02a18b2b6962",
+    "venueId": "a415ac52-cd74-42a6-8df7-7a8f6e71d080",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11d-color-distribution/evidence/booking-workspace-mobile-390.png",
+    "overflowX": false,
+    "canvasBg": "#F8F7F3",
+    "surfaces": [
+      {
+        "sel": "[data-testid=\"event-booking-summary\"]",
+        "bg": "#DCE8E0",
+        "border": null
+      },
+      {
+        "sel": "[data-testid=\"event-staff-assignment\"]",
+        "bg": "#F3F0E9",
+        "border": "#E6E3DC"
+      },
+      {
+        "sel": "[data-testid=\"event-questionnaires-guidance\"]",
+        "bg": "#EAF1F7",
+        "border": "#D5E1EB"
+      },
+      {
+        "sel": "[data-testid=\"event-inventory-event-order-card\"]",
+        "bg": "#FFFFFF",
+        "border": null
+      },
+      null
+    ]
+  },
+  {
+    "label": "lead-detail",
+    "viewport": "mobile-375",
+    "path": "/leads/6cf4f9a0-66b8-4e6f-8afa-b5d2e7327b2d",
+    "venueId": "a415ac52-cd74-42a6-8df7-7a8f6e71d080",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11d-color-distribution/evidence/lead-detail-mobile-375.png",
+    "overflowX": false,
+    "canvasBg": "#F8F7F3",
+    "surfaces": [
+      {
+        "sel": "[data-testid=\"lead-sales-availability\"]",
+        "bg": "#F3F0E9",
+        "border": "#E6E3DC"
+      },
+      null,
+      {
+        "sel": "[data-testid=\"lead-contact-card\"]",
+        "bg": "#FFFFFF",
+        "border": null
+      },
+      {
+        "sel": ".htc-lead-tour-personal-link",
+        "bg": "#EAF1F7",
+        "border": "#D5E1EB"
+      }
+    ]
+  },
+  {
+    "label": "booking-workspace",
+    "viewport": "mobile-375",
+    "path": "/clients/49aba826-0bd3-4891-ac9f-02a18b2b6962",
+    "venueId": "a415ac52-cd74-42a6-8df7-7a8f6e71d080",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11d-color-distribution/evidence/booking-workspace-mobile-375.png",
+    "overflowX": false,
+    "canvasBg": "#F8F7F3",
+    "surfaces": [
+      {
+        "sel": "[data-testid=\"event-booking-summary\"]",
+        "bg": "#DCE8E0",
+        "border": null
+      },
+      {
+        "sel": "[data-testid=\"event-staff-assignment\"]",
+        "bg": "#F3F0E9",
+        "border": "#E6E3DC"
+      },
+      {
+        "sel": "[data-testid=\"event-questionnaires-guidance\"]",
+        "bg": "#EAF1F7",
+        "border": "#D5E1EB"
+      },
+      {
+        "sel": "[data-testid=\"event-inventory-event-order-card\"]",
+        "bg": "#FFFFFF",
+        "border": null
+      },
+      null
+    ]
+  }
+]

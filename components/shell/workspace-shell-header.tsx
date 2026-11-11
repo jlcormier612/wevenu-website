@@ -2,13 +2,15 @@
 
 import * as React from "react";
 
-import { Building2, Menu, Search } from "lucide-react";
+import { Menu, Search } from "lucide-react";
 
 import { Wordmark } from "@/components/brand/wordmark";
 import { CommandPalette } from "@/components/shell/command-palette";
 import { NotificationBell } from "@/components/shell/notification-bell";
 import { SidebarNav } from "@/components/shell/sidebar-nav";
 import { UserMenu } from "@/components/shell/user-menu";
+import { VenueSwitcher } from "@/components/shell/venue-switcher";
+import type { VenueMembershipSummary } from "@/lib/venue/active-context";
 import { ThemeToggle } from "@/components/providers/theme-toggle";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,25 +31,29 @@ export function WorkspaceShellHeader({
   venueName,
   venueLogo,
   staffRole = null,
+  activeVenueId,
+  memberships = [],
 }: {
   email: string;
   venueName?: string;
   venueLogo?: string | null;
   staffRole?: string | null;
+  activeVenueId?: string;
+  memberships?: VenueMembershipSummary[];
 }) {
   const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
   const [searchOpen, setSearchOpen] = React.useState(false);
 
   return (
     <>
-      <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-2 border-b border-border/40 bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <header className="sticky top-0 z-30 flex h-14 sm:h-16 shrink-0 items-center gap-1.5 sm:gap-2 border-b border-border/50 bg-card/95 px-3 sm:px-4 backdrop-blur supports-[backdrop-filter]:bg-card/90">
         <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
           <SheetTrigger
             render={
               <Button
                 variant="ghost"
                 size="icon"
-                className="lg:hidden"
+                className="lg:hidden shrink-0"
                 aria-label="Open navigation"
               />
             }
@@ -69,29 +75,21 @@ export function WorkspaceShellHeader({
           </SheetContent>
         </Sheet>
 
-        <div className="lg:hidden">
-          <Wordmark showText={false} sizeClassName="h-[48.6px] w-auto" />
+        {/* Mobile: keep logo recognizable without crowding venue + actions. */}
+        <div className="lg:hidden shrink-0">
+          <Wordmark showText={false} sizeClassName="h-9 w-auto max-w-[7.5rem] object-contain" />
         </div>
 
-        {(venueLogo || venueName) && (
-          <div className="hidden min-w-0 items-center gap-2 lg:flex">
-            {venueLogo ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={venueLogo}
-                alt={venueName ?? "Venue"}
-                className="h-12 w-auto max-w-[200px] rounded-md object-contain"
-              />
-            ) : (
-              <>
-                <Building2 className="h-4 w-4 shrink-0 text-muted-foreground" />
-                <span className="truncate text-sm font-medium text-heading">{venueName}</span>
-              </>
-            )}
-          </div>
-        )}
+        <div className="min-w-0 flex-1 overflow-hidden">
+          <VenueSwitcher
+            venueName={venueName}
+            venueLogo={venueLogo}
+            activeVenueId={activeVenueId}
+            memberships={memberships}
+          />
+        </div>
 
-        <div className="ml-auto flex items-center gap-1">
+        <div className="ml-auto flex shrink-0 items-center gap-0.5 sm:gap-1">
           <button
             type="button"
             onClick={() => setSearchOpen(true)}
@@ -113,7 +111,10 @@ export function WorkspaceShellHeader({
             <Search className="h-[1.1rem] w-[1.1rem]" />
           </button>
           <NotificationBell />
-          <ThemeToggle />
+          {/* Theme is secondary on narrow phones — keep search, alerts, and account. */}
+          <div className="hidden sm:block">
+            <ThemeToggle />
+          </div>
           <UserMenu email={email} />
         </div>
       </header>

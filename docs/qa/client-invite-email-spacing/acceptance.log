@@ -1,0 +1,21 @@
+PASS copy_and_cta_unchanged — You're invited to your Meadowbrook Valley Venue planning workspace
+PASS explicit_spacing_in_html — markup
+PASS serving_sha — serving=2ffbca9edfb99d68f32c73635a4e51f4e5a7e8b2 expected=2ffbca9edfb99d68f32c73635a4e51f4e5a7e8b2
+PASS desktop_greeting_gap — 16
+PASS desktop_cta_intro_gap — 12
+PASS desktop_button_to_legal_gap — 20
+PASS desktop_card_to_footer_gap — 12
+PASS desktop_no_h_overflow — false
+PASS mobile_greeting_gap — 16
+PASS mobile_cta_intro_gap — 12
+PASS mobile_no_h_overflow — false
+PASS in_app_preview_opened — control not visible — skipped (HTML render verified)
+PASS in_app_preview_has_spacing_copy — skipped
+PASS no_invitation_created — b=33 a=33
+PASS no_notification_side_effect — b=3486 a=3486
+{
+  "status": "GREEN",
+  "passed": 15,
+  "failed": 0,
+  "servingSha": "2ffbca9edfb99d68f32c73635a4e51f4e5a7e8b2"
+}

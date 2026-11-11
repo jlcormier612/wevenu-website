@@ -1,0 +1,66 @@
+{
+  "ok": true,
+  "arrangement": {
+    "id": "59b2938f-338a-4894-b964-3b1dbd1ece10",
+    "venueId": "9336a6cb-6a49-4a38-82bc-ff3b2361e8a3",
+    "stripeSubscriptionId": "sub_1UZw74ErUqJH7nkta71f0YMw",
+    "stripeCustomerId": "cus_Vb8Ng5wqMg59Z5",
+    "kind": "percent_off",
+    "percentOff": 15,
+    "amountOffCents": null,
+    "fixedRateCents": null,
+    "frozenListAmountCents": null,
+    "planScope": "all",
+    "planKeyAtCreate": "starter",
+    "survivesTierChange": true,
+    "preventsTierUpgrade": false,
+    "protectsBaseRate": false,
+    "effectiveAt": "2026-11-09T23:27:18+00:00",
+    "expiresAt": null,
+    "durationBillingCycles": null,
+    "cyclesConsumed": 0,
+    "status": "ended",
+    "reason": "Phase 5 clean-venue acceptance",
+    "internalNotes": null,
+    "customerFacingLabel": "Special pricing",
+    "createdByUserId": null,
+    "createdByEmail": "jennifer@hellotocheers.com",
+    "endedByEmail": "jennifer@hellotocheers.com",
+    "endedAt": "2026-11-09T23:27:22.42+00:00",
+    "endReason": "Phase 5 clean acceptance cleanup",
+    "stripeCouponId": "htc_fnd_pct_15_59b2938f338a4894b9",
+    "stripePriceId": "price_1UZj6YErUqJH7nktmVMM7sgB",
+    "reconciliationStatus": "pending",
+    "expectedRecurringAmountCents": 16915,
+    "lastReconcileError": null,
+    "lastReconciledAt": "2026-11-09T23:27:20.546+00:00",
+    "supersedesArrangementId": null,
+    "supersededByArrangementId": null,
+    "relatedTierHoldId": null,
+    "idempotencyKey": "p5-clean-1794266838",
+    "audit": [
+      {
+        "at": "2026-11-09T23:27:19.312Z",
+        "by": "jennifer@hellotocheers.com",
+        "kind": "percent_off",
+        "action": "created",
+        "status": "active"
+      },
+      {
+        "at": "2026-11-09T23:27:20.546Z",
+        "error": null,
+        "action": "reconciled",
+        "deferred": false
+      },
+      {
+        "at": "2026-11-09T23:27:22.421Z",
+        "by": "jennifer@hellotocheers.com",
+        "action": "ended",
+        "reason": "Phase 5 clean acceptance cleanup"
+      }
+    ],
+    "metadata": {},
+    "createdAt": "2026-11-09T23:27:19.33676+00:00",
+    "updatedAt": "2026-11-09T23:27:22.444+00:00"
+  }
+}

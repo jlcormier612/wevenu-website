@@ -1,0 +1,15 @@
+PASS serving_commit — 97efb6658fdd34188dace69de887088cd0d64200
+PASS db_bakers_approved_unclaimed — {"preference_level":"standard","status":"active","vendors":{"is_claimed":false,"business_name":"Baker's Dozen"}}
+PASS db_nails_approved_unclaimed — {"preference_level":"standard","status":"active","vendors":{"is_claimed":false,"business_name":"Nail Studio"}}
+PASS fancy_cuppity_unaffected — {"preference_level":"preferred","status":"active","vendors":{"is_claimed":true,"business_name":"Cuppity Cakes"}}
+PASS active_venue_meadowbrook — ok
+PASS list_shows_approved_badges — Approved count≈2
+PASS list_shows_bakers — name
+PASS list_shows_nails — name
+PASS list_shows_not_claimed — claim column
+PASS list_shows_preferred_peer — Cuppity preferred
+PASS list_shows_recommended_peer — Harah recommended
+PASS reload_still_shows_approved — Approved count≈2
+PASS runtime_stayed_expected — 97efb6658fdd34188dace69de887088cd0d64200
+
+13/13 passed → docs/qa/vendor-approval-list-reflect/browser-results.json

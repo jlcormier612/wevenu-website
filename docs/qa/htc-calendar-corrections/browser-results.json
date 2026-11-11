@@ -1,0 +1,212 @@
+{
+  "ok": true,
+  "expected": "5fe3d13ece6d3002452e28c30cda5b47754e8173",
+  "checks": [
+    {
+      "name": "serving_commit",
+      "pass": true,
+      "detail": "5fe3d13ece6d3002452e28c30cda5b47754e8173"
+    },
+    {
+      "name": "timed_persisted",
+      "pass": true,
+      "detail": "{\"id\":\"739a80b3-fef2-4c25-92a7-cd10f6407174\",\"title\":\"HTC Timed Proof 1791856435562\",\"start_date\":\"2027-03-27\",\"end_date\":\"2027-03-27\",\"start_time\":\"10:00:00\",\"end_time\":\"11:00:00\",\"is_all_day\":false,\"notes\":null,\"lead_id\":null,\"client_id\":null}"
+    },
+    {
+      "name": "day_shows_times",
+      "pass": true,
+      "detail": "WALKTHROUGH\n\n10:00 AM – 11:00 AM\n\nHTC Timed Proof 1791856435562"
+    },
+    {
+      "name": "day_not_all_day_label_for_timed",
+      "pass": true,
+      "detail": "WALKTHROUGH\n\n10:00 AM – 11:00 AM\n\nHTC Timed Proof 1791856435562"
+    },
+    {
+      "name": "view_opens_readonly",
+      "pass": true,
+      "detail": "HTC Timed Proof 1791856435562\n\nWalkthrough · Sat, Mar 27, 2027 · 10:00 AM – 11:00 AM\n\nLoading details…\n\nClose\nEdit\nClose"
+    },
+    {
+      "name": "detail_shows_times",
+      "pass": true,
+      "detail": "HTC Timed Proof 1791856435562\n\nWalkthrough · Sat, Mar 27, 2027 · 10:00 AM – 11:00 AM\n\nLoading details…\n\nClose\nEdit\nClose"
+    },
+    {
+      "name": "no_broken_workspace_link",
+      "pass": true,
+      "detail": "unrelated item has no workspace CTA"
+    },
+    {
+      "name": "edit_prefilled_times",
+      "pass": true,
+      "detail": "10:00-11:00"
+    },
+    {
+      "name": "times_survive_unrelated_edit",
+      "pass": true,
+      "detail": "{\"id\":\"739a80b3-fef2-4c25-92a7-cd10f6407174\",\"start_date\":\"2027-03-27\",\"end_date\":\"2027-03-27\",\"start_time\":\"10:00:00\",\"end_time\":\"11:00:00\",\"is_all_day\":false,\"notes\":\"Notes survive edit\"}"
+    },
+    {
+      "name": "cancel_makes_no_changes",
+      "pass": true,
+      "detail": "HTC Timed Proof 1791856435562"
+    },
+    {
+      "name": "allday_untimed",
+      "pass": true,
+      "detail": "{\"id\":\"c317409e-9d8d-48f0-bf77-4cd634c90a2c\",\"title\":\"HTC All-Day Proof 1791856435562\",\"is_all_day\":true,\"start_time\":null,\"end_time\":null,\"start_date\":\"2027-03-28\"}"
+    },
+    {
+      "name": "allday_edit_no_invented_times",
+      "pass": true,
+      "detail": "checked=true timeInputs=0 startVal="
+    },
+    {
+      "name": "month_list_label",
+      "pass": true,
+      "detail": "Month list control present"
+    },
+    {
+      "name": "day_label",
+      "pass": true,
+      "detail": "Day aria label"
+    },
+    {
+      "name": "week_shows_timed",
+      "pass": true,
+      "detail": "week"
+    },
+    {
+      "name": "agenda_shows_timed",
+      "pass": true,
+      "detail": "agenda/month list"
+    },
+    {
+      "name": "today_navigation",
+      "pass": true,
+      "detail": "https://app.sandbox.hellotocheers.com/calendar?view=day&date=2026-10-12"
+    },
+    {
+      "name": "public_past_no_inquire",
+      "pass": true,
+      "detail": "inquire=0"
+    },
+    {
+      "name": "public_past_no_available_cells",
+      "pass": true,
+      "detail": "availableCells=0 legendHits=2"
+    },
+    {
+      "name": "public_future_still_rules",
+      "pass": true,
+      "detail": "inquire=30"
+    },
+    {
+      "name": "server_past_date_rejected",
+      "pass": true,
+      "detail": "rpc=false"
+    },
+    {
+      "name": "public_calendar_rpc_excludes_past",
+      "pass": true,
+      "detail": "dates=0"
+    },
+    {
+      "name": "public_form_past_rejected",
+      "pass": true,
+      "detail": "RPC authority rejects past; no form public_key found"
+    },
+    {
+      "name": "no_blocked_time_side_effect",
+      "pass": true,
+      "detail": "blocked_time count=0"
+    },
+    {
+      "name": "nicole_projection_timed",
+      "pass": true,
+      "detail": "n=5"
+    },
+    {
+      "name": "nicole_sat_rehearsal_only",
+      "pass": true,
+      "detail": "[{\"date\":\"2027-05-08\",\"spaceId\":\"6366187b-e7f5-45d0-b9bd-5534a48f6650\",\"useLabel\":\"Rehearsal Dinner\",\"startTime\":\"18:00\",\"endTime\":\"21:00\",\"index\":0}]"
+    },
+    {
+      "name": "nicole_sun_no_rehearsal",
+      "pass": true,
+      "detail": "[\"Getting Ready\",\"Ceremony\",\"Reception\",\"Cocktail Hour\"]"
+    },
+    {
+      "name": "nicole_barn_filter",
+      "pass": true,
+      "detail": "[{\"d\":\"2027-05-08\",\"t\":\"Rehearsal Dinner\"},{\"d\":\"2027-05-09\",\"t\":\"Reception\"}]"
+    },
+    {
+      "name": "nicole_ui_sat",
+      "pass": true,
+      "detail": "May 8 UI"
+    },
+    {
+      "name": "nicole_ui_sun",
+      "pass": true,
+      "detail": "May 9 UI"
+    },
+    {
+      "name": "nicole_reload_stable",
+      "pass": true,
+      "detail": "reload May 9"
+    },
+    {
+      "name": "runtime_stayed_expected",
+      "pass": true,
+      "detail": "5fe3d13ece6d3002452e28c30cda5b47754e8173"
+    }
+  ],
+  "evidence": {
+    "timed": {
+      "id": "739a80b3-fef2-4c25-92a7-cd10f6407174",
+      "title": "HTC Timed Proof 1791856435562",
+      "start_date": "2027-03-27",
+      "end_date": "2027-03-27",
+      "start_time": "10:00:00",
+      "end_time": "11:00:00",
+      "is_all_day": false,
+      "notes": null,
+      "lead_id": null,
+      "client_id": null
+    },
+    "afterEdit": {
+      "id": "739a80b3-fef2-4c25-92a7-cd10f6407174",
+      "start_date": "2027-03-27",
+      "end_date": "2027-03-27",
+      "start_time": "10:00:00",
+      "end_time": "11:00:00",
+      "is_all_day": false,
+      "notes": "Notes survive edit"
+    },
+    "allday": {
+      "id": "c317409e-9d8d-48f0-bf77-4cd634c90a2c",
+      "title": "HTC All-Day Proof 1791856435562",
+      "is_all_day": true,
+      "start_time": null,
+      "end_time": null,
+      "start_date": "2027-03-28"
+    },
+    "pastCalendarRpc": {
+      "ok": true,
+      "dates": [],
+      "venue": {
+        "name": "Meadowbrook Valley Venue",
+        "logoUrl": "https://wvpsldwwjqdannqasrdf.supabase.co/storage/v1/object/public/uploads/05f16a15-1752-4855-8a3b-aad5c593d8d9/logo.png?t=1791757861468",
+        "timezone": "America/New_York",
+        "primaryColor": "#7D508F"
+      }
+    },
+    "blockedTimeCount": 0
+  },
+  "deploymentIds": [
+    "5fe3d13ece6d3002452e28c30cda5b47754e8173"
+  ],
+  "deployRun": "https://github.com/jlcormier612/wevenu-website/actions/runs/38333123630"
+}

@@ -2,15 +2,27 @@
 
 import * as React from "react";
 
-import Link from "next/link";
+import { Check, ChevronDown, Copy, ExternalLink, Eye } from "lucide-react";
 
-import { Check, ChevronDown, Copy, ExternalLink } from "lucide-react";
-
+import { InquiryForm } from "@/components/form/inquiry-form";
 import { EmailIntakeSection } from "@/components/settings/email-intake-section";
 import { InquiryFormConfigSection } from "@/components/settings/inquiry-form-config-section";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import type { EmailIntakeHealthView } from "@/lib/lead-intake/email-intake-health";
 import type { EmailIntakeStatus } from "@/lib/lead-intake/email-status";
-import type { InquiryFormSettings } from "@/lib/inquiry-form/types";
+import {
+  INQUIRY_FORM_PREVIEW_BANNER,
+  applyInquiryFormDraftToPublicConfig,
+  type InquiryFormBuilderDraft,
+} from "@/lib/inquiry-form/preview-config";
+import type { InquiryFormSettings, PublicInquiryFormConfig } from "@/lib/inquiry-form/types";
 
 const WEBSITE_BUILDER_STEPS: { name: string; steps: string[] }[] = [
   { name: "Squarespace", steps: ["Edit the page → click the + where you want the form", "Choose Code → paste the embed code → Save"] },
@@ -23,16 +35,21 @@ export function WebsiteFormsSection({
   appUrl,
   leadEmailAddress,
   emailIntakeStatus,
+  intakeHealth = null,
   inquiryFormSettings = null,
   canEditInquiryForm = true,
+  previewBaseConfig = null,
 }: {
   embedKey: string;
   appUrl: string;
   /** null when RESEND_INBOUND_ADDRESS isn't configured platform-wide. */
   leadEmailAddress: string | null;
   emailIntakeStatus: EmailIntakeStatus | null;
+  intakeHealth?: EmailIntakeHealthView | null;
   inquiryFormSettings?: InquiryFormSettings | null;
   canEditInquiryForm?: boolean;
+  /** Saved public shell (venue brand / tour flags). Draft overlays this for Preview. */
+  previewBaseConfig?: PublicInquiryFormConfig | null;
 }) {
   const formUrl = `${appUrl}/form/${embedKey}`;
   const iframeCode = `<iframe\n  src="${formUrl}"\n  width="100%"\n  height="700"\n  frameborder="0"\n  title="Venue Inquiry Form"\n></iframe>`;
@@ -41,6 +58,9 @@ export function WebsiteFormsSection({
   const [copiedEmbed, setCopiedEmbed] = React.useState(false);
   const [howToOpen, setHowToOpen] = React.useState(false);
   const [openBuilder, setOpenBuilder] = React.useState<string | null>(null);
+  const draftGetterRef = React.useRef<(() => InquiryFormBuilderDraft) | null>(null);
+  const [previewOpen, setPreviewOpen] = React.useState(false);
+  const [previewConfig, setPreviewConfig] = React.useState<PublicInquiryFormConfig | null>(null);
 
   function copy(text: string, which: "url" | "embed") {
     navigator.clipboard.writeText(text);
@@ -48,15 +68,25 @@ export function WebsiteFormsSection({
     else { setCopiedEmbed(true); setTimeout(() => setCopiedEmbed(false), 2000); }
   }
 
+  const registerDraftGetter = React.useCallback((getDraft: () => InquiryFormBuilderDraft) => {
+    draftGetterRef.current = getDraft;
+  }, []);
+
+  function openPreview() {
+    if (!previewBaseConfig || !draftGetterRef.current) return;
+    setPreviewConfig(applyInquiryFormDraftToPublicConfig(previewBaseConfig, draftGetterRef.current()));
+    setPreviewOpen(true);
+  }
+
   return (
     <div className="space-y-5">
-      <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
+      <div className="htc-surface-guidance space-y-3 p-4">
         <div className="space-y-1">
           <p className="text-sm font-medium text-heading">Direct link</p>
           <p className="text-xs text-muted-foreground">Share this URL directly — email signatures, QR codes, social media.</p>
         </div>
-        <div className="flex items-center gap-2">
-          <code className="flex-1 rounded-md bg-muted border border-border px-3 py-2 text-xs font-mono text-foreground truncate">
+        <div className="flex flex-wrap items-center gap-2">
+          <code className="flex-1 min-w-[12rem] rounded-md bg-muted border border-border px-3 py-2 text-xs font-mono text-foreground truncate">
             {formUrl}
           </code>
           <Button type="button" variant="outline" size="sm" onClick={() => copy(formUrl, "url")}>
@@ -65,11 +95,23 @@ export function WebsiteFormsSection({
           <Button type="button" variant="outline" size="sm" render={<a href={formUrl} target="_blank" rel="noopener noreferrer" />}>
             <ExternalLink className="h-3.5 w-3.5" />
           </Button>
+          {previewBaseConfig && inquiryFormSettings && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={openPreview}
+              data-testid="inquiry-form-preview-open"
+            >
+              <Eye className="mr-1 h-3.5 w-3.5" />
+              Preview form
+            </Button>
+          )}
         </div>
       </div>
 
       {inquiryFormSettings && (
-        <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
+        <div className="htc-surface-working space-y-3 p-4">
           <div className="space-y-1">
             <p className="text-sm font-medium text-heading">Inquiry form fields</p>
             <p className="text-xs text-muted-foreground">Control which fields appear on your public inquiry form and how preferred event dates work.</p>
@@ -82,11 +124,13 @@ export function WebsiteFormsSection({
             initialCommunicationSettings={inquiryFormSettings.inquiryCommunicationSettings}
             smsConsentOfferAvailable={inquiryFormSettings.smsConsentOfferAvailable}
             canEdit={canEditInquiryForm}
+            registerDraftGetter={registerDraftGetter}
+            onPreviewForm={previewBaseConfig ? openPreview : undefined}
           />
         </div>
       )}
 
-      <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
+      <div className="htc-surface-guidance space-y-3 p-4">
         <div className="space-y-1">
           <p className="text-sm font-medium text-heading">Website embed</p>
           <p className="text-xs text-muted-foreground">Paste this snippet into your website HTML to embed the form inline.</p>
@@ -146,31 +190,29 @@ export function WebsiteFormsSection({
         </div>
       </div>
 
-      <EmailIntakeSection status={emailIntakeStatus} leadEmailAddress={leadEmailAddress} />
+      <EmailIntakeSection status={emailIntakeStatus} leadEmailAddress={leadEmailAddress} intakeHealth={intakeHealth} />
 
-      <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-2">
-        <p className="text-sm font-medium text-heading">More lead sources</p>
-        <p className="text-xs text-muted-foreground">
-          Lead Capture is where you manage every way inquiries reach Hello to Cheers — not only this website form.
-        </p>
-        <ul className="space-y-1.5 text-xs">
-          <li>
-            <Link href="/setup-hub/lead-capture" className="text-primary hover:underline">Facebook / Instagram Lead Ads</Link>
-            <span className="text-muted-foreground"> — connect Meta and choose which Lead Ads forms create leads</span>
-          </li>
-          <li>
-            <Link href="/library/qr-campaigns" className="text-primary hover:underline">QR code campaigns</Link>
-            <span className="text-muted-foreground"> — bridal shows, brochures, front-gate signs</span>
-          </li>
-          <li>
-            <Link href="/leads/new" className="text-primary hover:underline">Manual entry</Link>
-            <span className="text-muted-foreground"> — add a lead yourself from Sales → Leads</span>
-          </li>
-        </ul>
-        <p className="text-xs text-muted-foreground italic pt-1">
-          All sources flow into this same lead pipeline — every opportunity begins in Hello to Cheers.
-        </p>
-      </div>
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent
+          className="max-h-[min(92vh,52rem)] w-[calc(100%-1.5rem)] overflow-y-auto p-0 sm:max-w-2xl"
+          showCloseButton
+        >
+          <DialogHeader className="px-4 pt-4 pb-0">
+            <DialogTitle>Preview form</DialogTitle>
+            <DialogDescription>{INQUIRY_FORM_PREVIEW_BANNER}</DialogDescription>
+          </DialogHeader>
+          {previewConfig && (
+            <div className="border-t border-border">
+              <InquiryForm
+                embedKey={embedKey}
+                config={previewConfig}
+                preview
+                initialMode="request_information"
+              />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

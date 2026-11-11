@@ -25,14 +25,22 @@ function readActivateFormState(form: HTMLFormElement): {
   password: string;
   confirm: string;
   legalAccepted: boolean;
+  ownershipChoice: "" | "owner" | "on_behalf";
+  invitedOwnerName: string;
+  invitedOwnerEmail: string;
 } {
   const data = new FormData(form);
   const legal = form.elements.namedItem("legalAccepted");
+  const choice = String(data.get("ownershipChoice") || "");
   return {
     password: String(data.get("password") || ""),
     confirm: String(data.get("confirm") || ""),
     legalAccepted:
       legal instanceof HTMLInputElement ? legal.checked : false,
+    ownershipChoice:
+      choice === "owner" || choice === "on_behalf" ? choice : "",
+    invitedOwnerName: String(data.get("invitedOwnerName") || ""),
+    invitedOwnerEmail: String(data.get("invitedOwnerEmail") || ""),
   };
 }
 
@@ -56,12 +64,16 @@ export function ActivateAccountForm({
   token,
   email,
   venueName,
+  setupPersonName,
   relationshipId,
+  alreadyHasLogin = false,
 }: {
   token: string;
   email: string;
   venueName: string;
+  setupPersonName?: string;
   relationshipId?: string | null;
+  alreadyHasLogin?: boolean;
 }) {
   const [state, action, pending] = useActionState(activateAccountAction, null);
   const formRef = useRef<HTMLFormElement>(null);
@@ -69,6 +81,9 @@ export function ActivateAccountForm({
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [legalAccepted, setLegalAccepted] = useState(false);
+  const [ownershipChoice, setOwnershipChoice] = useState<"" | "owner" | "on_behalf">("");
+  const [invitedOwnerName, setInvitedOwnerName] = useState("");
+  const [invitedOwnerEmail, setInvitedOwnerEmail] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
@@ -78,6 +93,9 @@ export function ActivateAccountForm({
     setPassword(next.password);
     setConfirm(next.confirm);
     setLegalAccepted(next.legalAccepted);
+    setOwnershipChoice(next.ownershipChoice);
+    setInvitedOwnerName(next.invitedOwnerName);
+    setInvitedOwnerEmail(next.invitedOwnerEmail);
   };
 
   useEffect(() => {
@@ -88,6 +106,9 @@ export function ActivateAccountForm({
       setPassword(next.password);
       setConfirm(next.confirm);
       setLegalAccepted(next.legalAccepted);
+      setOwnershipChoice(next.ownershipChoice);
+      setInvitedOwnerName(next.invitedOwnerName);
+      setInvitedOwnerEmail(next.invitedOwnerEmail);
     }
   }, []);
 
@@ -95,6 +116,10 @@ export function ActivateAccountForm({
     password,
     confirm,
     legalAccepted,
+    ownershipChoice,
+    invitedOwnerName,
+    invitedOwnerEmail,
+    alreadyHasLogin,
   });
 
   return (
@@ -107,11 +132,14 @@ export function ActivateAccountForm({
     >
       <input type="hidden" name="token" value={token} />
       <input type="hidden" name="email" value={email} />
+      {alreadyHasLogin ? (
+        <input type="hidden" name="alreadyHasLogin" value="true" />
+      ) : null}
       {relationshipId ? (
         <input type="hidden" name="relationshipId" value={relationshipId} />
       ) : null}
-      <div className="rounded-sm border border-[color-mix(in_srgb,var(--taupe-light)_80%,transparent)] bg-[var(--warm-gray)]/40 px-4 py-3 text-sm">
-        <p className="font-medium text-[var(--forest-sage)]">{venueName}</p>
+      <div className="rounded-sm border border-border/60 bg-muted/60 px-4 py-3 text-sm">
+        <p className="font-medium text-foreground">{venueName}</p>
       </div>
       {state?.error ? (
         <p
@@ -121,6 +149,110 @@ export function ActivateAccountForm({
           {state.error}
         </p>
       ) : null}
+
+      <fieldset className="space-y-3 rounded-sm border border-border/60 px-4 py-3">
+        <legend className="ws-eyebrow px-1">Who owns this venue?</legend>
+        <p className="text-sm text-muted-foreground">
+          You&apos;re setting up Hello to Cheers for:
+        </p>
+        <div className="rounded-sm bg-muted/60 px-3 py-2 text-sm">
+          {setupPersonName ? (
+            <p className="font-medium text-foreground">{setupPersonName}</p>
+          ) : null}
+          <p className={setupPersonName ? "text-muted-foreground" : "font-medium text-foreground"}>
+            {email}
+          </p>
+        </div>
+        <p className="text-sm font-medium text-foreground">Are you an owner of this venue?</p>
+        <label className="flex cursor-pointer items-start gap-3 text-sm">
+          <input
+            type="radio"
+            name="ownershipChoice"
+            value="owner"
+            required
+            disabled={pending}
+            className="mt-1"
+          />
+          <span>
+            <span className="font-medium text-foreground">Yes, I&apos;m an owner</span>
+            <span className="mt-0.5 block text-muted-foreground">
+              I&apos;m one of the people who owns this venue.
+            </span>
+          </span>
+        </label>
+        <label className="flex cursor-pointer items-start gap-3 text-sm">
+          <input
+            type="radio"
+            name="ownershipChoice"
+            value="on_behalf"
+            required
+            disabled={pending}
+            className="mt-1"
+          />
+          <span>
+            <span className="font-medium text-foreground">
+              No, I&apos;m setting this up for someone else
+            </span>
+            <span className="mt-0.5 block text-muted-foreground">
+              I&apos;ll manage the venue in HTC, and I&apos;ll add the owner(s).
+            </span>
+          </span>
+        </label>
+      </fieldset>
+
+      {ownershipChoice === "on_behalf" ? (
+        <div className="space-y-3 rounded-sm border border-border/60 px-4 py-3">
+          <p className="text-sm font-medium text-foreground">Who owns this venue?</p>
+          <p className="text-sm text-muted-foreground">
+            Add an owner now, or add them after you sign in. You can invite them now or record them without inviting yet.
+          </p>
+          <label className="block">
+            <span className="ws-eyebrow">Full name</span>
+            <input
+              name="invitedOwnerName"
+              type="text"
+              disabled={pending}
+              autoComplete="name"
+              className="ws-control mt-2 w-full rounded-sm px-3 py-2.5 text-sm outline-none focus:border-[var(--heritage-sage)]"
+            />
+          </label>
+          <label className="block">
+            <span className="ws-eyebrow">Email address</span>
+            <input
+              name="invitedOwnerEmail"
+              type="email"
+              disabled={pending}
+              autoComplete="email"
+              className="ws-control mt-2 w-full rounded-sm px-3 py-2.5 text-sm outline-none focus:border-[var(--heritage-sage)]"
+            />
+          </label>
+          <fieldset className="space-y-2">
+            <legend className="ws-eyebrow">Invite to Hello to Cheers</legend>
+            <label className="flex cursor-pointer items-start gap-3 text-sm">
+              <input
+                type="radio"
+                name="inviteOwnerNow"
+                value="later"
+                defaultChecked
+                disabled={pending}
+                className="mt-1"
+              />
+              <span>Invite later</span>
+            </label>
+            <label className="flex cursor-pointer items-start gap-3 text-sm">
+              <input
+                type="radio"
+                name="inviteOwnerNow"
+                value="now"
+                disabled={pending}
+                className="mt-1"
+              />
+              <span>Invite now</span>
+            </label>
+          </fieldset>
+        </div>
+      ) : null}
+
       <label className="block">
         <span className="ws-eyebrow">Email</span>
         <input
@@ -129,9 +261,26 @@ export function ActivateAccountForm({
           readOnly
           autoComplete="username"
           aria-readonly="true"
-          className="mt-2 w-full cursor-default rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_40%,transparent)] bg-[var(--warm-gray)]/50 px-3 py-2.5 text-sm text-[var(--forest-sage)] outline-none"
+          className="ws-control-muted mt-2 w-full cursor-default rounded-sm px-3 py-2.5 text-sm outline-none"
         />
       </label>
+      {alreadyHasLogin ? (
+        <div
+          data-activate-existing-login
+          className="space-y-2 rounded-sm border border-border/60 bg-muted/60 px-4 py-3 text-sm leading-relaxed"
+        >
+          <p className="font-medium text-foreground">
+            You already have a Hello to Cheers account.
+          </p>
+          <p className="ws-muted">
+            Your existing password will continue to work when you sign in.
+          </p>
+          <p className="ws-muted">
+            After activation, you&apos;ll sign in with your existing account.
+          </p>
+        </div>
+      ) : (
+        <>
       <div>
         <label htmlFor="activate-password" className="block">
           <span className="ws-eyebrow">Create password</span>
@@ -145,12 +294,12 @@ export function ActivateAccountForm({
             minLength={ACTIVATE_PASSWORD_MIN_LENGTH}
             autoComplete="new-password"
             aria-describedby="activate-password-hint"
-            className="w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2.5 pr-10 text-sm outline-none focus:border-[var(--heritage-sage)]"
+            className="ws-control w-full rounded-sm px-3 py-2.5 pr-10 text-sm outline-none focus:border-[var(--heritage-sage)]"
           />
           <button
             type="button"
             onClick={() => setShowPassword((v) => !v)}
-            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--forest-sage)]/55 hover:text-[var(--forest-sage)]"
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
             aria-label={activatePasswordToggleLabel(showPassword, "password")}
             tabIndex={-1}
           >
@@ -177,12 +326,12 @@ export function ActivateAccountForm({
             required
             minLength={ACTIVATE_PASSWORD_MIN_LENGTH}
             autoComplete="new-password"
-            className="w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2.5 pr-10 text-sm outline-none focus:border-[var(--heritage-sage)]"
+            className="ws-control w-full rounded-sm px-3 py-2.5 pr-10 text-sm outline-none focus:border-[var(--heritage-sage)]"
           />
           <button
             type="button"
             onClick={() => setShowConfirm((v) => !v)}
-            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--forest-sage)]/55 hover:text-[var(--forest-sage)]"
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
             aria-label={activatePasswordToggleLabel(showConfirm, "confirm")}
             tabIndex={-1}
           >
@@ -194,7 +343,9 @@ export function ActivateAccountForm({
           </button>
         </div>
       </div>
-      <div className="flex items-start gap-3 text-sm leading-relaxed text-[var(--forest-sage)]/85">
+        </>
+      )}
+      <div className="flex items-start gap-3 text-sm leading-relaxed text-foreground">
         <input
           id="activate-legal-accepted"
           name="legalAccepted"
@@ -203,7 +354,7 @@ export function ActivateAccountForm({
           required
           disabled={pending}
           aria-labelledby="activate-legal-copy"
-          className="mt-1 size-4 shrink-0 rounded border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] accent-[var(--heritage-sage)]"
+          className="mt-1 size-4 shrink-0 rounded border-border accent-[var(--heritage-sage)]"
         />
         <span
           id="activate-legal-copy"
@@ -223,7 +374,7 @@ export function ActivateAccountForm({
             href={VENUE_TERMS_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="underline underline-offset-2 hover:text-[var(--forest-sage)]"
+            className="underline underline-offset-2 text-[var(--heritage-sage)] hover:text-foreground"
           >
             Terms of Service
           </a>{" "}
@@ -232,7 +383,7 @@ export function ActivateAccountForm({
             href={PRIVACY_POLICY_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="underline underline-offset-2 hover:text-[var(--forest-sage)]"
+            className="underline underline-offset-2 text-[var(--heritage-sage)] hover:text-foreground"
           >
             Privacy Policy
           </a>

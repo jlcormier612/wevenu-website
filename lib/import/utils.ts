@@ -3,7 +3,14 @@ import type { ClientInput } from "@/lib/clients/types";
 import type { LeadInput } from "@/lib/leads/types";
 import { resolveLeadSourceKey } from "@/lib/leads/constants";
 import type { VendorInput } from "@/lib/vendors/types";
-import type { PackageInput } from "@/lib/packages/types";
+import type { PackageInput, PackageItemInput } from "@/lib/packages/types";
+import { parsePackageIncludedItems } from "@/lib/import/package-items";
+import {
+  normalizeImportAmount,
+  normalizeImportDate,
+  normalizeImportQuantity,
+  normalizeImportVendorPricingTier,
+} from "@/lib/import/preview-integrity";
 
 type CsvRow = Record<string, string>;
 
@@ -16,6 +23,11 @@ type CsvRow = Record<string, string>;
 export type InventoryImportRow = {
   name: string; categoryName: string; quantityAvailable: string;
   width: string; length: string; height: string; shape: string; color: string; printableName: string;
+};
+
+/** Package shell plus optional composition lines for Import Data commit. */
+export type PackageImportRow = PackageInput & {
+  includedItems: PackageItemInput[];
 };
 
 const PHONE_LIKE = /^\+?\d{7,}$/;
@@ -60,6 +72,12 @@ function val(row: CsvRow, mapping: FieldMapping, key: string): string {
   return col ? (row[col] ?? "").trim() : "";
 }
 
+function mappedDate(row: CsvRow, mapping: FieldMapping, key: string): string {
+  const parsed = normalizeImportDate(val(row, mapping, key));
+  if (!parsed.ok) return val(row, mapping, key);
+  return parsed.value ?? "";
+}
+
 export function rowToClientInput(row: CsvRow, mapping: FieldMapping): ClientInput {
   return {
     firstName:        val(row, mapping, "firstName"),
@@ -68,10 +86,10 @@ export function rowToClientInput(row: CsvRow, mapping: FieldMapping): ClientInpu
     phone:            val(row, mapping, "phone"),
     partnerFirstName: val(row, mapping, "partnerFirstName"),
     partnerLastName:  val(row, mapping, "partnerLastName"),
-    partnerEmail:     "",
+    partnerEmail:     val(row, mapping, "partnerEmail"),
     eventType:        val(row, mapping, "eventType"),
-    eventDate:        val(row, mapping, "eventDate"),
-    endDate:          val(row, mapping, "endDate"),
+    eventDate:        mappedDate(row, mapping, "eventDate"),
+    endDate:          mappedDate(row, mapping, "endDate"),
     guestCount:       val(row, mapping, "guestCount"),
     ceremonyTime:     val(row, mapping, "ceremonyTime"),
     receptionTime:    val(row, mapping, "receptionTime"),
@@ -79,9 +97,7 @@ export function rowToClientInput(row: CsvRow, mapping: FieldMapping): ClientInpu
     teardownTime:     val(row, mapping, "teardownTime"),
     rehearsalDate:    "",
     internalNotes:    val(row, mapping, "internalNotes"),
-    // Space UUID mapping is resolved at commit when Import Wizard gains
-    // space-name resolution; spaceName is preserved via notes for now only
-    // if callers pass spaceId through a dedicated mapping key.
+    // Space name/UUID is resolved at commit via withResolvedSpace.
     spaceId:          val(row, mapping, "spaceId") || val(row, mapping, "spaceName"),
   };
 }
@@ -92,6 +108,7 @@ export function rowToLeadInput(row: CsvRow, mapping: FieldMapping): LeadInput {
   // resolved against it here rather than passed through raw, so an
   // unrecognized value can't fail the whole row on import.
   const { key: sourceKey, originalLabel } = resolveLeadSourceKey(val(row, mapping, "source"));
+  const budget = normalizeImportAmount(val(row, mapping, "estimatedBudget"));
   return {
     firstName:        val(row, mapping, "firstName"),
     lastName:         val(row, mapping, "lastName"),
@@ -101,10 +118,10 @@ export function rowToLeadInput(row: CsvRow, mapping: FieldMapping): LeadInput {
     partnerLastName:  "",
     partnerEmail:     "",
     eventType:        val(row, mapping, "eventType"),
-    eventDate:        val(row, mapping, "eventDate"),
+    eventDate:        mappedDate(row, mapping, "eventDate"),
     endDate:          "",
-    guestCount:       "",
-    estimatedBudget:  val(row, mapping, "estimatedBudget"),
+    guestCount:       val(row, mapping, "guestCount"),
+    estimatedBudget:  budget.ok ? budget.value : val(row, mapping, "estimatedBudget"),
     source:           sourceKey,
     originalSourceLabel: originalLabel,
     inquiryMessage:   val(row, mapping, "inquiryMessage"),
@@ -113,6 +130,7 @@ export function rowToLeadInput(row: CsvRow, mapping: FieldMapping): LeadInput {
 }
 
 export function rowToVendorInput(row: CsvRow, mapping: FieldMapping): VendorInput {
+  const tier = normalizeImportVendorPricingTier(val(row, mapping, "pricingTier"));
   return {
     businessName:    val(row, mapping, "businessName"),
     category:        val(row, mapping, "category"),
@@ -129,17 +147,20 @@ export function rowToVendorInput(row: CsvRow, mapping: FieldMapping): VendorInpu
     isInHouse:          false,
     description:        "",
     logoUrl:            "",
-    pricingTier:        val(row, mapping, "pricingTier"),
+    // Invalid tiers stay as the raw value so server-side validation can reject
+    // with a clear message; valid $ labels become canonical DB values.
+    pricingTier:        tier.ok ? tier.value : val(row, mapping, "pricingTier"),
     notes:              val(row, mapping, "notes"),
     specialPricingNote: "",
   };
 }
 
 export function rowToInventoryInput(row: CsvRow, mapping: FieldMapping): InventoryImportRow {
+  const qty = normalizeImportQuantity(val(row, mapping, "quantity"));
   return {
     name:              val(row, mapping, "name"),
     categoryName:      val(row, mapping, "category"),
-    quantityAvailable: val(row, mapping, "quantity"),
+    quantityAvailable: qty.ok ? qty.value : val(row, mapping, "quantity"),
     width:             val(row, mapping, "width"),
     length:            val(row, mapping, "length"),
     height:            val(row, mapping, "height"),
@@ -149,14 +170,24 @@ export function rowToInventoryInput(row: CsvRow, mapping: FieldMapping): Invento
   };
 }
 
-export function rowToPackageInput(row: CsvRow, mapping: FieldMapping): PackageInput {
+export function rowToPackageInput(row: CsvRow, mapping: FieldMapping): PackageImportRow {
+  const price = normalizeImportAmount(val(row, mapping, "basePrice"));
+  const parsedItems = parsePackageIncludedItems(val(row, mapping, "includedItems"));
   return {
     name:        val(row, mapping, "name"),
     description: val(row, mapping, "description"),
-    basePrice:   val(row, mapping, "basePrice"),
+    basePrice:   price.ok ? price.value : val(row, mapping, "basePrice"),
     category:    val(row, mapping, "category"),
     isActive:    true,
+    // Invalid composition is rejected at preview/commit; keep empty here if parse fails
+    // so row shape stays stable (caller validates via parsePackageIncludedItems).
+    includedItems: parsedItems.ok ? parsedItems.items : [],
   };
+}
+
+export function packageIncludedItemsParseError(row: CsvRow, mapping: FieldMapping): string | null {
+  const parsed = parsePackageIncludedItems(val(row, mapping, "includedItems"));
+  return parsed.ok ? null : parsed.message;
 }
 
 export function getSampleValue(
@@ -185,6 +216,7 @@ const TEMPLATE_SAMPLE_VALUES: Record<EntityType, Record<string, string>> = {
     firstName: "Emma", lastName: "Johnson",
     partnerFirstName: "James", partnerLastName: "Smith",
     email: "emma.johnson@example.com", phone: "555-0142",
+    partnerEmail: "james.smith@example.com",
     eventDate: "2027-06-12", endDate: "2027-06-12", eventType: "Wedding", guestCount: "120",
     ceremonyTime: "16:00", receptionTime: "22:00", setupTime: "14:00", teardownTime: "23:00",
     spaceName: "Ballroom",
@@ -193,14 +225,14 @@ const TEMPLATE_SAMPLE_VALUES: Record<EntityType, Record<string, string>> = {
   leads: {
     firstName: "Emma", lastName: "Johnson",
     email: "emma.johnson@example.com", phone: "555-0142",
-    eventDate: "2027-06-12", eventType: "Wedding",
+    eventDate: "2027-06-12", eventType: "Wedding", guestCount: "120",
     estimatedBudget: "15000", source: "Website",
     inquiryMessage: "Interested in a June 2027 date",
   },
   vendors: {
     businessName: "Bloom & Co Florals", category: "Florist",
     contactName: "Maria Chen", email: "maria@abcflorals.com", phone: "555-0142",
-    websiteUrl: "https://example.com", pricingTier: "$$",
+    websiteUrl: "https://example.com", pricingTier: "mid_range",
     notes: "Preferred vendor, responsive",
   },
   inventory: {
@@ -211,6 +243,7 @@ const TEMPLATE_SAMPLE_VALUES: Record<EntityType, Record<string, string>> = {
   packages: {
     name: "Silver Package", description: "Includes linens, chairs, and centerpieces for up to 100 guests.",
     basePrice: "2500", category: "Reception",
+    includedItems: "Linens|100|each; Chiavari chairs|100|each; Centerpieces|10|each",
   },
 };
 

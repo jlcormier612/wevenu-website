@@ -1,0 +1,109 @@
+{
+  "sweep": "hello-to-cheers-real-customer-journey",
+  "started": "2026-09-22",
+  "runtime": {
+    "cluster": "htc-sandbox",
+    "service": "htc-sandbox-venue-app",
+    "taskDefinition": "htc-sandbox-venue-app:355",
+    "imageTag": "cab3a1f03831877d03d40db658b486ef1f2315a6",
+    "rolloutState": "COMPLETED",
+    "production_untouched": true,
+    "deploy": "https://github.com/jlcormier612/wevenu-website/actions/runs/35810851169"
+  },
+  "fixture": {
+    "venue": "Jen's Fancy Venue",
+    "venue_id": "a415ac52-cd74-42a6-8df7-7a8f6e71d080",
+    "lead_id": "9ca3196f-3100-436f-921a-075ee3b7857d",
+    "relationship_id": "d8289c67-3136-4f96-ad53-be74d52af59c",
+    "email": "sweep.j1.20260922t2015@hellotocheers.test",
+    "commercial_selection_id": "43f230c9-2c93-4233-9a5c-bb23a71ae49b",
+    "proposal_url": "https://app.sandbox.hellotocheers.com/offer/c46c495046158f23b97124f57dd2afb75aedb18918d66fdd",
+    "planned_event_space_id": "3b36ec69-b17d-4351-8186-68d96dd6dfe7",
+    "appointment_id": "0068ef45-02ac-4bee-9730-9080abae32a6",
+    "confirm_token": "2e85816d-4f1e-41ba-8a7e-21ef9f0751ce"
+  },
+  "journeys": {
+    "1_public_inquiry_to_lead": "GREEN",
+    "2_lead_workspace": "GREEN",
+    "3_package_proposal": "GREEN",
+    "3b_proposal_email": "CLICKABLE_LINK_GREEN",
+    "4_tour": "GREEN",
+    "5_booking": "PENDING",
+    "6_contract": "PENDING",
+    "7_client_workspace": "PENDING",
+    "8_communications": "MESSAGE_COLLAPSE_FIX_DEPLOYING",
+    "9_brand": "PENDING",
+    "10_data_integrity": "PENDING"
+  },
+  "open_items": [
+    "RCJ-PROPOSAL-COMMERCIAL-PAYMENT-JOURNEY: Implementation in progress on feature/team-permissions-multi-owner — NOT GREEN. L1 commercial_proposals + client select/approve → L2; deposit email uses amount-due-now; event-date explicit field. Awaiting Sandbox migration + deploy + browser/Stripe E2E. See docs/qa/proposal-commercial-selection-payment-journey/STATUS.md.",
+    "RCJ-CONVERSATION-MESSAGE-COLLAPSE: cab3a1f0 live on :355 — collapse browser E2E still open.",
+    "RCJ payment/deposit journey: superseded by RCJ-PROPOSAL-COMMERCIAL-PAYMENT-JOURNEY (same workstream; deposit email fix included). Prior forensic: docs/qa/payment-deposit-journey-forensic/results.json.",
+    "Brand Colors artifact evaluation deferred to Journey 9.",
+    "Jen's Fancy Venue Twilio remains pending_compliance — SMS send E2E used Texting E2E Disposable venue (ready).",
+    "Original Yahoo Sent reply to tour confirm 01a0cbe2 is unrecoverable (delivered to Google jennifer@); future replies use Reply-To thread+@replies."
+  ],
+  "defects": [
+    {
+      "id": "RCJ-UPCOMING-TOURS-SORT-DESC",
+      "title": "Upcoming Tours listed farthest date first",
+      "root_cause": "getTourAppointments ordered scheduled_at descending; Tours page preserved that order for Upcoming.",
+      "fix": "Upcoming query window ascending + partitionTourAppointmentsForVenueList (Upcoming asc / Past desc).",
+      "status": "GREEN",
+      "commit": "474fd5f1f03276583237166727538b69279cc992",
+      "deploy_run": "https://github.com/jlcormier612/wevenu-website/actions/runs/35809732836",
+      "runtime": "htc-sandbox-venue-app:354 / 474fd5f1",
+      "evidence": "docs/qa/upcoming-tours-sort/results.json"
+    },
+    {
+      "id": "RCJ-PROPOSAL-EMAIL-LINK-PLAINTEXT",
+      "title": "Proposal URL in email was plain text, not a clickable <a href>",
+      "root_cause": "plainTextToEmailHtml escaped body and never linkified http(s) URLs — conversation/scheduled email HTML had bare text URLs.",
+      "fix": "Shared linkifyPlainTextForEmailHtml in lib/email/conversation-brand.ts; /offer/{token} → View your proposal CTA + URL under it; plain text body still carries raw URL.",
+      "status": "GREEN",
+      "commit": "cab3a1f03831877d03d40db658b486ef1f2315a6",
+      "deploy_run": "https://github.com/jlcormier612/wevenu-website/actions/runs/35810851169",
+      "runtime": "htc-sandbox-venue-app:355 / cab3a1f0",
+      "evidence": "docs/qa/proposal-email-clickable-link/results.json",
+      "resend_id": "01a0cc24-978a-709f-a0e6-6b4518ad7877"
+    },
+    {
+      "id": "RCJ-CONVERSATION-MESSAGE-COLLAPSE",
+      "title": "Conversation/Inbox message history fully expanded — does not scale",
+      "root_cause": "ConversationThread rendered every Bubble expanded; no progressive disclosure.",
+      "fix": "Shared ConversationThread: latest always expanded; older collapsed with sender/time/channel/preview; expand/collapse toggles; composer stays after history (not a fixed-height transcript box).",
+      "status": "FIX_DEPLOYING",
+      "commit": "cab3a1f03831877d03d40db658b486ef1f2315a6",
+      "deploy_run": "https://github.com/jlcormier612/wevenu-website/actions/runs/35810851169",
+      "evidence": "docs/qa/conversation-message-collapse/results.json"
+    },
+    {
+      "id": "J4-D1",
+      "title": "Lead Overview / Tours list showed browser-local tour time",
+      "status": "GREEN",
+      "commit": "fad061c03aa28293b8ebb9cdc9b9035a3bc91226"
+    },
+    {
+      "id": "ADD-LEAD-INQUIRY-DEFAULTS",
+      "title": "Add Lead inquiry date defaulted to UTC tomorrow; Message/notes label misled",
+      "status": "GREEN",
+      "commit": "4683f1df549a41413593c7ebaf958fb3d9f8c9f6",
+      "evidence": "docs/qa/add-lead-inquiry-defaults/results.json"
+    },
+    {
+      "id": "RCJ-SMS-CONSENT-ACQUISITION",
+      "title": "Manually added Lead had no venue path to request SMS consent",
+      "status": "GREEN",
+      "commit": "5988c8d9237398e17b4b2443b32b31795dda9245",
+      "evidence": "docs/qa/manual-lead-sms-consent/results.json"
+    },
+    {
+      "id": "RCJ-INBOUND-EMAIL-REPLY-LOST",
+      "title": "Yahoo reply to tour confirmation never appeared in Lead conversation / Inbox",
+      "status": "GREEN",
+      "commit": "e461f8de8a89371e39c1af7248949f91ab2d048a",
+      "evidence": "docs/qa/inbound-email-reply-lost/results.json"
+    }
+  ],
+  "note": "Proposal clickable link GREEN on :355/cab3a1f0. Message collapse still needs browser E2E on same runtime."
+}

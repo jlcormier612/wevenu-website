@@ -28,7 +28,7 @@ export function TemplatePreview({
   if (!hasEmail && !hasSms) {
     return (
       <div className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
-        Nothing to preview yet — write an Email or SMS body first.
+        Nothing to preview yet — write an Email or Text body first.
       </div>
     );
   }
@@ -67,7 +67,7 @@ export function TemplatePreview({
           <div className="overflow-hidden rounded-lg border border-border">
             <div className="flex items-center gap-2 border-b border-border bg-muted/40 px-4 py-2">
               <MessageSquare className="h-3.5 w-3.5 text-muted-foreground" />
-              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">SMS preview</p>
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Text preview</p>
             </div>
             <div className="flex justify-end bg-background p-4">
               <p className="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-sm bg-primary px-3.5 py-2.5 text-sm text-primary-foreground">

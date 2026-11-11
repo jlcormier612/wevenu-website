@@ -1,32 +1,80 @@
 import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
-import type { ProposalView } from "@/lib/booking-journey/proposal-view";
+import type { ProposalBrand, ProposalView } from "@/lib/booking-journey/proposal-view";
+import { inclusionUnitLabel } from "@/lib/commercial-proposals/inclusion-display";
 import { formatCurrency } from "@/lib/invoices/constants";
+import { DEFAULT_VENUE_BRAND, venueBrandSurfaceStyle } from "@/lib/theme/venue-brand-surface";
 
 /**
- * The couple-facing proposal body. Venue preview and /offer/{token} share
+ * The couple-facing package / proposal body. Venue preview and /offer/{token} share
  * this renderer so the review cannot drift from what the couple receives.
+ *
+ * Venue Brand Colors roles:
+ * - Primary: primary brand rule under the title
+ * - Secondary: supporting eyebrow / venue name
+ * - Accent: selective emphasis on the package total
+ * - Neutral: soft venue-branded page surface
+ *
+ * Use eyebrow "Your proposal" for multi-option L1 proposals.
+ * Use eyebrow "Review and accept" for direct Path B package offers.
  */
 export function ProposalArtifact({
   proposal,
   context,
   acceptSlot,
+  eyebrow = "Your proposal",
+  previewAcceptLabel = "Accept proposal",
 }: {
   proposal: ProposalView;
   context: "couple" | "venue-preview";
   acceptSlot?: ReactNode;
+  eyebrow?: string;
+  previewAcceptLabel?: string;
 }) {
   const showDeposit = proposal.depositAmount > 0;
   const accepted = proposal.status === "accepted";
+  const brand: ProposalBrand = proposal.brand ?? { ...DEFAULT_VENUE_BRAND, logoUrl: null };
+  const brandStyle = venueBrandSurfaceStyle(brand);
 
   return (
-    <div className="mx-auto max-w-lg px-4 py-12">
-      <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
-        Your proposal
+    <div
+      className="mx-auto min-h-full max-w-lg px-4 py-12 text-foreground"
+      style={brandStyle}
+      data-theme-lock="light"
+      data-venue-brand="proposal"
+    >
+      <p
+        className="text-xs font-medium uppercase tracking-widest"
+        style={{ color: "var(--venue-secondary)" }}
+      >
+        {eyebrow}
       </p>
-      <h1 className="mt-2 font-heading text-3xl text-heading">{proposal.name}</h1>
-      <p className="mt-2 text-2xl font-semibold text-heading">
+      {brand.logoUrl || proposal.venueName ? (
+        <div className="mt-3 flex items-center gap-3">
+          {brand.logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={brand.logoUrl}
+              alt={proposal.venueName ?? "Venue logo"}
+              data-testid="proposal-venue-logo"
+              className="h-14 w-14 shrink-0 rounded-lg object-contain bg-white/80 p-1 shadow-sm"
+            />
+          ) : null}
+          {proposal.venueName ? (
+            <p className="text-sm font-medium" style={{ color: "var(--venue-secondary)" }}>
+              {proposal.venueName}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+      <h1
+        className="mt-2 font-heading text-3xl text-foreground"
+        style={{ borderBottom: "3px solid var(--venue-primary)", paddingBottom: "0.5rem" }}
+      >
+        {proposal.name}
+      </h1>
+      <p className="mt-4 text-2xl font-semibold" style={{ color: "var(--venue-accent)" }}>
         {formatCurrency(proposal.totalAmount)}
       </p>
       {showDeposit ? (
@@ -36,39 +84,51 @@ export function ProposalArtifact({
         </p>
       ) : null}
       {proposal.offerMessage ? (
-        <p className="mt-6 whitespace-pre-wrap rounded-lg border border-border bg-muted/20 px-4 py-3 text-sm text-heading">
+        <p
+          className="mt-6 whitespace-pre-wrap rounded-lg border px-4 py-3 text-sm text-foreground"
+          style={{
+            borderColor: "var(--venue-primary)",
+            backgroundColor: "var(--venue-card)",
+          }}
+        >
           {proposal.offerMessage}
         </p>
       ) : null}
       {proposal.includedItems.length > 0 ? (
         <div className="mt-6">
-          <p className="text-sm font-medium text-heading">What&apos;s included</p>
+          <p className="text-sm font-medium" style={{ color: "var(--venue-secondary)" }}>
+            What&apos;s included
+          </p>
           <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
-            {proposal.includedItems.map((item, i) => (
-              <li key={`${item.description}-${i}`}>
-                • {item.description}
-                {item.quantity ? ` × ${item.quantity}` : ""}
-                {item.unit ? ` ${item.unit}` : ""}
-              </li>
-            ))}
+            {proposal.includedItems.map((item, i) => {
+              const unit = inclusionUnitLabel(item.description, item.unit);
+              return (
+                <li key={`${item.description}-${i}`}>
+                  • {item.description}
+                  {item.quantity ? ` × ${item.quantity}` : ""}
+                  {unit ? ` ${unit}` : ""}
+                </li>
+              );
+            })}
           </ul>
         </div>
       ) : null}
       <div className="mt-8">
         {accepted ? (
-          <p className="rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm text-heading">
+          <p className="rounded-lg border border-border px-4 py-3 text-sm text-foreground" style={{ backgroundColor: "var(--venue-card)" }}>
             {showDeposit
-              ? "You've accepted this package. Your venue will collect the deposit next."
-              : "You've accepted this package. Your venue will confirm the booking next."}
+              ? "You've accepted this package. Your venue will collect the deposit next. This acceptance is not itself a booking."
+              : "You've accepted this package. Your venue will follow up on what comes next."}
           </p>
         ) : acceptSlot ? (
           acceptSlot
         ) : context === "venue-preview" ? (
           <Button type="button" size="lg" className="w-full" disabled>
-            Accept proposal
+            {previewAcceptLabel}
           </Button>
         ) : null}
       </div>
     </div>
   );
 }
+

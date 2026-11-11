@@ -1,0 +1,127 @@
+{
+  "runId": "E2E72168",
+  "expectedSha": "c5bdafc029ca9ee0a3ad356e96131e30bd1b96bd",
+  "servingImage": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:c5bdafc029ca9ee0a3ad356e96131e30bd1b96bd",
+  "passed": true,
+  "counts": {
+    "PASS": 22,
+    "FAIL": 0,
+    "BLOCKED": 0,
+    "total": 22
+  },
+  "checks": [
+    {
+      "name": "Serving expected SHA",
+      "outcome": "PASS",
+      "detail": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:c5bdafc029ca9ee0a3ad356e96131e30bd1b96bd"
+    },
+    {
+      "name": "A Setup Profiles exclude Inventory/EO templates",
+      "outcome": "PASS",
+      "detail": "ok"
+    },
+    {
+      "name": "A Event Setup excludes Inventory/EO checklist rows",
+      "outcome": "PASS",
+      "detail": "Event setup\n\nUsing: Standard Wedding Setup\n\nReview planning, timeline, vendors, and floor plans for this event, then release the prepared experience to the client portal. Invite the client separately when you're ready. Questionnaires use authorized send when staff choose — not an"
+    },
+    {
+      "name": "A Inventory commercial tab reachable",
+      "outcome": "PASS",
+      "detail": "tab=inventory"
+    },
+    {
+      "name": "A Event Order commercial strip present",
+      "outcome": "PASS",
+      "detail": "strip"
+    },
+    {
+      "name": "E EO fixture present",
+      "outcome": "PASS",
+      "detail": "{\"id\":\"624eceef-5096-4288-b104-62daa3a82d11\",\"status\":\"finalized\",\"shared_at\":\"2026-10-23T16:07:20.128+00:00\",\"finalized_at\":\"2026-10-23T16:07:02.928+00:00\",\"revision\":9,\"client_agreed_at\":\"2026-10-23T16:08:03.562897+00:00\",\"client_agreed_name\":\"E2E-COMMERCIAL-E2E71482-ACCEPT2\",\"client_agreed_revision\":9}"
+    },
+    {
+      "name": "E1 Reopen clears agreement (DB)",
+      "outcome": "PASS",
+      "detail": "{\"id\":\"624eceef-5096-4288-b104-62daa3a82d11\",\"status\":\"open\",\"shared_at\":\"2026-10-23T16:07:20.128+00:00\",\"finalized_at\":null,\"revision\":9,\"client_agreed_at\":null,\"client_agreed_name\":null,\"client_agreed_revision\":null}"
+    },
+    {
+      "name": "E2 Finalize via UI",
+      "outcome": "PASS",
+      "detail": "{\"id\":\"624eceef-5096-4288-b104-62daa3a82d11\",\"status\":\"finalized\",\"shared_at\":\"2026-10-23T16:07:20.128+00:00\",\"finalized_at\":\"2026-10-23T16:16:37.452+00:00\",\"revision\":10,\"client_agreed_at\":null,\"client_agreed_name\":null,\"client_agreed_revision\":null}"
+    },
+    {
+      "name": "E3 Share/Update Shared Copy via UI",
+      "outcome": "PASS",
+      "detail": "uiSent=false before=2026-10-23T16:07:20.128+00:00 after=2026-10-23T16:16:52.839+00:00"
+    },
+    {
+      "name": "E4 Pre-accept agreement null",
+      "outcome": "PASS",
+      "detail": "{\"id\":\"624eceef-5096-4288-b104-62daa3a82d11\",\"status\":\"finalized\",\"shared_at\":\"2026-10-23T16:16:52.839+00:00\",\"finalized_at\":\"2026-10-23T16:16:37.452+00:00\",\"revision\":10,\"client_agreed_at\":null,\"client_agreed_name\":null,\"client_agreed_revision\":null}"
+    },
+    {
+      "name": "E5 Client accept revision",
+      "outcome": "PASS",
+      "detail": "{\"id\":\"624eceef-5096-4288-b104-62daa3a82d11\",\"status\":\"finalized\",\"shared_at\":\"2026-10-23T16:16:52.839+00:00\",\"finalized_at\":\"2026-10-23T16:16:37.452+00:00\",\"revision\":10,\"client_agreed_at\":\"2026-10-23T16:17:17.745221+00:00\",\"client_agreed_name\":\"E2E-COMMERCIAL-E2E72168-ACCEPT1\",\"client_agreed_revision\":10}"
+    },
+    {
+      "name": "E6 Agreement visible after reload",
+      "outcome": "PASS",
+      "detail": "badge=1"
+    },
+    {
+      "name": "E7 Accept panel gone after agreement (idempotent UI)",
+      "outcome": "PASS",
+      "detail": "no panel"
+    },
+    {
+      "name": "E8 Reopen invalidates agreement",
+      "outcome": "PASS",
+      "detail": "{\"id\":\"624eceef-5096-4288-b104-62daa3a82d11\",\"status\":\"open\",\"shared_at\":\"2026-10-23T16:16:52.839+00:00\",\"finalized_at\":null,\"revision\":10,\"client_agreed_at\":null,\"client_agreed_name\":null,\"client_agreed_revision\":null}"
+    },
+    {
+      "name": "E9 DB agreement cleared pending re-share",
+      "outcome": "PASS",
+      "detail": "{\"id\":\"624eceef-5096-4288-b104-62daa3a82d11\",\"status\":\"open\",\"shared_at\":\"2026-10-23T16:16:52.839+00:00\",\"finalized_at\":null,\"revision\":10,\"client_agreed_at\":null,\"client_agreed_name\":null,\"client_agreed_revision\":null}"
+    },
+    {
+      "name": "E10 Re-finalize",
+      "outcome": "PASS",
+      "detail": "{\"id\":\"624eceef-5096-4288-b104-62daa3a82d11\",\"status\":\"finalized\",\"shared_at\":\"2026-10-23T16:16:52.839+00:00\",\"finalized_at\":\"2026-10-23T16:17:41.303+00:00\",\"revision\":11,\"client_agreed_at\":null,\"client_agreed_name\":null,\"client_agreed_revision\":null}"
+    },
+    {
+      "name": "E11 Re-share via UI",
+      "outcome": "PASS",
+      "detail": "revision=11 shared=2026-10-23T16:18:04.956+00:00"
+    },
+    {
+      "name": "E12 Client re-accept new revision",
+      "outcome": "PASS",
+      "detail": "{\"id\":\"624eceef-5096-4288-b104-62daa3a82d11\",\"status\":\"finalized\",\"shared_at\":\"2026-10-23T16:18:04.956+00:00\",\"finalized_at\":\"2026-10-23T16:17:41.303+00:00\",\"revision\":11,\"client_agreed_at\":\"2026-10-23T16:18:46.850349+00:00\",\"client_agreed_name\":\"E2E-COMMERCIAL-E2E72168-ACCEPT2\",\"client_agreed_revision\":11}"
+    },
+    {
+      "name": "E13 DB matches new revision agreement",
+      "outcome": "PASS",
+      "detail": "{\"id\":\"624eceef-5096-4288-b104-62daa3a82d11\",\"status\":\"finalized\",\"shared_at\":\"2026-10-23T16:18:04.956+00:00\",\"finalized_at\":\"2026-10-23T16:17:41.303+00:00\",\"revision\":11,\"client_agreed_at\":\"2026-10-23T16:18:46.850349+00:00\",\"client_agreed_name\":\"E2E-COMMERCIAL-E2E72168-ACCEPT2\",\"client_agreed_revision\":11}"
+    },
+    {
+      "name": "C Portal inventory shared surface loads",
+      "outcome": "PASS",
+      "detail": "status=shared"
+    },
+    {
+      "name": "F EO invoice link panel present",
+      "outcome": "PASS",
+      "detail": "count=1"
+    },
+    {
+      "name": "F Documents tab loads",
+      "outcome": "PASS",
+      "detail": "ok"
+    }
+  ],
+  "at": "2026-10-23T16:19:08.731Z",
+  "productionUntouched": true,
+  "noRealMoney": true
+}

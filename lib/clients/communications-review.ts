@@ -1,17 +1,28 @@
 /**
- * Phase 5 communications review — presentation only.
+ * Phase 5 communications review — presentation only for automations.
  *
  * Reads existing invitation records and venue-authored Automations.
- * Does not send, enroll, schedule, or create a welcome message.
- * Invitation copy matches Phase 3 invite-at-release timing.
+ * Does not send, enroll, schedule, or create a welcome message on its own.
+ * The Communications panel may offer Invite client via the existing
+ * authorized invite path — that path is user-initiated, never on page load.
  * Booked-stage Automations are listed when configured; they are not created
  * or changed here.
  */
 
 import type { ClientInvitationStatus } from "@/lib/client-auth/types";
 
+/** Same rule as shouldSendClientInvitation in client-auth/service — kept local to avoid importing server modules into this presentation helper. */
+function canSendInvitation(
+  existing: { status: ClientInvitationStatus } | null,
+): boolean {
+  if (!existing) return true;
+  return existing.status !== "pending" && existing.status !== "accepted";
+}
+
 export type CommunicationsReviewInvitation = {
   status: ClientInvitationStatus;
+  deliveryStatus?: "sending" | "accepted" | "delivered" | "opened" | "clicked" | "failed" | null;
+  providerMessageId?: string | null;
 };
 
 export type CommunicationsReviewAutomation = {
@@ -32,15 +43,26 @@ export type CommunicationsReviewRow = {
   actionLabel: string;
 };
 
+/** Invite controls for the Client invitation row (user-initiated only). */
+export type CommunicationsInviteControl = {
+  canInvite: boolean;
+  clientId: string;
+  email: string | null;
+  coupleName: string;
+  /** Shown when canInvite is false and an invite is not already on file. */
+  disabledReason: string | null;
+};
+
 export type CommunicationsReviewModel = {
   heading: string;
   summary: string;
   reviewNote: string;
   rows: CommunicationsReviewRow[];
+  invite: CommunicationsInviteControl;
 };
 
 export const COMMUNICATIONS_REVIEW_NOTE =
-  "Opening this page does not send a message. The client invitation is sent when you release Client Planning, if an email is on file.";
+  "Opening this page does not send a message. Use Invite client when you're ready — releasing Client Planning does not send an invitation email.";
 
 export function isActiveBookedStageAutomation(automation: CommunicationsReviewAutomation): boolean {
   return (
@@ -56,12 +78,47 @@ export function invitationDetail(
 ): string {
   if (!invitation) {
     return clientHasEmail
-      ? "Not sent — the client will be invited when you release their planning."
+      ? "Not sent — invite them when you're ready. Releasing Client Planning does not send this invitation."
       : "Not sent — no client email on file";
   }
   if (invitation.status === "accepted") return "Client accepted their invitation";
-  if (invitation.status === "revoked") return "Invitation revoked";
-  return "Invitation sent";
+  if (invitation.status === "revoked") {
+    return clientHasEmail
+      ? "Invitation revoked — you can send a new invitation."
+      : "Invitation revoked — no client email on file";
+  }
+  if (invitation.providerMessageId && invitation.deliveryStatus === "delivered") return "Delivered";
+  if (invitation.providerMessageId && invitation.deliveryStatus !== "failed" && invitation.deliveryStatus !== "sending") {
+    return "The email provider accepted the invitation";
+  }
+  if (invitation.deliveryStatus === "failed") return "The email provider did not accept the invitation";
+  if (invitation.deliveryStatus === "sending") return "Send not confirmed";
+  return "Invitation is pending. Delivery was not recorded.";
+}
+
+export function invitationInviteControl(input: {
+  clientId: string;
+  invitation: CommunicationsReviewInvitation | null;
+  clientHasEmail: boolean;
+  email: string | null;
+  coupleName: string;
+}): CommunicationsInviteControl {
+  const canInvite =
+    Boolean(input.email?.trim())
+    && canSendInvitation(input.invitation);
+  return {
+    canInvite,
+    clientId: input.clientId,
+    email: input.email?.trim() || null,
+    coupleName: input.coupleName,
+    disabledReason: canInvite
+      ? null
+      : !input.email?.trim()
+        ? "No client email on file"
+        : input.invitation?.status === "pending" || input.invitation?.status === "accepted"
+          ? null
+          : "Invitation cannot be sent right now",
+  };
 }
 
 function invitationRow(
@@ -96,7 +153,7 @@ function automatedMessagesRow(
     return {
       key: "automated_messages",
       label: "Automated messages",
-      detail: "Nothing is scheduled to send automatically when Booking Started.",
+      detail: "Nothing is scheduled to send automatically when Booked.",
       onFile: false,
       needsAttention: false,
       href: "/communication/series",
@@ -107,9 +164,9 @@ function automatedMessagesRow(
   const plan =
     booked.length === 1
       ? booked[0].name.trim()
-        ? `${booked[0].name} is set to start when Booking Started.`
-        : "1 message plan is set to start when Booking Started."
-      : `${booked.length} message plans are set to start when Booking Started.`;
+        ? `${booked[0].name} is set to start when Booked.`
+        : "1 message plan is set to start when Booked."
+      : `${booked.length} message plans are set to start when Booked.`;
   const detail = started ? `${plan} Messages for this client have already started.` : plan;
 
   return {
@@ -133,6 +190,8 @@ export function buildCommunicationsReview(input: {
   clientId: string;
   invitation: CommunicationsReviewInvitation | null;
   clientHasEmail: boolean;
+  email?: string | null;
+  coupleName?: string;
   automations: CommunicationsReviewAutomation[];
   activeEnrollmentSequenceIds?: readonly string[];
 }): CommunicationsReviewModel {
@@ -145,5 +204,12 @@ export function buildCommunicationsReview(input: {
     summary: summarize(rows),
     reviewNote: COMMUNICATIONS_REVIEW_NOTE,
     rows,
+    invite: invitationInviteControl({
+      clientId: input.clientId,
+      invitation: input.invitation,
+      clientHasEmail: input.clientHasEmail,
+      email: input.email ?? null,
+      coupleName: input.coupleName ?? "there",
+    }),
   };
 }

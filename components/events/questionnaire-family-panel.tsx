@@ -2,20 +2,24 @@
 
 /**
  * Questionnaire Family — coordinator view on the booking workspace.
- * Three customer-facing forms: Client Planning, Final Details, Post-Event Feedback.
+ * Select a prepared library template, preview as client, then Send now or Schedule send.
+ * Templates are authored in Templates → Questionnaires & Feedback — not created here.
  */
 
 import * as React from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 import { CheckCircle, Copy, ExternalLink, Loader2, MessageSquareWarning, RotateCcw, Send, ShieldOff } from "lucide-react";
 import { toast } from "sonner";
 
 import {
   applyQuestionnaireTemplateAction,
+  cancelScheduledQuestionnaireSendAction,
   completeQuestionnaireAction,
   reopenQuestionnaireAction,
   requestQuestionnaireChangesAction,
-  saveQuestionnaireAction,
+  scheduleQuestionnaireSendAction,
   sendQuestionnaireAction,
   withdrawQuestionnaireAccessAction,
 } from "@/app/(app)/events/[id]/questionnaire-actions";
@@ -26,8 +30,6 @@ import { ShareDialog } from "@/components/sharing/share-dialog";
 import { Badge } from "@/components/ui/badge";
 import type { WaitingOn } from "@/components/business-assets/waiting-state";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { Questionnaire, QuestionnaireActivity } from "@/lib/events/questionnaire";
@@ -42,7 +44,7 @@ import {
   kindLabel,
   type QuestionnaireKind,
 } from "@/lib/questionnaire-family/definitions";
-import { resolveQuestionnaireFields } from "@/lib/questionnaire-family/resolve";
+import { AnswerRows } from "@/components/events/questionnaire-answer-rows";
 import type { QuestionnaireTemplate } from "@/lib/questionnaire-templates/service";
 
 const KINDS: QuestionnaireKind[] = ["client_planning", "final_details", "post_event_feedback"];
@@ -55,78 +57,14 @@ const SHARE_BODY: Record<QuestionnaireKind, string> = {
   post_event_feedback: "Thank you for celebrating with us. When you have a moment, we'd love your Post-Event Feedback about how everything felt.",
 };
 
-function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
-  return (
-    <div className="space-y-1.5">
-      <Label className="text-sm font-medium text-heading">
-        {label}{required && <span className="text-destructive"> *</span>}
-      </Label>
-      {children}
-    </div>
-  );
-}
-
-function AnswerRows({ q }: { q: Questionnaire }) {
-  const family = q.additional?.family ?? {};
-  const fields = resolveQuestionnaireFields({
-    kind: q.kind,
-    includedFields: q.includedFields,
-    requiredFields: q.requiredFields,
-    customFields: q.customFields,
-    masterOverrides: q.masterOverrides,
-    fieldOrder: q.fieldOrder,
+function preferredTemplateId(kindTemplates: QuestionnaireTemplate[], draftTemplateId: string | null | undefined): string {
+  if (draftTemplateId && kindTemplates.some((t) => t.id === draftTemplateId)) return draftTemplateId;
+  if (kindTemplates.length === 1) return kindTemplates[0].id;
+  const masterName = kindTemplates.find((t) => {
+    const master = getQuestionnaireMasterByKind(t.kind);
+    return t.name === master.name;
   });
-  const columns: Record<string, string | number | null | undefined> = {
-    meal_notes: q.mealNotes,
-    processional_song: q.processionalSong,
-    recessional_song: q.recessionalSong,
-    first_dance_song: q.firstDanceSong,
-    parent_dances: q.parentDances,
-    emergency_contact_name: q.emergencyContactName,
-    emergency_contact_phone: q.emergencyContactPhone,
-    special_requests: q.specialRequests,
-    vendor_notes: q.vendorNotes,
-    ceremony_start_time: q.ceremonyStartTime,
-    reception_start_time: q.receptionStartTime,
-    ceremony_location: q.ceremonyLocation,
-    reception_location: q.receptionLocation,
-    final_guest_count: q.finalGuestCount,
-  };
-  const shown = new Set<string>();
-
-  return (
-    <div className="rounded-sm border border-border bg-card p-4 space-y-0">
-      {q.kind === "final_details" && q.finalGuestCount != null && (
-        <div className="flex gap-4 py-2 border-b border-border">
-          <span className="w-52 shrink-0 text-xs text-muted-foreground">Guest count</span>
-          <span className="text-sm text-foreground">{q.finalGuestCount}</span>
-        </div>
-      )}
-      {fields.map((f) => {
-        let value: string | number | null | undefined;
-        if (f.destination === "column" && f.column) value = columns[f.column];
-        else if (f.destination === "event_guest_count") value = q.finalGuestCount;
-        else if (f.destination === "family") value = family[f.id];
-        else return null;
-        if (value == null || value === "") return null;
-        shown.add(f.id);
-        return (
-          <div key={f.id} className="flex gap-4 py-2 border-b border-border last:border-0">
-            <span className="w-52 shrink-0 text-xs text-muted-foreground">{f.label}</span>
-            <span className="text-sm text-foreground whitespace-pre-wrap">{String(value)}</span>
-          </div>
-        );
-      })}
-      {Object.entries(family).filter(([k]) => !shown.has(k)).map(([k, v]) => (
-        v ? (
-          <div key={k} className="flex gap-4 py-2 border-b border-border last:border-0">
-            <span className="w-52 shrink-0 text-xs text-muted-foreground">{k.replace(/_/g, " ")}</span>
-            <span className="text-sm text-foreground whitespace-pre-wrap">{v}</span>
-          </div>
-        ) : null
-      ))}
-    </div>
-  );
+  return masterName?.id ?? kindTemplates[0]?.id ?? "";
 }
 
 function KindPanel({
@@ -139,6 +77,7 @@ function KindPanel({
   coupleName,
   eventName,
   venueName,
+  onApplied,
 }: {
   kind: QuestionnaireKind;
   eventId: string;
@@ -149,42 +88,47 @@ function KindPanel({
   coupleName?: string | null;
   eventName?: string | null;
   venueName?: string;
+  onApplied?: () => void;
 }) {
   const master = getQuestionnaireMasterByKind(kind);
   const kindTemplates = templates.filter((t) => t.kind === kind && !t.isArchived);
-  const [selectedTemplateId, setSelectedTemplateId] = React.useState("");
+
+  const [selectedTemplateId, setSelectedTemplateId] = React.useState(() =>
+    preferredTemplateId(kindTemplates, initial?.templateId),
+  );
   const [applying, startApply] = React.useTransition();
   const [reopening, startReopen] = React.useTransition();
   const [withdrawing, startWithdraw] = React.useTransition();
-  const [saving, startSave] = React.useTransition();
   const [requestingChanges, startRequestChanges] = React.useTransition();
   const [completing, startComplete] = React.useTransition();
+  const [cancellingSchedule, startCancelSchedule] = React.useTransition();
   const [changeNote, setChangeNote] = React.useState("");
   const [showChangeForm, setShowChangeForm] = React.useState(false);
   const [formUrl, setFormUrl] = React.useState<string | null>(null);
   const [copiedUrl, setCopiedUrl] = React.useState(false);
-  const [expectedUpdatedAt, setExpectedUpdatedAt] = React.useState(initial?.updatedAt);
-  const [notes, setNotes] = React.useState({
-    mealNotes: initial?.mealNotes ?? "",
-    emergencyContactName: initial?.emergencyContactName ?? "",
-    emergencyContactPhone: initial?.emergencyContactPhone ?? "",
-    specialRequests: initial?.specialRequests ?? "",
-    vendorNotes: initial?.vendorNotes ?? "",
-    finalGuestCount: initial?.finalGuestCount ?? undefined as number | undefined,
-    ceremonyStartTime: initial?.ceremonyStartTime ?? "",
-    receptionStartTime: initial?.receptionStartTime ?? "",
-  });
+
+  React.useEffect(() => {
+    setSelectedTemplateId(preferredTemplateId(kindTemplates, initial?.templateId));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kind, initial?.templateId, kindTemplates.map((t) => t.id).join(",")]);
 
   const status = initial?.status ?? "draft";
   const needsReview = isQuestionnaireNeedsVenueReview(status);
   const isComplete = status === "complete";
   const isChangesRequested = status === "changes_requested";
   const isReviewSurface = needsReview || isComplete || isChangesRequested;
-  /** Withdraw is sent|in_progress → draft only; submitted forms use Request Changes / Reopen. */
   const canWithdrawAccess = status === "sent" || status === "in_progress";
   const canApplyTemplate = !initial || status === "draft";
-  const appUrl = typeof window !== "undefined" ? window.location.origin : "";
-  const currentFormUrl = formUrl ?? (initial?.accessKey ? `${appUrl}/questionnaire/${initial.accessKey}` : null);
+  const formPath = initial?.accessKey ? `/questionnaire/${initial.accessKey}` : null;
+  const currentFormUrl = formUrl ?? formPath;
+  const pendingSchedule = initial?.scheduledSendStatus === "scheduled" && initial.scheduledSendAt;
+
+  function absoluteFormUrl() {
+    if (!currentFormUrl) return "";
+    if (/^https?:\/\//i.test(currentFormUrl)) return currentFormUrl;
+    return `${window.location.origin}${currentFormUrl}`;
+  }
+
   const waitingOn: WaitingOn =
     !initial?.sentAt || status === "draft" ? "venue"
     : isComplete ? "completed"
@@ -202,12 +146,44 @@ function KindPanel({
     ? "Emails a fresh link to the same form. Their previous link still works. This does not delete answers."
     : "Emails the client a secure link to complete this form. Until then only your venue can see this draft.";
 
+  function applyTemplate(templateId: string, opts?: { silentIfSame?: boolean }) {
+    if (!canApplyTemplate || !templateId) return;
+    if (opts?.silentIfSame && initial?.templateId === templateId) {
+      setSelectedTemplateId(templateId);
+      return;
+    }
+    setSelectedTemplateId(templateId);
+    startApply(async () => {
+      const r = await applyQuestionnaireTemplateAction(templateId, eventId);
+      if (r.ok) {
+        toast.success("Library form applied to this draft.");
+        onApplied?.();
+      } else {
+        toast.error(r.message ?? "Could not apply.");
+      }
+    });
+  }
+
   async function handleShareSend(message: string) {
     if (!coupleEmail) return { ok: false, message: "Add their email to the client record first." };
     const result = await sendQuestionnaireAction(eventId, coupleEmail, coupleName ?? "there", eventName ?? "your event", undefined, message, kind);
     if (result.ok) {
       toast.success(initial?.sentAt ? "Questionnaire resent." : "Questionnaire sent.");
       if (result.formUrl) setFormUrl(result.formUrl);
+    }
+    return result;
+  }
+
+  async function handleSchedule(message: string, scheduledFor: string) {
+    const result = await scheduleQuestionnaireSendAction(eventId, kind, scheduledFor, message);
+    if (result.ok) {
+      toast.success(
+        result.scheduledFor
+          ? `Scheduled for ${new Date(result.scheduledFor).toLocaleString()}.`
+          : "Questionnaire send scheduled.",
+      );
+      // Do not refresh here — ShareDialog must paint the scheduled confirmation first.
+      // Refresh when the sheet closes via onSent / Done.
     }
     return result;
   }
@@ -242,7 +218,8 @@ function KindPanel({
       : isChangesRequested ? "warning"
       : "default";
     return (
-      <div className="space-y-4">
+      <div className="space-y-4" data-testid={`questionnaire-kind-panel-${kind}`}>
+        <div className="htc-hospitality-heading htc-hospitality-intro-accent space-y-3 p-4">
         <BusinessAssetHeader
           compact
           whatIsThis="Planning form"
@@ -307,6 +284,7 @@ function KindPanel({
             </div>
           }
         />
+        </div>
         {sentLabel && <p className="text-xs text-muted-foreground">Last sent {sentLabel}</p>}
         {isChangesRequested && (
           <div className="rounded-sm border border-warning/40 bg-warning/10 p-3 text-sm">
@@ -349,48 +327,90 @@ function KindPanel({
   }
 
   return (
-    <div className="space-y-5">
-      <BusinessAssetHeader
-        compact
-        whatIsThis="Planning form"
-        title={kindLabel(kind)}
-        status={<Badge variant={status === "sent" || status === "in_progress" ? "default" : "muted"}>{STATUS_LABEL[status] ?? "Draft"}</Badge>}
-        waitingOn={waitingOn}
-        lastUpdated={initial?.updatedAt ? new Date(initial.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—"}
-        relationship={eventName ? { name: eventName } : null}
-        primaryAction={
-          <div className="flex flex-wrap items-center gap-2">
-            {coupleEmail && (
-              <ShareDialog
-                trigger={(
-                  <Button type="button" size="sm">
-                    <Send className="mr-1 h-3.5 w-3.5" />
-                    {initial?.sentAt ? "Resend Questionnaire" : LIBRARY_LABELS.sendQuestionnaire}
-                  </Button>
-                )}
-                title={initial?.sentAt ? `Resend ${kindLabel(kind)}` : LIBRARY_LABELS.sendQuestionnaire}
-                recipient={shareRecipient}
-                whatHappensNext={sendConsequence}
-                defaultMessage={shareDefaultMessage}
-                sendLabel={initial?.sentAt ? "Resend Questionnaire" : LIBRARY_LABELS.sendQuestionnaire}
-                onSend={handleShareSend}
-              />
-            )}
-            {canWithdrawAccess && (
-              <Button type="button" size="sm" variant="outline" onClick={handleWithdraw} disabled={withdrawing}>
-                {withdrawing ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <ShieldOff className="mr-1 h-3.5 w-3.5" />}
-                {LIBRARY_LABELS.stopClientAccess}
-              </Button>
-            )}
-          </div>
-        }
-      />
+    <div className="space-y-5" data-testid={`questionnaire-kind-panel-${kind}`}>
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent space-y-3 p-4">
+        <BusinessAssetHeader
+          compact
+          whatIsThis="Planning form"
+          title={kindLabel(kind)}
+          status={<Badge className="htc-badge-active">{STATUS_LABEL[status] ?? "Draft"}</Badge>}
+          waitingOn={waitingOn}
+          lastUpdated={initial?.updatedAt ? new Date(initial.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—"}
+          relationship={eventName ? { name: eventName } : null}
+          primaryAction={
+            <div className="flex flex-wrap items-center gap-2">
+              {coupleEmail && (
+                <ShareDialog
+                  trigger={(
+                    <Button type="button" size="sm" data-testid="questionnaire-send-entry">
+                      <Send className="mr-1 h-3.5 w-3.5" />
+                      {initial?.sentAt ? "Resend Questionnaire" : LIBRARY_LABELS.sendQuestionnaire}
+                    </Button>
+                  )}
+                  title={initial?.sentAt ? `Resend ${kindLabel(kind)}` : LIBRARY_LABELS.sendQuestionnaire}
+                  recipient={shareRecipient}
+                  whatHappensNext={sendConsequence}
+                  defaultMessage={shareDefaultMessage}
+                  sendLabel={initial?.sentAt ? "Send now" : "Send now"}
+                  onSend={handleShareSend}
+                  allowSchedule
+                  onSchedule={handleSchedule}
+                  scheduleLabel="Schedule send"
+                  onSent={() => onApplied?.()}
+                />
+              )}
+              {canWithdrawAccess && (
+                <Button type="button" size="sm" variant="outline" onClick={handleWithdraw} disabled={withdrawing}>
+                  {withdrawing ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <ShieldOff className="mr-1 h-3.5 w-3.5" />}
+                  {LIBRARY_LABELS.stopClientAccess}
+                </Button>
+              )}
+            </div>
+          }
+        />
+      </div>
 
       <p className="text-sm text-muted-foreground">{master.description}</p>
 
-      <div className="rounded-sm border border-border bg-muted/30 p-4 space-y-3">
+      {pendingSchedule ? (
+        <div
+          className="htc-surface-guidance-compact flex flex-wrap items-center justify-between gap-2 px-3 py-2.5"
+          data-testid="questionnaire-scheduled-banner"
+        >
+          <p className="text-sm text-foreground">
+            Scheduled to send{" "}
+            <span className="font-medium">
+              {new Date(initial!.scheduledSendAt!).toLocaleString("en-US", {
+                month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit",
+              })}
+            </span>
+            . Nothing has been emailed yet.
+          </p>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={cancellingSchedule}
+            data-testid="questionnaire-cancel-schedule"
+            onClick={() => {
+              startCancelSchedule(async () => {
+                const r = await cancelScheduledQuestionnaireSendAction(eventId, kind);
+                if (r.ok) {
+                  toast.success("Scheduled send cancelled.");
+                  onApplied?.();
+                } else toast.error(r.message ?? "Could not cancel.");
+              });
+            }}
+          >
+            {cancellingSchedule ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : null}
+            Cancel schedule
+          </Button>
+        </div>
+      ) : null}
+
+      <div className="htc-surface-working space-y-3 p-4">
         <div className="flex items-center justify-between gap-2">
-          <p className="text-xs text-muted-foreground">
+          <p className="htc-surface-guidance-compact px-2.5 py-1.5 text-xs text-muted-foreground">
             {status === "draft" || !initial
               ? "Draft — not visible to the client until you send."
               : status === "in_progress"
@@ -399,8 +419,10 @@ function KindPanel({
                   ? `Sent ${sentLabel ?? ""} — opened, awaiting submission.`
                   : `Sent ${sentLabel ?? ""} — waiting for the client to open it.`}
           </p>
-          <a href={`/events/${eventId}/questionnaire-preview?kind=${kind}`} target="_blank" rel="noopener noreferrer">
-            <Button type="button" variant="ghost" size="sm">Preview as client</Button>
+          <a href={`/events/${eventId}/questionnaire-preview?kind=${encodeURIComponent(kind)}&from=event`}>
+            <Button type="button" variant="ghost" size="sm" data-testid="questionnaire-preview-as-client">
+              Preview as client
+            </Button>
           </a>
         </div>
         {(currentFormUrl && (initial?.sentAt || formUrl)) && (
@@ -408,7 +430,7 @@ function KindPanel({
             <code className="flex-1 rounded-md bg-muted border border-border px-3 py-1.5 text-xs font-mono truncate">{currentFormUrl}</code>
             <Button type="button" variant="outline" size="sm" onClick={() => {
               if (!currentFormUrl) return;
-              navigator.clipboard.writeText(currentFormUrl);
+              navigator.clipboard.writeText(absoluteFormUrl());
               setCopiedUrl(true);
               setTimeout(() => setCopiedUrl(false), 2000);
             }}>
@@ -421,93 +443,52 @@ function KindPanel({
         )}
       </div>
 
-      {canApplyTemplate && kindTemplates.length > 0 && (
-        <div className="rounded-sm border border-border bg-muted/30 p-4 space-y-2">
-          <p className="text-xs font-medium text-heading">{initial?.templateId ? "Library form applied (draft only)" : "Apply a library form? (optional)"}</p>
-          <p className="text-xs text-muted-foreground">Applies field configuration to this draft. Does not send anything to the client.</p>
-          <div className="flex items-center gap-2">
-            <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId} items={kindTemplates.map((t) => ({ value: t.id, label: t.name }))}>
-              <SelectTrigger className="w-64"><SelectValue placeholder="Choose…" /></SelectTrigger>
-              <SelectContent>{kindTemplates.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
-            </Select>
-            <Button type="button" variant="outline" size="sm" disabled={!selectedTemplateId || applying}
-              onClick={() => {
-                const tmpl = kindTemplates.find((t) => t.id === selectedTemplateId);
-                if (!confirm(
-                  `Create draft questionnaire from "${tmpl?.name ?? "this template"}"?\n\n`
-                  + "This updates the draft form on this event only. It does not email the client.",
-                )) return;
-                startApply(async () => {
-                  const r = await applyQuestionnaireTemplateAction(selectedTemplateId, eventId);
-                  if (r.ok) toast.success("Draft questionnaire created.");
-                  else toast.error(r.message ?? "Could not apply.");
-                });
-              }}>
-              {applying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : LIBRARY_LABELS.createQuestionnaire}
-            </Button>
-          </div>
+      {canApplyTemplate && (
+        <div className="htc-surface-guidance-compact space-y-2 p-4" data-testid="questionnaire-library-apply">
+          <p className="text-xs font-medium text-heading">
+            {initial?.templateId ? "Library form applied (draft only)" : "Apply a library form? (optional)"}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Applies field configuration to this draft. Does not send or schedule anything.
+          </p>
+          {kindTemplates.length > 0 ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <Select
+                value={selectedTemplateId || null}
+                onValueChange={(v) => {
+                  const id = v ?? "";
+                  setSelectedTemplateId(id);
+                  if (id) applyTemplate(id, { silentIfSame: true });
+                }}
+                items={kindTemplates.map((t) => ({ value: t.id, label: t.name }))}
+              >
+                <SelectTrigger className="w-64" data-testid={`questionnaire-template-select-${kind}`}>
+                  <SelectValue placeholder={kindTemplates.length === 0 ? "No templates for this type" : "Select a template…"}>
+                    {(value: string | null) => {
+                      if (!value) return null;
+                      const match = kindTemplates.find((t) => t.id === value);
+                      if (match) return match.name;
+                      if (kindTemplates.length === 0) return "Loading templates…";
+                      return "Select a template…";
+                    }}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {kindTemplates.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {applying ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /> : null}
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">No library templates for this type yet.</p>
+          )}
         </div>
       )}
 
-      {/* Coordinator can still edit operational Final Details columns. */}
-      {kind === "final_details" && (
-        <div className="space-y-4">
-          <Field label="Guest count" required>
-            <Input type="number" min={1} className="w-32" value={notes.finalGuestCount ?? ""}
-              onChange={(e) => setNotes((n) => ({ ...n, finalGuestCount: e.target.value ? Number(e.target.value) : undefined }))} />
-          </Field>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Ceremony start">
-              <Input type="time" value={notes.ceremonyStartTime} onChange={(e) => setNotes((n) => ({ ...n, ceremonyStartTime: e.target.value }))} />
-            </Field>
-            <Field label="Reception start">
-              <Input type="time" value={notes.receptionStartTime} onChange={(e) => setNotes((n) => ({ ...n, receptionStartTime: e.target.value }))} />
-            </Field>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Day-of emergency contact" required>
-              <Input value={notes.emergencyContactName} onChange={(e) => setNotes((n) => ({ ...n, emergencyContactName: e.target.value }))} />
-            </Field>
-            <Field label="Emergency phone" required>
-              <Input value={notes.emergencyContactPhone} onChange={(e) => setNotes((n) => ({ ...n, emergencyContactPhone: e.target.value }))} />
-            </Field>
-          </div>
-          <Field label="Meal / dietary notes">
-            <Textarea rows={3} value={notes.mealNotes} onChange={(e) => setNotes((n) => ({ ...n, mealNotes: e.target.value }))} />
-          </Field>
-          <Field label="Vendor arrival notes">
-            <Textarea rows={2} value={notes.vendorNotes} onChange={(e) => setNotes((n) => ({ ...n, vendorNotes: e.target.value }))} />
-          </Field>
-          <Field label="Anything else">
-            <Textarea rows={3} value={notes.specialRequests} onChange={(e) => setNotes((n) => ({ ...n, specialRequests: e.target.value }))} />
-          </Field>
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" disabled={saving} onClick={() => startSave(async () => {
-              const r = await saveQuestionnaireAction(eventId, notes, false, { expectedUpdatedAt, kind });
-              if (r.ok) { toast.success("Saved."); if (r.updatedAt) setExpectedUpdatedAt(r.updatedAt); }
-              else if (r.reason === "stale") toast.error("Someone else updated this form. Refresh first.");
-              else toast.error(r.message ?? "Could not save.");
-            })}>
-              {saving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}Save draft
-            </Button>
-            <Button type="button" disabled={saving} onClick={() => {
-              if (!confirm("Mark Final Details as submitted?")) return;
-              startSave(async () => {
-                const r = await saveQuestionnaireAction(eventId, notes, true, {
-                  expectedUpdatedAt, kind, requiredFields: initial?.requiredFields,
-                });
-                if (r.ok) toast.success("Marked submitted.");
-                else if (r.reason === "stale") toast.error("Someone else updated this form. Refresh first.");
-                else toast.error(r.message ?? "Could not submit.");
-              });
-            }}>
-              Mark as submitted
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {initial && (initial.status === "sent" || initial.additional?.family) && (
+      {/* Answers only after send / client progress — never expand the blank form inline on selection. */}
+      {initial && (initial.status === "sent" || initial.status === "in_progress" || initial.additional?.family) && (
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Answers so far</p>
           <AnswerRows q={initial} />
@@ -543,12 +524,58 @@ export function QuestionnaireFamilyPanel({
   eventName?: string | null;
   venueName?: string;
 }) {
+  const router = useRouter();
   const [active, setActive] = React.useState<QuestionnaireKind>("client_planning");
+  const [applyTick, setApplyTick] = React.useState(0);
   const byKind = Object.fromEntries(questionnaires.map((q) => [q.kind, q])) as Partial<Record<QuestionnaireKind, Questionnaire>>;
+  const activeTemplates = templates.filter((t) => !t.isArchived);
+  function refreshAfterApply() {
+    setApplyTick((n) => n + 1);
+    router.refresh();
+  }
+
+  // Extra library templates beyond the three kind tabs (same kind, different name).
+  const primaryByKind = Object.fromEntries(
+    KINDS.map((k) => {
+      const ofKind = activeTemplates.filter((t) => t.kind === k);
+      const master = getQuestionnaireMasterByKind(k);
+      const named = ofKind.find((t) => t.name === master.name);
+      return [k, named ?? ofKind[0] ?? null];
+    }),
+  ) as Record<QuestionnaireKind, QuestionnaireTemplate | null>;
+  const additionalTemplates = activeTemplates.filter((t) => {
+    const primary = primaryByKind[t.kind];
+    return primary && t.id !== primary.id;
+  });
+
+  function selectKind(kind: QuestionnaireKind, templateId?: string) {
+    setActive(kind);
+    const ofKind = activeTemplates.filter((t) => t.kind === kind);
+    const id = templateId ?? preferredTemplateId(ofKind, byKind[kind]?.templateId);
+    // Defer apply to KindPanel mount via selecting template — KindPanel applies on dropdown change.
+    // Also apply immediately here so tab click selects + applies without expanding content.
+    if (id && (!byKind[kind] || byKind[kind]?.status === "draft")) {
+      if (byKind[kind]?.templateId === id) return;
+      void applyQuestionnaireTemplateAction(id, eventId).then((r) => {
+        if (r.ok) {
+          toast.success("Library form applied to this draft.");
+          refreshAfterApply();
+        } else if (r.message) {
+          toast.error(r.message);
+        }
+      });
+    }
+  }
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-2">
+      <div
+        className="htc-surface-guidance px-3 py-2 text-sm leading-relaxed text-muted-foreground"
+        data-testid="questionnaire-delivery-guidance"
+      >
+        {"Manage questionnaire delivery by sending immediately or schedule sending them below. If they have already been attached to tasks or requested elsewhere, this step can be skipped or used to resend them if desired."}
+      </div>
+      <div className="flex flex-wrap gap-2" data-testid="questionnaire-kind-tabs">
         {KINDS.map((k) => {
           const q = byKind[k];
           const status = q?.status ?? "draft";
@@ -557,8 +584,9 @@ export function QuestionnaireFamilyPanel({
             <button
               key={k}
               type="button"
-              onClick={() => setActive(k)}
+              onClick={() => selectKind(k)}
               className={`rounded-full border px-3 py-1.5 text-xs ${selected ? "border-primary bg-primary/10 font-medium" : "border-border"}`}
+              data-testid={`questionnaire-kind-tab-${k}`}
             >
               {kindLabel(k)}
               {status === "complete" ? " · Complete"
@@ -569,8 +597,27 @@ export function QuestionnaireFamilyPanel({
             </button>
           );
         })}
+        {additionalTemplates.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            onClick={() => selectKind(t.kind, t.id)}
+            className={`rounded-full border px-3 py-1.5 text-xs ${active === t.kind && byKind[t.kind]?.templateId === t.id ? "border-primary bg-primary/10 font-medium" : "border-border"}`}
+            data-testid={`questionnaire-extra-template-${t.id}`}
+          >
+            {t.name}
+          </button>
+        ))}
       </div>
+      <p className="text-xs text-muted-foreground" data-testid="questionnaire-create-in-templates-guidance">
+        Want to create another questionnaire? Go to{" "}
+        <Link href="/library/questionnaire-templates" className="htc-record-link font-medium">
+          Questionnaires &amp; Feedback
+        </Link>{" "}
+        in your Templates tab. New questionnaires you create there will appear here as additional sending options.
+      </p>
       <KindPanel
+        key={`${active}-${applyTick}`}
         kind={active}
         eventId={eventId}
         initial={byKind[active] ?? null}
@@ -580,6 +627,7 @@ export function QuestionnaireFamilyPanel({
         coupleName={coupleName}
         eventName={eventName}
         venueName={venueName}
+        onApplied={refreshAfterApply}
       />
     </div>
   );

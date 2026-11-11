@@ -9,6 +9,10 @@ import { createClient } from "@/integrations/supabase/server";
 import type { createAdminClient } from "@/integrations/supabase/admin";
 import type { MergeContext } from "@/lib/message-templates/merge";
 import type { ScheduledMessage, ScheduledMessageInput } from "@/lib/scheduled-messages/types";
+import {
+  formatCoordinatorDisplayName,
+  pickOwnerStaffForCoordinator,
+} from "@/lib/scheduled-messages/coordinator-display";
 
 type DbClient = Awaited<ReturnType<typeof createClient>>;
 type AnyDbClient = DbClient | ReturnType<typeof createAdminClient>;
@@ -133,25 +137,39 @@ export async function getMergeContextForRelationship(
   );
 
   const { data: venue } = await client.from("venues").select("name").eq("id", venueId).maybeSingle<{ name: string }>();
-  const { data: staff } = await client.from("venue_staff").select("full_name")
-    .eq("venue_id", venueId).eq("is_owner", true).maybeSingle<{ full_name: string }>();
+  // Multi-owner venues (pending owner invite + accepted owner) make bare
+  // maybeSingle fail (PGRST116) and previously fell through to venues.name —
+  // so Warmly signatures rendered the venue name twice. Prefer accepted owner
+  // with title, same ordering spirit as getVenueFullDetails.
+  const { data: ownerRows } = await client.from("venue_staff")
+    .select("full_name, title, accepted_at, owner_invite_pending, user_id")
+    .eq("venue_id", venueId)
+    .eq("is_owner", true)
+    .eq("is_active", true);
+  const owner = pickOwnerStaffForCoordinator(
+    (ownerRows ?? []) as Array<{
+      full_name: string;
+      title: string | null;
+      accepted_at: string | null;
+      owner_invite_pending: boolean | null;
+      user_id: string | null;
+    }>,
+  );
+  const ownerCoordinator = owner
+    ? formatCoordinatorDisplayName(owner.full_name, owner.title)
+    : "";
 
   type PersonRow = {
     first_name: string; last_name: string;
     partner_first_name: string | null; partner_last_name: string | null;
     event_date: string | null;
   };
-  const displayName = (p: PersonRow) => {
-    const primary = `${p.first_name} ${p.last_name}`.trim();
-    const partner = p.partner_first_name || p.partner_last_name
-      ? `${p.partner_first_name ?? ""} ${p.partner_last_name ?? ""}`.trim()
-      : null;
-    return partner ? `${primary} & ${partner}` : primary;
-  };
+  const displayName = (p: PersonRow) => `${p.first_name} ${p.last_name}`.trim();
 
+  // Do not invent a coordinator from the venue name. Starter sign-offs
+  // already print {{venue_name}} on the next line.
   const coordinatorName = (opts?.coordinatorName?.trim()
-    || staff?.full_name
-    || venue?.name
+    || ownerCoordinator
     || "");
 
   const tourDatetime = await resolveTourDatetimeForRelationship(
@@ -175,6 +193,8 @@ export async function getMergeContextForRelationship(
       clientName: displayName(client_),
       clientFirstName: client_.first_name || null,
       clientLastName: client_.last_name || null,
+      partnerFirstName: client_.partner_first_name || null,
+      partnerLastName: client_.partner_last_name || null,
       coordinatorName,
       eventDate: event?.event_date ?? null,
       eventName: event?.name ?? null,
@@ -186,15 +206,25 @@ export async function getMergeContextForRelationship(
     };
   }
 
+  // A relationship can hold more than one lead (a later duplicate inquiry
+  // stays on the same relationship). Bare maybeSingle then fails with
+  // PGRST116 and the send is recorded as "Couldn't find who this message
+  // belongs to." even though the people exist. Same newest-row rule as
+  // getConversationRecipientEmail.
   const { data: lead } = await client.from("leads")
     .select("first_name, last_name, partner_first_name, partner_last_name, event_date")
-    .eq("relationship_id", relationshipId).maybeSingle<PersonRow>();
+    .eq("relationship_id", relationshipId)
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle<PersonRow>();
   if (lead) {
     return {
       venueName: venue?.name ?? "",
       clientName: displayName(lead),
       clientFirstName: lead.first_name || null,
       clientLastName: lead.last_name || null,
+      partnerFirstName: lead.partner_first_name || null,
+      partnerLastName: lead.partner_last_name || null,
       coordinatorName,
       eventDate: lead.event_date,
       eventName: null,
@@ -213,22 +243,44 @@ export async function getMergeContextForRelationship(
  * Delivery address for a relationship — kept separate from
  * getMergeContextForRelationship on purpose: one resolves what to *display*
  * in a message, this resolves where to actually *send* it. The relationship
- * itself carries email directly; phone still requires the lead/client join
- * (same lookup order as getConversationRecipientPhone, by relationship_id
- * instead of conversationId here since the processor works from
- * scheduled_messages, which stores relationship_id directly).
+ * itself carries the primary email; partner email and phone still require
+ * the lead/client join (same lookup order as getConversationRecipientPhone).
  */
 export async function getRecipientContactForRelationship(
   client: AnyDbClient, relationshipId: string,
-): Promise<{ email: string | null; phone: string | null }> {
+): Promise<{
+  email: string | null;
+  primaryEmail: string | null;
+  partnerEmail: string | null;
+  phone: string | null;
+}> {
   const { data: relationship } = await client.from("venue_customer_relationships")
     .select("email").eq("id", relationshipId).maybeSingle<{ email: string | null }>();
+  const primaryEmail = relationship?.email?.trim() || null;
 
   const { data: lead } = await client.from("leads")
-    .select("phone").eq("relationship_id", relationshipId).maybeSingle<{ phone: string | null }>();
-  if (lead?.phone) return { email: relationship?.email ?? null, phone: lead.phone };
+    .select("phone, partner_email")
+    .eq("relationship_id", relationshipId)
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle<{ phone: string | null; partner_email: string | null }>();
+  if (lead) {
+    return {
+      email: primaryEmail,
+      primaryEmail,
+      partnerEmail: lead.partner_email?.trim() || null,
+      phone: lead.phone,
+    };
+  }
 
   const { data: client_ } = await client.from("clients")
-    .select("phone").eq("relationship_id", relationshipId).maybeSingle<{ phone: string | null }>();
-  return { email: relationship?.email ?? null, phone: client_?.phone ?? null };
+    .select("phone, partner_email")
+    .eq("relationship_id", relationshipId)
+    .maybeSingle<{ phone: string | null; partner_email: string | null }>();
+  return {
+    email: primaryEmail,
+    primaryEmail,
+    partnerEmail: client_?.partner_email?.trim() || null,
+    phone: client_?.phone ?? null,
+  };
 }

@@ -6,12 +6,48 @@ import { createAdminClient } from "@/integrations/supabase/admin";
 import { isSupabaseConfigured, publicAppOrigin } from "@/lib/env";
 import * as repo from "@/lib/contracts/repository";
 import * as documentIntegration from "@/lib/contracts/document-integration";
-import { buildMergeData, mergeContent, extractTokens, assertCustomerSafeContractContent } from "@/lib/contracts/merge";
+import { buildMergeData, mergeContent, assertCustomerSafeContractContent } from "@/lib/contracts/merge";
+import {
+  formatBalanceRemaining,
+  formatCeremonyOrReceptionSummary,
+  formatContractTotalAmount,
+  formatVenueAccessHours,
+  MISSING_ADDITIONAL_ITEMS,
+  MISSING_COORDINATOR_NAME,
+  MISSING_INCLUDED_ITEMS,
+  MISSING_PACKAGE_SECTION,
+  MISSING_PAYMENT_SCHEDULE,
+} from "@/lib/contracts/merge-extras";
+import {
+  EMPTY_EVENT_SPACES_LABEL,
+  omitEmptyOptionalEventScheduleSections,
+  replaceEmptyEventSpacesLabel,
+  resolveAdditionalEventSpacesLabel,
+  resolveEventSpacesLabel,
+} from "@/lib/contracts/event-spaces-merge";
+import {
+  resolveCeremonySpace,
+  resolveReceptionSpace,
+  type CeremonyReceptionPreferenceSource,
+} from "@/lib/contracts/ceremony-reception-merge";
+import { configuredPaymentTermsSummary } from "@/lib/contracts/configured-payment-terms";
+import { pickPaymentScheduleForBooking } from "@/lib/contracts/payment-schedule-merge";
+import {
+  summarizeResendDeliveries,
+  validateResendSelection,
+  type ResendDeliveryOutcome,
+} from "@/lib/contracts/resend-recipients";
 import { getSpaces } from "@/lib/availability/service";
+import { contractDocumentBalanceRemaining } from "@/lib/contracts/balance-remaining";
+import { getEventIdForClient } from "@/lib/events/service";
 import { getEventOrder } from "@/lib/event-orders/service";
+import { getQuestionnaire } from "@/lib/events/questionnaire";
 import { getPaymentSchedules, getPaymentSchedule } from "@/lib/payments/service";
-import { computeTotalPaid } from "@/lib/payments/constants";
+import { computePortalScheduleTotals } from "@/lib/portal/payment-totals";
 import { formatContractDate } from "@/lib/contracts/constants";
+import { formatCurrency } from "@/lib/invoices/constants";
+import { formatPhoneDisplay } from "@/lib/sms/phone";
+import { labelForUseKey } from "@/lib/venue-spaces/uses";
 import { recordEngagementEvent } from "@/lib/activation/service";
 import type {
   Contract,
@@ -40,11 +76,16 @@ import {
   buildContractInviteText,
 } from "@/lib/email/contract-invite";
 import { recordExternalClientOutbound } from "@/lib/conversations/record-external-outbound";
-import { createRemindersForContract, getReminderCadence } from "@/lib/notifications/obligations";
+import { findOrCreateVenueCoupleConversation } from "@/lib/conversations/venue-couple-conversation";
+import { cancelRemindersForContract, createRemindersForContract, getReminderCadence } from "@/lib/notifications/obligations";
 import { CONTRACT_SIGNATURE_CONSENT_TEXT, hashContractContent } from "@/lib/contracts/signers";
 import { applyRequiredSignerSignatureBlocks } from "@/lib/contracts/signature-blocks";
 import { captureContractBrandingSnapshot } from "@/lib/contracts/branding";
 import type { ClientSignerSeed } from "@/lib/contracts/repository";
+import {
+  rollupContractsToCurrentAgreements,
+  type ContractWorkflowListRow,
+} from "@/lib/contracts/list-filters";
 
 export { hashContractContent } from "@/lib/contracts/signers";
 
@@ -77,57 +118,31 @@ async function resolveClientSignerSeeds(
   const client = await getClient(clientId);
   if (!client) return { ok: false, message: "Client not found." };
   const contacts = await getClientContacts(clientId);
+  const { resolveSignerSeedsFromSelection } = await import("@/lib/contracts/signer-candidates");
+  return resolveSignerSeedsFromSelection(client, contacts, selectedContactIds);
+}
 
-  if (selectedContactIds && selectedContactIds.length > 0) {
-    const seeds: ClientSignerSeed[] = [];
-    for (const contactId of selectedContactIds) {
-      const contact = contacts.find((c) => c.id === contactId);
-      if (!contact) return { ok: false, message: "One of the selected signers was not found." };
-      if (!contact.email?.trim()) {
-        return {
-          ok: false,
-          message: `${contact.firstName} has no email on file — add an email before making them a required signer.`,
-        };
-      }
-      seeds.push({
-        clientContactId: contact.id,
-        signerRefId: contact.id,
-        signerName: [contact.firstName, contact.lastName].filter(Boolean).join(" "),
-        signerEmail: contact.email.trim(),
-        signerRole: contact.roleLabel || contact.relationship || null,
-      });
-    }
-    return { ok: true, seeds };
-  }
-
-  // Default: one required signer from primary contact, else the client record
-  const primary = contacts.find((c) => c.isPrimary && c.email?.trim())
-    ?? contacts.find((c) => c.email?.trim());
-  if (primary?.email?.trim()) {
-    return {
-      ok: true,
-      seeds: [{
-        clientContactId: primary.id,
-        signerRefId: primary.id,
-        signerName: [primary.firstName, primary.lastName].filter(Boolean).join(" "),
-        signerEmail: primary.email.trim(),
-        signerRole: primary.roleLabel || primary.relationship || "primary",
-      }],
-    };
-  }
-  if (!client.email?.trim()) {
-    return { ok: false, message: "This client has no email on file — add one before creating a contract." };
-  }
-  return {
-    ok: true,
-    seeds: [{
-      clientContactId: null,
-      signerRefId: client.id,
-      signerName: [client.firstName, client.lastName].filter(Boolean).join(" "),
-      signerEmail: client.email.trim(),
-      signerRole: "primary",
-    }],
-  };
+/**
+ * Rebuild the same signer-candidate ids Preview uses, from persisted signer rows.
+ * client_contact_id is optional — relationship primary/partner rows use signer_ref_id / role / email.
+ */
+async function resolveSignerSelectionIdsFromContract(
+  clientId: string,
+  signers: Array<{
+    signerType: string;
+    isRequired: boolean;
+    clientContactId: string | null;
+    signerEmail: string | null;
+    signerRole: string | null;
+  }>,
+): Promise<string[] | undefined> {
+  const client = await getClient(clientId);
+  if (!client) return undefined;
+  const contacts = await getClientContacts(clientId);
+  const { buildSignerCandidates, selectedIdsFromExistingSigners } =
+    await import("@/lib/contracts/signer-candidates");
+  const ids = selectedIdsFromExistingSigners(buildSignerCandidates(client, contacts), signers);
+  return ids.length > 0 ? ids : undefined;
 }
 
 // ---- templates --------------------------------------------------------------
@@ -137,6 +152,14 @@ export async function getTemplates(includeArchived = false): Promise<ContractTem
   const venue = await getCurrentVenue();
   if (!venue) return [];
   return repo.getTemplates(await createClient(), venue.id, includeArchived);
+}
+
+/** Metadata-only templates (no content). For Client Workspace Documents list. */
+export async function getTemplatesMetadata(includeArchived = false): Promise<ContractTemplate[]> {
+  if (!isSupabaseConfigured) return [];
+  const venue = await getCurrentVenue();
+  if (!venue) return [];
+  return repo.getTemplatesMetadata(await createClient(), venue.id, includeArchived);
 }
 
 export async function getTemplate(id: string): Promise<ContractTemplate | null> {
@@ -160,6 +183,15 @@ export async function updateTemplate_(id: string, input: TemplateInput): Promise
   const errors = validateTemplateInput(input);
   if (Object.keys(errors).length > 0) return { ok: false, errors };
   const result = await withVenue(async (supabase, venueId) => {
+    const existing = await repo.getTemplate(supabase, venueId, id);
+    if (!existing) return { ok: false, message: "Template not found." } as ContractActionResult;
+    if (existing.sourceMasterKey) {
+      return {
+        ok: false,
+        message:
+          "Customize this Hello to Cheers starter to create your venue’s editable copy. The original starter stays unchanged.",
+      } as ContractActionResult;
+    }
     await repo.updateTemplate(supabase, venueId, id, input);
     return { ok: true } as ContractActionResult;
   });
@@ -196,6 +228,33 @@ export async function getContracts(): Promise<Contract[]> {
   return repo.getContracts(await createClient(), venue.id);
 }
 
+/**
+ * Client Workspace contracts: client OR event scope, without full content.
+ * Venue authorization remains via getCurrentVenue + RLS.
+ */
+export async function getContractsForClientOrEvent(
+  clientId: string,
+  eventId: string,
+): Promise<Contract[]> {
+  if (!isSupabaseConfigured) return [];
+  const venue = await getCurrentVenue();
+  if (!venue) return [];
+  return repo.getContractsForClientOrEvent(await createClient(), venue.id, { clientId, eventId });
+}
+
+/** Financials Contracts list — current agreement tip per amends_contract_id family. */
+export async function getContractsForWorkflowList(): Promise<ContractWorkflowListRow[]> {
+  const [contracts, templates] = await Promise.all([
+    getContracts(),
+    getTemplatesMetadata(true),
+  ]);
+  const templateNameById = new Map(templates.map((t) => [t.id, t.name]));
+  return rollupContractsToCurrentAgreements(contracts).map((row) => ({
+    ...row,
+    templateName: row.templateId ? templateNameById.get(row.templateId) ?? null : null,
+  }));
+}
+
 export async function getContractDetail(id: string): Promise<ContractWithDetails | null> {
   if (!isSupabaseConfigured) return null;
   const venue = await getCurrentVenue();
@@ -214,24 +273,54 @@ export async function getContractVersionFamily(contractId: string): Promise<
   const nodes = await repo.listContractLineageNodes(supabase, venue.id, [contractId]);
   const { isContractFinalized } = await import("@/lib/contracts/document-integration");
   const ids = nodes.map((n) => n.id);
-  const { data: venueSigners } = ids.length
+  const { data: signerRows } = ids.length
     ? await supabase
         .from("contract_signers")
-        .select("contract_id, signed_at")
+        .select("contract_id, signer_type, signed_at, is_required")
         .eq("venue_id", venue.id)
-        .eq("signer_type", "venue")
         .in("contract_id", ids)
-    : { data: [] as { contract_id: string; signed_at: string | null }[] };
-  const venueSignedByContract = new Map<string, boolean>();
-  for (const row of (venueSigners ?? []) as { contract_id: string; signed_at: string | null }[]) {
-    venueSignedByContract.set(row.contract_id, Boolean(row.signed_at));
+    : { data: [] as { contract_id: string; signer_type: string; signed_at: string | null; is_required: boolean }[] };
+
+  type Progress = {
+    venueSigned: boolean;
+    requiredClientTotal: number;
+    requiredClientSigned: number;
+    anyClientSigned: boolean;
+  };
+  const progressByContract = new Map<string, Progress>();
+  for (const row of (signerRows ?? []) as {
+    contract_id: string; signer_type: string; signed_at: string | null; is_required: boolean;
+  }[]) {
+    const cur = progressByContract.get(row.contract_id) ?? {
+      venueSigned: false,
+      requiredClientTotal: 0,
+      requiredClientSigned: 0,
+      anyClientSigned: false,
+    };
+    if (row.signer_type === "venue") {
+      cur.venueSigned = Boolean(row.signed_at);
+    } else if (row.signer_type === "client") {
+      if (row.is_required) {
+        cur.requiredClientTotal += 1;
+        if (row.signed_at) cur.requiredClientSigned += 1;
+      }
+      if (row.signed_at) cur.anyClientSigned = true;
+    }
+    progressByContract.set(row.contract_id, cur);
   }
+
   const withFinal = await Promise.all(
-    nodes.map(async (n) => ({
-      ...n,
-      venueSigned: venueSignedByContract.get(n.id) ?? false,
-      finalized: n.status === "signed" ? await isContractFinalized(supabase, n.id) : false,
-    })),
+    nodes.map(async (n) => {
+      const progress = progressByContract.get(n.id);
+      return {
+        ...n,
+        venueSigned: progress?.venueSigned ?? false,
+        anyClientSigned: progress?.anyClientSigned ?? false,
+        requiredClientTotal: progress?.requiredClientTotal ?? 0,
+        requiredClientSigned: progress?.requiredClientSigned ?? 0,
+        finalized: n.status === "signed" ? await isContractFinalized(supabase, n.id) : false,
+      };
+    }),
   );
   const { buildContractVersionFamily } = await import("@/lib/contracts/version-lineage");
   return buildContractVersionFamily(contractId, withFinal);
@@ -256,8 +345,8 @@ export async function getContractByToken(token: string): Promise<(Contract & {
 }
 
 /**
- * Generate a contract from a template + client/event.
- * Merges all available fields from the client, event, and venue.
+ * Generate a draft contract from a template + client/event.
+ * Stores authored content (Smart Fields intact). Tokens resolve at Send.
  */
 export async function createContract(input: NewContractInput): Promise<CreateContractResult> {
   const errors = validateNewContractInput(input);
@@ -292,37 +381,78 @@ export async function createContract(input: NewContractInput): Promise<CreateCon
     const signerSeeds = await resolveClientSignerSeeds(resolvedInput.clientId, resolvedInput.clientSignerContactIds);
     if (!signerSeeds.ok) return { ok: false, message: signerSeeds.message } as CreateContractResult;
 
-    const mergeData = await buildContractMergeData({
-      clientId: resolvedInput.clientId, eventId: resolvedInput.eventId, contractTitle: resolvedInput.title,
+    const { resolveActiveCommercialSelection } = await import("@/lib/commercial-selections/service");
+    const activeSelection = await resolveActiveCommercialSelection({
       selectionId: resolvedInput.selectionId,
+      eventId: resolvedInput.eventId,
+      clientId: resolvedInput.clientId,
     });
-    const resolvedContent = applyRequiredSignerSignatureBlocks(
-      mergeContent(resolvedInput.content, mergeData),
-      signerSeeds.seeds.map((s) => s.signerName),
-    );
-    // Drafts may still hold venue-policy placeholders (filled before send).
-    // Unresolved {{tokens}} must never land in a working contract.
-    const leftover = extractTokens(resolvedContent);
-    if (leftover.length > 0) {
-      return {
-        ok: false,
-        message: `Some details couldn't be filled in yet: ${leftover.map((t) => `{{${t}}}`).join(", ")}. Check the booking, client, and event, or remove those tokens before creating the agreement.`,
-      } as CreateContractResult;
-    }
-    const contractId = await repo.insertContract(supabase, venueId, { ...resolvedInput, content: resolvedContent });
+    const mergeSelectionId = activeSelection?.id ?? resolvedInput.selectionId;
+
+    // Token-preserving draft: store authored content (Smart Fields intact).
+    // Tokens resolve only at Send. Preview is display-only and never writes back.
+    const contractId = await repo.insertContract(supabase, venueId, {
+      ...resolvedInput,
+      content: resolvedInput.content,
+    });
     await repo.insertContractSigners(supabase, venueId, contractId, signerSeeds.seeds);
     const actor = await currentActor(venueId);
     await repo.insertContractActivity(
       supabase, venueId, contractId, "contract_created", "Contract created",
       undefined, actor.userId, actor.label,
     );
-    if (resolvedInput.selectionId) {
+    if (mergeSelectionId) {
       const { linkSelectionContract } = await import("@/lib/commercial-selections/service");
-      await linkSelectionContract(resolvedInput.selectionId, contractId);
+      await linkSelectionContract(mergeSelectionId, contractId);
     }
     return { ok: true, contractId } as CreateContractResult;
   });
   return result as CreateContractResult;
+}
+
+/**
+ * Resolve authored (tokenized) draft content into customer-facing text.
+ * Used by Preview (display-only) and Send (the only persist path).
+ * Never writes the draft.
+ */
+export async function materializeAuthoredContractContent(opts: {
+  authoredContent: string;
+  clientId: string;
+  eventId: string;
+  contractTitle: string;
+  clientSignerContactIds?: string[];
+  selectionId?: string;
+}): Promise<{ ok: true; content: string } | { ok: false; message: string }> {
+  try {
+    const signerSeeds = await resolveClientSignerSeeds(opts.clientId, opts.clientSignerContactIds);
+    if (!signerSeeds.ok) return { ok: false, message: signerSeeds.message };
+    const { resolveActiveCommercialSelection } = await import("@/lib/commercial-selections/service");
+    const activeSelection = await resolveActiveCommercialSelection({
+      selectionId: opts.selectionId,
+      eventId: opts.eventId,
+      clientId: opts.clientId,
+    });
+    const requiredClientSignerNames = signerSeeds.seeds.map((s) => s.signerName);
+    const mergeData = await buildContractMergeData({
+      clientId: opts.clientId,
+      eventId: opts.eventId,
+      contractTitle: opts.contractTitle,
+      selectionId: activeSelection?.id ?? opts.selectionId,
+      requiredClientSignerNames,
+    });
+    const content = applyRequiredSignerSignatureBlocks(
+      omitEmptyOptionalEventScheduleSections(
+        replaceEmptyEventSpacesLabel(
+          mergeContent(opts.authoredContent, mergeData),
+          mergeData.event_spaces ?? EMPTY_EVENT_SPACES_LABEL,
+        ),
+      ),
+      requiredClientSignerNames,
+    );
+    return { ok: true, content };
+  } catch {
+    return { ok: false, message: "Could not resolve contract details." };
+  }
 }
 
 /** Live preview of merged contract body, including per-signer signature blocks. */
@@ -334,23 +464,18 @@ export async function previewContractContent(opts: {
   clientSignerContactIds?: string[];
   selectionId?: string;
 }): Promise<{ ok: true; content: string } | { ok: false; message: string }> {
-  try {
-    const signerSeeds = await resolveClientSignerSeeds(opts.clientId, opts.clientSignerContactIds);
-    if (!signerSeeds.ok) return { ok: false, message: signerSeeds.message };
-    const mergeData = await buildContractMergeData({
-      clientId: opts.clientId,
-      eventId: opts.eventId,
-      contractTitle: opts.contractTitle,
-      selectionId: opts.selectionId,
-    });
-    const content = applyRequiredSignerSignatureBlocks(
-      mergeContent(opts.templateContent, mergeData),
-      signerSeeds.seeds.map((s) => s.signerName),
-    );
-    return { ok: true, content };
-  } catch {
-    return { ok: false, message: "Could not preview contract." };
+  const result = await materializeAuthoredContractContent({
+    authoredContent: opts.templateContent,
+    clientId: opts.clientId,
+    eventId: opts.eventId,
+    contractTitle: opts.contractTitle,
+    clientSignerContactIds: opts.clientSignerContactIds,
+    selectionId: opts.selectionId,
+  });
+  if (!result.ok) {
+    return { ok: false, message: result.message === "Could not resolve contract details." ? "Could not preview contract." : result.message };
   }
+  return result;
 }
 
 /**
@@ -384,13 +509,11 @@ export async function createAmendmentFromContract(sourceContractId: string): Pro
     if (!source.clientId) {
       return { ok: false, message: "This contract has no client — cannot create an amendment." } as CreateContractResult;
     }
-    const priorContactIds = (source.signers ?? [])
-      .filter((s) => s.signerType === "client" && s.isRequired && s.clientContactId)
-      .map((s) => s.clientContactId as string);
-    const seeds = await resolveClientSignerSeeds(
+    const signerSelectionIds = await resolveSignerSelectionIdsFromContract(
       source.clientId,
-      priorContactIds.length > 0 ? priorContactIds : undefined,
+      source.signers ?? [],
     );
+    const seeds = await resolveClientSignerSeeds(source.clientId, signerSelectionIds);
     if (!seeds.ok) return { ok: false, message: seeds.message } as CreateContractResult;
 
     const newContractId = await repo.insertContract(supabase, venueId, {
@@ -421,11 +544,22 @@ export async function buildContractMergeData(opts: {
   eventId?: string;
   contractTitle?: string;
   selectionId?: string;
+  /** Required client signer display names — drives {{client_name}} party wording. */
+  requiredClientSignerNames?: string[];
 }): Promise<Record<string, string>> {
+  // Prefer an explicit eventId; otherwise use the client's canonical dated Event
+  // so booked Event.space_id is visible even when the create URL omitted eventId.
+  let resolvedEventId = opts.eventId?.trim() || "";
+  if (!resolvedEventId && opts.clientId) {
+    try {
+      resolvedEventId = (await getEventIdForClient(opts.clientId)) ?? "";
+    } catch { /* optional */ }
+  }
+
   const [venue, client, event] = await Promise.all([
     getCurrentVenue(),
     opts.clientId ? getClient(opts.clientId) : Promise.resolve(null),
-    opts.eventId ? getEvent(opts.eventId) : Promise.resolve(null),
+    resolvedEventId ? getEvent(resolvedEventId) : Promise.resolve(null),
   ]);
 
   const addressParts = [
@@ -436,40 +570,69 @@ export async function buildContractMergeData(opts: {
   ].filter((p) => p && String(p).trim());
   const venueAddress = addressParts.length > 0 ? addressParts.join("\n") : null;
 
-  let eventSpaces = "No event spaces are listed on this booking yet.";
-  let venueAccessHours = "Event hours will follow your booking and Timeline.";
-  let ceremonySummary = "No separate ceremony details are listed on this booking yet.";
-  let receptionSummary = "No separate reception details are listed on this booking yet.";
-  let packageSection = "No package is currently selected for this booking.";
-  let includedItemsSummary = "No included items are listed on this booking yet.";
-  let additionalItemsSummary = "No additional or optional items are listed on this booking yet.";
-  let paymentScheduleSummary = "No payment schedule is on file for this celebration yet.";
+  let eventSpaces = EMPTY_EVENT_SPACES_LABEL;
+  // Package / payment / space fields — filled only from existing SoT at contract time.
+  let packageSection = MISSING_PACKAGE_SECTION;
+  let includedItemsSummary = MISSING_INCLUDED_ITEMS;
+  let additionalItemsSummary = MISSING_ADDITIONAL_ITEMS;
+  let paymentScheduleSummary = MISSING_PAYMENT_SCHEDULE;
   let contractTotal: string | null = null;
   let balanceRemaining: string | null = null;
-  let vendorsOnFile = "No vendors are currently listed for this celebration.";
+  /** Numeric contracted total for balance math (selection wins over schedule total). */
+  let contractedTotalAmount: number | null = null;
   let coordinatorName: string | null = null;
   let packageFromSelection = false;
+  let selectionDepositAmount = 0;
+  let ceremonySpaceLabel: string | null = null;
+  let receptionSpaceLabel: string | null = null;
+  let ceremonyAsgName: string | null = null;
+  let receptionAsgName: string | null = null;
+  let ceremonyPreference: CeremonyReceptionPreferenceSource | null = null;
+  let receptionPreference: CeremonyReceptionPreferenceSource | null = null;
+  let additionalEventSpacesLabel = "";
+  let rehearsalDateIso: string | null = null;
+  // Canonical Booked = events.booked_at. Pre-booking contracts use lead preferences.
+  const relationshipBooked = Boolean(event?.bookedAt);
 
   // Prefer frozen Selected Package (Booking Journey) over Event Order for package merge fields.
+  // Financial SoT for contracted total: commercial_selections.total_amount.
+  // Balance remaining is contracted total minus actual qualifying payments — never a
+  // configured depositAmount (that is a payment-plan allocation, not money received).
   try {
-    const { getSelectedPackage, getActiveSelectedPackageForClient, getActiveSelectedPackageForEvent } =
+    const { resolveActiveCommercialSelection } =
       await import("@/lib/commercial-selections/service");
     const { formatPackageSection } = await import("@/lib/commercial-selections/constants");
-    let selection = opts.selectionId ? await getSelectedPackage(opts.selectionId) : null;
-    if (!selection && opts.eventId) selection = await getActiveSelectedPackageForEvent(opts.eventId);
-    if (!selection && opts.clientId) selection = await getActiveSelectedPackageForClient(opts.clientId);
-    if (selection && selection.status !== "superseded") {
+    const selection = await resolveActiveCommercialSelection({
+      selectionId: opts.selectionId,
+      eventId: opts.eventId,
+      clientId: opts.clientId,
+    });
+    if (selection) {
       packageFromSelection = true;
-      packageSection = formatPackageSection(selection.name, selection.totalAmount, selection.includedItems, {
-        depositAmount: selection.depositAmount,
-      });
+      const { packageSectionOptsFromSelection } = await import("@/lib/commercial-selections/constants");
+      packageSection = formatPackageSection(
+        selection.name,
+        selection.totalAmount,
+        selection.includedItems,
+        packageSectionOptsFromSelection(selection),
+      );
       if (selection.includedItems.length > 0) {
         includedItemsSummary = selection.includedItems
           .map((l) => `• ${l.description}${l.quantity ? ` × ${l.quantity}` : ""}${l.unit ? ` ${l.unit}` : ""}`)
           .join("\n");
       }
-      contractTotal = selection.totalAmount.toFixed(2);
-      balanceRemaining = (selection.totalAmount - selection.depositAmount).toFixed(2);
+      // Final agreed total (package − discount + exclusive tax), not package alone.
+      contractedTotalAmount = selection.totalAmount;
+      selectionDepositAmount = selection.depositAmount;
+      contractTotal = formatContractTotalAmount(selection.totalAmount);
+      // No qualifying payments yet on this path — full balance remains.
+      // depositAmount must not reduce balance_remaining.
+      balanceRemaining = formatBalanceRemaining(
+        contractDocumentBalanceRemaining({
+          contractedTotal: selection.totalAmount,
+          paymentsReceived: 0,
+        }),
+      );
     }
   } catch { /* selection optional */ }
 
@@ -480,146 +643,356 @@ export async function buildContractMergeData(opts: {
     } catch { /* optional */ }
   }
 
-  if (event) {
-    const fmtTime = (t: string | null) => {
-      if (!t) return null;
-      const [h, m] = t.split(":");
-      const hour = Number(h);
-      const ampm = hour >= 12 ? "PM" : "AM";
-      const h12 = ((hour + 11) % 12) + 1;
-      return `${h12}:${m ?? "00"} ${ampm}`;
-    };
-    const start = fmtTime(event.startTime);
-    const end = fmtTime(event.endTime);
-    if (start || end) {
-      venueAccessHours = [start ? `Start ${start}` : null, end ? `End ${end}` : null].filter(Boolean).join(" · ");
+  // Event Spaces: assignments (use → physical) win; else Event.space_id; else lead planned.
+  // Same venue_spaces catalog — no second source of truth.
+  try {
+    let plannedEventSpaceId: string | null = null;
+    const supabase = await createClient();
+    if (client?.leadId) {
+      const { data: lead } = await supabase
+        .from("leads")
+        .select("planned_event_space_id")
+        .eq("id", client.leadId)
+        .maybeSingle<{ planned_event_space_id: string | null }>();
+      plannedEventSpaceId = lead?.planned_event_space_id ?? null;
     }
-    if (event.setupTime || event.teardownTime) {
-      const setup = fmtTime(event.setupTime);
-      const tear = fmtTime(event.teardownTime);
-      const extra = [setup ? `Setup from ${setup}` : null, tear ? `Teardown by ${tear}` : null].filter(Boolean).join(" · ");
-      if (extra) {
-        venueAccessHours = venueAccessHours.includes("Start") || venueAccessHours.includes("End")
-          ? `${venueAccessHours}\n${extra}`
-          : extra;
+    const spaces = await getSpaces();
+    let assignments: Array<{
+      useKey: string;
+      useLabel: string;
+      spaceId: string;
+      spaceName: string | null;
+      scheduledDate?: string | null;
+    }> = [];
+    if (event?.id) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: rows } = await (supabase.from("event_space_assignments") as any)
+        .select("use_key, use_label, space_id, venue_spaces(name)")
+        .eq("event_id", event.id)
+        .order("sort_order");
+      assignments = ((rows ?? []) as Array<{
+        use_key: string;
+        use_label: string;
+        space_id: string;
+        venue_spaces?: { name: string } | null;
+      }>).map((r) => ({
+        useKey: r.use_key,
+        useLabel: r.use_label,
+        spaceId: r.space_id,
+        spaceName: r.venue_spaces?.name ?? null,
+      }));
+    }
+
+    let rehearsalDateFromPreference: string | null = null;
+
+    // Pre-booking only: ceremony/reception Smart Fields + residual additional
+    // components read lead preferences. Post-booking uses event assignments.
+    if (!relationshipBooked && client?.leadId) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: prefRows } = await (supabase.from("lead_event_space_preferences") as any)
+        .select("id, use_key, preference_kind, space_id, external_location, scheduled_date")
+        .eq("lead_id", client.leadId);
+      const spaceNameById = new Map(spaces.map((s) => [s.id, s.name?.trim() || ""]));
+      const prefAssignments: typeof assignments = [];
+      const prefIds = ((prefRows ?? []) as Array<{ id: string }>).map((r) => r.id).filter(Boolean);
+      const holdDateByPreferenceId = new Map<string, string>();
+      if (prefIds.length > 0 && venue?.id) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: linkedHolds } = await (supabase.from("date_holds") as any)
+          .select("preference_id, hold_date")
+          .eq("venue_id", venue.id)
+          .eq("status", "active")
+          .in("preference_id", prefIds)
+          .order("hold_date", { ascending: true });
+        for (const h of (linkedHolds ?? []) as Array<{ preference_id: string | null; hold_date: string }>) {
+          if (h.preference_id && h.hold_date && !holdDateByPreferenceId.has(h.preference_id)) {
+            holdDateByPreferenceId.set(h.preference_id, h.hold_date);
+          }
+        }
+      }
+      for (const row of (prefRows ?? []) as Array<{
+        id: string;
+        use_key: string;
+        preference_kind: string;
+        space_id: string | null;
+        external_location: string | null;
+        scheduled_date: string | null;
+      }>) {
+        // Prefer persisted preference date; fall back to linked active hold start.
+        if (!row.scheduled_date && row.id && holdDateByPreferenceId.has(row.id)) {
+          row.scheduled_date = holdDateByPreferenceId.get(row.id) ?? null;
+        }
+        const kind = row.preference_kind;
+        if (
+          kind !== "venue_space"
+          && kind !== "external"
+          && kind !== "undecided"
+          && kind !== "not_applicable"
+        ) {
+          continue;
+        }
+        const source: CeremonyReceptionPreferenceSource = {
+          kind,
+          spaceName: row.space_id ? spaceNameById.get(row.space_id) ?? null : null,
+          externalLocation: row.external_location,
+        };
+        if (row.use_key === "ceremony") ceremonyPreference = source;
+        if (row.use_key === "reception") receptionPreference = source;
+        if (row.use_key === "rehearsal_dinner" && row.scheduled_date) {
+          rehearsalDateFromPreference = row.scheduled_date;
+        }
+        // Residual components for {{additional_event_spaces}} — only agreed locations.
+        if (kind === "venue_space" && row.space_id) {
+          prefAssignments.push({
+            useKey: row.use_key,
+            useLabel: labelForUseKey(row.use_key),
+            spaceId: row.space_id,
+            spaceName: spaceNameById.get(row.space_id) ?? null,
+            scheduledDate: row.scheduled_date,
+          });
+        } else if (kind === "external" && row.external_location?.trim()) {
+          prefAssignments.push({
+            useKey: row.use_key,
+            useLabel: labelForUseKey(row.use_key),
+            spaceId: "",
+            spaceName: row.external_location.trim(),
+            scheduledDate: row.scheduled_date,
+          });
+        }
+      }
+      if (assignments.length === 0 && prefAssignments.length > 0) {
+        assignments = prefAssignments;
       }
     }
 
-    try {
-      const spaces = await getSpaces();
-      const space = event.spaceId ? spaces.find((s) => s.id === event.spaceId) : null;
-      if (space?.name) eventSpaces = space.name;
-    } catch { /* optional */ }
+    // Post-booking: attach rehearsal date from client onto the rehearsal assignment line.
+    if (relationshipBooked && client?.rehearsalDate) {
+      assignments = assignments.map((a) =>
+        a.useKey === "rehearsal_dinner"
+          ? { ...a, scheduledDate: a.scheduledDate ?? client.rehearsalDate }
+          : a,
+      );
+    } else if (!relationshipBooked && rehearsalDateFromPreference) {
+      assignments = assignments.map((a) =>
+        a.useKey === "rehearsal_dinner"
+          ? { ...a, scheduledDate: a.scheduledDate ?? rehearsalDateFromPreference }
+          : a,
+      );
+    }
 
+    eventSpaces = resolveEventSpacesLabel({
+      spaces,
+      eventSpaceId: event?.spaceId ?? null,
+      plannedEventSpaceId,
+      assignments,
+    });
+    // Keep EMPTY_EVENT_SPACES_LABEL when unset — legacy {{event_spaces}} always resolves.
+    additionalEventSpacesLabel = resolveAdditionalEventSpacesLabel({
+      spaces,
+      assignments,
+    });
+
+    const ceremonyAsg = assignments.find((a) => a.useKey === "ceremony");
+    const receptionAsg = assignments.find((a) => a.useKey === "reception");
+    if (ceremonyAsg?.spaceName?.trim()) {
+      ceremonyAsgName = ceremonyAsg.spaceName.trim();
+      ceremonySpaceLabel = `${labelForUseKey(ceremonyAsg.useKey, ceremonyAsg.useLabel)}: ${ceremonyAsgName}`;
+    }
+    if (receptionAsg?.spaceName?.trim()) {
+      receptionAsgName = receptionAsg.spaceName.trim();
+      receptionSpaceLabel = `${labelForUseKey(receptionAsg.useKey, receptionAsg.useLabel)}: ${receptionAsgName}`;
+    }
+
+    rehearsalDateIso =
+      client?.rehearsalDate?.trim()
+      || rehearsalDateFromPreference
+      || null;
+  } catch { /* optional */ }
+
+  if (event) {
     try {
       const order = await getEventOrder(event.id);
       if (order?.lines?.length) {
+        // Package-defined lines only — inventory/operational assignments are not contract-time SoT.
         const packageLines = order.lines.filter((l) => l.provenance === "package");
-        const included = order.lines.filter((l) => l.provenance === "package" || l.provenance === "inventory");
         const additional = order.lines.filter((l) => l.provenance === "custom");
         if (!packageFromSelection && packageLines.length > 0) {
           const names = [...new Set(packageLines.map((l) => l.description))];
           packageSection = `Selected package / services:\n${names.map((n) => `• ${n}`).join("\n")}`;
-        }
-        if (!packageFromSelection && included.length > 0) {
-          includedItemsSummary = included.map((l) => `• ${l.description}${l.quantity ? ` × ${l.quantity}` : ""}`).join("\n");
+          includedItemsSummary = packageLines
+            .map((l) => `• ${l.description}${l.quantity ? ` × ${l.quantity}` : ""}`)
+            .join("\n");
         }
         if (additional.length > 0) {
-          additionalItemsSummary = additional.map((l) => `• ${l.description}${l.quantity ? ` × ${l.quantity}` : ""}`).join("\n");
+          additionalItemsSummary = additional
+            .map((l) => `• ${l.description}${l.quantity ? ` × ${l.quantity}` : ""}`)
+            .join("\n");
         }
       }
     } catch { /* Event Order may be disabled */ }
-
-    try {
-      const schedules = await getPaymentSchedules();
-      const forEvent = schedules.filter((s) => s.eventId === event.id);
-      if (forEvent.length > 0) {
-        const detail = await getPaymentSchedule(forEvent[0].id);
-        if (detail) {
-          const currency = detail.currency || "USD";
-          const fmt = (n: number) =>
-            new Intl.NumberFormat("en-US", { style: "currency", currency }).format(n);
-          paymentScheduleSummary = detail.lineItems
-            .map((li) => {
-              const due = li.dueDate ? formatContractDate(li.dueDate) : "Date TBD";
-              return `• ${li.label}: ${fmt(li.amount)} — due ${due}${li.status === "paid" ? " (paid)" : ""}`;
-            })
-            .join("\n");
-          contractTotal = fmt(detail.totalAmount);
-          const paid = computeTotalPaid(detail.lineItems);
-          balanceRemaining = fmt(Math.max(0, detail.totalAmount - paid));
-        }
-      }
-    } catch { /* optional */ }
-
-    try {
-      const supabase = await createClient();
-      const { data: assignments } = await supabase.from("event_vendor_assignments")
-        .select("role, vendors(name)")
-        .eq("event_id", event.id)
-        .eq("venue_id", event.venueId);
-      const rows = (assignments ?? []) as { role?: string | null; vendors?: { name?: string } | null }[];
-      if (rows.length > 0) {
-        vendorsOnFile = rows
-          .map((a) => `• ${a.vendors?.name ?? "Vendor"}${a.role ? ` — ${a.role}` : ""}`)
-          .join("\n");
-      }
-    } catch { /* optional */ }
-
-    try {
-      const supabase = await createClient();
-      const { data: q } = await supabase.from("event_questionnaires")
-        .select("ceremony_start_time, ceremony_location, reception_start_time, reception_location")
-        .eq("event_id", event.id).eq("kind", "final_details").maybeSingle<{
-          ceremony_start_time: string | null; ceremony_location: string | null;
-          reception_start_time: string | null; reception_location: string | null;
-        }>();
-      if (q) {
-        const cer = [q.ceremony_location, q.ceremony_start_time].filter(Boolean).join(" · ");
-        const rec = [q.reception_location, q.reception_start_time].filter(Boolean).join(" · ");
-        if (cer) ceremonySummary = cer;
-        if (rec) receptionSummary = rec;
-      }
-    } catch { /* optional */ }
   }
 
+  try {
+    const schedules = await getPaymentSchedules();
+    const picked = pickPaymentScheduleForBooking(schedules, {
+      eventId: event?.id ?? resolvedEventId ?? opts.eventId,
+      clientId: opts.clientId,
+    });
+    if (picked) {
+      const detail = await getPaymentSchedule(picked.id);
+      if (detail) {
+        const currency = detail.currency || "USD";
+        const fmt = (n: number) => formatCurrency(n, currency);
+        paymentScheduleSummary = detail.lineItems
+          .map((li) => {
+            const due = li.dueDate ? formatContractDate(li.dueDate) : "Date TBD";
+            return `• ${li.label}: ${fmt(li.amount)} — due ${due}${li.status === "paid" ? " (paid)" : ""}`;
+          })
+          .join("\n");
+        const totals = computePortalScheduleTotals(detail.lineItems);
+        if (!packageFromSelection) {
+          contractedTotalAmount = detail.totalAmount;
+          contractTotal = fmt(detail.totalAmount);
+        }
+        // Authoritative balance: contracted total − net retained collections.
+        // Planned / unpaid installments (including a configured deposit) do not reduce balance.
+        const contracted = contractedTotalAmount ?? detail.totalAmount;
+        balanceRemaining = formatBalanceRemaining(
+          contractDocumentBalanceRemaining({
+            contractedTotal: contracted,
+            paymentsReceived: totals.paid,
+          }),
+        );
+      }
+    }
+  } catch { /* optional */ }
+
+  // No schedule yet (the usual case before booking): state the venue's Settings payment plan.
+  if (paymentScheduleSummary === MISSING_PAYMENT_SCHEDULE && venue && contractedTotalAmount != null) {
+    paymentScheduleSummary = configuredPaymentTermsSummary({
+      prefs: venue.commercialBookingPrefs,
+      contractedTotal: contractedTotalAmount,
+      depositAmount: selectionDepositAmount,
+      formatAmount: (n) => formatCurrency(n),
+    }) ?? MISSING_PAYMENT_SCHEDULE;
+  }
+
+  const venueAccessHours = formatVenueAccessHours({
+    setupTime: event?.setupTime ?? null,
+    startTime: event?.startTime ?? client?.ceremonyTime ?? null,
+    endTime: event?.endTime ?? client?.receptionTime ?? null,
+    teardownTime: event?.teardownTime ?? null,
+  });
+
+  let ceremonySummary: string | null = null;
+  let receptionSummary: string | null = null;
+  if (event?.id) {
+    try {
+      const questionnaire = await getQuestionnaire(event.id, "final_details");
+      ceremonySummary = formatCeremonyOrReceptionSummary({
+        label: "Ceremony",
+        location: questionnaire?.ceremonyLocation,
+        startTime: questionnaire?.ceremonyStartTime ?? client?.ceremonyTime ?? null,
+        spaceAssignmentLabel: ceremonySpaceLabel,
+      });
+      receptionSummary = formatCeremonyOrReceptionSummary({
+        label: "Reception",
+        location: questionnaire?.receptionLocation,
+        startTime: questionnaire?.receptionStartTime ?? client?.receptionTime ?? null,
+        spaceAssignmentLabel: receptionSpaceLabel,
+      });
+    } catch { /* optional */ }
+  }
+  if (!ceremonySummary) {
+    ceremonySummary = formatCeremonyOrReceptionSummary({
+      label: "Ceremony",
+      location: null,
+      startTime: client?.ceremonyTime ?? null,
+      spaceAssignmentLabel: ceremonySpaceLabel,
+    });
+  }
+  if (!receptionSummary) {
+    receptionSummary = formatCeremonyOrReceptionSummary({
+      label: "Reception",
+      location: null,
+      startTime: client?.receptionTime ?? null,
+      spaceAssignmentLabel: receptionSpaceLabel,
+    });
+  }
+
+  const venuePhoneRaw = venue?.phone?.trim() || "";
+  const clientPhoneRaw = client?.phone?.trim() || "";
   return buildMergeData({
     venueName: venue?.name ?? "",
     venueAddress: venueAddress ?? "Address on file with the venue",
-    venuePhone: venue?.phone?.trim() || "Phone on file with the venue",
+    venuePhone: venuePhoneRaw
+      ? formatPhoneDisplay(venuePhoneRaw)
+      : "Phone on file with the venue",
     venueEmail: venue?.email?.trim() || "Email on file with the venue",
     clientFirstName: client?.firstName ?? "",
     clientLastName: client?.lastName ?? "",
-    partnerFirstName: client?.partnerFirstName ?? null,
-    partnerLastName: client?.partnerLastName ?? null,
     clientEmail: client?.email?.trim() || "Email on the client record",
-    clientPhone: client?.phone?.trim() || "Phone on the client record",
+    clientPhone: clientPhoneRaw
+      ? formatPhoneDisplay(clientPhoneRaw)
+      : "Phone on the client record",
+    requiredClientSignerNames: opts.requiredClientSignerNames ?? null,
     eventName: event?.name || "Your celebration",
     eventDate: event?.eventDate ?? client?.eventDate ?? null,
     eventType: event?.eventType ?? client?.eventType ?? null,
     guestCount: event?.guestCount ?? client?.guestCount ?? null,
     eventSpaces,
-    coordinatorName: coordinatorName || "Your venue team",
-    venueAccessHours,
-    ceremonySummary,
-    receptionSummary,
+    coordinatorName: coordinatorName || MISSING_COORDINATOR_NAME,
     packageSection,
     includedItemsSummary,
     additionalItemsSummary,
     paymentScheduleSummary,
-    contractTotal: contractTotal ?? "See payment schedule",
-    balanceRemaining: balanceRemaining ?? "See payment schedule",
-    vendorsOnFile,
+    contractTotal,
     contractTitle: opts.contractTitle ?? "",
+    venueAccessHours,
+    ceremonySummary,
+    receptionSummary,
+    ceremonySpace: resolveCeremonySpace({
+      booked: relationshipBooked,
+      assignmentName: ceremonyAsgName,
+      externalCeremonyLocation: event?.externalCeremonyLocation ?? null,
+      preference: ceremonyPreference,
+    }),
+    receptionSpace: resolveReceptionSpace({
+      booked: relationshipBooked,
+      assignmentName: receptionAsgName,
+      externalReceptionLocation: event?.externalReceptionLocation ?? null,
+      preference: receptionPreference,
+    }),
+    additionalEventSpaces: additionalEventSpacesLabel,
+    rehearsalDate: rehearsalDateIso,
+    balanceRemaining,
   });
 }
 
-export async function updateContractContent_(id: string, title: string, content: string, expectedUpdatedAt: string): Promise<ContractActionResult> {
+export async function updateContractContent_(
+  id: string,
+  title: string,
+  content: string,
+  expectedUpdatedAt: string,
+  clientSignerContactIds?: string[],
+): Promise<ContractActionResult> {
   if (!title.trim() || !content.trim()) return { ok: false, message: "Title and content are required." };
   const result = await withVenue(async (supabase, venueId) => {
     const outcome = await repo.updateContractContent(supabase, venueId, id, title, content, expectedUpdatedAt);
     if (!outcome.ok) return { ok: false, message: outcome.message, reason: outcome.reason } as ContractActionResult;
-    return { ok: true } as ContractActionResult;
+
+    if (clientSignerContactIds !== undefined) {
+      const contract = await repo.getContract(supabase, venueId, id);
+      if (!contract?.clientId) {
+        return { ok: false, message: "This draft has no client — cannot update signers." } as ContractActionResult;
+      }
+      const seeds = await resolveClientSignerSeeds(contract.clientId, clientSignerContactIds);
+      if (!seeds.ok) return { ok: false, message: seeds.message } as ContractActionResult;
+      const replaced = await repo.replaceDraftClientSigners(supabase, venueId, id, seeds.seeds);
+      if (!replaced.ok) return { ok: false, message: replaced.message } as ContractActionResult;
+    }
+
+    return { ok: true, updatedAt: outcome.updatedAt } as ContractActionResult;
   });
   return result as ContractActionResult;
 }
@@ -628,19 +1001,55 @@ export async function updateContractContent_(id: string, title: string, content:
 async function sendContractInviteEmails(
   contract: ContractWithDetails,
   customMessage?: string,
-): Promise<void> {
+  /** When set, only these contract_signers.id values receive email (already validated). */
+  onlySignerIds?: readonly string[],
+): Promise<ResendDeliveryOutcome[]> {
   const venue = await getCurrentVenue();
-  if (!venue) return;
+  if (!venue) return [];
   const baseUrl = publicAppOrigin();
   const brand = emailBrandFromVenue(venue);
   const supabase = await createClient();
+  const outcomes: ResendDeliveryOutcome[] = [];
 
-  const clientSigners = (contract.signers ?? []).filter((s) => s.signerType === "client" && s.isRequired);
+  // Same venue↔couple conversation the outbound recorder uses — pass as
+  // threadId so sendEmail sets Reply-To to thread+{id}@inbound when configured.
+  const admin = createAdminClient();
+  let conversationId: string | null = null;
+  if (contract.clientId) {
+    const { data: clientRow } = await admin
+      .from("clients")
+      .select("relationship_id")
+      .eq("id", contract.clientId)
+      .maybeSingle<{ relationship_id: string | null }>();
+    if (clientRow?.relationship_id) {
+      conversationId = await findOrCreateVenueCoupleConversation(
+        admin,
+        venue.id,
+        clientRow.relationship_id,
+      );
+    }
+  }
+
+  let clientSigners = (contract.signers ?? []).filter((s) => s.signerType === "client" && s.isRequired);
+  if (onlySignerIds) {
+    const allow = new Set(onlySignerIds);
+    clientSigners = clientSigners.filter((s) => allow.has(s.id));
+  }
   if (clientSigners.length > 0) {
     for (const signer of clientSigners) {
-      if (!signer.signerEmail) continue;
+      const name = (signer.signerName ?? "").trim() || "Client";
+      if (!signer.signerEmail) {
+        outcomes.push({
+          signerId: signer.id,
+          name,
+          email: null,
+          status: "skipped_no_email",
+          message: "No email on file",
+        });
+        continue;
+      }
       const signUrl = `${baseUrl}/sign/${signer.signToken}`;
-      const firstName = (signer.signerName ?? "there").split(/\s+/)[0] || "there";
+      const firstName = name.split(/\s+/)[0] || "there";
       const ctx = {
         brand,
         recipientFirstName: firstName,
@@ -655,27 +1064,60 @@ async function sendContractInviteEmails(
         text,
         html: buildContractInviteHtml(ctx),
         replyTo: venue.email ?? undefined,
+        threadId: conversationId ?? undefined,
       });
-      if (result.ok && contract.clientId) {
-        await recordExternalClientOutbound(supabase, {
-          venueId: venue.id,
-          clientId: contract.clientId,
-          channel: "email",
-          body: text,
-          providerId: result.method === "resend" ? result.providerId ?? null : null,
-          status: "accepted",
-          sourceType: "contract_invite",
-          sourceId: contract.id,
+      if (result.ok) {
+        if (contract.clientId) {
+          await recordExternalClientOutbound(supabase, {
+            venueId: venue.id,
+            clientId: contract.clientId,
+            channel: "email",
+            body: text,
+            providerId: result.method === "resend" ? result.providerId ?? null : null,
+            status: "accepted",
+            sourceType: "contract_invite",
+            sourceId: contract.id,
+          });
+        }
+        outcomes.push({
+          signerId: signer.id,
+          name,
+          email: signer.signerEmail,
+          status: result.method === "mailto" ? "mailto" : "accepted",
+          message:
+            result.method === "mailto"
+              ? "Opened as a draft in your email client (not provider-accepted)."
+              : "Accepted by the email provider for delivery (not proof of inbox delivery).",
+        });
+      } else {
+        outcomes.push({
+          signerId: signer.id,
+          name,
+          email: signer.signerEmail,
+          status: "failed",
+          message: result.message ?? "Could not send",
         });
       }
     }
-    return;
+    return outcomes;
   }
 
   // Legacy fallback — shared contracts.sign_token to client.email
-  if (!contract.clientId) return;
+  // Only when no per-signer rows and no explicit filter (first-send / legacy).
+  if (onlySignerIds && onlySignerIds.length > 0) return outcomes;
+  if (!contract.clientId) return outcomes;
   const client = await getClient(contract.clientId);
-  if (!client?.email) return;
+  const legacyName = [client?.firstName, client?.lastName].filter(Boolean).join(" ") || "Client";
+  if (!client?.email) {
+    outcomes.push({
+      signerId: "legacy",
+      name: legacyName,
+      email: null,
+      status: "skipped_no_email",
+      message: "No email on file",
+    });
+    return outcomes;
+  }
   const signUrl = `${baseUrl}/sign/${contract.signToken}`;
   const ctx = {
     brand,
@@ -691,6 +1133,7 @@ async function sendContractInviteEmails(
     text,
     html: buildContractInviteHtml(ctx),
     replyTo: venue.email ?? undefined,
+    threadId: conversationId ?? undefined,
   });
   if (result.ok) {
     await recordExternalClientOutbound(supabase, {
@@ -703,7 +1146,26 @@ async function sendContractInviteEmails(
       sourceType: "contract_invite",
       sourceId: contract.id,
     });
+    outcomes.push({
+      signerId: "legacy",
+      name: legacyName,
+      email: client.email,
+      status: result.method === "mailto" ? "mailto" : "accepted",
+      message:
+        result.method === "mailto"
+          ? "Opened as a draft in your email client (not provider-accepted)."
+          : "Accepted by the email provider for delivery (not proof of inbox delivery).",
+    });
+  } else {
+    outcomes.push({
+      signerId: "legacy",
+      name: legacyName,
+      email: client.email,
+      status: "failed",
+      message: result.message ?? "Could not send",
+    });
   }
+  return outcomes;
 }
 
 export async function venueSignContract(
@@ -724,7 +1186,7 @@ export async function venueSignContract(
     const contract = await repo.getContract(supabase, venueId, id);
     if (!contract) return { ok: false, message: "Contract not found." } as ContractActionResult;
 
-    const safety = assertCustomerSafeContractContent(contract.content);
+    const safety = assertCustomerSafeContractContent(contract.content, { allowPlaceholders: true });
     if (!safety.ok) return { ok: false, message: safety.message } as ContractActionResult;
 
     const { headers } = await import("next/headers");
@@ -750,7 +1212,40 @@ export async function venueSignContract(
       actorLabel: actor.label,
     });
     if (!outcome.ok) return { ok: false, message: outcome.message } as ContractActionResult;
-    return { ok: true } as ContractActionResult;
+
+    // Fully executed side-effects fire when the venue countersigns (client-first).
+    void recordEngagementEvent({
+      venueId,
+      eventType: "contract.signed",
+      actorType: "venue_user",
+      entityType: "contract",
+      entityId: id,
+    });
+    if (contract.eventId) {
+      const { triggerAutoComplete } = await import("@/lib/playbooks/service");
+      await triggerAutoComplete(supabase, venueId, contract.eventId, "contract_signed");
+    }
+    if (contract.clientId) {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (supabase.from("luv_celebrations") as any).insert({
+          venue_id: venueId,
+          client_id: contract.clientId,
+          event_id: contract.eventId,
+          celebration_type: "contract_signed",
+          entity_id: id,
+        });
+      } catch {
+        // Unique conflict is fine — celebration already recorded.
+      }
+    }
+
+    return {
+      ok: true,
+      newlyBooked: false,
+      clientId: contract.clientId,
+      eventId: contract.eventId,
+    } as ContractActionResult;
   });
   return result as ContractActionResult;
 }
@@ -769,7 +1264,11 @@ export async function withdrawVenueSignature(id: string): Promise<ContractAction
   return result as ContractActionResult;
 }
 
-export async function sendContract(id: string, customMessage?: string): Promise<ContractActionResult> {
+export async function sendContract(
+  id: string,
+  customMessage?: string,
+  options?: { acknowledgePlaceholders?: boolean },
+): Promise<ContractActionResult> {
   const result = await withVenue(async (supabase, venueId) => {
     const contract = await repo.getContract(supabase, venueId, id);
     if (!contract) return { ok: false, message: "Contract not found." } as ContractActionResult;
@@ -780,16 +1279,33 @@ export async function sendContract(id: string, customMessage?: string): Promise<
       } as ContractActionResult;
     }
 
-    const venueSigner = (contract.signers ?? []).find((s) => s.signerType === "venue");
-    if (!venueSigner?.signedAt) {
-      return { ok: false, message: "The venue must sign this contract before it can be released to the client." } as ContractActionResult;
-    }
+    // Client-first: venue signature is not required to issue the contract.
 
-    // Content is immutable after venue sign — do not force-resolve tokens here.
-    const safety = assertCustomerSafeContractContent(contract.content);
-    if (!safety.ok) {
-      return { ok: false, message: safety.message } as ContractActionResult;
+    const signerSelectionIds = contract.clientId
+      ? await resolveSignerSelectionIdsFromContract(contract.clientId, contract.signers ?? [])
+      : undefined;
+    const materialized = await materializeAuthoredContractContent({
+      authoredContent: contract.content,
+      clientId: contract.clientId ?? "",
+      eventId: contract.eventId ?? "",
+      contractTitle: contract.title,
+      clientSignerContactIds: signerSelectionIds,
+    });
+    if (!materialized.ok) {
+      return { ok: false, message: materialized.message } as ContractActionResult;
     }
+    const safety = assertCustomerSafeContractContent(materialized.content, {
+      allowPlaceholders: options?.acknowledgePlaceholders === true,
+    });
+    if (!safety.ok) {
+      return {
+        ok: false,
+        message: safety.message,
+        ...(safety.code ? { code: safety.code } : {}),
+      } as ContractActionResult;
+    }
+    await repo.forceResolveContractContent(supabase, venueId, id, materialized.content);
+    const customerFacing = { ...contract, content: materialized.content };
 
     const venue = await getCurrentVenue();
     const brandingSnapshot = venue ? captureContractBrandingSnapshot(venue) : undefined;
@@ -800,7 +1316,7 @@ export async function sendContract(id: string, customMessage?: string): Promise<
     if (!outcome.ok) return { ok: false, message: outcome.message } as ContractActionResult;
     const actor = await currentActor(venueId);
     await repo.insertContractActivity(
-      supabase, venueId, id, "sent", "Contract released for client signature",
+      supabase, venueId, id, "sent", "Contract sent to client for review",
       undefined, actor.userId, actor.label,
     );
 
@@ -808,7 +1324,7 @@ export async function sendContract(id: string, customMessage?: string): Promise<
     {
       const existingDocumentId = await documentIntegration.getContractDocumentId(supabase, id);
       if (!existingDocumentId) {
-        const { documentId: newDocumentId } = await documentIntegration.publishContractDocument(supabase, contract);
+        const { documentId: newDocumentId } = await documentIntegration.publishContractDocument(supabase, customerFacing);
         if (contract.amendsContractId) {
           const priorDocumentId = await documentIntegration.getContractDocumentId(supabase, contract.amendsContractId);
           if (priorDocumentId) {
@@ -816,7 +1332,7 @@ export async function sendContract(id: string, customMessage?: string): Promise<
           }
         }
       } else {
-        await documentIntegration.versionContractDocument(supabase, existingDocumentId, contract.content, { type: "venue", id: venueId });
+        await documentIntegration.versionContractDocument(supabase, existingDocumentId, materialized.content, { type: "venue", id: venueId });
       }
     }
 
@@ -831,26 +1347,117 @@ export async function sendContract(id: string, customMessage?: string): Promise<
   return result as ContractActionResult;
 }
 
+export type ContractResendResult =
+  | {
+      ok: true;
+      deliveries: ResendDeliveryOutcome[];
+      message: string;
+      /** Snapshot proof that resend did not mutate signing state. */
+      signatureSnapshot: { signerId: string; signedAt: string | null }[];
+      status: string;
+      contentHashUnchanged: true;
+    }
+  | {
+      ok: false;
+      message?: string;
+      reason?: "stale" | "not_editable" | "not_found";
+      deliveries?: ResendDeliveryOutcome[];
+    };
+
 /**
  * Work Package D5E — "Resend" for a contract already `sent` and still
- * awaiting signature.
+ * awaiting signature. Selected signer ids control delivery; missing selection
+ * defaults to every required client signatory (backward-compatible).
  */
-export async function resendContract(id: string, customMessage?: string): Promise<ContractActionResult> {
+export async function resendContract(
+  id: string,
+  customMessage?: string,
+  selectedSignerIds?: string[],
+): Promise<ContractResendResult> {
   const result = await withVenue(async (supabase, venueId) => {
     const contract = await repo.getContract(supabase, venueId, id);
-    if (!contract) return { ok: false, message: "Contract not found." } as ContractActionResult;
+    if (!contract) return { ok: false, message: "Contract not found." } as ContractResendResult;
     if (contract.status !== "sent") {
-      return { ok: false, message: "Only a contract that's already been sent and is still awaiting signature can be resent." } as ContractActionResult;
+      return {
+        ok: false,
+        message: "Only a contract that's already been sent and is still awaiting signature can be resent.",
+      } as ContractResendResult;
     }
-    await sendContractInviteEmails(contract, customMessage);
+
+    const required = (contract.signers ?? []).filter((s) => s.signerType === "client" && s.isRequired);
+    const beforeSignatures = (contract.signers ?? []).map((s) => ({
+      signerId: s.id,
+      signedAt: s.signedAt,
+    }));
+    const beforeContent = contract.content;
+    const beforeStatus = contract.status;
+
+    let deliveries: ResendDeliveryOutcome[];
+    if (required.length === 0) {
+      // Legacy single-token contracts — no per-signer rows to select.
+      if (selectedSignerIds !== undefined && selectedSignerIds.length > 0) {
+        return {
+          ok: false,
+          message: "Recipients must be selected from this contract's signatories.",
+        } as ContractResendResult;
+      }
+      deliveries = await sendContractInviteEmails(contract, customMessage);
+    } else {
+      const idsToSend =
+        selectedSignerIds !== undefined
+          ? selectedSignerIds
+          : required.map((s) => s.id);
+      const validated = validateResendSelection(contract.signers ?? [], idsToSend);
+      if (!validated.ok) {
+        return { ok: false, message: validated.message } as ContractResendResult;
+      }
+      deliveries = await sendContractInviteEmails(contract, customMessage, validated.signerIds);
+    }
+    const summary = summarizeResendDeliveries(deliveries);
+
     const actor = await currentActor(venueId);
+    const recipientNames = deliveries.map((d) => d.name).join(", ");
     await repo.insertContractActivity(
-      supabase, venueId, id, "resent", "Contract resent for signing",
-      undefined, actor.userId, actor.label,
+      supabase,
+      venueId,
+      id,
+      "resent",
+      "Contract resent for signing",
+      recipientNames
+        ? `Recipients: ${recipientNames}. ${summary.message}`
+        : summary.message,
+      actor.userId,
+      actor.label,
     );
-    return { ok: true } as ContractActionResult;
+
+    const refreshed = await repo.getContract(supabase, venueId, id);
+    const afterSignatures = (refreshed?.signers ?? contract.signers ?? []).map((s) => ({
+      signerId: s.id,
+      signedAt: s.signedAt,
+    }));
+    // Resend must not change terms, version, status, or signatures.
+    if (refreshed && (refreshed.content !== beforeContent || refreshed.status !== beforeStatus)) {
+      return {
+        ok: false,
+        message: "Resend aborted: contract state changed unexpectedly.",
+        deliveries,
+      } as ContractResendResult;
+    }
+
+    if (!summary.ok) {
+      return { ok: false, message: summary.message, deliveries } as ContractResendResult;
+    }
+
+    return {
+      ok: true,
+      deliveries,
+      message: summary.message,
+      signatureSnapshot: afterSignatures.length ? afterSignatures : beforeSignatures,
+      status: beforeStatus,
+      contentHashUnchanged: true as const,
+    } as ContractResendResult;
   });
-  return result as ContractActionResult;
+  return result as ContractResendResult;
 }
 
 export async function cancelContract(id: string): Promise<ContractActionResult> {
@@ -919,7 +1526,7 @@ export async function cloneAndResendContract(sourceContractId: string): Promise<
     if (!venueSigned && !anyClientSigned && source.status !== "signed") {
       return {
         ok: false,
-        message: "Create New Version is available after the venue has signed (content is then immutable).",
+        message: "Create New Version is available after the client has signed (so the signed version is preserved).",
       } as CreateContractResult;
     }
 
@@ -927,13 +1534,11 @@ export async function cloneAndResendContract(sourceContractId: string): Promise<
       return { ok: false, message: "This contract has no client — cannot create a new version." } as CreateContractResult;
     }
 
-    const priorContactIds = (source.signers ?? [])
-      .filter((s) => s.signerType === "client" && s.isRequired && s.clientContactId)
-      .map((s) => s.clientContactId as string);
-    const seeds = await resolveClientSignerSeeds(
+    const signerSelectionIds = await resolveSignerSelectionIdsFromContract(
       source.clientId,
-      priorContactIds.length > 0 ? priorContactIds : undefined,
+      source.signers ?? [],
     );
+    const seeds = await resolveClientSignerSeeds(source.clientId, signerSelectionIds);
     if (!seeds.ok) return { ok: false, message: seeds.message } as CreateContractResult;
 
     const newContractId = await repo.insertContract(supabase, venueId, {
@@ -1030,6 +1635,8 @@ export async function signContractByToken(
     }
 
     if (result.fully_executed && contractRow.venueId) {
+      const adminForReminders = createAdminClient();
+      await cancelRemindersForContract(adminForReminders as never, contractRow.venueId, contractRow.id);
       void recordEngagementEvent({
         venueId: contractRow.venueId,
         eventType: "contract.signed",
@@ -1042,15 +1649,6 @@ export async function signContractByToken(
         const admin = createAdminClient();
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await triggerAutoComplete(admin as any, contractRow.venueId, contractRow.eventId, "contract_signed");
-      }
-      if (contractRow.clientId) {
-        const { maybeStampCommercialBookedAt } = await import("@/lib/booking-journey/stamp-commercial-booked-at");
-        const admin = createAdminClient();
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await maybeStampCommercialBookedAt(admin as any, contractRow.venueId, {
-          clientId: contractRow.clientId,
-          eventId: contractRow.eventId,
-        });
       }
     }
 
@@ -1075,6 +1673,8 @@ export async function signContractByToken(
   if (!result?.ok) return { ok: false, message: "This contract is not available for signing." };
 
   if (contractRow.venueId) {
+    const adminForReminders = createAdminClient();
+    await cancelRemindersForContract(adminForReminders as never, contractRow.venueId, contractRow.id);
     void recordEngagementEvent({
       venueId: contractRow.venueId,
       eventType: "contract.signed",
@@ -1087,15 +1687,6 @@ export async function signContractByToken(
       const admin = createAdminClient();
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await triggerAutoComplete(admin as any, contractRow.venueId, contractRow.eventId, "contract_signed");
-    }
-    if (contractRow.clientId) {
-      const { maybeStampCommercialBookedAt } = await import("@/lib/booking-journey/stamp-commercial-booked-at");
-      const admin = createAdminClient();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await maybeStampCommercialBookedAt(admin as any, contractRow.venueId, {
-        clientId: contractRow.clientId,
-        eventId: contractRow.eventId,
-      });
     }
   }
 

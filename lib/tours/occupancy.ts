@@ -8,7 +8,8 @@
  *
  * Tours are not Events. Capacity is venue_capacity_rules.max_simultaneous_tours
  * only. Occupancy truth is tour_appointments with status scheduled or
- * confirmed (completed / no_show / cancelled do not consume live capacity).
+ * confirmed AND non-null scheduled_at (completed / no_show / cancelled /
+ * walk-ins do not consume live capacity).
  * Interval overlap is duration-based; touching endpoints do not
  * overlap. Buffer is a slot-generation step, not an overlap widening.
  *
@@ -82,8 +83,14 @@ export function tourIntervalsOverlap(a: TourInterval, b: TourInterval): boolean 
   return a.scheduledAtMs < bEnd && b.scheduledAtMs < aEnd;
 }
 
-export function occupyingTour(status: string): boolean {
-  return status === "scheduled" || status === "confirmed";
+/**
+ * Occupying tours match DB D2: status scheduled|confirmed AND scheduled_at present.
+ * Null scheduled_at (walk-ins) never occupy, regardless of status.
+ */
+export function occupyingTour(status: string, scheduledAt?: string | null): boolean {
+  if (status !== "scheduled" && status !== "confirmed") return false;
+  if (scheduledAt === null) return false;
+  return true;
 }
 
 export function evaluateTourCapacity(input: {
@@ -94,7 +101,7 @@ export function evaluateTourCapacity(input: {
 }): TourCapacityResult {
   const max = effectiveMaxSimultaneousTours(input.rules);
   const overlapping = input.existing.filter((t) => {
-    if (!occupyingTour(t.status)) return false;
+    if (!occupyingTour(t.status, t.scheduledAtMs != null ? "present" : null)) return false;
     if (input.excludeId && t.id === input.excludeId) return false;
     if (input.candidate.id && t.id === input.candidate.id) return false;
     return tourIntervalsOverlap(t, input.candidate);

@@ -27,6 +27,7 @@ export default async function FloorPlanTemplatePreviewPage({ params }: Props) {
       caption="Floor plan template preview — illustrative layout only. Not a capacity claim. Clients see a working floor plan after you apply this to an event."
       editHref={`/library/floor-plan-templates/${template.id}`}
       libraryHref="/library/floor-plan-templates"
+      libraryLabel="Floor Plan Templates"
       contentMaxWidthClassName="max-w-2xl"
     >
       <div className="space-y-4 pb-10">

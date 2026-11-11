@@ -1,0 +1,18 @@
+{
+  "ok": true,
+  "closedBy": "docs/qa/htc-commercial-roadmap-closure/FINAL-COMBINED-ACCEPTANCE.json",
+  "servingSha": "846c5143f33de2a88ea60b12d740454f9401bc93",
+  "referralId": "db898afa-c1c8-41fe-91e2-725f70070cce",
+  "rewardId": "6097ac77-24db-4745-b5af-f89ebae4991d",
+  "stripeInvoiceItemId": "ii_1Ua3UtErUqJH7nktl9ZkqlMA",
+  "appliedInvoiceId": "in_1Ua3UzErUqJH7nkturUieO32",
+  "rewardAmountCents": 24900,
+  "checks": {
+    "browser_submit": true,
+    "crm_referrals_ui": true,
+    "billing_credit_visible": true,
+    "finalized_invoice_paid": true,
+    "reward_status_applied": true,
+    "subscription_scoped": true
+  }
+}

@@ -1,0 +1,25 @@
+PASS serving-sha — expected=df95f7c4c17a ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:df95f7c4c17a3e522396df98df818754994d37b6
+PASS light-labels-found — count=11 sample=[{"text":"Planning","color":"rgb(31, 42, 31)","surface":"oklab(0.999994 0.0000455678 0.0000200868 / 0.4)","backdrop":"rgb(248, 247, 244)"},{"text":"Document","color":"rgb(74, 67, 58)","surface":"oklab(0.999994 0.0000455678 0.0000200868 / 0.4)","backdrop":"rgb(248, 247, 244)"},{"text":"Planning","color":"rgb(31, 42, 31)","surface":"oklab(0.999994 0.0000455678 0.0000200868 / 0.4)","backdrop":"rgb(248, 247, 244)"}]
+PASS light-label-planning — ratio=14.30 fg=rgb(31, 42, 31) surface=oklab(0.999994 0.0000455678 0.0000200868 / 0.4) bg=rgb(248, 247, 244)
+PASS light-label-planning — ratio=14.30 fg=rgb(31, 42, 31) surface=oklab(0.999994 0.0000455678 0.0000200868 / 0.4) bg=rgb(248, 247, 244)
+PASS light-label-planning — ratio=14.30 fg=rgb(31, 42, 31) surface=oklab(0.999994 0.0000455678 0.0000200868 / 0.4) bg=rgb(248, 247, 244)
+PASS light-label-planning — ratio=14.30 fg=rgb(31, 42, 31) surface=oklab(0.999994 0.0000455678 0.0000200868 / 0.4) bg=rgb(248, 247, 244)
+PASS light-label-planning — ratio=14.30 fg=rgb(31, 42, 31) surface=oklab(0.999994 0.0000455678 0.0000200868 / 0.4) bg=rgb(248, 247, 244)
+PASS light-label-planning — ratio=14.30 fg=rgb(31, 42, 31) surface=oklab(0.999994 0.0000455678 0.0000200868 / 0.4) bg=rgb(248, 247, 244)
+PASS light-label-planning — ratio=14.30 fg=rgb(31, 42, 31) surface=oklab(0.999994 0.0000455678 0.0000200868 / 0.4) bg=rgb(248, 247, 244)
+PASS light-label-planning — ratio=14.30 fg=rgb(31, 42, 31) surface=oklab(0.999994 0.0000455678 0.0000200868 / 0.4) bg=rgb(248, 247, 244)
+PASS light-category-labels-aa — pass=11 fail=0
+PASS dark-labels-found — count=11 sample=[{"text":"Planning","color":"rgb(247, 245, 241)","surface":"oklab(0.521358 -0.0288675 0.0202034 / 0.4)","backdrop":"rgb(79, 95, 79)"},{"text":"Document","color":"rgb(240, 235, 227)","surface":"oklab(0.521358 -0.0288675 0.0202034 / 0.4)","backdrop":"rgb(79, 95, 79)"},{"text":"Planning","color":"rgb(247, 245, 241)","surface":"oklab(0.521358 -0.0288675 0.0202034 / 0.4)","backdrop":"rgb(79, 95, 79)"}]
+PASS dark-label-planning — ratio=5.69 fg=rgb(247, 245, 241) surface=oklab(0.521358 -0.0288675 0.0202034 / 0.4) bg=rgb(79, 95, 79)
+PASS dark-label-planning — ratio=5.69 fg=rgb(247, 245, 241) surface=oklab(0.521358 -0.0288675 0.0202034 / 0.4) bg=rgb(79, 95, 79)
+PASS dark-label-planning — ratio=5.69 fg=rgb(247, 245, 241) surface=oklab(0.521358 -0.0288675 0.0202034 / 0.4) bg=rgb(79, 95, 79)
+PASS dark-label-planning — ratio=5.69 fg=rgb(247, 245, 241) surface=oklab(0.521358 -0.0288675 0.0202034 / 0.4) bg=rgb(79, 95, 79)
+PASS dark-label-planning — ratio=5.69 fg=rgb(247, 245, 241) surface=oklab(0.521358 -0.0288675 0.0202034 / 0.4) bg=rgb(79, 95, 79)
+PASS dark-label-planning — ratio=5.69 fg=rgb(247, 245, 241) surface=oklab(0.521358 -0.0288675 0.0202034 / 0.4) bg=rgb(79, 95, 79)
+PASS dark-label-planning — ratio=5.69 fg=rgb(247, 245, 241) surface=oklab(0.521358 -0.0288675 0.0202034 / 0.4) bg=rgb(79, 95, 79)
+PASS dark-label-planning — ratio=5.69 fg=rgb(247, 245, 241) surface=oklab(0.521358 -0.0288675 0.0202034 / 0.4) bg=rgb(79, 95, 79)
+PASS dark-category-labels-aa — pass=11 fail=0
+PASS dark-planning-not-forest-ink — color=rgb(247, 245, 241) avg=244
+PASS narrow-dark-shot — 390
+
+23 pass / 0 fail → docs/qa/product-contrast-audit/task-category-browser-results.json

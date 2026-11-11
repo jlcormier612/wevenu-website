@@ -1,0 +1,663 @@
+[
+  {
+    "label": "reporting-overview-mobile",
+    "route": "/reporting",
+    "viewport": "mobile",
+    "file": "evidence/reporting-overview-mobile.png",
+    "probe": {
+      "ok": true,
+      "activeLabel": "Overview",
+      "activeFullyVisible": true,
+      "canScrollLeft": false,
+      "canScrollRight": true,
+      "leftEdgeActive": false,
+      "rightEdgeActive": true,
+      "prevBtn": false,
+      "moreBtn": true,
+      "overlayHits": [],
+      "edgeCollisions": [],
+      "pageOverflowX": false,
+      "scrollerLeft": 55,
+      "scrollerRight": 335,
+      "leftEdgeRight": null,
+      "rightEdgeLeft": 335,
+      "tabs": [
+        {
+          "label": "Overview",
+          "active": true,
+          "visibleInScroller": true,
+          "left": 55,
+          "right": 140
+        },
+        {
+          "label": "Sales",
+          "active": false,
+          "visibleInScroller": true,
+          "left": 145,
+          "right": 203
+        },
+        {
+          "label": "Bookings",
+          "active": false,
+          "visibleInScroller": true,
+          "left": 208,
+          "right": 292
+        },
+        {
+          "label": "Revenue",
+          "active": false,
+          "visibleInScroller": true,
+          "left": 296,
+          "right": 376
+        },
+        {
+          "label": "Events",
+          "active": false,
+          "visibleInScroller": false,
+          "left": 380,
+          "right": 447
+        },
+        {
+          "label": "Saved",
+          "active": false,
+          "visibleInScroller": false,
+          "left": 452,
+          "right": 516
+        }
+      ]
+    }
+  },
+  {
+    "label": "reporting-bookings-mobile",
+    "route": "/reporting/bookings",
+    "viewport": "mobile",
+    "file": "evidence/reporting-bookings-mobile.png",
+    "probe": {
+      "ok": true,
+      "activeLabel": "Bookings",
+      "activeFullyVisible": true,
+      "canScrollLeft": false,
+      "canScrollRight": true,
+      "leftEdgeActive": false,
+      "rightEdgeActive": true,
+      "prevBtn": false,
+      "moreBtn": true,
+      "overlayHits": [],
+      "edgeCollisions": [],
+      "pageOverflowX": false,
+      "scrollerLeft": 55,
+      "scrollerRight": 335,
+      "leftEdgeRight": null,
+      "rightEdgeLeft": 335,
+      "tabs": [
+        {
+          "label": "Overview",
+          "active": false,
+          "visibleInScroller": true,
+          "left": 55,
+          "right": 140
+        },
+        {
+          "label": "Sales",
+          "active": false,
+          "visibleInScroller": true,
+          "left": 145,
+          "right": 203
+        },
+        {
+          "label": "Bookings",
+          "active": true,
+          "visibleInScroller": true,
+          "left": 208,
+          "right": 292
+        },
+        {
+          "label": "Revenue",
+          "active": false,
+          "visibleInScroller": true,
+          "left": 296,
+          "right": 376
+        },
+        {
+          "label": "Events",
+          "active": false,
+          "visibleInScroller": false,
+          "left": 380,
+          "right": 447
+        },
+        {
+          "label": "Saved",
+          "active": false,
+          "visibleInScroller": false,
+          "left": 452,
+          "right": 516
+        }
+      ]
+    }
+  },
+  {
+    "label": "reporting-revenue-mobile",
+    "route": "/reporting/revenue",
+    "viewport": "mobile",
+    "file": "evidence/reporting-revenue-mobile.png",
+    "probe": {
+      "ok": true,
+      "activeLabel": "Revenue",
+      "activeFullyVisible": true,
+      "canScrollLeft": true,
+      "canScrollRight": true,
+      "leftEdgeActive": true,
+      "rightEdgeActive": true,
+      "prevBtn": true,
+      "moreBtn": true,
+      "overlayHits": [],
+      "edgeCollisions": [],
+      "pageOverflowX": false,
+      "scrollerLeft": 55,
+      "scrollerRight": 335,
+      "leftEdgeRight": 55,
+      "rightEdgeLeft": 335,
+      "tabs": [
+        {
+          "label": "Overview",
+          "active": false,
+          "visibleInScroller": true,
+          "left": 6,
+          "right": 91
+        },
+        {
+          "label": "Sales",
+          "active": false,
+          "visibleInScroller": true,
+          "left": 96,
+          "right": 154
+        },
+        {
+          "label": "Bookings",
+          "active": false,
+          "visibleInScroller": true,
+          "left": 159,
+          "right": 243
+        },
+        {
+          "label": "Revenue",
+          "active": true,
+          "visibleInScroller": true,
+          "left": 247,
+          "right": 327
+        },
+        {
+          "label": "Events",
+          "active": false,
+          "visibleInScroller": true,
+          "left": 331,
+          "right": 398
+        },
+        {
+          "label": "Saved",
+          "active": false,
+          "visibleInScroller": false,
+          "left": 403,
+          "right": 467
+        }
+      ]
+    }
+  },
+  {
+    "label": "reporting-events-mobile",
+    "route": "/reporting/events",
+    "viewport": "mobile",
+    "file": "evidence/reporting-events-mobile.png",
+    "probe": {
+      "ok": true,
+      "activeLabel": "Events",
+      "activeFullyVisible": true,
+      "canScrollLeft": true,
+      "canScrollRight": true,
+      "leftEdgeActive": true,
+      "rightEdgeActive": true,
+      "prevBtn": true,
+      "moreBtn": true,
+      "overlayHits": [],
+      "edgeCollisions": [],
+      "pageOverflowX": false,
+      "scrollerLeft": 55,
+      "scrollerRight": 335,
+      "leftEdgeRight": 55,
+      "rightEdgeLeft": 335,
+      "tabs": [
+        {
+          "label": "Overview",
+          "active": false,
+          "visibleInScroller": false,
+          "left": -65,
+          "right": 20
+        },
+        {
+          "label": "Sales",
+          "active": false,
+          "visibleInScroller": true,
+          "left": 25,
+          "right": 83
+        },
+        {
+          "label": "Bookings",
+          "active": false,
+          "visibleInScroller": true,
+          "left": 88,
+          "right": 172
+        },
+        {
+          "label": "Revenue",
+          "active": false,
+          "visibleInScroller": true,
+          "left": 176,
+          "right": 256
+        },
+        {
+          "label": "Events",
+          "active": true,
+          "visibleInScroller": true,
+          "left": 260,
+          "right": 327
+        },
+        {
+          "label": "Saved",
+          "active": false,
+          "visibleInScroller": true,
+          "left": 332,
+          "right": 396
+        }
+      ]
+    }
+  },
+  {
+    "label": "reporting-saved-mobile",
+    "route": "/reporting/saved",
+    "viewport": "mobile",
+    "file": "evidence/reporting-saved-mobile.png",
+    "probe": {
+      "ok": true,
+      "activeLabel": "Saved",
+      "activeFullyVisible": true,
+      "canScrollLeft": true,
+      "canScrollRight": false,
+      "leftEdgeActive": true,
+      "rightEdgeActive": false,
+      "prevBtn": true,
+      "moreBtn": false,
+      "overlayHits": [],
+      "edgeCollisions": [],
+      "pageOverflowX": false,
+      "scrollerLeft": 55,
+      "scrollerRight": 335,
+      "leftEdgeRight": 55,
+      "rightEdgeLeft": null,
+      "tabs": [
+        {
+          "label": "Overview",
+          "active": false,
+          "visibleInScroller": false,
+          "left": -125,
+          "right": -40
+        },
+        {
+          "label": "Sales",
+          "active": false,
+          "visibleInScroller": false,
+          "left": -35,
+          "right": 23
+        },
+        {
+          "label": "Bookings",
+          "active": false,
+          "visibleInScroller": true,
+          "left": 28,
+          "right": 112
+        },
+        {
+          "label": "Revenue",
+          "active": false,
+          "visibleInScroller": true,
+          "left": 116,
+          "right": 196
+        },
+        {
+          "label": "Events",
+          "active": false,
+          "visibleInScroller": true,
+          "left": 200,
+          "right": 267
+        },
+        {
+          "label": "Saved",
+          "active": true,
+          "visibleInScroller": true,
+          "left": 272,
+          "right": 336
+        }
+      ]
+    }
+  },
+  {
+    "label": "reporting-desktop",
+    "route": "/reporting",
+    "viewport": "desktop",
+    "file": "evidence/reporting-desktop.png",
+    "probe": {
+      "ok": true,
+      "activeLabel": "Overview",
+      "activeFullyVisible": true,
+      "canScrollLeft": false,
+      "canScrollRight": false,
+      "leftEdgeActive": false,
+      "rightEdgeActive": false,
+      "prevBtn": false,
+      "moreBtn": false,
+      "overlayHits": [],
+      "edgeCollisions": [],
+      "pageOverflowX": false,
+      "scrollerLeft": 306,
+      "scrollerRight": 1398,
+      "leftEdgeRight": null,
+      "rightEdgeLeft": null,
+      "tabs": [
+        {
+          "label": "Overview",
+          "active": true,
+          "visibleInScroller": true,
+          "left": 306,
+          "right": 391
+        },
+        {
+          "label": "Sales",
+          "active": false,
+          "visibleInScroller": true,
+          "left": 395,
+          "right": 454
+        },
+        {
+          "label": "Bookings",
+          "active": false,
+          "visibleInScroller": true,
+          "left": 458,
+          "right": 542
+        },
+        {
+          "label": "Revenue",
+          "active": false,
+          "visibleInScroller": true,
+          "left": 547,
+          "right": 627
+        },
+        {
+          "label": "Events",
+          "active": false,
+          "visibleInScroller": true,
+          "left": 631,
+          "right": 698
+        },
+        {
+          "label": "Saved",
+          "active": false,
+          "visibleInScroller": true,
+          "left": 702,
+          "right": 766
+        }
+      ]
+    }
+  },
+  {
+    "label": "reporting-nav-interaction-mobile",
+    "evidenceKind": "live-interaction",
+    "file": "evidence/reporting-nav-interaction-mobile.png",
+    "before": {
+      "ok": true,
+      "activeLabel": "Overview",
+      "activeFullyVisible": true,
+      "canScrollLeft": false,
+      "canScrollRight": true,
+      "leftEdgeActive": false,
+      "rightEdgeActive": true,
+      "prevBtn": false,
+      "moreBtn": true,
+      "overlayHits": [],
+      "edgeCollisions": [],
+      "pageOverflowX": false,
+      "scrollerLeft": 55,
+      "scrollerRight": 335,
+      "leftEdgeRight": null,
+      "rightEdgeLeft": 335,
+      "tabs": [
+        {
+          "label": "Overview",
+          "active": true,
+          "visibleInScroller": true,
+          "left": 55,
+          "right": 140
+        },
+        {
+          "label": "Sales",
+          "active": false,
+          "visibleInScroller": true,
+          "left": 145,
+          "right": 203
+        },
+        {
+          "label": "Bookings",
+          "active": false,
+          "visibleInScroller": true,
+          "left": 208,
+          "right": 292
+        },
+        {
+          "label": "Revenue",
+          "active": false,
+          "visibleInScroller": true,
+          "left": 296,
+          "right": 376
+        },
+        {
+          "label": "Events",
+          "active": false,
+          "visibleInScroller": false,
+          "left": 380,
+          "right": 447
+        },
+        {
+          "label": "Saved",
+          "active": false,
+          "visibleInScroller": false,
+          "left": 452,
+          "right": 516
+        }
+      ]
+    },
+    "afterChevron": {
+      "ok": true,
+      "activeLabel": "Overview",
+      "activeFullyVisible": false,
+      "canScrollLeft": true,
+      "canScrollRight": true,
+      "leftEdgeActive": true,
+      "rightEdgeActive": true,
+      "prevBtn": true,
+      "moreBtn": true,
+      "overlayHits": [],
+      "edgeCollisions": [],
+      "pageOverflowX": false,
+      "scrollerLeft": 55,
+      "scrollerRight": 335,
+      "leftEdgeRight": 55,
+      "rightEdgeLeft": 335,
+      "tabs": [
+        {
+          "label": "Overview",
+          "active": true,
+          "visibleInScroller": false,
+          "left": -99,
+          "right": -14
+        },
+        {
+          "label": "Sales",
+          "active": false,
+          "visibleInScroller": false,
+          "left": -9,
+          "right": 49
+        },
+        {
+          "label": "Bookings",
+          "active": false,
+          "visibleInScroller": true,
+          "left": 54,
+          "right": 138
+        },
+        {
+          "label": "Revenue",
+          "active": false,
+          "visibleInScroller": true,
+          "left": 142,
+          "right": 222
+        },
+        {
+          "label": "Events",
+          "active": false,
+          "visibleInScroller": true,
+          "left": 226,
+          "right": 293
+        },
+        {
+          "label": "Saved",
+          "active": false,
+          "visibleInScroller": true,
+          "left": 298,
+          "right": 362
+        }
+      ]
+    },
+    "afterClick": {
+      "ok": true,
+      "activeLabel": "Events",
+      "activeFullyVisible": true,
+      "canScrollLeft": true,
+      "canScrollRight": true,
+      "leftEdgeActive": true,
+      "rightEdgeActive": true,
+      "prevBtn": true,
+      "moreBtn": true,
+      "overlayHits": [],
+      "edgeCollisions": [],
+      "pageOverflowX": false,
+      "scrollerLeft": 55,
+      "scrollerRight": 335,
+      "leftEdgeRight": 55,
+      "rightEdgeLeft": 335,
+      "tabs": [
+        {
+          "label": "Overview",
+          "active": false,
+          "visibleInScroller": false,
+          "left": -99,
+          "right": -14
+        },
+        {
+          "label": "Sales",
+          "active": false,
+          "visibleInScroller": false,
+          "left": -9,
+          "right": 49
+        },
+        {
+          "label": "Bookings",
+          "active": false,
+          "visibleInScroller": true,
+          "left": 54,
+          "right": 138
+        },
+        {
+          "label": "Revenue",
+          "active": false,
+          "visibleInScroller": true,
+          "left": 142,
+          "right": 222
+        },
+        {
+          "label": "Events",
+          "active": true,
+          "visibleInScroller": true,
+          "left": 226,
+          "right": 293
+        },
+        {
+          "label": "Saved",
+          "active": false,
+          "visibleInScroller": true,
+          "left": 298,
+          "right": 362
+        }
+      ]
+    },
+    "afterSwipe": {
+      "ok": true,
+      "activeLabel": "Events",
+      "activeFullyVisible": false,
+      "canScrollLeft": true,
+      "canScrollRight": true,
+      "leftEdgeActive": true,
+      "rightEdgeActive": true,
+      "prevBtn": true,
+      "moreBtn": true,
+      "overlayHits": [],
+      "edgeCollisions": [],
+      "pageOverflowX": false,
+      "scrollerLeft": 55,
+      "scrollerRight": 335,
+      "leftEdgeRight": 55,
+      "rightEdgeLeft": 335,
+      "tabs": [
+        {
+          "label": "Overview",
+          "active": false,
+          "visibleInScroller": true,
+          "left": 21,
+          "right": 106
+        },
+        {
+          "label": "Sales",
+          "active": false,
+          "visibleInScroller": true,
+          "left": 111,
+          "right": 169
+        },
+        {
+          "label": "Bookings",
+          "active": false,
+          "visibleInScroller": true,
+          "left": 174,
+          "right": 258
+        },
+        {
+          "label": "Revenue",
+          "active": false,
+          "visibleInScroller": true,
+          "left": 262,
+          "right": 342
+        },
+        {
+          "label": "Events",
+          "active": true,
+          "visibleInScroller": false,
+          "left": 346,
+          "right": 413
+        },
+        {
+          "label": "Saved",
+          "active": false,
+          "visibleInScroller": false,
+          "left": 418,
+          "right": 482
+        }
+      ]
+    }
+  }
+]

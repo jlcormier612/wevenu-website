@@ -3,12 +3,22 @@
  * event-date presets. Event filter = attributes first; specific event is secondary.
  */
 
-import { EVENT_TYPES, eventTypeLabel } from "@/lib/event-types/canonical";
+import { EVENT_TYPES } from "@/lib/event-types/canonical";
+import {
+  INBOX_EVENT_TYPE_LEGACY,
+  inboxEventTypeOptionLabel,
+} from "@/lib/conversations/inbox-event-type-options";
 
 export const INBOX_FILTER_ALL = "__all__";
+export {
+  INBOX_EVENT_TYPE_LEGACY,
+  INBOX_EVENT_TYPE_LEGACY_LABEL,
+  buildInboxEventTypeFilterOptions,
+  shouldShowInboxLegacyEventTypeBucket,
+} from "@/lib/conversations/inbox-event-type-options";
 
 export type InboxAttention = "all" | "unread" | "needs_response";
-export type InboxRelationship = "all" | "leads" | "bookings";
+export type InboxRelationship = "all" | "leads" | "bookings" | "clients" | "vendors";
 
 export type InboxSort =
   | "recent"
@@ -80,7 +90,10 @@ export const INBOX_SORT_OPTIONS: { value: InboxSort; label: string }[] = [
   { value: "client_name_desc", label: "Client name Z–A" },
 ];
 
-/** Canonical types for the Event type filter (existing vocabulary only). */
+/**
+ * @deprecated Prefer buildInboxEventTypeFilterOptions(acceptedInquiryEventTypes).
+ * Full catalog retained for tests that assert the vocabulary still exists.
+ */
 export const INBOX_EVENT_TYPE_OPTIONS = EVENT_TYPES;
 
 function pad2(n: number): string {
@@ -157,7 +170,7 @@ export function resolveInboxEventDateRange(
 export function defaultInboxFilters(): InboxFilterState {
   return {
     attention: "all",
-    relationship: "all",
+    relationship: "leads",
     bookingStage: INBOX_FILTER_ALL,
     channel: INBOX_FILTER_ALL,
     assignment: { mode: "any" },
@@ -176,7 +189,7 @@ export function inboxFiltersAreDefault(state: InboxFilterState): boolean {
   const d = defaultInboxFilters();
   return (
     state.attention === d.attention
-    && state.relationship === d.relationship
+    // relationship is the top category toggle, not an advanced filter
     && state.bookingStage === d.bookingStage
     && state.channel === d.channel
     && state.assignment.mode === d.assignment.mode
@@ -195,8 +208,10 @@ const STAGE_LABELS: Record<string, string> = {
   package: "Package",
   agreement: "Agreement",
   deposit: "Deposit",
-  booked: "Booked",
+  ready: "Next steps",
   planning: "Planning",
+  // Legacy filter value from prior journey stage key
+  booked: "Next steps",
 };
 
 const CHANNEL_LABELS: Record<string, string> = {
@@ -223,9 +238,14 @@ const SORT_CHIP_LABELS: Partial<Record<InboxSort, string>> = {
 };
 
 function eventTypesChipLabel(types: string[]): string {
-  if (types.length === 1) return eventTypeLabel(types[0]!) || types[0]!;
+  if (types.length === 1) return inboxEventTypeOptionLabel(types[0]!);
   if (types.length === 2) {
-    return `${eventTypeLabel(types[0]!) || types[0]}, ${eventTypeLabel(types[1]!) || types[1]}`;
+    return `${inboxEventTypeOptionLabel(types[0]!)}, ${inboxEventTypeOptionLabel(types[1]!)}`;
+  }
+  if (types.includes(INBOX_EVENT_TYPE_LEGACY)) {
+    const rest = types.filter((t) => t !== INBOX_EVENT_TYPE_LEGACY);
+    if (rest.length === 0) return inboxEventTypeOptionLabel(INBOX_EVENT_TYPE_LEGACY);
+    return `${rest.length + 1} event types`;
   }
   return `${types.length} event types`;
 }
@@ -237,8 +257,7 @@ export function inboxActiveChips(
   const chips: InboxActiveChip[] = [];
   if (state.attention === "unread") chips.push({ id: "attention", label: "Unread" });
   if (state.attention === "needs_response") chips.push({ id: "attention", label: "Needs response" });
-  if (state.relationship === "leads") chips.push({ id: "relationship", label: "Leads" });
-  if (state.relationship === "bookings") chips.push({ id: "relationship", label: "Bookings" });
+  // Relationship/category is owned by the top Leads/Clients/Vendors toggle — not a chip.
   if (state.bookingStage !== INBOX_FILTER_ALL) {
     chips.push({ id: "bookingStage", label: STAGE_LABELS[state.bookingStage] ?? state.bookingStage });
   }
@@ -356,7 +375,10 @@ export function inboxFiltersToQuery(
   return {
     unreadOnly: state.attention === "unread",
     needsResponseOnly: state.attention === "needs_response",
-    relationship: state.relationship,
+    relationship:
+      state.relationship === "clients" ? "bookings"
+      : state.relationship === "all" ? "all"
+      : state.relationship,
     channel: state.channel === INBOX_FILTER_ALL ? null : state.channel,
     bookingStage: state.bookingStage === INBOX_FILTER_ALL ? null : state.bookingStage,
     assignedStaffId,

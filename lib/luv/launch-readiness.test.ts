@@ -19,7 +19,9 @@ describe("/api/luv/draft launch-readiness", () => {
   });
 
   it("puts preferredTone into the system instruction", () => {
-    assert.match(draftRoute, /luvToneInstruction\(settings\.preferredTone\)/);
+    assert.match(draftRoute, /normalizePreferredTone\(settings\.preferredTone\)/);
+    assert.match(draftRoute, /buildDashboardDraftSystemPrompt\(venueName, preferredTone\)/);
+    assert.match(draftRoute, /buildDashboardDraftPrompt\(action, context, venueName, preferredTone\)/);
   });
 
   it("returns a fixed friendly error instead of the SDK message", () => {
@@ -56,8 +58,9 @@ describe("lib/luv/drafts.ts launch-readiness", () => {
   });
 
   it("uses canonical preferredTone in the prompt", () => {
-    assert.match(drafts, /luvToneInstruction\(tone\)/);
+    assert.match(drafts, /luvToneInstruction\(preferredTone\)/);
     assert.match(drafts, /settings\.preferredTone/);
+    assert.match(drafts, /normalizePreferredTone\(tone\)/);
   });
 
   it("times out hung OpenAI fetches", () => {
@@ -101,8 +104,15 @@ describe("/api/portal/luv-ask launch-readiness", () => {
 
   it("applies preferredTone conservatively and keeps grounding rules", () => {
     assert.match(luvAsk, /luvAskVoiceInstruction\(settings\.preferredTone\)/);
-    assert.match(luvAsk, /Only use the information provided below/);
-    assert.match(luvAsk, /Never make up information about the venue/);
+    assert.match(luvAsk, /buildCoupleAskLuvSystemPrompt/);
+    assert.match(luvAsk, /retrieveCoupleHtcKnowledge/);
+    const prompt = readFileSync(resolve("lib/luv/couple-ask-prompt.ts"), "utf8");
+    assert.match(prompt, /Only use the information in the knowledge layers below/);
+    assert.match(prompt, /Never make up venue policies/);
+    assert.match(prompt, /HTC PRODUCT KNOWLEDGE/);
+    assert.match(prompt, /VENUE KNOWLEDGE/);
+    assert.match(prompt, /CURRENT PORTAL CONTEXT/);
+    assert.match(prompt, /Never say "Typically, couples/);
   });
 
   it("times out hung OpenAI fetches and uses a friendly catch", () => {

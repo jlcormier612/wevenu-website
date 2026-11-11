@@ -4,12 +4,14 @@ export const PRODUCT_APP_URL =
 
 /**
  * Marketing pages as editorial chapters — short chapter name + title.
+ * Chapter names here remain content/metadata labels; visible header/footer
+ * chrome uses MARKETING_NAV / FOOTER_* with refined hospitality wording.
  */
 export const CHAPTERS = {
   why: {
     href: "/our-story",
     chapter: "Our Story",
-    title: "Hospitality First",
+    title: null,
   },
   product: {
     href: "/product",
@@ -31,6 +33,10 @@ export const CHAPTERS = {
     chapter: "Trust",
     title: "Our Promise",
   },
+  /**
+   * Retired public marketing Library directory (redirects to /features).
+   * Not the in-app venue Library.
+   */
   resources: {
     href: "/resources",
     chapter: "Resources",
@@ -40,41 +46,47 @@ export const CHAPTERS = {
 
 export type ChapterKey = keyof typeof CHAPTERS;
 
-/** Nav shows the short chapter name. */
+/**
+ * Primary header navigation — logo links Home; Home is not a text item.
+ * Visible labels refined; routes preserved.
+ */
 export const MARKETING_NAV = [
-  { href: "/", label: "Home" },
-  { href: CHAPTERS.why.href, label: CHAPTERS.why.chapter },
-  { href: CHAPTERS.product.href, label: CHAPTERS.product.chapter },
-  { href: CHAPTERS.features.href, label: CHAPTERS.features.chapter },
-  { href: CHAPTERS.pricing.href, label: CHAPTERS.pricing.chapter },
+  { href: CHAPTERS.why.href, label: "Our Story" },
+  { href: CHAPTERS.product.href, label: "The Platform" },
+  { href: CHAPTERS.features.href, label: "All Features" },
+  { href: CHAPTERS.pricing.href, label: "Pricing" },
   { href: "/contact", label: "Contact" },
 ] as const;
-
-function chapterFooterLabel(key: ChapterKey): string {
-  const c = CHAPTERS[key];
-  return c.title ? `${c.chapter} · ${c.title}` : c.chapter;
-}
 
 /** Explore column in the site footer */
 export const FOOTER_EXPLORE = [
-  { href: CHAPTERS.why.href, label: chapterFooterLabel("why") },
-  { href: CHAPTERS.product.href, label: chapterFooterLabel("product") },
-  { href: CHAPTERS.features.href, label: chapterFooterLabel("features") },
-  { href: CHAPTERS.pricing.href, label: chapterFooterLabel("pricing") },
-  { href: CHAPTERS.resources.href, label: chapterFooterLabel("resources") },
+  { href: CHAPTERS.why.href, label: "Our Story" },
+  { href: CHAPTERS.product.href, label: "The Platform" },
+  { href: CHAPTERS.features.href, label: "All Features" },
+  { href: CHAPTERS.pricing.href, label: "Pricing" },
+  { href: "/walkthrough", label: "Schedule a Walkthrough" },
   { href: "/contact", label: "Contact" },
 ] as const;
 
-/** Trust & legal column in the site footer */
-export const FOOTER_TRUST = [
-  { href: CHAPTERS.trust.href, label: chapterFooterLabel("trust") },
+/** Trust & Support column — public System Status page retired (redirects to /trust) */
+export const FOOTER_TRUST_SUPPORT = [
+  { href: CHAPTERS.trust.href, label: "Our Promise" },
+] as const;
+
+/** Legal column — every existing legal/policy destination retained */
+export const FOOTER_LEGAL = [
   { href: "/privacy", label: "Privacy Policy" },
   { href: "/terms", label: "Venue Subscription Agreement" },
   { href: "/end-user-terms", label: "End User Terms" },
   { href: "/vendor-terms", label: "Vendor Terms" },
   { href: "/cookie-policy", label: "Cookie Policy" },
   { href: "/acceptable-use", label: "Acceptable Use Policy" },
-  { href: "/status", label: "System Status" },
+] as const;
+
+/** @deprecated Prefer FOOTER_TRUST_SUPPORT + FOOTER_LEGAL */
+export const FOOTER_TRUST = [
+  ...FOOTER_TRUST_SUPPORT,
+  ...FOOTER_LEGAL,
 ] as const;
 
 export const PRIMARY_CTA = {
@@ -83,11 +95,11 @@ export const PRIMARY_CTA = {
 } as const;
 
 /**
- * Sibling near walkthrough CTAs — under-calendar form on /walkthrough
- * (same LeadForm + ingestWalkthroughRequest path; no Calendly time required).
+ * Sibling near walkthrough CTAs — Contact experience for questions
+ * without booking a walkthrough time.
  */
 export const MORE_INFO_CTA = {
-  href: "/walkthrough?intent=more-info#request-info",
+  href: "/contact",
   label: "Request more information",
 } as const;
 

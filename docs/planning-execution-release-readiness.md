@@ -81,15 +81,15 @@ Audited `lib/playbooks/constants.ts` (`isScheduledActivity`, `TaskScheduleSectio
 
 ## 5. Calendar Integration
 
-Audited `lib/calendar/service.ts` (Month view) and `lib/calendar/booking-schedule.ts` (per-booking view).
+Audited `lib/calendar/service.ts` (venue Calendar month aggregation). The former per-booking Booking Schedule (`lib/calendar/booking-schedule.ts`) has been retired.
 
-| Item type | Appears on Calendar? | Carries staff assignment (`assignedToStaffId`/`Name`)? | Links correctly? |
+| Item type | Appears on venue Calendar? | Carries staff assignment (`assignedToStaffId`/`Name`)? | Links correctly? |
 |---|---|---|---|
-| `planning_activity` (Month view, scheduled activities) | Yes | **Yes** — `assigned_to_staff_id` selected and joined to `venue_staff.full_name` | Yes, to `#playbook` |
-| `planning_task` (Booking Schedule, due-date tasks) | Yes | **No** — not selected in `booking-schedule.ts`'s construction of this item | Yes |
-| `timeline_entry` (Booking Schedule) | Yes | **No** — same gap, despite Timeline entries genuinely having a working `assigned_to_staff_id` of their own (confirmed in the Timeline pass) | Yes, to `#timeline` |
+| `planning_activity` (scheduled activities) | No (excluded; Slice 1) | N/A on venue Calendar | Owning surface: Planning `#playbook` |
+| `planning_task` (due-date tasks) | No (excluded) | N/A — former Booking Schedule passthrough gap is obsolete | Owning surface: Planning |
+| `timeline_entry` | No (excluded) | N/A — former Booking Schedule passthrough gap is obsolete | Owning surface: Timeline `#timeline` |
 
-**A real, concrete inconsistency:** the same piece of metadata (staff assignment) is correctly threaded through one Calendar view and silently dropped in another, for item types that would benefit from it the most — a single booking's own day-of schedule is exactly where "who's doing this" matters. This isn't a broken filter (Booking Schedule has no staff filter of its own to break) — it's a passthrough gap that would need closing the moment §3's layered-views gap is addressed, since a future Calendar-side "my work" filter would silently fail for these two item types today.
+**Historical note:** an earlier audit found staff-assignment metadata dropped on Booking Schedule item types. That surface no longer exists; dated work stays on owning surfaces.
 
 **Waived tasks correctly excluded** (re-confirmed, unchanged since the Planning pass). **Changing one place updates everywhere:** confirmed — `updateEventTaskSchedule`'s server action dual-revalidates `/events/[id]` and `/calendar`, and Timeline entry edits revalidate the same way; no stale-cache dead end found.
 
@@ -126,7 +126,7 @@ Per the brief's own framing: not "does an integration exist," but "is Planning E
 
 | Capability | Who owns the fact | Verified |
 |---|---|---|
-| **Calendar** | Planning Execution owns due dates/scheduled activities/Timeline entries; Calendar only ever reads and displays them (`event_tasks`, `timeline_entries` selected directly, nothing recomputed). Correct ownership. Gap found: §5's staff-metadata passthrough inconsistency — not an ownership violation, a completeness gap. |
+| **Calendar** | Planning Execution owns due dates/scheduled activities/Timeline entries; venue Calendar only aggregates scheduled/reserved/blocked time (Slice 1). Correct ownership. |
 | **Requests** | Requests owns its own lifecycle (`requests.status`); Planning links to it (`event_tasks.request_id`) without duplicating status. `ON DELETE SET NULL` confirmed (Planning pass) — a deleted Request never corrupts the task's own state. Correct. |
 | **Notifications** | Planning owns escalation/reminder configuration; the shared notification engine owns delivery. Escalation and reminders are both now real (Planning pass fixed both). `notify_on_assign`/`notify_on_complete` are the exception: Planning stores the configuration, and **nothing owns acting on it** — not Planning, not Notifications. A genuinely orphaned fact, flagged in §7. |
 | **Automation** | The one real automation action (`applyPlaybookToEvent` via "Booking Confirmed") correctly calls the same function a coordinator's own click uses — no parallel path. Correct. |
@@ -151,7 +151,7 @@ Per the brief's own framing: not "does an integration exist," but "is Planning E
 
 1. **`notify_on_complete` is equally dead**, and doubly misleading — an unrelated, unconditional trigger already covers a similar-sounding case (couple/vendor completion), making the per-task setting look redundant-but-harmless rather than simply inert.
 2. **Client progress is observable but undifferentiated** (§2) — the data (`clientTasks`) already exists as its own set; nothing renders it as its own section.
-3. **Calendar's Booking Schedule view silently drops staff-assignment metadata** for `planning_task` and `timeline_entry` items, while Month view's `planning_activity` correctly carries it (§5) — an inconsistency that will resurface the moment any Calendar-side "my work" filter is built on top of Booking Schedule.
+3. **~~Calendar's Booking Schedule view silently drops staff-assignment metadata~~** — **obsolete:** Booking Schedule was retired; dated work stays on owning surfaces (§5).
 4. **Scheduled Activities have no template-level path and, consistent with that, zero real-world usage** (§4) — a real, working feature that a coordinator can only discover by already knowing to look inside a task's own detail panel.
 5. **The per-event task list has no "due today" grouping**, unlike the venue-wide Task Center, which does (§1) — a small inconsistency between the two surfaces that answer overlapping questions.
 
@@ -162,7 +162,7 @@ Kept intentionally small, per this program's own standing discipline:
 - Designing and building the actual "My Tasks / Venue Tasks / Everything" three-tier view (Release Blocker #1 names the gap; the view itself, its defaults, and its interaction with Calendar's own staff filter is real product design work, not a bug fix).
 - A real Reference-Point/duration/sync model connecting Planning's scheduled activities and Timeline entries for wedding-day items — already named as Future Enhancement in the Timeline pass, reconfirmed relevant here as the long-term answer to §4's structural (if currently latent) duplication risk.
 - A "coming up on wedding day" preview surfaced inside the everyday Planning tab, closing §6's visibility gap without redesigning Wedding Day Ops itself.
-- Extending `assigned_to_staff_id` passthrough to Calendar's Booking Schedule item types (§5) — small, additive, deferred alongside the layered-views work it would actually serve.
+- ~~Extending `assigned_to_staff_id` passthrough to Calendar's Booking Schedule item types~~ — **obsolete:** Booking Schedule was retired.
 
 ---
 
@@ -273,7 +273,7 @@ Walking Planning → Timeline → Calendar → Wedding Day → Requests → Floo
 
 `RequestSummaryCard` (rendered on every booking's own Overview tab) links to `/requests` via "Open Request Dashboard →." Before this pass, that link landed on a page whose own `<h1>` read **"Requests (Internal)"** and whose subtitle read **"Framework verification page — create, assign, and move requests through their lifecycle."** The sidebar's own nav label read **"Requests (Internal)"** on every screen, permanently. This was not a stale comment nobody sees — `components/requests/request-manager.tsx`'s own header comment confirms the underlying feature was already finished ("Started as an internal verification-only page... this completes it into the real venue-side Request experience: filters, assignment, due-date ordering, and Origin") — the *component* was completed; only the *entry points* — the page title, the `<h1>`, the subtitle, and the sidebar label — never caught up to that fact. A real coordinator, following the exact path the brief names ("moving between Planning, Timeline, Calendar, Wedding Day, Requests... without feeling like they left one workflow"), would land on a page that told them, in its own words, that they'd wandered into a developer's leftover QA scaffold. That's not a matter of taste — it's shipped, customer-visible copy that misrepresents a real, working feature as unfinished, on the one workflow this pass's own brief called out by name. Classified as a **Release Blocker** and fixed (below), not carried forward as polish.
 
-Everything else in this section held up: Planning ↔ Timeline are two adjacent, independently-discoverable entry points on the same event page (a known, already-documented minor friction from the original audit, unchanged); Calendar is one click away via "Booking Schedule" in the event header; Floor Plans and Seating are a tab and a direct link respectively, both reachable without leaving the booking; "View Client Portal" is already gone (prior pass). No other off-workspace or unexplained navigation jump was found.
+Everything else in this section held up: Planning ↔ Timeline are two adjacent, independently-discoverable entry points on the same event page (a known, already-documented minor friction from the original audit, unchanged); venue Calendar is reachable from navigation (the former "Booking Schedule" event-header link was retired); Floor Plans and Seating are a tab and a direct link respectively, both reachable without leaving the booking; "View Client Portal" is already gone (prior pass). No other off-workspace or unexplained navigation jump was found.
 
 ### Wedding Day — progressively important, or switched on all at once?
 

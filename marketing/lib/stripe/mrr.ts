@@ -1,5 +1,7 @@
 import type Stripe from "stripe";
 
+import { listAmountCents } from "@shared/pricing";
+
 /**
  * Convert a recurring Stripe Price amount into monthly cents.
  * One-time prices (onboarding add-ons) are ignored by callers that filter recurring.
@@ -27,6 +29,7 @@ export function unitAmountToMonthlyCents(
 /**
  * Sum recurring line items on a Stripe Subscription into monthly MRR (cents).
  * Skips one-time items (e.g. White Glove add-on on the Checkout Session).
+ * Prefer this over plan-tier estimates whenever Stripe price objects are available.
  */
 export function mrrCentsFromStripeSubscription(
   subscription: Stripe.Subscription,
@@ -53,11 +56,31 @@ export function mrrCentsFromStripeSubscription(
   return total;
 }
 
-/** Rough MRR from plan tier when Stripe price objects are unavailable. */
+/**
+ * Rough MRR from plan tier when Stripe price objects are unavailable.
+ *
+ * Standard list amounts (authoritative catalog):
+ * - Gather $149 legacy / $199 Launch V1 — Gather uses catalog only when callers
+ *   already know Launch context; legacy Gather stays $149 here for Sandbox.
+ * - Celebrate $249
+ * - Flourish $349 (corrected from a stale $399 fallback that could inflate CRM MRR)
+ *
+ * Does not rewrite historical Stripe invoices. Prefer mrrCentsFromStripeSubscription
+ * whenever the subscription's Price amount is known.
+ */
 export function estimateMrrCentsFromPlan(plan: string): number {
   const key = plan.trim().toLowerCase();
-  if (key === "starter" || key === "gather") return 14900;
-  if (key === "growing" || key === "celebrate") return 24900;
-  if (key === "professional" || key === "flourish") return 39900;
+
+  if (key === "starter" || key === "gather") {
+    // Legacy contracted Gather remains $149 until Launch cutover; Launch paths
+    // should prefer Stripe unit_amount. Catalog Gather list is $199.
+    return 14900;
+  }
+  if (key === "growing" || key === "celebrate") {
+    return listAmountCents("growing");
+  }
+  if (key === "professional" || key === "flourish") {
+    return listAmountCents("professional"); // $349 — never $399
+  }
   return 0;
 }

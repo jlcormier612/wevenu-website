@@ -13,6 +13,7 @@ import { isSupabaseConfigured } from "@/lib/env";
 import { getCurrentVenue } from "@/lib/venue/service";
 import * as venueRepo from "@/lib/venue/repository";
 import { getStripeClient, isStripeConfigured, STRIPE_OAUTH_DEAUTHORIZE_URL, STRIPE_SUPPORTED_PAYMENT_METHODS } from "@/lib/stripe/config";
+import { chargesEnabledFromAccount } from "@/lib/stripe/account-capabilities";
 import type { StripeActionResult } from "@/lib/stripe/types";
 import type { StripePaymentMethodType } from "@/lib/venue/types";
 
@@ -24,6 +25,12 @@ import type { StripePaymentMethodType } from "@/lib/venue/types";
  */
 export async function connectStripeAccount(accountId: string): Promise<void> {
   if (!isSupabaseConfigured) return;
+  const { requireCapability } = await import("@/lib/authorization/membership");
+  const gate = await requireCapability(
+    "settings.integrations",
+    "You do not have permission to manage integrations.",
+  );
+  if (!gate.ok) return;
   const supabase = await createClient();
   const venue = await getCurrentVenue();
   if (!venue) return;
@@ -32,7 +39,7 @@ export async function connectStripeAccount(accountId: string): Promise<void> {
   if (isStripeConfigured()) {
     try {
       const account = await getStripeClient().accounts.retrieve(accountId);
-      chargesEnabled = !!account.charges_enabled;
+      chargesEnabled = chargesEnabledFromAccount(account);
     } catch (err) {
       console.error("[stripe] could not retrieve connected account after OAuth", err);
     }
@@ -55,6 +62,12 @@ export async function connectStripeAccount(accountId: string): Promise<void> {
  */
 export async function disconnectStripeAccount(): Promise<StripeActionResult> {
   if (!isSupabaseConfigured) return { ok: false, message: "Backend not configured." };
+  const { requireCapability } = await import("@/lib/authorization/membership");
+  const gate = await requireCapability(
+    "settings.integrations",
+    "You do not have permission to manage integrations.",
+  );
+  if (!gate.ok) return { ok: false, message: gate.error };
   const supabase = await createClient();
   const venue = await getCurrentVenue();
   if (!venue) return { ok: false, message: "Session expired." };

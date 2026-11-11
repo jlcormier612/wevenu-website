@@ -1,0 +1,41 @@
+{
+  "checks": [
+    {
+      "name": "serving_commit",
+      "pass": true,
+      "detail": "4ab44e5245ecebdf2590477f2004a80414b4a15e"
+    },
+    {
+      "name": "empty_label",
+      "pass": true,
+      "detail": "Add tour/follow-up details"
+    },
+    {
+      "name": "old_label_absent",
+      "pass": true,
+      "detail": "exact old button"
+    },
+    {
+      "name": "schedule_tour_present",
+      "pass": true,
+      "detail": "count=1"
+    },
+    {
+      "name": "editor_opens",
+      "pass": true,
+      "detail": "Follow-up date field"
+    },
+    {
+      "name": "tour_fields_in_editor",
+      "pass": true,
+      "detail": "Tour date field"
+    },
+    {
+      "name": "schedule_tour_still_present",
+      "pass": true,
+      "detail": "unchanged after open"
+    }
+  ],
+  "leadId": "9960dcbe-5c9d-41e8-a85d-6636da63c820",
+  "expected": "4ab44e5245ecebdf2590477f2004a80414b4a15e"
+}

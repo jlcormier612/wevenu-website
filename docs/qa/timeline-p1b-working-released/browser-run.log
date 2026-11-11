@@ -1,0 +1,79 @@
+PASS serving-sha — expected=8321cc0b804a90ba786dce3f0faec4d241944574 ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:8321cc0b804a90ba786dce3f0faec4d241944574
+PASS health — {"ok":true,"checks":{"env":"ok","supabase":"ok"}}
+PASS html-dpl — dpl=8321cc0b804a90ba786dce3f0faec4d241944574
+PASS table-exists — rows_sample=1
+PASS cutover-releases-present — cutoverCount=72
+PASS events-with-active-pointer — pointed=72
+PASS fixture-event — fc66e05d-1368-4181-89fa-627fdb0c005a
+PASS authz-missing-event — {"ok":false,"error":"event_not_found"}
+PASS preview-first-buckets — {"will":2,"held":1,"blocks":0,"soft":1,"can":true}
+PASS cancel-writes-nothing — count=0
+PASS stale-preview-rejected — {"ok":false,"error":"stale_preview","message":"The working timeline changed since you reviewed the preview. Review again before sharing."}
+PASS first-release-ok — {"ok":true,"releaseId":"3b38c036-c241-4867-a186-71ebf155b6e4","entryCount":2,"releasedAt":"2026-10-27T00:04:05.697811+00:00","heldOutCount":1,"priorReleaseId":null,"idempotentReplay":false}
+PASS active-pointer-first — {"active_venue_timeline_release_id":"3b38c036-c241-4867-a186-71ebf155b6e4"}
+PASS snapshot-excludes-held-out — {"titles1":["P1B-P1BMVP6ADFEA71-far-fixed","P1B-P1BMVP6ADFEA71-doors"],"held":[{"id":"b57e1235-b888-45b6-a5d9-e95fcf72cdac","title":"P1B-P1BMVP6ADFEA71-tbd","reason":"never_released_unresolved","attention":"unknown_intent"}]}
+PASS portal-matches-release-1 — ["P1B-P1BMVP6ADFEA71-far-fixed","P1B-P1BMVP6ADFEA71-doors"]
+PASS working-edit-does-not-change-portal — ["P1B-P1BMVP6ADFEA71-far-fixed","P1B-P1BMVP6ADFEA71-doors"]
+PASS held-out-still-unresolved — {"timing_attention":"unknown_intent"}
+PASS idempotent-retry — {"ok":true,"releaseId":"3b38c036-c241-4867-a186-71ebf155b6e4","idempotentReplay":true}
+PASS no-duplicate-release — count=1
+PASS second-release-ok — {"ok":true,"releaseId":"b56dfa69-8c70-41fb-8fb5-f4f7ceaf8d72","entryCount":4,"releasedAt":"2026-10-27T00:04:06.639493+00:00","heldOutCount":0,"priorReleaseId":"3b38c036-c241-4867-a186-71ebf155b6e4","idempotentReplay":false}
+PASS active-pointer-second — {"active_venue_timeline_release_id":"b56dfa69-8c70-41fb-8fb5-f4f7ceaf8d72"}
+PASS portal-updates-only-after-second-release — ["P1B-P1BMVP6ADFEA71-far-fixed","P1B-P1BMVP6ADFEA71-doors","P1B-P1BMVP6ADFEA71-tbd-resolved","P1B-P1BMVP6ADFEA71-cake"]
+PASS prior-release-immutable — {"count":2}
+PASS previously-released-unresolved-blocks — {"can":false,"blocks":[{"id":"3e488805-7098-4128-a6b8-84522b8f612a","title":"P1B-P1BMVP6ADFEA71-cake","reason":"previously_released_unresolved","attention":"missing_event_end"}]}
+PASS blocked-preserves-pointer — {"blockedConfirm":{"ok":false,"error":"blocks_release","message":"Fix or replace items already on the shared timeline before sharing again.","blocksRelease":[{"id":"3e488805-7098-4128-a6b8-84522b8f612a","title":"P1B-P1BMVP6ADFEA71-cake","reason":"previously_released_unresolved","attention":"missing_event_end"}]},"pointer":"b56dfa69-8c70-41fb-8fb5-f4f7ceaf8d72"}
+PASS couple-owned-separate — {"allTitles":["P1B-P1BMVP6ADFEA71-couple-note","P1B-P1BMVP6ADFEA71-far-fixed","P1B-P1BMVP6ADFEA71-doors","P1B-P1BMVP6ADFEA71-tbd-resolved","P1B-P1BMVP6ADFEA71-cake"],"venueOnly":["P1B-P1BMVP6ADFEA71-far-fixed","P1B-P1BMVP6ADFEA71-doors","P1B-P1BMVP6ADFEA71-tbd-resolved","P1B-P1BMVP6ADFEA71-cake"]}
+PASS submissions-unaffected — before=0 after=0
+PASS soft-warning-did-not-block-first-release — first release included far-fixed
+PASS cutover-idempotency-keys-unique — rows=72 unique=72
+PASS browser-share-control — count=1 url=https://app.sandbox.hellotocheers.com/clients/6d1fd528-c41b-4d63-91d3-e41f75dafd13?tab=timeline
+PASS browser-preview-dialog — Review what the couple will receive.
+
+Will share: 4 item(s).
+
+Note: 1 fixed date(s) are outside the usual planning window (informational only).
+
+No email is sent. Continue?
+PASS browser-cancel-writes-nothing — before=2 after=2
+PASS browser-portal-shows-released — https://app.sandbox.hellotocheers.com/p/qa-p1b-p1bmvp6adfea71 :: titles=far-fixed body=P1b
+
+·
+
+Jen's Fancy Venue
+
+Jun 15, 2027 – Jun 16, 2027
+
+Export my data
+🏠
+Home
+✅
+Tasks
+1
+🕒
+Timeline
+📁
+Docs
+🗺️
+Floor Plan
+💳
+Payments
+💬
+Messages
+🏛️
+Guide
+🤝
+Vendors
+Add your photo
+JEN'S FANCY VENUE
+
+P1b
+
+232 days until your celebration
+
+Tuesday, June 15, 2027 – Wednesday, June 16, 2027
+
+Your venue team is here with you—finish w
+PASS cleanup — client=6d1fd528-c41b-4d63-91d3-e41f75dafd13 event=fc66e05d-1368-4181-89fa-627fdb0c005a
+
+34 pass / 0 fail (run P1BMVP6ADFEA71)

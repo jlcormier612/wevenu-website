@@ -1,0 +1,258 @@
+{
+  "phase": "view",
+  "at": "2026-10-29T23:36:02.289Z",
+  "app": "http://localhost:3000",
+  "checks": [
+    {
+      "name": "draft-5cd0be77@1280: DB row names unique (name is a stable key here)",
+      "pass": true,
+      "detail": "{\"count\":32}"
+    },
+    {
+      "name": "draft-5cd0be77@1280 S1: every row classified exactly once, matching DB",
+      "pass": true,
+      "detail": "{\"uiCount\":32,\"dbCount\":32,\"bands\":{\"included\":31,\"additional_venue_sets\":1},\"mismatches\":[]}"
+    },
+    {
+      "name": "draft-5cd0be77@1280 S5: visibility disclosure",
+      "pass": true,
+      "detail": "All inventory rows are currently visible to the couple when you share. Venue-only items are not supported yet."
+    },
+    {
+      "name": "draft-5cd0be77@1280: no Venue only band",
+      "pass": true,
+      "detail": "checked main text"
+    },
+    {
+      "name": "draft-5cd0be77@1280 S2: Select only on Additional rows",
+      "pass": true,
+      "detail": "{\"includedWithToggle\":0,\"additionalWithToggle\":1,\"additional\":1}"
+    },
+    {
+      "name": "draft-5cd0be77@1280: max shown only for couple-can-choose rows",
+      "pass": true,
+      "detail": "{\"ui\":[],\"expectedMax\":[]}"
+    },
+    {
+      "name": "draft-5cd0be77@1280: Share/Finalize controls preserved (not clicked)",
+      "pass": true,
+      "detail": "{\"share\":1,\"finalize\":1}"
+    },
+    {
+      "name": "shared-ebf74f77@1280: DB row names unique (name is a stable key here)",
+      "pass": true,
+      "detail": "{\"count\":32}"
+    },
+    {
+      "name": "shared-ebf74f77@1280 S1: every row classified exactly once, matching DB",
+      "pass": true,
+      "detail": "{\"uiCount\":32,\"dbCount\":32,\"bands\":{\"couple_can_choose\":3,\"included\":29},\"mismatches\":[]}"
+    },
+    {
+      "name": "shared-ebf74f77@1280 S5: visibility disclosure",
+      "pass": true,
+      "detail": "All inventory rows are currently visible to the couple when you share. Venue-only items are not supported yet."
+    },
+    {
+      "name": "shared-ebf74f77@1280: no Venue only band",
+      "pass": true,
+      "detail": "checked main text"
+    },
+    {
+      "name": "shared-ebf74f77@1280 S2: Select only on Additional rows",
+      "pass": true,
+      "detail": "{\"includedWithToggle\":0,\"additionalWithToggle\":3,\"additional\":3}"
+    },
+    {
+      "name": "shared-ebf74f77@1280: max shown only for couple-can-choose rows",
+      "pass": true,
+      "detail": "{\"ui\":[\"Couple can select (max ×10)\",\"Couple can select (max ×8)\",\"Couple can select (max ×8)\"],\"expectedMax\":[\"Couple can select (max ×10)\",\"Couple can select (max ×8)\",\"Couple can select (max ×8)\"]}"
+    },
+    {
+      "name": "shared-ebf74f77@1280: Share/Finalize controls preserved (not clicked)",
+      "pass": true,
+      "detail": "{\"share\":1,\"finalize\":1}"
+    },
+    {
+      "name": "template-9c200402@1280 S4: every Included line shows $0 extra",
+      "pass": true,
+      "detail": "{\"includedLines\":0,\"ui\":0}"
+    },
+    {
+      "name": "template-9c200402@1280 S4: Additional amounts = qty × price; extra total matches DB",
+      "pass": true,
+      "detail": "{\"additionalLines\":7,\"unreconciled\":0,\"dbBillable\":2243,\"uiTotal\":2243,\"ui\":\"Extra charges (Additional lines with a price): $2,243 — Included lines add $0.\"}"
+    },
+    {
+      "name": "template-9c200402@1280 S3: template source groups/options match template definition",
+      "pass": true,
+      "detail": "{\"source\":\"template\",\"template\":\"Ceremony + Reception\",\"uiGroups\":7,\"defGroups\":7,\"uiOptions\":5,\"defOptions\":5,\"rules\":[\"Optional — choose any\",\"Pick one · required\",\"Optional — choose 1 or skip\",\"Optional — choose any · quantity per option\",\"Optional — choose 1 or skip · shown only if “Plated Dinner” is chosen\",\"Optional — choose 1 or skip · shown only if “Buffet Dinner” is chosen\",\"Optional — choose 1 or skip · shown only if “Beer & Wine” is chosen\"]}"
+    },
+    {
+      "name": "packet-ebf74f77@1280 S4: every Included line shows $0 extra",
+      "pass": true,
+      "detail": "{\"includedLines\":34,\"ui\":34}"
+    },
+    {
+      "name": "packet-ebf74f77@1280 S4: Additional amounts = qty × price; extra total matches DB",
+      "pass": true,
+      "detail": "{\"additionalLines\":14,\"unreconciled\":0,\"dbBillable\":3061,\"uiTotal\":3061,\"ui\":\"Extra charges (Additional lines with a price): $3,061 — Included lines add $0.\"}"
+    },
+    {
+      "name": "packet-ebf74f77@1280 S3: packet source shows the active packet's frozen groups and submitted answers",
+      "pass": true,
+      "detail": "{\"source\":\"packet\",\"activePacket\":\"2efac07a QA Conditional Choices Browser (submitted)\",\"uiGroups\":7,\"dbGroups\":7,\"uiOptions\":5,\"dbOptions\":5,\"uiChosen\":[\"c629b92b-132e-4d00-bc96-0e315df55f89\",\"e4794273-22a0-43de-ae2c-345e64b94801\"],\"dbChosen\":[\"e4794273-22a0-43de-ae2c-345e64b94801\",\"c629b92b-132e-4d00-bc96-0e315df55f89\"]}"
+    },
+    {
+      "name": "empty-9f569e99@1280 S4: every Included line shows $0 extra",
+      "pass": true,
+      "detail": "{\"includedLines\":0,\"ui\":0}"
+    },
+    {
+      "name": "empty-9f569e99@1280 S4: Additional amounts = qty × price; extra total matches DB",
+      "pass": true,
+      "detail": "{\"additionalLines\":0,\"unreconciled\":0,\"dbBillable\":0,\"uiTotal\":0,\"ui\":\"Extra charges (Additional lines with a price): $0 — Included lines add $0.\"}"
+    },
+    {
+      "name": "empty-9f569e99@1280 S3: empty state",
+      "pass": true,
+      "detail": "{\"text\":\"The couple will choose\\n\\nNo choices — the couple reviews only.\"}"
+    },
+    {
+      "name": "library-0f7cb5d2@1280 S1: every row classified exactly once, matching DB",
+      "pass": true,
+      "detail": "{\"uiCount\":32,\"dbCount\":32,\"bands\":{\"included\":31,\"additional_venue_sets\":1},\"mismatches\":[]}"
+    },
+    {
+      "name": "library-0f7cb5d2@1280 S8: template bands = event copy (5cd0be77) bands for every shared row",
+      "pass": true,
+      "detail": "{\"templateRows\":32,\"eventCopyRows\":32,\"mismatches\":[],\"templateRowsNotInCopy\":[]}"
+    },
+    {
+      "name": "draft-5cd0be77@390: DB row names unique (name is a stable key here)",
+      "pass": true,
+      "detail": "{\"count\":32}"
+    },
+    {
+      "name": "draft-5cd0be77@390 S1: every row classified exactly once, matching DB",
+      "pass": true,
+      "detail": "{\"uiCount\":32,\"dbCount\":32,\"bands\":{\"included\":31,\"additional_venue_sets\":1},\"mismatches\":[]}"
+    },
+    {
+      "name": "draft-5cd0be77@390 S5: visibility disclosure",
+      "pass": true,
+      "detail": "All inventory rows are currently visible to the couple when you share. Venue-only items are not supported yet."
+    },
+    {
+      "name": "draft-5cd0be77@390: no Venue only band",
+      "pass": true,
+      "detail": "checked main text"
+    },
+    {
+      "name": "draft-5cd0be77@390 S2: Select only on Additional rows",
+      "pass": true,
+      "detail": "{\"includedWithToggle\":0,\"additionalWithToggle\":1,\"additional\":1}"
+    },
+    {
+      "name": "draft-5cd0be77@390: max shown only for couple-can-choose rows",
+      "pass": true,
+      "detail": "{\"ui\":[],\"expectedMax\":[]}"
+    },
+    {
+      "name": "draft-5cd0be77@390: Share/Finalize controls preserved (not clicked)",
+      "pass": true,
+      "detail": "{\"share\":1,\"finalize\":1}"
+    },
+    {
+      "name": "shared-ebf74f77@390: DB row names unique (name is a stable key here)",
+      "pass": true,
+      "detail": "{\"count\":32}"
+    },
+    {
+      "name": "shared-ebf74f77@390 S1: every row classified exactly once, matching DB",
+      "pass": true,
+      "detail": "{\"uiCount\":32,\"dbCount\":32,\"bands\":{\"couple_can_choose\":3,\"included\":29},\"mismatches\":[]}"
+    },
+    {
+      "name": "shared-ebf74f77@390 S5: visibility disclosure",
+      "pass": true,
+      "detail": "All inventory rows are currently visible to the couple when you share. Venue-only items are not supported yet."
+    },
+    {
+      "name": "shared-ebf74f77@390: no Venue only band",
+      "pass": true,
+      "detail": "checked main text"
+    },
+    {
+      "name": "shared-ebf74f77@390 S2: Select only on Additional rows",
+      "pass": true,
+      "detail": "{\"includedWithToggle\":0,\"additionalWithToggle\":3,\"additional\":3}"
+    },
+    {
+      "name": "shared-ebf74f77@390: max shown only for couple-can-choose rows",
+      "pass": true,
+      "detail": "{\"ui\":[\"Couple can select (max ×10)\",\"Couple can select (max ×8)\",\"Couple can select (max ×8)\"],\"expectedMax\":[\"Couple can select (max ×10)\",\"Couple can select (max ×8)\",\"Couple can select (max ×8)\"]}"
+    },
+    {
+      "name": "shared-ebf74f77@390: Share/Finalize controls preserved (not clicked)",
+      "pass": true,
+      "detail": "{\"share\":1,\"finalize\":1}"
+    },
+    {
+      "name": "template-9c200402@390 S4: every Included line shows $0 extra",
+      "pass": true,
+      "detail": "{\"includedLines\":0,\"ui\":0}"
+    },
+    {
+      "name": "template-9c200402@390 S4: Additional amounts = qty × price; extra total matches DB",
+      "pass": true,
+      "detail": "{\"additionalLines\":7,\"unreconciled\":0,\"dbBillable\":2243,\"uiTotal\":2243,\"ui\":\"Extra charges (Additional lines with a price): $2,243 — Included lines add $0.\"}"
+    },
+    {
+      "name": "template-9c200402@390 S3: template source groups/options match template definition",
+      "pass": true,
+      "detail": "{\"source\":\"template\",\"template\":\"Ceremony + Reception\",\"uiGroups\":7,\"defGroups\":7,\"uiOptions\":5,\"defOptions\":5,\"rules\":[\"Optional — choose any\",\"Pick one · required\",\"Optional — choose 1 or skip\",\"Optional — choose any · quantity per option\",\"Optional — choose 1 or skip · shown only if “Plated Dinner” is chosen\",\"Optional — choose 1 or skip · shown only if “Buffet Dinner” is chosen\",\"Optional — choose 1 or skip · shown only if “Beer & Wine” is chosen\"]}"
+    },
+    {
+      "name": "packet-ebf74f77@390 S4: every Included line shows $0 extra",
+      "pass": true,
+      "detail": "{\"includedLines\":34,\"ui\":34}"
+    },
+    {
+      "name": "packet-ebf74f77@390 S4: Additional amounts = qty × price; extra total matches DB",
+      "pass": true,
+      "detail": "{\"additionalLines\":14,\"unreconciled\":0,\"dbBillable\":3061,\"uiTotal\":3061,\"ui\":\"Extra charges (Additional lines with a price): $3,061 — Included lines add $0.\"}"
+    },
+    {
+      "name": "packet-ebf74f77@390 S3: packet source shows the active packet's frozen groups and submitted answers",
+      "pass": true,
+      "detail": "{\"source\":\"packet\",\"activePacket\":\"2efac07a QA Conditional Choices Browser (submitted)\",\"uiGroups\":7,\"dbGroups\":7,\"uiOptions\":5,\"dbOptions\":5,\"uiChosen\":[\"c629b92b-132e-4d00-bc96-0e315df55f89\",\"e4794273-22a0-43de-ae2c-345e64b94801\"],\"dbChosen\":[\"e4794273-22a0-43de-ae2c-345e64b94801\",\"c629b92b-132e-4d00-bc96-0e315df55f89\"]}"
+    },
+    {
+      "name": "empty-9f569e99@390 S4: every Included line shows $0 extra",
+      "pass": true,
+      "detail": "{\"includedLines\":0,\"ui\":0}"
+    },
+    {
+      "name": "empty-9f569e99@390 S4: Additional amounts = qty × price; extra total matches DB",
+      "pass": true,
+      "detail": "{\"additionalLines\":0,\"unreconciled\":0,\"dbBillable\":0,\"uiTotal\":0,\"ui\":\"Extra charges (Additional lines with a price): $0 — Included lines add $0.\"}"
+    },
+    {
+      "name": "empty-9f569e99@390 S3: empty state",
+      "pass": true,
+      "detail": "{\"text\":\"The couple will choose\\n\\nNo choices — the couple reviews only.\"}"
+    },
+    {
+      "name": "library-0f7cb5d2@390 S1: every row classified exactly once, matching DB",
+      "pass": true,
+      "detail": "{\"uiCount\":32,\"dbCount\":32,\"bands\":{\"included\":31,\"additional_venue_sets\":1},\"mismatches\":[]}"
+    },
+    {
+      "name": "library-0f7cb5d2@390 S8: template bands = event copy (5cd0be77) bands for every shared row",
+      "pass": true,
+      "detail": "{\"templateRows\":32,\"eventCopyRows\":32,\"mismatches\":[],\"templateRowsNotInCopy\":[]}"
+    }
+  ],
+  "pass": true
+}

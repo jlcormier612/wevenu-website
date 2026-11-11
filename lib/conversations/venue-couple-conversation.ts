@@ -50,6 +50,7 @@ export async function findOrCreateVenueCoupleConversation(
       venue_id: venueId,
       relationship_id: relationshipId,
       conversation_kind: VENUE_COUPLE_CONVERSATION_KIND,
+      inbox_owner_kind: "lead",
     })
     .select("id")
     .single();

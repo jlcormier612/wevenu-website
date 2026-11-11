@@ -36,7 +36,7 @@ function MetricTag({ confidence }: { confidence: MetricConfidence }) {
         "ml-2 inline-flex items-center rounded-sm px-1.5 py-0.5 text-[0.65rem] tracking-wide uppercase",
         confidence === "actual"
           ? "bg-[var(--soft-sage)]/45 text-[var(--forest-sage)]"
-          : "bg-[var(--taupe-light)]/55 text-[var(--forest-sage)]",
+          : "bg-[var(--taupe-light)]/55 text-foreground",
       )}
     >
       {label}
@@ -316,7 +316,7 @@ export default async function BusinessPage() {
           </p>
           <p className="mt-4 text-sm ws-muted">
             Close-rate assumption (60%) is an{" "}
-            <span className="font-medium text-[var(--forest-sage)]">Estimate</span>{" "}
+            <span className="font-medium text-foreground">Estimate</span>{" "}
             used in Projected ARR.
           </p>
           <Link

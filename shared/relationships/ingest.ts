@@ -5,6 +5,7 @@ import {
 import {
   mutateRelationship,
   personFromFields,
+  resolveSubscriptionLifecycleRelationship,
   type FindOrCreateResult,
 } from "./service";
 import { loadLiveStore, withLiveStore } from "./store";
@@ -32,6 +33,49 @@ function safeBody(parts: Array<string | null | undefined>): string {
   return parts.filter((p) => (p ?? "").trim().length > 0).join("\n\n");
 }
 
+/**
+ * Provider / form retries may resubmit the same logical event. When a stable
+ * sourceId is present, skip creating a second timeline/communication/notification
+ * for the same event class. No schema change — uses timeline meta.sourceId.
+ * Create and cancel must not share the same type filter (same invitee URI).
+ */
+export async function findRelationshipByTimelineSourceId(
+  sourceId: string | undefined | null,
+  types: Array<
+    | "walkthrough_requested"
+    | "walkthrough_scheduled"
+    | "walkthrough_cancelled"
+    | "contact_form"
+    | "newsletter_signup"
+    | "support_request"
+    | "welcome_back_requested"
+  >,
+): Promise<FindOrCreateResult | null> {
+  const id = sourceId?.trim();
+  if (!id) return null;
+  const store = await loadLiveStore();
+  const typeSet = new Set(types);
+  const prior = store.timelineEvents.find(
+    (event) =>
+      typeSet.has(
+        event.type as
+          | "walkthrough_requested"
+          | "walkthrough_scheduled"
+          | "walkthrough_cancelled"
+          | "contact_form"
+          | "newsletter_signup"
+          | "support_request"
+          | "welcome_back_requested",
+      ) && String(event.meta?.sourceId ?? "") === id,
+  );
+  if (!prior) return null;
+  const relationship = store.relationships.find(
+    (row) => row.id === prior.relationshipId,
+  );
+  if (!relationship) return null;
+  return { relationship, created: false };
+}
+
 /** Website Contact Us form */
 export async function ingestContactForm(input: {
   name?: string;
@@ -42,6 +86,11 @@ export async function ingestContactForm(input: {
   message?: string;
   sourceId?: string;
 }): Promise<FindOrCreateResult> {
+  const prior = await findRelationshipByTimelineSourceId(input.sourceId, [
+    "contact_form",
+  ]);
+  if (prior) return prior;
+
   const person = personFromFields({
     name: input.name,
     firstName: input.firstName,
@@ -99,6 +148,12 @@ export async function ingestWalkthroughRequest(input: {
   referralSource?: string;
   assignedTeamMemberId?: string;
 }): Promise<FindOrCreateResult> {
+  const prior = await findRelationshipByTimelineSourceId(input.sourceId, [
+    "walkthrough_requested",
+    "walkthrough_scheduled",
+  ]);
+  if (prior) return prior;
+
   const person = personFromFields({
     name: input.name,
     firstName: input.firstName,
@@ -188,6 +243,11 @@ export async function ingestWalkthroughCanceled(input: {
   reason?: string | null;
   sourceId?: string;
 }): Promise<FindOrCreateResult | null> {
+  const prior = await findRelationshipByTimelineSourceId(input.sourceId, [
+    "walkthrough_cancelled",
+  ]);
+  if (prior) return prior;
+
   const { setWalkthroughStatus } = await import("./service");
   const person = personFromFields({ name: input.name });
   const store = await loadLiveStore();
@@ -334,6 +394,7 @@ export async function ingestCheckoutStarted(input: {
           : undefined,
       stripeCheckoutSessionId: checkoutSessionId,
     },
+    checkoutStartGuard: true,
     event: {
       type: "checkout_started",
       title: "Checkout started",
@@ -426,6 +487,7 @@ export async function ingestSubscriptionPurchased(input: {
       referralSource: "Stripe checkout",
       stripeCustomerId: input.stripeCustomerId,
       stripeCheckoutSessionId: input.stripeCheckoutSessionId,
+      stripeSubscriptionId: input.stripeSubscriptionId,
     },
     forceStatus: "subscribed",
     patch: {
@@ -484,6 +546,7 @@ export async function ingestSubscriptionPurchased(input: {
       stripeCustomerId: input.stripeCustomerId,
       stripeCheckoutSessionId: input.stripeCheckoutSessionId,
     },
+    purchaseMatch: true,
     notification: {
       type: isWhiteGlove
         ? "white_glove_purchased"
@@ -501,6 +564,10 @@ export async function ingestSubscriptionPurchased(input: {
       createdAt: now,
     },
   }))!;
+
+  if (result.purchaseHold) {
+    return result;
+  }
 
   if (!input.deferOnboardingEntry && result.relationship) {
     const { enterOnboardingAfterPurchase } = await import("./lifecycle");
@@ -577,25 +644,14 @@ export async function ingestSubscriptionLifecycle(input: {
   const existingSub = store.subscriptions.find(
     (s) => s.stripeSubscriptionId === stripeSubscriptionId,
   );
-  const existingRel =
-    store.relationships.find(
-      (r) => r.stripeSubscriptionId?.trim() === stripeSubscriptionId,
-    ) ||
-    (input.stripeCustomerId
-      ? store.relationships.find(
-          (r) => r.stripeCustomerId?.trim() === input.stripeCustomerId?.trim(),
-        )
-      : undefined) ||
-    (input.email
-      ? store.relationships.find(
-          (r) =>
-            (r.owner.email || "").trim().toLowerCase() ===
-            input.email!.trim().toLowerCase(),
-        )
-      : undefined) ||
-    (existingSub
-      ? store.relationships.find((r) => r.id === existingSub.relationshipId)
-      : undefined);
+  const existingRel = resolveSubscriptionLifecycleRelationship(
+    store.relationships,
+    store.subscriptions,
+    {
+      stripeSubscriptionId,
+      stripeCheckoutSessionId: input.stripeCheckoutSessionId,
+    },
+  );
 
   const previousStatus = existingSub?.status;
   const statusChanged = !previousStatus || previousStatus !== nextStatus;
@@ -608,10 +664,10 @@ export async function ingestSubscriptionLifecycle(input: {
   const resolvedPlanId =
     planId !== "none" ? planId : existingRel?.planId ?? "none";
 
-  const allowCreate =
-    input.allowCreate ?? Boolean(input.email?.trim() || input.venueName?.trim());
-
-  if (!existingRel && !allowCreate) {
+  // A new subscription that is not already this purchase, and not this
+  // session's unpaid draft, stays unattached until checkout.session.completed
+  // classifies it. Do not create or email-match here.
+  if (!existingRel) {
     return null;
   }
 
@@ -662,16 +718,19 @@ export async function ingestSubscriptionLifecycle(input: {
     }
   }
 
+  const matchedByThisSubscription =
+    existingRel.stripeSubscriptionId?.trim() === stripeSubscriptionId;
+  const storedSession = existingRel.stripeCheckoutSessionId?.trim() || "";
+  const incomingSession = input.stripeCheckoutSessionId?.trim() || "";
+  const sessionForPatch =
+    !incomingSession || !storedSession || incomingSession === storedSession
+      ? incomingSession || undefined
+      : undefined;
   const result = await mutateRelationship({
-    find: {
-      email: input.email,
-      venueName: input.venueName || existingRel?.venue.name,
-      referralSource: "Stripe subscription",
-      stripeCustomerId: input.stripeCustomerId,
-      stripeCheckoutSessionId: input.stripeCheckoutSessionId,
-      stripeSubscriptionId,
-    },
-    updateOnly: !allowCreate,
+    find: matchedByThisSubscription
+      ? { stripeSubscriptionId }
+      : { stripeCheckoutSessionId: input.stripeCheckoutSessionId },
+    updateOnly: true,
     forceStatus: isCancelled ? "former_customer" : undefined,
     patch: {
       planId: resolvedPlanId === "none" ? undefined : resolvedPlanId,
@@ -684,7 +743,7 @@ export async function ingestSubscriptionLifecycle(input: {
           : undefined,
       stripeCustomerId: input.stripeCustomerId,
       stripeSubscriptionId,
-      stripeCheckoutSessionId: input.stripeCheckoutSessionId,
+      stripeCheckoutSessionId: sessionForPatch,
       currentStageLabel: isCancelled ? "Former Customer" : undefined,
       ownerEmail: input.email,
       venueName: input.venueName,
@@ -706,7 +765,7 @@ export async function ingestSubscriptionLifecycle(input: {
           : (existingSub?.foundingMember ?? existingRel?.foundingMember ?? false),
       stripeSubscriptionId,
       stripeCustomerId: input.stripeCustomerId,
-      stripeCheckoutSessionId: input.stripeCheckoutSessionId,
+      stripeCheckoutSessionId: sessionForPatch,
     },
   });
 

@@ -1,0 +1,106 @@
+{
+  "pass": 20,
+  "fail": 0,
+  "checks": [
+    {
+      "name": "mc_guidance_panel",
+      "pass": true,
+      "detail": "panel"
+    },
+    {
+      "name": "mc_suggested_order",
+      "pass": true,
+      "detail": "steps"
+    },
+    {
+      "name": "mc_no_unexplained_active_commitment",
+      "pass": true,
+      "detail": "plain language"
+    },
+    {
+      "name": "mc_help_link",
+      "pass": true,
+      "detail": "help CTA"
+    },
+    {
+      "name": "mc_mentions_import_data",
+      "pass": true,
+      "detail": "path contrast"
+    },
+    {
+      "name": "mc_picker_after_source",
+      "pass": true,
+      "detail": "picker"
+    },
+    {
+      "name": "mc_booked_event_finances_option",
+      "pass": true,
+      "detail": "Booked-event finances (invoice, payments, signed agreement)"
+    },
+    {
+      "name": "mc_finance_panel",
+      "pass": true,
+      "detail": "panel explains task"
+    },
+    {
+      "name": "import_no_active_commitment",
+      "pass": true,
+      "detail": "plain"
+    },
+    {
+      "name": "import_points_mc",
+      "pass": true,
+      "detail": "direction"
+    },
+    {
+      "name": "import_calendar_prereq",
+      "pass": true,
+      "detail": "prereq"
+    },
+    {
+      "name": "import_help_cta",
+      "pass": true,
+      "detail": "help"
+    },
+    {
+      "name": "help_title",
+      "pass": true,
+      "detail": "title"
+    },
+    {
+      "name": "help_suggested_order",
+      "pass": true,
+      "detail": "checklist"
+    },
+    {
+      "name": "help_booked_finances",
+      "pass": true,
+      "detail": "plain finances"
+    },
+    {
+      "name": "help_no_paren_active_commitment",
+      "pass": true,
+      "detail": "jargon removed"
+    },
+    {
+      "name": "help_no_undo",
+      "pass": true,
+      "detail": "limitation"
+    },
+    {
+      "name": "team_import_data_link",
+      "pass": true,
+      "detail": "import"
+    },
+    {
+      "name": "team_mc_calendar_scope",
+      "pass": true,
+      "detail": "scope"
+    },
+    {
+      "name": "availability_loads",
+      "pass": true,
+      "detail": "https://app.sandbox.hellotocheers.com/settings/availability"
+    }
+  ]
+}

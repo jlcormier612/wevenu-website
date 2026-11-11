@@ -1,0 +1,58 @@
+import { RecommendationsPanel } from "@/components/dashboard/recommendations-panel";
+import { refreshVenueRecommendations } from "@/lib/luv/recommendation-service";
+import { isRecommendationActiveForDisplay } from "@/lib/luv/recommendation-visibility";
+import {
+  PAYMENT_ATTENTION_PATTERN_TYPE,
+  UNATTENDED_INQUIRY_PATTERN_TYPE,
+  type Phase5SpotPatternType,
+} from "@/lib/luv/spot-patterns";
+
+/**
+ * Inquiry workflow L2 patterns (Leads).
+ * P-P1 (inquiry_volume_increase) is Inform with no useful Leads action —
+ * keep it out of "Recommended next steps" rather than inventing a surface/CTA.
+ */
+export const LEADS_SPOT_PATTERN_TYPES: Phase5SpotPatternType[] = [
+  UNATTENDED_INQUIRY_PATTERN_TYPE,
+];
+
+/** Payments workflow L2 patterns. */
+export const PAYMENTS_SPOT_PATTERN_TYPES: Phase5SpotPatternType[] = [
+  PAYMENT_ATTENTION_PATTERN_TYPE,
+];
+
+/**
+ * Phase 5 Spot Patterns — L2 workflow surface only.
+ * Never Dashboard L1 (see isDashboardLevel1Recommendation).
+ */
+export async function SpotPatternRecommendationsPanel({
+  types,
+}: {
+  types: readonly Phase5SpotPatternType[];
+}) {
+  // Explicit refresh — L2 workflow surfaces may manufacture; Dashboard must not.
+  const all = await refreshVenueRecommendations();
+  const allow = new Set<string>(types);
+  const recommendations = all.filter(
+    (rec) => allow.has(rec.type) && isRecommendationActiveForDisplay(rec),
+  );
+  if (recommendations.length === 0) return null;
+
+  return (
+    <section
+      className="overflow-hidden rounded-[0.75rem] border border-[color:var(--htc-border-warm)] bg-[var(--htc-linen)]"
+      aria-label="Luv patterns"
+      data-luv-spot-panel
+    >
+      {/* Restrained Luv identity — blush accent, not a full-panel pink wash. */}
+      <div
+        className="h-1.5 w-full bg-[var(--htc-soft-blush)]"
+        data-luv-accent=""
+        aria-hidden
+      />
+      <div className="px-4 py-1">
+        <RecommendationsPanel recommendations={recommendations} />
+      </div>
+    </section>
+  );
+}

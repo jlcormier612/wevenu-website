@@ -16,6 +16,9 @@ export type NotificationPreferences = {
   prefContractRequiresAttention: boolean;
   prefContractSigned:            boolean;
   prefFinalGuestCountSubmitted:  boolean;
+  prefTourScheduled:             boolean;
+  prefTourConfirmed:             boolean;
+  prefProposalAccepted:          boolean;
   channelEmail:                  boolean;
   channelSms:                    boolean;
   channelPush:                   boolean;
@@ -38,6 +41,9 @@ const DEFAULTS: NotificationPreferences = {
   prefContractRequiresAttention: true,
   prefContractSigned:            false,
   prefFinalGuestCountSubmitted:  false,
+  prefTourScheduled:             true,
+  prefTourConfirmed:             true,
+  prefProposalAccepted:          true,
   channelEmail:                  false,
   channelSms:                    false,
   channelPush:                   false,

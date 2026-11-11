@@ -6,41 +6,63 @@ import { Check, ChevronDown, Copy } from "lucide-react";
 import { toast } from "sonner";
 
 import { connectEmailIntakeAction } from "@/app/(app)/settings/email-intake-actions";
+import { EmailIntakeHealth } from "@/components/settings/email-intake-health";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import type { EmailIntakeHealthView } from "@/lib/lead-intake/email-intake-health";
 import type { EmailIntakeStatus } from "@/lib/lead-intake/email-status";
 
 const PROVIDERS: { name: string; steps: string[] }[] = [
-  { name: "The Knot", steps: ["Storefront → Settings → Notifications", "Add your forwarding address as an additional inquiry notification recipient"] },
-  { name: "WeddingWire", steps: ["Storefront → Settings → Lead Notifications", "Add your forwarding address alongside your own email"] },
-  { name: "Zola", steps: ["Vendor dashboard → Settings → Notifications", "Add your forwarding address as a CC/additional recipient"] },
-  { name: "Gmail", steps: ["Settings → Filters and Blocked Addresses → Create a new filter", "Match inquiry emails, choose \"Forward to\" your forwarding address"] },
-  { name: "Outlook", steps: ["Settings → Mail → Rules → Add a new rule", "Condition: subject/sender matches your inquiry notifications", "Action: forward to your forwarding address"] },
+  {
+    name: "Here Comes the Guide",
+    steps: [
+      "Here Comes the Guide emails the venue when someone inquires. Which address receives that mail is set with them. Their site does not give venues a login to change it.",
+      "If those messages already arrive in a mailbox you control, forward only those messages to the address above. Do not point the listing at this address unless Here Comes the Guide confirms that for your listing.",
+    ],
+  },
+  {
+    name: "WeddingWire",
+    steps: [
+      "WeddingWire keeps leads in the WeddingPro inbox. The app can forward one lead at a time to another email address. That is manual. It is not an automatic rule, and US WeddingPro help does not show an extra-recipient setting.",
+      "If new-lead emails already arrive in your inbox, forward only those messages to the address above.",
+    ],
+  },
+  {
+    name: "The Knot",
+    steps: [
+      "The Knot leads are read in WeddingPro. The app can forward one lead at a time to another email address. That is manual. It is not an automatic rule, and no setting was found that adds a second address for new leads.",
+      "If inquiry emails already arrive in your inbox, forward only those messages to the address above. Do not add this address inside The Knot unless The Knot shows you that control.",
+    ],
+  },
+  {
+    name: "Gmail",
+    steps: [
+      "Settings → Filters and Blocked Addresses → Create a new filter.",
+      "Match only the inquiry sender or subject you already receive, then choose Forward to the address above. Leave the rest of your inbox alone.",
+    ],
+  },
+  {
+    name: "Outlook",
+    steps: [
+      "Settings → Mail → Rules → Add a new rule.",
+      "Condition: only the inquiry sender or subject. Action: forward to the address above. Do not forward all incoming mail.",
+    ],
+  },
 ];
 
-function timeAgo(iso: string | null): string {
-  if (!iso) return "Never";
-  const ms = Date.now() - new Date(iso).getTime();
-  const days = Math.floor(ms / 86_400_000);
-  if (days === 0) return "Today";
-  if (days === 1) return "Yesterday";
-  if (days < 30) return `${days} days ago`;
-  return new Date(iso).toLocaleDateString();
-}
-
 export function EmailIntakeSection({
-  status, leadEmailAddress,
+  status, leadEmailAddress, intakeHealth = null,
 }: {
   status: EmailIntakeStatus | null;
   /** null when RESEND_INBOUND_ADDRESS isn't set platform-wide — a genuinely different state from "this venue hasn't connected yet." */
   leadEmailAddress: string | null;
+  intakeHealth?: EmailIntakeHealthView | null;
 }) {
   const [connecting, startConnect] = React.useTransition();
   const [copied, setCopied] = React.useState(false);
   const [openProvider, setOpenProvider] = React.useState<string | null>(null);
 
   const isConnected = !!status?.connectedAt;
-  const hasReceivedAnything = !!status?.lastEmailReceivedAt;
 
   function handleConnect() {
     startConnect(async () => {
@@ -65,19 +87,25 @@ export function EmailIntakeSection({
   if (!leadEmailAddress) return null;
 
   return (
-    <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-4">
+    <div className="htc-surface-guidance space-y-4 p-4">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-sm font-medium text-heading">Email intake</p>
+        <div>
+          <p className="text-sm font-medium text-heading">Email intake</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Connect an inquiry email source so incoming inquiries can be captured as Leads.
+          </p>
+        </div>
         {isConnected ? (
-          hasReceivedAnything
-            ? <Badge variant="success">Connected</Badge>
-            : <Badge variant="warning">Awaiting first email</Badge>
+          <Badge variant="success">Connected</Badge>
         ) : (
           <Badge variant="muted">Not connected</Badge>
         )}
       </div>
       <p className="text-xs text-muted-foreground">
-        Forward inquiry notifications from The Knot, WeddingWire, or anywhere else that emails you a new inquiry — each one becomes a lead automatically.
+        After you connect, copy the address and send inquiry emails to it. Hello to Cheers creates
+        a Lead from the message. The Knot, WeddingWire, and Here Comes the Guide are not connected
+        integrations. A lead is labeled with one of those names only after that provider&apos;s
+        message has been verified. Until then it is stored as email intake.
       </p>
 
       {!isConnected ? (
@@ -94,6 +122,12 @@ export function EmailIntakeSection({
               {copied ? <><Check className="mr-1 h-3.5 w-3.5" />Copied!</> : <><Copy className="mr-1 h-3.5 w-3.5" />Copy</>}
             </Button>
           </div>
+
+          <p className="text-xs text-muted-foreground">
+            Use a mailbox filter or forward one inquiry at a time. Send only inquiry mail — not
+            your whole inbox. Open Leads to confirm it arrived. If the marketplace cannot be
+            verified from the message, the lead still appears as email intake.
+          </p>
 
           <div className="space-y-1.5">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Forwarding instructions</p>
@@ -114,29 +148,13 @@ export function EmailIntakeSection({
                 )}
               </div>
             ))}
-            <p className="text-[10px] text-muted-foreground italic">General steps — exact menus vary by provider and change over time.</p>
-          </div>
-
-          <div className="grid grid-cols-3 gap-3 rounded-md border border-border p-3 text-center">
-            <div>
-              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Last email</p>
-              <p className="text-sm font-medium text-heading">{timeAgo(status.lastEmailReceivedAt)}</p>
-            </div>
-            <div>
-              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Last lead</p>
-              <p className="text-sm font-medium text-heading">{timeAgo(status.lastLeadImportedAt)}</p>
-            </div>
-            <div>
-              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Confidence</p>
-              <p className="text-sm font-medium text-heading">{status.confidencePercent != null ? `${status.confidencePercent}%` : "—"}</p>
-            </div>
+            <p className="text-[10px] text-muted-foreground italic">
+              Mailbox steps are what you can do today. A marketplace name in this list is not a connection.
+            </p>
           </div>
         </div>
       )}
-
-      <p className="text-xs text-muted-foreground">
-        Each lead shows how confident the extraction was. When it&apos;s low, the lead is still created right away, but automated follow-ups wait until you&apos;ve confirmed the details.
-      </p>
+      {intakeHealth ? <EmailIntakeHealth health={intakeHealth} /> : null}
     </div>
   );
 }

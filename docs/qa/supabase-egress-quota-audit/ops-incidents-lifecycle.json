@@ -1,0 +1,56 @@
+{
+  "at": "2026-10-12T03:15:16.302Z",
+  "dedupe": "qa:ops-lifecycle:1791774916302",
+  "createdId": "3d49682b-5fdc-41af-bd96-1466ea4d320e",
+  "observationCount": 2,
+  "noDuplicate": true,
+  "ackKeepsUnresolved": true,
+  "emailFailureKeepsIncident": true,
+  "recovered": true,
+  "anonCannotRead": true,
+  "anonError": null,
+  "lambdaInvoke": {
+    "ok": true,
+    "results": [
+      {
+        "ok": true,
+        "email_ok": true,
+        "persist_ok": true,
+        "incident_id": "54c9935d-a48f-42e0-bad3-936b2dea315d",
+        "ref": "01a12e1b-8cfe-71ce-9f5a-63334c0c015d"
+      }
+    ]
+  },
+  "lambdaDupInvoke": {
+    "ok": true,
+    "results": [
+      {
+        "ok": true,
+        "email_ok": true,
+        "persist_ok": true,
+        "incident_id": "54c9935d-a48f-42e0-bad3-936b2dea315d",
+        "ref": "skipped_duplicate"
+      }
+    ]
+  },
+  "lambdaOkInvoke": {
+    "ok": true,
+    "results": [
+      {
+        "ok": true,
+        "email_ok": true,
+        "persist_ok": true,
+        "incident_id": "54c9935d-a48f-42e0-bad3-936b2dea315d",
+        "ref": "01a12e1b-966e-7934-99ff-bec9d5a9467d"
+      }
+    ]
+  },
+  "lambdaIncident": {
+    "id": "54c9935d-a48f-42e0-bad3-936b2dea315d",
+    "status": "recovered",
+    "severity": "high",
+    "title": "htc-sandbox-qa-lifecycle-probe",
+    "last_email_outcome": "accepted",
+    "observation_count": 3
+  }
+}

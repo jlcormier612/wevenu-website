@@ -205,10 +205,10 @@ export function VendorPackagesManager({ packages: initial }: { packages: VendorP
   return (
     <div className="space-y-4">
       {packages.length === 0 && !showAdd ? (
-        <div className="rounded-sm border border-dashed border-border py-12 text-center">
-          <Package className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+        <div data-vendor-empty="framed" className="htc-vendor-empty-framed py-12 text-center">
+          <Package className="mx-auto mb-2 h-8 w-8 text-muted-foreground" />
           <p className="text-sm font-medium text-foreground">No packages yet</p>
-          <p className="text-xs mt-1 text-muted-foreground mb-4">
+          <p className="mb-4 mt-1 text-xs text-muted-foreground">
             Add packages to show venues what you offer.
           </p>
           <Button size="sm" onClick={() => setShowAdd(true)}>

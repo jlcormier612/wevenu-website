@@ -1,0 +1,32 @@
+{
+  "lightPills": [
+    {
+      "text": "❓ FAQs⭐⭐⭐",
+      "tag": "span",
+      "w": 110,
+      "h": 23,
+      "color": "rgb(61, 80, 64)",
+      "bg": "rgba(93, 111, 93, 0.094)",
+      "border": "rgba(93, 111, 93, 0.19)",
+      "radius": "3.35544e+07px",
+      "padding": "2.125px 8.5px",
+      "className": "inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full font-medium"
+    }
+  ],
+  "lightRows": [],
+  "darkPills": [
+    {
+      "text": "❓ FAQs⭐⭐⭐",
+      "tag": "span",
+      "w": 110,
+      "h": 23,
+      "color": "rgb(61, 80, 64)",
+      "bg": "rgba(93, 111, 93, 0.094)",
+      "border": "rgba(93, 111, 93, 0.19)",
+      "radius": "3.35544e+07px",
+      "padding": "2.125px 8.5px",
+      "className": "inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full font-medium"
+    }
+  ],
+  "hasCompletion": true
+}

@@ -1,0 +1,88 @@
+{
+  "ok": true,
+  "arrangement": {
+    "id": "d1af59f3-21e3-446a-8bd5-41c09d0c132f",
+    "venueId": "9336a6cb-6a49-4a38-82bc-ff3b2361e8a3",
+    "stripeSubscriptionId": "sub_1UZw74ErUqJH7nkta71f0YMw",
+    "stripeCustomerId": "cus_Vb8Ng5wqMg59Z5",
+    "kind": "tier_freeze",
+    "percentOff": null,
+    "amountOffCents": null,
+    "fixedRateCents": null,
+    "frozenListAmountCents": null,
+    "planScope": "all",
+    "planKeyAtCreate": "starter",
+    "survivesTierChange": true,
+    "preventsTierUpgrade": true,
+    "protectsBaseRate": false,
+    "effectiveAt": "2026-11-09T23:53:41+00:00",
+    "expiresAt": "2026-11-12T23:53:41+00:00",
+    "durationBillingCycles": null,
+    "cyclesConsumed": 0,
+    "status": "active",
+    "reason": "Phase 5 final tier freeze",
+    "internalNotes": null,
+    "customerFacingLabel": null,
+    "createdByUserId": null,
+    "createdByEmail": "jennifer@hellotocheers.com",
+    "endedByEmail": null,
+    "endedAt": null,
+    "endReason": null,
+    "stripeCouponId": null,
+    "stripePriceId": null,
+    "reconciliationStatus": "not_applicable",
+    "expectedRecurringAmountCents": 19900,
+    "lastReconcileError": null,
+    "lastReconciledAt": null,
+    "supersedesArrangementId": null,
+    "supersededByArrangementId": null,
+    "relatedTierHoldId": "25294d12-6a82-4f9c-9fff-b567603449a6",
+    "idempotencyKey": "p5-final-tf-1794268421",
+    "audit": [
+      {
+        "at": "2026-11-09T23:53:41.930Z",
+        "by": "jennifer@hellotocheers.com",
+        "kind": "tier_freeze",
+        "action": "created",
+        "status": "active"
+      }
+    ],
+    "metadata": {},
+    "createdAt": "2026-11-09T23:53:41.964807+00:00",
+    "updatedAt": "2026-11-09T23:53:41.964807+00:00"
+  },
+  "preview": {
+    "currentAmountCents": 19900,
+    "proposedAmountCents": 19900,
+    "differenceCents": 0,
+    "currentWinnerSource": "standard",
+    "proposedWinnerSource": "standard",
+    "producesFinancialBenefit": true,
+    "ineffectiveBecauseBetterOffer": false,
+    "requiresConfirmation": false,
+    "explanation": "Best recurring amount $199.00 via standard (Standard catalog pricing).",
+    "selection": {
+      "winner": {
+        "id": "standard",
+        "source": "standard",
+        "label": "Standard catalog pricing",
+        "expectedAmountCents": 19900,
+        "tieBreakRank": 0
+      },
+      "candidates": [
+        {
+          "id": "standard",
+          "source": "standard",
+          "label": "Standard catalog pricing",
+          "expectedAmountCents": 19900,
+          "tieBreakRank": 0
+        }
+      ],
+      "explanation": "Best recurring amount $199.00 via standard (Standard catalog pricing)."
+    },
+    "tierFreezeActive": true
+  },
+  "stripeApplied": false,
+  "deferredToSchedule": false,
+  "warning": null
+}

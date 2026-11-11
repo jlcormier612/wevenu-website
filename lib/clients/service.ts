@@ -1,6 +1,7 @@
 /**
  * Clients application service. Server-only.
  */
+import { cache } from "react";
 import { isPastEventDate } from "@/lib/migration/historical-record";
 import { occupancyFailureFromUnknown, calendarBlockFailureFromUnknown } from "@/lib/availability/event-occupancy";
 import {
@@ -29,63 +30,15 @@ import {
 import { clientDisplayName } from "@/lib/clients/constants";
 import {
   countClientListFilters,
-  weddingWeekEnd,
   comingUpHorizonEnd,
   type ClientListFilterKey,
 } from "@/lib/clients/list-filters";
-import { getEventIdForClient, insertEvent } from "@/lib/events/repository";
+import { getCanonicallyBookedClientIds } from "@/lib/booking-journey/canonical-booked";
+import { getEventIdForClient } from "@/lib/events/repository";
 import { venueToday } from "@/lib/venue/timezone";
 import type { Lead } from "@/lib/leads/types";
 import { getCurrentVenue } from "@/lib/venue/service";
 import { exitEnrollmentsForBooking } from "@/lib/message-sequences/service";
-
-/**
- * If the client has an event date, automatically create the linked event.
- * Called inside the same withVenue callback as insertClient so both rows
- * share the same authenticated Supabase client and venue context.
- */
-async function autoCreateEvent(
-  supabase: Parameters<typeof insertEvent>[0],
-  venueId: string,
-  clientId: string,
-  opts: {
-    firstName: string;
-    lastName: string;
-    partnerFirstName?: string | null;
-    partnerLastName?: string | null;
-    eventDate: string;
-    /** Inclusive end day (client `endDate`); empty/omit = single-day. */
-    eventEndDate?: string | null;
-    eventType?: string | null;
-    guestCount?: string | null;
-    startTime?: string | null;
-    endTime?: string | null;
-    spaceId?: string | null;
-  },
-): Promise<string> {
-  // Guard against duplicate events if someone edits the client or re-runs conversion
-  const existing = await getEventIdForClient(supabase, venueId, clientId);
-  if (existing) return existing;
-
-  const coupleName = clientDisplayName(opts.firstName, opts.lastName, opts.partnerFirstName, opts.partnerLastName);
-  const typeLabel = opts.eventType?.replace(/_/g, " ") ?? "Event";
-  const eventId = await insertEvent(supabase, venueId, {
-    name: `${coupleName} — ${typeLabel}`,
-    eventType: opts.eventType ?? "",
-    eventDate: opts.eventDate,
-    eventEndDate: opts.eventEndDate ?? "",
-    startTime: opts.startTime ?? "",
-    endTime: opts.endTime ?? "",
-    setupTime: "",
-    teardownTime: "",
-    guestCount: opts.guestCount ?? "",
-    clientId,
-    spaceId: opts.spaceId ?? "",
-  });
-  // events.booked_at is stamped only at commercial Booked (agreement + deposit),
-  // never when the booking workspace / Event is first created.
-  return eventId;
-}
 
 function datedEventFromClient(
   input: Pick<ClientInput, "firstName" | "lastName" | "partnerFirstName" | "partnerLastName" | "eventType" | "eventDate" | "endDate" | "guestCount" | "ceremonyTime" | "receptionTime" | "setupTime" | "teardownTime" | "spaceId">,
@@ -163,60 +116,84 @@ export async function getClients(filters?: { q?: string; status?: string }): Pro
 }
 
 /**
- * Client Workspace list-page UX pass — "Needs Attention" filter/metric.
- * Reuses two signals already established elsewhere in this codebase
- * (overdue payments — the same definition the Dashboard's payments widget
- * uses; a contract sent 3+ days ago still unsigned — the same definition
- * Luv's own observation engine uses) rather than inventing a new one or a
- * full per-event readiness computation, which would mean an expensive
- * query per client just to render a filter count. Two single, venue-scoped
- * queries — not one per client.
+ * Contract Builder picker — eligible operational customers only.
+ * Does not replace getClients() for the Clients CRM list.
+ */
+export async function getSelectableContractClients(): Promise<Client[]> {
+  if (!isSupabaseConfigured) return [];
+  const venue = await getCurrentVenue();
+  if (!venue) return [];
+  return repo.getSelectableContractClients(await createClient(), venue.id);
+}
+
+/** Deep-link / selection preselect: keep that client in the picker unless cancelled. */
+export async function ensureContractPickerClient(
+  clients: Client[],
+  clientId: string | null | undefined,
+): Promise<Client[]> {
+  if (!clientId || clients.some((c) => c.id === clientId)) return clients;
+  const one = await getClient(clientId);
+  if (!one || one.status === "cancelled") return clients;
+  return [...clients, one];
+}
+
+/**
+ * Needs Attention client ids: past-due payment, past-due required task,
+ * or a conversation that still needs a response. Not unread, and not an
+ * unsigned contract by itself.
  */
 export async function getClientAttentionFlags(): Promise<Set<string>> {
   if (!isSupabaseConfigured) return new Set();
   const venue = await getCurrentVenue();
   if (!venue) return new Set();
-  return repo.getClientAttentionFlags(await createClient(), venue.id);
+  return repo.getClientAttentionFlags(await createClient(), venue.id, venueToday(venue.timezone));
 }
 
-const EMPTY_CLIENT_LIST_COUNTS: Record<ClientListFilterKey, number> = {
+type OperationalClientListCounts = Record<Exclude<ClientListFilterKey, "portal_activation">, number>;
+
+const EMPTY_CLIENT_LIST_COUNTS: OperationalClientListCounts = {
   all: 0,
-  upcoming: 0,
   coming_up: 0,
-  wedding_week: 0,
   needs_attention: 0,
-  past: 0,
   cancelled: 0,
+  past: 0,
 };
 
 /**
  * Server-side counts for the Clients operational views. Dashboard tiles that
  * navigate to those views must use this — not a second, dashboard-only query.
+ * portal_activation is a Luv deep-link only and is not counted here.
  */
-export async function getClientListFilterCounts(): Promise<Record<ClientListFilterKey, number>> {
+export async function getClientListFilterCounts(): Promise<OperationalClientListCounts> {
   if (!isSupabaseConfigured) return EMPTY_CLIENT_LIST_COUNTS;
   const venue = await getCurrentVenue();
   if (!venue) return EMPTY_CLIENT_LIST_COUNTS;
   const supabase = await createClient();
-  const [clients, attentionClientIds] = await Promise.all([
-    repo.getClients(supabase, venue.id),
-    repo.getClientAttentionFlags(supabase, venue.id),
-  ]);
   const today = venueToday(venue.timezone);
+  const [clients, attentionClientIds, bookedIds] = await Promise.all([
+    repo.getClients(supabase, venue.id),
+    repo.getClientAttentionFlags(supabase, venue.id, today),
+    getCanonicallyBookedClientIds(),
+  ]);
   return countClientListFilters(clients, {
     today,
-    weekOut: weddingWeekEnd(today),
     comingUpOut: comingUpHorizonEnd(today),
     attentionClientIds,
+    bookedClientIds: bookedIds,
   });
 }
 
-export async function getClient(clientId: string): Promise<ClientWithDetails | null> {
+/**
+ * Request-scoped `cache()` — generateMetadata + page both call getClient(id)
+ * on the same render. Same pattern as getCurrentVenue: never cross-request,
+ * never changes auth/venue isolation (still resolves via getCurrentVenue).
+ */
+export const getClient = cache(async (clientId: string): Promise<ClientWithDetails | null> => {
   if (!isSupabaseConfigured) return null;
   const venue = await getCurrentVenue();
   if (!venue) return null;
   return repo.getClient(await createClient(), venue.id, clientId);
-}
+});
 
 // ---- create -----------------------------------------------------------------
 
@@ -283,25 +260,15 @@ async function createClientCore(
   if (importAsHistoricalRecord && input.eventDate && !asHistorical) {
     return { ok: false, message: "Only past Events can be imported as historical records. Future bookings still follow availability." };
   }
-  // Server-side hard block: refuse if the event date is calendar-blocked.
-  // Historical reviewed records skip this — they land as Event status complete.
-  if (input.eventDate && !asHistorical) {
-    const title = await coveringClientEventBlockTitle(supabase, venueId, input);
-    if (title) {
-      return { ok: false, message: `Cannot book this date — the calendar is blocked: "${title}". Remove the block first.` };
-    }
-  }
   let clientId: string;
   let eventId: string | null;
-  if (input.eventDate) {
+  if (asHistorical && input.eventDate) {
     try {
       const row = await repo.insertClientWithDatedEvent(
-        supabase, venueId, input, datedEventFromClient(input, asHistorical), undefined, historicalImport,
+        supabase, venueId, input, datedEventFromClient(input, true), undefined, historicalImport,
       );
       clientId = row.clientId;
       eventId = row.eventId;
-      // events.booked_at is commercial Booked only (agreement + deposit).
-      // Direct Add / Start booking file create the workspace without stamping it.
     } catch (err) {
       const fail = occupancyClientFailure(err);
       if (fail) return fail;
@@ -310,6 +277,18 @@ async function createClientCore(
   } else {
     clientId = await repo.insertClient(supabase, venueId, input, undefined, historicalImport);
     eventId = null;
+    if (lifecycleOpts?.markAsAlreadyBooked && input.eventDate) {
+      const { bookClient } = await import("@/lib/booking-journey/book-client");
+      const booked = await bookClient(supabase, {
+        venueId,
+        clientId,
+        source: "manual",
+        spaceId: input.spaceId,
+        lifecycleOrigin: "import",
+      });
+      if (!booked.ok) return { ok: false, message: booked.message };
+      eventId = booked.eventId;
+    }
   }
 
   void enqueueQuickBooksSync(venueId, "customer", clientId, {
@@ -318,12 +297,16 @@ async function createClientCore(
     email: input.email, phone: input.phone,
   });
 
-  // Stop on booking (§3.3) — must never block client creation.
-  const { data: newClient } = await supabase.from("clients").select("relationship_id")
-    .eq("id", clientId).maybeSingle<{ relationship_id: string | null }>();
-  if (newClient?.relationship_id) {
-    void exitEnrollmentsForBooking(supabase, venueId, newClient.relationship_id)
-      .catch((e) => console.error("Series exit-on-booking failed:", e));
+  // Stop sales sequences only when the venue has actually booked
+  // (historical import or an explicit already-booked import). Preparing a
+  // client does not book, so it must not exit enrollments.
+  if (asHistorical || lifecycleOpts?.markAsAlreadyBooked) {
+    const { data: newClient } = await supabase.from("clients").select("relationship_id")
+      .eq("id", clientId).maybeSingle<{ relationship_id: string | null }>();
+    if (newClient?.relationship_id) {
+      void exitEnrollmentsForBooking(supabase, venueId, newClient.relationship_id)
+        .catch((e) => console.error("Series exit-on-booking failed:", e));
+    }
   }
 
   // Lifecycle Booking (distinct from events.booked_at payment timing):
@@ -406,18 +389,6 @@ export async function createClientForVenue(
   });
 }
 
-/** Convert a won lead to a client. Pre-populates from lead data. */
-// Imported lazily to avoid circular deps between client and availability modules
-async function convertLeadHolds(venueId: string, leadId: string, supabase: Parameters<typeof repo.insertClient>[0]) {
-  // Convert all active date holds for this lead to "converted" status
-  const { error } = await supabase.from("date_holds")
-    .update({ status: "converted" })
-    .eq("venue_id", venueId)
-    .eq("lead_id", leadId)
-    .eq("status", "active");
-  if (error) console.error("Could not convert holds:", error.message);
-}
-
 /** Workspace exists; Planning and pipeline Booked wait for commercial Booked. */
 async function markConvertedClientAsBookingFile(
   supabase: Parameters<typeof repo.insertClient>[0],
@@ -441,10 +412,8 @@ export async function convertLeadToClient(
 ): Promise<CreateClientResult> {
   const commercialOnly = opts?.commercialOnly === true;
   const spaceId = opts?.spaceId?.trim() || "";
-  // Quiet commercial ensure may lack an Event Space. Multi-space venues refuse
-  // dated Events without one — create the Client anyway and defer the Event
-  // until a space is chosen (Start booking file or a later ensure with space).
-  const createDatedEvent = Boolean(lead.eventDate) && (!commercialOnly || Boolean(spaceId));
+  // Preparing a client does not create an occupying Event. The Booked
+  // transition creates that Event from the client's preferred date.
   const input: ClientInput = {
     firstName: lead.firstName,
     lastName: lead.lastName,
@@ -466,13 +435,8 @@ export async function convertLeadToClient(
     spaceId,
   };
   const result = await withVenue(async (supabase, venueId) => {
-    // Server-side hard block: refuse if the lead's event date is calendar-blocked.
-    if (createDatedEvent && input.eventDate) {
-      const title = await coveringClientEventBlockTitle(supabase, venueId, input);
-      if (title) {
-        return { ok: false, message: `Cannot convert this lead — their event date is blocked: "${title}". Remove the block first, or update the event date.` } as CreateClientResult;
-      }
-    }
+    // Preparing the client does not occupy a date, so calendar coverage is
+    // not a reason to refuse conversion. Booked is the occupancy decision.
     // Lead Pipeline — Release Readiness, Release Blocker #2. clients.lead_id
     // is now uniquely constrained (a double-click or a race between two
     // tabs could otherwise create two Clients for one Lead) — this
@@ -481,44 +445,45 @@ export async function convertLeadToClient(
     const { data: existingClient } = await supabase.from("clients")
       .select("id").eq("lead_id", lead.id).eq("venue_id", venueId).maybeSingle<{ id: string }>();
     if (existingClient) {
-      let eventId = await getEventIdForClient(supabase, venueId, existingClient.id);
-      if (!eventId && createDatedEvent && input.eventDate) {
-        try {
-          eventId = await autoCreateEvent(supabase, venueId, existingClient.id, {
-            firstName: lead.firstName,
-            lastName: lead.lastName,
-            partnerFirstName: lead.partnerFirstName,
-            partnerLastName: lead.partnerLastName,
-            eventDate: input.eventDate,
-            eventEndDate: input.endDate,
-            eventType: input.eventType,
-            guestCount: input.guestCount,
-            startTime: input.ceremonyTime,
-            spaceId: input.spaceId,
+      const eventId = await getEventIdForClient(supabase, venueId, existingClient.id);
+      // Start booking file / quiet ensure create the workspace only.
+      // bookClient is the only pipeline-Booked write. Start booking file must not call it.
+      await markConvertedClientAsBookingFile(supabase, venueId, existingClient.id);
+      if (lead.relationshipId) {
+        const { setVenueCoupleInboxOwner } = await import(
+          "@/lib/conversations/inbox-ownership-write"
+        );
+        if (commercialOnly) {
+          await setVenueCoupleInboxOwner(supabase, {
+            venueId,
+            relationshipId: lead.relationshipId,
+            ownerKind: "lead",
+            leadId: lead.id,
           });
-        } catch (err) {
-          const fail = occupancyClientFailure(err);
-          if (fail) return fail;
-          throw err;
+        } else {
+          await setVenueCoupleInboxOwner(supabase, {
+            venueId,
+            relationshipId: lead.relationshipId,
+            ownerKind: "client",
+            clientId: existingClient.id,
+          });
         }
       }
-      // Start booking file / quiet ensure create the workspace only.
-      // Commercial Booked (maybeStampCommercialBookedAt) is the only pipeline-Booked write.
-      await markConvertedClientAsBookingFile(supabase, venueId, existingClient.id);
+      if (eventId) {
+        const eventDate = lead.eventDate || new Date().toISOString().slice(0, 10);
+        try {
+          const { migrateLeadTasksToEvent } = await import("@/lib/leads/repository");
+          await migrateLeadTasksToEvent(supabase, venueId, lead.id, eventId, eventDate);
+        } catch (err) {
+          console.error("Could not migrate lead venue tasks to event:", err);
+        }
+      }
       return { ok: true, clientId: existingClient.id, eventId, invitationSent: false } as CreateClientResult;
     }
     let clientId: string;
     let eventId: string | null = null;
     try {
-      if (createDatedEvent && input.eventDate) {
-        const row = await repo.insertClientWithDatedEvent(
-          supabase, venueId, input, datedEventFromClient(input), lead.id,
-        );
-        clientId = row.clientId;
-        eventId = row.eventId;
-      } else {
-        clientId = await repo.insertClient(supabase, venueId, input, lead.id);
-      }
+      clientId = await repo.insertClient(supabase, venueId, input, lead.id);
     } catch (err) {
       const occupancy = occupancyClientFailure(err);
       if (occupancy) return occupancy;
@@ -531,6 +496,26 @@ export async function convertLeadToClient(
         if (raceClient) {
           const raceEventId = await getEventIdForClient(supabase, venueId, raceClient.id);
           await markConvertedClientAsBookingFile(supabase, venueId, raceClient.id);
+          if (lead.relationshipId) {
+            const { setVenueCoupleInboxOwner } = await import(
+              "@/lib/conversations/inbox-ownership-write"
+            );
+            if (commercialOnly) {
+              await setVenueCoupleInboxOwner(supabase, {
+                venueId,
+                relationshipId: lead.relationshipId,
+                ownerKind: "lead",
+                leadId: lead.id,
+              });
+            } else {
+              await setVenueCoupleInboxOwner(supabase, {
+                venueId,
+                relationshipId: lead.relationshipId,
+                ownerKind: "client",
+                clientId: raceClient.id,
+              });
+            }
+          }
           return { ok: true, clientId: raceClient.id, eventId: raceEventId, invitationSent: false } as CreateClientResult;
         }
       }
@@ -538,7 +523,7 @@ export async function convertLeadToClient(
     }
     await repo.insertClientActivity(supabase, venueId, clientId, "note_added",
       "Welcome note", `Converted from lead inquiry — ${lead.firstName} ${lead.lastName}`);
-    await convertLeadHolds(venueId, lead.id, supabase);
+    // Date holds stay active until book_relationship (Booked). Client ≠ Booked.
 
     // Series exit and pipeline Booked happen only at commercial Booked.
 
@@ -558,6 +543,39 @@ export async function convertLeadToClient(
 
     await markConvertedClientAsBookingFile(supabase, venueId, clientId);
 
+    // Inbox ownership: commercial-only keeps the lead conversation under Leads.
+    // Start booking file / full convert moves the venue_couple thread to Clients.
+    if (lead.relationshipId) {
+      const { setVenueCoupleInboxOwner } = await import(
+        "@/lib/conversations/inbox-ownership-write"
+      );
+      if (commercialOnly) {
+        await setVenueCoupleInboxOwner(supabase, {
+          venueId,
+          relationshipId: lead.relationshipId,
+          ownerKind: "lead",
+          leadId: lead.id,
+        });
+      } else {
+        await setVenueCoupleInboxOwner(supabase, {
+          venueId,
+          relationshipId: lead.relationshipId,
+          ownerKind: "client",
+          clientId,
+        });
+      }
+    }
+
+    if (eventId) {
+      const eventDate = lead.eventDate || new Date().toISOString().slice(0, 10);
+      try {
+        const { migrateLeadTasksToEvent } = await import("@/lib/leads/repository");
+        await migrateLeadTasksToEvent(supabase, venueId, lead.id, eventId, eventDate);
+      } catch (err) {
+        console.error("Could not migrate lead venue tasks to event:", err);
+      }
+    }
+
     return { ok: true, clientId, eventId } as CreateClientResult;
   });
   const r = result as CreateClientResult;
@@ -570,23 +588,34 @@ export async function convertLeadToClient(
 
 // ---- update -----------------------------------------------------------------
 
+function isUniqueViolation(err: unknown): boolean {
+  return Boolean(err && typeof err === "object" && "code" in err && (err as { code: string }).code === "23505");
+}
+
 export async function updateClientInfo(clientId: string, input: ClientInput): Promise<ClientActionResult> {
   const errors = validateClientInput(input);
   if (Object.keys(errors).length > 0) return { ok: false, errors };
-  const result = await withVenue(async (supabase, venueId) => {
-    await repo.updateClientInfo(supabase, venueId, clientId, input);
-    await repo.insertClientActivity(supabase, venueId, clientId, "lead_updated", "Client information updated");
-    // A client's name/email changing after their QBO Customer was already
-    // created should re-sync — the queue's payload_hash dedup handles
-    // this safely (a no-op if nothing sync-relevant actually changed).
-    void enqueueQuickBooksSync(venueId, "customer", clientId, {
-      firstName: input.firstName, lastName: input.lastName,
-      partnerFirstName: input.partnerFirstName, partnerLastName: input.partnerLastName,
-      email: input.email, phone: input.phone,
+  try {
+    const result = await withVenue(async (supabase, venueId) => {
+      await repo.updateClientInfo(supabase, venueId, clientId, input);
+      await repo.insertClientActivity(supabase, venueId, clientId, "lead_updated", "Client information updated");
+      // A client's name/email changing after their QBO Customer was already
+      // created should re-sync — the queue's payload_hash dedup handles
+      // this safely (a no-op if nothing sync-relevant actually changed).
+      void enqueueQuickBooksSync(venueId, "customer", clientId, {
+        firstName: input.firstName, lastName: input.lastName,
+        partnerFirstName: input.partnerFirstName, partnerLastName: input.partnerLastName,
+        email: input.email, phone: input.phone,
+      });
+      return { ok: true } as ClientActionResult;
     });
-    return { ok: true } as ClientActionResult;
-  });
-  return result as ClientActionResult;
+    return result as ClientActionResult;
+  } catch (err) {
+    if (isUniqueViolation(err)) {
+      return { ok: false, message: "That email is already used by another relationship." };
+    }
+    throw err;
+  }
 }
 
 export async function updateClientStatus_(clientId: string, status: string): Promise<ClientActionResult> {

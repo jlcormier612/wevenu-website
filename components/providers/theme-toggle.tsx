@@ -10,9 +10,19 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { HTC_THEME_TOGGLE_ENABLED } from "@/lib/theme/htc-theme-access";
 
+/**
+ * Theme control. Hidden while hospitality dark QA is outstanding
+ * (`HTC_THEME_TOGGLE_ENABLED`). Component + dark CSS remaps remain so dark
+ * can be restored without rebuilding the control.
+ */
 export function ThemeToggle() {
   const { setTheme } = useTheme();
+
+  if (!HTC_THEME_TOGGLE_ENABLED) {
+    return null;
+  }
 
   return (
     <DropdownMenu>

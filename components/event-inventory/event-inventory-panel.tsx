@@ -2,12 +2,14 @@
 
 import * as React from "react";
 
+import { useRouter } from "next/navigation";
 import { Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import {
-  addEventInventoryToEventOrderAction, ensureEventInventoryAction, finalizeEventInventoryAction,
-  removeEventInventoryItemAction, reopenEventInventoryAction, shareEventInventoryAction,
+  addEventInventoryToEventOrderAction, confirmInventorySelectionsAction, ensureEventInventoryAction,
+  finalizeEventInventoryAction, removeEventInventoryItemAction, reopenEventInventoryAction,
+  requestInventorySelectionChangesAction, setInventoryItemClientSelectableAction, shareEventInventoryAction,
 } from "@/app/(app)/events/[id]/event-inventory-actions";
 import { ItemSheet } from "@/components/event-inventory/item-sheet";
 import { BusinessAssetHeader } from "@/components/business-assets/asset-header";
@@ -18,19 +20,39 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import {
+  INVENTORY_COUPLE_BAND_HINT, INVENTORY_VISIBILITY_DISCLOSURE, groupInventoryByCoupleBand, inventoryCoupleMaxQuantity,
+} from "@/lib/event-inventory/couple-bands";
+import { eventInventoryItemsPendingForEventOrder } from "@/lib/event-inventory/handoff";
+import { eventInventoryListPriceLabel } from "@/lib/event-inventory/list-display";
 import type { EventInventoryItem, EventInventoryStatus, EventInventoryWithDetails, InventoryTemplate } from "@/lib/event-inventory/types";
 import type { InventoryItem } from "@/lib/inventory/types";
 
-const STATUS_LABEL: Record<EventInventoryStatus, string> = { draft: "Draft", shared: "Shared with client", finalized: "Finalized" };
-const STATUS_VARIANT: Record<EventInventoryStatus, BadgeVariant> = { draft: "muted", shared: "default", finalized: "success" };
+const STATUS_LABEL: Record<EventInventoryStatus, string> = {
+  draft: "Draft",
+  shared: "Shared with client",
+  submitted: "Client submitted",
+  changes_requested: "Changes requested",
+  confirmed: "Confirmed",
+  finalized: "Finalized",
+};
+const STATUS_VARIANT: Record<EventInventoryStatus, BadgeVariant> = {
+  draft: "muted",
+  shared: "default",
+  submitted: "accent",
+  changes_requested: "default",
+  confirmed: "success",
+  finalized: "success",
+};
 
 function formatMoney(n: number): string {
   return n.toLocaleString("en-US", { style: "currency", currency: "USD" });
 }
 
-function ItemRow({ item, eventInventoryId, eventId, catalogItems, editable, onRemove, removing }: {
+function ItemRow({ item, eventInventoryId, eventId, catalogItems, editable, onRemove, removing, onToggleSelectable }: {
   item: EventInventoryItem; eventInventoryId: string; eventId: string; catalogItems: InventoryItem[];
   editable: boolean; onRemove: () => void; removing: boolean;
+  onToggleSelectable?: (next: boolean) => void;
 }) {
   return (
     <div className="group grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-3 py-2.5 border-b border-border last:border-0 text-sm">
@@ -38,17 +60,65 @@ function ItemRow({ item, eventInventoryId, eventId, catalogItems, editable, onRe
         <span className="text-foreground">{item.name}</span>
         {item.category && <span className="ml-2 text-xs text-muted-foreground">{item.category}</span>}
         {item.notes && <p className="mt-0.5 text-xs text-muted-foreground truncate">{item.notes}</p>}
+        {inventoryCoupleMaxQuantity(item) != null && (
+          <p className="mt-0.5 text-xs text-primary">Couple can select (max ×{inventoryCoupleMaxQuantity(item)})</p>
+        )}
+        {item.clientSubmittedQuantity != null && (
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Submitted ×{item.clientSubmittedQuantity}
+            {item.clientDraftQuantity != null && item.clientDraftQuantity !== item.clientSubmittedQuantity
+              ? ` · draft ×${item.clientDraftQuantity}`
+              : ""}
+          </p>
+        )}
+        {!item.clientVisible && (
+          <p className="mt-0.5 text-xs text-muted-foreground" data-testid={`inventory-item-venue-only-${item.id}`}>
+            Venue only — not shown to the couple
+          </p>
+        )}
         {item.addedToEventOrderAt && <p className="mt-0.5 text-xs text-success">✓ In the Event Order</p>}
       </div>
       <span className="text-muted-foreground text-right w-12">×{item.quantity}</span>
-      <span className="text-right w-24 font-medium text-foreground">
-        {item.unitPrice != null ? formatMoney(item.unitPrice) : <span className="font-normal text-muted-foreground">—</span>}
+      <span className="text-right w-24 font-medium text-foreground" data-testid="inventory-item-unit-price">
+        {(() => {
+          const { price, inclusionHint } = eventInventoryListPriceLabel(item);
+          if (price == null) {
+            return <span className="font-normal text-muted-foreground">—</span>;
+          }
+          return (
+            <span className="inline-flex flex-col items-end leading-tight">
+              <span>{price}</span>
+              {inclusionHint ? (
+                <span className="text-[10px] font-normal text-muted-foreground">{inclusionHint}</span>
+              ) : null}
+            </span>
+          );
+        })()}
       </span>
       <Badge variant={item.isIncluded ? "outline" : "accent"} className="w-fit justify-self-end">
         {item.isIncluded ? "Included" : "Additional"}
       </Badge>
       {editable ? (
         <div className="flex items-center gap-0.5 justify-self-end">
+          {!item.isIncluded && item.clientVisible && onToggleSelectable && (
+            <button
+              type="button"
+              className={`rounded px-1.5 py-1 text-[10px] font-medium ${
+                item.clientSelectable
+                  ? "bg-primary/10 text-primary hover:bg-primary/15"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              }`}
+              onClick={() => onToggleSelectable(!item.clientSelectable)}
+              data-testid={`inventory-item-select-toggle-${item.id}`}
+              title={
+                item.clientSelectable
+                  ? "Couple can select this additional item — click to lock"
+                  : "Offer this additional item for couple selection"
+              }
+            >
+              {item.clientSelectable ? "Selectable" : "Select"}
+            </button>
+          )}
           <ItemSheet eventInventoryId={eventInventoryId} eventId={eventId} catalogItems={catalogItems} existingItem={item} />
           <button type="button" onClick={onRemove} disabled={removing}
             className="opacity-0 group-hover:opacity-100 rounded p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-opacity" aria-label="Remove">
@@ -60,11 +130,38 @@ function ItemRow({ item, eventInventoryId, eventId, catalogItems, editable, onRe
   );
 }
 
-function StartInventory({ eventId, templates }: { eventId: string; templates: InventoryTemplate[] }) {
-  const [templateId, setTemplateId] = React.useState<string>("blank");
+function StartInventory({
+  eventId,
+  templates,
+  preferredTemplateId = null,
+}: {
+  eventId: string;
+  templates: InventoryTemplate[];
+  preferredTemplateId?: string | null;
+}) {
+  const router = useRouter();
+  const preferredExists = Boolean(preferredTemplateId && templates.some((t) => t.id === preferredTemplateId));
+  const [templateId, setTemplateId] = React.useState<string>(preferredExists ? preferredTemplateId! : "blank");
   const [starting, startTransition] = React.useTransition();
+  const [recovering, setRecovering] = React.useState(false);
 
   const options = [{ value: "blank", label: "Start blank" }, ...templates.map((t) => ({ value: t.id, label: t.name }))];
+
+  // Profile-configured inventory should already exist after booking / prepare-release.
+  // Recover silently once so this tab is an editor, not a second setup wizard.
+  React.useEffect(() => {
+    if (!preferredExists || !preferredTemplateId) return;
+    let cancelled = false;
+    setRecovering(true);
+    void (async () => {
+      const result = await ensureEventInventoryAction(eventId, preferredTemplateId);
+      if (cancelled) return;
+      setRecovering(false);
+      if (!result.ok) toast.error(result.message ?? "Could not prepare Event Inventory.");
+      else router.refresh();
+    })();
+    return () => { cancelled = true; };
+  }, [eventId, preferredExists, preferredTemplateId, router]);
 
   function handleStart() {
     startTransition(async () => {
@@ -73,14 +170,41 @@ function StartInventory({ eventId, templates }: { eventId: string; templates: In
     });
   }
 
+  if (preferredExists) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Event Inventory</CardTitle>
+          <CardDescription>
+            Preparing the profile starting inventory template for this event. This is a draft only — not shared and not an invoice.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            <p className="text-xs text-muted-foreground">
+              {recovering ? "Preparing inventory draft…" : "Refreshing…"}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card>
       <CardHeader>
         <CardTitle className="text-base">Event Inventory</CardTitle>
-        <CardDescription>What's actually part of this event — chairs, decor, bar service, anything selected for this booking.</CardDescription>
+        <CardDescription>
+          Manage this event&apos;s inventory draft and operational inventory state. Creating or
+          editing a draft does not share it with the client or create an invoice.
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
+          <p className="max-w-md text-xs text-muted-foreground">
+            No inventory draft yet. Choose a starting inventory template for this event only, or use Release to client portal from Overview when a Setup Profile template is configured. Creating or editing a draft does not share it with the client or create an invoice.
+          </p>
           {templates.length > 0 && (
             <Select value={templateId} onValueChange={setTemplateId} items={options}>
               <SelectTrigger className="w-64"><SelectValue /></SelectTrigger>
@@ -99,26 +223,73 @@ function StartInventory({ eventId, templates }: { eventId: string; templates: In
 }
 
 export function EventInventoryPanel({
-  eventId, eventInventory, templates, catalogItems,
+  eventId, eventInventory, templates, catalogItems, preferredTemplateId = null,
 }: {
   eventId: string;
   eventInventory: EventInventoryWithDetails | null;
   templates: InventoryTemplate[];
   catalogItems: InventoryItem[];
+  preferredTemplateId?: string | null;
 }) {
+  const router = useRouter();
   const [lifecyclePending, startLifecycle] = React.useTransition();
   const [removingId, setRemovingId] = React.useState<string | null>(null);
+  /** Optimistic Select flags — props can lag when RSC revalidation misses the clients page. */
+  const [selectableOverrides, setSelectableOverrides] = React.useState<Record<string, boolean>>({});
 
-  if (!eventInventory) return <StartInventory eventId={eventId} templates={templates} />;
+  React.useEffect(() => {
+    if (!eventInventory) return;
+    setSelectableOverrides((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      for (const item of eventInventory.items) {
+        if (next[item.id] === undefined) continue;
+        if (next[item.id] === item.clientSelectable) {
+          delete next[item.id];
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [eventInventory]);
+
+  /** Server actions revalidate, but this panel is props-driven — refresh so status CTAs update. */
+  function runLifecycle(fn: () => Promise<void>) {
+    startLifecycle(async () => {
+      await fn();
+      router.refresh();
+    });
+  }
+
+  if (!eventInventory) {
+    return (
+      <StartInventory
+        eventId={eventId}
+        templates={templates}
+        preferredTemplateId={preferredTemplateId}
+      />
+    );
+  }
 
   const inv = eventInventory;
+  const items = inv.items.map((item) =>
+    selectableOverrides[item.id] === undefined
+      ? item
+      : { ...item, clientSelectable: selectableOverrides[item.id]! },
+  );
   const isFinalized = inv.status === "finalized";
-  const isDraft = inv.status === "draft";
-  const billableTotal = inv.items.reduce((sum, i) => sum + (i.unitPrice ?? 0) * i.quantity, 0);
-  // D8 — per-item, not a permanent all-time flag: reflects exactly what's
-  // still eligible right now, so items added after a prior push (Reopen →
-  // add more → Finalize again) correctly bring this button back.
-  const hasUnpushedBillable = inv.items.some((i) => i.unitPrice != null && i.unitPrice > 0 && !i.addedToEventOrderAt);
+  const canShare =
+    inv.status === "draft" ||
+    inv.status === "shared" ||
+    inv.status === "confirmed" ||
+    inv.status === "changes_requested";
+  const canConfirm = inv.status === "submitted";
+  const billableTotal = items.reduce(
+    (sum, i) => i.isIncluded || !i.clientVisible ? sum : sum + (i.unitPrice ?? 0) * i.quantity,
+    0,
+  );
+  const hasUnpushedItems = eventInventoryItemsPendingForEventOrder(items).length > 0;
+  const selectableCount = items.filter((i) => i.clientSelectable).length;
 
   async function handleRemove(item: EventInventoryItem) {
     if (!confirm(`Remove "${item.name}"?`)) return;
@@ -139,18 +310,20 @@ export function EventInventoryPanel({
           lastUpdated={new Date(inv.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
           primaryAction={isFinalized ? (
             <div className="flex items-center gap-2">
-              {hasUnpushedBillable && (
+              {hasUnpushedItems && (
                 <Button type="button" variant="outline" size="sm" disabled={lifecyclePending}
-                  onClick={() => startLifecycle(async () => {
+                  onClick={() => runLifecycle(async () => {
                     const result = await addEventInventoryToEventOrderAction(inv.id, eventId);
-                    if (result.ok) toast.success(`Added ${result.addedCount} item${result.addedCount === 1 ? "" : "s"} (${formatMoney(result.addedTotal)}) to the Event Order.`);
-                    else toast.error(result.message ?? "Could not add to Event Order.");
+                    if (result.ok) {
+                      const extra = result.addedTotal > 0 ? ` (${formatMoney(result.addedTotal)} additional)` : " (included — no additional charge)";
+                      toast.success(`Added ${result.addedCount} item${result.addedCount === 1 ? "" : "s"}${extra} to the Event Order.`);
+                    } else toast.error(result.message ?? "Could not add to Event Order.");
                   })}>
                   Add to Event Order
                 </Button>
               )}
               <Button type="button" variant="outline" size="sm" disabled={lifecyclePending}
-                onClick={() => startLifecycle(async () => {
+                onClick={() => runLifecycle(async () => {
                   const result = await reopenEventInventoryAction(inv.id, eventId);
                   if (!result.ok) toast.error(result.message ?? "Could not reopen.");
                 })}>
@@ -158,40 +331,146 @@ export function EventInventoryPanel({
               </Button>
             </div>
           ) : (
-            <div className="flex items-center gap-2">
-              {isDraft && (
-                <Button type="button" variant="outline" size="sm" disabled={lifecyclePending}
-                  onClick={() => startLifecycle(async () => {
+            <div className="flex flex-wrap items-center gap-2">
+              {canShare && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={lifecyclePending}
+                  data-testid="inventory-share"
+                  onClick={() => runLifecycle(async () => {
                     const result = await shareEventInventoryAction(inv.id, eventId);
-                    if (result.ok) toast.success("Shared with client.");
-                    else toast.error(result.message ?? "Could not share.");
-                  })}>
-                  Share with client
+                    if (result.ok) {
+                      toast.success(
+                        selectableCount > 0
+                          ? "Inventory shared. The couple gets a link to review, choose, and submit."
+                          : "Inventory shared. The couple gets a read-only Inventory link — not an invoice.",
+                      );
+                    } else toast.error(result.message ?? "Could not share.");
+                  })}
+                >
+                  Share inventory
                 </Button>
               )}
-              <Button type="button" size="sm" disabled={lifecyclePending || inv.items.length === 0}
-                onClick={() => startLifecycle(async () => {
+              {canConfirm && (
+                <>
+                  <Button type="button" variant="outline" size="sm" disabled={lifecyclePending}
+                    onClick={() => runLifecycle(async () => {
+                      const note = window.prompt("Note for the couple (optional)") ?? "";
+                      const result = await requestInventorySelectionChangesAction(inv.id, eventId, note);
+                      if (result.ok) toast.success("Asked the couple for changes.");
+                      else toast.error(result.message ?? "Could not request changes.");
+                    })}>
+                    Request changes
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={lifecyclePending}
+                    data-testid="inventory-confirm-selections"
+                    onClick={() => runLifecycle(async () => {
+                      const result = await confirmInventorySelectionsAction(inv.id, eventId);
+                      if (result.ok) toast.success("Selections confirmed.");
+                      else toast.error(result.message ?? "Could not confirm.");
+                    })}
+                  >
+                    Confirm selections
+                  </Button>
+                </>
+              )}
+              <Button
+                type="button"
+                size="sm"
+                disabled={lifecyclePending || inv.items.length === 0 || inv.status === "submitted"}
+                data-testid="inventory-finalize"
+                onClick={() => runLifecycle(async () => {
                   const result = await finalizeEventInventoryAction(inv.id, eventId);
                   if (result.ok) toast.success("Event Inventory finalized.");
                   else toast.error(result.message ?? "Could not finalize.");
-                })}>
+                })}
+              >
                 {lifecyclePending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Finalize"}
               </Button>
             </div>
           )}
         />
-        <p className="text-xs text-muted-foreground -mt-1">
-          What's actually part of this event. Additional-cost total: <span className="font-medium text-foreground">{formatMoney(billableTotal)}</span>
-        </p>
+        <div
+          className="htc-surface-guidance -mt-1 space-y-1 px-3 py-2.5 text-xs text-muted-foreground"
+          data-testid="inventory-share-instructions"
+        >
+          <p>
+            <span className="font-medium text-foreground">Share inventory</span> emails the couple a
+            focused Inventory link. If any Additional item is marked{" "}
+            <span className="font-medium text-foreground">Select</span>, they can choose and submit;
+            otherwise the document is read-only. This does not send an invoice.
+          </p>
+          <p>
+            Included items stay informational. Confirm a submitted response before Finalize → Add to
+            Event Order. Additional-cost total:{" "}
+            <span className="font-medium text-foreground">{formatMoney(billableTotal)}</span>
+          </p>
+          {canShare && selectableCount > 0 ? (
+            <p className="text-foreground/80" data-testid="inventory-share-selection-ready">
+              {selectableCount} Additional item{selectableCount === 1 ? "" : "s"} marked for couple
+              selection — Share inventory will ask them to choose and submit.
+            </p>
+          ) : canShare ? (
+            <p data-testid="inventory-share-review-only-hint">
+              No Additional items marked Select — Share inventory sends a review-only document. To
+              offer choices, click Select on each Additional row first.
+            </p>
+          ) : null}
+        </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        {inv.items.length === 0 ? (
+        <p
+          className="htc-surface-guidance px-3 py-2 text-xs text-muted-foreground"
+          data-testid="inventory-visibility-disclosure"
+        >
+          {INVENTORY_VISIBILITY_DISCLOSURE}
+        </p>
+        {items.length === 0 ? (
           <p className="text-sm text-muted-foreground py-6 text-center">Nothing added yet.</p>
         ) : (
-          <div>
-            {inv.items.map((item) => (
-              <ItemRow key={item.id} item={item} eventInventoryId={inv.id} eventId={eventId} catalogItems={catalogItems}
-                editable={!isFinalized} onRemove={() => handleRemove(item)} removing={removingId === item.id} />
+          <div className="space-y-4">
+            {groupInventoryByCoupleBand(items).map((group) => (
+              <div key={group.band} data-testid={`inventory-band-${group.band}`}>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  {group.label} ({group.rows.length})
+                </p>
+                <p className="text-xs text-muted-foreground">{INVENTORY_COUPLE_BAND_HINT[group.band]}</p>
+                {group.rows.map((item) => (
+                  <ItemRow key={item.id} item={item} eventInventoryId={inv.id} eventId={eventId} catalogItems={catalogItems}
+                    editable={!isFinalized && inv.status !== "submitted"}
+                    onRemove={() => handleRemove(item)} removing={removingId === item.id}
+                    onToggleSelectable={(next) => {
+                      // Do not use runLifecycle/startTransition here: that sets
+                      // lifecyclePending and would block Share inventory during the
+                      // Select toggle round-trip, defeating optimistic Select.
+                      setSelectableOverrides((prev) => ({ ...prev, [item.id]: next }));
+                      void (async () => {
+                        const result = await setInventoryItemClientSelectableAction(
+                          inv.id,
+                          eventId,
+                          item.id,
+                          next,
+                        );
+                        if (!result.ok) {
+                          setSelectableOverrides((prev) => {
+                            const rollback = { ...prev };
+                            delete rollback[item.id];
+                            return rollback;
+                          });
+                          toast.error(result.message ?? "Could not update selection flag.");
+                          return;
+                        }
+                        router.refresh();
+                      })();
+                    }}
+                  />
+                ))}
+              </div>
             ))}
           </div>
         )}

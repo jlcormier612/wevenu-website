@@ -1,0 +1,79 @@
+PASS serving_sha — expected=89fd85e9587138825cf4212fea9f4119fc794385 ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:89fd85e9587138825cf4212fea9f4119fc794385
+PASS server_incomplete_rejected — Choose an option for “Entrées” before submitting.
+PASS server_overmax_rejected — “Sides” allows at most 2 selections.
+PASS portal_rejects_incomplete_followup — Choose an option for “Entrées” before submitting.
+PASS portal_incomplete_no_eo_mutation — before=1 after=1
+PASS portal_rejects_or_blocks_overmax — disabled=true text=third side disabled at max
+PASS portal_overmax_not_submitted — sent
+PASS portal_valid_submit_success — status=submitted ui=EOPF
+
+·
+
+Jen's Fancy Venue
+
+Feb 16, 2028
+
+Export my data
+🏠
+Home
+✅
+Tasks
+🕒
+Timeline
+📁
+Docs
+🗺️
+Floor Plan
+✅
+Choices
+1
+💳
+Payments
+💬
+Messages
+🏛️
+Guide
+🤝
+Vendors
+Your Choices
+
+Select options your venue asked for. Submitting sends them for review — it is not a payment.
+
+EOPF-EOPFMVSU6NSX-Dinner Se
+PASS persisted_submitted_status — submitted
+PASS persisted_plated_path_answers — {"g-dinner":{"optionIds":["o-plated"]},"g-entree":{"optionIds":["o-chicken"]}}
+PASS submit_does_not_create_choice_lines — [{"id":"b1ee15c2-08dd-4692-902b-54f59922f6a2","description":"EOPF-EOPFMVSU6NSX-MARKER-venue-fixed-line"}]
+PASS finalize_sets_status_finalized — {"status":"finalized","applied_line_ids":["cd0da818-0f68-4689-9cc8-70200a44f9a9","e740cdb7-8500-4eb1-af0e-dff9f5556747"],"answers":{"g-dinner":{"optionIds":["o-plated"]},"g-entree":{"optionIds":["o-chicken"]}}}
+PASS finalize_records_applied_line_ids — ["cd0da818-0f68-4689-9cc8-70200a44f9a9","e740cdb7-8500-4eb1-af0e-dff9f5556747"]
+PASS finalize_creates_expected_choice_lines — [{"id":"cd0da818-0f68-4689-9cc8-70200a44f9a9","description":"EOPF-EOPFMVSU6NSX-Plated Dinner","unit_price":0,"is_included":true,"quantity":1,"amount":0,"offering_id":null},{"id":"e740cdb7-8500-4eb1-af0e-dff9f5556747","description":"EOPF-EOPFMVSU6NSX-Chicken Marsala","unit_price":42,"is_included":false,"quantity":1,"amount":42,"offering_id":null}]
+PASS finalize_preserves_unrelated_marker_line — {"id":"b1ee15c2-08dd-4692-902b-54f59922f6a2","description":"EOPF-EOPFMVSU6NSX-MARKER-venue-fixed-line","unit_price":25,"is_included":false,"quantity":1,"amount":25,"offering_id":null}
+PASS finalize_line_count_exact — total=3 choice=2 applied=2
+PASS definition_edit_does_not_mutate_eo_snapshot — [{"description":"EOPF-EOPFMVSU6NSX-Chicken Marsala"}]
+PASS duplicate_finalize_no_duplicate_lines — {"chickenCount":1,"platedCount":1,"markerCount":1,"total":3,"priorApplied":["cd0da818-0f68-4689-9cc8-70200a44f9a9","e740cdb7-8500-4eb1-af0e-dff9f5556747"],"dupApplied":["45f9d506-deb5-4af8-a587-a31eff44c8ad","f8d91c6e-514b-4814-924e-a83eacd6026f"],"replaced":true}
+PASS reject_setup_incomplete_answers — {"status":"submitted","answers":{"g-dinner":{"optionIds":["o-plated"]}},"applied_line_ids":["45f9d506-deb5-4af8-a587-a31eff44c8ad","f8d91c6e-514b-4814-924e-a83eacd6026f"]}
+PASS rejected_finalize_no_partial_mutation — {"status":"submitted","uiHint":"OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\n99+\nClients\nVendors\n\nSCHEDULING\n\nCalendar\nTours\n22\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nLIBRARY\n\nTemplates\nDocuments\n\nFINANCIALS\n\nContracts\n17\nPayments\n14\n\nTO DO’S\n\nTask Center\nRequests\n\nYOUR VENUE\n\nSetup\nSettings\nGuidance\nVenue Guide\nReports\nHelp & Feedback\nJen's Fancy Venue
+PASS portal_mobile_390_choices_usable — overflowX=0 text=EOPF
+
+·
+
+Jen's Fancy Venue
+
+Home
+Tasks
+Messages
+Payments
+More
+Your Choices
+
+Select options your venue asked for. Submitting sends them for review — it is not a payment.
+
+EOPF-EOPFMVSU6NSX-Dinner Selections · Client Submitted
+Dinner style
+
+Pick one · required — 1 of 1 selected
+
+Pick one · required — 1 of 1 selected
+EOPF-EOPFMVSU6NSX-Buffet Dinner
+In
+
+GREEN — 21 pass / 0 fail

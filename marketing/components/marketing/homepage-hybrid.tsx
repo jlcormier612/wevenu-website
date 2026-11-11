@@ -1,301 +1,301 @@
 import Image from "next/image";
+import Link from "next/link";
 
-import { ClosingCta } from "@/components/marketing/closing-cta";
-import { CelebrationWhisper, HospitalityHeart } from "@/components/marketing/brand-accents";
-import { LuvQuietMoment } from "@/components/marketing/luv-quiet-moment";
-import { MarketingCta, WalkthroughCtas } from "@/components/marketing/marketing-cta";
-import { Reveal } from "@/components/marketing/reveal";
-import { SharedTruthArchitecture } from "@/components/marketing/shared-truth-architecture";
-import { FILM } from "@/lib/marketing/film";
-import {
-  EDITORIAL_BLEED,
-  EDITORIAL_FRAME,
-  EDITORIAL_IMAGE,
-  EDITORIAL_IMAGE_UI,
-  HOME_HERO_SHELL,
-} from "@/lib/marketing/rhythm";
-import { VISION, VISION_PHOTO } from "@/lib/marketing/vision";
-import { cn } from "@/lib/utils";
+import { SignatureClosingCta } from "@/components/marketing/signature-closing-cta";
+import { HOME_ASSETS, HOME_COPY } from "@/lib/marketing/homepage-v3";
 
-const RELATIONSHIPS = [
-  {
-    name: "Venue",
-    line: "The operating system for how your venue actually runs—sales, planning, operations, and hospitality in one living record.",
-  },
-  {
-    name: "Client",
-    line: "A planning experience that feels like your property—warm, personal, and continuous between conversations.",
-  },
-  {
-    name: "Vendor & Guest",
-    line: "Trusted partners and informed guests who arrive prepared—because they already share the same celebration.",
-  },
-] as const;
+import "@/app/homepage-v3.css";
 
 /**
- * Home — why Hello to Cheers exists.
- * Belief and hospitality first. Product journey lives on /product.
+ * Homepage from the approved manuscript.
+ * Hero + connected journey through Signature Closing CTA.
+ * Capabilities catalog removed from homepage (data retained for Features redesign).
+ * FeatureExplorer component preserved (not rendered).
  */
 export function HomepageHybrid() {
+  const c = HOME_COPY;
+  const a = HOME_ASSETS;
+
   return (
-    <div>
-      {/* ── Hero ── */}
-      <section className={cn("mx-auto max-w-5xl", HOME_HERO_SHELL)}>
-        <h1 className="mx-auto max-w-4xl font-heading text-[2.63rem] font-medium leading-[1.21] tracking-tight text-[var(--forest-sage)] md:text-[3.36rem] lg:text-[3.92rem]">
-          Every venue owner got into this business because they love creating unforgettable
-          celebrations.
-        </h1>
-        <p className="mx-auto mt-8 max-w-[65ch] text-base leading-[1.7] text-[var(--forest-sage)]/65 md:mt-10 md:text-lg">
-          Almost none imagined spending their days chasing emails, spreadsheets, vendors,
-          payments, and elusive details—or wondering whether something had been missed.
-        </p>
-        <p className="mx-auto mt-14 max-w-3xl font-heading text-2xl font-medium leading-[1.26] text-[var(--forest-sage)] md:mt-[72px] md:text-4xl">
-          Hello to Cheers gives you back the time—and peace of mind—to create unforgettable celebrations.
-        </p>
-        <WalkthroughCtas className="mt-14 justify-center md:mt-[72px]">
-          <MarketingCta
-            href="/product#follow"
-            label="Follow one booking"
-            variant="ghost"
-          />
-        </WalkthroughCtas>
-      </section>
-
-      {/* ── Hero divider — hospitality prep ── */}
-      <section
-        className={`relative aspect-[21/9] min-h-[50vh] w-full md:min-h-[55vh] ${EDITORIAL_BLEED}`}
-      >
-        <Image
-          src={FILM.heroCrop}
-          alt="A host carefully finishing a guest table — hospitality before arrival"
-          fill
-          priority
-          className={EDITORIAL_IMAGE}
-          style={{ objectPosition: "35% 45%" }}
-          sizes="100vw"
-        />
-      </section>
-
-      {/* ── One Shared Truth ── */}
-      <section className="px-6 py-28 md:py-36">
-        <Reveal className="mx-auto max-w-[1200px] text-center">
-          <h2 className="mx-auto max-w-3xl font-heading text-[2.1rem] font-medium leading-[1.21] whitespace-pre-line text-[var(--forest-sage)] md:text-[3.36rem]">
-            {"One Event.\nThree Perspectives.\nOne Shared Truth."}
-          </h2>
-
-          <div className="mx-auto mt-10 max-w-2xl space-y-5 text-base leading-[1.7] text-[var(--forest-sage)]/70 md:mt-12 md:text-lg">
-            <p>
-              Every conversation, document, payment, timeline, vendor, and guest belongs to one
-              shared celebration.
-            </p>
-            <p>
-              Hello to Cheers doesn&apos;t create separate software for venues, couples, and
-              vendors.
-            </p>
-            <p>
-              It gives each participant their own experience while everyone stays connected to the
-              same source of truth.
-            </p>
+    <div className="htc-home">
+      {/* 1. HERO — editorial photography + approved manuscript copy */}
+      <section className="hero" aria-labelledby="home-hero-heading">
+        <div className="hero-inner">
+          <div className="hero-copy">
+            <p className="hero-eyebrow">{c.hero.eyebrow}</p>
+            <h1 id="home-hero-heading">
+              {c.hero.headlineLine1}
+              <br />
+              {c.hero.headlineLine2}
+            </h1>
+            <p className="hero-lede">{c.hero.lede}</p>
+            <div className="hero-actions">
+              <Link className="btn btn-primary" href={c.hero.primaryCta.href}>
+                {c.hero.primaryCta.label}
+              </Link>
+              <Link className="btn btn-secondary" href={c.hero.secondaryCta.href}>
+                {c.hero.secondaryCta.label}
+              </Link>
+            </div>
           </div>
-        </Reveal>
 
-        <div className="mx-auto mt-14 max-w-[1200px] md:mt-16">
-          <SharedTruthArchitecture />
-        </div>
-
-        <div className="mt-14 flex justify-center md:mt-16">
-          <MarketingCta href="/product" label="Explore the Connected Journey →" />
-        </div>
-      </section>
-
-      {/* ── Philosophy — calm conversation ── */}
-      <section className="border-y border-[var(--taupe-light)] bg-[var(--linen)] px-6 py-28 md:py-36">
-        <Reveal className="mx-auto max-w-3xl">
-          <h2 className="font-heading text-[2.1rem] font-medium leading-[1.21] text-[var(--forest-sage)] md:text-[3.36rem]">
-            You were never looking for software.
-          </h2>
-
-          <p className="mt-14 font-heading text-2xl leading-[1.25] text-[var(--forest-sage)]/75 md:mt-16 md:text-3xl">
-            You were looking for calmer mornings.
-          </p>
-
-          <p className="mt-10 font-heading text-xl leading-[1.3] text-[var(--forest-sage)]/65 md:mt-12 md:text-2xl">
-            For fewer repeated conversations.
-          </p>
-
-          <p className="mt-8 font-heading text-xl leading-[1.3] text-[var(--forest-sage)]/65 md:mt-10 md:text-2xl">
-            For confidence that nothing had been forgotten.
-          </p>
-
-          <p className="mt-8 font-heading text-xl leading-[1.3] text-[var(--forest-sage)]/65 md:mt-10 md:text-2xl">
-            For more time creating unforgettable celebrations...
-          </p>
-
-          <p className="mt-6 font-heading text-xl leading-[1.3] text-[var(--forest-sage)]/65 md:mt-8 md:text-2xl">
-            ...and less time managing the details behind them.
-          </p>
-
-          <p className="mt-14 max-w-2xl font-heading text-xl leading-[1.35] text-[var(--forest-sage)]/70 md:mt-16 md:text-2xl">
-            Because hospitality was never meant to be stitched together across disconnected
-            systems.
-          </p>
-
-          <p className="mt-16 text-center font-heading text-2xl font-medium leading-[1.26] text-[var(--forest-sage)] md:mt-20 md:text-4xl">
-            One place where all the perfectly curated pieces of your venue come together.
-          </p>
-        </Reveal>
-      </section>
-
-      {/* ── Bridge — hospitality over departments ── */}
-      <section className="px-6 pb-28 md:pb-36">
-        <div className="mx-auto max-w-6xl">
-          <div className={`relative aspect-[16/10] w-full md:aspect-[2.1/1] ${EDITORIAL_FRAME}`}>
+          <figure className="hero-photo">
             <Image
-              src={FILM.homeVenueMagic}
-              alt="A sunlit reception patio prepared for celebration — hospitality gathered in one place"
+              src={a.heroHospitalityAiry}
+              alt="Venue professional arranging florals and candles on a long reception table"
               fill
-              className={EDITORIAL_IMAGE}
-              sizes="100vw"
+              priority
+              sizes="(max-width: 768px) 100vw, min(1280px, 100vw)"
             />
-            <CelebrationWhisper />
-          </div>
-          <div className="mx-auto mt-12 max-w-4xl space-y-5 text-center text-base leading-[1.7] text-[var(--forest-sage)]/70 md:mt-14 md:text-lg">
-            <p>
-              Unique venues deserve software built around hospitality—not around departments.
-            </p>
-            <p>Your venue isn&apos;t defined by the type of event you host.</p>
-            <p>It&apos;s defined by the experience people remember long after it&apos;s over.</p>
+          </figure>
+        </div>
+      </section>
+
+      {/* 2. CONNECTED JOURNEY — editorial photography trio + five-stage path */}
+      <section className="journey" id="journey" aria-labelledby="journey-heading">
+        <div className="journey-inner">
+          <header className="journey-intro">
+            <p className="journey-eyebrow">{c.journey.kicker}</p>
+            <h2 className="journey-headline" id="journey-heading">
+              {c.journey.headline}
+            </h2>
+            <div className="journey-lede">
+              <p>{c.journey.body}</p>
+            </div>
+          </header>
+
+          <ul className="journey-moments" aria-label="Connected journey moments">
+            {(
+              [
+                { asset: a.journeyFirstHello, ...c.journey.moments[0], position: "journey-pos-a" },
+                { asset: a.journeyCollaboration, ...c.journey.moments[1], position: "journey-pos-b" },
+                { asset: a.journeyFinalCheers, ...c.journey.moments[2], position: "journey-pos-c" },
+              ] as const
+            ).map((moment) => (
+              <li key={moment.title} className="journey-moment">
+                <figure className="journey-photo">
+                  <Image
+                    src={moment.asset}
+                    alt={moment.alt}
+                    fill
+                    sizes="(max-width: 640px) 100vw, (max-width: 900px) 33vw, 411px"
+                    className={moment.position}
+                  />
+                </figure>
+                <h3 className="journey-caption-title">{moment.title}</h3>
+                <p className="journey-caption-body">{moment.caption}</p>
+              </li>
+            ))}
+          </ul>
+
+          <ol className="journey-stages" aria-label="Connected event journey">
+            {c.journey.steps.map((step, index) => (
+              <li key={step} className="journey-stage">
+                <span className="journey-marker" aria-hidden>
+                  {index + 1}
+                </span>
+                <span className="journey-stage-label">{step}</span>
+              </li>
+            ))}
+          </ol>
+
+          <p className="journey-closing">{c.journey.closing}</p>
+        </div>
+      </section>
+
+      {/* 3. YOUR VENUE — editorial split: venue identity photography + approved copy */}
+      <section className="personalize" id="your-venue" aria-labelledby="personalize-heading">
+        <div className="personalize-inner">
+          <figure className="personalize-photo">
+            <Image
+              src={a.venueYourWayEditorial}
+              alt="The Willow Grove Venue presentation booklet styled with florals, linens, and venue photographs"
+              fill
+              sizes="(max-width: 640px) 100vw, (max-width: 900px) 100vw, 614px"
+              className="personalize-photo-img"
+            />
+          </figure>
+          <div className="personalize-copy">
+            <p className="personalize-eyebrow">{c.personalize.kicker}</p>
+            <h2 className="personalize-headline" id="personalize-heading">
+              {c.personalize.headline}
+            </h2>
+            <div className="personalize-body">
+              <p>{c.personalize.lede}</p>
+              <p>{c.personalize.body}</p>
+              <p>{c.personalize.body2}</p>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* ── Relationships ── */}
-      <section className="border-y border-[var(--taupe-light)] bg-[var(--linen)] px-6 py-28 md:py-36">
-        <div className="mx-auto max-w-5xl">
-          <HospitalityHeart size={14} className="mb-5 opacity-[0.8]" />
-          <h2 className="max-w-2xl font-heading text-[2.1rem] font-medium leading-[1.21] text-[var(--forest-sage)] md:text-[3.36rem]">
-            Hospitality is bigger than one relationship.
-          </h2>
-          <div className="mt-8 max-w-xl space-y-4 text-base leading-[1.7] text-[var(--forest-sage)]/70 md:text-lg">
-            <p>Your venue is about more than one relationship.</p>
-            <p>It coordinates vendors.</p>
-            <p>Welcomes guests.</p>
-            <p>Guides families.</p>
-            <p>Supports your staff.</p>
-            <p className="pt-2 text-[var(--forest-sage)]/80">
-              Hello to Cheers keeps every relationship connected—so everyone experiences the same
-              thoughtful hospitality.
-            </p>
-          </div>
-          <div className="mt-16 grid gap-12 md:grid-cols-3 md:gap-10">
-            {RELATIONSHIPS.map((party) => (
-              <div key={party.name} className="border-t border-[var(--taupe-medium)]/70 pt-6">
-                <h3 className="font-heading text-2xl text-[var(--forest-sage)] md:text-3xl">
-                  {party.name}
-                </h3>
-                <p className="mt-4 text-sm leading-[1.7] text-[var(--forest-sage)]/65 md:text-base">
-                  {party.line}
-                </p>
-              </div>
+      {/* 4. OPERATIONS — panoramic venue + four equal operational pillars */}
+      <section className="operations" id="operations" aria-labelledby="operations-heading">
+        <div className="operations-inner">
+          <header className="operations-intro">
+            <p className="operations-eyebrow">{c.operations.kicker}</p>
+            <h2 className="operations-headline" id="operations-heading">
+              {c.operations.headline}
+            </h2>
+            <p className="operations-lede">{c.operations.lede}</p>
+          </header>
+
+          <figure className="operations-photo">
+            <Image
+              src={a.operationsVenueReady}
+              alt="Bright, fully prepared reception venue with ivory linens, wood chairs, and soft florals"
+              fill
+              sizes="(max-width: 640px) 100vw, min(1280px, 100vw)"
+              className="operations-photo-img"
+            />
+          </figure>
+
+          <div className="operations-pillars">
+            {c.operations.phases.map((phase, index) => (
+              <article key={phase.title} className="operations-pillar">
+                <span className="operations-pillar-n" aria-hidden>
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+                <h3 className="operations-pillar-title">{phase.title}</h3>
+                <p className="operations-pillar-body">{phase.body}</p>
+              </article>
             ))}
           </div>
-        </div>
-      </section>
 
-      {/* ── Workspace ── */}
-      <section className="px-6 py-28 md:py-36">
-        <div className="mx-auto max-w-5xl">
-          <p className="text-[0.7125rem] tracking-[0.22em] uppercase text-[var(--heritage-sage)]/82">
-            The Workspace
-          </p>
-          <h2 className="mt-7 max-w-2xl font-heading text-[2.1rem] whitespace-pre-line text-[var(--forest-sage)] md:text-[3.36rem]">
-            One calm workspace.{"\n"}For an entire venue.
-          </h2>
-          <div className="mt-8 max-w-lg space-y-3 text-base leading-[1.7] text-[var(--forest-sage)]/70">
-            <p>Everything your venue needs lives in one thoughtful workspace.</p>
-            <p>Morning priorities.</p>
-            <p>Bookings.</p>
-            <p>Planning.</p>
-            <p>Conversations.</p>
-            <p>Financials.</p>
-            <p>Tasks.</p>
-            <p className="pt-2">Without switching between systems.</p>
-          </div>
-        </div>
-        <div className="mx-auto mt-12 grid max-w-7xl gap-4 md:mt-14 md:grid-cols-2 md:gap-6">
-          <div className={`relative aspect-[1024/584] ${EDITORIAL_FRAME} bg-[var(--linen)]`}>
-            <Image
-              src={VISION_PHOTO.dashboardOverview}
-              alt="Hello to Cheers workspace — Luv notices, venue health, and morning priorities"
-              fill
-              className={EDITORIAL_IMAGE_UI}
-              sizes="(max-width:768px) 100vw, 640px"
-            />
-          </div>
-          <div className={`relative aspect-[1024/584] ${EDITORIAL_FRAME} bg-[var(--linen)]`}>
-            <Image
-              src={VISION_PHOTO.dashboardOps}
-              alt="Hello to Cheers workspace — who needs attention, communication, and payments"
-              fill
-              className={EDITORIAL_IMAGE_UI}
-              sizes="(max-width:768px) 100vw, 640px"
-            />
+          <div className="operations-bridge" id="features">
+            <h3 className="operations-bridge-headline">{c.operations.featuresBridge.headline}</h3>
+            <p className="operations-bridge-body">{c.operations.featuresBridge.body}</p>
+            <Link className="btn btn-primary" href={c.operations.featuresBridge.cta.href}>
+              {c.operations.featuresBridge.cta.label}
+            </Link>
           </div>
         </div>
       </section>
 
-      {/* ── Luv — beneath workspace ── */}
-      <section className="px-6 py-28 md:py-36">
-        <div className="mx-auto grid max-w-5xl items-center gap-10 md:grid-cols-2 md:gap-10">
-          <div className="flex flex-col justify-center">
-            <LuvQuietMoment />
-            <h2 className="mt-7 font-heading text-[2.1rem] text-[var(--forest-sage)] md:text-[3.36rem]">
-              Your quiet teammate behind the scenes.
+      {/* 5. ECOSYSTEM — three audience editorial portraits */}
+      <section className="ecosystem" id="ecosystem" aria-labelledby="ecosystem-heading">
+        <div className="ecosystem-inner">
+          <header className="ecosystem-intro">
+            <p className="ecosystem-eyebrow">{c.ecosystem.kicker}</p>
+            <h2 className="ecosystem-headline" id="ecosystem-heading">
+              {c.ecosystem.headline}
             </h2>
-            <div className="mt-6 space-y-4 text-base leading-[1.7] text-[var(--forest-sage)]/75 md:text-lg">
-              <p>Luv quietly helps your venue stay one step ahead.</p>
-              <p>
-                She notices what&apos;s changing, surfaces thoughtful recommendations, prepares
-                helpful drafts, and keeps important details from slipping through the
-                cracks—always in service of the hospitality only your team can provide.
-              </p>
-            </div>
-            <div className="mt-10 space-y-4 text-base leading-[1.7] text-[var(--forest-sage)]/75 md:text-lg">
-              <p>She isn&apos;t here to replace people.</p>
-              <p>She handles the details.</p>
-              <p className="font-medium text-[var(--forest-sage)]">
-                Your team creates the moments.
-              </p>
+            <p className="ecosystem-lede">{c.ecosystem.lede}</p>
+          </header>
+
+          <ul className="ecosystem-profiles" aria-label="Connected audience experiences">
+            {c.ecosystem.panels.map((panel) => (
+              <li key={panel.role} className="ecosystem-profile">
+                <figure className="ecosystem-photo">
+                  <Image
+                    src={a[panel.img]}
+                    alt={panel.imgAlt}
+                    fill
+                    sizes="(max-width: 640px) 100vw, (max-width: 900px) 42vw, 408px"
+                    className={panel.position}
+                  />
+                </figure>
+                <div className="ecosystem-copy">
+                  <p className="ecosystem-role">{panel.role}</p>
+                  <h3 className="ecosystem-profile-title">{panel.title}</h3>
+                  <p className="ecosystem-profile-body">{panel.body}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+
+          <hr className="ecosystem-divider" aria-hidden />
+          <p className="ecosystem-closing">{c.ecosystem.closing}</p>
+        </div>
+      </section>
+
+      {/* 6. GETTING STARTED — editorial split: copy left, workspace photography right */}
+      <section
+        className="getting-started"
+        id="getting-started"
+        aria-labelledby="getting-started-heading"
+      >
+        <div className="getting-started-inner">
+          <div className="getting-started-copy">
+            <p className="getting-started-eyebrow">{c.gettingStarted.kicker}</p>
+            <h2 className="getting-started-headline" id="getting-started-heading">
+              {c.gettingStarted.headline}
+            </h2>
+            <p className="getting-started-subhead">{c.gettingStarted.subhead}</p>
+            <p className="getting-started-lede">{c.gettingStarted.lede}</p>
+
+            <ul className="getting-started-benefits" aria-label="Getting started benefits">
+              {c.gettingStarted.benefits.map((benefit) => (
+                <li key={benefit.title} className="getting-started-benefit">
+                  <h3 className="getting-started-benefit-title">{benefit.title}</h3>
+                  <p className="getting-started-benefit-body">{benefit.body}</p>
+                </li>
+              ))}
+            </ul>
+
+            <div className="getting-started-cta">
+              <Link className="btn btn-primary" href={c.gettingStarted.cta.href}>
+                {c.gettingStarted.cta.label}
+              </Link>
             </div>
           </div>
-          <div className="flex justify-center">
-            <div className={`w-[103%] ${EDITORIAL_FRAME}`}>
+
+          <figure className="getting-started-photo">
+            <Image
+              src={a.gettingStartedEditorial}
+              alt="Sunlit workspace with laptop, florals, notebook, and a sage-tied binder on a light wood desk"
+              fill
+              sizes="(max-width: 640px) 100vw, (max-width: 900px) 100vw, 600px"
+              className="getting-started-photo-img"
+            />
+          </figure>
+        </div>
+      </section>
+
+      {/* 8. OUR FIRST FRIENDS — editorial split: story left, keepsake photography right */}
+      <section className="first-friends" id="our-story" aria-labelledby="first-friends-heading">
+        <div className="first-friends-inner">
+          <div className="first-friends-copy">
+            <p className="first-friends-eyebrow">{c.founder.kicker}</p>
+            <h2 className="first-friends-headline" id="first-friends-heading">
+              {c.founder.headline}
+            </h2>
+            <div className="first-friends-body">
+              <p>{c.founder.body}</p>
+              <p>{c.founder.body2}</p>
+              <p>{c.founder.body3}</p>
+            </div>
+            <p className="first-friends-closing">{c.founder.closing}</p>
+            <Link className="first-friends-link" href={c.founder.cta.href}>
+              {c.founder.cta.label}
+              <span aria-hidden> →</span>
+            </Link>
+          </div>
+
+          <figure className="first-friends-photo">
+            <figcaption className="first-friends-caption">Our First Friends</figcaption>
+            <div className="first-friends-photo-frame">
               <Image
-                src={VISION_PHOTO.luvNoticed}
-                alt="Luv in Hello to Cheers — notices, remembers, and learning for your venue"
-                width={1024}
-                height={873}
-                className={`h-auto w-full ${EDITORIAL_IMAGE_UI}`}
-                sizes="(max-width:768px) 100vw, 505px"
-                priority
+                src={a.ourFirstFriendsEditorial}
+                alt="Sunlit flat lay of venue photographs, handwritten thank-you notes, a sage notebook, and soft florals"
+                fill
+                sizes="(max-width: 640px) 100vw, (max-width: 900px) 100vw, 690px"
+                className="first-friends-photo-img"
               />
             </div>
-          </div>
+          </figure>
         </div>
       </section>
 
-      {/* ── Final CTA ── */}
-      <section className="border-t border-[var(--taupe-light)] bg-[var(--header-linen)] px-6 py-28 md:py-36">
-        <div className="mx-auto max-w-2xl text-center">
-          <h2 className="font-heading text-[2.52rem] text-[var(--forest-sage)] md:text-[3.36rem]">
-            {VISION.cta.headline}
-          </h2>
-          <p className="mt-5 text-[var(--forest-sage)]/70">{VISION.cta.body}</p>
-          <div className="mt-8 flex justify-center">
-            <ClosingCta />
-          </div>
-        </div>
-      </section>
+      {/* 9. Signature Closing CTA */}
+      <SignatureClosingCta
+        id="get-started"
+        headingId="invitation-heading"
+        headline={c.close.headline}
+        body={c.close.lines}
+        bodyVariant="lines"
+        surface="botanical"
+      />
     </div>
   );
 }

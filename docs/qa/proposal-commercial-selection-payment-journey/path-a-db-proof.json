@@ -1,0 +1,47 @@
+{
+  "ok": true,
+  "path": "A",
+  "venue_id": "5c84e74e-355d-4ce1-9e6b-913a9267f543",
+  "lead_id": "48bc9d9e-ef5e-48d4-b642-a1086547e22a",
+  "proposal_id": "17907e4c-8c53-4a56-a743-36ae75551a84",
+  "selection_id": "a87d6a66-798f-4f2b-a879-933bda2eb234",
+  "offer_url": "https://app.sandbox.hellotocheers.com/offer/1c0eb3be967bf5a9cb12bcd8e70a6ab3da6a081c7d2bc3fb",
+  "accept_token": "1c0eb3be967bf5a9cb12bcd8e70a6ab3da6a081c7d2bc3fb",
+  "options_offered": [
+    {
+      "id": "7cd4db36-8ce2-4520-942b-e1ea4797369d",
+      "role": "primary",
+      "price": 2200,
+      "name": "Essential Wedding"
+    },
+    {
+      "id": "f109ae2e-37b7-47a2-ad6f-2cdf8444b198",
+      "role": "primary",
+      "price": 3200,
+      "name": "Signature Wedding"
+    },
+    {
+      "id": "98ad3f74-5c96-40ca-b56d-1227d84b3b66",
+      "role": "addon",
+      "price": 4500,
+      "name": "Full-Service Wedding"
+    }
+  ],
+  "choices": [
+    {
+      "optionId": "7cd4db36-8ce2-4520-942b-e1ea4797369d",
+      "quantity": 1
+    },
+    {
+      "optionId": "98ad3f74-5c96-40ca-b56d-1227d84b3b66",
+      "quantity": 1
+    }
+  ],
+  "expected_total": 6700,
+  "l2_total": 6700,
+  "selected_at": "2026-09-23T16:52:29.200043+00:00",
+  "approved_at": "2026-09-23T16:52:29.409573+00:00",
+  "catalog_bump_did_not_mutate_l1": true,
+  "does_not_book": true,
+  "note": "DB/RPC Path A proof. Browser/Stripe/mailbox still required for GREEN."
+}

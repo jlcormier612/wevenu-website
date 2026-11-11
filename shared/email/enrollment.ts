@@ -29,6 +29,8 @@ export type EnrollmentEmailContext = {
   /** e.g. intake URL for White Glove post-purchase */
   intakeUrl?: string | null;
   activateUrl?: string | null;
+  /** Checkout session used as the Resend idempotency key. */
+  stripeCheckoutSessionId?: string | null;
 };
 
 function baseVars(ctx: EnrollmentEmailContext): EmailTemplateVars {
@@ -41,6 +43,7 @@ function baseVars(ctx: EnrollmentEmailContext): EmailTemplateVars {
     implementationTimeline: ctx.implementationTimeline ?? null,
     activateUrl: ctx.activateUrl ?? null,
     intakeUrl: ctx.intakeUrl ?? null,
+    // Required for Welcome Back × White Glove copy branching in templates.
     onboardingType: ctx.onboardingType,
     whiteGlove: ctx.onboardingType === "white_glove" ? "true" : "false",
   };
@@ -58,6 +61,9 @@ export async function sendEnrollmentProductEmails(
   const vars = baseVars(ctx);
   const results: RelationshipEmailResult[] = [];
   const isWhiteGlove = ctx.onboardingType === "white_glove";
+  const sessionKey = ctx.stripeCheckoutSessionId?.trim() || "";
+  const idempotencyFor = (templateId: string) =>
+    sessionKey ? `htc-welcome:${sessionKey}:${templateId}` : undefined;
 
   if (isWhiteGlove) {
     results.push(
@@ -67,6 +73,7 @@ export async function sendEnrollmentProductEmails(
         templateId: "white_glove_welcome",
         vars,
         meta: { trigger: "checkout.session.completed", white_glove: true },
+        idempotencyKey: idempotencyFor("white_glove_welcome"),
       }),
     );
 
@@ -82,6 +89,7 @@ export async function sendEnrollmentProductEmails(
             welcome_back: true,
             white_glove: true,
           },
+          idempotencyKey: idempotencyFor("welcome_back"),
         }),
       );
     }
@@ -92,13 +100,15 @@ export async function sendEnrollmentProductEmails(
   }
 
   // Launch Yourself / self-guided
+  const welcomeTemplate = ctx.foundingMember ? "founder_welcome" : "welcome";
   results.push(
     await sendRelationshipEmail({
       relationshipId: ctx.relationshipId,
       to,
-      templateId: ctx.foundingMember ? "founder_welcome" : "welcome",
+      templateId: welcomeTemplate,
       vars,
       meta: { trigger: "checkout.session.completed" },
+      idempotencyKey: idempotencyFor(welcomeTemplate),
     }),
   );
 
@@ -110,6 +120,7 @@ export async function sendEnrollmentProductEmails(
         templateId: "welcome_back",
         vars,
         meta: { trigger: "checkout.session.completed", welcome_back: true },
+        idempotencyKey: idempotencyFor("welcome_back"),
       }),
     );
   }

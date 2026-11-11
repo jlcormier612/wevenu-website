@@ -16,6 +16,8 @@ const TABS = [
   { href: "/settings/availability", label: "Availability & Capacity" },
   { href: "/settings/communications", label: "Communications & Automation" },
   { href: "/settings/integrations", label: "Financials & Integrations" },
+  { href: "/settings/billing", label: "Subscription & Billing" },
+  { href: "/settings/referrals", label: "Refer a Venue" },
   { href: "/settings/team", label: "Team & Data" },
 ] as const;
 

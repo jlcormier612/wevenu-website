@@ -4,84 +4,77 @@
  * lib/notifications/engine.ts), extended with two new source columns
  * (payment_line_item_id, contract_id) rather than a second reminder system.
  *
- * Cadence is venue-configurable via venue_reminder_cadence (a small set of
- * named presets — see the migration for why this isn't a raw interval
- * input). "Before due" reminders are a fixed batch created once, when the
- * obligation is created/sent, exactly like event_tasks.reminder_before_days
- * already works. "After due" reminders are different: only the first
- * occurrence is created here (by the overdue/attention detector in
- * engine.ts), and the engine itself schedules each next occurrence at send
- * time via after_due_recur_interval_days — see that file's
- * processReminders() for the recurring half of this.
+ * Pure cadence types/helpers live in reminder-cadence.ts so Client Components
+ * can import them without pulling next/headers via the Supabase server client.
  */
 import { createClient } from "@/integrations/supabase/server";
+import { scheduledReminderAt } from "@/lib/notifications/schedule-times";
+import {
+  CADENCE_DEFAULTS,
+  coerceOffsetArray,
+  normalizeBeforeDueOffsets,
+  type ReminderCadence,
+} from "@/lib/notifications/reminder-cadence";
+import { getVenueTimezone } from "@/lib/venue/timezone";
+
+export {
+  BEFORE_DUE_OFFSET_OPTIONS,
+  beforeDueOffsets,
+  cadenceIntervalDays,
+  CADENCE_DEFAULTS,
+  normalizeBeforeDueOffsets,
+  presetToBeforeDueOffsets,
+  type AfterDueCadenceLabel,
+  type BeforeDueCadenceLabel,
+  type BeforeDueOffsetDays,
+  type CadenceLabel,
+  type ReminderCadence,
+} from "@/lib/notifications/reminder-cadence";
 
 type DbClient = Awaited<ReturnType<typeof createClient>>;
-
-export type AfterDueCadenceLabel = "weekly" | "every_3_days" | "daily" | "none";
-
-/** Before-due presets — fixed offsets relative to the obligation due date. */
-export type BeforeDueCadenceLabel =
-  | "weekly"          // 21, 14, 7 days before
-  | "once_week"       // 7 days before
-  | "once_two_weeks"  // 14 days before
-  | "on_due"          // morning of the due date
-  | "none";
-
-/** @deprecated Prefer AfterDueCadenceLabel / BeforeDueCadenceLabel. Kept for call sites. */
-export type CadenceLabel = AfterDueCadenceLabel;
-
-export type ReminderCadence = {
-  paymentBeforeDueCadence: BeforeDueCadenceLabel;
-  paymentAfterDueCadence: AfterDueCadenceLabel;
-  contractBeforeDueCadence: BeforeDueCadenceLabel;
-  taskAfterDueCadence: AfterDueCadenceLabel;
-};
-
-const CADENCE_DEFAULTS: ReminderCadence = {
-  paymentBeforeDueCadence: "weekly",
-  paymentAfterDueCadence: "daily",
-  contractBeforeDueCadence: "weekly",
-  taskAfterDueCadence: "every_3_days",
-};
-
-/** Interval in days for a recurring ("after due") cadence label. null = don't recur. */
-export function cadenceIntervalDays(label: AfterDueCadenceLabel): number | null {
-  switch (label) {
-    case "daily": return 1;
-    case "every_3_days": return 3;
-    case "weekly": return 7;
-    case "none": return null;
-  }
-}
-
-/**
- * Fixed offsets (days before due date) for a "before due" batch.
- * Empty = don't schedule any. Not relative to booking — use payment
- * schedule timing (at_booking / before_event) for when the due date itself falls.
- */
-export function beforeDueOffsets(label: BeforeDueCadenceLabel): number[] {
-  switch (label) {
-    case "weekly": return [21, 14, 7];
-    case "once_two_weeks": return [14];
-    case "once_week": return [7];
-    case "on_due": return [0];
-    case "none": return [];
-  }
-}
 
 export async function getReminderCadence(): Promise<ReminderCadence> {
   const supabase = await createClient();
   const { data } = await supabase.rpc("get_reminder_cadence");
   const result = data as Partial<ReminderCadence> & { error?: string } | null;
-  if (!result || result.error) return CADENCE_DEFAULTS;
-  return { ...CADENCE_DEFAULTS, ...result };
+  if (!result || result.error) return { ...CADENCE_DEFAULTS };
+
+  const paymentOffsets = coerceOffsetArray(result.paymentBeforeDueOffsets);
+  const contractOffsets = coerceOffsetArray(result.contractBeforeDueOffsets);
+
+  return {
+    paymentBeforeDueOffsets: paymentOffsets ?? CADENCE_DEFAULTS.paymentBeforeDueOffsets,
+    paymentAfterDueCadence: result.paymentAfterDueCadence ?? CADENCE_DEFAULTS.paymentAfterDueCadence,
+    contractBeforeDueOffsets: contractOffsets ?? CADENCE_DEFAULTS.contractBeforeDueOffsets,
+    taskAfterDueCadence: result.taskAfterDueCadence ?? CADENCE_DEFAULTS.taskAfterDueCadence,
+  };
 }
 
-function offsetDatetime(datetimeStr: string, days: number): string {
-  const d = new Date(datetimeStr);
-  d.setDate(d.getDate() + days);
-  return d.toISOString();
+function buildUpcomingReminderRows(opts: {
+  venueId: string;
+  dueDate: string;
+  offsets: number[];
+  timezone: string | null;
+  paymentLineItemId?: string;
+  contractId?: string;
+}): Record<string, unknown>[] {
+  const normalized = normalizeBeforeDueOffsets(opts.offsets);
+  if (normalized.length === 0) return [];
+
+  const now = new Date();
+  return normalized
+    .map((days) => {
+      const row: Record<string, unknown> = {
+        venue_id: opts.venueId,
+        reminder_type: "upcoming",
+        notify_role: "couple",
+        scheduled_for: scheduledReminderAt(opts.dueDate, days, opts.timezone),
+      };
+      if (opts.paymentLineItemId) row.payment_line_item_id = opts.paymentLineItemId;
+      if (opts.contractId) row.contract_id = opts.contractId;
+      return row;
+    })
+    .filter((r) => new Date(r.scheduled_for as string) > now);
 }
 
 /**
@@ -89,31 +82,45 @@ function offsetDatetime(datetimeStr: string, days: number): string {
  * when the line item's due date is known. Never creates the after-due
  * (overdue) reminder; that's created by the overdue-detection sweep in
  * engine.ts, the same moment the line item's status actually flips.
+ *
+ * Cancels any pending upcoming reminders for this line item first so
+ * re-scheduling (cadence change, due-date edit) cannot duplicate.
  */
 export async function createRemindersForPaymentLineItem(
   client: DbClient,
   venueId: string,
   lineItemId: string,
   dueDate: string, // "YYYY-MM-DD"
-  cadence: Pick<ReminderCadence, "paymentBeforeDueCadence">,
+  cadence: Pick<ReminderCadence, "paymentBeforeDueOffsets">,
 ): Promise<void> {
+  await cancelUpcomingRemindersForPaymentLineItem(client, venueId, lineItemId);
   if (!dueDate) return;
-  const offsets = beforeDueOffsets(cadence.paymentBeforeDueCadence);
-  if (offsets.length === 0) return;
 
-  const dueMidnight = dueDate + "T08:00:00Z";
-  const reminders = offsets
-    .map((days) => ({
-      venue_id: venueId,
-      payment_line_item_id: lineItemId,
-      reminder_type: "upcoming",
-      notify_role: "couple",
-      scheduled_for: offsetDatetime(dueMidnight, -days),
-    }))
-    .filter((r) => new Date(r.scheduled_for) > new Date());
-
+  const timezone = await getVenueTimezone(client, venueId);
+  const reminders = buildUpcomingReminderRows({
+    venueId,
+    dueDate,
+    offsets: cadence.paymentBeforeDueOffsets,
+    timezone,
+    paymentLineItemId: lineItemId,
+  });
   if (!reminders.length) return;
   await client.from("task_reminders").insert(reminders);
+}
+
+/** Cancel pending upcoming (before-due) reminders for one payment line item. */
+export async function cancelUpcomingRemindersForPaymentLineItem(
+  client: DbClient,
+  venueId: string,
+  lineItemId: string,
+): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await (client.from("task_reminders") as any)
+    .update({ status: "cancelled" })
+    .eq("payment_line_item_id", lineItemId)
+    .eq("venue_id", venueId)
+    .eq("reminder_type", "upcoming")
+    .eq("status", "pending");
 }
 
 /** Cancel all pending reminders for a payment line item — called once it's paid or cancelled. */
@@ -136,29 +143,99 @@ export async function cancelRemindersForPaymentLineItem(
  * after-due phase the way payments do: an expired, unsigned contract needs
  * the venue's attention (see the detector in engine.ts), not more client
  * emails past a date the couple can no longer act on.
+ *
+ * Cancels any pending upcoming reminders for this contract first so
+ * re-scheduling cannot duplicate.
  */
 export async function createRemindersForContract(
   client: DbClient,
   venueId: string,
   contractId: string,
   expiresAt: string | null, // "YYYY-MM-DD"
-  cadence: Pick<ReminderCadence, "contractBeforeDueCadence">,
+  cadence: Pick<ReminderCadence, "contractBeforeDueOffsets">,
 ): Promise<void> {
+  await cancelUpcomingRemindersForContract(client, venueId, contractId);
   if (!expiresAt) return;
-  const offsets = beforeDueOffsets(cadence.contractBeforeDueCadence);
-  if (offsets.length === 0) return;
 
-  const expiresMidnight = expiresAt + "T08:00:00Z";
-  const reminders = offsets
-    .map((days) => ({
-      venue_id: venueId,
-      contract_id: contractId,
-      reminder_type: "upcoming",
-      notify_role: "couple",
-      scheduled_for: offsetDatetime(expiresMidnight, -days),
-    }))
-    .filter((r) => new Date(r.scheduled_for) > new Date());
-
+  const timezone = await getVenueTimezone(client, venueId);
+  const reminders = buildUpcomingReminderRows({
+    venueId,
+    dueDate: expiresAt,
+    offsets: cadence.contractBeforeDueOffsets,
+    timezone,
+    contractId,
+  });
   if (!reminders.length) return;
   await client.from("task_reminders").insert(reminders);
+}
+
+/** Cancel pending upcoming signature reminders for one contract. */
+export async function cancelUpcomingRemindersForContract(
+  client: DbClient,
+  venueId: string,
+  contractId: string,
+): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await (client.from("task_reminders") as any)
+    .update({ status: "cancelled" })
+    .eq("contract_id", contractId)
+    .eq("venue_id", venueId)
+    .eq("reminder_type", "upcoming")
+    .eq("status", "pending");
+}
+
+/** Cancel all pending reminders for a contract — called once signed/cancelled. */
+export async function cancelRemindersForContract(
+  client: DbClient,
+  venueId: string,
+  contractId: string,
+): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await (client.from("task_reminders") as any)
+    .update({ status: "cancelled" })
+    .eq("contract_id", contractId)
+    .eq("venue_id", venueId)
+    .eq("status", "pending");
+}
+
+/**
+ * After a venue changes before-due selections, cancel pending upcoming
+ * reminders and recreate them from the new offsets for still-open
+ * obligations. Already-sent rows are left untouched. Paid/completed
+ * payments and signed/cancelled/expired contracts are not rescheduled.
+ */
+export async function reconcileVenueBeforeDueReminders(
+  client: DbClient,
+  venueId: string,
+  cadence: ReminderCadence,
+): Promise<void> {
+  // Payments — unpaid line items with a due date
+  const { data: paymentItems } = await client
+    .from("payment_line_items")
+    .select("id, due_date, status")
+    .eq("venue_id", venueId)
+    .eq("status", "pending")
+    .not("due_date", "is", null);
+
+  for (const item of (paymentItems ?? []) as { id: string; due_date: string | null; status: string }[]) {
+    if (!item.due_date) continue;
+    await createRemindersForPaymentLineItem(client, venueId, item.id, item.due_date, {
+      paymentBeforeDueOffsets: cadence.paymentBeforeDueOffsets,
+    });
+  }
+
+  // Contracts — still awaiting signature
+  const { data: contracts } = await client
+    .from("contracts")
+    .select("id, expires_at, status")
+    .eq("venue_id", venueId)
+    .eq("status", "sent")
+    .not("expires_at", "is", null);
+
+  for (const contract of (contracts ?? []) as { id: string; expires_at: string | null; status: string }[]) {
+    if (!contract.expires_at) continue;
+    await createRemindersForContract(client, venueId, contract.id, contract.expires_at, {
+      contractBeforeDueOffsets: cadence.contractBeforeDueOffsets,
+    });
+  }
 }

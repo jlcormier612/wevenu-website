@@ -145,9 +145,10 @@ describe("Communication setup guide", () => {
     assert.ok(guide);
     const text = JSON.stringify(guide);
     assert.match(text, /Email/);
-    assert.match(text, /SMS/);
+    assert.match(text, /Text/);
     assert.match(text, /Portal message/);
     assert.match(text, /Internal note/);
+    assert.doesNotMatch(text, /\bSMS\b/);
   });
 
   it("does not document Voicemail, Push, or Phone call as send actions", () => {

@@ -1,0 +1,6 @@
+Name,Email,Phone,Address,Notes,Date Created
+Ava Honeybook,ava.hb.obimp@hellotocheers-test.invalid,555-0101,"12 Barn Lane, Town NY",HB synthetic couple A,2024-01-15
+Blair Honeybook & Casey Honeybook,blair.hb.obimp@hellotocheers-test.invalid,555-0102,"34 Bridge Rd",HB three-word name needs review,2024-02-20
+Dana Honeybook,,555-0103,,Missing email is ok for phone-only,2024-03-01
+,orphan.hb.obimp@hellotocheers-test.invalid,555-0104,,Missing name should fail validation,2024-03-02
+Ellie Honeybook,ellie.hb.obimp@hellotocheers-test.invalid,not-a-phone,"",Valid name email odd phone,2024-04-01

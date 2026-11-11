@@ -21,6 +21,8 @@ describe("vendor invite email", () => {
     assert.match(text, /Claim My Vendor Profile/);
     assert.doesNotMatch(html, /has set up a vendor profile for/);
     assert.doesNotMatch(text, /has set up a vendor profile for/);
+    assert.match(html, /alt="Hello to Cheers"/);
+    assert.match(html, /hello-to-cheers-logo-primary-transparent\.png/);
   });
 
   it("explains what claiming the profile unlocks", () => {

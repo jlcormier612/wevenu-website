@@ -9,6 +9,7 @@ import { describe, it } from "node:test";
 
 import {
   ACTIVATE_LEGAL_ERROR,
+  ACTIVATE_OWNERSHIP_REQUIRED_ERROR,
   ACTIVATE_PASSWORD_LENGTH_ERROR,
   ACTIVATE_PASSWORD_MIN_LENGTH,
   ACTIVATE_PASSWORD_MISMATCH_ERROR,
@@ -46,6 +47,7 @@ describe("canSubmitActivateAccount / validateActivateAccountFields", () => {
       password: VALID_PASSWORD,
       confirm: VALID_PASSWORD,
       legalAccepted: true,
+      ownershipChoice: "owner" as const,
     };
     assert.equal(validateActivateAccountFields(input).ok, true);
     assert.equal(canSubmitActivateAccount(input), true);
@@ -57,6 +59,7 @@ describe("canSubmitActivateAccount / validateActivateAccountFields", () => {
       password: VALID_PASSWORD,
       confirm: "abcdefghx",
       legalAccepted: true,
+      ownershipChoice: "owner" as const,
     };
     const result = validateActivateAccountFields(input);
     assert.equal(result.ok, false);
@@ -71,6 +74,7 @@ describe("canSubmitActivateAccount / validateActivateAccountFields", () => {
       password: "short",
       confirm: "short",
       legalAccepted: true,
+      ownershipChoice: "owner" as const,
     };
     const result = validateActivateAccountFields(input);
     assert.equal(result.ok, false);
@@ -85,6 +89,7 @@ describe("canSubmitActivateAccount / validateActivateAccountFields", () => {
       password: VALID_PASSWORD,
       confirm: VALID_PASSWORD,
       legalAccepted: false,
+      ownershipChoice: "owner" as const,
     };
     const result = validateActivateAccountFields(input);
     assert.equal(result.ok, false);
@@ -100,10 +105,94 @@ describe("canSubmitActivateAccount / validateActivateAccountFields", () => {
         password: VALID_PASSWORD,
         confirm: VALID_PASSWORD,
         legalAccepted: true,
+        ownershipChoice: "owner",
         pending: true,
       }),
       false,
     );
+  });
+
+  it("on-behalf can continue without an owner yet; incomplete pair is rejected", () => {
+    const empty = validateActivateAccountFields({
+      password: VALID_PASSWORD,
+      confirm: VALID_PASSWORD,
+      legalAccepted: true,
+      ownershipChoice: "on_behalf",
+    });
+    assert.equal(empty.ok, true);
+    const incomplete = validateActivateAccountFields({
+      password: VALID_PASSWORD,
+      confirm: VALID_PASSWORD,
+      legalAccepted: true,
+      ownershipChoice: "on_behalf",
+      invitedOwnerName: "Pat Owner",
+    });
+    assert.equal(incomplete.ok, false);
+    const ok = validateActivateAccountFields({
+      password: VALID_PASSWORD,
+      confirm: VALID_PASSWORD,
+      legalAccepted: true,
+      ownershipChoice: "on_behalf",
+      invitedOwnerName: "Pat Owner",
+      invitedOwnerEmail: "pat@example.com",
+    });
+    assert.equal(ok.ok, true);
+  });
+
+  it("existing HTC login skips password creation without changing validation for new users", () => {
+    const existing = validateActivateAccountFields({
+      password: "",
+      confirm: "",
+      legalAccepted: true,
+      ownershipChoice: "owner",
+      alreadyHasLogin: true,
+    });
+    assert.equal(existing.ok, true);
+    assert.equal(
+      canSubmitActivateAccount({
+        password: "",
+        confirm: "",
+        legalAccepted: true,
+        ownershipChoice: "owner",
+        alreadyHasLogin: true,
+      }),
+      true,
+    );
+    const gated = gateActivateAccountSubmission(
+      formDataFrom({
+        token: "tok_existing",
+        email: "jlcormier612@gmail.com",
+        legalAccepted: "true",
+        ownershipChoice: "owner",
+        alreadyHasLogin: "true",
+      }),
+    );
+    assert.equal(gated.ok, true);
+    if (gated.ok) {
+      assert.equal(gated.password, "");
+    }
+  });
+
+  it("missing ownership choice is rejected — does not default to Owner", () => {
+    const missing = validateActivateAccountFields({
+      password: VALID_PASSWORD,
+      confirm: VALID_PASSWORD,
+      legalAccepted: true,
+      ownershipChoice: "",
+    });
+    assert.equal(missing.ok, false);
+    if (!missing.ok) {
+      assert.equal(missing.error, ACTIVATE_OWNERSHIP_REQUIRED_ERROR);
+    }
+    const gated = gateActivateAccountSubmission(
+      formDataFrom({
+        token: "tok_1",
+        password: VALID_PASSWORD,
+        confirm: VALID_PASSWORD,
+        legalAccepted: "true",
+      }),
+    );
+    assert.equal(gated.ok, false);
   });
 });
 
@@ -116,12 +205,14 @@ describe("parseActivateAccountFormData", () => {
         password: VALID_PASSWORD,
         confirm: VALID_PASSWORD,
         legalAccepted: "true",
+        ownershipChoice: "owner",
       }),
     );
     assert.equal(parsed.token, "tok_1");
     assert.equal(parsed.password, VALID_PASSWORD);
     assert.equal(parsed.confirm, VALID_PASSWORD);
     assert.equal(parsed.legalAccepted, true);
+    assert.equal(parsed.ownershipChoice, "owner");
     assert.equal(canSubmitActivateAccount(parsed), true);
   });
 
@@ -173,6 +264,9 @@ describe("Let's go submit path", () => {
     assert.match(formSrc, /value="true"/);
     assert.doesNotMatch(formSrc, /type="hidden"[^>]*name="legalAccepted"/);
     assert.match(formSrc, /type="checkbox"/);
+    assert.match(formSrc, /name="ownershipChoice"/);
+    assert.match(formSrc, /Yes, I&apos;m an owner/);
+    assert.match(formSrc, /No, I&apos;m setting this up for someone else/);
   });
 
   it("successful submit is wired to activateAccountAction → activateVenueAccount", () => {
@@ -180,10 +274,8 @@ describe("Let's go submit path", () => {
     assert.match(formSrc, /useActionState\(activateAccountAction/);
     assert.match(formSrc, /<form[\s\S]*action=\{action\}/);
     assert.match(actionSrc, /gateActivateAccountSubmission\(formData\)/);
-    assert.match(
-      actionSrc,
-      /const bridged = await activateVenueAccount\(\{ token, password \}\)/,
-    );
+    assert.match(actionSrc, /activateVenueAccount\(\{/);
+    assert.match(actionSrc, /purchaserIsOwner/);
   });
 
   it("successful gated payload is what activateVenueAccount would receive", () => {
@@ -194,12 +286,35 @@ describe("Let's go submit path", () => {
         password: VALID_PASSWORD,
         confirm: VALID_PASSWORD,
         legalAccepted: "true",
+        ownershipChoice: "owner",
       }),
     );
     assert.equal(gated.ok, true);
     if (gated.ok) {
       assert.equal(gated.token, "tok_live");
       assert.equal(gated.password, VALID_PASSWORD);
+      assert.equal(gated.purchaserIsOwner, true);
+    }
+  });
+
+  it("on-behalf gated payload includes invited Owner", () => {
+    const gated = gateActivateAccountSubmission(
+      formDataFrom({
+        token: "tok_live",
+        email: "gm@example.com",
+        password: VALID_PASSWORD,
+        confirm: VALID_PASSWORD,
+        legalAccepted: "true",
+        ownershipChoice: "on_behalf",
+        invitedOwnerName: "Venue Owner",
+        invitedOwnerEmail: "owner@example.com",
+      }),
+    );
+    assert.equal(gated.ok, true);
+    if (gated.ok) {
+      assert.equal(gated.purchaserIsOwner, false);
+      assert.equal(gated.invitedOwnerName, "Venue Owner");
+      assert.equal(gated.invitedOwnerEmail, "owner@example.com");
     }
   });
 
@@ -221,6 +336,7 @@ describe("Let's go submit path", () => {
           password: VALID_PASSWORD,
           confirm: "otherpass",
           legalAccepted: "true",
+          ownershipChoice: "owner",
         }),
       ).ok,
       false,
@@ -232,6 +348,7 @@ describe("Let's go submit path", () => {
           password: "short",
           confirm: "short",
           legalAccepted: "true",
+          ownershipChoice: "owner",
         }),
       ).ok,
       false,
@@ -240,7 +357,52 @@ describe("Let's go submit path", () => {
 
   it("keeps server-side password and legal checks before the account bridge", () => {
     const validateIdx = actionSrc.indexOf("gateActivateAccountSubmission");
-    const bridgeIdx = actionSrc.indexOf("activateVenueAccount({ token, password })");
+    const bridgeIdx = actionSrc.indexOf("activateVenueAccount({");
     assert.ok(validateIdx > 0 && bridgeIdx > validateIdx);
+    assert.match(actionSrc, /legalAccepted:\s*true/);
+  });
+});
+
+describe("activation page customer branding", () => {
+  const pageSrc = readFileSync(
+    resolve("workspace/app/activate/[token]/page.tsx"),
+    "utf8",
+  );
+  const markSrc = readFileSync(
+    resolve("workspace/components/activate/activation-brand-mark.tsx"),
+    "utf8",
+  );
+
+  it("uses the canonical HTC logo and no standalone Hello to Cheers wordmark", () => {
+    assert.match(pageSrc, /ActivationBrandMark/);
+    assert.match(pageSrc, /Let&apos;s get you started/);
+    assert.match(pageSrc, /Your Hello to Cheers experience is waiting for you/);
+    assert.doesNotMatch(pageSrc, /ws-eyebrow">Hello to Cheers/);
+    assert.match(markSrc, /HTC_LOGO_PUBLIC_PATH/);
+    assert.match(markSrc, /HTC_LOGO_ALT/);
+    const logoSrc = readFileSync(resolve("shared/brand/logo.ts"), "utf8");
+    assert.match(logoSrc, /hello-to-cheers-logo-primary-transparent\.png/);
+    assert.doesNotMatch(markSrc, /ws-eyebrow/);
+  });
+
+  it("does not change activate form ownership or submit wiring", () => {
+    assert.match(formSrc, /name="ownershipChoice"/);
+    assert.match(formSrc, /Yes, I&apos;m an owner/);
+    assert.match(actionSrc, /activateVenueAccount\(\{/);
+  });
+
+  it("existing-login activation hides Create password and tells the truth", () => {
+    assert.match(formSrc, /alreadyHasLogin/);
+    assert.match(formSrc, /data-activate-existing-login/);
+    assert.match(formSrc, /You already have a Hello to Cheers account/);
+    assert.match(formSrc, /Your existing password will continue to work when you sign in/);
+    assert.match(formSrc, /name="alreadyHasLogin"/);
+    const pageSrc = readFileSync(
+      resolve("workspace/app/activate/[token]/page.tsx"),
+      "utf8",
+    );
+    assert.match(pageSrc, /lookup\.alreadyHasLogin/);
+    assert.match(pageSrc, /Create your password below/);
+    assert.match(pageSrc, /alreadyHasLogin=\{lookup\.alreadyHasLogin === true\}/);
   });
 });

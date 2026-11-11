@@ -2,6 +2,10 @@
  * Vendor invitation email template.
  */
 
+import { htcEmailCtaAnchorHtml } from "@/lib/email/htc-cta";
+import { htcEmailLogoHeaderHtml } from "@/shared/brand/logo";
+import { EMAIL_INK } from "@/lib/email/contrast-safe";
+
 export function buildVendorInviteHtml({
   vendorName,
   venueName,
@@ -20,7 +24,8 @@ export function buildVendorInviteHtml({
   <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto">
     <tr>
       <td style="background:#fff;border-radius:12px;padding:40px;border:1px solid #e5e7eb">
-        <p style="margin:0 0 8px;font-size:13px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:#6b7280">
+        ${htcEmailLogoHeaderHtml()}
+        <p style="margin:0 0 8px;font-size:13px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:${EMAIL_INK.muted}">
           Invitation from ${escapeHtml(venueName)}
         </p>
         <h1 style="margin:0 0 24px;font-size:24px;font-weight:700;color:#111827;line-height:1.3">
@@ -42,19 +47,16 @@ export function buildVendorInviteHtml({
         <p style="margin:0 0 24px;font-size:15px;color:#374151;line-height:1.6">
           It only takes a minute to get started.
         </p>
-        <a href="${acceptUrl}"
-          style="display:inline-block;background:#1a1a1a;color:#fff;font-size:15px;font-weight:600;padding:14px 28px;border-radius:8px;text-decoration:none">
-          Claim My Vendor Profile →
-        </a>
-        <p style="margin:32px 0 0;font-size:13px;color:#9ca3af;line-height:1.5">
+        ${htcEmailCtaAnchorHtml(escapeHtml(acceptUrl), "Claim My Vendor Profile →")}
+        <p style="margin:32px 0 0;font-size:13px;color:${EMAIL_INK.footer};line-height:1.5">
           This invitation expires in 7 days. If you weren't expecting this, you can safely ignore it.<br>
-          <a href="${acceptUrl}" style="color:#9ca3af;word-break:break-all">${acceptUrl}</a>
+          <a href="${acceptUrl}" style="color:${EMAIL_INK.footer};word-break:break-all">${acceptUrl}</a>
         </p>
       </td>
     </tr>
     <tr>
       <td style="padding-top:20px;text-align:center">
-        <p style="font-size:12px;color:#9ca3af;margin:0">Powered by Hello to Cheers</p>
+        <p style="font-size:12px;color:${EMAIL_INK.footer};margin:0">Powered by Hello to Cheers</p>
       </td>
     </tr>
   </table>

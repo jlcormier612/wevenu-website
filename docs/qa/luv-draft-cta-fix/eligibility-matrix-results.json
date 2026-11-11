@@ -1,0 +1,71 @@
+{
+  "at": "2026-10-12T07:02:21.158Z",
+  "pass": true,
+  "checks": [
+    {
+      "name": "deployed_sha_prefix",
+      "pass": true,
+      "detail": "sha=9e59f2784dd330c2da6464219b7c6da89847cad4"
+    },
+    {
+      "name": "eligible_shows_draft_cta",
+      "pass": true,
+      "detail": "cta=true"
+    },
+    {
+      "name": "eligible_draft_persisted",
+      "pass": true,
+      "detail": "n=1"
+    },
+    {
+      "name": "silence_no_false_outreach_copy",
+      "pass": true,
+      "detail": "falseOutreach=false silenceCopy=true"
+    },
+    {
+      "name": "silence_keeps_owner_draft_cta",
+      "pass": true,
+      "detail": "ctaCount=1 noticedLabels=0"
+    },
+    {
+      "name": "actionable_completed_tour_allows_draft",
+      "pass": true,
+      "detail": "cta=1"
+    },
+    {
+      "name": "ellie_no_false_outreach_copy",
+      "pass": true,
+      "detail": "clean"
+    },
+    {
+      "name": "ellie_noticed_luv_tab_consistent",
+      "pass": true,
+      "detail": "silenceCopy=true cta=1 urging=false noticed=0"
+    },
+    {
+      "name": "silence_noticed_no_follow_up_urging",
+      "pass": true,
+      "detail": "urging=false cta=1"
+    },
+    {
+      "name": "follow_up_sent_owner_draft_without_false_outreach",
+      "pass": true,
+      "detail": "cta=1 falseOutreach=false silenceCopy=true"
+    },
+    {
+      "name": "existing_draft_visible_and_cta_safe",
+      "pass": true,
+      "detail": "cta=true seesExisting=true"
+    },
+    {
+      "name": "lost_lead_no_false_outreach_copy",
+      "pass": true,
+      "detail": "falseOutreach=false"
+    },
+    {
+      "name": "concurrent_clicks_persist_draft",
+      "pass": true,
+      "detail": "n=1"
+    }
+  ]
+}

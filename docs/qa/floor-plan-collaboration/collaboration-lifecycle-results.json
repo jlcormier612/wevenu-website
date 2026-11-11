@@ -1,0 +1,84 @@
+{
+  "verdict": "GREEN",
+  "expectedSha": "5f4eb7ed81a78908ae529922298c22587498fa65",
+  "passed": 15,
+  "failed": 0,
+  "checks": [
+    {
+      "name": "serving_sha",
+      "pass": true,
+      "detail": "serving=5f4eb7ed81a78908ae529922298c22587498fa65 expected=5f4eb7ed81a78908ae529922298c22587498fa65"
+    },
+    {
+      "name": "selection_persists",
+      "pass": true,
+      "detail": "b42658e7-c5ab-4e98-a56d-0febf568e4bc"
+    },
+    {
+      "name": "working_copy_shared_for_layout_not_seating",
+      "pass": true,
+      "detail": "{\"id\":\"b42658e7-c5ab-4e98-a56d-0febf568e4bc\",\"shared_with_couple\":true,\"client_access\":\"hidden\",\"source_template_id\":\"026fb633-2dce-4c73-87c8-144bb29a0318\",\"finalized_at\":null,\"event_id\":\"2a3b38f8-5098-454e-a628-f2b58200912e\"}"
+    },
+    {
+      "name": "portal_shows_working_layout",
+      "pass": true,
+      "detail": "Your choice | view only | Your working layout | view only"
+    },
+    {
+      "name": "template_objects_unchanged",
+      "pass": true,
+      "detail": "before=17 after=17"
+    },
+    {
+      "name": "working_plan_has_table_objects",
+      "pass": true,
+      "detail": "[{\"id\":\"8507a2ed-a52c-483e-88ed-3caecc46e266\",\"capacity\":2,\"object_type\":\"table_rect\"},{\"id\":\"320c84ba-069f-47c7-aa73-3215fc5a98be\",\"capacity\":8,\"object_type\":\"table_round\"},{\"id\":\"f31028f0-488b-4571-8501-0c8219bd8ed7\",\"capacity\":8,\"object_type\":\"table_round\"}]"
+    },
+    {
+      "name": "venue_share_for_seating",
+      "pass": true,
+      "detail": "{\"client_access\":\"view\",\"shared_with_couple\":true}"
+    },
+    {
+      "name": "seating_assign_via_portal_rpc",
+      "pass": true,
+      "detail": "true"
+    },
+    {
+      "name": "seating_linked_to_working_plan_table",
+      "pass": true,
+      "detail": "[{\"id\":\"097bc5a5-9fd1-4705-b01d-7f88eb0f7fe8\",\"guest_id\":\"5ed7ac23-afff-4e2c-acc8-afcbce3364de\",\"table_object_id\":\"8507a2ed-a52c-483e-88ed-3caecc46e266\",\"floor_plan_id\":\"b42658e7-c5ab-4e98-a56d-0febf568e4bc\"}]"
+    },
+    {
+      "name": "reposition_table_keeps_guest_assignment",
+      "pass": true,
+      "detail": "{\"beforeObj\":{\"x\":360,\"y\":90},\"seatsAfterMove\":[{\"id\":\"097bc5a5-9fd1-4705-b01d-7f88eb0f7fe8\",\"table_object_id\":\"8507a2ed-a52c-483e-88ed-3caecc46e266\"}]}"
+    },
+    {
+      "name": "ready_checkpoint_persists",
+      "pass": true,
+      "detail": "{\"finalized_at\":\"2026-10-22T20:38:29.653+00:00\"}"
+    },
+    {
+      "name": "portal_api_reports_ready",
+      "pass": true,
+      "detail": "{\"floorPlans\":[{\"id\":\"b42658e7-c5ab-4e98-a56d-0febf568e4bc\",\"name\":\"Collab Layout\",\"isReady\":true,\"spaceId\":null,\"createdAt\":\"2026-10-22T20:38:27.70718+00:00\",\"isOperational\":true,\"isCoupleSelected\":true}],\"operationalFloorPlanId\":\"b42658e7-c5ab-4e98-a56d-0febf568e4bc\",\"coupleSelectedFloorPlanId\":\"b42658e7-c5ab-4e98-a56d-0febf568e4bc\"}"
+    },
+    {
+      "name": "browser_portal_list_reports_ready",
+      "pass": true,
+      "detail": "[{\"id\":\"b42658e7-c5ab-4e98-a56d-0febf568e4bc\",\"name\":\"Collab Layout\",\"isReady\":true,\"spaceId\":null,\"createdAt\":\"2026-10-22T20:38:27.70718+00:00\",\"isOperational\":true,\"isCoupleSelected\":true}]"
+    },
+    {
+      "name": "portal_shows_ready_after_refresh",
+      "pass": true,
+      "detail": "Your working layout | Ready for the event | Ready for the event"
+    },
+    {
+      "name": "anon_cannot_read_floor_plan_directly",
+      "pass": true,
+      "detail": "null"
+    }
+  ],
+  "at": "2026-10-22T20:38:35.040Z"
+}

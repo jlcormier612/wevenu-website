@@ -46,13 +46,14 @@ export function AutomationsHelp({ className }: { className?: string }) {
 
   return (
     <section
-      className={cn("rounded-lg border border-border bg-muted/30", className)}
+      className={cn("htc-automations-help overflow-hidden rounded-lg border", className)}
+      data-expanded={open ? "true" : "false"}
       aria-label="How automations work"
     >
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-start gap-3 px-4 py-3 text-left"
+        className="htc-automations-help-header flex w-full items-start gap-3 px-4 py-3 text-left"
         aria-expanded={open}
       >
         <HelpCircle className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
@@ -71,7 +72,7 @@ export function AutomationsHelp({ className }: { className?: string }) {
       </button>
 
       {open && (
-        <div className="space-y-0 border-t border-border px-4 pb-1 pt-1">
+        <div className="htc-automations-help-body space-y-0 border-t border-border px-4 pb-1 pt-1">
           <HelpSection title="What an automation is" defaultOpen>
             <p>
               An automation is a simple follow-up plan: when something happens (or when you add someone),
@@ -104,7 +105,7 @@ export function AutomationsHelp({ className }: { className?: string }) {
             <p>
               Each person moves through the messages on their own timeline. Timing is relative —
               for example, “send immediately, then again 2 days later.” Editing an automation
-              affects people who join after you save; people already in it keep the plan they started with.
+              affects people who enter this automation after you save; people already in it keep the plan they started with.
             </p>
           </HelpSection>
 
@@ -122,7 +123,7 @@ export function AutomationsHelp({ className }: { className?: string }) {
           <HelpSection title="Pause vs stop">
             <p>
               <span className="font-medium text-heading">Pause the automation</span> — new people
-              won&apos;t join, and people already in it won&apos;t receive scheduled messages until you resume.
+              won&apos;t enter this automation, and people already in it won&apos;t receive scheduled messages until you resume.
             </p>
             <p>
               <span className="font-medium text-heading">Pause one person</span> — only that person

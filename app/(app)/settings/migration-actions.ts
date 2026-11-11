@@ -18,6 +18,7 @@ import {
 } from "@/lib/migration/service";
 import * as repo from "@/lib/migration/repository";
 import { createClient } from "@/integrations/supabase/server";
+import { venueMigrationArtifactPath } from "@/lib/documents/storage-path";
 import { getCurrentVenue } from "@/lib/venue/service";
 import { getSourceProfiles } from "@/lib/migration/source-profiles";
 import { getVendors } from "@/lib/vendors/repository";
@@ -126,6 +127,32 @@ export async function commitMigrationSessionAction(sessionId: string) {
   return result;
 }
 
+export async function previewImportSessionCleanupAction(sessionId: string) {
+  const { previewImportSessionCleanup } = await import("@/lib/migration/session-cleanup");
+  return previewImportSessionCleanup(sessionId);
+}
+
+export async function executeImportSessionCleanupAction(
+  sessionId: string,
+  overrideRecordIds: string[] = [],
+) {
+  const { executeImportSessionCleanup } = await import("@/lib/migration/session-cleanup");
+  const result = await executeImportSessionCleanup(sessionId, {
+    confirmed: true,
+    overrideRecordIds,
+  });
+  if (result.ok) {
+    revalidatePath("/settings/migration");
+    revalidatePath("/clients");
+    revalidatePath("/leads");
+    revalidatePath("/vendors");
+    revalidatePath("/calendar");
+    revalidatePath("/documents");
+    revalidatePath("/library/floor-plan-templates");
+  }
+  return result;
+}
+
 
 export async function getFloorPlanImportCatalogAction() {
   return getFloorPlanImportCatalog();
@@ -158,6 +185,23 @@ export async function attachMigrationSourceFileAction(
   const result = await attachSourceFileToOwnSession(sessionId, file);
   if (result.ok) revalidatePath("/settings/migration");
   return result;
+}
+
+// The two migration uploaders run in the browser, where the venue id is not
+// trustworthy, and the documents bucket refuses any object whose first path
+// segment isn't the caller's venue (see lib/documents/storage-path.ts).
+// Resolving the path here reads the venue from the session, and confirms the
+// session belongs to that venue before handing back a path scoped to it.
+export async function migrationArtifactUploadPathAction(
+  sessionId: string,
+  fileName: string,
+): Promise<{ ok: true; storagePath: string } | { ok: false; message: string }> {
+  const venue = await getCurrentVenue();
+  if (!venue) return { ok: false, message: "No venue found." };
+  const supabase = await createClient();
+  const session = await repo.getSession(supabase, venue.id, sessionId);
+  if (!session) return { ok: false, message: "Import session not found." };
+  return { ok: true, storagePath: venueMigrationArtifactPath(venue.id, sessionId, fileName) };
 }
 
 export async function getMigrationSessionSourceFilesAction(sessionId: string) {

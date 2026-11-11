@@ -3,9 +3,11 @@ import { notFound, redirect } from "next/navigation";
 
 import { InquiryForm } from "@/components/form/inquiry-form";
 import { getPublicInquiryFormConfig } from "@/lib/inquiry-form/service";
+import { createAdminClient } from "@/integrations/supabase/admin";
 import { createClient } from "@/integrations/supabase/server";
+import { resolveExistingLeadTourContext } from "@/lib/tours/existing-lead-tour-context";
 
-type Props = { params: Promise<{ key: string }> };
+type Props = { params: Promise<{ key: string }>; searchParams: Promise<{ o?: string; qr?: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { key } = await params;
@@ -19,10 +21,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function TourBookingPage({ params }: Props) {
+export default async function TourBookingPage({ params, searchParams }: Props) {
   const { key } = await params;
-  const supabase = await createClient();
-  const { data: venueRow } = await supabase
+  const { o: tourOriginToken } = await searchParams;
+  // Public visitors have no venue session; cookie-bound createClient() cannot
+  // read venues under RLS. Resolve embed_key with the admin client (same trust
+  // boundary as getPublicInquiryFormConfig), then load the public form config.
+  const admin = createAdminClient();
+  const { data: venueRow } = await admin
     .from("venues")
     .select("embed_key")
     .eq("tour_embed_key", key)
@@ -38,11 +44,22 @@ export default async function TourBookingPage({ params }: Props) {
     redirect(`/form/${venueRow.embed_key}`);
   }
 
+  const leadCtxResult = await resolveExistingLeadTourContext({
+    tourEmbedKey: key,
+    originToken: tourOriginToken,
+  });
+  // Stale/invalid origin tokens: still show the generic scheduler (no lead PII).
+  // Booking with that token is rejected server-side at submit.
+  const existingLeadTour =
+    leadCtxResult?.ok === true ? leadCtxResult.context : null;
+
   return (
     <InquiryForm
       embedKey={venueRow.embed_key}
       config={config}
       initialMode="schedule_tour"
+      tourOriginToken={tourOriginToken ?? null}
+      existingLeadTour={existingLeadTour}
     />
   );
 }

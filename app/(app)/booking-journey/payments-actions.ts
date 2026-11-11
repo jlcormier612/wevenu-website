@@ -2,10 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 
-import { sendInvoiceEmailAction } from "@/app/(app)/invoices/actions";
 import { ensureCommercialCustomerForSelection } from "@/lib/booking-journey/ensure-commercial-customer";
 import { setupPaymentsFromSelection } from "@/lib/booking-journey/setup-payments";
 import type { SetupPaymentsResult } from "@/lib/booking-journey/setup-payments";
+import type { CustomScheduleTemplate } from "@/lib/payments/custom-default-schedule";
 
 export async function setupPaymentsAction(input: {
   selectionId: string;
@@ -18,6 +18,13 @@ export async function setupPaymentsAction(input: {
   depositAmount?: number;
   requestDeposit?: boolean;
   scheduleStructure?: string | null;
+  customSchedule?: CustomScheduleTemplate | null;
+  builderLines?: {
+    label: string;
+    amount: number;
+    dueDate: string;
+    obligationKind: import("@/lib/payments/types").PaymentObligationKind;
+  }[] | null;
 }): Promise<SetupPaymentsResult & { emailSent?: boolean }> {
   let clientId = input.clientId;
   let eventId = input.eventId ?? null;
@@ -42,14 +49,12 @@ export async function setupPaymentsAction(input: {
     depositAmount: input.depositAmount,
     requestDeposit: input.requestDeposit,
     scheduleStructure: input.scheduleStructure,
+    customSchedule: input.customSchedule,
+    builderLines: input.builderLines,
   });
   if (!result.ok) return result;
 
   let emailSent = false;
-  if (input.requestDeposit) {
-    const emailed = await sendInvoiceEmailAction(result.invoiceId);
-    emailSent = emailed.ok === true;
-  }
 
   revalidatePath(`/invoices/${result.invoiceId}`);
   revalidatePath(`/payments/${result.scheduleId}`);
@@ -61,10 +66,12 @@ export async function setupPaymentsAction(input: {
 }
 
 /**
- * Record an externally received deposit against the commitment schedule.
- * Satisfies the commercial initial-payment condition without requiring Stripe.
+ * @deprecated Silent one-click deposit recording is removed.
+ * Overview “Record deposit received” opens RecordOfflinePaymentDialog →
+ * recordOfflineInstallmentPaymentAction. Kept as a hard refuse so no caller
+ * can recreate a payment without the shared entry form.
  */
-export async function recordDepositReceivedAction(input: {
+export async function recordDepositReceivedAction(_input: {
   clientId: string;
   amount?: number;
   paidDate?: string;
@@ -73,63 +80,9 @@ export async function recordDepositReceivedAction(input: {
   notes?: string;
   leadId?: string;
 }): Promise<{ ok: true } | { ok: false; message: string }> {
-  const { createClient } = await import("@/integrations/supabase/server");
-  const { getCurrentVenue } = await import("@/lib/venue/service");
-  const { markLineItemPaid } = await import("@/lib/payments/service");
-  const { getVenueTimezone, venueToday } = await import("@/lib/venue/timezone");
-
-  const venue = await getCurrentVenue();
-  if (!venue) return { ok: false, message: "Venue not found." };
-  const supabase = await createClient();
-
-  const { data: schedules } = await supabase
-    .from("payment_schedules")
-    .select("id")
-    .eq("venue_id", venue.id)
-    .eq("client_id", input.clientId);
-  const scheduleIds = ((schedules ?? []) as { id: string }[]).map((s) => s.id);
-  if (scheduleIds.length === 0) {
-    return { ok: false, message: "Set up payments before recording a deposit." };
-  }
-
-  const { data: lines } = await supabase
-    .from("payment_line_items")
-    .select("id, schedule_id, amount, status, obligation_kind")
-    .eq("venue_id", venue.id)
-    .in("schedule_id", scheduleIds)
-    .eq("obligation_kind", "deposit")
-    .neq("status", "cancelled")
-    .order("sort_order", { ascending: true })
-    .limit(5);
-
-  const deposit = ((lines ?? []) as {
-    id: string;
-    schedule_id: string;
-    amount: number;
-    status: string;
-  }[]).find((l) => l.status !== "paid");
-
-  if (!deposit) {
-    return { ok: false, message: "No unpaid deposit found on this booking." };
-  }
-
-  const tz = await getVenueTimezone(supabase, venue.id);
-  const paidDate = input.paidDate?.trim() || venueToday(tz);
-  const paidAmount = String(input.amount ?? deposit.amount);
-
-  const result = await markLineItemPaid(deposit.id, deposit.schedule_id, {
-    paidAmount,
-    paymentMethod: input.paymentMethod?.trim() || "External / check",
-    referenceNumber: input.referenceNumber?.trim() || "",
-    paidDate,
-    notes: input.notes?.trim() || "Recorded from Booking Journey",
-  });
-  if (!result.ok) {
-    return { ok: false, message: result.message ?? "Could not record the deposit." };
-  }
-
-  revalidatePath(`/payments/${deposit.schedule_id}`);
-  revalidatePath(`/clients/${input.clientId}`);
-  if (input.leadId) revalidatePath(`/leads/${input.leadId}`);
-  return { ok: true };
+  return {
+    ok: false,
+    message:
+      "Choose the installment, amount, method, and date before recording a payment.",
+  };
 }

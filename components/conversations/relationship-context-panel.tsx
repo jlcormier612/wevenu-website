@@ -97,7 +97,6 @@ function ContextBody({
           </p>
           <p className="text-[11px] text-muted-foreground">
             {o?.relationshipType ?? "…"}
-            {o?.bookingStageLabel ? ` · ${o.bookingStageLabel}` : ""}
           </p>
         </div>
         {onClose && (
@@ -140,7 +139,7 @@ function ContextBody({
             )}
             {requestHref && (
               <Link href={requestHref} className="inline-block pt-1 text-[11px] font-medium text-primary hover:underline">
-                Open {o.relationshipType === "Booking" ? "booking" : "lead"} workspace →
+                {`Open ${o.relationshipType === "Booking" ? "booking" : "lead"} workspace →`}
               </Link>
             )}
           </div>
@@ -179,7 +178,7 @@ function ContextBody({
                   <span className="truncate">{a.fileName}</span>
                 </a>
                 <p className="mt-0.5 text-[10px] text-muted-foreground">
-                  Shared in conversation{a.channel === "sms" ? " · SMS" : a.channel === "email" ? " · Email" : ""}
+                  Shared in conversation{a.channel === "sms" ? " · Text" : a.channel === "email" ? " · Email" : ""}
                 </p>
                 {docsHref && (
                   <Link href={docsHref} className="mt-1 block text-[10px] font-medium text-primary hover:underline">

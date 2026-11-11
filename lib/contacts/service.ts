@@ -2,6 +2,12 @@ import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured, publicAppOrigin } from "@/lib/env";
 import { getCurrentVenue } from "@/lib/venue/service";
 import { sendEmail } from "@/lib/email/send";
+import {
+  brandButtonHtml,
+  emailBrandFromVenue,
+  escapeHtml,
+  renderBrandedEmailHtml,
+} from "@/lib/email/venue-brand";
 import type { ClientContact, ClientContactInput } from "@/lib/contacts/types";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -174,6 +180,7 @@ export async function sendContactPortalInvite(
   const baseUrl = publicAppOrigin();
   const portalUrl = `${baseUrl}/p/${token}`;
 
+  const brand = emailBrandFromVenue(venue);
   const emailResult = await sendEmail({
     to: contact.email,
     subject: `You're invited to the ${coupleName} wedding portal`,
@@ -189,13 +196,12 @@ export async function sendContactPortalInvite(
       "",
       venueName,
     ].join("\n"),
-    html: [
-      `<p>Hi ${contact.firstName},</p>`,
-      `<p>${coupleName} have invited you to access their wedding planning portal through <strong>${venueName}</strong>.</p>`,
-      `<p><a href="${portalUrl}" style="background:${venue.primaryColor};color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;display:inline-block;">Open Planning Portal</a></p>`,
+    html: renderBrandedEmailHtml(brand, [
+      `<p>Hi ${escapeHtml(contact.firstName)},</p>`,
+      `<p>${escapeHtml(coupleName)} have invited you to access their wedding planning portal through <strong>${escapeHtml(venueName)}</strong>.</p>`,
+      `<p>${brandButtonHtml(brand, portalUrl, "Open Planning Portal")}</p>`,
       `<p style="color:#888;font-size:12px;">This is a personal link — please don't share it.</p>`,
-      `<p style="color:#888;font-size:12px;">${venueName}</p>`,
-    ].join(""),
+    ].join("")),
   });
 
   if (!emailResult.ok) return { ok: false, message: emailResult.message };

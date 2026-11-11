@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>PROPOSAL — Revenue Desktop</title>
+  <link rel="stylesheet" href="_shared.css" />
+</head>
+<body>
+  <div class="banner"><strong>DESIGN PROPOSAL ONLY</strong> — Phase 11B Revenue · Not live UI</div>
+  <div class="shell">
+    <div class="intro"><h1>Reports</h1><p>How your business is doing — bookings, revenue, sales, and events.</p></div>
+    <div class="tabs">
+      <span class="tab">Overview</span><span class="tab">Sales</span><span class="tab">Bookings</span>
+      <span class="tab active">Revenue</span><span class="tab">Events</span><span class="tab">Saved</span>
+    </div>
+    <div class="filter"><span class="chip on">This month</span><span class="chip">Last quarter</span></div>
+    <h2 style="font-family:Georgia,serif;font-size:1.15rem;margin:0 0 0.25rem">Revenue</h2>
+    <p style="margin:0 0 0.85rem;font-size:0.85rem;color:var(--muted)">Money: contracted value, collected cash, and outstanding balances.</p>
+    <div class="grid">
+      <div class="kpi tone-money"><div class="head">Contracted</div><div class="body"><p class="value">$86,400</p><p class="delta good">↑ 8% vs prior</p><p class="sub">Signed agreement value with a first payment collected.</p></div></div>
+      <div class="kpi tone-money"><div class="head">Payments Collected</div><div class="body"><p class="value">$41,200</p><p class="delta good">↑ 14% vs prior</p><p class="sub">Money actually received during this period.</p></div></div>
+      <div class="kpi tone-owed"><div class="head">Outstanding Balance</div><div class="body"><p class="value">$45,200</p><p class="delta bad">↑ 6% vs prior</p><p class="sub">Different clocks — commitment vs payment date.</p></div></div>
+      <div class="kpi tone-money"><div class="head">Avg. contracted value</div><div class="body"><p class="value">$9,600</p><p class="delta good">↑ 2% vs prior</p><p class="sub">Among clients with signed value + first payment.</p></div></div>
+    </div>
+    <div class="panel">
+      <h3>Revenue Trend</h3>
+      <p style="font-size:0.78rem;color:var(--muted);margin:0">White analytical panel — chart remains on white; eucalyptus section label only.</p>
+      <div style="height:120px;margin-top:0.75rem;border-radius:0.5rem;background:linear-gradient(180deg,#e8f0ea,transparent),repeating-linear-gradient(90deg,transparent,transparent 48px,rgba(36,51,43,0.06) 48px,rgba(36,51,43,0.06) 49px);border:1px dashed var(--border)"></div>
+    </div>
+    <div class="panel">
+      <h3>Revenue by source</h3>
+      <div class="grid grid-2">
+        <div>
+          <p class="section-label" style="margin-top:0">Contracted</p>
+          <div class="row"><span>Website</span><span>$42,000</span></div>
+          <div class="row"><span>Referral</span><span>$28,400</span></div>
+          <div class="row"><span>Not recorded</span><span>$16,000</span></div>
+        </div>
+        <div>
+          <p class="section-label" style="margin-top:0">Collected</p>
+          <div class="row"><span>Website</span><span>$19,500</span></div>
+          <div class="row"><span>Referral</span><span>$14,200</span></div>
+          <div class="row"><span>Not recorded</span><span>$7,500</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

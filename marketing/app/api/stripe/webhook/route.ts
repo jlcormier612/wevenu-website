@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import type Stripe from "stripe";
 
-import { sendRelationshipEmail, sendReactivationEmail } from "@shared/email";
+import { sendReactivationEmail } from "@shared/email";
 import {
   loadLiveStore,
-  markDunningReminderSent,
   reactivateRelationshipAccount,
   recordPaymentFailed,
+  resolveRelationshipForSubscription,
   type DunningDay,
 } from "@shared/relationships";
 import { createVenueEnrollment } from "@/lib/crm/service";
@@ -21,6 +21,15 @@ import {
   estimateMrrCentsFromPlan,
   mrrCentsFromStripeSubscription,
 } from "@/lib/stripe/mrr";
+import {
+  FOUNDING_PERCENT_OFF,
+  WEVEN_PERCENT_OFF,
+  getPricingOfferStore,
+  isPricingLaunchV1Ready,
+  requireDurablePricingOfferStore,
+  shouldHonorIssuedFoundingOffer,
+} from "@shared/pricing";
+import { shouldEndFoundingEligibilityOnSubscriptionEvent } from "@shared/pricing/founding-lifecycle";
 
 export const runtime = "nodejs";
 
@@ -79,7 +88,7 @@ export async function POST(request: Request) {
     }
     case "invoice.paid": {
       const invoice = event.data.object as Stripe.Invoice;
-      await handleInvoicePaid(stripe, invoice);
+      await handleInvoicePaid(stripe, invoice, event.id);
       break;
     }
     case "invoice.payment_failed": {
@@ -104,6 +113,11 @@ function readFoundingFromMeta(meta: Stripe.Metadata): boolean {
   const foundingFromMeta = meta.founding_member;
   if (foundingFromMeta != null) {
     return parseWelcomeBackRequested(foundingFromMeta);
+  }
+  // Launch V1: never recheck soft-milestone capacity after Session creation.
+  // Missing metadata ⇒ non-founding (fail closed for discount).
+  if (isPricingLaunchV1Ready()) {
+    return false;
   }
   return isAutomaticFoundingMember();
 }
@@ -197,7 +211,29 @@ async function handleCheckoutCompleted(
   const plan = meta.plan_tier ?? meta.htc_plan ?? meta.wevenu_plan ?? "unknown";
   const welcomeBack = readWelcomeBackFromMeta(meta);
   const onboardingType = parseOnboardingType(meta.onboarding_type);
-  const foundingMember = readFoundingFromMeta(meta);
+  const wevenDeclaredMeta = parseWelcomeBackRequested(meta.weven_declared);
+
+  // Prefer durable issued offer when Launch V1 is active — honors founding even
+  // if the soft 100 milestone was reached after this Session was created.
+  let foundingMember = readFoundingFromMeta(meta);
+  const offerStore = isPricingLaunchV1Ready()
+    ? requireDurablePricingOfferStore()
+    : getPricingOfferStore();
+  let checkoutOffer = await offerStore.getOfferBySessionId(session.id);
+  if (!checkoutOffer && meta.checkout_offer_id) {
+    checkoutOffer = await offerStore.getOfferById(meta.checkout_offer_id);
+    if (checkoutOffer && !checkoutOffer.checkoutSessionId) {
+      checkoutOffer = await offerStore.attachCheckoutSession(
+        checkoutOffer.id,
+        session.id,
+      );
+    }
+  }
+  if (checkoutOffer) {
+    foundingMember = shouldHonorIssuedFoundingOffer(checkoutOffer);
+  }
+  const wevenDeclared =
+    Boolean(checkoutOffer?.wevenDeclared) || wevenDeclaredMeta;
 
   const customerId =
     typeof session.customer === "string"
@@ -260,20 +296,140 @@ async function handleCheckoutCompleted(
       mrrCents,
     });
 
+    // Phase 4 — link reservation to this Session (fulfillment waits for venue activation).
+    const orgReservationId = meta.org_reservation_id?.trim() || null;
+    if (orgReservationId || meta.group_eligible === "true") {
+      try {
+        const { isPricingGroupV1FlagEnabled } = await import("@shared/pricing");
+        const { requireDurableGroupOrgStore } = await import(
+          "@shared/pricing/group-org-store-access"
+        );
+        if (isPricingGroupV1FlagEnabled()) {
+          const orgStore = requireDurableGroupOrgStore();
+          let reservation = orgReservationId
+            ? await orgStore.getReservationById(orgReservationId)
+            : null;
+          if (!reservation) {
+            reservation = await orgStore.getReservationByCheckoutSessionId(
+              session.id,
+            );
+          }
+          if (reservation && reservation.status === "reserved") {
+            await orgStore.attachCheckoutSession({
+              reservationId: reservation.id,
+              stripeCheckoutSessionId: session.id,
+              checkoutOfferId: checkoutOffer?.id ?? null,
+            });
+            console.info("[stripe] Phase 4 reservation attached on paid Checkout", {
+              reservationId: reservation.id,
+              sessionId: session.id,
+            });
+          }
+        }
+      } catch (orgAttachErr) {
+        console.error(
+          "[stripe] Phase 4 reservation attach failed (activation will retry)",
+          orgAttachErr,
+        );
+      }
+    }
+
+    if (checkoutOffer) {
+      await offerStore.markOfferStatus(checkoutOffer.id, "paid", {
+        paidAt: new Date().toISOString(),
+      });
+      let wevenGrantId: string | null = null;
+      if (foundingMember) {
+        const percentOff =
+          checkoutOffer.foundingPercentOff ?? FOUNDING_PERCENT_OFF;
+        const { created, grant } = await offerStore.earnFoundingGrant({
+          offerId: checkoutOffer.id,
+          checkoutSessionId: session.id,
+          relationshipId: meta.relationship_id || checkoutOffer.relationshipId,
+          percentOff,
+        });
+        console.info("[stripe] founding grant earn", {
+          sessionId: session.id,
+          offerId: checkoutOffer.id,
+          created,
+          percentOff,
+          grantId: grant.id,
+        });
+      }
+      if (wevenDeclared) {
+        const percentOff =
+          checkoutOffer.wevenPercentOff ?? WEVEN_PERCENT_OFF;
+        // Trust-first: self-declaration earns a durable Weven grant immediately
+        // (coupon already applied at Checkout). Claim stays queued for admin review.
+        const appliedOfferType =
+          checkoutOffer.appliedOfferType ??
+          (meta.applied_offer_type === "weven_pct" ||
+          meta.applied_offer_type === "founding_pct"
+            ? meta.applied_offer_type
+            : foundingMember
+              ? "founding_pct"
+              : null);
+        const { grant, created } = await offerStore.earnWevenGrant({
+          offerId: checkoutOffer.id,
+          checkoutSessionId: session.id,
+          percentOff,
+        });
+        wevenGrantId = grant.id;
+        console.info("[stripe] weven grant earn (trust-first declare)", {
+          sessionId: session.id,
+          offerId: checkoutOffer.id,
+          created,
+          percentOff,
+          grantId: grant.id,
+        });
+        const claim = await offerStore.upsertWevenClaim({
+          checkoutSessionId: session.id,
+          checkoutOfferId: checkoutOffer.id,
+          stripeSubscriptionId: subscriptionId,
+          relationshipId: meta.relationship_id || checkoutOffer.relationshipId,
+          ownerEmailNormalized:
+            customerEmail?.trim().toLowerCase() ||
+            checkoutOffer.ownerEmailNormalized,
+          venueNameNormalized:
+            venueName.trim().toLowerCase() || checkoutOffer.venueNameNormalized,
+          grantId: grant.id,
+          appliedOfferType,
+          appliedPercentOff:
+            appliedOfferType === "weven_pct"
+              ? percentOff
+              : appliedOfferType === "founding_pct"
+                ? checkoutOffer.foundingPercentOff ?? FOUNDING_PERCENT_OFF
+                : percentOff,
+          foundingAlsoEarned: foundingMember,
+        });
+        console.info("[stripe] weven claim upsert (admin review)", {
+          sessionId: session.id,
+          claimId: claim.id,
+          reviewStatus: claim.reviewStatus,
+          foundingAlsoEarned: claim.foundingAlsoEarned,
+          appliedOfferType: claim.appliedOfferType,
+          grantId: claim.grantId,
+        });
+      }
+    }
+
     console.info("[stripe] checkout.session.completed → venue enrollment", {
       enrollmentId: record.id,
       plan: record.plan,
       foundingMember: record.foundingMember,
       welcomeBack: record.welcomeBackRequested,
+      wevenDeclared,
       welcomeBackVerified: record.welcomeBackVerified,
       onboardingType: record.onboardingType,
       mrrCents: record.mrrCents,
       relationshipId: meta.relationship_id || null,
       legalAccepted: meta.legal_accepted === "true",
       pricingMode: meta.pricing_mode || null,
+      checkoutOfferId: checkoutOffer?.id ?? null,
     });
   } catch (error) {
     console.error("[stripe] failed to create venue enrollment", error);
+    throw error;
   }
 }
 
@@ -327,6 +483,93 @@ async function handleSubscriptionLifecycle(
     allowCreate: Boolean(email),
   });
 
+  // Sync authoritative Stripe period/cancel facts → product entitlement.
+  // Never suspend early solely because cancel_at_period_end flipped true.
+  try {
+    const { syncStripeEntitlementToProduct } = await import(
+      "@shared/product-sync/entitlement-sync"
+    );
+    const store = await loadLiveStore();
+    const relResolution = resolveRelationshipForSubscription(
+      store.relationships,
+      {
+        stripeSubscriptionId: subscription.id,
+        stripeCustomerId: customerId,
+      },
+    );
+    if (!relResolution.ok && relResolution.reason === "ambiguous") {
+      console.warn(
+        "[stripe] entitlement sync skipped CRM venue hint — ambiguous relationship",
+        {
+          subscriptionId: subscription.id,
+          customerId,
+          candidateIds: relResolution.candidateIds,
+        },
+      );
+    }
+    const rel = relResolution.ok ? relResolution.relationship : null;
+    const periodEndUnix = (
+      subscription as { current_period_end?: number }
+    ).current_period_end;
+    const currentPeriodEnd =
+      typeof periodEndUnix === "number"
+        ? new Date(periodEndUnix * 1000).toISOString()
+        : null;
+    const stripeStatus = deleted ? "canceled" : subscription.status;
+    // Do not pass ownerEmail for venue resolution — product resolves by
+    // venueId / subscription id / unambiguous customer id only.
+    await syncStripeEntitlementToProduct({
+      venueId: rel?.productSync?.venueId ?? null,
+      relationshipId: rel?.id ?? null,
+      stripeCustomerId: customerId,
+      stripeSubscriptionId: subscription.id,
+      stripeStatus,
+      cancelAtPeriodEnd: Boolean(subscription.cancel_at_period_end) && !deleted,
+      currentPeriodEnd,
+      dunningStartedAt: rel?.dunning?.startedAt ?? null,
+      dunningClearedAt: rel?.dunning?.clearedAt ?? null,
+      preferNonpaymentReason:
+        stripeStatus === "past_due" ||
+        stripeStatus === "unpaid" ||
+        Boolean(rel?.dunning && !rel.dunning.clearedAt),
+      reason: deleted
+        ? "Stripe subscription deleted"
+        : `Stripe subscription ${stripeStatus}`,
+    });
+
+    // Founding ends when the subscription fully ends — not on scheduled cancel.
+    if (
+      shouldEndFoundingEligibilityOnSubscriptionEvent({
+        stripeStatus,
+        deleted,
+        cancelAtPeriodEnd: Boolean(subscription.cancel_at_period_end),
+      })
+    ) {
+      const venueId = rel?.productSync?.venueId?.trim() || null;
+      if (venueId) {
+        try {
+          const offerStore = getPricingOfferStore();
+          const result = await offerStore.revokeFoundingGrantForVenue({
+            venueId,
+            reason: deleted
+              ? "stripe_subscription_deleted"
+              : `stripe_subscription_${stripeStatus}`,
+          });
+          console.info("[stripe] founding grant revoke on subscription end", {
+            venueId,
+            subscriptionId: subscription.id,
+            revoked: result.revoked,
+            grantId: result.grantId,
+          });
+        } catch (revokeErr) {
+          console.warn("[stripe] founding grant revoke failed", revokeErr);
+        }
+      }
+    }
+  } catch (error) {
+    console.warn("[stripe] entitlement sync failed", error);
+  }
+
   if (
     !deleted &&
     (subscription.status === "past_due" || subscription.status === "unpaid")
@@ -353,6 +596,7 @@ async function handleSubscriptionLifecycle(
     created: _created,
     mrrCents,
     plan,
+    cancelAtPeriodEnd: subscription.cancel_at_period_end,
   });
 }
 
@@ -423,34 +667,31 @@ async function handleDunningForCustomer(
     invoiceId: input.invoiceId,
   });
 
-  if (!result.relationship || result.reminderDay == null) return;
+  if (!result.relationship) return;
+
+  // Always attempt notification when a checkpoint is due OR suspension just happened.
+  // Suspension itself is already applied inside recordPaymentFailed when shouldSuspend.
+  if (result.reminderDay == null && !result.shouldSuspend) return;
 
   const portalUrl = await createBillingPortalUrl(
     stripe,
     result.relationship.stripeCustomerId || input.stripeCustomerId,
   );
-  const to = result.relationship.owner.email?.trim();
-  if (!to) return;
-
-  const day = result.reminderDay as DunningDay;
-  const templateId =
-    day === 21 || result.shouldSuspend ? "account_suspended" : "payment_reminder";
+  const day = (result.reminderDay ?? 21) as DunningDay;
 
   try {
-    await sendRelationshipEmail({
+    const { sendDunningCheckpointEmail } = await import(
+      "@shared/relationships/dunning-notify"
+    );
+    const notify = await sendDunningCheckpointEmail({
       relationshipId: result.relationship.id,
-      to,
-      templateId,
-      vars: {
-        firstName: result.relationship.owner.firstName,
-        venueName: result.relationship.venue.name,
-        planName: result.relationship.planName,
-        dunningDay: day,
-        billingPortalUrl: portalUrl,
-      },
-      meta: { trigger: "invoice.payment_failed", dunning_day: day },
+      day,
+      shouldSuspend: result.shouldSuspend,
+      billingPortalUrl: portalUrl,
     });
-    await markDunningReminderSent(result.relationship.id, day);
+    if (notify.error) {
+      console.error("[stripe] dunning email failed", notify.error);
+    }
   } catch (error) {
     console.error("[stripe] dunning email failed", error);
   }
@@ -459,6 +700,7 @@ async function handleDunningForCustomer(
 async function handleInvoicePaid(
   stripe: Stripe,
   invoice: Stripe.Invoice,
+  stripeEventId?: string,
 ): Promise<void> {
   const customerId =
     typeof invoice.customer === "string"
@@ -479,6 +721,93 @@ async function handleInvoicePaid(
     amount_paid: invoice.amount_paid,
   });
 
+  if (subscriptionId) {
+    try {
+      const sub = await stripe.subscriptions.retrieve(subscriptionId);
+      const { syncStripeEntitlementToProduct } = await import(
+        "@shared/product-sync/entitlement-sync"
+      );
+      const store = await loadLiveStore();
+      const relResolution = resolveRelationshipForSubscription(
+        store.relationships,
+        {
+          stripeSubscriptionId: subscriptionId,
+          stripeCustomerId: customerId,
+        },
+      );
+      if (!relResolution.ok && relResolution.reason === "ambiguous") {
+        console.warn(
+          "[stripe] invoice.paid entitlement — ambiguous relationship; product resolves by subscription",
+          {
+            subscriptionId,
+            customerId,
+            candidateIds: relResolution.candidateIds,
+          },
+        );
+      }
+      const rel = relResolution.ok ? relResolution.relationship : null;
+      const periodEndUnix = (sub as { current_period_end?: number }).current_period_end;
+      await syncStripeEntitlementToProduct({
+        venueId: rel?.productSync?.venueId ?? null,
+        relationshipId: rel?.id ?? null,
+        stripeCustomerId: customerId,
+        stripeSubscriptionId: subscriptionId,
+        stripeStatus: sub.status,
+        cancelAtPeriodEnd: Boolean(sub.cancel_at_period_end),
+        currentPeriodEnd:
+          typeof periodEndUnix === "number"
+            ? new Date(periodEndUnix * 1000).toISOString()
+            : null,
+        dunningStartedAt: rel?.dunning?.startedAt ?? null,
+        dunningClearedAt: new Date().toISOString(),
+        reason: "invoice.paid entitlement sync",
+      });
+
+      // Phase 3: correlate paid renewal invoices with scheduled tier upgrades.
+      try {
+        const {
+          getTierUpgradeStore,
+          reconcileTierUpgradeFromInvoice,
+          preferPostgresTierUpgradeStore,
+        } = await import("@shared/pricing");
+        if (preferPostgresTierUpgradeStore()) {
+          const priceId =
+            typeof sub.items?.data?.[0]?.price === "string"
+              ? sub.items.data[0].price
+              : sub.items?.data?.[0]?.price?.id ?? null;
+          const amountExcludingTax =
+            typeof (invoice as { total_excluding_tax?: number | null })
+              .total_excluding_tax === "number"
+              ? (invoice as { total_excluding_tax?: number }).total_excluding_tax!
+              : typeof (invoice as { amount_excluding_tax?: number | null })
+                    .amount_excluding_tax === "number"
+                ? (invoice as { amount_excluding_tax?: number }).amount_excluding_tax!
+                : null;
+          const reconcile = await reconcileTierUpgradeFromInvoice({
+            store: getTierUpgradeStore(),
+            stripeEventId: stripeEventId || `invoice.paid:${invoice.id}`,
+            subscriptionId,
+            subscriptionPriceId: priceId,
+            invoiceId: invoice.id,
+            invoiceAmountExcludingTaxCents: amountExcludingTax,
+            invoiceAmountPaidCents:
+              typeof invoice.amount_paid === "number" ? invoice.amount_paid : null,
+            invoiceStatus: invoice.status ?? null,
+          });
+          console.info("[stripe] invoice.paid tier-upgrade reconcile", {
+            action: reconcile.action,
+            upgradeId: reconcile.upgrade?.id ?? null,
+            reason: reconcile.reason,
+          });
+        }
+      } catch (tierErr) {
+        console.warn("[stripe] invoice.paid tier-upgrade reconcile failed", tierErr);
+      }
+    } catch (error) {
+      console.warn("[stripe] invoice.paid entitlement sync failed", error);
+    }
+  }
+
   await maybeReactivateFromPayment({
     stripeCustomerId: customerId,
     stripeSubscriptionId: subscriptionId,
@@ -492,26 +821,25 @@ async function maybeReactivateFromPayment(input: {
   email?: string | null;
 }): Promise<void> {
   const store = await loadLiveStore();
-  const relationship =
-    (input.stripeSubscriptionId
-      ? store.relationships.find(
-          (r) => r.stripeSubscriptionId === input.stripeSubscriptionId,
-        )
-      : undefined) ||
-    (input.stripeCustomerId
-      ? store.relationships.find(
-          (r) => r.stripeCustomerId === input.stripeCustomerId,
-        )
-      : undefined) ||
-    (input.email
-      ? store.relationships.find(
-          (r) =>
-            (r.owner.email || "").trim().toLowerCase() ===
-            input.email!.trim().toLowerCase(),
-        )
-      : undefined);
-
-  if (!relationship) return;
+  // Email is never used for multi-venue identity — only subscription / unique customer.
+  const resolution = resolveRelationshipForSubscription(store.relationships, {
+    stripeSubscriptionId: input.stripeSubscriptionId,
+    stripeCustomerId: input.stripeCustomerId,
+  });
+  if (!resolution.ok) {
+    if (resolution.reason === "ambiguous") {
+      console.warn(
+        "[stripe] reactivation skipped — ambiguous relationship for subscription/customer",
+        {
+          subscriptionId: input.stripeSubscriptionId ?? null,
+          customerId: input.stripeCustomerId,
+          candidateIds: resolution.candidateIds,
+        },
+      );
+    }
+    return;
+  }
+  const relationship = resolution.relationship;
   const needsReactivate =
     relationship.status === "suspended" ||
     relationship.status === "at_risk" ||

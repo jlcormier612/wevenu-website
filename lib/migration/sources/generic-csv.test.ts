@@ -55,6 +55,39 @@ describe("genericCsvAdapter.normalizeRow — client", () => {
     const result = genericCsvAdapter.normalizeRow({ firstName: "   ", lastName: "Rivera" }, "client");
     assert.equal(result.ok, false);
   });
+
+  it("splits a mapped combined name column the same way HoneyBook does", () => {
+    const result = genericCsvAdapter.normalizeRow(
+      { name: "Jamie Rivera", email: "jamie@example.com" },
+      "client",
+    );
+    assert.equal(result.ok, true);
+    if (result.ok) {
+      assert.equal(result.normalized.firstName, "Jamie");
+      assert.equal(result.normalized.lastName, "Rivera");
+    }
+  });
+
+  it("routes an ambiguous combined name to needs_review instead of silently inventing certainty", () => {
+    const result = genericCsvAdapter.normalizeRow(
+      { name: "Morgan OtherSys & Riley OtherSys", email: "m@example.com" },
+      "client",
+    );
+    assert.equal(result.ok, false);
+    if (!result.ok) assert.match(result.error, /please confirm/i);
+  });
+
+  it("splits when Suggest-with-Luv mapped a combined column onto First name only", () => {
+    const result = genericCsvAdapter.normalizeRow(
+      { firstName: "Jamie Rivera", email: "jamie@example.com" },
+      "client",
+    );
+    assert.equal(result.ok, true);
+    if (result.ok) {
+      assert.equal(result.normalized.firstName, "Jamie");
+      assert.equal(result.normalized.lastName, "Rivera");
+    }
+  });
 });
 
 describe("genericCsvAdapter.normalizeRow — lead", () => {
@@ -153,7 +186,7 @@ describe("genericCsvAdapter.normalizeRow — unsupported entity", () => {
   it("returns an explicit error for orphan payment rows", () => {
     const result = genericCsvAdapter.normalizeRow({ firstName: "x" }, "payment");
     assert.equal(result.ok, false);
-    if (!result.ok) assert.match(result.error, /Active commitment|payment/i);
+    if (!result.ok) assert.match(result.error, /Booked-event finances|payment/i);
   });
 
   it("requires storage fields for document rows", () => {

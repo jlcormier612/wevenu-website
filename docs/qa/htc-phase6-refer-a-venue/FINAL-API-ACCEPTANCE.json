@@ -1,0 +1,25 @@
+{
+  "ok": true,
+  "servingSha": "846c5143f33de2a88ea60b12d740454f9401bc93",
+  "deployRun": "https://github.com/jlcormier612/wevenu-website/actions/runs/42730594493",
+  "checks": {
+    "readiness_ok": true,
+    "program_ready": true,
+    "referred_created": true,
+    "referral_inserted": true,
+    "crm_lists_referral": true,
+    "attributed": true,
+    "marked_paid": true,
+    "qualified": true,
+    "approved": true,
+    "issued": true,
+    "issue_amount_matches": true,
+    "stripe_subscription_scoped": true,
+    "stripe_preview_includes_credit": true
+  },
+  "referralId": "478c364a-c092-45ea-9ad7-ac09cd5ba04c",
+  "rewardAmountCents": 19900,
+  "stripeInvoiceItemId": "ii_1Ua3KQErUqJH7nktTccswXHr",
+  "previewTotal": 0,
+  "previewAmountDue": 0
+}

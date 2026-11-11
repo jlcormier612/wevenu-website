@@ -39,7 +39,7 @@ export async function replaceTourAvailabilityWindowsAction(
 
 export async function addTourAvailabilityExceptionAction(
   input: TourAvailabilityExceptionInput,
-): Promise<{ ok: boolean }> {
+): Promise<{ ok: true; id: string } | { ok: false }> {
   const result = await addTourAvailabilityException(input);
   if (result.ok) revalidateTourAvailabilitySurfaces();
   return result;
@@ -54,4 +54,9 @@ export async function removeTourAvailabilityExceptionAction(id: string): Promise
 /** Settings/Setup Hub preview — same slot engine as coordinator scheduling, from saved tour availability. */
 export async function getTourSlotPreviewAction(startDate: string, endDate: string): Promise<TourSlot[]> {
   return getCoordinatorTourSlots(startDate, endDate);
+}
+
+export async function refundTourProtectionFeeAction(requestId: string): Promise<{ ok: boolean; message?: string }> {
+  const { refundTourProtectionFee } = await import("@/lib/tours/protection");
+  return refundTourProtectionFee(requestId);
 }

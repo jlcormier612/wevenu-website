@@ -2,18 +2,40 @@
 
 import { revalidatePath } from "next/cache";
 
+import { createClient } from "@/integrations/supabase/server";
 import {
-  addItem, addTemplateItem, addToEventOrder, createTemplate, deleteTemplate,
+  addItem, addTemplateItem, addToEventOrder, confirmInventorySelections, createTemplate, deleteTemplate,
   ensureEventInventory, finalizeEventInventory, getTemplate, removeItem, removeTemplateItem,
-  reopenEventInventory, setTemplateArchived, shareEventInventory, updateItem, updateTemplateItem,
+  reopenEventInventory, replaceEventInventoryFromTemplate, requestInventorySelectionChanges,
+  sendInventoryTemplate, setInventoryItemClientSelectable, setTemplateArchived, shareEventInventory,
+  updateItem, updateTemplateItem,
 } from "@/lib/event-inventory/service";
 import type {
   AddItemResult, AddTemplateItemResult, AddToEventOrderResult, CreateTemplateResult, EnsureEventInventoryResult,
-  EventInventoryActionResult, InventoryItemInput, InventoryTemplateWithItems,
+  EventInventoryActionResult, EventInventoryCollaborationMode, InventoryItemInput, InventoryTemplateWithItems,
 } from "@/lib/event-inventory/types";
 
-function revalidateEvent(eventId: string) {
+/**
+ * Event Inventory UI lives on the Booking workspace `/clients/{clientId}`.
+ * `/events/{id}` is only a redirect stub — revalidating it alone leaves the
+ * inventory panel on stale RSC props (Select click persists, Share stays disabled).
+ */
+async function revalidateEvent(eventId: string) {
   revalidatePath(`/events/${eventId}`);
+  try {
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from("events")
+      .select("client_id")
+      .eq("id", eventId)
+      .maybeSingle<{ client_id: string | null }>();
+    if (data?.client_id) {
+      revalidatePath(`/clients/${data.client_id}`);
+    }
+  } catch {
+    // Best-effort: mutation already succeeded; path revalidation must not throw.
+  }
+  revalidatePath("/clients");
 }
 
 export async function ensureEventInventoryAction(eventId: string, templateId: string | null = null): Promise<EnsureEventInventoryResult> {
@@ -22,8 +44,71 @@ export async function ensureEventInventoryAction(eventId: string, templateId: st
   return result;
 }
 
-export async function shareEventInventoryAction(eventInventoryId: string, eventId: string): Promise<EventInventoryActionResult> {
-  const result = await shareEventInventory(eventInventoryId);
+/** Overview setup — replace event inventory items from a Library template (no share/invoice). */
+export async function replaceEventInventoryFromTemplateAction(
+  eventId: string,
+  templateId: string,
+): Promise<EnsureEventInventoryResult | EventInventoryActionResult> {
+  const result = await replaceEventInventoryFromTemplate(eventId, templateId);
+  if (result.ok) revalidateEvent(eventId);
+  return result;
+}
+
+/**
+ * Share Inventory. Omit collaborationMode so the document's selectable items
+ * determine review-only vs selection. Passing a mode is reserved for explicit
+ * validation (e.g. forcing select with no choices must error).
+ */
+export async function shareEventInventoryAction(
+  eventInventoryId: string,
+  eventId: string,
+  collaborationMode?: EventInventoryCollaborationMode,
+): Promise<EventInventoryActionResult> {
+  const result = await shareEventInventory(
+    eventInventoryId,
+    collaborationMode ? { collaborationMode } : undefined,
+  );
+  if (result.ok) revalidateEvent(eventId);
+  return result;
+}
+
+export async function setInventoryItemClientSelectableAction(
+  eventInventoryId: string,
+  eventId: string,
+  itemId: string,
+  clientSelectable: boolean,
+  maxQuantity?: number | null,
+): Promise<EventInventoryActionResult> {
+  const result = await setInventoryItemClientSelectable(eventInventoryId, itemId, clientSelectable, maxQuantity);
+  if (result.ok) revalidateEvent(eventId);
+  return result;
+}
+
+export async function confirmInventorySelectionsAction(
+  eventInventoryId: string,
+  eventId: string,
+): Promise<EventInventoryActionResult> {
+  const result = await confirmInventorySelections(eventInventoryId);
+  if (result.ok) revalidateEvent(eventId);
+  return result;
+}
+
+export async function requestInventorySelectionChangesAction(
+  eventInventoryId: string,
+  eventId: string,
+  note?: string,
+): Promise<EventInventoryActionResult> {
+  const result = await requestInventorySelectionChanges(eventInventoryId, note);
+  if (result.ok) revalidateEvent(eventId);
+  return result;
+}
+
+/** Apply Inventory Template then share for client portal review. */
+export async function sendInventoryTemplateAction(
+  eventId: string,
+  templateId: string,
+): Promise<EnsureEventInventoryResult | EventInventoryActionResult> {
+  const result = await sendInventoryTemplate(eventId, templateId);
   if (result.ok) revalidateEvent(eventId);
   return result;
 }
@@ -73,6 +158,26 @@ export async function addEventInventoryToEventOrderAction(eventInventoryId: stri
 export async function createInventoryTemplateAction(name: string, description: string): Promise<CreateTemplateResult> {
   const result = await createTemplate(name, description);
   if (result.ok) revalidatePath("/library/inventory-templates");
+  return result;
+}
+
+export async function duplicateInventoryTemplateAction(id: string, newName: string): Promise<CreateTemplateResult> {
+  const { duplicateTemplate } = await import("@/lib/event-inventory/service");
+  const result = await duplicateTemplate(id, newName);
+  if (result.ok) revalidatePath("/library/inventory-templates");
+  return result;
+}
+
+export async function updateInventoryTemplateDetailsAction(
+  id: string,
+  input: { name: string; description: string | null },
+): Promise<EventInventoryActionResult> {
+  const { updateTemplateDetails } = await import("@/lib/event-inventory/service");
+  const result = await updateTemplateDetails(id, input);
+  if (result.ok) {
+    revalidatePath("/library/inventory-templates");
+    revalidatePath(`/library/inventory-templates/${id}`);
+  }
   return result;
 }
 

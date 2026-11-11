@@ -3,6 +3,16 @@
  */
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
+import { applyFirstPortalInviteToChecklist } from "@/lib/activation/first-portal-invite";
+import { getVenueFirstPortalInviteMilestone } from "@/lib/activation/first-portal-invite-service";
+import {
+  applyFirstPortalOpenToChecklist,
+  applyThreeCouplesPortalPrerequisite,
+} from "@/lib/activation/first-portal-open";
+import { getVenueFirstPortalOpenMilestone } from "@/lib/activation/first-portal-open-service";
+import { applyFirstTeamLoginPrerequisite } from "@/lib/activation/first-team-login";
+import { applyPortalOpenMilestoneToChecklist } from "@/lib/activation/portal-open-milestone";
+import { getVenuePortalOpenMilestone } from "@/lib/activation/portal-open-milestone-service";
 import type {
   ActivationChecklistItem,
   ActivationScore,
@@ -25,7 +35,7 @@ export async function getActivationScore(venueId: string): Promise<ActivationSco
     .maybeSingle<Record<string, unknown>>();
 
   if (cached && new Date(cached.computed_at as string).getTime() > Date.now() - ONE_HOUR_MS) {
-    return mapScore(cached);
+    return enrichActivationScore(venueId, mapScore(cached));
   }
 
   // Recompute
@@ -33,7 +43,52 @@ export async function getActivationScore(venueId: string): Promise<ActivationSco
     p_venue_id: venueId,
   });
   if (error || !data) return null;
-  return mapScore(data as Record<string, unknown>);
+  return enrichActivationScore(venueId, mapScore(data as Record<string, unknown>));
+}
+
+/**
+ * Overlay locked portal milestones onto checklist + gaps.
+ * Invitation rows and portal sessions remain the sources of truth —
+ * activation stamps are derived telemetry only.
+ *
+ * first_portal_open copy claims an invite was sent — it may only remain
+ * incomplete when invitation evidence exists. three_couples_active is a
+ * later-stage engagement gap and is suppressed until an invite exists.
+ * first_team_login copy claims a teammate was invited — suppress until
+ * first_team_invite is complete.
+ */
+async function enrichActivationScore(
+  venueId: string,
+  score: ActivationScore,
+): Promise<ActivationScore> {
+  const [threeCouplesMilestone, inviteMilestone, firstOpenMilestone] = await Promise.all([
+    getVenuePortalOpenMilestone(venueId),
+    getVenueFirstPortalInviteMilestone(venueId),
+    getVenueFirstPortalOpenMilestone(venueId),
+  ]);
+  let checklist = applyFirstPortalInviteToChecklist(
+    score.checklist,
+    inviteMilestone.complete,
+  );
+  checklist = applyFirstPortalOpenToChecklist(checklist, {
+    inviteSent: inviteMilestone.complete,
+    firstOpenComplete: firstOpenMilestone.complete,
+  });
+  checklist = applyPortalOpenMilestoneToChecklist(
+    checklist,
+    threeCouplesMilestone.complete,
+  );
+  checklist = applyThreeCouplesPortalPrerequisite(
+    checklist,
+    inviteMilestone.complete,
+  );
+  checklist = applyFirstTeamLoginPrerequisite(checklist);
+  const gaps = checklist
+    .filter((item) => !item.completed)
+    .sort((a, b) => b.points - a.points)
+    .slice(0, 3)
+    .map((item) => ({ label: item.label, points: item.points, href: item.href }));
+  return { ...score, checklist, gaps };
 }
 
 // The SQL RPC (compute_venue_activation_score) builds each gap object with

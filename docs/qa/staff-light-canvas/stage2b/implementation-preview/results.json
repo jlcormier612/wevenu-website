@@ -1,0 +1,66 @@
+{
+  "dpl": "6b192857",
+  "note": "Preview CSS mirrors Stage 2B staff light implementation; nav bar reinforced when live build predates sidebar-nav change.",
+  "palette": {
+    "primary": "#446B56",
+    "eucalyptus": "#A7C2AF",
+    "blush": "#D99A9E",
+    "softBlush": "#F7E9EB",
+    "card": "#FFFFFF",
+    "sidebar": "#FFFFFF",
+    "page": "#FAFCFA",
+    "ink": "#24332B",
+    "muted": "#5F6F68",
+    "border": "#E3E7E4"
+  },
+  "notes": [
+    {
+      "path": "/dashboard",
+      "slug": "dashboard",
+      "tokens": {
+        "background": "#fafcfa",
+        "card": "#ffffff",
+        "primary": "#446b56",
+        "accent": "#a7c2af",
+        "sidebar": "#ffffff",
+        "foreground": "#24332b",
+        "mutedForeground": "#5f6f68",
+        "border": "#e3e7e4",
+        "destructive": "#d99a9e",
+        "destructiveForeground": "#24332b"
+      }
+    },
+    {
+      "path": "/leads",
+      "slug": "leads",
+      "tokens": {
+        "background": "#fafcfa",
+        "card": "#ffffff",
+        "primary": "#446b56",
+        "accent": "#a7c2af",
+        "sidebar": "#ffffff",
+        "foreground": "#24332b",
+        "mutedForeground": "#5f6f68",
+        "border": "#e3e7e4",
+        "destructive": "#d99a9e",
+        "destructiveForeground": "#24332b"
+      }
+    },
+    {
+      "path": "/library/offerings",
+      "slug": "offerings",
+      "tokens": {
+        "background": "#fafcfa",
+        "card": "#ffffff",
+        "primary": "#446b56",
+        "accent": "#a7c2af",
+        "sidebar": "#ffffff",
+        "foreground": "#24332b",
+        "mutedForeground": "#5f6f68",
+        "border": "#e3e7e4",
+        "destructive": "#d99a9e",
+        "destructiveForeground": "#24332b"
+      }
+    }
+  ]
+}

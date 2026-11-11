@@ -6,7 +6,6 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, it } from "node:test";
 
-import { PERSPECTIVES } from "@/components/calendar/perspectives";
 import {
   APPOINTMENT_CATALOG_MAX_ACTIVE_CUSTOMS,
   buildScheduleItemPickerGroups,
@@ -272,11 +271,10 @@ describe("Calendar Slice 2A.2.3 — picker & perspectives", () => {
     assert.equal(edit.resolved.scheduleItemTypeId, "c-arch");
   });
 
-  it("custom types remain visible in relevant Calendar perspectives", () => {
-    for (const id of ["sales", "planning", "operations"] as const) {
-      const p = PERSPECTIVES.find((x) => x.id === id)!;
-      assert.equal(p.filters.manualTypes?.includes("custom"), true, id);
-    }
+  it("custom types remain Appointment classifications (perspectives retired)", () => {
+    const perspectivesSrc = readFileSync(resolve("components/calendar/perspectives.ts"), "utf8");
+    assert.match(perspectivesSrc, /CALENDAR_PERSPECTIVES_RETIRED/);
+    assert.doesNotMatch(perspectivesSrc, /id: "sales"|id: "planning"|id: "operations"/);
   });
 
   it("custom reserve-time snapshot is taken from catalog on create; same-type edit preserves", () => {
@@ -324,11 +322,13 @@ describe("Calendar Slice 2A.2.3 — service/UI seams", () => {
     assert.match(repoSrc, /Never rewrites calendar_blocks/);
   });
 
-  it("Settings UI exposes Add your own type with Name, Kind, and reserve control", () => {
+  it("Settings UI exposes Add your own type with Name, Kind, Enabled, and Blocks event bookings", () => {
     assert.match(sectionSrc, /Add your own type/);
     assert.match(sectionSrc, /Name/);
     assert.match(sectionSrc, /Kind/);
-    assert.match(sectionSrc, /Reserves venue time for events/);
+    assert.match(sectionSrc, /aria-label="Enabled"/);
+    assert.match(sectionSrc, /Blocks event bookings/);
+    assert.match(sectionSrc, /onCustomEnabled/);
     assert.match(sectionSrc, /Archive/);
     assert.match(sectionSrc, /Restore/);
     assert.match(sectionSrc, /Rename/);

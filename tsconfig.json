@@ -34,7 +34,11 @@
       "@shared/product-account": ["./shared/product-account/index.ts"],
       "@shared/product-account/*": ["./shared/product-account/*"],
       "@shared/analytics": ["./shared/analytics/index.ts"],
-      "@shared/analytics/*": ["./shared/analytics/*"]
+      "@shared/analytics/*": ["./shared/analytics/*"],
+      "@shared/brand": ["./shared/brand/logo.ts"],
+      "@shared/brand/*": ["./shared/brand/*"],
+      "@shared/pricing": ["./shared/pricing/index.ts"],
+      "@shared/pricing/*": ["./shared/pricing/*"]
     }
   },
   "include": [
@@ -45,5 +49,5 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules", "marketing", "workspace", "scripts"]
+  "exclude": ["node_modules", "marketing", "workspace", "scripts", "docs"]
 }

@@ -1,0 +1,121 @@
+{
+  "checks": [
+    {
+      "page": "product",
+      "vp": 320,
+      "deskW": 278,
+      "phoneW": 96,
+      "ratio": 0.346,
+      "phoneFits": true,
+      "overflow": false
+    },
+    {
+      "page": "features",
+      "vp": 320,
+      "headerFits": true,
+      "shotFits": true,
+      "shotW": 245,
+      "stageW": 267,
+      "offenders": [],
+      "overflow": false
+    },
+    {
+      "page": "product",
+      "vp": 390,
+      "deskW": 348,
+      "phoneW": 117,
+      "ratio": 0.337,
+      "phoneFits": true,
+      "overflow": false
+    },
+    {
+      "page": "features",
+      "vp": 390,
+      "headerFits": true,
+      "shotFits": true,
+      "shotW": 315,
+      "stageW": 337,
+      "offenders": [],
+      "overflow": false
+    },
+    {
+      "page": "product",
+      "vp": 430,
+      "deskW": 388,
+      "phoneW": 118,
+      "ratio": 0.304,
+      "phoneFits": true,
+      "overflow": false
+    },
+    {
+      "page": "features",
+      "vp": 430,
+      "headerFits": true,
+      "shotFits": true,
+      "shotW": 355,
+      "stageW": 377,
+      "offenders": [],
+      "overflow": false
+    },
+    {
+      "page": "features",
+      "vp": 768,
+      "scrollW": 768,
+      "clientW": 768,
+      "overflow": false
+    }
+  ],
+  "interactions": {
+    "options": [
+      {
+        "value": "sales",
+        "text": "Sales & Bookings — Inquiry to Booked"
+      },
+      {
+        "value": "communication",
+        "text": "Communication & Workflows — Stay Connected"
+      },
+      {
+        "value": "client",
+        "text": "Client Planning & Collaboration — Plan Together"
+      },
+      {
+        "value": "ops",
+        "text": "Event Planning & Operations — Bring It All Together"
+      },
+      {
+        "value": "vendors",
+        "text": "Vendor Relationships & Collaboration — Bring Vendors In"
+      },
+      {
+        "value": "payments",
+        "text": "Payments & Business Insights — Know Your Business"
+      },
+      {
+        "value": "custom",
+        "text": "Customization & Helpful Assistance — Make It Yours"
+      }
+    ],
+    "before": "app.sandbox.hellotocheers.com · A beautiful first impression",
+    "after": "app.sandbox.hellotocheers.com · Every conversation in context",
+    "changed": true,
+    "active": "Every conversation in context",
+    "nextVal": "communication",
+    "eyebrow": "COMMUNICATION & WORKFLOWS",
+    "headline": "Stay Connected"
+  },
+  "desktop": {
+    "product": {
+      "phonePos": "absolute",
+      "deskW": 1009,
+      "phoneW": 268,
+      "deskWidthRule": "1009.3px"
+    },
+    "features": {
+      "nav": "block",
+      "mobile": "none",
+      "cols": "280px 906.828px"
+    }
+  },
+  "auditOverflow": []
+}

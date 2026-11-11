@@ -3,6 +3,12 @@
 import * as React from "react";
 import { Pencil, Plus, Trash2, X, Check, ChevronDown, ChevronUp } from "lucide-react";
 import type { BudgetCategory, BudgetContributor, CoupleBudget } from "@/lib/portal/types";
+import {
+  isCustomBudgetCategoryKey,
+  newCustomBudgetCategoryKey,
+  unallocatedBudgetAmount,
+  visibleBudgetCategories,
+} from "@/lib/portal/budget-categories";
 import { getBudgetObservations } from "@/lib/luv/portal-observations";
 import { ProgressRing } from "@/components/dashboard-system/progress";
 
@@ -88,12 +94,13 @@ function computeInsights(budget: CoupleBudget): { type: "info" | "warn" | "good"
 
 // ── Category card ─────────────────────────────────────────────────────────────
 
-function CategoryCard({ cat, dbCat, totalBudget, token, onSaved }: {
-  cat: typeof BUDGET_CATS[number];
+function CategoryCard({ cat, dbCat, totalBudget, token, onSaved, onRemoved }: {
+  cat: { key: string; label: string; emoji: string; suggestedPct: number };
   dbCat: BudgetCategory | undefined;
   totalBudget: number;
   token: string;
   onSaved: (categoryKey: string, budgeted: number, actual: number) => void;
+  onRemoved?: () => void;
 }) {
   const [editing, setEditing] = React.useState(false);
   const [budgetStr, setBudgetStr] = React.useState("");
@@ -104,6 +111,7 @@ function CategoryCard({ cat, dbCat, totalBudget, token, onSaved }: {
   const actual   = dbCat?.actualAmount  ?? 0;
   const pct      = budgeted > 0 ? (actual / budgeted) * 100 : 0;
   const suggested = Math.round(totalBudget * cat.suggestedPct);
+  const isCustom = isCustomBudgetCategoryKey(cat.key);
 
   function startEdit() {
     setBudgetStr(budgeted > 0 ? String(budgeted) : "");
@@ -118,11 +126,44 @@ function CategoryCard({ cat, dbCat, totalBudget, token, onSaved }: {
     await fetch("/api/portal/budget/category", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ token, categoryKey: cat.key, budgetedAmount: b, actualAmount: a, displayOrder: BUDGET_CATS.findIndex(c => c.key === cat.key) }),
+      body: JSON.stringify({
+        token,
+        categoryKey: cat.key,
+        budgetedAmount: b,
+        actualAmount: a,
+        displayOrder: BUDGET_CATS.findIndex(c => c.key === cat.key),
+        customName: isCustom ? cat.label : null,
+      }),
     });
     onSaved(cat.key, b, a);
     setSaving(false);
     setEditing(false);
+  }
+
+  async function removeCategory() {
+    if (!confirm(`Remove “${cat.label}”? Its budgeted amount returns to unallocated.`)) return;
+    setSaving(true);
+    if (!dbCat) {
+      await fetch("/api/portal/budget/category", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          token,
+          categoryKey: cat.key,
+          budgetedAmount: 0,
+          actualAmount: 0,
+          displayOrder: BUDGET_CATS.findIndex((c) => c.key === cat.key),
+          customName: isCustom ? cat.label : null,
+        }),
+      });
+    }
+    await fetch("/api/portal/budget/category", {
+      method: "DELETE",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ token, categoryKey: cat.key }),
+    });
+    setSaving(false);
+    onRemoved?.();
   }
 
   const statusColor = actual === 0 && budgeted === 0
@@ -143,10 +184,19 @@ function CategoryCard({ cat, dbCat, totalBudget, token, onSaved }: {
             <span className="font-medium text-sm truncate">{dbCat?.customName ?? cat.label}</span>
           </div>
           {!editing && (
-            <button onClick={startEdit}
-              className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0">
-              <Pencil className="h-3.5 w-3.5" />
-            </button>
+            <div className="flex items-center gap-0.5 shrink-0">
+              <button onClick={startEdit}
+                className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                aria-label={`Edit ${cat.label}`}>
+                <Pencil className="h-3.5 w-3.5" />
+              </button>
+              <button onClick={removeCategory} disabled={saving}
+                className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-muted transition-colors"
+                aria-label={`Remove ${cat.label}`}
+                data-testid="budget-category-remove">
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </div>
           )}
         </div>
 
@@ -580,27 +630,137 @@ function EditTotalBudget({ budget, token, onUpdate }: {
 
 // ── Dashboard view ────────────────────────────────────────────────────────────
 
+function AddCustomCategory({
+  token,
+  unallocated,
+  onAdded,
+}: {
+  token: string;
+  unallocated: number;
+  onAdded: () => void;
+}) {
+  const [open, setOpen] = React.useState(false);
+  const [name, setName] = React.useState("");
+  const [amount, setAmount] = React.useState("");
+  const [saving, setSaving] = React.useState(false);
+
+  async function save() {
+    const label = name.trim();
+    if (!label) return;
+    const budgeted = parseAmt(amount);
+    if (budgeted > unallocated + 0.001) {
+      alert(`Only ${fmt(unallocated)} is unallocated right now.`);
+      return;
+    }
+    setSaving(true);
+    const key = newCustomBudgetCategoryKey();
+    await fetch("/api/portal/budget/category", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        token,
+        categoryKey: key,
+        budgetedAmount: budgeted,
+        actualAmount: 0,
+        displayOrder: 100,
+        customName: label,
+      }),
+    });
+    setSaving(false);
+    setName("");
+    setAmount("");
+    setOpen(false);
+    onAdded();
+  }
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        data-testid="budget-add-custom-category"
+        className="w-full rounded-2xl border border-dashed border-border px-4 py-6 text-sm text-muted-foreground hover:border-[var(--venue-primary)] hover:text-heading transition-colors"
+      >
+        <Plus className="inline h-4 w-4 mr-1.5" />
+        Add custom category
+        {unallocated > 0 ? ` · ${fmt(unallocated)} unallocated` : ""}
+      </button>
+    );
+  }
+
+  return (
+    <div className="rounded-2xl border border-border bg-card p-4 space-y-3" data-testid="budget-add-custom-form">
+      <p className="text-sm font-medium text-heading">New category</p>
+      <input
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        placeholder="Category name"
+        className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-background"
+      />
+      <div className="relative">
+        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
+        <input
+          type="number"
+          min="0"
+          step="100"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+          placeholder="Budget from unallocated"
+          className="w-full pl-6 pr-2 py-2 text-sm border border-border rounded-lg bg-background"
+        />
+      </div>
+      <p className="text-[11px] text-muted-foreground">{fmt(unallocated)} available to allocate</p>
+      <div className="flex gap-2">
+        <button type="button" onClick={() => setOpen(false)} className="flex-1 py-1.5 text-xs border border-border rounded-lg">
+          Cancel
+        </button>
+        <button
+          type="button"
+          onClick={save}
+          disabled={saving || !name.trim()}
+          className="flex-1 py-1.5 text-xs rounded-lg font-medium text-white"
+          style={{ backgroundColor: "var(--venue-primary)" }}
+        >
+          {saving ? "Saving…" : "Add"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function DashboardView({ budget, token, onUpdate }: {
   budget: CoupleBudget; token: string; onUpdate: () => void;
 }) {
-  const totalBudgeted = budget.categories.reduce((s, c) => s + c.budgetedAmount, 0);
-  const totalActual   = budget.categories.reduce((s, c) => s + c.actualAmount, 0);
+  const visible = visibleBudgetCategories(budget.categories);
+  const totalBudgeted = visible.reduce((s, c) => s + c.budgetedAmount, 0);
+  const totalActual   = visible.reduce((s, c) => s + c.actualAmount, 0);
   const remaining     = budget.totalBudget - totalActual;
+  const unallocated   = unallocatedBudgetAmount(budget.totalBudget, budget.categories);
   const pctSpent      = budget.totalBudget > 0 ? (totalActual / budget.totalBudget) * 100 : 0;
-  const insights      = computeInsights(budget);
+  const insights      = computeInsights({ ...budget, categories: visible });
   const luvObs        = getBudgetObservations(
-    budget.categories.map(c => ({ name: c.customName ?? c.categoryKey, budgetedAmount: c.budgetedAmount })),
+    visible.map(c => ({ name: c.customName ?? c.categoryKey, budgetedAmount: c.budgetedAmount })),
     budget.totalBudget,
   );
 
   // Build a lookup for quick access
   const catMap = React.useMemo(() => {
     const m = new Map<string, BudgetCategory>();
-    for (const c of budget.categories) m.set(c.categoryKey, c);
+    for (const c of visible) m.set(c.categoryKey, c);
     return m;
-  }, [budget.categories]);
+  }, [visible]);
 
-  function handleCategorySaved(key: string, budgeted: number, actual: number) {
+  const removedStarterKeys = React.useMemo(
+    () => new Set(
+      budget.categories.filter((c) => c.isRemoved && !isCustomBudgetCategoryKey(c.categoryKey)).map((c) => c.categoryKey),
+    ),
+    [budget.categories],
+  );
+
+  const starterCats = BUDGET_CATS.filter((c) => !removedStarterKeys.has(c.key));
+  const customCats = visible.filter((c) => isCustomBudgetCategoryKey(c.categoryKey));
+
+  function handleCategorySaved(_key: string, _budgeted: number, _actual: number) {
     onUpdate();
   }
 
@@ -623,10 +783,14 @@ function DashboardView({ budget, token, onUpdate }: {
               <span className="text-sm text-muted-foreground">total budget</span>
               <EditTotalBudget budget={budget} token={token} onUpdate={onUpdate} />
             </div>
-            <div className="grid grid-cols-3 gap-3 text-sm">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
               <div>
                 <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Budgeted</p>
                 <p className="font-semibold">{fmtShort(totalBudgeted)}</p>
+              </div>
+              <div>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Unallocated</p>
+                <p className="font-semibold" data-testid="budget-unallocated">{fmtShort(unallocated)}</p>
               </div>
               <div>
                 <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Actual</p>
@@ -680,7 +844,7 @@ function DashboardView({ budget, token, onUpdate }: {
       <section className="space-y-3">
         <p className="font-semibold text-heading">Categories</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {BUDGET_CATS.map(cat => (
+          {starterCats.map(cat => (
             <CategoryCard
               key={cat.key}
               cat={cat}
@@ -688,8 +852,26 @@ function DashboardView({ budget, token, onUpdate }: {
               totalBudget={budget.totalBudget}
               token={token}
               onSaved={handleCategorySaved}
+              onRemoved={onUpdate}
             />
           ))}
+          {customCats.map((c) => (
+            <CategoryCard
+              key={c.categoryKey}
+              cat={{
+                key: c.categoryKey,
+                label: c.customName?.trim() || "Custom",
+                emoji: "✨",
+                suggestedPct: 0,
+              }}
+              dbCat={c}
+              totalBudget={budget.totalBudget}
+              token={token}
+              onSaved={handleCategorySaved}
+              onRemoved={onUpdate}
+            />
+          ))}
+          <AddCustomCategory token={token} unallocated={unallocated} onAdded={onUpdate} />
         </div>
       </section>
 

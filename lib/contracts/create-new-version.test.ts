@@ -6,6 +6,7 @@ import {
   deriveVersionNumber,
   formatVersionLabel,
   isContractContentLocked,
+  selectCurrentAgreements,
   statusLabelForVersion,
   type ContractLineageNode,
 } from "@/lib/contracts/version-lineage";
@@ -65,16 +66,53 @@ describe("contract version lineage (amends_contract_id)", () => {
     assert.equal(family[2].versionNumber, 3);
   });
 
+  it("selects only the current tip of an amends family", () => {
+    const current = selectCurrentAgreements(
+      nodes.map((n) => ({
+        id: n.id,
+        amendsContractId: n.amendsContractId,
+        createdAt: n.createdAt,
+      })),
+    );
+    assert.equal(current.length, 1);
+    assert.equal(current[0].currentId, "c");
+    assert.equal(current[0].versionNumber, 3);
+    assert.deepEqual(new Set(current[0].familyIds), new Set(["a", "b", "c"]));
+  });
+
+  it("fails safely on cyclic amends pointers by keeping every instance visible", () => {
+    const cyclic = selectCurrentAgreements([
+      { id: "x", amendsContractId: "y", createdAt: "2026-01-01T00:00:00.000Z" },
+      { id: "y", amendsContractId: "x", createdAt: "2026-01-02T00:00:00.000Z" },
+    ]);
+    assert.equal(cyclic.length, 2);
+    assert.deepEqual(new Set(cyclic.map((s) => s.currentId)), new Set(["x", "y"]));
+  });
+
   it("formats human labels", () => {
     assert.equal(formatVersionLabel(2), "Version 2");
     assert.equal(statusLabelForVersion({ status: "draft", finalized: false, locked: false }), "Draft");
-    assert.equal(statusLabelForVersion({ status: "draft", finalized: false, locked: true }), "Ready to send");
-    assert.equal(statusLabelForVersion({ status: "signed", finalized: true, locked: true }), "Signed · Final");
+    assert.equal(statusLabelForVersion({ status: "draft", finalized: false, locked: true }), "Draft");
+    assert.equal(statusLabelForVersion({ status: "signed", finalized: true, locked: true }), "Fully Executed · Final");
+    assert.equal(statusLabelForVersion({ status: "signed", finalized: false, locked: true }), "Fully Executed");
+    assert.equal(statusLabelForVersion({ status: "sent", finalized: false, locked: false }), "Sent to Client");
+    assert.equal(
+      statusLabelForVersion({
+        status: "sent",
+        finalized: false,
+        locked: true,
+        requiredClientTotal: 1,
+        requiredClientSigned: 1,
+        venueSigned: false,
+      }),
+      "Awaiting Venue Signature",
+    );
   });
 
-  it("treats venue-signed content as locked", () => {
-    assert.equal(isContractContentLocked({ status: "draft", venueSigned: true }), true);
+  it("treats client-signed or executed content as locked", () => {
+    assert.equal(isContractContentLocked({ status: "draft", venueSigned: true }), false);
     assert.equal(isContractContentLocked({ status: "draft", venueSigned: false }), false);
+    assert.equal(isContractContentLocked({ status: "sent", venueSigned: false, anyClientSigned: true }), true);
     assert.equal(isContractContentLocked({ status: "signed", venueSigned: false }), true);
   });
 });
@@ -327,6 +365,12 @@ describe("Create New Version service wiring", () => {
     assert.doesNotMatch(detail, /Create Amendment/);
     assert.match(detail, /const canReopen = false/);
     assert.match(detail, /Version history/);
+    assert.match(detail, /Created /);
+    assert.match(detail, /v.signedAt/);
+    assert.match(detail, /isFullyExecutedSingleVersion/);
+    assert.match(detail, /showStandaloneVersionHistory/);
+    assert.match(detail, /data-testid="contract-version-compact"/);
+    assert.match(detail, /data-testid="contract-version-history-card"/);
   });
 
   it("actions expose createNewVersionFromContractAction", () => {

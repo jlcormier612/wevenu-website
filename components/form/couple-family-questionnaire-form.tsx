@@ -18,6 +18,7 @@ import { celebrateLuv } from "@/lib/luv/celebrate";
 import { coupleCelebrationMessage } from "@/lib/luv/celebrations";
 import {
   getQuestionnaireMasterByKind,
+  kindLabel,
   type QuestionnaireKind,
 } from "@/lib/questionnaire-family/definitions";
 import {
@@ -26,6 +27,10 @@ import {
   type MasterOverrides,
   type ResolvedQuestionnaireField,
 } from "@/lib/questionnaire-family/resolve";
+import {
+  buildSubmittedAnswerRows,
+} from "@/lib/questionnaire-family/submitted-answers";
+import { inkOn } from "@/lib/theme/public-form-surface";
 
 export type FamilyQuestionnaireData = {
   questionnaire_id: string;
@@ -72,10 +77,10 @@ type SaveState = "idle" | "saving" | "saved" | "error";
 function FieldShell({ label, hint, required, children }: { label: string; hint?: string; required?: boolean; children: React.ReactNode }) {
   return (
     <div className="space-y-1.5">
-      <label className="block text-sm font-medium text-gray-700">
-        {label}{required && <span className="text-red-500"> *</span>}
+      <label className="block text-sm font-medium text-foreground">
+        {label}{required && <span className="text-destructive"> *</span>}
       </label>
-      {hint && <p className="text-xs text-gray-500">{hint}</p>}
+      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
       {children}
     </div>
   );
@@ -83,8 +88,8 @@ function FieldShell({ label, hint, required, children }: { label: string; hint?:
 
 function SectionHead({ children }: { children: React.ReactNode }) {
   return (
-    <div className="border-t border-gray-100 pt-5">
-      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-3">{children}</p>
+    <div className="border-t border-border pt-5">
+      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">{children}</p>
     </div>
   );
 }
@@ -308,7 +313,9 @@ export function CoupleFamilyQuestionnaireForm({
     } catch { setError("Network error. Please try again."); setState("idle"); }
   }
 
-  const inputCls = "w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base sm:text-sm focus:outline-none focus:ring-2 focus:border-transparent";
+  const inputCls =
+    "w-full rounded-lg border border-input bg-background text-foreground placeholder:text-muted-foreground px-3 py-2.5 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent";
+  const submitInk = inkOn(primary);
   const sections = [...new Set(visibleFields().map((f) => f.section))];
 
   if (state === "stale") {
@@ -323,22 +330,59 @@ export function CoupleFamilyQuestionnaireForm({
   }
 
   if (state === "success" || state === "already_submitted") {
+    const answerRows = buildSubmittedAnswerRows({
+      ...data,
+      kind,
+      additional: { family },
+      meal_notes: columns.meal_notes ?? data.meal_notes,
+      processional_song: columns.processional_song ?? data.processional_song,
+      recessional_song: columns.recessional_song ?? data.recessional_song,
+      first_dance_song: columns.first_dance_song ?? data.first_dance_song,
+      parent_dances: columns.parent_dances ?? data.parent_dances,
+      emergency_contact_name: columns.emergency_contact_name ?? data.emergency_contact_name,
+      emergency_contact_phone: columns.emergency_contact_phone ?? data.emergency_contact_phone,
+      special_requests: columns.special_requests ?? data.special_requests,
+      vendor_notes: columns.vendor_notes ?? data.vendor_notes,
+      ceremony_start_time: columns.ceremony_start_time ?? data.ceremony_start_time,
+      reception_start_time: columns.reception_start_time ?? data.reception_start_time,
+      ceremony_location: columns.ceremony_location ?? data.ceremony_location,
+      reception_location: columns.reception_location ?? data.reception_location,
+      final_guest_count: guestCount ? Number(guestCount) : data.final_guest_count,
+    });
+    const sectionsInAnswers = [...new Set(answerRows.map((r) => r.section))];
     return (
-      <div className="max-w-xl mx-auto px-4 py-16 text-center space-y-3">
-        <CheckCircle className="mx-auto h-10 w-10" style={{ color: primary }} />
-        <p className="font-heading text-xl text-heading">Thank you</p>
-        <p className="text-sm text-muted-foreground">
-          {data.status === "complete"
-            ? "This form is complete with your venue."
-            : kind === "post_event_feedback"
-              ? "Your feedback is with our team."
-              : isChangesRequested || state === "success"
-                ? "Your answers are with your venue team for review."
-                : "Your answers are with your venue team."}
-        </p>
-        {data.status === "complete" && (
-          <p className="text-xs text-muted-foreground">Status: {questionnaireStatusLabel("complete")}</p>
-        )}
+      <div
+        className="max-w-xl mx-auto px-4 py-8 space-y-6 pb-24"
+        data-testid="questionnaire-submitted-review"
+        data-status={data.status}
+      >
+        <header className="space-y-3 text-center">
+          <CheckCircle className="mx-auto h-10 w-10" style={{ color: primary }} />
+          <p className="font-heading text-xl text-heading">{kindLabel(kind)}</p>
+          <p className="text-sm text-muted-foreground">
+            {data.status === "complete"
+              ? "This form is complete with your venue. Your submitted answers are below."
+              : kind === "post_event_feedback"
+                ? "Your feedback is with our team. A copy of what you sent is below."
+                : "Your answers are with your venue team. A read-only copy of what you submitted is below."}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Status: {questionnaireStatusLabel(data.status)} · Read-only
+          </p>
+        </header>
+        {sectionsInAnswers.map((section) => (
+          <section key={section} className="space-y-3">
+            <SectionHead>{section}</SectionHead>
+            <dl className="space-y-3 rounded-lg border border-border bg-card px-4 py-3">
+              {answerRows.filter((r) => r.section === section).map((row) => (
+                <div key={row.id} className="space-y-1">
+                  <dt className="text-xs font-medium text-muted-foreground">{row.label}</dt>
+                  <dd className="text-sm text-heading whitespace-pre-wrap">{row.value}</dd>
+                </div>
+              ))}
+            </dl>
+          </section>
+        ))}
       </div>
     );
   }
@@ -361,8 +405,8 @@ export function CoupleFamilyQuestionnaireForm({
       </header>
 
       {isChangesRequested && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-left space-y-1">
-          <p className="text-sm font-medium text-heading">Your venue requested changes</p>
+        <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-left space-y-1">
+          <p className="text-sm font-medium text-foreground">Your venue requested changes</p>
           {data.changes_requested_note ? (
             <p className="text-sm text-muted-foreground whitespace-pre-wrap">{data.changes_requested_note}</p>
           ) : (
@@ -378,7 +422,7 @@ export function CoupleFamilyQuestionnaireForm({
             if (f.type === "guest_count_confirm") {
               const known = data.event_guest_count;
               return (
-                <div key={f.id} className="space-y-3 rounded-lg border border-gray-100 bg-gray-50/60 p-4">
+                <div key={f.id} className="space-y-3 rounded-lg border border-border bg-muted/40 p-4">
                   {known != null ? (
                     <p className="text-sm text-heading">
                       We currently have <strong>{known}</strong> guests listed for your event. Is that still correct?
@@ -389,8 +433,14 @@ export function CoupleFamilyQuestionnaireForm({
                   {known != null && (
                     <div className="flex flex-col gap-2 sm:flex-row">
                       {(["yes", "no"] as const).map((v) => (
-                        <label key={v} className="flex items-center gap-2 text-sm">
-                          <input type="radio" name="guest_confirm" checked={guestConfirm === v} onChange={() => setGuestConfirm(v)} />
+                        <label key={v} className="flex items-center gap-2 text-sm text-foreground">
+                          <input
+                            type="radio"
+                            name="guest_confirm"
+                            checked={guestConfirm === v}
+                            onChange={() => setGuestConfirm(v)}
+                            className="h-4 w-4 shrink-0 accent-primary"
+                          />
                           {v === "yes" ? "Yes, that's right" : "No, I'd like to update it"}
                         </label>
                       ))}
@@ -407,7 +457,7 @@ export function CoupleFamilyQuestionnaireForm({
 
             if (f.type === "known_timing_confirm") {
               return (
-                <div key={f.id} className="space-y-3 rounded-lg border border-gray-100 bg-gray-50/60 p-4">
+                <div key={f.id} className="space-y-3 rounded-lg border border-border bg-muted/40 p-4">
                   <p className="text-sm text-heading">{f.label}</p>
                   <ul className="text-sm text-muted-foreground space-y-1">
                     {data.ceremony_start_time && <li>Ceremony: {data.ceremony_start_time}{data.ceremony_location ? ` · ${data.ceremony_location}` : ""}</li>}
@@ -416,8 +466,13 @@ export function CoupleFamilyQuestionnaireForm({
                       <li>Your coordinator will keep your Timeline and Event Order current as details firm up.</li>
                     )}
                   </ul>
-                  <label className="flex items-center gap-2 text-sm">
-                    <input type="checkbox" checked={timingChanging} onChange={(e) => setTimingChanging(e.target.checked)} />
+                  <label className="flex items-center gap-2 text-sm text-foreground">
+                    <input
+                      type="checkbox"
+                      checked={timingChanging}
+                      onChange={(e) => setTimingChanging(e.target.checked)}
+                      className="h-4 w-4 shrink-0 rounded border border-input accent-primary"
+                    />
                     Something is changing
                   </label>
                   {timingChanging && (
@@ -439,13 +494,18 @@ export function CoupleFamilyQuestionnaireForm({
 
             if (f.type === "known_ceremony_confirm") {
               return (
-                <div key={f.id} className="space-y-3 rounded-lg border border-gray-100 bg-gray-50/60 p-4">
+                <div key={f.id} className="space-y-3 rounded-lg border border-border bg-muted/40 p-4">
                   <p className="text-sm text-heading">{f.label}</p>
                   <p className="text-sm text-muted-foreground">
                     {[data.ceremony_location, data.ceremony_start_time].filter(Boolean).join(" · ") || "Ceremony details are on your Event Order / Timeline as your plans firm up."}
                   </p>
-                  <label className="flex items-center gap-2 text-sm">
-                    <input type="checkbox" checked={ceremonyChanging} onChange={(e) => setCeremonyChanging(e.target.checked)} />
+                  <label className="flex items-center gap-2 text-sm text-foreground">
+                    <input
+                      type="checkbox"
+                      checked={ceremonyChanging}
+                      onChange={(e) => setCeremonyChanging(e.target.checked)}
+                      className="h-4 w-4 shrink-0 rounded border border-input accent-primary"
+                    />
                     Something is changing
                   </label>
                   {ceremonyChanging && (
@@ -457,7 +517,7 @@ export function CoupleFamilyQuestionnaireForm({
 
             if (f.type === "vendor_review") {
               return (
-                <div key={f.id} className="space-y-3 rounded-lg border border-gray-100 bg-gray-50/60 p-4">
+                <div key={f.id} className="space-y-3 rounded-lg border border-border bg-muted/40 p-4">
                   <p className="text-sm text-heading">{f.label}</p>
                   {(data.known_vendors?.length ?? 0) > 0 ? (
                     <ul className="text-sm text-muted-foreground space-y-1">
@@ -488,7 +548,7 @@ export function CoupleFamilyQuestionnaireForm({
                 <FieldShell key={f.id} label={label} hint={f.helper} required={isReq}>
                   <div className="space-y-2">
                     {(f.options ?? []).map((opt) => (
-                      <label key={opt.value} className="flex items-start gap-2 text-sm">
+                      <label key={opt.value} className="flex items-start gap-2 text-sm text-foreground">
                         <input
                           type="checkbox"
                           checked={selected.has(opt.value)}
@@ -498,6 +558,7 @@ export function CoupleFamilyQuestionnaireForm({
                             else next.add(opt.value);
                             setFamilyField(f.id, JSON.stringify([...next]));
                           }}
+                          className="mt-0.5 h-4 w-4 shrink-0 rounded border border-input accent-primary"
                         />
                         <span>{opt.label}</span>
                       </label>
@@ -525,7 +586,7 @@ export function CoupleFamilyQuestionnaireForm({
                 <FieldShell key={f.id} label={label} hint={f.helper} required={isReq}>
                   <div className="space-y-2">
                     {(f.options ?? []).map((opt) => (
-                      <label key={opt.value} className="flex items-start gap-2 text-sm">
+                      <label key={opt.value} className="flex items-start gap-2 text-sm text-foreground">
                         <input
                           type="radio"
                           name={f.id}
@@ -534,6 +595,7 @@ export function CoupleFamilyQuestionnaireForm({
                             if (f.destination === "column" && f.column) setColumns((c) => ({ ...c, [f.column!]: opt.value }));
                             else setFamilyField(f.id, opt.value);
                           }}
+                          className="mt-0.5 h-4 w-4 shrink-0 border border-input accent-primary"
                         />
                         <span>{opt.label}</span>
                       </label>
@@ -586,13 +648,13 @@ export function CoupleFamilyQuestionnaireForm({
         </section>
       ))}
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
 
       <button
         type="submit"
         disabled={state === "submitting"}
-        className="w-full rounded-lg px-4 py-3 text-sm font-medium text-white"
-        style={{ background: primary }}
+        className="w-full rounded-lg px-4 py-3 text-sm font-medium disabled:opacity-60"
+        style={{ background: primary, color: submitInk }}
       >
         {state === "submitting" ? <Loader2 className="mx-auto h-4 w-4 animate-spin" /> : isChangesRequested ? "Resubmit" : "Submit"}
       </button>

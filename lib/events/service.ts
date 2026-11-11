@@ -17,6 +17,7 @@ import type {
 } from "@/lib/events/types";
 import { validateEventInput, validateEventStatus, validateTeamMemberInput } from "@/lib/events/validation";
 import { normalizeEventEndDate } from "@/lib/events/constants";
+import { clientEventDateSyncPatch } from "@/lib/events/sync-client-event-date";
 import { syncEventVendorAvailability } from "@/lib/vendor-availability/sync";
 import { getCurrentUserRole, getCurrentVenue } from "@/lib/venue/service";
 
@@ -73,15 +74,54 @@ export async function getEventIdForClient(clientId: string): Promise<string | nu
 export async function createEvent(input: EventInput): Promise<CreateEventResult> {
   const errors = validateEventInput(input);
   if (Object.keys(errors).length > 0) return { ok: false, errors };
+  if (!input.clientId) {
+    return {
+      ok: false,
+      message: "An event is created when you book the relationship. Choose the client, then book.",
+    };
+  }
   const result = await withVenue(async (supabase, venueId) => {
-    try {
-      const eventId = await repo.insertEvent(supabase, venueId, input);
-      return { ok: true, eventId } as CreateEventResult;
-    } catch (err) {
-      const fail = occupancyActionFailure(err);
-      if (fail) return fail as CreateEventResult;
-      throw err;
+    const { bookClient } = await import("@/lib/booking-journey/book-client");
+    const booked = await bookClient(supabase, {
+      venueId,
+      clientId: input.clientId,
+      source: "manual",
+      spaceId: input.spaceId,
+      event: {
+        name: input.name,
+        eventType: input.eventType,
+        eventDate: input.eventDate,
+        eventEndDate: input.eventEndDate,
+        startTime: input.startTime,
+        endTime: input.endTime,
+        setupTime: input.setupTime,
+        teardownTime: input.teardownTime,
+        guestCount: input.guestCount,
+      },
+    });
+    if (!booked.ok) return { ok: false, message: booked.message } as CreateEventResult;
+    // book_relationship does not yet accept Guaranteed; persist it after create (B0).
+    if ((input.guaranteedGuestCount ?? "").trim()) {
+      await repo.updateEvent(supabase, venueId, booked.eventId, input);
     }
+    if (input.spaceAssignments && input.spaceAssignments.length > 0) {
+      const { replaceEventSpaceAssignments } = await import("@/lib/events/space-assignments");
+      const venue = await getCurrentVenue();
+      if (venue?.spaceOperatingMode === "multi") {
+        const assigned = await replaceEventSpaceAssignments(booked.eventId, input.spaceAssignments);
+        if (!assigned.ok) {
+          return { ok: false, message: assigned.message } as CreateEventResult;
+        }
+        if (assigned.timelineWarning) {
+          return {
+            ok: true,
+            eventId: booked.eventId,
+            timelineWarning: assigned.timelineWarning,
+          } as CreateEventResult;
+        }
+      }
+    }
+    return { ok: true, eventId: booked.eventId } as CreateEventResult;
   });
   return result as CreateEventResult;
 }
@@ -92,6 +132,8 @@ export async function updateEvent_(eventId: string, input: EventInput): Promise<
   const errors = validateEventInput(input);
   if (Object.keys(errors).length > 0) return { ok: false, errors };
   const result = await withVenue(async (supabase, venueId) => {
+    let timelineWarning: string | undefined;
+    let flagWarning: string | undefined;
     const before = await repo.getEvent(supabase, venueId, eventId);
     try {
       await repo.updateEvent(supabase, venueId, eventId, input);
@@ -100,7 +142,108 @@ export async function updateEvent_(eventId: string, input: EventInput): Promise<
       if (fail) return fail as EventActionResult;
       throw err;
     }
+    // Narrow B2–B4 — when Guaranteed ?? Estimated changes, recalc bound EO lines
+    // (flag-gated; never touches invoices). Surface a Save notice when blocked.
+    let headcountNotice: string | undefined;
+    if (before) {
+      const { boundHeadcountForApply } = await import("@/lib/events/headcount");
+      const nextEstimated = input.guestCount.trim() ? parseInt(input.guestCount, 10) : null;
+      const nextGuaranteed = (input.guaranteedGuestCount ?? "").trim()
+        ? parseInt(input.guaranteedGuestCount, 10)
+        : null;
+      const prevBound = boundHeadcountForApply(before.guestCount, before.guaranteedGuestCount);
+      const nextBound = boundHeadcountForApply(nextEstimated, nextGuaranteed);
+      if (prevBound !== nextBound) {
+        const {
+          recalculateBoundEventOrderLinesForEvent,
+          venueNoticeForHeadcountSkip,
+        } = await import("@/lib/events/headcount-recalc");
+        const recalc = await recalculateBoundEventOrderLinesForEvent(
+          supabase,
+          venueId,
+          eventId,
+          nextEstimated,
+          nextGuaranteed,
+        );
+        const notice = venueNoticeForHeadcountSkip(recalc.skippedReason);
+        if (notice) headcountNotice = notice;
+        else if (recalc.reopened) {
+          headcountNotice =
+            "Guest count saved. Live Event Order quantities updated — send the updated copy to the couple.";
+        }
+      }
+    }
+    let reconciledViaAssignments = false;
+    if (input.spaceAssignments !== undefined) {
+      const venue = await getCurrentVenue();
+      if (venue?.spaceOperatingMode === "multi") {
+        const {
+          getEventSpaceAssignments,
+          replaceEventSpaceAssignments,
+        } = await import("@/lib/events/space-assignments");
+        const { preserveOmittedComponentScheduleFields } = await import(
+          "@/lib/venue-spaces/assignments"
+        );
+        // Edit-event (and any partial assignment payload) must not null out
+        // component dates/times that the caller did not include.
+        const existingAssignments = await getEventSpaceAssignments(eventId);
+        const assignments = preserveOmittedComponentScheduleFields(
+          input.spaceAssignments,
+          existingAssignments,
+        );
+        const assigned = await replaceEventSpaceAssignments(eventId, assignments);
+        if (!assigned.ok) return { ok: false, message: assigned.message };
+        if (assigned.timelineWarning) timelineWarning = assigned.timelineWarning;
+        if (assigned.flagWarning) flagWarning = assigned.flagWarning;
+        reconciledViaAssignments = true;
+      }
+    }
+    // Phase 5 — primary space_id change when assignments path did not run.
+    if (
+      !reconciledViaAssignments
+      && before
+      && (before.spaceId ?? null) !== (input.spaceId?.trim() || null)
+    ) {
+      try {
+        const { reconcileT1BookingRoomFlags } = await import(
+          "@/lib/floor-plans/review-flag-service"
+        );
+        const flags = await reconcileT1BookingRoomFlags(eventId, {
+          previousBookingRoomSet: before.spaceId ? [before.spaceId] : [],
+        });
+        if (flags.ok && flags.flagWarning) flagWarning = flags.flagWarning;
+      } catch (err) {
+        const detail = err instanceof Error ? err.message : "unknown";
+        console.error("[updateEvent_] review flag reconcile failed", { eventId, detail });
+        flagWarning =
+          "Rooms were saved, but layout review flags could not be updated. Refresh and try again, or contact support if this continues.";
+      }
+    }
     await repo.insertEventActivity(supabase, venueId, eventId, "event_updated", "Event details updated");
+
+    const nextEnd = normalizeEventEndDate(input.eventDate, input.eventEndDate);
+
+    // Keep clients.event_date synchronized with the authoritative event date.
+    // Clients list Past / All Bookings split still reads the client copy.
+    if (before) {
+      const clientDatePatch = clientEventDateSyncPatch({
+        clientId: before.clientId,
+        eventStatus: before.status,
+        previousEventDate: before.eventDate,
+        previousEventEndDate: before.eventEndDate,
+        nextEventDate: input.eventDate,
+        nextEventEndDate: nextEnd,
+      });
+      if (clientDatePatch) {
+        await repo.syncClientEventDate(
+          supabase,
+          venueId,
+          clientDatePatch.clientId,
+          clientDatePatch.eventDate,
+          clientDatePatch.endDate,
+        );
+      }
+    }
 
     // Product Decisions (2026-07-08): relative due dates stay synchronized
     // with the event date automatically, until a task is explicitly
@@ -110,7 +253,6 @@ export async function updateEvent_(eventId: string, input: EventInput): Promise<
     }
 
     // Move Booked availability when the secured event date range (or name) changes.
-    const nextEnd = normalizeEventEndDate(input.eventDate, input.eventEndDate);
     if (
       before &&
       (before.eventDate !== input.eventDate
@@ -125,7 +267,32 @@ export async function updateEvent_(eventId: string, input: EventInput): Promise<
       });
     }
 
-    return { ok: true } as EventActionResult;
+    // P1c — event save succeeds independently of timeline recalculation.
+    // Return a review hint when wedding dates or Day-of start changed.
+    const prevStart = before?.startTime?.slice(0, 5) ?? null;
+    const nextStart = input.startTime?.slice(0, 5) || null;
+    const dateChanged = Boolean(
+      before
+      && (before.eventDate !== input.eventDate || (before.eventEndDate ?? null) !== (nextEnd ?? null)),
+    );
+    const startChanged = Boolean(before && prevStart !== nextStart);
+    if (before && (dateChanged || startChanged)) {
+      return {
+        ok: true,
+        timingRecalc: {
+          dateChanged,
+          startChanged,
+          previousEventDate: before.eventDate,
+          previousEventEndDate: before.eventEndDate ?? null,
+          previousStartTime: prevStart,
+        },
+        timelineWarning,
+        flagWarning,
+        headcountNotice,
+      } as EventActionResult;
+    }
+
+    return { ok: true, timelineWarning, flagWarning, headcountNotice } as EventActionResult;
   });
   return result as EventActionResult;
 }
@@ -134,6 +301,30 @@ export async function updateEventStatus_(eventId: string, status: string): Promi
   if (!validateEventStatus(status)) return { ok: false, message: `"${status}" is not a valid status.` };
   const result = await withVenue(async (supabase, venueId) => {
     const before = await repo.getEvent(supabase, venueId, eventId);
+    if (status === "cancelled") {
+      const { data, error } = await supabase.rpc("cancel_booked_event_relationship", {
+        p_venue_id: venueId,
+        p_event_id: eventId,
+      });
+      if (error) {
+        const fail = occupancyActionFailure(error);
+        if (fail) return fail as EventActionResult;
+        throw error;
+      }
+      const row = data as { ok?: boolean; message?: string } | null;
+      if (row && row.ok === false) {
+        return { ok: false, message: row.message ?? "This event could not be cancelled." } as EventActionResult;
+      }
+      if (before && before.status !== status) {
+        await syncEventVendorAvailability(eventId, {
+          eventDate:    before.eventDate,
+          eventEndDate: before.eventEndDate,
+          eventName:    before.name,
+          status,
+        });
+      }
+      return { ok: true } as EventActionResult;
+    }
     try {
       await repo.updateEventStatus(supabase, venueId, eventId, status as EventStatus);
     } catch (err) {
@@ -141,8 +332,8 @@ export async function updateEventStatus_(eventId: string, status: string): Promi
       if (fail) return fail as EventActionResult;
       throw err;
     }
-    // Cancel frees Booked days; restoring a cancelled event re-books them.
-    // Do NOT stamp booked_at here — status changes are not the booking commitment moment.
+    // Restoring a cancelled event re-books occupancy. Do NOT stamp booked_at
+    // here — status changes are not the booking commitment moment.
     if (before && before.status !== status) {
       await syncEventVendorAvailability(eventId, {
         eventDate:    before.eventDate,
@@ -241,6 +432,19 @@ export async function removeTeamMember(memberId: string, memberName: string, eve
       return { ok: false, message: deleted.message } as EventActionResult;
     }
     await repo.insertEventActivity(supabase, venueId, eventId, "team_updated", `Team member removed: ${memberName}`);
+    return { ok: true } as EventActionResult;
+  });
+  return result as EventActionResult;
+}
+
+export async function setEventAssignedStaff(
+  eventId: string,
+  staffId: string | null,
+): Promise<EventActionResult> {
+  const result = await withVenue(async (supabase, venueId) => {
+    const { persistEventStaffAssignment } = await import("@/lib/team/staff-assignment");
+    const saved = await persistEventStaffAssignment(supabase, venueId, eventId, staffId);
+    if (!saved.ok) return { ok: false, message: saved.message } as EventActionResult;
     return { ok: true } as EventActionResult;
   });
   return result as EventActionResult;

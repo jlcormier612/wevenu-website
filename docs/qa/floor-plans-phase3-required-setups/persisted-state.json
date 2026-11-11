@@ -1,0 +1,142 @@
+{
+  "eventId": "16c54399-ffb4-4850-8aaa-d619ce4c69b3",
+  "setups": [
+    {
+      "id": "ff04c606-5ae9-4b71-8e0d-62631a82d2d5",
+      "name": "Ceremony",
+      "operational_floor_plan_id": "0187861e-4fb4-458a-9358-844b94062c4e",
+      "seating_in_use_floor_plan_id": "0187861e-4fb4-458a-9358-844b94062c4e",
+      "couple_selected_floor_plan_id": null,
+      "couple_preference_status": null
+    },
+    {
+      "id": "4f2f73b4-9c4f-4990-b072-d5ad703d4bcb",
+      "name": "Reception",
+      "operational_floor_plan_id": "41d2d266-7ad2-4f71-bc0f-42a3eb93c187",
+      "seating_in_use_floor_plan_id": null,
+      "couple_selected_floor_plan_id": null,
+      "couple_preference_status": null
+    }
+  ],
+  "members": [
+    {
+      "setup_id": "ff04c606-5ae9-4b71-8e0d-62631a82d2d5",
+      "floor_plan_id": "0187861e-4fb4-458a-9358-844b94062c4e",
+      "sort_order": 0
+    },
+    {
+      "setup_id": "4f2f73b4-9c4f-4990-b072-d5ad703d4bcb",
+      "floor_plan_id": "41d2d266-7ad2-4f71-bc0f-42a3eb93c187",
+      "sort_order": 0
+    },
+    {
+      "setup_id": "4f2f73b4-9c4f-4990-b072-d5ad703d4bcb",
+      "floor_plan_id": "c44bab2f-bb48-4019-b0e6-8f2b0da72462",
+      "sort_order": 1
+    }
+  ],
+  "seatBefore": {
+    "id": "0a29a98d-a24b-4e10-bc7a-8713a174c02d",
+    "guest_id": "d4a95173-8ec4-4b86-80c3-5ac8fa787f46",
+    "table_object_id": "d33a679e-c41f-4c00-b4b5-e194dd26ba8c",
+    "floor_plan_id": "0187861e-4fb4-458a-9358-844b94062c4e"
+  },
+  "afterPref": [
+    {
+      "id": "ff04c606-5ae9-4b71-8e0d-62631a82d2d5",
+      "name": "Ceremony",
+      "couple_selected_floor_plan_id": null,
+      "couple_preference_status": null,
+      "operational_floor_plan_id": "0187861e-4fb4-458a-9358-844b94062c4e",
+      "seating_in_use_floor_plan_id": "0187861e-4fb4-458a-9358-844b94062c4e"
+    },
+    {
+      "id": "4f2f73b4-9c4f-4990-b072-d5ad703d4bcb",
+      "name": "Reception",
+      "couple_selected_floor_plan_id": "c44bab2f-bb48-4019-b0e6-8f2b0da72462",
+      "couple_preference_status": "pending",
+      "operational_floor_plan_id": "41d2d266-7ad2-4f71-bc0f-42a3eb93c187",
+      "seating_in_use_floor_plan_id": null
+    }
+  ],
+  "seatsAfterPref": {
+    "id": "0a29a98d-a24b-4e10-bc7a-8713a174c02d",
+    "guest_id": "d4a95173-8ec4-4b86-80c3-5ac8fa787f46",
+    "table_object_id": "d33a679e-c41f-4c00-b4b5-e194dd26ba8c",
+    "floor_plan_id": "0187861e-4fb4-458a-9358-844b94062c4e"
+  },
+  "seatsAfterDetach": {
+    "id": "0a29a98d-a24b-4e10-bc7a-8713a174c02d",
+    "guest_id": "d4a95173-8ec4-4b86-80c3-5ac8fa787f46",
+    "table_object_id": "d33a679e-c41f-4c00-b4b5-e194dd26ba8c",
+    "floor_plan_id": "0187861e-4fb4-458a-9358-844b94062c4e"
+  },
+  "ceremonyPlan": {
+    "id": "0187861e-4fb4-458a-9358-844b94062c4e",
+    "shared_with_couple": true,
+    "client_access": "view"
+  },
+  "setupsApi": {
+    "setups": [
+      {
+        "name": "Ceremony",
+        "layouts": [
+          {
+            "name": "FP3-FP3MVR66K47-Garden Ceremony",
+            "isWorking": true,
+            "sortOrder": 0,
+            "isApproved": null,
+            "floorPlanId": "0187861e-4fb4-458a-9358-844b94062c4e",
+            "isPreference": null,
+            "sharedWithCouple": true
+          }
+        ],
+        "setupId": "ff04c606-5ae9-4b71-8e0d-62631a82d2d5",
+        "sortOrder": 0,
+        "couplePreferenceStatus": null,
+        "operationalFloorPlanId": "0187861e-4fb4-458a-9358-844b94062c4e",
+        "coupleApprovedFloorPlanId": null,
+        "coupleSelectedFloorPlanId": null
+      },
+      {
+        "name": "Reception",
+        "layouts": [
+          {
+            "name": "FP3-FP3MVR66K47-Reception A",
+            "isWorking": true,
+            "sortOrder": 0,
+            "isApproved": null,
+            "floorPlanId": "41d2d266-7ad2-4f71-bc0f-42a3eb93c187",
+            "isPreference": null,
+            "sharedWithCouple": true
+          },
+          {
+            "name": "FP3-FP3MVR66K47-Reception B",
+            "isWorking": false,
+            "sortOrder": 1,
+            "isApproved": null,
+            "floorPlanId": "c44bab2f-bb48-4019-b0e6-8f2b0da72462",
+            "isPreference": null,
+            "sharedWithCouple": true
+          }
+        ],
+        "setupId": "4f2f73b4-9c4f-4990-b072-d5ad703d4bcb",
+        "sortOrder": 1,
+        "couplePreferenceStatus": null,
+        "operationalFloorPlanId": "41d2d266-7ad2-4f71-bc0f-42a3eb93c187",
+        "coupleApprovedFloorPlanId": null,
+        "coupleSelectedFloorPlanId": null
+      }
+    ],
+    "hasSetups": true
+  },
+  "selectRes": {
+    "status": 200,
+    "body": {
+      "ok": true,
+      "setupId": "4f2f73b4-9c4f-4990-b072-d5ad703d4bcb",
+      "floorPlanId": "c44bab2f-bb48-4019-b0e6-8f2b0da72462",
+      "couplePreferenceStatus": "pending"
+    }
+  }
+}

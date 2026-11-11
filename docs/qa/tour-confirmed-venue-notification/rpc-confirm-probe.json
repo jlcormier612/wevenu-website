@@ -1,0 +1,48 @@
+{
+  "probedAt": "2026-10-16T01:48:09.959Z",
+  "fancy": {
+    "venueId": "a415ac52-cd74-42a6-8df7-7a8f6e71d080",
+    "label": "fancy-rpc",
+    "rpcRes": {
+      "ok": true,
+      "alreadyConfirmed": false
+    },
+    "rpcErr": null,
+    "after": {
+      "status": "confirmed",
+      "confirmed_at": "2026-10-16T01:48:09.124155+00:00",
+      "confirmation_source": "prospect_link"
+    },
+    "notifs": [
+      {
+        "id": "c346219f-b614-490f-a6cf-675c3e4e54c4",
+        "type": "tour_confirmed",
+        "title": "Tour confirmed — RpcProbe fancy-rpc-1792115288414",
+        "body": "Nov 14, 2028 at 10:00 AM · Confirmed by the guest",
+        "created_at": "2026-10-16T01:48:09.124155+00:00",
+        "needs_email": true
+      }
+    ],
+    "fired": true
+  },
+  "meadow": {
+    "venueId": "05f16a15-1752-4855-8a3b-aad5c593d8d9",
+    "label": "meadow-rpc",
+    "rpcRes": {
+      "ok": true,
+      "alreadyConfirmed": false
+    },
+    "rpcErr": null,
+    "after": {
+      "status": "confirmed",
+      "confirmed_at": "2026-10-16T01:48:09.715757+00:00",
+      "confirmation_source": "prospect_link"
+    },
+    "notifs": [],
+    "fired": false
+  },
+  "interpretation": {
+    "fancyPrefTrueExpectFire": true,
+    "meadowPrefFalseExpectSuppress": true
+  }
+}

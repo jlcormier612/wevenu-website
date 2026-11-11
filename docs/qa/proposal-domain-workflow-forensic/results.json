@@ -1,0 +1,301 @@
+{
+  "artifact": "proposal-domain-workflow-forensic",
+  "produced_at": "2026-09-23T16:30:00.000Z",
+  "scope": {
+    "production": "untouched",
+    "implementation": "none — forensic only",
+    "paused": ["payment UI fixes", "proposal email/payment flow patches"]
+  },
+  "locked_product_direction": {
+    "proposal_purpose": "Venue presents eligible commercial choices; client selects; client approval confirms that selection.",
+    "skip_path": "If client already knows what they want, venue skips Proposal and goes direct to Contract.",
+    "convergence": "Both paths must share the same frozen commercial source of truth for Contract → sign → deposit/Stripe."
+  },
+  "verdict": {
+    "current_vs_target": "MISMATCH",
+    "summary": "Today's Proposal is a shareable rubber-stamp of a venue-chosen single package. The target Proposal is a multi-option commercial menu where the client selects and HTC freezes that choice. Direct-to-contract already converges on commercial_selections; the gap is the client-choice Proposal layer and catalog eligibility.",
+    "safe_to_build_on": [
+      "packages + package_items Library catalog",
+      "commercial_selections frozen snapshot row (name/total/deposit/included_items)",
+      "createContract merge from selection → contracts.content freeze",
+      "setupPaymentsFromSelection copying selection amounts into invoice/schedule",
+      "Select Package without offer (direct commercial decision)"
+    ],
+    "must_not_conflate": [
+      "Library package live price ≠ accepted commercial total",
+      "proposal accepted ≠ booked / signed / deposit paid",
+      "Event Order lines ≠ commercial_selections (fallback merge only)"
+    ]
+  },
+  "live_fixture_jane_smith": {
+    "venue": "Jen's Fancy Venue (a415ac52-cd74-42a6-8df7-7a8f6e71d080)",
+    "selection_id": "76ce585d-aa82-402a-9dd8-65aa1fa1dfd8",
+    "name": "Signature Wedding",
+    "status": "accepted",
+    "source_package_id": "612b5df3-b9fc-422b-a703-9ae67fccbccb",
+    "total_amount": 32000,
+    "deposit_amount": 8000,
+    "offered_at": "2026-09-23T02:40:14.804+00:00",
+    "accepted_at": "2026-09-23T02:46:13.499999+00:00",
+    "contract_id": "7bec631d-d293-4cbf-aff8-748e5353e6ae",
+    "invoice_id": "60d264f4-4a59-40e5-b8af-fb9c8c226177",
+    "included_items_count": 6,
+    "observation": "Venue picked Signature Wedding; client Accept proposal only flipped offered→accepted. No client package choice UI existed."
+  },
+  "current_model": {
+    "packages_catalog": {
+      "tables": ["packages", "package_items"],
+      "migrations": [
+        "20260627080000_packages_invoices.sql",
+        "20260627100000_package_items_discounts.sql",
+        "20261275000000_package_starter_library.sql"
+      ],
+      "shape": {
+        "packages": ["id", "venue_id", "name", "description", "base_price", "category (freeform)", "is_active", "sort_order"],
+        "package_items": ["description", "quantity", "unit — descriptive only, no unit_price"]
+      },
+      "eligibility": {
+        "by_event_type": false,
+        "by_guest_count": false,
+        "by_space": false,
+        "by_other_venue_rules": false,
+        "notes": "SelectPackageSheet filters only is_active && base_price > 0. category is freeform label, not a rules engine. Lead event_type / guest_count / planned_event_space_id exist elsewhere but are not wired to packages."
+      },
+      "add_ons": {
+        "in_package_catalog": false,
+        "invoice_line_types_exist": ["package", "addon", "inventory", "discount", "fee", "tax", "deposit", "item"],
+        "commercial_selection_path_uses_addons": false
+      }
+    },
+    "proposal_as_implemented": {
+      "engineering_name": "commercial_selections",
+      "ui_names": ["Selected Package", "Proposal (status overlay on same row)"],
+      "migration": "20261343000000_commercial_selections.sql",
+      "acceptance_notice": "20261403100000_proposal_acceptance_notice.sql",
+      "cardinality": "one active selection per lead/client (prior superseded on replace)",
+      "package_cardinality_per_selection": 1,
+      "fields": {
+        "source_package_id": "nullable FK to packages (provenance only; not live-bound)",
+        "name": "frozen package name at create",
+        "total_amount": "frozen from packages.base_price at create",
+        "deposit_amount": "venue-entered or suggested %",
+        "included_items": "jsonb snapshot of package_items (description/qty/unit)",
+        "status": ["draft", "offered", "accepted", "superseded"],
+        "version": "integer lineage on supersede",
+        "offered_at": "when share token issued",
+        "accepted_at": "when client or venue marks accepted",
+        "accept_token": "couple /offer/{token}",
+        "offer_message": "optional venue note",
+        "contract_id": "set when contract created from selection",
+        "invoice_id": "set when payments setup from selection"
+      },
+      "capability_matrix": {
+        "multiple_selectable_packages_options": false,
+        "client_selections": false,
+        "quantities_editable_by_client": false,
+        "add_ons": false,
+        "resulting_calculated_total_from_client_choices": false,
+        "proposal_version_snapshot": "partial — selection.version + frozen fields; not a multi-option offer snapshot",
+        "client_selection_timestamp": false,
+        "client_approval_timestamp": "partial — accepted_at only (selection and approval are the same event today)"
+      },
+      "client_experience": {
+        "route": "/offer/{token}",
+        "ui": "ProposalArtifact + single Accept proposal button",
+        "action": "acceptOfferAction → RPC accept_commercial_selection",
+        "behavior": "Binary confirm of venue-chosen package. No choose/compare/qty/add-on."
+      },
+      "venue_create_path": {
+        "ui": "SelectPackageSheet",
+        "action": "createSelectedPackageFromLibrary",
+        "freeze_moment": "at venue create (not at client accept)",
+        "copy": "Changing the Library package later will not change it."
+      }
+    },
+    "proposal_accepted_semantics_today": {
+      "database": "commercial_selections.status = accepted; accepted_at = now()",
+      "activity": "lead_activities or client_activities type=proposal_accepted",
+      "notification": "create_venue_notification type=proposal_accepted; bell CTA Open the relationship",
+      "does_not": [
+        "create or sign a contract",
+        "create invoice or payment schedule",
+        "charge Stripe",
+        "set events.booked_at / commercially booked",
+        "mutate Library packages"
+      ],
+      "journey_copy": "They accepted the proposal. This venue still requires a signed contract. The proposal is not a contract, and they are not booked."
+    },
+    "proposal_to_contract": {
+      "relationship": "selection.contract_id FK after createContract with selectionId",
+      "copy_vs_reconstruct": "COPIES at contract create time",
+      "mechanism": "buildContractMergeData → formatPackageSection(selection) → mergeContent into contracts.content",
+      "fallback_if_no_selection": "Event Order package/custom lines (weaker; names only for package section)",
+      "post_create": "contracts.content is frozen text; later Library edits do not rewrite signed/draft contract body",
+      "re_merge_on_edit": "not automatic from live catalog; new version / amend is separate contract lineage"
+    },
+    "direct_to_contract_today": {
+      "exists": true,
+      "path": "Select Package (draft) → Create contract (?selectionId=…) without Send proposal",
+      "same_commercial_sot": true,
+      "note": "Direct path already skips offer/accept. Gap vs target is only that venue must still pick the one package; there is no client-menu Proposal."
+    },
+    "payments_convergence": {
+      "setup": "setupPaymentsFromSelection reads selection.totalAmount / depositAmount",
+      "invoice": "commitment invoice created from those amounts (not re-priced from Library)",
+      "conflict_with_target": "none on money SoT once selection is frozen; paused EMAIL-32K is presentation, not model"
+    }
+  },
+  "target_model": {
+    "entities": {
+      "package_catalog": "Mutable Library (packages + future eligibility + priced add-ons).",
+      "proposal": "Offer container: which eligible options are presented to this lead, with prices frozen at send.",
+      "accepted_commercial_selection": "Immutable chosen lines + calculated total + deposit — today's commercial_selections role after client approval (or venue direct decision).",
+      "contract": "Legal document merged from accepted selection snapshot into frozen content.",
+      "invoice_schedule": "Money plan derived from accepted selection amounts."
+    },
+    "target_journey": [
+      "Lead",
+      "Venue creates Proposal",
+      "Venue selects all eligible package/options available for this client",
+      "Proposal sent",
+      "Client selects package/options",
+      "HTC calculates selected commercial total",
+      "Client approves selection",
+      "Accepted commercial selection is frozen",
+      "Contract generated from that exact selection",
+      "Client signs → Venue signs",
+      "Payment schedule/deposit",
+      "Couple pays deposit through Stripe"
+    ],
+    "alternative_path": [
+      "Lead",
+      "Venue already knows selection → create commercial_selection (draft/accepted-by-venue)",
+      "Contract directly from that selection"
+    ],
+    "proposal_accepted_should_mean": {
+      "database": "Client-approved commercial choice frozen (chosen package/options/qty/add-ons + calculated total). Distinct from prior client_selected_at if multi-step UX.",
+      "activity_notification": "Still proposal_accepted (or rename to commercial_selection_approved) — still must NOT mean booked/signed/paid.",
+      "downstream_gate": "Unlocks Create contract from frozen selection; does not auto-create contract unless product later chooses to."
+    }
+  },
+  "immutable_snapshot_boundary": {
+    "recommendation": {
+      "L0_catalog": "packages / package_items / future eligibility rules — always mutable",
+      "L1_offer_snapshot": "NEW — freeze eligible options + unit prices at Send proposal (so catalog edits cannot change what the client was shown)",
+      "L2_accepted_selection": "commercial_selections (or successor) — freeze chosen lines + totals at client approval OR venue direct-decide",
+      "L3_contract_content": "contracts.content — freeze merged legal text at contract create / lock on send-sign",
+      "L4_money": "invoices + payment_schedules — copy amounts from L2; never re-read Library"
+    },
+    "today": {
+      "L1": "missing — offer only points at one already-frozen selection",
+      "L2": "created at venue Select Package (too early for target client-choice journey)",
+      "L3": "present",
+      "L4": "present"
+    },
+    "risk_if_unchanged": "If multi-option proposals read live packages.base_price at accept time, a catalog price change between send and accept alters the accepted commercial — violates target."
+  },
+  "manual_reentry_surfaces": [
+    {
+      "surface": "Library → Packages",
+      "what": "Create/edit catalog name, base_price, inclusions",
+      "necessary": true,
+      "note": "Catalog maintenance, not per-booking re-entry"
+    },
+    {
+      "surface": "Select Package sheet",
+      "what": "Venue picks one package + deposit",
+      "necessary_today": true,
+      "under_target": "Becomes Proposal option curation OR direct-decide; should not re-type prices"
+    },
+    {
+      "surface": "Contract template tokens / free text after merge",
+      "what": "Venue can edit merged draft content",
+      "risk": "Manual drift from selection totals if editor changes package_section / amounts"
+    },
+    {
+      "surface": "Event Order lines (when no selection)",
+      "what": "Planning lines used as weak contract merge fallback",
+      "risk": "Parallel commercial narrative; can force re-describing packages outside Library"
+    },
+    {
+      "surface": "Invoice line editor (outside guided setup)",
+      "what": "Manual invoice lines with type addon/package",
+      "risk": "Money can diverge from commercial_selections if created ad hoc"
+    },
+    {
+      "surface": "Change package (supersede)",
+      "what": "New selection version from Library again",
+      "note": "Correct for re-decision; not mid-accept edit of same offer"
+    }
+  ],
+  "schema_code_gaps": [
+    {
+      "id": "G1",
+      "gap": "No package eligibility by event type / guest count / space",
+      "severity": "additive columns or join tables on packages + resolver used by Proposal builder and Select Package"
+    },
+    {
+      "id": "G2",
+      "gap": "No multi-option Proposal entity — commercial_selections is already the chosen package",
+      "severity": "new proposal / proposal_options tables OR expand selection into offer_set + choice"
+    },
+    {
+      "id": "G3",
+      "gap": "No client selection of options/qty/add-ons; accept is binary",
+      "severity": "couple UI + RPC to persist choice then approve; split selected_at vs accepted_at"
+    },
+    {
+      "id": "G4",
+      "gap": "No priced add-on catalog bound to packages",
+      "severity": "reuse invoice_line_items.addon concept at catalog level; snapshot into selection lines"
+    },
+    {
+      "id": "G5",
+      "gap": "Total is venue-frozen at create, not calculated from client choices",
+      "severity": "pricing function over chosen lines at approve time; write into selection.total_amount"
+    },
+    {
+      "id": "G6",
+      "gap": "Offer snapshot of eligible menu prices missing (L1)",
+      "severity": "freeze option list + prices on sendOffer"
+    },
+    {
+      "id": "G7",
+      "gap": "SELEX status vocabulary overloads draft/offered/accepted for both Proposal and Selected Package",
+      "severity": "product language + possibly status rename; keep booked rule independent"
+    }
+  ],
+  "migration_implications": {
+    "existing_rows": "Accepted single-package commercial_selections (e.g. Jane Signature Wedding) remain valid L2 snapshots for Contract/Payments. Treat as venue-decided or already-approved commercial.",
+    "backward_compatible_strategy": "Keep commercial_selections as L2 SoT. Add L1 Proposal/options alongside. Migrate offered+accepted rows as proposals with one option already chosen.",
+    "breaking_risks": [
+      "Changing accept_commercial_selection to require a prior client choice breaks existing offered links that expect one-click accept",
+      "Moving freeze timing from create→approve changes totals if Library price drifted after Select Package",
+      "Renaming proposal_accepted notification type breaks bell mapping unless dual-written"
+    ],
+    "non_goals_this_phase": "Do not rewrite payment email, Stripe Connect, or contract signing in the same change set."
+  },
+  "conflicts_with_booking_contract_payment": {
+    "booking": "No conflict — accept already documented as not booked; target keeps that.",
+    "contract": "Compatible if Contract always reads L2 selection; conflict only if Proposal generate-contract before approval.",
+    "payment": "Compatible if invoice continues from L2 amounts; conflict if deposit UI invents totals independent of selection.",
+    "event_order": "Soft conflict — dual commercial narrative when selection absent; target should prefer L2 always for commercial contracts.",
+    "process_order_prefs": "deposit_first vs agreement_first still apply after L2 exists; Proposal layer sits before both."
+  },
+  "recommended_build_order_when_unpaused": [
+    "1. Define L1 Proposal + options schema; keep commercial_selections as L2",
+    "2. Freeze L1 prices on send; client choose → write L2; accept = approve L2",
+    "3. Wire eligibility resolver (even if rules v1 = active+priced only)",
+    "4. Keep Create contract + setupPayments reading only L2",
+    "5. Direct-to-contract = venue writes L2 without L1",
+    "6. Then payment email / Stripe journey fixes (paused)"
+  ],
+  "code_anchors": {
+    "packages": ["lib/packages/types.ts", "lib/packages/service.ts", "components/booking-journey/select-package-sheet.tsx"],
+    "selections": ["lib/commercial-selections/service.ts", "lib/commercial-selections/types.ts", "lib/commercial-selections/constants.ts"],
+    "offer_accept": ["lib/booking-journey/offer.ts", "components/booking-journey/offer-accept-client.tsx", "supabase/migrations/20261403100000_proposal_acceptance_notice.sql"],
+    "contract_merge": ["lib/contracts/service.ts#buildContractMergeData", "formatPackageSection"],
+    "journey": ["lib/booking-journey/model.ts", "lib/booking-journey/commercial-facts.ts"],
+    "payments": ["lib/booking-journey/setup-payments.ts"]
+  }
+}

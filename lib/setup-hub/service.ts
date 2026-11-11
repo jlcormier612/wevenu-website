@@ -8,7 +8,7 @@
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import * as repo from "@/lib/setup-hub/repository";
-import { CHANNEL_HAS_VERIFICATION } from "@/lib/setup-hub/types";
+import { isLeadCaptureComplete } from "@/lib/setup-hub/stage-completion";
 import type { BringYourBusinessPath, LeadCaptureChannelKey, LeadCaptureStageStatus, SetupHubState } from "@/lib/setup-hub/types";
 import { getCurrentVenue } from "@/lib/venue/service";
 
@@ -29,31 +29,7 @@ export async function getLeadCaptureStageStatus(): Promise<LeadCaptureStageStatu
       repo.getOrCreateState(client, venueId),
       repo.getLeadCaptureChannels(client, venueId),
     ]);
-    return { path: state.leadCapturePath, channels, complete: computeLeadCaptureComplete(state.leadCapturePath, channels) };
-  });
-}
-
-/**
- * Approved completion model (plan §D), applied literally:
- * "A. The venue configures and, where applicable, verifies at least one
- * automated intake channel they intend to use. OR B. The venue explicitly
- * chooses a valid manual/external workflow for now."
- *
- * A channel counts toward (A) only when it's configured AND — for channels
- * where an on-demand verify action is practical (CHANNEL_HAS_VERIFICATION)
- * — also verified. For channels with no practical verify path (manual,
- * QR scan-dependent), configuration alone is the bar.
- */
-function computeLeadCaptureComplete(
-  path: SetupHubState["leadCapturePath"],
-  channels: LeadCaptureStageStatus["channels"],
-): boolean {
-  if (path === "manual_external") return true;
-  if (path !== "automated") return false;
-  return channels.some((c) => {
-    if (!c.configuredAt) return false;
-    if (CHANNEL_HAS_VERIFICATION[c.channel]) return c.verifiedAt != null;
-    return true;
+    return { path: state.leadCapturePath, channels, complete: isLeadCaptureComplete(state.leadCapturePath, channels) };
   });
 }
 
@@ -128,10 +104,9 @@ export async function setReadyToInviteCouples(ready: boolean): Promise<{ ok: boo
 }
 
 /**
- * Setup Hub -> Dashboard graduation signal. Takes venueId directly (not the
- * withVenue "current user's venue" pattern) since callers — the app layout
- * gate and the dashboard's own data guard — already have the venue from
- * their own getCurrentVenue() call and would otherwise redo it.
+ * Owner-declared Setup Hub signal: the venue is ready to invite couples.
+ * Guidance and next-step presentation may use this. It does not hide
+ * Dashboard, Calendar, Leads, or the rest of the operational workspace.
  */
 export async function isVenueReadyToInviteCouples(venueId: string): Promise<boolean> {
   if (!isSupabaseConfigured) return false;

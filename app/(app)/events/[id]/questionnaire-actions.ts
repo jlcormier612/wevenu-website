@@ -12,6 +12,10 @@ import {
   type Questionnaire,
 } from "@/lib/events/questionnaire";
 import {
+  cancelScheduledQuestionnaireSend,
+  scheduleQuestionnaireSend,
+} from "@/lib/events/questionnaire-scheduled-send";
+import {
   addQuestionnaireStarterAgain,
   ensureQuestionnaireFamilyForCurrentVenue,
   provisionMissingQuestionnaireStarters,
@@ -33,16 +37,9 @@ export async function saveQuestionnaireAction(
   const result = await saveQuestionnaire(eventId, fields, submit, options);
   if (result.ok) {
     revalidatePath(`/events/${eventId}`);
+    // Submit (venue or couple path) does not finish questionnaire_submitted tasks —
+    // that happens on completeQuestionnaireAction / Mark Complete.
     if (submit) {
-      void (async () => {
-        try {
-          const { createClient: mk } = await import("@/integrations/supabase/server");
-          const { getCurrentVenue } = await import("@/lib/venue/service");
-          const { triggerAutoComplete } = await import("@/lib/playbooks/service");
-          const [sb, venue] = await Promise.all([mk(), getCurrentVenue()]);
-          if (venue) await triggerAutoComplete(sb, venue.id, eventId, "questionnaire_submitted");
-        } catch { /* non-blocking */ }
-      })();
       void (async () => {
         try {
           const supabase = await createClient();
@@ -71,6 +68,26 @@ export async function sendQuestionnaireAction(
   kind: QuestionnaireKind = "final_details",
 ): Promise<{ ok: boolean; formUrl?: string; message?: string }> {
   const result = await sendQuestionnaireToCouple(eventId, coupleEmail, coupleName, eventName, threadId, customMessage, kind);
+  if (result.ok) revalidatePath(`/events/${eventId}`);
+  return result;
+}
+
+export async function scheduleQuestionnaireSendAction(
+  eventId: string,
+  kind: QuestionnaireKind,
+  scheduledFor: string,
+  customMessage?: string,
+): Promise<{ ok: boolean; message?: string; scheduledFor?: string }> {
+  const result = await scheduleQuestionnaireSend(eventId, kind, scheduledFor, customMessage);
+  if (result.ok) revalidatePath(`/events/${eventId}`);
+  return result;
+}
+
+export async function cancelScheduledQuestionnaireSendAction(
+  eventId: string,
+  kind: QuestionnaireKind,
+): Promise<{ ok: boolean; message?: string }> {
+  const result = await cancelScheduledQuestionnaireSend(eventId, kind);
   if (result.ok) revalidatePath(`/events/${eventId}`);
   return result;
 }
@@ -175,6 +192,19 @@ export async function saveQuestionnaireAuthoringAction(
   },
 ) {
   const result = await templates.saveQuestionnaireAuthoring(id, input);
+  if (result.ok) {
+    revalidatePath("/library/questionnaire-templates");
+    revalidatePath(`/library/questionnaire-templates/${id}`);
+    revalidatePath(`/library/questionnaire-templates/${id}/preview`);
+  }
+  return result;
+}
+
+export async function updateQuestionnaireTemplateDetailsAction(
+  id: string,
+  input: { name: string; description: string | null },
+) {
+  const result = await templates.updateTemplateDetails(id, input);
   if (result.ok) {
     revalidatePath("/library/questionnaire-templates");
     revalidatePath(`/library/questionnaire-templates/${id}`);

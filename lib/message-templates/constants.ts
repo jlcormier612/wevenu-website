@@ -34,10 +34,9 @@ export type MergeFieldMeta = {
 // the written content itself never is.
 export const MESSAGE_MERGE_FIELDS: MergeFieldMeta[] = [
   { key: "venue_name",        label: "Venue Name",         description: "Your venue's name" },
-  { key: "client_name",       label: "Client Name",        description: "Full client name (e.g., Emily & James Carter)" },
+  { key: "client_name",       label: "Client Name",        description: "Primary client contact's first and last name" },
   { key: "first_name",        label: "First Name",         description: "Recipient's first name" },
   { key: "last_name",         label: "Last Name",          description: "Recipient's last name" },
-  { key: "full_name",         label: "Full Name",          description: "Recipient's first and last name" },
   { key: "coordinator_name",  label: "Coordinator Name",   description: "The team member sending this message" },
   { key: "event_date",        label: "Event Date",         description: "Formatted event date (e.g., June 12, 2027)" },
   { key: "event_name",        label: "Event Name",         description: "The event's name, when available" },

@@ -1,0 +1,169 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { describe, it } from "node:test";
+
+import {
+  profileConfigGaps,
+  profileHardConfigGaps,
+  profileHardGapSummary,
+  profileIsHonestlyConfigured,
+  profileSoftConfigGaps,
+  profileTemplateRefIncomplete,
+} from "@/lib/event-setup/profile-config-gaps";
+import type { SetupDecisions } from "@/lib/event-setup/state";
+import type { SetupTemplateRefs } from "@/lib/event-setup/template-refs";
+
+const emptyRefs: SetupTemplateRefs = {};
+const read = (p: string) => readFileSync(resolve(p), "utf8");
+
+describe("profileHardConfigGaps", () => {
+  it("treats Included planning/timeline/floor plans/questionnaires without templates as hard gaps", () => {
+    const decisions: SetupDecisions = {
+      planning: "set_up",
+      timeline: "set_up",
+      floor_plans: "set_up",
+      questionnaires: "set_up",
+      vendors: "set_up",
+    };
+    const gaps = profileHardConfigGaps(decisions, emptyRefs);
+    assert.equal(gaps.length, 4);
+    assert.ok(gaps.every((g) => g.severity === "hard"));
+    assert.deepEqual(
+      gaps.map((g) => g.step).sort(),
+      ["floor_plans", "planning", "questionnaires", "timeline"],
+    );
+    assert.equal(profileIsHonestlyConfigured(decisions, emptyRefs), false);
+  });
+
+  it("does not require a vendor recommendation list for Included preferred vendors", () => {
+    const decisions: SetupDecisions = { vendors: "set_up" };
+    assert.equal(profileHardConfigGaps(decisions, emptyRefs).length, 0);
+    assert.equal(profileIsHonestlyConfigured(decisions, emptyRefs), true);
+  });
+
+  it("accepts Included steps when required template refs are present", () => {
+    const decisions: SetupDecisions = {
+      planning: "set_up",
+      timeline: "set_up",
+      floor_plans: "set_up",
+      questionnaires: "set_up",
+      inventory: "set_up",
+      event_order: "set_up",
+    };
+    const refs: SetupTemplateRefs = {
+      planningPlaybookTemplateId: "pb-1",
+      venuePlanningPlaybookTemplateId: "pb-venue-1",
+      timelineTemplateId: "tl-1",
+      floorPlanTemplateIds: ["fp-1"],
+      questionnaireTemplateIds: ["q-1"],
+      inventoryTemplateId: "inv-1",
+      eventOrderTemplateId: "eo-1",
+    };
+    assert.equal(profileHardConfigGaps(decisions, refs).length, 0);
+    assert.equal(profileIsHonestlyConfigured(decisions, refs), true);
+  });
+
+  it("requires both client and venue checklists when Planning is Included", () => {
+    const decisions: SetupDecisions = { planning: "set_up" };
+    assert.match(
+      profileHardConfigGaps(decisions, { planningPlaybookTemplateId: "pb-1" })[0]!.message,
+      /venue\/internal checklist/,
+    );
+    assert.match(
+      profileHardConfigGaps(decisions, { venuePlanningPlaybookTemplateId: "pb-v" })[0]!.message,
+      /client checklist/,
+    );
+    assert.equal(
+      profileHardConfigGaps(decisions, {
+        planningPlaybookTemplateId: "pb-1",
+        venuePlanningPlaybookTemplateId: "pb-v",
+      }).length,
+      0,
+    );
+  });
+
+  it("never hard-gaps Inventory/Event Order (commercial, not Setup)", () => {
+    const decisions: SetupDecisions = { inventory: "set_up", event_order: "set_up" };
+    assert.equal(profileHardConfigGaps(decisions, emptyRefs).length, 0);
+    assert.equal(profileTemplateRefIncomplete("inventory", decisions, emptyRefs), false);
+    assert.equal(profileTemplateRefIncomplete("event_order", decisions, emptyRefs), false);
+  });
+
+  it("does not require commercial templates on Setup Profiles", () => {
+    const decisions: SetupDecisions = {
+      inventory: "skipped",
+      event_order: "skipped",
+    };
+    assert.equal(profileHardConfigGaps(decisions, emptyRefs).length, 0);
+    assert.equal(profileIsHonestlyConfigured(decisions, emptyRefs), true);
+  });
+
+  it("ignores Included steps that are not applicable under venue-wide settings", () => {
+    const decisions: SetupDecisions = {
+      planning: "set_up",
+      inventory: "set_up",
+      questionnaires: "set_up",
+    };
+    const gaps = profileHardConfigGaps(decisions, emptyRefs, ["timeline", "vendors"]);
+    assert.equal(gaps.length, 0);
+    assert.equal(profileIsHonestlyConfigured(decisions, emptyRefs, ["timeline"]), true);
+  });
+});
+
+describe("profileSoftConfigGaps", () => {
+  it("no longer soft- or hard-codes Inventory/Event Order incomplete refs", () => {
+    const decisions: SetupDecisions = {
+      inventory: "set_up",
+      event_order: "set_up",
+    };
+    assert.deepEqual(profileSoftConfigGaps(decisions, emptyRefs), []);
+    assert.equal(profileHardConfigGaps(decisions, emptyRefs).length, 0);
+    assert.equal(profileConfigGaps(decisions, emptyRefs).length, 0);
+  });
+});
+
+describe("profileHardGapSummary", () => {
+  it("returns null when there are no hard gaps", () => {
+    assert.equal(profileHardGapSummary([]), null);
+    assert.equal(
+      profileHardGapSummary([{ step: "inventory", severity: "soft", message: "soft only" }]),
+      null,
+    );
+  });
+
+  it("returns the single hard message or a combined label list", () => {
+    const one = profileHardConfigGaps({ planning: "set_up" }, emptyRefs);
+    assert.match(profileHardGapSummary(one) ?? "", /Planning is Included/);
+    const many = profileHardConfigGaps(
+      { planning: "set_up", timeline: "set_up" },
+      emptyRefs,
+    );
+    assert.match(profileHardGapSummary(many) ?? "", /Finish selecting templates for:/);
+  });
+});
+
+describe("profile UI and save seams for Inventory/Event Order honesty", () => {
+  it("Setup Profile UI excludes Inventory/Event Order template configuration", () => {
+    const section = read("components/settings/setup-profiles-section.tsx");
+    const profiles = read("lib/event-setup/profiles.ts");
+    assert.doesNotMatch(section, /Starting inventory template/);
+    assert.doesNotMatch(section, /Starting Event Order template/);
+    assert.doesNotMatch(section, /inventory draft is prepared automatically/);
+    assert.doesNotMatch(section, /Event Order draft is prepared automatically/);
+    assert.match(section, /commercial workflows/);
+    assert.doesNotMatch(section, /setup-profile-soft-gaps/);
+    assert.match(profiles, /profileHardConfigGaps/);
+    assert.doesNotMatch(profiles, /\.from\("event_setup_states"\)/);
+    assert.doesNotMatch(profiles, /\.from\("event_inventory"\)/);
+    assert.doesNotMatch(profiles, /\.from\("event_orders"\)/);
+  });
+
+  it("Event Setup routes profile configuration gaps to Setup Profiles", () => {
+    const readiness = read("lib/event-setup/readiness-detail.ts");
+    const panel = read("components/events/event-setup-panel.tsx");
+    assert.match(readiness, /Open Setup Profiles/);
+    assert.match(panel, /openSetupProfiles/);
+    assert.match(panel, /\/settings\/leads\/setup-profiles/);
+  });
+});

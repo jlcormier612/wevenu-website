@@ -1,39 +1,31 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 
-import { OfferingsLibrarySection } from "@/components/offerings/offerings-library-section";
-import { PageHeader } from "@/components/shell/module-placeholder";
-import { Button } from "@/components/ui/button";
+import { OfferingsPageClient } from "@/components/offerings/offerings-page-client";
 import { getItems } from "@/lib/inventory/service";
+import { listOfferingChoiceGroups } from "@/lib/offerings/choice-groups-service";
 import { ensureOfferingStartersForCurrentVenue } from "@/lib/offerings/provision";
 import { listOfferingCategories, listOfferings } from "@/lib/offerings/service";
+import { getCurrentVenue } from "@/lib/venue/service";
 
 export const metadata: Metadata = { title: "Offerings" };
 
 export default async function OfferingsLibraryPage() {
   await ensureOfferingStartersForCurrentVenue();
-  const [offerings, categories, inventoryItems] = await Promise.all([
+  const venue = await getCurrentVenue();
+  const [offerings, categories, inventoryItems, choiceGroups] = await Promise.all([
     listOfferings(true),
     listOfferingCategories(),
     getItems(),
+    listOfferingChoiceGroups(),
   ]);
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Offerings"
-        description="Menus, bar, services, and rentals you provide."
-        actions={
-          <Button variant="outline" render={<Link href="/library/inventory" />}>
-            Physical Inventory
-          </Button>
-        }
-      />
-      <OfferingsLibrarySection
-        initialOfferings={offerings}
-        categories={categories}
-        inventoryItems={inventoryItems}
-      />
-    </div>
+    <OfferingsPageClient
+      venueId={venue?.id ?? ""}
+      initialOfferings={offerings}
+      categories={categories}
+      inventoryItems={inventoryItems}
+      initialChoiceGroups={choiceGroups}
+    />
   );
 }

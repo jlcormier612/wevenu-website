@@ -1,0 +1,78 @@
+PASS [setup] venue — cd991d53-4a7e-47f4-bd56-c98b94558bb2
+PASS [setup] controls — c=2c1d7d4c-49f2-43da-82d6-f4d4117487e5 l=ef327c37-8390-40a2-9832-a8a95a655c93 look=6ad96575-cac1-4795-817b-be3acf430cf7
+PASS [setup] floor_doc — 116ba5aa-c8af-4386-bcad-b1f267336020
+PASS [setup] active_commitment — sched=ded6c48b-cb8b-4764-bf64-dcc788d8045d
+PASS [setup] session_provenance — session=f1c15afd-3a35-4505-9d26-9792f373ab5e rows=8
+PASS [setup] foreign_client — bb62aec9-93dc-4d0c-a1f8-a792405e1b0c
+PASS [deploy] serving_dpl — dpl=803046b4b7b833aa4fb2257fc200a25f0f4721a2 expect=803046b4
+PASS [browser] history_list_ready — Complete badge visible
+PASS [browser] history_session_clicked — Another system10/20/2026Complete
+PASS [browser] cleanup_panel_visible — url=https://app.sandbox.hellotocheers.com/settings/migration?source=another_system
+PASS [browser] shows_ready_and_choice — OVERVIEW
+
+Dashboard
+
+YOUR RELATIONSHIPS
+
+Leads
+2
+Clients
+Vendors
+
+SCHEDULING
+
+Calendar
+Tours
+
+COMMUNICATION
+
+Inbox
+Automations
+
+LIBRARY
+
+Templates
+Documents
+
+FINANCIALS
+
+Contracts
+Payments
+
+TO DO’S
+
+Task Center
+Requests
+
+YOUR VENUE
+
+Setup
+Settings
+Guidance
+Venue Guide
+Reports
+Help & Feedback
+Import 
+PASS [browser] shows_financial_block — financial wording
+PASS [browser] shows_edited_warning — edited wording
+PASS [browser] override_edited_delete — checked=true
+PASS [browser] override_floor_plan — checked=true count=1
+PASS [browser] remove_count_includes_override — label=Remove 4 expectMin=4
+PASS [browser] partial_summary — Cleanup completed for 4 records. 4 records remain because they need additional review or failed. Nothing was deleted for those remaining records.
+PASS [browser] remaining_called_out — Cleanup completed for 4 records. 4 records remain because they need additional review or failed. Nothing was deleted for those remaining records.
+PASS [persist] eligible_client_deleted — ann=gone
+PASS [persist] edited_override_deleted — editedDel=gone
+PASS [persist] edited_kept_retained — editedKeep=27b16993-eb2a-412a-8ed4-d8fd8b2813f5
+PASS [persist] eligible_lead_deleted — lead=gone
+PASS [persist] financial_client_retained — cara=b72c9382-99a1-47bf-a1ab-b0a12cf97e16
+PASS [persist] event_retained — event=cfe08807-314f-455c-97e1-c11de78fde80
+PASS [persist] floor_plan_deleted_or_skipped — fp=gone-or-n/a
+PASS [persist] preexisting_controls_intact — c=true l=true
+PASS [persist] lookalike_untouched — look=6ad96575-cac1-4795-817b-be3acf430cf7
+PASS [persist] foreign_tenant_untouched — foreign=bb62aec9-93dc-4d0c-a1f8-a792405e1b0c
+PASS [persist] paid_lines_preserved — paid=1
+PASS [retry] eligible_still_gone — no resurrect
+PASS [side_effects] no_new_invitations — before=0 after=0
+PASS [side_effects] no_new_enrollments — before=0 after=0
+
+SUMMARY pass=32 fail=0 venue=cd991d53-4a7e-47f4-bd56-c98b94558bb2 dpl=803046b4b7b833aa4fb2257fc200a25f0f4721a2

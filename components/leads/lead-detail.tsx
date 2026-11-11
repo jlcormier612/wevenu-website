@@ -20,11 +20,20 @@ import { toast } from "sonner";
 import { startBookingFileAction } from "@/app/(app)/booking-journey/actions";
 import { ConflictWarning } from "@/components/availability/conflict-warning";
 import { EventSpaceField } from "@/components/availability/event-space-field";
+import { LeadSpacePreferenceFields } from "@/components/leads/space-preference-fields";
+import { relevantUsesForEventType } from "@/lib/venue-spaces/relevant-uses";
 import { BookingJourneyPanel } from "@/components/booking-journey/booking-journey-panel";
+import { RelationshipPhotoAvatar } from "@/components/relationship-photos/relationship-photo-avatar";
 import type { BookingJourneyModel } from "@/lib/booking-journey/model";
 import type { PackageWithItems } from "@/lib/packages/types";
 import {
+  archiveLeadRelationshipAction,
+  restoreLeadRelationshipAction,
   deleteLeadRecordAction,
+  confirmPipelineBookedMoveAction,
+  getBookingConfirmationDraftAction,
+  setLeadPlannedEventSpaceAction,
+  markLeadLostAction,
   moveLeadBackToSalesPipelineAction,
   previewDeleteLeadAction,
   returnLeadToBookedAction,
@@ -34,10 +43,25 @@ import {
 import { DeleteRecordButton } from "@/components/records/delete-record-button";
 import { ActivityTimelineView } from "@/components/conversations/activity-timeline";
 import { LeadLifecycleConfirmDialog } from "@/components/leads/lifecycle-confirm-dialog";
+import { LostReasonDialog } from "@/components/leads/lost-reason-dialog";
 import { LeadStatusBadge } from "@/components/leads/lead-status-badge";
 import { PossibleDuplicateBanner } from "@/components/leads/possible-duplicate-banner";
+import { MergeLeadButton } from "@/components/leads/merge-lead-dialog";
 import { PipelineAutomationConfirmDialog } from "@/components/leads/pipeline-automation-confirm";
-import type { AutomationMessagePreview } from "@/lib/message-sequences/confirm-preview";
+import { PipelineBookedConfirmDialog } from "@/components/leads/pipeline-booked-confirm-dialog";
+import { StaffAssignmentField } from "@/components/team/staff-assignment-field";
+import { setLeadAssignedStaffAction } from "@/app/(app)/leads/[id]/actions";
+import {
+  prefillBookingConfirmation,
+  summarizeOwnHolds,
+  type BookingConfirmationDraft,
+} from "@/lib/booking-journey/confirmation-draft";
+import { formatPhoneDisplay } from "@/lib/sms/phone";
+import type { ConfirmedBookingOccupancy } from "@/lib/booking-journey/confirmed-occupancy";
+import type { StageChangeMessagePlan } from "@/lib/message-sequences/confirm-preview";
+import type { LostReasonValue } from "@/lib/leads/lost-reasons";
+import { lostReasonLabel } from "@/lib/leads/lost-reasons";
+import { resolveTransitionKind } from "@/lib/leads/pipeline-stage-transition";
 import { Badge } from "@/components/ui/badge";
 import { NotesSection } from "@/components/leads/notes-section";
 import { RelationshipCard } from "@/components/leads/relationship-card";
@@ -58,15 +82,20 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DateHoldsSection } from "@/components/availability/date-holds-section";
 import { DocumentWorkspace } from "@/components/document-workspace/document-workspace";
 import type { WorkspaceDocument } from "@/lib/document-workspace/types";
+import { ContextualLuvObservationsPanel } from "@/components/luv/contextual-observations-panel";
 import { LuvDraftPanel } from "@/components/luv/luv-draft-panel";
 import { LuvHeart } from "@/components/dashboard/luv-widget";
 import { RelationshipConversationTab } from "@/components/conversations/relationship-conversation-tab";
-import { TourPanel } from "@/components/leads/tour-panel";
+import { RelationshipTabShell } from "@/components/relationship/relationship-tab-shell";
+import { TourAppointmentList, TourScheduleActions, TourScheduleRoot } from "@/components/leads/tour-panel";
+import { updateDraftStatusAction } from "@/app/(app)/leads/[id]/luv-actions";
+import { draftStatusAfterSuccessfulSend } from "@/lib/luv/draft-status";
+import { luvPanelDescription } from "@/lib/luv/luv-panel-copy";
+import { LeadMessageAttentionIndicator } from "@/components/leads/lead-message-attention-indicator";
 import {
   LEAD_STATUSES,
   eventTypeLabel,
@@ -75,12 +104,81 @@ import {
   leadDisplayName,
   sourceLabel,
 } from "@/lib/leads/constants";
-import { isManuallyAssignableSalesStage, type SalesStage } from "@/lib/leads/sales-stages";
+import type { LeadMessageAttention } from "@/lib/leads/message-attention";
+import { type SalesStage } from "@/lib/leads/sales-stages";
 import type { DuplicateReview } from "@/lib/leads/duplicate-review";
 import type { LeadWithDetails } from "@/lib/leads/types";
 import type { DateHold, VenueSpace } from "@/lib/availability/types";
+import { workspaceDateText } from "@/lib/availability/workspace-date-language";
 import type { Document } from "@/lib/documents/types";
 import type { LuvDraft } from "@/lib/luv/drafts";
+import type { PipelineStage } from "@/lib/pipeline-templates/types";
+import {
+  INTERNAL_NOTES_LABEL,
+  INTERNAL_NOTES_PRIVACY_HINT,
+} from "@/lib/notes/internal-notes-copy";
+import {
+  inquiryMessageDisplayHint,
+  inquiryMessageDisplayLabel,
+  normalizeInquiryMessageOrigin,
+} from "@/lib/leads/inquiry-message-origin";
+import {
+  buildInternalNotesRollup,
+  type InternalNoteRollupItem,
+} from "@/lib/notes/internal-notes-rollup";
+
+type CustomAnswer = { questionText?: string; answer?: string | string[] };
+
+function LeadInquiryRecord({ lead }: { lead: LeadWithDetails }) {
+  const origin = normalizeInquiryMessageOrigin(lead.inquiryMessageOrigin);
+  const message = lead.inquiryMessage?.trim() ?? "";
+  const showMessage = message.length > 0 && origin !== "venue";
+  const answers = Array.isArray(lead.sourceData?.custom_answers)
+    ? (lead.sourceData.custom_answers as CustomAnswer[])
+    : [];
+  const ingestionMethod =
+    lead.sourceData?.ingestion_method === "email_forward" ? "email forward" : null;
+  const sourceLine = lead.source
+    ? `via ${sourceLabel(lead.source)}${
+        ingestionMethod && lead.source !== "email_parsed_generic" ? ` · ${ingestionMethod}` : ""
+      }`
+    : null;
+  const received = [
+    lead.inquiryDate ? `Received ${formatDate(lead.inquiryDate)}` : null,
+    sourceLine,
+  ].filter(Boolean).join(" ");
+  if (!received && !showMessage && answers.length === 0) return null;
+  return (
+    <div className="space-y-3" data-testid="lead-inquiry-record">
+      {received ? <p className="text-xs text-muted-foreground">{received}</p> : null}
+      {showMessage ? (
+        <div>
+          <Label className="mb-1 text-xs text-muted-foreground">
+            {inquiryMessageDisplayLabel(lead.inquiryMessageOrigin)}
+          </Label>
+          {inquiryMessageDisplayHint(lead.inquiryMessageOrigin) ? (
+            <p className="mb-1 text-[11px] text-muted-foreground">
+              {inquiryMessageDisplayHint(lead.inquiryMessageOrigin)}
+            </p>
+          ) : null}
+          <p className="whitespace-pre-wrap text-sm text-foreground">{message}</p>
+        </div>
+      ) : null}
+      {answers.length > 0 ? (
+        <div className="space-y-3">
+          {answers.map((entry, idx) => (
+            <div key={idx}>
+              <Label className="mb-1 text-xs text-muted-foreground">{entry.questionText ?? "Custom question"}</Label>
+              <p className="whitespace-pre-wrap text-sm text-foreground">
+                {Array.isArray(entry.answer) ? entry.answer.join(", ") : entry.answer}
+              </p>
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 // ---- info row (overview tab) ------------------------------------------------
 
@@ -95,13 +193,15 @@ function InfoRow({
 }) {
   if (!value) return null;
   return (
-    <div className="flex items-start gap-3">
+    <div className="flex min-w-0 items-start gap-3">
       <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
         <Icon className="h-3.5 w-3.5" />
       </span>
-      <div>
+      <div className="min-w-0">
         <p className="text-xs text-muted-foreground">{label}</p>
-        <p className="text-sm font-medium text-foreground">{value}</p>
+        <p className="break-words text-sm font-medium text-foreground" title={value}>
+          {value}
+        </p>
       </div>
     </div>
   );
@@ -109,15 +209,28 @@ function InfoRow({
 
 // ---- main component ---------------------------------------------------------
 
-export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvents = 1, documents = [], workspaceDocuments = [], pinnedDocumentKeys = [], recentDocumentEntries = [], luvDrafts = [], autoLuvDraft, tourAppointments = [], conversationId = null, now, bookingJourney, packages = [], smsPermission = null, duplicateReview = null }: { lead: LeadWithDetails; holds?: DateHold[]; spaces?: VenueSpace[]; maxSimultaneousEvents?: number; documents?: Document[]; workspaceDocuments?: WorkspaceDocument[]; pinnedDocumentKeys?: string[]; recentDocumentEntries?: [string, string][]; luvDrafts?: LuvDraft[]; autoLuvDraft?: string; tourAppointments?: import("@/lib/tours/types").TourAppointment[]; conversationId?: string | null; now: string; bookingJourney: BookingJourneyModel; packages?: PackageWithItems[]; smsPermission?: SmsPermissionEvidenceView | null; duplicateReview?: DuplicateReview | null }) {
+export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvents = 1, documents = [], workspaceDocuments = [], pinnedDocumentKeys = [], luvDrafts = [], autoLuvDraft, tourAppointments = [], conversationId = null, messageAttention = null, now, bookingJourney, packages = [], smsPermission = null, textingConfigured = false, duplicateReview = null, venueStages = null, staffOptions = [], currentStaffId = null, photoUrl = null, venueTimezone = null, contextualObservations = [], spaceOperatingMode = "single", holdBlocksAvailability = true, spacePreferences = [], spaceAssignments = [], relationshipArchived = false, openSetupPayments = false, followUpDraftCapable = true, followUpDraftEligible = true, followUpDraftIneligibleReason = null, followUpProactiveRecommended = true, conversationInternalNotes = [], internalNoteItems }: { lead: LeadWithDetails; holds?: DateHold[]; spaces?: VenueSpace[]; maxSimultaneousEvents?: number; documents?: Document[]; workspaceDocuments?: WorkspaceDocument[]; pinnedDocumentKeys?: string[]; luvDrafts?: LuvDraft[]; autoLuvDraft?: string; tourAppointments?: import("@/lib/tours/types").TourAppointment[]; conversationId?: string | null; messageAttention?: LeadMessageAttention | null; now: string; bookingJourney: BookingJourneyModel; packages?: PackageWithItems[]; smsPermission?: SmsPermissionEvidenceView | null; textingConfigured?: boolean; duplicateReview?: DuplicateReview | null; venueStages?: PipelineStage[] | null; staffOptions?: { id: string; name: string }[]; currentStaffId?: string | null; photoUrl?: string | null; venueTimezone?: string | null; contextualObservations?: import("@/lib/luv/types").LuvObservation[]; spaceOperatingMode?: import("@/lib/venue-spaces/uses").SpaceOperatingMode; holdBlocksAvailability?: boolean; spacePreferences?: import("@/lib/leads/space-preferences").LeadEventSpacePreference[]; spaceAssignments?: import("@/components/leads/space-preference-fields").LeadSpaceAssignmentDisplay[]; relationshipArchived?: boolean; openSetupPayments?: boolean; followUpDraftCapable?: boolean; followUpDraftEligible?: boolean; followUpDraftIneligibleReason?: string | null; followUpProactiveRecommended?: boolean; conversationInternalNotes?: Array<{ id: string; body: string; sentAt: string }>; internalNoteItems?: InternalNoteRollupItem[] }) {
+  const draftCapable = followUpDraftCapable && followUpDraftEligible;
   // Controlled tabs — supports Luv→Messages bridge and ?luv= URL param routing
   const [activeTab, setActiveTab] = React.useState(autoLuvDraft ? "luv" : "overview");
   const [messagePrefill, setMessagePrefill] = React.useState<{ subject: string; body: string } | null>(null);
+  /** Draft opened via "Send this →"; completed only after authoritative send. */
+  const [activeLuvDraftId, setActiveLuvDraftId] = React.useState<string | null>(null);
+  const [completedLuvDraftId, setCompletedLuvDraftId] = React.useState<string | null>(null);
+  /** Bumped when Overview “Ask Luv to draft” should start drafting on the Luv tab. */
+  const [luvDraftRequest, setLuvDraftRequest] = React.useState(0);
 
   React.useEffect(() => {
     const syncFromHash = () => {
+      const params = new URLSearchParams(window.location.search);
       const hash = window.location.hash.replace("#", "");
-      const tabParam = new URLSearchParams(window.location.search).get("tab");
+      // Contract "Set up payments" lands on Lead Overview + #booking-journey-payments.
+      // That hash is a scroll target inside Overview — not a tab id.
+      if (params.get("setupPayments") === "1" || hash === "booking-journey-payments") {
+        setActiveTab("overview");
+        return;
+      }
+      const tabParam = params.get("tab");
       const tab = hash || (tabParam === "conversation" ? "messages" : tabParam) || "";
       if (tab) setActiveTab(tab);
     };
@@ -126,29 +239,74 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
     return () => window.removeEventListener("hashchange", syncFromHash);
   }, []);
 
-  function handleUseDraft(subject: string | null, body: string) {
+  // Soft-nav / searchParam arrival with ?setupPayments=1 must keep Overview
+  // (Booking Journey owns payment setup) even if EventDetail-style hash sync raced.
+  React.useEffect(() => {
+    if (openSetupPayments) setActiveTab("overview");
+  }, [openSetupPayments]);
+
+  // Soft-nav or prop arrival with ?luv= must land on the Luv drafting tab.
+  React.useEffect(() => {
+    if (autoLuvDraft) setActiveTab("luv");
+  }, [autoLuvDraft]);
+
+  function handleUseDraft(draftId: string, subject: string | null, body: string) {
+    setActiveLuvDraftId(draftId);
     setMessagePrefill({ subject: subject ?? "", body });
     setActiveTab("messages");
   }
+
+  async function handleLuvDraftSendSuccess() {
+    if (!activeLuvDraftId) return;
+    const id = activeLuvDraftId;
+    setActiveLuvDraftId(null);
+    await updateDraftStatusAction(id, lead.id, draftStatusAfterSuccessfulSend());
+    setCompletedLuvDraftId(id);
+  }
   const router = useRouter();
+  /** After any authoritative send: refresh Luv Noticed (eligibility + recency). */
+  async function handleAuthoritativeConversationSendSuccess() {
+    await handleLuvDraftSendSuccess();
+    router.refresh();
+  }
   const [statusPending, startStatus] = React.useTransition();
   const [convertPending, startConvert] = React.useTransition();
   const [lifecyclePending, startLifecycle] = React.useTransition();
   const [confirmStageId, setConfirmStageId] = React.useState<string | null>(null);
-  const [confirmPreview, setConfirmPreview] = React.useState<AutomationMessagePreview | null>(null);
-  const [bookingSpaceId, setBookingSpaceId] = React.useState("");
+  const [confirmPlan, setConfirmPlan] = React.useState<StageChangeMessagePlan | null>(null);
+  const [bookingSpaceId, setBookingSpaceId] = React.useState(lead.plannedEventSpaceId ?? "");
   const [confirmBookOpen, setConfirmBookOpen] = React.useState(false);
   const [confirmMoveBackOpen, setConfirmMoveBackOpen] = React.useState(false);
   const [confirmReturnBookedOpen, setConfirmReturnBookedOpen] = React.useState(false);
+  const [lostMove, setLostMove] = React.useState<{ targetKey: string; label: string } | null>(null);
+  const [bookedMove, setBookedMove] = React.useState<{ targetKey: string; label: string } | null>(null);
+  const [liveBookingDraft, setLiveBookingDraft] = React.useState<BookingConfirmationDraft | null>(null);
+  const [bookingDraftError, setBookingDraftError] = React.useState<string | null>(null);
   const [eventDateBlocked, setEventDateBlocked] = React.useState(false);
-  const spacesRequired = maxSimultaneousEvents >= 2 && !!lead.eventDate && !lead.linkedClientId;
+  const spaceNeededForBooked = maxSimultaneousEvents >= 2 && !!lead.eventDate;
+  const spacesRequired = spaceNeededForBooked;
   const convertBlocked = spacesRequired && spaces.filter((s) => s.isActive).length === 0;
+  const relevantSpaceUses = relevantUsesForEventType(spaces, lead.eventType);
+  const showUsePreferences = spaceOperatingMode === "multi" && (
+    relevantSpaceUses.length > 0 || Boolean(lead.linkedEventId && spaceAssignments.length > 0)
+  );
+  const showEventSpaceField = !showUsePreferences
+    && (spaceOperatingMode !== "multi" || relevantSpaceUses.length === 0)
+    && (spacesRequired || spaces.some((s) => s.isActive));
 
-  function requestBookThisLead() {
-    if (spacesRequired && !bookingSpaceId && spaces.filter((s) => s.isActive).length > 0) {
-      toast.error("Assign an Event Space before starting the booking file.");
+  async function handlePlannedSpaceChange(next: string) {
+    const previous = bookingSpaceId;
+    setBookingSpaceId(next);
+    const result = await setLeadPlannedEventSpaceAction(lead.id, next || null);
+    if (!result.ok) {
+      setBookingSpaceId(previous);
+      toast.error(result.message ?? "Could not save the event space.");
       return;
     }
+    toast.success(next ? "Event space saved." : "Event space cleared.");
+  }
+
+  function requestBookThisLead() {
     if (lead.eventDate && eventDateBlocked) {
       toast.error("That date is already protected. Resolve the conflict before starting the booking file.");
       return;
@@ -166,7 +324,7 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
       if (result.warning) toast.warning(result.warning);
       else {
         toast.success(
-          "Booking file started. They are not Booked until the agreement and any required deposit are complete.",
+          "Workspace started. Preparing it does not reserve their date. You decide when they are Booked.",
         );
       }
       router.push(`/clients/${result.clientId}${result.eventId ? `?eventId=${result.eventId}` : ""}`);
@@ -196,16 +354,23 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
     });
   }
 
-  function confirmReturnToBooked() {
-    setConfirmReturnBookedOpen(false);
+  function confirmMarkAsBooked(occupancy: ConfirmedBookingOccupancy) {
     startLifecycle(async () => {
-      const result = await returnLeadToBookedAction(lead.id);
-      if (result.ok) {
-        toast.success("Returned to Booking Started.");
-        router.refresh();
-      } else {
-        toast.error(result.message ?? "Could not return to Booking Started.");
+      const result = await returnLeadToBookedAction(lead.id, occupancy);
+      if (!result.ok) {
+        toast.error(result.message ?? "Could not mark this relationship Booked.");
+        return;
       }
+      const qs = new URLSearchParams();
+      if (result.eventId) qs.set("eventId", result.eventId);
+      const suffix = qs.toString() ? `?${qs.toString()}` : "";
+      if (result.newlyBooked) {
+        // Hard navigation — Client workspace is the post-booking home.
+        window.location.assign(`/clients/${result.clientId}/booked${suffix}`);
+        return;
+      }
+      toast.success("Already booked.");
+      window.location.assign(`/clients/${result.clientId}${suffix}`);
     });
   }
 
@@ -215,6 +380,27 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
   );
 
   function handleStatusChange(status: string) {
+    const kind = resolveTransitionKind({ targetKey: status });
+    const label = LEAD_STATUSES.find((s) => s.value === status)?.label ?? status;
+
+    if (kind === "booked") {
+      setLiveBookingDraft(null);
+      setBookingDraftError(null);
+      setBookedMove({ targetKey: status, label });
+      void getBookingConfirmationDraftAction(lead.id).then((loaded) => {
+        if (!loaded.ok) {
+          setBookingDraftError(loaded.message);
+          return;
+        }
+        setLiveBookingDraft(loaded.draft);
+      });
+      return;
+    }
+    if (kind === "lost") {
+      setLostMove({ targetKey: status, label });
+      return;
+    }
+
     startStatus(async () => {
       const check = await wouldEnrollOnPipelineStageMoveAction(lead.id, status);
       if (!check.ok) {
@@ -223,7 +409,7 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
       }
       if (check.wouldEnroll) {
         setConfirmStageId(status);
-        setConfirmPreview(check.preview);
+        setConfirmPlan(check.plan);
         return;
       }
       const result = await updateLeadStatusAction(lead.id, status);
@@ -236,11 +422,12 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
     });
   }
 
-  function commitStageChange(stageKey: string) {
+  function commitStageChange(stageKey: string, customerMessages: "send" | "skip") {
     startStatus(async () => {
-      const result = await updateLeadStatusAction(lead.id, stageKey);
+      const result = await updateLeadStatusAction(lead.id, stageKey, customerMessages);
       if (result.ok) {
         toast.success("Stage updated.");
+        if (result.automationWarning) toast.warning(result.automationWarning);
         router.refresh();
       } else {
         toast.error(result.message ?? "Could not update stage.");
@@ -248,40 +435,137 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
     });
   }
 
+  async function confirmLostFromStage(input: { reason: LostReasonValue; detail: string | null }) {
+    if (!lostMove) return;
+    startLifecycle(async () => {
+      const result = await markLeadLostAction(lead.id, input, lostMove.targetKey);
+      if (result.ok) {
+        setLostMove(null);
+        toast.success("Marked as Lost.");
+        router.refresh();
+      } else {
+        toast.error(result.message ?? "Could not mark this lead Lost.");
+      }
+    });
+  }
+
+  async function confirmBookedFromStage(occupancy: ConfirmedBookingOccupancy) {
+    if (!bookedMove) return;
+    startLifecycle(async () => {
+      const result = await confirmPipelineBookedMoveAction(lead.id, bookedMove.targetKey, {
+        occupancy,
+        selectionId: bookingJourney.selection?.id,
+      });
+      if (!result.ok) {
+        toast.error(result.message ?? "Could not move this lead to Booked.");
+        return;
+      }
+      setBookedMove(null);
+      setConfirmReturnBookedOpen(false);
+      if (result.warning) toast.warning(result.warning);
+      if (!result.newlyBooked) {
+        toast.success("Already booked.");
+        router.refresh();
+        return;
+      }
+      const qs = new URLSearchParams();
+      if (result.eventId) qs.set("eventId", result.eventId);
+      router.push(`/clients/${result.clientId}/booked?${qs.toString()}`);
+    });
+  }
+
   const currentStage = (lead.salesStage ?? lead.status) as SalesStage;
   const isBookingStarted = currentStage === "booked";
+  const relationshipCancelled = (lead.salesStage as string) === "cancelled";
   const previouslyConverted = !!lead.linkedClientId;
-  // When Booking Started, only Lost remains in the generic stage menu — leaving
-  // Booking Started for an active sales stage uses Move back to Sales Pipeline.
   const assignableStages = LEAD_STATUSES.filter((s) => {
-    if (!isManuallyAssignableSalesStage(s.value)) return false;
     if (isBookingStarted) return s.value === "lost";
     return true;
-  });
+  }).map((s) => ({
+    value: s.value,
+    label: s.label,
+    description: s.description,
+    current: s.value === currentStage,
+  }));
 
   const openTaskCount = lead.tasks.filter((t) => !t.completed).length;
+  const internalNotes = internalNoteItems ?? buildInternalNotesRollup({
+    inquiry: {
+      leadId: lead.id,
+      body: lead.inquiryMessage,
+      origin: lead.inquiryMessageOrigin ?? null,
+      createdAt: lead.createdAt,
+    },
+    tours: tourAppointments.map((t) => ({
+      id: t.id,
+      notes: t.notes,
+      createdAt: t.createdAt,
+      completedAt: t.completedAt,
+      actualOccurredAt: t.actualOccurredAt,
+      scheduledAt: t.scheduledAt,
+    })),
+    leadNotes: lead.notes,
+    conversationNotes: conversationInternalNotes,
+  });
+
+  const prefilled = prefillBookingConfirmation({
+    eventType: lead.eventType,
+    eventDate: lead.eventDate,
+    endDate: lead.endDate,
+    plannedSpaceId: bookingSpaceId || lead.plannedEventSpaceId || null,
+    holds,
+    preferences: spacePreferences,
+    assignments: spaceAssignments.flatMap((row) => (
+      row.spaceId
+        ? [{ useKey: row.useKey, useLabel: row.useLabel, spaceId: row.spaceId }]
+        : []
+    )),
+  });
+  const bookingDraft = {
+    ...prefilled,
+    spaces,
+    maxSimultaneousEvents,
+    spaceOperatingMode,
+    leadId: lead.id,
+    holdBlocksAvailability,
+    hasOwnActiveHold: holds.some((hold) => hold.status === "active"),
+    sourceHoldDates: [...new Set(holds.filter((hold) => hold.status === "active").map((hold) => hold.holdDate))],
+    ownHolds: summarizeOwnHolds(
+      holds.filter((hold) => hold.status === "active"),
+      spaces.map((space) => ({ spaceId: space.id, spaceName: space.name })),
+    ),
+    staffOptions,
+    leadAssignedStaffId: lead.assignedStaffId ?? null,
+  };
 
   return (
     <div className="space-y-5">
       <PipelineAutomationConfirmDialog
         open={confirmStageId != null}
-        preview={confirmPreview}
+        plan={confirmPlan}
         onCancel={() => {
           setConfirmStageId(null);
-          setConfirmPreview(null);
+          setConfirmPlan(null);
         }}
-        onContinue={() => {
+        onSend={() => {
           if (!confirmStageId) return;
           const stageId = confirmStageId;
           setConfirmStageId(null);
-          setConfirmPreview(null);
-          commitStageChange(stageId);
+          setConfirmPlan(null);
+          commitStageChange(stageId, "send");
+        }}
+        onSkip={() => {
+          if (!confirmStageId) return;
+          const stageId = confirmStageId;
+          setConfirmStageId(null);
+          setConfirmPlan(null);
+          commitStageChange(stageId, "skip");
         }}
       />
       <LeadLifecycleConfirmDialog
         open={confirmBookOpen}
         title="Start booking file?"
-        description="This opens their booking file (Client and Event when a date applies). The lead stays on the sales pipeline. The Event stays a draft — they are not commercially Booked until the agreement is complete and any required deposit is paid. The event date is protected by existing availability rules when it applies. This does not invite them to the portal or start Client Planning. Contracts and payments can still run from the Booking Journey without this step."
+        description="This prepares their planning workspace. It does not book them, and it does not reserve their date. A preferred date stays a preference until you place a Hold or move the relationship to Booked."
         confirmLabel="Start booking file"
         confirming={convertPending}
         onCancel={() => setConfirmBookOpen(false)}
@@ -290,24 +574,48 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
       <LeadLifecycleConfirmDialog
         open={confirmMoveBackOpen}
         title="Move this lead back to the Sales Pipeline?"
-        description="This changes the current sales stage only. The client, event, documents, messages, and financial information you've already created will stay in place."
+        description="This changes the sales stage only when the client is not booked. A booked client stays booked until you cancel the event. The client, event, documents, messages, and financial information stay in place."
         confirmLabel="Move Back to Sales Pipeline"
         confirming={lifecyclePending}
         onCancel={() => setConfirmMoveBackOpen(false)}
         onConfirm={confirmMoveBack}
       />
-      <LeadLifecycleConfirmDialog
+      <PipelineBookedConfirmDialog
         open={confirmReturnBookedOpen}
-        title="Return to Booking Started?"
-        description="This returns the sales stage to Booking Started (booking file open). Your existing client, event, documents, messages, and financial information stay in place. They are commercially Booked only after the agreement is complete and the required deposit is paid."
-        confirmLabel="Return to Booking Started"
         confirming={lifecyclePending}
-        onCancel={() => setConfirmReturnBookedOpen(false)}
-        onConfirm={confirmReturnToBooked}
+        draft={liveBookingDraft ?? bookingDraft}
+        loadError={bookingDraftError}
+        onCancel={() => {
+          setConfirmReturnBookedOpen(false);
+          setLiveBookingDraft(null);
+          setBookingDraftError(null);
+        }}
+        onConfirm={confirmMarkAsBooked}
       />
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-1.5">
+      <LostReasonDialog
+        open={lostMove != null}
+        stageLabel={lostMove?.label}
+        confirming={lifecyclePending}
+        onCancel={() => setLostMove(null)}
+        onConfirm={confirmLostFromStage}
+      />
+      <PipelineBookedConfirmDialog
+        open={bookedMove != null}
+        confirming={lifecyclePending}
+        draft={liveBookingDraft ?? bookingDraft}
+        loadError={bookingDraftError}
+        onCancel={() => {
+          setBookedMove(null);
+          setLiveBookingDraft(null);
+          setBookingDraftError(null);
+        }}
+        onConfirm={confirmBookedFromStage}
+      />
+      <TourScheduleRoot leadId={lead.id} tourAppointments={tourAppointments} now={now} venueTimezone={venueTimezone}>
+      {/* Header: identity → actions → sales & availability → space prefs */}
+      <div className="space-y-3" data-testid="lead-detail-header">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0 space-y-1.5">
           <Button
             variant="ghost" size="sm"
             className="-ml-2 text-muted-foreground"
@@ -316,43 +624,59 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
             <ArrowLeft className="mr-1 h-3.5 w-3.5" />
             Leads
           </Button>
-          <h1 className="font-heading text-2xl font-medium text-heading">
-            {displayName}
-          </h1>
-          <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-            {lead.eventType && <span>{eventTypeLabel(lead.eventType)}</span>}
-            {lead.eventDate && (
-              <>
-                <span className="text-border">·</span>
-                <span className="flex items-center gap-1">
-                  <Calendar className="h-3.5 w-3.5" />
-                  {formatDate(lead.eventDate)}
-                </span>
-              </>
-            )}
-            {lead.guestCount != null && (
-              <>
-                <span className="text-border">·</span>
-                <span className="flex items-center gap-1">
-                  <Users className="h-3.5 w-3.5" />
-                  {lead.guestCount.toLocaleString()} guests
-                </span>
-              </>
-            )}
-            {lead.estimatedBudget != null && (
-              <>
-                <span className="text-border">·</span>
-                <span className="flex items-center gap-1">
-                  <DollarSign className="h-3.5 w-3.5" />
-                  {formatCurrency(lead.estimatedBudget)}
-                </span>
-              </>
-            )}
+          <div className="flex min-w-0 items-start gap-3">
+            <RelationshipPhotoAvatar photoUrl={photoUrl} name={displayName} />
+            <div className="min-w-0 space-y-0.5">
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
+                <h1 className="font-heading text-2xl font-medium leading-tight text-heading sm:text-3xl">
+                  {displayName}
+                </h1>
+                <LeadMessageAttentionIndicator attention={messageAttention} />
+              </div>
+              <div
+                data-testid="lead-summary-facts"
+                className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground"
+              >
+                {lead.eventType && <span>{eventTypeLabel(lead.eventType)}</span>}
+                {lead.eventDate && (
+                  <>
+                    {lead.eventType ? <span className="text-border" aria-hidden>·</span> : null}
+                    <span className="inline-flex items-center gap-1" data-testid="lead-date-state">
+                      <Calendar className="h-3.5 w-3.5 shrink-0" />
+                      {workspaceDateText({
+                        eventDate: lead.eventDate,
+                        booked: Boolean(lead.linkedEventId),
+                        holds,
+                        leadId: lead.id,
+                      })}
+                    </span>
+                  </>
+                )}
+                {lead.guestCount != null && (
+                  <>
+                    <span className="text-border" aria-hidden>·</span>
+                    <span className="inline-flex items-center gap-1">
+                      <Users className="h-3.5 w-3.5 shrink-0" />
+                      {lead.guestCount.toLocaleString()} guests
+                    </span>
+                  </>
+                )}
+                {lead.estimatedBudget != null && (
+                  <>
+                    <span className="text-border" aria-hidden>·</span>
+                    <span className="inline-flex items-center gap-1">
+                      <DollarSign className="h-3.5 w-3.5 shrink-0" />
+                      {formatCurrency(lead.estimatedBudget)}
+                    </span>
+                  </>
+                )}
+              </div>
+            </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {lead.otherLeadsOnRelationship > 0 && (
               <Badge variant="secondary">
-                Returning relationship — {lead.otherLeadsOnRelationship} other {lead.otherLeadsOnRelationship === 1 ? "lead" : "leads"} on file
+                Returning relationship — {`${lead.otherLeadsOnRelationship} other ${lead.otherLeadsOnRelationship === 1 ? "lead" : "leads"} on file`}
               </Badge>
             )}
             {lead.intakeConfidence != null && lead.intakeConfidence < 80 && (
@@ -365,116 +689,326 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
           </div>
         </div>
 
-        <div className="flex shrink-0 flex-col items-end gap-2">
-          {spacesRequired && (
+        <div
+          data-testid="lead-action-area"
+          className="flex w-full min-w-0 flex-col items-stretch gap-2 sm:w-auto sm:max-w-3xl sm:items-end"
+        >
+          {showEventSpaceField && (
             <div className="w-full min-w-56">
               <EventSpaceField
                 value={bookingSpaceId}
-                onChange={setBookingSpaceId}
+                onChange={(v) => { void handlePlannedSpaceChange(v); }}
                 spaces={spaces}
-                spacesRequired
+                spacesRequired={spacesRequired}
               />
             </div>
           )}
           {lead.eventDate && !lead.linkedClientId && currentStage !== "lost" && (
-            <div className="w-full max-w-md text-left">
+            <div className="w-full max-w-md text-left sm:text-right">
               <ConflictWarning
                 date={lead.eventDate}
                 endDate={lead.endDate ?? undefined}
                 spaceId={bookingSpaceId || undefined}
                 type="event"
+                excludeLeadId={lead.id}
+                purpose="preferred_date"
                 onStatusChange={setEventDateBlocked}
               />
             </div>
           )}
-          <div className="flex shrink-0 items-center gap-2 flex-wrap justify-end">
-          <LeadStatusBadge status={currentStage} />
-          {assignableStages.length > 0 && (
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                render={<Button variant="outline" size="sm" disabled={statusPending || lifecyclePending} />}
-              >
-                Change stage
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {assignableStages.map((s) => (
-                  <DropdownMenuItem
-                    key={s.value}
-                    disabled={s.value === currentStage}
-                    onClick={() => handleStatusChange(s.value)}
-                  >
-                    {s.label}
-                    <span className="ml-auto pl-4 text-xs text-muted-foreground">
-                      {s.description}
-                    </span>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-          <Button
-            variant="outline"
-            size="sm"
-            render={<Link href={`/leads/${lead.id}/edit`} />}
+          {/* Row 1 — Lead management (left-flow on mobile so chips don’t clump right) */}
+          <div
+            data-testid="lead-management-actions"
+            className="flex w-full flex-wrap items-center justify-start gap-1.5 sm:w-auto sm:justify-end sm:gap-2"
           >
-            <Pencil className="mr-1 h-3.5 w-3.5" />
-            Edit
-          </Button>
-          <DeleteRecordButton
-            kind="lead"
-            recordId={lead.id}
-            fallbackName={displayName}
-            previewAction={previewDeleteLeadAction}
-            deleteAction={deleteLeadRecordAction}
-          />
-          {isBookingStarted && (
+            <div className="text-left sm:mr-0.5 sm:text-right">
+              <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Pipeline stage</p>
+              <LeadStatusBadge status={currentStage} />
+            </div>
+            {currentStage === "lost" && lead.lostReason && (
+              <Badge variant="outline" className="max-w-[16rem] truncate" title={lead.lostReasonDetail ?? undefined}>
+                {lostReasonLabel(lead.lostReason)}
+                {lead.lostReasonDetail ? ` — ${lead.lostReasonDetail}` : ""}
+              </Badge>
+            )}
+            {assignableStages.length > 0 && (
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  render={<Button variant="outline" size="sm" disabled={statusPending || lifecyclePending} />}
+                >
+                  Change stage
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {assignableStages.map((s) => (
+                    <DropdownMenuItem
+                      key={s.value}
+                      disabled={s.current}
+                      onClick={() => handleStatusChange(s.value)}
+                    >
+                      {s.label}
+                      <span className="ml-auto pl-4 text-xs text-muted-foreground">
+                        {s.description}
+                      </span>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
             <Button
               variant="outline"
               size="sm"
-              disabled={lifecyclePending}
-              onClick={() => setConfirmMoveBackOpen(true)}
+              render={<Link href={`/leads/${lead.id}/edit`} />}
             >
-              Move back to Sales Pipeline
+              <Pencil className="mr-1 h-3.5 w-3.5" />
+              Edit
             </Button>
-          )}
-          {previouslyConverted && !isBookingStarted && currentStage !== "lost" && (
-            <Button
-              size="sm"
-              disabled={lifecyclePending}
-              onClick={() => setConfirmReturnBookedOpen(true)}
-            >
-              Return to Booking Started
-            </Button>
-          )}
-          {previouslyConverted ? (
-            <Button size="sm" variant={isBookingStarted || currentStage === "lost" ? "default" : "outline"}
-              render={<Link href={`/clients/${lead.linkedClientId}`} />}>
-              Open booking file →
-            </Button>
-          ) : currentStage !== "lost" ? (
-            <Button
-              size="sm"
-              disabled={convertPending || convertBlocked || (!!lead.eventDate && eventDateBlocked)}
-              onClick={requestBookThisLead}
-              title={
-                convertBlocked
-                  ? "Add an Event Space in Availability settings before starting the booking file."
-                  : lead.eventDate && eventDateBlocked
-                    ? "That date is already protected. Resolve the conflict before starting the booking file."
-                    : undefined
-              }
-            >
-              {convertPending
-                ? <><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />Starting…</>
-                : <><ArrowRight className="mr-1 h-3.5 w-3.5" />Start booking file</>}
-            </Button>
-          ) : null}
-        </div>
+            <MergeLeadButton leadId={lead.id} />
+            <DeleteRecordButton
+              kind="lead"
+              recordId={lead.id}
+              fallbackName={displayName}
+              previewAction={previewDeleteLeadAction}
+              deleteAction={deleteLeadRecordAction}
+            />
+            {relationshipArchived ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="text-muted-foreground"
+                disabled={lifecyclePending}
+                onClick={() => {
+                  startLifecycle(async () => {
+                    const result = await restoreLeadRelationshipAction(lead.id);
+                    if (result.ok) {
+                      toast.success("Relationship restored to active lists.");
+                      router.refresh();
+                    } else {
+                      toast.error(result.message ?? "Could not restore.");
+                    }
+                  });
+                }}
+              >
+                Restore
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="text-muted-foreground"
+                disabled={lifecyclePending}
+                onClick={() => {
+                  startLifecycle(async () => {
+                    const result = await archiveLeadRelationshipAction(lead.id);
+                    if (result.ok) {
+                      toast.success("Relationship archived. History is preserved.");
+                      router.push("/leads");
+                      router.refresh();
+                    } else {
+                      toast.error(result.message ?? "Could not archive.");
+                    }
+                  });
+                }}
+              >
+                Archive
+              </Button>
+            )}
+          </div>
+          {/* Row 2 — Next actions (stack full-width on mobile; right cluster on desktop) */}
+          <div
+            data-testid="lead-booking-tour-actions"
+            className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-end sm:gap-2 [&>*]:w-full sm:[&>*]:w-auto [&_button]:w-full sm:[&_button]:w-auto"
+          >
+            {(previouslyConverted && (relationshipCancelled || (!isBookingStarted && currentStage !== "lost"))) && (
+              <Button
+                size="sm"
+                disabled={lifecyclePending}
+                onClick={() => {
+                  setLiveBookingDraft(null);
+                  setBookingDraftError(null);
+                  setConfirmReturnBookedOpen(true);
+                  void getBookingConfirmationDraftAction(lead.id).then((loaded) => {
+                    if (!loaded.ok) {
+                      setBookingDraftError(loaded.message);
+                      return;
+                    }
+                    setLiveBookingDraft(loaded.draft);
+                  });
+                }}
+              >
+                Mark as Booked
+              </Button>
+            )}
+            <TourScheduleActions includeCopyLink={false} includeSchedule />
+            {previouslyConverted && !isBookingStarted && currentStage !== "lost" && lead.linkedClientId ? (
+              <Button
+                size="sm"
+                variant="outline"
+                render={
+                  <Link
+                    href={`/clients/${lead.linkedClientId}${lead.linkedEventId ? `?eventId=${lead.linkedEventId}` : ""}`}
+                  />
+                }
+                data-testid="continue-booking-setup-action"
+              >
+                Continue setup
+              </Button>
+            ) : null}
+            {/* Booked leads keep View original lead from the client workspace; this returns there. */}
+            {isBookingStarted && lead.linkedClientId ? (
+              <Button
+                size="sm"
+                variant="outline"
+                render={
+                  <Link
+                    href={`/clients/${lead.linkedClientId}${lead.linkedEventId ? `?eventId=${lead.linkedEventId}` : ""}`}
+                  />
+                }
+                data-testid="view-booking-workspace-action"
+              >
+                View booking
+              </Button>
+            ) : null}
+            {!previouslyConverted && currentStage !== "lost" ? (
+              <Button
+                size="sm"
+                disabled={convertPending || convertBlocked || (!!lead.eventDate && eventDateBlocked)}
+                onClick={requestBookThisLead}
+                data-testid="start-booking-action"
+                title={
+                  convertBlocked
+                    ? "Add an Event Space in Availability settings before starting the booking file."
+                    : lead.eventDate && eventDateBlocked
+                      ? "That date is already protected. Resolve the conflict before starting the booking file."
+                      : undefined
+                }
+              >
+                {convertPending
+                  ? <><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />Starting…</>
+                  : <><ArrowRight className="mr-1 h-3.5 w-3.5" />Start booking file</>}
+              </Button>
+            ) : null}
+          </div>
         </div>
       </div>
 
-      {/* Relationship card */}
-      <RelationshipCard lead={lead} />
+      <div
+        data-testid="lead-sales-availability"
+        className="htc-surface-working px-3 py-2.5 sm:px-3.5 sm:py-3"
+      >
+        <p className="mb-2 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+          Sales &amp; availability
+        </p>
+        <div
+          data-testid="lead-owner-hold-row"
+          className="flex min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-4 sm:gap-y-2 lg:gap-x-6"
+        >
+          <div className="min-w-0 w-full shrink-0 sm:w-auto sm:max-w-[22rem]">
+            <StaffAssignmentField
+              compact
+              label="Sales owner"
+              staff={staffOptions}
+              value={lead.assignedStaffId ?? null}
+              testId="lead-staff-assignment"
+              onSave={(staffId) => setLeadAssignedStaffAction(lead.id, staffId)}
+            />
+          </div>
+          <span
+            className="hidden h-6 w-px shrink-0 bg-border sm:block"
+            aria-hidden
+            data-testid="lead-owner-hold-divider"
+          />
+          <DateHoldsSection
+            density="compact"
+            leadId={lead.id}
+            leadName={leadDisplayName(lead.firstName, lead.lastName, lead.partnerFirstName, lead.partnerLastName)}
+            desiredEventDate={lead.eventDate}
+            initialHolds={holds}
+            spaces={spaces}
+            spacePreferences={spacePreferences}
+            venueTimezone={venueTimezone}
+            booked={Boolean(lead.linkedEventId)}
+          />
+        </div>
+      </div>
+
+      {showUsePreferences && (
+        <LeadSpacePreferenceFields
+          leadId={lead.id}
+          spaces={spaces}
+          spaceOperatingMode={spaceOperatingMode}
+          eventType={lead.eventType}
+          initial={spacePreferences}
+          assignments={spaceAssignments}
+          readOnly={Boolean(lead.linkedEventId)}
+          onOccupancyAnchorChange={(spaceId) => {
+            if (spaceId) setBookingSpaceId(spaceId);
+          }}
+        />
+      )}
+      </div>
+
+      <div
+        data-testid="lead-followup-contact-row"
+        className="grid items-stretch gap-4 lg:grid-cols-2"
+      >
+      <div className="min-w-0 h-full [&>[data-slot=card]]:h-full">
+      <RelationshipCard
+        lead={lead}
+        venueTimezone={venueTimezone}
+        hideManualTourSummary={tourAppointments.length > 0}
+        tourActions={<TourScheduleActions includeSchedule={false} />}
+        tourAppointments={<TourAppointmentList />}
+      />
+      </div>
+      <Card className="htc-surface-working h-full" data-testid="lead-contact-card">
+        <CardHeader>
+          <CardTitle className="text-base">Contact information</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-1 flex-col space-y-3 pt-0">
+          {(lead.firstName || lead.lastName || lead.email || lead.phone || lead.partnerFirstName || lead.partnerLastName || lead.partnerEmail) ? (
+            <div
+              data-testid="lead-contact-people"
+              className="grid gap-4 sm:grid-cols-2"
+            >
+              <div className="min-w-0 space-y-2" data-testid="lead-primary-contact">
+                <p className="text-sm font-medium text-heading">
+                  {[lead.firstName, lead.lastName].filter(Boolean).join(" ") || "Primary contact"}
+                </p>
+                <InfoRow icon={Mail} label="Email" value={lead.email} />
+                <InfoRow
+                  icon={Phone}
+                  label="Phone"
+                  value={lead.phone ? formatPhoneDisplay(lead.phone) : lead.phone}
+                />
+              </div>
+              {(lead.partnerFirstName || lead.partnerLastName || lead.partnerEmail) ? (
+                <div className="min-w-0 space-y-2" data-testid="lead-partner-contact">
+                  <p className="text-sm font-medium text-heading">
+                    {[lead.partnerFirstName, lead.partnerLastName].filter(Boolean).join(" ") || "Partner"}
+                  </p>
+                  {lead.partnerEmail ? (
+                    <InfoRow icon={Mail} label="Email" value={lead.partnerEmail} />
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">No contact details recorded.</p>
+          )}
+          <RelationshipCommunicationSummary
+            preferredChannels={lead.preferredCommunicationChannels ?? []}
+            sms={smsPermission}
+            leadId={lead.id}
+            hasPhone={Boolean(lead.phone?.trim())}
+            hasEmail={Boolean(lead.email?.trim())}
+            textingConfigured={textingConfigured}
+          />
+        </CardContent>
+      </Card>
+      </div>
+      </TourScheduleRoot>
 
       {/* Tabs */}
       {duplicateReview ? (
@@ -487,15 +1021,32 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
           }}
         />
       ) : null}
+      <ContextualLuvObservationsPanel
+        observations={contextualObservations}
+        currentPath={`/leads/${lead.id}`}
+        onSameRecordDraft={() => {
+          setActiveTab("luv");
+          window.location.hash = "luv";
+          setLuvDraftRequest((n) => n + 1);
+        }}
+        sameRecordDraftEligible={draftCapable}
+        sameRecordDraftIneligibleReason={followUpDraftIneligibleReason ?? undefined}
+        emptyHint={
+          followUpProactiveRecommended
+            ? undefined
+            : "There's nothing that needs a follow-up right now."
+        }
+      />
+
       <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); window.location.hash = v; }}>
         <TabsList className="max-w-full flex-nowrap overflow-x-auto">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="messages">Conversation</TabsTrigger>
           <TabsTrigger value="notes">
-            Notes
-            {lead.notes.length > 0 && (
+            {INTERNAL_NOTES_LABEL}
+            {internalNotes.length > 0 && (
               <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
-                {lead.notes.length}
+                {internalNotes.length}
               </span>
             )}
           </TabsTrigger>
@@ -528,7 +1079,11 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
 
         {/* ── Overview ─────────────────────────────────────────────── */}
         <TabsContent value="overview">
-          <div className="mb-4">
+          <RelationshipTabShell
+            title="Overview"
+            description="Booking details, package, and payment setup for this lead."
+            testId="lead-overview-tab"
+          >
             <BookingJourneyPanel
               journey={bookingJourney}
               packages={packages}
@@ -537,93 +1092,13 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
               eventId={lead.linkedEventId ?? undefined}
               eventDate={lead.eventDate ?? undefined}
               spaceId={bookingSpaceId || undefined}
+              eventType={lead.eventType ?? undefined}
+              guestCount={lead.guestCount ?? undefined}
+              venueTimezone={venueTimezone}
+              openSetupPayments={openSetupPayments}
+              workspaceReturnTo={`/leads/${lead.id}#booking-journey-payments`}
             />
-          </div>
-          <div className="grid gap-4 lg:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Contact information</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <InfoRow icon={Mail} label="Email" value={lead.email} />
-                <InfoRow icon={Phone} label="Phone" value={lead.phone} />
-                <RelationshipCommunicationSummary
-                  preferredChannels={lead.preferredCommunicationChannels ?? []}
-                  sms={smsPermission}
-                />
-                {(lead.partnerFirstName || lead.partnerLastName) && (
-                  <>
-                    <Separator />
-                    <p className="text-xs font-medium text-muted-foreground">Partner</p>
-                    <p className="text-sm font-medium text-foreground">
-                      {[lead.partnerFirstName, lead.partnerLastName].filter(Boolean).join(" ")}
-                    </p>
-                    {lead.partnerEmail && (
-                      <InfoRow icon={Mail} label="Partner email" value={lead.partnerEmail} />
-                    )}
-                  </>
-                )}
-                {!lead.email && !lead.phone && !lead.partnerFirstName && (
-                  <p className="text-sm text-muted-foreground">No contact details recorded.</p>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Inquiry details</CardTitle>
-                <CardDescription>
-                  Received {formatDate(lead.inquiryDate)}
-                  {lead.source && <> via {sourceLabel(lead.source)}</>}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <InfoRow icon={Calendar} label="Event type" value={eventTypeLabel(lead.eventType)} />
-                <InfoRow icon={Calendar} label="Preferred event date" value={formatDate(lead.eventDate)} />
-                <InfoRow
-                  icon={Users}
-                  label="Guest count"
-                  value={lead.guestCount != null ? `${lead.guestCount.toLocaleString()} guests` : undefined}
-                />
-                <InfoRow
-                  icon={DollarSign}
-                  label="Estimated budget"
-                  value={formatCurrency(lead.estimatedBudget) || undefined}
-                />
-                {lead.inquiryMessage && (
-                  <>
-                    <Separator />
-                    <div>
-                      <Label className="mb-1 text-xs text-muted-foreground">Message</Label>
-                      <p className="whitespace-pre-wrap text-sm text-foreground">
-                        {lead.inquiryMessage}
-                      </p>
-                    </div>
-                  </>
-                )}
-                {Array.isArray(lead.sourceData?.custom_answers) && (lead.sourceData.custom_answers as Array<{ questionText?: string; answer?: string | string[] }>).length > 0 && (
-                  <>
-                    <Separator />
-                    <div className="space-y-3">
-                      {(lead.sourceData.custom_answers as Array<{ questionText?: string; answer?: string | string[] }>).map((entry, idx) => (
-                        <div key={idx}>
-                          <Label className="mb-1 text-xs text-muted-foreground">{entry.questionText ?? "Custom question"}</Label>
-                          <p className="whitespace-pre-wrap text-sm text-foreground">
-                            {Array.isArray(entry.answer) ? entry.answer.join(", ") : entry.answer}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Coordinator Tour Scheduling — always visible, not just when a
-              tour already exists: this is the entry point, not a display-only
-              summary. */}
-          <TourPanel leadId={lead.id} tourAppointments={tourAppointments} now={now} />
+          </RelationshipTabShell>
         </TabsContent>
 
         {/* ── Conversation ─────────────────────────────────────────── */}
@@ -634,70 +1109,49 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
             clientId={lead.linkedClientId}
             initialBody={messagePrefill?.body}
             initialSubject={messagePrefill?.subject}
+            onAuthoritativeSendSuccess={handleAuthoritativeConversationSendSuccess}
           />
         </TabsContent>
 
-        {/* ── Notes ─────────────────────────────────────────────────── */}
+        {/* ── Internal notes ────────────────────────────────────────── */}
         <TabsContent value="notes">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Notes</CardTitle>
-              <CardDescription>
-                Internal notes. Not visible to the client.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <NotesSection leadId={lead.id} initialNotes={lead.notes} />
-            </CardContent>
-          </Card>
+          <RelationshipTabShell
+            title={INTERNAL_NOTES_LABEL}
+            description={INTERNAL_NOTES_PRIVACY_HINT}
+            testId="lead-notes-tab"
+          >
+            <div className="space-y-4">
+              <LeadInquiryRecord lead={lead} />
+              <NotesSection leadId={lead.id} items={internalNotes} venueTimezone={venueTimezone} />
+            </div>
+          </RelationshipTabShell>
         </TabsContent>
 
-        {/* ── Date Holds ────────────────────────────────────────────── */}
+        {/* ── Tasks (work to do — not date holds) ───────────────────── */}
         <TabsContent value="tasks">
-          <div className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Date Holds</CardTitle>
-                <CardDescription>
-                  Reserve a date for this lead without committing to a booking. Holds appear on the calendar and can be released or converted to an event.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <DateHoldsSection
-                  leadId={lead.id}
-                  leadName={leadDisplayName(lead.firstName, lead.lastName, lead.partnerFirstName, lead.partnerLastName)}
-                  initialHolds={holds}
-                  spaces={spaces}
-                />
-              </CardContent>
-            </Card>
-            <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Tasks</CardTitle>
-              <CardDescription>
-                Action items for this lead. Click a title to edit.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <TasksSection leadId={lead.id} initialTasks={lead.tasks} />
-            </CardContent>
-          </Card>
-          </div>
+          <RelationshipTabShell
+            title="Venue tasks"
+            description="One-off things your team needs to do for this lead. Assign an owner and due date — they also appear in Task Center. These are not client planning tasks and do not change your playbook templates. To reserve a date, use Place hold under Sales & availability."
+            testId="lead-tasks-tab"
+          >
+            <TasksSection
+              leadId={lead.id}
+              initialTasks={lead.tasks}
+              staffOptions={staffOptions}
+              defaultAssigneeId={currentStaffId}
+            />
+          </RelationshipTabShell>
         </TabsContent>
 
         {/* ── Activity ──────────────────────────────────────────────── */}
         <TabsContent value="activity">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Activity</CardTitle>
-              <CardDescription>
-                A chronological record of everything that has happened with this lead.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ActivityTimelineView leadId={lead.id} clientId={null} />
-            </CardContent>
-          </Card>
+          <RelationshipTabShell
+            title="Activity"
+            description="A chronological record of everything that has happened with this lead."
+            testId="lead-activity-tab"
+          >
+            <ActivityTimelineView leadId={lead.id} clientId={null} />
+          </RelationshipTabShell>
         </TabsContent>
 
         {/* ── Documents ────────────────────────────────────────────── */}
@@ -707,8 +1161,8 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
             description="Contracts, inspiration photos, questionnaires, and other files for this lead."
             documents={workspaceDocuments}
             initialPinnedKeys={pinnedDocumentKeys}
-            initialRecentEntries={recentDocumentEntries}
             uploadTarget={{ entityType: "lead", entityId: lead.id, venueId: lead.venueId }}
+            returnTo={`/leads/${lead.id}`}
           />
         </TabsContent>
 
@@ -717,10 +1171,26 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
           <Card>
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-1.5"><LuvHeart size={14} /> Luv</CardTitle>
-              <CardDescription>Your venue assistant can help draft a follow-up. You review, edit, and send it yourself.</CardDescription>
+              <CardDescription>
+                {luvPanelDescription({
+                  draftCapable,
+                  proactiveRecommended: followUpProactiveRecommended,
+                  capabilityBlockReason: followUpDraftIneligibleReason,
+                })}
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <LuvDraftPanel lead={lead} initialDrafts={luvDrafts} onUseDraft={handleUseDraft} autoGenerateDraftType={autoLuvDraft} />
+              <LuvDraftPanel
+                lead={lead}
+                initialDrafts={luvDrafts}
+                onUseDraft={handleUseDraft}
+                autoGenerateDraftType={autoLuvDraft}
+                completedDraftId={completedLuvDraftId}
+                followUpDraftEligible={draftCapable}
+                followUpDraftIneligibleReason={followUpDraftIneligibleReason}
+                externalDraftRequest={luvDraftRequest}
+                showContextualObservations={false}
+              />
             </CardContent>
           </Card>
         </TabsContent>

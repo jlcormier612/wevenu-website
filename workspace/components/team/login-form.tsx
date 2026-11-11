@@ -12,7 +12,7 @@ export function LoginForm({ next, accepted }: { next: string; accepted?: boolean
     <form action={action} className="mt-8 space-y-4">
       <input type="hidden" name="next" value={next} />
       {accepted ? (
-        <p className="rounded-sm border border-[color-mix(in_srgb,var(--soft-sage)_70%,transparent)] bg-[color-mix(in_srgb,var(--soft-sage)_25%,transparent)] px-3 py-2 text-sm text-[var(--forest-sage)]">
+        <p className="rounded-sm border border-[color-mix(in_srgb,var(--soft-sage)_70%,transparent)] bg-[color-mix(in_srgb,var(--soft-sage)_25%,transparent)] px-3 py-2 text-sm text-foreground">
           Invite accepted. Sign in with your new password.
         </p>
       ) : null}
@@ -29,7 +29,7 @@ export function LoginForm({ next, accepted }: { next: string; accepted?: boolean
           required
           autoComplete="username"
           defaultValue={DEMO_LOGIN.email}
-          className="mt-2 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2.5 text-sm outline-none focus:border-[var(--heritage-sage)]"
+          className="mt-2 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2.5 text-sm outline-none focus:border-[var(--heritage-sage)] text-foreground"
         />
       </label>
       <label className="block">
@@ -40,7 +40,7 @@ export function LoginForm({ next, accepted }: { next: string; accepted?: boolean
           required
           autoComplete="current-password"
           placeholder="••••••••"
-          className="mt-2 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2.5 text-sm outline-none focus:border-[var(--heritage-sage)]"
+          className="mt-2 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2.5 text-sm outline-none focus:border-[var(--heritage-sage)] text-foreground"
         />
       </label>
       <button

@@ -1,0 +1,254 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { describe, it } from "node:test";
+import { resolve } from "node:path";
+
+import { buildVenueNotificationEmail } from "@/lib/notifications/venue-notification-email";
+import { buildTourReminderCoordinatorEmail } from "@/lib/notifications/tour-reminder-email";
+import { buildMergeData, mergeContent } from "@/lib/message-templates/merge";
+import { wrapConversationMessageHtml } from "@/lib/email/conversation-brand";
+import { emailBrandFromVenue } from "@/lib/email/venue-brand";
+import { HTC_EMAIL_CTA_BACKGROUND } from "@/lib/email/htc-cta";
+
+const ORIGIN = "https://app.sandbox.hellotocheers.com";
+
+function visible(html: string): string {
+  return html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
+}
+
+describe("venue staff notification emails", () => {
+  it("new tour scheduled names the appointment and links with a lead CTA", () => {
+    const email = buildVenueNotificationEmail({
+      title: "New tour scheduled — Nicole Bethune",
+      body: "Oct 10, 2026 at 11:30 AM · 60 min · wedding",
+      link: "/leads/11111111-1111-1111-1111-111111111111",
+      appOrigin: ORIGIN,
+    });
+    assert.equal(email.subject, "New tour scheduled — Nicole Bethune");
+    assert.match(email.text, /Oct 10, 2026 at 11:30 AM · 60 min · wedding/);
+    assert.equal(email.ctaLabel, "View Nicole's lead");
+    assert.equal(email.href, `${ORIGIN}/leads/11111111-1111-1111-1111-111111111111`);
+    assert.match(email.html, /hello-to-cheers-logo-primary-transparent/);
+    assert.match(email.html, /View Nicole&#39;s lead|View Nicole's lead/);
+    assert.match(email.html, /Oct 10, 2026 at 11:30 AM/);
+    assert.doesNotMatch(visible(email.html), /https?:\/\//);
+    assert.match(email.html, new RegExp(`href="${ORIGIN}/leads/11111111-1111-1111-1111-111111111111"`));
+  });
+
+  it("new inquiry summary capitalizes Wedding and uses the same lead CTA", () => {
+    const email = buildVenueNotificationEmail({
+      title: "New inquiry from Nicole Bethune",
+      body: "wedding · May 09, 2027",
+      link: "/leads/22222222-2222-2222-2222-222222222222",
+      appOrigin: ORIGIN,
+    });
+    assert.equal(email.subject, "New inquiry from Nicole Bethune");
+    assert.match(email.text, /Wedding · May 09, 2027/);
+    assert.doesNotMatch(email.text, /\bwedding ·/);
+    assert.equal(email.ctaLabel, "View Nicole's lead");
+    assert.match(email.html, /Wedding · May 09, 2027/);
+    assert.doesNotMatch(email.html, /\bwedding ·/);
+    // Single-line summaries must stay one paragraph (no invented <br>).
+    assert.doesNotMatch(email.html, /Wedding · May 09, 2027<br>/);
+    assert.doesNotMatch(visible(email.html), /https?:\/\//);
+    assert.match(email.html, /hello-to-cheers-logo-primary-transparent/);
+    assert.match(email.html, new RegExp(`background:${HTC_EMAIL_CTA_BACKGROUND}`));
+    assert.doesNotMatch(email.html, /background:#1a1a1a/);
+  });
+
+  it("escapes HTML in detail bodies while converting newlines to br", () => {
+    const email = buildVenueNotificationEmail({
+      title: "Possible duplicate inquiry",
+      body: "Possible match: <script>alert(1)</script>\nEmail: a@b.c",
+      link: "/leads/bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+      appOrigin: ORIGIN,
+    });
+    assert.match(email.html, /Possible match: &lt;script&gt;alert\(1\)&lt;\/script&gt;<br>/);
+    assert.match(email.html, /Email: a@b\.c/);
+    assert.doesNotMatch(email.html, /<script>alert/);
+    assert.match(email.text, /Possible match: <script>alert\(1\)<\/script>\nEmail: a@b\.c/);
+  });
+
+  it("multiline inquiry fields become separate HTML lines (not one collapsed paragraph)", () => {
+    const body = [
+      "New inquiry received via Jen's Fancy Venue's website form.",
+      "",
+      "Name: Alice Gate",
+      "Email: alice@example.com",
+      "Phone: 5551001001",
+      "Partner: Sam Gate",
+      "Event type: Wedding",
+      "Preferred event date: 2027-11-11",
+      "Guests: 120",
+      "Budget: $25,000",
+      "",
+      "Message:",
+      "Looking for a fall weekend.",
+    ].join("\n");
+    const email = buildVenueNotificationEmail({
+      title: "New inquiry from Alice Gate",
+      body,
+      link: "/leads/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+      appOrigin: ORIGIN,
+    });
+    assert.match(email.html, /Name: Alice Gate<br>/);
+    assert.match(email.html, /Email: alice@example\.com<br>/);
+    assert.match(email.html, /Event type: Wedding<br>/);
+    assert.match(email.html, /Message:<br>Looking for a fall weekend\./);
+    assert.doesNotMatch(email.html, /Name: Alice Gate Email:/);
+    assert.match(email.text, /Name: Alice Gate\nEmail:/);
+  });
+
+  it("duplicate-match details render as separate HTML lines", () => {
+    const email = buildVenueNotificationEmail({
+      title: "Possible duplicate inquiry",
+      body: [
+        "Possible match: Alice Gate",
+        "Email: alice@example.com",
+        "Status: New Inquiry",
+        "Matched by: email",
+      ].join("\n"),
+      link: "/leads/bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+      appOrigin: ORIGIN,
+    });
+    assert.match(email.html, /Possible match: Alice Gate<br>/);
+    assert.match(email.html, /Email: alice@example\.com<br>/);
+    assert.match(email.html, /Status: New Inquiry<br>/);
+    assert.match(email.html, /Matched by: email/);
+    assert.doesNotMatch(email.html, /Possible match: Alice Gate ·/);
+    assert.match(email.text, /Possible match: Alice Gate\nEmail: alice@example\.com\nStatus:/);
+  });
+
+  it("representative multiline shared-shell caller (tour reminder) preserves field rows", () => {
+    const email = buildTourReminderCoordinatorEmail({
+      contactName: "Ivy Quinn",
+      dateLabel: "Oct 20, 2026",
+      timeLabel: "2:00 PM",
+      durationMinutes: 60,
+      venueName: "Jen's Fancy Venue",
+      leadId: "cccccccc-cccc-cccc-cccc-cccccccccccc",
+      appOrigin: ORIGIN,
+    });
+    assert.match(email.html, /Duration: 60 minutes\.<br>/);
+    assert.match(email.html, /Jen&#39;s Fancy Venue|Jen's Fancy Venue/);
+    assert.match(email.text, /Duration: 60 minutes\.\nJen's Fancy Venue/);
+    assert.match(email.html, /hello-to-cheers-logo-primary-transparent/);
+  });
+
+  it("date-based new-tour-booked subjects do not invent a weekday CTA name", () => {
+    const email = buildVenueNotificationEmail({
+      title: "New tour booked — Thursday, October 15 at 4:00 PM",
+      body: "Date: Thursday, October 15 at 4:00 PM\nDuration: 60 minutes",
+      link: "/leads/33333333-3333-3333-3333-333333333333",
+      appOrigin: ORIGIN,
+    });
+    assert.equal(email.subject, "New tour booked — Thursday, October 15 at 4:00 PM");
+    assert.equal(email.ctaLabel, "View this lead");
+    assert.doesNotMatch(email.ctaLabel ?? "", /Thursday/i);
+    assert.match(email.html, new RegExp(`background:${HTC_EMAIL_CTA_BACKGROUND}`));
+    assert.match(email.html, /hello-to-cheers-logo-primary-transparent/);
+  });
+
+  it("message_received deep links use the established HTC CTA and messages label", () => {
+    const email = buildVenueNotificationEmail({
+      title: "New message from Ivy Quinn",
+      body: "Need a reply tonight",
+      link: "/leads/44444444-4444-4444-4444-444444444444#messages",
+      appOrigin: ORIGIN,
+    });
+    assert.equal(email.ctaLabel, "View Ivy's messages");
+    assert.equal(
+      email.href,
+      `${ORIGIN}/leads/44444444-4444-4444-4444-444444444444#messages`,
+    );
+    assert.match(email.html, new RegExp(`background:${HTC_EMAIL_CTA_BACKGROUND}`));
+    assert.match(email.html, /hello-to-cheers-logo-primary-transparent/);
+    assert.match(email.html, /#messages/);
+  });
+
+  it("message_received drops a truncated mail-client quote header from the preview", () => {
+    const email = buildVenueNotificationEmail({
+      title: "New message from Bugs Bunny",
+      body:
+        "Thank you! We had tons of fun. Received the invoice and made our first payment - yay!\n    On Monday,",
+      link: "/clients/72892602-a1b1-4982-8353-0193b6d450cf#messages",
+      appOrigin: ORIGIN,
+    });
+    assert.match(email.text, /made our first payment - yay!/);
+    assert.doesNotMatch(email.text, /On Monday/);
+    assert.doesNotMatch(email.html, /On Monday/);
+    assert.equal(email.ctaLabel, "View Bugs's messages");
+  });
+
+  it("message_received client deep links use the messages CTA label", () => {
+    const email = buildVenueNotificationEmail({
+      title: "New message from Bugs Bunny",
+      body: "Thanks!",
+      link: "/clients/72892602-a1b1-4982-8353-0193b6d450cf#messages",
+      appOrigin: ORIGIN,
+    });
+    assert.equal(email.ctaLabel, "View Bugs's messages");
+    assert.match(email.href ?? "", /\/clients\/.*#messages/);
+  });
+
+  it("the dispatcher sends that HTML instead of a bare URL body", () => {
+    const src = readFileSync(resolve("lib/notifications/obligation-engine.ts"), "utf8");
+    const fn = src.slice(src.indexOf("export async function processVenueNotificationEmails"));
+    assert.match(fn, /buildVenueNotificationEmail/);
+    assert.match(fn, /html: email\.html/);
+    assert.doesNotMatch(fn, /\$\{baseUrl\}\$\{row\.link\}/);
+  });
+});
+
+describe("customer inquiry response sign-off", () => {
+  it("prints the venue name once when the coordinator would only repeat it", () => {
+    const template = [
+      "Hi {{first_name}},",
+      "",
+      "Thank you for reaching out to {{venue_name}}.",
+      "",
+      "Warmly,",
+      "{{coordinator_name}}",
+      "{{venue_name}}",
+    ].join("\n");
+    const body = mergeContent(template, buildMergeData({
+      venueName: "Lulu Lodge",
+      clientName: "Nicole Bethune",
+      clientFirstName: "Nicole",
+      coordinatorName: "Lulu Lodge",
+      eventDate: "2027-05-09",
+    }));
+    const signoff = body.slice(body.indexOf("Warmly,"));
+    assert.match(signoff, /Warmly,\n\nLulu Lodge$/);
+    assert.equal((signoff.match(/Lulu Lodge/g) ?? []).length, 1);
+    const brand = emailBrandFromVenue({
+      name: "Lulu Lodge",
+      logo_url: "https://cdn.example.test/lulu-logo.png",
+      primary_color: "#5D6F5D",
+      email_signature: "Cheers!\nThe Lulu Lodge Crew",
+    });
+    const html = wrapConversationMessageHtml(brand, body);
+    assert.match(html, /cdn\.example\.test\/lulu-logo\.png/);
+    assert.match(html, /Cheers!/);
+    assert.match(html, /The Lulu Lodge Crew/);
+    assert.doesNotMatch(html, /Lulu Lodge<br>Lulu Lodge/);
+    assert.doesNotMatch(html, />Lulu Lodge<\/p>\s*<p[^>]*>Lulu Lodge</);
+  });
+
+  it("keeps a real coordinator and the venue on separate sign-off lines", () => {
+    const template = ["Warmly,", "{{coordinator_name}}", "{{venue_name}}"].join("\n");
+    const body = mergeContent(template, buildMergeData({
+      venueName: "Jen's Fancy Venue",
+      clientName: "Betty Rubble",
+      coordinatorName: "Jennifer Fancy, Owner",
+      eventDate: null,
+    }));
+    assert.match(body, /Warmly,\nJennifer Fancy, Owner\nJen's Fancy Venue$/);
+  });
+
+  it("merge context does not substitute the venue name for a missing owner", () => {
+    const src = readFileSync(resolve("lib/scheduled-messages/repository.ts"), "utf8");
+    const fn = src.slice(src.indexOf("const coordinatorName"));
+    assert.doesNotMatch(fn.slice(0, 250), /venue\?\.name/);
+  });
+});

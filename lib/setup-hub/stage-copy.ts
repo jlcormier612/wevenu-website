@@ -52,9 +52,9 @@ export const STAGE_COPY: Record<SetupStageKey, StageCopy> = {
     whatToDo: "Open Packages in Library. Adjust starters, replace them, or build your own. If starters are enough for now, say so explicitly.",
   }),
   "client-experience": fromCrosswalk("client-experience", {
-    what: "Decide which contracts, questionnaires, messages, and planning materials you'll use with couples.",
+    what: "Decide which contracts, questionnaires, messages, and planning materials you'll use with couples — and which Setup Profile applies when you book a wedding.",
     why: "This is what couples experience while working with you.",
-    whatToDo: "Open Library. Make starters yours, or keep them deliberately. Seeded templates alone never mark this done.",
+    whatToDo: "Open Library to review starters. Then open Setup Profiles to confirm how weddings (and later other event types) should start — Library starters alone do not configure every event type.",
   }),
   "lead-capture": fromCrosswalk("lead-capture", {
     what: "Choose how new inquiries reach Hello to Cheers.",

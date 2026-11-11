@@ -19,10 +19,10 @@ describe("sales stages", () => {
       "In Follow-Up",
       "Tour Scheduled",
       "Proposal Sent",
-      "Booking Started",
+      "Booked",
       "Lost",
     ]);
-    assert.equal(STANDARD_SALES_PIPELINE_NAME, "Standard Sales Pipeline");
+    assert.equal(STANDARD_SALES_PIPELINE_NAME, "Standard");
   });
 
   it("migrates legacy status using locked rules", () => {

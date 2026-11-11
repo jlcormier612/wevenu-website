@@ -8,44 +8,45 @@ import { resolve } from "node:path";
 
 import { SALES_STAGE_META, salesStageLabel } from "@/lib/leads/sales-stages";
 import { formatTimingLabel } from "@/lib/payments/starters";
-import { isCommerciallyBooked, buildBookingJourney } from "@/lib/booking-journey/model";
+import { commercialStepsComplete, buildBookingJourney } from "@/lib/booking-journey/model";
 import type { CommercialSelection } from "@/lib/commercial-selections/types";
 
 const root = resolve(process.cwd());
 const read = (p: string) => readFileSync(resolve(root, p), "utf8");
 
 describe("Pipeline terminology — Booking Started vs commercial Booked", () => {
-  it("pipeline sales_stage booked is labeled Booking Started", () => {
-    assert.equal(salesStageLabel("booked"), "Booking Started");
-    assert.equal(SALES_STAGE_META.find((s) => s.value === "booked")!.label, "Booking Started");
-    assert.doesNotMatch(
-      SALES_STAGE_META.find((s) => s.value === "booked")!.description,
-      /^Booked$|commercially Booked milestone alone/i,
-    );
+  it("pipeline sales_stage booked is labeled Booked", () => {
+    assert.equal(salesStageLabel("booked"), "Booked");
+    assert.equal(SALES_STAGE_META.find((s) => s.value === "booked")!.label, "Booked");
     assert.match(
       SALES_STAGE_META.find((s) => s.value === "booked")!.description,
-      /not commercially Booked/i,
+      /booking transition is complete/i,
     );
   });
 
-  it("Booking Journey keeps commercial Booked label", () => {
+  it("commercialReady is informational; Booked is only bookClient", () => {
     const model = read("lib/booking-journey/model.ts");
-    assert.match(model, /key: "booked", label: "Booked"/);
-    const strip = read("components/booking-journey/booking-journey-strip.tsx");
-    assert.match(strip, /Commercial path/);
-    assert.match(strip, /Booking Started/);
+    assert.match(model, /commercialReady/);
+    assert.match(model, /commercialStepsComplete/);
+    assert.doesNotMatch(model, /export function isCommerciallyBooked/);
+    const facts = read("components/booking-journey/commercial-facts.tsx");
+    assert.match(facts, /You mark a relationship Booked when you/);
+    assert.match(facts, /payment does not decide it/i);
+    const panel = read("components/booking-journey/booking-journey-panel.tsx");
+    assert.doesNotMatch(panel, /BookingJourneyStrip/);
+    assert.doesNotMatch(panel, /Send proposal/);
+    const lead = read("components/leads/lead-detail.tsx");
+    const event = read("components/events/event-detail.tsx");
+    assert.match(lead, /Pipeline stage/);
+    assert.doesNotMatch(lead, /Booking Journey/);
+    assert.doesNotMatch(event, />\s*Booking Journey/);
   });
 
-  it("Lead confirm does not call the result a planning workspace", () => {
+  it("Start booking file prepares the workspace and does not reserve the date", () => {
     const detail = read("components/leads/lead-detail.tsx");
     assert.match(detail, /Start booking file\?/);
-    assert.match(detail, /Booking Started/);
-    assert.match(detail, /booking file/);
-    assert.doesNotMatch(
-      detail.slice(detail.indexOf("title=\"Start booking file?\""), detail.indexOf("confirmLabel=\"Start booking file\"")),
-      /planning workspace/i,
-    );
-    assert.match(detail, /not commercially Booked until/i);
+    assert.match(detail, /does not reserve their date/);
+    assert.match(detail, /planning workspace/);
   });
 });
 
@@ -61,14 +62,14 @@ describe("events.booked_at — commercial Booked only", () => {
     assert.doesNotMatch(core, /stampBookingDateIfNeeded|ensureEventBookedAt/);
   });
 
-  it("commercial stamp helper and payment/sign writers exist", () => {
+  it("commercial milestones do not book the relationship", () => {
     const stamp = read("lib/booking-journey/stamp-commercial-booked-at.ts");
     assert.match(stamp, /maybeStampCommercialBookedAt/);
-    assert.match(stamp, /isCommerciallyBooked/);
-    assert.match(stamp, /ensureEventBookedAt/);
-    assert.match(read("lib/payments/service.ts"), /maybeStampCommercialBookedAt/);
-    assert.match(read("lib/stripe/webhook-handlers.ts"), /maybeStampCommercialBookedAt/);
-    assert.match(read("lib/contracts/service.ts"), /maybeStampCommercialBookedAt/);
+    assert.match(stamp, /do not move a relationship to Booked/);
+    assert.doesNotMatch(stamp, /bookClient\(/);
+    assert.doesNotMatch(read("lib/payments/service.ts"), /maybeStampCommercialBookedAt/);
+    assert.doesNotMatch(read("lib/stripe/webhook-handlers.ts"), /maybeStampCommercialBookedAt/);
+    assert.doesNotMatch(read("lib/contracts/service.ts"), /maybeStampCommercialBookedAt/);
   });
 
   it("payment timing labels refer to commercial Booked", () => {
@@ -77,17 +78,26 @@ describe("events.booked_at — commercial Booked only", () => {
   });
 });
 
-describe("Commercial Booked gate", () => {
+describe("Commercial steps (not Booked)", () => {
   function selection(overrides: Partial<CommercialSelection> = {}): CommercialSelection {
+    const totalAmount = overrides.totalAmount ?? 10000;
     return {
       id: "s1",
       venueId: "v",
       leadId: null,
       clientId: "c1",
       eventId: "e1",
+      proposalId: null,
       sourcePackageId: null,
       name: "Gold",
-      totalAmount: 10000,
+      packageAmount: totalAmount,
+      discountAmount: 0,
+      discountType: null,
+      discountValue: null,
+      taxApplied: false,
+      taxRatePercent: null,
+      taxAmount: 0,
+      totalAmount,
       depositAmount: 2000,
       includedItems: [],
       status: "accepted",
@@ -105,17 +115,17 @@ describe("Commercial Booked gate", () => {
     };
   }
 
-  it("is commercially Booked only with agreement + deposit", () => {
+  it("commercial steps complete with agreement + deposit — still not Booked", () => {
     assert.equal(
-      isCommerciallyBooked({
+      commercialStepsComplete({
         selection: selection(),
-        contract: null,
+        contract: { id: "c1", status: "signed" },
         paymentLines: [{ obligationKind: "deposit", status: "paid", amount: 2000 }],
       }),
       true,
     );
     assert.equal(
-      isCommerciallyBooked({
+      commercialStepsComplete({
         selection: selection({ status: "offered" }),
         contract: null,
         paymentLines: [{ obligationKind: "deposit", status: "paid", amount: 2000 }],
@@ -124,18 +134,19 @@ describe("Commercial Booked gate", () => {
     );
   });
 
-  it("journey Booked stage stays commercial", () => {
+  it("journey ready stage never claims Booked", () => {
     const j = buildBookingJourney({
       selection: selection(),
-      contract: null,
+      contract: { id: "c1", status: "signed" },
       paymentLines: [{ obligationKind: "deposit", status: "paid", amount: 2000 }],
       portalInvited: false,
       planningStarted: false,
       clientId: "c1",
       eventId: "e1",
     });
-    assert.equal(j.isCommerciallyBooked, true);
-    assert.equal(j.stages.find((s) => s.key === "booked")?.label, "Booked");
+    assert.equal(j.commercialReady, true);
+    assert.equal(j.stages.find((s) => s.key === "ready")?.label, "Next steps");
+    assert.match(j.direction, /Mark them Booked when you're ready/i);
   });
 });
 
@@ -158,7 +169,7 @@ describe("Canonical Start booking file path", () => {
     const detail = read("components/leads/lead-detail.tsx");
     assert.doesNotMatch(detail, /wouldEnrollOnPipelineStageMoveAction\(lead\.id, "booked"\)/);
     assert.doesNotMatch(detail, /pendingBookAfterAutomation/);
-    assert.match(detail, /not commercially Booked until/i);
+    assert.match(detail, /does not reserve their date/i);
   });
 
   it("Lead detail surfaces ConflictWarning for the event date", () => {
@@ -168,11 +179,11 @@ describe("Canonical Start booking file path", () => {
     assert.match(detail, /That date is already protected/);
   });
 
-  it("convertLeadToClient hard-blocks calendar coverage and maps occupancy failures", () => {
+  it("convertLeadToClient prepares a client and does not occupy a date", () => {
     const clients = read("lib/clients/service.ts");
     const convert = clients.slice(clients.indexOf("export async function convertLeadToClient"));
-    assert.match(convert, /coveringClientEventBlockTitle/);
-    assert.match(convert, /occupancyClientFailure/);
+    assert.doesNotMatch(convert, /coveringClientEventBlockTitle/);
+    assert.doesNotMatch(convert, /insertClientWithDatedEvent\(/);
     assert.match(convert, /clients_lead_id_unique|23505/);
   });
 });
@@ -184,19 +195,20 @@ describe("Direct Add and celebration destinations", () => {
     assert.doesNotMatch(form, /\/booked/);
   });
 
-  it("commercial celebration page still requires isCommerciallyBooked", () => {
+  it("celebration page requires events.booked_at and the transition handoff", () => {
     const page = read("app/(app)/clients/[id]/booked/page.tsx");
-    assert.match(page, /isCommerciallyBooked/);
+    assert.match(page, /event\?\.bookedAt/);
+    assert.match(page, /consumeBookingCelebration/);
     assert.match(page, /redirect\(`\/clients\/\$\{client\.id\}`\)/);
-    assert.match(page, /Client Planning is optional/);
+    assert.match(page, /They're Booked/);
   });
 });
 
 describe("Booked-stage automation copy", () => {
-  it("communications review says Booking Started not after booking", () => {
+  it("communications review says when Booked", () => {
     const src = read("lib/clients/communications-review.ts");
-    assert.match(src, /when Booking Started/);
-    assert.doesNotMatch(src, /after booking/);
+    assert.match(src, /when Booked/);
+    assert.doesNotMatch(src, /Booking Started/);
   });
 });
 

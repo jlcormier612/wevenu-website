@@ -1,0 +1,12 @@
+PASS serving-sha — ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:e7f7178e1f4621561a395862470da12d2eac800d
+PASS serving-digest — sha256:85ce9adae5ddf30e8e428d455bdbc10e6e57c75dff121078386c0ce05c2ffa73
+PASS fixture-eo — {"id":"624eceef-5096-4288-b104-62daa3a82d11","status":"finalized","revision":26,"shared_at":"2026-10-24T02:24:06.106+00:00","template_id":"99585da2-587c-4b7a-9e59-5e9db5d4d998"}
+PASS eo-lines-present — {"count":43,"byProv":{"offering":6,"custom":7,"package":0,"inventory":30}}
+PASS fixture-invoice — {"id":"4489c869-38fd-4ae1-8cad-cc7043d1d527","status":"sent","total":2189.81,"subtotal":2061,"event_order_id":"624eceef-5096-4288-b104-62daa3a82d11","event_order_revision_at_freeze":26,"issued_at":"2026-10-25T20:10:34.31+00:00"}
+PASS stage6-eo-invoice-payable-reconcile — {"recon":{"deliverySubtotal":2381,"billableSubtotal":2061,"includedOrNonBillable":320,"invoiceAdjustmentsSubtotal":0,"discountAmount":0,"taxAmount":128.81,"payableTotal":2189.81},"invTotal":2189.81,"status":"sent","payableAgrees":true,"freezeAligned":true,"adjustmentCount":1,"invLineTypes":["item","tax","inventory"]}
+PASS stage6-issued-freeze-revision — revision_at_freeze=26 eo.revision=26
+PASS stage6-payment-plan-reconcile — no payment schedule on this invoice — skipped
+PASS scenario-h-finalized-line-is-snapshot — {"linePrice":10,"catalogDefault":null,"note":"Catalog default may differ; line amount is the event snapshot"}
+PASS stage5-seed-skips-shared-or-finalized — seedBookingPackageInclusions guards open && !sharedAt
+
+GREEN financial fixture

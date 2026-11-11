@@ -13,11 +13,18 @@ export type EventOrder = {
   id: string;
   venueId: string;
   eventId: string;
+  clientId?: string | null;
   status: EventOrderStatus;
   revision: number;
   finalizedAt: string | null;
   /** Set by share; never cleared by reopen. Client sees last share snapshot until re-share. */
   sharedAt: string | null;
+  /** Client acceptance of the shared snapshot — distinct from venue finalize/share. */
+  clientAgreedAt: string | null;
+  clientAgreedName: string | null;
+  clientAgreedRevision: number | null;
+  /** Secret couple document link token — /order/{reviewToken}. */
+  reviewToken?: string | null;
   templateId: string | null;
   createdAt: string;
   updatedAt: string;
@@ -32,6 +39,12 @@ export type EventOrderSection = {
   floorPlanId: string | null;
   createdAt: string;
   updatedAt: string;
+  /** Venue override: floor plan setup this section is laid out on. */
+  floorPlanSetupId?: string | null;
+  /** Template default setup name, matched to the event's setups by name. */
+  floorPlanSetupName?: string | null;
+  /** Venue choice: not compared with any floor plan. */
+  notOnFloorPlan?: boolean;
 };
 
 export type EventOrderLine = {
@@ -52,6 +65,8 @@ export type EventOrderLine = {
   amount: number;
   isIncluded: boolean;
   notes: string | null;
+  /** True when quantity should follow Guaranteed ?? Estimated (Narrow B). */
+  boundToHeadcount: boolean;
   sortOrder: number;
   createdAt: string;
   updatedAt: string;
@@ -84,6 +99,7 @@ export type AddCustomLineInput = {
   isIncluded?: boolean;
   notes?: string;
   descriptionDetail?: string;
+  boundToHeadcount?: boolean;
 };
 
 export type AddInventoryLineInput = {
@@ -95,6 +111,7 @@ export type AddInventoryLineInput = {
   unit?: string;
   isIncluded?: boolean;
   notes?: string;
+  boundToHeadcount?: boolean;
 };
 
 export type AddOfferingLineInput = {
@@ -108,6 +125,7 @@ export type AddOfferingLineInput = {
   notes?: string;
   descriptionDetail?: string;
   inventoryItemId?: string | null;
+  boundToHeadcount?: boolean;
 };
 
 export type UpdateLineInput = {

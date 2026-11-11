@@ -1,0 +1,66 @@
+{
+  "at": "2026-10-12T03:41:00.204Z",
+  "sha": "dc1bda28c53b27c292cae52afbf1b708981498d6",
+  "leadId": "9ca3196f-3100-436f-921a-075ee3b7857d",
+  "selectionId": "43f230c9-2c93-4233-9a5c-bb23a71ae49b",
+  "pass": true,
+  "checks": [
+    {
+      "name": "deployed_sha_prefix",
+      "pass": true,
+      "detail": "sha=dc1bda28c53b27c292cae52afbf1b708981498d6"
+    },
+    {
+      "name": "calendar_guidance_exact",
+      "pass": true,
+      "detail": "{\"calText\":\"Already working with someone? Use the personalized scheduling link that resides in their lead record, under 'Follow-up'. That will preserve any preferred date holds and other previously gathered information.\",\"expected\":\"Already working with someone? Use the personalized scheduling link that resides in their lead record, under 'Follow-up'. That will preserve any preferred date holds and other previously gathered information.\"}"
+    },
+    {
+      "name": "lead_guidance_exact",
+      "pass": true,
+      "detail": "{\"leadText\":\"Use this personalized scheduling link for this lead. The Calendar page's Copy tour link is a general link for new prospects only.\",\"expected\":\"Use this personalized scheduling link for this lead. The Calendar page's Copy tour link is a general link for new prospects only.\"}"
+    },
+    {
+      "name": "lead_copy_tour_link_bold",
+      "pass": true,
+      "detail": "bold=Copy tour link"
+    },
+    {
+      "name": "package_facts_visible",
+      "pass": true,
+      "detail": "visible"
+    },
+    {
+      "name": "package_facts_not_narrow",
+      "pass": true,
+      "detail": "width=530"
+    },
+    {
+      "name": "package_facts_readable",
+      "pass": true,
+      "detail": "textPreview=Selected PackageFull Service Wedding · $25,000Selected internally Package $25,000 · Agreed total $25,000 · Deposit alloc"
+    },
+    {
+      "name": "change_btn_no_overlap_facts",
+      "pass": true,
+      "detail": "overlapX=-82.390625 overlapY=29.75"
+    },
+    {
+      "name": "change_btn_no_overlap_hint",
+      "pass": true,
+      "detail": "hintY=1160.78125 btnY=1071.5625"
+    },
+    {
+      "name": "package_facts_mobile_width",
+      "pass": true,
+      "detail": "width=320"
+    },
+    {
+      "name": "package_facts_tablet_width",
+      "pass": true,
+      "detail": "width=315.5"
+    }
+  ],
+  "productionUntouched": true,
+  "bookingDataUnchanged": true
+}

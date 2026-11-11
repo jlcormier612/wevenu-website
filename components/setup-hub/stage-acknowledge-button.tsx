@@ -28,6 +28,7 @@ export function StageAcknowledgeButton({
       variant="outline"
       size="sm"
       disabled={pending}
+      className="htc-setup-quiet-action border-border bg-card text-heading hover:bg-card"
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();

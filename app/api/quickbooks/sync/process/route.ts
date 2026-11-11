@@ -15,7 +15,36 @@
 import { NextResponse } from "next/server";
 
 import { cronUnauthorizedResponse, isCronAuthorized, isManualSecretAuthorized } from "@/lib/auth/cron-auth";
-import { processQuickBooksSyncQueue } from "@/lib/quickbooks/processor";
+import { processQuickBooksSyncQueue, type ProcessResult } from "@/lib/quickbooks/processor";
+
+/**
+ * Counts and ages only — never venue, customer or entity identifiers.
+ * "idle" means there is genuinely nothing to do; a tick holding deferred work,
+ * waiting on review, or sitting on an ageing backlog reads differently.
+ */
+function summarizeQueueTick(result: ProcessResult): string {
+  const parts = [
+    `${result.succeeded} succeeded`,
+    `${result.failedRetrying} retrying`,
+    `${result.deadLettered} dead-lettered`,
+    `${result.skipped} skipped`,
+  ];
+  if (result.reclaimed > 0) parts.push(`${result.reclaimed} reclaimed`);
+  if (result.uncertainWrites > 0) {
+    parts.push(`${result.uncertainWrites} write outcome unknown`);
+  }
+  if (result.needsReview > 0) parts.push(`${result.needsReview} stuck awaiting review`);
+  if (result.deferredNoConnection > 0) {
+    parts.push(`${result.deferredNoConnection} deferred (no connection)`);
+  }
+  if (result.oldestEligiblePendingAgeMs !== null) {
+    parts.push(`oldest eligible ${Math.round(result.oldestEligiblePendingAgeMs / 60_000)}m`);
+  }
+  const anything =
+    result.processed > 0 || result.reclaimed > 0 || result.needsReview > 0 ||
+    result.uncertainWrites > 0 || result.deferredNoConnection > 0;
+  return anything ? parts.join(", ") : "idle, nothing queued";
+}
 
 /** GET — cron trigger */
 export async function GET(request: Request) {
@@ -24,7 +53,7 @@ export async function GET(request: Request) {
   }
   try {
     const result = await processQuickBooksSyncQueue();
-    console.log(`[cron] quickbooks sync processed: ${result.succeeded} succeeded, ${result.failedRetrying} retrying, ${result.deadLettered} dead-lettered, ${result.skipped} skipped`);
+    console.log(`[cron] quickbooks sync processed: ${summarizeQueueTick(result)}`);
     return NextResponse.json(result);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";

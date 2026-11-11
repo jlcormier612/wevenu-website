@@ -7,26 +7,29 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Filter, Paperclip, Search, X } from "lucide-react";
 
 import {
   getConversationInboxPageAction,
   getInboxFilterEventLabelAction,
+  resolveInboxCategoryAction,
   searchInboxFilterEventsAction,
+  clearConversationNeedsResponseAction,
 } from "@/app/(app)/messaging/actions";
 import { CHANNEL_META, ConversationThread } from "@/components/conversations/conversation-thread";
 import {
   conversationNeedsResponseFromSummary,
   isMeaningfulCommunication,
 } from "@/lib/conversations/inbox-attention";
+import { inboxListKindLabel } from "@/lib/conversations/inbox-working-population";
 import {
   clearInboxChip,
   defaultInboxFilters,
   INBOX_EVENT_DATE_PRESET_OPTIONS,
-  INBOX_EVENT_TYPE_OPTIONS,
   INBOX_FILTER_ALL,
   INBOX_SORT_OPTIONS,
+  buildInboxEventTypeFilterOptions,
   inboxActiveChips,
   inboxFiltersAreDefault,
   inboxFiltersToQuery,
@@ -36,8 +39,24 @@ import {
   type InboxSort,
 } from "@/lib/conversations/inbox-filters";
 import { formatInboxListEventCue } from "@/lib/conversations/inbox-header";
+import {
+  selectionAfterInboxCategoryChange,
+  selectionAfterInboxListReplace,
+} from "@/lib/conversations/inbox-selection";
 import type { ConversationMessagePreview, ConversationSummary } from "@/lib/conversations/types";
+import { totalUnreadAfterConversationCleared } from "@/lib/conversations/inbox-unread-totals";
+import {
+  INBOX_CATEGORY_OPTIONS,
+  inboxRelationshipParam,
+  requestNavAttentionRefresh,
+  type InboxCategory,
+} from "@/lib/navigation/attention";
 import type { StaffMember } from "@/lib/team/types";
+import {
+  IDLE_SEGMENTED,
+  SELECTED_SEGMENTED,
+} from "@/lib/ui/selected-state";
+import { cn } from "@/lib/utils";
 
 type InboxEventOption = {
   id: string;
@@ -73,13 +92,15 @@ function needsResponseForRow(
 }
 
 function ConversationRow({
-  conversation, isActive, needsResponse, timeLabel, onClick,
+  conversation, isActive, needsResponse, timeLabel, kindLabel, onClick, onNoResponseNeeded,
 }: {
   conversation: ConversationSummary;
   isActive: boolean;
   needsResponse: boolean;
   timeLabel: string;
+  kindLabel: string;
   onClick: () => void;
+  onNoResponseNeeded?: () => void;
 }) {
   const meaningful = conversation.latestMeaningfulMessage ?? conversation.latestMessage;
   const preview = meaningful && isMeaningfulCommunication(meaningful)
@@ -95,14 +116,19 @@ function ConversationRow({
     <button
       type="button"
       onClick={onClick}
-      className={`flex w-full items-start gap-3 border-b border-border/40 px-4 py-3.5 text-left transition-colors hover:bg-muted/30 ${isActive ? "border-l-2 border-l-primary bg-primary/5" : ""}`}
+      className={`flex w-full items-start gap-3 border-b border-border/40 px-4 py-3.5 text-left transition-colors hover:bg-[var(--htc-hover-lift)] ${isActive ? "border-l-2 border-l-primary bg-selected" : ""}`}
     >
       <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10">
         <span className="text-xs font-semibold text-primary">{initials(conversation.displayName)}</span>
       </div>
       <div className="min-w-0 flex-1 space-y-0.5">
         <div className="flex items-center justify-between gap-2">
-          <p className={`truncate text-sm font-medium ${conversation.venueUnread > 0 ? "text-heading" : "text-foreground"}`}>
+          <p
+            className={cn(
+              "htc-record-link truncate text-sm font-medium",
+              conversation.venueUnread > 0 ? "text-heading" : "text-foreground",
+            )}
+          >
             {conversation.displayName ?? "Unnamed relationship"}
           </p>
           <span className="shrink-0 text-[10px] text-muted-foreground">{timeLabel}</span>
@@ -112,14 +138,14 @@ function ConversationRow({
         )}
         <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
           <span className="rounded-full bg-muted px-1.5 py-0.5 font-medium">
-            {conversation.clientId ? "Booking" : "Lead"}
+            {kindLabel}
           </span>
           {ChannelIcon && <ChannelIcon className="h-3 w-3" aria-hidden />}
           {conversation.hasAttachments && (
             <Paperclip className="h-3 w-3" aria-label="Has attachments" />
           )}
           {needsResponse && (
-            <span className="rounded-full bg-warning/20 px-1.5 py-0.5 font-medium text-warning-foreground">
+            <span className="rounded-full bg-destructive px-1.5 py-0.5 font-medium text-destructive-foreground">
               Needs response
             </span>
           )}
@@ -129,11 +155,35 @@ function ConversationRow({
             {previewText}
           </p>
           {conversation.venueUnread > 0 && (
-            <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
+            <span
+              className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground"
+              title={`${conversation.venueUnread} unread message${conversation.venueUnread === 1 ? "" : "s"}`}
+              aria-label={`${conversation.venueUnread} unread`}
+            >
               {conversation.venueUnread > 9 ? "9+" : conversation.venueUnread}
             </span>
           )}
         </div>
+        {needsResponse && onNoResponseNeeded && (
+          <span
+            role="button"
+            tabIndex={0}
+            onClick={(e) => {
+              e.stopPropagation();
+              onNoResponseNeeded();
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                e.stopPropagation();
+                onNoResponseNeeded();
+              }
+            }}
+            className="inline-block text-[11px] font-medium text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+          >
+            No response needed
+          </span>
+        )}
       </div>
     </button>
   );
@@ -142,11 +192,20 @@ function ConversationRow({
 export function ConversationInbox({
   teamMembers = [],
   currentStaffId = null,
+  acceptedInquiryEventTypes = null,
 }: {
   teamMembers?: StaffMember[];
   currentStaffId?: string | null;
+  /** venues.accepted_inquiry_event_types — Setup source of truth for Event type filter. */
+  acceptedInquiryEventTypes?: unknown;
 }) {
+  const eventTypeFilterOptions = React.useMemo(
+    () => buildInboxEventTypeFilterOptions(acceptedInquiryEventTypes),
+    [acceptedInquiryEventTypes],
+  );
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
   const [items, setItems] = React.useState<ConversationSummary[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [loadingMore, setLoadingMore] = React.useState(false);
@@ -158,6 +217,7 @@ export function ConversationInbox({
     sortKey?: string | null;
   } | null>(null);
   const [totalUnread, setTotalUnread] = React.useState(0);
+  const [totalNeedsResponse, setTotalNeedsResponse] = React.useState(0);
   const [needsResponseOverrides, setNeedsResponseOverrides] = React.useState<Record<string, boolean>>({});
   const [activeId, setActiveId] = React.useState<string | null>(() => searchParams.get("conversation"));
   const [nowMs, setNowMs] = React.useState<number | null>(null);
@@ -171,10 +231,41 @@ export function ConversationInbox({
   const [search, setSearch] = React.useState("");
   const [searchDebounced, setSearchDebounced] = React.useState("");
   const [filters, setFilters] = React.useState<InboxFilterState>(defaultInboxFilters);
+  const [category, setCategory] = React.useState<InboxCategory>("leads");
   const [eventSearch, setEventSearch] = React.useState("");
   const [eventSearchResults, setEventSearchResults] = React.useState<InboxEventOption[]>([]);
   const [eventSearchPending, setEventSearchPending] = React.useState(false);
   const [selectedEventLabel, setSelectedEventLabel] = React.useState<string | null>(null);
+  const deepLinkResolved = React.useRef<string | null>(null);
+  const listLoadGeneration = React.useRef(0);
+
+  // Deep link: select the matching category for ?conversation=
+  React.useEffect(() => {
+    const fromUrl = searchParams.get("conversation");
+    if (!fromUrl || deepLinkResolved.current === fromUrl) return;
+    deepLinkResolved.current = fromUrl;
+    void resolveInboxCategoryAction(fromUrl).then((cat) => {
+      setCategory(cat);
+      setFilters((f) => ({ ...f, relationship: inboxRelationshipParam(cat) }));
+    });
+  }, [searchParams]);
+
+  function clearConversationDeepLink() {
+    if (!searchParams.get("conversation")) return;
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("conversation");
+    const qs = params.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  }
+
+  function selectCategory(next: InboxCategory) {
+    setActiveId((current) => selectionAfterInboxCategoryChange(category, next, current));
+    setCategory(next);
+    setFilters((f) => ({ ...f, relationship: inboxRelationshipParam(next) }));
+    // Drop ?conversation= so a prior deep link cannot restore the old thread
+    // or bounce the category back via resolveInboxCategoryAction.
+    clearConversationDeepLink();
+  }
 
   React.useEffect(() => {
     setNowMs(Date.now());
@@ -264,6 +355,7 @@ export function ConversationInbox({
   }, [searchDebounced, queryFields, nextCursor]);
 
   React.useEffect(() => {
+    const generation = ++listLoadGeneration.current;
     setNextCursor(null);
     void (async () => {
       setLoading(true);
@@ -274,30 +366,52 @@ export function ConversationInbox({
           search: searchDebounced || null,
           ...queryFields,
         });
+        if (generation !== listLoadGeneration.current) return;
         setItems(page.conversations);
         setHasMore(page.hasMore);
         setNextCursor(page.nextCursor);
         setTotalUnread(page.totalUnread);
+        setTotalNeedsResponse(page.totalNeedsResponse ?? 0);
         setNeedsResponseOverrides({});
+        // Drop a thread that is not in this bucket after the list replaces.
+        // While loading we keep activeId so deep links are not cleared early.
+        setActiveId((current) => selectionAfterInboxListReplace({
+          loading: false,
+          conversationIds: page.conversations.map((c) => c.id),
+          activeConversationId: current,
+          deepLinkConversationId: searchParams.get("conversation"),
+        }));
       } catch {
+        if (generation !== listLoadGeneration.current) return;
         setLoadError("Couldn’t load conversations. Try again.");
         setItems([]);
         setHasMore(false);
         setNextCursor(null);
+        setActiveId(null);
       } finally {
-        setLoading(false);
+        if (generation === listLoadGeneration.current) setLoading(false);
       }
     })();
   }, [queryKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const activeSummary = items.find((c) => c.id === activeId) ?? null;
-  const needsResponseCount = items.filter((c) => needsResponseForRow(c, needsResponseOverrides)).length;
+  const needsResponseCount = typeof totalNeedsResponse === "number"
+    ? totalNeedsResponse
+    : items.filter((c) => needsResponseForRow(c, needsResponseOverrides)).length;
 
   function markConversationOpened(conversationId: string, needsResponse: boolean) {
+    const priorUnread = items.find((c) => c.id === conversationId)?.venueUnread ?? 0;
     setItems((prev) => prev.map((c) => (
-      c.id === conversationId ? { ...c, venueUnread: 0 } : c
+      c.id === conversationId
+        ? { ...c, venueUnread: 0, needsResponse }
+        : c
     )));
     setNeedsResponseOverrides((prev) => ({ ...prev, [conversationId]: needsResponse }));
+    // Only after successful get_conversation (caller). Subtract once; repeat open with 0 is a no-op.
+    if (priorUnread > 0) {
+      setTotalUnread((n) => totalUnreadAfterConversationCleared(n, priorUnread));
+      requestNavAttentionRefresh();
+    }
   }
 
   function markConversationSent(
@@ -305,6 +419,11 @@ export function ConversationInbox({
     latestMessage: ConversationMessagePreview,
     needsResponse: boolean,
   ) {
+    const priorUnread = items.find((c) => c.id === conversationId)?.venueUnread ?? 0;
+    const wasNeeded = needsResponseForRow(
+      items.find((c) => c.id === conversationId) ?? { id: conversationId, needsResponse: true } as ConversationSummary,
+      needsResponseOverrides,
+    );
     setItems((prev) => prev.map((c) => (
       c.id === conversationId
         ? {
@@ -313,33 +432,61 @@ export function ConversationInbox({
             latestMeaningfulMessage: isMeaningfulCommunication(latestMessage) ? latestMessage : c.latestMeaningfulMessage,
             lastMessageAt: latestMessage.sentAt,
             venueUnread: 0,
+            needsResponse,
           }
         : c
     )));
     setNeedsResponseOverrides((prev) => ({ ...prev, [conversationId]: needsResponse }));
+    // Same unread-total defect as open when send syncs venueUnread→0 with a non-zero prior.
+    if (priorUnread > 0) {
+      setTotalUnread((n) => totalUnreadAfterConversationCleared(n, priorUnread));
+      requestNavAttentionRefresh();
+    }
+    if (wasNeeded && !needsResponse) {
+      setTotalNeedsResponse((n) => Math.max(0, n - 1));
+    }
+  }
+
+  async function markNoResponseNeeded(conversationId: string) {
+    const result = await clearConversationNeedsResponseAction(conversationId);
+    if (!result.ok) return;
+    const wasNeeded = needsResponseForRow(
+      items.find((c) => c.id === conversationId) ?? { id: conversationId, needsResponse: true } as ConversationSummary,
+      needsResponseOverrides,
+    );
+    setItems((prev) => prev.map((c) => (
+      c.id === conversationId ? { ...c, needsResponse: false } : c
+    )));
+    setNeedsResponseOverrides((prev) => ({ ...prev, [conversationId]: false }));
+    if (wasNeeded) setTotalNeedsResponse((n) => Math.max(0, n - 1));
   }
 
   function clearAllFilters() {
+    setActiveId((current) => selectionAfterInboxCategoryChange(category, "leads", current));
+    setCategory("leads");
     setFilters(defaultInboxFilters());
     setSearch("");
     setSearchDebounced("");
     setEventSearch("");
     setEventSearchResults([]);
     setSelectedEventLabel(null);
+    clearConversationDeepLink();
   }
 
   return (
-    <div className="flex min-w-0 w-full flex-col gap-3">
-      <div className="flex shrink-0 items-start justify-between gap-3">
+    <div className="htc-hospitality-page flex min-w-0 w-full flex-col gap-3">
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent flex shrink-0 items-start justify-between gap-3">
         <div>
           <h1 className="font-heading text-3xl font-medium text-heading">Inbox</h1>
           <p className="text-[0.95rem] text-muted-foreground">
             Email, text, and portal conversations in one place.
           </p>
           <p className="mt-1 text-xs text-muted-foreground" aria-live="polite">
-            {totalUnread > 0 ? `${totalUnread} unread` : "No unread"}
+            {totalUnread > 0 ? `${totalUnread} unread messages` : "No unread messages"}
             {" · "}
-            {needsResponseCount > 0 ? `${needsResponseCount} need response (this page)` : "None need response on this page"}
+            {needsResponseCount > 0
+              ? `${needsResponseCount} need response`
+              : "None need response"}
           </p>
         </div>
         <Link href="/messaging/health" className="shrink-0 text-xs text-muted-foreground hover:text-foreground hover:underline">
@@ -347,34 +494,60 @@ export function ConversationInbox({
         </Link>
       </div>
 
-      <div className="flex shrink-0 flex-wrap items-center gap-2">
-        <div className="relative min-w-0 flex-1">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by name, email, phone, or event…"
-            aria-label="Search inbox conversations"
-            className="h-9 w-full rounded-lg border border-border bg-background pl-8 pr-3 text-sm"
-          />
-        </div>
-        <button
-          type="button"
-          onClick={() => setFiltersOpen((o) => !o)}
-          aria-expanded={filtersOpen}
-          className={`inline-flex h-9 items-center gap-1.5 rounded-lg border px-3 text-xs ${
-            filtersOpen || !inboxFiltersAreDefault(filters)
-              ? "border-primary bg-primary/10 text-primary"
-              : "border-border text-muted-foreground"
-          }`}
+      <div className="htc-hospitality-toolbar flex shrink-0 flex-col gap-2">
+        <div
+          role="tablist"
+          aria-label="Inbox category"
+          className="flex min-w-0 gap-1 rounded-lg border border-[color:var(--htc-border-warm)] bg-card p-1"
         >
-          <Filter className="h-3.5 w-3.5" /> Filters
-          {!inboxFiltersAreDefault(filters) && (
-            <span className="rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground">
-              {chips.length}
-            </span>
-          )}
-        </button>
+          {INBOX_CATEGORY_OPTIONS.map((opt) => {
+            const selected = category === opt.value;
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                role="tab"
+                aria-selected={selected}
+                onClick={() => selectCategory(opt.value)}
+                className={cn(
+                  "min-w-0 flex-1 truncate rounded-md px-2 py-1.5 text-xs font-medium transition-colors",
+                  selected ? SELECTED_SEGMENTED : IDLE_SEGMENTED,
+                )}
+              >
+                {opt.label}
+              </button>
+            );
+          })}
+        </div>
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <div className="relative min-w-0 flex-1">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by name, email, phone, or event…"
+              aria-label="Search inbox conversations"
+              className="h-9 w-full rounded-lg border border-[color:var(--htc-border-warm)] bg-card pl-8 pr-3 text-sm"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={() => setFiltersOpen((o) => !o)}
+            aria-expanded={filtersOpen}
+            className={`inline-flex h-9 items-center gap-1.5 rounded-lg border px-3 text-xs ${
+              filtersOpen || !inboxFiltersAreDefault(filters)
+                ? "border-primary bg-primary/10 text-primary"
+                : "border-border text-muted-foreground"
+            }`}
+          >
+            <Filter className="h-3.5 w-3.5" /> Filters
+            {!inboxFiltersAreDefault(filters) && (
+              <span className="rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground">
+                {chips.length}
+              </span>
+            )}
+          </button>
+        </div>
       </div>
 
       {chips.length > 0 && (
@@ -404,7 +577,7 @@ export function ConversationInbox({
       {filtersOpen && (
         <div className="max-h-[min(40vh,22rem)] shrink-0 space-y-4 overflow-y-auto rounded-lg border border-border/60 bg-muted/20 p-4">
           {/* Top row: compact peer filters — equal weight, no empty cells */}
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2">
             <fieldset className="space-y-2">
               <legend className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Attention</legend>
               <div className="flex flex-col gap-1.5 text-xs">
@@ -425,33 +598,6 @@ export function ConversationInbox({
                   </label>
                 ))}
               </div>
-            </fieldset>
-
-            <fieldset className="space-y-2">
-              <legend className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Relationship</legend>
-              <select
-                aria-label="Filter by lead or booking"
-                value={filters.relationship}
-                onChange={(e) => setFilters((f) => ({ ...f, relationship: e.target.value as InboxFilterState["relationship"] }))}
-                className="h-8 w-full rounded-lg border border-border bg-background px-2 text-xs"
-              >
-                <option value="all">All</option>
-                <option value="leads">Leads</option>
-                <option value="bookings">Bookings</option>
-              </select>
-              <select
-                aria-label="Filter by booking stage"
-                value={filters.bookingStage}
-                onChange={(e) => setFilters((f) => ({ ...f, bookingStage: e.target.value }))}
-                className="h-8 w-full rounded-lg border border-border bg-background px-2 text-xs"
-              >
-                <option value={INBOX_FILTER_ALL}>Any stage</option>
-                <option value="package">Package</option>
-                <option value="agreement">Agreement</option>
-                <option value="deposit">Deposit</option>
-                <option value="booked">Booked</option>
-                <option value="planning">Planning</option>
-              </select>
             </fieldset>
 
             <fieldset className="space-y-2">
@@ -478,7 +624,7 @@ export function ConversationInbox({
               <div className="space-y-1 min-w-0">
                 <p className="text-[10px] text-muted-foreground">Event type</p>
                 <div className="max-h-44 space-y-1 overflow-y-auto rounded-lg border border-border bg-background px-2 py-1.5 sm:max-h-52">
-                  {INBOX_EVENT_TYPE_OPTIONS.map((t) => {
+                  {eventTypeFilterOptions.map((t) => {
                     const checked = filters.eventTypes.includes(t.value);
                     return (
                       <label key={t.value} className="flex items-center gap-2 text-xs text-foreground">
@@ -736,7 +882,9 @@ export function ConversationInbox({
                   isActive={c.id === activeId}
                   needsResponse={needsResponseForRow(c, needsResponseOverrides)}
                   timeLabel={formatListTime(c.lastMessageAt, nowMs)}
+                  kindLabel={inboxListKindLabel(category)}
                   onClick={() => setActiveId(c.id)}
+                  onNoResponseNeeded={() => void markNoResponseNeeded(c.id)}
                 />
               ))}
               {hasMore && (
@@ -766,13 +914,23 @@ export function ConversationInbox({
               onInboxSent={(latestMessage, needsResponse) => {
                 markConversationSent(activeId, latestMessage, needsResponse);
               }}
+              onNeedsResponseCleared={() => void markNoResponseNeeded(activeId)}
             />
           ) : (
-            <div className="max-w-xs space-y-1 px-6 text-center">
-              <p className="text-sm font-medium text-heading">Select a conversation</p>
-              <p className="text-xs text-muted-foreground">
-                Choose someone from the list to read and reply by email or text.
-              </p>
+            /*
+             * Color Distribution Phase 2 — no-selection workspace.
+             * Calm-blue informational surface centered in the white pane.
+             * Hidden below md (list-first mobile). List empty states are separate.
+             */
+            <div className="flex w-full flex-1 items-center justify-center px-6 py-10 md:px-10 md:py-14">
+              <div className="htc-inbox-no-selection w-full max-w-md rounded-xl border px-6 py-8 text-center sm:px-8 sm:py-10">
+                <p className="text-base font-semibold leading-snug text-heading sm:text-lg">
+                  Select a conversation
+                </p>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                  Choose someone from the list to read and reply by email or text.
+                </p>
+              </div>
             </div>
           )}
         </div>

@@ -24,6 +24,8 @@ export type TourVenueInfo = {
   logoUrl: string | null;
 };
 
+export type TourProtectionMode = "none" | "setup" | "fee";
+
 export type TourSettings = {
   tourSchedulingEnabled: boolean;
   tourEmbedKey: string;
@@ -33,6 +35,9 @@ export type TourSettings = {
   tourBufferMinutes: number;
   tourPageHeadline: string | null;
   tourPageDescription: string | null;
+  tourProtectionMode: TourProtectionMode;
+  tourProtectionFeeCents: number;
+  tourProtectionEligible: boolean;
 };
 
 /**
@@ -61,12 +66,15 @@ export type TourAvailabilityException = {
   startDate: string; // "YYYY-MM-DD"
   endDate: string;
   label: string | null;
+  /** none = one-time; annual = same month/day span every year (rule-based). */
+  recurrenceRule: "none" | "annual";
 };
 
 export type TourAvailabilityExceptionInput = {
   startDate: string;
   endDate: string;
   label?: string;
+  recurrenceRule?: "none" | "annual";
 };
 
 export type TourOutcome = "interested" | "considering" | "not_a_fit" | "booked" | "unknown";
@@ -75,7 +83,11 @@ export type TourAppointment = {
   id: string;
   venueId: string;
   leadId: string | null;
-  scheduledAt: string;
+  /** Null only for genuine walk-ins (origin=walk_in). */
+  scheduledAt: string | null;
+  /** When the tour actually occurred; never overwrites scheduledAt. */
+  actualOccurredAt: string | null;
+  origin: "scheduled" | "walk_in";
   durationMinutes: number;
   status: "scheduled" | "confirmed" | "completed" | "cancelled" | "no_show";
   contactName: string | null;
@@ -98,6 +110,11 @@ export type TourAppointment = {
   confirmationRequestedAt: string | null;
   /** How the tour became Confirmed. Null until confirmed. */
   confirmationSource: "manual" | "prospect_link" | null;
+  /**
+   * List hygiene for the Tours workspace. Orthogonal to status —
+   * a completed archived tour is still status=completed.
+   */
+  isArchived: boolean;
 };
 
 export type BookingResult = {
@@ -120,6 +137,12 @@ export type BookingResult = {
   duration?: number;
   /** Lead Intake architecture — lets the caller record a coordinator-notification outcome onto the same intake attempt row. */
   intakeAttemptId?: string | null;
+  /** Present when protection is required: Stripe Checkout/Setup URL. No appointment yet. */
+  protectionRequired?: boolean;
+  checkoutUrl?: string;
+  protectionRequestId?: string;
+  /** Public booking attached to an existing Lead — not a new opportunity. */
+  attachedExistingLead?: boolean;
 };
 
 // Coordinator Tour Scheduling — the Lead already exists, so there's no
@@ -139,7 +162,29 @@ export type CoordinatorTourResult =
       contactEmail: string | null;
       contactPhone: string | null;
       oldScheduledAt?: string; // present on reschedule
+      /** Outcome of the confirmation email. The tour save still succeeds when this is not ok. */
+      confirmationEmail: { ok: true } | { ok: false; message: string };
     }
   | { ok: false; error: string };
 
-export type SimpleTourResult = { ok: true } | { ok: false; error: string };
+export type SimpleTourResult =
+  | {
+      ok: true;
+      status?: string;
+      scheduledAt?: string | null;
+      actualOccurredAt?: string | null;
+      completedAt?: string | null;
+    }
+  | { ok: false; error: string };
+
+/** Customer-facing preview of a tour email. `body` and `html` come from the send builder. */
+export type TourCustomerSendPreview = {
+  who: string | null;
+  channel: "Email";
+  subject: string;
+  body: string;
+  html: string;
+  why: string;
+  recipientAction: string;
+  htcAfterward: string;
+};

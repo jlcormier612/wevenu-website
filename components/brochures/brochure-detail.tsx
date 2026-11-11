@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { deleteBrochureAction, sendBrochureToLeadAction, updateBrochureAction, updateBrochurePhotographyAction } from "@/app/(app)/library/brochures/actions";
 import { BrochurePhotosEditor } from "@/components/brochures/brochure-photos-editor";
 import { BusinessAssetHeader } from "@/components/business-assets/asset-header";
+import { CollectionBackLink } from "@/components/library/collection-back-link";
 import { LibraryDeleteConfirmDialog } from "@/components/library/library-delete-confirm-dialog";
 import { LibrarySaveStatus } from "@/components/library/library-save-status";
 import { librarySavedToastMessage, useLibraryUnsavedGuard } from "@/components/library/use-library-unsaved-guard";
@@ -97,19 +98,60 @@ export function BrochureDetail({
   }
 
   function handlePhotosChange(next: { photoUrls: string[]; photoLayout: BrochurePhotoLayout }) {
+    const previous = { photoUrls, photoLayout };
     setPhotoUrls(next.photoUrls);
     setPhotoLayout(next.photoLayout);
     startPhotos(async () => {
-      const result = await updateBrochurePhotographyAction(brochure.id, next.photoUrls, next.photoLayout);
-      if (!result.ok) toast.error(result.message ?? "Could not save photos.");
+      try {
+        const result = await updateBrochurePhotographyAction(brochure.id, next.photoUrls, next.photoLayout);
+        if (!result.ok) {
+          setPhotoUrls(previous.photoUrls);
+          setPhotoLayout(previous.photoLayout);
+          toast.error(result.message ?? "Could not save photos.");
+        }
+      } catch (err) {
+        setPhotoUrls(previous.photoUrls);
+        setPhotoLayout(previous.photoLayout);
+        toast.error(err instanceof Error ? err.message : "Could not save photos.");
+      }
     });
+  }
+
+  function handlePhotosDeleted(nextUrls: string[]) {
+    setPhotoUrls(nextUrls);
   }
 
   function handleSave() {
     startSave(async () => {
-      const result = await updateBrochureAction(brochure.id, { name, welcomeText, includePackages, includeFaqs, closingText });
-      if (result.ok) { toast.success(librarySavedToastMessage()); setDirty(false); }
-      else toast.error(result.message ?? "Could not save.");
+      try {
+        // Persist content + current photos in one server update so Save cannot
+        // leave photos saved and authored text lost (or the reverse).
+        const result = await updateBrochureAction(brochure.id, {
+          name,
+          welcomeText,
+          includePackages,
+          includeFaqs,
+          closingText,
+          photoUrls,
+          photoLayout,
+        });
+        if (result.ok) {
+          toast.success(librarySavedToastMessage());
+          setDirty(false);
+        } else {
+          toast.error(result.message ?? result.errors?.name ?? "Could not save brochure. Your previous saved version is unchanged.");
+        }
+      } catch (err) {
+        // Includes Next.js "Failed to find Server Action" after a deploy with a stale tab.
+        const message = err instanceof Error && err.message
+          ? err.message
+          : "Could not save brochure.";
+        toast.error(
+          /server action|older or newer deployment/i.test(message)
+            ? "This page is out of date after an update. Refresh, then Save again — your edits are still in the form."
+            : message,
+        );
+      }
     });
   }
 
@@ -122,37 +164,35 @@ export function BrochureDetail({
   }
 
   return (
-    <div className="htc-hospitality-page space-y-5 sm:space-y-6">
+    <div className="htc-hospitality-page space-y-5 sm:space-y-6" data-htc-phase12="brochure-edit">
+      <CollectionBackLink href="/library/brochures" label="Brochures" confirmLeave={confirmLeave} />
       <div className="htc-hospitality-heading htc-hospitality-intro-accent">
-      <BusinessAssetHeader
-        backHref="/library/brochures"
-        backLabel="Brochures"
-        beforeNavigate={confirmLeave}
-        whatIsThis="Brochure"
-        title={brochure.name}
-        status={brochure.isArchived ? <Badge variant="muted">Archived</Badge> : <Badge variant="outline">Active</Badge>}
-        lastUpdated={new Date(brochure.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-        primaryAction={
-          <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              render={<Link href={`/library/brochures/${brochure.id}/preview`} />}
-            >
-              <Eye className="mr-1.5 h-3.5 w-3.5" />Preview
-            </Button>
-            <a href={`/api/brochures/${brochure.id}/pdf`} download>
-              <Button type="button" variant="ghost" size="sm"><Download className="mr-1.5 h-3.5 w-3.5" /></Button>
-            </a>
-          </div>
-        }
-      />
+        <BusinessAssetHeader
+          whatIsThis="Brochure"
+          title={brochure.name}
+          status={brochure.isArchived ? <Badge variant="muted">Archived</Badge> : <Badge variant="outline">Active</Badge>}
+          lastUpdated={new Date(brochure.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+          primaryAction={
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                render={<Link href={`/library/brochures/${brochure.id}/preview`} />}
+              >
+                <Eye className="mr-1.5 h-3.5 w-3.5" />Preview
+              </Button>
+              <a href={`/api/brochures/${brochure.id}/pdf`} download>
+                <Button type="button" variant="ghost" size="sm"><Download className="mr-1.5 h-3.5 w-3.5" /></Button>
+              </a>
+            </div>
+          }
+        />
       </div>
 
       <Card className="htc-working-card gap-0 py-0">
-        <CardHeader><p className="text-sm font-medium text-heading">Content</p></CardHeader>
-        <CardContent className="space-y-5">
+        <CardHeader className="py-4"><p className="text-sm font-medium text-heading">Content</p></CardHeader>
+        <CardContent className="space-y-5 py-5">
           <div className="space-y-1.5">
             <Label className="text-sm font-medium text-heading">Name</Label>
             <Input value={name} onChange={(e) => markDirty(setName)(e.target.value)} />
@@ -190,27 +230,53 @@ export function BrochureDetail({
       </Card>
 
       <Card className="htc-working-card gap-0 py-0">
-        <CardHeader><p className="text-sm font-medium text-heading">Photography</p></CardHeader>
-        <CardContent>
+        <CardHeader className="py-4"><p className="text-sm font-medium text-heading">Photography</p></CardHeader>
+        <CardContent className="py-5">
           <BrochurePhotosEditor
+            brochureId={brochure.id}
             venueId={venueId}
             venueHeroUrl={venueHeroUrl}
             photoUrls={photoUrls}
             photoLayout={photoLayout}
             pending={photosPending}
             onChange={handlePhotosChange}
+            onDeleted={handlePhotosDeleted}
           />
         </CardContent>
       </Card>
 
       <Card className="htc-working-card gap-0 py-0">
-        <CardHeader><p className="text-sm font-medium text-heading">Share with a lead</p></CardHeader>
-        <CardContent className="space-y-3">
+        <CardHeader className="py-4"><p className="text-sm font-medium text-heading">Share with a lead</p></CardHeader>
+        <CardContent className="space-y-3 py-5">
           <p className="text-xs text-muted-foreground">
             Share sends an email with a view link. The public link for this brochure stays the same after you send —
             there is no separate revoke action. Archive hides the brochure from your Library list; previously shared
             links keep working until you delete the brochure.
           </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <code className="min-w-0 flex-1 truncate rounded bg-muted px-2 py-1 text-[11px] text-muted-foreground">
+              /brochure/{brochure.shareToken}
+            </code>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const url = `${window.location.origin}/brochure/${brochure.shareToken}`;
+                void navigator.clipboard.writeText(url).then(
+                  () => toast.success("Public link copied."),
+                  () => toast.error("Could not copy."),
+                );
+              }}
+            >
+              Copy link
+            </Button>
+            <a href={`/api/brochures/${brochure.id}/pdf`} download>
+              <Button type="button" variant="outline" size="sm">
+                <Download className="mr-1.5 h-3.5 w-3.5" />Download PDF
+              </Button>
+            </a>
+          </div>
           {leads.filter((l) => l.email).length === 0 ? (
             <p className="text-sm text-muted-foreground">No leads with an email address yet.</p>
           ) : (
@@ -221,8 +287,8 @@ export function BrochureDetail({
 
       {brochure.activities.length > 0 && (
         <Card className="htc-working-card gap-0 py-0">
-          <CardHeader><p className="text-sm font-medium text-heading">Activity</p></CardHeader>
-          <CardContent><ActivityTimeline activities={brochure.activities} /></CardContent>
+          <CardHeader className="py-4"><p className="text-sm font-medium text-heading">Activity</p></CardHeader>
+          <CardContent className="py-5"><ActivityTimeline activities={brochure.activities} /></CardContent>
         </Card>
       )}
 

@@ -9,7 +9,7 @@ import { leadDisplayName } from "@/lib/leads/constants";
 
 type DbClient = Awaited<ReturnType<typeof createClient>>;
 
-export type DuplicateSignal = "email" | "phone" | "partner_email" | "name_pair";
+export type DuplicateSignal = "email" | "phone" | "partner_email" | "name_pair" | "inquiry_text";
 
 export type InquiryIdentity = {
   firstName: string;
@@ -19,6 +19,8 @@ export type InquiryIdentity = {
   partnerFirstName?: string | null;
   partnerLastName?: string | null;
   partnerEmail?: string | null;
+  /** Extracted inquiry text only. Notes and headers are not compared. */
+  inquiryMessage?: string | null;
 };
 
 export type DuplicateCandidate = {
@@ -33,6 +35,7 @@ export type DuplicateCandidate = {
 };
 
 const SIGNAL_RANK: Record<DuplicateSignal, number> = {
+  inquiry_text: 5,
   email: 4,
   partner_email: 3,
   phone: 2,
@@ -42,6 +45,17 @@ const SIGNAL_RANK: Record<DuplicateSignal, number> = {
 export function normalizeEmail(raw: string | null | undefined): string | null {
   const t = raw?.trim().toLowerCase() ?? "";
   return t.includes("@") ? t : null;
+}
+
+/**
+ * Exact-text comparison for a possible re-forward.
+ * Trims, normalizes line endings, and collapses repeated whitespace.
+ * Does not stem, drop words, or fuzzy-match.
+ */
+export function normalizeInquiryText(raw: string | null | undefined): string | null {
+  if (typeof raw !== "string") return null;
+  const normalized = raw.replace(/\r\n/g, "\n").replace(/\r/g, "\n").replace(/\s+/g, " ").trim();
+  return normalized.length > 0 ? normalized : null;
 }
 
 /** Digits only. Returns null when fewer than 10 digits (avoids partial matches). */
@@ -81,6 +95,7 @@ type LeadRow = {
   partner_first_name: string | null;
   partner_last_name: string | null;
   partner_email: string | null;
+  inquiry_message: string | null;
   sales_stage: string | null;
 };
 
@@ -140,6 +155,7 @@ export function signalsAgainstRecord(
     email?: string | null;
     phone?: string | null;
     partnerEmail?: string | null;
+    inquiryMessage?: string | null;
     firstName: string;
     lastName: string;
     partnerFirstName?: string | null;
@@ -155,6 +171,11 @@ export function signalsAgainstRecord(
   const recPhone = normalizePhone(record.phone);
 
   if (inEmail && recEmail && inEmail === recEmail) signals.push("email");
+  const inText = normalizeInquiryText(incoming.inquiryMessage);
+  const recText = normalizeInquiryText(record.inquiryMessage);
+  if (inEmail && recEmail && inEmail === recEmail && inText && recText && inText === recText) {
+    signals.push("inquiry_text");
+  }
   if (
     (inEmail && recPartnerEmail && inEmail === recPartnerEmail) ||
     (inPartnerEmail && recEmail && inPartnerEmail === recEmail) ||
@@ -206,7 +227,7 @@ export async function findPossibleDuplicateMatches(
     client
       .from("leads")
       .select(
-        "id, relationship_id, first_name, last_name, email, phone, partner_first_name, partner_last_name, partner_email, sales_stage",
+        "id, relationship_id, first_name, last_name, email, phone, partner_first_name, partner_last_name, partner_email, inquiry_message, sales_stage",
       )
       .eq("venue_id", venueId),
     client
@@ -238,6 +259,7 @@ export async function findPossibleDuplicateMatches(
       email: row.email,
       phone: row.phone,
       partnerEmail: row.partner_email,
+      inquiryMessage: row.inquiry_message,
       firstName: row.first_name,
       lastName: row.last_name,
       partnerFirstName: row.partner_first_name,
@@ -349,5 +371,7 @@ export function signalLabel(signal: DuplicateSignal): string {
       return "Email matches partner contact";
     case "name_pair":
       return "Same couple names";
+    case "inquiry_text":
+      return "Same inquiry text";
   }
 }

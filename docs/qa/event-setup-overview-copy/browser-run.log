@@ -1,0 +1,7 @@
+PASS serving-image — 405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:4ef14218c5379f6e443a5b68e8e83689f90c979a sha256:f3ba33aadb64461398c690cda13085b5a7456db80641ebf6f5da8f25b29c8902
+PASS serving-sha — expected=4ef14218
+PASS exact-new-wording — match
+PASS forbidden-absent:not an automated schedule — not an automated schedule
+PASS forbidden-absent:Event Order are commercial workflows on  — Event Order are commercial workflows on the Inventory
+
+GREEN 5/5

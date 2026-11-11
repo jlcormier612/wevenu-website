@@ -11,13 +11,16 @@ const buttonVariants = cva(
         default:
           "bg-primary text-primary-foreground hover:bg-primary/90 active:bg-primary/80",
         outline:
-          "border-border bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
+          "border-primary/40 bg-card text-primary hover:bg-selected hover:text-primary aria-expanded:bg-selected aria-expanded:text-primary dark:border-input dark:bg-input/30 dark:text-foreground dark:hover:bg-input/50 dark:hover:text-foreground",
         secondary:
-          "bg-secondary text-secondary-foreground hover:bg-accent/40 aria-expanded:bg-accent/40 aria-expanded:text-secondary-foreground",
+          "border border-primary/35 bg-card text-primary hover:bg-selected aria-expanded:bg-selected aria-expanded:text-primary dark:border-transparent dark:bg-secondary dark:text-secondary-foreground dark:hover:bg-accent/40",
         ghost:
-          "hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50",
+          "text-primary hover:bg-selected hover:text-primary aria-expanded:bg-selected aria-expanded:text-primary dark:text-foreground dark:hover:bg-muted/50 dark:hover:text-foreground",
         destructive:
-          "border-destructive/40 bg-destructive/15 text-foreground hover:bg-destructive/25 focus-visible:border-destructive/50 focus-visible:ring-destructive/30 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40",
+          // Solid dusty-rose + destructive-foreground (black). Soft fill +
+          // theme foreground failed on light amber banners when .dark set
+          // white ink (~1:1). Black on #d8a7aa is ~10:1 (AA).
+          "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/90 focus-visible:border-destructive focus-visible:ring-destructive/40 active:bg-destructive/80",
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {

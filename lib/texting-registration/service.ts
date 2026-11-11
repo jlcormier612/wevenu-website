@@ -11,6 +11,7 @@ import { getCurrentUserRole, getCurrentVenue } from "@/lib/venue/service";
 import type { Venue } from "@/lib/venue/types";
 import {
   canConfigureVenueTexting,
+  canConfigureVenueTextingFromAccess,
   TEXTING_SETUP_ROLE_DENIED,
 } from "@/lib/texting-registration/authority";
 import {
@@ -211,7 +212,9 @@ async function requireTextingConfigureAuthority(): Promise<
 > {
   const ctx = await requireVenueContext();
   if (!ctx.ok) return ctx;
-  if (!canConfigureVenueTexting(ctx.role)) {
+  const { getActiveVenueMembership } = await import("@/lib/authorization/membership");
+  const membership = await getActiveVenueMembership();
+  if (!canConfigureVenueTextingFromAccess(membership)) {
     return { ok: false, message: TEXTING_SETUP_ROLE_DENIED };
   }
   return ctx;
@@ -227,14 +230,26 @@ export async function getTextingSetupBundle(): Promise<TextingSetupBundle | null
     const account = await getVenueTwilioAccountByVenueId(client, venue.id);
     const smsReady = await isSmsConfigured(venue.id);
     const textingNumberE164 = account?.defaultFromE164 ?? null;
-    const phase = resolveTextingDisplayPhase(storedPhase, account, smsReady);
+    const phase = resolveTextingDisplayPhase(storedPhase, account, smsReady, {
+      complianceSubmittedAt: account?.complianceSubmittedAt ?? null,
+      a2pBrandStatus: account?.a2pBrandStatus ?? null,
+      a2pCampaignStatus: account?.a2pCampaignStatus ?? null,
+      secondaryProfileSid: account?.secondaryProfileSid ?? null,
+      a2pBrandSid: account?.a2pBrandSid ?? null,
+      a2pCampaignSid: account?.a2pCampaignSid ?? null,
+      phoneNumberSid: account?.phoneNumberSid ?? null,
+      defaultFromE164: account?.defaultFromE164 ?? null,
+      phoneA2pStatus: account?.phoneA2pStatus ?? null,
+    });
     const statusPanel = buildTextingStatusPanel({
       registration,
       phase,
       smsReady,
       textingNumberE164,
     });
-    const canConfigure = canConfigureVenueTexting(role);
+    const { getActiveVenueMembership } = await import("@/lib/authorization/membership");
+    const membership = await getActiveVenueMembership();
+    const canConfigure = canConfigureVenueTextingFromAccess(membership);
     return {
       registration,
       phase,
@@ -408,7 +423,17 @@ export async function submitTextingRegistration(
 
   const account = await getVenueTwilioAccountByVenueId(client, venue.id);
   const smsReady = await isSmsConfigured(venue.id);
-  const displayPhase = resolveTextingDisplayPhase(saved.phase, account, smsReady);
+  const displayPhase = resolveTextingDisplayPhase(saved.phase, account, smsReady, {
+    complianceSubmittedAt: account?.complianceSubmittedAt ?? null,
+    a2pBrandStatus: account?.a2pBrandStatus ?? null,
+    a2pCampaignStatus: account?.a2pCampaignStatus ?? null,
+    secondaryProfileSid: account?.secondaryProfileSid ?? null,
+    a2pBrandSid: account?.a2pBrandSid ?? null,
+    a2pCampaignSid: account?.a2pCampaignSid ?? null,
+    phoneNumberSid: account?.phoneNumberSid ?? null,
+    defaultFromE164: account?.defaultFromE164 ?? null,
+    phoneA2pStatus: account?.phoneA2pStatus ?? null,
+  });
   const statusPanel = buildTextingStatusPanel({
     registration: saved,
     phase: displayPhase,

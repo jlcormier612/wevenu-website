@@ -1,0 +1,88 @@
+{
+  "pass": true,
+  "image": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:20e9e3168c7e971533b6d95555d7d44d922319fa",
+  "digest": "sha256:6575c2855b577e0c07975a07c78c28b65415f0b346c1251d22c6227f6d97b7ba",
+  "expectedSha": "20e9e3168c7e971533b6d95555d7d44d922319fa",
+  "marker": "EO-PROC-SEED-1792967321536",
+  "eventId": "9c200402-5d76-4851-aa8e-ef3ffd823144",
+  "eventOrderId": "0feaf2d4-4b6d-4fd2-a909-fe18a37714ad",
+  "selectionId": "c7ccc5a8-e7a0-4405-a2d5-acfea8834a04",
+  "checks": [
+    {
+      "name": "serving-sha",
+      "pass": true,
+      "detail": "expected=20e9e3168c7e971533b6d95555d7d44d922319fa ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:20e9e3168c7e971533b6d95555d7d44d922319fa"
+    },
+    {
+      "name": "serving-digest",
+      "pass": true,
+      "detail": "sha256:6575c2855b577e0c07975a07c78c28b65415f0b346c1251d22c6227f6d97b7ba"
+    },
+    {
+      "name": "fixture-package",
+      "pass": true,
+      "detail": "{\"id\":\"987a70e2-f654-4569-a500-f2e38fc3a731\",\"name\":\"Bar Package\",\"base_price\":2500}"
+    },
+    {
+      "name": "fixture-open-eo",
+      "pass": true,
+      "detail": "{\"eventId\":\"9c200402-5d76-4851-aa8e-ef3ffd823144\",\"eventOrderId\":\"0feaf2d4-4b6d-4fd2-a909-fe18a37714ad\",\"templateId\":\"d73d9734-98d9-46a0-b54b-dccadb036150\"}"
+    },
+    {
+      "name": "stage1-selection-created",
+      "pass": true,
+      "detail": "{\"id\":\"c7ccc5a8-e7a0-4405-a2d5-acfea8834a04\",\"name\":\"Process seed Bar Package\",\"included_items\":[{\"unit\":null,\"quantity\":1,\"description\":\"EO-PROC-SEED-1792967321536\"},{\"unit\":null,\"quantity\":1,\"description\":\"EO-PROC-INCLUDED-SERVICE\"}],\"total_amount\":2500}"
+    },
+    {
+      "name": "stage2-marker-absent-before",
+      "pass": true,
+      "detail": "lines=7"
+    },
+    {
+      "name": "stage2-browser-landed",
+      "pass": true,
+      "detail": "https://app.sandbox.hellotocheers.com/clients/21d9fa35-7a0d-42ce-8697-69a9bb202cde#event-order-order"
+    },
+    {
+      "name": "stage2-package-inclusion-seeded",
+      "pass": true,
+      "detail": "[{\"id\":\"630754d0-b943-4f77-9874-f0a4b7f3e05e\",\"description\":\"EO-PROC-SEED-1792967321536\",\"unit_price\":null,\"amount\":0,\"is_included\":true,\"notes\":\"package-selection:c7ccc5a8-e7a0-4405-a2d5-acfea8834a04|Process seed Bar Package\",\"provenance\":\"custom\",\"offering_id\":null,\"package_id\":null}]"
+    },
+    {
+      "name": "stage2-second-inclusion-seeded",
+      "pass": true,
+      "detail": "[{\"id\":\"73e4f398-d29b-46d7-a72b-2c26d1f28236\",\"description\":\"EO-PROC-INCLUDED-SERVICE\",\"unit_price\":null,\"amount\":0,\"is_included\":true,\"notes\":\"package-selection:c7ccc5a8-e7a0-4405-a2d5-acfea8834a04|Process seed Bar Package\",\"provenance\":\"custom\",\"offering_id\":null,\"package_id\":null}]"
+    },
+    {
+      "name": "stage2-no-offering-invented",
+      "pass": true,
+      "detail": "offering_id must remain null"
+    },
+    {
+      "name": "stage2-no-package-fee-auto-added",
+      "pass": true,
+      "detail": "package fee stays on booking spine"
+    },
+    {
+      "name": "stage2-idempotent-no-duplicate",
+      "pass": true,
+      "detail": "count=1"
+    },
+    {
+      "name": "stage6-payable-unchanged-by-included-seed",
+      "pass": true,
+      "detail": "before=2243 after=2243"
+    },
+    {
+      "name": "scenario-e-included-vs-paid",
+      "pass": true,
+      "detail": "includedSeed=true paidCount=7"
+    },
+    {
+      "name": "cleanup-seed-lines",
+      "pass": true,
+      "detail": "removed EO-PROC-* lines; superseded test selection"
+    }
+  ],
+  "at": "2026-10-25T22:29:26.406Z"
+}

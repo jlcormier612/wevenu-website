@@ -1,0 +1,85 @@
+{
+  "status": "GREEN",
+  "servingSha": "2ffbca9edfb99d68f32c73635a4e51f4e5a7e8b2",
+  "expectedSha": "2ffbca9edfb99d68f32c73635a4e51f4e5a7e8b2",
+  "passed": 15,
+  "failed": 0,
+  "checks": [
+    {
+      "name": "copy_and_cta_unchanged",
+      "pass": true,
+      "detail": "You're invited to your Meadowbrook Valley Venue planning workspace"
+    },
+    {
+      "name": "explicit_spacing_in_html",
+      "pass": true,
+      "detail": "markup"
+    },
+    {
+      "name": "serving_sha",
+      "pass": true,
+      "detail": "serving=2ffbca9edfb99d68f32c73635a4e51f4e5a7e8b2 expected=2ffbca9edfb99d68f32c73635a4e51f4e5a7e8b2"
+    },
+    {
+      "name": "desktop_greeting_gap",
+      "pass": true,
+      "detail": "16"
+    },
+    {
+      "name": "desktop_cta_intro_gap",
+      "pass": true,
+      "detail": "12"
+    },
+    {
+      "name": "desktop_button_to_legal_gap",
+      "pass": true,
+      "detail": "20"
+    },
+    {
+      "name": "desktop_card_to_footer_gap",
+      "pass": true,
+      "detail": "12"
+    },
+    {
+      "name": "desktop_no_h_overflow",
+      "pass": true,
+      "detail": "false"
+    },
+    {
+      "name": "mobile_greeting_gap",
+      "pass": true,
+      "detail": "16"
+    },
+    {
+      "name": "mobile_cta_intro_gap",
+      "pass": true,
+      "detail": "12"
+    },
+    {
+      "name": "mobile_no_h_overflow",
+      "pass": true,
+      "detail": "false"
+    },
+    {
+      "name": "in_app_preview_opened",
+      "pass": true,
+      "detail": "control not visible — skipped (HTML render verified)"
+    },
+    {
+      "name": "in_app_preview_has_spacing_copy",
+      "pass": true,
+      "detail": "skipped"
+    },
+    {
+      "name": "no_invitation_created",
+      "pass": true,
+      "detail": "b=33 a=33"
+    },
+    {
+      "name": "no_notification_side_effect",
+      "pass": true,
+      "detail": "b=3486 a=3486"
+    }
+  ],
+  "at": "2026-10-22T17:21:28.811Z"
+}

@@ -5,6 +5,8 @@ import * as React from "react";
 import { Loader2, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
+import { useRouter } from "next/navigation";
+
 import { addLineItemAction, removeLineItemAction } from "@/app/(app)/invoices/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,12 +15,13 @@ import {
 } from "@/components/ui/select";
 import { useSyncedState } from "@/lib/hooks/use-synced-state";
 import { formatCurrency, LINE_ITEM_TYPES } from "@/lib/invoices/constants";
+import { defaultTaxRateInput } from "@/lib/invoices/tax-rate-default";
 import type { InvoiceLineItem, InvoiceLineItemInput, InvoiceLineItemType } from "@/lib/invoices/types";
 import type { Package } from "@/lib/packages/types";
 
 const EMPTY_INPUT: InvoiceLineItemInput = {
   type: "item", description: "", quantity: "1", unitPrice: "", packageId: "",
-  discountType: "fixed", discountValue: "",
+  discountType: "fixed", discountValue: "", taxRatePercent: "",
 };
 
 function LineItemRow({
@@ -29,10 +32,17 @@ function LineItemRow({
   // even a real invoice_line_items row yet. Never removable from here;
   // that decision belongs to Event Order.
   const isProjected = !!item.eventOrderLineId;
+  const meta =
+    item.type === "discount" && item.discountType === "percent" && item.discountValue != null
+      ? `${item.discountValue}% (frozen)`
+      : item.type === "tax" && item.taxRateMode === "percent" && item.taxRateValue != null
+        ? `${item.taxRateValue}% applied`
+        : null;
   return (
     <div className="group grid grid-cols-[1fr_auto_auto_auto_auto] gap-2 items-center py-2 border-b border-border last:border-0 text-sm">
       <span className="text-foreground">
         {item.description}
+        {meta && <span className="ml-2 text-[10px] text-muted-foreground">{meta}</span>}
         {isProjected && <span className="ml-2 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground align-middle">Event Order</span>}
       </span>
       <span className="text-muted-foreground text-right w-12">{item.quantity}×</span>
@@ -51,16 +61,25 @@ function LineItemRow({
 }
 
 export function InvoiceLineItemsEditor({
-  invoiceId, initialItems, packages, invoiceStatus,
+  invoiceId,
+  initialItems,
+  packages,
+  invoiceStatus,
+  lineTypes = LINE_ITEM_TYPES,
+  defaultTaxPercent = null,
 }: {
   invoiceId: string;
   initialItems: InvoiceLineItem[];
   packages: Package[];
   invoiceStatus: string;
+  lineTypes?: { value: InvoiceLineItemType; label: string }[];
+  /** Venue Invoice Adjustments default tax rate — prefills new Tax lines only. */
+  defaultTaxPercent?: number | null;
 }) {
   // See lib/hooks/use-synced-state.ts — the invoice-status control on this
   // same page calls router.refresh() on status change, and Event-Order-
   // projected lines can also change from outside this component entirely.
+  const router = useRouter();
   const [items, setItems] = useSyncedState(initialItems);
   const [showAdd, setShowAdd] = React.useState(false);
   const [input, setInput] = React.useState<InvoiceLineItemInput>(EMPTY_INPUT);
@@ -85,6 +104,7 @@ export function InvoiceLineItemsEditor({
         setItems((p) => [...p, result.item]);
         setInput(EMPTY_INPUT);
         setShowAdd(false);
+        router.refresh();
       } else toast.error(result.message ?? "Could not add line item.");
     });
   }
@@ -93,12 +113,15 @@ export function InvoiceLineItemsEditor({
     setRemovingId(itemId);
     const result = await removeLineItemAction(invoiceId, itemId);
     setRemovingId(null);
-    if (result.ok) setItems((p) => p.filter((i) => i.id !== itemId));
-    else toast.error(result.message ?? "Could not remove.");
+    if (result.ok) {
+      setItems((p) => p.filter((i) => i.id !== itemId));
+      router.refresh();
+    } else toast.error(result.message ?? "Could not remove.");
   }
 
   const total = items.reduce((s, i) => {
-    if (i.type === "discount" || i.type === "deposit") return s - i.amount;
+    if (i.type === "deposit") return s; // payment allocation — not an invoice adjustment
+    if (i.type === "discount") return s - i.amount;
     return s + i.amount;
   }, 0);
 
@@ -147,25 +170,37 @@ export function InvoiceLineItemsEditor({
         <div className="rounded-lg border border-ring bg-card p-4 space-y-3">
           {/* Discount type toggle — only for discount/deposit items */}
           {(() => {
-            const isDiscount = input.type === "discount" || input.type === "deposit";
+            const isDiscount = input.type === "discount";
+            const isTax = input.type === "tax";
             return (
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">Type</label>
                   <Select
                     value={input.type}
-                    onValueChange={(v) => setInput((p) => ({ ...p, type: v as InvoiceLineItemType, discountType: "fixed", discountValue: "", unitPrice: "" }))}
-                    items={LINE_ITEM_TYPES}
+                    onValueChange={(v) => {
+                      const nextType = v as InvoiceLineItemType;
+                      setInput((p) => ({
+                        ...p,
+                        type: nextType,
+                        discountType: "fixed",
+                        discountValue: "",
+                        taxRatePercent:
+                          nextType === "tax" ? defaultTaxRateInput(defaultTaxPercent) : "",
+                        unitPrice: "",
+                      }));
+                    }}
+                    items={lineTypes}
                   >
                     <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>{LINE_ITEM_TYPES.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
+                    <SelectContent>{lineTypes.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">Description *</label>
                   <Input value={input.description} onChange={(e) => setInput((p) => ({ ...p, description: e.target.value }))} placeholder="Item description…" autoFocus />
                 </div>
-                {!isDiscount && (
+                {!isDiscount && !isTax && (
                   <>
                     <div className="space-y-1.5">
                       <label className="text-xs font-medium text-muted-foreground">Quantity</label>
@@ -176,6 +211,21 @@ export function InvoiceLineItemsEditor({
                       <Input value={input.unitPrice} onChange={(e) => setInput((p) => ({ ...p, unitPrice: e.target.value }))} placeholder="8,500" />
                     </div>
                   </>
+                )}
+                {isTax && (
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <label className="text-xs font-medium text-muted-foreground">Tax rate (%)</label>
+                    <Input
+                      value={input.taxRatePercent ?? ""}
+                      onChange={(e) => setInput((p) => ({ ...p, taxRatePercent: e.target.value, unitPrice: "" }))}
+                      placeholder={defaultTaxPercent != null ? String(defaultTaxPercent) : "e.g. 6.25"}
+                      inputMode="decimal"
+                      data-testid="invoice-tax-rate-input"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Starts from your venue default tax rate when set. Exclusive tax on (charges − discounts). The calculated amount is saved with this rate so later setting changes do not rewrite it.
+                    </p>
+                  </div>
                 )}
                 {isDiscount && (
                   <>
@@ -202,7 +252,7 @@ export function InvoiceLineItemsEditor({
                         placeholder={input.discountType === "percent" ? "10" : "1,000"}
                       />
                       {input.discountType === "percent" && (
-                        <p className="text-xs text-muted-foreground">Applied to current invoice subtotal at time of adding.</p>
+                        <p className="text-xs text-muted-foreground">Dollar amount is frozen when you add this line — later edits to other lines do not recalculate it.</p>
                       )}
                     </div>
                   </>
@@ -212,7 +262,19 @@ export function InvoiceLineItemsEditor({
           })()}
           <div className="flex items-center justify-end gap-2">
             <Button type="button" variant="ghost" size="sm" onClick={() => { setShowAdd(false); setInput(EMPTY_INPUT); }} disabled={addPending}>Cancel</Button>
-            <Button type="button" size="sm" disabled={!input.description.trim() || (input.type !== "discount" && input.type !== "deposit" && !input.unitPrice) || ((input.type === "discount" || input.type === "deposit") && input.discountType === "percent" && !input.discountValue) || ((input.type === "discount" || input.type === "deposit") && input.discountType === "fixed" && !input.unitPrice) || addPending} onClick={handleAdd}>
+            <Button
+              type="button"
+              size="sm"
+              disabled={
+                !input.description.trim()
+                || addPending
+                || (input.type === "tax" && !input.taxRatePercent)
+                || (input.type === "discount" && input.discountType === "percent" && !input.discountValue)
+                || (input.type === "discount" && input.discountType === "fixed" && !input.unitPrice)
+                || (input.type !== "discount" && input.type !== "tax" && !input.unitPrice)
+              }
+              onClick={handleAdd}
+            >
               {addPending ? <><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />Adding…</> : "Add Line Item"}
             </Button>
           </div>
@@ -220,9 +282,58 @@ export function InvoiceLineItemsEditor({
       )}
 
       {isEditable && !showAdd && (
-        <Button type="button" variant="outline" size="sm" onClick={() => setShowAdd(true)}>
-          <Plus className="mr-1 h-3.5 w-3.5" /> Add Line Item
-        </Button>
+        <div className="space-y-2" data-testid="invoice-adjustments">
+          {(lineTypes.some((t) => t.value === "discount") || lineTypes.some((t) => t.value === "tax")) && (
+            <div className="rounded-lg border border-border/70 bg-muted/20 px-3 py-2.5 space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Invoice adjustments
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Add a discount or exclusive tax line on this draft invoice. Rates and amounts are saved on the line so later Settings changes do not rewrite them.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {lineTypes.some((t) => t.value === "discount") ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-8"
+                    data-testid="invoice-add-discount"
+                    onClick={() => {
+                      setInput({ ...EMPTY_INPUT, type: "discount", description: "Discount", discountType: "fixed" });
+                      setShowAdd(true);
+                    }}
+                  >
+                    <Plus className="mr-1 h-3.5 w-3.5" /> Add discount
+                  </Button>
+                ) : null}
+                {lineTypes.some((t) => t.value === "tax") ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-8"
+                    data-testid="invoice-add-tax"
+                    onClick={() => {
+                      setInput({
+                        ...EMPTY_INPUT,
+                        type: "tax",
+                        description: "Tax",
+                        taxRatePercent: defaultTaxRateInput(defaultTaxPercent),
+                      });
+                      setShowAdd(true);
+                    }}
+                  >
+                    <Plus className="mr-1 h-3.5 w-3.5" /> Add tax
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+          )}
+          <Button type="button" variant="outline" size="sm" onClick={() => setShowAdd(true)} data-testid="invoice-add-line-item">
+            <Plus className="mr-1 h-3.5 w-3.5" /> Add Line Item
+          </Button>
+        </div>
       )}
 
       {/* Totals */}

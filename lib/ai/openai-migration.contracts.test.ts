@@ -48,7 +48,11 @@ describe("Ask Luv / roll-up / concierge JSON contracts (source)", () => {
     const luvAsk = readFileSync(resolve("app/api/portal/luv-ask/route.ts"), "utf8");
     assert.match(luvAsk, /function parseAskJson/);
     assert.match(luvAsk, /guideSection/);
-    assert.match(luvAsk, /Only use the information provided below/);
+    assert.match(luvAsk, /buildCoupleAskLuvSystemPrompt/);
+    const prompt = readFileSync(resolve("lib/luv/couple-ask-prompt.ts"), "utf8");
+    assert.match(prompt, /Only use the information in the knowledge layers below/);
+    assert.match(prompt, /HTC PRODUCT KNOWLEDGE/);
+    assert.match(prompt, /VENUE KNOWLEDGE/);
   });
 
   it("roll-up still requires the four observation keys", () => {

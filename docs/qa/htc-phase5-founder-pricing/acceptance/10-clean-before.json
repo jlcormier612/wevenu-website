@@ -1,0 +1,37 @@
+{
+  "ok": true,
+  "readiness": {
+    "mode": "founder_ready",
+    "ready": true,
+    "flagEnabled": true,
+    "missing": [],
+    "saasProductId": "prod_V4AgrDDqyO0YGF",
+    "diagnosticMessage": "Founder custom pricing (Phase 5) is ready."
+  },
+  "venue": {
+    "id": "9336a6cb-6a49-4a38-82bc-ff3b2361e8a3",
+    "name": "[DISPOSABLE-P3-CANCEL] 1794244329",
+    "planKey": "starter",
+    "planName": "Gather",
+    "listAmountCents": 19900,
+    "stripeSubscriptionId": "sub_1UZw74ErUqJH7nkta71f0YMw",
+    "stripeCustomerId": "cus_Vb8Ng5wqMg59Z5",
+    "subscriptionStatus": "active",
+    "currentPeriodEnd": null,
+    "listAmount": "$199"
+  },
+  "grants": [],
+  "groupEligible": false,
+  "holdActive": false,
+  "pendingTierUpgrade": null,
+  "appliedOffer": {
+    "source": "standard",
+    "label": "Standard catalog pricing",
+    "amountCents": 19900,
+    "amount": "$199"
+  },
+  "nextInvoicePreviewCents": 19900,
+  "nextInvoicePreview": "$199",
+  "nextInvoicePreviewSource": "stripe_test_preview",
+  "arrangements": []
+}

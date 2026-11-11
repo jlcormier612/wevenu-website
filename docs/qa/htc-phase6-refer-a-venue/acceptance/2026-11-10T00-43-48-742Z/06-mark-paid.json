@@ -1,0 +1,45 @@
+{
+  "status": 200,
+  "json": {
+    "ok": true,
+    "attribution": {
+      "id": "064475c2-9953-4a0e-83b5-dfb669c63b7a",
+      "referralId": "f77458fb-78ef-4af9-9889-11f92030a562",
+      "referredVenueId": "6d3abc3e-c323-4c30-be64-b3ab899b6110",
+      "referredStripeSubscriptionId": "sub_fake_p6_1794271429189",
+      "referredStripeCustomerId": "cus_fake_p6_1794271429189",
+      "matchMethod": "founder_confirmed",
+      "matchEvidence": {},
+      "confirmedByEmail": "phase6-harness@hellotocheers.com",
+      "confirmedAt": "2026-11-10T00:43:50.334+00:00",
+      "convertedAt": "2026-11-10T00:43:50.334+00:00",
+      "firstPaidInvoiceId": "in_fake_p6_1794271429189",
+      "firstPaidInvoiceAt": "2026-10-10T00:43:50.633+00:00",
+      "qualificationStartsAt": "2026-10-10T00:43:50.633+00:00",
+      "qualificationEndsAt": "2026-11-09T00:43:50.633+00:00",
+      "status": "confirmed",
+      "rejectionReason": null,
+      "idempotencyKey": "attr:v1:f77458fb-78ef-4af9-9889-11f92030a562:6d3abc3e-c323-4c30-be64-b3ab899b6110",
+      "audit": [
+        {
+          "at": "2026-11-10T00:43:50.362Z",
+          "action": "created",
+          "status": "confirmed"
+        },
+        {
+          "at": "2026-11-10T00:43:50.334Z",
+          "by": "phase6-harness@hellotocheers.com",
+          "action": "confirmed"
+        },
+        {
+          "at": "2026-11-10T00:43:50.820Z",
+          "by": "phase6-harness@hellotocheers.com",
+          "action": "first_paid_invoice",
+          "invoiceId": "in_fake_p6_1794271429189"
+        }
+      ],
+      "createdAt": "2026-11-10T00:43:50.394439+00:00",
+      "updatedAt": "2026-11-10T00:43:50.85+00:00"
+    }
+  }
+}

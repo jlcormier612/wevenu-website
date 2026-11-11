@@ -104,7 +104,7 @@ export default async function SequencesPage() {
           {enrollments.length === 0 ? (
             <p className="text-sm ws-muted">
               No enrollments yet. Open a relationship and use{" "}
-              <strong className="font-medium text-[var(--forest-sage)]">Enroll in sequence</strong>.
+              <strong className="font-medium text-foreground">Enroll in sequence</strong>.
             </p>
           ) : (
             <ul className="divide-y divide-[color-mix(in_srgb,var(--taupe-medium)_35%,transparent)]">

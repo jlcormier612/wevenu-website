@@ -1,17 +1,34 @@
 /**
- * QR campaign image generation. Same qrcode-package/SVG approach as
- * app/api/portal/website/qr/route.ts (already installed, already proven)
- * — kept as its own route rather than reusing that one, since this one is
- * an authenticated-Settings-only concern, not a public portal endpoint.
+ * QR campaign image generation. Same qrcode package as portal website QR.
+ * Supports SVG (default) and PNG for print/download.
  */
 import { NextResponse } from "next/server";
 import QRCode from "qrcode";
 
 export async function GET(request: Request) {
-  const url = new URL(request.url).searchParams.get("url") ?? "";
+  const params = new URL(request.url).searchParams;
+  const url = params.get("url") ?? "";
+  const format = (params.get("format") ?? "svg").toLowerCase();
   if (!url) return NextResponse.json({ error: "Missing url." }, { status: 400 });
 
   try {
+    if (format === "png") {
+      const png = await QRCode.toBuffer(url, {
+        type: "png",
+        margin: 2,
+        width: 1024,
+        color: { dark: "#1A1A1A", light: "#FFFFFF" },
+        errorCorrectionLevel: "M",
+      });
+      return new NextResponse(new Uint8Array(png), {
+        headers: {
+          "content-type": "image/png",
+          "cache-control": "public, max-age=86400",
+          "content-disposition": 'attachment; filename="qr-code.png"',
+        },
+      });
+    }
+
     const svg = await QRCode.toString(url, {
       type: "svg",
       margin: 2,

@@ -1,6 +1,7 @@
 "use client";
 
-import { LogOut } from "lucide-react";
+import { KeyRound, LogOut } from "lucide-react";
+import Link from "next/link";
 
 import { signOut } from "@/app/auth/actions";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -9,7 +10,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -51,10 +51,19 @@ export function UserMenu({ email }: { email: string }) {
         </span>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
-        <DropdownMenuLabel className="truncate font-normal text-muted-foreground">
+        {/* Identity only — not DropdownMenuLabel (Base UI GroupLabel needs Menu.Group). */}
+        <div className="truncate px-1.5 py-1 text-xs font-normal text-muted-foreground">
           {email}
-        </DropdownMenuLabel>
+        </div>
         <DropdownMenuSeparator />
+        <DropdownMenuItem
+          render={
+            <Link href="/account/password" />
+          }
+        >
+          <KeyRound className="mr-2 h-4 w-4" />
+          Change password
+        </DropdownMenuItem>
         <DropdownMenuItem
           onClick={() => {
             void signOut();

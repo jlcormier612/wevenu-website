@@ -14,6 +14,7 @@ import { PLAYBOOK_KINDS } from "@/lib/playbooks/constants";
 import type { PlaybookKind, PlaybookTemplateWithStats } from "@/lib/playbooks/types";
 import { ConflictWarning } from "@/components/availability/conflict-warning";
 import { EventSpaceField } from "@/components/availability/event-space-field";
+import { EventSpaceAssignmentsEditor } from "@/components/events/event-space-assignments-editor";
 import { Field } from "@/components/setup/field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,10 +25,17 @@ import { Separator } from "@/components/ui/separator";
 import type { EventErrors, EventInput } from "@/lib/events/types";
 import { EVENT_TYPES } from "@/lib/leads/constants";
 import type { VenueSpace } from "@/lib/availability/types";
+import { resolveExperienceProfile } from "@/lib/event-experience";
+import {
+  primarySpaceIdFromAssignments,
+  type EventSpaceAssignmentInput,
+} from "@/lib/venue-spaces/assignments";
+import { relevantUsesForExperience } from "@/lib/venue-spaces/relevant-uses";
 
 export function EventFormFields({
   input, errors, set, onSubmit, pending, submitLabel = "Create event",
-  spaces = [], existingEventId, maxSimultaneousEvents = 1,
+  spaces = [],   existingEventId, excludeLeadId, maxSimultaneousEvents = 1,
+  spaceOperatingMode = "single",
 }: {
   input: EventInput;
   errors: EventErrors;
@@ -37,11 +45,28 @@ export function EventFormFields({
   submitLabel?: string;
   spaces?: VenueSpace[];
   existingEventId?: string; // exclude self when editing
+  /** Originating lead — that lead's own hold must not block this event. */
+  excludeLeadId?: string;
   maxSimultaneousEvents?: number;
+  spaceOperatingMode?: "single" | "multi";
 }) {
   const router = useRouter();
   const [dateBlocked, setDateBlocked] = React.useState(false);
   const spacesRequired = maxSimultaneousEvents >= 2;
+  const multi = spaceOperatingMode === "multi";
+  const experience = resolveExperienceProfile(input.eventType);
+  const relevantUses = multi ? relevantUsesForExperience(spaces, experience) : [];
+  const showAssignments = multi && relevantUses.length > 0;
+  const assignments = input.spaceAssignments ?? [];
+
+  function setAssignments(next: EventSpaceAssignmentInput[]) {
+    const primary = primarySpaceIdFromAssignments(next, {
+      weddingFamily: experience.isWeddingSpecific,
+    });
+    set("spaceAssignments", next);
+    set("spaceId", primary ?? "");
+  }
+
   return (
     <div className="space-y-6">
       <Field label="Event name" htmlFor="en" required error={errors.name}>
@@ -77,13 +102,57 @@ export function EventFormFields({
       </Field>
 
       {/* Space assignment + availability check */}
-      <EventSpaceField
-        value={input.spaceId}
-        onChange={(v) => set("spaceId", v)}
-        spaces={spaces}
-        spacesRequired={spacesRequired}
-        error={errors.spaceId}
-      />
+      {showAssignments ? (
+        <EventSpaceAssignmentsEditor
+          spaces={spaces}
+          value={assignments}
+          onChange={setAssignments}
+          uses={relevantUses}
+        />
+      ) : (
+        <EventSpaceField
+          value={input.spaceId}
+          onChange={(v) => set("spaceId", v)}
+          spaces={spaces}
+          spacesRequired={spacesRequired}
+          error={errors.spaceId}
+        />
+      )}
+      {multi && relevantUses.length === 0 && (
+        <p className="text-xs text-muted-foreground -mt-3">
+          Multi-space mode is on. Add permitted uses on spaces in Availability settings to assign
+          spaces for this event. Until then, the primary event space field above still
+          works.
+        </p>
+      )}
+      {multi && experience.isWeddingSpecific && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field
+            label="External ceremony location"
+            htmlFor="ext-cer"
+            hint="Used when the ceremony is not in a venue space."
+          >
+            <Input
+              id="ext-cer"
+              value={input.externalCeremonyLocation ?? ""}
+              onChange={(e) => set("externalCeremonyLocation", e.target.value)}
+              placeholder="Outside the venue"
+            />
+          </Field>
+          <Field
+            label="External reception location"
+            htmlFor="ext-rec"
+            hint="Used when the reception is not in a venue space."
+          >
+            <Input
+              id="ext-rec"
+              value={input.externalReceptionLocation ?? ""}
+              onChange={(e) => set("externalReceptionLocation", e.target.value)}
+              placeholder="Location name"
+            />
+          </Field>
+        </div>
+      )}
 
       {/* Availability conflict advisory — hard block disables save */}
       {input.eventDate && (
@@ -97,6 +166,7 @@ export function EventFormFields({
           spaceId={input.spaceId || undefined}
           type="event"
           excludeId={existingEventId}
+          excludeLeadId={excludeLeadId}
           onStatusChange={setDateBlocked}
         />
       )}
@@ -119,8 +189,17 @@ export function EventFormFields({
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Guest count" htmlFor="gc" error={errors.guestCount}>
+        <Field label="Estimated guest count" htmlFor="gc" error={errors.guestCount}>
           <Input id="gc" type="number" value={input.guestCount} onChange={(e) => set("guestCount", e.target.value)} placeholder="150" />
+        </Field>
+        <Field label="Guaranteed guest count" htmlFor="ggc" error={errors.guaranteedGuestCount}>
+          <Input
+            id="ggc"
+            type="number"
+            value={input.guaranteedGuestCount ?? ""}
+            onChange={(e) => set("guaranteedGuestCount", e.target.value)}
+            placeholder="Optional"
+          />
         </Field>
       </div>
 
@@ -137,11 +216,13 @@ export function EventFormFields({
 
 export function EventForm({
   initial, spaces = [], playbookTemplates = [], maxSimultaneousEvents = 1,
+  spaceOperatingMode = "single",
 }: {
   initial: EventInput;
   spaces?: VenueSpace[];
   playbookTemplates?: PlaybookTemplateWithStats[];
   maxSimultaneousEvents?: number;
+  spaceOperatingMode?: "single" | "multi";
 }) {
   const router = useRouter();
   const [input, setInput] = React.useState<EventInput>(initial);
@@ -174,11 +255,17 @@ export function EventForm({
           const applyResult = await applyPlaybookAction(result.eventId, templateId, input.eventDate);
           if (!applyResult.ok) allApplied = false;
         }
-        if (allApplied) toast.success("Event created and checklists applied — tasks and reminders are ready.");
+        if (result.timelineWarning) toast.warning(result.timelineWarning);
+        else if (allApplied) toast.success("Event created and checklists applied — tasks and reminders are ready.");
         else {
           toast.success("Event created.");
           toast.error("A checklist could not be applied. You can apply it from the event's Planning tab.");
         }
+        if (result.timelineWarning && !allApplied) {
+          toast.error("A checklist could not be applied. You can apply it from the event's Planning tab.");
+        }
+      } else if (result.timelineWarning) {
+        toast.warning(result.timelineWarning);
       } else {
         toast.success("Event created.");
       }
@@ -191,7 +278,7 @@ export function EventForm({
 
   return (
     <div className="space-y-6">
-      <EventFormFields input={input} errors={errors} set={set} onSubmit={handleSubmit} pending={pending} spaces={spaces} maxSimultaneousEvents={maxSimultaneousEvents} />
+      <EventFormFields input={input} errors={errors} set={set} onSubmit={handleSubmit} pending={pending} spaces={spaces} maxSimultaneousEvents={maxSimultaneousEvents} spaceOperatingMode={spaceOperatingMode} />
       {playbookTemplates.length > 0 && (
         <div className="rounded-sm border border-border bg-muted/30 p-4 space-y-3">
           <p className="text-sm font-medium text-heading">Starting checklists (optional)</p>

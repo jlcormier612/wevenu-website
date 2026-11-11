@@ -1,0 +1,11 @@
+{
+  "at": "2026-10-12T01:01:05.193379+00:00",
+  "alarm": "htc-sandbox-health-supabase-down",
+  "received": 3,
+  "health_alarm_in_sqs": true,
+  "subjects": [
+    "OK: \"htc-sandbox-health-supabase-down\" in US East (N. Virginia)",
+    "OK: \"htc-sandbox-health-supabase-down\" in US East (N. Virginia)",
+    "ALARM: \"htc-sandbox-health-supabase-down\" in US East (N. Virginia)"
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "at": "2026-10-14T23:27:42.190Z",
+  "subjectProtection": "Tour protection completed — time no longer available",
+  "subjectSaved": "Weekly sales — Last 7 days",
+  "artifacts": {
+    "protectionHtml": "docs/qa/email-consistency-audit/group-b-tour-protection.html",
+    "protectionTxt": "docs/qa/email-consistency-audit/group-b-tour-protection.txt",
+    "savedHtml": "docs/qa/email-consistency-audit/group-b-saved-report.html",
+    "savedTxt": "docs/qa/email-consistency-audit/group-b-saved-report.txt"
+  },
+  "checks": {
+    "protectionHasLogo": true,
+    "protectionHasViewTours": true,
+    "protectionHasViewLead": true,
+    "protectionTextParity": true,
+    "protectionNoRawUrlAsSoleBody": true,
+    "savedHasLogo": true,
+    "savedHasCta": true,
+    "savedHref": true
+  },
+  "allPass": true
+}

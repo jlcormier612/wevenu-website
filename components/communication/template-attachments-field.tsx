@@ -15,11 +15,12 @@ import { toast } from "sonner";
 import {
   addTemplateAttachmentAction, removeTemplateAttachmentAction,
 } from "@/app/(app)/communication/templates/actions";
-import { saveVenueDocumentAction } from "@/app/(app)/documents/actions";
+import { saveVenueDocumentAction, venueDocumentUploadPathAction } from "@/app/(app)/documents/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { createClient } from "@/integrations/supabase/client";
+import { ATTACHMENT_SOURCE_LABELS } from "@/lib/documents/attachment-source";
 import type { Document } from "@/lib/documents/types";
 import type { MessageTemplateAttachment } from "@/lib/message-templates/types";
 
@@ -53,9 +54,12 @@ export function TemplateAttachmentsField({
     setUploading(true);
     try {
       const supabase = createClient();
-      const docId = crypto.randomUUID();
-      const ext = file.name.split(".").pop()?.toLowerCase() ?? "bin";
-      const storagePath = `venue/${docId}.${ext}`;
+      // The documents bucket only accepts objects whose first path segment is
+      // the caller's venue id, so the path is resolved from the session rather
+      // than built here (see lib/documents/storage-path.ts).
+      const pathResult = await venueDocumentUploadPathAction(file.name);
+      if (!pathResult.ok) { toast.error(pathResult.message); return; }
+      const storagePath = pathResult.storagePath;
       const { error: uploadError } = await supabase.storage.from("documents").upload(storagePath, file, { upsert: false, contentType: file.type });
       if (uploadError) throw new Error(uploadError.message);
       const { data: urlData } = supabase.storage.from("documents").getPublicUrl(storagePath);
@@ -120,14 +124,19 @@ export function TemplateAttachmentsField({
 
       <div className="flex flex-wrap items-center gap-1.5">
         <input ref={fileRef} type="file" accept={ACCEPT} onChange={handleFileSelect} className="hidden" id={`template-upload-${templateId}`} />
-        <Button type="button" variant="outline" size="sm" className="h-7 px-2 text-xs" disabled={uploading} onClick={() => fileRef.current?.click()}>
-          {uploading ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Upload className="mr-1 h-3 w-3" />} Upload a file
-        </Button>
+        {/*
+          Documents first and filled; uploading is the bordered fallback. A
+          brochure or pricing sheet worth putting on a template is nearly always
+          already in the venue's Documents.
+        */}
         {availableDocs.length > 0 && (
-          <Button type="button" variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => setAttachingExisting((v) => !v)}>
-            <FileText className="mr-1 h-3 w-3" /> Use an existing document
+          <Button type="button" size="sm" className="h-7 px-2 text-xs" onClick={() => setAttachingExisting((v) => !v)}>
+            <FileText className="mr-1 h-3 w-3" /> {ATTACHMENT_SOURCE_LABELS.fromDocuments}
           </Button>
         )}
+        <Button type="button" variant="outline" size="sm" className="h-7 px-2 text-xs" disabled={uploading} onClick={() => fileRef.current?.click()}>
+          {uploading ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Upload className="mr-1 h-3 w-3" />} {ATTACHMENT_SOURCE_LABELS.fromComputer}
+        </Button>
         <Button type="button" variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => setAddingLink((v) => !v)}>
           <Link2 className="mr-1 h-3 w-3" /> Add a link
         </Button>

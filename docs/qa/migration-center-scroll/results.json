@@ -1,0 +1,80 @@
+{
+  "observedAt": "2026-10-11T22:27:14.435Z",
+  "expectSha": null,
+  "checks": [
+    {
+      "name": "runtime_dpl",
+      "pass": false,
+      "detail": "dpl=missing"
+    },
+    {
+      "name": "heading_visible",
+      "pass": true,
+      "detail": "Migration Center heading"
+    },
+    {
+      "name": "honeybook_selected_or_visible",
+      "pass": true,
+      "detail": "HoneyBook lane present"
+    },
+    {
+      "name": "original_main_scrollable",
+      "pass": true,
+      "detail": "mainScrollable=true prog={\"ok\":true,\"beforeTop\":749,\"afterTop\":749,\"clientH\":732,\"scrollH\":1481,\"moved\":false} wheelMoved=true main={\"overflow\":\"auto\",\"overflowY\":\"auto\",\"overflowX\":\"auto\",\"height\":732,\"maxHeight\":\"none\",\"display\":\"block\",\"flex\":\"1 1 0%\",\"minHeight\":\"0px\",\"position\":\"static\",\"top\":68,\"bottom\":800,\"clientH\":732,\"scrollH\":1481,\"scrollTop\":0,\"scrollable\":true}"
+    },
+    {
+      "name": "original_wheel_or_prog_scrolls",
+      "pass": true,
+      "detail": "wheelMoved=true progMoved=false"
+    },
+    {
+      "name": "original_bottom_reachable",
+      "pass": true,
+      "detail": "marker=/CSV files/i y=249 h=17 inView=true"
+    },
+    {
+      "name": "keyboard_focus_visible",
+      "pass": true,
+      "detail": "{\"tag\":\"INPUT\",\"text\":\"\",\"y\":798.90625,\"visible\":true}"
+    },
+    {
+      "name": "short_main_scrollable",
+      "pass": true,
+      "detail": "mainScrollable=true prog={\"ok\":true,\"beforeTop\":849,\"afterTop\":849,\"clientH\":632,\"scrollH\":1481,\"moved\":false} wheelMoved=true main={\"overflow\":\"auto\",\"overflowY\":\"auto\",\"overflowX\":\"auto\",\"height\":632,\"maxHeight\":\"none\",\"display\":\"block\",\"flex\":\"1 1 0%\",\"minHeight\":\"0px\",\"position\":\"static\",\"top\":68,\"bottom\":700,\"clientH\":632,\"scrollH\":1481,\"scrollTop\":0,\"scrollable\":true}"
+    },
+    {
+      "name": "short_wheel_or_prog_scrolls",
+      "pass": true,
+      "detail": "wheelMoved=true progMoved=false"
+    },
+    {
+      "name": "short_bottom_reachable",
+      "pass": true,
+      "detail": "marker=/CSV files/i y=149 h=17 inView=true"
+    },
+    {
+      "name": "narrow_main_scrollable",
+      "pass": true,
+      "detail": "mainScrollable=true prog={\"ok\":true,\"beforeTop\":840,\"afterTop\":840,\"clientH\":732,\"scrollH\":1572,\"moved\":false} wheelMoved=true main={\"overflow\":\"auto\",\"overflowY\":\"auto\",\"overflowX\":\"auto\",\"height\":732,\"maxHeight\":\"none\",\"display\":\"block\",\"flex\":\"1 1 0%\",\"minHeight\":\"0px\",\"position\":\"static\",\"top\":68,\"bottom\":800,\"clientH\":732,\"scrollH\":1572,\"scrollTop\":0,\"scrollable\":true}"
+    },
+    {
+      "name": "narrow_wheel_or_prog_scrolls",
+      "pass": true,
+      "detail": "wheelMoved=true progMoved=false"
+    },
+    {
+      "name": "narrow_bottom_reachable",
+      "pass": true,
+      "detail": "marker=/CSV files/i y=183 h=17 inView=true"
+    },
+    {
+      "name": "sibling_settings_scroll_ok",
+      "pass": true,
+      "detail": "{\"ok\":true,\"scrollH\":4941,\"clientH\":632,\"moved\":true,\"canScroll\":true}"
+    }
+  ],
+  "hardFail": [
+    "runtime_dpl"
+  ],
+  "ok": false
+}

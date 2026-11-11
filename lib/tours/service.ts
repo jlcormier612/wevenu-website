@@ -1,17 +1,46 @@
 import { createClient } from "@/integrations/supabase/server";
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/env";
+import { emailBrandFromVenue } from "@/lib/email/venue-brand";
 import { getCurrentVenue } from "@/lib/venue/service";
 import { getVenueTimezone, utcToVenueLocalParts, venueLocalToUtcIso } from "@/lib/venue/timezone";
 import { parseCoordinatorTourAvailability, type TourAvailabilityLoad } from "@/lib/tours/availability-read";
 import { tourCapacityFailureFromUnknown } from "@/lib/tours/occupancy";
-import type { BookingResult, CoordinatorTourResult, SimpleTourResult, TourAvailabilityException, TourAvailabilityExceptionInput, TourAvailabilityWindow, TourAvailabilityWindowInput, TourSettings, TourSlot, TourVenueInfo } from "@/lib/tours/types";
+import { actualOccurrenceIsFuture, FUTURE_ACTUAL_OCCURRENCE_MESSAGE } from "@/lib/tours/occurrence-clock";
+import type { BookingResult, CoordinatorTourResult, SimpleTourResult, TourAvailabilityException, TourAvailabilityExceptionInput, TourAvailabilityWindow, TourAvailabilityWindowInput, TourCustomerSendPreview, TourSettings, TourSlot, TourVenueInfo } from "@/lib/tours/types";
 import type { CalendarItem } from "@/lib/calendar/types";
-import { eventTypeLabel, leadDisplayName } from "@/lib/leads/constants";
-import { sendTourConfirmation, sendTourConfirmationRequest } from "@/lib/tours/communication";
+import { eventTypeLabel } from "@/lib/leads/constants";
+import { resolveTourContactDisplayName } from "@/lib/tours/contact-display";
+import {
+  previewTourConfirmationRequest,
+  previewTourScheduled,
+  sendTourConfirmation,
+  sendTourConfirmationRequest,
+  sendTourScheduled,
+} from "@/lib/tours/communication";
 import { advanceLeadSalesStageIfForward } from "@/lib/leads/service";
 import { ingestLead } from "@/lib/lead-intake/pipeline";
 import { recordNotificationStatus } from "@/lib/lead-intake/attempt-log";
+import { checkRateLimit, isNearRateLimit } from "@/lib/lead-intake/rate-limit";
+import { isTurnstileConfigured, verifyTurnstileToken } from "@/lib/lead-intake/turnstile";
+import { isForwardSalesStageMove, isSalesStage } from "@/lib/leads/sales-stages";
+import { normalizeEmail } from "@/lib/leads/duplicate-detection";
+import { isOpenLeadLifecycle } from "@/lib/leads/open-lifecycle";
+import { triggerSequencesForRelationship } from "@/lib/message-sequences/service";
+import {
+  createTourOriginToken,
+  requireTourOriginSigningSecret,
+  tourOriginSigningSecret,
+  verifyTourOriginToken,
+} from "@/lib/tours/origin-context";
+import { publicTourSchedulingPathForLead } from "@/lib/tours/public-link";
+import {
+  decidePublicTourAttach,
+  type PublicTourLeadRow,
+} from "@/lib/tours/public-tour-attach";
+import { loadVenueProtectionByTourKey, startProtectedTour, venueRequiresPublicProtection } from "@/lib/tours/protection";
+import { isConnectEligible, type TourProtectionMode } from "@/lib/tours/protection-rules";
+import { canHardDeleteTourAppointment } from "@/lib/tours/delete-guard";
 
 type DbClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -40,32 +69,64 @@ export async function getTourCalendarEntries(
   const nextIso = `${next.getUTCFullYear()}-${String(next.getUTCMonth() + 1).padStart(2, "0")}-${String(next.getUTCDate()).padStart(2, "0")}`;
   const windowEnd = venueLocalToUtcIso(nextIso, "00:00", tz);
 
-  const { data } = await client.from("tour_appointments")
-      .select("id, scheduled_at, status, lead_id, event_type, leads(first_name, last_name, partner_first_name)")
-      .eq("venue_id", venueId)
-      .not("status", "in", "(cancelled,no_show)")
-      .gte("scheduled_at", windowStart)
-      .lt("scheduled_at", windowEnd);
+  const select =
+    "id, scheduled_at, actual_occurred_at, origin, status, lead_id, event_type, contact_name, leads(first_name, last_name, partner_first_name, partner_last_name)";
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return ((data ?? []) as any[]).map((t) => {
-    const lead = t.leads as { first_name: string; last_name: string; partner_first_name: string | null } | null;
-    const name = lead
-      ? [lead.first_name, lead.last_name].join(" ") + (lead.partner_first_name ? ` & ${lead.partner_first_name}` : "")
-      : (t.contact_name ?? "Unknown");
-    // Venue-local, not the UTC wall clock the stored timestamptz would give
-    // if extracted directly — a tour booked for 10:00 America/New_York
-    // correctly stores as 14:00 UTC; displaying "14:00" without converting
-    // back was the actual bug.
-    const { date, time } = utcToVenueLocalParts(t.scheduled_at as string, tz);
+  // Occupying scheduled/confirmed render from scheduled_at.
+  // Walk-ins and completed tours with an actual clock render from actual_occurred_at.
+  const [{ data: scheduledRows }, { data: actualRows }] = await Promise.all([
+    client.from("tour_appointments")
+      .select(select)
+      .eq("venue_id", venueId)
+      .eq("is_archived", false)
+      .not("status", "in", "(cancelled,no_show)")
+      .not("scheduled_at", "is", null)
+      .or("status.in.(scheduled,confirmed),actual_occurred_at.is.null")
+      .gte("scheduled_at", windowStart)
+      .lt("scheduled_at", windowEnd),
+    client.from("tour_appointments")
+      .select(select)
+      .eq("venue_id", venueId)
+      .eq("is_archived", false)
+      .not("status", "in", "(cancelled,no_show)")
+      .not("actual_occurred_at", "is", null)
+      .or("origin.eq.walk_in,status.eq.completed")
+      .gte("actual_occurred_at", windowStart)
+      .lt("actual_occurred_at", windowEnd),
+  ]);
+
+  const seen = new Set<string>();
+  const rows: any[] = [];
+  for (const t of [...(scheduledRows ?? []), ...(actualRows ?? [])] as any[]) {
+    if (seen.has(t.id)) continue;
+    seen.add(t.id);
+    rows.push(t);
+  }
+
+  return rows.map((t) => {
+    const lead = t.leads as {
+      first_name: string;
+      last_name: string;
+      partner_first_name: string | null;
+      partner_last_name: string | null;
+    } | null;
+    const name = resolveTourContactDisplayName({ contactName: t.contact_name, lead }) ?? "Unknown";
+    const clockIso =
+      t.origin === "walk_in" || !t.scheduled_at || (t.status === "completed" && t.actual_occurred_at)
+        ? (t.actual_occurred_at as string)
+        : (t.scheduled_at as string);
+    const { date, time } = utcToVenueLocalParts(clockIso, tz);
+    const walkIn = t.origin === "walk_in";
     return {
       id: `tour-${t.id}`,
       type: "tour",
       date,
       title: `Venue Tour — ${name}`,
-      subtitle: [t.status === "completed" ? "Completed" : null, t.event_type ? eventTypeLabel(t.event_type) : null]
-        .filter(Boolean)
-        .join(" · ") || null,
+      subtitle: [
+        walkIn ? "Walk-in" : null,
+        t.status === "completed" ? "Completed" : null,
+        t.event_type ? eventTypeLabel(t.event_type) : null,
+      ].filter(Boolean).join(" · ") || null,
       time,
       link: t.lead_id ? `/leads/${t.lead_id}` : "/tours",
     };
@@ -113,14 +174,306 @@ const TOUR_BOOK_ERRORS: Record<string, string> = {
   slot_too_far: "This slot is too far in the future.",
   invalid_key: "This booking link is not valid.",
   event_type_required: "Event type is required.",
+  event_type_not_accepted: "That event type is not accepted for this venue.",
   date_unavailable: "That date is no longer available. Please choose another date.",
+  protection_required: "This venue requires a payment step before the tour can be booked.",
+  lead_not_found: "This scheduling link is not valid.",
+  lead_not_open: "This scheduling link is no longer valid.",
 };
+
+function mapLeadAttachRow(row: {
+  id: string;
+  venue_id: string;
+  sales_stage: string | null;
+  email: string | null;
+  partner_email: string | null;
+  relationship_id: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
+  phone?: string | null;
+}): PublicTourLeadRow {
+  return {
+    id: row.id,
+    venueId: row.venue_id,
+    salesStage: row.sales_stage,
+    email: row.email,
+    partnerEmail: row.partner_email,
+    relationshipId: row.relationship_id,
+    firstName: row.first_name ?? null,
+    lastName: row.last_name ?? null,
+    phone: row.phone ?? null,
+  };
+}
+
+async function loadOriginLeadForToken(
+  admin: ReturnType<typeof createAdminClient>,
+  originToken: string | null | undefined,
+): Promise<{ originLead: PublicTourLeadRow | null }> {
+  const token = originToken?.trim();
+  if (!token) return { originLead: null };
+  const secret = tourOriginSigningSecret();
+  if (!secret) return { originLead: null };
+  const payload = verifyTourOriginToken(token, secret);
+  if (!payload) return { originLead: null };
+  const { data } = await admin
+    .from("leads")
+    .select("id, venue_id, sales_stage, email, partner_email, relationship_id, first_name, last_name, phone")
+    .eq("id", payload.leadId)
+    .maybeSingle<{
+      id: string;
+      venue_id: string;
+      sales_stage: string | null;
+      email: string | null;
+      partner_email: string | null;
+      relationship_id: string | null;
+      first_name: string | null;
+      last_name: string | null;
+      phone: string | null;
+    }>();
+  return { originLead: data ? mapLeadAttachRow(data) : null };
+}
+
+async function loadOpenEmailMatches(
+  admin: ReturnType<typeof createAdminClient>,
+  venueId: string,
+  email: string | null | undefined,
+): Promise<PublicTourLeadRow[]> {
+  const normalized = normalizeEmail(email);
+  if (!normalized) return [];
+  const escaped = normalized.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
+  const { data } = await admin
+    .from("leads")
+    .select("id, venue_id, sales_stage, email, partner_email, relationship_id, first_name, last_name, phone")
+    .eq("venue_id", venueId)
+    .or(`email.ilike.${escaped},partner_email.ilike.${escaped}`);
+  return ((data ?? []) as Array<{
+    id: string;
+    venue_id: string;
+    sales_stage: string | null;
+    email: string | null;
+    partner_email: string | null;
+    relationship_id: string | null;
+    first_name: string | null;
+    last_name: string | null;
+    phone: string | null;
+  }>)
+    .map(mapLeadAttachRow)
+    .filter((row) => isOpenLeadLifecycle(row.salesStage));
+}
+
+export async function resolvePublicTourAttachDecision(opts: {
+  admin: ReturnType<typeof createAdminClient>;
+  venueId: string;
+  originToken?: string | null;
+  email?: string | null;
+  submittedIdentity?: {
+    firstName?: string | null;
+    lastName?: string | null;
+    phone?: string | null;
+  } | null;
+}): Promise<ReturnType<typeof decidePublicTourAttach>> {
+  const { originLead } = await loadOriginLeadForToken(opts.admin, opts.originToken);
+  const openEmailMatches = opts.originToken?.trim()
+    ? []
+    : await loadOpenEmailMatches(opts.admin, opts.venueId, opts.email);
+  return decidePublicTourAttach({
+    venueId: opts.venueId,
+    originToken: opts.originToken,
+    signingSecret: tourOriginSigningSecret(),
+    originLead,
+    email: opts.email,
+    openEmailMatches,
+    submittedIdentity: opts.submittedIdentity,
+  });
+}
+
+async function enforcePublicTourIntakeGuards(
+  admin: ReturnType<typeof createAdminClient>,
+  venueId: string,
+  opts?: { turnstileToken?: string | null; ipAddress?: string | null },
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const rateLimit = await checkRateLimit(admin, { venueId, ipAddress: opts?.ipAddress ?? null });
+  if (!rateLimit.withinLimit) return { ok: false, error: rateLimit.reason };
+  if (isTurnstileConfigured()) {
+    const nearLimit = await isNearRateLimit(admin, { venueId, ipAddress: opts?.ipAddress ?? null });
+    const turnstileOk = await verifyTurnstileToken(opts?.turnstileToken ?? null, opts?.ipAddress ?? null);
+    if (nearLimit && !turnstileOk) {
+      return { ok: false, error: "Please complete the verification challenge and try again." };
+    }
+  }
+  return { ok: true };
+}
+
+async function advanceAttachedLeadToTourScheduled(
+  admin: ReturnType<typeof createAdminClient>,
+  venueId: string,
+  leadId: string,
+): Promise<void> {
+  const { data: row } = await admin
+    .from("leads")
+    .select("sales_stage, relationship_id")
+    .eq("id", leadId)
+    .eq("venue_id", venueId)
+    .maybeSingle<{ sales_stage: string | null; relationship_id: string | null }>();
+  if (!row?.sales_stage || !isSalesStage(row.sales_stage)) return;
+  if (!isForwardSalesStageMove(row.sales_stage, "tour_scheduled")) return;
+  await admin
+    .from("leads")
+    .update({ sales_stage: "tour_scheduled" })
+    .eq("id", leadId)
+    .eq("venue_id", venueId);
+  if (row.relationship_id) {
+    void triggerSequencesForRelationship(
+      admin,
+      venueId,
+      row.relationship_id,
+      "lead_stage_changed",
+      "tour_scheduled",
+    ).catch((err) => console.error("Series enrollment (lead_stage_changed) failed:", err));
+  }
+}
+
+async function bookPublicTourOntoExistingLead(opts: {
+  admin: ReturnType<typeof createAdminClient>;
+  key: string;
+  venueId: string;
+  leadId: string;
+  slotStart: string;
+  fields: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+    notes: string;
+  };
+}): Promise<BookingResult> {
+  const submittedName = `${opts.fields.firstName} ${opts.fields.lastName}`.trim();
+  const { data, error } = await opts.admin.rpc("book_public_tour_for_lead", {
+    p_embed_key: opts.key,
+    p_lead_id: opts.leadId,
+    p_slot_start: opts.slotStart,
+    p_notes: opts.fields.notes ?? null,
+    p_contact_name: submittedName || null,
+    p_contact_email: opts.fields.email?.trim() || null,
+    p_contact_phone: opts.fields.phone?.trim() || null,
+  });
+  if (error) {
+    const fail = tourCapacityFailureFromUnknown(error);
+    return { ok: false, error: fail ? TOUR_BOOK_ERRORS.slot_unavailable : error.message };
+  }
+  const d = data as Record<string, unknown>;
+  if (!d?.ok) {
+    return { ok: false, error: TOUR_BOOK_ERRORS[d?.error as string] ?? "Could not book this slot. Please try again." };
+  }
+  const appointmentId = d.appointmentId as string;
+  const leadId = d.leadId as string;
+  const relationshipId = (d.relationshipId as string | null) ?? null;
+  const scheduledAt = d.scheduledAt as string;
+  const duration = d.duration as number;
+  const venueName = d.venueName as string;
+
+  const { data: apptRow } = await opts.admin
+    .from("tour_appointments")
+    .select("contact_email, contact_name, contact_phone, confirm_token, venues(name, email, phone, primary_color, logo_url, email_signature, email_footer_show_signature, email_footer_show_email, email_footer_show_phone)")
+    .eq("id", appointmentId)
+    .maybeSingle<{
+      contact_email: string | null;
+      contact_name: string | null;
+      contact_phone: string | null;
+      confirm_token: string;
+      venues: {
+        name: string | null;
+        email: string | null;
+        phone: string | null;
+        primary_color: string | null;
+        logo_url: string | null;
+        email_signature: string | null;
+      } | null;
+    }>();
+
+  await advanceAttachedLeadToTourScheduled(opts.admin, opts.venueId, leadId);
+
+  if (apptRow?.confirm_token) {
+    void sendTourScheduled({
+      venueId: opts.venueId,
+      leadId,
+      relationshipId,
+      contactEmail: apptRow.contact_email ?? opts.fields.email,
+      contactName: apptRow.contact_name ?? `${opts.fields.firstName} ${opts.fields.lastName}`.trim(),
+      venueName,
+      primaryColor: apptRow.venues?.primary_color ?? null,
+      brand: emailBrandFromVenue(apptRow.venues),
+      scheduledAt,
+      durationMinutes: duration,
+      confirmToken: apptRow.confirm_token,
+      timezone: null,
+    }).catch((err) => console.error("sendTourScheduled failed:", err));
+  }
+
+  return {
+    ok: true,
+    leadId,
+    relationshipId,
+    appointmentId,
+    scheduledAt,
+    venueName,
+    duration,
+    venueId: opts.venueId,
+    attachedExistingLead: true,
+    venueEmail: apptRow?.venues?.email ?? null,
+    venuePhone: d.venuePhone as string | null | undefined,
+    addressLine1: d.addressLine1 as string | null | undefined,
+    city: d.city as string | null | undefined,
+    stateRegion: d.stateRegion as string | null | undefined,
+    contactEmail: apptRow?.contact_email ?? opts.fields.email,
+    contactName: apptRow?.contact_name ?? `${opts.fields.firstName} ${opts.fields.lastName}`.trim(),
+    contactPhone: apptRow?.contact_phone ?? opts.fields.phone,
+  };
+}
+
+export type PublicTourBookFields = {
+  firstName: string;
+  lastName: string;
+  partnerName: string;
+  partnerFirst?: string | null;
+  partnerLast?: string | null;
+  partnerEmail?: string | null;
+  email: string;
+  phone: string;
+  eventType: string;
+  eventDate: string;
+  guestCount: number | null;
+  notes: string;
+};
+
+/**
+ * book_tour historically stores a single partnerName into partner_first_name.
+ * When the shared inquiry/tour form sends structured partner fields (including
+ * partner email), persist them onto the lead after create — column already exists.
+ */
+async function applyStructuredPartnerFieldsToLead(
+  admin: ReturnType<typeof createAdminClient>,
+  venueId: string,
+  leadId: string,
+  fields: PublicTourBookFields,
+): Promise<void> {
+  const partnerFirst = fields.partnerFirst?.trim() || null;
+  const partnerLast = fields.partnerLast?.trim() || null;
+  const partnerEmail = fields.partnerEmail?.trim().toLowerCase() || null;
+  if (!partnerFirst && !partnerLast && !partnerEmail) return;
+  const update: Record<string, string | null> = {};
+  if (partnerFirst) update.partner_first_name = partnerFirst;
+  if (partnerLast) update.partner_last_name = partnerLast;
+  if (partnerEmail) update.partner_email = partnerEmail;
+  if (Object.keys(update).length === 0) return;
+  await admin.from("leads").update(update).eq("id", leadId).eq("venue_id", venueId);
+}
 
 export async function bookTour(
   key: string,
   slotStart: string,
-  fields: { firstName: string; lastName: string; partnerName: string; email: string; phone: string; eventType: string; eventDate: string; guestCount: number | null; notes: string },
-  opts?: { turnstileToken?: string | null; ipAddress?: string | null; qrCampaignId?: string | null; sourceData?: Record<string, unknown> },
+  fields: PublicTourBookFields,
+  opts?: { turnstileToken?: string | null; ipAddress?: string | null; qrCampaignId?: string | null; sourceData?: Record<string, unknown>; originToken?: string | null },
 ): Promise<BookingResult> {
   if (!isSupabaseConfigured) return { ok: false, error: "Backend not configured." };
 
@@ -136,15 +489,47 @@ export async function bookTour(
   // Venue resolution happens up front (not only inside book_tour) so the
   // Lead Intake pipeline can log/rate-limit against a known venue_id before
   // the RPC call — book_tour still independently re-validates the key.
-  const { data: venueRow } = await admin
-    .from("venues")
-    .select("id, timezone")
-    .eq("tour_embed_key", key)
-    .eq("tour_scheduling_enabled", true)
-    .maybeSingle<{ id: string; timezone: string | null }>();
-
+  const venueRow = await loadVenueProtectionByTourKey(admin, key);
   if (!venueRow) {
     return { ok: false, error: TOUR_BOOK_ERRORS.invalid_key };
+  }
+
+  const attach = await resolvePublicTourAttachDecision({
+    admin,
+    venueId: venueRow.id,
+    originToken: opts?.originToken,
+    email: fields.email,
+    submittedIdentity: {
+      firstName: fields.firstName,
+      lastName: fields.lastName,
+      phone: fields.phone,
+    },
+  });
+  if (attach.action === "reject") {
+    return { ok: false, error: attach.error };
+  }
+
+  if (venueRequiresPublicProtection(venueRow)) {
+    return startProtectedTour({
+      key,
+      slotStart,
+      fields,
+      ...opts,
+      attachLeadId: attach.action === "attach" ? attach.leadId : null,
+    });
+  }
+
+  if (attach.action === "attach") {
+    const guards = await enforcePublicTourIntakeGuards(admin, venueRow.id, opts);
+    if (!guards.ok) return guards;
+    return bookPublicTourOntoExistingLead({
+      admin,
+      key,
+      venueId: venueRow.id,
+      leadId: attach.leadId,
+      slotStart,
+      fields,
+    });
   }
 
   // book_tour's own response carries booking-specific fields (appointmentId,
@@ -164,7 +549,9 @@ export async function bookTour(
     input: {
       firstName: fields.firstName,
       lastName: fields.lastName,
-      partnerFirstName: fields.partnerName,
+      partnerFirstName: fields.partnerFirst?.trim() || fields.partnerName || null,
+      partnerLastName: fields.partnerLast?.trim() || null,
+      partnerEmail: fields.partnerEmail?.trim() || null,
       email: fields.email,
       phone: fields.phone,
       eventType: fields.eventType,
@@ -196,6 +583,11 @@ export async function bookTour(
       }
       const { data: leadRow } = await admin.from("leads").select("relationship_id")
         .eq("id", d.leadId as string).maybeSingle<{ relationship_id: string | null }>();
+      await admin.from("leads")
+        .update({ inquiry_message_origin: "customer" })
+        .eq("id", d.leadId as string)
+        .eq("venue_id", venueRow.id);
+      await applyStructuredPartnerFieldsToLead(admin, venueRow.id, d.leadId as string, fields);
       if (!leadRow?.relationship_id) return { ok: false, error: "Lead created without a relationship." };
       const { count } = await admin.from("leads")
         .select("id", { count: "exact", head: true })
@@ -224,27 +616,40 @@ export async function bookTour(
 
   const { data: apptRow } = await admin
     .from("tour_appointments")
-    .select("contact_email, contact_name, contact_phone, venues(email, primary_color)")
+    .select("contact_email, contact_name, contact_phone, confirm_token, venues(name, email, phone, primary_color, logo_url, email_signature, email_footer_show_signature, email_footer_show_email, email_footer_show_phone)")
     .eq("id", appointmentId)
-    .maybeSingle<{ contact_email: string | null; contact_name: string | null; contact_phone: string | null; venues: { email: string | null; primary_color: string | null } | null }>();
+    .maybeSingle<{
+      contact_email: string | null;
+      contact_name: string | null;
+      contact_phone: string | null;
+      confirm_token: string;
+      venues: {
+        name: string | null;
+        email: string | null;
+        phone: string | null;
+        primary_color: string | null;
+        logo_url: string | null;
+        email_signature: string | null;
+      } | null;
+    }>();
 
   const contactEmail = apptRow?.contact_email ?? fields.email;
   const contactName = apptRow?.contact_name ?? `${fields.firstName} ${fields.lastName}`.trim();
   const venueId = venueRow.id;
 
-  // Same confirmation, same pipeline, whether the website or a coordinator
-  // booked it — see lib/tours/communication.ts. Never blocks the response;
-  // a failed send must not fail a booking that already succeeded. Already
-  // tracks its own delivery status durably in conversation_messages; also
-  // recorded onto the intake attempt so a coordinator can see it from there too.
-  void sendTourConfirmation({
-    venueId, leadId, relationshipId, contactEmail, contactName,
-    venueName, primaryColor: apptRow?.venues?.primary_color ?? null, scheduledAt, durationMinutes: duration,
-    timezone: venueRow.timezone,
-  }).then(
-    () => recordNotificationStatus(admin, outcome.attemptId, "sent"),
-    (err) => { console.error("sendTourConfirmation failed:", err); void recordNotificationStatus(admin, outcome.attemptId, "failed"); },
-  );
+  // Scheduled-language email (Confirm CTA) — tour remains scheduled until
+  // the client confirms. Never blocks the booking response.
+  if (apptRow?.confirm_token) {
+    void sendTourScheduled({
+      venueId, leadId, relationshipId, contactEmail, contactName,
+      venueName, primaryColor: apptRow?.venues?.primary_color ?? null,
+      brand: emailBrandFromVenue(apptRow?.venues), scheduledAt, durationMinutes: duration,
+      confirmToken: apptRow.confirm_token, timezone: venueRow.timezone,
+    }).then(
+      (send) => recordNotificationStatus(admin, outcome.attemptId, send.ok ? "sent" : "failed"),
+      (err) => { console.error("sendTourScheduled failed:", err); void recordNotificationStatus(admin, outcome.attemptId, "failed"); },
+    );
+  }
 
   return {
     ok: true,
@@ -274,9 +679,25 @@ export async function getTourSettings(): Promise<TourSettings | null> {
   const venue = await getCurrentVenue();
   if (!venue) return null;
   const supabase = await createClient();
-  const { data } = await supabase.from("venues").select("tour_scheduling_enabled,tour_embed_key,tour_duration_minutes,tour_min_notice_hours,tour_max_advance_days,tour_buffer_minutes,tour_page_headline,tour_page_description").eq("id", venue.id).maybeSingle<Record<string, unknown>>();
+  const { data } = await supabase.from("venues").select("tour_scheduling_enabled,tour_embed_key,tour_duration_minutes,tour_min_notice_hours,tour_max_advance_days,tour_buffer_minutes,tour_page_headline,tour_page_description,tour_protection_mode,tour_protection_fee_cents,stripe_account_id,stripe_charges_enabled").eq("id", venue.id).maybeSingle<Record<string, unknown>>();
   if (!data) return null;
-  return { tourSchedulingEnabled: data.tour_scheduling_enabled as boolean, tourEmbedKey: data.tour_embed_key as string, tourDurationMinutes: data.tour_duration_minutes as number, tourMinNoticeHours: data.tour_min_notice_hours as number, tourMaxAdvanceDays: data.tour_max_advance_days as number, tourBufferMinutes: data.tour_buffer_minutes as number, tourPageHeadline: (data.tour_page_headline ?? null) as string | null, tourPageDescription: (data.tour_page_description ?? null) as string | null };
+  const mode = (data.tour_protection_mode as TourProtectionMode | null) ?? "none";
+  return {
+    tourSchedulingEnabled: data.tour_scheduling_enabled as boolean,
+    tourEmbedKey: data.tour_embed_key as string,
+    tourDurationMinutes: data.tour_duration_minutes as number,
+    tourMinNoticeHours: data.tour_min_notice_hours as number,
+    tourMaxAdvanceDays: data.tour_max_advance_days as number,
+    tourBufferMinutes: data.tour_buffer_minutes as number,
+    tourPageHeadline: (data.tour_page_headline ?? null) as string | null,
+    tourPageDescription: (data.tour_page_description ?? null) as string | null,
+    tourProtectionMode: mode === "setup" || mode === "fee" ? mode : "none",
+    tourProtectionFeeCents: Number(data.tour_protection_fee_cents ?? 0),
+    tourProtectionEligible: isConnectEligible({
+      stripeAccountId: (data.stripe_account_id as string | null) ?? null,
+      stripeChargesEnabled: Boolean(data.stripe_charges_enabled),
+    }),
+  };
 }
 
 export async function updateTourSettings(patch: Partial<Omit<TourSettings, "tourEmbedKey">>): Promise<{ ok: boolean }> {
@@ -292,6 +713,16 @@ export async function updateTourSettings(patch: Partial<Omit<TourSettings, "tour
   if (patch.tourBufferMinutes !== undefined) dbPatch.tour_buffer_minutes = patch.tourBufferMinutes;
   if (patch.tourPageHeadline !== undefined) dbPatch.tour_page_headline = patch.tourPageHeadline || null;
   if (patch.tourPageDescription !== undefined) dbPatch.tour_page_description = patch.tourPageDescription || null;
+  if (patch.tourProtectionMode !== undefined) {
+    dbPatch.tour_protection_mode = patch.tourProtectionMode;
+  }
+  if (patch.tourProtectionFeeCents !== undefined) {
+    dbPatch.tour_protection_fee_cents = Math.max(0, Math.round(patch.tourProtectionFeeCents));
+  }
+  if ((patch.tourProtectionMode ?? undefined) === "fee") {
+    const fee = patch.tourProtectionFeeCents ?? Number(dbPatch.tour_protection_fee_cents ?? 0);
+    if (fee <= 0) return { ok: false };
+  }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (supabase.from("venues") as any).update(dbPatch).eq("id", venue.id);
   return { ok: !error };
@@ -355,15 +786,23 @@ export async function getTourAvailabilityExceptions(): Promise<TourAvailabilityE
   return result.exceptions;
 }
 
-export async function addTourAvailabilityException(input: TourAvailabilityExceptionInput): Promise<{ ok: boolean }> {
+export async function addTourAvailabilityException(
+  input: TourAvailabilityExceptionInput,
+): Promise<{ ok: true; id: string } | { ok: false }> {
   if (!isSupabaseConfigured) return { ok: false };
   const venue = await getCurrentVenue();
   if (!venue) return { ok: false };
   const supabase = await createClient();
-  const { error } = await supabase.from("tour_availability_exceptions").insert({
-    venue_id: venue.id, start_date: input.startDate, end_date: input.endDate, label: input.label?.trim() || null,
-  });
-  return { ok: !error };
+  const recurrenceRule = input.recurrenceRule === "annual" ? "annual" : "none";
+  const { data, error } = await supabase.from("tour_availability_exceptions").insert({
+    venue_id: venue.id,
+    start_date: input.startDate,
+    end_date: input.endDate,
+    label: input.label?.trim() || null,
+    recurrence_rule: recurrenceRule,
+  }).select("id").single<{ id: string }>();
+  if (error || !data?.id) return { ok: false };
+  return { ok: true, id: data.id };
 }
 
 export async function removeTourAvailabilityException(id: string): Promise<{ ok: boolean }> {
@@ -371,29 +810,111 @@ export async function removeTourAvailabilityException(id: string): Promise<{ ok:
   const venue = await getCurrentVenue();
   if (!venue) return { ok: false };
   const supabase = await createClient();
-  const { error } = await supabase.from("tour_availability_exceptions").delete().eq("id", id).eq("venue_id", venue.id);
-  return { ok: !error };
+  const { data, error } = await supabase
+    .from("tour_availability_exceptions")
+    .delete()
+    .eq("id", id)
+    .eq("venue_id", venue.id)
+    .select("id");
+  return { ok: !error && (data?.length ?? 0) > 0 };
 }
+
+function enrichAppointmentContact(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  r: any,
+): import("@/lib/tours/types").TourAppointment {
+  const appt = mapAppointment(r);
+  // Prefer live Lead identity when lead_id resolves. Stale contact_name must
+  // not win over an attached Lead after a rename.
+  appt.contactName = resolveTourContactDisplayName({
+    contactName: appt.contactName,
+    lead: r.leads ?? null,
+  });
+  return appt;
+}
+
+const TOUR_LIST_SELECT =
+  "*, leads(first_name,last_name,partner_first_name,partner_last_name)";
 
 export async function getTourAppointments(): Promise<import("@/lib/tours/types").TourAppointment[]> {
   if (!isSupabaseConfigured) return [];
   const venue = await getCurrentVenue();
   if (!venue) return [];
   const supabase = await createClient();
-  const { data } = await supabase.from("tour_appointments").select("*, leads(first_name,last_name,partner_first_name)").eq("venue_id", venue.id).order("scheduled_at", { ascending: false }).limit(50);
-  // The Tours list showed "Unknown" for appointments whose own
-  // contact_name column was never populated (e.g. booked before that
-  // column was consistently filled in) even though the linked Lead's name
-  // was right there — the query already joined it, mapAppointment just
-  // never read it. Same name the Lead's own page already shows.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return ((data ?? []) as any[]).map((r) => {
-    const appt = mapAppointment(r);
-    if (!appt.contactName && r.leads) {
-      appt.contactName = leadDisplayName(r.leads.first_name, r.leads.last_name, r.leads.partner_first_name, null);
-    }
-    return appt;
+  // Upcoming = soonest-first (scheduled_at asc). Past history is fetched
+  // separately so a long past cannot push upcoming out of a single limit.
+  // Archived tours are excluded here — list hygiene, not status change.
+  const nowIso = new Date().toISOString();
+  const select = TOUR_LIST_SELECT;
+  // Cancelled (non-archived) are loaded for the Tours Cancelled section —
+  // presentation discoverability only; status semantics unchanged.
+  const [{ data: upcomingRows }, { data: completedRows }, { data: overdueRows }, { data: cancelledRows }] = await Promise.all([
+    supabase
+      .from("tour_appointments")
+      .select(select)
+      .eq("venue_id", venue.id)
+      .eq("is_archived", false)
+      .in("status", ["scheduled", "confirmed"])
+      .gte("scheduled_at", nowIso)
+      .order("scheduled_at", { ascending: true })
+      .limit(50),
+    supabase
+      .from("tour_appointments")
+      .select(select)
+      .eq("venue_id", venue.id)
+      .eq("is_archived", false)
+      .in("status", ["completed", "no_show"])
+      .order("scheduled_at", { ascending: false })
+      .limit(50),
+    supabase
+      .from("tour_appointments")
+      .select(select)
+      .eq("venue_id", venue.id)
+      .eq("is_archived", false)
+      .in("status", ["scheduled", "confirmed"])
+      .lt("scheduled_at", nowIso)
+      .order("scheduled_at", { ascending: false })
+      .limit(50),
+    supabase
+      .from("tour_appointments")
+      .select(select)
+      .eq("venue_id", venue.id)
+      .eq("is_archived", false)
+      .eq("status", "cancelled")
+      .order("scheduled_at", { ascending: false })
+      .limit(50),
+  ]);
+  // Completed/walk-in history: sort by actual occurrence when scheduled_at is null.
+  const completedSorted = (completedRows ?? []).slice().sort((a: any, b: any) => {
+    const ac = a.actual_occurred_at ?? a.scheduled_at ?? "";
+    const bc = b.actual_occurred_at ?? b.scheduled_at ?? "";
+    return bc.localeCompare(ac);
   });
+  const merged = [
+    ...(upcomingRows ?? []),
+    ...completedSorted,
+    ...(overdueRows ?? []),
+    ...(cancelledRows ?? []),
+  ];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (merged as any[]).map(enrichAppointmentContact);
+}
+
+/** Archived Tours workspace section — recoverable history, not reporting exclusion. */
+export async function getArchivedTourAppointments(): Promise<import("@/lib/tours/types").TourAppointment[]> {
+  if (!isSupabaseConfigured) return [];
+  const venue = await getCurrentVenue();
+  if (!venue) return [];
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("tour_appointments")
+    .select(TOUR_LIST_SELECT)
+    .eq("venue_id", venue.id)
+    .eq("is_archived", true)
+    .order("scheduled_at", { ascending: false })
+    .limit(100);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return ((data ?? []) as any[]).map(enrichAppointmentContact);
 }
 
 export async function getTourAppointmentsForLead(leadId: string): Promise<import("@/lib/tours/types").TourAppointment[]> {
@@ -401,14 +922,108 @@ export async function getTourAppointmentsForLead(leadId: string): Promise<import
   const venue = await getCurrentVenue();
   if (!venue) return [];
   const supabase = await createClient();
-  const { data } = await supabase.from("tour_appointments").select("*").eq("venue_id", venue.id).eq("lead_id", leadId).order("scheduled_at");
+  // Lead panel shows full tour history including archived rows.
+  const { data } = await supabase
+    .from("tour_appointments")
+    .select(TOUR_LIST_SELECT)
+    .eq("venue_id", venue.id)
+    .eq("lead_id", leadId)
+    .order("scheduled_at");
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return ((data ?? []) as any[]).map(mapAppointment);
+  return ((data ?? []) as any[]).map(enrichAppointmentContact);
+}
+
+export type TourArchiveActionResult = { ok: true } | { ok: false; message: string };
+
+/** Soft-archive / restore — only flips is_archived; never mutates status or relationships. */
+export async function setTourAppointmentArchived(
+  appointmentId: string,
+  isArchived: boolean,
+): Promise<TourArchiveActionResult> {
+  if (!isSupabaseConfigured) return { ok: false, message: "Database is not configured." };
+  const venue = await getCurrentVenue();
+  if (!venue) return { ok: false, message: "No venue session." };
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("tour_appointments")
+    .update({ is_archived: isArchived })
+    .eq("id", appointmentId)
+    .eq("venue_id", venue.id)
+    .select("id")
+    .maybeSingle();
+  if (error) return { ok: false, message: error.message };
+  if (!data) return { ok: false, message: "Tour not found." };
+  return { ok: true };
+}
+
+export type TourDeleteActionResult = { ok: true } | { ok: false; message: string };
+
+/**
+ * Guarded hard delete. Server enforces disposable/orphan criteria.
+ * Never deletes leads/clients/events — only the tour_appointments row
+ * (task_reminders CASCADE; protection/merge pointers SET NULL).
+ */
+export async function deleteTourAppointment(
+  appointmentId: string,
+): Promise<TourDeleteActionResult> {
+  if (!isSupabaseConfigured) return { ok: false, message: "Database is not configured." };
+  const venue = await getCurrentVenue();
+  if (!venue) return { ok: false, message: "No venue session." };
+  const supabase = await createClient();
+  const { data: row, error: loadErr } = await supabase
+    .from("tour_appointments")
+    .select("id, lead_id, contact_email, contact_name")
+    .eq("id", appointmentId)
+    .eq("venue_id", venue.id)
+    .maybeSingle();
+  if (loadErr) return { ok: false, message: loadErr.message };
+  if (!row) return { ok: false, message: "Tour not found." };
+
+  const guard = canHardDeleteTourAppointment({
+    leadId: row.lead_id,
+    contactEmail: row.contact_email,
+    contactName: row.contact_name,
+  });
+  if (!guard.allowed) return { ok: false, message: guard.reason };
+
+  const { error } = await supabase
+    .from("tour_appointments")
+    .delete()
+    .eq("id", appointmentId)
+    .eq("venue_id", venue.id);
+  if (error) return { ok: false, message: error.message };
+  return { ok: true };
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapAppointment(r: any): import("@/lib/tours/types").TourAppointment {
-  return { id: r.id, venueId: r.venue_id, leadId: r.lead_id ?? null, scheduledAt: r.scheduled_at, durationMinutes: r.duration_minutes, status: r.status, contactName: r.contact_name ?? null, contactEmail: r.contact_email ?? null, contactPhone: r.contact_phone ?? null, eventType: r.event_type ?? null, eventDate: r.event_date ?? null, guestCount: r.guest_count ?? null, notes: r.notes ?? null, assignedTo: r.assigned_to ?? null, confirmedAt: r.confirmed_at ?? null, completedAt: r.completed_at ?? null, followUpSentAt: r.follow_up_sent_at ?? null, outcome: r.outcome ?? null, cancellationReason: r.cancellation_reason ?? null, createdAt: r.created_at, confirmationRequestedAt: r.confirmation_requested_at ?? null, confirmationSource: r.confirmation_source ?? null };
+  return {
+    id: r.id,
+    venueId: r.venue_id,
+    leadId: r.lead_id ?? null,
+    scheduledAt: r.scheduled_at ?? null,
+    actualOccurredAt: r.actual_occurred_at ?? null,
+    origin: r.origin === "walk_in" ? "walk_in" : "scheduled",
+    durationMinutes: r.duration_minutes,
+    status: r.status,
+    contactName: r.contact_name ?? null,
+    contactEmail: r.contact_email ?? null,
+    contactPhone: r.contact_phone ?? null,
+    eventType: r.event_type ?? null,
+    eventDate: r.event_date ?? null,
+    guestCount: r.guest_count ?? null,
+    notes: r.notes ?? null,
+    assignedTo: r.assigned_to ?? null,
+    confirmedAt: r.confirmed_at ?? null,
+    completedAt: r.completed_at ?? null,
+    followUpSentAt: r.follow_up_sent_at ?? null,
+    outcome: r.outcome ?? null,
+    cancellationReason: r.cancellation_reason ?? null,
+    createdAt: r.created_at,
+    confirmationRequestedAt: r.confirmation_requested_at ?? null,
+    confirmationSource: r.confirmation_source ?? null,
+    isArchived: Boolean(r.is_archived),
+  };
 }
 
 // ── Coordinator Tour Scheduling — schedule/reschedule/cancel from a Lead -------
@@ -419,10 +1034,39 @@ function mapAppointment(r: any): import("@/lib/tours/types").TourAppointment {
 // the public widget's book_tour() uses (via a shared internal SQL
 // function) — never a second implementation of "is this slot free."
 
-export async function getCoordinatorTourSlots(startDate: string, endDate: string): Promise<TourSlot[]> {
+export async function getCoordinatorTourSlots(
+  startDate: string,
+  endDate: string,
+  excludeAppointmentId?: string | null,
+): Promise<TourSlot[]> {
   if (!isSupabaseConfigured) return [];
   const supabase = await createClient();
-  const { data } = await supabase.rpc("get_coordinator_tour_slots", { p_start_date: startDate, p_end_date: endDate });
+  // Omit exclude when null/undefined so two-arg PostgREST callers (Schedule,
+  // Settings preview) keep using the default null path after the migration
+  // drops the old (date, date) overload in favor of a defaulted third arg.
+  const baseArgs = { p_start_date: startDate, p_end_date: endDate };
+  if (!excludeAppointmentId) {
+    const { data } = await supabase.rpc("get_coordinator_tour_slots", baseArgs);
+    if (!data || (data as Record<string, unknown>).error) return [];
+    return ((data as Record<string, unknown>).slots ?? []) as TourSlot[];
+  }
+
+  const { data, error } = await supabase.rpc("get_coordinator_tour_slots", {
+    ...baseArgs,
+    p_exclude_appointment_id: excludeAppointmentId,
+  });
+  // Pre-migration Sandbox still exposes only (date, date). Fall back so the
+  // Reschedule sheet remains usable until 20261427200000 is applied; self-
+  // exclusion then becomes authoritative.
+  if (error) {
+    const msg = error.message ?? "";
+    if (msg.includes("Could not find the function") || error.code === "PGRST202") {
+      const fallback = await supabase.rpc("get_coordinator_tour_slots", baseArgs);
+      if (!fallback.data || (fallback.data as Record<string, unknown>).error) return [];
+      return ((fallback.data as Record<string, unknown>).slots ?? []) as TourSlot[];
+    }
+    return [];
+  }
   if (!data || (data as Record<string, unknown>).error) return [];
   return ((data as Record<string, unknown>).slots ?? []) as TourSlot[];
 }
@@ -439,10 +1083,139 @@ const TOUR_RPC_ERRORS: Record<string, string> = {
   invalid_status: "That's not a valid tour status.",
 };
 
-async function sendConfirmationForResult(supabase: DbClient, appointmentId: string, leadId: string, relationshipId: string | null, venueId: string, venueName: string, primaryColor: string | null, scheduledAt: string, duration: number, contactEmail: string | null, contactName: string | null, timezone?: string | null) {
-  void sendTourConfirmation({
-    venueId, leadId, relationshipId, contactEmail, contactName, venueName, primaryColor, scheduledAt, durationMinutes: duration, timezone,
-  }).catch((err) => console.error("sendTourConfirmation failed:", err));
+async function sendScheduledEmailForAppointment(
+  appointmentId: string,
+  leadId: string,
+  relationshipId: string | null,
+  venueId: string,
+  venueName: string,
+  primaryColor: string | null,
+  scheduledAt: string,
+  duration: number,
+  contactEmail: string | null,
+  contactName: string | null,
+  timezone?: string | null,
+  brand?: ReturnType<typeof emailBrandFromVenue>,
+) {
+  try {
+    const supabase = await createClient();
+    const { data: appt } = await supabase.from("tour_appointments")
+      .select("confirm_token")
+      .eq("id", appointmentId)
+      .eq("venue_id", venueId)
+      .maybeSingle<{ confirm_token: string }>();
+    if (!appt?.confirm_token) {
+      return { ok: false as const, message: "This tour has no confirmation link yet." };
+    }
+    return await sendTourScheduled({
+      venueId, leadId, relationshipId, contactEmail, contactName, venueName, primaryColor,
+      brand, scheduledAt, durationMinutes: duration, confirmToken: appt.confirm_token, timezone,
+    });
+  } catch (err) {
+    console.error("sendTourScheduled failed:", err);
+    return { ok: false as const, message: "The scheduled tour email was not sent." };
+  }
+}
+
+export type TourSendPreviewResult =
+  | { ok: true; preview: TourCustomerSendPreview }
+  | { ok: false; error: string };
+
+export async function previewScheduleTourEmail(leadId: string, slotStart: string): Promise<TourSendPreviewResult> {
+  if (!isSupabaseConfigured) return { ok: false, error: "Backend not configured." };
+  const venue = await getCurrentVenue();
+  if (!venue) return { ok: false, error: "Session expired." };
+  const supabase = await createClient();
+  const { data: lead } = await supabase.from("leads")
+    .select("first_name, last_name, email")
+    .eq("id", leadId).eq("venue_id", venue.id)
+    .maybeSingle<{ first_name: string; last_name: string; email: string | null }>();
+  if (!lead) return { ok: false, error: "This lead could not be found." };
+  const { data: settings } = await supabase.from("venues")
+    .select("tour_duration_minutes")
+    .eq("id", venue.id)
+    .maybeSingle<{ tour_duration_minutes: number }>();
+  const duration = settings?.tour_duration_minutes ?? 60;
+  const contactName = `${lead.first_name} ${lead.last_name}`.trim();
+  // Preview before an appointment exists — placeholder token is illustrative only.
+  return {
+    ok: true,
+    preview: previewTourScheduled({
+      venueId: venue.id,
+      leadId,
+      relationshipId: null,
+      contactEmail: lead.email,
+      contactName,
+      venueName: venue.name,
+      primaryColor: venue.primaryColor,
+      brand: emailBrandFromVenue(venue),
+      scheduledAt: slotStart,
+      durationMinutes: duration,
+      confirmToken: "00000000-0000-0000-0000-000000000000",
+      timezone: venue.timezone,
+    }, "schedule"),
+  };
+}
+
+export async function previewRescheduleTourEmail(appointmentId: string, slotStart: string): Promise<TourSendPreviewResult> {
+  if (!isSupabaseConfigured) return { ok: false, error: "Backend not configured." };
+  const venue = await getCurrentVenue();
+  if (!venue) return { ok: false, error: "Session expired." };
+  const supabase = await createClient();
+  const { data: appt } = await supabase.from("tour_appointments")
+    .select("lead_id, contact_name, contact_email, duration_minutes, status, confirm_token")
+    .eq("id", appointmentId).eq("venue_id", venue.id)
+    .maybeSingle<{ lead_id: string | null; contact_name: string | null; contact_email: string | null; duration_minutes: number; status: string; confirm_token: string }>();
+  if (!appt) return { ok: false, error: "This tour could not be found." };
+  if (appt.status === "cancelled" || appt.status === "completed" || appt.status === "no_show") {
+    return { ok: false, error: "This tour can't be rescheduled — it's already cancelled, completed, or marked no-show." };
+  }
+  return {
+    ok: true,
+    preview: previewTourScheduled({
+      venueId: venue.id,
+      leadId: appt.lead_id ?? "",
+      relationshipId: null,
+      contactEmail: appt.contact_email,
+      contactName: appt.contact_name,
+      venueName: venue.name,
+      primaryColor: venue.primaryColor,
+      brand: emailBrandFromVenue(venue),
+      scheduledAt: slotStart,
+      durationMinutes: appt.duration_minutes,
+      confirmToken: appt.confirm_token,
+      timezone: venue.timezone,
+    }, "reschedule"),
+  };
+}
+
+export async function previewTourConfirmationRequestEmail(appointmentId: string): Promise<TourSendPreviewResult> {
+  if (!isSupabaseConfigured) return { ok: false, error: "Backend not configured." };
+  const venue = await getCurrentVenue();
+  if (!venue) return { ok: false, error: "Session expired." };
+  const supabase = await createClient();
+  const { data: appt } = await supabase.from("tour_appointments")
+    .select("status, lead_id, contact_name, contact_email, scheduled_at, duration_minutes, confirm_token")
+    .eq("id", appointmentId).eq("venue_id", venue.id)
+    .maybeSingle<{ status: string; lead_id: string | null; contact_name: string | null; contact_email: string | null; scheduled_at: string; duration_minutes: number; confirm_token: string }>();
+  if (!appt) return { ok: false, error: "This tour could not be found." };
+  if (appt.status !== "scheduled") return { ok: false, error: "Only a Scheduled tour can have a confirmation request sent." };
+  return {
+    ok: true,
+    preview: previewTourConfirmationRequest({
+      venueId: venue.id,
+      relationshipId: null,
+      contactEmail: appt.contact_email,
+      contactName: appt.contact_name,
+      venueName: venue.name,
+      primaryColor: venue.primaryColor,
+      brand: emailBrandFromVenue(venue),
+      scheduledAt: appt.scheduled_at,
+      durationMinutes: appt.duration_minutes,
+      confirmToken: appt.confirm_token,
+      timezone: venue.timezone,
+    }),
+  };
 }
 
 export async function scheduleTourForLead(leadId: string, slotStart: string, notes?: string): Promise<CoordinatorTourResult> {
@@ -458,8 +1231,8 @@ export async function scheduleTourForLead(leadId: string, slotStart: string, not
   const d = data as Record<string, unknown>;
   if (!d?.ok) return { ok: false, error: TOUR_RPC_ERRORS[d?.error as string] ?? "Could not schedule this tour." };
 
-  const result: CoordinatorTourResult = {
-    ok: true,
+  const result = {
+    ok: true as const,
     appointmentId: d.appointmentId as string,
     leadId: d.leadId as string,
     relationshipId: (d.relationshipId as string | null) ?? null,
@@ -472,14 +1245,42 @@ export async function scheduleTourForLead(leadId: string, slotStart: string, not
     contactPhone: (d.contactPhone as string | null) ?? null,
   };
 
-  await sendConfirmationForResult(supabase, result.appointmentId, result.leadId, result.relationshipId, result.venueId, result.venueName, venue.primaryColor, result.scheduledAt, result.duration, result.contactEmail, result.contactName, venue.timezone);
+  const confirmationEmail = await sendScheduledEmailForAppointment(
+    result.appointmentId, result.leadId, result.relationshipId, result.venueId, result.venueName,
+    venue.primaryColor, result.scheduledAt, result.duration, result.contactEmail, result.contactName, venue.timezone,
+    emailBrandFromVenue(venue),
+  );
 
   // Tour Scheduled is a real Sales Pipeline stage. Forward-only — never
   // regresses Booked/Lost or stages already past tour_scheduled.
   await advanceLeadSalesStageIfForward(leadId, "tour_scheduled")
     .catch((err) => console.error("Lead stage advance on tour scheduling failed:", err));
 
-  return result;
+  return { ...result, confirmationEmail };
+}
+
+/** Staff-generated, venue-bound public scheduler for an existing Lead. */
+export async function getLeadPublicTourSchedulingUrl(leadId: string): Promise<string | null> {
+  if (!isSupabaseConfigured) return null;
+  const venue = await getCurrentVenue();
+  if (!venue) return null;
+  const supabase = await createClient();
+  const { data: lead } = await supabase
+    .from("leads")
+    .select("id, sales_stage")
+    .eq("id", leadId)
+    .eq("venue_id", venue.id)
+    .maybeSingle<{ id: string; sales_stage: string | null }>();
+  if (!lead || !isOpenLeadLifecycle(lead.sales_stage)) return null;
+  const { data: settings } = await supabase
+    .from("venues")
+    .select("tour_embed_key, tour_scheduling_enabled")
+    .eq("id", venue.id)
+    .maybeSingle<{ tour_embed_key: string | null; tour_scheduling_enabled: boolean }>();
+  if (!settings?.tour_scheduling_enabled || !settings.tour_embed_key) return null;
+  const secret = requireTourOriginSigningSecret();
+  const token = createTourOriginToken({ venueId: venue.id, leadId: lead.id }, secret);
+  return publicTourSchedulingPathForLead(settings.tour_embed_key, token);
 }
 
 export async function rescheduleTour(appointmentId: string, newSlotStart: string): Promise<CoordinatorTourResult> {
@@ -495,11 +1296,11 @@ export async function rescheduleTour(appointmentId: string, newSlotStart: string
   const d = data as Record<string, unknown>;
   if (!d?.ok) return { ok: false, error: TOUR_RPC_ERRORS[d?.error as string] ?? "Could not reschedule this tour." };
 
-  const result: CoordinatorTourResult = {
-    ok: true,
+  const result = {
+    ok: true as const,
     appointmentId,
     leadId: d.leadId as string,
-    relationshipId: null,
+    relationshipId: null as string | null,
     scheduledAt: d.scheduledAt as string,
     oldScheduledAt: d.oldScheduledAt as string,
     venueName: d.venueName as string,
@@ -517,9 +1318,13 @@ export async function rescheduleTour(appointmentId: string, newSlotStart: string
     result.relationshipId = leadRow?.relationship_id ?? null;
   }
 
-  await sendConfirmationForResult(supabase, result.appointmentId, result.leadId, result.relationshipId, result.venueId, result.venueName, venue.primaryColor, result.scheduledAt, result.duration, result.contactEmail, result.contactName, venue.timezone);
+  const confirmationEmail = await sendScheduledEmailForAppointment(
+    result.appointmentId, result.leadId, result.relationshipId, result.venueId, result.venueName,
+    venue.primaryColor, result.scheduledAt, result.duration, result.contactEmail, result.contactName, venue.timezone,
+    emailBrandFromVenue(venue),
+  );
 
-  return result;
+  return { ...result, confirmationEmail };
 }
 
 const STATUS_TO_SIGNAL: Record<string, string> = {
@@ -540,10 +1345,20 @@ const POST_TOUR_STATUSES = new Set(["completed", "no_show", "cancelled"]);
  * pending reminders) that already existed and must not be dropped or
  * duplicated by a naive rewrite.
  */
+export type UpdateTourStatusOptions = {
+  /**
+   * Venue-local actual occurrence (YYYY-MM-DD + HH:MM). Optional.
+   * Never inferred from click time. When omitted, actual_occurred_at is left unchanged.
+   */
+  actualDate?: string;
+  actualTime?: string;
+};
+
 export async function updateTourStatus(
   appointmentId: string,
   status: "scheduled" | "confirmed" | "completed" | "cancelled" | "no_show",
   reason?: string,
+  options?: UpdateTourStatusOptions,
 ): Promise<SimpleTourResult> {
   if (!isSupabaseConfigured) return { ok: false, error: "Backend not configured." };
   const venue = await getCurrentVenue();
@@ -551,17 +1366,38 @@ export async function updateTourStatus(
   const supabase = await createClient();
 
   const { data: appt } = await supabase.from("tour_appointments")
-    .select("status, lead_id, contact_name, scheduled_at")
+    .select("status, lead_id, contact_name, contact_email, scheduled_at, duration_minutes, actual_occurred_at")
     .eq("id", appointmentId).eq("venue_id", venue.id)
-    .maybeSingle<{ status: string; lead_id: string | null; contact_name: string | null; scheduled_at: string }>();
+    .maybeSingle<{
+      status: string;
+      lead_id: string | null;
+      contact_name: string | null;
+      contact_email: string | null;
+      scheduled_at: string | null;
+      duration_minutes: number;
+      actual_occurred_at: string | null;
+    }>();
   if (!appt) return { ok: false, error: "This tour could not be found." };
 
   const patch: Record<string, unknown> = { status, updated_at: new Date().toISOString() };
   if (status === "cancelled") patch.cancellation_reason = reason?.trim() || null;
-  // A manual status change must never itself send customer communication —
-  // this is the one and only place confirmation_source ever becomes
-  // 'manual'. The other path, 'prospect_link', can only be set by
-  // confirm_tour_by_token(), never from here.
+  if (status === "completed") {
+    patch.completed_at = new Date().toISOString();
+    // Explicit actual only — never invent from now(), never rewrite scheduled_at.
+    const actualDate = options?.actualDate?.trim();
+    const actualTime = options?.actualTime?.trim().slice(0, 5);
+    if (actualDate && actualTime) {
+      const actualOccurredAt = venueLocalToUtcIso(actualDate, actualTime, venue.timezone);
+      if (actualOccurrenceIsFuture(actualOccurredAt)) {
+        return { ok: false, error: FUTURE_ACTUAL_OCCURRENCE_MESSAGE };
+      }
+      patch.actual_occurred_at = actualOccurredAt;
+    }
+  }
+  // Manual confirm is the only place confirmation_source becomes 'manual'.
+  // The other path, 'prospect_link', is set only by confirm_tour_by_token().
+  // When the tour newly becomes confirmed, send the confirmed-language
+  // customer email (Add to Calendar) — same content as the prospect-link path.
   const becameConfirmed = status === "confirmed" && appt.status !== "confirmed";
   if (becameConfirmed) {
     patch.confirmed_at = new Date().toISOString();
@@ -569,17 +1405,53 @@ export async function updateTourStatus(
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase.from("tour_appointments") as any).update(patch).eq("id", appointmentId).eq("venue_id", venue.id);
+  const { data: saved, error } = await (supabase.from("tour_appointments") as any)
+    .update(patch)
+    .eq("id", appointmentId)
+    .eq("venue_id", venue.id)
+    .select("id, status, scheduled_at, actual_occurred_at, completed_at")
+    .maybeSingle();
   if (error) {
     const fail = tourCapacityFailureFromUnknown(error);
     return { ok: false, error: fail ? TOUR_RPC_ERRORS.slot_taken : error.message };
   }
+  if (!saved || saved.status !== status) {
+    return { ok: false, error: "This tour could not be updated." };
+  }
 
-  if (becameConfirmed && appt.lead_id) {
-    void supabase.from("lead_activities").insert({
-      venue_id: venue.id, lead_id: appt.lead_id, type: "tour_confirmed", title: "Tour confirmed",
-      description: `Tour for ${appt.contact_name ?? "the prospect"} marked confirmed manually.`,
-    }).then(null, () => {});
+  if (becameConfirmed) {
+    if (appt.lead_id) {
+      void supabase.from("lead_activities").insert({
+        venue_id: venue.id, lead_id: appt.lead_id, type: "tour_confirmed", title: "Tour confirmed",
+        description: `Tour for ${appt.contact_name ?? "the prospect"} marked confirmed manually.`,
+      }).then(null, () => {});
+    }
+    // Confirmation email needs a booked slot. Walk-ins have null scheduled_at
+    // and are recorded completed, not confirmed — so this path is scheduled-only.
+    const scheduledAt = appt.scheduled_at;
+    if (scheduledAt) {
+      void (async () => {
+        let relationshipId: string | null = null;
+        if (appt.lead_id) {
+          const { data: lead } = await supabase.from("leads").select("relationship_id")
+            .eq("id", appt.lead_id).maybeSingle<{ relationship_id: string | null }>();
+          relationshipId = lead?.relationship_id ?? null;
+        }
+        await sendTourConfirmation({
+          venueId: venue.id,
+          leadId: appt.lead_id ?? "",
+          relationshipId,
+          contactEmail: appt.contact_email,
+          contactName: appt.contact_name,
+          venueName: venue.name,
+          primaryColor: venue.primaryColor,
+          brand: emailBrandFromVenue(venue),
+          scheduledAt,
+          durationMinutes: appt.duration_minutes,
+          timezone: venue.timezone,
+        });
+      })().catch((err) => console.error("sendTourConfirmation failed:", err));
+    }
   }
 
   if (status === "cancelled" || status === "no_show") {
@@ -617,7 +1489,13 @@ export async function updateTourStatus(
     }
   }
 
-  return { ok: true };
+  return {
+    ok: true,
+    status: saved.status,
+    scheduledAt: saved.scheduled_at ?? null,
+    actualOccurredAt: saved.actual_occurred_at ?? null,
+    completedAt: saved.completed_at ?? null,
+  };
 }
 
 /**
@@ -648,7 +1526,8 @@ export async function requestTourConfirmation(appointmentId: string): Promise<Si
 
   const sendResult = await sendTourConfirmationRequest({
     venueId: venue.id, relationshipId, contactEmail: appt.contact_email, contactName: appt.contact_name,
-    venueName: venue.name, primaryColor: venue.primaryColor, scheduledAt: appt.scheduled_at,
+    venueName: venue.name, primaryColor: venue.primaryColor, brand: emailBrandFromVenue(venue),
+    scheduledAt: appt.scheduled_at,
     durationMinutes: appt.duration_minutes, confirmToken: appt.confirm_token, timezone: venue.timezone,
   });
   if (!sendResult.ok) return { ok: false, error: sendResult.message ?? "Could not send the confirmation request." };
@@ -708,7 +1587,51 @@ export async function confirmTourByToken(token: string): Promise<{ ok: boolean; 
   if (!d?.ok) {
     return { ok: false, error: d?.error === "not_confirmable" ? "This tour is no longer available to confirm." : "This confirmation link isn't valid." };
   }
-  return { ok: true, alreadyConfirmed: Boolean(d.alreadyConfirmed) };
+  const alreadyConfirmed = Boolean(d.alreadyConfirmed);
+  // Fresh confirmation only — never re-send on alreadyConfirmed.
+  if (!alreadyConfirmed) {
+    void (async () => {
+      const admin = createAdminClient();
+      const { data: appt } = await admin.from("tour_appointments")
+        .select("id, venue_id, lead_id, contact_email, contact_name, scheduled_at, duration_minutes, venues(name, primary_color, timezone, logo_url, email_signature, email, phone, email_footer_show_signature, email_footer_show_email, email_footer_show_phone)")
+        .eq("confirm_token", token)
+        .maybeSingle<{
+          id: string; venue_id: string; lead_id: string | null;
+          contact_email: string | null; contact_name: string | null;
+          scheduled_at: string; duration_minutes: number;
+          venues: {
+            name: string;
+            primary_color: string | null;
+            timezone: string | null;
+            logo_url: string | null;
+            email_signature: string | null;
+            email: string | null;
+            phone: string | null;
+          } | null;
+        }>();
+      if (!appt) return;
+      let relationshipId: string | null = null;
+      if (appt.lead_id) {
+        const { data: lead } = await admin.from("leads").select("relationship_id")
+          .eq("id", appt.lead_id).maybeSingle<{ relationship_id: string | null }>();
+        relationshipId = lead?.relationship_id ?? null;
+      }
+      await sendTourConfirmation({
+        venueId: appt.venue_id,
+        leadId: appt.lead_id ?? "",
+        relationshipId,
+        contactEmail: appt.contact_email,
+        contactName: appt.contact_name,
+        venueName: appt.venues?.name ?? "Venue",
+        primaryColor: appt.venues?.primary_color ?? null,
+        brand: emailBrandFromVenue(appt.venues),
+        scheduledAt: appt.scheduled_at,
+        durationMinutes: appt.duration_minutes,
+        timezone: appt.venues?.timezone ?? null,
+      });
+    })().catch((err) => console.error("sendTourConfirmation failed:", err));
+  }
+  return { ok: true, alreadyConfirmed };
 }
 
 export async function updateTourOutcome(

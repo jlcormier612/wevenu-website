@@ -1,0 +1,156 @@
+PASS Serving expected SHA — image=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:dfabcca2107558710b72a9c6efd650c7733ad174 expected=dfabcca21075
+PASS A Strip present as commercial home — Commercial workspace
+
+Event-level home for commercial progress. Inventory selection and client-selectable choices are separate workflows. Applying a template is not sharing an Event Order; client submission is not venue confirmation; finalizing is distinct from sharing; invoice and payment plan follow after the agreed Event Order. Use the chips to 
+PASS A Copy: separate workflows + finalize ≠ share — Commercial workspace
+
+Event-level home for commercial progress. Inventory selection and client-selectable choices are separate workflows. Applying a template is not sharing an Event Order; client submission is not venue confirmation; finalizing is distinct from sharing; invoice a
+PASS A Anchors + Open Inventory present — subnav
+PASS A Strip has no Share/Finalize/Send authoritative controls — deep-link chips only
+PASS A Choices + Event Order panels still mounted (Path A does not require groups) — choicesPanel=1 orderPanel=1
+PASS A Event Order chip matches persisted finalize≠share — chip=Event Order
+· Shared db status=finalized shared_at=2026-10-23T00:26:09.17+00:00 expect=Shared
+PASS B Inventory chip matches persisted status — chip=Inventory
+· Awaiting client db=shared expect=Awaiting client
+PASS B Client submission not shown as venue confirmation — status=shared chip=Inventory
+· Awaiting client
+PASS B Open Inventory reaches Inventory tab — url=https://app.sandbox.hellotocheers.com/clients/b4e2764b-be33-4579-89e3-0c8e4a6dd5be?tab=event-order#inventory activeAttr= panel=true
+PASS C Choices chip present (separate from Inventory) — choices=1 inventory=1 choiceRows=1
+PASS C Choices anchor scrolls to client_choices panel — strip=true hash=#event-order-choices Client selections
+Optional choice packets from Event Order Templates (menus, add-ons, rentals). The Event Order below can already include venue-authored lines — those are not client submissions. Clien
+PASS C Event Order anchor reaches order panel — hash=#event-order-order
+PASS D Invoice anchor reaches existing EO invoice link — Amount due lives on
+Event & Inventory Selections INV-2026-4489C8
+Draft
+Open Invoice
+Create Payment Plan
+
+Event Order is not an invoice. The payment plan total always follows this invoice.
+PASS D Invoice chip is status/deep-link only — Invoice
+· Draft
+PASS D Strip does not expose Create Invoice / Payment Plan primary actions — no finance create on strip
+PASS E Inventory tab intact — inventory tab
+PASS E Payments tab intact — payments
+PASS E C2 Library Packages ≠ Event Order Templates intact — library hub
+PASS E C1 Setup readiness links intact — Event setup
+
+Using: Standard Wedding Setup
+
+Review your event's standard setup, make any event-specific changes, and release the prepared experience to the client portal. Invite the client separately when you're ready. Questionnaires use authorized send when staff choose — not an
+PASS E Portal inventory reachable — B2P & Portal
+
+·
+
+Jen's Fancy Venue
+
+Jul 17, 2060
+
+Export my data
+5
+🏠
+Home
+✅
+Tasks
+9
+🕒
+Timeline
+📁
+Docs
+🗺️
+Floor Plan
+🪑
+Inventory
+1
+📋
+Order
+1
+✅
+Choices
+💳
+Payments
+💬
+Messages
+🏛️
+Guide
+🤝
+Vendors
+PASS E Portal event-order reachable — B2P & Portal
+
+·
+
+Jen's Fancy Venue
+
+Jul 17, 2060
+
+Export my data
+5
+🏠
+Home
+✅
+Tasks
+9
+🕒
+Timeline
+📁
+Docs
+🗺️
+Floor Plan
+🪑
+Inventory
+1
+📋
+Order
+1
+✅
+Choices
+💳
+Payments
+💬
+Messages
+1
+🏛️
+Guide
+🤝
+Vendo
+PASS E Portal choices reachable — B2P & Portal
+
+·
+
+Jen's Fancy Venue
+
+Jul 17, 2060
+
+Export my data
+5
+🏠
+Home
+✅
+Tasks
+9
+🕒
+Timeline
+📁
+Docs
+🗺️
+Floor Plan
+🪑
+Inventory
+1
+📋
+Order
+1
+✅
+Choices
+💳
+Payments
+💬
+Messages
+1
+🏛️
+Guide
+🤝
+Vendo
+PASS E Strip + Open Inventory visible at 390 — 390
+PASS E Open Inventory works at 390 — https://app.sandbox.hellotocheers.com/clients/b4e2764b-be33-4579-89e3-0c8e4a6dd5be?tab=event-order#inventory
+PASS E No duplicate inventory/choices/EO lines from strip navigation — inv 1->1 lines 44->44 choices 1->1
+ALL PASS 26/26

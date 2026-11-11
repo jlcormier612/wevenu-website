@@ -1,0 +1,11 @@
+PASS fixtures_created — A=2da6122a-7d38-4c37-83b9-c07b3b49017b B=be420e30-d789-4171-9675-f29521e31648
+PASS merge_button_visible — ok
+PASS merge_dialog_open — dialog
+PASS preview_shows_primary — Survives label
+PASS confirm_enabled — enabled
+PASS redirected_to_primary — https://app.sandbox.hellotocheers.com/leads/2da6122a-7d38-4c37-83b9-c07b3b49017b | toast=["Leads merged. Opening the surviving lead."]
+PASS db_secondary_soft_marked — {"merged_into_lead_id":"2da6122a-7d38-4c37-83b9-c07b3b49017b","merged_at":"2026-10-20T22:48:26.201909+00:00","phone":"555-0188"}
+PASS db_phone_filled — {"phone":"555-0188","merged_into_lead_id":null}
+PASS secondary_page_redirects — https://app.sandbox.hellotocheers.com/leads/2da6122a-7d38-4c37-83b9-c07b3b49017b?mergedFrom=be420e30-d789-4171-9675-f29521e31648
+
+SUMMARY pass=9 fail=0

@@ -12,8 +12,12 @@ export type ContractLineageNode = {
   signedAt: string | null;
   /** Document Domain finalized (Final PDF), when known. */
   finalized?: boolean;
-  /** Venue signature present — content locked even while status is still draft. */
+  /** Venue countersignature present. */
   venueSigned?: boolean;
+  /** At least one required client signature captured. */
+  anyClientSigned?: boolean;
+  requiredClientTotal?: number;
+  requiredClientSigned?: number;
 };
 
 export type ContractVersionEntry = {
@@ -27,6 +31,10 @@ export type ContractVersionEntry = {
   finalized: boolean;
   createdAt: string;
   amendsContractId: string | null;
+  venueSigned?: boolean;
+  anyClientSigned?: boolean;
+  requiredClientTotal?: number;
+  requiredClientSigned?: number;
 };
 
 /** Walk parents until root; depth of this node is the version ordinal (1-based). */
@@ -48,13 +56,13 @@ export function deriveVersionNumber(
   return n;
 }
 
-/** True when content is immutable under venue-first signing (UI lock presentation). */
+/** True when content is immutable under client-first signing (UI lock presentation). */
 export function isContractContentLocked(opts: {
   status: string;
   venueSigned: boolean;
   anyClientSigned?: boolean;
 }): boolean {
-  if (opts.venueSigned || opts.anyClientSigned) return true;
+  if (opts.anyClientSigned) return true;
   return opts.status === "signed" || opts.status === "cancelled" || opts.status === "expired";
 }
 
@@ -104,13 +112,16 @@ export function buildContractVersionFamily(
     .map((id) => {
       const n = byId.get(id)!;
       const versionNumber = deriveVersionNumber(id, byId);
+      const anyClientSigned = Boolean(n.anyClientSigned);
+      const venueSigned = Boolean(n.venueSigned);
       const locked =
         n.status === "signed" ||
         n.status === "cancelled" ||
         n.status === "expired" ||
         Boolean(n.signedAt) ||
         Boolean(n.finalized) ||
-        Boolean(n.venueSigned);
+        anyClientSigned ||
+        venueSigned;
       return {
         id,
         versionNumber,
@@ -122,6 +133,10 @@ export function buildContractVersionFamily(
         finalized: Boolean(n.finalized),
         createdAt: n.createdAt,
         amendsContractId: n.amendsContractId,
+        venueSigned,
+        anyClientSigned,
+        requiredClientTotal: n.requiredClientTotal,
+        requiredClientSigned: n.requiredClientSigned,
       } satisfies ContractVersionEntry;
     })
     .sort((a, b) => a.versionNumber - b.versionNumber || a.createdAt.localeCompare(b.createdAt));
@@ -129,18 +144,133 @@ export function buildContractVersionFamily(
   return entries;
 }
 
+export type AgreementLineagePointer = {
+  id: string;
+  amendsContractId: string | null;
+  createdAt: string;
+};
+
+export type CurrentAgreementSelection = {
+  currentId: string;
+  familyIds: string[];
+  versionNumber: number;
+};
+
+/**
+ * Roll up contract instances into agreement families using ONLY
+ * amends_contract_id. Same client/title/event is never a family.
+ * Current = highest version ordinal in the family (then latest created_at).
+ */
+export function selectCurrentAgreements(
+  nodes: AgreementLineagePointer[],
+): CurrentAgreementSelection[] {
+  const byId = new Map(nodes.map((n) => [n.id, n]));
+  const children = new Map<string, string[]>();
+  for (const n of nodes) {
+    if (!n.amendsContractId || !byId.has(n.amendsContractId)) continue;
+    const list = children.get(n.amendsContractId) ?? [];
+    list.push(n.id);
+    children.set(n.amendsContractId, list);
+  }
+
+  const processed = new Set<string>();
+  const selections: CurrentAgreementSelection[] = [];
+
+  for (const n of nodes) {
+    if (processed.has(n.id)) continue;
+
+    let root = n.id;
+    const seenUp = new Set<string>();
+    while (true) {
+      if (seenUp.has(root)) break;
+      seenUp.add(root);
+      const parent = byId.get(root)?.amendsContractId ?? null;
+      if (!parent || !byId.has(parent)) break;
+      root = parent;
+    }
+
+    const familyIds: string[] = [];
+    const queue = [root];
+    const seen = new Set<string>();
+    while (queue.length > 0) {
+      const id = queue.shift()!;
+      if (seen.has(id)) continue;
+      seen.add(id);
+      familyIds.push(id);
+      for (const child of children.get(id) ?? []) queue.push(child);
+    }
+    for (const id of familyIds) processed.add(id);
+
+    if (lineageFamilyHasCycle(familyIds, byId)) {
+      for (const id of familyIds) {
+        selections.push({ currentId: id, familyIds: [id], versionNumber: 1 });
+      }
+      continue;
+    }
+
+    let currentId = familyIds[0]!;
+    let bestVersion = deriveVersionNumber(currentId, byId);
+    let bestCreated = byId.get(currentId)?.createdAt ?? "";
+    for (const id of familyIds) {
+      const version = deriveVersionNumber(id, byId);
+      const created = byId.get(id)?.createdAt ?? "";
+      if (version > bestVersion || (version === bestVersion && created > bestCreated)) {
+        currentId = id;
+        bestVersion = version;
+        bestCreated = created;
+      }
+    }
+
+    selections.push({
+      currentId,
+      familyIds,
+      versionNumber: bestVersion,
+    });
+  }
+
+  return selections;
+}
+
+function lineageFamilyHasCycle(
+  familyIds: string[],
+  byId: Map<string, { amendsContractId: string | null }>,
+): boolean {
+  const family = new Set(familyIds);
+  for (const start of familyIds) {
+    const seen = new Set<string>();
+    let cursor: string | null = start;
+    while (cursor && family.has(cursor)) {
+      if (seen.has(cursor)) return true;
+      seen.add(cursor);
+      const node = byId.get(cursor);
+      const parentId: string | null = node?.amendsContractId ?? null;
+      if (!parentId || !family.has(parentId)) break;
+      cursor = parentId;
+    }
+  }
+  return false;
+}
+
 export function formatVersionLabel(versionNumber: number): string {
   return `Version ${versionNumber}`;
 }
 
-export function statusLabelForVersion(entry: Pick<ContractVersionEntry, "status" | "finalized" | "locked">): string {
-  if (entry.finalized) return "Signed · Final";
-  if (entry.status === "signed") return "Signed";
-  if (entry.status === "sent") return "Sent";
-  if (entry.status === "draft") {
-    if (entry.locked) return "Ready to send";
-    return "Draft";
+export function statusLabelForVersion(entry: Pick<
+  ContractVersionEntry,
+  "status" | "finalized" | "locked" | "venueSigned" | "anyClientSigned" | "requiredClientTotal" | "requiredClientSigned"
+>): string {
+  if (entry.finalized) return "Fully Executed · Final";
+  if (entry.status === "signed") return "Fully Executed";
+  if (entry.status === "sent") {
+    const total = Math.max(1, entry.requiredClientTotal ?? 1);
+    const signed = entry.requiredClientSigned ?? (entry.anyClientSigned ? total : 0);
+    if (signed >= total && !entry.venueSigned) return "Awaiting Venue Signature";
+    if (total > 1 && signed > 0 && signed < total) {
+      return `Sent to Client (${signed} of ${total})`;
+    }
+    return "Sent to Client";
   }
+  if (entry.status === "draft") return "Draft";
   if (entry.status === "cancelled") return "Cancelled";
   if (entry.status === "expired") return "Expired";
   return entry.status;

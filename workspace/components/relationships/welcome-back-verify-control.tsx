@@ -37,10 +37,10 @@ export function WelcomeBackVerifyControl({
       }
       const label =
         action === "approve"
-          ? "Confirmed returning"
+          ? "Verified — billing unchanged"
           : action === "reject"
-            ? "Marked not returning"
-            : "Marked needs follow up";
+            ? "Marked not eligible — billing unchanged"
+            : "Needs review";
       setDone(label);
       startTransition(() => router.refresh());
     } catch {
@@ -57,7 +57,7 @@ export function WelcomeBackVerifyControl({
       ? "rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-2 py-1 text-[0.7rem] font-medium text-[var(--forest-sage)] disabled:opacity-60"
       : "rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-4 py-2 text-sm font-medium text-[var(--forest-sage)] disabled:opacity-60";
   const followUpBtn =
-    "rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--warm-gray)] px-4 py-2 text-sm font-medium text-[var(--forest-sage)] disabled:opacity-60";
+    "rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--warm-gray)] px-4 py-2 text-sm font-medium text-foreground disabled:opacity-60";
 
   const actions = (
     <div className="flex flex-wrap gap-2">
@@ -67,7 +67,7 @@ export function WelcomeBackVerifyControl({
         onClick={() => void onAction("approve")}
         className={primaryBtn}
       >
-        Confirm returning
+        Verify
       </button>
       <button
         type="button"
@@ -75,7 +75,7 @@ export function WelcomeBackVerifyControl({
         onClick={() => void onAction("reject")}
         className={secondaryBtn}
       >
-        Not returning
+        Mark not eligible
       </button>
       {variant === "panel" ? (
         <button
@@ -84,7 +84,7 @@ export function WelcomeBackVerifyControl({
           onClick={() => void onAction("needs_follow_up")}
           className={followUpBtn}
         >
-          Needs Follow Up
+          Needs review
         </button>
       ) : null}
     </div>
@@ -134,7 +134,7 @@ export function WelcomeBackVerifyControl({
             onClick={() => void onAction("approve")}
             className={primaryBtn}
           >
-            Confirm returning
+            Verify
           </button>
           <button
             type="button"
@@ -142,15 +142,15 @@ export function WelcomeBackVerifyControl({
             onClick={() => void onAction("reject")}
             className={secondaryBtn}
           >
-            Not returning
+            Mark not eligible
           </button>
           <button
             type="button"
             disabled={pending}
             onClick={() => void onAction("needs_follow_up")}
-            className="rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--warm-gray)] px-3 py-1.5 text-xs font-medium text-[var(--forest-sage)] disabled:opacity-60"
+            className="rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--warm-gray)] px-3 py-1.5 text-xs font-medium text-foreground disabled:opacity-60"
           >
-            Needs Follow Up
+            Needs review
           </button>
         </div>
         {feedback}
@@ -160,12 +160,14 @@ export function WelcomeBackVerifyControl({
 
   return (
     <div id="welcome-back-verify" className="ws-panel border-[var(--soft-sage)]/50 p-5">
-      <p className="ws-eyebrow">Welcome Back Request</p>
+      <p className="ws-eyebrow">Former Weven / Welcome Back</p>
       <h2 className="mt-1 font-heading text-xl">Verify eligibility</h2>
       <p className="mt-2 text-sm ws-muted">
-        {venueName ?? "This venue"} self-identified for Welcome Back. Confirming
-        returning applies Founding Member pricing on this Relationship — no
-        separate queue.
+        {venueName ?? "This venue"} self-declared former Weven eligibility at
+        Checkout. Confirm, flag for review, or mark not eligible. Marking not
+        eligible records your decision only — it does not automatically change
+        Stripe billing. Any billing correction requires a separate authorized
+        action.
       </p>
 
       <div className="mt-4">{actions}</div>

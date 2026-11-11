@@ -33,7 +33,12 @@ export type VenueEvent = {
   endTime: string | null;
   setupTime: string | null;
   teardownTime: string | null;
+  /** Estimated guest count (`events.guest_count`). */
   guestCount: number | null;
+  /** Optional Guaranteed guest count (`events.guaranteed_guest_count`). */
+  guaranteedGuestCount: number | null;
+  /** Operational owner. Null or omitted until the venue assigns someone. */
+  assignedStaffId?: string | null;
   /**
    * Calendar date the booking commitment was made (payment timing "At booking").
    * Distinct from eventDate (celebration day) and createdAt (row insert).
@@ -44,6 +49,16 @@ export type VenueEvent = {
   operationalFloorPlanId: string | null;
   /** Phase 2 — couple-selected event floor plan (independent of operational). */
   coupleSelectedFloorPlanId: string | null;
+  /** Phase 2 — preference lifecycle for coupleSelectedFloorPlanId. */
+  couplePreferenceStatus?: string | null;
+  /** Phase 2 — last approved preference (preserved across decline/defer/withdraw/supersede). */
+  coupleApprovedFloorPlanId?: string | null;
+  /** Phase 2 — explicit seating-in-use designation (C1). */
+  seatingInUseFloorPlanId?: string | null;
+  /** Post-book ceremony location outside the venue. Null until set. */
+  externalCeremonyLocation: string | null;
+  /** Post-book reception location outside the venue. Null until set. */
+  externalReceptionLocation: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -107,8 +122,17 @@ export type EventInput = {
   setupTime: string;
   teardownTime: string;
   guestCount: string;
+  /** Optional Guaranteed; empty string = unset. */
+  guaranteedGuestCount: string;
   clientId: string;
   spaceId: string;   // empty string = no space assigned
+  externalCeremonyLocation?: string;
+  externalReceptionLocation?: string;
+  /**
+   * Multi-space use → physical space rows. Undefined = leave existing
+   * assignments untouched on update; [] clears. Single-space venues ignore.
+   */
+  spaceAssignments?: import("@/lib/venue-spaces/assignments").EventSpaceAssignmentInput[];
 };
 
 export type TeamMemberInput = {
@@ -119,10 +143,26 @@ export type TeamMemberInput = {
 
 export type EventErrors = Record<string, string>;
 
+/** P1c — after Edit Event save, offer working-timeline review when dates/start changed. */
+export type EventTimingRecalcHint = {
+  dateChanged: boolean;
+  startChanged: boolean;
+  previousEventDate: string;
+  previousEventEndDate: string | null;
+  previousStartTime: string | null;
+};
+
 export type EventActionResult =
-  | { ok: true }
+  | {
+      ok: true;
+      timingRecalc?: EventTimingRecalcHint;
+      timelineWarning?: string;
+      flagWarning?: string;
+      /** Narrow B armor — Save notice when headcount-bound EO lines did not auto-update. */
+      headcountNotice?: string;
+    }
   | { ok: false; errors?: EventErrors; message?: string; code?: OccupancyCode };
 
 export type CreateEventResult =
-  | { ok: true; eventId: string }
+  | { ok: true; eventId: string; timelineWarning?: string }
   | { ok: false; errors?: EventErrors; message?: string; code?: OccupancyCode };

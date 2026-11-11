@@ -1,8 +1,9 @@
 "use client";
 
 /**
- * Add Hello to Cheers starter messages again — never overwrites customized
+ * Add Hello to Cheers starter messages — never overwrites customized
  * venue copies; creates new independent rows from protected masters.
+ * Distinct from Duplicate (which copies an existing venue-owned template).
  */
 
 import * as React from "react";
@@ -15,19 +16,26 @@ import {
   addStarterMessageAgainAction,
   provisionMissingStartersAction,
 } from "@/app/(app)/communication/templates/actions";
+import { starterInsertLabel } from "@/components/library/labels";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import type { StarterMessageMasterKey } from "@/lib/message-templates/starters";
+import {
+  STARTER_MESSAGE_MASTERS,
+  type StarterMessageMasterKey,
+} from "@/lib/message-templates/starters";
 
 export function AddHelloToCheersStarters({
   missingMasters,
+  presentKeys = [],
 }: {
   missingMasters: { key: StarterMessageMasterKey; name: string }[];
+  presentKeys?: string[];
 }) {
   const router = useRouter();
   const [pending, startTransition] = React.useTransition();
+  const present = new Set(presentKeys);
 
   function addOne(key: StarterMessageMasterKey) {
     startTransition(async () => {
@@ -66,17 +74,11 @@ export function AddHelloToCheersStarters({
             Add missing starters ({missingMasters.length})
           </DropdownMenuItem>
         )}
-        <DropdownMenuItem onClick={() => addOne("MSG-01")}>Add New Inquiry Response again</DropdownMenuItem>
-        <DropdownMenuItem onClick={() => addOne("MSG-02")}>Add Tour Confirmation again</DropdownMenuItem>
-        <DropdownMenuItem onClick={() => addOne("MSG-03")}>Add Tour Reminder again</DropdownMenuItem>
-        <DropdownMenuItem onClick={() => addOne("MSG-04")}>Add Tour Follow-Up again</DropdownMenuItem>
-        <DropdownMenuItem onClick={() => addOne("MSG-05")}>Add Proposal Follow-Up again</DropdownMenuItem>
-        <DropdownMenuItem onClick={() => addOne("MSG-06")}>Add Contract Reminder again</DropdownMenuItem>
-        <DropdownMenuItem onClick={() => addOne("MSG-07")}>Add Final Details Reminder again</DropdownMenuItem>
-        <DropdownMenuItem onClick={() => addOne("MSG-08")}>Add Final Guest Count Reminder again</DropdownMenuItem>
-        <DropdownMenuItem onClick={() => addOne("MSG-09")}>Add Almost Here again</DropdownMenuItem>
-        <DropdownMenuItem onClick={() => addOne("MSG-10")}>Add Payment Reminder again</DropdownMenuItem>
-        <DropdownMenuItem onClick={() => addOne("MSG-11")}>Add Post-Event Thank You again</DropdownMenuItem>
+        {STARTER_MESSAGE_MASTERS.map((m) => (
+          <DropdownMenuItem key={m.key} onClick={() => addOne(m.key)}>
+            {starterInsertLabel(m.name, present.has(m.key))}
+          </DropdownMenuItem>
+        ))}
       </DropdownMenuContent>
     </DropdownMenu>
   );

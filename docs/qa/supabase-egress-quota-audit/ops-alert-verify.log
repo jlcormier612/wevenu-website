@@ -1,0 +1,24 @@
+{
+  "tip": "553c8687dd19e1d5196c94fe07b9957cecabec70",
+  "usageOk": true,
+  "daily": {
+    "used": 33,
+    "limit": 100,
+    "sent": 33,
+    "received": 0,
+    "resets_at": "2026-10-12T23:59:59.999Z"
+  },
+  "monthly": {
+    "used": 2263,
+    "limit": 3000,
+    "sent": 2259,
+    "received": 4,
+    "resets_at": "2026-10-14T00:04:08.777Z"
+  },
+  "snsEmail": "PendingConfirmation",
+  "lambdaFanout": "Confirmed",
+  "sqsAlarm": true,
+  "sqsOk": false,
+  "resendHumanPathProven": true,
+  "alarmCount": 12
+}

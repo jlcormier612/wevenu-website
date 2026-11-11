@@ -11,7 +11,7 @@ export type NotificationStats = {
   pendingReminders: number;
   sentLast24h: number;
   failedLast24h: number;
-  lastProcessedAt: string | null;
+  lastSentAt: string | null;
   /** Next future pending reminder, if any. */
   nextScheduledFor: string | null;
 };
@@ -22,7 +22,7 @@ export const EMPTY_NOTIFICATION_STATS: NotificationStats = {
   pendingReminders: 0,
   sentLast24h: 0,
   failedLast24h: 0,
-  lastProcessedAt: null,
+  lastSentAt: null,
   nextScheduledFor: null,
 };
 
@@ -76,7 +76,7 @@ export async function getNotificationStats(): Promise<NotificationStats> {
     pendingReminders: waitingFuture + dueNow,
     sentLast24h: sentResult.count ?? 0,
     failedLast24h: failedResult.count ?? 0,
-    lastProcessedAt: lastResult.data?.sent_at ?? null,
+    lastSentAt: lastResult.data?.sent_at ?? null,
     nextScheduledFor: nextResult.data?.scheduled_for ?? null,
   };
 }

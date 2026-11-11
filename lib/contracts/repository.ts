@@ -2,6 +2,7 @@
  * Contracts data access layer. Server-only.
  */
 import { createClient } from "@/integrations/supabase/server";
+import { resolveContractListEventDate } from "@/lib/contracts/list-event-date";
 import type {
   Contract,
   ContractActivity,
@@ -23,13 +24,18 @@ type TemplateRow = {
 };
 type ContractRow = {
   id: string; venue_id: string; client_id: string | null; event_id: string | null;
-  template_id: string | null; title: string; content: string; status: Contract["status"];
+  template_id: string | null; title: string; content?: string | null; status: Contract["status"];
   execution_origin?: Contract["executionOrigin"] | null;
   sign_token: string; signer_name: string | null; signed_at: string | null;
   sent_at: string | null; expires_at: string | null; created_at: string; updated_at: string;
   amends_contract_id: string | null;
   branding_snapshot: ContractBrandingSnapshot | null;
-  clients?: { first_name: string; last_name: string; partner_first_name: string | null; partner_last_name: string | null; email: string | null } | null;
+  clients?: {
+    first_name: string; last_name: string;
+    partner_first_name: string | null; partner_last_name: string | null;
+    email?: string | null;
+    event_date?: string | null;
+  } | null;
   events?: { event_date: string | null } | null;
   venue?: { name: string | null; primaryColor: string | null; secondaryColor: string | null; accentColor: string | null; neutralColor: string | null; logoUrl: string | null } | null;
   signer?: {
@@ -41,6 +47,14 @@ type ContractRow = {
     legacy: boolean;
   } | null;
 };
+
+/** List/readiness columns — intentionally omits `content` (large text blob). */
+const CONTRACT_WORKSPACE_LIST_SELECT =
+  "id, venue_id, client_id, event_id, template_id, title, status, execution_origin, sign_token, signer_name, signed_at, sent_at, expires_at, created_at, updated_at, amends_contract_id, branding_snapshot, clients(first_name, last_name, partner_first_name, partner_last_name, event_date), events(event_date)";
+
+/** Template picker/metadata columns — intentionally omits `content`. */
+const TEMPLATE_METADATA_SELECT =
+  "id, venue_id, name, description, is_default, is_archived, source_master_key, created_at, updated_at";
 type ActRow = {
   id: string; venue_id: string; contract_id: string; type: string; title: string;
   description: string | null; created_at: string;
@@ -80,7 +94,8 @@ function mapContract(r: ContractRow): Contract {
     sentAt: r.sent_at, expiresAt: r.expires_at, createdAt: r.created_at, updatedAt: r.updated_at,
     amendsContractId: r.amends_contract_id ?? null,
     brandingSnapshot: r.branding_snapshot ?? null,
-    clientName: cn, clientEmail: r.clients?.email ?? null, eventDate: r.events?.event_date ?? null,
+    clientName: cn, clientEmail: r.clients?.email ?? null,
+    eventDate: resolveContractListEventDate(r.events?.event_date, r.clients?.event_date),
     venue: r.venue,
   };
 }
@@ -129,6 +144,25 @@ export async function getTemplates(client: DbClient, venueId: string, includeArc
   return (data as TemplateRow[]).map(mapTemplate);
 }
 
+/**
+ * Template metadata for surfaces that only need name/id/flags (e.g. Client
+ * Workspace Documents). Does not retrieve full template content — create/edit
+ * paths must continue using getTemplate(id) / getTemplates().
+ */
+export async function getTemplatesMetadata(
+  client: DbClient,
+  venueId: string,
+  includeArchived = false,
+): Promise<ContractTemplate[]> {
+  let q = client.from("contract_templates").select(TEMPLATE_METADATA_SELECT).eq("venue_id", venueId);
+  if (!includeArchived) q = q.eq("is_archived", false);
+  const { data, error } = await q.order("is_default", { ascending: false }).order("name");
+  if (error) throw error;
+  return ((data ?? []) as Omit<TemplateRow, "content">[]).map((r) =>
+    mapTemplate({ ...r, content: "" }),
+  );
+}
+
 export async function getTemplate(client: DbClient, venueId: string, id: string): Promise<ContractTemplate | null> {
   const { data, error } = await client.from("contract_templates").select("*")
     .eq("id", id).eq("venue_id", venueId).maybeSingle<TemplateRow>();
@@ -150,13 +184,25 @@ export async function insertTemplate(client: DbClient, venueId: string, input: T
 }
 
 export async function updateTemplate(client: DbClient, venueId: string, id: string, input: TemplateInput): Promise<void> {
+  const existing = await getTemplate(client, venueId, id);
+  if (!existing) throw new Error("Template not found.");
+  // HTC starters stay immutable — Customize (duplicate without master key) is
+  // the ownership path. Never clear source_master_key while editing the starter
+  // row in place; that would mutate the original starter.
+  if (existing.sourceMasterKey) {
+    throw new Error("STARTER_PROTECTED");
+  }
   if (input.isDefault) {
     await client.from("contract_templates").update({ is_default: false }).eq("venue_id", venueId).neq("id", id);
   }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (client.from("contract_templates") as any)
-    .update({ name: input.name.trim(), description: input.description.trim() || null,
-      content: input.content, is_default: input.isDefault })
+    .update({
+      name: input.name.trim(),
+      description: input.description.trim() || null,
+      content: input.content,
+      is_default: input.isDefault,
+    })
     .eq("id", id).eq("venue_id", venueId);
   if (error) throw error;
 }
@@ -199,12 +245,18 @@ export async function duplicateTemplate(client: DbClient, venueId: string, sourc
 
 // ---- contracts --------------------------------------------------------------
 
-export async function getContracts(client: DbClient, venueId: string): Promise<Contract[]> {
-  const { data, error } = await client.from("contracts")
-    .select("*, clients(first_name, last_name, partner_first_name, partner_last_name), events(event_date)")
-    .eq("venue_id", venueId).order("created_at", { ascending: false });
-  if (error) throw error;
-  const contracts = (data as unknown as ContractRow[]).map(mapContract);
+type SignerSummaryRow = {
+  contract_id: string;
+  signer_type: string;
+  signed_at: string | null;
+  is_required: boolean;
+};
+
+async function attachSignerSummaries(
+  client: DbClient,
+  venueId: string,
+  contracts: Contract[],
+): Promise<Contract[]> {
   if (contracts.length === 0) return contracts;
 
   const { data: signerRows, error: sErr } = await client.from("contract_signers")
@@ -213,9 +265,8 @@ export async function getContracts(client: DbClient, venueId: string): Promise<C
     .in("contract_id", contracts.map((c) => c.id));
   if (sErr) throw sErr;
 
-  type SummaryRow = { contract_id: string; signer_type: string; signed_at: string | null; is_required: boolean };
-  const byContract = new Map<string, SummaryRow[]>();
-  for (const row of (signerRows ?? []) as SummaryRow[]) {
+  const byContract = new Map<string, SignerSummaryRow[]>();
+  for (const row of (signerRows ?? []) as SignerSummaryRow[]) {
     const list = byContract.get(row.contract_id) ?? [];
     list.push(row);
     byContract.set(row.contract_id, list);
@@ -238,10 +289,37 @@ export async function getContracts(client: DbClient, venueId: string): Promise<C
   });
 }
 
+export async function getContracts(client: DbClient, venueId: string): Promise<Contract[]> {
+  const { data, error } = await client.from("contracts")
+    .select("*, clients(first_name, last_name, partner_first_name, partner_last_name, event_date), events(event_date)")
+    .eq("venue_id", venueId).order("created_at", { ascending: false });
+  if (error) throw error;
+  return attachSignerSummaries(client, venueId, (data as unknown as ContractRow[]).map(mapContract));
+}
+
+/**
+ * Client Workspace / Booking Documents list path.
+ * Scope: client_id = clientId OR event_id = eventId (venue RLS still applies).
+ * Omits contract `content`; signers are loaded only for the scoped IDs.
+ */
+export async function getContractsForClientOrEvent(
+  client: DbClient,
+  venueId: string,
+  scope: { clientId: string; eventId: string },
+): Promise<Contract[]> {
+  const { data, error } = await client.from("contracts")
+    .select(CONTRACT_WORKSPACE_LIST_SELECT)
+    .eq("venue_id", venueId)
+    .or(`client_id.eq.${scope.clientId},event_id.eq.${scope.eventId}`)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return attachSignerSummaries(client, venueId, (data as unknown as ContractRow[]).map(mapContract));
+}
+
 export async function getContract(client: DbClient, venueId: string, id: string): Promise<ContractWithDetails | null> {
   const [cRes, aRes, sRes] = await Promise.all([
     client.from("contracts")
-      .select("*, clients(first_name, last_name, partner_first_name, partner_last_name, email), events(event_date)")
+      .select("*, clients(first_name, last_name, partner_first_name, partner_last_name, email, event_date), events(event_date)")
       .eq("id", id).eq("venue_id", venueId).maybeSingle<ContractRow>(),
     client.from("contract_activities").select("*").eq("contract_id", id).order("created_at", { ascending: false }),
     client.from("contract_signers").select("*").eq("contract_id", id).eq("venue_id", venueId).order("sign_order").order("created_at"),
@@ -329,6 +407,81 @@ export async function insertContractSigners(
   if (error) throw error;
 }
 
+/**
+ * Replace required client signers on a draft only. Venue signer row is preserved.
+ * New clients get fresh sign tokens (DB default).
+ */
+export async function replaceDraftClientSigners(
+  client: DbClient,
+  venueId: string,
+  contractId: string,
+  clientSigners: ClientSignerSeed[],
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  const { data: contract, error: cErr } = await client.from("contracts")
+    .select("id, status")
+    .eq("id", contractId).eq("venue_id", venueId)
+    .maybeSingle<{ id: string; status: string }>();
+  if (cErr) throw cErr;
+  if (!contract) return { ok: false, message: "Contract not found." };
+  if (contract.status !== "draft") {
+    return { ok: false, message: "Required signers can only be changed while the contract is a draft." };
+  }
+  if (clientSigners.length === 0) {
+    return { ok: false, message: "Select at least one required client signer with an email." };
+  }
+
+  const { error: delErr } = await client.from("contract_signers")
+    .delete()
+    .eq("contract_id", contractId)
+    .eq("venue_id", venueId)
+    .eq("signer_type", "client");
+  if (delErr) throw delErr;
+
+  // Ensure venue placeholder exists (create/draft paths that never seeded signers).
+  const { data: venueRow, error: vErr } = await client.from("contract_signers")
+    .select("id")
+    .eq("contract_id", contractId)
+    .eq("venue_id", venueId)
+    .eq("signer_type", "venue")
+    .maybeSingle<{ id: string }>();
+  if (vErr) throw vErr;
+  if (!venueRow) {
+    const { error: venueInsErr } = await client.from("contract_signers").insert({
+      contract_id: contractId,
+      venue_id: venueId,
+      signer_type: "venue",
+      signer_role: null,
+      signer_ref_id: null,
+      client_contact_id: null,
+      signer_name: null,
+      signer_email: null,
+      is_required: true,
+      sign_order: 0,
+    });
+    if (venueInsErr) {
+      return { ok: false, message: venueInsErr.message || "Could not create venue signer." };
+    }
+  }
+
+  const rows = clientSigners.map((s) => ({
+    contract_id: contractId,
+    venue_id: venueId,
+    signer_type: "client" as const,
+    signer_role: s.signerRole,
+    signer_ref_id: s.signerRefId,
+    client_contact_id: s.clientContactId,
+    signer_name: s.signerName,
+    signer_email: s.signerEmail,
+    is_required: true,
+    sign_order: 1,
+  }));
+  const { error: insErr } = await client.from("contract_signers").insert(rows);
+  if (insErr) {
+    return { ok: false, message: insErr.message || "Could not update required client signers." };
+  }
+  return { ok: true };
+}
+
 export async function venueSignContract(
   client: DbClient,
   venueId: string,
@@ -353,11 +506,22 @@ export async function venueSignContract(
     .maybeSingle<{ id: string; status: Contract["status"]; content: string }>();
   if (cErr) throw cErr;
   if (!contract) return { ok: false, message: "Contract not found." };
-  if (contract.status !== "draft") {
-    return { ok: false, message: "Only a draft contract can be signed by the venue." };
+  if (contract.status !== "sent") {
+    return { ok: false, message: "The venue can sign only after the client has signed and the contract is awaiting venue signature." };
   }
   if (!opts.consent) {
     return { ok: false, message: "Please confirm you agree this constitutes your legal signature." };
+  }
+
+  const { data: requiredClients, error: cErr2 } = await client.from("contract_signers")
+    .select("id, signed_at, is_required")
+    .eq("contract_id", contractId).eq("venue_id", venueId).eq("signer_type", "client");
+  if (cErr2) throw cErr2;
+  const clients = (requiredClients ?? []) as { id: string; signed_at: string | null; is_required: boolean }[];
+  const required = clients.filter((c) => c.is_required);
+  const bar = required.length > 0 ? required : clients;
+  if (bar.length === 0 || bar.some((c) => !c.signed_at)) {
+    return { ok: false, message: "All required client signatures must be complete before the venue can sign." };
   }
 
   const { data: venueSigner, error: sErr } = await client.from("contract_signers")
@@ -398,6 +562,25 @@ export async function venueSignContract(
     `Signed by ${opts.signerName.trim()}`,
     opts.actorId, opts.actorLabel,
   );
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error: statusErr } = await (client.from("contracts") as any)
+    .update({
+      status: "signed",
+      signed_at: new Date().toISOString(),
+      signer_name: opts.signerName.trim(),
+    })
+    .eq("id", contractId)
+    .eq("venue_id", venueId)
+    .eq("status", "sent");
+  if (statusErr) throw statusErr;
+
+  await insertContractActivity(
+    client, venueId, contractId, "fully_executed", "Contract fully executed",
+    "Client and venue signatures are complete",
+    opts.actorId, opts.actorLabel,
+  );
+
   return { ok: true };
 }
 
@@ -445,12 +628,13 @@ export async function insertContract(client: DbClient, venueId: string, input: N
 }
 
 /**
- * TR-L1 + venue-first signing: editable only while draft AND venue has not
- * yet signed. Once the venue signer has signed_at set, content is immutable.
+ * Client-first signing: editable while draft, or while sent with no client
+ * signatures yet. Once a client has signed (or the contract is executed),
+ * content is immutable — use Create New Version for revisions.
  */
 export async function updateContractContent(
   client: DbClient, venueId: string, id: string, title: string, content: string, expectedUpdatedAt: string,
-): Promise<{ ok: true } | { ok: false; message: string; reason?: "stale" | "not_editable" | "not_found" }> {
+): Promise<{ ok: true; updatedAt?: string } | { ok: false; message: string; reason?: "stale" | "not_editable" | "not_found" }> {
   const { data: existing, error: fetchError } = await client
     .from("contracts")
     .select("status")
@@ -458,19 +642,20 @@ export async function updateContractContent(
     .maybeSingle<{ status: Contract["status"] }>();
   if (fetchError) throw fetchError;
   if (!existing) return { ok: false, message: "Contract not found.", reason: "not_found" };
-  if (existing.status !== "draft") {
-    return { ok: false, message: "This contract has already been sent and can no longer be edited.", reason: "not_editable" };
+  if (existing.status !== "draft" && existing.status !== "sent") {
+    return { ok: false, message: "This contract can no longer be edited.", reason: "not_editable" };
   }
 
-  const { data: venueSigner } = await client.from("contract_signers")
+  const { data: clientSigners } = await client.from("contract_signers")
     .select("signed_at")
-    .eq("contract_id", id).eq("venue_id", venueId).eq("signer_type", "venue")
-    .maybeSingle<{ signed_at: string | null }>();
-  if (venueSigner?.signed_at) {
+    .eq("contract_id", id).eq("venue_id", venueId).eq("signer_type", "client");
+  const anyClientSigned = ((clientSigners ?? []) as { signed_at: string | null }[])
+    .some((r) => r.signed_at != null);
+  if (anyClientSigned) {
     return {
       ok: false,
       message:
-        "This contract has been signed by the venue and can no longer be edited. Use Create New Version for a revised draft, or withdraw the venue signature while this contract is still an unreleased draft.",
+        "This contract has a client signature and can no longer be edited. Use Create New Version for a revised draft — the signed version is preserved.",
       reason: "not_editable",
     };
   }
@@ -478,7 +663,7 @@ export async function updateContractContent(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: updated, error } = await (client.from("contracts") as any).update({ title: title.trim(), content })
     .eq("id", id).eq("venue_id", venueId).eq("updated_at", expectedUpdatedAt)
-    .select("id");
+    .select("id, updated_at");
   if (error) throw error;
 
   if (!updated || updated.length === 0) {
@@ -490,7 +675,7 @@ export async function updateContractContent(
   }
 
   await insertContractActivity(client, venueId, id, "edited", "Contract content edited");
-  return { ok: true };
+  return { ok: true, updatedAt: (updated[0] as { updated_at: string }).updated_at };
 }
 
 /**
@@ -512,7 +697,7 @@ export async function reopenForEditing(
     return {
       ok: false,
       message:
-        "This contract cannot be reopened for editing after the venue has signed. Content is immutable — use Create New Version to start a new draft.",
+        "This contract cannot be reopened for editing after a signature. Content is immutable — use Create New Version to start a new draft.",
     };
   }
 
@@ -527,16 +712,15 @@ export async function reopenForEditing(
     return {
       ok: false,
       message:
-        "A client has already signed this contract. Use Create New Version to start a new draft — the signed record cannot be reopened or edited.",
+        "This contract cannot be reopened for editing after a signature. Content is immutable — use Create New Version to start a new draft.",
     };
   }
 
-  // Venue-first: released contracts always have a venue signature, so the
-  // historical sent→draft reopen path is unreachable. Fail closed.
+  // Client-first: fail closed — never mutate a sent/signed agreement in place.
   return {
     ok: false,
     message:
-      "This contract cannot be reopened for editing after the venue has signed. Content is immutable — use Create New Version to start a new draft.",
+      "This contract cannot be reopened for editing. Content is immutable — use Create New Version to start a new draft.",
   };
 }
 
@@ -621,19 +805,7 @@ export async function updateContractStatus(
   if (!current) return { ok: false, message: "Contract not found." };
 
   if (status === "sent" && current.status !== "draft") {
-    return { ok: false, message: "Only a draft contract can be sent for signing." };
-  }
-  if (status === "sent") {
-    const { data: venueSigner } = await client.from("contract_signers")
-      .select("signed_at")
-      .eq("contract_id", id).eq("venue_id", venueId).eq("signer_type", "venue")
-      .maybeSingle<{ signed_at: string | null }>();
-    // New-model contracts always have a venue signer row; require signed_at.
-    // Legacy contracts created before this migration may have zero signer rows
-    // — those are not created anymore; block release without venue signature.
-    if (!venueSigner?.signed_at) {
-      return { ok: false, message: "The venue must sign this contract before it can be released to the client." };
-    }
+    return { ok: false, message: "Only a draft contract can be sent to the client." };
   }
   if (status === "cancelled" && !["draft", "sent"].includes(current.status)) {
     return { ok: false, message: "A signed contract cannot be cancelled this way — it's a permanent record." };
@@ -676,16 +848,16 @@ export async function deleteContract(client: DbClient, venueId: string, id: stri
 }
 
 /**
- * Work Package D6 §11 — internal-only. Also blocked once venue has signed
- * (force-resolve must not alter committed content).
+ * Work Package D6 §11 — internal-only. Blocked once any required party has
+ * signed (client-first: client signature locks content; venue countersign also locks).
  */
 export async function forceResolveContractContent(client: DbClient, venueId: string, id: string, content: string): Promise<void> {
-  const { data: venueSigner } = await client.from("contract_signers")
-    .select("signed_at")
-    .eq("contract_id", id).eq("venue_id", venueId).eq("signer_type", "venue")
-    .maybeSingle<{ signed_at: string | null }>();
-  if (venueSigner?.signed_at) {
-    throw new Error("Cannot modify content after the venue has signed.");
+  const { data: signers } = await client.from("contract_signers")
+    .select("signer_type, signed_at, is_required")
+    .eq("contract_id", id).eq("venue_id", venueId);
+  const rows = (signers ?? []) as { signer_type: string; signed_at: string | null; is_required: boolean }[];
+  if (rows.some((r) => r.signed_at && (r.signer_type === "venue" || r.is_required))) {
+    throw new Error("Cannot modify content after a signature has been recorded. Use Create New Version.");
   }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (client.from("contracts") as any).update({ content }).eq("id", id).eq("venue_id", venueId);

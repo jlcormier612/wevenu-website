@@ -90,7 +90,7 @@ export function TemplateForm({ template }: { template?: ContractTemplate | null 
         : await createTemplateAction(input);
       if (result.ok) {
         toast.success(isEdit ? librarySavedToastMessage() : "Template created.");
-        router.push("/contracts/templates");
+        router.push("/library/contracts");
         return;
       }
       if (result.errors) setErrors(result.errors);
@@ -100,7 +100,10 @@ export function TemplateForm({ template }: { template?: ContractTemplate | null 
 
   return (
     <div className="space-y-6">
-      <div className="rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+      <div
+        className="htc-contract-template-disclaimer rounded-lg border px-4 py-3 text-sm text-muted-foreground"
+        data-testid="contract-template-disclaimer"
+      >
         This is your <span className="font-medium text-heading">template</span>
         {isEdit ? " — edits here do not change agreements already created for clients." : "."}
         {" "}Your agreement should use language approved for your venue. Hello to Cheers provides this template as a starting structure and does not provide legal advice.
@@ -196,7 +199,7 @@ export function TemplateForm({ template }: { template?: ContractTemplate | null 
           <div className="space-y-2">
             {MERGE_FIELDS.map((f) => (
               <div key={f.key}
-                className="rounded-lg border border-border bg-muted/30 px-3 py-2 cursor-pointer hover:border-primary/40 transition-colors"
+                className="htc-merge-field-chip rounded-lg border border-border px-3 py-2 cursor-pointer"
                 onClick={() => {
                   const token = `{{${f.key}}}`;
                   navigator.clipboard?.writeText(token).then(() => toast.success(`Copied ${token}`)).catch(() => {});

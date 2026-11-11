@@ -9,6 +9,8 @@ import { assignmentCoversDate, resolveVendorDateAvailability, type CoupleDateAva
 export async function lookupVendorsForEventDate(
   vendorIds: string[],
   eventDate: string,
+  /** When set, assignments for this event do not count as "booked elsewhere". */
+  excludeEventId?: string | null,
 ): Promise<Map<string, CoupleDateAvailability>> {
   const unique = [...new Set(vendorIds.filter(Boolean))];
   const result = new Map<string, CoupleDateAvailability>();
@@ -24,7 +26,7 @@ export async function lookupVendorsForEventDate(
   const [{ data: assignments }, { data: blockedRows }, { data: historyRows }] = await Promise.all([
     admin
       .from("event_vendor_assignments")
-      .select("vendor_id, events!inner(event_date, event_end_date, status)")
+      .select("vendor_id, event_id, events!inner(id, event_date, event_end_date, status)")
       .in("vendor_id", unique),
     admin
       .from("vendor_availability")
@@ -43,12 +45,17 @@ export async function lookupVendorsForEventDate(
   const booked = new Set<string>();
   for (const row of (assignments ?? []) as Array<{
     vendor_id: string;
-    events: { event_date: string | null; event_end_date: string | null; status: string } | Array<{
-      event_date: string | null; event_end_date: string | null; status: string;
+    event_id: string | null;
+    events: { id?: string; event_date: string | null; event_end_date: string | null; status: string } | Array<{
+      id?: string; event_date: string | null; event_end_date: string | null; status: string;
     }>;
   }>) {
     const event = Array.isArray(row.events) ? row.events[0] : row.events;
     if (!event || event.status === "cancelled") continue;
+    const assignmentEventId = row.event_id ?? event.id ?? null;
+    // Required / assigned vendors for THIS event must not appear "Unavailable"
+    // solely because they are booked on the couple's own date.
+    if (excludeEventId && assignmentEventId === excludeEventId) continue;
     if (assignmentCoversDate(event.event_date, event.event_end_date, eventDate)) {
       booked.add(row.vendor_id);
     }

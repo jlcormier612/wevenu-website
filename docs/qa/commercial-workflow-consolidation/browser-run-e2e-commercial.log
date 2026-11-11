@@ -1,0 +1,28 @@
+PASS Serving expected SHA — 405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:c5bdafc029ca9ee0a3ad356e96131e30bd1b96bd
+PASS A Setup Profiles exclude Inventory/EO templates — ok
+PASS A Event Setup excludes Inventory/EO checklist rows — Event setup
+
+Using: Standard Wedding Setup
+
+Review planning, timeline, vendors, and floor plans for this event, then release the prepared experience to the client portal. Invite the client separately when you're ready. Questionnaires use authorized send when staff choose — not an
+PASS A Inventory commercial tab reachable — tab=inventory
+PASS A Event Order commercial strip present — strip
+PASS E EO fixture present — {"id":"624eceef-5096-4288-b104-62daa3a82d11","status":"finalized","shared_at":"2026-10-23T16:07:20.128+00:00","finalized_at":"2026-10-23T16:07:02.928+00:00","revision":9,"client_agreed_at":"2026-10-23T16:08:03.562897+00:00","client_agreed_name":"E2E-COMMERCIAL-E2E71482-ACCEPT2","client_agreed_revision":9}
+PASS E1 Reopen clears agreement (DB) — {"id":"624eceef-5096-4288-b104-62daa3a82d11","status":"open","shared_at":"2026-10-23T16:07:20.128+00:00","finalized_at":null,"revision":9,"client_agreed_at":null,"client_agreed_name":null,"client_agreed_revision":null}
+PASS E2 Finalize via UI — {"id":"624eceef-5096-4288-b104-62daa3a82d11","status":"finalized","shared_at":"2026-10-23T16:07:20.128+00:00","finalized_at":"2026-10-23T16:16:37.452+00:00","revision":10,"client_agreed_at":null,"client_agreed_name":null,"client_agreed_revision":null}
+PASS E3 Share/Update Shared Copy via UI — uiSent=false before=2026-10-23T16:07:20.128+00:00 after=2026-10-23T16:16:52.839+00:00
+PASS E4 Pre-accept agreement null — {"id":"624eceef-5096-4288-b104-62daa3a82d11","status":"finalized","shared_at":"2026-10-23T16:16:52.839+00:00","finalized_at":"2026-10-23T16:16:37.452+00:00","revision":10,"client_agreed_at":null,"client_agreed_name":null,"client_agreed_revision":null}
+PASS E5 Client accept revision — {"id":"624eceef-5096-4288-b104-62daa3a82d11","status":"finalized","shared_at":"2026-10-23T16:16:52.839+00:00","finalized_at":"2026-10-23T16:16:37.452+00:00","revision":10,"client_agreed_at":"2026-10-23T16:17:17.745221+00:00","client_agreed_name":"E2E-COMMERCIAL-E2E72168-ACCEPT1","client_agreed_revision":10}
+PASS E6 Agreement visible after reload — badge=1
+PASS E7 Accept panel gone after agreement (idempotent UI) — no panel
+PASS E8 Reopen invalidates agreement — {"id":"624eceef-5096-4288-b104-62daa3a82d11","status":"open","shared_at":"2026-10-23T16:16:52.839+00:00","finalized_at":null,"revision":10,"client_agreed_at":null,"client_agreed_name":null,"client_agreed_revision":null}
+PASS E9 DB agreement cleared pending re-share — {"id":"624eceef-5096-4288-b104-62daa3a82d11","status":"open","shared_at":"2026-10-23T16:16:52.839+00:00","finalized_at":null,"revision":10,"client_agreed_at":null,"client_agreed_name":null,"client_agreed_revision":null}
+PASS E10 Re-finalize — {"id":"624eceef-5096-4288-b104-62daa3a82d11","status":"finalized","shared_at":"2026-10-23T16:16:52.839+00:00","finalized_at":"2026-10-23T16:17:41.303+00:00","revision":11,"client_agreed_at":null,"client_agreed_name":null,"client_agreed_revision":null}
+PASS E11 Re-share via UI — revision=11 shared=2026-10-23T16:18:04.956+00:00
+PASS E12 Client re-accept new revision — {"id":"624eceef-5096-4288-b104-62daa3a82d11","status":"finalized","shared_at":"2026-10-23T16:18:04.956+00:00","finalized_at":"2026-10-23T16:17:41.303+00:00","revision":11,"client_agreed_at":"2026-10-23T16:18:46.850349+00:00","client_agreed_name":"E2E-COMMERCIAL-E2E72168-ACCEPT2","client_agreed_revision":11}
+PASS E13 DB matches new revision agreement — {"id":"624eceef-5096-4288-b104-62daa3a82d11","status":"finalized","shared_at":"2026-10-23T16:18:04.956+00:00","finalized_at":"2026-10-23T16:17:41.303+00:00","revision":11,"client_agreed_at":"2026-10-23T16:18:46.850349+00:00","client_agreed_name":"E2E-COMMERCIAL-E2E72168-ACCEPT2","client_agreed_revision":11}
+PASS C Portal inventory shared surface loads — status=shared
+PASS F EO invoice link panel present — count=1
+PASS F Documents tab loads — ok
+
+22 PASS / 0 FAIL / 0 BLOCKED → docs/qa/commercial-workflow-consolidation/browser-results-e2e-commercial.json

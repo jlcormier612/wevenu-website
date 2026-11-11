@@ -10,6 +10,7 @@ import {
   linkSelectionContract,
   markSelectionAccepted,
   sendOfferForSelection,
+  updateCommercialSelectionTerms,
 } from "@/lib/commercial-selections/service";
 import type {
   CommercialSelectionActionResult,
@@ -22,6 +23,36 @@ import { publicAppOrigin } from "@/lib/env";
 import { getCurrentVenue } from "@/lib/venue/service";
 import { DEFAULT_COMMERCIAL_BOOKING_PREFS } from "@/lib/booking-journey/venue-prefs";
 
+export async function updateSelectionFinancialTermsAction(input: {
+  selectionId: string;
+  packageAmount: number;
+  discountType?: "fixed" | "percent" | null;
+  discountValue?: number | null;
+  adjustments?: import("@/lib/invoices/financial-adjustments").FinancialAdjustmentInput[] | null;
+  applyTax: boolean;
+  taxRatePercent?: number | null;
+  depositAmount: number;
+  leadId?: string | null;
+  clientId?: string | null;
+  eventId?: string | null;
+}): Promise<CommercialSelectionActionResult> {
+  const result = await updateCommercialSelectionTerms(input.selectionId, {
+    packageAmount: input.packageAmount,
+    discountType: input.discountType,
+    discountValue: input.discountValue,
+    adjustments: input.adjustments,
+    applyTax: input.applyTax,
+    taxRatePercent: input.taxRatePercent,
+    depositAmount: input.depositAmount,
+  });
+  if (result.ok) {
+    if (input.leadId) revalidatePath(`/leads/${input.leadId}`);
+    if (input.clientId) revalidatePath(`/clients/${input.clientId}`);
+    if (input.eventId) revalidatePath(`/events/${input.eventId}`);
+  }
+  return result;
+}
+
 export async function createSelectedPackageAction(input: {
   packageId: string;
   leadId?: string;
@@ -33,8 +64,8 @@ export async function createSelectedPackageAction(input: {
   const prefs = venue?.commercialBookingPrefs ?? DEFAULT_COMMERCIAL_BOOKING_PREFS;
   const result = await createSelectedPackageFromLibrary({
     ...input,
-    depositAmount: prefs.initialPaymentRequired ? input.depositAmount : 0,
-    initialPaymentRequired: prefs.initialPaymentRequired,
+    depositAmount: prefs.collectInitialPayment ? input.depositAmount : 0,
+    initialPaymentRequired: prefs.collectInitialPayment,
   });
   if (result.ok) {
     if (input.leadId) revalidatePath(`/leads/${input.leadId}`);
@@ -55,7 +86,8 @@ export async function startBookingFileAction(
   spaceId?: string,
   selectionId?: string,
 ): Promise<CreateClientResult> {
-  const result = await convertLeadToClient(lead, { spaceId });
+  const resolvedSpace = spaceId?.trim() || lead.plannedEventSpaceId || undefined;
+  const result = await convertLeadToClient(lead, { spaceId: resolvedSpace });
   if (!result.ok) return result;
 
   let warning: string | undefined;
@@ -123,8 +155,8 @@ export async function prepareCreateContractAction(input: {
 > {
   const ensured = await ensureCommercialCustomerForSelection(input);
   if (!ensured.ok) return ensured;
-  if (input.leadId) revalidatePath(`/leads/${input.leadId}`);
-  revalidatePath(`/clients/${ensured.clientId}`);
+  // Do not revalidate the current Lead here. That refresh races the client's
+  // hard navigation and can drop the transition before the editor opens.
   const params = new URLSearchParams();
   params.set("selectionId", ensured.selectionId);
   params.set("clientId", ensured.clientId);
@@ -151,6 +183,112 @@ export async function sendOfferAction(input: {
   if (input.clientId) revalidatePath(`/clients/${input.clientId}`);
   revalidatePath(`/leads`);
   return { ok: true, acceptUrl };
+}
+
+export async function createProposalAction(input: {
+  leadId?: string;
+  clientId?: string;
+  eventId?: string;
+  options: { packageId: string; offerRole: "primary" | "addon" }[];
+  depositAmount?: number;
+  message?: string;
+  eventType?: string | null;
+  guestCount?: number | null;
+  spaceId?: string | null;
+}): Promise<{ ok: true; proposalId: string } | { ok: false; message: string }> {
+  const { createCommercialProposal } = await import("@/lib/commercial-proposals/service");
+  const result = await createCommercialProposal({
+    leadId: input.leadId,
+    clientId: input.clientId,
+    eventId: input.eventId,
+    options: input.options,
+    depositAmount: input.depositAmount,
+    message: input.message,
+    eligibilityContext: {
+      eventType: input.eventType,
+      guestCount: input.guestCount,
+      spaceId: input.spaceId,
+    },
+  });
+  if (!result.ok) {
+    return { ok: false, message: result.message ?? "Could not create the proposal." };
+  }
+  if (!("proposalId" in result) || !result.proposalId) {
+    return { ok: false, message: "Could not create the proposal." };
+  }
+  if (input.leadId) revalidatePath(`/leads/${input.leadId}`);
+  if (input.clientId) revalidatePath(`/clients/${input.clientId}`);
+  return { ok: true, proposalId: result.proposalId };
+}
+
+export async function sendProposalAction(input: {
+  proposalId: string;
+  message?: string;
+  leadId?: string;
+  clientId?: string;
+}): Promise<
+  | { ok: true; acceptUrl: string; emailSubmitted: boolean; emailMessage?: string }
+  | { ok: false; message: string }
+> {
+  const { sendCommercialProposal } = await import("@/lib/commercial-proposals/service");
+  const result = await sendCommercialProposal({
+    proposalId: input.proposalId,
+    message: input.message,
+  });
+  if (!result.ok || !("acceptToken" in result)) {
+    return { ok: false, message: result.ok === false ? result.message : "Could not send proposal." };
+  }
+  const acceptUrl = `${publicAppOrigin()}/offer/${result.acceptToken}`;
+  if (input.leadId) revalidatePath(`/leads/${input.leadId}`);
+  if (input.clientId) revalidatePath(`/clients/${input.clientId}`);
+  return {
+    ok: true,
+    acceptUrl,
+    emailSubmitted: result.emailSubmitted,
+    emailMessage: result.emailMessage,
+  };
+}
+
+export async function resendProposalEmailAction(input: {
+  proposalId: string;
+  leadId?: string;
+  clientId?: string;
+}): Promise<
+  | { ok: true; emailSubmitted: boolean; emailMessage?: string }
+  | { ok: false; message: string }
+> {
+  const { resendCommercialProposalEmail } = await import("@/lib/commercial-proposals/service");
+  const result = await resendCommercialProposalEmail(input.proposalId);
+  if (!result.ok || !("emailSubmitted" in result)) {
+    return {
+      ok: false,
+      message: "message" in result && result.message
+        ? result.message
+        : "Could not resend the proposal email.",
+    };
+  }
+  if (input.leadId) revalidatePath(`/leads/${input.leadId}`);
+  if (input.clientId) revalidatePath(`/clients/${input.clientId}`);
+  return {
+    ok: true,
+    emailSubmitted: result.emailSubmitted,
+    emailMessage: result.emailMessage,
+  };
+}
+
+export async function withdrawProposalAction(input: {
+  proposalId: string;
+  leadId?: string;
+  clientId?: string;
+}): Promise<{ ok: true } | { ok: false; message: string }> {
+  const { withdrawCommercialProposal } = await import("@/lib/commercial-proposals/service");
+  const result = await withdrawCommercialProposal(input.proposalId);
+  if (!result.ok) {
+    return { ok: false, message: result.message ?? "Could not withdraw the proposal." };
+  }
+  if (input.leadId) revalidatePath(`/leads/${input.leadId}`);
+  if (input.clientId) revalidatePath(`/clients/${input.clientId}`);
+  return { ok: true };
 }
 
 export async function markOfferAcceptedAction(input: {

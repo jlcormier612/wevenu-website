@@ -3,7 +3,15 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, it } from "node:test";
 
-import { utcToVenueLocalParts, venueLocalToUtcIso, venueToday } from "@/lib/venue/timezone";
+import {
+  formatVenueLocalClock,
+  formatVenueLocalShortDate,
+  formatVenueLocalTourDisplay,
+  utcToVenueLocalParts,
+  venueCalendarDateFromValue,
+  venueLocalToUtcIso,
+  venueToday,
+} from "@/lib/venue/timezone";
 
 describe("venue-local rendering of stored timestamps", () => {
   // The exact row behind the reported Dashboard defect: one tour appointment,
@@ -33,6 +41,38 @@ describe("venue-local rendering of stored timestamps", () => {
   });
 });
 
+describe("public tour confirmation uses the venue clock, not the visitor clock", () => {
+  it("shows 10:45 AM Eastern for the Nov 4 2026 15:45Z fixture", () => {
+    const stored = "2026-11-04T15:45:00+00:00";
+    assert.equal(venueLocalToUtcIso("2026-11-04", "10:45", "America/New_York"), "2026-11-04T15:45:00.000Z");
+    const parts = utcToVenueLocalParts(stored, "America/New_York");
+    assert.equal(parts.date, "2026-11-04");
+    assert.equal(parts.time, "10:45");
+    const display = formatVenueLocalTourDisplay(stored, "America/New_York");
+    assert.equal(display.timeLabel, "10:45 AM");
+    assert.match(display.dateLabel, /November 4, 2026/);
+    const atlanticVisitor = new Date(stored).toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+      timeZone: "America/Halifax",
+    });
+    assert.equal(atlanticVisitor, "11:45 AM");
+  });
+
+  it("still uses Eastern daylight time before the November fallback", () => {
+    const stored = "2026-10-28T14:45:00+00:00";
+    assert.equal(formatVenueLocalTourDisplay(stored, "America/New_York").timeLabel, "10:45 AM");
+    assert.equal(utcToVenueLocalParts(stored, "America/New_York").time, "10:45");
+  });
+
+  it("formats the confirmation page through the venue-timezone helper", () => {
+    const source = readFileSync(resolve("components/form/inquiry-confirmations.tsx"), "utf8");
+    assert.match(source, /formatVenueLocalTourDisplay/);
+    assert.doesNotMatch(source, /toLocaleTimeString\("en-US", \{\s*hour:/);
+  });
+});
+
 describe("venueToday", () => {
   it("returns the venue's calendar date, not the UTC date, late in the evening", () => {
     // 01:30Z Sep 1 is Aug 31 in America/New_York.
@@ -42,6 +82,23 @@ describe("venueToday", () => {
 
   it("matches UTC on a UTC noon instant", () => {
     assert.equal(venueToday("America/New_York", new Date("2026-08-31T16:00:00Z")), "2026-08-31");
+  });
+
+  it("Sep 28 02:00Z is Sep 27 in America/New_York", () => {
+    assert.equal(venueToday("America/New_York", new Date("2026-09-28T02:00:00Z")), "2026-09-27");
+  });
+});
+
+describe("venueCalendarDateFromValue", () => {
+  it("converts a signed_at timestamp to the venue calendar date", () => {
+    assert.equal(
+      venueCalendarDateFromValue("2026-09-28T02:00:00.000Z", "America/New_York"),
+      "2026-09-27",
+    );
+  });
+
+  it("leaves a date-only due_date unchanged", () => {
+    assert.equal(venueCalendarDateFromValue("2026-09-27", "America/New_York"), "2026-09-27");
   });
 });
 
@@ -77,5 +134,58 @@ describe("dashboard today is the venue's calendar day", () => {
       source,
       /const today = new Date\(\)\.toISOString\(\)\.slice\(0, 10\)/,
     );
+  });
+});
+
+describe("lead TourPanel and Tours list render venue-local times", () => {
+  it("formats Lead Overview appointment rows through formatVenueLocalTourDisplay", () => {
+    const source = readFileSync(resolve("components/leads/tour-panel.tsx"), "utf8");
+    assert.match(source, /formatVenueLocalTourDisplay/);
+    assert.doesNotMatch(
+      source,
+      /d\.toLocaleTimeString\("en-US", \{\s*hour:/,
+      "Lead Overview tour times must not use the browser clock",
+    );
+  });
+
+  it("formats Tours list rows through formatVenueLocalTourDisplay", () => {
+    const source = readFileSync(resolve("components/tours/tour-list.tsx"), "utf8");
+    assert.match(source, /formatVenueLocalTourDisplay/);
+    assert.doesNotMatch(
+      source,
+      /d\.toLocaleTimeString\("en-US", \{\s*hour:/,
+      "Tours list times must not use the browser clock",
+    );
+  });
+});
+
+describe("human-facing clock never exposes raw 16:30 in ordinary UI", () => {
+  it("formats venue-local 24h parts as 12h AM/PM", () => {
+    assert.equal(formatVenueLocalClock("16:30"), "4:30 PM");
+    assert.equal(formatVenueLocalClock("04:30"), "4:30 AM");
+    assert.equal(formatVenueLocalClock("00:00"), "12:00 AM");
+    assert.equal(formatVenueLocalClock("12:00"), "12:00 PM");
+  });
+
+  it("formats short dates without military time", () => {
+    assert.equal(formatVenueLocalShortDate("2026-09-27"), "Sep 27, 2026");
+  });
+
+  it("Lead Overview relationship card does not slice raw tourTime into the UI", () => {
+    const source = readFileSync(resolve("components/leads/relationship-card.tsx"), "utf8");
+    assert.match(source, /formatVenueLocalClock/);
+    assert.doesNotMatch(source, /tourTime\.slice\(0,\s*5\)/);
+  });
+
+  it("Dashboard upcoming tours does not slice raw tourTime into the UI", () => {
+    const source = readFileSync(resolve("components/dashboard/upcoming-tours.tsx"), "utf8");
+    assert.match(source, /formatVenueLocalClock/);
+    assert.doesNotMatch(source, /tourTime\.slice\(0,\s*5\)/);
+  });
+
+  it("decision-engine detail does not splice raw 24h tourTime", () => {
+    const source = readFileSync(resolve("lib/dashboard-system/decision-engine.ts"), "utf8");
+    assert.match(source, /formatVenueLocalClock/);
+    assert.doesNotMatch(source, /tourTime\.slice\(0,\s*5\)/);
   });
 });

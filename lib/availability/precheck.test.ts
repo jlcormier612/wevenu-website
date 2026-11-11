@@ -334,6 +334,93 @@ describe("availability pre-check (Phase 5)", () => {
     assert.equal(overlappingNy.conflicts.some((c) => c.type === "tour_event_overlap"), true);
   });
 
+  it("Allow tours during booked events changes only the event overlap", () => {
+    const evening = event({ id: "e1", eventDate: "2099-06-15", startTime: "18:00", endTime: "22:00" });
+    const windows = [{ dayOfWeek: 1, startTime: "09:00", endTime: "22:00" }];
+    const slot = Date.parse("2099-06-15T18:30:00Z");
+    const base = {
+      calendarBlocks: [] as { title: string; type: string }[],
+      holdCount: 0,
+      rules: { maxSimultaneousTours: 1 },
+      events: [evening],
+      activeSpaceIds: [] as string[],
+      allSpaceIds: [] as string[],
+      tours: [],
+      tourWindows: windows,
+    };
+
+    const off = buildAvailabilityConflicts(
+      { date: "2099-06-15", type: "tour", tourScheduledAtMs: slot, tourDurationMinutes: 60 },
+      { ...base, allowToursDuringBookedEvents: false },
+    );
+    assert.equal(off.conflicts.some((c) => c.type === "tour_event_overlap"), true);
+
+    const on = buildAvailabilityConflicts(
+      { date: "2099-06-15", type: "tour", tourScheduledAtMs: slot, tourDurationMinutes: 60 },
+      { ...base, allowToursDuringBookedEvents: true },
+    );
+    assert.equal(on.conflicts.some((c) => c.type === "tour_event_overlap"), false);
+    assert.equal(on.available, true);
+
+    const outsideWindow = buildAvailabilityConflicts(
+      { date: "2099-06-15", type: "tour", tourScheduledAtMs: Date.parse("2099-06-15T23:30:00Z"), tourDurationMinutes: 60 },
+      { ...base, allowToursDuringBookedEvents: true },
+    );
+    assert.equal(outsideWindow.conflicts.some((c) => c.type === "tour_outside_window"), true);
+
+    const exception = buildAvailabilityConflicts(
+      { date: "2099-06-15", type: "tour", tourScheduledAtMs: slot, tourDurationMinutes: 60 },
+      { ...base, allowToursDuringBookedEvents: true, tourExceptionLabel: "Closed" },
+    );
+    assert.equal(exception.conflicts.some((c) => c.type === "tour_exception"), true);
+
+    const capacity = buildAvailabilityConflicts(
+      { date: "2099-06-15", type: "tour", tourScheduledAtMs: slot, tourDurationMinutes: 60 },
+      {
+        ...base,
+        allowToursDuringBookedEvents: true,
+        tours: [{ id: "t1", status: "scheduled", scheduledAtMs: slot, durationMinutes: 60 }],
+      },
+    );
+    assert.equal(capacity.conflicts.some((c) => c.type === "tour_capacity_full"), true);
+
+    const blockedTime = buildAvailabilityConflicts(
+      { date: "2099-06-15", type: "tour", tourScheduledAtMs: slot, tourDurationMinutes: 60, startTime: "18:30", endTime: "19:30" },
+      {
+        ...base,
+        allowToursDuringBookedEvents: true,
+        calendarBlocks: [{ title: "Blocked", type: "blocked_time" }],
+      },
+    );
+    assert.equal(blockedTime.conflicts.some((c) => c.type === "calendar_blocked"), true);
+
+    const noEvent = buildAvailabilityConflicts(
+      { date: "2099-06-15", type: "tour", tourScheduledAtMs: slot, tourDurationMinutes: 60 },
+      { ...base, events: [], allowToursDuringBookedEvents: false },
+    );
+    assert.equal(noEvent.conflicts.some((c) => c.type === "tour_event_overlap"), false);
+
+    const cancelled = buildAvailabilityConflicts(
+      { date: "2099-06-15", type: "tour", tourScheduledAtMs: slot, tourDurationMinutes: 60 },
+      {
+        ...base,
+        allowToursDuringBookedEvents: false,
+        events: [event({ id: "e1", eventDate: "2099-06-15", startTime: "18:00", endTime: "22:00", status: "cancelled" })],
+      },
+    );
+    assert.equal(cancelled.conflicts.some((c) => c.type === "tour_event_overlap"), false);
+
+    const complete = buildAvailabilityConflicts(
+      { date: "2099-06-15", type: "tour", tourScheduledAtMs: slot, tourDurationMinutes: 60 },
+      {
+        ...base,
+        allowToursDuringBookedEvents: false,
+        events: [event({ id: "e1", eventDate: "2099-06-15", startTime: "18:00", endTime: "22:00", status: "complete" })],
+      },
+    );
+    assert.equal(complete.conflicts.some((c) => c.type === "tour_event_overlap"), false);
+  });
+
   it("Tour calendar-block pre-check only uses write-path closing types", () => {
     const ignored = buildAvailabilityConflicts(
       { date: "2099-06-15", type: "tour" },

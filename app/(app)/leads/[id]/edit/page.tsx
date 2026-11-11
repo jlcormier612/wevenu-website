@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { LeadEditForm } from "@/components/leads/lead-edit-form";
+import { CollectionBackLink } from "@/components/library/collection-back-link";
+import { RelationshipPhotoEditor } from "@/components/relationship-photos/relationship-photo-editor";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import {
   Card,
@@ -10,8 +12,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { buildVenueEventTypeOptions } from "@/lib/event-types/venue-options";
+import { getInquiryFormSettings } from "@/lib/inquiry-form/service";
 import { leadDisplayName } from "@/lib/leads/constants";
 import { getLead } from "@/lib/leads/service";
+import { resolveVenueFacingPhoto } from "@/lib/relationship-photos/model";
+import { getRelationshipPhotoForVenue } from "@/lib/relationship-photos/service";
+import { getCurrentVenue } from "@/lib/venue/service";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -26,24 +34,58 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function EditLeadPage({ params }: Props) {
   const { id } = await params;
-  const lead = await getLead(id);
+  const [lead, venue, inquirySettings] = await Promise.all([
+    getLead(id),
+    getCurrentVenue(),
+    getInquiryFormSettings(),
+  ]);
   if (!lead) notFound();
 
+  const photo = lead.relationshipId
+    ? await getRelationshipPhotoForVenue(lead.relationshipId)
+    : resolveVenueFacingPhoto({
+        venuePhotoUrl: null,
+        clientPhotoUrl: null,
+        clientPhotoShared: false,
+        venueDisplaySource: "none",
+      });
+
+  const eventTypeOptions = buildVenueEventTypeOptions({
+    acceptedRaw: inquirySettings?.acceptedEventTypes ?? null,
+    currentValue: lead.eventType,
+  });
+
+  const displayName = leadDisplayName(lead.firstName, lead.lastName, lead.partnerFirstName, lead.partnerLastName);
+
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title={`Edit · ${leadDisplayName(lead.firstName, lead.lastName, lead.partnerFirstName, lead.partnerLastName)}`}
-        description="Update the contact information and event details for this lead."
-      />
-      <Card>
-        <CardHeader>
+    <div className="htc-hospitality-page space-y-5 sm:space-y-6" data-htc-phase12="lead-edit">
+      <CollectionBackLink href={`/leads/${lead.id}`} label={displayName} />
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
+        <PageHeader
+          title={`Edit · ${displayName}`}
+          description="Update the contact information and event details for this lead."
+        />
+      </div>
+      <Card className="htc-working-card gap-0 py-0">
+        <CardHeader className="py-4">
           <CardTitle>Lead details</CardTitle>
           <CardDescription>
             Changes are saved immediately and logged to the activity timeline.
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <LeadEditForm lead={lead} />
+        <CardContent className="space-y-6 py-5">
+          {lead.relationshipId && venue ? (
+            <>
+              <RelationshipPhotoEditor
+                relationshipId={lead.relationshipId}
+                venueId={venue.id}
+                initial={photo!}
+                leadId={lead.id}
+              />
+              <Separator />
+            </>
+          ) : null}
+          <LeadEditForm lead={lead} eventTypeOptions={eventTypeOptions} />
         </CardContent>
       </Card>
     </div>

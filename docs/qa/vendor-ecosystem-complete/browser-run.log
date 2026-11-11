@@ -1,0 +1,32 @@
+PASS serving_sha — serving=3dbc2a45fbcc0fd9fa430884a3c9cc82d46d52d0 expected=3dbc2a45fbcc0fd9fa430884a3c9cc82d46d52d0
+PASS venue_network_lists_active_relationships — [{"vendor_id":"e5ed92aa-82a4-46c7-b6c2-36a90db714e1","status":"active","preference_level":"recommended","is_required":false,"vendors":{"is_claimed":false,"business_name":"Flora's Flowers"}},{"vendor_id":"a35f82fa-f63d-41e3-aad5-73c3eb90e971","status":"active","preference_level":"
+PASS uninvited_vendor_has_no_invitation_yet — count=0
+PASS invitation_preview_and_claim_token_resolve — {"preview":{"email":"vendor-invite-1792704062739@hellotocheers-test.invalid","venueId":"a415ac52-cd74-42a6-8df7-7a8f6e71d080","vendorId":"f20bc414-1b65-49ce-9a97-34cfa9d5e3b0","venueName":"Jen's Fancy Venue","vendorName":"VendorEcosystem Photo 1b21","invitationId":"bed49a9d-3dc4-
+PASS invalid_claim_token_rejected — undefined
+PASS invitation_resend_idempotent — count=1
+PASS invite_accept_page_renders_for_valid_token — Claim | claim | Sign in | create | claim | Claim | Sign in | claim
+PASS invite_accept_page_rejects_invalid_token — Link invalid or expired
+
+This invitation link has already been used, expired, or is no longer valid. Ask your venue contact to send a new invitation.
+PASS vendor_profile_description_persists — {"before":"Truly beautiful gourmet and high end cak","after":"Eco profile 9-1b21"}
+PASS vendor_availability_persists — {"availRow":{"id":"9bd23ea2-c142-411b-b92b-b750cc5b0d1d","date":"2075-12-04","is_blocked":false,"note":"Eco available 1b21"}}
+PASS anon_cannot_mutate_vendor_profile — {"success":true,"error":null,"data":[],"count":null,"status":200,"statusText":"OK"}
+PASS vendor_portal_profile_reachable — url=https://app.sandbox.hellotocheers.com/vendor/profile body=Profile | Profile | Profile | Business | Business | profile | Profile
+PASS vendor_portal_availability_reachable — Availability | Availability | availability | Blocked | blocked
+PASS unclaimed_inquiry_rejected — {"ok":false,"error":"vendor_unclaimed"}
+PASS claimed_inquiry_creates_conversation — {"ok":true,"created":true,"messageId":"394072d0-71c1-4c7b-9a99-62a00cce4ff9","conversationId":"8506c600-4bb3-4b78-836c-cc94cda36806"}
+PASS vendor_reply_persists_in_conversation — {"msgs":[{"id":"394072d0-71c1-4c7b-9a99-62a00cce4ff9","body":"Sandbox ecosystem inquiry 1792704062739-1b21","sender_type":"lead_or_client","channel":"portal"},{"id":"2b50b65a-9ba7-4d6f-b5bd-65edcb794263","body":"Vendor reply ecosystem 1792704062739-1b21","sender_type":"vendor","c
+PASS internal_note_not_leaked_to_couple_api — {"coupleView":{"messages":[{"id":"394072d0-71c1-4c7b-9a99-62a00cce4ff9","body":"Sandbox ecosystem inquiry 1792704062739-1b21","sentAt":"2026-10-22T21:21:18.593368+00:00","senderType":"lead_or_client","attachments":[]},{"id":"2b50b65a-9ba7-4d6f-b5bd-65edcb794263","body":"Vendor re
+PASS private_pick_before_submit — {"picked_at":"2026-10-22T21:21:18.907+00:00","selected_at":null}
+PASS submit_creates_event_assignment — {"submit":{"ok":true,"eventId":"65b10d76-1ae9-43cc-be31-852df93a8d6c","venueId":"a415ac52-cd74-42a6-8df7-7a8f6e71d080","celebrated":true,"submissionId":"e9275f61-1f64-434f-8231-f4cbe42c7d0d","newlyAssigned":[{"vendorId":"42a8d273-f738-4f3c-bdcd-f2a5a237e1b3","assignmentId":"501f3
+PASS submit_idempotent — {"assignCount":1,"submit2":{"ok":true,"eventId":"65b10d76-1ae9-43cc-be31-852df93a8d6c","venueId":"a415ac52-cd74-42a6-8df7-7a8f6e71d080","celebrated":false,"submissionId":"4ad10100-d994-444e-9a3d-acfb675d3456","newlyAssigned":[],"selectedCount":1,"removalRequests":[]}}
+PASS assigned_vendor_linked_to_event — {"id":"501f37a6-3c8d-4b66-9833-0b7f698babc6","event_id":"65b10d76-1ae9-43cc-be31-852df93a8d6c","vendor_id":"42a8d273-f738-4f3c-bdcd-f2a5a237e1b3","share_couple_email":false,"share_couple_phone":false}
+PASS vendor_owned_event_task_created — {"task":{"id":"c4848478-2649-4d5a-ac0e-8031f2695a77","visibility":"vendor_owned","owner_type":"vendor"}}
+PASS documents_support_shared_with_vendors — sample={"id":"3db97a51-88ff-4046-a14e-338b9dcaf1ad","shared_with_vendors":false} err=
+PASS client_portal_vendors_section_loads — Vendor | ask | Vendor | vendor
+PASS anon_cannot_list_other_venue_relationships — {"success":true,"error":null,"data":[],"count":null,"status":200,"statusText":"OK"}
+PASS anon_cannot_read_event_assignment — {"success":true,"error":null,"data":null,"count":null,"status":200,"statusText":"OK"}
+PASS venue_vendors_directory_loads — Vendors | Vendors | Vendors | required | Vendors | Add Vendor | Required | Preferred | Preferred | Required | Recommended | Preferred | Preferred | Recommended | Recommended
+PASS notification_records_present_or_table_reachable — vendor_notifications=[{"id":"63e2edd7-7d75-4543-9ac5-7e27de5acad5","title":"New task shared with you","created_at":"2026-10-22T21:21:19.497403+00:00"},{"id":"37acc395-d973-48ea-bbb4-7fb03a272fdf","title":"You've been selected for an event","created_at":"2026-10-22T21:21:19.074724
+
+GREEN passed=28 failed=0

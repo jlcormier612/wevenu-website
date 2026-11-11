@@ -22,6 +22,10 @@ export type BriefingItem = {
    * lives on the notification bell.
    */
   dismissNotificationIds?: string[];
+  /**
+   * Stable Dashboard Focus dismissal fingerprint for this readiness condition.
+   */
+  conditionKey?: string;
 };
 
 export type LuvBriefing = {

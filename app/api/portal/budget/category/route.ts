@@ -8,8 +8,9 @@ export async function POST(request: Request) {
     budgetedAmount: number;
     actualAmount: number;
     displayOrder?: number;
+    customName?: string | null;
   };
-  const { token, categoryKey, budgetedAmount, actualAmount, displayOrder } = body;
+  const { token, categoryKey, budgetedAmount, actualAmount, displayOrder, customName } = body;
 
   if (!token || !categoryKey) {
     return NextResponse.json({ error: "invalid_input" }, { status: 400 });
@@ -22,6 +23,24 @@ export async function POST(request: Request) {
     p_budgeted: budgetedAmount ?? 0,
     p_actual: actualAmount ?? 0,
     p_display_order: displayOrder ?? 0,
+    p_custom_name: customName?.trim() || null,
+  });
+
+  if (data?.error) return NextResponse.json({ error: data.error }, { status: 400 });
+  return NextResponse.json({ ok: true });
+}
+
+export async function DELETE(request: Request) {
+  const body = await request.json() as { token: string; categoryKey: string };
+  const { token, categoryKey } = body;
+  if (!token || !categoryKey) {
+    return NextResponse.json({ error: "invalid_input" }, { status: 400 });
+  }
+
+  const supabase = await createClient();
+  const { data } = await supabase.rpc("remove_portal_budget_category", {
+    p_token: token,
+    p_category_key: categoryKey,
   });
 
   if (data?.error) return NextResponse.json({ error: data.error }, { status: 400 });

@@ -5,10 +5,10 @@ import { describe, it } from "node:test";
 
 /**
  * Preference → notification type matrix (venue staff optional email).
- * Source of truth: should_email_venue_notification() in
- * supabase/migrations/20261298000000_reminder_cadence_and_venue_email.sql
- * (and later preference migrations). This test locks the customer-facing
- * mapping — it does not prove live email delivery.
+ * Live gate: create_venue_notification in
+ * 20261419000000_venue_notification_prefs_email_only.sql (prefs set needs_email
+ * only; in-app rows always insert). This test locks the type↔pref mapping —
+ * it does not prove live email delivery.
  */
 const PREFERENCE_MATRIX: {
   prefKey: string;
@@ -28,11 +28,15 @@ const PREFERENCE_MATRIX: {
   { prefKey: "pref_vendor_checked_in", notificationType: "vendor_checked_in", uiLabel: "Vendor check-in", channel: "email_optional" },
   { prefKey: "pref_feedback_received", notificationType: "feedback_received", uiLabel: "Feedback received", channel: "email_optional" },
   { prefKey: "pref_referral_received", notificationType: "referral_received", uiLabel: "Referral received", channel: "email_optional" },
+  { prefKey: "pref_tour_scheduled", notificationType: "tour_scheduled", uiLabel: "Tour scheduled", channel: "email_optional" },
+  { prefKey: "pref_tour_confirmed", notificationType: "tour_confirmed", uiLabel: "Tour confirmed", channel: "email_optional" },
+  { prefKey: "pref_proposal_accepted", notificationType: "proposal_accepted", uiLabel: "Proposal accepted", channel: "email_optional" },
 ];
 
 describe("notification preference matrix", () => {
+  // Latest create_venue_notification (202614190) is the live email/in-app gate.
   const sql = readFileSync(
-    resolve("supabase/migrations/20261298000000_reminder_cadence_and_venue_email.sql"),
+    resolve("supabase/migrations/20261419000000_venue_notification_prefs_email_only.sql"),
     "utf8",
   );
   const ui = readFileSync(

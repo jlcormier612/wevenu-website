@@ -51,7 +51,7 @@ export function NewsletterSignup({ className }: { className?: string }) {
       aria-label="Newsletter signup"
     >
       <label htmlFor="newsletter-email" className="sr-only">
-        Email
+        Email address
       </label>
       <input
         id="newsletter-email"
@@ -60,15 +60,19 @@ export function NewsletterSignup({ className }: { className?: string }) {
         required
         autoComplete="email"
         placeholder="Email address"
-        className="w-full rounded-2xl border border-[var(--taupe-light)] bg-[var(--true-white)] px-4 py-2.5 text-sm text-[var(--forest-sage)] outline-none transition duration-200 ease-out focus:border-[var(--heritage-sage)]"
+        className="w-full rounded-sm border border-[var(--taupe-medium)]/70 bg-[var(--natural-cream)] px-4 py-2.5 text-sm text-[var(--forest-sage)] outline-none transition duration-200 ease-out placeholder:text-[var(--forest-sage)]/45 focus:border-[var(--heritage-sage)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--heritage-sage)]"
       />
-      {error ? <p className="text-xs text-[var(--forest-sage)]/60">{error}</p> : null}
+      {error ? (
+        <p className="text-xs text-[var(--forest-sage)]/70" role="alert">
+          {error}
+        </p>
+      ) : null}
       <button
         type="submit"
         disabled={status === "submitting"}
         className={`inline-flex w-full items-center justify-center rounded-full bg-[var(--heritage-sage)] px-4 py-2.5 text-sm text-[var(--true-white)] transition duration-200 ease-out disabled:opacity-60 ${HOVER_FILL}`}
       >
-        {status === "submitting" ? "Joining…" : "Stay in touch"}
+        {status === "submitting" ? "Subscribing…" : "Subscribe"}
       </button>
     </form>
   );

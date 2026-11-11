@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, it } from "node:test";
 
-import { buildBookingHandoff } from "@/lib/clients/booking-handoff";
+import { buildBookingHandoff, isBookingWorkspaceHref } from "@/lib/clients/booking-handoff";
 
 const CLIENT_ID = "client-1";
 const EVENT_ID = "event-1";
@@ -15,7 +15,7 @@ function baseInput(overrides: Partial<Parameters<typeof buildBookingHandoff>[0]>
     playbookApplications: [],
     financialSummary: "Nothing on file yet. Contract and payment plan are optional.",
     communicationsSummary:
-      "Not sent — the client will be invited when you release their planning. Nothing is scheduled to send automatically when Booking Started.",
+      "Not sent — invite them when you're ready. Releasing Client Planning does not send this invitation. Nothing is scheduled to send automatically when Booked.",
     experienceSummary: "Your client's experience is set up for a wedding.",
     ...overrides,
   };
@@ -29,10 +29,11 @@ describe("buildBookingHandoff", () => {
     assert.doesNotMatch(blob, /wedding website ready/i);
     assert.doesNotMatch(blob, /planning tools ready/i);
     assert.equal(model.bookingLine, "are booked.");
-    assert.equal(model.prepareHeading, "Prepare Their Event");
+    assert.equal(model.prepareHeading, "What to do next");
     const communications = model.items.find((i) => i.key === "communications");
     assert.equal(communications?.complete, false);
-    assert.match(communications?.detail ?? "", /will be invited when you release their planning/);
+    assert.match(communications?.detail ?? "", /invite them when you're ready/i);
+    assert.match(communications?.detail ?? "", /does not send this invitation/i);
     const clientPlanning = model.items.find((i) => i.key === "client_planning");
     assert.equal(clientPlanning?.complete, false);
     assert.equal(clientPlanning?.detail, "Not configured");
@@ -44,24 +45,25 @@ describe("buildBookingHandoff", () => {
     assert.equal(model.items.find((i) => i.key === "venue_planning")?.complete, false);
     assert.equal(model.items.find((i) => i.key === "client_planning")?.detail, "Not configured");
     assert.equal(model.items.find((i) => i.key === "venue_planning")?.detail, "Not configured");
-    assert.equal(model.primaryHref, `/events/${EVENT_ID}#playbook`);
-    assert.equal(model.primaryLabel, "Prepare Their Event");
+    assert.equal(model.primaryHref, `/clients/${CLIENT_ID}#event-setup`);
+    assert.equal(model.primaryLabel, "Continue event setup");
   });
 
   it("represents invitation state truthfully on the Communications row", () => {
     const pending = buildBookingHandoff(baseInput({
-      communicationsSummary: "Not sent — the client will be invited when you release their planning. Nothing is scheduled to send automatically when Booking Started.",
+      communicationsSummary: "Not sent — invite them when you're ready. Releasing Client Planning does not send this invitation. Nothing is scheduled to send automatically when Booked.",
     }));
-    assert.match(pending.items.find((i) => i.key === "communications")?.detail ?? "", /will be invited when you release their planning/);
+    assert.match(pending.items.find((i) => i.key === "communications")?.detail ?? "", /invite them when you're ready/i);
+    assert.match(pending.items.find((i) => i.key === "communications")?.detail ?? "", /does not send this invitation/i);
     assert.equal(pending.items.find((i) => i.key === "communications")?.complete, false);
 
     const noEmail = buildBookingHandoff(baseInput({
-      communicationsSummary: "Not sent — no client email on file. Nothing is scheduled to send automatically when Booking Started.",
+      communicationsSummary: "Not sent — no client email on file. Nothing is scheduled to send automatically when Booked.",
     }));
     assert.match(noEmail.items.find((i) => i.key === "communications")?.detail ?? "", /no client email on file/);
 
     const sent = buildBookingHandoff(baseInput({
-      communicationsSummary: "Invitation sent. Nothing is scheduled to send automatically when Booking Started.",
+      communicationsSummary: "Invitation sent. Nothing is scheduled to send automatically when Booked.",
     }));
     assert.match(sent.items.find((i) => i.key === "communications")?.detail ?? "", /Invitation sent/);
   });
@@ -79,17 +81,19 @@ describe("buildBookingHandoff", () => {
     assert.equal(empty.items.find((i) => i.key === "communications")?.label, "Communications");
   });
 
-  it("distinguishes Client Planning draft from released without treating either as website-ready", () => {
+  it("distinguishes Client Planning draft from released without treating draft as complete", () => {
     const draft = buildBookingHandoff(baseInput({
       playbookApplications: [{ kind: "client", releasedAt: null, templateName: "Standard Wedding" }],
     }));
-    assert.equal(draft.items.find((i) => i.key === "client_planning")?.complete, true);
+    assert.equal(draft.items.find((i) => i.key === "client_planning")?.complete, false);
     assert.match(draft.items.find((i) => i.key === "client_planning")?.detail ?? "", /Draft/);
+    assert.equal(draft.items.find((i) => i.key === "client_planning")?.actionLabel, "Release Client Planning");
     assert.doesNotMatch(JSON.stringify(draft), /workspace is ready/i);
 
     const released = buildBookingHandoff(baseInput({
       playbookApplications: [{ kind: "client", releasedAt: "2026-09-02T00:00:00Z", templateName: "Standard Wedding" }],
     }));
+    assert.equal(released.items.find((i) => i.key === "client_planning")?.complete, true);
     assert.match(released.items.find((i) => i.key === "client_planning")?.detail ?? "", /Released to the client/);
     assert.match(released.items.find((i) => i.key === "client_planning")?.detail ?? "", /Standard Wedding/);
   });
@@ -99,6 +103,23 @@ describe("buildBookingHandoff", () => {
     assert.equal(model.items.find((i) => i.key === "event")?.complete, false);
     assert.equal(model.primaryHref, `/clients/${CLIENT_ID}/edit`);
     assert.equal(model.items.find((i) => i.key === "client_planning")?.href, `/clients/${CLIENT_ID}/edit`);
+    assert.doesNotMatch(JSON.stringify(model), /draft Event|tentative Event|pre-booking Event/i);
+    assert.match(model.items.find((i) => i.key === "event")?.detail ?? "", /Book this relationship/);
+  });
+
+  it("describes the booked Event as the booked occasion, not a Draft Event", () => {
+    const model = buildBookingHandoff(baseInput());
+    const event = model.items.find((i) => i.key === "event");
+    assert.equal(event?.complete, true);
+    assert.equal(event?.detail, "The booked Event exists because this relationship is Booked.");
+    assert.equal(event?.href, `/events/${EVENT_ID}`);
+    const blob = JSON.stringify(model);
+    assert.doesNotMatch(blob, /draft Event/i);
+    assert.doesNotMatch(blob, /A draft Event exists/);
+    assert.doesNotMatch(blob, /tentative Event/i);
+    assert.doesNotMatch(blob, /pre-booking Event/i);
+    assert.match(model.bookingLine, /are booked/);
+    assert.match(model.eyebrow, /Booking complete/);
   });
 
   it("does not invent a contract or deposit requirement", () => {
@@ -110,7 +131,61 @@ describe("buildBookingHandoff", () => {
   });
 });
 
+describe("post-booking workspace links", () => {
+  it("treats the client workspace and the event redirect as the same destination", () => {
+    assert.equal(isBookingWorkspaceHref("/clients/client-1"), true);
+    assert.equal(isBookingWorkspaceHref("/events/event-1"), true);
+    assert.equal(isBookingWorkspaceHref("/events/event-1#playbook"), true);
+    assert.equal(isBookingWorkspaceHref("#financial-readiness"), false);
+    assert.equal(isBookingWorkspaceHref("/contracts/new"), false);
+    assert.equal(isBookingWorkspaceHref("/communication/series"), false);
+    const celebration = readFileSync(resolve("components/clients/booking-celebration.tsx"), "utf8");
+    const experience = readFileSync(resolve("components/clients/event-experience-review-panel.tsx"), "utf8");
+    const communications = readFileSync(resolve("components/clients/communications-review-panel.tsx"), "utf8");
+    for (const src of [celebration, experience, communications]) {
+      assert.match(src, /isBookingWorkspaceHref/);
+    }
+  });
+});
+
+describe("booked-event summary after the booking transition", () => {
+  it("renders a balanced fact grid with human space labels", () => {
+    const detail = readFileSync(resolve("components/events/event-detail.tsx"), "utf8");
+    const start = detail.indexOf("function EventHeroCard");
+    const end = detail.indexOf("// ---- Coming Soon", start);
+    const hero = detail.slice(start, end);
+    assert.match(hero, /text-left/);
+    assert.match(hero, /text-2xl/);
+    assert.doesNotMatch(hero, /text-5xl/);
+    assert.doesNotMatch(hero, /text-center/);
+    assert.match(hero, /EventStatusBadge/);
+    assert.match(hero, /multiDay \? "Overall booking window" : "Time"/);
+    assert.match(hero, /<dt[^>]*>Guests<\/dt>/);
+    assert.match(hero, /<dt[^>]*>Spaces<\/dt>/);
+    assert.match(hero, /sm:grid-cols-2/);
+    assert.match(hero, /lg:grid-cols-3/);
+    assert.match(hero, /spaceLine/);
+    assert.match(hero, /weekday: "long"/);
+    const uses = readFileSync(resolve("lib/venue-spaces/uses.ts"), "utf8");
+    assert.match(uses, /A stored label that is only the internal key is not a customer-facing name/);
+    assert.doesNotMatch(hero, /cocktail_hour|getting_ready/);
+  });
+});
+
 describe("booked page — conversion and copy seams", () => {
+  it("does not call a booked Event a Draft Event, Tentative Event, or pre-booking Event", () => {
+    const celebration = readFileSync(resolve("components/clients/booking-celebration.tsx"), "utf8");
+    const page = readFileSync(resolve("app/(app)/clients/[id]/booked/page.tsx"), "utf8");
+    const handoff = readFileSync(resolve("lib/clients/booking-handoff.ts"), "utf8");
+    for (const src of [celebration, page, handoff]) {
+      assert.doesNotMatch(src, /A draft Event exists/);
+      assert.doesNotMatch(src, /draft Event exists/i);
+      assert.doesNotMatch(src, /Draft Event/);
+      assert.doesNotMatch(src, /tentative Event/i);
+      assert.doesNotMatch(src, /pre-booking Event/i);
+    }
+  });
+
   it("does not render the old workspace-ready or wedding-website-ready assertions", () => {
     const celebration = readFileSync(resolve("components/clients/booking-celebration.tsx"), "utf8");
     const page = readFileSync(resolve("app/(app)/clients/[id]/booked/page.tsx"), "utf8");
@@ -122,16 +197,22 @@ describe("booked page — conversion and copy seams", () => {
     assert.match(celebration, /eventTypeLabel/);
     assert.match(celebration, /handoff\.prepareHeading/);
     assert.match(celebration, /handoff\.primaryLabel/);
+    assert.doesNotMatch(celebration, /href=\{`\/events\/\$\{eventId\}`\}/);
+    assert.match(page, /primaryLabel = "Continue event setup"/);
+    assert.match(page, /primaryHref = `\/clients\/\$\{client\.id\}#event-setup`/);
+    assert.doesNotMatch(celebration, /Open booking/i);
+    assert.doesNotMatch(celebration, /View Client/);
+    assert.doesNotMatch(celebration, /Continue to booking/);
     assert.match(page, /buildBookingHandoff/);
     assert.match(page, /getClientInvitation/);
     assert.match(page, /buildCommunicationsReview/);
     assert.match(page, /clientHasEmail/);
     assert.match(page, /getEventPlaybookApplications/);
     assert.match(page, /getTemplates/);
-    assert.match(celebration, /PreparePlanningPanel/);
-    assert.match(celebration, /FinancialReadinessPanel/);
-    assert.match(celebration, /EventExperienceReviewPanel/);
-    assert.match(celebration, /CommunicationsReviewPanel/);
+    assert.doesNotMatch(celebration, /PreparePlanningPanel/);
+    assert.match(celebration, /BookedNextSteps/);
+    assert.match(celebration, /financial\.rows/);
+    assert.doesNotMatch(celebration, /FinancialReadinessPanel|EventExperienceReviewPanel|CommunicationsReviewPanel/);
   });
 
   it("does not invite at convertLeadToClient and does not apply planning", () => {
@@ -141,10 +222,32 @@ describe("booked page — conversion and copy seams", () => {
     const fn = src.slice(fnStart, fnEnd);
     assert.doesNotMatch(fn, /inviteClient\(/);
     assert.match(fn, /insertClient\(/);
-    assert.match(fn, /autoCreateEvent\(/);
-    assert.match(fn, /startTime: input\.ceremonyTime/);
+    assert.doesNotMatch(fn, /autoCreateEvent\(/);
+    assert.doesNotMatch(fn, /insertClientWithDatedEvent\(/);
     assert.doesNotMatch(fn, /updateLeadSalesStage/);
     assert.doesNotMatch(fn, /applyPlaybookToEvent/);
     assert.doesNotMatch(fn, /releasePlaybookApplication/);
+  });
+});
+
+describe("booked page next steps", () => {
+  const celebration = readFileSync(resolve("components/clients/booking-celebration.tsx"), "utf8");
+  const page = readFileSync(resolve("app/(app)/clients/[id]/booked/page.tsx"), "utf8");
+
+  it("orders event setup, then release, then invite — and offers no invite action here", () => {
+    const setup = celebration.indexOf('key: "event_setup"');
+    const release = celebration.indexOf('key: "release"');
+    const invite = celebration.indexOf('key: "invite"');
+    assert.ok(setup > 0 && setup < release && release < invite);
+    assert.match(celebration, /an invitation can't be taken back/);
+    assert.doesNotMatch(celebration, /inviteClientAction|previewClientInviteAction|Invite client/);
+    assert.match(celebration, /data-testid="booked-continue-event-setup"/);
+    assert.match(page, /tagline = "Planning stays private until you release it in Event setup\."/);
+  });
+
+  it("uses theme colors so the card stays readable in dark mode", () => {
+    assert.doesNotMatch(celebration, /#FDF8F8|#9ca3af|#3D2F30|#5A3235/);
+    assert.match(celebration, /bg-card/);
+    assert.match(celebration, /rounded-full bg-destructive text-\[10px\] font-bold text-destructive-foreground/);
   });
 });

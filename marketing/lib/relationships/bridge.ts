@@ -134,6 +134,7 @@ export async function syncEnrollmentToRelationship(
   activationToken: string | null;
   firstName: string;
   venueName: string;
+  purchaseHold: boolean;
 } | null> {
   try {
     const mrrCents =
@@ -163,13 +164,16 @@ export async function syncEnrollmentToRelationship(
     // (cleared / deferred for White Glove).
     return {
       relationshipId: result.relationship.id,
-      activationToken: result.relationship.activationToken ?? null,
+      activationToken: result.purchaseHold
+        ? null
+        : (result.relationship.activationToken ?? null),
       firstName: result.relationship.owner.firstName,
       venueName: result.relationship.venue.name,
+      purchaseHold: Boolean(result.purchaseHold),
     };
   } catch (error) {
     console.error("[relationships] failed to sync enrollment", record.id, error);
-    return null;
+    throw error;
   }
 }
 

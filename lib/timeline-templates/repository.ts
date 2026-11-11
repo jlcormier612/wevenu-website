@@ -1,5 +1,8 @@
 import { createClient } from "@/integrations/supabase/server";
-import { sanitizeVenueTemplateAudiences } from "@/lib/timeline-templates/constants";
+import {
+  sanitizeVenueTemplateAudiences,
+  sortTimelineTemplateItems,
+} from "@/lib/timeline-templates/constants";
 import type { TimelineAudience } from "@/lib/timeline/types";
 import type {
   TimelineTemplate,
@@ -15,7 +18,12 @@ type TemplateRow = {
   is_default: boolean; is_archived: boolean; source_master_key: string | null;
   created_at: string; updated_at: string;
 };
-type ItemRow = { id: string; template_id: string; venue_id: string; title: string; description: string | null; notes: string | null; time_of_day: string | null; minutes_offset: number | null; day_offset: number; needs_review: boolean; audiences: string[]; sort_order: number; created_at: string; updated_at: string; };
+type ItemRow = {
+  id: string; template_id: string; venue_id: string; title: string; description: string | null;
+  notes: string | null; time_of_day: string | null; minutes_offset: number | null; day_offset: number;
+  day_anchor?: string | null;
+  needs_review: boolean; audiences: string[]; sort_order: number; created_at: string; updated_at: string;
+};
 
 const mapTemplate = (r: TemplateRow): TimelineTemplate => ({
   id: r.id, venueId: r.venue_id, name: r.name, eventType: r.event_type, spaceId: r.space_id,
@@ -23,10 +31,16 @@ const mapTemplate = (r: TemplateRow): TimelineTemplate => ({
   createdAt: r.created_at, updatedAt: r.updated_at,
 });
 
+function mapDayAnchor(raw: string | null | undefined): TimelineTemplateItem["dayAnchor"] {
+  return raw === "event_end" ? "event_end" : "event_start";
+}
+
 const mapItem = (r: ItemRow): TimelineTemplateItem => ({
   id: r.id, templateId: r.template_id, venueId: r.venue_id, title: r.title, description: r.description,
   notes: r.notes, timeOfDay: r.time_of_day, minutesOffset: r.minutes_offset,
-  dayOffset: r.day_offset ?? 0, needsReview: r.needs_review,
+  dayOffset: Math.trunc(r.day_offset ?? 0),
+  dayAnchor: mapDayAnchor(r.day_anchor),
+  needsReview: r.needs_review,
   audiences: r.audiences as TimelineAudience[], sortOrder: r.sort_order, createdAt: r.created_at, updatedAt: r.updated_at,
 });
 
@@ -54,7 +68,9 @@ export async function getTemplate(client: DbClient, venueId: string, id: string)
 export async function getTemplatesWithStats(client: DbClient, venueId: string): Promise<TimelineTemplateWithStats[]> {
   const [{ data: templateRows, error: templateError }, { data: itemRows, error: itemError }, { data: spaceRows, error: spaceError }] = await Promise.all([
     client.from("timeline_templates").select("*").eq("venue_id", venueId).order("name"),
-    client.from("timeline_template_items").select("template_id, title, day_offset, sort_order").eq("venue_id", venueId)
+    client.from("timeline_template_items")
+      .select("template_id, title, day_offset, day_anchor, minutes_offset, time_of_day, sort_order")
+      .eq("venue_id", venueId)
       .order("day_offset", { ascending: true })
       .order("sort_order", { ascending: true }),
     client.from("venue_spaces").select("id, name").eq("venue_id", venueId),
@@ -63,11 +79,37 @@ export async function getTemplatesWithStats(client: DbClient, venueId: string): 
   if (itemError) throw itemError;
   if (spaceError) throw spaceError;
 
+  type PreviewRow = {
+    template_id: string;
+    title: string;
+    day_offset: number;
+    day_anchor: string | null;
+    minutes_offset: number | null;
+    time_of_day: string | null;
+    sort_order: number;
+  };
   const previewByTemplate = new Map<string, { title: string; dayOffset: number }[]>();
-  for (const row of itemRows as { template_id: string; title: string; day_offset: number }[]) {
-    const list = previewByTemplate.get(row.template_id) ?? [];
-    list.push({ title: row.title, dayOffset: row.day_offset ?? 0 });
-    previewByTemplate.set(row.template_id, list);
+  const rawByTemplate = new Map<string, PreviewRow[]>();
+  for (const row of itemRows as PreviewRow[]) {
+    const list = rawByTemplate.get(row.template_id) ?? [];
+    list.push(row);
+    rawByTemplate.set(row.template_id, list);
+  }
+  for (const [templateId, rows] of rawByTemplate) {
+    const sorted = sortTimelineTemplateItems(
+      rows.map((r) => ({
+        title: r.title,
+        dayOffset: r.day_offset ?? 0,
+        dayAnchor: r.day_anchor === "event_end" ? "event_end" as const : "event_start" as const,
+        minutesOffset: r.minutes_offset,
+        timeOfDay: r.time_of_day,
+        sortOrder: r.sort_order ?? 0,
+      })),
+    );
+    previewByTemplate.set(
+      templateId,
+      sorted.map((r) => ({ title: r.title, dayOffset: r.dayOffset ?? 0 })),
+    );
   }
 
   const spaceNames = new Map<string, string>();
@@ -106,6 +148,25 @@ export async function insertTemplate(
 export async function renameTemplate(client: DbClient, venueId: string, id: string, name: string): Promise<void> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (client.from("timeline_templates") as any).update({ name: name.trim() }).eq("id", id).eq("venue_id", venueId);
+  if (error) throw error;
+}
+
+/** Template-level metadata only — does not touch items or source_master_key. */
+export async function updateTemplateDetails(
+  client: DbClient,
+  venueId: string,
+  id: string,
+  input: { name: string; eventType: string | null; spaceId: string | null },
+): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("timeline_templates") as any)
+    .update({
+      name: input.name.trim(),
+      event_type: input.eventType || null,
+      space_id: input.spaceId || null,
+    })
+    .eq("id", id)
+    .eq("venue_id", venueId);
   if (error) throw error;
 }
 
@@ -159,7 +220,8 @@ export async function duplicateTemplateInto(client: DbClient, venueId: string, s
   for (const item of items) {
     await insertItem(client, venueId, newTemplateId, {
       title: item.title, description: item.description, notes: item.notes,
-      timeOfDay: item.timeOfDay, minutesOffset: item.minutesOffset, dayOffset: item.dayOffset,
+      timeOfDay: item.timeOfDay, minutesOffset: item.minutesOffset,
+      dayOffset: item.dayOffset, dayAnchor: item.dayAnchor,
       needsReview: item.needsReview,
       audiences: sanitizeVenueTemplateAudiences(item.audiences), sortOrder: item.sortOrder,
     });
@@ -175,7 +237,21 @@ export async function getItems(client: DbClient, venueId: string, templateId: st
     .order("day_offset", { ascending: true })
     .order("sort_order", { ascending: true });
   if (error) throw error;
-  return (data as ItemRow[]).map(mapItem);
+  return sortTimelineTemplateItems((data as ItemRow[]).map(mapItem));
+}
+
+/**
+ * Rewrite sort_order to match chronological order (earliest → latest).
+ * Called after add/edit so persistence, preview, and apply agree.
+ */
+export async function rechronoItems(
+  client: DbClient,
+  venueId: string,
+  templateId: string,
+): Promise<TimelineTemplateItem[]> {
+  const items = await getItems(client, venueId, templateId);
+  await reorderItems(client, venueId, items.map((it) => it.id));
+  return items.map((it, i) => ({ ...it, sortOrder: i }));
 }
 
 export async function insertItem(client: DbClient, venueId: string, templateId: string, input: TimelineTemplateItemInput): Promise<string> {
@@ -183,7 +259,8 @@ export async function insertItem(client: DbClient, venueId: string, templateId: 
     template_id: templateId, venue_id: venueId, title: input.title.trim(),
     description: input.description?.trim() || null, notes: input.notes?.trim() || null,
     time_of_day: input.timeOfDay || null, minutes_offset: input.minutesOffset,
-    day_offset: Math.max(0, Math.trunc(input.dayOffset ?? 0)),
+    day_offset: Math.trunc(input.dayOffset ?? 0),
+    day_anchor: input.dayAnchor === "event_end" ? "event_end" : "event_start",
     needs_review: input.needsReview ?? false,
     audiences: sanitizeVenueTemplateAudiences(input.audiences), sort_order: input.sortOrder,
   }).select("id").single<{ id: string }>();
@@ -202,7 +279,10 @@ export async function updateItem(client: DbClient, venueId: string, itemId: stri
   if (patch.notes !== undefined) row.notes = patch.notes?.trim() || null;
   if (patch.timeOfDay !== undefined) row.time_of_day = patch.timeOfDay || null;
   if (patch.minutesOffset !== undefined) row.minutes_offset = patch.minutesOffset;
-  if (patch.dayOffset !== undefined) row.day_offset = Math.max(0, Math.trunc(patch.dayOffset));
+  if (patch.dayOffset !== undefined) row.day_offset = Math.trunc(patch.dayOffset);
+  if (patch.dayAnchor !== undefined) {
+    row.day_anchor = patch.dayAnchor === "event_end" ? "event_end" : "event_start";
+  }
   if (patch.needsReview !== undefined) row.needs_review = patch.needsReview;
   if (patch.audiences !== undefined) row.audiences = sanitizeVenueTemplateAudiences(patch.audiences);
   if (patch.sortOrder !== undefined) row.sort_order = patch.sortOrder;

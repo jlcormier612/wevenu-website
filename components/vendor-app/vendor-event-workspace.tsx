@@ -25,6 +25,10 @@ import {
 } from "@/app/vendor/(workspace)/events/actions";
 import { applyVendorTaskTemplatesAction } from "@/app/vendor/(workspace)/task-templates/actions";
 import {
+  VENDOR_PRIVATE_NOTES_HINT,
+  VENDOR_PRIVATE_NOTES_LABEL,
+} from "@/lib/notes/vendor-private-notes-copy";
+import {
   getVendorConversationAction,
   getVendorConversationIdsForEventAction,
 } from "@/app/vendor/(workspace)/messages/actions";
@@ -139,8 +143,26 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "tasks",     label: "Tasks"             },
   { id: "documents", label: "Documents"         },
   { id: "venueinfo", label: "Venue Information" },
-  { id: "notes",     label: "Notes"             },
+  { id: "notes",     label: "Internal notes"    },
 ];
+
+/** Title card matching Documents "Event Folder" — botanical left accent on white. */
+function VendorEventTabIntro({
+  title,
+  description,
+}: {
+  title: string;
+  description?: string;
+}) {
+  return (
+    <div className="htc-hospitality-heading htc-hospitality-intro-accent">
+      <h2 className="font-heading text-2xl font-medium text-heading">{title}</h2>
+      {description ? (
+        <p className="mt-0.5 text-sm text-muted-foreground">{description}</p>
+      ) : null}
+    </div>
+  );
+}
 
 function formatDate(iso: string | null): string {
   if (!iso) return "";
@@ -266,7 +288,7 @@ export function VendorEventWorkspace({
             >
               {label}
               {id === "tasks" && detail.eventTasks.filter((t) => t.status !== "complete").length + detail.personalTasks.filter((t) => t.status !== "complete").length > 0 && (
-                <span className="ml-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary/15 px-1 text-[10px] font-bold text-primary">
+                <span className="ml-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--htc-eucalyptus-surface)] px-1 text-[10px] font-bold text-[var(--htc-botanical)]">
                   {detail.eventTasks.filter((t) => t.status !== "complete").length + detail.personalTasks.filter((t) => t.status !== "complete").length}
                 </span>
               )}
@@ -432,14 +454,22 @@ function OverviewTab({
   }
 
   return (
+    <div className="space-y-4">
+      <VendorEventTabIntro
+        title="Overview"
+        description="Your day-of assignment, open work, and recent updates for this event."
+      />
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
       {/* Assignment info */}
       <div
-        className={`rounded-sm border bg-card p-4 space-y-3 ${
-          emphasizeCheckin ? "border-primary/50 ring-2 ring-primary/25" : "border-border"
+        className={`htc-surface-working overflow-hidden ${
+          emphasizeCheckin ? "border-primary/50 ring-2 ring-primary/25" : ""
         }`}
       >
-        <h2 className="text-sm font-semibold text-foreground">Your assignment</h2>
+        <div data-vendor-section-banner="" className="px-4 py-2.5">
+          <h2 className="text-sm font-semibold text-heading">Your assignment</h2>
+        </div>
+        <div className="space-y-3 p-4">
         <div className="space-y-2 text-sm">
           {detail.arrivalTime && (
             <div className="flex items-start gap-2">
@@ -479,8 +509,8 @@ function OverviewTab({
                 disabled={pendingField !== null}
                 className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-60 ${
                   checkedIn
-                    ? "border-primary/40 bg-primary/10 text-primary"
-                    : "border-border bg-background text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                    ? "border-[color-mix(in_oklch,var(--htc-botanical)_45%,var(--htc-border-warm))] bg-[var(--htc-eucalyptus-surface)] text-[var(--htc-botanical)]"
+                    : "border-[color-mix(in_oklch,var(--htc-eucalyptus)_45%,var(--htc-border-warm))] bg-[var(--htc-eucalyptus-surface)] text-[var(--htc-botanical)] hover:bg-[var(--htc-soft-sage,#c9d9ce)]"
                 }`}
               >
                 {pendingField === "checked_in" ? (
@@ -496,8 +526,8 @@ function OverviewTab({
                 disabled={pendingField !== null}
                 className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-60 ${
                   setupDone
-                    ? "border-primary/40 bg-primary/10 text-primary"
-                    : "border-border bg-background text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                    ? "border-[color-mix(in_oklch,var(--htc-botanical)_45%,var(--htc-border-warm))] bg-[var(--htc-eucalyptus-surface)] text-[var(--htc-botanical)]"
+                    : "border-[color-mix(in_oklch,var(--htc-eucalyptus)_45%,var(--htc-border-warm))] bg-[var(--htc-eucalyptus-surface)] text-[var(--htc-botanical)] hover:bg-[var(--htc-soft-sage,#c9d9ce)]"
                 }`}
               >
                 {pendingField === "setup_complete" ? (
@@ -558,16 +588,19 @@ function OverviewTab({
             </button>
           )}
         </div>
+        </div>
       </div>
 
       {/* At a glance — actionable deep links into event tabs */}
-      <div className="rounded-sm border border-border bg-card overflow-hidden">
-        <h2 className="text-sm font-semibold text-foreground px-4 pt-4 pb-2">At a glance</h2>
-        <div className="divide-y divide-border border-t border-border">
+      <div className="htc-surface-working overflow-hidden">
+        <div data-vendor-section-banner="" className="px-4 py-2.5">
+          <h2 className="text-sm font-semibold text-heading">At a glance</h2>
+        </div>
+        <div className="divide-y divide-border">
           <button
             type="button"
             onClick={() => onNavigate("tasks")}
-            className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-muted/40 transition-colors"
+            className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-[color-mix(in_oklch,var(--htc-eucalyptus)_18%,white)]"
           >
             <div className="min-w-0">
               <p className="text-sm font-medium text-foreground">
@@ -589,7 +622,12 @@ function OverviewTab({
           <button
             type="button"
             onClick={() => onNavigate("documents")}
-            className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-muted/40 transition-colors"
+            data-vendor-empty={detail.documents.length === 0 ? "documents" : undefined}
+            className={`flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors ${
+              detail.documents.length === 0
+                ? "bg-[var(--htc-calm-blue)] hover:bg-[var(--htc-calm-blue-deep)]"
+                : "hover:bg-[color-mix(in_oklch,var(--htc-eucalyptus)_18%,white)]"
+            }`}
           >
             <div className="min-w-0">
               <p className="text-sm font-medium text-foreground">
@@ -607,7 +645,7 @@ function OverviewTab({
           <button
             type="button"
             onClick={() => onNavigate("messages", "venue")}
-            className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-muted/40 transition-colors"
+            className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-[color-mix(in_oklch,var(--htc-eucalyptus)_18%,white)]"
           >
             <div className="min-w-0">
               <p className="text-sm font-medium text-foreground">Message venue</p>
@@ -620,10 +658,10 @@ function OverviewTab({
             <button
               type="button"
               onClick={() => onNavigate("messages", "couple")}
-              className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-muted/40 transition-colors"
-            >
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-foreground">Message couple</p>
+            className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-[color-mix(in_oklch,var(--htc-eucalyptus)_18%,white)]"
+          >
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-foreground">Message couple</p>
                 <p className="text-xs text-muted-foreground truncate">Open the couple thread</p>
               </div>
               <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -653,25 +691,31 @@ function OverviewTab({
         </div>
       </div>
 
-      {/* Agreed fee — coordination reference only. Payments happen outside
-          Hello to Cheers; no paid/pending status is shown here. Hidden when
-          the venue hasn't set a fee. */}
+      {/* Venue cost (agreed_fee) — coordination reference only. Not a couple
+          charge, Event Order line, or invoice. Payments happen outside HTC.
+          Hidden when the venue hasn't set a fee. */}
       {detail.agreedFee != null && (
-        <div className="rounded-sm border border-border bg-card p-4 space-y-2 sm:col-span-2">
-          <h2 className="text-sm font-semibold text-foreground">Agreed fee</h2>
-          <p className="text-2xl font-semibold text-foreground">${detail.agreedFee.toLocaleString()}</p>
-          <p className="text-xs text-muted-foreground">
-            Tracked for coordination — payments happen outside Hello to Cheers.
-          </p>
+        <div className="htc-surface-working sm:col-span-2 overflow-hidden">
+          <div data-vendor-section-banner="" className="px-4 py-2.5">
+            <h2 className="text-sm font-semibold text-heading">Venue cost for this event</h2>
+          </div>
+          <div className="space-y-2 p-4">
+            <p className="text-2xl font-semibold text-foreground">${detail.agreedFee.toLocaleString()}</p>
+            <p className="text-xs text-muted-foreground">
+              What the venue recorded as owed to you for coordination — not a couple charge in Hello to Cheers. Payments happen outside the app.
+            </p>
+          </div>
         </div>
       )}
 
       {/* Recent activity — attention surface: action-needed until addressed,
           FYI within 72h. Hidden when empty. */}
       {activityFeed.length > 0 && (
-        <div className="rounded-sm border border-border bg-card overflow-hidden sm:col-span-2">
-          <h2 className="text-sm font-semibold text-foreground px-4 pt-4 pb-2">Recent activity</h2>
-          <div className="divide-y divide-border border-t border-border">
+        <div className="htc-surface-working sm:col-span-2 overflow-hidden">
+          <div data-vendor-section-banner="" className="px-4 py-2.5">
+            <h2 className="text-sm font-semibold text-heading">Recent activity</h2>
+          </div>
+          <div className="divide-y divide-border">
             {activityFeed.map((item) => (
               <button
                 key={item.id}
@@ -698,6 +742,7 @@ function OverviewTab({
         </div>
       )}
     </div>
+    </div>
   );
 }
 
@@ -711,12 +756,18 @@ function TimelineTab({ detail }: { detail: VendorEventDetail }) {
 
   if (detail.timeline.length === 0) {
     return (
-      <div className="rounded-sm border border-dashed border-border py-12 text-center">
-        <p className="text-sm font-medium text-foreground">No timeline items yet</p>
-        <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
-          The venue shares day-of timing with vendors when they are ready.
-          Check back once they release your items for this event.
-        </p>
+      <div className="space-y-4">
+        <VendorEventTabIntro
+          title="Timeline"
+          description="Day-of timing the venue has shared with you for this event."
+        />
+        <div className="rounded-sm border border-dashed border-border py-12 text-center">
+          <p className="text-sm font-medium text-foreground">No timeline items yet</p>
+          <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
+            The venue shares day-of timing with vendors when they are ready.
+            Check back once they release your items for this event.
+          </p>
+        </div>
       </div>
     );
   }
@@ -744,6 +795,10 @@ function TimelineTab({ detail }: { detail: VendorEventDetail }) {
 
   return (
     <div className="space-y-5">
+      <VendorEventTabIntro
+        title="Timeline"
+        description="Day-of timing the venue has shared with you for this event."
+      />
       {Array.from(byDay.entries()).map(([day, entries]) => (
         <div key={day} className="space-y-2">
           {multiDay && detail.eventDate && (
@@ -1153,6 +1208,10 @@ function TasksTab({
 
   return (
     <div className="space-y-4">
+      <VendorEventTabIntro
+        title="Tasks"
+        description="Work assigned by the venue and tasks you track for this event."
+      />
       {/* Venue-assigned tasks */}
       {detail.eventTasks.length > 0 && (
         <div className="space-y-2">
@@ -1469,9 +1528,15 @@ function MessagesTab({
   }
   if (!threads.length || !activeId) {
     return (
-      <div className="rounded-sm border border-dashed border-border py-12 text-center">
-        <p className="text-sm font-medium text-foreground">Messages</p>
-        <p className="text-xs text-muted-foreground mt-1">No conversation for this event yet.</p>
+      <div className="space-y-4">
+        <VendorEventTabIntro
+          title="Messages"
+          description="Conversation with the venue and couple for this booking."
+        />
+        <div className="rounded-sm border border-dashed border-border py-12 text-center">
+          <p className="text-sm font-medium text-foreground">Messages</p>
+          <p className="text-xs text-muted-foreground mt-1">No conversation for this event yet.</p>
+        </div>
       </div>
     );
   }
@@ -1481,6 +1546,10 @@ function MessagesTab({
 
   return (
     <div className="space-y-3">
+      <VendorEventTabIntro
+        title="Messages"
+        description="Conversation with the venue and couple for this booking."
+      />
       {threads.length > 1 && (
         <div className="flex flex-wrap gap-2">
           {threads.map((t) => {
@@ -1500,8 +1569,8 @@ function MessagesTab({
                 className={`max-w-full truncate rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
                   activeId === t.conversationId
                     ? t.counterpartyLabel === "Couple"
-                      ? "border-[color-mix(in_oklch,var(--dusty-rose)_45%,var(--border))] bg-[color-mix(in_oklch,var(--dusty-rose)_14%,transparent)] text-foreground dark:border-[color-mix(in_oklch,var(--dusty-rose)_50%,transparent)] dark:bg-[color-mix(in_oklch,var(--dusty-rose)_20%,transparent)] dark:text-[var(--true-white)]"
-                      : "border-[color-mix(in_oklch,var(--forest-sage)_40%,var(--border))] bg-[color-mix(in_oklch,var(--forest-sage)_10%,transparent)] text-foreground dark:border-[color-mix(in_oklch,var(--soft-sage)_45%,transparent)] dark:bg-white/10 dark:text-[var(--true-white)]"
+                      ? "border-[color-mix(in_oklch,var(--htc-blush,#d99a9e)_45%,var(--border))] bg-[color-mix(in_oklch,var(--htc-blush,#d99a9e)_14%,transparent)] text-foreground"
+                      : "border-[color-mix(in_oklch,var(--htc-botanical,#446b56)_40%,var(--border))] bg-[color-mix(in_oklch,var(--htc-botanical,#446b56)_10%,transparent)] text-foreground"
                     : "border-border bg-card text-muted-foreground hover:text-foreground"
                 }`}
               >
@@ -1562,12 +1631,12 @@ function DocumentsTab({
   return (
     <div className={highlight ? "space-y-4 rounded-sm p-1 -m-1 ring-2 ring-primary/25 bg-primary/5" : "space-y-4"}>
       <DocumentWorkspace
-        title="Event folder"
+        title="Event Folder"
         description={`Files for this booking — from ${detail.venueName}, shared by you, and (when enabled) with the couple.`}
         documents={workspaceDocuments}
         initialPinnedKeys={[]}
-        initialRecentEntries={[]}
         pinningEnabled={false}
+        viewerScope="files"
       />
       <VendorEventSharePanel
         assignmentId={detail.assignmentId}
@@ -1592,12 +1661,26 @@ function VenueInfoTab({ detail }: { detail: VendorEventDetail }) {
   }
   if (!handbook) {
     return (
-      <div className="rounded-sm border border-dashed border-border py-12 text-center">
-        <p className="text-sm text-muted-foreground">Venue information isn&apos;t available for this event.</p>
+      <div className="space-y-4">
+        <VendorEventTabIntro
+          title="Venue Information"
+          description={`Logistics and house details from ${detail.venueName}.`}
+        />
+        <div className="rounded-sm border border-dashed border-border py-12 text-center">
+          <p className="text-sm text-muted-foreground">Venue information isn&apos;t available for this event.</p>
+        </div>
       </div>
     );
   }
-  return <VendorHandbookView handbook={handbook} />;
+  return (
+    <div className="space-y-4">
+      <VendorEventTabIntro
+        title="Venue Information"
+        description={`Logistics and house details from ${detail.venueName}.`}
+      />
+      <VendorHandbookView handbook={handbook} />
+    </div>
+  );
 }
 
 function NotesTab({ detail }: { detail: VendorEventDetail }) {
@@ -1614,10 +1697,13 @@ function NotesTab({ detail }: { detail: VendorEventDetail }) {
 
   return (
     <div className="space-y-3">
-      <p className="text-xs text-muted-foreground">Private notes visible only to you, not the venue or the client.</p>
+      <VendorEventTabIntro
+        title={VENDOR_PRIVATE_NOTES_LABEL}
+        description={VENDOR_PRIVATE_NOTES_HINT}
+      />
       <textarea
         className="w-full rounded-sm border border-border bg-card px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring min-h-[200px] resize-none"
-        placeholder="Add your private notes for this event…"
+        placeholder="Add notes for your vendor team…"
         value={notes}
         onChange={(e) => { setNotes(e.target.value); setEdited(true); }}
       />

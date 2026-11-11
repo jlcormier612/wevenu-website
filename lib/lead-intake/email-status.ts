@@ -1,15 +1,14 @@
 /**
  * Email Intake self-service status — Sprint 3, Item 2.
  *
- * Everything here is derived from lead_intake_attempts (source =
- * 'email_parsed_generic'), filtered to this one channel — no new
- * tracking table needed, per the assessment: "last email received,"
- * "last lead imported," and a confidence signal are all queries away.
+ * Derived from lead_intake_attempts with trust_tier = email_parsed so the
+ * health panel still covers marketplace-attributed email-forward leads
+ * (the_knot, wedding_wire, …) as well as email_parsed_generic. No new
+ * tracking table — "last email received," "last lead imported," and a
+ * confidence signal remain queries away.
  */
 import { createClient } from "@/integrations/supabase/server";
 import { getCurrentVenue } from "@/lib/venue/service";
-
-const SOURCE = "email_parsed_generic";
 
 export type EmailIntakeStatus = {
   leadEmailKey: string;
@@ -32,7 +31,7 @@ export async function getEmailIntakeStatus(): Promise<EmailIntakeStatus | null> 
     supabase.from("venues").select("lead_email_key, email_intake_connected_at").eq("id", venue.id).maybeSingle<{ lead_email_key: string; email_intake_connected_at: string | null }>(),
     supabase.from("lead_intake_attempts")
       .select("status, confidence_score, lead_id, created_at")
-      .eq("venue_id", venue.id).eq("source", SOURCE)
+      .eq("venue_id", venue.id).eq("trust_tier", "email_parsed")
       .order("created_at", { ascending: false })
       .limit(20),
   ]);

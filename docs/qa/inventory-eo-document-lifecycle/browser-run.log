@@ -1,0 +1,62 @@
+PASS [deploy] serving_sha — expected=2b97ed8805fde90079fdb69ea6a7e3990ec7d14b ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:2b97ed8805fde90079fdb69ea6a7e3990ec7d14b
+PASS [usability] portal_setup_no_inventory_event_order_toggles — planningVisible=true invEoCopy=false
+PASS [usability] setup_profiles_treat_inventory_eo_as_commercial — OVERVIEW
+
+Dashboard
+
+YOUR RELATIONSHIPS
+
+Leads
+99+
+Clients
+Vendors
+
+SCHEDULING
+
+Calendar
+Tours
+22
+
+COMMUNICATION
+
+Inbox
+Automations
+
+LIBRARY
+
+Templates
+Documents
+
+FINANCIALS
+
+Contracts
+17
+Payments
+14
+
+TO DO’S
+
+Task Center
+Requests
+
+YOUR VENUE
+
+Setup
+Settings
+Guidance
+Venue Guide
+Reports
+Help & Feedback
+Jen's Fancy Venue
+Search
+⌘K
+99+
+J
+jennifer@hellotocheers.com
+Setup Profiles
+
+This is where you t
+PASS [deploy] finalize_notify_and_documents_seams_shipped — covered by focused unit suite + migration on tip
+PASS [usability] 
+PARTIAL GREEN (settings gates) — 5 pass / 0 fail
+Full lifecycle scenarios 1–4 remain required for ACCEPTED.

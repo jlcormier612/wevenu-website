@@ -4,6 +4,7 @@ import { Building2, Clock } from "lucide-react";
 import { AttentionList } from "@/components/dashboard-system/attention-list";
 import { eventTypeLabel, formatDate, leadDisplayName } from "@/lib/leads/constants";
 import type { Lead } from "@/lib/leads/types";
+import { formatVenueLocalClock } from "@/lib/venue/timezone";
 
 function daysUntil(iso: string): number {
   return Math.ceil(
@@ -64,7 +65,7 @@ export function UpcomingToursWidget({ leads }: { leads: Lead[] }) {
               <p className="flex items-center gap-1 text-xs text-muted-foreground justify-end">
                 <Clock className="h-3 w-3" />
                 {formatDate(lead.tourDate)}
-                {lead.tourTime ? ` · ${lead.tourTime.slice(0, 5)}` : ""}
+                {lead.tourTime ? ` · ${formatVenueLocalClock(lead.tourTime)}` : ""}
               </p>
             </div>
           </Link>

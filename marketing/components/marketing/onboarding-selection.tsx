@@ -9,6 +9,7 @@ import {
   getDefaultOnboardingType,
   ONBOARDING_PACKAGES,
   ONBOARDING_SELECTION_COPY,
+  ONBOARDING_SELECTION_COPY_LEGACY,
 } from "@/lib/marketing/onboarding-packages";
 import { HOVER_FILL, HOVER_LINK, HOVER_OUTLINE } from "@/lib/marketing/rhythm";
 import { cn } from "@/lib/utils";
@@ -21,6 +22,8 @@ type OnboardingSelectionProps = {
   planLabel: string;
   loading?: boolean;
   error?: string | null;
+  /** When true, show Phase 2 Weven 20% copy and $399 White Glove. */
+  wevenOfferAvailable?: boolean;
   onClose: () => void;
   onContinue: (selection: {
     onboardingType: OnboardingType;
@@ -41,6 +44,7 @@ export function OnboardingSelection({
   planLabel,
   loading = false,
   error = null,
+  wevenOfferAvailable = false,
   onClose,
   onContinue,
 }: OnboardingSelectionProps) {
@@ -105,7 +109,9 @@ export function OnboardingSelection({
 
   if (!open) return null;
 
-  const copy = ONBOARDING_SELECTION_COPY;
+  const copy = wevenOfferAvailable
+    ? ONBOARDING_SELECTION_COPY
+    : ONBOARDING_SELECTION_COPY_LEGACY;
 
   return createPortal(
     <div className="fixed inset-0 z-[100] overflow-y-auto overscroll-contain">
@@ -196,9 +202,14 @@ export function OnboardingSelection({
             </div>
 
             <div className="mt-8 space-y-3 border-t border-[var(--taupe-medium)]/40 pt-8">
-              <p className="text-sm leading-[1.6] text-[var(--forest-sage)]/70">
+              <p className="text-sm font-medium leading-[1.6] text-[var(--forest-sage)]/85">
                 {copy.welcomeBack.prompt}
               </p>
+              {copy.welcomeBack.body ? (
+                <p className="text-sm leading-[1.6] text-[var(--forest-sage)]/70">
+                  {copy.welcomeBack.body}
+                </p>
+              ) : null}
               <label className="flex cursor-pointer items-start gap-3 text-sm leading-[1.6] text-[var(--forest-sage)]/80">
                 <input
                   type="checkbox"
@@ -209,6 +220,19 @@ export function OnboardingSelection({
                 />
                 <span>{copy.welcomeBack.checkboxLabel}</span>
               </label>
+              {copy.welcomeBack.support ? (
+                <p className="text-xs leading-[1.6] text-[var(--forest-sage)]/55">
+                  {copy.welcomeBack.support}
+                </p>
+              ) : null}
+              {welcomeBack && copy.welcomeBack.appliedBanner ? (
+                <p
+                  className="rounded-sm border border-[var(--heritage-sage)]/25 bg-[var(--linen)]/60 px-3 py-2 text-sm leading-[1.6] text-[var(--forest-sage)]"
+                  role="status"
+                >
+                  {copy.welcomeBack.appliedBanner}
+                </p>
+              ) : null}
             </div>
 
             <div className="mt-8 space-y-3 border-t border-[var(--taupe-medium)]/40 pt-8">
@@ -281,7 +305,11 @@ export function OnboardingSelection({
                         />
                       </div>
                       <p className="mt-3 text-sm tracking-wide text-[var(--heritage-sage)]">
-                        {pkg.priceLabel}
+                        {pkg.id === "white_glove" &&
+                        welcomeBack &&
+                        wevenOfferAvailable
+                          ? copy.whiteGloveWevenPriceLabel
+                          : pkg.priceLabel}
                       </p>
                       <p className="mt-4 text-sm leading-[1.7] text-[var(--forest-sage)]/70">
                         {pkg.description}

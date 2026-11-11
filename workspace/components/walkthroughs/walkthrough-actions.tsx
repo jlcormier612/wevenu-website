@@ -95,7 +95,7 @@ function ActionButton({
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className="rounded-sm bg-[var(--warm-gray)] px-2 py-1 text-xs text-[var(--forest-sage)] ring-1 ring-[color-mix(in_srgb,var(--taupe-medium)_45%,transparent)] hover:bg-[var(--header-linen)] disabled:opacity-60"
+      className="rounded-sm bg-[var(--warm-gray)] px-2 py-1 text-xs text-foreground ring-1 ring-[color-mix(in_srgb,var(--taupe-medium)_45%,transparent)] hover:bg-[var(--header-linen)] disabled:opacity-60"
     >
       {children}
     </button>

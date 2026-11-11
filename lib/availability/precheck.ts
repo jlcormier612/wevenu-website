@@ -22,9 +22,15 @@ import {
   effectiveMinTurnaroundHours,
   eventOccupancyOverlapsTour,
   evaluateEventOccupancy,
+  isInquiryEventDateAvailable,
   type OccupancyCode,
   type OccupancyEvent,
 } from "@/lib/availability/event-occupancy";
+import {
+  conflictingForeignHolds,
+  inquiryDateBlockedByHolds,
+  type HoldOccupancyRow,
+} from "@/lib/availability/hold-occupancy";
 import type { AvailabilityStatus, ConflictItem, ConflictType } from "@/lib/availability/types";
 import {
   effectiveMaxSimultaneousTours,
@@ -38,6 +44,8 @@ import { utcToVenueLocalParts } from "@/lib/venue/timezone";
 
 export { TOUR_CLOSING_CALENDAR_BLOCK_TYPES };
 
+export type AvailabilityCheckPurpose = "booking" | "preferred_date";
+
 export type AvailabilityCheckInput = {
   date: string;
   endDate?: string;
@@ -46,8 +54,20 @@ export type AvailabilityCheckInput = {
   setupTime?: string;
   teardownTime?: string;
   spaceId?: string;
+  /** Per-space windows for a booking confirmation. Each space is checked on its own times. */
+  windows?: Array<{
+    spaceId: string;
+    startTime?: string | null;
+    endTime?: string | null;
+    scheduledDate?: string | null;
+  }>;
   type: "event" | "tour";
   excludeId?: string;
+  /**
+   * booking — Event write pre-check (space required when simultaneous).
+   * preferred_date — Lead/inquiry preferred date (date-level; does not require a space).
+   */
+  purpose?: AvailabilityCheckPurpose;
   /** Venue-local Tour start as UTC ms. Omit when no tour time is known. */
   tourScheduledAtMs?: number;
   tourDurationMinutes?: number;
@@ -59,7 +79,24 @@ export type AvailabilityCheckTour = TourInterval & { leadId?: string | null };
 
 export type AvailabilityCheckSnapshot = {
   calendarBlocks: CalendarBlockCoverageInput[];
+  /** @deprecated Prefer `holds` — retained for older call sites/tests. */
   holdCount: number;
+  /** Active holds on the check date (caller already filtered expiry/status). */
+  holds?: HoldOccupancyRow[];
+  /** Lead whose own holds must not block this check. */
+  excludeLeadId?: string | null;
+  /**
+   * When true (venue default), active Holds refuse Event booking — same as
+   * venues.hold_blocks_availability / events_enforce_availability.
+   */
+  holdBlocksAvailability?: boolean;
+  /**
+   * When true, public inquiry date availability uses space-based simultaneous
+   * rules. Default false — confirmed Event occupancy closes the date venue-wide.
+   */
+  allowSimultaneousPublicAvailability?: boolean;
+  /** When true, a tour may overlap a booked event. Default false. */
+  allowToursDuringBookedEvents?: boolean;
   rules: { maxSimultaneousEvents?: number | null; maxSimultaneousTours?: number | null; minTurnaroundHours?: number | null } | null;
   events: OccupancyEvent[];
   activeSpaceIds: string[];
@@ -79,7 +116,7 @@ export function occupancyConflictType(code: OccupancyCode): ConflictType {
 function pushBlock(conflicts: ConflictItem[], title: string) {
   conflicts.push({
     type: "calendar_blocked",
-    message: `Date is blocked: ${title}`,
+    message: `This date is blocked on the calendar: ${title}.`,
     severity: "error",
   });
 }
@@ -95,7 +132,8 @@ export function buildAvailabilityConflicts(
       ? utcToVenueLocalParts(new Date(input.tourScheduledAtMs).toISOString(), input.timezone)
       : utcClockFromMs(input.tourScheduledAtMs))
     : null;
-  const blockInterval = input.type === "event"
+  const blockWindows = (input.windows ?? []).filter((row) => row.spaceId?.trim());
+  const blockInterval = input.type === "event" && blockWindows.length === 0
     ? eventCoverageInterval({
       eventDate: input.date,
       eventEndDate: input.endDate,
@@ -114,42 +152,146 @@ export function buildAvailabilityConflicts(
     blockInterval,
     input.type === "tour" ? { types: TOUR_CLOSING_CALENDAR_BLOCK_TYPES } : undefined,
   );
-  if (coveringTitle) pushBlock(conflicts, coveringTitle);
+  if (input.type === "event" && blockWindows.length > 0) {
+    for (const row of blockWindows) {
+      const title = coveringCalendarBlockTitle(
+        snapshot.calendarBlocks,
+        eventCoverageInterval({
+          eventDate: input.date,
+          eventEndDate: input.endDate,
+          startTime: row.startTime,
+          endTime: row.endTime,
+        }),
+      );
+      if (title) {
+        pushBlock(conflicts, title);
+        break;
+      }
+    }
+  } else if (coveringTitle) pushBlock(conflicts, coveringTitle);
 
-  if (snapshot.holdCount > 0) {
-    conflicts.push({
-      type: "hold_exists",
-      message: `${snapshot.holdCount} active hold(s) on this date`,
-      severity: "warning",
-    });
+  const effectiveMax = effectiveMaxSimultaneousEvents(snapshot.rules);
+  const allowSimultaneousPublic = snapshot.allowSimultaneousPublicAvailability === true;
+  /** Public inquiry clamps to venue-wide capacity unless the venue opts in. */
+  const inquiryEffectiveMax = allowSimultaneousPublic ? effectiveMax : 1;
+  const holdRows = snapshot.holds ?? [];
+  const holdConflictCount = holdRows.length > 0
+    ? (() => {
+      const purpose = input.purpose ?? "booking";
+      const inquiryNoSpace = purpose === "preferred_date" && !input.spaceId?.trim();
+      if (inquiryNoSpace) {
+        return inquiryDateBlockedByHolds(
+          holdRows,
+          input.date,
+          inquiryEffectiveMax,
+          snapshot.activeSpaceIds,
+          snapshot.excludeLeadId,
+        ) ? 1 : 0;
+      }
+      const slices = blockWindows.length > 0
+        ? blockWindows.map((row) => ({
+          date: input.date,
+          spaceIds: [row.spaceId.trim()],
+          startTime: row.startTime,
+          endTime: row.endTime,
+        }))
+        : [{
+          date: input.date,
+          spaceIds: input.spaceId?.trim() ? [input.spaceId.trim()] : [],
+          setupTime: input.setupTime,
+          startTime: input.startTime,
+          endTime: input.endTime,
+          teardownTime: input.teardownTime,
+        }];
+      const hits = new Set<string>();
+      for (const slice of slices) {
+        for (const hold of conflictingForeignHolds(holdRows, slice, effectiveMax, snapshot.excludeLeadId)) {
+          hits.add(hold.id ?? `${hold.holdDate}:${hold.spaceIds.join(",")}`);
+        }
+      }
+      return hits.size;
+    })()
+    : snapshot.holdCount;
+
+  if (holdConflictCount > 0) {
+    const holdBlocks = snapshot.holdBlocksAvailability !== false;
+    if (holdBlocks) {
+      conflicts.push({
+        type: "hold_exists",
+        message: "This date has a hold. Your availability settings treat holds as unavailable.",
+        severity: "error",
+      });
+    } else {
+      conflicts.push({
+        type: "hold_exists",
+        message: holdConflictCount === 1
+          ? "There is a hold on this date. Your settings do not treat holds as unavailable."
+          : `There are ${holdConflictCount} holds on this date. Your settings do not treat holds as unavailable.`,
+        severity: "warning",
+      });
+    }
   }
 
   if (input.type === "event") {
-    const occupancy = evaluateEventOccupancy(
-      {
-        eventDate: input.date,
-        eventEndDate: input.endDate,
-        spaceId: input.spaceId,
-        setupTime: input.setupTime,
-        startTime: input.startTime,
-        endTime: input.endTime,
-        teardownTime: input.teardownTime,
-        excludeEventId: input.excludeId,
-      },
-      {
-        effectiveMax: effectiveMaxSimultaneousEvents(snapshot.rules),
-        minTurnaroundHours: effectiveMinTurnaroundHours(snapshot.rules),
-        activeSpaceIds: snapshot.activeSpaceIds,
-        allSpaceIds: snapshot.allSpaceIds,
-      },
-      snapshot.events,
-    );
-    if (!occupancy.ok) {
+    // Settings → Availability → Blocked Dates (tour_availability_exceptions)
+    // close preferred event dates and bookings the same way public inquiry does.
+    if (snapshot.tourExceptionLabel !== undefined && snapshot.tourExceptionLabel !== null) {
+      const extra = snapshot.tourExceptionLabel.trim();
       conflicts.push({
-        type: occupancyConflictType(occupancy.code),
-        message: occupancy.message,
+        type: "tour_exception",
+        message: extra
+          ? `This date is blocked on the venue calendar (${extra}).`
+          : "This date is blocked on the venue calendar.",
         severity: "error",
       });
+    }
+
+    const venueOccupancy = {
+      effectiveMax,
+      minTurnaroundHours: effectiveMinTurnaroundHours(snapshot.rules),
+      activeSpaceIds: snapshot.activeSpaceIds,
+      allSpaceIds: snapshot.allSpaceIds,
+      allowSimultaneousPublicAvailability: allowSimultaneousPublic,
+    };
+    const purpose = input.purpose ?? "booking";
+    if (purpose === "preferred_date" && !input.spaceId?.trim()) {
+      // Lead / inquiry preferred dates are date-level — do not require a space.
+      // Space-based simultaneous availability applies only when the venue opts in.
+      if (!isInquiryEventDateAvailable(input.date, venueOccupancy, snapshot.events)) {
+        const simultaneous = allowSimultaneousPublic && venueOccupancy.effectiveMax >= 2;
+        conflicts.push({
+          type: simultaneous && venueOccupancy.activeSpaceIds.length === 0
+            ? "event_occupancy"
+            : "event_capacity_full",
+          message: simultaneous && venueOccupancy.activeSpaceIds.length === 0
+            ? "Add an Event Space in Availability settings before booking. This venue can host more than one event at the same time."
+            : "This date is already booked for an overlapping event.",
+          severity: "error",
+        });
+      }
+    } else {
+      const occupancy = evaluateEventOccupancy(
+        {
+          eventDate: input.date,
+          eventEndDate: input.endDate,
+          spaceId: input.spaceId,
+          windows: blockWindows,
+          setupTime: input.setupTime,
+          startTime: input.startTime,
+          endTime: input.endTime,
+          teardownTime: input.teardownTime,
+          excludeEventId: input.excludeId,
+        },
+        venueOccupancy,
+        snapshot.events,
+      );
+      if (!occupancy.ok) {
+        conflicts.push({
+          type: occupancyConflictType(occupancy.code),
+          message: occupancy.message,
+          severity: "error",
+        });
+      }
     }
   } else if (input.tourScheduledAtMs != null) {
     const duration = input.tourDurationMinutes && input.tourDurationMinutes > 0
@@ -181,10 +323,10 @@ export function buildAvailabilityConflicts(
         durationMinutes: duration,
       }),
     );
-    if (overlappingEvent) {
+    if (overlappingEvent && snapshot.allowToursDuringBookedEvents !== true) {
       conflicts.push({
         type: "tour_event_overlap",
-        message: "This tour time overlaps an Event. Choose a time outside the Event's setup-to-teardown window.",
+        message: "This tour time overlaps a booked event.",
         severity: "error",
       });
     }

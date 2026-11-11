@@ -1,0 +1,51 @@
+{
+  "at": "2026-10-14T22:41:30.623Z",
+  "expectedSha": "5132aebfbfa0d5c8d904689caf369f9db8707f20",
+  "servingImage": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:5132aebfbfa0d5c8d904689caf369f9db8707f20",
+  "leadId": "e76ff28e-33aa-48d2-aaac-78f7ddf7bdca",
+  "formVenueHref": "https://app.sandbox.hellotocheers.com/leads/e76ff28e-33aa-48d2-aaac-78f7ddf7bdca",
+  "pass": true,
+  "checks": [
+    {
+      "name": "Serving expected SHA",
+      "pass": true,
+      "detail": "image=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:5132aebfbfa0d5c8d904689caf369f9db8707f20 expected=5132aebfbfa0"
+    },
+    {
+      "name": "D1 thank-you HTML+text parity",
+      "pass": true,
+      "detail": "We received your inquiry — Jen's Fancy Venue"
+    },
+    {
+      "name": "D3 Wedding label",
+      "pass": true,
+      "detail": "canonical labels"
+    },
+    {
+      "name": "D2 lead-specific CTA href",
+      "pass": true,
+      "detail": "https://app.sandbox.hellotocheers.com/leads/e76ff28e-33aa-48d2-aaac-78f7ddf7bdca"
+    },
+    {
+      "name": "D2 CTA opens Fancy lead in venue context",
+      "pass": true,
+      "detail": "landed=https://app.sandbox.hellotocheers.com/leads/e76ff28e-33aa-48d2-aaac-78f7ddf7bdca"
+    },
+    {
+      "name": "Mobile thank-you render",
+      "pass": true,
+      "detail": "390 viewport"
+    },
+    {
+      "name": "No critical console errors",
+      "pass": true,
+      "detail": "errors=0"
+    },
+    {
+      "name": "No real emails sent",
+      "pass": true,
+      "detail": "magic-link auth + navigation only"
+    }
+  ],
+  "consoleErrors": []
+}

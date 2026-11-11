@@ -33,9 +33,9 @@ function triggerSummary(triggerType: string | null, triggerStage: string | null)
 }
 
 function participantLabel(count: number): string {
-  if (count <= 0) return "No one active right now";
-  if (count === 1) return "1 person active";
-  return `${count} people active`;
+  if (count <= 0) return "No one is in this automation right now";
+  if (count === 1) return "1 person currently in this automation";
+  return `${count} people currently in this automation`;
 }
 
 const PAUSE_DESCRIPTION =
@@ -63,11 +63,15 @@ function AutomationRow({
         s.status === "paused" ? " · Turn on when you’re ready" : ""
       }`}
       badges={
-        <Badge variant={s.status === "active" ? "success" : "muted"} className="text-[10px]">
+        <Badge
+          variant={s.status === "active" ? "outline" : "muted"}
+          className={s.status === "active" ? "htc-badge-active text-[10px]" : "text-[10px]"}
+        >
           {s.status === "active" ? "Active" : "Paused"}
         </Badge>
       }
       primaryActions={[
+        { id: "view", label: "View", href: `/communication/series/${s.id}`, emphasis: "preview" },
         { id: "edit", label: LIBRARY_LABELS.edit, href: `/communication/series/${s.id}/edit`, emphasis: "edit" },
       ]}
       overflowPending={pendingId === s.id}
@@ -109,7 +113,7 @@ export function SeriesList({ initialSeries }: { initialSeries: MessageSequenceLi
       setSeries((p) => p.map((x) => (x.id === s.id ? { ...x, status: next } : x)));
       toast.success(
         next === "active"
-          ? "Automation resumed — new people can join and scheduled messages can send again."
+          ? "Automation resumed — new people can enter this automation and scheduled messages can send again."
           : "Automation paused for everyone.",
       );
       setPausing(null);
@@ -137,20 +141,25 @@ export function SeriesList({ initialSeries }: { initialSeries: MessageSequenceLi
   const groups: { key: string; title: string; blurb: string; items: MessageSequenceListItem[] }[] = [
     { key: "sales", title: AUTOMATION_AUDIENCE_LABELS.sales.title, blurb: AUTOMATION_AUDIENCE_LABELS.sales.blurb, items: sales },
     { key: "client", title: AUTOMATION_AUDIENCE_LABELS.client.title, blurb: AUTOMATION_AUDIENCE_LABELS.client.blurb, items: client },
-    { key: "manual", title: "Manual", blurb: "You choose who joins.", items: manual },
+    { key: "manual", title: "Manual", blurb: "You choose who enters this automation.", items: manual },
   ].filter((g) => g.items.length > 0);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-5 sm:space-y-6">
       {groups.map((group) => (
-        <section key={group.key} className="space-y-2" aria-labelledby={`automation-group-${group.key}`}>
-          <div>
-            <h2 id={`automation-group-${group.key}`} className="text-sm font-semibold text-heading">
+        <section
+          key={group.key}
+          className="htc-group-shell"
+          aria-labelledby={`automation-group-${group.key}`}
+          data-automation-group={group.key}
+        >
+          <div className="htc-group-shell-header">
+            <h2 id={`automation-group-${group.key}`} data-group-title="">
               {group.title}
             </h2>
-            <p className="text-xs text-muted-foreground">{group.blurb}</p>
+            <p data-group-blurb="">{group.blurb}</p>
           </div>
-          <div className="space-y-2">
+          <div className="htc-group-shell-body">
             {group.items.map((s) => (
               <AutomationRow
                 key={s.id}

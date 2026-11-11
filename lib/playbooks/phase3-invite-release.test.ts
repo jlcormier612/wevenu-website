@@ -29,10 +29,11 @@ describe("Phase 3 invite-at-release seams", () => {
     const fn = src.slice(fnStart, fnEnd);
     assert.doesNotMatch(fn, /inviteClient\(/);
     assert.match(fn, /insertClient\(/);
-    assert.match(fn, /convertLeadHolds\(/);
-    assert.match(fn, /exitEnrollmentsForBooking\(/);
-    assert.match(fn, /autoCreateEvent\(/);
-    assert.match(fn, /updateLeadSalesStage\(lead\.id, "booked"/);
+    assert.doesNotMatch(fn, /convertLeadHolds\(/);
+    assert.doesNotMatch(fn, /from\("date_holds"\)/);
+    assert.doesNotMatch(fn, /exitEnrollmentsForBooking\(/);
+    assert.doesNotMatch(fn, /autoCreateEvent\(/);
+    assert.doesNotMatch(fn, /updateLeadSalesStage\(lead\.id, "booked"/);
     assert.doesNotMatch(fn, /status:\s*"confirmed"/);
     assert.doesNotMatch(fn, /applyPlaybookToEvent/);
 
@@ -41,28 +42,16 @@ describe("Phase 3 invite-at-release seams", () => {
     assert.doesNotMatch(src.slice(coreStart, coreEnd), /inviteClient\(/);
   });
 
-  it("successful Client Planning release calls inviteClient only after release succeeds", () => {
+  it("Client Planning release does not invite the couple (content release ≠ invitation)", () => {
     const src = readFileSync(resolve("lib/playbooks/service.ts"), "utf8");
     const fnStart = src.indexOf("export async function releasePlaybookApplication");
     const fnEnd = src.indexOf("export async function updateEventTaskDaysOffset", fnStart);
     const fn = src.slice(fnStart, fnEnd);
-    const failReturn = fn.indexOf("if (!released.ok)");
-    const inviteCall = fn.indexOf("inviteClient(");
-    assert.ok(failReturn >= 0);
-    assert.ok(inviteCall > failReturn);
     assert.match(fn, /if \(!released\.ok\)/);
-    assert.match(fn, /inviteClient\(/);
-    assert.match(fn, /if \(!email\)/);
+    assert.doesNotMatch(fn, /inviteClient\(/);
     assert.doesNotMatch(fn, /applyPlaybookToEvent/);
-  });
-
-  it("release failure returns before inviteClient", () => {
-    const src = readFileSync(resolve("lib/playbooks/service.ts"), "utf8");
-    const fnStart = src.indexOf("export async function releasePlaybookApplication");
-    const fn = src.slice(fnStart, src.indexOf("export async function updateEventTaskDaysOffset", fnStart));
-    const beforeInvite = fn.slice(0, fn.indexOf("inviteClient("));
-    assert.match(beforeInvite, /already_released/);
-    assert.match(beforeInvite, /return \{/);
+    assert.match(fn, /checklist is now visible/);
+    assert.match(fn, /Invite them to the workspace separately/);
   });
 
   it("inviteClient skips insert when an active invitation already exists", () => {
@@ -83,18 +72,22 @@ describe("Phase 3 invite-at-release seams", () => {
 
     const panel = readFileSync(resolve("components/clients/prepare-planning-panel.tsx"), "utf8");
     assert.doesNotMatch(panel, /releasePlaybookAction/);
-    assert.match(panel, /applyPlaybookAction/);
+    const sheet = readFileSync(resolve("components/playbooks/playbook-apply-preview-sheet.tsx"), "utf8");
+    assert.match(sheet, /applyPlaybookAction/);
   });
 
-  it("Prepare Their Event invitation copy uses the live record and invite-at-release timing", () => {
+  it("Prepare Their Event invitation copy uses the live record and Invite client eligibility", () => {
     const withEmail = buildCommunicationsReview({
       clientId: "c1",
       invitation: null,
       clientHasEmail: true,
+      email: "c1@example.test",
+      coupleName: "C1",
       automations: [],
-    }).rows.find((i) => i.key === "invitation");
-    assert.equal(withEmail?.detail, "Not sent — the client will be invited when you release their planning.");
-    assert.equal(withEmail?.onFile, false);
+    });
+    assert.match(withEmail.rows.find((i) => i.key === "invitation")?.detail ?? "", /invite them when you're ready/i);
+    assert.equal(withEmail.rows.find((i) => i.key === "invitation")?.onFile, false);
+    assert.equal(withEmail.invite.canInvite, true);
 
     const noEmail = buildCommunicationsReview({
       clientId: "c1",
@@ -108,9 +101,14 @@ describe("Phase 3 invite-at-release seams", () => {
       clientId: "c1",
       invitation: { status: "pending" },
       clientHasEmail: true,
+      email: "c1@example.test",
       automations: [],
-    }).rows.find((i) => i.key === "invitation");
-    assert.equal(sent?.detail, "Invitation sent");
+    });
+    assert.equal(
+      sent.rows.find((i) => i.key === "invitation")?.detail,
+      "Invitation is pending. Delivery was not recorded.",
+    );
+    assert.equal(sent.invite.canInvite, false);
 
     const page = readFileSync(resolve("app/(app)/clients/[id]/booked/page.tsx"), "utf8");
     assert.match(page, /getClientInvitation/);
@@ -118,10 +116,13 @@ describe("Phase 3 invite-at-release seams", () => {
     assert.doesNotMatch(page, /invited === ["']1["']/);
   });
 
-  it("release UX states that invitation email is sent when an address is on file", () => {
+  it("release UX states content becomes visible without claiming an invitation email", () => {
     const list = readFileSync(resolve("components/playbooks/event-task-list.tsx"), "utf8");
-    assert.match(list, /they'll receive their invitation email if an email address is on file/);
+    assert.doesNotMatch(list, /they'll receive their invitation email if an email address is on file/);
+    assert.match(list, /does not send an invitation email/);
     assert.match(list, /result\.message/);
+    const service = readFileSync(resolve("lib/playbooks/service.ts"), "utf8");
+    assert.match(service, /does not send an invitation email/);
   });
 
   it("wedding wording and Event Experience resolver are unchanged", () => {

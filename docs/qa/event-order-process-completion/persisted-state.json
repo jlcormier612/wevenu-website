@@ -1,0 +1,46 @@
+{
+  "marker": "EO-PROC-SEED-1792967321536",
+  "selection": {
+    "id": "c7ccc5a8-e7a0-4405-a2d5-acfea8834a04",
+    "name": "Process seed Bar Package",
+    "included_items": [
+      {
+        "unit": null,
+        "quantity": 1,
+        "description": "EO-PROC-SEED-1792967321536"
+      },
+      {
+        "unit": null,
+        "quantity": 1,
+        "description": "EO-PROC-INCLUDED-SERVICE"
+      }
+    ],
+    "total_amount": 2500
+  },
+  "linesAfterSample": [
+    {
+      "id": "630754d0-b943-4f77-9874-f0a4b7f3e05e",
+      "description": "EO-PROC-SEED-1792967321536",
+      "unit_price": null,
+      "amount": 0,
+      "is_included": true,
+      "notes": "package-selection:c7ccc5a8-e7a0-4405-a2d5-acfea8834a04|Process seed Bar Package",
+      "provenance": "custom",
+      "offering_id": null,
+      "package_id": null
+    },
+    {
+      "id": "73e4f398-d29b-46d7-a72b-2c26d1f28236",
+      "description": "EO-PROC-INCLUDED-SERVICE",
+      "unit_price": null,
+      "amount": 0,
+      "is_included": true,
+      "notes": "package-selection:c7ccc5a8-e7a0-4405-a2d5-acfea8834a04|Process seed Bar Package",
+      "provenance": "custom",
+      "offering_id": null,
+      "package_id": null
+    }
+  ],
+  "payableBefore": 2243,
+  "payableAfter": 2243
+}

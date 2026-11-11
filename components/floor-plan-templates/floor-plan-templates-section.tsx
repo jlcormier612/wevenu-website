@@ -15,9 +15,10 @@ import { toast } from "sonner";
 import { addFloorPlanStarterAgainAction } from "@/app/(app)/library/floor-plan-templates/actions";
 import { applyTemplateAction } from "@/app/(app)/events/[id]/floor-plan-actions";
 import {
-  deleteTemplateAction, duplicateTemplateAction, renameTemplateAction, setTemplateArchivedAction, setTemplateDefaultAction,
+  deleteTemplateAction, duplicateTemplateAction, setTemplateArchivedAction, setTemplateDefaultAction,
 } from "@/app/(app)/floor-plan-templates/actions";
 import { FloorPlanLayoutPreview } from "@/components/floor-plan/floor-plan-layout-preview";
+import { FloorPlanTemplateDetailsSheet } from "@/components/floor-plan-templates/floor-plan-template-details-sheet";
 import { FloorPlanTemplateStarterPicker } from "@/components/floor-plan-templates/floor-plan-template-starter-picker";
 import { LIBRARY_LABELS } from "@/components/library/labels";
 import { LibraryArchivedSection } from "@/components/library/library-archived-section";
@@ -33,14 +34,26 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import type { VenueSpace } from "@/lib/availability/types";
-import { EVENT_TYPES, eventTypeLabel, formatRelative } from "@/lib/leads/constants";
+import { eventTypeLabel, formatRelative } from "@/lib/leads/constants";
+import {
+  FLOOR_PLAN_TEMPLATE_ANY_EVENT_TYPE,
+  buildFloorPlanTemplateFilterEventTypeOptions,
+} from "@/lib/floor-plan-templates/event-type-options";
+import {
+  FLOOR_PLAN_LAYOUT_PURPOSE_ANY,
+  FLOOR_PLAN_LAYOUT_PURPOSE_FILTER_OPTIONS,
+  layoutPurposeLabelForTemplate,
+  templateMatchesLayoutPurposeFilter,
+} from "@/lib/floor-plan-templates/layout-purpose";
 import {
   FLOOR_PLAN_STARTER_MASTERS,
+  getFloorPlanStarterMaster,
   type FloorPlanStarterMasterKey,
 } from "@/lib/floor-plan-templates/starters";
 import type { FloorPlanTemplateWithStats } from "@/lib/floor-plan-templates/types";
 
-const ANY_EVENT_TYPE = "__any__";
+const ANY_EVENT_TYPE = FLOOR_PLAN_TEMPLATE_ANY_EVENT_TYPE;
+const ANY_LAYOUT = FLOOR_PLAN_LAYOUT_PURPOSE_ANY;
 
 function sortTemplates(templates: FloorPlanTemplateWithStats[]): FloorPlanTemplateWithStats[] {
   return [...templates].sort((a, b) => {
@@ -139,7 +152,7 @@ function UseFloorPlanSheet({
               <p><span className="text-muted-foreground">Template</span> · {template.name}</p>
               <p><span className="text-muted-foreground">Event</span> · {selected.name}</p>
             </div>
-            <ul className="list-disc space-y-1.5 pl-5 text-sm text-muted-foreground">
+            <ul className="htc-surface-guidance-compact list-disc space-y-1.5 px-3 py-2.5 pl-8 text-sm text-muted-foreground">
               <li>Creates a new floor plan on the event, starting from this layout.</li>
               <li>Your reusable template is never changed by editing the new copy.</li>
               <li>Does not send email, SMS, or portal notifications.</li>
@@ -208,8 +221,15 @@ function TemplateCard({
   canDelete?: boolean;
 }) {
   const eventType = template.eventType ? eventTypeLabel(template.eventType) : "Any event type";
+  const layoutPurpose = layoutPurposeLabelForTemplate(template.sourceMasterKey);
   const previewHref = `/library/floor-plan-templates/${template.id}/preview`;
+  const starterMaster = template.sourceMasterKey
+    ? getFloorPlanStarterMaster(template.sourceMasterKey)
+    : undefined;
+  const starterDescription = starterMaster?.description ?? null;
+  const isSpecializedFlip = starterMaster?.key === "FP-SR";
 
+  const isStarter = Boolean(template.sourceMasterKey);
   const primaryActions = archivedView
     ? [
         { id: "preview", label: LIBRARY_LABELS.preview, href: previewHref, emphasis: "preview" as const },
@@ -219,9 +239,14 @@ function TemplateCard({
       ]
     : [
         { id: "preview", label: LIBRARY_LABELS.preview, href: previewHref, emphasis: "preview" as const },
-        ...(canEdit
-          ? [{ id: "edit", label: LIBRARY_LABELS.edit, href: `/library/floor-plan-templates/${template.id}`, emphasis: "edit" as const }]
-          : []),
+        ...(canEdit && isStarter
+          ? [
+              { id: "customize", label: LIBRARY_LABELS.customize, onClick: onDuplicate, emphasis: "edit" as const, disabled: busy },
+              { id: "edit", label: LIBRARY_LABELS.edit, href: `/library/floor-plan-templates/${template.id}`, emphasis: "edit" as const },
+            ]
+          : canEdit
+            ? [{ id: "edit", label: LIBRARY_LABELS.edit, href: `/library/floor-plan-templates/${template.id}`, emphasis: "edit" as const }]
+            : []),
         { id: "use", label: LIBRARY_LABELS.useFloorPlan, onClick: onUse, emphasis: "use" as const },
       ];
 
@@ -230,8 +255,10 @@ function TemplateCard({
     : [
         ...(canEdit
           ? [
-              { id: "duplicate", label: LIBRARY_LABELS.duplicate, onClick: onDuplicate },
-              { id: "rename", label: "Rename", onClick: onRename },
+              ...(!isStarter
+                ? [{ id: "duplicate", label: LIBRARY_LABELS.duplicate, onClick: onDuplicate }]
+                : []),
+              { id: "rename", label: LIBRARY_LABELS.editDetails, onClick: onRename },
               ...(!template.isDefault ? [{ id: "default", label: "Set as Default", onClick: onSetDefault }] : []),
               { id: "archive", label: LIBRARY_LABELS.archive, onClick: onArchiveToggle, separatorBefore: true },
             ]
@@ -248,11 +275,28 @@ function TemplateCard({
     <LibraryAssetCard
       layout="row"
       title={template.name}
-      isStarter={Boolean(template.sourceMasterKey)}
+      description={starterDescription}
+      isStarter={isStarter}
       isArchived={template.isArchived}
       badges={
         <>
-          <Badge variant="outline" className="text-[10px]">{eventType}</Badge>
+          {!isStarter && (
+            <Badge variant="outline" className="text-[10px]">{LIBRARY_LABELS.yourTemplate}</Badge>
+          )}
+          <Badge variant="outline" className="text-[10px]" title="Booking event type">
+            {eventType}
+          </Badge>
+          <Badge
+            variant="muted"
+            className="text-[10px]"
+            title="Layout purpose"
+            data-testid="floor-plan-layout-purpose-badge"
+          >
+            {layoutPurpose}
+          </Badge>
+          {isSpecializedFlip && (
+            <Badge variant="muted" className="text-[10px]">Specialized · same room</Badge>
+          )}
           {template.spaceName && <Badge variant="accent" className="text-[10px]">{template.spaceName}</Badge>}
           {template.isDefault && <Badge variant="muted" className="text-[10px]">Default</Badge>}
         </>
@@ -284,20 +328,32 @@ function TemplateCard({
 
 export function FloorPlanTemplatesSection({
   initialTemplates, spaces, venueId, events = [],
+  acceptedEventTypes = [],
   canEdit = true, canDelete = true,
+  headerCreate = true,
 }: {
   initialTemplates: FloorPlanTemplateWithStats[];
   spaces: VenueSpace[];
   venueId: string;
   events?: FloorPlanEventOption[];
+  /** venues.accepted_inquiry_event_types (parsed) — drives filter + create selects. */
+  acceptedEventTypes?: string[];
   canEdit?: boolean;
   canDelete?: boolean;
+  /** When false, PageHeader owns + New Template. */
+  headerCreate?: boolean;
 }) {
   const [templates, setTemplates] = React.useState(initialTemplates);
   const [busyId, setBusyId] = React.useState<string | null>(null);
   const [search, setSearch] = React.useState("");
   const [eventTypeFilter, setEventTypeFilter] = React.useState(ANY_EVENT_TYPE);
+  const [layoutPurposeFilter, setLayoutPurposeFilter] = React.useState(ANY_LAYOUT);
+  const filterEventTypeOptions = React.useMemo(
+    () => buildFloorPlanTemplateFilterEventTypeOptions(acceptedEventTypes),
+    [acceptedEventTypes],
+  );
   const [using, setUsing] = React.useState<FloorPlanTemplateWithStats | null>(null);
+  const [detailsTemplate, setDetailsTemplate] = React.useState<FloorPlanTemplateWithStats | null>(null);
   const [deleting, setDeleting] = React.useState<FloorPlanTemplateWithStats | null>(null);
   const [deletePending, setDeletePending] = React.useState(false);
   const router = useRouter();
@@ -327,11 +383,8 @@ export function FloorPlanTemplatesSection({
     }
   }
 
-  async function handleRename(id: string, currentName: string) {
-    const name = window.prompt("Rename template", currentName);
-    if (!name || !name.trim() || name.trim() === currentName) return;
-    const result = await withBusy(id, () => renameTemplateAction(id, name.trim()));
-    if (result.ok) setTemplates((p) => p.map((t) => (t.id === id ? { ...t, name: name.trim() } : t)));
+  function handleEditDetails(template: FloorPlanTemplateWithStats) {
+    setDetailsTemplate(template);
   }
 
   async function handleSetDefault(id: string, template: FloorPlanTemplateWithStats) {
@@ -370,9 +423,10 @@ export function FloorPlanTemplatesSection({
   const sorted = React.useMemo(() => sortTemplates(templates), [templates]);
   const filtered = React.useMemo(() => sorted.filter((t) => {
     if (eventTypeFilter !== ANY_EVENT_TYPE && t.eventType !== eventTypeFilter) return false;
+    if (!templateMatchesLayoutPurposeFilter(t.sourceMasterKey, layoutPurposeFilter)) return false;
     if (search.trim() && !t.name.toLowerCase().includes(search.trim().toLowerCase())) return false;
     return true;
-  }), [sorted, search, eventTypeFilter]);
+  }), [sorted, search, eventTypeFilter, layoutPurposeFilter]);
   const { active: filteredActive, archived: filteredArchived } = React.useMemo(
     () => partitionArchived(filtered, (t) => t.isArchived),
     [filtered],
@@ -384,11 +438,16 @@ export function FloorPlanTemplatesSection({
       <div className="rounded-xl border border-dashed border-border py-10 text-center space-y-3">
         <Sparkles className="h-8 w-8 text-muted-foreground mx-auto" />
         <p className="text-sm font-medium text-heading">No floor plan templates yet</p>
-        <p className="text-xs text-muted-foreground">Reusable room layouts a venue builds once and applies to any booking.</p>
-        {canEdit && (
+        <p className="text-xs text-muted-foreground">Reusable room layouts you build once and apply to any booking.</p>
+        {canEdit && headerCreate && (
           <div className="flex justify-center gap-2 pt-1 flex-wrap">
             <StarterMenu missingKeys={missingStarterKeys} />
-            <FloorPlanTemplateStarterPicker existingTemplates={activeTemplates} spaces={spaces} venueId={venueId} />
+            <FloorPlanTemplateStarterPicker
+              existingTemplates={activeTemplates}
+              spaces={spaces}
+              venueId={venueId}
+              acceptedEventTypes={acceptedEventTypes}
+            />
           </div>
         )}
       </div>
@@ -401,7 +460,7 @@ export function FloorPlanTemplatesSection({
         key={t.id} template={t} busy={busyId === t.id} archivedView={archivedView}
         canEdit={canEdit}
         canDelete={canDelete}
-        onRename={() => handleRename(t.id, t.name)}
+        onRename={() => handleEditDetails(t)}
         onDuplicate={() => handleDuplicate(t.id, t.name)}
         onSetDefault={() => handleSetDefault(t.id, t)}
         onArchiveToggle={() => handleArchiveToggle(t.id, t.isArchived)}
@@ -419,37 +478,68 @@ export function FloorPlanTemplatesSection({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search templates by name…"
-            className="h-9 w-56 text-sm"
+            className="h-9 w-56 bg-white text-sm"
           />
           <Select
             value={eventTypeFilter}
             onValueChange={setEventTypeFilter}
-            items={[{ value: ANY_EVENT_TYPE, label: "All event types" }, ...EVENT_TYPES]}
+            items={filterEventTypeOptions}
           >
-            <SelectTrigger className="h-9 w-44 text-sm"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="h-9 w-44 bg-white text-sm" aria-label="Filter by event type">
+              <SelectValue placeholder="Event type" />
+            </SelectTrigger>
             <SelectContent>
-              <SelectItem value={ANY_EVENT_TYPE}>All event types</SelectItem>
-              {EVENT_TYPES.map((e) => <SelectItem key={e.value} value={e.value}>{e.label}</SelectItem>)}
+              {filterEventTypeOptions.map((e) => (
+                <SelectItem key={e.value} value={e.value}>{e.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={layoutPurposeFilter}
+            onValueChange={setLayoutPurposeFilter}
+            items={FLOOR_PLAN_LAYOUT_PURPOSE_FILTER_OPTIONS}
+          >
+            <SelectTrigger
+              className="h-9 w-48 bg-white text-sm"
+              aria-label="Filter by layout purpose"
+              data-testid="floor-plan-layout-purpose-filter"
+            >
+              <SelectValue placeholder="Layout" />
+            </SelectTrigger>
+            <SelectContent>
+              {FLOOR_PLAN_LAYOUT_PURPOSE_FILTER_OPTIONS.map((e) => (
+                <SelectItem key={e.value} value={e.value}>{e.label}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {canEdit && (
+          {canEdit && headerCreate && (
             <>
               <StarterMenu missingKeys={missingStarterKeys} />
-              <FloorPlanTemplateStarterPicker existingTemplates={activeTemplates} spaces={spaces} venueId={venueId} />
+              <FloorPlanTemplateStarterPicker
+                existingTemplates={activeTemplates}
+                spaces={spaces}
+                venueId={venueId}
+                acceptedEventTypes={acceptedEventTypes}
+              />
             </>
+          )}
+          {canEdit && !headerCreate && (
+            <StarterMenu missingKeys={missingStarterKeys} />
           )}
         </div>
       </div>
-      <p className="text-xs text-muted-foreground">
-        Edit reusable layouts here. Applying a floor plan to a booking happens on the event — not as a client send from the Library.
-      </p>
       {filteredActive.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border py-10 text-center">
+        <div className="rounded-xl border border-dashed border-border py-10 text-center space-y-2 px-4">
           <p className="text-sm text-muted-foreground">
             {filtered.length === 0 ? "No templates match your search." : "No active floor plan templates match your search."}
           </p>
+          {eventTypeFilter === "reception" && layoutPurposeFilter === ANY_LAYOUT && (
+            <p className="text-xs text-muted-foreground max-w-md mx-auto">
+              “Reception Only” under event type means a reception-only booking. Wedding reception layouts are tagged Wedding — choose Layout → Reception Only to find them.
+            </p>
+          )}
         </div>
       ) : (
         <div className="space-y-2">
@@ -467,6 +557,17 @@ export function FloorPlanTemplatesSection({
         open={!!using}
         onOpenChange={(o) => { if (!o) setUsing(null); }}
       />
+      {detailsTemplate ? (
+        <FloorPlanTemplateDetailsSheet
+          template={detailsTemplate}
+          spaces={spaces}
+          acceptedEventTypes={acceptedEventTypes}
+          open={!!detailsTemplate}
+          onOpenChange={(o) => {
+            if (!o) setDetailsTemplate(null);
+          }}
+        />
+      ) : null}
       <LibraryDeleteConfirmDialog
         open={!!deleting}
         itemName={deleting?.name ?? ""}

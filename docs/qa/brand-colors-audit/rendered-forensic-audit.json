@@ -1,0 +1,208 @@
+{
+  "status": "NOT GREEN — forensic audit only; no implementation",
+  "auditedAt": "2026-09-22T22:30:00Z",
+  "runtime": "https://app.sandbox.hellotocheers.com (live Sandbox)",
+  "venue": {
+    "id": "a415ac52-cd74-42a6-8df7-7a8f6e71d080",
+    "name": "Jen's Fancy Venue",
+    "configured": {
+      "primary": "#FF1493",
+      "secondary": "#00BFFF",
+      "accent": "#FF00FF",
+      "neutral": "#FFF0F5"
+    }
+  },
+  "method": "Live DOM computed-style scan matching exact configured hex values; CSS variable inspection; renderer source cross-check only after live evidence. HTC/global backgrounds (e.g. #FFFFFF, #F7F5F1 muted, forest-sage #4F5F4F text-heading) are NOT counted as venue Neutral.",
+  "productPromise": {
+    "settingsDescription": "Used on emails, proposals, contracts, brochures, and other materials you send to clients — not on the Hello to Cheers app screens.",
+    "roleHints": {
+      "Primary": "Main color on emails, proposals, and contracts",
+      "Secondary": "Supports the primary on branded materials",
+      "Accent": "Highlights on brochures and other printables",
+      "Neutral": "Soft background tone on client-facing materials"
+    }
+  },
+  "brochureHtml": {
+    "url": "https://app.sandbox.hellotocheers.com/brochure/2f11c7db-971c-43de-813a-7bb5426bdb23?cb=audit-render",
+    "renderer": "components/brochures/brochure-preview-view.tsx",
+    "loader": "lib/brochures/service.ts (venue_*_color → primaryColor/secondaryColor/accentColor)",
+    "states": {
+      "Primary": {
+        "configured": true,
+        "availableToRenderer": true,
+        "actuallyConsumed": true,
+        "visiblyCustomerFacing": true,
+        "evidence": "Exactly 1 computed hit: header borderBottomColor #FF1493 via style borderBottomColor: var(--venue-primary)"
+      },
+      "Secondary": {
+        "configured": true,
+        "availableToRenderer": true,
+        "actuallyConsumed": false,
+        "visiblyCustomerFacing": false,
+        "evidence": "CSS var --venue-secondary=#00BFFF is set on <article>; 0 elements use it; 0 stylesheet rules reference var(--venue-secondary)"
+      },
+      "Accent": {
+        "configured": true,
+        "availableToRenderer": true,
+        "actuallyConsumed": false,
+        "visiblyCustomerFacing": false,
+        "evidence": "CSS var --venue-accent=#FF00FF set; 0 computed usages"
+      },
+      "Neutral": {
+        "configured": true,
+        "availableToRenderer": false,
+        "actuallyConsumed": false,
+        "visiblyCustomerFacing": false,
+        "evidence": "--venue-neutral not set. article background #FFFFFF; body #FFFFFF. Not #FFF0F5."
+      }
+    },
+    "defaultsOverriding": {
+      "typography": "text-heading / text-muted-foreground → HTC forest-sage (#4F5F4F and oklch muted sage) — NOT venue Secondary",
+      "borders": "border-border → #DED6CA taupe (HTC)",
+      "background": "bg-background → #FFFFFF (HTC), not venue Neutral"
+    },
+    "visualSummary": "One pink Primary rule under the header. Rest of brochure is HTC muted green typography + taupe rules. No blue Secondary. No magenta Accent. No lavender Neutral page tone."
+  },
+  "brochurePdf": {
+    "renderer": "lib/brochures/pdf.ts + resolvePdfBrandColors",
+    "Primary": "USED (header borderBottomColor)",
+    "Secondary": "USED (section head color + underline) — PDF-only path; NOT the public HTML brochure",
+    "Accent": "AVAILABLE via resolvePdfBrandColors but NOT applied in PDF styles",
+    "Neutral": "AVAILABLE via resolvePdfBrandColors but NOT applied in PDF styles",
+    "note": "HTML and PDF brochures diverge: Secondary is customer-facing in PDF only."
+  },
+  "surfaces": [
+    {
+      "surface": "A. Wedding Brochure / Venue Guide (HTML public)",
+      "PRIMARY": "USED",
+      "SECONDARY": "NOT USED",
+      "ACCENT": "NOT USED",
+      "NEUTRAL": "NOT USED",
+      "DEFAULT_FALLBACK": "HTC text-heading #4F5F4F, muted oklch sage, border #DED6CA, bg #FFFFFF",
+      "ACTUAL_SOURCE": "brochure-preview-view.tsx — only var(--venue-primary) on header border",
+      "liveProof": "CDP hitCounts P=1 S=0 A=0 N=0"
+    },
+    {
+      "surface": "A2. Brochure PDF",
+      "PRIMARY": "USED",
+      "SECONDARY": "USED",
+      "ACCENT": "NOT USED",
+      "NEUTRAL": "NOT USED",
+      "DEFAULT_FALLBACK": "Hardcoded PDF body #2A2622 / taupe greys",
+      "ACTUAL_SOURCE": "lib/brochures/pdf.ts"
+    },
+    {
+      "surface": "B. Contracts (HTML signing artifact / review overlay)",
+      "PRIMARY": "USED",
+      "SECONDARY": "NOT USED",
+      "ACCENT": "NOT USED",
+      "NEUTRAL": "NOT USED",
+      "DEFAULT_FALLBACK": "bg-gray-50, gray-200 borders, gray text (Tailwind gray)",
+      "ACTUAL_SOURCE": "contract-signing-artifact.tsx — all 4 CSS vars set; only borderTopColor: var(--venue-primary) consumed",
+      "liveProof": "Review overlay: brandNode has all 4; computed S=0 A=0 N=0; P hits on border-top + app primary buttons"
+    },
+    {
+      "surface": "B2. Contracts PDF",
+      "PRIMARY": "USED",
+      "SECONDARY": "USED",
+      "ACCENT": "NOT USED",
+      "NEUTRAL": "NOT USED",
+      "ACTUAL_SOURCE": "lib/contracts/pdf.ts section heads/rules use brand.secondary"
+    },
+    {
+      "surface": "C. Invoices (print document)",
+      "PRIMARY": "USED",
+      "SECONDARY": "NOT USED (snapshotted only)",
+      "ACCENT": "USED (due/balance amounts)",
+      "NEUTRAL": "USED (amount-due / balance section backgrounds)",
+      "DEFAULT_FALLBACK": "gray-50 meta row, gray text",
+      "ACTUAL_SOURCE": "invoice-print-document.tsx; branding_snapshot on sample invoice includes all 4 configured colors",
+      "note": "Secondary is in snapshot and resolvePrintBrandColors input but never assigned to a style"
+    },
+    {
+      "surface": "D. Proposals (/offer)",
+      "PRIMARY": "NOT USED",
+      "SECONDARY": "NOT USED",
+      "ACCENT": "NOT USED",
+      "NEUTRAL": "NOT USED",
+      "DEFAULT_FALLBACK": "HTC text-heading / muted-foreground / border-border",
+      "ACTUAL_SOURCE": "proposal-artifact.tsx — zero venue brand style props"
+    },
+    {
+      "surface": "E–G. Customer-facing email (tour confirm, confirm-request, other transactional)",
+      "PRIMARY": "USED",
+      "SECONDARY": "NOT USED",
+      "ACCENT": "NOT USED",
+      "NEUTRAL": "NOT USED",
+      "DEFAULT_FALLBACK": "white card, #e5e7eb border",
+      "ACTUAL_SOURCE": "lib/email/venue-brand.ts — documented Primary-only ceiling"
+    },
+    {
+      "surface": "H/I. Public Request Information + Schedule a Tour (/book/...)",
+      "PRIMARY": "USED",
+      "SECONDARY": "NOT USED",
+      "ACCENT": "NOT USED",
+      "NEUTRAL": "NOT USED",
+      "DEFAULT_FALLBACK": "Page tint is color-mix(Primary 8%, white) — NOT venue Neutral #FFF0F5. HTC tokens for muted controls (#F7F5F1 = default Neutral fallback, not venue Neutral).",
+      "ACTUAL_SOURCE": "inquiry-form / book flow; live CDP P=6 S=0 A=0 N=0",
+      "note": "components/tours/tour-scheduler.tsx WOULD paint min-h-screen with venue.neutralColor, but the live /book surface under test did not render Neutral #FFF0F5"
+    },
+    {
+      "surface": "J. Client Portal",
+      "PRIMARY": "PARTIALLY USED / UNKNOWN at full portal depth",
+      "SECONDARY": "NOT USED",
+      "ACCENT": "NOT USED",
+      "NEUTRAL": "NOT USED",
+      "DEFAULT_FALLBACK": "Heritage Sage / HTC chrome per portal-shell comments",
+      "ACTUAL_SOURCE": "portal-shell.tsx — HTC owns chrome; limited venue primary for some accents (message bubbles comment); not full 4-color system"
+    },
+    {
+      "surface": "K. Hosted Wedding Website",
+      "PRIMARY": "NOT USED (venue brand)",
+      "SECONDARY": "NOT USED (venue brand)",
+      "ACCENT": "NOT USED (venue brand)",
+      "NEUTRAL": "NOT USED (venue brand)",
+      "DEFAULT_FALLBACK": "Separate Color Story roles",
+      "ACTUAL_SOURCE": "couple_websites Color Story columns — live Colby site: color_primary #5F8299, color_secondary #A8BEC8, color_accent #315B70, color_neutral #E8E1D7, color_background #F7F5F0 — none match venue brand swatches",
+      "liveProof": "CDP on /p/... token page: P=0 S=0 A=0 N=0 for venue configured hexes",
+      "intentionalSeparation": true
+    },
+    {
+      "surface": "L. Generated PDFs (brochure/contract/invoice)",
+      "PRIMARY": "USED where applicable",
+      "SECONDARY": "USED on brochure+contract PDF; NOT on invoice print",
+      "ACCENT": "USED on invoice; NOT on brochure/contract PDF",
+      "NEUTRAL": "USED on invoice; NOT on brochure/contract PDF",
+      "ACTUAL_SOURCE": "see A2/B2/C"
+    },
+    {
+      "surface": "M. Vendor portal venue hero (vendor-facing)",
+      "PRIMARY": "USED",
+      "SECONDARY": "USED (gradient with primary)",
+      "ACCENT": "NOT USED",
+      "NEUTRAL": "NOT USED",
+      "ACTUAL_SOURCE": "vendor-venue-hero.tsx linear-gradient(secondary → primary)",
+      "note": "Vendor-facing, not couple brochure — one of the few live Secondary consumers"
+    }
+  ],
+  "answers": {
+    "secondaryCustomerFacingAnywhere": "YES but sparse — Brochure PDF section heads, Contract PDF section heads, Vendor hero gradient. NOT on HTML brochure, HTML contract artifact, proposals, email, or live /book form.",
+    "accentCustomerFacingAnywhere": "YES but sparse — Invoice amount colors; setup preview chip border. NOT on HTML brochure (despite Accent hint saying brochures), HTML contract, email, proposals, wedding site (venue brand).",
+    "neutralCustomerFacingAnywhere": "YES but sparse — Invoice section backgrounds; setup preview chip; TourScheduler source path (not proven on live /book). NOT on HTML brochure. Live /book did not show #FFF0F5.",
+    "weddingWebsiteSeparateColorSystem": "YES — intentional Color Story on couple_websites; does not consume venues.*_color brand swatches.",
+    "implementationGaps": [
+      "HTML Brochure sets --venue-secondary/--venue-accent but never consumes them; Neutral not even wired — contradicts Accent/Neutral role hints and Settings description.",
+      "HTML Contract signing artifact sets all 4 vars but only consumes Primary.",
+      "Proposals claim brandability in Settings copy but ProposalArtifact uses zero venue colors.",
+      "Invoice snapshots Secondary but never paints it.",
+      "Brochure/Contract PDF resolve Accent+Neutral then ignore them.",
+      "Settings Brand colors description overstates uniform use across emails/proposals/contracts/brochures."
+    ],
+    "smallestCoherentImplementationIfAny": "Choose product intent first: (1) Wire HTML brochure (and optionally HTML contract artifact) to actually consume Secondary/Accent/Neutral in specific elements matching role hints, OR (2) Narrow Settings/BrandStep copy to match Primary-dominant reality and treat Secondary/Accent/Neutral as PDF/invoice/vendor-only. Do not invent new email uses. Do not merge Wedding Website Color Story into venue brand.",
+    "intentionallyPrimaryOnly": "Transactional email (explicit in venue-brand.ts). Public inquiry/tour CTAs are Primary-forward.",
+    "classification": "BOTH — implementation gap (HTML brochure/contract vars unused; proposals unwired) AND product-design gap (UI promises four-color branded materials; most couple-facing HTML surfaces are Primary-only or HTC defaults)."
+  },
+  "production": "untouched",
+  "codeChanges": "none",
+  "deploy": "none"
+}

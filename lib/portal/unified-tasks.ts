@@ -22,6 +22,7 @@
  */
 import type { PortalRequestSummary } from "@/lib/requests/types";
 import type { PortalTask } from "@/lib/portal/types";
+import { isSubmittedAwaitingVenue } from "@/lib/portal/submitted-awaiting-venue";
 import { selectCanonicalPaymentSchedules } from "@/lib/portal/payment-schedules";
 import type { PortalWorkspaceFocus } from "@/lib/portal/workspace-routing";
 import { FINAL_PAYMENT_OBLIGATION_TRIGGER } from "@/lib/payments/obligation-constants";
@@ -48,6 +49,7 @@ export type UnifiedTaskTargetSection =
   | "seating"
   | "inventory"
   | "event-order"
+  | "choices"
   | "website"
   | "floor_plans"
   | "overview";
@@ -101,6 +103,11 @@ export type UnifiedTask = {
   missingLinkHint: string | null;
   /** Snapshotted Planning milestone name (venue_task only). */
   milestoneName: string | null;
+  /**
+   * Couple submitted; waiting on venue review. Still incomplete for Tasks,
+   * but demoted from Home Next Steps.
+   */
+  awaitingVenueReview: boolean;
 };
 
 type PaymentSchedule = {
@@ -119,7 +126,8 @@ const TRIGGER_WORKSPACE: Record<
   { section: UnifiedTaskTargetSection; actionLabel: string; focus: PortalWorkspaceFocus | null }
 > = {
   guest_count_finalized: { section: "guests", actionLabel: "Submit guest count", focus: "finalize" },
-  vendor_selected: { section: "vendors", actionLabel: "Add vendors", focus: "pick" },
+  // Trigger routes here; submit does not complete the task (venue confirms).
+  vendor_selected: { section: "vendors", actionLabel: "Review vendors", focus: "pick" },
   seating_submitted: { section: "seating", actionLabel: "Submit seating", focus: "submit" },
   timeline_submitted: { section: "timeline", actionLabel: "Submit timeline", focus: "submit" },
   contract_signed: { section: "documents", actionLabel: "Review & sign", focus: "sign" },
@@ -128,10 +136,11 @@ const TRIGGER_WORKSPACE: Record<
   // Impl 7: verified Final Payment — same payments workspace; completableHere false.
   final_payment_obligation_paid: { section: "payments", actionLabel: "Pay now", focus: null },
   questionnaire_submitted: { section: "questionnaire", actionLabel: "Complete form", focus: "form" },
+  client_choices_submitted: { section: "choices", actionLabel: "Complete your choices", focus: "form" },
   // D5A — fires when the venue finalizes the Event Inventory (see
   // lib/event-inventory/service.ts finalizeEventInventory); read-only for
   // the couple, so there's nothing to "do" beyond looking.
-  inventory_finalized: { section: "inventory", actionLabel: "Review what's included", focus: null },
+  inventory_finalized: { section: "inventory", actionLabel: "Review inventory", focus: null },
   // D5C — fires when the venue shares the Event Order (see
   // lib/event-orders/representation.ts shareEventOrderWithClient);
   // read-only for the couple, same shape as inventory_finalized above.
@@ -164,6 +173,7 @@ const ACTION_TYPE_WORKSPACE: Record<
   timeline: { section: "timeline", focus: null, actionLabel: "Open Timeline" },
   floor_plan: { section: "floor_plans", focus: null, actionLabel: "Open Floor Plan" },
   event_order: { section: "event-order", focus: null, actionLabel: "Open Event Order" },
+  client_choices: { section: "choices", focus: "form", actionLabel: "Open Your Choices" },
   wedding_website: { section: "website", focus: null, actionLabel: "Open Wedding Website" },
   // Historical playbook action_type only — Key Dates product is retired.
   // Overview is the honest destination (same as event_details).
@@ -376,6 +386,11 @@ export function unifiedTaskCompletionCounts(items: readonly UnifiedTask[]): {
   return { done, total, open: total - done };
 }
 
+/** Nav / Home attention — excludes submitted/waiting (still incomplete on Tasks). */
+export function unifiedActiveAttentionCount(items: readonly UnifiedTask[]): number {
+  return items.filter((t) => !t.completed && !t.awaitingVenueReview).length;
+}
+
 /**
  * Financial checklist mirrors that compete with ledger Pay now attention.
  * payment_received (any payment) and final_payment_obligation_paid (typed final).
@@ -441,7 +456,8 @@ export function buildUnifiedTaskList(input: {
       continue;
     }
     const done = t.status === "complete";
-    const overdue = !done && (t.status === "overdue" || isPastDue(t.dueDate, today));
+    const awaitingVenueReview = isSubmittedAwaitingVenue(t);
+    const overdue = !done && !awaitingVenueReview && (t.status === "overdue" || isPastDue(t.dueDate, today));
     const presentation = venueTaskPresentation(t);
     out.push({
       id: `task_${t.id}`, kind: "venue_task", title: t.title, description: t.description,
@@ -449,7 +465,7 @@ export function buildUnifiedTaskList(input: {
       isOverdue: overdue, isRequired: t.isRequired, ownership: "venue",
       targetSection: presentation.targetSection,
       targetFocus: presentation.targetFocus,
-      actionLabel: presentation.actionLabel,
+      actionLabel: awaitingVenueReview ? "Waiting on venue" : presentation.actionLabel,
       completableHere: presentation.completableHere,
       externalUrl: presentation.externalUrl,
       externalUrlLabel: presentation.externalUrlLabel,
@@ -457,6 +473,7 @@ export function buildUnifiedTaskList(input: {
       confirmLabel: presentation.confirmLabel,
       missingLinkHint: presentation.missingLinkHint,
       milestoneName: t.milestoneName?.trim() || null,
+      awaitingVenueReview,
     });
   }
 
@@ -473,6 +490,7 @@ export function buildUnifiedTaskList(input: {
       completableHere: false,
       externalUrl: null, externalUrlLabel: null, undoableHere: false, confirmLabel: null, missingLinkHint: null,
       milestoneName: null,
+      awaitingVenueReview: false,
     });
   }
 
@@ -485,6 +503,7 @@ export function buildUnifiedTaskList(input: {
       completableHere: false,
       externalUrl: null, externalUrlLabel: null, undoableHere: false, confirmLabel: null, missingLinkHint: null,
       milestoneName: null,
+      awaitingVenueReview: false,
     });
   }
 
@@ -497,6 +516,7 @@ export function buildUnifiedTaskList(input: {
       completableHere: false,
       externalUrl: null, externalUrlLabel: null, undoableHere: false, confirmLabel: null, missingLinkHint: null,
       milestoneName: null,
+      awaitingVenueReview: false,
     });
   }
 
@@ -518,6 +538,7 @@ export function buildUnifiedTaskList(input: {
       completableHere: false,
       externalUrl: null, externalUrlLabel: null, undoableHere: false, confirmLabel: null, missingLinkHint: null,
       milestoneName: null,
+      awaitingVenueReview: false,
     });
   }
 
@@ -530,6 +551,7 @@ export function buildUnifiedTaskList(input: {
       completableHere: false,
       externalUrl: null, externalUrlLabel: null, undoableHere: false, confirmLabel: null, missingLinkHint: null,
       milestoneName: null,
+      awaitingVenueReview: false,
     });
   }
 

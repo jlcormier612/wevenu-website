@@ -1,0 +1,51 @@
+{
+  "at": "2026-10-23T15:24:04.277Z",
+  "beforeAcceptFromBrowser": {
+    "status": "finalized",
+    "client_agreed_at": "2026-10-23T15:23:42.520035+00:00",
+    "client_agreed_name": "Overhaul Accept QA",
+    "client_agreed_revision": 3,
+    "revision": 3,
+    "shared_at": "2026-10-23T00:26:09.17+00:00"
+  },
+  "afterReopen": {
+    "status": "open",
+    "client_agreed_at": null,
+    "client_agreed_name": null,
+    "client_agreed_revision": null,
+    "shared_at": "2026-10-23T00:26:09.17+00:00",
+    "revision": 3
+  },
+  "acceptAfterReopenFinalize": {
+    "ok": true,
+    "already": false,
+    "client_agreed_at": "2026-10-23T15:24:03.940827+00:00",
+    "client_agreed_revision": 3
+  },
+  "idempotentSecondAccept": {
+    "ok": true,
+    "already": true,
+    "client_agreed_at": "2026-10-23T15:24:03.940827+00:00",
+    "client_agreed_revision": 3
+  },
+  "afterAgree": {
+    "status": "finalized",
+    "client_agreed_at": "2026-10-23T15:24:03.940827+00:00",
+    "client_agreed_name": "ReAgree QA",
+    "client_agreed_revision": 3,
+    "revision": 3
+  },
+  "clientAgreedActivityCountBeforeBrowserApprox": 1,
+  "clientAgreedActivityCountAfter": 2,
+  "recentAgreedActs": [
+    {
+      "id": "84c32a31-c725-4495-a0c8-0558363c636f",
+      "title": "Client accepted Event Order",
+      "description": "Accepted by Overhaul Accept QA — revision 3",
+      "created_at": "2026-10-23T15:23:42.520035+00:00"
+    }
+  ],
+  "inventoryRows": 1,
+  "eventOrderRows": 1,
+  "notes": "Reopen cleared agreement without outbound share. Re-finalize (no re-share) then accept required new agreement; second accept idempotent already=true."
+}

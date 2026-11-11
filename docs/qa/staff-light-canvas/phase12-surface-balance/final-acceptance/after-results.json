@@ -1,0 +1,743 @@
+[
+  {
+    "id": "tasks-header",
+    "viewport": "mobile-375",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/final-acceptance/after/tasks-header-mobile-375.png",
+    "overflowX": false,
+    "introCountsStacked": true,
+    "holdOverlap": false,
+    "holdPlaceFullWidth": null,
+    "surfaces": [
+      {
+        "sel": "[data-testid=\"task-center-intro\"]",
+        "bg": "#DCE8E0",
+        "color": "#24332B",
+        "top": 77,
+        "left": 17,
+        "width": 341,
+        "height": 174,
+        "bottom": 251,
+        "right": 358
+      },
+      {
+        "sel": "[data-testid=\"task-center-intro-counts\"]",
+        "bg": "transparent",
+        "color": "#5F6F68",
+        "top": 198,
+        "left": 35,
+        "width": 305,
+        "height": 36,
+        "bottom": 235,
+        "right": 340
+      }
+    ]
+  },
+  {
+    "id": "tasks-header",
+    "viewport": "mobile-390",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/final-acceptance/after/tasks-header-mobile-390.png",
+    "overflowX": false,
+    "introCountsStacked": true,
+    "holdOverlap": false,
+    "holdPlaceFullWidth": null,
+    "surfaces": [
+      {
+        "sel": "[data-testid=\"task-center-intro\"]",
+        "bg": "#DCE8E0",
+        "color": "#24332B",
+        "top": 77,
+        "left": 17,
+        "width": 356,
+        "height": 174,
+        "bottom": 251,
+        "right": 373
+      },
+      {
+        "sel": "[data-testid=\"task-center-intro-counts\"]",
+        "bg": "transparent",
+        "color": "#5F6F68",
+        "top": 198,
+        "left": 35,
+        "width": 320,
+        "height": 36,
+        "bottom": 235,
+        "right": 355
+      }
+    ]
+  },
+  {
+    "id": "tasks-header",
+    "viewport": "desktop",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/final-acceptance/after/tasks-header-desktop.png",
+    "overflowX": false,
+    "introCountsStacked": false,
+    "holdOverlap": false,
+    "holdPlaceFullWidth": null,
+    "surfaces": [
+      {
+        "sel": "[data-testid=\"task-center-intro\"]",
+        "bg": "#DCE8E0",
+        "color": "#24332B",
+        "top": 111,
+        "left": 306,
+        "width": 1092,
+        "height": 110,
+        "bottom": 220,
+        "right": 1398
+      },
+      {
+        "sel": "[data-testid=\"task-center-intro-counts\"]",
+        "bg": "transparent",
+        "color": "#5F6F68",
+        "top": 131,
+        "left": 1218,
+        "width": 156,
+        "height": 40,
+        "bottom": 171,
+        "right": 1374
+      }
+    ]
+  },
+  {
+    "id": "tasks-overdue",
+    "viewport": "desktop",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/final-acceptance/after/tasks-overdue-desktop.png",
+    "overflowX": false,
+    "introCountsStacked": false,
+    "holdOverlap": false,
+    "holdPlaceFullWidth": null,
+    "surfaces": [
+      {
+        "sel": ".htc-task-overdue-banner",
+        "bg": null,
+        "color": "#24332B",
+        "top": 467,
+        "left": 306,
+        "width": 1092,
+        "height": 49,
+        "bottom": 515,
+        "right": 1398
+      },
+      {
+        "sel": ".htc-task-overdue-ink",
+        "bg": "transparent",
+        "color": null,
+        "top": 483,
+        "left": 324,
+        "width": 17,
+        "height": 17,
+        "bottom": 500,
+        "right": 341
+      },
+      {
+        "sel": ".htc-task-overdue-count",
+        "bg": null,
+        "color": null,
+        "top": 532,
+        "left": 394,
+        "width": 32,
+        "height": 23,
+        "bottom": 556,
+        "right": 427
+      }
+    ]
+  },
+  {
+    "id": "tasks-overdue",
+    "viewport": "mobile-390",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/final-acceptance/after/tasks-overdue-mobile-390.png",
+    "overflowX": false,
+    "introCountsStacked": true,
+    "holdOverlap": false,
+    "holdPlaceFullWidth": null,
+    "surfaces": [
+      {
+        "sel": ".htc-task-overdue-banner",
+        "bg": null,
+        "color": "#24332B",
+        "top": 493,
+        "left": 17,
+        "width": 356,
+        "height": 49,
+        "bottom": 542,
+        "right": 373
+      },
+      {
+        "sel": ".htc-task-overdue-ink",
+        "bg": "transparent",
+        "color": null,
+        "top": 509,
+        "left": 35,
+        "width": 17,
+        "height": 17,
+        "bottom": 526,
+        "right": 52
+      },
+      {
+        "sel": ".htc-task-overdue-count",
+        "bg": null,
+        "color": null,
+        "top": 559,
+        "left": 105,
+        "width": 32,
+        "height": 23,
+        "bottom": 582,
+        "right": 138
+      }
+    ]
+  },
+  {
+    "id": "lead-hold",
+    "viewport": "mobile-375",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/final-acceptance/after/lead-hold-mobile-375.png",
+    "overflowX": false,
+    "introCountsStacked": null,
+    "holdOverlap": false,
+    "holdPlaceFullWidth": true,
+    "surfaces": [
+      {
+        "sel": "[data-testid=\"lead-owner-hold-row\"]",
+        "bg": "transparent",
+        "color": "#24332B",
+        "top": 392,
+        "left": 31,
+        "width": 314,
+        "height": 235,
+        "bottom": 627,
+        "right": 344
+      },
+      {
+        "sel": "[data-testid=\"date-hold-compact-band\"]",
+        "bg": "transparent",
+        "color": "#24332B",
+        "top": 482,
+        "left": 31,
+        "width": 314,
+        "height": 108,
+        "bottom": 590,
+        "right": 344
+      },
+      {
+        "sel": "[data-testid=\"date-hold-place\"]",
+        "bg": "#446B56",
+        "color": "#FFFFFF",
+        "top": 556,
+        "left": 31,
+        "width": 314,
+        "height": 34,
+        "bottom": 590,
+        "right": 344
+      }
+    ]
+  },
+  {
+    "id": "lead-hold",
+    "viewport": "mobile-390",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/final-acceptance/after/lead-hold-mobile-390.png",
+    "overflowX": false,
+    "introCountsStacked": null,
+    "holdOverlap": false,
+    "holdPlaceFullWidth": true,
+    "surfaces": [
+      {
+        "sel": "[data-testid=\"lead-owner-hold-row\"]",
+        "bg": "transparent",
+        "color": "#24332B",
+        "top": 392,
+        "left": 31,
+        "width": 329,
+        "height": 192,
+        "bottom": 584,
+        "right": 359
+      },
+      {
+        "sel": "[data-testid=\"date-hold-compact-band\"]",
+        "bg": "transparent",
+        "color": "#24332B",
+        "top": 439,
+        "left": 31,
+        "width": 329,
+        "height": 108,
+        "bottom": 547,
+        "right": 359
+      },
+      {
+        "sel": "[data-testid=\"date-hold-place\"]",
+        "bg": "#446B56",
+        "color": "#FFFFFF",
+        "top": 513,
+        "left": 31,
+        "width": 329,
+        "height": 34,
+        "bottom": 547,
+        "right": 359
+      }
+    ]
+  },
+  {
+    "id": "lead-hold",
+    "viewport": "desktop",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/final-acceptance/after/lead-hold-desktop.png",
+    "overflowX": false,
+    "introCountsStacked": null,
+    "holdOverlap": false,
+    "holdPlaceFullWidth": false,
+    "surfaces": [
+      {
+        "sel": "[data-testid=\"lead-owner-hold-row\"]",
+        "bg": "transparent",
+        "color": "#24332B",
+        "top": 266,
+        "left": 322,
+        "width": 1060,
+        "height": 67,
+        "bottom": 333,
+        "right": 1382
+      },
+      {
+        "sel": "[data-testid=\"date-hold-compact-band\"]",
+        "bg": "transparent",
+        "color": "#24332B",
+        "top": 266,
+        "left": 705,
+        "width": 677,
+        "height": 34,
+        "bottom": 300,
+        "right": 1382
+      },
+      {
+        "sel": "[data-testid=\"date-hold-place\"]",
+        "bg": "#446B56",
+        "color": "#FFFFFF",
+        "top": 266,
+        "left": 1183,
+        "width": 199,
+        "height": 34,
+        "bottom": 300,
+        "right": 1382
+      }
+    ]
+  },
+  {
+    "id": "automations-list",
+    "viewport": "desktop",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/final-acceptance/after/automations-list-desktop.png",
+    "overflowX": false,
+    "introCountsStacked": null,
+    "holdOverlap": false,
+    "holdPlaceFullWidth": null,
+    "surfaces": [
+      {
+        "sel": ".htc-hospitality-intro",
+        "bg": "#DCE8E0",
+        "color": "#24332B",
+        "top": 111,
+        "left": 306,
+        "width": 1092,
+        "height": 136,
+        "bottom": 247,
+        "right": 1398
+      },
+      {
+        "sel": "section.htc-automations-help",
+        "bg": "#EAF1F7",
+        "color": "#24332B",
+        "top": 272,
+        "left": 306,
+        "width": 1092,
+        "height": 72,
+        "bottom": 344,
+        "right": 1398
+      },
+      {
+        "sel": ".htc-group-shell",
+        "bg": "#F3F0E9",
+        "color": "#24332B",
+        "top": 370,
+        "left": 306,
+        "width": 1092,
+        "height": 575,
+        "bottom": 945,
+        "right": 1398
+      },
+      {
+        "sel": ".htc-badge-active",
+        "bg": "#DCE8E0",
+        "color": "#24332B",
+        "top": 474,
+        "left": 495,
+        "width": 53,
+        "height": 26,
+        "bottom": 500,
+        "right": 547
+      }
+    ]
+  },
+  {
+    "id": "automations-list",
+    "viewport": "mobile-390",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/final-acceptance/after/automations-list-mobile-390.png",
+    "overflowX": false,
+    "introCountsStacked": null,
+    "holdOverlap": false,
+    "holdPlaceFullWidth": null,
+    "surfaces": [
+      {
+        "sel": ".htc-hospitality-intro",
+        "bg": "#DCE8E0",
+        "color": "#24332B",
+        "top": 77,
+        "left": 17,
+        "width": 356,
+        "height": 201,
+        "bottom": 277,
+        "right": 373
+      },
+      {
+        "sel": "section.htc-automations-help",
+        "bg": "#EAF1F7",
+        "color": "#24332B",
+        "top": 298,
+        "left": 17,
+        "width": 356,
+        "height": 136,
+        "bottom": 434,
+        "right": 373
+      },
+      {
+        "sel": ".htc-group-shell",
+        "bg": "#F3F0E9",
+        "color": "#24332B",
+        "top": 455,
+        "left": 17,
+        "width": 356,
+        "height": 847,
+        "bottom": 1302,
+        "right": 373
+      },
+      {
+        "sel": ".htc-badge-active",
+        "bg": "#DCE8E0",
+        "color": "#24332B",
+        "top": 560,
+        "left": 206,
+        "width": 53,
+        "height": 26,
+        "bottom": 586,
+        "right": 258
+      }
+    ]
+  },
+  {
+    "id": "automations-new",
+    "viewport": "desktop",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/final-acceptance/after/automations-new-desktop.png",
+    "overflowX": false,
+    "introCountsStacked": null,
+    "holdOverlap": false,
+    "holdPlaceFullWidth": null,
+    "surfaces": [
+      {
+        "sel": ".htc-hospitality-intro",
+        "bg": "#DCE8E0",
+        "color": "#24332B",
+        "top": 111,
+        "left": 306,
+        "width": 1092,
+        "height": 136,
+        "bottom": 247,
+        "right": 1398
+      },
+      {
+        "sel": "section.htc-automations-help",
+        "bg": "#EAF1F7",
+        "color": "#24332B",
+        "top": 272,
+        "left": 306,
+        "width": 1092,
+        "height": 72,
+        "bottom": 344,
+        "right": 1398
+      }
+    ]
+  },
+  {
+    "id": "automations-new",
+    "viewport": "mobile-390",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/final-acceptance/after/automations-new-mobile-390.png",
+    "overflowX": false,
+    "introCountsStacked": null,
+    "holdOverlap": false,
+    "holdPlaceFullWidth": null,
+    "surfaces": [
+      {
+        "sel": ".htc-hospitality-intro",
+        "bg": "#DCE8E0",
+        "color": "#24332B",
+        "top": 77,
+        "left": 17,
+        "width": 356,
+        "height": 154,
+        "bottom": 230,
+        "right": 373
+      },
+      {
+        "sel": "section.htc-automations-help",
+        "bg": "#EAF1F7",
+        "color": "#24332B",
+        "top": 252,
+        "left": 17,
+        "width": 356,
+        "height": 136,
+        "bottom": 387,
+        "right": 373
+      }
+    ]
+  },
+  {
+    "id": "dashboard",
+    "viewport": "desktop",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/final-acceptance/after/dashboard-desktop.png",
+    "overflowX": false,
+    "introCountsStacked": null,
+    "holdOverlap": false,
+    "holdPlaceFullWidth": null,
+    "surfaces": [
+      {
+        "sel": ".htc-surface-working",
+        "bg": "#FFFFFF",
+        "color": "#24332B",
+        "top": 1276,
+        "left": 306,
+        "width": 1092,
+        "height": 172,
+        "bottom": 1448,
+        "right": 1398
+      },
+      {
+        "sel": "main",
+        "bg": "#F8F7F3",
+        "color": "#24332B",
+        "top": 68,
+        "left": 264,
+        "width": 1177,
+        "height": 1032,
+        "bottom": 1100,
+        "right": 1440
+      }
+    ]
+  },
+  {
+    "id": "dashboard",
+    "viewport": "mobile-390",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/final-acceptance/after/dashboard-mobile-390.png",
+    "overflowX": false,
+    "introCountsStacked": null,
+    "holdOverlap": false,
+    "holdPlaceFullWidth": null,
+    "surfaces": [
+      {
+        "sel": ".htc-surface-working",
+        "bg": "#FFFFFF",
+        "color": "#24332B",
+        "top": 1321,
+        "left": 17,
+        "width": 356,
+        "height": 172,
+        "bottom": 1494,
+        "right": 373
+      },
+      {
+        "sel": "main",
+        "bg": "#F8F7F3",
+        "color": "#24332B",
+        "top": 60,
+        "left": 0,
+        "width": 390,
+        "height": 785,
+        "bottom": 844,
+        "right": 390
+      }
+    ]
+  },
+  {
+    "id": "lead-detail",
+    "viewport": "desktop",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/final-acceptance/after/lead-detail-desktop.png",
+    "overflowX": false,
+    "introCountsStacked": null,
+    "holdOverlap": false,
+    "holdPlaceFullWidth": false,
+    "surfaces": []
+  },
+  {
+    "id": "lead-detail",
+    "viewport": "mobile-390",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/final-acceptance/after/lead-detail-mobile-390.png",
+    "overflowX": false,
+    "introCountsStacked": null,
+    "holdOverlap": false,
+    "holdPlaceFullWidth": true,
+    "surfaces": []
+  },
+  {
+    "id": "booking-detail",
+    "viewport": "desktop",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/final-acceptance/after/booking-detail-desktop.png",
+    "overflowX": false,
+    "introCountsStacked": null,
+    "holdOverlap": false,
+    "holdPlaceFullWidth": null,
+    "surfaces": []
+  },
+  {
+    "id": "booking-detail",
+    "viewport": "mobile-390",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/final-acceptance/after/booking-detail-mobile-390.png",
+    "overflowX": false,
+    "introCountsStacked": null,
+    "holdOverlap": false,
+    "holdPlaceFullWidth": null,
+    "surfaces": []
+  },
+  {
+    "id": "vendors",
+    "viewport": "desktop",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/final-acceptance/after/vendors-desktop.png",
+    "overflowX": false,
+    "introCountsStacked": null,
+    "holdOverlap": false,
+    "holdPlaceFullWidth": null,
+    "surfaces": []
+  },
+  {
+    "id": "vendors",
+    "viewport": "mobile-390",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/final-acceptance/after/vendors-mobile-390.png",
+    "overflowX": false,
+    "introCountsStacked": null,
+    "holdOverlap": false,
+    "holdPlaceFullWidth": null,
+    "surfaces": []
+  },
+  {
+    "id": "contracts",
+    "viewport": "desktop",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/final-acceptance/after/contracts-desktop.png",
+    "overflowX": false,
+    "introCountsStacked": null,
+    "holdOverlap": false,
+    "holdPlaceFullWidth": null,
+    "surfaces": []
+  },
+  {
+    "id": "contracts",
+    "viewport": "mobile-390",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/final-acceptance/after/contracts-mobile-390.png",
+    "overflowX": false,
+    "introCountsStacked": null,
+    "holdOverlap": false,
+    "holdPlaceFullWidth": null,
+    "surfaces": []
+  },
+  {
+    "id": "payments",
+    "viewport": "desktop",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/final-acceptance/after/payments-desktop.png",
+    "overflowX": false,
+    "introCountsStacked": null,
+    "holdOverlap": false,
+    "holdPlaceFullWidth": null,
+    "surfaces": []
+  },
+  {
+    "id": "payments",
+    "viewport": "mobile-390",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/final-acceptance/after/payments-mobile-390.png",
+    "overflowX": false,
+    "introCountsStacked": null,
+    "holdOverlap": false,
+    "holdPlaceFullWidth": null,
+    "surfaces": []
+  },
+  {
+    "id": "reporting",
+    "viewport": "desktop",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/final-acceptance/after/reporting-desktop.png",
+    "overflowX": false,
+    "introCountsStacked": null,
+    "holdOverlap": false,
+    "holdPlaceFullWidth": null,
+    "surfaces": []
+  },
+  {
+    "id": "reporting",
+    "viewport": "mobile-390",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/final-acceptance/after/reporting-mobile-390.png",
+    "overflowX": false,
+    "introCountsStacked": null,
+    "holdOverlap": false,
+    "holdPlaceFullWidth": null,
+    "surfaces": []
+  },
+  {
+    "id": "templates",
+    "viewport": "desktop",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/final-acceptance/after/templates-desktop.png",
+    "overflowX": false,
+    "introCountsStacked": null,
+    "holdOverlap": false,
+    "holdPlaceFullWidth": null,
+    "surfaces": []
+  },
+  {
+    "id": "templates",
+    "viewport": "mobile-390",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/final-acceptance/after/templates-mobile-390.png",
+    "overflowX": false,
+    "introCountsStacked": null,
+    "holdOverlap": false,
+    "holdPlaceFullWidth": null,
+    "surfaces": []
+  },
+  {
+    "id": "settings",
+    "viewport": "desktop",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/final-acceptance/after/settings-desktop.png",
+    "overflowX": false,
+    "introCountsStacked": null,
+    "holdOverlap": false,
+    "holdPlaceFullWidth": null,
+    "surfaces": []
+  },
+  {
+    "id": "settings",
+    "viewport": "mobile-390",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/final-acceptance/after/settings-mobile-390.png",
+    "overflowX": false,
+    "introCountsStacked": null,
+    "holdOverlap": false,
+    "holdPlaceFullWidth": null,
+    "surfaces": []
+  },
+  {
+    "id": "setup-hub",
+    "viewport": "desktop",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/final-acceptance/after/setup-hub-desktop.png",
+    "overflowX": false,
+    "introCountsStacked": null,
+    "holdOverlap": false,
+    "holdPlaceFullWidth": null,
+    "surfaces": []
+  },
+  {
+    "id": "setup-hub",
+    "viewport": "mobile-390",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/final-acceptance/after/setup-hub-mobile-390.png",
+    "overflowX": false,
+    "introCountsStacked": null,
+    "holdOverlap": false,
+    "holdPlaceFullWidth": null,
+    "surfaces": []
+  }
+]

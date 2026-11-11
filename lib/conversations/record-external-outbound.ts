@@ -28,6 +28,7 @@ export type RecordExternalOutboundInput = {
   leadId?: string | null;
   providerId?: string | null;
   status?: string | null;
+  failureReason?: string | null;
   /** Audit linkage retained alongside notification_log. */
   sourceType: string;
   sourceId: string;
@@ -109,6 +110,7 @@ export async function recordExternalClientOutbound(
       body,
       provider_id: input.providerId ?? null,
       status: input.status ?? "accepted",
+      failure_reason: input.failureReason ?? null,
       channel_metadata: {
         sourceType: input.sourceType,
         sourceId: input.sourceId,

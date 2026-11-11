@@ -11,6 +11,7 @@ import {
   defaultApplySelections,
   formatTemplateOfferingPrice,
   linesForSection,
+  normalizeTemplatePricingModel,
   unsectionedLines,
   type TemplateApplySelection,
 } from "@/lib/event-order-templates/offerings";
@@ -20,10 +21,12 @@ export function TemplateApplyChooser({
   template,
   selections,
   onChange,
+  guestCount,
 }: {
   template: EventOrderTemplateWithDetails;
   selections: TemplateApplySelection[];
   onChange: (next: TemplateApplySelection[]) => void;
+  guestCount?: number | null;
 }) {
   const sections = [...template.sections].sort((a, b) => a.sortOrder - b.sortOrder);
   const loose = unsectionedLines(template.lines);
@@ -65,6 +68,13 @@ export function TemplateApplyChooser({
                 onChange={(e) => setQty(line.id, Number(e.target.value) || 1)}
               />
             </label>
+            {normalizeTemplatePricingModel(line.pricingModel) === "per_person" ? (
+              <p className="mt-1 text-xs text-muted-foreground" data-testid={`apply-per-person-hint-${line.id}`}>
+                {guestCount && guestCount > 0
+                  ? `Per person — starts at this event's ${guestCount} guests.`
+                  : "Per person — enter the number of guests."}
+              </p>
+            ) : null}
           </div>
         ) : null}
       </li>
@@ -110,34 +120,39 @@ export function ApplyEventOrderTemplateSheet({
   template,
   pending,
   onApply,
+  guestCount,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   template: EventOrderTemplateWithDetails | null;
   pending: boolean;
   onApply: (selections: TemplateApplySelection[]) => Promise<void>;
+  guestCount?: number | null;
 }) {
   const [selections, setSelections] = React.useState<TemplateApplySelection[]>([]);
 
   React.useEffect(() => {
-    if (open && template) setSelections(defaultApplySelections(template.lines));
-  }, [open, template]);
+    if (open && template) setSelections(defaultApplySelections(template.lines, guestCount));
+  }, [open, template, guestCount]);
 
   if (!template) return null;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="flex w-full flex-col overflow-y-auto sm:max-w-lg">
-        <SheetHeader className="mb-4">
+      <SheetContent side="right" className="flex h-dvh max-h-dvh w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-lg">
+        <SheetHeader className="mb-0 shrink-0 px-4 pt-4 pr-12">
           <SheetTitle>Apply {template.name}</SheetTitle>
         </SheetHeader>
-        <p className="mb-4 text-sm text-muted-foreground">
+        <p className="shrink-0 px-4 pt-3 text-sm text-muted-foreground">
           Choose what this event should receive. Applying creates event-specific structure — not an invoice, contract, or payment.
         </p>
-        <div className="min-h-0 flex-1">
-          <TemplateApplyChooser template={template} selections={selections} onChange={setSelections} />
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4" data-testid="event-order-apply-list">
+          <TemplateApplyChooser template={template} selections={selections} onChange={setSelections} guestCount={guestCount} />
         </div>
-        <div className="mt-4 flex flex-wrap justify-end gap-2 border-t border-border pt-4">
+        <div
+          className="flex shrink-0 flex-wrap justify-end gap-2 border-t border-border bg-popover px-4 py-4"
+          data-testid="event-order-apply-footer"
+        >
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={pending}>
             Cancel
           </Button>

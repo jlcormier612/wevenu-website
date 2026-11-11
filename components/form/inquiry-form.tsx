@@ -13,7 +13,11 @@ import {
   ScheduleTourConfirmation,
 } from "@/components/form/inquiry-confirmations";
 import { VenueFormAnalyticsConsent } from "@/components/form/venue-form-analytics-consent";
+import { HtcPlatformMark } from "@/components/brand/htc-platform-mark";
+import { MonthYearPicker } from "@/components/shared/month-year-picker";
 import { TurnstileWidget } from "@/components/shared/turnstile-widget";
+import { CALENDAR_MAX_YEAR } from "@/lib/calendar/types";
+import { clampMonthYear } from "@/lib/calendar/month-year-range";
 import {
   captureFirstTouchAttribution,
   getOrCreateOpaqueAnonId,
@@ -41,13 +45,28 @@ import {
   validateConfigurableFields,
   validateCustomAnswers,
 } from "@/lib/inquiry-form/validation";
+import { INQUIRY_FORM_PREVIEW_BANNER } from "@/lib/inquiry-form/preview-config";
 import {
   INQUIRY_SMS_CONSENT_OPTIONAL_HINT,
+  SMS_PUBLIC_CONSENT_DISCLOSURES,
   buildInquirySmsConsentText,
 } from "@/lib/communication/sms-consent";
+import type { ExistingLeadTourContext } from "@/lib/tours/existing-lead-tour-context";
+import { shouldSkipPreferredEventDateRequirement } from "@/lib/tours/existing-lead-tour-context";
 import type { TourSlot } from "@/lib/tours/types";
+import { inkOn, publicFormSurfaceStyle } from "@/lib/theme/public-form-surface";
 
-const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+function formatPreferredEventDateLabel(iso: string): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  if (!y || !m || !d) return iso;
+  return new Date(y, m - 1, d).toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 type FormState = "idle" | "submitting" | "success_info" | "success_tour" | "error";
@@ -60,18 +79,28 @@ function ModeSelector({
   mode,
   onSelect,
   primary,
+  accent,
   tourEnabled,
 }: {
   mode: InquiryMode | null;
   onSelect: (m: InquiryMode) => void;
   primary: string;
+  accent: string;
   tourEnabled: boolean;
 }) {
   if (!tourEnabled) return null;
   const tourActive = mode === "schedule_tour";
   const infoActive = mode === "request_information";
-  const inactiveBorder = "#DED6CA";
-  const inactiveBg = "#F5F4F2";
+  const inactive = {
+    borderColor: "var(--border)",
+    background: "var(--muted)",
+    color: "var(--foreground)",
+  };
+  const active = {
+    borderColor: accent,
+    background: `color-mix(in srgb, ${primary} 10%, var(--card))`,
+    color: "var(--foreground)",
+  };
 
   return (
     <div className="grid grid-cols-2 gap-3">
@@ -79,33 +108,25 @@ function ModeSelector({
         type="button"
         onClick={() => onSelect("schedule_tour")}
         className="rounded-2xl border-2 p-4 text-center space-y-1.5 transition-colors"
-        style={
-          tourActive
-            ? { borderColor: primary, background: `${primary}08` }
-            : { borderColor: inactiveBorder, background: inactiveBg }
-        }
+        style={tourActive ? active : inactive}
       >
         <p className="text-2xl">📅</p>
-        <p className="text-sm font-semibold" style={{ color: tourActive ? primary : "#374151" }}>
+        <p className="text-sm font-semibold text-heading">
           Schedule a Tour
         </p>
-        <p className="text-xs text-gray-500">Pick a date and time to visit us.</p>
+        <p className="text-xs text-muted-foreground">Pick a date and time to visit us.</p>
       </button>
       <button
         type="button"
         onClick={() => onSelect("request_information")}
         className="rounded-2xl border-2 p-4 text-center space-y-1.5 transition-colors"
-        style={
-          infoActive
-            ? { borderColor: primary, background: `${primary}08` }
-            : { borderColor: inactiveBorder, background: inactiveBg }
-        }
+        style={infoActive ? active : inactive}
       >
         <p className="text-2xl">✉️</p>
-        <p className="text-sm font-semibold" style={{ color: infoActive ? primary : "#374151" }}>
+        <p className="text-sm font-semibold text-heading">
           Request Information
         </p>
-        <p className="text-xs text-gray-500">Tell us about your event.</p>
+        <p className="text-xs text-muted-foreground">Tell us about your event.</p>
       </button>
     </div>
   );
@@ -123,6 +144,7 @@ function AvailabilityCalendar({
   availableDates: Set<string>;
   selectedDate: string | null;
   onSelect: (d: string) => void;
+  /** 0–11 */
   month: number;
   year: number;
   onMonthChange: (m: number, y: number) => void;
@@ -132,37 +154,75 @@ function AvailabilityCalendar({
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+  const minYear = today.getFullYear();
+  const maxYear = CALENDAR_MAX_YEAR;
+  const atPastFloor = year < minYear || (year === minYear && month <= today.getMonth());
+  const atFutureCeiling = year > maxYear || (year === maxYear && month >= 11);
   const cells: (number | null)[] = Array(firstDay).fill(null);
   for (let i = 1; i <= daysInMonth; i++) cells.push(i);
   while (cells.length % 7 !== 0) cells.push(null);
 
+  function jumpTo(month0: number, nextYear: number) {
+    const clamped = clampMonthYear(month0, nextYear, minYear, maxYear);
+    if (clamped.year === minYear && clamped.month < today.getMonth()) {
+      onMonthChange(today.getMonth(), minYear);
+      return;
+    }
+    onMonthChange(clamped.month, clamped.year);
+  }
+
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <button type="button" onClick={() => (month === 0 ? onMonthChange(11, year - 1) : onMonthChange(month - 1, year))} aria-label="Previous month" className="p-2 rounded-lg hover:bg-gray-100">
+    <div className="space-y-3" data-testid="availability-calendar">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <button
+          type="button"
+          disabled={atPastFloor}
+          onClick={() => jumpTo(month - 1, year)}
+          aria-label="Previous month"
+          className="rounded-lg p-2 text-foreground hover:bg-muted disabled:cursor-not-allowed disabled:text-muted-foreground disabled:opacity-100 disabled:hover:bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
           <ChevronLeft className="h-4 w-4" />
         </button>
-        <p className="font-semibold text-gray-900">{MONTHS[month]} {year}</p>
-        <button type="button" onClick={() => (month === 11 ? onMonthChange(0, year + 1) : onMonthChange(month + 1, year))} aria-label="Next month" className="p-2 rounded-lg hover:bg-gray-100">
+        <MonthYearPicker
+          year={year}
+          month={month + 1}
+          minYear={minYear}
+          maxYear={maxYear}
+          onChange={(y, m1) => jumpTo(m1 - 1, y)}
+        />
+        <button
+          type="button"
+          disabled={atFutureCeiling}
+          onClick={() => jumpTo(month + 1, year)}
+          aria-label="Next month"
+          className="rounded-lg p-2 text-foreground hover:bg-muted disabled:cursor-not-allowed disabled:text-muted-foreground disabled:opacity-100 disabled:hover:bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
           <ChevronRight className="h-4 w-4" />
         </button>
       </div>
       <div className="grid grid-cols-7 gap-0.5">
-        {DAYS.map((d) => <p key={d} className="text-center text-[11px] font-medium text-gray-500 py-1">{d}</p>)}
+        {DAYS.map((d) => <p key={d} className="text-center text-[11px] font-medium text-muted-foreground py-1">{d}</p>)}
         {cells.map((day, i) => {
           if (!day) return <div key={`e-${i}`} />;
           const iso = isoDate(year, month, day);
           const isAvail = availableDates.has(iso);
           const isPast = new Date(year, month, day) < today;
           const isSel = iso === selectedDate;
+          const open = isAvail && !isPast;
           return (
             <button
               key={iso}
               type="button"
-              disabled={!isAvail || isPast}
+              disabled={!open}
               onClick={() => onSelect(iso)}
-              className={`rounded-lg py-2 text-sm font-medium transition-colors ${isSel ? "text-white" : isAvail && !isPast ? "text-gray-900 hover:bg-gray-100" : "text-gray-300"}`}
-              style={isSel ? { background: primary } : isAvail && !isPast ? { background: `${primary}14` } : {}}
+              className={`rounded-lg py-2 text-sm font-medium transition-colors disabled:opacity-100 ${open && !isSel ? "hover:bg-muted" : ""}`}
+              style={
+                isSel
+                  ? { background: primary, color: inkOn(primary) }
+                  : open
+                    ? { background: `color-mix(in srgb, ${primary} 14%, var(--card))`, color: "var(--foreground)" }
+                    : { color: "var(--muted-foreground)" }
+              }
             >
               {day}
             </button>
@@ -188,12 +248,12 @@ function CustomQuestionField({
   if (q.questionType === "long_answer") {
     return (
       <div className="space-y-1.5">
-        <label className="block text-sm font-medium text-gray-700">{label}</label>
+        <label className="block text-sm font-medium text-foreground">{label}</label>
         <textarea
           rows={3}
           value={typeof value === "string" ? value : ""}
           onChange={(e) => onChange(e.target.value)}
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm resize-none"
+          className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground resize-none"
         />
         {error && <p className="text-xs text-red-600">{error}</p>}
       </div>
@@ -202,11 +262,11 @@ function CustomQuestionField({
   if (q.questionType === "single_select") {
     return (
       <div className="space-y-1.5">
-        <label className="block text-sm font-medium text-gray-700">{label}</label>
+        <label className="block text-sm font-medium text-foreground">{label}</label>
         <select
           value={typeof value === "string" ? value : ""}
           onChange={(e) => onChange(e.target.value)}
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white"
+          className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground"
         >
           <option value="">Select…</option>
           {q.options.map((o) => <option key={o} value={o}>{o}</option>)}
@@ -219,10 +279,10 @@ function CustomQuestionField({
     const selected = Array.isArray(value) ? value : [];
     return (
       <div className="space-y-1.5">
-        <p className="block text-sm font-medium text-gray-700">{label}</p>
+        <p className="block text-sm font-medium text-foreground">{label}</p>
         <div className="space-y-2">
           {q.options.map((o) => (
-            <label key={o} className="flex items-center gap-2 text-sm text-gray-700">
+            <label key={o} className="flex items-center gap-2 text-sm text-foreground">
               <input
                 type="checkbox"
                 checked={selected.includes(o)}
@@ -240,11 +300,11 @@ function CustomQuestionField({
   }
   return (
     <div className="space-y-1.5">
-      <label className="block text-sm font-medium text-gray-700">{label}</label>
+      <label className="block text-sm font-medium text-foreground">{label}</label>
       <input
         value={typeof value === "string" ? value : ""}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+        className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground"
       />
       {error && <p className="text-xs text-red-600">{error}</p>}
     </div>
@@ -255,17 +315,40 @@ export function InquiryForm({
   embedKey,
   config,
   initialMode = null,
+  initialEventDate,
+  tourOriginToken = null,
+  existingLeadTour = null,
+  preview = false,
 }: {
   embedKey: string;
   config: PublicInquiryFormConfig;
   initialMode?: InquiryMode | null;
+  initialEventDate?: string;
+  tourOriginToken?: string | null;
+  /**
+   * Server-resolved lead context for `?o=` tour links. Preferred event date
+   * is authoritative — never invent or re-validate it against new-inquiry
+   * availability calendars.
+   */
+  existingLeadTour?: ExistingLeadTourContext | null;
+  /** Authenticated builder preview — same renderer, submissions disabled. */
+  preview?: boolean;
 }) {
-  const { venue, inquiryFormFields: fields, inquiryEventDateMode, customQuestions, tourSchedulingEnabled, tourEmbedKey, acceptedEventTypes, inquiryCommunicationSettings: comm } = config;
+  const { venue, inquiryFormFields: fields, inquiryEventDateMode, customQuestions, tourSchedulingEnabled, tourEmbedKey, acceptedEventTypes, inquiryCommunicationSettings: comm, tourProtectionRequired, tourProtectionKind, tourProtectionFeeCents } = config;
   const primary = venue.primaryColor || "#5D6F5D";
+  const secondary = venue.secondaryColor || "#4F5F4F";
+  const accent = venue.accentColor || "#B8AEA1";
+  const neutral = venue.neutralColor || "#F7F5F1";
+  const formBrand = { primary, secondary, accent, neutral };
   const eventTypeOptions = EVENT_TYPES.filter((t) => acceptedEventTypes.includes(t.value));
   const smsConsentText = buildInquirySmsConsentText(venue.name);
 
+  const lockedExistingLeadTour = Boolean(existingLeadTour?.hasExistingLead);
+
   const [mode, setMode] = React.useState<InquiryMode | null>(() => {
+    // Existing-lead `?o=` links are tour-scheduling only — never open in
+    // Request Information with a held preferred date seeded into the picker.
+    if (existingLeadTour?.hasExistingLead) return "schedule_tour";
     if (initialMode) return initialMode;
     return tourSchedulingEnabled ? null : "request_information";
   });
@@ -277,15 +360,26 @@ export function InquiryForm({
   const [turnstileToken, setTurnstileToken] = React.useState<string | null>(null);
   const [tourConfirmation, setTourConfirmation] = React.useState<TourBookingConfirmation | null>(null);
 
-  const [firstName, setFirstName] = React.useState("");
-  const [lastName, setLastName] = React.useState("");
-  const [email, setEmail] = React.useState("");
-  const [phone, setPhone] = React.useState("");
+  const [firstName, setFirstName] = React.useState(existingLeadTour?.firstName ?? "");
+  const [lastName, setLastName] = React.useState(existingLeadTour?.lastName ?? "");
+  const [email, setEmail] = React.useState(existingLeadTour?.email ?? "");
+  const [phone, setPhone] = React.useState(existingLeadTour?.phone ?? "");
   const [partnerFirst, setPartnerFirst] = React.useState("");
   const [partnerLast, setPartnerLast] = React.useState("");
-  const [eventType, setEventType] = React.useState("");
-  const [eventDate, setEventDate] = React.useState("");
-  const [guestCount, setGuestCount] = React.useState("");
+  const [partnerEmail, setPartnerEmail] = React.useState("");
+  const [eventType, setEventType] = React.useState(existingLeadTour?.eventType ?? "");
+  const seededDate = (() => {
+    // Existing-lead preferred date is display-only. Never seed it into mutable
+    // eventDate — ModeToggle/inquire/create must not submit a held date.
+    if (existingLeadTour?.hasExistingLead) return "";
+    if (initialEventDate && /^\d{4}-\d{2}-\d{2}$/.test(initialEventDate)) return initialEventDate;
+    return "";
+  })();
+  const seededParts = seededDate ? seededDate.split("-").map(Number) : null;
+  const [eventDate, setEventDate] = React.useState(seededDate);
+  const [guestCount, setGuestCount] = React.useState(
+    existingLeadTour?.guestCount != null ? String(existingLeadTour.guestCount) : "",
+  );
   const [budget, setBudget] = React.useState("");
   const [message, setMessage] = React.useState("");
   const [customAnswers, setCustomAnswers] = React.useState<Record<string, string | string[]>>({});
@@ -295,8 +389,8 @@ export function InquiryForm({
   const [smsPermissionGranted, setSmsPermissionGranted] = React.useState(false);
 
   const today = new Date();
-  const [eventMonth, setEventMonth] = React.useState(today.getMonth());
-  const [eventYear, setEventYear] = React.useState(today.getFullYear());
+  const [eventMonth, setEventMonth] = React.useState(seededParts ? seededParts[1] - 1 : today.getMonth());
+  const [eventYear, setEventYear] = React.useState(seededParts ? seededParts[0] : today.getFullYear());
   const [availableEventDates, setAvailableEventDates] = React.useState<Set<string>>(new Set());
   const [loadingEventDates, setLoadingEventDates] = React.useState(false);
 
@@ -307,18 +401,32 @@ export function InquiryForm({
   const [selectedTourDate, setSelectedTourDate] = React.useState<string | null>(null);
   const [selectedTourSlot, setSelectedTourSlot] = React.useState<TourSlot | null>(null);
 
+  const existingLeadScheduleTour = Boolean(
+    existingLeadTour?.hasExistingLead && mode === "schedule_tour",
+  );
+
   React.useEffect(() => {
+    // Existing-lead tour: do not load new-inquiry availability for the locked preferred date.
+    if (existingLeadScheduleTour) return;
     if (inquiryEventDateMode !== "choose_available" || fields.preferred_event_date === "hidden") return;
     setLoadingEventDates(true);
     const start = isoDate(eventYear, eventMonth, 1);
     const last = new Date(eventYear, eventMonth + 1, 0).getDate();
     const end = isoDate(eventYear, eventMonth, last);
+    // Read-only availability — safe for builder preview (no lead/write side effects).
     fetch(`/api/public/inquiry-available-dates?key=${embedKey}&start=${start}&end=${end}`)
       .then((r) => r.json())
       .then((d: { dates?: string[] }) => setAvailableEventDates(new Set(d.dates ?? [])))
       .catch(() => setAvailableEventDates(new Set()))
       .finally(() => setLoadingEventDates(false));
-  }, [embedKey, eventMonth, eventYear, inquiryEventDateMode, fields.preferred_event_date]);
+  }, [
+    embedKey,
+    eventMonth,
+    eventYear,
+    inquiryEventDateMode,
+    fields.preferred_event_date,
+    existingLeadScheduleTour,
+  ]);
 
   React.useEffect(() => {
     if (mode !== "schedule_tour" || !tourEmbedKey) return;
@@ -335,8 +443,9 @@ export function InquiryForm({
 
   // First-touch UTM/referrer snapshot (sessionStorage only — no visitor DB).
   React.useEffect(() => {
+    if (preview) return;
     captureFirstTouchAttribution(embedKey);
-  }, [embedKey]);
+  }, [preview, embedKey]);
 
   const tourAvailableDates = new Set(tourSlots.map((s) => s.date));
   const tourSlotsForDate = selectedTourDate ? tourSlots.filter((s) => s.date === selectedTourDate) : [];
@@ -418,7 +527,13 @@ export function InquiryForm({
     if (!lastName.trim()) errors.lastName = "Last name is required.";
     if (!email.trim()) errors.email = "Email is required.";
     if (!eventType) errors.eventType = "Event type is required.";
-    Object.assign(errors, validateConfigurableFields(fields, {
+    const fieldsForValidation = shouldSkipPreferredEventDateRequirement({
+      mode,
+      existingLeadTour: Boolean(existingLeadTour?.hasExistingLead),
+    })
+      ? { ...fields, preferred_event_date: "optional" as const }
+      : fields;
+    Object.assign(errors, validateConfigurableFields(fieldsForValidation, {
       phone, partnerFirst, partnerLast, eventDate, guestCount, budget, message,
     }));
     Object.assign(errors, validateCustomAnswers(customQuestions, customAnswers));
@@ -431,6 +546,10 @@ export function InquiryForm({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (preview) {
+      setError(INQUIRY_FORM_PREVIEW_BANNER);
+      return;
+    }
     if (honeypot || !mode) return;
     if (!validate()) return;
 
@@ -452,14 +571,15 @@ export function InquiryForm({
           body: JSON.stringify({
             embedKey,
             firstName, lastName, email, phone,
-            partnerFirst, partnerLast,
+            partnerFirst, partnerLast, partnerEmail: partnerEmail.trim() || null,
             eventType, eventDate,
             guestCount: guestCount ? parseInt(guestCount, 10) : null,
             estimatedBudget: budget ? parseFloat(budget.replace(/[$,]/g, "")) : null,
             message,
             sourceData,
             preferredCommunicationChannels,
-            smsPermissionGranted: smsPermissionGranted && !!phone.trim(),
+            // Send the raw checkbox — server resolves phone (form or on-file) before recording.
+            smsPermissionGranted,
             turnstileToken,
           }),
         });
@@ -474,6 +594,9 @@ export function InquiryForm({
       } else if (mode === "schedule_tour" && selectedTourSlot && tourEmbedKey) {
         const qrCampaignId = new URLSearchParams(window.location.search).get("qr");
         const sourceData = buildSourceData("schedule_tour");
+        // Existing-lead attach uses the lead's authoritative event_date server-side.
+        // Never send the held preferred date as a new-inquiry eventDate.
+        const submitEventDate = existingLeadScheduleTour ? "" : eventDate;
         const res = await fetch("/api/tours/book", {
           method: "POST",
           headers: { "content-type": "application/json" },
@@ -482,18 +605,28 @@ export function InquiryForm({
             slotStart: selectedTourSlot.start,
             firstName, lastName,
             partnerName: [partnerFirst, partnerLast].filter(Boolean).join(" "),
-            email, phone, eventType, eventDate,
+            partnerFirst, partnerLast,
+            partnerEmail: partnerEmail.trim() || null,
+            email, phone, eventType, eventDate: submitEventDate,
             guestCount: guestCount ? parseInt(guestCount, 10) : null,
             notes: message,
             turnstileToken,
             qrCampaignId,
             sourceData,
+            originToken: tourOriginToken
+              ?? new URLSearchParams(window.location.search).get("o"),
             preferredCommunicationChannels,
-            smsPermissionGranted: smsPermissionGranted && !!phone.trim(),
+            // Send the raw checkbox — server resolves phone (form or on-file) before recording.
+            smsPermissionGranted,
           }),
         });
         const data = await res.json();
-        if (data.ok) {
+        if (data.ok && data.checkoutUrl) {
+          fireVenueLeadAnalytics("schedule_tour", sourceData);
+          window.location.assign(data.checkoutUrl as string);
+          return;
+        }
+        if (data.ok && data.appointmentId && data.scheduledAt) {
           fireVenueLeadAnalytics("schedule_tour", sourceData);
           setTourConfirmation({
             scheduledAt: data.scheduledAt,
@@ -504,8 +637,12 @@ export function InquiryForm({
             addressLine1: data.addressLine1 ?? venue.addressLine1,
             city: data.city ?? venue.city,
             stateRegion: data.stateRegion ?? venue.stateRegion,
+            timezone: venue.timezone ?? null,
           });
           setState("success_tour");
+        } else if (data.ok) {
+          setError("Your tour is not booked yet. Please complete the payment step.");
+          setState("error");
         } else {
           setError(INQUIRY_API_ERRORS[data.error] ?? data.error ?? "Something went wrong. Please try again.");
           setState("error");
@@ -518,41 +655,78 @@ export function InquiryForm({
   }
 
   if (state === "success_info") {
-    return <RequestInformationConfirmation firstName={firstName} venueName={venue.name} primaryColor={primary} />;
+    return <RequestInformationConfirmation firstName={firstName} venueName={venue.name} brand={formBrand} />;
   }
   if (state === "success_tour" && tourConfirmation) {
-    return <ScheduleTourConfirmation firstName={firstName} confirmation={tourConfirmation} primaryColor={primary} />;
+    return <ScheduleTourConfirmation firstName={firstName} confirmation={tourConfirmation} brand={formBrand} />;
   }
 
   const showForm = mode !== null;
-  const inputClass = "w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:border-transparent";
+  const inputClass = "w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:border-transparent";
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: `${primary}08` }}>
-      <div className="py-8 px-4 text-center" style={{ backgroundColor: primary }}>
+    <div
+      data-theme-lock="light"
+      data-venue-brand="public-book"
+      data-testid={preview ? "inquiry-form-preview" : "inquiry-form-public"}
+      className={preview ? "" : "min-h-screen"}
+      style={publicFormSurfaceStyle(formBrand)}
+    >
+      {preview && (
+        <div
+          data-testid="inquiry-form-preview-banner"
+          className="border-b border-amber-200 bg-amber-50 px-4 py-3 text-center text-sm font-medium text-amber-950"
+        >
+          {INQUIRY_FORM_PREVIEW_BANNER}
+        </div>
+      )}
+      <div className="py-8 px-4 text-center" style={{ backgroundColor: primary, color: inkOn(primary) }}>
         {venue.logoUrl && (
           <img src={venue.logoUrl} alt={venue.name} className="h-12 w-12 object-contain rounded-lg mx-auto mb-3" style={{ background: "rgba(255,255,255,0.15)" }} />
         )}
-        <h1 className="text-white text-xl font-semibold">{venue.name}</h1>
-        <p className="text-white/70 text-sm mt-1">Inquiry Form</p>
+        <h1 className="text-xl font-semibold">{venue.name}</h1>
+        <p className="text-sm mt-1">{preview ? "Inquiry Form (Preview)" : "Inquiry Form"}</p>
       </div>
 
       <div className="max-w-xl mx-auto px-4 py-6 space-y-6">
-        <ModeSelector mode={mode} onSelect={setMode} primary={primary} tourEnabled={tourSchedulingEnabled} />
+        {!lockedExistingLeadTour && (
+          <ModeSelector mode={mode} onSelect={setMode} primary={primary} accent={accent} tourEnabled={tourSchedulingEnabled} />
+        )}
 
-        {!showForm && tourSchedulingEnabled && (
-          <p className="text-center text-sm text-gray-500">Choose how you&apos;d like to connect with us.</p>
+        {!showForm && tourSchedulingEnabled && !lockedExistingLeadTour && (
+          <p className="text-center text-sm text-muted-foreground">Choose how you&apos;d like to connect with us.</p>
         )}
 
         {showForm && (
-          <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 md:p-8 space-y-5">
+          <form onSubmit={handleSubmit} className="bg-card text-card-foreground rounded-2xl shadow-sm border border-border p-6 md:p-8 space-y-5">
             <input type="text" name="website_url" value={honeypot} onChange={(e) => setHoneypot(e.target.value)} className="sr-only" tabIndex={-1} autoComplete="off" aria-hidden="true" />
 
             {mode === "schedule_tour" && tourEmbedKey && (
               <div className="space-y-4 border-b border-gray-100 pb-5">
-                <p className="text-sm font-semibold text-gray-900">Select your tour</p>
+                <p className="text-sm font-semibold text-heading">Select your tour</p>
+                {tourProtectionRequired && (
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-950 space-y-1">
+                    {tourProtectionKind === "fee" ? (
+                      <>
+                        <p className="font-semibold">A tour fee is required before this tour is booked.</p>
+                        <p>
+                          {venue.name} collects a ${((tourProtectionFeeCents ?? 0) / 100).toFixed(2)} tour fee.
+                          Your tour is not booked until that payment is complete.
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="font-semibold">A card on file is required before this tour is booked.</p>
+                        <p>
+                          You will save a payment method. You are not charged just for saving a card.
+                          Your tour is not booked until that step is complete.
+                        </p>
+                      </>
+                    )}
+                  </div>
+                )}
                 {loadingTourSlots ? (
-                  <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-gray-400" /></div>
+                  <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
                 ) : (
                   <AvailabilityCalendar
                     availableDates={tourAvailableDates}
@@ -574,9 +748,13 @@ export function InquiryForm({
                           type="button"
                           onClick={() => setSelectedTourSlot(slot)}
                           className="rounded-lg border py-2.5 text-sm font-medium"
-                          style={isSel ? { background: primary, borderColor: primary, color: "white" } : { borderColor: "#DED6CA" }}
+                          style={
+                            isSel
+                              ? { background: primary, borderColor: primary, color: inkOn(primary) }
+                              : { borderColor: "var(--border)", background: "var(--card)", color: "var(--foreground)" }
+                          }
                         >
-                          <Clock className="h-3.5 w-3.5 inline mr-1 opacity-60" />
+                          <Clock className="h-3.5 w-3.5 inline mr-1" />
                           {slot.time}
                         </button>
                       );
@@ -589,12 +767,12 @@ export function InquiryForm({
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <label className="block text-sm font-medium text-gray-700">First name *</label>
+                <label className="block text-sm font-medium text-foreground">First name *</label>
                 <input required value={firstName} onChange={(e) => setFirstName(e.target.value)} className={inputClass} style={{ "--tw-ring-color": primary } as React.CSSProperties} />
                 {fieldErrors.firstName && <p className="text-xs text-red-600">{fieldErrors.firstName}</p>}
               </div>
               <div className="space-y-1.5">
-                <label className="block text-sm font-medium text-gray-700">Last name *</label>
+                <label className="block text-sm font-medium text-foreground">Last name *</label>
                 <input required value={lastName} onChange={(e) => setLastName(e.target.value)} className={inputClass} />
                 {fieldErrors.lastName && <p className="text-xs text-red-600">{fieldErrors.lastName}</p>}
               </div>
@@ -602,13 +780,13 @@ export function InquiryForm({
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <label className="block text-sm font-medium text-gray-700">Email *</label>
+                <label className="block text-sm font-medium text-foreground">Email *</label>
                 <input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} />
                 {fieldErrors.email && <p className="text-xs text-red-600">{fieldErrors.email}</p>}
               </div>
               {fields.phone !== "hidden" && (
                 <div className="space-y-1.5">
-                  <label className="block text-sm font-medium text-gray-700">{fieldLabel("Phone", fields.phone)}</label>
+                  <label className="block text-sm font-medium text-foreground">{fieldLabel("Phone", fields.phone)}</label>
                   <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className={inputClass} />
                   {fieldErrors.phone && <p className="text-xs text-red-600">{fieldErrors.phone}</p>}
                 </div>
@@ -616,11 +794,40 @@ export function InquiryForm({
             </div>
 
             {fields.partner !== "hidden" && (
-              <div className="border-t border-gray-100 pt-4 space-y-1.5">
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{fieldLabel("Partner / Co-host", fields.partner)}</p>
+              <div className="border-t border-gray-100 pt-4 space-y-1.5" data-testid="inquiry-partner-fields">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{fieldLabel("Partner / Co-host", fields.partner)}</p>
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <input placeholder="Partner first name" value={partnerFirst} onChange={(e) => setPartnerFirst(e.target.value)} className={inputClass} />
-                  <input placeholder="Partner last name" value={partnerLast} onChange={(e) => setPartnerLast(e.target.value)} className={inputClass} />
+                  <input
+                    placeholder="Partner first name"
+                    value={partnerFirst}
+                    onChange={(e) => setPartnerFirst(e.target.value)}
+                    className={inputClass}
+                    data-testid="inquiry-partner-first"
+                    autoComplete="off"
+                  />
+                  <input
+                    placeholder="Partner last name"
+                    value={partnerLast}
+                    onChange={(e) => setPartnerLast(e.target.value)}
+                    className={inputClass}
+                    data-testid="inquiry-partner-last"
+                    autoComplete="off"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-medium text-foreground" htmlFor="inquiry-partner-email">
+                    Partner email
+                  </label>
+                  <input
+                    id="inquiry-partner-email"
+                    type="email"
+                    placeholder="partner@example.com"
+                    value={partnerEmail}
+                    onChange={(e) => setPartnerEmail(e.target.value)}
+                    className={inputClass}
+                    data-testid="inquiry-partner-email"
+                    autoComplete="off"
+                  />
                 </div>
                 {fieldErrors.partner && <p className="text-xs text-red-600">{fieldErrors.partner}</p>}
               </div>
@@ -628,19 +835,54 @@ export function InquiryForm({
 
             <div className="border-t border-gray-100 pt-4 grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <label className="block text-sm font-medium text-gray-700">Event type *</label>
-                <select required value={eventType} onChange={(e) => setEventType(e.target.value)} className={`${inputClass} bg-white`}>
+                <label className="block text-sm font-medium text-foreground">Event type *</label>
+                <select required value={eventType} onChange={(e) => setEventType(e.target.value)} className={inputClass}>
                   <option value="">Select event type</option>
                   {eventTypeOptions.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
                 </select>
                 {fieldErrors.eventType && <p className="text-xs text-red-600">{fieldErrors.eventType}</p>}
               </div>
 
-              {fields.preferred_event_date !== "hidden" && (
+              {existingLeadTour?.hasExistingLead && mode === "schedule_tour" ? (
+                <div
+                  className="space-y-1.5 sm:col-span-2"
+                  data-testid="existing-lead-preferred-event-date"
+                >
+                  <p className="text-sm font-medium text-foreground">Preferred event date</p>
+                  {existingLeadTour.preferredEventDate ? (
+                    <div className="rounded-lg border border-border bg-muted px-3 py-3 text-sm text-foreground">
+                      <p className="font-medium">
+                        {formatPreferredEventDateLabel(existingLeadTour.preferredEventDate)}
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        This is the preferred event date already shared with {venue.name}. You do not
+                        need to select it again — choose a tour time below.
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      No preferred event date is on file yet. You can schedule a tour without selecting
+                      one here.
+                    </p>
+                  )}
+                </div>
+              ) : fields.preferred_event_date !== "hidden" ? (
                 <div className="space-y-1.5 sm:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700">
-                    {fieldLabel("Preferred event date", fields.preferred_event_date)}
+                  <label className="block text-sm font-medium text-foreground">
+                    {fieldLabel(
+                      "Preferred event date",
+                      // Tour booking must not require re-picking a date that may be
+                      // held for an existing inquiry (generic Calendar tour links).
+                      mode === "schedule_tour" ? "optional" : fields.preferred_event_date,
+                    )}
                   </label>
+                  {mode === "schedule_tour" && (
+                    <p className="text-xs text-muted-foreground">
+                      Optional for tours. Already working with {venue.name}? Use the personal
+                      scheduling link from your venue so your preferred date and hold are preserved —
+                      you do not need to select that date again here.
+                    </p>
+                  )}
                   {inquiryEventDateMode === "choose_available" ? (
                     <div className="rounded-lg border border-gray-200 p-4">
                       {loadingEventDates ? (
@@ -662,18 +904,18 @@ export function InquiryForm({
                   )}
                   {fieldErrors.eventDate && <p className="text-xs text-red-600">{fieldErrors.eventDate}</p>}
                 </div>
-              )}
+              ) : null}
 
               {fields.guest_count !== "hidden" && (
                 <div className="space-y-1.5">
-                  <label className="block text-sm font-medium text-gray-700">{fieldLabel("Guest count", fields.guest_count)}</label>
+                  <label className="block text-sm font-medium text-foreground">{fieldLabel("Guest count", fields.guest_count)}</label>
                   <input type="number" min="1" value={guestCount} onChange={(e) => setGuestCount(e.target.value)} className={inputClass} />
                   {fieldErrors.guestCount && <p className="text-xs text-red-600">{fieldErrors.guestCount}</p>}
                 </div>
               )}
               {fields.estimated_budget !== "hidden" && (
                 <div className="space-y-1.5">
-                  <label className="block text-sm font-medium text-gray-700">{fieldLabel("Estimated budget", fields.estimated_budget)}</label>
+                  <label className="block text-sm font-medium text-foreground">{fieldLabel("Estimated budget", fields.estimated_budget)}</label>
                   <input value={budget} onChange={(e) => setBudget(e.target.value)} className={inputClass} />
                   {fieldErrors.budget && <p className="text-xs text-red-600">{fieldErrors.budget}</p>}
                 </div>
@@ -682,7 +924,7 @@ export function InquiryForm({
 
             {fields.event_details !== "hidden" && (
               <div className="space-y-1.5">
-                <label className="block text-sm font-medium text-gray-700">{fieldLabel("Tell us about your event", fields.event_details)}</label>
+                <label className="block text-sm font-medium text-foreground">{fieldLabel("Tell us about your event", fields.event_details)}</label>
                 <textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={4} className={`${inputClass} resize-none`} />
                 {fieldErrors.message && <p className="text-xs text-red-600">{fieldErrors.message}</p>}
               </div>
@@ -699,26 +941,31 @@ export function InquiryForm({
             ))}
 
             {comm.showPreferences && (
-              <fieldset className="space-y-2 rounded-xl border border-gray-200 bg-gray-50/80 p-4">
-                <legend className="px-1 text-sm font-semibold text-gray-900">
+              <fieldset className="space-y-2 rounded-xl border border-border bg-muted p-4">
+                <legend className="px-1 text-sm font-semibold text-heading">
                   How would you like us to communicate with you?
                 </legend>
-                <p className="text-xs text-gray-500">Choose any that apply. This is separate from your phone number.</p>
+                <p className="text-xs text-muted-foreground">Choose any that apply. This is separate from your phone number.</p>
+                {comm.offeredChannels.includes("sms") && (
+                  <p className="text-xs text-muted-foreground">
+                    Choosing “Text message” as a preferred contact method is not SMS consent.
+                  </p>
+                )}
                 <div className="space-y-2">
                   {comm.offeredChannels.includes("email") && (
-                    <label className="flex items-start gap-2 text-sm text-gray-800">
+                    <label className="flex items-start gap-2 text-sm text-foreground">
                       <input type="checkbox" checked={prefEmail} onChange={(e) => setPrefEmail(e.target.checked)} className="mt-0.5 h-4 w-4" />
                       Email
                     </label>
                   )}
                   {comm.offeredChannels.includes("sms") && (
-                    <label className="flex items-start gap-2 text-sm text-gray-800">
+                    <label className="flex items-start gap-2 text-sm text-foreground">
                       <input type="checkbox" checked={prefSms} onChange={(e) => setPrefSms(e.target.checked)} className="mt-0.5 h-4 w-4" />
                       Text message
                     </label>
                   )}
                   {comm.offeredChannels.includes("phone_call") && (
-                    <label className="flex items-start gap-2 text-sm text-gray-800">
+                    <label className="flex items-start gap-2 text-sm text-foreground">
                       <input type="checkbox" checked={prefPhoneCall} onChange={(e) => setPrefPhoneCall(e.target.checked)} className="mt-0.5 h-4 w-4" />
                       Phone call
                     </label>
@@ -727,13 +974,13 @@ export function InquiryForm({
               </fieldset>
             )}
 
-            {comm.showSmsPermission && (
-              <fieldset className="space-y-2 rounded-xl border border-gray-200 p-4">
-                <legend className="px-1 text-sm font-semibold text-gray-900">
-                  Text message permission <span className="font-normal text-gray-500">(optional)</span>
+            {comm.showSmsPermission && fields.phone !== "hidden" && (
+              <fieldset className="space-y-2 rounded-xl border border-border bg-muted p-4">
+                <legend className="px-1 text-sm font-semibold text-heading">
+                  Text message permission <span className="font-normal text-muted-foreground">(optional)</span>
                 </legend>
-                <p className="text-xs text-gray-500">{INQUIRY_SMS_CONSENT_OPTIONAL_HINT}</p>
-                <label className="flex items-start gap-2 text-sm text-gray-800">
+                <p className="text-xs text-muted-foreground">{INQUIRY_SMS_CONSENT_OPTIONAL_HINT}</p>
+                <label className="flex items-start gap-2 text-sm text-foreground">
                   <input
                     type="checkbox"
                     checked={smsPermissionGranted}
@@ -744,9 +991,14 @@ export function InquiryForm({
                   <span>{smsConsentText}</span>
                 </label>
                 {!phone.trim() && smsPermissionGranted && (
-                  <p className="text-xs text-amber-700">Add a phone number above so we can text you.</p>
+                  <p className="text-xs text-foreground">Add a phone number above so we can text you. Without a phone number, this box does not record text permission.</p>
                 )}
-                <p className="text-[11px] text-gray-500">
+                <ul className="list-disc space-y-1 pl-5 text-xs text-muted-foreground">
+                  {SMS_PUBLIC_CONSENT_DISCLOSURES.map((line) => (
+                    <li key={line}>{line}</li>
+                  ))}
+                </ul>
+                <p className="text-[11px] text-muted-foreground">
                   See our{" "}
                   <a
                     href="https://hellotocheers.com/privacy"
@@ -772,29 +1024,41 @@ export function InquiryForm({
 
             {(state === "error" || error) && <p className="text-sm text-red-600 text-center">{error}</p>}
 
-            <div className="flex justify-center">
-              <TurnstileWidget onToken={setTurnstileToken} />
-            </div>
+            {!preview && (
+              <div className="flex justify-center">
+                <TurnstileWidget onToken={setTurnstileToken} />
+              </div>
+            )}
 
             <button
               type="submit"
-              disabled={state === "submitting"}
-              className="w-full rounded-lg py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2"
-              style={{ backgroundColor: primary }}
+              disabled={preview || state === "submitting"}
+              data-testid={preview ? "inquiry-form-preview-submit" : undefined}
+              className="w-full rounded-lg py-3 text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-60 flex items-center justify-center gap-2"
+              style={{ backgroundColor: primary, color: inkOn(primary) }}
             >
-              {state === "submitting"
-                ? <><Loader2 className="h-4 w-4 animate-spin" />Sending…</>
-                : mode === "schedule_tour" ? "Confirm Tour" : "Send Inquiry"}
+              {preview
+                ? "Preview only — submissions disabled"
+                : state === "submitting"
+                  ? <><Loader2 className="h-4 w-4 animate-spin" />Sending…</>
+                  : mode === "schedule_tour"
+                    ? (tourProtectionRequired
+                      ? (tourProtectionKind === "fee" ? "Continue to payment" : "Continue to save a card")
+                      : "Confirm Tour")
+                    : "Send Inquiry"}
             </button>
 
-            <p className="text-center text-xs text-gray-400">Your information is used only to respond to your inquiry.</p>
-            <VenueFormAnalyticsConsent
-              venueId={venue.id}
-              measurementId={config.ga4MeasurementId}
-              primaryColor={primary}
-            />
+            <p className="text-center text-xs text-muted-foreground">Your information is used only to respond to your inquiry.</p>
+            {!preview && (
+              <VenueFormAnalyticsConsent
+                venueId={venue.id}
+                measurementId={config.ga4MeasurementId}
+                primaryColor={primary}
+              />
+            )}
           </form>
         )}
+        <HtcPlatformMark className="pt-2 pb-2" />
       </div>
     </div>
   );

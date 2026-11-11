@@ -1,0 +1,182 @@
+[
+  {
+    "id": "dashboard",
+    "viewport": "desktop",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/evidence-before/dashboard-desktop.png",
+    "url": "https://app.sandbox.hellotocheers.com/dashboard?cb=1793684050121"
+  },
+  {
+    "id": "dashboard",
+    "viewport": "mobile-390",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/evidence-before/dashboard-mobile-390.png",
+    "url": "https://app.sandbox.hellotocheers.com/dashboard?cb=1793684056406"
+  },
+  {
+    "id": "automations",
+    "viewport": "desktop",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/evidence-before/automations-desktop.png",
+    "url": "https://app.sandbox.hellotocheers.com/communication/series?cb=1793684060807"
+  },
+  {
+    "id": "automations",
+    "viewport": "mobile-390",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/evidence-before/automations-mobile-390.png",
+    "url": "https://app.sandbox.hellotocheers.com/communication/series?cb=1793684064355"
+  },
+  {
+    "id": "tours",
+    "viewport": "desktop",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/evidence-before/tours-desktop.png",
+    "url": "https://app.sandbox.hellotocheers.com/tours?cb=1793684068218"
+  },
+  {
+    "id": "tours",
+    "viewport": "mobile-390",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/evidence-before/tours-mobile-390.png",
+    "url": "https://app.sandbox.hellotocheers.com/tours?cb=1793684071959"
+  },
+  {
+    "id": "requests",
+    "viewport": "desktop",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/evidence-before/requests-desktop.png",
+    "url": "https://app.sandbox.hellotocheers.com/requests?cb=1793684075510"
+  },
+  {
+    "id": "requests",
+    "viewport": "mobile-390",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/evidence-before/requests-mobile-390.png",
+    "url": "https://app.sandbox.hellotocheers.com/requests?cb=1793684078672"
+  },
+  {
+    "id": "tasks",
+    "viewport": "desktop",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/evidence-before/tasks-desktop.png",
+    "url": "https://app.sandbox.hellotocheers.com/tasks?cb=1793684081842"
+  },
+  {
+    "id": "tasks",
+    "viewport": "mobile-390",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/evidence-before/tasks-mobile-390.png",
+    "url": "https://app.sandbox.hellotocheers.com/tasks?cb=1793684092593"
+  },
+  {
+    "id": "setup-hub",
+    "viewport": "desktop",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/evidence-before/setup-hub-desktop.png",
+    "url": "https://app.sandbox.hellotocheers.com/setup-hub?cb=1793684096159"
+  },
+  {
+    "id": "setup-hub",
+    "viewport": "mobile-390",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/evidence-before/setup-hub-mobile-390.png",
+    "url": "https://app.sandbox.hellotocheers.com/setup-hub?cb=1793684099656"
+  },
+  {
+    "id": "settings",
+    "viewport": "desktop",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/evidence-before/settings-desktop.png",
+    "url": "https://app.sandbox.hellotocheers.com/settings?cb=1793684103626"
+  },
+  {
+    "id": "settings",
+    "viewport": "mobile-390",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/evidence-before/settings-mobile-390.png",
+    "url": "https://app.sandbox.hellotocheers.com/settings?cb=1793684107284"
+  },
+  {
+    "id": "library",
+    "viewport": "desktop",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/evidence-before/library-desktop.png",
+    "url": "https://app.sandbox.hellotocheers.com/library?cb=1793684110760"
+  },
+  {
+    "id": "library",
+    "viewport": "mobile-390",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/evidence-before/library-mobile-390.png",
+    "url": "https://app.sandbox.hellotocheers.com/library?cb=1793684114403"
+  },
+  {
+    "id": "inventory",
+    "viewport": "desktop",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/evidence-before/inventory-desktop.png",
+    "url": "https://app.sandbox.hellotocheers.com/library/inventory?cb=1793684117970"
+  },
+  {
+    "id": "inventory",
+    "viewport": "mobile-390",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/evidence-before/inventory-mobile-390.png",
+    "url": "https://app.sandbox.hellotocheers.com/library/inventory?cb=1793684121649"
+  },
+  {
+    "id": "lead-detail",
+    "viewport": "desktop",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/evidence-before/lead-detail-desktop.png",
+    "url": "https://app.sandbox.hellotocheers.com/leads/20e470d8-ab91-4db1-bbae-d75dad943b69?cb=1793684124962"
+  },
+  {
+    "id": "lead-detail",
+    "viewport": "mobile-390",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/evidence-before/lead-detail-mobile-390.png",
+    "url": "https://app.sandbox.hellotocheers.com/leads/20e470d8-ab91-4db1-bbae-d75dad943b69?cb=1793684129231"
+  },
+  {
+    "id": "booking-detail",
+    "viewport": "desktop",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/evidence-before/booking-detail-desktop.png",
+    "url": "https://app.sandbox.hellotocheers.com/clients/49aba826-0bd3-4891-ac9f-02a18b2b6962?cb=1793684134480"
+  },
+  {
+    "id": "booking-detail",
+    "viewport": "mobile-390",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/evidence-before/booking-detail-mobile-390.png",
+    "url": "https://app.sandbox.hellotocheers.com/clients/49aba826-0bd3-4891-ac9f-02a18b2b6962?cb=1793684139348"
+  },
+  {
+    "id": "reporting",
+    "viewport": "desktop",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/evidence-before/reporting-desktop.png",
+    "url": "https://app.sandbox.hellotocheers.com/reporting?cb=1793684144270"
+  },
+  {
+    "id": "reporting",
+    "viewport": "mobile-390",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/evidence-before/reporting-mobile-390.png",
+    "url": "https://app.sandbox.hellotocheers.com/reporting?cb=1793684148347"
+  },
+  {
+    "id": "contracts",
+    "viewport": "desktop",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/evidence-before/contracts-desktop.png",
+    "url": "https://app.sandbox.hellotocheers.com/contracts?cb=1793684151769"
+  },
+  {
+    "id": "contracts",
+    "viewport": "mobile-390",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/evidence-before/contracts-mobile-390.png",
+    "url": "https://app.sandbox.hellotocheers.com/contracts?cb=1793684155637"
+  },
+  {
+    "id": "payments",
+    "viewport": "desktop",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/evidence-before/payments-desktop.png",
+    "url": "https://app.sandbox.hellotocheers.com/payments?cb=1793684159785"
+  },
+  {
+    "id": "payments",
+    "viewport": "mobile-390",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/evidence-before/payments-mobile-390.png",
+    "url": "https://app.sandbox.hellotocheers.com/payments?cb=1793684164197"
+  },
+  {
+    "id": "vendors",
+    "viewport": "desktop",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/evidence-before/vendors-desktop.png",
+    "url": "https://app.sandbox.hellotocheers.com/vendors?cb=1793684168106"
+  },
+  {
+    "id": "vendors",
+    "viewport": "mobile-390",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/evidence-before/vendors-mobile-390.png",
+    "url": "https://app.sandbox.hellotocheers.com/vendors?cb=1793684171812"
+  }
+]

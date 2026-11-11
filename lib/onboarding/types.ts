@@ -3,18 +3,19 @@
  * Customer-facing choices match the Setup & White Glove product specification.
  */
 
+import type { SpaceOperatingMode } from "@/lib/venue-spaces/uses";
+
 export type SpaceMode = "one" | "multiple";
+
+/** Maps intake spaceMode onto venues.space_operating_mode. */
+export function spaceOperatingModeFromIntake(mode: SpaceMode): SpaceOperatingMode {
+  return mode === "multiple" ? "multi" : "single";
+}
 
 export type IntakeSpace = {
   name: string;
   maxCapacity: number | null;
 };
-
-export type TastingAppointmentChoice =
-  | "tastings"
-  | "other_appointments"
-  | "both"
-  | "neither";
 
 export type InquirySourceKey =
   | "website"
@@ -29,6 +30,42 @@ export type BringBusinessChoice =
   | "another_system"
   | "starting_fresh";
 
+/** Appointment kinds offered besides tours — intake + Settings share these keys. */
+export type AppointmentTypeKey =
+  | "consultations"
+  | "planning_meetings"
+  | "final_walkthroughs"
+  | "menu_tastings"
+  | "other";
+
+export const APPOINTMENT_TYPE_OPTIONS: {
+  key: AppointmentTypeKey;
+  label: string;
+}[] = [
+  { key: "consultations", label: "Consultations" },
+  { key: "planning_meetings", label: "Planning meetings" },
+  { key: "final_walkthroughs", label: "Final walkthroughs" },
+  { key: "menu_tastings", label: "Menu or food tastings" },
+  { key: "other", label: "Other appointments" },
+];
+
+export const APPOINTMENT_TYPE_KEY_SET = new Set<string>(
+  APPOINTMENT_TYPE_OPTIONS.map((o) => o.key),
+);
+
+export function sanitizeAppointmentTypeKeys(
+  keys: readonly string[] | null | undefined,
+): AppointmentTypeKey[] {
+  if (!keys?.length) return [];
+  const out: AppointmentTypeKey[] = [];
+  for (const raw of keys) {
+    if (APPOINTMENT_TYPE_KEY_SET.has(raw) && !out.includes(raw as AppointmentTypeKey)) {
+      out.push(raw as AppointmentTypeKey);
+    }
+  }
+  return out;
+}
+
 export const INQUIRY_SOURCE_OPTIONS: {
   key: InquirySourceKey;
   label: string;
@@ -38,7 +75,7 @@ export const INQUIRY_SOURCE_OPTIONS: {
   { key: "facebook_instagram", label: "Facebook / Instagram" },
   {
     key: "marketplace",
-    label: "The Knot / WeddingWire / Here Comes the Guide / Zola",
+    label: "The Knot / WeddingWire / Here Comes the Guide",
   },
   { key: "other", label: "Other" },
 ];
@@ -52,19 +89,19 @@ export const BRING_BUSINESS_OPTIONS: {
     key: "honeybook",
     title: "Yes — I use HoneyBook",
     description:
-      "We'll recognize the HoneyBook export and guide you through bringing your information into Hello to Cheers.",
+      "We'll note that you're coming from HoneyBook and help you export what you want us to use — nothing moves over automatically.",
   },
   {
     key: "tripleseat",
     title: "Yes — I use Tripleseat",
     description:
-      "We'll recognize the Tripleseat export and guide you through bringing your information into Hello to Cheers.",
+      "We'll note that you're coming from Tripleseat and help you export what you want us to use — nothing moves over automatically.",
   },
   {
     key: "another_system",
     title: "Yes — I use another system",
     description:
-      "No problem. We'll guide you through exporting, mapping, and reviewing your information.",
+      "Tell us what you use; we'll help you gather the pieces that matter — nothing imports on its own.",
   },
   {
     key: "starting_fresh",
@@ -88,7 +125,16 @@ export type OnboardingIntakeInput = {
   spaceMode: SpaceMode;
   spaces: IntakeSpace[];
   offersTours: boolean;
-  tastingAppointmentChoice: TastingAppointmentChoice;
+  /**
+   * Optional operator signal. Null means unanswered.
+   * True does not configure appointment scheduling.
+   * UI copy: "Do you offer appointments other than tours?"
+   */
+  offersTastingsOrAppointments: boolean | null;
+  /** Selected when offersTastingsOrAppointments is true. Empty when No/unanswered. */
+  appointmentTypeKeys?: AppointmentTypeKey[];
+  /** Free text when appointmentTypeKeys includes "other". */
+  appointmentTypesOther?: string | null;
   inquirySources: InquirySourceKey[];
   inquirySourcesOther?: string | null;
   bringBusinessChoice: BringBusinessChoice;
@@ -112,4 +158,15 @@ export function bringBusinessMigrationHref(
   if (choice === "honeybook") return "/settings/migration?source=honeybook";
   if (choice === "tripleseat") return "/settings/migration?source=tripleseat";
   return "/settings/migration?source=another_system";
+}
+
+/** Hub acknowledgement of the intake Bring Business answer — not a new source of truth. */
+export function bringBusinessIntakeHeading(
+  choice: BringBusinessChoice | null | undefined,
+): string | null {
+  if (choice === "honeybook") return "Bring your HoneyBook business into Hello to Cheers";
+  if (choice === "tripleseat") return "Bring your Tripleseat business into Hello to Cheers";
+  if (choice === "another_system") return "Bring your existing business into Hello to Cheers";
+  if (choice === "starting_fresh") return "Start fresh";
+  return null;
 }

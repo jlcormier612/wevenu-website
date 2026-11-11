@@ -1,0 +1,814 @@
+/**
+ * Phase 3B — Features differentiator spotlights (isolated previews only).
+ * Scoped under .fs-spotlights. Does not alter live /features or showroom styles.
+ */
+
+.fs-spotlights {
+  --fs-botanical: #446b56;
+  --fs-botanical-deep: #355544;
+  --fs-eucalyptus: #dce8e0;
+  --fs-linen: #f3f0e9;
+  --fs-canvas: #f8f7f3;
+  --fs-ivory: #fefefc;
+  --fs-charcoal: #24332b;
+  --fs-muted: rgba(36, 51, 43, 0.68);
+  --fs-line: rgba(36, 51, 43, 0.12);
+  --fs-blush: #f7e9eb;
+  color: var(--fs-charcoal);
+}
+
+.fs-spot {
+  padding: 3.75rem 0 4.25rem;
+  scroll-margin-top: 5.5rem;
+}
+
+.fs-spot-inner {
+  width: min(1220px, calc(100% - 2rem));
+  margin-inline: auto;
+}
+
+.fs-spot-copy {
+  display: grid;
+  gap: 0.95rem;
+  max-width: 36rem;
+}
+
+.fs-spot-copy-wide {
+  max-width: 46rem;
+  margin-inline: auto;
+  text-align: center;
+  justify-items: center;
+}
+
+.fs-spot-eyebrow {
+  margin: 0;
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--fs-botanical);
+}
+
+.fs-spot-headline {
+  margin: 0;
+  font-family: var(--font-heading), Georgia, serif;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 1.12;
+  font-size: clamp(1.85rem, 4.2vw, 2.85rem);
+  color: var(--fs-charcoal);
+  max-width: 18ch;
+}
+
+.fs-spot-copy-wide .fs-spot-headline {
+  max-width: 22ch;
+}
+
+.fs-spot-body {
+  margin: 0;
+  font-size: 1.02rem;
+  line-height: 1.68;
+  color: var(--fs-muted);
+  max-width: 48ch;
+}
+
+.fs-spot-body-closer {
+  font-family: var(--font-heading), Georgia, serif;
+  font-size: 1.12rem;
+  line-height: 1.45;
+  letter-spacing: -0.01em;
+  color: var(--fs-charcoal);
+  max-width: 28ch;
+}
+
+.fs-spot-copy-wide .fs-spot-body {
+  max-width: 56ch;
+}
+
+
+.fs-spot-product-note {
+  margin: 0.35rem 0 0;
+  max-width: 48ch;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  color: color-mix(in srgb, var(--fs-botanical-deep) 78%, var(--fs-muted));
+  font-style: italic;
+}
+
+/* ── Photography framing ─────────────────────────────────────────── */
+
+.fs-spot-photo {
+  margin: 0;
+  display: grid;
+  gap: 0.7rem;
+}
+
+.fs-spot-photo-frame {
+  overflow: hidden;
+  border-radius: 0.2rem;
+  background: color-mix(in srgb, var(--fs-linen) 70%, white);
+  box-shadow:
+    0 1px 0 rgba(36, 51, 43, 0.04),
+    0 18px 40px -28px rgba(36, 51, 43, 0.35);
+  aspect-ratio: 5 / 4;
+}
+
+.fs-spot-photo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.fs-spot-photo-cap {
+  display: grid;
+  gap: 0.2rem;
+  padding-inline: 0.1rem;
+}
+
+.fs-spot-photo-label {
+  font-size: 0.68rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--fs-botanical);
+}
+
+.fs-spot-photo-line {
+  font-family: var(--font-heading), Georgia, serif;
+  font-size: 1.02rem;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+  color: var(--fs-charcoal);
+}
+
+/* ── Product screenshot framing ──────────────────────────────────── */
+
+.fs-spot-screen {
+  margin: 0;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.fs-spot-screen-frame {
+  overflow: hidden;
+  border-radius: 0.35rem;
+  background: var(--fs-ivory);
+  border: 1px solid var(--fs-line);
+  box-shadow:
+    0 1px 0 rgba(36, 51, 43, 0.03),
+    0 22px 48px -30px rgba(36, 51, 43, 0.38);
+}
+
+.fs-spot-screen-frame.is-hero {
+  border-radius: 0.45rem;
+}
+
+.fs-spot-screen-frame.is-immersive {
+  border-radius: 0.4rem;
+}
+
+.fs-spot-screen-img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.fs-spot-screen-cap {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: var(--fs-muted);
+  text-align: center;
+}
+
+/* ── Steps ────────────────────────────────────────────────────────── */
+
+.fs-spot-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.fs-spot-step-num {
+  margin: 0;
+  font-size: 0.72rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--fs-botanical);
+}
+
+.fs-spot-step-title {
+  margin: 0.35rem 0 0;
+  font-family: var(--font-heading), Georgia, serif;
+  font-weight: 400;
+  font-size: 1.28rem;
+  letter-spacing: -0.015em;
+  line-height: 1.25;
+  color: var(--fs-charcoal);
+}
+
+.fs-spot-step-body {
+  margin: 0.55rem 0 0;
+  font-size: 0.96rem;
+  line-height: 1.62;
+  color: var(--fs-muted);
+  max-width: 38ch;
+}
+
+.fs-spot-step-copy {
+  display: grid;
+  align-content: start;
+  gap: 0;
+  padding-top: 0.15rem;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Concept A — Editorial Hospitality (photography-led)
+   Order: Journey → Prepared → Flexibility
+   ═══════════════════════════════════════════════════════════════════ */
+
+.fs-spotlights-a .fs-spot-journey {
+  /* Rich Natural Linen — deepest beige of the three refined sections */
+  background: #e9e0d4;
+  border-top: 1px solid var(--fs-line);
+}
+
+.fs-spot-journey-inner {
+  display: grid;
+  gap: 2.35rem;
+  align-items: center;
+}
+
+.fs-spot-journey-cta {
+  margin-top: 0.35rem;
+}
+
+.fs-spot-journey-visual {
+  position: relative;
+  display: grid;
+  gap: 1rem;
+  isolation: isolate;
+}
+
+.fs-spot-photo-frame.is-journey-primary {
+  aspect-ratio: 5 / 4;
+}
+
+.fs-spot-photo-img.is-journey-primary {
+  /* Keep all three people and tablet consultation clearly visible */
+  object-position: 40% 34%;
+}
+
+.fs-spot-photo-frame.is-journey-secondary {
+  /* Landscape plate suits handshake / couple faces */
+  aspect-ratio: 5 / 4;
+  margin-inline: auto 0;
+  box-shadow:
+    0 1px 0 rgba(36, 51, 43, 0.04),
+    0 22px 44px -26px rgba(36, 51, 43, 0.42);
+}
+
+.fs-spot-photo-img.is-journey-secondary {
+  /* Handshake, couple smiles, paperwork — avoid cropping faces/hands */
+  object-position: 52% 40%;
+}
+
+.fs-spotlights-a .fs-spot-prepared {
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--fs-eucalyptus) 42%, var(--fs-canvas)) 0%,
+      var(--fs-canvas) 55%,
+      var(--fs-ivory) 100%
+    );
+}
+
+.fs-spot-prepared-inner {
+  display: grid;
+  gap: 2.75rem;
+}
+
+.fs-spot-prepared-visual {
+  display: grid;
+  gap: 1.75rem;
+}
+
+.fs-spot-photo-frame.is-prepared-primary {
+  aspect-ratio: 16 / 11;
+}
+
+.fs-spot-photo-img.is-prepared-primary {
+  /* Notebook, floor plan, swatches, and hands */
+  object-position: 46% 48%;
+}
+
+.fs-spot-photo-frame.is-prepared-secondary {
+  aspect-ratio: 4 / 5;
+}
+
+.fs-spot-photo-img.is-prepared-secondary {
+  /* Farmhouse table depth toward fireplace; keep candles and florals */
+  object-position: 58% 42%;
+}
+
+.fs-spotlights-a .fs-spot-flexibility {
+  /* Soft Oatmeal — lighter warm contrast to hero, still richer than canvas */
+  background: #f1e9e1;
+  border-top: 1px solid var(--fs-line);
+}
+
+.fs-spot-flexibility-inner {
+  display: grid;
+  gap: 2.6rem;
+}
+
+.fs-spot-flexibility-visual {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.fs-spot-photo-frame.is-flex-intimate {
+  aspect-ratio: 5 / 4;
+}
+
+.fs-spot-photo-frame.is-flex-estate {
+  /* Wider frame preserves house + ceremony + pavilion together */
+  aspect-ratio: 16 / 10;
+}
+
+.fs-spot-photo-img.is-intimate {
+  object-position: 42% 48%;
+}
+
+.fs-spot-photo-img.is-estate {
+  /* Keep lounge, manor, ceremony lawn, and pavilion in view */
+  object-position: 48% 52%;
+}
+
+.fs-spot-cta {
+  appearance: none;
+  border: 1px solid color-mix(in srgb, var(--fs-botanical) 35%, transparent);
+  background: transparent;
+  color: var(--fs-botanical-deep);
+  font-family: var(--font-heading), Georgia, serif;
+  font-size: 1.05rem;
+  letter-spacing: -0.01em;
+  padding: 0.7rem 1.35rem;
+  border-radius: 999px;
+  cursor: pointer;
+  transition:
+    background 160ms ease,
+    color 160ms ease,
+    border-color 160ms ease;
+}
+
+.fs-spot-cta:hover {
+  background: color-mix(in srgb, var(--fs-botanical) 10%, white);
+  border-color: color-mix(in srgb, var(--fs-botanical) 55%, transparent);
+}
+
+.fs-spot-cta:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--fs-botanical) 55%, transparent);
+  outline-offset: 3px;
+}
+
+.fs-preview-close {
+  background: var(--fs-linen);
+  border-top: 1px solid var(--fs-line);
+  padding: 4.5rem 1.25rem 5rem;
+}
+
+.fs-preview-close-inner {
+  width: min(42rem, 100%);
+  margin-inline: auto;
+  text-align: center;
+  display: grid;
+  gap: 1.1rem;
+  justify-items: center;
+}
+
+.fs-preview-close-headline {
+  margin: 0;
+  font-family: var(--font-heading), Georgia, serif;
+  font-weight: 400;
+  font-size: clamp(1.9rem, 4vw, 2.85rem);
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  color: var(--fs-charcoal);
+}
+
+.fs-preview-close-lines {
+  display: grid;
+  gap: 0.35rem;
+  max-width: 38rem;
+}
+
+.fs-preview-close-lines p {
+  margin: 0;
+  font-size: 1.02rem;
+  line-height: 1.65;
+  color: var(--fs-muted);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Concept B — Product-Led Editorial
+   ═══════════════════════════════════════════════════════════════════ */
+
+.fs-spotlights-b .fs-spot-b1 {
+  background:
+    linear-gradient(
+      165deg,
+      var(--fs-canvas) 0%,
+      color-mix(in srgb, var(--fs-eucalyptus) 55%, var(--fs-linen)) 48%,
+      var(--fs-linen) 100%
+    );
+  border-top: 1px solid var(--fs-line);
+}
+
+.fs-spot-b1-inner {
+  display: grid;
+  gap: 2.1rem;
+  justify-items: center;
+}
+
+.fs-spot-b1-inner .fs-spot-screen-hero {
+  width: min(920px, 100%);
+}
+
+.fs-spot-b1-pair {
+  width: 100%;
+  display: grid;
+  gap: 1.25rem;
+  margin-top: 0.35rem;
+}
+
+.fs-spot-photo.is-secondary .fs-spot-photo-frame {
+  aspect-ratio: 16 / 10;
+  box-shadow:
+    0 1px 0 rgba(36, 51, 43, 0.03),
+    0 14px 32px -24px rgba(36, 51, 43, 0.3);
+}
+
+.fs-spotlights-b .fs-spot-b2 {
+  background:
+    linear-gradient(
+      180deg,
+      var(--fs-ivory) 0%,
+      color-mix(in srgb, var(--fs-linen) 60%, white) 100%
+    );
+}
+
+.fs-spot-b2-inner {
+  display: grid;
+  gap: 2.85rem;
+}
+
+.fs-spot-steps-b {
+  display: grid;
+  gap: 2.75rem;
+}
+
+.fs-spot-step-row {
+  display: grid;
+  gap: 1.25rem;
+  align-items: center;
+}
+
+.fs-spot-steps-b .fs-spot-step-copy::before {
+  content: "";
+  display: block;
+  width: 2.5rem;
+  height: 1px;
+  margin-bottom: 0.85rem;
+  background: color-mix(in srgb, var(--fs-botanical) 40%, transparent);
+}
+
+/* ── Desktop / tablet ─────────────────────────────────────────────── */
+
+@media (min-width: 760px) {
+  /*
+   * Journey: two balanced moments — consultation + booking handshake at
+   * ~75% of consultation width with intentional layered overlap. Note: %
+   * padding is relative to the visual’s width (containing block).
+   *
+   * Keep vertical hang visible; clip only the horizontal overhang so the
+   * layered composition cannot expand document scroll width on tablet.
+   */
+  .fs-spot-journey {
+    overflow-x: clip;
+    overflow-y: visible;
+  }
+
+  .fs-spot-journey-inner,
+  .fs-spot-journey-visual {
+    overflow: visible;
+  }
+
+  .fs-spot-journey-visual {
+    display: block;
+    position: relative;
+    padding: 0;
+    /* Contain absolute secondary within the visual’s box */
+    overflow-x: clip;
+    overflow-y: visible;
+  }
+
+  .fs-spot-journey-primary {
+    /* Room for a near-peer booking plate without equal card sizing */
+    width: 70%;
+    margin: 0;
+    /*
+     * Secondary height ≈ 0.52×0.8×W ≈ 0.416W at these proportions.
+     * 22% padding → intentional vertical layering (~half the booking plate
+     * sits below; the rest overlaps the consultation).
+     */
+    padding-bottom: 22%;
+  }
+
+  .fs-spot-journey-secondary {
+    position: absolute;
+    /* left ≈ primaryRight − 0.26 × secondaryWidth → ~26% width overlap */
+    left: calc(70% - 0.26 * 48%);
+    right: auto;
+    bottom: 0;
+    /* 48 / 70 ≈ 69% of consultation — still a clear peer plate, fits shell */
+    width: 48%;
+    max-width: none;
+    z-index: 2;
+  }
+
+  .fs-spot-photo-frame.is-journey-secondary {
+    max-width: none;
+    width: 100%;
+    margin: 0;
+  }
+
+  /*
+   * Prepared: display:contents so frames share one row and bottom-align;
+   * captions share the row beneath with consistent spacing.
+   */
+  .fs-spot-prepared-visual {
+    grid-template-columns: minmax(0, 1.35fr) minmax(0, 0.85fr);
+    grid-template-rows: auto auto;
+    column-gap: 1.85rem;
+    row-gap: 0.7rem;
+    align-items: end;
+  }
+
+  .fs-spot-prepared-primary,
+  .fs-spot-prepared-secondary {
+    display: contents;
+  }
+
+  .fs-spot-prepared-primary .fs-spot-photo-frame {
+    grid-column: 1;
+    grid-row: 1;
+    align-self: end;
+  }
+
+  .fs-spot-prepared-secondary .fs-spot-photo-frame {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: end;
+  }
+
+  .fs-spot-prepared-primary .fs-spot-photo-cap {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .fs-spot-prepared-secondary .fs-spot-photo-cap {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  /*
+   * Flexibility: tops of both photographs share one baseline.
+   */
+  .fs-spot-flexibility-visual {
+    grid-template-columns: minmax(0, 0.86fr) minmax(0, 1.14fr);
+    grid-template-rows: auto auto;
+    column-gap: 1.75rem;
+    row-gap: 0.7rem;
+    align-items: start;
+  }
+
+  .fs-spot-flex-intimate,
+  .fs-spot-flex-estate {
+    display: contents;
+  }
+
+  .fs-spot-flex-intimate .fs-spot-photo-frame {
+    grid-column: 1;
+    grid-row: 1;
+    align-self: start;
+  }
+
+  .fs-spot-flex-estate .fs-spot-photo-frame {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: start;
+  }
+
+  .fs-spot-flex-intimate .fs-spot-photo-cap {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .fs-spot-flex-estate .fs-spot-photo-cap {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  .fs-spot-b1-pair {
+    grid-template-columns: 1fr 1fr;
+    max-width: 920px;
+    gap: 1.35rem;
+  }
+}
+
+@media (min-width: 960px) {
+  .fs-spot {
+    padding: 4.75rem 0 5.25rem;
+  }
+
+  .fs-spot-inner {
+    width: min(1280px, calc(100% - 2.75rem));
+  }
+
+  .fs-spot-journey-inner {
+    grid-template-columns: minmax(0, 0.88fr) minmax(0, 1.12fr);
+    gap: 3rem 3.5rem;
+  }
+
+  .fs-spot-journey-primary {
+    width: 70%;
+    /* secondaryH ≈ 0.525×0.8×W = 0.42W; 20% padding → stronger layered hang */
+    padding-bottom: 20%;
+  }
+
+  .fs-spot-journey-secondary {
+    /* 52.5 / 70 = 75% of consultation width; ~28% overlap */
+    left: calc(70% - 0.28 * 52.5%);
+    width: 52.5%;
+    max-width: none;
+  }
+
+  .fs-spot-headline {
+    font-size: clamp(2.15rem, 3.1vw, 2.95rem);
+  }
+
+  .fs-spot-prepared-visual {
+    column-gap: 2.25rem;
+  }
+
+  .fs-spot-flexibility-visual {
+    column-gap: 2.1rem;
+    max-width: 1080px;
+    margin-inline: auto;
+    width: 100%;
+  }
+
+  .fs-spot-step-row {
+    grid-template-columns: minmax(0, 1.28fr) minmax(0, 0.72fr);
+    gap: 2.5rem;
+  }
+
+  .fs-spot-step-row.is-reverse {
+    grid-template-columns: minmax(0, 0.72fr) minmax(0, 1.28fr);
+  }
+
+  .fs-spot-step-row.is-reverse .fs-spot-screen {
+    order: 2;
+  }
+
+  .fs-spot-step-row.is-reverse .fs-spot-step-copy {
+    order: 1;
+    justify-self: end;
+    text-align: right;
+  }
+
+  .fs-spot-step-row.is-reverse .fs-spot-step-copy::before {
+    margin-inline-start: auto;
+  }
+
+  .fs-spot-step-row.is-reverse .fs-spot-step-body {
+    margin-inline-start: auto;
+  }
+
+  .fs-spot-steps-b {
+    gap: 3.35rem;
+  }
+}
+
+/* ── Mobile refinements ───────────────────────────────────────────── */
+
+@media (max-width: 759px) {
+  .fs-spot {
+    padding: 3.1rem 0 3.4rem;
+  }
+
+  .fs-spot-copy-wide {
+    text-align: left;
+    justify-items: start;
+    margin-inline: 0;
+  }
+
+  .fs-spot-journey-visual {
+    display: grid;
+    gap: 0.9rem;
+    padding: 0;
+  }
+
+  .fs-spot-journey-primary {
+    width: 100%;
+    padding-bottom: 0;
+  }
+
+  .fs-spot-photo-frame.is-journey-primary {
+    aspect-ratio: 16 / 11;
+  }
+
+  /* Mobile: stack — booking plate stays substantial, not a thumbnail */
+  .fs-spot-journey-secondary {
+    position: static;
+    left: auto;
+    width: 88%;
+    max-width: none;
+    margin-inline: auto 0;
+  }
+
+  .fs-spot-photo-frame.is-journey-secondary {
+    max-width: none;
+    aspect-ratio: 5 / 4;
+  }
+
+  .fs-spot-prepared-visual {
+    display: grid;
+    gap: 1.35rem;
+    grid-template-columns: 1fr;
+    grid-template-rows: none;
+  }
+
+  .fs-spot-prepared-primary,
+  .fs-spot-prepared-secondary {
+    display: grid;
+    gap: 0.7rem;
+  }
+
+  .fs-spot-photo-frame.is-prepared-primary {
+    aspect-ratio: 16 / 11;
+  }
+
+  .fs-spot-photo-frame.is-prepared-secondary {
+    aspect-ratio: 16 / 11;
+    max-width: none;
+  }
+
+  .fs-spot-flexibility-visual {
+    display: grid;
+    gap: 1.25rem;
+    grid-template-columns: 1fr;
+    grid-template-rows: none;
+  }
+
+  .fs-spot-flex-intimate,
+  .fs-spot-flex-estate {
+    display: grid;
+    gap: 0.7rem;
+  }
+
+  .fs-spot-photo-frame.is-flex-intimate,
+  .fs-spot-photo-frame.is-flex-estate {
+    aspect-ratio: 16 / 11;
+  }
+
+  .fs-spot-step-row + .fs-spot-step-row {
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--fs-line);
+  }
+
+  .fs-spot-steps-b .fs-spot-screen-frame.is-immersive {
+    max-height: min(58vh, 420px);
+  }
+
+  .fs-spot-steps-b .fs-spot-screen-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: top left;
+  }
+
+  .fs-spot-b1-inner .fs-spot-screen-frame.is-hero {
+    max-height: min(52vh, 360px);
+  }
+
+  .fs-spot-b1-inner .fs-spot-screen-frame.is-hero .fs-spot-screen-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: top left;
+  }
+}

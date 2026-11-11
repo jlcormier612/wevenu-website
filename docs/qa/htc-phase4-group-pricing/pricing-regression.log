@@ -1,0 +1,186 @@
+▶ selectBestOffer
+  ✔ keeps founding grant recorded while applying better Weven percent (2.86125ms)
+  ✔ applies founding when it is the only earned grant (0.242ms)
+  ✔ ignores revoked grants (7.069042ms)
+✔ selectBestOffer (17.862833ms)
+▶ SaaS catalog V1 amounts
+  ✔ uses approved standard monthly list prices (0.585167ms)
+  ✔ computes 10% Founding amounts (0.119042ms)
+  ✔ formats marketing display strings (0.118458ms)
+  ✔ rounds percent-off to nearest cent (0.060375ms)
+✔ SaaS catalog V1 amounts (1.728583ms)
+▶ evaluateEventVolume
+  ✔ counts by event_date calendar year, not bookedAt year (8.210792ms)
+  ✔ uses the highest count across multiple future years (0.744792ms)
+  ✔ excludes cancelled even when booked_at remains (0.130375ms)
+  ✔ counts a rebooked event once it is qualifying again (0.090792ms)
+  ✔ counts completed and in-progress events (0.085208ms)
+  ✔ counts multiple events on the same date separately (0.059ms)
+  ✔ thresholds at 25/26 and 75/76 (0.066834ms)
+  ✔ does not recommend downgrade when volume falls (0.12525ms)
+  ✔ requires bookedAt — status alone is insufficient (0.075375ms)
+  ✔ excludes past calendar years from peak (year rollover) (0.414709ms)
+  ✔ uses future-year peak when higher than current year (0.399459ms)
+✔ evaluateEventVolume (12.982833ms)
+▶ decideFoundingIssuance — soft milestone
+  ✔ issues while earned count is under 100 (1.817625ms)
+  ✔ stops issuing new offers once earned count reaches 100 (0.180708ms)
+  ✔ allows two simultaneous issuances when both see count 99 (0.14625ms)
+  ✔ does not re-issue for a venue that already earned (0.143291ms)
+  ✔ respects program inactive (0.134167ms)
+✔ decideFoundingIssuance — soft milestone (3.57975ms)
+▶ issued offer honor + display remaining
+  ✔ honors an issued founding offer after milestone is reached (0.189875ms)
+  ✔ display remaining never goes negative when earned exceeds capacity (0.164875ms)
+✔ issued offer honor + display remaining (0.548959ms)
+▶ Phase 4 group eligibility
+  ✔ does not count spaces — only active memberships with qualifying subs (1.380083ms)
+  ✔ keeps past_due as qualifying during dunning (0.240875ms)
+  ✔ requires two qualifying venues for group eligibility (3.481542ms)
+  ✔ Checkout reservation bridges second-venue group pricing without charging venue 1 midcycle (0.17875ms)
+  ✔ flags duplicate property names for founder review (0.1385ms)
+  ✔ same owner email without membership never implies organization (0.063917ms)
+✔ Phase 4 group eligibility (6.847625ms)
+▶ Phase 4 best-offer + amounts
+  ✔ applies catalog group amounts (0.147333ms)
+  ✔ Group only → 10%; Weven beats Group; Founding beats Group at equal 10% (0.271167ms)
+  ✔ Group + Founding + Weven → Weven 20% (0.088833ms)
+✔ Phase 4 best-offer + amounts (0.649084ms)
+▶ Phase 4 Checkout resolution
+  ✔ second-venue Checkout uses group 10% when reservation bridges eligibility (4.073125ms)
+  ✔ Add Another Venue suppresses Founding so Group coupon applies while soft-100 remains (0.272042ms)
+  ✔ Founding still wins over Group at Checkout when both apply (0.167792ms)
+  ✔ Weven wins over Group at Checkout (0.142292ms)
+✔ Phase 4 Checkout resolution (4.759583ms)
+▶ Phase 4 billing reconcile + Phase 3 safety
+  ✔ defers coupon mutation when an HTC tier-upgrade schedule is active (0.29475ms)
+  ✔ applies group prospectively when no schedule owns the subscription (0.144375ms)
+  ✔ removes group prospectively and preserves Founding grant (0.102833ms)
+  ✔ tier upgrade amount previews with group (0.129792ms)
+✔ Phase 4 billing reconcile + Phase 3 safety (0.773291ms)
+▶ Phase 4 organization store lifecycle
+  ✔ enforces one active billing org per venue and reservation fulfill/release (2.465125ms)
+  ✔ does not release a reservation that still has a payable Checkout Session (0.45225ms)
+  ✔ fulfills activation idempotently and queues prospective adjustments (1.753042ms)
+  ✔ resolves Checkout group eligibility from durable reservation only (0.577083ms)
+✔ Phase 4 organization store lifecycle (5.472083ms)
+▶ Phase 4 Stripe group coupon executor
+  ✔ refuses independent mutation when a schedule is attached (0.511625ms)
+  ✔ applies coupon with proration_behavior none and confirms (0.188ms)
+  ✔ confirms coupons from expanded discounts[].source.coupon (API 2024+) (0.212125ms)
+✔ Phase 4 Stripe group coupon executor (1.036416ms)
+[pricing] abandoned issued offer after Stripe failure {
+  offerId: '87b1e4d7-bae4-4c64-a8d4-a7c2d724f0d4',
+  reason: 'stripe_boom'
+}
+▶ Postgres PricingOfferStore (fake client)
+  ✔ persists offer issuance, session attach, paid earn, and venue bind (4.642208ms)
+  ✔ does not count unpaid issued offers toward the milestone (0.380875ms)
+  ✔ keeps two venues under one login independent for founding grants (0.301542ms)
+✔ Postgres PricingOfferStore (fake client) (7.053583ms)
+▶ Stripe Session create failure abandons issued offer
+  ✔ marks the offer failed so it cannot later count as earned (1.79425ms)
+✔ Stripe Session create failure abandons issued offer (1.863084ms)
+▶ requireDurablePricingOfferStore
+  ✔ rejects memory store when Launch flag is enabled (0.422333ms)
+  ✔ accepts an injected durable store (0.092958ms)
+✔ requireDurablePricingOfferStore (0.757625ms)
+▶ Checkout offer lifecycle — soft 100
+  ✔ issues founding, pays after milestone, still earns grant (6.534375ms)
+  ✔ does not count abandoned / unpaid sessions as earned (0.1915ms)
+  ✔ webhook/activation retries are idempotent for the same session (0.234459ms)
+  ✔ same venue cannot earn founding twice; second venue under one login can (0.357333ms)
+✔ Checkout offer lifecycle — soft 100 (8.174916ms)
+▶ Pricing Launch V1 readiness — tri-state
+  ✔ defaults to legacy mode when flag is off (0.862917ms)
+  ✔ is v1_misconfigured when flag is on but Stripe config is missing — no legacy fallback (0.634625ms)
+  ✔ is v1_ready only when flag + prices + founding percent coupon are set (0.514542ms)
+  ✔ does not treat the legacy $30 coupon env as the Launch Founding coupon (0.134292ms)
+  ✔ exposes a secret-free operational signal for deployment verification (0.202208ms)
+✔ Pricing Launch V1 readiness — tri-state (3.15225ms)
+▶ resolveLaunchCheckoutPricing
+  ✔ uses standard Prices and 10% coupon when founding issued (1.166333ms)
+  ✔ honors an already-issued founding offer without rechecking capacity (0.25ms)
+✔ resolveLaunchCheckoutPricing (1.527042ms)
+▶ tier-upgrade timing
+  ✔ uses imminent renewal when full notice window fits (2.125667ms)
+  ✔ skips imminent renewal using authoritative period length (0.103041ms)
+  ✔ fails closed when subsequent renewal would require a 30-day guess (0.068ms)
+  ✔ fails closed when period end is missing (0.064791ms)
+  ✔ requires 7 full calendar days after notice (0.093125ms)
+✔ tier-upgrade timing (3.314792ms)
+▶ notice-before-upgrade apply gate
+  ✔ allows apply only when provider-accepted notice and window are satisfied (0.461ms)
+  ✔ rejects simulated notices for billing apply (0.110709ms)
+  ✔ defers when notice window is unsatisfied (0.096167ms)
+  ✔ cancels path when volume no longer requires upgrade (0.112791ms)
+  ✔ resolves provider acceptance only with message id (0.098459ms)
+✔ notice-before-upgrade apply gate (1.09275ms)
+▶ tier-upgrade pricing preservation
+  ✔ preserves Weven 20% on Celebrate and Flourish (0.367917ms)
+  ✔ preserves Founding 10% when Weven is absent (0.075542ms)
+✔ tier-upgrade pricing preservation (0.510833ms)
+▶ decideTierUpgrade
+  ✔ schedules Gather → Celebrate at 26 bookings (0.902375ms)
+  ✔ schedules Gather → Flourish directly at 76 bookings (0.244917ms)
+  ✔ never auto-downgrades (0.068833ms)
+  ✔ cancels pending when bookings fall before effective date (0.203917ms)
+  ✔ blocks founder holds and requests cancel of prior schedule (0.098041ms)
+  ✔ blocks legacy unmapped prices (0.07575ms)
+  ✔ skips imminent renewal inside notice window with period anchors (0.123833ms)
+  ✔ blocks review when short renewal lacks period start (0.068417ms)
+  ✔ blocks foreign existing Stripe schedules (0.071875ms)
+✔ decideTierUpgrade (1.984ms)
+▶ tier-upgrade store + orchestrator
+  ✔ is idempotent for duplicate evaluations (2.108792ms)
+  ✔ supersedes Gather→Celebrate with Gather→Flourish before renewal (8.270458ms)
+  ✔ honors holds and releases prior schedules (0.664875ms)
+  ✔ keeps schedule reference until Stripe release confirms on volume drop (0.282ms)
+  ✔ builds schedule intent with no proration and preserved coupon (0.678708ms)
+✔ tier-upgrade store + orchestrator (12.163125ms)
+▶ schedule release confirmation helpers
+  ✔ requires HTC metadata to own a schedule (1.927541ms)
+  ✔ isolates venue subscription mapping (0.980917ms)
+✔ schedule release confirmation helpers (2.985333ms)
+▶ stripe subscription snapshot mapping
+  ✔ maps period anchors, price, coupon, and schedule without guessing (1.276625ms)
+✔ stripe subscription snapshot mapping (1.360792ms)
+▶ stripe schedule confirmation + notice + webhook
+  ✔ confirms only when price and amount match on same subscription (0.095ms)
+  ✔ classifies duplicate webhooks as ignore (0.064625ms)
+  ✔ assesses foreign schedules as block_review (0.035583ms)
+  ✔ builds release intent for cancelled upgrades (0.030875ms)
+  ✔ builds friendly notice without claiming unconfirmed amounts (28.406291ms)
+✔ stripe schedule confirmation + notice + webhook (28.751208ms)
+▶ phase3 rehearsal wiring
+  ✔ refuses fixture-only notice/apply unless rehearsal execution is explicitly enabled (3.554125ms)
+  ✔ reconciles invoice.paid into applied with idempotent retries (49.882084ms)
+  ✔ apply gate still refuses near-term increases before notice window (0.115917ms)
+✔ phase3 rehearsal wiring (53.6705ms)
+▶ Phase 2 Weven catalog amounts
+  ✔ computes 20% forever subscription totals for all tiers (0.676542ms)
+✔ Phase 2 Weven catalog amounts (1.314459ms)
+▶ Phase 2 Weven readiness gate
+  ✔ stays disabled by default without advertising Weven Checkout (0.378708ms)
+  ✔ is weven_misconfigured when flag is on but Stripe IDs missing (0.227875ms)
+  ✔ is weven_ready when coupon + WG Price are configured (0.139625ms)
+✔ Phase 2 Weven readiness gate (0.881791ms)
+▶ Phase 2 Weven checkout resolution
+  ✔ applies Weven 20% coupon and keeps foundingIssued when under soft-100 (0.504084ms)
+  ✔ covers Celebrate and Flourish Weven list Prices (0.17675ms)
+  ✔ does not issue Founding when soft-100 already reached but still applies Weven 20% (0.169208ms)
+  ✔ fails closed when Weven is declared but misconfigured (0.467292ms)
+  ✔ ignores Weven declaration when Phase 2 is disabled — V1 founding unchanged (0.379125ms)
+✔ Phase 2 Weven checkout resolution (2.025583ms)
+▶ Phase 2 Weven grants, claims, and verification
+  ✔ earns both Weven and Founding grants; best offer applies Weven only (1.77725ms)
+  ✔ pending Weven verification still allows venue grant binding (activation) (0.192542ms)
+✔ Phase 2 Weven grants, claims, and verification (2.07325ms)
+ℹ tests 114
+ℹ suites 30
+ℹ pass 114
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 727.00375

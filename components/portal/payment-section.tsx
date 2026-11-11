@@ -13,6 +13,13 @@ import {
   type CheckoutNoticeKind,
 } from "@/lib/portal/checkout-return-notice";
 import { computePortalScheduleTotals } from "@/lib/portal/payment-totals";
+import { formatPortalPaymentDate } from "@/lib/portal/payment-display-date";
+import {
+  bareInvoiceNextStepCopy,
+  invoicesWithoutPaymentPlan,
+  labelForSchedule,
+  portalInvoiceLabel,
+} from "@/lib/portal/payment-obligations";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -69,11 +76,8 @@ function formatMoney(amount: number, currency = "USD"): string {
   }).format(amount);
 }
 
-function formatDate(iso: string): string {
-  const [y, m, d] = iso.split("-");
-  return new Date(Number(y), Number(m) - 1, Number(d)).toLocaleDateString("en-US", {
-    month: "short", day: "numeric", year: "numeric",
-  });
+function formatDate(iso: string | null | undefined): string {
+  return formatPortalPaymentDate(iso);
 }
 
 function daysUntilDate(iso: string): number {
@@ -185,11 +189,12 @@ function StatusPill({ status, dueDate }: { status: PaymentStatus; dueDate: strin
 // ── Summary bar ───────────────────────────────────────────────────────────────
 
 function SummaryBar({
-  schedule, token, paidTotal,
+  schedule, token, paidTotal, onlinePaymentsReady,
 }: {
   schedule: PortalPaymentSchedule;
   token: string;
   paidTotal: number;
+  onlinePaymentsReady: boolean;
 }) {
   const { remaining, planTotal, paid } = computeTotals(schedule);
   const displayPaid = paidTotal > 0 ? paidTotal : paid;
@@ -266,7 +271,7 @@ function SummaryBar({
                 {next.dueDate ? ` · Due ${formatDate(next.dueDate)}` : ""}
               </p>
             </div>
-            {(next.status === "pending" || next.status === "overdue") && (
+            {onlinePaymentsReady && (next.status === "pending" || next.status === "overdue") && (
               <PayNowButton token={token} itemId={next.id} paidTotal={paidTotal} />
             )}
           </div>
@@ -332,11 +337,12 @@ function PayNowButton({
 // ── Payment timeline ──────────────────────────────────────────────────────────
 
 function PaymentTimeline({
-  items, token, paidTotal,
+  items, token, paidTotal, onlinePaymentsReady,
 }: {
   items: PortalPaymentItem[];
   token: string;
   paidTotal: number;
+  onlinePaymentsReady: boolean;
 }) {
   return (
     <div className="space-y-3">
@@ -412,7 +418,7 @@ function PaymentTimeline({
                         {formatMoney(item.paidAmount ?? item.amount)}
                       </p>
                       <StatusPill status={item.status} dueDate={item.dueDate} />
-                      {(item.status === "pending" || item.status === "overdue") && (
+                      {onlinePaymentsReady && (item.status === "pending" || item.status === "overdue") && (
                         <div><PayNowButton token={token} itemId={item.id} paidTotal={paidTotal} /></div>
                       )}
                     </div>
@@ -429,14 +435,53 @@ function PaymentTimeline({
 
 // ── Main section ──────────────────────────────────────────────────────────────
 
-async function fetchPortalSchedules(token: string): Promise<PortalPaymentSchedule[]> {
+type PortalInvoiceRow = {
+  id: string;
+  invoiceNumber: string;
+  displayName?: string | null;
+  total?: number;
+  balanceDue?: number;
+  status?: string;
+  dueDate?: string | null;
+  amendsInvoiceId?: string | null;
+};
+
+type PortalPaymentsPayload = {
+  schedules?: PortalPaymentSchedule[];
+  invoices?: PortalInvoiceRow[];
+  onlinePaymentsReady?: boolean;
+  error?: string;
+};
+
+async function fetchPortalPayments(token: string): Promise<{
+  schedules: PortalPaymentSchedule[];
+  invoices: PortalInvoiceRow[];
+  onlinePaymentsReady: boolean;
+  offlinePaymentMethods: Array<{ value: string; label: string }>;
+  offlinePaymentInstructions: string | null;
+}> {
   const res = await fetch(`/api/portal/payments?token=${encodeURIComponent(token)}`);
-  const data = await res.json() as { schedules?: PortalPaymentSchedule[]; error?: string };
-  return data.schedules ?? [];
+  const data = await res.json() as PortalPaymentsPayload & {
+    offlinePaymentMethods?: Array<{ value: string; label: string }>;
+    offlinePaymentInstructions?: string | null;
+  };
+  return {
+    schedules: data.schedules ?? [],
+    invoices: data.invoices ?? [],
+    onlinePaymentsReady: data.onlinePaymentsReady === true,
+    offlinePaymentMethods: data.offlinePaymentMethods ?? [],
+    offlinePaymentInstructions: data.offlinePaymentInstructions ?? null,
+  };
 }
 
 export function PaymentSection({ token }: { token: string }) {
   const [schedules, setSchedules] = React.useState<PortalPaymentSchedule[] | null>(null);
+  const [invoices, setInvoices] = React.useState<PortalInvoiceRow[]>([]);
+  const [onlinePaymentsReady, setOnlinePaymentsReady] = React.useState(false);
+  const [offlinePaymentMethods, setOfflinePaymentMethods] = React.useState<
+    Array<{ value: string; label: string }>
+  >([]);
+  const [offlinePaymentInstructions, setOfflinePaymentInstructions] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [checkoutReturn, setCheckoutReturn] = React.useState<"success" | "cancelled" | null>(null);
   const [checkoutBaseline, setCheckoutBaseline] = React.useState<CheckoutBaseline | null>(null);
@@ -465,16 +510,30 @@ export function PaymentSection({ token }: { token: string }) {
   React.useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    fetchPortalSchedules(token)
-      .then((next) => { if (!cancelled) setSchedules(next); })
-      .catch(() => { if (!cancelled) setSchedules([]); })
+    fetchPortalPayments(token)
+      .then((next) => {
+        if (cancelled) return;
+        setSchedules(next.schedules);
+        setInvoices(next.invoices);
+        setOnlinePaymentsReady(next.onlinePaymentsReady);
+        setOfflinePaymentMethods(next.offlinePaymentMethods);
+        setOfflinePaymentInstructions(next.offlinePaymentInstructions);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setSchedules([]);
+        setInvoices([]);
+        setOnlinePaymentsReady(false);
+        setOfflinePaymentMethods([]);
+        setOfflinePaymentInstructions(null);
+      })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [token]);
 
-  const schedule = schedules?.[0] ?? null;
-  const allItems = schedule?.lineItems ?? [];
-  const paidTotal = settledPaidTotal(allItems);
+  const scheduleList = schedules ?? [];
+  const allItems = scheduleList.flatMap((row) => row.lineItems);
+  const bareInvoices = invoicesWithoutPaymentPlan(invoices, scheduleList);
   const checkoutNotice: CheckoutNoticeKind = resolveCheckoutNotice({
     checkoutReturn,
     lineItems: loading ? null : allItems,
@@ -491,8 +550,14 @@ export function PaymentSection({ token }: { token: string }) {
       if (cancelled) return;
       if (Date.now() - started > CHECKOUT_POLL_MAX_MS) return;
       try {
-        const next = await fetchPortalSchedules(token);
-        if (!cancelled) setSchedules(next);
+        const next = await fetchPortalPayments(token);
+        if (!cancelled) {
+          setSchedules(next.schedules);
+          setInvoices(next.invoices);
+          setOnlinePaymentsReady(next.onlinePaymentsReady);
+          setOfflinePaymentMethods(next.offlinePaymentMethods);
+          setOfflinePaymentInstructions(next.offlinePaymentInstructions);
+        }
       } catch {
         // Keep the current notice; next interval retries.
       }
@@ -544,7 +609,7 @@ export function PaymentSection({ token }: { token: string }) {
     );
   }
 
-  if (!schedules || schedules.length === 0 || !schedule) {
+  if (scheduleList.length === 0 && bareInvoices.length === 0) {
     return (
       <div className="space-y-6 px-1">
         {checkoutNotice === "confirming" && (
@@ -568,10 +633,13 @@ export function PaymentSection({ token }: { token: string }) {
           <h2 className="font-heading text-2xl font-medium text-heading">Payments</h2>
           <p className="text-sm text-muted-foreground mt-1">Your payment schedule with your venue.</p>
         </div>
-        <div className="rounded-2xl border border-dashed border-border bg-muted/20 p-10 text-center">
-          <p className="text-3xl mb-3">💳</p>
-          <p className="text-sm font-medium text-heading mb-1">No payment schedule yet</p>
-          <p className="text-xs text-muted-foreground max-w-xs mx-auto">
+        <div
+          data-portal-empty="guidance"
+          className="htc-surface-guidance p-10 text-center"
+        >
+          <p className="mb-3 text-3xl">💳</p>
+          <p className="mb-1 text-sm font-medium text-heading">No payment schedule yet</p>
+          <p className="mx-auto max-w-xs text-xs text-muted-foreground">
             Your venue coordinator will set up your payment plan here. Check back soon or reach out if you have questions.
           </p>
         </div>
@@ -579,11 +647,10 @@ export function PaymentSection({ token }: { token: string }) {
     );
   }
 
-  // API returns one schedule per invoice (newest). Emma-style single-invoice
-  // relationships see exactly that plan; multi-invoice clients still pick the
-  // newest plan here (pre-existing Payments destination limitation).
   const luvObs = getPaymentObservations(allItems);
-  const { remaining } = computeTotals(schedule);
+  const currency = scheduleList[0]?.currency ?? "USD";
+  const remaining = scheduleList.reduce((sum, row) => sum + computeTotals(row).remaining, 0)
+    + bareInvoices.reduce((sum, invoice) => sum + (invoice.balanceDue ?? 0), 0);
   const next = nextUnpaidItem(allItems);
 
   return (
@@ -592,23 +659,23 @@ export function PaymentSection({ token }: { token: string }) {
         <div className="rounded-xl px-4 py-3 text-sm space-y-1" style={{ background: "#EFF6FF", border: "1px solid #BFDBFE", color: "#1E3A8A" }}>
           <p className="font-medium">Confirming your payment</p>
           <p>Checkout finished. Your balance updates when Hello to Cheers confirms the payment — this can take a moment.</p>
-          <p>Current remaining balance: {formatMoney(remaining, schedule.currency)}</p>
+          <p>Current remaining balance: {formatMoney(remaining, currency)}</p>
         </div>
       )}
       {checkoutNotice === "processing" && (
         <div className="rounded-xl px-4 py-3 text-sm space-y-1" style={{ background: "#EFF6FF", border: "1px solid #BFDBFE", color: "#1E3A8A" }}>
           <p className="font-medium">Payment processing</p>
           <p>Your payment is processing (for example a bank transfer). It is not marked paid until it clears.</p>
-          <p>Current remaining balance: {formatMoney(remaining, schedule.currency)}</p>
+          <p>Current remaining balance: {formatMoney(remaining, currency)}</p>
         </div>
       )}
       {checkoutNotice === "confirmed" && (
         <div className="rounded-xl px-4 py-3 text-sm space-y-1" style={{ background: "#F7FBF8", border: "1px solid #B9D1C2", color: "#1F5C3D" }}>
           <p className="font-medium">Payment confirmed</p>
           <p>Thank you — your payment is reflected on your plan.</p>
-          <p>Remaining balance: {formatMoney(remaining, schedule.currency)}</p>
+          <p>Remaining balance: {formatMoney(remaining, currency)}</p>
           {next?.dueDate && (
-            <p>Next payment due: {formatDate(next.dueDate)}{next.amount != null ? ` · ${formatMoney(next.amount, schedule.currency)}` : ""}</p>
+            <p>Next payment due: {formatDate(next.dueDate)}{next.amount != null ? ` · ${formatMoney(next.amount, currency)}` : ""}</p>
           )}
         </div>
       )}
@@ -623,10 +690,98 @@ export function PaymentSection({ token }: { token: string }) {
         <p className="text-sm text-muted-foreground mt-1">
           What you&apos;ve paid, what&apos;s next, and how to pay.
         </p>
+        {(scheduleList.length + bareInvoices.length) > 1 && remaining > 0 && (
+          <div
+            className="mt-3 rounded-xl px-4 py-3 space-y-1"
+            style={{ background: "#F7F4F0", border: "1px solid #E8E2D8" }}
+          >
+            <p className="text-sm font-semibold text-heading">
+              Combined outstanding: {formatMoney(remaining, currency)}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              This total adds remaining balances across {scheduleList.length + bareInvoices.length} invoices.
+              Each invoice keeps its own schedule (if any) — an additional-charges invoice does not inherit
+              another invoice&apos;s payment plan.
+            </p>
+          </div>
+        )}
       </div>
 
-      {/* Summary */}
-      <SummaryBar schedule={schedule} token={token} paidTotal={paidTotal} />
+      {!onlinePaymentsReady && (offlinePaymentMethods.length > 0 || offlinePaymentInstructions) && (
+        <div
+          className="rounded-xl px-4 py-3 space-y-2"
+          style={{ background: "#FAFAF9", border: "1px solid #E8E2D8" }}
+        >
+          <p className="text-sm font-semibold text-heading">How to pay</p>
+          {offlinePaymentMethods.length > 0 && (
+            <p className="text-sm text-muted-foreground">
+              Accepted methods:{" "}
+              {offlinePaymentMethods.map((m) => m.label).join(", ").replace(/, ([^,]*)$/, ", and $1")}.
+            </p>
+          )}
+          {offlinePaymentInstructions?.trim() && (
+            <p className="whitespace-pre-line text-sm text-foreground">
+              {offlinePaymentInstructions.trim()}
+            </p>
+          )}
+        </div>
+      )}
+
+      {scheduleList.map((row) => {
+        const rowPaid = settledPaidTotal(row.lineItems);
+        return (
+          <section key={row.id} className="space-y-4" aria-label={labelForSchedule(row, invoices)}>
+            <h3 className="text-sm font-semibold text-heading">{labelForSchedule(row, invoices)}</h3>
+            <SummaryBar
+              schedule={row}
+              token={token}
+              paidTotal={rowPaid}
+              onlinePaymentsReady={onlinePaymentsReady}
+            />
+            {row.lineItems.length > 0 && (
+              <PaymentTimeline
+                items={row.lineItems}
+                token={token}
+                paidTotal={rowPaid}
+                onlinePaymentsReady={onlinePaymentsReady}
+              />
+            )}
+            {row.notes && (
+              <div
+                className="rounded-xl px-4 py-3"
+                style={{ background: "#F7F4F0", border: "1px solid #E8E2D8" }}
+              >
+                <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-1.5">Notes from your venue</p>
+                <p className="text-sm text-foreground leading-relaxed">{row.notes}</p>
+              </div>
+            )}
+          </section>
+        );
+      })}
+
+      {bareInvoices.map((invoice) => {
+        const bal = invoice.balanceDue ?? invoice.total ?? 0;
+        return (
+          <section key={invoice.id} className="rounded-2xl border border-border bg-card p-6 space-y-2" aria-label={portalInvoiceLabel(invoice)}>
+            <h3 className="text-sm font-semibold text-heading">{portalInvoiceLabel(invoice)}</h3>
+            {invoice.amendsInvoiceId ? (
+              <p className="text-xs text-muted-foreground">
+                Additional charges on a separate invoice — not covered by your earlier payment plan.
+              </p>
+            ) : null}
+            <p className="text-sm text-heading">
+              Invoice total: {formatMoney(invoice.total ?? bal, currency)}
+            </p>
+            <p className="text-sm text-heading">
+              Balance: {formatMoney(bal, currency)}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {invoice.dueDate ? `Due ${formatDate(invoice.dueDate)}` : "No due date set"}
+            </p>
+            <p className="text-xs text-muted-foreground">{bareInvoiceNextStepCopy(bal)}</p>
+          </section>
+        );
+      })}
 
       {/* Luv observations */}
       {luvObs.length > 0 && (
@@ -644,20 +799,6 @@ export function PaymentSection({ token }: { token: string }) {
               <p className="text-sm leading-relaxed" style={{ color: "#5A3235" }}>{obs.text}</p>
             </div>
           ))}
-        </div>
-      )}
-
-      {/* Timeline */}
-      {allItems.length > 0 && <PaymentTimeline items={allItems} token={token} paidTotal={paidTotal} />}
-
-      {/* Notes */}
-      {schedule.notes && (
-        <div
-          className="rounded-xl px-4 py-3"
-          style={{ background: "#F7F4F0", border: "1px solid #E8E2D8" }}
-        >
-          <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-1.5">Notes from your venue</p>
-          <p className="text-sm text-foreground leading-relaxed">{schedule.notes}</p>
         </div>
       )}
 

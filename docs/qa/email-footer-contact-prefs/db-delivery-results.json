@@ -1,0 +1,40 @@
+{
+  "ok": false,
+  "checks": [
+    {
+      "name": "schema_defaults",
+      "pass": true,
+      "detail": "n=5"
+    },
+    {
+      "name": "new_venue_defaults",
+      "pass": true,
+      "detail": "{\"phone\":false,\"email\":true,\"sig\":true}"
+    },
+    {
+      "name": "render_default_hides_phone",
+      "pass": true,
+      "detail": "contact=contact.1791759134294@example.test"
+    },
+    {
+      "name": "prefs_do_not_clear_contact_data",
+      "pass": true,
+      "detail": "email=contact.1791759134294@example.test phone=9788703988"
+    },
+    {
+      "name": "explicit_phone_only",
+      "pass": true,
+      "detail": "contact=(978) 870-3988 sig=null"
+    },
+    {
+      "name": "resend_accepted",
+      "pass": false,
+      "detail": "status=401"
+    },
+    {
+      "name": "delivered_email_matches_prefs",
+      "pass": false,
+      "detail": "html_len=0"
+    }
+  ]
+}

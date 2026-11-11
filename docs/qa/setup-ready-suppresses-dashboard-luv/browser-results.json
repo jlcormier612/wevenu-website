@@ -1,0 +1,59 @@
+{
+  "ok": true,
+  "servingSha": "4765f568b70d03f36740151952f809840aa32128",
+  "expectedSha": "4765f568b70d03f36740151952f809840aa32128",
+  "primaryVenueId": "05f16a15-1752-4855-8a3b-aad5c593d8d9",
+  "primaryVenueName": "Meadowbrook Valley Venue",
+  "checks": [
+    {
+      "name": "serving_tip",
+      "pass": true,
+      "detail": "serving=4765f568b70d03f36740151952f809840aa32128 expected=4765f568b70d03f36740151952f809840aa32128"
+    },
+    {
+      "name": "persisted_ready_true",
+      "pass": true,
+      "detail": "ready_to_invite_couples=true at=2026-10-12T23:21:31.509+00:00"
+    },
+    {
+      "name": "ready_hides_setup_prompt",
+      "pass": true,
+      "detail": "prompt absent when ready=true"
+    },
+    {
+      "name": "reload_still_hides",
+      "pass": true,
+      "detail": "still absent after reload"
+    },
+    {
+      "name": "setup_hub_confirmation",
+      "pass": true,
+      "detail": "confirmation visible"
+    },
+    {
+      "name": "setup_hub_still_accessible",
+      "pass": true,
+      "detail": "setup hub remains configurable"
+    },
+    {
+      "name": "reverse_restores_prompt",
+      "pass": true,
+      "detail": "prompt returned after reverse"
+    },
+    {
+      "name": "not_ready_shows_setup_prompt",
+      "pass": true,
+      "detail": "prompt visible when ready=false"
+    },
+    {
+      "name": "venue_isolation",
+      "pass": true,
+      "detail": "meadowHide=true fancyShow=true"
+    }
+  ],
+  "hubBefore": {
+    "ready_to_invite_couples": true,
+    "ready_to_invite_couples_at": "2026-10-12T23:21:31.509+00:00",
+    "ready_to_invite_couples_declared_by": "6721694e-3f38-45e6-9afa-383ba1fd7564"
+  }
+}

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 
 import {
@@ -10,6 +11,7 @@ import {
 import type { CommercialSelection } from "@/lib/commercial-selections/types";
 
 function selection(overrides: Partial<CommercialSelection> = {}): CommercialSelection {
+  const totalAmount = overrides.totalAmount ?? 3200;
   return {
     id: "sel-1",
     venueId: "v1",
@@ -17,8 +19,16 @@ function selection(overrides: Partial<CommercialSelection> = {}): CommercialSele
     clientId: "c1",
     eventId: "e1",
     sourcePackageId: "pkg-1",
+    proposalId: null,
     name: "Garden Package",
-    totalAmount: 3200,
+    packageAmount: totalAmount,
+    discountAmount: 0,
+    discountType: null,
+    discountValue: null,
+    taxApplied: false,
+    taxRatePercent: null,
+    taxAmount: 0,
+    totalAmount,
     depositAmount: 800,
     includedItems: [],
     status: "accepted",
@@ -153,6 +163,76 @@ describe("runSetupPaymentsFromSelection — failure / retry safety", () => {
     assert.match(result.message, /already set up/i);
   });
 
+  it("creates an explicit custom builder schedule without requesting payment", async () => {
+    const added: { label: string; amount: string; dueDate: string }[] = [];
+    let statusUpdated = false;
+    const result = await runSetupPaymentsFromSelection(
+      {
+        ...input,
+        requestDeposit: false,
+        scheduleStructure: "custom",
+        builderLines: [
+          { label: "Conversation retainer", amount: 1500, dueDate: "2026-09-08", obligationKind: "deposit" },
+          { label: "Planning", amount: 900, dueDate: "2026-10-01", obligationKind: "installment" },
+          { label: "Event day", amount: 800, dueDate: "2026-10-17", obligationKind: "final" },
+        ],
+      },
+      baseDeps({
+        addLineItem: async (_id, line) => {
+          added.push({ label: line.label, amount: line.amount, dueDate: line.dueDate });
+          return { ok: true, item: {} as never };
+        },
+        updateInvoiceStatus: async () => {
+          statusUpdated = true;
+          return { ok: true };
+        },
+      }),
+    );
+    assert.equal(result.ok, true);
+    assert.equal(statusUpdated, false);
+    assert.deepEqual(added, [
+      { label: "Conversation retainer", amount: "1500", dueDate: "2026-09-08" },
+      { label: "Planning", amount: "900", dueDate: "2026-10-01" },
+      { label: "Event day", amount: "800", dueDate: "2026-10-17" },
+    ]);
+  });
+
+  it("refuses builder lines that do not equal the commitment", async () => {
+    const result = await runSetupPaymentsFromSelection(
+      {
+        ...input,
+        scheduleStructure: "custom",
+        builderLines: [
+          { label: "Only part", amount: 500, dueDate: "2026-09-08", obligationKind: "deposit" },
+        ],
+      },
+      baseDeps(),
+    );
+    assert.equal(result.ok, false);
+    if (result.ok) return;
+    assert.match(result.message, /reconcile/i);
+  });
+
+  it("booking journey sheet exposes Custom payment plan and no booking-date picker", () => {
+    const src = readFileSync("components/booking-journey/setup-payments-sheet.tsx", "utf8");
+    assert.match(src, /PaymentPlanBuilder/);
+    assert.match(src, /customSchedule=\{customSchedule\}/);
+    assert.match(src, /remainingBalanceMode=\{remainingBalanceMode\}/);
+    assert.match(src, /requestDeposit: false/);
+    assert.match(src, /bookingDate: null/);
+    assert.doesNotMatch(src, /Booked date|Booking date/);
+    const builder = readFileSync("components/payments/payment-plan-builder.tsx", "utf8");
+    const timing = readFileSync("components/payments/timing-fields.tsx", "utf8");
+    assert.match(builder, /Custom payment plan/);
+    assert.match(timing, /Due today/);
+    assert.match(timing, /Days after contract is fully executed/);
+    assert.match(timing, /Days before event/);
+    assert.match(timing, /On event date/);
+    assert.match(timing, /Specific date/);
+    assert.doesNotMatch(builder, /Booked date|Booking date/);
+    assert.doesNotMatch(timing, /Booked date|Booking date/);
+  });
+
   it("happy path returns ids only after link succeeds", async () => {
     let linked = false;
     const result = await runSetupPaymentsFromSelection(input, baseDeps({
@@ -166,5 +246,21 @@ describe("runSetupPaymentsFromSelection — failure / retry safety", () => {
     if (!result.ok) return;
     assert.equal(result.invoiceId, "inv-1");
     assert.equal(result.scheduleId, "sch-1");
+  });
+});
+
+describe("Set up payments — no stranded $0 drafts", () => {
+  const sheet = readFileSync("components/booking-journey/setup-payments-sheet.tsx", "utf8");
+  const service = readFileSync("lib/booking-journey/setup-payments.ts", "utf8");
+
+  it("the sheet refuses to close while the create is saving", () => {
+    assert.match(sheet, /if \(!next && pending\) return;/);
+    assert.match(sheet, /showCloseButton=\{!pending\}/);
+  });
+
+  it("a retry removes a never-sent draft left without a plan", () => {
+    const recover = service.slice(service.indexOf("async function findRecoverableCommitment"));
+    const body = recover.slice(0, recover.indexOf("async function compensateSetupWrites"));
+    assert.match(body, /if \(!schedule\) \{[\s\S]*inv\.status === "draft"[\s\S]*\.delete\(\)[\s\S]*\.eq\("status", "draft"\)/);
   });
 });

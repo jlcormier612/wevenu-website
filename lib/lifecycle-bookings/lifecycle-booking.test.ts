@@ -73,19 +73,24 @@ describe("Lifecycle booking writers", () => {
   });
 
   it("pipeline Booked records lifecycle and skips when already Booked", () => {
-    assert.match(leadsSvc, /recordLifecycleBooking/);
-    assert.match(leadsSvc, /previousStage !== "booked"/);
-    assert.match(leadsSvc, /origin: "pipeline"/);
+    const book = readFileSync(resolve("lib/booking-journey/book-client.ts"), "utf8");
+    assert.match(book, /recordLifecycleBooking/);
+    assert.match(book, /previous_sales_stage !== "booked"/);
+    assert.match(book, /origin: input.lifecycleOrigin \?\? \(row.lead_id \? "pipeline" : "direct"\)/);
+    assert.doesNotMatch(leadsSvc, /recordLifecycleBooking/);
   });
 
-  it("convertLeadToClient does not set pipeline Booked; commercial stamp does", () => {
+  it("convertLeadToClient does not set pipeline Booked, and neither does a commercial stamp", () => {
     const convert = clientsSvc.slice(clientsSvc.indexOf("export async function convertLeadToClient"));
     assert.doesNotMatch(convert, /updateLeadSalesStage/);
     assert.doesNotMatch(convert, /recordLifecycleBooking/);
     assert.match(convert, /markConvertedClientAsBookingFile/);
+    const book = readFileSync(resolve("lib/booking-journey/book-client.ts"), "utf8");
+    assert.match(book, /book_relationship/);
+    assert.doesNotMatch(book, /updateLeadSalesStage/);
     const stamp = readFileSync(resolve("lib/booking-journey/stamp-commercial-booked-at.ts"), "utf8");
-    assert.match(stamp, /updateLeadSalesStage/);
-    assert.match(stamp, /allowBooked: true/);
+    assert.doesNotMatch(stamp, /bookClient\(/);
+    assert.match(stamp, /return null/);
   });
 
   it("Direct Add records origin=direct for live dated creates", () => {
@@ -124,7 +129,7 @@ describe("Customer-facing Lead → Booking cohort alignment", () => {
   });
 
   it("Overview Lead → Booking and Business Funnel share the approved population", () => {
-    assert.match(overview, /Lost inquiries stay in this rate|Lost leads stay in this rate|later marked Lost/);
+    assert.match(overview, /Lost leads stay in this rate|later marked Lost/);
     assert.match(overview, /getLeadCohortLifecycleBookingStats/);
     assert.match(overview, /getBusinessFunnel/);
     const funnelSrc = readFileSync(resolve("lib/metrics/business-funnel.ts"), "utf8");
@@ -134,7 +139,7 @@ describe("Customer-facing Lead → Booking cohort alignment", () => {
 
   it("Sales cohort Lead → Booking uses the same helper (not a second population)", () => {
     assert.match(salesPage, /getLeadCohortLifecycleBookingStats/);
-    assert.match(salesPage, /lost inquiries stay in this group/);
+    assert.match(salesPage, /lost leads stay in this group/);
   });
 });
 
@@ -160,7 +165,7 @@ describe("Reporting distinctions", () => {
   });
 
   it("Sales separates cohort vs period activity and shows attribution coverage", () => {
-    assert.match(salesPage, /Inquiries from this period/);
+    assert.match(salesPage, /Leads from this period/);
     assert.match(salesPage, /During this period/);
     assert.match(salesPage, /getLeadCohortLifecycleBookingStats/);
     assert.match(salesPage, /known source/);

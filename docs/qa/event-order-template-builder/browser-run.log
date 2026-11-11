@@ -1,0 +1,15 @@
+PASS serving-sha — expected=e7f7178e1f4621561a395862470da12d2eac800d ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:e7f7178e1f4621561a395862470da12d2eac800d
+PASS serving-digest — sha256:85ce9adae5ddf30e8e428d455bdbc10e6e57c75dff121078386c0ce05c2ffa73
+PASS fixture-template — {"templateId":"d73d9734-98d9-46a0-b54b-dccadb036150","cateringSectionId":"a2f36af6-3434-4dd6-9094-a75ef907712c","emptyDependentId":"7a0eb11a-d4b7-43fd-b780-9045867af4ef"}
+PASS persisted-catering-groups — {"groupCount":3,"optionCount":5}
+PASS ui-section-nav — eo-template-section-nav
+PASS ui-catering-workspace — 1
+PASS ui-incomplete-dependent-visible — branch=1 banner=1
+PASS ui-nested-branches — nestedCards=2
+PASS ui-categorized-offering-picker — 1
+PASS ui-offering-filter-preferred-default — value=preferred
+PASS ui-client-preview — eo-template-client-preview
+PASS ui-section-switch-hides-other — cateringVisible=false
+PASS ui-reload-nav-persists — nav after reload
+
+GREEN builder verification

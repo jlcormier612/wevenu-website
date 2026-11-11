@@ -3,6 +3,8 @@ import type { Metadata } from "next";
 import { MessageTemplateList } from "@/components/communication/message-template-list";
 import { MessageTemplateStarterPicker } from "@/components/communication/message-template-starter-picker";
 import { AddHelloToCheersStarters } from "@/components/communication/add-hello-to-cheers-starters";
+import { CollectionBackLink } from "@/components/library/collection-back-link";
+import { LibraryHowItWorks } from "@/components/library/library-guidance";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { getTemplates } from "@/lib/message-templates/service";
 import { ensureStarterMessageTemplatesForCurrentVenue } from "@/lib/message-templates/provision";
@@ -15,20 +17,33 @@ export default async function MessageTemplatesPage() {
   const templates = await getTemplates(true);
   const presentKeys = new Set(templates.map((t) => t.sourceMasterKey).filter(Boolean));
   const missingMasters = STARTER_MESSAGE_MASTERS.filter((m) => !presentKeys.has(m.key));
+  const active = templates.filter((t) => !t.isArchived);
 
   return (
-    <div className="htc-hospitality-page htc-hospitality-heading htc-hospitality-intro-accent space-y-6">
-      <PageHeader
-        title="Message Templates"
-        description="Reusable email and text messages for couples — including Hello to Cheers starters you can edit to sound like your venue."
-        actions={
-          <div className="flex flex-wrap items-center gap-2">
-            <AddHelloToCheersStarters missingMasters={missingMasters.map((m) => ({ key: m.key, name: m.name }))} />
-            <MessageTemplateStarterPicker existingTemplates={templates.filter((t) => !t.isArchived)} variant="import" />
-            <MessageTemplateStarterPicker existingTemplates={templates.filter((t) => !t.isArchived)} />
-          </div>
-        }
-      />
+    <div className="htc-hospitality-page space-y-4 sm:space-y-6">
+      <CollectionBackLink href="/library" label="Templates" />
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
+        <PageHeader
+          title="Message Templates"
+          description="Reusable email and text messages for couples — including Hello to Cheers starters you can Customize into your venue’s own editable copies."
+          actions={
+            <div className="flex flex-wrap items-center gap-2">
+              <MessageTemplateStarterPicker existingTemplates={active} />
+              <MessageTemplateStarterPicker existingTemplates={active} variant="import" />
+              <AddHelloToCheersStarters
+                missingMasters={missingMasters.map((m) => ({ key: m.key, name: m.name }))}
+                presentKeys={[...presentKeys].filter((k): k is string => Boolean(k))}
+              />
+            </div>
+          }
+        />
+      </div>
+      <LibraryHowItWorks tone="calm">
+        Message subject and body are authored in the template editor — there is no separate catalog
+        these templates select from. Customize a Hello to Cheers starter to create your venue’s
+        editable copy; the original starter stays unchanged. Editing a venue-owned template never
+        sends a message — send from Messaging after you review the draft.
+      </LibraryHowItWorks>
 
       {templates.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-sm border border-dashed border-border bg-card/40 py-16 text-center">
@@ -37,8 +52,8 @@ export default async function MessageTemplatesPage() {
             Create a reusable email or text message, or bring in one you already send.
           </p>
           <div className="flex items-center gap-2">
-            <MessageTemplateStarterPicker existingTemplates={[]} variant="import" />
             <MessageTemplateStarterPicker existingTemplates={[]} />
+            <MessageTemplateStarterPicker existingTemplates={[]} variant="import" />
           </div>
         </div>
       ) : (

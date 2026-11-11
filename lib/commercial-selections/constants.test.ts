@@ -52,6 +52,17 @@ describe("Selected Package freeze (source locks)", () => {
     assert.match(src, /name: pkg\.name/);
     assert.match(src, /sourcePackageId: pkg\.id/);
     assert.match(src, /insertSelection|bumpVersion/);
+    assert.doesNotMatch(src, /bookClient|booked_at/);
+    const repo = readFileSync(resolve("lib/commercial-selections/repository.ts"), "utf8");
+    assert.match(repo, /status: "draft"/);
+  });
+
+  it("package save recognizes a stale server action instead of a database failure", () => {
+    const src = readFileSync(resolve("components/booking-journey/select-package-sheet.tsx"), "utf8");
+    assert.match(src, /was not found on the server/);
+    assert.match(src, /Server action not found/);
+    assert.match(src, /The app was updated — reload this page and select the package again/);
+    assert.match(src, /Could not save selected package\. Reload and try again/);
   });
 
   it("setup payments refuses a second invoice for the same selection", () => {

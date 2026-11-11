@@ -1,0 +1,148 @@
+{
+  "run": "FP4MVR8RUW5",
+  "expectedSha": "be71bf3baf0416c0be060bc81d5fdd58b1737d4a",
+  "pass": 28,
+  "fail": 0,
+  "checks": [
+    {
+      "name": "serving_sha",
+      "pass": true,
+      "detail": "expected=be71bf3baf0416c0be060bc81d5fdd58b1737d4a ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:be71bf3baf0416c0be060bc81d5fdd58b1737d4a"
+    },
+    {
+      "name": "api_health",
+      "pass": true,
+      "detail": "{\"status\":200,\"body\":{\"ok\":true,\"checks\":{\"env\":\"ok\",\"supabase\":\"ok\"}}}"
+    },
+    {
+      "name": "html_dpl",
+      "pass": true,
+      "detail": "dpl=be71bf3baf0416c0be060bc81d5fdd58b1737d4a"
+    },
+    {
+      "name": "migration_flips_table",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "name": "P4-6_opt_in_collapsed",
+      "pass": true,
+      "detail": "editorVisible=0 (summary may exist only after link)"
+    },
+    {
+      "name": "P4-7_no_auto_claim_on_workspace",
+      "pass": true,
+      "detail": "autoClaimHits=0"
+    },
+    {
+      "name": "P4-5_cancel_no_partial_link",
+      "pass": true,
+      "detail": "none"
+    },
+    {
+      "name": "P4-1_persisted_pair",
+      "pass": true,
+      "detail": "{\"id\":\"6fcff9dd-2ca9-471a-8c8e-7b8e2c94b30b\",\"venue_id\":\"a415ac52-cd74-42a6-8df7-7a8f6e71d080\",\"event_id\":\"6d8d326d-4564-42df-9f01-2c01af853f37\",\"before_floor_plan_id\":\"2dbb6633-106a-4ce3-bcb0-c50bd3fe03b1\",\"after_floor_plan_id\":\"288ab4e9-7341-4dbe-8dab-eb97edb268df\",\"transition_notes\":\"Staff turnover: clear ceremony chairs then set reception (FP4MVR8RUW5)\",\"created_at\":\"2026-10-27T22:13:24.940289+00:00\",\"updated_at\":\"2026-10-27T22:13:24.940289+00:00\"}"
+    },
+    {
+      "name": "P4-2_notes_persisted",
+      "pass": true,
+      "detail": "Staff turnover: clear ceremony chairs then set reception (FP4MVR8RUW5)"
+    },
+    {
+      "name": "P4-4_no_side_effects_on_link",
+      "pass": true,
+      "detail": "equal"
+    },
+    {
+      "name": "P4-1_reload_pair_visible",
+      "pass": true,
+      "detail": "before=Before: FP4-FP4MVR8RUW5-Before Ceremony after=After: FP4-FP4MVR8RUW5-After Reception"
+    },
+    {
+      "name": "P4-2_notes_reload",
+      "pass": true,
+      "detail": "Staff turnover: clear ceremony chairs then set reception (FP4MVR8RUW5)"
+    },
+    {
+      "name": "P4-honest_copy_not_auto",
+      "pass": true,
+      "detail": "Linked for venue/staff planning (not an automatic room switch)"
+    },
+    {
+      "name": "P4-2_couple_api_no_notes",
+      "pass": true,
+      "detail": "status=200 leaks=none bodyKeys=floorPlans,couplePreferenceStatus,operationalFloorPlanId,seatingInUseFloorPlanId,coupleApprovedFloorPlanId,coupleSelectedFloorPlanId"
+    },
+    {
+      "name": "P4-8_portal_setups_intact_no_notes",
+      "pass": true,
+      "detail": "status=200 hasSetups=true leaks=none"
+    },
+    {
+      "name": "P4-9_share_rules",
+      "pass": true,
+      "detail": "shared=2dbb6633-106a-4ce3-bcb0-c50bd3fe03b1,288ab4e9-7341-4dbe-8dab-eb97edb268df"
+    },
+    {
+      "name": "P4-9_portal_ui_no_notes_no_auto",
+      "pass": true,
+      "detail": "notes absent"
+    },
+    {
+      "name": "P4-3_unlink_removes_relationship",
+      "pass": true,
+      "detail": "gone"
+    },
+    {
+      "name": "P4-3_layouts_seats_membership_preserved",
+      "pass": true,
+      "detail": "equal"
+    },
+    {
+      "name": "P4-4_no_side_effects_on_unlink",
+      "pass": true,
+      "detail": "equal to pre-link baseline"
+    },
+    {
+      "name": "P4-8_setup_package_panel_present",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "name": "P4-8_membership_count",
+      "pass": true,
+      "detail": "members=3"
+    },
+    {
+      "name": "P4-6_simple_path_no_forced_editor",
+      "pass": true,
+      "detail": "editor=0"
+    },
+    {
+      "name": "P4-6_simple_path_need_two_copy",
+      "pass": true,
+      "detail": "Add a second layout on this event before linking a before/after pair. A single-layout wedding does not need a flip link."
+    },
+    {
+      "name": "P4-7_fpsr_template_static",
+      "pass": true,
+      "detail": "FP-SR template not provisioned on Fancy; code starter copy covered by unit tests"
+    },
+    {
+      "name": "P4-5_after_unlink_form_ready_no_partial",
+      "pass": true,
+      "detail": "form ready"
+    },
+    {
+      "name": "cleanup_no_artifacts",
+      "pass": true,
+      "detail": "{\"leftoverFlips\":0,\"leftoverPlans\":0,\"ok\":true}"
+    },
+    {
+      "name": "cleanup_event_count_restored",
+      "pass": true,
+      "detail": "before=83 after=83"
+    }
+  ]
+}

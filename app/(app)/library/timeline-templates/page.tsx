@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 
+import { CollectionBackLink } from "@/components/library/collection-back-link";
+import { LibraryDependencyNote } from "@/components/library/library-guidance";
 import { PageHeader } from "@/components/shell/module-placeholder";
+import { TimelineTemplateStarterPicker } from "@/components/timeline-templates/timeline-template-starter-picker";
 import { TimelineTemplatesSection } from "@/components/timeline-templates/timeline-templates-section";
 import { getSpaces } from "@/lib/availability/service";
 import { getEvents } from "@/lib/events/service";
@@ -17,18 +20,39 @@ export default async function TimelineTemplatesPage() {
   const missingStarterKeys = TIMELINE_STARTER_MASTERS
     .filter((m) => !presentKeys.has(m.key))
     .map((m) => m.key);
+  const activeTemplates = templates.filter((t) => !t.isArchived);
 
   return (
-    <div className="htc-hospitality-page htc-hospitality-heading htc-hospitality-intro-accent space-y-6">
-      <PageHeader
-        title="Timeline Templates"
-        description="Reusable day-of schedules a venue builds once and applies to any booking."
-      />
+    <div className="htc-hospitality-page space-y-4 sm:space-y-6">
+      <CollectionBackLink href="/library" label="Templates" />
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
+        <PageHeader
+          title="Timeline Templates"
+          description="Reusable day-of schedules you build once and apply to any booking."
+          actions={
+            <TimelineTemplateStarterPicker existingTemplates={activeTemplates} spaces={spaces} />
+          }
+        />
+      </div>
+      <LibraryDependencyNote
+        tone="calm"
+        detail={
+          <>
+            Build day-of times and labels once, optionally tie a template to a space, then apply it on
+            an event&apos;s Timeline or Setup. Customize a starter to make your own copy — editing yours
+            never changes the starter. These templates are never emailed to clients.
+          </>
+        }
+        action={{ href: "/settings/availability", label: "Manage Spaces (Availability)" }}
+      >
+        How Timeline Templates work
+      </LibraryDependencyNote>
       <TimelineTemplatesSection
         initialTemplates={templates}
         spaces={spaces}
         missingStarterKeys={missingStarterKeys}
         events={events.map((e) => ({ id: e.id, name: e.name, eventDate: e.eventDate, startTime: e.startTime }))}
+        headerCreate={false}
       />
     </div>
   );

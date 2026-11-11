@@ -7,6 +7,7 @@ import { Bell, Trash2 } from "lucide-react";
 
 import type { VendorNotification } from "@/lib/vendor-notifications/types";
 import { normalizeVendorTaskDeepLink } from "@/lib/vendor-luv/notifications";
+import { useBackoffPoll } from "@/lib/polling/use-backoff-poll";
 import { cn } from "@/lib/utils";
 
 const PANEL_WIDTH = 320;
@@ -35,12 +36,11 @@ function relativeTime(iso: string): string {
 
 /**
  * Vendor notification center — history feed with mark-one / mark-all read
- * and clear-one / clear-all dismiss. Lives in VendorAppShell (sidebar + mobile
- * header), matching venue NotificationBell.
+ * and clear-one / clear-all dismiss. Lives in VendorAppShell main header
+ * (top-right), matching venue NotificationBell placement.
  *
- * Panel is portaled + fixed so a 320px dropdown is never clipped/off-screen
- * when the trigger sits in the narrow left sidebar (absolute right-0 would
- * overflow past the viewport left edge).
+ * Panel is portaled + fixed so a 320px dropdown stays in the viewport when
+ * the trigger sits at the right edge of the header.
  */
 export function VendorNotificationBell({
   triggerClassName,
@@ -62,28 +62,26 @@ export function VendorNotificationBell({
     setMounted(true);
   }, []);
 
-  async function fetchNotifications() {
+  async function fetchNotifications(): Promise<boolean> {
     try {
       const res = await fetch("/api/vendor/notifications");
-      if (!res.ok) return;
+      if (!res.ok) return false;
       const data = await res.json() as {
         notifications?: VendorNotification[];
         unreadCount?: number;
       };
       setNotifications(data.notifications ?? []);
       setUnreadCount(data.unreadCount ?? 0);
+      return true;
     } catch {
       // never crash the shell over a failed fetch
+      return false;
     } finally {
       setLoading(false);
     }
   }
 
-  React.useEffect(() => {
-    fetchNotifications();
-    const id = setInterval(fetchNotifications, 60_000);
-    return () => clearInterval(id);
-  }, []);
+  useBackoffPoll(fetchNotifications);
 
   // Deep-link from Luv briefing rollups: /vendor/...?notifications=1
   React.useEffect(() => {
@@ -195,7 +193,8 @@ export function VendorNotificationBell({
       ? createPortal(
           <div
             ref={panelRef}
-            className="fixed z-50 w-[320px] overflow-hidden rounded-sm border border-border bg-card"
+            data-vendor-notif-panel=""
+            className="fixed z-50 w-[320px] overflow-hidden rounded-sm border border-border bg-card shadow-lg shadow-[color-mix(in_oklch,#24332b_12%,transparent)]"
             style={{
               top: coords.top,
               left: coords.left,
@@ -208,7 +207,7 @@ export function VendorNotificationBell({
               <div className="flex items-center gap-2">
                 <p className="text-sm font-semibold text-foreground">Notifications</p>
                 {hasUnread && (
-                  <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                  <span className="rounded-full bg-[#f7e9eb] px-2 py-0.5 text-[10px] font-semibold text-[#8f555a]">
                     {unreadCount} new
                   </span>
                 )}
@@ -258,9 +257,9 @@ export function VendorNotificationBell({
 
                     const item = (
                       <div
-                        className={`flex gap-2.5 px-3 py-3 transition-colors hover:bg-muted/50 cursor-pointer ${
-                          isUnread ? "bg-primary/[0.04]" : ""
-                        }`}
+                        data-vendor-notif-item=""
+                        data-unread={isUnread ? "true" : "false"}
+                        className="flex cursor-pointer gap-2.5 px-3 py-3"
                         onClick={() => {
                           if (isUnread) void markOneRead(n.id);
                           setOpen(false);
@@ -342,7 +341,8 @@ export function VendorNotificationBell({
         type="button"
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          "relative rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
+          "relative rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-[color-mix(in_oklch,var(--htc-eucalyptus)_28%,white)] hover:text-foreground",
+          open && "bg-[color-mix(in_oklch,var(--htc-eucalyptus)_28%,white)] text-foreground",
           triggerClassName,
         )}
         aria-label={hasUnread ? `${unreadCount} unread notifications` : "Notifications"}
@@ -351,7 +351,7 @@ export function VendorNotificationBell({
       >
         <Bell className="h-4 w-4" />
         {hasUnread && (
-          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold text-primary-foreground">
+          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--htc-blush,#d99a9e)] px-1 text-[9px] font-bold text-[#24332b]">
             {unreadCount > 9 ? "9+" : unreadCount}
           </span>
         )}

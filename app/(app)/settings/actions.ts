@@ -11,12 +11,7 @@ import {
   type SaveSectionResult,
 } from "@/lib/venue/service";
 import type { VenueSetupInput } from "@/lib/venue/types";
-import { exportVenueData, type ExportResult } from "@/lib/export/service";
 import { setEventCompletedNudgeEnabled } from "@/lib/automation/service";
-
-export async function exportVenueDataAction(): Promise<ExportResult> {
-  return exportVenueData();
-}
 
 /** RC2, Milestone 4 — the one purpose-built toggle for Event.Completed → review/referral. */
 export async function setEventCompletedNudgeEnabledAction(enabled: boolean): Promise<{ ok: boolean; message?: string }> {
@@ -78,7 +73,9 @@ import type { StripePaymentMethodType } from "@/lib/venue/types";
 import {
   connectQuickBooksAccount,
   disconnectQuickBooksAccount,
+  listQuickBooksIncomeAccounts,
   retryQuickBooksSync,
+  selectQuickBooksIncomeAccount,
 } from "@/lib/quickbooks/service";
 import type { QuickBooksActionResult, QuickBooksEntityType } from "@/lib/quickbooks/types";
 
@@ -142,6 +139,17 @@ export async function disconnectQuickBooksAction(): Promise<QuickBooksActionResu
 
 export async function retryQuickBooksSyncAction(entityType: QuickBooksEntityType, entityId: string): Promise<QuickBooksActionResult> {
   const result = await retryQuickBooksSync(entityType, entityId);
+  revalidatePath("/settings/integrations");
+  return result;
+}
+
+/** Read-only — populates the income-account picker. Persists nothing. */
+export async function listQuickBooksIncomeAccountsAction() {
+  return listQuickBooksIncomeAccounts();
+}
+
+export async function selectQuickBooksIncomeAccountAction(accountId: string): Promise<QuickBooksActionResult> {
+  const result = await selectQuickBooksIncomeAccount(accountId);
   revalidatePath("/settings/integrations");
   return result;
 }

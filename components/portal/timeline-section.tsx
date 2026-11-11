@@ -19,10 +19,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { formatTime, formatTimelineDayHeader, isMultiDayEvent, maxDayOffset, timelineDayOptions, compareTimelineEntries } from "@/lib/timeline/constants";
-import { TIMELINE_AUDIENCES, type TimelineAudience } from "@/lib/timeline/types";
+import { CLIENT_TIMELINE_AUDIENCES, type TimelineAudience } from "@/lib/timeline/types";
 import type { PortalTimeline, PortalTimelineEntry, PortalTimelineSection } from "@/lib/portal/types";
 import { celebrateLuv } from "@/lib/luv/celebrate";
 import { coupleCelebrationMessage } from "@/lib/luv/celebrations";
+import { HTC_NATIVE_SELECT_CLASS } from "@/lib/ui/native-select";
 import {
   SHARE_TIMELINE_ACTION_TYPE,
   shouldPresentShareTimelineCelebration,
@@ -50,7 +51,7 @@ function DaySelect({
     <select
       value={value}
       onChange={(e) => onChange(Number(e.target.value))}
-      className="h-8 rounded-md border border-input bg-background px-2 text-sm"
+      className={`h-8 rounded-md border border-input bg-background px-2 text-sm ${HTC_NATIVE_SELECT_CLASS}`}
       aria-label="Day"
     >
       {options.map((o) => (
@@ -80,8 +81,8 @@ function VisibilityPicker({
 
   return (
     <div className="mt-1.5 flex flex-wrap items-center gap-1">
-      <span className="text-[10px] text-muted-foreground">Also share with:</span>
-      {TIMELINE_AUDIENCES.map((a) => (
+      <span className="text-[10px] text-muted-foreground">Share with</span>
+      {CLIENT_TIMELINE_AUDIENCES.map((a) => (
         <button
           key={a.value}
           type="button"
@@ -301,8 +302,15 @@ function AddItemAction({
 
   if (!adding) {
     return (
-      <Button type="button" variant="outline" size="sm" onClick={() => setAdding(true)} className="h-7 px-2 text-xs">
-        <Plus className="mr-1 h-3 w-3" /> Add Timeline Item
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={() => setAdding(true)}
+        className="h-9 w-full justify-center px-3 text-sm font-medium sm:w-auto"
+        data-testid="portal-timeline-add-item"
+      >
+        <Plus className="mr-1.5 h-4 w-4" /> Add your item
       </Button>
     );
   }
@@ -534,12 +542,18 @@ export function TimelineSection({
   const [lastSubmittedAt, setLastSubmittedAt] = React.useState(initialLastSubmittedAt);
   const [hasUnpublishedChanges, setHasUnpublishedChanges] = React.useState(initialHasUnpublishedChanges);
 
-  const multiDay = isMultiDayEvent(eventDate, eventEndDate);
+  const multiDay = React.useMemo(() => {
+    if (isMultiDayEvent(eventDate, eventEndDate)) return true;
+    return entries.some((e) => (e.dayOffset ?? 0) !== 0);
+  }, [eventDate, eventEndDate, entries]);
   const dayOffsets = React.useMemo(() => {
     if (!multiDay) return [null] as (number | null)[];
-    const max = maxDayOffset(eventDate, eventEndDate);
-    return Array.from({ length: max + 1 }, (_, i) => i);
-  }, [multiDay, eventDate, eventEndDate]);
+    const set = new Set<number>();
+    const spanMax = maxDayOffset(eventDate, eventEndDate);
+    for (let i = 0; i <= spanMax; i += 1) set.add(i);
+    for (const e of entries) set.add(e.dayOffset ?? 0);
+    return [...set].sort((a, b) => a - b) as (number | null)[];
+  }, [multiDay, eventDate, eventEndDate, entries]);
 
   const refresh = React.useCallback(() => {
     fetch(`/api/portal/timeline?token=${token}`)
@@ -595,10 +609,15 @@ export function TimelineSection({
     return (
       <div className="w-full space-y-5">
         <ShareTimelineWithVendors token={token} onShared={refresh} />
-        <div className="rounded-2xl border border-dashed border-border py-16 text-center px-6 space-y-2">
+        <div
+          data-portal-empty="guidance"
+          className="htc-surface-guidance space-y-2 px-6 py-16 text-center"
+        >
           <p className="text-2xl">🕒</p>
           <p className="text-sm font-medium text-heading">No timeline shared yet</p>
-          <p className="text-xs text-muted-foreground max-w-xs mx-auto">Your venue will share the Timeline here as it comes together.</p>
+          <p className="mx-auto max-w-xs text-xs text-muted-foreground">
+            Your venue will share the Timeline here as it comes together.
+          </p>
         </div>
       </div>
     );
@@ -611,6 +630,29 @@ export function TimelineSection({
 
     return (
       <>
+        {addTargetSectionId ? (
+          <div className="rounded-xl border border-dashed border-[color-mix(in_srgb,var(--venue-primary)_35%,transparent)] bg-[color-mix(in_srgb,var(--venue-primary)_6%,transparent)] p-3 space-y-2">
+            <p className="text-xs text-muted-foreground">
+              Add private items for your day. Venue rows stay locked — submit when you want your venue to see updates.
+            </p>
+            <AddItemAction
+              token={token}
+              sectionId={addTargetSectionId}
+              defaultDayOffset={day ?? 0}
+              eventDate={eventDate}
+              eventEndDate={eventEndDate}
+              onAdded={handleAdded}
+            />
+          </div>
+        ) : (
+          <p
+            className="rounded-xl border border-dashed border-border px-3 py-3 text-xs text-muted-foreground"
+            data-testid="portal-timeline-add-unavailable"
+          >
+            Your venue hasn&apos;t opened a section for couple additions yet. Venue items stay read-only here.
+          </p>
+        )}
+
         {list.length > 0 && (
           <div className="space-y-2">
             {list.map((entry, index) => {
@@ -638,17 +680,6 @@ export function TimelineSection({
               );
             })}
           </div>
-        )}
-
-        {addTargetSectionId && (
-          <AddItemAction
-            token={token}
-            sectionId={addTargetSectionId}
-            defaultDayOffset={day ?? 0}
-            eventDate={eventDate}
-            eventEndDate={eventEndDate}
-            onAdded={handleAdded}
-          />
         )}
       </>
     );

@@ -167,7 +167,8 @@ export function RequestDetail({
       </div>
 
       <div className="space-y-1">
-        <p className="text-xs text-muted-foreground">Assigned To</p>
+        <p className="text-xs text-muted-foreground">Internal owner</p>
+        <p className="text-[11px] text-muted-foreground">Venue staff responsible for follow-up — not the client recipient.</p>
         <select className="border rounded px-2 py-1.5 text-sm" value={request.assignedToStaffId ?? ""} disabled={pending}
           onChange={(e) => e.target.value && handleAssign(e.target.value)}>
           <option value="">{assignee?.name ?? "Unassigned"}</option>
@@ -177,7 +178,7 @@ export function RequestDetail({
 
       <label className="flex items-center gap-2 text-sm cursor-pointer">
         <input type="checkbox" checked={request.clientActionEnabled} disabled={pending} onChange={handleToggleClientAction} />
-        Client can act on this request
+        Show in client Request Center (client can respond)
       </label>
 
       <div className="space-y-2">

@@ -1,0 +1,51 @@
+{
+  "templateId": "a634ecab-14f6-4c21-9384-7b52a76abde5",
+  "eventId": "ebf74f77-2944-474a-b735-48762ecb6842",
+  "eventDate": "2060-07-17",
+  "endDate": "2060-07-19",
+  "applied": [
+    {
+      "title": "QA-TT-TTMVOSLG5S-specific",
+      "entry_time": "15:00",
+      "day_offset": 0
+    },
+    {
+      "title": "QA-TT-TTMVOSLG5S-rel",
+      "entry_time": "15:30",
+      "day_offset": 0
+    },
+    {
+      "title": "QA-TT-TTMVOSLG5S-day2",
+      "entry_time": "10:00",
+      "day_offset": 1
+    },
+    {
+      "title": "QA-TT-TTMVOSLG5S-dual",
+      "entry_time": "14:00",
+      "day_offset": 0
+    },
+    {
+      "title": "QA-TT-TTMVOSLG5S-before",
+      "entry_time": "09:00",
+      "day_offset": -1
+    },
+    {
+      "title": "QA-TT-TTMVOSLG5S-end",
+      "entry_time": "11:00",
+      "day_offset": 2
+    },
+    {
+      "title": "QA-TT-TTMVOSLG5S-ui-specific",
+      "entry_time": "17:30",
+      "day_offset": 0
+    }
+  ],
+  "uiItem": {
+    "id": "45a05c18-1558-4599-b8d4-f67bcd011a0f",
+    "time_of_day": "17:30:00",
+    "minutes_offset": null,
+    "day_offset": 0,
+    "title": "QA-TT-TTMVOSLG5S-ui-specific"
+  },
+  "at": "2026-10-26T05:05:20.547Z"
+}

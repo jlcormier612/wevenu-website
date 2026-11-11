@@ -7,17 +7,39 @@ import { toast } from "sonner";
 
 import { updateEventAction } from "@/app/(app)/events/[id]/actions";
 import { EventFormFields } from "@/components/events/event-form";
+import { TimelineTimingRecalcDialog } from "@/components/events/timeline-timing-recalc-dialog";
 import { useLibraryUnsavedGuard } from "@/components/library/use-library-unsaved-guard";
 import { eventInputFromVenueEvent } from "@/lib/events/constants";
-import type { EventErrors, EventInput, VenueEvent } from "@/lib/events/types";
+import type { EventErrors, EventInput, EventTimingRecalcHint, VenueEvent } from "@/lib/events/types";
 import type { VenueSpace } from "@/lib/availability/types";
+import type { EventSpaceAssignmentInput } from "@/lib/venue-spaces/assignments";
 
-export function EventEditForm({ event, spaces = [], maxSimultaneousEvents = 1 }: { event: VenueEvent; spaces?: VenueSpace[]; maxSimultaneousEvents?: number }) {
+export function EventEditForm({
+  event,
+  spaces = [],
+  maxSimultaneousEvents = 1,
+  spaceOperatingMode = "single",
+  initialAssignments = [],
+  excludeLeadId,
+}: {
+  event: VenueEvent;
+  spaces?: VenueSpace[];
+  maxSimultaneousEvents?: number;
+  spaceOperatingMode?: "single" | "multi";
+  initialAssignments?: EventSpaceAssignmentInput[];
+  excludeLeadId?: string;
+}) {
   const router = useRouter();
-  const [baseline] = React.useState(() => JSON.stringify(eventInputFromVenueEvent(event)));
-  const [input, setInput] = React.useState<EventInput>(() => eventInputFromVenueEvent(event));
+  const buildInput = React.useCallback((): EventInput => ({
+    ...eventInputFromVenueEvent(event),
+    spaceAssignments: spaceOperatingMode === "multi" ? initialAssignments : undefined,
+  }), [event, initialAssignments, spaceOperatingMode]);
+  const [baseline] = React.useState(() => JSON.stringify(buildInput()));
+  const [input, setInput] = React.useState<EventInput>(buildInput);
   const [errors, setErrors] = React.useState<EventErrors>({});
   const [pending, startTransition] = React.useTransition();
+  const [timingHint, setTimingHint] = React.useState<EventTimingRecalcHint | null>(null);
+  const [recalcOpen, setRecalcOpen] = React.useState(false);
   const dirty = JSON.stringify(input) !== baseline;
   useLibraryUnsavedGuard(dirty);
 
@@ -29,11 +51,53 @@ export function EventEditForm({ event, spaces = [], maxSimultaneousEvents = 1 }:
   function handleSubmit() {
     startTransition(async () => {
       const result = await updateEventAction(event.id, input);
-      if (result.ok) { toast.success("Event updated."); router.push(`/events/${event.id}`); router.refresh(); return; }
+      if (result.ok) {
+        if (result.timelineWarning) toast.warning(result.timelineWarning);
+        if (result.headcountNotice) toast.warning(result.headcountNotice);
+        if (result.timingRecalc) {
+          if (!result.timelineWarning && !result.headcountNotice) {
+            toast.success(
+              result.timingRecalc.dateChanged
+                ? "Wedding dates saved. Review your timeline so item dates still match."
+                : "Day-of start saved. Review relative timeline times if needed.",
+            );
+          }
+          setTimingHint(result.timingRecalc);
+          setRecalcOpen(true);
+          return;
+        }
+        if (!result.timelineWarning && !result.headcountNotice) toast.success("Event updated.");
+        router.push(`/events/${event.id}`);
+        router.refresh();
+        return;
+      }
       if (result.errors) setErrors(result.errors);
       toast.error(result.message ?? "Please fix the highlighted fields.");
     });
   }
 
-  return <EventFormFields input={input} errors={errors} set={set} onSubmit={handleSubmit} pending={pending} submitLabel="Save changes" spaces={spaces} existingEventId={event.id} maxSimultaneousEvents={maxSimultaneousEvents} />;
+  return (
+    <>
+      <EventFormFields
+        input={input}
+        errors={errors}
+        set={set}
+        onSubmit={handleSubmit}
+        pending={pending}
+        submitLabel="Save changes"
+        spaces={spaces}
+        existingEventId={event.id}
+        excludeLeadId={excludeLeadId}
+        maxSimultaneousEvents={maxSimultaneousEvents}
+        spaceOperatingMode={spaceOperatingMode}
+      />
+      <TimelineTimingRecalcDialog
+        open={recalcOpen}
+        onOpenChange={setRecalcOpen}
+        eventId={event.id}
+        clientId={event.clientId}
+        hint={timingHint}
+      />
+    </>
+  );
 }

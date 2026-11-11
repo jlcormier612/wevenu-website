@@ -2,9 +2,11 @@
  * Founder Program capacity — shared by workspace dashboards and marketing display.
  *
  * Capacity comes from `FOUNDER_PROGRAM_CAPACITY` (default 100).
- * Remaining spots are preferably `capacity − foundingCount` (live relationships),
- * not a separately decremented counter. Marketing may still set
- * `FOUNDER_SPOTS_REMAINING` as a fallback when no live count is available.
+ * Soft milestone: remaining display is `max(0, capacity − earnedCount)`.
+ * Already-issued Founding Checkout offers are still honored if earned count
+ * later reaches or exceeds capacity (see `@shared/pricing` offer lifecycle).
+ * Marketing may still set `FOUNDER_SPOTS_REMAINING` as a fallback when no live
+ * count is available (legacy path).
  */
 
 function parseNonNegativeInt(value: string | undefined, fallback: number): number {

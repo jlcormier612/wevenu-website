@@ -1,4 +1,9 @@
-export type QrDestinationType = "inquiry_form" | "tour_booking" | "wedding_website" | "external_url";
+export type QrDestinationType =
+  | "inquiry_form"
+  | "tour_booking"
+  | "wedding_website"
+  | "external_url"
+  | "public_form";
 
 export type QrCampaign = {
   id: string;
@@ -7,6 +12,8 @@ export type QrCampaign = {
   code: string;
   destinationType: QrDestinationType;
   destinationUrl: string | null;
+  /** Set when destinationType is public_form. */
+  publicFormId: string | null;
   status: "active" | "archived";
   sourceMasterKey: string | null;
   createdAt: string;
@@ -16,6 +23,7 @@ export type QrCampaignInput = {
   name: string;
   destinationType: QrDestinationType;
   destinationUrl?: string;
+  publicFormId?: string;
 };
 
 export type QrCampaignAnalytics = {

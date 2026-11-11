@@ -1,0 +1,28 @@
+PASS [setup] fixture_venue — 47d34f27
+PASS [setup] document_blob_uploaded — 47d34f27-e2b5-45ea-89f6-6f442d02dc2b/migration-cert/spec-con
+PASS [setup] runtime_dpl — dpl=d62f4260cbc77ed09858298ead614e141118fd23 expectPrefix=d62f4260
+PASS [parent] ui_client — committed=true
+PASS [parent] ui_event — committed=true
+PASS [parent] ui_vendor — committed=true
+PASS [special] ui_guest_list — committed=true
+PASS [special] ui_guest_orphan_review — committed=true needsReview=true
+PASS [special] ui_event_vendor_assignment — committed=true
+PASS [special] ui_timeline — committed=true needsReview=true
+PASS [special] ui_timeline_far_not_imported — committed=true needsReview=true
+PASS [special] ui_document — committed=true
+PASS [special] ui_active_commitment — committed=true ok=true OVERVIEW Dashboard YOUR RELATIONSHIPS Leads Clients Vendors SCHEDULING Calendar Tours COMMUNICATION Inbox Automat
+PASS [special] ui_floor_plan — committed=true OVERVIEW Dashboard YOUR RELATIONSHIPS Leads Clients Vendors SCHEDULING Calendar Tours COMMUNICATION Inbox Automations LIBRARY Templ
+PASS [db] parent_client_event — client=2cfa1d49 event=031aaa3b date=2026-10-30
+FAIL [db] guests_linked — n=0 named=0 clientMatch=true
+PASS [db] vendor_assignments — n=1
+PASS [db] timeline_near — titles=Ceremony start
+PASS [db] timeline_far_absent — titles=Ceremony start
+FAIL [db] document_on_event — docs=
+PASS [db] active_commitment_artifacts — orders=1 invoices=1 schedules=1 eventStatus=confirmed
+PASS [db] floor_plan_persisted — floorDocs=true floor_plans=0
+PASS [side] no_invitations — invites=0
+PASS [side] no_automation_enrollments — enrollments=0
+PASS [side] no_scheduled_messages — scheduled=0
+PASS [db] orphan_guest_absent — guests=
+
+24 passed, 2 failed → docs/qa/mc-specialized-cert/runtime-results.json

@@ -5,98 +5,507 @@ import { describe, it } from "node:test";
 
 import {
   resolveLeadTourWrite,
+  sameLeadTourSlot,
   TOUR_TIME_REQUIRED,
 } from "@/lib/leads/relationship-tour";
+import { occupyingTour } from "@/lib/tours/occupancy";
+import { venueLocalToUtcIso } from "@/lib/venue/timezone";
 
-describe("resolveLeadTourWrite", () => {
-  it("date + time schedules a Tour with the supplied time", () => {
+const TZ = "America/New_York";
+
+const occupying = {
+  id: "appt-1",
+  status: "scheduled",
+  scheduledAt: "2099-06-15T14:00:00.000Z",
+  origin: "scheduled",
+} as const;
+
+const confirmed = { ...occupying, status: "confirmed" } as const;
+
+/** Bindi forensic slot: Sun Oct 18, 2026 12:00 PM ET. */
+const bindiConfirmed = {
+  id: "555060cd-a188-4e2a-ae42-f0da64396e50",
+  status: "confirmed",
+  scheduledAt: venueLocalToUtcIso("2026-10-18", "12:00", TZ),
+  origin: "scheduled",
+} as const;
+
+describe("resolveLeadTourWrite — Phase 2 intents", () => {
+  it("date + time schedules a future tour", () => {
     assert.deepEqual(
-      resolveLeadTourWrite({ tourDate: "2099-06-15", tourTime: "10:00" }),
-      { action: "upsert", tourDate: "2099-06-15", tourTime: "10:00" },
+      resolveLeadTourWrite({
+        tourDate: "2099-06-15",
+        tourTime: "10:00",
+        tourCompleted: false,
+        tourNotes: "",
+        existing: null,
+      }),
+      { action: "future_schedule", tourDate: "2099-06-15", tourTime: "10:00", notes: "" },
     );
   });
 
   it("date only cannot create or update a real Tour appointment", () => {
     assert.deepEqual(
-      resolveLeadTourWrite({ tourDate: "2099-06-15", tourTime: "" }),
-      { action: "reject", message: TOUR_TIME_REQUIRED },
-    );
-    assert.deepEqual(
-      resolveLeadTourWrite({ tourDate: "2099-06-15", tourTime: "   " }),
+      resolveLeadTourWrite({
+        tourDate: "2099-06-15",
+        tourTime: "",
+        tourCompleted: false,
+        tourNotes: "",
+        existing: null,
+      }),
       { action: "reject", message: TOUR_TIME_REQUIRED },
     );
   });
 
-  it("no date clears an existing Tour regardless of leftover time", () => {
-    assert.deepEqual(resolveLeadTourWrite({ tourDate: "", tourTime: "" }), { action: "clear" });
-    assert.deepEqual(resolveLeadTourWrite({ tourDate: "  ", tourTime: "10:00" }), { action: "clear" });
+  it("no date clears an occupying Tour", () => {
+    assert.deepEqual(
+      resolveLeadTourWrite({
+        tourDate: "",
+        tourTime: "10:00",
+        tourCompleted: false,
+        tourNotes: "",
+        existing: occupying,
+      }),
+      { action: "clear" },
+    );
+  });
+
+  it("no date is a noop when there is no occupying tour", () => {
+    assert.deepEqual(
+      resolveLeadTourWrite({
+        tourDate: "",
+        tourTime: "",
+        tourCompleted: false,
+        tourNotes: "",
+        existing: null,
+      }),
+      { action: "noop" },
+    );
+  });
+
+  it("completing an occupying tour without an exception uses the scheduled date and time", () => {
+    assert.deepEqual(
+      resolveLeadTourWrite({
+        tourDate: "2026-06-15",
+        tourTime: "11:30",
+        tourCompleted: true,
+        tourNotes: "On time",
+        existing: occupying,
+      }),
+      {
+        action: "complete_scheduled",
+        appointmentId: "appt-1",
+        actualDate: "2026-06-15",
+        actualTime: "11:30",
+        notes: "On time",
+      },
+    );
+    const confirmedDecision = resolveLeadTourWrite({
+      tourDate: "2026-06-16",
+      tourTime: "09:00",
+      tourCompleted: true,
+      tourNotes: "",
+      existing: confirmed,
+    });
+    assert.equal(confirmedDecision.action, "complete_scheduled");
+    if (confirmedDecision.action === "complete_scheduled") {
+      assert.equal(confirmedDecision.actualDate, "2026-06-16");
+      assert.equal(confirmedDecision.actualTime, "09:00");
+    }
+  });
+
+  it("does not invent an occurrence when the scheduled date or time is missing", () => {
+    const missing = resolveLeadTourWrite({
+      tourDate: "",
+      tourTime: "",
+      tourCompleted: true,
+      tourNotes: "",
+      existing: occupying,
+    });
+    assert.equal(missing.action, "reject");
+    if (missing.action === "reject") {
+      assert.match(missing.message, /no scheduled date and time/);
+    }
+    const dateOnly = resolveLeadTourWrite({
+      tourDate: "2026-06-15",
+      tourTime: "",
+      tourCompleted: true,
+      tourNotes: "",
+      existing: occupying,
+    });
+    assert.equal(dateOnly.action, "reject");
+  });
+
+  it("early occurrence uses explicit actual fields without changing the scheduled date fields", () => {
+    const decision = resolveLeadTourWrite({
+      tourDate: "2026-10-11",
+      tourTime: "14:00",
+      tourActualDate: "2026-10-09",
+      tourActualTime: "14:00",
+      tourCompleted: true,
+      tourNotes: "Arrived early",
+      existing: {
+        id: "appt-oct11",
+        status: "scheduled",
+        scheduledAt: "2026-10-11T18:00:00.000Z",
+        origin: "scheduled",
+      },
+    });
+    assert.deepEqual(decision, {
+      action: "complete_scheduled",
+      appointmentId: "appt-oct11",
+      actualDate: "2026-10-09",
+      actualTime: "14:00",
+      notes: "Arrived early",
+    });
+  });
+
+  it("late occurrence and later completion-recording still use actual fields", () => {
+    const decision = resolveLeadTourWrite({
+      tourDate: "2026-10-11",
+      tourTime: "14:00",
+      tourActualDate: "2026-10-13",
+      tourActualTime: "10:00",
+      tourCompleted: true,
+      tourNotes: "",
+      existing: occupying,
+    });
+    assert.equal(decision.action, "complete_scheduled");
+    if (decision.action === "complete_scheduled") {
+      assert.equal(decision.actualDate, "2026-10-13");
+      assert.equal(decision.actualTime, "10:00");
+    }
+  });
+
+  it("completed with no occupying tour is a walk-in (new row)", () => {
+    assert.deepEqual(
+      resolveLeadTourWrite({
+        tourDate: "2099-06-15",
+        tourTime: "14:00",
+        tourCompleted: true,
+        tourNotes: "Walk-in",
+        existing: null,
+      }),
+      { action: "walk_in", actualDate: "2099-06-15", actualTime: "14:00", notes: "Walk-in" },
+    );
+  });
+
+  it("editing actual on an already-completed row is actual_only", () => {
+    assert.equal(
+      resolveLeadTourWrite({
+        tourDate: "2099-06-15",
+        tourTime: "15:00",
+        tourActualDate: "2099-06-15",
+        tourActualTime: "16:00",
+        tourCompleted: true,
+        tourNotes: "Corrected",
+        existing: {
+          id: "appt-2",
+          status: "completed",
+          scheduledAt: "2099-06-15T14:00:00.000Z",
+          origin: "scheduled",
+        },
+      }).action,
+      "actual_only",
+    );
+  });
+
+  it("turning the exception off writes the scheduled date and time as the occurrence", () => {
+    assert.deepEqual(
+      resolveLeadTourWrite({
+        tourDate: "2026-06-15",
+        tourTime: "15:00",
+        tourCompleted: true,
+        tourNotes: "",
+        existing: {
+          id: "appt-2",
+          status: "completed",
+          scheduledAt: "2026-06-15T19:00:00.000Z",
+          origin: "scheduled",
+        },
+      }),
+      {
+        action: "actual_only",
+        appointmentId: "appt-2",
+        actualDate: "2026-06-15",
+        actualTime: "15:00",
+        notes: "",
+      },
+    );
   });
 });
 
-describe("Relationship Venue Tour write seams", () => {
+describe("same-slot follow-up must not demote confirmed", () => {
+  it("sameLeadTourSlot matches venue-local clock to stored UTC", () => {
+    assert.equal(sameLeadTourSlot(bindiConfirmed.scheduledAt, "2026-10-18", "12:00", TZ), true);
+    assert.equal(sameLeadTourSlot(bindiConfirmed.scheduledAt, "2026-10-18", "12:00:00", TZ), true);
+    assert.equal(sameLeadTourSlot(bindiConfirmed.scheduledAt, "2026-10-18", "13:00", TZ), false);
+    assert.equal(sameLeadTourSlot(bindiConfirmed.scheduledAt, "2026-10-19", "12:00", TZ), false);
+    assert.equal(sameLeadTourSlot(null, "2026-10-18", "12:00", TZ), false);
+  });
+
+  it("confirmed + unchanged date/time with venueTimezone is noop", () => {
+    assert.deepEqual(
+      resolveLeadTourWrite({
+        tourDate: "2026-10-18",
+        tourTime: "12:00",
+        tourCompleted: false,
+        tourNotes: "",
+        existing: bindiConfirmed,
+        venueTimezone: TZ,
+      }),
+      { action: "noop" },
+    );
+  });
+
+  it("scheduled (never confirmed) + unchanged slot with venueTimezone is also noop", () => {
+    const scheduled = {
+      ...bindiConfirmed,
+      status: "scheduled" as const,
+    };
+    assert.deepEqual(
+      resolveLeadTourWrite({
+        tourDate: "2026-10-18",
+        tourTime: "12:00",
+        tourCompleted: false,
+        tourNotes: "note ignored on noop",
+        existing: scheduled,
+        venueTimezone: TZ,
+      }),
+      { action: "noop" },
+    );
+  });
+
+  it("confirmed + changed time is future_schedule (genuine reschedule; does not keep confirmed)", () => {
+    assert.deepEqual(
+      resolveLeadTourWrite({
+        tourDate: "2026-10-18",
+        tourTime: "14:00",
+        tourCompleted: false,
+        tourNotes: "",
+        existing: bindiConfirmed,
+        venueTimezone: TZ,
+      }),
+      { action: "future_schedule", tourDate: "2026-10-18", tourTime: "14:00", notes: "" },
+    );
+  });
+
+  it("confirmed + changed date is future_schedule", () => {
+    assert.deepEqual(
+      resolveLeadTourWrite({
+        tourDate: "2026-10-19",
+        tourTime: "12:00",
+        tourCompleted: false,
+        tourNotes: "",
+        existing: bindiConfirmed,
+        venueTimezone: TZ,
+      }),
+      { action: "future_schedule", tourDate: "2026-10-19", tourTime: "12:00", notes: "" },
+    );
+  });
+
+  it("without venueTimezone, same slot still resolves to future_schedule (legacy callers)", () => {
+    assert.deepEqual(
+      resolveLeadTourWrite({
+        tourDate: "2026-10-18",
+        tourTime: "12:00",
+        tourCompleted: false,
+        tourNotes: "",
+        existing: bindiConfirmed,
+      }),
+      { action: "future_schedule", tourDate: "2026-10-18", tourTime: "12:00", notes: "" },
+    );
+  });
+
+  it("repeated identical saves stay noop", () => {
+    const once = resolveLeadTourWrite({
+      tourDate: "2026-10-18",
+      tourTime: "12:00",
+      tourCompleted: false,
+      tourNotes: "",
+      existing: bindiConfirmed,
+      venueTimezone: TZ,
+    });
+    const twice = resolveLeadTourWrite({
+      tourDate: "2026-10-18",
+      tourTime: "12:00",
+      tourCompleted: false,
+      tourNotes: "",
+      existing: bindiConfirmed,
+      venueTimezone: TZ,
+    });
+    assert.deepEqual(once, { action: "noop" });
+    assert.deepEqual(twice, { action: "noop" });
+  });
+
+  it("completed / walk-in / clear paths are unchanged when timezone is present", () => {
+    assert.equal(
+      resolveLeadTourWrite({
+        tourDate: "2026-10-18",
+        tourTime: "12:00",
+        tourCompleted: true,
+        tourNotes: "",
+        existing: bindiConfirmed,
+        venueTimezone: TZ,
+      }).action,
+      "complete_scheduled",
+    );
+    assert.equal(
+      resolveLeadTourWrite({
+        tourDate: "",
+        tourTime: "",
+        tourCompleted: false,
+        tourNotes: "",
+        existing: bindiConfirmed,
+        venueTimezone: TZ,
+      }).action,
+      "clear",
+    );
+    assert.equal(
+      resolveLeadTourWrite({
+        tourDate: "2026-06-15",
+        tourTime: "11:30",
+        tourCompleted: true,
+        tourNotes: "Walk-in",
+        existing: null,
+        venueTimezone: TZ,
+      }).action,
+      "walk_in",
+    );
+  });
+});
+
+describe("Phase 2 occupancy mirror", () => {
+  it("matches DB: scheduled/confirmed occupy only when scheduled_at is present", () => {
+    assert.equal(occupyingTour("scheduled"), true);
+    assert.equal(occupyingTour("confirmed"), true);
+    assert.equal(occupyingTour("scheduled", "2099-06-15T10:00:00Z"), true);
+    assert.equal(occupyingTour("scheduled", null), false);
+    assert.equal(occupyingTour("confirmed", null), false);
+    assert.equal(occupyingTour("completed"), false);
+    assert.equal(occupyingTour("no_show"), false);
+    assert.equal(occupyingTour("cancelled"), false);
+    assert.equal(occupyingTour("completed", null), false);
+  });
+});
+
+describe("Phase 2 Relationship / ConflictWarning / calendar seams", () => {
   const repo = readFileSync(resolve("lib/leads/repository.ts"), "utf8");
   const card = readFileSync(resolve("components/leads/relationship-card.tsx"), "utf8");
+  const warning = readFileSync(resolve("components/availability/conflict-warning.tsx"), "utf8");
   const service = readFileSync(resolve("lib/leads/service.ts"), "utf8");
-  const scheduler = readFileSync(resolve("components/tours/tour-scheduler.tsx"), "utf8");
-  const inquiry = readFileSync(resolve("components/form/inquiry-form.tsx"), "utf8");
-  const tourPanel = readFileSync(resolve("components/leads/tour-panel.tsx"), "utf8");
-  const bookRoute = readFileSync(resolve("app/api/tours/book/route.ts"), "utf8");
+  const calendar = readFileSync(resolve("lib/tours/service.ts"), "utf8");
+  const occupancy = readFileSync(resolve("lib/tours/occupancy.ts"), "utf8");
+  const focus = readFileSync(resolve("lib/dashboard/service.ts"), "utf8");
 
-  it("does not invent a noon timestamp when time is missing", () => {
-    assert.match(repo, /resolveLeadTourWrite/);
-    assert.doesNotMatch(repo, /tourTime \|\| ["']12:00["']/);
-    assert.doesNotMatch(repo, /input\.tourTime \|\| ["']12:00["']/);
+  it("follow-up persists before tour write; capacity returns structured conflict", () => {
     const updateFn = repo.slice(repo.indexOf("export async function updateRelationshipFields"));
-    const rejectIdx = updateFn.indexOf('tourDecision.action === "reject"');
+    const followIdx = updateFn.indexOf('.from("leads")');
+    const tourIdx = updateFn.indexOf("applyLeadTourWrite");
+    assert.ok(followIdx >= 0 && tourIdx > followIdx, "follow-up write must precede tour apply");
+    assert.match(updateFn, /tourConflict/);
+    assert.match(service, /tourConflict/);
+    assert.match(card, /result\.tourConflict/);
+    assert.match(card, /must not disable Save/);
+  });
+
+  it("applyLeadTourWrite re-resolves future_schedule with venueTimezone for same-slot noop", () => {
+    const applyFn = repo.slice(repo.indexOf("export async function applyLeadTourWrite"));
+    assert.match(applyFn, /venueTimezone: timezone/);
+    assert.match(applyFn, /decision\.action === "future_schedule"/);
+    assert.match(applyFn, /decision\.action === "noop"/);
+  });
+
+  it("follow-up Edit pins prior tour fields when appointments own the tour UI", () => {
+    assert.match(card, /appointmentsOwnTour = hideManualTourSummary/);
+    assert.match(card, /tourDate: prev\.current\.tourDate/);
+    assert.match(card, /tourTime: prev\.current\.tourTime/);
+    assert.match(card, /hideManualTourSummary \? null/);
+    assert.match(card, /data-testid="tour-followup-manual-tour-edit"/);
+  });
+
+  it("date-only Tour is refused before the lead row is written", () => {
+    const updateFn = repo.slice(repo.indexOf("export async function updateRelationshipFields"));
+    const rejectIdx = updateFn.indexOf('preview.action === "reject"');
     const leadUpdateIdx = updateFn.indexOf('.from("leads")');
-    assert.ok(rejectIdx >= 0 && rejectIdx < leadUpdateIdx, "date-only Tour must be refused before the lead row is written");
+    assert.ok(rejectIdx >= 0 && rejectIdx < leadUpdateIdx);
   });
 
-  it("Relationship UI requires time when a Tour date is set, and still allows clearing", () => {
-    assert.match(card, /tourDateOnly/);
-    assert.match(card, /A tour time is required to schedule a venue tour/);
-    assert.match(card, /disabled=\{pending \|\| tourDateBlocked \|\| tourDateOnly\}/);
+  it("ConflictWarning clears blocked state on unmount", () => {
+    assert.match(warning, /onStatusChange\?\.\(false\)/);
+    assert.match(card, /setTourDateBlocked\(false\)/);
   });
 
-  it("service maps a date-only Tour write to a user-facing refusal", () => {
-    assert.match(service, /LeadTourWriteError/);
-    assert.match(service, /TOUR_TIME_REQUIRED/);
-  });
-
-  it("public Request Information remains an inquiry, not a Tour booking", () => {
-    assert.match(inquiry, /mode === "request_information"/);
-    assert.match(inquiry, /\/api\/public\/inquire/);
-    assert.match(inquiry, /\/api\/tours\/book/);
-    const infoHandler = inquiry.slice(
-      inquiry.indexOf('if (mode === "request_information")'),
-      inquiry.indexOf('} else if (mode === "schedule_tour"'),
+  it("completion and walk-in paths never write scheduled_at on complete", () => {
+    const applyFn = repo.slice(repo.indexOf("export async function applyLeadTourWrite"));
+    assert.match(applyFn, /action === "complete_without_actual"/);
+    assert.match(applyFn, /action === "complete_scheduled"/);
+    assert.match(applyFn, /origin: "walk_in"/);
+    assert.match(applyFn, /scheduled_at: null/);
+    // complete_scheduled update must not include scheduled_at assignment
+    const completeBlock = applyFn.slice(
+      applyFn.indexOf('decision.action === "complete_scheduled"'),
+      applyFn.indexOf('decision.action === "actual_only"'),
     );
-    assert.doesNotMatch(infoHandler, /\/api\/tours\/book/);
-    assert.match(infoHandler, /\/api\/public\/inquire/);
+    assert.doesNotMatch(completeBlock, /scheduled_at:/);
+    assert.match(completeBlock, /actual_occurred_at:/);
   });
 
-  it("public and coordinator actual Tour scheduling still require a slot time", () => {
-    assert.match(scheduler, /if \(!selectedSlot\) return;/);
-    assert.match(scheduler, /slotStart: selectedSlot\.start/);
-    assert.match(inquiry, /Please select a tour date and time/);
-    assert.match(inquiry, /slotStart: selectedTourSlot\.start/);
-    assert.match(bookRoute, /!body\.key \|\| !body\.slotStart/);
-    assert.match(tourPanel, /disabled=\{!selectedSlot \|\| saving\}/);
-    assert.match(tourPanel, /selectedSlot\.start/);
+  it("calendar projects occupying from scheduled_at and completed/walk-ins from actual_occurred_at", () => {
+    const calFn = calendar.slice(calendar.indexOf("export async function getTourCalendarEntries"));
+    assert.match(calFn, /origin\.eq\.walk_in,status\.eq\.completed/);
+    assert.match(calFn, /actual_occurred_at/);
+    assert.match(calFn, /Walk-in/);
+    assert.match(calFn, /status === "completed" && t\.actual_occurred_at/);
   });
 
-  it("stamps venues.tour_duration_minutes on create and update, and does not hard-code 60", () => {
-    const fnStart = repo.indexOf("export async function upsertLeadTour");
-    const fnEnd = repo.indexOf("// ---- row mappers");
-    const fn = repo.slice(fnStart, fnEnd);
-    assert.match(fn, /select\("timezone, tour_duration_minutes"\)/);
-    assert.match(fn, /durationMinutes = Number\(venueRow\?\.tour_duration_minutes\)/);
-    assert.match(fn, /durationMinutes <= 0/);
-    assert.match(fn, /does not have a tour duration configured/);
-    assert.doesNotMatch(fn, /duration_minutes:\s*60/);
-    assert.doesNotMatch(fn, /tour_duration_minutes\s*\|\|\s*60/);
-    const durationWrites = fn.split("duration_minutes: durationMinutes");
-    assert.equal(durationWrites.length, 3, "create and update/reschedule must both stamp duration_minutes from the venue");
-    assert.match(fn, /input\.tourCompleted \? "completed" : "scheduled"/);
+  it("app occupancy mirror documents null scheduled_at as non-occupying", () => {
+    assert.match(occupancy, /scheduledAt === null/);
+    assert.match(occupancy, /walk-ins do not consume/);
+  });
+
+  it("Focus tour window still keys off scheduled_at (walk-ins excluded by null)", () => {
+    assert.match(focus, /gte\("scheduled_at", tourWindowStart\)/);
+  });
+
+  it("updateTourStatus never rewrites scheduled_at; actual_occurred_at only from explicit options", () => {
+    const updateFn = calendar.slice(
+      calendar.indexOf("export async function updateTourStatus"),
+      calendar.indexOf("export async function requestTourConfirmation"),
+    );
+    const patchBlock = updateFn.slice(
+      updateFn.indexOf("const patch:"),
+      updateFn.indexOf(".update(patch)"),
+    );
+    assert.match(patchBlock, /status === "completed"/);
+    assert.match(patchBlock, /patch\.completed_at/);
+    assert.doesNotMatch(patchBlock, /scheduled_at\s*=/);
+    assert.doesNotMatch(patchBlock, /new Date\(\)\.toISOString\(\).*actual/);
+    assert.match(patchBlock, /actualDate && actualTime/);
+    assert.match(patchBlock, /patch\.actual_occurred_at/);
+    assert.match(patchBlock, /never invent from now\(\)/);
+  });
+
+  it("Relationship UI distinguishes scheduled vs actual and requires actual time when completing", () => {
+    assert.match(card, /tourDateOnly/);
+    assert.match(card, /tourFormBlocked/);
+    assert.match(card, /Actually occurred/);
+    assert.match(card, /Scheduled/);
+    assert.match(card, /Marked completed/);
+    assert.match(card, /Not recorded/);
+    assert.doesNotMatch(card, /formatVenueLocalShortDate\(lead\.tourActualDate \|\| lead\.tourDate/);
+    assert.match(card, /prefillActualFromScheduled/);
+    assert.match(card, /A tour time is required to schedule a venue tour/);
+    assert.match(card, /disabled=\{pending \|\| tourFormBlocked\}/);
+    assert.doesNotMatch(card, /futureScheduleHardBlock/);
+  });
+
+  it("Tours list uses tourDisplayClockIso and complete dialog asks for actual occurrence", () => {
+    const list = readFileSync(resolve("components/tours/tour-list.tsx"), "utf8");
+    assert.match(list, /tourDisplayClockIso/);
+    assert.doesNotMatch(list, /scheduledAt \?\? appt\.actualOccurredAt/);
+    assert.match(list, /Actually occurred/);
+    assert.match(list, /Marked completed/);
+    assert.match(list, /actualDate/);
   });
 });

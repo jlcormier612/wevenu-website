@@ -1,0 +1,23 @@
+{
+  "phase": "portal",
+  "at": "2026-10-29T23:38:59.187Z",
+  "app": "http://localhost:3000",
+  "checks": [
+    {
+      "name": "S6: venue bands = couple portal bands by stable row id",
+      "pass": true,
+      "detail": "{\"venueRows\":32,\"portalRows\":32,\"diff\":[]}"
+    },
+    {
+      "name": "S6@1280: couple portal shows the couple-can-choose rows",
+      "pass": true,
+      "detail": "{\"choosable\":[\"QA Optional Linens mvk6tawi\",\"Closure Optional Uplighting mvk717fu\",\"Closure Optional Uplighting mvk7ux9x\"]}"
+    },
+    {
+      "name": "S6@390: couple portal shows the couple-can-choose rows",
+      "pass": true,
+      "detail": "{\"choosable\":[\"QA Optional Linens mvk6tawi\",\"Closure Optional Uplighting mvk717fu\",\"Closure Optional Uplighting mvk7ux9x\"]}"
+    }
+  ],
+  "pass": true
+}

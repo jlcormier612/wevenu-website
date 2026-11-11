@@ -1,0 +1,179 @@
+{
+  "before": {
+    "innerHeight": 800,
+    "visualViewport": {
+      "h": 800,
+      "offsetTop": 0,
+      "scale": 1
+    },
+    "html": {
+      "clientH": 800,
+      "scrollH": 800,
+      "overflow": "hidden"
+    },
+    "body": {
+      "top": 0,
+      "bottom": 800,
+      "height": 800,
+      "width": 1280,
+      "position": "static",
+      "transform": "none",
+      "inset": "auto/auto/auto/auto",
+      "heightCss": "800px",
+      "overflow": "hidden",
+      "margin": "0px",
+      "padding": "0px"
+    },
+    "shell": {
+      "top": 0,
+      "bottom": 800,
+      "height": 800,
+      "width": 1280,
+      "position": "fixed",
+      "transform": "none",
+      "inset": "0px/0px/0px/0px",
+      "heightCss": "800px",
+      "overflow": "hidden",
+      "margin": "0px",
+      "padding": "0px"
+    },
+    "main": {
+      "top": 0,
+      "bottom": 732,
+      "height": 732,
+      "width": 1017,
+      "position": "static",
+      "transform": "none",
+      "inset": "auto/auto/auto/auto",
+      "heightCss": "732px",
+      "overflow": "hidden scroll",
+      "margin": "0px",
+      "padding": "0px"
+    },
+    "mainScroll": {
+      "top": 274,
+      "sh": 2324,
+      "ch": 732
+    },
+    "gapBelowShell": 0,
+    "gapAboveShell": 0
+  },
+  "after": {
+    "innerHeight": 800,
+    "visualViewport": {
+      "h": 800,
+      "offsetTop": 0,
+      "scale": 1
+    },
+    "html": {
+      "clientH": 800,
+      "scrollH": 800,
+      "overflow": "hidden"
+    },
+    "body": {
+      "top": 0,
+      "bottom": 800,
+      "height": 800,
+      "width": 1280,
+      "position": "static",
+      "transform": "none",
+      "inset": "auto/auto/auto/auto",
+      "heightCss": "800px",
+      "overflow": "hidden",
+      "margin": "0px",
+      "padding": "0px"
+    },
+    "shell": {
+      "top": 0,
+      "bottom": 800,
+      "height": 800,
+      "width": 1280,
+      "position": "fixed",
+      "transform": "none",
+      "inset": "0px/0px/0px/0px",
+      "heightCss": "800px",
+      "overflow": "hidden",
+      "margin": "0px",
+      "padding": "0px"
+    },
+    "main": {
+      "top": 0,
+      "bottom": 732,
+      "height": 732,
+      "width": 1017,
+      "position": "static",
+      "transform": "none",
+      "inset": "auto/auto/auto/auto",
+      "heightCss": "732px",
+      "overflow": "hidden scroll",
+      "margin": "0px",
+      "padding": "0px"
+    },
+    "mainScroll": {
+      "top": 558,
+      "sh": 2324,
+      "ch": 732
+    },
+    "gapBelowShell": 0,
+    "gapAboveShell": 0
+  },
+  "atTop": {
+    "innerHeight": 800,
+    "visualViewport": {
+      "h": 800,
+      "offsetTop": 0,
+      "scale": 1
+    },
+    "html": {
+      "clientH": 800,
+      "scrollH": 800,
+      "overflow": "hidden"
+    },
+    "body": {
+      "top": 0,
+      "bottom": 800,
+      "height": 800,
+      "width": 1280,
+      "position": "static",
+      "transform": "none",
+      "inset": "auto/auto/auto/auto",
+      "heightCss": "800px",
+      "overflow": "hidden",
+      "margin": "0px",
+      "padding": "0px"
+    },
+    "shell": {
+      "top": 0,
+      "bottom": 800,
+      "height": 800,
+      "width": 1280,
+      "position": "fixed",
+      "transform": "none",
+      "inset": "0px/0px/0px/0px",
+      "heightCss": "800px",
+      "overflow": "hidden",
+      "margin": "0px",
+      "padding": "0px"
+    },
+    "main": {
+      "top": 0,
+      "bottom": 732,
+      "height": 732,
+      "width": 1017,
+      "position": "static",
+      "transform": "none",
+      "inset": "auto/auto/auto/auto",
+      "heightCss": "732px",
+      "overflow": "hidden scroll",
+      "margin": "0px",
+      "padding": "0px"
+    },
+    "mainScroll": {
+      "top": 0,
+      "sh": 2324,
+      "ch": 732
+    },
+    "gapBelowShell": 0,
+    "gapAboveShell": 0
+  }
+}

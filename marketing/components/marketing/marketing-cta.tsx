@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 import { MORE_INFO_CTA, PRIMARY_CTA } from "@/lib/marketing/nav";
-import { HOVER_FILL, HOVER_GHOST, HOVER_OUTLINE } from "@/lib/marketing/rhythm";
+import { HOVER_GHOST, HOVER_OUTLINE } from "@/lib/marketing/rhythm";
 
 type MarketingCtaProps = {
   href?: string;
@@ -28,8 +28,9 @@ export function MarketingCta({
       href={href}
       className={cn(
         "inline-flex items-center justify-center rounded-full text-sm tracking-wide transition duration-200 ease-out",
+        "outline-none focus-visible:ring-2 focus-visible:ring-[var(--botanical)] focus-visible:ring-offset-2",
         variant === "primary" &&
-          `bg-[var(--heritage-sage)] px-6 py-3 text-[var(--true-white)] ${HOVER_FILL}`,
+          "bg-[var(--botanical)] px-6 py-3 font-medium text-[var(--true-white)] hover:bg-[color-mix(in_srgb,var(--botanical)_88%,black)]",
         variant === "secondary" &&
           `border border-[var(--heritage-sage)]/28 bg-transparent px-6 py-3 text-[var(--forest-sage)]/72 ${HOVER_OUTLINE}`,
         variant === "ghost" &&
@@ -37,7 +38,10 @@ export function MarketingCta({
         className,
       )}
     >
-      {label}
+      {/* Full-width span keeps multi-line labels centered inside the pill */}
+      <span className="w-full min-w-0 grow basis-full text-center text-balance">
+        {label}
+      </span>
     </Link>
   );
 }

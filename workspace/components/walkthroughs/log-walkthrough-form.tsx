@@ -93,7 +93,7 @@ export function LogWalkthroughForm({
         <button
           type="button"
           onClick={() => setOpen(false)}
-          className="text-xs ws-muted hover:text-[var(--forest-sage)]"
+          className="text-xs ws-muted hover:text-foreground"
         >
           Cancel
         </button>
@@ -120,7 +120,7 @@ export function LogWalkthroughForm({
               id="relationshipId"
               name="relationshipId"
               required
-              className="mt-1 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_50%,transparent)] bg-[var(--true-white)] px-3 py-2 text-sm"
+              className="mt-1 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_50%,transparent)] bg-[var(--true-white)] px-3 py-2 text-sm text-foreground"
               defaultValue=""
             >
               <option value="" disabled>
@@ -156,7 +156,7 @@ export function LogWalkthroughForm({
             name="scheduledAt"
             type="datetime-local"
             required
-            className="mt-1 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_50%,transparent)] bg-[var(--true-white)] px-3 py-2 text-sm"
+            className="mt-1 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_50%,transparent)] bg-[var(--true-white)] px-3 py-2 text-sm text-foreground"
           />
         </div>
 
@@ -167,7 +167,7 @@ export function LogWalkthroughForm({
           <select
             id="assignedTeamMemberId"
             name="assignedTeamMemberId"
-            className="mt-1 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_50%,transparent)] bg-[var(--true-white)] px-3 py-2 text-sm"
+            className="mt-1 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_50%,transparent)] bg-[var(--true-white)] px-3 py-2 text-sm text-foreground"
             defaultValue=""
           >
             <option value="">—</option>
@@ -187,7 +187,7 @@ export function LogWalkthroughForm({
             id="notes"
             name="notes"
             rows={2}
-            className="mt-1 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_50%,transparent)] bg-[var(--true-white)] px-3 py-2 text-sm"
+            className="mt-1 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_50%,transparent)] bg-[var(--true-white)] px-3 py-2 text-sm text-foreground"
           />
         </div>
 
@@ -222,7 +222,7 @@ function ModeButton({
       className={
         active
           ? "rounded-sm bg-[var(--soft-sage)]/50 px-3 py-1.5 text-xs"
-          : "rounded-sm px-3 py-1.5 text-xs ws-muted hover:text-[var(--forest-sage)]"
+          : "rounded-sm px-3 py-1.5 text-xs ws-muted hover:text-foreground"
       }
     >
       {children}
@@ -251,7 +251,7 @@ function Field({
         name={name}
         type={type}
         required={required}
-        className="mt-1 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_50%,transparent)] bg-[var(--true-white)] px-3 py-2 text-sm"
+        className="mt-1 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_50%,transparent)] bg-[var(--true-white)] px-3 py-2 text-sm text-foreground"
       />
     </div>
   );

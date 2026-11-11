@@ -1,0 +1,588 @@
+{
+  "workflow": "booking-to-portal-simplification",
+  "status": "GREEN",
+  "expectedSha": "ad5c6939aed2f94d6e8320d49c777954745f639d",
+  "servingSha": "ad5c6939aed2f94d6e8320d49c777954745f639d",
+  "ids": {
+    "leadId": "219b91b4-b462-4086-83db-54f5c7c868e5",
+    "clientId": "b4e2764b-be33-4579-89e3-0c8e4a6dd5be",
+    "eventId": "ebf74f77-2944-474a-b735-48762ecb6842",
+    "profileId": "b2c5bb44-cdea-4b1a-9aca-995c04fea327",
+    "tag": "B2P-1792642396736-9a50"
+  },
+  "passed": 114,
+  "failed": 0,
+  "checks": [
+    {
+      "name": "profile_configured_inventory_eo",
+      "pass": true,
+      "detail": "{\"invRef\":\"0f7cb5d2-f2ef-4e47-bf25-309f8b60a330\",\"eoRef\":\"d73d9734-98d9-46a0-b54b-dccadb036150\"}"
+    },
+    {
+      "name": "profile_configured_both_planning_checklists",
+      "pass": true,
+      "detail": "{\"clientPbRef\":\"7a1766d4-f1cd-4882-a8ed-19a54aba68ea\",\"venuePbRef\":\"b2808150-67cb-4900-9cf2-eb5c10c3123e\"}"
+    },
+    {
+      "name": "serving_sha",
+      "pass": true,
+      "detail": "serving=ad5c6939aed2f94d6e8320d49c777954745f639d expected=ad5c6939aed2f94d6e8320d49c777954745f639d"
+    },
+    {
+      "name": "settings_lists_full_capability_set",
+      "pass": true,
+      "detail": "Planning checklists, Floor plans, Floor Plans, Seating arrangements, Floor plans, Vendor Network, Vendor Network, Vendor Network, Inventory, inventory, inventory, Inventory, Event Order, Event Order, Event Order, Event Order, Questionnaires, questionnaires, questionnaires"
+    },
+    {
+      "name": "settings_keeps_floor_and_seating_distinct",
+      "pass": true,
+      "detail": "floor plans vs seating copy"
+    },
+    {
+      "name": "profile_list_shows_standard_wedding",
+      "pass": true,
+      "detail": "OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\nClients\nVendors\n\nSCHEDULING\n\nCalendar\nTours\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nLIBRARY\n\nTemplates\nDocuments\n\nFINANCIALS\n\nContracts\nPa"
+    },
+    {
+      "name": "profile_explains_auto_prepare",
+      "pass": true,
+      "detail": "source copy includes both Planning checklists + auto-prepare"
+    },
+    {
+      "name": "profile_vendor_network_authoritative",
+      "pass": true,
+      "detail": "source copy (unit + shipped UI)"
+    },
+    {
+      "name": "profile_list_shows_both_checklists",
+      "pass": true,
+      "detail": "Client checklist: Standard Wedding — Client Planning · Venue checklist: Standard Wedding — Venue Planning · Timeline: Standard Wedding Day Timeline"
+    },
+    {
+      "name": "profile_ui_both_planning_selects",
+      "pass": true,
+      "detail": "client=true venue=true"
+    },
+    {
+      "name": "booked_client_and_event",
+      "pass": true,
+      "detail": "{\"clientId\":\"b4e2764b-be33-4579-89e3-0c8e4a6dd5be\",\"eventId\":\"ebf74f77-2944-474a-b735-48762ecb6842\"}"
+    },
+    {
+      "name": "setup_snapshot_inherited",
+      "pass": true,
+      "detail": "{\"uses_profile\":true,\"profile_id\":\"b2c5bb44-cdea-4b1a-9aca-995c04fea327\",\"inherited_template_refs\":{\"requiredVendorIds\":[],\"timelineTemplateId\":\"a5855821-8c1a-4424-906a-7b2f6cf686c4\",\"inventoryTemplateId\":\"0f7cb5d2-f2ef-4e47-bf25-309f8b60a330\",\"timelineTemplateIds\":[],\"eventOrderTemplateId\":\"d73d9734-98d9-46a0-b54b-dccadb036150\",\"floorPlanTemplateIds\":[\"3d4e11ef-7de7-495b-8fc7-b2eaf59584c3\"],\"recommendedVendorIds\":[],\"questionnaireTemplateIds\":[\"7d0f8006-adeb-42b3-ad42-596c64e1e76a\"],\"defaultFloorPlanTemplateId\":\"3d4e11ef-7de7-495b-8fc7-b2eaf59584c3\",\"planningPlaybookTemplateId\":\"7a1766d4-f1cd"
+    },
+    {
+      "name": "booking_prepared_inventory_draft",
+      "pass": true,
+      "detail": "[{\"id\":\"2cdf3609-21e0-4ffc-a56d-062485ea683d\",\"status\":\"draft\",\"template_id\":\"0f7cb5d2-f2ef-4e47-bf25-309f8b60a330\",\"finalized_at\":null}]"
+    },
+    {
+      "name": "booking_prepared_event_order_draft",
+      "pass": true,
+      "detail": "[{\"id\":\"624eceef-5096-4288-b104-62daa3a82d11\",\"status\":\"open\",\"template_id\":\"d73d9734-98d9-46a0-b54b-dccadb036150\",\"shared_at\":null,\"finalized_at\":null}]"
+    },
+    {
+      "name": "booking_prepared_client_checklist",
+      "pass": true,
+      "detail": "{\"id\":\"3fb7107e-4cd7-4952-88ae-bad919378b18\",\"kind\":\"client\",\"released_at\":null,\"template_id\":\"7a1766d4-f1cd-4882-a8ed-19a54aba68ea\"}"
+    },
+    {
+      "name": "booking_prepared_venue_checklist",
+      "pass": true,
+      "detail": "{\"venuePb\":{\"id\":\"5867ed34-bab5-45a0-a816-9e0b24cbcd8f\",\"kind\":\"venue\",\"released_at\":\"2026-10-22T04:13:37.362+00:00\",\"template_id\":\"b2808150-67cb-4900-9cf2-eb5c10c3123e\"},\"expected\":\"b2808150-67cb-4900-9cf2-eb5c10c3123e\"}"
+    },
+    {
+      "name": "booking_prepared_timeline",
+      "pass": true,
+      "detail": "entries=38 ref=a5855821-8c1a-4424-906a-7b2f6cf686c4"
+    },
+    {
+      "name": "booking_prepared_floor_plan_offers",
+      "pass": true,
+      "detail": "{\"offers\":[{\"id\":\"fdef7380-6a94-4887-9bf2-792b0b867894\",\"floor_plan_template_id\":\"3d4e11ef-7de7-495b-8fc7-b2eaf59584c3\",\"is_offered\":true}],\"offersErr\":null}"
+    },
+    {
+      "name": "booking_no_invoice",
+      "pass": true,
+      "detail": "invoices=0"
+    },
+    {
+      "name": "booking_no_questionnaire_sent",
+      "pass": true,
+      "detail": "sent=0"
+    },
+    {
+      "name": "booking_no_invitation",
+      "pass": true,
+      "detail": "invites=0"
+    },
+    {
+      "name": "event_setup_shows_prepare_release",
+      "pass": true,
+      "detail": "Event setup\n\nUsing: Standard Wedding Setup\n\nReview your event's standard setup, make any event-specific changes, and release the prepared experience to the client portal. Invite the client separately when you're ready. Questionnaires use authorized send when staff choose — not an"
+    },
+    {
+      "name": "event_setup_shows_invite_separate",
+      "pass": true,
+      "detail": "Event setup\n\nUsing: Standard Wedding Setup\n\nReview your event's standard setup, make any event-specific changes, and release the prepared experience to the client portal. Invite the client separately when you're ready. Questionnaires use authorized send when staff choose — not an"
+    },
+    {
+      "name": "event_setup_no_start_draft_ctas",
+      "pass": true,
+      "detail": "no component-level prepare/start draft CTAs"
+    },
+    {
+      "name": "event_setup_no_embedded_apply_wizards",
+      "pass": true,
+      "detail": "no BookingSetupCard/TimelineSetupCard wizards in Event Setup"
+    },
+    {
+      "name": "event_setup_no_unavailable_inventory_eo",
+      "pass": true,
+      "detail": "configured Inventory/Event Order must not show Unavailable"
+    },
+    {
+      "name": "event_setup_open_planning_from_card",
+      "pass": true,
+      "detail": "Planning card exposes Open Planning"
+    },
+    {
+      "name": "event_setup_single_release_cta",
+      "pass": true,
+      "detail": "one Release CTA; no yellow outstanding when only drafts await release"
+    },
+    {
+      "name": "event_setup_change_opens_editor_not_set_up_skip",
+      "pass": true,
+      "detail": "change=1 setUpChooser=0"
+    },
+    {
+      "name": "planning_badge_included_not_draft",
+      "pass": true,
+      "detail": "Planning\n\nIncluded\nStandard Wedding Setup\nChange for this event\nDon't include for this event\n\nBoth checklists are set up for this event: client checklist \"Standard Wedding — Client Planning\" (not released yet) and venue/internal checklist \"Standard Wedding — Venue Planning\" (inte"
+    },
+    {
+      "name": "planning_shows_profile_name",
+      "pass": true,
+      "detail": "Planning\n\nIncluded\nStandard Wedding Setup\nChange for this event\nDon't include for this event\n\nBoth checklists are set up for this event: client checklist \"Standard Wedding — Client Planning\" (not released yet) and venue/internal checklist \"Standard Wedding — Venue Planning\" (inte"
+    },
+    {
+      "name": "planning_overview_describes_both_checklists",
+      "pass": true,
+      "detail": "Planning\n\nIncluded\nStandard Wedding Setup\nChange for this event\nDon't include for this event\n\nBoth checklists are set up for this event: client checklist \"Standard Wedding — Client Planning\" (not released yet) and venue/internal checklist \"Standard Wedding — Venue Planning\" (internal only). Use Change for this event to change the client checklist, the venue checklist, or both — changes apply only to this event and do not alter Library templates. Client checklist release is a "
+    },
+    {
+      "name": "open_planning_reaches_management_workspace",
+      "pass": true,
+      "detail": "taskList=1 url=https://app.sandbox.hellotocheers.com/clients/b4e2764b-be33-4579-89e3-0c8e4a6dd5be#planning-task-list"
+    },
+    {
+      "name": "management_workspace_keeps_fulfillment_actions",
+      "pass": true,
+      "detail": "UPCOMING (15)\n\nComplete your questionnaire\n\nPlanning\n·\nClient\n·\nClient completes\n·\n90 days before · Apr 18\n\nAuto-completes on trigger\n\nCreate Request\nWaive\n\nPurchase event insurance\n\nDocument\n·\nClient\n·\nClient completes\n·\n60 days before · May 18\n\nAuto-completes on trigger\n\nCreate"
+    },
+    {
+      "name": "change_opens_dedicated_planning_setup_editor",
+      "pass": true,
+      "detail": "editor=1"
+    },
+    {
+      "name": "setup_editor_has_two_paths_only",
+      "pass": true,
+      "detail": "template + customize; no waive/request"
+    },
+    {
+      "name": "setup_editor_add_task_persists",
+      "pass": true,
+      "detail": "[{\"id\":\"6f1a8bad-e79c-43f0-8ba7-899c50ffee9a\",\"title\":\"QA event-only planning task\",\"template_task_id\":null,\"owner_type\":\"couple\"}]"
+    },
+    {
+      "name": "planning_questionnaire_attach_control_present",
+      "pass": true,
+      "detail": "count=1"
+    },
+    {
+      "name": "planning_task_questionnaire_attached",
+      "pass": true,
+      "detail": "[{\"id\":\"2741aa30-f800-401c-a717-adf2628eba60\",\"action_type\":\"questionnaire\",\"auto_complete_trigger\":\"questionnaire_submitted\"}]"
+    },
+    {
+      "name": "questionnaire_attach_did_not_send",
+      "pass": true,
+      "detail": "[{\"id\":\"e055c612-ed2c-4180-a34c-03414fece3ed\",\"status\":\"draft\"}]"
+    },
+    {
+      "name": "setup_editor_did_not_mutate_library",
+      "pass": true,
+      "detail": "libraryHits=0"
+    },
+    {
+      "name": "booking_inherited_venue_checklist_application",
+      "pass": true,
+      "detail": "[{\"id\":\"5867ed34-bab5-45a0-a816-9e0b24cbcd8f\",\"template_id\":\"b2808150-67cb-4900-9cf2-eb5c10c3123e\",\"template_name\":\"Standard Wedding — Venue Planning\"}]"
+    },
+    {
+      "name": "booking_inherited_venue_checklist_tasks",
+      "pass": true,
+      "detail": "venueTasks=7"
+    },
+    {
+      "name": "setup_editor_has_venue_audience",
+      "pass": true,
+      "detail": "venue audience + two paths"
+    },
+    {
+      "name": "venue_setup_shows_inherited_checklist_not_empty",
+      "pass": true,
+      "detail": "empty=0"
+    },
+    {
+      "name": "venue_template_cancel_does_not_mutate",
+      "pass": true,
+      "detail": "{\"mid\":[{\"id\":\"5867ed34-bab5-45a0-a816-9e0b24cbcd8f\",\"template_id\":\"b2808150-67cb-4900-9cf2-eb5c10c3123e\"}],\"after\":[{\"id\":\"5867ed34-bab5-45a0-a816-9e0b24cbcd8f\",\"template_id\":\"b2808150-67cb-4900-9cf2-eb5c10c3123e\"}]}"
+    },
+    {
+      "name": "setup_editor_venue_add_task_persists",
+      "pass": true,
+      "detail": "[{\"id\":\"73ad3bc6-d49e-463a-9c55-a8add9cdbf38\",\"title\":\"QA venue-only planning task\",\"template_task_id\":null,\"owner_type\":\"coordinator\"}]"
+    },
+    {
+      "name": "setup_editor_venue_did_not_mutate_library",
+      "pass": true,
+      "detail": "libraryHits=0"
+    },
+    {
+      "name": "change_opens_dedicated_timeline_setup_editor",
+      "pass": true,
+      "detail": "timeline editor + two paths"
+    },
+    {
+      "name": "timeline_setup_add_item_persists",
+      "pass": true,
+      "detail": "[{\"id\":\"31efeb31-a96c-4fb8-a0b5-c601011502a8\",\"title\":\"QA event-only timeline item\",\"owner\":\"venue\"}]"
+    },
+    {
+      "name": "timeline_setup_did_not_duplicate_on_add",
+      "pass": true,
+      "detail": "before=39 after=40"
+    },
+    {
+      "name": "timeline_template_cancel_does_not_mutate",
+      "pass": true,
+      "detail": "before=40 after=40"
+    },
+    {
+      "name": "timeline_template_replace_persists",
+      "pass": true,
+      "detail": "{\"tlAfterReplace\":28,\"altItemCount\":28,\"stillOnEditor\":true,\"qaCustomStill\":0}"
+    },
+    {
+      "name": "timeline_db_times_chronological_after_replace",
+      "pass": true,
+      "detail": "14:00:Venue Setup Begins | 18:00:Venue Access / Team Arrival | 20:00:Vendor Load-In"
+    },
+    {
+      "name": "timeline_time_edit_earlier_reorders_persist",
+      "pass": true,
+      "detail": "13:00:Vendor Load-In | 14:00:Venue Setup Begins | 18:00:Venue Access / Team Arrival"
+    },
+    {
+      "name": "timeline_time_edit_later_reorders_persist",
+      "pass": true,
+      "detail": "14:00:Venue Setup Begins | 18:00:Venue Access / Team Arrival | 22:00:Vendor Load-In"
+    },
+    {
+      "name": "open_timeline_reaches_management_workspace",
+      "pass": true,
+      "detail": "url=https://app.sandbox.hellotocheers.com/clients/b4e2764b-be33-4579-89e3-0c8e4a6dd5be#timeline"
+    },
+    {
+      "name": "timeline_browser_display_chronological",
+      "pass": true,
+      "detail": "05:00, 05:00, 05:00"
+    },
+    {
+      "name": "change_hidden_for_areas_without_setup_editor",
+      "pass": true,
+      "detail": "Questionnaires Change hidden until later phases"
+    },
+    {
+      "name": "change_opens_dedicated_inventory_setup_editor",
+      "pass": true,
+      "detail": "inventory setup editor visible"
+    },
+    {
+      "name": "inventory_setup_customize_persists",
+      "pass": true,
+      "detail": "items=[{\"id\":\"63fecddc-8679-4a5d-8a69-1970ac06d843\",\"name\":\"QA event-only inventory B2P-1792642396736-9a50\"}]"
+    },
+    {
+      "name": "inventory_setup_template_replace_safe",
+      "pass": true,
+      "detail": "template=9a2c583a-4b4b-4b45-b970-6ae876355138 status=draft drafts=1"
+    },
+    {
+      "name": "open_inventory_reaches_management_workspace",
+      "pass": true,
+      "detail": "url=https://app.sandbox.hellotocheers.com/clients/b4e2764b-be33-4579-89e3-0c8e4a6dd5be#inventory"
+    },
+    {
+      "name": "inventory_library_template_unchanged",
+      "pass": true,
+      "detail": "before=32 after=32"
+    },
+    {
+      "name": "change_opens_dedicated_event_order_setup_editor",
+      "pass": true,
+      "detail": "event order setup editor visible"
+    },
+    {
+      "name": "event_order_setup_customize_persists",
+      "pass": true,
+      "detail": "lines=[{\"id\":\"30a81af3-28f1-4328-a94c-e430d7982f99\",\"description\":\"QA event-only EO line B2P-1792642396736-9a50\"}] status=open"
+    },
+    {
+      "name": "event_order_setup_package_replace_safe",
+      "pass": true,
+      "detail": "wanted=99585da2-587c-4b7a-9e59-5e9db5d4d998 template=99585da2-587c-4b7a-9e59-5e9db5d4d998 drafts=1"
+    },
+    {
+      "name": "open_event_order_reaches_management_workspace",
+      "pass": true,
+      "detail": "url=https://app.sandbox.hellotocheers.com/clients/b4e2764b-be33-4579-89e3-0c8e4a6dd5be#event-order"
+    },
+    {
+      "name": "event_order_library_package_unchanged",
+      "pass": true,
+      "detail": "before=0 after=0"
+    },
+    {
+      "name": "change_opens_dedicated_floor_plans_setup_editor",
+      "pass": true,
+      "detail": "The client has not selected a layout yet. A working layout (Barn-master-floorplan) is ready for venue prep."
+    },
+    {
+      "name": "floor_plans_setup_shows_client_selection_truthfully",
+      "pass": true,
+      "detail": "The client has not selected a layout yet. A working layout (Barn-master-floorplan) is ready for venue prep."
+    },
+    {
+      "name": "floor_plans_editor_keeps_offer_mgmt_in_sheet",
+      "pass": true,
+      "detail": "offer mgmt in Change; no redundant Open management section"
+    },
+    {
+      "name": "floor_plans_setup_offer_persists",
+      "pass": true,
+      "detail": "[{\"id\":\"a796f419-0846-493d-89df-9714efed29c4\",\"couple_label\":\"QA floor offer B2P-1792642396736-9a50\",\"is_offered\":true,\"floor_plan_template_id\":\"026fb633-2dce-4c73-87c8-144bb29a0318\"}]"
+    },
+    {
+      "name": "floor_plans_offer_initializes_working_layout",
+      "pass": true,
+      "detail": "opsBefore=1 opsAfter=1 operational=18c943fb-9762-4383-948a-e0f82fa4f89f"
+    },
+    {
+      "name": "floor_plans_setup_withdraw_persists",
+      "pass": true,
+      "detail": "{\"id\":\"a796f419-0846-493d-89df-9714efed29c4\",\"is_offered\":false}"
+    },
+    {
+      "name": "floor_plans_setup_withdraw_survives_reload",
+      "pass": true,
+      "detail": "{\"id\":\"a796f419-0846-493d-89df-9714efed29c4\",\"is_offered\":false}"
+    },
+    {
+      "name": "floor_plans_setup_reopen_idempotent",
+      "pass": true,
+      "detail": "before=1 afterReopen=2"
+    },
+    {
+      "name": "open_floor_plans_opens_working_layout_editor",
+      "pass": true,
+      "detail": "url=https://app.sandbox.hellotocheers.com/events/ebf74f77-2944-474a-b735-48762ecb6842/floor-plans/18c943fb-9762-4383-948a-e0f82fa4f89f operational=18c943fb-9762-4383-948a-e0f82fa4f89f"
+    },
+    {
+      "name": "open_floor_plans_hides_offer_layouts_panel",
+      "pass": true,
+      "detail": "offer panel absent"
+    },
+    {
+      "name": "floor_plans_library_templates_unchanged",
+      "pass": true,
+      "detail": "before=3 after=3"
+    },
+    {
+      "name": "floor_plans_other_events_offers_unchanged",
+      "pass": true,
+      "detail": "before=61 after=61"
+    },
+    {
+      "name": "change_opens_dedicated_vendors_setup_editor",
+      "pass": true,
+      "detail": "Vendors for this event\n\nB2P 96736-9a50 & Portal Partner · Standard Wedding Setup\n\nCuppity Cakes\n\nCake & Desserts · 5089896064\n\nRemove\n\nBaker's Dozen\n\nCake & Desserts · 5089896064\n\nRemove\n\nAdd a vendor\n\nSelect a vendor…\nAdd vendor\nBack to Ov"
+    },
+    {
+      "name": "vendors_setup_shows_assignment_list_or_empty",
+      "pass": true,
+      "detail": "assignBefore=2"
+    },
+    {
+      "name": "vendors_setup_assignment_persists",
+      "pass": true,
+      "detail": "[{\"id\":\"36c85d4f-c870-493d-a860-65c1753dea6f\",\"vendor_id\":\"e5ed92aa-82a4-46c7-b6c2-36a90db714e1\"}]"
+    },
+    {
+      "name": "vendors_setup_assignment_did_not_create_highlight",
+      "pass": true,
+      "detail": "recsForVendor=0"
+    },
+    {
+      "name": "vendors_setup_remove_assignment_persists",
+      "pass": true,
+      "detail": "assignmentId=36c85d4f-c870-493d-a860-65c1753dea6f"
+    },
+    {
+      "name": "vendors_setup_remove_keeps_network_relationship",
+      "pass": true,
+      "detail": "network=1"
+    },
+    {
+      "name": "vendors_setup_reopen_idempotent",
+      "pass": true,
+      "detail": "assignBefore=2 assignAfterReopen=2"
+    },
+    {
+      "name": "vendors_setup_did_not_mutate_highlights",
+      "pass": true,
+      "detail": "before=0 after=0"
+    },
+    {
+      "name": "open_vendors_reaches_management_workspace",
+      "pass": true,
+      "detail": "url=https://app.sandbox.hellotocheers.com/clients/b4e2764b-be33-4579-89e3-0c8e4a6dd5be#vendors"
+    },
+    {
+      "name": "open_vendors_shows_highlights_section",
+      "pass": true,
+      "detail": "highlights live on Vendors tab"
+    },
+    {
+      "name": "vendors_library_relationships_unchanged",
+      "pass": true,
+      "detail": "before=10 after=10"
+    },
+    {
+      "name": "vendors_other_events_highlights_unchanged",
+      "pass": true,
+      "detail": "before=14 after=14"
+    },
+    {
+      "name": "vendors_setup_did_not_invite",
+      "pass": true,
+      "detail": "before=0 after=0"
+    },
+    {
+      "name": "vendors_tab_uses_vendor_network",
+      "pass": true,
+      "detail": "OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\n28\nClients\nVendors\n\nSCHEDULING\n\nCalendar\nTours\n4\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nLIBRARY\n\nTemplates\nDocuments\n\nFINANCIALS\n\nContracts\n13\nPayments\n13\n\nTO DO’S\n\nTask Center\nRequests\n\nYOUR VENUE\n\nSetup\nSettings\nGuidance\nVenue Guide\nRe"
+    },
+    {
+      "name": "floor_plans_working_layout_on_this_event",
+      "pass": true,
+      "detail": "{\"offerCount\":1,\"operational\":\"18c943fb-9762-4383-948a-e0f82fa4f89f\",\"plans\":1,\"coupleSelected\":null}"
+    },
+    {
+      "name": "floor_plans_working_layout_stage_present_on_venue",
+      "pass": true,
+      "detail": "{\"sample\":[{\"id\":\"33917722-36bc-4902-bd51-6f756a30184f\",\"event_id\":\"b16f8c7a-5754-4354-9ce3-ac6e25085525\",\"name\":\"Ceremony\",\"source_template_id\":null},{\"id\":\"3666169c-5a0f-4707-a3a1-6521d4ba964c\",\"event_id\":\"b16f8c7a-5754-4354-9ce3-ac6e25085525\",\"name\":\"Reception\",\"source_template_id\":null},{\"id\":\"44238472-3c60-474f-8bfa-5b3e106a2362\",\"event_id\":\"6781cc37-e162-4427-8431-3d8b45ab01d0\",\"name\":\"workspace-prebook-plan\",\"source_template_id\":null}],\"thisEvent\":1}"
+    },
+    {
+      "name": "floor_plans_seating_assignments_scoped_to_event",
+      "pass": true,
+      "detail": "{\"floorPlanId\":\"18c943fb-9762-4383-948a-e0f82fa4f89f\",\"eventId\":\"ebf74f77-2944-474a-b735-48762ecb6842\",\"seatCount\":0,\"sameEventOtherPlanSeats\":0,\"note\":\"No seat rows on this working layout yet — scope contract verified via floor_plan_id FK\"}"
+    },
+    {
+      "name": "floor_plans_client_selection_column_present",
+      "pass": true,
+      "detail": "{\"id\":\"ebf74f77-2944-474a-b735-48762ecb6842\",\"couple_selected_floor_plan_id\":null}"
+    },
+    {
+      "name": "prepare_release_button_present",
+      "pass": true,
+      "detail": "count=1"
+    },
+    {
+      "name": "prepare_released_client_planning",
+      "pass": true,
+      "detail": "{\"id\":\"3fb7107e-4cd7-4952-88ae-bad919378b18\",\"kind\":\"client\",\"released_at\":\"2026-10-22T04:16:13.074+00:00\"}"
+    },
+    {
+      "name": "prepare_kept_venue_checklist_internal",
+      "pass": true,
+      "detail": "{\"id\":\"5867ed34-bab5-45a0-a816-9e0b24cbcd8f\",\"kind\":\"venue\",\"released_at\":\"2026-10-22T04:13:37.362+00:00\",\"template_id\":\"b2808150-67cb-4900-9cf2-eb5c10c3123e\"}"
+    },
+    {
+      "name": "prepare_did_not_invite",
+      "pass": true,
+      "detail": "invites=0"
+    },
+    {
+      "name": "prepare_did_not_send_questionnaires",
+      "pass": true,
+      "detail": "sent=0"
+    },
+    {
+      "name": "prepare_did_not_create_invoice",
+      "pass": true,
+      "detail": "invoices=0"
+    },
+    {
+      "name": "prepare_idempotent_no_duplicate_drafts",
+      "pass": true,
+      "detail": "inv=1 eo=1"
+    },
+    {
+      "name": "venue_inventory_grew_by_one",
+      "pass": true,
+      "detail": "before=46 after=47"
+    },
+    {
+      "name": "venue_eo_grew_by_one",
+      "pass": true,
+      "detail": "before=49 after=50"
+    },
+    {
+      "name": "profile_unchanged",
+      "pass": true,
+      "detail": "{\"requiredVendorIds\":[],\"timelineTemplateId\":\"a5855821-8c1a-4424-906a-7b2f6cf686c4\",\"inventoryTemplateId\":\"0f7cb5d2-f2ef-4e47-bf25-309f8b60a330\",\"timelineTemplateIds\":[],\"eventOrderTemplateId\":\"d73d9734-98d9-46a0-b54b-dccadb036150\",\"floorPlanTemplateIds\":[\"3d4e11ef-7de7-495b-8fc7-b2eaf59584c3\"],\"recommendedVendorIds\":[],\"questionnaireTemplateIds\":[\"7d0f8006-adeb-42b3-ad42-596c64e1e76a\"],\"defaultFloorPlanTemplateId\":\"3d4e11ef-7de7-495b-8fc7-b2eaf59584c3\",\"planningPlaybookTemplateId\":\"7a1766d4-f1cd-4882-a8ed-19a54aba68ea\",\"venuePlanningPlaybookTemplateId\":\"b2808150-67cb-4900-9cf2-eb5c10c3123e\"}"
+    },
+    {
+      "name": "prepare_release_code_boundaries",
+      "pass": true,
+      "detail": "prepare-release side-effect boundaries"
+    },
+    {
+      "name": "invite_button_present_after_prepare",
+      "pass": true,
+      "detail": "testid=1 role=1 section=1"
+    },
+    {
+      "name": "invite_created_separately",
+      "pass": true,
+      "detail": "[{\"id\":\"d8cf9eb5-dc3d-436f-b4c1-87eaee4e08c1\",\"status\":\"pending\",\"email\":\"b2p-invite-1792642396736@hellotocheers-test.invalid\"}]"
+    },
+    {
+      "name": "invite_did_not_send_questionnaires",
+      "pass": true,
+      "detail": "sent=0"
+    },
+    {
+      "name": "invite_did_not_create_invoice",
+      "pass": true,
+      "detail": "invoices=0"
+    }
+  ],
+  "at": "2026-10-22T04:16:29.588Z"
+}

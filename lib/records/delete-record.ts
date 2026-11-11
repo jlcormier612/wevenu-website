@@ -3,9 +3,18 @@
  *
  * Lost = a real opportunity we did not win (stays in conversion).
  * Delete = this record should not exist (removed from counts and conversion).
+ *
+ * Global active-visibility rule: after a successful hard delete, the entity
+ * must not surface in active business surfaces. Surviving SET NULL / historical
+ * rows must not present the deleted entity as current. See deletion-contract.ts.
  */
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
+import {
+  formatClientDeleteFailureMessage,
+  formatLeadDeleteBlockedMessage,
+  formatLeadDeleteFailureMessage,
+} from "@/lib/records/deletion-contract";
 import { getCurrentVenue } from "@/lib/venue/service";
 
 export type DeleteImpact = {
@@ -166,12 +175,37 @@ export async function previewDeleteLead(leadId: string): Promise<DeletePreview> 
  * Destructive lead delete. Caller must have already previewed.
  * Booking history is removed and cannot be resurrected from client stamps.
  * Client workspace / contracts / payments are not deleted.
+ *
+ * Active-visibility side effects (successful delete only):
+ * - Cancel occupying scheduled/confirmed tours so capacity is released and
+ *   confirm links cannot succeed on an orphaned row after lead_id SET NULL.
+ * - Soft-archive tours for this lead so SET NULL contact_name cannot keep them
+ *   in active Tours lists.
+ * - Clear lead-scoped Luv drafts so stale intelligence cannot resurface.
  */
 export async function applyLeadRecordDeletion(
   supabase: Db,
   venueId: string,
   leadId: string,
 ): Promise<DeleteResult> {
+  const { count: protectionCount, error: protectionError } = await supabase
+    .from("tour_protection_requests")
+    .select("id", { count: "exact", head: true })
+    .eq("venue_id", venueId)
+    .eq("lead_id", leadId);
+  if (protectionError) {
+    return { ok: false, message: formatLeadDeleteFailureMessage(protectionError) };
+  }
+  if ((protectionCount ?? 0) > 0) {
+    return {
+      ok: false,
+      message: formatLeadDeleteBlockedMessage({
+        kind: "tour_protection",
+        count: protectionCount ?? 0,
+      }),
+    };
+  }
+
   const { data: client } = await supabase
     .from("clients")
     .select("id")
@@ -180,6 +214,57 @@ export async function applyLeadRecordDeletion(
     .maybeSingle<{ id: string }>();
 
   await removeLifecycleEventsFor(supabase, venueId, { leadId });
+
+  // Occupying tours must leave capacity before lead_id SET NULL. Soft-archive
+  // alone keeps status scheduled/confirmed, so availability stays blocked and
+  // confirm_token can still "succeed" on an orphaned row. Cancel first (no
+  // customer email — this is hard-delete reconciliation, not a venue cancel
+  // action), then archive for list hygiene. Idempotent if already cancelled.
+  const { data: occupyingTours, error: occupyingError } = await supabase
+    .from("tour_appointments")
+    .select("id")
+    .eq("venue_id", venueId)
+    .eq("lead_id", leadId)
+    .in("status", ["scheduled", "confirmed"]);
+  if (occupyingError) {
+    return { ok: false, message: formatLeadDeleteFailureMessage(occupyingError) };
+  }
+  const occupyingIds = ((occupyingTours ?? []) as { id: string }[]).map((t) => t.id);
+  if (occupyingIds.length > 0) {
+    const { error: cancelError } = await supabase
+      .from("tour_appointments")
+      .update({ status: "cancelled" })
+      .eq("venue_id", venueId)
+      .in("id", occupyingIds)
+      .in("status", ["scheduled", "confirmed"]);
+    if (cancelError) {
+      return { ok: false, message: formatLeadDeleteFailureMessage(cancelError) };
+    }
+    await supabase
+      .from("task_reminders")
+      .update({ status: "cancelled" })
+      .in("tour_appointment_id", occupyingIds)
+      .eq("status", "pending");
+  }
+
+  // Soft-archive before SET NULL so active Tours do not keep presenting this person.
+  const { error: archiveError } = await supabase
+    .from("tour_appointments")
+    .update({ is_archived: true })
+    .eq("venue_id", venueId)
+    .eq("lead_id", leadId)
+    .eq("is_archived", false);
+  if (archiveError) {
+    return { ok: false, message: formatLeadDeleteFailureMessage(archiveError) };
+  }
+
+  // Lead-scoped Luv drafts must not remain as active intelligence.
+  await supabase
+    .from("luv_drafts")
+    .delete()
+    .eq("venue_id", venueId)
+    .eq("entity_type", "lead")
+    .eq("entity_id", leadId);
 
   if (client) {
     // clients.lead_id becomes NULL on lead delete. If lifecycle stamps stay,
@@ -195,12 +280,15 @@ export async function applyLeadRecordDeletion(
     if (stampError) return { ok: false, message: stampError.message };
   }
 
-  const { error } = await supabase
+  const { error, count } = await supabase
     .from("leads")
-    .delete()
+    .delete({ count: "exact" })
     .eq("id", leadId)
     .eq("venue_id", venueId);
-  if (error) return { ok: false, message: error.message };
+  if (error) return { ok: false, message: formatLeadDeleteFailureMessage(error) };
+  if ((count ?? 0) === 0) {
+    return { ok: false, message: "Lead not found. Nothing was deleted." };
+  }
   return { ok: true };
 }
 
@@ -273,6 +361,27 @@ export async function deleteClientRecord(clientId: string): Promise<DeleteResult
       .maybeSingle<{ id: string; lead_id: string | null }>();
     if (!client) return { ok: false as const, message: "Client not found." };
 
+    // Fail closed before any destructive work when the linked lead cannot be deleted.
+    if (client.lead_id) {
+      const { count: protectionCount, error: protectionError } = await supabase
+        .from("tour_protection_requests")
+        .select("id", { count: "exact", head: true })
+        .eq("venue_id", venueId)
+        .eq("lead_id", client.lead_id);
+      if (protectionError) {
+        return { ok: false as const, message: formatLeadDeleteFailureMessage(protectionError) };
+      }
+      if ((protectionCount ?? 0) > 0) {
+        return {
+          ok: false as const,
+          message: `${formatLeadDeleteBlockedMessage({
+            kind: "tour_protection",
+            count: protectionCount ?? 0,
+          })} The client was not deleted.`,
+        };
+      }
+    }
+
     await removeLifecycleEventsFor(supabase, venueId, {
       leadId: client.lead_id,
       clientId,
@@ -293,19 +402,19 @@ export async function deleteClientRecord(clientId: string): Promise<DeleteResult
         return {
           ok: false as const,
           message:
-            "This record has related planning history that could not be removed automatically. Do not mark it Lost — keep the real record and delete only an extra inquiry.",
+            "This record has related planning history that could not be removed automatically. Do not mark it Lost — keep the real record and delete only an extra inquiry. The client was not deleted.",
         };
       }
     }
 
     if (client.lead_id) {
-      const { error: leadError } = await supabase
-        .from("leads")
-        .delete()
-        .eq("id", client.lead_id)
-        .eq("venue_id", venueId);
-      if (leadError) {
-        return { ok: false as const, message: leadError.message };
+      // Same active-visibility side effects as lead delete (tours + drafts).
+      const leadDelete = await applyLeadRecordDeletion(supabase, venueId, client.lead_id);
+      if (!leadDelete.ok) {
+        return {
+          ok: false as const,
+          message: `${leadDelete.message} The client was not deleted.`,
+        };
       }
     }
 
@@ -317,10 +426,7 @@ export async function deleteClientRecord(clientId: string): Promise<DeleteResult
     if (error) {
       return {
         ok: false as const,
-        message:
-          error.message.includes("foreign key") || error.code === "23503"
-            ? "This record has related history that could not be removed automatically. Do not mark it Lost — delete only an extra inquiry, or keep this record."
-            : error.message,
+        message: formatClientDeleteFailureMessage(error),
       };
     }
     return { ok: true as const };

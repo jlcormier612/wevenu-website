@@ -24,6 +24,8 @@ export type CommunicationHealthIssue = {
   occurredAt: string;
   leadId: string | null;
   clientId: string | null;
+  /** Conversation-backed issues — Inbox deep-link when lead/client missing. */
+  conversationId: string | null;
 };
 
 export type CommunicationHealth = {
@@ -87,6 +89,7 @@ async function getRecentIssues(client: DbClient, venueId: string, since: string)
     return {
       id: m.id, channel: "email", reason: m.error_message ?? "Your message couldn't be delivered.",
       occurredAt: m.updated_at, leadId: thread?.lead_id ?? null, clientId: thread?.client_id ?? null,
+      conversationId: null,
     };
   });
 
@@ -100,13 +103,25 @@ async function getRecentIssues(client: DbClient, venueId: string, since: string)
   const leadByConversation = new Map<string, string>();
   const clientByConversation = new Map<string, string>();
   if (conversationIds.length > 0) {
+    type ConvMeta = {
+      id: string;
+      relationship_id: string | null;
+      inbox_owner_lead_id: string | null;
+      inbox_owner_client_id: string | null;
+    };
     const { data: conversations } = await client.from("conversations")
-      .select("id, relationship_id").in("id", conversationIds);
+      .select("id, relationship_id, inbox_owner_lead_id, inbox_owner_client_id")
+      .in("id", conversationIds);
+    const convMeta = (conversations ?? []) as ConvMeta[];
     const relationshipByConversation = new Map(
-      ((conversations ?? []) as { id: string; relationship_id: string | null }[])
+      convMeta
         .filter((c) => c.relationship_id)
         .map((c) => [c.id, c.relationship_id!]),
     );
+    for (const c of convMeta) {
+      if (c.inbox_owner_client_id) clientByConversation.set(c.id, c.inbox_owner_client_id);
+      if (c.inbox_owner_lead_id) leadByConversation.set(c.id, c.inbox_owner_lead_id);
+    }
     const relationshipIds = [...new Set(relationshipByConversation.values())];
     if (relationshipIds.length > 0) {
       const [{ data: leads }, { data: clients }] = await Promise.all([
@@ -116,10 +131,14 @@ async function getRecentIssues(client: DbClient, venueId: string, since: string)
       const leadByRelationship = new Map(((leads ?? []) as { id: string; relationship_id: string }[]).map((l) => [l.relationship_id, l.id]));
       const clientByRelationship = new Map(((clients ?? []) as { id: string; relationship_id: string }[]).map((c) => [c.relationship_id, c.id]));
       for (const [convId, relId] of relationshipByConversation) {
-        const leadId = leadByRelationship.get(relId);
-        if (leadId) leadByConversation.set(convId, leadId);
-        const clientId = clientByRelationship.get(relId);
-        if (clientId) clientByConversation.set(convId, clientId);
+        if (!leadByConversation.has(convId)) {
+          const leadId = leadByRelationship.get(relId);
+          if (leadId) leadByConversation.set(convId, leadId);
+        }
+        if (!clientByConversation.has(convId)) {
+          const clientId = clientByRelationship.get(relId);
+          if (clientId) clientByConversation.set(convId, clientId);
+        }
       }
     }
   }
@@ -130,6 +149,7 @@ async function getRecentIssues(client: DbClient, venueId: string, since: string)
     occurredAt: m.sent_at,
     leadId: leadByConversation.get(m.conversation_id) ?? null,
     clientId: clientByConversation.get(m.conversation_id) ?? null,
+    conversationId: m.conversation_id,
   }));
 
   return [...legacyIssues, ...conversationIssues]

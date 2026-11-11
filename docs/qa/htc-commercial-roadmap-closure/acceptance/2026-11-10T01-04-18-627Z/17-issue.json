@@ -1,0 +1,95 @@
+{
+  "status": 200,
+  "json": {
+    "ok": true,
+    "reward": {
+      "id": "6097ac77-24db-4745-b5af-f89ebae4991d",
+      "referralId": "db898afa-c1c8-41fe-91e2-725f70070cce",
+      "attributionId": "cad779cd-56b5-4b5a-b629-b25861334bb7",
+      "referringVenueId": "f9427d5e-84f9-48bc-a9fa-8a2bcb95af7f",
+      "referringStripeSubscriptionId": "sub_1UZvv7ErUqJH7nktxwGc9vmC",
+      "referringStripeCustomerId": "cus_Vb8ByVzSBbqWcS",
+      "referredVenueId": "a1c1b043-974d-4755-97bf-d899905f7db1",
+      "qualifyingInvoiceId": "in_fake_close_1794272703396",
+      "eligibilityAt": "2026-11-10T01:05:14.239+00:00",
+      "rewardAmountCents": 24900,
+      "currency": "usd",
+      "valuationAt": "2026-11-10T01:05:14.239+00:00",
+      "valuationPlanKey": "growing",
+      "valuationListAmountCents": 24900,
+      "valuationSource": "standard",
+      "valuationSnapshot": {
+        "excludes": [
+          "tax",
+          "white_glove",
+          "one_time_fees",
+          "prior_referral_credits",
+          "referred_venue_price"
+        ],
+        "valuedAt": "2026-11-10T01:05:14.239Z",
+        "winnerId": "standard",
+        "candidates": [
+          {
+            "id": "standard",
+            "label": "Standard catalog pricing",
+            "source": "standard",
+            "expectedAmountCents": 24900
+          }
+        ],
+        "winnerLabel": "Standard catalog pricing",
+        "winnerSource": "standard",
+        "baseListAmountCents": 24900,
+        "expectedAmountCents": 24900
+      },
+      "status": "issued",
+      "approvedByEmail": "jennifer@hellotocheers.com",
+      "approvedAt": "2026-11-10T01:05:15.17+00:00",
+      "approvalNotes": "Combined closure approval",
+      "rejectedByEmail": null,
+      "rejectedAt": null,
+      "rejectionReason": null,
+      "stripeInvoiceItemId": "ii_1Ua3UtErUqJH7nktl9ZkqlMA",
+      "stripeCreditIdempotencyKey": "referral-credit:v1:6097ac77-24db-4745-b5af-f89ebae4991d",
+      "issuedAt": "2026-11-10T01:05:15.426+00:00",
+      "appliedInvoiceId": null,
+      "appliedAt": null,
+      "lastError": null,
+      "retryCount": 0,
+      "audit": [
+        {
+          "at": "2026-11-10T01:05:14.122Z",
+          "action": "created",
+          "status": "pending_qualification"
+        },
+        {
+          "at": "2026-11-10T01:05:14.239Z",
+          "by": "jennifer@hellotocheers.com",
+          "action": "valued_eligible",
+          "amountCents": 24900
+        },
+        {
+          "at": "2026-11-10T01:05:15.170Z",
+          "by": "jennifer@hellotocheers.com",
+          "action": "approved"
+        },
+        {
+          "at": "2026-11-10T01:05:15.426Z",
+          "by": "jennifer@hellotocheers.com",
+          "action": "issuing"
+        },
+        {
+          "at": "2026-11-10T01:05:15.426Z",
+          "by": "jennifer@hellotocheers.com",
+          "action": "issued",
+          "invoiceItemId": "ii_1Ua3UtErUqJH7nktl9ZkqlMA"
+        }
+      ],
+      "metadata": {
+        "customerAtEligibility": "cus_Vb8ByVzSBbqWcS",
+        "subscriptionAtEligibility": "sub_1UZvv7ErUqJH7nktxwGc9vmC"
+      },
+      "createdAt": "2026-11-10T01:05:14.139623+00:00",
+      "updatedAt": "2026-11-10T01:05:15.791+00:00"
+    }
+  }
+}

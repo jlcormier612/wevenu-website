@@ -12,11 +12,13 @@ import type { TaskActionType } from "@/lib/playbooks/types";
 const ALL_TAB_HASHES = new Set([
   "overview", "playbook", "timeline", "floorplan", "documents", "vendors",
   "event-order", "inventory", "invoice", "messages", "activity", "notes",
-  "team", "feedback",
+  "team", "feedback", "questionnaires",
+  // Commercial deep-link anchors on the Event Order tab (event-detail.tsx)
+  "event-order-choices", "event-order-order", "event-order-invoice",
 ]);
 
 describe("Task Destination Audit — venue-side action types", () => {
-  it("every action type resolves to a real event-detail tab", () => {
+  it("every action type resolves to a real event-detail tab or commercial anchor", () => {
     for (const a of TASK_ACTION_TYPES) {
       assert.ok(
         ALL_TAB_HASHES.has(a.tabHash),
@@ -26,9 +28,10 @@ describe("Task Destination Audit — venue-side action types", () => {
   });
 
   it("taskActionHref builds an event-scoped hash link", () => {
-    assert.equal(taskActionHref("questionnaire", "evt-1"), "/events/evt-1#overview");
+    assert.equal(taskActionHref("questionnaire", "evt-1"), "/events/evt-1#questionnaires");
     assert.equal(taskActionHref("timeline", "evt-1"), "/events/evt-1#timeline");
     assert.equal(taskActionHref("contract", "evt-1"), "/events/evt-1#documents");
+    assert.equal(taskActionHref("client_choices", "evt-1"), "/events/evt-1#event-order-choices");
     assert.equal(taskActionHref(null, "evt-1"), null);
   });
 
@@ -51,7 +54,7 @@ describe("Task Destination Audit — venue-side action types", () => {
     const universal: TaskActionType[] = [
       "vendor_library", "payments", "documents", "guest_list",
       "questionnaire", "contract", "timeline", "floor_plan",
-      "event_order", "event_details",
+      "event_order", "client_choices", "event_details",
     ];
     for (const value of universal) {
       assert.ok(clientOptions.has(value), `${value} missing from Client Planning options`);
@@ -62,7 +65,7 @@ describe("Task Destination Audit — venue-side action types", () => {
   it("covers the native workflows from the Task Destination Audit (Key Dates retired)", () => {
     const values = TASK_ACTION_TYPES.map((a) => a.value).sort();
     assert.deepEqual(values, [
-      "contract", "documents", "event_details", "event_order",
+      "client_choices", "contract", "documents", "event_details", "event_order",
       "floor_plan", "guest_list", "payments",
       "questionnaire", "timeline", "vendor_library", "wedding_website",
     ]);

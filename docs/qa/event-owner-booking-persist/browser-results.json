@@ -1,0 +1,51 @@
+{
+  "tipPrefix": "e700ad47",
+  "checks": [
+    {
+      "name": "lead_sales_owner_a",
+      "pass": true,
+      "detail": "{\"lead\":{\"id\":\"38324a9e-0d2e-4bb2-82f6-aa68c4222673\",\"assigned_staff_id\":\"67458154-e6fe-41e3-830e-ea39844e4e19\"},\"staffA\":{\"id\":\"67458154-e6fe-41e3-830e-ea39844e4e19\",\"full_name\":\"Jen Fancy\"}}"
+    },
+    {
+      "name": "serving_commit",
+      "pass": true,
+      "detail": "e700ad477636f51fafd9b161396ebfd82b47f3d7"
+    },
+    {
+      "name": "confirmation_keeps_staff_b_after_draft_settle",
+      "pass": true,
+      "detail": "Terry Tuttle"
+    },
+    {
+      "name": "persisted_event_owner_b",
+      "pass": true,
+      "detail": "{\"event\":{\"id\":\"71c44882-df39-4095-b7c4-38d60700fd33\",\"assigned_staff_id\":\"53447f3a-6b85-42bd-91ce-2acc67ead5f3\",\"booked_at\":\"2026-10-12\"},\"staffB\":{\"id\":\"53447f3a-6b85-42bd-91ce-2acc67ead5f3\",\"full_name\":\"Terry Tuttle\"}}"
+    },
+    {
+      "name": "lead_still_owner_a",
+      "pass": true,
+      "detail": "{\"assigned_staff_id\":\"67458154-e6fe-41e3-830e-ea39844e4e19\",\"sales_stage\":\"booked\"}"
+    },
+    {
+      "name": "workspace_shows_staff_b",
+      "pass": true,
+      "detail": "Event owner\nTerry Tuttle\nEdit/Save"
+    },
+    {
+      "name": "reload_still_staff_b",
+      "pass": true,
+      "detail": "Event owner\nTerry Tuttle\nEdit/Save"
+    },
+    {
+      "name": "reassign_staff_c_persists",
+      "pass": true,
+      "detail": "{\"afterC\":\"Event owner\\nRon Cormier\\nEdit/Save\",\"eventC\":{\"assigned_staff_id\":\"72495b35-c11b-4a84-8bcb-911135eac2bd\"},\"staffC\":{\"id\":\"72495b35-c11b-4a84-8bcb-911135eac2bd\",\"full_name\":\"Ron Cormier\"}}"
+    },
+    {
+      "name": "lead_still_a_after_reassign",
+      "pass": true,
+      "detail": "{\"assigned_staff_id\":\"67458154-e6fe-41e3-830e-ea39844e4e19\"}"
+    }
+  ],
+  "pass": true
+}

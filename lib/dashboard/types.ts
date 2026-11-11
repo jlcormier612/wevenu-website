@@ -5,7 +5,6 @@
 import type { Lead } from "@/lib/leads/types";
 import type { LuvBriefing } from "@/lib/luv/briefing-types";
 import type { ClientListFilterKey } from "@/lib/clients/list-filters";
-import type { VenueNextStep } from "@/lib/dashboard/venue-next-steps";
 
 /** Lead with a computed "why it needs attention" reason string. */
 export type AttentionLead = Lead & {
@@ -99,8 +98,6 @@ export type DashboardData = {
   venueName: string;
   ownerFirstName: string | null;
   todayIso: string;
-  /** Venue Home queue — things that need attention next. Empty hides the card. */
-  nextSteps: VenueNextStep[];
   onboarding: OnboardingStatus;
   briefing: LuvBriefing;
   // ---- pipeline (leads) ----
@@ -126,7 +123,7 @@ export type DashboardData = {
   // ---- booked clients + events ----
   /** Upcoming events from the events table (canonical source). Capped at 8 rows for rendering. */
   upcomingEvents: DashboardEvent[];
-  /** True count of Clients → Coming up (next 60 days) — same population as that filter. */
+  /** True count of Clients → Coming up (next 30 days) — same population as that filter. */
   upcomingEventCount: number;
   /** Counts for every Clients operational view the Dashboard metrics link into. */
   clientListCounts: Record<ClientListFilterKey, number>;
@@ -158,7 +155,6 @@ export type DashboardData = {
   // ---- Activation Engine (Sprint 108) ----
   activationScore: import("@/lib/activation/types").ActivationScore | null;
   nextPendingMilestone: import("@/lib/activation/types").VenueMilestone | null;
-  showDigestCallout: boolean;
   /** When false, Dashboard Luv (observations, recommendations, aggregates) stays hidden. */
   luvObservationsEnabled: boolean;
   showLuvIntro: boolean;

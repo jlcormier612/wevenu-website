@@ -84,7 +84,7 @@ export function VenueFormAnalyticsConsent({
   if (!configured) return null;
 
   return (
-    <label className="mt-3 flex items-start gap-2 text-left text-xs text-gray-500">
+    <label className="mt-3 flex items-start gap-2 text-left text-xs text-muted-foreground">
       <input
         type="checkbox"
         className="mt-0.5 h-3.5 w-3.5 shrink-0"

@@ -3,60 +3,282 @@
 import * as React from "react";
 
 import { useRouter } from "next/navigation";
-import { Calendar, Check, Loader2, Plus, X } from "lucide-react";
+import { Calendar, ChevronDown, ChevronRight, Loader2, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import {
   createHoldAction,
   releaseHoldAction,
+  updateHoldAction,
 } from "@/app/(app)/availability/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { formatDate, HOLD_STATUS_LABEL } from "@/lib/availability/constants";
+import { formatDate } from "@/lib/availability/constants";
+import { defaultHoldDateFromDesiredEventDate } from "@/lib/availability/hold-defaults";
+import { venueCalendarDateFromValue } from "@/lib/venue/timezone";
+import { defaultHoldSpaceIdsFromPreferences } from "@/lib/availability/hold-occupancy";
+import {
+  activeHolds as selectActiveHolds,
+  canReactivateHold,
+  currentProtectionSummary,
+  historicalHoldLabel,
+  historicalHolds as selectHistoricalHolds,
+  holdDateRangeLabel,
+  holdWindowLabel,
+  isActiveHold,
+  placeHoldCtaLabel,
+  shouldShowPlaceHoldCta,
+} from "@/lib/availability/hold-presentation";
+import {
+  clearWholeVenue,
+  holdSpaceIdsForSubmit,
+  selectWholeVenue,
+  toggleIndividualSpace,
+  type HoldSpaceSelection,
+} from "@/lib/availability/hold-space-selection";
 import { useSyncedState } from "@/lib/hooks/use-synced-state";
-import type { DateHold, DateHoldInput } from "@/lib/availability/types";
-import type { VenueSpace } from "@/lib/availability/types";
+import type { DateHold, DateHoldInput, DateHoldUpdateInput, VenueSpace } from "@/lib/availability/types";
+
+function holdExpiresDateInput(expiresAt: string | null, timezone: string | null): string {
+  if (!expiresAt) return "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(expiresAt)) return expiresAt;
+  return venueCalendarDateFromValue(expiresAt, timezone);
+}
+
+export type HoldSpacePreferenceSeed = {
+  id?: string;
+  useKey: string;
+  preferenceKind: string;
+  spaceId: string | null;
+  scheduledDate?: string | null;
+};
 
 export function DateHoldsSection({
   leadId,
   leadName,
+  desiredEventDate = null,
   initialHolds,
   spaces,
+  spacePreferences = [],
+  venueTimezone = null,
+  density = "regular",
+  booked = false,
 }: {
   leadId: string;
   leadName: string;
+  /** Authoritative preferred/desired event date (YYYY-MM-DD). Hold date defaults from this. */
+  desiredEventDate?: string | null;
   initialHolds: DateHold[];
   spaces: VenueSpace[];
+  /** Lead ceremony/reception prefs — default selected spaces when venue_space. */
+  spacePreferences?: HoldSpacePreferenceSeed[];
+  /** Venue IANA zone. Expiration dates are that zone's end of day, not the browser's. */
+  venueTimezone?: string | null;
+  /** Compact row for the lead header. The place/edit form is unchanged. */
+  density?: "regular" | "compact";
+  /** Booked relationship — date protected by event occupancy; hide Place hold urgency. */
+  booked?: boolean;
 }) {
   const router = useRouter();
-  // See lib/hooks/use-synced-state.ts — TasksSection is a true sibling on
-  // this same tab and calls router.refresh() on its own task actions,
-  // which would otherwise leave this list stale without a full reload.
+  // See lib/hooks/use-synced-state.ts — TasksSection may refresh siblings
+  // on the same page and would otherwise leave this list stale.
   const [holds, setHolds] = useSyncedState(initialHolds);
-  const [showForm, setShowForm] = React.useState(false);
+  const [formMode, setFormMode] = React.useState<"create" | "edit" | null>(null);
+  const [editingHoldId, setEditingHoldId] = React.useState<string | null>(null);
   const [holdDate, setHoldDate] = React.useState("");
+  const [endDate, setEndDate] = React.useState("");
   const [holdTitle, setHoldTitle] = React.useState(`Hold — ${leadName}`);
-  const [spaceId, setSpaceId] = React.useState("");
+  const [wholeVenue, setWholeVenue] = React.useState(false);
+  const [selectedSpaceIds, setSelectedSpaceIds] = React.useState<string[]>([]);
+  const [startTime, setStartTime] = React.useState("");
+  const [endTime, setEndTime] = React.useState("");
   const [expiresAt, setExpiresAt] = React.useState("");
+  const [preferenceId, setPreferenceId] = React.useState<string>("");
   const [addPending, startAdd] = React.useTransition();
   const [releasingId, setReleasingId] = React.useState<string | null>(null);
+  /** Compact density: space names / expiration stay behind this disclosure. */
+  const [expandedHoldIds, setExpandedHoldIds] = React.useState<Set<string>>(() => new Set());
+  const showForm = formMode !== null;
+
+  function toggleHoldDetails(holdId: string) {
+    setExpandedHoldIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(holdId)) next.delete(holdId);
+      else next.add(holdId);
+      return next;
+    });
+  }
+
+  const desiredDefault = defaultHoldDateFromDesiredEventDate(desiredEventDate);
+  const activeHolds = selectActiveHolds(holds);
+  const pastHolds = selectHistoricalHolds(holds);
+  const protection = currentProtectionSummary({
+    eventDate: desiredEventDate,
+    holds,
+    booked,
+  });
+  const editingHold = editingHoldId ? holds.find((h) => h.id === editingHoldId) : null;
+  const editingIsReactivation = Boolean(
+    !booked && editingHold && !isActiveHold(editingHold) && canReactivateHold(editingHold),
+  );
+  const showPlaceHold = shouldShowPlaceHoldCta(holds, { booked });
+  const placeCtaLabel = placeHoldCtaLabel(desiredDefault, activeHolds.length > 0);
+  const prefDefaults = defaultHoldSpaceIdsFromPreferences(spacePreferences);
+  const activeSpaces = spaces.filter((s) => s.isActive);
+  const formSpaces = React.useMemo(() => {
+    const heldInactive = spaces.filter((s) =>
+      !s.isActive && selectedSpaceIds.includes(s.id),
+    );
+    return [...activeSpaces, ...heldInactive];
+  }, [spaces, activeSpaces, selectedSpaceIds]);
+
+  function closeForm() {
+    setFormMode(null);
+    setEditingHoldId(null);
+  }
+
+  function openForm() {
+    setHoldDate(desiredDefault);
+    setEndDate(desiredDefault);
+    setHoldTitle(`Hold — ${leadName}`);
+    const defaults = prefDefaults.filter((id) => activeSpaces.some((s) => s.id === id));
+    setWholeVenue(defaults.length === 0);
+    setSelectedSpaceIds(defaults);
+    setStartTime("");
+    setEndTime("");
+    setExpiresAt("");
+    setPreferenceId("");
+    setEditingHoldId(null);
+    setFormMode("create");
+  }
+
+  function openEdit(hold: DateHold) {
+    setHoldDate(hold.holdDate);
+    setEndDate(hold.endDate || hold.holdDate);
+    setHoldTitle(hold.title);
+    setWholeVenue(hold.spaceIds.length === 0);
+    setSelectedSpaceIds(hold.spaceIds);
+    setStartTime(hold.startTime ?? "");
+    setEndTime(hold.endTime ?? "");
+    setExpiresAt(holdExpiresDateInput(hold.expiresAt, venueTimezone));
+    setPreferenceId(hold.preferenceId ?? "");
+    setEditingHoldId(hold.id);
+    setFormMode("edit");
+  }
+
+  function applySpaceSelection(next: HoldSpaceSelection) {
+    setWholeVenue(next.wholeVenue);
+    setSelectedSpaceIds(next.selectedSpaceIds);
+  }
+
+  function toggleSpace(spaceId: string) {
+    applySpaceSelection(toggleIndividualSpace(
+      { wholeVenue, selectedSpaceIds },
+      spaceId,
+    ));
+  }
 
   function handleAdd() {
     if (!holdDate || !holdTitle.trim()) return;
+    const resolvedEnd = endDate && endDate >= holdDate ? endDate : holdDate;
+    const spaceIds = holdSpaceIdsForSubmit({ wholeVenue, selectedSpaceIds });
     startAdd(async () => {
       const input: DateHoldInput = {
-        leadId, spaceId, title: holdTitle.trim(), holdDate,
-        startTime: "", endTime: "", notes: "",
-        expiresAt: expiresAt ? new Date(expiresAt + "T23:59:59").toISOString() : "",
+        leadId,
+        spaceIds,
+        spaceId: spaceIds.length === 1 ? spaceIds[0]! : "",
+        title: holdTitle.trim(),
+        holdDate,
+        endDate: resolvedEnd,
+        startTime,
+        endTime,
+        notes: "",
+        expiresAt,
+        preferenceId: preferenceId || null,
       };
       const result = await createHoldAction(input);
       if (result.ok) {
         toast.success("Hold placed.");
-        setHolds((p) => [...p, { id: result.holdId, venueId: "", leadId, spaceId: spaceId || null, title: holdTitle.trim(), holdDate, startTime: null, endTime: null, status: "active", expiresAt: expiresAt || null, notes: null, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), leadName, spaceName: spaces.find((s) => s.id === spaceId)?.name ?? null }]);
-        setShowForm(false);
+        const names = spaceIds
+          .map((id) => activeSpaces.find((s) => s.id === id)?.name)
+          .filter((n): n is string => !!n);
+        setHolds((p) => [...p, {
+          id: result.holdId,
+          venueId: "",
+          leadId,
+          spaceId: spaceIds.length === 1 ? spaceIds[0]! : null,
+          spaceIds,
+          title: holdTitle.trim(),
+          holdDate,
+          endDate: resolvedEnd,
+          startTime: startTime || null,
+          endTime: endTime || null,
+          status: "active",
+          expiresAt: expiresAt || null,
+          notes: null,
+          preferenceId: preferenceId || null,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          leadName,
+          spaceName: names.length === 1 ? names[0]! : names.length > 1 ? names.join(", ") : null,
+          spaceNames: names,
+        }]);
+        closeForm();
         router.refresh();
       } else toast.error(result.message ?? "Could not place hold.");
+    });
+  }
+
+  function handleSave() {
+    if (!editingHoldId || !holdDate || !holdTitle.trim()) return;
+    const resolvedEnd = endDate && endDate >= holdDate ? endDate : holdDate;
+    const spaceIds = holdSpaceIdsForSubmit({ wholeVenue, selectedSpaceIds });
+    startAdd(async () => {
+      const input: DateHoldUpdateInput = {
+        leadId,
+        spaceIds,
+        spaceId: spaceIds.length === 1 ? spaceIds[0]! : "",
+        title: holdTitle.trim(),
+        holdDate,
+        endDate: resolvedEnd,
+        startTime,
+        endTime,
+        expiresAt,
+        preferenceId: preferenceId || null,
+      };
+      const result = await updateHoldAction(editingHoldId, input);
+      if (result.ok) {
+        const wasReactivating = editingHold && !isActiveHold(editingHold);
+        toast.success(wasReactivating ? "Hold reactivated — date is protected." : "Hold updated.");
+        const names = spaceIds
+          .map((id) => formSpaces.find((s) => s.id === id)?.name ?? spaces.find((s) => s.id === id)?.name)
+          .filter((n): n is string => !!n);
+        // Optimistic: mirror server reactivation (status → active + new expiresAt).
+        const nextExpires =
+          expiresAt.trim() === ""
+            ? null
+            : expiresAt.includes("T")
+              ? expiresAt
+              : `${expiresAt}T23:59:59.999Z`;
+        setHolds((p) => p.map((h) => h.id !== editingHoldId ? h : {
+          ...h,
+          status: "active" as const,
+          spaceId: spaceIds.length === 1 ? spaceIds[0]! : null,
+          spaceIds,
+          title: holdTitle.trim(),
+          holdDate,
+          endDate: resolvedEnd,
+          startTime: startTime || null,
+          endTime: endTime || null,
+          expiresAt: nextExpires,
+          preferenceId: preferenceId || null,
+          spaceName: names.length === 1 ? names[0]! : names.length > 1 ? names.join(", ") : null,
+          spaceNames: names,
+        }));
+        closeForm();
+        router.refresh();
+      } else toast.error(result.message ?? "Could not update hold.");
     });
   }
 
@@ -71,85 +293,557 @@ export function DateHoldsSection({
     } else toast.error(result.message ?? "Could not release hold.");
   }
 
-  const activeHolds = holds.filter((h) => h.status === "active");
-  const pastHolds = holds.filter((h) => h.status !== "active");
+  function holdResourcesLabel(hold: DateHold): string {
+    if (hold.spaceNames?.length) return hold.spaceNames.join(", ");
+    if (hold.spaceName) return hold.spaceName;
+    if (hold.spaceIds?.length) {
+      return hold.spaceIds
+        .map((id) => spaces.find((s) => s.id === id)?.name ?? id)
+        .join(", ");
+    }
+    return "Whole venue";
+  }
 
+  const compact = density === "compact";
+
+  // Compact: `contents` so the hold form can `basis-full` under the whole
+  // Sales & availability control row (Sales owner + Date hold), not a right column.
+  // Protection status stays on the Date hold band (not a full-width banner above).
   return (
-    <div className="space-y-3">
-      {/* Active holds */}
-      {activeHolds.length > 0 && (
-        <div className="space-y-2">
+    <div
+      className={compact ? "contents" : "space-y-3"}
+      data-testid={compact ? "date-hold-compact" : undefined}
+    >
+      {/* Regular density: full protection banner above lists */}
+      {!compact && !showForm ? (
+        <div
+          className={
+            protection.source === "hold"
+              ? "rounded-lg border border-warning/30 bg-warning/5 px-3 py-2"
+              : protection.source === "booking"
+                ? "rounded-lg border border-border bg-[var(--htc-eucalyptus-surface)] px-3 py-2"
+                : "rounded-lg border border-border bg-muted/40 px-3 py-2"
+          }
+          data-testid="date-hold-protection-banner"
+          data-protected={protection.protected ? "true" : "false"}
+          data-protection-source={protection.source}
+        >
+          <p
+            className={
+              protection.source === "hold"
+                ? "text-xs font-semibold uppercase tracking-wide text-warning-foreground dark:text-foreground"
+                : "text-xs font-semibold uppercase tracking-wide text-heading"
+            }
+            data-testid="date-hold-protection-headline"
+          >
+            {protection.headline}
+          </p>
+          {protection.detail ? (
+            <p className="mt-0.5 text-xs text-muted-foreground" data-testid="date-hold-protection-detail">
+              {protection.detail}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+      {compact ? (
+        <div
+          className="flex min-w-0 flex-1 basis-full flex-col gap-2 sm:basis-0 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-2 sm:gap-y-1"
+          data-testid="date-hold-compact-band"
+        >
+          <div className="flex min-w-0 w-full flex-wrap items-start gap-x-2 gap-y-1.5 sm:w-auto sm:flex-1 sm:items-center">
+          <span className="shrink-0 text-xs font-medium text-muted-foreground">Date hold</span>
+          {!showForm && activeHolds.length === 0 ? (
+            <div
+              className="flex min-w-0 flex-1 basis-[min(100%,16rem)] flex-col gap-0.5 sm:flex-row sm:items-center sm:gap-x-2"
+              data-testid="date-hold-protection-banner"
+              data-protected={protection.protected ? "true" : "false"}
+              data-protection-source={protection.source}
+              title={protection.detail ?? undefined}
+            >
+              <span
+                className={
+                  protection.source === "booking"
+                    ? "htc-badge-active w-fit shrink-0 rounded-md px-1.5 py-0.5 text-xs font-semibold"
+                    : "htc-badge-attention w-fit shrink-0 rounded-md px-1.5 py-0.5 text-xs font-semibold"
+                }
+                data-testid="date-hold-protection-headline"
+              >
+                {protection.chipLabel}
+              </span>
+              <span
+                className="min-w-0 text-xs text-muted-foreground sm:truncate"
+                data-testid="date-hold-protection-detail"
+              >
+                {protection.source === "booking"
+                  ? protection.detail
+                  : "No active hold is protecting this event date."}
+              </span>
+            </div>
+          ) : null}
+          {activeHolds.length > 0 ? (
+            <div
+              className="flex min-w-0 w-full flex-col gap-2 sm:w-auto sm:flex-1 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-2 sm:gap-y-2"
+              data-testid="date-hold-active-list"
+            >
+              {activeHolds.map((hold) => (
+                <div
+                  key={hold.id}
+                  className="flex min-h-8 w-full min-w-0 max-w-full flex-wrap items-center gap-1.5 rounded-md border border-warning/30 bg-warning/5 px-1.5 py-1 sm:w-fit sm:flex-nowrap sm:py-0"
+                  data-testid="date-hold-active"
+                  data-protected="true"
+                >
+                  <Calendar className="h-3.5 w-3.5 shrink-0 text-warning-foreground dark:text-foreground" />
+                  <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
+                    <p
+                      className="text-xs font-semibold uppercase tracking-wide text-warning-foreground dark:text-foreground"
+                      data-testid="date-hold-protection-headline"
+                    >
+                      Held
+                    </p>
+                    <p className="text-sm font-medium text-foreground" data-testid="date-hold-summary-date">
+                      {holdDateRangeLabel(hold)}
+                    </p>
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-0.5 text-xs font-medium text-muted-foreground hover:text-foreground"
+                      aria-expanded={expandedHoldIds.has(hold.id)}
+                      aria-controls={`date-hold-details-${hold.id}`}
+                      onClick={() => toggleHoldDetails(hold.id)}
+                      data-testid="date-hold-details-toggle"
+                    >
+                      {expandedHoldIds.has(hold.id) ? (
+                        <ChevronDown className="h-3.5 w-3.5" />
+                      ) : (
+                        <ChevronRight className="h-3.5 w-3.5" />
+                      )}
+                      Details
+                    </button>
+                  </div>
+                  <div className="flex w-full shrink-0 flex-wrap items-center gap-2 sm:w-auto">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-8"
+                      disabled={addPending || releasingId === hold.id}
+                      onClick={() => openEdit(hold)}
+                      data-testid="date-hold-edit"
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-8"
+                      disabled={releasingId === hold.id}
+                      onClick={() => handleRelease(hold.id)}
+                      data-testid="date-hold-release"
+                    >
+                      {releasingId === hold.id ? (
+                        <>
+                          <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+                          Releasing…
+                        </>
+                      ) : (
+                        "Release hold"
+                      )}
+                    </Button>
+                  </div>
+                  {expandedHoldIds.has(hold.id) ? (
+                    <div
+                      id={`date-hold-details-${hold.id}`}
+                      className="basis-full flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground"
+                      data-testid="date-hold-details"
+                    >
+                      <span data-testid="date-hold-details-spaces">{holdResourcesLabel(hold)}</span>
+                      {holdWindowLabel(hold) ? <span>{holdWindowLabel(hold)}</span> : <span>All day</span>}
+                      {hold.expiresAt ? (
+                        <span data-testid="date-hold-details-expires">
+                          Expires{" "}
+                          {new Date(hold.expiresAt).toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                          })}
+                        </span>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          ) : null}
+          </div>
+          {!showForm && showPlaceHold ? (
+            <Button
+              type="button"
+              size="sm"
+              className="h-8 w-full shrink-0 whitespace-nowrap sm:w-auto"
+              onClick={openForm}
+              data-testid="date-hold-place"
+            >
+              <Plus className="mr-1 h-3.5 w-3.5" />
+              {placeCtaLabel}
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
+      {/* Regular (non-compact) active holds */}
+      {!compact && activeHolds.length > 0 && (
+        <div className="space-y-2" data-testid="date-hold-active-list">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Active holds
+          </p>
           {activeHolds.map((hold) => (
-            <div key={hold.id} className="group flex items-start gap-3 rounded-lg border border-warning/30 bg-warning/5 px-3 py-2.5">
-              <Calendar className="h-4 w-4 shrink-0 text-warning-foreground mt-0.5" />
+            <div
+              key={hold.id}
+              className="flex items-start gap-3 rounded-lg border border-warning/30 bg-warning/5 px-3 py-2.5"
+              data-testid="date-hold-active"
+            >
+              <Calendar className="mt-0.5 h-4 w-4 shrink-0 text-warning-foreground dark:text-foreground" />
               <div className="min-w-0 flex-1 space-y-0.5">
-                <p className="text-sm font-medium text-foreground">{formatDate(hold.holdDate)}</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-warning-foreground dark:text-foreground">
+                  Hold active
+                </p>
+                <p className="text-sm font-medium text-foreground" data-testid="date-hold-range-label">
+                  {holdDateRangeLabel(hold)}
+                </p>
                 <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                  {hold.spaceName && <span>{hold.spaceName}</span>}
-                  {hold.expiresAt && <span>Expires {new Date(hold.expiresAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>}
+                  <span>{holdResourcesLabel(hold)}</span>
+                  {holdWindowLabel(hold) ? <span>{holdWindowLabel(hold)}</span> : <span>All day</span>}
+                  {hold.expiresAt ? (
+                    <span>
+                      Expires{" "}
+                      {new Date(hold.expiresAt).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                      })}
+                    </span>
+                  ) : null}
                 </div>
               </div>
-              <Button type="button" variant="ghost" size="sm" className="shrink-0 opacity-0 transition-opacity group-hover:opacity-100 text-muted-foreground"
-                disabled={releasingId === hold.id} onClick={() => handleRelease(hold.id)}>
-                {releasingId === hold.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <X className="h-3.5 w-3.5" />}
-                Release
-              </Button>
+              <div className="flex shrink-0 items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={addPending || releasingId === hold.id}
+                  onClick={() => openEdit(hold)}
+                  data-testid="date-hold-edit"
+                >
+                  Edit
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={releasingId === hold.id}
+                  onClick={() => handleRelease(hold.id)}
+                  data-testid="date-hold-release"
+                >
+                  {releasingId === hold.id ? (
+                    <>
+                      <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+                      Releasing…
+                    </>
+                  ) : (
+                    "Release hold"
+                  )}
+                </Button>
+              </div>
             </div>
           ))}
         </div>
       )}
 
-      {/* Past holds (collapsed) */}
+      {/* Historical holds — released / expired / converted; not current protection */}
       {pastHolds.length > 0 && (
-        <div className="space-y-1">
-          {pastHolds.map((hold) => (
-            <div key={hold.id} className="flex items-center gap-2 px-1 py-0.5 text-xs text-muted-foreground">
-              <Check className="h-3 w-3 shrink-0" />
-              <span>{formatDate(hold.holdDate)} — {HOLD_STATUS_LABEL[hold.status]}</span>
-            </div>
-          ))}
+        <div className={compact ? "basis-full min-w-0 pt-1" : "space-y-1"} data-testid="date-hold-history">
+          {compact ? (
+            <details className="group">
+              <summary className="cursor-pointer list-none px-0.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground marker:content-none [&::-webkit-details-marker]:hidden">
+                <span className="inline-flex items-center gap-1">
+                  <ChevronRight className="h-3 w-3 transition-transform group-open:rotate-90" />
+                  Hold history ({pastHolds.length}) — not current protection
+                </span>
+              </summary>
+              <div className="mt-1 space-y-0.5">
+                {pastHolds.map((hold) => (
+                  <div
+                    key={hold.id}
+                    className="flex flex-wrap items-center gap-2 px-1 py-0.5 text-xs text-muted-foreground"
+                    data-testid="date-hold-history-row"
+                  >
+                    <span>{historicalHoldLabel(hold)}</span>
+                    {!booked && canReactivateHold(hold) ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-1.5 text-xs"
+                        disabled={addPending}
+                        onClick={() => openEdit(hold)}
+                        data-testid="date-hold-reactivate"
+                      >
+                        Reactivate…
+                      </Button>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            </details>
+          ) : (
+            <>
+              <p className="px-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                Hold history (not current protection)
+              </p>
+              {pastHolds.map((hold) => (
+                <div
+                  key={hold.id}
+                  className="flex flex-wrap items-center gap-2 px-1 py-0.5 text-xs text-muted-foreground"
+                  data-testid="date-hold-history-row"
+                >
+                  <span>{historicalHoldLabel(hold)}</span>
+                  {!booked && canReactivateHold(hold) ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-1.5 text-xs"
+                      disabled={addPending}
+                      onClick={() => openEdit(hold)}
+                      data-testid="date-hold-reactivate"
+                    >
+                      Reactivate…
+                    </Button>
+                  ) : null}
+                </div>
+              ))}
+            </>
+          )}
         </div>
       )}
 
-      {/* Add form */}
+      {/* Place hold / Place another hold — never gated by an existing active hold. */}
       {showForm ? (
-        <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
-          <div className="grid gap-3 sm:grid-cols-2">
+        <div
+          className={
+            compact
+              // Full row width under Sales owner + Date hold (no short max-width
+              // island that left an empty band beside the form).
+              ? "min-w-0 w-full max-w-full basis-full space-y-3 rounded-lg border border-border bg-muted/30 p-4"
+              : "space-y-3 rounded-lg border border-border bg-muted/30 p-4"
+          }
+          data-testid="date-hold-form"
+        >
+          <div className="space-y-3">
             <div className="space-y-1.5">
               <Label className="text-xs">Hold title</Label>
               <Input value={holdTitle} onChange={(e) => setHoldTitle(e.target.value)} />
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Hold date *</Label>
-              <Input type="date" value={holdDate} onChange={(e) => setHoldDate(e.target.value)} />
-            </div>
-            {spaces.length > 0 && (
+            <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <Label className="text-xs">Space <span className="font-normal text-muted-foreground">(optional)</span></Label>
-                <select value={spaceId} onChange={(e) => setSpaceId(e.target.value)}
-                  className="h-9 w-full rounded-lg border border-input bg-transparent px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
-                  <option value="">Any / Whole venue</option>
-                  {spaces.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                <Label className="text-xs">Start date *</Label>
+                <Input
+                  type="date"
+                  value={holdDate}
+                  onChange={(e) => {
+                    const next = e.target.value;
+                    setHoldDate(next);
+                    if (!endDate || endDate < next) setEndDate(next);
+                  }}
+                  data-testid="date-hold-hold-date"
+                />
+                {formMode !== "edit" && desiredDefault ? (
+                  <p className="text-[11px] text-muted-foreground">
+                    Defaults to their preferred event date ({formatDate(desiredDefault)}). Change only if you intend to hold a different day.
+                  </p>
+                ) : formMode !== "edit" ? (
+                  <p className="text-[11px] text-muted-foreground">
+                    No preferred event date on this lead — enter the date to hold.
+                  </p>
+                ) : null}
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">End date *</Label>
+                <Input
+                  type="date"
+                  value={endDate || holdDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  data-testid="date-hold-end-date"
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Inclusive. Same as start for a single day; use Fri–Sun for a weekend reservation without separate daily holds.
+                </p>
+              </div>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Start time <span className="font-normal text-muted-foreground">(optional)</span></Label>
+                <Input
+                  type="time"
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                  data-testid="date-hold-start-time"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">End time <span className="font-normal text-muted-foreground">(optional)</span></Label>
+                <Input
+                  type="time"
+                  value={endTime}
+                  onChange={(e) => setEndTime(e.target.value)}
+                  data-testid="date-hold-end-time"
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Leave blank for an all-day / date-range reservation. Times apply to each day in the range.
+                </p>
+              </div>
+            </div>
+            {spacePreferences.some((p) => p.id) ? (
+              <div className="space-y-1.5">
+                <Label className="text-xs">
+                  Link to booking component{" "}
+                  <span className="font-normal text-muted-foreground">(optional)</span>
+                </Label>
+                <select
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+                  value={preferenceId}
+                  onChange={(e) => setPreferenceId(e.target.value)}
+                  data-testid="date-hold-preference-link"
+                >
+                  <option value="">No linked component — reservation only</option>
+                  {spacePreferences.filter((p) => p.id).map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.useKey}
+                      {p.scheduledDate ? ` (${p.scheduledDate})` : ""}
+                    </option>
+                  ))}
                 </select>
+                <p className="text-[11px] text-muted-foreground">
+                  Associates this hold with an agreed component (e.g. rehearsal dinner). Does not add unagreed services to the contract.
+                </p>
+              </div>
+            ) : null}
+            {formSpaces.length > 0 && (
+              <div className="space-y-1.5" data-testid="date-hold-spaces">
+                <Label className="text-xs">Spaces to hold</Label>
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={wholeVenue}
+                    onChange={(e) => {
+                      applySpaceSelection(
+                        e.target.checked ? selectWholeVenue() : clearWholeVenue(),
+                      );
+                    }}
+                    data-testid="date-hold-whole-venue"
+                  />
+                  <span>Whole venue</span>
+                </label>
+                <div className="mt-1 space-y-1">
+                  {formSpaces.map((s) => {
+                    const pref = spacePreferences.find(
+                      (p) => p.preferenceKind === "venue_space" && p.spaceId === s.id,
+                    );
+                    const useLabel = pref?.useKey === "ceremony"
+                      ? "Ceremony"
+                      : pref?.useKey === "reception"
+                        ? "Reception"
+                        : null;
+                    return (
+                      <label key={s.id} className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={!wholeVenue && selectedSpaceIds.includes(s.id)}
+                          onChange={() => toggleSpace(s.id)}
+                          data-testid={`date-hold-space-${s.id}`}
+                        />
+                        <span>
+                          {s.name}
+                          {useLabel ? (
+                            <span className="text-muted-foreground"> — {useLabel}</span>
+                          ) : null}
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+                {!wholeVenue && selectedSpaceIds.length === 0 ? (
+                  <p className="text-[11px] text-muted-foreground">
+                    Select one or more spaces, or choose Whole venue.
+                  </p>
+                ) : null}
+                {formMode === "edit" && formSpaces.some((s) => !s.isActive) ? (
+                  <p className="text-[11px] text-muted-foreground">
+                    A space on this hold is no longer active. It stays available here so saving without changing spaces does not drop it.
+                  </p>
+                ) : null}
               </div>
             )}
             <div className="space-y-1.5">
               <Label className="text-xs">Auto-release date <span className="font-normal text-muted-foreground">(optional)</span></Label>
               <Input type="date" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} />
+              <p className="text-[11px] text-muted-foreground">
+                When this temporary hold should stop protecting the hold date — not the event date itself.
+              </p>
             </div>
           </div>
+          <div className="space-y-1">
+            <h3 className="text-sm font-semibold text-heading">
+              {formMode === "edit"
+                ? editingIsReactivation
+                  ? "You're reactivating this Hold."
+                  : "You're editing this Hold."
+                : activeHolds.length > 0
+                  ? "You're placing another Hold."
+                  : "You're placing a Hold on this date."}
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              {formMode === "edit"
+                ? editingIsReactivation
+                  ? "Saving with a future auto-release date (or none) reactivates this hold and protects the date again. It does not create a new hold."
+                  : "Saving updates this hold. It does not create a new one."
+                : activeHolds.length > 0
+                  ? "This creates a new hold. Existing holds stay as they are."
+                  : "Whether this Hold prevents booking is controlled by your availability settings."}
+            </p>
+          </div>
           <div className="flex items-center justify-end gap-2">
-            <Button type="button" variant="ghost" size="sm" onClick={() => setShowForm(false)} disabled={addPending}>Cancel</Button>
-            <Button type="button" size="sm" disabled={!holdDate || !holdTitle.trim() || addPending} onClick={handleAdd}>
-              {addPending ? "Placing…" : "Place Hold"}
+            <Button type="button" variant="ghost" size="sm" onClick={closeForm} disabled={addPending}>Cancel</Button>
+            <Button
+              type="button"
+              size="sm"
+              disabled={
+                !holdDate
+                || !holdTitle.trim()
+                || addPending
+                || (formSpaces.length > 0 && !wholeVenue && selectedSpaceIds.length === 0)
+              }
+              onClick={formMode === "edit" ? handleSave : handleAdd}
+              data-testid={formMode === "edit" ? "date-hold-save" : "date-hold-place-submit"}
+            >
+              {addPending
+                ? (formMode === "edit"
+                  ? (editingIsReactivation ? "Reactivating…" : "Saving…")
+                  : "Placing…")
+                : (formMode === "edit"
+                  ? (editingIsReactivation ? "Reactivate hold" : "Save hold")
+                  : "Place Hold")}
             </Button>
           </div>
         </div>
-      ) : (
-        <Button type="button" variant="outline" size="sm" onClick={() => setShowForm(true)}>
-          <Plus className="mr-1 h-3.5 w-3.5" /> Place Hold
+      ) : !compact && showPlaceHold ? (
+        <Button
+          type="button"
+          size="sm"
+          onClick={openForm}
+          data-testid="date-hold-place"
+        >
+          <Plus className="mr-1 h-3.5 w-3.5" />
+          {placeCtaLabel}
         </Button>
-      )}
+      ) : null}
     </div>
   );
 }

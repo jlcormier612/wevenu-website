@@ -1,0 +1,51 @@
+{
+  "status": 200,
+  "json": {
+    "ok": true,
+    "readiness": {
+      "mode": "referral_ready",
+      "ready": true,
+      "flagEnabled": true,
+      "rewardIssueEnabled": true,
+      "missing": [],
+      "qualificationDays": 30,
+      "diagnosticMessage": "Refer a Venue is ready (submission, qualification, and reward issuance)."
+    },
+    "referrals": [
+      {
+        "id": "f77458fb-78ef-4af9-9889-11f92030a562",
+        "referringVenueId": "9336a6cb-6a49-4a38-82bc-ff3b2361e8a3",
+        "referringOrganizationId": null,
+        "submittedByUserId": null,
+        "submittedByEmail": "jennifer@hellotocheers.com",
+        "referredVenueName": "DISPOSABLE-P6-REF-1794271429189",
+        "referredCity": "Austin",
+        "referredState": "TX",
+        "referredWebsite": "https://p6-ref-1794271429189.test",
+        "referredWebsiteDomain": "p6-ref-1794271429189.test",
+        "referredContactEmail": "contact+p6-1794271429189@hellotocheers.com",
+        "referredContactName": "P6 Contact",
+        "referredContactRole": null,
+        "notes": null,
+        "status": "submitted",
+        "assignedOwnerEmail": null,
+        "linkedRelationshipId": null,
+        "linkedVenueId": null,
+        "isSelfReferral": false,
+        "isSameOrganization": false,
+        "isExistingPayingCustomer": false,
+        "isDuplicateClaim": false,
+        "blockedReason": null,
+        "programPolicyVersion": "referral_v1",
+        "qualificationDays": 30,
+        "audit": [],
+        "metadata": {
+          "harness": "phase6",
+          "disposable": true
+        },
+        "createdAt": "2026-11-10T00:43:49.574143+00:00",
+        "updatedAt": "2026-11-10T00:43:49.574143+00:00"
+      }
+    ]
+  }
+}

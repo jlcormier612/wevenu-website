@@ -5,15 +5,20 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/integrations/supabase/server";
 import {
   addLineItem,
+  applyPostPaymentCredit,
   createAmendedInvoice,
   createInvoice,
   dismissEventOrderDrift,
-  getInvoice,
   removeLineItem,
   revertInvoiceToDraft,
+  updateInvoiceDisplayName,
   updateInvoiceStatus,
 } from "@/lib/invoices/service";
-import { formatCurrency } from "@/lib/invoices/constants";
+import {
+  listInvoiceOfflineInstallments,
+  recordOfflineInstallmentPayment,
+} from "@/lib/payments/service";
+import type { OfflinePaymentRecordResult } from "@/lib/payments/types";
 import type {
   AddLineItemResult,
   CreateInvoiceResult,
@@ -23,7 +28,23 @@ import type {
   InvoiceStatus,
 } from "@/lib/invoices/types";
 import { sendEmail } from "@/lib/email/send";
+import { emailBrandFromVenue } from "@/lib/email/venue-brand";
+import { buildInvoiceAndPaymentPlanEmail } from "@/lib/invoices/invoice-and-payment-plan-email";
+import {
+  beginOutboundSend,
+  dueDateLabelFromContext,
+  endOutboundSend,
+  hasSuccessfulPaymentRequestSend,
+  INVOICE_PLAN_REVISION_SOURCE_TYPE,
+  loadInvoiceOutboundContext,
+  PAYMENT_REQUEST_SOURCE_TYPE,
+  type InvoiceOutboundContext,
+} from "@/lib/invoices/outbound";
 import { getCurrentVenue } from "@/lib/venue/service";
+import type { EmailVenueBrand } from "@/lib/email/venue-brand";
+
+const INVOICE_ALREADY_SENT =
+  "This invoice and payment plan was already sent."
 
 export async function createInvoiceAction(input: InvoiceInput): Promise<CreateInvoiceResult> {
   const result = await createInvoice(input);
@@ -33,19 +54,38 @@ export async function createInvoiceAction(input: InvoiceInput): Promise<CreateIn
 
 export async function addLineItemAction(invoiceId: string, input: InvoiceLineItemInput): Promise<AddLineItemResult> {
   const result = await addLineItem(invoiceId, input);
-  if (result.ok) revalidatePath(`/invoices/${invoiceId}`);
+  if (result.ok) {
+    revalidatePath(`/invoices/${invoiceId}`);
+    revalidatePath("/payments");
+  }
   return result;
 }
 
 export async function removeLineItemAction(invoiceId: string, itemId: string): Promise<InvoiceActionResult> {
   const result = await removeLineItem(invoiceId, itemId);
-  if (result.ok) revalidatePath(`/invoices/${invoiceId}`);
+  if (result.ok) {
+    revalidatePath(`/invoices/${invoiceId}`);
+    revalidatePath("/payments");
+  }
   return result;
 }
 
 export async function updateInvoiceStatusAction(invoiceId: string, status: InvoiceStatus): Promise<InvoiceActionResult> {
   const result = await updateInvoiceStatus(invoiceId, status);
   if (result.ok) revalidatePath(`/invoices/${invoiceId}`);
+  return result;
+}
+
+/** Presentation-only — never changes invoice_number or payment references. */
+export async function updateInvoiceDisplayNameAction(
+  invoiceId: string,
+  displayName: string,
+): Promise<InvoiceActionResult> {
+  const result = await updateInvoiceDisplayName(invoiceId, displayName);
+  if (result.ok) {
+    revalidatePath(`/invoices/${invoiceId}`);
+    revalidatePath("/invoices");
+  }
   return result;
 }
 
@@ -70,108 +110,353 @@ export async function createAmendedInvoiceAction(originalInvoiceId: string): Pro
   return result;
 }
 
+/** Post-payment credit on an issued invoice — does not rewrite paid installments. */
+export async function applyPostPaymentCreditAction(
+  invoiceId: string,
+  input: { amount: number; description: string },
+): Promise<InvoiceActionResult> {
+  const result = await applyPostPaymentCredit(invoiceId, input);
+  if (result.ok) {
+    revalidatePath(`/invoices/${invoiceId}`);
+    revalidatePath("/payments");
+  }
+  return result;
+}
+
+export type InvoiceAndPaymentPlanPreview = {
+  recipient: string;
+  clientName: string;
+  venueName: string;
+  subject: string;
+  amountDueNow: string | null;
+  dueDate: string | null;
+  totalContracted: string;
+  paidToDate: string;
+  remainingBalance: string;
+  invoicePlanUrl: string | null;
+  payableNow: boolean;
+  /** Remaining / open schedule lines as the client-facing email will show them. */
+  scheduleLines: Array<{
+    label: string;
+    amount: number;
+    dueDate: string | null;
+    status: string;
+  }>;
+};
+
+export async function paymentRequestAlreadySentAction(
+  invoiceId: string,
+): Promise<{ ok: true; alreadySent: boolean } | InvoiceActionResult> {
+  const venue = await getCurrentVenue();
+  if (!venue) return { ok: false, message: "Invoice or venue not found." };
+  const { createAdminClient } = await import("@/integrations/supabase/admin");
+  const alreadySent = await hasSuccessfulPaymentRequestSend(createAdminClient(), {
+    venueId: venue.id,
+    invoiceId,
+  });
+  return { ok: true, alreadySent };
+}
+
+function emailFromContext(ctx: InvoiceOutboundContext, brand: EmailVenueBrand) {
+  return buildInvoiceAndPaymentPlanEmail({
+    clientFirstName: ctx.clientFirstName,
+    clientEmail: ctx.clientEmail,
+    clientName: `${ctx.clientFirstName} ${ctx.clientLastName}`.trim(),
+    venueName: ctx.venueName,
+    venueEmail: ctx.venueEmail,
+    invoiceLabel: ctx.invoiceLabel,
+    invoiceNumber: ctx.invoice.invoiceNumber,
+    eventDate: ctx.invoice.eventDate,
+    eventName: ctx.invoice.eventName,
+    totalContracted: ctx.invoice.total,
+    paidToDate: ctx.paidToDate,
+    balanceDue: ctx.invoice.balanceDue,
+    dueNow: ctx.dueNow,
+    dueDateLabel: dueDateLabelFromContext(ctx),
+    remainingAfter: ctx.remainingAfter,
+    scheduleLines: ctx.scheduleLines,
+    invoicePlanUrl: ctx.invoicePlanUrl,
+    brand,
+  });
+}
+
+function previewFromEmail(
+  ctx: InvoiceOutboundContext,
+  email: ReturnType<typeof buildInvoiceAndPaymentPlanEmail>,
+): InvoiceAndPaymentPlanPreview {
+  return {
+    recipient: email.recipient,
+    clientName: email.clientName,
+    venueName: email.venueName,
+    subject: email.subject,
+    amountDueNow: email.amountDueNow,
+    dueDate: email.dueDate,
+    totalContracted: email.totalContracted,
+    paidToDate: email.paidToDate,
+    remainingBalance: email.remainingBalance,
+    invoicePlanUrl: email.invoicePlanUrl,
+    payableNow: ctx.dueNow.kind === "next_installment",
+    scheduleLines: ctx.scheduleLines.map((l) => ({
+      label: l.label,
+      amount: l.amount,
+      dueDate: l.dueDate,
+      status: l.status,
+    })),
+  };
+}
+
+export async function previewInvoiceAndPaymentPlanAction(
+  invoiceId: string,
+): Promise<
+  | { ok: true; preview: InvoiceAndPaymentPlanPreview; alreadySent: boolean }
+  | InvoiceActionResult
+> {
+  const venue = await getCurrentVenue();
+  if (!venue) return { ok: false, message: "Invoice or venue not found." };
+  const { createAdminClient } = await import("@/integrations/supabase/admin");
+  const alreadySent = await hasSuccessfulPaymentRequestSend(createAdminClient(), {
+    venueId: venue.id,
+    invoiceId,
+  });
+  if (alreadySent) {
+    return { ok: false, message: INVOICE_ALREADY_SENT };
+  }
+  const loaded = await loadInvoiceOutboundContext(invoiceId, {
+    publish: false,
+  });
+  if (!loaded.ok) return loaded;
+  const email = emailFromContext(loaded.ctx, emailBrandFromVenue(venue));
+  return { ok: true, preview: previewFromEmail(loaded.ctx, email), alreadySent: false };
+}
+
+export async function sendInvoiceAndPaymentPlanAction(
+  invoiceId: string,
+): Promise<{ ok: true; method: "resend" | "mailto"; mailtoUrl?: string } | InvoiceActionResult> {
+  if (!beginOutboundSend("payment_request", invoiceId)) {
+    return { ok: false, message: "This invoice and payment plan is already sending." };
+  }
+  try {
+    const venue = await getCurrentVenue();
+    if (!venue) return { ok: false, message: "Invoice or venue not found." };
+    const { createAdminClient } = await import("@/integrations/supabase/admin");
+    const admin = createAdminClient();
+    if (await hasSuccessfulPaymentRequestSend(admin, { venueId: venue.id, invoiceId })) {
+      return { ok: false, message: INVOICE_ALREADY_SENT };
+    }
+    const loaded = await loadInvoiceOutboundContext(invoiceId, {
+      publish: true,
+    });
+    if (!loaded.ok) return loaded;
+    const email = emailFromContext(loaded.ctx, emailBrandFromVenue(venue));
+    const { resolveVenueCoupleThreadId } = await import("@/lib/conversations/resolve-couple-thread");
+    const threadId = await resolveVenueCoupleThreadId(admin, loaded.ctx.venueId, {
+      clientId: loaded.ctx.clientId,
+    });
+    const result = await sendEmail({
+      to: email.to,
+      subject: email.subject,
+      text: email.text,
+      html: email.html,
+      replyTo: email.replyTo,
+      threadId: threadId ?? undefined,
+    });
+    if (result.ok && result.method === "resend") {
+      const { recordExternalClientOutbound } = await import("@/lib/conversations/record-external-outbound");
+      const recorded = await recordExternalClientOutbound(admin, {
+        venueId: loaded.ctx.venueId,
+        clientId: loaded.ctx.clientId,
+        channel: "email",
+        body: email.text,
+        providerId: result.providerId ?? null,
+        status: "accepted",
+        sourceType: PAYMENT_REQUEST_SOURCE_TYPE,
+        sourceId: invoiceId,
+      });
+      if (!recorded.ok) {
+        console.error("[sendInvoiceAndPaymentPlanAction] conversation record failed", recorded);
+      }
+      revalidatePath(`/invoices/${invoiceId}`);
+      revalidatePath(`/clients/${loaded.ctx.clientId}`);
+      revalidatePath("/payments");
+      revalidatePath("/documents");
+    }
+    return result;
+  } finally {
+    endOutboundSend("payment_request", invoiceId);
+  }
+}
+
+/**
+ * Preview a revised invoice / payment plan after Adjust — allowed even when
+ * the original payment request was already sent. Uses the same materialization
+ * as the client email.
+ */
+export async function previewRevisedInvoiceAndPaymentPlanAction(
+  invoiceId: string,
+): Promise<
+  | { ok: true; preview: InvoiceAndPaymentPlanPreview; alreadySent: boolean }
+  | InvoiceActionResult
+> {
+  const venue = await getCurrentVenue();
+  if (!venue) return { ok: false, message: "Invoice or venue not found." };
+  const loaded = await loadInvoiceOutboundContext(invoiceId, { publish: false });
+  if (!loaded.ok) return loaded;
+  if (loaded.ctx.invoice.status !== "sent" && loaded.ctx.invoice.status !== "partially_paid") {
+    return { ok: false, message: "Only a sent or partially paid invoice can send a revised plan." };
+  }
+  const email = emailFromContext(loaded.ctx, emailBrandFromVenue(venue));
+  const { createAdminClient } = await import("@/integrations/supabase/admin");
+  const alreadySent = await hasSuccessfulPaymentRequestSend(createAdminClient(), {
+    venueId: venue.id,
+    invoiceId,
+  });
+  return { ok: true, preview: previewFromEmail(loaded.ctx, email), alreadySent };
+}
+
+/**
+ * Explicit send of a revised collection arrangement. Distinct sourceType from
+ * the first payment-request send so send-once on invoice_email remains intact.
+ */
+export async function sendRevisedInvoiceAndPaymentPlanAction(
+  invoiceId: string,
+): Promise<{ ok: true; method: "resend" | "mailto"; mailtoUrl?: string } | InvoiceActionResult> {
+  if (!beginOutboundSend("plan_revision", invoiceId)) {
+    return { ok: false, message: "This revised invoice and payment plan is already sending." };
+  }
+  try {
+    const venue = await getCurrentVenue();
+    if (!venue) return { ok: false, message: "Invoice or venue not found." };
+    const loaded = await loadInvoiceOutboundContext(invoiceId, { publish: true });
+    if (!loaded.ok) return loaded;
+    if (loaded.ctx.invoice.status !== "sent" && loaded.ctx.invoice.status !== "partially_paid") {
+      return { ok: false, message: "Only a sent or partially paid invoice can send a revised plan." };
+    }
+    const email = emailFromContext(loaded.ctx, emailBrandFromVenue(venue));
+    const revisedSubject = email.subject.startsWith("Updated:")
+      ? email.subject
+      : `Updated: ${email.subject}`;
+    const { createAdminClient } = await import("@/integrations/supabase/admin");
+    const admin = createAdminClient();
+    const { resolveVenueCoupleThreadId } = await import("@/lib/conversations/resolve-couple-thread");
+    const threadId = await resolveVenueCoupleThreadId(admin, loaded.ctx.venueId, {
+      clientId: loaded.ctx.clientId,
+    });
+    const result = await sendEmail({
+      to: email.to,
+      subject: revisedSubject,
+      text: email.text,
+      html: email.html,
+      replyTo: email.replyTo,
+      threadId: threadId ?? undefined,
+    });
+    if (result.ok && result.method === "resend") {
+      const { recordExternalClientOutbound } = await import("@/lib/conversations/record-external-outbound");
+      const recorded = await recordExternalClientOutbound(admin, {
+        venueId: loaded.ctx.venueId,
+        clientId: loaded.ctx.clientId,
+        channel: "email",
+        body: email.text,
+        providerId: result.providerId ?? null,
+        status: "accepted",
+        sourceType: INVOICE_PLAN_REVISION_SOURCE_TYPE,
+        sourceId: invoiceId,
+      });
+      if (!recorded.ok) {
+        console.error("[sendRevisedInvoiceAndPaymentPlanAction] conversation record failed", recorded);
+      }
+      revalidatePath(`/invoices/${invoiceId}`);
+      revalidatePath(`/clients/${loaded.ctx.clientId}`);
+      revalidatePath("/payments");
+      revalidatePath("/documents");
+    }
+    return result;
+  } finally {
+    endOutboundSend("plan_revision", invoiceId);
+  }
+}
+
+/** @deprecated Canonical send is sendInvoiceAndPaymentPlanAction. */
 export async function sendInvoiceEmailAction(
   invoiceId: string,
 ): Promise<{ ok: true; method: "resend" | "mailto"; mailtoUrl?: string } | InvoiceActionResult> {
-  const [invoice, venue, supabase] = await Promise.all([
-    getInvoice(invoiceId),
-    getCurrentVenue(),
-    createClient(),
-  ]);
-  if (!invoice || !venue) return { ok: false, message: "Invoice or venue not found." };
-  if (!invoice.clientId) return { ok: false, message: "Invoice has no linked client." };
+  return sendInvoiceAndPaymentPlanAction(invoiceId);
+}
 
-  // Booking Financial Architecture Phase 3b: emailing is another way content
-  // leaves the building, not just "Mark as Sent" — an Event-Order-linked
-  // Draft invoice needs the same freeze-on-send commitment moment before
-  // anything goes out, so a subsequent Event Order change has a real,
-  // frozen "as sent" state to be compared against. Scoped to the
-  // Event-Order-linked case only — a plain draft invoice keeps its existing
-  // behavior of being emailable without a status change.
-  let invoiceToSend = invoice;
-  if (invoice.status === "draft" && invoice.eventOrderId) {
-    const freezeResult = await updateInvoiceStatus(invoiceId, "sent");
-    if (!freezeResult.ok) return { ok: false, message: freezeResult.message ?? "Could not prepare this invoice to send." };
-    const refreshed = await getInvoice(invoiceId);
-    if (!refreshed) return { ok: false, message: "Invoice not found." };
-    invoiceToSend = refreshed;
+/** @deprecated Canonical send is sendInvoiceAndPaymentPlanAction. */
+export async function sendInvoiceDocumentCopyAction(
+  invoiceId: string,
+): Promise<{ ok: true; method: "resend" | "mailto"; mailtoUrl?: string } | InvoiceActionResult> {
+  return sendInvoiceAndPaymentPlanAction(invoiceId);
+}
+
+/** @deprecated Canonical preview is previewInvoiceAndPaymentPlanAction. */
+export async function previewPaymentRequestAction(
+  invoiceId: string,
+): Promise<
+  | { ok: true; preview: InvoiceAndPaymentPlanPreview; alreadySent: boolean }
+  | InvoiceActionResult
+> {
+  return previewInvoiceAndPaymentPlanAction(invoiceId);
+}
+
+/** @deprecated Canonical preview is previewInvoiceAndPaymentPlanAction. */
+export async function previewInvoiceDocumentCopyAction(
+  invoiceId: string,
+): Promise<{ ok: true; preview: InvoiceAndPaymentPlanPreview } | InvoiceActionResult> {
+  const result = await previewInvoiceAndPaymentPlanAction(invoiceId);
+  if (!result.ok) return result;
+  if (!("preview" in result)) {
+    return { ok: false, message: "Could not prepare this invoice and payment plan." };
   }
+  return { ok: true, preview: result.preview };
+}
 
-  // Fetch client email
-  const { data: client } = await supabase.from("clients")
-    .select("email, first_name, last_name")
-    .eq("id", invoiceToSend.clientId)
-    .maybeSingle<{ email: string | null; first_name: string; last_name: string }>();
-  if (!client?.email) return { ok: false, message: "Client has no email address on file." };
+/** Open installments for the deliberate offline recording dialog. */
+export async function listInvoiceOfflineInstallmentsAction(invoiceId: string) {
+  return listInvoiceOfflineInstallments(invoiceId);
+}
 
-  // Build plain text email
-  const dueStr = invoiceToSend.dueDate
-    ? new Date(invoiceToSend.dueDate + "T12:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
-    : null;
-
-  const lineItemsText = invoiceToSend.lineItems
-    .filter((i) => i.type !== "discount" && i.type !== "deposit")
-    .map((i) => `  ${i.description}: ${formatCurrency(i.amount)}`)
-    .join("\n");
-
-  const discountsText = invoiceToSend.lineItems
-    .filter((i) => i.type === "discount" || i.type === "deposit")
-    .map((i) => `  ${i.description}: -${formatCurrency(i.amount)}`)
-    .join("\n");
-
-  const text = [
-    `Hi ${client.first_name},`,
-    "",
-    `Please find your invoice from ${venue.name} below.`,
-    "",
-    `Invoice: ${invoiceToSend.invoiceNumber}`,
-    dueStr ? `Due: ${dueStr}` : null,
-    "",
-    lineItemsText || null,
-    discountsText ? `\nDiscounts / deposits:\n${discountsText}` : null,
-    invoiceToSend.taxAmount > 0 ? `\nTax: ${formatCurrency(invoiceToSend.taxAmount)}` : null,
-    "",
-    `Total: ${formatCurrency(invoiceToSend.total)}`,
-    invoiceToSend.balanceDue > 0 ? `Balance due: ${formatCurrency(invoiceToSend.balanceDue)}` : "Paid in full.",
-    invoiceToSend.notes ? `\nNotes: ${invoiceToSend.notes}` : null,
-    "",
-    `Please don't hesitate to reach out with any questions.`,
-    "",
-    `Warm regards,`,
-    venue.name,
-    venue.email ?? "",
-  ].filter(Boolean).join("\n");
-
-  const result = await sendEmail({
-    to: client.email,
-    subject: `Invoice ${invoiceToSend.invoiceNumber} from ${venue.name}`,
-    text,
-    replyTo: venue.email ?? undefined,
+/**
+ * Record offline payment against an explicit installment.
+ * Replaces the former one-click recordInvoiceInstallmentReceivedAction.
+ */
+export async function recordOfflineInstallmentPaymentAction(input: {
+  invoiceId: string;
+  scheduleId: string;
+  itemId: string;
+  paidAmount: string;
+  paymentMethod: string;
+  referenceNumber?: string;
+  paidDate: string;
+  notes?: string;
+  idempotencyKey?: string;
+}): Promise<
+  | { ok: true; offlineRecord?: OfflinePaymentRecordResult }
+  | { ok: false; message: string }
+> {
+  const result = await recordOfflineInstallmentPayment({
+    invoiceId: input.invoiceId,
+    scheduleId: input.scheduleId,
+    itemId: input.itemId,
+    paidAmount: input.paidAmount,
+    paymentMethod: input.paymentMethod,
+    referenceNumber: input.referenceNumber,
+    paidDate: input.paidDate,
+    notes: input.notes,
+    idempotencyKey: input.idempotencyKey,
   });
-
-  // Mirror successful Resend delivery into the relationship conversation
-  // (same pattern as payment/contract reminders). Mailto/disabled paths do
-  // not claim a sent message in conversation history.
-  if (result.ok && result.method === "resend") {
-    // Service role — same pattern as obligation/reminder engines — so the
-    // conversation history write is not blocked by session/RLS edge cases.
-    const { createAdminClient } = await import("@/integrations/supabase/admin");
-    const { recordExternalClientOutbound } = await import("@/lib/conversations/record-external-outbound");
-    const recorded = await recordExternalClientOutbound(createAdminClient(), {
-      venueId: venue.id,
-      clientId: invoiceToSend.clientId,
-      channel: "email",
-      body: text,
-      providerId: result.providerId ?? null,
-      status: "accepted",
-      sourceType: "invoice_email",
-      sourceId: invoiceId,
-    });
-    if (!recorded.ok) {
-      console.error("[sendInvoiceEmailAction] conversation record failed", recorded);
-    }
-    revalidatePath(`/invoices/${invoiceId}`);
-    if (invoiceToSend.clientId) revalidatePath(`/clients/${invoiceToSend.clientId}`);
+  if (!result.ok) {
+    const message = "message" in result && result.message
+      ? result.message
+      : result.errors
+        ? Object.values(result.errors)[0] ?? "Could not record this payment."
+        : "Could not record this payment.";
+    return { ok: false, message };
   }
-  return result;
+  revalidatePath(`/invoices/${input.invoiceId}`);
+  revalidatePath("/invoices");
+  revalidatePath(`/payments/${input.scheduleId}`);
+  revalidatePath("/payments");
+  revalidatePath("/clients");
+  return { ok: true, offlineRecord: result.offlineRecord };
 }

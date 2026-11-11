@@ -1,0 +1,44 @@
+{
+  "ok": true,
+  "commit_expected": "cb0e66ae517acd2d9a236e6b11c315d173645217",
+  "migration": "20261413100000_clear_venue_notifications.sql",
+  "results": {
+    "seed.rows": {
+      "ok": true,
+      "detail": "fancyOne=f4126932-456b-46b1-9e34-1e5884abd2e1 fancyKeep=ad8e918f-3496-48b3-9ab4-e184c4a4b649 other=5987e5ac-687d-48cd-a924-9d03e274fe4f otherVenue=5c84e74e-355d-4ce1-9e6b-913a9267f543"
+    },
+    "auth.fancy": {
+      "ok": true,
+      "detail": "jennifer@hellotocheers.com"
+    },
+    "rpc.clear_one": {
+      "ok": true,
+      "detail": "{\"clearOneData\":{\"ok\":true},\"clearOneErr\":null}"
+    },
+    "rpc.clear_one.isolation": {
+      "ok": true,
+      "detail": "remaining=5987e5ac-687d-48cd-a924-9d03e274fe4f,ad8e918f-3496-48b3-9ab4-e184c4a4b649"
+    },
+    "rpc.clear_other_venue_id_noop": {
+      "ok": true,
+      "detail": "{\"crossData\":{\"ok\":true},\"otherStill\":\"5987e5ac-687d-48cd-a924-9d03e274fe4f\"}"
+    },
+    "rpc.clear_all": {
+      "ok": true,
+      "detail": "{\"clearAllData\":{\"ok\":true},\"clearAllErr\":null}"
+    },
+    "rpc.clear_all.isolation": {
+      "ok": true,
+      "detail": "fancyLeft=0 otherLeft=5987e5ac-687d-48cd-a924-9d03e274fe4f"
+    },
+    "rpc.unauthenticated_rejected": {
+      "ok": true,
+      "detail": "{\"unauthData\":{\"ok\":false},\"unauthErr\":null}"
+    },
+    "rpc.mark_one_read_still_works": {
+      "ok": true,
+      "detail": "{\"markData\":{\"ok\":true},\"read_at\":\"2026-10-06T20:55:57.257586+00:00\"}"
+    }
+  },
+  "at": "2026-10-06T20:55:57.374Z"
+}

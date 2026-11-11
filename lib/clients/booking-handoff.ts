@@ -98,10 +98,10 @@ function clientPlanningItem(
     return {
       key: "client_planning",
       label: "Client Planning",
-      detail: "Draft — not yet released to the client",
-      complete: true,
+      detail: "Draft — prepared for this event, not yet visible to the client",
+      complete: false,
       href,
-      actionLabel: "Open Planning",
+      actionLabel: "Release Client Planning",
     };
   }
   return {
@@ -141,6 +141,12 @@ function venuePlanningItem(
   };
 }
 
+/** True when a link opens the same booking workspace as the primary Open Event action. */
+export function isBookingWorkspaceHref(href: string): boolean {
+  const path = href.split(/[?#]/)[0] ?? "";
+  return /^\/clients\/[^/]+$/.test(path) || /^\/events\/[^/]+$/.test(path);
+}
+
 export function buildBookingHandoff(input: BookingHandoffInput): BookingHandoffModel {
   const { clientId, eventId, playbookApplications, financialSummary, communicationsSummary, experienceSummary } = input;
   const clientPlanning = clientPlanningItem(clientId, eventId, playbookApplications);
@@ -159,7 +165,7 @@ export function buildBookingHandoff(input: BookingHandoffInput): BookingHandoffM
       ? {
           key: "event",
           label: "Event created",
-          detail: "A draft Event exists for this booking.",
+          detail: "The booked Event exists because this relationship is Booked.",
           complete: true,
           href: `/events/${eventId}`,
           actionLabel: "Open Event",
@@ -167,7 +173,7 @@ export function buildBookingHandoff(input: BookingHandoffInput): BookingHandoffM
       : {
           key: "event",
           label: "Event created",
-          detail: "No event yet — add a date to create one.",
+          detail: "No Event yet — Book this relationship to create the booked occasion.",
           complete: false,
           href: `/clients/${clientId}/edit`,
           actionLabel: "Add event details",
@@ -200,13 +206,17 @@ export function buildBookingHandoff(input: BookingHandoffInput): BookingHandoffM
     },
   ];
 
+  const setupHref = eventId
+    ? `/clients/${clientId}#event-setup`
+    : `/clients/${clientId}/edit`;
   return {
     eyebrow: "Booking complete",
     bookingLine: "are booked.",
-    prepareHeading: "Prepare Their Event",
-    tagline: "Their booking is complete. Next, prepare their event.",
-    primaryHref: eventId ? `/events/${eventId}#playbook` : `/clients/${clientId}/edit`,
-    primaryLabel: eventId ? "Prepare Their Event" : "Add event details",
+    prepareHeading: "What to do next",
+    tagline:
+      "Booked does not release planning to the couple. Continue on Event setup — it stays on the client workspace after you leave this screen.",
+    primaryHref: setupHref,
+    primaryLabel: eventId ? "Continue event setup" : "Add event details",
     items,
   };
 }

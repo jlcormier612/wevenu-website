@@ -2,14 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import {
-  addEventTaskContextLink, addMilestone, addPlaybookTaskAttachment, addTemplateTask,   applyPlaybookToEvent, completeEventTask_,
+  addCustomClientEventTask, addCustomVenueEventTask, addEventTaskContextLink, addMilestone, addPlaybookTaskAttachment, addTemplateTask,   applyPlaybookToEvent, applyPlaybookToClient, completeEventTask_,
   createStandardClientPlanningTemplate, createStandardVenueWorkflowTemplate, createTemplate, createTemplateFromImport,
   deleteMilestone, deleteTemplate_, deleteTemplateTask_, duplicateTemplate,
   getMilestones, getTemplate, getTemplateTasks,
-  releasePlaybookApplication, unapplyPlaybookFromEvent,
+  releasePlaybookApplication, removeClientEventTask, removeVenueEventTask, replaceClientPlaybookOnEvent, replaceVenuePlaybookOnEvent, unapplyPlaybookFromEvent,
   removeEventTaskContextLink, removePlaybookTaskAttachment, renameMilestone, renameTemplate_, reorderMilestone,
-  setEventTaskRequest, setEventTaskStatus, setMilestoneKind, setTemplateArchived_, setTemplateDefault_, updateEventTaskAssignment, updateEventTaskDaysOffset, updateEventTaskDueDate, updateEventTaskNotes,
-  updateEventTaskSchedule, updateTemplateTask_,
+  setEventTaskRequest, setEventTaskStatus, setMilestoneKind, setTemplateArchived_, setTemplateDefault_, updateClientEventTaskFields, updateVenueEventTaskFields, updateEventTaskAssignment, updateEventTaskDaysOffset, updateEventTaskDueDate, updateEventTaskNotes,
+  updateEventTaskSchedule, updateTemplateDetails_, updateTemplateTask_,
 } from "@/lib/playbooks/service";
 import type { ScheduleInput } from "@/lib/playbooks/repository";
 import type { EventTaskContextSourceType, ImportPlaybookResult, PlaybookActionResult, PlaybookKind, PlaybookMilestone, PlaybookTask, CreatePlaybookResult } from "@/lib/playbooks/types";
@@ -30,6 +30,19 @@ export async function deleteTemplateAction(id: string): Promise<PlaybookActionRe
 export async function renameTemplateAction(id: string, name: string): Promise<PlaybookActionResult> {
   const result = await renameTemplate_(id, name);
   if (result.ok) revalidatePath("/library/playbooks");
+  return result;
+}
+
+export async function updateTemplateDetailsAction(
+  id: string,
+  input: { name: string; eventType: string | null; description: string | null },
+): Promise<PlaybookActionResult> {
+  const result = await updateTemplateDetails_(id, input);
+  if (result.ok) {
+    revalidatePath("/library/playbooks");
+    revalidatePath(`/library/playbooks/${id}`);
+    revalidatePath(`/library/playbooks/${id}/preview`);
+  }
   return result;
 }
 
@@ -75,6 +88,12 @@ export async function applyPlaybookAction(eventId: string, templateId: string, e
   return result;
 }
 
+export async function applyPlaybookToClientAction(clientId: string, templateId: string, anchorDate: string): Promise<PlaybookActionResult> {
+  const result = await applyPlaybookToClient(clientId, templateId, anchorDate);
+  if (result.ok) revalidatePath(`/clients/${clientId}`);
+  return result;
+}
+
 /** Choose → Preview → Apply: load template contents for the apply preview sheet. */
 export async function getPlaybookApplyPreviewAction(templateId: string): Promise<{
   ok: true;
@@ -89,16 +108,12 @@ export async function getPlaybookApplyPreviewAction(templateId: string): Promise
   ]);
   if (!template) return { ok: false, message: "That checklist template could not be found." };
   const { getCurrentVenue } = await import("@/lib/venue/service");
-  const { filterTasksForVenueCapabilities } = await import("@/lib/playbooks/capabilities");
+  const {
+    capabilitiesFromVenue,
+    filterTasksForVenueCapabilities,
+  } = await import("@/lib/playbooks/capabilities");
   const venue = await getCurrentVenue();
-  const caps = venue
-    ? {
-        timeline: venue.planningTimelineEnabled,
-        floorPlan: venue.planningFloorPlanEnabled,
-        seating: venue.planningSeatingEnabled,
-        vendors: venue.planningVendorsEnabled,
-      }
-    : undefined;
+  const caps = venue ? capabilitiesFromVenue(venue) : undefined;
   const tasks = caps ? filterTasksForVenueCapabilities(tasksRaw, caps) : tasksRaw;
   return {
     ok: true,
@@ -126,9 +141,12 @@ export async function unapplyPlaybookAction(eventId: string, kind: PlaybookKind)
   return result;
 }
 
-export async function completeTaskAction(taskId: string, eventId: string): Promise<PlaybookActionResult> {
+export async function completeTaskAction(taskId: string, eventId: string, clientId?: string | null): Promise<PlaybookActionResult> {
   const result = await completeEventTask_(taskId);
-  if (result.ok) revalidatePath(`/events/${eventId}`);
+  if (result.ok) {
+    revalidatePath(`/events/${eventId}`);
+    if (clientId) revalidatePath(`/clients/${clientId}`);
+  }
   return result;
 }
 
@@ -302,5 +320,103 @@ export async function deleteMilestoneAction(templateId: string, milestoneId: str
 export async function setMilestoneKindAction(templateId: string, milestoneId: string, kind: PlaybookMilestone["kind"]): Promise<PlaybookActionResult> {
   const result = await setMilestoneKind(templateId, milestoneId, kind);
   if (result.ok) revalidatePath(`/library/playbooks/${templateId}`);
+  return result;
+}
+
+/** Pre-release event-specific Client Planning setup editor — never releases or mutates Library. */
+export async function replaceClientPlaybookAction(
+  eventId: string,
+  templateId: string,
+  eventDate: string,
+): Promise<PlaybookActionResult> {
+  const result = await replaceClientPlaybookOnEvent(eventId, templateId, eventDate);
+  if (result.ok) {
+    revalidatePath(`/events/${eventId}`);
+    revalidatePath("/clients");
+  }
+  return result;
+}
+
+export async function addCustomClientEventTaskAction(
+  eventId: string,
+  eventDate: string,
+  input: {
+    title: string;
+    daysOffset: number;
+    description?: string | null;
+    attachQuestionnaire?: boolean;
+  },
+): Promise<PlaybookActionResult & { taskId?: string }> {
+  const result = await addCustomClientEventTask(eventId, eventDate, input);
+  if (result.ok) revalidatePath(`/events/${eventId}`);
+  return result;
+}
+
+export async function removeClientEventTaskAction(
+  eventId: string,
+  taskId: string,
+): Promise<PlaybookActionResult> {
+  const result = await removeClientEventTask(eventId, taskId);
+  if (result.ok) revalidatePath(`/events/${eventId}`);
+  return result;
+}
+
+export async function updateClientEventTaskFieldsAction(
+  eventId: string,
+  eventDate: string,
+  taskId: string,
+  input: {
+    title?: string;
+    daysOffset?: number;
+    description?: string | null;
+    attachQuestionnaire?: boolean;
+  },
+): Promise<PlaybookActionResult> {
+  const result = await updateClientEventTaskFields(eventId, eventDate, taskId, input);
+  if (result.ok) revalidatePath(`/events/${eventId}`);
+  return result;
+}
+
+/** Pre-release event-specific Venue Planning setup — stays internal; never mutates Library. */
+export async function replaceVenuePlaybookAction(
+  eventId: string,
+  templateId: string,
+  eventDate: string,
+): Promise<PlaybookActionResult> {
+  const result = await replaceVenuePlaybookOnEvent(eventId, templateId, eventDate);
+  if (result.ok) {
+    revalidatePath(`/events/${eventId}`);
+    revalidatePath("/clients");
+  }
+  return result;
+}
+
+export async function addCustomVenueEventTaskAction(
+  eventId: string,
+  eventDate: string,
+  input: { title: string; daysOffset: number; description?: string | null },
+): Promise<PlaybookActionResult & { taskId?: string }> {
+  const result = await addCustomVenueEventTask(eventId, eventDate, input);
+  if (result.ok) revalidatePath(`/events/${eventId}`);
+  return result;
+}
+
+export async function removeVenueEventTaskAction(
+  eventId: string,
+  taskId: string,
+): Promise<PlaybookActionResult> {
+  const result = await removeVenueEventTask(eventId, taskId);
+  if (result.ok) revalidatePath(`/events/${eventId}`);
+  return result;
+}
+
+export async function updateVenueEventTaskFieldsAction(
+  eventId: string,
+  eventDate: string,
+  taskId: string,
+  input: { title?: string; daysOffset?: number; description?: string | null },
+): Promise<PlaybookActionResult> {
+  const result = await updateVenueEventTaskFields(eventId, eventDate, taskId, input);
+  if (result.ok) revalidatePath(`/events/${eventId}`);
   return result;
 }

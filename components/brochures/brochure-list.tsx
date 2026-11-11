@@ -21,7 +21,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { formatRelative } from "@/lib/leads/constants";
 import type { Brochure } from "@/lib/brochures/types";
 
-function NewBrochureSheet() {
+export function NewBrochureSheet() {
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const [name, setName] = React.useState("");
@@ -158,17 +158,23 @@ function BrochureCard({ brochure, archivedView }: { brochure: Brochure; archived
   );
 }
 
-export function BrochureList({ brochures }: { brochures: Brochure[] }) {
+export function BrochureList({
+  brochures,
+  headerCreate = true,
+}: {
+  brochures: Brochure[];
+  /** When false, PageHeader owns + New Brochure. */
+  headerCreate?: boolean;
+}) {
   const { active, archived } = partitionArchived(brochures, (b) => b.isArchived);
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <p className="text-xs text-muted-foreground">
-          Edit and preview here. Share with a lead from the brochure detail — Share emails a view link.
-        </p>
-        <NewBrochureSheet />
-      </div>
+      {headerCreate ? (
+        <div className="flex items-center justify-end">
+          <NewBrochureSheet />
+        </div>
+      ) : null}
       {active.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-sm border border-dashed border-border bg-card/40 py-16 text-center">
           <p className="font-heading text-lg font-medium text-heading">No brochures yet</p>

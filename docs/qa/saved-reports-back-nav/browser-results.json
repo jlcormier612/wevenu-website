@@ -1,0 +1,99 @@
+{
+  "at": "2026-10-28T19:15:35.330Z",
+  "expectedSha": "2bee773f1dcda7f0f5d8bee3795f8eabc08f4f81",
+  "servingImage": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:0edc09b087b649a2062d7c2fa3d01d847db471a5",
+  "servingSha": "0edc09b087b649a2062d7c2fa3d01d847db471a5",
+  "checks": [
+    {
+      "name": "serving_sha",
+      "pass": true,
+      "detail": "expected=2bee773f1dcda7f0f5d8bee3795f8eabc08f4f81 ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:0edc09b087b649a2062d7c2fa3d01d847db471a5 descendant tip=0edc09b087b649a2062d7c2fa3d01d847db471a5 contains ancestor=2bee773f1dcda7f0f5d8bee3795f8eabc08f4f81"
+    },
+    {
+      "name": "back_link_present",
+      "pass": true,
+      "detail": "count=1"
+    },
+    {
+      "name": "back_link_href",
+      "pass": true,
+      "detail": "href=/library"
+    },
+    {
+      "name": "desktop_back_above_reports",
+      "pass": true,
+      "detail": "{\"linkTop\":110.5,\"reportsTop\":165.75,\"linkText\":\"Templates\",\"reportsText\":\"Reports\"}"
+    },
+    {
+      "name": "desktop_reports_heading",
+      "pass": true,
+      "detail": "Templates Reports How your business is doing — bookings, revenue, sales, and events. Overview Sales Bookings Revenue Events Saved Saved Reports Reports you've saved so you can q"
+    },
+    {
+      "name": "desktop_tabs_present",
+      "pass": true,
+      "detail": "tabs"
+    },
+    {
+      "name": "desktop_saved_heading",
+      "pass": true,
+      "detail": "saved heading"
+    },
+    {
+      "name": "overview_no_templates_back",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "sales_no_templates_back",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "click_returns_to_library",
+      "pass": true,
+      "detail": "https://app.sandbox.hellotocheers.com/library"
+    },
+    {
+      "name": "library_page_content",
+      "pass": true,
+      "detail": "Templates Reusable things you create once and use again — templates you apply to events, plus catalogs and assets those templates pull from. APPLYABLE TEMPLATES Templates are reusable starting points. Create one here,"
+    },
+    {
+      "name": "narrow_back_present",
+      "pass": true,
+      "detail": "390px"
+    },
+    {
+      "name": "narrow_back_above_reports",
+      "pass": true,
+      "detail": "{\"linkTop\":76.5,\"reportsTop\":131.75,\"linkText\":\"Templates\",\"reportsText\":\"Reports\"}"
+    },
+    {
+      "name": "narrow_reports_heading",
+      "pass": true,
+      "detail": "Templates Reports How your business is doing — bookings, revenue, sales, and events. Overview Sales Bookings Revenue Events Saved Saved Reports Reports you've saved so you can q"
+    },
+    {
+      "name": "narrow_tabs_present",
+      "pass": true,
+      "detail": "tabs"
+    },
+    {
+      "name": "narrow_saved_heading",
+      "pass": true,
+      "detail": "saved heading"
+    },
+    {
+      "name": "no_horizontal_overflow",
+      "pass": true,
+      "detail": "overflow=false"
+    },
+    {
+      "name": "tab_overview_works",
+      "pass": true,
+      "detail": "https://app.sandbox.hellotocheers.com/reporting"
+    }
+  ],
+  "ok": true
+}

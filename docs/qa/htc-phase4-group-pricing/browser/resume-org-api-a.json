@@ -1,0 +1,54 @@
+{
+  "status": 200,
+  "body": {
+    "ok": true,
+    "organization": {
+      "id": "90efb537-aa7e-4302-8f38-1c4d6e196d99",
+      "name": "[DISPOSABLE-P4-PROP-A] 1794260831925 Organization",
+      "status": "active",
+      "reviewStatus": "none"
+    },
+    "membership": {
+      "id": "305c9d0e-2254-4fd7-9be7-25347ecb4428",
+      "status": "active",
+      "role": "primary"
+    },
+    "groupEligible": true,
+    "groupEligibleForCheckout": true,
+    "qualifyingVenueCount": 2,
+    "reason": "Organization has 2 qualifying active subscriptions — group 10% eligible.",
+    "members": [
+      {
+        "venueId": "4609a143-556c-4eb3-b64e-fc64f2dc19f8",
+        "venueName": "[DISPOSABLE-P4-PROP-A] 1794260831925",
+        "membershipStatus": "active",
+        "subscriptionStatus": "active",
+        "planKey": "starter",
+        "isCurrent": true,
+        "appliedOfferLabel": "Group 10%",
+        "listAmountCents": 19900,
+        "appliedRecurringCents": 17910,
+        "pendingAdjustmentCents": null,
+        "groupRecurringPreviewCents": 17910
+      },
+      {
+        "venueId": "d2063d3c-108b-40ab-af02-d17578d6d96e",
+        "venueName": "[DISPOSABLE-P4-PROP-B] 1794264061011",
+        "membershipStatus": "active",
+        "subscriptionStatus": "active",
+        "planKey": "starter",
+        "isCurrent": false,
+        "appliedOfferLabel": "Group 10%",
+        "listAmountCents": 19900,
+        "appliedRecurringCents": 17910,
+        "pendingAdjustmentCents": null,
+        "groupRecurringPreviewCents": 17910
+      }
+    ],
+    "pendingAdjustments": [],
+    "addAnotherVenueAvailable": true,
+    "gates": {
+      "groupPricingFlag": true
+    }
+  }
+}

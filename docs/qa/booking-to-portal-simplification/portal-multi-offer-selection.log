@@ -1,0 +1,23 @@
+PASS serving_sha — serving=cb25fb817efff630bf0d5faf7da1c59adfc56a76 expected=cb25fb817efff630bf0d5faf7da1c59adfc56a76
+PASS fixture_two_offers_and_working_layout_a — {"offerA":"dc92c2de-204a-4030-a4d2-bd55ce5a1253","offerB":"c83b2d83-4415-42c5-941a-2dd4ff7f48e4","planA":"40defae3-1135-4427-b9a6-f4db044f44e6","seatMarkerId":"44a58b8f-f702-41e0-9152-fb405359661f"}
+PASS portal_shows_two_layout_options — Layout Option A — Barn | Layout Option B — Reception Only | Layout Option A — Barn
+PASS portal_select_second_persists_db — {"planA":"40defae3-1135-4427-b9a6-f4db044f44e6","planB":"8c9cc9a0-65ab-425b-ba82-45fdb3ee4f25"}
+PASS operational_matches_couple_selection — {"couple_selected_floor_plan_id":"8c9cc9a0-65ab-425b-ba82-45fdb3ee4f25","operational_floor_plan_id":"8c9cc9a0-65ab-425b-ba82-45fdb3ee4f25"}
+PASS selected_layout_is_real_plan_for_template_b — {"id":"8c9cc9a0-65ab-425b-ba82-45fdb3ee4f25","name":"Layout Option B — Reception Only","source_template_id":"026fb633-2dce-4c73-87c8-144bb29a0318","event_id":"fbf0f14d-2e07-4b3e-9933-72724b437863"}
+PASS portal_selection_survives_reload — Layout Option B — Reception Only | Your choice | Layout Option B — Reception Only
+PASS repeat_select_no_duplicate_b_plans — [{"id":"8c9cc9a0-65ab-425b-ba82-45fdb3ee4f25"}]
+PASS prior_working_layout_and_seating_retained — {"planAStill":1,"seatMarkerId":"44a58b8f-f702-41e0-9152-fb405359661f","seatStill":true}
+PASS event_has_exactly_two_plans_after_select — eventPlans=2
+PASS other_booking_offers_unchanged — before=0 after=0
+PASS library_templates_unchanged — tpl 3->3 obj 89->89
+PASS no_invitation_side_effect — before=0 after=0
+PASS no_questionnaire_send_side_effect — sent=0
+PASS no_invoice_side_effect — invoices=0
+{
+  "passed": 15,
+  "failed": 0,
+  "servingSha": "cb25fb817efff630bf0d5faf7da1c59adfc56a76",
+  "eventId": "fbf0f14d-2e07-4b3e-9933-72724b437863",
+  "planB": "8c9cc9a0-65ab-425b-ba82-45fdb3ee4f25",
+  "status": "GREEN"
+}

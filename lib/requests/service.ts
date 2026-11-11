@@ -8,6 +8,13 @@
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getCurrentVenue } from "@/lib/venue/service";
+import {
+  REQUEST_CLIENT_SEARCH_LIMIT,
+  requestClientMatchesQuery,
+  toRequestClientOption,
+  type RequestClientOption,
+  type RequestClientSearchRow,
+} from "./client-search";
 import { TERMINAL_STATUS_TIMESTAMP_COLUMN } from "./constants";
 import { emitRequestLifecycleEvent } from "./hooks";
 import type {
@@ -225,4 +232,44 @@ export async function assignRequest(
     return { ok: true };
   });
   return result as RequestActionResult;
+}
+
+/**
+ * Name/email search for the New Request client field — venue-scoped, capped.
+ * Same first/last/partner/email ilike shape as clients repository / calendar
+ * Related-to search. Never returns another venue's clients.
+ */
+export async function searchRequestClients(query: string): Promise<RequestClientOption[]> {
+  const q = query.trim();
+  if (!isSupabaseConfigured || !q) return [];
+  const venue = await getCurrentVenue();
+  if (!venue) return [];
+  const supabase = await createClient();
+  // SQL matches on a lead token; multi-word queries are narrowed with the
+  // same token-AND contract as requestClientMatchesQuery (venue-scoped only).
+  const tokens = q.split(/\s+/).filter(Boolean);
+  const leadToken = tokens[0] ?? q;
+  const pattern = `%${leadToken}%`;
+  const orClause =
+    `first_name.ilike.${pattern},last_name.ilike.${pattern},email.ilike.${pattern},partner_first_name.ilike.${pattern},partner_last_name.ilike.${pattern}`;
+  const fetchLimit = tokens.length > 1
+    ? Math.min(REQUEST_CLIENT_SEARCH_LIMIT * 4, 48)
+    : REQUEST_CLIENT_SEARCH_LIMIT;
+  const { data, error } = await supabase
+    .from("clients")
+    .select("id, first_name, last_name, partner_first_name, partner_last_name, email, event_type, event_date")
+    .eq("venue_id", venue.id)
+    .neq("status", "cancelled")
+    .or(orClause)
+    .order("event_date", { ascending: true, nullsFirst: false })
+    .limit(fetchLimit);
+  if (error) {
+    console.error("[searchRequestClients]", error.message);
+    throw new Error("Could not search clients. Try again.");
+  }
+  const rows = (data ?? []) as unknown as RequestClientSearchRow[];
+  return rows
+    .filter((row) => requestClientMatchesQuery(row, q))
+    .slice(0, REQUEST_CLIENT_SEARCH_LIMIT)
+    .map(toRequestClientOption);
 }

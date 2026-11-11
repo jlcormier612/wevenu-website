@@ -1,0 +1,67 @@
+{
+  "at": "2026-10-15T00:26:39.036Z",
+  "expectedSha": "2bfe4cde2224d24169f906f5a2bc777488722795",
+  "servingImage": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:2bfe4cde2224d24169f906f5a2bc777488722795",
+  "disposableEmail": "lb2.reproof.1792023971316@hellotocheers-test.invalid",
+  "priorVenueId": "37a36416-a8f0-4919-a0fe-c24bd4524780",
+  "newVenueId": "6c54036e-115b-4dfb-b82f-23b6ca2e33bb",
+  "checks": [
+    {
+      "name": "Serving expected SHA",
+      "pass": true,
+      "detail": "image=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:2bfe4cde2224d24169f906f5a2bc777488722795"
+    },
+    {
+      "name": "Path B pending Juniper invite",
+      "pass": true,
+      "detail": "invitedDomain=yahoo.com"
+    },
+    {
+      "name": "Path B browser Wrong account",
+      "pass": true,
+      "detail": "url=https://app.sandbox.hellotocheers.com/join?token=7a80ab1c-4e6b-4c76-9719-aa3620e03069 title=Wrong account\n\nThis invitation was sent to:\njyagnesak@yahoo.com\n\nYou're currentl"
+    },
+    {
+      "name": "Path B Fancy still has zero Juniper membership",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "Path A handoff created",
+      "pass": true,
+      "detail": "{\"id\":\"b5d0cfb0-4062-44cd-892e-d76ac4f01873\",\"ok\":true}"
+    },
+    {
+      "name": "Path A consume RPC sets New venue",
+      "pass": true,
+      "detail": "{\"ok\":true,\"origin\":\"purchase_activation\",\"venueId\":\"6c54036e-115b-4dfb-b82f-23b6ca2e33bb\"}"
+    },
+    {
+      "name": "Path A browser lands on New venue",
+      "pass": true,
+      "detail": "landedNew=true url=https://app.sandbox.hellotocheers.com/onboarding/intake bodyHasNew=true"
+    },
+    {
+      "name": "Path A DB active venue is New",
+      "pass": true,
+      "detail": "active=6c54036e expected=6c54036e"
+    },
+    {
+      "name": "Path A handoff consumed once",
+      "pass": true,
+      "detail": "consumed=true"
+    },
+    {
+      "name": "Path A refresh keeps New (B_keep_valid)",
+      "pass": true,
+      "detail": "url=https://app.sandbox.hellotocheers.com/onboarding/intake"
+    },
+    {
+      "name": "Fancy Juniper membership still zero",
+      "pass": true,
+      "detail": "count=0"
+    }
+  ],
+  "allPass": true,
+  "noCustomerSends": true
+}

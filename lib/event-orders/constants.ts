@@ -1,3 +1,4 @@
+import { formatMoneyDisplay } from "@/lib/money/format";
 import type { EventOrder, EventOrderDisplayStatus, EventOrderLine, EventOrderLineProvenance } from "@/lib/event-orders/types";
 
 /**
@@ -19,7 +20,7 @@ export const DISPLAY_STATUS_LABEL: Record<EventOrderDisplayStatus, string> = {
 };
 
 export function formatMoney(amount: number): string {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(amount);
+  return formatMoneyDisplay(amount, "USD");
 }
 
 export function sumLines(lines: Pick<EventOrderLine, "amount">[]): number {

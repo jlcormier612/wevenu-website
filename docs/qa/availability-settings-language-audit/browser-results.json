@@ -1,0 +1,38 @@
+{
+  "url": "https://app.sandbox.hellotocheers.com/settings/availability",
+  "email": "jennifer@hellotocheers.com",
+  "image": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:ffbe34c7f1475f18f9f3fc66b757ec5e8e109ab3",
+  "checks": [
+    {
+      "name": "Serving copy lineage",
+      "pass": true,
+      "detail": "image=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:ffbe34c7f1475f18f9f3fc66b757ec5e8e109ab3"
+    },
+    {
+      "name": "No simple venue wording",
+      "pass": true,
+      "detail": "removed"
+    },
+    {
+      "name": "Capacity hosts-one-event copy",
+      "pass": true,
+      "detail": "hint"
+    },
+    {
+      "name": "Capacity does not enable public inquiries",
+      "pass": true,
+      "detail": "separation"
+    },
+    {
+      "name": "Points to confirmed-event control",
+      "pass": true,
+      "detail": "control"
+    },
+    {
+      "name": "Staff limits do not override public preference",
+      "pass": true,
+      "detail": "card description"
+    }
+  ],
+  "pass": true
+}

@@ -1,0 +1,108 @@
+{
+  "status": "NOT AN HTC SEND FAILURE — provider accepted + reported delivered",
+  "workstream": "Proposal email — UI Sent vs mailbox empty",
+  "production": "untouched",
+  "codeChanges": "none — no HTC false-success or wrong-recipient bug found",
+  "deploy": "none",
+  "investigatedAt": "2026-09-22T23:20:00Z",
+  "fixture": {
+    "leadId": "ab37d13c-5802-4b51-b4b8-31972da26393",
+    "leadName": "Grace Van Pelt & Wayne Rigsby",
+    "relationshipId": "ff68eb1f-e3a0-4357-8681-c749a318cc1b",
+    "conversationId": "4ed0b3ef-54f5-40a3-8439-27cc16763cf9",
+    "selectionId": "dec5111c-deb5-40a1-a475-ce6404c06bd4",
+    "acceptToken": "592b46e0af7a3dadf21c98643c3f012ba3bee6fd5774af11",
+    "proposalUrl": "https://app.sandbox.hellotocheers.com/offer/592b46e0af7a3dadf21c98643c3f012ba3bee6fd5774af11",
+    "conversationMessageId": "ab6a9477-ad37-4f4a-a9bd-43763e037c42",
+    "note": "This was Grace's Lead Workspace Conversation email containing a pasted/shared proposal link — not Teresa, and not sendOfferAction (Create share link does not email)."
+  },
+  "path": {
+    "ui": "Lead Workspace → Conversation → Channel Email → Send email now",
+    "action": "sendConversationMessageAction",
+    "service": "lib/conversations/service.ts → sendConversationMessage",
+    "recipientResolver": "getConversationRecipientEmail (client → lead → relationship)",
+    "transport": "lib/email/send.ts → Resend API (canonical)",
+    "persist": "send_conversation_message RPC with provider_id + status=accepted",
+    "webhooks": "POST /api/messaging/webhook → conversation_message_events + status advance"
+  },
+  "statusSemantics": {
+    "immediateToast": "Email sent — it left Hello to Cheers through email. (== provider accepted; does NOT claim inbox delivery)",
+    "accepted": "Conversation label Sent — Resend took the message (email.sent)",
+    "delivered": "Conversation label Delivered — Resend email.delivered webhook",
+    "failed": "Couldn't deliver — bounce/reject",
+    "observedOnMessage": "status=delivered after email.sent then email.delivered"
+  },
+  "recipientMatrix": {
+    "A_uiDisplayed": "jlcormier612@gmail.com (Grace lead contact)",
+    "B_leadStored": "jlcormier612@gmail.com",
+    "C_relationshipStored": "jlcormier612@gmail.com",
+    "D_clientStored": null,
+    "E_canonicalResolver": "lead email (no client) → jlcormier612@gmail.com",
+    "F_providerWebhookTo": ["jlcormier612@gmail.com"],
+    "G_conversationRow": "body only; recipient not duplicated on row (resolver at send time)",
+    "partnerInvolved": false,
+    "primaryOnly": true
+  },
+  "provider": {
+    "apiCallMade": true,
+    "providerId": "01a0cb44-f4ba-7170-8699-a5e9875e925b",
+    "sesMessageId": "<010001a0cb44f636-d1989894-6113-49aa-8e3b-8449089d7f90-000000@email.amazonses.com>",
+    "from": "Hello to Cheers <jennifer@hellotocheers.com>",
+    "subject": "Proposal for Jen's Fancy Wedding",
+    "events": [
+      {
+        "type": "email.sent",
+        "occurred_at": "2026-09-22T22:38:09.462+00:00",
+        "to": ["jlcormier612@gmail.com"]
+      },
+      {
+        "type": "email.delivered",
+        "occurred_at": "2026-09-22T22:38:10.101+00:00",
+        "to": ["jlcormier612@gmail.com"]
+      }
+    ],
+    "resendGetApiFromInvestigatorHost": "403 Cloudflare — could not re-fetch Resend dashboard object; webhook payloads are authoritative in DB"
+  },
+  "proposalUrlProof": {
+    "inMessageBody": true,
+    "publicOpenWithoutVenueSession": true,
+    "title": "Essential Wedding · Proposal",
+    "acceptButtonPresent": true
+  },
+  "conversationDb": {
+    "messageCountWithThisOfferUrl": 1,
+    "sender_type": "venue_staff",
+    "channel": "email",
+    "status": "delivered",
+    "failure_reason": null,
+    "body": "Please find your proposal linked here: https://app.sandbox.hellotocheers.com/offer/592b46e0af7a3dadf21c98643c3f012ba3bee6fd5774af11",
+    "browserUi": "7:38 PM · Delivered (green)"
+  },
+  "ecsRuntime": {
+    "taskDefinitionChecked": "htc-sandbox-venue-app:348",
+    "COMMUNICATION_MODE": "unset → defaults to real (no sandbox redirect)",
+    "FROM_EMAIL": "Hello to Cheers <jennifer@hellotocheers.com>",
+    "RESEND_INBOUND_ADDRESS": "inbox@replies.hellotocheers.com"
+  },
+  "classification": {
+    "uiFalselyReportingSuccess": false,
+    "emailLeftHtc": true,
+    "wrongRecipient": false,
+    "legacySender": false,
+    "providerFailureSwallowed": false,
+    "conversationWrittenBeforeSend": false,
+    "rootCause": "Not an HTC proposal-email send bug. Canonical path submitted to Resend with correct primary recipient; Resend returned email.sent then email.delivered. Immediate toast correctly means left HTC; Conversation correctly shows Delivered. Mailbox non-receipt (if still true) is outside HTC's send pipeline — check Gmail spam/promotions/filters, or Resend dashboard for that email_id."
+  },
+  "greenGate": {
+    "proposalSend": true,
+    "correctRecipient": true,
+    "realProviderSubmission": true,
+    "truthfulStatus": true,
+    "mailboxReceiptVerifiedByInvestigator": false,
+    "providerSideDeliveryDocumented": true,
+    "validProposalLink": true,
+    "exactlyOneConversationMessage": true,
+    "noDuplicateSend": true,
+    "verdict": "HTC send path GREEN for this incident; independent mailbox open not proven from investigator environment"
+  }
+}

@@ -1,0 +1,69 @@
+{
+  "status": 200,
+  "json": {
+    "ok": true,
+    "arrangement": {
+      "id": "3c309304-2ef9-46f8-8272-efa0e757beed",
+      "venueId": "f9427d5e-84f9-48bc-a9fa-8a2bcb95af7f",
+      "stripeSubscriptionId": "sub_1UZvv7ErUqJH7nktxwGc9vmC",
+      "stripeCustomerId": "cus_Vb8ByVzSBbqWcS",
+      "kind": "percent_off",
+      "percentOff": 15,
+      "amountOffCents": null,
+      "fixedRateCents": null,
+      "frozenListAmountCents": null,
+      "planScope": "all",
+      "planKeyAtCreate": "growing",
+      "survivesTierChange": true,
+      "preventsTierUpgrade": false,
+      "protectsBaseRate": false,
+      "effectiveAt": "2026-11-10T01:02:58.106+00:00",
+      "expiresAt": null,
+      "durationBillingCycles": null,
+      "cyclesConsumed": 0,
+      "status": "ended",
+      "reason": "Phase 5+6 combined closure acceptance",
+      "internalNotes": null,
+      "customerFacingLabel": "Special pricing",
+      "createdByUserId": null,
+      "createdByEmail": "jennifer@hellotocheers.com",
+      "endedByEmail": "jennifer@hellotocheers.com",
+      "endedAt": "2026-11-10T01:03:24.058+00:00",
+      "endReason": "Phase 5+6 combined closure cleanup before referral reward",
+      "stripeCouponId": "htc_fnd_pct_15_3c3093042ef946f882",
+      "stripePriceId": "price_1U5rfoErUqJH7nkts2RnCCtg",
+      "reconciliationStatus": "pending",
+      "expectedRecurringAmountCents": 21165,
+      "lastReconcileError": "Subscription has an attached schedule — defer founder change to Phase 3 path.",
+      "lastReconciledAt": "2026-11-10T01:02:59.839+00:00",
+      "supersedesArrangementId": null,
+      "supersededByArrangementId": null,
+      "relatedTierHoldId": null,
+      "idempotencyKey": "p5-close-f9427d5e-84f9-48bc-a9fa-8a2bcb95af7f-1794272578105",
+      "audit": [
+        {
+          "at": "2026-11-10T01:02:59.169Z",
+          "by": "jennifer@hellotocheers.com",
+          "kind": "percent_off",
+          "action": "created",
+          "status": "active"
+        },
+        {
+          "at": "2026-11-10T01:02:59.839Z",
+          "error": "Subscription has an attached schedule — defer founder change to Phase 3 path.",
+          "action": "reconcile_failed",
+          "deferred": true
+        },
+        {
+          "at": "2026-11-10T01:03:24.058Z",
+          "by": "jennifer@hellotocheers.com",
+          "action": "ended",
+          "reason": "Phase 5+6 combined closure cleanup before referral reward"
+        }
+      ],
+      "metadata": {},
+      "createdAt": "2026-11-10T01:02:59.216868+00:00",
+      "updatedAt": "2026-11-10T01:03:24.089+00:00"
+    }
+  }
+}

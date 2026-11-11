@@ -1,0 +1,177 @@
+{
+  "run": "P1BMVP6ADFEA71",
+  "expected": "8321cc0b804a90ba786dce3f0faec4d241944574",
+  "failed": 0,
+  "checks": [
+    {
+      "name": "serving-sha",
+      "pass": true,
+      "detail": "expected=8321cc0b804a90ba786dce3f0faec4d241944574 ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:8321cc0b804a90ba786dce3f0faec4d241944574"
+    },
+    {
+      "name": "health",
+      "pass": true,
+      "detail": "{\"ok\":true,\"checks\":{\"env\":\"ok\",\"supabase\":\"ok\"}}"
+    },
+    {
+      "name": "html-dpl",
+      "pass": true,
+      "detail": "dpl=8321cc0b804a90ba786dce3f0faec4d241944574"
+    },
+    {
+      "name": "table-exists",
+      "pass": true,
+      "detail": "rows_sample=1"
+    },
+    {
+      "name": "cutover-releases-present",
+      "pass": true,
+      "detail": "cutoverCount=72"
+    },
+    {
+      "name": "events-with-active-pointer",
+      "pass": true,
+      "detail": "pointed=72"
+    },
+    {
+      "name": "fixture-event",
+      "pass": true,
+      "detail": "fc66e05d-1368-4181-89fa-627fdb0c005a"
+    },
+    {
+      "name": "authz-missing-event",
+      "pass": true,
+      "detail": "{\"ok\":false,\"error\":\"event_not_found\"}"
+    },
+    {
+      "name": "preview-first-buckets",
+      "pass": true,
+      "detail": "{\"will\":2,\"held\":1,\"blocks\":0,\"soft\":1,\"can\":true}"
+    },
+    {
+      "name": "cancel-writes-nothing",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "stale-preview-rejected",
+      "pass": true,
+      "detail": "{\"ok\":false,\"error\":\"stale_preview\",\"message\":\"The working timeline changed since you reviewed the preview. Review again before sharing.\"}"
+    },
+    {
+      "name": "first-release-ok",
+      "pass": true,
+      "detail": "{\"ok\":true,\"releaseId\":\"3b38c036-c241-4867-a186-71ebf155b6e4\",\"entryCount\":2,\"releasedAt\":\"2026-10-27T00:04:05.697811+00:00\",\"heldOutCount\":1,\"priorReleaseId\":null,\"idempotentReplay\":false}"
+    },
+    {
+      "name": "active-pointer-first",
+      "pass": true,
+      "detail": "{\"active_venue_timeline_release_id\":\"3b38c036-c241-4867-a186-71ebf155b6e4\"}"
+    },
+    {
+      "name": "snapshot-excludes-held-out",
+      "pass": true,
+      "detail": "{\"titles1\":[\"P1B-P1BMVP6ADFEA71-far-fixed\",\"P1B-P1BMVP6ADFEA71-doors\"],\"held\":[{\"id\":\"b57e1235-b888-45b6-a5d9-e95fcf72cdac\",\"title\":\"P1B-P1BMVP6ADFEA71-tbd\",\"reason\":\"never_released_unresolved\",\"attention\":\"unknown_intent\"}]}"
+    },
+    {
+      "name": "portal-matches-release-1",
+      "pass": true,
+      "detail": "[\"P1B-P1BMVP6ADFEA71-far-fixed\",\"P1B-P1BMVP6ADFEA71-doors\"]"
+    },
+    {
+      "name": "working-edit-does-not-change-portal",
+      "pass": true,
+      "detail": "[\"P1B-P1BMVP6ADFEA71-far-fixed\",\"P1B-P1BMVP6ADFEA71-doors\"]"
+    },
+    {
+      "name": "held-out-still-unresolved",
+      "pass": true,
+      "detail": "{\"timing_attention\":\"unknown_intent\"}"
+    },
+    {
+      "name": "idempotent-retry",
+      "pass": true,
+      "detail": "{\"ok\":true,\"releaseId\":\"3b38c036-c241-4867-a186-71ebf155b6e4\",\"idempotentReplay\":true}"
+    },
+    {
+      "name": "no-duplicate-release",
+      "pass": true,
+      "detail": "count=1"
+    },
+    {
+      "name": "second-release-ok",
+      "pass": true,
+      "detail": "{\"ok\":true,\"releaseId\":\"b56dfa69-8c70-41fb-8fb5-f4f7ceaf8d72\",\"entryCount\":4,\"releasedAt\":\"2026-10-27T00:04:06.639493+00:00\",\"heldOutCount\":0,\"priorReleaseId\":\"3b38c036-c241-4867-a186-71ebf155b6e4\",\"idempotentReplay\":false}"
+    },
+    {
+      "name": "active-pointer-second",
+      "pass": true,
+      "detail": "{\"active_venue_timeline_release_id\":\"b56dfa69-8c70-41fb-8fb5-f4f7ceaf8d72\"}"
+    },
+    {
+      "name": "portal-updates-only-after-second-release",
+      "pass": true,
+      "detail": "[\"P1B-P1BMVP6ADFEA71-far-fixed\",\"P1B-P1BMVP6ADFEA71-doors\",\"P1B-P1BMVP6ADFEA71-tbd-resolved\",\"P1B-P1BMVP6ADFEA71-cake\"]"
+    },
+    {
+      "name": "prior-release-immutable",
+      "pass": true,
+      "detail": "{\"count\":2}"
+    },
+    {
+      "name": "previously-released-unresolved-blocks",
+      "pass": true,
+      "detail": "{\"can\":false,\"blocks\":[{\"id\":\"3e488805-7098-4128-a6b8-84522b8f612a\",\"title\":\"P1B-P1BMVP6ADFEA71-cake\",\"reason\":\"previously_released_unresolved\",\"attention\":\"missing_event_end\"}]}"
+    },
+    {
+      "name": "blocked-preserves-pointer",
+      "pass": true,
+      "detail": "{\"blockedConfirm\":{\"ok\":false,\"error\":\"blocks_release\",\"message\":\"Fix or replace items already on the shared timeline before sharing again.\",\"blocksRelease\":[{\"id\":\"3e488805-7098-4128-a6b8-84522b8f612a\",\"title\":\"P1B-P1BMVP6ADFEA71-cake\",\"reason\":\"previously_released_unresolved\",\"attention\":\"missing_event_end\"}]},\"pointer\":\"b56dfa69-8c70-41fb-8fb5-f4f7ceaf8d72\"}"
+    },
+    {
+      "name": "couple-owned-separate",
+      "pass": true,
+      "detail": "{\"allTitles\":[\"P1B-P1BMVP6ADFEA71-couple-note\",\"P1B-P1BMVP6ADFEA71-far-fixed\",\"P1B-P1BMVP6ADFEA71-doors\",\"P1B-P1BMVP6ADFEA71-tbd-resolved\",\"P1B-P1BMVP6ADFEA71-cake\"],\"venueOnly\":[\"P1B-P1BMVP6ADFEA71-far-fixed\",\"P1B-P1BMVP6ADFEA71-doors\",\"P1B-P1BMVP6ADFEA71-tbd-resolved\",\"P1B-P1BMVP6ADFEA71-cake\"]}"
+    },
+    {
+      "name": "submissions-unaffected",
+      "pass": true,
+      "detail": "before=0 after=0"
+    },
+    {
+      "name": "soft-warning-did-not-block-first-release",
+      "pass": true,
+      "detail": "first release included far-fixed"
+    },
+    {
+      "name": "cutover-idempotency-keys-unique",
+      "pass": true,
+      "detail": "rows=72 unique=72"
+    },
+    {
+      "name": "browser-share-control",
+      "pass": true,
+      "detail": "count=1 url=https://app.sandbox.hellotocheers.com/clients/6d1fd528-c41b-4d63-91d3-e41f75dafd13?tab=timeline"
+    },
+    {
+      "name": "browser-preview-dialog",
+      "pass": true,
+      "detail": "Review what the couple will receive.\n\nWill share: 4 item(s).\n\nNote: 1 fixed date(s) are outside the usual planning window (informational only).\n\nNo email is sent. Continue?"
+    },
+    {
+      "name": "browser-cancel-writes-nothing",
+      "pass": true,
+      "detail": "before=2 after=2"
+    },
+    {
+      "name": "browser-portal-shows-released",
+      "pass": true,
+      "detail": "https://app.sandbox.hellotocheers.com/p/qa-p1b-p1bmvp6adfea71 :: titles=far-fixed body=P1b\n\n·\n\nJen's Fancy Venue\n\nJun 15, 2027 – Jun 16, 2027\n\nExport my data\n🏠\nHome\n✅\nTasks\n1\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n💳\nPayments\n💬\nMessages\n🏛️\nGuide\n🤝\nVendors\nAdd your photo\nJEN'S FANCY VENUE\n\nP1b\n\n232 days until your celebration\n\nTuesday, June 15, 2027 – Wednesday, June 16, 2027\n\nYour venue team is here with you—finish what helps your day come together.\n\nReview what Jen's Fancy Venue needs\nMessage Jen's Fancy Venue\nView Timeline\n\nJen's Fancy Venue is waiting on 1 thing from you.\n\nJump to your next steps below.\n\nWHAT JEN'S FANCY VENUE NEEDS FROM YOU\n\nYour Next Steps\n\n1 left for Jen's Fancy Venue\n\nSHARED PLANNING\n\nSubmit your timeline updates\n\nYou've made changes your venue hasn't s"
+    },
+    {
+      "name": "cleanup",
+      "pass": true,
+      "detail": "client=6d1fd528-c41b-4d63-91d3-e41f75dafd13 event=fc66e05d-1368-4181-89fa-627fdb0c005a"
+    }
+  ]
+}

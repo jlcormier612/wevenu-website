@@ -1,0 +1,79 @@
+{
+  "status": 200,
+  "json": {
+    "ok": true,
+    "reward": {
+      "id": "795a4e08-8ad4-4cea-9c22-857d5d5143a0",
+      "referralId": "478c364a-c092-45ea-9ad7-ac09cd5ba04c",
+      "attributionId": "62ae335c-1f4d-4fe0-8405-45be605522b9",
+      "referringVenueId": "9336a6cb-6a49-4a38-82bc-ff3b2361e8a3",
+      "referringStripeSubscriptionId": "sub_1UZw74ErUqJH7nkta71f0YMw",
+      "referringStripeCustomerId": "cus_Vb8Ng5wqMg59Z5",
+      "referredVenueId": "41fdc275-0a13-4d9f-b053-90bd70ab8789",
+      "qualifyingInvoiceId": "in_fake_p6_1794272062269",
+      "eligibilityAt": "2026-11-10T00:54:24.917+00:00",
+      "rewardAmountCents": 19900,
+      "currency": "usd",
+      "valuationAt": "2026-11-10T00:54:24.917+00:00",
+      "valuationPlanKey": "starter",
+      "valuationListAmountCents": 19900,
+      "valuationSource": "standard",
+      "valuationSnapshot": {
+        "excludes": [
+          "tax",
+          "white_glove",
+          "one_time_fees",
+          "prior_referral_credits",
+          "referred_venue_price"
+        ],
+        "valuedAt": "2026-11-10T00:54:24.917Z",
+        "winnerId": "standard",
+        "candidates": [
+          {
+            "id": "standard",
+            "label": "Standard catalog pricing",
+            "source": "standard",
+            "expectedAmountCents": 19900
+          }
+        ],
+        "winnerLabel": "Standard catalog pricing",
+        "winnerSource": "standard",
+        "baseListAmountCents": 19900,
+        "expectedAmountCents": 19900
+      },
+      "status": "eligible",
+      "approvedByEmail": null,
+      "approvedAt": null,
+      "approvalNotes": null,
+      "rejectedByEmail": null,
+      "rejectedAt": null,
+      "rejectionReason": null,
+      "stripeInvoiceItemId": null,
+      "stripeCreditIdempotencyKey": null,
+      "issuedAt": null,
+      "appliedInvoiceId": null,
+      "appliedAt": null,
+      "lastError": null,
+      "retryCount": 0,
+      "audit": [
+        {
+          "at": "2026-11-10T00:54:24.705Z",
+          "action": "created",
+          "status": "pending_qualification"
+        },
+        {
+          "at": "2026-11-10T00:54:24.917Z",
+          "by": "phase6-harness@hellotocheers.com",
+          "action": "valued_eligible",
+          "amountCents": 19900
+        }
+      ],
+      "metadata": {
+        "customerAtEligibility": "cus_Vb8Ng5wqMg59Z5",
+        "subscriptionAtEligibility": "sub_1UZw74ErUqJH7nkta71f0YMw"
+      },
+      "createdAt": "2026-11-10T00:54:24.740148+00:00",
+      "updatedAt": "2026-11-10T00:54:25.523+00:00"
+    }
+  }
+}

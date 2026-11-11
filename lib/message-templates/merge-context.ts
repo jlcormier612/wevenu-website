@@ -2,8 +2,8 @@
  * Live tour + payment merge context for Message Templates.
  * Reads authoritative tables only — never duplicates into the template row.
  */
+import { getVenueTimezone, formatVenueLocalTourDisplay } from "@/lib/venue/timezone";
 import { formatDate, formatMoney } from "@/lib/payments/constants";
-import { getVenueTimezone, utcToVenueLocalParts } from "@/lib/venue/timezone";
 
 type AnyDbClient = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -11,22 +11,8 @@ type AnyDbClient = {
 };
 
 export function formatTourDatetimeForCustomer(scheduledAtIso: string, timezone: string | null): string {
-  const tz = timezone || "America/New_York";
-  const instant = new Date(scheduledAtIso);
-  try {
-    return new Intl.DateTimeFormat("en-US", {
-      timeZone: tz,
-      weekday: "long",
-      month: "long",
-      day: "numeric",
-      year: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-    }).format(instant);
-  } catch {
-    const { date, time } = utcToVenueLocalParts(scheduledAtIso, timezone);
-    return `${date} at ${time}`;
-  }
+  const { dateLabel, timeLabel } = formatVenueLocalTourDisplay(scheduledAtIso, timezone);
+  return `${dateLabel} at ${timeLabel}`;
 }
 
 /**

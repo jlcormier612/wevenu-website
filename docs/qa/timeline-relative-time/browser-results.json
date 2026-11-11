@@ -1,0 +1,137 @@
+{
+  "runId": "RT3746",
+  "expectedSha": "df95f7c4c17a3e522396df98df818754994d37b6",
+  "servingImage": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:df95f7c4c17a3e522396df98df818754994d37b6",
+  "anchorField": "events.start_time (Day-of schedule Start time)",
+  "fixtureTimes": {
+    "EVENT_START": "16:00:00",
+    "GETTING_READY": "10:00:00",
+    "CEREMONY": "16:00:00",
+    "RECEPTION": "18:00:00"
+  },
+  "expected": {
+    "QA-RT-RT3746-m60": "15:00",
+    "QA-RT-RT3746-0": "16:00",
+    "QA-RT-RT3746-p30": "16:30",
+    "QA-RT-RT3746-p120": "18:00",
+    "QA-RT-RT3746-fixed": "14:45",
+    "QA-RT-RT3746-day2": "16:00"
+  },
+  "rows": [
+    {
+      "id": "1ff09505-f182-4798-8a39-e883915dfeb8",
+      "title": "QA-RT-RT3746-m60",
+      "entry_time": "15:00:00",
+      "day_offset": 0,
+      "notes": "internal-RT3746"
+    },
+    {
+      "id": "3b502e12-9120-4643-9d58-a1136aede2c6",
+      "title": "QA-RT-RT3746-0",
+      "entry_time": "16:00:00",
+      "day_offset": 0,
+      "notes": "internal-RT3746"
+    },
+    {
+      "id": "79593988-22d7-415b-8420-12fd95390ea1",
+      "title": "QA-RT-RT3746-p30",
+      "entry_time": "16:30:00",
+      "day_offset": 0,
+      "notes": "internal-RT3746"
+    },
+    {
+      "id": "e2f13cf8-0a2c-47de-87d5-696e7fa9ff36",
+      "title": "QA-RT-RT3746-p120",
+      "entry_time": "18:00:00",
+      "day_offset": 0,
+      "notes": "internal-RT3746"
+    },
+    {
+      "id": "0ffedf37-6e1f-4bfe-a4df-7382ac267efd",
+      "title": "QA-RT-RT3746-fixed",
+      "entry_time": "14:45:00",
+      "day_offset": 0,
+      "notes": "internal-RT3746"
+    },
+    {
+      "id": "4fb9e54a-ad34-4dad-8ea4-d623cf63e5b6",
+      "title": "QA-RT-RT3746-day2",
+      "entry_time": "16:00:00",
+      "day_offset": 1,
+      "notes": "internal-RT3746"
+    }
+  ],
+  "counts": {
+    "PASS": 13,
+    "FAIL": 0,
+    "BLOCKED": 0
+  },
+  "checks": [
+    {
+      "name": "Serving expected SHA",
+      "outcome": "PASS",
+      "detail": "image=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:df95f7c4c17a3e522396df98df818754994d37b6"
+    },
+    {
+      "name": "DB entry QA-RT-RT3746-m60",
+      "outcome": "PASS",
+      "detail": "got=15:00 want=15:00 notGettingReady=true notReception=true"
+    },
+    {
+      "name": "DB entry QA-RT-RT3746-0",
+      "outcome": "PASS",
+      "detail": "got=16:00 want=16:00 notGettingReady=true notReception=true"
+    },
+    {
+      "name": "DB entry QA-RT-RT3746-p30",
+      "outcome": "PASS",
+      "detail": "got=16:30 want=16:30 notGettingReady=true notReception=true"
+    },
+    {
+      "name": "DB entry QA-RT-RT3746-p120",
+      "outcome": "PASS",
+      "detail": "got=18:00 want=18:00 notGettingReady=true notReception=true"
+    },
+    {
+      "name": "DB entry QA-RT-RT3746-fixed",
+      "outcome": "PASS",
+      "detail": "got=14:45 want=14:45 notGettingReady=true notReception=true"
+    },
+    {
+      "name": "DB entry QA-RT-RT3746-day2",
+      "outcome": "PASS",
+      "detail": "got=16:00 want=16:00 notGettingReady=true notReception=true"
+    },
+    {
+      "name": "Anchor is events.start_time (16:00), not getting-ready/reception",
+      "outcome": "PASS",
+      "detail": "m60=15:00 vs GR=09:00 vs REC=17:00"
+    },
+    {
+      "name": "Venue UI shows applied relative/fixed/day2 items",
+      "outcome": "PASS",
+      "detail": "OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\nClients\nVendors\n\nSCHEDULING\n\nCalendar\nTours\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nLIBRARY\n\nTemplates\nDocuments\n\nFINANCIALS\n\nContracts\nPayments\n\nTO DO’S\n\nTas"
+    },
+    {
+      "name": "Venue UI shows expected clock times",
+      "outcome": "PASS",
+      "detail": "hits=5"
+    },
+    {
+      "name": "Changing event start does not recalculate baked entry_time",
+      "outcome": "PASS",
+      "detail": "entry=16:00:00"
+    },
+    {
+      "name": "Portal shows client timeline without internal notes",
+      "outcome": "PASS",
+      "detail": "seesItem=true noInternal=true"
+    },
+    {
+      "name": "Cleanup",
+      "outcome": "PASS",
+      "detail": "restored start_time=11:00:00"
+    }
+  ],
+  "at": "2026-10-23T16:42:50.818Z"
+}

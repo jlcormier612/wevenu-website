@@ -2,8 +2,8 @@
  * Calendar Slice 1 — venue Calendar display boundary.
  *
  * Venue Calendar shows scheduled / reserved / occupied / intentionally blocked
- * time only. Booking Schedule may still surface due dates and other dated work
- * for a single booking; those types remain on CalendarItemType for that lens.
+ * time only. Dated work types remain on CalendarItemType so persisted filters
+ * can be sanitized, but they are never aggregated into venue Calendar.
  */
 import type { CalendarItemType } from "@/lib/calendar/types";
 import type { ManualScheduleType } from "@/lib/availability/types";
@@ -60,10 +60,10 @@ export function sanitizeVenueCalendarFilters<T extends {
     : null;
   return {
     ...filters,
-    types: types && types.length > 0 ? types : (filters.types ? [] : null),
-    // Empty types array means "match nothing" when the user had only excluded
-    // types saved; null still means "all venue types."
-    manualTypes: manualTypes && manualTypes.length > 0 ? manualTypes : (filters.manualTypes ? [] : null),
+    // Empty arrays blank the calendar. Collapse them to null ("all venue types")
+    // so stale localStorage or a chip dead-end cannot look like missing data.
+    types: types && types.length > 0 ? types : null,
+    manualTypes: manualTypes && manualTypes.length > 0 ? manualTypes : null,
   };
 }
 
@@ -140,4 +140,130 @@ export function venueCalendarTaxonomyLabel(key: VenueCalendarTaxonomyKey): strin
     case "hold": return "Hold";
     case "blocked_time": return "Blocked Time";
   }
+}
+
+/** Taxonomy keys present among a set of venue Calendar items (legend order). */
+export function presentVenueCalendarTaxonomyKeys(
+  items: { type: CalendarItemType; manualType?: ManualScheduleType | null }[],
+): VenueCalendarTaxonomyKey[] {
+  const seen = new Set<VenueCalendarTaxonomyKey>();
+  for (const item of items) {
+    const key = venueCalendarTaxonomyKey(item);
+    if (key) seen.add(key);
+  }
+  return VENUE_CALENDAR_TAXONOMY.filter((k) => seen.has(k));
+}
+
+/**
+ * Next taxonomy chip selection after a toggle.
+ *
+ * Multi-select is preserved when more than one type is present. Deselecting
+ * the last remaining chip is a no-op so the calendar cannot silently blank
+ * (forensic: sole Tour / Blocked Time chip → types: []).
+ */
+export function nextTaxonomySelectionAfterToggle(
+  current: VenueCalendarTaxonomyKey[],
+  toggled: VenueCalendarTaxonomyKey,
+  present: VenueCalendarTaxonomyKey[],
+): VenueCalendarTaxonomyKey[] {
+  const base = current.length > 0 ? current : present;
+  if (!present.includes(toggled) && !base.includes(toggled)) {
+    return base;
+  }
+  const next = base.includes(toggled)
+    ? base.filter((k) => k !== toggled)
+    : [...base, toggled];
+  if (next.length === 0) return base;
+  return next;
+}
+
+/**
+ * Map a taxonomy chip selection onto the existing types + manualTypes filter
+ * axes. Selecting every present key collapses to null (show all).
+ */
+export function filtersFromTaxonomySelection(
+  selected: VenueCalendarTaxonomyKey[],
+  present: VenueCalendarTaxonomyKey[],
+): { types: CalendarItemType[] | null; manualTypes: ManualScheduleType[] | null } {
+  if (present.length === 0 || selected.length === present.length) {
+    return { types: null, manualTypes: null };
+  }
+  if (selected.length === 0) {
+    // Empty selection blanks the calendar. Callers should use
+    // nextTaxonomySelectionAfterToggle so this path is unreachable from chips;
+    // treat as "all" if it still arrives (e.g. stale localStorage).
+    return { types: null, manualTypes: null };
+  }
+
+  const types: CalendarItemType[] = [];
+  const manualTypes: ManualScheduleType[] = [];
+  let needsBlockNarrowing = false;
+
+  if (selected.includes("event")) types.push("event");
+  if (selected.includes("tour")) types.push("tour");
+  if (selected.includes("hold")) {
+    types.push("date_hold");
+    types.push("calendar_block");
+    manualTypes.push(...VENUE_CALENDAR_HOLD_MANUAL_TYPES);
+    needsBlockNarrowing = true;
+  }
+  if (selected.includes("appointment")) {
+    if (!types.includes("calendar_block")) types.push("calendar_block");
+    manualTypes.push(...VENUE_CALENDAR_APPOINTMENT_CLASSIFICATIONS);
+    // Legacy manual-tour rows render as Appointment.
+    manualTypes.push("tour");
+    needsBlockNarrowing = true;
+  }
+  if (selected.includes("blocked_time")) {
+    if (!types.includes("calendar_block")) types.push("calendar_block");
+    manualTypes.push("blocked_time");
+    needsBlockNarrowing = true;
+  }
+
+  return {
+    types: types.length > 0 ? types : [],
+    manualTypes: needsBlockNarrowing ? manualTypes : null,
+  };
+}
+
+/**
+ * Reverse-map live filter state onto taxonomy chips for highlight state.
+ * Unknown / partial legacy perspective presets still resolve to the closest
+ * taxonomy chips rather than inventing a sixth category.
+ */
+export function taxonomySelectionFromFilters(
+  filters: { types: CalendarItemType[] | null; manualTypes: ManualScheduleType[] | null },
+  present: VenueCalendarTaxonomyKey[],
+): VenueCalendarTaxonomyKey[] {
+  if (filters.types === null && filters.manualTypes === null) return present;
+  if (!filters.types || filters.types.length === 0) return [];
+
+  const selected: VenueCalendarTaxonomyKey[] = [];
+  if (filters.types.includes("event") && present.includes("event")) selected.push("event");
+  if (filters.types.includes("tour") && present.includes("tour")) selected.push("tour");
+
+  const mt = filters.manualTypes;
+  const hasHoldType =
+    filters.types.includes("date_hold") ||
+    (filters.types.includes("calendar_block") &&
+      (mt === null ||
+        mt.some((t) => (VENUE_CALENDAR_HOLD_MANUAL_TYPES as readonly string[]).includes(t))));
+  if (hasHoldType && present.includes("hold")) selected.push("hold");
+
+  const hasAppointment =
+    filters.types.includes("calendar_block") &&
+    (mt === null ||
+      mt.some(
+        (t) =>
+          (VENUE_CALENDAR_APPOINTMENT_CLASSIFICATIONS as readonly string[]).includes(t) ||
+          t === "tour",
+      ));
+  if (hasAppointment && present.includes("appointment")) selected.push("appointment");
+
+  const hasBlocked =
+    filters.types.includes("calendar_block") &&
+    (mt === null || mt.includes("blocked_time"));
+  if (hasBlocked && present.includes("blocked_time")) selected.push("blocked_time");
+
+  return selected;
 }

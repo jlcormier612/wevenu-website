@@ -4,6 +4,7 @@ import {
   Building2,
   CalendarClock,
   CreditCard,
+  HeartHandshake,
   Inbox,
   MessageCircle,
   UsersRound,
@@ -76,6 +77,18 @@ export default async function SettingsPage() {
       summary: `${paymentsConnected ? "Payments connected" : "Payments not connected"} · ${quickbooksConnected ? "QuickBooks connected" : "QuickBooks not connected"}`,
     },
     {
+      href: "/settings/billing",
+      title: "Subscription & Billing",
+      icon: CreditCard,
+      description: "Hello to Cheers plan, payment method, and cancellation.",
+    },
+    {
+      href: "/settings/referrals",
+      title: "Refer a Venue",
+      icon: HeartHandshake,
+      description: "Share HTC with another venue and earn a thank-you credit.",
+    },
+    {
       href: "/settings/team",
       title: "Team & Data",
       icon: UsersRound,
@@ -88,25 +101,28 @@ export default async function SettingsPage() {
     : null;
 
   return (
-    <div className="htc-hospitality-page space-y-6">
+    <div className="htc-hospitality-page space-y-4 sm:space-y-6">
       <div className="htc-hospitality-heading htc-hospitality-intro-accent">
-      <PageHeader
-        title="Settings"
-        description="Make Hello to Cheers work the way your venue works."
-      />
+        <PageHeader
+          title="Settings"
+          description="Make Hello to Cheers work the way your venue works."
+        />
       </div>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div
+        className="htc-settings-directory grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+        data-htc-phase9="settings-directory"
+      >
         {categories.map((cat) => (
           <Link
             key={cat.href}
             href={cat.href}
-            className="htc-surface-working flex flex-col gap-3 rounded-sm p-5 transition-colors hover:bg-muted/20"
+            className="htc-settings-directory-card htc-record-card-link flex flex-col gap-3 rounded-sm border border-border p-5 transition-colors"
           >
-            <div className="flex size-9 items-center justify-center rounded-sm bg-primary/10 text-primary">
+            <div className="htc-settings-directory-icon flex size-9 items-center justify-center rounded-sm text-primary">
               <cat.icon className="h-4.5 w-4.5" />
             </div>
             <div>
-              <p className="text-sm font-medium text-heading">{cat.title}</p>
+              <p className="htc-record-link text-sm font-medium">{cat.title}</p>
               <p className="mt-1 text-xs text-muted-foreground">{cat.description}</p>
               {cat.summary && (
                 <p className="mt-2 text-[11px] text-muted-foreground/80">{cat.summary}</p>

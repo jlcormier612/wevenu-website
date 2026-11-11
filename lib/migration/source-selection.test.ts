@@ -5,16 +5,21 @@ import { describe, it } from "node:test";
 
 import type { SourceProfile } from "@/lib/migration/types";
 import {
+  DEFAULT_SOURCE_SELECTION_LANE,
+  IMPORT_HISTORY_COPY,
   MIGRATION_CENTER_INTRO,
   SOURCE_SELECTION_LANES,
   genericSourceProfile,
   hasSourceSpecificAcceleration,
+  laneAllowsImport,
   laneForRecognizedSource,
+  laneFromSourceQuery,
   namedSourceProfiles,
   sourceHistoryLabel,
   sourceKeyForLane,
   sourceSelectionGuidance,
 } from "@/lib/migration/source-selection";
+import { BRING_YOUR_BUSINESS_ROUTES } from "@/lib/setup-hub/bring-your-business";
 
 function profile(partial: Partial<SourceProfile> & Pick<SourceProfile, "key" | "displayName">): SourceProfile {
   return {
@@ -59,23 +64,43 @@ describe("Migration Center source selection", () => {
     assert.doesNotMatch(labels, /Weven|The Knot|WeddingWire|Planning Pod|Event Temple|Aisle Planner|Perfect Venue|Eventbrite/i);
   });
 
-  it("exposes HoneyBook, Tripleseat, and Another system as first-class radios", () => {
+  it("exposes HoneyBook, Tripleseat, Another system, and starting from scratch as first-class radios", () => {
     assert.deepEqual(
       SOURCE_SELECTION_LANES.map((l) => l.id),
-      ["honeybook", "tripleseat", "another_system"],
+      ["honeybook", "tripleseat", "another_system", "starting_fresh"],
     );
     assert.equal(SOURCE_SELECTION_LANES.some((l) => l.label === "A system we recognize"), false);
     assert.equal(SOURCE_SELECTION_LANES.some((l) => /not sure/i.test(l.label)), false);
+    assert.match(
+      SOURCE_SELECTION_LANES.find((l) => l.id === "starting_fresh")!.label,
+      /starting from scratch/i,
+    );
+  });
+
+  it("defaults to starting from scratch as the reversible neutral state", () => {
+    assert.equal(DEFAULT_SOURCE_SELECTION_LANE, "starting_fresh");
+    assert.equal(laneAllowsImport("starting_fresh"), false);
+    assert.equal(sourceKeyForLane("starting_fresh"), null);
+    assert.equal(laneFromSourceQuery(null), "starting_fresh");
+    assert.equal(laneFromSourceQuery(""), "starting_fresh");
+    assert.equal(laneFromSourceQuery("starting_fresh"), "starting_fresh");
+    assert.equal(laneFromSourceQuery("not_sure"), "starting_fresh");
   });
 
   it("treats another system (and legacy not_sure) as first-class generic_csv paths", () => {
     assert.equal(sourceKeyForLane("another_system"), "generic_csv");
     assert.equal(sourceKeyForLane("not_sure"), "generic_csv");
+    assert.equal(laneAllowsImport("another_system"), true);
+    assert.equal(laneAllowsImport("honeybook"), true);
   });
 
   it("maps HoneyBook and Tripleseat lanes to their real source keys", () => {
     assert.equal(sourceKeyForLane("honeybook"), "honeybook");
     assert.equal(sourceKeyForLane("tripleseat"), "tripleseat");
+    assert.equal(laneFromSourceQuery("honeybook"), "honeybook");
+    assert.equal(laneFromSourceQuery("tripleseat"), "tripleseat");
+    assert.equal(laneFromSourceQuery("another_system"), "another_system");
+    assert.equal(laneFromSourceQuery("generic_csv"), "another_system");
   });
 
   it("detects real adapter acceleration only for HoneyBook and Tripleseat", () => {
@@ -99,10 +124,12 @@ describe("Migration Center source selection", () => {
   it("never frames generic or unsure paths as failure", () => {
     const another = sourceSelectionGuidance("another_system", genericSourceProfile(PROFILES));
     const unsure = sourceSelectionGuidance("not_sure", genericSourceProfile(PROFILES));
+    const fresh = sourceSelectionGuidance("starting_fresh", null);
     assert.match(another.body.toLowerCase(), /export|match/);
     assert.doesNotMatch(another.body.toLowerCase(), /unsupported|not available|cannot migrate/);
     assert.match(unsure.body.toLowerCase(), /guide|spreadsheet|csv/);
     assert.doesNotMatch(unsure.body.toLowerCase(), /unsupported|dead end/);
+    assert.match(fresh.body.toLowerCase(), /import later|change your mind/);
   });
 
   it("offers stronger guidance only for HoneyBook and Tripleseat", () => {
@@ -123,7 +150,8 @@ describe("Migration Center source selection", () => {
   it("introduces Migration Center as inclusive, not list-gated", () => {
     assert.equal(MIGRATION_CENTER_INTRO.title, "Bring your business with you");
     assert.match(MIGRATION_CENTER_INTRO.body, /don't see your system/i);
-    assert.match(MIGRATION_CENTER_INTRO.body, /csv or spreadsheet/i);
+    assert.match(MIGRATION_CENTER_INTRO.body, /CSV/i);
+    assert.match(MIGRATION_CENTER_INTRO.body, /booked-event invoices/i);
   });
 
   it("does not name unverified systems in Another system copy", () => {
@@ -138,6 +166,13 @@ describe("Migration Center source selection", () => {
       "HoneyBook",
     );
   });
+
+  it("uses customer-facing import history copy", () => {
+    assert.equal(IMPORT_HISTORY_COPY.title, "Your import history");
+    assert.match(IMPORT_HISTORY_COPY.description, /Hello to Cheers/);
+    assert.doesNotMatch(IMPORT_HISTORY_COPY.description, /leave and come back/i);
+    assert.equal(IMPORT_HISTORY_COPY.empty, "No imports yet.");
+  });
 });
 
 describe("Migration Center UI matches adapter reality", () => {
@@ -151,9 +186,50 @@ describe("Migration Center UI matches adapter reality", () => {
     assert.doesNotMatch(ui, /lane === "recognized"/);
   });
 
-  it("still asks what you are bringing over and uploads a CSV", () => {
+  it("still asks what you are bringing over and uploads a CSV with designed control", () => {
     assert.match(ui, /What are you bringing over\?/);
     assert.match(ui, /accept="\.csv"/);
+    assert.doesNotMatch(ui, /accept="[^"]*\.xlsx/);
+    assert.match(ui, /Choose file/);
+    assert.match(ui, /className="sr-only"/);
+    assert.match(ui, /laneAllowsImport/);
+    assert.match(ui, /starting_fresh/);
+    assert.match(ui, /CSV files/);
+    assert.match(ui, /Upload a CSV export from/);
+  });
+
+  it("points Excel and other supported files to Import Wizard before any file is chosen", () => {
+    const csvUploadBlock = ui.match(
+      /rounded-lg border border-dashed border-border p-4 space-y-2[\s\S]*?(?=\n\s*\{headers\.length > 0)/,
+    )?.[0];
+    assert.ok(csvUploadBlock, "expected CSV upload block before file-mapping step");
+    assert.match(csvUploadBlock, /Have an Excel spreadsheet or another supported file\?/);
+    assert.match(csvUploadBlock, /Use Import Wizard/);
+    assert.match(csvUploadBlock, /BRING_YOUR_BUSINESS_ROUTES\.spreadsheetImport/);
+    assert.match(csvUploadBlock, /Excel \(\.xlsx\/\.xls\), Word \(\.docx\), or PDF/);
+    // Guidance is a sibling of the CSV control, not gated on file selection / mapping.
+    assert.doesNotMatch(csvUploadBlock, /\{pendingFile &&/);
+    assert.doesNotMatch(csvUploadBlock, /\{headers\.length/);
+    assert.equal(BRING_YOUR_BUSINESS_ROUTES.spreadsheetImport, "/settings/import");
+  });
+
+  it("leaves Import Wizard multi-format accept list unchanged", () => {
+    const wizard = readFileSync(resolve("components/settings/import-wizard.tsx"), "utf8");
+    assert.match(wizard, /const ACCEPTED_EXTENSIONS = "\.csv,\.xlsx,\.xls,\.docx,\.pdf"/);
+    assert.match(wizard, /accept=\{ACCEPTED_EXTENSIONS\}/);
+  });
+
+  it("renders reversible starting-from-scratch as a first-class radio", () => {
+    assert.match(ui, /SOURCE_SELECTION_LANES\.map/);
+    assert.match(ui, /DEFAULT_SOURCE_SELECTION_LANE/);
+    assert.match(ui, /initialSource/);
+    assert.match(page, /initialSource/);
+  });
+
+  it("uses import history copy, not migration jargon empty state", () => {
+    assert.match(ui, /IMPORT_HISTORY_COPY/);
+    assert.doesNotMatch(ui, /No migrations started yet/);
+    assert.doesNotMatch(ui, /leave and come back any time/);
   });
 
   it("does not name unverified systems on the page", () => {

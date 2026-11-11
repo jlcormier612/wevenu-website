@@ -59,7 +59,9 @@ export async function POST(request: Request) {
   try {
     const { data: enrollment, error } = await admin
       .from("venue_enrollments")
-      .select("venue_name, onboarding_type, status, activation_token, intake_token, white_glove_status")
+      .select(
+        "venue_name, owner_email, onboarding_type, status, activation_token, intake_token, white_glove_status",
+      )
       .eq("stripe_checkout_session_id", sessionId)
       .maybeSingle();
     if (error) throw error;
@@ -72,6 +74,8 @@ export async function POST(request: Request) {
       ok: true,
       found: true,
       venueName: enrollment.venue_name as string,
+      /** Purchaser email for post-activation login prefill only — never authorization. */
+      ownerEmail: ((enrollment.owner_email as string | null) ?? "").trim().toLowerCase() || null,
       onboardingType: enrollment.onboarding_type as string,
       status: enrollment.status as string,
       activationToken: (enrollment.activation_token as string | null) ?? null,

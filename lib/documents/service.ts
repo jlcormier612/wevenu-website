@@ -1,5 +1,4 @@
 import { createClient } from "@/integrations/supabase/server";
-import { createClient as createBrowserClient } from "@/integrations/supabase/client";
 import { isSupabaseConfigured } from "@/lib/env";
 import * as repo from "@/lib/documents/repository";
 import type {
@@ -134,16 +133,40 @@ export async function getDocumentFileVersions(documentId: string) {
 export async function deleteDocument(documentId: string): Promise<DocumentActionResult> {
   const result = await withVenue(async (c, venueId) => {
     const versionPaths = await repo.listDocumentFileVersionPaths(c, venueId, documentId);
+    const { getVenueDocumentReferences, planDocumentDeletion } = await import(
+      "@/lib/documents/references"
+    );
+    // Read references while the row still exists — after the delete there is
+    // nothing left to resolve the storage path from.
+    const currentPath = await repo.findDocumentStoragePath(c, venueId, documentId);
+    const plan = planDocumentDeletion(
+      await getVenueDocumentReferences(c, { documentId, storagePath: currentPath }),
+    );
+
     const storagePath = await repo.deleteDocument(c, venueId, documentId);
     // Only remove objects that live in the documents bucket. Conversation
     // attachments may share a Documents row that references couple-messages
     // storage — deleting the workspace document must not destroy that file
     // while a message attachment still points at it (and vice versa).
+    //
+    // The bucket check alone is not enough in the other direction: a Library
+    // document lives at documents/venue/… and passes it, yet an already-sent
+    // message may still be serving that exact object. retainStorage covers
+    // that case by keeping the file and dropping only the row.
     const { isDocumentsBucketPath } = await import("@/lib/conversations/attachment-document");
-    const browser = createBrowserClient();
-    const paths = [storagePath, ...versionPaths].filter((p): p is string => !!p && isDocumentsBucketPath(p));
+    const paths = plan.retainStorage
+      ? []
+      : [storagePath, ...versionPaths].filter((p): p is string => !!p && isDocumentsBucketPath(p));
     if (paths.length > 0) {
-      await browser.storage.from("documents").remove(paths);
+      // The request-scoped server client, not the browser client. This runs
+      // server-side, where the browser client carries no session, so Storage
+      // answered every remove() with 403 AccessDenied — and the error was
+      // discarded, so the row went away while the object stayed in the bucket
+      // forever, leaving a "deleted" file still retrievable by anyone holding
+      // its path. documents_storage_delete grants delete to `authenticated`,
+      // which is exactly what this client is; no service-role escalation needed.
+      const { error } = await c.storage.from("documents").remove(paths);
+      if (error) throw error;
     }
     return { ok: true } as DocumentActionResult;
   });

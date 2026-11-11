@@ -3,6 +3,7 @@ import type { CSSProperties } from "react";
 import { notFound } from "next/navigation";
 
 import { ConfirmTourView } from "@/app/confirm/[token]/confirm-view";
+import { HtcPlatformMark } from "@/components/brand/htc-platform-mark";
 import { getTourByConfirmToken } from "@/lib/tours/service";
 
 type Props = { params: Promise<{ token: string }> };
@@ -32,6 +33,7 @@ export default async function ConfirmTourPage({ params }: Props) {
           <p className="text-2xl">✓</p>
           <h1 className="text-xl font-semibold text-gray-800">This tour is already confirmed.</h1>
           <p className="text-sm text-gray-500">{dateStr} at {timeStr} — {tour.venueName}.</p>
+          <HtcPlatformMark className="pt-4" />
         </div>
       </div>
     );
@@ -43,6 +45,7 @@ export default async function ConfirmTourPage({ params }: Props) {
         <div className="max-w-2xl w-full text-center space-y-3">
           <h1 className="text-xl font-semibold text-gray-800">This tour is no longer available to confirm.</h1>
           <p className="text-sm text-gray-500">It may have been rescheduled or cancelled. Contact {tour.venueName} if you have questions.</p>
+          <HtcPlatformMark className="pt-4" />
         </div>
       </div>
     );
@@ -75,6 +78,7 @@ export default async function ConfirmTourPage({ params }: Props) {
           durationMinutes={tour.durationMinutes}
           contactName={tour.contactName}
         />
+        <HtcPlatformMark />
       </div>
     </div>
   );

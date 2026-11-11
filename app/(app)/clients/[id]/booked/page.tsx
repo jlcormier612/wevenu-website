@@ -2,12 +2,12 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 
 import { BookingCelebration } from "@/components/clients/booking-celebration";
+import { consumeBookingCelebration } from "@/lib/booking-journey/booking-celebration";
 import { buildBookingHandoff } from "@/lib/clients/booking-handoff";
 import { buildCommunicationsReview } from "@/lib/clients/communications-review";
 import { buildEventExperienceReview } from "@/lib/clients/event-experience-review";
 import { buildFinancialReadiness } from "@/lib/clients/financial-readiness";
 import { loadBookingJourneyForClient } from "@/lib/booking-journey/load";
-import { remainingAmount } from "@/lib/commercial-selections/constants";
 import { clientDisplayName } from "@/lib/clients/constants";
 import { getClient } from "@/lib/clients/service";
 import { getClientInvitation } from "@/lib/client-auth/service";
@@ -20,7 +20,7 @@ import { getEventPlaybookApplications, getTemplates } from "@/lib/playbooks/serv
 
 type Props = {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ eventId?: string; invited?: string }>;
+  searchParams: Promise<{ eventId?: string; invited?: string; from?: string }>;
 };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -38,6 +38,18 @@ export default async function BookedPage({ params, searchParams }: Props) {
   const client = await getClient(id);
   if (!client) notFound();
   const resolvedEventId = eventId ?? client.linkedEventId ?? null;
+  const event = resolvedEventId ? await getEvent(resolvedEventId) : null;
+  if (!event?.bookedAt || !resolvedEventId) {
+    redirect(`/clients/${client.id}`);
+  }
+
+  // Celebration belongs to the booking transition, not to the screen that
+  // triggered it. bookClient sets the pending flag only when booked_at
+  // goes from null to a timestamp. Consuming it is the one-shot gate.
+  const celebrate = await consumeBookingCelebration(resolvedEventId);
+  if (!celebrate) {
+    redirect(`/clients/${client.id}`);
+  }
 
   const journey = await loadBookingJourneyForClient({
     clientId: client.id,
@@ -45,18 +57,12 @@ export default async function BookedPage({ params, searchParams }: Props) {
     leadId: client.leadId,
   });
 
-  // Venue-facing Booked celebration only after agreement + deposit paid.
-  if (!journey.isCommerciallyBooked) {
-    redirect(`/clients/${client.id}`);
-  }
-
-  const [invitation, applications, contracts, schedules, templates, event, automations, enrollments] = await Promise.all([
+  const [invitation, applications, contracts, schedules, templates, automations, enrollments] = await Promise.all([
     getClientInvitation(client.id),
     resolvedEventId ? getEventPlaybookApplications(resolvedEventId) : Promise.resolve([]),
     getContracts(),
     getPaymentSchedules(),
     getTemplates(),
-    resolvedEventId ? getEvent(resolvedEventId) : Promise.resolve(null),
     getSequences(),
     client.relationshipId
       ? getActiveEnrollmentsForRelationship(client.relationshipId)
@@ -85,8 +91,21 @@ export default async function BookedPage({ params, searchParams }: Props) {
   });
   const communications = buildCommunicationsReview({
     clientId: client.id,
-    invitation: invitation ? { status: invitation.status } : null,
+    invitation: invitation
+      ? {
+          status: invitation.status,
+          deliveryStatus: invitation.deliveryStatus ?? null,
+          providerMessageId: invitation.providerMessageId ?? null,
+        }
+      : null,
     clientHasEmail: Boolean(client.email?.trim()),
+    email: client.email,
+    coupleName: clientDisplayName(
+      client.firstName,
+      client.lastName,
+      client.partnerFirstName,
+      client.partnerLastName,
+    ),
     automations: automations.map((a) => ({
       id: a.id,
       name: a.name,
@@ -104,9 +123,6 @@ export default async function BookedPage({ params, searchParams }: Props) {
   });
 
   const selection = journey.selection;
-  const remaining = selection
-    ? remainingAmount(selection.totalAmount, selection.depositAmount)
-    : null;
 
   const handoff = buildBookingHandoff({
     clientId: client.id,
@@ -121,19 +137,19 @@ export default async function BookedPage({ params, searchParams }: Props) {
     experienceSummary: experience.summary,
   });
 
-  // Override celebration copy for commercial Booked (agreement + deposit).
+  // Same celebration for automatic and manual booking. Confetti is once.
   handoff.eyebrow = "They're Booked";
   handoff.bookingLine = selection
-    ? `${selection.name} · ${formatCurrency(selection.totalAmount)} · Deposit ${formatCurrency(selection.depositAmount)} received · ${formatCurrency(remaining ?? 0)} remaining`
-    : "Agreement complete and deposit received.";
+    ? `${selection.name} · ${formatCurrency(selection.totalAmount)}`
+    : "This client is booked.";
   handoff.prepareHeading = "What to do next";
-  handoff.tagline =
-    "Client Planning is optional and separate. Invite them to the portal and release planning only when those are ready — Booked does not mean planning is released.";
-  handoff.primaryLabel = "Continue to booking";
-  handoff.primaryHref = `/clients/${client.id}`;
+  handoff.tagline = "Planning stays private until you release it in Event setup.";
+  handoff.primaryLabel = "Continue event setup";
+  handoff.primaryHref = `/clients/${client.id}#event-setup`;
 
   return (
     <BookingCelebration
+      celebrate
       client={client}
       eventId={resolvedEventId}
       eventDate={event?.eventDate ?? client.eventDate}

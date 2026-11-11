@@ -9,7 +9,7 @@
  */
 
 /** Producer legs get_venue_documents() unions. Matches document_workspace_pins/interactions.doc_type. */
-export type WorkspaceDocType = "document" | "contract" | "invoice" | "floor_plan" | "questionnaire" | "event_order";
+export type WorkspaceDocType = "document" | "contract" | "invoice" | "floor_plan" | "questionnaire" | "event_order" | "client_choices";
 
 /** The brief's fixed, 12-value category list (Step 2, Section 3). No additional categories. */
 export type WorkspaceCategory =
@@ -72,9 +72,16 @@ export type WorkspaceDocument = {
   isCoupleVisible: boolean;
   isVendorVisible: boolean;
   uploadedByType: "venue" | "vendor";
+  /**
+   * Human origin label. Couple-shared insurance mirrors keep uploadedByType=venue
+   * (DB CHECK) but originated as a client upload (client-media / tag).
+   */
+  originLabel?: "Venue" | "Vendor" | "Client";
   /** Type-specific extras the Preview panel's Representation section reads — never rendered generically. */
   amount?: number | null;
   balanceDue?: number | null;
+  /** Secondary system identity for invoices (display name is primary in `name`). */
+  invoiceNumber?: string | null;
   signToken?: string | null;
   signedAt?: string | null;
   createdAt: string;
@@ -147,6 +154,8 @@ export type WorkspacePermissions = {
   comment: false;
   share: boolean;
   download: boolean;
+  /** Generic uploads only — contracts/invoices/etc. are removed from their own producers. */
+  delete: boolean;
   archive: boolean;
   lock: boolean;
 };

@@ -12,7 +12,6 @@ import {
   deleteContract_,
   deleteTemplate_,
   duplicateTemplate_,
-  mergeContent,
   reopenContractForEditing,
   resendContract,
   sendContract,
@@ -21,7 +20,7 @@ import {
   updateTemplate_,
   venueSignContract,
   withdrawVenueSignature,
-  buildContractMergeData,
+  previewContractContent,
 } from "@/lib/contracts/service";
 import { finalizeContract, getContractPdfUrl } from "@/lib/contracts/finalize";
 import type {
@@ -86,7 +85,19 @@ export async function createContractAction(input: NewContractInput): Promise<Cre
   return result;
 }
 
-/** Resolve merge fields for a template given client/event selection. */
+/** Display-only preview. Never persists. Tokens stay in the authored draft. */
+export async function previewContractContentAction(opts: {
+  templateContent: string;
+  clientId: string;
+  eventId: string;
+  contractTitle: string;
+  clientSignerContactIds?: string[];
+  selectionId?: string;
+}): Promise<{ ok: true; content: string } | { ok: false; message: string }> {
+  return previewContractContent(opts);
+}
+
+/** @deprecated Use previewContractContentAction — same display-only resolve. */
 export async function previewMergedContentAction(opts: {
   templateContent: string;
   clientId: string;
@@ -94,17 +105,7 @@ export async function previewMergedContentAction(opts: {
   contractTitle: string;
   selectionId?: string;
 }): Promise<{ ok: true; content: string } | { ok: false; message: string }> {
-  try {
-    const data = await buildContractMergeData({
-      clientId: opts.clientId,
-      eventId: opts.eventId,
-      contractTitle: opts.contractTitle,
-      selectionId: opts.selectionId,
-    });
-    return { ok: true, content: mergeContent(opts.templateContent, data) };
-  } catch {
-    return { ok: false, message: "Could not preview contract." };
-  }
+  return previewContractContentAction(opts);
 }
 
 /**
@@ -128,8 +129,12 @@ async function refreshContractLeadScore(contractId: string): Promise<void> {
   } catch { /* non-blocking */ }
 }
 
-export async function sendContractAction(id: string, customMessage?: string): Promise<ContractActionResult> {
-  const result = await sendContract(id, customMessage);
+export async function sendContractAction(
+  id: string,
+  customMessage?: string,
+  options?: { acknowledgePlaceholders?: boolean },
+): Promise<ContractActionResult> {
+  const result = await sendContract(id, customMessage, options);
   if (result.ok) {
     revalidatePath(`/contracts/${id}`);
     void refreshContractLeadScore(id);
@@ -154,14 +159,24 @@ export async function withdrawVenueSignatureAction(id: string): Promise<Contract
 }
 
 /** Work Package D5E — resend, distinct from send: no status/Document Domain changes, see lib/contracts/service.ts resendContract(). */
-export async function resendContractAction(id: string, customMessage?: string): Promise<ContractActionResult> {
-  const result = await resendContract(id, customMessage);
+export async function resendContractAction(
+  id: string,
+  customMessage?: string,
+  selectedSignerIds?: string[],
+): Promise<import("@/lib/contracts/service").ContractResendResult> {
+  const result = await resendContract(id, customMessage, selectedSignerIds);
   if (result.ok) revalidatePath(`/contracts/${id}`);
   return result;
 }
 
-export async function updateContractContentAction(id: string, title: string, content: string, expectedUpdatedAt: string): Promise<ContractActionResult> {
-  const result = await updateContractContent_(id, title, content, expectedUpdatedAt);
+export async function updateContractContentAction(
+  id: string,
+  title: string,
+  content: string,
+  expectedUpdatedAt: string,
+  clientSignerContactIds?: string[],
+): Promise<ContractActionResult> {
+  const result = await updateContractContent_(id, title, content, expectedUpdatedAt, clientSignerContactIds);
   if (result.ok) revalidatePath(`/contracts/${id}`);
   return result;
 }

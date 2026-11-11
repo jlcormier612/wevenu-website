@@ -1,0 +1,13 @@
+{
+  "at": "2026-10-11T23:19:26.256414Z",
+  "invoke": {
+    "ok": true,
+    "detail": {
+      "error": null,
+      "body": "{\"ok\":true,\"checks\":{\"env\":\"ok\",\"supabase\":\"ok\"}}",
+      "status": 200
+    }
+  },
+  "function": "htc-sandbox-health-canary",
+  "schedule": "rate(5 minutes)"
+}

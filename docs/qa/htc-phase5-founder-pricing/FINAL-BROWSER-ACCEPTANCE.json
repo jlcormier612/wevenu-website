@@ -1,0 +1,13 @@
+{
+  "ok": true,
+  "closedBy": "docs/qa/htc-commercial-roadmap-closure/FINAL-COMBINED-ACCEPTANCE.json",
+  "servingSha": "846c5143f33de2a88ea60b12d740454f9401bc93",
+  "checks": {
+    "crm_custom_pricing_ui": true,
+    "create_percent_15_celebrate_21165": true,
+    "venue_billing_special_pricing_visible": true,
+    "end_arrangement_ok": true
+  },
+  "venueId": "f9427d5e-84f9-48bc-a9fa-8a2bcb95af7f",
+  "note": "Phase 5 browser-smoke gap closed by combined Phase 5+6 acceptance pass."
+}

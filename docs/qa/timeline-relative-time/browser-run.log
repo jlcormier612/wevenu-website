@@ -1,0 +1,47 @@
+PASS Serving expected SHA — image=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:df95f7c4c17a3e522396df98df818754994d37b6
+PASS DB entry QA-RT-RT3746-m60 — got=15:00 want=15:00 notGettingReady=true notReception=true
+PASS DB entry QA-RT-RT3746-0 — got=16:00 want=16:00 notGettingReady=true notReception=true
+PASS DB entry QA-RT-RT3746-p30 — got=16:30 want=16:30 notGettingReady=true notReception=true
+PASS DB entry QA-RT-RT3746-p120 — got=18:00 want=18:00 notGettingReady=true notReception=true
+PASS DB entry QA-RT-RT3746-fixed — got=14:45 want=14:45 notGettingReady=true notReception=true
+PASS DB entry QA-RT-RT3746-day2 — got=16:00 want=16:00 notGettingReady=true notReception=true
+PASS Anchor is events.start_time (16:00), not getting-ready/reception — m60=15:00 vs GR=09:00 vs REC=17:00
+PASS Venue UI shows applied relative/fixed/day2 items — OVERVIEW
+
+Dashboard
+
+YOUR RELATIONSHIPS
+
+Leads
+Clients
+Vendors
+
+SCHEDULING
+
+Calendar
+Tours
+
+COMMUNICATION
+
+Inbox
+Automations
+
+LIBRARY
+
+Templates
+Documents
+
+FINANCIALS
+
+Contracts
+Payments
+
+TO DO’S
+
+Tas
+PASS Venue UI shows expected clock times — hits=5
+PASS Changing event start does not recalculate baked entry_time — entry=16:00:00
+PASS Portal shows client timeline without internal notes — seesItem=true noInternal=true
+PASS Cleanup — restored start_time=11:00:00
+
+13 PASS / 0 FAIL / 0 BLOCKED

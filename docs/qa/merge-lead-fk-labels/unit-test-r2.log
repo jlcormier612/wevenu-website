@@ -1,0 +1,62 @@
+▶ merge-client is browser-safe
+  ✔ merge-client has no server/fs/product-sync imports (0.721625ms)
+  ✔ merge-lead-dialog imports gate helpers from merge-client, not merge.ts (0.189291ms)
+  ✔ Continue stays disabled until conflict choices resolve (0.11675ms)
+✔ merge-client is browser-safe (1.716291ms)
+▶ lead merge field reconciliation
+  ✔ fills empty primary from populated secondary (0.657291ms)
+  ✔ treats identical values as one value (0.218708ms)
+  ✔ flags conflicting populated values without choosing (0.108917ms)
+  ✔ defaults primary to earliest created_at (8.530833ms)
+  ✔ marks identical created_at as needing explicit choice (0.06775ms)
+  ✔ norm collapses channel arrays for comparison (0.050625ms)
+✔ lead merge field reconciliation (10.201792ms)
+▶ FK preview labels (event space + staff)
+  ✔ shows event-space names on fill while keeping the underlying id (0.245917ms)
+  ✔ shows staff names on conflict choices while keeping both ids (0.135833ms)
+  ✔ uses readable fallbacks when related rows are missing (0.140917ms)
+  ✔ collects only FK ids that appear in diffs (0.833125ms)
+✔ FK preview labels (event space + staff) (1.474542ms)
+▶ Continue / final-confirm gate
+  ✔ blocks Continue while conflict fields lack choices (0.123333ms)
+  ✔ blocks Continue when tied created_at needs explicit survivor (0.044292ms)
+✔ Continue / final-confirm gate (0.218583ms)
+▶ inquiry message keep-both resolution
+  ✔ Keep both uses primary field and flags secondary history (0.113916ms)
+  ✔ Keep primary does not archive secondary (0.0365ms)
+  ✔ Use secondary sets primary field to secondary text (0.032833ms)
+  ✔ identical text with keep-both does not create redundant history (0.030958ms)
+  ✔ empty secondary with keep-both does not create history (0.0515ms)
+  ✔ inquiry conflict is detected when both differ (0.06375ms)
+  ✔ identical inquiry messages are same, not conflict (0.048083ms)
+  ✔ empty primary + populated secondary is fill, not keep-both (0.041375ms)
+✔ inquiry message keep-both resolution (0.519125ms)
+▶ lead merge safety contracts (source)
+  ✔ confirm uses atomic RPC and revalidates stale timestamps (0.146667ms)
+  ✔ merge_leads_v1 casts UUID FK patch columns (space + staff) (0.086291ms)
+  ✔ merge discovery searches name/email/phone and excludes current lead (0.105541ms)
+  ✔ dialog is search-first, auto-previews on select, and has no UUID paste UI (0.189875ms)
+  ✔ RPC soft-marks secondary and reparents tours without drop (0.066625ms)
+  ✔ RPC does not send messages or enroll sequences (0.103667ms)
+  ✔ blocks tour_protection and unauthorized callers (0.041458ms)
+  ✔ UI requires confirmation and surfaces conflicts/tours (0.065875ms)
+  ✔ secondary lead detail redirects to primary (0.039792ms)
+  ✔ list queries exclude merged secondaries (0.184625ms)
+  ✔ lead-received reporting also excludes soft-merged secondaries (0.265417ms)
+  ✔ duplicate banner no longer instructs manual copy/delete (0.390625ms)
+  ✔ idempotent already-merged path exists (0.043917ms)
+  ✔ preserve-inquiry migration archives secondary as activity, not a note or message send (0.084709ms)
+  ✔ confirm maps keep-both sentinel before RPC field patch (0.044542ms)
+  ✔ dialog offers keep-both as default for inquiry conflicts (0.046625ms)
+✔ lead merge safety contracts (source) (2.118458ms)
+▶ regression: duplicate detection still warn-only
+  ✔ duplicate-review still does not call merge on create (0.115875ms)
+✔ regression: duplicate detection still warn-only (0.148208ms)
+ℹ tests 40
+ℹ suites 7
+ℹ pass 40
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 475.419167

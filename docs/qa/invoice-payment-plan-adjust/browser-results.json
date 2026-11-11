@@ -1,0 +1,257 @@
+{
+  "ok": true,
+  "servingSha": "6a7a47b563670230e44b81fc7558dfd2486e6a97",
+  "checks": [
+    {
+      "name": "serving_commit",
+      "pass": true,
+      "detail": "6a7a47b563670230e44b81fc7558dfd2486e6a97"
+    },
+    {
+      "name": "adjust_button_visible",
+      "pass": true,
+      "detail": "Adjust invoice / payment plan"
+    },
+    {
+      "name": "preview_reconciles",
+      "pass": true,
+      "detail": "reconciled"
+    },
+    {
+      "name": "send_preview_total",
+      "pass": true,
+      "detail": "To: jlcormier612@gmail.com\n\nSubject: Updated: Your invoice and payment plan — Meadowbrook Valley Venue\n\nTotal: $10,000\n\nPaid to date: $2,500\n\nOutstanding: $7,500\n\nPAYMENT SCHEDULE (AS CLIENT WILL SEE)"
+    },
+    {
+      "name": "send_preview_paid",
+      "pass": true,
+      "detail": "paid to date in preview"
+    },
+    {
+      "name": "send_preview_outstanding",
+      "pass": true,
+      "detail": "outstanding in preview"
+    },
+    {
+      "name": "send_preview_contract_note",
+      "pass": true,
+      "detail": "contract separation note"
+    },
+    {
+      "name": "send_revised_completed",
+      "pass": true,
+      "detail": "revision recorded status=delivered; dialogClosed=false"
+    },
+    {
+      "name": "ui_paid_unchanged",
+      "pass": true,
+      "detail": "paid to date still $2,500"
+    },
+    {
+      "name": "ui_balance",
+      "pass": true,
+      "detail": "balance $7,500"
+    },
+    {
+      "name": "ui_initial_not_partial_shortfall",
+      "pass": true,
+      "detail": "initial shortfall closed in UI"
+    },
+    {
+      "name": "db_receipt_immutable",
+      "pass": true,
+      "detail": "{\"id\":\"a1cb868e-9979-45a5-b7c3-b3296a53ecf6\",\"label\":\"Initial Payment\",\"amount\":2500,\"status\":\"paid\",\"paid_amount\":2500,\"due_date\":\"2026-10-01\",\"sort_order\":0,\"payment_method\":\"check\",\"reference_number\":\"ADJ-1791839010167\"}"
+    },
+    {
+      "name": "db_invoice_total",
+      "pass": true,
+      "detail": "10000"
+    },
+    {
+      "name": "db_balance_due",
+      "pass": true,
+      "detail": "7500"
+    },
+    {
+      "name": "db_remaining_sum",
+      "pass": true,
+      "detail": "pendingSum=7500 balance=7500"
+    },
+    {
+      "name": "db_activity",
+      "pass": true,
+      "detail": "remaining_plan_adjusted"
+    },
+    {
+      "name": "db_first_send_preserved",
+      "pass": true,
+      "detail": "invoice_email=1"
+    },
+    {
+      "name": "db_revision_sent",
+      "pass": true,
+      "detail": "invoice_plan_revision=1 status=delivered"
+    },
+    {
+      "name": "nicole_adjust_reachable",
+      "pass": true,
+      "detail": "Nicole/Colby Adjust visible"
+    }
+  ],
+  "ids": {
+    "invoiceId": "998a51d5-e6be-4cec-a7da-d77daa33fd81",
+    "scheduleId": "c00cb082-3437-4b13-8910-3163e1aaeace",
+    "clientId": "7738dbc2-a27b-4fad-8475-20129eefef8f",
+    "receivedPaymentId": "a1cb868e-9979-45a5-b7c3-b3296a53ecf6"
+  },
+  "urls": {
+    "invoice": "https://app.sandbox.hellotocheers.com/invoices/998a51d5-e6be-4cec-a7da-d77daa33fd81"
+  },
+  "before": {
+    "inv": {
+      "id": "998a51d5-e6be-4cec-a7da-d77daa33fd81",
+      "total": 10000,
+      "balance_due": 7500,
+      "status": "partially_paid"
+    },
+    "lines": [
+      {
+        "id": "a1cb868e-9979-45a5-b7c3-b3296a53ecf6",
+        "label": "Initial Payment",
+        "amount": 4000,
+        "status": "partially_paid",
+        "paid_amount": 2500,
+        "due_date": "2026-10-01",
+        "sort_order": 0,
+        "payment_method": "check",
+        "reference_number": "ADJ-1791839010167"
+      },
+      {
+        "id": "7c637afe-0dbb-4e42-98e0-ff80d51f3ad9",
+        "label": "Planning Payment",
+        "amount": 3000,
+        "status": "pending",
+        "paid_amount": null,
+        "due_date": "2027-02-01",
+        "sort_order": 1,
+        "payment_method": null,
+        "reference_number": null
+      },
+      {
+        "id": "d0800040-4358-46d5-968f-0f6f15e94b9a",
+        "label": "Final Payment",
+        "amount": 3000,
+        "status": "pending",
+        "paid_amount": null,
+        "due_date": "2027-08-01",
+        "sort_order": 2,
+        "payment_method": null,
+        "reference_number": null
+      }
+    ],
+    "activities": [],
+    "messages": [
+      {
+        "id": "3acd541f-6425-4c9e-9bcb-e354d015438f",
+        "status": "accepted",
+        "channel_metadata": {
+          "qaSeed": true,
+          "sourceId": "998a51d5-e6be-4cec-a7da-d77daa33fd81",
+          "sourceType": "invoice_email"
+        },
+        "sent_at": "2026-10-12T21:03:34.607763+00:00",
+        "body": "Seeded first payment request (send-once)."
+      }
+    ]
+  },
+  "after": {
+    "inv": {
+      "id": "998a51d5-e6be-4cec-a7da-d77daa33fd81",
+      "total": 10000,
+      "balance_due": 7500,
+      "status": "partially_paid"
+    },
+    "lines": [
+      {
+        "id": "a1cb868e-9979-45a5-b7c3-b3296a53ecf6",
+        "label": "Initial Payment",
+        "amount": 2500,
+        "status": "paid",
+        "paid_amount": 2500,
+        "due_date": "2026-10-01",
+        "sort_order": 0,
+        "payment_method": "check",
+        "reference_number": "ADJ-1791839010167"
+      },
+      {
+        "id": "0b107419-a5d4-4039-9214-20fbe54ea1ec",
+        "label": "Planning Payment",
+        "amount": 3750,
+        "status": "pending",
+        "paid_amount": null,
+        "due_date": "2027-02-01",
+        "sort_order": 1,
+        "payment_method": null,
+        "reference_number": null
+      },
+      {
+        "id": "b6bd1916-466b-406d-a187-4dc92145f269",
+        "label": "Final Payment",
+        "amount": 3750,
+        "status": "pending",
+        "paid_amount": null,
+        "due_date": "2027-08-01",
+        "sort_order": 2,
+        "payment_method": null,
+        "reference_number": null
+      }
+    ],
+    "activities": [
+      {
+        "type": "remaining_plan_adjusted",
+        "title": "Remaining payment plan adjusted. $1500.00 of partial-installment shortfall redistributed. Recorded payments unchanged.",
+        "description": null,
+        "created_at": "2026-10-12T21:04:21.031987+00:00"
+      }
+    ],
+    "messages": [
+      {
+        "id": "e0a42c03-aca3-4e2e-8571-3fdda212fd82",
+        "status": "delivered",
+        "channel_metadata": {
+          "sourceId": "998a51d5-e6be-4cec-a7da-d77daa33fd81",
+          "automated": true,
+          "sourceType": "invoice_plan_revision"
+        },
+        "sent_at": "2026-10-12T21:04:28.727743+00:00",
+        "body": "Hi Plan,\n\nMeadowbrook Valley Venue has sent your invoice and payment plan.\n\nView Invoice & Payment Plan:\nhttps://app.sandbox.hellotocheers.com/p/155fa617f6ec4594291367dee255a8e0794c6a051d86911e9f0270172907b190\n\nNext payment (Planning Payment): $3,750 due February 1, 2027. It is not due yet.\n\nInvoice: Plan Adjust disposable 1791839010167 (INV-ADJ-39010167)\nTotal contracted: $10,000\nPaid to date: $2,500\nBalance remaining: $7,500\n\nWarm regards,\nMeadowbrook Valley Venue\njlcormier612@gmail.com"
+      },
+      {
+        "id": "3acd541f-6425-4c9e-9bcb-e354d015438f",
+        "status": "accepted",
+        "channel_metadata": {
+          "qaSeed": true,
+          "sourceId": "998a51d5-e6be-4cec-a7da-d77daa33fd81",
+          "sourceType": "invoice_email"
+        },
+        "sent_at": "2026-10-12T21:03:34.607763+00:00",
+        "body": "Seeded first payment request (send-once)."
+      }
+    ]
+  },
+  "send": {
+    "firstSend": 1,
+    "revisionMsgs": 1,
+    "revision": {
+      "id": "e0a42c03-aca3-4e2e-8571-3fdda212fd82",
+      "status": "delivered",
+      "channel_metadata": {
+        "sourceId": "998a51d5-e6be-4cec-a7da-d77daa33fd81",
+        "automated": true,
+        "sourceType": "invoice_plan_revision"
+      },
+      "sent_at": "2026-10-12T21:04:28.727743+00:00",
+      "body": "Hi Plan,\n\nMeadowbrook Valley Venue has sent your invoice and payment plan.\n\nView Invoice & Payment Plan:\nhttps://app.sandbox.hellotocheers.com/p/155fa617f6ec4594291367dee255a8e0794c6a051d86911e9f0270172907b190\n\nNext payment (Planning Payment): $3,750 due February 1, 2027. It is not due yet.\n\nInvoice: Plan Adjust disposable 1791839010167 (INV-ADJ-39010167)\nTotal contracted: $10,000\nPaid to date: $2,500\nBalance remaining: $7,500\n\nWarm regards,\nMeadowbrook Valley Venue\njlcormier612@gmail.com"
+    }
+  }
+}

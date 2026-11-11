@@ -36,7 +36,7 @@ function conflictFooter(kind: "event" | "tour", conflicts: ConflictItem[]): stri
     return "This event cannot be saved until the conflict is resolved.";
   }
   if (types.has("tour_event_overlap")) {
-    return "Choose a time that does not overlap the Event's setup-to-teardown window.";
+    return "Choose a time that does not overlap a booked event.";
   }
   if (types.has("tour_outside_window")) {
     return "Choose a time within the venue's tour hours.";
@@ -53,6 +53,10 @@ function conflictFooter(kind: "event" | "tour", conflicts: ConflictItem[]): stri
   return "This time is not available.";
 }
 
+export const BOOKING_CONFLICT_HEADING = "This time is unavailable";
+export const BOOKING_CONFLICT_MESSAGE =
+  "Another booking or hold already reserves one or more of the selected spaces during this time. Change the dates, spaces, or times to continue.";
+
 export function ConflictWarning({
   date,
   endDate,
@@ -61,8 +65,11 @@ export function ConflictWarning({
   setupTime,
   teardownTime,
   spaceId,
+  windows,
   type,
   excludeId,
+  excludeLeadId,
+  purpose,
   onStatusChange,
 }: {
   date: string;
@@ -72,13 +79,23 @@ export function ConflictWarning({
   setupTime?: string;
   teardownTime?: string;
   spaceId?: string;
+  windows?: Array<{
+    spaceId: string;
+    startTime?: string | null;
+    endTime?: string | null;
+    scheduledDate?: string | null;
+  }>;
   type: "event" | "tour";
   excludeId?: string;
+  /** date_holds.lead_id of the lead being edited — own hold must not self-block. */
+  excludeLeadId?: string;
+  purpose?: "booking" | "preferred_date";
   /** Called when availability resolves. `true` = hard block exists, save must be prevented. */
   onStatusChange?: (blocked: boolean) => void;
 }) {
   const [status, setStatus] = React.useState<AvailabilityStatus | null>(null);
   const timerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const windowsKey = (windows ?? []).map((row) => `${row.spaceId}|${row.startTime ?? ""}|${row.endTime ?? ""}`).join(";");
 
   React.useEffect(() => {
     if (!date) {
@@ -97,19 +114,36 @@ export function ConflictWarning({
         setupTime: setupTime || undefined,
         teardownTime: teardownTime || undefined,
         spaceId: spaceId || undefined,
+        windows: windows?.filter((row) => row.spaceId),
         type,
         excludeId,
+        excludeLeadId,
+        purpose,
       });
       setStatus(result);
       onStatusChange?.(result.conflicts.some((c) => c.severity === "error"));
     }, 400);
 
-    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-  }, [date, endDate, startTime, endTime, setupTime, teardownTime, spaceId, type, excludeId]); // eslint-disable-line react-hooks/exhaustive-deps
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      // Sticky tourDateBlocked fix: clear hard-block when this warning unmounts
+      // (completed tour, walk-in, date cleared, or parent stops rendering it).
+      onStatusChange?.(false);
+    };
+  }, [date, endDate, startTime, endTime, setupTime, teardownTime, spaceId, windowsKey, type, excludeId, excludeLeadId, purpose]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!status || status.conflicts.length === 0) return null;
 
   const hasError = status.conflicts.some((c) => c.severity === "error");
+  if (purpose === "booking") {
+    if (!hasError) return null;
+    return (
+      <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2.5" role="alert">
+        <p className="text-sm font-semibold text-destructive">{BOOKING_CONFLICT_HEADING}</p>
+        <p className="mt-1 text-sm text-muted-foreground">{BOOKING_CONFLICT_MESSAGE}</p>
+      </div>
+    );
+  }
   const errors = status.conflicts.filter((c) => c.severity === "error");
   const warnings = status.conflicts.filter((c) => c.severity === "warning");
 

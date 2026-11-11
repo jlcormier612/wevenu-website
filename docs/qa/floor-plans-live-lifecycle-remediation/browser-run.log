@@ -1,0 +1,123 @@
+PASS serving_sha — 405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:12721ce63afa00b187b1bf5816dd7880d5eda219
+PASS D0_banner_honest_when_empty — empty=true bannerCount=0 rooms=Booking rooms (read-only): Barn
+PASS D0_booking_rooms_not_none_while_assigned — Booking rooms (read-only): Barn
+PASS C_labels_preference_not_furniture — preference=1 furnitureApproved=0 legacyClientApproved=0
+PASS P2_card_grouped_controls — visibility=3 prep=4
+PASS D1_persist_open_flag — [{"id":"fd3c7323-49f8-48de-a712-7722c8d7467f","trigger":"t1_layout_room","plan":"4d842d6f-9c48-4e32-bbc9-82d0e45ce178"}]
+PASS D2_ui_shows_open_review_and_banner — banner=true items=1 emptyGone=true
+PASS D3_review_visible_after_navigation — items=1
+PASS D4_clear_removes_from_ui_and_persist — openFlags=0 banner=0
+PASS D5_clear_does_not_mutate_layout_access_seating — {"planBeforeClear":{"id":"4d842d6f-9c48-4e32-bbc9-82d0e45ce178","space_id":"40f81c67-199d-47f8-bf7d-79c118e34198","shared_with_couple":true,"client_access":"view","client_layout_status":"working"},"planAfterClear":{"id":"4d842d6f-9c48-4e32-bbc9-82d0e45ce178","space_id":"40f81c67-199d-47f8-bf7d-79c118e34198","shared_with_couple":true,"client_access":"view","client_layout_status":"working"},"eventBeforeClear":{"operational_floor_plan_id":"4d842d6f-9c48-4e32-bbc9-82d0e45ce178","couple_selected_floo
+PASS A1_venue_sees_required_setups — Wedding setups (optional)
+
+For multi-part weddings, organize layouts into required setups such as Ceremony and Reception. Alternatives belong under one setup only. A single-layout wedding does not need this.
+
+Hide setup organizer
+
+REQUIRED SETUP
+
+Ceremony
+
+FPLR-FPLRMVRHPIJH-CeremonyWorking layout for this setup · Shared with couple
+Detach
+
+REQUIRED SETUP
+
+Reception
+
+FPLR-FPLRMVRHPIJH-ReceptionWork
+PASS A2_portal_api_has_setups — {"setups":[{"name":"Ceremony","layouts":[{"name":"FPLR-FPLRMVRHPIJH-Ceremony","isWorking":true,"sortOrder":0,"isApproved":null,"floorPlanId":"4d842d6f-9c48-4e32-bbc9-82d0e45ce178","isPreference":null,"sharedWithCouple":true}],"setupId":"9347dc67-015d-4ca7-9346-3b6811cbd2e2","sortOrder":0,"couplePreferenceStatus":null,"operationalFloorPlanId":"4d842d6f-9c48-4e32-bbc9-82d0e45ce178","coupleApprovedFloorPlanId":null,"coupleSelectedFloorPlanId":null},{"name":"Reception","layouts":[{"name":"FPLR-FPLRM
+PASS A2_couple_sees_setup_package — weddingSetups=1 body=FPLRRemediation
+
+·
+
+Jen's Fancy Venue
+
+Jul 17, 2061
+
+Export my data
+🏠
+Home
+✅
+Tasks
+🕒
+Timeline
+📁
+Docs
+🗺️
+Floor Plan
+💳
+Payments
+💬
+Messages
+🏛️
+Guide
+🤝
+Vendors
+Your wedding setups
+
+Each setup is a part of your wedding plan. Alternatives appear only under the setup they belong to. Saving a preference asks your venue to review it — it does not approve the layout or change what the venue will use by itself.
+
+REQUIRED SETUP
+
+Ceremony
+
+FPLR-FPLRMVRHPIJH-Ceremony
+Venue working
+PASS A2b_portal_select_reception_ok — {"status":200,"body":{"ok":true,"setupId":"b033b731-f676-45f8-9ae7-94c1139e163c","floorPlanId":"b61f6f96-a7b8-47d8-8966-98bf777020b9","couplePreferenceStatus":"pending"}}
+PASS A3_preference_does_not_replace_working_or_seating — {"cer":{"id":"9347dc67-015d-4ca7-9346-3b6811cbd2e2","name":"Ceremony","couple_selected_floor_plan_id":null,"operational_floor_plan_id":"4d842d6f-9c48-4e32-bbc9-82d0e45ce178","seating_in_use_floor_plan_id":"4d842d6f-9c48-4e32-bbc9-82d0e45ce178"},"rec":{"id":"b033b731-f676-45f8-9ae7-94c1139e163c","name":"Reception","couple_selected_floor_plan_id":"b61f6f96-a7b8-47d8-8966-98bf777020b9","operational_floor_plan_id":"8d96f2de-e924-43a8-88c1-a1b44bf35fd3","seating_in_use_floor_plan_id":null},"eventAfte
+PASS B1_flip_linked_persist — [{"id":"cc68e5db-0ca9-4455-9e44-1854abfe7ce3","venue_id":"a415ac52-cd74-42a6-8df7-7a8f6e71d080","event_id":"744f289b-eceb-4442-8316-36413ea52479","before_floor_plan_id":"4d842d6f-9c48-4e32-bbc9-82d0e45ce178","after_floor_plan_id":"8d96f2de-e924-43a8-88c1-a1b44bf35fd3","transition_notes":"Move cocktail furniture after ceremony.","created_at":"2026-10-28T02:24:27.646801+00:00","updated_at":"2026-10-28T02:24:27.764178+00:00","recorded_before_space_id":"40f81c67-199d-47f8-bf7d-79c118e34198","recorde
+PASS B2_venue_understands_link — Same-room flip link (optional)
+
+Link two real layouts as before and after for venue/staff planning. This records a relationship only — Hello to Cheers does not switch rooms automatically, on a timer, or with staffing. A static starter illustration is not a link.
+
+Hide flip link
+
+Linked for venue/staff planning (not an automatic room switch)
+
+Before: FPLR-FPLRMVRHPIJH-Ceremony
+
+After: FPLR-FPLRMVRH
+PASS B3_unlink_preserves_layouts — flips=0 plans=3 objs=9
+PASS C1_furniture_submit_distinct_from_preference — badge=1 panel=Furniture placement submitted: FPLR-FPLRMVRHPIJH-Ceremony
+
+Submitted 10/27/2026, 10:24:34 PM. Open the layout to inspect table and furniture placement, then approve or request changes. This is not the same as approving their layout preference. Approving placement keeps this working layout — it does not create a second copy.
+
+Approve furniture place
+PASS C2_approve_furniture_label_and_persist — {"afterApprove":{"client_layout_status":"approved","space_id":"40f81c67-199d-47f8-bf7d-79c118e34198","shared_with_couple":true},"furnitureApprovedAfter":1,"stillPreference":1,"legacyClientApprovedAfter":0}
+PASS E1_venue_next_action_clear_after_furniture_approve — nextAfterApprove=1 furnitureBadge=1 preferenceBadge=1 status=Couple preference: FPLR-FPLRMVRHPIJH-Ceremony (pending). Preference is not the same as working layout, sharing, or seating access.
+
+Furniture layout is approved. When print/setup-ready, open it and Mark as Ready.
+PASS E2_couple_not_told_false_completion — FPLRRemediation
+
+·
+
+Jen's Fancy Venue
+
+Jul 17, 2061
+
+Export my data
+🏠
+Home
+✅
+Tasks
+🕒
+Timeline
+📁
+Docs
+🗺️
+Floor Plan
+💳
+Payments
+💬
+Messages
+🏛️
+Guide
+🤝
+Vendors
+Your wedding setups
+
+Each setup is a part of your wedding plan. Alternatives appear only under the setup they belong to. Saving a preference asks your venue to review it — it does not approve the layout or change what the venue will use
+PASS cleanup — events=1
+
+SUMMARY passed=23 failed=0

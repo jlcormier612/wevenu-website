@@ -1,0 +1,12 @@
+PASS serving-image — 405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:2aad64718c9295b97a0114c217f165178698414e sha256:9c64f696da1bba3a5b394cbcbd70364c912ad0cebd6eb7cfd7054e5fbc43d556
+PASS serving-sha-matches — expected=2aad64718c9295b97a0114c217f165178698414e image=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:2aad64718c9295b97a0114c217f165178698414e
+PASS persisted-layout-vs-guest — {"seats":170,"tables":25,"guest":88,"surplus":82,"space":150}
+PASS staff-login — jennifer@hellotocheers.com
+PASS capacity-banner-visible — 170 layout seats across 25 tables · 88 guests recorded on this event · assigned Space capacity 150 · 82 layout seats above the event guest count
+PASS capacity-copy-layout-vs-guest — 170 layout seats across 25 tables · 88 guests recorded on this event · assigned Space capacity 150 · 82 layout seats above the event guest count
+PASS capacity-copy-not-ambiguous-spare — 170 layout seats across 25 tables · 88 guests recorded on this event · assigned Space capacity 150 · 82 layout seats above the event guest count | Layout seats sum seat counts on round, rectangular, and oval tables on this canvas (including ceremony rows and cocktail tables when present). That total is one simultaneous layout — zone labels like 
+PASS capacity-legend-explains-zones — Layout seats sum seat counts on round, rectangular, and oval tables on this canvas (including ceremony rows and cocktail tables when present). That total is one simultaneous layout — zone labels like Ceremony / Cocktail / Reception are visual areas, not separate timed setups. “Above guest count” is layout seats minus the event's recorded guest count (170 − 88 = 82); it is not Space capacity minus 
+PASS inventory-usage-legend — Available is this venue's inventory quantity on hand. Used counts objects on this event's floor plans that are linked to that inventory item (not every canvas object with a similar label). Remaining = Available − Used.
+PASS client-capacity-visible — 170 layout seats across 25 tables · 88 guests recorded on this event · assigned Space capacity 150 · 82 layout seats above the event guest count · Barn
+PASS client-capacity-copy — 170 layout seats across 25 tables · 88 guests recorded on this event · assigned Space capacity 150 · 82 layout seats above the event guest count · Barn
+GREEN 11/11

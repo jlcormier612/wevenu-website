@@ -1,0 +1,61 @@
+{
+  "verdict": "GREEN/CLOSED",
+  "closedAt": "2026-11-09T22:50:00Z",
+  "servingAtJourney": {
+    "sha": "e8d3f96913cc6a2bcfb692ba90ed3d10838736bd",
+    "deploy": "https://github.com/jlcormier612/wevenu-website/actions/runs/42709665690",
+    "note": "Add Another Venue → group_pct Checkout deployed and serving during purchase"
+  },
+  "followUpFixDeployed": {
+    "sha": "148bb76ba7ce5ccde52dae36ffd7872076457335",
+    "deploy": "https://github.com/jlcormier612/wevenu-website/actions/runs/42714803227",
+    "purpose": "Expand Stripe discounts on retrieve so group coupon confirmation does not false-fail"
+  },
+  "propertyA": {
+    "venueId": "4609a143-556c-4eb3-b64e-fc64f2dc19f8",
+    "venueName": "[DISPOSABLE-P4-PROP-A] 1794260831925",
+    "customerId": "cus_VbCogr9Mnehst8",
+    "subscriptionId": "sub_1Ua0PFErUqJH7nktG6NBEFXb",
+    "planKey": "starter",
+    "listAmountCents": 19900,
+    "groupCoupon": "htc_group_10_forever",
+    "discountId": "di_1Ua1HNErUqJH7nktOXLqA6x9",
+    "invoicePreviewTotalCents": 17910,
+    "adjustmentId": "21329a5f-9254-40ba-a3f3-36709971f8b8",
+    "adjustmentStatus": "applied"
+  },
+  "propertyB": {
+    "venueId": "d2063d3c-108b-40ab-af02-d17578d6d96e",
+    "venueName": "[DISPOSABLE-P4-PROP-B] 1794264061011",
+    "customerId": "cus_VbDhxHEOEDQL6r",
+    "subscriptionId": "sub_1Ua1GUErUqJH7nktqmmVOnB3",
+    "checkoutSessionId": "cs_test_a1R3xaWHxAj4MzknEqy5dESuAKd79xBrRRLNQSEZA5I8Gar3gu0l9lrmLa",
+    "invoiceId": "in_1Ua1GSErUqJH7nktg0ZW4ZnU",
+    "invoiceAmountPaidCents": 17910,
+    "groupCoupon": "htc_group_10_forever",
+    "discountId": "di_1Ua1GSErUqJH7nktVUGa0s2q",
+    "enrollmentId": "0616d95e-6891-4e98-b3b5-e6cc38b77218",
+    "enrollmentStatus": "activated",
+    "appliedOfferType": "group_pct"
+  },
+  "organization": {
+    "id": "90efb537-aa7e-4302-8f38-1c4d6e196d99",
+    "reservationId": "9f5d3033-1a6f-4d29-b814-8df99b365bca",
+    "reservationStatus": "fulfilled",
+    "qualifyingVenueCount": 2,
+    "groupEligible": true,
+    "activeMemberships": 2
+  },
+  "regressions": {
+    "sharedPricing": "114/114 PASS",
+    "phase4Suite": "24/24 PASS"
+  },
+  "phase3Flags": {
+    "TIER_UPGRADE_SEND_NOTICE": "true",
+    "TIER_UPGRADE_APPLY_STRIPE": "true",
+    "PRICING_TIER_UPGRADE_STORE": "postgres",
+    "PRICING_GROUP_V1": "true",
+    "STRIPE_GROUP_PERCENT_COUPON_ID": "htc_group_10_forever"
+  },
+  "evidenceDir": "docs/qa/htc-phase4-group-pricing/browser"
+}

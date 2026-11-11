@@ -1,21 +1,30 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { buildBookingJourney, isCommerciallyBooked } from "@/lib/booking-journey/model";
+import { buildBookingJourney, commercialStepsComplete } from "@/lib/booking-journey/model";
 import { DEFAULT_COMMERCIAL_BOOKING_PREFS } from "@/lib/booking-journey/venue-prefs";
 import { suggestDepositAmount } from "@/lib/commercial-selections/constants";
 import type { CommercialSelection } from "@/lib/commercial-selections/types";
 
 function selection(overrides: Partial<CommercialSelection> = {}): CommercialSelection {
+  const totalAmount = overrides.totalAmount ?? 3200;
   return {
     id: "sel-1",
     venueId: "v1",
     leadId: "lead-1",
     clientId: "client-1",
     eventId: "event-1",
+    proposalId: null,
     sourcePackageId: "pkg-1",
     name: "Garden Package",
-    totalAmount: 3200,
+    packageAmount: totalAmount,
+    discountAmount: 0,
+    discountType: null,
+    discountValue: null,
+    taxApplied: false,
+    taxRatePercent: null,
+    taxAmount: 0,
+    totalAmount,
     depositAmount: 800,
     includedItems: [{ description: "Lawn", quantity: 1, unit: null }],
     status: "draft",
@@ -35,10 +44,10 @@ function selection(overrides: Partial<CommercialSelection> = {}): CommercialSele
 
 const prefs = DEFAULT_COMMERCIAL_BOOKING_PREFS;
 
-describe("Commercial variants A–F", () => {
-  it("A — proposal path with required initial payment: accept is not Booked until deposit paid", () => {
+describe("Commercial variants A–F (simplified)", () => {
+  it("A — accept is not commercially ready until the contract is signed and the deposit is paid; never Booked", () => {
     assert.equal(
-      isCommerciallyBooked({
+      commercialStepsComplete({
         selection: selection({ status: "accepted" }),
         contract: null,
         paymentLines: [],
@@ -55,13 +64,14 @@ describe("Commercial variants A–F", () => {
       planningStarted: false,
       prefs,
     });
-    assert.equal(unpaid.currentKey, "deposit");
-    assert.equal(unpaid.isCommerciallyBooked, false);
+    assert.equal(unpaid.currentKey, "agreement");
+    assert.equal(unpaid.primaryAction, "create_contract");
+    assert.equal(unpaid.commercialReady, false);
     assert.ok(unpaid.stages.some((s) => s.key === "deposit"));
     assert.equal(
-      isCommerciallyBooked({
+      commercialStepsComplete({
         selection: selection({ status: "accepted" }),
-        contract: null,
+        contract: { id: "c1", status: "signed" },
         paymentLines: [{ obligationKind: "deposit", status: "paid", amount: 800 }],
         prefs,
       }),
@@ -73,19 +83,19 @@ describe("Commercial variants A–F", () => {
     const j = buildBookingJourney({
       clientId: "client-1",
       selection: selection({ status: "accepted", depositAmount: 3200 }),
-      contract: null,
+      contract: { id: "c1", status: "signed" },
       paymentLines: [{ obligationKind: "deposit", status: "paid", amount: 3200 }],
       portalInvited: false,
       planningStarted: false,
       prefs,
     });
-    assert.equal(j.isCommerciallyBooked, true);
+    assert.equal(j.commercialReady, true);
     assert.equal(j.remainingSummary, "$0.00");
   });
 
-  it("C — signed contract completes agreement without proposal acceptance", () => {
+  it("C — signed contract completes agreement without selection acceptance", () => {
     assert.equal(
-      isCommerciallyBooked({
+      commercialStepsComplete({
         selection: selection({ status: "draft" }),
         contract: { id: "c1", status: "signed" },
         paymentLines: [{ obligationKind: "deposit", status: "paid", amount: 800 }],
@@ -106,7 +116,7 @@ describe("Commercial variants A–F", () => {
     assert.equal(j.stages.find((s) => s.key === "agreement")?.state, "complete");
   });
 
-  it("D — deposit-first shows Deposit before Agreement", () => {
+  it("D — processOrder deposit_first is ignored (always agreement then deposit)", () => {
     const j = buildBookingJourney({
       leadId: "lead-1",
       selection: selection(),
@@ -116,16 +126,16 @@ describe("Commercial variants A–F", () => {
       planningStarted: false,
       prefs: { ...prefs, processOrder: "deposit_first" },
     });
-    assert.equal(j.stages[1]?.key, "deposit");
-    assert.equal(j.stages[2]?.key, "agreement");
-    assert.equal(j.currentKey, "deposit");
+    assert.equal(j.stages[1]?.key, "agreement");
+    assert.equal(j.stages[2]?.key, "deposit");
+    assert.equal(j.currentKey, "agreement");
   });
 
   it("E — pending deposit offers Record deposit received when external collection is allowed", () => {
     const j = buildBookingJourney({
       clientId: "client-1",
       selection: selection({ status: "accepted", invoiceId: "inv-1" }),
-      contract: null,
+      contract: { id: "c1", status: "signed" },
       paymentLines: [{ obligationKind: "deposit", status: "pending", amount: 800 }],
       portalInvited: false,
       planningStarted: false,
@@ -135,26 +145,30 @@ describe("Commercial variants A–F", () => {
     assert.equal(j.secondaryLabel, "Record deposit received");
   });
 
-  it("F — initialPaymentRequired=false skips Deposit and books on agreement", () => {
-    const noPay = { ...prefs, initialPaymentRequired: false };
-    assert.equal(suggestDepositAmount(3200, 800, { initialPaymentRequired: false }), 0);
+  it("F — collectInitialPayment=false skips Deposit; commercial ready ≠ Booked", () => {
+    const noPay = {
+      ...prefs,
+      collectInitialPayment: false,
+      initialPaymentRequired: false,
+    };
+    assert.equal(suggestDepositAmount(3200, 800, { collectInitialPayment: false }), 0);
     const j = buildBookingJourney({
       clientId: "client-1",
       selection: selection({ status: "accepted", depositAmount: 0 }),
-      contract: null,
+      contract: { id: "c1", status: "signed" },
       paymentLines: [],
       portalInvited: false,
       planningStarted: false,
       prefs: noPay,
     });
-    assert.equal(j.isCommerciallyBooked, true);
-    assert.equal(j.currentKey, "booked");
+    assert.equal(j.commercialReady, true);
+    assert.equal(j.currentKey, "ready");
     assert.ok(!j.stages.some((s) => s.key === "deposit"));
     assert.equal(j.depositSummary, null);
-    assert.doesNotMatch(j.direction, /deposit/i);
+    assert.match(j.direction, /Mark them Booked when you're ready/i);
   });
 
-  it("proposal acceptance completes agreement without a contract", () => {
+  it("selection acceptance does not complete agreement without a signed contract", () => {
     const j = buildBookingJourney({
       clientId: "client-1",
       selection: selection({ status: "accepted" }),
@@ -164,13 +178,14 @@ describe("Commercial variants A–F", () => {
       planningStarted: false,
       prefs,
     });
-    assert.equal(j.stages.find((s) => s.key === "agreement")?.state, "complete");
-    assert.equal(j.isCommerciallyBooked, true);
+    assert.equal(j.stages.find((s) => s.key === "agreement")?.state, "current");
+    assert.equal(j.primaryAction, "create_contract");
+    assert.equal(j.commercialReady, false);
   });
 
-  it("Start booking file / draft selection is not commercially Booked", () => {
+  it("draft selection is not commercially ready", () => {
     assert.equal(
-      isCommerciallyBooked({
+      commercialStepsComplete({
         selection: selection({ status: "draft" }),
         contract: null,
         paymentLines: [],

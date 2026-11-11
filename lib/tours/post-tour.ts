@@ -26,7 +26,8 @@ type PostTourContext = {
   venueId: string;
   leadId: string | null;
   contactName: string | null;
-  scheduledAt: string;
+  /** Booked slot when present; null for walk-ins (actual clock only). */
+  scheduledAt: string | null;
 };
 
 export async function runPostTourAutomation(
@@ -50,7 +51,7 @@ async function handleCompleted(
   venueId: string,
   leadId: string | null,
   name: string,
-  scheduledAt: string,
+  scheduledAt: string | null,
 ) {
   if (!leadId) return;
 

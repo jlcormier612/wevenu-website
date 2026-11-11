@@ -10,8 +10,10 @@ import {
   updateEvent_,
   updateEventBookedAt_,
   updateEventNote_,
+  setEventAssignedStaff,
   updateEventStatus_,
 } from "@/lib/events/service";
+import { returnClientToBooked } from "@/lib/leads/service";
 import type { EventActionResult, EventInput, TeamMemberInput } from "@/lib/events/types";
 
 function revalidateEvent(eventId: string) {
@@ -21,9 +23,61 @@ function revalidateEvent(eventId: string) {
   revalidatePath("/payments/new");
 }
 
+export async function setEventAssignedStaffAction(
+  eventId: string,
+  staffId: string | null,
+): Promise<EventActionResult> {
+  const result = await setEventAssignedStaff(eventId, staffId);
+  if (result.ok) {
+    revalidateEvent(eventId);
+    revalidatePath("/clients");
+  }
+  return result;
+}
+
 export async function updateEventStatusAction(eventId: string, status: string): Promise<EventActionResult> {
   const result = await updateEventStatus_(eventId, status);
-  if (result.ok) revalidateEvent(eventId);
+  if (result.ok) {
+    revalidateEvent(eventId);
+    if (status === "cancelled") {
+      revalidatePath("/clients");
+      revalidatePath("/calendar");
+      revalidatePath("/leads");
+    }
+  }
+  return result;
+}
+
+export async function returnClientToBookedAction(
+  clientId: string,
+  occupancy?: import("@/lib/booking-journey/confirmed-occupancy").ConfirmedBookingOccupancy,
+): Promise<EventActionResult> {
+  const result = await returnClientToBooked(clientId, occupancy);
+  if (result.ok) {
+    revalidatePath("/clients");
+    revalidatePath(`/clients/${clientId}`);
+    revalidatePath("/calendar");
+    revalidatePath("/leads");
+    revalidatePath("/events");
+  }
+  return result.ok ? { ok: true } : { ok: false, message: result.message };
+}
+
+export async function saveEventSpaceAssignmentsAction(
+  eventId: string,
+  assignments: import("@/lib/venue-spaces/assignments").EventSpaceAssignmentInput[],
+  clientId?: string | null,
+): Promise<EventActionResult> {
+  const { replaceEventSpaceAssignments } = await import("@/lib/events/space-assignments");
+  const result = await replaceEventSpaceAssignments(eventId, assignments);
+  if (result.ok) {
+    // Event (+ client) first — the open page needs these. Calendar is a
+    // separate surface; revalidate it too but it is not required for the
+    // schedule dialog to finish honestly.
+    revalidateEvent(eventId);
+    if (clientId) revalidatePath(`/clients/${clientId}`);
+    revalidatePath("/calendar");
+  }
   return result;
 }
 

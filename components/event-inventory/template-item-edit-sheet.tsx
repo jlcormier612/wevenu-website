@@ -12,17 +12,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
+import { isCatalogBackedTemplateItem } from "@/lib/event-inventory/template-catalog";
 import type { InventoryItemInput, InventoryTemplateItem } from "@/lib/event-inventory/types";
 
 /**
- * Edit sheet for an existing template item. Same field set and "Included in
- * the base package (not an extra cost)" language already used for this item
- * shape (components/event-inventory/item-sheet.tsx, Event Inventory's
- * equivalent edit sheet) and the Add Item form on this same screen
- * (inventory-template-detail.tsx's AddTemplateItemInline). Templates are
- * snapshots (D5 brief §7) — editing here only ever touches this template's
- * own row, never any inventory_items or event data it may have originated
- * from or been copied into.
+ * Edit sheet for an existing template item. Preserves inventoryItemId when
+ * present (catalog provenance). Snapshots only — never live-syncs catalog.
  */
 export function TemplateItemEditSheet({
   templateId, item, onPersist,
@@ -31,12 +26,14 @@ export function TemplateItemEditSheet({
   item: InventoryTemplateItem;
   onPersist: (phase: "saving" | "saved" | "error", message?: string) => void;
 }) {
+  const fromCatalog = isCatalogBackedTemplateItem(item);
   const [open, setOpen] = React.useState(false);
   const [name, setName] = React.useState(item.name);
   const [category, setCategory] = React.useState(item.category ?? "");
   const [quantity, setQuantity] = React.useState(String(item.quantity));
   const [unitPrice, setUnitPrice] = React.useState(item.unitPrice != null ? String(item.unitPrice) : "");
   const [isIncluded, setIsIncluded] = React.useState(item.isIncluded);
+  const [venueOnly, setVenueOnly] = React.useState(!item.clientVisible);
   const [notes, setNotes] = React.useState(item.notes ?? "");
   const [error, setError] = React.useState("");
   const [pending, startTransition] = React.useTransition();
@@ -47,6 +44,7 @@ export function TemplateItemEditSheet({
     setQuantity(String(item.quantity));
     setUnitPrice(item.unitPrice != null ? String(item.unitPrice) : "");
     setIsIncluded(item.isIncluded);
+    setVenueOnly(!item.clientVisible);
     setNotes(item.notes ?? "");
     setError("");
   }
@@ -54,7 +52,8 @@ export function TemplateItemEditSheet({
   function handleSubmit() {
     if (!name.trim()) { setError("Name is required."); return; }
     const input: InventoryItemInput = {
-      inventoryItemId: item.inventoryItemId, name, category, quantity, unitPrice, isIncluded, notes,
+      inventoryItemId: item.inventoryItemId, name, category, quantity, unitPrice, isIncluded,
+      clientVisible: !venueOnly, notes,
     };
     startTransition(async () => {
       onPersist("saving");
@@ -76,13 +75,17 @@ export function TemplateItemEditSheet({
 
   return (
     <Sheet open={open} onOpenChange={(v) => { setOpen(v); if (!v) reset(); }}>
-      <SheetTrigger render={<Button type="button" variant="ghost" size="sm" className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100" aria-label="Edit item" />}>
+      <SheetTrigger render={<Button type="button" variant="ghost" size="sm" className="h-7 w-7 p-0" aria-label="Edit item" data-testid="inventory-template-item-edit" />}>
         <Pencil className="h-3.5 w-3.5" />
       </SheetTrigger>
       <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
         <SheetHeader className="mb-6">
           <SheetTitle>Edit Item</SheetTitle>
-          <p className="text-sm text-muted-foreground">What&apos;s part of this template?</p>
+          <p className="text-sm text-muted-foreground">
+            {fromCatalog
+              ? "From Available Inventory — edits apply to this template only, not the catalog or existing events."
+              : "Custom item — not linked to Available Inventory."}
+          </p>
         </SheetHeader>
 
         <div className="space-y-4">
@@ -111,6 +114,18 @@ export function TemplateItemEditSheet({
             <Checkbox id={`tmpl-item-included-${item.id}`} checked={isIncluded} onCheckedChange={(v) => setIsIncluded(v === true)} />
             <Label htmlFor={`tmpl-item-included-${item.id}`} className="text-sm font-normal text-foreground cursor-pointer">
               Included in the base package (not an extra cost)
+            </Label>
+          </div>
+
+          <div className="flex items-start gap-2">
+            <Checkbox
+              id={`tmpl-item-venue-only-${item.id}`}
+              checked={venueOnly}
+              onCheckedChange={(v) => setVenueOnly(v === true)}
+              data-testid="template-item-venue-only-checkbox"
+            />
+            <Label htmlFor={`tmpl-item-venue-only-${item.id}`} className="text-sm font-normal text-foreground cursor-pointer">
+              Venue only — counted for your team, never shown to the couple, added to the Event Order, or billed
             </Label>
           </div>
 

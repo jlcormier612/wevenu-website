@@ -1,0 +1,139 @@
+{
+  "expectedSha": "57ab96ab1fc598e5168c7739b6cfec9d3ca1ab1f",
+  "servingImage": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:57ab96ab1fc598e5168c7739b6cfec9d3ca1ab1f",
+  "servingDigest": "sha256:1eeefa372dde08e9d692473bdb9e8130cebb9e0e744a89a34bb3f5ccc2150abc",
+  "counts": {
+    "pass": 25,
+    "fail": 0,
+    "total": 25
+  },
+  "checks": [
+    {
+      "name": "serving-sha",
+      "pass": true,
+      "detail": "expected=57ab96ab1fc5 ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:57ab96ab1fc598e5168c7739b6cfec9d3ca1ab1f"
+    },
+    {
+      "name": "serving-digest-present",
+      "pass": true,
+      "detail": "sha256:1eeefa372dde08e9d692473bdb9e8130cebb9e0e744a89a34bb3f5ccc2150abc"
+    },
+    {
+      "name": "dashboard-light-muted",
+      "pass": true,
+      "detail": "muted=color-mix(in oklch, #4f5f4f 80%, transparent) mixPct=80 soft=true mutedRgb=oklch(0.466934 0.0321873 145.003 / 0.8) aaPass=0 aaFail=0 bad="
+    },
+    {
+      "name": "dashboard-dark-muted",
+      "pass": true,
+      "detail": "muted=color-mix(in oklch, #fff 86%, transparent) mixPct=86 soft=true mutedRgb=oklch(0.999994 0.0000497986 none / 0.86) aaPass=0 aaFail=0 bad="
+    },
+    {
+      "name": "planning-light-muted",
+      "pass": true,
+      "detail": "muted=color-mix(in oklch, #4f5f4f 80%, transparent) mixPct=80 soft=true mutedRgb=oklch(0.466934 0.0321873 145.003 / 0.8) aaPass=0 aaFail=0 bad="
+    },
+    {
+      "name": "light-category-hue-diversity",
+      "pass": true,
+      "detail": "labels=19 uniqueColors=5 sample=[{\"text\":\"Planning\",\"color\":\"rgb(79, 95, 79)\",\"surface\":\"rgb(255, 255, 255)\",\"backdrop\":\"rgb(248, 247, 244)\",\"fontSize\":\"14.875px\"},{\"text\":\"Document\",\"color\":\"rgb(74, 67, 58)\",\"surface\":\"rgb(255, 255, 255)\",\"backdrop\":\"rgb(248, 247, 244)\",\"fontSize\":\"14.875px\"},{\"text\":\"Planning\",\"color\":\"rgb(79, 95, 79)\",\"surface\":\"rgb(255, 255, 255)\",\"backdrop\":\"rgb(248, 247, 244)\",\"fontSize\":\"14.875px\"},{\"text\":\"Planning\",\"color\":\"rgb(79, 95, 79)\",\"surface\":\"rgb(255, 255, 255)\",\"backdrop\":\"rgb(248, 247, 244)\",\"fontSize\":\"14.875px\"}]"
+    },
+    {
+      "name": "light-category-aa",
+      "pass": true,
+      "detail": "pass=19 fail=0 skipped=0"
+    },
+    {
+      "name": "light-task-meta-not-10px",
+      "pass": true,
+      "detail": "minPx=14.875 sample=[{\"t\":\"Planning\",\"fs\":\"14.875px\"},{\"t\":\"Client\",\"fs\":\"14.875px\"},{\"t\":\"12315 days before · Oct 29\",\"fs\":\"14.875px\"},{\"t\":\"Document\",\"fs\":\"14.875px\"}]"
+    },
+    {
+      "name": "planning-dark-muted",
+      "pass": true,
+      "detail": "muted=color-mix(in oklch, #fff 86%, transparent) mixPct=86 soft=true mutedRgb=oklch(0.999994 0.0000497986 none / 0.86) aaPass=0 aaFail=0 bad="
+    },
+    {
+      "name": "dark-category-hue-diversity",
+      "pass": true,
+      "detail": "labels=19 uniqueColors=5 sample=[{\"text\":\"Planning\",\"color\":\"rgb(234, 236, 234)\",\"surface\":\"rgb(93, 111, 93)\",\"backdrop\":\"rgb(79, 95, 79)\",\"fontSize\":\"14.875px\"},{\"text\":\"Document\",\"color\":\"rgb(239, 238, 234)\",\"surface\":\"rgb(93, 111, 93)\",\"backdrop\":\"rgb(79, 95, 79)\",\"fontSize\":\"14.875px\"},{\"text\":\"Planning\",\"color\":\"rgb(234, 236, 234)\",\"surface\":\"rgb(93, 111, 93)\",\"backdrop\":\"rgb(79, 95, 79)\",\"fontSize\":\"14.875px\"},{\"text\":\"Planning\",\"color\":\"rgb(234, 236, 234)\",\"surface\":\"rgb(93, 111, 93)\",\"backdrop\":\"rgb(79, 95, 79)\",\"fontSize\":\"14.875px\"}]"
+    },
+    {
+      "name": "dark-category-aa",
+      "pass": true,
+      "detail": "pass=19 fail=0 skipped=0"
+    },
+    {
+      "name": "dark-task-meta-not-10px",
+      "pass": true,
+      "detail": "minPx=14.875 sample=[{\"t\":\"Planning\",\"fs\":\"14.875px\"},{\"t\":\"Client\",\"fs\":\"14.875px\"},{\"t\":\"12315 days before · Oct 29\",\"fs\":\"14.875px\"},{\"t\":\"Document\",\"fs\":\"14.875px\"}]"
+    },
+    {
+      "name": "inventory-light-muted",
+      "pass": true,
+      "detail": "muted=color-mix(in oklch, #4f5f4f 80%, transparent) mixPct=80 soft=true mutedRgb=oklch(0.466934 0.0321873 145.003 / 0.8) aaPass=0 aaFail=0 bad="
+    },
+    {
+      "name": "inventory-dark-muted",
+      "pass": true,
+      "detail": "muted=color-mix(in oklch, #fff 86%, transparent) mixPct=86 soft=true mutedRgb=oklch(0.999994 0.0000497986 none / 0.86) aaPass=0 aaFail=0 bad="
+    },
+    {
+      "name": "event-order-light-muted",
+      "pass": true,
+      "detail": "muted=color-mix(in oklch, #4f5f4f 80%, transparent) mixPct=80 soft=true mutedRgb=oklch(0.466934 0.0321873 145.003 / 0.8) aaPass=0 aaFail=0 bad="
+    },
+    {
+      "name": "event-order-dark-muted",
+      "pass": true,
+      "detail": "muted=color-mix(in oklch, #fff 86%, transparent) mixPct=86 soft=true mutedRgb=oklch(0.999994 0.0000497986 none / 0.86) aaPass=0 aaFail=0 bad="
+    },
+    {
+      "name": "light-timeline-time-prominence",
+      "pass": true,
+      "detail": "no-clock-sample sample=[{\"t\":\"OverviewDashboardYour RelationshipsLeads\",\"fs\":\"17px\",\"fw\":\"400\"},{\"t\":\"Jen's Fancy VenueSearch⌘K99+Jjennifer@he\",\"fs\":\"17px\",\"fw\":\"400\"}]"
+    },
+    {
+      "name": "dark-timeline-time-prominence",
+      "pass": true,
+      "detail": "no-clock-sample sample=[{\"t\":\"OverviewDashboardYour RelationshipsLeads\",\"fs\":\"17px\",\"fw\":\"400\"},{\"t\":\"Jen's Fancy VenueSearch⌘K99+Jjennifer@he\",\"fs\":\"17px\",\"fw\":\"400\"}]"
+    },
+    {
+      "name": "couple-eyebrow-not-10px",
+      "pass": true,
+      "detail": "minPx=17 sample=[{\"t\":\"B2P & Portal·Jen's Fancy VenueJul 17, 20\",\"fs\":\"17px\",\"color\":\"rgb(255, 255, 255)\"},{\"t\":\"B2P & Portal·Jen's Fancy VenueJul 17, 20\",\"fs\":\"17px\",\"color\":\"rgb(255, 255, 255)\"},{\"t\":\"Add your photoJen's Fancy VenueB2P & Por\",\"fs\":\"17px\",\"color\":\"rgb(255, 255, 255)\"}]"
+    },
+    {
+      "name": "couple-home-muted",
+      "pass": true,
+      "detail": "muted=color-mix(in oklch, #fff 86%, transparent) mixPct=86 soft=true mutedRgb=oklch(0.999994 0.0000497986 none / 0.86) aaPass=0 aaFail=0 bad="
+    },
+    {
+      "name": "vendor-shot",
+      "pass": true,
+      "detail": "https://app.sandbox.hellotocheers.com/vendor/login?next=%2Fvendor"
+    },
+    {
+      "name": "email-venue-cta-pale.html-no-cool-gray-footer",
+      "pass": true,
+      "detail": "coolGrayHits=0 forestHits=3"
+    },
+    {
+      "name": "email-venue-cta-heritage.html-no-cool-gray-footer",
+      "pass": true,
+      "detail": "coolGrayHits=0 forestHits=3"
+    },
+    {
+      "name": "email-venue-branded-shell.html-no-cool-gray-footer",
+      "pass": true,
+      "detail": "coolGrayHits=0 forestHits=4"
+    },
+    {
+      "name": "email-team-invite.html-no-cool-gray-footer",
+      "pass": true,
+      "detail": "coolGrayHits=0 forestHits=5"
+    }
+  ],
+  "shotsDir": "docs/qa/product-contrast-audit/shots-recovery",
+  "at": "2026-10-23T17:18:27.633Z"
+}

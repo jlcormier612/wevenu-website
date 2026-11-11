@@ -1,0 +1,75 @@
+STEP readiness { phase5: true, phase6: true, issue: true }
+STEP phase5_crm_ui {
+  ok: true,
+  url: 'https://workspace.sandbox.hellotocheers.com/custom-pricing'
+}
+STEP phase5_create {
+  ok: true,
+  amount: 21165,
+  arrangementId: '3c309304-2ef9-46f8-8272-efa0e757beed'
+}
+STEP phase5_billing {
+  ok: true,
+  snippet: 'OVERVIEW\n' +
+    '\n' +
+    'Dashboard\n' +
+    '\n' +
+    'YOUR RELATIONSHIPS\n' +
+    '\n' +
+    'Leads\n' +
+    'Clients\n' +
+    'Vendors\n' +
+    '\n' +
+    'SCHEDULING\n' +
+    '\n' +
+    'Calendar\n' +
+    'Tours\n' +
+    '\n' +
+    'COMMUNICATION\n' +
+    '\n' +
+    'Inbox\n' +
+    'Automations\n' +
+    '\n' +
+    'LIBRARY\n' +
+    '\n' +
+    'Templates\n' +
+    'Documents\n' +
+    '\n' +
+    'FINANCIALS\n' +
+    '\n' +
+    'Contracts\n' +
+    'Payments\n' +
+    '\n' +
+    'TO DO’S\n' +
+    '\n' +
+    'Task Center\n' +
+    'Requests\n' +
+    '\n' +
+    'YOUR VENUE\n' +
+    '\n' +
+    'Setup\n' +
+    'Settings\n' +
+    'Guidance\n' +
+    'Venue Guide\n' +
+    'Reports\n' +
+    'Help & Feedback\n' +
+    '[DISPOSABLE-P3-REHEARSAL] 1794243588\n' +
+    'Search\n' +
+    '⌘K\n' +
+    'J\n' +
+    'jennifer@hellotocheers.com\n' +
+    'Subscription & Billing\n' +
+    '\n' +
+    'Manage yo'
+}
+STEP phase5_end { ok: true }
+STEP phase6_copy { ok: true }
+STEP phase6_submit { confirmation: true, history: true }
+STEP phase6_referral_row { referralId: 'e9736984-1640-41a1-a0a1-a337668e3fa0' }
+locator.fill: Timeout 30000ms exceeded.
+Call log:
+  - waiting for locator('input[type="email"], input[name="email"]').first()
+
+    at main (/Users/jensmac/Developer/wevenu-website/docs/qa/htc-commercial-roadmap-closure/combined-acceptance.mts:427:77) {
+  name: 'TimeoutError'
+}

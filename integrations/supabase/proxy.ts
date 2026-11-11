@@ -24,11 +24,16 @@ import { isWelcomeAppPath } from "@/lib/legal/welcome-session-scope";
  */
 export const PUBLIC_PATHS = [
   "/login",
+  "/forgot-password", // venue password-reset request (pre-auth)
+  "/reset-password",  // venue password-reset completion (recovery session)
+  "/auth/confirm",    // Supabase Auth email/PKCE callback (recovery, etc.)
   "/client/login",   // couple/client portal login
   "/client/accept",  // primary couple invite accept (pre-auth)
   "/client/accept-participant", // delegate invite accept (pre-auth)
   "/vendor/login",   // vendor portal login (isolated cookie jar)
   "/form",           // public venue inquiry forms - /form/{embedKey}
+  "/forms",          // purpose-specific Public Forms - /forms/{publicKey}
+  "/availability",   // public shareable availability calendar - /availability/{embedKey}
   "/questionnaire",  // public final details forms - /questionnaire/{accessKey}
   "/api/public",     // public API routes - /api/public/inquire, /api/public/questionnaire
   "/api/messaging/inbound",  // Resend inbound email webhook (no user session)
@@ -49,11 +54,13 @@ export const PUBLIC_PATHS = [
   "/api/legal",      // public legal metadata (active document ids / versions)
   "/api/internal/legal", // CRM -> legal acceptances - Bearer PRODUCT_SYNC_API_KEY
   "/p",              // client portal workspace - /p/{access_token}
+  "/portal/invoices", // couple Docs invoice print — token query auth, no staff session
   "/v",              // vendor portal workspace - /v/{access_token}
   "/vendor/accept",  // vendor invitation claim - accessible before auth
   "/join",           // staff team-invite acceptance - accessible before auth, same shape as /vendor/accept
   "/book",           // public tour scheduling - /book/{tour_embed_key}
   "/offer",          // Booking Journey couple offer accept - /offer/{accept_token}
+  "/order",          // couple Event Order document + Approve - /order/{review_token}
   "/w",              // public wedding website - /w/{slug}
   "/qr",             // QR Lead Capture scan-and-redirect - /qr/{code}, plus /qr/inactive
   "/rsvp",           // public RSVP submission - /rsvp/{rsvp_token}
@@ -78,10 +85,15 @@ export const PUBLIC_PATHS = [
   "/api/facebook/sync/process",      // Facebook Lead Ads queue cron (vercel.json) - CRON_SECRET-guarded, not session-guarded
   "/api/facebook/reconcile/process", // Facebook Lead Ads reconciliation poll cron (vercel.json) - CRON_SECRET-guarded, not session-guarded
   "/api/saved-reports/process",      // D7C - scheduled Saved Report delivery cron (vercel.json) - CRON_SECRET-guarded, not session-guarded
+  "/api/texting/provision/process",  // Texting self-service Twilio provisioning cron - CRON_SECRET-guarded, not session-guarded
   "/api/webhooks/stripe-connect",    // Stripe Connect webhook - no user session, verifies its own signature (Sprint 4)
   "/api/internal/product-access",    // CRM -> product access lock - Bearer PRODUCT_SYNC_API_KEY, not session-guarded
   "/api/internal/enrollment",        // CRM/Workspace -> venue enrollment + activation bridge - Bearer PRODUCT_SYNC_API_KEY, not session-guarded
+  "/api/internal/pricing",           // Phase 3 tier-upgrade evaluate - Bearer PRODUCT_SYNC_API_KEY/CRON_SECRET, not session-guarded
   "/api/health",                     // deployment health check - no session, no secret; read-only, returns booleans only, never data
+  // Legal enforcement recovery — static unavailable page; no session/tenant data.
+  // Also on LEGAL_ENFORCEMENT_SKIP_PREFIXES so fail-closed redirects cannot loop.
+  "/system/legal-unavailable",
   // White Glove pre-login intake — token validated in page/API handlers (not session).
   // Do NOT widen to bare "/onboarding" (Self-Setup intake and other onboarding stay authed).
   "/onboarding/white-glove",
@@ -89,7 +101,12 @@ export const PUBLIC_PATHS = [
 ];
 
 /** Authenticated routes still reachable when the venue SaaS account is suspended. */
-const SUSPENDED_ALLOW_PATHS = ["/billing/suspended", "/api/billing/portal"];
+const SUSPENDED_ALLOW_PATHS = [
+  "/billing/suspended",
+  "/api/billing/portal",
+  // Restricted recovery: venue data export while SaaS access is suspended.
+  "/api/venue/export",
+];
 
 function isSuspendedAllowPath(pathname: string): boolean {
   return SUSPENDED_ALLOW_PATHS.some(
@@ -100,6 +117,45 @@ function isSuspendedAllowPath(pathname: string): boolean {
 export function isPublicPath(pathname: string): boolean {
   return PUBLIC_PATHS.some(
     (path) => pathname === path || pathname.startsWith(`${path}/`),
+  );
+}
+
+/**
+ * Public routes need no session, so the only work the Auth round-trips below
+ * would do for them is refresh cookies those routes never read. Exact
+ * "/login" is the one exception: it reads the venue session to bounce
+ * already-signed-in staff to their home page.
+ */
+export function needsSessionResolution(pathname: string): boolean {
+  return !isPublicPath(pathname) || pathname === "/login";
+}
+
+/** Cookie name a scope's session lands under, including the venue default. */
+function sessionCookieNameForScope(
+  scope: AuthSessionScope,
+  projectRef: string | null,
+): string | null {
+  const explicit = cookieNameForScope(scope, projectRef);
+  if (explicit) return explicit;
+  return projectRef ? `sb-${projectRef}-auth-token` : null;
+}
+
+/**
+ * Whether the request actually carries a session cookie for this scope.
+ * @supabase/ssr splits large sessions across `<name>.0`, `<name>.1`, so a
+ * chunk suffix counts. When the name cannot be derived this returns true, so
+ * an unrecognised project ref falls back to asking Auth rather than silently
+ * treating a real session as absent.
+ */
+export function hasScopeSessionCookie(
+  cookieNames: readonly string[],
+  scope: AuthSessionScope,
+  projectRef: string | null,
+): boolean {
+  const name = sessionCookieNameForScope(scope, projectRef);
+  if (!name) return true;
+  return cookieNames.some(
+    (cookieName) => cookieName === name || cookieName.startsWith(`${name}.`),
   );
 }
 
@@ -132,7 +188,7 @@ function nextWithPathname(request: NextRequest, pathname: string): NextResponse 
  * Copy Set-Cookie headers from the session-bearing response onto a new one.
  * Redirects / JSON after getUser() must preserve refreshed auth cookies -
  * otherwise a silent JWT refresh is dropped and the next navigation looks logged out.
- * Never clears cookies on fail-open legal / lock paths.
+ * Never clears cookies on legal fail-closed / lock paths.
  */
 function withSessionCookies(
   from: NextResponse,
@@ -167,6 +223,14 @@ export async function updateSession(
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = "/login";
     return NextResponse.redirect(loginUrl);
+  }
+
+  // Nothing below this point applies to a public route, and every Auth call it
+  // would make is a network round-trip to Supabase. Health checks, portal token
+  // polling, webhooks and cron ticks all land here, and that traffic dominated
+  // the 2026-09-28 refresh storm. Short-circuit before touching Auth at all.
+  if (!needsSessionResolution(pathname)) {
+    return nextWithPathname(request, pathname);
   }
 
   const requestHeaders = new Headers(request.headers);
@@ -225,16 +289,34 @@ export async function updateSession(
   // sign-in never collapses another.
   const venueSupabase = makeScopedClient("venue");
   const vendorSupabase = makeScopedClient("vendor");
-  const clientSupabase = makeScopedClient("client");
 
-  // IMPORTANT: getUser() revalidates the token with Supabase Auth.
-  const [{ data: { user: venueUser } }, { data: { user: vendorUser } }] =
-    await Promise.all([
-      venueSupabase.auth.getUser(),
-      vendorSupabase.auth.getUser(),
-    ]);
-  // Warm the client jar (writes refreshed cookies via setAll when present).
-  await clientSupabase.auth.getUser();
+  // IMPORTANT: getUser() revalidates the token against Supabase Auth over the
+  // network every time it is called, and a jar with no cookie can only ever
+  // resolve to a null user. Asking regardless cost three Auth round-trips on
+  // every matched request — link prefetches included — and let concurrent
+  // requests carrying one expired session all race the same refresh token,
+  // which Supabase rejects with 409 "Too many concurrent token refresh
+  // requests on the same session or refresh token".
+  const cookieNames = request.cookies.getAll().map((cookie) => cookie.name);
+  async function resolveUser(
+    client: ReturnType<typeof makeScopedClient>,
+    scope: AuthSessionScope,
+  ) {
+    if (!hasScopeSessionCookie(cookieNames, scope, projectRef)) return null;
+    const { data } = await client.auth.getUser();
+    return data.user;
+  }
+
+  const [venueUser, vendorUser] = await Promise.all([
+    resolveUser(venueSupabase, "venue"),
+    resolveUser(vendorSupabase, "vendor"),
+  ]);
+
+  // Warm the client jar only when it actually holds a session, so it writes
+  // refreshed cookies via setAll without costing a round-trip otherwise.
+  if (hasScopeSessionCookie(cookieNames, "client", projectRef)) {
+    await makeScopedClient("client").auth.getUser();
+  }
 
   const vendorPath = isVendorAppPath(pathname);
 
@@ -261,6 +343,13 @@ export async function updateSession(
   if (!venueUser && !vendorPath && !isPublicPath(pathname)) {
     if (welcomePath && (vendorUser || welcomeCoupleToken)) {
       // Allow through — page/API resolve the correct jar.
+    } else if (pathname.startsWith("/api/admin")) {
+      // HQ APIs must not HTML-redirect to /login — clients expect JSON 401
+      // (parallel to non-HQ 403 JSON above). Never leak signed material URLs.
+      return withSessionCookies(
+        supabaseResponse,
+        NextResponse.json({ error: "unauthorized" }, { status: 401 }),
+      );
     } else {
       const loginPath = loginRedirectWithNext(
         pathname,
@@ -345,18 +434,22 @@ export async function updateSession(
 
   // Legal Acceptance Middleware (WP4) - one enforcement path for returning
   // users + signup/setup. Compliant users pass through unchanged.
-  // Fail-open (inside decideLegalProxyEnforcement) never clears cookies.
+  // Fail-closed on enforcement infra failure never clears cookies.
   if (
     user &&
     !isPublicPath(pathname) &&
     !shouldSkipLegalEnforcement(pathname)
   ) {
+    const activeVenueId = vendorPath
+      ? null
+      : request.cookies.get("htc_active_venue_id")?.value?.trim() || null;
     const legalDecision = await decideLegalProxyEnforcement({
       user,
       pathname,
       search: request.nextUrl.search,
       supabase,
       prefer: vendorPath ? "vendor" : "venue",
+      activeVenueId,
     });
     if (legalDecision.action === "redirect_welcome") {
       return withSessionCookies(
@@ -366,16 +459,28 @@ export async function updateSession(
         ),
       );
     }
+    if (legalDecision.action === "unavailable") {
+      return withSessionCookies(
+        supabaseResponse,
+        NextResponse.redirect(
+          new URL(legalDecision.recoveryPath, request.nextUrl.origin),
+        ),
+      );
+    }
     if (legalDecision.action === "block_api") {
+      const unavailable =
+        legalDecision.code === "legal_enforcement_unavailable";
       return withSessionCookies(
         supabaseResponse,
         NextResponse.json(
           {
-            error: "Legal acceptance required.",
+            error: unavailable
+              ? "Legal compliance check is temporarily unavailable. Please try again shortly."
+              : "Legal acceptance required.",
             code: legalDecision.code,
             welcomePath: legalDecision.welcomePath,
           },
-          { status: 403 },
+          { status: unavailable ? 503 : 403 },
         ),
       );
     }
@@ -383,6 +488,21 @@ export async function updateSession(
 
   // Only redirect logged-in venue users away from /login.
   if (venueUser && pathname === "/login") {
+    // Post-purchase activation must never reuse an existing venue session.
+    // Otherwise a browser already signed in as Account A (e.g. Fancy) lands
+    // in Account A after activating a purchase for Account B, and B's
+    // onboarding handoff stays unconsumed.
+    if (request.nextUrl.searchParams.get("activated") === "1") {
+      await venueSupabase.auth.signOut();
+      // Drop any stale active-venue cookie from the prior account so a Fancy
+      // (or other) context cannot outlive the cleared session.
+      supabaseResponse.cookies.set("htc_active_venue_id", "", {
+        path: "/",
+        maxAge: 0,
+      });
+      return supabaseResponse;
+    }
+
     const { data: lockedVenue } = await venueSupabase
       .from("venues")
       .select("access_disabled, account_status")

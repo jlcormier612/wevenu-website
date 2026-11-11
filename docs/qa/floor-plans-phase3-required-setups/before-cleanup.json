@@ -1,0 +1,21 @@
+{
+  "eventId": "16c54399-ffb4-4850-8aaa-d619ce4c69b3",
+  "clientId": "7d7c692e-554b-4dfb-9da8-91ae67db3148",
+  "leadId": "d9baf4e4-59cf-4e1d-9204-01bfeab5812a",
+  "createdPlanIds": [
+    "0187861e-4fb4-458a-9358-844b94062c4e",
+    "41d2d266-7ad2-4f71-bc0f-42a3eb93c187",
+    "c44bab2f-bb48-4019-b0e6-8f2b0da72462"
+  ],
+  "createdSetupIds": [
+    "ff04c606-5ae9-4b71-8e0d-62631a82d2d5",
+    "4f2f73b4-9c4f-4990-b072-d5ad703d4bcb"
+  ],
+  "seatSnapshot": {
+    "id": "0a29a98d-a24b-4e10-bc7a-8713a174c02d",
+    "guest_id": "d4a95173-8ec4-4b86-80c3-5ac8fa787f46",
+    "table_object_id": "d33a679e-c41f-4c00-b4b5-e194dd26ba8c",
+    "floor_plan_id": "0187861e-4fb4-458a-9358-844b94062c4e"
+  },
+  "beforeEvents": 83
+}

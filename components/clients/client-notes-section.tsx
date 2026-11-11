@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import type { ClientNote } from "@/lib/clients/types";
+import { INTERNAL_NOTES_PRIVACY_HINT } from "@/lib/notes/internal-notes-copy";
 
 function formatRelative(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -75,6 +76,9 @@ export function ClientNotesSection({ clientId, initialNotes }: { clientId: strin
 
   return (
     <div className="space-y-4">
+      <p className="text-xs text-muted-foreground">
+        {INTERNAL_NOTES_PRIVACY_HINT}
+      </p>
       <div className="space-y-2">
         <Textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="Add a note…" rows={3}
           onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleAdd(); }} />

@@ -35,6 +35,7 @@ import type {
 import { isSendableChannel } from "@/lib/conversations/channels";
 import { acceptOutboundEmail, acceptOutboundSms } from "@/lib/conversations/delivery-result";
 import { getCommunicationMode } from "@/lib/communication/mode";
+import { isTextingConversationKind, TEXTING_KIND_BLOCKED_MESSAGE } from "@/lib/conversations/texting";
 import { sendSms, isSmsConfigured } from "@/lib/sms/send";
 import { formatPhoneDisplay, toE164 } from "@/lib/sms/phone";
 import { isEmailConfigured, sendEmail } from "@/lib/email/send";
@@ -43,6 +44,7 @@ import { appendEmailSignatureText, emailBrandFromVenue } from "@/lib/email/venue
 import { extractTokens, mergeContent, resolveForCustomerSend, assertCustomerSafeMergedContent, buildMergeData } from "@/lib/message-templates/merge";
 import { getMergeContextForRelationship } from "@/lib/scheduled-messages/repository";
 import { getCurrentStaffMember } from "@/lib/team/service";
+import { formatCoordinatorDisplayName } from "@/lib/scheduled-messages/coordinator-display";
 import { getCurrentVenue } from "@/lib/venue/service";
 import { TEXTING_SETUP_PATH } from "@/lib/texting-registration/types";
 
@@ -56,7 +58,7 @@ export async function getConversationInboxPage(
   query: repo.InboxPageQuery = {},
 ): Promise<repo.InboxPageResult> {
   if (!isSupabaseConfigured) {
-    return { conversations: [], totalUnread: 0, hasMore: false, nextCursor: null };
+    return { conversations: [], totalUnread: 0, totalNeedsResponse: 0, hasMore: false, nextCursor: null };
   }
   const supabase = await createClient();
   return repo.getConversationInboxPage(supabase, query);
@@ -127,6 +129,15 @@ export async function getConversation(conversationId: string): Promise<Conversat
   return repo.getConversation(supabase, conversationId);
 }
 
+/** Explicit "No response needed" — clears Needs Response without a reply. */
+export async function clearConversationNeedsResponse(
+  conversationId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  if (!isSupabaseConfigured) return { ok: false, error: "Not configured." };
+  const supabase = await createClient();
+  return repo.clearConversationNeedsResponse(supabase, conversationId);
+}
+
 export async function getConversationComposeContext(
   conversationId: string,
 ): Promise<ConversationComposeContext | null> {
@@ -141,6 +152,7 @@ export async function getConversationComposeContext(
   let smsPermissionMessage: string | null = null;
   let emailPermissionMessage: string | null = null;
   let smsPermissionHint: string | null = null;
+  let smsConsentCollectionHint: string | null = null;
   if (venue) {
     const {
       assertChannelAllowed,
@@ -156,8 +168,14 @@ export async function getConversationComposeContext(
       });
       if (!sms.ok) {
         smsPermissionMessage = sms.message;
+        if (sms.status === "not_opted_in") {
+          smsConsentCollectionHint =
+            "Texting permission is collected on the inquiry and tour forms. It is not assumed from a reply.";
+        }
       } else if (sms.status === "not_opted_in") {
         smsPermissionHint = smsPermissionStatusLabel(sms.status);
+        smsConsentCollectionHint =
+          "Texting permission is collected on the inquiry and tour forms. It is not assumed from a reply.";
       } else if (sms.status === "opted_in") {
         smsPermissionHint = smsPermissionStatusLabel(sms.status);
       }
@@ -175,7 +193,8 @@ export async function getConversationComposeContext(
   }
 
   const smsConfigured = !!venue && (await isSmsConfigured(venue.id));
-  const smsReady = !sendingDisabled && smsConfigured && !smsPermissionMessage;
+  const smsProvisioned = !sendingDisabled && smsConfigured;
+  const smsReady = smsProvisioned && !smsPermissionMessage && isTextingConversationKind(facts.conversationKind);
 
   return {
     displayName: facts.displayName,
@@ -184,11 +203,13 @@ export async function getConversationComposeContext(
     recipientPhone: facts.recipientPhone,
     recipientPhoneDisplay: facts.recipientPhone ? formatPhoneDisplay(facts.recipientPhone) : null,
     emailReady: !sendingDisabled && isEmailConfigured() && !emailPermissionMessage,
+    smsProvisioned,
     smsReady,
     sendingDisabled,
     smsPermissionMessage,
     emailPermissionMessage,
     smsPermissionHint,
+    smsConsentCollectionHint,
     textingSetupHref:
       !sendingDisabled && !smsConfigured && !smsPermissionMessage
         ? TEXTING_SETUP_PATH
@@ -226,7 +247,9 @@ export async function previewConversationSend(
   }
   const staff = await getCurrentStaffMember(venue.id);
   const ctx = await getMergeContextForRelationship(supabase, venue.id, relationshipId, {
-    coordinatorName: staff?.name ?? null,
+    coordinatorName: staff
+      ? formatCoordinatorDisplayName(staff.name, staff.jobTitle)
+      : null,
   });
   if (!ctx) {
     return {
@@ -254,7 +277,18 @@ export async function sendConversationMessage(
   channel = "portal",
   emailSubject?: string,
   hasAttachment = false,
-  attachments: Array<{ url: string; name: string; size?: number | null; mimeType?: string | null }> = [],
+  attachments: Array<{
+    url: string;
+    name: string;
+    size?: number | null;
+    mimeType?: string | null;
+    /**
+     * Set when the file came from Library → Documents. That row is already the
+     * system of record for this file, so the attachment must not trigger a
+     * second, entity-scoped Documents row.
+     */
+    libraryDocumentId?: string | null;
+  }> = [],
 ): Promise<SendMessageResult> {
   if (!isSupabaseConfigured) return { ok: false, message: "Backend not configured." };
   if (!isSendableChannel(channel)) {
@@ -296,7 +330,9 @@ export async function sendConversationMessage(
     const staff = venue ? await getCurrentStaffMember(venue.id) : null;
     const ctx = venue && relationshipId
       ? await getMergeContextForRelationship(supabase, venue.id, relationshipId, {
-          coordinatorName: staff?.name ?? null,
+          coordinatorName: staff
+            ? formatCoordinatorDisplayName(staff.name, staff.jobTitle)
+            : null,
         })
       : null;
     if (!ctx) {
@@ -326,6 +362,10 @@ export async function sendConversationMessage(
   let providerAccountSid: string | undefined;
   let status: string | undefined;
   if (channel === "sms") {
+    const facts = await repo.getConversationComposeFacts(supabase, conversationId);
+    if (!isTextingConversationKind(facts?.conversationKind)) {
+      return { ok: false, message: TEXTING_KIND_BLOCKED_MESSAGE };
+    }
     const phone = await repo.getConversationRecipientPhone(supabase, conversationId);
     const e164 = phone ? toE164(phone) : null;
     if (!e164) {
@@ -417,7 +457,11 @@ export async function sendConversationMessage(
       size: file.size,
       mimeType: file.mimeType,
     });
-    if (attached.ok) {
+    // A Library pick keeps the Library Document as its single Documents record.
+    // Registering it again would scope a duplicate row to this lead or client,
+    // so attaching one reusable file to nine relationships would leave nine
+    // copies of it in the workspace.
+    if (attached.ok && !file.libraryDocumentId) {
       const { registerMessageAttachmentAsDocument } = await import("@/lib/conversations/attachment-document");
       await registerMessageAttachmentAsDocument(supabase, {
         messageId: result.messageId!,

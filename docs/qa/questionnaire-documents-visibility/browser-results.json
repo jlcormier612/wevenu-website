@@ -1,0 +1,78 @@
+{
+  "image": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:4ef14218c5379f6e443a5b68e8e83689f90c979a",
+  "digest": "sha256:f3ba33aadb64461398c690cda13085b5a7456db80641ebf6f5da8f25b29c8902",
+  "marker": "Docs visibility proof 1792819334725",
+  "questionnaireId": "e055c612-ed2c-4180-a34c-03414fece3ed",
+  "checks": [
+    {
+      "name": "serving-image",
+      "pass": true,
+      "detail": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:4ef14218c5379f6e443a5b68e8e83689f90c979a sha256:f3ba33aadb64461398c690cda13085b5a7456db80641ebf6f5da8f25b29c8902"
+    },
+    {
+      "name": "serving-sha-matches",
+      "pass": true,
+      "detail": "expected=4ef14218 image=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:4ef14218c5379f6e443a5b68e8e83689f90c979a"
+    },
+    {
+      "name": "fixture-questionnaire-returned",
+      "pass": true,
+      "detail": "{\"status\":\"complete\",\"kind\":\"client_planning\",\"submitted_at\":\"2026-10-23T01:26:40.192782+00:00\"}"
+    },
+    {
+      "name": "documents-shows-questionnaire-card",
+      "pass": true,
+      "detail": "📋\nClient Planning Questionnaire\nComplete\n\nYour submitted answers — open to review (read-only).\n\nReview →"
+    },
+    {
+      "name": "title-is-client-planning",
+      "pass": true,
+      "detail": "📋\nClient Planning Questionnaire\nComplete\n\nYour submitted answers — open to review (read-only).\n\nReview →"
+    },
+    {
+      "name": "submitted-review-visible",
+      "pass": true,
+      "detail": "B2P & Portal\n\n·\n\nJen's Fancy Venue\n\nJul 17, 2060\n\nExport my data\n9+\n🏠\nHome\n✅\nTasks\n9+\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n🪑\nInventory\n1\n📋\nOrder\n1\n✅\nChoices\n1\n💳\nPayments\n1\n💬\nMessages\n9+\n🏛️\nGuide\n🤝\nVendors\nClient Planning Questionnaire · Complete\nFinal Details\n\nClient Planning Questionnaire\n\nThis form is complete with your venue. Your submitted answers are below.\n\nStatus: Complete · Read-only\n\nYOUR PLANS\n\nWhat are you most excited about for your celebration?\nDocs visibility proof 17928193347"
+    },
+    {
+      "name": "submitted-answers-include-marker",
+      "pass": true,
+      "detail": "marker present"
+    },
+    {
+      "name": "review-not-event-setup",
+      "pass": true,
+      "detail": "questionnaire review surface"
+    },
+    {
+      "name": "documents-card-persists-reload",
+      "pass": true,
+      "detail": "count=1"
+    },
+    {
+      "name": "submitted-review-persists-reload",
+      "pass": true,
+      "detail": "reload"
+    },
+    {
+      "name": "foreign-token-no-fixture-questionnaire",
+      "pass": true,
+      "detail": "💗\n\nThis link has expired or is no longer active.\n\nPlease contact your venue coordinator for an updated link to your wedding workspace."
+    },
+    {
+      "name": "narrow-documents-card",
+      "pass": true,
+      "detail": "390"
+    },
+    {
+      "name": "no-duplicate-questionnaire-rows",
+      "pass": true,
+      "detail": "before=3 after=3"
+    },
+    {
+      "name": "canonical-row-unchanged-status",
+      "pass": true,
+      "detail": "{\"status\":\"complete\",\"submitted_at\":\"2026-10-23T01:26:40.192782+00:00\",\"venue_id\":\"a415ac52-cd74-42a6-8df7-7a8f6e71d080\",\"event_id\":\"ebf74f77-2944-474a-b735-48762ecb6842\"}"
+    }
+  ]
+}

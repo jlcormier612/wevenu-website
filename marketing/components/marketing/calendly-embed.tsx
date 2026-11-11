@@ -1,9 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 
-/** Calendly docs use ~700px; extra room so the month grid isn’t clipped. */
-const WIDGET_HEIGHT_PX = 900;
+import { resolveCalendlyEmbedUrl } from "@/lib/marketing/calendly-url";
+import { TYPE_BODY, TYPE_MEASURE } from "@/lib/marketing/rhythm";
+import { cn } from "@/lib/utils";
+
+const INK = "text-[#24332b]";
+const INK_MUTED = "text-[rgba(36,51,43,0.68)]";
 
 function withEmbedParams(raw: string, hostname?: string): string {
   try {
@@ -16,38 +20,90 @@ function withEmbedParams(raw: string, hostname?: string): string {
   }
 }
 
+function useClientHostname(): string | undefined {
+  return useSyncExternalStore(
+    () => () => {},
+    () => window.location.hostname,
+    () => undefined,
+  );
+}
+
+type CalendlyEmbedProps = {
+  url: string;
+  className?: string;
+  /** Optional heading id for aria-labelledby on the booking region. */
+  labelledBy?: string;
+};
+
 /**
  * Inline Calendly booking UI.
- * Uses an iframe with an explicit height — Calendly’s iframe is height:100%,
- * so min-height alone collapses to a blank body (logo only).
+ * Uses an iframe with an explicit responsive height — Calendly’s iframe is
+ * height:100%, so min-height alone collapses to a blank body (logo only).
  */
-export function CalendlyEmbed({ url }: { url: string }) {
-  const [src, setSrc] = useState(() => withEmbedParams(url));
+export function CalendlyEmbed({
+  url,
+  className,
+  labelledBy,
+}: CalendlyEmbedProps) {
+  const resolved = useMemo(() => resolveCalendlyEmbedUrl(url), [url]);
+  const hostname = useClientHostname();
+  const src = resolved ? withEmbedParams(resolved, hostname) : "";
+  const [loadedSrc, setLoadedSrc] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
+  const loaded = loadedSrc === src;
 
-  useEffect(() => {
-    setSrc(withEmbedParams(url, window.location.hostname));
-  }, [url]);
-
-  return (
-    <div className="rounded-[2rem] border border-[var(--taupe-light)] bg-[var(--true-white)]">
-      <div className="border-b border-[var(--taupe-light)] px-6 py-5 md:px-8">
-        <p className="text-xs tracking-[0.18em] uppercase text-[var(--heritage-sage)]">
-          Schedule
+  if (!resolved || failed) {
+    return (
+      <div
+        className={cn(
+          "rounded-sm border border-[var(--taupe-medium)]/45 bg-[var(--true-white)] px-6 py-10 md:px-10 md:py-12",
+          className,
+        )}
+        role="status"
+      >
+        <p className={`font-heading text-2xl ${INK} md:text-3xl`}>
+          Scheduling is temporarily unavailable
         </p>
-        <h2 className="mt-1 font-heading text-2xl text-[var(--forest-sage)] md:text-3xl">
-          Pick a time that works
-        </h2>
-        <p className="mt-2 max-w-xl text-sm leading-relaxed text-[var(--forest-sage)]/70">
-          Choose a slot below. We&apos;ll confirm by email and prepare for your venue.
+        <p className={`mt-4 ${TYPE_BODY} ${INK_MUTED} ${TYPE_MEASURE}`}>
+          Please use Contact and we&apos;ll help you find a time.
         </p>
       </div>
-      <iframe
-        title="Schedule a Walkthrough"
-        src={src}
-        loading="lazy"
-        className="block w-full"
-        style={{ minWidth: 320, height: WIDGET_HEIGHT_PX, border: 0 }}
-      />
+    );
+  }
+
+  return (
+    <div
+      className={cn(
+        "overflow-hidden rounded-sm border border-[var(--taupe-medium)]/40 bg-[var(--true-white)]",
+        className,
+      )}
+      aria-labelledby={labelledBy}
+    >
+      <div className="relative w-full overflow-x-auto">
+        {!loaded ? (
+          <div
+            className="absolute inset-x-0 top-0 z-10 flex h-[min(70vh,720px)] items-center justify-center bg-[var(--linen)]/55 md:h-[900px]"
+            aria-live="polite"
+          >
+            <p className={`text-sm tracking-wide ${INK_MUTED}`}>
+              Loading the calendar…
+            </p>
+          </div>
+        ) : null}
+        <iframe
+          key={src}
+          title="Schedule a Walkthrough calendar"
+          src={src}
+          loading="lazy"
+          referrerPolicy="no-referrer-when-downgrade"
+          className="block w-full min-w-[320px] border-0"
+          style={{
+            height: "clamp(640px, 78vh, 920px)",
+          }}
+          onLoad={() => setLoadedSrc(src)}
+          onError={() => setFailed(true)}
+        />
+      </div>
     </div>
   );
 }

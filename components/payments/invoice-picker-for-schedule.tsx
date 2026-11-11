@@ -54,13 +54,13 @@ export function InvoicePickerForSchedule({
   return (
     <div className="space-y-4">
       {presetId ? (
-        <div className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-xs text-muted-foreground">
+        <div className="htc-surface-guidance px-3 py-2 text-xs text-muted-foreground">
           You chose a <span className="font-medium text-foreground">starter plan</span>. Pick the couple&apos;s
           invoice next — Hello to Cheers will calculate dollar amounts from that invoice and due dates from
           their Event date.
         </div>
       ) : (
-        <div className="rounded-lg border border-border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
+        <div className="htc-surface-guidance px-3 py-2 text-xs text-muted-foreground">
           A payment schedule belongs to one invoice so the installment total always matches what you&apos;re
           charging. Choose an invoice with a total greater than $0.
         </div>

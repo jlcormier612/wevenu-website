@@ -18,6 +18,10 @@ import {
 import { toast } from "sonner";
 import { celebrateLuv } from "@/lib/luv/celebrate";
 import { coordinatorCelebrationMessage } from "@/lib/luv/celebrations";
+import {
+  INTERNAL_NOTES_PRIVACY_HINT,
+  internalNotesLabel,
+} from "@/lib/notes/internal-notes-copy";
 
 import {
   addLineItemAction,
@@ -31,6 +35,7 @@ import {
   PaymentStatusBadge,
   ScheduleStatusBadge,
 } from "@/components/payments/payment-status-badge";
+import { PaymentPlanEditor, PaymentPlanNeedsReview } from "@/components/payments/payment-plan-editor";
 import { ScheduleReviewBanner } from "@/components/payments/schedule-review-banner";
 import { BusinessAssetHeader } from "@/components/business-assets/asset-header";
 import { ActivityTimeline } from "@/components/leads/activity-timeline";
@@ -48,7 +53,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  PAYMENT_METHODS,
+  offlineRecordMethodOptions,
   OBLIGATION_KIND_OPTIONS,
   computeTotalPaid,
   daysUntil,
@@ -66,6 +71,11 @@ import type {
 } from "@/lib/payments/types";
 import type { Invoice } from "@/lib/invoices/types";
 import { formatCurrency } from "@/lib/invoices/constants";
+import {
+  planTotalsReconcile,
+  scheduleHasPaymentActivity,
+  scheduledPlanTotal,
+} from "@/lib/payments/reconcile-commitment";
 import { cn } from "@/lib/utils";
 
 // ---- Inline add/edit form ---------------------------------------------------
@@ -163,52 +173,95 @@ function MarkPaidForm({
   onSave,
   onCancel,
   pending,
+  acceptedMethods,
 }: {
   item: PaymentLineItem;
   onSave: (input: MarkPaidInput) => void;
   onCancel: () => void;
   pending: boolean;
+  acceptedMethods?: string[] | null;
 }) {
-  const [paidAmount, setPaidAmount] = React.useState(String(item.amount));
+  const methodOptions = offlineRecordMethodOptions(acceptedMethods);
+  const remaining = item.status === "partially_paid"
+    ? Math.max(0, item.amount - (item.paidAmount ?? 0))
+    : item.amount;
+  const [paidAmount, setPaidAmount] = React.useState(String(remaining));
   const [method, setMethod] = React.useState("");
   const [ref, setRef] = React.useState("");
   const [paidDate, setPaidDate] = React.useState(new Date().toISOString().slice(0, 10));
   const [notes, setNotes] = React.useState("");
+  const [idempotencyKey] = React.useState(() => crypto.randomUUID());
+  const submitLock = React.useRef(false);
+  const amountNum = parseFloat(paidAmount.replace(/[$,]/g, ""));
+  const fullySatisfies = Number.isFinite(amountNum) && amountNum >= remaining - 0.009;
   return (
     <div className="rounded-lg border border-success/30 bg-success/5 p-4 space-y-3">
-      <p className="text-sm font-medium text-heading">Record Payment</p>
+      <div className="space-y-1">
+        <p className="text-sm font-medium text-heading">Record payment received</p>
+        <p className="text-xs text-muted-foreground">
+          Applying to <span className="font-medium text-foreground">{item.label}</span>
+          {" · "}
+          {formatMoney(remaining)} remaining on this installment
+          {item.status === "partially_paid" && item.paidAmount != null
+            ? ` (${formatMoney(item.paidAmount)} already received)`
+            : ""}
+        </p>
+      </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label className="text-xs">Amount received *</Label>
-          <Input value={paidAmount} onChange={(e) => setPaidAmount(e.target.value)} placeholder="0.00" />
+          <Input value={paidAmount} onChange={(e) => setPaidAmount(e.target.value)} placeholder="0.00" disabled={pending} />
         </div>
         <div className="space-y-1.5">
           <Label className="text-xs">Date received *</Label>
-          <Input type="date" value={paidDate} onChange={(e) => setPaidDate(e.target.value)} />
+          <Input type="date" value={paidDate} onChange={(e) => setPaidDate(e.target.value)} disabled={pending} />
         </div>
         <div className="space-y-1.5">
-          <Label className="text-xs">Payment method</Label>
-          <Select value={method} onValueChange={setMethod} items={PAYMENT_METHODS}>
+          <Label className="text-xs">Payment method *</Label>
+          <Select value={method} onValueChange={setMethod} items={methodOptions}>
             <SelectTrigger><SelectValue placeholder="Select method" /></SelectTrigger>
             <SelectContent>
-              {PAYMENT_METHODS.map((m) => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
+              {methodOptions.map((m) => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
         <div className="space-y-1.5">
           <Label className="text-xs">Reference # <span className="font-normal text-muted-foreground">(optional)</span></Label>
-          <Input value={ref} onChange={(e) => setRef(e.target.value)} placeholder="Check #, transaction ID…" />
+          <Input value={ref} onChange={(e) => setRef(e.target.value)} placeholder="Check #, transaction ID…" disabled={pending} />
         </div>
       </div>
-      <div className="space-y-1.5">
-        <Label className="text-xs">Notes <span className="font-normal text-muted-foreground">(optional)</span></Label>
-        <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} placeholder="Any notes about this payment…" />
-      </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs">{internalNotesLabel("payment")}</Label>
+          <p className="text-[11px] text-muted-foreground">{INTERNAL_NOTES_PRIVACY_HINT}</p>
+          <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} placeholder="Check number, wire confirmation, coordinator reminder…" disabled={pending} />
+        </div>
+      <p className="text-xs text-muted-foreground">
+        {fullySatisfies
+          ? `This will mark ${item.label} Paid. Other installments are unchanged.`
+          : `This will partially satisfy ${item.label}. ${formatMoney(Math.max(0, remaining - (Number.isFinite(amountNum) ? amountNum : 0)))} will remain on this installment.`}
+      </p>
       <div className="flex items-center justify-end gap-2">
         <Button type="button" variant="ghost" size="sm" onClick={onCancel} disabled={pending}>Cancel</Button>
-        <Button type="button" size="sm" disabled={!paidAmount.trim() || !paidDate || pending}
-          onClick={() => onSave({ paidAmount, paymentMethod: method, referenceNumber: ref, paidDate, notes })}>
-          {pending ? <><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />Recording…</> : "Record Payment"}
+        <Button
+          type="button"
+          size="sm"
+          disabled={!paidAmount.trim() || !paidDate || !method.trim() || pending}
+          onClick={() => {
+            if (submitLock.current || pending) return;
+            submitLock.current = true;
+            onSave({
+              paidAmount,
+              paymentMethod: method,
+              referenceNumber: ref,
+              paidDate,
+              notes,
+              idempotencyKey,
+            });
+          }}
+        >
+          {pending
+            ? <><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />Recording…</>
+            : `Record ${formatMoney(Number.isFinite(amountNum) ? amountNum : 0)} payment`}
         </Button>
       </div>
     </div>
@@ -273,6 +326,8 @@ function LineItemRow({
   onMarkPaid,
   onDelete,
   currentUserRole,
+  planLocked = false,
+  acceptedMethods,
 }: {
   item: PaymentLineItem;
   scheduleId: string;
@@ -282,6 +337,9 @@ function LineItemRow({
   onMarkPaid: (id: string) => void;
   onDelete: (id: string) => void;
   currentUserRole?: string | null;
+  /** When true, schedule structure (edit/cancel/add) is locked; Pay remains available. */
+  planLocked?: boolean;
+  acceptedMethods?: string[] | null;
 }) {
   const [editMode, setEditMode] = React.useState(false);
   const [payMode, setPayMode] = React.useState(false);
@@ -293,6 +351,7 @@ function LineItemRow({
 
   const days = item.dueDate ? daysUntil(item.dueDate) : null;
   const isPaid = item.status === "paid";
+  const isPartiallyPaid = item.status === "partially_paid";
   const isCancelled = item.status === "cancelled";
   const isRefunded = item.status === "refunded";
   const isPartiallyRefunded = item.status === "partially_refunded";
@@ -305,6 +364,9 @@ function LineItemRow({
   // that the server was always going to reject. Cosmetic-only: the real
   // enforcement remains server-side, unchanged by this.
   const canRefund = (isPaid || isPartiallyRefunded) && currentUserRole === "owner";
+  const remainingOnItem = isPartiallyPaid
+    ? Math.max(0, item.amount - (item.paidAmount ?? 0))
+    : item.amount;
 
   function handleEdit(input: LineItemInput) {
     startEdit(async () => {
@@ -325,17 +387,39 @@ function LineItemRow({
     startPay(async () => {
       const result = await markPaidAction(item.id, scheduleId, input);
       if (result.ok) {
-        onMarkPaid(item.id);
+        const rec = result.offlineRecord;
+        if (rec) {
+          onUpdate(item.id, {
+            status: rec.installmentStatus,
+            paidAmount: rec.installmentStatus === "paid"
+              ? item.amount
+              : item.amount - rec.installmentRemaining,
+            paidAt: new Date().toISOString(),
+            paymentMethod: input.paymentMethod || null,
+          });
+        } else {
+          onMarkPaid(item.id);
+        }
         setPayMode(false);
-        if (item.obligationKind === "deposit" && clientId) {
-          toast.success("Deposit recorded.");
-          window.location.href = `/clients/${clientId}/booked`;
+        if (result.bookingCelebration) {
+          const qs = new URLSearchParams({ eventId: result.bookingCelebration.eventId });
+          window.location.href = `/clients/${result.bookingCelebration.clientId}/booked?${qs.toString()}`;
           return;
         }
         if (result.celebrated) {
           celebrateLuv(coordinatorCelebrationMessage("final_payment_received", scheduleTitle));
         } else if (result.obligationCelebrated) {
           celebrateLuv(coordinatorCelebrationMessage("final_payment_obligation_paid", scheduleTitle));
+        } else if (rec?.alreadyRecorded) {
+          toast.message("This payment was already recorded.");
+        } else if (rec) {
+          toast.success("Payment recorded", {
+            description: [
+              `${formatMoney(rec.amountRecorded)} applied to ${rec.itemLabel}`,
+              `Payment plan: ${rec.planPaidInstallments} of ${rec.planTotalInstallments} paid`,
+              `${formatMoney(rec.planRemainingAmount)} remaining`,
+            ].join(" · "),
+          });
         } else {
           toast.success("Payment recorded.");
         }
@@ -367,7 +451,7 @@ function LineItemRow({
     });
   }
 
-  if (editMode) {
+  if (editMode && !planLocked) {
     return (
       <LineItemForm
         initial={{
@@ -419,10 +503,13 @@ function LineItemRow({
                 </span>
               </>
             )}
+            {isPartiallyPaid && (
+              <><span className="text-border">·</span><span className="text-amber-700 dark:text-amber-400">{formatMoney(item.paidAmount ?? 0)} paid · {formatMoney(remainingOnItem)} remaining</span></>
+            )}
             {isPaid && item.paidAt && (
               <><span className="text-border">·</span><span className="text-success">Paid {formatDate(item.paidAt.slice(0, 10))}{item.paidAmount != null && item.paidAmount !== item.amount ? ` (${formatMoney(item.paidAmount)})` : ""}</span></>
             )}
-            {isPaid && item.paymentMethod && (
+            {(isPaid || isPartiallyPaid) && item.paymentMethod && (
               <><span className="text-border">·</span><span>{paymentMethodLabel(item.paymentMethod)}</span></>
             )}
             {isProcessing && (
@@ -453,17 +540,22 @@ function LineItemRow({
         {!isPaid && !isCancelled && !isRefunded && !isPartiallyRefunded && !isProcessing && (
           <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
             <Button type="button" size="sm" className="h-7 px-2 text-xs"
-              onClick={() => setPayMode(true)} disabled={cancelPending}>
-              <CreditCard className="mr-1 h-3 w-3" /> Pay
+              onClick={() => setPayMode(true)} disabled={cancelPending || payMode}>
+              <CreditCard className="mr-1 h-3 w-3" />
+              {isPartiallyPaid ? "Record remainder" : "Record payment"}
             </Button>
-            <button type="button" onClick={() => setEditMode(true)}
-              className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Edit">
-              <Pencil className="h-3.5 w-3.5" />
-            </button>
-            <button type="button" onClick={handleCancel} disabled={cancelPending}
-              className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" aria-label="Cancel">
-              <X className="h-3.5 w-3.5" />
-            </button>
+            {!planLocked && (
+              <>
+                <button type="button" onClick={() => setEditMode(true)}
+                  className="rounded p-1 text-primary hover:bg-[var(--htc-hover-lift)] hover:text-primary" aria-label="Edit">
+                  <Pencil className="h-3.5 w-3.5" />
+                </button>
+                <button type="button" onClick={handleCancel} disabled={cancelPending}
+                  className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" aria-label="Cancel">
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </>
+            )}
           </div>
         )}
         {canRefund && (
@@ -483,7 +575,7 @@ function LineItemRow({
       </div>
       {payMode && (
         <div className="mt-1.5">
-          <MarkPaidForm item={item} onSave={handleMarkPaid} onCancel={() => setPayMode(false)} pending={payPending} />
+          <MarkPaidForm item={item} onSave={handleMarkPaid} onCancel={() => setPayMode(false)} pending={payPending} acceptedMethods={acceptedMethods} />
         </div>
       )}
       {refundMode && (
@@ -497,10 +589,11 @@ function LineItemRow({
 
 // ---- Main component ---------------------------------------------------------
 
-export function PaymentScheduleDetail({ schedule, invoice, currentUserRole }: { schedule: PaymentScheduleWithDetails; invoice?: Invoice | null; currentUserRole?: string | null }) {
+export function PaymentScheduleDetail({ schedule, invoice, currentUserRole, acceptedPaymentMethods }: { schedule: PaymentScheduleWithDetails; invoice?: Invoice | null; currentUserRole?: string | null; acceptedPaymentMethods?: string[] | null }) {
   const router = useRouter();
   const [items, setItems] = React.useState(schedule.lineItems);
   const [showAdd, setShowAdd] = React.useState(false);
+  const [editingPlan, setEditingPlan] = React.useState(false);
   const [addPending, startAdd] = React.useTransition();
 
   const totalPaid = computeTotalPaid(items);
@@ -511,6 +604,11 @@ export function PaymentScheduleDetail({ schedule, invoice, currentUserRole }: { 
   // Surface a clear Needs Review state." A direct comparison against the
   // linked invoice's current total, not a timestamp or revision counter.
   const reviewStatus = paymentPlanReviewStatus(schedule, invoice?.total ?? null);
+  const lineSum = scheduledPlanTotal(items);
+  const commitmentMismatch = Boolean(
+    invoice && !planTotalsReconcile(lineSum, invoice.total),
+  );
+  const planHasActivity = scheduleHasPaymentActivity(items, invoice?.status);
 
   // Allocation tracking (all active installments, whether paid or not)
   const allocated = items.filter((i) => i.status !== "cancelled").reduce((s, i) => s + i.amount, 0);
@@ -556,8 +654,12 @@ export function PaymentScheduleDetail({ schedule, invoice, currentUserRole }: { 
               problem (an overdue/refunded installment vs. this schedule
               no longer matching its invoice). Named for what's actually
               wrong instead. */}
-          {reviewStatus === "needs_review" && <Badge variant="warning">🟡 Out of Sync with Invoice</Badge>}
-          {reviewStatus === "current" && invoice && <Badge variant="success">🟢 Current</Badge>}
+          {(reviewStatus === "needs_review" || commitmentMismatch) && (
+            <Badge variant="warning">Payment plan needs review</Badge>
+          )}
+          {reviewStatus === "current" && invoice && !commitmentMismatch && (
+            <Badge variant="success">🟢 Current</Badge>
+          )}
           <ScheduleStatusBadge status={schedule.scheduleStatus} />
         </>}
         lastUpdated={new Date(schedule.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
@@ -566,10 +668,10 @@ export function PaymentScheduleDetail({ schedule, invoice, currentUserRole }: { 
 
       {/* Invoice context banner */}
       {invoice && (
-        <div className="rounded-sm border border-primary/20 bg-primary/5 px-4 py-3">
+        <div className="htc-surface-guidance px-4 py-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="space-y-0.5">
-              <p className="text-xs font-semibold text-primary uppercase tracking-wide">Linked Invoice</p>
+              <p className="text-xs font-semibold text-heading uppercase tracking-wide">Linked Invoice</p>
               <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-sm">
                 <span className="font-medium text-heading">{invoice.invoiceNumber}</span>
                 <span className="text-muted-foreground">Invoice total: <span className="font-medium text-foreground">{formatCurrency(invoice.total)}</span></span>
@@ -578,14 +680,53 @@ export function PaymentScheduleDetail({ schedule, invoice, currentUserRole }: { 
                 </span>
               </div>
             </div>
-            <Button type="button" variant="outline" size="sm" render={<Link href={`/invoices/${invoice.id}`} />}>
-              View Invoice →
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                render={<Link href={`/invoices/${invoice.id}/print`} target="_blank" />}
+              >
+                Preview
+              </Button>
+              <Button type="button" variant="outline" size="sm" render={<Link href={`/invoices/${invoice.id}`} />}>
+                Preview and send →
+              </Button>
+            </div>
           </div>
+          <p className="mt-2 text-xs text-muted-foreground">
+            After you create a plan, preview and send it from the Invoice & Payment Plan. Sending includes the initial payment when it is due now.
+          </p>
         </div>
       )}
 
-      {reviewStatus === "needs_review" && invoice && (
+      {commitmentMismatch && invoice && !planHasActivity && (
+        <PaymentPlanNeedsReview
+          previousTotal={lineSum}
+          nextTotal={invoice.total}
+          canEdit
+          onEdit={() => setEditingPlan(true)}
+        />
+      )}
+      {editingPlan && invoice && !planHasActivity && (
+        <div className="rounded-lg border border-border p-4">
+          <PaymentPlanEditor
+            scheduleId={schedule.id}
+            invoiceId={invoice.id}
+            invoiceTotal={invoice.total}
+            lines={items}
+            timingCtx={{
+              eventDate: schedule.eventDate,
+              bookingDate: schedule.bookedAt,
+              executedAt: null,
+              today: new Date().toISOString().slice(0, 10),
+            }}
+            commitLabel="Save payment plan"
+            onSaved={() => setEditingPlan(false)}
+          />
+        </div>
+      )}
+      {commitmentMismatch && invoice && planHasActivity && (
         <ScheduleReviewBanner scheduleId={schedule.id} scheduleTotal={schedule.totalAmount} invoiceTotal={invoice.total} />
       )}
 
@@ -651,11 +792,16 @@ export function PaymentScheduleDetail({ schedule, invoice, currentUserRole }: { 
                 {!overAllocated && remaining <= 0 && allocated > 0 && <span className="text-success font-medium">✓ Fully allocated</span>}
               </div>
             </div>
-            <Button type="button" size="sm" variant="outline" onClick={() => setShowAdd(true)} disabled={showAdd}>
-              <Plus className="mr-1 h-3.5 w-3.5" /> Add Payment
-            </Button>
+            {!planHasActivity && (
+              <Button type="button" size="sm" variant="outline" onClick={() => setShowAdd(true)} disabled={showAdd}>
+                <Plus className="mr-1 h-3.5 w-3.5" /> Add Payment
+              </Button>
+            )}
           </div>
-          <CardDescription>Click "Pay" on any item to record a received payment.</CardDescription>
+          <CardDescription>
+            Use &quot;Record payment&quot; on an unpaid installment to enter amount, method, and date.
+            Paid installments cannot be recorded again.
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-2">
           {items.length === 0 && !showAdd && (
@@ -667,9 +813,10 @@ export function PaymentScheduleDetail({ schedule, invoice, currentUserRole }: { 
             <LineItemRow key={item.id} item={item} scheduleId={schedule.id} scheduleTitle={schedule.title}
               clientId={schedule.clientId}
               onUpdate={handleItemUpdate} onMarkPaid={handleMarkPaid} onDelete={handleDelete}
-              currentUserRole={currentUserRole} />
+              currentUserRole={currentUserRole} planLocked={planHasActivity}
+              acceptedMethods={acceptedPaymentMethods} />
           ))}
-          {showAdd && (
+          {showAdd && !planHasActivity && (
             <div className="space-y-2">
               {remaining > 0 && (
                 <div className="flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2">

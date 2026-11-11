@@ -1,0 +1,80 @@
+PASS serving-image — 405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:4ef14218c5379f6e443a5b68e8e83689f90c979a sha256:f3ba33aadb64461398c690cda13085b5a7456db80641ebf6f5da8f25b29c8902
+PASS serving-sha-matches — expected=4ef14218 image=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:4ef14218c5379f6e443a5b68e8e83689f90c979a
+PASS fixture-questionnaire-returned — {"status":"complete","kind":"client_planning","submitted_at":"2026-10-23T01:26:40.192782+00:00"}
+PASS documents-shows-questionnaire-card — 📋
+Client Planning Questionnaire
+Complete
+
+Your submitted answers — open to review (read-only).
+
+Review →
+PASS title-is-client-planning — 📋
+Client Planning Questionnaire
+Complete
+
+Your submitted answers — open to review (read-only).
+
+Review →
+PASS submitted-review-visible — B2P & Portal
+
+·
+
+Jen's Fancy Venue
+
+Jul 17, 2060
+
+Export my data
+9+
+🏠
+Home
+✅
+Tasks
+9+
+🕒
+Timeline
+📁
+Docs
+🗺️
+Floor Plan
+🪑
+Inventory
+1
+📋
+Order
+1
+✅
+Choices
+1
+💳
+Payments
+1
+💬
+Messages
+9+
+🏛️
+Guide
+🤝
+Vendors
+Client Planning Questionnaire · Complete
+Final Details
+
+Client Planning Questionnaire
+
+This form is complete with your venue. Your submitted answers are below.
+
+Status: Complete · Read-only
+
+PASS submitted-answers-include-marker — marker present
+PASS review-not-event-setup — questionnaire review surface
+PASS documents-card-persists-reload — count=1
+PASS submitted-review-persists-reload — reload
+PASS foreign-token-no-fixture-questionnaire — 💗
+
+This link has expired or is no longer active.
+
+Please contact your venue coordinator for an updated link to your wedding workspace.
+PASS narrow-documents-card — 390
+PASS no-duplicate-questionnaire-rows — before=3 after=3
+PASS canonical-row-unchanged-status — {"status":"complete","submitted_at":"2026-10-23T01:26:40.192782+00:00","venue_id":"a415ac52-cd74-42a6-8df7-7a8f6e71d080","event_id":"ebf74f77-2944-474a-b735-48762ecb6842"}
+
+GREEN 14/14

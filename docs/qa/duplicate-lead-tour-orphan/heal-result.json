@@ -1,0 +1,55 @@
+{
+  "ok": true,
+  "cancelled": 6,
+  "after": [
+    {
+      "id": "992ceb00-4a91-4438-85c7-876b1f20b5cf",
+      "status": "cancelled",
+      "is_archived": true,
+      "lead_id": null,
+      "scheduled_at": "2026-10-04T20:30:00+00:00",
+      "contact_email": "tour-lifecycle-e2e-1790807465270@hellotocheers-test.invalid"
+    },
+    {
+      "id": "ece47223-1fb7-40c6-82ef-2e954564823b",
+      "status": "cancelled",
+      "is_archived": true,
+      "lead_id": null,
+      "scheduled_at": "2026-10-06T13:00:00+00:00",
+      "contact_email": "phase2.publicbook@hellotocheers-test.invalid"
+    },
+    {
+      "id": "61063e85-de74-4402-b617-ccfa0f224d05",
+      "status": "cancelled",
+      "is_archived": true,
+      "lead_id": null,
+      "scheduled_at": "2027-04-14T14:23:00+00:00",
+      "contact_email": "global-delete-qa-proof@example.test"
+    },
+    {
+      "id": "fa5148a2-ee8c-4954-b937-c8626cfb91a4",
+      "status": "cancelled",
+      "is_archived": true,
+      "lead_id": null,
+      "scheduled_at": "2027-11-03T15:30:00+00:00",
+      "contact_email": "brand-rt-59a9e6af@hellotocheers.test"
+    },
+    {
+      "id": "fc300a53-984b-4c61-91d3-93ab923f2111",
+      "status": "cancelled",
+      "is_archived": true,
+      "lead_id": null,
+      "scheduled_at": "2026-10-07T18:27:30+00:00",
+      "contact_email": "tour-brand-proof-75ac653f@hellotocheers.test"
+    },
+    {
+      "id": "bd020bf3-fb5f-4e8e-bcab-e35ce60b259d",
+      "status": "cancelled",
+      "is_archived": true,
+      "lead_id": null,
+      "scheduled_at": "2026-10-18T14:30:00+00:00",
+      "contact_email": "jlcormier612@gmail.com"
+    }
+  ],
+  "emailsSent": []
+}

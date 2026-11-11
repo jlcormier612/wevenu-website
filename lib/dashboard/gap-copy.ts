@@ -34,15 +34,18 @@ export const GAP_COPY: Record<string, GapCopy> = {
     timeEstimate: "2 min",
     ctaLabel: "Invite a couple",
   },
+  // Eligibility: only when invitation evidence exists (see applyFirstPortalOpenToChecklist).
+  // Without that gate this copy falsely claims an invite was sent.
   first_portal_open: {
     title: "Your first couple hasn't opened their portal yet",
     description: "You've sent the invite — once they open it, you'll know your couples are actually using their workspace, not just receiving an email.",
     ctaLabel: "View clients",
   },
   three_couples_active: {
-    title: "Get three couples active in their portals",
-    description: "This is the point where Hello to Cheers starts running your day-to-day — couples managing their own guest lists and timelines instead of emailing you for updates.",
-    ctaLabel: "View clients",
+    title: "Get 3 couples started in their portals",
+    description:
+      "Your goal is for at least three booked couples to open their planning portal. When they do, they can manage guest lists and timelines instead of emailing you for every update.",
+    ctaLabel: "Review portal setup",
   },
   first_contract_signed: {
     title: "Sign your first contract",
@@ -65,6 +68,7 @@ export const GAP_COPY: Record<string, GapCopy> = {
     timeEstimate: "2 min",
     ctaLabel: "Invite your team",
   },
+  // Eligibility: only when first_team_invite is complete (see applyFirstTeamLoginPrerequisite).
   first_team_login: {
     title: "Get your team logged in",
     description: "An invited team member who hasn't logged in yet can't actually help you with anything. A quick nudge closes the loop.",

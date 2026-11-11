@@ -139,6 +139,8 @@ describe("resolveExperienceProfile — inquiry aliases and labels", () => {
     assert.equal(resolveExperienceProfileId("Birthday / Milestone"), "general_event");
     assert.equal(resolveExperienceProfileId("Celebration of Life"), "celebration_of_life");
     assert.equal(resolveExperienceProfileId("Reception Only"), "wedding");
+    assert.equal(resolveExperienceProfileId("Rehearsal Dinner Only"), "wedding");
+    assert.equal(resolveExperienceProfileId("Rehearsal Dinner"), "wedding");
     assert.equal(resolveExperienceProfileId("Quinceañera"), "general_event");
   });
 });

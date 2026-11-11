@@ -12,84 +12,78 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { formatContractDate } from "@/lib/contracts/constants";
-import { deriveContractSigningUiState } from "@/lib/contracts/signers";
-import type { Contract } from "@/lib/contracts/types";
+import {
+  CONTRACT_LIST_FILTERS,
+  contractMatchesListFilter,
+  contractMatchesWorkflowSearch,
+  parseContractListFilter,
+  type ContractListFilterKey,
+  type ContractWorkflowListRow,
+} from "@/lib/contracts/list-filters";
+import {
+  contractListPrimaryTitle,
+  contractListSecondaryLabel,
+} from "@/lib/contracts/list-identity";
+import { formatVersionLabel } from "@/lib/contracts/version-lineage";
 
-type FilterKey =
-  | "all"
-  | "draft"
-  | "ready_to_send"
-  | "awaiting_client_signature"
-  | "fully_signed"
-  | "cancelled";
-
-const FILTERS: { value: FilterKey; label: string }[] = [
-  { value: "all", label: "All" },
-  { value: "draft", label: "Draft" },
-  { value: "ready_to_send", label: "Ready to send" },
-  { value: "awaiting_client_signature", label: "Awaiting client signature" },
-  { value: "fully_signed", label: "Fully signed" },
-  { value: "cancelled", label: "Cancelled" },
-];
-
-function contractFilterKey(c: Contract): FilterKey {
-  if (c.status === "cancelled") return "cancelled";
-  if (c.status === "expired") return "cancelled";
-  const progressive = deriveContractSigningUiState({
-    status: c.status,
-    venueSigned: c.venueSigned ?? false,
-    requiredClientTotal: c.requiredClientTotal ?? 1,
-    requiredClientSigned: c.requiredClientSigned ?? 0,
-    expiresAt: c.expiresAt,
-  });
-  if (progressive.state === "fully_signed") return "fully_signed";
-  if (progressive.state === "awaiting_client_signature") return "awaiting_client_signature";
-  if (progressive.state === "ready_to_send") return "ready_to_send";
-  if (progressive.state === "draft") return "draft";
-  return "all";
-}
-
-export function ContractList({ contracts }: { contracts: Contract[] }) {
+export function ContractList({
+  contracts,
+  initialFilter,
+}: {
+  contracts: ContractWorkflowListRow[];
+  initialFilter?: string;
+}) {
   const [query, setQuery] = React.useState("");
-  const [filter, setFilter] = React.useState<FilterKey>("all");
+  const [filter, setFilter] = React.useState<ContractListFilterKey>(
+    () => parseContractListFilter(initialFilter),
+  );
 
   const filtered = React.useMemo(() => {
     const q = query.toLowerCase();
     return contracts.filter((c) => {
-      if (filter !== "all" && contractFilterKey(c) !== filter) return false;
-      if (!q) return true;
-      return [c.title, c.clientName].some((s) => s?.toLowerCase().includes(q));
+      if (!contractMatchesListFilter(c, filter)) return false;
+      return contractMatchesWorkflowSearch(c, q);
     });
   }, [contracts, query, filter]);
 
   return (
     <div className="space-y-4">
-      <div className="htc-hospitality-toolbar flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-          <Input value={query} onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search contracts…" className="border-[color:var(--htc-border-warm)] bg-card pl-9" />
+      <div className="htc-hospitality-toolbar space-y-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search contracts…"
+              className="border-[color:var(--htc-border-warm)] bg-card pl-9"
+            />
+          </div>
         </div>
-      </div>
-      <div className="flex flex-wrap gap-1.5">
-        {FILTERS.map(({ value, label }) => {
-          const count = value === "all"
-            ? contracts.length
-            : contracts.filter((c) => contractFilterKey(c) === value).length;
-          const active = filter === value;
-          return (
-            <button key={value} type="button" onClick={() => setFilter(value)}
-              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${active ? "border-primary bg-primary text-primary-foreground" : "border-[color:var(--htc-border-warm)] bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground"}`}>
-              {label}
-              <span className={`rounded-full px-1.5 py-px text-[10px] font-semibold ${active ? "bg-primary-foreground/20 text-primary-foreground" : "bg-[color:var(--htc-canvas)] text-muted-foreground"}`}>{count}</span>
-            </button>
-          );
-        })}
+        <div className="flex flex-wrap gap-1.5">
+          {CONTRACT_LIST_FILTERS.map(({ value, label }) => {
+            const count = contracts.filter((c) => contractMatchesListFilter(c, value)).length;
+            const active = filter === value;
+            return (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setFilter(value)}
+                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${active ? "border-primary bg-primary text-primary-foreground" : "border-[color:var(--htc-border-warm)] bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground"}`}
+              >
+                {label}
+                <span className={`rounded-full px-1.5 py-px text-[10px] font-semibold ${active ? "bg-primary-foreground/20 text-primary-foreground" : "bg-[color:var(--htc-canvas)] text-muted-foreground"}`}>
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {contracts.length === 0 && (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card/40 py-16 text-center">
-          <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[color:var(--htc-canvas)] text-muted-foreground">
+        <div className="htc-surface-guidance flex flex-col items-center justify-center rounded-xl border-dashed py-16 text-center">
+          <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
             <FileText className="h-5 w-5" />
           </span>
           <p className="font-heading text-lg font-medium text-heading">No contracts yet</p>
@@ -103,57 +97,108 @@ export function ContractList({ contracts }: { contracts: Contract[] }) {
       {contracts.length > 0 && filtered.length === 0 && (
         <div className="rounded-xl border border-dashed border-border py-10 text-center">
           <p className="text-sm text-muted-foreground">No contracts match your filters.</p>
-          <Button variant="link" size="sm" className="mt-1" onClick={() => { setQuery(""); setFilter("all"); }}>Clear filters</Button>
+          <Button variant="link" size="sm" className="mt-1" onClick={() => { setQuery(""); setFilter("all"); }}>Show all</Button>
         </div>
       )}
 
       {filtered.length > 0 && (
-        <div className="rounded-xl htc-hospitality-table border border-border bg-card">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Title</TableHead>
-                <TableHead>Client</TableHead>
-                <TableHead>Event Date</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead className="w-16" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.map((contract) => (
-                <TableRow key={contract.id} className="group">
-                  <TableCell className="font-medium text-foreground">
-                    <Link href={`/contracts/${contract.id}`} className="htc-record-link">{contract.title}</Link>
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {contract.clientName
-                      ? <Link href={`/clients/${contract.clientId}`} className="htc-record-link">{contract.clientName}</Link>
-                      : "—"}
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {contract.eventDate ? formatContractDate(contract.eventDate) : "—"}
-                  </TableCell>
-                  <TableCell>
-                    <ContractStatusBadge
-                      status={contract.status}
-                      executionOrigin={contract.executionOrigin}
-                      venueSigned={contract.venueSigned}
-                      requiredClientTotal={contract.requiredClientTotal}
-                      requiredClientSigned={contract.requiredClientSigned}
-                      expiresAt={contract.expiresAt}
-                    />
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {formatContractDate(contract.createdAt.slice(0, 10))}
-                  </TableCell>
-                  <TableCell>
-                    <Button variant="ghost" size="sm" render={<Link href={`/contracts/${contract.id}`} />}>View →</Button>
-                  </TableCell>
+        <div className="htc-hospitality-table overflow-hidden">
+          {/* Mobile cards — full event date visible without horizontal clipping */}
+          <ul className="divide-y divide-border sm:hidden">
+            {filtered.map((contract) => {
+              const href = `/contracts/${contract.id}?returnTo=${encodeURIComponent("/contracts")}`;
+              return (
+                <li key={contract.id} className="space-y-2 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1 space-y-0.5">
+                      <Link href={href} className="htc-record-link block text-sm font-medium">
+                        {contractListPrimaryTitle(contract)}
+                      </Link>
+                      <p className="text-xs text-muted-foreground">
+                        {contractListSecondaryLabel(contract)}
+                        {contract.listFamilySize > 1
+                          ? ` · ${formatVersionLabel(contract.listVersionNumber)}`
+                          : ""}
+                      </p>
+                    </div>
+                    <Button variant="ghost" size="sm" className="shrink-0" render={<Link href={href} />}>
+                      View →
+                    </Button>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                    <span className="whitespace-nowrap">
+                      Event {contract.eventDate ? formatContractDate(contract.eventDate) : "—"}
+                    </span>
+                    <span className="whitespace-nowrap">
+                      Created {formatContractDate(contract.createdAt.slice(0, 10))}
+                    </span>
+                  </div>
+                  <ContractStatusBadge
+                    status={contract.status}
+                    executionOrigin={contract.executionOrigin}
+                    venueSigned={contract.venueSigned}
+                    requiredClientTotal={contract.requiredClientTotal}
+                    requiredClientSigned={contract.requiredClientSigned}
+                    expiresAt={contract.expiresAt}
+                  />
+                </li>
+              );
+            })}
+          </ul>
+          <div className="hidden sm:block overflow-x-auto">
+            <Table className="min-w-[36rem]">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Client</TableHead>
+                  <TableHead className="whitespace-nowrap">Event Date</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="whitespace-nowrap">Created</TableHead>
+                  <TableHead className="w-16" />
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {filtered.map((contract) => {
+                  const href = `/contracts/${contract.id}?returnTo=${encodeURIComponent("/contracts")}`;
+                  return (
+                  <TableRow key={contract.id} className="group">
+                    <TableCell className="font-medium text-foreground">
+                      <div className="flex flex-col gap-0.5">
+                        <Link href={href} className="htc-record-link">
+                          {contractListPrimaryTitle(contract)}
+                        </Link>
+                        <span className="text-xs font-normal text-muted-foreground">
+                          {contractListSecondaryLabel(contract)}
+                          {contract.listFamilySize > 1
+                            ? ` · ${formatVersionLabel(contract.listVersionNumber)}`
+                            : ""}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
+                      {contract.eventDate ? formatContractDate(contract.eventDate) : "—"}
+                    </TableCell>
+                    <TableCell>
+                      <ContractStatusBadge
+                        status={contract.status}
+                        executionOrigin={contract.executionOrigin}
+                        venueSigned={contract.venueSigned}
+                        requiredClientTotal={contract.requiredClientTotal}
+                        requiredClientSigned={contract.requiredClientSigned}
+                        expiresAt={contract.expiresAt}
+                      />
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
+                      {formatContractDate(contract.createdAt.slice(0, 10))}
+                    </TableCell>
+                    <TableCell>
+                      <Button variant="ghost" size="sm" render={<Link href={href} />}>View →</Button>
+                    </TableCell>
+                  </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
         </div>
       )}
     </div>

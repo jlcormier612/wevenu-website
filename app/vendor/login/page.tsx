@@ -14,19 +14,22 @@ import {
 import { createVendorClient } from "@/integrations/supabase/server";
 import { safeInternalNextPath } from "@/lib/auth/portal-home";
 import { isSupabaseConfigured } from "@/lib/env";
+import { VENDOR_AUTH_HOSPITALITY_STYLE } from "@/lib/theme/vendor-auth-hospitality";
 
 export const metadata: Metadata = { title: "Vendor sign in — Hello to Cheers" };
 
 export const dynamic = "force-dynamic";
 
-type Props = { searchParams: Promise<{ next?: string }> };
+type Props = { searchParams: Promise<{ next?: string; reset?: string }> };
 
 /**
  * Vendor-only login. Uses the vendor auth cookie jar so a venue session in the
- * same browser stays signed in.
+ * same browser stays signed in. Light Contemporary Botanical surface (pinned
+ * hospitality tokens — outside `.htc-staff`).
  */
 export default async function VendorLoginPage({ searchParams }: Props) {
-  const { next: nextRaw } = await searchParams;
+  const { next: nextRaw, reset } = await searchParams;
+  const justReset = reset === "1";
   const next = safeInternalNextPath(nextRaw) ?? "/vendor/dashboard";
 
   if (isSupabaseConfigured) {
@@ -49,10 +52,15 @@ export default async function VendorLoginPage({ searchParams }: Props) {
   }
 
   return (
-    <main className="flex min-h-svh flex-col items-center justify-center bg-muted/40 px-4 py-12">
+    <main
+      data-theme-lock="light"
+      data-vendor-auth-hospitality=""
+      className="flex min-h-svh flex-col items-center justify-center px-4 py-12"
+      style={VENDOR_AUTH_HOSPITALITY_STYLE}
+    >
       <div className="flex w-full max-w-sm flex-col gap-6">
         <div className="flex justify-center">
-          <Wordmark />
+          <Wordmark forceLight />
         </div>
         <Card>
           <CardHeader className="text-center space-y-1">
@@ -63,6 +71,14 @@ export default async function VendorLoginPage({ searchParams }: Props) {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            {justReset ? (
+              <p
+                role="status"
+                className="rounded-md border border-[color-mix(in_srgb,#a7c2af_45%,transparent)] bg-[color-mix(in_srgb,#dce8e0_55%,transparent)] px-3 py-2 text-sm text-foreground"
+              >
+                Your password was updated. Sign in with your new password.
+              </p>
+            ) : null}
             <VendorLoginForm next={next} />
             <p className="text-center text-xs text-muted-foreground">
               Venue staff?{" "}
