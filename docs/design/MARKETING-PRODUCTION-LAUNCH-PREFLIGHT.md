@@ -27,7 +27,8 @@
 | Branch | `feat/spaces-booking-e1-smart-fields` |
 | Sandbox serving | `f22b8c14…` (no newer approved Sandbox marketing deploy) |
 | Baseline ancestry | Includes homepage/product/features/Our Story + `02157600` CTA/footer/nav + Calendly fail-closed |
-| Release commit | **`d138de6ec116d8e4c1167a666da76d3d06d6f0de`** (`d138de6e`) |
+| Release tip (deploy this) | **`f70b03be6212b87cf2e113d35f6eb79853b156ce`** (`f70b03be`) |
+| Base marketing commit | `d138de6e` (+ offer-store fix `9c57ca8f` + OG merge fix) |
 
 ### Included (approved launch work)
 
@@ -112,6 +113,15 @@ If a key already exists with wrong value, remove/replace via Vercel UI (agent wi
 ## 5. Deployment plan (Production HARD STOP)
 
 ### Preview (authorized by existing workflow)
+
+| Field | Value |
+|---|---|
+| Preview URL | https://hello-to-cheers-bpgnsltag-hello-77130364s-projects.vercel.app |
+| Deployment | `dpl_GGbKW2VXJESfGJcy5yrauQ4be2zY` |
+| Commit | `f70b03be` |
+| Target | Preview only (not Production) |
+
+
 
 ```bash
 node marketing/scripts/deploy-marketing-preview.mjs <RELEASE_SHA>
