@@ -29,7 +29,7 @@ export default async function CalendarPage({ searchParams }: Props) {
   const printHref = `/calendar/print?view=${view}&year=${year}&month=${month}&weekStart=${weekStart}&date=${dayDate}`;
 
   return (
-    <div className="space-y-6">
+    <div className="htc-hospitality-page space-y-6">
       <div className="flex items-start justify-between gap-4">
         <PageHeader
           title="Calendar"

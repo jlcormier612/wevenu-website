@@ -19,7 +19,7 @@ export default async function PaymentsPage({ searchParams }: Props) {
     : schedules;
 
   return (
-    <div className="space-y-6">
+    <div className="htc-hospitality-page space-y-6">
       <PageHeader
         title="Payments"
         description={

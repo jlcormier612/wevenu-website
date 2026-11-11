@@ -88,7 +88,7 @@ export default async function SettingsPage() {
     : null;
 
   return (
-    <div className="space-y-6">
+    <div className="htc-hospitality-page space-y-6">
       <PageHeader
         title="Settings"
         description="Make Hello to Cheers work the way your venue works."

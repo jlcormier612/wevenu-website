@@ -37,7 +37,7 @@ export default async function InvoicesPage({ searchParams }: Props) {
     }
   });
   return (
-    <div className="space-y-6">
+    <div className="htc-hospitality-page space-y-6">
       <div className="flex items-start justify-between gap-4">
         <PageHeader title="Invoices" description="Track amounts owed across all clients and events." />
         <Button type="button" render={<Link href="/invoices/new" />} className="shrink-0">

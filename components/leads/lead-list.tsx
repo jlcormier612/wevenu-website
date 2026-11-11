@@ -171,7 +171,7 @@ export function LeadList({
           </button>
         </div>
       )}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+      <div className="htc-hospitality-toolbar flex flex-col gap-2 sm:flex-row sm:items-center">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
           <Input
@@ -268,7 +268,7 @@ export function LeadList({
       )}
 
       {filtered.length > 0 && (
-        <div className="rounded-sm border border-border bg-card">
+        <div className="htc-hospitality-table rounded-sm border border-border bg-card">
           <Table>
             <TableHeader>
               <TableRow>

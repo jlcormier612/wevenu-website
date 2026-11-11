@@ -16,7 +16,7 @@ export default async function VendorsPage() {
     getVenueRequiredVendorCategories(),
   ]);
   return (
-    <div className="space-y-6">
+    <div className="htc-hospitality-page space-y-6">
       <PageHeader
         title="Vendors"
         description="Vendors you make available to couples. Recommend or prefer them, mark required or in-house, and invite them to claim their profile."

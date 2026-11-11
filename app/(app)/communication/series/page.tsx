@@ -15,7 +15,7 @@ export default async function SeriesPage() {
   const series = await getSequences();
 
   return (
-    <div className="space-y-6">
+    <div className="htc-hospitality-page space-y-6">
       <PageHeader
         title="Automations"
         description="When something happens, Hello to Cheers can send the right follow-up for you — for sales leads and for booked clients."
