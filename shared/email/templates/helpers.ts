@@ -142,9 +142,16 @@ export function productAppBaseUrl(): string {
 /**
  * After password creation, send the owner to product login with a return
  * path into Setup Hub — not a bare /login that then dumps them on Dashboard.
+ * Optional email prefills the login form (pricing success "already activated").
  */
-export function productPostActivationLoginUrl(): string {
-  return `${productAppBaseUrl()}/login?activated=1&next=${encodeURIComponent("/setup-hub")}`;
+export function productPostActivationLoginUrl(email?: string | null): string {
+  const params = new URLSearchParams({
+    activated: "1",
+    next: "/setup-hub",
+  });
+  const trimmed = email?.trim();
+  if (trimmed) params.set("email", trimmed);
+  return `${productAppBaseUrl()}/login?${params.toString()}`;
 }
 
 export function paragraphsToHtml(paragraphs: string[]): string {
