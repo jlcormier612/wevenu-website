@@ -27,6 +27,68 @@ export function firstName(vars: EmailTemplateVars): string {
   });
 }
 
+/**
+ * Person name for email greetings — never a venue name.
+ * Hierarchy: billing contact → account owner / generic person fields → null.
+ */
+export function personGreetingName(vars: EmailTemplateVars): string | null {
+  // greetingFirstName coerces empty fallback to "there"; use a sentinel.
+  const none = "__htc_no_person_name__";
+
+  const billingRaw =
+    str(vars, "billingFirstName") ||
+    str(vars, "billing_first_name") ||
+    str(vars, "billingFullName") ||
+    str(vars, "billing_full_name") ||
+    str(vars, "billingName") ||
+    str(vars, "billing_name") ||
+    str(vars, "billingEmail") ||
+    str(vars, "billing_email") ||
+    "";
+  if (billingRaw) {
+    const billing = greetingFirstName({
+      firstName:
+        str(vars, "billingFirstName") ||
+        str(vars, "billing_first_name") ||
+        null,
+      fullName:
+        str(vars, "billingFullName") ||
+        str(vars, "billing_full_name") ||
+        str(vars, "billingName") ||
+        str(vars, "billing_name") ||
+        null,
+      email: str(vars, "billingEmail") || str(vars, "billing_email") || null,
+      fallback: none,
+    });
+    if (billing && billing !== none) return billing;
+  }
+
+  const ownerRaw =
+    str(vars, "firstName") ||
+    str(vars, "ownerFirstName") ||
+    str(vars, "fullName") ||
+    str(vars, "ownerFullName") ||
+    str(vars, "email") ||
+    str(vars, "ownerEmail") ||
+    "";
+  if (!ownerRaw) return null;
+
+  const owner = greetingFirstName({
+    firstName: str(vars, "firstName") || str(vars, "ownerFirstName") || null,
+    fullName: str(vars, "fullName") || str(vars, "ownerFullName") || null,
+    email: str(vars, "email") || str(vars, "ownerEmail") || null,
+    fallback: none,
+  });
+  return owner && owner !== none ? owner : null;
+}
+
+/** Opening line: "Hi Jordan," or neutral "Hello," — never "Hi your venue,". */
+export function greetingSalutation(vars: EmailTemplateVars): string {
+  const name = personGreetingName(vars);
+  return name ? `Hi ${name},` : "Hello,";
+}
+
+
 export function venueName(vars: EmailTemplateVars): string {
   return str(vars, "venueName") || "your venue";
 }

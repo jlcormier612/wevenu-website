@@ -3,6 +3,7 @@ import {
   ctaButtonHtml,
   escapeHtml,
   firstName,
+  greetingSalutation,
   marketingUrl,
   paragraphsToHtml,
   planName,
@@ -120,17 +121,30 @@ export const welcomeBackTemplate: EmailTemplateDefinition = {
   id: "welcome_back",
   name: "Welcome Back",
   description:
-    "Acknowledgment when Welcome Back is requested at checkout or via form (verification still pending).",
+    "Acknowledgment when Welcome Back is requested at checkout or via form (verification still pending). White Glove purchasers get coordination copy instead of self-setup settling-in language.",
   status: "live",
   render(vars) {
-    const name = firstName(vars);
+    const greeting = greetingSalutation(vars);
     const venue = venueName(vars);
+    const onboarding = String(
+      vars.onboardingType ?? vars.onboarding_type ?? "",
+    )
+      .trim()
+      .toLowerCase();
+    const isWhiteGlove =
+      onboarding === "white_glove" ||
+      String(vars.whiteGlove ?? vars.white_glove ?? "")
+        .trim()
+        .toLowerCase() === "true";
     const subject = `We received your Welcome Back note — ${venue}`;
+    const nextStep = isWhiteGlove
+      ? `Since you've selected White Glove onboarding, our team will be in touch personally to coordinate your setup and help you get everything ready. We're looking forward to welcoming you back!`
+      : `In the meantime, your subscription is active and you can begin settling in.`;
     const paragraphs = [
-      `Hi ${name},`,
+      greeting,
       `We received your Welcome Back request for ${venue}. Thank you for coming back to us.`,
-      `Our team will review your note and follow up personally. Welcome Back verification is intentional — not automatic — so we can honor your history with care.`,
-      `In the meantime, your subscription is active and you can begin settling in.`,
+      `Our team will review your former Weven history personally — Welcome Back verification is intentional, not automatic, and is independent of how you chose to onboard.`,
+      nextStep,
       `Questions? Just reply here.`,
     ];
     const text = paragraphs.join("\n\n");
@@ -333,12 +347,13 @@ export const paymentReminderTemplate: EmailTemplateDefinition = {
   status: "live",
   render(vars) {
     const name = firstName(vars);
+    const greeting = greetingSalutation(vars);
     const venue = venueName(vars);
     const day = String(vars.dunningDay ?? "0");
     const portalUrl = String(vars.billingPortalUrl || "").trim();
     const subject = `Action needed: update payment for ${venue}`;
     const paragraphs = [
-      `Hi ${name},`,
+      greeting,
       `We weren't able to process the latest payment for ${venue}'s Hello to Cheers subscription.`,
       portalUrl
         ? `Please update your payment method here: ${portalUrl}`
@@ -365,11 +380,12 @@ export const accountSuspendedTemplate: EmailTemplateDefinition = {
   status: "live",
   render(vars) {
     const name = firstName(vars);
+    const greeting = greetingSalutation(vars);
     const venue = venueName(vars);
     const portalUrl = String(vars.billingPortalUrl || "").trim();
     const subject = `Access paused for ${venue}`;
     const paragraphs = [
-      `Hi ${name},`,
+      greeting,
       `We've paused access to Hello to Cheers for ${venue} because payment is still unresolved.`,
       `Your data is preserved. Update your payment method to restore access${portalUrl ? `: ${portalUrl}` : "."}`,
       `Reply anytime — we're here to help you get back online.`,
@@ -392,10 +408,11 @@ export const accountReactivatedTemplate: EmailTemplateDefinition = {
   status: "live",
   render(vars) {
     const name = firstName(vars);
+    const greeting = greetingSalutation(vars);
     const venue = venueName(vars);
     const subject = `Welcome back — ${venue} is active again`;
     const paragraphs = [
-      `Hi ${name},`,
+      greeting,
       `Good news: access for ${venue} is restored. Welcome back.`,
       `Everything you had before is still here. If you need a hand settling back in, just reply.`,
     ];
@@ -503,12 +520,13 @@ export const renewalReminderTemplate: EmailTemplateDefinition = {
   status: "registry",
   render(vars) {
     const name = firstName(vars);
+    const greeting = greetingSalutation(vars);
     const venue = venueName(vars);
     const plan = planName(vars);
     const renewDate = String(vars.renewalDate || "").trim() || "soon";
     const subject = `Renewal coming up — ${venue}`;
     const paragraphs = [
-      `Hi ${name},`,
+      greeting,
       `A gentle heads-up: ${venue}'s ${plan} subscription renews ${renewDate}.`,
       `Nothing you need to do if everything looks right. If you'd like to change plans or talk through the year ahead, reply anytime.`,
     ];

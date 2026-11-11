@@ -9,8 +9,7 @@
  * per-row content (which genuinely differs row to row: some widgets show
  * a status badge, some a two-line date block, some an urgency label) and
  * now supplies that content to this component instead of duplicating the
- * Card/CardHeader/empty-state/row-container chrome around it. Zero visual
- * change: every row's own JSX is unmodified, only relocated.
+ * Card/CardHeader/empty-state/row-container chrome around it.
  *
  * `rowVariant` preserves the one real structural difference the inventory
  * found between these widgets: most use a divide-y list (no per-row
@@ -18,6 +17,9 @@
  * Both are legitimate, existing, distinct visual treatments — this
  * component keeps both rather than forcing one at the cost of a real
  * visual regression.
+ *
+ * `headerBand` passes through to DashboardCardShell so Today's Focus can
+ * use an eucalyptus header while Coming up stays quiet white.
  */
 import type { ReactNode } from "react";
 import { DashboardCardShell } from "@/components/dashboard-system/dashboard-card-shell";
@@ -28,6 +30,8 @@ export function AttentionList<T>({
   title,
   description,
   headerRight,
+  headerBand = "none",
+  className,
   items,
   getKey,
   renderRow,
@@ -38,6 +42,8 @@ export function AttentionList<T>({
   title: string;
   description?: string;
   headerRight?: ReactNode;
+  headerBand?: "eucalyptus" | "none";
+  className?: string;
   items: T[];
   getKey: (item: T) => string;
   renderRow: (item: T) => ReactNode;
@@ -50,6 +56,8 @@ export function AttentionList<T>({
       title={title}
       description={description}
       headerRight={headerRight}
+      headerBand={headerBand}
+      className={className}
       isEmpty={items.length === 0}
       emptyState={emptyState}
     >

@@ -53,7 +53,7 @@ export default async function DashboardPage({ searchParams }: Props) {
 
   if (!data) {
     return (
-      <div className="flex flex-col items-center justify-center py-24 text-center">
+      <div className="htc-hospitality-page flex flex-col items-center justify-center py-24 text-center">
         <p className="text-muted-foreground">Dashboard unavailable.</p>
       </div>
     );

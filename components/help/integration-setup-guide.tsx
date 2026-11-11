@@ -6,7 +6,7 @@ import { HELP_GUIDES_HOME_HREF, HELP_GUIDES_TITLE } from "@/lib/help-guides/area
 
 export function IntegrationSetupGuideView({ guide }: { guide: SetupGuide }) {
   return (
-    <div className="max-w-3xl space-y-7">
+    <div className="htc-hospitality-page max-w-3xl space-y-4 sm:space-y-6">
       <Link
         href={HELP_GUIDES_HOME_HREF}
         className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
@@ -15,7 +15,7 @@ export function IntegrationSetupGuideView({ guide }: { guide: SetupGuide }) {
         {HELP_GUIDES_TITLE}
       </Link>
 
-      <header className="space-y-3">
+      <header className="htc-hospitality-heading htc-hospitality-intro-accent space-y-3">
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">{guide.category} · Setup Guide</p>
         <h1 className="text-2xl font-bold tracking-tight text-foreground">{guide.title}</h1>
         <p className="max-w-2xl text-sm leading-6 text-muted-foreground">{guide.intro}</p>
@@ -84,9 +84,9 @@ export function IntegrationSetupGuideView({ guide }: { guide: SetupGuide }) {
                 ) : null}
 
                 {step.tip ? (
-                  <div className="rounded-lg border border-primary/15 bg-primary/5 px-4 py-3">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-primary">Helpful tip</p>
-                    <p className="mt-1.5 whitespace-pre-wrap text-sm leading-6 text-foreground">{step.tip}</p>
+                  <div className="htc-surface-guidance space-y-1 px-4 py-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-heading">Helpful tip</p>
+                    <p className="whitespace-pre-wrap text-sm leading-6 text-foreground">{step.tip}</p>
                   </div>
                 ) : null}
               </div>
@@ -95,8 +95,8 @@ export function IntegrationSetupGuideView({ guide }: { guide: SetupGuide }) {
         </div>
       </section>
 
-      <section className="rounded-xl border border-primary/20 bg-primary/5 p-5 space-y-3">
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">You're done</p>
+      <section className="htc-surface-guidance space-y-3 p-5">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-heading">You&apos;re done</p>
         <h2 className="text-lg font-semibold text-foreground">{guide.completion}</h2>
         <Link
           href={guide.returnHref}

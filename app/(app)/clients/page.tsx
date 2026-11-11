@@ -19,7 +19,7 @@ export default async function ClientsPage() {
   ]);
   const today = venueToday(venue?.timezone ?? null);
   return (
-    <div className="space-y-6">
+    <div className="htc-hospitality-page htc-hospitality-heading space-y-6">
       <PageHeader
         title="Clients"
         description="Booked clients and their events."

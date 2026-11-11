@@ -52,10 +52,10 @@ export function SidebarNav({
                 onClick={onNavigate}
                 aria-current={isActive ? "page" : undefined}
                 className={cn(
-                  "group/nav flex items-center gap-3 rounded-sm px-3 py-2.5 text-[0.95rem] tracking-wide transition-colors",
+                  "group/nav relative flex items-center gap-3 rounded-sm px-3 py-2.5 text-base tracking-wide transition-colors",
                   "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
                   isActive
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                    ? "bg-sidebar-accent font-medium text-sidebar-foreground before:absolute before:inset-y-1 before:left-0 before:w-[3px] before:rounded-full before:bg-sidebar-primary"
                     : "text-sidebar-foreground",
                 )}
               >
@@ -63,7 +63,7 @@ export function SidebarNav({
                   className={cn(
                     "h-4 w-4 shrink-0 transition-colors",
                     isActive
-                      ? "text-sidebar-primary"
+                      ? "text-sidebar-foreground"
                       : "text-sidebar-foreground/70 group-hover/nav:text-sidebar-accent-foreground",
                   )}
                 />

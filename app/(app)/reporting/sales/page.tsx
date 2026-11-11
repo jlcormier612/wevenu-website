@@ -99,7 +99,7 @@ export default async function SalesReportPage({ searchParams }: Props) {
   const closeHref = hrefWith(params, { detail: null });
 
   return (
-    <div className="space-y-6">
+    <div className="htc-hospitality-page space-y-6">
       <ReportHeader
         title="Sales"
         description="What came in during these dates, and how many of those leads later booked."

@@ -5,8 +5,6 @@ import { WorkspaceShell } from "@/components/shell/workspace-shell";
 import { createClient } from "@/integrations/supabase/server";
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/env";
-import { isPreGraduationAllowedPath } from "@/lib/setup-hub/pre-graduation-paths";
-import { isVenueReadyToInviteCouples } from "@/lib/setup-hub/service";
 import { getIntakeForVenue } from "@/lib/onboarding/intake-service";
 import { getCurrentUserRole, getCurrentVenue } from "@/lib/venue/service";
 import { recordStaffActivity } from "@/lib/activation/service";
@@ -15,7 +13,7 @@ export const dynamic = "force-dynamic";
 
 /**
  * Protected layout for the venue workspace.
- * Graduation gate: ready_to_invite_couples only (not venues.setup_completed).
+ * Ready to invite couples is a Setup Hub declaration, not a workspace wall.
  * White Glove customers without completed handoff/activation stay out of the
  * product workspace (waiting / intake is token-scoped outside this layout).
  */
@@ -94,13 +92,6 @@ export default async function WorkspaceLayout({
     !pathname.startsWith("/onboarding")
   ) {
     redirect("/onboarding/intake");
-  }
-
-  const ready = await isVenueReadyToInviteCouples(venue.id);
-  if (!ready) {
-    if (!isPreGraduationAllowedPath(pathname)) {
-      redirect("/setup-hub");
-    }
   }
 
   if (venue.accessDisabled || venue.accountStatus === "suspended") {

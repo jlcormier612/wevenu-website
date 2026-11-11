@@ -59,7 +59,10 @@ export function DateRangeControl({ current, label }: { current: DateRangePreset;
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div
+      className="htc-hospitality-filter flex flex-wrap items-center gap-2"
+      data-htc-phase10="reporting-date-toolbar"
+    >
       <Select value={current} onValueChange={(v) => applyPreset(v as DateRangePreset)} items={DATE_RANGE_PRESETS}>
         <SelectTrigger className="w-40" aria-label="Date range"><SelectValue /></SelectTrigger>
         <SelectContent>
