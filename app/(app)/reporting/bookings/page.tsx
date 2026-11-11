@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { BookingsBySourceChart } from "@/components/reporting/bookings-by-source-chart";
 import { DateRangeControl } from "@/components/reporting/date-range-control";
 import { ReportHeader } from "@/components/reporting/report-header";
 import { ComparisonCard, ComparisonCardGrid } from "@/components/dashboard-system/comparison-card";
@@ -8,9 +9,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { reportingSourceDisplayLabel } from "@/lib/attribution/source";
 import {
   getLifecycleBookingSourceCoverage,
-  getLifecycleBookingsByAcquisitionSource,
   getMedianTimeToBookDays,
 } from "@/lib/metrics/attribution";
+import { getPeriodBookingsBySource } from "@/lib/metrics/bookings-by-source";
 import {
   getCurrentlyBookedPipelineCount,
   getLifecycleBookingsWithNames,
@@ -73,7 +74,7 @@ export default async function BookingsReportPage({ searchParams }: Props) {
     getGrossBookedRevenue(prevWindow),
     getCurrentlyBookedPipelineCount(),
     getLifecycleBookingSourceCoverage(window),
-    getLifecycleBookingsByAcquisitionSource(window),
+    getPeriodBookingsBySource(window),
     getMedianTimeToBookDays(window),
     getUndatedLifecycleBookingCount(),
   ]);
@@ -94,6 +95,7 @@ export default async function BookingsReportPage({ searchParams }: Props) {
           previousValue={prevBookings.length}
           comparisonLabel={range.comparisonLabel}
           polarity="up-good"
+          tone="bookings"
           sub="First time you marked them booked in this period. Later Lost does not remove them."
         />
         <ComparisonCard
@@ -102,6 +104,7 @@ export default async function BookingsReportPage({ searchParams }: Props) {
           previousValue={prevGrossRevenue}
           comparisonLabel={range.comparisonLabel}
           polarity="up-good"
+          tone="contracted"
           format={formatMoney}
           sub="Signed contract value with a first payment collected — money, not this Booking count."
           href={reportingHref("/reporting/revenue", range)}
@@ -112,6 +115,7 @@ export default async function BookingsReportPage({ searchParams }: Props) {
           previousValue={prevAvgValue}
           comparisonLabel={range.comparisonLabel}
           polarity="up-good"
+          tone="contracted"
           format={formatMoney}
           sub="Among clients with signed value and a first payment — not Booking count."
         />
@@ -130,30 +134,9 @@ export default async function BookingsReportPage({ searchParams }: Props) {
           : ""}
       </p>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Bookings by source</CardTitle>
-          <CardDescription>
-            Frozen source recorded when they booked. Website includes tour requests. Missing source is Not recorded.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {bookingsBySource.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No bookings in this date range.</p>
-          ) : (
-            <div className="divide-y divide-border">
-              {bookingsBySource.map((s) => (
-                <div key={s.key} className="flex items-center justify-between py-2 text-sm">
-                  <span className="text-foreground">{s.label}</span>
-                  <span className="tabular-nums font-medium text-heading">{s.count}</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <BookingsBySourceChart report={bookingsBySource} />
 
-      <Card>
+      <Card className={bookings.length === 0 ? "htc-report-empty-card" : undefined}>
         <CardHeader>
           <CardTitle className="text-base">Bookings over time</CardTitle>
           <CardDescription>Based on when you first marked them booked — not contract or payment dates.</CardDescription>
@@ -167,7 +150,7 @@ export default async function BookingsReportPage({ searchParams }: Props) {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className={bookings.length === 0 ? "htc-report-empty-card" : undefined}>
         <CardHeader>
           <CardTitle className="text-base">Bookings</CardTitle>
           <CardDescription>Click through when a client workspace exists.</CardDescription>

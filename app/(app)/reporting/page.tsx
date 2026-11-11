@@ -1,11 +1,14 @@
 import Link from "next/link";
 import { CalendarDays, DollarSign, TrendingUp, Users, Wallet, Receipt, MapPin } from "lucide-react";
 
+import { BookingsBySourceChart } from "@/components/reporting/bookings-by-source-chart";
 import { BusinessFunnel } from "@/components/reporting/business-funnel";
 import { DateRangeControl } from "@/components/reporting/date-range-control";
+import { ReportHeader } from "@/components/reporting/report-header";
 import { ComparisonCard, ComparisonCardGrid } from "@/components/dashboard-system/comparison-card";
 import { Button } from "@/components/ui/button";
 import { getBusinessFunnel } from "@/lib/metrics/business-funnel";
+import { getPeriodBookingsBySource } from "@/lib/metrics/bookings-by-source";
 import {
   getCurrentlyBookedPipelineCount,
   getLeadCohortLifecycleBookingStats,
@@ -39,6 +42,7 @@ export default async function ReportingOverviewPage({ searchParams }: Props) {
     cohort, prevCohort,
     currentlyBooked,
     undatedBookings,
+    bookingsBySource,
   ] = await Promise.all([
     getBusinessFunnel(window), getBusinessFunnel(prevWindow),
     getLifecycleBookings(window), getLifecycleBookings(prevWindow),
@@ -49,11 +53,19 @@ export default async function ReportingOverviewPage({ searchParams }: Props) {
     getLeadCohortLifecycleBookingStats(window), getLeadCohortLifecycleBookingStats(prevWindow),
     getCurrentlyBookedPipelineCount(),
     getUndatedLifecycleBookingCount(),
+    getPeriodBookingsBySource(window),
   ]);
 
   return (
     <div className="space-y-6">
+      <ReportHeader
+        title="Overview"
+        description="How the business moved during the selected period."
+      />
       <DateRangeControl current={range.preset} label={range.label} />
+      <p className="text-sm text-muted-foreground -mt-2" data-testid="overview-period-orientation">
+        What happened during {range.label}, then what happened to the leads that came in during those dates.
+      </p>
 
       <BusinessFunnel funnel={businessFunnel} rangeLabel={range.label} />
 
@@ -61,61 +73,66 @@ export default async function ReportingOverviewPage({ searchParams }: Props) {
         <ComparisonCard
           label="Leads" icon={Users}
           value={leads.total} previousValue={prevLeads.total}
-          comparisonLabel={range.comparisonLabel} polarity="up-good"
+          comparisonLabel={range.comparisonLabel} polarity="up-good" tone="sales"
           href={reportingHref("/reporting/sales", range, { detail: "stage:inquiry" })}
-          sub="New inquiries received in this period."
+          sub="New leads received in this period."
         />
         <ComparisonCard
           label="Tours" icon={MapPin}
           value={businessFunnel.period.tours} previousValue={prevFunnel.period.tours}
-          comparisonLabel={range.comparisonLabel} polarity="up-good"
+          comparisonLabel={range.comparisonLabel} polarity="up-good" tone="sales"
           href={reportingHref("/reporting/sales", range, { detail: "period-tours" })}
           sub="Tours scheduled during this period."
         />
         <ComparisonCard
           label="Bookings" icon={CalendarDays}
           value={bookings.length} previousValue={prevBookings.length}
-          comparisonLabel={range.comparisonLabel} polarity="up-good"
+          comparisonLabel={range.comparisonLabel} polarity="up-good" tone="bookings"
           href={reportingHref("/reporting/bookings", range)}
           sub="Marked booked during this period."
         />
         <ComparisonCard
           label="Leads who booked" icon={TrendingUp}
           value={cohort.conversionRate} previousValue={prevCohort.conversionRate}
-          comparisonLabel={range.comparisonLabel} polarity="up-good" format={(n) => `${n}%`}
+          comparisonLabel={range.comparisonLabel} polarity="up-good" tone="bookings" format={(n) => `${n}%`}
           href={reportingHref("/reporting/sales", range, { detail: "stage:booked" })}
-          sub={`${cohort.eventuallyBooked} of ${cohort.leadsEntered} inquiries from this period later booked — even if the booking happened after these dates. Lost inquiries stay in this rate.`}
+          sub={`${cohort.eventuallyBooked} of ${cohort.leadsEntered} leads from this period later booked — even if the booking happened after these dates. Lost leads stay in this rate.`}
         />
         <ComparisonCard
           label="Contracted" icon={DollarSign}
           value={grossRevenue ?? 0} previousValue={prevGrossRevenue}
-          comparisonLabel={range.comparisonLabel} polarity="up-good" format={formatMoney}
+          comparisonLabel={range.comparisonLabel} polarity="up-good" tone="contracted" format={formatMoney}
           href={reportingHref("/reporting/revenue", range)}
           sub="Signed agreement value with a first payment collected."
         />
         <ComparisonCard
           label="Collected" icon={Wallet}
           value={paymentsCollected ?? 0} previousValue={prevPaymentsCollected}
-          comparisonLabel={range.comparisonLabel} polarity="up-good" format={formatMoney}
+          comparisonLabel={range.comparisonLabel} polarity="up-good" tone="collected" format={formatMoney}
           href={reportingHref("/reporting/revenue", range, { detail: "payments" })}
           sub="Money actually received during this period."
         />
         <ComparisonCard
           label="Outstanding" icon={Receipt}
           value={outstanding ?? 0} previousValue={prevOutstanding}
-          comparisonLabel={range.comparisonLabel} polarity="up-bad" format={formatMoney}
+          comparisonLabel={range.comparisonLabel} polarity="up-bad" tone="outstanding" format={formatMoney}
           href={reportingHref("/reporting/revenue", range, { detail: "outstanding" })}
           sub="Contracted value minus collections — those use different dates. See Revenue."
         />
       </ComparisonCardGrid>
 
       <p className="text-xs text-muted-foreground">
-        {currentlyBooked} {currentlyBooked === 1 ? "relationship is" : "relationships are"} currently in Booked on your pipeline.
+          {`${currentlyBooked} ${currentlyBooked === 1 ? "relationship is" : "relationships are"} currently in Booked on your pipeline.`}
         That snapshot can differ from Bookings above, which count when you first marked them booked.
         {undatedBookings > 0
           ? ` ${undatedBookings} ${undatedBookings === 1 ? "Booking does" : "Bookings do"} not have a known date, so ${undatedBookings === 1 ? "it is" : "they are"} not included in this period's Bookings count. ${undatedBookings === 1 ? "It still counts" : "They still count"} in Leads who booked.`
           : ""}
       </p>
+
+      <BookingsBySourceChart
+        report={bookingsBySource}
+        detailHref={reportingHref("/reporting/sales", range)}
+      />
 
       <div className="flex flex-wrap gap-2 pt-2">
         <Button variant="outline" size="sm" render={<Link href={reportingHref("/reporting/sales", range)} />}>View Sales</Button>
