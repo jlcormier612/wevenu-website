@@ -51,10 +51,8 @@ export function SiteFooter() {
               </li>
             ))}
           </ul>
-        </div>
 
-        <div>
-          <p className={`mb-4 ${TYPE_LABEL}`}>Trust &amp; Support</p>
+          <p className={`mb-4 mt-8 ${TYPE_LABEL}`}>Trust &amp; Support</p>
           <ul className="space-y-2.5">
             {FOOTER_TRUST_SUPPORT.map((item) => (
               <li key={item.href}>
@@ -67,14 +65,16 @@ export function SiteFooter() {
               </li>
             ))}
           </ul>
+        </div>
 
-          <p className={`mb-3 mt-8 ${TYPE_LABEL}`}>Legal</p>
+        <div>
+          <p className={`mb-4 ${TYPE_LABEL}`}>Legal</p>
           <ul className="space-y-2">
             {FOOTER_LEGAL.map((item) => (
               <li key={item.href}>
                 <Link
                   href={item.href}
-                  className="text-[0.8125rem] leading-snug text-[var(--forest-sage)]/90 underline-offset-4 transition-colors duration-200 ease-out hover:underline hover:text-[var(--botanical)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--botanical)] focus-visible:ring-offset-2"
+                  className="text-sm text-[var(--forest-sage)] underline-offset-4 transition-colors duration-200 ease-out hover:underline hover:text-[var(--botanical)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--botanical)] focus-visible:ring-offset-2"
                 >
                   {item.label}
                 </Link>

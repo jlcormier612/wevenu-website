@@ -9,6 +9,9 @@ const redirects = [
   { source: "/resources", destination: "/features", permanent: true },
   { source: "/resources/", destination: "/features", permanent: true },
   { source: "/resources/:path*", destination: "/features", permanent: true },
+  // Retired public System Status page — send visitors to Our Promise.
+  { source: "/status", destination: "/trust", permanent: true },
+  { source: "/status/", destination: "/trust", permanent: true },
 ];
 
 const nextConfig: NextConfig = {

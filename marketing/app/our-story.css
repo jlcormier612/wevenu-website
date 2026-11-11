@@ -525,3 +525,16 @@
     aspect-ratio: 2 / 1;
   }
 }
+
+/* Our Story closing CTA only — white secondary for contrast on story-linen */
+.htc-story #welcome .signature-closing-btn-secondary {
+  background: #ffffff;
+  border-color: rgba(36, 51, 43, 0.22);
+  color: #24332b;
+}
+
+.htc-story #welcome .signature-closing-btn-secondary:hover {
+  border-color: rgba(36, 51, 43, 0.4);
+  background: color-mix(in srgb, #ffffff 88%, #e8ebe4);
+  color: #24332b;
+}

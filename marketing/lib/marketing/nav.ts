@@ -68,10 +68,9 @@ export const FOOTER_EXPLORE = [
   { href: "/contact", label: "Contact" },
 ] as const;
 
-/** Trust & Support column — public marketing Library retired */
+/** Trust & Support column — public System Status page retired (redirects to /trust) */
 export const FOOTER_TRUST_SUPPORT = [
   { href: CHAPTERS.trust.href, label: "Our Promise" },
-  { href: "/status", label: "System Status" },
 ] as const;
 
 /** Legal column — every existing legal/policy destination retained */
@@ -96,11 +95,11 @@ export const PRIMARY_CTA = {
 } as const;
 
 /**
- * Sibling near walkthrough CTAs — under-calendar form on /walkthrough
- * (same LeadForm + ingestWalkthroughRequest path; no Calendly time required).
+ * Sibling near walkthrough CTAs — Contact experience for questions
+ * without booking a walkthrough time.
  */
 export const MORE_INFO_CTA = {
-  href: "/walkthrough?intent=more-info#request-info",
+  href: "/contact",
   label: "Request more information",
 } as const;
 

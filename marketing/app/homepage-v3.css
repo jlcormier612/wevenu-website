@@ -309,14 +309,14 @@
 }
 
 .htc-home .hero-actions .btn-secondary {
-  background: transparent;
+  background: #ffffff;
   border: 1px solid rgba(36, 51, 43, 0.22);
   color: #24332b;
 }
 
 .htc-home .hero-actions .btn-secondary:hover {
   border-color: rgba(36, 51, 43, 0.4);
-  background: rgba(255, 255, 255, 0.35);
+  background: color-mix(in srgb, #ffffff 88%, #e8ebe4);
 }
 
 .htc-home .hero-actions .btn-secondary:focus-visible {
