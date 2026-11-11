@@ -16,6 +16,7 @@ import {
   getGrossBookedRevenueByAcquisitionSource,
   getPaymentsCollectedByAcquisitionSource,
 } from "@/lib/metrics/attribution";
+import { TrendGranularityControl } from "@/components/reporting/trend-granularity-control";
 import { resolveDateRangeFromParams } from "@/lib/reporting/date-range";
 import {
   getCategoryDetail,
@@ -24,6 +25,10 @@ import {
   getPaymentsCollectedTrend,
   getRevenueTrend,
 } from "@/lib/reporting/service";
+import {
+  availableTrendGranularities,
+  parseTrendGranularity,
+} from "@/lib/reporting/trend-buckets";
 import { formatMoney } from "@/lib/event-orders/constants";
 
 type Props = { searchParams: Promise<Record<string, string | string[] | undefined>> };
@@ -41,6 +46,12 @@ export default async function RevenueReportPage({ searchParams }: Props) {
   const range = resolveDateRangeFromParams(params);
   const window = { from: range.from, to: range.to };
   const prevWindow = { from: range.previousFrom, to: range.previousTo };
+  const grain = parseTrendGranularity(
+    typeof params.grain === "string" ? params.grain : undefined,
+    window.from,
+    window.to,
+  );
+  const grainOptions = availableTrendGranularities(window.from, window.to);
   const detail = typeof params.detail === "string" ? params.detail : null;
   const [detailKind, detailValue] = detail ? detail.split(":") : [null, null];
   const closeHref = hrefWith(params, { detail: null });
@@ -57,8 +68,8 @@ export default async function RevenueReportPage({ searchParams }: Props) {
     getOutstandingBalance(window), getOutstandingBalance(prevWindow),
     getAverageBookingValue(window), getAverageBookingValue(prevWindow),
     getGrossBookedRevenueByCategory(window),
-    getRevenueTrend(window),
-    getPaymentsCollectedTrend(window),
+    getRevenueTrend(window, grain),
+    getPaymentsCollectedTrend(window, grain),
     getGrossBookedRevenueByAcquisitionSource(window),
     getPaymentsCollectedByAcquisitionSource(window),
   ]);
@@ -147,12 +158,16 @@ export default async function RevenueReportPage({ searchParams }: Props) {
         </DetailPanel>
       )}
 
+      <div className="flex justify-end">
+        <TrendGranularityControl current={grain} available={grainOptions} />
+      </div>
+
       <div className="grid gap-4 lg:grid-cols-2">
         <Card className={!hasContractedTrend ? "htc-report-empty-card" : undefined}>
           <CardHeader>
             <CardTitle className="text-base">Contracted trend</CardTitle>
             <CardDescription>
-              {contractedTrend.granularityLabel} contracted value by commitment date (signed agreement + first payment) — not when you marked them booked.
+              {contractedTrend.granularityLabel} by commitment date (signed + first payment). Separate clock from collected.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -167,7 +182,7 @@ export default async function RevenueReportPage({ searchParams }: Props) {
           <CardHeader>
             <CardTitle className="text-base">Collected trend</CardTitle>
             <CardDescription>
-              {collectedTrend.granularityLabel} payments collected by payment date — a different clock from contracted.
+              {collectedTrend.granularityLabel} by payment date — not the contracted commitment date.
             </CardDescription>
           </CardHeader>
           <CardContent>

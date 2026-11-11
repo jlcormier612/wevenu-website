@@ -36,8 +36,8 @@ export type TrendSeries = {
   granularityLabel: string;
 };
 
-function emptyTrend(window: DateWindow): TrendSeries {
-  const granularity = resolveTrendGranularity(window.from, window.to);
+function emptyTrend(window: DateWindow, granularityOverride?: TrendGranularity): TrendSeries {
+  const granularity = granularityOverride ?? resolveTrendGranularity(window.from, window.to);
   const buckets = buildTrendBuckets(window.from, window.to, granularity);
   return {
     points: buckets.map((b) => ({ label: b.label, value: 0 })),
@@ -49,8 +49,9 @@ function emptyTrend(window: DateWindow): TrendSeries {
 function aggregateCountTrend(
   timestamps: string[],
   window: DateWindow,
+  granularityOverride?: TrendGranularity,
 ): TrendSeries {
-  const granularity = resolveTrendGranularity(window.from, window.to);
+  const granularity = granularityOverride ?? resolveTrendGranularity(window.from, window.to);
   const buckets = buildTrendBuckets(window.from, window.to, granularity);
   const counts = new Map<string, number>();
   for (const ts of timestamps) {
@@ -127,10 +128,12 @@ export async function getBookingsWithClientNames(window: DateWindow): Promise<Bo
 export function bookingsToTrend(
   bookings: CanonicalBooking[] | BookingDrillRow[],
   window: DateWindow,
+  granularityOverride?: TrendGranularity,
 ): TrendSeries {
   return aggregateCountTrend(
     bookings.map((b) => ("bookedAt" in b ? b.bookedAt : "")),
     window,
+    granularityOverride,
   );
 }
 
@@ -139,10 +142,13 @@ export function bookingsToTrend(
  * booked-client-scoped formula canonical_gross_booked_revenue() uses, grouped
  * by each booking's booked_at into adaptive day/week/month buckets.
  */
-export async function getRevenueTrend(window: DateWindow): Promise<TrendSeries> {
-  if (!isSupabaseConfigured) return emptyTrend(window);
+export async function getRevenueTrend(
+  window: DateWindow,
+  granularityOverride?: TrendGranularity,
+): Promise<TrendSeries> {
+  if (!isSupabaseConfigured) return emptyTrend(window, granularityOverride);
   const venue = await getCurrentVenue();
-  if (!venue) return emptyTrend(window);
+  if (!venue) return emptyTrend(window, granularityOverride);
   const supabase = await createClient();
 
   const { data: bookings } = await supabase
@@ -154,7 +160,7 @@ export async function getRevenueTrend(window: DateWindow): Promise<TrendSeries> 
   const exclusions = await loadReportingExclusions(supabase, venue.id);
   const bookingRows = ((bookings ?? []) as { client_id: string; booked_at: string }[])
     .filter((b) => !exclusions.clientIds.has(b.client_id));
-  if (bookingRows.length === 0) return emptyTrend(window);
+  if (bookingRows.length === 0) return emptyTrend(window, granularityOverride);
 
   const clientIds = [...new Set(bookingRows.map((b) => b.client_id))];
   const { data: invoices } = await supabase
@@ -164,7 +170,7 @@ export async function getRevenueTrend(window: DateWindow): Promise<TrendSeries> 
     .neq("status", "void")
     .in("client_id", clientIds);
 
-  const granularity = resolveTrendGranularity(window.from, window.to);
+  const granularity = granularityOverride ?? resolveTrendGranularity(window.from, window.to);
   const buckets = buildTrendBuckets(window.from, window.to, granularity);
   const bookedAtByClient = new Map(bookingRows.map((b) => [b.client_id, b.booked_at]));
   const totals = new Map<string, number>();
@@ -185,12 +191,15 @@ export async function getRevenueTrend(window: DateWindow): Promise<TrendSeries> 
  * Payments Collected trend — same paid_at / net-of-refund rows as
  * canonical_payments_collected(), bucketed for comparison beside contracted.
  */
-export async function getPaymentsCollectedTrend(window: DateWindow): Promise<TrendSeries> {
-  if (!isSupabaseConfigured) return emptyTrend(window);
+export async function getPaymentsCollectedTrend(
+  window: DateWindow,
+  granularityOverride?: TrendGranularity,
+): Promise<TrendSeries> {
+  if (!isSupabaseConfigured) return emptyTrend(window, granularityOverride);
   const venue = await getCurrentVenue();
-  if (!venue) return emptyTrend(window);
+  if (!venue) return emptyTrend(window, granularityOverride);
   const rows = await getPaymentsCollectedDetail(window);
-  const granularity = resolveTrendGranularity(window.from, window.to);
+  const granularity = granularityOverride ?? resolveTrendGranularity(window.from, window.to);
   const buckets = buildTrendBuckets(window.from, window.to, granularity);
   const totals = new Map<string, number>();
   for (const r of rows) {
@@ -207,10 +216,19 @@ export async function getPaymentsCollectedTrend(window: DateWindow): Promise<Tre
 export type LeadSummary = { total: number; bySourceTrend: TrendPoint[] };
 
 /** Leads received trend by created_at — adaptive day/week/month. Plain COUNT, not a funnel/conversion calculation. */
-export async function getLeadsTrend(window: DateWindow): Promise<{ total: number; trend: TrendPoint[]; granularityLabel: string }> {
-  if (!isSupabaseConfigured) return { total: 0, trend: [], granularityLabel: "Monthly" };
+export async function getLeadsTrend(
+  window: DateWindow,
+  granularityOverride?: TrendGranularity,
+): Promise<{ total: number; trend: TrendPoint[]; granularity: TrendGranularity; granularityLabel: string }> {
+  if (!isSupabaseConfigured) {
+    const empty = emptyTrend(window, granularityOverride);
+    return { total: 0, trend: [], granularity: empty.granularity, granularityLabel: empty.granularityLabel };
+  }
   const venue = await getCurrentVenue();
-  if (!venue) return { total: 0, trend: [], granularityLabel: "Monthly" };
+  if (!venue) {
+    const empty = emptyTrend(window, granularityOverride);
+    return { total: 0, trend: [], granularity: empty.granularity, granularityLabel: empty.granularityLabel };
+  }
   const supabase = await createClient();
 
   const { data } = await onlyBusinessReporting(
@@ -219,8 +237,13 @@ export async function getLeadsTrend(window: DateWindow): Promise<{ total: number
       .gte("created_at", window.from).lte("created_at", window.to + "T23:59:59"),
   );
   const rows = (data ?? []) as { created_at: string }[];
-  const series = aggregateCountTrend(rows.map((r) => r.created_at), window);
-  return { total: rows.length, trend: series.points, granularityLabel: series.granularityLabel };
+  const series = aggregateCountTrend(rows.map((r) => r.created_at), window, granularityOverride);
+  return {
+    total: rows.length,
+    trend: series.points,
+    granularity: series.granularity,
+    granularityLabel: series.granularityLabel,
+  };
 }
 
 export type EventDrillRow = { id: string; clientId: string | null; name: string; eventDate: string | null; eventType: string | null; guestCount: number | null };
@@ -250,19 +273,27 @@ export function averageGuestCount(events: EventDrillRow[]): number {
   return Math.round(withCount.reduce((sum, e) => sum + (e.guestCount ?? 0), 0) / withCount.length);
 }
 
-export function eventsToTrend(events: EventDrillRow[], window: DateWindow): TrendSeries {
+export function eventsToTrend(
+  events: EventDrillRow[],
+  window: DateWindow,
+  granularityOverride?: TrendGranularity,
+): TrendSeries {
   return aggregateCountTrend(
     events.map((e) => e.eventDate ?? ""),
     window,
+    granularityOverride,
   );
 }
 
 export function eventsByType(events: EventDrillRow[]): { type: string; label: string; count: number }[] {
   const counts = new Map<string, { label: string; count: number }>();
   for (const e of events) {
-    const canonical = normalizeEventType(e.eventType);
-    const type = canonical ?? "unspecified";
-    const label = canonical ? (eventTypeLabel(canonical) || canonical) : "Not recorded";
+    const raw = e.eventType?.trim() || null;
+    // "Not recorded" is only for missing/blank values — not for unknown but present tokens
+    // like cocktail_hour / private_event (display-normalized; storage unchanged).
+    const canonical = normalizeEventType(raw);
+    const type = canonical ?? (raw ? raw : "unspecified");
+    const label = raw ? eventTypeLabel(raw) : "Not recorded";
     const cur = counts.get(type) ?? { label, count: 0 };
     cur.count += 1;
     counts.set(type, cur);

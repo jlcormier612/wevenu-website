@@ -70,13 +70,23 @@ export function normalizeEventType(value: string | null | undefined): string | n
   return EVENT_TYPE_LABEL_ALIASES[lower] ?? null;
 }
 
+/** Title-case unknown snake_case / kebab values for display only — never rewrite storage. */
+export function humanizeEventTypeToken(value: string): string {
+  return value
+    .trim()
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 export function eventTypeLabel(value: string | null | undefined): string {
   if (!value) return "";
   const canonical = normalizeEventType(value);
   if (canonical) {
     return EVENT_TYPES.find((t) => t.value === canonical)?.label ?? canonical;
   }
-  return value;
+  // Known-looking internal tokens (e.g. cocktail_hour) stay visible — not "Not recorded".
+  return humanizeEventTypeToken(value);
 }
 
 /**

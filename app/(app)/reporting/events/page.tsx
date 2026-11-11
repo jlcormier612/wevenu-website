@@ -6,10 +6,15 @@ import { SourceCompositionChart } from "@/components/reporting/source-compositio
 import { ComparisonCard, ComparisonCardGrid } from "@/components/dashboard-system/comparison-card";
 import { TrendChart } from "@/components/dashboard-system/trend-chart";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { TrendGranularityControl } from "@/components/reporting/trend-granularity-control";
 import { allocateIntegerPercents } from "@/lib/attribution/bookings-by-source";
 import { eventTypeLabel } from "@/lib/leads/constants";
 import { resolveDateRangeFromParams } from "@/lib/reporting/date-range";
 import { averageGuestCount, eventsByType, eventsToTrend, getEventsInRange } from "@/lib/reporting/service";
+import {
+  availableTrendGranularities,
+  parseTrendGranularity,
+} from "@/lib/reporting/trend-buckets";
 
 type Props = { searchParams: Promise<Record<string, string | string[] | undefined>> };
 
@@ -19,12 +24,18 @@ export default async function EventsReportPage({ searchParams }: Props) {
   const range = resolveDateRangeFromParams(params);
   const window = { from: range.from, to: range.to };
   const prevWindow = { from: range.previousFrom, to: range.previousTo };
+  const grain = parseTrendGranularity(
+    typeof params.grain === "string" ? params.grain : undefined,
+    window.from,
+    window.to,
+  );
+  const grainOptions = availableTrendGranularities(window.from, window.to);
 
   const [events, prevEvents] = await Promise.all([
     getEventsInRange(window),
     getEventsInRange(prevWindow),
   ]);
-  const trend = eventsToTrend(events, window);
+  const trend = eventsToTrend(events, window, grain);
   const types = eventsByType(events);
   const avgGuests = averageGuestCount(events);
   const prevAvgGuests = averageGuestCount(prevEvents);
@@ -48,11 +59,14 @@ export default async function EventsReportPage({ searchParams }: Props) {
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card className={events.length === 0 ? "htc-report-empty-card" : undefined}>
-          <CardHeader>
-            <CardTitle className="text-base">Events Over Time</CardTitle>
-            <CardDescription>
-              {trend.granularityLabel} view based on each event&apos;s date.
-            </CardDescription>
+          <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3 space-y-0">
+            <div className="space-y-1.5">
+              <CardTitle className="text-base">Events Over Time</CardTitle>
+              <CardDescription>
+                {trend.granularityLabel} view based on each event&apos;s date.
+              </CardDescription>
+            </div>
+            <TrendGranularityControl current={grain} available={grainOptions} />
           </CardHeader>
           <CardContent>
             {events.length === 0 ? (

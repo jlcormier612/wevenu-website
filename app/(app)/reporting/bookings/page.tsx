@@ -19,11 +19,14 @@ import {
 } from "@/lib/metrics/lifecycle-booking";
 import { getAverageBookingValue, getGrossBookedRevenue } from "@/lib/metrics/revenue";
 import { reportingHref, resolveDateRangeFromParams } from "@/lib/reporting/date-range";
+import { TrendGranularityControl } from "@/components/reporting/trend-granularity-control";
 import {
+  availableTrendGranularities,
   bucketKeyForTimestamp,
   buildTrendBuckets,
-  resolveTrendGranularity,
+  parseTrendGranularity,
   trendGranularityCaption,
+  type TrendGranularity,
 } from "@/lib/reporting/trend-buckets";
 import { formatMoney } from "@/lib/event-orders/constants";
 import type { TrendPoint } from "@/components/dashboard-system/trend-chart";
@@ -33,8 +36,8 @@ type Props = { searchParams: Promise<Record<string, string | string[] | undefine
 function lifecycleToTrend(
   bookings: { occurredAt: string | null }[],
   window: { from: string; to: string },
+  granularity: TrendGranularity,
 ): { points: TrendPoint[]; granularityLabel: string } {
-  const granularity = resolveTrendGranularity(window.from, window.to);
   const buckets = buildTrendBuckets(window.from, window.to, granularity);
   const counts = new Map<string, number>();
   for (const b of bookings) {
@@ -53,6 +56,12 @@ export default async function BookingsReportPage({ searchParams }: Props) {
   const range = resolveDateRangeFromParams(params);
   const window = { from: range.from, to: range.to };
   const prevWindow = { from: range.previousFrom, to: range.previousTo };
+  const grain = parseTrendGranularity(
+    typeof params.grain === "string" ? params.grain : undefined,
+    window.from,
+    window.to,
+  );
+  const grainOptions = availableTrendGranularities(window.from, window.to);
 
   const [
     bookings, prevBookings,
@@ -72,7 +81,7 @@ export default async function BookingsReportPage({ searchParams }: Props) {
     getMedianTimeToBookDays(window),
     getUndatedLifecycleBookingCount(),
   ]);
-  const trend = lifecycleToTrend(bookings, window);
+  const trend = lifecycleToTrend(bookings, window, grain);
 
   return (
     <div className="htc-hospitality-page space-y-6">
@@ -131,11 +140,14 @@ export default async function BookingsReportPage({ searchParams }: Props) {
       <BookingsBySourceChart report={bookingsBySource} />
 
       <Card className={bookings.length === 0 ? "htc-report-empty-card" : undefined}>
-        <CardHeader>
-          <CardTitle className="text-base">Bookings over time</CardTitle>
-          <CardDescription>
-            {trend.granularityLabel} view based on when you first marked them booked — not contract or payment dates.
-          </CardDescription>
+        <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3 space-y-0">
+          <div className="space-y-1.5">
+            <CardTitle className="text-base">Bookings over time</CardTitle>
+            <CardDescription>
+              {trend.granularityLabel} view based on when you first marked them booked — not contract or payment dates.
+            </CardDescription>
+          </div>
+          <TrendGranularityControl current={grain} available={grainOptions} />
         </CardHeader>
         <CardContent>
           {bookings.length === 0 ? (
