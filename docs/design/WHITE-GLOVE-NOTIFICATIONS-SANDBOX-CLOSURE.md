@@ -1,8 +1,10 @@
 # HTC — White Glove Notifications Sandbox Closure
 
 **Date:** 2026-11-10  
-**Commit SHA:** `4a3b512684ce619ded3456531338e1bb6c5783b6`  
-**Deploy workflow:** [Deploy Sandbox #42923431146](https://github.com/jlcormier612/wevenu-website/actions/runs/42923431146)  
+**Feature commit:** `4a3b512684ce619ded3456531338e1bb6c5783b6`  
+**Build-fix commit (serving):** `44d472d4eebd1193a9d7ace1159a549bbded3394`  
+**Failed deploy:** [42923431146](https://github.com/jlcormier612/wevenu-website/actions/runs/42923431146)  
+**Successful deploy:** [42928030980](https://github.com/jlcormier612/wevenu-website/actions/runs/42928030980) **SUCCESS**  
 **Branch:** `feat/spaces-booking-e1-smart-fields`  
 **Environment:** Sandbox only  
 
@@ -10,165 +12,155 @@
 
 ## Final verdict
 
-### **YELLOW — implementation + Resend delivery PASS; serving Sandbox deploy still in progress**
+### **GREEN — serving Sandbox verified for UX + notify configuration**
 
 | Gate | Status |
 |---|---|
 | Local UX + notify implementation | **PASS** |
+| Build root cause fixed (`RawSendResult` import) | **PASS** (`44d472d4`) |
 | Focused tests | **29/29 PASS** |
-| Scoped commit (no CTA/footer/marketing dirty work) | **PASS** (`4a3b5126`) |
-| Sandbox deploy dispatched | **IN PROGRESS** (run `42923431146`) |
-| ECS `INQUIRY_NOTIFY_EMAIL` on marketing + venue | **Pending deploy complete** |
-| Resend → `jennifer@hellotocheers.com` probes | **PASS — `last_event: delivered`** for both subscription- and intake-shaped probes |
-| Human eyeball of Gmail UI | Not opened by agent (Resend delivered = receiving MTA accepted) |
-| Serving Sandbox UX copy | **Pending deploy complete** |
+| Workspace / marketing / venue `next build` | **PASS** (local preflight) |
+| Deploy `42928030980` | **SUCCESS** |
+| Serving images | **PASS** — marketing + venue on `44d472d4…` |
+| ECS `INQUIRY_NOTIFY_EMAIL` | **PASS** — both services `jennifer@hellotocheers.com` |
+| Serving White Glove UX copy | **PASS** (live intake URL) |
+| Controlled Resend transport probes | **PASS — `delivered`** (not app HTTP path) |
+| Live Stripe webhook / intake-submit notify retest | **Not re-run** (no new payment; user intake not submitted) |
 
-**Why not GREEN yet:** Serving Sandbox must finish deploying SHA `4a3b5126` and ECS must show `INQUIRY_NOTIFY_EMAIL` on marketing + venue tasks.
-
-**Why not RED:** Code, tests, commit, Resend delivery to the confirmed ops mailbox, and deploy dispatch all succeeded.
+Production, Stripe config, legal migrations, and unrelated marketing dirty work were not touched.
 
 ---
 
-## 1. Exact files changed (commit `4a3b5126`)
+## Build root cause and repair
 
-### UX (already approved, deployed with this commit)
-- `app/onboarding/white-glove/[token]/page.tsx`
-- `components/onboarding/onboarding-intake-form.tsx`
-- `components/onboarding/white-glove-intake-client.tsx`
-- `components/onboarding/white-glove-waiting-client.tsx`
-- `lib/onboarding/types.ts` (+ tests)
-- `docs/qa/white-glove-intake-ux/verify-browser.mts`
+**Failure:** Deploy `42923431146` → job `Build & push (workspace)` → TypeScript  
+`Module '"./client"' declares 'RawSendResult' locally, but it is not exported.`
 
-### Notifications
-- `shared/email/ops-notify.ts` (+ test)
-- `shared/email/index.ts`
-- `marketing/lib/crm/notify.ts` (+ test)
-- `marketing/lib/crm/enrollment-summary.ts`
-- `marketing/lib/crm/service.ts` (re-export + first-insert-only call preserved)
-- `lib/onboarding/white-glove-ops-notify.ts` (+ test)
-- `app/api/onboarding/white-glove/intake/route.ts`
+**Cause:** `shared/email/ops-notify.ts` imported `type RawSendResult` from `./client`.  
+`client.ts` only *imports* `RawSendResult` from `./types` for its return type; it does **not** re-export it.
 
-### Sandbox configuration
-- `infra/htc-ecs-stack.json` — `InquiryNotifyEmail` → `INQUIRY_NOTIFY_EMAIL` on **marketing** and **venue-app**
-- `.github/workflows/deploy-sandbox.yml` — `InquiryNotifyEmail=jennifer@hellotocheers.com`
+**Fix (smallest):** import the type from the authoritative module:
 
-### Docs / evidence
-- `docs/design/WHITE-GLOVE-ONBOARDING-LAUNCH-AUDIT.md`
-- `docs/design/legal-launch-consolidated-audit/NEW-OWNER-SIGNUP-VERIFICATION.md`
-- `docs/design/legal-launch-consolidated-audit/human-checkout-stripe-evidence.json`
+```ts
+import { sendRawEmail } from "./client";
+import type { RawSendResult } from "./types";
+```
 
-**Excluded from commit:** homepage/Our Story CTAs, footer, unrelated marketing/settings/legal page dirty work, welcome-back template edits.
+No runtime email behavior change. Commit `44d472d4`.
+
+---
+
+## 1. Exact files changed
+
+### Feature (`4a3b5126`) — UX + notify + CFN (prior)
+See earlier sections / git show.
+
+### Repair (`44d472d4`)
+- `shared/email/ops-notify.ts` — type import fix  
+- `marketing/lib/crm/notify.test.ts` — drop unsupported `/s` regex flag for older marketing `tsc` targets  
+
+### Closure doc updates
+- This file
 
 ---
 
 ## 2. Notification configuration and recipient
 
-| Item | Decision |
+| Item | Value |
 |---|---|
-| Proposed `hello@hellotocheers.com` | **Not used** — CFN docs state it is not a real mailbox |
-| Sandbox recipient | **`jennifer@hellotocheers.com`** (confirmed existing Sandbox ops address; matches From/Reply-To) |
-| Env var | `INQUIRY_NOTIFY_EMAIL` |
-| Transport | Existing `RESEND_API_KEY` secret on marketing + venue tasks |
-| From identity | Unchanged (`Hello to Cheers <jennifer@hellotocheers.com>`) |
-
-Missing `INQUIRY_NOTIFY_EMAIL` → skip/log (customer flows continue). Missing `RESEND_API_KEY` → simulated dry-run.
+| Env | `INQUIRY_NOTIFY_EMAIL` |
+| Sandbox recipient | **`jennifer@hellotocheers.com`** |
+| Why not `hello@` | CFN documents hello@ as not a real mailbox |
+| Marketing task | `htc-sandbox-marketing:1138` → image `…/htc-sandbox-marketing:44d472d4…` → **INQUIRY_NOTIFY_EMAIL=jennifer@hellotocheers.com** |
+| Venue task | `htc-sandbox-venue-app:1164` → image `…/htc-sandbox-venue-app:44d472d4…` → **INQUIRY_NOTIFY_EMAIL=jennifer@hellotocheers.com** |
+| Resend | Existing `RESEND_API_KEY` secrets on both tasks (unchanged) |
 
 ---
 
 ## 3. Subscription notification — trigger & idempotency
 
-| Gate | Behavior |
-|---|---|
-| Trigger | `createVenueEnrollment` **only when `!existing`** after successful paid webhook enrollment |
-| Abandoned Checkout | No enrollment → **no notify** |
-| Webhook retry | Existing enrollment reused → **no second notify** |
-| Resend key | `htc-ops-subscription:{checkoutSessionId\|enrollmentId}` |
-| Content | Venue, purchaser name/email, tier, onboarding (LY vs WG), WG yes/no, discounts/claims, enrollment + Stripe refs, next action |
-| Attachments | None |
+- After successful paid enrollment, **first insert only** (`!existing` in `createVenueEnrollment`)
+- Abandoned Checkout → no notify  
+- Webhook retry → no duplicate  
+- Resend key: `htc-ops-subscription:{checkoutSessionId|enrollmentId}`  
+- Deployed on **marketing** image `44d472d4`
 
 ---
 
 ## 4. Intake notification — trigger & idempotency
 
-| Gate | Behavior |
-|---|---|
-| Trigger | After **successful** `submitOnboardingIntake` on WG intake POST |
-| Failed persist | Notify not called |
-| First submit only | `previousWhiteGloveStatus` not already in waiting/in_progress/… |
-| Edit / retry | Skipped (`not_first_submit`) + Resend key `htc-ops-wg-intake:{enrollmentId}` |
-| Content | Venue, customer email, existing-system choice, materials count (no files), HQ review URL `/admin/onboarding/{venueId}`, next action |
-| Attachments | **None** (explicit) |
+- After successful first WG intake persist only  
+- Edit/retry skipped; Resend key `htc-ops-wg-intake:{enrollmentId}`  
+- No file attachments  
+- Deployed on **venue-app** image `44d472d4`
 
 ---
 
-## 5. Test results
+## 5. Test / build results (pre-redeploy)
 
-```text
-npx tsx --test \
-  shared/email/ops-notify.test.ts \
-  lib/onboarding/white-glove-ops-notify.test.ts \
-  marketing/lib/crm/notify.test.ts \
-  lib/onboarding/types.test.ts \
-  lib/onboarding/materials.test.ts \
-  lib/onboarding/tasting-signal.test.ts
-→ 29 pass / 0 fail
-```
-
-Covers: unset config skip, simulated send, first vs retry intake, no attachment leakage, subscription first-insert + idempotency wiring, UX regression strings.
-
-Legal acceptance logic **unchanged**.
+- Focused notify/UX tests: **29/29 PASS**  
+- `workspace` `npm run build`: **PASS** (was the failing Docker job)  
+- `marketing` `npm run build`: **PASS**  
+- Venue root `npm run build`: **PASS**
 
 ---
 
-## 6. Deployment SHA and workflow
+## 6. Deployment evidence
 
-- **SHA:** `4a3b512684ce619ded3456531338e1bb6c5783b6`
-- **Workflow:** `deploy-sandbox.yml` run **42923431146**
-- **URL:** https://github.com/jlcormier612/wevenu-website/actions/runs/42923431146
+- Workflow: https://github.com/jlcormier612/wevenu-website/actions/runs/42928030980  
+- Conclusion: **success** (all build jobs + Deploy application stack + Wait & verify)  
+- Serving SHA tag: **`44d472d4eebd1193a9d7ace1159a549bbded3394`**
 
 ---
 
 ## 7. Serving Sandbox verification
 
-**Pending deploy completion.** After success, verify:
+### ECS
+Confirmed via `aws ecs describe-services` / `describe-task-definition` (above).
 
-1. ECS marketing + venue task defs include `INQUIRY_NOTIFY_EMAIL=jennifer@hellotocheers.com`
-2. Intake page copy (welcome / upload limits) on `app.sandbox.hellotocheers.com`
-3. No customer emails/SMS from probes
+### White Glove UX (live)
+`GET https://app.sandbox.hellotocheers.com/onboarding/white-glove/intake_0390…` → **200**
 
----
+| Check | Result |
+|---|---|
+| “Welcome to White Glove Setup” | Present |
+| “login is already set” | **Absent** |
+| Access-after-setup copy | Present |
+| “Tell us about your venue” | Present |
+| Upload limits 25 MB / 40 files | Present |
+| HoneyBook / warm migration language | Present |
 
-## 8. Actual delivery evidence
-
-### Controlled Resend probes (no Stripe, no customer intake)
-
-| Probe | Resend id | Recipient | HTTP | last_event |
-|---|---|---|---|---|
-| Subscription-shaped | `01a1c7c9-c64c-7802-999b-54a3d589aa0f` | jennifer@hellotocheers.com | 200 | **`delivered`** |
-| Intake-shaped | `01a1c7c9-c6cd-73e9-af3e-94e208662ae6` | jennifer@hellotocheers.com | 200 | **`delivered`** |
-
-Subjects include `[SANDBOX PROBE]` and stamp `2026-11-10T23-27-31-762Z`. No customer documents attached. No Stripe charge.
-
----
-
-## 9. Remaining blockers
-
-1. Finish Sandbox deploy `42923431146` and confirm serving SHA / ECS env includes `INQUIRY_NOTIFY_EMAIL=jennifer@hellotocheers.com`.  
-2. Optional visual confirm of the two `[SANDBOX PROBE]` messages in jennifer@ (Resend already reports `delivered`).  
-3. Optional: live first-intake notify still not exercised on disposable Willow Grove enrollment (intake not submitted per instruction).  
-4. Production: CFN default applies; production deploy workflow should pass `InquiryNotifyEmail` explicitly when Production is authorized.
+### Customer emails
+Repair commit did not change customer template definitions; no customer emails/SMS sent during this repair verification.
 
 ---
 
-## 10. Legal safety (unchanged)
+## 8. Delivery evidence (distinguish probe types)
 
-Two-stage model preserved: Stripe metadata at checkout; `legal_acceptances` at Activate. No WG staff activation changes.
+### A. Earlier controlled Resend API probes (transport only)
+Not the serving webhook/intake HTTP path. Both **`delivered`** to jennifer@:
+
+- `01a1c7c9-c64c-7802-999b-54a3d589aa0f`  
+- `01a1c7c9-c6cd-73e9-af3e-94e208662ae6`  
+
+### B. End-to-end serving HTTP notify
+**Not re-executed** in this repair pass:
+
+- No new paid Checkout (not authorized)  
+- Disposable Willow Grove intake **not submitted** (per instruction)  
+
+Serving proof for notify is therefore: **correct image SHA + `INQUIRY_NOTIFY_EMAIL` on both task defs + code present in that SHA**. Full HTTP path remains available for a later disposable exercise.
 
 ---
 
-## Recommended follow-up (same chat or next)
+## 9. Remaining gaps (non-blocking for this repair)
 
-1. Confirm deploy SUCCESS.  
-2. `aws ecs describe-task-definition` for marketing + venue → assert `INQUIRY_NOTIFY_EMAIL`.  
-3. Confirm jennifer@ inbox (or Resend `delivered`).  
-4. Upgrade this report to **GREEN** when 1–3 pass.
+1. Optional: one disposable Launch Yourself or WG purchase to prove marketing webhook → ops email on serving.  
+2. Optional: submit a **new** disposable WG intake (not the user’s open form) to prove venue intake → ops email.  
+3. Production deploy must pass `InquiryNotifyEmail` when Production is authorized.
+
+---
+
+## 10. Legal safety
+
+Unchanged two-stage model. No WG staff activation changes.
