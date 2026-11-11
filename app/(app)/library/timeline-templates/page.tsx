@@ -19,7 +19,7 @@ export default async function TimelineTemplatesPage() {
     .map((m) => m.key);
 
   return (
-    <div className="space-y-6">
+    <div className="htc-hospitality-page htc-hospitality-heading htc-hospitality-intro-accent space-y-6">
       <PageHeader
         title="Timeline Templates"
         description="Reusable day-of schedules a venue builds once and applies to any booking."

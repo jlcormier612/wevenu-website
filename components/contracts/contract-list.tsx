@@ -64,7 +64,7 @@ export function ContractList({ contracts }: { contracts: Contract[] }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+      <div className="htc-hospitality-toolbar flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
           <Input value={query} onChange={(e) => setQuery(e.target.value)}
@@ -108,7 +108,7 @@ export function ContractList({ contracts }: { contracts: Contract[] }) {
       )}
 
       {filtered.length > 0 && (
-        <div className="rounded-xl border border-border bg-card">
+        <div className="rounded-xl htc-hospitality-table border border-border bg-card">
           <Table>
             <TableHeader>
               <TableRow>

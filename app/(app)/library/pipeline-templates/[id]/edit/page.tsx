@@ -20,7 +20,7 @@ export default async function EditPipelineTemplatePage({ params }: Props) {
   const template = await getTemplate(id);
   if (!template) notFound();
   return (
-    <div className="space-y-6">
+    <div className="htc-hospitality-page htc-hospitality-heading htc-hospitality-intro-accent space-y-6">
       <PageHeader
         title={`Edit · ${template.name}`}
         description="Update the stages. Nothing here affects your current Leads pipeline yet."

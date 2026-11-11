@@ -47,7 +47,7 @@ export default async function SetupHubPage() {
   const isWhiteGlove = hubState?.onboardingType === "white_glove";
 
   return (
-    <div className="htc-hospitality-page space-y-6">
+    <div className="htc-hospitality-page htc-hospitality-heading htc-hospitality-intro-accent space-y-6">
       <PageHeader
         title="Setup"
         description={

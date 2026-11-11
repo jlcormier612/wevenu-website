@@ -18,7 +18,7 @@ export default function NewTemplatePage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="htc-hospitality-page htc-hospitality-heading htc-hospitality-intro-accent space-y-6">
       <PageHeader title="New Template" description="Create a reusable contract template with merge fields." />
       <Card>
         <CardHeader>

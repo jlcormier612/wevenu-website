@@ -8,7 +8,7 @@ export const metadata: Metadata = { title: "New Pipeline Template" };
 
 export default function NewPipelineTemplatePage() {
   return (
-    <div className="space-y-6">
+    <div className="htc-hospitality-page htc-hospitality-heading htc-hospitality-intro-accent space-y-6">
       <PageHeader title="New Pipeline Template" description="Build an ordered set of stages. Nothing here affects your current Leads pipeline yet." />
       <Card>
         <CardHeader>

@@ -11,7 +11,7 @@ export const metadata: Metadata = { title: "New Automation" };
 export default async function NewSeriesPage() {
   const templates = await getTemplates();
   return (
-    <div className="space-y-6">
+    <div className="htc-hospitality-page htc-hospitality-heading htc-hospitality-intro-accent space-y-6">
       <PageHeader
         title="New Automation"
         description="Choose who it starts for, what messages go out, and when. You’ll see a plain-language preview before you save."

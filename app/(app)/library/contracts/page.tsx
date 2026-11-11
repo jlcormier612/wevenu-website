@@ -15,7 +15,7 @@ export default async function ContractTemplatesLibraryPage() {
   await ensureContractStartersForCurrentVenue();
   const templates = await getTemplates(true);
   return (
-    <div className="space-y-6">
+    <div className="htc-hospitality-page htc-hospitality-heading htc-hospitality-intro-accent space-y-6">
       <PageHeader
         title="Contract Templates"
         description="Reusable agreements with event details filled in from Hello to Cheers. Signed agreements live under Contracts."

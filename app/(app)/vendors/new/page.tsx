@@ -8,7 +8,7 @@ export const metadata: Metadata = { title: "Add Vendor" };
 
 export default function NewVendorPage() {
   return (
-    <div className="space-y-6">
+    <div className="htc-hospitality-page htc-hospitality-heading htc-hospitality-intro-accent space-y-6">
       <PageHeader title="Add Vendor" description="Add a vendor to your directory." />
       <Card>
         <CardHeader>

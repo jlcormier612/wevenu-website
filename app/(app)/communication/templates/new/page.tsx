@@ -8,7 +8,7 @@ export const metadata: Metadata = { title: "New Template" };
 
 export default function NewMessageTemplatePage() {
   return (
-    <div className="space-y-6">
+    <div className="htc-hospitality-page htc-hospitality-heading htc-hospitality-intro-accent space-y-6">
       <PageHeader title="New Template" description="Create a reusable email or text message with merge fields." />
       <Card>
         <CardHeader>

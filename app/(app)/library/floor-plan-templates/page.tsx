@@ -20,7 +20,7 @@ export default async function FloorPlanTemplatesPage() {
     getTemplatesForLibrary(), getSpaces(), getCurrentVenue(), getEvents(), getCurrentUserRole(),
   ]);
   return (
-    <div className="space-y-6">
+    <div className="htc-hospitality-page htc-hospitality-heading htc-hospitality-intro-accent space-y-6">
       <PageHeader
         title="Floor Plan Templates"
         description="Reusable room layouts a venue builds once and applies to any booking."

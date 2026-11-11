@@ -92,14 +92,16 @@ export default async function DashboardPage({ searchParams }: Props) {
     : null;
 
   return (
-    <div className="space-y-8">
+    <div className="htc-hospitality-page space-y-4 sm:space-y-6">
       <MilestoneToast milestone={data.nextPendingMilestone} />
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <Greeting venueName={data.venueName} ownerFirstName={data.ownerFirstName} />
-        <Button render={<Link href="/leads/new" />} className="sm:shrink-0">
-          + New Lead
-        </Button>
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <Greeting venueName={data.venueName} ownerFirstName={data.ownerFirstName} />
+          <Button render={<Link href="/leads/new" />} className="w-full sm:w-auto sm:shrink-0">
+            + New Lead
+          </Button>
+        </div>
       </div>
 
       <DashboardLuvIntro
@@ -142,6 +144,7 @@ export default async function DashboardPage({ searchParams }: Props) {
           icon={<CalendarClock className="h-4 w-4 text-muted-foreground" />}
           title="Coming up"
           description="Events in the next 60 days."
+          className="htc-surface-guidance"
           items={upcomingItems}
           getKey={(i) => i.id}
           emptyState={
@@ -156,7 +159,7 @@ export default async function DashboardPage({ searchParams }: Props) {
       <section>
         <Link
           href="/reporting"
-          className="flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3 text-sm hover:bg-muted/40 transition-colors"
+          className="flex items-center justify-between rounded-[0.75rem] border border-[color:var(--htc-border-warm)] bg-card px-4 py-3 text-sm hover:bg-muted/40 transition-colors"
         >
           <span className="font-medium text-foreground">View Reports</span>
           <ChevronRight className="h-4 w-4 text-muted-foreground" />
