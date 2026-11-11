@@ -24,7 +24,7 @@ export default async function PackagesPage() {
 
   return (
     <div className="htc-hospitality-page space-y-6">
-      <div className="flex items-start justify-between gap-4">
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent flex items-start justify-between gap-4">
         <PageHeader
           title="Packages"
           description="Define your venue offerings. Customize starters, set pricing, then use them on invoices and Event Orders."

@@ -24,10 +24,12 @@ export default async function FinancialsIntegrationsSettingsPage() {
 
   return (
     <div className="htc-hospitality-page space-y-6">
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
       <PageHeader
         title="Financials & Integrations"
         description="Payments, accounting, and connected services."
       />
+      </div>
       <SettingsTabs />
 
       {venue && (

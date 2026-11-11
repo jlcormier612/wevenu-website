@@ -96,25 +96,25 @@ export function RequestManager({
 
   return (
     <div className="space-y-8">
-      <div className="border rounded-md p-4 space-y-3">
-        <h2 className="font-medium">New Request</h2>
+      <div className="htc-surface-working space-y-3 p-4">
+        <h2 className="font-medium text-heading">New Request</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <select className="border rounded px-2 py-1.5 text-sm" value={form.clientId}
+          <select className="rounded border border-[color:var(--htc-border-warm)] bg-card px-2 py-1.5 text-sm" value={form.clientId}
             onChange={(e) => setForm((f) => ({ ...f, clientId: e.target.value }))}>
             <option value="">Select client…</option>
             {clients.map((c) => (
               <option key={c.id} value={c.id}>{clientDisplayName(c.firstName, c.lastName, c.partnerFirstName, c.partnerLastName)}</option>
             ))}
           </select>
-          <select className="border rounded px-2 py-1.5 text-sm" value={form.requestType}
+          <select className="rounded border border-[color:var(--htc-border-warm)] bg-card px-2 py-1.5 text-sm" value={form.requestType}
             onChange={(e) => setForm((f) => ({ ...f, requestType: e.target.value as RequestType }))}>
             {REQUEST_TYPES.map((t) => <option key={t} value={t}>{REQUEST_TYPE_LABELS[t]}</option>)}
           </select>
-          <input className="border rounded px-2 py-1.5 text-sm sm:col-span-2" placeholder="Title"
+          <input className="rounded border border-[color:var(--htc-border-warm)] bg-card px-2 py-1.5 text-sm sm:col-span-2" placeholder="Title"
             value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} />
-          <textarea className="border rounded px-2 py-1.5 text-sm sm:col-span-2" placeholder="Description (optional)"
+          <textarea className="rounded border border-[color:var(--htc-border-warm)] bg-card px-2 py-1.5 text-sm sm:col-span-2" placeholder="Description (optional)"
             value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} />
-          <input type="date" className="border rounded px-2 py-1.5 text-sm" value={form.dueDate}
+          <input type="date" className="rounded border border-[color:var(--htc-border-warm)] bg-card px-2 py-1.5 text-sm" value={form.dueDate}
             onChange={(e) => setForm((f) => ({ ...f, dueDate: e.target.value }))} />
         </div>
         <button className="border rounded px-3 py-1.5 text-sm disabled:opacity-50"
@@ -123,19 +123,19 @@ export function RequestManager({
         </button>
       </div>
 
-      <div className="space-y-3">
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <h2 className="font-medium">Requests ({filtered.length})</h2>
+      <div className="htc-surface-working space-y-3 p-4" data-testid="requests-list-shell">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="font-medium text-heading">Requests ({filtered.length})</h2>
           <div className="flex items-center gap-2">
-            <select className="border rounded px-2 py-1 text-xs" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+            <select className="rounded border border-[color:var(--htc-border-warm)] bg-card px-2 py-1 text-xs" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
               <option value={ALL}>All statuses</option>
               {REQUEST_STATUSES.map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
             </select>
-            <select className="border rounded px-2 py-1 text-xs" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
+            <select className="rounded border border-[color:var(--htc-border-warm)] bg-card px-2 py-1 text-xs" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
               <option value={ALL}>All types</option>
               {REQUEST_TYPES.map((t) => <option key={t} value={t}>{REQUEST_TYPE_LABELS[t]}</option>)}
             </select>
-            <select className="border rounded px-2 py-1 text-xs" value={assigneeFilter} onChange={(e) => setAssigneeFilter(e.target.value)}>
+            <select className="rounded border border-[color:var(--htc-border-warm)] bg-card px-2 py-1 text-xs" value={assigneeFilter} onChange={(e) => setAssigneeFilter(e.target.value)}>
               <option value={ALL}>Anyone assigned</option>
               {teamMembers.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
             </select>
@@ -144,7 +144,7 @@ export function RequestManager({
         {filtered.length === 0 ? (
           <p className="text-sm text-muted-foreground">No requests match these filters.</p>
         ) : (
-          <table className="w-full text-sm border-collapse">
+          <div className="htc-hospitality-table overflow-x-auto"><table className="w-full text-sm border-collapse">
             <thead>
               <tr className="text-left border-b">
                 <th className="py-1.5 pr-3">Title</th>
@@ -189,7 +189,7 @@ export function RequestManager({
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         )}
       </div>
     </div>

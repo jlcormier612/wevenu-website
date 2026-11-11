@@ -54,10 +54,12 @@ export default async function CommunicationsAutomationSettingsPage() {
 
   return (
     <div className="htc-hospitality-page space-y-6">
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
       <PageHeader
         title="Communications & Automation"
         description="Notifications, follow-ups, texting, and Luv."
       />
+      </div>
       <SettingsTabs />
 
       <TextMessagingSetupSection initial={textingSetup} />

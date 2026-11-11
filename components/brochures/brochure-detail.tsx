@@ -122,7 +122,8 @@ export function BrochureDetail({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="htc-hospitality-page space-y-5 sm:space-y-6">
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
       <BusinessAssetHeader
         backHref="/library/brochures"
         backLabel="Brochures"
@@ -147,8 +148,9 @@ export function BrochureDetail({
           </div>
         }
       />
+      </div>
 
-      <Card>
+      <Card className="htc-working-card gap-0 py-0">
         <CardHeader><p className="text-sm font-medium text-heading">Content</p></CardHeader>
         <CardContent className="space-y-5">
           <div className="space-y-1.5">
@@ -187,7 +189,7 @@ export function BrochureDetail({
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="htc-working-card gap-0 py-0">
         <CardHeader><p className="text-sm font-medium text-heading">Photography</p></CardHeader>
         <CardContent>
           <BrochurePhotosEditor
@@ -201,7 +203,7 @@ export function BrochureDetail({
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="htc-working-card gap-0 py-0">
         <CardHeader><p className="text-sm font-medium text-heading">Share with a lead</p></CardHeader>
         <CardContent className="space-y-3">
           <p className="text-xs text-muted-foreground">
@@ -218,7 +220,7 @@ export function BrochureDetail({
       </Card>
 
       {brochure.activities.length > 0 && (
-        <Card>
+        <Card className="htc-working-card gap-0 py-0">
           <CardHeader><p className="text-sm font-medium text-heading">Activity</p></CardHeader>
           <CardContent><ActivityTimeline activities={brochure.activities} /></CardContent>
         </Card>

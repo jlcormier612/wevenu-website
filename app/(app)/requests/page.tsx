@@ -27,7 +27,7 @@ export default async function RequestsPage() {
 
   return (
     <div className="htc-hospitality-page space-y-6">
-      <div>
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
         <h1 className="text-2xl font-semibold">Requests</h1>
         <p className="text-sm text-muted-foreground">
           Everything you&apos;ve asked a couple or vendor to do, across every booking — assign it, track it, and see where it stands.

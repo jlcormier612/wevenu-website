@@ -70,12 +70,12 @@ export function VendorList({ vendors }: { vendors: Vendor[] }) {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
           <Input value={query} onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search vendors…" className="pl-9" />
+            placeholder="Search vendors…" className="border-[color:var(--htc-border-warm)] bg-card pl-9" />
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
           <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" />
           <Select value={sort} onValueChange={(v) => setSort(v as SortKey)} items={SORT_OPTIONS}>
-            <SelectTrigger className="h-9 w-40 text-sm border-border">
+            <SelectTrigger className="h-9 w-40 border-[color:var(--htc-border-warm)] bg-card text-sm text-muted-foreground">
               <SelectValue placeholder="A → Z" />
             </SelectTrigger>
             <SelectContent>
@@ -145,7 +145,7 @@ export function VendorList({ vendors }: { vendors: Vendor[] }) {
                 return (
                 <TableRow key={vendor.id} className="group">
                   <TableCell className="font-medium text-foreground">
-                    <Link href={`/vendors/${vendor.id}`} className="hover:text-primary">
+                    <Link href={`/vendors/${vendor.id}`} className="htc-record-link">
                       {vendor.businessName}
                     </Link>
                   </TableCell>
@@ -169,7 +169,7 @@ export function VendorList({ vendors }: { vendors: Vendor[] }) {
                         </Badge>
                       )}
                       {vendor.isRequired && (
-                        <Badge className="gap-1 bg-foreground text-background hover:bg-foreground">
+                        <Badge className="htc-badge-attention gap-1">
                           Required
                         </Badge>
                       )}

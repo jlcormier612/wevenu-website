@@ -113,7 +113,7 @@ export function InventoryTemplateDetail({ template, catalogItems }: { template: 
   }
 
   return (
-    <div className="space-y-6">
+    <div className="htc-hospitality-page space-y-5 sm:space-y-6">
       <BusinessAssetHeader
         backHref="/library/inventory-templates"
         backLabel="Inventory Templates"

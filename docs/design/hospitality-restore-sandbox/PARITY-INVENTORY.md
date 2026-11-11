@@ -1,15 +1,22 @@
-# Hospitality Parity Inventory — f22b8c14 vs origin/main
+# Hospitality Parity Inventory — f22b8c14 vs integration candidate
 
 - Approved reference: `f22b8c14`
-- Current main: `7582d7c7`
-- Files with hospitality markers on f22: **127**
-- Same markers present on main: **36**
-- Present on both: **29**
-- Still absent from main (marker files): **98**
+- Base main: `c9115c9f`
+- Candidate HEAD: `c9115c9f` (uncommitted ports included in working tree)
+- Generated: 2026-11-11T19:56Z
 
-## Present on main (hospitality-marked)
+| Bucket | Count |
+| --- | ---: |
+| Already integrated / marker parity | 38 |
+| Partially integrated | 25 |
+| Missing but portable (imports resolve) | 1 |
+| Missing / blocked by deps | 40 |
+| Absent file, no missing imports | 24 |
+
+## Already integrated
 - `app/(app)/clients/page.tsx`
 - `app/(app)/communication/series/page.tsx`
+- `app/(app)/communication/templates/page.tsx`
 - `app/(app)/contracts/page.tsx`
 - `app/(app)/dashboard/page.tsx`
 - `app/(app)/guide/page.tsx`
@@ -17,9 +24,14 @@
 - `app/(app)/invoices/page.tsx`
 - `app/(app)/leads/page.tsx`
 - `app/(app)/leads/pipeline/page.tsx`
-- `app/(app)/library/page.tsx`
+- `app/(app)/library/brochures/page.tsx`
+- `app/(app)/library/contracts/page.tsx`
+- `app/(app)/library/floor-plan-templates/page.tsx`
+- `app/(app)/library/pipeline-templates/page.tsx`
+- `app/(app)/library/questionnaire-templates/page.tsx`
+- `app/(app)/library/timeline-templates/page.tsx`
+- `app/(app)/messaging/health/page.tsx`
 - `app/(app)/packages/page.tsx`
-- `app/(app)/payments/page.tsx`
 - `app/(app)/requests/page.tsx`
 - `app/(app)/settings/communications/page.tsx`
 - `app/(app)/settings/import/page.tsx`
@@ -30,139 +42,112 @@
 - `app/(app)/tasks/page.tsx`
 - `app/(app)/tours/page.tsx`
 - `app/(app)/vendors/page.tsx`
-- `app/globals.css`
-- `components/clients/client-list.tsx`
+- `components/brochures/brochure-detail.tsx`
+- `components/contracts/contract-list.tsx`
+- `components/events/timeline/timeline-summary-bar.tsx`
 - `components/help/integration-setup-guide.tsx`
-- `components/leads/lead-list.tsx`
 - `components/relationship/relationship-tab-shell.tsx`
 - `components/reporting/date-range-control.tsx`
-- `lib/theme/htc-visual-system.test.ts`
+- `components/reporting/report-tabs.tsx`
+- `components/reporting/reports-layout-shell.tsx`
+- `lib/theme/staff-light-canvas.test.ts`
+- `lib/ui/selected-state.ts`
 
-## Absent from main by category
-### app-pages (46)
-- `app/(app)/account/password/page.tsx` (file absent on main)
-- `app/(app)/clients/[id]/edit/page.tsx` (file exists; needs class/port)
-- `app/(app)/clients/new/page.tsx` (file exists; needs class/port)
-- `app/(app)/communication/series/[id]/edit/page.tsx` (file exists; needs class/port)
-- `app/(app)/communication/series/new/page.tsx` (file exists; needs class/port)
-- `app/(app)/communication/templates/[id]/edit/page.tsx` (file exists; needs class/port)
-- `app/(app)/communication/templates/new/page.tsx` (file exists; needs class/port)
-- `app/(app)/communication/templates/page.tsx` (file exists; needs class/port)
-- `app/(app)/contracts/templates/[id]/edit/page.tsx` (file exists; needs class/port)
-- `app/(app)/contracts/templates/new/page.tsx` (file exists; needs class/port)
-- `app/(app)/events/[id]/edit/page.tsx` (file exists; needs class/port)
-- `app/(app)/feedback/page.tsx` (file absent on main)
-- `app/(app)/leads/[id]/edit/page.tsx` (file exists; needs class/port)
-- `app/(app)/leads/new/page.tsx` (file exists; needs class/port)
-- `app/(app)/library/brochures/page.tsx` (file exists; needs class/port)
-- `app/(app)/library/contracts/page.tsx` (file exists; needs class/port)
-- `app/(app)/library/documents/page.tsx` (file absent on main)
-- `app/(app)/library/event-order-templates/page.tsx` (file exists; needs class/port)
-- `app/(app)/library/floor-plan-templates/[id]/page.tsx` (file exists; needs class/port)
-- `app/(app)/library/floor-plan-templates/page.tsx` (file exists; needs class/port)
-- `app/(app)/library/inventory-templates/page.tsx` (file exists; needs class/port)
-- `app/(app)/library/inventory/[id]/edit/page.tsx` (file exists; needs class/port)
-- `app/(app)/library/inventory/new/page.tsx` (file exists; needs class/port)
-- `app/(app)/library/inventory/page.tsx` (file exists; needs class/port)
-- `app/(app)/library/pipeline-templates/[id]/edit/page.tsx` (file exists; needs class/port)
-- `app/(app)/library/pipeline-templates/new/page.tsx` (file exists; needs class/port)
-- `app/(app)/library/pipeline-templates/page.tsx` (file exists; needs class/port)
-- `app/(app)/library/playbooks/[id]/page.tsx` (file exists; needs class/port)
-- `app/(app)/library/playbooks/page.tsx` (file exists; needs class/port)
-- `app/(app)/library/questionnaire-templates/page.tsx` (file exists; needs class/port)
-- `app/(app)/library/timeline-templates/[id]/page.tsx` (file exists; needs class/port)
-- `app/(app)/library/timeline-templates/page.tsx` (file exists; needs class/port)
-- `app/(app)/messaging/conversation-inbox.tsx` (file exists; needs class/port)
-- `app/(app)/messaging/health/page.tsx` (file exists; needs class/port)
-- `app/(app)/packages/[id]/page.tsx` (file exists; needs class/port)
-- `app/(app)/packages/new/page.tsx` (file exists; needs class/port)
-- `app/(app)/settings/availability/page.tsx` (file exists; needs class/port)
-- `app/(app)/settings/billing/page.tsx` (file absent on main)
-- `app/(app)/settings/business/page.tsx` (file exists; needs class/port)
-- `app/(app)/settings/leads/page.tsx` (file exists; needs class/port)
-- `app/(app)/settings/leads/setup-profiles/page.tsx` (file absent on main)
-- `app/(app)/settings/migration/page.tsx` (file exists; needs class/port)
-- `app/(app)/settings/referrals/page.tsx` (file absent on main)
-- `app/(app)/settings/team/page.tsx` (file exists; needs class/port)
-- `app/(app)/vendors/[id]/edit/page.tsx` (file exists; needs class/port)
-- `app/(app)/vendors/new/page.tsx` (file exists; needs class/port)
+## Partially integrated
+- `app/(app)/clients/new/page.tsx` (cur=3 f22=4)
+- `app/(app)/communication/series/[id]/edit/page.tsx` (cur=3 f22=5)
+- `app/(app)/communication/series/new/page.tsx` (cur=3 f22=4)
+- `app/(app)/communication/templates/new/page.tsx` (cur=3 f22=4)
+- `app/(app)/contracts/templates/new/page.tsx` (cur=3 f22=4)
+- `app/(app)/library/inventory/new/page.tsx` (cur=3 f22=5)
+- `app/(app)/library/page.tsx` (cur=1 f22=4)
+- `app/(app)/library/pipeline-templates/[id]/edit/page.tsx` (cur=3 f22=4)
+- `app/(app)/library/pipeline-templates/new/page.tsx` (cur=3 f22=4)
+- `app/(app)/packages/[id]/page.tsx` (cur=3 f22=7)
+- `app/(app)/packages/new/page.tsx` (cur=3 f22=5)
+- `app/(app)/payments/page.tsx` (cur=1 f22=3)
+- `app/(app)/vendors/[id]/edit/page.tsx` (cur=3 f22=4)
+- `app/(app)/vendors/new/page.tsx` (cur=3 f22=4)
+- `components/clients/client-list.tsx` (cur=2 f22=4)
+- `components/document-workspace/document-workspace.tsx` (cur=6 f22=8)
+- `components/event-inventory/inventory-template-detail.tsx` (cur=1 f22=6)
+- `components/leads/lead-list.tsx` (cur=2 f22=3)
+- `components/offerings/offerings-library-section.tsx` (cur=1 f22=6)
+- `components/payments/payment-schedule-list.tsx` (cur=3 f22=5)
+- `components/questionnaire-templates/questionnaire-authoring-workspace.tsx` (cur=1 f22=3)
+- `components/requests/request-manager.tsx` (cur=3 f22=5)
+- `components/vendor-app/vendor-event-workspace.tsx` (cur=1 f22=6)
+- `components/vendors/vendor-list.tsx` (cur=4 f22=5)
+- `lib/theme/htc-visual-system.test.ts` (cur=9 f22=10)
 
-### components (25)
-- `components/brochures/brochure-detail.tsx` (file exists; needs class/port)
-- `components/calendar/calendar-page-client.tsx` (file absent on main)
-- `components/contracts/contract-list.tsx` (file exists; needs class/port)
-- `components/document-workspace/document-workspace.tsx` (file exists; needs class/port)
-- `components/event-inventory/inventory-template-detail.tsx` (file exists; needs class/port)
-- `components/event-order-templates/event-order-template-detail.tsx` (file exists; needs class/port)
-- `components/events/event-setup-panel.tsx` (file absent on main)
-- `components/events/questionnaire-family-panel.tsx` (file exists; needs class/port)
-- `components/events/timeline/timeline-summary-bar.tsx` (file exists; needs class/port)
-- `components/floor-plan-templates/floor-plan-template-editor-header.tsx` (file absent on main)
-- `components/library/library-documents-manager.tsx` (file absent on main)
-- `components/offerings/offerings-library-section.tsx` (file exists; needs class/port)
-- `components/offerings/offerings-page-client.tsx` (file absent on main)
-- `components/payments/payment-schedule-list.tsx` (file exists; needs class/port)
-- `components/playbooks/event-task-list.tsx` (file exists; needs class/port)
-- `components/playbooks/playbook-builder.tsx` (file exists; needs class/port)
-- `components/playbooks/playbook-template-editor-header.tsx` (file absent on main)
-- `components/public-forms/public-forms-page-client.tsx` (file absent on main)
-- `components/qr-campaigns/qr-campaigns-page-client.tsx` (file absent on main)
-- `components/questionnaire-templates/questionnaire-authoring-workspace.tsx` (file exists; needs class/port)
-- `components/reporting/reports-layout-shell.tsx` (file absent on main)
-- `components/requests/request-manager.tsx` (file exists; needs class/port)
-- `components/timeline-templates/timeline-template-editor-header.tsx` (file absent on main)
-- `components/vendor-app/vendor-event-workspace.tsx` (file exists; needs class/port)
-- `components/vendors/vendor-list.tsx` (file exists; needs class/port)
+## Missing but portable
+- `lib/dashboard-system/dashboard-page.test.ts`
 
-### lib (4)
-- `lib/communication/color-distribution-phase3.test.ts` (file absent on main)
-- `lib/dashboard-system/dashboard-page.test.ts` (file exists; needs class/port)
-- `lib/library/library-guidance-calm.test.ts` (file absent on main)
-- `lib/setup-hub/stage-section-runs.test.ts` (file absent on main)
+## Missing / dependency-blocked
+- `app/(app)/account/password/page.tsx`
+- `app/(app)/clients/[id]/edit/page.tsx`
+- `app/(app)/communication/templates/[id]/edit/page.tsx`
+- `app/(app)/contracts/templates/[id]/edit/page.tsx`
+- `app/(app)/events/[id]/edit/page.tsx`
+- `app/(app)/leads/[id]/edit/page.tsx`
+- `app/(app)/leads/new/page.tsx`
+- `app/(app)/library/documents/page.tsx`
+- `app/(app)/library/event-order-templates/page.tsx`
+- `app/(app)/library/floor-plan-templates/[id]/page.tsx`
+- `app/(app)/library/inventory-templates/page.tsx`
+- `app/(app)/library/inventory/[id]/edit/page.tsx`
+- `app/(app)/library/inventory/page.tsx`
+- `app/(app)/library/playbooks/[id]/page.tsx`
+- `app/(app)/library/playbooks/page.tsx`
+- `app/(app)/library/timeline-templates/[id]/page.tsx`
+- `app/(app)/messaging/conversation-inbox.tsx`
+- `app/(app)/settings/availability/page.tsx`
+- `app/(app)/settings/billing/page.tsx`
+- `app/(app)/settings/business/page.tsx`
+- `app/(app)/settings/leads/page.tsx`
+- `app/(app)/settings/leads/setup-profiles/page.tsx`
+- `app/(app)/settings/migration/page.tsx`
+- `app/(app)/settings/referrals/page.tsx`
+- `app/(app)/settings/team/page.tsx`
+- `components/calendar/calendar-page-client.tsx`
+- `components/dashboard/business-snapshot.tsx`
+- `components/event-order-templates/event-order-template-detail.tsx`
+- `components/events/event-setup-panel.tsx`
+- `components/events/questionnaire-family-panel.tsx`
+- `components/floor-plan-templates/floor-plan-template-editor-header.tsx`
+- `components/library/library-documents-manager.tsx`
+- `components/offerings/offerings-page-client.tsx`
+- `components/playbooks/event-task-list.tsx`
+- `components/playbooks/playbook-builder.tsx`
+- `components/playbooks/playbook-template-editor-header.tsx`
+- `components/public-forms/public-forms-page-client.tsx`
+- `components/timeline-templates/timeline-template-editor-header.tsx`
+- `lib/dashboard/business-snapshot.test.ts`
+- `lib/setup-hub/stage-section-runs.test.ts`
 
-### theme-tests-helpers (23)
-- `lib/theme/calendar-availability-sharing.test.ts` (file absent on main)
-- `lib/theme/calendar-month-refinement.test.ts` (file absent on main)
-- `lib/theme/calendar-week-day-agenda-refinement.test.ts` (file absent on main)
-- `lib/theme/clients-offerings-hospitality.test.ts` (file absent on main)
-- `lib/theme/color-distribution-phase10.test.ts` (file absent on main)
-- `lib/theme/color-distribution-phase4.test.ts` (file absent on main)
-- `lib/theme/color-distribution-phase5.test.ts` (file absent on main)
-- `lib/theme/color-distribution-phase6.test.ts` (file absent on main)
-- `lib/theme/color-distribution-phase8.test.ts` (file absent on main)
-- `lib/theme/color-distribution-phase9.test.ts` (file absent on main)
-- `lib/theme/dashboard-hospitality.test.ts` (file absent on main)
-- `lib/theme/leads-vendors-hospitality.test.ts` (file absent on main)
-- `lib/theme/list-page-recipe.test.ts` (file absent on main)
-- `lib/theme/phase11a-record-interactions.test.ts` (file absent on main)
-- `lib/theme/phase11b-reports-tones.test.ts` (file absent on main)
-- `lib/theme/phase11c-calendar-hospitality.test.ts` (file absent on main)
-- `lib/theme/phase12-surface-balance.test.ts` (file absent on main)
-- `lib/theme/pipeline-board-hospitality.test.ts` (file absent on main)
-- `lib/theme/tours-main-workspace-hospitality.test.ts` (file absent on main)
-- `lib/theme/wave-g2-template-workspaces.test.ts` (file absent on main)
-- `lib/theme/wave-g3-relationship-tabs.test.ts` (file absent on main)
-- `lib/theme/wave-g4-leftover-editors.test.ts` (file absent on main)
-- `lib/theme/wave-g5-light-polish.test.ts` (file absent on main)
+## Absent (no missing imports; often tests-only or unused routes)
+- `app/(app)/feedback/page.tsx`
+- `components/qr-campaigns/qr-campaigns-page-client.tsx`
+- `lib/theme/calendar-availability-sharing.test.ts`
+- `lib/theme/calendar-month-refinement.test.ts`
+- `lib/theme/calendar-week-day-agenda-refinement.test.ts`
+- `lib/theme/clients-offerings-hospitality.test.ts`
+- `lib/theme/color-distribution-phase10-polish.test.ts`
+- `lib/theme/color-distribution-phase10.test.ts`
+- `lib/theme/color-distribution-phase8.test.ts`
+- `lib/theme/color-distribution-phase9.test.ts`
+- `lib/theme/dashboard-hospitality.test.ts`
+- `lib/theme/htc-dark-surface-remap.test.ts`
+- `lib/theme/leads-vendors-hospitality.test.ts`
+- `lib/theme/list-page-recipe.test.ts`
+- `lib/theme/phase11a-record-interactions.test.ts`
+- `lib/theme/phase11b-reports-tones.test.ts`
+- `lib/theme/phase11c-calendar-hospitality.test.ts`
+- `lib/theme/phase12-surface-balance.test.ts`
+- `lib/theme/pipeline-board-hospitality.test.ts`
+- `lib/theme/tours-main-workspace-hospitality.test.ts`
+- `lib/theme/wave-g2-template-workspaces.test.ts`
+- `lib/theme/wave-g3-relationship-tabs.test.ts`
+- `lib/theme/wave-g4-leftover-editors.test.ts`
+- `lib/theme/wave-g5-light-polish.test.ts`
 
-## Dependency blockers (do not blind-import)
-@/components/library/collection-back-link (NOW ADDED in PR23)
-@/components/library/starter-ownership-banner (NOW ADDED in PR23)
-@/lib/ui/selected-state (NOW ADDED in PR23)
-@/lib/navigation/attention (+ attention-service, inbox-ownership helpers)
-@/lib/authorization/membership
-@/lib/event-types/venue-options
-@/components/relationship-photos/*
-@/lib/relationship-photos/*
-@/shared/brand/logo
-@/lib/venue/active-context (+ venue-switcher) — multi-venue shell
-@/components/billing/* organization/referral cards
-@/lib/dashboard/business-snapshot
-… see TOP_MISSING list
-
-## Recommended forward waves
-1. **Wave A (this PR23):** build unblock + collection-back-link + selected-state + more page wrappers.
-2. **Wave B:** port `lead-list`/`client-list`/`vendor-list` hospitality recipes using selected-state; messaging inbox hospitality chrome without attention module.
-3. **Wave C:** `lib/navigation/attention` stack only if product still wants badge semantics on main.
-4. **Wave D:** multi-venue shell (`active-context`, venue-switcher) — large; separate PR.
-5. **Wave E:** relationship-photos, billing org cards, offerings catalog sections — feature-coupled.

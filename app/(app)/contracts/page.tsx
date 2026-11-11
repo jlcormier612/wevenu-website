@@ -12,6 +12,7 @@ export default async function ContractsPage() {
   const contracts = await getContracts();
   return (
     <div className="htc-hospitality-page space-y-6">
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
       <PageHeader
         title="Contracts"
         description="Prepare, send, and track agreements with your clients."
@@ -24,6 +25,7 @@ export default async function ContractsPage() {
           </div>
         }
       />
+      </div>
       <ContractList contracts={contracts} />
     </div>
   );

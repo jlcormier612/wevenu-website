@@ -14,7 +14,7 @@ export default async function HelpGuidesHomePage() {
 
   return (
     <div className="htc-hospitality-page space-y-8 max-w-3xl">
-      <div>
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
         <h1 className="text-xl font-bold text-foreground flex items-center gap-2">
           <BookOpen className="h-5 w-5 text-muted-foreground" aria-hidden />
           {HELP_GUIDES_TITLE}
@@ -34,7 +34,7 @@ export default async function HelpGuidesHomePage() {
               ) : null}
             </div>
 
-            <div className="rounded-sm border border-border bg-card divide-y divide-border">
+            <div className="htc-surface-working divide-y divide-border rounded-sm">
               {cat.articles.map((a) => (
                 <Link
                   key={a.slug}

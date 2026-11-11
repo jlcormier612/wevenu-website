@@ -89,16 +89,18 @@ export default async function SettingsPage() {
 
   return (
     <div className="htc-hospitality-page space-y-6">
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
       <PageHeader
         title="Settings"
         description="Make Hello to Cheers work the way your venue works."
       />
+      </div>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {categories.map((cat) => (
           <Link
             key={cat.href}
             href={cat.href}
-            className="flex flex-col gap-3 rounded-sm border border-border bg-card p-5 transition-colors hover:bg-muted/20"
+            className="htc-surface-working flex flex-col gap-3 rounded-sm p-5 transition-colors hover:bg-muted/20"
           >
             <div className="flex size-9 items-center justify-center rounded-sm bg-primary/10 text-primary">
               <cat.icon className="h-4.5 w-4.5" />
