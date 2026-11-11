@@ -3,7 +3,8 @@
  * Uses INQUIRY_NOTIFY_EMAIL + sendRawEmail. Never timeline'd. Never attaches files.
  */
 
-import { sendRawEmail, type RawSendResult } from "./client";
+import { sendRawEmail } from "./client";
+import type { RawSendResult } from "./types";
 
 export function resolveInquiryNotifyEmail(): string | null {
   const to = process.env.INQUIRY_NOTIFY_EMAIL?.trim() || "";

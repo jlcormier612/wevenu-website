@@ -27,7 +27,7 @@ describe("subscription ops notify content + wiring", () => {
   it("notifies only on first enrollment insert with Resend idempotency key", () => {
     assert.match(
       service,
-      /if \(!existing\) \{\s*await notifySubscriptionEnrollment\(record\);/s,
+      /if \(!existing\) \{\s*await notifySubscriptionEnrollment\(record\);/,
     );
     assert.match(notify, /htc-ops-subscription:/);
     assert.match(notify, /sendOpsInternalEmail/);
