@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { BookingsBySourceChart } from "@/components/reporting/bookings-by-source-chart";
 import { DateRangeControl } from "@/components/reporting/date-range-control";
 import { DetailPanel, DetailRow } from "@/components/reporting/detail-panel";
 import { ReportHeader } from "@/components/reporting/report-header";
@@ -16,6 +17,7 @@ import {
   getPeriodToursWithNames,
   getToursByAcquisitionSource,
 } from "@/lib/metrics/attribution";
+import { getLeadCohortBookingsBySource } from "@/lib/metrics/bookings-by-source";
 import {
   getAcquisitionSourceCohortBreakdown,
   getEventTypeCohortBreakdown,
@@ -65,7 +67,7 @@ export default async function SalesReportPage({ searchParams }: Props) {
     leadCoverage, bookingCoverage, toursBySource, bookingsBySource,
     timeToBook, revenueBySource,
     sourceCohort, timeToBookBySource, eventTypeCohort,
-    undatedBookings, periodTours,
+    undatedBookings, periodTours, cohortBookingsBySource,
   ] = await Promise.all([
     getConversionFunnel(window),
     getLeadsTrend(window),
@@ -86,6 +88,7 @@ export default async function SalesReportPage({ searchParams }: Props) {
     getEventTypeCohortBreakdown(window),
     getUndatedLifecycleBookingCount(),
     getPeriodToursWithNames(window),
+    getLeadCohortBookingsBySource(window),
   ]);
 
   const counts = funnel?.counts;
@@ -110,25 +113,24 @@ export default async function SalesReportPage({ searchParams }: Props) {
         <CardHeader>
           <CardTitle className="text-base">Leads from this period</CardTitle>
           <CardDescription>
-            These are leads created during the selected period. A lead can book after the selected period.{" "}
             {cohort.leadsEntered === 1
-              ? `1 lead was created during ${range.label}`
-              : `${cohort.leadsEntered} leads were created during ${range.label}`}
-            {" "}(lost leads stay in this group). {cohort.eventuallyBooked} of these leads later booked — the booking can happen after the selected period.
-            Bookings that happened during these dates are listed separately below as Bookings this period.
+              ? `1 lead created during ${range.label}`
+              : `${cohort.leadsEntered} leads created during ${range.label}`}
+            {" — "}
+            {cohort.eventuallyBooked} later booked.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid gap-3 sm:grid-cols-3">
-            <Link href={hrefWith(params, { detail: "stage:inquiry" })} className="rounded-md border border-border px-3 py-2 hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          <div className="grid gap-3 sm:grid-cols-3" data-sales-leads-kpis="">
+            <Link href={hrefWith(params, { detail: "stage:inquiry" })} className="htc-report-metric-tile hover:brightness-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" data-tone="sales" data-report-metric-tile="">
               <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Leads</p>
               <p className="text-lg font-semibold tabular-nums text-heading">{cohort.leadsEntered}</p>
             </Link>
-            <Link href={hrefWith(params, { detail: "stage:booked" })} className="rounded-md border border-border px-3 py-2 hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <Link href={hrefWith(params, { detail: "stage:booked" })} className="htc-report-metric-tile hover:brightness-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" data-tone="bookings" data-report-metric-tile="">
               <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Leads who booked</p>
               <p className="text-lg font-semibold tabular-nums text-heading">{cohort.eventuallyBooked}</p>
             </Link>
-            <div className="rounded-md border border-border px-3 py-2">
+            <div className="htc-report-metric-tile" data-tone="bookings" data-report-metric-tile="">
               <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Booking rate</p>
               <p className="text-lg font-semibold tabular-nums text-heading">{cohort.conversionRate}%</p>
               <p className="text-[11px] text-muted-foreground">Leads who booked ÷ leads</p>
@@ -139,6 +141,23 @@ export default async function SalesReportPage({ searchParams }: Props) {
             {leadCoverage.percent}% of these leads have a known source
             ({leadCoverage.known} of {leadCoverage.total}). Missing source is listed as Not recorded.
           </p>
+
+          <details className="rounded-sm border border-border bg-muted/20 px-3 py-2" data-sales-leads-method="">
+            <summary className="cursor-pointer text-sm font-medium text-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              How these numbers are calculated
+            </summary>
+            <div className="mt-2 space-y-2 text-xs text-muted-foreground">
+              <p>
+                These are leads created during the selected period. A lead can book after the selected period.
+                Lost leads stay in this group. {cohort.eventuallyBooked} of these leads later booked —
+                the booking can happen after the selected period.
+              </p>
+              <p>
+                Bookings that happened during these dates are listed separately below as Bookings this period.
+                Conversion rates use this lead cohort as the denominator.
+              </p>
+            </div>
+          </details>
 
           <div>
             <p className="mb-2 text-sm font-medium text-heading">Where leads came from</p>
@@ -203,6 +222,8 @@ export default async function SalesReportPage({ searchParams }: Props) {
             )}
           </div>
 
+          <BookingsBySourceChart report={cohortBookingsBySource} compact />
+
           <div>
             <p className="mb-2 text-sm font-medium text-heading">How these leads progressed</p>
             <p className="mb-3 text-xs text-muted-foreground">
@@ -266,19 +287,19 @@ export default async function SalesReportPage({ searchParams }: Props) {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <Link href={hrefWith(params, { detail: "stage:inquiry" })} className="rounded-md border border-border px-3 py-2 hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <Link href={hrefWith(params, { detail: "stage:inquiry" })} className="htc-report-metric-tile hover:brightness-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" data-tone="sales" data-report-metric-tile="">
               <p className="text-[11px] uppercase tracking-wide text-muted-foreground">New leads</p>
               <p className="text-lg font-semibold tabular-nums text-heading">{leads.total}</p>
             </Link>
-            <Link href={hrefWith(params, { detail: "period-tours" })} className="rounded-md border border-border px-3 py-2 hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <Link href={hrefWith(params, { detail: "period-tours" })} className="htc-report-metric-tile hover:brightness-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" data-tone="sales" data-report-metric-tile="">
               <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Tours this period</p>
               <p className="text-lg font-semibold tabular-nums text-heading">{periodTours.length}</p>
             </Link>
-            <Link href={hrefWith(params, { detail: "period-bookings" })} className="rounded-md border border-border px-3 py-2 hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <Link href={hrefWith(params, { detail: "period-bookings" })} className="htc-report-metric-tile hover:brightness-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" data-tone="bookings" data-report-metric-tile="">
               <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Bookings this period</p>
               <p className="text-lg font-semibold tabular-nums text-heading">{periodBookings.length}</p>
             </Link>
-            <div className="rounded-md border border-border px-3 py-2">
+            <div className="htc-report-metric-tile" data-tone="neutral" data-report-metric-tile="">
               <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Currently booked</p>
               <p className="text-lg font-semibold tabular-nums text-heading">{currentlyBooked}</p>
               <p className="text-[11px] text-muted-foreground">On your pipeline right now — not this period&apos;s booking count</p>
@@ -333,11 +354,11 @@ export default async function SalesReportPage({ searchParams }: Props) {
           )}
 
           <div className="grid gap-3 sm:grid-cols-2">
-            <div className="rounded-md border border-border px-3 py-2">
+            <div className="htc-report-metric-tile" data-tone="contracted" data-report-metric-tile="">
               <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Contracted</p>
               <p className="text-lg font-semibold tabular-nums text-heading">{formatMoney(grossRevenue ?? 0)}</p>
             </div>
-            <div className="rounded-md border border-border px-3 py-2">
+            <div className="htc-report-metric-tile" data-tone="collected" data-report-metric-tile="">
               <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Collected</p>
               <p className="text-lg font-semibold tabular-nums text-heading">{formatMoney(paymentsCollected ?? 0)}</p>
             </div>
