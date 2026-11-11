@@ -136,7 +136,7 @@ export const OUR_STORY = {
     note: "A closer look at the platform, with your venue's needs in mind.",
     primaryCta: { href: "/walkthrough", label: "Schedule a Walkthrough" },
     secondaryCta: {
-      href: "/walkthrough?intent=more-info#request-info",
+      href: "/contact",
       label: "Request More Information",
     },
   },

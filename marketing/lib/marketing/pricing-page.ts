@@ -1,13 +1,13 @@
 /**
- * Pricing page — editorial hospitality catalog, not SaaS comparison.
- * Display mode (Founder vs Welcome Back vs regular) is controlled by enrollment config.
- *
- * Legacy PRICING_PAGE amounts ($149 / $119 Founding fixed) remain the default so
- * Sandbox keeps advertising the currently serving prices until Launch V1 is ready.
- * When Launch V1 is ready, `getPricingPage()` rewrites plan amounts from the shared catalog.
+ * Pricing page — V1 catalog only.
+ * Plan amounts always derive from shared/pricing catalog helpers.
+ * Legacy $149 / fixed Founding amounts are never customer-facing.
  */
 
 import {
+  WEVEN_WHITE_GLOVE_AMOUNT_CENTS,
+  WHITE_GLOVE_AMOUNT_CENTS,
+  formatUsdFromCents,
   getCatalogEntry,
   getPricingLaunchMode,
   getPricingLaunchV1Readiness,
@@ -19,205 +19,25 @@ import {
 
 export type SubscriptionPlanId = "starter" | "growing" | "professional";
 
-const ENTERPRISE_PLAN = {
-  id: "enterprise" as const,
-  name: "Custom",
-  capacity: "Multi-venue/More Celebrations",
-  price: null as string | null,
-  period: null as string | null,
-  priceLabel: "Let's build something together.",
-  foundingPrice: null as string | null,
-  welcomeBackPrice: null as string | null,
-  cta: "Let's Talk.",
-  kind: "contact" as const,
-};
-
-export const PRICING_PAGE = {
-  hero: {
-    headline: "One platform. Every feature. Simple monthly pricing.",
-    lines: [
-      "Hospitality should feel simple.",
-      "Your software should too.",
-      "Every Hello to Cheers subscription includes every feature. The only thing that changes is the number of celebrations you host each year.",
-      "No contracts. No hidden fees. Cancel anytime.",
-    ],
-  },
-  plans: [
-    {
-      id: "starter" as const,
-      name: "Gather",
-      capacity: "Up to 25 annual celebrations",
-      price: "$149",
-      period: "/month",
-      foundingPrice: "$119",
-      welcomeBackPrice: "$119",
-      cta: "Get Started",
-      kind: "subscription" as const,
-    },
-    {
-      id: "growing" as const,
-      name: "Celebrate",
-      capacity: "Up to 75 annual celebrations",
-      price: "$249",
-      period: "/month",
-      foundingPrice: "$199",
-      welcomeBackPrice: "$199",
-      cta: "Get Started",
-      kind: "subscription" as const,
-    },
-    {
-      id: "professional" as const,
-      name: "Flourish",
-      capacity: "Up to 200 annual celebrations",
-      price: "$349",
-      period: "/month",
-      foundingPrice: "$299",
-      welcomeBackPrice: "$299",
-      cta: "Get Started",
-      kind: "subscription" as const,
-    },
-    ENTERPRISE_PLAN,
-  ],
-  founderPricing: {
-    label: "Founding Membership",
-    lockedNote: "Price locked while subscribed.",
-  },
-  postFounder: {
-    headline: "Former Weven customer?",
-    body: "At checkout, let us know if your venue was part of the Weven family. You can subscribe anytime — we'll confirm Welcome Back after you're enrolled.",
-    ctaLabel: "Choose a plan",
-    ctaHref: "#plans",
-  },
-  beneathPlans: {
-    founder: (spots: number) =>
-      `Founding Pricing is available for the first ${spots} venues - plus all former Weven venues - and is locked in for as long as your subscription remains active.`,
-    welcomeBack:
-      "Welcome Back Pricing is available to eligible former Weven customers who join by December 31, 2026 and is also locked in while subscribed.",
-    shared: [
-      "Every plan includes every feature.",
-      "No feature gates.",
-      "No required upgrades.",
-    ],
-  },
-  included: {
-    headline: "Every plan includes:",
-    features: [
-      "CRM & Lead Management",
-      "Sales & Bookings",
-      "Event Management",
-      "Client Portal",
-      "Vendor Collaboration",
-      "Planning & Timelines",
-      "Financials & Payments",
-      "Venue Operations",
-      "Messaging & Automations",
-      "Reporting & Insights",
-      "Luv · Venue Assistant",
-      "Unlimited Team Members",
-      "Product Updates",
-    ],
-  },
-  foundingMembership: {
-    headline: "Founding Venue Membership",
-    intro: (spots: number) => [
-      `The first ${spots} venues to join Hello to Cheers will receive Founding Pricing that's locked in for as long as their subscription remains active.`,
-      "Founding Membership isn't simply an introductory discount.",
-      "It's our way of thanking the venues that choose to help us build something exceptional from the very beginning.",
-      "The first 100 venues—and every former Weven customer—receive our Founding Member pricing.",
-    ],
-    receivesLabel: "As a Founding Venue, you'll receive:",
-    benefits: [
-      "Founding Pricing locked while subscribed",
-      "Early access to new capabilities",
-      "Opportunities to preview and provide feedback on upcoming features",
-      "Direct access to our product team as we continue building together",
-    ],
-  },
-  welcomeBack: {
-    headline: "To our old friends who believed in us first...",
-    lines: [
-      "Some time ago, we had the privilege of working alongside hundreds of valued wedding and event venues as their dedicated customer success team on a platform called Weven.",
-      "You welcomed us into your businesses, shared your ideas, celebrated your successes with us, and helped shape our vision and future journey.",
-      "Hello to Cheers is the next chapter of that story.",
-      "We've built a new platform from the ground up, bringing back everything you loved, while creating the truly comprehensive experience we always dreamed of offering.",
-      "If you were with us at Weven, we'd be honored to serve you again.",
-    ],
-    note: [
-      "Former Weven venue customers receive 20% off their Hello to Cheers subscription for life.",
-      "At checkout, simply confirm that your venue was a Weven customer — we'll apply the discount now and confirm eligibility afterward.",
-    ],
-  },
-  closing: {
-    headline: "Ready to welcome your next celebration?",
-    lines: ["Everything you need.", "Nothing you don't."],
-    cta: "Schedule a Walkthrough",
-  },
-  gettingStarted: {
-    headline: "How would you like to get started?",
-    intro: [] as string[],
-    cards: [
-      {
-        eyebrow: "Included",
-        title: "I'll set it up myself",
-        price: "$0",
-        lead: [
-          "Get access right away and walk through a short, guided setup. You can change anything later.",
-        ],
-        checklist: [] as string[],
-        body: [] as string[],
-        footer: [] as string[],
-      },
-      {
-        eyebrow: "Optional",
-        title: "White Glove Setup",
-        price: "One-time $499",
-        lead: [
-          "We'll help build your Hello to Cheers workspace for you. Give us your venue information and materials, and we'll take care of the setup work.",
-        ],
-        checklist: [] as string[],
-        body: [] as string[],
-        footer: [] as string[],
-      },
-    ],
-  },
-} as const;
-
 export type PricingPlanCard = {
-  id: SubscriptionPlanId | "enterprise";
+  id: SubscriptionPlanId;
   name: string;
   capacity: string;
-  price: string | null;
-  period: string | null;
-  priceLabel?: string;
-  foundingPrice: string | null;
-  welcomeBackPrice: string | null;
+  price: string;
+  period: string;
+  foundingPrice: string;
+  welcomeBackPrice: string;
   cta: string;
-  kind: "subscription" | "contact";
+  kind: "subscription";
 };
 
-export type PricingPageContent = Omit<typeof PRICING_PAGE, "plans" | "welcomeBack"> & {
-  plans: PricingPlanCard[];
-  /**
-   * Welcome Back / Former Weven copy may switch between Phase 1 founding
-   * messaging and Phase 2 20% lifetime messaging based on readiness.
-   */
-  welcomeBack: Omit<(typeof PRICING_PAGE)["welcomeBack"], "note"> & {
-    note: readonly string[];
-  };
+export type PricingFaqItem = {
+  question: string;
+  answer: string;
 };
 
-export type PricingDisplayState = {
-  mode: PricingLaunchMode;
-  page: PricingPageContent;
-  /** False when Launch V1 is flagged on but Checkout cannot fulfill purchases. */
-  checkoutAvailable: boolean;
-  readinessMessage: string;
-};
-
-function buildLaunchPlans(wevenReady: boolean): PricingPlanCard[] {
-  const launchPlans: PricingPlanCard[] = (
-    ["starter", "growing", "professional"] as const
-  ).map((id) => {
+function buildV1Plans(wevenReady: boolean): PricingPlanCard[] {
+  return (["starter", "growing", "professional"] as const).map((id) => {
     const catalog = getCatalogEntry(id);
     const amounts = planDisplayAmounts(id);
     const weven = planWevenDisplayAmounts(id);
@@ -228,57 +48,243 @@ function buildLaunchPlans(wevenReady: boolean): PricingPlanCard[] {
       price: amounts.list,
       period: "/month",
       foundingPrice: amounts.founding,
-      // Only advertise Weven 20% amounts when Phase 2 Checkout can fulfill them.
       welcomeBackPrice: wevenReady ? weven.weven : amounts.founding,
       cta: "Get Started",
-      kind: "subscription",
+      kind: "subscription" as const,
     };
   });
-  return [...launchPlans, { ...ENTERPRISE_PLAN }];
 }
 
+const WHITE_GLOVE_PRICE = formatUsdFromCents(WHITE_GLOVE_AMOUNT_CENTS);
+const WEVEN_WHITE_GLOVE_PRICE = formatUsdFromCents(WEVEN_WHITE_GLOVE_AMOUNT_CENTS);
+
+export const PRICING_PAGE = {
+  hero: {
+    headline: "One platform. Every feature. Simple monthly pricing.",
+    body: "Everything your venue needs, thoughtfully connected. Every plan includes every feature — your subscription simply reflects the number of celebrations you host.",
+  },
+  founderPricing: {
+    label: "Founding Membership",
+    discountNote:
+      "Your 10% Founding discount stays with you as your plan evolves.",
+  },
+  multiVenue: {
+    headline: "Managing more than one venue?",
+    body: "Each venue has its own subscription. Each additional venue receives 10% off its subscription. Discounts do not stack — your venue receives the single best eligible offer.",
+  },
+  included: {
+    headline: "Everything you need. All included.",
+    intro:
+      "One complete platform, thoughtfully designed for the way your venue works.",
+    supportingLine:
+      "Plus unlimited team members, ongoing product updates, and the flexibility to make it all your own.",
+    features: [
+      "Leads, Tours & Bookings",
+      "Proposals & Contracts",
+      "Branded Client Portal",
+      "Vendor Portal & Collaboration",
+      "Planning, Tasks & Timelines",
+      "Floor Plans & Seating",
+      "Packages, Inventory & Selections",
+      "Invoices & Payments",
+      "Email, Texting & Automations",
+      "Venue Operations & Reporting",
+      "Customizable Templates & Workflows",
+      "Luv · Your Venue Assistant",
+    ],
+  },
+  foundingMembership: {
+    headline: "Founding Membership",
+    intro: (spots: number) => [
+      `The first ${spots} eligible venues receive 10% off their applicable Hello to Cheers subscription.`,
+      "Your Founding discount follows you through tier upgrades and continues to apply to the then-current standard price if pricing increases.",
+      "Founding Membership remains available while your subscription stays active. When the subscription ends, Founding eligibility ends.",
+    ],
+    receivesLabel: "As a Founding Venue, you'll receive:",
+    benefits: [
+      "10% off your applicable subscription rate",
+      "Discount that stays with you as your plan evolves",
+      "Early access to new capabilities",
+      "Opportunities to preview and share feedback on upcoming features",
+      "Direct access to our product team as we continue building together",
+    ],
+  },
+  welcomeBack: {
+    eyebrow: "A SPECIAL INVITATION",
+    headline: "To our friends from Weven",
+    lines: [
+      "Some of you may remember us from our Weven days. We had the privilege of working alongside hundreds of wonderful venues, learning from your experiences and building relationships we still treasure.",
+      "You welcomed us into your businesses, shared your ideas, celebrated your successes with us, and helped shape our vision.",
+      "Hello to Cheers is a completely new platform built from the ground up — informed by years of venue relationships and feedback, and designed for the comprehensive experience we always dreamed of offering.",
+      "We'd love the opportunity to work with you again.",
+    ],
+    thankYou:
+      "As a thank-you, former Weven venues receive 20% off their Hello to Cheers subscription, for life.",
+    note: [
+      "Simply let us know you were a Weven customer when you sign up, and we'll take care of the rest.",
+    ],
+  },
+  gettingStarted: {
+    headline: "How would you like to get started?",
+    intro: [
+      "Setup fees are separate from your monthly subscription. You can adjust your venue configuration anytime.",
+    ],
+    cards: [
+      {
+        eyebrow: "Included",
+        title: "Guided self-setup",
+        price: "$0",
+        lead: [
+          "Get access right away and walk through a short, guided setup. You can change anything later.",
+        ],
+      },
+      {
+        eyebrow: "Optional",
+        title: "White Glove Setup",
+        price: `One-time ${WHITE_GLOVE_PRICE}`,
+        wevenPrice: `Former Weven: one-time ${WEVEN_WHITE_GLOVE_PRICE}`,
+        lead: [
+          "We'll help build your Hello to Cheers workspace for you. Share your venue information and materials, and we'll take care of the setup work.",
+        ],
+      },
+    ],
+  },
+  faq: [
+    {
+      question: "How does event volume determine my subscription?",
+      answer:
+        "Your plan reflects the number of qualifying booked celebrations in a calendar year. Gather is 0–25, Celebrate is 26–75, and Flourish is 76 or more. New venues with zero qualifying events start on Gather.",
+    },
+    {
+      question: "What happens when our event volume increases?",
+      answer:
+        "When your qualifying volume requires a higher tier, Hello to Cheers can upgrade your subscription automatically while preserving any eligible percentage discount. You keep every feature at every tier.",
+    },
+    {
+      question: "Can I move to a lower plan?",
+      answer:
+        "Of course! If your event volume has changed and you think a lower plan might be a better fit, just reach out. We're happy to take a look with you.",
+    },
+    {
+      question: "Are all features included on every plan?",
+      answer:
+        "Yes. Every Hello to Cheers subscription includes every feature. The only difference is the number of celebrations you host.",
+    },
+    {
+      question: "How does Founding Membership work?",
+      answer:
+        "The first 100 eligible venues receive 10% off their applicable subscription. The percentage follows tier changes and future standard prices while the subscription remains active. When the subscription ends, Founding eligibility ends.",
+    },
+    {
+      question: "How do former Weven discounts work?",
+      answer:
+        "Former Weven venues receive 20% off their Hello to Cheers subscription, for life. Just let us know at signup — the discount applies right away and does not stack with Founding or additional-venue offers.",
+    },
+    {
+      question: "How does pricing work for multiple venues?",
+      answer:
+        "Each venue has its own subscription, and you'll receive 10% off each additional venue. If another offer gives you a better discount, we'll apply that instead. Discounts don't stack.",
+    },
+    {
+      question: "What are the cancellation terms?",
+      answer:
+        "There is no long-term contract and no cancellation fee. You can cancel anytime in Billing. Access continues through the end of your current paid period; unused days are not refunded.",
+    },
+  ] as PricingFaqItem[],
+  closing: {
+    headline: "Ready to welcome your next celebration?",
+    lines: [
+      "Everything you need. Nothing you don't.",
+      "Schedule a 45-minute walkthrough to see Hello to Cheers in action.",
+    ],
+    cta: "Schedule a Walkthrough",
+  },
+} as const;
+
+export type PricingPageContent = {
+  hero: (typeof PRICING_PAGE)["hero"];
+  founderPricing: (typeof PRICING_PAGE)["founderPricing"];
+  multiVenue: (typeof PRICING_PAGE)["multiVenue"];
+  included: {
+    headline: string;
+    intro: string;
+    supportingLine: string;
+    features: readonly string[];
+  };
+  foundingMembership: (typeof PRICING_PAGE)["foundingMembership"];
+  welcomeBack: {
+    eyebrow: string;
+    headline: string;
+    lines: readonly string[];
+    thankYou: string;
+    note: readonly string[];
+  };
+  gettingStarted: {
+    headline: string;
+    intro: readonly string[];
+    cards: ReadonlyArray<{
+      eyebrow: string;
+      title: string;
+      price: string;
+      wevenPrice?: string;
+      lead: readonly string[];
+    }>;
+  };
+  faq: readonly PricingFaqItem[];
+  closing: (typeof PRICING_PAGE)["closing"];
+  plans: PricingPlanCard[];
+};
+
+export type PricingDisplayState = {
+  mode: PricingLaunchMode;
+  page: PricingPageContent;
+  /** False when Checkout cannot fulfill purchases safely. */
+  checkoutAvailable: boolean;
+  readinessMessage: string;
+};
+
 /**
- * Marketing + Checkout display source with explicit launch mode.
- *
- * - legacy: current Sandbox amounts ($149 / fixed founding)
- * - v1_ready: catalog V1 amounts; Checkout purchasable
- * - v1_misconfigured: show intended V1 amounts but disable purchase
- *   (never silently advertise legacy $149 while flag is on)
+ * Customer-facing Pricing always uses V1 catalog amounts.
+ * Checkout is available only when Launch V1 is fully ready.
  */
 export function getPricingDisplayState(): PricingDisplayState {
   const readiness = getPricingLaunchV1Readiness();
   const mode = getPricingLaunchMode(readiness);
-
-  if (mode === "legacy") {
-    return {
-      mode,
-      page: {
-        ...PRICING_PAGE,
-        plans: PRICING_PAGE.plans.map((plan) => ({ ...plan })),
-      },
-      checkoutAvailable: true,
-      readinessMessage: readiness.diagnosticMessage,
-    };
-  }
-
   const wevenReady = isPricingWevenV1Ready();
+  const plans = buildV1Plans(wevenReady);
+
   return {
-    mode,
+    mode: mode === "legacy" ? "v1_misconfigured" : mode,
     page: {
-      ...PRICING_PAGE,
-      plans: buildLaunchPlans(wevenReady),
+      hero: PRICING_PAGE.hero,
+      founderPricing: PRICING_PAGE.founderPricing,
+      multiVenue: PRICING_PAGE.multiVenue,
+      included: PRICING_PAGE.included,
+      foundingMembership: PRICING_PAGE.foundingMembership,
       welcomeBack: {
-        ...PRICING_PAGE.welcomeBack,
-        note: wevenReady
-          ? [...PRICING_PAGE.welcomeBack.note]
-          : [
-              "Former Weven customers receive Founding Member pricing during our launch period.",
-              "At checkout, simply note that your venue was part of the Weven family.",
-            ],
+        eyebrow: PRICING_PAGE.welcomeBack.eyebrow,
+        headline: PRICING_PAGE.welcomeBack.headline,
+        lines: [...PRICING_PAGE.welcomeBack.lines],
+        thankYou: PRICING_PAGE.welcomeBack.thankYou,
+        note: [...PRICING_PAGE.welcomeBack.note],
       },
+      gettingStarted: {
+        headline: PRICING_PAGE.gettingStarted.headline,
+        intro: [...PRICING_PAGE.gettingStarted.intro],
+        cards: PRICING_PAGE.gettingStarted.cards.map((card) => ({
+          ...card,
+          lead: [...card.lead],
+        })),
+      },
+      faq: [...PRICING_PAGE.faq],
+      closing: PRICING_PAGE.closing,
+      plans,
     },
     checkoutAvailable: mode === "v1_ready",
-    readinessMessage: readiness.diagnosticMessage,
+    readinessMessage:
+      mode === "legacy"
+        ? "Pricing Launch V1 must be enabled before checkout. Catalog amounts shown are V1; purchases are unavailable until configuration is ready."
+        : readiness.diagnosticMessage,
   };
 }
 

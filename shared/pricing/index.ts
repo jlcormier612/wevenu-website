@@ -78,6 +78,17 @@ export {
 } from "./founding";
 
 export {
+  shouldEndFoundingEligibilityOnSubscriptionEvent,
+  foundingDiscountStillValidOnSubscription,
+} from "./founding-lifecycle";
+
+export {
+  resolveOrgAnchorVenueId,
+  venueReceivesAdditionalVenueDiscount,
+  type GroupAnchorMember,
+} from "./group-anchor";
+
+export {
   selectBestOffer,
   type EligibleGrant,
   type BestOfferSelection,

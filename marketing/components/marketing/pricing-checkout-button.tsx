@@ -7,7 +7,7 @@ import { OnboardingSelection } from "@/components/marketing/onboarding-selection
 import type { OnboardingType } from "@/lib/marketing/enrollment";
 import { getPlanDisplayName } from "@/lib/marketing/onboarding-packages";
 import type { SubscriptionPlanId } from "@/lib/marketing/pricing-page";
-import { HOVER_FILL, HOVER_LINK, HOVER_OUTLINE } from "@/lib/marketing/rhythm";
+import { HOVER_LINK, HOVER_OUTLINE } from "@/lib/marketing/rhythm";
 import { cn } from "@/lib/utils";
 
 type PricingCheckoutButtonProps = {
@@ -95,7 +95,7 @@ export function PricingCheckoutButton({
           "inline-flex w-full items-center justify-center rounded-full px-6 py-3 text-sm tracking-wide transition duration-200 ease-out disabled:opacity-60",
           FOCUS_RING,
           variant === "primary" &&
-            `bg-[var(--heritage-sage)] text-[var(--true-white)] ${HOVER_FILL}`,
+            `bg-[var(--botanical)] text-[var(--true-white)] hover:bg-[color-mix(in_srgb,var(--botanical)_88%,black)]`,
           variant === "secondary" &&
             `border border-[var(--heritage-sage)]/35 bg-transparent text-[var(--forest-sage)] ${HOVER_OUTLINE}`,
           className,

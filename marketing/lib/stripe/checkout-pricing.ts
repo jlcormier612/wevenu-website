@@ -196,11 +196,9 @@ export function resolveLegacyCheckoutPricing(
 /**
  * Resolve Checkout pricing.
  *
- * When Launch V1 is ready, `options.launch` must supply earned founding count
- * (and optional honor/venue flags). Without launch options while ready, throws
- * so callers cannot accidentally skip the soft-milestone issuance decision.
- *
- * When Launch V1 is not ready, uses the legacy path unchanged.
+ * Launch V1 is required for customer-facing Checkout. Legacy $149 / fixed
+ * Founding paths remain available via `resolveLegacyCheckoutPricing` for
+ * tests and migration tooling only — never as a silent customer fallback.
  */
 export function resolveCheckoutPricing(
   plan: SubscriptionPlanId,
@@ -213,35 +211,39 @@ export function resolveCheckoutPricing(
       honorFoundingIssued?: boolean;
       /** Explicit former-Weven self-declaration (never inferred from email). */
       wevenDeclared?: boolean;
+      /** Durable verified Weven eligibility (not self-declare alone). */
+      wevenVerified?: boolean;
       /** Server-resolved organization group eligibility (never trust the client). */
       groupEligible?: boolean;
     };
   },
 ): CheckoutPricingResolution {
-  if (isPricingLaunchV1Ready()) {
-    if (!options?.launch) {
-      throw new Error(
-        "Pricing Launch V1 is ready — Checkout must supply launch issuance context.",
-      );
-    }
-    const launch = resolveLaunchCheckoutPricing({
-      plan,
-      earnedFoundingVenueCount: options.launch.earnedFoundingVenueCount,
-      programActive: options.launch.programActive,
-      venueAlreadyEarnedFounding: options.launch.venueAlreadyEarnedFounding,
-      honorFoundingIssued: options.launch.honorFoundingIssued,
-      wevenDeclared: options.launch.wevenDeclared,
-      groupEligible: options.launch.groupEligible,
-    });
-    return {
-      plan,
-      priceId: launch.priceId,
-      foundingCouponId: launch.foundingCouponId,
-      allowPromotionCodes: launch.allowPromotionCodes,
-      mode: launch.mode,
-      launch,
-    };
+  if (!isPricingLaunchV1Ready()) {
+    throw new Error(
+      "Subscription checkout requires Pricing Launch V1. Legacy $149 / fixed-Founding pricing is disabled for customer Checkout.",
+    );
   }
-
-  return resolveLegacyCheckoutPricing(plan, { founder: options?.founder });
+  if (!options?.launch) {
+    throw new Error(
+      "Pricing Launch V1 is ready — Checkout must supply launch issuance context.",
+    );
+  }
+  const launch = resolveLaunchCheckoutPricing({
+    plan,
+    earnedFoundingVenueCount: options.launch.earnedFoundingVenueCount,
+    programActive: options.launch.programActive,
+    venueAlreadyEarnedFounding: options.launch.venueAlreadyEarnedFounding,
+    honorFoundingIssued: options.launch.honorFoundingIssued,
+    wevenDeclared: options.launch.wevenDeclared,
+    wevenVerified: options.launch.wevenVerified,
+    groupEligible: options.launch.groupEligible,
+  });
+  return {
+    plan,
+    priceId: launch.priceId,
+    foundingCouponId: launch.foundingCouponId,
+    allowPromotionCodes: launch.allowPromotionCodes,
+    mode: launch.mode,
+    launch,
+  };
 }

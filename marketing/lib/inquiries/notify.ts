@@ -29,7 +29,13 @@ export async function notifyInquiry(submission: InquirySubmission): Promise<void
     return;
   }
 
-  const result = await sendRawEmail({ to, subject, text });
+  const result = await sendRawEmail({
+    to,
+    subject,
+    text,
+    // Same inquiry id → Resend returns the original send within 24h.
+    idempotencyKey: `inquiry-notify:${submission.kind}:${submission.id}`,
+  });
   if (!result.ok) {
     console.error("[inquiries] notify failed", result.message);
   } else if (result.delivery === "simulated") {

@@ -2,118 +2,193 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { TrustRule } from "@/components/marketing/brand-accents";
-import { TrustSecurityPoints } from "@/components/marketing/trust-security-points";
+import { SignatureClosingCta } from "@/components/marketing/signature-closing-cta";
 import { FILM } from "@/lib/marketing/film";
-import { EDITORIAL_FRAME, EDITORIAL_IMAGE, HOVER_NAV } from "@/lib/marketing/rhythm";
+import {
+  EDITORIAL_FRAME,
+  EDITORIAL_IMAGE,
+  HEADING_AFTER_EYEBROW,
+  HOVER_LINK,
+  SECTION_SCROLL,
+  TYPE_LABEL,
+  TYPE_MEASURE,
+  TYPE_TITLE_TO_BODY,
+} from "@/lib/marketing/rhythm";
 import { TRUST_PAGE } from "@/lib/marketing/trust-page";
 
-/** Trust H2s — ~12% larger than prior 2.1 / 3.36 */
+/** Match Pricing / Contact / Features — forest-sage headings, charcoal-muted body. */
+const HEADING = "text-[var(--forest-sage)]";
+const BODY_MUTED = "text-[rgba(36,51,43,0.68)]";
 const TRUST_H2 =
-  "mt-7 font-heading text-[2.35rem] whitespace-pre-line text-[var(--forest-sage)] md:text-[3.76rem]";
-/** Uppercase labels — ~10% quieter than /82 */
-const TRUST_LABEL =
-  "text-[0.7125rem] tracking-[0.22em] uppercase text-[var(--heritage-sage)]/74";
+  `font-heading text-[2.2rem] leading-[1.14] tracking-tight ${HEADING} md:text-[3.05rem] md:leading-[1.12]`;
+/** Three-line ownership headline — same voice, slightly tighter stack. */
+const TRUST_OWNERSHIP_H2 =
+  `font-heading text-[2.05rem] leading-[1.2] tracking-tight ${HEADING} md:text-[2.85rem] md:leading-[1.16]`;
+const TRUST_BODY = `text-base leading-[1.7] ${BODY_MUTED} md:text-lg`;
+/** Soft emphasis line within a multi-line editorial heading. */
+const EMPHASIS_LINE = "italic text-[var(--forest-sage)]/88";
 
 /**
- * Trust experience — editorial publication for security, privacy, reliability, and transparency.
+ * Trust experience — approved five-section editorial page.
+ * Meaningful anchors: #data-ownership, #security, #privacy.
  */
 export function TrustExperience() {
   const page = TRUST_PAGE;
 
   return (
     <div className="bg-[var(--true-white)]">
-      {/* ── Hero — Our Promise (unchanged) ── */}
-      <section className="px-6 pt-[140px] pb-28 md:pb-36">
-        <div className="mx-auto max-w-[65ch]">
-          <TrustRule className="mb-5" />
-          <p className="text-[0.7125rem] tracking-[0.22em] uppercase text-[var(--heritage-sage)]/82">
-            {page.hero.title}
-          </p>
-          <p className="mt-8 font-heading text-2xl leading-snug text-[var(--forest-sage)]/80 md:text-3xl">
-            {page.hero.chapterTitle}
-          </p>
-          <h1 className="mt-8 font-heading text-[2.52rem] font-medium leading-[1.16] tracking-tight text-[var(--forest-sage)] md:text-[4.2rem]">
-            {page.hero.headline}
-          </h1>
-          <p className="mt-8 font-heading text-2xl leading-snug text-[var(--forest-sage)]/80 md:text-3xl">
-            {page.hero.subhead}
-          </p>
-          <div className="mt-8 space-y-4 text-base leading-[1.7] text-[var(--forest-sage)]/70 md:text-lg max-w-[65ch]">
-            {page.hero.lines.map((line) => (
-              <p key={line}>{line}</p>
-            ))}
+      {/* ── 01 Hero ── */}
+      <section
+        className="border-b border-[var(--taupe-medium)]/35 bg-[var(--header-linen)] px-6 pt-[140px] pb-16 md:pb-24"
+        aria-labelledby="trust-hero-heading"
+      >
+        <div className="mx-auto grid max-w-6xl items-center gap-10 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] lg:gap-14 xl:gap-16">
+          <div className="max-w-xl">
+            <TrustRule className="mb-5" />
+            <p className={TYPE_LABEL}>{page.hero.eyebrow}</p>
+            <h1
+              id="trust-hero-heading"
+              className={`mt-8 max-w-[11.5em] font-heading text-[2.45rem] font-medium leading-[1.1] tracking-tight ${HEADING} md:text-[3.35rem] md:leading-[1.08] lg:text-[3.65rem]`}
+            >
+              {page.hero.headlineLines.map((line, index) => (
+                <span
+                  key={line.text}
+                  className={[
+                    "block",
+                    index > 0 ? "mt-1 md:mt-1.5" : "",
+                    line.emphasis ? EMPHASIS_LINE : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                >
+                  {line.text}
+                </span>
+              ))}
+            </h1>
+            <p className={`mt-7 ${TRUST_BODY} ${TYPE_MEASURE}`}>
+              {page.hero.body}
+            </p>
+            <p
+              className={`mt-7 font-heading text-xl leading-snug ${HEADING} md:text-[1.35rem]`}
+            >
+              {page.hero.closing}
+            </p>
           </div>
-        </div>
 
-        <div className={`relative mx-auto mt-14 aspect-[16/9] w-full max-w-5xl md:mt-16 md:aspect-[2.2/1] ${EDITORIAL_FRAME}`}>
-          <Image
-            src={FILM.trustEarned}
-            alt="Trust — earned every month, kept for every celebration"
-            fill
-            className={EDITORIAL_IMAGE}
-            sizes="100vw"
-            priority
-          />
+          <figure
+            className={`relative mx-auto aspect-[16/10] w-full max-w-2xl lg:max-w-none ${EDITORIAL_FRAME}`}
+          >
+            <Image
+              src={FILM.trustEarned}
+              alt={page.hero.imageAlt}
+              fill
+              className={EDITORIAL_IMAGE}
+              sizes="(max-width: 1024px) 100vw, 48vw"
+              priority
+            />
+          </figure>
         </div>
       </section>
 
-      {/* ── In-page nav ── */}
-      <nav
-        className="border-y border-[var(--taupe-medium)]/40 bg-[var(--linen)] px-6 py-8"
-        aria-label="Trust topics"
+      {/* ── 02 Data Ownership ── */}
+      <section
+        id="data-ownership"
+        className={`${SECTION_SCROLL} bg-[var(--true-white)]`}
+        aria-labelledby="trust-data-heading"
       >
-        <ul className="mx-auto flex max-w-5xl flex-wrap gap-x-6 gap-y-3">
-          {page.nav.map((item) => (
-            <li key={item.id}>
-              <a
-                href={`#${item.id}`}
-                className={`text-sm tracking-wide text-[var(--forest-sage)]/65 transition duration-200 ease-out ${HOVER_NAV}`}
-              >
-                {item.label}
-              </a>
-            </li>
-          ))}
-        </ul>
-      </nav>
-
-      {/* ── Security ── */}
-      <section id="security" className="scroll-mt-28 px-6 py-28 md:py-36">
         <div className="mx-auto max-w-3xl">
           <TrustRule className="mb-5" />
-          <p className={TRUST_LABEL}>{page.security.title}</p>
-          <h2 className={TRUST_H2}>{page.security.headline}</h2>
-          <div className="mt-8 max-w-[65ch] space-y-4 text-base leading-[1.7] text-[var(--forest-sage)]/70 md:text-lg">
-            {page.security.intro.map((line) => (
-              <p key={line}>{line}</p>
+          <p className={TYPE_LABEL}>{page.dataOwnership.eyebrow}</p>
+          <h2
+            id="trust-data-heading"
+            className={`${HEADING_AFTER_EYEBROW} max-w-[14em] ${TRUST_OWNERSHIP_H2}`}
+          >
+            {page.dataOwnership.headlineLines.map((line, index) => (
+              <span
+                key={line.text}
+                className={[
+                  "block",
+                  index > 0 ? "mt-0.5 md:mt-1" : "",
+                  line.emphasis ? EMPHASIS_LINE : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+              >
+                {line.text}
+              </span>
+            ))}
+          </h2>
+          <div
+            className={`${TYPE_TITLE_TO_BODY} space-y-5 ${TRUST_BODY} ${TYPE_MEASURE}`}
+          >
+            {page.dataOwnership.paragraphs.map((paragraph) => (
+              <p key={paragraph}>{paragraph}</p>
             ))}
           </div>
-          <TrustSecurityPoints points={page.security.points} />
         </div>
       </section>
 
-      {/* ── Privacy ── */}
+      {/* ── 03 Security & Reliability ── */}
+      <section
+        id="security"
+        className={`${SECTION_SCROLL} border-y border-[var(--taupe-medium)]/30 bg-[var(--header-linen)]`}
+        aria-labelledby="trust-security-heading"
+      >
+        <div className="mx-auto max-w-5xl">
+          <div className="max-w-3xl">
+            <TrustRule className="mb-5" />
+            <p className={TYPE_LABEL}>{page.security.eyebrow}</p>
+            <h2
+              id="trust-security-heading"
+              className={`${HEADING_AFTER_EYEBROW} ${TRUST_H2}`}
+            >
+              {page.security.headline}
+            </h2>
+            <p className={`${TYPE_TITLE_TO_BODY} ${TRUST_BODY} ${TYPE_MEASURE}`}>
+              {page.security.intro}
+            </p>
+          </div>
+
+          <div className="mt-11 grid gap-x-12 md:mt-12 md:grid-cols-2">
+            {page.security.commitments.map((item) => (
+              <div
+                key={item.title}
+                className="border-t border-[var(--taupe-medium)]/35 py-7 md:py-8"
+              >
+                <h3 className={`font-heading text-xl ${HEADING} md:text-2xl`}>
+                  {item.title}
+                </h3>
+                <p className={`mt-3 ${TRUST_BODY} ${TYPE_MEASURE}`}>
+                  {item.body}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── 04 Privacy — shorter bottom pad for compact copy (section-local only) ── */}
       <section
         id="privacy"
-        className="scroll-mt-28 border-y border-[var(--taupe-medium)]/40 bg-[var(--linen)] px-6 py-28 md:py-36"
+        className="scroll-mt-28 bg-[var(--true-white)] px-6 pt-28 pb-20 md:pt-36 md:pb-28"
+        aria-labelledby="trust-privacy-heading"
       >
         <div className="mx-auto max-w-3xl">
           <TrustRule className="mb-5" />
-          <p className={TRUST_LABEL}>{page.privacy.title}</p>
-          <h2 className={TRUST_H2}>{page.privacy.headline}</h2>
-          <div className="mt-8 space-y-5">
-            {page.privacy.lines.map((line) => (
-              <p
-                key={line}
-                className="font-heading text-2xl leading-snug text-[var(--forest-sage)] md:text-3xl"
-              >
-                {line}
-              </p>
-            ))}
-          </div>
-          <p className="mt-12">
+          <p className={TYPE_LABEL}>{page.privacy.eyebrow}</p>
+          <h2
+            id="trust-privacy-heading"
+            className={`${HEADING_AFTER_EYEBROW} ${TRUST_H2}`}
+          >
+            {page.privacy.headline}
+          </h2>
+          <p className={`${TYPE_TITLE_TO_BODY} ${TRUST_BODY} ${TYPE_MEASURE}`}>
+            {page.privacy.body}
+          </p>
+          <p className="mt-10">
             <Link
               href={page.privacy.cta.href}
-              className="font-heading text-xl text-[var(--forest-sage)] underline-offset-8 hover:underline md:text-2xl"
+              className={`font-heading text-xl ${HEADING} underline-offset-8 md:text-2xl ${HOVER_LINK}`}
             >
               {page.privacy.cta.label}
             </Link>
@@ -121,275 +196,16 @@ export function TrustExperience() {
         </div>
       </section>
 
-      {/* ── Data Ownership ── */}
-      <section id="data-ownership" className="scroll-mt-28 px-6 py-28 md:py-36">
-        <div className="mx-auto max-w-3xl">
-          <TrustRule className="mb-5" />
-          <p className={TRUST_LABEL}>{page.dataOwnership.title}</p>
-          <h2 className={TRUST_H2}>{page.dataOwnership.headline}</h2>
-          <p className="mt-6 font-heading text-2xl text-[var(--forest-sage)]/80 md:text-3xl">
-            {page.dataOwnership.subhead}
-          </p>
-          <div className="mt-8 space-y-5 text-base leading-[1.7] text-[var(--forest-sage)]/70 md:text-lg max-w-[65ch]">
-            {page.dataOwnership.lines.map((line) => (
-              <p key={line}>{line}</p>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Data Processing & Ownership ── */}
-      <section id="data-processing-ownership" className="scroll-mt-28 px-6 py-28 md:py-36">
-        <div className="mx-auto max-w-3xl">
-          <TrustRule className="mb-5" />
-          <h2 className="font-heading text-[2.35rem] text-[var(--forest-sage)] md:text-[3.76rem]">
-            {page.dataProcessingOwnership.title}
-          </h2>
-          <div className="mt-8 space-y-5 text-base leading-[1.7] text-[var(--forest-sage)]/70 md:text-lg max-w-[65ch]">
-            {page.dataProcessingOwnership.lines.map((line) => (
-              <p key={line}>{line}</p>
-            ))}
-          </div>
-          <div className="mt-14 space-y-12">
-            {page.dataProcessingOwnership.subsections.map((subsection) => (
-              <div key={subsection.title}>
-                <h3 className="font-heading text-xl text-[var(--forest-sage)] md:text-2xl">
-                  {subsection.title}
-                </h3>
-                <div className="mt-3 space-y-4 text-base leading-[1.7] text-[var(--forest-sage)]/70 md:text-lg max-w-[65ch]">
-                  {subsection.lines.map((line) => (
-                    <p key={line}>{line}</p>
-                  ))}
-                </div>
-                {"bullets" in subsection && subsection.bullets ? (
-                  <ul className="mt-5 space-y-3">
-                    {subsection.bullets.map((bullet) => (
-                      <li
-                        key={bullet}
-                        className="flex items-start gap-3 text-base leading-[1.7] text-[var(--forest-sage)]/70 md:text-lg max-w-[65ch]"
-                      >
-                        <span
-                          className="mt-2.5 h-1 w-1 shrink-0 rounded-full bg-[var(--heritage-sage)]"
-                          aria-hidden
-                        />
-                        <span>{bullet}</span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : null}
-                {"afterBullets" in subsection && subsection.afterBullets ? (
-                  <div className="mt-5 space-y-4 text-base leading-[1.7] text-[var(--forest-sage)]/70 md:text-lg max-w-[65ch]">
-                    {subsection.afterBullets.map((line) => (
-                      <p key={line}>{line}</p>
-                    ))}
-                  </div>
-                ) : null}
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Luv Principles ── */}
-      <section id="luv-principles" className="scroll-mt-28 px-6 py-28 md:py-36">
-        <div className="mx-auto max-w-3xl">
-          <TrustRule className="mb-5" />
-          <h2 className="font-heading text-[2.35rem] text-[var(--forest-sage)] md:text-[3.76rem]">
-            {page.luvPrinciples.title}
-          </h2>
-          <div className="mt-8 space-y-5 text-base leading-[1.7] text-[var(--forest-sage)]/70 md:text-lg max-w-[65ch]">
-            {page.luvPrinciples.lines.map((line) => (
-              <p key={line}>{line}</p>
-            ))}
-          </div>
-          <div className="mt-14 space-y-12">
-            {page.luvPrinciples.subsections.map((subsection) => (
-              <div key={subsection.title}>
-                <h3 className="font-heading text-xl text-[var(--forest-sage)] md:text-2xl">
-                  {subsection.title}
-                </h3>
-                <div className="mt-3 space-y-4 text-base leading-[1.7] text-[var(--forest-sage)]/70 md:text-lg max-w-[65ch]">
-                  {subsection.lines.map((line) => (
-                    <p key={line}>{line}</p>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Invited Users ── */}
-      <section id="invited-users" className="scroll-mt-28 px-6 py-28 md:py-36">
-        <div className="mx-auto max-w-3xl">
-          <TrustRule className="mb-5" />
-          <h2 className="font-heading text-[2.35rem] text-[var(--forest-sage)] md:text-[3.76rem]">
-            {page.invitedUsers.title}
-          </h2>
-          <div className="mt-8 space-y-5 text-base leading-[1.7] text-[var(--forest-sage)]/70 md:text-lg max-w-[65ch]">
-            {page.invitedUsers.lines.map((line) => (
-              <p key={line}>{line}</p>
-            ))}
-          </div>
-          <div className="mt-14 space-y-12">
-            {page.invitedUsers.subsections.map((subsection) => (
-              <div key={subsection.title}>
-                <h3 className="font-heading text-xl text-[var(--forest-sage)] md:text-2xl">
-                  {subsection.title}
-                </h3>
-                <div className="mt-3 space-y-4 text-base leading-[1.7] text-[var(--forest-sage)]/70 md:text-lg max-w-[65ch]">
-                  {subsection.lines.map((line) => (
-                    <p key={line}>{line}</p>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Reliability ── */}
-      <section
-        id="reliability"
-        className="scroll-mt-28 border-y border-[var(--taupe-medium)]/40 bg-[var(--linen)] px-6 py-28 md:py-36"
-      >
-        <div className="mx-auto max-w-3xl">
-          <TrustRule className="mb-5" />
-          <p className={TRUST_LABEL}>{page.reliability.title}</p>
-          <h2 className={TRUST_H2}>{page.reliability.headline}</h2>
-          <div className="mt-14 space-y-10">
-            {page.reliability.points.map((point) => (
-              <div key={point.title}>
-                <h3 className="font-heading text-xl text-[var(--forest-sage)] md:text-2xl">
-                  {point.title}
-                </h3>
-                <p className="mt-3 text-base leading-[1.7] text-[var(--forest-sage)]/70 md:text-lg max-w-[65ch]">
-                  {point.body}
-                </p>
-              </div>
-            ))}
-          </div>
-          <p className="mt-12 text-sm leading-[1.7] text-[var(--forest-sage)]/55">
-            {page.reliability.disclaimer}
-          </p>
-          <p className="mt-8">
-            <Link
-              href={page.reliability.statusCta.href}
-              className="font-heading text-xl text-[var(--forest-sage)] underline-offset-8 hover:underline md:text-2xl"
-            >
-              {page.reliability.statusCta.label}
-            </Link>
-          </p>
-        </div>
-      </section>
-
-      {/* ── Compliance ── */}
-      <section id="compliance" className="scroll-mt-28 px-6 py-28 md:py-36">
-        <div className="mx-auto max-w-3xl">
-          <TrustRule className="mb-5" />
-          <p className={TRUST_LABEL}>{page.compliance.title}</p>
-          <h2 className={TRUST_H2}>{page.compliance.headline}</h2>
-          <div className="mt-8 space-y-5 text-base leading-[1.7] text-[var(--forest-sage)]/70 md:text-lg max-w-[65ch]">
-            {page.compliance.lines.map((line) => (
-              <p key={line}>{line}</p>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Terms ── */}
-      <section
-        id="terms"
-        className="scroll-mt-28 border-y border-[var(--taupe-medium)]/40 bg-[var(--linen)] px-6 py-28 md:py-36"
-      >
-        <div className="mx-auto max-w-3xl">
-          <TrustRule className="mb-5" />
-          <p className={TRUST_LABEL}>{page.terms.title}</p>
-          <h2 className={TRUST_H2}>{page.terms.headline}</h2>
-          <div className="mt-8 space-y-5 text-base leading-[1.7] text-[var(--forest-sage)]/75 md:text-lg max-w-[65ch]">
-            {page.terms.lines.map((line) => (
-              <p key={line}>{line}</p>
-            ))}
-          </div>
-          <p className="mt-12">
-            <Link
-              href={page.terms.cta.href}
-              className="font-heading text-xl text-[var(--forest-sage)] underline-offset-8 hover:underline md:text-2xl"
-            >
-              {page.terms.cta.label}
-            </Link>
-          </p>
-        </div>
-      </section>
-
-      {/* ── Subscription Philosophy ── */}
-      <section id="subscription" className="scroll-mt-28 px-6 py-28 md:py-36">
-        <div className="mx-auto max-w-3xl">
-          <TrustRule className="mb-5" />
-          <p className={TRUST_LABEL}>{page.subscription.title}</p>
-          <h2 className={TRUST_H2}>{page.subscription.headline}</h2>
-          <div className="mt-8 space-y-5 text-base leading-[1.7] text-[var(--forest-sage)]/75 md:text-lg max-w-[65ch]">
-            {page.subscription.lines.map((line) => (
-              <p key={line}>{line}</p>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Cancel Anytime ── */}
-      <section
-        id="cancellation"
-        className="scroll-mt-28 border-y border-[var(--taupe-medium)]/40 bg-[var(--linen)] px-6 py-28 md:py-36"
-      >
-        <div className="mx-auto max-w-3xl">
-          <TrustRule className="mb-5" />
-          <h2 className="font-heading text-[2.35rem] text-[var(--forest-sage)] md:text-[3.76rem]">
-            {page.cancellation.title}
-          </h2>
-          <div className="mt-8 space-y-5 text-base leading-[1.7] text-[var(--forest-sage)]/75 md:text-lg max-w-[65ch]">
-            {page.cancellation.lines.map((line) => (
-              <p key={line}>{line}</p>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Happiness Promise ── */}
-      <section id="happiness" className="scroll-mt-28 px-6 py-28 md:py-36">
-        <div className="mx-auto max-w-3xl">
-          <TrustRule className="mb-5" />
-          <h2 className="font-heading text-[2.35rem] text-[var(--forest-sage)] md:text-[3.76rem]">
-            {page.happiness.title}
-          </h2>
-          <div className="mt-8 space-y-5 text-base leading-[1.7] text-[var(--forest-sage)]/75 md:text-lg max-w-[65ch]">
-            {page.happiness.lines.map((line) => (
-              <p key={line}>{line}</p>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Built for the long haul + signature ── */}
-      <section className="border-t border-[var(--taupe-medium)]/40 px-6 py-28 md:py-36">
-        <div className="mx-auto max-w-3xl text-center">
-          <h2 className="font-heading text-[2.35rem] text-[var(--forest-sage)] md:text-[3.76rem]">
-            {page.close.headline}
-          </h2>
-          <div className="mx-auto mt-8 max-w-[65ch] space-y-5 text-base leading-[1.7] text-[var(--forest-sage)]/70 md:text-lg">
-            {page.close.lines.map((line) => (
-              <p key={line}>{line}</p>
-            ))}
-          </div>
-          <div className="mt-20 md:mt-24">
-            <p className="font-heading text-xl text-[var(--forest-sage)] md:text-2xl">
-              {page.close.signature.brand}
-            </p>
-            <p className="mt-3 text-sm tracking-wide text-[var(--forest-sage)]/55 md:text-base">
-              {page.close.signature.line}
-            </p>
-          </div>
-        </div>
-      </section>
+      {/* ── 05 Closing ── */}
+      <SignatureClosingCta
+        id="trust-close"
+        headingId="trust-closing-heading"
+        headline={page.close.headline}
+        body={page.close.body}
+        bodyVariant="paragraphs"
+        surface="botanical"
+        primaryLabel={page.close.primaryCta.label}
+      />
     </div>
   );
 }

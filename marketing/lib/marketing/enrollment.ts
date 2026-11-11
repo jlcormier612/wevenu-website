@@ -104,18 +104,21 @@ export function getEnrollmentConfig(): EnrollmentConfig {
 export async function getEnrollmentConfigAsync(): Promise<EnrollmentConfig> {
   if (isPricingLaunchV1Ready()) {
     try {
-      const earned =
-        await requireDurablePricingOfferStore().countEarnedFoundingVenues();
+      const consumed =
+        await requireDurablePricingOfferStore().countConsumedFoundingAllocations();
       (globalThis as { __htcFoundingEarnedCount?: number }).__htcFoundingEarnedCount =
-        earned;
+        consumed;
       const capacity = getFounderProgramCapacity();
       return {
         founderProgramActive: parseBooleanFlag(
           process.env.FOUNDER_PROGRAM_ACTIVE,
           true,
         ),
-        founderSpotsRemaining: foundingSpotsRemainingForDisplay(earned, capacity),
-        foundingEarnedCount: earned,
+        founderSpotsRemaining: foundingSpotsRemainingForDisplay(
+          consumed,
+          capacity,
+        ),
+        foundingEarnedCount: consumed,
       };
     } catch (error) {
       console.error("[enrollment] durable founding count unavailable", {

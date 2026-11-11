@@ -1,10 +1,7 @@
 import { NextResponse } from "next/server";
 
 import {
-  getEnrollmentConfig,
   getEnrollmentConfigAsync,
-  isAutomaticFoundingMember,
-  isFounderPricingActive,
   parseOnboardingType,
   parseWelcomeBackRequested,
 } from "@/lib/marketing/enrollment";
@@ -119,17 +116,28 @@ export async function POST(request: Request) {
     }
 
     const launchReady = isPricingLaunchV1Ready(launchReadiness);
+    if (!launchReady) {
+      console.error("[checkout] Pricing Launch V1 not ready — refusing legacy Checkout", {
+        mode: launchReadiness.mode,
+        message: launchReadiness.diagnosticMessage,
+      });
+      return NextResponse.json(
+        {
+          error:
+            "Subscription checkout requires Pricing Launch V1 configuration. Legacy pricing is disabled.",
+          code: "pricing_launch_required",
+        },
+        { status: 503 },
+      );
+    }
     const wevenReadiness = getPricingWevenV1Readiness();
     const wevenReady = isPricingWevenV1Ready(wevenReadiness);
-    const enrollment = launchReady
-      ? await getEnrollmentConfigAsync()
-      : getEnrollmentConfig();
-    const founderActive = isFounderPricingActive(enrollment);
+    const enrollment = await getEnrollmentConfigAsync();
     const welcomeBack = parseWelcomeBackRequested(
       body.welcome_back ?? body.welcome_back_requested,
     );
-    // Explicit self-declaration only. When Phase 2 is ready, welcome_back drives
-    // the Weven 20% Checkout path. When Phase 2 is off, it remains a CRM flag.
+    // Explicit self-declaration records a claim. Coupon applies only when
+    // durable Weven eligibility is already verified for the venue.
     const wevenDeclared = welcomeBack && wevenReady;
     if (welcomeBack && isPricingWevenV1Misconfigured(wevenReadiness)) {
       const signal = getPricingWevenOperationalSignal();
@@ -232,10 +240,12 @@ export async function POST(request: Request) {
       }
     }
 
+    // Soft-100 uses permanently consumed allocations (earned + revoked).
+    // Never a Checkout blocker — overage near the milestone is acceptable.
     const earnedFoundingCount =
       launchReady && offerStore
         ? (enrollment.foundingEarnedCount ??
-          (await offerStore.countEarnedFoundingVenues()))
+          (await offerStore.countConsumedFoundingAllocations()))
         : 0;
 
     // Phase 4 — server-authoritative group eligibility from durable reservation.
@@ -312,30 +322,46 @@ export async function POST(request: Request) {
       }
     }
 
-    const pricing = launchReady
-      ? getCheckoutPricingForPlan(plan, {
-          launch: {
-            earnedFoundingVenueCount: earnedFoundingCount,
-            programActive: enrollment.founderProgramActive,
-            wevenDeclared,
-            groupEligible,
-            // Add Another Venue: do not consume Founding soft-100 slots on
-            // organization-linked properties. Group 10% is the intended offer
-            // when the reservation bridges eligibility (Founding still wins
-            // over Group on ordinary first-venue Checkout).
-            ...(organizationReservationId && groupEligible
-              ? { honorFoundingIssued: false }
-              : {}),
-          },
-        })
-      : getCheckoutPricingForPlan(plan, { founder: founderActive });
+    // CRM-assisted re-link may already know the venue — use for Weven/Founding gates.
+    let venueAlreadyEarnedFounding = false;
+    let wevenVerified = false;
+    if (offerStore && privileges.relationshipId) {
+      try {
+        const { loadLiveStore } = await import("@shared/relationships/store");
+        const store = await loadLiveStore();
+        const rel = store.relationships.find(
+          (r) => r.id === privileges.relationshipId,
+        );
+        const venueId = rel?.productSync?.venueId?.trim() || null;
+        if (venueId) {
+          venueAlreadyEarnedFounding =
+            await offerStore.venueHasEverEarnedFounding(venueId);
+          wevenVerified = await offerStore.venueHasEarnedWeven(venueId);
+        }
+      } catch (lookupErr) {
+        console.warn("[checkout] venue eligibility lookup failed", lookupErr);
+      }
+    }
+
+    const pricing = getCheckoutPricingForPlan(plan, {
+      launch: {
+        earnedFoundingVenueCount: earnedFoundingCount,
+        programActive: enrollment.founderProgramActive,
+        venueAlreadyEarnedFounding,
+        wevenDeclared,
+        wevenVerified,
+        groupEligible,
+        // Add Another Venue: do not consume Founding soft-100 slots on
+        // organization-linked properties. Group 10% is the intended offer
+        // when the reservation bridges eligibility.
+        ...(organizationReservationId && groupEligible
+          ? { honorFoundingIssued: false }
+          : {}),
+      },
+    });
 
     // Launch V1: founding eligibility comes from the issued offer (soft-100).
-    // When Weven wins the applied coupon, foundingIssued can still be true for the grant.
-    // Legacy: automatic founding while program spots remain.
-    const foundingMember = launchReady
-      ? Boolean(pricing.launch?.foundingIssued)
-      : isAutomaticFoundingMember(enrollment);
+    const foundingMember = Boolean(pricing.launch?.foundingIssued);
     const siteUrl = getMarketingSiteUrl();
 
     const forwardedFor = request.headers.get("x-forwarded-for");

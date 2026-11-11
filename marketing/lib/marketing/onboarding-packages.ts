@@ -5,7 +5,10 @@
  */
 
 import type { OnboardingType } from "@/lib/marketing/enrollment";
-import { PRICING_PAGE, type SubscriptionPlanId } from "@/lib/marketing/pricing-page";
+import {
+  getPricingPage,
+  type SubscriptionPlanId,
+} from "@/lib/marketing/pricing-page";
 
 export type OnboardingPackage = {
   id: OnboardingType;
@@ -93,6 +96,6 @@ export function getDefaultOnboardingType(): OnboardingType {
 
 /** Display name for a subscription plan (e.g. Celebrate). */
 export function getPlanDisplayName(planId: SubscriptionPlanId | string): string {
-  const plan = PRICING_PAGE.plans.find((entry) => entry.id === planId);
+  const plan = getPricingPage().plans.find((entry) => entry.id === planId);
   return plan?.name ?? planId;
 }

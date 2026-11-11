@@ -6,6 +6,17 @@ export const metadata: Metadata = {
   title: "Wedding & Event Venue Management Software",
   description:
     "Hello to Cheers — wedding and event venue management software with big capabilities and beautiful simplicity. Run your venue, plan exceptional events, and keep your team, clients, and vendors connected.",
+  openGraph: {
+    title: "Wedding & Event Venue Management Software",
+    description:
+      "Hello to Cheers — wedding and event venue management software with big capabilities and beautiful simplicity. Run your venue, plan exceptional events, and keep your team, clients, and vendors connected.",
+    url: "/",
+  },
+  twitter: {
+    title: "Wedding & Event Venue Management Software",
+    description:
+      "Hello to Cheers — wedding and event venue management software with big capabilities and beautiful simplicity. Run your venue, plan exceptional events, and keep your team, clients, and vendors connected.",
+  },
 };
 
 export default function MarketingHomePage() {

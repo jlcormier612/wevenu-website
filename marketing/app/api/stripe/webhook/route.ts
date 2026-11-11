@@ -29,6 +29,7 @@ import {
   requireDurablePricingOfferStore,
   shouldHonorIssuedFoundingOffer,
 } from "@shared/pricing";
+import { shouldEndFoundingEligibilityOnSubscriptionEvent } from "@shared/pricing/founding-lifecycle";
 
 export const runtime = "nodejs";
 
@@ -358,26 +359,29 @@ async function handleCheckoutCompleted(
       if (wevenDeclared) {
         const percentOff =
           checkoutOffer.wevenPercentOff ?? WEVEN_PERCENT_OFF;
-        const { created, grant } = await offerStore.earnWevenGrant({
+        // Trust-first: self-declaration earns a durable Weven grant immediately
+        // (coupon already applied at Checkout). Claim stays queued for admin review.
+        const appliedOfferType =
+          checkoutOffer.appliedOfferType ??
+          (meta.applied_offer_type === "weven_pct" ||
+          meta.applied_offer_type === "founding_pct"
+            ? meta.applied_offer_type
+            : foundingMember
+              ? "founding_pct"
+              : null);
+        const { grant, created } = await offerStore.earnWevenGrant({
           offerId: checkoutOffer.id,
           checkoutSessionId: session.id,
-          relationshipId: meta.relationship_id || checkoutOffer.relationshipId,
           percentOff,
         });
         wevenGrantId = grant.id;
-        console.info("[stripe] weven grant earn", {
+        console.info("[stripe] weven grant earn (trust-first declare)", {
           sessionId: session.id,
           offerId: checkoutOffer.id,
           created,
           percentOff,
           grantId: grant.id,
         });
-        const appliedOfferType =
-          checkoutOffer.appliedOfferType ??
-          (meta.applied_offer_type === "weven_pct" ||
-          meta.applied_offer_type === "founding_pct"
-            ? meta.applied_offer_type
-            : "weven_pct");
         const claim = await offerStore.upsertWevenClaim({
           checkoutSessionId: session.id,
           checkoutOfferId: checkoutOffer.id,
@@ -388,19 +392,23 @@ async function handleCheckoutCompleted(
             checkoutOffer.ownerEmailNormalized,
           venueNameNormalized:
             venueName.trim().toLowerCase() || checkoutOffer.venueNameNormalized,
-          grantId: wevenGrantId,
+          grantId: grant.id,
           appliedOfferType,
           appliedPercentOff:
             appliedOfferType === "weven_pct"
               ? percentOff
-              : checkoutOffer.foundingPercentOff ?? FOUNDING_PERCENT_OFF,
+              : appliedOfferType === "founding_pct"
+                ? checkoutOffer.foundingPercentOff ?? FOUNDING_PERCENT_OFF
+                : percentOff,
           foundingAlsoEarned: foundingMember,
         });
-        console.info("[stripe] weven claim upsert", {
+        console.info("[stripe] weven claim upsert (admin review)", {
           sessionId: session.id,
           claimId: claim.id,
           reviewStatus: claim.reviewStatus,
           foundingAlsoEarned: claim.foundingAlsoEarned,
+          appliedOfferType: claim.appliedOfferType,
+          grantId: claim.grantId,
         });
       }
     }
@@ -528,6 +536,36 @@ async function handleSubscriptionLifecycle(
         ? "Stripe subscription deleted"
         : `Stripe subscription ${stripeStatus}`,
     });
+
+    // Founding ends when the subscription fully ends — not on scheduled cancel.
+    if (
+      shouldEndFoundingEligibilityOnSubscriptionEvent({
+        stripeStatus,
+        deleted,
+        cancelAtPeriodEnd: Boolean(subscription.cancel_at_period_end),
+      })
+    ) {
+      const venueId = rel?.productSync?.venueId?.trim() || null;
+      if (venueId) {
+        try {
+          const offerStore = getPricingOfferStore();
+          const result = await offerStore.revokeFoundingGrantForVenue({
+            venueId,
+            reason: deleted
+              ? "stripe_subscription_deleted"
+              : `stripe_subscription_${stripeStatus}`,
+          });
+          console.info("[stripe] founding grant revoke on subscription end", {
+            venueId,
+            subscriptionId: subscription.id,
+            revoked: result.revoked,
+            grantId: result.grantId,
+          });
+        } catch (revokeErr) {
+          console.warn("[stripe] founding grant revoke failed", revokeErr);
+        }
+      }
+    }
   } catch (error) {
     console.warn("[stripe] entitlement sync failed", error);
   }

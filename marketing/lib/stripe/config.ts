@@ -79,22 +79,18 @@ export function getCheckoutPricingForPlan(
       venueAlreadyEarnedFounding?: boolean;
       honorFoundingIssued?: boolean;
       wevenDeclared?: boolean;
+      wevenVerified?: boolean;
       /** Server-resolved organization group eligibility (never trust the client). */
       groupEligible?: boolean;
     };
   },
 ): CheckoutPricingResolution {
-  if (isPricingLaunchV1Ready()) {
-    if (!options?.launch) {
-      throw new Error(
-        "Pricing Launch V1 is ready — Checkout must supply launch issuance context.",
-      );
-    }
-    return resolveCheckoutPricing(plan, { launch: options.launch });
+  if (!options?.launch) {
+    throw new Error(
+      "Checkout must supply Launch V1 issuance context. Legacy pricing is disabled for customer Checkout.",
+    );
   }
-  const useFounder =
-    options?.founder ?? isFounderPricingActive(getEnrollmentConfig());
-  return resolveLegacyCheckoutPricing(plan, { founder: useFounder });
+  return resolveCheckoutPricing(plan, { launch: options.launch });
 }
 
 /**

@@ -5,7 +5,7 @@ import { TrustExperience } from "@/components/marketing/trust-experience";
 export const metadata: Metadata = {
   title: "Our Promise",
   description:
-    "Trust isn't something you ask for. It's something you earn—security, privacy, data ownership, reliability, and transparent terms from Hello to Cheers.",
+    "Trust is earned every day. Our promise: respect your relationships, protect your information, and give you control.",
 };
 
 export default function TrustPage() {

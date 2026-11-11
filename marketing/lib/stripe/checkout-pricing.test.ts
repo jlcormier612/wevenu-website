@@ -8,8 +8,7 @@ import { afterEach, describe, it } from "node:test";
 import {
   getPricingDisplayState,
   getPricingPage,
-  PRICING_PAGE,
-} from "@/lib/marketing/pricing-page";
+} from "../marketing/pricing-page";
 import {
   resolveCheckoutPricing,
   resolveFoundingCouponId,
@@ -86,50 +85,25 @@ describe("resolveFoundingCouponId", () => {
   });
 });
 
-describe("resolveCheckoutPricing — legacy Gather (Launch V1 off)", () => {
-  it("non-founding uses canonical Gather price with promo codes allowed", () => {
+describe("resolveCheckoutPricing — legacy path disabled for customers", () => {
+  it("refuses silent $149 fallback when Launch V1 is off", () => {
     stashEnv();
     process.env.STRIPE_GATHER_PRICE_ID = "price_gather_149";
     process.env.STRIPE_FOUNDING_COUPON_ID = "coupon_founding_30";
-    const resolved = resolveCheckoutPricing("starter", { founder: false });
-    assert.equal(resolved.priceId, "price_gather_149");
-    assert.equal(resolved.foundingCouponId, null);
-    assert.equal(resolved.allowPromotionCodes, true);
-    assert.equal(resolved.mode, "gather_standard");
+    assert.throws(
+      () => resolveCheckoutPricing("starter", { founder: false }),
+      /Launch V1|Legacy/,
+    );
   });
 
-  it("founding applies coupon on $149 Gather (not a separate $119 price)", () => {
+  it("keeps resolveLegacyCheckoutPricing for tooling / migration only", () => {
     stashEnv();
     process.env.STRIPE_GATHER_PRICE_ID = "price_gather_149";
     process.env.STRIPE_FOUNDING_COUPON_ID = "coupon_founding_30";
-    process.env.STRIPE_PRICE_STARTER_FOUNDER = "price_founder_119_legacy";
-    const resolved = resolveCheckoutPricing("starter", { founder: true });
+    const resolved = resolveLegacyCheckoutPricing("starter", { founder: true });
     assert.equal(resolved.priceId, "price_gather_149");
     assert.equal(resolved.foundingCouponId, "coupon_founding_30");
-    assert.equal(resolved.allowPromotionCodes, false);
     assert.equal(resolved.mode, "gather_founding_coupon");
-  });
-
-  it("founding without coupon falls back to legacy Founder Price ID", () => {
-    stashEnv();
-    process.env.STRIPE_GATHER_PRICE_ID = "price_gather_149";
-    process.env.STRIPE_PRICE_STARTER_FOUNDER = "price_founder_119_legacy";
-    const resolved = resolveCheckoutPricing("starter", { founder: true });
-    assert.equal(resolved.priceId, "price_founder_119_legacy");
-    assert.equal(resolved.foundingCouponId, null);
-    assert.equal(resolved.mode, "gather_founding_legacy_price");
-  });
-});
-
-describe("resolveCheckoutPricing — legacy Celebrate", () => {
-  it("uses Founder Price ID while founding when set", () => {
-    stashEnv();
-    process.env.STRIPE_PRICE_GROWING = "price_celebrate";
-    process.env.STRIPE_PRICE_GROWING_FOUNDER = "price_celebrate_founder";
-    const resolved = resolveCheckoutPricing("growing", { founder: true });
-    assert.equal(resolved.priceId, "price_celebrate_founder");
-    assert.equal(resolved.foundingCouponId, null);
-    assert.equal(resolved.mode, "plan_founder_price");
   });
 });
 
@@ -188,17 +162,16 @@ describe("resolveCheckoutPricing — Launch V1", () => {
 });
 
 describe("marketing + checkout price consistency", () => {
-  it("advertises legacy $149/$119 while Launch V1 is off", () => {
+  it("advertises V1 amounts with checkout disabled when Launch V1 is off", () => {
     stashEnv();
     const display = getPricingDisplayState();
-    assert.equal(display.mode, "legacy");
-    assert.equal(display.checkoutAvailable, true);
-    assert.equal(display.page.plans[0]?.price, "$149");
-    assert.equal(display.page.plans[0]?.foundingPrice, "$119");
-    assert.equal(PRICING_PAGE.plans[0]?.price, "$149");
+    assert.equal(display.checkoutAvailable, false);
+    assert.equal(display.page.plans[0]?.price, "$199");
+    assert.equal(display.page.plans[0]?.foundingPrice, "$179.10");
+    assert.equal(display.page.plans.length, 3);
   });
 
-  it("advertises catalog $199/$179.10 only when Launch V1 is ready", () => {
+  it("advertises catalog $199/$179.10 when Launch V1 is ready", () => {
     stashEnv();
     process.env.PRICING_LAUNCH_V1 = "true";
     process.env.STRIPE_PRICE_GATHER_199 = "price_gather_199";
