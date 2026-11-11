@@ -37,15 +37,45 @@ export function inclusiveDayCount(from: string, to: string): number {
 
 /**
  * Choose readable granularity for the selected range.
- * - ≤ 45 days → daily
- * - ≤ 120 days → weekly
- * - longer → monthly (capped at 36 months for readability)
+ * Defaults (date range stays independent of this choice):
+ * - ≤ 7 days → day
+ * - ≤ 120 days (This/Last Month, ~90 days) → week
+ * - longer (6–12 months, year) → month
  */
 export function resolveTrendGranularity(from: string, to: string): TrendGranularity {
   const days = inclusiveDayCount(from, to);
-  if (days <= 45) return "day";
+  if (days <= 7) return "day";
   if (days <= 120) return "week";
   return "month";
+}
+
+/** Granularity options that remain meaningful for the selected window. */
+export function availableTrendGranularities(
+  from: string,
+  to: string,
+): TrendGranularity[] {
+  const days = inclusiveDayCount(from, to);
+  const options: TrendGranularity[] = [];
+  // Day is only useful when the window is short enough that bars stay readable.
+  if (days <= 62) options.push("day");
+  if (days >= 8 && days <= 210) options.push("week");
+  if (days >= 28) options.push("month");
+  // Always expose at least the auto default.
+  const auto = resolveTrendGranularity(from, to);
+  if (!options.includes(auto)) options.unshift(auto);
+  return options.length > 0 ? options : [auto];
+}
+
+export function parseTrendGranularity(
+  raw: string | null | undefined,
+  from: string,
+  to: string,
+): TrendGranularity {
+  const allowed = availableTrendGranularities(from, to);
+  if (raw === "day" || raw === "week" || raw === "month") {
+    if (allowed.includes(raw)) return raw;
+  }
+  return resolveTrendGranularity(from, to);
 }
 
 function startOfWeekSunday(d: Date): Date {

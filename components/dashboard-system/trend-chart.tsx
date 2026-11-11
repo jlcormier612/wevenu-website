@@ -53,6 +53,7 @@ export function TrendChart({
               <div
                 className="w-full rounded-t-sm transition-all"
                 style={{ height: `${pct}%`, minHeight: d.value > 0 ? 2 : 0, backgroundColor: barColor }}
+                title={`${d.label}: ${formatValue(d.value)}`}
               />
             </div>
           );
