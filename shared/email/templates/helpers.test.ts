@@ -47,6 +47,15 @@ describe("productPostActivationLoginUrl — must land on product login then Setu
     );
     assert.doesNotMatch(url, /workspace\.sandbox/);
   });
+
+  it("prefills owner email when provided (already-activated pricing success)", () => {
+    process.env.NEXT_PUBLIC_PRODUCT_APP_URL = "https://app.sandbox.hellotocheers.com";
+    const url = productPostActivationLoginUrl("owner@example.com");
+    assert.equal(
+      url,
+      "https://app.sandbox.hellotocheers.com/login?activated=1&next=%2Fsetup-hub&email=owner%40example.com",
+    );
+  });
 });
 
 describe("activationBaseUrl / activationUrlFromToken — must resolve to the workspace app", () => {
