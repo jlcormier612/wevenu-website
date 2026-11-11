@@ -1,0 +1,56 @@
+{
+  "at": "2026-11-11T23:31:59.876Z",
+  "routes": {
+    "reporting-overview": {
+      "ok": true,
+      "assertions": {
+        "metricTiles": 9,
+        "hasBusinessFunnel": true,
+        "hasSalesTone": true,
+        "hasOutstandingTone": true,
+        "hospitalityPage": true
+      },
+      "shot": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-visual-baselines/current/reporting-overview.png"
+    },
+    "dashboard": {
+      "ok": true,
+      "assertions": {
+        "hospitalityPage": true,
+        "attentionPresent": true
+      },
+      "shot": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-visual-baselines/current/dashboard.png"
+    },
+    "leads": {
+      "ok": true,
+      "assertions": {
+        "hospitalityPage": true,
+        "toolbar": true
+      },
+      "shot": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-visual-baselines/current/leads.png"
+    },
+    "clients": {
+      "ok": true,
+      "assertions": {
+        "hospitalityPage": true,
+        "toolbar": true
+      },
+      "shot": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-visual-baselines/current/clients.png"
+    },
+    "billing": {
+      "ok": true,
+      "assertions": {
+        "hospitalityPage": true,
+        "heading": true
+      },
+      "shot": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-visual-baselines/current/billing.png"
+    },
+    "templates": {
+      "ok": true,
+      "assertions": {
+        "hospitalityPage": true,
+        "title": "Templates · Hello to Cheers"
+      },
+      "shot": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-visual-baselines/current/templates.png"
+    }
+  }
+}

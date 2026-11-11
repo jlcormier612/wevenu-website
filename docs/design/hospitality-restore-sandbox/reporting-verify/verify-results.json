@@ -1,0 +1,122 @@
+{
+  "expectedSha": "df1aa331dc8cd38d7b6db6e6762d8d8c2a2d1070",
+  "capturedAt": "2026-11-11T23:27:55.148Z",
+  "routes": {
+    "desktop:overview": {
+      "shot": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/reporting-verify/desktop/overview.png",
+      "url": "https://app.sandbox.hellotocheers.com/reporting",
+      "title": "Reports · Hello to Cheers",
+      "metricTiles": 9,
+      "businessFunnel": true,
+      "hasPlainBorderStrip": false,
+      "grainControl": true,
+      "tone_sales": true,
+      "tone_bookings": true,
+      "tone_contracted": true,
+      "tone_collected": true,
+      "tone_outstanding": true,
+      "grainPressed": "Week",
+      "grainAfterClick": "Week",
+      "urlHasGrain": false,
+      "hasComparisonNav": true
+    },
+    "desktop:sales": {
+      "shot": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/reporting-verify/desktop/sales.png",
+      "url": "https://app.sandbox.hellotocheers.com/reporting/sales",
+      "title": "Reports · Hello to Cheers",
+      "grainControl": false,
+      "hasComparisonNav": true
+    },
+    "desktop:bookings": {
+      "shot": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/reporting-verify/desktop/bookings.png",
+      "url": "https://app.sandbox.hellotocheers.com/reporting/bookings",
+      "title": "Reports · Hello to Cheers",
+      "grainControl": true,
+      "hasComparisonNav": true
+    },
+    "desktop:revenue": {
+      "shot": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/reporting-verify/desktop/revenue.png",
+      "url": "https://app.sandbox.hellotocheers.com/reporting/revenue",
+      "title": "Reports · Hello to Cheers",
+      "grainControl": true,
+      "hasComparisonNav": true
+    },
+    "desktop:events": {
+      "shot": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/reporting-verify/desktop/events.png",
+      "url": "https://app.sandbox.hellotocheers.com/reporting/events",
+      "title": "Reports · Hello to Cheers",
+      "hasCocktailHour": true,
+      "hasPrivateEvent": true,
+      "hasRawCocktail": false,
+      "notRecordedCount": 0,
+      "hasComparisonNav": true
+    },
+    "desktop:saved": {
+      "shot": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/reporting-verify/desktop/saved.png",
+      "url": "https://app.sandbox.hellotocheers.com/reporting/saved",
+      "title": "Saved Reports",
+      "savedRows": 4,
+      "openButtons": 0,
+      "manageButtons": 0,
+      "hasComparisonNav": true
+    },
+    "mobile:overview": {
+      "shot": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/reporting-verify/mobile/overview.png",
+      "url": "https://app.sandbox.hellotocheers.com/reporting",
+      "title": "Reports · Hello to Cheers",
+      "metricTiles": 9,
+      "businessFunnel": true,
+      "hasPlainBorderStrip": false,
+      "grainControl": true,
+      "tone_sales": true,
+      "tone_bookings": true,
+      "tone_contracted": true,
+      "tone_collected": true,
+      "tone_outstanding": true,
+      "grainPressed": "Week",
+      "grainAfterClick": "Week",
+      "urlHasGrain": false,
+      "hasComparisonNav": true
+    },
+    "mobile:sales": {
+      "shot": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/reporting-verify/mobile/sales.png",
+      "url": "https://app.sandbox.hellotocheers.com/reporting/sales",
+      "title": "Reports · Hello to Cheers",
+      "grainControl": false,
+      "hasComparisonNav": true
+    },
+    "mobile:bookings": {
+      "shot": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/reporting-verify/mobile/bookings.png",
+      "url": "https://app.sandbox.hellotocheers.com/reporting/bookings",
+      "title": "Reports · Hello to Cheers",
+      "grainControl": true,
+      "hasComparisonNav": true
+    },
+    "mobile:revenue": {
+      "shot": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/reporting-verify/mobile/revenue.png",
+      "url": "https://app.sandbox.hellotocheers.com/reporting/revenue",
+      "title": "Reports · Hello to Cheers",
+      "grainControl": true,
+      "hasComparisonNav": true
+    },
+    "mobile:events": {
+      "shot": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/reporting-verify/mobile/events.png",
+      "url": "https://app.sandbox.hellotocheers.com/reporting/events",
+      "title": "Reports · Hello to Cheers",
+      "hasCocktailHour": true,
+      "hasPrivateEvent": true,
+      "hasRawCocktail": false,
+      "notRecordedCount": 0,
+      "hasComparisonNav": true
+    },
+    "mobile:saved": {
+      "shot": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/reporting-verify/mobile/saved.png",
+      "url": "https://app.sandbox.hellotocheers.com/reporting/saved",
+      "title": "Saved Reports",
+      "savedRows": 4,
+      "openButtons": 0,
+      "manageButtons": 0,
+      "hasComparisonNav": true
+    }
+  }
+}

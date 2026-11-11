@@ -46,3 +46,13 @@ Do not treat CSS class presence as visual acceptance.
 2. Screenshot matrix vs approved captures for shell + top CRM routes (desktop + mobile).
 3. Restore remaining presentation gaps adapted to current architecture — no blind cherry-picks.
 4. Enforce GitHub ruleset + visual CI + deploy SHA/digest verification.
+
+## Reporting wave status (2026-11-11)
+
+- Merged PR #29 → `df1aa331`; Sandbox ECS `:1172`; digest `sha256:5a109d1376e6a38d6090ccd03d285713f2ad4889aacee66511a26a07951f2f9e`.
+- Overview colored KPIs visually verified vs marketing reporting.png — **PASS**.
+- Deploy workflow now records/fails on SHA+digest mismatch.
+- Visual smoke workflow + baseline harness seeded (`docs/design/hospitality-visual-baselines/`).
+- Remaining launch blockers unchanged: exhaustive screenshot parity for templates/editors, multi-venue UX nuances, relationship-photo coverage matrix, attention navigation UX proof, deeper billing card polish vs approved captures.
+
+**Overall: IN PROGRESS — not GREEN.**

@@ -1,0 +1,170 @@
+{
+  "approved": "77e6a1937284821782a8dc9cdbf4498c25963243",
+  "main": "df1aa331dc8cd38d7b6db6e6762d8d8c2a2d1070",
+  "only_on_approved": [],
+  "only_on_main": [
+    "components/reporting/bookings-by-source-chart.tsx",
+    "components/reporting/business-funnel.test.ts",
+    "components/reporting/source-composition-chart.tsx",
+    "components/reporting/trend-granularity-control.tsx"
+  ],
+  "changed_presentation_candidates": [
+    {
+      "path": "components/reporting/saved-report-list.tsx",
+      "bytes_approved": 3875,
+      "bytes_main": 5553,
+      "signal_diff": {
+        "LibraryAssetCard": {
+          "approved": 2,
+          "main": 1
+        }
+      },
+      "lost_signals": [
+        "LibraryAssetCard"
+      ],
+      "gained_signals": [],
+      "severity": "LIKELY_REGRESSION"
+    },
+    {
+      "path": "app/(app)/reporting/bookings/page.tsx",
+      "bytes_approved": 9108,
+      "bytes_main": 8736,
+      "signal_diff": {
+        "htc-hospitality-page": {
+          "approved": 0,
+          "main": 1
+        }
+      },
+      "lost_signals": [],
+      "gained_signals": [
+        "htc-hospitality-page"
+      ],
+      "severity": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/reporting/events/page.tsx",
+      "bytes_approved": 5751,
+      "bytes_main": 6590,
+      "signal_diff": {
+        "htc-hospitality-page": {
+          "approved": 0,
+          "main": 1
+        }
+      },
+      "lost_signals": [],
+      "gained_signals": [
+        "htc-hospitality-page"
+      ],
+      "severity": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/reporting/page.tsx",
+      "bytes_approved": 7306,
+      "bytes_main": 5943,
+      "signal_diff": {
+        "htc-hospitality-page": {
+          "approved": 0,
+          "main": 1
+        }
+      },
+      "lost_signals": [],
+      "gained_signals": [
+        "htc-hospitality-page"
+      ],
+      "severity": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/reporting/revenue/page.tsx",
+      "bytes_approved": 13231,
+      "bytes_main": 14871,
+      "signal_diff": {
+        "htc-hospitality-page": {
+          "approved": 0,
+          "main": 1
+        }
+      },
+      "lost_signals": [],
+      "gained_signals": [
+        "htc-hospitality-page"
+      ],
+      "severity": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/reporting/sales/page.tsx",
+      "bytes_approved": 27233,
+      "bytes_main": 28327,
+      "signal_diff": {
+        "htc-hospitality-page": {
+          "approved": 0,
+          "main": 1
+        }
+      },
+      "lost_signals": [],
+      "gained_signals": [
+        "htc-hospitality-page"
+      ],
+      "severity": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/reporting/saved/page.tsx",
+      "bytes_approved": 895,
+      "bytes_main": 922,
+      "signal_diff": {
+        "htc-hospitality-page": {
+          "approved": 0,
+          "main": 1
+        },
+        "PageHeader": {
+          "approved": 0,
+          "main": 2
+        }
+      },
+      "lost_signals": [],
+      "gained_signals": [
+        "htc-hospitality-page",
+        "PageHeader"
+      ],
+      "severity": "EVOLVED"
+    },
+    {
+      "path": "components/reporting/business-funnel.tsx",
+      "bytes_approved": 5848,
+      "bytes_main": 6081,
+      "signal_diff": {},
+      "lost_signals": [],
+      "gained_signals": [],
+      "severity": "EVOLVED"
+    },
+    {
+      "path": "components/reporting/save-report-button.tsx",
+      "bytes_approved": 3145,
+      "bytes_main": 3063,
+      "signal_diff": {},
+      "lost_signals": [],
+      "gained_signals": [],
+      "severity": "EVOLVED"
+    },
+    {
+      "path": "components/vendor-app/vendor-event-workspace.tsx",
+      "bytes_approved": 69229,
+      "bytes_main": 69263,
+      "signal_diff": {
+        "htc-hospitality-page": {
+          "approved": 0,
+          "main": 1
+        }
+      },
+      "lost_signals": [],
+      "gained_signals": [
+        "htc-hospitality-page"
+      ],
+      "severity": "EVOLVED"
+    }
+  ],
+  "counts": {
+    "only_approved": 0,
+    "only_main": 4,
+    "changed_scanned": 10,
+    "likely_regression": 1
+  }
+}

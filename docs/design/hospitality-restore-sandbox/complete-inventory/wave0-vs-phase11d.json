@@ -1,0 +1,1818 @@
+{
+  "approved": "dea957d2",
+  "main": "df1aa331dc8cd38d7b6db6e6762d8d8c2a2d1070",
+  "counts": {
+    "changed": 152,
+    "likely": 2
+  },
+  "rows": [
+    {
+      "path": "components/clients/client-list.tsx",
+      "lost": [
+        "htc-soft-blush"
+      ],
+      "gained": [],
+      "bytes": [
+        15524,
+        15402
+      ],
+      "disposition": "LIKELY_REGRESSION"
+    },
+    {
+      "path": "components/reporting/saved-report-list.tsx",
+      "lost": [
+        "LibraryAssetCard"
+      ],
+      "gained": [],
+      "bytes": [
+        3821,
+        5553
+      ],
+      "disposition": "LIKELY_REGRESSION"
+    },
+    {
+      "path": "app/(app)/account/password/page.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page",
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        647,
+        766
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/clients/[id]/edit/page.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page",
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        2915,
+        3340
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/clients/new/page.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page",
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        1190,
+        1567
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/communication/series/[id]/edit/page.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page",
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        3049,
+        3198
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/communication/series/new/page.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page",
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        1255,
+        1449
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/communication/series/page.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page",
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        1774,
+        1940
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/communication/templates/[id]/edit/page.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page",
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        2804,
+        3363
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/communication/templates/new/page.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page",
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        953,
+        1360
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/communication/templates/page.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page",
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        3076,
+        3437
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/contracts/page.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page",
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        1173,
+        1357
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/contracts/templates/[id]/edit/page.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page",
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        1762,
+        2276
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/contracts/templates/new/page.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page",
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        1436,
+        1793
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/contracts/templates/page.tsx",
+      "lost": [],
+      "gained": [],
+      "bytes": [
+        1646,
+        399
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/events/[id]/edit/page.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page",
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        3157,
+        3755
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/feedback/page.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page",
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        3547,
+        3691
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/guide/page.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page",
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        1393,
+        1525
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/help/page.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page",
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        1970,
+        2111
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/invoices/page.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page",
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        4177,
+        4318
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/layout.tsx",
+      "lost": [],
+      "gained": [],
+      "bytes": [
+        6307,
+        6715
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/leads/[id]/edit/page.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page",
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        2989,
+        3404
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/leads/new/page.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page",
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        4031,
+        4406
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/leads/page.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page",
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        3639,
+        3801
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/leads/pipeline/page.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page",
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        1266,
+        1424
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/library/brochures/page.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page",
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        1081,
+        1457
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/library/contracts/page.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page",
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        2282,
+        2432
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/library/documents/page.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page",
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        853,
+        1022
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/library/event-order-templates/page.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page",
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        3526,
+        2937
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/library/floor-plan-templates/[id]/page.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page"
+      ],
+      "bytes": [
+        2800,
+        3254
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/library/floor-plan-templates/page.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page",
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        3333,
+        3398
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/library/inventory-templates/page.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page",
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        2530,
+        2646
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/library/inventory/[id]/edit/page.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page",
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        1554,
+        2197
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/library/inventory/new/page.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page",
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        901,
+        1538
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/library/inventory/page.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page",
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        3037,
+        2760
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/library/page.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page",
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        9788,
+        9947
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/library/pipeline-templates/[id]/edit/page.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page",
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        1635,
+        2056
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/library/pipeline-templates/new/page.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page",
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        962,
+        1374
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/library/pipeline-templates/page.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page",
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        1731,
+        1869
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/library/playbooks/[id]/page.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page"
+      ],
+      "bytes": [
+        1848,
+        1787
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/library/playbooks/page.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page",
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        2181,
+        2549
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/library/questionnaire-templates/page.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page",
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        2078,
+        2228
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/library/timeline-templates/[id]/page.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page"
+      ],
+      "bytes": [
+        1969,
+        1885
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/library/timeline-templates/page.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page",
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        2652,
+        2787
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/messaging/conversation-inbox.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page",
+        "htc-hospitality-heading",
+        "htc-hospitality-toolbar"
+      ],
+      "bytes": [
+        39879,
+        40654
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/messaging/health/page.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page",
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        2402,
+        2423
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/packages/[id]/page.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page",
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        2217,
+        2730
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/packages/new/page.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page",
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        809,
+        1229
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/packages/page.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page",
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        2065,
+        2304
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/payments/page.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page",
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        1229,
+        1390
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/reporting/bookings/page.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page"
+      ],
+      "bytes": [
+        8884,
+        8736
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/reporting/events/page.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page"
+      ],
+      "bytes": [
+        5542,
+        6590
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/reporting/page.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page"
+      ],
+      "bytes": [
+        6890,
+        5943
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/reporting/revenue/page.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page"
+      ],
+      "bytes": [
+        13188,
+        14871
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/reporting/sales/page.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page"
+      ],
+      "bytes": [
+        27233,
+        28327
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/reporting/saved/page.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page"
+      ],
+      "bytes": [
+        901,
+        922
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/requests/page.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page",
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        1577,
+        1818
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/settings/availability/page.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page",
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        10978,
+        11371
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/settings/business/page.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page",
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        2630,
+        2762
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/settings/communications/page.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page",
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        6644,
+        6776
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/settings/import/page.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page",
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        3181,
+        3339
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/settings/integrations/page.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page",
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        2388,
+        2520
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/settings/leads/page.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page",
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        5496,
+        5628
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/settings/leads/setup-profiles/page.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page",
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        4306,
+        4438
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/settings/migration/page.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page",
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        2261,
+        2393
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/settings/page.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page",
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        4856,
+        5502
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/settings/team/page.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page",
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        5624,
+        5756
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/setup-hub/lead-capture/page.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page",
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        2548,
+        2667
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/setup-hub/page.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page",
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        4774,
+        5108
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/tasks/page.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page",
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        8454,
+        8787
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/tours/page.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page",
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        4808,
+        7293
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/vendors/[id]/edit/page.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page",
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        1260,
+        1659
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/vendors/new/page.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page",
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        804,
+        1175
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "app/(app)/vendors/page.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page",
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        1452,
+        1614
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "app/globals.css",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-heading",
+        "htc-hospitality-table",
+        "htc-report-metric-tile",
+        "htc-soft-blush",
+        "htc-eucalyptus",
+        "LibraryAssetCard",
+        "data-tone",
+        "htc-report-kpi"
+      ],
+      "bytes": [
+        97865,
+        125929
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/auth/auth-brand-shell.tsx",
+      "lost": [],
+      "gained": [],
+      "bytes": [
+        3074,
+        3809
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/availability/date-holds-section.tsx",
+      "lost": [],
+      "gained": [
+        "htc-eucalyptus"
+      ],
+      "bytes": [
+        34581,
+        35710
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/booking-journey/booking-journey-panel.tsx",
+      "lost": [],
+      "gained": [],
+      "bytes": [
+        17718,
+        17849
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/brochures/brochure-detail.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page",
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        13965,
+        14511
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/brochures/brochure-list.tsx",
+      "lost": [],
+      "gained": [],
+      "bytes": [
+        8031,
+        7878
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/calendar/calendar-page-client.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        3795,
+        3806
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/communication/message-template-list.tsx",
+      "lost": [],
+      "gained": [],
+      "bytes": [
+        7962,
+        7698
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/communication/series-enrollments.tsx",
+      "lost": [],
+      "gained": [],
+      "bytes": [
+        9176,
+        9352
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/communication/series-list.tsx",
+      "lost": [],
+      "gained": [],
+      "bytes": [
+        7662,
+        7849
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/contracts/contract-list.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-toolbar",
+        "htc-hospitality-table"
+      ],
+      "bytes": [
+        9057,
+        9354
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/conversations/activity-timeline.tsx",
+      "lost": [],
+      "gained": [
+        "htc-eucalyptus"
+      ],
+      "bytes": [
+        4110,
+        4542
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/dashboard-system/trend-chart.tsx",
+      "lost": [],
+      "gained": [],
+      "bytes": [
+        2893,
+        3092
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/document-workspace/badges.tsx",
+      "lost": [],
+      "gained": [],
+      "bytes": [
+        2034,
+        2428
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/document-workspace/document-card.tsx",
+      "lost": [],
+      "gained": [
+        "htc-eucalyptus"
+      ],
+      "bytes": [
+        15195,
+        15227
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/document-workspace/document-workspace.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        10851,
+        11213
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/event-inventory/inventory-template-detail.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page",
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        16821,
+        17339
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/event-order-templates/event-order-template-detail.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page",
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        9802,
+        10168
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/event-order-templates/event-order-template-list.tsx",
+      "lost": [],
+      "gained": [],
+      "bytes": [
+        24808,
+        24480
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/event-order-templates/guided-setup-wizard.tsx",
+      "lost": [],
+      "gained": [],
+      "bytes": [
+        20240,
+        20494
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/event-orders/event-order-panel.tsx",
+      "lost": [],
+      "gained": [],
+      "bytes": [
+        49036,
+        49571
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/events/booking-documents-tab.tsx",
+      "lost": [],
+      "gained": [],
+      "bytes": [
+        8320,
+        2608
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/events/event-detail.tsx",
+      "lost": [],
+      "gained": [],
+      "bytes": [
+        74327,
+        78028
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/events/event-setup-panel.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        26630,
+        27143
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/events/questionnaire-family-panel.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        28069,
+        28259
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/floor-plan-templates/floor-plan-template-editor-header.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        3262,
+        3315
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/floor-plan-templates/floor-plan-templates-section.tsx",
+      "lost": [],
+      "gained": [],
+      "bytes": [
+        23840,
+        23551
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/help/integration-setup-guide.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page",
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        6895,
+        6934
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/inventory/inventory-item-form.tsx",
+      "lost": [],
+      "gained": [],
+      "bytes": [
+        13833,
+        13612
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/invoices/invoice-status-badge.tsx",
+      "lost": [],
+      "gained": [],
+      "bytes": [
+        627,
+        758
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/leads/activity-timeline.tsx",
+      "lost": [],
+      "gained": [
+        "htc-eucalyptus"
+      ],
+      "bytes": [
+        4310,
+        4442
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/leads/lead-detail.tsx",
+      "lost": [],
+      "gained": [],
+      "bytes": [
+        50862,
+        51259
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/leads/lead-list.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-toolbar",
+        "htc-hospitality-table",
+        "htc-soft-blush"
+      ],
+      "bytes": [
+        24135,
+        24503
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/leads/lead-status-badge.tsx",
+      "lost": [],
+      "gained": [],
+      "bytes": [
+        612,
+        881
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/leads/pipeline-board.tsx",
+      "lost": [],
+      "gained": [],
+      "bytes": [
+        12579,
+        12458
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/leads/relationship-card.tsx",
+      "lost": [],
+      "gained": [],
+      "bytes": [
+        30036,
+        30311
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/leads/tour-panel.tsx",
+      "lost": [],
+      "gained": [],
+      "bytes": [
+        29029,
+        33993
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/leads/tour-send-preview.tsx",
+      "lost": [],
+      "gained": [],
+      "bytes": [
+        1362,
+        1543
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/library/library-documents-manager.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-toolbar"
+      ],
+      "bytes": [
+        14260,
+        14322
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/library/library-guidance.tsx",
+      "lost": [],
+      "gained": [],
+      "bytes": [
+        4074,
+        4461
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/luv/spot-pattern-recommendations.tsx",
+      "lost": [],
+      "gained": [
+        "htc-soft-blush"
+      ],
+      "bytes": [
+        1652,
+        1984
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/offerings/offerings-library-section.tsx",
+      "lost": [],
+      "gained": [],
+      "bytes": [
+        53848,
+        53586
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/offerings/offerings-page-client.tsx",
+      "lost": [],
+      "gained": [],
+      "bytes": [
+        3349,
+        3139
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/onboarding/onboarding-intake-form.tsx",
+      "lost": [],
+      "gained": [],
+      "bytes": [
+        18388,
+        18057
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/onboarding/white-glove-intake-client.tsx",
+      "lost": [],
+      "gained": [],
+      "bytes": [
+        5344,
+        5783
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/onboarding/white-glove-waiting-client.tsx",
+      "lost": [],
+      "gained": [],
+      "bytes": [
+        7359,
+        7859
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/packages/package-form.tsx",
+      "lost": [],
+      "gained": [],
+      "bytes": [
+        5136,
+        4965
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/packages/package-list.tsx",
+      "lost": [],
+      "gained": [],
+      "bytes": [
+        8458,
+        8277
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/payments/payment-schedule-list.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-toolbar",
+        "htc-hospitality-table"
+      ],
+      "bytes": [
+        6604,
+        6825
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/playbooks/event-task-list.tsx",
+      "lost": [],
+      "gained": [],
+      "bytes": [
+        60428,
+        60552
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/playbooks/playbook-template-editor-header.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        4368,
+        4421
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/portal/portal-shell.tsx",
+      "lost": [],
+      "gained": [],
+      "bytes": [
+        290027,
+        290342
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/providers/theme-provider.tsx",
+      "lost": [],
+      "gained": [],
+      "bytes": [
+        529,
+        1023
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/providers/theme-toggle.tsx",
+      "lost": [],
+      "gained": [],
+      "bytes": [
+        1062,
+        1393
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/public-forms/public-form-list.tsx",
+      "lost": [],
+      "gained": [],
+      "bytes": [
+        10487,
+        10852
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/public-forms/public-forms-page-client.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page",
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        1961,
+        1919
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/qr-campaigns/qr-campaigns-page-client.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page",
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        2342,
+        2328
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/questionnaire-templates/questionnaire-authoring-workspace.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page",
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        25130,
+        25516
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/reporting/reports-layout-shell.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page",
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        776,
+        938
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/requests/request-manager.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-table"
+      ],
+      "bytes": [
+        9912,
+        10612
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/settings/migration-guidance-panel.tsx",
+      "lost": [],
+      "gained": [],
+      "bytes": [
+        4726,
+        4966
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/settings/settings-tabs.tsx",
+      "lost": [],
+      "gained": [],
+      "bytes": [
+        1523,
+        1648
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/settings/setup-profiles-section.tsx",
+      "lost": [],
+      "gained": [],
+      "bytes": [
+        27119,
+        28184
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/setup-hub/setup-hub-overview.tsx",
+      "lost": [],
+      "gained": [
+        "htc-eucalyptus"
+      ],
+      "bytes": [
+        14044,
+        16355
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/tasks/task-center.tsx",
+      "lost": [],
+      "gained": [],
+      "bytes": [
+        30735,
+        31348
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/timeline-templates/timeline-template-editor-header.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-heading"
+      ],
+      "bytes": [
+        3216,
+        3269
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/timeline-templates/timeline-template-editor.tsx",
+      "lost": [],
+      "gained": [],
+      "bytes": [
+        28188,
+        28573
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/timeline-templates/timeline-templates-section.tsx",
+      "lost": [],
+      "gained": [],
+      "bytes": [
+        18368,
+        18008
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/tours/tour-list.tsx",
+      "lost": [],
+      "gained": [],
+      "bytes": [
+        21262,
+        22797
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/ui/image-upload.tsx",
+      "lost": [],
+      "gained": [],
+      "bytes": [
+        5189,
+        6382
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/vendor-app/vendor-app-shell.tsx",
+      "lost": [],
+      "gained": [],
+      "bytes": [
+        10612,
+        10201
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/vendor-app/vendor-conversation-thread.tsx",
+      "lost": [],
+      "gained": [],
+      "bytes": [
+        12701,
+        11810
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/vendor-app/vendor-event-workspace.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-page",
+        "htc-hospitality-heading",
+        "htc-eucalyptus"
+      ],
+      "bytes": [
+        66431,
+        69263
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/vendor-app/vendor-library-section.tsx",
+      "lost": [],
+      "gained": [],
+      "bytes": [
+        7311,
+        7596
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/vendor-app/vendor-notification-bell.tsx",
+      "lost": [],
+      "gained": [
+        "htc-eucalyptus"
+      ],
+      "bytes": [
+        13731,
+        13915
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/vendor-app/vendor-profile-form.tsx",
+      "lost": [],
+      "gained": [],
+      "bytes": [
+        11668,
+        12742
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/vendors/required-vendor-categories-panel.tsx",
+      "lost": [],
+      "gained": [],
+      "bytes": [
+        3070,
+        3241
+      ],
+      "disposition": "EVOLVED"
+    },
+    {
+      "path": "components/vendors/vendor-list.tsx",
+      "lost": [],
+      "gained": [
+        "htc-hospitality-toolbar",
+        "htc-hospitality-table"
+      ],
+      "bytes": [
+        9566,
+        9885
+      ],
+      "disposition": "EVOLVED"
+    }
+  ]
+}

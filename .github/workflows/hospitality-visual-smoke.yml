@@ -1,0 +1,40 @@
+# Structural hospitality visual smoke against Sandbox.
+# Fails if Reports Overview loses colored KPI tiles or core routes lose hospitality shell.
+# Requires sandbox Environment secrets/vars for app URL only at capture time when run manually;
+# PR CI runs the unit guards that lock source presentation.
+
+name: Hospitality visual smoke
+
+on:
+  workflow_dispatch: {}
+  pull_request:
+    paths:
+      - "app/(app)/reporting/**"
+      - "components/reporting/**"
+      - "components/dashboard-system/**"
+      - "app/globals.css"
+      - "lib/theme/**"
+      - "scripts/qa/hospitality-visual-baselines.mts"
+
+concurrency:
+  group: hospitality-visual-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  source-guards:
+    name: Hospitality presentation source guards
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - name: KPI + funnel source guards
+        run: |
+          npx tsx --test \
+            lib/theme/hospitality-reporting-kpi-parity.test.ts \
+            components/reporting/business-funnel.test.ts \
+            lib/event-types/event-type-display.test.ts \
+            lib/reporting/trend-buckets.test.ts

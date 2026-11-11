@@ -1,0 +1,9 @@
+{
+  "before": "Week",
+  "after": "Day",
+  "url": "https://app.sandbox.hellotocheers.com/reporting?grain=day",
+  "leadDesc": 1,
+  "openCount": 4,
+  "manageCount": 4,
+  "openHref": "/reporting/events?range=this_month"
+}
