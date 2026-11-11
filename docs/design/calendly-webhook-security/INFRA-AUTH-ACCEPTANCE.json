@@ -1,0 +1,28 @@
+{
+  "results": [
+    {
+      "case": "missing_signature",
+      "status": 401,
+      "body": "{\"error\":\"Invalid signature.\"}",
+      "ok": true
+    },
+    {
+      "case": "invalid_signature",
+      "status": 401,
+      "body": "{\"error\":\"Invalid signature.\"}",
+      "ok": true
+    },
+    {
+      "case": "stale_signature",
+      "status": 401,
+      "body": "{\"error\":\"Invalid signature.\"}",
+      "ok": true
+    },
+    {
+      "case": "valid_ignored_event",
+      "status": 200,
+      "body": "{\"ok\":true,\"ignored\":\"invitee.no_show\"}",
+      "ok": true
+    }
+  ]
+}

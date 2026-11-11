@@ -1,0 +1,67 @@
+{
+  "changeSetName": "calendly-webhook-secret-1794363548",
+  "status": "CREATE_COMPLETE",
+  "executionStatus": "AVAILABLE",
+  "changes": [
+    {
+      "action": "Add",
+      "logicalId": "CalendlyWebhookSigningKeySecret",
+      "type": "AWS::SecretsManager::Secret",
+      "replacement": null
+    },
+    {
+      "action": "Modify",
+      "logicalId": "EcsTaskExecutionRole",
+      "type": "AWS::IAM::Role",
+      "replacement": "False"
+    },
+    {
+      "action": "Modify",
+      "logicalId": "MarketingService",
+      "type": "AWS::ECS::Service",
+      "replacement": "False"
+    },
+    {
+      "action": "Modify",
+      "logicalId": "MarketingTaskDefinition",
+      "type": "AWS::ECS::TaskDefinition",
+      "replacement": "True"
+    },
+    {
+      "action": "Modify",
+      "logicalId": "SchedulerService",
+      "type": "AWS::ECS::Service",
+      "replacement": "False"
+    },
+    {
+      "action": "Modify",
+      "logicalId": "SchedulerTaskDefinition",
+      "type": "AWS::ECS::TaskDefinition",
+      "replacement": "Conditional"
+    },
+    {
+      "action": "Modify",
+      "logicalId": "VenueAppService",
+      "type": "AWS::ECS::Service",
+      "replacement": "False"
+    },
+    {
+      "action": "Modify",
+      "logicalId": "VenueAppTaskDefinition",
+      "type": "AWS::ECS::TaskDefinition",
+      "replacement": "Conditional"
+    },
+    {
+      "action": "Modify",
+      "logicalId": "WorkspaceService",
+      "type": "AWS::ECS::Service",
+      "replacement": "False"
+    },
+    {
+      "action": "Modify",
+      "logicalId": "WorkspaceTaskDefinition",
+      "type": "AWS::ECS::TaskDefinition",
+      "replacement": "Conditional"
+    }
+  ]
+}

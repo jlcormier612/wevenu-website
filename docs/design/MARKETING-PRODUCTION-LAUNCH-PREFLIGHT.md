@@ -1,8 +1,8 @@
 # HTC — Marketing Production Launch Preflight
 
-**Updated:** 2026-11-10 (America/New_York) — Fail-closed Calendly webhook deployed to Sandbox  
-**Mode:** Sandbox deploy of security fix only · no CFN/secret/subscription · no Production  
-**Recommendation:** **CONDITIONAL GO** — fail-closed security live; booking embed live; CRM sync still blocked until signing secret + CFN wiring + Calendly subscription (next authorized step)
+**Updated:** 2026-11-10 (America/New_York) — Sandbox Calendly signing secret + ECS wiring  
+**Mode:** Sandbox infra only · no Calendly subscription · no Production · no real bookings  
+**Recommendation:** **CONDITIONAL GO** — signing key injected and auth verified (401/200); **you** must register the Calendly webhook subscription using the same key from Secrets Manager
 
 ---
 
@@ -10,131 +10,182 @@
 
 | Layer | Verdict |
 |---|---|
-| Fail-closed webhook on Sandbox | **GO** — unsigned → **503** `Webhook not configured.` |
-| Public booking embed + CTAs | **GO** — unchanged, desktop/mobile |
-| Authenticated Calendly → CRM | **CONDITIONAL** — needs secret + CFN + subscription (not authorized this pass) |
+| Secrets Manager signing key | **GO** — `htc/sandbox/calendly-webhook-signing-key` populated (value never disclosed) |
+| CFN / ECS wiring | **GO** — marketing task receives `CALENDLY_WEBHOOK_SIGNING_KEY` |
+| Webhook auth on Sandbox | **GO** — missing/invalid/stale → **401**; valid signed ignored-event → **200** |
+| Public booking embed / CTAs | **GO** |
+| Calendly subscription registration | **STOP until you act** — not created this pass |
+| Authenticated live Calendly → CRM | **CONDITIONAL** — blocked on subscription registration |
 | Production | **STOP** |
 
 ---
 
-## 1. Commit and deployment
+## 1. Secret provisioning status
+
+| Item | Evidence (non-sensitive) |
+|---|---|
+| Secret name | `htc/sandbox/calendly-webhook-signing-key` |
+| ARN | `arn:aws:secretsmanager:us-east-1:405254329873:secret:htc/sandbox/calendly-webhook-signing-key-BMUVVf` |
+| Runtime env | `CALENDLY_WEBHOOK_SIGNING_KEY` ← Secrets Manager JSON key `value` |
+| Value length check | 64 chars (hex), non-empty; **value never printed** |
+| Pre-existing? | **No** — `ResourceNotFoundException` before create |
+| Rotation | None — first provisioning only |
+
+Generated with `secrets.token_hex(32)` and written via `put-secret-value` after CFN created the empty placeholder secret. Not stored in Git, chat, GitHub vars, or `NEXT_PUBLIC_*`.
+
+---
+
+## 2. CloudFormation change-set evidence
 
 | Item | Value |
 |---|---|
-| Commit | `f22b8c143584e352582bfef682280894ebcfe473` |
-| Message | Fail closed on unsigned Calendly webhooks before CRM writes. |
-| Deploy | [42943210110](https://github.com/jlcormier612/wevenu-website/actions/runs/42943210110) **SUCCESS** |
-| Serving | ECS `htc-sandbox-marketing:1141` · image `…/htc-sandbox-marketing:f22b8c14…` |
-| CFN secret wiring | **Not applied** (as authorized) |
-| Calendly subscription | **Not created** (as authorized) |
+| Stack | `htc-sandbox` |
+| Change set | `calendly-webhook-secret-1794363548` |
+| Parameters | All `UsePreviousValue=true` (images remain `f22b8c14…`) |
+| Result | **UPDATE_COMPLETE** |
 
-### Scoped commit contents
+Summary artifact: `docs/design/calendly-webhook-security/CFN-CHANGESET-SUMMARY.json`
 
-- `marketing/lib/calendly/verify.ts`
-- `marketing/lib/calendly/webhook-auth.ts`
-- `marketing/lib/calendly/webhook-auth.test.ts`
-- `marketing/app/api/calendly/webhook/route.ts`
-- `shared/relationships/ingest.ts`
-- `shared/relationships/index.ts`
-- `shared/relationships/calendly-walkthrough-lifecycle.test.ts`
-- `docs/design/calendly-webhook-security/PREPARED-CFN-WIRING.json`
-- `docs/design/calendly-webhook-security/PROBE-CLEANUP.json`
-
-Unrelated dirty tree preserved.
-
-### Pre-commit validation
-
-- Webhook auth tests: **11/11 PASS**
-- CRM lifecycle fixtures: **5/5 PASS**
-- Marketing `tsc --noEmit` + `npm run build`: **PASS**
-
----
-
-## 2. Security acceptance evidence (Sandbox live)
-
-Evidence: `docs/design/calendly-webhook-security/SANDBOX-ACCEPTANCE.json`
-
-| Request | HTTP | Body |
+| Action | Resource | Notes |
 |---|---|---|
-| Unsigned POST with invitee payload | **503** | `{"error":"Webhook not configured."}` |
-| POST with garbage `Calendly-Webhook-Signature` (no key configured) | **503** | same — fail-closed before CRM (401 would apply once key is injected) |
-| Empty unsigned body | **503** | same |
-| CRM check for rejected probe email | **0 rows** | no mutation |
+| **Add** | `CalendlyWebhookSigningKeySecret` | New SM secret |
+| **Modify** | `EcsTaskExecutionRole` | `GetSecretValue` on new secret only (existing ReadHtcSecrets policy) |
+| **Modify** | `MarketingTaskDefinition` | Replace=True (expected for ContainerDefinitions secret add) → revision **1142** |
+| **Modify** | `MarketingService` | Points at new task def |
+| **Modify** | Venue/Workspace/Scheduler task defs | Conditional on shared execution role update — **no container/env changes**; services stayed healthy |
 
-Auth runs before JSON/CRM handling. 180s replay window + HMAC `t.rawBody` remain in serving code. No secrets logged.
+No unrelated Removes. No Production stack touched.
 
 ---
 
-## 3. Booking UI acceptance
+## 3. Applied infrastructure changes
+
+- `infra/htc-ecs-stack.json`: `CalendlyWebhookSigningKeySecret` + marketing Secrets entry + IAM Ref  
+- Marketing container secrets now include `CALENDLY_WEBHOOK_SIGNING_KEY`  
+- Venue-app / workspace / scheduler **application** config unchanged  
+- Force-new-deployment completed so tasks load the populated secret version  
+
+---
+
+## 4. ECS task definition and serving image
+
+| Item | Value |
+|---|---|
+| Task definition | `htc-sandbox-marketing:1142` |
+| Image | `…/htc-sandbox-marketing:f22b8c143584e352582bfef682280894ebcfe473` (security commit preserved) |
+| Rollout | PRIMARY / COMPLETED / steady state |
+| Secret names on task | includes `CALENDLY_WEBHOOK_SIGNING_KEY` (value not readable via describe) |
+
+App security commit remains `f22b8c14` (fail-closed route). Infra-only update to inject the key.
+
+---
+
+## 5. Webhook authentication verification
+
+Evidence: `docs/design/calendly-webhook-security/INFRA-AUTH-ACCEPTANCE.json`
+
+| Case | HTTP | Result |
+|---|---|---|
+| Missing signature | **401** `Invalid signature.` | Pass |
+| Invalid signature | **401** | Pass |
+| Stale timestamp (>180s) | **401** | Pass |
+| Valid HMAC + ignored event (`invitee.no_show`) | **200** `{"ok":true,"ignored":…}` | Pass — auth OK, no CRM write |
+| CRM rows for auth probe emails | **0** | Pass |
+
+Positive test intentionally used an **ignored** event type so authentication could be proven without creating CRM leads.
+
+---
+
+## 6. Booking UI verification
+
+Evidence: `docs/design/calendly-webhook-security/INFRA-UI-ACCEPTANCE.json`
 
 | Check | Desktop | Mobile |
 |---|---|---|
-| `/walkthrough` Calendly iframe (`new-meeting`) | Pass | Pass |
-| “Coming soon” absent | Pass | Pass |
-| Schedule CTAs → `/walkthrough` (home, pricing, product, features, our-story, contact) | Pass | Pass |
-
-Screenshots: `docs/design/calendly-webhook-security/accept-{desktop,mobile}-walkthrough.png`  
-No real appointment booked; no external notifications sent.
+| `/walkthrough` iframe → `jennifer-hellotocheers/new-meeting` | Pass | Pass |
+| No “coming soon” | Pass | Pass |
+| Schedule CTAs → `/walkthrough` | Pass | Pass |
 
 ---
 
-## 4. Next authorized step (precise sequence)
+## 7. Exact remaining Calendly subscription registration procedure
 
-Prepared wiring: `docs/design/calendly-webhook-security/PREPARED-CFN-WIRING.json`  
-Endpoint owner: **marketing ECS** only.
+**Callback:** `https://sandbox.hellotocheers.com/api/calendly/webhook`  
+**Events:** `invitee.created`, `invitee.canceled`  
+**Scope:** User (`jennifer-hellotocheers`)  
+**Signing key:** Must be **identical** to `htc/sandbox/calendly-webhook-signing-key` → JSON `value`
 
-### Step 1 — Create signing secret securely
+### Can Cursor register it now?
 
-| Actor | Action |
-|---|---|
-| **You (Calendly)** | In Calendly Webhooks UI, confirm no existing callback to `https://sandbox.hellotocheers.com/api/calendly/webhook`. If none, create **user-scoped** subscription for `invitee.created` + `invitee.canceled`, with signing enabled. Copy the signing key once — do not paste into chat/git/GitHub vars. |
-| **Cursor (after your approval)** | `aws secretsmanager create-secret` / `put-secret-value` for `htc/sandbox/calendly-webhook-signing-key` with JSON `{"value":"<key>"}` (value never printed). Prefer create empty secret via CFN placeholder first, then put-secret-value. |
+**No** — no Calendly Personal Access Token / OAuth credential exists in Sandbox Secrets Manager, and subscription creation is **not authorized** this pass.
 
-### Step 2 — Apply prepared ECS / CloudFormation wiring
+### What you do (Calendly UI — preferred)
 
-| Actor | Action |
-|---|---|
-| **Cursor (after infra approval)** | Add `CalendlyWebhookSigningKeySecret` to `infra/htc-ecs-stack.json`; grant `EcsTaskExecutionRole` `GetSecretValue`; inject `CALENDLY_WEBHOOK_SIGNING_KEY` = `${CalendlyWebhookSigningKeySecret}:value::` into **MarketingTaskDefinition** Secrets only. Deploy Sandbox stack / marketing service so the env is present. |
-| **Not yet** | Do not apply until you explicitly authorize infrastructure. |
+1. Sign in as the owner of `jennifer-hellotocheers`.  
+2. Open **Integrations & apps** / **Developer** → **Webhooks**.  
+3. Confirm there is **no** existing subscription pointing at the Sandbox callback (avoid duplicates).  
+4. Retrieve the signing key yourself from AWS (Console → Secrets Manager → `htc/sandbox/calendly-webhook-signing-key` → Retrieve secret value → `value`), or:
+   ```bash
+   aws secretsmanager get-secret-value \
+     --secret-id htc/sandbox/calendly-webhook-signing-key \
+     --query SecretString --output text
+   ```
+   (Do not paste the value into chat/Cursor.)  
+5. Create **one** user-scoped webhook subscription:  
+   - URL = Sandbox callback above  
+   - Events = `invitee.created`, `invitee.canceled`  
+   - Signing key = the Secrets Manager value (custom/signing key field — do not let Calendly generate a different key unless you then update SM to match)  
+6. Save. Do not create a Production callback.
 
-### Step 3 — Register Calendly webhook subscription
+### If Calendly UI only auto-generates a key
 
-| Actor | Action |
-|---|---|
-| **You** | Create/confirm subscription in Calendly UI (or authorize API use of a PAT — none exists in Sandbox secrets today; do not create/rotate credentials without approval). |
-| **Cursor** | Cannot list/create subscriptions without a Calendly token you authorize. |
+1. Create the subscription and copy Calendly’s generated signing key once.  
+2. Authorize Cursor (separate approval) to `put-secret-value` that key into `htc/sandbox/calendly-webhook-signing-key` (overwrite).  
+3. Force marketing ECS redeploy so tasks reload the secret.  
+4. Then verify signed delivery.
 
-### Step 4 — Verify authenticated delivery + CRM sync
+### Optional API path (needs separate approval)
 
-| Actor | Action |
-|---|---|
-| **Cursor (after steps 1–3)** | Prove unsigned still **503** (or **401** if key present but bad sig); with a **signed** controlled payload or your authorized test booking, confirm CRM walkthrough lead / cancel / idempotency; no duplicate leads. |
-| **You** | Approve one disposable test booking if live Calendly delivery is preferred over a signed synthetic POST. |
+- Create a Calendly **Personal Access Token** with webhook subscription permissions (minimum: webhooks read/write for your user).  
+- Store the PAT in Secrets Manager (e.g. `htc/sandbox/calendly-pat`) — never in chat.  
+- Authorize Cursor to `POST /webhook_subscriptions` with the Sandbox URL, events, user scope, and signing key already in SM.  
+- Do **not** create/rotate a PAT until you explicitly approve.
 
-**401 vs 503 note:** With no key injected, missing/invalid signatures both fail closed as **503**. After the key is injected, invalid/stale signatures return **401**; unset key remains **503**.
+### After subscription exists (next Cursor verification, when authorized)
+
+1. Unsigned/missing/invalid/stale still **401**.  
+2. Authorized disposable test booking **or** signed synthetic `invitee.created` → CRM walkthrough lead.  
+3. Cancel path → CRM cancel idempotency.  
+4. Confirm a single subscription only.
 
 ---
 
-## 5. Remaining Production dependencies (unchanged)
+## 8. Action required from you
 
-```text
-NEXT_PUBLIC_CALENDLY_URL=https://calendly.com/jennifer-hellotocheers/new-meeting
-CALENDLY_WEBHOOK_SIGNING_KEY=<Production subscription signing key>
-```
-
-Plus separate Production webhook URL `https://hellotocheers.com/api/calendly/webhook`, Resend/notify, CRM keys, pricing/Stripe/product sync as needed, robots/sitemap, explicit Production approval. Do not copy Sandbox secrets.
+1. **Register** the Sandbox Calendly webhook subscription (UI steps above) using the SM signing key.  
+2. Reply with confirmation (no secrets) when done.  
+3. Authorize the follow-up signed CRM verification pass (and optionally a disposable test booking).
 
 ---
 
-## 6. GO / CONDITIONAL GO / STOP
+## 9. GO / CONDITIONAL GO / STOP
 
 | Scope | Verdict |
 |---|---|
-| Sandbox fail-closed webhook deploy | **GO** |
-| Sandbox public walkthrough booking UI | **GO** |
-| Sandbox Calendly → CRM end-to-end | **CONDITIONAL GO** — blocked on secret + CFN + subscription |
+| Sandbox secret + CFN/ECS injection + auth | **GO** |
+| Public walkthrough booking UI | **GO** |
+| End-to-end Calendly → CRM | **CONDITIONAL GO** — waiting on your webhook subscription |
 | Production | **STOP** |
 
 ---
 
-**Stop line honored this pass:** Sandbox only · no CFN/secret injection · no Calendly subscription · no credential create/rotate · no Production · no Stripe · no migrations · unrelated dirty work preserved.
+## Prior context (still valid)
+
+- App security commit: `f22b8c14`  
+- Prior app deploy: [42943210110](https://github.com/jlcormier612/wevenu-website/actions/runs/42943210110)  
+- Embed URL: `https://calendly.com/jennifer-hellotocheers/new-meeting`  
+- Prepared wiring (now applied): `docs/design/calendly-webhook-security/PREPARED-CFN-WIRING.json`
+
+---
+
+**Stop line honored:** Sandbox only · no Calendly subscription create · no PAT create/rotate · no real booking · no Production · no Stripe · no migrations · secret values never disclosed · unrelated dirty work preserved.
