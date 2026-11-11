@@ -1,58 +1,75 @@
 # Launch hospitality restoration inventory (working)
 
-**Status:** IN PROGRESS — not GREEN.  
-**Serving baseline before this work:** Sandbox `54bb95a5` / ECS `:1171`.  
-**Approved KPI reference:** marketing `features-showroom/reporting.png` + hospitality tip prior to `40c7bb55`.
+**Status:** IN PROGRESS — LAUNCH BLOCKER (not GREEN).  
+**Serving Sandbox (preserved — no new deploy this wave):** `df1aa331` · ECS `htc-sandbox-venue-app:1172` · digest `sha256:5a109d1376e6a38d6090ccd03d285713f2ad4889aacee66511a26a07951f2f9e`.  
+**Approved hospitality reference tip:** `f22b8c14` (+ Phase 11 reporting tones via PR #29).  
+**Safeguards PR:** [#30](https://github.com/jlcormier612/wevenu-website/pull/30) — visual pixel-compare + deploy identity (awaiting merge/deploy approval).
 
-## Reporting KPI root cause (confirmed)
+Disposition keys: **RESTORED AND VERIFIED** · **ALREADY PRESENT AND VERIFIED** · **PARTIAL — NEEDS DEEPER PROOF** · **UNRESOLVED — LAUNCH BLOCKER** · **SUPERSEDED**
+
+## Reporting KPI root cause (confirmed, closed on Sandbox)
 
 | Item | Detail |
 | --- | --- |
 | Symptom | Overview “How the business moved” showed plain white outlined boxes |
-| Approved | Softly colored `htc-report-metric-tile` period + cohort tiles (Phase 11B/11D) |
-| Cause | `40c7bb55` (“Integrate latest reporting onto the finished hospitality application”) replaced hospitality `BusinessFunnel` with main’s plain bordered strip from the reporting line |
-| Classification | **A** — approved presentation overwritten during reporting integration |
-| Fix wave | Restore metric-tile tones; remove redundant `ComparisonCardGrid` on Overview |
+| Approved | Softly colored `htc-report-metric-tile` period + cohort tiles |
+| Cause | `40c7bb55` replaced hospitality `BusinessFunnel` with plain borders |
+| Fix | PR #29 → Sandbox `df1aa331` — colored KPIs verified vs marketing `reporting.png` |
 
-## Exhaustive area ledger (seed — expand with screenshot evidence)
+## Safeguards (this wave)
 
-Disposition keys: **RESTORED AND VERIFIED** · **ALREADY PRESENT AND VERIFIED** · **SUPERSEDED** · **UNRESOLVED — LAUNCH BLOCKER**
+| Gate | Status | Evidence |
+| --- | --- | --- |
+| Deploy SHA + ECR digest verification | Present on PR #30 (`deploy-sandbox.yml`); fails if running image tag ≠ `github.sha` or ECR digest missing | Workflow step `Record and verify venue-app image SHA + digest` |
+| Visual guard = pixel compare vs approved baselines | **Implemented** — capture alone is not a pass; mutated PNG → `diffRatio 1.0` → exit 1 | `scripts/qa/compare-png-baselines.mts` + `.test.ts` (5/5) |
+| CI jobs | Source guards + Screenshot vs approved baseline compare (PR); live Sandbox capture+compare on `workflow_dispatch` | `.github/workflows/hospitality-visual-smoke.yml` |
+| Branch protection / ruleset on `main` | Still required for permanent merge gates | Prior ruleset work; confirm required checks include visual compare job after #30 merges |
+| Approved baseline matrix | 20 PNGs: 10 routes × desktop/mobile locked under `docs/design/hospitality-visual-baselines/approved/` | Captured from live Sandbox `df1aa331` |
 
-| Area | Approved source | Current (`main` / Sandbox) | Disposition | Notes |
+## Exhaustive area ledger
+
+| Area | Approved source | Live Sandbox / code | Disposition | Visual evidence |
 | --- | --- | --- | --- | --- |
-| Reports Overview KPI strip | `dea957d2` / marketing reporting.png | Plain borders on `54bb95a5`; restored on this branch | RESTORED pending visual verify | Wave in progress |
-| Reports Overview duplicate KPI grid | N/A (regression) | ComparisonCards duplicated funnel | RESTORED pending visual verify | Removed duplicate grid |
-| Chart Day/Week/Month control | Product brief | Auto day/week/month only | RESTORED pending visual verify | Defaults aligned to brief |
-| Event type doughnut vs list | Canonical display | Unknown tokens → “Not recorded” | RESTORED pending visual verify | Display-only humanize |
-| Saved Reports density | Hospitality density | Oversized white cards | RESTORED pending visual verify | Compact rows |
-| Global shell / sidebar | hospitality tip | Present on Sandbox | ALREADY PRESENT — needs visual proof | Class markers ≠ parity |
-| Dashboard | hospitality tip | Present | ALREADY PRESENT — needs visual proof | |
-| Leads / Clients lists | hospitality tip | Present | ALREADY PRESENT — needs visual proof | |
-| Contracts / Payments | hospitality tip | Present | ALREADY PRESENT — needs visual proof | Partial marker gaps historically |
-| Templates / document manager | f22 + later | Files present | UNRESOLVED — LAUNCH BLOCKER | Needs screenshot parity |
-| Billing / org cards | f22 + later | Files present | UNRESOLVED — LAUNCH BLOCKER | Needs screenshot parity |
-| Multi-venue shell | hospitality work | Unknown | UNRESOLVED — LAUNCH BLOCKER | Inventory |
-| Attention navigation | prior QA | Unknown | UNRESOLVED — LAUNCH BLOCKER | Inventory |
-| Relationship photos | prior design | Unknown | UNRESOLVED — LAUNCH BLOCKER | Inventory |
-| Branch protection on `main` | Ops requirement | **None** (API 404 / empty rulesets) | UNRESOLVED — LAUNCH BLOCKER | Admin enforce required |
-| Visual regression suite | Ops requirement | Not yet enforced | UNRESOLVED — LAUNCH BLOCKER | In progress |
-| Deploy integrity recording | Ops requirement | Partial in Deploy Sandbox | UNRESOLVED — LAUNCH BLOCKER | Extend verify job |
+| Reports Overview KPI strip | Phase 11B / marketing PNG | Colored tiles on `df1aa331` | **RESTORED AND VERIFIED** | `reporting-overview__desktop/mobile.png` |
+| Chart Day/Week/Month | Product brief | Present post-#29 | **RESTORED AND VERIFIED** | reporting verify set (prior wave) |
+| Event type labels | Canonical humanize | Fixed display-only | **RESTORED AND VERIFIED** | prior wave |
+| Saved Reports density | Hospitality compact | Compact rows | **RESTORED AND VERIFIED** | prior wave |
+| Global shell / sidebar botanical | `f22b8c14` | File-identical hospitality markers; live shell matches | **ALREADY PRESENT AND VERIFIED** | all baseline shots show shell |
+| Dashboard hospitality + focus | `f22` / Phase 10–11 | Today’s Focus + toned snapshot tiles live | **ALREADY PRESENT AND VERIFIED** | `dashboard__desktop/mobile.png` |
+| Leads / Clients lists | `f22` | Hospitality toolbar/page live | **ALREADY PRESENT AND VERIFIED** | `leads__*`, `clients__*` |
+| Templates hub | `f22` | File-identical; live hospitality hub | **ALREADY PRESENT AND VERIFIED** (hub) | `templates__desktop/mobile.png` |
+| Communication / message templates list | `f22` | Live hospitality list + starters | **ALREADY PRESENT AND VERIFIED** (list) | `communication-templates__*` |
+| Timeline / questionnaire template lists | `f22` | Live hospitality lists | **ALREADY PRESENT AND VERIFIED** (lists) | `timeline-templates__*`, `questionnaire-templates__*` |
+| Template **editors** (timeline edit chrome, EO, floor plan, document workspace) | Wave G2 tests + `f22` | Timeline edit live: `htc-hospitality-page` + `htc-working-card` + `data-htc-phase12=timeline-template-edit` | **ALREADY PRESENT AND VERIFIED** (timeline edit) · **PARTIAL** (EO/floor-plan/doc editors still need shot matrix) | `recovery-evidence/timeline-template-edit__desktop/mobile.png` |
+| Billing / subscription cards | `f22` + billing components | Live Subscription & Billing + pricing cards | **ALREADY PRESENT AND VERIFIED** (page) | `billing__desktop/mobile.png` |
+| Organization settings hub | `f22` | Settings card grid live | **ALREADY PRESENT AND VERIFIED** | `org-settings__*` |
+| Multi-venue switcher | venue-switcher in shell header | Live “The Willow Grove” switcher in header | **ALREADY PRESENT AND VERIFIED** (switcher chrome) | all desktop headers; `multi-venue-header__*` |
+| Multi-venue **switch behavior** / membership edge cases | product | Not exercised (switch + persist + RLS) in this wave | **PARTIAL — NEEDS DEEPER PROOF** | — |
+| Attention navigation (Today’s Focus + nav badges) | attention service + sidebar | Today’s Focus live; Leads `99+` badge live; `/api/navigation/attention` → 200 | **ALREADY PRESENT AND VERIFIED** (dashboard focus + badge) | `dashboard__*`, recovery `attention-dashboard__*` |
+| Attention **inbox deep-link / dismiss** flows | prior QA | Needs end-to-end click-through proof beyond dashboard list | **PARTIAL — NEEDS DEEPER PROOF** | — |
+| Relationship photos (avatar/editor on lead/client) | relationship-photos components | Lead detail shows avatar (initials fallback when no upload); client/event header monogram present; `data-testid=relationship-photo-avatar` added for guards | **ALREADY PRESENT AND VERIFIED** (avatar chrome + initials) · **PARTIAL** (uploaded-photo + editor flows still need shot matrix) | `recovery-evidence/lead-detail-photo__*`, `client-detail-photo__*` |
+| Contracts / Payments / Invoices lists | `f22` | Marker parity historically restored; screenshot matrix not yet expanded this wave | **PARTIAL — NEEDS DEEPER PROOF** | add to next baseline wave |
+| Calendar / Tours / Vendors / Packages | `f22` | Source hospitality present; visual matrix incomplete | **PARTIAL — NEEDS DEEPER PROOF** | — |
+| Vendor portal hospitality | later fixes on main | Out of staff-app matrix; keep tracked | **PARTIAL** | — |
+| Source parity `f22` hospitality files | 122 files | 121 identical; 1 improved (`vendor-event-workspace` gained `htc-hospitality-page`) | **ALREADY PRESENT** (code) | scan 2026-11-11 |
+| Permanent branch-protection requiring visual job | Ops | Not fully accepted until #30 merged + required | **UNRESOLVED — LAUNCH BLOCKER** | — |
 
-Do not treat CSS class presence as visual acceptance.
+Do **not** treat CSS class presence, green builds, or a handful of screenshots as full parity. Editors, photo matrix, attention deep-links, multi-venue switch persistence, and remaining CRM routes still block declaring GREEN.
 
-## Next waves (ordered)
+## Pixel-compare proof (this wave)
 
-1. Land reporting polish PR (this branch) after build + tests + screenshot evidence; Sandbox only with explicit approval.
-2. Screenshot matrix vs approved captures for shell + top CRM routes (desktop + mobile).
-3. Restore remaining presentation gaps adapted to current architecture — no blind cherry-picks.
-4. Enforce GitHub ruleset + visual CI + deploy SHA/digest verification.
+1. Mutate `current/reporting-overview.png` → solid red → `compare-png-baselines` exit **1** (`diffRatio 1.0000`).
+2. Restore file → compare exit **0** (20/20 pairs).
+3. Unit suite `scripts/qa/compare-png-baselines.test.ts` — 5/5 including intentional regression failure.
 
-## Reporting wave status (2026-11-11)
+## Next before complete restoration can be accepted
 
-- Merged PR #29 → `df1aa331`; Sandbox ECS `:1172`; digest `sha256:5a109d1376e6a38d6090ccd03d285713f2ad4889aacee66511a26a07951f2f9e`.
-- Overview colored KPIs visually verified vs marketing reporting.png — **PASS**.
-- Deploy workflow now records/fails on SHA+digest mismatch.
-- Visual smoke workflow + baseline harness seeded (`docs/design/hospitality-visual-baselines/`).
-- Remaining launch blockers unchanged: exhaustive screenshot parity for templates/editors, multi-venue UX nuances, relationship-photo coverage matrix, attention navigation UX proof, deeper billing card polish vs approved captures.
+1. Merge PR #30 **only after** CI shows both source-guards **and** Screenshot vs approved baseline compare green (no Sandbox deploy until explicit approval — preserve `df1aa331`).
+2. Expand baseline + recovery matrix: template **edit** surfaces, lead/client **photo** states, contracts/payments/calendar/vendors, attention dismiss → destination.
+3. Exercise multi-venue switch end-to-end on Sandbox demo org.
+4. Require the visual compare job on `main` ruleset.
+5. Only then request Sandbox deploy of any net-new restoration commits.
 
-**Overall: IN PROGRESS — not GREEN.**
+## Overall
+
+**IN PROGRESS — LAUNCH BLOCKER.** Reporting wave closed on Sandbox. Safeguards upgraded to real screenshot-vs-baseline failure. Priority hubs (templates, billing, org settings, multi-venue chrome, attention dashboard) visually confirmed on live `df1aa331`, but editor/photo/deep-link/remaining-route parity is not yet complete enough to accept full restoration.
