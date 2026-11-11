@@ -1,0 +1,236 @@
+# Marketing-only Sandbox deploy.
+# Builds/pushes htc-sandbox-marketing for an explicit ref, then updates ONLY
+# the htc-sandbox-marketing ECS service (new task-definition revision with the
+# new image). Venue-app, workspace, and scheduler are never built or restarted.
+#
+# Does not run CloudFormation. Does not touch Production.
+
+name: Deploy Sandbox Marketing Only
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Git SHA or ref to deploy (marketing image tag)"
+        required: true
+        type: string
+
+concurrency:
+  group: deploy-sandbox-marketing-only
+  cancel-in-progress: false
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+
+jobs:
+  build-and-deploy:
+    name: Build & deploy marketing
+    runs-on: ubuntu-latest
+    environment: sandbox
+    steps:
+      - name: Checkout requested ref
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Log in to ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Prefetch base images (private ECR, then Public ECR)
+        run: |
+          set -euo pipefail
+          REGISTRY="${{ steps.ecr-login.outputs.registry }}"
+          retry_pull() {
+            local image="$1"
+            local local_tag="$2"
+            local attempt=1
+            local delay=5
+            while [ "$attempt" -le 5 ]; do
+              echo "Pull attempt $attempt/5: $image"
+              if docker pull "$image"; then
+                docker tag "$image" "$local_tag"
+                return 0
+              fi
+              sleep "$delay"
+              attempt=$((attempt + 1))
+              delay=$((delay * 2))
+            done
+            return 1
+          }
+          pull_base() {
+            local private_tag="$1"
+            local public_image="$2"
+            local local_tag="$public_image"
+            if docker pull "${REGISTRY}/htc-ci-bases:${private_tag}"; then
+              docker tag "${REGISTRY}/htc-ci-bases:${private_tag}" "$local_tag"
+              return 0
+            fi
+            if retry_pull "$public_image" "$local_tag"; then
+              docker tag "$local_tag" "${REGISTRY}/htc-ci-bases:${private_tag}"
+              docker push "${REGISTRY}/htc-ci-bases:${private_tag}" || true
+              return 0
+            fi
+            echo "::error::Failed to pull ${local_tag}"
+            return 1
+          }
+          pull_base node-22-alpine public.ecr.aws/docker/library/node:22-alpine
+          pull_base alpine-3.20 public.ecr.aws/docker/library/alpine:3.20
+
+      - name: Resolve deploy SHA
+        id: sha
+        run: |
+          SHA=$(git rev-parse HEAD)
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "Deploying marketing at $SHA"
+
+      - name: Build marketing image
+        env:
+          IMAGE_URI: ${{ steps.ecr-login.outputs.registry }}/htc-sandbox-marketing:${{ steps.sha.outputs.sha }}
+          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+        run: |
+          set -euo pipefail
+          CALENDLY_LEN_PROBE="${{ vars.NEXT_PUBLIC_CALENDLY_URL }}"
+          echo "Marketing bake: NEXT_PUBLIC_CALENDLY_URL length=${#CALENDLY_LEN_PROBE}"
+          if [ -z "$CALENDLY_LEN_PROBE" ]; then
+            echo "::warning::NEXT_PUBLIC_CALENDLY_URL is empty — /walkthrough will show scheduling fallback"
+          fi
+          REWRITTEN="$(mktemp)"
+          ./scripts/ci/rewrite-sandbox-dockerfile-bases.sh \
+            marketing/Dockerfile \
+            "$REWRITTEN" \
+            "$ECR_REGISTRY"
+          if grep -E '^FROM[[:space:]]+public\.ecr\.aws/docker/library/' "$REWRITTEN"; then
+            echo "::error::rewritten Dockerfile still references public.ecr.aws/docker/library"
+            exit 1
+          fi
+          attempt=1
+          delay=10
+          while [ "$attempt" -le 3 ]; do
+            echo "Build attempt $attempt/3 for marketing"
+            if docker build --pull=false -f "$REWRITTEN" \
+              --build-arg "NEXT_PUBLIC_MARKETING_URL=https://sandbox.hellotocheers.com" \
+              --build-arg "NEXT_PUBLIC_SITE_URL=https://sandbox.hellotocheers.com" \
+              --build-arg "NEXT_PUBLIC_PRODUCT_APP_URL=https://app.sandbox.hellotocheers.com" \
+              --build-arg "NEXT_PUBLIC_CALENDLY_URL=${{ vars.NEXT_PUBLIC_CALENDLY_URL }}" \
+              --build-arg "NEXT_PUBLIC_GA4_MEASUREMENT_ID=${{ vars.NEXT_PUBLIC_GA4_MEASUREMENT_ID }}" \
+              -t "$IMAGE_URI" .; then
+              rm -f "$REWRITTEN"
+              exit 0
+            fi
+            sleep "$delay"
+            attempt=$((attempt + 1))
+            delay=$((delay * 2))
+          done
+          rm -f "$REWRITTEN"
+          echo "::error::docker build failed for marketing after 3 attempts"
+          exit 1
+
+      - name: Push marketing image
+        env:
+          IMAGE_URI: ${{ steps.ecr-login.outputs.registry }}/htc-sandbox-marketing:${{ steps.sha.outputs.sha }}
+        run: docker push "$IMAGE_URI"
+
+      - name: Update only htc-sandbox-marketing ECS service
+        env:
+          IMAGE_URI: ${{ steps.ecr-login.outputs.registry }}/htc-sandbox-marketing:${{ steps.sha.outputs.sha }}
+          SHA: ${{ steps.sha.outputs.sha }}
+        run: |
+          set -euo pipefail
+          CURRENT_TD=$(aws ecs describe-services \
+            --cluster htc-sandbox \
+            --services htc-sandbox-marketing \
+            --query 'services[0].taskDefinition' \
+            --output text)
+          echo "Current task definition: $CURRENT_TD"
+          aws ecs describe-task-definition --task-definition "$CURRENT_TD" \
+            --query 'taskDefinition' > /tmp/marketing-td.json
+          python3 <<'PY'
+          import json, os
+          td = json.load(open("/tmp/marketing-td.json"))
+          image = os.environ["IMAGE_URI"]
+          sha = os.environ["SHA"]
+          containers = td["containerDefinitions"]
+          assert len(containers) >= 1
+          containers[0]["image"] = image
+          # Keep runtime env/secrets from the live task definition.
+          payload = {
+            "family": td["family"],
+            "taskRoleArn": td.get("taskRoleArn"),
+            "executionRoleArn": td.get("executionRoleArn"),
+            "networkMode": td.get("networkMode"),
+            "containerDefinitions": containers,
+            "requiresCompatibilities": td.get("requiresCompatibilities"),
+            "cpu": td.get("cpu"),
+            "memory": td.get("memory"),
+            "volumes": td.get("volumes") or [],
+          }
+          if td.get("runtimePlatform"):
+            payload["runtimePlatform"] = td["runtimePlatform"]
+          if td.get("proxyConfiguration"):
+            payload["proxyConfiguration"] = td["proxyConfiguration"]
+          json.dump(payload, open("/tmp/marketing-td-register.json", "w"))
+          print(f"Registering new revision with image={image}")
+          PY
+          NEW_TD_ARN=$(aws ecs register-task-definition \
+            --cli-input-json file:///tmp/marketing-td-register.json \
+            --query 'taskDefinition.taskDefinitionArn' \
+            --output text)
+          echo "Registered: $NEW_TD_ARN"
+          echo "NEW_TD_ARN=$NEW_TD_ARN" >> "$GITHUB_ENV"
+          aws ecs update-service \
+            --cluster htc-sandbox \
+            --service htc-sandbox-marketing \
+            --task-definition "$NEW_TD_ARN" \
+            --force-new-deployment \
+            >/tmp/marketing-svc-update.json
+          echo "Updated htc-sandbox-marketing only"
+
+      - name: Wait for marketing service stable
+        run: |
+          set -euo pipefail
+          aws ecs wait services-stable \
+            --cluster htc-sandbox \
+            --services htc-sandbox-marketing
+          aws ecs describe-services \
+            --cluster htc-sandbox \
+            --services htc-sandbox-marketing \
+            --query 'services[0].{taskDefinition:taskDefinition,running:runningCount,desired:desiredCount,rollout:deployments[0].rolloutState}' \
+            --output json
+
+      - name: Verify marketing ALB routes
+        run: |
+          set -euo pipefail
+          BASE=https://sandbox.hellotocheers.com
+          fail=0
+          for path in / /pricing /contact /walkthrough /trust /features /product /our-story; do
+            code=$(curl -sS -o /tmp/mkt-body -w '%{http_code}' --max-time 30 "$BASE$path" || echo 000)
+            echo "$path -> $code"
+            if [ "$code" != "200" ]; then
+              echo "::error::$path returned $code"
+              fail=1
+            fi
+          done
+          # Signal approved redesign markers on Pricing/Contact
+          pricing=$(curl -sS --max-time 30 "$BASE/pricing")
+          contact=$(curl -sS --max-time 30 "$BASE/contact")
+          echo "$pricing" | grep -q 'Get Started' || { echo '::error::Pricing missing Get Started'; fail=1; }
+          echo "$pricing" | grep -Eqi 'first[[:space:]]+[0-9]+[[:space:]]+eligible' || { echo '::error::Pricing missing founding phrase'; fail=1; }
+          echo "$contact" | grep -q "We'd love to hear from you" || { echo '::error::Contact missing approved headline'; fail=1; }
+          # Confirm other services were not redeployed by this job
+          for svc in htc-sandbox-venue-app htc-sandbox-workspace htc-sandbox-scheduler; do
+            img=$(aws ecs describe-services --cluster htc-sandbox --services "$svc" \
+              --query 'services[0].taskDefinition' --output text)
+            echo "untouched_service $svc td=$img"
+          done
+          exit "$fail"
