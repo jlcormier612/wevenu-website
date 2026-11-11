@@ -160,9 +160,9 @@ export async function getDashboardData(): Promise<DashboardData | null> {
   if (!isSupabaseConfigured) return null;
   const venue = await getCurrentVenue();
   if (!venue) return null;
-  // Canonical graduation: ready_to_invite_couples only.
+  // Ready-to-invite is a Setup Hub declaration, not a dashboard wall.
+  // Still load operational dashboard data; checklist copy may reflect readiness.
   const readyToInviteCouples = await isVenueReadyToInviteCouples(venue.id);
-  if (!readyToInviteCouples) return null;
   const supabase = await createClient();
 
   // Venue-local calendar day, not UTC. Today's Focus vs Upcoming partitions
