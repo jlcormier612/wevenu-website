@@ -20,7 +20,7 @@ export default async function ToursPage() {
   const past     = appointments.filter((a) => a.status === "completed" || a.status === "no_show" || (a.status !== "cancelled" && new Date(a.scheduledAt) < new Date()));
 
   return (
-    <div className="htc-hospitality-page space-y-6">
+    <div className="htc-hospitality-page htc-hospitality-heading htc-hospitality-intro-accent space-y-6">
       <div className="flex items-center justify-between gap-4">
         <PageHeader title="Tours" description="Upcoming and past venue tour appointments." />
         {tourSettings?.tourSchedulingEnabled && (

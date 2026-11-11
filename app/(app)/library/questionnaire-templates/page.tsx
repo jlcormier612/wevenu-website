@@ -21,7 +21,7 @@ export default async function QuestionnaireTemplatesLibraryPage() {
     .map((m) => m.key);
 
   return (
-    <div className="space-y-6">
+    <div className="htc-hospitality-page htc-hospitality-heading htc-hospitality-intro-accent space-y-6">
       <PageHeader
         title="Questionnaires & Feedback"
         description="Client Planning Questionnaire, Final Details, and Post-Event Feedback — Hello to Cheers starters you can customize for your venue."

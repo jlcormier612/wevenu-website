@@ -17,7 +17,7 @@ export default async function MessageTemplatesPage() {
   const missingMasters = STARTER_MESSAGE_MASTERS.filter((m) => !presentKeys.has(m.key));
 
   return (
-    <div className="space-y-6">
+    <div className="htc-hospitality-page htc-hospitality-heading htc-hospitality-intro-accent space-y-6">
       <PageHeader
         title="Message Templates"
         description="Reusable email and text messages for couples — including Hello to Cheers starters you can edit to sound like your venue."

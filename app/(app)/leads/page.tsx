@@ -20,7 +20,7 @@ export default async function LeadsPage({ searchParams }: Props) {
     : attention === "active" ? "active" as const
     : null;
   return (
-    <div className="htc-hospitality-page space-y-6">
+    <div className="htc-hospitality-page htc-hospitality-heading htc-hospitality-intro-accent space-y-6">
       <PageHeader
         title="Leads"
         description="Manage leads and track them through your pipeline."

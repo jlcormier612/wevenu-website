@@ -11,7 +11,7 @@ export default async function BrochuresPage() {
   await ensureBrochureStartersForCurrentVenue();
   const brochures = await getBrochures(true);
   return (
-    <div className="space-y-6">
+    <div className="htc-hospitality-page htc-hospitality-heading htc-hospitality-intro-accent space-y-6">
       <PageHeader
         title="Brochures"
         description="Reusable, brandable overviews of your venue to share with prospective couples. Customize your Hello to Cheers starter, then share when you're ready."

@@ -1,0 +1,62 @@
+# Required quality gate for venue-app changes.
+# Prevents hospitality / shell / app recoveries from merging before a production-style
+# Next.js build (including TypeScript) succeeds — the failure mode behind PR #22/#23.
+#
+# Uses placeholder NEXT_PUBLIC_* values sufficient for `next build` typecheck/compile.
+# Does not deploy. Does not touch Sandbox or Production.
+
+name: Venue app PR build
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "app/**"
+      - "components/**"
+      - "lib/**"
+      - "shared/**"
+      - "integrations/**"
+      - "proxy.ts"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.json"
+      - "next.config.*"
+      - "Dockerfile"
+      - ".github/workflows/venue-app-pr-build.yml"
+
+concurrency:
+  group: venue-app-pr-build-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Production-style venue-app build
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Write build env
+        run: |
+          printf '%s\n' \
+            "NEXT_PUBLIC_SUPABASE_URL=https://example.supabase.co" \
+            "NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_pr_build_placeholder" \
+            > .env.production
+
+      - name: next build (includes TypeScript)
+        run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
+          NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_pr_build_placeholder

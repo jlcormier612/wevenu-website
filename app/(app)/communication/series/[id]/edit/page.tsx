@@ -30,7 +30,7 @@ export default async function EditSeriesPage({ params }: Props) {
   const activeCount = enrollments.filter((e) => e.status === "active").length;
 
   return (
-    <div className="space-y-6">
+    <div className="htc-hospitality-page htc-hospitality-heading htc-hospitality-intro-accent space-y-6">
       <PageHeader
         title={series.name}
         description="Review who this is for, what will happen, and who is currently receiving messages."

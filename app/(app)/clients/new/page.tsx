@@ -11,7 +11,7 @@ export const metadata: Metadata = { title: "New Client" };
 export default async function NewClientPage() {
   const [spaces, capacityRules] = await Promise.all([getSpaces(), getCapacityRules()]);
   return (
-    <div className="space-y-6">
+    <div className="htc-hospitality-page htc-hospitality-heading htc-hospitality-intro-accent space-y-6">
       <PageHeader
         title="New Client"
         description="Record a booked client directly."

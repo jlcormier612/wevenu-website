@@ -24,6 +24,15 @@ export const LIBRARY_LABELS = {
   useQrCampaign: "Use QR Campaign",
   openReport: "Open report",
   duplicate: "Duplicate",
+  /** Primary CTA for Hello to Cheers starters — creates a venue-owned copy. */
+  customize: "Customize",
+  /** Template-level name / space / event-type (not item editing). */
+  editDetails: "Edit details",
+  /**
+   * Planning-only: re-provision fresh master recipe content (not Duplicate of this row).
+   * Kept distinct from Duplicate / Customize on purpose — see playbooks-section.
+   */
+  addAnotherCopy: "Add another copy",
   archive: "Archive",
   restore: "Restore",
   delete: "Delete",
@@ -31,6 +40,9 @@ export const LIBRARY_LABELS = {
   saving: "Saving…",
   saved: "Saved",
   savedJustNow: "Saved just now",
+  /** Durable autosave completion — must not fade into a blank state. */
+  allChangesSaved: "All changes saved",
+  autosaveTeaching: "Changes save as you work. You can leave anytime.",
   unableToSave: "Unable to save changes. Please try again.",
   cancel: "Cancel",
   optionsAria: "More actions",
@@ -44,4 +56,12 @@ export const LIBRARY_LABELS = {
 
 export function archiveToggleLabel(isArchived: boolean): string {
   return isArchived ? LIBRARY_LABELS.restore : LIBRARY_LABELS.archive;
+}
+
+/**
+ * Hello to Cheers starter insertion labels — distinct from Duplicate.
+ * Repeated insertion is allowed (fresh venue-owned copy; prior customizations stay).
+ */
+export function starterInsertLabel(name: string, alreadyPresent: boolean): string {
+  return alreadyPresent ? `Add another copy of ${name}` : `Add ${name}`;
 }

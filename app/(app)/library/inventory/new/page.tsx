@@ -11,7 +11,7 @@ export const metadata: Metadata = { title: "New Inventory Item" };
 export default async function NewInventoryItemPage() {
   const [categories, venue] = await Promise.all([getCategories(), getCurrentVenue()]);
   return (
-    <div className="space-y-6">
+    <div className="htc-hospitality-page htc-hospitality-heading htc-hospitality-intro-accent space-y-6">
       <PageHeader title="New Inventory Item" description="Add a reusable item to your inventory." />
       <Card>
         <CardContent className="pt-6">

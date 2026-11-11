@@ -20,7 +20,7 @@ export default async function CommunicationHealthPage() {
   ]);
 
   return (
-    <div className="space-y-6">
+    <div className="htc-hospitality-page space-y-6">
       <div>
         <h1 className="font-heading text-2xl font-medium text-heading">Communication Health</h1>
         <p className="text-sm text-muted-foreground">Whether your emails and texts are actually reaching your leads and clients.</p>

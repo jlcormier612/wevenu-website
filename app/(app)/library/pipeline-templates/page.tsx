@@ -12,7 +12,7 @@ export default async function PipelineTemplatesPage() {
   const templates = await getTemplates();
 
   return (
-    <div className="space-y-6">
+    <div className="htc-hospitality-page htc-hospitality-heading htc-hospitality-intro-accent space-y-6">
       <PageHeader
         title="Pipeline Templates"
         description="Customize the stages on your Leads Pipeline. Names and order here are what you see on the board."
