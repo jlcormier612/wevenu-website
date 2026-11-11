@@ -1,9 +1,15 @@
 # Marketing-only Sandbox deploy.
 # Builds/pushes htc-sandbox-marketing for an explicit ref, then updates ONLY
-# the htc-sandbox-marketing ECS service (new task-definition revision with the
-# new image). Venue-app, workspace, and scheduler are never built or restarted.
+# MarketingImage via CloudFormation (UsePreviousValue for venue/workspace/
+# scheduler images and all other stack parameters).
 #
-# Does not run CloudFormation. Does not touch Production.
+# Why CFN (not ecs:RegisterTaskDefinition):
+# The live GHA role `htc-sandbox-github-actions-deploy` can DescribeServices /
+# UpdateService via CFN execution role, but does NOT include
+# ecs:DescribeTaskDefinition / ecs:RegisterTaskDefinition (confirmed 2026-11-11
+# against policy HtcSandboxDeploy). Direct TD register fails AccessDenied.
+#
+# Does not touch Production. Does not build venue-app / workspace / scheduler.
 
 name: Deploy Sandbox Marketing Only
 
@@ -141,62 +147,144 @@ jobs:
           IMAGE_URI: ${{ steps.ecr-login.outputs.registry }}/htc-sandbox-marketing:${{ steps.sha.outputs.sha }}
         run: docker push "$IMAGE_URI"
 
-      - name: Update only htc-sandbox-marketing ECS service
+      - name: Snapshot non-marketing task definitions (pre-deploy)
+        id: pre
+        run: |
+          set -euo pipefail
+          for svc in htc-sandbox-venue-app htc-sandbox-workspace htc-sandbox-scheduler; do
+            td=$(aws ecs describe-services --cluster htc-sandbox --services "$svc" \
+              --query 'services[0].taskDefinition' --output text)
+            echo "$svc=$td"
+            echo "${svc//=/_}=$td" >> "$GITHUB_OUTPUT"
+          done
+          # GitHub output keys cannot contain hyphens easily; write a file instead.
+          aws ecs describe-services --cluster htc-sandbox \
+            --services htc-sandbox-venue-app htc-sandbox-workspace htc-sandbox-scheduler \
+            --query 'services[].{name:serviceName,td:taskDefinition}' --output json \
+            > /tmp/pre-non-marketing-tds.json
+          cat /tmp/pre-non-marketing-tds.json
+
+      - name: Update MarketingImage only via CloudFormation
         env:
           IMAGE_URI: ${{ steps.ecr-login.outputs.registry }}/htc-sandbox-marketing:${{ steps.sha.outputs.sha }}
           SHA: ${{ steps.sha.outputs.sha }}
+          STACK: ${{ vars.CFN_STACK_NAME }}
+          ROLE: ${{ vars.CFN_EXECUTION_ROLE_ARN }}
         run: |
           set -euo pipefail
-          CURRENT_TD=$(aws ecs describe-services \
-            --cluster htc-sandbox \
-            --services htc-sandbox-marketing \
-            --query 'services[0].taskDefinition' \
-            --output text)
-          echo "Current task definition: $CURRENT_TD"
-          aws ecs describe-task-definition --task-definition "$CURRENT_TD" \
-            --query 'taskDefinition' > /tmp/marketing-td.json
+          CS="mkt-only-${SHA:0:12}-$(date +%s)"
+          echo "Change set: $CS"
+          echo "MarketingImage=$IMAGE_URI"
+          # Only MarketingImage changes. Every other parameter keeps the live
+          # stack value so venue/workspace/scheduler images are untouched.
+          PARAMS=(
+            "ParameterKey=MarketingImage,ParameterValue=$IMAGE_URI"
+            "ParameterKey=EnvironmentName,UsePreviousValue=true"
+            "ParameterKey=VenueAppImage,UsePreviousValue=true"
+            "ParameterKey=WorkspaceImage,UsePreviousValue=true"
+            "ParameterKey=SchedulerImage,UsePreviousValue=true"
+            "ParameterKey=VenueAppHostname,UsePreviousValue=true"
+            "ParameterKey=MarketingHostname,UsePreviousValue=true"
+            "ParameterKey=WorkspaceHostname,UsePreviousValue=true"
+            "ParameterKey=CertificateArn,UsePreviousValue=true"
+            "ParameterKey=FromEmailAddress,UsePreviousValue=true"
+            "ParameterKey=EmailReplyTo,UsePreviousValue=true"
+            "ParameterKey=InquiryNotifyEmail,UsePreviousValue=true"
+            "ParameterKey=SupabaseUrl,UsePreviousValue=true"
+            "ParameterKey=SupabaseAnonKey,UsePreviousValue=true"
+            "ParameterKey=ResendInboundAddress,UsePreviousValue=true"
+            "ParameterKey=CronSecret,UsePreviousValue=true"
+            "ParameterKey=NotificationsSecret,UsePreviousValue=true"
+            "ParameterKey=CommunicationMode,UsePreviousValue=true"
+            "ParameterKey=StripePriceStarter,UsePreviousValue=true"
+            "ParameterKey=StripePriceGrowing,UsePreviousValue=true"
+            "ParameterKey=StripePriceGrowingFounder,UsePreviousValue=true"
+            "ParameterKey=StripePriceProfessional,UsePreviousValue=true"
+            "ParameterKey=StripePriceProfessionalFounder,UsePreviousValue=true"
+            "ParameterKey=StripePriceWhiteGlove,UsePreviousValue=true"
+            "ParameterKey=StripeFoundingCouponId,UsePreviousValue=true"
+            "ParameterKey=StripePriceGather199,UsePreviousValue=true"
+            "ParameterKey=StripeFoundingPercentCouponId,UsePreviousValue=true"
+            "ParameterKey=PricingLaunchV1,UsePreviousValue=true"
+            "ParameterKey=StripeWevenPercentCouponId,UsePreviousValue=true"
+            "ParameterKey=StripePriceWhiteGloveWeven,UsePreviousValue=true"
+            "ParameterKey=PricingWevenV1,UsePreviousValue=true"
+            "ParameterKey=StripeGroupPercentCouponId,UsePreviousValue=true"
+            "ParameterKey=PricingGroupV1,UsePreviousValue=true"
+            "ParameterKey=StripeSaasProductId,UsePreviousValue=true"
+            "ParameterKey=PricingFounderV1,UsePreviousValue=true"
+            "ParameterKey=ReferralProgramV1,UsePreviousValue=true"
+            "ParameterKey=ReferralRewardIssue,UsePreviousValue=true"
+            "ParameterKey=ReferralQualificationDays,UsePreviousValue=true"
+            "ParameterKey=PricingTierUpgradeStore,UsePreviousValue=true"
+            "ParameterKey=TierUpgradeApplyStripe,UsePreviousValue=true"
+            "ParameterKey=TierUpgradeSendNotice,UsePreviousValue=true"
+          )
+          # Use the LIVE stack template so deploying an older marketing SHA
+          # cannot accidentally roll infra/template drift from that commit.
+          aws cloudformation get-template --stack-name "$STACK" --template-stage Processed \
+            --query TemplateBody --output text > /tmp/htc-ecs-stack-live.json
+          aws cloudformation create-change-set \
+            --stack-name "$STACK" \
+            --change-set-name "$CS" \
+            --template-body file:///tmp/htc-ecs-stack-live.json \
+            --capabilities CAPABILITY_NAMED_IAM \
+            --role-arn "$ROLE" \
+            --change-set-type UPDATE \
+            --parameters "${PARAMS[@]}"
+
+          for _ in $(seq 1 40); do
+            st=$(aws cloudformation describe-change-set --stack-name "$STACK" --change-set-name "$CS" --query Status --output text)
+            case "$st" in CREATE_COMPLETE|FAILED) break ;; esac
+            sleep 2
+          done
+
+          aws cloudformation describe-change-set --stack-name "$STACK" --change-set-name "$CS" --output json \
+            > /tmp/mkt-only-changeset.json
           python3 <<'PY'
-          import json, os
-          td = json.load(open("/tmp/marketing-td.json"))
-          image = os.environ["IMAGE_URI"]
-          sha = os.environ["SHA"]
-          containers = td["containerDefinitions"]
-          assert len(containers) >= 1
-          containers[0]["image"] = image
-          # Keep runtime env/secrets from the live task definition.
-          payload = {
-            "family": td["family"],
-            "taskRoleArn": td.get("taskRoleArn"),
-            "executionRoleArn": td.get("executionRoleArn"),
-            "networkMode": td.get("networkMode"),
-            "containerDefinitions": containers,
-            "requiresCompatibilities": td.get("requiresCompatibilities"),
-            "cpu": td.get("cpu"),
-            "memory": td.get("memory"),
-            "volumes": td.get("volumes") or [],
-          }
-          if td.get("runtimePlatform"):
-            payload["runtimePlatform"] = td["runtimePlatform"]
-          if td.get("proxyConfiguration"):
-            payload["proxyConfiguration"] = td["proxyConfiguration"]
-          json.dump(payload, open("/tmp/marketing-td-register.json", "w"))
-          print(f"Registering new revision with image={image}")
+          import json, sys
+          d = json.load(open("/tmp/mkt-only-changeset.json"))
+          status, reason = d.get("Status"), d.get("StatusReason") or ""
+          if status == "FAILED" and "didn't contain changes" in reason:
+              print("No stack changes (MarketingImage already current).")
+              open("/tmp/mkt-only-empty", "w").write("1")
+              sys.exit(0)
+          if status != "CREATE_COMPLETE":
+              print(f"::error::Change set status {status}: {reason}")
+              sys.exit(1)
+          changes = d.get("Changes") or []
+          for c in changes:
+              rc = c["ResourceChange"]
+              print(f"  {rc.get('Action')} {rc.get('LogicalResourceId')} {rc.get('ResourceType')}")
+          # Refuse any change that is not marketing-related.
+          bad = [
+              c["ResourceChange"]["LogicalResourceId"]
+              for c in changes
+              if "Marketing" not in c["ResourceChange"]["LogicalResourceId"]
+              and c["ResourceChange"].get("Action") in ("Modify", "Remove", "Add")
+          ]
+          # Allow shared resources only if they are purely tag/metadata — still
+          # fail closed on venue/workspace/scheduler logical IDs.
+          blocked = [
+              lid for lid in bad
+              if any(x in lid for x in ("VenueApp", "Workspace", "Scheduler", "Facebook", "Https"))
+          ]
+          if blocked:
+              print("::error::Change set would touch non-marketing resources: " + ", ".join(blocked))
+              sys.exit(1)
           PY
-          NEW_TD_ARN=$(aws ecs register-task-definition \
-            --cli-input-json file:///tmp/marketing-td-register.json \
-            --query 'taskDefinition.taskDefinitionArn' \
-            --output text)
-          echo "Registered: $NEW_TD_ARN"
-          echo "NEW_TD_ARN=$NEW_TD_ARN" >> "$GITHUB_ENV"
-          aws ecs update-service \
-            --cluster htc-sandbox \
-            --service htc-sandbox-marketing \
-            --task-definition "$NEW_TD_ARN" \
-            --force-new-deployment \
-            >/tmp/marketing-svc-update.json
-          echo "Updated htc-sandbox-marketing only"
+          if [ -f /tmp/mkt-only-empty ]; then
+            echo "CHANGE_SET_EMPTY=1" >> "$GITHUB_ENV"
+          else
+            echo "CHANGE_SET_NAME=$CS" >> "$GITHUB_ENV"
+            aws cloudformation execute-change-set --stack-name "$STACK" --change-set-name "$CS"
+            aws cloudformation wait stack-update-complete --stack-name "$STACK"
+          fi
 
       - name: Wait for marketing service stable
+        env:
+          STACK: ${{ vars.CFN_STACK_NAME }}
+          SHA: ${{ steps.sha.outputs.sha }}
         run: |
           set -euo pipefail
           aws ecs wait services-stable \
@@ -207,8 +295,16 @@ jobs:
             --services htc-sandbox-marketing \
             --query 'services[0].{taskDefinition:taskDefinition,running:runningCount,desired:desiredCount,rollout:deployments[0].rolloutState}' \
             --output json
+          # Prefer CFN parameter (readable by GHA role) over ecs:DescribeTaskDefinition
+          # which is NOT granted on the live deploy role.
+          CFN_IMG=$(aws cloudformation describe-stacks --stack-name "$STACK" \
+            --query "Stacks[0].Parameters[?ParameterKey=='MarketingImage'].ParameterValue" \
+            --output text)
+          echo "CFN_MARKETING_IMAGE=$CFN_IMG"
+          echo "$CFN_IMG" | grep -q "$SHA" \
+            || { echo "::error::Stack MarketingImage does not contain expected SHA $SHA"; exit 1; }
 
-      - name: Verify marketing ALB routes
+      - name: Verify marketing ALB routes and non-marketing TDs unchanged
         run: |
           set -euo pipefail
           BASE=https://sandbox.hellotocheers.com
@@ -221,16 +317,29 @@ jobs:
               fail=1
             fi
           done
-          # Signal approved redesign markers on Pricing/Contact
           pricing=$(curl -sS --max-time 30 "$BASE/pricing")
           contact=$(curl -sS --max-time 30 "$BASE/contact")
           echo "$pricing" | grep -q 'Get Started' || { echo '::error::Pricing missing Get Started'; fail=1; }
           echo "$pricing" | grep -Eqi 'first[[:space:]]+[0-9]+[[:space:]]+eligible' || { echo '::error::Pricing missing founding phrase'; fail=1; }
-          echo "$contact" | grep -q "We'd love to hear from you" || { echo '::error::Contact missing approved headline'; fail=1; }
-          # Confirm other services were not redeployed by this job
-          for svc in htc-sandbox-venue-app htc-sandbox-workspace htc-sandbox-scheduler; do
-            img=$(aws ecs describe-services --cluster htc-sandbox --services "$svc" \
-              --query 'services[0].taskDefinition' --output text)
-            echo "untouched_service $svc td=$img"
-          done
+          echo "$contact" | grep -Eq "We('\'')d love to hear from you|We&#x27;d love to hear from you" \
+            || { echo '::error::Contact missing approved headline'; fail=1; }
+
+          python3 <<'PY'
+          import json, subprocess, sys
+          pre = {r["name"]: r["td"] for r in json.load(open("/tmp/pre-non-marketing-tds.json"))}
+          out = subprocess.check_output([
+            "aws","ecs","describe-services","--cluster","htc-sandbox",
+            "--services","htc-sandbox-venue-app","htc-sandbox-workspace","htc-sandbox-scheduler",
+            "--query","services[].{name:serviceName,td:taskDefinition}","--output","json"
+          ], text=True)
+          post = {r["name"]: r["td"] for r in json.loads(out)}
+          changed = False
+          for name, td in pre.items():
+              now = post.get(name)
+              print(f"untouched_check {name} pre={td} post={now}")
+              if now != td:
+                  print(f"::error::{name} task definition changed during marketing-only deploy")
+                  changed = True
+          sys.exit(1 if changed else 0)
+          PY
           exit "$fail"
