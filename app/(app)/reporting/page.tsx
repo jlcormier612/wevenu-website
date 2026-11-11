@@ -5,10 +5,14 @@ import { BookingsBySourceChart } from "@/components/reporting/bookings-by-source
 import { BusinessFunnel } from "@/components/reporting/business-funnel";
 import { DateRangeControl } from "@/components/reporting/date-range-control";
 import { ReportHeader } from "@/components/reporting/report-header";
+import { SourceCompositionChart } from "@/components/reporting/source-composition-chart";
 import { ComparisonCard, ComparisonCardGrid } from "@/components/dashboard-system/comparison-card";
+import { TrendChart } from "@/components/dashboard-system/trend-chart";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getBusinessFunnel } from "@/lib/metrics/business-funnel";
 import { getPeriodBookingsBySource } from "@/lib/metrics/bookings-by-source";
+import { getLeadsBySource } from "@/lib/metrics/leads-by-source";
 import {
   getCurrentlyBookedPipelineCount,
   getLeadCohortLifecycleBookingStats,
@@ -43,6 +47,7 @@ export default async function ReportingOverviewPage({ searchParams }: Props) {
     currentlyBooked,
     undatedBookings,
     bookingsBySource,
+    leadsBySource,
   ] = await Promise.all([
     getBusinessFunnel(window), getBusinessFunnel(prevWindow),
     getLifecycleBookings(window), getLifecycleBookings(prevWindow),
@@ -54,6 +59,7 @@ export default async function ReportingOverviewPage({ searchParams }: Props) {
     getCurrentlyBookedPipelineCount(),
     getUndatedLifecycleBookingCount(),
     getPeriodBookingsBySource(window),
+    getLeadsBySource(window),
   ]);
 
   return (
@@ -129,10 +135,40 @@ export default async function ReportingOverviewPage({ searchParams }: Props) {
           : ""}
       </p>
 
-      <BookingsBySourceChart
-        report={bookingsBySource}
-        detailHref={reportingHref("/reporting/sales", range)}
-      />
+      <div className="grid gap-4 lg:grid-cols-2">
+        <SourceCompositionChart
+          title="Leads by Source"
+          description={leadsBySource.basis}
+          slices={leadsBySource.slices}
+          total={leadsBySource.total}
+          emptyText="No leads to show for this period."
+          unitSingular="lead"
+          unitPlural="leads"
+          detailHref={reportingHref("/reporting/sales", range)}
+          detailLabel="Open Sales for conversion by source"
+          testId="overview-leads-by-source-chart"
+        />
+        <BookingsBySourceChart
+          report={bookingsBySource}
+          detailHref={reportingHref("/reporting/sales", range)}
+        />
+      </div>
+
+      <Card className={leads.total === 0 ? "htc-report-empty-card" : undefined}>
+        <CardHeader>
+          <CardTitle className="text-base">Lead volume trend</CardTitle>
+          <CardDescription>
+            {leads.granularityLabel} view of leads received (created date) during {range.label}.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {leads.total === 0 ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">No leads in this date range.</p>
+          ) : (
+            <TrendChart data={leads.trend} />
+          )}
+        </CardContent>
+      </Card>
 
       <div className="flex flex-wrap gap-2 pt-2">
         <Button variant="outline" size="sm" render={<Link href={reportingHref("/reporting/sales", range)} />}>View Sales</Button>
