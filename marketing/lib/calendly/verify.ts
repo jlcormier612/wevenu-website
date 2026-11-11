@@ -5,15 +5,19 @@ import { createHmac, timingSafeEqual } from "crypto";
  * Header: `Calendly-Webhook-Signature: t=<unix>,v1=<hex>`
  * Signed payload: `${t}.${rawBody}`
  *
+ * Replay protection: reject when |now - t| exceeds toleranceSeconds (default 300).
+ *
  * @see https://developer.calendly.com/api-docs/ZG9jOjM2MzE2MDM4-webhook-signatures
  */
 export function verifyCalendlySignature(
   signatureHeader: string | null,
   rawBody: string,
   signingKey: string,
-  toleranceSeconds = 300,
+  /** Calendly docs use a 3-minute (180s) example tolerance zone. */
+  toleranceSeconds = 180,
+  nowSeconds: number = Math.floor(Date.now() / 1000),
 ): boolean {
-  if (!signatureHeader || !signingKey) return false;
+  if (!signatureHeader?.trim() || !signingKey.trim()) return false;
 
   const parts = Object.fromEntries(
     signatureHeader.split(",").map((part) => {
@@ -28,7 +32,7 @@ export function verifyCalendlySignature(
 
   const ts = Number(timestamp);
   if (!Number.isFinite(ts)) return false;
-  if (Math.abs(Math.floor(Date.now() / 1000) - ts) > toleranceSeconds) {
+  if (Math.abs(nowSeconds - ts) > toleranceSeconds) {
     return false;
   }
 
@@ -46,18 +50,22 @@ export function verifyCalendlySignature(
   }
 }
 
-/** Optional shared-secret header when Calendly signing key is not configured. */
+/**
+ * Optional shared-secret header fallback when Calendly signing key is not used.
+ * Fail closed: missing/empty configured secret or missing/mismatched header → false.
+ */
 export function verifySharedSecretHeader(
   request: Request,
-  secret: string | undefined,
+  secret: string | undefined | null,
 ): boolean {
-  if (!secret?.trim()) return true;
+  const expected = secret?.trim() || "";
+  if (!expected) return false;
   const header =
     request.headers.get("x-calendly-webhook-secret") ||
     request.headers.get("x-webhook-secret");
   if (!header) return false;
   const a = Buffer.from(header);
-  const b = Buffer.from(secret.trim());
+  const b = Buffer.from(expected);
   if (a.length !== b.length) return false;
   return timingSafeEqual(a, b);
 }

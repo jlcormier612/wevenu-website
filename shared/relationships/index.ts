@@ -175,6 +175,7 @@ export {
   type RecordInboundEmailResult,
 } from "./inbound-email";
 export {
+  findRelationshipByTimelineSourceId,
   ingestContactForm,
   ingestWalkthroughRequest,
   ingestWalkthroughCanceled,

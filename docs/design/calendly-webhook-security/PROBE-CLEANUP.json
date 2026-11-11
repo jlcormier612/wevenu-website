@@ -1,0 +1,110 @@
+[
+  {
+    "email": "probe@example.com",
+    "rel": "rel_c3fcf53aa1ab",
+    "table": "htc_crm_notifications",
+    "status": 200,
+    "deleted_count": 0
+  },
+  {
+    "email": "probe@example.com",
+    "rel": "rel_c3fcf53aa1ab",
+    "table": "htc_crm_communications",
+    "status": 200,
+    "deleted_count": 0
+  },
+  {
+    "email": "probe@example.com",
+    "rel": "rel_c3fcf53aa1ab",
+    "table": "htc_crm_timeline_events",
+    "status": 200,
+    "deleted_count": 0
+  },
+  {
+    "email": "probe@example.com",
+    "rel": "rel_c3fcf53aa1ab",
+    "table": "htc_crm_walkthroughs",
+    "status": 200,
+    "deleted_count": 0
+  },
+  {
+    "email": "probe@example.com",
+    "rel": "rel_c3fcf53aa1ab",
+    "table": "htc_crm_tasks",
+    "status": 200,
+    "deleted_count": 0
+  },
+  {
+    "email": "probe@example.com",
+    "rel": "rel_c3fcf53aa1ab",
+    "table": "htc_crm_subscriptions",
+    "status": 200,
+    "deleted_count": 0
+  },
+  {
+    "email": "probe@example.com",
+    "rel": "rel_c3fcf53aa1ab",
+    "table": "htc_crm_relationships",
+    "status": 200,
+    "deleted": [
+      {
+        "id": "rel_c3fcf53aa1ab",
+        "owner_email": "probe@example.com"
+      }
+    ]
+  },
+  {
+    "email": "unsigned-check@example.com",
+    "rel": "rel_2332de99d61f",
+    "table": "htc_crm_notifications",
+    "status": 200,
+    "deleted_count": 1
+  },
+  {
+    "email": "unsigned-check@example.com",
+    "rel": "rel_2332de99d61f",
+    "table": "htc_crm_communications",
+    "status": 200,
+    "deleted_count": 1
+  },
+  {
+    "email": "unsigned-check@example.com",
+    "rel": "rel_2332de99d61f",
+    "table": "htc_crm_timeline_events",
+    "status": 200,
+    "deleted_count": 1
+  },
+  {
+    "email": "unsigned-check@example.com",
+    "rel": "rel_2332de99d61f",
+    "table": "htc_crm_walkthroughs",
+    "status": 200,
+    "deleted_count": 1
+  },
+  {
+    "email": "unsigned-check@example.com",
+    "rel": "rel_2332de99d61f",
+    "table": "htc_crm_tasks",
+    "status": 200,
+    "deleted_count": 0
+  },
+  {
+    "email": "unsigned-check@example.com",
+    "rel": "rel_2332de99d61f",
+    "table": "htc_crm_subscriptions",
+    "status": 200,
+    "deleted_count": 0
+  },
+  {
+    "email": "unsigned-check@example.com",
+    "rel": "rel_2332de99d61f",
+    "table": "htc_crm_relationships",
+    "status": 200,
+    "deleted": [
+      {
+        "id": "rel_2332de99d61f",
+        "owner_email": "unsigned-check@example.com"
+      }
+    ]
+  }
+]

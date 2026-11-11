@@ -33,6 +33,49 @@ function safeBody(parts: Array<string | null | undefined>): string {
   return parts.filter((p) => (p ?? "").trim().length > 0).join("\n\n");
 }
 
+/**
+ * Provider / form retries may resubmit the same logical event. When a stable
+ * sourceId is present, skip creating a second timeline/communication/notification
+ * for the same event class. No schema change — uses timeline meta.sourceId.
+ * Create and cancel must not share the same type filter (same invitee URI).
+ */
+export async function findRelationshipByTimelineSourceId(
+  sourceId: string | undefined | null,
+  types: Array<
+    | "walkthrough_requested"
+    | "walkthrough_scheduled"
+    | "walkthrough_cancelled"
+    | "contact_form"
+    | "newsletter_signup"
+    | "support_request"
+    | "welcome_back_requested"
+  >,
+): Promise<FindOrCreateResult | null> {
+  const id = sourceId?.trim();
+  if (!id) return null;
+  const store = await loadLiveStore();
+  const typeSet = new Set(types);
+  const prior = store.timelineEvents.find(
+    (event) =>
+      typeSet.has(
+        event.type as
+          | "walkthrough_requested"
+          | "walkthrough_scheduled"
+          | "walkthrough_cancelled"
+          | "contact_form"
+          | "newsletter_signup"
+          | "support_request"
+          | "welcome_back_requested",
+      ) && String(event.meta?.sourceId ?? "") === id,
+  );
+  if (!prior) return null;
+  const relationship = store.relationships.find(
+    (row) => row.id === prior.relationshipId,
+  );
+  if (!relationship) return null;
+  return { relationship, created: false };
+}
+
 /** Website Contact Us form */
 export async function ingestContactForm(input: {
   name?: string;
@@ -43,6 +86,11 @@ export async function ingestContactForm(input: {
   message?: string;
   sourceId?: string;
 }): Promise<FindOrCreateResult> {
+  const prior = await findRelationshipByTimelineSourceId(input.sourceId, [
+    "contact_form",
+  ]);
+  if (prior) return prior;
+
   const person = personFromFields({
     name: input.name,
     firstName: input.firstName,
@@ -100,6 +148,12 @@ export async function ingestWalkthroughRequest(input: {
   referralSource?: string;
   assignedTeamMemberId?: string;
 }): Promise<FindOrCreateResult> {
+  const prior = await findRelationshipByTimelineSourceId(input.sourceId, [
+    "walkthrough_requested",
+    "walkthrough_scheduled",
+  ]);
+  if (prior) return prior;
+
   const person = personFromFields({
     name: input.name,
     firstName: input.firstName,
@@ -189,6 +243,11 @@ export async function ingestWalkthroughCanceled(input: {
   reason?: string | null;
   sourceId?: string;
 }): Promise<FindOrCreateResult | null> {
+  const prior = await findRelationshipByTimelineSourceId(input.sourceId, [
+    "walkthrough_cancelled",
+  ]);
+  if (prior) return prior;
+
   const { setWalkthroughStatus } = await import("./service");
   const person = personFromFields({ name: input.name });
   const store = await loadLiveStore();
