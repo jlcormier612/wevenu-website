@@ -205,6 +205,20 @@ jobs:
               --build-arg "NEXT_DEPLOYMENT_ID=${{ github.sha }}"
             )
           fi
+          # Marketing NEXT_PUBLIC_* must also be passed on argv. Matrix BUILD_ARGS
+          # can arrive empty for optional vars when exported as a step env blob
+          # (same class of drop as venue-app Supabase above). Last --build-arg wins.
+          if [ "${{ matrix.name }}" = "marketing" ]; then
+            CALENDLY_LEN_PROBE="${{ vars.NEXT_PUBLIC_CALENDLY_URL }}"
+            ARGS+=(
+              --build-arg "NEXT_PUBLIC_CALENDLY_URL=${{ vars.NEXT_PUBLIC_CALENDLY_URL }}"
+              --build-arg "NEXT_PUBLIC_GA4_MEASUREMENT_ID=${{ vars.NEXT_PUBLIC_GA4_MEASUREMENT_ID }}"
+            )
+            echo "Marketing bake: NEXT_PUBLIC_CALENDLY_URL length=${#CALENDLY_LEN_PROBE}"
+            if [ -z "$CALENDLY_LEN_PROBE" ]; then
+              echo "::warning::NEXT_PUBLIC_CALENDLY_URL is empty — /walkthrough will show scheduling fallback"
+            fi
+          fi
           # Rewrite Public ECR library FROM -> private htc-ci-bases so BuildKit
           # never loads metadata from public.ecr.aws (HTTP 429). Committed
           # Dockerfiles are left unchanged; only the temp build file is used.
