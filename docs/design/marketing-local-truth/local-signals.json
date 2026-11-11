@@ -1,0 +1,101 @@
+{
+  "capturedAt": "2026-11-11T04:42:40.351Z",
+  "local": {
+    "home": {
+      "h1": "Big capabilities.Beautifully simple.",
+      "getStarted": 0,
+      "contactCta": false,
+      "unavailable": false,
+      "hospitality": false,
+      "loveToHear": false,
+      "reachTeam": false,
+      "foundingPhrase": null,
+      "wevenFriends": false,
+      "customCard": false
+    },
+    "pricing": {
+      "h1": "One platform. Every feature. Simple monthly pricing.",
+      "getStarted": 0,
+      "contactCta": true,
+      "unavailable": true,
+      "hospitality": false,
+      "loveToHear": false,
+      "reachTeam": false,
+      "foundingPhrase": "first 100 eligible venues",
+      "wevenFriends": true,
+      "customCard": false
+    },
+    "contact": {
+      "h1": "We'd love to hear from you.",
+      "getStarted": 0,
+      "contactCta": false,
+      "unavailable": false,
+      "hospitality": false,
+      "loveToHear": true,
+      "reachTeam": false,
+      "foundingPhrase": null,
+      "wevenFriends": false,
+      "customCard": false
+    },
+    "features": {
+      "h1": "So much more than meets the eye.",
+      "getStarted": 0,
+      "contactCta": false,
+      "unavailable": false,
+      "hospitality": false,
+      "loveToHear": false,
+      "reachTeam": false,
+      "foundingPhrase": null,
+      "wevenFriends": false,
+      "customCard": false
+    },
+    "walkthrough": {
+      "h1": "Let's talk about your venue.",
+      "getStarted": 0,
+      "contactCta": false,
+      "unavailable": false,
+      "hospitality": false,
+      "loveToHear": false,
+      "reachTeam": false,
+      "foundingPhrase": null,
+      "wevenFriends": false,
+      "customCard": false
+    },
+    "trust": {
+      "h1": "Trust is earned.Every day.",
+      "getStarted": 0,
+      "contactCta": false,
+      "unavailable": false,
+      "hospitality": false,
+      "loveToHear": false,
+      "reachTeam": false,
+      "foundingPhrase": null,
+      "wevenFriends": false,
+      "customCard": false
+    },
+    "our-story": {
+      "h1": "Some things stay with you.",
+      "getStarted": 0,
+      "contactCta": false,
+      "unavailable": false,
+      "hospitality": false,
+      "loveToHear": false,
+      "reachTeam": false,
+      "foundingPhrase": null,
+      "wevenFriends": false,
+      "customCard": false
+    },
+    "product": {
+      "h1": "Your venue, beautifully connected.",
+      "getStarted": 0,
+      "contactCta": false,
+      "unavailable": false,
+      "hospitality": false,
+      "loveToHear": false,
+      "reachTeam": false,
+      "foundingPhrase": null,
+      "wevenFriends": false,
+      "customCard": false
+    }
+  }
+}
