@@ -43,6 +43,9 @@ function baseVars(ctx: EnrollmentEmailContext): EmailTemplateVars {
     implementationTimeline: ctx.implementationTimeline ?? null,
     activateUrl: ctx.activateUrl ?? null,
     intakeUrl: ctx.intakeUrl ?? null,
+    // Required for Welcome Back × White Glove copy branching in templates.
+    onboardingType: ctx.onboardingType,
+    whiteGlove: ctx.onboardingType === "white_glove" ? "true" : "false",
   };
 }
 
