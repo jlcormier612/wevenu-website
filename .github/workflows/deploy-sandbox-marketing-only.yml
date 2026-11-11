@@ -53,7 +53,48 @@ jobs:
         id: ecr-login
         uses: aws-actions/amazon-ecr-login@v2
 
+      - name: Resolve deploy SHA
+        id: sha
+        run: |
+          SHA=$(git rev-parse HEAD)
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "Deploying marketing at $SHA"
+
+      # Same-image verification / redeploys: reuse the ECR tag when it already
+      # exists so we do not bake a different digest under the same SHA tag.
+      # Use BatchGetImage (granted on the deploy role). DescribeImages is NOT.
+      - name: Detect existing marketing image
+        id: image
+        env:
+          IMAGE_URI: ${{ steps.ecr-login.outputs.registry }}/htc-sandbox-marketing:${{ steps.sha.outputs.sha }}
+          SHA: ${{ steps.sha.outputs.sha }}
+        run: |
+          set -euo pipefail
+          set +e
+          OUT=$(aws ecr batch-get-image \
+            --repository-name htc-sandbox-marketing \
+            --image-ids "imageTag=${SHA}" \
+            --query 'images[0].imageId.imageDigest' \
+            --output text 2>/tmp/mkt-image-detect.err)
+          RC=$?
+          set -e
+          if [ "$RC" -ne 0 ]; then
+            echo "::error::ECR batch-get-image failed while detecting existing tag $SHA"
+            cat /tmp/mkt-image-detect.err >&2 || true
+            exit "$RC"
+          fi
+          # Missing tag returns empty Images[] → query text is "None"
+          if [ -n "$OUT" ] && [ "$OUT" != "None" ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "digest=$OUT" >> "$GITHUB_OUTPUT"
+            echo "Reusing existing $IMAGE_URI ($OUT)"
+            exit 0
+          fi
+          echo "exists=false" >> "$GITHUB_OUTPUT"
+          echo "No existing image for tag $SHA — will build and push"
+
       - name: Prefetch base images (private ECR, then Public ECR)
+        if: steps.image.outputs.exists != 'true'
         run: |
           set -euo pipefail
           REGISTRY="${{ steps.ecr-login.outputs.registry }}"
@@ -93,14 +134,8 @@ jobs:
           pull_base node-22-alpine public.ecr.aws/docker/library/node:22-alpine
           pull_base alpine-3.20 public.ecr.aws/docker/library/alpine:3.20
 
-      - name: Resolve deploy SHA
-        id: sha
-        run: |
-          SHA=$(git rev-parse HEAD)
-          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
-          echo "Deploying marketing at $SHA"
-
       - name: Build marketing image
+        if: steps.image.outputs.exists != 'true'
         env:
           IMAGE_URI: ${{ steps.ecr-login.outputs.registry }}/htc-sandbox-marketing:${{ steps.sha.outputs.sha }}
           ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
@@ -143,6 +178,7 @@ jobs:
           exit 1
 
       - name: Push marketing image
+        if: steps.image.outputs.exists != 'true'
         env:
           IMAGE_URI: ${{ steps.ecr-login.outputs.registry }}/htc-sandbox-marketing:${{ steps.sha.outputs.sha }}
         run: docker push "$IMAGE_URI"
@@ -222,8 +258,19 @@ jobs:
           )
           # Use the LIVE stack template so deploying an older marketing SHA
           # cannot accidentally roll infra/template drift from that commit.
+          # IMPORTANT: --query TemplateBody --output text breaks on JSON
+          # templates (aws CLI: 'str' object has no attribute 'items').
           aws cloudformation get-template --stack-name "$STACK" --template-stage Processed \
-            --query TemplateBody --output text > /tmp/htc-ecs-stack-live.json
+            --output json > /tmp/htc-ecs-stack-raw.json
+          python3 - <<'PY'
+          import json
+          raw = json.load(open("/tmp/htc-ecs-stack-raw.json"))
+          body = raw["TemplateBody"]
+          if isinstance(body, dict):
+              json.dump(body, open("/tmp/htc-ecs-stack-live.json", "w"))
+          else:
+              open("/tmp/htc-ecs-stack-live.json", "w").write(body)
+          PY
           aws cloudformation create-change-set \
             --stack-name "$STACK" \
             --change-set-name "$CS" \

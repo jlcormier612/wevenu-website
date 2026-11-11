@@ -296,6 +296,8 @@ export async function getDashboardData(): Promise<DashboardData | null> {
   if (!venue) return null;
   forensicSetVenue(venue.id);
 
+  // Ready-to-invite is a Setup Hub declaration, not a dashboard wall.
+  // Loaded later in the parallel wave; checklist copy may reflect readiness.
   const supabase = await forensicTime("create_client", () => createClient());
 
   // Venue-local calendar day, not UTC. Today's Focus vs Upcoming partitions

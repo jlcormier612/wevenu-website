@@ -254,7 +254,7 @@ export function VendorEventWorkspace({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="htc-hospitality-page space-y-5 sm:space-y-6">
       {/* Back + header */}
       <div className="flex items-center gap-3">
         <Link href="/vendor/events" className="text-muted-foreground hover:text-foreground text-sm flex items-center gap-1">
