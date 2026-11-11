@@ -14,7 +14,7 @@ export default async function PipelinePage() {
   const leads = await getLeads();
 
   return (
-    <div className="space-y-6">
+    <div className="htc-hospitality-page space-y-6">
       <PageHeader
         title="Pipeline"
         description="Drag a lead to move it to a different stage."

@@ -115,7 +115,7 @@ export default async function LibraryPage() {
   const offerings = offeringsAll.filter((o) => !o.isArchived);
 
   return (
-    <div className="space-y-8">
+    <div className="htc-hospitality-page space-y-8">
       <PageHeader
         title="Library"
         description="Your venue's toolbox — the things you set up once and use again and again: agreements, packages, planning tools, marketing, and more."

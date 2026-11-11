@@ -11,7 +11,7 @@ export const metadata: Metadata = { title: "Contracts" };
 export default async function ContractsPage() {
   const contracts = await getContracts();
   return (
-    <div className="space-y-6">
+    <div className="htc-hospitality-page space-y-6">
       <PageHeader
         title="Contracts"
         description="Prepare, send, and track agreements with your clients."

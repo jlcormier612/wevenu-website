@@ -22,7 +22,7 @@ export const dynamic = "force-dynamic";
 export default async function TaskCenterPage() {
   if (!isSupabaseConfigured) {
     return (
-      <div className="space-y-6">
+      <div className="htc-hospitality-page space-y-6">
         <PageHeader
           title="Task Center"
           description="What your team needs to do — and which clients need watching."

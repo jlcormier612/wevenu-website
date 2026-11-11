@@ -53,7 +53,7 @@ export default async function CommunicationsAutomationSettingsPage() {
   const textingNumberDisplay = textingSetup?.statusPanel.textingNumber.label ?? null;
 
   return (
-    <div className="space-y-6">
+    <div className="htc-hospitality-page space-y-6">
       <PageHeader
         title="Communications & Automation"
         description="Notifications, follow-ups, texting, and Luv."
