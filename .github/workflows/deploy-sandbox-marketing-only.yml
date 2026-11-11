@@ -62,6 +62,7 @@ jobs:
 
       # Same-image verification / redeploys: reuse the ECR tag when it already
       # exists so we do not bake a different digest under the same SHA tag.
+      # Use BatchGetImage (granted on the deploy role). DescribeImages is NOT.
       - name: Detect existing marketing image
         id: image
         env:
@@ -69,18 +70,25 @@ jobs:
           SHA: ${{ steps.sha.outputs.sha }}
         run: |
           set -euo pipefail
-          if aws ecr describe-images \
+          set +e
+          OUT=$(aws ecr batch-get-image \
             --repository-name htc-sandbox-marketing \
             --image-ids "imageTag=${SHA}" \
-            --query 'imageDetails[0].imageDigest' \
-            --output text >/tmp/mkt-image-digest.txt 2>/dev/null; then
-            DIGEST=$(cat /tmp/mkt-image-digest.txt)
-            if [ -n "$DIGEST" ] && [ "$DIGEST" != "None" ]; then
-              echo "exists=true" >> "$GITHUB_OUTPUT"
-              echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
-              echo "Reusing existing $IMAGE_URI ($DIGEST)"
-              exit 0
-            fi
+            --query 'images[0].imageId.imageDigest' \
+            --output text 2>/tmp/mkt-image-detect.err)
+          RC=$?
+          set -e
+          if [ "$RC" -ne 0 ]; then
+            echo "::error::ECR batch-get-image failed while detecting existing tag $SHA"
+            cat /tmp/mkt-image-detect.err >&2 || true
+            exit "$RC"
+          fi
+          # Missing tag returns empty Images[] → query text is "None"
+          if [ -n "$OUT" ] && [ "$OUT" != "None" ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "digest=$OUT" >> "$GITHUB_OUTPUT"
+            echo "Reusing existing $IMAGE_URI ($OUT)"
+            exit 0
           fi
           echo "exists=false" >> "$GITHUB_OUTPUT"
           echo "No existing image for tag $SHA — will build and push"
