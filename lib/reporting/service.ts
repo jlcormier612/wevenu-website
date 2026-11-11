@@ -20,55 +20,52 @@ import { getCanonicalBookings, type CanonicalBooking } from "@/lib/metrics/booki
 import type { TrendPoint } from "@/components/dashboard-system/trend-chart";
 import { eventTypeLabel, normalizeEventType } from "@/lib/event-types/canonical";
 import { onlyBusinessReporting, loadReportingExclusions } from "@/lib/reporting/business-scope";
+import {
+  bucketKeyForTimestamp,
+  buildTrendBuckets,
+  resolveTrendGranularity,
+  trendGranularityCaption,
+  type TrendGranularity,
+} from "@/lib/reporting/trend-buckets";
 
 export type DateWindow = { from: string; to: string };
 
-function monthKey(iso: string): string {
-  return iso.slice(0, 7); // YYYY-MM
+export type TrendSeries = {
+  points: TrendPoint[];
+  granularity: TrendGranularity;
+  granularityLabel: string;
+};
+
+function emptyTrend(window: DateWindow): TrendSeries {
+  const granularity = resolveTrendGranularity(window.from, window.to);
+  const buckets = buildTrendBuckets(window.from, window.to, granularity);
+  return {
+    points: buckets.map((b) => ({ label: b.label, value: 0 })),
+    granularity,
+    granularityLabel: trendGranularityCaption(granularity),
+  };
 }
 
-/** Every calendar month from `from` to `to`, inclusive — so a month with zero activity still shows as 0, never silently omitted (brief §33). */
-function monthBuckets(from: string, to: string): { key: string; label: string }[] {
-  const buckets: { key: string; label: string }[] = [];
-  const start = new Date(from + "T00:00:00");
-  const end = new Date(to + "T00:00:00");
-  const cursor = new Date(start.getFullYear(), start.getMonth(), 1);
-  const last = new Date(end.getFullYear(), end.getMonth(), 1);
-  // Cap at 24 buckets — a multi-year custom range would otherwise render an
-  // unreadable trend; monthly granularity beyond 2 years isn't a "keep it
-  // simple" trend anymore (brief §16).
-  let guard = 0;
-  while (cursor <= last && guard < 24) {
-    buckets.push({ key: `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}`, label: cursor.toLocaleDateString("en-US", { month: "short" }) });
-    cursor.setMonth(cursor.getMonth() + 1);
-    guard++;
-  }
-  return buckets;
-}
-
-export type BookingDrillRow = { clientId: string; clientName: string; contractId: string | null; bookedAt: string; source: string | null };
-
-async function bookedRelationshipsInWindow(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  venueId: string,
+function aggregateCountTrend(
+  timestamps: string[],
   window: DateWindow,
-): Promise<{ client_id: string; booked_at: string }[]> {
-  const { data } = await supabase
-    .from("events")
-    .select("client_id, booked_at")
-    .eq("venue_id", venueId)
-    .not("booked_at", "is", null)
-    .neq("status", "cancelled")
-    .gte("booked_at", window.from)
-    .lte("booked_at", window.to);
-  const byClient = new Map<string, string>();
-  for (const row of (data ?? []) as { client_id: string | null; booked_at: string }[]) {
-    if (!row.client_id || !row.booked_at) continue;
-    const prev = byClient.get(row.client_id);
-    if (!prev || row.booked_at < prev) byClient.set(row.client_id, row.booked_at);
+): TrendSeries {
+  const granularity = resolveTrendGranularity(window.from, window.to);
+  const buckets = buildTrendBuckets(window.from, window.to, granularity);
+  const counts = new Map<string, number>();
+  for (const ts of timestamps) {
+    if (!ts) continue;
+    const key = bucketKeyForTimestamp(ts, granularity);
+    counts.set(key, (counts.get(key) ?? 0) + 1);
   }
-  return [...byClient.entries()].map(([client_id, booked_at]) => ({ client_id, booked_at }));
+  return {
+    points: buckets.map((b) => ({ label: b.label, value: counts.get(b.key) ?? 0 })),
+    granularity,
+    granularityLabel: trendGranularityCaption(granularity),
+  };
 }
+
+export type BookingDrillRow = { clientId: string; clientName: string; contractId: string; bookedAt: string; source: string | null };
 
 /**
  * Canonical Bookings in range, with client name + frozen acquisition source
@@ -96,7 +93,14 @@ export async function getBookingsWithClientNames(window: DateWindow): Promise<Bo
   if (!venue) return [];
   const supabase = await createClient();
 
-  const bookingRows = await bookedRelationshipsInWindow(supabase, venue.id, window);
+  const { data: bookings } = await supabase
+    .from("canonical_bookings")
+    .select("client_id, contract_id, booked_at")
+    .eq("venue_id", venue.id)
+    .gte("booked_at", window.from)
+    .lte("booked_at", window.to)
+    .order("booked_at", { ascending: false });
+  const bookingRows = (bookings ?? []) as { client_id: string; contract_id: string; booked_at: string }[];
   if (bookingRows.length === 0) return [];
   const exclusions = await loadReportingExclusions(supabase, venue.id);
   const included = bookingRows.filter((b) => !exclusions.clientIds.has(b.client_id));
@@ -115,32 +119,42 @@ export async function getBookingsWithClientNames(window: DateWindow): Promise<Bo
     const c = clientById.get(b.client_id);
     const primary = c ? [c.first_name, c.last_name].filter(Boolean).join(" ") : "Client";
     const partner = c?.partner_first_name ? ` & ${[c.partner_first_name, c.partner_last_name].filter(Boolean).join(" ")}` : "";
-    return { clientId: b.client_id, clientName: `${primary}${partner}`, contractId: null, bookedAt: b.booked_at, source: c?.leads?.acquisition_source ?? null };
+    return { clientId: b.client_id, clientName: `${primary}${partner}`, contractId: b.contract_id, bookedAt: b.booked_at, source: c?.leads?.acquisition_source ?? null };
   });
 }
 
-/** Bookings-per-month trend, bucketed from the exact same canonical rows the Bookings report's own count uses — never a separate formula. */
-export function bookingsToTrend(bookings: CanonicalBooking[] | BookingDrillRow[], window: DateWindow): TrendPoint[] {
-  const buckets = monthBuckets(window.from, window.to);
-  const counts = new Map<string, number>();
-  for (const b of bookings) {
-    const at = "bookedAt" in b ? b.bookedAt : "";
-    const key = monthKey(at);
-    counts.set(key, (counts.get(key) ?? 0) + 1);
-  }
-  return buckets.map((b) => ({ label: b.label, value: counts.get(b.key) ?? 0 }));
+/** Bookings trend from the exact same canonical rows the Bookings report's count uses — never a separate formula. Granularity follows the selected range. */
+export function bookingsToTrend(
+  bookings: CanonicalBooking[] | BookingDrillRow[],
+  window: DateWindow,
+): TrendSeries {
+  return aggregateCountTrend(
+    bookings.map((b) => ("bookedAt" in b ? b.bookedAt : "")),
+    window,
+  );
 }
 
-/** Gross Booked Revenue per month — same subtotal-minus-discount, non-void, booked-client-scoped formula canonical_gross_booked_revenue() uses server-side, just grouped by the booking's own booked_at month instead of summed once. */
-export async function getRevenueTrend(window: DateWindow): Promise<TrendPoint[]> {
-  if (!isSupabaseConfigured) return [];
+/**
+ * Gross Booked Revenue trend — same subtotal-minus-discount, non-void,
+ * booked-client-scoped formula canonical_gross_booked_revenue() uses, grouped
+ * by each booking's booked_at into adaptive day/week/month buckets.
+ */
+export async function getRevenueTrend(window: DateWindow): Promise<TrendSeries> {
+  if (!isSupabaseConfigured) return emptyTrend(window);
   const venue = await getCurrentVenue();
-  if (!venue) return [];
+  if (!venue) return emptyTrend(window);
   const supabase = await createClient();
+
+  const { data: bookings } = await supabase
+    .from("canonical_bookings")
+    .select("client_id, booked_at")
+    .eq("venue_id", venue.id)
+    .gte("booked_at", window.from)
+    .lte("booked_at", window.to);
   const exclusions = await loadReportingExclusions(supabase, venue.id);
-  const bookingRows = (await bookedRelationshipsInWindow(supabase, venue.id, window))
+  const bookingRows = ((bookings ?? []) as { client_id: string; booked_at: string }[])
     .filter((b) => !exclusions.clientIds.has(b.client_id));
-  if (bookingRows.length === 0) return monthBuckets(window.from, window.to).map((b) => ({ label: b.label, value: 0 }));
+  if (bookingRows.length === 0) return emptyTrend(window);
 
   const clientIds = [...new Set(bookingRows.map((b) => b.client_id))];
   const { data: invoices } = await supabase
@@ -150,40 +164,63 @@ export async function getRevenueTrend(window: DateWindow): Promise<TrendPoint[]>
     .neq("status", "void")
     .in("client_id", clientIds);
 
+  const granularity = resolveTrendGranularity(window.from, window.to);
+  const buckets = buildTrendBuckets(window.from, window.to, granularity);
   const bookedAtByClient = new Map(bookingRows.map((b) => [b.client_id, b.booked_at]));
-  const buckets = monthBuckets(window.from, window.to);
   const totals = new Map<string, number>();
   for (const inv of (invoices ?? []) as { client_id: string; subtotal: number; discount_amount: number }[]) {
     const bookedAt = bookedAtByClient.get(inv.client_id);
     if (!bookedAt) continue;
-    const key = monthKey(bookedAt);
+    const key = bucketKeyForTimestamp(bookedAt, granularity);
     totals.set(key, (totals.get(key) ?? 0) + (Number(inv.subtotal) - Number(inv.discount_amount)));
   }
-  return buckets.map((b) => ({ label: b.label, value: Math.round(totals.get(b.key) ?? 0) }));
+  return {
+    points: buckets.map((b) => ({ label: b.label, value: Math.round(totals.get(b.key) ?? 0) })),
+    granularity,
+    granularityLabel: trendGranularityCaption(granularity),
+  };
+}
+
+/**
+ * Payments Collected trend — same paid_at / net-of-refund rows as
+ * canonical_payments_collected(), bucketed for comparison beside contracted.
+ */
+export async function getPaymentsCollectedTrend(window: DateWindow): Promise<TrendSeries> {
+  if (!isSupabaseConfigured) return emptyTrend(window);
+  const venue = await getCurrentVenue();
+  if (!venue) return emptyTrend(window);
+  const rows = await getPaymentsCollectedDetail(window);
+  const granularity = resolveTrendGranularity(window.from, window.to);
+  const buckets = buildTrendBuckets(window.from, window.to, granularity);
+  const totals = new Map<string, number>();
+  for (const r of rows) {
+    const key = bucketKeyForTimestamp(r.paidAt, granularity);
+    totals.set(key, (totals.get(key) ?? 0) + r.amount);
+  }
+  return {
+    points: buckets.map((b) => ({ label: b.label, value: Math.round(totals.get(b.key) ?? 0) })),
+    granularity,
+    granularityLabel: trendGranularityCaption(granularity),
+  };
 }
 
 export type LeadSummary = { total: number; bySourceTrend: TrendPoint[] };
 
-/** Leads received per month, by created_at — the same "entered the pipeline" date canonical_conversion_funnel() now windows on (migration 20261257000000). Plain COUNT, not a funnel/conversion calculation. */
-export async function getLeadsTrend(window: DateWindow): Promise<{ total: number; trend: TrendPoint[] }> {
-  if (!isSupabaseConfigured) return { total: 0, trend: [] };
+/** Leads received trend by created_at — adaptive day/week/month. Plain COUNT, not a funnel/conversion calculation. */
+export async function getLeadsTrend(window: DateWindow): Promise<{ total: number; trend: TrendPoint[]; granularityLabel: string }> {
+  if (!isSupabaseConfigured) return { total: 0, trend: [], granularityLabel: "Monthly" };
   const venue = await getCurrentVenue();
-  if (!venue) return { total: 0, trend: [] };
+  if (!venue) return { total: 0, trend: [], granularityLabel: "Monthly" };
   const supabase = await createClient();
 
-  // Soft-merged duplicates stay on disk for redirect/audit but must not inflate
-  // "leads received" totals — same exclusion as active lead lists.
   const { data } = await onlyBusinessReporting(
     supabase.from("leads").select("created_at")
       .eq("venue_id", venue.id)
-      .is("merged_into_lead_id", null)
       .gte("created_at", window.from).lte("created_at", window.to + "T23:59:59"),
   );
   const rows = (data ?? []) as { created_at: string }[];
-  const buckets = monthBuckets(window.from, window.to);
-  const counts = new Map<string, number>();
-  for (const r of rows) counts.set(monthKey(r.created_at), (counts.get(monthKey(r.created_at)) ?? 0) + 1);
-  return { total: rows.length, trend: buckets.map((b) => ({ label: b.label, value: counts.get(b.key) ?? 0 })) };
+  const series = aggregateCountTrend(rows.map((r) => r.created_at), window);
+  return { total: rows.length, trend: series.points, granularityLabel: series.granularityLabel };
 }
 
 export type EventDrillRow = { id: string; clientId: string | null; name: string; eventDate: string | null; eventType: string | null; guestCount: number | null };
@@ -199,8 +236,6 @@ export async function getEventsInRange(window: DateWindow): Promise<EventDrillRo
     supabase.from("events")
       .select("id, client_id, name, event_date, event_type, guest_count")
       .eq("venue_id", venue.id)
-      .not("booked_at", "is", null)
-      .neq("status", "cancelled")
       .gte("event_date", window.from).lte("event_date", window.to)
       .order("event_date", { ascending: true }),
   );
@@ -215,15 +250,11 @@ export function averageGuestCount(events: EventDrillRow[]): number {
   return Math.round(withCount.reduce((sum, e) => sum + (e.guestCount ?? 0), 0) / withCount.length);
 }
 
-export function eventsToTrend(events: EventDrillRow[], window: DateWindow): TrendPoint[] {
-  const buckets = monthBuckets(window.from, window.to);
-  const counts = new Map<string, number>();
-  for (const e of events) {
-    if (!e.eventDate) continue;
-    const key = monthKey(e.eventDate);
-    counts.set(key, (counts.get(key) ?? 0) + 1);
-  }
-  return buckets.map((b) => ({ label: b.label, value: counts.get(b.key) ?? 0 }));
+export function eventsToTrend(events: EventDrillRow[], window: DateWindow): TrendSeries {
+  return aggregateCountTrend(
+    events.map((e) => e.eventDate ?? ""),
+    window,
+  );
 }
 
 export function eventsByType(events: EventDrillRow[]): { type: string; label: string; count: number }[] {
@@ -335,8 +366,10 @@ export async function getOutstandingBalanceDetail(window: DateWindow): Promise<O
   if (!venue) return [];
   const supabase = await createClient();
 
+  const { data: bookings } = await supabase.from("canonical_bookings").select("client_id, booked_at")
+    .eq("venue_id", venue.id).gte("booked_at", window.from).lte("booked_at", window.to);
   const exclusions = await loadReportingExclusions(supabase, venue.id);
-  const bookingRows = (await bookedRelationshipsInWindow(supabase, venue.id, window))
+  const bookingRows = ((bookings ?? []) as { client_id: string; booked_at: string }[])
     .filter((b) => !exclusions.clientIds.has(b.client_id));
   if (bookingRows.length === 0) return [];
   const clientIds = bookingRows.map((b) => b.client_id);
@@ -388,12 +421,9 @@ export async function getCategoryDetail(category: string, window: DateWindow): P
   if (!venue) return [];
   const supabase = await createClient();
 
-  const exclusions = await loadReportingExclusions(supabase, venue.id);
-  const bookedClientIds = new Set(
-    (await bookedRelationshipsInWindow(supabase, venue.id, window))
-      .filter((b) => !exclusions.clientIds.has(b.client_id))
-      .map((b) => b.client_id),
-  );
+  const { data: bookings } = await supabase.from("canonical_bookings").select("client_id, booked_at")
+    .eq("venue_id", venue.id).gte("booked_at", window.from).lte("booked_at", window.to);
+  const bookedClientIds = new Set((bookings ?? []).map((b: { client_id: string }) => b.client_id));
   if (bookedClientIds.size === 0) return [];
 
   const { data } = await supabase

@@ -1,8 +1,10 @@
 import Link from "next/link";
 
+import { BookingsBySourceChart } from "@/components/reporting/bookings-by-source-chart";
 import { DateRangeControl } from "@/components/reporting/date-range-control";
 import { DetailPanel, DetailRow } from "@/components/reporting/detail-panel";
 import { ReportHeader } from "@/components/reporting/report-header";
+import { SourceCompositionChart } from "@/components/reporting/source-composition-chart";
 import { TrendChart } from "@/components/dashboard-system/trend-chart";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { reportingSourceDisplayLabel } from "@/lib/attribution/source";
@@ -16,6 +18,8 @@ import {
   getPeriodToursWithNames,
   getToursByAcquisitionSource,
 } from "@/lib/metrics/attribution";
+import { getLeadCohortBookingsBySource } from "@/lib/metrics/bookings-by-source";
+import { getLeadsBySource } from "@/lib/metrics/leads-by-source";
 import {
   getAcquisitionSourceCohortBreakdown,
   getEventTypeCohortBreakdown,
@@ -65,7 +69,7 @@ export default async function SalesReportPage({ searchParams }: Props) {
     leadCoverage, bookingCoverage, toursBySource, bookingsBySource,
     timeToBook, revenueBySource,
     sourceCohort, timeToBookBySource, eventTypeCohort,
-    undatedBookings, periodTours,
+    undatedBookings, periodTours, cohortBookingsBySource, leadsBySource,
   ] = await Promise.all([
     getConversionFunnel(window),
     getLeadsTrend(window),
@@ -86,6 +90,8 @@ export default async function SalesReportPage({ searchParams }: Props) {
     getEventTypeCohortBreakdown(window),
     getUndatedLifecycleBookingCount(),
     getPeriodToursWithNames(window),
+    getLeadCohortBookingsBySource(window),
+    getLeadsBySource(window),
   ]);
 
   const counts = funnel?.counts;
@@ -93,7 +99,7 @@ export default async function SalesReportPage({ searchParams }: Props) {
   const closeHref = hrefWith(params, { detail: null });
 
   return (
-    <div className="space-y-6">
+    <div className="htc-hospitality-page space-y-6">
       <ReportHeader
         title="Sales"
         description="What came in during these dates, and how many of those leads later booked."
@@ -156,11 +162,26 @@ export default async function SalesReportPage({ searchParams }: Props) {
             </div>
           </details>
 
+          <div className="grid gap-4 lg:grid-cols-2">
+            <SourceCompositionChart
+              title="Leads by Source"
+              description={leadsBySource.basis}
+              slices={leadsBySource.slices}
+              total={leadsBySource.total}
+              emptyText="No leads in this period."
+              unitSingular="lead"
+              unitPlural="leads"
+              compact
+              testId="leads-by-source-chart"
+            />
+            <BookingsBySourceChart report={cohortBookingsBySource} compact />
+          </div>
+
           <div>
-            <p className="mb-2 text-sm font-medium text-heading">Where leads came from</p>
+            <p className="mb-2 text-sm font-medium text-heading">Conversion by source</p>
             <p className="mb-2 text-[11px] text-muted-foreground">
               Official source recorded when the lead was created. Website includes tour-request form entries.
-              Rates are of these leads only.
+              Rates are of these leads only — not period booking activity.
             </p>
             {sourceCohort.length === 0 ? (
               <p className="text-sm text-muted-foreground">No leads in this period.</p>
@@ -477,7 +498,9 @@ export default async function SalesReportPage({ searchParams }: Props) {
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Leads received</CardTitle>
-          <CardDescription>New opportunities over time (lead created date).</CardDescription>
+          <CardDescription>
+            {leads.granularityLabel} view of new opportunities (lead created date).
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {leads.total === 0 ? (

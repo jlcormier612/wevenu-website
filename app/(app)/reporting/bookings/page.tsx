@@ -1,16 +1,17 @@
 import Link from "next/link";
 
+import { BookingsBySourceChart } from "@/components/reporting/bookings-by-source-chart";
 import { DateRangeControl } from "@/components/reporting/date-range-control";
 import { ReportHeader } from "@/components/reporting/report-header";
 import { ComparisonCard, ComparisonCardGrid } from "@/components/dashboard-system/comparison-card";
-import { TrendChart, type TrendPoint } from "@/components/dashboard-system/trend-chart";
+import { TrendChart } from "@/components/dashboard-system/trend-chart";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { reportingSourceDisplayLabel } from "@/lib/attribution/source";
 import {
   getLifecycleBookingSourceCoverage,
-  getLifecycleBookingsByAcquisitionSource,
   getMedianTimeToBookDays,
 } from "@/lib/metrics/attribution";
+import { getPeriodBookingsBySource } from "@/lib/metrics/bookings-by-source";
 import {
   getCurrentlyBookedPipelineCount,
   getLifecycleBookingsWithNames,
@@ -18,39 +19,33 @@ import {
 } from "@/lib/metrics/lifecycle-booking";
 import { getAverageBookingValue, getGrossBookedRevenue } from "@/lib/metrics/revenue";
 import { reportingHref, resolveDateRangeFromParams } from "@/lib/reporting/date-range";
+import {
+  bucketKeyForTimestamp,
+  buildTrendBuckets,
+  resolveTrendGranularity,
+  trendGranularityCaption,
+} from "@/lib/reporting/trend-buckets";
 import { formatMoney } from "@/lib/event-orders/constants";
+import type { TrendPoint } from "@/components/dashboard-system/trend-chart";
 
 type Props = { searchParams: Promise<Record<string, string | string[] | undefined>> };
 
-function monthKey(iso: string): string {
-  return iso.slice(0, 7);
-}
-
 function lifecycleToTrend(
-  bookings: { occurredAt: string }[],
+  bookings: { occurredAt: string | null }[],
   window: { from: string; to: string },
-): TrendPoint[] {
-  const start = new Date(window.from + "T12:00:00");
-  const end = new Date(window.to + "T12:00:00");
-  const buckets: { key: string; label: string; value: number }[] = [];
-  const cursor = new Date(Date.UTC(start.getFullYear(), start.getMonth(), 1));
-  const endMonth = new Date(Date.UTC(end.getFullYear(), end.getMonth(), 1));
-  while (cursor <= endMonth) {
-    const key = cursor.toISOString().slice(0, 7);
-    buckets.push({
-      key,
-      label: cursor.toLocaleDateString("en-US", { month: "short", year: "numeric", timeZone: "UTC" }),
-      value: 0,
-    });
-    cursor.setUTCMonth(cursor.getUTCMonth() + 1);
-  }
-  const byKey = new Map(buckets.map((b) => [b.key, b]));
+): { points: TrendPoint[]; granularityLabel: string } {
+  const granularity = resolveTrendGranularity(window.from, window.to);
+  const buckets = buildTrendBuckets(window.from, window.to, granularity);
+  const counts = new Map<string, number>();
   for (const b of bookings) {
-    const k = monthKey(b.occurredAt);
-    const row = byKey.get(k);
-    if (row) row.value += 1;
+    if (!b.occurredAt) continue;
+    const key = bucketKeyForTimestamp(b.occurredAt, granularity);
+    counts.set(key, (counts.get(key) ?? 0) + 1);
   }
-  return buckets.map(({ label, value }) => ({ label, value }));
+  return {
+    points: buckets.map((b) => ({ label: b.label, value: counts.get(b.key) ?? 0 })),
+    granularityLabel: trendGranularityCaption(granularity),
+  };
 }
 
 export default async function BookingsReportPage({ searchParams }: Props) {
@@ -73,14 +68,14 @@ export default async function BookingsReportPage({ searchParams }: Props) {
     getGrossBookedRevenue(prevWindow),
     getCurrentlyBookedPipelineCount(),
     getLifecycleBookingSourceCoverage(window),
-    getLifecycleBookingsByAcquisitionSource(window),
+    getPeriodBookingsBySource(window),
     getMedianTimeToBookDays(window),
     getUndatedLifecycleBookingCount(),
   ]);
   const trend = lifecycleToTrend(bookings, window);
 
   return (
-    <div className="space-y-6">
+    <div className="htc-hospitality-page space-y-6">
       <ReportHeader
         title="Bookings"
         description="Relationships you marked booked, dated when you marked them booked. Money lives on Revenue."
@@ -133,39 +128,20 @@ export default async function BookingsReportPage({ searchParams }: Props) {
           : ""}
       </p>
 
-      <Card className={bookingsBySource.length === 0 ? "htc-report-empty-card" : undefined}>
-        <CardHeader>
-          <CardTitle className="text-base">Bookings by source</CardTitle>
-          <CardDescription>
-            Frozen source recorded when they booked. Website includes tour requests. Missing source is Not recorded.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {bookingsBySource.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No bookings in this date range.</p>
-          ) : (
-            <div className="divide-y divide-border">
-              {bookingsBySource.map((s) => (
-                <div key={s.key} className="flex items-center justify-between py-2 text-sm">
-                  <span className="text-foreground">{s.label}</span>
-                  <span className="tabular-nums font-medium text-heading">{s.count}</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <BookingsBySourceChart report={bookingsBySource} />
 
       <Card className={bookings.length === 0 ? "htc-report-empty-card" : undefined}>
         <CardHeader>
           <CardTitle className="text-base">Bookings over time</CardTitle>
-          <CardDescription>Based on when you first marked them booked — not contract or payment dates.</CardDescription>
+          <CardDescription>
+            {trend.granularityLabel} view based on when you first marked them booked — not contract or payment dates.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {bookings.length === 0 ? (
             <p className="py-8 text-center text-sm text-muted-foreground">No bookings in this date range.</p>
           ) : (
-            <TrendChart data={trend} />
+            <TrendChart data={trend.points} />
           )}
         </CardContent>
       </Card>

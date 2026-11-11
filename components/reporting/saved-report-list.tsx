@@ -41,7 +41,7 @@ export function SavedReportList({ reports }: { reports: SavedReport[] }) {
 
   if (reports.length === 0) {
     return (
-      <div className="htc-surface-guidance flex flex-col items-center justify-center rounded-sm border-dashed py-16 text-center">
+      <div className="flex flex-col items-center justify-center rounded-sm border border-dashed border-border bg-card/40 py-16 text-center">
         <p className="font-heading text-lg font-medium text-heading">No saved reports yet</p>
         <p className="mt-1 text-sm text-muted-foreground">Open any report in Reporting and click &quot;Save Report&quot; to keep a view you come back to often.</p>
       </div>
@@ -49,7 +49,7 @@ export function SavedReportList({ reports }: { reports: SavedReport[] }) {
   }
 
   return (
-    <div className="space-y-2" data-report-saved-list="">
+    <div className="space-y-2">
       {reports.map((r) => {
         const qs = new URLSearchParams({ range: r.datePreset, ...(r.customFrom ? { from: r.customFrom } : {}), ...(r.customTo ? { to: r.customTo } : {}) }).toString();
         return (
@@ -59,11 +59,7 @@ export function SavedReportList({ reports }: { reports: SavedReport[] }) {
             title={r.name}
             meta={`${presetLabel(r.datePreset)} · Updated ${formatRelative(r.updatedAt)}`}
             isStarter={Boolean(r.sourceMasterKey)}
-            badges={
-              <Badge variant="outline" className="htc-badge-active">
-                {SAVED_REPORT_PATH_LABEL[r.reportPath]}
-              </Badge>
-            }
+            badges={<Badge variant="outline">{SAVED_REPORT_PATH_LABEL[r.reportPath]}</Badge>}
             primaryActions={[
               { id: "use", label: "Open report", href: `${r.reportPath}?${qs}`, emphasis: "use" },
               { id: "edit", label: "Manage", href: `/reporting/saved/${r.id}`, emphasis: "edit" },

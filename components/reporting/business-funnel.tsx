@@ -4,13 +4,10 @@
  * Period strip = what happened during the selected dates (each metric on its own clock).
  * Cohort = what happened to leads that entered during those dates.
  * Never divide period stages into each other.
- *
- * Phase 11B: period/cohort tiles use metric-family tones (not polarity fills).
  */
 import Link from "next/link";
 
-import { Card, CardContent } from "@/components/ui/card";
-import type { ComparisonTone } from "@/components/dashboard-system/comparison-card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { BusinessFunnelModel } from "@/lib/metrics/business-funnel";
 import { formatMoney } from "@/lib/event-orders/constants";
 
@@ -24,7 +21,6 @@ type PeriodStage = {
   label: string;
   value: string;
   clock: string;
-  tone: ComparisonTone;
 };
 
 export function BusinessFunnel({ funnel, rangeLabel }: Props) {
@@ -36,48 +32,48 @@ export function BusinessFunnel({ funnel, rangeLabel }: Props) {
       label: "Leads",
       value: String(period.leads),
       clock: "Received this period",
-      tone: "sales",
     },
     {
       key: "tours",
       label: "Tours",
       value: String(period.tours),
       clock: "Scheduled this period",
-      tone: "sales",
     },
     {
       key: "bookings",
       label: "Bookings",
       value: String(period.bookings),
       clock: "Marked booked this period",
-      tone: "bookings",
     },
     {
       key: "bookedRevenue",
       label: "Contracted",
       value: formatMoney(period.bookedRevenue),
       clock: "Signed value (financial date)",
-      tone: "contracted",
     },
     {
       key: "collected",
       label: "Collected",
       value: formatMoney(period.collectedRevenue),
       clock: "Money received this period",
-      tone: "collected",
     },
     {
       key: "outstanding",
       label: "Outstanding",
       value: formatMoney(period.outstanding),
       clock: "Mixed clocks — see note",
-      tone: "outstanding",
     },
   ];
 
   return (
-    <Card data-testid="business-funnel">
-      <CardContent className="space-y-6 pt-6">
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base">How the business moved</CardTitle>
+        <CardDescription>
+          What happened during {rangeLabel}, then what happened to the leads that came in during those dates.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
         <div>
           <p className="mb-1 text-sm font-medium text-heading">During this period</p>
           <p className="mb-3 text-xs text-muted-foreground">
@@ -87,9 +83,7 @@ export function BusinessFunnel({ funnel, rangeLabel }: Props) {
             {stages.map((stage) => (
               <li
                 key={stage.key}
-                className="htc-report-metric-tile"
-                data-tone={stage.tone}
-                data-report-metric-tile=""
+                className="rounded-md border border-border px-3 py-2.5"
               >
                 <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{stage.label}</p>
                 <p className="mt-0.5 text-lg font-semibold tabular-nums text-heading">{stage.value}</p>
@@ -107,21 +101,21 @@ export function BusinessFunnel({ funnel, rangeLabel }: Props) {
             Booking here means you marked them booked — which may have happened after this period ended.
           </p>
           <div className="grid gap-3 sm:grid-cols-3">
-            <div className="htc-report-metric-tile" data-tone="sales" data-report-metric-tile="">
+            <div className="rounded-md border border-border px-3 py-2">
               <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Took a tour</p>
               <p className="text-lg font-semibold tabular-nums text-heading">{cohort.leadToTourRate}%</p>
               <p className="text-[11px] text-muted-foreground">
                 {cohort.eventuallyToured} of {cohort.leadsEntered} later toured
               </p>
             </div>
-            <div className="htc-report-metric-tile" data-tone="bookings" data-report-metric-tile="">
+            <div className="rounded-md border border-border px-3 py-2">
               <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Leads who booked</p>
               <p className="text-lg font-semibold tabular-nums text-heading">{cohort.leadToBookingRate}%</p>
               <p className="text-[11px] text-muted-foreground">
                 {cohort.eventuallyBooked} of {cohort.leadsEntered} later booked — the booking can be after this period
               </p>
             </div>
-            <div className="htc-report-metric-tile" data-tone="bookings" data-report-metric-tile="">
+            <div className="rounded-md border border-border px-3 py-2">
               <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Toured, then booked</p>
               <p className="text-lg font-semibold tabular-nums text-heading">{cohort.tourToBookingRate}%</p>
               <p className="text-[11px] text-muted-foreground">

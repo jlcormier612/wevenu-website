@@ -1,4 +1,3 @@
-import { htcEmailLogoHeaderHtml } from "../../brand/logo";
 import type { EmailTemplateVars } from "../types";
 import { greetingFirstName } from "../../relationships/normalize";
 
@@ -27,6 +26,68 @@ export function firstName(vars: EmailTemplateVars): string {
     fallback: "there",
   });
 }
+
+/**
+ * Person name for email greetings — never a venue name.
+ * Hierarchy: billing contact → account owner / generic person fields → null.
+ */
+export function personGreetingName(vars: EmailTemplateVars): string | null {
+  // greetingFirstName coerces empty fallback to "there"; use a sentinel.
+  const none = "__htc_no_person_name__";
+
+  const billingRaw =
+    str(vars, "billingFirstName") ||
+    str(vars, "billing_first_name") ||
+    str(vars, "billingFullName") ||
+    str(vars, "billing_full_name") ||
+    str(vars, "billingName") ||
+    str(vars, "billing_name") ||
+    str(vars, "billingEmail") ||
+    str(vars, "billing_email") ||
+    "";
+  if (billingRaw) {
+    const billing = greetingFirstName({
+      firstName:
+        str(vars, "billingFirstName") ||
+        str(vars, "billing_first_name") ||
+        null,
+      fullName:
+        str(vars, "billingFullName") ||
+        str(vars, "billing_full_name") ||
+        str(vars, "billingName") ||
+        str(vars, "billing_name") ||
+        null,
+      email: str(vars, "billingEmail") || str(vars, "billing_email") || null,
+      fallback: none,
+    });
+    if (billing && billing !== none) return billing;
+  }
+
+  const ownerRaw =
+    str(vars, "firstName") ||
+    str(vars, "ownerFirstName") ||
+    str(vars, "fullName") ||
+    str(vars, "ownerFullName") ||
+    str(vars, "email") ||
+    str(vars, "ownerEmail") ||
+    "";
+  if (!ownerRaw) return null;
+
+  const owner = greetingFirstName({
+    firstName: str(vars, "firstName") || str(vars, "ownerFirstName") || null,
+    fullName: str(vars, "fullName") || str(vars, "ownerFullName") || null,
+    email: str(vars, "email") || str(vars, "ownerEmail") || null,
+    fallback: none,
+  });
+  return owner && owner !== none ? owner : null;
+}
+
+/** Opening line: "Hi Jordan," or neutral "Hello," — never "Hi your venue,". */
+export function greetingSalutation(vars: EmailTemplateVars): string {
+  const name = personGreetingName(vars);
+  return name ? `Hi ${name},` : "Hello,";
+}
+
 
 export function venueName(vars: EmailTemplateVars): string {
   return str(vars, "venueName") || "your venue";
@@ -81,21 +142,9 @@ export function productAppBaseUrl(): string {
 /**
  * After password creation, send the owner to product login with a return
  * path into Setup Hub — not a bare /login that then dumps them on Dashboard.
- *
- * Optional `purchaserEmail` is prefill only (never authorization). The venue
- * proxy clears any prior venue session when `activated=1` so an unrelated
- * browser login cannot silently override the purchaser handoff.
  */
-export function productPostActivationLoginUrl(purchaserEmail?: string | null): string {
-  const params = new URLSearchParams({
-    activated: "1",
-    next: "/setup-hub",
-  });
-  const email = (purchaserEmail ?? "").trim().toLowerCase();
-  if (email && email.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    params.set("email", email);
-  }
-  return `${productAppBaseUrl()}/login?${params.toString()}`;
+export function productPostActivationLoginUrl(): string {
+  return `${productAppBaseUrl()}/login?activated=1&next=${encodeURIComponent("/setup-hub")}`;
 }
 
 export function paragraphsToHtml(paragraphs: string[]): string {
@@ -118,7 +167,6 @@ export function ctaButtonHtml(label: string, href: string): string {
 }
 
 export function wrapHelloHtml(title: string, bodyHtml: string): string {
-  const logoHeader = htcEmailLogoHeaderHtml({ href: marketingUrl() });
   return `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
@@ -126,7 +174,7 @@ export function wrapHelloHtml(title: string, bodyHtml: string): string {
   <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto">
     <tr>
       <td style="background:#fffdf9;border-radius:4px;padding:40px 36px;border:1px solid #e5ddd0">
-        ${logoHeader}
+        <p style="margin:0 0 8px;font-size:12px;letter-spacing:0.14em;text-transform:uppercase;color:#6b7a6b">Hello to Cheers</p>
         <h1 style="margin:0 0 24px;font-size:24px;line-height:1.3;color:#2f3d2f;font-weight:normal">${escapeHtml(title)}</h1>
         ${bodyHtml}
         <p style="margin:28px 0 0;font-size:14px;line-height:1.5;color:#6b7a6b">With care,<br/>Jennifer &amp; the Hello to Cheers team</p>

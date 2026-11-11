@@ -3,6 +3,7 @@ import {
   ctaButtonHtml,
   escapeHtml,
   firstName,
+  greetingSalutation,
   marketingUrl,
   paragraphsToHtml,
   planName,
@@ -120,17 +121,30 @@ export const welcomeBackTemplate: EmailTemplateDefinition = {
   id: "welcome_back",
   name: "Welcome Back",
   description:
-    "Acknowledgment when Welcome Back is requested at checkout or via form (verification still pending).",
+    "Acknowledgment when Welcome Back is requested at checkout or via form (verification still pending). White Glove purchasers get coordination copy instead of self-setup settling-in language.",
   status: "live",
   render(vars) {
-    const name = firstName(vars);
+    const greeting = greetingSalutation(vars);
     const venue = venueName(vars);
+    const onboarding = String(
+      vars.onboardingType ?? vars.onboarding_type ?? "",
+    )
+      .trim()
+      .toLowerCase();
+    const isWhiteGlove =
+      onboarding === "white_glove" ||
+      String(vars.whiteGlove ?? vars.white_glove ?? "")
+        .trim()
+        .toLowerCase() === "true";
     const subject = `We received your Welcome Back note — ${venue}`;
+    const nextStep = isWhiteGlove
+      ? `Since you've selected White Glove onboarding, our team will be in touch personally to coordinate your setup and help you get everything ready. We're looking forward to welcoming you back!`
+      : `In the meantime, your subscription is active and you can begin settling in.`;
     const paragraphs = [
-      `Hi ${name},`,
+      greeting,
       `We received your Welcome Back request for ${venue}. Thank you for coming back to us.`,
-      `Our team will review your note and follow up personally. Welcome Back verification is intentional — not automatic — so we can honor your history with care.`,
-      `In the meantime, your subscription is active and you can begin settling in.`,
+      `Our team will review your former Weven history personally — Welcome Back verification is intentional, not automatic, and is independent of how you chose to onboard.`,
+      nextStep,
       `Questions? Just reply here.`,
     ];
     const text = paragraphs.join("\n\n");
@@ -265,38 +279,23 @@ export const whiteGloveWelcomeTemplate: EmailTemplateDefinition = {
     const plan = planName(vars);
     const intakeUrl = String(vars.intakeUrl || "").trim();
     const subject = `Let's get ${venue} ready — White Glove Setup`;
-    const before = [
+    const paragraphs = [
       `Hi ${name},`,
       `Thank you for choosing White Glove Setup for ${venue}. Your ${plan} subscription is confirmed.`,
       `You've chosen White Glove Setup. We'll build your Hello to Cheers workspace using the information and materials you provide.`,
       `You don't need to configure everything yourself.`,
       `Every venue is a little different. We'll get started as soon as we have what we need and keep you updated along the way. The sooner you send your materials and answer any questions, the sooner we'll have your workspace ready to use.`,
-    ];
-    const after = [
+      ...(intakeUrl
+        ? [`Share a few details about your venue here: ${intakeUrl}`]
+        : [`We'll send you a short link to share your venue information shortly.`]),
       `You won't receive login credentials yet — we'll invite you when your workspace is ready.`,
       `Questions? Just reply — we're right here.`,
     ];
-    const text = [
-      ...before,
-      intakeUrl
-        ? `Share a few details about your venue here: ${intakeUrl}`
-        : `We'll send you a short link to share your venue information shortly.`,
-      ...after,
-    ].join("\n\n");
-    const htmlBody = intakeUrl
-      ? paragraphsToHtml(before) +
-        `<p style="margin:0 0 8px;font-size:16px;line-height:1.55;color:#1f2937">Share a few details about your venue:</p>` +
-        ctaButtonHtml("Share venue details", intakeUrl) +
-        paragraphsToHtml(after)
-      : paragraphsToHtml([
-          ...before,
-          `We'll send you a short link to share your venue information shortly.`,
-          ...after,
-        ]);
+    const text = paragraphs.join("\n\n");
     return {
       subject,
       text,
-      html: wrapHelloHtml("White Glove Welcome", htmlBody),
+      html: wrapHelloHtml("White Glove Welcome", paragraphsToHtml(paragraphs)),
       preview: previewFromText(text),
       timelineTitle: "White Glove Welcome Email Sent",
     };
@@ -341,15 +340,6 @@ export const welcomeHomeTemplate: EmailTemplateDefinition = {
   },
 };
 
-/**
- * Full three-sided / client-vendor notice copy is Phase 2.
- * Keep it prepared but gated so Sandbox cannot send those claims early.
- * Enable only when HTC_PHASE2_LIFECYCLE_COMMS=true after Phase 2 is GREEN.
- */
-function phase2LifecycleCommsEnabled(): boolean {
-  return process.env.HTC_PHASE2_LIFECYCLE_COMMS === "true";
-}
-
 export const paymentReminderTemplate: EmailTemplateDefinition = {
   id: "payment_reminder",
   name: "Payment Reminder",
@@ -357,68 +347,21 @@ export const paymentReminderTemplate: EmailTemplateDefinition = {
   status: "live",
   render(vars) {
     const name = firstName(vars);
+    const greeting = greetingSalutation(vars);
     const venue = venueName(vars);
-    const day = Number(vars.dunningDay ?? "0");
+    const day = String(vars.dunningDay ?? "0");
     const portalUrl = String(vars.billingPortalUrl || "").trim();
-    const accessEndsRaw = String(vars.accessEndsAt || "").trim();
-    const accessEndsLabel = accessEndsRaw
-      ? new Date(accessEndsRaw).toLocaleDateString("en-US", {
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-          timeZone: "UTC",
-        }) + " (UTC)"
-      : null;
-    const phase2 = phase2LifecycleCommsEnabled();
-    const subject =
-      day >= 14
-        ? `Action required — Your Hello to Cheers access may end soon`
-        : day >= 7
-          ? `Reminder: update payment for ${venue}`
-          : `Action needed: update payment for ${venue}`;
+    const subject = `Action needed: update payment for ${venue}`;
     const paragraphs = [
-      `Hi ${name},`,
+      greeting,
       `We weren't able to process the latest payment for ${venue}'s Hello to Cheers subscription.`,
       portalUrl
-        ? `You can resolve this securely here: ${portalUrl}`
+        ? `Please update your payment method here: ${portalUrl}`
         : `Please update your payment method from the billing email Stripe sent, or reply and we'll help.`,
+      Number(day) >= 14
+        ? `Your account is at risk of suspension if payment isn't resolved soon. Your data remains safe.`
+        : `No action needed if you've already updated your card — thank you.`,
     ];
-    if (day >= 7 && accessEndsLabel) {
-      paragraphs.push(
-        phase2
-          ? `If this isn't resolved by ${accessEndsLabel}, access to your venue workspace will be suspended. Connected client portals, vendor workspaces, wedding websites, and automated communications that depend on your subscription will also stop when that date arrives.`
-          : `If this isn't resolved by ${accessEndsLabel}, access to your venue workspace will be suspended. Your venue data will be preserved.`,
-      );
-      paragraphs.push(
-        phase2
-          ? `Before then, please export any information you wish to retain from Settings → Team & Data → Export my data. Clients can use Export my data in their planning portal. Vendors can download documents available in their workspace.`
-          : `Before then, please export any information you wish to retain from Settings → Team & Data → Export my data (or from the recovery screen if access is already paused).`,
-      );
-    }
-    if (day >= 14) {
-      if (phase2) {
-        paragraphs.push(
-          `Beginning seven days before the scheduled suspension, clients and vendors who sign in may see a discreet in-app notice about the date their workspace becomes unavailable. Hello to Cheers will not email or text your clients or vendors about this change, and we will not share the reason. We encourage you to communicate with them directly.`,
-        );
-      }
-      paragraphs.push(
-        `Your account information will be retained for a limited recovery period after suspension, subject to our retention policy.`,
-      );
-    } else if (day >= 7) {
-      if (phase2) {
-        paragraphs.push(
-          `If the issue remains unresolved, client and vendor in-app notices will begin seven days before suspension. Hello to Cheers will not email or text your clients or vendors about this change.`,
-        );
-      } else {
-        paragraphs.push(
-          `Your services remain available until the suspension date above. Please update billing to avoid interruption.`,
-        );
-      }
-    } else {
-      paragraphs.push(
-        `No action needed if you've already updated your card — thank you. Your services remain fully available while we work through this.`,
-      );
-    }
     const text = paragraphs.join("\n\n");
     return {
       subject,
@@ -437,14 +380,14 @@ export const accountSuspendedTemplate: EmailTemplateDefinition = {
   status: "live",
   render(vars) {
     const name = firstName(vars);
+    const greeting = greetingSalutation(vars);
     const venue = venueName(vars);
     const portalUrl = String(vars.billingPortalUrl || "").trim();
     const subject = `Access paused for ${venue}`;
     const paragraphs = [
-      `Hi ${name},`,
+      greeting,
       `We've paused access to Hello to Cheers for ${venue} because payment is still unresolved.`,
-      `Your venue data is preserved. You can update your payment method to restore access${portalUrl ? `: ${portalUrl}` : "."}`,
-      `While access is paused, authorized owners can still open billing recovery and export venue data from the recovery screen.`,
+      `Your data is preserved. Update your payment method to restore access${portalUrl ? `: ${portalUrl}` : "."}`,
       `Reply anytime — we're here to help you get back online.`,
     ];
     const text = paragraphs.join("\n\n");
@@ -465,10 +408,11 @@ export const accountReactivatedTemplate: EmailTemplateDefinition = {
   status: "live",
   render(vars) {
     const name = firstName(vars);
+    const greeting = greetingSalutation(vars);
     const venue = venueName(vars);
     const subject = `Welcome back — ${venue} is active again`;
     const paragraphs = [
-      `Hi ${name},`,
+      greeting,
       `Good news: access for ${venue} is restored. Welcome back.`,
       `Everything you had before is still here. If you need a hand settling back in, just reply.`,
     ];
@@ -576,12 +520,13 @@ export const renewalReminderTemplate: EmailTemplateDefinition = {
   status: "registry",
   render(vars) {
     const name = firstName(vars);
+    const greeting = greetingSalutation(vars);
     const venue = venueName(vars);
     const plan = planName(vars);
     const renewDate = String(vars.renewalDate || "").trim() || "soon";
     const subject = `Renewal coming up — ${venue}`;
     const paragraphs = [
-      `Hi ${name},`,
+      greeting,
       `A gentle heads-up: ${venue}'s ${plan} subscription renews ${renewDate}.`,
       `Nothing you need to do if everything looks right. If you'd like to change plans or talk through the year ahead, reply anytime.`,
     ];
@@ -670,50 +615,6 @@ export const luvSuggestionTemplate: EmailTemplateDefinition = {
       html: wrapHelloHtml(subject, htmlBody),
       preview: previewFromText(text),
       timelineTitle: `Email Sent — ${subject}`,
-    };
-  },
-};
-
-/**
- * Phase 3 automatic tier-upgrade notice.
- * Registry-only until Sandbox activation authorizes real sends.
- */
-export const tierUpgradeNoticeTemplate: EmailTemplateDefinition = {
-  id: "tier_upgrade_notice",
-  name: "Tier Upgrade Notice",
-  description:
-    "Advance notice that a venue's subscription will move to a higher plan at an eligible renewal. No immediate charge.",
-  status: "registry",
-  render(vars) {
-    const venue = venueName(vars);
-    const currentPlan = String(vars.current_plan_name || vars.currentPlanName || "Gather");
-    const newPlan = String(vars.new_plan_name || vars.newPlanName || "Celebrate");
-    const effective = String(vars.effective_date || vars.effectiveDate || "your next eligible renewal");
-    const currentAmount = String(vars.current_amount || vars.currentAmount || "");
-    const newAmount = String(vars.new_amount || vars.newAmount || "");
-    const discount = String(vars.discount_label || vars.discountLabel || "");
-    const peakCount = String(vars.peak_count || vars.peakCount || "");
-    const peakYear = String(vars.peak_year || vars.peakYear || "");
-    const contact = String(vars.contact_email || vars.contactEmail || "jennifer@hellotocheers.com");
-    const subject = "Your Hello to Cheers plan is growing with you";
-    const paragraphs = [
-      `Hi ${venue},`,
-      `Your venue has reached the booking volume for our ${newPlan} plan${peakCount && peakYear ? ` (${peakCount} qualifying celebrations in ${peakYear})` : ""}.`,
-      `Your subscription will move from ${currentPlan} to ${newPlan} at your next eligible renewal on ${effective}.`,
-      currentAmount && newAmount
-        ? `Current recurring subscription: ${currentAmount}/month. New recurring subscription: ${newAmount}/month.`
-        : `Your recurring subscription amount will update on ${effective}.`,
-      discount || "Any existing lifetime discount continues on the new plan.",
-      "There is no immediate charge. Your current plan and billing amount stay the same until that renewal date.",
-      `Questions? Reply to this email or contact ${contact}.`,
-    ];
-    const text = paragraphs.join("\n\n");
-    return {
-      subject,
-      text,
-      html: wrapHelloHtml(subject, paragraphsToHtml(paragraphs)),
-      preview: previewFromText(text),
-      timelineTitle: "Tier Upgrade Notice Prepared",
     };
   },
 };

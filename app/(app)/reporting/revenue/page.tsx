@@ -17,7 +17,13 @@ import {
   getPaymentsCollectedByAcquisitionSource,
 } from "@/lib/metrics/attribution";
 import { resolveDateRangeFromParams } from "@/lib/reporting/date-range";
-import { getCategoryDetail, getOutstandingBalanceDetail, getPaymentsCollectedDetail, getRevenueTrend } from "@/lib/reporting/service";
+import {
+  getCategoryDetail,
+  getOutstandingBalanceDetail,
+  getPaymentsCollectedDetail,
+  getPaymentsCollectedTrend,
+  getRevenueTrend,
+} from "@/lib/reporting/service";
 import { formatMoney } from "@/lib/event-orders/constants";
 
 type Props = { searchParams: Promise<Record<string, string | string[] | undefined>> };
@@ -44,7 +50,7 @@ export default async function RevenueReportPage({ searchParams }: Props) {
     paymentsCollected, prevPaymentsCollected,
     outstanding, prevOutstanding,
     avgValue, prevAvgValue,
-    byCategory, trend, revenueBySource, collectedBySource,
+    byCategory, contractedTrend, collectedTrend, revenueBySource, collectedBySource,
   ] = await Promise.all([
     getGrossBookedRevenue(window), getGrossBookedRevenue(prevWindow),
     getPaymentsCollected(window), getPaymentsCollected(prevWindow),
@@ -52,12 +58,14 @@ export default async function RevenueReportPage({ searchParams }: Props) {
     getAverageBookingValue(window), getAverageBookingValue(prevWindow),
     getGrossBookedRevenueByCategory(window),
     getRevenueTrend(window),
+    getPaymentsCollectedTrend(window),
     getGrossBookedRevenueByAcquisitionSource(window),
     getPaymentsCollectedByAcquisitionSource(window),
   ]);
 
   const categoryTotal = byCategory.reduce((sum, c) => sum + c.amount, 0);
-  const hasTrendValues = trend.some((d) => d.value > 0);
+  const hasContractedTrend = contractedTrend.points.some((d) => d.value > 0);
+  const hasCollectedTrend = collectedTrend.points.some((d) => d.value > 0);
 
   // Fetched only when actually needed — the whole point of "small detail
   // panel on demand," not a giant table pre-loaded on every render.
@@ -68,7 +76,7 @@ export default async function RevenueReportPage({ searchParams }: Props) {
   ]);
 
   return (
-    <div className="space-y-6">
+    <div className="htc-hospitality-page space-y-6">
       <ReportHeader title="Revenue" description="Money: contracted value, collected cash, and outstanding balances. Booking counts live on Bookings." />
       <DateRangeControl current={range.preset} label={range.label} />
 
@@ -139,19 +147,38 @@ export default async function RevenueReportPage({ searchParams }: Props) {
         </DetailPanel>
       )}
 
-      <Card className={!hasTrendValues ? "htc-report-empty-card" : undefined}>
-        <CardHeader>
-          <CardTitle className="text-base">Revenue Trend</CardTitle>
-          <CardDescription>Contracted value by month, dated when the signed contract and first payment were both in place — not when you marked them booked.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {!hasTrendValues ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">No contracted revenue in this date range.</p>
-          ) : (
-            <TrendChart data={trend} formatValue={formatMoney} />
-          )}
-        </CardContent>
-      </Card>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card className={!hasContractedTrend ? "htc-report-empty-card" : undefined}>
+          <CardHeader>
+            <CardTitle className="text-base">Contracted trend</CardTitle>
+            <CardDescription>
+              {contractedTrend.granularityLabel} contracted value by commitment date (signed agreement + first payment) — not when you marked them booked.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {!hasContractedTrend ? (
+              <p className="py-8 text-center text-sm text-muted-foreground">No contracted revenue in this date range.</p>
+            ) : (
+              <TrendChart data={contractedTrend.points} formatValue={formatMoney} />
+            )}
+          </CardContent>
+        </Card>
+        <Card className={!hasCollectedTrend ? "htc-report-empty-card" : undefined}>
+          <CardHeader>
+            <CardTitle className="text-base">Collected trend</CardTitle>
+            <CardDescription>
+              {collectedTrend.granularityLabel} payments collected by payment date — a different clock from contracted.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {!hasCollectedTrend ? (
+              <p className="py-8 text-center text-sm text-muted-foreground">No payments collected in this date range.</p>
+            ) : (
+              <TrendChart data={collectedTrend.points} formatValue={formatMoney} barColor="var(--chart-2)" />
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
       <Card>
         <CardHeader>
