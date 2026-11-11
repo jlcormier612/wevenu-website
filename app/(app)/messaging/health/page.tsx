@@ -21,7 +21,7 @@ export default async function CommunicationHealthPage() {
 
   return (
     <div className="htc-hospitality-page space-y-6">
-      <div>
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
         <h1 className="font-heading text-2xl font-medium text-heading">Communication Health</h1>
         <p className="text-sm text-muted-foreground">Whether your emails and texts are actually reaching your leads and clients.</p>
         <div className="mt-3 rounded-lg border border-border bg-muted/20 px-3 py-2.5 text-xs text-muted-foreground space-y-1.5">

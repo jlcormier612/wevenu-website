@@ -142,7 +142,7 @@ export function DocumentWorkspace({
           {/* Pinned Documents */}
           {pinningEnabled && pinned.length > 0 && (
             <section className="space-y-2">
-              <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Pinned</h2>
+              <h2 className="htc-hospitality-section-label">Pinned</h2>
               <div className="space-y-2">
                 {pinned.map((d) => (
                   <WorkspaceDocumentCard key={workspaceDocKey(d.docType, d.id)} doc={d} pinned onOpenPreview={openPreview} onOpenVersionHistory={openHistory} onPinChange={(next) => handlePinChange(workspaceDocKey(d.docType, d.id), next)} pinningEnabled={pinningEnabled} />
@@ -154,7 +154,7 @@ export function DocumentWorkspace({
           {/* Recent Documents */}
           {recent.length > 0 && (
             <section className="space-y-2">
-              <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Recent</h2>
+              <h2 className="htc-hospitality-section-label">Recent</h2>
               <div className="space-y-2">
                 {recent.map((d) => (
                   <WorkspaceDocumentCard key={workspaceDocKey(d.docType, d.id)} doc={d} pinned={pinnedKeys.has(workspaceDocKey(d.docType, d.id))} onOpenPreview={openPreview} onOpenVersionHistory={openHistory} onPinChange={(next) => handlePinChange(workspaceDocKey(d.docType, d.id), next)} pinningEnabled={pinningEnabled} />
@@ -165,7 +165,7 @@ export function DocumentWorkspace({
 
           {/* Document Categories */}
           <section className="space-y-2">
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Categories</h2>
+            <h2 className="htc-hospitality-section-label">Categories</h2>
             <div className="flex flex-wrap gap-1.5">
               <button type="button" onClick={() => setCategory("all")}>
                 <Badge variant={category === "all" ? "default" : "outline"}>All ({documents.length})</Badge>
@@ -179,7 +179,7 @@ export function DocumentWorkspace({
           </section>
 
           {/* Search / Filter / Sort */}
-          <section className="flex flex-wrap items-center gap-2">
+          <section className="htc-hospitality-toolbar flex flex-wrap items-center gap-2">
             <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search documents…" className="max-w-xs" />
             <Select value={status} onValueChange={(v) => setStatus(v as WorkspaceStatus | "all")}>
               <SelectTrigger className="w-auto"><SelectValue /></SelectTrigger>
@@ -198,7 +198,7 @@ export function DocumentWorkspace({
 
           {/* All Documents */}
           <section className="space-y-2">
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <h2 className="htc-hospitality-section-label">
               {category === "all" ? "All Documents" : category} ({filtered.length})
             </h2>
             {filtered.length === 0 ? (
@@ -215,7 +215,7 @@ export function DocumentWorkspace({
           {/* Document Activity */}
           {activity.length > 0 && (
             <section className="space-y-2">
-              <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Activity</h2>
+              <h2 className="htc-hospitality-section-label">Activity</h2>
               <div className="rounded-sm border border-border divide-y divide-border">
                 {activity.map((entry) => (
                   <div key={entry.key} className="flex items-center justify-between px-3 py-2 text-xs">

@@ -33,7 +33,7 @@ export default async function ImportPage({
 
   return (
     <div className="htc-hospitality-page space-y-6 max-w-3xl">
-      <div className="space-y-1.5">
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent space-y-1.5">
         <h1 className="text-xl font-bold text-foreground">Import Data</h1>
         <p className="text-sm text-muted-foreground mt-1">
           Bring your existing clients, leads, and vendors into Hello to Cheers from any CSV export.

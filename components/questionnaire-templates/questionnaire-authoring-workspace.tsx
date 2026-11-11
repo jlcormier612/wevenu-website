@@ -271,7 +271,7 @@ export function QuestionnaireAuthoringWorkspace({
   const saveStatus = pending ? "saving" : dirty ? "dirty" : savedFlash ? "saved" : "idle";
 
   return (
-    <div className="space-y-6">
+    <div className="htc-hospitality-page space-y-5 sm:space-y-6">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1 min-w-0">
           <div className="flex flex-wrap items-center gap-2">

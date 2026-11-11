@@ -148,7 +148,7 @@ export default async function TaskCenterPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent flex items-start justify-between gap-4">
         <PageHeader
           title="Task Center"
           description="What your team needs to do — and which clients need watching."

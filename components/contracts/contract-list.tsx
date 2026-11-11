@@ -68,7 +68,7 @@ export function ContractList({ contracts }: { contracts: Contract[] }) {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
           <Input value={query} onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search contracts…" className="pl-9" />
+            placeholder="Search contracts…" className="border-[color:var(--htc-border-warm)] bg-card pl-9" />
         </div>
       </div>
       <div className="flex flex-wrap gap-1.5">
@@ -79,9 +79,9 @@ export function ContractList({ contracts }: { contracts: Contract[] }) {
           const active = filter === value;
           return (
             <button key={value} type="button" onClick={() => setFilter(value)}
-              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${active ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground"}`}>
+              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${active ? "border-primary bg-primary text-primary-foreground" : "border-[color:var(--htc-border-warm)] bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground"}`}>
               {label}
-              <span className={`rounded-full px-1.5 py-px text-[10px] font-semibold ${active ? "bg-primary-foreground/20 text-primary-foreground" : "bg-muted text-muted-foreground"}`}>{count}</span>
+              <span className={`rounded-full px-1.5 py-px text-[10px] font-semibold ${active ? "bg-primary-foreground/20 text-primary-foreground" : "bg-[color:var(--htc-canvas)] text-muted-foreground"}`}>{count}</span>
             </button>
           );
         })}
@@ -89,7 +89,7 @@ export function ContractList({ contracts }: { contracts: Contract[] }) {
 
       {contracts.length === 0 && (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card/40 py-16 text-center">
-          <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
+          <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[color:var(--htc-canvas)] text-muted-foreground">
             <FileText className="h-5 w-5" />
           </span>
           <p className="font-heading text-lg font-medium text-heading">No contracts yet</p>
@@ -124,11 +124,11 @@ export function ContractList({ contracts }: { contracts: Contract[] }) {
               {filtered.map((contract) => (
                 <TableRow key={contract.id} className="group">
                   <TableCell className="font-medium text-foreground">
-                    <Link href={`/contracts/${contract.id}`} className="hover:text-primary">{contract.title}</Link>
+                    <Link href={`/contracts/${contract.id}`} className="htc-record-link">{contract.title}</Link>
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {contract.clientName
-                      ? <Link href={`/clients/${contract.clientId}`} className="hover:text-primary">{contract.clientName}</Link>
+                      ? <Link href={`/clients/${contract.clientId}`} className="htc-record-link">{contract.clientName}</Link>
                       : "—"}
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">

@@ -34,7 +34,7 @@ export function OfferingsLibrarySection({
   const visible = offerings.filter((o) => showArchived || !o.isArchived);
 
   return (
-    <div className="space-y-4">
+    <div className="htc-hospitality-page space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm text-muted-foreground">
           Menus, bar, services, and rentals you provide. Distinct from physical Inventory.

@@ -29,11 +29,11 @@ export function PaymentScheduleList({ schedules }: { schedules: PaymentScheduleS
       <div className="relative">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
         <Input value={query} onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search schedules…" className="pl-9" />
+          placeholder="Search schedules…" className="border-[color:var(--htc-border-warm)] bg-card pl-9" />
       </div>
 
       {schedules.length === 0 && (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card/40 py-16 text-center">
+        <div className="htc-surface-guidance flex flex-col items-center justify-center rounded-xl border-dashed py-16 text-center">
           <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
             <DollarSign className="h-5 w-5" />
           </span>
@@ -49,7 +49,7 @@ export function PaymentScheduleList({ schedules }: { schedules: PaymentScheduleS
       )}
 
       {filtered.length > 0 && (
-        <div className="rounded-xl border border-border bg-card">
+        <div className="htc-hospitality-table">
           <Table>
             <TableHeader>
               <TableRow>
@@ -65,7 +65,7 @@ export function PaymentScheduleList({ schedules }: { schedules: PaymentScheduleS
               {filtered.map((s) => (
                 <TableRow key={s.id} className="group">
                   <TableCell className="font-medium text-foreground">
-                    <Link href={`/payments/${s.id}`} className="hover:text-primary">{s.title}</Link>
+                    <Link href={`/payments/${s.id}`} className="htc-record-link">{s.title}</Link>
                     {s.clientName && (
                       <p className="text-xs text-muted-foreground">{s.clientName}</p>
                     )}
