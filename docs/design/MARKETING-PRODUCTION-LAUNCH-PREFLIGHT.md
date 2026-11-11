@@ -27,7 +27,7 @@
 | Branch | `feat/spaces-booking-e1-smart-fields` |
 | Sandbox serving | `f22b8c14…` (no newer approved Sandbox marketing deploy) |
 | Baseline ancestry | Includes homepage/product/features/Our Story + `02157600` CTA/footer/nav + Calendly fail-closed |
-| Release commit | *(filled at commit time — see §2)* |
+| Release commit | **`d138de6ec116d8e4c1167a666da76d3d06d6f0de`** (`d138de6e`) |
 
 ### Included (approved launch work)
 
@@ -49,7 +49,11 @@
 
 ## 2. Marketing-only release commit
 
-*(SHA and file list recorded after `git commit` in this session — see chat report §1–2.)*
+| Field | Value |
+|---|---|
+| SHA | `d138de6ec116d8e4c1167a666da76d3d06d6f0de` |
+| Short | `d138de6e` |
+| Files | 48 (marketing UX + OG assets + minimal `shared/pricing` helpers + this preflight) |
 
 Deploy assemble path continues to upload **`marketing` + `shared` only** via `hello-to-cheers` Vercel project.
 
