@@ -492,8 +492,15 @@
    * Journey: two balanced moments — consultation + booking handshake at
    * ~75% of consultation width with intentional layered overlap. Note: %
    * padding is relative to the visual’s width (containing block).
+   *
+   * Keep vertical hang visible; clip only the horizontal overhang so the
+   * layered composition cannot expand document scroll width on tablet.
    */
-  .fs-spot-journey,
+  .fs-spot-journey {
+    overflow-x: clip;
+    overflow-y: visible;
+  }
+
   .fs-spot-journey-inner,
   .fs-spot-journey-visual {
     overflow: visible;
@@ -501,15 +508,19 @@
 
   .fs-spot-journey-visual {
     display: block;
+    position: relative;
     padding: 0;
+    /* Contain absolute secondary within the visual’s box */
+    overflow-x: clip;
+    overflow-y: visible;
   }
 
   .fs-spot-journey-primary {
     /* Room for a near-peer booking plate without equal card sizing */
-    width: 72%;
+    width: 70%;
     margin: 0;
     /*
-     * Secondary height ≈ 0.54×0.8×W = 0.432W at these proportions.
+     * Secondary height ≈ 0.52×0.8×W ≈ 0.416W at these proportions.
      * 22% padding → intentional vertical layering (~half the booking plate
      * sits below; the rest overlaps the consultation).
      */
@@ -518,12 +529,12 @@
 
   .fs-spot-journey-secondary {
     position: absolute;
-    /* left ≈ primaryRight − 0.28 × secondaryWidth → ~28% width overlap */
-    left: calc(72% - 0.28 * 54%);
+    /* left ≈ primaryRight − 0.26 × secondaryWidth → ~26% width overlap */
+    left: calc(70% - 0.26 * 48%);
     right: auto;
     bottom: 0;
-    /* 54 / 72 = 75% of consultation displayed width */
-    width: 54%;
+    /* 48 / 70 ≈ 69% of consultation — still a clear peer plate, fits shell */
+    width: 48%;
     max-width: none;
     z-index: 2;
   }

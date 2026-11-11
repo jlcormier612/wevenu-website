@@ -1,0 +1,548 @@
+{
+  "productHero": {
+    "390": {
+      "desk": {
+        "w": 348,
+        "h": 221,
+        "x": 20,
+        "y": 458,
+        "right": 368,
+        "bottom": 678
+      },
+      "phone": {
+        "w": 117,
+        "h": 248,
+        "x": 250,
+        "y": 466,
+        "right": 367,
+        "bottom": 714
+      },
+      "stage": {
+        "w": 350,
+        "h": 258,
+        "x": 20,
+        "y": 458,
+        "right": 370,
+        "bottom": 716
+      },
+      "phoneVsDeskWidth": 0.337,
+      "phoneInViewport": true,
+      "deskInViewport": true,
+      "scrollW": 390,
+      "clientW": 390
+    },
+    "1440": {
+      "phonePosition": "absolute",
+      "deskW": 1009,
+      "phoneW": 268,
+      "phoneAbsolute": true,
+      "deskWidthPct": "1009.3px"
+    }
+  },
+  "featuresExplorer": {
+    "390": {
+      "scrollW": 390,
+      "clientW": 390,
+      "overflow": false,
+      "headerW": 337,
+      "stageW": 337,
+      "frameW": 317,
+      "headerFits": true,
+      "offenders": [
+        {
+          "cls": "fs-shot is-cover",
+          "right": 411,
+          "over": 21
+        },
+        {
+          "cls": "fs-shot-img",
+          "right": 411,
+          "over": 21
+        }
+      ]
+    },
+    "1440": {
+      "navDisplay": "block",
+      "mobileDisplay": "none",
+      "layoutCols": "280px 906.828px"
+    }
+  },
+  "audit": [
+    {
+      "route": "/",
+      "viewport": "320",
+      "scrollW": 320,
+      "clientW": 320,
+      "overflow": false,
+      "offenders": []
+    },
+    {
+      "route": "/product",
+      "viewport": "320",
+      "scrollW": 320,
+      "clientW": 320,
+      "overflow": false,
+      "offenders": [
+        {
+          "tag": "A",
+          "cls": "shrink-0 px-1.5 py-2 text-[11px] tracking-wide whitespace-no",
+          "over": 70
+        }
+      ]
+    },
+    {
+      "route": "/features",
+      "viewport": "320",
+      "scrollW": 320,
+      "clientW": 320,
+      "overflow": false,
+      "offenders": [
+        {
+          "tag": "DIV",
+          "cls": "fs-shot is-cover",
+          "over": 91
+        },
+        {
+          "tag": "IMG",
+          "cls": "fs-shot-img",
+          "over": 91
+        }
+      ]
+    },
+    {
+      "route": "/pricing",
+      "viewport": "320",
+      "scrollW": 320,
+      "clientW": 320,
+      "overflow": false,
+      "offenders": []
+    },
+    {
+      "route": "/contact",
+      "viewport": "320",
+      "scrollW": 320,
+      "clientW": 320,
+      "overflow": false,
+      "offenders": []
+    },
+    {
+      "route": "/walkthrough",
+      "viewport": "320",
+      "scrollW": 320,
+      "clientW": 320,
+      "overflow": false,
+      "offenders": [
+        {
+          "tag": "IFRAME",
+          "cls": "block w-full min-w-[320px] border-0",
+          "over": 25
+        }
+      ]
+    },
+    {
+      "route": "/trust",
+      "viewport": "320",
+      "scrollW": 320,
+      "clientW": 320,
+      "overflow": false,
+      "offenders": []
+    },
+    {
+      "route": "/our-story",
+      "viewport": "320",
+      "scrollW": 320,
+      "clientW": 320,
+      "overflow": false,
+      "offenders": []
+    },
+    {
+      "route": "/",
+      "viewport": "375",
+      "scrollW": 375,
+      "clientW": 375,
+      "overflow": false,
+      "offenders": []
+    },
+    {
+      "route": "/product",
+      "viewport": "375",
+      "scrollW": 375,
+      "clientW": 375,
+      "overflow": false,
+      "offenders": [
+        {
+          "tag": "A",
+          "cls": "shrink-0 px-1.5 py-2 text-[11px] tracking-wide whitespace-no",
+          "over": 15
+        }
+      ]
+    },
+    {
+      "route": "/features",
+      "viewport": "375",
+      "scrollW": 375,
+      "clientW": 375,
+      "overflow": false,
+      "offenders": [
+        {
+          "tag": "DIV",
+          "cls": "fs-shot is-cover",
+          "over": 36
+        },
+        {
+          "tag": "IMG",
+          "cls": "fs-shot-img",
+          "over": 36
+        }
+      ]
+    },
+    {
+      "route": "/pricing",
+      "viewport": "375",
+      "scrollW": 375,
+      "clientW": 375,
+      "overflow": false,
+      "offenders": []
+    },
+    {
+      "route": "/contact",
+      "viewport": "375",
+      "scrollW": 375,
+      "clientW": 375,
+      "overflow": false,
+      "offenders": []
+    },
+    {
+      "route": "/walkthrough",
+      "viewport": "375",
+      "scrollW": 375,
+      "clientW": 375,
+      "overflow": false,
+      "offenders": []
+    },
+    {
+      "route": "/trust",
+      "viewport": "375",
+      "scrollW": 375,
+      "clientW": 375,
+      "overflow": false,
+      "offenders": []
+    },
+    {
+      "route": "/our-story",
+      "viewport": "375",
+      "scrollW": 375,
+      "clientW": 375,
+      "overflow": false,
+      "offenders": []
+    },
+    {
+      "route": "/",
+      "viewport": "390",
+      "scrollW": 390,
+      "clientW": 390,
+      "overflow": false,
+      "offenders": []
+    },
+    {
+      "route": "/product",
+      "viewport": "390",
+      "scrollW": 390,
+      "clientW": 390,
+      "overflow": false,
+      "offenders": [
+        {
+          "tag": "A",
+          "cls": "shrink-0 px-1.5 py-2 text-[11px] tracking-wide whitespace-no",
+          "over": 49
+        }
+      ]
+    },
+    {
+      "route": "/features",
+      "viewport": "390",
+      "scrollW": 390,
+      "clientW": 390,
+      "overflow": false,
+      "offenders": [
+        {
+          "tag": "DIV",
+          "cls": "fs-shot is-cover",
+          "over": 21
+        },
+        {
+          "tag": "IMG",
+          "cls": "fs-shot-img",
+          "over": 21
+        }
+      ]
+    },
+    {
+      "route": "/pricing",
+      "viewport": "390",
+      "scrollW": 390,
+      "clientW": 390,
+      "overflow": false,
+      "offenders": []
+    },
+    {
+      "route": "/contact",
+      "viewport": "390",
+      "scrollW": 390,
+      "clientW": 390,
+      "overflow": false,
+      "offenders": []
+    },
+    {
+      "route": "/walkthrough",
+      "viewport": "390",
+      "scrollW": 390,
+      "clientW": 390,
+      "overflow": false,
+      "offenders": []
+    },
+    {
+      "route": "/trust",
+      "viewport": "390",
+      "scrollW": 390,
+      "clientW": 390,
+      "overflow": false,
+      "offenders": []
+    },
+    {
+      "route": "/our-story",
+      "viewport": "390",
+      "scrollW": 390,
+      "clientW": 390,
+      "overflow": false,
+      "offenders": []
+    },
+    {
+      "route": "/",
+      "viewport": "430",
+      "scrollW": 430,
+      "clientW": 430,
+      "overflow": false,
+      "offenders": []
+    },
+    {
+      "route": "/product",
+      "viewport": "430",
+      "scrollW": 430,
+      "clientW": 430,
+      "overflow": false,
+      "offenders": [
+        {
+          "tag": "A",
+          "cls": "shrink-0 px-1.5 py-2 text-[11px] tracking-wide whitespace-no",
+          "over": 9
+        }
+      ]
+    },
+    {
+      "route": "/features",
+      "viewport": "430",
+      "scrollW": 430,
+      "clientW": 430,
+      "overflow": false,
+      "offenders": []
+    },
+    {
+      "route": "/pricing",
+      "viewport": "430",
+      "scrollW": 430,
+      "clientW": 430,
+      "overflow": false,
+      "offenders": []
+    },
+    {
+      "route": "/contact",
+      "viewport": "430",
+      "scrollW": 430,
+      "clientW": 430,
+      "overflow": false,
+      "offenders": []
+    },
+    {
+      "route": "/walkthrough",
+      "viewport": "430",
+      "scrollW": 430,
+      "clientW": 430,
+      "overflow": false,
+      "offenders": []
+    },
+    {
+      "route": "/trust",
+      "viewport": "430",
+      "scrollW": 430,
+      "clientW": 430,
+      "overflow": false,
+      "offenders": []
+    },
+    {
+      "route": "/our-story",
+      "viewport": "430",
+      "scrollW": 430,
+      "clientW": 430,
+      "overflow": false,
+      "offenders": []
+    },
+    {
+      "route": "/",
+      "viewport": "768",
+      "scrollW": 768,
+      "clientW": 768,
+      "overflow": false,
+      "offenders": []
+    },
+    {
+      "route": "/product",
+      "viewport": "768",
+      "scrollW": 768,
+      "clientW": 768,
+      "overflow": false,
+      "offenders": []
+    },
+    {
+      "route": "/features",
+      "viewport": "768",
+      "scrollW": 832,
+      "clientW": 768,
+      "overflow": true,
+      "offenders": [
+        {
+          "tag": "FIGURE",
+          "cls": "fs-spot-photo fs-spot-journey-secondary",
+          "over": 64
+        },
+        {
+          "tag": "DIV",
+          "cls": "fs-spot-photo-frame is-journey-secondary",
+          "over": 64
+        },
+        {
+          "tag": "IMG",
+          "cls": "fs-spot-photo-img is-journey-secondary",
+          "over": 64
+        }
+      ]
+    },
+    {
+      "route": "/pricing",
+      "viewport": "768",
+      "scrollW": 768,
+      "clientW": 768,
+      "overflow": false,
+      "offenders": []
+    },
+    {
+      "route": "/contact",
+      "viewport": "768",
+      "scrollW": 768,
+      "clientW": 768,
+      "overflow": false,
+      "offenders": []
+    },
+    {
+      "route": "/walkthrough",
+      "viewport": "768",
+      "scrollW": 768,
+      "clientW": 768,
+      "overflow": false,
+      "offenders": []
+    },
+    {
+      "route": "/trust",
+      "viewport": "768",
+      "scrollW": 768,
+      "clientW": 768,
+      "overflow": false,
+      "offenders": []
+    },
+    {
+      "route": "/our-story",
+      "viewport": "768",
+      "scrollW": 768,
+      "clientW": 768,
+      "overflow": false,
+      "offenders": []
+    },
+    {
+      "route": "/",
+      "viewport": "1440",
+      "scrollW": 1440,
+      "clientW": 1440,
+      "overflow": false,
+      "offenders": []
+    },
+    {
+      "route": "/product",
+      "viewport": "1440",
+      "scrollW": 1440,
+      "clientW": 1440,
+      "overflow": false,
+      "offenders": []
+    },
+    {
+      "route": "/features",
+      "viewport": "1440",
+      "scrollW": 1440,
+      "clientW": 1440,
+      "overflow": false,
+      "offenders": []
+    },
+    {
+      "route": "/pricing",
+      "viewport": "1440",
+      "scrollW": 1440,
+      "clientW": 1440,
+      "overflow": false,
+      "offenders": []
+    },
+    {
+      "route": "/contact",
+      "viewport": "1440",
+      "scrollW": 1440,
+      "clientW": 1440,
+      "overflow": false,
+      "offenders": []
+    },
+    {
+      "route": "/walkthrough",
+      "viewport": "1440",
+      "scrollW": 1440,
+      "clientW": 1440,
+      "overflow": false,
+      "offenders": []
+    },
+    {
+      "route": "/trust",
+      "viewport": "1440",
+      "scrollW": 1440,
+      "clientW": 1440,
+      "overflow": false,
+      "offenders": []
+    },
+    {
+      "route": "/our-story",
+      "viewport": "1440",
+      "scrollW": 1440,
+      "clientW": 1440,
+      "overflow": false,
+      "offenders": []
+    }
+  ],
+  "interactions": {
+    "featureSelect": {
+      "beforeCaption": "app.sandbox.hellotocheers.com · A beautiful first impression",
+      "afterCaption": "app.sandbox.hellotocheers.com · Every conversation in context",
+      "activeCount": 1,
+      "changed": true
+    },
+    "collectionSelect": {
+      "value": "communication",
+      "eyebrow": "COMMUNICATION & WORKFLOWS",
+      "headline": "Stay Connected"
+    }
+  }
+}

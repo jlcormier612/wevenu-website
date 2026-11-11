@@ -171,33 +171,55 @@
 @media (max-width: 640px) {
   .htc-product .po-hero {
     padding-top: 6.25rem;
-    padding-bottom: 3.5rem;
+    /* Extra bottom room so the overlapping phone stays in-viewport */
+    padding-bottom: 4.25rem;
   }
 
   .htc-product .po-hero-copy {
-    margin-bottom: 2rem;
+    margin-bottom: 1.75rem;
   }
 
+  /*
+   * Keep the approved desktop+phone overlap on mobile.
+   * Prior stacked layout made the phone ~64%/240px (dominant) and
+   * diminished the desktop dashboard — restore desktop-first hierarchy.
+   */
   .htc-product .po-hero-stage {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0;
-    padding: 0 0 0.5rem;
+    display: block;
+    width: 100%;
+    padding: 0 0.15rem 2.35rem 0;
   }
 
   .htc-product .po-desktop-frame {
-    border-width: 3px;
-    border-radius: 12px;
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    border-width: 2px;
+    border-radius: 10px;
   }
 
   .htc-product .po-phone-frame {
-    position: relative;
-    right: auto;
-    bottom: auto;
-    width: min(64%, 240px);
-    margin: -3.25rem 0.35rem 0 auto;
+    position: absolute;
     z-index: 2;
+    /* Foreground accent — proportionately smaller than the desktop */
+    width: clamp(92px, 30vw, 118px);
+    right: 0.2rem;
+    bottom: 0.15rem;
+    margin: 0;
+    border-width: 2px;
+    border-radius: 1rem;
+    padding: 0.28rem 0.22rem 0.3rem;
+  }
+
+  .htc-product .po-phone-notch {
+    height: 0.28rem;
+    margin-bottom: 0.2rem;
+  }
+
+  .htc-product .po-phone-screen {
+    border-radius: 0.75rem;
   }
 }
 
