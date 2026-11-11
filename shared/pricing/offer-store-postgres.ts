@@ -191,6 +191,32 @@ export function createPostgresPricingOfferStore(
       return seen.size + orphan;
     },
 
+    async countConsumedFoundingAllocations() {
+      // Permanent soft-100 consumption: earned + revoked still occupy a place.
+      const { data, error } = await admin
+        .from("saas_offer_grants")
+        .select("id, venue_id, source_checkout_session_id, status")
+        .eq("offer_type", "founding_pct")
+        .in("status", ["earned", "revoked_prospective"]);
+      if (error) {
+        throw new Error(
+          `countConsumedFoundingAllocations failed: ${error.message}`,
+        );
+      }
+      const seen = new Set<string>();
+      let orphan = 0;
+      for (const row of data ?? []) {
+        if (row.venue_id) {
+          seen.add(`v:${row.venue_id}`);
+        } else if (row.source_checkout_session_id) {
+          seen.add(`s:${row.source_checkout_session_id}`);
+        } else {
+          orphan += 1;
+        }
+      }
+      return seen.size + orphan;
+    },
+
     async issueCheckoutOffer(input) {
       const { data, error } = await admin
         .from("saas_checkout_offers")
@@ -604,6 +630,63 @@ export function createPostgresPricingOfferStore(
       return Boolean(data);
     },
 
+    async venueHasEverEarnedFounding(venueId) {
+      const { data, error } = await admin
+        .from("saas_offer_grants")
+        .select("id")
+        .eq("offer_type", "founding_pct")
+        .eq("venue_id", venueId)
+        .limit(1)
+        .maybeSingle();
+      if (error) {
+        throw new Error(`venueHasEverEarnedFounding failed: ${error.message}`);
+      }
+      return Boolean(data);
+    },
+
+    async venueHasEarnedWeven(venueId) {
+      const { data, error } = await admin
+        .from("saas_offer_grants")
+        .select("id")
+        .eq("offer_type", "weven_pct")
+        .eq("status", "earned")
+        .eq("venue_id", venueId)
+        .maybeSingle();
+      if (error) {
+        throw new Error(`venueHasEarnedWeven failed: ${error.message}`);
+      }
+      return Boolean(data);
+    },
+
+    async revokeFoundingGrantForVenue(input) {
+      const { data: existing, error: lookupErr } = await admin
+        .from("saas_offer_grants")
+        .select("id")
+        .eq("offer_type", "founding_pct")
+        .eq("status", "earned")
+        .eq("venue_id", input.venueId)
+        .maybeSingle();
+      if (lookupErr) {
+        throw new Error(
+          `revokeFoundingGrantForVenue lookup failed: ${lookupErr.message}`,
+        );
+      }
+      if (!existing) return { revoked: false, grantId: null };
+      const { error } = await admin
+        .from("saas_offer_grants")
+        .update({
+          status: "revoked_prospective",
+          revoked_at: new Date().toISOString(),
+          revoke_reason: input.reason,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", existing.id);
+      if (error) {
+        throw new Error(`revokeFoundingGrantForVenue failed: ${error.message}`);
+      }
+      return { revoked: true, grantId: existing.id as string };
+    },
+
     async upsertWevenClaim(input) {
       const { data: existing } = await admin
         .from("weven_claims")
@@ -733,6 +816,26 @@ export function createPostgresPricingOfferStore(
         ? [...existing.decision_history, decision]
         : [decision];
 
+      let grantId = existing.grant_id as string | null;
+      if (
+        input.reviewStatus === "verified" &&
+        existing.venue_id &&
+        existing.checkout_offer_id &&
+        (existing.stripe_checkout_session_id || existing.checkout_session_id)
+      ) {
+        const sessionId = String(
+          existing.stripe_checkout_session_id || existing.checkout_session_id,
+        );
+        const { grant } = await this.earnWevenGrant({
+          offerId: String(existing.checkout_offer_id),
+          checkoutSessionId: sessionId,
+          venueId: String(existing.venue_id),
+          relationshipId: (existing.relationship_id as string | null) ?? null,
+          percentOff: (existing.applied_percent_off as number | null) ?? 20,
+        });
+        grantId = grant.id;
+      }
+
       const { data, error } = await admin
         .from("weven_claims")
         .update({
@@ -741,6 +844,7 @@ export function createPostgresPricingOfferStore(
           reviewed_by: input.reviewedBy,
           review_notes: input.note ?? existing.review_notes,
           decision_history: history,
+          grant_id: grantId,
           updated_at: decision.at,
         })
         .eq("id", input.claimId)

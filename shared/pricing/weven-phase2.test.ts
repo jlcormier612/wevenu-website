@@ -116,7 +116,7 @@ describe("Phase 2 Weven readiness gate", () => {
 });
 
 describe("Phase 2 Weven checkout resolution", () => {
-  it("applies Weven 20% coupon and keeps foundingIssued when under soft-100", () => {
+  it("applies Weven 20% immediately on trust-first self-declare (beats Founding)", () => {
     stashEnv();
     enableLaunchV1();
     enableWevenReady();
@@ -124,6 +124,24 @@ describe("Phase 2 Weven checkout resolution", () => {
       plan: "starter",
       earnedFoundingVenueCount: 62,
       wevenDeclared: true,
+      wevenVerified: false,
+    });
+    assert.equal(pricing.mode, "launch_weven_percent");
+    assert.equal(pricing.foundingCouponId, "coupon_weven_20");
+    assert.equal(pricing.wevenDeclared, true);
+    assert.equal(pricing.appliedOfferType, "weven_pct");
+    assert.equal(pricing.foundingIssued, true);
+  });
+
+  it("applies Weven 20% on declare and keeps foundingIssued when under soft-100", () => {
+    stashEnv();
+    enableLaunchV1();
+    enableWevenReady();
+    const pricing = resolveLaunchCheckoutPricing({
+      plan: "starter",
+      earnedFoundingVenueCount: 62,
+      wevenDeclared: true,
+      wevenVerified: true,
     });
     assert.equal(pricing.mode, "launch_weven_percent");
     assert.equal(pricing.priceId, "price_gather_199");
@@ -136,7 +154,7 @@ describe("Phase 2 Weven checkout resolution", () => {
     assert.equal(pricing.wevenWhiteGlovePriceId, "price_wg_weven_399");
   });
 
-  it("covers Celebrate and Flourish Weven list Prices", () => {
+  it("covers Celebrate and Flourish Weven list Prices on declare", () => {
     stashEnv();
     enableLaunchV1();
     enableWevenReady();
@@ -156,7 +174,7 @@ describe("Phase 2 Weven checkout resolution", () => {
     assert.equal(flourish.foundingCouponId, "coupon_weven_20");
   });
 
-  it("does not issue Founding when soft-100 already reached but still applies Weven 20%", () => {
+  it("does not issue Founding when soft-100 already reached but still applies declared Weven 20%", () => {
     stashEnv();
     enableLaunchV1();
     enableWevenReady();

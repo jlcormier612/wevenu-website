@@ -10,6 +10,10 @@ import {
   decideGroupBillingAdjustment,
   type GroupReconcileDecision,
 } from "./group-billing-reconcile";
+import {
+  resolveOrgAnchorVenueId,
+  venueReceivesAdditionalVenueDiscount,
+} from "./group-anchor";
 import { evaluateGroupEligibility } from "./group-eligibility";
 import type { GroupOrgStore } from "./group-org-store";
 import type {
@@ -210,6 +214,18 @@ export async function fulfillOrganizationVenueActivation(input: {
     };
   }
 
+  // First/anchor venue never receives retroactive group 10%.
+  const anchorVenueId = resolveOrgAnchorVenueId(
+    members.map((m) => ({
+      venueId: m.venueId,
+      role: m.role,
+      createdAt: m.createdAt,
+      qualifies: Boolean(
+        eligibility.qualifyingVenueIds.includes(m.venueId),
+      ),
+    })),
+  );
+
   // Queue prospective adjustments for every active member except pure noops.
   for (const member of members.filter((m) => m.status === "active")) {
     const snap = byVenue.get(member.venueId);
@@ -217,13 +233,20 @@ export async function fulfillOrganizationVenueActivation(input: {
     // Skip the brand-new venue — Checkout already applied the winning coupon.
     if (member.venueId === input.venueId) continue;
 
+    const additionalVenueGroup = venueReceivesAdditionalVenueDiscount({
+      venueId: member.venueId,
+      anchorVenueId,
+      qualifyingVenueCount: eligibility.qualifyingVenueCount,
+    });
+
     const decision = decideGroupBillingAdjustment({
       venueId: member.venueId,
       organizationId: reservation.organizationId,
       planKey: snap.planKey,
       stripeSubscriptionId: snap.stripeSubscriptionId,
       grants: snap.grants ?? [],
-      groupEligible: eligibility.groupEligible,
+      // Approved policy: never retroactively discount the first/anchor venue.
+      groupEligible: additionalVenueGroup,
       pendingTierUpgrade: snap.pendingTierUpgrade ?? null,
       currentAppliedOfferType: snap.currentAppliedOfferType ?? null,
       currentStripeCouponId: snap.currentStripeCouponId ?? null,

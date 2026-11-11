@@ -316,6 +316,7 @@ describe("Phase 4 Checkout resolution", () => {
       plan: "professional",
       earnedFoundingVenueCount: 10,
       wevenDeclared: true,
+      wevenVerified: true,
       groupEligible: true,
     });
     assert.equal(pricing.appliedOfferType, "weven_pct");
@@ -530,8 +531,10 @@ describe("Phase 4 organization store lifecycle", () => {
     });
     assert.equal(first.groupEligible, true);
     assert.equal(first.membership?.venueId, "venue-b");
-    assert.ok(first.adjustments.length >= 1);
-    assert.equal(first.adjustments[0]?.venueId, "venue-a");
+    // Approved policy: first/anchor venue does not receive a retroactive
+    // group discount when an additional venue joins. Checkout already applied
+    // the winning coupon to venue-b, so no prospective adjustments are queued.
+    assert.equal(first.adjustments.length, 0);
 
     const second = await fulfillOrganizationVenueActivation({
       store,

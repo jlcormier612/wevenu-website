@@ -72,8 +72,15 @@ export function resolveLaunchCheckoutPricing(input: {
   /** Explicit customer self-declaration (never inferred from email). */
   wevenDeclared?: boolean;
   /**
+   * Durable Weven eligibility already on file (earned grant).
+   * Trust-first Checkout also applies 20% on self-declaration alone when
+   * Phase 2 is ready; this flag covers re-subscribe without re-checking a box.
+   */
+  wevenVerified?: boolean;
+  /**
    * Organization already has ≥2 qualifying venues, OR a Checkout reservation
    * bridges this Session to become the second qualifying property.
+   * Applies only to the *additional* (non-anchor) venue being purchased.
    */
   groupEligible?: boolean;
   readiness?: PricingLaunchReadiness;
@@ -133,7 +140,12 @@ export function resolveLaunchCheckoutPricing(input: {
     earnedCount = decision.earnedCount;
   }
 
-  const wevenActive = wevenRequested && wevenReadiness.ready;
+  // Trust-first: self-declaration immediately applies 20% when Phase 2 is ready.
+  // Claims remain recorded for later administrative review.
+  const wevenActive =
+    wevenReadiness.ready &&
+    (wevenRequested || Boolean(input.wevenVerified));
+  const wevenDeclaredForRecord = wevenActive;
   const groupActive = groupRequested && groupReadiness.ready;
 
   const grants: EligibleGrant[] = [];
@@ -204,9 +216,8 @@ export function resolveLaunchCheckoutPricing(input: {
       listAmountCents: listCents,
       foundingIssued: true,
       foundingPercentOff: FOUNDING_PERCENT_OFF,
-      // Only surface Weven when Phase 2 is actually active on this Session.
-      wevenDeclared: wevenActive,
-      wevenPercentOff: wevenActive ? WEVEN_PERCENT_OFF : null,
+      wevenDeclared: wevenDeclaredForRecord,
+      wevenPercentOff: wevenDeclaredForRecord ? WEVEN_PERCENT_OFF : null,
       groupEligible: groupRequested,
       groupPercentOff: groupActive ? GROUP_PERCENT_OFF : null,
       appliedOfferType: "founding_pct",
@@ -234,8 +245,8 @@ export function resolveLaunchCheckoutPricing(input: {
       listAmountCents: listCents,
       foundingIssued,
       foundingPercentOff: foundingIssued ? FOUNDING_PERCENT_OFF : null,
-      wevenDeclared: wevenActive,
-      wevenPercentOff: wevenActive ? WEVEN_PERCENT_OFF : null,
+      wevenDeclared: wevenDeclaredForRecord,
+      wevenPercentOff: wevenDeclaredForRecord ? WEVEN_PERCENT_OFF : null,
       groupEligible: true,
       groupPercentOff: GROUP_PERCENT_OFF,
       appliedOfferType: "group_pct",
@@ -256,8 +267,8 @@ export function resolveLaunchCheckoutPricing(input: {
     listAmountCents: listCents,
     foundingIssued: false,
     foundingPercentOff: null,
-    wevenDeclared: false,
-    wevenPercentOff: null,
+    wevenDeclared: wevenDeclaredForRecord,
+    wevenPercentOff: wevenDeclaredForRecord ? WEVEN_PERCENT_OFF : null,
     groupEligible: groupRequested,
     groupPercentOff: null,
     appliedOfferType: null,

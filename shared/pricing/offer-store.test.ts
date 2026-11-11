@@ -252,4 +252,34 @@ describe("Checkout offer lifecycle — soft 100", () => {
     assert.equal(earn2.created, true);
     assert.equal(await store.countEarnedFoundingVenues(), 2);
   });
+
+  it("keeps soft-100 allocation consumed after Founding revoke", async () => {
+    const store = createMemoryPricingOfferStore();
+    const offer = await store.issueCheckoutOffer({
+      planKey: "starter",
+      listAmountCents: 19900,
+      stripePriceId: "price_a",
+      foundingIssued: true,
+      foundingPercentOff: 10,
+      stripeCouponId: "c",
+      pricingVersion: "v1",
+      checkoutSessionId: "cs_consume",
+    });
+    await store.earnFoundingGrant({
+      offerId: offer.id,
+      checkoutSessionId: "cs_consume",
+      venueId: "venue_consume",
+      percentOff: 10,
+    });
+    assert.equal(await store.countEarnedFoundingVenues(), 1);
+    assert.equal(await store.countConsumedFoundingAllocations(), 1);
+
+    await store.revokeFoundingGrantForVenue({
+      venueId: "venue_consume",
+      reason: "stripe_subscription_canceled",
+    });
+    assert.equal(await store.countEarnedFoundingVenues(), 0);
+    assert.equal(await store.countConsumedFoundingAllocations(), 1);
+    assert.equal(await store.venueHasEverEarnedFounding("venue_consume"), true);
+  });
 });

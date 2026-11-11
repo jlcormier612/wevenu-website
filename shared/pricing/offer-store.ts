@@ -63,6 +63,12 @@ export type PricingOfferStore = {
   /** True when backed by Postgres (survives process restarts / multi-service). */
   durable: boolean;
   countEarnedFoundingVenues(): Promise<number>;
+  /**
+   * Soft-100 allocation consumption: unique venues (or pre-activation sessions)
+   * that ever received a Founding grant — earned or revoked. Cancelled Founding
+   * does not reopen a place. Soft limit only — never blocks Checkout.
+   */
+  countConsumedFoundingAllocations(): Promise<number>;
   issueCheckoutOffer(input: IssueCheckoutOfferInput): Promise<CheckoutOfferRecord>;
   attachCheckoutSession(
     offerId: string,
@@ -107,6 +113,21 @@ export type PricingOfferStore = {
     },
   ): Promise<AppliedOfferRecord>;
   venueHasEarnedFounding(venueId: string): Promise<boolean>;
+  /**
+   * True if this venue ever received a Founding grant (earned or revoked).
+   * Used to block silent re-issue after subscription termination.
+   */
+  venueHasEverEarnedFounding(venueId: string): Promise<boolean>;
+  /** True when venue holds an earned Weven grant (survives cancel for re-apply). */
+  venueHasEarnedWeven(venueId: string): Promise<boolean>;
+  /**
+   * End Founding billing eligibility after subscription termination.
+   * Preserves the row for audit (status → revoked_prospective).
+   */
+  revokeFoundingGrantForVenue(input: {
+    venueId: string;
+    reason: string;
+  }): Promise<{ revoked: boolean; grantId: string | null }>;
   upsertWevenClaim(input: UpsertWevenClaimInput): Promise<WevenClaimRecord>;
   getWevenClaimBySessionId(
     checkoutSessionId: string,
@@ -204,6 +225,22 @@ export function createMemoryPricingOfferStore(): PricingOfferStore {
       let orphan = 0;
       for (const g of grants.values()) {
         if (g.offerType !== "founding_pct" || g.status !== "earned") continue;
+        if (g.venueId) seen.add(`v:${g.venueId}`);
+        else if (g.sourceCheckoutSessionId) {
+          seen.add(`s:${g.sourceCheckoutSessionId}`);
+        } else orphan += 1;
+      }
+      return seen.size + orphan;
+    },
+
+    async countConsumedFoundingAllocations() {
+      const seen = new Set<string>();
+      let orphan = 0;
+      for (const g of grants.values()) {
+        if (g.offerType !== "founding_pct") continue;
+        if (g.status !== "earned" && g.status !== "revoked_prospective") {
+          continue;
+        }
         if (g.venueId) seen.add(`v:${g.venueId}`);
         else if (g.sourceCheckoutSessionId) {
           seen.add(`s:${g.sourceCheckoutSessionId}`);
@@ -384,6 +421,45 @@ export function createMemoryPricingOfferStore(): PricingOfferStore {
       return false;
     },
 
+    async venueHasEverEarnedFounding(venueId) {
+      for (const g of grants.values()) {
+        if (g.offerType === "founding_pct" && g.venueId === venueId) {
+          return true;
+        }
+      }
+      return false;
+    },
+
+    async venueHasEarnedWeven(venueId) {
+      for (const g of grants.values()) {
+        if (
+          g.offerType === "weven_pct" &&
+          g.status === "earned" &&
+          g.venueId === venueId
+        ) {
+          return true;
+        }
+      }
+      return false;
+    },
+
+    async revokeFoundingGrantForVenue(input) {
+      for (const [id, g] of grants.entries()) {
+        if (
+          g.offerType === "founding_pct" &&
+          g.status === "earned" &&
+          g.venueId === input.venueId
+        ) {
+          grants.set(id, {
+            ...g,
+            status: "revoked_prospective",
+          });
+          return { revoked: true, grantId: id };
+        }
+      }
+      return { revoked: false, grantId: null };
+    },
+
     async upsertWevenClaim(input) {
       const existingId = wevenClaimsBySession.get(input.checkoutSessionId);
       if (existingId) {
@@ -473,8 +549,26 @@ export function createMemoryPricingOfferStore(): PricingOfferStore {
         note: input.note ?? null,
         billingActionAuthorized: false,
       };
+      let grantId = existing.grantId;
+      // Persist durable Weven eligibility on verify (no Stripe mutation here).
+      if (
+        input.reviewStatus === "verified" &&
+        existing.venueId &&
+        existing.checkoutOfferId &&
+        existing.checkoutSessionId
+      ) {
+        const { grant } = await earnGrantOfType("weven_pct", {
+          offerId: existing.checkoutOfferId,
+          checkoutSessionId: existing.checkoutSessionId,
+          venueId: existing.venueId,
+          relationshipId: existing.relationshipId,
+          percentOff: existing.appliedPercentOff ?? 20,
+        });
+        grantId = grant.id;
+      }
       const updated: WevenClaimRecord = {
         ...existing,
+        grantId,
         reviewStatus: input.reviewStatus,
         reviewedAt: decision.at,
         reviewedBy: input.reviewedBy,
