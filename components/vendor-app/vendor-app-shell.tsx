@@ -4,15 +4,15 @@ import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  ArrowLeftRight, CalendarDays, FileText,
+  ArrowLeftRight, CalendarDays, FileText, KeyRound,
   LayoutDashboard, LogOut, Menu, MessageSquare,
   User, X,
 } from "lucide-react";
 
 import { signOutVendor } from "@/app/auth/portal-session-actions";
 import { getVendorEventVenueIdAction } from "@/app/vendor/(workspace)/events/actions";
+import { Wordmark } from "@/components/brand/wordmark";
 import { FeedbackSheet } from "@/components/feedback/feedback-sheet";
-import { ThemeToggle } from "@/components/providers/theme-toggle";
 import { VendorNotificationBell } from "@/components/vendor-app/vendor-notification-bell";
 import type { VendorRole } from "@/lib/vendors/types";
 import { cn } from "@/lib/utils";
@@ -67,7 +67,7 @@ function NavItem({
       />
       <span className="flex-1">{label}</span>
       {badgeCount != null && badgeCount > 0 && (
-        <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-bold text-primary-foreground">
+        <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--htc-blush,#d99a9e)] px-1.5 text-[10px] font-bold text-[#24332b]">
           {badgeCount}
         </span>
       )}
@@ -104,7 +104,7 @@ export function VendorAppShell({
   const closeMobile = () => setMobileOpen(false);
 
   return (
-    <div className="htc-staff flex h-svh w-full overflow-hidden bg-background font-sans text-foreground">
+    <div className="htc-staff htc-vendor flex h-svh w-full overflow-hidden bg-background font-sans text-foreground">
       {/* Desktop sidebar — same pattern as WorkspaceShell (`hidden` + `lg:flex`) */}
       <aside className="hidden w-[15.5rem] shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground lg:flex">
         <SidebarContent
@@ -152,14 +152,9 @@ export function VendorAppShell({
           >
             <Menu className="h-5 w-5" />
           </button>
-          {logoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={logoUrl} alt="" className="h-6 w-6 shrink-0 rounded-sm object-cover" />
-          ) : null}
-          <span className="truncate text-sm font-semibold text-foreground">{businessName}</span>
-          <div className="ml-auto flex items-center gap-1 lg:hidden">
+          {/* Vendor name + logo live in the left nav only — keep the top bar uncluttered. */}
+          <div className="ml-auto flex items-center gap-1">
             <VendorNotificationBell />
-            <ThemeToggle />
           </div>
         </header>
 
@@ -204,22 +199,21 @@ function SidebarContent({
 
   return (
     <>
-      {/* Header */}
-      <div className="border-b px-5 pb-4 pt-6">
-        <div className="mb-1 flex items-center justify-between gap-2">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-sidebar-foreground/60">
-            Hello to Cheers
-          </p>
-          <div className="hidden items-center gap-1 text-sidebar-foreground lg:flex">
-            <VendorNotificationBell triggerClassName="text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" />
-            <ThemeToggle />
-          </div>
+      {/* Header — platform Wordmark + readable vendor mark in the nav only */}
+      <div className="border-b px-4 pb-4 pt-5">
+        <div className="mb-3">
+          <Wordmark sizeClassName="h-9 w-auto max-w-[9.5rem]" />
         </div>
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-3">
           {logoUrl ? (
-            <img src={logoUrl} alt="" className="h-9 w-9 shrink-0 rounded-sm border border-sidebar-border object-cover" />
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={logoUrl}
+              alt=""
+              className="h-20 w-20 shrink-0 rounded-sm border border-sidebar-border bg-[var(--htc-ivory,#faf9f5)] object-contain p-px"
+            />
           ) : (
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm border border-sidebar-border bg-sidebar-accent text-xs font-bold text-sidebar-foreground/70">
+            <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-sm border border-sidebar-border bg-sidebar-accent text-sm font-bold text-sidebar-foreground/70">
               {businessName.slice(0, 2).toUpperCase()}
             </div>
           )}
@@ -258,6 +252,14 @@ function SidebarContent({
           Switch workspace
         </Link>
         <FeedbackSheet surface="vendor" relatedVenueId={relatedVenueId} />
+        <Link
+          href="/vendor/account/password"
+          onClick={onNavigate}
+          className="flex w-full items-center gap-3 rounded-sm px-3 py-2.5 text-[0.95rem] tracking-wide text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+        >
+          <KeyRound className="h-4 w-4 shrink-0 text-sidebar-foreground/70" />
+          Change password
+        </Link>
         <form action={signOutVendor}>
           <button
             type="submit"

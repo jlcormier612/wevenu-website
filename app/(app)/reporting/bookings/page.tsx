@@ -75,7 +75,7 @@ export default async function BookingsReportPage({ searchParams }: Props) {
   const trend = lifecycleToTrend(bookings, window);
 
   return (
-    <div className="space-y-6">
+    <div className="htc-hospitality-page space-y-6">
       <ReportHeader
         title="Bookings"
         description="Relationships you marked booked, dated when you marked them booked. Money lives on Revenue."

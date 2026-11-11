@@ -51,6 +51,7 @@ export function StatTile({
   size = "md",
   valueClassName,
   className,
+  ariaLabel,
 }: {
   icon?: React.ElementType;
   value: number | string;
@@ -70,6 +71,8 @@ export function StatTile({
   valueClassName?: string;
   /** Escape hatch for a call site's own container padding/radius/background that doesn't match either default (kept narrow — every current use is documented in the migrations, not a general styling prop). */
   className?: string;
+  /** Accessible name when the tile is a link or button. */
+  ariaLabel?: string;
 }) {
   const activeValue = severity && (typeof value !== "number" || value > 0);
   const config = activeValue ? SEVERITY_CONFIG[severity] : null;
@@ -144,14 +147,14 @@ export function StatTile({
 
   if (href) {
     return (
-      <Link href={href} className="block h-full">
+      <Link href={href} className="block h-full rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label={ariaLabel}>
         {content}
       </Link>
     );
   }
   if (onClick) {
     return (
-      <button type="button" onClick={onClick} className="block h-full w-full text-left">
+      <button type="button" onClick={onClick} className="block h-full w-full text-left rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label={ariaLabel}>
         {content}
       </button>
     );

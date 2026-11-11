@@ -76,7 +76,7 @@ export default async function RevenueReportPage({ searchParams }: Props) {
   ]);
 
   return (
-    <div className="space-y-6">
+    <div className="htc-hospitality-page space-y-6">
       <ReportHeader title="Revenue" description="Money: contracted value, collected cash, and outstanding balances. Booking counts live on Bookings." />
       <DateRangeControl current={range.preset} label={range.label} />
 

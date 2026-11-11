@@ -43,6 +43,10 @@
   --color-secondary: var(--secondary);
   --color-primary-foreground: var(--primary-foreground);
   --color-primary: var(--primary);
+  /* Selected / active interactive surfaces (tabs, buckets, segmented controls) */
+  --color-selected: var(--selected);
+  --color-selected-foreground: var(--selected-foreground);
+  --color-selected-border: var(--selected-border);
   --color-popover-foreground: var(--popover-foreground);
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
@@ -101,11 +105,13 @@
   --secondary: var(--natural-cream);
   --secondary-foreground: var(--forest-sage);
   --muted: var(--natural-cream);
-  --muted-foreground: color-mix(in oklch, var(--forest-sage) 70%, transparent);
+  /* Softer secondary copy (HTC recovery). Spot-fix failing helpers; do not flatten to near-solid forest. */
+  --muted-foreground: color-mix(in oklch, var(--forest-sage) 82%, transparent);
   --accent: var(--soft-sage);
   --accent-foreground: var(--forest-sage);
   --destructive: var(--dusty-rose);
-  --destructive-foreground: var(--forest-sage);
+  /* Black on dusty-rose clears WCAG AA (~10:1). Forest-sage on dusty fails (~3.25:1). */
+  --destructive-foreground: var(--black);
   --success: var(--heritage-sage);
   --success-foreground: var(--true-white);
   --warning: var(--taupe-dark);
@@ -115,6 +121,14 @@
   --border: var(--taupe-light);
   --input: var(--taupe-light);
   --ring: var(--heritage-sage);
+  /*
+   * Selected / active surface — primary-tinted light green wash (tracks
+   * venue-brand --primary). Used for segmented controls, filter chips, and
+   * other “what is selected?” states. Stronger than bg-background-on-muted.
+   */
+  --selected: color-mix(in oklch, var(--primary) 22%, var(--background));
+  --selected-foreground: var(--primary);
+  --selected-border: color-mix(in oklch, var(--primary) 48%, var(--border));
 
   --chart-1: var(--heritage-sage);
   --chart-2: var(--forest-sage);
@@ -131,35 +145,34 @@
   --sidebar-foreground: var(--forest-sage);
   --sidebar-primary: var(--heritage-sage);
   --sidebar-primary-foreground: var(--true-white);
-  --sidebar-accent: var(--linen);
+  /* Active nav: primary-tinted wash (same family as --selected), not plain linen */
+  --sidebar-accent: color-mix(in oklch, var(--sidebar-primary) 20%, var(--sidebar));
   --sidebar-accent-foreground: var(--forest-sage);
   --sidebar-border: color-mix(in oklch, var(--forest-sage) 25%, var(--taupe-dark));
   --sidebar-ring: var(--heritage-sage);
 
   /* Calendar item dot colors (light mode — dark dots on light surface).
-     Manual Schedule Items (Calendar Manual Type Redesign): the five colors
-     a coordinator should recognize instantly at a glance — Tour (green),
-     Wedding/Event (purple), Meeting (orange, covers Consultation/Client
-     Meeting/Vendor Meeting alike — they're all "someone's talking to
-     someone"), Walkthrough (blue), Blocked Time (charcoal, no longer red —
-     a closed date isn't an alarm, it's just unavailable) — were chosen to
-     be clearly distinguishable from every other color already in this
-     palette, not just from each other. */
-  --cal-event:          #7B5EA0;                 /* purple — the wedding day itself, the single most important item on the calendar */
-  --cal-tour:           var(--soft-sage);        /* #B9D1C2 — light sage green — shared by real booked tours AND manual "Tour" schedule items, deliberately identical */
+     Locked taxonomy visual language:
+       Event        = purple (--cal-event)
+       Tour         = platform clear blue (--cal-tour, same hex as former walkthrough)
+       Appointment  = orange (--cal-meeting)
+       Hold         = bright yellow (--cal-date-hold)
+       Blocked Time = destructive/error red (--cal-blocked → --destructive) */
+  --cal-event:          #7B5EA0;                 /* purple — keep */
+  --cal-tour:           #4A7EA8;                 /* platform clear blue (former --cal-walkthrough) */
   --cal-follow-up:      var(--taupe-dark);       /* #B8AEA1 — taupe       */
   --cal-payment-due:    var(--dusty-rose);       /* #D8A7AA — rose        */
-  --cal-date-hold:      #C7A66A;                 /* amber (tint, same hue as taupe) */
-  --cal-blocked:        #5A5A5A;                 /* charcoal — Blocked Time is "unavailable," not an alarm; also reused by the manual "Blocked Time" schedule type */
+  --cal-date-hold:      #E8C200;                 /* bright yellow — clearly distinct from muted taupe */
+  --cal-blocked:        var(--destructive);      /* dusty-rose error red — unavailable at a glance */
   --cal-planning-activity: #7A8FA6;              /* muted slate blue — distinct from every other item type */
   --cal-request-due:       #B08D3E;              /* muted mustard gold — Due Date kind (§2a) */
   --cal-contract-expiration: #8E6B8E;            /* muted plum — Expiration kind (§2a), distinct from Due Date colors */
   --cal-document-expiration: #9C7A5B;            /* muted clay brown — Expiration kind (§2a) */
-  --cal-planning-task:  #8A9A5B;                  /* muted olive — Due Date kind, Booking Schedule lens only (Phase 3) */
-  --cal-timeline-entry: #B06A3A;                  /* muted copper — day-of run-of-show, Booking Schedule lens only (Phase 3) */
-  --cal-meeting:        #D68A3E;                  /* orange — manual Consultation/Client Meeting/Vendor Meeting, deliberately one color for the whole "meeting" family */
-  --cal-walkthrough:    #4A7EA8;                  /* clear blue — manual Walkthrough, distinct from Planning's own muted slate-blue above (a Walkthrough scheduled here is a Calendar-only entry, not a Planning-tracked task) */
-  --cal-other:          #9C9690;                  /* neutral warm gray — manual "Other," the catch-all */
+  --cal-planning-task:  #8A9A5B;                  /* muted olive — Due Date kind (legacy CalendarItemType meta) */
+  --cal-timeline-entry: #B06A3A;                  /* muted copper — day-of run-of-show (legacy CalendarItemType meta) */
+  --cal-meeting:        #D68A3E;                  /* orange — all Appointment classifications */
+  --cal-walkthrough:    var(--cal-meeting);       /* walkthrough is Appointment — shares orange */
+  --cal-other:          #9C9690;                  /* neutral warm gray — unused catch-all token */
 }
 
 /*
@@ -167,8 +180,10 @@
  * Additive scope: do NOT flip root `:root` (client portal stays Inter /
  * soft white). next-themes puts `.dark` on <html>, so dark staff rules are
  * `.dark .htc-staff` / `html.dark:has(.htc-staff)` (not `.htc-staff.dark`).
- * Token values mirror workspace/app/globals.css (cream/warm canvas, body ink,
- * sharper radius, sidebar recipe).
+ * Token values mirror workspace/app/globals.css (body ink, sharper radius).
+ * Light staff = Modern Botanical Luxury: bright warm-white workspace, pale
+ * blush sidebar, Soft Sage only for supporting/selected surfaces — never a
+ * uniform sage page wash. Dark staff remap below is untouched.
  *
  * `html:has(.htc-staff)` mirrors tokens onto the document so Base UI portals
  * (dropdown / select / sheet / tooltip) inherit staff radius + surfaces even
@@ -185,73 +200,3383 @@ html:has(.htc-staff) body {
   overflow: hidden;
 }
 
+/*
+ * Module pages scroll inside `main` (WorkspaceShell). macOS overlay scrollbars
+ * left gutter=0, so tall routes (Migration Center) looked clipped with no
+ * apparent scroll control. Force a stable, always-painted scrollbar on the
+ * real scrollport without unlocking document scroll.
+ */
+html:has(.htc-staff) main[data-workspace-main] {
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--forest-sage) 35%, transparent) transparent;
+}
+
+html:has(.htc-staff) main[data-workspace-main]::-webkit-scrollbar {
+  width: 12px;
+}
+
+html:has(.htc-staff) main[data-workspace-main]::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+html:has(.htc-staff) main[data-workspace-main]::-webkit-scrollbar-thumb {
+  background-color: color-mix(in srgb, var(--forest-sage) 35%, transparent);
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+
+html:has(.htc-staff) main[data-workspace-main]::-webkit-scrollbar-thumb:hover {
+  background-color: color-mix(in srgb, var(--forest-sage) 55%, transparent);
+}
+
 .htc-staff,
 html:has(.htc-staff) {
   --font-sans: var(--font-staff-sans), ui-sans-serif, system-ui, sans-serif;
 
-  --warm-gray: #f8f7f4;
-  --natural-cream: #fefefc;
-  --header-linen: #efe9e1;
+  /*
+   * Contemporary Botanical — staff Light Mode (Stage 2B designer-directed).
+   * Exact HEX from design authority. Dark remap below is untouched.
+   */
+  --htc-botanical: #446b56;
+  --htc-eucalyptus: #a7c2af;
+  --htc-blush: #d99a9e;
+  --htc-soft-blush: #f7e9eb;
+  /*
+   * Application-wide staff canvas (Stage 1 light-mode foundations).
+   * Warm hospitality canvas is the default venue-staff workspace background.
+   * Scoped to `.htc-staff` only — portal / vendor-app / admin / marketing
+   * do not mount this class and keep their own surfaces.
+   */
+  --htc-workspace: #f8f7f3;
+  --htc-canvas: #f8f7f3;
+  --htc-eucalyptus-surface: #dce8e0;
+  /* Faded eucalyptus for large booking summary shells — stay green, never pink. */
+  --htc-eucalyptus-surface-pale: #ecf2ee;
+  --htc-border-warm: #e6e3dc;
 
-  --background: var(--warm-gray);
-  --foreground: var(--forest-sage);
-  --heading: var(--forest-sage);
-  --card: var(--true-white);
-  --card-foreground: var(--forest-sage);
-  --popover: var(--true-white);
-  --popover-foreground: var(--forest-sage);
-  --muted: var(--natural-cream);
-  --muted-foreground: color-mix(in oklch, var(--forest-sage) 68%, transparent);
-  --secondary: var(--natural-cream);
-  --secondary-foreground: var(--forest-sage);
-  --border: var(--taupe-medium);
-  --input: var(--taupe-medium);
+  /*
+   * Expanded hospitality shades — coordinated with locked bases above.
+   * See docs/design/htc-visual-system.md. Do not invent a parallel theme.
+   */
+  /* Botanical family */
+  --htc-leaf-muted: #7e9e88;
+  --htc-soft-sage: #c9d9ce;
+  --htc-botanical-pale: #e8f0ea;
+  --htc-green-mist: #f1f5f2;
+  /* Blush / rose family */
+  --htc-dusty-rose: #d99a9e; /* alias of --htc-blush */
+  --htc-soft-rose: #e8c5c8;
+  --htc-petal: #f0d8db;
+  --htc-blush-pale: #fbf6f7;
+  /* Warm neutrals */
+  --htc-linen: #f3f0e9;
+  --htc-oatmeal: #ede9e1;
+  --htc-ivory: #faf9f5;
+  --htc-warm-pale: #f5f3ee;
+  /* Calm blue — supporting informational family (HTC visual system §1.2) */
+  --htc-calm-blue: #eaf1f7;
+  --htc-calm-blue-deep: #dfe9f1;
+  --htc-border-calm: #d5e1eb;
+  --htc-calm-accent: #63819a;
+
+  --warm-gray: #f8f7f3;
+  --natural-cream: #f8f7f3;
+  --header-linen: #ffffff;
+  --panel-blush: #f7e9eb;
+  --panel-sage: color-mix(in oklch, #a7c2af 22%, white);
+
+  --background: #f8f7f3;
+  --foreground: #24332b;
+  --heading: #24332b;
+  --card: #ffffff;
+  --card-foreground: #24332b;
+  --popover: #ffffff;
+  --popover-foreground: #24332b;
+  --muted: color-mix(in oklch, #a7c2af 18%, white);
+  --muted-foreground: #5f6f68;
+  --secondary: #ffffff;
+  /* Dark ink on light surfaces — never botanical-green as default text. */
+  --secondary-foreground: #24332b;
+  --border: #e6e3dc;
+  --input: #e6e3dc;
+  --primary: #446b56;
+  --primary-foreground: #ffffff;
+  --accent: #a7c2af;
+  --accent-foreground: #24332b;
+  --destructive: #d99a9e;
+  /* Dark ink on refined blush — white on #D99A9E fails WCAG AA. */
+  --destructive-foreground: #24332b;
+  --ring: #446b56;
 
   /* Sharper than portal’s 1rem soft radius — CRM panels use rounded-sm */
   --radius: 0.375rem;
 
-  --sidebar: color-mix(in oklch, var(--taupe-dark) 40%, white);
-  --sidebar-foreground: var(--forest-sage);
-  --sidebar-primary: var(--heritage-sage);
-  --sidebar-primary-foreground: var(--true-white);
-  --sidebar-accent: var(--linen);
-  --sidebar-accent-foreground: var(--forest-sage);
-  --sidebar-border: color-mix(in oklch, var(--forest-sage) 25%, var(--taupe-dark));
-  --sidebar-ring: var(--heritage-sage);
+  /* Sidebar: pure white — never blush, beige, or pale-green chrome */
+  --sidebar: #ffffff;
+  --sidebar-foreground: #24332b;
+  --sidebar-primary: #446b56;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: color-mix(in oklch, #a7c2af 28%, white);
+  /* Active nav labels stay dark; botanical is reserved for the left bar. */
+  --sidebar-accent-foreground: #24332b;
+  --sidebar-border: #e6e3dc;
+  --sidebar-ring: #446b56;
+
+  --selected: color-mix(in oklch, #a7c2af 32%, white);
+  --selected-foreground: #24332b;
+  --selected-border: #a7c2af;
+
+  /*
+   * Shared interactive hover wash. Light = soft blush (existing brand hover).
+   * Dark remaps to a soft white lift so pink never muddies on forest green.
+   */
+  --htc-hover-lift: var(--htc-soft-blush);
+}
+
+/*
+ * Vendor workspace accent — same Contemporary Botanical light tokens as venue
+ * (`.htc-staff`), with softer leaf-muted chrome so partner surfaces read
+ * distinct. Do not invent a parallel palette. Light only — no vendor dark remap.
+ * See docs/design/htc-visual-system.md §1.2 (muted leaf).
+ */
+.htc-staff.htc-vendor,
+html:has(.htc-staff.htc-vendor) {
+  --sidebar-primary: var(--htc-leaf-muted);
+  --sidebar-ring: var(--htc-leaf-muted);
+  --ring: var(--htc-leaf-muted);
+}
+
+/*
+ * Couple portal — Celebration Soft (palette B).
+ * Ivory canvas + white working cards + botanical actions.
+ * Soft blush is reserved for celebration / Luv-adjacent modules
+ * (`[data-portal-celebration]`), not a full-page pink wash.
+ * Token values are also pinned in app/(portal)/layout.tsx for .dark lock.
+ * Do not invent a parallel palette — docs/design/htc-visual-system.md.
+ */
+.htc-portal {
+  --htc-ivory: #faf9f5;
+  --htc-canvas: #faf9f5;
+  --htc-soft-blush: #f7e9eb;
+  --htc-blush: #d99a9e;
+  --htc-petal: #f0d8db;
+  --htc-blush-pale: #fbf6f7;
+  --htc-border-warm: #e6e3dc;
+  --htc-botanical: #446b56;
+  --htc-eucalyptus: #a7c2af;
+  color: var(--foreground);
+  background: var(--htc-ivory);
+}
+
+.htc-portal [data-portal-celebration] {
+  background: linear-gradient(
+    135deg,
+    color-mix(in oklch, var(--htc-soft-blush) 70%, white) 0%,
+    var(--htc-ivory) 100%
+  );
+  border-color: color-mix(in oklch, var(--htc-blush) 28%, var(--htc-border-warm));
+}
+
+/*
+ * Couple portal — calm-blue guidance / empty shells (same Rule D tokens as staff).
+ * Used for informational empties (timeline, payments, docs) — not every blank.
+ */
+.htc-portal .htc-surface-guidance,
+.htc-portal [data-portal-empty="guidance"] {
+  border: 1px solid var(--htc-border-calm, #d5e1eb);
+  border-left: 3px solid var(--htc-calm-blue-deep, #dfe9f1);
+  border-radius: 0.65rem;
+  background: var(--htc-calm-blue, #eaf1f7);
+  color: var(--foreground);
+  box-shadow: none;
+}
+
+/*
+ * Vendor workspace — empty / framed shells on hospitality canvas.
+ * Documents empty → calm blue (informational). Other empties → linen frame
+ * for contrast without inventing colors. See HTC-COLOR-DISTRIBUTION-RULES.md.
+ */
+.htc-staff.htc-vendor [data-vendor-empty="documents"],
+.htc-staff.htc-vendor .htc-vendor-empty-documents {
+  border: 1px solid var(--htc-border-calm);
+  border-left: 3px solid var(--htc-calm-blue-deep);
+  border-radius: 0.65rem;
+  background: var(--htc-calm-blue);
+  color: var(--foreground);
+  box-shadow: none;
+}
+
+.htc-staff.htc-vendor [data-vendor-empty="framed"],
+.htc-staff.htc-vendor .htc-vendor-empty-framed {
+  border: 1px solid var(--htc-border-warm);
+  border-radius: 0.65rem;
+  background: var(--htc-linen);
+  color: var(--foreground);
+  box-shadow: none;
+}
+
+/*
+ * Vendor notification panel is portaled to document.body (outside `.htc-vendor`),
+ * so hover/unread styles must not rely on the staff/vendor ancestor.
+ * Use hard hex fallbacks — panel is outside the staff token tree.
+ */
+[data-vendor-notif-panel] [data-vendor-notif-item] {
+  background: #ffffff;
+  transition: background-color 140ms ease, box-shadow 140ms ease;
+}
+[data-vendor-notif-panel] [data-vendor-notif-item][data-unread="true"] {
+  background: #fbf6f7;
+}
+[data-vendor-notif-panel] a:hover [data-vendor-notif-item],
+[data-vendor-notif-panel] [data-vendor-notif-item]:hover {
+  background: #dce8e0;
+  box-shadow: inset 3px 0 0 #446b56;
+}
+[data-vendor-notif-panel] a:hover [data-vendor-notif-item][data-unread="true"],
+[data-vendor-notif-panel] [data-vendor-notif-item][data-unread="true"]:hover {
+  background: #d0e0d6;
+  box-shadow: inset 3px 0 0 #446b56;
+}
+
+/* Eucalyptus section banner strip — vendor event overview cards */
+.htc-staff.htc-vendor [data-vendor-section-banner] {
+  border-bottom: 1px solid color-mix(in oklch, var(--htc-eucalyptus) 40%, var(--htc-border-warm));
+  background: var(--htc-eucalyptus-surface);
+  color: var(--heading);
+}
+
+/* Soft depth on staff cards — white working surfaces on warm canvas */
+.htc-staff [data-slot="card"],
+html:has(.htc-staff) [data-slot="card"] {
+  border: 1px solid var(--htc-border-warm);
+  box-shadow:
+    0 1px 2px color-mix(in oklch, #24332b 6%, transparent),
+    0 4px 14px color-mix(in oklch, #24332b 4%, transparent);
+}
+
+/*
+ * HTC hospitality surface system — see docs/design/htc-visual-system.md.
+ * Warm canvas behind white content; eucalyptus/blush for secondary & attention.
+ * Scoped to hospitality pages — not the default for every staff route.
+ */
+.htc-staff .htc-hospitality-page {
+  margin: -1rem -1rem 0;
+  padding: 1rem 1rem 1.75rem;
+  min-height: calc(100% + 1rem);
+  background: var(--htc-canvas);
+}
+@media (min-width: 640px) {
+  .htc-staff .htc-hospitality-page {
+    margin: -1.5rem -1.5rem 0;
+    padding: 1.5rem 1.5rem 2rem;
+    min-height: calc(100% + 1.5rem);
+  }
+}
+@media (min-width: 1024px) {
+  .htc-staff .htc-hospitality-page {
+    margin: -2.5rem -2.5rem 0;
+    padding: 2.5rem 2.5rem 2.5rem;
+    min-height: calc(100% + 2.5rem);
+  }
+}
+
+.htc-staff .htc-hospitality-elevated {
+  border: 1px solid var(--htc-border-warm);
+  border-radius: 0.75rem;
+  background: var(--card);
+  box-shadow:
+    0 1px 2px color-mix(in oklch, #24332b 5%, transparent),
+    0 4px 14px color-mix(in oklch, #24332b 4%, transparent);
+}
+
+.htc-staff .htc-hospitality-heading {
+  border: 1px solid var(--htc-border-warm);
+  border-radius: 0.75rem;
+  background: var(--card);
+  padding: 0.9rem 1rem;
+  box-shadow:
+    0 1px 2px color-mix(in oklch, #24332b 4%, transparent),
+    0 3px 10px color-mix(in oklch, #24332b 3%, transparent);
+}
+@media (min-width: 640px) {
+  .htc-staff .htc-hospitality-heading {
+    padding: 1.15rem 1.35rem;
+  }
+}
+
+/*
+ * Eucalyptus page introduction — Contracts / Payments Balanced Hospitality (Phase 8).
+ * Keeps title, subtitle, and primary actions in one coherent region (no linen strip
+ * separating actions). Scoped utility; does not change white `.htc-hospitality-heading`.
+ */
+.htc-staff .htc-hospitality-intro {
+  border: 1px solid color-mix(in oklch, var(--htc-eucalyptus) 35%, var(--htc-border-warm));
+  border-radius: 0.75rem;
+  background: var(--htc-eucalyptus-surface);
+  padding: 0.9rem 1rem;
+  box-shadow:
+    0 1px 2px color-mix(in oklch, #24332b 4%, transparent),
+    0 3px 10px color-mix(in oklch, #24332b 3%, transparent);
+}
+@media (min-width: 640px) {
+  .htc-staff .htc-hospitality-intro {
+    padding: 1.15rem 1.35rem;
+  }
+}
+
+/*
+ * Botanical left edge for primary label cards.
+ * List recipe (Rule J): white `.htc-hospitality-heading` + this accent.
+ * Also valid on eucalyptus `.htc-hospitality-intro` where that intro is still approved.
+ */
+.htc-staff .htc-hospitality-intro.htc-hospitality-intro-accent,
+.htc-staff .htc-hospitality-heading.htc-hospitality-intro-accent {
+  border-left: 5px solid var(--htc-botanical);
+}
+
+/*
+ * Phase 10 / Rule J — Reporting date/filter toolbar is white working chrome
+ * (not linen). White operational toolbars also use `.htc-hospitality-toolbar`.
+ */
+.htc-staff .htc-hospitality-filter {
+  border: 1px solid var(--htc-border-warm);
+  border-radius: 0.75rem;
+  background: #ffffff;
+  padding: 0.85rem 1rem;
+  box-shadow: 0 1px 2px color-mix(in oklch, #24332b 4%, transparent);
+}
+
+/*
+ * Phase 10 — restrained eucalyptus section bands (Documents categories / list heading).
+ * Visual twin of Phase 9 setup stage labels; separate class to avoid Setup Hub coupling.
+ */
+.htc-staff .htc-hospitality-section-label {
+  margin: 0;
+  border: 1px solid color-mix(in oklch, var(--htc-eucalyptus) 40%, var(--htc-border-warm));
+  border-radius: 0.5rem;
+  background: var(--htc-eucalyptus-surface);
+  padding: 0.45rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--foreground);
+  box-shadow: none;
+}
+
+.htc-staff .htc-hospitality-toolbar {
+  border: 1px solid var(--htc-border-warm);
+  border-radius: 0.75rem;
+  background: var(--card);
+  padding: 0.85rem 1rem;
+  box-shadow: 0 1px 2px color-mix(in oklch, #24332b 4%, transparent);
+}
+
+/*
+ * Phase 11D — reusable color-distribution surface roles.
+ * Prefer these semantic classes over page-specific greens/muted washes.
+ * Rules: docs/design/HTC-COLOR-DISTRIBUTION-RULES.md
+ * Scoped to `.htc-staff` — portal / PDF / print unchanged.
+ */
+.htc-staff .htc-surface-working {
+  border: 1px solid var(--htc-border-warm);
+  border-radius: 0.75rem;
+  background: #ffffff;
+  color: var(--foreground);
+  box-shadow: 0 1px 2px color-mix(in oklch, #24332b 4%, transparent);
+}
+
+.htc-staff .htc-surface-operational {
+  border: 1px solid var(--htc-border-warm);
+  border-radius: 0.75rem;
+  background: var(--htc-linen);
+  color: var(--foreground);
+  box-shadow: none;
+}
+
+.htc-staff .htc-surface-summary,
+.htc-staff [data-slot="card"].htc-surface-summary {
+  border: 1px solid color-mix(in oklch, var(--htc-eucalyptus) 40%, var(--htc-border-warm));
+  border-radius: 0.75rem;
+  background: var(--htc-eucalyptus-surface);
+  color: var(--foreground);
+  box-shadow: none;
+  --tw-ring-shadow: 0 0 #0000;
+  --tw-ring-color: transparent;
+}
+
+/*
+ * Rule K — pale booking summary shell.
+ * Explicit pale eucalyptus hex (not oklch mix — those can drift pink on warm canvas).
+ * Nested Booked chip (`.htc-badge-active`) stays standard `--htc-eucalyptus-surface`.
+ */
+.htc-staff .htc-surface-summary-pale,
+.htc-staff [data-slot="card"].htc-surface-summary-pale {
+  background: var(--htc-eucalyptus-surface-pale);
+  border-color: color-mix(in srgb, var(--htc-eucalyptus) 28%, var(--htc-border-warm));
+}
+
+.htc-staff .htc-surface-guidance {
+  border: 1px solid var(--htc-border-calm);
+  border-left: 3px solid var(--htc-calm-blue-deep);
+  border-radius: 0.65rem;
+  background: var(--htc-calm-blue);
+  color: var(--foreground);
+  box-shadow: none;
+}
+
+.htc-staff .htc-surface-guidance-compact {
+  border: 1px solid var(--htc-border-calm);
+  border-left: 3px solid var(--htc-calm-blue-deep);
+  border-radius: 0.5rem;
+  background: var(--htc-calm-blue);
+  color: var(--foreground);
+  box-shadow: none;
+  padding: 0.55rem 0.75rem;
+}
+
+/*
+ * Rule K slot G — relationship-workspace attention callout (true blockers only).
+ * Soft blush, not amber/warning chrome.
+ */
+.htc-staff .htc-surface-attention {
+  border: 1px solid color-mix(in oklch, var(--htc-soft-rose) 45%, var(--htc-border-warm));
+  border-left: 3px solid var(--htc-blush);
+  border-radius: 0.65rem;
+  background: var(--htc-soft-blush);
+  color: var(--foreground);
+  box-shadow: none;
+}
+
+/*
+ * Phase 12 — linen group shell with white nested working cards.
+ * Parent provides operational warmth; children stay readable white.
+ */
+.htc-staff .htc-group-shell {
+  border: 1px solid var(--htc-border-warm);
+  border-radius: 0.75rem;
+  background: var(--htc-linen);
+  color: var(--foreground);
+  padding: 0.85rem 0.85rem 0.75rem;
+  box-shadow: none;
+}
+
+.htc-staff .htc-group-shell > .htc-group-shell-header {
+  margin: 0 0 0.65rem;
+  padding: 0 0.15rem;
+}
+
+.htc-staff .htc-group-shell > .htc-group-shell-header h2,
+.htc-staff .htc-group-shell > .htc-group-shell-header [data-group-title] {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--heading);
+}
+
+.htc-staff .htc-group-shell > .htc-group-shell-header p,
+.htc-staff .htc-group-shell > .htc-group-shell-header [data-group-blurb] {
+  margin: 0.15rem 0 0;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: var(--muted-foreground);
+}
+
+.htc-staff .htc-group-shell > .htc-group-shell-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.htc-staff .htc-group-shell [data-slot="card"],
+.htc-staff .htc-group-shell .htc-surface-working {
+  background: #ffffff;
+  border-color: var(--htc-border-warm);
+  box-shadow: 0 1px 2px color-mix(in oklch, #24332b 4%, transparent);
+}
+
+/*
+ * Phase 12 — restrained eucalyptus Active indicator (dark readable text).
+ * Do not use for Paused / Failed / Overdue / Draft.
+ */
+.htc-staff .htc-badge-active,
+.htc-staff [data-slot="badge"].htc-badge-active {
+  background: var(--htc-eucalyptus-surface);
+  color: var(--heading);
+  border: 1px solid color-mix(in oklch, var(--htc-eucalyptus) 40%, var(--htc-border-warm));
+}
+
+/*
+ * List recipe — attention / Required chips (soft blush, not charcoal fill).
+ * Distinct from botanical primary actions and eucalyptus Active.
+ */
+.htc-staff .htc-badge-attention,
+.htc-staff [data-slot="badge"].htc-badge-attention {
+  background: var(--htc-soft-blush);
+  color: var(--heading);
+  border: 1px solid color-mix(in oklch, var(--htc-soft-rose) 45%, var(--htc-border-warm));
+}
+
+/*
+ * Phase 12 final — Task Center overdue readability.
+ * Keeps blush/dusty-rose semantic family but darkens ink for AA contrast on warm canvas.
+ * Does not remappe global --destructive (Calendar taxonomy / other surfaces stay).
+ */
+.htc-staff .htc-task-overdue-ink {
+  color: color-mix(in oklch, var(--htc-dusty-rose) 42%, var(--heading));
+}
+
+.htc-staff .htc-task-overdue-count {
+  background: color-mix(in oklch, var(--htc-soft-blush) 75%, white);
+  color: color-mix(in oklch, var(--htc-dusty-rose) 42%, var(--heading));
+  border: 1px solid color-mix(in oklch, var(--htc-dusty-rose) 45%, var(--htc-border-warm));
+}
+
+.htc-staff .htc-task-overdue-banner {
+  border-color: color-mix(in oklch, var(--htc-dusty-rose) 50%, var(--htc-border-warm));
+  background: color-mix(in oklch, var(--htc-soft-blush) 65%, white);
+}
+
+/*
+ * Phase 11A — Pattern 13: shared record-name navigation.
+ * Charcoal at rest; underline on hover / focus-visible; botanical is not a link cue.
+ * Inset focus outline so rings remain visible inside overflow-clipped table shells.
+ */
+.htc-staff .htc-record-link {
+  color: var(--foreground);
+  text-decoration: none;
+  text-underline-offset: 0.18em;
+  cursor: pointer;
+  border-radius: 0.125rem;
+  outline: none;
+}
+
+.htc-staff .htc-record-link:hover {
+  color: var(--foreground);
+  text-decoration: underline;
+}
+
+.htc-staff .htc-record-link:focus-visible {
+  color: var(--foreground);
+  text-decoration: underline;
+  outline: 2px solid color-mix(in oklch, var(--ring) 60%, transparent);
+  outline-offset: -2px;
+}
+
+.htc-staff .htc-record-link:visited {
+  color: var(--foreground);
+}
+
+/* Whole-card record navigation (e.g. Invoices) — keep card hover wash; add focus ring. */
+.htc-staff .htc-record-card-link {
+  color: inherit;
+  outline: none;
+}
+
+.htc-staff .htc-record-card-link:focus-visible {
+  outline: 2px solid color-mix(in oklch, var(--ring) 60%, transparent);
+  outline-offset: 2px;
+}
+
+.htc-staff .htc-record-card-link:hover .htc-record-link,
+.htc-staff .htc-record-card-link:focus-visible .htc-record-link {
+  text-decoration: underline;
+}
+
+/*
+ * Phase 11B — Reports KPI / metric family tones.
+ * Category surfaces only — never encode comparison polarity in the fill.
+ * Outstanding uses soft blush (attention / money-owed family). Collected is slightly stronger
+ * botanical than Contracted.
+ */
+.htc-staff .htc-report-kpi {
+  overflow: hidden;
+  border-color: var(--htc-border-warm);
+  background: var(--card);
+}
+
+.htc-staff .htc-report-kpi[data-tone="sales"] {
+  background: var(--card);
+}
+
+.htc-staff .htc-report-kpi[data-tone="sales"] .htc-report-kpi-label {
+  border-bottom: 1px solid color-mix(in oklch, var(--htc-eucalyptus) 45%, var(--htc-border-warm));
+  background: var(--htc-eucalyptus-surface);
+  margin: -1rem -1rem 0.5rem;
+  padding: 0.65rem 1rem 0.5rem;
+}
+
+.htc-staff .htc-report-kpi[data-tone="bookings"] {
+  background: var(--htc-green-mist);
+}
+
+.htc-staff .htc-report-kpi[data-tone="contracted"] {
+  background: var(--htc-botanical-pale);
+}
+
+.htc-staff .htc-report-kpi[data-tone="collected"] {
+  /* Stronger botanical than Contracted pale (#E8F0EA) — eucalyptus surface. */
+  background: var(--htc-eucalyptus-surface);
+}
+
+.htc-staff .htc-report-kpi[data-tone="outstanding"] {
+  background: var(--htc-soft-blush);
+}
+
+.htc-staff .htc-report-kpi[data-tone="ops"] {
+  background: var(--card);
+}
+
+/* Events / ops family — eucalyptus label strip (same light-green pattern as sales). */
+.htc-staff .htc-report-kpi[data-tone="ops"] .htc-report-kpi-label {
+  border-bottom: 1px solid color-mix(in oklch, var(--htc-eucalyptus) 45%, var(--htc-border-warm));
+  background: var(--htc-eucalyptus-surface);
+  margin: -1rem -1rem 0.5rem;
+  padding: 0.65rem 1rem 0.5rem;
+}
+
+.htc-staff .htc-report-kpi[data-tone="neutral"] {
+  background: var(--card);
+}
+
+/* Compact metric tiles (funnel strip, Sales mini-wells). */
+.htc-staff .htc-report-metric-tile {
+  border: 1px solid var(--htc-border-warm);
+  border-radius: 0.55rem;
+  background: var(--card);
+  padding: 0.55rem 0.75rem;
+}
+
+.htc-staff .htc-report-metric-tile[data-tone="sales"] {
+  background: var(--htc-eucalyptus-surface);
+  border-color: color-mix(in oklch, var(--htc-eucalyptus) 40%, var(--htc-border-warm));
+}
+
+.htc-staff .htc-report-metric-tile[data-tone="bookings"] {
+  background: var(--htc-green-mist);
+}
+
+.htc-staff .htc-report-metric-tile[data-tone="contracted"] {
+  background: var(--htc-botanical-pale);
+}
+
+.htc-staff .htc-report-metric-tile[data-tone="collected"] {
+  background: var(--htc-eucalyptus-surface);
+  border-color: color-mix(in oklch, var(--htc-eucalyptus) 40%, var(--htc-border-warm));
+}
+
+.htc-staff .htc-report-metric-tile[data-tone="outstanding"] {
+  background: var(--htc-soft-blush);
+}
+
+.htc-staff .htc-report-metric-tile[data-tone="ops"] {
+  background: var(--htc-eucalyptus-surface);
+  border-color: color-mix(in oklch, var(--htc-eucalyptus) 40%, var(--htc-border-warm));
+}
+
+.htc-staff .htc-report-metric-tile[data-tone="neutral"] {
+  background: var(--card);
+}
+
+/*
+ * Legacy Saved Reports nest (unused). Prefer calm-blue guidance above the list,
+ * then white LibraryAssetCards directly on the beige canvas.
+ */
+.htc-staff .htc-report-saved-shell {
+  border: 1px solid var(--htc-border-calm);
+  border-left: 3px solid var(--htc-calm-blue-deep);
+  border-radius: 0.75rem;
+  background: var(--htc-calm-blue);
+  padding: 0.65rem;
+  box-shadow: none;
+}
+
+.htc-staff .htc-report-saved-shell [data-slot="card"] {
+  background: #ffffff;
+  border-color: var(--htc-border-warm);
+}
+
+/*
+ * Lead Pipeline board — eucalyptus stage headers + linen lanes (audit #8).
+ * White lead cards stay working surfaces; blush hover matches list rows.
+ * Do not paint stage semantics into column fills (Rule G).
+ */
+.htc-staff .htc-pipeline-board {
+  display: flex;
+  gap: 1rem;
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+}
+
+.htc-staff .htc-pipeline-column {
+  display: flex;
+  width: 18rem;
+  flex-shrink: 0;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--htc-border-warm);
+  border-radius: 0.5rem;
+  background: var(--htc-linen);
+  transition: border-color 120ms ease, background-color 120ms ease;
+}
+
+.htc-staff .htc-pipeline-column[data-drag-target="true"] {
+  border-color: var(--htc-botanical);
+  background: color-mix(in oklch, var(--htc-eucalyptus-surface) 55%, var(--htc-linen));
+}
+
+.htc-staff .htc-pipeline-column-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  border-bottom: 1px solid color-mix(in oklch, var(--htc-eucalyptus) 40%, var(--htc-border-warm));
+  background: var(--htc-eucalyptus-surface);
+  padding: 0.65rem 0.75rem 0.55rem;
+}
+
+.htc-staff .htc-pipeline-column-value {
+  padding: 0.5rem 0.75rem 0;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--muted-foreground);
+}
+
+.htc-staff .htc-pipeline-column-body {
+  display: flex;
+  min-height: 6rem;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.65rem;
+}
+
+.htc-staff .htc-pipeline-lead-card {
+  cursor: grab;
+  border: 1px solid var(--htc-border-warm);
+  border-radius: 0.55rem;
+  background: #ffffff;
+  padding: 0.65rem 0.75rem;
+  box-shadow: 0 1px 2px color-mix(in oklch, #24332b 4%, transparent);
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+.htc-staff .htc-pipeline-lead-card:hover,
+.htc-staff .htc-pipeline-lead-card:focus-visible {
+  border-color: color-mix(in oklch, var(--htc-botanical) 35%, var(--htc-border-warm));
+  background: color-mix(in oklch, var(--htc-soft-blush) 55%, white);
+  outline: none;
+}
+
+.htc-staff .htc-pipeline-lead-card:hover .htc-record-link,
+.htc-staff .htc-pipeline-lead-card:focus-visible .htc-record-link {
+  text-decoration: underline;
+}
+
+/* Wave F deeper edit/detail working cards: white body + eucalyptus header banner */
+.htc-staff .htc-working-card {
+  overflow: hidden;
+  border: 1px solid var(--htc-border-warm);
+  background: #ffffff;
+  box-shadow:
+    0 1px 2px color-mix(in oklch, #24332b 5%, transparent),
+    0 4px 14px color-mix(in oklch, #24332b 4%, transparent);
+}
+
+.htc-staff .htc-working-card > [data-slot="card-header"] {
+  background-color: var(--htc-eucalyptus-surface);
+  border-bottom: 1px solid color-mix(in oklch, var(--htc-eucalyptus) 40%, var(--htc-border-warm));
+}
+
+/*
+ * Wave G5 — instructional working-card headers use calm blue (how-to /
+ * save-scope copy), not eucalyptus. Eucalyptus stays for group/section chrome.
+ */
+.htc-staff .htc-working-card.htc-working-card-guidance > [data-slot="card-header"] {
+  background-color: var(--htc-calm-blue);
+  border-bottom: 1px solid var(--htc-border-calm);
+}
+
+.htc-staff .htc-working-card > [data-slot="card-footer"] {
+  background-color: #ffffff;
+  border-top-color: var(--htc-border-warm);
+}
+
+.htc-staff .htc-working-row {
+  transition: background-color 120ms ease;
+}
+
+.htc-staff .htc-working-row:hover {
+  background-color: color-mix(in oklch, var(--htc-soft-blush) 55%, white);
+}
+
+/*
+ * Wave G1 — merge-field chips + notification rows.
+ * White at rest, soft blush on hover (same family as toolbox / settings tiles).
+ */
+.htc-staff .htc-merge-field-chip {
+  background: #ffffff;
+  border-color: var(--htc-border-warm);
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+.htc-staff .htc-merge-field-chip:hover,
+.htc-staff .htc-merge-field-chip:focus-visible {
+  background: var(--htc-soft-blush);
+  border-color: color-mix(in oklch, var(--htc-soft-rose) 45%, var(--htc-border-warm));
+}
+
+.htc-staff .htc-notification-row {
+  transition: background-color 120ms ease;
+}
+
+.htc-staff .htc-notification-row:hover,
+.htc-staff .htc-notification-row:focus-visible {
+  background: var(--htc-soft-blush);
+}
+
+.htc-staff .htc-hospitality-table {
+  overflow: hidden;
+  border: 1px solid var(--htc-border-warm);
+  border-radius: 0.75rem;
+  background: var(--card);
+  box-shadow:
+    0 1px 2px color-mix(in oklch, #24332b 5%, transparent),
+    0 4px 14px color-mix(in oklch, #24332b 4%, transparent);
+}
+
+.htc-staff .htc-hospitality-table [data-slot="table-header"] tr,
+.htc-staff .htc-hospitality-table thead tr {
+  border-bottom: 1px solid color-mix(in oklch, var(--htc-eucalyptus) 40%, var(--htc-border-warm));
+  background: var(--htc-eucalyptus-surface);
+}
+
+.htc-staff .htc-hospitality-table [data-slot="table-header"] th,
+.htc-staff .htc-hospitality-table thead th {
+  color: var(--heading);
+}
+
+.htc-staff .htc-hospitality-table [data-slot="table-body"] tr,
+.htc-staff .htc-hospitality-table tbody tr {
+  border-bottom: 1px solid color-mix(in oklch, var(--htc-border-warm) 88%, transparent);
+  background: var(--card);
+}
+
+.htc-staff .htc-hospitality-table tbody tr:hover {
+  background: color-mix(in oklch, var(--htc-soft-blush) 55%, white);
+}
+
+/*
+ * Attention rows: white working surface + restrained soft-rose left indicator
+ * (matches Focus critical pattern). Avoid full-row blush washes that pink-tint
+ * large portions of the Clients table.
+ */
+.htc-staff .htc-hospitality-table [data-slot="table-body"] tr[data-attention="true"] {
+  background: var(--card);
+  box-shadow: inset 3px 0 0 0 var(--htc-soft-rose);
+}
+
+.htc-staff .htc-hospitality-table [data-slot="table-body"] tr:hover {
+  background: color-mix(in oklch, var(--htc-soft-blush) 55%, white);
+}
+
+.htc-staff .htc-hospitality-table [data-slot="table-body"] tr[data-attention="true"]:hover {
+  background: color-mix(in oklch, var(--htc-soft-blush) 72%, white);
+}
+
+.htc-staff .htc-hospitality-catalog {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+@media (min-width: 640px) {
+  .htc-staff .htc-hospitality-catalog {
+    gap: 0.75rem;
+  }
+}
+
+/*
+ * Library guidance — calm tone (Color Distribution Phase 1).
+ * Informational reassurance only. Tokens locked in §1.2 visual system.
+ * Scoped to `.htc-staff` so portal / vendor-app / marketing are unaffected.
+ */
+.htc-staff .htc-library-guidance-calm {
+  border-color: var(--htc-border-calm);
+  background: var(--htc-calm-blue);
+  color: var(--foreground);
+  box-shadow: none;
+}
+
+/*
+ * Inbox — no-selection conversation pane (Color Distribution Phase 2).
+ * Calm informational surface only. Does not recolor the list, thread, or
+ * message bubbles. Scoped to `.htc-staff`.
+ */
+.htc-staff .htc-inbox-no-selection {
+  border-color: var(--htc-border-calm);
+  border-left: 3px solid var(--htc-calm-blue-deep);
+  background: var(--htc-calm-blue);
+  color: var(--foreground);
+  box-shadow: none;
+}
+
+/*
+ * Color Distribution Phase 3 — Communication Health guidance (full calm fill).
+ * Keep this rule separate from AutomationsHelp so CSS merge does not repaint
+ * the expanded Automations accordion as one blue block.
+ */
+.htc-staff .htc-communication-health-guidance {
+  border-color: var(--htc-border-calm);
+  border-left: 3px solid var(--htc-calm-blue-deep);
+  background-color: var(--htc-calm-blue);
+  color: var(--foreground);
+  box-shadow: none;
+}
+
+/*
+ * Color Distribution Phase 3 refinement — AutomationsHelp surface hierarchy.
+ * Collapsed: shell fills calm blue (approved collapsed look).
+ * Expanded: calm blue on heading row only; accordion body is white.
+ * Selectors intentionally distinct from Inbox / Health calm rules.
+ */
+.htc-staff section.htc-automations-help {
+  border-color: var(--htc-border-calm);
+  border-left: 3px solid var(--htc-calm-blue-deep);
+  background-color: var(--htc-calm-blue);
+  color: var(--foreground);
+  box-shadow: none;
+}
+
+.htc-staff section.htc-automations-help[data-expanded="true"] {
+  background-color: #ffffff;
+}
+
+.htc-staff section.htc-automations-help > button.htc-automations-help-header {
+  background-color: var(--htc-calm-blue);
+}
+
+.htc-staff section.htc-automations-help > .htc-automations-help-body {
+  background-color: #ffffff;
+  border-top-color: var(--htc-border-calm);
+}
+
+/*
+ * Color Distribution Phase 4 — informational calm guidance panels.
+ * Setup Hub white-glove welcome + Contract agreement guidance.
+ * Payment Schedule review banner remains excluded (actionable reconciliation).
+ * Full calm fill + left accent. Scoped to `.htc-staff`.
+ */
+.htc-staff .htc-setup-hub-welcome,
+.htc-staff .htc-contract-agreement-guidance {
+  border-color: var(--htc-border-calm);
+  border-left: 3px solid var(--htc-calm-blue-deep);
+  background-color: var(--htc-calm-blue);
+  color: var(--foreground);
+  box-shadow: none;
+}
+
+/*
+ * Color Distribution Phase 9 — Setup Hub Option A (eucalyptus stage section labels)
+ * + Settings directory Option B (eucalyptus icon wells). Scoped to `.htc-staff`.
+ * Does not replace Phase 4 calm welcome or Phase 8 hospitality intro.
+ */
+.htc-staff .htc-setup-stage-section-label {
+  margin: 0;
+  border: 1px solid color-mix(in oklch, var(--htc-eucalyptus) 40%, var(--htc-border-warm));
+  border-radius: 0.5rem;
+  background: var(--htc-eucalyptus-surface);
+  padding: 0.45rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--foreground);
+  box-shadow: none;
+}
+
+.htc-staff .htc-settings-directory-icon {
+  background: var(--htc-eucalyptus-surface);
+  color: var(--primary);
+}
+
+/*
+ * Interactive directory / list tiles — white at rest, soft blush on hover.
+ * Settings, Help/Guidance articles, Feedback channels, Templates toolbox cards.
+ */
+.htc-staff .htc-settings-directory-card,
+.htc-staff .htc-feedback-channel-card,
+.htc-staff .htc-toolbox-card {
+  background: #ffffff;
+  border-color: var(--htc-border-warm);
+  transition: background-color 120ms ease;
+}
+
+.htc-staff .htc-settings-directory-card:hover,
+.htc-staff .htc-settings-directory-card:focus-visible,
+.htc-staff .htc-feedback-channel-card:hover,
+.htc-staff .htc-feedback-channel-card:focus-visible,
+.htc-staff .htc-toolbox-card:hover,
+.htc-staff .htc-toolbox-card:focus-visible {
+  background: var(--htc-soft-blush);
+}
+
+.htc-staff .htc-help-article-list {
+  background: #ffffff;
+  border-color: var(--htc-border-warm);
+}
+
+.htc-staff .htc-help-article-row {
+  transition: background-color 120ms ease;
+}
+
+.htc-staff .htc-help-article-row:hover,
+.htc-staff .htc-help-article-row:focus-visible {
+  background: var(--htc-soft-blush);
+}
+
+.htc-staff .htc-help-article-row:hover .htc-record-link,
+.htc-staff .htc-help-article-row:focus-visible .htc-record-link,
+.htc-staff .htc-settings-directory-card:hover .htc-record-link,
+.htc-staff .htc-feedback-channel-card:hover .htc-record-link,
+.htc-staff .htc-feedback-channel-card:focus-visible .htc-record-link {
+  text-decoration: underline;
+}
+
+/* Reporting empty chart/list cards — calm-blue guidance shells */
+.htc-staff .htc-report-empty-card,
+.htc-staff [data-slot="card"].htc-report-empty-card {
+  background: var(--htc-calm-blue);
+  border-color: var(--htc-border-calm);
+  box-shadow: none;
+}
+
+/* Save Report — quiet eucalyptus chip-button on white filter bar */
+.htc-staff .htc-report-save-button {
+  border-color: color-mix(in srgb, var(--htc-eucalyptus) 45%, var(--htc-border-warm));
+  background: var(--htc-eucalyptus-surface);
+  color: var(--heading);
+}
+
+.htc-staff .htc-report-save-button:hover {
+  background: color-mix(in srgb, var(--htc-eucalyptus-surface) 82%, white);
+  color: var(--heading);
+}
+
+/* Dashboard Today's Focus rows — soft blush on hover; titles underline via record-link */
+.htc-staff .htc-focus-attention-row:hover,
+.htc-staff .htc-focus-attention-row:focus-within {
+  background: var(--htc-soft-blush);
+}
+
+/*
+ * Color Distribution Phase 5 — Task Center plate-clear reassurance
+ * (full calm fill). Same locked tokens as Phase 4. Scoped to `.htc-staff`.
+ */
+.htc-staff .htc-task-center-plate-clear {
+  border-color: var(--htc-border-calm);
+  border-left: 3px solid var(--htc-calm-blue-deep);
+  background-color: var(--htc-calm-blue);
+  color: var(--foreground);
+  box-shadow: none;
+}
+
+/* Rule J — Task Center couple/staff group header eucalyptus; clear row division. */
+.htc-staff .htc-task-event-group-header {
+  border-bottom: 1px solid color-mix(in oklch, var(--htc-eucalyptus) 40%, var(--htc-border-warm));
+  background: var(--htc-eucalyptus-surface);
+}
+
+.htc-staff .htc-task-event-group-body .htc-task-row {
+  border-bottom: 1px solid color-mix(in oklch, var(--htc-border-warm) 88%, transparent);
+}
+
+.htc-staff .htc-task-event-group-body .htc-task-row:last-child {
+  border-bottom: none;
+}
+
+.htc-staff .htc-task-event-group-body .htc-task-row:hover {
+  background: color-mix(in oklch, var(--htc-soft-blush) 40%, white);
+}
+
+/*
+ * Phase 5 refinement — Availability guidance hierarchy.
+ * Outer shell: calm border + left accent. Intro header: calm blue.
+ * Detailed paragraphs: white reference body (not a second blue wall).
+ */
+.htc-staff .htc-availability-settings-guidance {
+  border-color: var(--htc-border-calm);
+  border-left: 3px solid var(--htc-calm-blue-deep);
+  background-color: #ffffff;
+  color: var(--foreground);
+  box-shadow: none;
+}
+
+.htc-staff .htc-availability-settings-guidance > .htc-availability-settings-guidance-intro {
+  background-color: var(--htc-calm-blue);
+}
+
+.htc-staff .htc-availability-settings-guidance > .htc-availability-settings-guidance-body {
+  background-color: #ffffff;
+  border-top-color: var(--htc-border-calm);
+}
+
+/*
+ * Color Distribution Phase 6 — Migration guidance hierarchy + Import cutover tip.
+ * Migration: white shell, calm intro, white instructional body (Availability pattern).
+ * Import cutover: compact full calm tip. Scoped to `.htc-staff`.
+ */
+.htc-staff .htc-migration-guidance {
+  border-color: var(--htc-border-calm);
+  border-left: 3px solid var(--htc-calm-blue-deep);
+  background-color: #ffffff;
+  color: var(--foreground);
+  box-shadow: none;
+}
+
+.htc-staff .htc-migration-guidance > .htc-migration-guidance-intro {
+  background-color: var(--htc-calm-blue);
+}
+
+.htc-staff .htc-migration-guidance > .htc-migration-guidance-body {
+  background-color: #ffffff;
+  border-top-color: var(--htc-border-calm);
+}
+
+.htc-staff .htc-import-cutover-pointer {
+  border-color: var(--htc-border-calm);
+  border-left: 3px solid var(--htc-calm-blue-deep);
+  background-color: var(--htc-calm-blue);
+  color: var(--foreground);
+  box-shadow: none;
+}
+
+/* Phase 6 calm surfaces end. */
+
+/*
+ * Color Distribution Phase 7 — Venue Guide orientation + Contract template disclaimer.
+ * Compact full calm fill + left accent (Phase 4 agreement-guidance pattern).
+ * Scoped to `.htc-staff`.
+ */
+.htc-staff .htc-venue-guide-orientation,
+.htc-staff .htc-contract-template-disclaimer {
+  border-color: var(--htc-border-calm);
+  border-left: 3px solid var(--htc-calm-blue-deep);
+  background-color: var(--htc-calm-blue);
+  color: var(--foreground);
+  box-shadow: none;
+}
+
+.htc-staff .htc-catalog-section {
+  overflow: hidden;
+  border: 1px solid var(--htc-border-warm);
+  border-radius: 0.75rem;
+  background: var(--card);
+  box-shadow:
+    0 1px 2px color-mix(in oklch, #24332b 5%, transparent),
+    0 4px 14px color-mix(in oklch, #24332b 4%, transparent);
+}
+
+/* Ordinary / standalone majors: white — no blush, no decorative botanical stripe. */
+.htc-staff .htc-catalog-major {
+  background: var(--card);
+  border-left: 3px solid transparent;
+}
+
+/*
+ * Parent majors with nested content: white working row + botanical left indicator.
+ * Avoid checkered green/linen/white fills — hierarchy comes from indent + left border.
+ */
+.htc-staff .htc-catalog-major[data-has-children="true"] {
+  background: var(--card);
+  border-bottom: 1px solid color-mix(in oklch, var(--htc-border-warm) 90%, transparent);
+  border-left-color: var(--htc-botanical);
+}
+
+.htc-staff .htc-catalog-major[data-standalone="true"] {
+  border-bottom: none;
+}
+
+/*
+ * Categories: white working nest under parents — eucalyptus left border for quiet grouping.
+ */
+.htc-staff .htc-catalog-category {
+  background: var(--card);
+  border-left: 3px solid var(--htc-eucalyptus);
+}
+
+.htc-staff .htc-catalog-item {
+  background: var(--card);
+  border-left: 3px solid transparent;
+}
+
+/* Nested items: white, indented under category with a quieter eucalyptus guide. */
+.htc-staff .htc-catalog-item-nested {
+  background: var(--card);
+  border-left: 3px solid color-mix(in oklch, var(--htc-eucalyptus) 55%, transparent);
+}
+
+.htc-staff .htc-catalog-section ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.htc-staff .htc-catalog-section li + li {
+  border-top: 1px solid color-mix(in oklch, var(--htc-border-warm) 90%, transparent);
+}
+
+/*
+ * Calendar Month refinement (Workstream 2A) — scoped chrome only.
+ * Does NOT remap --cal-* taxonomy colors. Does NOT style print/public routes.
+ * Week/Day/Agenda layouts stay structural; shared switcher/filters may opt in.
+ *
+ * Phase 11C — linen navigation toolbar + linen filters; eucalyptus intro lives
+ * on calendar-page-client (htc-hospitality-intro-accent). Taxonomy --cal-* frozen.
+ */
+.htc-staff .htc-calendar-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  border: 1px solid color-mix(in oklch, var(--htc-eucalyptus) 40%, var(--htc-border-warm));
+  border-radius: 0.75rem;
+  background: var(--htc-eucalyptus-surface);
+  padding: 0.65rem 0.75rem;
+  box-shadow: 0 1px 2px color-mix(in oklch, #24332b 4%, transparent);
+}
+
+/* Canonical taxonomy color-dot size (matches Month-at-a-glance). */
+.htc-staff .htc-calendar-dot {
+  display: block;
+  width: 0.625rem; /* 10px — h-2.5 */
+  height: 0.625rem;
+  flex-shrink: 0;
+  border-radius: 9999px;
+}
+
+.htc-staff .htc-calendar-toolbar-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.55rem;
+}
+
+/* Final polish — desktop: view switcher left, date nav right, one linen shell. */
+@media (min-width: 768px) {
+  .htc-staff .htc-calendar-toolbar {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.55rem 0.75rem;
+  }
+
+  .htc-staff .htc-calendar-toolbar-row[data-cal-toolbar-row="views"] {
+    flex: 0 1 auto;
+    justify-content: flex-start;
+  }
+
+  .htc-staff .htc-calendar-toolbar-row[data-cal-toolbar-row="date"] {
+    flex: 0 1 auto;
+    justify-content: flex-end;
+    margin-left: auto;
+  }
+}
+
+/* Final polish — keep intro actions on one row from 375px up when space allows. */
+.htc-staff .htc-calendar-workspace [data-cal-intro-actions] {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+@media (max-width: 359px) {
+  .htc-staff .htc-calendar-workspace [data-cal-intro-actions] {
+    flex-wrap: wrap;
+  }
+}
+
+.htc-staff .htc-calendar-workspace [data-cal-intro-actions] [data-slot="button"] {
+  padding-inline: 0.625rem;
+}
+
+.htc-staff .htc-calendar-guidance {
+  border: 1px solid color-mix(in oklch, var(--htc-calm-blue-deep) 55%, var(--htc-border-warm));
+  border-radius: 0.65rem;
+  background: var(--htc-calm-blue);
+  padding: 0.75rem 0.9rem;
+  color: var(--heading);
+}
+
+.htc-staff .htc-calendar-guidance p {
+  margin: 0;
+  color: var(--heading);
+}
+
+.htc-staff .htc-calendar-view-switcher {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.15rem;
+  border: 1px solid var(--htc-border-warm);
+  border-radius: 0.75rem;
+  background: var(--card);
+  padding: 0.2rem;
+  box-shadow: 0 1px 2px color-mix(in oklch, #24332b 4%, transparent);
+}
+
+.htc-staff .htc-calendar-view-switcher [data-cal-view] {
+  border-radius: 0.55rem;
+  padding: 0.35rem 0.85rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.25;
+  transition: color 120ms ease, background-color 120ms ease;
+}
+
+.htc-staff .htc-calendar-view-switcher [data-cal-view][data-active="true"] {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.htc-staff .htc-calendar-view-switcher [data-cal-view][data-active="false"] {
+  background: transparent;
+  color: var(--muted-foreground);
+}
+
+.htc-staff .htc-calendar-view-switcher [data-cal-view][data-active="false"]:hover {
+  color: var(--foreground);
+  background: color-mix(in oklch, var(--htc-warm-pale) 70%, white);
+}
+
+.htc-staff .htc-calendar-view-switcher [data-cal-view]:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--ring);
+}
+
+.htc-staff .htc-calendar-month-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.htc-staff .htc-calendar-month-nav-group {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.25rem;
+  max-width: 100%;
+  border: 1px solid var(--htc-border-warm);
+  border-radius: 0.75rem;
+  /* Match Month/Week/Day switcher — white nested control on eucalyptus toolbar. */
+  background: #ffffff;
+  padding: 0.25rem;
+  box-shadow: 0 1px 2px color-mix(in oklch, #24332b 4%, transparent);
+}
+
+/* Date selects stay white inside the eucalyptus calendar toolbar. */
+.htc-staff .htc-calendar-toolbar [data-slot="select-trigger"] {
+  background: #ffffff;
+  border-color: var(--htc-border-warm);
+}
+
+/* Keep prev/next arrows with month+year on one coherent row (esp. 390px). */
+.htc-staff .htc-calendar-month-nav-group > button {
+  flex: 0 0 auto;
+}
+
+.htc-staff .htc-calendar-month-nav-group [data-testid="month-year-picker"] {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.htc-staff .htc-calendar-month-nav-group [data-testid="calendar-month-select"] {
+  width: 8.25rem;
+  min-width: 0;
+}
+
+.htc-staff .htc-calendar-month-nav-group [data-testid="calendar-year-select"] {
+  width: 5.25rem;
+  min-width: 0;
+}
+
+@media (min-width: 640px) {
+  .htc-staff .htc-calendar-month-nav-group [data-testid="calendar-month-select"] {
+    width: 9.5rem;
+  }
+  .htc-staff .htc-calendar-month-nav-group [data-testid="calendar-year-select"] {
+    width: 6rem;
+  }
+}
+
+.htc-staff .htc-calendar-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem 1.15rem;
+  /* Informational only — white + warm-neutral border; never blush/soft-rose. */
+  border: 1px solid var(--htc-border-warm);
+  border-radius: 0.65rem;
+  background: var(--card);
+  padding: 0.5rem 0.85rem;
+}
+
+.htc-staff .htc-calendar-legend [data-cal-legend-item] {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+  pointer-events: none;
+  user-select: none;
+}
+
+.htc-staff .htc-calendar-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  border: 1px solid var(--htc-border-warm);
+  border-radius: 0.75rem;
+  /* Rule J — white working shell; taxonomy chips keep eucalyptus when active. */
+  background: #ffffff;
+  /* Desktop: tighter vertical padding; mobile keeps roomier touch layout. */
+  padding: 0.5rem 0.75rem;
+  box-shadow: 0 1px 2px color-mix(in oklch, #24332b 4%, transparent);
+}
+
+@media (max-width: 639px) {
+  .htc-staff .htc-calendar-filters {
+    gap: 0.65rem;
+    padding: 0.75rem 0.9rem;
+  }
+}
+
+.htc-staff .htc-calendar-filters [data-taxonomy-chip] {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border-radius: 999px;
+  border: 1px solid var(--htc-border-warm);
+  padding: 0.3rem 0.7rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  transition: color 120ms ease, background-color 120ms ease, border-color 120ms ease;
+}
+
+.htc-staff .htc-calendar-filters [data-taxonomy-chip][data-active="true"] {
+  border-color: color-mix(in oklch, var(--htc-eucalyptus) 55%, var(--htc-border-warm));
+  background: var(--htc-eucalyptus-surface);
+  color: var(--heading);
+}
+
+/* Tour chip stays eucalyptus (quiet grouping) — never calm-blue fill */
+.htc-staff .htc-calendar-filters [data-taxonomy-chip][data-taxonomy-key="tour"][data-active="true"] {
+  border-color: color-mix(in oklch, var(--htc-eucalyptus) 60%, var(--htc-border-warm));
+  background: var(--htc-eucalyptus-surface);
+  color: var(--heading);
+}
+
+.htc-staff .htc-calendar-filters [data-taxonomy-chip][data-active="false"] {
+  background: var(--card);
+  color: var(--muted-foreground);
+  opacity: 1;
+}
+
+.htc-staff .htc-calendar-filters [data-taxonomy-chip][data-active="false"]:hover {
+  color: var(--foreground);
+  border-color: color-mix(in oklch, var(--htc-eucalyptus) 40%, var(--htc-border-warm));
+}
+
+.htc-staff .htc-calendar-filters [data-taxonomy-chip]:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--ring);
+}
+
+.htc-staff .htc-calendar-filters select {
+  height: 1.85rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--htc-border-warm);
+  background: var(--card);
+  padding: 0 0.5rem;
+  font-size: 0.75rem;
+  color: var(--foreground);
+}
+
+.htc-staff .htc-calendar-month-grid [data-cal-weekday-row] {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  margin-bottom: 0.35rem;
+  border-bottom: 1px solid var(--htc-border-warm);
+}
+
+.htc-staff .htc-calendar-month-grid [data-cal-weekday] {
+  padding: 0.45rem 0.25rem;
+  text-align: center;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+
+.htc-staff .htc-calendar-month-grid [data-cal-day-grid] {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid var(--htc-border-warm);
+  border-radius: 0.75rem;
+  background: var(--htc-border-warm);
+  box-shadow: 0 1px 2px color-mix(in oklch, #24332b 4%, transparent);
+}
+
+.htc-staff .htc-calendar-month-grid [data-cal-day-cell],
+.htc-staff .htc-calendar-month-grid [data-cal-day-outside] {
+  min-height: 4.5rem;
+  background: var(--card);
+}
+
+/* Exact linen — avoid OKLCH mixes that can drift toward pink. */
+.htc-staff .htc-calendar-month-grid [data-cal-day-outside] {
+  background: var(--htc-linen);
+}
+
+.htc-staff .htc-calendar-month-grid [data-cal-day-cell] {
+  padding: 0.4rem;
+  text-align: left;
+  transition: background-color 120ms ease;
+}
+
+.htc-staff .htc-calendar-month-grid [data-cal-day-cell]:hover {
+  background: var(--htc-soft-blush);
+}
+
+/*
+ * Selected date: exact eucalyptus surface (#DCE8E0) for every selected day —
+ * including non-Today — with no OKLCH mixes that can read as blush.
+ */
+.htc-staff .htc-calendar-month-grid [data-cal-day-cell][data-selected="true"],
+.htc-staff .htc-calendar-month-grid [data-cal-day-cell][data-selected="true"]:hover,
+.htc-staff .htc-calendar-month-grid [data-cal-day-cell][data-selected="true"]:focus,
+.htc-staff .htc-calendar-month-grid [data-cal-day-cell][data-selected="true"]:focus-visible {
+  background: var(--htc-eucalyptus-surface);
+  box-shadow: inset 0 0 0 1px var(--htc-eucalyptus);
+}
+
+.htc-staff .htc-calendar-month-grid [data-cal-day-num] {
+  display: flex;
+  height: 1.5rem;
+  width: 1.5rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--foreground);
+}
+
+.htc-staff .htc-calendar-month-grid [data-cal-day-num][data-today="true"] {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.htc-staff .htc-calendar-schedule {
+  overflow: hidden;
+  border: 1px solid var(--htc-border-warm);
+  border-radius: 0.75rem;
+  background: var(--htc-linen);
+  box-shadow: 0 1px 2px color-mix(in oklch, #24332b 4%, transparent);
+}
+
+.htc-staff .htc-calendar-schedule [data-cal-schedule-header] {
+  border-bottom: 1px solid color-mix(in oklch, var(--htc-border-warm) 88%, transparent);
+  padding: 0.85rem 1rem 0.65rem;
+}
+
+.htc-staff .htc-calendar-schedule [data-cal-schedule-title] {
+  font-family: var(--font-heading), ui-serif, Georgia, serif;
+  font-size: 1.05rem;
+  font-weight: 500;
+  color: var(--heading);
+}
+
+.htc-staff .htc-calendar-schedule [data-cal-schedule-body] {
+  padding: 0.85rem 1rem 1rem;
+}
+
+.htc-staff .htc-calendar-schedule [data-cal-schedule-empty] {
+  border: 1px solid var(--htc-border-calm);
+  border-left: 3px solid var(--htc-calm-blue-deep);
+  border-radius: 0.65rem;
+  background: var(--htc-calm-blue);
+  padding: 1.15rem 0.9rem;
+  text-align: center;
+}
+
+.htc-staff .htc-calendar-schedule [data-cal-schedule-empty] p {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--muted-foreground);
+}
+
+/*
+ * Calendar Week / Day / Agenda (Workstream 2B) — align with approved Month chrome.
+ * Shared FilterBar + view switcher already use Month styles. Do not remap --cal-*.
+ */
+.htc-staff .htc-calendar-week,
+.htc-staff .htc-calendar-day,
+.htc-staff .htc-calendar-agenda {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.htc-staff .htc-calendar-week [data-cal-week-grid] {
+  display: grid;
+  gap: 0.65rem;
+}
+
+@media (min-width: 480px) and (max-width: 767px) {
+  .htc-staff .htc-calendar-week [data-cal-week-grid] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 768px) {
+  .htc-staff .htc-calendar-week [data-cal-week-grid] {
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+  }
+}
+
+.htc-staff .htc-calendar-week [data-cal-week-day] {
+  min-height: 9rem;
+  border: 1px solid var(--htc-border-warm);
+  border-radius: 0.75rem;
+  background: var(--card);
+  padding: 0.55rem 0.5rem;
+  box-shadow: 0 1px 2px color-mix(in oklch, #24332b 3%, transparent);
+}
+
+.htc-staff .htc-calendar-week [data-cal-week-day][data-today="true"] {
+  background: var(--htc-eucalyptus-surface);
+  box-shadow: inset 0 0 0 1px var(--htc-eucalyptus);
+}
+
+.htc-staff .htc-calendar-week [data-cal-week-day-name] {
+  text-align: center;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+
+.htc-staff .htc-calendar-week [data-cal-week-day-num] {
+  display: flex;
+  margin: 0.15rem auto 0.45rem;
+  height: 1.55rem;
+  width: 1.55rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+.htc-staff .htc-calendar-week [data-cal-week-day-num][data-today="true"] {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.htc-staff .htc-calendar-week [data-cal-week-event] {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.35rem;
+  border: 1px solid var(--htc-border-warm);
+  border-radius: 0.5rem;
+  background: var(--card);
+  padding: 0.35rem 0.4rem;
+  transition: background-color 120ms ease;
+}
+
+.htc-staff .htc-calendar-week [data-cal-week-day][data-today="true"] [data-cal-week-event] {
+  background: color-mix(in srgb, var(--card) 88%, transparent);
+}
+
+.htc-staff .htc-calendar-week [data-cal-week-event]:hover {
+  background: var(--htc-warm-pale);
+}
+
+.htc-staff .htc-calendar-week [data-cal-week-empty] {
+  padding: 0.5rem 0.15rem;
+  text-align: center;
+  font-size: 0.7rem;
+  color: var(--muted-foreground);
+}
+
+.htc-staff .htc-calendar-week [data-cal-week-full] {
+  border: 1px solid var(--htc-border-warm);
+  border-radius: 0.75rem;
+  background: var(--htc-linen);
+  padding: 0.85rem 1rem;
+}
+
+.htc-staff .htc-calendar-week [data-cal-week-full-title] {
+  margin: 0 0 0.65rem;
+  font-family: var(--font-heading), ui-serif, Georgia, serif;
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--heading);
+}
+
+.htc-staff .htc-calendar-day [data-cal-day-board] {
+  width: 100%;
+  max-width: none;
+  border: 1px solid var(--htc-border-warm);
+  border-radius: 0.75rem;
+  background: var(--card);
+  padding: 0.85rem 1rem;
+  box-shadow: 0 1px 2px color-mix(in oklch, #24332b 4%, transparent);
+}
+
+/* Day date nav (shared toolbar) — keep Today with date controls; no second card shell. */
+.htc-staff [data-cal-day-nav] {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+}
+
+.htc-staff [data-cal-day-nav] .htc-calendar-month-nav-group {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.htc-staff [data-cal-day-nav] .htc-calendar-month-nav-group h2 {
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: normal;
+  line-height: 1.25;
+}
+
+.htc-staff [data-cal-day-today] {
+  flex: 0 0 auto;
+  min-height: 2.5rem;
+  min-width: 2.75rem;
+}
+
+@media (max-width: 639px) {
+  .htc-staff [data-cal-day-nav] {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.4rem;
+  }
+
+  .htc-staff [data-cal-day-nav] .htc-calendar-month-nav-group {
+    width: 100%;
+  }
+
+  .htc-staff [data-cal-day-today] {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+.htc-staff .htc-calendar-day [data-cal-day-empty],
+.htc-staff .htc-calendar-agenda [data-cal-agenda-empty] {
+  border: 1px dashed var(--htc-border-warm);
+  border-radius: 0.75rem;
+  background: var(--htc-linen);
+  padding: 1.5rem 1rem;
+  text-align: center;
+}
+
+.htc-staff .htc-calendar-day [data-cal-day-empty] p,
+.htc-staff .htc-calendar-agenda [data-cal-agenda-empty] p {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--muted-foreground);
+}
+
+.htc-staff .htc-calendar-agenda [data-cal-agenda-groups] {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.htc-staff .htc-calendar-agenda [data-cal-agenda-group] {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.htc-staff .htc-calendar-agenda [data-cal-agenda-date] {
+  font-family: var(--font-heading), ui-serif, Georgia, serif;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--heading);
+}
+
+.htc-staff .htc-calendar-agenda [data-cal-agenda-date][data-today="true"] {
+  color: var(--primary);
+}
+
+.htc-staff .htc-calendar-agenda [data-cal-agenda-items] {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/*
+ * Calendar Availability & Sharing cards (Workstream 2C).
+ * Distinct Public Event Availability vs Tour Scheduling — presentation only.
+ */
+.htc-staff .htc-calendar-share-grid {
+  gap: 0.85rem;
+}
+
+.htc-staff .htc-calendar-share-card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--htc-border-warm);
+  border-radius: 0.75rem;
+  background: var(--card);
+  box-shadow: 0 1px 2px color-mix(in oklch, #24332b 4%, transparent);
+}
+
+.htc-staff .htc-calendar-share-card [data-cal-share-header] {
+  padding: 0.75rem 1rem 0.65rem;
+}
+
+.htc-staff .htc-calendar-share-card [data-cal-share-title] {
+  margin: 0;
+  font-family: var(--font-heading), ui-serif, Georgia, serif;
+  font-size: 1.05rem;
+  font-weight: 500;
+  line-height: 1.25;
+  color: var(--heading);
+}
+
+.htc-staff .htc-calendar-share-card [data-cal-share-body] {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  padding: 0.15rem 1rem 1rem;
+}
+
+.htc-staff .htc-calendar-share-card [data-cal-share-lead] {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--foreground);
+}
+
+.htc-staff .htc-calendar-share-card [data-cal-share-actions] {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.85rem;
+}
+
+.htc-staff .htc-calendar-share-card [data-cal-share-helper] {
+  margin: 0.55rem 0 0;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: var(--muted-foreground);
+}
+
+/* Public Event Availability + Tour Scheduling — eucalyptus header, eucalyptus left strip */
+.htc-staff .htc-calendar-share-event,
+.htc-staff .htc-calendar-share-tour {
+  box-shadow:
+    inset 3px 0 0 0 var(--htc-eucalyptus),
+    0 1px 2px color-mix(in oklch, #24332b 4%, transparent);
+}
+
+.htc-staff .htc-calendar-share-event [data-cal-share-header],
+.htc-staff .htc-calendar-share-tour [data-cal-share-header] {
+  border-bottom: 1px solid color-mix(in oklch, var(--htc-eucalyptus) 40%, var(--htc-border-warm));
+  background: var(--htc-eucalyptus-surface);
+}
+
+/* Tour Scheduling — keep linen personalized-link guidance nest */
+.htc-staff .htc-calendar-share-tour [data-cal-share-guidance] {
+  margin-top: 0.85rem;
+  border: 1px solid color-mix(in oklch, var(--htc-border-warm) 90%, transparent);
+  border-radius: 0.55rem;
+  background: var(--htc-linen);
+  padding: 0.65rem 0.75rem;
+}
+
+.htc-staff .htc-calendar-share-tour [data-cal-share-guidance] p {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: var(--muted-foreground);
+}
+
+.htc-staff .htc-calendar-share-card[data-ready="false"] [data-cal-share-actions] {
+  display: none;
+}
+
+/*
+ * Tours main workspace (Workstream 2D-A) — hospitality presentation only.
+ * Lifecycle badges use hospitality tokens; Calendar --cal-tour blue stays untouched.
+ */
+.htc-staff .htc-tours-workspace [data-tours-section],
+.htc-staff .htc-tours-workspace [data-tours-followup] {
+  overflow: hidden;
+  border: 1px solid var(--htc-border-warm);
+  border-radius: 0.75rem;
+  background: var(--card);
+  box-shadow:
+    0 1px 2px color-mix(in oklch, #24332b 5%, transparent),
+    0 4px 14px color-mix(in oklch, #24332b 4%, transparent);
+}
+
+.htc-staff .htc-tours-workspace [data-tours-section-header] {
+  padding: 0.85rem 1rem 0.7rem;
+  border-bottom: 1px solid var(--htc-border-warm);
+  background: var(--htc-eucalyptus-surface);
+}
+
+/* Upcoming — eucalyptus */
+.htc-staff .htc-tours-workspace [data-tours-section="upcoming"] [data-tours-section-header] {
+  background: var(--htc-eucalyptus-surface);
+  border-bottom-color: color-mix(in oklch, var(--htc-eucalyptus) 40%, var(--htc-border-warm));
+}
+
+/* Past — muted botanical / soft sage */
+.htc-staff .htc-tours-workspace [data-tours-section="past"] [data-tours-section-header] {
+  background: var(--htc-botanical-pale);
+  border-bottom-color: color-mix(in oklch, var(--htc-eucalyptus) 35%, var(--htc-border-warm));
+}
+
+/* Cancelled — pale blush */
+.htc-staff .htc-tours-workspace [data-tours-section="cancelled"] [data-tours-section-header] {
+  background: var(--htc-soft-blush);
+  border-bottom-color: color-mix(in oklch, var(--htc-soft-rose) 40%, var(--htc-border-warm));
+}
+
+/* Archived (empty section + populated LibraryArchivedSection) — linen */
+.htc-staff .htc-tours-workspace [data-tours-section="archived-empty"] [data-tours-section-header],
+.htc-staff .htc-tours-workspace .htc-tours-archived {
+  background: var(--htc-linen);
+  border-bottom-color: var(--htc-border-warm);
+}
+
+.htc-staff .htc-tours-workspace .htc-tours-archived {
+  margin-top: 0.25rem;
+  padding: 0.85rem 1rem 1rem;
+  border: 1px solid var(--htc-border-warm);
+  border-radius: 0.75rem;
+  border-top: 1px solid var(--htc-border-warm);
+  box-shadow:
+    0 1px 2px color-mix(in oklch, #24332b 5%, transparent),
+    0 4px 14px color-mix(in oklch, #24332b 4%, transparent);
+}
+
+.htc-staff .htc-tours-workspace [data-tours-followup] [data-tours-section-header] {
+  background: color-mix(in oklch, var(--htc-soft-blush) 55%, white);
+  border-bottom-color: color-mix(in oklch, var(--htc-soft-rose) 45%, var(--htc-border-warm));
+}
+
+.htc-staff .htc-tours-workspace [data-tours-section-title] {
+  margin: 0;
+  font-family: var(--font-heading), ui-serif, Georgia, serif;
+  font-size: 1.15rem;
+  font-weight: 500;
+  line-height: 1.25;
+  color: var(--heading);
+}
+
+.htc-staff .htc-tours-workspace [data-tours-section-desc] {
+  margin: 0.25rem 0 0;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: var(--muted-foreground);
+}
+
+.htc-staff .htc-tours-workspace [data-tours-section-body] {
+  padding: 0.35rem 0.25rem 0.45rem;
+  background: color-mix(in oklch, var(--htc-canvas) 55%, white);
+}
+
+.htc-staff .htc-tours-workspace .htc-tours-empty-page,
+.htc-staff .htc-tours-workspace .htc-tours-section-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.45rem;
+  margin: 0.5rem;
+  padding: 1.1rem 1rem;
+  border: 1px solid var(--htc-border-calm);
+  border-left: 3px solid var(--htc-calm-blue-deep);
+  border-radius: 0.65rem;
+  background: var(--htc-calm-blue);
+}
+
+.htc-staff .htc-tours-workspace .htc-tours-empty-page {
+  align-items: center;
+  text-align: center;
+  padding: 2rem 1.25rem;
+}
+
+.htc-staff .htc-tours-workspace [data-tours-empty-title] {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--heading);
+}
+
+.htc-staff .htc-tours-workspace [data-tours-empty-copy] {
+  margin: 0;
+  max-width: 36rem;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--muted-foreground);
+}
+
+.htc-staff .htc-tours-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  padding: 0.55rem 0.5rem 0.65rem;
+}
+
+.htc-staff .htc-tours-row {
+  padding: 0.95rem 0.85rem;
+  border: 1px solid var(--htc-border-warm);
+  border-radius: 0.75rem;
+  background: var(--card);
+  box-shadow: 0 1px 2px color-mix(in oklch, #24332b 4%, transparent);
+}
+
+.htc-staff .htc-tours-row:hover {
+  background: color-mix(in oklch, var(--htc-soft-blush) 55%, white);
+}
+
+.htc-staff .htc-tours-row:last-child {
+  border-bottom: 1px solid var(--htc-border-warm);
+}
+
+.htc-staff .htc-tours-row-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.htc-staff .htc-tours-row-identity {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.htc-staff .htc-tours-date {
+  flex-shrink: 0;
+  width: 2.75rem;
+  text-align: center;
+  padding: 0.35rem 0.2rem;
+  border-radius: 0.5rem;
+  background: var(--htc-linen);
+  border: 1px solid color-mix(in oklch, var(--htc-border-warm) 90%, transparent);
+}
+
+.htc-staff .htc-tours-date [data-tours-day] {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--heading);
+}
+
+.htc-staff .htc-tours-date [data-tours-month] {
+  margin: 0.2rem 0 0;
+  font-size: 0.625rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+
+.htc-staff .htc-tours-row-content {
+  min-width: 0;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.htc-staff .htc-tours-row-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.5rem;
+}
+
+.htc-staff .htc-tours-row-title [data-tours-name] {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--heading);
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.htc-staff .htc-tours-row-title a.htc-record-link[data-tours-name] {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.htc-staff .htc-tours-status-badge {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+/* Scheduled — warm linen / neutral pending */
+.htc-staff .htc-tours-status-badge[data-tours-status-badge="scheduled"] {
+  background: var(--htc-linen);
+  border-color: var(--htc-border-warm);
+  color: color-mix(in oklch, var(--heading) 82%, #8a6a3a);
+}
+
+/* Confirmed — eucalyptus / botanical */
+.htc-staff .htc-tours-status-badge[data-tours-status-badge="confirmed"] {
+  background: var(--htc-eucalyptus-surface);
+  border-color: color-mix(in oklch, var(--htc-eucalyptus) 55%, var(--htc-border-warm));
+  color: var(--htc-botanical);
+}
+
+/* Completed — quiet eucalyptus Active treatment */
+.htc-staff .htc-tours-status-badge[data-tours-status-badge="completed"] {
+  background: var(--htc-eucalyptus-surface);
+  border-color: color-mix(in oklch, var(--htc-eucalyptus) 40%, var(--htc-border-warm));
+  color: var(--heading);
+}
+
+/* Cancelled — neutral muted */
+.htc-staff .htc-tours-status-badge[data-tours-status-badge="cancelled"] {
+  background: color-mix(in oklch, var(--htc-warm-pale) 80%, white);
+  border-color: var(--htc-border-warm);
+  color: var(--muted-foreground);
+}
+
+/* No Show — restrained soft rose */
+.htc-staff .htc-tours-status-badge[data-tours-status-badge="no_show"] {
+  background: var(--htc-soft-blush);
+  border-color: color-mix(in oklch, var(--htc-soft-rose) 55%, var(--htc-border-warm));
+  color: color-mix(in oklch, #6b3f44 70%, var(--heading));
+}
+
+.htc-staff .htc-tours-meta-badge {
+  font-size: 0.625rem !important;
+}
+
+.htc-staff .htc-tours-row-content [data-tours-meta],
+.htc-staff .htc-tours-row-content [data-tours-aside],
+.htc-staff .htc-tours-row-content [data-tours-email] {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: var(--muted-foreground);
+}
+
+.htc-staff .htc-tours-row-content [data-tours-email] {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.htc-staff .htc-tours-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.45rem;
+  padding-left: 3.6rem;
+}
+
+.htc-staff .htc-tours-confirm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+
+.htc-staff .htc-tours-confirm-btn {
+  min-height: 2.25rem;
+  font-size: 0.75rem;
+}
+
+.htc-staff .htc-tours-confirm-primary {
+  flex: 1 1 9rem;
+  background: var(--htc-botanical);
+  border-color: var(--htc-botanical);
+  color: white;
+}
+
+.htc-staff .htc-tours-confirm-actions .htc-tours-confirm-btn:not(.htc-tours-confirm-primary) {
+  flex: 1 1 9rem;
+}
+
+.htc-staff .htc-tours-row-tools {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-left: auto;
+}
+
+.htc-staff .htc-tours-confirm-primary:hover {
+  background: color-mix(in oklch, var(--htc-botanical) 88%, black);
+  border-color: color-mix(in oklch, var(--htc-botanical) 88%, black);
+  color: white;
+}
+
+.htc-staff .htc-tours-status-select {
+  height: 2.25rem;
+  min-width: 7.5rem;
+  max-width: 10.5rem;
+  width: auto;
+  flex: 0 1 9rem;
+  font-size: 0.75rem;
+}
+
+.htc-staff .htc-tours-lead-link {
+  height: 2.25rem;
+  width: 2.25rem;
+  padding: 0;
+}
+
+.htc-staff .htc-tours-outcome {
+  margin: 0.65rem 0 0 3.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.htc-staff .htc-tours-outcome [data-tours-outcome-summary] {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+}
+
+.htc-staff .htc-tours-outcome [data-tours-outcome-summary] span:first-child {
+  font-weight: 600;
+  color: var(--heading);
+}
+
+.htc-staff .htc-tours-outcome [data-tours-followup-sent] {
+  color: var(--htc-botanical);
+}
+
+.htc-staff .htc-tours-outcome-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.htc-staff .htc-tours-outcome-links button {
+  font-size: 0.6875rem;
+  color: var(--muted-foreground);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+.htc-staff .htc-tours-outcome-links button:hover {
+  color: var(--foreground);
+}
+
+.htc-staff .htc-tours-outcome-form {
+  margin-top: 0.25rem;
+  padding: 0.75rem;
+  border: 1px solid var(--htc-border-warm);
+  border-radius: 0.65rem;
+  background: var(--htc-linen);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* Mobile: denser action band — confirm pair side-by-side, status+tools on one row */
+@media (max-width: 639px) {
+  .htc-staff .htc-tours-row-actions {
+    padding-left: 0;
+    gap: 0.35rem;
+  }
+
+  .htc-staff .htc-tours-confirm-actions {
+    flex: 1 1 100%;
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    gap: 0.4rem;
+    align-items: stretch;
+  }
+
+  /*
+   * Touch-target correction (2D-A): ≥44px, target 48px; allow secondary label wrap;
+   * no ellipsis. Overrides Button size=sm fixed h-8 only inside Tours confirm actions.
+   */
+  .htc-staff .htc-tours-workspace .htc-tours-confirm-actions > .htc-tours-confirm-btn {
+    flex: unset;
+    width: 100%;
+    min-width: 0;
+    height: auto;
+    min-height: 3rem; /* 48px target; grows with wrapped label */
+    padding-block: 0.65rem;
+    padding-inline: 0.55rem;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    line-height: 1.3;
+    text-align: center;
+    align-self: stretch;
+  }
+
+  .htc-staff .htc-tours-status-select {
+    flex: 1 1 7rem;
+    max-width: none;
+    min-width: 6.5rem;
+  }
+
+  .htc-staff .htc-tours-row-tools {
+    margin-left: 0;
+  }
+
+  .htc-staff .htc-tours-outcome {
+    margin-left: 0;
+  }
+}
+
+@media (min-width: 640px) {
+  .htc-staff .htc-tours-row-main {
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+  }
+
+  .htc-staff .htc-tours-row-actions {
+    padding-left: 0;
+    flex-shrink: 0;
+    justify-content: flex-end;
+    max-width: 26rem;
+  }
+
+  .htc-staff .htc-tours-confirm-actions {
+    flex: 0 1 auto;
+    justify-content: flex-end;
+  }
+
+  .htc-staff .htc-tours-confirm-primary,
+  .htc-staff .htc-tours-confirm-actions .htc-tours-confirm-btn:not(.htc-tours-confirm-primary) {
+    flex: 0 1 auto;
+  }
+
+  .htc-staff .htc-tours-status-select {
+    width: 8.5rem;
+    flex: 0 0 8.5rem;
+  }
+
+  .htc-staff .htc-tours-row-tools {
+    margin-left: 0;
+  }
+
+  .htc-staff .htc-tours-outcome {
+    margin-left: 3.6rem;
+  }
+}
+
+/* ─── 2D-B1: Lead Tour & follow-up (contextual; reuses 2D-A status badges) ─── */
+.htc-staff .htc-lead-tour-followup {
+  border-color: var(--htc-border-warm);
+  background: var(--card);
+  box-shadow: none;
+}
+
+.htc-staff .htc-lead-tour-followup-title {
+  color: var(--heading);
+  line-height: 1.25;
+}
+
+.htc-staff .htc-lead-tour-followup-sub {
+  max-width: 36rem;
+  line-height: 1.45;
+}
+
+.htc-staff .htc-lead-tour-section-label {
+  margin: 0;
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+
+.htc-staff .htc-lead-tour-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.htc-staff .htc-lead-tour-appt {
+  padding: 0.85rem 0.9rem;
+  border: 1px solid var(--htc-border-warm);
+  border-radius: 0.65rem;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.htc-staff .htc-lead-tour-appt-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.65rem 1rem;
+}
+
+.htc-staff .htc-lead-tour-appt-date {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--heading);
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+
+.htc-staff .htc-lead-tour-appt-time {
+  margin: 0.15rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--muted-foreground);
+  line-height: 1.4;
+}
+
+.htc-staff .htc-lead-tour-appt-when-kind {
+  font-weight: 500;
+  color: color-mix(in oklch, var(--heading) 55%, var(--muted-foreground));
+}
+
+.htc-staff .htc-lead-tour-appt-aside {
+  margin: 0.25rem 0 0;
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+  line-height: 1.4;
+}
+
+.htc-staff .htc-lead-tour-appt-badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+/* Overdue is orthogonal to lifecycle status — distinct from badges */
+.htc-staff .htc-lead-tour-overdue {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.12rem 0.4rem;
+  border-radius: 0.35rem;
+  border: 1px solid color-mix(in oklch, var(--htc-soft-rose) 45%, var(--htc-border-warm));
+  background: color-mix(in oklch, var(--htc-soft-blush) 55%, white);
+  color: color-mix(in oklch, #6b3f44 65%, var(--heading));
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  line-height: 1.2;
+}
+
+.htc-staff .htc-lead-tour-appt-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 0.4rem;
+}
+
+.htc-staff .htc-lead-tour-confirm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 0.4rem;
+  flex: 1 1 auto;
+}
+
+.htc-staff .htc-lead-tour-confirm-primary {
+  background: var(--htc-botanical);
+  color: #fff;
+  border-color: var(--htc-botanical);
+}
+
+.htc-staff .htc-lead-tour-confirm-primary:hover {
+  background: color-mix(in oklch, var(--htc-botanical) 88%, black);
+  color: #fff;
+}
+
+.htc-staff .htc-lead-tour-confirm-secondary,
+.htc-staff .htc-lead-tour-action-secondary {
+  border-color: var(--htc-border-warm);
+  background: #fff;
+  color: var(--heading);
+}
+
+.htc-staff .htc-lead-tour-action-destructive {
+  color: color-mix(in oklch, #6b3f44 75%, var(--heading));
+}
+
+.htc-staff .htc-lead-tour-action-destructive:hover {
+  background: var(--htc-soft-blush);
+  color: color-mix(in oklch, #6b3f44 85%, var(--heading));
+}
+
+.htc-staff .htc-lead-tour-confirm-primary,
+.htc-staff .htc-lead-tour-confirm-secondary,
+.htc-staff .htc-lead-tour-action-secondary,
+.htc-staff .htc-lead-tour-action-destructive,
+.htc-staff .htc-lead-tour-personal-link-btn,
+.htc-staff .htc-lead-tour-schedule-btn {
+  height: auto;
+  min-height: 2.75rem; /* 44px floor */
+  padding-block: 0.55rem;
+  padding-inline: 0.75rem;
+  white-space: normal;
+  line-height: 1.3;
+}
+
+/*
+ * Lead personalized scheduling-link — calm-blue guidance (Phase 11D formalized).
+ * Uses shared surface-guidance tokens; keep the lead-specific layout helpers.
+ */
+.htc-staff .htc-lead-tour-personal-link {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid var(--htc-border-calm);
+  border-left: 3px solid var(--htc-calm-blue-deep);
+  border-radius: 0.65rem;
+  background: var(--htc-calm-blue);
+  color: var(--foreground);
+  box-shadow: none;
+}
+
+.htc-staff .htc-lead-tour-personal-link-label {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--heading);
+  line-height: 1.3;
+}
+
+.htc-staff .htc-lead-tour-personal-link-guidance {
+  margin: 0.25rem 0 0;
+  max-width: 28rem;
+  font-size: 0.6875rem;
+  line-height: 1.45;
+  color: var(--muted-foreground);
+}
+
+.htc-staff .htc-lead-tour-personal-link-btn {
+  flex-shrink: 0;
+  border-color: var(--htc-border-calm);
+  background: #fff;
+  color: var(--heading);
+}
+
+.htc-staff .htc-lead-tour-empty {
+  padding: 0.85rem 0.9rem;
+  border: 1px dashed var(--htc-border-warm);
+  border-radius: 0.65rem;
+  background: color-mix(in oklch, var(--htc-linen) 45%, white);
+}
+
+.htc-staff .htc-lead-tour-empty-title {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--heading);
+}
+
+.htc-staff .htc-lead-tour-empty-copy {
+  margin: 0.3rem 0 0;
+  max-width: 28rem;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: var(--muted-foreground);
+}
+
+.htc-staff .htc-lead-tour-empty-followup {
+  max-width: 28rem;
+  line-height: 1.45;
+}
+
+@media (max-width: 639px) {
+  .htc-staff .htc-lead-tour-confirm-actions {
+    flex: 1 1 100%;
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    gap: 0.4rem;
+  }
+
+  .htc-staff .htc-lead-tour-confirm-actions > .htc-lead-tour-confirm-primary,
+  .htc-staff .htc-lead-tour-confirm-actions > .htc-lead-tour-confirm-secondary {
+    width: 100%;
+    min-width: 0;
+    min-height: 3rem; /* 48px mobile target — matches 2D-A confirm correction */
+    padding-block: 0.65rem;
+    text-align: center;
+  }
+
+  .htc-staff .htc-lead-tour-appt-actions > .htc-lead-tour-action-secondary,
+  .htc-staff .htc-lead-tour-appt-actions > .htc-lead-tour-action-destructive {
+    min-height: 2.75rem;
+  }
+
+  .htc-staff .htc-lead-tour-personal-link {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .htc-staff .htc-lead-tour-personal-link-btn {
+    width: 100%;
+    min-height: 3rem;
+    justify-content: center;
+  }
+}
+
+/* ─── 2D-B2: Schedule / Reschedule slot sheet ─────────────────────────────── */
+html:has(.htc-staff) .htc-tour-slot-sheet-content {
+  background: #fff;
+}
+
+html:has(.htc-staff) .htc-tour-slot-sheet {
+  min-height: 0;
+}
+
+html:has(.htc-staff) .htc-tour-slot-sheet-header {
+  background: color-mix(in oklch, var(--htc-warm-pale) 55%, white);
+  border-bottom-color: var(--htc-border-warm);
+}
+
+html:has(.htc-staff) .htc-tour-slot-sheet-body {
+  overscroll-behavior: contain;
+}
+
+html:has(.htc-staff) .htc-tour-slot-sheet-footer {
+  background: #fff;
+  border-top-color: var(--htc-border-warm);
+  gap: 0.5rem;
+}
+
+html:has(.htc-staff) .htc-tour-slot-guidance {
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--htc-border-calm);
+  border-left: 3px solid var(--htc-calm-blue-deep);
+  border-radius: 0.65rem;
+  background: var(--htc-calm-blue);
+}
+
+html:has(.htc-staff) .htc-tour-slot-guidance-title {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--heading);
+  line-height: 1.3;
+}
+
+html:has(.htc-staff) .htc-tour-slot-guidance-copy {
+  margin: 0.25rem 0 0;
+  font-size: 0.6875rem;
+  line-height: 1.45;
+  color: var(--htc-calm-accent);
+}
+
+html:has(.htc-staff) .htc-tour-slot-cal-day {
+  min-height: 2.5rem;
+  border-radius: 0.55rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: center;
+  transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+  color: color-mix(in oklch, var(--muted-foreground) 55%, transparent);
+}
+
+html:has(.htc-staff) .htc-tour-slot-cal-day:disabled {
+  cursor: not-allowed;
+}
+
+html:has(.htc-staff) .htc-tour-slot-cal-day[data-tour-cal-available="true"] {
+  color: var(--heading);
+  background: color-mix(in oklch, var(--htc-botanical-pale) 70%, white);
+}
+
+html:has(.htc-staff) .htc-tour-slot-cal-day[data-tour-cal-available="true"]:hover {
+  background: var(--htc-eucalyptus-surface);
+}
+
+html:has(.htc-staff) .htc-tour-slot-cal-day[data-tour-cal-today="true"][data-tour-cal-available="true"] {
+  box-shadow: inset 0 0 0 1.5px var(--htc-eucalyptus);
+}
+
+html:has(.htc-staff) .htc-tour-slot-cal-day[data-tour-cal-selected="true"] {
+  background: var(--htc-eucalyptus-surface);
+  color: var(--htc-botanical);
+  box-shadow: inset 0 0 0 2px var(--htc-botanical);
+}
+
+html:has(.htc-staff) .htc-tour-slot-calendar-nav-btn {
+  min-width: 2.5rem;
+  min-height: 2.5rem;
+}
+
+html:has(.htc-staff) .htc-tour-slot-duration {
+  margin: 0;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: var(--muted-foreground);
+}
+
+html:has(.htc-staff) .htc-tour-slot-empty {
+  margin: 0;
+  padding: 1.25rem 0.75rem;
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--muted-foreground);
+  border: 1px dashed var(--htc-border-warm);
+  border-radius: 0.65rem;
+  background: color-mix(in oklch, var(--htc-linen) 40%, white);
+}
+
+html:has(.htc-staff) .htc-tour-slot-time-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+html:has(.htc-staff) .htc-tour-slot-time-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  min-height: 2.75rem;
+  padding: 0.55rem 0.4rem;
+  border-radius: 0.55rem;
+  border: 1px solid var(--htc-border-warm);
+  background: #fff;
+  color: var(--heading);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.2;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+html:has(.htc-staff) .htc-tour-slot-time-chip:hover {
+  border-color: color-mix(in oklch, var(--htc-botanical) 40%, var(--htc-border-warm));
+  background: var(--htc-botanical-pale);
+}
+
+html:has(.htc-staff) .htc-tour-slot-time-chip[data-tour-slot-selected="true"] {
+  border-color: var(--htc-botanical);
+  background: var(--htc-botanical);
+  color: #fff;
+}
+
+html:has(.htc-staff) .htc-tour-slot-footer-primary {
+  min-height: 2.75rem;
+  background: var(--htc-botanical);
+  border-color: var(--htc-botanical);
+  color: #fff;
+}
+
+html:has(.htc-staff) .htc-tour-slot-footer-primary:hover {
+  background: color-mix(in oklch, var(--htc-botanical) 88%, black);
+  color: #fff;
+}
+
+html:has(.htc-staff) .htc-tour-slot-footer-secondary {
+  min-height: 2.75rem;
+  border-color: var(--htc-border-warm);
+  background: #fff;
+  color: var(--heading);
+}
+
+html:has(.htc-staff) .htc-tour-send-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.85rem 0.9rem;
+  border: 1px solid var(--htc-border-warm);
+  border-radius: 0.7rem;
+  background: color-mix(in oklch, var(--htc-linen) 35%, white);
+}
+
+html:has(.htc-staff) .htc-tour-send-preview-kicker {
+  margin: 0;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+
+html:has(.htc-staff) .htc-tour-send-preview-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.65rem 0.75rem;
+}
+
+html:has(.htc-staff) .htc-tour-send-preview-label {
+  margin: 0;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--muted-foreground);
+}
+
+html:has(.htc-staff) .htc-tour-send-preview-value {
+  margin: 0.15rem 0 0;
+  font-size: 0.875rem;
+  color: var(--foreground);
+  line-height: 1.35;
+}
+
+html:has(.htc-staff) .htc-tour-send-preview-message {
+  padding-top: 0.15rem;
+}
+
+html:has(.htc-staff) .htc-tour-send-preview-subject {
+  margin: 0.2rem 0 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--heading);
+  line-height: 1.35;
+}
+
+html:has(.htc-staff) .htc-tour-send-preview-body {
+  margin: 0.55rem 0 0;
+  padding: 0.7rem 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--htc-border-warm);
+  background: #fff;
+  white-space: pre-wrap;
+  font-family: inherit;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--foreground);
+}
+
+html:has(.htc-staff) .htc-tour-send-preview-warn {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--destructive);
+}
+
+@media (max-width: 639px) {
+  html:has(.htc-staff) .htc-tour-slot-sheet-content {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  html:has(.htc-staff) .htc-tour-slot-cal-day {
+    min-height: 2.75rem;
+  }
+
+  html:has(.htc-staff) .htc-tour-slot-time-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.55rem;
+  }
+
+  html:has(.htc-staff) .htc-tour-slot-time-chip {
+    min-height: 3rem;
+  }
+
+  html:has(.htc-staff) .htc-tour-slot-footer-primary,
+  html:has(.htc-staff) .htc-tour-slot-footer-secondary {
+    min-height: 3rem;
+  }
+
+  html:has(.htc-staff) .htc-tour-send-preview-meta {
+    grid-template-columns: 1fr;
+  }
+}
+
+.dark .htc-staff .htc-calendar-share-card,
+.dark .htc-staff .htc-calendar-share-event [data-cal-share-header],
+.dark .htc-staff .htc-calendar-share-tour [data-cal-share-header],
+.dark .htc-staff .htc-calendar-share-tour [data-cal-share-guidance],
+html.dark:has(.htc-staff) .htc-calendar-share-card,
+html.dark:has(.htc-staff) .htc-calendar-share-event [data-cal-share-header],
+html.dark:has(.htc-staff) .htc-calendar-share-tour [data-cal-share-header],
+html.dark:has(.htc-staff) .htc-calendar-share-tour [data-cal-share-guidance] {
+  border-color: var(--border);
+  background: var(--card);
+  box-shadow: none;
+}
+
+.dark .htc-staff .htc-calendar-week [data-cal-week-day],
+.dark .htc-staff .htc-calendar-week [data-cal-week-full],
+.dark .htc-staff .htc-calendar-day [data-cal-day-board],
+.dark .htc-staff .htc-calendar-day [data-cal-day-empty],
+.dark .htc-staff .htc-calendar-agenda [data-cal-agenda-empty],
+html.dark:has(.htc-staff) .htc-calendar-week [data-cal-week-day],
+html.dark:has(.htc-staff) .htc-calendar-week [data-cal-week-full],
+html.dark:has(.htc-staff) .htc-calendar-day [data-cal-day-board],
+html.dark:has(.htc-staff) .htc-calendar-day [data-cal-day-empty],
+html.dark:has(.htc-staff) .htc-calendar-agenda [data-cal-agenda-empty] {
+  border-color: var(--border);
+  background: var(--card);
+  box-shadow: none;
+}
+.dark .htc-staff .htc-calendar-week [data-cal-week-day][data-today="true"],
+html.dark:has(.htc-staff) .htc-calendar-week [data-cal-week-day][data-today="true"] {
+  background: var(--muted);
+  box-shadow: none;
+}
+
+/* Dark Mode — hospitality utilities follow staff dark surfaces (no warm canvas). */
+.dark .htc-staff .htc-hospitality-page,
+html.dark:has(.htc-staff) .htc-hospitality-page {
+  background: var(--background);
+}
+.dark .htc-staff .htc-hospitality-heading,
+.dark .htc-staff .htc-hospitality-intro,
+.dark .htc-staff .htc-hospitality-filter,
+.dark .htc-staff .htc-hospitality-section-label,
+.dark .htc-staff .htc-hospitality-toolbar,
+.dark .htc-staff .htc-hospitality-elevated,
+.dark .htc-staff .htc-hospitality-table,
+.dark .htc-staff .htc-catalog-section,
+.dark .htc-staff .htc-calendar-view-switcher,
+.dark .htc-staff .htc-calendar-month-nav-group,
+.dark .htc-staff .htc-calendar-filters,
+.dark .htc-staff .htc-calendar-schedule,
+.dark .htc-staff .htc-tours-workspace [data-tours-section],
+.dark .htc-staff .htc-tours-workspace [data-tours-followup],
+html.dark:has(.htc-staff) .htc-hospitality-heading,
+html.dark:has(.htc-staff) .htc-hospitality-intro,
+html.dark:has(.htc-staff) .htc-hospitality-filter,
+html.dark:has(.htc-staff) .htc-hospitality-section-label,
+html.dark:has(.htc-staff) .htc-hospitality-toolbar,
+html.dark:has(.htc-staff) .htc-hospitality-elevated,
+html.dark:has(.htc-staff) .htc-hospitality-table,
+html.dark:has(.htc-staff) .htc-catalog-section,
+html.dark:has(.htc-staff) .htc-calendar-view-switcher,
+html.dark:has(.htc-staff) .htc-calendar-month-nav-group,
+html.dark:has(.htc-staff) .htc-calendar-filters,
+html.dark:has(.htc-staff) .htc-calendar-schedule,
+html.dark:has(.htc-staff) .htc-tours-workspace [data-tours-section],
+html.dark:has(.htc-staff) .htc-tours-workspace [data-tours-followup] {
+  border-color: var(--border);
+  background: var(--card);
+  box-shadow: none;
+}
+.dark .htc-staff .htc-hospitality-intro.htc-hospitality-intro-accent,
+html.dark:has(.htc-staff) .htc-hospitality-intro.htc-hospitality-intro-accent {
+  border-left-color: var(--primary);
+}
+.dark .htc-staff .htc-tours-workspace [data-tours-section-header],
+.dark .htc-staff .htc-tours-workspace .htc-tours-archived,
+.dark .htc-staff .htc-tours-workspace .htc-tours-date,
+.dark .htc-staff .htc-tours-workspace .htc-tours-section-empty,
+.dark .htc-staff .htc-tours-workspace .htc-tours-empty-page,
+.dark .htc-staff .htc-tours-workspace .htc-tours-outcome-form,
+html.dark:has(.htc-staff) .htc-tours-workspace [data-tours-section-header],
+html.dark:has(.htc-staff) .htc-tours-workspace .htc-tours-archived,
+html.dark:has(.htc-staff) .htc-tours-workspace .htc-tours-date,
+html.dark:has(.htc-staff) .htc-tours-workspace .htc-tours-section-empty,
+html.dark:has(.htc-staff) .htc-tours-workspace .htc-tours-empty-page,
+html.dark:has(.htc-staff) .htc-tours-workspace .htc-tours-outcome-form {
+  border-color: var(--border);
+  background: var(--muted);
+}
+.dark .htc-staff .htc-calendar-legend,
+html.dark:has(.htc-staff) .htc-calendar-legend {
+  border-color: var(--border);
+  background: var(--muted);
+}
+.dark .htc-staff .htc-calendar-filters [data-taxonomy-chip][data-active="true"],
+.dark .htc-staff .htc-calendar-month-grid [data-cal-day-cell][data-selected="true"],
+html.dark:has(.htc-staff) .htc-calendar-filters [data-taxonomy-chip][data-active="true"],
+html.dark:has(.htc-staff) .htc-calendar-month-grid [data-cal-day-cell][data-selected="true"] {
+  background: var(--htc-hover-lift);
+  border-color: var(--border);
+  box-shadow: none;
+}
+
+/* Calendar month cell hover — white lift (light uses soft-blush). */
+.dark .htc-staff .htc-calendar-month-grid [data-cal-day-cell]:hover,
+html.dark:has(.htc-staff) .htc-calendar-month-grid [data-cal-day-cell]:hover {
+  background: var(--htc-hover-lift);
+}
+
+/* Month/Week/Day active chip — white on dark (not soft-sage primary fill). */
+.dark .htc-staff .htc-calendar-view-switcher [data-cal-view][data-active="true"],
+html.dark:has(.htc-staff) .htc-calendar-view-switcher [data-cal-view][data-active="true"] {
+  background: var(--true-white);
+  color: var(--forest-sage);
+}
+
+.dark .htc-staff .htc-calendar-view-switcher [data-cal-view][data-active="false"]:hover,
+html.dark:has(.htc-staff) .htc-calendar-view-switcher [data-cal-view][data-active="false"]:hover {
+  background: var(--htc-hover-lift);
+  color: var(--heading);
+}
+.dark .htc-staff .htc-calendar-month-grid [data-cal-day-outside],
+html.dark:has(.htc-staff) .htc-calendar-month-grid [data-cal-day-outside] {
+  background: color-mix(in oklch, var(--muted) 70%, var(--card));
+}
+.dark .htc-staff .htc-calendar-schedule [data-cal-schedule-empty],
+html.dark:has(.htc-staff) .htc-calendar-schedule [data-cal-schedule-empty] {
+  border-color: var(--border);
+  background: var(--muted);
+}
+.dark .htc-staff .htc-hospitality-table [data-slot="table-header"] tr,
+.dark .htc-staff .htc-catalog-major,
+.dark .htc-staff .htc-catalog-category,
+html.dark:has(.htc-staff) .htc-hospitality-table [data-slot="table-header"] tr,
+html.dark:has(.htc-staff) .htc-catalog-major,
+html.dark:has(.htc-staff) .htc-catalog-category {
+  background: var(--muted);
+  border-color: var(--border);
+}
+.dark .htc-staff .htc-hospitality-table [data-slot="table-body"] tr[data-attention="true"],
+html.dark:has(.htc-staff) .htc-hospitality-table [data-slot="table-body"] tr[data-attention="true"] {
+  background: var(--card);
+  box-shadow: inset 3px 0 0 0 color-mix(in oklch, var(--destructive) 55%, transparent);
+}
+.dark .htc-staff .htc-catalog-item,
+.dark .htc-staff .htc-catalog-item-nested,
+html.dark:has(.htc-staff) .htc-catalog-item,
+html.dark:has(.htc-staff) .htc-catalog-item-nested {
+  background: var(--card);
 }
 
 /* CRM dark remap under staff scope (html.dark from next-themes) */
 .dark .htc-staff,
 html.dark:has(.htc-staff) {
-  --warm-gray: var(--forest-sage);
+  /*
+   * Staff dark greens use light-mode botanical (#446B56), not army olive
+   * forest/heritage sage. Card is a slight white lift off the canvas.
+   */
+  --htc-botanical: #446b56;
+  --warm-gray: var(--htc-botanical);
   --header-linen: color-mix(in oklch, var(--taupe-dark) 70%, white);
-  --natural-cream: var(--heritage-sage);
+  --natural-cream: color-mix(in oklch, var(--htc-botanical) 86%, var(--true-white));
 
-  --background: var(--forest-sage);
+  --background: var(--htc-botanical);
   --foreground: var(--true-white);
   --heading: var(--true-white);
-  --card: var(--heritage-sage);
+  --card: color-mix(in oklch, var(--htc-botanical) 86%, var(--true-white));
   --card-foreground: var(--true-white);
-  --popover: var(--heritage-sage);
+  --popover: color-mix(in oklch, var(--htc-botanical) 86%, var(--true-white));
   --popover-foreground: var(--true-white);
-  --muted: var(--heritage-sage);
-  --muted-foreground: color-mix(in oklch, var(--true-white) 78%, transparent);
-  --secondary: var(--heritage-sage);
+  --muted: color-mix(in oklch, var(--htc-botanical) 86%, var(--true-white));
+  --muted-foreground: color-mix(in oklch, var(--true-white) 86%, transparent);
+  --secondary: color-mix(in oklch, var(--htc-botanical) 86%, var(--true-white));
   --secondary-foreground: var(--true-white);
-  --border: color-mix(in oklch, var(--true-white) 20%, transparent);
-  --input: color-mix(in oklch, var(--true-white) 24%, transparent);
+  --border: color-mix(in oklch, var(--true-white) 28%, transparent);
+  --input: color-mix(in oklch, var(--true-white) 32%, transparent);
   --primary: var(--soft-sage);
-  --primary-foreground: var(--forest-sage);
+  --primary-foreground: color-mix(in oklch, var(--htc-botanical) 62%, black);
   --ring: var(--soft-sage);
 
   --sidebar: color-mix(in oklch, var(--taupe-dark) 70%, white);
-  --sidebar-foreground: var(--forest-sage);
-  --sidebar-primary: var(--heritage-sage);
+  --sidebar-foreground: var(--htc-botanical);
+  --sidebar-primary: var(--htc-botanical);
   --sidebar-primary-foreground: var(--true-white);
-  --sidebar-accent: color-mix(in oklch, var(--true-white) 38%, transparent);
-  --sidebar-accent-foreground: var(--forest-sage);
-  --sidebar-border: color-mix(in oklch, var(--forest-sage) 20%, transparent);
-  --sidebar-ring: var(--heritage-sage);
+  /* Active/hover nav on cream sidebar — pure white, not sage-tinted gray-green. */
+  --sidebar-accent: var(--true-white);
+  --sidebar-accent-foreground: var(--htc-botanical);
+  --sidebar-border: color-mix(in oklch, var(--htc-botanical) 20%, transparent);
+  --sidebar-ring: var(--htc-botanical);
+
+  /*
+   * HTC hospitality tokens were light-mode only (Waves A–G out of dark scope).
+   * Without this remap, calm-blue / eucalyptus / blush / ivory fills stay pastel
+   * while --foreground/--heading flip to white → illegible white-on-light.
+   * Accent hues (--htc-eucalyptus, --htc-blush, --htc-botanical) stay as brand.
+   */
+  --htc-workspace: var(--background);
+  --htc-canvas: var(--background);
+  --htc-eucalyptus-surface: color-mix(in oklch, var(--soft-sage) 22%, var(--card));
+  --htc-eucalyptus-surface-pale: color-mix(in oklch, var(--soft-sage) 14%, var(--card));
+  --htc-border-warm: var(--border);
+  /*
+   * Blush/calm must NOT mix into green --card (pink+olive → muddy ochre).
+   * Mix into neutral dark bases so attention washes stay mauve / cool slate.
+   * Generic row/tile hovers use --htc-hover-lift (white lift) instead of blush.
+   */
+  --htc-soft-blush: color-mix(in oklch, var(--htc-blush) 38%, #2c2829);
+  --htc-leaf-muted: color-mix(in oklch, var(--soft-sage) 55%, var(--true-white));
+  --htc-soft-sage: color-mix(in oklch, var(--soft-sage) 35%, var(--card));
+  --htc-botanical-pale: color-mix(in oklch, var(--soft-sage) 16%, var(--card));
+  --htc-green-mist: color-mix(in oklch, var(--soft-sage) 12%, var(--card));
+  --htc-soft-rose: color-mix(in oklch, var(--htc-blush) 48%, #2c2829);
+  --htc-petal: color-mix(in oklch, var(--htc-blush) 32%, #2c2829);
+  --htc-blush-pale: color-mix(in oklch, var(--htc-blush) 22%, #2c2829);
+  --htc-linen: color-mix(in oklch, var(--taupe-dark) 18%, var(--card));
+  --htc-oatmeal: color-mix(in oklch, var(--taupe-dark) 14%, var(--card));
+  --htc-ivory: var(--card);
+  --htc-warm-pale: color-mix(in oklch, var(--taupe-dark) 12%, var(--card));
+  --htc-calm-blue: color-mix(in oklch, #7a96ad 28%, #252a2e);
+  --htc-calm-blue-deep: color-mix(in oklch, #7a96ad 42%, #252a2e);
+  --htc-border-calm: color-mix(in oklch, #7a96ad 28%, var(--border));
+  --htc-calm-accent: color-mix(in oklch, #9bb4c7 72%, var(--true-white));
+  --htc-hover-lift: color-mix(in oklch, var(--true-white) 10%, var(--card));
+  --panel-blush: var(--htc-soft-blush);
+  --panel-sage: color-mix(in oklch, var(--soft-sage) 22%, var(--card));
+
+  /* List/segment selected washes — white lift, not sage-on-green. */
+  --selected: var(--htc-hover-lift);
+  --selected-foreground: var(--heading);
+  --selected-border: var(--border);
+}
+
+/*
+ * DARK STAFF — HTC hardcoded light-surface companions.
+ * Wave F/G utilities paint `#ffffff` / mix-to-white. Token remap above heals
+ * `var(--htc-*)` consumers; these companions heal hardcoded whites only.
+ * Light-mode selectors above are intentionally untouched.
+ */
+.dark .htc-staff .htc-working-card,
+.dark .htc-staff .htc-surface-working,
+.dark .htc-staff .htc-group-shell [data-slot="card"],
+.dark .htc-staff .htc-group-shell .htc-surface-working,
+.dark .htc-staff .htc-report-saved-shell [data-slot="card"],
+.dark .htc-staff .htc-merge-field-chip,
+.dark .htc-staff .htc-settings-directory-card,
+.dark .htc-staff .htc-feedback-channel-card,
+.dark .htc-staff .htc-toolbox-card,
+.dark .htc-staff .htc-help-article-list,
+.dark .htc-staff .htc-lead-tour-appt,
+.dark .htc-staff .htc-lead-tour-confirm-secondary,
+.dark .htc-staff .htc-lead-tour-action-secondary,
+.dark .htc-staff .htc-lead-tour-personal-link-btn,
+.dark .htc-staff .htc-pipeline-lead-card,
+html.dark:has(.htc-staff) .htc-working-card,
+html.dark:has(.htc-staff) .htc-surface-working,
+html.dark:has(.htc-staff) .htc-group-shell [data-slot="card"],
+html.dark:has(.htc-staff) .htc-group-shell .htc-surface-working,
+html.dark:has(.htc-staff) .htc-report-saved-shell [data-slot="card"],
+html.dark:has(.htc-staff) .htc-merge-field-chip,
+html.dark:has(.htc-staff) .htc-settings-directory-card,
+html.dark:has(.htc-staff) .htc-feedback-channel-card,
+html.dark:has(.htc-staff) .htc-toolbox-card,
+html.dark:has(.htc-staff) .htc-help-article-list,
+html.dark:has(.htc-staff) .htc-lead-tour-appt,
+html.dark:has(.htc-staff) .htc-lead-tour-confirm-secondary,
+html.dark:has(.htc-staff) .htc-lead-tour-action-secondary,
+html.dark:has(.htc-staff) .htc-lead-tour-personal-link-btn,
+html.dark:has(.htc-staff) .htc-pipeline-lead-card {
+  background: var(--card);
+  background-color: var(--card);
+  border-color: var(--border);
+  box-shadow: none;
+}
+
+.dark .htc-staff .htc-working-card > [data-slot="card-footer"],
+html.dark:has(.htc-staff) .htc-working-card > [data-slot="card-footer"] {
+  background-color: var(--card);
+  border-top-color: var(--border);
+}
+
+.dark .htc-staff .htc-working-card > [data-slot="card-header"],
+html.dark:has(.htc-staff) .htc-working-card > [data-slot="card-header"] {
+  background-color: var(--htc-eucalyptus-surface);
+  border-bottom-color: var(--border);
+}
+
+.dark .htc-staff .htc-working-card.htc-working-card-guidance > [data-slot="card-header"],
+html.dark:has(.htc-staff) .htc-working-card.htc-working-card-guidance > [data-slot="card-header"] {
+  background-color: var(--htc-calm-blue);
+  border-bottom-color: var(--htc-border-calm);
+}
+
+/*
+ * Generic row/tile hovers — soft white lift only (not blush).
+ * Blush stays reserved for true attention surfaces below.
+ */
+.dark .htc-staff .htc-working-row:hover,
+.dark .htc-staff .htc-hospitality-table tbody tr:hover,
+.dark .htc-staff .htc-hospitality-table [data-slot="table-body"] tr:hover,
+.dark .htc-staff .htc-merge-field-chip:hover,
+.dark .htc-staff .htc-merge-field-chip:focus-visible,
+.dark .htc-staff .htc-notification-row:hover,
+.dark .htc-staff .htc-notification-row:focus-visible,
+.dark .htc-staff .htc-settings-directory-card:hover,
+.dark .htc-staff .htc-settings-directory-card:focus-visible,
+.dark .htc-staff .htc-feedback-channel-card:hover,
+.dark .htc-staff .htc-feedback-channel-card:focus-visible,
+.dark .htc-staff .htc-toolbox-card:hover,
+.dark .htc-staff .htc-toolbox-card:focus-visible,
+.dark .htc-staff .htc-help-article-row:hover,
+.dark .htc-staff .htc-help-article-row:focus-visible,
+.dark .htc-staff .htc-focus-attention-row:hover,
+.dark .htc-staff .htc-focus-attention-row:focus-within,
+.dark .htc-staff .htc-tours-row:hover,
+.dark .htc-staff .htc-pipeline-lead-card:hover,
+.dark .htc-staff .htc-pipeline-lead-card:focus-visible,
+html.dark:has(.htc-staff) .htc-working-row:hover,
+html.dark:has(.htc-staff) .htc-hospitality-table tbody tr:hover,
+html.dark:has(.htc-staff) .htc-hospitality-table [data-slot="table-body"] tr:hover,
+html.dark:has(.htc-staff) .htc-merge-field-chip:hover,
+html.dark:has(.htc-staff) .htc-merge-field-chip:focus-visible,
+html.dark:has(.htc-staff) .htc-notification-row:hover,
+html.dark:has(.htc-staff) .htc-notification-row:focus-visible,
+html.dark:has(.htc-staff) .htc-settings-directory-card:hover,
+html.dark:has(.htc-staff) .htc-settings-directory-card:focus-visible,
+html.dark:has(.htc-staff) .htc-feedback-channel-card:hover,
+html.dark:has(.htc-staff) .htc-feedback-channel-card:focus-visible,
+html.dark:has(.htc-staff) .htc-toolbox-card:hover,
+html.dark:has(.htc-staff) .htc-toolbox-card:focus-visible,
+html.dark:has(.htc-staff) .htc-help-article-row:hover,
+html.dark:has(.htc-staff) .htc-help-article-row:focus-visible,
+html.dark:has(.htc-staff) .htc-focus-attention-row:hover,
+html.dark:has(.htc-staff) .htc-focus-attention-row:focus-within,
+html.dark:has(.htc-staff) .htc-tours-row:hover,
+html.dark:has(.htc-staff) .htc-pipeline-lead-card:hover,
+html.dark:has(.htc-staff) .htc-pipeline-lead-card:focus-visible {
+  background: var(--htc-hover-lift);
+  background-color: var(--htc-hover-lift);
+  border-color: var(--border);
+}
+
+/* True attention — keep mauve soft-blush (remapped above), not hover-lift. */
+.dark .htc-staff .htc-hospitality-table [data-slot="table-body"] tr[data-attention="true"]:hover,
+html.dark:has(.htc-staff) .htc-hospitality-table [data-slot="table-body"] tr[data-attention="true"]:hover {
+  background: var(--htc-soft-blush);
+  background-color: var(--htc-soft-blush);
+}
+
+.dark .htc-staff .htc-badge-active,
+.dark .htc-staff [data-slot="badge"].htc-badge-active,
+.dark .htc-staff .htc-badge-attention,
+.dark .htc-staff [data-slot="badge"].htc-badge-attention,
+html.dark:has(.htc-staff) .htc-badge-active,
+html.dark:has(.htc-staff) [data-slot="badge"].htc-badge-active,
+html.dark:has(.htc-staff) .htc-badge-attention,
+html.dark:has(.htc-staff) [data-slot="badge"].htc-badge-attention {
+  color: var(--heading);
+  border-color: var(--border);
+}
+
+.dark .htc-staff .htc-badge-attention,
+.dark .htc-staff [data-slot="badge"].htc-badge-attention,
+.dark .htc-staff .htc-report-kpi[data-tone="outstanding"],
+.dark .htc-staff .htc-report-metric-tile[data-tone="outstanding"],
+.dark .htc-staff .htc-task-overdue-count,
+.dark .htc-staff .htc-task-overdue-banner,
+html.dark:has(.htc-staff) .htc-badge-attention,
+html.dark:has(.htc-staff) [data-slot="badge"].htc-badge-attention,
+html.dark:has(.htc-staff) .htc-report-kpi[data-tone="outstanding"],
+html.dark:has(.htc-staff) .htc-report-metric-tile[data-tone="outstanding"],
+html.dark:has(.htc-staff) .htc-task-overdue-count,
+html.dark:has(.htc-staff) .htc-task-overdue-banner {
+  background: var(--htc-soft-blush);
+  background-color: var(--htc-soft-blush);
+  border-color: color-mix(in oklch, var(--htc-blush) 45%, var(--border));
+}
+
+.dark .htc-staff .htc-task-overdue-count,
+.dark .htc-staff .htc-task-overdue-banner,
+html.dark:has(.htc-staff) .htc-task-overdue-count,
+html.dark:has(.htc-staff) .htc-task-overdue-banner {
+  color: color-mix(in oklch, var(--htc-blush) 35%, var(--true-white));
+}
+
+html.dark:has(.htc-staff) [data-slot="tabs-list"] {
+  background: var(--card);
+  border-color: var(--border);
+}
+
+/*
+ * DARK STAFF — status ink legibility.
+ * Light-mode warning/error utilities (amber-800 text, amber-50 fills, dusty-rose
+ * destructive/taupe warning ink) drop to ~1–2.6:1 on Forest/Heritage Sage.
+ * Remap them to light ink + translucent tints so every label clears WCAG AA
+ * (≥4.5:1 on Heritage Sage cards). Elements that already declare their own
+ * dark: color for that property are left alone.
+ */
+html.dark:has(.htc-staff) :is(
+  [class~="text-amber-500"], [class~="text-amber-600"], [class~="text-amber-700"],
+  [class~="text-amber-800"], [class~="text-amber-900"], [class~="text-amber-950"],
+  [class*="text-amber-800/"], [class*="text-amber-900/"],
+  [class~="text-yellow-700"], [class~="text-yellow-900"], [class~="text-orange-700"]
+):not([class*="dark:text-"]) {
+  color: #fef3c7;
+}
+
+html.dark:has(.htc-staff) :is(
+  [class~="text-red-500"], [class~="text-red-600"], [class~="text-red-700"],
+  [class~="text-red-800"], [class~="text-red-900"],
+  [class~="text-destructive"]
+):not([class*="dark:text-"]) {
+  color: color-mix(in oklch, var(--dusty-rose) 22%, var(--true-white));
+}
+
+html.dark:has(.htc-staff) [class~="text-warning"]:not([class*="dark:text-"]) {
+  color: color-mix(in oklch, var(--taupe-dark) 22%, var(--true-white));
+}
+
+html.dark:has(.htc-staff) :is(
+  [class~="bg-amber-50"], [class*="bg-amber-50/"], [class~="bg-amber-100"],
+  [class~="bg-yellow-50"], [class~="bg-orange-50"]
+):not([class*="dark:bg-"]) {
+  background-color: color-mix(in oklch, #f59e0b 16%, transparent);
+}
+
+html.dark:has(.htc-staff) :is(
+  [class~="bg-red-50"], [class~="bg-red-100"], [class*="bg-rose-50/"]
+):not([class*="dark:bg-"]) {
+  background-color: color-mix(in oklch, var(--dusty-rose) 20%, transparent);
+}
+
+html.dark:has(.htc-staff) :is(
+  [class~="border-amber-100"], [class~="border-amber-200"], [class*="border-amber-200/"],
+  [class~="border-amber-300"], [class*="border-amber-300/"], [class~="border-orange-100"]
+):not([class*="dark:border-"]) {
+  border-color: color-mix(in oklch, #fcd34d 50%, transparent);
+}
+
+html.dark:has(.htc-staff) :is(
+  [class~="border-red-100"], [class~="border-red-200"], [class~="border-red-300"],
+  [class*="border-rose-200/"]
+):not([class*="dark:border-"]) {
+  border-color: color-mix(in oklch, var(--dusty-rose) 55%, transparent);
 }
 
 /*
@@ -302,6 +3627,15 @@ html:has(.htc-staff) [data-slot="select-trigger"] {
   border-radius: var(--radius-sm);
   --tw-ring-shadow: 0 0 #0000;
   box-shadow: none;
+  color: var(--foreground);
+}
+
+/* Dark staff: never inherit light-brand ink into translucent controls */
+html.dark:has(.htc-staff) [data-slot="input"],
+html.dark:has(.htc-staff) [data-slot="textarea"],
+html.dark:has(.htc-staff) [data-slot="select-trigger"] {
+  color: var(--foreground);
+  background-color: color-mix(in oklch, var(--true-white) 12%, transparent);
 }
 
 html:has(.htc-staff) [data-slot="input"]:focus-visible,
@@ -350,11 +3684,22 @@ html:has(.htc-staff) [data-slot="tooltip-content"] {
 
 html:has(.htc-staff) [data-slot="tabs-list"] {
   border-radius: var(--radius-sm);
+  /* Rule K/J — white tab chrome (not muted gray); selected keeps eucalyptus. */
+  background: #ffffff;
+  border-color: var(--htc-border-warm);
 }
 
 html:has(.htc-staff) [data-slot="tabs-trigger"] {
   border-radius: calc(var(--radius-sm) * 0.85);
   box-shadow: none;
+}
+
+/* Rule K/J — staff select + text fields are white working controls, not gray/canvas washes.
+   Override component `bg-transparent` so canvas linen does not show through. */
+html:has(.htc-staff) [data-slot="select-trigger"],
+html:has(.htc-staff) [data-slot="input"],
+html:has(.htc-staff) [data-slot="textarea"] {
+  background-color: #ffffff;
 }
 
 html:has(.htc-staff) [data-slot="table-head"] {
@@ -417,24 +3762,33 @@ html:has(.htc-staff) [data-slot="table"] {
   --popover: var(--heritage-sage);
   --popover-foreground: var(--true-white);
   --primary: var(--soft-sage);
-  --primary-foreground: var(--forest-sage);
+  /* Forest on soft-sage is ~4.21:1 — below AA for normal button labels.
+     Mix toward black so primary actions clear 4.5:1 without leaving the palette. */
+  --primary-foreground: color-mix(in oklch, var(--forest-sage) 62%, black);
   --secondary: var(--heritage-sage);
   --secondary-foreground: var(--true-white);
   --muted: var(--heritage-sage);
-  --muted-foreground: color-mix(in oklch, var(--true-white) 78%, transparent);
+  --muted-foreground: color-mix(in oklch, var(--true-white) 86%, transparent);
   --accent: var(--heritage-sage);
   --accent-foreground: var(--true-white);
   --destructive: var(--dusty-rose);
-  --destructive-foreground: var(--forest-sage);
+  /* Same ink as light: black on dusty-rose (~10:1). Forest-sage on dusty fails AA. */
+  --destructive-foreground: var(--black);
   --success: var(--soft-sage);
   --success-foreground: var(--forest-sage);
   --warning: var(--taupe-dark);
-  --warning-foreground: var(--forest-sage);
+  /* True White — forest-sage on Heritage Sage cards fails WCAG AA (~1.3:1);
+     dashboard "Follow up" and other warning labels must stay legible in dark. */
+  --warning-foreground: var(--true-white);
   --info: var(--soft-sage);
   --info-foreground: var(--forest-sage);
-  --border: color-mix(in oklch, var(--true-white) 20%, transparent);
-  --input: color-mix(in oklch, var(--true-white) 24%, transparent);
+  --border: color-mix(in oklch, var(--true-white) 28%, transparent);
+  --input: color-mix(in oklch, var(--true-white) 32%, transparent);
   --ring: var(--soft-sage);
+
+  --selected: color-mix(in oklch, var(--primary) 28%, var(--card));
+  --selected-foreground: var(--primary);
+  --selected-border: color-mix(in oklch, var(--primary) 55%, transparent);
 
   --chart-1: var(--soft-sage);
   --chart-2: var(--true-white);
@@ -448,14 +3802,17 @@ html:has(.htc-staff) [data-slot="table"] {
   --sidebar-foreground: var(--forest-sage);
   --sidebar-primary: var(--heritage-sage);
   --sidebar-primary-foreground: var(--true-white);
-  --sidebar-accent: color-mix(in oklch, var(--true-white) 38%, transparent);
+  --sidebar-accent: color-mix(in oklch, var(--soft-sage) 32%, var(--sidebar));
   --sidebar-accent-foreground: var(--forest-sage);
   --sidebar-border: color-mix(in oklch, var(--forest-sage) 20%, transparent);
   --sidebar-ring: var(--heritage-sage);
 
   /* Calendar item dot colors (dark mode — light dots on dark surface) */
-  --cal-event:       #C4AEDA;               /* light lavender — keeps the purple identity legible on dark, rather than reverting to plain white */
-  --cal-blocked:     #9A9A9A;               /* lighter charcoal — the light-mode #5A5A5A would vanish against a dark surface */
+  --cal-event:       #C4AEDA;               /* light lavender — keeps the purple identity legible on dark */
+  --cal-tour:        #7EB0D8;               /* lighter clear blue for dark surfaces */
+  --cal-date-hold:   #F5D76E;               /* brighter yellow for dark surfaces */
+  --cal-blocked:     #E8B4B7;               /* lighter dusty-rose destructive red */
+  --cal-meeting:     #E5A85C;               /* lighter orange for Appointment on dark */
 }
 
 @layer base {
@@ -465,8 +3822,21 @@ html:has(.htc-staff) [data-slot="table"] {
   body {
     @apply bg-background text-foreground;
   }
+  /*
+   * Root type scale — 17px, deliberately global across all three
+   * experiences (staff, couple portal, vendor). The staff rules above are
+   * already expressed in rem, so they resolve to their intended larger
+   * sizes from this root alone (0.9375rem → ~16px card/table body,
+   * 1.0625rem → ~18px card titles). Do not also raise those rem values;
+   * that would apply the increase twice.
+   *
+   * Utilities pinned in px (text-[10px] and friends) intentionally do not
+   * scale — badges, calendar chips, and other genuinely micro text stay
+   * micro.
+   */
   html {
     @apply font-sans;
+    font-size: 17px;
   }
   h1,
   h2,
@@ -474,6 +3844,76 @@ html:has(.htc-staff) [data-slot="table"] {
   h4 {
     @apply font-heading text-heading;
   }
+
+  input[type="checkbox"],
+  input[type="radio"] {
+    accent-color: var(--primary);
+  }
+
+  input[type="checkbox"]:focus-visible,
+  input[type="radio"]:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+}
+
+/*
+ * Always-light brand locks (login / welcome / public inquiry). Keep control
+ * ink readable when html.dark is set from system preference. The lock root
+ * re-pins light tokens; these rules stop native controls and inherited color
+ * from picking up the dark foreground.
+ */
+[data-theme-lock="light"] {
+  color-scheme: light;
+  color: var(--foreground);
+}
+
+[data-theme-lock="light"] input:not([data-slot]):not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="file"]):not([type="submit"]):not([type="button"]):not([type="image"]):not([type="reset"]),
+[data-theme-lock="light"] textarea:not([data-slot]),
+[data-theme-lock="light"] select:not([data-slot]) {
+  color: var(--foreground);
+  background-color: var(--true-white);
+  border-color: var(--border);
+}
+
+[data-theme-lock="light"] [data-slot="input"],
+[data-theme-lock="light"] [data-slot="textarea"],
+[data-theme-lock="light"] [data-slot="select-trigger"] {
+  color: var(--foreground);
+  background-color: transparent;
+}
+
+/*
+ * Native <select> discoverability (client portal + vendor switchers).
+ * Browser-default selects often look like empty text boxes until focused —
+ * especially in dark theme. Force a chevron + token ink/surface.
+ */
+.htc-native-select {
+  -webkit-appearance: none;
+  appearance: none;
+  color: var(--foreground);
+  background-color: var(--background);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2371717a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.55rem center;
+  background-size: 1rem 1rem;
+  padding-right: 2rem;
+  cursor: pointer;
+}
+
+.dark .htc-native-select,
+[data-theme="dark"] .htc-native-select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23a1a1aa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+}
+
+.htc-native-select:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.htc-native-select:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
 }
 
 /* ---- Confetti animation (booking celebration) ----------------------------- */

@@ -63,7 +63,7 @@ export default async function ReportingOverviewPage({ searchParams }: Props) {
   ]);
 
   return (
-    <div className="space-y-6">
+    <div className="htc-hospitality-page space-y-6">
       <ReportHeader
         title="Overview"
         description="How the business moved during the selected period."

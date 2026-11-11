@@ -37,7 +37,7 @@ export default async function EventsReportPage({ searchParams }: Props) {
   }));
 
   return (
-    <div className="space-y-6">
+    <div className="htc-hospitality-page space-y-6">
       <ReportHeader title="Events" description="Events on the calendar in this date range, grouped by type." />
       <DateRangeControl current={range.preset} label={range.label} />
 

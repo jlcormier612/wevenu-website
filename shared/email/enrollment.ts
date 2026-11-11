@@ -41,6 +41,8 @@ function baseVars(ctx: EnrollmentEmailContext): EmailTemplateVars {
     implementationTimeline: ctx.implementationTimeline ?? null,
     activateUrl: ctx.activateUrl ?? null,
     intakeUrl: ctx.intakeUrl ?? null,
+    onboardingType: ctx.onboardingType,
+    whiteGlove: ctx.onboardingType === "white_glove" ? "true" : "false",
   };
 }
 

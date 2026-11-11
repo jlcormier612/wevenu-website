@@ -11,7 +11,7 @@ export default async function SavedReportsPage() {
   await ensureSavedReportStartersForCurrentVenue();
   const reports = await getSavedReports();
   return (
-    <div className="space-y-6">
+    <div className="htc-hospitality-page space-y-6">
       <PageHeader
         title="Saved Reports"
         description="Reports you've saved so you can quickly return to them, or have them delivered to you. Hello to Cheers starters point at Sales, Bookings, Revenue, and Events."
