@@ -132,3 +132,4 @@ describe("comparePngBuffers — genuine visual regression guard", () => {
     }
   });
 });
+
