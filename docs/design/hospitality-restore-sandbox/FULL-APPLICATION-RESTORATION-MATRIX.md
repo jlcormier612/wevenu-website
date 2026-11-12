@@ -2,7 +2,7 @@
 
 **Verdict:** RESTORATION IN PROGRESS — not FULLY RESTORED / GREEN  
 **Serving Sandbox (preserved):** `df1aa331` — Production untouched.  
-**Combined candidate (undeployed):** draft PR [#33](https://github.com/jlcormier612/wevenu-website/pull/33) @ `e9f99163` (#30+#31+#32).  
+**Combined candidate (undeployed):** draft PR [#33](https://github.com/jlcormier612/wevenu-website/pull/33) @ `939c8f07` (#30+#31+#32).  
 **Release plan:** `SANDBOX-RELEASE-MANIFEST.md`  
 **Evidence wave:** `recovery-evidence/matrix-wave/` (56 route PNGs + corrected-path follow-up)
 
