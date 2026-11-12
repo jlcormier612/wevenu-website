@@ -16,7 +16,7 @@ export default async function ReferralsSettingsPage() {
       <div className="htc-hospitality-heading htc-hospitality-intro-accent">
         <PageHeader
           title="Refer a Venue"
-          description="Share Hello to Cheers with another venue — and earn a thank-you credit when they join."
+          description="Share the Luv with another venue and earn a free month of Hello to Cheers when they become a qualifying paying customer."
         />
       </div>
       <SettingsTabs />

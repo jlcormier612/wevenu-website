@@ -172,14 +172,14 @@ export function ReferAVenuePage() {
     <div className="space-y-6">
       <div className="space-y-3">
         <p className="text-sm font-medium tracking-[0.14em] text-[color:var(--heritage-sage)] uppercase">
-          Share the Luv
+          A little thank-you for spreading the word
         </p>
         <h1 className="font-serif text-3xl tracking-tight text-foreground sm:text-4xl">
           Share the Luv. Get a free month.
         </h1>
         <p className="max-w-2xl text-base text-muted-foreground">
-          Know a venue that could use a little more ease and a lot less busywork? We&apos;d
-          love an introduction!
+          Know another venue that could use a little more ease and a lot less busywork?
+          We&apos;d love an introduction!
         </p>
       </div>
 
@@ -193,13 +193,17 @@ export function ReferAVenuePage() {
             you with a free month of your own subscription.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-2 text-sm text-foreground/80">
+        <CardContent className="space-y-3 text-sm text-foreground/80">
           <p className="font-medium text-heading">And yes, you can earn more than one!</p>
           <p>
-            Every new qualifying venue you refer brings another free month your way. Credits
-            are one-time subscription thank-yous after eligibility — not a permanent discount —
-            and apply after the referred venue has remained paying for the qualification window
-            (typically 30 days) with settled payment.
+            Every new qualifying venue you refer brings another free month your way.
+          </p>
+          <p>
+            Qualifying referrals are new, independently paying venues. Your thank-you is a
+            one-time credit equal to one month of your applicable subscription after the
+            referred venue has remained paying for 30 days with settled payment. Self-referrals,
+            duplicates, and refunded or disputed purchases do not qualify. Complete program
+            details follow the Refer a Venue policy applied at reward time.
           </p>
         </CardContent>
       </Card>
@@ -252,7 +256,7 @@ export function ReferAVenuePage() {
                 <p className="text-sm text-destructive">{message}</p>
               ) : null}
               <Button type="submit" disabled={busy} size="lg">
-                {busy ? "Sending…" : "Share the Luv — Refer a Venue"}
+                {busy ? "Sending…" : "Share the Luv"}
               </Button>
             </form>
           )}
