@@ -100,8 +100,8 @@ export function assignUniqueCompositionColors(slices: { key: string }[]): string
     let chosen: string | null = null;
     for (let step = 0; step < COMPOSITION_PALETTE.length; step++) {
       const candidate = COMPOSITION_PALETTE[(start + step) % COMPOSITION_PALETTE.length]!;
+      // Reserved neutrals are not palette members — uniqueness is via `used` only.
       if (used.has(candidate)) continue;
-      if (candidate === NOT_RECORDED_COLOR || candidate === OTHER_COLOR) continue;
       chosen = candidate;
       break;
     }
