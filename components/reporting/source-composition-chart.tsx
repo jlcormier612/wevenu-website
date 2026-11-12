@@ -9,72 +9,16 @@ import Link from "next/link";
 
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  OTHER_SOURCE_KEY,
+  buildDisplayComposition,
+  type CompositionSlice,
+  type DisplayCompositionSlice,
+} from "@/lib/reporting/composition-display";
 
-export type CompositionSlice = {
-  key: string;
-  label: string;
-  count: number;
-  percent: number;
-};
+export type { CompositionSlice };
 
-/**
- * Hospitality palette ordered to alternate dark / light / rose / taupe so
- * adjacent doughnut segments stay distinguishable. Never invent off-brand hues.
- */
-const SLICE_COLORS = [
-  "var(--chart-1)", // heritage sage (dark)
-  "var(--chart-5)", // soft sage (light)
-  "var(--chart-4)", // dusty rose
-  "var(--chart-3)", // taupe
-  "var(--chart-2)", // forest sage (dark) — separated from chart-1 by three steps
-  "color-mix(in oklch, var(--soft-sage) 55%, white)",
-  "color-mix(in oklch, var(--dusty-rose) 55%, white)",
-  "color-mix(in oklch, var(--taupe-dark) 45%, white)",
-  "color-mix(in oklch, var(--heritage-sage) 55%, var(--dusty-rose))",
-  "color-mix(in oklch, var(--soft-sage) 40%, var(--taupe-dark))",
-];
-
-const DARK_GREEN = new Set([
-  "var(--chart-1)",
-  "var(--chart-2)",
-]);
-
-function hashKey(key: string): number {
-  let h = 2166136261;
-  for (let i = 0; i < key.length; i++) {
-    h ^= key.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  return h >>> 0;
-}
-
-function preferredColor(key: string): string {
-  return SLICE_COLORS[hashKey(key) % SLICE_COLORS.length]!;
-}
-
-function nextDistinct(from: string, avoid: string | undefined): string {
-  const start = Math.max(0, SLICE_COLORS.indexOf(from));
-  for (let step = 0; step < SLICE_COLORS.length; step++) {
-    const candidate = SLICE_COLORS[(start + step) % SLICE_COLORS.length]!;
-    if (!avoid) return candidate;
-    if (candidate === avoid) continue;
-    if (DARK_GREEN.has(candidate) && DARK_GREEN.has(avoid)) continue;
-    return candidate;
-  }
-  return from;
-}
-
-/** Stable per-key colors with adjacent-segment conflict resolution. */
-export function assignCompositionColors(slices: { key: string }[]): string[] {
-  const colors: string[] = [];
-  for (let i = 0; i < slices.length; i++) {
-    const preferred = preferredColor(slices[i]!.key);
-    colors.push(nextDistinct(preferred, colors[i - 1]));
-  }
-  return colors;
-}
-
-type Arc = CompositionSlice & { color: string; d: string };
+type Arc = DisplayCompositionSlice & { d: string };
 
 function polar(cx: number, cy: number, r: number, angleDeg: number) {
   const rad = ((angleDeg - 90) * Math.PI) / 180;
@@ -124,22 +68,24 @@ function donutArc(
 }
 
 function buildArcs(slices: CompositionSlice[]): Arc[] {
-  const total = slices.reduce((a, s) => a + s.count, 0);
+  const display = buildDisplayComposition(slices);
+  const total = display.reduce((a, s) => a + s.count, 0);
   if (total <= 0) return [];
-  const colors = assignCompositionColors(slices);
   let angle = 0;
-  return slices.map((s, i) => {
+  return display.map((s) => {
     const sweep = (s.count / total) * 360;
     const start = angle;
     const end = angle + sweep;
     angle = end;
     return {
       ...s,
-      color: colors[i]!,
       d: donutArc(100, 100, 78, 48, start, end),
     };
   });
 }
+
+/** @deprecated Prefer buildDisplayComposition — kept for existing tests importing assignment. */
+export { assignUniqueCompositionColors as assignCompositionColors } from "@/lib/reporting/composition-display";
 
 export function SourceCompositionChart({
   title,
@@ -170,13 +116,15 @@ export function SourceCompositionChart({
 }) {
   const arcs = React.useMemo(() => buildArcs(slices), [slices]);
   const [activeKey, setActiveKey] = React.useState<string | null>(null);
+  const [otherOpen, setOtherOpen] = React.useState(false);
   const active = arcs.find((a) => a.key === activeKey) ?? null;
   const unit = total === 1 ? unitSingular : unitPlural;
 
+  const chartTotal = arcs.reduce((a, s) => a + s.count, 0);
   const ariaSummary =
     total === 0
       ? emptyText
-      : `${title}. Total ${total} ${unit}. ${slices
+      : `${title}. Total ${total} ${unit}. ${arcs
           .map((s) => `${s.label}: ${s.count}, ${s.percent} percent`)
           .join(". ")}.`;
 
@@ -228,7 +176,7 @@ export function SourceCompositionChart({
                   {active ? active.label : "Total"}
                 </p>
                 <p className="text-2xl font-semibold tabular-nums text-heading">
-                  {active ? active.count : total}
+                  {active ? active.count : chartTotal}
                 </p>
                 {active ? (
                   <p className="text-xs tabular-nums text-muted-foreground">{active.percent}%</p>
@@ -239,6 +187,7 @@ export function SourceCompositionChart({
             <ul className="max-h-[16rem] space-y-1.5 overflow-y-auto pr-1" aria-label={`${title} legend`}>
               {arcs.map((s) => {
                 const isActive = activeKey === s.key;
+                const isOther = s.key === OTHER_SOURCE_KEY && (s.members?.length ?? 0) > 0;
                 return (
                   <li key={s.key}>
                     <button
@@ -248,22 +197,49 @@ export function SourceCompositionChart({
                         "hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                         isActive && "bg-muted/50",
                       )}
+                      aria-expanded={isOther ? otherOpen : undefined}
                       onMouseEnter={() => setActiveKey(s.key)}
                       onMouseLeave={() => setActiveKey(null)}
                       onFocus={() => setActiveKey(s.key)}
                       onBlur={() => setActiveKey(null)}
+                      onClick={() => {
+                        if (isOther) setOtherOpen((o) => !o);
+                      }}
                     >
                       <span
                         className="h-2.5 w-2.5 shrink-0 rounded-full"
                         style={{ backgroundColor: s.color }}
                         aria-hidden
                       />
-                      <span className="min-w-0 flex-1 truncate text-foreground">{s.label}</span>
+                      <span className="min-w-0 flex-1 truncate text-foreground">
+                        {s.label}
+                        {isOther ? (
+                          <span className="ml-1 text-xs text-muted-foreground">
+                            ({s.members!.length}) {otherOpen ? "▾" : "▸"}
+                          </span>
+                        ) : null}
+                      </span>
                       <span className="shrink-0 tabular-nums font-medium text-heading">{s.count}</span>
                       <span className="w-10 shrink-0 text-right tabular-nums text-muted-foreground">
                         {s.percent}%
                       </span>
                     </button>
+                    {isOther && otherOpen ? (
+                      <ul
+                        className="mt-1 space-y-1 border-l border-border/60 pl-3"
+                        aria-label="Sources included in Other"
+                      >
+                        {s.members!.map((m) => (
+                          <li
+                            key={m.key}
+                            className="flex items-center gap-2 px-1.5 py-1 text-xs text-muted-foreground"
+                          >
+                            <span className="min-w-0 flex-1 truncate">{m.label}</span>
+                            <span className="shrink-0 tabular-nums">{m.count}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
                   </li>
                 );
               })}
