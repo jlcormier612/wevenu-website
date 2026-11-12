@@ -7,6 +7,8 @@
  * insights, or read/sync persisted recommendations on the critical path.
  * Server-only.
  */
+import { cache } from "react";
+
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getCommunicationObservations } from "@/lib/luv/communication-observations";
@@ -290,7 +292,8 @@ export async function loadFocusPopulationLeads(
 
 // ---- main service function --------------------------------------------------
 
-export async function getDashboardData(): Promise<DashboardData | null> {
+/** Request-scoped: header + focus islands can share one Dashboard assembly. */
+export const getDashboardData = cache(async function getDashboardData(): Promise<DashboardData | null> {
   if (!isSupabaseConfigured) return null;
   const venue = await forensicTime("auth_venue_resolution", () => getCurrentVenue());
   if (!venue) return null;
@@ -608,18 +611,27 @@ export async function getDashboardData(): Promise<DashboardData | null> {
       venueCreatedAt: venue.createdAt,
     }),
   };
-}
+});
 
 /**
  * Presentation layer over the Activation Engine's own checklist.
  * Articles are loaded only when the checklist card would actually show.
  */
 async function buildGuidedSetupChecklist(venue: Venue, activationScore: ActivationScore | null): Promise<OnboardingStatus> {
-  const items = activationScore?.checklist ?? [];
-
   // Continuous Setup Experience: this card stays hidden (show: false).
-  // Skip Success Library I/O when the UI will not render the checklist.
+  // Skip checklist / Success Library work on the Dashboard critical path.
   const show = false;
+  if (!show) {
+    return {
+      show: false,
+      steps: [],
+      completedCount: 0,
+      totalSteps: 0,
+      luvNudge: null,
+    };
+  }
+
+  const items = activationScore?.checklist ?? [];
   const incompleteKeys = items.filter((i) => !i.completed).map((i) => i.key);
   let articlesByGapKey = new Map<string, { title: string; slug: string }>();
   if (show && incompleteKeys.length > 0) {

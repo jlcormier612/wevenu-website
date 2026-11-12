@@ -1,0 +1,55 @@
+{
+  "at": "2026-11-12T02:04:21.344Z",
+  "base": "http://127.0.0.1:3456",
+  "samples": [
+    {
+      "path": "/dashboard",
+      "clickToFeedbackMs": 2051,
+      "sawLoading": true,
+      "usefulContentMs": 2137,
+      "finalUrl": "http://127.0.0.1:3456/dashboard"
+    },
+    {
+      "path": "/leads",
+      "clickToFeedbackMs": 841,
+      "sawLoading": true,
+      "usefulContentMs": 2366,
+      "finalUrl": "http://127.0.0.1:3456/leads"
+    },
+    {
+      "path": "/clients",
+      "clickToFeedbackMs": -1,
+      "sawLoading": false,
+      "usefulContentMs": 860,
+      "finalUrl": "http://127.0.0.1:3456/clients"
+    },
+    {
+      "path": "/payments",
+      "clickToFeedbackMs": 858,
+      "sawLoading": true,
+      "usefulContentMs": 1379,
+      "finalUrl": "http://127.0.0.1:3456/payments"
+    },
+    {
+      "path": "/reporting",
+      "clickToFeedbackMs": -1,
+      "sawLoading": false,
+      "usefulContentMs": 1209,
+      "finalUrl": "http://127.0.0.1:3456/reporting"
+    },
+    {
+      "path": "/calendar",
+      "clickToFeedbackMs": -1,
+      "sawLoading": false,
+      "usefulContentMs": 885,
+      "finalUrl": "http://127.0.0.1:3456/calendar"
+    },
+    {
+      "path": "/leads/54db1c0c-4332-4a4b-b5b3-eca9067ecffe",
+      "clickToFeedbackMs": 1015,
+      "sawLoading": true,
+      "usefulContentMs": 3401,
+      "finalUrl": "http://127.0.0.1:3456/leads/54db1c0c-4332-4a4b-b5b3-eca9067ecffe"
+    }
+  ]
+}
