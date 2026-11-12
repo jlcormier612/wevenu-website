@@ -225,4 +225,22 @@ describe("Luv lifecycle regression matrix", () => {
     });
     assert.equal(gate.draftCapable, true);
   });
+
+  it("legacy follow_up_email without workflowIntent withdraws when committed; planning draft_types untouched", () => {
+    const decision = resolveRelationshipLifecycle({ contractSigned: true });
+    const legacySales = shouldWithdrawSalesFollowUpDraft({
+      draftType: "follow_up_email",
+      context: { communicationPurpose: "none" }, // no workflowIntent
+      decision,
+    });
+    assert.equal(legacySales.withdraw, true);
+    assert.equal(legacySales.reasonCode, "contract_signed");
+
+    const planningSurface = shouldWithdrawSalesFollowUpDraft({
+      draftType: "next_steps",
+      context: { communicationPurpose: "none" },
+      decision,
+    });
+    assert.equal(planningSurface.withdraw, false);
+  });
 });
