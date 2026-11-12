@@ -123,8 +123,8 @@ export function ReferAVenuePage() {
       }
       setConfirmation(
         json.confirmation ?? {
-          title: "Thanks for sharing the love!",
-          body: "We've received your referral.",
+          title: "Thanks for sharing the Luv!",
+          body: "We've received your referral, and we'll take it from here. We appreciate you helping more venues discover Hello to Cheers!",
         },
       );
       setForm(EMPTY);
@@ -170,23 +170,39 @@ export function ReferAVenuePage() {
 
   return (
     <div className="space-y-6">
-      <div className="space-y-2">
-        <p className="text-sm font-medium tracking-wide text-muted-foreground">
-          A little thank-you for spreading the word
+      <div className="space-y-3">
+        <p className="text-sm font-medium tracking-[0.14em] text-[color:var(--heritage-sage)] uppercase">
+          Share the Luv
         </p>
         <h1 className="font-serif text-3xl tracking-tight text-foreground sm:text-4xl">
-          Love Hello to Cheers? Share the love.
+          Share the Luv. Get a free month.
         </h1>
         <p className="max-w-2xl text-base text-muted-foreground">
-          Know another venue that could use a little more ease and a lot less
-          busywork? Refer them to HTC, and when they become a paying customer,
-          we&apos;ll thank you with a free month.
-        </p>
-        <p className="max-w-2xl text-sm text-muted-foreground">
-          The thank-you is a one-time subscription credit for your venue after
-          eligibility requirements are met — not a permanent discount.
+          Know a venue that could use a little more ease and a lot less busywork? We&apos;d
+          love an introduction!
         </p>
       </div>
+
+      <Card className="border-[color:var(--soft-sage)] bg-[color:color-mix(in_oklch,var(--soft-sage)_28%,white)]">
+        <CardHeader className="space-y-2">
+          <CardTitle className="font-serif text-2xl text-heading">
+            One referral. One FREE month.
+          </CardTitle>
+          <CardDescription className="text-base text-foreground/80">
+            When a venue you refer becomes a paying Hello to Cheers customer, we&apos;ll thank
+            you with a free month of your own subscription.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-2 text-sm text-foreground/80">
+          <p className="font-medium text-heading">And yes, you can earn more than one!</p>
+          <p>
+            Every new qualifying venue you refer brings another free month your way. Credits
+            are one-time subscription thank-yous after eligibility — not a permanent discount —
+            and apply after the referred venue has remained paying for the qualification window
+            (typically 30 days) with settled payment.
+          </p>
+        </CardContent>
+      </Card>
 
       {confirmation ? (
         <Card>
@@ -199,10 +215,15 @@ export function ReferAVenuePage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Refer a venue</CardTitle>
-          <CardDescription>
-            Tell us who to look for. We review referrals personally — we won&apos;t
-            automatically contact the business for you.
+          <CardTitle className="text-base">Refer a Venue</CardTitle>
+          <CardDescription className="space-y-2 text-base text-muted-foreground">
+            <span className="block font-medium text-foreground">
+              Know a venue that would love Hello to Cheers?
+            </span>
+            <span className="block">
+              Share a few details about them, and we&apos;ll take it from there! We&apos;ll
+              personally review your referral and reach out with a thoughtful introduction.
+            </span>
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -230,8 +251,8 @@ export function ReferAVenuePage() {
               {message ? (
                 <p className="text-sm text-destructive">{message}</p>
               ) : null}
-              <Button type="submit" disabled={busy}>
-                {busy ? "Sending…" : "Share the love"}
+              <Button type="submit" disabled={busy} size="lg">
+                {busy ? "Sending…" : "Share the Luv — Refer a Venue"}
               </Button>
             </form>
           )}
