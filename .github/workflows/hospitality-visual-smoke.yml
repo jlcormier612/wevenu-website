@@ -139,3 +139,5 @@ jobs:
             docs/design/hospitality-visual-baselines/diffs/
             docs/design/hospitality-visual-baselines/last-compare.json
             docs/design/hospitality-visual-baselines/last-run.json
+
+# Keep path-filtered required checks discoverable for non-UI PRs via workflow edits.
