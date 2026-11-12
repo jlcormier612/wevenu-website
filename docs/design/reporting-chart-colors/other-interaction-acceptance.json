@@ -1,0 +1,42 @@
+{
+  "at": "2026-11-12T05:22:32.547Z",
+  "desktop": {
+    "tag": "desktop",
+    "width": 1280,
+    "before": "chartTotal=195 inputTotal=195",
+    "afterExpandTotals": "chartTotal=195 inputTotal=195",
+    "totalsUnchanged": true,
+    "expanded": true,
+    "collapsed": true,
+    "membersVisible": 3,
+    "memberKeys": [
+      "friend_of_owner",
+      "google",
+      "other_custom"
+    ],
+    "hasUnknownInOther": false,
+    "longVisible": true,
+    "noHorizontalScroll": true,
+    "ariaLabelOther": true
+  },
+  "mobile": {
+    "tag": "mobile",
+    "width": 390,
+    "before": "chartTotal=195 inputTotal=195",
+    "afterExpandTotals": "chartTotal=195 inputTotal=195",
+    "totalsUnchanged": true,
+    "expanded": true,
+    "collapsed": true,
+    "membersVisible": 3,
+    "memberKeys": [
+      "friend_of_owner",
+      "google",
+      "other_custom"
+    ],
+    "hasUnknownInOther": false,
+    "longVisible": true,
+    "noHorizontalScroll": true,
+    "ariaLabelOther": true
+  },
+  "ok": true
+}
