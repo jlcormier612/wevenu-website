@@ -39,6 +39,9 @@ function lead(overrides: Partial<Lead> = {}): Lead {
   } as Lead;
 }
 
+/** Fixed clock before sample tour times so "upcoming" stays upcoming in regression. */
+const NOW_BEFORE_TOURS = Date.parse("2026-10-01T12:00:00Z");
+
 describe("classifyFollowUpTourState", () => {
   it("none when no rows", () => {
     assert.deepEqual(classifyFollowUpTourState([]), { kind: "none" });
@@ -46,19 +49,37 @@ describe("classifyFollowUpTourState", () => {
 
   it("upcoming scheduled", () => {
     assert.deepEqual(
-      classifyFollowUpTourState([
-        { scheduled_at: "2026-10-10T18:00:00Z", status: "scheduled", completed_at: null },
-      ]),
+      classifyFollowUpTourState(
+        [{ scheduled_at: "2026-10-10T18:00:00Z", status: "scheduled", completed_at: null }],
+        NOW_BEFORE_TOURS,
+      ),
       { kind: "upcoming", scheduledAt: "2026-10-10T18:00:00Z", status: "scheduled" },
     );
   });
 
   it("upcoming confirmed", () => {
     assert.deepEqual(
-      classifyFollowUpTourState([
-        { scheduled_at: "2026-10-10T18:00:00Z", status: "confirmed", completed_at: null },
-      ]),
+      classifyFollowUpTourState(
+        [{ scheduled_at: "2026-10-10T18:00:00Z", status: "confirmed", completed_at: null }],
+        NOW_BEFORE_TOURS,
+      ),
       { kind: "upcoming", scheduledAt: "2026-10-10T18:00:00Z", status: "confirmed" },
+    );
+  });
+
+  it("past-due confirmed is not upcoming (does not rewrite tour status)", () => {
+    const state = classifyFollowUpTourState(
+      [{ scheduled_at: "2026-11-10T16:15:00Z", status: "confirmed", completed_at: null }],
+      Date.parse("2026-11-12T17:00:00Z"),
+    );
+    assert.deepEqual(state, {
+      kind: "past_due",
+      scheduledAt: "2026-11-10T16:15:00Z",
+      status: "confirmed",
+    });
+    assert.equal(
+      deriveFollowUpWorkflowIntent({ tour: state, nextActionText: null }),
+      "invite_to_schedule_tour",
     );
   });
 
@@ -101,10 +122,13 @@ describe("classifyFollowUpTourState", () => {
   });
 
   it("cancelled historical does not override later upcoming", () => {
-    const state = classifyFollowUpTourState([
-      { scheduled_at: "2026-09-01T15:00:00Z", status: "cancelled", completed_at: null },
-      { scheduled_at: "2026-10-15T18:00:00Z", status: "confirmed", completed_at: null },
-    ]);
+    const state = classifyFollowUpTourState(
+      [
+        { scheduled_at: "2026-09-01T15:00:00Z", status: "cancelled", completed_at: null },
+        { scheduled_at: "2026-10-15T18:00:00Z", status: "confirmed", completed_at: null },
+      ],
+      NOW_BEFORE_TOURS,
+    );
     assert.equal(state.kind, "upcoming");
     if (state.kind === "upcoming") assert.equal(state.status, "confirmed");
   });

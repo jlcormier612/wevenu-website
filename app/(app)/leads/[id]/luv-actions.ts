@@ -33,9 +33,10 @@ export async function updateDraftStatusAction(
   leadId: string,
   status: "accepted",
   linkedClientId?: string | null,
-): Promise<void> {
-  await updateDraftStatus(draftId, status);
-  revalidateLuvDraftSurfacesByIds(leadId, linkedClientId);
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  const result = await updateDraftStatus(draftId, status);
+  if (result.ok) revalidateLuvDraftSurfacesByIds(leadId, linkedClientId);
+  return result;
 }
 
 /** Discard = permanent delete. Does not archive. */

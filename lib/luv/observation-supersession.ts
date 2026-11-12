@@ -5,7 +5,12 @@
  * Tour follow-up is useful while the relationship is still pre-agreement.
  * A signed contract, a received payment, or the venue's Booked decision
  * supersedes that recommendation. Proposal stage alone does not.
+ *
+ * Delegates to the shared relationship lifecycle resolver so dashboard
+ * observations and draft eligibility cannot drift.
  */
+
+import { salesTourFollowUpSuperseded } from "@/lib/luv/relationship-lifecycle-eligibility";
 
 export type TourFollowUpLifecycleFacts = {
   /** Authoritative Booked — first_booked_at, not sales_stage. */
@@ -19,8 +24,5 @@ export type TourFollowUpLifecycleFacts = {
 export function tourFollowUpSuperseded(
   facts: TourFollowUpLifecycleFacts,
 ): boolean {
-  if (facts.booked || facts.lost) return true;
-  if (facts.contractSigned) return true;
-  if (facts.paymentReceived) return true;
-  return false;
+  return salesTourFollowUpSuperseded(facts);
 }

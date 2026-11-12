@@ -17,6 +17,7 @@ import {
   type FollowUpTourState,
   type FollowUpWorkflowIntent,
 } from "@/lib/luv/follow-up-workflow-context";
+import { loadRelationshipLifecycleFacts } from "@/lib/luv/relationship-lifecycle-loader";
 import type { Lead } from "@/lib/leads/types";
 import type { TourAppointment } from "@/lib/tours/types";
 import { getCurrentVenue } from "@/lib/venue/service";
@@ -39,6 +40,7 @@ export type LeadFollowUpPresentation = {
 /** Map workspace TourAppointment rows into FollowUpTourState (no second classifier). */
 export function followUpTourStateFromAppointments(
   appointments: TourAppointment[],
+  nowMs: number = Date.now(),
 ): FollowUpTourState {
   return classifyFollowUpTourState(
     appointments.map((a) => ({
@@ -46,6 +48,7 @@ export function followUpTourStateFromAppointments(
       status: a.status,
       completed_at: a.completedAt,
     })),
+    nowMs,
   );
 }
 
@@ -123,10 +126,11 @@ export async function loadLeadFollowUpPresentation(
     };
   }
   const supabase = await createClient();
-  const [proposalSent, tourState, messages] = await Promise.all([
+  const [proposalSent, tourState, messages, lifecycleFacts] = await Promise.all([
     loadProposalSentFact(supabase, venue.id, lead.id),
     loadFollowUpTourState(supabase, venue.id, lead.id),
     loadLeadThreadMessages(supabase, venue.id, lead.relationshipId),
+    loadRelationshipLifecycleFacts(supabase, venue.id, lead.id),
   ]);
   const tour = tourState.tour;
   const inquiryOrigin = normalizeInquiryMessageOrigin(lead.inquiryMessageOrigin);
@@ -143,6 +147,10 @@ export async function loadLeadFollowUpPresentation(
       messages,
       inquiryMessage: lead.inquiryMessage,
       inquiryOrigin,
+      booked: Boolean(lifecycleFacts.firstBookedAt || lifecycleFacts.clientLifecycleBookedAt),
+      lost: Boolean(lifecycleFacts.lostAt),
+      contractSigned: Boolean(lifecycleFacts.contractSigned),
+      paymentReceived: Boolean(lifecycleFacts.paymentReceived),
     });
   }
 
@@ -152,6 +160,7 @@ export async function loadLeadFollowUpPresentation(
     completedDecision,
     leadStatus: lead.status,
     lostAt: lead.lostAt,
+    lifecycleFacts,
   });
 
   return {

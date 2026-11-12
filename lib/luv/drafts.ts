@@ -41,6 +41,13 @@ import {
   type FollowUpWorkflowIntent,
 } from "@/lib/luv/follow-up-workflow-context";
 import {
+  draftHasLifecycleWithdrawal,
+  resolveRelationshipLifecycle,
+  shouldWithdrawSalesFollowUpDraft,
+  type LifecycleDraftContext,
+} from "@/lib/luv/relationship-lifecycle-eligibility";
+import { loadRelationshipLifecycleFacts } from "@/lib/luv/relationship-lifecycle-loader";
+import {
   getLuvSettings,
   isLuvDraftingEnabled,
   luvToneInstruction,
@@ -48,6 +55,7 @@ import {
 } from "@/lib/luv/settings";
 import { getCurrentVenue } from "@/lib/venue/service";
 import type { Lead } from "@/lib/leads/types";
+import type { DraftLifecycleWithdrawal } from "@/lib/luv/draft-status";
 
 export type LuvDraft = {
   id: string;
@@ -58,6 +66,11 @@ export type LuvDraft = {
   content: string;
   status: "pending_review" | "accepted" | "discarded";
   createdAt: string;
+  /** Present when lifecycle superseded the draft; row retained, not actionable. */
+  lifecycleWithdrawal?: DraftLifecycleWithdrawal | null;
+  /** Workflow intent captured at generation (for revalidation). */
+  workflowIntent?: FollowUpWorkflowIntent | string | null;
+  communicationPurpose?: string | null;
 };
 
 export type FollowUpVerifiedFacts = {
@@ -86,9 +99,12 @@ export type FollowUpVerifiedFacts = {
 type DraftRow = {
   id: string; entity_type: string; entity_id: string; draft_type: string;
   subject: string | null; content: string; status: string; created_at: string;
+  context?: LifecycleDraftContext | null;
 };
 
 function mapDraft(r: DraftRow): LuvDraft {
+  const ctx = (r.context ?? null) as LifecycleDraftContext | null;
+  const withdrawal = ctx?.lifecycleWithdrawal ?? null;
   return {
     id: r.id,
     entityType: r.entity_type as LuvDraft["entityType"],
@@ -98,6 +114,15 @@ function mapDraft(r: DraftRow): LuvDraft {
     content: r.content,
     status: r.status as LuvDraft["status"],
     createdAt: r.created_at,
+    lifecycleWithdrawal: withdrawal?.withdrawnAt
+      ? {
+          withdrawnAt: withdrawal.withdrawnAt,
+          reasonCode: withdrawal.reasonCode,
+          reason: withdrawal.reason,
+        }
+      : null,
+    workflowIntent: ctx?.workflowIntent ?? null,
+    communicationPurpose: ctx?.communicationPurpose ?? null,
   };
 }
 
@@ -385,10 +410,11 @@ export async function generateFollowUpDraft(lead: Lead): Promise<
       .select("full_name").eq("venue_id", venue.id).eq("is_owner", true).maybeSingle<{ full_name: string }>();
     const ownerName = staff?.full_name?.split(" ")[0] ?? null;
 
-    const [proposalSent, tourState, messages] = await Promise.all([
+    const [proposalSent, tourState, messages, lifecycleFacts] = await Promise.all([
       loadProposalSentFact(supabase, venue.id, lead.id),
       loadFollowUpTourState(supabase, venue.id, lead.id),
       loadLeadThreadMessages(supabase, venue.id, lead.relationshipId),
+      loadRelationshipLifecycleFacts(supabase, venue.id, lead.id),
     ]);
     const tour = tourState.tour;
     const inquiryOrigin = normalizeInquiryMessageOrigin(lead.inquiryMessageOrigin);
@@ -403,6 +429,10 @@ export async function generateFollowUpDraft(lead: Lead): Promise<
         messages,
         inquiryMessage: lead.inquiryMessage,
         inquiryOrigin,
+        booked: Boolean(lifecycleFacts.firstBookedAt || lifecycleFacts.clientLifecycleBookedAt),
+        lost: Boolean(lifecycleFacts.lostAt),
+        contractSigned: Boolean(lifecycleFacts.contractSigned),
+        paymentReceived: Boolean(lifecycleFacts.paymentReceived),
       })
       : null;
     const gate = resolveFollowUpDraftEligibility({
@@ -411,8 +441,10 @@ export async function generateFollowUpDraft(lead: Lead): Promise<
       completedDecision,
       leadStatus: lead.status,
       lostAt: lead.lostAt,
+      lifecycleFacts,
     });
-    // Capability gate only — proactive silence must not block owner-initiated drafts.
+    // Capability + lifecycle: proactive silence must not block owner drafts for
+    // prospects; commercial commitment / Booked blocks sales follow-up drafts.
     if (!gate.draftCapable) {
       return {
         ok: false,
@@ -463,6 +495,14 @@ export async function generateFollowUpDraft(lead: Lead): Promise<
           workflowIntent,
           communicationPurpose,
           preferredTone: normalizePreferredTone(settings.preferredTone),
+          lifecycle: {
+            officialBookingState: gate.lifecycle?.officialBookingState ?? null,
+            communicationRelationshipState:
+              gate.lifecycle?.communicationRelationshipState ?? null,
+            commerciallyCommitted: gate.lifecycle?.commerciallyCommitted ?? false,
+            contractSigned: Boolean(lifecycleFacts.contractSigned),
+            firstBookedAt: lifecycleFacts.firstBookedAt ?? null,
+          },
         },
         status: "pending_review",
       })
@@ -475,6 +515,66 @@ export async function generateFollowUpDraft(lead: Lead): Promise<
     console.error("[luv/drafts] generateFollowUpDraft failed:", err);
     return { ok: false, message: "Luv couldn't generate a draft right now. Please try again." };
   }
+}
+
+/**
+ * Lazy lifecycle invalidation: stamp context.lifecycleWithdrawal on superseded
+ * pending sales drafts. Does not delete rows or change status enum.
+ */
+async function lazilyWithdrawIneligibleDrafts(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  venueId: string,
+  leadId: string,
+  rows: DraftRow[],
+): Promise<DraftRow[]> {
+  const pending = rows.filter((r) => r.status === "pending_review");
+  if (pending.length === 0) return rows;
+
+  const facts = await loadRelationshipLifecycleFacts(supabase, venueId, leadId);
+  const decision = resolveRelationshipLifecycle(facts);
+  if (decision.salesFollowUpAllowed) return rows;
+
+  const nowIso = new Date().toISOString();
+  const updatedById = new Map<string, DraftRow>();
+
+  for (const row of pending) {
+    const ctx = (row.context ?? {}) as LifecycleDraftContext;
+    if (draftHasLifecycleWithdrawal(ctx)) {
+      updatedById.set(row.id, row);
+      continue;
+    }
+    const check = shouldWithdrawSalesFollowUpDraft({
+      draftType: row.draft_type,
+      context: ctx,
+      decision,
+    });
+    if (!check.withdraw || !check.reason || !check.reasonCode) {
+      updatedById.set(row.id, row);
+      continue;
+    }
+    const nextContext: LifecycleDraftContext = {
+      ...ctx,
+      lifecycleWithdrawal: {
+        withdrawnAt: nowIso,
+        reasonCode: check.reasonCode,
+        reason: check.reason,
+      },
+    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase.from("luv_drafts") as any)
+      .update({ context: nextContext })
+      .eq("id", row.id)
+      .eq("venue_id", venueId)
+      .eq("status", "pending_review");
+    if (error) {
+      console.error("[luv/drafts] lazy lifecycle withdrawal failed:", error);
+      updatedById.set(row.id, row);
+      continue;
+    }
+    updatedById.set(row.id, { ...row, context: nextContext });
+  }
+
+  return rows.map((r) => updatedById.get(r.id) ?? r);
 }
 
 export async function getDraftsForLead(leadId: string): Promise<LuvDraft[]> {
@@ -490,19 +590,100 @@ export async function getDraftsForLead(leadId: string): Promise<LuvDraft[]> {
     // Discarded rows are deleted; exclude any legacy discarded status from UI.
     .neq("status", "discarded")
     .order("created_at", { ascending: false });
-  return (data as DraftRow[] ?? []).map(mapDraft);
+  const rows = await lazilyWithdrawIneligibleDrafts(
+    supabase,
+    venue.id,
+    leadId,
+    (data as DraftRow[] ?? []),
+  );
+  return rows.map(mapDraft);
 }
 
+/**
+ * Server-side pre-accept revalidation. Blocks accepting/copying/send-complete
+ * when the draft is lifecycle-superseded. Never bypassable from the client alone.
+ */
 export async function updateDraftStatus(
   draftId: string,
   status: "accepted",
-): Promise<void> {
-  if (!isSupabaseConfigured) return;
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  if (!isSupabaseConfigured) return { ok: false, message: "Backend not configured." };
   const venue = await getCurrentVenue();
-  if (!venue) return;
+  if (!venue) return { ok: false, message: "No venue found." };
   const supabase = await createClient();
+
+  const { data: existing, error: readError } = await supabase
+    .from("luv_drafts")
+    .select("id, entity_id, entity_type, draft_type, status, context")
+    .eq("id", draftId)
+    .eq("venue_id", venue.id)
+    .maybeSingle<DraftRow & { entity_id: string; entity_type: string }>();
+
+  if (readError || !existing) {
+    if (readError) console.error("[luv/drafts] updateDraftStatus read failed:", readError);
+    return { ok: false, message: "That draft is no longer available." };
+  }
+  if (existing.status !== "pending_review") {
+    return { ok: false, message: "That draft is no longer pending review." };
+  }
+
+  if (existing.entity_type === "lead") {
+    const facts = await loadRelationshipLifecycleFacts(
+      supabase,
+      venue.id,
+      existing.entity_id,
+    );
+    const decision = resolveRelationshipLifecycle(facts);
+    const ctx = (existing.context ?? {}) as LifecycleDraftContext;
+    if (draftHasLifecycleWithdrawal(ctx)) {
+      return {
+        ok: false,
+        message:
+          ctx.lifecycleWithdrawal?.reason
+          ?? "This draft is no longer appropriate for the current relationship.",
+      };
+    }
+    const check = shouldWithdrawSalesFollowUpDraft({
+      draftType: existing.draft_type,
+      context: ctx,
+      decision,
+    });
+    if (check.withdraw) {
+      if (check.reason && check.reasonCode) {
+        const nextContext: LifecycleDraftContext = {
+          ...ctx,
+          lifecycleWithdrawal: {
+            withdrawnAt: new Date().toISOString(),
+            reasonCode: check.reasonCode,
+            reason: check.reason,
+          },
+        };
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (supabase.from("luv_drafts") as any)
+          .update({ context: nextContext })
+          .eq("id", draftId)
+          .eq("venue_id", venue.id);
+      }
+      return {
+        ok: false,
+        message:
+          check.reason
+          ?? "This draft is no longer appropriate for the current relationship.",
+      };
+    }
+  }
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (supabase.from("luv_drafts") as any).update({ status }).eq("id", draftId).eq("venue_id", venue.id);
+  const { error } = await (supabase.from("luv_drafts") as any)
+    .update({ status })
+    .eq("id", draftId)
+    .eq("venue_id", venue.id)
+    .eq("status", "pending_review");
+  if (error) {
+    console.error("[luv/drafts] updateDraftStatus failed:", error);
+    return { ok: false, message: "Couldn’t update that draft. Please try again." };
+  }
+  return { ok: true };
 }
 
 /**
@@ -547,7 +728,9 @@ export {
   applyDiscardResult,
   draftHistoryDrafts,
   draftStatusAfterSuccessfulSend,
+  lifecycleWithdrawnDrafts,
   pendingReviewDrafts,
   withDraftStatus,
+  withLifecycleWithdrawal,
   withoutDraft,
 } from "@/lib/luv/draft-status";

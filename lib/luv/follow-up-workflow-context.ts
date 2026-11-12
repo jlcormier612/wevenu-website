@@ -8,6 +8,12 @@
 export type FollowUpTourState =
   | { kind: "none" }
   | { kind: "upcoming"; scheduledAt: string; status: "scheduled" | "confirmed" }
+  /**
+   * Scheduled/confirmed appointment whose start time has passed without
+   * completion — not rewritten in tour_appointments; classification only.
+   * Must not be treated as an upcoming tour for sales copy.
+   */
+  | { kind: "past_due"; scheduledAt: string; status: "scheduled" | "confirmed" }
   | { kind: "completed"; scheduledAt: string; completedAt: string | null }
   | { kind: "cancelled"; scheduledAt: string | null };
 
@@ -33,9 +39,13 @@ export type FollowUpTourAppointmentRow = {
  * 1) Prefer the most recent non-cancelled appointment (scheduled/confirmed/completed/no_show).
  * 2) Only if none exist, fall back to a cancelled historical row.
  * A cancelled row never overrides a later/active completed or upcoming tour.
+ *
+ * Past-due scheduled/confirmed rows are classified as `past_due` (not upcoming).
+ * This does not rewrite tour_appointments status.
  */
 export function classifyFollowUpTourState(
   rows: FollowUpTourAppointmentRow[],
+  nowMs: number = Date.now(),
 ): FollowUpTourState {
   const sorted = [...rows].sort((a, b) =>
     String(b.scheduled_at).localeCompare(String(a.scheduled_at)),
@@ -51,6 +61,14 @@ export function classifyFollowUpTourState(
       };
     }
     if (active.status === "scheduled" || active.status === "confirmed") {
+      const scheduledMs = Date.parse(active.scheduled_at);
+      if (Number.isFinite(scheduledMs) && scheduledMs < nowMs) {
+        return {
+          kind: "past_due",
+          scheduledAt: active.scheduled_at,
+          status: active.status,
+        };
+      }
       return {
         kind: "upcoming",
         scheduledAt: active.scheduled_at,
@@ -91,7 +109,12 @@ export function deriveFollowUpWorkflowIntent(input: {
   if (input.tour.kind === "upcoming") {
     return "reference_upcoming_tour";
   }
-  if (input.tour.kind === "none" || input.tour.kind === "cancelled") {
+  // Past-due confirmed/scheduled is not "upcoming" — invite to reconnect/reschedule.
+  if (
+    input.tour.kind === "none"
+    || input.tour.kind === "cancelled"
+    || input.tour.kind === "past_due"
+  ) {
     return "invite_to_schedule_tour";
   }
   return "gentle_check_in";
@@ -110,10 +133,11 @@ export function deriveFollowUpProhibitions(input: {
 }): FollowUpWorkflowProhibitions {
   const completed = input.tour.kind === "completed";
   const upcoming = input.tour.kind === "upcoming";
+  const pastDue = input.tour.kind === "past_due";
   return {
     inviteToScheduleTour: completed || upcoming,
     implyNoTourVisited: completed,
-    implyNoTourScheduled: upcoming,
+    implyNoTourScheduled: upcoming || pastDue,
     claimProposalSent: !input.proposalSent,
   };
 }
@@ -127,7 +151,7 @@ export function workflowIntentLabel(intent: FollowUpWorkflowIntent): string {
     case "follow_recorded_next_action":
       return "Follow the venue's recorded next-action direction for this lead (workflow context — not raw staff copy for the customer).";
     case "invite_to_schedule_tour":
-      return "A gentle invitation to schedule (or reschedule) a tour is an appropriate workflow direction.";
+      return "A gentle invitation to schedule (or reschedule) a tour is an appropriate workflow direction. Do not claim an upcoming tour is still on the calendar if it is past due.";
     case "answer_questions":
       return "Answer the specific unanswered customer question or request. Do not write a generic tour thank-you.";
     case "gentle_check_in":
@@ -143,6 +167,8 @@ export function formatTourWorkflowFact(tour: FollowUpTourState): string {
       return "Tour: none on record";
     case "upcoming":
       return `Tour: upcoming (${tour.status}) at ${tour.scheduledAt}`;
+    case "past_due":
+      return `Tour: past due (${tour.status}) was scheduled ${tour.scheduledAt} — do not describe it as upcoming; rescheduling may be appropriate`;
     case "completed":
       return `Tour: completed (scheduled ${tour.scheduledAt}${tour.completedAt ? `; completed_at ${tour.completedAt}` : ""})`;
     case "cancelled":

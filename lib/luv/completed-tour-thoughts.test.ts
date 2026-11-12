@@ -208,9 +208,18 @@ describe("completed-tour Thoughts presentation wiring", () => {
   });
 
   it("7. Upcoming/confirmed tour recognized as upcoming, never completed", () => {
-    const state = followUpTourStateFromAppointments([
-      appt({ id: "u1", status: "confirmed", completedAt: null, actualOccurredAt: null }),
-    ]);
+    const state = followUpTourStateFromAppointments(
+      [
+        appt({
+          id: "u1",
+          status: "confirmed",
+          completedAt: null,
+          actualOccurredAt: null,
+          scheduledAt: "2026-12-15T18:00:00.000Z",
+        }),
+      ],
+      Date.parse("2026-11-12T12:00:00.000Z"),
+    );
     assert.equal(state.kind, "upcoming");
     if (state.kind === "upcoming") assert.equal(state.status, "confirmed");
 
