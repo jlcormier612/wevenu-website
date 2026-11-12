@@ -10,7 +10,7 @@
 | Item | Value |
 | --- | --- |
 | Branch | `integrate/sandbox-release-candidate` |
-| Tip SHA | `d78c137e199309df686bb1bba21eb84ba2c8ff3c` |
+| Tip SHA | `2acada2ddaaf4b39101bc7a72dfef83bc8be4d9c` (docs + matrix wave script atop `d78c137e`) |
 | Base | `origin/main` @ `df1aa331` |
 | Merge order used | `#30` → `#31` → `#32` (no conflicts) |
 
