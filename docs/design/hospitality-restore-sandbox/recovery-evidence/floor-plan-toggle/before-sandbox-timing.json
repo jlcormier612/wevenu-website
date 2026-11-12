@@ -1,0 +1,78 @@
+{
+  "at": "2026-11-12T00:38:12.310Z",
+  "label": "before-sandbox",
+  "base": "https://app.sandbox.hellotocheers.com",
+  "landed": "https://app.sandbox.hellotocheers.com/clients/11ce02ca-3c56-49f9-baf9-115d2fc830e3#floorplan",
+  "summary": {
+    "avgVisibleMs": 11487,
+    "maxVisibleMs": 22972,
+    "avgPersistMs": 11488
+  },
+  "results": [
+    {
+      "testId": "floor-plan-switch-couple-view",
+      "before": "true",
+      "after": "false",
+      "visibleMs": 8181,
+      "saveStartMs": 3138,
+      "confirmMs": 3137,
+      "persistMs": 8184,
+      "flipped": true
+    },
+    {
+      "testId": "floor-plan-switch-seating",
+      "before": "true",
+      "after": "false",
+      "visibleMs": 2336,
+      "saveStartMs": 7,
+      "confirmMs": 2324,
+      "persistMs": 2339,
+      "flipped": true
+    },
+    {
+      "testId": "floor-plan-couple-may-add",
+      "before": "true",
+      "after": "false",
+      "visibleMs": 22972,
+      "saveStartMs": 7,
+      "confirmMs": 8370,
+      "persistMs": 22972,
+      "flipped": true
+    },
+    {
+      "testId": "floor-plan-switch-vendors",
+      "before": "true",
+      "after": "false",
+      "visibleMs": 12458,
+      "saveStartMs": 5,
+      "confirmMs": 12337,
+      "persistMs": 12458,
+      "flipped": true
+    }
+  ],
+  "rapid": {
+    "testId": "floor-plan-switch-couple-view",
+    "start": "false",
+    "end": "false",
+    "expectedOpposite": "true",
+    "matchesLastClick": false
+  },
+  "dual": {
+    "couple": {
+      "before": "false",
+      "after": "true",
+      "flipped": true
+    },
+    "vendors": {
+      "before": "false",
+      "after": "false",
+      "flipped": false
+    }
+  },
+  "refreshPersistence": {
+    "beforeRefresh": "true",
+    "mid": "false",
+    "afterRefresh": "false",
+    "persisted": true
+  }
+}

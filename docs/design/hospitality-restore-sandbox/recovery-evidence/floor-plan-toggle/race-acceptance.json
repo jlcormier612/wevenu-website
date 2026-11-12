@@ -1,0 +1,44 @@
+{
+  "at": "2026-11-12T01:00:00.000Z",
+  "branch": "fix/floor-plan-toggle-latency",
+  "suite": "lib/floor-plans/use-optimistic-permission-toggle.test.ts",
+  "results": [
+    {
+      "case": "immediate flip + failure rollback with error",
+      "verdict": "PASS"
+    },
+    {
+      "case": "out-of-order: slower earlier save ignored after newer click",
+      "verdict": "PASS"
+    },
+    {
+      "case": "rapid on/off/on ends on last click intent",
+      "verdict": "PASS"
+    },
+    {
+      "case": "stale failure cannot overwrite newer successful selection",
+      "verdict": "PASS"
+    },
+    {
+      "case": "hold optimistic value until server props match",
+      "verdict": "PASS"
+    },
+    {
+      "case": "do not adopt server props while pending",
+      "verdict": "PASS"
+    },
+    {
+      "case": "workspace wires four toggles without pre-save setState",
+      "verdict": "PASS"
+    },
+    {
+      "case": "switch not disabled during pending (aria-busy only)",
+      "verdict": "PASS"
+    },
+    {
+      "case": "hook delegates to pure controller",
+      "verdict": "PASS"
+    }
+  ],
+  "summary": { "pass": 9, "fail": 0 }
+}
