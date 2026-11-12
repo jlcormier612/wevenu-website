@@ -1,0 +1,18 @@
+{
+  "at": "2026-11-12T03:52:28.810Z",
+  "base": "http://127.0.0.1:3460",
+  "checks": [
+    {
+      "tag": "normal",
+      "blocked": true,
+      "reason": "legal-unavailable gate",
+      "pass": false
+    },
+    {
+      "tag": "reduced-motion",
+      "blocked": true,
+      "reason": "legal-unavailable gate",
+      "pass": false
+    }
+  ]
+}
