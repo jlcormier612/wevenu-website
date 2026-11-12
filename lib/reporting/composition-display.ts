@@ -35,6 +35,21 @@ export const STANDARD_SOURCE_COLORS: Readonly<Record<string, string>> = {
 };
 
 /**
+ * Permanent identities for recognized standard event types.
+ * Keyed by stored event_type (canonical / known tokens). Never by rank or count.
+ * Hex values may intentionally match source identities (shared HTC palette).
+ * Do not merge custom types into these keys merely because labels are similar.
+ */
+export const STANDARD_EVENT_TYPE_COLORS: Readonly<Record<string, string>> = {
+  wedding: "#5D6F5D", // HTC heritage sage
+  corporate: "#7B5EA0", // purple
+  private_event: "#A9C9DA", // powder blue
+  birthday: "#D8A7AA", // dusty rose
+  anniversary: "#F0DFA6", // buttery yellow
+  cocktail_reception: "#A7C2AF", // eucalyptus
+};
+
+/**
  * Supplemental palette for venue-defined custom sources.
  * Deterministic by key hash. Excludes reserved standard identities and neutrals.
  * Length ≥ 20 so typical venues rarely wrap within one chart.
@@ -88,6 +103,9 @@ export function normalizeCompositionSourceKey(key: string): string {
   const t = key.trim().toLowerCase();
   if (t === "phone_call") return "phone";
   if (t === "tour_scheduling") return "website";
+  if (t === "corporate_event") return "corporate";
+  if (t === "birthday_milestone" || t === "birthday_party") return "birthday";
+  if (t === "anniversary_celebration") return "anniversary";
   return t;
 }
 
@@ -96,10 +114,35 @@ export function isStandardCompositionSource(key: string): boolean {
   return Object.prototype.hasOwnProperty.call(STANDARD_SOURCE_COLORS, n);
 }
 
+export function isStandardCompositionEventType(key: string): boolean {
+  const n = normalizeCompositionSourceKey(key);
+  return Object.prototype.hasOwnProperty.call(STANDARD_EVENT_TYPE_COLORS, n);
+}
+
+/** Permanent identity (source or event type) — never displaced by rank/count. */
+export function isPermanentCompositionKey(key: string): boolean {
+  return isStandardCompositionSource(key) || isStandardCompositionEventType(key);
+}
+
+function permanentCompositionColor(normalizedKey: string): string | null {
+  return STANDARD_SOURCE_COLORS[normalizedKey]
+    ?? STANDARD_EVENT_TYPE_COLORS[normalizedKey]
+    ?? null;
+}
+
+function reservedPermanentColors(): Set<string> {
+  return new Set<string>([
+    ...Object.values(STANDARD_SOURCE_COLORS),
+    ...Object.values(STANDARD_EVENT_TYPE_COLORS),
+    NOT_RECORDED_COLOR,
+    OTHER_COLOR,
+  ]);
+}
+
 /**
- * Canonical color for a source key — independent of count, rank, or chart mates.
- * Standard sources use permanent identities. Custom sources use a deterministic
- * supplemental-palette slot from the key hash (collision walk within the chart).
+ * Canonical color for a composition key — independent of count, rank, or mates.
+ * Standard sources and event types use permanent identities. Custom keys use a
+ * deterministic supplemental-palette slot from the key hash (collision walk).
  */
 export function compositionColorForSourceKey(
   key: string,
@@ -109,16 +152,12 @@ export function compositionColorForSourceKey(
   if (key === OTHER_SOURCE_KEY) return OTHER_COLOR;
 
   const normalized = normalizeCompositionSourceKey(key);
-  const standard = STANDARD_SOURCE_COLORS[normalized];
-  if (standard) return standard;
+  const permanent = permanentCompositionColor(normalized);
+  if (permanent) return permanent;
 
   const used = usedInChart ?? new Set<string>();
-  // Never steal a reserved standard/neutral color for a custom source.
-  const reserved = new Set<string>([
-    ...Object.values(STANDARD_SOURCE_COLORS),
-    NOT_RECORDED_COLOR,
-    OTHER_COLOR,
-  ]);
+  // Never steal a reserved standard/neutral color for a custom key.
+  const reserved = reservedPermanentColors();
   const start = hashKey(normalized) % COMPOSITION_PALETTE.length;
   for (let step = 0; step < COMPOSITION_PALETTE.length; step++) {
     const candidate = COMPOSITION_PALETTE[(start + step) % COMPOSITION_PALETTE.length]!;
@@ -132,8 +171,8 @@ export function compositionColorForSourceKey(
 
 /**
  * Assign colors so each visible slice gets a unique in-chart color when possible.
- * Standard sources keep permanent identities even if a custom source collides —
- * custom sources walk the supplemental palette instead.
+ * Permanent identities (sources + event types) are never displaced — custom keys
+ * walk the supplemental palette instead.
  */
 export function assignUniqueCompositionColors(
   slices: { key: string; count?: number }[],
@@ -141,7 +180,7 @@ export function assignUniqueCompositionColors(
   const colors: string[] = new Array(slices.length);
   const used = new Set<string>();
 
-  // Pass 1 — reserved + permanent standard identities (never displaced).
+  // Pass 1 — reserved + permanent identities (never displaced).
   for (let i = 0; i < slices.length; i++) {
     const key = slices[i]!.key;
     if (key === UNKNOWN_SOURCE_KEY) {
@@ -154,14 +193,14 @@ export function assignUniqueCompositionColors(
       used.add(OTHER_COLOR);
       continue;
     }
-    if (isStandardCompositionSource(key)) {
+    if (isPermanentCompositionKey(key)) {
       const color = compositionColorForSourceKey(key);
       colors[i] = color;
       used.add(color);
     }
   }
 
-  // Pass 2 — custom sources, deterministic by key, avoiding used/reserved slots.
+  // Pass 2 — custom keys, deterministic by key, avoiding used/reserved slots.
   for (let i = 0; i < slices.length; i++) {
     if (colors[i]) continue;
     const key = slices[i]!.key;

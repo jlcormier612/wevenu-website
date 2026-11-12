@@ -6,12 +6,14 @@ import { UNKNOWN_SOURCE_KEY } from "@/lib/attribution/source";
 import {
   NOT_RECORDED_COLOR,
   OTHER_SOURCE_KEY,
+  STANDARD_EVENT_TYPE_COLORS,
   STANDARD_SOURCE_COLORS,
   assignUniqueCompositionColors,
   buildDisplayComposition,
   compositionColorForSourceKey,
   type CompositionSlice,
 } from "@/lib/reporting/composition-display";
+import { eventsByType } from "@/lib/reporting/service";
 
 function slices(
   rows: Array<{ key: string; label: string; count: number }>,
@@ -199,5 +201,88 @@ describe("permanent standard source color identity", () => {
   it("maps phone_call alias to the Phone Call identity", () => {
     assert.equal(compositionColorForSourceKey("phone_call"), "#63819A");
     assert.equal(compositionColorForSourceKey("phone"), "#63819A");
+  });
+});
+
+describe("permanent standard event-type color identity", () => {
+  it("locks exact mandatory Wedding and standard type assignments", () => {
+    assert.equal(STANDARD_EVENT_TYPE_COLORS.wedding, "#5D6F5D");
+    assert.equal(STANDARD_EVENT_TYPE_COLORS.corporate, "#7B5EA0");
+    assert.equal(STANDARD_EVENT_TYPE_COLORS.private_event, "#A9C9DA");
+    assert.equal(STANDARD_EVENT_TYPE_COLORS.birthday, "#D8A7AA");
+    assert.equal(STANDARD_EVENT_TYPE_COLORS.anniversary, "#F0DFA6");
+    assert.equal(STANDARD_EVENT_TYPE_COLORS.cocktail_reception, "#A7C2AF");
+  });
+
+  it("keeps Wedding heritage sage across range/count/order changes", () => {
+    const novLike = buildDisplayComposition(
+      slices([
+        { key: "private_event", label: "Private Event", count: 2 },
+        { key: "cocktail_hour", label: "Cocktail Hour", count: 2 },
+        { key: "corporate", label: "Corporate Event", count: 2 },
+        { key: "birthday", label: "Birthday Party", count: 1 },
+      ]),
+    );
+    const withWedding = buildDisplayComposition(
+      slices([
+        { key: "wedding", label: "Wedding", count: 14 },
+        { key: "corporate", label: "Corporate Event", count: 5 },
+        { key: "birthday", label: "Birthday Party", count: 5 },
+        { key: "private_event", label: "Private Event", count: 4 },
+        { key: "cocktail_hour", label: "Cocktail Hour", count: 3 },
+      ]),
+    );
+    const reordered = buildDisplayComposition(
+      slices([
+        { key: "cocktail_hour", label: "Cocktail Hour", count: 3 },
+        { key: "wedding", label: "Wedding", count: 2 },
+        { key: "corporate", label: "Corporate Event", count: 1 },
+      ]),
+    );
+    assert.equal(colorOf(withWedding, "wedding"), "#5D6F5D");
+    assert.equal(colorOf(reordered, "wedding"), "#5D6F5D");
+    assert.equal(colorOf(novLike, "corporate"), "#7B5EA0");
+    assert.equal(colorOf(withWedding, "corporate"), "#7B5EA0");
+    assert.equal(colorOf(novLike, "private_event"), "#A9C9DA");
+    assert.equal(colorOf(novLike, "birthday"), "#D8A7AA");
+    // Cocktail Hour is a custom type — deterministic, not Corporate purple, not Wedding sage.
+    assert.notEqual(colorOf(novLike, "cocktail_hour"), "#7B5EA0");
+    assert.notEqual(colorOf(novLike, "cocktail_hour"), "#5D6F5D");
+    assert.notEqual(colorOf(novLike, "cocktail_hour"), colorOf(novLike, "corporate"));
+    assert.equal(
+      colorOf(novLike, "cocktail_hour"),
+      colorOf(withWedding, "cocktail_hour"),
+    );
+  });
+
+  it("does not change acquisition-source identities when event types are present", () => {
+    assert.equal(compositionColorForSourceKey("website"), "#F0DFA6");
+    assert.equal(compositionColorForSourceKey("referral"), "#5D6F5D");
+    assert.equal(compositionColorForSourceKey("instagram"), "#A9C9DA");
+    assert.equal(compositionColorForSourceKey("wedding"), "#5D6F5D");
+    const mixed = assignUniqueCompositionColors([
+      { key: "website" },
+      { key: "wedding" },
+      { key: "referral" },
+    ]);
+    assert.equal(mixed[0], "#F0DFA6");
+    assert.equal(mixed[1], "#5D6F5D");
+    assert.equal(mixed[2], "#5D6F5D"); // Referral keeps heritage sage even if Wedding also uses it
+  });
+
+  it("eventsByType groups from events.event_type only (not spaces/timeline)", () => {
+    const types = eventsByType([
+      { id: "1", clientId: null, name: "A", eventDate: "2026-11-08", eventType: "cocktail_hour", guestCount: 20 },
+      { id: "2", clientId: null, name: "B", eventDate: "2026-11-15", eventType: "wedding", guestCount: 100 },
+      { id: "3", clientId: null, name: "C", eventDate: "2026-11-20", eventType: "corporate", guestCount: 40 },
+    ]);
+    assert.deepEqual(
+      types.map((t) => ({ type: t.type, label: t.label, count: t.count })),
+      [
+        { type: "cocktail_hour", label: "Cocktail Hour", count: 1 },
+        { type: "wedding", label: "Wedding", count: 1 },
+        { type: "corporate", label: "Corporate Event", count: 1 },
+      ],
+    );
   });
 });
