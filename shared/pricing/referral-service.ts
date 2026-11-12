@@ -203,14 +203,15 @@ export async function submitVenueReferral(
     },
   });
 
-  // Do NOT email the prospect. Confirmation is in-app only here.
+  // Do NOT auto-email the prospect. Confirmation is in-app only here.
+  // Founders review referrals in workspace CRM and follow up personally.
   return {
     ok: true,
     referral,
     customerView: toCustomerReferralView(referral, null),
     confirmation: {
-      title: "Thanks for sharing the love!",
-      body: "We've received your referral. If the venue joins Hello to Cheers and qualifies, we'll let you know when your thank-you credit is ready.",
+      title: "Thanks for sharing the Luv!",
+      body: "We've received your referral, and we'll take it from here. We appreciate you helping more venues discover Hello to Cheers!",
     },
   };
 }

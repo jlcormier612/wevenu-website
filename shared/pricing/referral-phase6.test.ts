@@ -353,8 +353,9 @@ describe("submission safeguards", () => {
     });
     assert.equal(result.ok, true);
     if (!result.ok) return;
-    assert.match(result.confirmation.title, /Thanks for sharing/);
-    assert.match(result.confirmation.body, /qualifies/);
+    assert.match(result.confirmation.title, /Thanks for sharing the Luv/i);
+    assert.match(result.confirmation.body, /take it from here/i);
+    assert.doesNotMatch(result.confirmation.body, /automatically contact/i);
     assert.equal(result.referral.status, "submitted");
   });
 

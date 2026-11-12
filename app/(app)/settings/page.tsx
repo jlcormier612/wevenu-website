@@ -86,7 +86,7 @@ export default async function SettingsPage() {
       href: "/settings/referrals",
       title: "Refer a Venue",
       icon: HeartHandshake,
-      description: "Share HTC with another venue and earn a thank-you credit.",
+      description: "Share the Luv and earn a free month when a venue you refer joins.",
     },
     {
       href: "/settings/team",
