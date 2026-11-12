@@ -10,7 +10,7 @@
 | Item | Value |
 | --- | --- |
 | Branch | `integrate/sandbox-release-candidate` |
-| Tip SHA | `2acada2ddaaf4b39101bc7a72dfef83bc8be4d9c` (docs + matrix wave script atop `d78c137e`) |
+| Tip SHA | `891ff87b62ece2fa7726980a0dd4e4a4088e7669` (docs/manifest atop merged #30+#31+#32 @ `d78c137e`) |
 | Base | `origin/main` @ `df1aa331` |
 | Merge order used | `#30` → `#31` → `#32` (no conflicts) |
 
@@ -48,7 +48,7 @@ No shared Stripe, billing math, or Production paths in this set.
 | Merge conflict resolution | Clean (ort, no conflict markers) |
 | Focused unit suite (floor-plan races, reporting, Coming Up, PNG compare, funnel) | **76/76 PASS** |
 | PNG baseline compare (approved vs identical current) | **22/22 PASS** |
-| Production-style `npm run build` | Started on candidate tip — record result before approve |
+| Production-style `npm run build` | **SUCCESS** locally on candidate (Next.js 16.2.9; routes emitted) |
 | Individual PR CI | #30 green; #31 green; #32 must be green before approve |
 | Full restoration matrix GREEN | **No** — still IN PROGRESS |
 
