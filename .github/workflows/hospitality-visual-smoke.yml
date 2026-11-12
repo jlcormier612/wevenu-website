@@ -21,6 +21,7 @@ on:
       - "components/dashboard-system/**"
       - "app/globals.css"
       - "lib/theme/**"
+      - "lib/reporting/**"
       - "lib/navigation/attention*"
       - "scripts/qa/hospitality-visual-baselines.mts"
       - "scripts/qa/compare-png-baselines.mts"
