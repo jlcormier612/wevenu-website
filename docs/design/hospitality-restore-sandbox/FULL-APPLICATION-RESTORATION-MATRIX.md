@@ -2,7 +2,7 @@
 
 **Verdict:** RESTORATION CANDIDATE GREEN (local + combined tip) — Sandbox runtime cutover still **pending explicit approval**  
 **Serving Sandbox (preserved):** `df1aa331` — Production untouched.  
-**Combined candidate (undeployed):** draft PR [#33](https://github.com/jlcormier612/wevenu-website/pull/33) @ `88e6d2bd` (#30+#31+#32 + closure `6718a4be`).  
+**Combined candidate (undeployed):** draft PR [#33](https://github.com/jlcormier612/wevenu-website/pull/33) @ `68b8cf46` (#30+#31+#32 + closure `6718a4be`).  
 **Release plan:** `SANDBOX-RELEASE-MANIFEST.md`  
 **Evidence waves:** `recovery-evidence/matrix-wave/` · `recovery-evidence/closure/`
 

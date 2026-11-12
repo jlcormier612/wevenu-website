@@ -11,7 +11,7 @@
 | --- | --- |
 | Branch | `integrate/sandbox-release-candidate` |
 | Draft PR | [#33](https://github.com/jlcormier612/wevenu-website/pull/33) (DRAFT — do not merge until approved) |
-| Tip SHA | `88e6d2bdedd05226f316cd86858228c994570648` |
+| Tip SHA | `68b8cf4607c182a4ceafec66d9dafe9fd3f43d3e` |
 | Closure code commit | `6718a4be` |
 | Prior tip (pre-closure) | `a62a53e6` |
 | Code merge tip | `d78c137e` (#30+#31+#32, clean ort merges) |
