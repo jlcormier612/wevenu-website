@@ -241,6 +241,10 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
   });
   const docLoadGen = React.useRef(0);
   const luvLoadGen = React.useRef(0);
+  const docPackRef = React.useRef(docPack);
+  const luvPackRef = React.useRef(luvPack);
+  docPackRef.current = docPack;
+  luvPackRef.current = luvPack;
 
   React.useEffect(() => {
     // Reset packs when navigating to a different lead record.
@@ -262,10 +266,12 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
     luvLoadGen.current += 1;
   }, [lead.id]); // eslint-disable-line react-hooks/exhaustive-deps -- intentional record-switch reset
 
-  React.useEffect(() => {
-    if (activeTab !== "documents" || docPack.loaded || docPack.loading) return;
+  const ensureDocumentsPack = React.useEffectEvent((mode: "tab" | "idle" | "hover") => {
+    if (!deferDocuments) return;
+    const current = docPackRef.current;
+    if (current.loaded || current.loading) return;
     const gen = ++docLoadGen.current;
-    setDocPack((p) => ({ ...p, loading: true, error: null }));
+    setDocPack((p) => ({ ...p, loading: true, error: mode === "tab" ? null : p.error }));
     void loadLeadDocumentsPackAction(lead.id)
       .then((pack) => {
         if (gen !== docLoadGen.current) return; // stale / record switched
@@ -280,18 +286,25 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
       })
       .catch((err: unknown) => {
         if (gen !== docLoadGen.current) return;
+        // Idle/hover failures stay quiet until the user opens the tab.
+        if (mode !== "tab") {
+          setDocPack((p) => ({ ...p, loading: false }));
+          return;
+        }
         setDocPack((p) => ({
           ...p,
           loading: false,
           error: err instanceof Error ? err.message : "Could not load documents",
         }));
       });
-  }, [activeTab, docPack.loaded, docPack.loading, lead.id]);
+  });
 
-  React.useEffect(() => {
-    if (activeTab !== "luv" || luvPack.loaded || luvPack.loading) return;
+  const ensureLuvPack = React.useEffectEvent((mode: "tab" | "idle" | "hover") => {
+    if (!deferLuvDrafts) return;
+    const current = luvPackRef.current;
+    if (current.loaded || current.loading) return;
     const gen = ++luvLoadGen.current;
-    setLuvPack((p) => ({ ...p, loading: true, error: null }));
+    setLuvPack((p) => ({ ...p, loading: true, error: mode === "tab" ? null : p.error }));
     void loadLeadLuvDraftsPackAction(lead.id)
       .then((pack) => {
         if (gen !== luvLoadGen.current) return;
@@ -299,13 +312,55 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
       })
       .catch((err: unknown) => {
         if (gen !== luvLoadGen.current) return;
+        if (mode !== "tab") {
+          setLuvPack((p) => ({ ...p, loading: false }));
+          return;
+        }
         setLuvPack((p) => ({
           ...p,
           loading: false,
           error: err instanceof Error ? err.message : "Could not load Luv drafts",
         }));
       });
-  }, [activeTab, luvPack.loaded, luvPack.loading, lead.id]);
+  });
+
+  React.useEffect(() => {
+    if (activeTab === "documents") ensureDocumentsPack("tab");
+  }, [activeTab, docPack.loaded, docPack.loading, lead.id, ensureDocumentsPack]);
+
+  React.useEffect(() => {
+    if (activeTab === "luv") ensureLuvPack("tab");
+  }, [activeTab, luvPack.loaded, luvPack.loading, lead.id, ensureLuvPack]);
+
+  // Bounded idle prefetch — does not compete with first paint; warms Documents/Luv
+  // so Overview → Documents does not reintroduce a multi-second wait.
+  React.useEffect(() => {
+    if (!deferDocuments && !deferLuvDrafts) return;
+    let cancelled = false;
+    const run = () => {
+      if (cancelled) return;
+      if (deferDocuments) ensureDocumentsPack("idle");
+      if (deferLuvDrafts) ensureLuvPack("idle");
+    };
+    const ric = (window as Window & {
+      requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+      cancelIdleCallback?: (id: number) => void;
+    }).requestIdleCallback;
+    let idleId: number | undefined;
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    if (typeof ric === "function") {
+      idleId = ric(run, { timeout: 1200 });
+    } else {
+      timeoutId = setTimeout(run, 400);
+    }
+    return () => {
+      cancelled = true;
+      if (idleId != null) {
+        (window as Window & { cancelIdleCallback?: (id: number) => void }).cancelIdleCallback?.(idleId);
+      }
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [lead.id, deferDocuments, deferLuvDrafts, ensureDocumentsPack, ensureLuvPack]);
 
   React.useEffect(() => {
     const syncFromHash = () => {
@@ -1157,13 +1212,22 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
               </span>
             )}
           </TabsTrigger>
-          <TabsTrigger value="documents">
+          <TabsTrigger
+            value="documents"
+            onPointerEnter={() => ensureDocumentsPack("hover")}
+            onFocus={() => ensureDocumentsPack("hover")}
+          >
             Documents
             {docPack.loaded && docPack.documents.length > 0 && (
               <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{docPack.documents.length}</span>
             )}
           </TabsTrigger>
-          <TabsTrigger value="luv" className="gap-1.5">
+          <TabsTrigger
+            value="luv"
+            className="gap-1.5"
+            onPointerEnter={() => ensureLuvPack("hover")}
+            onFocus={() => ensureLuvPack("hover")}
+          >
             <LuvHeart size={12} /> Luv
           </TabsTrigger>
         </TabsList>

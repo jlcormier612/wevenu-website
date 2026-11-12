@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { Wordmark } from "@/components/brand/wordmark";
+import { NavigationPendingProvider } from "@/components/shell/navigation-pending";
 import { SidebarNav } from "@/components/shell/sidebar-nav";
 import { WorkspaceMainScrollBridge } from "@/components/shell/workspace-main-scroll-bridge";
 import { WorkspaceShellHeader } from "@/components/shell/workspace-shell-header";
@@ -52,47 +53,49 @@ export function WorkspaceShell({
   const isInboxWorkspace = pathname === "/messaging";
 
   return (
-    <div className="htc-staff fixed inset-0 flex min-h-0 w-full overflow-hidden bg-background font-sans text-foreground">
-      <aside className="hidden h-full min-h-0 w-[15.5rem] shrink-0 flex-col overflow-hidden border-r border-sidebar-border bg-sidebar text-sidebar-foreground lg:flex">
-        <div className="flex h-20 shrink-0 items-center border-b border-sidebar-border px-5">
-          <Wordmark sizeClassName="h-[66.8px] w-auto" />
-        </div>
-        {/* Giving feedback lives in the nav with everything else, under Your
-            Venue → Give feedback. A second trigger pinned down here opened the
-            form directly and bypassed the four choices, so staff met two
-            different feedback experiences depending on which one they found. */}
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          <SidebarNav staffRole={staffRole} />
-        </div>
-      </aside>
-
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <WorkspaceShellHeader
-          email={email}
-          venueName={venueName}
-          venueLogo={venueLogo}
-          staffRole={staffRole}
-          activeVenueId={activeVenueId}
-          memberships={memberships}
-        />
-
-        <main
-          data-workspace-main=""
-          className="min-h-0 min-w-0 flex-1 overflow-x-clip overflow-y-scroll overscroll-y-contain bg-background"
-        >
-          <div
-            className={cn(
-              "mx-auto w-full min-w-0",
-              isInboxWorkspace
-                ? "max-w-[90rem] px-3 py-3 sm:px-4 sm:py-4 lg:px-6 lg:py-4"
-                : "max-w-6xl p-4 sm:p-6 lg:p-10",
-            )}
-          >
-            {children}
+    <NavigationPendingProvider>
+      <div className="htc-staff fixed inset-0 flex min-h-0 w-full overflow-hidden bg-background font-sans text-foreground">
+        <aside className="hidden h-full min-h-0 w-[15.5rem] shrink-0 flex-col overflow-hidden border-r border-sidebar-border bg-sidebar text-sidebar-foreground lg:flex">
+          <div className="flex h-20 shrink-0 items-center border-b border-sidebar-border px-5">
+            <Wordmark sizeClassName="h-[66.8px] w-auto" />
           </div>
-        </main>
-        <WorkspaceMainScrollBridge />
+          {/* Giving feedback lives in the nav with everything else, under Your
+              Venue → Give feedback. A second trigger pinned down here opened the
+              form directly and bypassed the four choices, so staff met two
+              different feedback experiences depending on which one they found. */}
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <SidebarNav staffRole={staffRole} />
+          </div>
+        </aside>
+
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+          <WorkspaceShellHeader
+            email={email}
+            venueName={venueName}
+            venueLogo={venueLogo}
+            staffRole={staffRole}
+            activeVenueId={activeVenueId}
+            memberships={memberships}
+          />
+
+          <main
+            data-workspace-main=""
+            className="min-h-0 min-w-0 flex-1 overflow-x-clip overflow-y-scroll overscroll-y-contain bg-background"
+          >
+            <div
+              className={cn(
+                "mx-auto w-full min-w-0",
+                isInboxWorkspace
+                  ? "max-w-[90rem] px-3 py-3 sm:px-4 sm:py-4 lg:px-6 lg:py-4"
+                  : "max-w-6xl p-4 sm:p-6 lg:p-10",
+              )}
+            >
+              {children}
+            </div>
+          </main>
+          <WorkspaceMainScrollBridge />
+        </div>
       </div>
-    </div>
+    </NavigationPendingProvider>
   );
 }

@@ -4,6 +4,7 @@
  * Components and server actions call here — never the repository directly.
  * Server-only.
  */
+import { cache } from "react";
 import { createClient } from "@/integrations/supabase/server";
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/env";
@@ -139,13 +140,17 @@ export async function findActiveDuplicateLeadForVenue(venueId: string, email: st
   return repo.findActiveDuplicate(createAdminClient(), venueId, email, firstName, lastName);
 }
 
-export async function getLead(leadId: string): Promise<LeadWithDetails | null> {
+/**
+ * Request-scoped only (`cache`) — dedupes generateMetadata + page + same-request
+ * authz helpers. Never cross-request / cross-tenant.
+ */
+export const getLead = cache(async function getLead(leadId: string): Promise<LeadWithDetails | null> {
   if (!isSupabaseConfigured) return null;
   const venue = await getCurrentVenue();
   if (!venue) return null;
   const supabase = await createClient();
   return repo.getLead(supabase, venue.id, leadId);
-}
+});
 
 // ---- create -----------------------------------------------------------------
 

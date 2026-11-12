@@ -4,6 +4,10 @@ import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import {
+  navigationPendingOnClick,
+  useNavigationPending,
+} from "@/components/shell/navigation-pending";
 import { NAV_SECTIONS } from "@/lib/navigation";
 import {
   badgeCountForNavItem,
@@ -38,6 +42,7 @@ export function SidebarNav({
   staffRole?: string | null;
 }) {
   const pathname = usePathname();
+  const navPending = useNavigationPending();
   const [counts, setCounts] = React.useState<NavAttentionCounts>(emptyNavAttentionCounts);
 
   React.useEffect(() => {
@@ -97,7 +102,7 @@ export function SidebarNav({
               >
                 <Link
                   href={href}
-                  onClick={onNavigate}
+                  onClick={navigationPendingOnClick(navPending?.begin, href, () => onNavigate?.())}
                   aria-current={isActive ? "page" : undefined}
                   className="flex min-w-0 flex-1 items-center gap-3 focus-visible:outline-none"
                 >
