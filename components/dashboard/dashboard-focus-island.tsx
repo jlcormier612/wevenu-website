@@ -85,7 +85,7 @@ export async function DashboardFocusIsland() {
 
         {luvEntry && <DashboardLuvEntryCard entry={luvEntry} />}
 
-        <section>
+        <section data-testid="coming-up-section">
           <AttentionList
             icon={<CalendarClock className="h-4 w-4 text-muted-foreground" />}
             title="Coming up"

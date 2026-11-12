@@ -43,3 +43,5 @@ Local n=10 Overview useful median: **2337 → 1276 ms** vs PR #34; Documents fir
 **No merge. No deploy. Production / Stripe / demo data untouched.**
 
 Full evidence: `WAVE-C1-OPTIMIZATION-RESULTS.md`, `WAVE-C1-PROTOTYPE-RESULTS.md`, `PERFORMANCE-CHANGE-MANIFEST.md`.
+
+Release readiness: see `PERFORMANCE-RELEASE-READINESS.md` (no merge/deploy).
