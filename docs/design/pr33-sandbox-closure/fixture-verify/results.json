@@ -1,0 +1,42 @@
+{
+  "at": "2026-11-12T05:31:32.897Z",
+  "db": {
+    "leads": [
+      {
+        "id": "24b2d6d7-c2df-40ae-8bd4-dacd670649a1",
+        "first_name": "Avery",
+        "last_name": "Blake Final 2026-11-08",
+        "venue_id": "31f38b79-eb99-4ebc-81bc-af85767b42aa"
+      },
+      {
+        "id": "f66059c9-5d2b-4a58-92df-567ff3ed924b",
+        "first_name": "Ellie",
+        "last_name": "St. James",
+        "venue_id": "31f38b79-eb99-4ebc-81bc-af85767b42aa"
+      }
+    ],
+    "averyProposals": [
+      {
+        "id": "a964b9b5-dc50-4336-b44d-0c7d8bddfafb",
+        "lead_id": "24b2d6d7-c2df-40ae-8bd4-dacd670649a1",
+        "status": "sent"
+      }
+    ]
+  },
+  "pages": {
+    "ellie": {
+      "url": "https://app.sandbox.hellotocheers.com/leads/f66059c9-5d2b-4a58-92df-567ff3ed924b",
+      "status": 200,
+      "hasName": true,
+      "has404": false,
+      "title": "Ellie St. James & Colby Thornton · Hello to Cheers"
+    },
+    "avery": {
+      "url": "https://app.sandbox.hellotocheers.com/leads/24b2d6d7-c2df-40ae-8bd4-dacd670649a1",
+      "status": 200,
+      "hasName": true,
+      "has404": false,
+      "title": "Avery Blake Final 2026-11-08 & Rowan Blake · Hello to Cheers"
+    }
+  }
+}
