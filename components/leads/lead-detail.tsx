@@ -243,11 +243,15 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
   const luvLoadGen = React.useRef(0);
   const docPackRef = React.useRef(docPack);
   const luvPackRef = React.useRef(luvPack);
+  const docInflightRef = React.useRef<Promise<void> | null>(null);
+  const luvInflightRef = React.useRef<Promise<void> | null>(null);
   docPackRef.current = docPack;
   luvPackRef.current = luvPack;
 
   React.useEffect(() => {
     // Reset packs when navigating to a different lead record.
+    docInflightRef.current = null;
+    luvInflightRef.current = null;
     setDocPack({
       documents,
       workspaceDocuments,
@@ -266,13 +270,21 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
     luvLoadGen.current += 1;
   }, [lead.id]); // eslint-disable-line react-hooks/exhaustive-deps -- intentional record-switch reset
 
-  const ensureDocumentsPack = React.useEffectEvent((mode: "tab" | "idle" | "hover") => {
+  const ensureDocumentsPack = React.useEffectEvent((mode: "tab" | "idle" | "hover" | "retry") => {
     if (!deferDocuments) return;
     const current = docPackRef.current;
-    if (current.loaded || current.loading) return;
+    if (current.loaded) return;
+    // Reuse in-flight prefetch (idle/hover) when the tab opens mid-flight.
+    if (docInflightRef.current && mode !== "retry") return;
+    if (mode === "retry") {
+      docInflightRef.current = null;
+    } else if (current.loading && docInflightRef.current) {
+      return;
+    }
     const gen = ++docLoadGen.current;
-    setDocPack((p) => ({ ...p, loading: true, error: mode === "tab" ? null : p.error }));
-    void loadLeadDocumentsPackAction(lead.id)
+    const leadId = lead.id;
+    setDocPack((p) => ({ ...p, loading: true, error: mode === "idle" || mode === "hover" ? p.error : null }));
+    const pending = loadLeadDocumentsPackAction(leadId)
       .then((pack) => {
         if (gen !== docLoadGen.current) return; // stale / record switched
         setDocPack({
@@ -286,8 +298,8 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
       })
       .catch((err: unknown) => {
         if (gen !== docLoadGen.current) return;
-        // Idle/hover failures stay quiet until the user opens the tab.
-        if (mode !== "tab") {
+        // Idle/hover failures stay quiet until the user opens the tab / retries.
+        if (mode === "idle" || mode === "hover") {
           setDocPack((p) => ({ ...p, loading: false }));
           return;
         }
@@ -296,23 +308,34 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
           loading: false,
           error: err instanceof Error ? err.message : "Could not load documents",
         }));
+      })
+      .finally(() => {
+        if (docInflightRef.current === pending) docInflightRef.current = null;
       });
+    docInflightRef.current = pending;
   });
 
-  const ensureLuvPack = React.useEffectEvent((mode: "tab" | "idle" | "hover") => {
+  const ensureLuvPack = React.useEffectEvent((mode: "tab" | "idle" | "hover" | "retry") => {
     if (!deferLuvDrafts) return;
     const current = luvPackRef.current;
-    if (current.loaded || current.loading) return;
+    if (current.loaded) return;
+    if (luvInflightRef.current && mode !== "retry") return;
+    if (mode === "retry") {
+      luvInflightRef.current = null;
+    } else if (current.loading && luvInflightRef.current) {
+      return;
+    }
     const gen = ++luvLoadGen.current;
-    setLuvPack((p) => ({ ...p, loading: true, error: mode === "tab" ? null : p.error }));
-    void loadLeadLuvDraftsPackAction(lead.id)
+    const leadId = lead.id;
+    setLuvPack((p) => ({ ...p, loading: true, error: mode === "idle" || mode === "hover" ? p.error : null }));
+    const pending = loadLeadLuvDraftsPackAction(leadId)
       .then((pack) => {
         if (gen !== luvLoadGen.current) return;
         setLuvPack({ drafts: pack.drafts, loaded: true, loading: false, error: null });
       })
       .catch((err: unknown) => {
         if (gen !== luvLoadGen.current) return;
-        if (mode !== "tab") {
+        if (mode === "idle" || mode === "hover") {
           setLuvPack((p) => ({ ...p, loading: false }));
           return;
         }
@@ -321,7 +344,11 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
           loading: false,
           error: err instanceof Error ? err.message : "Could not load Luv drafts",
         }));
+      })
+      .finally(() => {
+        if (luvInflightRef.current === pending) luvInflightRef.current = null;
       });
+    luvInflightRef.current = pending;
   });
 
   React.useEffect(() => {
@@ -332,8 +359,8 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
     if (activeTab === "luv") ensureLuvPack("tab");
   }, [activeTab, luvPack.loaded, luvPack.loading, lead.id, ensureLuvPack]);
 
-  // Bounded idle prefetch — does not compete with first paint; warms Documents/Luv
-  // so Overview → Documents does not reintroduce a multi-second wait.
+  // Bounded idle prefetch after first paint — short timeout so cold Documents
+  // clicks rarely lose the race, without starting during critical rendering.
   React.useEffect(() => {
     if (!deferDocuments && !deferLuvDrafts) return;
     let cancelled = false;
@@ -349,9 +376,9 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
     let idleId: number | undefined;
     let timeoutId: ReturnType<typeof setTimeout> | undefined;
     if (typeof ric === "function") {
-      idleId = ric(run, { timeout: 1200 });
+      idleId = ric(run, { timeout: 400 });
     } else {
-      timeoutId = setTimeout(run, 400);
+      timeoutId = setTimeout(run, 200);
     }
     return () => {
       cancelled = true;
@@ -1322,9 +1349,17 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
               Loading documents…
             </div>
           ) : docPack.error ? (
-            <p className="py-6 text-sm text-destructive" data-testid="lead-documents-deferred-error" role="alert">
-              {docPack.error}
-            </p>
+            <div className="space-y-3 py-6" data-testid="lead-documents-deferred-error" role="alert">
+              <p className="text-sm text-destructive">{docPack.error}</p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => ensureDocumentsPack("retry")}
+              >
+                Try again
+              </Button>
+            </div>
           ) : (
             <DocumentWorkspace
               title="Documents"
@@ -1362,9 +1397,17 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
                   Loading Luv drafts…
                 </div>
               ) : luvPack.error ? (
-                <p className="text-sm text-destructive" data-testid="lead-luv-deferred-error" role="alert">
-                  {luvPack.error}
-                </p>
+                <div className="space-y-3" data-testid="lead-luv-deferred-error" role="alert">
+                  <p className="text-sm text-destructive">{luvPack.error}</p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => ensureLuvPack("retry")}
+                  >
+                    Try again
+                  </Button>
+                </div>
               ) : (
                 <LuvDraftPanel
                   lead={lead}

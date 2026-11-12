@@ -39,7 +39,10 @@ describe("Wave C1 lead workspace deferral + optimization", () => {
     assert.match(detail, /docLoadGen/);
     assert.match(detail, /luvLoadGen/);
     assert.match(detail, /ensureDocumentsPack/);
-    assert.match(detail, /requestIdleCallback|setTimeout\(run, 400\)/);
+    assert.match(detail, /docInflightRef/);
+    assert.match(detail, /Try again/);
+    assert.match(detail, /requestIdleCallback|setTimeout\(run, 200\)/);
+    assert.match(detail, /timeout: 400/);
   });
 
   it("scopes Lead Booking Journey contracts — never venue-wide getContracts()", () => {

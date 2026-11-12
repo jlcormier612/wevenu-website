@@ -5,20 +5,38 @@ import { usePathname } from "next/navigation";
 
 /**
  * Immediate soft-nav feedback that does not wait for the server RSC flight.
- * Click sets pending; pathname change clears. Subtle top edge only — no overlay.
+ * Click sets pending; pathname change / popstate / safety timeout clears.
+ * Subtle top edge only — no overlay, no false success.
  */
 const NavigationPendingContext = React.createContext<{
   pendingHref: string | null;
   begin: (href: string) => void;
 } | null>(null);
 
+const STUCK_CLEAR_MS = 12_000;
+
 export function NavigationPendingProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [pendingHref, setPendingHref] = React.useState<string | null>(null);
+  const stuckTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearPending = React.useEffectEvent(() => {
+    if (stuckTimer.current) {
+      clearTimeout(stuckTimer.current);
+      stuckTimer.current = null;
+    }
+    setPendingHref(null);
+  });
 
   React.useEffect(() => {
-    setPendingHref(null);
-  }, [pathname]);
+    clearPending();
+  }, [pathname, clearPending]);
+
+  React.useEffect(() => {
+    const onPop = () => clearPending();
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, [clearPending]);
 
   const value = React.useMemo(
     () => ({
@@ -27,6 +45,11 @@ export function NavigationPendingProvider({ children }: { children: React.ReactN
         const path = href.split("?")[0]?.split("#")[0] ?? href;
         if (!path || path === pathname) return;
         setPendingHref(path);
+        if (stuckTimer.current) clearTimeout(stuckTimer.current);
+        stuckTimer.current = setTimeout(() => {
+          setPendingHref(null);
+          stuckTimer.current = null;
+        }, STUCK_CLEAR_MS);
       },
     }),
     [pendingHref, pathname],
@@ -46,7 +69,7 @@ export function NavigationPendingProvider({ children }: { children: React.ReactN
         }
       >
         {pendingHref ? (
-          <div className="htc-nav-pending-indeterminate h-full w-1/3 bg-[color:var(--htc-botanical)]/85" />
+          <div className="htc-nav-pending-indeterminate h-full w-1/3 bg-[color:var(--htc-botanical)]/85 motion-reduce:animate-none motion-reduce:w-full motion-reduce:opacity-70" />
         ) : null}
       </div>
     </NavigationPendingContext.Provider>
