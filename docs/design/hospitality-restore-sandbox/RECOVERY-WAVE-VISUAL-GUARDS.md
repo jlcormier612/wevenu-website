@@ -39,6 +39,8 @@ CI also greps this step so it cannot be silently removed.
 | Templates hub | `approved/templates__desktop.png` | `…__mobile.png` | Hospitality hub OK |
 | Message templates list | `communication-templates__*` | same | Hospitality list OK |
 | Timeline template **editor** | `recovery-evidence/timeline-template-edit__desktop.png` | `…__mobile.png` | Hospitality + working cards OK |
+| Event Order / Floor plan / Questionnaire editors | `event-order-edit__*`, `floor-plan-edit-real__*`, `questionnaire-edit-real__*` | same | Hospitality editors OK |
+| Contracts / Payments / Calendar / Vendors / Packages | `contracts__*`, `payments__*`, `calendar__*`, `vendors__*`, `packages__*` | same | Live hospitality lists/calendar OK |
 | Billing / subscription | `billing__*` | same | Cards + heading OK |
 | Org settings | `org-settings__*` | same | Settings card grid OK |
 | Multi-venue chrome | header “The Willow Grove” on all shots | same | Switcher chrome OK |

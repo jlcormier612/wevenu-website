@@ -1,0 +1,66 @@
+{
+  "at": "2026-11-11T23:58:54.947Z",
+  "routes": {
+    "contracts": {
+      "path": "/contracts",
+      "hospitality": 1,
+      "workingCard": 0,
+      "heading": 1,
+      "shot": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/contracts__desktop.png"
+    },
+    "payments": {
+      "path": "/payments",
+      "hospitality": 1,
+      "workingCard": 0,
+      "heading": 1,
+      "shot": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/payments__desktop.png"
+    },
+    "calendar": {
+      "path": "/calendar",
+      "hospitality": 0,
+      "workingCard": 0,
+      "heading": 1,
+      "shot": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/calendar__desktop.png"
+    },
+    "vendors": {
+      "path": "/vendors",
+      "hospitality": 1,
+      "workingCard": 0,
+      "heading": 1,
+      "shot": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/vendors__desktop.png"
+    },
+    "packages": {
+      "path": "/packages",
+      "hospitality": 1,
+      "workingCard": 0,
+      "heading": 1,
+      "shot": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/packages__desktop.png"
+    },
+    "floor-plan-edit": {
+      "path": "/library/floor-plan-templates/6dfb74c9-b1c7-4d54-ae50-760db4216f2b/preview",
+      "hospitality": 0,
+      "workingCard": 0,
+      "heading": 0,
+      "shot": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/floor-plan-edit__desktop.png"
+    },
+    "event-order-edit": {
+      "path": "/library/event-order-templates/f5d05a81-2069-4fdf-96c4-40e8534ae948",
+      "hospitality": 1,
+      "workingCard": 5,
+      "heading": 1,
+      "shot": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/event-order-edit__desktop.png"
+    },
+    "questionnaire-edit": {
+      "path": "/library/questionnaire-templates/88ffd0f4-f811-479d-a224-fa7e3aa199e7/preview",
+      "hospitality": 0,
+      "workingCard": 0,
+      "heading": 0,
+      "shot": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/questionnaire-edit__desktop.png"
+    }
+  },
+  "discovered": {
+    "floorEdit": "/library/floor-plan-templates/6dfb74c9-b1c7-4d54-ae50-760db4216f2b/preview",
+    "eoEdit": "/library/event-order-templates/f5d05a81-2069-4fdf-96c4-40e8534ae948",
+    "qEdit": "/library/questionnaire-templates/88ffd0f4-f811-479d-a224-fa7e3aa199e7/preview"
+  }
+}
