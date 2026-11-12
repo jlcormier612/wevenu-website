@@ -83,12 +83,23 @@ describe("Phase 3B forensic instrumentation wiring", () => {
   const root = process.cwd();
   const read = (rel: string) => readFileSync(join(root, rel), "utf8");
 
-  it("wires ALS forensic wrapper on the Dashboard page", () => {
+  it("wires ALS forensic wrapper on Dashboard streaming islands", () => {
     const page = read("app/(app)/dashboard/page.tsx");
-    assert.match(page, /withDashboardForensic/);
-    assert.match(page, /forensicTime\("get_dashboard_data"/);
-    assert.match(page, /forensicTime\("business_snapshot"/);
-    assert.match(page, /forensicTime\("rsc_focus_l1_assembly"/);
+    assert.match(page, /DashboardHeaderIsland/);
+    assert.match(page, /DashboardSnapshotIsland/);
+    assert.match(page, /DashboardFocusIsland/);
+    assert.match(page, /Suspense/);
+
+    const header = read("components/dashboard/dashboard-header-island.tsx");
+    const snapshot = read("components/dashboard/dashboard-snapshot-island.tsx");
+    const focus = read("components/dashboard/dashboard-focus-island.tsx");
+    assert.match(header, /withDashboardForensic/);
+    assert.match(header, /forensicTime\("get_dashboard_data"/);
+    assert.match(snapshot, /withDashboardForensic/);
+    assert.match(snapshot, /forensicTime\("business_snapshot"/);
+    assert.match(focus, /withDashboardForensic/);
+    assert.match(focus, /forensicTime\("get_dashboard_data"/);
+    assert.match(focus, /forensicTime\("rsc_focus_l1_assembly"/);
   });
 
   it("times Dashboard service wave boundaries and L1 inputs", () => {

@@ -1,0 +1,225 @@
+{
+  "at": "2026-11-12T02:28:17.548Z",
+  "base": "http://127.0.0.1:3457",
+  "softNav": [
+    {
+      "run": 1,
+      "from": "/dashboard",
+      "href": "/leads",
+      "name": "to-leads",
+      "clickToFeedbackMs": -1,
+      "sawLoading": false,
+      "usefulMs": 349,
+      "busyRegionsOk": true
+    },
+    {
+      "run": 1,
+      "from": "/leads",
+      "href": "/clients",
+      "name": "to-clients",
+      "clickToFeedbackMs": -1,
+      "sawLoading": false,
+      "usefulMs": 287,
+      "busyRegionsOk": true
+    },
+    {
+      "run": 1,
+      "from": "/clients",
+      "href": "/payments",
+      "name": "to-payments",
+      "clickToFeedbackMs": 1207,
+      "sawLoading": true,
+      "usefulMs": 244,
+      "busyRegionsOk": true
+    },
+    {
+      "run": 1,
+      "from": "/payments",
+      "href": "/reporting",
+      "name": "to-reporting",
+      "clickToFeedbackMs": 1209,
+      "sawLoading": true,
+      "usefulMs": 260,
+      "busyRegionsOk": true
+    },
+    {
+      "run": 1,
+      "from": "/reporting",
+      "href": "/calendar",
+      "name": "to-calendar",
+      "clickToFeedbackMs": -1,
+      "sawLoading": false,
+      "usefulMs": 245,
+      "busyRegionsOk": true
+    },
+    {
+      "run": 1,
+      "from": "/calendar",
+      "href": "/dashboard",
+      "name": "to-dashboard",
+      "clickToFeedbackMs": -1,
+      "sawLoading": false,
+      "usefulMs": 239,
+      "busyRegionsOk": true
+    },
+    {
+      "run": 2,
+      "from": "/dashboard",
+      "href": "/leads",
+      "name": "to-leads",
+      "clickToFeedbackMs": -1,
+      "sawLoading": false,
+      "usefulMs": 262,
+      "busyRegionsOk": true
+    },
+    {
+      "run": 2,
+      "from": "/leads",
+      "href": "/clients",
+      "name": "to-clients",
+      "clickToFeedbackMs": 1199,
+      "sawLoading": true,
+      "usefulMs": 282,
+      "busyRegionsOk": true
+    },
+    {
+      "run": 2,
+      "from": "/clients",
+      "href": "/payments",
+      "name": "to-payments",
+      "clickToFeedbackMs": 1190,
+      "sawLoading": true,
+      "usefulMs": 246,
+      "busyRegionsOk": true
+    },
+    {
+      "run": 2,
+      "from": "/payments",
+      "href": "/reporting",
+      "name": "to-reporting",
+      "clickToFeedbackMs": 1209,
+      "sawLoading": true,
+      "usefulMs": 259,
+      "busyRegionsOk": true
+    },
+    {
+      "run": 2,
+      "from": "/reporting",
+      "href": "/calendar",
+      "name": "to-calendar",
+      "clickToFeedbackMs": 1240,
+      "sawLoading": true,
+      "usefulMs": 257,
+      "busyRegionsOk": true
+    },
+    {
+      "run": 2,
+      "from": "/calendar",
+      "href": "/dashboard",
+      "name": "to-dashboard",
+      "clickToFeedbackMs": 1204,
+      "sawLoading": true,
+      "usefulMs": 251,
+      "busyRegionsOk": true
+    },
+    {
+      "run": 3,
+      "from": "/dashboard",
+      "href": "/leads",
+      "name": "to-leads",
+      "clickToFeedbackMs": 1210,
+      "sawLoading": true,
+      "usefulMs": 269,
+      "busyRegionsOk": true
+    },
+    {
+      "run": 3,
+      "from": "/leads",
+      "href": "/clients",
+      "name": "to-clients",
+      "clickToFeedbackMs": 1315,
+      "sawLoading": true,
+      "usefulMs": 296,
+      "busyRegionsOk": true
+    },
+    {
+      "run": 3,
+      "from": "/clients",
+      "href": "/payments",
+      "name": "to-payments",
+      "clickToFeedbackMs": 1156,
+      "sawLoading": true,
+      "usefulMs": 252,
+      "busyRegionsOk": true
+    },
+    {
+      "run": 3,
+      "from": "/payments",
+      "href": "/reporting",
+      "name": "to-reporting",
+      "clickToFeedbackMs": 1235,
+      "sawLoading": true,
+      "usefulMs": 272,
+      "busyRegionsOk": true
+    },
+    {
+      "run": 3,
+      "from": "/reporting",
+      "href": "/calendar",
+      "name": "to-calendar",
+      "clickToFeedbackMs": 1229,
+      "sawLoading": true,
+      "usefulMs": 260,
+      "busyRegionsOk": true
+    },
+    {
+      "run": 3,
+      "from": "/calendar",
+      "href": "/dashboard",
+      "name": "to-dashboard",
+      "clickToFeedbackMs": 1230,
+      "sawLoading": true,
+      "usefulMs": 243,
+      "busyRegionsOk": true
+    }
+  ],
+  "dashboard": {
+    "hasGreeting": true,
+    "hasNewLead": false,
+    "hasLeadFlow": true,
+    "hasBookedBusiness": true,
+    "hasCashCollected": true,
+    "hasOutstanding": true,
+    "hasTodaysFocus": true,
+    "hasComingUp": true,
+    "hasViewReports": true,
+    "streamingRoot": true,
+    "sectionOrder": {
+      "greetingBeforeKpi": true,
+      "kpiBeforeFocus": true,
+      "focusBeforeComing": true
+    },
+    "dismissControlPresent": true,
+    "comingUpNav": {
+      "href": "/clients/4dc379ce-d2b4-4289-825c-1155ea643eb9",
+      "after": "http://127.0.0.1:3457/clients/4dc379ce-d2b4-4289-825c-1155ea643eb9",
+      "ok": true
+    },
+    "backOk": true
+  },
+  "a11y": {},
+  "softNavStats": {
+    "n": 13,
+    "median": 1209,
+    "p95": 1315,
+    "max": 1315,
+    "min": 1156
+  },
+  "softNavUseful": {
+    "n": 18,
+    "median": 260,
+    "p95": 349,
+    "max": 349,
+    "min": 239
+  }
+}
