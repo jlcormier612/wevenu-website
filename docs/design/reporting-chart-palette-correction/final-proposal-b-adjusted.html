@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Final Reporting palette — Proposal B adjusted</title>
+  <style>
+    :root {
+      --dusty-rose: #d8a7aa;
+      --soft-sage: #b9d1c2;
+      --cal-tour: #4A7EA8;
+      --cal-event: #7B5EA0;
+      --htc-eucalyptus: #a7c2af;
+      --htc-blush: #d99a9e;
+      --cal-contract-expiration: #8E6B8E;
+      --cal-planning-activity: #7A8FA6;
+      --htc-soft-rose: #e8c5c8;
+      --htc-leaf-muted: #7e9e88;
+      --heritage-sage: #5d6f5d;
+      --cal-other: #9C9690;
+      --htc-soft-sage: #c9d9ce;
+      --htc-petal: #f0d8db;
+      --htc-calm-accent: #63819a;
+      --htc-eucalyptus-surface: #dce8e0;
+      --htc-calm-blue-deep: #dfe9f1;
+      --cal-document-expiration: #9C7A5B;
+      --not-recorded: #c9c0b3;
+      --canvas: #f8f7f3;
+      --border: #e6e3dc;
+      --heading: #4f5f4f;
+      --muted: #6a7468;
+    }
+    body { margin: 0; font-family: ui-sans-serif, system-ui, sans-serif; background: var(--canvas); padding: 28px; color: #1a1a1a; }
+    h1 { font-family: Georgia, serif; color: var(--heading); margin: 0 0 8px; font-size: 24px; }
+    .blurb { color: var(--muted); margin: 0 0 20px; max-width: 70rem; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    .card { background: #fff; border: 1px solid var(--border); border-radius: 16px; padding: 20px; }
+    .card h3 { margin: 0; font-size: 16px; color: var(--heading); }
+    .desc { margin: 6px 0 14px; font-size: 13px; color: var(--muted); }
+    .row { display: grid; grid-template-columns: minmax(0,14rem) 1fr; gap: 20px; align-items: center; }
+    .donut { position: relative; }
+    .center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; }
+    .center .k { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+    .center .v { font-size: 24px; font-weight: 600; color: var(--heading); }
+    ul { list-style: none; margin: 0; padding: 0; }
+    li { display: flex; gap: 8px; align-items: center; padding: 6px; font-size: 14px; }
+    .sw { width: 10px; height: 10px; border-radius: 999px; }
+    .lbl { flex: 1; }
+    .cnt { font-weight: 600; color: var(--heading); }
+    .pct { width: 40px; text-align: right; color: var(--muted); }
+    .map { margin-top: 18px; display: flex; flex-wrap: wrap; gap: 8px; }
+    .chip { background: #fff; border: 1px solid var(--border); border-radius: 999px; padding: 4px 10px; font-size: 12px; display: inline-flex; gap: 8px; align-items: center; }
+    .dot { width: 14px; height: 14px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <h1>Final palette — Proposal B adjusted</h1>
+  <p class="blurb">Soft buttery yellow (#F0DFA6) for the largest source; soft blue (#A9C9DA); one dark green late. Willow Grove Overview data.</p>
+  <div class="grid" id="charts"></div>
+  <div class="map" id="map"></div>
+  <script>
+    const PALETTE = [
+      "#F0DFA6","#d8a7aa","#A9C9DA","#4A7EA8","#7B5EA0","#a7c2af","#d99a9e","#b9d1c2",
+      "#8E6B8E","#7A8FA6","#e8c5c8","#7e9e88","#5d6f5d","#9C9690","#c9d9ce","#f0d8db",
+      "#63819a","#dce8e0","#dfe9f1","#9C7A5B"
+    ];
+    const NOT = "#c9c0b3";
+    const LEADS = [
+      {key:"website",label:"Website",count:29,percent:50},
+      {key:"referral",label:"Referral",count:1,percent:2},
+      {key:"phone_call",label:"Phone Call",count:1,percent:2},
+      {key:"facebook",label:"Facebook",count:1,percent:2},
+      {key:"google",label:"Google",count:1,percent:1},
+      {key:"unknown",label:"Not recorded",count:25,percent:43},
+    ];
+    const BOOKINGS = [
+      {key:"website",label:"Website",count:2,percent:25},
+      {key:"instagram",label:"Instagram",count:2,percent:25},
+      {key:"the_knot",label:"The Knot",count:2,percent:25},
+      {key:"referral",label:"Referral",count:1,percent:13},
+      {key:"unknown",label:"Not recorded",count:1,percent:12},
+    ];
+    function assign(slices) {
+      const map = new Map();
+      const real = slices.filter(s => s.key !== "unknown").sort((a,b)=> b.count-a.count || a.key.localeCompare(b.key));
+      real.forEach((s,i)=> map.set(s.key, PALETTE[i]));
+      return map;
+    }
+    // Cross-chart union rank (matches intended visual balance for this screenshot)
+    const union = assign([...LEADS, ...BOOKINGS].filter(s=>s.key!=="unknown"));
+    // Actually assignUniqueCompositionColors is per-chart. Simulate per-chart:
+    function assignChart(slices) {
+      const map = new Map();
+      const real = slices.filter(s => s.key !== "unknown").slice().sort((a,b)=> b.count-a.count || a.key.localeCompare(b.key));
+      real.forEach((s,i)=> map.set(s.key, PALETTE[i]));
+      return map;
+    }
+    function polar(cx,cy,r,a){const rad=((a-90)*Math.PI)/180;return{x:cx+r*Math.cos(rad),y:cy+r*Math.sin(rad)};}
+    function arc(cx,cy,ro,ri,s,e){
+      const sweep=e-s; if(sweep<=0)return"";
+      const large=sweep>180?1:0; const o0=polar(cx,cy,ro,s),o1=polar(cx,cy,ro,e),i1=polar(cx,cy,ri,e),i0=polar(cx,cy,ri,s);
+      return `M ${o0.x} ${o0.y} A ${ro} ${ro} 0 ${large} 1 ${o1.x} ${o1.y} L ${i1.x} ${i1.y} A ${ri} ${ri} 0 ${large} 0 ${i0.x} ${i0.y} Z`;
+    }
+    function render(title,desc,slices,total){
+      const map = assignChart(slices);
+      let ang=0;
+      const arcs = slices.map(s=>{
+        const sweep=(s.count/total)*360; const start=ang; const end=ang+sweep; ang=end;
+        const color = s.key==="unknown" ? NOT : map.get(s.key);
+        return {...s,color,d:arc(100,100,78,48,start,end)};
+      });
+      const el=document.createElement("div"); el.className="card";
+      el.innerHTML=`<h3>${title}</h3><p class="desc">${desc}</p><div class="row"><div class="donut"><svg viewBox="0 0 200 200">${arcs.map(a=>`<path d="${a.d}" fill="${a.color}"></path>`).join("")}</svg><div class="center"><div class="k">Total</div><div class="v">${total}</div></div></div><ul>${arcs.map(a=>`<li><span class="sw" style="background:${a.color}"></span><span class="lbl">${a.label}</span><span class="cnt">${a.count}</span><span class="pct">${a.percent}%</span></li>`).join("")}</ul></div>`;
+      document.getElementById("charts").appendChild(el);
+      return map;
+    }
+    const m1 = render("Leads by Source","New leads received in this period, grouped by acquisition source captured at entry. Missing source is Not recorded.", LEADS, 58);
+    const m2 = render("Bookings by Source","Bookings first marked booked during the selected period, by the frozen source recorded when the lead arrived. Missing source is Not recorded.", BOOKINGS, 8);
+    const shown = new Map([...m1,...m2]);
+    document.getElementById("map").innerHTML = [...shown.entries()].map(([k,c])=>`<span class="chip"><span class="dot" style="background:${c}"></span><strong>${k}</strong> <code>${c}</code></span>`).join("") + `<span class="chip"><span class="dot" style="background:${NOT}"></span><strong>unknown</strong> <code>${NOT}</code></span>`;
+  </script>
+</body>
+</html>

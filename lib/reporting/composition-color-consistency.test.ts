@@ -56,7 +56,7 @@ describe("cross-chart composition color consistency", () => {
     assert.equal(colorOf(withIg, "website"), colorOf(withoutIg, "website"));
   });
 
-  it("preserves preferred colors across rank changes when no palette collision", () => {
+  it("gives the lead palette accent to whichever source ranks largest", () => {
     const periodA = buildDisplayComposition(
       slices([
         { key: "website", label: "Website", count: 50 },
@@ -71,12 +71,13 @@ describe("cross-chart composition color consistency", () => {
         { key: "referral", label: "Referral", count: 5 },
       ]),
     );
-    assert.equal(colorOf(periodA, "website"), colorOf(periodB, "website"));
-    assert.equal(colorOf(periodA, "instagram"), colorOf(periodB, "instagram"));
+    // Rank-aware: largest source claims the first curated accent in both periods.
+    assert.equal(colorOf(periodA, "website"), colorOf(periodB, "instagram"));
+    assert.equal(colorOf(periodA, "instagram"), colorOf(periodB, "website"));
+    assert.equal(colorOf(periodA, "website"), "#F0DFA6");
   });
 
-  it("documents collision behavior: second assignee may walk when preferred slots clash", () => {
-    // Force many sources so preferred indices collide; uniqueness wins.
+  it("keeps unique colors when ranks reverse; accents follow prominence", () => {
     const keys = Array.from({ length: 12 }, (_, i) => `src_${i}`);
     const a = buildDisplayComposition(
       slices(keys.map((key, i) => ({ key, label: key, count: 20 - i }))),
@@ -90,13 +91,9 @@ describe("cross-chart composition color consistency", () => {
     );
     assert.equal(new Set(a.map((s) => s.color)).size, a.length);
     assert.equal(new Set(b.map((s) => s.color)).size, b.length);
-    // Some keys may differ between charts when rank/order changes collide —
-    // acceptable; document how many stay stable.
-    const shared = keys.filter((k) => colorOf(a, k) && colorOf(b, k) && colorOf(a, k) === colorOf(b, k));
-    assert.ok(
-      shared.length >= 1,
-      `expected at least one stable key across reorder; stable=${shared.length}`,
-    );
+    // Rank-aware: largest key in each chart claims the soft yellow accent.
+    assert.equal(colorOf(a, keys[0]!), "#F0DFA6");
+    assert.equal(colorOf(b, keys[keys.length - 1]!), "#F0DFA6");
   });
 
   it("sources folded into Other lose individual arcs but totals stay reconciled", () => {
