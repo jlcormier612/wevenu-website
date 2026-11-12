@@ -1,0 +1,224 @@
+{
+  "at": "2026-11-12T03:54:38.649Z",
+  "maxDiffRatio": 0.02,
+  "ok": false,
+  "results": [
+    {
+      "key": "billing__desktop",
+      "ok": true,
+      "diffPixels": 0,
+      "totalPixels": 0,
+      "diffRatio": 0,
+      "approvedSha": "80a212f5d511e4cb",
+      "currentSha": "80a212f5d511e4cb"
+    },
+    {
+      "key": "billing__mobile",
+      "ok": true,
+      "diffPixels": 0,
+      "totalPixels": 0,
+      "diffRatio": 0,
+      "approvedSha": "2ddd4e6641838eb3",
+      "currentSha": "2ddd4e6641838eb3"
+    },
+    {
+      "key": "clients__desktop",
+      "ok": true,
+      "diffPixels": 0,
+      "totalPixels": 0,
+      "diffRatio": 0,
+      "approvedSha": "067539877735b94f",
+      "currentSha": "067539877735b94f"
+    },
+    {
+      "key": "clients__mobile",
+      "ok": true,
+      "diffPixels": 0,
+      "totalPixels": 0,
+      "diffRatio": 0,
+      "approvedSha": "d6367bad5c70dc1f",
+      "currentSha": "d6367bad5c70dc1f"
+    },
+    {
+      "key": "communication-templates__desktop",
+      "ok": true,
+      "diffPixels": 0,
+      "totalPixels": 0,
+      "diffRatio": 0,
+      "approvedSha": "f5c3c97f5b158ba9",
+      "currentSha": "f5c3c97f5b158ba9"
+    },
+    {
+      "key": "communication-templates__mobile",
+      "ok": true,
+      "diffPixels": 0,
+      "totalPixels": 0,
+      "diffRatio": 0,
+      "approvedSha": "afce84438c3545b7",
+      "currentSha": "afce84438c3545b7"
+    },
+    {
+      "key": "dashboard-coming-up__desktop",
+      "ok": true,
+      "width": 1092,
+      "height": 507,
+      "diffPixels": 8526,
+      "totalPixels": 553644,
+      "diffRatio": 0.015399787589136701,
+      "approvedSha": "6fa92e9a72efdf1a",
+      "currentSha": "9c6d3b92b2096d4f",
+      "diffPath": "/Users/jensmac/Developer/wevenu-website/.worktrees/perf-c1-optimize/docs/design/hospitality-visual-baselines/diffs/dashboard-coming-up__desktop.png"
+    },
+    {
+      "key": "dashboard-coming-up__mobile",
+      "ok": false,
+      "reason": "diffRatio 0.0472 > max 0.02",
+      "width": 356,
+      "height": 508,
+      "diffPixels": 8532,
+      "totalPixels": 180848,
+      "diffRatio": 0.047177740422896575,
+      "approvedSha": "b07afcae0d0e1496",
+      "currentSha": "9cdbb7cba2672027",
+      "diffPath": "/Users/jensmac/Developer/wevenu-website/.worktrees/perf-c1-optimize/docs/design/hospitality-visual-baselines/diffs/dashboard-coming-up__mobile.png"
+    },
+    {
+      "key": "dashboard__desktop",
+      "ok": true,
+      "diffPixels": 0,
+      "totalPixels": 0,
+      "diffRatio": 0,
+      "approvedSha": "219ad4b4e5a5260c",
+      "currentSha": "219ad4b4e5a5260c"
+    },
+    {
+      "key": "dashboard__mobile",
+      "ok": true,
+      "diffPixels": 0,
+      "totalPixels": 0,
+      "diffRatio": 0,
+      "approvedSha": "101c319e3275328a",
+      "currentSha": "101c319e3275328a"
+    },
+    {
+      "key": "leads__desktop",
+      "ok": true,
+      "width": 1440,
+      "height": 900,
+      "diffPixels": 1842,
+      "totalPixels": 1296000,
+      "diffRatio": 0.0014212962962962964,
+      "approvedSha": "03cfbd40795c222d",
+      "currentSha": "63c80d9c45fffa58",
+      "diffPath": "/Users/jensmac/Developer/wevenu-website/.worktrees/perf-c1-optimize/docs/design/hospitality-visual-baselines/diffs/leads__desktop.png"
+    },
+    {
+      "key": "leads__mobile",
+      "ok": true,
+      "width": 390,
+      "height": 844,
+      "diffPixels": 1846,
+      "totalPixels": 329160,
+      "diffRatio": 0.005608214849921011,
+      "approvedSha": "b974adf4f2deba92",
+      "currentSha": "64c1e420dcdcd5ce",
+      "diffPath": "/Users/jensmac/Developer/wevenu-website/.worktrees/perf-c1-optimize/docs/design/hospitality-visual-baselines/diffs/leads__mobile.png"
+    },
+    {
+      "key": "org-settings__desktop",
+      "ok": true,
+      "diffPixels": 0,
+      "totalPixels": 0,
+      "diffRatio": 0,
+      "approvedSha": "aadfc57b78d6dfc3",
+      "currentSha": "aadfc57b78d6dfc3"
+    },
+    {
+      "key": "org-settings__mobile",
+      "ok": true,
+      "diffPixels": 0,
+      "totalPixels": 0,
+      "diffRatio": 0,
+      "approvedSha": "849b91fa489d8340",
+      "currentSha": "849b91fa489d8340"
+    },
+    {
+      "key": "questionnaire-templates__desktop",
+      "ok": true,
+      "diffPixels": 0,
+      "totalPixels": 0,
+      "diffRatio": 0,
+      "approvedSha": "550e2eda85b61906",
+      "currentSha": "550e2eda85b61906"
+    },
+    {
+      "key": "questionnaire-templates__mobile",
+      "ok": true,
+      "width": 390,
+      "height": 844,
+      "diffPixels": 5,
+      "totalPixels": 329160,
+      "diffRatio": 0.000015190181066958317,
+      "approvedSha": "4f7dbfefbcc91c07",
+      "currentSha": "12312023ca33073e",
+      "diffPath": "/Users/jensmac/Developer/wevenu-website/.worktrees/perf-c1-optimize/docs/design/hospitality-visual-baselines/diffs/questionnaire-templates__mobile.png"
+    },
+    {
+      "key": "reporting-overview__desktop",
+      "ok": true,
+      "diffPixels": 0,
+      "totalPixels": 0,
+      "diffRatio": 0,
+      "approvedSha": "20ef9baea2109b11",
+      "currentSha": "20ef9baea2109b11"
+    },
+    {
+      "key": "reporting-overview__mobile",
+      "ok": true,
+      "diffPixels": 0,
+      "totalPixels": 0,
+      "diffRatio": 0,
+      "approvedSha": "b4ea409aabef7e33",
+      "currentSha": "b4ea409aabef7e33"
+    },
+    {
+      "key": "templates__desktop",
+      "ok": true,
+      "diffPixels": 0,
+      "totalPixels": 0,
+      "diffRatio": 0,
+      "approvedSha": "dd828c5bbd235a2a",
+      "currentSha": "dd828c5bbd235a2a"
+    },
+    {
+      "key": "templates__mobile",
+      "ok": true,
+      "diffPixels": 0,
+      "totalPixels": 0,
+      "diffRatio": 0,
+      "approvedSha": "a2961d735cf5d505",
+      "currentSha": "a2961d735cf5d505"
+    },
+    {
+      "key": "timeline-templates__desktop",
+      "ok": true,
+      "diffPixels": 0,
+      "totalPixels": 0,
+      "diffRatio": 0,
+      "approvedSha": "5d551b5eaaef3647",
+      "currentSha": "5d551b5eaaef3647"
+    },
+    {
+      "key": "timeline-templates__mobile",
+      "ok": true,
+      "width": 390,
+      "height": 844,
+      "diffPixels": 5,
+      "totalPixels": 329160,
+      "diffRatio": 0.000015190181066958317,
+      "approvedSha": "aaa3a15ee0af7ea0",
+      "currentSha": "d51efa5131837824",
+      "diffPath": "/Users/jensmac/Developer/wevenu-website/.worktrees/perf-c1-optimize/docs/design/hospitality-visual-baselines/diffs/timeline-templates__mobile.png"
+    }
+  ]
+}

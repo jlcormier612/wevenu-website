@@ -226,6 +226,39 @@ async function captureAll() {
         const entry = report.routes[route.key] as { shots?: Record<string, string> };
         if (entry?.shots) entry.shots.mobile = shot;
       }
+
+      // Approved matrix includes Coming Up section crops (not full-page).
+      if (route.key === "dashboard") {
+        const comingKey = `dashboard-coming-up__${vp.name}`;
+        const comingPath = `${ROOT}/current/${comingKey}.png`;
+        const coming = page
+          .locator('[data-testid="coming-up-section"], section:has-text("Coming up")')
+          .first();
+        if ((await coming.count()) > 0) {
+          await coming.scrollIntoViewIfNeeded().catch(() => {});
+          await page.waitForTimeout(200);
+          await coming.screenshot({ path: comingPath });
+        } else {
+          // Fallback: crop lower half of dashboard viewport (matches prior crop intent).
+          const vpSize = page.viewportSize() ?? { width: vp.width, height: vp.height };
+          await page.screenshot({
+            path: comingPath,
+            clip: {
+              x: Math.round(vpSize.width * 0.12),
+              y: Math.round(vpSize.height * 0.35),
+              width: Math.round(vpSize.width * 0.76),
+              height: Math.round(vpSize.height * 0.55),
+            },
+          });
+        }
+        if (UPDATE || !existsSync(`${ROOT}/approved/${comingKey}.png`)) {
+          writeFileSync(`${ROOT}/approved/${comingKey}.png`, readFileSync(comingPath));
+        }
+        const dash = report.routes.dashboard as { shots?: Record<string, string> };
+        if (dash?.shots) {
+          dash.shots[vp.name === "desktop" ? "comingUpDesktop" : "comingUpMobile"] = comingPath;
+        }
+      }
     }
 
     await context.close();

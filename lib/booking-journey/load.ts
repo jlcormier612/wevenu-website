@@ -7,7 +7,10 @@ import {
 import { resolveActiveProposal, resolveLatestWithdrawnProposal } from "@/lib/commercial-proposals/service";
 import type { CommercialProposal } from "@/lib/commercial-proposals/types";
 import { getClientInvitation } from "@/lib/client-auth/service";
-import { getContracts, getContractsForClientOrEvent } from "@/lib/contracts/service";
+import {
+  getContractsForClient,
+  getContractsForClientOrEvent,
+} from "@/lib/contracts/service";
 import { pickContract } from "@/lib/clients/booking-handoff";
 import { getPaymentSchedule, getPaymentSchedules } from "@/lib/payments/service";
 import { getEventPlaybookApplications } from "@/lib/playbooks/service";
@@ -15,6 +18,7 @@ import { getCurrentVenue } from "@/lib/venue/service";
 import { DEFAULT_COMMERCIAL_BOOKING_PREFS } from "@/lib/booking-journey/venue-prefs";
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { hasSuccessfulPaymentRequestSend } from "@/lib/invoices/outbound";
+import type { Contract } from "@/lib/contracts/types";
 
 async function paymentLinesForClient(clientId: string) {
   const schedules = (await getPaymentSchedules()).filter((s) => s.clientId === clientId);
@@ -64,7 +68,7 @@ async function venueName(): Promise<string | null> {
   return venue?.name ?? null;
 }
 
-function bestContract(clientId: string | null | undefined, contracts: Awaited<ReturnType<typeof getContracts>>): JourneyContract | null {
+function bestContract(clientId: string | null | undefined, contracts: Contract[]): JourneyContract | null {
   if (!clientId) return null;
   const owned = contracts.filter((c) => c.clientId === clientId);
   const picked = pickContract(owned.map((c) => ({ id: c.id, status: c.status, executionOrigin: c.executionOrigin })));
@@ -77,6 +81,16 @@ function bestContract(clientId: string | null | undefined, contracts: Awaited<Re
     requiredClientTotal: full?.requiredClientTotal ?? 0,
     requiredClientSigned: full?.requiredClientSigned ?? 0,
   };
+}
+
+/** Never pull venue-wide contracts into a single-lead journey. */
+async function contractsForLeadJourney(
+  clientId: string | null,
+  eventId: string | null,
+): Promise<Contract[]> {
+  if (!clientId) return [];
+  if (eventId) return getContractsForClientOrEvent(clientId, eventId);
+  return getContractsForClient(clientId);
 }
 
 function toJourneyProposal(p: CommercialProposal | null): JourneyProposal | null {
@@ -95,9 +109,8 @@ export async function loadBookingJourneyForLead(input: {
   linkedClientId?: string | null;
   linkedEventId?: string | null;
 }): Promise<BookingJourneyModel> {
-  const [selection, contracts, proposal] = await Promise.all([
+  const [selection, proposal] = await Promise.all([
     getActiveSelectedPackageForLead(input.leadId),
-    getContracts(),
     resolveActiveProposal({ leadId: input.leadId, clientId: input.linkedClientId ?? undefined }).then(async (active) =>
       active ?? resolveLatestWithdrawnProposal({ leadId: input.leadId, clientId: input.linkedClientId ?? undefined }),
     ),
@@ -108,7 +121,8 @@ export async function loadBookingJourneyForLead(input: {
   }
   const clientId = input.linkedClientId ?? clientSelection?.clientId ?? null;
   const eventId = input.linkedEventId ?? clientSelection?.eventId ?? null;
-  const [paymentLines, invitation, applications, prefs, brand, name, paymentRequestSent] = await Promise.all([
+  const [contracts, paymentLines, invitation, applications, prefs, brand, name, paymentRequestSent] = await Promise.all([
+    contractsForLeadJourney(clientId, eventId),
     clientId ? paymentLinesForClient(clientId) : Promise.resolve([]),
     clientId ? getClientInvitation(clientId) : Promise.resolve(null),
     eventId ? getEventPlaybookApplications(eventId) : Promise.resolve([]),
@@ -139,12 +153,10 @@ export async function loadBookingJourneyForClient(input: {
   eventId?: string | null;
   leadId?: string | null;
 }): Promise<BookingJourneyModel> {
-  // When eventId is known (Client Workspace booked path), use the same
-  // client|event scoped list as Documents/readiness — avoids a second
-  // venue-wide contracts+content fetch on that page.
+  // Prefer client|event scope; fall back to client-only — never venue-wide.
   const contractsPromise = input.eventId
     ? getContractsForClientOrEvent(input.clientId, input.eventId)
-    : getContracts();
+    : getContractsForClient(input.clientId);
   const [selection, contracts, paymentLines, invitation, applications, prefs, brand, name, proposal] = await Promise.all([
     getActiveSelectedPackageForClient(input.clientId),
     contractsPromise,

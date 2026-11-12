@@ -3916,6 +3916,20 @@ html:has(.htc-staff) [data-slot="table"] {
   outline-offset: 2px;
 }
 
+/* ---- Soft-nav pending (immediate click feedback; not success) ------------- */
+@keyframes htc-nav-pending-slide {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(400%);
+  }
+}
+
+.htc-nav-pending-indeterminate {
+  animation: htc-nav-pending-slide 0.9s ease-in-out infinite;
+}
+
 /* ---- Confetti animation (booking celebration) ----------------------------- */
 @keyframes confetti-fall {
   0%   { opacity: 1;   transform: translateY(-12px) rotate(0deg); }

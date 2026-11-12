@@ -37,7 +37,10 @@ import { getEventSpaceAssignments } from "@/lib/events/space-assignments";
 /** Fail the route instead of hanging the Lead detail RSC payload forever. */
 const LEAD_DETAIL_LOAD_TIMEOUT_MS = 45_000;
 
-type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ luv?: string; setupPayments?: string }> };
+type Props = {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ luv?: string; setupPayments?: string; tab?: string }>;
+};
 
 /** Canonical draft types Luv can auto-open from ?luv=… recommendation links. */
 const LUV_DRAFT_PARAMS = new Set(["follow_up_email", "follow_up_text", "next_steps", "timeline"]);
@@ -64,45 +67,76 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function LeadDetailPage({ params, searchParams }: Props) {
   const { id } = await params;
-  const { luv: luvParam, setupPayments } = await searchParams;
+  const { luv: luvParam, setupPayments, tab: tabParam } = await searchParams;
   const autoLuvDraft = normalizeAutoLuvDraft(luvParam);
+  // Wave C1: documents + Luv drafts deferred unless deep-linked.
+  const eagerDocuments = tabParam === "documents";
+  const eagerLuvDrafts = Boolean(autoLuvDraft) || tabParam === "luv";
 
   const page = await withTimeout(
     (async () => {
       // Share one getSpaces() promise — preferences previously called getSpaces
       // again inside getLeadSpacePreferences, doubling the spaces round trip.
       const spacesPromise = getSpaces();
-      const [lead, holds, spaces, capacityRules, documents, workspaceDocuments, pinnedKeys, luvDrafts, tourAppointments, packages, activeTemplate, venue, spacePreferences] = await Promise.all([
-        getLead(id),
-        getHolds({ leadId: id }),
-        spacesPromise,
-        getCapacityRules(),
-        getDocuments("lead", id),
-        getVenueWorkspaceDocuments({ leadId: id }),
-        getPinnedDocumentKeys(),
-        getDraftsForLead(id),
-        getTourAppointmentsForLead(id),
-        getPackagesWithItems(true),
-        getActiveTemplate(),
-        getCurrentVenue(),
-        spacesPromise.then((loadedSpaces) => getLeadSpacePreferences(id, loadedSpaces)),
-      ]);
+      const [lead, holds, spaces, capacityRules, tourAppointments, packages, activeTemplate, venue, spacePreferences] =
+        await Promise.all([
+          getLead(id),
+          getHolds({ leadId: id }),
+          spacesPromise,
+          getCapacityRules(),
+          getTourAppointmentsForLead(id),
+          getPackagesWithItems(true),
+          getActiveTemplate(),
+          getCurrentVenue(),
+          spacesPromise.then((loadedSpaces) => getLeadSpacePreferences(id, loadedSpaces)),
+        ]);
       if (!lead) return null;
       if (lead.mergedIntoLeadId) {
         redirect(`/leads/${lead.mergedIntoLeadId}?mergedFrom=${id}`);
       }
-      const spaceAssignments = lead.linkedEventId
-        ? (await getEventSpaceAssignments(lead.linkedEventId)).map((a) => ({
-            useKey: a.useKey,
-            useLabel: a.useLabel,
-            spaceId: a.spaceId,
-            spaceName: a.spaceName?.trim() || spaces.find((s) => s.id === a.spaceId)?.name?.trim() || "",
-          })).filter((a) => a.spaceName)
-        : [];
-      const [conversationId, smsPermission, duplicateReview, teamMembers, currentStaff, textingConfigured] = await Promise.all([
-        lead.relationshipId
-          ? getConversationIdForRelationship(lead.relationshipId)
-          : Promise.resolve(null),
+
+      // After identity is known: run independent domains in one wave
+      // (previously sequential conversation → notes → journey → Luv → photo).
+      const conversationIdPromise = lead.relationshipId
+        ? getConversationIdForRelationship(lead.relationshipId)
+        : Promise.resolve(null);
+
+      const [
+        documents,
+        workspaceDocuments,
+        pinnedKeys,
+        luvDrafts,
+        spaceAssignments,
+        conversationId,
+        smsPermission,
+        duplicateReview,
+        teamMembers,
+        currentStaff,
+        textingConfigured,
+        bookingJourney,
+        rawObservations,
+        followUpPresentation,
+        photo,
+        archiveState,
+      ] = await Promise.all([
+        eagerDocuments ? getDocuments("lead", id) : Promise.resolve([]),
+        eagerDocuments ? getVenueWorkspaceDocuments({ leadId: id }) : Promise.resolve([]),
+        eagerDocuments ? getPinnedDocumentKeys() : Promise.resolve(new Set<string>()),
+        eagerLuvDrafts ? getDraftsForLead(id) : Promise.resolve([]),
+        lead.linkedEventId
+          ? getEventSpaceAssignments(lead.linkedEventId).then((rows) =>
+              rows
+                .map((a) => ({
+                  useKey: a.useKey,
+                  useLabel: a.useLabel,
+                  spaceId: a.spaceId,
+                  spaceName:
+                    a.spaceName?.trim() || spaces.find((s) => s.id === a.spaceId)?.name?.trim() || "",
+                }))
+                .filter((a) => a.spaceName),
+            )
+          : Promise.resolve([]),
+        conversationIdPromise,
         getSmsPermissionEvidenceForContact({
           venueId: lead.venueId,
           phone: lead.phone,
@@ -113,19 +147,43 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
         venue ? getTeamMembers(venue.id) : Promise.resolve([]),
         venue ? getCurrentStaffMember(venue.id) : Promise.resolve(null),
         venue ? isSmsConfigured(venue.id) : Promise.resolve(false),
-      ]);
-      const conversationInternalNotes = await loadConversationInternalNotes(conversationId);
-      const bookingJourney = await loadBookingJourneyForLead({
-        leadId: lead.id,
-        linkedClientId: lead.linkedClientId,
-        linkedEventId: lead.linkedEventId ?? null,
-      });
-      const [rawObservations, followUpPresentation] = await Promise.all([
+        loadBookingJourneyForLead({
+          leadId: lead.id,
+          linkedClientId: lead.linkedClientId,
+          linkedEventId: lead.linkedEventId ?? null,
+        }),
         venue
           ? getContextualObservationsForRecord(venue.id, venue.timezone, { leadId: lead.id })
           : Promise.resolve([]),
         loadLeadFollowUpPresentation(lead),
+        lead.relationshipId != null
+          ? getRelationshipPhotoForVenue(lead.relationshipId)
+          : Promise.resolve(null),
+        lead.relationshipId != null
+          ? import("@/lib/relationships/archive").then((m) =>
+              m.getRelationshipArchiveState(lead.relationshipId!),
+            )
+          : Promise.resolve(null),
       ]);
+
+      const conversationInternalNotes = await loadConversationInternalNotes(conversationId);
+
+      let messageAttention: LeadMessageAttention | null = null;
+      if (conversationId) {
+        const supabase = await createClient();
+        const { data: convo } = await supabase
+          .from("conversations")
+          .select("id, needs_response")
+          .eq("id", conversationId)
+          .maybeSingle<{ id: string; needs_response: boolean }>();
+        if (convo?.needs_response) {
+          messageAttention = {
+            conversationId: convo.id,
+            href: leadMessageAttentionHref(lead.id, convo.id),
+          };
+        }
+      }
+
       const proactiveRecommended = followUpPresentation.proactiveRecommended;
       const contextualObservations = observationsForDraftSurface(
         rawObservations,
@@ -148,10 +206,13 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
         workspaceDocuments,
         pinnedKeys,
         luvDrafts,
+        documentsDeferred: !eagerDocuments,
+        luvDraftsDeferred: !eagerLuvDrafts,
         tourAppointments,
         packages,
         conversationId,
         conversationInternalNotes,
+        messageAttention,
         smsPermission,
         textingConfigured,
         duplicateReview,
@@ -169,6 +230,8 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
         holdBlocksAvailability: venue?.holdBlocksAvailability !== false,
         spacePreferences,
         spaceAssignments,
+        photo,
+        archiveState,
       };
     })(),
     LEAD_DETAIL_LOAD_TIMEOUT_MS,
@@ -181,35 +244,6 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
   // Does not clear conversations.needs_response (Decision C / Inbox contract).
   void markLeadVenueSeen(page.lead.id);
 
-  // Decision C — message attention from needs_response (read-only; do not open via get_conversation).
-  let messageAttention: LeadMessageAttention | null = null;
-  if (page.conversationId) {
-    const supabase = await createClient();
-    const { data: convo } = await supabase
-      .from("conversations")
-      .select("id, needs_response")
-      .eq("id", page.conversationId)
-      .maybeSingle<{ id: string; needs_response: boolean }>();
-    if (convo?.needs_response) {
-      messageAttention = {
-        conversationId: convo.id,
-        href: leadMessageAttentionHref(page.lead.id, convo.id),
-      };
-    }
-  }
-
-  const photo =
-    page.lead.relationshipId != null
-      ? await getRelationshipPhotoForVenue(page.lead.relationshipId)
-      : null;
-
-  const archiveState =
-    page.lead.relationshipId != null
-      ? await (await import("@/lib/relationships/archive")).getRelationshipArchiveState(
-          page.lead.relationshipId,
-        )
-      : null;
-
   // Computed server-side, not inside the client component — React Compiler
   // treats Date.now() as impure during render; see the identical pattern in
   // app/(app)/leads/page.tsx and app/(app)/clients/page.tsx.
@@ -218,7 +252,7 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
     <LeadDetail
       lead={page.lead}
       now={now}
-      relationshipArchived={Boolean(archiveState?.archivedAt)}
+      relationshipArchived={Boolean(page.archiveState?.archivedAt)}
       holds={page.holds}
       spaces={page.spaces}
       maxSimultaneousEvents={effectiveMaxSimultaneousEvents(page.capacityRules)}
@@ -226,10 +260,12 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
       workspaceDocuments={page.workspaceDocuments}
       pinnedDocumentKeys={[...page.pinnedKeys]}
       luvDrafts={page.luvDrafts}
+      deferDocuments={page.documentsDeferred}
+      deferLuvDrafts={page.luvDraftsDeferred}
       autoLuvDraft={autoLuvDraft}
       tourAppointments={page.tourAppointments}
       conversationId={page.conversationId}
-      messageAttention={messageAttention}
+      messageAttention={page.messageAttention}
       conversationInternalNotes={page.conversationInternalNotes}
       bookingJourney={page.bookingJourney}
       packages={page.packages}
@@ -239,7 +275,7 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
       venueStages={page.venueStages}
       staffOptions={page.staffOptions}
       currentStaffId={page.currentStaffId}
-      photoUrl={photo?.displayedPhotoUrl ?? null}
+      photoUrl={page.photo?.displayedPhotoUrl ?? null}
       venueTimezone={page.venueTimezone}
       contextualObservations={page.contextualObservations}
       followUpDraftCapable={page.followUpDraftCapable}

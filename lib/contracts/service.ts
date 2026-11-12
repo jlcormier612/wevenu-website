@@ -242,6 +242,14 @@ export async function getContractsForClientOrEvent(
   return repo.getContractsForClientOrEvent(await createClient(), venue.id, { clientId, eventId });
 }
 
+/** Lead journey: client exists, event may not — still avoid venue-wide contracts. */
+export async function getContractsForClient(clientId: string): Promise<Contract[]> {
+  if (!isSupabaseConfigured) return [];
+  const venue = await getCurrentVenue();
+  if (!venue) return [];
+  return repo.getContractsForClient(await createClient(), venue.id, clientId);
+}
+
 /** Financials Contracts list — current agreement tip per amends_contract_id family. */
 export async function getContractsForWorkflowList(): Promise<ContractWorkflowListRow[]> {
   const [contracts, templates] = await Promise.all([

@@ -1,15 +1,23 @@
 # Performance change manifest
 
-**Branch:** `perf/launch-remediation`  
-**Based on:** `integrate/sandbox-release-candidate` / PR #33 @ `ee22f319`  
 **Do not merge/deploy without explicit approval.**
 
-| Wave | Commit scope | Depends on | Conflicts with #33? | Ready? |
-| --- | --- | --- | --- | --- |
-| B | Route `loading.tsx` + `HospitalityRouteLoading` | None beyond #33 tip | No | Yes |
-| C2 | Dashboard Suspense islands + `cache()` | Wave B optional | No | Yes |
-| C1 | Tab-scoped workspace data | Design approval | Possible touch of client/lead pages | **Blocked on design** |
-| C3 | Demo script Claire IDs | Docs only | No | Doc done |
-| D | Selective refresh/optimistic | #31 pattern | Case-by-case | Later |
+| Stream | Branch / PR | Head (verify) | Scope | Conflicts with #33? | Ready? |
+| --- | --- | --- | --- | --- | --- |
+| Hospitality + floor + reporting | PR #33 | `ee22f319` | Combined #30+#31+#32 | — | Sandbox accept pending |
+| Wave B + C2 | PR #34 `perf/launch-remediation` | `6f5973e4` | loading shells + Dashboard streaming | No (based on #33 integrate) | KEEP after #33 |
+| C1 deferral prototype | `perf/wave-c1-lead-deferral-prototype` | `10429dc4` | Defer docs/Luv only | No | **REVERT** as release (insufficient) |
+| **C1 optimize** | `perf/wave-c1-lead-optimize` | (this branch) | Scoped journey contracts, parallel lead RSC, idle/hover prefetch, nav pending | No (isolated; do not land into #33/#34 without coordination) | **KEEP** pending review |
+| Client C1 | design doc only | — | EventDetail pack design | N/A | Not authorized to implement |
 
-Excluded: Stripe, Production, demo reseed, unapproved migrations, hospitality visual baseline overwrites.
+## C1 optimize file touch list
+
+- `lib/booking-journey/load.ts`
+- `lib/contracts/service.ts` / `repository.ts` (`getContractsForClient`)
+- `lib/leads/service.ts` (`cache(getLead)`)
+- `app/(app)/leads/[id]/page.tsx`
+- `components/leads/lead-detail.tsx`
+- `components/shell/navigation-pending.tsx` (+ sidebar/shell/css)
+- Docs under `docs/qa/launch-performance/`
+
+Excluded: Stripe, Production, Sandbox reseed, migrations, hospitality PNG baseline overwrites, Client/EventDetail rewrite.

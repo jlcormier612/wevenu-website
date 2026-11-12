@@ -93,6 +93,10 @@ import { RelationshipConversationTab } from "@/components/conversations/relation
 import { RelationshipTabShell } from "@/components/relationship/relationship-tab-shell";
 import { TourAppointmentList, TourScheduleActions, TourScheduleRoot } from "@/components/leads/tour-panel";
 import { updateDraftStatusAction } from "@/app/(app)/leads/[id]/luv-actions";
+import {
+  loadLeadDocumentsPackAction,
+  loadLeadLuvDraftsPackAction,
+} from "@/app/(app)/leads/[id]/deferred-tab-actions";
 import { draftStatusAfterSuccessfulSend } from "@/lib/luv/draft-status";
 import { luvPanelDescription } from "@/lib/luv/luv-panel-copy";
 import { LeadMessageAttentionIndicator } from "@/components/leads/lead-message-attention-indicator";
@@ -209,7 +213,7 @@ function InfoRow({
 
 // ---- main component ---------------------------------------------------------
 
-export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvents = 1, documents = [], workspaceDocuments = [], pinnedDocumentKeys = [], luvDrafts = [], autoLuvDraft, tourAppointments = [], conversationId = null, messageAttention = null, now, bookingJourney, packages = [], smsPermission = null, textingConfigured = false, duplicateReview = null, venueStages = null, staffOptions = [], currentStaffId = null, photoUrl = null, venueTimezone = null, contextualObservations = [], spaceOperatingMode = "single", holdBlocksAvailability = true, spacePreferences = [], spaceAssignments = [], relationshipArchived = false, openSetupPayments = false, followUpDraftCapable = true, followUpDraftEligible = true, followUpDraftIneligibleReason = null, followUpProactiveRecommended = true, conversationInternalNotes = [], internalNoteItems }: { lead: LeadWithDetails; holds?: DateHold[]; spaces?: VenueSpace[]; maxSimultaneousEvents?: number; documents?: Document[]; workspaceDocuments?: WorkspaceDocument[]; pinnedDocumentKeys?: string[]; luvDrafts?: LuvDraft[]; autoLuvDraft?: string; tourAppointments?: import("@/lib/tours/types").TourAppointment[]; conversationId?: string | null; messageAttention?: LeadMessageAttention | null; now: string; bookingJourney: BookingJourneyModel; packages?: PackageWithItems[]; smsPermission?: SmsPermissionEvidenceView | null; textingConfigured?: boolean; duplicateReview?: DuplicateReview | null; venueStages?: PipelineStage[] | null; staffOptions?: { id: string; name: string }[]; currentStaffId?: string | null; photoUrl?: string | null; venueTimezone?: string | null; contextualObservations?: import("@/lib/luv/types").LuvObservation[]; spaceOperatingMode?: import("@/lib/venue-spaces/uses").SpaceOperatingMode; holdBlocksAvailability?: boolean; spacePreferences?: import("@/lib/leads/space-preferences").LeadEventSpacePreference[]; spaceAssignments?: import("@/components/leads/space-preference-fields").LeadSpaceAssignmentDisplay[]; relationshipArchived?: boolean; openSetupPayments?: boolean; followUpDraftCapable?: boolean; followUpDraftEligible?: boolean; followUpDraftIneligibleReason?: string | null; followUpProactiveRecommended?: boolean; conversationInternalNotes?: Array<{ id: string; body: string; sentAt: string }>; internalNoteItems?: InternalNoteRollupItem[] }) {
+export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvents = 1, documents = [], workspaceDocuments = [], pinnedDocumentKeys = [], luvDrafts = [], deferDocuments = false, deferLuvDrafts = false, autoLuvDraft, tourAppointments = [], conversationId = null, messageAttention = null, now, bookingJourney, packages = [], smsPermission = null, textingConfigured = false, duplicateReview = null, venueStages = null, staffOptions = [], currentStaffId = null, photoUrl = null, venueTimezone = null, contextualObservations = [], spaceOperatingMode = "single", holdBlocksAvailability = true, spacePreferences = [], spaceAssignments = [], relationshipArchived = false, openSetupPayments = false, followUpDraftCapable = true, followUpDraftEligible = true, followUpDraftIneligibleReason = null, followUpProactiveRecommended = true, conversationInternalNotes = [], internalNoteItems }: { lead: LeadWithDetails; holds?: DateHold[]; spaces?: VenueSpace[]; maxSimultaneousEvents?: number; documents?: Document[]; workspaceDocuments?: WorkspaceDocument[]; pinnedDocumentKeys?: string[]; luvDrafts?: LuvDraft[]; /** C1: fetch documents pack on first Documents tab open */ deferDocuments?: boolean; /** C1: fetch Luv drafts on first Luv tab open */ deferLuvDrafts?: boolean; autoLuvDraft?: string; tourAppointments?: import("@/lib/tours/types").TourAppointment[]; conversationId?: string | null; messageAttention?: LeadMessageAttention | null; now: string; bookingJourney: BookingJourneyModel; packages?: PackageWithItems[]; smsPermission?: SmsPermissionEvidenceView | null; textingConfigured?: boolean; duplicateReview?: DuplicateReview | null; venueStages?: PipelineStage[] | null; staffOptions?: { id: string; name: string }[]; currentStaffId?: string | null; photoUrl?: string | null; venueTimezone?: string | null; contextualObservations?: import("@/lib/luv/types").LuvObservation[]; spaceOperatingMode?: import("@/lib/venue-spaces/uses").SpaceOperatingMode; holdBlocksAvailability?: boolean; spacePreferences?: import("@/lib/leads/space-preferences").LeadEventSpacePreference[]; spaceAssignments?: import("@/components/leads/space-preference-fields").LeadSpaceAssignmentDisplay[]; relationshipArchived?: boolean; openSetupPayments?: boolean; followUpDraftCapable?: boolean; followUpDraftEligible?: boolean; followUpDraftIneligibleReason?: string | null; followUpProactiveRecommended?: boolean; conversationInternalNotes?: Array<{ id: string; body: string; sentAt: string }>; internalNoteItems?: InternalNoteRollupItem[] }) {
   const draftCapable = followUpDraftCapable && followUpDraftEligible;
   // Controlled tabs — supports Luv→Messages bridge and ?luv= URL param routing
   const [activeTab, setActiveTab] = React.useState(autoLuvDraft ? "luv" : "overview");
@@ -219,6 +223,171 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
   const [completedLuvDraftId, setCompletedLuvDraftId] = React.useState<string | null>(null);
   /** Bumped when Overview “Ask Luv to draft” should start drafting on the Luv tab. */
   const [luvDraftRequest, setLuvDraftRequest] = React.useState(0);
+
+  // Wave C1 — tab-local deferred packs (not a second workspace store).
+  const [docPack, setDocPack] = React.useState({
+    documents,
+    workspaceDocuments,
+    pinnedDocumentKeys,
+    loaded: !deferDocuments,
+    loading: false,
+    error: null as string | null,
+  });
+  const [luvPack, setLuvPack] = React.useState({
+    drafts: luvDrafts,
+    loaded: !deferLuvDrafts,
+    loading: false,
+    error: null as string | null,
+  });
+  const docLoadGen = React.useRef(0);
+  const luvLoadGen = React.useRef(0);
+  const docPackRef = React.useRef(docPack);
+  const luvPackRef = React.useRef(luvPack);
+  const docInflightRef = React.useRef<Promise<void> | null>(null);
+  const luvInflightRef = React.useRef<Promise<void> | null>(null);
+  docPackRef.current = docPack;
+  luvPackRef.current = luvPack;
+
+  React.useEffect(() => {
+    // Reset packs when navigating to a different lead record.
+    docInflightRef.current = null;
+    luvInflightRef.current = null;
+    setDocPack({
+      documents,
+      workspaceDocuments,
+      pinnedDocumentKeys,
+      loaded: !deferDocuments,
+      loading: false,
+      error: null,
+    });
+    setLuvPack({
+      drafts: luvDrafts,
+      loaded: !deferLuvDrafts,
+      loading: false,
+      error: null,
+    });
+    docLoadGen.current += 1;
+    luvLoadGen.current += 1;
+  }, [lead.id]); // eslint-disable-line react-hooks/exhaustive-deps -- intentional record-switch reset
+
+  const ensureDocumentsPack = React.useEffectEvent((mode: "tab" | "idle" | "hover" | "retry") => {
+    if (!deferDocuments) return;
+    const current = docPackRef.current;
+    if (current.loaded) return;
+    // Reuse in-flight prefetch (idle/hover) when the tab opens mid-flight.
+    if (docInflightRef.current && mode !== "retry") return;
+    if (mode === "retry") {
+      docInflightRef.current = null;
+    } else if (current.loading && docInflightRef.current) {
+      return;
+    }
+    const gen = ++docLoadGen.current;
+    const leadId = lead.id;
+    setDocPack((p) => ({ ...p, loading: true, error: mode === "idle" || mode === "hover" ? p.error : null }));
+    const pending = loadLeadDocumentsPackAction(leadId)
+      .then((pack) => {
+        if (gen !== docLoadGen.current) return; // stale / record switched
+        setDocPack({
+          documents: pack.documents,
+          workspaceDocuments: pack.workspaceDocuments,
+          pinnedDocumentKeys: pack.pinnedDocumentKeys,
+          loaded: true,
+          loading: false,
+          error: null,
+        });
+      })
+      .catch((err: unknown) => {
+        if (gen !== docLoadGen.current) return;
+        // Idle/hover failures stay quiet until the user opens the tab / retries.
+        if (mode === "idle" || mode === "hover") {
+          setDocPack((p) => ({ ...p, loading: false }));
+          return;
+        }
+        setDocPack((p) => ({
+          ...p,
+          loading: false,
+          error: err instanceof Error ? err.message : "Could not load documents",
+        }));
+      })
+      .finally(() => {
+        if (docInflightRef.current === pending) docInflightRef.current = null;
+      });
+    docInflightRef.current = pending;
+  });
+
+  const ensureLuvPack = React.useEffectEvent((mode: "tab" | "idle" | "hover" | "retry") => {
+    if (!deferLuvDrafts) return;
+    const current = luvPackRef.current;
+    if (current.loaded) return;
+    if (luvInflightRef.current && mode !== "retry") return;
+    if (mode === "retry") {
+      luvInflightRef.current = null;
+    } else if (current.loading && luvInflightRef.current) {
+      return;
+    }
+    const gen = ++luvLoadGen.current;
+    const leadId = lead.id;
+    setLuvPack((p) => ({ ...p, loading: true, error: mode === "idle" || mode === "hover" ? p.error : null }));
+    const pending = loadLeadLuvDraftsPackAction(leadId)
+      .then((pack) => {
+        if (gen !== luvLoadGen.current) return;
+        setLuvPack({ drafts: pack.drafts, loaded: true, loading: false, error: null });
+      })
+      .catch((err: unknown) => {
+        if (gen !== luvLoadGen.current) return;
+        if (mode === "idle" || mode === "hover") {
+          setLuvPack((p) => ({ ...p, loading: false }));
+          return;
+        }
+        setLuvPack((p) => ({
+          ...p,
+          loading: false,
+          error: err instanceof Error ? err.message : "Could not load Luv drafts",
+        }));
+      })
+      .finally(() => {
+        if (luvInflightRef.current === pending) luvInflightRef.current = null;
+      });
+    luvInflightRef.current = pending;
+  });
+
+  React.useEffect(() => {
+    if (activeTab === "documents") ensureDocumentsPack("tab");
+  }, [activeTab, docPack.loaded, docPack.loading, lead.id, ensureDocumentsPack]);
+
+  React.useEffect(() => {
+    if (activeTab === "luv") ensureLuvPack("tab");
+  }, [activeTab, luvPack.loaded, luvPack.loading, lead.id, ensureLuvPack]);
+
+  // Bounded idle prefetch after first paint — short timeout so cold Documents
+  // clicks rarely lose the race, without starting during critical rendering.
+  React.useEffect(() => {
+    if (!deferDocuments && !deferLuvDrafts) return;
+    let cancelled = false;
+    const run = () => {
+      if (cancelled) return;
+      if (deferDocuments) ensureDocumentsPack("idle");
+      if (deferLuvDrafts) ensureLuvPack("idle");
+    };
+    const ric = (window as Window & {
+      requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+      cancelIdleCallback?: (id: number) => void;
+    }).requestIdleCallback;
+    let idleId: number | undefined;
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    if (typeof ric === "function") {
+      idleId = ric(run, { timeout: 400 });
+    } else {
+      timeoutId = setTimeout(run, 200);
+    }
+    return () => {
+      cancelled = true;
+      if (idleId != null) {
+        (window as Window & { cancelIdleCallback?: (id: number) => void }).cancelIdleCallback?.(idleId);
+      }
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [lead.id, deferDocuments, deferLuvDrafts, ensureDocumentsPack, ensureLuvPack]);
 
   React.useEffect(() => {
     const syncFromHash = () => {
@@ -1070,13 +1239,22 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
               </span>
             )}
           </TabsTrigger>
-          <TabsTrigger value="documents">
+          <TabsTrigger
+            value="documents"
+            onPointerEnter={() => ensureDocumentsPack("hover")}
+            onFocus={() => ensureDocumentsPack("hover")}
+          >
             Documents
-            {documents.length > 0 && (
-              <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{documents.length}</span>
+            {docPack.loaded && docPack.documents.length > 0 && (
+              <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{docPack.documents.length}</span>
             )}
           </TabsTrigger>
-          <TabsTrigger value="luv" className="gap-1.5">
+          <TabsTrigger
+            value="luv"
+            className="gap-1.5"
+            onPointerEnter={() => ensureLuvPack("hover")}
+            onFocus={() => ensureLuvPack("hover")}
+          >
             <LuvHeart size={12} /> Luv
           </TabsTrigger>
         </TabsList>
@@ -1160,14 +1338,38 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
 
         {/* ── Documents ────────────────────────────────────────────── */}
         <TabsContent value="documents">
-          <DocumentWorkspace
-            title="Documents"
-            description="Contracts, inspiration photos, questionnaires, and other files for this lead."
-            documents={workspaceDocuments}
-            initialPinnedKeys={pinnedDocumentKeys}
-            uploadTarget={{ entityType: "lead", entityId: lead.id, venueId: lead.venueId }}
-            returnTo={`/leads/${lead.id}`}
-          />
+          {docPack.loading || !docPack.loaded ? (
+            <div
+              className="htc-hospitality-elevated flex items-center gap-2 px-4 py-8 text-sm text-muted-foreground"
+              role="status"
+              aria-busy="true"
+              data-testid="lead-documents-deferred-pending"
+            >
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+              Loading documents…
+            </div>
+          ) : docPack.error ? (
+            <div className="space-y-3 py-6" data-testid="lead-documents-deferred-error" role="alert">
+              <p className="text-sm text-destructive">{docPack.error}</p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => ensureDocumentsPack("retry")}
+              >
+                Try again
+              </Button>
+            </div>
+          ) : (
+            <DocumentWorkspace
+              title="Documents"
+              description="Contracts, inspiration photos, questionnaires, and other files for this lead."
+              documents={docPack.workspaceDocuments}
+              initialPinnedKeys={docPack.pinnedDocumentKeys}
+              uploadTarget={{ entityType: "lead", entityId: lead.id, venueId: lead.venueId }}
+              returnTo={`/leads/${lead.id}`}
+            />
+          )}
         </TabsContent>
 
         {/* ── Luv ──────────────────────────────────────────────────── */}
@@ -1184,17 +1386,41 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <LuvDraftPanel
-                lead={lead}
-                initialDrafts={luvDrafts}
-                onUseDraft={handleUseDraft}
-                autoGenerateDraftType={autoLuvDraft}
-                completedDraftId={completedLuvDraftId}
-                followUpDraftEligible={draftCapable}
-                followUpDraftIneligibleReason={followUpDraftIneligibleReason}
-                externalDraftRequest={luvDraftRequest}
-                showContextualObservations={false}
-              />
+              {luvPack.loading || !luvPack.loaded ? (
+                <div
+                  className="flex items-center gap-2 py-6 text-sm text-muted-foreground"
+                  role="status"
+                  aria-busy="true"
+                  data-testid="lead-luv-deferred-pending"
+                >
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                  Loading Luv drafts…
+                </div>
+              ) : luvPack.error ? (
+                <div className="space-y-3" data-testid="lead-luv-deferred-error" role="alert">
+                  <p className="text-sm text-destructive">{luvPack.error}</p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => ensureLuvPack("retry")}
+                  >
+                    Try again
+                  </Button>
+                </div>
+              ) : (
+                <LuvDraftPanel
+                  lead={lead}
+                  initialDrafts={luvPack.drafts}
+                  onUseDraft={handleUseDraft}
+                  autoGenerateDraftType={autoLuvDraft}
+                  completedDraftId={completedLuvDraftId}
+                  followUpDraftEligible={draftCapable}
+                  followUpDraftIneligibleReason={followUpDraftIneligibleReason}
+                  externalDraftRequest={luvDraftRequest}
+                  showContextualObservations={false}
+                />
+              )}
             </CardContent>
           </Card>
         </TabsContent>
