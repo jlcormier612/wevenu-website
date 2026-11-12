@@ -1,0 +1,192 @@
+{
+  "at": "2026-11-12T02:33:56.860Z",
+  "leadId": "54db1c0c-4332-4a4b-b5b3-eca9067ecffe",
+  "leadName": "Claire Nguyen",
+  "selection": "Lead workspace — clearer tab boundaries (Documents + Luv) than EventDetail client workspace; high audit latency (~4.5s)",
+  "deferredDomains": [
+    "documents (getDocuments+workspace+pins)",
+    "luv drafts (getDraftsForLead)"
+  ],
+  "pr34": [
+    {
+      "run": 1,
+      "label": "pr34-eager",
+      "usefulOverviewMs": 6138,
+      "overviewOk": true,
+      "documentsFirstMs": 102,
+      "documentsPendingSeen": false,
+      "documentsWarmMs": 52,
+      "luvFirstMs": 48,
+      "luvPendingSeen": false,
+      "rapidSwitchMs": [
+        77,
+        69,
+        67,
+        65,
+        68
+      ],
+      "deepDocumentsMs": -1,
+      "deepPendingSeen": false,
+      "postUrlsSample": []
+    },
+    {
+      "run": 2,
+      "label": "pr34-eager",
+      "usefulOverviewMs": 2048,
+      "overviewOk": true,
+      "documentsFirstMs": 96,
+      "documentsPendingSeen": false,
+      "documentsWarmMs": 33,
+      "luvFirstMs": 49,
+      "luvPendingSeen": false,
+      "rapidSwitchMs": [
+        77,
+        67,
+        66,
+        70,
+        66
+      ],
+      "deepDocumentsMs": -1,
+      "deepPendingSeen": false,
+      "postUrlsSample": []
+    },
+    {
+      "run": 3,
+      "label": "pr34-eager",
+      "usefulOverviewMs": 1991,
+      "overviewOk": true,
+      "documentsFirstMs": 94,
+      "documentsPendingSeen": false,
+      "documentsWarmMs": 43,
+      "luvFirstMs": 43,
+      "luvPendingSeen": false,
+      "rapidSwitchMs": [
+        75,
+        68,
+        64,
+        71,
+        65
+      ],
+      "deepDocumentsMs": -1,
+      "deepPendingSeen": false,
+      "postUrlsSample": []
+    }
+  ],
+  "c1": [
+    {
+      "run": 1,
+      "label": "c1-deferred",
+      "usefulOverviewMs": 1911,
+      "overviewOk": true,
+      "documentsFirstMs": 1025,
+      "documentsPendingSeen": true,
+      "documentsWarmMs": 62,
+      "luvFirstMs": 784,
+      "luvPendingSeen": true,
+      "rapidSwitchMs": [
+        66,
+        82,
+        72,
+        65,
+        66
+      ],
+      "deepDocumentsMs": -1,
+      "deepPendingSeen": false,
+      "postUrlsSample": [
+        "http://127.0.0.1:3458/leads/54db1c0c-4332-4a4b-b5b3-eca9067ecffe",
+        "http://127.0.0.1:3458/leads/54db1c0c-4332-4a4b-b5b3-eca9067ecffe"
+      ]
+    },
+    {
+      "run": 2,
+      "label": "c1-deferred",
+      "usefulOverviewMs": 1759,
+      "overviewOk": true,
+      "documentsFirstMs": 986,
+      "documentsPendingSeen": true,
+      "documentsWarmMs": 57,
+      "luvFirstMs": 833,
+      "luvPendingSeen": true,
+      "rapidSwitchMs": [
+        57,
+        68,
+        64,
+        67,
+        67
+      ],
+      "deepDocumentsMs": -1,
+      "deepPendingSeen": false,
+      "postUrlsSample": [
+        "http://127.0.0.1:3458/leads/54db1c0c-4332-4a4b-b5b3-eca9067ecffe",
+        "http://127.0.0.1:3458/leads/54db1c0c-4332-4a4b-b5b3-eca9067ecffe"
+      ]
+    },
+    {
+      "run": 3,
+      "label": "c1-deferred",
+      "usefulOverviewMs": 2059,
+      "overviewOk": true,
+      "documentsFirstMs": 1083,
+      "documentsPendingSeen": true,
+      "documentsWarmMs": 69,
+      "luvFirstMs": 882,
+      "luvPendingSeen": true,
+      "rapidSwitchMs": [
+        59,
+        75,
+        77,
+        66,
+        67
+      ],
+      "deepDocumentsMs": -1,
+      "deepPendingSeen": false,
+      "postUrlsSample": [
+        "http://127.0.0.1:3458/leads/54db1c0c-4332-4a4b-b5b3-eca9067ecffe",
+        "http://127.0.0.1:3458/leads/54db1c0c-4332-4a4b-b5b3-eca9067ecffe"
+      ]
+    }
+  ],
+  "summary": {
+    "pr34OverviewUseful": {
+      "n": 3,
+      "median": 2048,
+      "p95": 6138,
+      "max": 6138,
+      "min": 1991
+    },
+    "c1OverviewUseful": {
+      "n": 3,
+      "median": 1911,
+      "p95": 2059,
+      "max": 2059,
+      "min": 1759
+    },
+    "pr34DocFirst": {
+      "n": 3,
+      "median": 96,
+      "p95": 102,
+      "max": 102,
+      "min": 94
+    },
+    "c1DocFirst": {
+      "n": 3,
+      "median": 1025,
+      "p95": 1083,
+      "max": 1083,
+      "min": 986
+    },
+    "c1DocWarm": {
+      "n": 3,
+      "median": 62,
+      "p95": 69,
+      "max": 69,
+      "min": 57
+    },
+    "c1PendingOnFirstDoc": true,
+    "c1PendingOnWarmDoc": true
+  },
+  "sourceProof": {
+    "criticalPathOmitsDocumentsAndLuv": true,
+    "unitTests": "lib/leads/wave-c1-deferral.test.ts PASS"
+  }
+}
