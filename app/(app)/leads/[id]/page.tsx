@@ -37,7 +37,10 @@ import { getEventSpaceAssignments } from "@/lib/events/space-assignments";
 /** Fail the route instead of hanging the Lead detail RSC payload forever. */
 const LEAD_DETAIL_LOAD_TIMEOUT_MS = 45_000;
 
-type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ luv?: string; setupPayments?: string }> };
+type Props = {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ luv?: string; setupPayments?: string; tab?: string }>;
+};
 
 /** Canonical draft types Luv can auto-open from ?luv=… recommendation links. */
 const LUV_DRAFT_PARAMS = new Set(["follow_up_email", "follow_up_text", "next_steps", "timeline"]);
@@ -64,23 +67,25 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function LeadDetailPage({ params, searchParams }: Props) {
   const { id } = await params;
-  const { luv: luvParam, setupPayments } = await searchParams;
+  const { luv: luvParam, setupPayments, tab: tabParam } = await searchParams;
   const autoLuvDraft = normalizeAutoLuvDraft(luvParam);
+  // Wave C1 prototype: documents + Luv drafts are deferred unless deep-linked.
+  // Hash deep links (#documents / #luv) cannot be read on the server — the
+  // client LeadDetail loads those packs on first activation (and caches them).
+  const eagerDocuments = tabParam === "documents";
+  const eagerLuvDrafts = Boolean(autoLuvDraft) || tabParam === "luv";
 
   const page = await withTimeout(
     (async () => {
       // Share one getSpaces() promise — preferences previously called getSpaces
       // again inside getLeadSpacePreferences, doubling the spaces round trip.
       const spacesPromise = getSpaces();
-      const [lead, holds, spaces, capacityRules, documents, workspaceDocuments, pinnedKeys, luvDrafts, tourAppointments, packages, activeTemplate, venue, spacePreferences] = await Promise.all([
+      const [lead, holds, spaces, capacityRules, tourAppointments, packages, activeTemplate, venue, spacePreferences] = await Promise.all([
         getLead(id),
         getHolds({ leadId: id }),
         spacesPromise,
         getCapacityRules(),
-        getDocuments("lead", id),
-        getVenueWorkspaceDocuments({ leadId: id }),
-        getPinnedDocumentKeys(),
-        getDraftsForLead(id),
+        // C1: documents + Luv drafts removed from this critical-path wave.
         getTourAppointmentsForLead(id),
         getPackagesWithItems(true),
         getActiveTemplate(),
@@ -91,6 +96,12 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
       if (lead.mergedIntoLeadId) {
         redirect(`/leads/${lead.mergedIntoLeadId}?mergedFrom=${id}`);
       }
+      const [documents, workspaceDocuments, pinnedKeys, luvDrafts] = await Promise.all([
+        eagerDocuments ? getDocuments("lead", id) : Promise.resolve([]),
+        eagerDocuments ? getVenueWorkspaceDocuments({ leadId: id }) : Promise.resolve([]),
+        eagerDocuments ? getPinnedDocumentKeys() : Promise.resolve(new Set<string>()),
+        eagerLuvDrafts ? getDraftsForLead(id) : Promise.resolve([]),
+      ]);
       const spaceAssignments = lead.linkedEventId
         ? (await getEventSpaceAssignments(lead.linkedEventId)).map((a) => ({
             useKey: a.useKey,
@@ -148,6 +159,8 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
         workspaceDocuments,
         pinnedKeys,
         luvDrafts,
+        documentsDeferred: !eagerDocuments,
+        luvDraftsDeferred: !eagerLuvDrafts,
         tourAppointments,
         packages,
         conversationId,
@@ -226,6 +239,8 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
       workspaceDocuments={page.workspaceDocuments}
       pinnedDocumentKeys={[...page.pinnedKeys]}
       luvDrafts={page.luvDrafts}
+      deferDocuments={page.documentsDeferred}
+      deferLuvDrafts={page.luvDraftsDeferred}
       autoLuvDraft={autoLuvDraft}
       tourAppointments={page.tourAppointments}
       conversationId={page.conversationId}

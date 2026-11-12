@@ -93,6 +93,10 @@ import { RelationshipConversationTab } from "@/components/conversations/relation
 import { RelationshipTabShell } from "@/components/relationship/relationship-tab-shell";
 import { TourAppointmentList, TourScheduleActions, TourScheduleRoot } from "@/components/leads/tour-panel";
 import { updateDraftStatusAction } from "@/app/(app)/leads/[id]/luv-actions";
+import {
+  loadLeadDocumentsPackAction,
+  loadLeadLuvDraftsPackAction,
+} from "@/app/(app)/leads/[id]/deferred-tab-actions";
 import { draftStatusAfterSuccessfulSend } from "@/lib/luv/draft-status";
 import { luvPanelDescription } from "@/lib/luv/luv-panel-copy";
 import { LeadMessageAttentionIndicator } from "@/components/leads/lead-message-attention-indicator";
@@ -209,7 +213,7 @@ function InfoRow({
 
 // ---- main component ---------------------------------------------------------
 
-export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvents = 1, documents = [], workspaceDocuments = [], pinnedDocumentKeys = [], luvDrafts = [], autoLuvDraft, tourAppointments = [], conversationId = null, messageAttention = null, now, bookingJourney, packages = [], smsPermission = null, textingConfigured = false, duplicateReview = null, venueStages = null, staffOptions = [], currentStaffId = null, photoUrl = null, venueTimezone = null, contextualObservations = [], spaceOperatingMode = "single", holdBlocksAvailability = true, spacePreferences = [], spaceAssignments = [], relationshipArchived = false, openSetupPayments = false, followUpDraftCapable = true, followUpDraftEligible = true, followUpDraftIneligibleReason = null, followUpProactiveRecommended = true, conversationInternalNotes = [], internalNoteItems }: { lead: LeadWithDetails; holds?: DateHold[]; spaces?: VenueSpace[]; maxSimultaneousEvents?: number; documents?: Document[]; workspaceDocuments?: WorkspaceDocument[]; pinnedDocumentKeys?: string[]; luvDrafts?: LuvDraft[]; autoLuvDraft?: string; tourAppointments?: import("@/lib/tours/types").TourAppointment[]; conversationId?: string | null; messageAttention?: LeadMessageAttention | null; now: string; bookingJourney: BookingJourneyModel; packages?: PackageWithItems[]; smsPermission?: SmsPermissionEvidenceView | null; textingConfigured?: boolean; duplicateReview?: DuplicateReview | null; venueStages?: PipelineStage[] | null; staffOptions?: { id: string; name: string }[]; currentStaffId?: string | null; photoUrl?: string | null; venueTimezone?: string | null; contextualObservations?: import("@/lib/luv/types").LuvObservation[]; spaceOperatingMode?: import("@/lib/venue-spaces/uses").SpaceOperatingMode; holdBlocksAvailability?: boolean; spacePreferences?: import("@/lib/leads/space-preferences").LeadEventSpacePreference[]; spaceAssignments?: import("@/components/leads/space-preference-fields").LeadSpaceAssignmentDisplay[]; relationshipArchived?: boolean; openSetupPayments?: boolean; followUpDraftCapable?: boolean; followUpDraftEligible?: boolean; followUpDraftIneligibleReason?: string | null; followUpProactiveRecommended?: boolean; conversationInternalNotes?: Array<{ id: string; body: string; sentAt: string }>; internalNoteItems?: InternalNoteRollupItem[] }) {
+export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvents = 1, documents = [], workspaceDocuments = [], pinnedDocumentKeys = [], luvDrafts = [], deferDocuments = false, deferLuvDrafts = false, autoLuvDraft, tourAppointments = [], conversationId = null, messageAttention = null, now, bookingJourney, packages = [], smsPermission = null, textingConfigured = false, duplicateReview = null, venueStages = null, staffOptions = [], currentStaffId = null, photoUrl = null, venueTimezone = null, contextualObservations = [], spaceOperatingMode = "single", holdBlocksAvailability = true, spacePreferences = [], spaceAssignments = [], relationshipArchived = false, openSetupPayments = false, followUpDraftCapable = true, followUpDraftEligible = true, followUpDraftIneligibleReason = null, followUpProactiveRecommended = true, conversationInternalNotes = [], internalNoteItems }: { lead: LeadWithDetails; holds?: DateHold[]; spaces?: VenueSpace[]; maxSimultaneousEvents?: number; documents?: Document[]; workspaceDocuments?: WorkspaceDocument[]; pinnedDocumentKeys?: string[]; luvDrafts?: LuvDraft[]; /** C1: fetch documents pack on first Documents tab open */ deferDocuments?: boolean; /** C1: fetch Luv drafts on first Luv tab open */ deferLuvDrafts?: boolean; autoLuvDraft?: string; tourAppointments?: import("@/lib/tours/types").TourAppointment[]; conversationId?: string | null; messageAttention?: LeadMessageAttention | null; now: string; bookingJourney: BookingJourneyModel; packages?: PackageWithItems[]; smsPermission?: SmsPermissionEvidenceView | null; textingConfigured?: boolean; duplicateReview?: DuplicateReview | null; venueStages?: PipelineStage[] | null; staffOptions?: { id: string; name: string }[]; currentStaffId?: string | null; photoUrl?: string | null; venueTimezone?: string | null; contextualObservations?: import("@/lib/luv/types").LuvObservation[]; spaceOperatingMode?: import("@/lib/venue-spaces/uses").SpaceOperatingMode; holdBlocksAvailability?: boolean; spacePreferences?: import("@/lib/leads/space-preferences").LeadEventSpacePreference[]; spaceAssignments?: import("@/components/leads/space-preference-fields").LeadSpaceAssignmentDisplay[]; relationshipArchived?: boolean; openSetupPayments?: boolean; followUpDraftCapable?: boolean; followUpDraftEligible?: boolean; followUpDraftIneligibleReason?: string | null; followUpProactiveRecommended?: boolean; conversationInternalNotes?: Array<{ id: string; body: string; sentAt: string }>; internalNoteItems?: InternalNoteRollupItem[] }) {
   const draftCapable = followUpDraftCapable && followUpDraftEligible;
   // Controlled tabs — supports Luv→Messages bridge and ?luv= URL param routing
   const [activeTab, setActiveTab] = React.useState(autoLuvDraft ? "luv" : "overview");
@@ -219,6 +223,89 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
   const [completedLuvDraftId, setCompletedLuvDraftId] = React.useState<string | null>(null);
   /** Bumped when Overview “Ask Luv to draft” should start drafting on the Luv tab. */
   const [luvDraftRequest, setLuvDraftRequest] = React.useState(0);
+
+  // Wave C1 — tab-local deferred packs (not a second workspace store).
+  const [docPack, setDocPack] = React.useState({
+    documents,
+    workspaceDocuments,
+    pinnedDocumentKeys,
+    loaded: !deferDocuments,
+    loading: false,
+    error: null as string | null,
+  });
+  const [luvPack, setLuvPack] = React.useState({
+    drafts: luvDrafts,
+    loaded: !deferLuvDrafts,
+    loading: false,
+    error: null as string | null,
+  });
+  const docLoadGen = React.useRef(0);
+  const luvLoadGen = React.useRef(0);
+
+  React.useEffect(() => {
+    // Reset packs when navigating to a different lead record.
+    setDocPack({
+      documents,
+      workspaceDocuments,
+      pinnedDocumentKeys,
+      loaded: !deferDocuments,
+      loading: false,
+      error: null,
+    });
+    setLuvPack({
+      drafts: luvDrafts,
+      loaded: !deferLuvDrafts,
+      loading: false,
+      error: null,
+    });
+    docLoadGen.current += 1;
+    luvLoadGen.current += 1;
+  }, [lead.id]); // eslint-disable-line react-hooks/exhaustive-deps -- intentional record-switch reset
+
+  React.useEffect(() => {
+    if (activeTab !== "documents" || docPack.loaded || docPack.loading) return;
+    const gen = ++docLoadGen.current;
+    setDocPack((p) => ({ ...p, loading: true, error: null }));
+    void loadLeadDocumentsPackAction(lead.id)
+      .then((pack) => {
+        if (gen !== docLoadGen.current) return; // stale / record switched
+        setDocPack({
+          documents: pack.documents,
+          workspaceDocuments: pack.workspaceDocuments,
+          pinnedDocumentKeys: pack.pinnedDocumentKeys,
+          loaded: true,
+          loading: false,
+          error: null,
+        });
+      })
+      .catch((err: unknown) => {
+        if (gen !== docLoadGen.current) return;
+        setDocPack((p) => ({
+          ...p,
+          loading: false,
+          error: err instanceof Error ? err.message : "Could not load documents",
+        }));
+      });
+  }, [activeTab, docPack.loaded, docPack.loading, lead.id]);
+
+  React.useEffect(() => {
+    if (activeTab !== "luv" || luvPack.loaded || luvPack.loading) return;
+    const gen = ++luvLoadGen.current;
+    setLuvPack((p) => ({ ...p, loading: true, error: null }));
+    void loadLeadLuvDraftsPackAction(lead.id)
+      .then((pack) => {
+        if (gen !== luvLoadGen.current) return;
+        setLuvPack({ drafts: pack.drafts, loaded: true, loading: false, error: null });
+      })
+      .catch((err: unknown) => {
+        if (gen !== luvLoadGen.current) return;
+        setLuvPack((p) => ({
+          ...p,
+          loading: false,
+          error: err instanceof Error ? err.message : "Could not load Luv drafts",
+        }));
+      });
+  }, [activeTab, luvPack.loaded, luvPack.loading, lead.id]);
 
   React.useEffect(() => {
     const syncFromHash = () => {
@@ -1072,8 +1159,8 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
           </TabsTrigger>
           <TabsTrigger value="documents">
             Documents
-            {documents.length > 0 && (
-              <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{documents.length}</span>
+            {docPack.loaded && docPack.documents.length > 0 && (
+              <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{docPack.documents.length}</span>
             )}
           </TabsTrigger>
           <TabsTrigger value="luv" className="gap-1.5">
@@ -1160,14 +1247,30 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
 
         {/* ── Documents ────────────────────────────────────────────── */}
         <TabsContent value="documents">
-          <DocumentWorkspace
-            title="Documents"
-            description="Contracts, inspiration photos, questionnaires, and other files for this lead."
-            documents={workspaceDocuments}
-            initialPinnedKeys={pinnedDocumentKeys}
-            uploadTarget={{ entityType: "lead", entityId: lead.id, venueId: lead.venueId }}
-            returnTo={`/leads/${lead.id}`}
-          />
+          {docPack.loading || !docPack.loaded ? (
+            <div
+              className="htc-hospitality-elevated flex items-center gap-2 px-4 py-8 text-sm text-muted-foreground"
+              role="status"
+              aria-busy="true"
+              data-testid="lead-documents-deferred-pending"
+            >
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+              Loading documents…
+            </div>
+          ) : docPack.error ? (
+            <p className="py-6 text-sm text-destructive" data-testid="lead-documents-deferred-error" role="alert">
+              {docPack.error}
+            </p>
+          ) : (
+            <DocumentWorkspace
+              title="Documents"
+              description="Contracts, inspiration photos, questionnaires, and other files for this lead."
+              documents={docPack.workspaceDocuments}
+              initialPinnedKeys={docPack.pinnedDocumentKeys}
+              uploadTarget={{ entityType: "lead", entityId: lead.id, venueId: lead.venueId }}
+              returnTo={`/leads/${lead.id}`}
+            />
+          )}
         </TabsContent>
 
         {/* ── Luv ──────────────────────────────────────────────────── */}
@@ -1184,17 +1287,33 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <LuvDraftPanel
-                lead={lead}
-                initialDrafts={luvDrafts}
-                onUseDraft={handleUseDraft}
-                autoGenerateDraftType={autoLuvDraft}
-                completedDraftId={completedLuvDraftId}
-                followUpDraftEligible={draftCapable}
-                followUpDraftIneligibleReason={followUpDraftIneligibleReason}
-                externalDraftRequest={luvDraftRequest}
-                showContextualObservations={false}
-              />
+              {luvPack.loading || !luvPack.loaded ? (
+                <div
+                  className="flex items-center gap-2 py-6 text-sm text-muted-foreground"
+                  role="status"
+                  aria-busy="true"
+                  data-testid="lead-luv-deferred-pending"
+                >
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                  Loading Luv drafts…
+                </div>
+              ) : luvPack.error ? (
+                <p className="text-sm text-destructive" data-testid="lead-luv-deferred-error" role="alert">
+                  {luvPack.error}
+                </p>
+              ) : (
+                <LuvDraftPanel
+                  lead={lead}
+                  initialDrafts={luvPack.drafts}
+                  onUseDraft={handleUseDraft}
+                  autoGenerateDraftType={autoLuvDraft}
+                  completedDraftId={completedLuvDraftId}
+                  followUpDraftEligible={draftCapable}
+                  followUpDraftIneligibleReason={followUpDraftIneligibleReason}
+                  externalDraftRequest={luvDraftRequest}
+                  showContextualObservations={false}
+                />
+              )}
             </CardContent>
           </Card>
         </TabsContent>
