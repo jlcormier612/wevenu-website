@@ -107,9 +107,17 @@ describe("Dashboard page information architecture", () => {
     const body = end >= 0 ? fn.slice(0, end) : fn;
     assert.match(body, /comingUpHorizonEnd/);
     assert.match(body, /data\.upcomingEvents/);
+    assert.match(body, /eventTypeLabel/);
+    assert.match(body, /\/clients\/\$\{event\.clientId\}/);
     assert.doesNotMatch(body, /classifyDatedItems/);
     assert.doesNotMatch(body, /upcomingPayments/);
     assert.doesNotMatch(body, /upcomingTours/);
+  });
+
+  it("Coming up rows are actionable ComingUpRow links on the pale guidance surface", () => {
+    assert.match(page, /ComingUpRow/);
+    assert.match(page, /htc-surface-guidance/);
+    assert.match(page, /title="Coming up"/);
   });
 
   it("Today's Focus still uses Event Readiness payment/invoice attention", () => {
@@ -152,6 +160,7 @@ describe("Dashboard Coming up is the Clients Coming-up (30-day) population", () 
     assert.match(service, /\.lte\("event_date", comingUpOut\)/);
     const eventsBlock = service.slice(service.indexOf("Coming up source"), service.indexOf("Payment line items"));
     assert.match(eventsBlock, /from\("events"\)/);
+    assert.match(eventsBlock, /event_type/);
     assert.doesNotMatch(eventsBlock, /payment_line_items/);
     assert.doesNotMatch(eventsBlock, /payment_schedules/);
   });

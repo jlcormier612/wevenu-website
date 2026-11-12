@@ -39,8 +39,22 @@ function tour(id: string, tourDate: string) {
   return { id, firstName: "Sara", lastName: "Parker", partnerFirstName: null, partnerLastName: null, tourDate, tourTime: "11:00" };
 }
 
-function event(id: string, eventDate: string) {
-  return { id, name: `Event ${id}`, eventDate, startTime: null, status: "confirmed", guestCount: null, clientId: null, clientName: `Client ${id}` };
+function event(
+  id: string,
+  eventDate: string,
+  over: { clientId?: string | null; eventType?: string | null; clientName?: string | null; name?: string } = {},
+) {
+  return {
+    id,
+    name: over.name ?? `Event ${id}`,
+    eventDate,
+    startTime: null,
+    status: "confirmed",
+    guestCount: null,
+    clientId: over.clientId ?? null,
+    clientName: over.clientName ?? `Client ${id}`,
+    eventType: over.eventType ?? null,
+  };
 }
 
 function payment(id: string, dueDate: string) {
@@ -129,6 +143,50 @@ describe("Coming up is events only", () => {
     assert.equal(upcoming[0]!.domain, "Events");
     assert.equal(upcoming[0]!.href, "/events/e2");
     assert.equal(upcoming[0]!.sortDate, LATER);
+    assert.equal(upcoming[0]!.detail, "Event");
+  });
+
+  it("uses the booking workspace href and real event-type label when available", () => {
+    const data = dashboard({
+      upcomingEvents: [
+        event("abbott", LATER, {
+          clientId: "client-abbott",
+          clientName: "Abbott Anniversary Cocktail",
+          eventType: "cocktail_hour",
+        }),
+        event("pierce", TOMORROW, {
+          clientId: "client-pierce",
+          clientName: "Pierce",
+          eventType: null,
+        }),
+      ] as never,
+    });
+    const upcoming = classifyUpcomingItems(data);
+    assert.equal(upcoming.length, 2);
+    assert.equal(upcoming[0]!.href, "/clients/client-pierce");
+    assert.equal(upcoming[0]!.detail, "Event");
+    assert.equal(upcoming[1]!.id, "up-event-abbott");
+    assert.equal(upcoming[1]!.href, "/clients/client-abbott");
+    assert.equal(upcoming[1]!.detail, "Cocktail Hour");
+    assert.equal(upcoming[1]!.label, "Abbott Anniversary Cocktail");
+  });
+
+  it("keeps distinct hrefs for similarly named clients", () => {
+    const data = dashboard({
+      upcomingEvents: [
+        event("e-a", TOMORROW, { clientId: "c-a", clientName: "Jordan Lee", eventType: "wedding" }),
+        event("e-b", LATER, { clientId: "c-b", clientName: "Jordan Lee", eventType: "private_event" }),
+      ] as never,
+    });
+    const upcoming = classifyUpcomingItems(data);
+    assert.deepEqual(
+      upcoming.map((i) => i.href),
+      ["/clients/c-a", "/clients/c-b"],
+    );
+    assert.deepEqual(
+      upcoming.map((i) => i.detail),
+      ["Wedding", "Private Event"],
+    );
   });
 
   it("does not include a remaining-balance payment attached to a real event", () => {

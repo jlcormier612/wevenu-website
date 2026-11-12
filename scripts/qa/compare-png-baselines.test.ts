@@ -116,6 +116,7 @@ describe("comparePngBuffers — genuine visual regression guard", () => {
     const required = [
       "reporting-overview",
       "dashboard",
+      "dashboard-coming-up",
       "templates",
       "billing",
       "org-settings",

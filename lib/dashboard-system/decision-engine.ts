@@ -26,6 +26,7 @@
 import { comingUpHorizonEnd } from "@/lib/clients/list-filters";
 import { isOverdue, formatDate as formatLeadDate, leadDisplayName } from "@/lib/leads/constants";
 import { formatDate as formatEventDate } from "@/lib/events/constants";
+import { eventTypeLabel } from "@/lib/event-types/canonical";
 import { formatDate as formatPaymentDate, formatMoney } from "@/lib/payments/constants";
 import { leadCountsOnTodaySchedule } from "@/lib/dashboard/focus-lead-membership";
 import type { DashboardData } from "@/lib/dashboard/types";
@@ -312,13 +313,18 @@ export function classifyUpcomingItems(data: DashboardData): ClassifiedItem[] {
     if (!event.eventDate) continue;
     if (event.eventDate <= today) continue;
     if (event.eventDate > horizon) continue;
+    const typeLabel = eventTypeLabel(event.eventType);
     items.push({
       id: `up-event-${event.id}`,
       priority: "upcoming",
       domain: "Events",
       label: event.clientName ?? event.name,
-      detail: "Event",
-      href: `/events/${event.id}`,
+      // Use the stored event type when present; keep a quiet generic fallback
+      // only when the row has no type — never invent a specific ceremony/type.
+      detail: typeLabel || "Event",
+      // Booking workspace is the live event detail surface; /events/[id] still
+      // redirects there when clientId is missing from the feed.
+      href: event.clientId ? `/clients/${event.clientId}` : `/events/${event.id}`,
       rightLabel: formatEventDate(event.eventDate),
       sortDate: event.eventDate,
       crossSectionSubject: null,

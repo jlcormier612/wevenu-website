@@ -1,0 +1,23 @@
+{
+  "at": "2026-11-12T00:17:42.279Z",
+  "phase": "after-local-3000",
+  "comingUpLinks": 6,
+  "hrefs": [
+    "/clients/4dc379ce-d2b4-4289-825c-1155ea643eb9",
+    "/clients/8888d22e-a3ce-4a85-8216-027109594a43",
+    "/clients/0e455d8c-2bf2-428a-9984-37c5c0cc61e9",
+    "/clients/9c5477f7-bb11-4722-b741-7fbb3a5fddee",
+    "/clients/3dd4b133-8358-44a0-87df-c43da1fe780b",
+    "/clients/7e92c9b5-c8d0-433a-980e-6be9af9b0f6e"
+  ],
+  "details": [
+    "Cocktail Hour",
+    "Private Event",
+    "Corporate Event",
+    "Private Event",
+    "Corporate Event",
+    "Birthday Party"
+  ],
+  "navigatedHref": "/clients/4dc379ce-d2b4-4289-825c-1155ea643eb9",
+  "landingPath": "/clients/4dc379ce-d2b4-4289-825c-1155ea643eb9"
+}

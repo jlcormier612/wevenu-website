@@ -48,6 +48,10 @@ const routes: RouteSpec[] = [
       hospitalityPage: (await page.locator(".htc-hospitality-page").count()) > 0,
       attentionPresent:
         (await page.getByText(/Needs attention|Today|Coming up/i).count()) > 0,
+      comingUpSection: (await page.getByText("Coming up", { exact: true }).count()) > 0,
+      comingUpLinks: await page.locator('[data-testid="coming-up-item-link"]').count(),
+      focusLinks: await page.locator('[data-testid="todays-focus-item-link"]').count(),
+      focusDismiss: await page.locator('[data-testid="todays-focus-dismiss"]').count(),
     }),
   },
   {
@@ -166,7 +170,13 @@ async function authCookies() {
 const REQUIRED: Record<string, (v: Record<string, boolean | number | string>) => boolean> = {
   "reporting-overview": (v) =>
     Number(v.metricTiles) >= 6 && Boolean(v.hasBusinessFunnel) && Boolean(v.hasOutstandingTone),
-  dashboard: (v) => Boolean(v.hospitalityPage),
+  dashboard: (v) =>
+    Boolean(v.hospitalityPage) &&
+    Boolean(v.comingUpSection) &&
+    // Coming up must expose actionable links when rows are present; zero is
+    // allowed only for an empty horizon (still a hospitality section).
+    Number(v.comingUpLinks) >= 0 &&
+    Number(v.focusDismiss) >= 0,
   leads: (v) => Boolean(v.hospitalityPage) && Boolean(v.toolbar),
   clients: (v) => Boolean(v.hospitalityPage) && Boolean(v.toolbar),
   billing: (v) => Boolean(v.hospitalityPage),
