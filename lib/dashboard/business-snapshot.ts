@@ -5,6 +5,8 @@
  * No Upcoming card (Coming up above already covers events).
  * Venue-facing copy never hard-codes custom pipeline stage names.
  */
+import { cache } from "react";
+
 import { getCurrentBookedClientIds } from "@/lib/booking-journey/booked-membership";
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
@@ -191,8 +193,9 @@ export function buildBusinessSnapshotCards(input: {
 
 /**
  * Load the four Dashboard Business Snapshot cards for the current venue.
+ * Request-scoped cache so streaming islands do not double-query.
  */
-export async function getBusinessSnapshot(): Promise<BusinessSnapshotModel | null> {
+export const getBusinessSnapshot = cache(async function getBusinessSnapshot(): Promise<BusinessSnapshotModel | null> {
   if (!isSupabaseConfigured) return null;
   const venue = await getCurrentVenue();
   if (!venue) return null;
@@ -302,4 +305,4 @@ export async function getBusinessSnapshot(): Promise<BusinessSnapshotModel | nul
   });
 
   return { cards };
-}
+});

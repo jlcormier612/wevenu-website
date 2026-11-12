@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { ClientList } from "@/components/clients/client-list";
+import { HospitalityRouteLoading } from "@/components/shell/hospitality-route-loading";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { Button } from "@/components/ui/button";
 import {
@@ -66,7 +67,7 @@ export default async function ClientsPage() {
           }
         />
       </div>
-      <Suspense fallback={null}>
+      <Suspense fallback={<HospitalityRouteLoading variant="list" label="Loading client list" />}>
         <ClientList
           clients={clients}
           attentionClientIds={attentionClientIds}

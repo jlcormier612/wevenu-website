@@ -1,36 +1,16 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { CalendarClock, ChevronRight } from "lucide-react";
+import { Suspense } from "react";
 
-import { Greeting } from "@/components/dashboard/greeting";
-import { MilestoneToast } from "@/components/dashboard/milestone-toast";
-import { DashboardLuvIntro } from "@/components/dashboard/luv-intro";
-import { DashboardLuvEntryCard } from "@/components/dashboard/luv-dashboard-entry";
-import { BusinessSnapshotSection } from "@/components/dashboard/business-snapshot";
-import { AttentionList } from "@/components/dashboard-system/attention-list";
-import { ComingUpRow } from "@/components/dashboard-system/coming-up-row";
-import { FocusAttentionRow } from "@/components/dashboard-system/focus-attention-row";
-import { Button } from "@/components/ui/button";
-import { getDashboardData } from "@/lib/dashboard/service";
-import { getBusinessSnapshot } from "@/lib/dashboard/business-snapshot";
+import { DashboardFocusIsland } from "@/components/dashboard/dashboard-focus-island";
+import { DashboardHeaderIsland } from "@/components/dashboard/dashboard-header-island";
 import {
-  forensicCount,
-  forensicExtra,
-  forensicRecordL1,
-  forensicTime,
-  withDashboardForensic,
-} from "@/lib/dashboard/forensic-timing";
-import {
-  classifyBriefingItems, classifyUpcomingItems,
-  collectCrossSectionSubjects, excludeByCrossSectionSubject,
-} from "@/lib/dashboard-system/decision-engine";
-import { listDismissedDashboardAttentionKeys } from "@/lib/dashboard-system/attention-dismiss";
-import { filterDismissedFocusItems } from "@/lib/dashboard-system/attention-identity";
-import { selectLuvDashboardEntry } from "@/lib/dashboard-system/luv-entry";
+  DashboardFocusFallback,
+  DashboardHeaderFallback,
+  DashboardSnapshotFallback,
+} from "@/components/dashboard/dashboard-section-fallbacks";
+import { DashboardSnapshotIsland } from "@/components/dashboard/dashboard-snapshot-island";
 
 export const metadata: Metadata = { title: "Dashboard" };
-
-type Props = { searchParams: Promise<{ milestone?: string }> };
 
 /**
  * Venue Dashboard — concise awareness / briefing surface.
@@ -43,138 +23,26 @@ type Props = { searchParams: Promise<{ milestone?: string }> };
  *   5. Coming up — what's coming (awareness, not another task queue)
  *   6. View Reports
  *
- * Owning surfaces do the work (Leads, Inbox/Conversation, Contracts,
- * Invoices, Tours, Task Center). Dashboard does not reproduce their queues.
- * "+ New Lead" remains as the header primary action.
+ * Wave C2: header, snapshot, and focus stream in parallel Suspense islands.
+ * getDashboardData / getBusinessSnapshot are request-scoped (React cache).
  */
-export default async function DashboardPage({ searchParams }: Props) {
-  // Phase 3B timer-only forensic — temporary; does not change page semantics.
-  return withDashboardForensic(async () => {
-  const [data, snapshot] = await Promise.all([
-    forensicTime("get_dashboard_data", () => getDashboardData()),
-    forensicTime("business_snapshot", () => getBusinessSnapshot()),
-    searchParams,
-  ]);
-
-  if (!data) {
-    forensicExtra("dashboard_data", "null");
-    forensicRecordL1({
-      source: "NONE",
-      type: null,
-      candidate: null,
-      path: "dashboard_unavailable",
-    });
-    return (
-      <div className="htc-hospitality-page flex flex-col items-center justify-center py-24 text-center">
-        <p className="text-muted-foreground">Dashboard unavailable.</p>
-      </div>
-    );
-  }
-
-  const assembly = await forensicTime("rsc_focus_l1_assembly", async () => {
-    const dismissedKeys = new Set(await listDismissedDashboardAttentionKeys());
-    const allFocusItems = filterDismissedFocusItems(classifyBriefingItems(data), dismissedKeys);
-    const focusItems = allFocusItems.slice(0, 10);
-
-    const claimedSubjects = collectCrossSectionSubjects(allFocusItems);
-    const upcomingItems = excludeByCrossSectionSubject(classifyUpcomingItems(data), claimedSubjects).slice(0, 10);
-
-    forensicCount("focus_items_classified", allFocusItems.length);
-    forensicCount("focus_items_shown", focusItems.length);
-    forensicCount("upcoming_items_shown", upcomingItems.length);
-    forensicCount("luv_observations_in", data.luvObservations.length);
-    forensicCount("insight_observations_in", data.insightObservations.length);
-    forensicCount("recommendations_in", data.recommendations.length);
-
-    const luvEntry = data.luvObservationsEnabled
-      ? selectLuvDashboardEntry({
-          focusItems,
-          observations: data.luvObservations,
-          recommendations: [],
-        })
-      : (forensicRecordL1({
-          source: "NONE",
-          type: "observations_disabled",
-          candidate: null,
-          path: "luv_observations_disabled",
-        }), null);
-
-    return { allFocusItems, focusItems, upcomingItems, luvEntry };
-  });
-
-  const { allFocusItems, focusItems, upcomingItems, luvEntry } = assembly;
-
-  // RSC JSX build is sync; serialization cost is not separately measurable here.
-  forensicExtra("rsc_serialization", "UNKNOWN");
-
+export default function DashboardPage() {
   return (
-    <div className="htc-hospitality-page space-y-4 sm:space-y-6">
-      <MilestoneToast milestone={data.nextPendingMilestone} />
+    <div
+      className="htc-hospitality-page space-y-4 sm:space-y-6"
+      data-testid="dashboard-streaming-root"
+    >
+      <Suspense fallback={<DashboardHeaderFallback />}>
+        <DashboardHeaderIsland />
+      </Suspense>
 
-      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <Greeting venueName={data.venueName} ownerFirstName={data.ownerFirstName} />
-          <Button render={<Link href="/leads/new" />} className="w-full sm:w-auto sm:shrink-0">
-            + New Lead
-          </Button>
-        </div>
-      </div>
+      <Suspense fallback={<DashboardSnapshotFallback />}>
+        <DashboardSnapshotIsland />
+      </Suspense>
 
-      <DashboardLuvIntro
-        show={data.showLuvIntro}
-        setupHref={data.onboarding.show ? "/setup-hub" : "/setup-hub"}
-      />
-
-      {snapshot && <BusinessSnapshotSection cards={snapshot.cards} />}
-
-      <section>
-        <AttentionList
-          icon={<CalendarClock className="h-4 w-4 text-primary" />}
-          title="Today's Focus"
-          description="What requires attention today."
-          headerBand="eucalyptus"
-          headerRight={allFocusItems.length > focusItems.length ? <span className="text-xs text-muted-foreground">{focusItems.length} of {allFocusItems.length}</span> : undefined}
-          items={focusItems}
-          getKey={(i) => i.id}
-          emptyState={
-            <p className="py-6 text-center text-sm text-muted-foreground">
-              Nothing urgent today — you&apos;re all caught up.
-            </p>
-          }
-          renderRow={(item) => <FocusAttentionRow item={item} />}
-        />
-      </section>
-
-      {luvEntry && <DashboardLuvEntryCard entry={luvEntry} />}
-
-      <section>
-        <AttentionList
-          icon={<CalendarClock className="h-4 w-4 text-muted-foreground" />}
-          title="Coming up"
-          description="Events in the next 30 days."
-          headerBand="none"
-          className="htc-surface-guidance"
-          items={upcomingItems}
-          getKey={(i) => i.id}
-          emptyState={
-            <p className="py-6 text-center text-sm text-muted-foreground">
-              Nothing on the horizon yet.
-            </p>
-          }
-          renderRow={(item) => <ComingUpRow item={item} />}
-        />
-      </section>
-
-      <section>
-        <Link
-          href="/reporting"
-          className="flex items-center justify-between rounded-[0.75rem] border border-[color:var(--htc-border-warm)] bg-card px-4 py-3 text-sm hover:bg-muted/40 transition-colors"
-        >
-          <span className="font-medium text-foreground">View Reports</span>
-          <ChevronRight className="h-4 w-4 text-muted-foreground" />
-        </Link>
-      </section>
+      <Suspense fallback={<DashboardFocusFallback />}>
+        <DashboardFocusIsland />
+      </Suspense>
     </div>
   );
-  });
 }
