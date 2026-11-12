@@ -2,74 +2,82 @@
 
 **Verdict:** RESTORATION IN PROGRESS — LAUNCH BLOCKER  
 **Do not declare FULLY RESTORED / GREEN.**  
-**Serving Sandbox (preserved):** `df1aa331` / ECS tip previously verified; Production untouched.  
-**PR #30 (safeguards):** OPEN — https://github.com/jlcormier612/wevenu-website/pull/30 @ `875cb4cd` (checks green; not merged).  
-**Floor-plan toggle fix:** separate branch `fix/floor-plan-toggle-latency` (not mixed into #30).
+**Serving Sandbox (preserved):** `df1aa331` — Production untouched.  
+**Combined candidate (undeployed):** `integrate/sandbox-release-candidate` @ `d78c137e` (#30+#31+#32).  
+**Release plan:** `SANDBOX-RELEASE-MANIFEST.md`
+
+Disposition: **PASS** · **FAIL** · **BLOCKED** · **NOT APPLICABLE**
 
 ## Definitive baselines
 
 | Concern | Reference | Notes |
 | --- | --- | --- |
-| Hospitality shell / CRM presentation | `f22b8c14` + Wave G / Phase 11 ports already on `main` | Class markers ≠ visual proof |
-| Reporting KPIs / charts / Saved Reports | Restored after overwrite by `40c7bb55`; live on Sandbox `df1aa331` | Colored `htc-report-metric-tile` verified |
+| Hospitality shell / CRM presentation | `f22b8c14` + Wave G / Phase 11 on `main` | Class markers ≠ visual proof |
+| Reporting KPIs / charts / Saved Reports | Live on Sandbox `df1aa331`; #32 adds grain/Period net/doughnut | Post-deploy baseline refresh required for reporting-overview |
 | Newer booking / billing / contracts / Stripe | Current `main` | Must remain |
-| Visual baselines for CI | PR #30 approved `__desktop` / `__mobile` PNGs + pixel compare | Live Sandbox capture job skipped until deploy policy allows |
+| Visual baselines for CI | PR #30 approved PNGs + pixel compare | Live Sandbox capture still dispatch-only |
 
-Disposition keys for this ledger: **PASS** · **FAIL** · **BLOCKED** · **NOT APPLICABLE**
-
-## Matrix (seed — expand with screenshot evidence per area)
+## Matrix
 
 | Area | Approved reference | Current implementation | Visual parity | Functional parity | Evidence | Verdict |
 | --- | --- | --- | --- | --- | --- | --- |
-| Reports Overview KPI tiles | hospitality tip / marketing reporting.png | Restored tones on `main` / Sandbox | Verified on Sandbox after #29 | Charts + Saved Reports preserved | Sandbox browser + reporting docs | PASS |
-| Chart Day/Week/Month | Product brief | Present on reporting pages | Sandbox verify | Functional | Reporting polish PR | PASS |
-| Event-type humanize | Display contract | Humanize path on `main` | N/A (copy) | Functional | Unit/display | PASS |
-| Global shell / botanical tokens | `f22b8c14` / globals.css | On `main` + Sandbox | Source + partial shots | Nav works | PR #30 baselines subset | BLOCKED |
-| Dashboard / Coming Up | hospitality + Coming Up affordance work | Coming Up row/link/chevron on branch history | Partial evidence under recovery-evidence/coming-up | Nav + dismiss still inventory | coming-up evidence | BLOCKED |
-| Today’s Focus / attention deep-links | prior QA | Attention nav QA docs present | Incomplete desktop/mobile matrix | Needs re-verify | docs/qa/attention-message-navigation | BLOCKED |
-| Leads / Clients lists | hospitality tip | On `main` | Incomplete matrix | List nav works historically | PR #30 baselines partial | BLOCKED |
-| Tours | hospitality tip | On `main` | Screenshot coverage incomplete | BLOCKED | inventory | BLOCKED |
-| Calendar | hospitality tip | On `main` | Incomplete | BLOCKED | — | BLOCKED |
-| Contracts / Proposals / Packages | hospitality + commercial | On `main` | Incomplete | Preserve lifecycle rules | — | BLOCKED |
-| Invoices / Payments | hospitality tip | On `main` | Screenshot coverage incomplete | Preserve Stripe | — | BLOCKED |
-| Vendors / relationships / photos | hospitality + photo flows | Files present; photo flows need evidence | Incomplete | BLOCKED | relationship-photos inventory | BLOCKED |
-| Inbox / Automations | hospitality tip | On `main` | Incomplete | BLOCKED | — | BLOCKED |
-| Reporting Saved Reports | reporting line | On Sandbox | Verified earlier | PASS | reporting docs | PASS |
-| Timelines / Event Orders / Inventory | current product rules | On `main` | Incomplete visual | Functional rules must stay | — | BLOCKED |
-| Floor Plans workspace presentation | hospitality + floor-plan phases | On Sandbox | Incomplete visual matrix | Permissions rules preserved | Carriage House Working Layout | BLOCKED |
-| Floor Plan Working Layout toggles latency | Launch UX | Sandbox before avg **11.5s** visible; local optimistic **~17–57ms** visible + async persist | N/A (interaction) | Local verified; Sandbox still pre-fix until PR merge/deploy | floor-plan-toggle evidence | FAIL |
-| Questionnaires / Tasks / Documents / Guides | hospitality tip | On `main` | Incomplete | BLOCKED | — | BLOCKED |
-| Wedding websites / RSVP | product | On `main` | Incomplete | BLOCKED | — | BLOCKED |
-| Event settings / release controls | product | On `main` | Incomplete | BLOCKED | — | BLOCKED |
-| Setup Hub / Setup Profiles | hospitality tip | On `main` | Incomplete | BLOCKED | — | BLOCKED |
-| Templates / template editors | f22 + later | Files present | Incomplete evidence | BLOCKED | templates recovery wave | BLOCKED |
-| Venue settings / branding / spaces | hospitality tip | On `main` | Incomplete | BLOCKED | — | BLOCKED |
-| Staff / permissions / multi-venue | hospitality + multi-venue work | Needs persistence verify | Incomplete | BLOCKED | multi-venue inventory | BLOCKED |
-| Subscription / billing / onboarding | current Stripe shared config | On `main` | Incomplete | Preserve shared Stripe | — | BLOCKED |
-| Client / vendor portals | product rules | On `main` | Incomplete | Preserve portal rules | — | BLOCKED |
-| Branch protection on `main` | Ops | Ruleset still requires admin enforce | N/A | N/A | GitHub API | FAIL |
-| Visual compare required check | Ops / PR #30 | Workflow green on PR; enforcement of required status pending | N/A | N/A | PR #30 checks | BLOCKED |
-| Deploy SHA + digest verification | Ops | In deploy-sandbox workflow | N/A | N/A | workflow | BLOCKED |
+| Reports Overview KPI tiles | hospitality / marketing | Restored tones on Sandbox | Verified after #29 | Charts + Saved Reports | Sandbox + reporting docs | PASS |
+| Chart Day/Week/Month | Product brief | Local rebucket on candidate (#32) | Sandbox current slower; candidate ~60ms | Functional | #32 tests + reporting-final-quality | PASS |
+| Event-type humanize | Display contract | On `main` | N/A | Functional | unit/display | PASS |
+| Global shell / botanical tokens | `f22b8c14` | On Sandbox + baselines | Approved shell PNGs present; live matrix incomplete for all routes | Nav works | PR #30 baselines | BLOCKED |
+| Dashboard / Coming Up | hospitality + affordance | Coming Up link/chevron/event types on #30 tip | Desktop/mobile after shots | Actionable rows + tests | `recovery-evidence/coming-up/` | PASS |
+| Today’s Focus / attention deep-links | prior QA | Attention API 200; hospitality dashboard | Desktop+mobile shots | `needsAttentionText` false on capture — deep-link matrix incomplete | `evidence.json` attention-dashboard | BLOCKED |
+| Leads / Clients lists | hospitality tip | On Sandbox | Partial baselines | List nav historical | PR #30 baselines partial | BLOCKED |
+| Lead / Client relationship photos | hospitality + photos | Avatar imgs present; `relationshipPhotoNodes=0`, `photoEditor=0` | Desktop shot | Photo editor affordance not observed | `deep-evidence.json` lead/client | FAIL |
+| Tours | hospitality tip | On Sandbox | Incomplete d/m | Incomplete | inventory | BLOCKED |
+| Calendar | hospitality tip | On Sandbox | `hospitality=0` on capture | Heading only | `wave-remaining` / `wave-editors` calendar | FAIL |
+| Contracts / Proposals / Packages | hospitality + commercial | On Sandbox | Desktop hospitality shell PASS for contracts/packages | Lifecycle must stay | `wave-remaining` contracts/packages | BLOCKED |
+| Invoices / Payments | hospitality tip | On Sandbox | Desktop hospitality shell PASS | Preserve Stripe | `wave-remaining` payments | BLOCKED |
+| Vendors | hospitality tip | On Sandbox | Desktop hospitality PASS | Incomplete mobile/func | `wave-remaining` vendors | BLOCKED |
+| Inbox / Automations | hospitality tip | Messaging hospitality=1; attention API 200 | Desktop deep shot | Unread/badge observed | `deep-evidence` inbox | BLOCKED |
+| Reporting Saved Reports | reporting line | On Sandbox | Earlier verify | Interactive matrix YELLOW | reporting docs | PASS |
+| Timelines templates | f22 + later | Edit path hospitality=1 phase12=1 | Preview path previously hospitality=0 | Editor loads | `deep-evidence` timelineEdit; `evidence` timeline preview gap | BLOCKED |
+| Event Orders templates | product | Edit hospitality=1 but `workingCard=5` | Dense working-card presentation | Editor loads | `wave-editors` event-order-edit | FAIL |
+| Floor Plans workspace presentation | hospitality + phases | Edit-real hospitality=1 workingCard=1 | Preview path hospitality=0 earlier | Permissions rules | `wave-editors` floor-plan-edit-real | BLOCKED |
+| Floor Plan Working Layout toggles | Launch UX | Optimistic + race controller on candidate | N/A | Local ~17–57ms; races 9/9; Sandbox still pre-deploy | `floor-plan-toggle/*` | PASS |
+| Questionnaires templates | hospitality tip | Edit-real hospitality=1 | Preview path hospitality=0 earlier | Editor loads | `wave-editors` questionnaire-edit-real | BLOCKED |
+| Tasks / Documents / Guides | hospitality tip | On Sandbox | Incomplete d/m | Incomplete | — | BLOCKED |
+| Wedding websites / RSVP | product | On Sandbox | Incomplete | Incomplete | — | BLOCKED |
+| Event settings / release controls | product | On Sandbox | Incomplete | Incomplete | — | BLOCKED |
+| Setup Hub / Setup Profiles | hospitality tip | On Sandbox | Incomplete | Incomplete | — | BLOCKED |
+| Venue settings / branding / spaces | hospitality tip | On Sandbox | Incomplete | Incomplete | — | BLOCKED |
+| Staff / permissions / multi-venue | hospitality | Venue switcher present | Desktop+mobile header shots | Persistence of toggles = #31 candidate | `evidence` multi-venue-header | BLOCKED |
+| Subscription / billing / onboarding | Stripe shared | Billing hospitality shell | Desktop+mobile | Preserve Stripe — no config change | `evidence` billing-cards | BLOCKED |
+| Client / vendor portals | product | On Sandbox | Incomplete | Preserve portal rules | — | BLOCKED |
+| Branch protection on `main` | Ops | Ruleset: PR required + venue-app build required | N/A | Active | GitHub ruleset `27077187` | PASS |
+| Visual compare required check | Ops / #30 | Workflow exists + green on #30 | N/A | **Not** a required status check yet | ruleset vs hospitality-visual-smoke | BLOCKED |
+| Deploy SHA + digest verification | Ops | `deploy-sandbox.yml` verify records tag+digest | N/A | Runs on Sandbox deploy | workflow lines ~546–575 | PASS |
 
-## Counts (this seed)
+## Counts
 
 | Verdict | Count |
 | --- | --- |
-| PASS | 4 |
-| FAIL | 2 |
-| BLOCKED | 24 |
+| PASS | 9 |
+| FAIL | 3 |
+| BLOCKED | 20 |
 | NOT APPLICABLE | 0 |
-| **Total areas listed** | **30** |
+| **Total areas listed** | **32** |
 
-Additional route-tree areas will be appended as the exhaustive inventory expands; unresolved items stay visible.
+Prior seed had 24 BLOCKED; evidence from PR #30 recovery waves converted 4 → PASS and 3 → FAIL (confirmed gaps), leaving **20 BLOCKED**. Still not FULLY RESTORED.
 
-## Floor-plan toggle (launch defect — tracked)
+## Confirmed FAILs (repair required — separate focused PRs after release decision)
 
-See `FLOOR-PLAN-TOGGLE-LATENCY.md` and `recovery-evidence/floor-plan-toggle/`.
+1. **Calendar hospitality presentation** — capture shows `hospitality=0`.
+2. **Relationship photo editor affordance** — lead/client deep capture shows no photo editor / relationship photo nodes.
+3. **Event Order template editor density** — `workingCard=5` on edit route (presentation regression vs hospitality working surface).
+
+## Floor-plan toggle
+
+See `FLOOR-PLAN-TOGGLE-LATENCY.md` and `recovery-evidence/floor-plan-toggle/` (timing + `race-acceptance.json` 9/9). Sandbox still serves pre-fix until approved combined deploy.
 
 ## Next controlled batches (no merge/deploy without approval)
 
-1. Land floor-plan optimistic toggle PR (separate from #30) after measurements + tests.
-2. Keep #30 open until safeguards (required checks / ruleset) are accepted.
-3. Expand this matrix with desktop/mobile screenshot pairs per remaining BLOCKED area.
-4. Repair confirmed FAILs only in focused PRs.
+1. Finish mobile + functional pairs for remaining BLOCKED rows against live Sandbox `df1aa331`.
+2. Keep combined candidate as the only merge vehicle (`integrate/sandbox-release-candidate`).
+3. Add visual smoke jobs as **required** checks on `main` when you authorize ruleset change.
+4. Repair the three FAILs in focused follow-up PRs (do not silently expand this release).
