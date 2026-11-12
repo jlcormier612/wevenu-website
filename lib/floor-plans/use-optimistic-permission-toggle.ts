@@ -14,66 +14,65 @@
  */
 import * as React from "react";
 
-export type PermissionSaveResult = { ok: true } | { ok: false; message?: string };
+import {
+  adoptServerValue,
+  beginOptimisticToggle,
+  createOptimisticPermissionState,
+  settleOptimisticToggle,
+  type PermissionSaveResult,
+} from "@/lib/floor-plans/optimistic-permission-controller";
+
+export type { PermissionSaveResult };
 
 export function useOptimisticPermissionToggle(serverValue: boolean) {
-  const [value, setValue] = React.useState(serverValue);
-  const [pending, setPending] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
-  const genRef = React.useRef(0);
-  const valueRef = React.useRef(value);
-  const desiredRef = React.useRef<boolean | null>(null);
-  valueRef.current = value;
+  const [state, setState] = React.useState(() => createOptimisticPermissionState(serverValue));
+  const stateRef = React.useRef(state);
+  stateRef.current = state;
 
   React.useEffect(() => {
-    if (pending) return;
-    if (desiredRef.current != null) {
-      if (serverValue === desiredRef.current) {
-        desiredRef.current = null;
-        setValue(serverValue);
-      }
-      // else: keep optimistic value until props match the last successful intent
-      return;
-    }
-    setValue(serverValue);
-  }, [serverValue, pending]);
+    setState((prev) => adoptServerValue(prev, serverValue));
+  }, [serverValue]);
 
   const run = React.useCallback(
     async (next: boolean, save: (next: boolean) => Promise<PermissionSaveResult>) => {
-      const gen = ++genRef.current;
-      const previous = valueRef.current;
-      setError(null);
-      desiredRef.current = next;
-      setValue(next);
-      setPending(true);
+      const { state: begun, gen, previous } = beginOptimisticToggle(stateRef.current, next);
+      stateRef.current = begun;
+      setState(begun);
       try {
         const result = await save(next);
-        if (gen !== genRef.current) return { stale: true as const, result };
-        if (!result.ok) {
-          desiredRef.current = null;
-          setValue(previous);
-          setError(result.message ?? "Could not save this permission.");
-          return { stale: false as const, result };
-        }
-        return { stale: false as const, result };
+        const settled = settleOptimisticToggle(stateRef.current, gen, result, previous);
+        stateRef.current = settled.state;
+        setState(settled.state);
+        return { stale: settled.stale, result };
       } catch (err) {
-        if (gen !== genRef.current) return { stale: true as const, result: { ok: false as const } };
-        desiredRef.current = null;
-        setValue(previous);
         const message = err instanceof Error ? err.message : "Could not save this permission.";
-        setError(message);
-        return { stale: false as const, result: { ok: false as const, message } };
-      } finally {
-        if (gen === genRef.current) setPending(false);
+        const settled = settleOptimisticToggle(
+          stateRef.current,
+          gen,
+          { ok: false, message },
+          previous,
+        );
+        stateRef.current = settled.state;
+        setState(settled.state);
+        return { stale: settled.stale, result: { ok: false as const, message } };
       }
     },
     [],
   );
 
   const toggle = React.useCallback(
-    (save: (next: boolean) => Promise<PermissionSaveResult>) => run(!valueRef.current, save),
+    (save: (next: boolean) => Promise<PermissionSaveResult>) =>
+      run(!stateRef.current.value, save),
     [run],
   );
 
-  return { value, pending, error, setError, run, toggle };
+  return {
+    value: state.value,
+    pending: state.pending,
+    error: state.error,
+    setError: (message: string | null) =>
+      setState((prev) => ({ ...prev, error: message })),
+    run,
+    toggle,
+  };
 }

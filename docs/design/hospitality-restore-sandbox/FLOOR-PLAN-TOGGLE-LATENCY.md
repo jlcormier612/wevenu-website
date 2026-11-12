@@ -56,7 +56,13 @@ Source: `recovery-evidence/floor-plan-toggle/before-sandbox-timing.json`, `after
 
 ## Permission / race notes
 
-- Generation counter drops stale responses.
+- Generation counter drops stale responses (`optimistic-permission-controller.ts`).
 - Failure path restores previous value + toast (no silent rollback without error).
+- Delayed / out-of-order saves covered by unit simulations in `use-optimistic-permission-toggle.test.ts` (9/9 PASS) — see `recovery-evidence/floor-plan-toggle/race-acceptance.json`.
 - Event/plan IDs still passed into existing actions (wrong-layout writes unchanged / prevented by existing auth).
 - Downstream seating reconciliation cost remains on the async path (visible path no longer waits).
+
+## Remaining before Sandbox deploy of this PR alone
+
+- Browser failure injection against a live action (network abort) still recommended on the combined release candidate.
+- Do not merge/deploy until the reconciled multi-PR candidate is approved.
