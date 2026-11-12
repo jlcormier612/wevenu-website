@@ -77,9 +77,9 @@ export function BusinessFunnel({
     },
     {
       key: "outstanding",
-      label: "Outstanding",
+      label: "Period net",
       value: formatMoney(period.outstanding),
-      clock: "Mixed clocks — see note",
+      clock: "Contracted − collected (mixed clocks)",
       tone: "outstanding",
     },
   ];

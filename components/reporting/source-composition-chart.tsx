@@ -17,22 +17,61 @@ export type CompositionSlice = {
   percent: number;
 };
 
-/** Tasteful HTC palette — sage family + dusty rose + taupe accents. */
+/**
+ * Hospitality palette ordered to alternate dark / light / rose / taupe so
+ * adjacent doughnut segments stay distinguishable. Never invent off-brand hues.
+ */
 const SLICE_COLORS = [
-  "var(--chart-1)",
-  "var(--chart-2)",
-  "var(--chart-5, var(--soft-sage))",
-  "var(--chart-4)",
-  "var(--chart-3)",
-  "color-mix(in oklch, var(--heritage-sage) 65%, white)",
-  "color-mix(in oklch, var(--dusty-rose) 70%, var(--forest-sage))",
-  "color-mix(in oklch, var(--taupe-dark) 55%, white)",
-  "color-mix(in oklch, var(--heritage-sage) 40%, var(--dusty-rose))",
-  "color-mix(in oklch, var(--forest-sage) 50%, var(--taupe-dark))",
+  "var(--chart-1)", // heritage sage (dark)
+  "var(--chart-5)", // soft sage (light)
+  "var(--chart-4)", // dusty rose
+  "var(--chart-3)", // taupe
+  "var(--chart-2)", // forest sage (dark) — separated from chart-1 by three steps
+  "color-mix(in oklch, var(--soft-sage) 55%, white)",
+  "color-mix(in oklch, var(--dusty-rose) 55%, white)",
+  "color-mix(in oklch, var(--taupe-dark) 45%, white)",
+  "color-mix(in oklch, var(--heritage-sage) 55%, var(--dusty-rose))",
+  "color-mix(in oklch, var(--soft-sage) 40%, var(--taupe-dark))",
 ];
 
-function colorForIndex(i: number): string {
-  return SLICE_COLORS[i % SLICE_COLORS.length]!;
+const DARK_GREEN = new Set([
+  "var(--chart-1)",
+  "var(--chart-2)",
+]);
+
+function hashKey(key: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < key.length; i++) {
+    h ^= key.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+function preferredColor(key: string): string {
+  return SLICE_COLORS[hashKey(key) % SLICE_COLORS.length]!;
+}
+
+function nextDistinct(from: string, avoid: string | undefined): string {
+  const start = Math.max(0, SLICE_COLORS.indexOf(from));
+  for (let step = 0; step < SLICE_COLORS.length; step++) {
+    const candidate = SLICE_COLORS[(start + step) % SLICE_COLORS.length]!;
+    if (!avoid) return candidate;
+    if (candidate === avoid) continue;
+    if (DARK_GREEN.has(candidate) && DARK_GREEN.has(avoid)) continue;
+    return candidate;
+  }
+  return from;
+}
+
+/** Stable per-key colors with adjacent-segment conflict resolution. */
+export function assignCompositionColors(slices: { key: string }[]): string[] {
+  const colors: string[] = [];
+  for (let i = 0; i < slices.length; i++) {
+    const preferred = preferredColor(slices[i]!.key);
+    colors.push(nextDistinct(preferred, colors[i - 1]));
+  }
+  return colors;
 }
 
 type Arc = CompositionSlice & { color: string; d: string };
@@ -87,6 +126,7 @@ function donutArc(
 function buildArcs(slices: CompositionSlice[]): Arc[] {
   const total = slices.reduce((a, s) => a + s.count, 0);
   if (total <= 0) return [];
+  const colors = assignCompositionColors(slices);
   let angle = 0;
   return slices.map((s, i) => {
     const sweep = (s.count / total) * 360;
@@ -95,7 +135,7 @@ function buildArcs(slices: CompositionSlice[]): Arc[] {
     angle = end;
     return {
       ...s,
-      color: colorForIndex(i),
+      color: colors[i]!,
       d: donutArc(100, 100, 78, 48, start, end),
     };
   });
@@ -197,7 +237,7 @@ export function SourceCompositionChart({
             </div>
 
             <ul className="max-h-[16rem] space-y-1.5 overflow-y-auto pr-1" aria-label={`${title} legend`}>
-              {slices.map((s, i) => {
+              {arcs.map((s) => {
                 const isActive = activeKey === s.key;
                 return (
                   <li key={s.key}>
@@ -215,7 +255,7 @@ export function SourceCompositionChart({
                     >
                       <span
                         className="h-2.5 w-2.5 shrink-0 rounded-full"
-                        style={{ backgroundColor: colorForIndex(i) }}
+                        style={{ backgroundColor: s.color }}
                         aria-hidden
                       />
                       <span className="min-w-0 flex-1 truncate text-foreground">{s.label}</span>

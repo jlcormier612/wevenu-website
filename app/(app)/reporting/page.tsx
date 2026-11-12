@@ -2,13 +2,11 @@ import Link from "next/link";
 
 import { BookingsBySourceChart } from "@/components/reporting/bookings-by-source-chart";
 import { BusinessFunnel } from "@/components/reporting/business-funnel";
+import { ClientTrendPanel } from "@/components/reporting/client-trend-panel";
 import { DateRangeControl } from "@/components/reporting/date-range-control";
 import { ReportHeader } from "@/components/reporting/report-header";
 import { SourceCompositionChart } from "@/components/reporting/source-composition-chart";
-import { TrendGranularityControl } from "@/components/reporting/trend-granularity-control";
-import { TrendChart } from "@/components/dashboard-system/trend-chart";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getBusinessFunnel } from "@/lib/metrics/business-funnel";
 import { getPeriodBookingsBySource } from "@/lib/metrics/bookings-by-source";
 import { getLeadsBySource } from "@/lib/metrics/leads-by-source";
@@ -18,7 +16,7 @@ import {
   getUndatedLifecycleBookingCount,
 } from "@/lib/metrics/lifecycle-booking";
 import { reportingHref, resolveDateRangeFromParams } from "@/lib/reporting/date-range";
-import { getLeadsTrend } from "@/lib/reporting/service";
+import { getLeadCreatedAts } from "@/lib/reporting/service";
 import {
   availableTrendGranularities,
   parseTrendGranularity,
@@ -44,7 +42,7 @@ export default async function ReportingOverviewPage({ searchParams }: Props) {
     bookings,
     currentlyBooked,
     undatedBookings,
-    leads,
+    leadAts,
     bookingsBySource,
     leadsBySource,
   ] = await Promise.all([
@@ -52,7 +50,7 @@ export default async function ReportingOverviewPage({ searchParams }: Props) {
     getLifecycleBookings(window),
     getCurrentlyBookedPipelineCount(),
     getUndatedLifecycleBookingCount(),
-    getLeadsTrend(window, grain),
+    getLeadCreatedAts(window),
     getPeriodBookingsBySource(window),
     getLeadsBySource(window),
   ]);
@@ -100,24 +98,16 @@ export default async function ReportingOverviewPage({ searchParams }: Props) {
         />
       </div>
 
-      <Card className={leads.total === 0 ? "htc-report-empty-card" : undefined}>
-        <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3 space-y-0">
-          <div className="space-y-1.5">
-            <CardTitle className="text-base">Lead volume trend</CardTitle>
-            <CardDescription>
-              {leads.granularityLabel} view of leads received during {range.label}.
-            </CardDescription>
-          </div>
-          <TrendGranularityControl current={grain} available={grainOptions} />
-        </CardHeader>
-        <CardContent>
-          {leads.total === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">No leads in this date range.</p>
-          ) : (
-            <TrendChart data={leads.trend} />
-          )}
-        </CardContent>
-      </Card>
+      <ClientTrendPanel
+        title="Lead volume trend"
+        descriptionSuffix={`view of leads received during ${range.label}.`}
+        window={window}
+        initialGrain={grain}
+        available={grainOptions}
+        observations={leadAts.map((at) => ({ at }))}
+        emptyText="No leads in this date range."
+        testId="overview-lead-volume-trend"
+      />
 
       <div className="flex flex-wrap gap-2 pt-2">
         <Button variant="outline" size="sm" render={<Link href={reportingHref("/reporting/sales", range)} />}>View Sales</Button>

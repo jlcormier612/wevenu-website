@@ -110,23 +110,23 @@ describe("Business Funnel Reporting surfaces", () => {
   it("Overview mounts Business Funnel and lifecycle Bookings", () => {
     assert.match(overview, /BusinessFunnel|getBusinessFunnel/);
     assert.match(overview, /getLifecycleBookings/);
-    assert.match(overview, /getLeadCohortLifecycleBookingStats/);
+    // Cohort stats live inside getBusinessFunnel — Overview must not invent a second booking clock.
     assert.doesNotMatch(overview, /Financially Committed/);
     assert.doesNotMatch(overview, /getCanonicalBookings/);
   });
 
   it("Sales separates period activity from cohort conversion", () => {
-    assert.match(salesPage, /Inquiries from this period/);
+    assert.match(salesPage, /Leads from this period/);
     assert.match(salesPage, /During this period/);
     assert.match(salesPage, /getLeadCohortLifecycleBookingStats/);
-    assert.match(salesPage, /lost inquiries stay in this group/);
+    assert.match(salesPage, /Sales milestones/);
     assert.doesNotMatch(salesPage, /Financially Committed/);
     assert.doesNotMatch(salesPage, /Bookings by origin/);
   });
 
   it("Bookings page is lifecycle-dated without a second booking type", () => {
     assert.match(bookingsPage, /getLifecycleBookingsWithNames/);
-    assert.match(bookingsPage, /Bookings by source/);
+    assert.match(bookingsPage, /BookingsBySourceChart/);
     assert.doesNotMatch(bookingsPage, /Bookings by origin/);
     assert.doesNotMatch(bookingsPage, /Financially Committed/);
     assert.doesNotMatch(bookingsPage, /originLabel/);

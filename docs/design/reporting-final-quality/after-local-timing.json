@@ -1,0 +1,44 @@
+{
+  "at": "2026-11-12T00:54:23.569Z",
+  "label": "after-local",
+  "grain": {
+    "results": [
+      {
+        "grain": "day",
+        "visibleMs": 106
+      },
+      {
+        "grain": "week",
+        "visibleMs": 43
+      },
+      {
+        "grain": "month",
+        "visibleMs": 31
+      }
+    ],
+    "rapidLastWeekPressed": true,
+    "rapidMs": 148,
+    "avgVisibleMs": 60
+  },
+  "grainMobile": {
+    "results": [
+      {
+        "grain": "day",
+        "visibleMs": 38
+      },
+      {
+        "grain": "week",
+        "visibleMs": 46
+      },
+      {
+        "grain": "month",
+        "visibleMs": 32
+      }
+    ],
+    "rapidLastWeekPressed": true,
+    "rapidMs": 133,
+    "avgVisibleMs": 39
+  },
+  "hasPeriodNet": true,
+  "hasOutstandingTile": false
+}

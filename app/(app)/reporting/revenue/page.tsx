@@ -5,9 +5,9 @@ import { DateRangeControl } from "@/components/reporting/date-range-control";
 import { DetailPanel, DetailRow } from "@/components/reporting/detail-panel";
 import { ReportHeader } from "@/components/reporting/report-header";
 import { ComparisonCard, ComparisonCardGrid } from "@/components/dashboard-system/comparison-card";
-import { TrendChart } from "@/components/dashboard-system/trend-chart";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ClientLinkedTrendCharts } from "@/components/reporting/client-linked-trend-charts";
 import {
   getAverageBookingValue, getGrossBookedRevenue, getGrossBookedRevenueByCategory,
   getOutstandingBalance, getPaymentsCollected,
@@ -16,14 +16,13 @@ import {
   getGrossBookedRevenueByAcquisitionSource,
   getPaymentsCollectedByAcquisitionSource,
 } from "@/lib/metrics/attribution";
-import { TrendGranularityControl } from "@/components/reporting/trend-granularity-control";
 import { resolveDateRangeFromParams } from "@/lib/reporting/date-range";
 import {
   getCategoryDetail,
   getOutstandingBalanceDetail,
   getPaymentsCollectedDetail,
-  getPaymentsCollectedTrend,
-  getRevenueTrend,
+  getPaymentsCollectedObservations,
+  getRevenueObservations,
 } from "@/lib/reporting/service";
 import {
   availableTrendGranularities,
@@ -61,22 +60,20 @@ export default async function RevenueReportPage({ searchParams }: Props) {
     paymentsCollected, prevPaymentsCollected,
     outstanding, prevOutstanding,
     avgValue, prevAvgValue,
-    byCategory, contractedTrend, collectedTrend, revenueBySource, collectedBySource,
+    byCategory, contractedObs, collectedObs, revenueBySource, collectedBySource,
   ] = await Promise.all([
     getGrossBookedRevenue(window), getGrossBookedRevenue(prevWindow),
     getPaymentsCollected(window), getPaymentsCollected(prevWindow),
     getOutstandingBalance(window), getOutstandingBalance(prevWindow),
     getAverageBookingValue(window), getAverageBookingValue(prevWindow),
     getGrossBookedRevenueByCategory(window),
-    getRevenueTrend(window, grain),
-    getPaymentsCollectedTrend(window, grain),
+    getRevenueObservations(window),
+    getPaymentsCollectedObservations(window),
     getGrossBookedRevenueByAcquisitionSource(window),
     getPaymentsCollectedByAcquisitionSource(window),
   ]);
 
   const categoryTotal = byCategory.reduce((sum, c) => sum + c.amount, 0);
-  const hasContractedTrend = contractedTrend.points.some((d) => d.value > 0);
-  const hasCollectedTrend = collectedTrend.points.some((d) => d.value > 0);
 
   // Fetched only when actually needed — the whole point of "small detail
   // panel on demand," not a giant table pre-loaded on every render.
@@ -88,7 +85,7 @@ export default async function RevenueReportPage({ searchParams }: Props) {
 
   return (
     <div className="htc-hospitality-page space-y-6">
-      <ReportHeader title="Revenue" description="Money: contracted value, collected cash, and outstanding balances. Booking counts live on Bookings." />
+      <ReportHeader title="Revenue" description="Contracted value, money collected, and period net activity. Booking counts live on Bookings." />
       <DateRangeControl current={range.preset} label={range.label} />
 
       <ComparisonCardGrid>
@@ -104,9 +101,9 @@ export default async function RevenueReportPage({ searchParams }: Props) {
           href={hrefWith(params, { detail: "payments" })}
         />
         <ComparisonCard
-          label="Outstanding Balance" value={outstanding ?? 0} previousValue={prevOutstanding}
+          label="Period net" value={outstanding ?? 0} previousValue={prevOutstanding}
           comparisonLabel={range.comparisonLabel} polarity="up-bad" tone="outstanding" format={formatMoney}
-          sub="Contracted value (commitment date) minus payments collected (payment date) — not the same clock."
+          sub="Contracted − collected for this period (different date clocks). Not a current receivables balance."
           href={hrefWith(params, { detail: "outstanding" })}
         />
         <ComparisonCard
@@ -135,10 +132,10 @@ export default async function RevenueReportPage({ searchParams }: Props) {
 
       {detailKind === "outstanding" && (
         <DetailPanel
-          title={`Who Owes Us Money (${outstandingDetail?.length ?? 0})`}
+          title={`Period net by client (${outstandingDetail?.length ?? 0})`}
           closeHref={closeHref}
           isEmpty={(outstandingDetail?.length ?? 0) === 0}
-          emptyText="No outstanding balances in this period."
+          emptyText="No period net activity in this range."
         >
           {(outstandingDetail ?? []).slice(0, 30).map((o) => (
             <DetailRow key={o.clientId}>
@@ -158,42 +155,31 @@ export default async function RevenueReportPage({ searchParams }: Props) {
         </DetailPanel>
       )}
 
-      <div className="flex justify-end">
-        <TrendGranularityControl current={grain} available={grainOptions} />
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card className={!hasContractedTrend ? "htc-report-empty-card" : undefined}>
-          <CardHeader>
-            <CardTitle className="text-base">Contracted trend</CardTitle>
-            <CardDescription>
-              {contractedTrend.granularityLabel} by commitment date (signed + first payment). Separate clock from collected.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {!hasContractedTrend ? (
-              <p className="py-8 text-center text-sm text-muted-foreground">No contracted revenue in this date range.</p>
-            ) : (
-              <TrendChart data={contractedTrend.points} formatValue={formatMoney} />
-            )}
-          </CardContent>
-        </Card>
-        <Card className={!hasCollectedTrend ? "htc-report-empty-card" : undefined}>
-          <CardHeader>
-            <CardTitle className="text-base">Collected trend</CardTitle>
-            <CardDescription>
-              {collectedTrend.granularityLabel} by payment date — not the contracted commitment date.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {!hasCollectedTrend ? (
-              <p className="py-8 text-center text-sm text-muted-foreground">No payments collected in this date range.</p>
-            ) : (
-              <TrendChart data={collectedTrend.points} formatValue={formatMoney} barColor="var(--chart-2)" />
-            )}
-          </CardContent>
-        </Card>
-      </div>
+      <ClientLinkedTrendCharts
+        window={window}
+        initialGrain={grain}
+        available={grainOptions}
+        charts={[
+          {
+            title: "Contracted trend",
+            descriptionSuffix:
+              "by commitment date (signed + first payment). Separate clock from collected.",
+            observations: contractedObs,
+            emptyText: "No contracted revenue in this date range.",
+            valueFormat: "money",
+            testId: "revenue-contracted-trend",
+          },
+          {
+            title: "Collected trend",
+            descriptionSuffix: "by payment date — not the contracted commitment date.",
+            observations: collectedObs,
+            emptyText: "No payments collected in this date range.",
+            valueFormat: "money",
+            barColor: "var(--chart-2)",
+            testId: "revenue-collected-trend",
+          },
+        ]}
+      />
 
       <Card>
         <CardHeader>
@@ -201,7 +187,7 @@ export default async function RevenueReportPage({ searchParams }: Props) {
           <CardDescription>
             Contracted value (when the agreement and first payment were both in place) and payments collected (when money arrived).
             Missing source is listed as Not recorded. This is money, not a booking count.
-            Outstanding is not broken out by source because those two dates are not the same clock.
+            Period net is not broken out by source because contracted and collected use different date clocks.
           </CardDescription>
         </CardHeader>
         <CardContent>

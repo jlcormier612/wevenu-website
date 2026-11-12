@@ -112,7 +112,7 @@ export const BUSINESS_FUNNEL_LEADLESS_NOTE =
   "Clients you added already booked (they were never a lead) count in Bookings and in money, but not in Lead → Tour or Lead → Booking rates.";
 
 export const BUSINESS_FUNNEL_OUTSTANDING_LIMITATION =
-  "Outstanding is contracted value (signed contract and first collected payment, dated by that commitment) minus payments collected by payment date. Those are different clocks — not a single point-in-time balance.";
+  "Period net is contracted value (commitment date) minus payments collected (payment date) for this period. Those are different clocks — not a current receivables balance.";
 
 async function countPeriodTours(window: DateWindow): Promise<number> {
   if (!isSupabaseConfigured) return 0;

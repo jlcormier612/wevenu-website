@@ -4,13 +4,12 @@ import { DateRangeControl } from "@/components/reporting/date-range-control";
 import { ReportHeader } from "@/components/reporting/report-header";
 import { SourceCompositionChart } from "@/components/reporting/source-composition-chart";
 import { ComparisonCard, ComparisonCardGrid } from "@/components/dashboard-system/comparison-card";
-import { TrendChart } from "@/components/dashboard-system/trend-chart";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { TrendGranularityControl } from "@/components/reporting/trend-granularity-control";
+import { ClientTrendPanel } from "@/components/reporting/client-trend-panel";
 import { allocateIntegerPercents } from "@/lib/attribution/bookings-by-source";
 import { eventTypeLabel } from "@/lib/leads/constants";
 import { resolveDateRangeFromParams } from "@/lib/reporting/date-range";
-import { averageGuestCount, eventsByType, eventsToTrend, getEventsInRange } from "@/lib/reporting/service";
+import { averageGuestCount, eventsByType, getEventsInRange } from "@/lib/reporting/service";
 import {
   availableTrendGranularities,
   parseTrendGranularity,
@@ -35,7 +34,6 @@ export default async function EventsReportPage({ searchParams }: Props) {
     getEventsInRange(window),
     getEventsInRange(prevWindow),
   ]);
-  const trend = eventsToTrend(events, window, grain);
   const types = eventsByType(events);
   const avgGuests = averageGuestCount(events);
   const prevAvgGuests = averageGuestCount(prevEvents);
@@ -58,24 +56,18 @@ export default async function EventsReportPage({ searchParams }: Props) {
       </ComparisonCardGrid>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <Card className={events.length === 0 ? "htc-report-empty-card" : undefined}>
-          <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3 space-y-0">
-            <div className="space-y-1.5">
-              <CardTitle className="text-base">Events Over Time</CardTitle>
-              <CardDescription>
-                {trend.granularityLabel} view based on each event&apos;s date.
-              </CardDescription>
-            </div>
-            <TrendGranularityControl current={grain} available={grainOptions} />
-          </CardHeader>
-          <CardContent>
-            {events.length === 0 ? (
-              <p className="py-8 text-center text-sm text-muted-foreground">No events in this date range.</p>
-            ) : (
-              <TrendChart data={trend.points} />
-            )}
-          </CardContent>
-        </Card>
+        <ClientTrendPanel
+          title="Events Over Time"
+          descriptionSuffix="view based on each event's date."
+          window={window}
+          initialGrain={grain}
+          available={grainOptions}
+          observations={events
+            .filter((e) => e.eventDate)
+            .map((e) => ({ at: e.eventDate! }))}
+          emptyText="No events in this date range."
+          testId="events-over-time-trend"
+        />
 
         <SourceCompositionChart
           title="Event Types"

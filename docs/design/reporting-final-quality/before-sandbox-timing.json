@@ -1,0 +1,43 @@
+{
+  "at": "2026-11-12T00:51:38.765Z",
+  "label": "before-sandbox",
+  "base": "https://app.sandbox.hellotocheers.com",
+  "grain": {
+    "results": [
+      {
+        "grain": "day",
+        "visibleMs": 1989
+      },
+      {
+        "grain": "week",
+        "visibleMs": 1297
+      },
+      {
+        "grain": "month",
+        "visibleMs": 1013
+      }
+    ],
+    "rapidLastWeekPressed": true,
+    "rapidMs": 2492,
+    "avgVisibleMs": 1433
+  },
+  "grainMobile": {
+    "results": [
+      {
+        "grain": "day",
+        "visibleMs": 788
+      },
+      {
+        "grain": "week",
+        "visibleMs": 1792
+      },
+      {
+        "grain": "month",
+        "visibleMs": 559
+      }
+    ],
+    "rapidLastWeekPressed": true,
+    "rapidMs": 1060,
+    "avgVisibleMs": 1046
+  }
+}

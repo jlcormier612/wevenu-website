@@ -241,9 +241,9 @@ export default async function SalesReportPage({ searchParams }: Props) {
           </div>
 
           <div>
-            <p className="mb-2 text-sm font-medium text-heading">How these leads progressed</p>
+            <p className="mb-2 text-sm font-medium text-heading">Sales milestones</p>
             <p className="mb-3 text-xs text-muted-foreground">
-              Same leads as above. Proposals, agreements, and first payments are paperwork and money — not the Bookings this period count.
+              Same leads as above. Stages are milestones reached, not a strictly sequential funnel. Proposals, agreements, and first payments are paperwork and money — not the Bookings this period count.
             </p>
             {!counts || counts.inquiry === 0 ? (
               <p className="py-4 text-center text-sm text-muted-foreground">No leads in this period.</p>

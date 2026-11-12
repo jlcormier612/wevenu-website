@@ -21,50 +21,16 @@ import type { TrendPoint } from "@/components/dashboard-system/trend-chart";
 import { eventTypeLabel, normalizeEventType } from "@/lib/event-types/canonical";
 import { onlyBusinessReporting, loadReportingExclusions } from "@/lib/reporting/business-scope";
 import {
-  bucketKeyForTimestamp,
-  buildTrendBuckets,
-  resolveTrendGranularity,
-  trendGranularityCaption,
-  type TrendGranularity,
-} from "@/lib/reporting/trend-buckets";
+  emptyTrend,
+  observationsToTrend,
+  timestampsToTrend,
+  type TrendObservation,
+  type TrendSeries,
+} from "@/lib/reporting/aggregate-trend";
+import type { TrendGranularity } from "@/lib/reporting/trend-buckets";
 
 export type DateWindow = { from: string; to: string };
-
-export type TrendSeries = {
-  points: TrendPoint[];
-  granularity: TrendGranularity;
-  granularityLabel: string;
-};
-
-function emptyTrend(window: DateWindow, granularityOverride?: TrendGranularity): TrendSeries {
-  const granularity = granularityOverride ?? resolveTrendGranularity(window.from, window.to);
-  const buckets = buildTrendBuckets(window.from, window.to, granularity);
-  return {
-    points: buckets.map((b) => ({ label: b.label, value: 0 })),
-    granularity,
-    granularityLabel: trendGranularityCaption(granularity),
-  };
-}
-
-function aggregateCountTrend(
-  timestamps: string[],
-  window: DateWindow,
-  granularityOverride?: TrendGranularity,
-): TrendSeries {
-  const granularity = granularityOverride ?? resolveTrendGranularity(window.from, window.to);
-  const buckets = buildTrendBuckets(window.from, window.to, granularity);
-  const counts = new Map<string, number>();
-  for (const ts of timestamps) {
-    if (!ts) continue;
-    const key = bucketKeyForTimestamp(ts, granularity);
-    counts.set(key, (counts.get(key) ?? 0) + 1);
-  }
-  return {
-    points: buckets.map((b) => ({ label: b.label, value: counts.get(b.key) ?? 0 })),
-    granularity,
-    granularityLabel: trendGranularityCaption(granularity),
-  };
-}
+export type { TrendObservation, TrendSeries };
 
 export type BookingDrillRow = { clientId: string; clientName: string; contractId: string; bookedAt: string; source: string | null };
 
@@ -130,7 +96,7 @@ export function bookingsToTrend(
   window: DateWindow,
   granularityOverride?: TrendGranularity,
 ): TrendSeries {
-  return aggregateCountTrend(
+  return timestampsToTrend(
     bookings.map((b) => ("bookedAt" in b ? b.bookedAt : "")),
     window,
     granularityOverride,
@@ -138,17 +104,13 @@ export function bookingsToTrend(
 }
 
 /**
- * Gross Booked Revenue trend — same subtotal-minus-discount, non-void,
- * booked-client-scoped formula canonical_gross_booked_revenue() uses, grouped
- * by each booking's booked_at into adaptive day/week/month buckets.
+ * Contracted-revenue observations (commitment date × invoice net).
+ * Client grain switching rebuckets these without a second query.
  */
-export async function getRevenueTrend(
-  window: DateWindow,
-  granularityOverride?: TrendGranularity,
-): Promise<TrendSeries> {
-  if (!isSupabaseConfigured) return emptyTrend(window, granularityOverride);
+export async function getRevenueObservations(window: DateWindow): Promise<TrendObservation[]> {
+  if (!isSupabaseConfigured) return [];
   const venue = await getCurrentVenue();
-  if (!venue) return emptyTrend(window, granularityOverride);
+  if (!venue) return [];
   const supabase = await createClient();
 
   const { data: bookings } = await supabase
@@ -160,7 +122,7 @@ export async function getRevenueTrend(
   const exclusions = await loadReportingExclusions(supabase, venue.id);
   const bookingRows = ((bookings ?? []) as { client_id: string; booked_at: string }[])
     .filter((b) => !exclusions.clientIds.has(b.client_id));
-  if (bookingRows.length === 0) return emptyTrend(window, granularityOverride);
+  if (bookingRows.length === 0) return [];
 
   const clientIds = [...new Set(bookingRows.map((b) => b.client_id))];
   const { data: invoices } = await supabase
@@ -170,21 +132,35 @@ export async function getRevenueTrend(
     .neq("status", "void")
     .in("client_id", clientIds);
 
-  const granularity = granularityOverride ?? resolveTrendGranularity(window.from, window.to);
-  const buckets = buildTrendBuckets(window.from, window.to, granularity);
   const bookedAtByClient = new Map(bookingRows.map((b) => [b.client_id, b.booked_at]));
-  const totals = new Map<string, number>();
+  const out: TrendObservation[] = [];
   for (const inv of (invoices ?? []) as { client_id: string; subtotal: number; discount_amount: number }[]) {
     const bookedAt = bookedAtByClient.get(inv.client_id);
     if (!bookedAt) continue;
-    const key = bucketKeyForTimestamp(bookedAt, granularity);
-    totals.set(key, (totals.get(key) ?? 0) + (Number(inv.subtotal) - Number(inv.discount_amount)));
+    out.push({
+      at: bookedAt,
+      amount: Number(inv.subtotal) - Number(inv.discount_amount),
+    });
   }
-  return {
-    points: buckets.map((b) => ({ label: b.label, value: Math.round(totals.get(b.key) ?? 0) })),
-    granularity,
-    granularityLabel: trendGranularityCaption(granularity),
-  };
+  return out;
+}
+
+/**
+ * Gross Booked Revenue trend — same subtotal-minus-discount formula, bucketed.
+ */
+export async function getRevenueTrend(
+  window: DateWindow,
+  granularityOverride?: TrendGranularity,
+): Promise<TrendSeries> {
+  const observations = await getRevenueObservations(window);
+  if (observations.length === 0) return emptyTrend(window, granularityOverride);
+  return observationsToTrend(observations, window, granularityOverride);
+}
+
+/** Payments collected observations (paid_at × net amount) for client rebucketing. */
+export async function getPaymentsCollectedObservations(window: DateWindow): Promise<TrendObservation[]> {
+  const rows = await getPaymentsCollectedDetail(window);
+  return rows.map((r) => ({ at: r.paidAt, amount: r.amount }));
 }
 
 /**
@@ -195,52 +171,48 @@ export async function getPaymentsCollectedTrend(
   window: DateWindow,
   granularityOverride?: TrendGranularity,
 ): Promise<TrendSeries> {
-  if (!isSupabaseConfigured) return emptyTrend(window, granularityOverride);
-  const venue = await getCurrentVenue();
-  if (!venue) return emptyTrend(window, granularityOverride);
-  const rows = await getPaymentsCollectedDetail(window);
-  const granularity = granularityOverride ?? resolveTrendGranularity(window.from, window.to);
-  const buckets = buildTrendBuckets(window.from, window.to, granularity);
-  const totals = new Map<string, number>();
-  for (const r of rows) {
-    const key = bucketKeyForTimestamp(r.paidAt, granularity);
-    totals.set(key, (totals.get(key) ?? 0) + r.amount);
-  }
-  return {
-    points: buckets.map((b) => ({ label: b.label, value: Math.round(totals.get(b.key) ?? 0) })),
-    granularity,
-    granularityLabel: trendGranularityCaption(granularity),
-  };
+  const observations = await getPaymentsCollectedObservations(window);
+  if (observations.length === 0) return emptyTrend(window, granularityOverride);
+  return observationsToTrend(observations, window, granularityOverride);
 }
 
 export type LeadSummary = { total: number; bySourceTrend: TrendPoint[] };
 
-/** Leads received trend by created_at — adaptive day/week/month. Plain COUNT, not a funnel/conversion calculation. */
-export async function getLeadsTrend(
-  window: DateWindow,
-  granularityOverride?: TrendGranularity,
-): Promise<{ total: number; trend: TrendPoint[]; granularity: TrendGranularity; granularityLabel: string }> {
-  if (!isSupabaseConfigured) {
-    const empty = emptyTrend(window, granularityOverride);
-    return { total: 0, trend: [], granularity: empty.granularity, granularityLabel: empty.granularityLabel };
-  }
+/** Lead created_at timestamps for client-side grain rebucketing. */
+export async function getLeadCreatedAts(window: DateWindow): Promise<string[]> {
+  if (!isSupabaseConfigured) return [];
   const venue = await getCurrentVenue();
-  if (!venue) {
-    const empty = emptyTrend(window, granularityOverride);
-    return { total: 0, trend: [], granularity: empty.granularity, granularityLabel: empty.granularityLabel };
-  }
+  if (!venue) return [];
   const supabase = await createClient();
-
   const { data } = await onlyBusinessReporting(
     supabase.from("leads").select("created_at")
       .eq("venue_id", venue.id)
       .gte("created_at", window.from).lte("created_at", window.to + "T23:59:59"),
   );
-  const rows = (data ?? []) as { created_at: string }[];
-  const series = aggregateCountTrend(rows.map((r) => r.created_at), window, granularityOverride);
+  return ((data ?? []) as { created_at: string }[]).map((r) => r.created_at);
+}
+
+/** Leads received trend by created_at — adaptive day/week/month. Plain COUNT, not a funnel/conversion calculation. */
+export async function getLeadsTrend(
+  window: DateWindow,
+  granularityOverride?: TrendGranularity,
+): Promise<{ total: number; trend: TrendPoint[]; timestamps: string[]; granularity: TrendGranularity; granularityLabel: string }> {
+  const timestamps = await getLeadCreatedAts(window);
+  if (timestamps.length === 0) {
+    const empty = emptyTrend(window, granularityOverride);
+    return {
+      total: 0,
+      trend: [],
+      timestamps: [],
+      granularity: empty.granularity,
+      granularityLabel: empty.granularityLabel,
+    };
+  }
+  const series = timestampsToTrend(timestamps, window, granularityOverride);
   return {
-    total: rows.length,
+    total: timestamps.length,
     trend: series.points,
+    timestamps,
     granularity: series.granularity,
     granularityLabel: series.granularityLabel,
   };
@@ -278,7 +250,7 @@ export function eventsToTrend(
   window: DateWindow,
   granularityOverride?: TrendGranularity,
 ): TrendSeries {
-  return aggregateCountTrend(
+  return timestampsToTrend(
     events.map((e) => e.eventDate ?? ""),
     window,
     granularityOverride,
