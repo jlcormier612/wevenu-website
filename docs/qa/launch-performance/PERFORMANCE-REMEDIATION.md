@@ -8,7 +8,7 @@
 | PR #33 | `ee22f319` | Untouched |
 | PR #34 | `6f5973e4` | Wave B + C2 + acceptance docs |
 | C1 deferral prototype | `10429dc4` | Historical; modest Overview gain |
-| **C1 optimize** | `perf/wave-c1-lead-optimize` | Meaningful Lead gains — see `WAVE-C1-OPTIMIZATION-RESULTS.md` |
+| **C1 optimize + hardening** | `perf/wave-c1-lead-hardening` (from optimize `c8b1305a`) | Meaningful Lead gains — see `WAVE-C1-OPTIMIZATION-RESULTS.md` |
 | Sandbox serving | `df1aa331` | Unchanged |
 
 ---
@@ -37,7 +37,7 @@ Local n=10 Overview useful median: **2337 → 1276 ms** vs PR #34; Documents fir
 1. Accept/deploy **PR #33** to Sandbox from `main` only.  
 2. Re-measure soft-nav + Dashboard on serving Sandbox.  
 3. Merge **PR #34**.  
-4. Review/merge **C1 optimize** as follow-up (not folded into #33/#34 without coordination).  
+4. Review/merge **C1 optimize + hardening** as follow-up (not folded into #33/#34 without coordination).  
 5. Client conversion only after Lead KEEP approval.
 
 **No merge. No deploy. Production / Stripe / demo data untouched.**

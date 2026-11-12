@@ -138,3 +138,13 @@ Accessible measured path: Dashboard → Avery Lead Overview (median ~1.1 s local
 | Client/EventDetail conversion now | **REVISE** / wait — design only |
 
 **No merge. No deploy.**
+
+---
+
+## Hardening follow-up
+
+See **`WAVE-C1-HARDENING-ACCEPTANCE.md`** on branch `perf/wave-c1-lead-hardening`.
+
+- Contract fixture parity vs venue-wide+filter: PASS (read-only).
+- Prefetch in-flight dedupe + retry + faster idle: KEEP.
+- Recommendation: **YELLOW** pending Sandbox hospitality visual re-check (no baseline overwrite).
