@@ -1,0 +1,15 @@
+{
+  "before": "true",
+  "firstChange": 70,
+  "mid": "false",
+  "after": "false",
+  "pending": "true",
+  "dbBefore": {
+    "shared_with_couple": true
+  },
+  "dbAfter": {
+    "shared_with_couple": true
+  },
+  "toastText": [],
+  "toasts": []
+}

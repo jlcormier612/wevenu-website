@@ -69,6 +69,7 @@ import type { VenueSpace } from "@/lib/availability/types";
 import type { EventFloorPlanOfferWithTemplate } from "@/lib/floor-plan-offers/types";
 import type { FloorPlan } from "@/lib/floor-plans/types";
 import type { FloorPlanTemplate } from "@/lib/floor-plan-templates/types";
+import { useOptimisticPermissionToggle } from "@/lib/floor-plans/use-optimistic-permission-toggle";
 import type { InventoryUsage } from "@/lib/inventory/types";
 
 const NO_SPACE = "__none__";
@@ -94,11 +95,14 @@ function PlanSwitchRow({
         type="button"
         role="switch"
         aria-checked={on}
+        aria-busy={pending}
         aria-label={label}
-        disabled={pending}
         onClick={onToggle}
         data-testid={testId}
-        className={`inline-flex h-5 w-9 shrink-0 items-center rounded-full p-0.5 transition-colors disabled:opacity-50 ${on ? "bg-primary" : "bg-input"}`}
+        data-pending={pending ? "true" : "false"}
+        className={`inline-flex h-5 w-9 shrink-0 items-center rounded-full p-0.5 transition-colors ${
+          pending ? "opacity-80" : ""
+        } ${on ? "bg-primary" : "bg-input"}`}
       >
         <span className={`block size-4 rounded-full bg-white shadow-sm transition-transform ${on ? "translate-x-4" : "translate-x-0"}`} />
       </button>
@@ -113,18 +117,20 @@ function PlanSwitchRow({
  */
 function ShareForSeatingToggle({ eventId, plan }: { eventId: string; plan: FloorPlan }) {
   const router = useRouter();
-  const [access, setAccess] = React.useState(plan.clientAccess);
-  const [pending, startTransition] = React.useTransition();
-  const shared = access !== "hidden";
+  const seatingOpen = plan.clientAccess !== "hidden";
+  const { value: shared, pending, toggle } = useOptimisticPermissionToggle(seatingOpen);
 
-  function toggle(e: React.MouseEvent) {
+  function onToggle(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
-    const next = shared ? "hidden" : "view";
-    startTransition(async () => {
-      const result = await setClientAccessAction(plan.id, eventId, next);
-      if (result.ok) { setAccess(next); router.refresh(); }
-      else toast.error(result.message ?? "Could not update sharing.");
+    void toggle(async (next) => {
+      const result = await setClientAccessAction(plan.id, eventId, next ? "view" : "hidden");
+      if (!result.ok) {
+        toast.error(result.message ?? "Could not update sharing.");
+        return result;
+      }
+      await router.refresh();
+      return result;
     });
   }
 
@@ -134,7 +140,7 @@ function ShareForSeatingToggle({ eventId, plan }: { eventId: string; plan: Floor
       hint={shared ? "Seating open — they can assign guests to tables." : "Seating paused."}
       on={shared}
       pending={pending}
-      onToggle={toggle}
+      onToggle={onToggle}
       testId="floor-plan-switch-seating"
     />
   );
@@ -143,17 +149,19 @@ function ShareForSeatingToggle({ eventId, plan }: { eventId: string; plan: Floor
 /** Phase 1 — Share Floor Plan (couple layout view). Independent of Enable Seating. */
 function ShareFloorPlanToggle({ eventId, plan }: { eventId: string; plan: FloorPlan }) {
   const router = useRouter();
-  const [shared, setShared] = React.useState(plan.sharedWithCouple);
-  const [pending, startTransition] = React.useTransition();
+  const { value: shared, pending, toggle } = useOptimisticPermissionToggle(plan.sharedWithCouple);
 
-  function toggle(e: React.MouseEvent) {
+  function onToggle(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
-    const next = !shared;
-    startTransition(async () => {
+    void toggle(async (next) => {
       const result = await setCoupleShareAction(plan.id, eventId, next);
-      if (result.ok) { setShared(next); router.refresh(); }
-      else toast.error(result.message ?? "Could not update Floor Plan sharing.");
+      if (!result.ok) {
+        toast.error(result.message ?? "Could not update Floor Plan sharing.");
+        return result;
+      }
+      await router.refresh();
+      return result;
     });
   }
 
@@ -163,7 +171,7 @@ function ShareFloorPlanToggle({ eventId, plan }: { eventId: string; plan: FloorP
       hint="View only, in their portal under Floor Plan."
       on={shared}
       pending={pending}
-      onToggle={toggle}
+      onToggle={onToggle}
       testId="floor-plan-switch-couple-view"
     />
   );
@@ -214,17 +222,19 @@ function SetOperationalToggle({
  */
 function ShareWithVendorsToggle({ eventId, plan }: { eventId: string; plan: FloorPlan }) {
   const router = useRouter();
-  const [shared, setShared] = React.useState(plan.sharedWithVendors);
-  const [pending, startTransition] = React.useTransition();
+  const { value: shared, pending, toggle } = useOptimisticPermissionToggle(plan.sharedWithVendors);
 
-  function toggle(e: React.MouseEvent) {
+  function onToggle(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
-    const next = !shared;
-    startTransition(async () => {
+    void toggle(async (next) => {
       const result = await setVendorAccessAction(plan.id, eventId, next);
-      if (result.ok) { setShared(next); router.refresh(); }
-      else toast.error(result.message ?? "Could not update sharing.");
+      if (!result.ok) {
+        toast.error(result.message ?? "Could not update sharing.");
+        return result;
+      }
+      await router.refresh();
+      return result;
     });
   }
 
@@ -234,7 +244,7 @@ function ShareWithVendorsToggle({ eventId, plan }: { eventId: string; plan: Floo
       hint="Any vendor assigned to this event."
       on={shared}
       pending={pending}
-      onToggle={toggle}
+      onToggle={onToggle}
       testId="floor-plan-switch-vendors"
     />
   );
@@ -392,8 +402,8 @@ function FloorPlanCard({
 
 function CoupleMayAddTablesToggle({ eventId, plan }: { eventId: string; plan: FloorPlan }) {
   const router = useRouter();
-  const [pending, startTransition] = React.useTransition();
-  const allowed = plan.coupleMayAddTables !== false;
+  const serverAllowed = plan.coupleMayAddTables !== false;
+  const { value: allowed, pending, toggle } = useOptimisticPermissionToggle(serverAllowed);
   return (
     <PlanSwitchRow
       label="Couple can add tables"
@@ -404,14 +414,15 @@ function CoupleMayAddTablesToggle({ eventId, plan }: { eventId: string; plan: Fl
       onToggle={(e) => {
         e.preventDefault();
         e.stopPropagation();
-        startTransition(async () => {
-          const result = await setFloorPlanCoupleMayAddTablesAction(plan.id, eventId, !allowed);
+        void toggle(async (next) => {
+          const result = await setFloorPlanCoupleMayAddTablesAction(plan.id, eventId, next);
           if (!result.ok) {
             toast.error(result.message ?? "Could not update add-furniture setting.");
-            return;
+            return result;
           }
-          toast.success(allowed ? "Client table adds turned off." : "Client table adds allowed.");
-          router.refresh();
+          toast.success(next ? "Client table adds allowed." : "Client table adds turned off.");
+          await router.refresh();
+          return result;
         });
       }}
     />

@@ -1,0 +1,153 @@
+{
+  "at": "2026-11-12T01:42:17.153Z",
+  "base": "https://app.sandbox.hellotocheers.com",
+  "checks": {
+    "attentionDeepLinks": {
+      "focusCount": 4,
+      "comingUpCount": 0,
+      "samples": [
+        {
+          "text": "Tours",
+          "href": "/tours",
+          "status": 200,
+          "ok": true
+        },
+        {
+          "text": "Inbox",
+          "href": "/messaging",
+          "status": 200,
+          "ok": true
+        },
+        {
+          "text": "Contracts",
+          "href": "/contracts",
+          "status": 200,
+          "ok": true
+        },
+        {
+          "text": "+ New Lead",
+          "href": "/leads/new",
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "pass": true
+    },
+    "weddingRsvpStaff": {
+      "note": "No top-level /wedding-websites staff list — wedding website/RSVP are client-portal & event-scoped surfaces",
+      "reedTabs": [
+        "Planning Overview",
+        "Planning Tasks",
+        "Timeline",
+        "Floor Plans",
+        "Vendors",
+        "Documents",
+        "Payments",
+        "Conversation",
+        "Activity",
+        "Internal notes1",
+        " Luv"
+      ],
+      "pathProbes": [
+        {
+          "path": "/library/offerings",
+          "status": 200,
+          "hasRsvp": true,
+          "title": "Offerings · Hello to Cheers"
+        },
+        {
+          "path": "/guide",
+          "status": 200,
+          "hasRsvp": true,
+          "title": "Venue Guide · Hello to Cheers"
+        },
+        {
+          "path": "/help",
+          "status": 200,
+          "hasRsvp": false,
+          "title": "Guidance · Hello to Cheers"
+        },
+        {
+          "path": "/clients/11ce02ca-3c56-49f9-baf9-115d2fc830e3",
+          "status": 200,
+          "hasRsvp": true,
+          "title": "Morgan Reed · Hello to Cheers"
+        },
+        {
+          "path": "/settings/leads",
+          "status": 200,
+          "hasRsvp": true,
+          "title": "Leads & Booking — Settings · Hello to Cheers"
+        }
+      ],
+      "pass": true,
+      "disposition": "PASS_WITH_PATH_CLARITY"
+    },
+    "eventSettingsRelease": {
+      "hasReleaseCopy": true,
+      "hasPreviewPortal": true,
+      "didNotClickRelease": true,
+      "pass": true,
+      "note": "Read-only — did not click Release/Invite"
+    },
+    "relationshipPhoto": {
+      "leadId": "54db1c0c-4332-4a4b-b5b3-eca9067ecffe",
+      "hasAvatar": false,
+      "hasEditButton": false,
+      "hasAvatarEditLink": false,
+      "editHref": null
+    },
+    "eventOrderDensity": {
+      "url": "https://app.sandbox.hellotocheers.com/library/event-order-templates/f5d05a81-2069-4fdf-96c4-40e8534ae948",
+      "workingCards": 5,
+      "sectionCards": 5,
+      "note": "Section working cards are intentional; chrome spacing tightened on candidate",
+      "pass": true
+    },
+    "portals": {
+      "client": {
+        "tokenPresent": true,
+        "sections": [
+          {
+            "name": "Tasks",
+            "found": false
+          },
+          {
+            "name": "Timeline",
+            "found": false
+          },
+          {
+            "name": "Documents",
+            "found": false
+          },
+          {
+            "name": "Payments",
+            "found": false
+          },
+          {
+            "name": "Vendors",
+            "found": false
+          },
+          {
+            "name": "Floor",
+            "found": false
+          },
+          {
+            "name": "Questionnaire",
+            "found": false
+          },
+          {
+            "name": "Budget",
+            "found": false
+          }
+        ]
+      },
+      "vendor": {
+        "url": "https://app.sandbox.hellotocheers.com/vendor/dashboard",
+        "redirectedToLogin": false,
+        "showsContent": true
+      },
+      "pass": false
+    }
+  }
+}

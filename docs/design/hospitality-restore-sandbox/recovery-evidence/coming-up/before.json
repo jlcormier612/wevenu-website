@@ -1,0 +1,19 @@
+{
+  "at": "2026-11-12T00:12:49.188Z",
+  "phase": "before-live-sandbox",
+  "routes": {},
+  "before": {
+    "comingUpLinks": 0,
+    "plainLinksInComingUp": 6,
+    "focusLinks": 10,
+    "focusDismiss": 10,
+    "sampleDetails": [
+      "Event",
+      "Event",
+      "Event",
+      "Event",
+      "Event",
+      "Event"
+    ]
+  }
+}

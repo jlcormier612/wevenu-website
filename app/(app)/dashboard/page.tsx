@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import type { ReactNode } from "react";
 import Link from "next/link";
 import { CalendarClock, ChevronRight } from "lucide-react";
 
@@ -9,6 +8,7 @@ import { DashboardLuvIntro } from "@/components/dashboard/luv-intro";
 import { DashboardLuvEntryCard } from "@/components/dashboard/luv-dashboard-entry";
 import { BusinessSnapshotSection } from "@/components/dashboard/business-snapshot";
 import { AttentionList } from "@/components/dashboard-system/attention-list";
+import { ComingUpRow } from "@/components/dashboard-system/coming-up-row";
 import { FocusAttentionRow } from "@/components/dashboard-system/focus-attention-row";
 import { Button } from "@/components/ui/button";
 import { getDashboardData } from "@/lib/dashboard/service";
@@ -26,19 +26,11 @@ import {
 } from "@/lib/dashboard-system/decision-engine";
 import { listDismissedDashboardAttentionKeys } from "@/lib/dashboard-system/attention-dismiss";
 import { filterDismissedFocusItems } from "@/lib/dashboard-system/attention-identity";
-import type { ClassifiedItem, Priority } from "@/lib/dashboard-system/decision-engine";
 import { selectLuvDashboardEntry } from "@/lib/dashboard-system/luv-entry";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
 type Props = { searchParams: Promise<{ milestone?: string }> };
-
-const PRIORITY_SEVERITY: Record<Priority, "critical" | "warning" | undefined> = {
-  critical: "critical",
-  needs_attention_today: "warning",
-  upcoming: undefined,
-  informational: undefined,
-};
 
 /**
  * Venue Dashboard — concise awareness / briefing surface.
@@ -169,7 +161,7 @@ export default async function DashboardPage({ searchParams }: Props) {
               Nothing on the horizon yet.
             </p>
           }
-          renderRow={(item) => <ClassifiedRow item={item} />}
+          renderRow={(item) => <ComingUpRow item={item} />}
         />
       </section>
 
@@ -185,25 +177,4 @@ export default async function DashboardPage({ searchParams }: Props) {
     </div>
   );
   });
-}
-
-function ClassifiedRow({ item }: { item: ClassifiedItem }): ReactNode {
-  const severity = item.rightSeverity ?? PRIORITY_SEVERITY[item.priority];
-  const colorClass = severity === "critical" ? "text-destructive" : severity === "warning" ? "text-warning-foreground" : "text-muted-foreground";
-  return (
-    <Link
-      href={item.href}
-      className="flex items-start justify-between gap-4 py-3 hover:bg-muted/40 -mx-2 px-2 rounded-lg transition-colors"
-    >
-      <div className="min-w-0 flex-1 space-y-0.5">
-        <p className="truncate text-sm font-medium text-foreground">{item.label}</p>
-        {item.detail && <p className="text-xs text-muted-foreground truncate">{item.detail}</p>}
-      </div>
-      {item.rightLabel && (
-        <div className="shrink-0 pt-0.5">
-          <span className={`text-xs font-medium ${colorClass}`}>{item.rightLabel}</span>
-        </div>
-      )}
-    </Link>
-  );
 }

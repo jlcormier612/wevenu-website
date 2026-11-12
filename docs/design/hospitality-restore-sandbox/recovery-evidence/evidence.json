@@ -1,0 +1,61 @@
+{
+  "at": "2026-11-11T23:54:03.914Z",
+  "base": "https://app.sandbox.hellotocheers.com",
+  "routes": {
+    "attention-dashboard": {
+      "assertions": {
+        "hospitalityPage": true,
+        "needsAttentionText": false,
+        "navAttentionFetch": 200,
+        "sidebarBadgeNodes": 0
+      },
+      "shots": {
+        "desktop": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/attention-dashboard__desktop.png",
+        "mobile": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/attention-dashboard__mobile.png"
+      }
+    },
+    "multi-venue-header": {
+      "assertions": {
+        "venueSwitcher": true,
+        "headerPresent": true
+      },
+      "shots": {
+        "desktop": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/multi-venue-header__desktop.png",
+        "mobile": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/multi-venue-header__mobile.png"
+      }
+    },
+    "relationship-lead": {
+      "assertions": {
+        "leadPath": "/leads/pipeline",
+        "photoAvatar": false,
+        "hospitalityOrTabs": true,
+        "tabShell": true
+      },
+      "shots": {
+        "desktop": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/relationship-lead__desktop.png",
+        "mobile": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/relationship-lead__mobile.png"
+      }
+    },
+    "timeline-template-editor": {
+      "assertions": {
+        "editorPath": "/library/timeline-templates/98576b73-ad50-40db-92a6-eee2a81a5507/preview",
+        "hospitalityPage": false,
+        "workingCard": false
+      },
+      "shots": {
+        "desktop": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/timeline-template-editor__desktop.png",
+        "mobile": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/timeline-template-editor__mobile.png"
+      }
+    },
+    "billing-cards": {
+      "assertions": {
+        "hospitalityPage": true,
+        "orgOrSubscriptionText": true
+      },
+      "shots": {
+        "desktop": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/billing-cards__desktop.png",
+        "mobile": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/billing-cards__mobile.png"
+      }
+    }
+  }
+}

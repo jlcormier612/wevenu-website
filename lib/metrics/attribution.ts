@@ -6,7 +6,7 @@ import { resolveDeterministicClientAcquisitionSource, resolveDeterministicFinanc
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { listLifecycleBookingsInPeriod } from "@/lib/lifecycle-bookings/service";
-import { getCanonicalBookings } from "@/lib/metrics/booking";
+import { listGrossBookedRevenueClientIds } from "@/lib/metrics/revenue";
 import { onlyBusinessReporting } from "@/lib/reporting/business-scope";
 import { getCurrentVenue } from "@/lib/venue/service";
 import {
@@ -161,10 +161,14 @@ export async function getLifecycleBookingsByAcquisitionSource(window?: DateWindo
 }
 
 /**
- * Gross Booked Revenue by acquisition source — Financially Committed window (booked_at).
+ * Gross Booked Revenue by acquisition source — same Contracted population as
+ * `canonical_gross_booked_revenue` (first `events.booked_at` per client in range).
  * Per invoice: event→client→lead.acquisition_source when event_id set; else client→lead.
  * Multi-event clients with one originating lead remain attributed (schema: one lead_id).
- * Leadless / missing acquisition_source → Unknown. Not lifecycle Booking revenue.
+ * Leadless / missing acquisition_source → Unknown.
+ *
+ * Do not window on `canonical_bookings.booked_at` here — that financially-committed
+ * clock can select a different cohort than the Contracted headline for the same dates.
  */
 export async function getGrossBookedRevenueByAcquisitionSource(
   window?: DateWindow,
@@ -174,10 +178,10 @@ export async function getGrossBookedRevenueByAcquisitionSource(
   if (!venue) return [];
   const supabase = await createClient();
 
-  const bookings = await getCanonicalBookings(window);
-  if (bookings.length === 0) return [];
+  const bookedClientIds = await listGrossBookedRevenueClientIds(window);
+  if (bookedClientIds.size === 0) return [];
 
-  const clientIds = [...new Set(bookings.map((b) => b.clientId))];
+  const clientIds = [...bookedClientIds];
 
   const { data: invoices } = await supabase
     .from("invoices")

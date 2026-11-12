@@ -1,0 +1,511 @@
+{
+  "at": "2026-11-12T01:00:42.097Z",
+  "base": "https://app.sandbox.hellotocheers.com",
+  "servingNote": "Live Sandbox df1aa331 tip — read-only evidence for matrix",
+  "routes": {
+    "dashboard-shell": {
+      "path": "/dashboard",
+      "assertions": {
+        "hospitality": 1,
+        "workingCard": 0,
+        "heading": 2,
+        "phase12": 0,
+        "toolbar": 0,
+        "title": "Dashboard · Hello to Cheers",
+        "url": "https://app.sandbox.hellotocheers.com/dashboard",
+        "httpStatus": "200"
+      },
+      "shots": {
+        "desktop": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/matrix-wave/dashboard-shell__desktop.png",
+        "mobile": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/matrix-wave/dashboard-shell__mobile.png"
+      },
+      "verdict": "PASS_SHELL"
+    },
+    "leads-list": {
+      "path": "/leads",
+      "assertions": {
+        "hospitality": 1,
+        "workingCard": 0,
+        "heading": 1,
+        "phase12": 0,
+        "toolbar": 0,
+        "title": "Leads · Hello to Cheers",
+        "url": "https://app.sandbox.hellotocheers.com/leads",
+        "httpStatus": "200"
+      },
+      "shots": {
+        "desktop": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/matrix-wave/leads-list__desktop.png",
+        "mobile": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/matrix-wave/leads-list__mobile.png"
+      },
+      "verdict": "PASS_SHELL"
+    },
+    "clients-list": {
+      "path": "/clients",
+      "assertions": {
+        "hospitality": 1,
+        "workingCard": 0,
+        "heading": 1,
+        "phase12": 0,
+        "toolbar": 0,
+        "title": "Clients · Hello to Cheers",
+        "url": "https://app.sandbox.hellotocheers.com/clients",
+        "httpStatus": "200"
+      },
+      "shots": {
+        "desktop": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/matrix-wave/clients-list__desktop.png",
+        "mobile": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/matrix-wave/clients-list__mobile.png"
+      },
+      "verdict": "PASS_SHELL"
+    },
+    "tours": {
+      "path": "/tours",
+      "assertions": {
+        "hospitality": 1,
+        "workingCard": 0,
+        "heading": 5,
+        "phase12": 0,
+        "toolbar": 0,
+        "title": "Tours · Hello to Cheers",
+        "url": "https://app.sandbox.hellotocheers.com/tours",
+        "httpStatus": "200"
+      },
+      "shots": {
+        "desktop": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/matrix-wave/tours__desktop.png",
+        "mobile": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/matrix-wave/tours__mobile.png"
+      },
+      "verdict": "PASS_SHELL"
+    },
+    "calendar": {
+      "path": "/calendar",
+      "assertions": {
+        "hospitality": 0,
+        "workingCard": 0,
+        "heading": 1,
+        "phase12": 0,
+        "toolbar": 0,
+        "title": "Calendar · Hello to Cheers",
+        "url": "https://app.sandbox.hellotocheers.com/calendar",
+        "httpStatus": "200"
+      },
+      "shots": {
+        "desktop": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/matrix-wave/calendar__desktop.png",
+        "mobile": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/matrix-wave/calendar__mobile.png"
+      },
+      "verdict": "FAIL_NO_HOSPITALITY"
+    },
+    "contracts": {
+      "path": "/contracts",
+      "assertions": {
+        "hospitality": 1,
+        "workingCard": 0,
+        "heading": 1,
+        "phase12": 0,
+        "toolbar": 0,
+        "title": "Contracts · Hello to Cheers",
+        "url": "https://app.sandbox.hellotocheers.com/contracts",
+        "httpStatus": "200"
+      },
+      "shots": {
+        "desktop": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/matrix-wave/contracts__desktop.png",
+        "mobile": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/matrix-wave/contracts__mobile.png"
+      },
+      "verdict": "PASS_SHELL"
+    },
+    "proposals": {
+      "path": "/proposals",
+      "assertions": {
+        "hospitality": 0,
+        "workingCard": 0,
+        "heading": 2,
+        "phase12": 0,
+        "toolbar": 0,
+        "title": "Hello to Cheers",
+        "url": "https://app.sandbox.hellotocheers.com/proposals",
+        "httpStatus": "404"
+      },
+      "shots": {
+        "desktop": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/matrix-wave/proposals__desktop.png",
+        "mobile": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/matrix-wave/proposals__mobile.png"
+      },
+      "verdict": "FAIL_NO_HOSPITALITY"
+    },
+    "packages": {
+      "path": "/packages",
+      "assertions": {
+        "hospitality": 1,
+        "workingCard": 0,
+        "heading": 1,
+        "phase12": 0,
+        "toolbar": 0,
+        "title": "Packages · Hello to Cheers",
+        "url": "https://app.sandbox.hellotocheers.com/packages",
+        "httpStatus": "200"
+      },
+      "shots": {
+        "desktop": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/matrix-wave/packages__desktop.png",
+        "mobile": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/matrix-wave/packages__mobile.png"
+      },
+      "verdict": "PASS_SHELL"
+    },
+    "payments": {
+      "path": "/payments",
+      "assertions": {
+        "hospitality": 1,
+        "workingCard": 0,
+        "heading": 1,
+        "phase12": 0,
+        "toolbar": 0,
+        "title": "Payments · Hello to Cheers",
+        "url": "https://app.sandbox.hellotocheers.com/payments",
+        "httpStatus": "200"
+      },
+      "shots": {
+        "desktop": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/matrix-wave/payments__desktop.png",
+        "mobile": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/matrix-wave/payments__mobile.png"
+      },
+      "verdict": "PASS_SHELL"
+    },
+    "vendors": {
+      "path": "/vendors",
+      "assertions": {
+        "hospitality": 1,
+        "workingCard": 0,
+        "heading": 1,
+        "phase12": 0,
+        "toolbar": 0,
+        "title": "Vendors · Hello to Cheers",
+        "url": "https://app.sandbox.hellotocheers.com/vendors",
+        "httpStatus": "200"
+      },
+      "shots": {
+        "desktop": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/matrix-wave/vendors__desktop.png",
+        "mobile": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/matrix-wave/vendors__mobile.png"
+      },
+      "verdict": "PASS_SHELL"
+    },
+    "messaging-inbox": {
+      "path": "/messaging",
+      "assertions": {
+        "hospitality": 1,
+        "workingCard": 0,
+        "heading": 1,
+        "phase12": 0,
+        "toolbar": 0,
+        "title": "Inbox · Hello to Cheers",
+        "url": "https://app.sandbox.hellotocheers.com/messaging",
+        "httpStatus": "200"
+      },
+      "shots": {
+        "desktop": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/matrix-wave/messaging-inbox__desktop.png",
+        "mobile": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/matrix-wave/messaging-inbox__mobile.png"
+      },
+      "verdict": "PASS_SHELL"
+    },
+    "automations": {
+      "path": "/communication/series",
+      "assertions": {
+        "hospitality": 1,
+        "workingCard": 0,
+        "heading": 3,
+        "phase12": 0,
+        "toolbar": 0,
+        "title": "Automations · Hello to Cheers",
+        "url": "https://app.sandbox.hellotocheers.com/communication/series",
+        "httpStatus": "200"
+      },
+      "shots": {
+        "desktop": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/matrix-wave/automations__desktop.png",
+        "mobile": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/matrix-wave/automations__mobile.png"
+      },
+      "verdict": "PASS_SHELL"
+    },
+    "timeline-templates": {
+      "path": "/library/timeline-templates",
+      "assertions": {
+        "hospitality": 1,
+        "workingCard": 0,
+        "heading": 1,
+        "phase12": 0,
+        "toolbar": 0,
+        "title": "Timeline Templates · Hello to Cheers",
+        "url": "https://app.sandbox.hellotocheers.com/library/timeline-templates",
+        "httpStatus": "200"
+      },
+      "shots": {
+        "desktop": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/matrix-wave/timeline-templates__desktop.png",
+        "mobile": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/matrix-wave/timeline-templates__mobile.png"
+      },
+      "verdict": "PASS_SHELL"
+    },
+    "floor-plan-templates": {
+      "path": "/library/floor-plan-templates",
+      "assertions": {
+        "hospitality": 1,
+        "workingCard": 0,
+        "heading": 1,
+        "phase12": 0,
+        "toolbar": 0,
+        "title": "Floor Plan Templates · Hello to Cheers",
+        "url": "https://app.sandbox.hellotocheers.com/library/floor-plan-templates",
+        "httpStatus": "200"
+      },
+      "shots": {
+        "desktop": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/matrix-wave/floor-plan-templates__desktop.png",
+        "mobile": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/matrix-wave/floor-plan-templates__mobile.png"
+      },
+      "verdict": "PASS_SHELL"
+    },
+    "questionnaire-templates": {
+      "path": "/library/questionnaire-templates",
+      "assertions": {
+        "hospitality": 1,
+        "workingCard": 0,
+        "heading": 1,
+        "phase12": 0,
+        "toolbar": 0,
+        "title": "Questionnaires & Feedback · Hello to Cheers",
+        "url": "https://app.sandbox.hellotocheers.com/library/questionnaire-templates",
+        "httpStatus": "200"
+      },
+      "shots": {
+        "desktop": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/matrix-wave/questionnaire-templates__desktop.png",
+        "mobile": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/matrix-wave/questionnaire-templates__mobile.png"
+      },
+      "verdict": "PASS_SHELL"
+    },
+    "event-order-templates": {
+      "path": "/library/event-order-templates",
+      "assertions": {
+        "hospitality": 1,
+        "workingCard": 0,
+        "heading": 1,
+        "phase12": 0,
+        "toolbar": 0,
+        "title": "Event Order Templates · Hello to Cheers",
+        "url": "https://app.sandbox.hellotocheers.com/library/event-order-templates",
+        "httpStatus": "200"
+      },
+      "shots": {
+        "desktop": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/matrix-wave/event-order-templates__desktop.png",
+        "mobile": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/matrix-wave/event-order-templates__mobile.png"
+      },
+      "verdict": "PASS_SHELL"
+    },
+    "tasks": {
+      "path": "/tasks",
+      "assertions": {
+        "hospitality": 1,
+        "workingCard": 0,
+        "heading": 3,
+        "phase12": 0,
+        "toolbar": 0,
+        "title": "Task Center · Hello to Cheers",
+        "url": "https://app.sandbox.hellotocheers.com/tasks",
+        "httpStatus": "200"
+      },
+      "shots": {
+        "desktop": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/matrix-wave/tasks__desktop.png",
+        "mobile": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/matrix-wave/tasks__mobile.png"
+      },
+      "verdict": "PASS_SHELL"
+    },
+    "documents": {
+      "path": "/documents",
+      "assertions": {
+        "hospitality": 0,
+        "workingCard": 0,
+        "heading": 3,
+        "phase12": 0,
+        "toolbar": 0,
+        "title": "Documents · Hello to Cheers",
+        "url": "https://app.sandbox.hellotocheers.com/documents",
+        "httpStatus": "200"
+      },
+      "shots": {
+        "desktop": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/matrix-wave/documents__desktop.png",
+        "mobile": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/matrix-wave/documents__mobile.png"
+      },
+      "verdict": "FAIL_NO_HOSPITALITY"
+    },
+    "guides": {
+      "path": "/guides",
+      "assertions": {
+        "hospitality": 0,
+        "workingCard": 0,
+        "heading": 2,
+        "phase12": 0,
+        "toolbar": 0,
+        "title": "Hello to Cheers",
+        "url": "https://app.sandbox.hellotocheers.com/guides",
+        "httpStatus": "404"
+      },
+      "shots": {
+        "desktop": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/matrix-wave/guides__desktop.png",
+        "mobile": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/matrix-wave/guides__mobile.png"
+      },
+      "verdict": "FAIL_NO_HOSPITALITY"
+    },
+    "wedding-websites": {
+      "path": "/wedding-websites",
+      "assertions": {
+        "hospitality": 0,
+        "workingCard": 0,
+        "heading": 2,
+        "phase12": 0,
+        "toolbar": 0,
+        "title": "Hello to Cheers",
+        "url": "https://app.sandbox.hellotocheers.com/wedding-websites",
+        "httpStatus": "404"
+      },
+      "shots": {
+        "desktop": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/matrix-wave/wedding-websites__desktop.png",
+        "mobile": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/matrix-wave/wedding-websites__mobile.png"
+      },
+      "verdict": "FAIL_NO_HOSPITALITY"
+    },
+    "setup-hub": {
+      "path": "/setup",
+      "assertions": {
+        "hospitality": 1,
+        "workingCard": 0,
+        "heading": 4,
+        "phase12": 0,
+        "toolbar": 0,
+        "title": "Setup · Hello to Cheers",
+        "url": "https://app.sandbox.hellotocheers.com/setup-hub",
+        "httpStatus": "200"
+      },
+      "shots": {
+        "desktop": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/matrix-wave/setup-hub__desktop.png",
+        "mobile": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/matrix-wave/setup-hub__mobile.png"
+      },
+      "verdict": "PASS_SHELL"
+    },
+    "setup-profiles": {
+      "path": "/setup/profiles",
+      "assertions": {
+        "hospitality": 0,
+        "workingCard": 0,
+        "heading": 2,
+        "phase12": 0,
+        "toolbar": 0,
+        "title": "Hello to Cheers",
+        "url": "https://app.sandbox.hellotocheers.com/setup/profiles",
+        "httpStatus": "404"
+      },
+      "shots": {
+        "desktop": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/matrix-wave/setup-profiles__desktop.png",
+        "mobile": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/matrix-wave/setup-profiles__mobile.png"
+      },
+      "verdict": "FAIL_NO_HOSPITALITY"
+    },
+    "venue-settings": {
+      "path": "/settings/venue",
+      "assertions": {
+        "hospitality": 0,
+        "workingCard": 0,
+        "heading": 2,
+        "phase12": 0,
+        "toolbar": 0,
+        "title": "Hello to Cheers",
+        "url": "https://app.sandbox.hellotocheers.com/settings/venue",
+        "httpStatus": "404"
+      },
+      "shots": {
+        "desktop": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/matrix-wave/venue-settings__desktop.png",
+        "mobile": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/matrix-wave/venue-settings__mobile.png"
+      },
+      "verdict": "FAIL_NO_HOSPITALITY"
+    },
+    "branding": {
+      "path": "/settings/branding",
+      "assertions": {
+        "hospitality": 0,
+        "workingCard": 0,
+        "heading": 2,
+        "phase12": 0,
+        "toolbar": 0,
+        "title": "Hello to Cheers",
+        "url": "https://app.sandbox.hellotocheers.com/settings/branding",
+        "httpStatus": "404"
+      },
+      "shots": {
+        "desktop": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/matrix-wave/branding__desktop.png",
+        "mobile": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/matrix-wave/branding__mobile.png"
+      },
+      "verdict": "FAIL_NO_HOSPITALITY"
+    },
+    "spaces": {
+      "path": "/settings/spaces",
+      "assertions": {
+        "hospitality": 0,
+        "workingCard": 0,
+        "heading": 2,
+        "phase12": 0,
+        "toolbar": 0,
+        "title": "Hello to Cheers",
+        "url": "https://app.sandbox.hellotocheers.com/settings/spaces",
+        "httpStatus": "404"
+      },
+      "shots": {
+        "desktop": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/matrix-wave/spaces__desktop.png",
+        "mobile": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/matrix-wave/spaces__mobile.png"
+      },
+      "verdict": "FAIL_NO_HOSPITALITY"
+    },
+    "staff": {
+      "path": "/settings/staff",
+      "assertions": {
+        "hospitality": 0,
+        "workingCard": 0,
+        "heading": 2,
+        "phase12": 0,
+        "toolbar": 0,
+        "title": "Hello to Cheers",
+        "url": "https://app.sandbox.hellotocheers.com/settings/staff",
+        "httpStatus": "404"
+      },
+      "shots": {
+        "desktop": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/matrix-wave/staff__desktop.png",
+        "mobile": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/matrix-wave/staff__mobile.png"
+      },
+      "verdict": "FAIL_NO_HOSPITALITY"
+    },
+    "billing": {
+      "path": "/settings/billing",
+      "assertions": {
+        "hospitality": 1,
+        "workingCard": 0,
+        "heading": 1,
+        "phase12": 0,
+        "toolbar": 0,
+        "title": "Subscription & Billing — Settings · Hello to Cheers",
+        "url": "https://app.sandbox.hellotocheers.com/settings/billing",
+        "httpStatus": "200"
+      },
+      "shots": {
+        "desktop": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/matrix-wave/billing__desktop.png",
+        "mobile": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/matrix-wave/billing__mobile.png"
+      },
+      "verdict": "PASS_SHELL"
+    },
+    "reporting-overview": {
+      "path": "/reporting",
+      "assertions": {
+        "hospitality": 2,
+        "workingCard": 0,
+        "heading": 2,
+        "phase12": 0,
+        "toolbar": 0,
+        "title": "Reports · Hello to Cheers",
+        "url": "https://app.sandbox.hellotocheers.com/reporting",
+        "httpStatus": "200"
+      },
+      "shots": {
+        "desktop": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/matrix-wave/reporting-overview__desktop.png",
+        "mobile": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-restore-sandbox/recovery-evidence/matrix-wave/reporting-overview__mobile.png"
+      },
+      "verdict": "PASS_SHELL"
+    }
+  }
+}

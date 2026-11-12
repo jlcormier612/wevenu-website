@@ -96,6 +96,22 @@ describe("relationship couple photos app wiring", () => {
     assert.match(clientPage, /photoUrl=\{photo\?\.displayedPhotoUrl/);
   });
 
+  it("Lead/Client/Event headers link the avatar to the photo editor edit route", () => {
+    const avatar = readFileSync(
+      join(root, "components/relationship-photos/relationship-photo-avatar.tsx"),
+      "utf8",
+    );
+    const leadDetail = readFileSync(join(root, "components/leads/lead-detail.tsx"), "utf8");
+    const eventDetail = readFileSync(join(root, "components/events/event-detail.tsx"), "utf8");
+    const clientPage = readFileSync(join(root, "app/(app)/clients/[id]/page.tsx"), "utf8");
+    assert.match(avatar, /editHref/);
+    assert.match(avatar, /relationship-photo-edit-link/);
+    assert.match(avatar, /Edit photo for/);
+    assert.match(leadDetail, /editHref=\{`\/leads\/\$\{lead\.id\}\/edit`\}/);
+    assert.match(clientPage, /editHref=\{`\/clients\/\$\{client\.id\}\/edit`\}/);
+    assert.match(eventDetail, /\/clients\/\$\{relationshipContact\.clientId\}\/edit/);
+  });
+
   it("portal hero mounts couple photo control", () => {
     const shell = readFileSync(join(root, "components/portal/portal-shell.tsx"), "utf8");
     const control = readFileSync(join(root, "components/portal/couple-photo-hero-control.tsx"), "utf8");

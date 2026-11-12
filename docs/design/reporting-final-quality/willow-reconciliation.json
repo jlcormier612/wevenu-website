@@ -1,0 +1,88 @@
+{
+  "at": "2026-11-12T00:49:57.855Z",
+  "window": {
+    "from": "2026-11-01",
+    "to": "2026-11-30"
+  },
+  "cohortBookedByDisplayLabel": {
+    "Not recorded": 24,
+    "Website": 2
+  },
+  "periodBookingsByDisplayLabel": {
+    "The Knot": 2,
+    "Website": 2,
+    "Instagram": 2,
+    "Not recorded": 3,
+    "Referral": 1
+  },
+  "pipelineBookedLeads": 23,
+  "clientsConfirmed": 23,
+  "rows": [
+    {
+      "metric": "Sales lead cohort (created This Month)",
+      "expected": 58,
+      "actual": 58,
+      "source": "leads.created_at in window",
+      "verdict": "PASS"
+    },
+    {
+      "metric": "Cohort later booked",
+      "expected": 26,
+      "actual": 26,
+      "source": "first_booked_at OR lifecycle first_booked",
+      "verdict": "PASS"
+    },
+    {
+      "metric": "Cohort booked \u2192 Not recorded",
+      "expected": 24,
+      "actual": 24,
+      "source": "acquisition_source other/null \u2192 Not recorded (frozen; not invented)",
+      "verdict": "PASS"
+    },
+    {
+      "metric": "Period first_booked count",
+      "expected": 8,
+      "actual": 8,
+      "source": "lifecycle first_booked minus exclude_from_business_reporting clients",
+      "verdict": "PASS"
+    },
+    {
+      "metric": "Period bookings known source",
+      "expected": 7,
+      "actual": 7,
+      "source": "event/lead acquisition_source known vocab",
+      "verdict": "PASS"
+    },
+    {
+      "metric": "Current pipeline booked",
+      "expected": 23,
+      "actual": 23,
+      "source": "leads.sales_stage=booked (fallback clients.status=confirmed)",
+      "verdict": "PASS"
+    },
+    {
+      "metric": "Nov Contracted (UI)",
+      "expected": 64500,
+      "actual": 64500,
+      "source": "canonical_gross_booked_revenue (UI/RPC; not reinvented here)",
+      "verdict": "PASS"
+    },
+    {
+      "metric": "Nov Collected",
+      "expected": 28725,
+      "actual": 28725,
+      "source": "canonical_payments_collected / payment_line_items paid_at",
+      "verdict": "PASS"
+    },
+    {
+      "metric": "Period net (was Outstanding)",
+      "expected": 35775,
+      "actual": 35775,
+      "source": "GBR \u2212 Collected mixed clocks",
+      "verdict": "PASS"
+    }
+  ],
+  "attributionFinding": "24 Not recorded among cohort booked = 23 frozen acquisition_source='other' + 1 null. Display maps other\u2192Not recorded by design. Not a silent attribution defect; do not backfill.",
+  "outstandingFinding": "canonical_outstanding_balance = GBR(window) \u2212 Collected(window). Period-derived mixed clocks \u2014 renamed UI to Period net. Not current AR.",
+  "periodBookingsNote": "Raw lifecycle rows in Nov=10; 2 excluded clients \u2192 8 reporting-scoped (7 known + 1 Not recorded)."
+}

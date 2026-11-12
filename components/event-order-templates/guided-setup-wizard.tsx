@@ -203,10 +203,10 @@ export function GuidedSetupWizard({
   );
 
   return (
-    <div className="space-y-6" data-testid="eo-guided-setup-wizard">
+    <div className="space-y-4" data-testid="eo-guided-setup-wizard">
       {incompleteFlat.length > 0 ? (
         <div
-          className="htc-surface-attention sticky top-14 z-10 px-4 py-3 shadow-sm backdrop-blur"
+          className="htc-surface-attention sticky top-14 z-10 px-3.5 py-2.5 shadow-sm backdrop-blur"
           data-testid="eo-guided-incomplete-checklist"
         >
           <p className="text-sm font-semibold text-heading">Finish before Use / Send</p>
@@ -224,7 +224,7 @@ export function GuidedSetupWizard({
           </ul>
         </div>
       ) : null}
-      <div className="space-y-6" data-testid="eo-guided-step-workspace">
+      <div className="space-y-4" data-testid="eo-guided-step-workspace">
         {sectionsOrdered.length === 0 ? (
           <p className="htc-surface-guidance px-4 py-6 text-center text-sm" data-testid="eo-guided-no-sections">
             No sections yet. Add the first thing you sell, like Catering or Bar Service.
@@ -244,6 +244,7 @@ export function GuidedSetupWizard({
               className="htc-working-card gap-0 py-0 scroll-mt-28"
               data-testid={`eo-guided-configure-${section.id}`}
               data-section-expanded={expanded ? "true" : "false"}
+              data-eo-section-card="true"
             >
               <CardHeader className="py-3">
                 <div className="flex items-start justify-between gap-2">

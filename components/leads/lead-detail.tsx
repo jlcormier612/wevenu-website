@@ -625,7 +625,11 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
             Leads
           </Button>
           <div className="flex min-w-0 items-start gap-3">
-            <RelationshipPhotoAvatar photoUrl={photoUrl} name={displayName} />
+            <RelationshipPhotoAvatar
+              photoUrl={photoUrl}
+              name={displayName}
+              editHref={`/leads/${lead.id}/edit`}
+            />
             <div className="min-w-0 space-y-0.5">
               <div className="flex min-w-0 flex-wrap items-center gap-2">
                 <h1 className="font-heading text-2xl font-medium leading-tight text-heading sm:text-3xl">

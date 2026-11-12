@@ -4,8 +4,8 @@ import { BookingsBySourceChart } from "@/components/reporting/bookings-by-source
 import { DateRangeControl } from "@/components/reporting/date-range-control";
 import { ReportHeader } from "@/components/reporting/report-header";
 import { ComparisonCard, ComparisonCardGrid } from "@/components/dashboard-system/comparison-card";
-import { TrendChart } from "@/components/dashboard-system/trend-chart";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ClientTrendPanel } from "@/components/reporting/client-trend-panel";
 import { reportingSourceDisplayLabel } from "@/lib/attribution/source";
 import {
   getLifecycleBookingSourceCoverage,
@@ -19,37 +19,13 @@ import {
 } from "@/lib/metrics/lifecycle-booking";
 import { getAverageBookingValue, getGrossBookedRevenue } from "@/lib/metrics/revenue";
 import { reportingHref, resolveDateRangeFromParams } from "@/lib/reporting/date-range";
-import { TrendGranularityControl } from "@/components/reporting/trend-granularity-control";
 import {
   availableTrendGranularities,
-  bucketKeyForTimestamp,
-  buildTrendBuckets,
   parseTrendGranularity,
-  trendGranularityCaption,
-  type TrendGranularity,
 } from "@/lib/reporting/trend-buckets";
 import { formatMoney } from "@/lib/event-orders/constants";
-import type { TrendPoint } from "@/components/dashboard-system/trend-chart";
 
 type Props = { searchParams: Promise<Record<string, string | string[] | undefined>> };
-
-function lifecycleToTrend(
-  bookings: { occurredAt: string | null }[],
-  window: { from: string; to: string },
-  granularity: TrendGranularity,
-): { points: TrendPoint[]; granularityLabel: string } {
-  const buckets = buildTrendBuckets(window.from, window.to, granularity);
-  const counts = new Map<string, number>();
-  for (const b of bookings) {
-    if (!b.occurredAt) continue;
-    const key = bucketKeyForTimestamp(b.occurredAt, granularity);
-    counts.set(key, (counts.get(key) ?? 0) + 1);
-  }
-  return {
-    points: buckets.map((b) => ({ label: b.label, value: counts.get(b.key) ?? 0 })),
-    granularityLabel: trendGranularityCaption(granularity),
-  };
-}
 
 export default async function BookingsReportPage({ searchParams }: Props) {
   const params = await searchParams;
@@ -81,8 +57,6 @@ export default async function BookingsReportPage({ searchParams }: Props) {
     getMedianTimeToBookDays(window),
     getUndatedLifecycleBookingCount(),
   ]);
-  const trend = lifecycleToTrend(bookings, window, grain);
-
   return (
     <div className="htc-hospitality-page space-y-6">
       <ReportHeader
@@ -139,24 +113,18 @@ export default async function BookingsReportPage({ searchParams }: Props) {
 
       <BookingsBySourceChart report={bookingsBySource} />
 
-      <Card className={bookings.length === 0 ? "htc-report-empty-card" : undefined}>
-        <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3 space-y-0">
-          <div className="space-y-1.5">
-            <CardTitle className="text-base">Bookings over time</CardTitle>
-            <CardDescription>
-              {trend.granularityLabel} view based on when you first marked them booked — not contract or payment dates.
-            </CardDescription>
-          </div>
-          <TrendGranularityControl current={grain} available={grainOptions} />
-        </CardHeader>
-        <CardContent>
-          {bookings.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">No bookings in this date range.</p>
-          ) : (
-            <TrendChart data={trend.points} />
-          )}
-        </CardContent>
-      </Card>
+      <ClientTrendPanel
+        title="Bookings over time"
+        descriptionSuffix="view based on when you first marked them booked — not contract or payment dates."
+        window={window}
+        initialGrain={grain}
+        available={grainOptions}
+        observations={bookings
+          .filter((b) => b.occurredAt)
+          .map((b) => ({ at: b.occurredAt! }))}
+        emptyText="No bookings in this date range."
+        testId="bookings-over-time-trend"
+      />
 
       <Card className={bookings.length === 0 ? "htc-report-empty-card" : undefined}>
         <CardHeader>

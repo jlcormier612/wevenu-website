@@ -1,0 +1,39 @@
+{
+  "at": "2026-11-12T00:40:21.297Z",
+  "label": "after-local",
+  "base": "http://localhost:3000",
+  "landed": "http://localhost:3000/clients/11ce02ca-3c56-49f9-baf9-115d2fc830e3#floorplan",
+  "note": "Initial suite captured optimistic visible latency. Persist race fixed afterward; see after-local-persist-diag.json for DB-confirmed save (~57ms visible, ~3310ms pending clear, shared_with_couple flipped).",
+  "summary": {
+    "avgVisibleMs": 17,
+    "maxVisibleMs": 49,
+    "avgPersistMs": 9698
+  },
+  "persistDiag": {
+    "visibleMs": 57,
+    "pendingEndMs": 3310,
+    "dbFlipped": true,
+    "heldOptimistic": true
+  },
+  "results": [
+    {
+      "testId": "floor-plan-switch-couple-view",
+      "visibleMs": 49
+    },
+    {
+      "testId": "floor-plan-switch-seating",
+      "visibleMs": 7
+    },
+    {
+      "testId": "floor-plan-couple-may-add",
+      "visibleMs": 5
+    },
+    {
+      "testId": "floor-plan-switch-vendors",
+      "visibleMs": 6
+    }
+  ],
+  "rapid": {
+    "matchesLastClick": true
+  }
+}

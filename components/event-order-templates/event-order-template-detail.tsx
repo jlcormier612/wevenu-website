@@ -144,8 +144,9 @@ export function EventOrderTemplateDetail({
 
   return (
     <div
-      className="htc-hospitality-page space-y-5 sm:space-y-6 overflow-x-hidden"
+      className="htc-hospitality-page space-y-4 sm:space-y-5 overflow-x-hidden"
       data-htc-phase12="eo-template-edit"
+      data-testid="eo-template-edit-surface"
     >
       <CollectionBackLink href="/library/event-order-templates" label="Event Order Templates" />
       <TemplateWorkflowChrome templateId={template.id} current="edit" />
@@ -192,18 +193,20 @@ export function EventOrderTemplateDetail({
         />
       ) : null}
 
-      <div className="htc-surface-guidance max-w-2xl px-3.5 py-3" data-testid="eo-template-detail-intro">
-        <p className="text-sm leading-relaxed">
-          Each section has three parts: <span className="font-medium text-heading">Included</span>{" "}
-          (always on the package, covered by its price), <span className="font-medium text-heading">Couple chooses</span>{" "}
-          (primary picks plus optional add-on groups the couple can select together), and{" "}
-          <span className="font-medium text-heading">Add-ons</span>{" "}
-          (staff-only extras toggled when you apply the template — not the couple path).{" "}
+      <div
+        className="htc-surface-guidance max-w-2xl px-3 py-2.5"
+        data-testid="eo-template-detail-intro"
+      >
+        <p className="text-sm leading-snug">
+          Each section: <span className="font-medium text-heading">Included</span>,{" "}
+          <span className="font-medium text-heading">Couple chooses</span>, and{" "}
+          <span className="font-medium text-heading">Add-ons</span>
+          {" "}(staff-only).{" "}
           <Link href="/library/offerings" className="htc-record-link font-medium">
             Manage Offerings →
           </Link>
         </p>
-        {template.description ? <p className="mt-2 text-sm text-foreground">{template.description}</p> : null}
+        {template.description ? <p className="mt-1.5 text-sm text-foreground">{template.description}</p> : null}
       </div>
 
       <GuidedSetupWizard
