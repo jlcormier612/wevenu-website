@@ -61,8 +61,12 @@ export function TrendChart({
       </div>
       <div className="flex gap-1.5 mt-1.5">
         {data.map((d, i) => (
-          <div key={`${d.label}-${i}-label`} className="flex-1 text-center">
-            {i % labelEvery === 0 && <span className="text-xs text-muted-foreground">{d.label}</span>}
+          <div key={`${d.label}-${i}-label`} className="flex-1 min-w-0 text-center">
+            {i % labelEvery === 0 && (
+              <span className="block truncate whitespace-nowrap text-[10px] leading-tight text-muted-foreground sm:text-xs">
+                {d.label}
+              </span>
+            )}
           </div>
         ))}
       </div>
