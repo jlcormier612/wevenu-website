@@ -84,6 +84,7 @@ function buildArcs(slices: CompositionSlice[]): Arc[] {
   });
 }
 
+/** Palette assignment lives in lib/reporting/composition-display (HTC Proposal B). */
 /** @deprecated Prefer buildDisplayComposition — kept for existing tests importing assignment. */
 export { assignUniqueCompositionColors as assignCompositionColors } from "@/lib/reporting/composition-display";
 

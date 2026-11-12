@@ -19,35 +19,33 @@ export const OTHER_SOURCE_LABEL = "Other";
 export const COMPOSITION_MAX_INDIVIDUAL = 7;
 
 /**
- * Hospitality palette — visually distinguishable, no neon.
- * Length ≥ 24 so typical venues never wrap within one chart.
- * Each string is unique; assignUniqueCompositionColors never reuses within a chart.
+ * HTC + calendar-balanced Reporting palette (Proposal B, adjusted).
+ * Exact existing tokens where possible; two approved Reporting accents:
+ * soft buttery yellow (#F0DFA6) and soft calm blue (#A9C9DA).
+ * One dark green only (heritage sage, late). No mustard / burnt orange / mauve.
+ * Length ≥ 20 so typical venues never wrap within one chart.
  */
 export const COMPOSITION_PALETTE = [
-  "var(--heritage-sage)", // eucalyptus dark
-  "var(--dusty-rose)", // dusty rose
-  "#6a87a8", // muted blue
-  "#c4785a", // warm terracotta
-  "#c9a84c", // soft gold
-  "#8a7fa8", // lavender-gray
-  "var(--soft-sage)", // light sage
-  "#9a6b5c", // cocoa rose
-  "#5b7d6a", // teal eucalyptus (distinct from heritage sage)
-  "#b8a38a", // warm taupe
-  "#7b6e9a", // muted violet
-  "#d4a07a", // apricot sand
-  "#4f6f8f", // slate blue
-  "#a3b58a", // olive mist
-  "#c9949c", // blush
-  "#8c7a5c", // khaki brown
-  "#6e9aa0", // dusty aqua
-  "#b08968", // clay
-  "#8f6f7c", // mauve taupe
-  "#d2c08a", // pale gold
-  "#5e6b7a", // blue-gray
-  "#9c8f6e", // moss taupe
-  "#c4a4b0", // soft plum
-  "#7a8f7e", // gray-sage (light value, not dark green twin)
+  "#F0DFA6", // soft buttery yellow — approved Reporting accent
+  "var(--dusty-rose)", // #d8a7aa
+  "#A9C9DA", // soft calm blue — approved lighter blue
+  "var(--cal-tour)", // #4A7EA8
+  "var(--cal-event)", // #7B5EA0 lavender
+  "var(--htc-eucalyptus)", // #a7c2af soft green
+  "var(--htc-blush)", // #d99a9e
+  "var(--soft-sage)", // #b9d1c2
+  "var(--cal-contract-expiration)", // #8E6B8E plum
+  "var(--cal-planning-activity)", // #7A8FA6 slate
+  "var(--htc-soft-rose)", // #e8c5c8
+  "var(--htc-leaf-muted)", // #7e9e88
+  "var(--heritage-sage)", // #5d6f5d — sole dark green
+  "var(--cal-other)", // #9C9690
+  "var(--htc-soft-sage)", // #c9d9ce
+  "var(--htc-petal)", // #f0d8db
+  "var(--htc-calm-accent)", // #63819a — later blue (soft #A9C9DA preferred first)
+  "var(--htc-eucalyptus-surface)", // #dce8e0
+  "var(--htc-calm-blue-deep)", // #dfe9f1
+  "var(--cal-document-expiration)", // #9C7A5B clay
 ] as const;
 
 /** Reserved neutral — Not recorded only. Never assigned to a real source. */
@@ -62,55 +60,58 @@ export type DisplayCompositionSlice = CompositionSlice & {
   members?: CompositionSlice[];
 };
 
-function hashKey(key: string): number {
-  let h = 2166136261;
-  for (let i = 0; i < key.length; i++) {
-    h ^= key.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  return h >>> 0;
-}
-
-function preferredPaletteIndex(key: string): number {
-  return hashKey(key) % COMPOSITION_PALETTE.length;
-}
-
 /**
  * Assign colors so each visible slice in this chart gets a unique color.
  * Not recorded → fixed neutral. Other → fixed Other color.
- * Real sources: deterministic preferred index, then walk unused palette slots.
+ * Real sources: claim curated palette from the front in count-descending
+ * order (stable key tie-break), so prominent categories receive the
+ * soft yellow / rose / blue accents without hardcoding source names.
  */
-export function assignUniqueCompositionColors(slices: { key: string }[]): string[] {
+export function assignUniqueCompositionColors(
+  slices: { key: string; count?: number }[],
+): string[] {
+  const colors: string[] = new Array(slices.length);
   const used = new Set<string>();
-  const colors: string[] = [];
 
-  for (const slice of slices) {
-    if (slice.key === UNKNOWN_SOURCE_KEY) {
-      colors.push(NOT_RECORDED_COLOR);
+  const realIdx: number[] = [];
+  for (let i = 0; i < slices.length; i++) {
+    const key = slices[i]!.key;
+    if (key === UNKNOWN_SOURCE_KEY) {
+      colors[i] = NOT_RECORDED_COLOR;
       used.add(NOT_RECORDED_COLOR);
       continue;
     }
-    if (slice.key === OTHER_SOURCE_KEY) {
-      colors.push(OTHER_COLOR);
+    if (key === OTHER_SOURCE_KEY) {
+      colors[i] = OTHER_COLOR;
       used.add(OTHER_COLOR);
       continue;
     }
+    realIdx.push(i);
+  }
 
-    const start = preferredPaletteIndex(slice.key);
+  realIdx.sort((a, b) => {
+    const ca = slices[a]!.count ?? 0;
+    const cb = slices[b]!.count ?? 0;
+    if (cb !== ca) return cb - ca;
+    return slices[a]!.key.localeCompare(slices[b]!.key);
+  });
+
+  let paletteCursor = 0;
+  for (const i of realIdx) {
     let chosen: string | null = null;
-    for (let step = 0; step < COMPOSITION_PALETTE.length; step++) {
-      const candidate = COMPOSITION_PALETTE[(start + step) % COMPOSITION_PALETTE.length]!;
-      // Reserved neutrals are not palette members — uniqueness is via `used` only.
+    while (paletteCursor < COMPOSITION_PALETTE.length) {
+      const candidate = COMPOSITION_PALETTE[paletteCursor]!;
+      paletteCursor += 1;
       if (used.has(candidate)) continue;
       chosen = candidate;
       break;
     }
     if (!chosen) {
-      // Palette exhausted — should not happen for ≤24 visible sources.
-      chosen = COMPOSITION_PALETTE[start]!;
+      // Palette exhausted — should not happen for ≤20 visible sources.
+      chosen = COMPOSITION_PALETTE[paletteCursor % COMPOSITION_PALETTE.length]!;
     }
     used.add(chosen);
-    colors.push(chosen);
+    colors[i] = chosen;
   }
 
   return colors;
