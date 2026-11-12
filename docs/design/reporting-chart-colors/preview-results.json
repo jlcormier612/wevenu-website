@@ -1,0 +1,21 @@
+{
+  "ok": true,
+  "cases": [
+    [
+      "01-two-sources-website-instagram",
+      2
+    ],
+    [
+      "02-five-sources",
+      5
+    ],
+    [
+      "03-twelve-sources-other",
+      12
+    ],
+    [
+      "04-twenty-sources-other",
+      20
+    ]
+  ]
+}
