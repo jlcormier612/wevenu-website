@@ -256,6 +256,18 @@
                 ]
               },
               {
+                  "Sid": "EcsDescribeTaskDefinitionForVerification",
+                  "Effect": "Allow",
+                  "Action": ["ecs:DescribeTaskDefinition"],
+                  "Resource": "*"
+                },
+                {
+                  "Sid": "EcrDescribeImagesForVerification",
+                  "Effect": "Allow",
+                  "Action": ["ecr:DescribeImages"],
+                  "Resource": { "Fn::Sub": "arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/htc-sandbox-venue-app" }
+                },
+                {
                 "Sid": "ElbReadOnlyForVerification",
                 "Effect": "Allow",
                 "Action": ["elasticloadbalancing:DescribeLoadBalancers", "elasticloadbalancing:DescribeTargetGroups", "elasticloadbalancing:DescribeTargetHealth"],

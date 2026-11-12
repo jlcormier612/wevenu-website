@@ -1,9 +1,9 @@
 # PR #33 — Sandbox deploy Wait&verify IAM proposal
 
-**Status:** PROPOSED — **do not apply until approved**  
+**Status:** APPLIED + PERSISTED IN INFRA (2026-11-12)  
 **Date:** 2026-11-12  
 **Role:** `htc-sandbox-github-actions-deploy` (OIDC → GitHub Environment `sandbox` only)  
-**Failed run:** [43151830145](https://github.com/jlcormier612/wevenu-website/actions/runs/43151830145) · job Wait & verify · step “Record and verify venue-app image SHA + digest”
+**Failed run (now green):** [43151830145](https://github.com/jlcormier612/wevenu-website/actions/runs/43151830145) · job Wait & verify · step “Record and verify venue-app image SHA + digest”
 
 ## Root cause
 
