@@ -316,6 +316,24 @@ export async function getContractsForClientOrEvent(
   return attachSignerSummaries(client, venueId, (data as unknown as ContractRow[]).map(mapContract));
 }
 
+/**
+ * Lead Booking Journey when a client exists but no event yet.
+ * Client-scoped list only — never venue-wide getContracts().
+ */
+export async function getContractsForClient(
+  client: DbClient,
+  venueId: string,
+  clientId: string,
+): Promise<Contract[]> {
+  const { data, error } = await client.from("contracts")
+    .select(CONTRACT_WORKSPACE_LIST_SELECT)
+    .eq("venue_id", venueId)
+    .eq("client_id", clientId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return attachSignerSummaries(client, venueId, (data as unknown as ContractRow[]).map(mapContract));
+}
+
 export async function getContract(client: DbClient, venueId: string, id: string): Promise<ContractWithDetails | null> {
   const [cRes, aRes, sRes] = await Promise.all([
     client.from("contracts")
