@@ -27,6 +27,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   applyDiscardResult,
   draftHistoryDrafts,
+  lifecycleWithdrawnDrafts,
   pendingReviewDrafts,
   withDraftStatus,
   withoutDraft,
@@ -59,12 +60,15 @@ function DraftCard({
   const [discarding, startDiscard] = React.useTransition();
 
   async function handleCopy() {
+    const result = await updateDraftStatusAction(draft.id, leadId, "accepted", linkedClientId);
+    if (!result.ok) {
+      toast.error(result.message);
+      return;
+    }
     const full = draft.subject ? `Subject: ${subject}\n\n${body}` : body;
     await navigator.clipboard.writeText(full);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
-    // Mark as accepted when copied — they're using it
-    await updateDraftStatusAction(draft.id, leadId, "accepted", linkedClientId);
     onAccepted(draft.id);
   }
 
@@ -262,6 +266,7 @@ export function LuvDraftPanel({
   }, [completedDraftId]);
 
   const pendingDrafts = pendingReviewDrafts(allDrafts);
+  const withdrawnDrafts = lifecycleWithdrawnDrafts(allDrafts);
   const pastDrafts = draftHistoryDrafts(allDrafts);
 
   function handleGenerate() {
@@ -356,6 +361,30 @@ export function LuvDraftPanel({
               onAccepted={handleAccepted}
               onUseDraft={onUseDraft}
             />
+          ))}
+        </div>
+      )}
+
+      {/* Lifecycle-superseded drafts — retained, not actionable, not deleted */}
+      {withdrawnDrafts.length > 0 && (
+        <div className="space-y-2" data-testid="luv-lifecycle-withdrawn-drafts">
+          <Separator />
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            No longer applicable
+          </p>
+          {withdrawnDrafts.map((draft) => (
+            <div
+              key={draft.id}
+              className="rounded-sm border border-border bg-muted/20 px-3 py-2.5 space-y-1"
+            >
+              <p className="text-xs font-medium text-heading truncate">
+                {draft.subject ?? draft.content.slice(0, 72)}
+              </p>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                {draft.lifecycleWithdrawal?.reason
+                  ?? "This draft is no longer appropriate for the current relationship."}
+              </p>
+            </div>
           ))}
         </div>
       )}

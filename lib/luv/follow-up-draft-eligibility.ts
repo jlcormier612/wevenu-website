@@ -5,7 +5,8 @@
  * Proactive: should Luv urge outreach right now? (contextual judgment)
  *
  * These must never be the same gate. A completed tour can silence proactive
- * outreach while still allowing owner-initiated drafting.
+ * outreach while still allowing owner-initiated drafting — unless the
+ * relationship lifecycle has commercially superseded sales follow-ups.
  */
 
 import {
@@ -17,6 +18,11 @@ import {
   type FollowUpTourState,
   type FollowUpWorkflowIntent,
 } from "@/lib/luv/follow-up-workflow-context";
+import {
+  isIntentEligibleForLifecycle,
+  resolveRelationshipLifecycle,
+  type RelationshipLifecycleFacts,
+} from "@/lib/luv/relationship-lifecycle-eligibility";
 
 export type FollowUpDraftEligibility = {
   /**
@@ -36,6 +42,8 @@ export type FollowUpDraftEligibility = {
   workflowIntent: FollowUpWorkflowIntent;
   communicationPurpose: "unresolved_question" | "explicit_request" | "none";
   communicationExcerpt: string | null;
+  /** Lifecycle snapshot for audit / draft context. */
+  lifecycle?: ReturnType<typeof resolveRelationshipLifecycle>;
 };
 
 export type LeadDraftCapabilityInput = {
@@ -67,7 +75,8 @@ export function resolveOwnerDraftCapability(input: LeadDraftCapabilityInput): {
 
 /**
  * Shared decision for CTA + generateFollowUpDraft.
- * Proactive silence (completed tour / no_outreach) does not disable drafting.
+ * Proactive silence (completed tour / no_outreach) does not disable drafting
+ * unless relationship lifecycle has superseded sales follow-ups.
  */
 export function resolveFollowUpDraftEligibility(input: {
   tour: FollowUpTourState;
@@ -76,10 +85,18 @@ export function resolveFollowUpDraftEligibility(input: {
   completedDecision?: CompletedTourDecision | null;
   leadStatus?: string | null;
   lostAt?: string | null;
+  /** Authoritative commercial / booking facts — not sales_stage. */
+  lifecycleFacts?: RelationshipLifecycleFacts | null;
 }): FollowUpDraftEligibility {
   const capability = resolveOwnerDraftCapability({
     leadStatus: input.leadStatus,
     lostAt: input.lostAt,
+  });
+
+  const lifecycle = resolveRelationshipLifecycle({
+    leadStatus: input.leadStatus,
+    lostAt: input.lostAt,
+    ...(input.lifecycleFacts ?? {}),
   });
 
   let communicationPurpose: FollowUpDraftEligibility["communicationPurpose"] = "none";
@@ -98,21 +115,49 @@ export function resolveFollowUpDraftEligibility(input: {
     nextActionText: input.nextActionText,
     communicationPurpose,
   });
-  const proactiveRecommended = proactiveIntent !== "no_outreach";
+
+  // Commercial commitment / Booked / lost supersede proactive sales outreach.
+  const lifecycleAllowsProactive = lifecycle.salesFollowUpAllowed
+    || proactiveIntent === "answer_questions";
+  const proactiveRecommended =
+    proactiveIntent !== "no_outreach" && lifecycleAllowsProactive;
 
   // Owner-initiated drafts never use no_outreach — gentle_check_in with tour
   // prohibitions keeps wording honest when Luv has nothing urgent to urge.
-  const workflowIntent: FollowUpWorkflowIntent = proactiveRecommended
+  let workflowIntent: FollowUpWorkflowIntent = proactiveRecommended
     ? proactiveIntent
     : "gentle_check_in";
 
+  if (communicationPurpose !== "none" && proactiveIntent === "answer_questions") {
+    workflowIntent = "answer_questions";
+  }
+
+  // Sales follow-up generation is blocked when lifecycle supersedes — including
+  // owner-initiated gentle_check_in. Purpose-built answer_questions remains.
+  let draftCapable = capability.draftCapable;
+  let capabilityBlockReason = capability.capabilityBlockReason;
+
+  if (draftCapable && !isIntentEligibleForLifecycle(workflowIntent, lifecycle)) {
+    draftCapable = false;
+    capabilityBlockReason =
+      lifecycle.salesFollowUpBlockReason
+      ?? "A sales follow-up isn’t appropriate for this relationship right now.";
+  }
+
+  // Owner-capable + proactive silence → gentle_check_in for wording honesty.
+  // Lifecycle-blocked drafts keep the blocked intent out of generation.
+  if (draftCapable && !proactiveRecommended && workflowIntent !== "answer_questions") {
+    workflowIntent = "gentle_check_in";
+  }
+
   return {
-    eligible: capability.draftCapable,
-    draftCapable: capability.draftCapable,
-    capabilityBlockReason: capability.capabilityBlockReason,
+    eligible: draftCapable,
+    draftCapable,
+    capabilityBlockReason,
     proactiveRecommended,
     workflowIntent,
     communicationPurpose,
     communicationExcerpt,
+    lifecycle,
   };
 }

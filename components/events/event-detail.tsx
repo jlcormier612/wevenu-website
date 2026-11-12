@@ -704,13 +704,17 @@ export function EventDetail({
   async function handleLuvDraftSendSuccess() {
     if (!activeLuvDraftId || !luvLead) return;
     const id = activeLuvDraftId;
-    setActiveLuvDraftId(null);
-    await updateDraftStatusAction(
+    const result = await updateDraftStatusAction(
       id,
       luvLead.id,
       draftStatusAfterSuccessfulSend(),
       luvLead.linkedClientId ?? event.clientId,
     );
+    if (!result.ok) {
+      toast.error(result.message);
+      return;
+    }
+    setActiveLuvDraftId(null);
     setCompletedLuvDraftId(id);
   }
 

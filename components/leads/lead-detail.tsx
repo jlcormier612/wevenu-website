@@ -428,8 +428,12 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
   async function handleLuvDraftSendSuccess() {
     if (!activeLuvDraftId) return;
     const id = activeLuvDraftId;
+    const result = await updateDraftStatusAction(id, lead.id, draftStatusAfterSuccessfulSend());
+    if (!result.ok) {
+      toast.error(result.message);
+      return;
+    }
     setActiveLuvDraftId(null);
-    await updateDraftStatusAction(id, lead.id, draftStatusAfterSuccessfulSend());
     setCompletedLuvDraftId(id);
   }
   const router = useRouter();

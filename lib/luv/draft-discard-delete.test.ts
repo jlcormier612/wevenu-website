@@ -102,7 +102,7 @@ describe("deleteDraft service + action wiring", () => {
   });
 
   it("Discard UI deletes then removes locally; failure keeps draft and toasts", () => {
-    assert.match(panel, /deleteDraftAction\(draft\.id, leadId\)/);
+    assert.match(panel, /deleteDraftAction\(draft\.id, leadId(?:, linkedClientId)?\)/);
     assert.match(panel, /withoutDraft/);
     assert.match(panel, /applyDiscardResult/);
     assert.match(panel, /toast\.error\(next\.error\)/);
