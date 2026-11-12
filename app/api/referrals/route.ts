@@ -86,6 +86,35 @@ export async function POST(request: Request) {
     return NextResponse.json(result, { status });
   }
 
+  // Founder/admin notice only — never emails the referred prospect.
+  // Failures must not block the customer confirmation.
+  try {
+    const {
+      INTERNAL_REFERRAL_NOTICE_META_KEY,
+      notifyInternalReferralSubmitted,
+    } = await import("@/lib/referrals/notify-internal");
+    const notice = await notifyInternalReferralSubmitted({
+      referral: result.referral,
+      referringVenueName: venue.name ?? "Unknown venue",
+    });
+    if (notice.sent) {
+      await ctx.store.updateReferral(result.referral.id, {
+        metadata: {
+          [INTERNAL_REFERRAL_NOTICE_META_KEY]: new Date().toISOString(),
+        },
+        auditEntry: {
+          at: new Date().toISOString(),
+          action: "internal_founder_notice_sent",
+          delivery: notice.delivery,
+          to: notice.to,
+          idempotencyKey: notice.idempotencyKey,
+        },
+      });
+    }
+  } catch (err) {
+    console.error("internal referral notice failed", err);
+  }
+
   return NextResponse.json({
     ok: true,
     confirmation: result.confirmation,
