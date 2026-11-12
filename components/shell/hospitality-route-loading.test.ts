@@ -34,6 +34,7 @@ describe("hospitality route loading shells (Wave B)", () => {
       "app/(app)/leads/[id]/loading.tsx",
       "app/(app)/clients/loading.tsx",
       "app/(app)/clients/[id]/loading.tsx",
+      "app/(app)/events/loading.tsx",
       "app/(app)/events/[id]/loading.tsx",
       "app/(app)/calendar/loading.tsx",
       "app/(app)/reporting/loading.tsx",
@@ -41,6 +42,10 @@ describe("hospitality route loading shells (Wave B)", () => {
       "app/(app)/invoices/loading.tsx",
       "app/(app)/contracts/loading.tsx",
       "app/(app)/contracts/[id]/loading.tsx",
+      "app/(app)/tours/loading.tsx",
+      "app/(app)/messaging/loading.tsx",
+      "app/(app)/vendors/loading.tsx",
+      "app/(app)/setup-hub/loading.tsx",
     ];
     for (const rel of required) {
       assert.ok(
