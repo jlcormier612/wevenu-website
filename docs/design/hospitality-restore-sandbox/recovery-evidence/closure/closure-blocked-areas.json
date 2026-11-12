@@ -1,0 +1,154 @@
+{
+  "at": "2026-11-12T01:47:03.234Z",
+  "comingUpLinks": [],
+  "weddingEvents": [
+    {
+      "id": "80ff5166-0785-4639-8aa5-879a975db450",
+      "name": "Nguyen Wedding",
+      "event_type": "wedding",
+      "client_id": "b8fc8fd2-52a5-4157-8366-082949a54ea0"
+    },
+    {
+      "id": "862a1206-2e7e-4d34-a927-c909770aeb21",
+      "name": "Reed Wedding",
+      "event_type": "wedding",
+      "client_id": "315d02af-08d4-4956-a48d-6f53fc97cf63"
+    },
+    {
+      "id": "48527889-80a6-4086-8099-7037d8bc2ddc",
+      "name": "Sutton Wedding",
+      "event_type": "wedding",
+      "client_id": "aa32dacf-4d4f-4a17-9cd7-585e66cfefc7"
+    },
+    {
+      "id": "9068c7e5-aac7-4dca-bcd5-cf7a07e8f98d",
+      "name": "Singh Wedding",
+      "event_type": "wedding",
+      "client_id": "c884b921-355b-4df0-ab42-a6a613da588e"
+    },
+    {
+      "id": "4a6e4adb-a917-416c-b479-a214f17f0e7b",
+      "name": "Olivia & James Hayes Wedding",
+      "event_type": "wedding",
+      "client_id": "f962b6a8-c0d7-4688-8de1-6831ba14bdf1"
+    }
+  ],
+  "weddingRoutes": [
+    {
+      "path": "/events/80ff5166-0785-4639-8aa5-879a975db450",
+      "status": 200,
+      "url": "https://app.sandbox.hellotocheers.com/clients/b8fc8fd2-52a5-4157-8366-082949a54ea0",
+      "hit": false,
+      "snippet": "OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\nClients\nVendors\n\nSCHEDULING\n\nCalendar\nTours\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nLIBRARY\n\nTemplates\nDocuments\n\nFINANCIALS\n\nContracts\nPayments\n\nTO DO’S\n\nTas"
+    },
+    {
+      "path": "/clients/b8fc8fd2-52a5-4157-8366-082949a54ea0",
+      "status": 200,
+      "url": "https://app.sandbox.hellotocheers.com/clients/b8fc8fd2-52a5-4157-8366-082949a54ea0",
+      "hit": false,
+      "snippet": "OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\nClients\nVendors\n\nSCHEDULING\n\nCalendar\nTours\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nLIBRARY\n\nTemplates\nDocuments\n\nFINANCIALS\n\nContracts\nPayments\n\nTO DO’S\n\nTas"
+    },
+    {
+      "path": "/events/80ff5166-0785-4639-8aa5-879a975db450/wedding-website",
+      "status": 404,
+      "url": "https://app.sandbox.hellotocheers.com/events/80ff5166-0785-4639-8aa5-879a975db450/wedding-website",
+      "hit": false,
+      "snippet": "404\nThis page could not be found."
+    },
+    {
+      "path": "/events/80ff5166-0785-4639-8aa5-879a975db450/rsvp",
+      "status": 404,
+      "url": "https://app.sandbox.hellotocheers.com/events/80ff5166-0785-4639-8aa5-879a975db450/rsvp",
+      "hit": false,
+      "snippet": "404\nThis page could not be found."
+    },
+    {
+      "path": "/wedding-website?eventId=80ff5166-0785-4639-8aa5-879a975db450",
+      "status": 404,
+      "url": "https://app.sandbox.hellotocheers.com/wedding-website?eventId=80ff5166-0785-4639-8aa5-879a975db450",
+      "hit": false,
+      "snippet": "404\nThis page could not be found."
+    }
+  ],
+  "eventSettingsRoutes": [
+    {
+      "path": "/events/80ff5166-0785-4639-8aa5-879a975db450",
+      "status": 200,
+      "url": "https://app.sandbox.hellotocheers.com/clients/b8fc8fd2-52a5-4157-8366-082949a54ea0",
+      "hasSettings": true,
+      "snippet": "OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\n99+\nClients\nVendors\n\nSCHEDULING\n\nCalendar\nTours\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nLIBRARY\n\nTemplates\nDocuments\n\nFINANCIALS\n\nContracts\nPayments\n22\n\nTO DO’S\n\nTask Center\n5\nRequests\n\nYOUR VENUE\n\nSetup\nSett"
+    },
+    {
+      "path": "/events/80ff5166-0785-4639-8aa5-879a975db450/settings",
+      "status": 404,
+      "url": "https://app.sandbox.hellotocheers.com/events/80ff5166-0785-4639-8aa5-879a975db450/settings",
+      "hasSettings": false,
+      "snippet": "404\nThis page could not be found."
+    },
+    {
+      "path": "/events/80ff5166-0785-4639-8aa5-879a975db450/edit",
+      "status": 200,
+      "url": "https://app.sandbox.hellotocheers.com/events/80ff5166-0785-4639-8aa5-879a975db450/edit",
+      "hasSettings": true,
+      "snippet": "OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\nClients\nVendors\n\nSCHEDULING\n\nCalendar\nTours\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nLIBRARY\n\nTemplates\nDocuments\n\nFINANCIALS\n\nContracts\nPayments\n\nTO DO’S\n\nTask Center\nRequests\n\nYOUR VENUE\n\nSetup\nSettings\nGuid"
+    }
+  ],
+  "eventSettingsBody": "OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\n99+\nClients\nVendors\n\nSCHEDULING\n\nCalendar\nTours\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nLIBRARY\n\nTemplates\nDocuments\n\nFINANCIALS\n\nContracts\nPayments\n22\n\nTO DO’S\n\nTask Center\n5\nRequests\n\nYOUR VENUE\n\nSetup\nSettings\nGuidance\nVenue Guide\nReports\nHelp & Feedback\nThe Willow Grove\nSearch\n⌘K\n99+\nJ\njennifer@hellotocheers.com\nDelete\nBookings\nCD\nNguyen Wedding\nView original lead\nBooked\nEdit event\nDay-of Sheet\nCancel event\n\nWEDDING\n\nFebruary 14, 2027\n\nSunday · In 94 days\n\nBooked\nTime\n4:00 PM – 10:00 PM\nEstimated\n130 guests\nGuaranteed\nNot set\nSpaces\nCarriage House\n\nTEAM ASSIGNMENT\n\nEvent owner\nUnassigned\nEdit/Save\nQuestionnaires\n\nChoose and send your prepared information/feedback-gathering questionnaires when ready — separate from the client portal release proc",
+  "portalTabs": [
+    {
+      "label": "Home",
+      "ok": true,
+      "url": "https://app.sandbox.hellotocheers.com/p/wg_c04_mw7cnv0c#overview",
+      "snippet": "The Willow Grove\n\nAug 12, 2028\n\nExport my data\n🏠\nHome\n✅\nTasks\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n💳\nPayments\n💬\nMessages\n🏛️\nGuide\n🤝\nVendors\nAdd your photo\nTHE WILLOW GROVE\n\nMorgan & Taylor\n\n640 days until your celebra"
+    },
+    {
+      "label": "Tasks",
+      "ok": true,
+      "url": "https://app.sandbox.hellotocheers.com/p/wg_c04_mw7cnv0c#tasks",
+      "snippet": "The Willow Grove\n\nAug 12, 2028\n\nExport my data\n🏠\nHome\n✅\nTasks\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n💳\nPayments\n💬\nMessages\n🏛️\nGuide\n🤝\nVendors\nFrom your venue\n\nEverything The Willow Grove needs from you, in one place — n"
+    },
+    {
+      "label": "Timeline",
+      "ok": true,
+      "url": "https://app.sandbox.hellotocheers.com/p/wg_c04_mw7cnv0c#timeline",
+      "snippet": "The Willow Grove\n\nAug 12, 2028\n\nExport my data\n🏠\nHome\n✅\nTasks\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n💳\nPayments\n💬\nMessages\n🏛️\nGuide\n🤝\nVendors\n\n🕒\n\nNo timeline shared yet\n\nYour venue will share the Timeline here as it co"
+    },
+    {
+      "label": "Docs",
+      "ok": true,
+      "url": "https://app.sandbox.hellotocheers.com/p/wg_c04_mw7cnv0c#documents",
+      "snippet": "The Willow Grove\n\nAug 12, 2028\n\nExport my data\n🏠\nHome\n✅\nTasks\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n💳\nPayments\n💬\nMessages\n🏛️\nGuide\n🤝\nVendors\nLoading documents…\nThe Willow Grove\n💗"
+    },
+    {
+      "label": "Floor Plan",
+      "ok": true,
+      "url": "https://app.sandbox.hellotocheers.com/p/wg_c04_mw7cnv0c#floor_plans",
+      "snippet": "The Willow Grove\n\nAug 12, 2028\n\nExport my data\n🏠\nHome\n✅\nTasks\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n💳\nPayments\n💬\nMessages\n🏛️\nGuide\n🤝\nVendors\nLoading Floor Plan…\nThe Willow Grove\n💗"
+    },
+    {
+      "label": "Payments",
+      "ok": true,
+      "url": "https://app.sandbox.hellotocheers.com/p/wg_c04_mw7cnv0c#payments",
+      "snippet": "The Willow Grove\n\nAug 12, 2028\n\nExport my data\n🏠\nHome\n✅\nTasks\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n💳\nPayments\n💬\nMessages\n🏛️\nGuide\n🤝\nVendors\nThe Willow Grove\n💗"
+    },
+    {
+      "label": "Messages",
+      "ok": true,
+      "url": "https://app.sandbox.hellotocheers.com/p/wg_c04_mw7cnv0c#messages",
+      "snippet": "The Willow Grove\n\nAug 12, 2028\n\nExport my data\n🏠\nHome\n✅\nTasks\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n💳\nPayments\n💬\nMessages\n🏛️\nGuide\n🤝\nVendors\nT\n\nThe Willow Grove\n\nYour venue team\n\n💬\n\nStart a conversation with The Willo"
+    },
+    {
+      "label": "Guide",
+      "ok": true,
+      "url": "https://app.sandbox.hellotocheers.com/p/wg_c04_mw7cnv0c#guide",
+      "snippet": "The Willow Grove\n\nAug 12, 2028\n\nExport my data\n🏠\nHome\n✅\nTasks\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n💳\nPayments\n💬\nMessages\n🏛️\nGuide\n🤝\nVendors\n🏛️ Venue Guide\n\nEverything The Willow Grove has shared — browse, search, or "
+    },
+    {
+      "label": "Vendors",
+      "ok": true,
+      "url": "https://app.sandbox.hellotocheers.com/p/wg_c04_mw7cnv0c#vendors",
+      "snippet": "The Willow Grove\n\nAug 12, 2028\n\nExport my data\n🏠\nHome\n✅\nTasks\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n💳\nPayments\n💬\nMessages\n🏛️\nGuide\n🤝\nVendors\n\nVendors The Willow Grove makes available to you\n\nBrowse their approved list,"
+    }
+  ],
+  "vendorSession": false
+}

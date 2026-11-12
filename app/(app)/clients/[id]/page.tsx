@@ -167,7 +167,12 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
         <PreparingMessagesDeepLink leadId={client.leadId} />
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex items-center gap-3">
-            <RelationshipPhotoAvatar photoUrl={photo?.displayedPhotoUrl ?? null} name={displayName} size="lg" />
+            <RelationshipPhotoAvatar
+              photoUrl={photo?.displayedPhotoUrl ?? null}
+              name={displayName}
+              size="lg"
+              editHref={`/clients/${client.id}/edit`}
+            />
             <PageHeader
               title={displayName}
               description="You are preparing this client's planning workspace. Preparing the workspace does not reserve their date."

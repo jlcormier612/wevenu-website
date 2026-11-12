@@ -1,0 +1,75 @@
+{
+  "at": "2026-11-12T01:50:03.518Z",
+  "weddingWebsite": {
+    "url": "https://app.sandbox.hellotocheers.com/p/wg_c04_mw7cnv0c#website",
+    "snippet": "The Willow Grove\n\nAug 12, 2028\n\nExport my data\n🏠\nHome\n✅\nTasks\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n💳\nPayments\n💬\nMessages\n🏛️\nGuide\n🤝\nVendors\n\nWEBSITE STUDIO\n\nLet's build your\nwedding website.\n\nALREADY WAITING FOR YOU\n\nMorgan & Taylor\n\nThe Willow Grove\n\nLet's get startedSkip setup — go straight to studio\n\nWEBSITE STUDIO\n\n0 sections added\n\nSetup guide\n\nMorgan & Taylor\n\nWildflower\n\nOrganic, joyful "
+  },
+  "guests": {
+    "url": "https://app.sandbox.hellotocheers.com/p/wg_c04_mw7cnv0c#guests",
+    "snippet": "The Willow Grove\n\nAug 12, 2028\n\nExport my data\n🏠\nHome\n✅\nTasks\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n💳\nPayments\n💬\nMessages\n🏛️\nGuide\n🤝\nVendors\n\nNOT YET SENT\n\n24\n\nINVITED\n\n0\n\nAWAITING RESPONSE\n\n0\n\nRESPONDED\n\n0\n\nGuest Count\n\nNot yet submitted to your venue.\n\n24\n\n24 currently attending, based on your live RSVPs — this is only visible to you until you submit.\n\nFinalize Guest Count\n100%\nresponded\n\nTOTA"
+  },
+  "setupPanelVisible": 1,
+  "setupPanelText": "Event Setup\n\n4 need a decision · 0 included · 0 not included\n\nDecide Set up or Skip for each area. A capability being available does not mean this event must use it.\n\nPreview client portal\n\nSee what this couple will see for this event before you release materials or invite them. Read-only — does not release, invite, or send anything.\n\nPreview client portal\n\nPlanning\n\nDecide\nSet up\nSkip\n\nDecide whether this area is included for this event.\n\nTimeline\n\nDecide\nSet up\nSkip\n\nDecide whether this area is included for this event.\n\nFloor plans\n\nDecide\nSet up\nSkip\n\nDecide whether this area is included fo",
+  "relatedTabs": [
+    "Setup",
+    "Planning Overview",
+    "Planning Tasks"
+  ],
+  "reedRelease": {
+    "hasRelease": false,
+    "hasPreview": true,
+    "setupPanel": 1,
+    "snippet": "nventory & Event Order\nEvent Order: Not started\nOpen Event Order\nOpen Inventory\nPlanning Overview\nPlanning Tasks\nTimeline\nFloor Plans\nVendors\nDocuments\nPayments\n1\nConversation\nActivity\nInternal notes\nLuv\nEvent Setup\n\n4 need a decision · 0 included · 0 not included\n\nDecide Set up or Skip for each "
+  },
+  "reedPanelText": "Event Setup\n\n4 need a decision · 0 included · 0 not included\n\nDecide Set up or Skip for each area. A capability being available does not mean this event must use it.\n\nPreview client portal\n\nSee what this couple will see for this event before you release materials or invite them. Read-only — does not release, invite, or send anything.\n\nPreview client portal\n\nPlanning\n\nDecide\nSet up\nSkip\n\nDecide whether this area is included for this event.\n\nTimeline\n\nDecide\nSet up\nSkip\n\nDecide whether this area is included for this event.\n\nFloor plans\n\nDecide\nSet up\nSkip\n\nDecide whether this area is included for this event.\n\nVendors\n\nDecide\nSet up\nSkip\n\nDecide whether this area is included for this event.\n\nYo",
+  "vendorUserEmails": [
+    "legal-audit-vendor-1794334035806@hellotocheers-test.invalid",
+    "chris@northlightphoto.example",
+    "wg-ux-wgiuxmvtrdjfy@hellotocheers-test.invalid",
+    "eoch-eochmvrm43dj@hellotocheers-test.invalid"
+  ],
+  "vendorLoginAttempts": [
+    {
+      "email": "vendor@hellotocheers.com",
+      "ok": false,
+      "url": "https://app.sandbox.hellotocheers.com/vendor/login?next=%2Fvendor%2Fdashboard",
+      "snip": "Vendor sign in\nSign in to your vendor portal. This does not replace a venue or client session in this browser.\nEmail\nPassword\nForgot password?\nSign in\n\nVenue staff? Venue sign in · Switch workspace"
+    },
+    {
+      "email": "florist@thewillowgrove.com",
+      "ok": false,
+      "url": "https://app.sandbox.hellotocheers.com/vendor/login?next=%2Fvendor%2Fdashboard",
+      "snip": "Vendor sign in\nSign in to your vendor portal. This does not replace a venue or client session in this browser.\nEmail\nPassword\nForgot password?\nSign in\n\nVenue staff? Venue sign in · Switch workspace"
+    },
+    {
+      "email": "demo.vendor@hellotocheers.com",
+      "ok": false,
+      "url": "https://app.sandbox.hellotocheers.com/vendor/login?next=%2Fvendor%2Fdashboard",
+      "snip": "Vendor sign in\nSign in to your vendor portal. This does not replace a venue or client session in this browser.\nEmail\nPassword\nForgot password?\nSign in\n\nVenue staff? Venue sign in · Switch workspace"
+    },
+    {
+      "email": "legal-audit-vendor-1794334035806@hellotocheers-test.invalid",
+      "ok": false,
+      "url": "https://app.sandbox.hellotocheers.com/vendor/login?next=%2Fvendor%2Fdashboard",
+      "snip": "Vendor sign in\nSign in to your vendor portal. This does not replace a venue or client session in this browser.\nEmail\nPassword\nForgot password?\nSign in\n\nVenue staff? Venue sign in · Switch workspace"
+    },
+    {
+      "email": "chris@northlightphoto.example",
+      "ok": false,
+      "url": "https://app.sandbox.hellotocheers.com/vendor/login?next=%2Fvendor%2Fdashboard",
+      "snip": "Vendor sign in\nSign in to your vendor portal. This does not replace a venue or client session in this browser.\nEmail\nPassword\nForgot password?\nSign in\n\nVenue staff? Venue sign in · Switch workspace"
+    },
+    {
+      "email": "wg-ux-wgiuxmvtrdjfy@hellotocheers-test.invalid",
+      "ok": false,
+      "url": "https://app.sandbox.hellotocheers.com/vendor/login?next=%2Fvendor%2Fdashboard",
+      "snip": "Vendor sign in\nSign in to your vendor portal. This does not replace a venue or client session in this browser.\nEmail\nPassword\nForgot password?\nSign in\n\nVenue staff? Venue sign in · Switch workspace"
+    },
+    {
+      "email": "eoch-eochmvrm43dj@hellotocheers-test.invalid",
+      "ok": false,
+      "url": "https://app.sandbox.hellotocheers.com/vendor/login?next=%2Fvendor%2Fdashboard",
+      "snip": "Vendor sign in\nSign in to your vendor portal. This does not replace a venue or client session in this browser.\nEmail\nPassword\nForgot password?\nSign in\n\nVenue staff? Venue sign in · Switch workspace"
+    }
+  ]
+}

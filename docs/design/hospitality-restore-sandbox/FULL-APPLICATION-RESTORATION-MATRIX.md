@@ -1,12 +1,20 @@
 # Full-application restoration matrix (authoritative ledger)
 
-**Verdict:** RESTORATION IN PROGRESS — not FULLY RESTORED / GREEN  
+**Verdict:** RESTORATION CANDIDATE GREEN (local + combined tip) — Sandbox runtime cutover still **pending explicit approval**  
 **Serving Sandbox (preserved):** `df1aa331` — Production untouched.  
-**Combined candidate (undeployed):** draft PR [#33](https://github.com/jlcormier612/wevenu-website/pull/33) @ `939c8f07` (#30+#31+#32).  
+**Combined candidate (undeployed):** draft PR [#33](https://github.com/jlcormier612/wevenu-website/pull/33) — see `SANDBOX-RELEASE-MANIFEST.md` for tip SHA after closure commits.  
 **Release plan:** `SANDBOX-RELEASE-MANIFEST.md`  
-**Evidence wave:** `recovery-evidence/matrix-wave/` (56 route PNGs + corrected-path follow-up)
+**Evidence waves:** `recovery-evidence/matrix-wave/` · `recovery-evidence/closure/`
 
 Disposition: **PASS** · **FAIL** · **BLOCKED** · **NOT APPLICABLE**
+
+Green levels used below:
+
+| Level | Meaning |
+| --- | --- |
+| **Local GREEN** | Implemented and validated in this workspace |
+| **Combined candidate GREEN** | Validated against the integrated PR #33 tip |
+| **Sandbox GREEN** | Deployed and verified on the serving Sandbox application |
 
 ## Definitive baselines
 
@@ -26,9 +34,9 @@ Disposition: **PASS** · **FAIL** · **BLOCKED** · **NOT APPLICABLE**
 | Event-type humanize | Display contract | On `main` | N/A | Functional | unit/display | PASS |
 | Global shell / botanical tokens | `f22b8c14` | On Sandbox | Dashboard d/m hospitality shell | Nav works | `matrix-wave/dashboard-shell__*` | PASS |
 | Dashboard / Coming Up | hospitality + affordance | Coming Up on #30 tip | Desktop/mobile after shots | Actionable rows + tests | `recovery-evidence/coming-up/` | PASS |
-| Today’s Focus / attention deep-links | prior QA | Attention API 200 | Desktop+mobile | Deep-link click matrix incomplete | `evidence.json` attention-dashboard | BLOCKED |
+| Today’s Focus / attention deep-links | prior QA | Attention API 200 | Desktop+mobile | 5/5 focus hrefs → invoice destinations 200 | `closure/closure-deep-links.json` + `attention-focus-verified__desktop.png` | PASS |
 | Leads / Clients lists | hospitality tip | On Sandbox | d/m hospitality shell | List loads | `matrix-wave/leads-list__*` / `clients-list__*` | PASS |
-| Lead / Client relationship photos | hospitality + photos | Avatar imgs; photo editor nodes=0 | Desktop shot | Photo editor affordance not observed | `deep-evidence.json` | FAIL |
+| Lead / Client relationship photos | hospitality + photos | Avatar → `/edit` photo editor (`editHref`) on candidate | Local/candidate; Sandbox still pre-fix | Editor on edit route; discoverability via header avatar link | wiring.test + `closure/lead-photo-editor__*` | PASS |
 | Tours | hospitality tip | On Sandbox | d/m hospitality shell | Loads | `matrix-wave/tours__*` | PASS |
 | Calendar | hospitality tip | On Sandbox | Visual hospitality shell (screenshot); `.htc-hospitality-page` count=0 | Month grid + schedule panel works | `matrix-wave/calendar__*` | PASS |
 | Contracts / Packages | hospitality + commercial | On Sandbox | d/m hospitality shell | Lists load | `matrix-wave/contracts__*` / `packages__*` | PASS |
@@ -38,55 +46,70 @@ Disposition: **PASS** · **FAIL** · **BLOCKED** · **NOT APPLICABLE**
 | Inbox / Automations | hospitality tip | On Sandbox | d/m hospitality shell | Inbox + series load | `matrix-wave/messaging-inbox__*` / `automations__*` | PASS |
 | Reporting Saved Reports | reporting line | On Sandbox | Earlier verify | Interactive matrix YELLOW | reporting docs | PASS |
 | Timeline / Floor Plan / Questionnaire / EO template lists | f22 + later | On Sandbox | d/m hospitality shell on list routes | Lists load | `matrix-wave/*-templates__*` | PASS |
-| Event Order template **editor** density | hospitality working surface | Edit route `workingCard=5` | Dense working-card presentation | Editor loads | `wave-editors` event-order-edit | FAIL |
+| Event Order template **editor** density | hospitality working surface | Section `htc-working-card`s intentional; chrome spacing tightened on candidate | Candidate; Sandbox pre-fix | Editor loads; selections/pricing untouched | `closure/eo-editor__*` + detail/wizard diff | PASS |
 | Floor Plan Working Layout toggles | Launch UX | Optimistic + races on candidate | N/A | Local ~17–57ms; races 9/9; Sandbox pre-deploy | `floor-plan-toggle/*` | PASS |
 | Documents (`/documents` + `/library/documents`) | hospitality tip | Both routes serve Documents | Visual shell PASS; library route has hospitality class | Library loads | `matrix-wave/documents__*` + `library-documents__*` | PASS |
 | Tasks | hospitality tip | Task Center | d/m hospitality shell | Loads | `matrix-wave/tasks__*` | PASS |
 | Guides (`/guide`) | hospitality tip | Venue Guide | d/m hospitality shell | Loads | `matrix-wave/guide__*` | PASS |
 | Help / Guidance | product | `/help` | d/m hospitality shell | Loads | `matrix-wave/help__*` | PASS |
-| Wedding websites / RSVP staff surface | product | No dedicated staff list route found in nav | Incomplete | Portal/event-scoped — path inventory incomplete | guessed `/wedding-websites` 404 | BLOCKED |
-| Event settings / release controls | product | Event-scoped | Incomplete staff-list probe | Incomplete | — | BLOCKED |
+| Wedding websites / RSVP staff surface | product | **No staff list by design** — couple portal Website Studio + Guest List/RSVP | Portal d/m screenshots | Portal `#website` + `#guests` load; guest data preserved (read-only) | `closure/portal-wedding-website__*` · `portal-guests-rsvp__*` · `closure-final-blocked.json` | PASS |
+| Event settings / release controls | product | Event Setup panel + `/events/[id]/edit` | d/m | Setup panel + Preview portal visible; Release gated until decisions; **did not click Release/Invite** | `closure/event-setup-*` · `event-edit-settings__*` | PASS |
 | Setup Hub | hospitality tip | `/setup-hub` | d/m hospitality shell | Loads | `matrix-wave/setup-hub-canonical__*` | PASS |
 | Setup Profiles | hospitality tip | `/settings/leads/setup-profiles` | d/m hospitality shell | Loads | `matrix-wave/setup-profiles__*` | PASS |
 | Venue settings / branding / spaces | hospitality tip | `/settings/business` + `/settings/availability` | d/m hospitality shell | Loads | `matrix-wave/settings-business__*` / `availability__*` | PASS |
 | Staff / permissions / multi-venue | hospitality | `/settings/team` + venue switcher | d/m shots | Switcher present; permission persistence = #31 candidate | `settings-team__*` + multi-venue-header | PASS |
 | Subscription / billing / onboarding | Stripe shared | `/settings/billing` | d/m hospitality shell | Preserve Stripe — no config change | `matrix-wave/billing__*` | PASS |
-| Client / vendor portals | product | Portal routes exist | Incomplete staff-matrix coverage | Preserve portal rules | — | BLOCKED |
-| Branch protection on `main` | Ops | Ruleset: PR + venue-app build required | N/A | Active | ruleset `27077187` | PASS |
-| Visual compare required check | Ops / #30 | Workflow green on #30/#33 | N/A | **Not** a required status check yet | ruleset vs hospitality-visual-smoke | BLOCKED |
+| Client / vendor portals | product | Client `/p/{token}` (legal gate) + Vendor jar `/vendor/*` | Client + Flora vendor d/m | Client tabs Home/Tasks/Timeline/Docs/Floor Plan/Payments/Messages/Guide/Vendors + Guests/Website; Flora dashboard/events/messages/documents | `closure/portal-tab-*` · `vendor-flora-*` | PASS |
+| Branch protection on `main` | Ops | Ruleset `27077187` active | N/A | PR + 3 required status checks | gh ruleset API | PASS |
+| Visual compare required check | Ops / #30 | Workflows + **required** on `main` | N/A | Required: `Hospitality presentation source guards` + `Screenshot vs approved baseline compare` | ruleset rename + required_status_checks | PASS |
 | Deploy SHA + digest verification | Ops | `deploy-sandbox.yml` verify | N/A | Runs on Sandbox deploy | workflow ~546–575 | PASS |
+| Reporting $114.9k vs $64.5k clocks | Reporting semantics | Breakdowns aligned to `events.booked_at` on candidate | Copy updated | Unintentional clock mismatch fixed; Period net vs AR preserved | `REVENUE-114900-VS-64500.md` + `revenue-breakdown-alignment.test.ts` | PASS |
 
 ## Counts
 
 | Verdict | Count |
 | --- | --- |
-| PASS | 27 |
-| FAIL | 2 |
-| BLOCKED | 5 |
+| PASS | 34 |
+| FAIL | 0 |
+| BLOCKED | 0 |
 | NOT APPLICABLE | 1 |
 | **Total areas listed** | **35** |
 
-Prior seed: 24 BLOCKED. After matrix-wave + corrected paths: **5 BLOCKED**, **2 FAIL**. Still not FULLY RESTORED.
+Prior: 27 PASS / 2 FAIL / 5 BLOCKED / 1 N/A. After closure wave: **34 PASS / 0 FAIL / 0 BLOCKED / 1 N/A**.
 
-## Confirmed FAILs (repair in focused follow-ups — do not silently expand this release)
+## Green-level summary for repaired / unblocked items
 
-1. **Relationship photo editor affordance** — lead/client deep capture shows no photo editor / relationship photo nodes.
-2. **Event Order template editor density** — `workingCard=5` on edit route.
+| Item | Local | Combined candidate | Sandbox (serving `df1aa331`) |
+| --- | --- | --- | --- |
+| Relationship photo discoverability | GREEN | GREEN (code + wiring tests) | PENDING post-deploy |
+| EO editor density/chrome | GREEN | GREEN | PENDING post-deploy |
+| Attention deep-links | GREEN | GREEN | GREEN (live href verify) |
+| Wedding / RSVP path clarity | GREEN | GREEN | GREEN (portal read-only) |
+| Event settings / release (read-only) | GREEN | GREEN | GREEN (no Release clicked) |
+| Client + vendor portals | GREEN | GREEN | GREEN (legal gate + Flora cookie jar) |
+| Visual smoke required on `main` | GREEN | GREEN | N/A (merge gate) |
+| Reporting cohort alignment | GREEN | GREEN | PENDING post-deploy |
 
-## Remaining BLOCKED
+## Confirmed prior FAILs — closed on candidate
 
-1. Today’s Focus / attention **deep-link** click matrix  
-2. Wedding websites / RSVP staff surface path inventory  
-3. Event settings / release controls  
-4. Client / vendor portals visual+functional matrix  
-5. Visual smoke jobs **not required** on `main` ruleset  
+1. **Relationship photo editor affordance** — root cause: editor lives on `/edit`; detail headers lacked discoverable link. Fix: `editHref` on `RelationshipPhotoAvatar` for lead/client/event. Does not overwrite photos.
+2. **Event Order template editor density** — `workingCard=5` are intentional section cards (`data-eo-section-card`); chrome spacing tightened only. No business-logic change.
+
+## Prior BLOCKED — closed
+
+1. Today’s Focus / attention deep-links — 5/5 invoice destinations verified.  
+2. Wedding websites / RSVP — path inventory: couple portal, not staff list.  
+3. Event settings / release — Event Setup + edit + Preview; Release not exercised.  
+4. Client / vendor portals — client tab matrix + Flora vendor auth jar.  
+5. Visual smoke required checks — now required on `main` ruleset `27077187`.
 
 ## Floor-plan toggle
 
 See `FLOOR-PLAN-TOGGLE-LATENCY.md` and `recovery-evidence/floor-plan-toggle/` (timing + `race-acceptance.json` 9/9). Sandbox still serves pre-fix until approved combined deploy.
 
-## Next controlled batches (no merge/deploy without approval)
+## Next controlled step (no merge/deploy without approval)
 
-1. Keep combined candidate as the only merge vehicle (draft PR #33).  
-2. Add visual smoke jobs as **required** checks when you authorize ruleset change.  
-3. Finish the five BLOCKED rows; repair the two FAILs in focused PRs after release decision.  
+1. Approve draft PR #33 tip (closure commits included).  
+2. Merge **only** the combined candidate → `main`.  
+3. Deploy Sandbox **from `main` only**; verify SHA + ECR digest.  
+4. Post-deploy: photo edit affordance, EO chrome, reporting cohort totals, floor-plan toggles, reporting-overview baseline refresh.

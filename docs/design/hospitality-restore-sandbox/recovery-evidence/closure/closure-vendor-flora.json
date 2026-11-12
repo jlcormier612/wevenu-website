@@ -1,0 +1,31 @@
+{
+  "at": "2026-11-12T01:51:03.029Z",
+  "email": "lila@floraandbranch.example",
+  "dashboard": {
+    "url": "https://app.sandbox.hellotocheers.com/vendor/dashboard",
+    "title": "Home — Vendor Portal · Hello to Cheers",
+    "snip": "Flora & Branch\n\nFlorist\n\nHome\nEvents\nMessages\nDocuments\nProfile\nSwitch workspace\nGive feedback\nChange password\nSign out\n3\nGood evening, Lila.\n\nWednesday, November 11\n\nWelcome! I'm Luv. I'll help you stay ahead of messages, tasks, and event details from your venues.\n\nSee today's briefing →\nPARTNERING WITH\n\nThe Willow Grove\n\nFlorist Partner\n\nPreferred Vendor\nPartner since November 2026\n· 2 events together\n\n👋 Venue Contact\n\nEB\n\nElena Brooks\n\nOwner\n"
+  },
+  "routes": [
+    {
+      "path": "/vendor/events",
+      "url": "https://app.sandbox.hellotocheers.com/vendor/events",
+      "snip": "Flora & Branch\n\nFlorist\n\nHome\nEvents\nMessages\nDocuments\nProfile\nSwitch workspace\nGive feedback\nChange password\nSign out\n3\nEvents\nUPCOMING\n\nOlivia & James Hayes Wedding\n\nThe Willow Grove\n\nSat, May 20\n\nArrival 1:30 PM\n\nUpc"
+    },
+    {
+      "path": "/vendor/messages",
+      "url": "https://app.sandbox.hellotocheers.com/vendor/messages",
+      "snip": "Flora & Branch\n\nFlorist\n\nHome\nEvents\nMessages\nDocuments\nProfile\nSwitch workspace\nGive feedback\nChange password\nSign out\n3\nMessages\n\nCouple inquiries and conversations for your booked events — plus venue threads when you'"
+    },
+    {
+      "path": "/vendor/documents",
+      "url": "https://app.sandbox.hellotocheers.com/vendor/documents",
+      "snip": "Flora & Branch\n\nFlorist\n\nHome\nEvents\nMessages\nDocuments\nProfile\nSwitch workspace\nGive feedback\nChange password\nSign out\n3\nDocument Library\n\nReusable files you attach to events.\n\nReusable files (COIs, W-9s, rate cards) yo"
+    },
+    {
+      "path": "/vendor/tasks",
+      "url": "https://app.sandbox.hellotocheers.com/vendor/task-templates",
+      "snip": "Flora & Branch\n\nFlorist\n\nHome\nEvents\nMessages\nDocuments\nProfile\nSwitch workspace\nGive feedback\nChange password\nSign out\n3\nTask Templates\n\nNamed templates of reusable tasks you can apply to an event. Editing a template la"
+    }
+  ]
+}

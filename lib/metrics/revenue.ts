@@ -59,11 +59,46 @@ export const REVENUE_CATEGORIES = [
 export type RevenueCategory = (typeof REVENUE_CATEGORIES)[number];
 
 /**
+ * Client ids in the Gross Booked Revenue (Contracted) population for a window.
+ *
+ * Matches `canonical_gross_booked_revenue`: first non-cancelled `events.booked_at`
+ * per client (NOT `canonical_bookings.booked_at`, which is financially-committed
+ * signed+deposit and can select a different cohort for the same calendar range).
+ */
+export async function listGrossBookedRevenueClientIds(window?: DateWindow): Promise<Set<string>> {
+  if (!isSupabaseConfigured) return new Set();
+  const venue = await getCurrentVenue();
+  if (!venue) return new Set();
+  const supabase = await createClient();
+
+  let eventsQuery = supabase
+    .from("events")
+    .select("client_id, booked_at")
+    .eq("venue_id", venue.id)
+    .not("booked_at", "is", null)
+    .neq("status", "cancelled")
+    .not("client_id", "is", null);
+  if (window?.from) eventsQuery = eventsQuery.gte("booked_at", window.from);
+  if (window?.to) eventsQuery = eventsQuery.lte("booked_at", `${window.to}T23:59:59.999Z`);
+  const { data: events } = await eventsQuery;
+  const exclusions = await loadReportingExclusions(supabase, venue.id);
+
+  // First booked_at per client (ascending) — same distinct-on semantics as the RPC.
+  const firstByClient = new Map<string, string>();
+  for (const row of (events ?? []) as { client_id: string; booked_at: string }[]) {
+    if (!row.client_id || exclusions.clientIds.has(row.client_id)) continue;
+    const prev = firstByClient.get(row.client_id);
+    if (!prev || row.booked_at < prev) firstByClient.set(row.client_id, row.booked_at);
+  }
+  return new Set(firstByClient.keys());
+}
+
+/**
  * Gross Booked Revenue broken out by Revenue Category, for booked clients
  * only. Best-effort: rows backfilled with no confident signal (see the
  * migration's own comment) will show under whichever category the backfill
  * assigned, most commonly "Other." Work Package R1 — optional date window,
- * filtered on booked_at (the exact same field/semantic
+ * filtered on events.booked_at (the exact same field/semantic
  * canonical_gross_booked_revenue() itself windows on), so a report's
  * category breakdown always matches its own headline Gross Booked Revenue
  * number for the same range.
@@ -80,22 +115,7 @@ export async function getGrossBookedRevenueByCategory(window?: DateWindow): Prom
     .eq("invoices.venue_id", venue.id)
     .neq("invoices.status", "void");
 
-  // The embed above only proves the invoice exists; still need to filter
-  // to booked clients specifically — done as a second, explicit pass
-  // rather than a harder-to-verify nested-embed filter, matching this
-  // codebase's own documented preference for flat fetch + JS aggregation
-  // over untested embedded-relationship filtering (lib/playbooks/
-  // repository.ts's own precedent).
-  let bookingsQuery = supabase.from("canonical_bookings").select("client_id, booked_at").eq("venue_id", venue.id);
-  if (window?.from) bookingsQuery = bookingsQuery.gte("booked_at", window.from);
-  if (window?.to) bookingsQuery = bookingsQuery.lte("booked_at", window.to);
-  const { data: bookings } = await bookingsQuery;
-  const exclusions = await loadReportingExclusions(supabase, venue.id);
-  const bookedClientIds = new Set(
-    (bookings ?? [])
-      .map((b: { client_id: string }) => b.client_id)
-      .filter((id: string) => !exclusions.clientIds.has(id)),
-  );
+  const bookedClientIds = await listGrossBookedRevenueClientIds(window);
 
   type Row = { amount: number; revenue_category: RevenueCategory | null; invoices: { client_id: string | null } | null };
   const totals = new Map<string, number>();

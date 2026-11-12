@@ -185,8 +185,8 @@ export default async function RevenueReportPage({ searchParams }: Props) {
         <CardHeader>
           <CardTitle className="text-base">Revenue by source</CardTitle>
           <CardDescription>
-            Contracted value (when the agreement and first payment were both in place) and payments collected (when money arrived).
-            Missing source is listed as Not recorded. This is money, not a booking count.
+            Contracted breakdown uses the same clients and event booked dates as the Contracted headline above — row amounts should sum to that headline for this range.
+            Collected is when money arrived (payment date). Missing source is listed as Not recorded. This is money, not a booking count.
             Period net is not broken out by source because contracted and collected use different date clocks.
           </CardDescription>
         </CardHeader>
@@ -233,7 +233,9 @@ export default async function RevenueReportPage({ searchParams }: Props) {
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Revenue by Category</CardTitle>
-          <CardDescription>Where booked revenue comes from. Click a category for the clients behind it.</CardDescription>
+          <CardDescription>
+            Same Contracted population as the headline (event booked date). Category amounts should sum to Contracted for this range. Click a category for the clients behind it.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {byCategory.length === 0 ? (

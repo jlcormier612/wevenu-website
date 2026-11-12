@@ -761,6 +761,11 @@ export function EventDetail({
               name={relationshipContact
                 ? [relationshipContact.firstName, relationshipContact.partnerFirstName].filter(Boolean).join(" & ") || event.name
                 : (event.clientName ?? event.name)}
+              editHref={
+                relationshipContact?.clientId
+                  ? `/clients/${relationshipContact.clientId}/edit`
+                  : undefined
+              }
             />
             <h1 className="font-heading text-2xl font-medium text-heading">{event.name}</h1>
           </div>

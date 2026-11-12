@@ -1,0 +1,81 @@
+{
+  "at": "2026-11-12T01:49:05.190Z",
+  "portalTokenTail": "mw7cnv0c",
+  "portalNavTexts": [
+    "🏠 Home",
+    "✅ Tasks",
+    "🕒 Timeline",
+    "📁 Docs",
+    "🗺️ Floor Plan",
+    "💳 Payments",
+    "💬 Messages",
+    "🏛️ Guide",
+    "🤝 Vendors",
+    "Home",
+    "Tasks",
+    "Messages",
+    "Payments",
+    "More"
+  ],
+  "portalWeddingHints": [
+    "🌐 Wedding Website Start your wedding website Open Website →",
+    "👥 Guest List Begin your guest list Open Guest List →"
+  ],
+  "portal_Guests": {
+    "ok": false
+  },
+  "portal_Website": {
+    "ok": false
+  },
+  "portal_Guest List": {
+    "ok": true,
+    "url": "https://app.sandbox.hellotocheers.com/p/wg_c04_mw7cnv0c#guests",
+    "snippet": "The Willow Grove\n\nAug 12, 2028\n\nExport my data\n🏠\nHome\n✅\nTasks\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n💳\nPayments\n💬\nMessages\n🏛️\nGuide\n🤝\nVendors\n\nNOT YET SENT\n\n24\n\nINVITED\n\n0\n\nAWAITING RESPONSE\n\n0\n\nRESPONDED\n\n0\n\n100%\nresponded\n\nTOTAL\n\n24\n\nCOMING\n\n24\n\nDECLINED\n\n0\n\nPENDING\n\n0\n\n💗\n100% response rate — almost everyone has weighed in. Nice work.\n💗\nYou ha"
+  },
+  "portal_RSVP": {
+    "ok": false
+  },
+  "weddingSites": null,
+  "mtEvents": [
+    {
+      "id": "e1d7d6cd-421a-4a64-bd41-2cc8340677d4",
+      "name": "Morgan & Taylor Reed Wedding (C04 Demo)",
+      "client_id": "11ce02ca-3c56-49f9-baf9-115d2fc830e3"
+    }
+  ],
+  "eventOverviewHasRelease": false,
+  "eventOverviewSnippet": "OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\nClients\nVendors\n\nSCHEDULING\n\nCalendar\nTours\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nLIBRARY\n\nTemplates\nDocuments\n\nFINANCIALS\n\nContracts\nPayments\n\nTO DO’S\n\nTask Center\nRequests\n\nYOUR VENUE\n\nSetup\nSettings\nGuidance\nVenue Guide\nReports\nHelp & Feedback\nThe Willow Grove\nSearch\n⌘K\nJ\njennifer@hellotocheers.com\nDelete\nBookings\nMT\nMorgan & Taylor Reed Wedding (C04 Demo)\nBooked\nEdit event\nDay-of Sheet\nCancel event\n\nWEDDING\n\nAugust 12, 2028\n\nSaturday · In 639 days\n\nBooked\nTime\nAll day\nEstimated\n90 guests\nGuaranteed\nNot set\nSpaces\nCarriage House\n\nTEAM ASSIGNMENT\n\nEvent owner\nUnassigned\nEdit/Save\nQuestionnaires\n\nChoose and send your prepared information/feedback-gathering questionnaires when ready — separate from the client portal release process. Schedule them or send now — your choice!\n\nOpen Questionnaires\nInventory & Event Order\nEvent Order: Not started\nOp",
+  "setupControlCount": 0,
+  "eventEdit": {
+    "url": "https://app.sandbox.hellotocheers.com/events/e1d7d6cd-421a-4a64-bd41-2cc8340677d4/edit",
+    "hasForm": true,
+    "snippet": "OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\nClients\nVendors\n\nSCHEDULING\n\nCalendar\nTours\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nLIBRARY\n\nTemplates\nDocuments\n\nFINANCIALS\n\nContracts\nPayments\n\nTO DO’S\n\nTask Center\nRequests\n\nYOUR VENUE\n\nSetup\nSettings\nGuidance\nVenue Guide\nReports\nHelp & Feedback\nThe Willow Grove\nSearch\n⌘K\nJ\njennifer@hellotocheers.com\nClient\nEdit · Morgan & Taylor Reed Wedding (C04 Demo)\n\nUpdate event details.\n\nBooking date\nUsed for payments due at booking. Separate from the Event date"
+  },
+  "vendorLookup": {
+    "vendor_portal_sessions": {
+      "error": "Could not find the table 'public.vendor_portal_sessions' in the schema cache",
+      "count": 0,
+      "sampleKeys": []
+    },
+    "vendor_access_tokens": {
+      "error": "Could not find the table 'public.vendor_access_tokens' in the schema cache",
+      "count": 0,
+      "sampleKeys": []
+    },
+    "vendor_invites": {
+      "error": "Could not find the table 'public.vendor_invites' in the schema cache",
+      "count": 0,
+      "sampleKeys": []
+    },
+    "event_vendors": {
+      "error": "Could not find the table 'public.event_vendors' in the schema cache",
+      "count": 0,
+      "sampleKeys": []
+    }
+  },
+  "vendorPortalSessionsAny": {
+    "count": 0,
+    "keys": [],
+    "sample": null
+  }
+}
