@@ -88,7 +88,9 @@ jobs:
           set -euo pipefail
           wf=".github/workflows/deploy-sandbox.yml"
           grep -q "Record and verify venue-app image SHA + digest" "$wf"
-          grep -q 'EXPECTED_SHA: \${{ github.sha }}' "$wf"
+          # Do not embed ${{ }} in this script — Actions interpolates it and breaks grep.
+          grep -q "EXPECTED_SHA:" "$wf"
+          grep -q "github.sha" "$wf"
           grep -q "does not match deploy SHA" "$wf"
           grep -q "Could not resolve ECR digest" "$wf"
           grep -q "DEPLOY_IDENTITY sha=" "$wf"
