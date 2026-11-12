@@ -1,0 +1,37 @@
+{
+  "at": "2026-11-11T23:55:42.028Z",
+  "deep": {
+    "lead": {
+      "path": "/leads/c812654a-a7e6-43f3-874d-e1592f050648",
+      "hospitality": 0,
+      "photoEditor": 0,
+      "relationshipPhotoNodes": 0,
+      "avatarImgs": 3,
+      "tablist": 1
+    },
+    "timelineEdit": {
+      "path": "/library/timeline-templates/98576b73-ad50-40db-92a6-eee2a81a5507",
+      "hospitality": 1,
+      "workingCard": 1,
+      "phase12": 1,
+      "title": "Reception Only Timeline — Timeline Templates · Hello to Cheers"
+    },
+    "client": {
+      "path": "/clients/4dc379ce-d2b4-4289-825c-1155ea643eb9",
+      "hospitality": 0,
+      "relationshipPhotoNodes": 0,
+      "tablist": 2
+    },
+    "inbox": {
+      "path": "/messaging",
+      "hospitality": 1,
+      "attentionApi": 200,
+      "unreadOrBadge": 3
+    }
+  },
+  "discovered": {
+    "leadHref": "/leads/c812654a-a7e6-43f3-874d-e1592f050648",
+    "timelineEdit": "/library/timeline-templates/98576b73-ad50-40db-92a6-eee2a81a5507",
+    "clientHref": "/clients/4dc379ce-d2b4-4289-825c-1155ea643eb9"
+  }
+}

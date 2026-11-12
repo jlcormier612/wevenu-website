@@ -543,6 +543,37 @@ jobs:
           fi
           echo "venue-app COMMUNICATION_MODE=real on $svc_td ($dep_running/$dep_desired tasks)"
 
+      - name: Record and verify venue-app image SHA + digest
+        # Deployment integrity: the running service must serve the commit that
+        # triggered this workflow (github.sha), not a stale tag or mutated digest.
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          svc_td=$(aws ecs describe-services --cluster htc-sandbox --services htc-sandbox-venue-app \
+            --query "services[0].taskDefinition" --output text)
+          image=$(aws ecs describe-task-definition --task-definition "$svc_td" \
+            --query "taskDefinition.containerDefinitions[0].image" --output text)
+          tag="${image##*:}"
+          if [ "$tag" != "$EXPECTED_SHA" ]; then
+            echo "::error::Running venue-app image tag '$tag' does not match deploy SHA '$EXPECTED_SHA' (image=$image)."
+            exit 1
+          fi
+          digest=$(aws ecr describe-images --repository-name htc-sandbox-venue-app \
+            --image-ids imageTag="$EXPECTED_SHA" --query 'imageDetails[0].imageDigest' --output text)
+          if [ -z "$digest" ] || [ "$digest" = "None" ]; then
+            echo "::error::Could not resolve ECR digest for htc-sandbox-venue-app:$EXPECTED_SHA"
+            exit 1
+          fi
+          {
+            echo "### Sandbox venue-app deployment identity"
+            echo "- source SHA: \`$EXPECTED_SHA\`"
+            echo "- task definition: \`$svc_td\`"
+            echo "- image: \`$image\`"
+            echo "- digest: \`$digest\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "DEPLOY_IDENTITY sha=$EXPECTED_SHA task=$svc_td image=$image digest=$digest"
+
       - name: Verify ALB endpoints
         run: |
           ALB_DNS=$(aws cloudformation describe-stacks \

@@ -1,0 +1,33 @@
+{
+  "at": "2026-11-12T00:01:13.055Z",
+  "routes": {
+    "floor-plan-edit-real": {
+      "path": "/library/floor-plan-templates/6dfb74c9-b1c7-4d54-ae50-760db4216f2b",
+      "hospitality": 1,
+      "workingCard": 1,
+      "heading": 1,
+      "phase12": 1
+    },
+    "questionnaire-edit-real": {
+      "path": "/library/questionnaire-templates/88ffd0f4-f811-479d-a224-fa7e3aa199e7",
+      "hospitality": 1,
+      "workingCard": 0,
+      "heading": 1,
+      "phase12": 1
+    },
+    "calendar": {
+      "path": "/calendar",
+      "hospitality": 0,
+      "workingCard": 0,
+      "heading": 1,
+      "phase12": 0
+    },
+    "event-order-edit": {
+      "path": "/library/event-order-templates/f5d05a81-2069-4fdf-96c4-40e8534ae948",
+      "hospitality": 1,
+      "workingCard": 5,
+      "heading": 1,
+      "phase12": 1
+    }
+  }
+}

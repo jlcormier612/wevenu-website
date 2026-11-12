@@ -344,10 +344,10 @@ export async function getDashboardData(): Promise<DashboardData | null> {
           .limit(15),
       ),
       // Coming up source: events table only — real event_date, next 30 days.
-      forensicTime("events_query", () =>
+          forensicTime("events_query", () =>
         supabase
           .from("events")
-          .select("id, name, event_date, start_time, status, guest_count, client_id, exclude_from_business_reporting, clients(first_name, last_name, partner_first_name, partner_last_name)")
+          .select("id, name, event_date, start_time, status, guest_count, client_id, event_type, exclude_from_business_reporting, clients(first_name, last_name, partner_first_name, partner_last_name)")
           .eq("venue_id", venue.id)
           .neq("status", "cancelled")
           .gte("event_date", today)
@@ -455,6 +455,7 @@ export async function getDashboardData(): Promise<DashboardData | null> {
   type DashEventRow = {
     id: string; name: string; event_date: string; start_time: string | null;
     status: string; guest_count: number | null; client_id: string | null;
+    event_type: string | null;
     exclude_from_business_reporting?: boolean;
     clients: { first_name: string; last_name: string; partner_first_name: string | null; partner_last_name: string | null } | null;
   };
@@ -471,6 +472,7 @@ export async function getDashboardData(): Promise<DashboardData | null> {
       id: r.id, name: r.name, eventDate: r.event_date,
       startTime: r.start_time?.slice(0, 5) ?? null, status: r.status,
       guestCount: r.guest_count, clientId: r.client_id, clientName: cn,
+      eventType: r.event_type ?? null,
     };
   });
 

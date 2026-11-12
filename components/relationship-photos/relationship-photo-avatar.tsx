@@ -25,7 +25,12 @@ export function RelationshipPhotoAvatar({
 }) {
   const initials = initialsFromName(name);
   return (
-    <Avatar size={size} className={cn("shrink-0", className)}>
+    <Avatar
+      size={size}
+      className={cn("shrink-0", className)}
+      data-testid="relationship-photo-avatar"
+      data-relationship-photo={photoUrl ? "uploaded" : "initials"}
+    >
       {photoUrl ? <AvatarImage src={photoUrl} alt="" /> : null}
       <AvatarFallback className="bg-muted text-muted-foreground text-sm font-medium">
         {initials}

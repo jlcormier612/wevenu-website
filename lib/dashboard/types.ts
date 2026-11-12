@@ -53,6 +53,8 @@ export type DashboardEvent = {
   guestCount: number | null;
   clientId: string | null;
   clientName: string | null;
+  /** Stored events.event_type when present — display via eventTypeLabel; never invent. */
+  eventType: string | null;
 };
 
 

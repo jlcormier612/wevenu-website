@@ -1,0 +1,117 @@
+{
+  "at": "2026-11-11T23:51:26.131Z",
+  "base": "https://app.sandbox.hellotocheers.com",
+  "updateBaselines": true,
+  "routes": {
+    "reporting-overview": {
+      "ok": true,
+      "assertions": {
+        "metricTiles": 9,
+        "hasBusinessFunnel": true,
+        "hasSalesTone": true,
+        "hasOutstandingTone": true,
+        "hospitalityPage": true
+      },
+      "shots": {
+        "desktop": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-visual-baselines/current/reporting-overview__desktop.png",
+        "mobile": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-visual-baselines/current/reporting-overview__mobile.png"
+      }
+    },
+    "dashboard": {
+      "ok": true,
+      "assertions": {
+        "hospitalityPage": true,
+        "attentionPresent": true
+      },
+      "shots": {
+        "desktop": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-visual-baselines/current/dashboard__desktop.png",
+        "mobile": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-visual-baselines/current/dashboard__mobile.png"
+      }
+    },
+    "leads": {
+      "ok": true,
+      "assertions": {
+        "hospitalityPage": true,
+        "toolbar": true
+      },
+      "shots": {
+        "desktop": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-visual-baselines/current/leads__desktop.png",
+        "mobile": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-visual-baselines/current/leads__mobile.png"
+      }
+    },
+    "clients": {
+      "ok": true,
+      "assertions": {
+        "hospitalityPage": true,
+        "toolbar": true
+      },
+      "shots": {
+        "desktop": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-visual-baselines/current/clients__desktop.png",
+        "mobile": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-visual-baselines/current/clients__mobile.png"
+      }
+    },
+    "billing": {
+      "ok": true,
+      "assertions": {
+        "hospitalityPage": true,
+        "heading": true
+      },
+      "shots": {
+        "desktop": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-visual-baselines/current/billing__desktop.png",
+        "mobile": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-visual-baselines/current/billing__mobile.png"
+      }
+    },
+    "org-settings": {
+      "ok": true,
+      "assertions": {
+        "hospitalityPage": true,
+        "heading": true
+      },
+      "shots": {
+        "desktop": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-visual-baselines/current/org-settings__desktop.png",
+        "mobile": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-visual-baselines/current/org-settings__mobile.png"
+      }
+    },
+    "templates": {
+      "ok": true,
+      "assertions": {
+        "hospitalityPage": true,
+        "title": "Templates · Hello to Cheers"
+      },
+      "shots": {
+        "desktop": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-visual-baselines/current/templates__desktop.png",
+        "mobile": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-visual-baselines/current/templates__mobile.png"
+      }
+    },
+    "communication-templates": {
+      "ok": true,
+      "assertions": {
+        "hospitalityPage": true
+      },
+      "shots": {
+        "desktop": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-visual-baselines/current/communication-templates__desktop.png",
+        "mobile": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-visual-baselines/current/communication-templates__mobile.png"
+      }
+    },
+    "timeline-templates": {
+      "ok": true,
+      "assertions": {
+        "hospitalityPage": true
+      },
+      "shots": {
+        "desktop": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-visual-baselines/current/timeline-templates__desktop.png",
+        "mobile": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-visual-baselines/current/timeline-templates__mobile.png"
+      }
+    },
+    "questionnaire-templates": {
+      "ok": true,
+      "assertions": {
+        "hospitalityPage": true
+      },
+      "shots": {
+        "desktop": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-visual-baselines/current/questionnaire-templates__desktop.png",
+        "mobile": "/Users/jensmac/Developer/wevenu-website/docs/design/hospitality-visual-baselines/current/questionnaire-templates__mobile.png"
+      }
+    }
+  }
+}
