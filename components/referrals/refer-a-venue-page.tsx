@@ -264,8 +264,7 @@ export function ReferAVenuePage() {
             Qualifying referrals are new, independently paying venues. Your thank-you is a
             one-time credit equal to one month of your applicable subscription after the
             referred venue has remained paying for 30 days with settled payment. Self-referrals,
-            duplicates, and refunded or disputed purchases do not qualify. Complete program
-            details follow the Refer a Venue policy applied at reward time.
+            duplicates, and refunded or disputed purchases do not qualify.
           </p>
         </CardContent>
       </Card>
