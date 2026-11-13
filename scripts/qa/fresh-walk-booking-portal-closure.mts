@@ -6,15 +6,15 @@
  * Sandbox only. No Production. No real customer outreach.
  */
 import { createRequire } from "node:module";
-import { mkdirSync, writeFileSync } from "node:fs";
-import { createClient } from "@supabase/supabase-js";
-import { config } from "dotenv";
+import { mkdirSync, writeFileSync, readFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 
-config({ path: "/Users/jensmac/Developer/wevenu-website/.env.local", quiet: true });
 const require = createRequire(
   "/Users/jensmac/Developer/wevenu-website/marketing/package.json",
 );
+const { config } = require("dotenv");
+config({ path: "/Users/jensmac/Developer/wevenu-website/.env.local", quiet: true });
+const { createClient } = require("@supabase/supabase-js");
 const { chromium } = require("playwright");
 const ssrUtils = require(
   "/Users/jensmac/Developer/wevenu-website/node_modules/@supabase/ssr/dist/main/utils/index.js",
@@ -25,7 +25,7 @@ const WORKSPACE = "https://workspace.sandbox.hellotocheers.com";
 const VENUE = "c314c50c-09b3-4c27-a5ca-4cfd832dbd1e";
 const OWNER_EMAIL = "jennifer+fresh.walk.mwf976l4@hellotocheers.com";
 const EXPECTED_SHA = process.env.EXPECTED_SHA ?? "";
-const OUT = "docs/qa/fresh-venue-first-time/closure";
+const OUT = "/private/tmp/htc-setup-hub-wt/docs/qa/fresh-venue-first-time/closure";
 mkdirSync(OUT, { recursive: true });
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
@@ -121,21 +121,21 @@ async function main() {
 
   // --- Scenario A: activation UX wired (browser disposable activation after deploy) ---
   try {
-    const { readFileSync } = await import("node:fs");
+    const root = "/private/tmp/htc-setup-hub-wt";
     const formSrc = readFileSync(
-      "workspace/components/activate/activate-account-form.tsx",
+      `${root}/workspace/components/activate/activate-account-form.tsx`,
       "utf8",
     );
     const helperSrc = readFileSync(
-      "workspace/lib/program4/activate-account-form.ts",
+      `${root}/workspace/lib/program4/activate-account-form.ts`,
       "utf8",
     );
-    const loginSrc = readFileSync("components/auth/login-form.tsx", "utf8");
+    const loginSrc = readFileSync(`${root}/components/auth/login-form.tsx`, "utf8");
     record(
       "activation_processing_copy_wired",
       /data-activate-processing/.test(formSrc)
         && /Setting up your account/.test(helperSrc)
-        && /Stay on this page/.test(helperSrc)
+        && /stay on this page/i.test(helperSrc)
         && /if \(pending\)/.test(formSrc)
         && /postActivationInvalidCredentialsMessage/.test(loginSrc),
       "processing banner + double-submit guard + soft login hint",
@@ -148,6 +148,9 @@ async function main() {
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
   const page = await context.newPage();
+  page.on("dialog", async (dialog) => {
+    await dialog.accept().catch(() => undefined);
+  });
 
   try {
     await context.addCookies(await cookiesFor(OWNER_EMAIL, VENUE));
@@ -388,41 +391,33 @@ async function main() {
       await page.waitForTimeout(2500);
     }
 
-    // Save draft if builder requires it
-    const saveDraft = page.getByRole("button", { name: /Save draft|Create contract|Save & continue|Save/i }).first();
-    if (await saveDraft.count() && /contracts\/new/.test(page.url())) {
-      await saveDraft.click().catch(() => undefined);
-      await page.waitForTimeout(3000);
+    // Save draft on the New Contract builder (exact label)
+    if (/contracts\/new/.test(page.url())) {
+      const saveDraft = page.getByRole("button", { name: /^Save draft$/i });
+      if (await saveDraft.count()) {
+        await saveDraft.scrollIntoViewIfNeeded();
+        await saveDraft.click();
+        for (let i = 0; i < 40; i += 1) {
+          await page.waitForTimeout(500);
+          if (/\/contracts\/[0-9a-f-]{36}/.test(page.url())) break;
+        }
+      }
     }
     await page.screenshot({ path: `${OUT}/04-contract-builder.png`, fullPage: true });
 
     // Resolve contract id from URL or DB
     const urlMatch = page.url().match(/\/contracts\/([0-9a-f-]{36})/);
     if (urlMatch) contractId = urlMatch[1];
-    if (!contractId) {
-      const { data: cRow } = await admin
-        .from("contracts")
-        .select("id,status,title,client_id,event_id")
-        .eq("venue_id", VENUE)
-        .eq("lead_id", leadId)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      contractId = cRow?.id ?? null;
-    }
-    // lead_id may not exist on contracts — try by selection / recent
-    if (!contractId) {
+    if (!contractId && selectionId) {
       const { data: cRow } = await admin
         .from("contracts")
         .select("id,status,title,client_id,event_id,created_at")
         .eq("venue_id", VENUE)
         .order("created_at", { ascending: false })
         .limit(5);
-      const recent = (cRow ?? []).find((c) => true);
-      // Prefer newest for this venue created in last 10 min
-      const cutoff = Date.now() - 10 * 60_000;
+      const cutoff = Date.now() - 15 * 60_000;
       const fresh = (cRow ?? []).find((c) => new Date(c.created_at).getTime() > cutoff);
-      contractId = fresh?.id ?? recent?.id ?? null;
+      contractId = fresh?.id ?? null;
     }
     ids.contractId = contractId;
     record("contract_created", !!contractId, `contractId=${contractId}`, "C");
@@ -892,7 +887,8 @@ async function main() {
         (u) => u.email?.toLowerCase() === clientEmail.toLowerCase(),
       );
       if (user?.id) {
-        await admin.from("client_users").upsert({ id: user.id }).catch(() => undefined);
+        const { error: cuErr } = await admin.from("client_users").upsert({ id: user.id });
+        if (cuErr) console.log("client_users upsert", cuErr.message);
       }
       const { error: sessErr } = await admin.from("client_portal_sessions").insert({
         venue_id: VENUE,
