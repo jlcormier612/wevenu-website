@@ -551,7 +551,7 @@ async function main() {
     await sess1.page.screenshot({ path: `${OUT}/D-setup-hub-1.png` });
     record(
       "D.setup_hub_reachable",
-      isWorkspaceUrl(sess1.page.url()) &&
+      /\/setup-hub/i.test(sess1.page.url()) &&
         /Setup/i.test(setup1) &&
         !/Subscription inactive/i.test(setup1),
       `url=${sess1.page.url()} excerpt=${setup1.slice(0, 220)}`,
