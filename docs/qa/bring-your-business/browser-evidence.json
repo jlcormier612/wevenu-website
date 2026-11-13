@@ -1,0 +1,46 @@
+{
+  "venue": "DISPOSABLE Fresh Walk mwf976l4",
+  "venueId": "c314c50c-09b3-4c27-a5ca-4cfd832dbd1e",
+  "discovered": {
+    "setupHubChapter4": "https://app.sandbox.hellotocheers.com/setup-hub",
+    "migrationCenter": "https://app.sandbox.hellotocheers.com/settings/migration",
+    "importData": "https://app.sandbox.hellotocheers.com/settings/import?type=couples"
+  },
+  "importExercise": {
+    "method": "paste CSV via Import Data UI",
+    "entity": "clients/couples",
+    "rowsReady": "3 of 3",
+    "imported": 3,
+    "notesColumn": "unmapped \u2014 warned as will be lost",
+    "postImportCtaServing": "Invite clients to the portal (pre-fix)",
+    "clientsList": "All Bookings filter hides contacts without bookings \u2014 Ava/Noah/Mia not visible until event attached",
+    "dbConfirmed": [
+      "ava.patel.byb@hellotocheers-test.invalid",
+      "noah.kim.byb@hellotocheers-test.invalid"
+    ],
+    "historicalImportFlag": true,
+    "noAutoInvite": true
+  },
+  "supportedEntityTypesMigrationCenter": [
+    "Calendar blocks",
+    "Date holds",
+    "Clients",
+    "Leads",
+    "Vendors",
+    "Packages",
+    "Events",
+    "Tours",
+    "Documents",
+    "Booked-event finances",
+    "Event vendor assignments",
+    "Timeline entries",
+    "Floor plans"
+  ],
+  "importDataEntityTypes": [
+    "Clients",
+    "Leads",
+    "Vendors",
+    "Inventory Templates",
+    "Package Templates"
+  ]
+}
