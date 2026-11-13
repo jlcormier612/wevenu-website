@@ -131,7 +131,7 @@ describe("welcome-integration role + context mapping", () => {
     );
     assert.match(
       String(copyForWelcomeContext("venueSignup").introduction),
-      /Before creating your venue workspace/,
+      /Before you continue into your venue workspace/,
     );
     assert.equal(
       copyForWelcomeContext("versionUpdate").heading,

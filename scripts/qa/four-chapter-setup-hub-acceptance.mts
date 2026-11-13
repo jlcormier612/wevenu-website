@@ -6,18 +6,16 @@
  */
 import { createRequire } from "node:module";
 import { mkdirSync, writeFileSync } from "node:fs";
-import { createClient } from "@supabase/supabase-js";
-import { config } from "dotenv";
-
-config({ path: "/Users/jensmac/Developer/wevenu-website/.env.local", quiet: true });
-config({ path: ".env.local", quiet: true });
 
 const require = createRequire("/Users/jensmac/Developer/wevenu-website/package.json");
 const { chromium } = require("playwright");
+const { createClient } = require("@supabase/supabase-js");
+const { config } = require("dotenv");
+config({ path: "/Users/jensmac/Developer/wevenu-website/.env.local", quiet: true });
 
 const APP = "https://app.sandbox.hellotocheers.com";
 const WORKSPACE = "https://workspace.sandbox.hellotocheers.com";
-const OUT = "docs/qa/four-chapter-setup-hub";
+const OUT = "/private/tmp/htc-setup-hub-wt/docs/qa/four-chapter-setup-hub";
 const stamp = Date.now().toString(36);
 
 mkdirSync(OUT, { recursive: true });
@@ -92,37 +90,35 @@ async function magicLogin(email: string, venueId: string) {
 async function main() {
   const report: Record<string, unknown> = { startedAt: new Date().toISOString(), stamp };
 
-  // Prefer a disposable paid enrollment that still has an activation token.
+  // Prefer a still-provisioned disposable paid enrollment (token unused).
   let { data: enrollment } = await admin
     .from("venue_enrollments")
     .select(
       "id,venue_id,status,owner_email,activation_token,stripe_checkout_session_id,stripe_subscription_id",
     )
     .ilike("owner_email", "jennifer+access.paid.a.%@hellotocheers.com")
+    .eq("status", "provisioned")
     .not("activation_token", "is", null)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
 
   if (!enrollment?.activation_token || !enrollment.venue_id) {
-    // Fall back to any disposable Access Paid A venue already activated.
-    const { data: venue } = await admin
-      .from("venues")
-      .select("id,name")
-      .ilike("name", "DISPOSABLE Access Paid A%")
+    // Reuse the latest activated disposable Access Paid A enrollment.
+    const { data: activated } = await admin
+      .from("venue_enrollments")
+      .select(
+        "id,venue_id,status,owner_email,activation_token,stripe_checkout_session_id,stripe_subscription_id",
+      )
+      .ilike("owner_email", "jennifer+access.paid.a.%@hellotocheers.com")
+      .eq("status", "activated")
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
-    if (!venue) throw new Error("No disposable paid A venue found — run paid checkout first");
-    enrollment = {
-      id: "existing",
-      venue_id: venue.id,
-      status: "activated",
-      owner_email: "jennifer+access.paid.a.mwf65mrq@hellotocheers.com",
-      activation_token: null,
-      stripe_checkout_session_id: null,
-      stripe_subscription_id: null,
-    };
+    if (!activated?.venue_id) {
+      throw new Error("No disposable paid A venue found — run paid checkout first");
+    }
+    enrollment = { ...activated, activation_token: null };
     report.activationMode = "already_activated_login";
   } else {
     report.activationMode = "fresh_password_activation";
@@ -167,9 +163,18 @@ async function main() {
       }
 
       await page.screenshot({ path: `${OUT}/H-02-activate-filled.png`, fullPage: true });
-      const submit = page.getByRole("button", { name: /Activate|Create account|Continue|Get started/i }).first();
+      const submit = page.getByRole("button", { name: /Let's go|Activate|Create account|Continue|Get started/i }).first();
+      await submit.waitFor({ state: "visible", timeout: 15000 });
+      // Wait until client-side canSubmit enables the button
+      for (let i = 0; i < 40; i++) {
+        if (!(await submit.isDisabled().catch(() => true))) break;
+        await page.waitForTimeout(250);
+      }
+      if (await submit.isDisabled().catch(() => true)) {
+        throw new Error("Let's go remained disabled after fill");
+      }
       await submit.click({ timeout: 20000 });
-      await page.waitForTimeout(4000);
+      await page.waitForTimeout(5000);
       await page.screenshot({ path: `${OUT}/H-03-after-activate.png`, fullPage: true });
       report.afterActivateUrl = page.url();
       record(
@@ -190,23 +195,71 @@ async function main() {
     await context.clearCookies();
     await context.addCookies(login.cookies);
 
-    await page.goto(`${APP}/setup-hub`, { waitUntil: "domcontentloaded", timeout: 90000 });
-    await page.waitForTimeout(2500);
+    async function completeWelcomeIfPresent(shotName = "H-welcome-gate") {
+      if (!/\/welcome/.test(page.url())) return false;
+      await page.screenshot({ path: `${OUT}/${shotName}.png`, fullPage: true });
+      const agree = page.locator('input[type="checkbox"]').first();
+      if (await agree.count()) {
+        await agree.check({ force: true }).catch(async () => agree.click({ force: true }));
+      }
+      const cont = page.getByRole("button", { name: /^Continue$/i }).first();
+      await cont.waitFor({ state: "visible", timeout: 20000 });
+      for (let i = 0; i < 40; i++) {
+        if (!(await cont.isDisabled().catch(() => true))) break;
+        await page.waitForTimeout(250);
+      }
+      await Promise.all([
+        page
+          .waitForURL((u) => !u.pathname.includes("/welcome"), { timeout: 45000 })
+          .catch(() => null),
+        cont.click({ timeout: 20000 }),
+      ]);
+      await page.waitForTimeout(1500);
+      return true;
+    }
+
+    async function ensureSetupHub() {
+      await page.goto(`${APP}/setup-hub`, { waitUntil: "domcontentloaded", timeout: 90000 });
+      await page.waitForTimeout(1500);
+      if (await completeWelcomeIfPresent()) {
+        report.hitWelcomeGate = true;
+      }
+      if (!/\/setup-hub/.test(page.url())) {
+        await page.goto(`${APP}/setup-hub`, { waitUntil: "domcontentloaded", timeout: 90000 });
+        await page.waitForTimeout(1500);
+        if (await completeWelcomeIfPresent("H-welcome-gate-retry")) {
+          report.hitWelcomeGate = true;
+        }
+      }
+    }
+
+    await ensureSetupHub();
+    const hitWelcome = Boolean(report.hitWelcomeGate);
     await page.screenshot({ path: `${OUT}/H-04-setup-hub.png`, fullPage: true });
     let hubBody = (await page.locator("body").innerText()).replace(/\s+/g, " ");
     record(
       "H.reaches_setup_hub",
-      /setup-hub|Get your venue ready|Setup|Four approachable|Welcome/i.test(hubBody + page.url()) &&
+      /\/setup-hub/.test(page.url()) &&
+        (await page.locator('[data-testid="setup-hub-chapters"]').count()) > 0 &&
         !/Access denied|subscription inactive|suspended/i.test(hubBody),
-      `url=${page.url()} body=${hubBody.slice(0, 240)}`,
+      `url=${page.url()} welcomeGate=${hitWelcome} body=${hubBody.slice(0, 240)}`,
     );
 
-    // Correct venue
+    // Correct venue (membership + active venue cookie / hub access)
     const { data: venue } = await admin.from("venues").select("id,name").eq("id", venueId).maybeSingle();
+    const { data: membership } = await admin
+      .from("venue_staff")
+      .select("venue_id,role")
+      .eq("venue_id", venueId)
+      .eq("user_id", login.userId)
+      .maybeSingle();
+    const venueNameHit =
+      Boolean(venue?.name) &&
+      (hubBody.includes(venue!.name) || hubBody.includes(venue!.name.split(" ")[0]!));
     record(
       "H.correct_venue",
-      Boolean(venue?.name) && hubBody.includes(venue!.name.split(" ")[0]!),
-      `venue=${venue?.name}`,
+      Boolean(membership?.venue_id) && (/\/setup-hub/.test(page.url()) || venueNameHit),
+      `venue=${venue?.name} membership=${membership?.role ?? "none"} nameHit=${venueNameHit}`,
     );
 
     // Starters
@@ -244,11 +297,16 @@ async function main() {
       await page.waitForTimeout(1500);
     }
     await page.screenshot({ path: `${OUT}/B-business.png`, fullPage: false });
-    record("B.venue_settings_reachable", /Business|Brand|phone|email/i.test(await page.locator("body").innerText()), page.url());
+    record(
+      "B.venue_settings_reachable",
+      /\/settings\//.test(page.url()) &&
+        !/\/onboarding\/intake/.test(page.url()) &&
+        /Business|Brand|phone|email/i.test(await page.locator("body").innerText()),
+      page.url(),
+    );
 
     // Persist BYB skip as Hub progress signal
-    await page.goto(`${APP}/setup-hub`, { waitUntil: "domcontentloaded", timeout: 90000 });
-    await page.waitForTimeout(1500);
+    await ensureSetupHub();
     const skipByb = page.getByRole("button", { name: /Skip for now|starting fresh/i }).first();
     if (await skipByb.count()) {
       await skipByb.click();
@@ -273,6 +331,7 @@ async function main() {
     await page.screenshot({ path: `${OUT}/D-setup-profiles.png`, fullPage: false });
 
     // ---------- E: Make it yours ----------
+    await ensureSetupHub();
     await page.goto(`${APP}/setup-hub#setup-chapter-make-it-yours`, { waitUntil: "domcontentloaded", timeout: 90000 });
     await page.waitForTimeout(1200);
     hubBody = (await page.locator("body").innerText()).replace(/\s+/g, " ");
@@ -299,21 +358,21 @@ async function main() {
     await context.clearCookies();
     const login2 = await magicLogin(ownerEmail, venueId);
     await context.addCookies(login2.cookies);
-    await page.goto(`${APP}/setup-hub`, { waitUntil: "domcontentloaded", timeout: 90000 });
-    await page.waitForTimeout(2000);
+    await ensureSetupHub();
     await page.screenshot({ path: `${OUT}/F-resume.png`, fullPage: true });
     const resumeBody = (await page.locator("body").innerText()).replace(/\s+/g, " ");
     record(
       "F.resume_no_loop",
-      /setup-hub|Get your venue ready|Setup/i.test(resumeBody + page.url()) &&
+      /\/setup-hub/.test(page.url()) &&
+        (await page.locator('[data-testid="setup-hub-chapters"]').count()) > 0 &&
+        !/\/welcome/.test(page.url()) &&
         !/redirect|too many|loop/i.test(resumeBody),
       `url=${page.url()} byb=${JSON.stringify(hubState)}`,
     );
 
     // ---------- G: Mobile ----------
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto(`${APP}/setup-hub`, { waitUntil: "domcontentloaded", timeout: 90000 });
-    await page.waitForTimeout(1500);
+    await ensureSetupHub();
     await page.screenshot({ path: `${OUT}/G-mobile.png`, fullPage: true });
     const mobileChapters = await page.locator('[data-testid="setup-hub-chapters"]').count();
     record("G.mobile_chapters", mobileChapters > 0, `chapters=${mobileChapters}`);

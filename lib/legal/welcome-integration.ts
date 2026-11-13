@@ -31,8 +31,10 @@ export type WelcomeFlowContext =
 export const WP4_WELCOME_COPY = {
   venueSignup: {
     heading: "Welcome to Hello to Cheers",
+    // Paid activation may already have created the venue — do not imply the
+    // workspace does not exist yet. Owners resume Setup Hub via returnTo.
     introduction:
-      "Before creating your venue workspace, please review the documents below.",
+      "Before you continue into your venue workspace, please review the documents below.",
   },
   coupleInvitation: {
     heading: "Welcome",

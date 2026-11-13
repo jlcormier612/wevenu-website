@@ -28,7 +28,15 @@ describe("workspace layout no_memberships routing", () => {
   it("does not introduce an owner-role or onboarding bypass", () => {
     assert.doesNotMatch(layoutSrc, /is_owner\s*===\s*true.*bypass/i);
     assert.doesNotMatch(layoutSrc, /skipOnboarding/i);
-    // Intake submission gate for enrolled self-setup venues remains.
-    assert.match(layoutSrc, /!intake\?\.submittedAt/);
+  });
+
+  it("does not wall activated self-setup venues behind incomplete intake", () => {
+    // Four-chapter Setup Hub is the first-time experience; incomplete
+    // venue_onboarding_intake must not redirect the whole workspace away.
+    assert.doesNotMatch(layoutSrc, /!intake\?\.submittedAt/);
+    assert.doesNotMatch(
+      layoutSrc,
+      /getIntakeForVenue[\s\S]*redirect\("\/onboarding\/intake"\)/,
+    );
   });
 });

@@ -32,7 +32,7 @@ export default async function InitialOwnershipPage() {
       ownerCount: owners.length,
     })
   ) {
-    redirect("/onboarding/intake");
+    redirect("/setup-hub");
   }
 
   const setupPersonName = setupPersonDisplayName({
