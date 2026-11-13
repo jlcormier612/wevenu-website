@@ -1204,8 +1204,15 @@ export function MigrationCenter({
             )}
 
             {resume?.state === "done" && (
-              <div className="rounded-lg border border-success/30 bg-success/5 p-3 text-sm text-foreground">
-                Everything from this file has been resolved — {outcomeSentence(resume.summary)}.
+              <div className="rounded-lg border border-success/30 bg-success/5 p-3 text-sm text-foreground space-y-2">
+                <p>Everything from this file has been resolved — {outcomeSentence(resume.summary)}.</p>
+                <p className="text-xs text-muted-foreground">
+                  Nothing was emailed, invited, or charged. Find contacts under Clients → Contacts, events on Calendar, and continue from{" "}
+                  <Link href={BRING_YOUR_BUSINESS_ROUTES.guidedExperience} className="font-medium text-primary hover:underline">
+                    Bring Your Business
+                  </Link>
+                  .
+                </p>
               </div>
             )}
 

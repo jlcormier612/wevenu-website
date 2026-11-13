@@ -2,6 +2,7 @@
  * Canonical Client list buckets.
  *
  * All Bookings is the active working population (booked, not cancelled, not past).
+ * Contacts are clients without an active booking (including imported people with no event yet).
  * Coming up is a date subset of that population (today through the next 30 days).
  * Needs Attention is an action subset of that population and can overlap Coming up.
  * Cancelled and Past are historical views, opened only by those buckets.
@@ -9,6 +10,7 @@
  */
 export type ClientListFilterKey =
   | "all"
+  | "contacts"
   | "coming_up"
   | "needs_attention"
   | "cancelled"
@@ -19,6 +21,7 @@ export type ClientListFilterKey =
 /** Filters shown as Clients list pills. portal_activation is deep-link only. */
 export const CLIENT_LIST_FILTERS: { key: Exclude<ClientListFilterKey, "portal_activation">; label: string }[] = [
   { key: "all", label: "All Bookings" },
+  { key: "contacts", label: "Contacts" },
   { key: "coming_up", label: "Coming up" },
   { key: "needs_attention", label: "Needs Attention" },
   { key: "cancelled", label: "Cancelled" },
@@ -99,6 +102,16 @@ function isBookedClient(client: ClientListFilterRecord, ctx: ClientListFilterCon
   return true;
 }
 
+/**
+ * Clients without an active booking — including imported contacts that have
+ * not been attached to an event yet. Not a booked event.
+ */
+function isUnbookedContact(client: ClientListFilterRecord, ctx: ClientListFilterContext): boolean {
+  if (client.status === "cancelled") return false;
+  if (ctx.bookedClientIds) return !ctx.bookedClientIds.has(client.id);
+  return !client.eventDate;
+}
+
 function isPastBooking(client: ClientListFilterRecord, ctx: ClientListFilterContext): boolean {
   return isBookedClient(client, ctx) && !!client.eventDate && client.eventDate < ctx.today;
 }
@@ -116,6 +129,8 @@ export function clientMatchesListFilter(
   switch (key) {
     case "all":
       return isAllBooking(client, ctx);
+    case "contacts":
+      return isUnbookedContact(client, ctx);
     case "coming_up":
       return (
         isAllBooking(client, ctx)

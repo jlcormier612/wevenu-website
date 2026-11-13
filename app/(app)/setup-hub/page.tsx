@@ -115,6 +115,9 @@ export default async function SetupHubPage() {
         }}
         intakeBringBusinessChoice={intake?.bringBusinessChoice ?? null}
         setupProfileCount={setupProfiles.profiles.length}
+        spreadsheetImportedCount={importBatches
+          .filter((b) => !b.rolledBackAt)
+          .reduce((sum, b) => sum + b.importedCount, 0)}
       />
     </div>
   );

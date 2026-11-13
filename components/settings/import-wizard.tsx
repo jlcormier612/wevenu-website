@@ -30,7 +30,7 @@ import {
 type CsvRow = Record<string, string>;
 
 const ENTITY_META: Record<EntityType, { label: string; resultPath: string; description: string }> = {
-  couples:   { label: "Clients",   resultPath: "/clients",          description: "Import clients with contact details. Past event dates create a historical calendar Event; future dates stay on the client until you book (Migration Center event import or book from the client)." },
+  couples:   { label: "Clients",   resultPath: "/clients?filter=contacts", description: "Import clients with contact details. Past event dates create a historical calendar Event; future dates stay on the client until you book (Migration Center event import or book from the client). Imported contacts without a booking appear under Clients → Contacts." },
   leads:     { label: "Leads",     resultPath: "/leads",            description: "Import inquiries into your leads pipeline. Historical imports stay quiet (no automations, new-lead alerts, or scheduled outreach)." },
   vendors:   { label: "Vendors",   resultPath: "/vendors",          description: "Import your existing vendor contacts and relationships." },
   inventory: { label: "Inventory Templates", resultPath: "/library/inventory", description: "Import your tables, chairs, decor, and other physical inventory." },
@@ -39,10 +39,10 @@ const ENTITY_META: Record<EntityType, { label: string; resultPath: string; descr
 
 const NEXT_STEP: Record<EntityType, { cta: string; href: string; detail: string }> = {
   couples: {
-    cta:    "Bring over their events next",
-    href:   "/settings/migration?source=another_system",
+    cta:    "Find imported contacts",
+    href:   "/clients?filter=contacts",
     detail:
-      "Imported contacts stay private — nothing is emailed or invited automatically. Use Migration Center to attach bookings, then invite clients when you're ready.",
+      "They appear under Contacts — All Bookings only shows clients with an active booking. Nothing is emailed or invited automatically. Next, bring over their events.",
   },
   leads: {
     cta:    "Review imported leads",
@@ -735,6 +735,14 @@ function StepResults({
             >
               {next.cta} →
             </Link>
+            {entity === "couples" ? (
+              <Link
+                href="/setup-hub/bring-your-business"
+                className="block text-xs font-medium text-primary hover:underline"
+              >
+                Bring over their events next
+              </Link>
+            ) : null}
           </div>
         );
       })()}

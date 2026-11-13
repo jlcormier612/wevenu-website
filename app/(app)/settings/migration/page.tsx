@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { SettingsTabs } from "@/components/settings/settings-tabs";
@@ -45,6 +46,13 @@ export default async function MigrationCenterPage({
         href="/help/what-should-i-set-up-before-i-start"
         label="How to bring your business over"
       />
+      <p className="text-sm text-muted-foreground">
+        Prefer a recommended order?{" "}
+        <Link href="/setup-hub/bring-your-business" className="font-medium text-primary hover:underline">
+          Open Bring Your Business
+        </Link>
+        .
+      </p>
       <MigrationGuidancePanel />
       <SettingsTabs />
       <MigrationCenter
