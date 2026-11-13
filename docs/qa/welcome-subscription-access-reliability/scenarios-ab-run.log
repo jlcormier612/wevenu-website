@@ -1,0 +1,17 @@
+PASS A.ui_checkout_started — session=cs_test_a0jyfNMVCOKz6BWlOHKwmn1hDyxZlpyLtrckttwGEA4zUFgfMudMcIW8pP url=https://checkout.stripe.com/g/pay/cs_test_a0jyfNMVCOKz6BWlOHKwmn1hDyxZlpyLtrcktt
+PASS A.stripe_paid — payment_status=paid status=complete sub=sub_1UbMzzErUqJH7nktvzNy5DvW amount_total=17910
+FAIL A.block — Unexpected token '<', "<html>
+<h"... is not valid JSON
+PASS B.prepay_not_eligible — {"ok":true,"status":"not_eligible","reason":"payment=unpaid;subscription=unknown"}
+PASS B.stripe_paid_eligible — payment_status=paid status=complete sub=sub_1UbN1PErUqJH7nktFNB0Ppw8
+PASS B.pre_reconcile_no_enrollment — cleared webhook rows=0 remaining=0
+PASS B.stripe_still_paid_pre_reconcile — payment_status=paid
+FAIL B.block — Unexpected token '<', "<html>
+<h"... is not valid JSON
+PASS NEG.forged_blocked — {"ok":true,"status":"not_eligible","reason":"stripe_session_not_found"}
+PASS NEG.unpaid_blocked — rec={"ok":true,"status":"not_eligible","reason":"payment=unpaid;subscription=unknown"} count=0
+{
+  "passed": 8,
+  "failed": 2,
+  "out": "docs/qa/welcome-subscription-access-reliability"
+}

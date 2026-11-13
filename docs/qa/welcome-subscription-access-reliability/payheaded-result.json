@@ -1,0 +1,21 @@
+{
+  "log": [
+    {
+      "frame": "__privateStripeFrame0013",
+      "disabled": false,
+      "errText": [
+        "",
+        "",
+        ""
+      ]
+    },
+    "clicked",
+    "paid_via_poll"
+  ],
+  "finalUrl": "https://checkout.stripe.com/g/pay/cs_test_a0fNtzEY8vFDknj0qbRIRW5o5cGY0di8E0PByqP0mzycNrwdqE06CpvR0Q#fidnandhYHdWcXxpYCc%2FJ2FgY2RwaXEnKSdicyc%2FNiknZHVsTmB8Jz8ndW5acWB2cVowNFAxNzczQHdQdE9NMmtucV9nUEd%2Fa31udG91Smd2MTFHNUFrb2JfUGdJM2ZEMkxDUnNSUU00dkRfZ2FufWRtX09CXDJcY080REBoQHRHSHdpUk1pU3VHXDU1T05TNzZwZmEnKSdjd2poVmB3c2B3Jz9xd3BgKSdnZGZuYndqcGthRmppancnPycmY2NjY2NjJyknaWR8anBxUXx1YCc%2FJ3Zsa2JpYFpscWBoJ3gl",
+  "payment_status": "paid",
+  "status": "complete",
+  "sub": "sub_1UbMyuErUqJH7nktd2MXrGz5",
+  "amount_total": 17910,
+  "session_id": "cs_test_a0fNtzEY8vFDknj0qbRIRW5o5cGY0di8E0PByqP0mzycNrwdqE06CpvR0Q"
+}
