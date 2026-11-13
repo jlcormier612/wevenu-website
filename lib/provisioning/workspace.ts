@@ -13,7 +13,7 @@
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/env";
 import { resolveUserIdForEmail } from "@/lib/legal/service";
-import { seedWorkspaceStarters, type StarterSeedResult } from "@/lib/provisioning/starters";
+import { ensureVenueStarters, type StarterSeedResult } from "@/lib/provisioning/starters";
 import type { OnboardingType } from "@/lib/setup-hub/types";
 import { randomBytes } from "crypto";
 
@@ -164,7 +164,7 @@ export async function provisionWorkspaceFromEnrollment(
     return { ok: false, error: linkErr.message };
   }
 
-  const starters = await seedWorkspaceStarters(venueId, admin);
+  const starters = await ensureVenueStarters(venueId, { client: admin });
 
   // Persist SaaS Stripe identifiers on the venue for Billing Portal + entitlement sync.
   // Does not change access_disabled — activation remains a separate step.
@@ -242,6 +242,6 @@ export async function ensureProvisionedWorkspace(input: {
     }
   }
 
-  const starters = await seedWorkspaceStarters(input.venueId, admin);
+  const starters = await ensureVenueStarters(input.venueId, { client: admin });
   return { ok: true, starters };
 }

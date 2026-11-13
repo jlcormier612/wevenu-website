@@ -27,6 +27,9 @@ import { ensureBrochureStartersForCurrentVenue } from "@/lib/brochures/provision
 import { ensureSavedReportStartersForCurrentVenue } from "@/lib/saved-reports/provision";
 import { ensureOfferingStartersForCurrentVenue } from "@/lib/offerings/provision";
 import { listOfferings } from "@/lib/offerings/service";
+import { StarterProvisioningBanner } from "@/components/library/starter-provisioning-banner";
+import { getStarterProvisioningSnapshot } from "@/lib/provisioning/starters";
+import { getCurrentVenue } from "@/lib/venue/service";
 
 export const metadata: Metadata = { title: "Library" };
 
@@ -115,6 +118,7 @@ function Group({
 }
 
 export default async function LibraryPage() {
+  const venue = await getCurrentVenue();
   await Promise.all([
     ensureBrochureStartersForCurrentVenue(),
     ensureSavedReportStartersForCurrentVenue(),
@@ -124,6 +128,7 @@ export default async function LibraryPage() {
     contractTemplates, playbookTemplatesAll, timelineTemplatesAll, floorPlanTemplatesAll,
     packagesAll, inventoryItemsAll, qrCampaigns, publicForms, messageTemplates, inventoryTemplates,
     questionnaireTemplates, eventOrderTemplatesAll, brochuresAll, savedReports, offeringsAll,
+    starterProvisioning,
   ] = await Promise.all([
     getContractTemplates(),
     getPlaybookTemplates(),
@@ -140,6 +145,7 @@ export default async function LibraryPage() {
     getBrochures(true),
     getSavedReports(),
     listOfferings(true),
+    venue ? getStarterProvisioningSnapshot(venue.id) : Promise.resolve(null),
   ]);
   const eventOrderTemplates = eventOrderTemplatesAll.filter((t) => !t.isArchived);
   const brochures = brochuresAll.filter((b) => !b.isArchived);
@@ -159,6 +165,10 @@ export default async function LibraryPage() {
           description="What you sell, what you have, and what you deliver — reusable resources for bookings and events."
         />
       </div>
+
+      {starterProvisioning?.needsAttention ? (
+        <StarterProvisioningBanner snapshot={starterProvisioning} />
+      ) : null}
 
       <Group title="Sales">
         <ToolboxCard

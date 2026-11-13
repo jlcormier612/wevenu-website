@@ -190,9 +190,12 @@ export async function submitVenueSetup(
     };
   }
 
-  // Idempotency: if a completed venue already exists, treat as success.
+  // Idempotency: if a completed venue already exists, treat as success —
+  // but still ensure starters (progress-save / prior bypass may have skipped).
   const existing = await repository.getVenueForCurrentUser(supabase);
   if (existing?.setupCompleted) {
+    const { ensureVenueStarters } = await import("@/lib/provisioning/starters");
+    await ensureVenueStarters(existing.id);
     pushVenueProfileToCrm(existing.id, input, "setup_submit");
     return { ok: true, venueId: existing.id };
   }
@@ -200,16 +203,19 @@ export async function submitVenueSetup(
   try {
     const venueId = await repository.insertVenueSetup(supabase, input);
     // Starters live in the shared provisioning layer — not owned by the wizard.
-    const { seedWorkspaceStarters } = await import("@/lib/provisioning/starters");
-    await seedWorkspaceStarters(venueId);
+    const { ensureVenueStarters } = await import("@/lib/provisioning/starters");
+    await ensureVenueStarters(venueId);
     pushVenueProfileToCrm(venueId, input, "setup_submit");
     return { ok: true, venueId };
   } catch (error) {
     const code = (error as { code?: string } | null)?.code;
     if (code === "23505") {
-      // Unique violation — a venue already exists for this owner.
+      // Unique violation — a venue already exists for this owner (often via
+      // progress-save). Ensure starters before returning success.
       const venue = await repository.getVenueForCurrentUser(supabase);
       if (venue) {
+        const { ensureVenueStarters } = await import("@/lib/provisioning/starters");
+        await ensureVenueStarters(venue.id);
         pushVenueProfileToCrm(venue.id, input, "setup_submit");
         return { ok: true, venueId: venue.id };
       }
@@ -246,6 +252,12 @@ export async function saveSetupProgress(
 
   try {
     const venueId = await repository.insertVenueSetup(supabase, input, false, lastStep);
+    // Durable owner-accessible venue — kick off starters without blocking the
+    // progress-save response (wizard stays responsive). Idempotent; submit
+    // and Restore paths still await completion.
+    void import("@/lib/provisioning/starters")
+      .then(({ ensureVenueStarters }) => ensureVenueStarters(venueId))
+      .catch((err) => console.error("[setup] progress starter ensure failed", err));
     pushVenueProfileToCrm(venueId, input, "setup_progress");
     return { ok: true, venueId };
   } catch (error) {

@@ -13,6 +13,8 @@ import { getTourSettings } from "@/lib/tours/service";
 import { getCurrentVenue, getSetupReadyCounts, getVenueSettings } from "@/lib/venue/service";
 import { getIntakeForVenue } from "@/lib/onboarding/intake-service";
 import { loadSetupConciergeEntry } from "@/lib/setup-concierge/load";
+import { StarterProvisioningBanner } from "@/components/library/starter-provisioning-banner";
+import { getStarterProvisioningSnapshot } from "@/lib/provisioning/starters";
 
 export const metadata: Metadata = { title: "Setup" };
 export const dynamic = "force-dynamic";
@@ -24,7 +26,7 @@ export default async function SetupHubPage() {
   const [
     hubState, leadCapture, spaces, capacityRules, tourSettings,
     importBatches, readyCounts, teamMembers, quickbooksConnection, setupConcierge, venueDocuments, venueSettings, intake,
-    setupProfiles,
+    setupProfiles, starterProvisioning,
   ] = await Promise.all([
     getSetupHubState(),
     getLeadCaptureStageStatus(),
@@ -40,6 +42,7 @@ export default async function SetupHubPage() {
     getVenueSettings(),
     getIntakeForVenue(venue.id),
     listVenueSetupProfiles(venue.id),
+    getStarterProvisioningSnapshot(venue.id),
   ]);
 
   // Team Setup Hub completion: only deliberate Team/Owners actions (invited_by set).
@@ -80,6 +83,9 @@ export default async function SetupHubPage() {
             to invite couples.
           </p>
         </div>
+      ) : null}
+      {starterProvisioning.needsAttention ? (
+        <StarterProvisioningBanner snapshot={starterProvisioning} />
       ) : null}
       <SetupHubOverview
         venueName={venue.name}
