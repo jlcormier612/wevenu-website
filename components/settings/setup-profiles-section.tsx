@@ -333,7 +333,18 @@ export function SetupProfilesSection({
           return (
             <li key={profile.id} className="flex flex-wrap items-start justify-between gap-3 rounded-lg border border-border px-4 py-3">
               <div>
-                <p className="text-sm font-medium text-heading">{profile.name}</p>
+                {canEdit ? (
+                  <button
+                    type="button"
+                    className="text-left text-sm font-medium text-heading underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--heritage-sage)]/40 rounded-sm"
+                    onClick={() => beginEdit(profile)}
+                    aria-label={`Open setup profile ${profile.name}`}
+                  >
+                    {profile.name}
+                  </button>
+                ) : (
+                  <p className="text-sm font-medium text-heading">{profile.name}</p>
+                )}
                 <p className="text-sm text-muted-foreground">Used for: {setupProfileUsedForLabel(usedFor)}</p>
                 <p className="mt-1 text-xs text-muted-foreground">{profileSummary(profile, playbooks, venuePlaybooks, timelines)}</p>
                 {hard.length > 0 ? (

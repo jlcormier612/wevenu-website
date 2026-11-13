@@ -7,7 +7,9 @@ import {
   isPostActivationLogin,
   isWrongAccountForPostActivation,
   mustClearVenueSessionForPostActivationLogin,
+  postActivationInvalidCredentialsMessage,
   postActivationLoginEmailPrefill,
+  POST_ACTIVATION_INVALID_CREDENTIALS_HINT,
 } from "./post-activation-login";
 
 const root = join(import.meta.dirname, "../..");
@@ -119,6 +121,19 @@ describe("post-activation identity handoff — wiring invariants", () => {
     assert.match(loginPage, /email used for this purchase/);
     assert.match(loginPage, /has been signed out/);
     assert.match(loginPage, /safeLoginEmailPrefill/);
+    assert.match(loginPage, /justActivated=\{justActivated\}/);
+  });
+
+  it("softens Invalid login credentials on post-activation login", () => {
+    const raw = "Invalid login credentials";
+    assert.equal(postActivationInvalidCredentialsMessage(raw, false), raw);
+    const softened = postActivationInvalidCredentialsMessage(raw, true);
+    assert.match(softened, /Invalid login credentials/);
+    assert.match(softened, /wait a few seconds/i);
+    assert.ok(softened.includes(POST_ACTIVATION_INVALID_CREDENTIALS_HINT));
+    const loginForm = read("components/auth/login-form.tsx");
+    assert.match(loginForm, /postActivationInvalidCredentialsMessage/);
+    assert.match(loginForm, /justActivated/);
   });
 
   it("marketing already-activated CTA uses post-activation login URL with owner email", () => {

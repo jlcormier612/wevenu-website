@@ -39,3 +39,22 @@ export function isWrongAccountForPostActivation(input: {
   if (!session || !intended) return false;
   return session !== intended;
 }
+
+/**
+ * Soft recovery copy when post-activation login fails with invalid credentials.
+ * Common cause: the purchaser left the activate page early (or opened login in
+ * another tab) before activateVenueAccount finished writing the password.
+ */
+export const POST_ACTIVATION_INVALID_CREDENTIALS_HINT =
+  "If you just created your password, wait a few seconds and try again — account setup may still be finishing. Stay on the activation page until it redirects you next time.";
+
+export function postActivationInvalidCredentialsMessage(
+  errorMessage: string,
+  justActivated: boolean,
+): string {
+  const trimmed = errorMessage.trim();
+  if (!justActivated || !/invalid login credentials/i.test(trimmed)) {
+    return trimmed;
+  }
+  return `${trimmed} ${POST_ACTIVATION_INVALID_CREDENTIALS_HINT}`;
+}

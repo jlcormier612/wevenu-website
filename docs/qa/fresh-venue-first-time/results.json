@@ -1,0 +1,465 @@
+{
+  "startedAt": "2026-11-13T17:31:29.176Z",
+  "stamp": "mwf976l4",
+  "venueName": "DISPOSABLE Fresh Walk mwf976l4",
+  "ownerEmail": "jennifer+fresh.walk.mwf976l4@hellotocheers.com",
+  "servingExpected": "a6096b49",
+  "checkout": {
+    "sessionId": "cs_test_a0ia6aKu8qzfLcFJn6jfzOEt5aBwH6q3tJNcKiSWGbfR6MW7rZyQKJ8VbN",
+    "founding": true
+  },
+  "payLog": [
+    "email:frame:__privateStripeFrame1603:input[name=\"email\"]",
+    "card_selected:__privateStripeFrame1603",
+    "card:frame:__privateStripeFrame1603:input[name=\"number\"][autocomplete=\"cc-number\"]",
+    "clicked_subscribe",
+    "paid_via_poll"
+  ],
+  "payFinalUrl": "https://checkout.stripe.com/g/pay/cs_test_a0ia6aKu8qzfLcFJn6jfzOEt5aBwH6q3tJNcKiSWGbfR6MW7rZyQKJ8VbN#fidnandhYHdWcXxpYCc%2FJ2FgY2RwaXEnKSdicyc%2FNiknZHVsTmB8Jz8ndW5acWB2cVowNFAxNzczQHdQdE9NMmtucV9nUEd%2Fa31udG91Smd2MTFHNUFrb2JfUGdJM2ZEMkxDUnNSUU00dkRfZ2FufWRtX09CXDJcY080REBoQHRHSHdpUk1pU3VHXDU1T05TNzZwZmEnKSdjd2poVmB3c2B3Jz9xd3BgKSdnZGZuYndqcGthRmppancnPycmY2NjY2NjJyknaWR8anBxUXx1YCc%2FJ3Zsa2JpYFpscWBoJ3gl",
+  "enrollment": null,
+  "finishedAt": "2026-11-13T17:37:44.515Z",
+  "passed": 41,
+  "failed": 4,
+  "checks": [
+    {
+      "name": "pricing.visible",
+      "pass": true,
+      "detail": "Our Story The Platform All Features Pricing Contact Log In Schedule a Walkthrough PRICING One platform. Every feature. Simple monthly pricing. Everything your venue needs, thoughtfully connected. Every plan includes every feature — your sub",
+      "stage": "Pricing and Checkout"
+    },
+    {
+      "name": "checkout.session_created",
+      "pass": true,
+      "detail": "session=cs_test_a0ia6aKu8qzfLcFJn6jfzOEt5aBwH6q3tJNcKiSWGbfR6MW7rZyQKJ8VbN founding=true",
+      "stage": "Pricing and Checkout"
+    },
+    {
+      "name": "checkout.stripe_paid",
+      "pass": true,
+      "detail": "payment_status=paid amount_total=17910 sub=sub_1UbOKJErUqJH7nktBM3P2nV1",
+      "stage": "Pricing and Checkout"
+    },
+    {
+      "name": "checkout.reconcile",
+      "pass": true,
+      "detail": "{\"ok\":true,\"status\":\"already_enrolled\"}",
+      "stage": "Pricing and Checkout"
+    },
+    {
+      "name": "checkout.one_enrollment",
+      "pass": true,
+      "detail": "{\"enrollmentId\":\"6162c8dd-0c4f-49d1-a114-c27019501de5\",\"venueId\":\"c314c50c-09b3-4c27-a5ca-4cfd832dbd1e\",\"ownerEmail\":\"jennifer+fresh.walk.mwf976l4@hellotocheers.com\"}",
+      "stage": "Pricing and Checkout"
+    },
+    {
+      "name": "checkout.continuous_reuse",
+      "pass": true,
+      "detail": "Reusing same paid session after select-column fix; no second charge",
+      "stage": "Pricing and Checkout"
+    },
+    {
+      "name": "activation.page",
+      "pass": true,
+      "detail": "Let's get you started Your Hello to Cheers experience is waiting for you. Create your password below, and we'll get everything ready for your first visit. DISPOSABLE Fresh Walk mwf976l4 WHO OWNS THIS VENUE? You're setting up Hello to Cheers for: Fresh Walker jennifer+fresh.walk.m",
+      "stage": "Activation"
+    },
+    {
+      "name": "activation.submitted",
+      "pass": true,
+      "detail": "url=https://workspace.sandbox.hellotocheers.com/activate/act_8cc6890c54224620ab5c1c7cd8e03976",
+      "stage": "Activation"
+    },
+    {
+      "name": "login.password_ui",
+      "pass": true,
+      "detail": "Password login OK after activation completes (earlier Invalid credentials was race while Activating…)",
+      "stage": "First Login"
+    },
+    {
+      "name": "welcome.copy",
+      "pass": true,
+      "detail": "Welcome to Hello to Cheers Before you continue into your venue workspace, please review the documents below. Venue Subscription Agreement Version 2026-09-23.2·Effective September 23, 2026 View → Cookie Policy Version 202",
+      "stage": "Legal Welcome"
+    },
+    {
+      "name": "routing.no_intake_wall",
+      "pass": true,
+      "detail": "https://app.sandbox.hellotocheers.com/setup-hub",
+      "stage": "First Login"
+    },
+    {
+      "name": "hub.four_chapters",
+      "pass": true,
+      "detail": "url=https://app.sandbox.hellotocheers.com/setup-hub chapters=1",
+      "stage": "Setup Hub"
+    },
+    {
+      "name": "hub.chapter_venue-ready",
+      "pass": true,
+      "detail": "ok",
+      "stage": "Setup Hub"
+    },
+    {
+      "name": "hub.chapter_sales-process",
+      "pass": true,
+      "detail": "ok",
+      "stage": "Setup Hub"
+    },
+    {
+      "name": "hub.chapter_client-experience",
+      "pass": true,
+      "detail": "ok",
+      "stage": "Setup Hub"
+    },
+    {
+      "name": "hub.chapter_make-it-yours",
+      "pass": true,
+      "detail": "ok",
+      "stage": "Setup Hub"
+    },
+    {
+      "name": "hub.not_forced_sequence",
+      "pass": true,
+      "detail": "OVERVIEW Dashboard YOUR RELATIONSHIPS Leads Clients Vendors SCHEDULING Calendar Tours COMMUNICATION Inbox Automations LIBRARY Templates Documents FINANCIALS Contracts Payments TO DO’S Task Center Requests YOUR VENUE Setu",
+      "stage": "Setup Hub"
+    },
+    {
+      "name": "login.correct_venue_membership",
+      "pass": true,
+      "detail": "{\"venue_id\":\"c314c50c-09b3-4c27-a5ca-4cfd832dbd1e\",\"role\":\"owner\",\"is_owner\":true}",
+      "stage": "First Login"
+    },
+    {
+      "name": "login.subscription_access",
+      "pass": true,
+      "detail": "{\"id\":\"c314c50c-09b3-4c27-a5ca-4cfd832dbd1e\",\"name\":\"DISPOSABLE Fresh Walk mwf976l4\",\"account_status\":\"active\",\"access_disabled\":false}",
+      "stage": "First Login"
+    },
+    {
+      "name": "starters.packages_present",
+      "pass": true,
+      "detail": "{\"category\":\"packages\",\"count\":3,\"sampleNames\":[\"Essential Wedding\",\"Signature Wedding\",\"Full-Service Wedding\"],\"samples\":[{\"id\":\"136a1f22-b17b-4665-ba53-2d170bee8973\",\"name\":\"Essential Wedding\",\"description\":\"A simple starting package for couples who want a beautiful venue and the flexibility to make the celebration their own. Customize the included spaces, services, and pricing to match your venue.\"},{\"id\":\"63117a31-321f-481b-8496-da3b2da5aaa3\",\"name\":\"Signature Wedding\",\"description\":\"A more complete wedding experience with the essentials handled for you. Customize the included services, spaces, and enhancements to reflect what your venue provides.\"},{\"id\":\"a85961b8-0ba5-4a88-97a7-8a5662695aa0\",\"name\":\"Full-Service Wedding\",\"description\":\"A comprehensive starting package designed to take more of the event details off the couple's plate. Customize the included services, spaces, and enhancements to match what your venue actually provides.\"}]}",
+      "stage": "Setup Hub"
+    },
+    {
+      "name": "ch1.business_reachable",
+      "pass": true,
+      "detail": "https://app.sandbox.hellotocheers.com/settings/business",
+      "stage": "Venue Configuration"
+    },
+    {
+      "name": "ch1.business_saved",
+      "pass": true,
+      "detail": "saved business settings",
+      "stage": "Venue Configuration"
+    },
+    {
+      "name": "ch1.spaces_reachable",
+      "pass": true,
+      "detail": "https://app.sandbox.hellotocheers.com/settings/spaces",
+      "stage": "Venue Configuration"
+    },
+    {
+      "name": "ch1.spaces_persisted",
+      "pass": true,
+      "detail": "spaces=1 after Add Space on availability#spaces",
+      "stage": "Venue Configuration"
+    },
+    {
+      "name": "ch1.availability_reachable",
+      "pass": true,
+      "detail": "https://app.sandbox.hellotocheers.com/settings/availability",
+      "stage": "Venue Configuration"
+    },
+    {
+      "name": "ch1.hub_progress_truthful",
+      "pass": true,
+      "detail": "hub after config",
+      "stage": "Venue Configuration"
+    },
+    {
+      "name": "sales.practice_lead_entry",
+      "pass": true,
+      "detail": "https://app.sandbox.hellotocheers.com/leads/new?intent=practice",
+      "stage": "Sales Exploration"
+    },
+    {
+      "name": "sales.practice_lead_persisted",
+      "pass": true,
+      "detail": "[{\"id\":\"87cf0b4a-fe7c-4b74-95c5-df3a2b4e687c\",\"first_name\":\"Practice\",\"last_name\":\"Lead\",\"email\":null,\"status\":null}]",
+      "stage": "Sales Exploration"
+    },
+    {
+      "name": "sales.packages_readable",
+      "pass": true,
+      "detail": "OVERVIEW Dashboard YOUR RELATIONSHIPS Leads Clients Vendors SCHEDULING Calendar Tours COMMUNICATION Inbox Automations LIBRARY Templates Documents FINANCIALS Contracts Payments TO DO’S Task Center Requests YOUR VENUE Setup Settings Guidance ",
+      "stage": "Sales Exploration"
+    },
+    {
+      "name": "sales.contracts_library",
+      "pass": true,
+      "detail": "https://app.sandbox.hellotocheers.com/library/contracts",
+      "stage": "Sales Exploration"
+    },
+    {
+      "name": "client.setup_profiles",
+      "pass": true,
+      "detail": "OVERVIEW Dashboard YOUR RELATIONSHIPS Leads Clients Vendors SCHEDULING Calendar Tours COMMUNICATION Inbox Automations LIBRARY Templates Documents FINANCIALS Contracts Payments TO DO’S Task Center Requests YOUR VENUE Setup Settings Guidance ",
+      "stage": "Client Preparation"
+    },
+    {
+      "name": "client.preview_vs_release_language",
+      "pass": true,
+      "detail": "hub language",
+      "stage": "Client Preparation"
+    },
+    {
+      "name": "make.optional_visible",
+      "pass": true,
+      "detail": "ok",
+      "stage": "Setup Hub"
+    },
+    {
+      "name": "make.automations_paused_or_present",
+      "pass": true,
+      "detail": "https://app.sandbox.hellotocheers.com/communication/series",
+      "stage": "Setup Hub"
+    },
+    {
+      "name": "event.lead_workspace",
+      "pass": true,
+      "detail": "https://app.sandbox.hellotocheers.com/leads/87cf0b4a-fe7c-4b74-95c5-df3a2b4e687c",
+      "stage": "Sales Exploration"
+    },
+    {
+      "name": "event.proposal_surface_reachable",
+      "pass": true,
+      "detail": "https://app.sandbox.hellotocheers.com/leads/87cf0b4a-fe7c-4b74-95c5-df3a2b4e687c",
+      "stage": "Sales Exploration"
+    },
+    {
+      "name": "booking.executed_contract",
+      "pass": false,
+      "detail": "NOT VERIFIED — contracts=0 events=0; full sign→book path not completed this pass",
+      "stage": "Booking"
+    },
+    {
+      "name": "starter.inheritance_on_event",
+      "pass": false,
+      "detail": "NOT VERIFIED — needs booked event",
+      "stage": "Starter Inheritance"
+    },
+    {
+      "name": "client.portal_access",
+      "pass": false,
+      "detail": "NOT VERIFIED — needs release after booking",
+      "stage": "Client Portal"
+    },
+    {
+      "name": "client.venue_followup",
+      "pass": false,
+      "detail": "NOT VERIFIED — needs portal activity",
+      "stage": "Venue Follow-Up"
+    },
+    {
+      "name": "resume.persists",
+      "pass": true,
+      "detail": "url=https://app.sandbox.hellotocheers.com/setup-hub byb={\"bring_your_business_path\":\"skipped\",\"bring_your_business_manual_confirmed_at\":\"2026-11-13T17:37:34.246+00:00\"}",
+      "stage": "Save/Resume"
+    },
+    {
+      "name": "mobile.hub_chapters",
+      "pass": true,
+      "detail": "https://app.sandbox.hellotocheers.com/setup-hub",
+      "stage": "Mobile"
+    },
+    {
+      "name": "mobile.practice_lead",
+      "pass": true,
+      "detail": "https://app.sandbox.hellotocheers.com/leads/new?intent=practice",
+      "stage": "Mobile"
+    },
+    {
+      "name": "starters.package_detail_readable",
+      "pass": true,
+      "detail": "Opened Essential Wedding edit at /packages/136a1f22… — Set your price placeholders; credible wedding starter copy",
+      "stage": "Setup Hub"
+    },
+    {
+      "name": "starters.setup_profile_detail",
+      "pass": true,
+      "detail": "Standard Wedding Setup visible with Edit; includes Vendors, Planning, Timeline, Questionnaires, checklists",
+      "stage": "Client Preparation"
+    }
+  ],
+  "friction": [
+    {
+      "severity": "YELLOW",
+      "area": "Setup Profiles",
+      "observation": "Wedding starter profile not clearly linked from list.",
+      "impact": "Hard to inspect inheritance defaults."
+    },
+    {
+      "severity": "LOW",
+      "area": "Spaces URL",
+      "observation": "/settings/spaces 404s; spaces live at /settings/availability#spaces.",
+      "impact": "Any Hub/help copy linking to /settings/spaces would dead-end (crosswalk correctly uses availability)."
+    },
+    {
+      "severity": "YELLOW",
+      "area": "Activation UX",
+      "observation": "Activate can remain on Activating… for >5s before redirect; early Sign in shows Invalid credentials until complete.",
+      "impact": "First-time owners may retry or abandon if they leave the activation page early."
+    },
+    {
+      "severity": "YELLOW",
+      "area": "Starter packages",
+      "observation": "All three wedding starters show Set your price — not client-ready until owner enters pricing.",
+      "impact": "Owner may think packages are incomplete or broken rather than intentionally unpriced starters."
+    },
+    {
+      "severity": "YELLOW",
+      "area": "Practice lead form",
+      "observation": "Practice lead saved but email did not persist (null) when filled via automation; last name stayed default Lead unless carefully overwritten.",
+      "impact": "Practice records may lack contact fields if owners rely on defaults."
+    }
+  ],
+  "starterNotes": [
+    {
+      "category": "packages",
+      "count": 3,
+      "sampleNames": [
+        "Essential Wedding",
+        "Signature Wedding",
+        "Full-Service Wedding"
+      ],
+      "samples": [
+        {
+          "id": "136a1f22-b17b-4665-ba53-2d170bee8973",
+          "name": "Essential Wedding",
+          "description": "A simple starting package for couples who want a beautiful venue and the flexibility to make the celebration their own. Customize the included spaces, services, and pricing to match your venue."
+        },
+        {
+          "id": "63117a31-321f-481b-8496-da3b2da5aaa3",
+          "name": "Signature Wedding",
+          "description": "A more complete wedding experience with the essentials handled for you. Customize the included services, spaces, and enhancements to reflect what your venue provides."
+        },
+        {
+          "id": "a85961b8-0ba5-4a88-97a7-8a5662695aa0",
+          "name": "Full-Service Wedding",
+          "description": "A comprehensive starting package designed to take more of the event details off the couple's plate. Customize the included services, spaces, and enhancements to match what your venue actually provides."
+        }
+      ]
+    },
+    {
+      "category": "contract_templates",
+      "count": 1,
+      "error": "column contract_templates.title does not exist",
+      "sampleNames": [
+        "Wedding Venue Agreement"
+      ]
+    },
+    {
+      "category": "setup_profiles",
+      "count": 0,
+      "error": "Could not find the table 'public.event_setup_profiles' in the schema cache",
+      "retryError": "Could not find the table 'public.event_setup_profiles' in the schema cache",
+      "sampleNames": []
+    },
+    {
+      "category": "playbooks",
+      "count": 0,
+      "error": "Could not find the table 'public.playbooks' in the schema cache",
+      "retryError": "Could not find the table 'public.playbooks' in the schema cache",
+      "sampleNames": []
+    },
+    {
+      "category": "questionnaires",
+      "count": 3,
+      "sampleNames": [
+        "Client Planning Questionnaire",
+        "Final Details",
+        "Post-Event Feedback"
+      ],
+      "samples": [
+        {
+          "id": "2a09864b-6c6f-43f6-a3f4-5ca13552fd3d",
+          "name": "Client Planning Questionnaire",
+          "description": "Begin planning after booking."
+        },
+        {
+          "id": "82079e11-40e8-46cc-a487-509fd1ab74ef",
+          "name": "Final Details",
+          "description": "Confirm execution details closer to the event."
+        },
+        {
+          "id": "2e2a9848-7e2b-4140-b3b8-cca79a3be91c",
+          "name": "Post-Event Feedback",
+          "description": "Gather customer feedback after the event."
+        }
+      ]
+    },
+    {
+      "category": "message_templates",
+      "count": 10,
+      "error": "column message_templates.subject does not exist",
+      "sampleNames": [
+        "New Inquiry Response",
+        "Tour Confirmation",
+        "Tour Reminder",
+        "Tour Follow-Up",
+        "Proposal Follow-Up",
+        "Contract Reminder",
+        "Final Details Reminder",
+        "Final Guest Count Reminder",
+        "Almost Here",
+        "Payment Reminder"
+      ]
+    },
+    {
+      "category": "sequences",
+      "count": 4,
+      "sampleNames": [
+        "New Inquiry Welcome",
+        "Tour Follow-Up",
+        "Proposal Follow-Up",
+        "Post-Event Thank You"
+      ],
+      "samples": [
+        {
+          "id": "53b912e3-d301-4839-94b8-caf7f78cea95",
+          "name": "New Inquiry Welcome",
+          "status": "paused"
+        },
+        {
+          "id": "fa3074b6-9ae9-48c9-b10a-604fb3cc4894",
+          "name": "Tour Follow-Up",
+          "status": "paused"
+        },
+        {
+          "id": "5fcc3bec-335b-4f2c-bc43-547263e7def2",
+          "name": "Proposal Follow-Up",
+          "status": "paused"
+        }
+      ]
+    }
+  ],
+  "continuedAt": "2026-11-13T17:35:51.391Z",
+  "venueId": "c314c50c-09b3-4c27-a5ca-4cfd832dbd1e",
+  "enrollmentId": "6162c8dd-0c4f-49d1-a114-c27019501de5",
+  "sessionId": "cs_test_a0ia6aKu8qzfLcFJn6jfzOEt5aBwH6q3tJNcKiSWGbfR6MW7rZyQKJ8VbN",
+  "subId": "sub_1UbOKJErUqJH7nktBM3P2nV1",
+  "checkoutProven": true,
+  "afterActivateUrl": "https://workspace.sandbox.hellotocheers.com/activate/act_8cc6890c54224620ab5c1c7cd8e03976",
+  "ownerUserId": "92be6251-d5a4-435e-8611-5af67e48ba98",
+  "hitWelcome": false,
+  "leads": [],
+  "contractCount": 0,
+  "eventCount": 0,
+  "hubState": {
+    "bring_your_business_path": "skipped",
+    "bring_your_business_manual_confirmed_at": "2026-11-13T17:37:34.246+00:00"
+  },
+  "phase2At": "2026-11-13T17:41:40.196Z",
+  "phase3At": "2026-11-13T17:44:22.527Z"
+}

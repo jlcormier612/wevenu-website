@@ -10,6 +10,7 @@ import { type AuthFormState, signIn } from "@/app/auth/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { postActivationInvalidCredentialsMessage } from "@/lib/auth/post-activation-login";
 
 const INITIAL_STATE: AuthFormState = {};
 
@@ -32,7 +33,15 @@ function SubmitButton({ redirecting }: { redirecting: boolean }) {
   );
 }
 
-export function LoginForm({ next, defaultEmail }: { next?: string; defaultEmail?: string }) {
+export function LoginForm({
+  next,
+  defaultEmail,
+  justActivated = false,
+}: {
+  next?: string;
+  defaultEmail?: string;
+  justActivated?: boolean;
+}) {
   const [state, formAction] = React.useActionState(signIn, INITIAL_STATE);
   const [showPassword, setShowPassword] = React.useState(false);
 
@@ -48,12 +57,15 @@ export function LoginForm({ next, defaultEmail }: { next?: string; defaultEmail?
   // or a stringified empty object from an unexpected upstream response)
   // should never be shown to someone trying to sign in — a clear generic
   // message is more honest than a literal "{}" and less alarming.
-  const errorMessage =
+  const rawError =
     state.error && state.error.trim() && state.error.trim() !== "{}"
       ? state.error
       : state.error
         ? "Something went wrong signing you in. Please try again."
         : null;
+  const errorMessage = rawError
+    ? postActivationInvalidCredentialsMessage(rawError, justActivated)
+    : null;
 
   return (
     <form action={formAction} className="space-y-4">

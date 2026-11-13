@@ -319,3 +319,11 @@ describe("book-time reference snapshot", () => {
     assert.equal(effectiveSetupDecision(loaded, "timeline"), "skipped");
   });
 });
+
+describe("Setup Profile list open affordance", () => {
+  it("makes the profile title a primary open action when editing is allowed", () => {
+    const section = read("components/settings/setup-profiles-section.tsx");
+    assert.match(section, /Open setup profile \$\{profile\.name\}/);
+    assert.match(section, /onClick=\{\(\) => beginEdit\(profile\)\}/);
+  });
+});
