@@ -12,7 +12,7 @@ import { getTemplates } from "@/lib/event-order-templates/service";
 import { EVENT_ORDER_STARTER_MASTERS } from "@/lib/event-order-templates/starters";
 import { getTemplateApplyClientGroups } from "@/lib/library/template-apply-targets-service";
 
-export const metadata: Metadata = { title: "Event Order Templates" };
+export const metadata: Metadata = { title: "Event Order plans" };
 
 export default async function EventOrderTemplatesPage() {
   await ensureEventOrderStartersForCurrentVenue();
@@ -27,11 +27,11 @@ export default async function EventOrderTemplatesPage() {
 
   return (
     <div className="htc-hospitality-page space-y-4 sm:space-y-6">
-      <CollectionBackLink href="/library" label="Templates" />
+      <CollectionBackLink href="/library" label="Library" />
       <div className="htc-hospitality-heading htc-hospitality-intro-accent">
         <PageHeader
-          title="Event Order Templates"
-          description="Reusable packages for a wedding’s Event Order — always-on items and couple choices selected from your Offerings."
+          title="Event Order plans"
+          description="Reusable delivery plans with always-included items and couple choice groups from your choices catalog."
           actions={<NewEventOrderTemplateButton />}
         />
       </div>
@@ -40,17 +40,16 @@ export default async function EventOrderTemplatesPage() {
           tone="calm"
           detail={
             <>
-              Always-on items stay on the package; couple choices (like Buffet vs Plated) come from
-              your Offerings — they only see the options you pick. Prefer reusable Offerings; use a
-              template-only line for one-offs. Preview shows the couple experience without sending.
-              Use applies to an event&apos;s Event Order; Send is only for templates with client choice groups.
-              Apply copies a snapshot — later edits never rewrite a booked Event Order. Linked
-              inventory reserves when the couple approves the Event Order. Distinct from sales Packages — neither creates an invoice.
+              Always-included items stay on the plan; couple choices (like Buffet vs Plated) come from
+              your choices catalog — they only see the options you pick. Preview shows the couple
+              experience without sending. Use applies to an event&apos;s Event Order; Send is only for
+              plans with client choice groups. Apply copies a snapshot — later edits never rewrite a
+              booked Event Order. Distinct from sales Packages — neither creates an invoice.
             </>
           }
-          action={{ href: "/library/offerings", label: "Manage Offerings" }}
+          action={{ href: "/library/offerings", label: "Manage choices catalog" }}
         >
-          How Event Order Templates work
+          How Event Order plans work
         </LibraryDependencyNote>
       </div>
       <EventOrderTemplateList

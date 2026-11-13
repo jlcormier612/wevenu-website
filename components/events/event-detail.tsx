@@ -1026,8 +1026,11 @@ export function EventDetail({
           </Card>
           <Card size="sm" className="htc-surface-working gap-2" id="inventory-event-order-card" data-testid="event-inventory-event-order-card">
             <CardHeader className="gap-0.5">
-              <CardTitle className="text-base">Inventory &amp; Event Order</CardTitle>
+              <CardTitle className="text-base">Celebration summary</CardTitle>
               <CardDescription className="text-xs leading-snug" data-testid="event-order-overview-summary">
+                {selectedPackage
+                  ? `Package: ${selectedPackage.name}. `
+                  : "No package selected. "}
                 {eventOrderOverviewSummary({
                   choices: clientChoices ?? [],
                   eventOrder: eventOrder
@@ -1046,6 +1049,9 @@ export function EventDetail({
                   unbilledAmount: financialImpact?.unbilledAmount ?? 0,
                   hasPaymentPlan: Boolean(linkedScheduleId),
                 })}
+                {eventInventory
+                  ? ` Items for this event: ${eventInventory.status.replace(/_/g, " ")}.`
+                  : " Items for this event: not started."}
               </CardDescription>
             </CardHeader>
             <CardContent className="flex flex-wrap gap-2">
@@ -1070,7 +1076,7 @@ export function EventDetail({
                   window.location.hash = "inventory";
                 }}
               >
-                Open Inventory
+                Open event items
               </Button>
             </CardContent>
           </Card>
@@ -1538,6 +1544,12 @@ export function EventDetail({
             templates={inventoryTemplates}
             catalogItems={inventoryItems}
             preferredTemplateId={eventSetup.inheritedTemplateRefs?.inventoryTemplateId ?? null}
+            eventOrderLines={(eventOrder?.lines ?? []).map((line) => ({
+              id: line.id,
+              description: line.description,
+              isIncluded: line.isIncluded,
+              unitPrice: line.unitPrice,
+            }))}
           />
         </TabsContent>
 

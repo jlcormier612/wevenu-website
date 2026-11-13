@@ -1,6 +1,6 @@
 /**
- * C2 — Library clarity contracts: catalogs vs templates; Packages ≠ EO;
- * Use vs Send without implying false share/invoice behavior.
+ * C2 — Library clarity: three commercial heroes; Packages ≠ EO plans;
+ * starting lists apply on event (share from event workspace).
  */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -14,28 +14,21 @@ function read(path: string): string {
 describe("C2 Library clarity — hub cards", () => {
   const hub = read("app/(app)/library/page.tsx");
 
-  it("keeps Packages distinct from Event Order Templates", () => {
-    assert.match(hub, /title="Packages"/);
-    assert.match(hub, /Distinct from Event Order Templates/);
-    assert.match(hub, /title="Event Order Templates"/);
-    assert.match(hub, /Distinct from sales Packages/);
+  it("keeps Packages & Pricing distinct from Event Order plans", () => {
+    assert.match(hub, /Packages & Pricing/);
+    assert.match(hub, /Event Order plans/);
+    assert.match(hub, /Choices catalog/);
   });
 
-  it("Inventory Templates Use vs Send without invoice claim", () => {
-    assert.match(hub, /title="Inventory Templates"/);
-    assert.match(hub, /Use applies a draft/);
-    assert.match(hub, /Send also shares/);
-    assert.match(hub, /Neither creates an invoice/);
+  it("presents Available Inventory with saved starting lists secondary", () => {
+    assert.match(hub, /Available Inventory/);
+    assert.match(hub, /Saved starting lists/);
   });
 
-  it("Available Inventory is catalog, not an event packing list", () => {
-    assert.match(hub, /title="Available Inventory"/);
-    assert.match(hub, /not an event packing list/i);
-  });
-
-  it("Offerings catalog edits are not client selection or EO apply", () => {
-    assert.match(hub, /title="Offerings"/);
-    assert.match(hub, /does not send choices to clients/i);
+  it("does not peer Offerings or Inventory Templates as commercial heroes", () => {
+    assert.doesNotMatch(hub, /title="Offerings"/);
+    assert.doesNotMatch(hub, /title="Inventory Templates"/);
+    assert.doesNotMatch(hub, /title="Event Order Templates"/);
   });
 
   it("Choices Templates remain absent from the hub", () => {
@@ -45,51 +38,46 @@ describe("C2 Library clarity — hub cards", () => {
 });
 
 describe("C2 Library clarity — collection pages", () => {
-  it("Inventory Templates page distinguishes Use (no share) from Send to client (share)", () => {
+  it("Saved starting lists emphasize Use on event; share from the event", () => {
     const page = read("app/(app)/library/inventory-templates/page.tsx");
-    assert.match(page, /Reusable starting lists for the inventory you typically provide at an event/);
+    assert.match(page, /Saved starting lists/);
     assert.match(page, /LibraryDependencyNote[\s\S]*tone="calm"/);
-    assert.match(page, /Use<\/strong> applies the list to an event without\s+sharing it/s);
-    assert.match(page, /Send to client<\/strong> applies it if needed and\s+shares the event inventory for the couple to review/s);
-    assert.doesNotMatch(page, /Event Order handoff/);
-    assert.doesNotMatch(page, /parallel payment/);
-    assert.doesNotMatch(page, /draft snapshot/);
+    assert.match(page, /Use on event<\/strong>/);
+    assert.match(page, /Share quantities with the couple from the event workspace/);
+    assert.doesNotMatch(page, /Send to client/);
     const list = read("components/event-inventory/inventory-template-list.tsx");
-    assert.doesNotMatch(list, /Event Order handoff/);
-    assert.doesNotMatch(list, /parallel payment stack/);
-    assert.match(list, /sendInventoryTemplateAction/);
+    assert.doesNotMatch(list, /id: "send"/);
     assert.match(list, /ensureEventInventoryAction/);
-    assert.match(list, /LIBRARY_LABELS\.sendToClient/);
   });
 
-  it("Event Order Templates remain distinct from sales Packages", () => {
+  it("Event Order plans remain distinct from sales Packages", () => {
     const page = read("app/(app)/library/event-order-templates/page.tsx");
     assert.match(page, /Distinct from sales Packages/i);
-    assert.match(page, /Send is only for templates with client choice groups/i);
-    assert.match(page, /Neither creates an invoice/i);
+    assert.match(page, /Send is only for\s+plans with client choice groups/i);
+    assert.match(page, /neither creates an invoice/i);
   });
 
   it("Packages page points sales packages away from Event Order authoring", () => {
     const page = read("app/(app)/packages/page.tsx");
-    assert.match(page, /Distinct from Event Order Templates/i);
-    assert.match(page, /not where you author or send an Event Order/i);
-    assert.match(page, /use Event Order Templates/i);
-    assert.match(page, /not selected from the Offerings catalog/);
+    assert.match(page, /Packages & Pricing/);
+    assert.match(page, /not Event Order choices/i);
+    assert.match(page, /Event Order plans/);
+    assert.match(page, /not selected from the choices catalog/);
   });
 
-  it("Available Inventory and Offerings remain editable catalogs without Use Template CTAs", () => {
+  it("Available Inventory and choices catalog remain editable without Use Template CTAs", () => {
     const inventory = read("app/(app)/library/inventory/page.tsx");
     assert.match(inventory, /does not share with clients/i);
     assert.doesNotMatch(inventory, /Use Template/);
-    assert.match(inventory, /Open Inventory Templates/);
+    assert.match(inventory, /Saved starting lists/);
     const offerings = read("components/offerings/offerings-page-client.tsx");
-    assert.match(offerings, /How Offerings work/);
-    assert.match(offerings, /Event Order Templates use these offerings/);
+    assert.match(offerings, /Choices catalog/);
+    assert.match(offerings, /power Event Order plans/);
     assert.doesNotMatch(offerings, /Use Template/);
-    assert.match(offerings, /Open Event Order Templates/);
+    assert.match(offerings, /Open Event Order plans/);
   });
 
-  it("Choices Templates route remains a redirect to Event Order Templates", () => {
+  it("Choices Templates route remains a redirect to Event Order templates", () => {
     const page = read("app/(app)/library/choices-templates/page.tsx");
     assert.match(page, /redirect\("\/library\/event-order-templates"\)/);
   });

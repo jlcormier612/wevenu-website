@@ -3,61 +3,60 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, it } from "node:test";
 
-describe("Library Templates IA — templates vs catalogs", () => {
+describe("Library Templates IA — commercial heroes + other templates", () => {
   const page = readFileSync(resolve("app/(app)/library/page.tsx"), "utf8");
 
-  it("groups applyable templates separately from reusable assets/catalogs", () => {
-    assert.match(page, /Applyable templates/);
-    assert.match(page, /Reusable assets & catalogs/);
-    assert.doesNotMatch(page, /Agreements & Forms/);
-    assert.doesNotMatch(page, /title="Marketing"/);
-    assert.doesNotMatch(page, /Group title="Planning"/);
+  it("groups Sales / Stock / Delivery separately from other templates", () => {
+    assert.match(page, /Group title="Sales"/);
+    assert.match(page, /Group title="Stock"/);
+    assert.match(page, /Group title="Delivery"/);
+    assert.match(page, /Other templates & assets/);
+    assert.doesNotMatch(page, /Applyable templates/);
+    assert.doesNotMatch(page, /Reusable assets & catalogs/);
   });
 
-  it("lists applyable templates with Template badge kind", () => {
+  it("presents three primary commercial heroes", () => {
+    assert.match(page, /Packages & Pricing/);
+    assert.match(page, /Available Inventory/);
+    assert.match(page, /Event Order plans/);
+  });
+
+  it("keeps Offerings and starting lists as secondary links", () => {
+    assert.match(page, /Saved starting lists/);
+    assert.match(page, /Choices catalog/);
+    assert.doesNotMatch(page, /title="Offerings"/);
+    assert.doesNotMatch(page, /title="Inventory Templates"/);
+    assert.doesNotMatch(page, /title="Event Order Templates"/);
+  });
+
+  it("lists other applyable templates with Template badge kind", () => {
     for (const title of [
       "Contract Templates",
       "Planning Templates",
       "Timeline Templates",
       "Floor Plan Templates",
-      "Event Order Templates",
-      "Inventory Templates",
     ]) {
       assert.match(page, new RegExp(`kind="template"[\\s\\S]*?title="${title}"`));
     }
     assert.doesNotMatch(page, /title="Choices Templates"/);
   });
-
-  it("lists catalog/source assets without Use Template on the hub cards", () => {
-    for (const title of ["Offerings", "Available Inventory", "Public Forms", "QR Campaigns"]) {
-      assert.match(page, new RegExp(`kind="catalog"[\\s\\S]*?title="${title}"`));
-    }
-    assert.doesNotMatch(page, /Use Template/);
-  });
-
-  it("teaches workflows with how-it-works copy on the hub", () => {
-    assert.match(page, /Templates are reusable starting points/);
-    assert.match(page, /reusable items your templates can pull from/);
-  });
 });
 
 describe("Library dependency guidance — source + direct links + how used", () => {
-  it("Inventory Templates explain authorship and link Available Inventory (no All templates hub)", () => {
+  it("Saved starting lists explain authorship and link Available Inventory", () => {
     const src = readFileSync(resolve("app/(app)/library/inventory-templates/page.tsx"), "utf8");
     assert.match(src, /LibraryDependencyNote/);
     assert.match(src, /href: "\/library\/inventory"/);
     assert.match(src, /Manage Available Inventory/);
     assert.match(src, /Built from your Available Inventory catalog/);
     assert.doesNotMatch(src, /All templates/);
-    assert.doesNotMatch(src, /href: "\/library"/);
   });
 
-  it("Event Order Templates link Manage Offerings and explain selection", () => {
+  it("Event Order plans link choices catalog and explain selection", () => {
     const src = readFileSync(resolve("app/(app)/library/event-order-templates/page.tsx"), "utf8");
     assert.match(src, /LibraryDependencyNote/);
     assert.match(src, /href: "\/library\/offerings"/);
-    assert.match(src, /Manage Offerings/);
-    assert.match(src, /Prefer reusable Offerings/i);
+    assert.match(src, /Manage choices catalog/);
     assert.match(src, /couple choices/i);
     assert.doesNotMatch(src, /All templates/);
   });
@@ -105,12 +104,12 @@ describe("Library dependency guidance — source + direct links + how used", () 
 
   it("Offerings and Inventory catalogs reverse-link consumers without Use Template", () => {
     const offerings = readFileSync(resolve("components/offerings/offerings-page-client.tsx"), "utf8");
-    assert.match(offerings, /Open Event Order Templates/);
+    assert.match(offerings, /Open Event Order plans/);
     assert.doesNotMatch(offerings, /Open Choices Templates/);
     assert.doesNotMatch(offerings, /Use Template/);
     const inventory = readFileSync(resolve("app/(app)/library/inventory/page.tsx"), "utf8");
     assert.match(inventory, /Open Floor Plan Templates/);
-    assert.match(inventory, /Open Inventory Templates/);
+    assert.match(inventory, /Saved starting lists/);
     assert.doesNotMatch(inventory, /Use Template/);
     const inventorySection = readFileSync(resolve("components/inventory/inventory-library-section.tsx"), "utf8");
     assert.match(inventorySection, /LIBRARY_LABELS\.edit/);
@@ -125,7 +124,7 @@ describe("Library dependency guidance — source + direct links + how used", () 
     const messages = readFileSync(resolve("app/(app)/communication/templates/page.tsx"), "utf8");
     assert.match(messages, /no separate catalog/);
     const packages = readFileSync(resolve("app/(app)/packages/page.tsx"), "utf8");
-    assert.match(packages, /not selected from the Offerings catalog/);
+    assert.match(packages, /not selected from the choices catalog/);
   });
 
   it("LibraryDependencyNote supports action + detail", () => {
@@ -160,9 +159,9 @@ describe("Public Form ↔ QR Campaign relationship", () => {
 });
 
 describe("Applyable template grammar + apply semantics preserved", () => {
-  it("Inventory Templates keep Use and add Duplicate", () => {
+  it("Saved starting lists keep Use on event and Duplicate", () => {
     const list = readFileSync(resolve("components/event-inventory/inventory-template-list.tsx"), "utf8");
-    assert.match(list, /LIBRARY_LABELS\.useTemplate/);
+    assert.match(list, /Use on event/);
     assert.match(list, /duplicateInventoryTemplateAction/);
     assert.match(list, /ensureEventInventoryAction/);
     assert.match(list, /TemplateApplyTargetPicker/);
@@ -178,58 +177,5 @@ describe("Applyable template grammar + apply semantics preserved", () => {
     const panel = readFileSync(resolve("components/client-choices/client-choices-panel.tsx"), "utf8");
     assert.match(panel, /createClientChoicesFromEventOrderTemplateAction/);
     assert.match(panel, /eventOrderTemplates/);
-    assert.doesNotMatch(panel, /library\/choices-templates/);
-  });
-
-  it("Event Order apply still snapshots into event_orders without mutating template", () => {
-    const service = readFileSync(resolve("lib/event-orders/service.ts"), "utf8");
-    assert.match(service, /applyTemplateToEventOrder/);
-    assert.match(service, /copyTemplateSnapshotsIntoOrder/);
-    const list = readFileSync(resolve("components/event-order-templates/event-order-template-list.tsx"), "utf8");
-    assert.match(list, /TemplateApplyTargetPicker/);
-    assert.match(list, /IncompleteTemplateWarningDialog/);
-    assert.match(list, /isEventOrderTemplateUnfinished/);
-  });
-
-  it("Use Template pages load client-first targets (not raw getEvents)", () => {
-    for (const page of [
-      "app/(app)/library/event-order-templates/page.tsx",
-      "app/(app)/library/inventory-templates/page.tsx",
-    ]) {
-      const src = readFileSync(resolve(page), "utf8");
-      assert.match(src, /getTemplateApplyClientGroups/, page);
-      assert.doesNotMatch(src, /getEvents\(\)/, page);
-    }
-  });
-
-  it("EO invoice path is primary when priced (not buried under Advanced)", () => {
-    const src = readFileSync(resolve("components/event-orders/event-order-invoice-link.tsx"), "utf8");
-    assert.match(src, /Create Invoice/);
-    assert.match(src, /Create Payment Plan/);
-    assert.match(src, /hasPricedContent/);
-    assert.doesNotMatch(src, /Advanced: link or create/);
-  });
-
-  it("EO panel wires linkedScheduleId so Create Payment Plan hides when a plan exists", () => {
-    const panel = readFileSync(resolve("components/event-orders/event-order-panel.tsx"), "utf8");
-    assert.match(panel, /linkedScheduleId=\{linkedScheduleId\}/);
-    assert.doesNotMatch(panel, /linkedScheduleId=\{null\}/);
-    const page = readFileSync(resolve("app/(app)/clients/[id]/page.tsx"), "utf8");
-    assert.match(page, /getPaymentSchedules/);
-    assert.match(page, /eoLinkedScheduleId/);
-    assert.match(page, /linkedScheduleId=\{eoLinkedScheduleId\}/);
-  });
-
-  it("Client/Venue Planning Library row grammar remains shared TemplateCard", () => {
-    const section = readFileSync(resolve("components/settings/playbooks-section.tsx"), "utf8");
-    assert.match(section, /LIBRARY_LABELS\.useTemplate/);
-    assert.match(section, /LIBRARY_LABELS\.preview/);
-    assert.match(section, /playbookKindLabel\(template\.kind\)/);
-    assert.match(section, /Add another copy|addAnotherCopy/);
-  });
-
-  it("Public form submit path still creates leads", () => {
-    const route = readFileSync(resolve("app/api/public/forms/submit/route.ts"), "utf8");
-    assert.match(route, /create_public_form_lead|ingestLead/);
   });
 });

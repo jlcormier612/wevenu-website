@@ -12,7 +12,7 @@ import { INVENTORY_TEMPLATE_STARTER_MASTERS } from "@/lib/inventory/starters";
 import { getTemplates } from "@/lib/event-inventory/service";
 import { getTemplateApplyClientGroups } from "@/lib/library/template-apply-targets-service";
 
-export const metadata: Metadata = { title: "Inventory Templates" };
+export const metadata: Metadata = { title: "Saved starting lists" };
 
 export default async function InventoryTemplatesLibraryPage() {
   await ensureInventoryStartersForCurrentVenue();
@@ -27,11 +27,11 @@ export default async function InventoryTemplatesLibraryPage() {
 
   return (
     <div className="htc-hospitality-page space-y-4 sm:space-y-6">
-      <CollectionBackLink href="/library" label="Templates" />
+      <CollectionBackLink href="/library/inventory" label="Available Inventory" />
       <div className="htc-hospitality-heading htc-hospitality-intro-accent">
         <PageHeader
-          title="Inventory Templates"
-          description="Reusable starting lists for the inventory you typically provide at an event. Apply one to an event, then customize that event’s inventory as needed."
+          title="Saved starting lists"
+          description="Reusable starting lists for Items for this event. Apply one to an event, review quantities there, then share from the event when ready."
           actions={<NewInventoryTemplateButton />}
         />
       </div>
@@ -39,13 +39,12 @@ export default async function InventoryTemplatesLibraryPage() {
         tone="calm"
           detail={
             <>
-              <strong className="font-medium text-heading">Use</strong> applies the list to an event without sharing it.{" "}
-              <strong className="font-medium text-heading">Send to client</strong> applies it if needed and shares the event inventory for the couple to review. Built from your Available Inventory catalog — add catalog items when you edit a template; use a custom line only for one-offs.
+              <strong className="font-medium text-heading">Use on event</strong> applies the list as that event&apos;s editable copy without sharing. Share quantities with the couple from the event workspace after you review real counts — not from this Library list. Built from your Available Inventory catalog.
             </>
           }
         action={{ href: "/library/inventory", label: "Manage Available Inventory" }}
       >
-        How Inventory Templates work
+        How saved starting lists work
       </LibraryDependencyNote>
       <InventoryTemplateList
         templates={templates}

@@ -11,6 +11,7 @@ import {
   finalizeEventInventoryAction, removeEventInventoryItemAction, reopenEventInventoryAction,
   requestInventorySelectionChangesAction, setInventoryItemClientSelectableAction, shareEventInventoryAction,
 } from "@/app/(app)/events/[id]/event-inventory-actions";
+import { HandoffConfirmDialog } from "@/components/event-inventory/handoff-confirm-dialog";
 import { ItemSheet } from "@/components/event-inventory/item-sheet";
 import { BusinessAssetHeader } from "@/components/business-assets/asset-header";
 import { ActivityTimeline } from "@/components/leads/activity-timeline";
@@ -23,7 +24,10 @@ import {
 import {
   INVENTORY_COUPLE_BAND_HINT, INVENTORY_VISIBILITY_DISCLOSURE, groupInventoryByCoupleBand, inventoryCoupleMaxQuantity,
 } from "@/lib/event-inventory/couple-bands";
-import { eventInventoryItemsPendingForEventOrder } from "@/lib/event-inventory/handoff";
+import {
+  eventInventoryItemsPendingForEventOrder,
+  type EventOrderLineNameRef,
+} from "@/lib/event-inventory/handoff";
 import { eventInventoryListPriceLabel } from "@/lib/event-inventory/list-display";
 import type { EventInventoryItem, EventInventoryStatus, EventInventoryWithDetails, InventoryTemplate } from "@/lib/event-inventory/types";
 import type { InventoryItem } from "@/lib/inventory/types";
@@ -224,15 +228,19 @@ function StartInventory({
 
 export function EventInventoryPanel({
   eventId, eventInventory, templates, catalogItems, preferredTemplateId = null,
+  eventOrderLines = [],
 }: {
   eventId: string;
   eventInventory: EventInventoryWithDetails | null;
   templates: InventoryTemplate[];
   catalogItems: InventoryItem[];
   preferredTemplateId?: string | null;
+  /** Existing Event Order lines for advisory name-match warnings on handoff. */
+  eventOrderLines?: EventOrderLineNameRef[];
 }) {
   const router = useRouter();
   const [lifecyclePending, startLifecycle] = React.useTransition();
+  const [handoffOpen, setHandoffOpen] = React.useState(false);
   const [removingId, setRemovingId] = React.useState<string | null>(null);
   /** Optimistic Select flags — props can lag when RSC revalidation misses the clients page. */
   const [selectableOverrides, setSelectableOverrides] = React.useState<Record<string, boolean>>({});
@@ -288,7 +296,8 @@ export function EventInventoryPanel({
     (sum, i) => i.isIncluded || !i.clientVisible ? sum : sum + (i.unitPrice ?? 0) * i.quantity,
     0,
   );
-  const hasUnpushedItems = eventInventoryItemsPendingForEventOrder(items).length > 0;
+  const pendingForHandoff = eventInventoryItemsPendingForEventOrder(items);
+  const hasUnpushedItems = pendingForHandoff.length > 0;
   const selectableCount = items.filter((i) => i.clientSelectable).length;
 
   async function handleRemove(item: EventInventoryItem) {
@@ -304,22 +313,22 @@ export function EventInventoryPanel({
       <CardHeader>
         <BusinessAssetHeader
           compact
-          whatIsThis="Event Inventory"
-          title="Event Inventory"
+          whatIsThis="Items for this event"
+          title="Items for this event"
           status={<Badge variant={STATUS_VARIANT[inv.status]}>{STATUS_LABEL[inv.status]}</Badge>}
           lastUpdated={new Date(inv.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
           primaryAction={isFinalized ? (
             <div className="flex items-center gap-2">
               {hasUnpushedItems && (
-                <Button type="button" variant="outline" size="sm" disabled={lifecyclePending}
-                  onClick={() => runLifecycle(async () => {
-                    const result = await addEventInventoryToEventOrderAction(inv.id, eventId);
-                    if (result.ok) {
-                      const extra = result.addedTotal > 0 ? ` (${formatMoney(result.addedTotal)} additional)` : " (included — no additional charge)";
-                      toast.success(`Added ${result.addedCount} item${result.addedCount === 1 ? "" : "s"}${extra} to the Event Order.`);
-                    } else toast.error(result.message ?? "Could not add to Event Order.");
-                  })}>
-                  Add to Event Order
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={lifecyclePending}
+                  data-testid="inventory-add-to-event-order"
+                  onClick={() => setHandoffOpen(true)}
+                >
+                  Copy to Event Order
                 </Button>
               )}
               <Button type="button" variant="outline" size="sm" disabled={lifecyclePending}
@@ -400,13 +409,17 @@ export function EventInventoryPanel({
           data-testid="inventory-share-instructions"
         >
           <p>
-            <span className="font-medium text-foreground">Share inventory</span> emails the couple a
-            focused Inventory link. If any Additional item is marked{" "}
+            Physical items to prepare for this celebration. Commercial services and upgrades live on
+            the Event Order — do not ask the couple to make the same purchasing decision twice.
+          </p>
+          <p>
+            <span className="font-medium text-foreground">Share quantities</span> emails the couple a
+            focused items link when you want their input. If any Additional item is marked{" "}
             <span className="font-medium text-foreground">Select</span>, they can choose and submit;
             otherwise the document is read-only. This does not send an invoice.
           </p>
           <p>
-            Included items stay informational. Confirm a submitted response before Finalize → Add to
+            Included items stay informational. Confirm a submitted response before Finalize → Copy to
             Event Order. Additional-cost total:{" "}
             <span className="font-medium text-foreground">{formatMoney(billableTotal)}</span>
           </p>
@@ -490,6 +503,38 @@ export function EventInventoryPanel({
           </details>
         )}
       </CardContent>
+
+      <HandoffConfirmDialog
+        open={handoffOpen}
+        onOpenChange={setHandoffOpen}
+        pendingItems={pendingForHandoff.map((item) => ({
+          id: item.id,
+          name: item.name,
+          isIncluded: item.isIncluded,
+          unitPrice: item.unitPrice,
+          quantity: item.quantity,
+          addedToEventOrderAt: item.addedToEventOrderAt,
+          clientVisible: item.clientVisible,
+        }))}
+        existingLines={eventOrderLines}
+        busy={lifecyclePending}
+        onConfirm={(itemIds) => {
+          runLifecycle(async () => {
+            const result = await addEventInventoryToEventOrderAction(inv.id, eventId, { itemIds });
+            if (result.ok) {
+              setHandoffOpen(false);
+              const extra = result.addedTotal > 0
+                ? ` (${formatMoney(result.addedTotal)} additional)`
+                : " (included — no additional charge)";
+              toast.success(
+                `Added ${result.addedCount} item${result.addedCount === 1 ? "" : "s"}${extra} to the Event Order. Snapshot only — not live sync.`,
+              );
+            } else {
+              toast.error(result.message ?? "Could not add to Event Order.");
+            }
+          });
+        }}
+      />
     </Card>
   );
 }

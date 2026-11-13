@@ -31,15 +31,16 @@ describe("Package add-on path — no new booking", () => {
   });
 });
 
-describe("Inventory Templates Use + Send", () => {
-  it("exposes sendInventoryTemplate and Library Send action", () => {
+describe("Saved starting lists Use on event (share from event)", () => {
+  it("keeps sendInventoryTemplate capability but demotes Library Send CTA", () => {
     const service = read("lib/event-inventory/service.ts");
     assert.match(service, /export async function sendInventoryTemplate/);
     assert.match(service, /shareEventInventory/);
     const actions = read("app/(app)/events/[id]/event-inventory-actions.ts");
     assert.match(actions, /sendInventoryTemplateAction/);
     const list = read("components/event-inventory/inventory-template-list.tsx");
-    assert.match(list, /sendInventoryTemplateAction/);
-    assert.match(list, /LIBRARY_LABELS\.sendToClient/);
+    assert.match(list, /ensureEventInventoryAction/);
+    assert.match(list, /Use on event/);
+    assert.doesNotMatch(list, /id: "send"/);
   });
 });

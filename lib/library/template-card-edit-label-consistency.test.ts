@@ -94,11 +94,11 @@ describe("template-card Edit label consistency", () => {
     }
   });
 
-  it("Preview / Use / Send to client remain distinct labels in families that offer them", () => {
+  it("Preview / Use remain distinct; inventory starting lists demote Library Send", () => {
     const inv = read("components/event-inventory/inventory-template-list.tsx");
     assert.match(inv, /LIBRARY_LABELS\.preview/);
-    assert.match(inv, /LIBRARY_LABELS\.useTemplate/);
-    assert.match(inv, /LIBRARY_LABELS\.sendToClient/);
+    assert.match(inv, /Use on event/);
+    assert.doesNotMatch(inv, /id: "send"/);
 
     const eo = read("components/event-order-templates/event-order-template-list.tsx");
     assert.match(eo, /LIBRARY_LABELS\.preview/);

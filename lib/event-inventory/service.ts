@@ -402,7 +402,11 @@ export async function finalizeEventInventory(eventInventoryId: string): Promise<
  * Event Order as operational agreement lines; only additional charges
  * are later eligible to freeze onto an invoice.
  */
-export async function addToEventOrder(eventInventoryId: string, eventId: string): Promise<AddToEventOrderResult> {
+export async function addToEventOrder(
+  eventInventoryId: string,
+  eventId: string,
+  opts?: { itemIds?: string[] },
+): Promise<AddToEventOrderResult> {
   const venue = await getCurrentVenue();
   if (!venue) return { ok: false, message: "No venue found." };
   const supabase = await createClient();
@@ -412,12 +416,18 @@ export async function addToEventOrder(eventInventoryId: string, eventId: string)
   if (inv.status !== "finalized") {
     return { ok: false, message: "Finalize the Event Inventory before adding it to the Event Order." };
   }
-  const pending = eventInventoryItemsPendingForEventOrder(inv.items);
+  let pending = eventInventoryItemsPendingForEventOrder(inv.items);
+  if (opts?.itemIds) {
+    const allow = new Set(opts.itemIds);
+    pending = pending.filter((item) => allow.has(item.id));
+  }
   if (pending.length === 0) {
     return {
       ok: false,
       message: inv.items.some((i) => !i.addedToEventOrderAt)
-        ? "Only venue-only items remain — they stay off the Event Order."
+        ? (opts?.itemIds
+          ? "No selected items are eligible to add (already transferred, venue-only, or skipped)."
+          : "Only venue-only items remain — they stay off the Event Order.")
         : "Everything here has already been added to the Event Order.",
     };
   }

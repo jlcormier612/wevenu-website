@@ -145,8 +145,12 @@ export async function removeEventInventoryItemAction(eventInventoryId: string, e
   return result;
 }
 
-export async function addEventInventoryToEventOrderAction(eventInventoryId: string, eventId: string): Promise<AddToEventOrderResult> {
-  const result = await addToEventOrder(eventInventoryId, eventId);
+export async function addEventInventoryToEventOrderAction(
+  eventInventoryId: string,
+  eventId: string,
+  opts?: { itemIds?: string[] },
+): Promise<AddToEventOrderResult> {
+  const result = await addToEventOrder(eventInventoryId, eventId, opts);
   if (result.ok) {
     revalidateEvent(eventId);
   }

@@ -6,7 +6,6 @@ import {
   Layers, LayoutGrid, Mail, Megaphone, Package, QrCode,
 } from "lucide-react";
 
-import { LibraryHowItWorks } from "@/components/library/library-guidance";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { Badge } from "@/components/ui/badge";
 import { getTemplates as getContractTemplates } from "@/lib/contracts/service";
@@ -29,7 +28,7 @@ import { ensureSavedReportStartersForCurrentVenue } from "@/lib/saved-reports/pr
 import { ensureOfferingStartersForCurrentVenue } from "@/lib/offerings/provision";
 import { listOfferings } from "@/lib/offerings/service";
 
-export const metadata: Metadata = { title: "Templates" };
+export const metadata: Metadata = { title: "Library" };
 
 type LibraryCard = {
   title: string;
@@ -37,45 +36,80 @@ type LibraryCard = {
   href?: string;
   count?: number;
   icon: React.ElementType;
-  kind?: "template" | "catalog";
+  kind?: "template" | "catalog" | "primary";
+  secondaryHref?: string;
+  secondaryLabel?: string;
 };
 
-function ToolboxCard({ title, description, href, count, icon: Icon, kind }: LibraryCard) {
-  const body = (
-    <div className="htc-toolbox-card flex h-full items-start gap-3 rounded-sm border border-border p-4">
+function ToolboxCard({
+  title, description, href, count, icon: Icon, kind, secondaryHref, secondaryLabel,
+}: LibraryCard) {
+  const inner = (
+    <>
       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
         <Icon className="h-4 w-4" />
       </div>
       <div className="min-w-0 flex-1 space-y-1">
         <div className="flex flex-wrap items-center gap-2">
-          <p className="htc-record-link text-sm font-medium">{title}</p>
+          {href ? (
+            <Link href={href} className="htc-record-link text-sm font-medium">
+              {title}
+            </Link>
+          ) : (
+            <p className="htc-record-link text-sm font-medium">{title}</p>
+          )}
           {kind === "template" && <Badge variant="accent" className="text-[10px]">Template</Badge>}
           {kind === "catalog" && <Badge variant="outline" className="text-[10px]">Catalog</Badge>}
           {count !== undefined && <Badge variant="muted">{count}</Badge>}
         </div>
         <p className="text-xs text-muted-foreground">{description}</p>
+        {secondaryHref && secondaryLabel ? (
+          <p className="pt-1 text-xs">
+            <Link
+              href={secondaryHref}
+              className="text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+            >
+              {secondaryLabel}
+            </Link>
+          </p>
+        ) : null}
       </div>
+    </>
+  );
+
+  // Avoid nested <a> when a secondary link is present.
+  if (href && !secondaryHref) {
+    return (
+      <Link href={href} className="htc-record-card-link group">
+        <div className="htc-toolbox-card flex h-full items-start gap-3 rounded-sm border border-border p-4">
+          {inner}
+        </div>
+      </Link>
+    );
+  }
+
+  return (
+    <div className="htc-toolbox-card flex h-full items-start gap-3 rounded-sm border border-border p-4">
+      {inner}
     </div>
   );
-  return href ? <Link href={href} className="htc-record-card-link group">{body}</Link> : body;
 }
 
 function Group({
   title,
-  guidance,
   children,
+  compact,
 }: {
   title: string;
-  guidance: React.ReactNode;
   children: React.ReactNode;
+  compact?: boolean;
 }) {
   return (
-    <section className="space-y-3">
-      <div className="space-y-2">
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</h2>
-        <LibraryHowItWorks tone="calm">{guidance}</LibraryHowItWorks>
+    <section className="space-y-3" data-testid={`library-group-${title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}>
+      <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</h2>
+      <div className={compact ? "grid gap-2 sm:grid-cols-2 lg:grid-cols-3" : "grid gap-2 sm:grid-cols-1 md:grid-cols-1"}>
+        {children}
       </div>
-      <div className="grid gap-2 sm:grid-cols-2">{children}</div>
     </section>
   );
 }
@@ -115,41 +149,65 @@ export default async function LibraryPage() {
   const inventoryItems = inventoryItemsAll.filter((i) => !i.isArchived);
   const packages = packagesAll;
   const offerings = offeringsAll.filter((o) => !o.isArchived);
+  const savedLists = inventoryTemplates.filter((t) => !t.isArchived);
 
   return (
-    <div className="htc-hospitality-page space-y-6 sm:space-y-8">
+    <div className="htc-hospitality-page space-y-6 sm:space-y-8" data-testid="library-commercial-ia">
       <div className="htc-hospitality-heading htc-hospitality-intro-accent">
         <PageHeader
-          title="Templates"
-          description="Reusable things you create once and use again — templates you apply to events, plus catalogs and assets those templates pull from."
+          title="Library"
+          description="What you sell, what you have, and what you deliver — reusable resources for bookings and events."
         />
       </div>
 
-      <Group
-        title="Applyable templates"
-        guidance="Templates are reusable starting points. Create one here, then use it when setting up an event. Applying always creates that event’s own editable copy."
-      >
-        <ToolboxCard kind="template" title="Contract Templates" description="Reusable agreements with fill-in details. Use creates a draft contract — send and sign later." href="/library/contracts" count={contractTemplates.length} icon={FileSignature} />
-        <ToolboxCard kind="template" title="Planning Templates" description="Client Planning and Venue Planning checklists you refine once, then apply per booking." href="/library/playbooks" count={playbookTemplatesCount} icon={BookOpen} />
-        <ToolboxCard kind="template" title="Timeline Templates" description="Reusable day-of schedules. Use adds entries to an event timeline." href="/library/timeline-templates" count={timelineTemplates.length} icon={CalendarClock} />
-        <ToolboxCard kind="template" title="Floor Plan Templates" description="Reusable room layouts. Use creates an event floor plan." href="/library/floor-plan-templates" count={floorPlanTemplates.length} icon={LayoutGrid} />
-        <ToolboxCard kind="template" title="Event Order Templates" description="Reusable delivery build sheets — fixed offerings and selectable groups. Use applies on the venue side (then Finalize & Share on the event); Send is only for templates with client choice groups. Neither creates an invoice. Distinct from sales Packages." href="/library/event-order-templates" count={eventOrderTemplates.length} icon={Layers} />
-        <ToolboxCard kind="template" title="Inventory Templates" description="Reusable packing lists from Available Inventory. Use applies a draft to an event’s Inventory tab; Send also shares for portal review. Neither creates an invoice." href="/library/inventory-templates" count={inventoryTemplates.length} icon={Layers} />
-        <ToolboxCard kind="template" title="Questionnaires & Feedback" description="Client questionnaires and post-event feedback you can send per booking." href="/library/questionnaire-templates" count={questionnaireTemplates.length} icon={FileText} />
-        <ToolboxCard kind="template" title="Message Templates" description="Emails and texts you send often — pick one when composing." href="/communication/templates" count={messageTemplates.length} icon={Mail} />
+      <Group title="Sales">
+        <ToolboxCard
+          kind="primary"
+          title="Packages & Pricing"
+          description="Priced offers for proposals and contracts."
+          href="/packages"
+          count={packages.length}
+          icon={Boxes}
+        />
       </Group>
 
-      <Group
-        title="Reusable assets & catalogs"
-        guidance="These are reusable items your templates can pull from, or shareable assets (forms, QR codes, brochures). They are not applied like templates."
-      >
-        <ToolboxCard kind="catalog" title="Offerings" description="Menus, bar, services, and rentals. Event Order Templates select from here — editing the catalog does not send choices to clients or apply an Event Order." href="/library/offerings" count={offerings.length} icon={Package} />
-        <ToolboxCard kind="catalog" title="Packages" description="What you sell commercially — priced sales packages with inclusions for booking. Distinct from Event Order Templates (delivery build sheets)." href="/packages" count={packages.length} icon={Boxes} />
-        <ToolboxCard kind="catalog" title="Available Inventory" description="Physical stock catalog. Inventory Templates and floor plans use these items — not an event packing list by itself." href="/library/inventory" count={inventoryItems.length} icon={Package} />
-        <ToolboxCard kind="catalog" title="Public Forms" description="Lead-capture forms for expos and open houses. Share by link or as a QR destination." href="/library/public-forms" count={publicForms.length} icon={ClipboardList} />
-        <ToolboxCard kind="catalog" title="QR Campaigns" description="Printable QR codes that send people to a Public Form, tour, website, or URL — with scan tracking." href="/library/qr-campaigns" count={qrCampaigns.length} icon={QrCode} />
-        <ToolboxCard kind="catalog" title="Brochures" description="Brandable venue overviews. Download PDF or share a hosted link with a lead." href="/library/brochures" count={brochures.length} icon={Megaphone} />
-        <ToolboxCard title="Saved Reports" description="Reports you’ve saved to reopen quickly or have delivered." href="/reporting/saved" count={savedReports.length} icon={FileText} />
+      <Group title="Stock">
+        <ToolboxCard
+          kind="primary"
+          title="Available Inventory"
+          description="Physical items your venue owns or can provide."
+          href="/library/inventory"
+          count={inventoryItems.length}
+          icon={Package}
+          secondaryHref="/library/inventory-templates"
+          secondaryLabel={`Saved starting lists (${savedLists.length})`}
+        />
+      </Group>
+
+      <Group title="Delivery">
+        <ToolboxCard
+          kind="primary"
+          title="Event Order plans"
+          description="Reusable delivery plans with included items and couple choices."
+          href="/library/event-order-templates"
+          count={eventOrderTemplates.length}
+          icon={Layers}
+          secondaryHref="/library/offerings"
+          secondaryLabel={`Choices catalog (${offerings.length})`}
+        />
+      </Group>
+
+      <Group title="Other templates & assets" compact>
+        <ToolboxCard kind="template" title="Contract Templates" description="Reusable agreements with fill-in details." href="/library/contracts" count={contractTemplates.length} icon={FileSignature} />
+        <ToolboxCard kind="template" title="Planning Templates" description="Client and venue planning checklists." href="/library/playbooks" count={playbookTemplatesCount} icon={BookOpen} />
+        <ToolboxCard kind="template" title="Timeline Templates" description="Reusable day-of schedules." href="/library/timeline-templates" count={timelineTemplates.length} icon={CalendarClock} />
+        <ToolboxCard kind="template" title="Floor Plan Templates" description="Reusable room layouts." href="/library/floor-plan-templates" count={floorPlanTemplates.length} icon={LayoutGrid} />
+        <ToolboxCard kind="template" title="Questionnaires & Feedback" description="Client questionnaires and post-event feedback." href="/library/questionnaire-templates" count={questionnaireTemplates.length} icon={FileText} />
+        <ToolboxCard kind="template" title="Message Templates" description="Emails and texts you send often." href="/communication/templates" count={messageTemplates.length} icon={Mail} />
+        <ToolboxCard kind="catalog" title="Public Forms" description="Lead-capture forms for expos and open houses." href="/library/public-forms" count={publicForms.length} icon={ClipboardList} />
+        <ToolboxCard kind="catalog" title="QR Campaigns" description="Printable QR codes with scan tracking." href="/library/qr-campaigns" count={qrCampaigns.length} icon={QrCode} />
+        <ToolboxCard kind="catalog" title="Brochures" description="Brandable venue overviews." href="/library/brochures" count={brochures.length} icon={Megaphone} />
+        <ToolboxCard title="Saved Reports" description="Reports you’ve saved to reopen quickly." href="/reporting/saved" count={savedReports.length} icon={FileText} />
       </Group>
     </div>
   );

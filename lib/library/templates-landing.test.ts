@@ -5,7 +5,7 @@ import { describe, it } from "node:test";
 
 import { NAV_ITEMS } from "@/lib/navigation";
 
-describe("Templates landing page", () => {
+describe("Library landing page", () => {
   const page = readFileSync(resolve("app/(app)/library/page.tsx"), "utf8");
 
   it("does not present Documents as a template category", () => {
@@ -15,23 +15,23 @@ describe("Templates landing page", () => {
     assert.doesNotMatch(page, /getVenueDocuments/);
   });
 
-  it("keeps the legitimate template categories", () => {
+  it("keeps commercial heroes and other template categories reachable", () => {
     for (const title of [
+      "Packages & Pricing",
+      "Available Inventory",
+      "Event Order plans",
       "Contract Templates",
       "Questionnaires & Feedback",
-      "Packages",
-      "Offerings",
       "Planning Templates",
       "Timeline Templates",
       "Floor Plan Templates",
-      "Event Order Templates",
     ]) {
-      assert.match(page, new RegExp(`title="${title}"`));
+      assert.match(page, new RegExp(title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
     }
     assert.match(page, /href="\/library\/contracts"/);
     assert.match(page, /href="\/library\/questionnaire-templates"/);
     assert.match(page, /href="\/packages"/);
-    assert.match(page, /href="\/library\/offerings"/);
+    assert.match(page, /secondaryHref="\/library\/offerings"|href="\/library\/offerings"/);
     assert.match(page, /href="\/library\/playbooks"/);
     assert.match(page, /href="\/library\/timeline-templates"/);
     assert.match(page, /href="\/library\/floor-plan-templates"/);
