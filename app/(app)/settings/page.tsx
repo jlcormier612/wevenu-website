@@ -86,7 +86,7 @@ export default async function SettingsPage() {
       href: "/settings/referrals",
       title: "Refer a Venue",
       icon: HeartHandshake,
-      description: "Share the Luv and earn a free month when a venue you refer joins.",
+      description: "Share the Luv and earn a free month when a venue you refer becomes a paying customer.",
     },
     {
       href: "/settings/team",
