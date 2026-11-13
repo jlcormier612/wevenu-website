@@ -32,4 +32,14 @@ describe("pricing success page — enrollment handoff", () => {
     assert.match(page, /not_eligible/);
     assert.match(page, /We couldn't complete your subscription/);
   });
+
+  it("routes White Glove to intake with non-self-setup messaging", () => {
+    assert.match(page, /view === "white_glove_ready"/);
+    assert.match(page, /whiteGloveIntakeUrlFromToken\(enrollment\.intakeToken\)/);
+    assert.match(page, /Share your venue information/);
+    assert.match(page, /You won&apos;t sign in yet/);
+    assert.match(page, /no Setup Hub for you to complete on your own/);
+    assert.doesNotMatch(page, /You're all set—start setting up your venue/);
+    assert.doesNotMatch(page, /Complete your Setup Hub to get started/);
+  });
 });

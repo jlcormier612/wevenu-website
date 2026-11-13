@@ -1,0 +1,47 @@
+SUBJECT: Let's get WG Stripe C 1793287100199 ready — White Glove Setup
+
+Hi Jennifer,
+
+Thank you for choosing White Glove Setup for WG Stripe C 1793287100199. Your Gather subscription and White Glove onboarding purchase are confirmed.
+
+We'll help build your Hello to Cheers workspace using the information and materials you provide. You don't need to configure everything yourself.
+
+There's nothing you need to schedule right now. Share a few details about your venue, and we'll take it from there — reaching out personally when we need anything from you.
+
+Every venue is a little different. We'll get started as soon as we have what we need and keep you updated along the way.
+
+Share a few details about your venue here: https://app.sandbox.hellotocheers.com/onboarding/white-glove/intake_278f0b5e21d4044cd67518137f847bb18a837d970a280391
+
+You won't receive login credentials yet — we'll invite you when your workspace is ready.
+
+While you wait, you can return to your intake link anytime to add materials. There's no Setup Hub work for you to complete on your own.
+
+Questions? Just reply — we're right here.
+
+--- HTML ---
+
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="font-family:Georgia,'Times New Roman',serif;background:#f7f4ef;margin:0;padding:32px 16px">
+  <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto">
+    <tr>
+      <td style="background:#fffdf9;border-radius:4px;padding:40px 36px;border:1px solid #e5ddd0">
+        <p style="margin:0 0 8px;font-size:12px;letter-spacing:0.14em;text-transform:uppercase;color:#6b7a6b">Hello to Cheers</p>
+        <h1 style="margin:0 0 24px;font-size:24px;line-height:1.3;color:#2f3d2f;font-weight:normal">White Glove Welcome</h1>
+        <p style="margin:0 0 16px;font-size:16px;line-height:1.55;color:#1f2937">Hi Jennifer,</p>
+<p style="margin:0 0 16px;font-size:16px;line-height:1.55;color:#1f2937">Thank you for choosing White Glove Setup for WG Stripe C 1793287100199. Your Gather subscription and White Glove onboarding purchase are confirmed.</p>
+<p style="margin:0 0 16px;font-size:16px;line-height:1.55;color:#1f2937">We'll help build your Hello to Cheers workspace using the information and materials you provide. You don't need to configure everything yourself.</p>
+<p style="margin:0 0 16px;font-size:16px;line-height:1.55;color:#1f2937">There's nothing you need to schedule right now. Share a few details about your venue, and we'll take it from there — reaching out personally when we need anything from you.</p>
+<p style="margin:0 0 16px;font-size:16px;line-height:1.55;color:#1f2937">Every venue is a little different. We'll get started as soon as we have what we need and keep you updated along the way.</p><p style="margin:8px 0 24px">
+  <a href="https://app.sandbox.hellotocheers.com/onboarding/white-glove/intake_278f0b5e21d4044cd67518137f847bb18a837d970a280391" style="display:inline-block;background:#2f3d2f;color:#fffdf9;text-decoration:none;padding:12px 22px;border-radius:4px;font-size:16px;font-family:Georgia,'Times New Roman',serif">Share venue details</a>
+</p>
+<p style="margin:0 0 16px;font-size:13px;line-height:1.5;color:#6b7a6b">Or open this link: <a href="https://app.sandbox.hellotocheers.com/onboarding/white-glove/intake_278f0b5e21d4044cd67518137f847bb18a837d970a280391" style="color:#2f3d2f">https://app.sandbox.hellotocheers.com/onboarding/white-glove/intake_278f0b5e21d4044cd67518137f847bb18a837d970a280391</a></p><p style="margin:0 0 16px;font-size:16px;line-height:1.55;color:#1f2937">You won't receive login credentials yet — we'll invite you when your workspace is ready.</p>
+<p style="margin:0 0 16px;font-size:16px;line-height:1.55;color:#1f2937">While you wait, you can return to your intake link anytime to add materials. There's no Setup Hub work for you to complete on your own.</p>
+<p style="margin:0 0 16px;font-size:16px;line-height:1.55;color:#1f2937">Questions? Just reply — we're right here.</p>
+        <p style="margin:28px 0 0;font-size:14px;line-height:1.5;color:#6b7a6b">With care,<br/>Jennifer &amp; the Hello to Cheers team</p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

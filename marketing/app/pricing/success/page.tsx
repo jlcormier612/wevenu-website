@@ -100,11 +100,11 @@ export default async function PricingSuccessPage({
   } else if (view === "white_glove_ready" && enrollment) {
     heading = "Let's get your venue ready";
     body =
-      "You've chosen White Glove Setup. We'll build your Hello to Cheers workspace using the information and materials you provide. You don't need to configure everything yourself.";
+      "Your subscription and White Glove onboarding purchase are confirmed. We'll help build your Hello to Cheers workspace using the information and materials you provide — you don't need to configure everything yourself.";
     if (enrollment.intakeToken) {
       primaryCta = {
         href: whiteGloveIntakeUrlFromToken(enrollment.intakeToken),
-        label: "Continue",
+        label: "Share your venue information",
       };
     }
   } else if (view === "self_setup_ready" && enrollment?.activationToken) {
@@ -163,8 +163,12 @@ export default async function PricingSuccessPage({
               {body}
             </p>
             <p className="mt-5 text-base leading-[1.7] text-[var(--forest-sage)]/70 md:text-lg">
-              We&apos;ll let you know if we need you to make a decision we can&apos;t make for
-              you.
+              Your next step is to share a few details about your venue. There&apos;s nothing to
+              schedule right now — we&apos;ll reach out personally when we need anything from you.
+            </p>
+            <p className="mt-5 text-base leading-[1.7] text-[var(--forest-sage)]/70 md:text-lg">
+              You won&apos;t sign in yet. We&apos;ll invite you when your workspace is ready. There
+              is no Setup Hub for you to complete on your own.
             </p>
             <p className="mt-5 text-sm leading-[1.7] text-[var(--forest-sage)]/55">
               Every venue is a little different. We&apos;ll get started as soon as we have what we

@@ -1,0 +1,52 @@
+{
+  "reusedEnrollment": {
+    "id": "d29fbf80-4903-4cc0-b9fc-03c87e271c3d",
+    "owner_email": "jennifer+wg-c-1793287100199@hellotocheers.com",
+    "venue_name": "WG Stripe C 1793287100199",
+    "plan": "starter/Gather",
+    "status": "provisioned",
+    "white_glove_status": "waiting",
+    "stripe_checkout_session_id": "cs_test_b1WRY4xiZxscDWbyQ9W2jlCDFl92vaTTWWfdKNwiM3MuyKa0Lw25j9YFIe",
+    "payment_status": "paid",
+    "amount_total_cents": 61800,
+    "line_items": [
+      {
+        "desc": "Gather",
+        "amount": 11900,
+        "recurring": "month"
+      },
+      {
+        "desc": "White Glove Setup",
+        "amount": 49900,
+        "recurring": null
+      }
+    ],
+    "welcome_email": {
+      "template_id": "white_glove_welcome",
+      "delivery": "sent",
+      "provider_id": "01a18843-aaa6-7a5d-a480-68acafc2558f",
+      "occurredAt": "2026-10-29T15:24:58.472Z",
+      "inbox_delivery": "NOT_VERIFIED (Resend accepted; controlled mailbox delivery not re-opened)"
+    }
+  },
+  "successPageServing": {
+    "url": "https://sandbox.hellotocheers.com/pricing/success?session_id=cs_test_b1WRY4xiZxscDWbyQ9W2jlCDFl92vaTTWWfdKNwiM3MuyKa0Lw25j9YFIe",
+    "heading": "Let's get your venue ready",
+    "cta": "Continue \u2192 intake (pre-fix serving)",
+    "intakeHref": "https://app.sandbox.hellotocheers.com/onboarding/white-glove/intake_278f0b5e21d4044cd67518137f847bb18a837d970a280391"
+  },
+  "waitingPage": {
+    "url": "https://app.sandbox.hellotocheers.com/onboarding/white-glove/intake_278f0b5e21d4044cd67518137f847bb18a837d970a280391/waiting",
+    "heading": "We're getting WG Stripe C 1793287100199 ready"
+  },
+  "intakePageAwaiting": {
+    "url": "https://app.sandbox.hellotocheers.com/onboarding/white-glove/intake_0390ff511ca72bb3cbcb7392ab1318650fc76555535f72d3",
+    "note": "Willow Grove awaiting_intake \u2014 form loads; no submit performed"
+  },
+  "founderHandoff": {
+    "crm_relationship": "rel_c897a6577b0e",
+    "status": "white_glove_implementation",
+    "hq_path": "/admin/onboarding/[venueId]",
+    "finish_action": "finishWhiteGloveSetupAction \u2192 welcome_home email"
+  }
+}
