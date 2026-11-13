@@ -67,4 +67,33 @@ describe("Refer & Earn nav CTA", () => {
     assert.match(page, /free month/i);
     assert.match(page, /paying/i);
   });
+
+  it("Refer a Venue page shortens intro and moves eligibility into Program details", () => {
+    const page = readFileSync(resolve("components/referrals/refer-a-venue-page.tsx"), "utf8");
+    const settingsReferrals = readFileSync(
+      resolve("app/(app)/settings/referrals/page.tsx"),
+      "utf8",
+    );
+    assert.match(
+      settingsReferrals,
+      /Introduce another venue to Hello to Cheers and enjoy a little thank-you from us\./,
+    );
+    assert.match(page, /Share the Luv\. Get a free month\./);
+    assert.match(page, /One referral\. One FREE month\./);
+    assert.match(page, /And yes, you can earn more than one!/);
+    assert.match(page, /data-testid="refer-program-details"/);
+    assert.match(page, /Program details/);
+    const rewardPanelIdx = page.indexOf("One referral. One FREE month.");
+    const formIdx = page.indexOf('CardTitle className="text-base">Refer a Venue');
+    const detailsIdx = page.indexOf('data-testid="refer-program-details"');
+    assert.ok(rewardPanelIdx > 0 && formIdx > rewardPanelIdx && detailsIdx > formIdx);
+    assert.doesNotMatch(
+      page.slice(rewardPanelIdx, formIdx),
+      /Qualifying referrals are new, independently paying venues/,
+    );
+    assert.match(
+      page.slice(detailsIdx),
+      /Qualifying referrals are new, independently paying venues/,
+    );
+  });
 });
