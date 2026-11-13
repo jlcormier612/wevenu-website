@@ -39,6 +39,14 @@ describe("white_glove_welcome — intake CTA", () => {
   it("still offers a secondary text link for clients that block buttons", () => {
     assert.match(rendered.html, /Or open this link:/);
   });
+
+  it("does not push self-setup or Setup Hub work", () => {
+    assert.match(rendered.text, /won't receive login credentials yet/);
+    assert.match(rendered.text, /no Setup Hub work for you to complete on your own/);
+    assert.match(rendered.text, /nothing you need to schedule right now/);
+    assert.doesNotMatch(rendered.text, /Setup Hub to get started/i);
+    assert.doesNotMatch(rendered.text, /You're all set/i);
+  });
 });
 
 describe("white_glove_welcome — missing intake URL", () => {

@@ -279,23 +279,39 @@ export const whiteGloveWelcomeTemplate: EmailTemplateDefinition = {
     const plan = planName(vars);
     const intakeUrl = String(vars.intakeUrl || "").trim();
     const subject = `Let's get ${venue} ready — White Glove Setup`;
-    const paragraphs = [
+    const beforeCta = [
       `Hi ${name},`,
-      `Thank you for choosing White Glove Setup for ${venue}. Your ${plan} subscription is confirmed.`,
-      `You've chosen White Glove Setup. We'll build your Hello to Cheers workspace using the information and materials you provide.`,
-      `You don't need to configure everything yourself.`,
-      `Every venue is a little different. We'll get started as soon as we have what we need and keep you updated along the way. The sooner you send your materials and answer any questions, the sooner we'll have your workspace ready to use.`,
+      `Thank you for choosing White Glove Setup for ${venue}. Your ${plan} subscription and White Glove onboarding purchase are confirmed.`,
+      `We'll help build your Hello to Cheers workspace using the information and materials you provide. You don't need to configure everything yourself.`,
+      `There's nothing you need to schedule right now. Share a few details about your venue, and we'll take it from there — reaching out personally when we need anything from you.`,
+      `Every venue is a little different. We'll get started as soon as we have what we need and keep you updated along the way.`,
+    ];
+    const afterCta = [
+      `You won't receive login credentials yet — we'll invite you when your workspace is ready.`,
+      `While you wait, you can return to your intake link anytime to add materials. There's no Setup Hub work for you to complete on your own.`,
+      `Questions? Just reply — we're right here.`,
+    ];
+    const textParagraphs = [
+      ...beforeCta,
       ...(intakeUrl
         ? [`Share a few details about your venue here: ${intakeUrl}`]
         : [`We'll send you a short link to share your venue information shortly.`]),
-      `You won't receive login credentials yet — we'll invite you when your workspace is ready.`,
-      `Questions? Just reply — we're right here.`,
+      ...afterCta,
     ];
-    const text = paragraphs.join("\n\n");
+    const text = textParagraphs.join("\n\n");
+    const htmlBody = intakeUrl
+      ? paragraphsToHtml(beforeCta) +
+        ctaButtonHtml("Share venue details", intakeUrl) +
+        paragraphsToHtml(afterCta)
+      : paragraphsToHtml([
+          ...beforeCta,
+          `We'll send you a short link to share your venue information shortly.`,
+          ...afterCta,
+        ]);
     return {
       subject,
       text,
-      html: wrapHelloHtml("White Glove Welcome", paragraphsToHtml(paragraphs)),
+      html: wrapHelloHtml("White Glove Welcome", htmlBody),
       preview: previewFromText(text),
       timelineTitle: "White Glove Welcome Email Sent",
     };
