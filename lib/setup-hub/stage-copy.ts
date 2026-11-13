@@ -32,43 +32,43 @@ function fromCrosswalk(
 
 export const STAGE_COPY: Record<SetupStageKey, StageCopy> = {
   "your-venue": fromCrosswalk("your-venue", {
-    what: "Confirm your venue name, contact details, business hours, logo, hero image, and brand colors.",
-    why: "This is how couples recognize you on emails, contracts, and client-facing pages.",
-    whatToDo: "Open Business & Brand and fill in what you can. You can change any of it later.",
+    what: "Start with your venue name and contact details. Add business hours, logo, hero image, and brand colors when you're ready.",
+    why: "Spaces and contact info help Hello to Cheers know where events happen. Branding shows on emails, contracts, and client pages — polish it anytime.",
+    whatToDo: "Open Business & Brand. Name and contact are enough to keep going; logo and hero can wait until before you invite clients.",
   }),
   "calendar-availability": fromCrosswalk("calendar-availability", {
     what: "Set event spaces, how many events you can host at once, and whether you offer tours.",
-    why: "This keeps you from double-booking and lets couples see real availability — without turning Calendar into a task list.",
-    whatToDo: "Open Availability & Capacity. Business Hours and Tour Availability are separate. If you don't offer tours, choose Not offered — that's a complete answer.",
+    why: "Configuring spaces tells Hello to Cheers where events can happen and how availability should work — so you don't double-book.",
+    whatToDo: "Open Availability & Capacity. If you don't offer tours, choose Not offered — that's a complete answer.",
   }),
   "bring-your-business": fromCrosswalk("bring-your-business", {
-    what: "Decide whether to bring existing clients and calendar commitments into Hello to Cheers.",
-    why: "So the product opens as your working venue — or a clean start — on purpose.",
+    what: "Optionally bring existing clients and calendar commitments into Hello to Cheers.",
+    why: "Useful when you're migrating — not required for a brand-new venue exploring the product.",
     whatToDo: "Import through Migration Center, add things yourself, or skip for now. None of these is the “correct” answer.",
   }),
   "your-offerings": fromCrosswalk("your-offerings", {
-    what: "Start with what you sell — review your wedding package price. Event Order plans and Available Inventory can wait until after your first inquiry if you prefer.",
-    why: "A couple needs something real to book. You do not need Inventory or Event Orders configured to accept your first inquiry.",
-    whatToDo: "Open Packages & Pricing. Adjust starters or build your own. When ready, preview Event Order plans for couple choices; stock and saved starting lists stay optional.",
+    what: "Review the packages Hello to Cheers prepared for you — adjust, replace, or keep them.",
+    why: "Packages are what you sell on the way from inquiry to booking. Starters are ready to customize; you don't need to rebuild from scratch.",
+    whatToDo: "Open Packages in Library. Preview a contract starter when you're ready. If starters are enough for now, say so explicitly.",
   }),
   "client-experience": fromCrosswalk("client-experience", {
-    what: "Decide which contracts, questionnaires, messages, and planning materials you'll use with couples — and which Setup Profile applies when you book a wedding.",
-    why: "This is what couples experience while working with you.",
-    whatToDo: "Open Library to review starters (Packages, Event Order plans, and other templates). Then open Setup Profiles to confirm how weddings start — Library starters alone do not configure every event type.",
+    what: "Review Setup Profiles, planning playbooks, Event Orders, and client-facing materials — then preview before anything is shared.",
+    why: "You configure a preferred experience once, customize individual events, review what is prepared, and choose when to release or invite.",
+    whatToDo: "Open Library and Setup Profiles. Use Preview — never Invite or Release — until you mean to involve a real client.",
   }),
   "lead-capture": fromCrosswalk("lead-capture", {
-    what: "Choose how new inquiries reach Hello to Cheers.",
-    why: "An inquiry that doesn't land anywhere is a couple you never hear from.",
-    whatToDo: "Set up at least one intake path you intend to use, or choose to add leads yourself for now. Optional channels (Facebook, QR, tours) stay optional.",
+    what: "Choose how new inquiries reach Hello to Cheers — or practice with a manual lead first.",
+    why: "Understanding the sales journey starts with where a lead lands. Practice leads never email or text anyone.",
+    whatToDo: "Set up an intake path, or add a practice lead yourself. Public forms and automations stay off until you turn them on.",
   }),
   "your-team": fromCrosswalk("your-team", {
     what: "Invite coordinators if anyone else should have their own access.",
     why: "So the right people can help — without sharing your login.",
-    whatToDo: "Invite teammates when you're ready. Running solo is completely fine and does not leave setup incomplete.",
+    whatToDo: "Invite teammates when you're ready. Running solo is completely fine.",
   }),
   financials: fromCrosswalk("financials", {
     what: "Decide whether couples can pay you online.",
-    why: "Online payment collection is useful once you're taking deposits — it is not required to start.",
+    why: "Useful once you're taking deposits — not required to explore Hello to Cheers.",
     whatToDo: "Open Financials & Integrations when you're ready to connect Stripe, or skip for now.",
   }),
 };

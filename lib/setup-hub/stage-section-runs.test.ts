@@ -72,23 +72,19 @@ describe("Phase 9 Setup Hub + Settings structural seams", () => {
   const setupPage = read("app/(app)/setup-hub/page.tsx");
   const css = read("app/globals.css");
 
-  it("Setup Hub overview uses contiguous runs + eucalyptus section label without hospitality intro", () => {
-    assert.match(overview, /contiguousSetupStageRuns/);
+  it("Setup Hub overview uses four chapters + eucalyptus labels without hospitality intro", () => {
+    assert.match(overview, /SETUP_CHAPTERS/);
+    assert.ok(overview.includes('from "@/lib/setup-hub/chapters"'));
     assert.match(overview, /htc-setup-stage-section-label/);
-    assert.match(overview, /data-htc-phase9="setup-stages"/);
+    assert.match(overview, /data-testid="setup-hub-chapters"/);
+    assert.match(overview, /data-htc-chapters="four"/);
     assert.doesNotMatch(overview, /htc-hospitality-intro/);
     assert.match(overview, /SetupConciergeCard/);
-    // Stage keys remain in the same authored order (sample anchors).
-    const venue = overview.indexOf('"your-venue"');
-    const calendar = overview.indexOf('"calendar-availability"');
-    const byb = overview.indexOf('"bring-your-business"');
-    const offerings = overview.indexOf('"your-offerings"');
-    const client = overview.indexOf('"client-experience"');
-    const lead = overview.indexOf('"lead-capture"');
-    const team = overview.indexOf('"your-team"');
-    const financials = overview.indexOf('key: "financials"');
-    assert.ok(venue < calendar && calendar < byb && byb < offerings);
-    assert.ok(offerings < client && client < lead && lead < team && team < financials);
+    assert.ok(overview.includes("setup-chapter-${ch.id}"));
+    assert.match(overview, /setup-hub-practice-lead/);
+    assert.match(overview, /setup-hub-recommended-next/);
+    assert.match(overview, /setup-hub-client-preview-boundaries/);
+    assert.match(overview, /setup-hub-make-it-yours-extras/);
   });
 
   it("Phase 4 white-glove welcome gate and calm class remain on Setup Hub page", () => {
@@ -97,10 +93,10 @@ describe("Phase 9 Setup Hub + Settings structural seams", () => {
     assert.match(setupPage, /Welcome to Hello to Cheers/);
   });
 
-  it("Settings directory keeps six tiles, white cards, and eucalyptus icon wells", () => {
+  it("Settings directory keeps eucalyptus icon wells and core settings destinations", () => {
     assert.match(settings, /data-htc-phase9="settings-directory"/);
     assert.match(settings, /htc-settings-directory-icon/);
-    assert.match(settings, /bg-card p-5/);
+    assert.match(settings, /htc-settings-directory-card/);
     assert.match(settings, /htc-hospitality-heading htc-hospitality-intro-accent/);
     assert.doesNotMatch(settings, /className="htc-hospitality-intro"/);
     assert.doesNotMatch(settings, /htc-settings-linen|p9b-settings-linen/);
@@ -113,7 +109,6 @@ describe("Phase 9 Setup Hub + Settings structural seams", () => {
       "/settings/team",
     ];
     for (const href of hrefs) assert.match(settings, new RegExp(`href:\\s*"${href}"`));
-    assert.equal((settings.match(/href:\s*"\/settings\//g) ?? []).length, 6);
   });
 
   it("Phase 9 CSS scopes eucalyptus surfaces without recoloring welcome", () => {

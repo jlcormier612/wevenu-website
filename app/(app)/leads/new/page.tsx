@@ -39,9 +39,10 @@ function parseClientName(clientName: string): Partial<LeadInput> {
 export default async function NewLeadPage({
   searchParams,
 }: {
-  searchParams: Promise<{ fromBlockId?: string }>;
+  searchParams: Promise<{ fromBlockId?: string; intent?: string }>;
 }) {
-  const { fromBlockId } = await searchParams;
+  const { fromBlockId, intent } = await searchParams;
+  const isPractice = intent === "practice";
   const [block, inquirySettings, venue] = await Promise.all([
     fromBlockId ? getBlock(fromBlockId) : Promise.resolve(null),
     getInquiryFormSettings(),
@@ -55,6 +56,15 @@ export default async function NewLeadPage({
     acceptedRaw: inquirySettings?.acceptedEventTypes ?? null,
   });
   const acceptedSet = new Set(eventTypeOptions.map((o) => o.value));
+
+  const practiceInitial: Partial<LeadInput> | undefined = isPractice && !block
+    ? {
+        firstName: "Practice",
+        lastName: "Lead",
+        inquiryMessage:
+          "PRACTICE — Safe Setup Hub exploration. Do not email, text, or charge. Delete when finished.",
+      }
+    : undefined;
 
   const initial: Partial<LeadInput> | undefined = block ? {
     ...(block.clientName ? parseClientName(block.clientName) : {}),
@@ -70,19 +80,29 @@ export default async function NewLeadPage({
     guestCount: block.guestCount != null ? String(block.guestCount) : "",
     estimatedBudget: block.estimatedRevenue != null ? String(block.estimatedRevenue) : "",
     inquiryMessage: `From Calendar: "${block.title}"`,
-  } : undefined;
+  } : practiceInitial;
 
   return (
     <div className="htc-hospitality-page space-y-5 sm:space-y-6" data-htc-phase12="lead-new">
-      <CollectionBackLink href="/leads" label="Leads" />
+      <CollectionBackLink href={isPractice ? "/setup-hub" : "/leads"} label={isPractice ? "Setup" : "Leads"} />
       <div className="htc-hospitality-heading htc-hospitality-intro-accent">
         <PageHeader
-          title={block ? "Convert to Lead" : "New Lead"}
+          title={block ? "Convert to Lead" : isPractice ? "Practice Lead" : "New Lead"}
           description={block
             ? `Turning "${block.title}" into a real Lead — nothing here was retyped, review and save when ready.`
-            : "Record a new lead from a call, email, or walk-in."}
+            : isPractice
+              ? "Safe exploration only — saving creates a real lead record in your venue, but nothing is emailed, texted, or charged unless you take those actions later."
+              : "Record a new lead from a call, email, or walk-in."}
         />
       </div>
+      {isPractice ? (
+        <div
+          className="htc-surface-guidance rounded-md border border-dashed px-4 py-3 text-sm text-muted-foreground"
+          data-testid="practice-lead-banner"
+        >
+          This is a practice lead from Setup Hub. Name it clearly so your team never confuses it with a real client.
+        </div>
+      ) : null}
       <Card className="htc-working-card gap-0 py-0">
         <CardHeader className="py-4">
           <CardTitle>Lead details</CardTitle>

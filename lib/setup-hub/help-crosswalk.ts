@@ -81,8 +81,9 @@ export const SETUP_HELP_CROSSWALK: readonly SetupHelpCrosswalkRow[] = [
     destinationPathLabel: "Your Venue → Settings → Migration Center",
     helpSlug: null,
     helpTitle: null,
-    required: true,
-    canBeNotApplicable: false,
+    // Optional Chapter 4 — brand-new venues should not treat Migration as an early obligation.
+    required: false,
+    canBeNotApplicable: true,
     completionSignal: "Migration Center import (import_batches.migration_session_id) | individual (path) | skipped (path). Spreadsheet/HQ imports alone do not complete.",
   },
   {
