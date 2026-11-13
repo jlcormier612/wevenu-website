@@ -12,6 +12,7 @@ import {
   classifySuccessEnrollment,
   waitForEnrollmentBySession,
 } from "@/lib/pricing/wait-for-enrollment";
+import { reconcilePaidCheckoutSession } from "@/lib/stripe/reconcile-paid-checkout";
 import { TYPE_HERO_SHELL, TYPE_LABEL } from "@/lib/marketing/rhythm";
 
 export const metadata: Metadata = {
@@ -28,9 +29,10 @@ type SuccessSearchParams = Promise<{ session_id?: string }>;
  * Self-Setup → activation CTA (only after enrollment is available).
  * White Glove → intake CTA (no product access yet).
  *
- * Bounded server retries cover the normal Checkout → webhook gap. A soft
- * client refresh continues while still processing. Lookups are read-only and
- * keyed by Stripe Checkout Session id — never create enrollments here.
+ * Bounded server retries cover the normal Checkout → webhook gap. When the
+ * webhook is still late, a trusted Stripe Session re-read may run the same
+ * idempotent enrollment path the webhook uses — never the success URL alone.
+ * Soft client refresh continues while still processing.
  */
 export default async function PricingSuccessPage({
   searchParams,
@@ -40,18 +42,46 @@ export default async function PricingSuccessPage({
   const params = await searchParams;
   const sessionId = params.session_id?.trim() || null;
 
-  const outcome = await waitForEnrollmentBySession(sessionId, {
+  let outcome = await waitForEnrollmentBySession(sessionId, {
     attempts: 8,
     delayMs: 500,
     lookup: getEnrollmentBySession,
   });
+
+  let paymentActionRequired = false;
+
+  // Webhook may still be in flight after Checkout redirect. Re-read Stripe
+  // (never the success URL alone) and run the same idempotent enrollment path.
+  if (outcome.status === "pending" && sessionId) {
+    try {
+      const reconciled = await reconcilePaidCheckoutSession(sessionId);
+      if (
+        reconciled.ok &&
+        (reconciled.status === "reconciled" ||
+          reconciled.status === "already_enrolled")
+      ) {
+        outcome = await waitForEnrollmentBySession(sessionId, {
+          attempts: 4,
+          delayMs: 400,
+          lookup: getEnrollmentBySession,
+        });
+      } else if (reconciled.ok && reconciled.status === "not_eligible") {
+        // Checkout success URL without paid/active Stripe state — do not
+        // keep the owner in an infinite "confirming" loop.
+        paymentActionRequired = true;
+      }
+    } catch (error) {
+      console.warn("[pricing/success] Stripe reconcile skipped", error);
+    }
+  }
+
   const view = classifySuccessEnrollment(outcome);
   const enrollment =
     outcome.status === "found" ? outcome.enrollment : null;
 
   const isSelfSetupWelcome = view === "self_setup_ready";
   const isWhiteGloveWelcome = view === "white_glove_ready";
-  const isProcessing = view === "processing";
+  const isProcessing = view === "processing" && !paymentActionRequired;
   const isMissingSession = view === "missing_session";
 
   let heading = "Welcome to Hello to Cheers";
@@ -82,9 +112,17 @@ export default async function PricingSuccessPage({
       href: activationUrlFromToken(enrollment.activationToken),
       label: "Get started",
     };
+  } else if (paymentActionRequired) {
+    heading = "Let's finish your subscription";
+    body =
+      "We couldn't complete your subscription. Your setup is saved, so you can pick up right where you left off.";
+    primaryCta = {
+      href: "/pricing#plans",
+      label: "Return to pricing",
+    };
   } else if (isProcessing && sessionId) {
     body =
-      "Your payment went through. We're finishing your venue account now — this usually takes just a few seconds. You can stay on this page, or check your email for the next step.";
+      "Your subscription is being confirmed. Your venue setup is saved, and we'll have you on your way shortly.";
   } else if (isMissingSession) {
     body =
       "If you just completed checkout, open the link from your confirmation email to continue. If you need help, reply to that email and we'll take care of you.";
@@ -138,7 +176,7 @@ export default async function PricingSuccessPage({
                 <MarketingCta href={primaryCta.href} label={primaryCta.label} variant="primary" />
               </div>
             ) : (
-              <SuccessPendingRefresh />
+              <SuccessPendingRefresh sessionId={sessionId} />
             )}
           </>
         ) : (
@@ -154,7 +192,9 @@ export default async function PricingSuccessPage({
                 <MarketingCta href={primaryCta.href} label={primaryCta.label} variant="primary" />
               </div>
             ) : null}
-            {isProcessing && sessionId ? <SuccessPendingRefresh /> : null}
+            {isProcessing && sessionId ? (
+              <SuccessPendingRefresh sessionId={sessionId} />
+            ) : null}
           </>
         )}
       </div>
