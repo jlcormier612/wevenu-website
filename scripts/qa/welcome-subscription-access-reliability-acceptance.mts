@@ -50,6 +50,33 @@ const disposableVenueIds: string[] = [];
 const disposableUserIds: string[] = [];
 const stamp = Date.now().toString(36);
 
+async function seedVenueLegalAcceptances(userId: string) {
+  const { data: docs, error } = await admin
+    .from("legal_documents")
+    .select("id, document_type, version")
+    .eq("is_active", true)
+    .eq("is_published", true)
+    .in("document_type", [
+      "venue_terms_of_service",
+      "privacy_policy",
+      "acceptable_use_policy",
+      "cookie_policy",
+    ]);
+  if (error) throw error;
+  const now = new Date().toISOString();
+  for (const doc of docs ?? []) {
+    await admin.from("legal_acceptances").insert({
+      user_id: userId,
+      legal_document_id: doc.id,
+      accepted_version: doc.version,
+      accepted_at: now,
+      acceptance_method: "Venue Signup",
+      ip_address: "127.0.0.1",
+      user_agent: "welcome-subscription-access-reliability-acceptance",
+    });
+  }
+}
+
 async function createOwner(label: string) {
   const email = `jennifer+access.${label}.${stamp}@hellotocheers.com`;
   const password = `Ac-${stamp}-Aa1x`;
@@ -60,7 +87,25 @@ async function createOwner(label: string) {
   });
   if (error || !data.user) throw error ?? new Error("createUser");
   disposableUserIds.push(data.user.id);
+  await seedVenueLegalAcceptances(data.user.id);
   return { email, password, userId: data.user.id };
+}
+
+async function setActiveVenue(userId: string, venueId: string) {
+  await admin.from("venue_staff_active_context").upsert({
+    user_id: userId,
+    active_venue_id: venueId,
+    updated_at: new Date().toISOString(),
+  });
+}
+
+function isWorkspaceUrl(url: string) {
+  return (
+    !/\/login/i.test(url) &&
+    !/\/welcome/i.test(url) &&
+    !/\/billing\/suspended/i.test(url) &&
+    !/\/pricing/i.test(url)
+  );
 }
 
 async function createVenue(opts: {
@@ -124,6 +169,48 @@ async function createVenue(opts: {
     { onConflict: "venue_id" },
   );
   return data;
+}
+
+async function passWelcome(page: {
+  url: () => string;
+  locator: (s: string) => {
+    count: () => Promise<number>;
+    check: (o?: { force?: boolean }) => Promise<void>;
+    first: () => {
+      count: () => Promise<number>;
+      check: (o?: { force?: boolean }) => Promise<void>;
+    };
+    isVisible: () => Promise<boolean>;
+  };
+  getByRole: (
+    r: string,
+    o?: { name?: RegExp },
+  ) => {
+    count: () => Promise<number>;
+    click: () => Promise<void>;
+  };
+  waitForTimeout: (n: number) => Promise<void>;
+}) {
+  for (let a = 0; a < 3; a++) {
+    const onWelcome = page.url().includes("/welcome");
+    const visible = await page
+      .locator('[data-welcome-experience="true"]')
+      .isVisible()
+      .catch(() => false);
+    if (!onWelcome && !visible) return;
+    const agree = page.locator("#welcome-experience-agree");
+    if ((await agree.count()) > 0) await agree.check({ force: true });
+    else {
+      const fb = page.locator("input[type='checkbox']").first();
+      if ((await fb.count()) > 0) await fb.check({ force: true });
+    }
+    const cont = page.getByRole("button", { name: /^Continue$/i });
+    if ((await cont.count()) > 0) await cont.click();
+    for (let i = 0; i < 25; i++) {
+      if (!page.url().includes("/welcome")) break;
+      await page.waitForTimeout(400);
+    }
+  }
 }
 
 async function browserSession(email: string, venueId: string) {
@@ -457,28 +544,35 @@ async function main() {
     });
     const sess1 = await browserSession(owner.email, venue.id);
     await sess1.page.goto(`${APP}/setup-hub`, { waitUntil: "domcontentloaded", timeout: 90000 });
+    await passWelcome(sess1.page);
+    await sess1.page.goto(`${APP}/setup-hub`, { waitUntil: "domcontentloaded", timeout: 90000 });
     await sess1.page.waitForTimeout(1500);
     const setup1 = (await sess1.page.locator("body").innerText()).replace(/\s+/g, " ");
     await sess1.page.screenshot({ path: `${OUT}/D-setup-hub-1.png` });
     record(
       "D.setup_hub_reachable",
-      /Setup/i.test(setup1) && !/Subscription inactive/i.test(setup1),
-      setup1.slice(0, 220),
+      isWorkspaceUrl(sess1.page.url()) &&
+        /Setup/i.test(setup1) &&
+        !/Subscription inactive/i.test(setup1),
+      `url=${sess1.page.url()} excerpt=${setup1.slice(0, 220)}`,
     );
     await sess1.browser.close();
 
     const sess2 = await browserSession(owner.email, venue.id);
     await sess2.page.goto(`${APP}/setup-hub`, { waitUntil: "domcontentloaded", timeout: 90000 });
+    await passWelcome(sess2.page);
+    await sess2.page.goto(`${APP}/setup-hub`, { waitUntil: "domcontentloaded", timeout: 90000 });
     await sess2.page.waitForTimeout(1200);
     const setup2 = (await sess2.page.locator("body").innerText()).replace(/\s+/g, " ");
     record(
       "D.resume_same_venue",
-      setup2.includes(venue.name) || /Set up your venue at your own pace/i.test(setup2),
+      isWorkspaceUrl(sess2.page.url()) &&
+        (setup2.includes(venue.name) || /Set up your venue at your own pace/i.test(setup2)),
       `url=${sess2.page.url()} excerpt=${setup2.slice(0, 220)}`,
     );
     record(
       "D.no_redirect_loop",
-      !/login\?|pricing\/success/i.test(sess2.page.url()),
+      isWorkspaceUrl(sess2.page.url()) && !/pricing\/success/i.test(sess2.page.url()),
       sess2.page.url(),
     );
     await sess2.browser.close();
@@ -503,11 +597,13 @@ async function main() {
     });
     const sess = await browserSession(owner.email, venue.id);
     await sess.page.goto(`${APP}/dashboard`, { waitUntil: "domcontentloaded", timeout: 90000 });
+    await passWelcome(sess.page);
+    await sess.page.goto(`${APP}/dashboard`, { waitUntil: "domcontentloaded", timeout: 90000 });
     await sess.page.waitForTimeout(1500);
     const body = (await sess.page.locator("body").innerText()).replace(/\s+/g, " ");
     record(
       "E.paid_through_workspace_access",
-      !/Subscription inactive/i.test(body) && !/login/i.test(sess.page.url()),
+      isWorkspaceUrl(sess.page.url()) && !/Subscription inactive/i.test(body),
       `url=${sess.page.url()} excerpt=${body.slice(0, 220)}`,
     );
     await sess.browser.close();
@@ -531,6 +627,7 @@ async function main() {
     });
     const sess = await browserSession(owner.email, venue.id);
     await sess.page.goto(`${APP}/dashboard`, { waitUntil: "domcontentloaded", timeout: 90000 });
+    // Suspended should win over legal welcome when access is locked.
     await sess.page.waitForTimeout(1500);
     const body = (await sess.page.locator("body").innerText()).replace(/\s+/g, " ");
     record(
@@ -573,17 +670,22 @@ async function main() {
         saas_subscription_status: "canceled",
       },
     });
+    await setActiveVenue(owner.userId, venue.id);
     const sess = await browserSession(owner.email, venue.id);
+    await sess.page.goto(`${APP}/dashboard`, { waitUntil: "domcontentloaded", timeout: 90000 });
+    await passWelcome(sess.page);
+    await setActiveVenue(owner.userId, venue.id);
     await sess.page.goto(`${APP}/dashboard`, { waitUntil: "domcontentloaded", timeout: 90000 });
     await sess.page.waitForTimeout(1200);
     const body = (await sess.page.locator("body").innerText()).replace(/\s+/g, " ");
     record(
       "G.override_venue_accessible",
-      !/Subscription inactive/i.test(body),
+      isWorkspaceUrl(sess.page.url()) && !/Subscription inactive/i.test(body),
       `url=${sess.page.url()} excerpt=${body.slice(0, 180)}`,
     );
     await sess.browser.close();
 
+    await setActiveVenue(owner.userId, other.id);
     const sessOther = await browserSession(owner.email, other.id);
     await sessOther.page.goto(`${APP}/dashboard`, {
       waitUntil: "domcontentloaded",
