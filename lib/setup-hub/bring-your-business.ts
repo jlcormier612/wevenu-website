@@ -4,6 +4,8 @@
  * CSV Import remains for small ad-hoc spreadsheet adds; same field fidelity.
  */
 export const BRING_YOUR_BUSINESS_ROUTES = {
+  /** Customer-facing guided sequence wrapping Import Data + Migration Center. */
+  guidedExperience: "/setup-hub/bring-your-business",
   /** Full cutover: clients, calendar, holds, tours, blocks, packages. */
   migrationCenter: "/settings/migration",
   /** Small spreadsheet add — same create paths, not a second domain model. */

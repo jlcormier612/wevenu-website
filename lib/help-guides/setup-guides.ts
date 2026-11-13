@@ -80,7 +80,7 @@ export const SETUP_GUIDES: readonly SetupGuide[] = [
     completion: "Your existing business has a real starting point in Hello to Cheers — clients and calendar brought over deliberately and reviewed, or an intentional fresh start. Nothing was created without you seeing it first.",
     troubleshooting: ["If a record shows a live availability conflict (double-booked date, missing space, a blocked date), that's a real scheduling problem in the source data, not an import bug — resolve it in Calendar first, then come back and approve or skip that row.", "If you're not sure whether something is a genuine duplicate, skip it for now — you can always bring it in later once you've checked the existing record.", "If an import looks wrong after committing, keep the original file and ask for help so the source and result can be compared.", "If you are unsure whether a file should become a template, keep it as reference material until you know how you will use it."],
     relatedFeatures: [
-      { label: "Open Bring Your Business", href: "/setup-hub" },
+      { label: "Open Bring Your Business", href: "/setup-hub/bring-your-business" },
       { label: "Open Migration Center", href: "/settings/migration" },
       { label: "Open Import Data", href: "/settings/import" },
       { label: "Set up Calendar & Availability first", href: "/help/setup-calendar-availability" },

@@ -89,6 +89,7 @@ const LEAD_FOCUS_SELECT =
 
 const EMPTY_CLIENT_COUNTS = {
   all: 0,
+  contacts: 0,
   coming_up: 0,
   needs_attention: 0,
   cancelled: 0,

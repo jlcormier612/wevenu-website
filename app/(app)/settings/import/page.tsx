@@ -38,7 +38,11 @@ export default async function ImportPage({
         <p className="text-sm text-muted-foreground mt-1">
           Bring a small, clean list of clients, leads, vendors, inventory templates, or package
           templates into Hello to Cheers. Import from CSV, Excel, Word, PDF, or a pasted list, then
-          map your columns before anything is saved.
+          map your columns before anything is saved. Prefer a recommended order?{" "}
+          <Link href="/setup-hub/bring-your-business" className="font-medium text-primary hover:underline">
+            Open Bring Your Business
+          </Link>
+          .
         </p>
         <SetupGuideLink
           href="/help/what-should-i-set-up-before-i-start"

@@ -22,6 +22,7 @@ describe("Bring Your Business Hub routing", () => {
   it("both destinations remain Setup Hub destinations, not operational-workspace routes", () => {
     assert.equal(isPreGraduationAllowedPath(BRING_YOUR_BUSINESS_ROUTES.migrationCenter), true);
     assert.equal(isPreGraduationAllowedPath(BRING_YOUR_BUSINESS_ROUTES.spreadsheetImport), true);
+    assert.equal(isPreGraduationAllowedPath(BRING_YOUR_BUSINESS_ROUTES.guidedExperience), true);
     assert.equal(isPreGraduationAllowedPath("/dashboard"), false);
   });
 });
@@ -87,9 +88,10 @@ describe("Bring Your Business choices — three equal paths", () => {
 describe("Import Wizard post-import next steps — migration-safe", () => {
   it("does not push portal invite as the primary next step after client import", () => {
     const src = readFileSync(join(process.cwd(), "components/settings/import-wizard.tsx"), "utf8");
+    assert.match(src, /Find imported contacts/);
+    assert.match(src, /clients\?filter=contacts/);
     assert.match(src, /Bring over their events next/);
-    assert.match(src, /settings\/migration\?source=another_system/);
-    assert.match(src, /nothing is emailed or invited automatically/);
+    assert.match(src, /othing is emailed or invited automatically/i);
     assert.doesNotMatch(
       src,
       /couples:\s*\{[^}]*Invite clients to the portal/s,

@@ -44,7 +44,7 @@ export const STAGE_COPY: Record<SetupStageKey, StageCopy> = {
   "bring-your-business": fromCrosswalk("bring-your-business", {
     what: "Optionally bring existing clients and calendar commitments into Hello to Cheers.",
     why: "Useful when you're migrating — not required for a brand-new venue exploring the product.",
-    whatToDo: "Import through Migration Center, add things yourself, or skip for now. None of these is the “correct” answer.",
+    whatToDo: "Follow Bring Your Business for a recommended order, add things yourself, or skip for now. None of these is the “correct” answer.",
   }),
   "your-offerings": fromCrosswalk("your-offerings", {
     what: "Review the packages Hello to Cheers prepared for you — adjust, replace, or keep them.",

@@ -41,9 +41,10 @@ describe("comingUpHorizonEnd", () => {
 });
 
 describe("parseClientListFilter / href", () => {
-  it("accepts the five buckets and maps the removed ones", () => {
+  it("accepts the operational buckets and maps the removed ones", () => {
     assert.deepEqual(CLIENT_LIST_FILTERS.map((f) => f.key), [
       "all",
+      "contacts",
       "coming_up",
       "needs_attention",
       "cancelled",
@@ -51,6 +52,7 @@ describe("parseClientListFilter / href", () => {
     ]);
     assert.deepEqual(CLIENT_LIST_FILTERS.map((f) => f.label), [
       "All Bookings",
+      "Contacts",
       "Coming up",
       "Needs Attention",
       "Cancelled",
@@ -90,6 +92,29 @@ describe("All Bookings", () => {
     assert.equal(clientMatchesListFilter(client({ id: "a", eventDate: "2027-01-01" }), "all", booked), true);
     assert.equal(clientMatchesListFilter(client({ id: "b", eventDate: "2027-01-01" }), "all", booked), false);
     assert.equal(clientMatchesListFilter(client({ id: "a", eventDate: "2026-08-01" }), "all", booked), false);
+  });
+});
+
+describe("Contacts", () => {
+  it("shows unbooked clients, including imported people with no event", () => {
+    const booked = ctx({ bookedClientIds: new Set(["booked"]) });
+    const imported = client({ id: "imported", eventDate: null });
+    const datedUnbooked = client({ id: "dated", eventDate: "2027-06-01" });
+    const bookedClient = client({ id: "booked", eventDate: "2027-06-01" });
+    const cancelled = client({ id: "gone", status: "cancelled", eventDate: null });
+    assert.equal(clientMatchesListFilter(imported, "contacts", booked), true);
+    assert.equal(clientMatchesListFilter(datedUnbooked, "contacts", booked), true);
+    assert.equal(clientMatchesListFilter(bookedClient, "contacts", booked), false);
+    assert.equal(clientMatchesListFilter(cancelled, "contacts", booked), false);
+    assert.equal(clientMatchesListFilter(imported, "all", booked), false);
+  });
+
+  it("does not treat a contact as a booked event", () => {
+    const booked = ctx({ bookedClientIds: new Set() });
+    const contact = client({ id: "ava", eventDate: null });
+    assert.equal(clientMatchesListFilter(contact, "contacts", booked), true);
+    assert.equal(clientMatchesListFilter(contact, "all", booked), false);
+    assert.equal(clientMatchesListFilter(contact, "coming_up", booked), false);
   });
 });
 

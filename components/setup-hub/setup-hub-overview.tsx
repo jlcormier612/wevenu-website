@@ -8,6 +8,7 @@ import { Check, ChevronRight, HelpCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { BringYourBusinessChoices } from "@/components/setup-hub/bring-your-business-choices";
+import { SetupHubStartingChoice } from "@/components/setup-hub/setup-hub-starting-choice";
 import { SetupReadiness } from "@/components/setup-hub/setup-readiness";
 import { SetupConciergeCard } from "@/components/setup-hub/setup-concierge-card";
 import { StageAcknowledgeButton } from "@/components/setup-hub/stage-acknowledge-button";
@@ -33,6 +34,10 @@ import {
   recommendNextAction,
 } from "@/lib/setup-hub/chapters";
 import { evaluateCutoverPrerequisites } from "@/lib/setup-hub/bring-your-business";
+import {
+  BRING_YOUR_BUSINESS_GUIDE_HREF,
+  hasMeaningfulExistingBusiness,
+} from "@/lib/setup-hub/bring-your-business-guide";
 import type { SetupReadyCounts } from "@/lib/venue/service";
 import type { LeadCaptureStageStatus, SetupHubState } from "@/lib/setup-hub/types";
 import type { SetupConciergeEntry } from "@/lib/setup-concierge/types";
@@ -82,6 +87,7 @@ export function SetupHubOverview({
   yourVenueFacts,
   intakeBringBusinessChoice = null,
   setupProfileCount = 0,
+  spreadsheetImportedCount = 0,
 }: {
   venueName: string;
   ownerFirstName: string | null;
@@ -106,6 +112,8 @@ export function SetupHubOverview({
   intakeBringBusinessChoice?: BringBusinessChoice | null;
   /** Venue Setup Profiles — 0 means Library starters are not yet wired to event types. */
   setupProfileCount?: number;
+  /** Durable spreadsheet import rows (import_batches.imported_count, not rolled back). */
+  spreadsheetImportedCount?: number;
 }) {
   const yourVenueDone = isYourVenueComplete(yourVenueFacts);
   const yourVenueBasics = isYourVenueBasicsReady(yourVenueFacts);
@@ -260,6 +268,8 @@ export function SetupHubOverview({
     "bring-your-business": {
       key: "bring-your-business",
       title: "Bring Your Business",
+      href: BRING_YOUR_BUSINESS_GUIDE_HREF,
+      hrefLabel: "Open Bring Your Business",
       status: bringYourBusinessDone ? "complete" : "not_started",
       detail: hasMigrationImport
         ? "Your existing data has been brought in through Migration Center."
@@ -310,6 +320,15 @@ export function SetupHubOverview({
           </p>
         ) : null}
       </div>
+
+      <SetupHubStartingChoice
+        isWhiteGlove={hubState?.onboardingType === "white_glove"}
+        hasExistingBusiness={hasMeaningfulExistingBusiness({
+          contactCount: readyCounts.contacts,
+          hasMigrationImport,
+          spreadsheetImportedCount,
+        })}
+      />
 
       {recommended ? (
         <div

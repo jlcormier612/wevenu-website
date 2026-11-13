@@ -28,7 +28,7 @@ export async function ImportHealthWidget() {
   ]);
 
   const stats = [
-    { label: "Clients",   count: clients.length,   importPath: "/settings/import?type=couples",   resultPath: "/clients"          },
+    { label: "Clients",   count: clients.length,   importPath: "/settings/import?type=couples",   resultPath: "/clients?filter=contacts" },
     { label: "Leads",     count: leads.length,     importPath: "/settings/import?type=leads",     resultPath: "/leads"            },
     { label: "Vendors",   count: vendors.length,   importPath: "/settings/import?type=vendors",   resultPath: "/vendors"          },
     { label: "Inventory Templates", count: inventory.length, importPath: "/settings/import?type=inventory", resultPath: "/library/inventory" },

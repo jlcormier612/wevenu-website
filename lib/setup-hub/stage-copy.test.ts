@@ -45,7 +45,7 @@ describe("Setup Hub stage copy", () => {
 
   it("describes Bring Your Business as three equal paths", () => {
     const copy = STAGE_COPY["bring-your-business"].whatToDo.toLowerCase();
-    assert.match(copy, /import/);
+    assert.match(copy, /bring your business|import/);
     assert.match(copy, /add|yourself|individual/i);
     assert.match(copy, /skip/);
   });

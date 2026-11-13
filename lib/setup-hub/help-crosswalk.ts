@@ -76,9 +76,9 @@ export const SETUP_HELP_CROSSWALK: readonly SetupHelpCrosswalkRow[] = [
   {
     stage: "bring-your-business",
     title: "Bring Your Business",
-    destinationHref: "/settings/migration",
-    destinationLabel: "Open Migration Center",
-    destinationPathLabel: "Your Venue → Settings → Migration Center",
+    destinationHref: "/setup-hub/bring-your-business",
+    destinationLabel: "Open Bring Your Business",
+    destinationPathLabel: "Setup → Bring Your Business",
     helpSlug: null,
     helpTitle: null,
     // Optional Chapter 4 — brand-new venues should not treat Migration as an early obligation.

@@ -43,10 +43,10 @@ export function BringYourBusinessChoices({
       <div className="flex flex-wrap items-center gap-3 pt-1">
         {hasImportedData ? (
           <Link
-            href={BRING_YOUR_BUSINESS_ROUTES.migrationCenter}
+            href={BRING_YOUR_BUSINESS_ROUTES.guidedExperience}
             className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
           >
-            Continue Migration Center
+            Continue Bring Your Business
             <ChevronRight className="h-3 w-3" />
           </Link>
         ) : path === "individual" ? (
@@ -72,7 +72,7 @@ export function BringYourBusinessChoices({
               <p className="text-xs text-muted-foreground">Start fresh — that matches what you told us at setup.</p>
             ) : null}
             <Link
-              href={intakeMigrationHref ?? BRING_YOUR_BUSINESS_ROUTES.migrationCenter}
+              href={intakeMigrationHref ?? BRING_YOUR_BUSINESS_ROUTES.guidedExperience}
               className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
             >
               Changed your mind? Bring your business over
@@ -90,8 +90,11 @@ export function BringYourBusinessChoices({
         Two ways into the same Setup Hub:{" "}
         <span className="font-medium text-foreground">starting fresh</span> (use Chapters 1–3, then
         skip here) or{" "}
-        <span className="font-medium text-foreground">bringing an existing business</span> (import
-        below). For dated events, finish Calendar &amp; Availability first so bookings land on the
+        <span className="font-medium text-foreground">bringing an existing business</span> (
+        <Link href={BRING_YOUR_BUSINESS_ROUTES.guidedExperience} className="font-medium text-primary hover:underline">
+          Bring Your Business
+        </Link>
+        {" "}guides you through import). For dated events, finish Calendar &amp; Availability first so bookings land on the
         right space.
       </p>
       {calendarReadyHint ? (
@@ -131,8 +134,16 @@ export function BringYourBusinessChoices({
         <div className="htc-surface-guidance space-y-2 p-3 text-sm">
           <p className="font-medium">Import my business</p>
           <p className="text-xs text-muted-foreground">
-            Bring clients and calendar commitments over through Migration Center. HoneyBook, Tripleseat, or another system — all fine.
+            Follow Bring Your Business for a recommended order, or go straight to Migration Center.
+            HoneyBook, Tripleseat, or another system — all fine. Exports are files you upload; Hello to Cheers does not connect live to those products.
           </p>
+          <Link
+            href={BRING_YOUR_BUSINESS_ROUTES.guidedExperience}
+            className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+          >
+            Open Bring Your Business
+            <ChevronRight className="h-3 w-3" />
+          </Link>
           <div className="space-y-1.5">
             {BRING_BUSINESS_OPTIONS.filter((o) => o.key !== "starting_fresh").map((opt) => {
               const href =

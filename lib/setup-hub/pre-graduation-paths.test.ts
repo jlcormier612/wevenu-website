@@ -8,6 +8,7 @@ describe("isPreGraduationAllowedPath — Setup Hub destinations, not a workspace
     assert.equal(isPreGraduationAllowedPath("/setup-hub"), true);
     assert.equal(isPreGraduationAllowedPath("/setup-hub/lead-capture"), true);
     assert.equal(isPreGraduationAllowedPath("/setup-hub/financials"), true);
+    assert.equal(isPreGraduationAllowedPath("/setup-hub/bring-your-business"), true);
   });
 
   it("allows Venue Settings, Availability, Import, Migration Center, and Team", () => {

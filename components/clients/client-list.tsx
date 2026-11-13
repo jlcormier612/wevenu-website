@@ -192,6 +192,30 @@ export function ClientList({
           🎉 {`${weddingDayToday} wedding${weddingDayToday === 1 ? "" : "s"} today`}
         </p>
       )}
+      {filter === "all" && counts.contacts > 0 ? (
+        <p className="text-sm text-muted-foreground" data-testid="imported-contacts-hint">
+          {counts.contacts} contact{counts.contacts === 1 ? "" : "s"} without a booking{" "}
+          {counts.contacts === 1 ? "is" : "are"} listed under{" "}
+          <button
+            type="button"
+            className="font-medium text-primary hover:underline"
+            onClick={() => setFilter("contacts")}
+          >
+            Contacts
+          </button>
+          . All Bookings only shows clients with an active booking.
+        </p>
+      ) : null}
+      {filter === "contacts" ? (
+        <p className="text-sm text-muted-foreground" data-testid="contacts-filter-hint">
+          These are clients without an active booking — including people you imported.
+          They are not booked events.{" "}
+          <Link href="/setup-hub/bring-your-business" className="font-medium text-primary hover:underline">
+            Bring over their events
+          </Link>
+          {" "}when you are ready.
+        </p>
+      ) : null}
       <div className="htc-hospitality-toolbar space-y-3">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <div className="relative flex-1">
@@ -261,14 +285,21 @@ export function ClientList({
       {clients.length > 0 && filtered.length === 0 && (
         <div className="rounded-sm border border-dashed border-border py-10 text-center space-y-2">
           <p className="text-sm text-muted-foreground">No clients match your filters.</p>
-          {filter === "all" && clients.some((c) => !bookedClientIds.has(c.id) && c.status !== "cancelled") ? (
+          {filter === "all" && counts.contacts > 0 ? (
             <p className="mx-auto max-w-md text-xs text-muted-foreground">
-              All Bookings only shows clients with an active booking. Contacts you imported without an
-              event yet are still saved — open{" "}
-              <Link href="/settings/migration" className="font-medium text-primary hover:underline">
-                Migration Center
-              </Link>{" "}
-              to bring over their events, or search by name after you attach a booking.
+              All Bookings only shows clients with an active booking.{" "}
+              <button
+                type="button"
+                className="font-medium text-primary hover:underline"
+                onClick={() => setFilter("contacts")}
+              >
+                View {counts.contacts} contact{counts.contacts === 1 ? "" : "s"}
+              </button>
+              {" "}without a booking, or{" "}
+              <Link href="/setup-hub/bring-your-business" className="font-medium text-primary hover:underline">
+                bring over their events
+              </Link>
+              .
             </p>
           ) : null}
           <Button variant="link" size="sm" className="mt-1" onClick={() => { setQuery(""); setFilter("all"); }}>Clear filters</Button>
