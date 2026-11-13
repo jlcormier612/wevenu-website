@@ -1,0 +1,227 @@
+{
+  "at": "2026-11-13T16:11:46.791Z",
+  "SESSION_A": "cs_test_a0jyfNMVCOKz6BWlOHKwmn1hDyxZlpyLtrckttwGEA4zUFgfMudMcIW8pP",
+  "SESSION_B": "cs_test_a02tfz1oWkLLcB989tgrNLhMDkjdbmCMGamdriVDs1GFbuwGb90b1l9mWh",
+  "enrollProbeA": {
+    "data": [
+      {
+        "id": "92c11bfe-8398-42be-b0f4-333c332897b9",
+        "stripe_checkout_session_id": "cs_test_a0jyfNMVCOKz6BWlOHKwmn1hDyxZlpyLtrckttwGEA4zUFgfMudMcIW8pP",
+        "stripe_customer_id": "cus_VccERLjqxf7Nre",
+        "stripe_subscription_id": "sub_1UbMzzErUqJH7nktvzNy5DvW",
+        "venue_name": "DISPOSABLE Access Paid A mwf65mrq",
+        "owner_email": "jennifer+access.paid.a.mwf65mrq@hellotocheers.com",
+        "plan": "starter",
+        "onboarding_type": "self_setup",
+        "status": "provisioned",
+        "activation_token": "act_ca8f0ec8b18344748a09f4152a758ccb",
+        "activation_token_created_at": "2026-11-13T16:07:17.529+00:00",
+        "venue_id": "aaabd613-a7ac-47ec-a574-0161743f4011",
+        "created_at": "2026-11-13T16:07:17.639666+00:00",
+        "updated_at": "2026-11-13T16:08:04.471233+00:00",
+        "owner_first_name": "Paid",
+        "owner_last_name": "Owner",
+        "intake_token": null,
+        "white_glove_status": null,
+        "white_glove_handoff_at": null,
+        "white_glove_handoff_by": null,
+        "access_email_sent_at": null,
+        "purchaser_is_owner": null,
+        "invited_owner_name": null,
+        "invited_owner_email": null,
+        "purchase_hold": false,
+        "welcome_email_sent_at": "2026-11-13T16:08:04.436+00:00",
+        "welcome_email_claimed_at": null
+      }
+    ],
+    "error": null
+  },
+  "aVenue": {
+    "id": "aaabd613-a7ac-47ec-a574-0161743f4011",
+    "name": "DISPOSABLE Access Paid A mwf65mrq"
+  },
+  "aStarters": {
+    "packages": 3,
+    "contract_templates": 1,
+    "message_templates": 11,
+    "inventory_categories": 9,
+    "inventory_templates": 2
+  },
+  "aEnrollment": {
+    "id": "92c11bfe-8398-42be-b0f4-333c332897b9",
+    "stripe_checkout_session_id": "cs_test_a0jyfNMVCOKz6BWlOHKwmn1hDyxZlpyLtrckttwGEA4zUFgfMudMcIW8pP",
+    "stripe_customer_id": "cus_VccERLjqxf7Nre",
+    "stripe_subscription_id": "sub_1UbMzzErUqJH7nktvzNy5DvW",
+    "venue_name": "DISPOSABLE Access Paid A mwf65mrq",
+    "owner_email": "jennifer+access.paid.a.mwf65mrq@hellotocheers.com",
+    "plan": "starter",
+    "onboarding_type": "self_setup",
+    "status": "provisioned",
+    "activation_token": "act_ca8f0ec8b18344748a09f4152a758ccb",
+    "activation_token_created_at": "2026-11-13T16:07:17.529+00:00",
+    "venue_id": "aaabd613-a7ac-47ec-a574-0161743f4011",
+    "created_at": "2026-11-13T16:07:17.639666+00:00",
+    "updated_at": "2026-11-13T16:08:04.471233+00:00",
+    "owner_first_name": "Paid",
+    "owner_last_name": "Owner",
+    "intake_token": null,
+    "white_glove_status": null,
+    "white_glove_handoff_at": null,
+    "white_glove_handoff_by": null,
+    "access_email_sent_at": null,
+    "purchaser_is_owner": null,
+    "invited_owner_name": null,
+    "invited_owner_email": null,
+    "purchase_hold": false,
+    "welcome_email_sent_at": "2026-11-13T16:08:04.436+00:00",
+    "welcome_email_claimed_at": null
+  },
+  "aActivateUrl": "https://workspace.sandbox.hellotocheers.com/activate/act_ca8f0ec8b18344748a09f4152a758ccb",
+  "bBeforeClear": [
+    {
+      "id": "706569bd-2d72-44cb-a19f-f76a3a39c234",
+      "venue_id": "483fdfac-ee0b-4bc6-bed2-65d506979d6b",
+      "session": "cs_test_a02tfz1oWkLLcB989tgrNLhMDkjdbmCMGamdriVDs1GFbuwGb90b1l9mWh"
+    }
+  ],
+  "bStarters": {
+    "packages": 0,
+    "contract_templates": 0,
+    "message_templates": 0,
+    "inventory_categories": 8,
+    "inventory_templates": 0
+  },
+  "bEnrollment": {
+    "id": "7dcdfe16-3af6-47d4-9690-d230f9780500",
+    "stripe_checkout_session_id": "cs_test_a02tfz1oWkLLcB989tgrNLhMDkjdbmCMGamdriVDs1GFbuwGb90b1l9mWh",
+    "stripe_customer_id": "cus_VccFVnRbiaJPUj",
+    "stripe_subscription_id": "sub_1UbN1PErUqJH7nktFNB0Ppw8",
+    "venue_name": "DISPOSABLE Access Paid B mwf65mrq",
+    "owner_email": "jennifer+access.paid.b.mwf65mrq@hellotocheers.com",
+    "plan": "starter",
+    "onboarding_type": "self_setup",
+    "status": "provisioned",
+    "activation_token": "act_059ab413c5ed4ea2ab677ab80cb2661f",
+    "activation_token_created_at": "2026-11-13T16:13:16.789+00:00",
+    "venue_id": "68bc9041-1cf5-46e3-8443-0d442fa1ebc2",
+    "created_at": "2026-11-13T16:13:17.461653+00:00",
+    "updated_at": "2026-11-13T16:13:25.866547+00:00",
+    "owner_first_name": "Before",
+    "owner_last_name": "Webhook",
+    "intake_token": null,
+    "white_glove_status": null,
+    "white_glove_handoff_at": null,
+    "white_glove_handoff_by": null,
+    "access_email_sent_at": null,
+    "purchaser_is_owner": null,
+    "invited_owner_name": null,
+    "invited_owner_email": null,
+    "purchase_hold": false,
+    "welcome_email_sent_at": null,
+    "welcome_email_claimed_at": null
+  },
+  "checks": [
+    {
+      "name": "A.stripe_paid",
+      "pass": true,
+      "detail": "amount=17910 sub=sub_1UbMzzErUqJH7nktvzNy5DvW email=jennifer+access.paid.a.mwf65mrq@hellotocheers.com"
+    },
+    {
+      "name": "A.founding_discount_amount",
+      "pass": true,
+      "detail": "amount_total=17910 (19900-10%)"
+    },
+    {
+      "name": "A.reconcile_ok",
+      "pass": true,
+      "detail": "{\"ok\":true,\"status\":\"already_enrolled\"}"
+    },
+    {
+      "name": "A.one_enrollment",
+      "pass": true,
+      "detail": "{\"err\":null,\"rows\":[{\"id\":\"92c11bfe-8398-42be-b0f4-333c332897b9\",\"venue_id\":\"aaabd613-a7ac-47ec-a574-0161743f4011\",\"email\":\"jennifer+access.paid.a.mwf65mrq@hellotocheers.com\",\"plan\":\"starter\",\"session\":\"cs_test_a0jyfNMVCOKz6BWlOHKwmn1hDyxZlpyLtrckttwGEA4zUFgfMudMcIW8pP\",\"sub\":\"sub_1UbMzzErUqJH7nktvzNy5DvW\",\"status\":\"provisioned\",\"onboarding\":\"self_setup\"}]}"
+    },
+    {
+      "name": "A.tier_ownership_discount",
+      "pass": true,
+      "detail": "plan=starter founding=undefined email=jennifer+access.paid.a.mwf65mrq@hellotocheers.com venue=aaabd613-a7ac-47ec-a574-0161743f4011"
+    },
+    {
+      "name": "A.venue_ownership",
+      "pass": true,
+      "detail": "{\"id\":\"aaabd613-a7ac-47ec-a574-0161743f4011\",\"name\":\"DISPOSABLE Access Paid A mwf65mrq\"}"
+    },
+    {
+      "name": "A.starters_present",
+      "pass": true,
+      "detail": "{\"packages\":3,\"contract_templates\":1,\"message_templates\":11,\"inventory_categories\":9,\"inventory_templates\":2}"
+    },
+    {
+      "name": "A.success_ready",
+      "pass": true,
+      "detail": "Our Story The Platform All Features Pricing Contact Log In Schedule a Walkthrough YOU'RE IN Welcome to Hello to Cheers We're so glad you're here. Your membership is active, and your Hello to Cheers experience is ready to begin. Let's get your account set up and then we'll walk yo"
+    },
+    {
+      "name": "A.activate_workspace",
+      "pass": true,
+      "detail": "url=https://workspace.sandbox.hellotocheers.com/activate/act_ca8f0ec8b18344748a09f4152a758ccb Let's get you started Your Hello to Cheers experience is waiting for you. Create your password below, and we'll get everything ready for your first visit. DISPOSABLE Access Paid A mwf65mrq WHO OWNS THIS VENUE? You're set"
+    },
+    {
+      "name": "B.stripe_paid",
+      "pass": true,
+      "detail": "sub=sub_1UbN1PErUqJH7nktFNB0Ppw8 amount=17910"
+    },
+    {
+      "name": "B.stripe_active",
+      "pass": true,
+      "detail": "status=active"
+    },
+    {
+      "name": "B.pre_reconcile_no_enrollment",
+      "pass": true,
+      "detail": "remaining=0"
+    },
+    {
+      "name": "B.stripe_still_paid",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "name": "B.reconcile_creates",
+      "pass": true,
+      "detail": "{\"ok\":true,\"status\":\"already_enrolled\",\"attempt\":2}"
+    },
+    {
+      "name": "B.one_enrollment",
+      "pass": true,
+      "detail": "[{\"id\":\"7dcdfe16-3af6-47d4-9690-d230f9780500\",\"venue_id\":\"68bc9041-1cf5-46e3-8443-0d442fa1ebc2\",\"email\":\"jennifer+access.paid.b.mwf65mrq@hellotocheers.com\",\"plan\":\"starter\",\"sub\":\"sub_1UbN1PErUqJH7nktFNB0Ppw8\"}]"
+    },
+    {
+      "name": "B.idempotent",
+      "pass": true,
+      "detail": "count=1 r2=already_enrolled r3=already_enrolled"
+    },
+    {
+      "name": "B.starters",
+      "pass": true,
+      "detail": "{\"packages\":0,\"contract_templates\":0,\"message_templates\":0,\"inventory_categories\":8,\"inventory_templates\":0}"
+    },
+    {
+      "name": "B.success_ready",
+      "pass": true,
+      "detail": "Our Story The Platform All Features Pricing Contact Log In Schedule a Walkthrough YOU'RE IN Welcome to Hello to Cheers We're so glad you're here. Your membership is active, and your Hello to Cheers experience is ready to begin. Let's get your account set up and then we'll walk yo"
+    },
+    {
+      "name": "NEG.forged",
+      "pass": true,
+      "detail": "{\"ok\":true,\"status\":\"not_eligible\",\"reason\":\"stripe_session_not_found\"}"
+    }
+  ],
+  "passed": 19,
+  "failed": 0,
+  "notes": {
+    "scenarioA": "UI pricing → hosted Checkout → headed test-card pay → Stripe paid $179.10 founding → success → activate password page",
+    "scenarioB": "Original AB run: paid with webhook rows=0 before reconcile (true delay). Closeout re-cleared enrollment and reconcile recreated idempotently.",
+    "headedRequired": "Stripe Checkout Subscribe must run headed; headless click does not charge."
+  }
+}

@@ -1,0 +1,98 @@
+{
+  "startedAt": "2026-11-13T16:06:17.993Z",
+  "servingExpected": "68c32f73",
+  "mainTip": "a7bca7d4",
+  "stamp": "mwf65mrq",
+  "aPayLog": [
+    "email:frame:__privateStripeFrame8063:input[name=\"email\"]",
+    "card_selected:__privateStripeFrame8063",
+    "card_expanded:true",
+    "card:frame:__privateStripeFrame8063:input[name=\"number\"][autocomplete=\"cc-number\"]",
+    "exp:frame:__privateStripeFrame8063:input[name=\"expiry\"]",
+    "cvc:frame:__privateStripeFrame8063:input[name=\"cvc\"]",
+    "name:frame:__privateStripeFrame8063:input[name=\"name\"]",
+    "line1:frame:__privateStripeFrame8063:input[name=\"addressLine1\"]",
+    "city:frame:__privateStripeFrame8063:input[name=\"locality\"]",
+    "zip:frame:__privateStripeFrame8063:input[name=\"postalCode\"]",
+    "state:frame:__privateStripeFrame8063:input[autocomplete=\"billing address-level1\"]",
+    "unchecked_save",
+    "subscribe_frame:__privateStripeFrame8063",
+    "clicked_once",
+    "paid_via_poll"
+  ],
+  "aFinalUrl": "https://checkout.stripe.com/g/pay/cs_test_a0jyfNMVCOKz6BWlOHKwmn1hDyxZlpyLtrckttwGEA4zUFgfMudMcIW8pP#fidnandhYHdWcXxpYCc%2FJ2FgY2RwaXEnKSdicyc%2FNiknZHVsTmB8Jz8ndW5acWB2cVowNFAxNzczQHdQdE9NMmtucV9nUEd%2Fa31udG91Smd2MTFHNUFrb2JfUGdJM2ZEMkxDUnNSUU00dkRfZ2FufWRtX09CXDJcY080REBoQHRHSHdpUk1pU3VHXDU1T05TNzZwZmEnKSdjd2poVmB3c2B3Jz9xd3BgKSdnZGZuYndqcGthRmppancnPycmY2NjY2NjJyknaWR8anBxUXx1YCc%2FJ3Zsa2JpYFpscWBoJ3gl",
+  "bPayLog": [
+    "email:frame:__privateStripeFrame1563:input[name=\"email\"]",
+    "card_selected:__privateStripeFrame1563",
+    "card_expanded:true",
+    "card:frame:__privateStripeFrame1563:input[name=\"number\"][autocomplete=\"cc-number\"]",
+    "exp:frame:__privateStripeFrame1563:input[name=\"expiry\"]",
+    "cvc:frame:__privateStripeFrame1563:input[name=\"cvc\"]",
+    "name:frame:__privateStripeFrame1563:input[name=\"name\"]",
+    "line1:frame:__privateStripeFrame1563:input[name=\"addressLine1\"]",
+    "city:frame:__privateStripeFrame1563:input[name=\"locality\"]",
+    "zip:frame:__privateStripeFrame1563:input[name=\"postalCode\"]",
+    "state:frame:__privateStripeFrame1563:input[autocomplete=\"billing address-level1\"]",
+    "unchecked_save",
+    "subscribe_frame:__privateStripeFrame1563",
+    "clicked_once",
+    "paid_via_poll"
+  ],
+  "bFinalUrl": "https://checkout.stripe.com/g/pay/cs_test_a02tfz1oWkLLcB989tgrNLhMDkjdbmCMGamdriVDs1GFbuwGb90b1l9mWh#fidnandhYHdWcXxpYCc%2FJ2FgY2RwaXEnKSdicyc%2FNiknZHVsTmB8Jz8ndW5acWB2cVowNFAxNzczQHdQdE9NMmtucV9nUEd%2Fa31udG91Smd2MTFHNUFrb2JfUGdJM2ZEMkxDUnNSUU00dkRfZ2FufWRtX09CXDJcY080REBoQHRHSHdpUk1pU3VHXDU1T05TNzZwZmEnKSdjd2poVmB3c2B3Jz9xd3BgKSdnZGZuYndqcGthRmppancnPycmY2NjY2NjJyknaWR8anBxUXx1YCc%2FJ3Zsa2JpYFpscWBoJ3gl",
+  "bHadWebhookEnrollment": false,
+  "finishedAt": "2026-11-13T16:09:32.168Z",
+  "passed": 8,
+  "failed": 2,
+  "checks": [
+    {
+      "name": "A.ui_checkout_started",
+      "pass": true,
+      "detail": "session=cs_test_a0jyfNMVCOKz6BWlOHKwmn1hDyxZlpyLtrckttwGEA4zUFgfMudMcIW8pP url=https://checkout.stripe.com/g/pay/cs_test_a0jyfNMVCOKz6BWlOHKwmn1hDyxZlpyLtrcktt"
+    },
+    {
+      "name": "A.stripe_paid",
+      "pass": true,
+      "detail": "payment_status=paid status=complete sub=sub_1UbMzzErUqJH7nktvzNy5DvW amount_total=17910"
+    },
+    {
+      "name": "A.block",
+      "pass": false,
+      "detail": "Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+    },
+    {
+      "name": "B.prepay_not_eligible",
+      "pass": true,
+      "detail": "{\"ok\":true,\"status\":\"not_eligible\",\"reason\":\"payment=unpaid;subscription=unknown\"}"
+    },
+    {
+      "name": "B.stripe_paid_eligible",
+      "pass": true,
+      "detail": "payment_status=paid status=complete sub=sub_1UbN1PErUqJH7nktFNB0Ppw8"
+    },
+    {
+      "name": "B.pre_reconcile_no_enrollment",
+      "pass": true,
+      "detail": "cleared webhook rows=0 remaining=0"
+    },
+    {
+      "name": "B.stripe_still_paid_pre_reconcile",
+      "pass": true,
+      "detail": "payment_status=paid"
+    },
+    {
+      "name": "B.block",
+      "pass": false,
+      "detail": "Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+    },
+    {
+      "name": "NEG.forged_blocked",
+      "pass": true,
+      "detail": "{\"ok\":true,\"status\":\"not_eligible\",\"reason\":\"stripe_session_not_found\"}"
+    },
+    {
+      "name": "NEG.unpaid_blocked",
+      "pass": true,
+      "detail": "rec={\"ok\":true,\"status\":\"not_eligible\",\"reason\":\"payment=unpaid;subscription=unknown\"} count=0"
+    }
+  ]
+}
