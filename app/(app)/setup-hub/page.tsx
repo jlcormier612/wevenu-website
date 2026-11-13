@@ -68,7 +68,7 @@ export default async function SetupHubPage() {
           description={
             isWhiteGlove
               ? "We've already done a lot of the setup for you. There are just a few things we'd like you to review before you're ready to invite couples."
-              : "Set up your venue at your own pace. Every area here can be revisited and edited any time — nothing here is final until you say so."
+              : "Four approachable chapters — venue, sales, client experience, and optional polish. Work in any order; nothing is final until you say so."
           }
         />
       </div>

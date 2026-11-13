@@ -45,13 +45,16 @@ describe("evaluateCutoverPrerequisites", () => {
   });
 });
 
-describe("Setup Hub stage order — Calendar before Bring Your Business", () => {
-  it("lists calendar-availability before bring-your-business in the overview", () => {
-    const src = readFileSync(join(process.cwd(), "components/setup-hub/setup-hub-overview.tsx"), "utf8");
-    const cal = src.indexOf('key: "calendar-availability"');
-    const byb = src.indexOf('key: "bring-your-business"');
-    assert.ok(cal > 0 && byb > 0);
-    assert.ok(cal < byb, "Calendar & Availability must precede Bring Your Business");
+describe("Setup Hub chapter order — Calendar before Bring Your Business", () => {
+  it("places calendar in Chapter 1 and Bring Your Business in Chapter 4", () => {
+    const chapters = readFileSync(join(process.cwd(), "lib/setup-hub/chapters.ts"), "utf8");
+    const venue = chapters.indexOf('id: "venue-ready"');
+    const makeYours = chapters.indexOf('id: "make-it-yours"');
+    const calInVenue = chapters.indexOf('"calendar-availability"', venue);
+    const bybInMake = chapters.indexOf('"bring-your-business"', makeYours);
+    assert.ok(venue > 0 && makeYours > venue);
+    assert.ok(calInVenue > venue && calInVenue < makeYours);
+    assert.ok(bybInMake > makeYours);
   });
 });
 

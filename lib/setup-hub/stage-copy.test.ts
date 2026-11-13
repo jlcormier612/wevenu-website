@@ -40,6 +40,7 @@ describe("Setup Hub stage copy", () => {
     assert.equal(STAGE_COPY.financials.destinationHref, "/settings/integrations");
     assert.equal(STAGE_COPY["your-team"].required, false);
     assert.equal(STAGE_COPY.financials.required, false);
+    assert.equal(STAGE_COPY["bring-your-business"].required, false);
   });
 
   it("describes Bring Your Business as three equal paths", () => {

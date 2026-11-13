@@ -7,8 +7,13 @@ import type { SpaceOperatingMode } from "@/lib/venue-spaces/uses";
 import { CHANNEL_HAS_VERIFICATION } from "@/lib/setup-hub/types";
 import type { LeadCaptureChannelState, SetupHubState } from "@/lib/setup-hub/types";
 
-function filled(value: string | null | undefined): boolean {
+export function filled(value: string | null | undefined): boolean {
   return Boolean(value?.trim());
+}
+
+/** Name + email + phone — enough to start Chapter 1 without requiring branding assets. */
+export function isYourVenueBasicsReady(facts: YourVenueFacts): boolean {
+  return filled(facts.name) && filled(facts.email) && filled(facts.phone);
 }
 
 /** Fields named by the Your Venue card — not Venue Guide, type, capacity, or legal name. */

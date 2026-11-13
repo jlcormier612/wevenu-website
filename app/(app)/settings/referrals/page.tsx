@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/shell/module-placeholder";
 import { SettingsTabs } from "@/components/settings/settings-tabs";
 import { getCurrentVenue } from "@/lib/venue/service";
 
-// Path-filter anchor: keep required venue-app + hospitality checks on harness/docs PRs.
+// Path-filter anchor: keep required venue-app + hospitality checks on Setup Hub PRs.
 export const metadata: Metadata = { title: "Refer a Venue — Settings" };
 
 export default async function ReferralsSettingsPage() {
