@@ -177,10 +177,6 @@ export function ReferAVenuePage() {
         <h1 className="font-serif text-3xl tracking-tight text-foreground sm:text-4xl">
           Share the Luv. Get a free month.
         </h1>
-        <p className="max-w-2xl text-base text-muted-foreground">
-          Know another venue that could use a little more ease and a lot less busywork?
-          We&apos;d love an introduction!
-        </p>
       </div>
 
       <Card className="border-[color:var(--soft-sage)] bg-[color:color-mix(in_oklch,var(--soft-sage)_28%,white)]">
@@ -197,13 +193,6 @@ export function ReferAVenuePage() {
           <p className="font-medium text-heading">And yes, you can earn more than one!</p>
           <p>
             Every new qualifying venue you refer brings another free month your way.
-          </p>
-          <p>
-            Qualifying referrals are new, independently paying venues. Your thank-you is a
-            one-time credit equal to one month of your applicable subscription after the
-            referred venue has remained paying for 30 days with settled payment. Self-referrals,
-            duplicates, and refunded or disputed purchases do not qualify. Complete program
-            details follow the Refer a Venue policy applied at reward time.
           </p>
         </CardContent>
       </Card>
@@ -260,6 +249,24 @@ export function ReferAVenuePage() {
               </Button>
             </form>
           )}
+        </CardContent>
+      </Card>
+
+      <Card data-testid="refer-program-details">
+        <CardHeader>
+          <CardTitle className="text-base">Program details</CardTitle>
+          <CardDescription>
+            Eligibility and thank-you credit rules — available here before you submit.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-2 text-sm text-muted-foreground">
+          <p>
+            Qualifying referrals are new, independently paying venues. Your thank-you is a
+            one-time credit equal to one month of your applicable subscription after the
+            referred venue has remained paying for 30 days with settled payment. Self-referrals,
+            duplicates, and refunded or disputed purchases do not qualify. Complete program
+            details follow the Refer a Venue policy applied at reward time.
+          </p>
         </CardContent>
       </Card>
 
