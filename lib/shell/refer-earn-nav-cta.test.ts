@@ -95,5 +95,13 @@ describe("Refer & Earn nav CTA", () => {
       page.slice(detailsIdx),
       /Qualifying referrals are new, independently paying venues/,
     );
+    assert.match(
+      page.slice(detailsIdx),
+      /Self-referrals,\s+duplicates, and refunded or disputed purchases do not qualify/,
+    );
+    assert.doesNotMatch(
+      page,
+      /Complete program details follow the Refer a Venue policy applied at reward time/,
+    );
   });
 });
