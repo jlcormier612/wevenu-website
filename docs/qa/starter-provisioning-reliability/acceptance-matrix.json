@@ -1,0 +1,124 @@
+{
+  "generatedAt": "2026-11-13T03:58:45.998Z",
+  "expectSha": "24cce4d0",
+  "passed": 23,
+  "failed": 0,
+  "total": 23,
+  "checks": [
+    {
+      "name": "serving_sha_gate",
+      "pass": true,
+      "detail": "expect=24cce4d0 note=24cce4d0"
+    },
+    {
+      "name": "A_seed_complete",
+      "pass": true,
+      "detail": "ok=true status=complete seeded=16 failed=0"
+    },
+    {
+      "name": "A_starter_categories",
+      "pass": true,
+      "detail": "pkg=3 ctr=1 msg=11 seq=4 q=3 play=6 tl=3 eo=2 invCat=9 invTpl=2"
+    },
+    {
+      "name": "A_automations_paused",
+      "pass": true,
+      "detail": "n=4"
+    },
+    {
+      "name": "A_wedding_setup_profile",
+      "pass": true,
+      "detail": "wedding=true corporateAssign=false"
+    },
+    {
+      "name": "A_no_premature_floor_assign",
+      "pass": true,
+      "detail": "spaces=0 (floor plans stay library-only until spaces exist)"
+    },
+    {
+      "name": "A_library_browser",
+      "pass": true,
+      "detail": "url=https://app.sandbox.hellotocheers.com/library pkgLink=2 banner=0"
+    },
+    {
+      "name": "B_progress_path_seeded",
+      "pass": true,
+      "detail": "firstOk=true status=complete"
+    },
+    {
+      "name": "B_no_duplicates_after_repeated_ensure",
+      "pass": true,
+      "detail": "pkg=3->3 status2=complete"
+    },
+    {
+      "name": "B_library_no_banner_when_complete",
+      "pass": true,
+      "detail": "banner=0"
+    },
+    {
+      "name": "C_incomplete_not_reported_complete",
+      "pass": true,
+      "detail": "status=incomplete"
+    },
+    {
+      "name": "C_owner_guidance_visible",
+      "pass": true,
+      "detail": "banner=1 text=Some of your starter resources aren't ready yet\n\nYou can continue setting up your venue while we finish preparing them. "
+    },
+    {
+      "name": "C_retry_restores_missing_only",
+      "pass": true,
+      "detail": "pkg 3->3 msg 11->11 status=complete"
+    },
+    {
+      "name": "D_concurrent_no_duplicates",
+      "pass": true,
+      "detail": "pkgDup(PKG-01)=1 pkgTotal=3 skipped=2 status=complete"
+    },
+    {
+      "name": "D_no_false_complete_while_running",
+      "pass": true,
+      "detail": "results=complete,running/skip,running/skip"
+    },
+    {
+      "name": "E_customization_preserved",
+      "pass": true,
+      "detail": "name=Customized Essential 1794542158013"
+    },
+    {
+      "name": "E_deliberate_delete_respected",
+      "pass": true,
+      "detail": "CTR-01 count=0 restoreStatus=complete"
+    },
+    {
+      "name": "E_owner_original_survives",
+      "pass": true,
+      "detail": "original=1"
+    },
+    {
+      "name": "E_explicit_recreate_deleted",
+      "pass": true,
+      "detail": "CTR-01=1 customNameKept=true"
+    },
+    {
+      "name": "F_incomplete_detected",
+      "pass": true,
+      "detail": "status=incomplete"
+    },
+    {
+      "name": "F_repair_available_in_ui",
+      "pass": true,
+      "detail": "banner=1"
+    },
+    {
+      "name": "F_safe_recovery",
+      "pass": true,
+      "detail": "ok=true status=complete pkg=3->3->3"
+    },
+    {
+      "name": "F_banner_clears_after_restore",
+      "pass": true,
+      "detail": "banner=0"
+    }
+  ]
+}

@@ -120,6 +120,21 @@ async function createVenue(opts: {
     active_venue_id: data.id,
     updated_at: new Date().toISOString(),
   });
+  // Satisfy app layout intake gate so Library/Setup Hub are reachable.
+  await admin.from("venue_onboarding_intake").upsert(
+    {
+      venue_id: data.id,
+      path: "self_setup",
+      venue_name: data.name,
+      space_mode: "one",
+      spaces: [{ name: "Main Space", maxCapacity: null }],
+      offers_tours: false,
+      inquiry_sources: [],
+      bring_business_choice: "starting_fresh",
+      submitted_at: new Date().toISOString(),
+    },
+    { onConflict: "venue_id" },
+  );
   return data as { id: string; name: string };
 }
 
@@ -154,7 +169,11 @@ async function countByMaster(table: string, venueId: string) {
     .select("id", { count: "exact", head: true })
     .eq("venue_id", venueId)
     .not("source_master_key", "is", null);
-  if (error) throw error;
+  if (error) {
+    throw new Error(
+      `countByMaster(${table}): ${error.message || error.code || JSON.stringify(error)}`,
+    );
+  }
   return count ?? 0;
 }
 
@@ -224,6 +243,7 @@ async function passWelcome(page: {
 async function cleanup() {
   for (const venueId of disposableVenueIds) {
     await admin.from("venue_starter_provisioning").delete().eq("venue_id", venueId);
+    await admin.from("venue_onboarding_intake").delete().eq("venue_id", venueId);
     await admin.from("venue_staff_active_context").delete().eq("active_venue_id", venueId);
     await admin.from("venue_staff").delete().eq("venue_id", venueId);
     await admin.from("venues").delete().eq("id", venueId);
@@ -275,7 +295,8 @@ async function main() {
       playA,
       tlA,
       eoA,
-      invA,
+      invCatA,
+      invTplA,
     ] = await Promise.all([
       countByMaster("packages", venueA.id),
       countByMaster("contract_templates", venueA.id),
@@ -285,12 +306,22 @@ async function main() {
       countByMaster("playbook_templates", venueA.id),
       countByMaster("timeline_templates", venueA.id),
       countByMaster("event_order_templates", venueA.id),
-      countByMaster("inventory_items", venueA.id),
+      // Catalog masters live on inventory_categories; starting lists on inventory_templates.
+      countByMaster("inventory_categories", venueA.id),
+      countByMaster("inventory_templates", venueA.id),
     ]);
     record(
       "A_starter_categories",
-      pkgA > 0 && contractsA > 0 && msgsA > 0 && seqA > 0 && playA > 0 && tlA > 0 && eoA > 0 && invA > 0,
-      `pkg=${pkgA} ctr=${contractsA} msg=${msgsA} seq=${seqA} q=${qA} play=${playA} tl=${tlA} eo=${eoA} inv=${invA}`,
+      pkgA > 0 &&
+        contractsA > 0 &&
+        msgsA > 0 &&
+        seqA > 0 &&
+        playA > 0 &&
+        tlA > 0 &&
+        eoA > 0 &&
+        invCatA > 0 &&
+        invTplA > 0,
+      `pkg=${pkgA} ctr=${contractsA} msg=${msgsA} seq=${seqA} q=${qA} play=${playA} tl=${tlA} eo=${eoA} invCat=${invCatA} invTpl=${invTplA}`,
     );
 
     const { data: seqStatuses } = await admin
@@ -330,9 +361,14 @@ async function main() {
     await passWelcome(page);
     await page.goto(`${APP}/library`, { waitUntil: "networkidle", timeout: 60000 });
     await page.screenshot({ path: `${OUT}/A-library.png`, fullPage: true });
+    const urlA = page.url();
     const bannerA = await page.locator('[data-testid="starter-provisioning-banner"]').count();
     const pkgLink = await page.getByRole("link", { name: /Packages & Pricing/i }).count();
-    record("A_library_browser", pkgLink > 0 && bannerA === 0, `pkgLink=${pkgLink} banner=${bannerA}`);
+    record(
+      "A_library_browser",
+      urlA.includes("/library") && pkgLink > 0 && bannerA === 0,
+      `url=${urlA} pkgLink=${pkgLink} banner=${bannerA}`,
+    );
 
     // ========== Scenario B — Save and resume (progress path) ==========
     const ownerB = await createOwner(stamp, "b");
@@ -593,7 +629,13 @@ async function main() {
     const bannerF2 = await page.locator('[data-testid="starter-provisioning-banner"]').count();
     record("F_banner_clears_after_restore", bannerF2 === 0, `banner=${bannerF2}`);
   } catch (error) {
-    record("harness_error", false, error instanceof Error ? error.message : String(error));
+    const detail =
+      error instanceof Error
+        ? error.message
+        : typeof error === "object" && error
+          ? JSON.stringify(error)
+          : String(error);
+    record("harness_error", false, detail);
     console.error(error);
   } finally {
     await browser.close();
