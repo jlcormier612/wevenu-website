@@ -38,7 +38,13 @@ describe("Refer & Earn nav CTA", () => {
     assert.match(cta, /shrink-0/);
     assert.match(cta, /hidden max-w-\[14rem\] truncate sm:inline/);
     assert.match(cta, /rounded-full/);
-    assert.match(cta, /htc-soft-blush|htc-blush/);
+  });
+
+  it("uses soft powder blue invitation styling (not blush/warning rose)", () => {
+    assert.match(cta, /#A9C9DA/);
+    assert.match(cta, /REFER_EARN_POWDER_BLUE|#A9C9DA/);
+    assert.doesNotMatch(cta, /htc-blush|htc-soft-blush|htc-petal/);
+    assert.match(cta, /focus-visible:ring-\[color:color-mix\(in_oklch,#A9C9DA/);
   });
 
   it("does not remove the Settings referral card or page", () => {

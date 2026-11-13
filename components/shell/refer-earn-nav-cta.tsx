@@ -7,9 +7,12 @@ import { cn } from "@/lib/utils";
 export const REFER_EARN_NAV_HREF = "/settings/referrals";
 export const REFER_EARN_NAV_LABEL = "Refer & Earn a Free Month";
 
+/** Soft powder blue reference from the HTC palette (#A9C9DA). */
+export const REFER_EARN_POWDER_BLUE = "#A9C9DA";
+
 /**
- * Warm dusty-rose pill for the venue top nav. Links only — does not change
- * referral eligibility, form, or fulfillment.
+ * Soft powder-blue invitation pill for the venue top nav. Links only — does not
+ * change referral eligibility, form, or fulfillment.
  */
 export function ReferEarnNavCta({ className }: { className?: string }) {
   return (
@@ -20,14 +23,14 @@ export function ReferEarnNavCta({ className }: { className?: string }) {
       title={REFER_EARN_NAV_LABEL}
       className={cn(
         "inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-full border px-2.5 text-xs font-medium tracking-tight transition-colors",
-        "border-[color:color-mix(in_oklch,var(--htc-blush)_42%,var(--htc-border-warm))]",
-        "bg-[var(--htc-soft-blush)] text-[color:color-mix(in_oklch,var(--htc-blush)_42%,#24332b)]",
-        "hover:bg-[var(--htc-petal)] hover:text-[#24332b]",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:color-mix(in_oklch,var(--htc-blush)_55%,transparent)] focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+        "border-[color:color-mix(in_oklch,#A9C9DA_55%,var(--htc-border-warm,#e6e3dc))]",
+        "bg-[color:color-mix(in_oklch,#A9C9DA_22%,white)] text-[#24332b]",
+        "hover:bg-[color:color-mix(in_oklch,#A9C9DA_34%,white)] hover:border-[color:color-mix(in_oklch,#A9C9DA_70%,var(--htc-border-warm,#e6e3dc))] hover:text-[#24332b]",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:color-mix(in_oklch,#A9C9DA_65%,var(--htc-calm-accent,#63819a))] focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         className,
       )}
     >
-      <Gift className="h-3.5 w-3.5 shrink-0" aria-hidden />
+      <Gift className="h-3.5 w-3.5 shrink-0 text-[#24332b]" aria-hidden />
       <span className="hidden max-w-[14rem] truncate sm:inline">{REFER_EARN_NAV_LABEL}</span>
     </Link>
   );
