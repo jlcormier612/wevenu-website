@@ -120,6 +120,21 @@ async function createVenue(opts: {
     active_venue_id: data.id,
     updated_at: new Date().toISOString(),
   });
+  // Satisfy app layout intake gate so Library/Setup Hub are reachable.
+  await admin.from("venue_onboarding_intake").upsert(
+    {
+      venue_id: data.id,
+      path: "self_setup",
+      venue_name: data.name,
+      space_mode: "one",
+      spaces: [{ name: "Main Space", maxCapacity: null }],
+      offers_tours: false,
+      inquiry_sources: [],
+      bring_business_choice: "starting_fresh",
+      submitted_at: new Date().toISOString(),
+    },
+    { onConflict: "venue_id" },
+  );
   return data as { id: string; name: string };
 }
 
@@ -228,6 +243,7 @@ async function passWelcome(page: {
 async function cleanup() {
   for (const venueId of disposableVenueIds) {
     await admin.from("venue_starter_provisioning").delete().eq("venue_id", venueId);
+    await admin.from("venue_onboarding_intake").delete().eq("venue_id", venueId);
     await admin.from("venue_staff_active_context").delete().eq("active_venue_id", venueId);
     await admin.from("venue_staff").delete().eq("venue_id", venueId);
     await admin.from("venues").delete().eq("id", venueId);
@@ -345,9 +361,14 @@ async function main() {
     await passWelcome(page);
     await page.goto(`${APP}/library`, { waitUntil: "networkidle", timeout: 60000 });
     await page.screenshot({ path: `${OUT}/A-library.png`, fullPage: true });
+    const urlA = page.url();
     const bannerA = await page.locator('[data-testid="starter-provisioning-banner"]').count();
     const pkgLink = await page.getByRole("link", { name: /Packages & Pricing/i }).count();
-    record("A_library_browser", pkgLink > 0 && bannerA === 0, `pkgLink=${pkgLink} banner=${bannerA}`);
+    record(
+      "A_library_browser",
+      urlA.includes("/library") && pkgLink > 0 && bannerA === 0,
+      `url=${urlA} pkgLink=${pkgLink} banner=${bannerA}`,
+    );
 
     // ========== Scenario B — Save and resume (progress path) ==========
     const ownerB = await createOwner(stamp, "b");
