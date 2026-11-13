@@ -7,6 +7,7 @@ import { Menu, Search } from "lucide-react";
 import { Wordmark } from "@/components/brand/wordmark";
 import { CommandPalette } from "@/components/shell/command-palette";
 import { NotificationBell } from "@/components/shell/notification-bell";
+import { ReferEarnNavCta } from "@/components/shell/refer-earn-nav-cta";
 import { SidebarNav } from "@/components/shell/sidebar-nav";
 import { UserMenu } from "@/components/shell/user-menu";
 import { VenueSwitcher } from "@/components/shell/venue-switcher";
@@ -110,6 +111,7 @@ export function WorkspaceShellHeader({
           >
             <Search className="h-[1.1rem] w-[1.1rem]" />
           </button>
+          <ReferEarnNavCta />
           <NotificationBell />
           {/* Theme is secondary on narrow phones — keep search, alerts, and account. */}
           <div className="hidden sm:block">

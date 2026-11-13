@@ -18,6 +18,7 @@ describe("venue portal mobile chrome layout", () => {
     assert.match(header, /min-w-0 flex-1 overflow-hidden/);
     assert.match(header, /shrink-0/);
     assert.match(header, /hidden sm:block/);
+    assert.match(header, /ReferEarnNavCta/);
     assert.match(switcher, /max-w-\[9rem\].*sm:max-w-\[12rem\].*lg:max-w-\[16rem\]/s);
     assert.match(switcher, /min-w-0 truncate/);
   });
