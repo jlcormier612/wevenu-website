@@ -156,7 +156,7 @@ async function createVenue(opts: {
       submitted_at: new Date().toISOString(),
       space_mode: "one",
       spaces: [{ name: "Main Space", max_capacity: 100 }],
-      bring_business_choice: "start_fresh",
+      bring_business_choice: "starting_fresh",
     },
     { onConflict: "venue_id" },
   );
