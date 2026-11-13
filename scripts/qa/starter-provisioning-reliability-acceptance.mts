@@ -154,7 +154,11 @@ async function countByMaster(table: string, venueId: string) {
     .select("id", { count: "exact", head: true })
     .eq("venue_id", venueId)
     .not("source_master_key", "is", null);
-  if (error) throw error;
+  if (error) {
+    throw new Error(
+      `countByMaster(${table}): ${error.message || error.code || JSON.stringify(error)}`,
+    );
+  }
   return count ?? 0;
 }
 
@@ -275,7 +279,8 @@ async function main() {
       playA,
       tlA,
       eoA,
-      invA,
+      invCatA,
+      invTplA,
     ] = await Promise.all([
       countByMaster("packages", venueA.id),
       countByMaster("contract_templates", venueA.id),
@@ -285,12 +290,22 @@ async function main() {
       countByMaster("playbook_templates", venueA.id),
       countByMaster("timeline_templates", venueA.id),
       countByMaster("event_order_templates", venueA.id),
-      countByMaster("inventory_items", venueA.id),
+      // Catalog masters live on inventory_categories; starting lists on inventory_templates.
+      countByMaster("inventory_categories", venueA.id),
+      countByMaster("inventory_templates", venueA.id),
     ]);
     record(
       "A_starter_categories",
-      pkgA > 0 && contractsA > 0 && msgsA > 0 && seqA > 0 && playA > 0 && tlA > 0 && eoA > 0 && invA > 0,
-      `pkg=${pkgA} ctr=${contractsA} msg=${msgsA} seq=${seqA} q=${qA} play=${playA} tl=${tlA} eo=${eoA} inv=${invA}`,
+      pkgA > 0 &&
+        contractsA > 0 &&
+        msgsA > 0 &&
+        seqA > 0 &&
+        playA > 0 &&
+        tlA > 0 &&
+        eoA > 0 &&
+        invCatA > 0 &&
+        invTplA > 0,
+      `pkg=${pkgA} ctr=${contractsA} msg=${msgsA} seq=${seqA} q=${qA} play=${playA} tl=${tlA} eo=${eoA} invCat=${invCatA} invTpl=${invTplA}`,
     );
 
     const { data: seqStatuses } = await admin
@@ -593,7 +608,13 @@ async function main() {
     const bannerF2 = await page.locator('[data-testid="starter-provisioning-banner"]').count();
     record("F_banner_clears_after_restore", bannerF2 === 0, `banner=${bannerF2}`);
   } catch (error) {
-    record("harness_error", false, error instanceof Error ? error.message : String(error));
+    const detail =
+      error instanceof Error
+        ? error.message
+        : typeof error === "object" && error
+          ? JSON.stringify(error)
+          : String(error);
+    record("harness_error", false, detail);
     console.error(error);
   } finally {
     await browser.close();
