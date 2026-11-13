@@ -11,7 +11,7 @@ import { ensurePackageStartersForCurrentVenue } from "@/lib/packages/provision";
 import { getPackagesWithItems } from "@/lib/packages/service";
 import { PACKAGE_STARTER_MASTERS, type PackageStarterMasterKey } from "@/lib/packages/starters";
 
-export const metadata: Metadata = { title: "Packages" };
+export const metadata: Metadata = { title: "Packages & Pricing" };
 
 export default async function PackagesPage() {
   await ensurePackageStartersForCurrentVenue();
@@ -25,20 +25,20 @@ export default async function PackagesPage() {
 
   return (
     <div className="htc-hospitality-page space-y-4 sm:space-y-6">
-      <CollectionBackLink href="/library" label="Templates" />
+      <CollectionBackLink href="/library" label="Library" />
       <div className="htc-hospitality-heading htc-hospitality-intro-accent">
         <PageHeader
-          title="Packages"
-          description="Priced sales packages with inclusions for booking and Selected Package snapshots. Distinct from Event Order Templates (delivery build sheets) — this is not where you author or send an Event Order."
+          title="Packages & Pricing"
+          description="Priced offers you sell before booking. Inclusions are your commercial story — not Event Order choices."
           actions={
             <Button type="button" render={<Link href="/packages/new" />}>
-              + New Package
+              + New package
             </Button>
           }
         />
       </div>
       <LibraryHowItWorks tone="calm">
-        Package names, pricing, and inclusion lines are authored here for what you sell. Inclusions are written on the package itself — they are not selected from the Offerings catalog. Archiving hides a package from the active list without sending anything to a client. For event delivery lists and client choice groups, use Event Order Templates.
+        Author package names, pricing, and inclusion lines here. Inclusions are written on the package itself — they are not selected from the choices catalog. For delivery plans and couple choice groups, use Event Order plans.
       </LibraryHowItWorks>
       <PackageList initialPackages={packages} missingStarterKeys={missingStarterKeys} />
     </div>

@@ -35,18 +35,15 @@ export function EventCommercialStatusStrip({
       data-testid="event-commercial-status-strip"
     >
       <div>
-        <p className="text-sm font-medium text-heading">Commercial progress</p>
+        <p className="text-sm font-medium text-heading">Event Order lifecycle</p>
         <p className="mt-1 text-xs text-muted-foreground">
-          Status chips for this event&apos;s Event Order path. Build selections and fixed lines below,
-          apply couple submissions with Create / Update Event Order, then share the final order and
-          invoice. Applying a template is not sharing; client submission is not venue confirmation;
-          creating the Event Order does not change booking state. Inventory stays operational and
-          separate from billable Event Order lines.
+          Configure → Shared → Awaiting review → Confirmed → Billing. Stages are derived from
+          existing statuses — submitting choices is not payment, and sharing is not agreement.
+          Items for this event stay operational and separate from billable Event Order lines.
         </p>
         <p className="mt-1.5 text-xs text-muted-foreground" data-testid="commercial-path-wiring">
-          Fixed-only Event Order (no choice groups): Library Use / Apply → Finalize → Share on Event
-          Order. Templates with choice groups: Start selections → Send to Client (portal) → Create /
-          Update Event Order from selections → Share. Active proposed-order email is a later step.
+          Commercial choices belong on the Event Order. Share item quantities only when you want
+          prep input — never ask the couple to make the same purchasing decision twice.
         </p>
       </div>
 
@@ -179,7 +176,7 @@ export function EventCommercialStatusStrip({
           data-testid="commercial-open-inventory"
           onClick={() => onNavigate({ kind: "tab", tab: "inventory" })}
         >
-          Open Inventory
+          Open event items
         </Button>
       </div>
     </div>

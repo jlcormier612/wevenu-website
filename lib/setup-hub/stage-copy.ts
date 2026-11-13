@@ -47,14 +47,14 @@ export const STAGE_COPY: Record<SetupStageKey, StageCopy> = {
     whatToDo: "Import through Migration Center, add things yourself, or skip for now. None of these is the “correct” answer.",
   }),
   "your-offerings": fromCrosswalk("your-offerings", {
-    what: "Decide what you sell — packages and the inventory that goes with them.",
-    why: "A couple needs something real to book. Starter examples don't count as your configuration until you keep or replace them on purpose.",
-    whatToDo: "Open Packages in Library. Adjust starters, replace them, or build your own. If starters are enough for now, say so explicitly.",
+    what: "Start with what you sell — review your wedding package price. Event Order plans and Available Inventory can wait until after your first inquiry if you prefer.",
+    why: "A couple needs something real to book. You do not need Inventory or Event Orders configured to accept your first inquiry.",
+    whatToDo: "Open Packages & Pricing. Adjust starters or build your own. When ready, preview Event Order plans for couple choices; stock and saved starting lists stay optional.",
   }),
   "client-experience": fromCrosswalk("client-experience", {
     what: "Decide which contracts, questionnaires, messages, and planning materials you'll use with couples — and which Setup Profile applies when you book a wedding.",
     why: "This is what couples experience while working with you.",
-    whatToDo: "Open Library to review starters. Then open Setup Profiles to confirm how weddings (and later other event types) should start — Library starters alone do not configure every event type.",
+    whatToDo: "Open Library to review starters (Packages, Event Order plans, and other templates). Then open Setup Profiles to confirm how weddings start — Library starters alone do not configure every event type.",
   }),
   "lead-capture": fromCrosswalk("lead-capture", {
     what: "Choose how new inquiries reach Hello to Cheers.",

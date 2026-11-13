@@ -109,7 +109,7 @@ export function buildCommercialStatusChips(input: CommercialStatusInput): Commer
   if (showInventory) {
     chips.push({
       id: "inventory",
-      label: "Inventory",
+      label: "Event items",
       status: input.eventInventory
         ? INV_STATUS_LABEL[input.eventInventory.status] ?? input.eventInventory.status
         : "Not started",
@@ -314,16 +314,16 @@ export function buildCommercialProgressSteps(
   return [
     {
       id: "draft",
-      label: "Draft",
+      label: "Configure",
       state: stateFor("draft", draftComplete),
       detail: draftComplete
         ? "Working commercial records exist on this event."
-        : "Apply a template or start blank on Event Order / Inventory.",
+        : "Apply an Event Order plan or start blank. Items for this event are optional.",
       nav: { kind: "tab", tab: "event-order", anchor: "event-order-order" },
     },
     {
       id: "engagement",
-      label: "Shared / selections",
+      label: "Shared / awaiting review",
       state: stateFor("engagement", sharedComplete),
       detail: sharedComplete
         ? `Client engagement started. ${selectionNote}`
@@ -336,7 +336,7 @@ export function buildCommercialProgressSteps(
     },
     {
       id: "order_agreed",
-      label: "Agreed",
+      label: "Confirmed",
       state: stateFor("order_agreed", agreedComplete),
       detail: agreedComplete
         ? "Client accepted the shared Event Order (finalize and share alone do not equal agreement)."
@@ -345,7 +345,7 @@ export function buildCommercialProgressSteps(
     },
     {
       id: "invoiced",
-      label: "Invoiced",
+      label: "Billing",
       state: stateFor("invoiced", invoicedComplete),
       detail: invoicedComplete
         ? `Invoice ${INVOICE_STATUS_LABEL[linked!.status] ?? linked!.status} (payment plan is a later step on the invoice).`

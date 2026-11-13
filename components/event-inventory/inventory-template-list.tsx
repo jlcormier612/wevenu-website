@@ -262,12 +262,11 @@ function UseOrSendInventoryTemplateSheet({
 }
 
 function TemplateCard({
-  template, archivedView, onUse, onSend, onDelete, onDuplicate,
+  template, archivedView, onUse, onDelete, onDuplicate,
 }: {
   template: InventoryTemplate;
   archivedView?: boolean;
   onUse: () => void;
-  onSend: () => void;
   onDelete: () => void;
   onDuplicate: () => void;
 }) {
@@ -307,8 +306,7 @@ function TemplateCard({
               : [
                   { id: "edit", label: LIBRARY_LABELS.edit, href: `/library/inventory-templates/${template.id}`, emphasis: "edit" as const },
                 ]),
-            { id: "use", label: LIBRARY_LABELS.useTemplate, onClick: onUse, emphasis: "use" },
-            { id: "send", label: LIBRARY_LABELS.sendToClient, onClick: onSend, emphasis: "use" },
+            { id: "use", label: "Use on event", onClick: onUse, emphasis: "use" },
           ]}
       overflowPending={pending}
       overflowItems={archivedView ? [] : [
@@ -356,7 +354,6 @@ export function InventoryTemplateList({
   const router = useRouter();
   const { active, archived } = partitionArchived(templates, (t) => t.isArchived);
   const [using, setUsing] = React.useState<InventoryTemplate | null>(null);
-  const [sending, setSending] = React.useState<InventoryTemplate | null>(null);
   const [deleting, setDeleting] = React.useState<InventoryTemplate | null>(null);
   const [deletePending, setDeletePending] = React.useState(false);
 
@@ -378,7 +375,6 @@ export function InventoryTemplateList({
       <TemplateCard
         key={t.id} template={t} archivedView={archivedView}
         onUse={() => setUsing(t)}
-        onSend={() => setSending(t)}
         onDelete={() => setDeleting(t)}
         onDuplicate={() => {
           void (async () => {
@@ -403,8 +399,8 @@ export function InventoryTemplateList({
       </div>
       {templates.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-sm border border-dashed border-border bg-card/40 py-16 text-center">
-          <p className="font-heading text-lg font-medium text-heading">No inventory templates yet</p>
-          <p className="mt-1 text-sm text-muted-foreground">Create one to reuse across events, or restore a Hello to Cheers starter.</p>
+          <p className="font-heading text-lg font-medium text-heading">No saved starting lists yet</p>
+          <p className="mt-1 text-sm text-muted-foreground">Create one to reuse across events, or restore a Hello to Cheers starter. Share with couples from the event after you review quantities.</p>
         </div>
       ) : (
         <>
@@ -428,13 +424,6 @@ export function InventoryTemplateList({
         clientGroups={clientGroups}
         open={!!using}
         onOpenChange={(o) => { if (!o) setUsing(null); }}
-      />
-      <UseOrSendInventoryTemplateSheet
-        mode="send"
-        template={sending}
-        clientGroups={clientGroups}
-        open={!!sending}
-        onOpenChange={(o) => { if (!o) setSending(null); }}
       />
       <LibraryDeleteConfirmDialog
         open={!!deleting}

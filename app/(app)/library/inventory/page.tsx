@@ -18,15 +18,15 @@ export default async function InventoryLibraryPage() {
   const [items, stockSharing] = await Promise.all([getItemsForLibrary(), getStockSharingForCurrentVenue()]);
   return (
     <div className="htc-hospitality-page space-y-4 sm:space-y-6">
-      <CollectionBackLink href="/library" label="Templates" />
+      <CollectionBackLink href="/library" label="Library" />
       <div className="htc-hospitality-heading htc-hospitality-intro-accent">
         <PageHeader
           title="Available Inventory"
-          description="Physical stock catalog your venue owns — create and edit items here. Editing the catalog does not share with clients, create event inventory, or create an Event Order."
+          description="Physical items your venue owns or can provide. Editing here does not share with clients or create an Event Order."
           actions={
             <div className="flex flex-wrap gap-2">
               <Button render={<Link href="/library/inventory/new" />}>
-                + New Inventory Item
+                + Add item
               </Button>
               <Button variant="outline" render={<Link href="/settings/import?type=inventory" />}>
                 Import Inventory
@@ -37,10 +37,10 @@ export default async function InventoryLibraryPage() {
       </div>
       <LibraryDependencyNote
         tone="calm"
-        detail="Maintain the reusable stock catalog here. Floor Plan Templates can place items marked for floor plans. Inventory Templates and the event Inventory tab pull from this catalog when building an event list — those are separate from this catalog page. Set when two events can share the same stock in the card just below."
-        action={{ href: "/library/floor-plan-templates", label: "Open Floor Plan Templates" }}
+        detail="Maintain the reusable stock catalog here. Floor plans can place eligible items. Saved starting lists and Items for this event pull from this catalog when building an event list. Set when two events can share the same stock in the card just below."
+        action={{ href: "/library/inventory-templates", label: "Saved starting lists" }}
         secondaryActions={[
-          { href: "/library/inventory-templates", label: "Open Inventory Templates" },
+          { href: "/library/floor-plan-templates", label: "Open Floor Plan Templates" },
         ]}
       >
         How Available Inventory works

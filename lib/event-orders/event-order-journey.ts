@@ -106,7 +106,7 @@ function eventOrderRow(input: EventOrderJourneyInput): RowFacts {
   if (!eo) {
     return {
       state: "Not started",
-      detail: "Pick a template or start blank below. The couple sees nothing until you send it.",
+      detail: "Use an Event Order plan or start blank below. The couple sees nothing until you send choices.",
       primaryLabel: "Build Event Order",
       action: "build",
       preview: false,
@@ -115,8 +115,8 @@ function eventOrderRow(input: EventOrderJourneyInput): RowFacts {
   }
   if (!eo.sharedAt) {
     return {
-      state: "Draft — not sent yet",
-      detail: "Preview exactly what the couple will see, then send. Sending locks this version and emails them one link.",
+      state: "Configure — not shared yet",
+      detail: "Preview exactly what the couple will see, then send. Sending locks this version and emails them one link. Submitting is not payment.",
       primaryLabel: "Send to couple",
       action: "send",
       preview: true,

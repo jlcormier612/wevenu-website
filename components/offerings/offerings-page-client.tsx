@@ -33,11 +33,11 @@ export function OfferingsPageClient({
 
   return (
     <div className="htc-hospitality-page space-y-4 sm:space-y-6">
-      <CollectionBackLink href="/library" label="Templates" />
+      <CollectionBackLink href="/library/event-order-templates" label="Event Order plans" />
       <div className="htc-hospitality-heading htc-hospitality-intro-accent">
         <PageHeader
-          title="Offerings"
-          description="Organize the services, packages, and options your venue offers. Group related items under choices, such as dinner styles or bar packages, so you can reuse them across Event Order Templates."
+          title="Choices catalog"
+          description="Reusable menus, bar, services, and upgrades that power Event Order plans. Editing here does not send choices to clients."
           actions={
             <Button
               type="button"
@@ -49,20 +49,20 @@ export function OfferingsPageClient({
                 if (!sectionRef.current) requestAnimationFrame(open);
               }}
             >
-              + New Offering
+              + New choice
             </Button>
           }
         />
       </div>
       <LibraryDependencyNote
         tone="calm"
-        detail="Maintain your catalog here. Event Order Templates use these offerings to define what's included and which choices or additional items clients can select. Optionally link an offering to a physical inventory item — stock is reserved when the couple approves the Event Order. Distinct from Available Inventory."
-        action={{ href: "/library/event-order-templates", label: "Open Event Order Templates" }}
+        detail="These choices power Event Order plans — open a plan to decide what couples can select. Optionally link a choice to a physical inventory item for stock awareness. Distinct from Available Inventory and from sales Packages."
+        action={{ href: "/library/event-order-templates", label: "Open Event Order plans" }}
         secondaryActions={[
           { href: "/library/inventory", label: "Manage Available Inventory" },
         ]}
       >
-        How Offerings work
+        How the choices catalog works
       </LibraryDependencyNote>
       <OfferingsLibrarySection
         ref={sectionRef}

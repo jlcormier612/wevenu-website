@@ -219,12 +219,11 @@ describe("Library guidance — catalog-first copy", () => {
     assert.doesNotMatch(src, /Checklist lines \(name, quantity, price\) are authored/);
   });
 
-  it("Event Order Templates guidance emphasizes catalog-first fixed + selectable", () => {
+  it("Event Order plans guidance emphasizes choices catalog + selectable groups", () => {
     const eo = readFileSync(resolve("app/(app)/library/event-order-templates/page.tsx"), "utf8");
-    assert.match(eo, /Prefer reusable Offerings/i);
-    assert.match(eo, /template-only line/i);
-    assert.match(eo, /reserves when the couple approves the Event Order/i);
-    assert.doesNotMatch(eo, /does not reserve stock/i);
+    assert.match(eo, /choices catalog/i);
+    assert.match(eo, /couple choices/i);
+    assert.match(eo, /Distinct from sales Packages/i);
     const ch = readFileSync(resolve("app/(app)/library/choices-templates/page.tsx"), "utf8");
     assert.match(ch, /redirect\("\/library\/event-order-templates"\)/);
     assert.doesNotMatch(ch, /ChoicesTemplateList/);
