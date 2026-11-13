@@ -1,0 +1,110 @@
+{
+  "workflow": "fresh-walk-booking-portal-closure",
+  "verdict": "RED",
+  "error": "TypeError: admin.from(...).upsert(...).catch is not a function",
+  "checks": [
+    {
+      "name": "activation_processing_copy_wired",
+      "pass": false,
+      "detail": "processing banner + double-submit guard + soft login hint",
+      "scenario": "A"
+    },
+    {
+      "name": "serving_sha",
+      "pass": true,
+      "detail": "serving=a6096b49127dce7513735aca5ce063d86df4c321 expectedPrefix=a6096b49",
+      "scenario": "J"
+    },
+    {
+      "name": "essential_wedding_priced",
+      "pass": true,
+      "detail": "{\"id\":\"136a1f22-b17b-4665-ba53-2d170bee8973\",\"name\":\"Essential Wedding\",\"base_price\":8500}",
+      "scenario": "B"
+    },
+    {
+      "name": "select_package_cta",
+      "pass": true,
+      "detail": "Select package on lead",
+      "scenario": "B"
+    },
+    {
+      "name": "package_selection_captured",
+      "pass": true,
+      "detail": "{\"id\":\"871500a8-dd09-4637-a436-612819232ccc\",\"name\":\"Essential Wedding\",\"status\":\"draft\",\"total_amount\":8500,\"package_amount\":8500,\"source_package_id\":\"136a1f22-b17b-4665-ba53-2d170bee8973\"}",
+      "scenario": "B"
+    },
+    {
+      "name": "client_reviewed_package",
+      "pass": true,
+      "detail": "no share token — venue selection path used; client review via contract sign later",
+      "scenario": "B"
+    },
+    {
+      "name": "contract_created",
+      "pass": false,
+      "detail": "contractId=null",
+      "scenario": "C"
+    },
+    {
+      "name": "booked_via_rule",
+      "pass": true,
+      "detail": "{\"eventId\":\"f48c8c02-b1f4-48eb-95b4-b0b9246791e5\",\"booked_at\":\"2026-11-13\",\"clientId\":\"d7e5eec9-d30c-49b8-b85f-af8146f13632\"}",
+      "scenario": "D"
+    },
+    {
+      "name": "no_duplicate_client_event",
+      "pass": true,
+      "detail": "clients=1 events=1",
+      "scenario": "J"
+    },
+    {
+      "name": "setup_profile_inherited",
+      "pass": true,
+      "detail": "{\"uses_profile\":true,\"profile_name\":\"Standard Wedding Setup\",\"refs\":{\"requiredVendorIds\":[],\"timelineTemplateId\":\"99dc4cdc-acb9-4054-be92-7fd8720be1f5\",\"inventoryTemplateId\":null,\"timelineTemplateIds\":[],\"eventOrderTemplateId\":null,\"floorPlanTemplateIds\":[],\"recommendedVendorIds\":[],\"questionnaireTemplateIds\":[\"2a09864b-6c6f-43f6-a3f4-5ca13552fd3d\",\"82079e11-40e8-46cc-a487-509fd1ab74ef\"],\"defaultFloorPlanTemplateId\":null,\"planningPlaybookTemplateId\":\"b3b57491-e45a-40ac-b275-0e3d10e568ef\",\"venuePlanningPlaybookTemplateId\":\"197003cb-5b86-4229-8f1a-9f986339a7a2\"}}",
+      "scenario": "E"
+    },
+    {
+      "name": "inherited_resources_present",
+      "pass": true,
+      "detail": "{\"playbooks\":[{\"kind\":\"client\",\"released\":false},{\"kind\":\"venue\",\"released\":true}],\"questionnaires\":2,\"timeline\":38}",
+      "scenario": "E"
+    },
+    {
+      "name": "unreleased_until_venue_action",
+      "pass": true,
+      "detail": "released=1",
+      "scenario": "E"
+    },
+    {
+      "name": "venue_previewed_client_experience",
+      "pass": true,
+      "detail": "https://app.sandbox.hellotocheers.com/clients/d7e5eec9-d30c-49b8-b85f-af8146f13632/portal-preview?event=f48c8c02-b1f4-48eb-95b4-b0b9246791e5",
+      "scenario": "F"
+    },
+    {
+      "name": "selective_release_action",
+      "pass": true,
+      "detail": "prepare-and-release-portal",
+      "scenario": "F"
+    },
+    {
+      "name": "subset_released_not_all_silently",
+      "pass": true,
+      "detail": "{\"apps\":[{\"id\":\"694804fd-7129-4bf7-9400-2323cd25d1c4\",\"kind\":\"client\",\"released_at\":\"2026-11-13T17:58:06.65+00:00\"},{\"id\":\"ac1941fe-4531-46ab-899a-36ab5d1b5e07\",\"kind\":\"venue\",\"released_at\":\"2026-11-13T17:57:23.085+00:00\"}],\"allReleased\":true}",
+      "scenario": "F"
+    },
+    {
+      "name": "client_invitation_created",
+      "pass": true,
+      "detail": "[{\"id\":\"954733f0-822c-4f0f-89e5-75f3edca2b7c\",\"token\":\"a9ded503-7e0c-427e-af0e-a25458eb3627\",\"status\":\"pending\",\"email\":\"fresh.walk.client.7b8121@hellotocheers-test.invalid\"}]",
+      "scenario": "G"
+    },
+    {
+      "name": "client_auth_user",
+      "pass": true,
+      "detail": "fresh.walk.client.7b8121@hellotocheers-test.invalid",
+      "scenario": "G"
+    }
+  ],
+  "at": "2026-11-13T17:58:16.125Z"
+}

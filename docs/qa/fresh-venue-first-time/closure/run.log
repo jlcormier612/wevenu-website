@@ -1,0 +1,20 @@
+FAIL [A] activation_processing_copy_wired — processing banner + double-submit guard + soft login hint
+PASS [J] serving_sha — serving=a6096b49127dce7513735aca5ce063d86df4c321 expectedPrefix=a6096b49
+PASS [B] essential_wedding_priced — {"id":"136a1f22-b17b-4665-ba53-2d170bee8973","name":"Essential Wedding","base_price":8500}
+PASS [B] select_package_cta — Select package on lead
+PASS [B] package_selection_captured — {"id":"871500a8-dd09-4637-a436-612819232ccc","name":"Essential Wedding","status":"draft","total_amount":8500,"package_amount":8500,"source_package_id":"136a1f22-b17b-4665-ba53-2d170bee8973"}
+PASS [B] client_reviewed_package — no share token — venue selection path used; client review via contract sign later
+FAIL [C] contract_created — contractId=null
+PASS [D] booked_via_rule — {"eventId":"f48c8c02-b1f4-48eb-95b4-b0b9246791e5","booked_at":"2026-11-13","clientId":"d7e5eec9-d30c-49b8-b85f-af8146f13632"}
+PASS [J] no_duplicate_client_event — clients=1 events=1
+PASS [E] setup_profile_inherited — {"uses_profile":true,"profile_name":"Standard Wedding Setup","refs":{"requiredVendorIds":[],"timelineTemplateId":"99dc4cdc-acb9-4054-be92-7fd8720be1f5","inventoryTemplateId":null,"timelineTemplateIds":[],"eventOrderTempl
+PASS [E] inherited_resources_present — {"playbooks":[{"kind":"client","released":false},{"kind":"venue","released":true}],"questionnaires":2,"timeline":38}
+PASS [E] unreleased_until_venue_action — released=1
+PASS [F] venue_previewed_client_experience — https://app.sandbox.hellotocheers.com/clients/d7e5eec9-d30c-49b8-b85f-af8146f13632/portal-preview?event=f48c8c02-b1f4-48eb-95b4-b0b9246791e5
+PASS [F] selective_release_action — prepare-and-release-portal
+PASS [F] subset_released_not_all_silently — {"apps":[{"id":"694804fd-7129-4bf7-9400-2323cd25d1c4","kind":"client","released_at":"2026-11-13T17:58:06.65+00:00"},{"id":"ac1941fe-4531-46ab-899a-36ab5d1b5e07","kind":"venue","released_at":"2026-11-13T17:57:23.085+00:00
+PASS [G] client_invitation_created — [{"id":"954733f0-822c-4f0f-89e5-75f3edca2b7c","token":"a9ded503-7e0c-427e-af0e-a25458eb3627","status":"pending","email":"fresh.walk.client.7b8121@hellotocheers-test.invalid"}]
+PASS [G] client_auth_user — fresh.walk.client.7b8121@hellotocheers-test.invalid
+TypeError: admin.from(...).upsert(...).catch is not a function
+    at main (/private/tmp/htc-setup-hub-wt/scripts/qa/fresh-walk-booking-portal-closure.mts:895:66)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)

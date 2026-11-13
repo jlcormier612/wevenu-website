@@ -1,0 +1,60 @@
+PASS [A] activation_processing_copy_wired — processing banner + double-submit guard + soft login hint
+FAIL [C] contract_created — contractId=null url=https://app.sandbox.hellotocheers.com/contracts/new?selectionId=871500a8-dd09-4637-a436-612819232ccc&clientId=d7e5eec9-d30c-49b8-b85f-af8146f13632&eventId=f48c8c02-b1f4-48eb-95b4-b0b9246791e5
+PASS [G] client_auth_user — fresh.walk.client.7b8121@hellotocheers-test.invalid
+PASS [G] portal_session — fw_portal_4cefedbd
+PASS [G] client_portal_branding_event — Welcome
+
+Your venue has invited you to begin planning together through Hello to Cheers.
+
+Before continuing, please review the following documents.
+
+End User Terms
+
+Version 2026-09-11.1·Effective
+
+View →
+
+Privacy Policy
+
+
+PASS [G] released_visible_unreleased_hidden — released planning surface present in portal
+locator.click: Timeout 30000ms exceeded.
+Call log:
+  - waiting for getByRole('link', { name: /Questionnaire|Planning|Questions|Tasks/i }).or(getByRole('button', { name: /Questionnaire|Start|Continue|Open/i })).first()
+    - locator resolved to <button disabled type="button" class="mt-7 inline-flex w-full items-center justify-center gap-2 rounded-md bg-[var(--forest-sage)] px-5 py-3 text-sm font-medium text-[var(--true-white)] transition-opacity hover:bg-[var(--heritage-sage)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--heritage-sage)]/45 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--true-white)] disabled:opacity-50">Continue</button>
+  - attempting click action
+    2 × waiting for element to be visible, enabled and stable
+      - element is not enabled
+    - retrying click action
+    - waiting 20ms
+    2 × waiting for element to be visible, enabled and stable
+      - element is not enabled
+    - retrying click action
+      - waiting 100ms
+    57 × waiting for element to be visible, enabled and stable
+       - element is not enabled
+     - retrying click action
+       - waiting 500ms
+    - waiting for element to be visible, enabled and stable
+
+    at main (/private/tmp/htc-setup-hub-wt/scripts/qa/fresh-walk-closure-contract-portal.mts:320:19) {
+  log: [
+    "  - waiting for getByRole('link', { name: /Questionnaire|Planning|Questions|Tasks/i }).or(getByRole('button', { name: /Questionnaire|Start|Continue|Open/i })).first()",
+    '    - locator resolved to <button disabled type="button" class="mt-7 inline-flex w-full items-center justify-center gap-2 rounded-md bg-[var(--forest-sage)] px-5 py-3 text-sm font-medium text-[var(--true-white)] transition-opacity hover:bg-[var(--heritage-sage)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--heritage-sage)]/45 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--true-white)] disabled:opacity-50">Continue</button>',
+    '  - attempting click action',
+    '    2 × waiting for element to be visible, enabled and stable',
+    '      - element is not enabled',
+    '    - retrying click action',
+    '    - waiting 20ms',
+    '    2 × waiting for element to be visible, enabled and stable',
+    '      - element is not enabled',
+    '    - retrying click action',
+    '      - waiting 100ms',
+    '    57 × waiting for element to be visible, enabled and stable',
+    '       - element is not enabled',
+    '     - retrying click action',
+    '       - waiting 500ms',
+    '    - waiting for element to be visible, enabled and stable'
+  ],
+  name: 'TimeoutError'
+}
