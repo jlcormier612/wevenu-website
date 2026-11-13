@@ -153,6 +153,7 @@ type OperationalClientListCounts = Record<Exclude<ClientListFilterKey, "portal_a
 
 const EMPTY_CLIENT_LIST_COUNTS: OperationalClientListCounts = {
   all: 0,
+  contacts: 0,
   coming_up: 0,
   needs_attention: 0,
   cancelled: 0,
