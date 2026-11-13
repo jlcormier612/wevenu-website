@@ -10,9 +10,7 @@
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { createClient } from "@/integrations/supabase/server";
 
-/** Session or service-role client — scripts may pass a plain supabase-js admin. */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type DbClient = Awaited<ReturnType<typeof createClient>> | ReturnType<typeof createAdminClient> | any;
+type DbClient = Awaited<ReturnType<typeof createClient>> | ReturnType<typeof createAdminClient>;
 
 export type StarterSeedResult = {
   ok: boolean;
@@ -217,23 +215,28 @@ function snapshotFromRow(row: ProvisionRow): StarterProvisioningSnapshot {
   };
 }
 
+// Table is new; cast until Database typings are regenerated.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function provisioningTable(client: DbClient): any {
+  return client.from("venue_starter_provisioning");
+}
+
 async function readProvisionRow(
   client: DbClient,
   venueId: string,
 ): Promise<ProvisionRow | null> {
-  const { data, error } = await client
-    .from("venue_starter_provisioning")
+  const { data, error } = await provisioningTable(client)
     .select(
       "venue_id,status,seeded_steps,failed_steps,attempt_count,last_attempt_at,completed_at,last_error",
     )
     .eq("venue_id", venueId)
-    .maybeSingle<ProvisionRow>();
+    .maybeSingle();
   if (error) {
     // Table may not exist yet in older local DBs — treat as unknown.
     console.warn("[provisioning] read venue_starter_provisioning", error.message);
     return null;
   }
-  return data;
+  return (data as ProvisionRow | null) ?? null;
 }
 
 async function upsertProvisionRow(
@@ -241,7 +244,7 @@ async function upsertProvisionRow(
   venueId: string,
   patch: Record<string, unknown>,
 ): Promise<void> {
-  const { error } = await client.from("venue_starter_provisioning").upsert(
+  const { error } = await provisioningTable(client).upsert(
     {
       venue_id: venueId,
       ...patch,
@@ -309,7 +312,7 @@ async function claimProvisioningRun(
   const nextAttempt = (existing?.attempt_count ?? 0) + 1;
 
   if (!existing) {
-    const { error } = await db.from("venue_starter_provisioning").insert({
+    const { error } = await provisioningTable(db).insert({
       venue_id: venueId,
       status: "running",
       seeded_steps: [],
@@ -335,8 +338,7 @@ async function claimProvisioningRun(
     }
   }
 
-  const { data, error } = await db
-    .from("venue_starter_provisioning")
+  const { data, error } = await provisioningTable(db)
     .update({
       status: "running",
       last_attempt_at: nowIso,

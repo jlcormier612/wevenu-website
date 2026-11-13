@@ -10,6 +10,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { createClient } from "@supabase/supabase-js";
 import { config } from "dotenv";
 
+import { createAdminClient } from "@/integrations/supabase/admin";
 import {
   ensureVenueStarters,
   getStarterProvisioningSnapshot,
@@ -55,6 +56,7 @@ const admin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
   { auth: { persistSession: false } },
 );
+const provisionAdmin = createAdminClient();
 const anon = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -256,7 +258,7 @@ async function main() {
       name: `Starter A ${stamp}`,
       setupCompleted: true,
     });
-    const seedA = await ensureVenueStarters(venueA.id, { client: admin });
+    const seedA = await ensureVenueStarters(venueA.id, { client: provisionAdmin });
     const rowA = await provisionRow(venueA.id);
     record(
       "A_seed_complete",
@@ -340,10 +342,10 @@ async function main() {
       name: `Starter B Progress ${stamp}`,
       setupCompleted: false,
     });
-    const seedB1 = await ensureVenueStarters(venueB.id, { client: admin });
-    const seedB2 = await ensureVenueStarters(venueB.id, { client: admin });
+    const seedB1 = await ensureVenueStarters(venueB.id, { client: provisionAdmin });
+    const seedB2 = await ensureVenueStarters(venueB.id, { client: provisionAdmin });
     const pkgB1 = await countByMaster("packages", venueB.id);
-    const seedB3 = await ensureVenueStarters(venueB.id, { client: admin });
+    const seedB3 = await ensureVenueStarters(venueB.id, { client: provisionAdmin });
     const pkgB2 = await countByMaster("packages", venueB.id);
     const rowB = await provisionRow(venueB.id);
     record(
@@ -374,7 +376,7 @@ async function main() {
       name: `Starter C Partial ${stamp}`,
       setupCompleted: true,
     });
-    await ensureVenueStarters(venueC.id, { client: admin });
+    await ensureVenueStarters(venueC.id, { client: provisionAdmin });
     const pkgBeforeDelete = await countByMaster("packages", venueC.id);
     const msgBefore = await countByMaster("message_templates", venueC.id);
     await admin.from("packages").delete().eq("venue_id", venueC.id).not("source_master_key", "is", null);
@@ -389,7 +391,7 @@ async function main() {
       last_error: "controlled fault injection",
       updated_at: new Date().toISOString(),
     });
-    const snapC = await getStarterProvisioningSnapshot(venueC.id, admin);
+    const snapC = await getStarterProvisioningSnapshot(venueC.id, provisionAdmin);
     record(
       "C_incomplete_not_reported_complete",
       snapC.status === "incomplete" && snapC.needsAttention,
@@ -418,7 +420,7 @@ async function main() {
       await page.waitForTimeout(2500);
       await page.goto(`${APP}/library`, { waitUntil: "networkidle", timeout: 60000 });
     } else {
-      await restoreHtcStarters(venueC.id, { client: admin });
+      await restoreHtcStarters(venueC.id, { client: provisionAdmin });
     }
     const pkgAfter = await countByMaster("packages", venueC.id);
     const msgAfter = await countByMaster("message_templates", venueC.id);
@@ -438,14 +440,14 @@ async function main() {
       setupCompleted: true,
     });
     const [r1, r2, r3] = await Promise.all([
-      seedWorkspaceStarters(venueD.id, admin),
-      seedWorkspaceStarters(venueD.id, admin),
-      seedWorkspaceStarters(venueD.id, admin),
+      seedWorkspaceStarters(venueD.id, provisionAdmin),
+      seedWorkspaceStarters(venueD.id, provisionAdmin),
+      seedWorkspaceStarters(venueD.id, provisionAdmin),
     ]);
     // Allow the winner to finish if others skipped
     if ([r1, r2, r3].some((r) => r.skippedBecauseRunning)) {
       await new Promise((r) => setTimeout(r, 8000));
-      await ensureVenueStarters(venueD.id, { client: admin });
+      await ensureVenueStarters(venueD.id, { client: provisionAdmin });
     }
     const rowD = await provisionRow(venueD.id);
     const pkgD = await countByMaster("packages", venueD.id);
@@ -470,7 +472,7 @@ async function main() {
       name: `Starter E Custom ${stamp}`,
       setupCompleted: true,
     });
-    await ensureVenueStarters(venueE.id, { client: admin });
+    await ensureVenueStarters(venueE.id, { client: provisionAdmin });
     const { data: pkgRow } = await admin
       .from("packages")
       .select("id,name,source_master_key")
@@ -500,7 +502,7 @@ async function main() {
       .single();
 
     const restoreE = await restoreHtcStarters(venueE.id, {
-      client: admin,
+      client: provisionAdmin,
       recreateDeleted: false,
     });
     const { data: pkgAfterCustom } = await admin
@@ -533,7 +535,7 @@ async function main() {
 
     // Explicit recreate deleted
     const restoreDeleted = await restoreHtcStarters(venueE.id, {
-      client: admin,
+      client: provisionAdmin,
       recreateDeleted: true,
     });
     const ctrRestored = await countExactMasters("contract_templates", venueE.id, "CTR-01");
@@ -558,7 +560,7 @@ async function main() {
       setupCompleted: true,
     });
     // No seed — simulate never-provisioned accessible venue
-    const snapF = await getStarterProvisioningSnapshot(venueF.id, admin);
+    const snapF = await getStarterProvisioningSnapshot(venueF.id, provisionAdmin);
     record(
       "F_incomplete_detected",
       snapF.status === "incomplete" && snapF.needsAttention,
@@ -574,11 +576,11 @@ async function main() {
     const bannerF = await page.locator('[data-testid="starter-provisioning-banner"]').count();
     record("F_repair_available_in_ui", bannerF > 0, `banner=${bannerF}`);
 
-    const restoreF = await restoreHtcStarters(venueF.id, { client: admin });
+    const restoreF = await restoreHtcStarters(venueF.id, { client: provisionAdmin });
     const pkgF = await countByMaster("packages", venueF.id);
     const rowF = await provisionRow(venueF.id);
     const pkgF2 = await countByMaster("packages", venueF.id);
-    await ensureVenueStarters(venueF.id, { client: admin });
+    await ensureVenueStarters(venueF.id, { client: provisionAdmin });
     const pkgF3 = await countByMaster("packages", venueF.id);
     record(
       "F_safe_recovery",

@@ -61,10 +61,11 @@ describe("provisioning starters module", () => {
     const src = readFileSync(join(__dirname, "../venue/service.ts"), "utf8");
     assert.match(src, /ensureVenueStarters/);
     assert.doesNotMatch(src, /seedPackageStarters\(venueId\)/);
-    // Progress-save must not bypass provisioning.
+    // Progress-save must kick off provisioning without awaiting (responsive).
     const progressIdx = src.indexOf("export async function saveSetupProgress");
-    const progressSlice = src.slice(progressIdx, progressIdx + 1200);
+    const progressSlice = src.slice(progressIdx, progressIdx + 1400);
     assert.match(progressSlice, /ensureVenueStarters/);
+    assert.match(progressSlice, /void import\("@\/lib\/provisioning\/starters"\)/);
     // Unique-violation success path must still ensure starters.
     assert.match(src, /code === "23505"[\s\S]*ensureVenueStarters/);
   });

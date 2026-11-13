@@ -252,10 +252,12 @@ export async function saveSetupProgress(
 
   try {
     const venueId = await repository.insertVenueSetup(supabase, input, false, lastStep);
-    // Durable owner-accessible venue — do not wait for final activation to seed.
-    // ensureVenueStarters is idempotent and skips healthy complete venues.
-    const { ensureVenueStarters } = await import("@/lib/provisioning/starters");
-    await ensureVenueStarters(venueId);
+    // Durable owner-accessible venue — kick off starters without blocking the
+    // progress-save response (wizard stays responsive). Idempotent; submit
+    // and Restore paths still await completion.
+    void import("@/lib/provisioning/starters")
+      .then(({ ensureVenueStarters }) => ensureVenueStarters(venueId))
+      .catch((err) => console.error("[setup] progress starter ensure failed", err));
     pushVenueProfileToCrm(venueId, input, "setup_progress");
     return { ok: true, venueId };
   } catch (error) {
