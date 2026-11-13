@@ -1,0 +1,7 @@
+PASS pricing.visible — Our Story The Platform All Features Pricing Contact Log In Schedule a Walkthrough PRICING One platform. Every feature. Simple monthly pricing. Everything your venue needs, thoughtfully connected. Every plan includes every feature — your sub
+PASS checkout.session_created — session=cs_test_a0ia6aKu8qzfLcFJn6jfzOEt5aBwH6q3tJNcKiSWGbfR6MW7rZyQKJ8VbN founding=true
+PASS checkout.stripe_paid — payment_status=paid amount_total=17910 sub=sub_1UbOKJErUqJH7nktBM3P2nV1
+PASS checkout.reconcile — {"ok":true,"status":"already_enrolled"}
+FAIL checkout.one_enrollment — null
+FAIL checkout.block — enrollment or activation_token missing
+EXIT:1

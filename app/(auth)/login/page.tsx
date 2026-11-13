@@ -102,7 +102,11 @@ export default async function LoginPage({ searchParams }: Props) {
                 Your password was updated. Sign in with your new password.
               </p>
             ) : null}
-            <LoginForm next={nextPath} defaultEmail={defaultEmail} />
+            <LoginForm
+              next={nextPath}
+              defaultEmail={defaultEmail}
+              justActivated={justActivated}
+            />
           </CardContent>
         </Card>
 

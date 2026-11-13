@@ -18,6 +18,27 @@ export const ACTIVATE_OWNERSHIP_REQUIRED_ERROR =
 export const ACTIVATE_INVITED_OWNER_INCOMPLETE_ERROR =
   "Enter both the owner's name and email, or leave both blank and add them after you sign in.";
 
+/**
+ * Shown while the server action finishes legal + product account setup.
+ * Activation can take several seconds (cross-app bridge). Leaving early and
+ * signing in produces "Invalid login credentials" until the password write
+ * completes — keep the owner on this page until redirect.
+ */
+export const ACTIVATE_PROCESSING_HEADING = "Setting up your account";
+export const ACTIVATE_PROCESSING_BODY =
+  "This usually takes a few seconds. Please stay on this page — we'll take you to sign in when your password is ready. Signing in before this finishes will not work yet.";
+
+export function activateProcessingCopy(pending: boolean): {
+  heading: string;
+  body: string;
+} | null {
+  if (!pending) return null;
+  return {
+    heading: ACTIVATE_PROCESSING_HEADING,
+    body: ACTIVATE_PROCESSING_BODY,
+  };
+}
+
 export type ActivateOwnershipChoice = "owner" | "on_behalf";
 
 export type ActivateAccountFieldState = {

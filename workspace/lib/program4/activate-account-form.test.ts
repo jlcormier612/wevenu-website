@@ -13,8 +13,11 @@ import {
   ACTIVATE_PASSWORD_LENGTH_ERROR,
   ACTIVATE_PASSWORD_MIN_LENGTH,
   ACTIVATE_PASSWORD_MISMATCH_ERROR,
+  ACTIVATE_PROCESSING_BODY,
+  ACTIVATE_PROCESSING_HEADING,
   activatePasswordInputType,
   activatePasswordToggleLabel,
+  activateProcessingCopy,
   canSubmitActivateAccount,
   gateActivateAccountSubmission,
   isActivateLegalAccepted,
@@ -253,6 +256,30 @@ describe("password visibility toggles", () => {
     assert.match(formSrc, /activatePasswordInputType\(showConfirm\)/);
     assert.match(formSrc, /setShowPassword\(\(v\) => !v\)/);
     assert.match(formSrc, /setShowConfirm\(\(v\) => !v\)/);
+  });
+});
+
+describe("activation processing UX (race with early login)", () => {
+  it("exposes stay-on-page copy only while pending", () => {
+    assert.equal(activateProcessingCopy(false), null);
+    const copy = activateProcessingCopy(true);
+    assert.ok(copy);
+    assert.equal(copy.heading, ACTIVATE_PROCESSING_HEADING);
+    assert.equal(copy.body, ACTIVATE_PROCESSING_BODY);
+    assert.match(copy.body, /Stay on this page/i);
+    assert.match(copy.body, /Signing in before this finishes will not work/i);
+  });
+
+  it("form surfaces processing status, blocks double-submit, keeps errors for real failures", () => {
+    assert.match(formSrc, /activateProcessingCopy\(pending\)/);
+    assert.match(formSrc, /data-activate-processing/);
+    assert.match(formSrc, /aria-busy=\{pending\}/);
+    assert.match(formSrc, /if \(pending\) \{\s*e\.preventDefault\(\);/);
+    assert.match(formSrc, /Setting up your account…/);
+    assert.match(formSrc, /Stay on this page until we redirect you to sign in/);
+    // Real failures must still show after pending clears — never an infinite spinner.
+    assert.match(formSrc, /state\?\.error && !pending/);
+    assert.match(actionSrc, /redirect\(productPostActivationLoginUrl\(email\)\)/);
   });
 });
 

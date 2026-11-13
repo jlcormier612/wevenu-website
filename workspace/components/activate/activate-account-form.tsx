@@ -9,6 +9,7 @@ import {
   ACTIVATE_PASSWORD_MISMATCH_ERROR,
   activatePasswordInputType,
   activatePasswordToggleLabel,
+  activateProcessingCopy,
   canSubmitActivateAccount,
 } from "@/lib/program4/activate-account-form";
 
@@ -122,13 +123,24 @@ export function ActivateAccountForm({
     alreadyHasLogin,
   });
 
+  const processing = activateProcessingCopy(pending);
+
   return (
     <form
       ref={formRef}
       action={action}
+      aria-busy={pending}
       className="activate-account-form mt-8 space-y-4"
       onInput={(e) => syncFromForm(e.currentTarget)}
       onChange={(e) => syncFromForm(e.currentTarget)}
+      onSubmit={(e) => {
+        // Block double-submit while the server action is in flight. useActionState
+        // already disables the button when pending, but Enter / rapid clicks can
+        // still queue a second submission before pending flips.
+        if (pending) {
+          e.preventDefault();
+        }
+      }}
     >
       <input type="hidden" name="token" value={token} />
       <input type="hidden" name="email" value={email} />
@@ -141,7 +153,18 @@ export function ActivateAccountForm({
       <div className="rounded-sm border border-border/60 bg-muted/60 px-4 py-3 text-sm">
         <p className="font-medium text-foreground">{venueName}</p>
       </div>
-      {state?.error ? (
+      {processing ? (
+        <div
+          role="status"
+          aria-live="polite"
+          data-activate-processing
+          className="rounded-sm border border-[color-mix(in_srgb,var(--heritage-sage)_35%,transparent)] bg-[color-mix(in_srgb,var(--soft-sage)_35%,transparent)] px-3 py-3 text-sm text-foreground"
+        >
+          <p className="font-medium">{processing.heading}</p>
+          <p className="mt-1 leading-relaxed text-muted-foreground">{processing.body}</p>
+        </div>
+      ) : null}
+      {state?.error && !pending ? (
         <p
           role="alert"
           className="rounded-sm border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"
@@ -394,12 +417,15 @@ export function ActivateAccountForm({
         type="submit"
         data-activate-submit
         disabled={pending || (hydrated && !canSubmit)}
+        aria-disabled={pending || (hydrated && !canSubmit)}
         className="w-full rounded-sm bg-[var(--forest-sage)] px-4 py-3 text-sm font-medium text-[var(--true-white)] transition-colors duration-200 hover:bg-[var(--heritage-sage)] disabled:opacity-60 motion-reduce:transition-none"
       >
-        {pending ? "Activating…" : "Let's go"}
+        {pending ? "Setting up your account…" : "Let's go"}
       </button>
       <p className="text-center text-xs leading-relaxed ws-muted">
-        We&apos;ll start with a few simple details about your venue.
+        {pending
+          ? "Stay on this page until we redirect you to sign in."
+          : "We'll start with a few simple details about your venue."}
       </p>
     </form>
   );

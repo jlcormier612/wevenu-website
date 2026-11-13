@@ -1,0 +1,22 @@
+PASS login.password_ui — url=https://app.sandbox.hellotocheers.com/dashboard
+PASS ch1.business_reachable — https://app.sandbox.hellotocheers.com/settings/business
+PASS ch1.business_saved — saved business settings
+FAIL ch1.spaces_persisted — spaces=0
+PASS sales.practice_lead_persisted — [{"id":"87cf0b4a-fe7c-4b74-95c5-df3a2b4e687c","first_name":"Practice","last_name":"Lead","email":null,"status":null}]
+PASS event.lead_workspace — https://app.sandbox.hellotocheers.com/leads/87cf0b4a-fe7c-4b74-95c5-df3a2b4e687c
+PASS event.proposal_surface_reachable — https://app.sandbox.hellotocheers.com/leads/87cf0b4a-fe7c-4b74-95c5-df3a2b4e687c
+FAIL starters.package_detail_readable — could not open package
+FAIL starters.setup_profile_detail — Wedding profile link not found
+FRICTION YELLOW [Setup Profiles] Wedding starter profile not clearly linked from list.
+FAIL booking.executed_contract — NOT VERIFIED — contracts=0 events=0; full sign→book path not completed this pass
+FAIL starter.inheritance_on_event — NOT VERIFIED — needs booked event
+FAIL client.portal_access — NOT VERIFIED — needs release after booking
+FAIL client.venue_followup — NOT VERIFIED — needs portal activity
+FRICTION LOW [Spaces URL] /settings/spaces 404s; spaces live at /settings/availability#spaces.
+FRICTION YELLOW [Activation UX] Activate can remain on Activating… for >5s before redirect; early Sign in shows Invalid credentials until complete.
+{
+  "passed": 38,
+  "failed": 7,
+  "friction": 3
+}
+EXIT:1

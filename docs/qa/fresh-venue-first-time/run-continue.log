@@ -1,0 +1,51 @@
+PASS checkout.one_enrollment — {"enrollmentId":"6162c8dd-0c4f-49d1-a114-c27019501de5","venueId":"c314c50c-09b3-4c27-a5ca-4cfd832dbd1e","ownerEmail":"jennifer+fresh.walk.mwf976l4@hellotocheers.com"}
+PASS checkout.continuous_reuse — Reusing same paid session after select-column fix; no second charge
+PASS activation.page — Let's get you started Your Hello to Cheers experience is waiting for you. Create your password below, and we'll get everything ready for your first visit. DISPOSABLE Fresh Walk mwf976l4 WHO OWNS THIS VENUE? You're setting up Hello to Cheers for: Fresh Walker jennifer+fresh.walk.m
+PASS activation.submitted — url=https://workspace.sandbox.hellotocheers.com/activate/act_8cc6890c54224620ab5c1c7cd8e03976
+FAIL login.password_ui — url=https://app.sandbox.hellotocheers.com/login
+PASS welcome.copy — Welcome to Hello to Cheers Before you continue into your venue workspace, please review the documents below. Venue Subscription Agreement Version 2026-09-23.2·Effective September 23, 2026 View → Cookie Policy Version 202
+PASS routing.no_intake_wall — https://app.sandbox.hellotocheers.com/setup-hub
+PASS hub.four_chapters — url=https://app.sandbox.hellotocheers.com/setup-hub chapters=1
+PASS hub.chapter_venue-ready — ok
+PASS hub.chapter_sales-process — ok
+PASS hub.chapter_client-experience — ok
+PASS hub.chapter_make-it-yours — ok
+PASS hub.not_forced_sequence — OVERVIEW Dashboard YOUR RELATIONSHIPS Leads Clients Vendors SCHEDULING Calendar Tours COMMUNICATION Inbox Automations LIBRARY Templates Documents FINANCIALS Contracts Payments TO DO’S Task Center Requests YOUR VENUE Setu
+PASS login.correct_venue_membership — {"venue_id":"c314c50c-09b3-4c27-a5ca-4cfd832dbd1e","role":"owner","is_owner":true}
+PASS login.subscription_access — {"id":"c314c50c-09b3-4c27-a5ca-4cfd832dbd1e","name":"DISPOSABLE Fresh Walk mwf976l4","account_status":"active","access_disabled":false}
+PASS starters.packages_present — {"category":"packages","count":3,"sampleNames":["Essential Wedding","Signature Wedding","Full-Service Wedding"],"samples":[{"id":"136a1f22-b17b-4665-ba53-2d170bee8973","name":"Essential Wedding","description":"A simple starting package for couples who want a beautiful venue and the flexibility to make the celebration their own. Customize the included spaces, services, and pricing to match your venue."},{"id":"63117a3
+FAIL ch1.business_reachable — https://app.sandbox.hellotocheers.com/setup-hub
+FAIL ch1.business_saved — save unavailable
+PASS ch1.spaces_reachable — https://app.sandbox.hellotocheers.com/settings/spaces
+FAIL ch1.spaces_persisted — spaces=0
+PASS ch1.availability_reachable — https://app.sandbox.hellotocheers.com/settings/availability
+PASS routing.no_intake_wall — https://app.sandbox.hellotocheers.com/setup-hub
+PASS ch1.hub_progress_truthful — hub after config
+PASS sales.practice_lead_entry — https://app.sandbox.hellotocheers.com/leads/new?intent=practice
+FAIL sales.practice_lead_persisted — []
+PASS sales.packages_readable — OVERVIEW Dashboard YOUR RELATIONSHIPS Leads Clients Vendors SCHEDULING Calendar Tours COMMUNICATION Inbox Automations LIBRARY Templates Documents FINANCIALS Contracts Payments TO DO’S Task Center Requests YOUR VENUE Setup Settings Guidance 
+PASS sales.contracts_library — https://app.sandbox.hellotocheers.com/library/contracts
+PASS client.setup_profiles — OVERVIEW Dashboard YOUR RELATIONSHIPS Leads Clients Vendors SCHEDULING Calendar Tours COMMUNICATION Inbox Automations LIBRARY Templates Documents FINANCIALS Contracts Payments TO DO’S Task Center Requests YOUR VENUE Setup Settings Guidance 
+PASS routing.no_intake_wall — https://app.sandbox.hellotocheers.com/setup-hub
+PASS client.preview_vs_release_language — hub language
+PASS make.optional_visible — ok
+PASS make.automations_paused_or_present — https://app.sandbox.hellotocheers.com/communication/series
+FAIL event.lead_workspace — no lead
+FAIL event.proposal_surface_reachable — no lead
+FAIL booking.executed_contract — NOT VERIFIED — contract/signing path not completed in this pass
+FAIL starter.inheritance_on_event — NOT VERIFIED — requires booked event
+FAIL client.portal_access — NOT VERIFIED — requires release after booking
+FAIL client.venue_followup — NOT VERIFIED — requires portal activity
+PASS routing.no_intake_wall — https://app.sandbox.hellotocheers.com/setup-hub
+PASS routing.no_intake_wall — https://app.sandbox.hellotocheers.com/setup-hub
+PASS resume.persists — url=https://app.sandbox.hellotocheers.com/setup-hub byb={"bring_your_business_path":"skipped","bring_your_business_manual_confirmed_at":"2026-11-13T17:37:34.246+00:00"}
+PASS routing.no_intake_wall — https://app.sandbox.hellotocheers.com/setup-hub
+PASS mobile.hub_chapters — https://app.sandbox.hellotocheers.com/setup-hub
+PASS mobile.practice_lead — https://app.sandbox.hellotocheers.com/leads/new?intent=practice
+{
+  "passed": 32,
+  "failed": 11,
+  "friction": 0,
+  "out": "/private/tmp/htc-setup-hub-wt/docs/qa/fresh-venue-first-time"
+}
+EXIT:1

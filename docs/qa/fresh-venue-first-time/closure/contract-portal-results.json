@@ -1,0 +1,90 @@
+{
+  "workflow": "fresh-walk-closure-contract-portal",
+  "scenarios": {
+    "A": "PASS",
+    "C": "PASS",
+    "D": "PASS",
+    "G": "PASS",
+    "H": "FAIL",
+    "I": "PASS"
+  },
+  "contractId": "052eeaa1-4b29-489c-80eb-6e89e2134e3d",
+  "portalToken": "fw_portal_e833e70a",
+  "clientId": "d7e5eec9-d30c-49b8-b85f-af8146f13632",
+  "eventId": "f48c8c02-b1f4-48eb-95b4-b0b9246791e5",
+  "checks": [
+    {
+      "name": "activation_processing_copy_wired",
+      "pass": true,
+      "detail": "processing banner + double-submit guard + soft login hint",
+      "scenario": "A"
+    },
+    {
+      "name": "contract_created",
+      "pass": true,
+      "detail": "contractId=052eeaa1-4b29-489c-80eb-6e89e2134e3d url=https://app.sandbox.hellotocheers.com/contracts/052eeaa1-4b29-489c-80eb-6e89e2134e3d",
+      "scenario": "C"
+    },
+    {
+      "name": "contract_sent_safe_path",
+      "pass": true,
+      "detail": "materialized + sent without Resend to humans",
+      "scenario": "C"
+    },
+    {
+      "name": "client_signed",
+      "pass": true,
+      "detail": "signed_at=2026-11-13T18:01:55.8507+00:00",
+      "scenario": "C"
+    },
+    {
+      "name": "contract_fully_executed",
+      "pass": true,
+      "detail": "status=signed venueSigned=true",
+      "scenario": "C"
+    },
+    {
+      "name": "client_auth_user",
+      "pass": true,
+      "detail": "fresh.walk.client.7b8121@hellotocheers-test.invalid",
+      "scenario": "G"
+    },
+    {
+      "name": "portal_session",
+      "pass": true,
+      "detail": "fw_portal_e833e70a",
+      "scenario": "G"
+    },
+    {
+      "name": "client_portal_branding_event",
+      "pass": true,
+      "detail": "DISPOSABLE Fresh Walk mwf976l4\n\nMar 26, 2039\n\nExport my data\n🏠\nHome\n✅\nTasks\n8\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n💳\nPayments\n💬\nMessages\n🏛️\nGuide\n🤝\nVendors\nAdd your photo\nDISPOSABLE FRESH WALK MWF976L4\n\nFreshWalk & Partner\n\n4,516 days until your celebration\n\nSaturday, March 26",
+      "scenario": "G"
+    },
+    {
+      "name": "released_visible_unreleased_hidden",
+      "pass": true,
+      "detail": "released planning surface present in portal",
+      "scenario": "G"
+    },
+    {
+      "name": "client_interacted",
+      "pass": false,
+      "detail": "no interactive control found",
+      "scenario": "H"
+    },
+    {
+      "name": "venue_sees_client_activity",
+      "pass": true,
+      "detail": "OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\nClients\nVendors\n\nSCHEDULING\n\nCalendar\nTours\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nLIBRARY\n\nTemplates\nDocuments\n\nFINANCIALS\n\nContracts\nPayments\n\nTO DO’S\n\nTask Center\nRequests\n\nYOUR VENUE\n\nSetup\nSettings\nGuidance\nVenue Guide\nReports\nHelp ",
+      "scenario": "I"
+    },
+    {
+      "name": "booked_still_holds",
+      "pass": true,
+      "detail": "booked_at=2026-11-13",
+      "scenario": "D"
+    }
+  ],
+  "at": "2026-11-13T18:02:26.488Z"
+}

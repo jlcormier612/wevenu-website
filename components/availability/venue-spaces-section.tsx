@@ -64,16 +64,34 @@ function SpaceForm({
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label className="text-xs">Space name *</Label>
-          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Main Hall, Garden, Barn…" autoFocus />
+          <Input
+            name="name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Main Hall, Garden, Barn…"
+            autoFocus
+          />
         </div>
         <div className="space-y-1.5">
           <Label className="text-xs">Capacity <span className="font-normal text-muted-foreground">(optional)</span></Label>
-          <Input type="number" value={capacity} onChange={(e) => setCapacity(e.target.value)} placeholder="200" className="w-32" />
+          <Input
+            name="capacity"
+            type="number"
+            value={capacity}
+            onChange={(e) => setCapacity(e.target.value)}
+            placeholder="200"
+            className="w-32"
+          />
         </div>
       </div>
       <div className="space-y-1.5">
         <Label className="text-xs">Description <span className="font-normal text-muted-foreground">(optional)</span></Label>
-        <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Brief description of this space…" />
+        <Input
+          name="description"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="Brief description of this space…"
+        />
       </div>
       {showUses && (
         <div className="space-y-2">
