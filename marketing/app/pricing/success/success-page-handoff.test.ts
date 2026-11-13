@@ -26,7 +26,10 @@ describe("pricing success page — enrollment handoff", () => {
     assert.match(page, /isProcessing && sessionId/);
   });
 
-  it("does not create enrollments on the success page", () => {
+  it("never creates enrollments inline — only via trusted Stripe reconcile", () => {
     assert.doesNotMatch(page, /upsertVenueEnrollment|createVenueEnrollment|provisionVenue/);
+    assert.match(page, /reconcilePaidCheckoutSession/);
+    assert.match(page, /not_eligible/);
+    assert.match(page, /We couldn't complete your subscription/);
   });
 });
