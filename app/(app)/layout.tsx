@@ -6,7 +6,6 @@ import { WorkspaceShell } from "@/components/shell/workspace-shell";
 import { createClient } from "@/integrations/supabase/server";
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/env";
-import { getIntakeForVenue } from "@/lib/onboarding/intake-service";
 import { needsInitialOwnershipStep } from "@/lib/onboarding/initial-ownership";
 import { getActiveVenueMembership } from "@/lib/authorization/membership";
 import { bootstrapActiveVenueContext } from "@/lib/venue/active-context";
@@ -154,14 +153,10 @@ export default async function WorkspaceLayout({
     }
   }
 
-  const intake = await getIntakeForVenue(venue.id);
-  if (
-    enrollment?.onboarding_type !== "white_glove" &&
-    !intake?.submittedAt &&
-    !pathname.startsWith("/onboarding")
-  ) {
-    redirect("/onboarding/intake");
-  }
+  // Self-Setup intake is optional guidance — not a workspace wall.
+  // Activated venues reach the four-chapter Setup Hub without being forced
+  // through /onboarding/intake first. White Glove remains gated above.
+  // Intake remains available at /onboarding/intake when owners choose it.
 
   if (venue.accessDisabled || venue.accountStatus === "suspended") {
     redirect("/billing/suspended");

@@ -38,7 +38,7 @@ export function InitialOwnershipClient({
       return;
     }
     if (next === "owner") {
-      router.push("/onboarding/intake");
+      router.push("/setup-hub");
       router.refresh();
       return;
     }
@@ -111,7 +111,7 @@ export function InitialOwnershipClient({
             <button
               type="button"
               className="text-sm font-medium text-primary hover:underline"
-              onClick={() => router.push("/onboarding/intake")}
+              onClick={() => router.push("/setup-hub")}
             >
               Continue setup
             </button>
