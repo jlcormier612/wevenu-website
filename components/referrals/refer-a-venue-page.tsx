@@ -255,9 +255,6 @@ export function ReferAVenuePage() {
       <Card data-testid="refer-program-details">
         <CardHeader>
           <CardTitle className="text-base">Program details</CardTitle>
-          <CardDescription>
-            Eligibility and thank-you credit rules — available here before you submit.
-          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-2 text-sm text-muted-foreground">
           <p>
