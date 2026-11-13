@@ -83,3 +83,16 @@ describe("Bring Your Business choices — three equal paths", () => {
     assert.match(page, /getIntakeForVenue/);
   });
 });
+
+describe("Import Wizard post-import next steps — migration-safe", () => {
+  it("does not push portal invite as the primary next step after client import", () => {
+    const src = readFileSync(join(process.cwd(), "components/settings/import-wizard.tsx"), "utf8");
+    assert.match(src, /Bring over their events next/);
+    assert.match(src, /settings\/migration\?source=another_system/);
+    assert.match(src, /nothing is emailed or invited automatically/);
+    assert.doesNotMatch(
+      src,
+      /couples:\s*\{[^}]*Invite clients to the portal/s,
+    );
+  });
+});

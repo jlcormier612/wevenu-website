@@ -259,8 +259,18 @@ export function ClientList({
       )}
 
       {clients.length > 0 && filtered.length === 0 && (
-        <div className="rounded-sm border border-dashed border-border py-10 text-center">
+        <div className="rounded-sm border border-dashed border-border py-10 text-center space-y-2">
           <p className="text-sm text-muted-foreground">No clients match your filters.</p>
+          {filter === "all" && clients.some((c) => !bookedClientIds.has(c.id) && c.status !== "cancelled") ? (
+            <p className="mx-auto max-w-md text-xs text-muted-foreground">
+              All Bookings only shows clients with an active booking. Contacts you imported without an
+              event yet are still saved — open{" "}
+              <Link href="/settings/migration" className="font-medium text-primary hover:underline">
+                Migration Center
+              </Link>{" "}
+              to bring over their events, or search by name after you attach a booking.
+            </p>
+          ) : null}
           <Button variant="link" size="sm" className="mt-1" onClick={() => { setQuery(""); setFilter("all"); }}>Clear filters</Button>
         </div>
       )}

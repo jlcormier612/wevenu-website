@@ -86,6 +86,14 @@ export function BringYourBusinessChoices({
 
   return (
     <div className="space-y-3 pt-1">
+      <p className="text-xs text-muted-foreground">
+        Two ways into the same Setup Hub:{" "}
+        <span className="font-medium text-foreground">starting fresh</span> (use Chapters 1–3, then
+        skip here) or{" "}
+        <span className="font-medium text-foreground">bringing an existing business</span> (import
+        below). For dated events, finish Calendar &amp; Availability first so bookings land on the
+        right space.
+      </p>
       {calendarReadyHint ? (
         <p className="text-xs text-amber-800 dark:text-amber-200">
           {calendarReadyHint}{" "}

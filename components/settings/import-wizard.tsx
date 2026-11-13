@@ -39,14 +39,16 @@ const ENTITY_META: Record<EntityType, { label: string; resultPath: string; descr
 
 const NEXT_STEP: Record<EntityType, { cta: string; href: string; detail: string }> = {
   couples: {
-    cta:    "Invite clients to the portal",
-    href:   "/clients",
-    detail: "Your first client in the portal is your biggest activation milestone — and they'll love having a planning home.",
+    cta:    "Bring over their events next",
+    href:   "/settings/migration?source=another_system",
+    detail:
+      "Imported contacts stay private — nothing is emailed or invited automatically. Use Migration Center to attach bookings, then invite clients when you're ready.",
   },
   leads: {
-    cta:    "Follow up with your leads",
+    cta:    "Review imported leads",
     href:   "/leads",
-    detail: "Leads that receive a response within the hour convert at 2× the rate. Now is the best time.",
+    detail:
+      "Historical imports stay quiet (no automations or outreach). Open Leads to review, then follow up yourself when you're ready.",
   },
   vendors: {
     cta:    "Connect vendors to events",
