@@ -80,7 +80,11 @@ export default async function PortalPage({ params, searchParams }: Props) {
           ? "documents"
           : viewParam === "questionnaire"
             ? "questionnaire"
-            : undefined;
+            : viewParam === "floor_plans" || viewParam === "floor-plans"
+              ? "floor_plans"
+              : viewParam === "seating"
+                ? "seating"
+                : undefined;
 
   const [tasks, vendorTasks, timeline, legalGate] = await Promise.all([
     resolvePortalTasks(token),

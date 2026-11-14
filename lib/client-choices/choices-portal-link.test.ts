@@ -61,6 +61,8 @@ describe("choices portal link", () => {
     assert.match(page, /isChoicesPortalView/);
     assert.match(page, /choicesView\s*\?\s*"choices"/);
     assert.match(page, /initialSection=\{initialSection\}/);
+    assert.match(page, /viewParam === "floor_plans"|viewParam === "floor-plans"/);
+    assert.match(page, /viewParam === "seating"/);
     const financialBranch = page.slice(
       page.indexOf('if (context.accessLevel === "financial")'),
       page.indexOf("const choicesView"),

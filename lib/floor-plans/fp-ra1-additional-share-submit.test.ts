@@ -27,10 +27,16 @@ describe("FP-RA-1 Additional-layout + Share collaboration path", () => {
   });
 
   it("portal gates multi-offer preference separately from shared collaboration submit", () => {
-    assert.match(portal, /requiresPreferenceSelection = needsChooser/);
+    assert.match(portal, /requiresPreferenceSelection = multiOffer/);
     assert.match(portal, /requiresPreferenceSelection,/);
     assert.match(portal, /floor-plan-submit-needs-preference/);
-    assert.match(portal, /Choose a starting layout above before you can submit/);
+    assert.match(
+      portal,
+      /Choose a starting layout above before you can send furniture placement for review/,
+    );
+    // Initial chooser / preference gate is working-only — not during review lifecycle.
+    assert.match(portal, /layoutStatus === "working"/);
+    assert.match(portal, /awaitingInitialSelection/);
   });
 
   it("venue empty state puts Add a layout first and keeps Offer as a secondary path", () => {
