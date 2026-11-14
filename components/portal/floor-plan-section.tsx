@@ -764,7 +764,7 @@ export default function FloorPlanSection({
   const [operationalId, setOperationalId] = React.useState<string | null>(null);
   const [coupleSelectedIdFromApi, setCoupleSelectedIdFromApi] = React.useState<string | null>(null);
   const [preferenceStatus, setPreferenceStatus] = React.useState<string | null>(null);
-  const [approvedId, setApprovedId] = React.useState<string | null>(null);
+  const [, setApprovedId] = React.useState<string | null>(null);
   const [selectedId, setSelectedId] = React.useState<string | null>(null);
   const [detail, setDetail] = React.useState<PortalFloorPlanDetail | null>(null);
   const [loading, setLoading] = React.useState(true);
