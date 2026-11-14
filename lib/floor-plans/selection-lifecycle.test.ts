@@ -73,6 +73,28 @@ describe("selection lifecycle — pick establishes working", () => {
     }
   });
 
+  it("Ready + approved still records proposed_replacement without switching operational", () => {
+    // Ready (finalized_at) is a physical-edit lock. Requesting a different offered
+    // layout still uses the post-approval proposed_replacement path: operational,
+    // seating pointers, and the Ready lock stay on the current plan until venue accept.
+    const next = nextStateAfterLayoutSelect({
+      selectedFloorPlanId: "b",
+      operationalFloorPlanId: "a",
+      seatingInUseFloorPlanId: "a",
+      operationalClientLayoutStatus: "approved",
+      hasApprovedRevisionOnOperational: true,
+      currentHasSeats: true,
+      selectedHasSeats: false,
+      previousSelectedFloorPlanId: "a",
+    });
+    assert.equal(next.mode, "proposed_replacement");
+    if (next.mode === "proposed_replacement") {
+      assert.equal(next.operationalFloorPlanId, "a");
+      assert.equal(next.proposedFloorPlanId, "b");
+      assert.equal(next.selectionStatus, "proposed_replacement");
+    }
+  });
+
   it("accept proposed replacement Case C requires seating choice", () => {
     const blocked = nextStateAfterAcceptProposedReplacement({
       proposedFloorPlanId: "b",

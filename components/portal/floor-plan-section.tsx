@@ -365,13 +365,14 @@ function WorkingLayoutCanvas({
   return (
     <div className="space-y-2">
       <div
-        className="overflow-auto bg-[#F7F5F1] p-3 min-h-[min(340px,55vh)] md:min-h-[420px]"
+        className="overflow-auto bg-[#F7F5F1] p-3 min-h-[min(340px,55vh)] max-h-[min(70vh,720px)] md:min-h-[420px] md:max-h-[75vh]"
         data-testid="floor-plan-working-canvas"
       >
         <svg
           ref={svgRef}
           viewBox={`0 0 ${canvasW} ${canvasH}`}
-          className="w-full h-auto min-h-[min(340px,55vh)] max-h-[70vh] md:min-h-[420px] mx-auto block touch-none"
+          className="w-full h-auto mx-auto block touch-none"
+          preserveAspectRatio="xMidYMid meet"
           role="img"
           aria-label={`Your floor plan: ${planName}`}
           onPointerMove={onPointerMove}
