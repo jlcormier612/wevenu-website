@@ -1,5 +1,6 @@
 /**
- * Floor Plans Phase 2 — venue preference review + seating-in-use designation.
+ * Floor Plans — seating-in-use designation + proposed layout replacement review.
+ * Ordinary couple selection no longer requires Approve / Decline / Defer.
  * Server-only. Never rewrites guest_seat_assignments rows.
  */
 import { createClient } from "@/integrations/supabase/server";
@@ -11,11 +12,11 @@ import {
 import * as repo from "@/lib/floor-plans/repository";
 import {
   classifyPreferenceApprovalCase,
-  nextPreferenceState,
   normalizeCouplePreferenceStatus,
   type CouplePreferenceStatus,
   type PreferenceApprovalCase,
 } from "@/lib/floor-plans/preference-lifecycle";
+import { nextStateAfterAcceptProposedReplacement } from "@/lib/floor-plans/selection-lifecycle";
 import type { FloorPlanActionResult } from "@/lib/floor-plans/types";
 import { getCurrentUserRole, getCurrentVenue } from "@/lib/venue/service";
 
@@ -90,108 +91,103 @@ export async function getPreferenceReviewSnapshot(
   };
 }
 
-export type VenuePreferenceDecisionInput =
+export type ProposedReplacementDecisionInput =
   | { decision: "decline" }
-  | { decision: "defer" }
-  | { decision: "approve"; seatingChoice?: "start_on_preferred"; seatingInUseFloorPlanId?: string };
+  | {
+      decision: "accept";
+      seatingChoice?: "start_on_proposed";
+      seatingInUseFloorPlanId?: string;
+    };
 
 /**
- * Venue decides a pending preference. Idempotent for identical outcomes.
- * Cancel is a no-op at the UI (never call this). Failures leave prior state.
+ * Venue accepts or declines a post-approval proposed layout replacement.
+ * Ordinary initial selection does not use this path.
  */
-export async function decideCoupleFloorPlanPreference(
+export async function decideProposedLayoutReplacement(
   eventId: string,
-  input: VenuePreferenceDecisionInput,
+  input: ProposedReplacementDecisionInput,
 ): Promise<FloorPlanActionResult> {
   const result = await withVenueEditor(async (supabase, venueId) => {
     const row = await repo.getEventFloorPlanPreferenceState(supabase, venueId, eventId);
     if (!row) return { ok: false as const, message: "Event not found." };
-    const preferredId = row.couple_selected_floor_plan_id;
-    if (!preferredId) {
-      return { ok: false as const, message: "There is no couple preference to review." };
+    const proposedId = row.couple_selected_floor_plan_id;
+    if (!proposedId || row.couple_preference_status !== "proposed_replacement") {
+      return {
+        ok: false as const,
+        message: "There is no proposed layout replacement to review.",
+      };
     }
-    const status = normalizeCouplePreferenceStatus(
-      row.couple_preference_status,
-      preferredId,
-    );
     const operationalId = row.operational_floor_plan_id;
+
+    if (input.decision === "decline") {
+      await repo.updateEventFloorPlanPreferenceState(supabase, venueId, eventId, {
+        couple_selected_floor_plan_id: operationalId,
+        couple_preference_status: operationalId ? "applied" : null,
+      });
+      return { ok: true as const };
+    }
+
     const currentSeatCount = operationalId
       ? await repo.countGuestSeatAssignments(supabase, operationalId, venueId)
       : 0;
-    const preferredSeatCount = await repo.countGuestSeatAssignments(
+    const proposedSeatCount = await repo.countGuestSeatAssignments(
       supabase,
-      preferredId,
+      proposedId,
       venueId,
     );
-    const approvalCase = classifyPreferenceApprovalCase({
-      currentOperationalId: operationalId,
-      preferredId,
-      currentHasSeats: currentSeatCount > 0,
-      preferredHasSeats: preferredSeatCount > 0,
-    });
-
-    let decision;
-    if (input.decision === "decline" || input.decision === "defer") {
-      decision = { decision: input.decision } as const;
-    } else if (approvalCase === "A") {
-      decision = { decision: "approve" as const, case: "A" as const };
-    } else if (approvalCase === "B") {
-      if (input.seatingChoice !== "start_on_preferred") {
-        return {
-          ok: false as const,
-          message:
-            "This working layout already has seating. Choose “Approve and start seating on the preferred layout” (seats stay on the current layout), or Decline / Defer to keep the current arrangement.",
-        };
-      }
-      decision = {
-        decision: "approve" as const,
-        case: "B" as const,
-        seatingChoice: "start_on_preferred" as const,
-      };
-    } else {
-      const inUse = input.seatingInUseFloorPlanId?.trim() || null;
-      if (!inUse || (inUse !== preferredId && inUse !== operationalId)) {
-        return {
-          ok: false as const,
-          message: "Both layouts have seating. Choose which seating arrangement is in use before approving.",
-        };
-      }
-      decision = {
-        decision: "approve" as const,
-        case: "C" as const,
-        seatingInUseFloorPlanId: inUse,
-      };
-    }
-
-    const next = nextPreferenceState({
-      coupleSelectedFloorPlanId: preferredId,
-      coupleApprovedFloorPlanId: row.couple_approved_floor_plan_id,
-      couplePreferenceStatus: status,
+    const next = nextStateAfterAcceptProposedReplacement({
+      proposedFloorPlanId: proposedId,
       operationalFloorPlanId: operationalId,
       seatingInUseFloorPlanId: row.seating_in_use_floor_plan_id,
-      decision,
+      currentHasSeats: currentSeatCount > 0,
+      proposedHasSeats: proposedSeatCount > 0,
+      seatingChoice: input.seatingChoice,
+      seatingInUseFloorPlanIdChoice: input.seatingInUseFloorPlanId,
     });
     if (!next.ok) return { ok: false as const, message: next.message };
 
-    // Idempotent: identical write is a no-op success.
-    const unchanged =
-      next.coupleSelectedFloorPlanId === row.couple_selected_floor_plan_id
-      && next.coupleApprovedFloorPlanId === row.couple_approved_floor_plan_id
-      && next.couplePreferenceStatus === (row.couple_preference_status ?? status)
-      && next.operationalFloorPlanId === row.operational_floor_plan_id
-      && next.seatingInUseFloorPlanId === row.seating_in_use_floor_plan_id;
-    if (unchanged) return { ok: true as const };
+    // Share the new working plan; do not rewrite seating assignment rows.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase.from("floor_plans") as any)
+      .update({ shared_with_couple: true })
+      .eq("id", next.operationalFloorPlanId)
+      .eq("venue_id", venueId)
+      .eq("event_id", eventId);
 
     await repo.updateEventFloorPlanPreferenceState(supabase, venueId, eventId, {
-      couple_selected_floor_plan_id: next.coupleSelectedFloorPlanId,
-      couple_approved_floor_plan_id: next.coupleApprovedFloorPlanId,
-      couple_preference_status: next.couplePreferenceStatus,
+      couple_selected_floor_plan_id: next.operationalFloorPlanId,
+      couple_preference_status: next.selectionStatus,
       operational_floor_plan_id: next.operationalFloorPlanId,
       seating_in_use_floor_plan_id: next.seatingInUseFloorPlanId,
     });
     return { ok: true as const };
   });
   return result as FloorPlanActionResult;
+}
+
+/**
+ * @deprecated Ordinary selection no longer requires venue preference approval.
+ * Kept as a thin alias for proposed-replacement accept during transition tests.
+ */
+export async function decideCoupleFloorPlanPreference(
+  eventId: string,
+  input:
+    | { decision: "decline" }
+    | { decision: "defer" }
+    | { decision: "approve"; seatingChoice?: "start_on_preferred"; seatingInUseFloorPlanId?: string },
+): Promise<FloorPlanActionResult> {
+  if (input.decision === "defer") {
+    return { ok: false, message: "Preference deferral was removed. Selection no longer requires venue approval." };
+  }
+  if (input.decision === "decline") {
+    return decideProposedLayoutReplacement(eventId, { decision: "decline" });
+  }
+  return decideProposedLayoutReplacement(eventId, {
+    decision: "accept",
+    seatingChoice:
+      input.seatingChoice === "start_on_preferred" ? "start_on_proposed" : undefined,
+    seatingInUseFloorPlanId: input.seatingInUseFloorPlanId,
+  });
 }
 
 /** Explicit seating-in-use designation. Does not change preference or share. */

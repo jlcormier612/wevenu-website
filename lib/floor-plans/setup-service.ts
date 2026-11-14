@@ -1,5 +1,6 @@
 /**
- * Floor Plans Phase 3 — venue setup authoring + per-setup preference review.
+ * Floor Plans Phase 3 — venue setup authoring + proposed-replacement review.
+ * Couple selection establishes setup working layout (no Approve/Decline/Defer).
  * Never infers setup names. Detach ≠ delete layout/seats.
  */
 import { createClient } from "@/integrations/supabase/server";
@@ -10,11 +11,10 @@ import {
 } from "@/lib/floor-plans/authorize";
 import {
   classifyPreferenceApprovalCase,
-  nextPreferenceState,
   normalizeCouplePreferenceStatus,
   type PreferenceApprovalCase,
 } from "@/lib/floor-plans/preference-lifecycle";
-import type { VenuePreferenceDecisionInput } from "@/lib/floor-plans/preference-service";
+import { nextStateAfterAcceptProposedReplacement } from "@/lib/floor-plans/selection-lifecycle";
 import * as repo from "@/lib/floor-plans/repository";
 import {
   mapSetupRow,
@@ -287,7 +287,7 @@ export async function getSetupPreferenceReviewSnapshot(
     ? await repo.countGuestSeatAssignments(supabase, preferredId, venue.id)
     : 0;
   const approvalCase =
-    preferredId && status === "pending"
+    preferredId && setup.couple_preference_status === "proposed_replacement"
       ? classifyPreferenceApprovalCase({
           currentOperationalId: operationalId,
           preferredId,
@@ -309,91 +309,91 @@ export async function getSetupPreferenceReviewSnapshot(
   };
 }
 
+export type SetupProposedReplacementInput =
+  | { decision: "decline" }
+  | {
+      decision: "accept";
+      seatingChoice?: "start_on_proposed";
+      seatingInUseFloorPlanId?: string;
+    }
+  // Legacy aliases during transition — mapped to accept/decline.
+  | { decision: "defer" }
+  | {
+      decision: "approve";
+      seatingChoice?: "start_on_preferred";
+      seatingInUseFloorPlanId?: string;
+    };
+
 /**
- * Venue decides a pending preference for one setup only.
+ * Venue accepts or declines a post-approval proposed layout replacement for one setup.
+ * Ordinary couple selection does not use this path.
  * Never mutates other setups or guest_seat_assignments rows.
  */
 export async function decideSetupFloorPlanPreference(
   eventId: string,
   setupId: string,
-  input: VenuePreferenceDecisionInput,
+  input: SetupProposedReplacementInput,
 ): Promise<FloorPlanActionResult> {
   return withVenueEditor(async (supabase, venueId) => {
     const setup = await repo.getSetupById(supabase, venueId, setupId);
     if (!setup || setup.event_id !== eventId) {
       return { ok: false as const, message: "Setup not found." };
     }
-    const preferredId = setup.couple_selected_floor_plan_id;
-    if (!preferredId) {
-      return { ok: false as const, message: "There is no couple preference to review for this setup." };
+    const proposedId = setup.couple_selected_floor_plan_id;
+    if (!proposedId || setup.couple_preference_status !== "proposed_replacement") {
+      return {
+        ok: false as const,
+        message: "There is no proposed layout replacement to review for this setup.",
+      };
     }
-    const status = normalizeCouplePreferenceStatus(
-      setup.couple_preference_status,
-      preferredId,
-    );
     const operationalId = setup.operational_floor_plan_id;
+
+    if (input.decision === "defer") {
+      return {
+        ok: false as const,
+        message: "Preference deferral was removed. Selection no longer requires venue approval.",
+      };
+    }
+
+    if (input.decision === "decline") {
+      await repo.updateEventFloorPlanSetup(supabase, venueId, setupId, {
+        couple_selected_floor_plan_id: operationalId,
+        couple_preference_status: operationalId ? "applied" : null,
+      });
+      return { ok: true as const };
+    }
+
+    const seatingChoice =
+      input.decision === "approve"
+        ? (input.seatingChoice === "start_on_preferred" ? "start_on_proposed" as const : undefined)
+        : input.seatingChoice;
+    const seatingInUseChoice =
+      input.decision === "approve" || input.decision === "accept"
+        ? input.seatingInUseFloorPlanId
+        : undefined;
+
     const currentSeatCount = operationalId
       ? await repo.countGuestSeatAssignments(supabase, operationalId, venueId)
       : 0;
-    const preferredSeatCount = await repo.countGuestSeatAssignments(
+    const proposedSeatCount = await repo.countGuestSeatAssignments(
       supabase,
-      preferredId,
+      proposedId,
       venueId,
     );
-    const approvalCase = classifyPreferenceApprovalCase({
-      currentOperationalId: operationalId,
-      preferredId,
-      currentHasSeats: currentSeatCount > 0,
-      preferredHasSeats: preferredSeatCount > 0,
-    });
-
-    let decision;
-    if (input.decision === "decline" || input.decision === "defer") {
-      decision = { decision: input.decision } as const;
-    } else if (approvalCase === "A") {
-      decision = { decision: "approve" as const, case: "A" as const };
-    } else if (approvalCase === "B") {
-      if (input.seatingChoice !== "start_on_preferred") {
-        return {
-          ok: false as const,
-          message:
-            "This setup’s working layout already has seating. Choose “Approve and start seating on the preferred layout” (seats stay on the current layout), or Decline / Defer.",
-        };
-      }
-      decision = {
-        decision: "approve" as const,
-        case: "B" as const,
-        seatingChoice: "start_on_preferred" as const,
-      };
-    } else {
-      const inUse = input.seatingInUseFloorPlanId?.trim() || null;
-      if (!inUse || (inUse !== preferredId && inUse !== operationalId)) {
-        return {
-          ok: false as const,
-          message: "Both layouts have seating. Choose which seating arrangement is in use for this setup before approving.",
-        };
-      }
-      decision = {
-        decision: "approve" as const,
-        case: "C" as const,
-        seatingInUseFloorPlanId: inUse,
-      };
-    }
-
-    const next = nextPreferenceState({
-      coupleSelectedFloorPlanId: preferredId,
-      coupleApprovedFloorPlanId: setup.couple_approved_floor_plan_id,
-      couplePreferenceStatus: status,
+    const next = nextStateAfterAcceptProposedReplacement({
+      proposedFloorPlanId: proposedId,
       operationalFloorPlanId: operationalId,
       seatingInUseFloorPlanId: setup.seating_in_use_floor_plan_id,
-      decision,
+      currentHasSeats: currentSeatCount > 0,
+      proposedHasSeats: proposedSeatCount > 0,
+      seatingChoice,
+      seatingInUseFloorPlanIdChoice: seatingInUseChoice,
     });
     if (!next.ok) return { ok: false as const, message: next.message };
 
     await repo.updateEventFloorPlanSetup(supabase, venueId, setupId, {
-      couple_selected_floor_plan_id: next.coupleSelectedFloorPlanId,
-      couple_preference_status: next.couplePreferenceStatus,
-      couple_approved_floor_plan_id: next.coupleApprovedFloorPlanId,
+      couple_selected_floor_plan_id: next.operationalFloorPlanId,
+      couple_preference_status: next.selectionStatus,
       operational_floor_plan_id: next.operationalFloorPlanId,
       seating_in_use_floor_plan_id: next.seatingInUseFloorPlanId,
     });

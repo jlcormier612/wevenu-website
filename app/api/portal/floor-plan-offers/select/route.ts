@@ -2,10 +2,11 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/integrations/supabase/server";
 
 /**
- * Couple selects an offered layout (Phase 2 preference only).
+ * Couple selects an offered layout.
  * Clones or reuses the event plan; never mutates the Library template.
- * Sets couple_selected_floor_plan_id + couple_preference_status=pending.
- * Does not change operational_floor_plan_id, sharing, seating access, or assignments.
+ * Establishes working layout + share (status=applied). After a physical
+ * arrangement is approved, a different offer becomes proposed_replacement
+ * without silently replacing operational. Never rewrites seating assignments.
  */
 export async function POST(request: Request) {
   const body = await request.json().catch(() => null) as { token?: string; offerId?: string } | null;

@@ -4,14 +4,35 @@
 import type { EventFloorPlanOfferWithTemplate } from "@/lib/floor-plan-offers/types";
 import type { FloorPlan } from "@/lib/floor-plans/types";
 
-/** The preference card appears only when the venue has something to decide. */
+/**
+ * Venue action card appears for proposed replacements, seating-in-use conflicts,
+ * or errors — not for ordinary applied selections that need no follow-up.
+ */
 export function preferenceReviewIsActionable(input: {
   status: string | null;
   hasPreferred: boolean;
   multipleSeated: boolean;
   hasError: boolean;
+  needsSeatingResolution?: boolean;
 }): boolean {
-  return input.hasError || input.multipleSeated || (input.status === "pending" && input.hasPreferred);
+  return (
+    input.hasError
+    || input.multipleSeated
+    || input.needsSeatingResolution === true
+    || (input.status === "proposed_replacement" && input.hasPreferred)
+  );
+}
+
+/** Case B: working plan changed but seats (and seating-in-use) remain on a prior plan. */
+export function needsSeatingHostResolution(input: {
+  operationalFloorPlanId: string | null;
+  seatingInUseFloorPlanId: string | null;
+  operationalSeatCount: number;
+  seatingInUseSeatCount: number;
+}): boolean {
+  if (!input.operationalFloorPlanId || !input.seatingInUseFloorPlanId) return false;
+  if (input.operationalFloorPlanId === input.seatingInUseFloorPlanId) return false;
+  return input.seatingInUseSeatCount > 0 && input.operationalSeatCount === 0;
 }
 
 export type OfferedLayoutView = { id: string; label: string; isCouplePick: boolean };

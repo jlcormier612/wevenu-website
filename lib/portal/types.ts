@@ -176,6 +176,10 @@ export type PortalFloorPlanSummary = {
   isCoupleSelected?: boolean;
   isCoupleApproved?: boolean;
   isSeatingInUse?: boolean;
+  /** Effective seating permission from floor_plans.client_access: view | hidden. */
+  seatingAccess?: "view" | "hidden" | string;
+  /** True when client_access = view (couple may assign guests). */
+  seatingEnabled?: boolean;
   isReady?: boolean;
   clientLayoutStatus?: string;
   clientSubmittedAt?: string | null;
@@ -254,6 +258,8 @@ export type PortalFloorPlanDetail = {
     isCoupleSelected?: boolean;
     isCoupleApproved?: boolean;
     isSeatingInUse?: boolean;
+    seatingAccess?: "view" | "hidden" | string;
+    seatingEnabled?: boolean;
     isReady?: boolean;
     /** When true, couple may add table objects on this working plan. */
     coupleMayAddTables?: boolean;
