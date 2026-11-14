@@ -1,0 +1,46 @@
+{
+  "overflowX": false,
+  "buttons": [
+    {
+      "text": "Reschedule",
+      "h": 44,
+      "fontSize": "13px",
+      "fontWeight": "500",
+      "padL": "14px"
+    },
+    {
+      "text": "Mark as Confirmed",
+      "h": 44,
+      "fontSize": "13px",
+      "fontWeight": "500",
+      "padL": "14px"
+    },
+    {
+      "text": "Send Confirmation Request",
+      "h": 44,
+      "fontSize": "13px",
+      "fontWeight": "500",
+      "padL": "14px"
+    },
+    {
+      "text": "Mark Completed",
+      "h": 44,
+      "fontSize": "13px",
+      "fontWeight": "500",
+      "padL": "14px"
+    },
+    {
+      "text": "Cancel",
+      "h": 44,
+      "fontSize": "13px",
+      "fontWeight": "500",
+      "padL": "8px"
+    }
+  ],
+  "h1": {
+    "color": "rgb(79, 95, 79)",
+    "weight": "400",
+    "size": "32px",
+    "family": "\"Cormorant Garamond\", ui-serif, Georgia, serif"
+  }
+}

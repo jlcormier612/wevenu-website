@@ -52,7 +52,7 @@ describe("2D-B1 Lead Tour & follow-up hospitality", () => {
     assert.match(row, /Mark as Confirmed/);
     assert.match(row, /Send Confirmation Request/);
     assert.match(row, /Reschedule/);
-    assert.match(row, /Completed/);
+    assert.match(row, /Mark Completed/);
     assert.match(row, /No Show/);
     assert.match(row, /htc-lead-tour-action-destructive/);
     assert.match(row, />\s*Cancel\s*</);
@@ -95,9 +95,9 @@ describe("2D-B1 Lead Tour & follow-up hospitality", () => {
       leadTourCss.indexOf(".htc-staff .htc-lead-tour-personal-link {"),
       leadTourCss.indexOf(".htc-staff .htc-lead-tour-empty {"),
     );
-    assert.match(personal, /background:\s*#eaf1f7/i);
-    assert.match(personal, /border:\s*1px solid #d5e1eb/i);
-    assert.match(personal, /border-left:\s*3px solid #dfe9f1/i);
+    assert.match(personal, /background:\s*var\(--htc-calm-blue\)/);
+    assert.match(personal, /border:\s*1px solid var\(--htc-border-calm\)/);
+    assert.match(personal, /border-left:\s*3px solid var\(--htc-calm-blue-deep\)/);
     assert.doesNotMatch(personal, /--htc-soft-blush|--htc-linen|#f7e9eb/i);
     // Shared blush token definition and other blush consumers unchanged
     assert.match(css, /--htc-soft-blush:\s*#f7e9eb/i);
@@ -105,10 +105,19 @@ describe("2D-B1 Lead Tour & follow-up hospitality", () => {
     assert.match(leadTourCss, /\.htc-lead-tour-overdue[\s\S]*?--htc-soft-blush/);
   });
 
-  it("targets mobile confirm/touch heights consistent with 2D-A correction", () => {
-    assert.match(leadTourCss, /min-height:\s*3rem/);
-    assert.match(leadTourCss, /min-height:\s*2\.75rem/);
-    assert.match(leadTourCss, /@media \(max-width: 639px\)/);
+  it("targets compact desktop actions with mobile a11y floor", () => {
+    const actions = leadTourCss.slice(
+      leadTourCss.indexOf(".htc-staff .htc-lead-tour-appt-actions {"),
+      leadTourCss.indexOf(".htc-staff .htc-lead-tour-personal-link {"),
+    );
+    const mobile = leadTourCss.slice(
+      leadTourCss.indexOf("@media (max-width: 639px)"),
+      leadTourCss.indexOf(".htc-staff .htc-lead-tour-personal-link {", leadTourCss.indexOf("@media (max-width: 639px)")),
+    );
+    assert.match(actions, /height:\s*2\.25rem/); /* 36px desktop */
+    assert.match(actions, /gap:\s*0\.5rem/);
+    assert.match(mobile, /min-height:\s*2\.75rem/); /* 44px a11y (>40px) */
+    assert.doesNotMatch(mobile, /min-height:\s*3rem/);
   });
 
   it("does not alter Schedule sheet / SlotPickerSheet (B2 out of scope)", () => {

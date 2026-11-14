@@ -79,6 +79,14 @@ describe("Refer & Earn nav CTA", () => {
       /Introduce another venue to Hello to Cheers and enjoy a little thank-you from us\./,
     );
     assert.match(page, /Share the Luv\. Get a free month\./);
+    assert.match(
+      page,
+      /font-heading text-\[clamp\(2rem,4\.5vw,3\.5rem\)\] font-normal[^>]*text-\[rgb\(79,95,79\)\]/,
+    );
+    assert.doesNotMatch(
+      page.slice(page.indexOf("Share the Luv. Get a free month.") - 180, page.indexOf("Share the Luv. Get a free month.")),
+      /text-foreground|font-semibold|font-bold|text-3xl/,
+    );
     assert.match(page, /One referral\. One FREE month\./);
     assert.match(page, /And yes, you can earn more than one!/);
     assert.match(page, /data-testid="refer-program-details"/);
