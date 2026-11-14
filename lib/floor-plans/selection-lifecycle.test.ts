@@ -226,6 +226,27 @@ describe("portal guidance", () => {
     assert.doesNotMatch(g.instruction, /prepared a few options/i);
   });
 
+  it("changes_requested / submitted / approved outrank chooser awaiting selection", () => {
+    for (const status of ["changes_requested", "submitted", "approved"] as const) {
+      const g = portalFloorPlanGuidance({
+        needsChooser: true,
+        hasWorkingShared: true,
+        hasSelectedWorking: false,
+        clientLayoutStatus: status,
+        isReady: false,
+        furnitureEditingAllowed: status === "changes_requested",
+        coupleMayAddTables: status === "changes_requested",
+        seatingEnabled: false,
+      });
+      assert.doesNotMatch(g.instruction, /prepared a few options/i);
+      assert.doesNotMatch(g.headline, /Choose your starting layout/i);
+      if (status === "changes_requested") {
+        assert.match(g.headline, /Changes requested/i);
+        assert.match(g.instruction, /requested a few changes/i);
+      }
+    }
+  });
+
   it("seating-only and proposed replacement", () => {
     const seating = portalFloorPlanGuidance({
       needsChooser: false,
