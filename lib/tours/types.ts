@@ -105,6 +105,8 @@ export type TourAppointment = {
   outcome: TourOutcome | null;
   cancellationReason: string | null;
   createdAt: string;
+  /** Last staff/system update — used for “Recorded …” outcome copy. */
+  updatedAt?: string | null;
   // Tour confirmation — status vs. communication are separate concepts.
   /** When a confirmation request was last sent. Does not itself mean the tour is confirmed. */
   confirmationRequestedAt: string | null;

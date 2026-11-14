@@ -2787,6 +2787,29 @@ html:has(.htc-staff) [data-slot="card"] {
   border-color: var(--htc-border-warm);
   background: #fff;
   color: var(--heading);
+  cursor: pointer;
+}
+
+.htc-staff .htc-lead-tour-confirm-secondary:hover:not(:disabled),
+.htc-staff .htc-lead-tour-action-secondary:hover:not(:disabled) {
+  background: color-mix(in oklch, var(--htc-soft-sage) 22%, #fff);
+  border-color: color-mix(in oklch, var(--htc-border-warm) 70%, var(--htc-botanical));
+}
+
+.htc-staff .htc-lead-tour-confirm-primary:focus-visible,
+.htc-staff .htc-lead-tour-confirm-secondary:focus-visible,
+.htc-staff .htc-lead-tour-action-secondary:focus-visible,
+.htc-staff .htc-lead-tour-action-destructive:focus-visible {
+  outline: 2px solid color-mix(in oklch, var(--htc-botanical) 65%, transparent);
+  outline-offset: 2px;
+}
+
+.htc-staff .htc-lead-tour-confirm-primary:disabled,
+.htc-staff .htc-lead-tour-confirm-secondary:disabled,
+.htc-staff .htc-lead-tour-action-secondary:disabled,
+.htc-staff .htc-lead-tour-action-destructive:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .htc-staff .htc-lead-tour-action-destructive {
@@ -2802,11 +2825,73 @@ html:has(.htc-staff) [data-slot="card"] {
   border: none;
   background: transparent;
   box-shadow: none;
+  cursor: pointer;
 }
 
 .htc-staff .htc-lead-tour-action-destructive:hover {
   background: var(--htc-soft-blush);
   color: color-mix(in oklch, #6b3f44 85%, var(--heading));
+}
+
+/* Terminal outcome detail — compact; does not alter action button chrome. */
+.htc-staff .htc-lead-tour-outcome {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding-top: 0.15rem;
+}
+
+.htc-staff .htc-lead-tour-outcome-line {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.35;
+  color: var(--muted-foreground);
+}
+
+.htc-staff .htc-lead-tour-outcome-note {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: var(--heading);
+}
+
+.htc-staff .htc-lead-tour-outcome-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem 0.9rem;
+}
+
+.htc-staff .htc-lead-tour-outcome-link {
+  appearance: none;
+  border: none;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  min-height: 2.75rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.25;
+  color: color-mix(in oklch, var(--htc-botanical) 85%, var(--heading));
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.htc-staff .htc-lead-tour-outcome-link:hover {
+  color: var(--htc-botanical);
+}
+
+.htc-staff .htc-lead-tour-outcome-link:focus-visible {
+  outline: 2px solid color-mix(in oklch, var(--htc-botanical) 65%, transparent);
+  outline-offset: 2px;
+  border-radius: 0.25rem;
+}
+
+@media (min-width: 768px) {
+  .htc-staff .htc-lead-tour-outcome-link {
+    min-height: auto;
+  }
 }
 
 /* Compact tour card actions — scoped; personal-link keeps its own touch target. */

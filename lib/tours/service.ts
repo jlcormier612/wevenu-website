@@ -1020,6 +1020,7 @@ function mapAppointment(r: any): import("@/lib/tours/types").TourAppointment {
     outcome: r.outcome ?? null,
     cancellationReason: r.cancellation_reason ?? null,
     createdAt: r.created_at,
+    updatedAt: r.updated_at ?? null,
     confirmationRequestedAt: r.confirmation_requested_at ?? null,
     confirmationSource: r.confirmation_source ?? null,
     isArchived: Boolean(r.is_archived),
@@ -1352,6 +1353,14 @@ export type UpdateTourStatusOptions = {
    */
   actualDate?: string;
   actualTime?: string;
+  /** Optional staff-facing outcome note (stored on tour_appointments.notes). */
+  notes?: string | null;
+  /**
+   * Staff correction of an existing outcome (Edit outcome / Undo).
+   * Updates status + notes without customer emails, post-tour enrollment,
+   * or duplicate automation side effects.
+   */
+  staffCorrection?: boolean;
 };
 
 export async function updateTourStatus(
@@ -1364,9 +1373,10 @@ export async function updateTourStatus(
   const venue = await getCurrentVenue();
   if (!venue) return { ok: false, error: "Session expired." };
   const supabase = await createClient();
+  const staffCorrection = Boolean(options?.staffCorrection);
 
   const { data: appt } = await supabase.from("tour_appointments")
-    .select("status, lead_id, contact_name, contact_email, scheduled_at, duration_minutes, actual_occurred_at")
+    .select("status, lead_id, contact_name, contact_email, scheduled_at, duration_minutes, actual_occurred_at, notes, cancellation_reason")
     .eq("id", appointmentId).eq("venue_id", venue.id)
     .maybeSingle<{
       status: string;
@@ -1376,13 +1386,38 @@ export async function updateTourStatus(
       scheduled_at: string | null;
       duration_minutes: number;
       actual_occurred_at: string | null;
+      notes: string | null;
+      cancellation_reason: string | null;
     }>();
   if (!appt) return { ok: false, error: "This tour could not be found." };
 
   const patch: Record<string, unknown> = { status, updated_at: new Date().toISOString() };
-  if (status === "cancelled") patch.cancellation_reason = reason?.trim() || null;
+  const noteText = options?.notes !== undefined
+    ? (options.notes?.trim() || null)
+    : (reason !== undefined && status !== "cancelled" ? (reason.trim() || null) : undefined);
+  if (noteText !== undefined) patch.notes = noteText;
+
+  // Leaving a terminal outcome must clear stale active metadata. scheduled_at
+  // is never rewritten. Historical lead_activities / audit rows stay as-is.
+  if (appt.status === "completed" && status !== "completed") {
+    patch.completed_at = null;
+    patch.actual_occurred_at = null;
+  }
+  if (appt.status === "cancelled" && status !== "cancelled") {
+    patch.cancellation_reason = null;
+  }
+
+  if (status === "cancelled") {
+    const cancelNote = reason?.trim() || (options?.notes?.trim() || null);
+    patch.cancellation_reason = cancelNote;
+    if (options?.notes !== undefined || reason !== undefined) {
+      patch.notes = cancelNote;
+    }
+  }
   if (status === "completed") {
-    patch.completed_at = new Date().toISOString();
+    if (appt.status !== "completed") {
+      patch.completed_at = new Date().toISOString();
+    }
     // Explicit actual only — never invent from now(), never rewrite scheduled_at.
     const actualDate = options?.actualDate?.trim();
     const actualTime = options?.actualTime?.trim().slice(0, 5);
@@ -1409,7 +1444,7 @@ export async function updateTourStatus(
     .update(patch)
     .eq("id", appointmentId)
     .eq("venue_id", venue.id)
-    .select("id, status, scheduled_at, actual_occurred_at, completed_at")
+    .select("id, status, scheduled_at, actual_occurred_at, completed_at, notes, cancellation_reason")
     .maybeSingle();
   if (error) {
     const fail = tourCapacityFailureFromUnknown(error);
@@ -1419,7 +1454,17 @@ export async function updateTourStatus(
     return { ok: false, error: "This tour could not be updated." };
   }
 
-  if (becameConfirmed) {
+  if (staffCorrection && appt.lead_id && appt.status !== status) {
+    void supabase.from("lead_activities").insert({
+      venue_id: venue.id,
+      lead_id: appt.lead_id,
+      type: "tour_outcome_corrected",
+      title: "Tour outcome updated",
+      description: `Tour outcome changed from ${appt.status} to ${status}.`,
+    }).then(null, () => {});
+  }
+
+  if (becameConfirmed && !staffCorrection) {
     if (appt.lead_id) {
       void supabase.from("lead_activities").insert({
         venue_id: venue.id, lead_id: appt.lead_id, type: "tour_confirmed", title: "Tour confirmed",
@@ -1454,12 +1499,12 @@ export async function updateTourStatus(
     }
   }
 
-  if (status === "cancelled" || status === "no_show") {
+  if ((status === "cancelled" || status === "no_show") && !staffCorrection) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (supabase.from("task_reminders") as any).update({ status: "cancelled" }).eq("tour_appointment_id", appointmentId).eq("status", "pending");
   }
 
-  if (POST_TOUR_STATUSES.has(status) && appt.status !== status) {
+  if (!staffCorrection && POST_TOUR_STATUSES.has(status) && appt.status !== status) {
     const { runPostTourAutomation } = await import("@/lib/tours/post-tour");
     void runPostTourAutomation(
       { supabase, appointmentId, venueId: venue.id, leadId: appt.lead_id, contactName: appt.contact_name, scheduledAt: appt.scheduled_at },

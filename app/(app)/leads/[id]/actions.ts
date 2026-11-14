@@ -359,9 +359,14 @@ export async function rescheduleTourAction(appointmentId: string, leadId: string
 export async function updateTourStatusAction(
   appointmentId: string,
   leadId: string,
-  status: "confirmed" | "completed" | "cancelled" | "no_show",
+  status: "scheduled" | "confirmed" | "completed" | "cancelled" | "no_show",
   reason?: string,
-  options?: { actualDate?: string; actualTime?: string },
+  options?: {
+    actualDate?: string;
+    actualTime?: string;
+    notes?: string | null;
+    staffCorrection?: boolean;
+  },
 ): Promise<SimpleTourResult> {
   const result = await updateTourStatus(appointmentId, status, reason, options);
   if (result.ok) revalidateLead(leadId);
