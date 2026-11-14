@@ -36,7 +36,8 @@ describe("tour-follow-up card layout", () => {
       panel.indexOf("function AppointmentRow"),
       panel.indexOf("type TourScheduleContextValue"),
     );
-    assert.doesNotMatch(row, /tour-appointment-edit-/);
+    // Active-row actions stay Reschedule (no Edit replacing it). Terminal
+    // "Edit outcome" lives in the outcome block, not the action row.
     assert.match(row, /data-testid=\{`tour-appointment-actions-\$\{appt\.id\}`\}/);
     assert.match(row, /data-testid=\{`tour-appointment-reschedule-\$\{appt\.id\}`\}/);
     assert.match(row, />\s*Reschedule\s*</);
@@ -45,6 +46,7 @@ describe("tour-follow-up card layout", () => {
     assert.match(row, /Mark as Confirmed/);
     assert.match(row, />\s*Mark Completed\s*</);
     assert.match(row, />\s*Cancel\s*</);
+    assert.match(row, /setNoShowOpen\(true\)/);
   });
 
   it("does not change tour action handlers or copy-link destination", () => {

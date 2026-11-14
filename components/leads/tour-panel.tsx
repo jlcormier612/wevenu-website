@@ -24,13 +24,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CALENDAR_MAX_YEAR } from "@/lib/calendar/types";
 import { clampMonthYear } from "@/lib/calendar/month-year-range";
 import type { TourAppointment, TourCustomerSendPreview, TourSlot } from "@/lib/tours/types";
 import { tourDisplayClockIso } from "@/lib/tours/list-order";
-import { prefillActualFromScheduled, tourActualDiffersFromScheduled } from "@/lib/tours/occurrence-clock";
+import { tourActualDiffersFromScheduled } from "@/lib/tours/occurrence-clock";
 import { isTourSlotConflictError } from "@/lib/tours/slot-conflict";
 import { formatVenueLocalTourDisplay, utcToVenueLocalParts } from "@/lib/venue/timezone";
 
@@ -340,33 +339,199 @@ function SlotPickerSheet({
   );
 }
 
-function CancelDialog({ open, onOpenChange, onConfirm }: { open: boolean; onOpenChange: (o: boolean) => void; onConfirm: (reason: string) => void }) {
-  const [reason, setReason] = React.useState("");
+const OUTCOME_NOTE_MAX = 500;
+
+type OutcomeDialogProps = {
+  open: boolean;
+  title: string;
+  body: string;
+  summary?: string | null;
+  noteLabel: string;
+  notePlaceholder: string;
+  primaryLabel: string;
+  secondaryLabel: string;
+  primaryVariant?: "default" | "destructive";
+  pending?: boolean;
+  initialNote?: string;
+  onClose: () => void;
+  onConfirm: (note: string) => void;
+};
+
+function OutcomeConfirmDialog({
+  open, title, body, summary, noteLabel, notePlaceholder,
+  primaryLabel, secondaryLabel, primaryVariant = "default",
+  pending, initialNote = "", onClose, onConfirm,
+}: OutcomeDialogProps) {
+  const [note, setNote] = React.useState(initialNote);
+  React.useEffect(() => {
+    if (open) setNote(initialNote);
+  }, [open, initialNote]);
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => onOpenChange(false)}>
-      <div className="w-full max-w-sm rounded-xl border border-border bg-card p-5 space-y-3" onClick={(e) => e.stopPropagation()}>
-        <p className="text-sm font-semibold text-heading">Cancel this tour?</p>
-        <Textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Reason (optional)" className="text-sm" />
-        <div className="flex justify-end gap-2">
-          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>Never mind</Button>
-          <Button variant="destructive" size="sm" onClick={() => { onConfirm(reason); onOpenChange(false); setReason(""); }}>Cancel Tour</Button>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      onClick={() => { if (!pending) onClose(); }}
+      data-testid="tour-outcome-dialog-backdrop"
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="tour-outcome-dialog-title"
+        className="w-full max-w-[440px] rounded-xl border border-border bg-card p-5 md:p-6 space-y-3 shadow-lg"
+        onClick={(e) => e.stopPropagation()}
+        data-testid="tour-outcome-dialog"
+      >
+        <p id="tour-outcome-dialog-title" className="text-sm font-semibold text-heading">{title}</p>
+        <p className="text-[13px] text-muted-foreground leading-snug">{body}</p>
+        {summary ? (
+          <p className="rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs text-heading" data-testid="tour-outcome-dialog-summary">
+            {summary}
+          </p>
+        ) : null}
+        <div className="space-y-1.5">
+          <Label className="text-xs text-muted-foreground">{noteLabel}</Label>
+          <Textarea
+            rows={3}
+            value={note}
+            maxLength={OUTCOME_NOTE_MAX}
+            onChange={(e) => setNote(e.target.value.slice(0, OUTCOME_NOTE_MAX))}
+            placeholder={notePlaceholder}
+            className="text-sm min-h-20"
+            data-testid="tour-outcome-dialog-note"
+          />
+          <p className="text-[11px] text-muted-foreground text-right">{note.length}/{OUTCOME_NOTE_MAX}</p>
+        </div>
+        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-1">
+          <Button
+            type="button"
+            variant="outline"
+            className="min-h-11 sm:min-h-9"
+            disabled={pending}
+            onClick={onClose}
+            data-testid="tour-outcome-dialog-secondary"
+          >
+            {secondaryLabel}
+          </Button>
+          <Button
+            type="button"
+            variant={primaryVariant}
+            className="min-h-11 sm:min-h-9"
+            disabled={pending}
+            onClick={() => onConfirm(note)}
+            data-testid="tour-outcome-dialog-primary"
+          >
+            {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : primaryLabel}
+          </Button>
         </div>
       </div>
     </div>
   );
 }
 
-function AppointmentRow({ appt, leadId, now, venueTimezone, onReschedule, onChanged }: { appt: TourAppointment; leadId: string; now: string; venueTimezone: string | null; onReschedule: (id: string) => void; onChanged: () => void }) {
+function EditOutcomeDialog({
+  open, appt, venueTimezone, pending, onClose, onSave,
+}: {
+  open: boolean;
+  appt: TourAppointment;
+  venueTimezone: string | null;
+  pending: boolean;
+  onClose: () => void;
+  onSave: (status: TourAppointment["status"], note: string) => void;
+}) {
+  const [status, setStatus] = React.useState<TourAppointment["status"]>(appt.status);
+  const [note, setNote] = React.useState(appt.notes ?? appt.cancellationReason ?? "");
+  React.useEffect(() => {
+    if (!open) return;
+    setStatus(appt.status);
+    setNote(appt.notes ?? appt.cancellationReason ?? "");
+  }, [open, appt]);
+  if (!open) return null;
+  const scheduled = appt.scheduledAt
+    ? formatVenueLocalTourDisplay(appt.scheduledAt, venueTimezone)
+    : null;
+  const options: TourAppointment["status"][] = ["scheduled", "completed", "no_show", "cancelled"];
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => { if (!pending) onClose(); }}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        className="w-full max-w-[440px] rounded-xl border border-border bg-card p-5 md:p-6 space-y-3 shadow-lg"
+        onClick={(e) => e.stopPropagation()}
+        data-testid="tour-edit-outcome-dialog"
+      >
+        <p className="text-sm font-semibold text-heading">Update tour outcome</p>
+        {scheduled ? (
+          <p className="rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs text-heading">
+            {scheduled.dateLabel} · {scheduled.timeLabel}
+            <span className="text-muted-foreground"> · Current: {STATUS_LABEL[appt.status]}</span>
+          </p>
+        ) : null}
+        <div className="space-y-1.5">
+          <Label className="text-xs text-muted-foreground">Tour status</Label>
+          <select
+            className="w-full min-h-11 rounded-md border border-border bg-background px-3 text-sm"
+            value={status}
+            onChange={(e) => setStatus(e.target.value as TourAppointment["status"])}
+            data-testid="tour-edit-outcome-status"
+          >
+            {options.map((s) => (
+              <option key={s} value={s}>{STATUS_LABEL[s]}</option>
+            ))}
+          </select>
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs text-muted-foreground">Note (optional)</Label>
+          <Textarea
+            rows={3}
+            value={note}
+            maxLength={OUTCOME_NOTE_MAX}
+            onChange={(e) => setNote(e.target.value.slice(0, OUTCOME_NOTE_MAX))}
+            placeholder="Add or update a note for your team."
+            className="text-sm min-h-20"
+            data-testid="tour-edit-outcome-note"
+          />
+        </div>
+        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-1">
+          <Button type="button" variant="outline" className="min-h-11 sm:min-h-9" disabled={pending} onClick={onClose}>
+            Keep current status
+          </Button>
+          <Button
+            type="button"
+            className="min-h-11 sm:min-h-9"
+            disabled={pending}
+            onClick={() => onSave(status, note)}
+            data-testid="tour-edit-outcome-save"
+          >
+            {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save changes"}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function recordedLabel(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+function AppointmentRow({
+  appt, leadId, now, venueTimezone, onReschedule, onScheduleAnother, onChanged,
+}: {
+  appt: TourAppointment;
+  leadId: string;
+  now: string;
+  venueTimezone: string | null;
+  onReschedule: (id: string) => void;
+  onScheduleAnother: () => void;
+  onChanged: () => void;
+}) {
   const [cancelOpen, setCancelOpen] = React.useState(false);
   const [completeOpen, setCompleteOpen] = React.useState(false);
+  const [noShowOpen, setNoShowOpen] = React.useState(false);
+  const [editOpen, setEditOpen] = React.useState(false);
   const [pending, setPending] = React.useState(false);
   const [requestPreview, setRequestPreview] = React.useState<TourCustomerSendPreview | null>(null);
-  const scheduledParts = appt.scheduledAt
-    ? utcToVenueLocalParts(appt.scheduledAt, venueTimezone)
-    : { date: "", time: "" };
-  const [actualDate, setActualDate] = React.useState(scheduledParts.date);
-  const [actualTime, setActualTime] = React.useState(scheduledParts.time);
   const statusLabel = STATUS_LABEL[appt.status];
   const clockIso = tourDisplayClockIso(appt);
   const d = clockIso ? new Date(clockIso) : new Date(0);
@@ -375,60 +540,82 @@ function AppointmentRow({ appt, leadId, now, venueTimezone, onReschedule, onChan
     ? formatVenueLocalTourDisplay(appt.scheduledAt, venueTimezone)
     : null;
   const isActive = appt.status === "scheduled" || appt.status === "confirmed";
+  const isTerminal = appt.status === "completed" || appt.status === "no_show" || appt.status === "cancelled";
   const isPast = d.getTime() < new Date(now).getTime();
   const showOverdue = appt.status === "scheduled" && isPast;
   const showScheduledAside =
     appt.status === "completed" && tourActualDiffersFromScheduled(appt) && Boolean(appt.scheduledAt);
   const whenKind =
     appt.status === "completed" && appt.actualOccurredAt ? "Actually occurred" : "Scheduled";
+  const tourSummary = scheduledDisplay
+    ? `${scheduledDisplay.dateLabel} · ${scheduledDisplay.timeLabel}`
+    : null;
+  const outcomeNote = (appt.notes ?? appt.cancellationReason ?? "").trim();
+  const recordedAt = recordedLabel(
+    appt.status === "completed"
+      ? (appt.completedAt ?? appt.updatedAt ?? appt.createdAt)
+      : (appt.updatedAt ?? appt.createdAt),
+  );
 
   async function setStatus(
-    status: "confirmed" | "completed" | "no_show" | "cancelled",
+    status: "scheduled" | "confirmed" | "completed" | "no_show" | "cancelled",
     reason?: string,
-    options?: { actualDate?: string; actualTime?: string },
+    options?: {
+      actualDate?: string;
+      actualTime?: string;
+      notes?: string | null;
+      staffCorrection?: boolean;
+    },
   ) {
     setPending(true);
+    const previousStatus = appt.status;
     const result = await updateTourStatusAction(appt.id, leadId, status, reason, options);
     setPending(false);
-    if (result.ok) {
-      toast.success(status === "confirmed" ? "Tour marked confirmed." : "Tour updated.");
-      setCompleteOpen(false);
-      onChanged();
-    } else toast.error(result.error);
-  }
-
-  function openComplete() {
-    const prefill = prefillActualFromScheduled({
-      scheduledAt: appt.scheduledAt,
-      timezone: venueTimezone,
-      utcToParts: utcToVenueLocalParts,
-    });
-    if (prefill.fromScheduled) {
-      setActualDate(prefill.date);
-      setActualTime(prefill.time);
-    } else if (appt.actualOccurredAt && !prefill.scheduledStillAhead) {
-      const parts = utcToVenueLocalParts(appt.actualOccurredAt, venueTimezone);
-      setActualDate(parts.date);
-      setActualTime(parts.time);
-    } else {
-      setActualDate("");
-      setActualTime("");
-    }
-    setCompleteOpen(true);
-  }
-
-  async function confirmComplete() {
-    const hasDate = Boolean(actualDate.trim());
-    const hasTime = Boolean(actualTime.trim());
-    if (hasDate !== hasTime) {
-      toast.error("Enter when the tour actually occurred.");
+    if (!result.ok) {
+      toast.error(result.error);
       return;
     }
-    await setStatus(
-      "completed",
-      undefined,
-      hasDate ? { actualDate, actualTime } : undefined,
-    );
+    setCompleteOpen(false);
+    setNoShowOpen(false);
+    setCancelOpen(false);
+    setEditOpen(false);
+    onChanged();
+
+    if (options?.staffCorrection) {
+      toast.success("Tour updated.");
+      return;
+    }
+    if (status === "confirmed") {
+      toast.success("Tour marked confirmed.");
+      return;
+    }
+    if (status === "no_show") {
+      toast.success("Tour marked as a no-show.", {
+        action: {
+          label: "Undo",
+          onClick: () => {
+            void updateTourStatusAction(appt.id, leadId, previousStatus === "confirmed" ? "confirmed" : "scheduled", undefined, {
+              staffCorrection: true,
+            }).then((undo) => {
+              if (undo.ok) {
+                toast.success("Tour restored.");
+                onChanged();
+              } else toast.error(undo.error ?? "Could not undo.");
+            });
+          },
+        },
+      });
+      return;
+    }
+    if (status === "completed") {
+      toast.success("Tour marked completed.");
+      return;
+    }
+    if (status === "cancelled") {
+      toast.success("Tour cancelled.");
+      return;
+    }
+    toast.success("Tour updated.");
   }
 
   async function reviewConfirmationRequest() {
@@ -474,21 +661,6 @@ function AppointmentRow({ appt, leadId, now, venueTimezone, onReschedule, onChan
               Originally scheduled {scheduledDisplay.dateLabel} · {scheduledDisplay.timeLabel}
             </p>
           ) : null}
-          {appt.status === "completed" && appt.completedAt ? (
-            <p className="htc-lead-tour-appt-aside">
-              Marked completed{" "}
-              {new Date(appt.completedAt).toLocaleString("en-US", {
-                month: "short",
-                day: "numeric",
-                year: "numeric",
-                hour: "numeric",
-                minute: "2-digit",
-              })}
-            </p>
-          ) : null}
-          {appt.status === "cancelled" && appt.cancellationReason ? (
-            <p className="htc-lead-tour-appt-aside">Reason: {appt.cancellationReason}</p>
-          ) : null}
           {appt.status === "scheduled" && appt.confirmationRequestedAt ? (
             <p className="htc-lead-tour-appt-aside">
               Confirmation requested{" "}
@@ -515,6 +687,53 @@ function AppointmentRow({ appt, leadId, now, venueTimezone, onReschedule, onChan
           ) : null}
         </div>
       </div>
+
+      {isTerminal ? (
+        <div className="htc-lead-tour-outcome" data-testid={`tour-appointment-outcome-${appt.id}`}>
+          <p className="htc-lead-tour-outcome-line">
+            <span className="font-medium text-heading">
+              {appt.status === "no_show" ? "No show" : STATUS_LABEL[appt.status]}
+            </span>
+            {recordedAt ? <span className="text-muted-foreground">{` · Recorded ${recordedAt}`}</span> : null}
+          </p>
+          {outcomeNote ? (
+            <p className="htc-lead-tour-outcome-note" data-testid={`tour-appointment-outcome-note-${appt.id}`}>
+              {outcomeNote}
+            </p>
+          ) : null}
+          <div className="htc-lead-tour-outcome-actions">
+            {(appt.status === "no_show" || appt.status === "cancelled") ? (
+              <button
+                type="button"
+                className="htc-lead-tour-outcome-link"
+                onClick={onScheduleAnother}
+                data-testid={`tour-appointment-schedule-another-${appt.id}`}
+              >
+                Schedule another tour
+              </button>
+            ) : null}
+            {appt.status === "completed" ? (
+              <button
+                type="button"
+                className="htc-lead-tour-outcome-link"
+                onClick={() => setEditOpen(true)}
+                data-testid={`tour-appointment-add-note-${appt.id}`}
+              >
+                Add or edit note
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className="htc-lead-tour-outcome-link"
+              onClick={() => setEditOpen(true)}
+              data-testid={`tour-appointment-correct-outcome-${appt.id}`}
+            >
+              Edit outcome
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       {isActive ? (
         <div
           className="htc-lead-tour-appt-actions"
@@ -558,7 +777,7 @@ function AppointmentRow({ appt, leadId, now, venueTimezone, onReschedule, onChan
                 size="sm"
                 className="htc-lead-tour-action-secondary"
                 disabled={pending}
-                onClick={openComplete}
+                onClick={() => setCompleteOpen(true)}
               >
                 Mark Completed
               </Button>
@@ -568,7 +787,7 @@ function AppointmentRow({ appt, leadId, now, venueTimezone, onReschedule, onChan
                   size="sm"
                   className="htc-lead-tour-action-secondary"
                   disabled={pending}
-                  onClick={() => void setStatus("no_show")}
+                  onClick={() => setNoShowOpen(true)}
                 >
                   No Show
                 </Button>
@@ -586,36 +805,58 @@ function AppointmentRow({ appt, leadId, now, venueTimezone, onReschedule, onChan
           </Button>
         </div>
       ) : null}
-      <CancelDialog open={cancelOpen} onOpenChange={setCancelOpen} onConfirm={(reason) => void setStatus("cancelled", reason)} />
-      {completeOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setCompleteOpen(false)}>
-          <div className="w-full max-w-sm rounded-xl border border-border bg-card p-5 space-y-3" onClick={(e) => e.stopPropagation()}>
-            <p className="text-sm font-semibold text-heading">Mark tour completed</p>
-            {scheduledDisplay ? (
-              <p className="text-xs text-muted-foreground">
-                Scheduled {scheduledDisplay.dateLabel} · {scheduledDisplay.timeLabel}. Recording completion does not change that appointment.
-                {appt.scheduledAt && Date.parse(appt.scheduledAt) > Date.now()
-                  ? " That time is still ahead. Enter when it happened, or leave both fields empty if you don't know yet."
-                  : " The fields start from the scheduled time. Change them if it happened at a different time."}
-              </p>
-            ) : null}
-            <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">Actually occurred (date)</Label>
-              <Input type="date" value={actualDate} onChange={(e) => setActualDate(e.target.value)} />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">Actually occurred (time)</Label>
-              <Input type="time" value={actualTime} onChange={(e) => setActualTime(e.target.value)} />
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" size="sm" disabled={pending} onClick={() => setCompleteOpen(false)}>Cancel</Button>
-              <Button size="sm" disabled={pending} onClick={() => void confirmComplete()}>
-                {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Mark completed"}
-              </Button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+
+      <OutcomeConfirmDialog
+        open={noShowOpen}
+        title="Mark this tour as a no-show?"
+        body="We'll record that the tour didn't take place. You can add a note now or update the outcome later."
+        summary={tourSummary}
+        noteLabel="Add a note (optional)"
+        notePlaceholder="For example, couldn't reach the couple, or they called to reschedule."
+        primaryLabel="Mark No Show"
+        secondaryLabel="Keep Scheduled"
+        pending={pending}
+        onClose={() => setNoShowOpen(false)}
+        onConfirm={(note) => void setStatus("no_show", undefined, { notes: note || null })}
+      />
+      <OutcomeConfirmDialog
+        open={completeOpen}
+        title="Mark this tour as completed?"
+        body="We'll record that this tour took place. Add a note if there's anything your team should remember."
+        summary={tourSummary}
+        noteLabel="Add a note (optional)"
+        notePlaceholder="For example, loved the garden ceremony space; follow up with pricing."
+        primaryLabel="Mark Completed"
+        secondaryLabel="Keep Scheduled"
+        pending={pending}
+        onClose={() => setCompleteOpen(false)}
+        onConfirm={(note) => void setStatus("completed", undefined, { notes: note || null })}
+      />
+      <OutcomeConfirmDialog
+        open={cancelOpen}
+        title="Cancel this tour?"
+        body="This will cancel the scheduled tour. You can keep a note about why it was cancelled."
+        summary={tourSummary}
+        noteLabel="Reason or note (optional)"
+        notePlaceholder="For example, requested a different date."
+        primaryLabel="Cancel Tour"
+        secondaryLabel="Keep Tour"
+        primaryVariant="destructive"
+        pending={pending}
+        onClose={() => setCancelOpen(false)}
+        onConfirm={(note) => void setStatus("cancelled", note || undefined, { notes: note || null })}
+      />
+      <EditOutcomeDialog
+        open={editOpen}
+        appt={appt}
+        venueTimezone={venueTimezone}
+        pending={pending}
+        onClose={() => setEditOpen(false)}
+        onSave={(status, note) => void setStatus(status, note || undefined, {
+          notes: note || null,
+          staffCorrection: true,
+        })}
+      />
       {requestPreview && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setRequestPreview(null)}>
           <div className="w-full max-w-lg max-h-[85vh] overflow-y-auto rounded-xl border border-border bg-card p-5 space-y-3" onClick={(e) => e.stopPropagation()}>
@@ -774,7 +1015,7 @@ export function TourScheduleActions({
 }
 
 export function TourAppointmentList() {
-  const { sorted, leadId, now, venueTimezone, openReschedule } = useTourSchedule();
+  const { sorted, leadId, now, venueTimezone, openReschedule, openSchedule } = useTourSchedule();
   const router = useRouter();
   if (sorted.length === 0) {
     return (
@@ -801,6 +1042,7 @@ export function TourAppointmentList() {
           now={now}
           venueTimezone={venueTimezone}
           onReschedule={openReschedule}
+          onScheduleAnother={openSchedule}
           onChanged={router.refresh}
         />
       ))}
