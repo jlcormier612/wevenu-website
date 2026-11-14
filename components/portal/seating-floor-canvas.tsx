@@ -150,6 +150,7 @@ export function SeatingFloorCanvas({
                 return (
                   <text
                     key={obj.id}
+                    data-object-id={obj.id}
                     x={obj.x}
                     y={obj.y}
                     textAnchor="middle"
@@ -186,6 +187,7 @@ export function SeatingFloorCanvas({
               return (
                 <g
                   key={obj.id}
+                  data-object-id={obj.id}
                   transform={`rotate(${obj.rotation}, ${obj.x}, ${obj.y})`}
                   className={interactive ? "cursor-pointer" : undefined}
                   onClick={(e) => {

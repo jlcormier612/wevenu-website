@@ -1028,6 +1028,46 @@ export default function SeatingSection({ token }: { token: string }) {
   const allGuests = useMemo(() => (data ? buildAllGuests(data) : []), [data]);
   const unassignedPool = useMemo(() => allGuests.filter((g) => g.tableId === null), [allGuests]);
 
+  // Must run before any early returns — switching dashboard → workspace (or
+  // loading → ready) would otherwise change hook order and crash the chart.
+  const guestsByTableId = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const t of data?.tables ?? []) map.set(t.id, t.guests.length);
+    return map;
+  }, [data?.tables]);
+
+  const canvasObjects: SeatingCanvasObject[] = useMemo(() => {
+    if (layoutObjects.length > 0) {
+      return layoutObjects.map((o) => ({
+        id: o.id,
+        objectType: o.objectType,
+        label: o.label,
+        capacity: o.capacity,
+        x: o.x,
+        y: o.y,
+        width: o.width,
+        height: o.height,
+        rotation: o.rotation,
+        displayShape: o.displayShape,
+        guestCount: guestsByTableId.get(o.id) ?? 0,
+      }));
+    }
+    // Fallback when floor-plan detail is unavailable — seating tables only.
+    return (data?.tables ?? []).map((t) => ({
+      id: t.id,
+      objectType: t.displayShape === "oval" ? "table_oval" : t.width === t.height ? "table_round" : "table_rect",
+      label: t.label,
+      capacity: t.capacity,
+      x: t.x,
+      y: t.y,
+      width: t.width,
+      height: t.height,
+      rotation: t.rotation,
+      displayShape: t.displayShape,
+      guestCount: t.guests.length,
+    }));
+  }, [layoutObjects, data?.tables, guestsByTableId]);
+
   const stats = data?.stats;
   const pctAssigned = stats && stats.totalAttending > 0 ? Math.round((stats.totalAssigned / stats.totalAttending) * 100) : 0;
 
@@ -1191,44 +1231,6 @@ export default function SeatingSection({ token }: { token: string }) {
       </div>
     );
   }
-
-  const guestsByTableId = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const t of data.tables) map.set(t.id, t.guests.length);
-    return map;
-  }, [data.tables]);
-
-  const canvasObjects: SeatingCanvasObject[] = useMemo(() => {
-    if (layoutObjects.length > 0) {
-      return layoutObjects.map((o) => ({
-        id: o.id,
-        objectType: o.objectType,
-        label: o.label,
-        capacity: o.capacity,
-        x: o.x,
-        y: o.y,
-        width: o.width,
-        height: o.height,
-        rotation: o.rotation,
-        displayShape: o.displayShape,
-        guestCount: guestsByTableId.get(o.id) ?? 0,
-      }));
-    }
-    // Fallback when floor-plan detail is unavailable — seating tables only.
-    return data.tables.map((t) => ({
-      id: t.id,
-      objectType: t.displayShape === "oval" ? "table_oval" : t.width === t.height ? "table_round" : "table_rect",
-      label: t.label,
-      capacity: t.capacity,
-      x: t.x,
-      y: t.y,
-      width: t.width,
-      height: t.height,
-      rotation: t.rotation,
-      displayShape: t.displayShape,
-      guestCount: t.guests.length,
-    }));
-  }, [layoutObjects, data.tables, guestsByTableId]);
 
   const everyoneSeated = Boolean(stats && stats.totalAttending > 0 && stats.totalAssigned >= stats.totalAttending);
 
