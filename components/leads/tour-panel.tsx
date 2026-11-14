@@ -29,9 +29,10 @@ import { CALENDAR_MAX_YEAR } from "@/lib/calendar/types";
 import { clampMonthYear } from "@/lib/calendar/month-year-range";
 import type { TourAppointment, TourCustomerSendPreview, TourSlot } from "@/lib/tours/types";
 import { tourDisplayClockIso } from "@/lib/tours/list-order";
-import { tourActualDiffersFromScheduled } from "@/lib/tours/occurrence-clock";
+import { prefillActualFromScheduled, tourActualDiffersFromScheduled } from "@/lib/tours/occurrence-clock";
 import { isTourSlotConflictError } from "@/lib/tours/slot-conflict";
 import { formatVenueLocalTourDisplay, utcToVenueLocalParts } from "@/lib/venue/timezone";
+import { Input } from "@/components/ui/input";
 
 const DAYS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 
@@ -341,6 +342,13 @@ function SlotPickerSheet({
 
 const OUTCOME_NOTE_MAX = 500;
 
+type ActualOccurrenceFields = {
+  date: string;
+  time: string;
+  onDateChange: (value: string) => void;
+  onTimeChange: (value: string) => void;
+};
+
 type OutcomeDialogProps = {
   open: boolean;
   title: string;
@@ -353,6 +361,8 @@ type OutcomeDialogProps = {
   primaryVariant?: "default" | "destructive";
   pending?: boolean;
   initialNote?: string;
+  /** Completed dialog only — optional venue-local actual occurrence. */
+  actualOccurrence?: ActualOccurrenceFields | null;
   onClose: () => void;
   onConfirm: (note: string) => void;
 };
@@ -360,7 +370,7 @@ type OutcomeDialogProps = {
 function OutcomeConfirmDialog({
   open, title, body, summary, noteLabel, notePlaceholder,
   primaryLabel, secondaryLabel, primaryVariant = "default",
-  pending, initialNote = "", onClose, onConfirm,
+  pending, initialNote = "", actualOccurrence = null, onClose, onConfirm,
 }: OutcomeDialogProps) {
   const [note, setNote] = React.useState(initialNote);
   React.useEffect(() => {
@@ -401,6 +411,33 @@ function OutcomeConfirmDialog({
           />
           <p className="text-[11px] text-muted-foreground text-right">{note.length}/{OUTCOME_NOTE_MAX}</p>
         </div>
+        {actualOccurrence ? (
+          <div className="space-y-2" data-testid="tour-outcome-actual-occurrence">
+            <p className="text-xs font-medium text-heading">Actually occurred (optional)</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <Label htmlFor="tour-actual-date" className="text-xs text-muted-foreground">Date</Label>
+                <Input
+                  id="tour-actual-date"
+                  type="date"
+                  value={actualOccurrence.date}
+                  onChange={(e) => actualOccurrence.onDateChange(e.target.value)}
+                  data-testid="tour-outcome-actual-date"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="tour-actual-time" className="text-xs text-muted-foreground">Time</Label>
+                <Input
+                  id="tour-actual-time"
+                  type="time"
+                  value={actualOccurrence.time}
+                  onChange={(e) => actualOccurrence.onTimeChange(e.target.value)}
+                  data-testid="tour-outcome-actual-time"
+                />
+              </div>
+            </div>
+          </div>
+        ) : null}
         <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-1">
           <Button
             type="button"
@@ -532,6 +569,11 @@ function AppointmentRow({
   const [editOpen, setEditOpen] = React.useState(false);
   const [pending, setPending] = React.useState(false);
   const [requestPreview, setRequestPreview] = React.useState<TourCustomerSendPreview | null>(null);
+  const scheduledParts = appt.scheduledAt
+    ? utcToVenueLocalParts(appt.scheduledAt, venueTimezone)
+    : { date: "", time: "" };
+  const [actualDate, setActualDate] = React.useState(scheduledParts.date);
+  const [actualTime, setActualTime] = React.useState(scheduledParts.time);
   const statusLabel = STATUS_LABEL[appt.status];
   const clockIso = tourDisplayClockIso(appt);
   const d = clockIso ? new Date(clockIso) : new Date(0);
@@ -556,6 +598,39 @@ function AppointmentRow({
       ? (appt.completedAt ?? appt.updatedAt ?? appt.createdAt)
       : (appt.updatedAt ?? appt.createdAt),
   );
+
+  function openComplete() {
+    const prefill = prefillActualFromScheduled({
+      scheduledAt: appt.scheduledAt,
+      timezone: venueTimezone,
+      utcToParts: utcToVenueLocalParts,
+    });
+    if (prefill.fromScheduled) {
+      setActualDate(prefill.date);
+      setActualTime(prefill.time);
+    } else if (appt.actualOccurredAt && !prefill.scheduledStillAhead) {
+      const parts = utcToVenueLocalParts(appt.actualOccurredAt, venueTimezone);
+      setActualDate(parts.date);
+      setActualTime(parts.time);
+    } else {
+      setActualDate("");
+      setActualTime("");
+    }
+    setCompleteOpen(true);
+  }
+
+  function confirmComplete(note: string) {
+    const hasDate = Boolean(actualDate.trim());
+    const hasTime = Boolean(actualTime.trim());
+    if (hasDate !== hasTime) {
+      toast.error("Enter when the tour actually occurred.");
+      return;
+    }
+    void setStatus("completed", undefined, {
+      notes: note || null,
+      ...(hasDate ? { actualDate, actualTime } : {}),
+    });
+  }
 
   async function setStatus(
     status: "scheduled" | "confirmed" | "completed" | "no_show" | "cancelled",
@@ -777,7 +852,7 @@ function AppointmentRow({
                 size="sm"
                 className="htc-lead-tour-action-secondary"
                 disabled={pending}
-                onClick={() => setCompleteOpen(true)}
+                onClick={openComplete}
               >
                 Mark Completed
               </Button>
@@ -829,8 +904,14 @@ function AppointmentRow({
         primaryLabel="Mark Completed"
         secondaryLabel="Keep Scheduled"
         pending={pending}
+        actualOccurrence={{
+          date: actualDate,
+          time: actualTime,
+          onDateChange: setActualDate,
+          onTimeChange: setActualTime,
+        }}
         onClose={() => setCompleteOpen(false)}
-        onConfirm={(note) => void setStatus("completed", undefined, { notes: note || null })}
+        onConfirm={confirmComplete}
       />
       <OutcomeConfirmDialog
         open={cancelOpen}

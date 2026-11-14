@@ -1396,6 +1396,17 @@ export async function updateTourStatus(
     ? (options.notes?.trim() || null)
     : (reason !== undefined && status !== "cancelled" ? (reason.trim() || null) : undefined);
   if (noteText !== undefined) patch.notes = noteText;
+
+  // Leaving a terminal outcome must clear stale active metadata. scheduled_at
+  // is never rewritten. Historical lead_activities / audit rows stay as-is.
+  if (appt.status === "completed" && status !== "completed") {
+    patch.completed_at = null;
+    patch.actual_occurred_at = null;
+  }
+  if (appt.status === "cancelled" && status !== "cancelled") {
+    patch.cancellation_reason = null;
+  }
+
   if (status === "cancelled") {
     const cancelNote = reason?.trim() || (options?.notes?.trim() || null);
     patch.cancellation_reason = cancelNote;

@@ -2,7 +2,7 @@
 
 **Branch:** `fix/tour-outcome-actions`  
 **Base:** `origin/main` @ `7a6c2dfd` (PR #68 Tour button chrome)  
-**Status:** STOP before merge/deployment — awaiting review. Production untouched.
+**Status:** STOP before merge/deployment — pre-merge corrections applied (Actually occurred + metadata clearing). Production untouched.
 
 ## Existing lifecycle (unchanged architecture)
 
@@ -20,9 +20,11 @@
 Presentation/behavior only on the Lead Tour card. **PR #68 button heights, padding, fonts, gaps, and Refer a Venue were not modified** (hover/focus tokens added without changing dimensions).
 
 1. **No Show / Completed / Cancel** open confirmation dialogs with exact copy, optional 500-char note, and Keep Scheduled / Keep Tour dismissals.
-2. Terminal tours show a compact outcome line + note + **Edit outcome** / **Schedule another tour** (opens existing schedule sheet; does not overwrite history).
-3. **Edit outcome** can set Scheduled / Completed / No Show / Cancelled with note via `staffCorrection: true` — status/note update **without** customer emails or post-tour enrollment.
-4. No-show toast includes real **Undo** (restores prior scheduled/confirmed via staffCorrection).
+2. **Completed** restores optional **Actually occurred** date/time (prefill via `prefillActualFromScheduled`; both required together; never rewrites `scheduled_at`).
+3. Terminal tours show a compact outcome line + note + **Edit outcome** / **Schedule another tour** (opens existing schedule sheet; does not overwrite history).
+4. **Edit outcome** can set Scheduled / Completed / No Show / Cancelled with note via `staffCorrection: true` — status/note update **without** customer emails or post-tour enrollment.
+5. Corrections away from Completed clear `completed_at` + `actual_occurred_at`; away from Cancelled clear `cancellation_reason` (notes may remain).
+6. No-show toast includes real **Undo** (restores prior scheduled/confirmed via staffCorrection).
 
 ## Files
 
@@ -48,7 +50,7 @@ npx tsx --test \
   lib/tours/occupancy.test.ts
 ```
 
-**39/39 pass.**
+Focused suite including Actually occurred + metadata-clear assertions: pass (see latest run).
 
 ## Sandbox screenshots
 

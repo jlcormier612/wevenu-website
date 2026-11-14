@@ -29,6 +29,25 @@ describe("tour outcome confirmations", () => {
     assert.match(panel, /requested a different date/);
   });
 
+  it("restores optional Actually occurred fields on the Completed dialog", () => {
+    assert.match(panel, /Actually occurred \(optional\)/);
+    assert.match(panel, /prefillActualFromScheduled/);
+    assert.match(panel, /confirmComplete/);
+    assert.match(panel, /hasDate !== hasTime/);
+    assert.match(panel, /actualOccurrence=\{\{/);
+    assert.match(panel, /data-testid="tour-outcome-actual-date"/);
+    assert.match(panel, /data-testid="tour-outcome-actual-time"/);
+    // After the optional note, before Keep Scheduled / Mark Completed.
+    const completeDialog = panel.slice(
+      panel.indexOf('title="Mark this tour as completed?"'),
+      panel.indexOf('title="Cancel this tour?"'),
+    );
+    const noteIdx = completeDialog.indexOf('noteLabel="Add a note (optional)"');
+    const actualIdx = completeDialog.indexOf("actualOccurrence={{");
+    const primaryIdx = completeDialog.indexOf('primaryLabel="Mark Completed"');
+    assert.ok(noteIdx > 0 && actualIdx > noteIdx && primaryIdx > 0);
+  });
+
   it("exposes Edit outcome and Schedule another tour for terminal states", () => {
     assert.match(panel, /Update tour outcome/);
     assert.match(panel, /Schedule another tour/);
@@ -50,6 +69,21 @@ describe("updateTourStatus correction path", () => {
     assert.match(service, /if \(becameConfirmed && !staffCorrection\)/);
     assert.match(service, /if \(!staffCorrection && POST_TOUR_STATUSES\.has\(status\)/);
     assert.match(service, /tour_outcome_corrected/);
+  });
+
+  it("clears stale completion and cancellation metadata when correcting away", () => {
+    const fn = service.slice(service.indexOf("export async function updateTourStatus"));
+    const body = fn.slice(0, fn.indexOf("export async function requestTourConfirmation"));
+    assert.match(body, /appt\.status === "completed" && status !== "completed"/);
+    assert.match(body, /patch\.completed_at = null/);
+    assert.match(body, /patch\.actual_occurred_at = null/);
+    assert.match(body, /appt\.status === "cancelled" && status !== "cancelled"/);
+    assert.match(body, /patch\.cancellation_reason = null/);
+    // Never invent actual or rewrite the booked slot.
+    assert.doesNotMatch(body, /patch\.scheduled_at/);
+    const completed = body.slice(body.indexOf('if (status === "completed")'), body.indexOf("const becameConfirmed"));
+    assert.match(completed, /actualDate && actualTime/);
+    assert.match(completed, /patch\.actual_occurred_at = actualOccurredAt/);
   });
 });
 
