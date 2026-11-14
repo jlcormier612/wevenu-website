@@ -11,17 +11,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
 /**
- * Phase 4's print-ready checkpoint — mirrors the Event Order panel's own
- * Finalize/Reopen control exactly (components/event-orders/event-order-panel.tsx).
- * Reversible, and never gates placement editing before, during, or after —
- * this is a coordinator's own checkpoint, not a lock.
- *
- * Business Asset Experience Consolidation (Work Package BA4, Step 1D): the
- * label used to say "Final" / "Mark Final" / "Reopen" — words that promise
- * a lock this control has never actually enforced (BA2/BA3 finding). The
- * behavior is unchanged; only the words now match it — "Ready" is a
- * checkpoint a coordinator can toggle any time, not a state that needs
- * "reopening." Customer language for clearing Ready: "Make Changes".
+ * Mark Ready / Make Changes for the physical arrangement.
+ * Ready locks staff and couple furniture edits. Seating stays independent.
+ * Make Changes reopens physical editing and preserves approved revision history.
  */
 export function FloorPlanFinalizeControl({
   planId, eventId, finalizedAt,
@@ -36,17 +28,28 @@ export function FloorPlanFinalizeControl({
     startTransition(async () => {
       const result = await setFloorPlanFinalizedAction(planId, eventId, !isFinalized);
       if (!result.ok) { toast.error(result.message ?? "Could not update this floor plan."); return; }
-      toast.success(isFinalized ? "Ready cleared — you can keep editing." : "Marked as ready.");
+      toast.success(
+        isFinalized
+          ? "Make Changes — physical editing reopened. Last approved arrangement is preserved."
+          : "Marked Ready — physical editing is locked for staff and couple. Seating stays separate.",
+      );
       router.refresh();
     });
   }
 
   return (
-    <div className="flex items-center gap-2">
-      {isFinalized && <Badge variant="accent">Ready</Badge>}
-      <Button type="button" variant="outline" size="sm" disabled={pending} onClick={handleToggle}>
-        {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : isFinalized ? "Make Changes" : "Mark as Ready"}
-      </Button>
+    <div className="flex flex-col items-start gap-1">
+      <div className="flex items-center gap-2">
+        {isFinalized && <Badge variant="accent">Ready</Badge>}
+        <Button type="button" variant="outline" size="sm" disabled={pending} onClick={handleToggle}>
+          {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : isFinalized ? "Make Changes" : "Mark as Ready"}
+        </Button>
+      </div>
+      <p className="text-[11px] text-muted-foreground max-w-sm">
+        {isFinalized
+          ? "Physical layout is locked. Guest seating stays available when enabled."
+          : "Marks this arrangement ready for event execution and locks furniture edits until you Make Changes."}
+      </p>
     </div>
   );
 }

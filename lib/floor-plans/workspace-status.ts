@@ -4,14 +4,23 @@
 import type { EventFloorPlanOfferWithTemplate } from "@/lib/floor-plan-offers/types";
 import type { FloorPlan } from "@/lib/floor-plans/types";
 
-/** The preference card appears only when the venue has something to decide. */
+/**
+ * Venue action card appears for proposed replacements, seating-in-use conflicts,
+ * or errors — not for ordinary applied selections.
+ */
 export function preferenceReviewIsActionable(input: {
   status: string | null;
   hasPreferred: boolean;
   multipleSeated: boolean;
   hasError: boolean;
+  needsSeatingResolution?: boolean;
 }): boolean {
-  return input.hasError || input.multipleSeated || (input.status === "pending" && input.hasPreferred);
+  return (
+    input.hasError
+    || input.multipleSeated
+    || input.needsSeatingResolution === true
+    || (input.status === "proposed_replacement" && input.hasPreferred)
+  );
 }
 
 export type OfferedLayoutView = { id: string; label: string; isCouplePick: boolean };

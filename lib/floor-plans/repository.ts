@@ -442,19 +442,137 @@ export async function getVendorFloorPlan(
 }
 
 /**
- * Phase 4 — the "Ready" checkpoint reconciliation is anchored to. Reversible
- * (clear it via Make Changes) — mirrors event_orders.finalized_at exactly. Never
- * gates placement editing; it's a coordinator's own print-ready checkpoint,
- * not a lock.
+ * Mark Ready / Make Changes. Ready locks physical object edits (couple + staff).
+ * Make Changes clears Ready; when the plan was approved, reopen to
+ * changes_requested so edits are allowed while the approved revision remains.
  */
 export async function setFloorPlanFinalized(
   client: DbClient, venueId: string, planId: string, finalized: boolean,
 ): Promise<void> {
+  const now = new Date().toISOString();
+  if (finalized) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (client.from("floor_plans") as any)
+      .update({ finalized_at: now, updated_at: now })
+      .eq("id", planId).eq("venue_id", venueId);
+    if (error) throw error;
+    return;
+  }
+
+  const plan = await getFloorPlan(client, venueId, planId);
+  const patch: Record<string, unknown> = {
+    finalized_at: null,
+    updated_at: now,
+  };
+  if (plan && normalizeClientLayoutStatus(plan.clientLayoutStatus) === "approved") {
+    patch.client_layout_status = "changes_requested";
+    patch.client_reviewed_at = now;
+    if (!plan.clientReviewNote) {
+      patch.client_review_note = "Venue reopened physical editing (Make Changes).";
+    }
+  }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (client.from("floor_plans") as any)
-    .update({ finalized_at: finalized ? new Date().toISOString() : null })
+    .update(patch)
     .eq("id", planId).eq("venue_id", venueId);
   if (error) throw error;
+}
+
+/** True when staff/couple must not mutate live furniture objects. */
+export function physicalEditsBlockedReason(plan: Pick<FloorPlan, "finalizedAt" | "clientLayoutStatus">): string | null {
+  if (plan.finalizedAt) {
+    return "Physical layout is Ready. Use Make Changes before editing furniture.";
+  }
+  if (normalizeClientLayoutStatus(plan.clientLayoutStatus) === "approved") {
+    return "This arrangement is approved. Reopen physical editing before changing furniture.";
+  }
+  return null;
+}
+
+export async function assertPhysicalEditsAllowed(
+  client: DbClient, venueId: string, planId: string,
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  const plan = await getFloorPlan(client, venueId, planId);
+  if (!plan) return { ok: false, message: "Floor plan not found." };
+  const reason = physicalEditsBlockedReason(plan);
+  if (reason) return { ok: false, message: reason };
+  return { ok: true };
+}
+
+export async function hasApprovedLayoutRevision(
+  client: DbClient, floorPlanId: string,
+): Promise<boolean> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (client.from("floor_plan_layout_revisions") as any)
+    .select("id")
+    .eq("floor_plan_id", floorPlanId)
+    .eq("status", "approved")
+    .limit(1);
+  if (error) throw error;
+  return Array.isArray(data) && data.length > 0;
+}
+
+/** Snapshot live objects as the new approved revision; supersede prior approved. */
+export async function createApprovedLayoutRevision(
+  client: DbClient,
+  venueId: string,
+  eventId: string,
+  planId: string,
+  note?: string | null,
+): Promise<{ revisionNumber: number }> {
+  const withObjects = await getFloorPlan(client, venueId, planId);
+  if (!withObjects) throw new Error("Floor plan not found.");
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error: superErr } = await (client.from("floor_plan_layout_revisions") as any)
+    .update({ status: "superseded" })
+    .eq("floor_plan_id", planId)
+    .eq("venue_id", venueId)
+    .eq("status", "approved");
+  if (superErr) throw superErr;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: prior, error: priorErr } = await (client.from("floor_plan_layout_revisions") as any)
+    .select("revision_number")
+    .eq("floor_plan_id", planId)
+    .order("revision_number", { ascending: false })
+    .limit(1);
+  if (priorErr) throw priorErr;
+  const nextNum = (Array.isArray(prior) && prior[0]?.revision_number
+    ? Number(prior[0].revision_number)
+    : 0) + 1;
+
+  const objects_snapshot = withObjects.objects.map((o) => ({
+    id: o.id,
+    objectType: o.objectType,
+    label: o.label,
+    capacity: o.capacity,
+    x: o.x,
+    y: o.y,
+    width: o.width,
+    height: o.height,
+    rotation: o.rotation,
+    sortOrder: o.sortOrder,
+    inventoryItemId: o.inventoryItemId,
+    color: o.color,
+    notes: o.notes,
+    locked: o.locked,
+    displayShape: o.displayShape,
+  }));
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error: insErr } = await (client.from("floor_plan_layout_revisions") as any)
+    .insert({
+      venue_id: venueId,
+      event_id: eventId,
+      floor_plan_id: planId,
+      revision_number: nextNum,
+      status: "approved",
+      objects_snapshot,
+      note: note ?? null,
+    });
+  if (insErr) throw insErr;
+  return { revisionNumber: nextNum };
 }
 
 export async function setFloorPlanCoupleMayAddTables(

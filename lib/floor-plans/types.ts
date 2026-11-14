@@ -69,10 +69,8 @@ export type FloorPlan = {
   roomWidthFt: number;
   roomDepthFt: number;
   measurementUnit: MeasurementUnit;
-  // Phase 4 — the print-ready checkpoint reconciliation is anchored to.
-  // Mirrors event_orders.finalized_at's shape exactly. Never gates editing
-  // — placement stays open before, during, and after Ready (customer language;
-  // column remains finalized_at). Not an immutability lock.
+  // Mark Ready / Make Changes. Locks physical object edits for staff and couple
+  // while set; seating remains independent. Column remains finalized_at.
   finalizedAt: string | null;
   /** When false, portal cannot add tables (server-enforced). */
   coupleMayAddTables: boolean;

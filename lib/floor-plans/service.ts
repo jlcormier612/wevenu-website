@@ -344,7 +344,12 @@ export async function getVendorFloorPlan(planId: string): Promise<VendorFloorPla
   return repo.getVendorFloorPlan(await createClient(), planId);
 }
 
-/** Phase 4 — the print-ready checkpoint. Never gates editing; reversible. */
+/**
+ * Mark Ready / Make Changes.
+ * Ready locks physical object edits for staff and couple.
+ * Make Changes reopens editing and, if the plan was approved, moves it to
+ * changes_requested while preserving approved revision history.
+ */
 export async function setFinalized(planId: string, finalized: boolean): Promise<FloorPlanActionResult> {
   const result = await withVenueEditor(async (supabase, venueId) => {
     await repo.setFloorPlanFinalized(supabase, venueId, planId, finalized);
@@ -365,7 +370,7 @@ export async function setCoupleMayAddTables(
   return result as FloorPlanActionResult;
 }
 
-/** Venue: approve a client-submitted working layout (locks further couple placement). */
+/** Venue: approve a client-submitted working layout and snapshot the arrangement. */
 export async function approveClientFloorPlanLayout(planId: string): Promise<FloorPlanActionResult> {
   const result = await withVenueEditor(async (supabase, venueId) => {
     const plan = await repo.getFloorPlan(supabase, venueId, planId);
@@ -376,6 +381,8 @@ export async function approveClientFloorPlanLayout(planId: string): Promise<Floo
         message: "There is no client submission waiting for review on this layout.",
       } as FloorPlanActionResult;
     }
+    // Snapshot first so the approved arrangement is preserved before status flips.
+    await repo.createApprovedLayoutRevision(supabase, venueId, plan.eventId, planId);
     await repo.setFloorPlanClientLayoutReview(supabase, venueId, planId, {
       clientLayoutStatus: "approved",
       clientReviewNote: null,
@@ -406,6 +413,36 @@ export async function requestClientFloorPlanChanges(
     await repo.setFloorPlanClientLayoutReview(supabase, venueId, planId, {
       clientLayoutStatus: "changes_requested",
       clientReviewNote: trimmed.slice(0, 2000),
+    });
+    return { ok: true } as FloorPlanActionResult;
+  });
+  return result as FloorPlanActionResult;
+}
+
+/**
+ * Venue: reopen an approved arrangement for further physical edits.
+ * Preserves approved revision history; couple may edit once status allows.
+ */
+export async function reopenClientFloorPlanLayout(
+  planId: string,
+  note?: string,
+): Promise<FloorPlanActionResult> {
+  const result = await withVenueEditor(async (supabase, venueId) => {
+    const plan = await repo.getFloorPlan(supabase, venueId, planId);
+    if (!plan) return { ok: false, message: "Floor plan not found." } as FloorPlanActionResult;
+    if (plan.clientLayoutStatus !== "approved" && !plan.finalizedAt) {
+      return {
+        ok: false,
+        message: "Only an approved or Ready layout needs to be reopened for physical edits.",
+      } as FloorPlanActionResult;
+    }
+    if (plan.finalizedAt) {
+      await repo.setFloorPlanFinalized(supabase, venueId, planId, false);
+      return { ok: true } as FloorPlanActionResult;
+    }
+    await repo.setFloorPlanClientLayoutReview(supabase, venueId, planId, {
+      clientLayoutStatus: "changes_requested",
+      clientReviewNote: (note?.trim() || "Venue reopened physical editing.").slice(0, 2000),
     });
     return { ok: true } as FloorPlanActionResult;
   });
@@ -467,6 +504,8 @@ export async function addObject(
   planId: string, input: AddObjectInput,
 ): Promise<{ ok: true; object: import("@/lib/floor-plans/types").FloorPlanObject } | FloorPlanActionResult> {
   const result = await withVenueEditor(async (supabase, venueId) => {
+    const gate = await repo.assertPhysicalEditsAllowed(supabase, venueId, planId);
+    if (!gate.ok) return gate;
     const object = await repo.insertObject(supabase, venueId, planId, input);
     return { ok: true, object };
   });
@@ -477,6 +516,15 @@ export async function updateObject_(
   objId: string, input: UpdateObjectInput,
 ): Promise<FloorPlanActionResult> {
   const result = await withVenueEditor(async (supabase, venueId) => {
+    const { data: obj } = await supabase
+      .from("floor_plan_objects")
+      .select("floor_plan_id")
+      .eq("id", objId)
+      .eq("venue_id", venueId)
+      .maybeSingle<{ floor_plan_id: string }>();
+    if (!obj) return { ok: false, message: "Object not found." } as FloorPlanActionResult;
+    const gate = await repo.assertPhysicalEditsAllowed(supabase, venueId, obj.floor_plan_id);
+    if (!gate.ok) return gate;
     await repo.updateObject(supabase, venueId, objId, input);
     return { ok: true } as FloorPlanActionResult;
   });
@@ -485,6 +533,15 @@ export async function updateObject_(
 
 export async function deleteObject_(objId: string): Promise<FloorPlanActionResult> {
   const result = await withVenueEditor(async (supabase, venueId) => {
+    const { data: obj } = await supabase
+      .from("floor_plan_objects")
+      .select("floor_plan_id")
+      .eq("id", objId)
+      .eq("venue_id", venueId)
+      .maybeSingle<{ floor_plan_id: string }>();
+    if (!obj) return { ok: false, message: "Object not found." } as FloorPlanActionResult;
+    const gate = await repo.assertPhysicalEditsAllowed(supabase, venueId, obj.floor_plan_id);
+    if (!gate.ok) return gate;
     const outcome = await repo.deleteObject(supabase, venueId, objId);
     if (!outcome.ok) return { ok: false, message: outcome.message } as FloorPlanActionResult;
     return { ok: true } as FloorPlanActionResult;
@@ -494,6 +551,8 @@ export async function deleteObject_(objId: string): Promise<FloorPlanActionResul
 
 export async function clearFloorPlan(planId: string): Promise<FloorPlanActionResult> {
   const result = await withVenueEditor(async (supabase, venueId) => {
+    const gate = await repo.assertPhysicalEditsAllowed(supabase, venueId, planId);
+    if (!gate.ok) return gate;
     const outcome = await repo.clearAllObjects(supabase, venueId, planId);
     if (!outcome.ok) return { ok: false, message: outcome.message } as FloorPlanActionResult;
     return { ok: true } as FloorPlanActionResult;

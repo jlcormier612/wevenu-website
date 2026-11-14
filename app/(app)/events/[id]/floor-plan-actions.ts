@@ -371,9 +371,30 @@ export async function requestClientFloorPlanChangesAction(
 }
 
 /**
- * Phase 2 — venue preference review (approve / decline / defer).
- * Approval does not change sharing. Seating assignments are never rewritten.
+ * Venue accepts or declines a post-approval proposed layout replacement.
+ * Ordinary couple selection does not require venue approval.
+ * Seating assignments are never rewritten.
  */
+export async function decideProposedLayoutReplacementAction(
+  eventId: string,
+  input:
+    | { decision: "decline" }
+    | {
+        decision: "accept";
+        seatingChoice?: "start_on_proposed";
+        seatingInUseFloorPlanId?: string;
+      },
+): Promise<FloorPlanActionResult> {
+  const { decideProposedLayoutReplacement } = await import("@/lib/floor-plans/preference-service");
+  const result = await decideProposedLayoutReplacement(eventId, input);
+  if (result.ok) {
+    revalidateEvent(eventId);
+    revalidateWorkspace(eventId);
+  }
+  return result;
+}
+
+/** @deprecated Use decideProposedLayoutReplacementAction. */
 export async function decideCoupleFloorPlanPreferenceAction(
   eventId: string,
   input:
@@ -387,6 +408,15 @@ export async function decideCoupleFloorPlanPreferenceAction(
     revalidateEvent(eventId);
     revalidateWorkspace(eventId);
   }
+  return result;
+}
+
+export async function reopenClientFloorPlanLayoutAction(
+  planId: string, eventId: string, note?: string,
+): Promise<FloorPlanActionResult> {
+  const { reopenClientFloorPlanLayout } = await import("@/lib/floor-plans/service");
+  const result = await reopenClientFloorPlanLayout(planId, note);
+  if (result.ok) revalidateEvent(eventId);
   return result;
 }
 

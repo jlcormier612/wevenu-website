@@ -30,7 +30,7 @@ describe("FP-RA-1 Additional-layout + Share collaboration path", () => {
     assert.match(portal, /requiresPreferenceSelection = needsChooser/);
     assert.match(portal, /requiresPreferenceSelection,/);
     assert.match(portal, /floor-plan-submit-needs-preference/);
-    assert.match(portal, /Save a preferred layout in the chooser above/);
+    assert.match(portal, /Choose a starting layout above before you can submit/);
   });
 
   it("venue empty state puts Add a layout first and keeps Offer as a secondary path", () => {

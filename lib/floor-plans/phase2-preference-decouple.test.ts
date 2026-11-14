@@ -29,8 +29,13 @@ const selectRoute = readFileSync(resolve("app/api/portal/floor-plan-offers/selec
 const preferenceService = readFileSync(resolve("lib/floor-plans/preference-service.ts"), "utf8");
 const actions = readFileSync(resolve("app/(app)/events/[id]/floor-plan-actions.ts"), "utf8");
 
-describe("Phase 2 — select RPC preference only", () => {
-  it("migration select sets couple_selected + pending and does not set operational/share/seating", () => {
+const workflowMigration = readFileSync(
+  resolve("supabase/migrations/20270121120000_floor_plans_complete_workflow.sql"),
+  "utf8",
+);
+
+describe("Phase 2 — select RPC preference only (historical 246)", () => {
+  it("246 migration select sets couple_selected + pending and does not set operational/share/seating", () => {
     assert.match(migration, /create or replace function public\.select_portal_floor_plan_offer/);
     assert.match(migration, /couple_preference_status = 'pending'/);
     assert.match(migration, /couple_selected_floor_plan_id = v_plan_id/);
@@ -44,7 +49,15 @@ describe("Phase 2 — select RPC preference only", () => {
       .split("create or replace function public.ensure_portal_floor_plan_assignment")[0]!;
     assert.doesNotMatch(selectBody, /shared_with_couple\s*=\s*true/);
     assert.doesNotMatch(selectBody, /client_access\s*=\s*'view'/);
-    assert.match(selectRoute, /preference only|Does not change operational/i);
+  });
+
+  it("complete-workflow migration select establishes working + share; proposed_replacement after approval", () => {
+    assert.match(workflowMigration, /couple_preference_status = 'applied'/);
+    assert.match(workflowMigration, /proposed_replacement/);
+    assert.match(workflowMigration, /operational_floor_plan_id = v_plan_id/);
+    assert.match(workflowMigration, /shared_with_couple = true/);
+    assert.match(workflowMigration, /floor_plan_layout_revisions/);
+    assert.match(selectRoute, /Establishes working layout|proposed_replacement/i);
   });
 
   it("ensure_portal no longer auto-selects sole offer or heals seating", () => {
@@ -210,15 +223,12 @@ describe("Phase 2 — approval × sharing copy matrix", () => {
     assert.match(approvedShared.detail, /working layout and shared/i);
   });
 
-  it("does not claim venue will use layout unless approved path copy", () => {
-    assert.doesNotMatch(portalSection, /Your venue will use this/);
-    assert.match(portalSection, /does not approve the layout or change what the venue/);
-    assert.match(portalSection, /floor-plan-preference-pending-banner/);
-    assert.match(portalSection, /couplePreferenceStatusCopy|preferenceCopy\.headline/);
-    assert.match(
-      readFileSync(resolve("lib/floor-plans/preference-lifecycle.ts"), "utf8"),
-      /does not mean your venue approved/i,
-    );
+  it("portal selection establishes working without preference-approval ceremony", () => {
+    assert.match(portalSection, /Use this layout|Choose your starting layout/);
+    assert.match(portalSection, /do not need an extra approval step/i);
+    assert.doesNotMatch(portalSection, /Save as preference/);
+    assert.doesNotMatch(portalSection, /floor-plan-preference-pending-banner/);
+    assert.match(portalSection, /portalFloorPlanGuidance/);
   });
 
   it("venue export allowlist includes preference lifecycle fields next to existing pointers", () => {
@@ -232,23 +242,23 @@ describe("Phase 2 — approval × sharing copy matrix", () => {
 });
 
 describe("Phase 2 — venue UX + authorization surface", () => {
-  it("workspace exposes preference review and B1/B3/C actions", () => {
+  it("workspace exposes proposed-replacement review and Case B/C seating actions (no ordinary Approve/Defer)", () => {
     assert.match(workspace, /floor-plan-preference-review/);
-    assert.match(workspace, /Approve preference|Approve and start seating/);
+    assert.match(workspace, /Accept layout replacement|Accept and start seating|Accept with this seating/);
     assert.match(workspace, /floor-plan-decline-preference/);
-    assert.match(workspace, /floor-plan-defer-preference/);
+    assert.doesNotMatch(workspace, /floor-plan-defer-preference/);
+    assert.doesNotMatch(workspace, /Approve preference(?! with)/);
     assert.match(workspace, /floor-plan-case-b/);
     assert.match(workspace, /floor-plan-case-c/);
     assert.match(workspace, /floor-plan-seating-in-use/);
-    assert.match(workspace, /Cancel/);
     assert.match(workspace, /prior state was not partially rewritten/i);
   });
 
-  it("service never updates guest_seat_assignments on preference decide", () => {
+  it("service never updates guest_seat_assignments on replacement decide", () => {
     assert.doesNotMatch(preferenceService, /\.from\(\s*["']guest_seat_assignments["']/);
     assert.doesNotMatch(preferenceService, /\.update\([\s\S]{0,80}guest_seat/);
     assert.match(preferenceService, /Never rewrites guest_seat_assignments/);
-    assert.match(actions, /decideCoupleFloorPlanPreferenceAction/);
+    assert.match(actions, /decideProposedLayoutReplacementAction/);
     assert.match(actions, /setSeatingInUseFloorPlanAction/);
     assert.match(preferenceService, /FLOOR_PLAN_EDIT_DENIED|canEditFloorPlans/);
   });
@@ -262,7 +272,7 @@ describe("Phase 2 — venue UX + authorization surface", () => {
     assert.match(repoSrc, /createAdminClient/);
     assert.match(repoSrc, /staff JWT cannot read guest_seat_assignments/);
     assert.match(preferenceService, /countGuestSeatAssignments\(\s*supabase,\s*operationalId,\s*venueId/);
-    assert.match(preferenceService, /countGuestSeatAssignments\(\s*supabase,\s*preferredId,\s*venueId/);
+    assert.match(preferenceService, /countGuestSeatAssignments\(\s*supabase,\s*proposedId,\s*venueId/);
   });
 
   it("schema adds preference lifecycle + seating-in-use distinct from client_layout_status", () => {

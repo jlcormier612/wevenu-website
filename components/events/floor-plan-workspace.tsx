@@ -25,7 +25,8 @@ import {
   renameFloorPlanAction,
   requestClientFloorPlanChangesAction,
   setClientAccessAction,
-  decideCoupleFloorPlanPreferenceAction,
+  decideProposedLayoutReplacementAction,
+  reopenClientFloorPlanLayoutAction,
   setCoupleShareAction,
   setFloorPlanCoupleMayAddTablesAction,
   setOperationalFloorPlanAction,
@@ -39,8 +40,6 @@ import {
 } from "@/lib/floor-plans/client-layout-review";
 import {
   classifyPreferenceApprovalCase,
-  normalizeCouplePreferenceStatus,
-  venuePreferenceStatusCopy,
 } from "@/lib/floor-plans/preference-lifecycle";
 import {
   applyClientFloorPlanTemplateAction,
@@ -455,8 +454,8 @@ function ClientSubmissionReviewPanel({
           ? new Date(plan.clientSubmittedAt).toLocaleString()
           : "recently"}
         . Open the layout to inspect table and furniture placement, then approve or request changes.
-        This is not the same as approving their layout preference. Approving placement keeps this
-        working layout — it does not create a second copy.
+        Approving preserves this specific arrangement as a revision — later edits cannot silently
+        overwrite it.
       </p>
       <div className="flex flex-wrap gap-2">
         <Button
@@ -471,7 +470,7 @@ function ClientSubmissionReviewPanel({
                 toast.error(result.message ?? "Could not approve.");
                 return;
               }
-              toast.success("Furniture placement approved.");
+              toast.success("Furniture placement approved and saved as a revision.");
               router.refresh();
             });
           }}
@@ -521,13 +520,13 @@ function ClientSubmissionReviewPanel({
   );
 }
 
-function PreferenceReviewPanel({
+/** Post-approval proposed replacement + seating-in-use conflicts (not ordinary selection). */
+function LayoutSelectionFollowUpPanel({
   eventId,
   floorPlans,
   operationalFloorPlanId,
   coupleSelectedFloorPlanId,
   couplePreferenceStatus,
-  coupleApprovedFloorPlanId,
   seatingInUseFloorPlanId,
   seatCounts,
   canEdit,
@@ -545,67 +544,63 @@ function PreferenceReviewPanel({
   const router = useRouter();
   const [pending, startTransition] = React.useTransition();
   const [caseCChoice, setCaseCChoice] = React.useState<string>("");
-  const [confirmB3, setConfirmB3] = React.useState(false);
+  const [confirmB, setConfirmB] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
-  const status = normalizeCouplePreferenceStatus(
-    couplePreferenceStatus,
-    coupleSelectedFloorPlanId,
-  );
-  const preferred = floorPlans.find((p) => p.id === coupleSelectedFloorPlanId) ?? null;
-  const approved = floorPlans.find((p) => p.id === coupleApprovedFloorPlanId) ?? null;
+  const status = couplePreferenceStatus;
+  const proposed = floorPlans.find((p) => p.id === coupleSelectedFloorPlanId) ?? null;
   const working = floorPlans.find((p) => p.id === operationalFloorPlanId) ?? null;
-  const preferredShared = Boolean(preferred?.sharedWithCouple);
-  const copy = venuePreferenceStatusCopy({
-    status,
-    preferredName: preferred?.name ?? null,
-    approvedName: approved?.name ?? null,
-    shared: preferredShared,
-    isWorking: Boolean(operationalFloorPlanId),
-  });
-
   const currentSeats = operationalFloorPlanId ? (seatCounts[operationalFloorPlanId] ?? 0) : 0;
-  const preferredSeats = coupleSelectedFloorPlanId ? (seatCounts[coupleSelectedFloorPlanId] ?? 0) : 0;
-  const approvalCase =
-    status === "pending" && coupleSelectedFloorPlanId
+  const proposedSeats = coupleSelectedFloorPlanId ? (seatCounts[coupleSelectedFloorPlanId] ?? 0) : 0;
+  const isProposed = status === "proposed_replacement" && Boolean(proposed);
+  const seatingCase =
+    isProposed && coupleSelectedFloorPlanId
       ? classifyPreferenceApprovalCase({
           currentOperationalId: operationalFloorPlanId,
           preferredId: coupleSelectedFloorPlanId,
           currentHasSeats: currentSeats > 0,
-          preferredHasSeats: preferredSeats > 0,
+          preferredHasSeats: proposedSeats > 0,
         })
       : null;
+  const multipleSeated = floorPlans.filter((p) => (seatCounts[p.id] ?? 0) > 0).length > 1 && canEdit;
+  const needsSeatingResolution = seatingCase === "C";
+
+  if (!preferenceReviewIsActionable({
+    status,
+    hasPreferred: Boolean(proposed),
+    multipleSeated,
+    hasError: Boolean(error),
+    needsSeatingResolution,
+  })) {
+    return null;
+  }
 
   function runDecision(
     input:
       | { decision: "decline" }
-      | { decision: "defer" }
-      | { decision: "approve"; seatingChoice?: "start_on_preferred"; seatingInUseFloorPlanId?: string },
+      | {
+          decision: "accept";
+          seatingChoice?: "start_on_proposed";
+          seatingInUseFloorPlanId?: string;
+        },
   ) {
     if (!canEdit || !eventId) return;
     setError(null);
     startTransition(async () => {
-      const result = await decideCoupleFloorPlanPreferenceAction(eventId, input);
+      const result = await decideProposedLayoutReplacementAction(eventId, input);
       if (!result.ok) {
         setError(result.message ?? "Could not save that decision.");
         toast.error(result.message ?? "Could not save that decision.");
         return;
       }
-      setConfirmB3(false);
+      setConfirmB(false);
       toast.success(
-        input.decision === "approve"
-          ? "Preference approved. Sharing stays a separate control."
-          : input.decision === "decline"
-            ? "Preference declined. Prior approved preference preserved."
-            : "Preference deferred. Prior approved preference preserved.",
+        input.decision === "accept"
+          ? "Layout replacement accepted. Sharing and seating stay separate controls."
+          : "Proposed layout change declined. Current working arrangement kept.",
       );
       router.refresh();
     });
-  }
-
-  const multipleSeated = floorPlans.filter((p) => (seatCounts[p.id] ?? 0) > 0).length > 1 && canEdit;
-  if (!preferenceReviewIsActionable({ status, hasPreferred: Boolean(preferred), multipleSeated, hasError: Boolean(error) })) {
-    return null;
   }
 
   return (
@@ -613,147 +608,132 @@ function PreferenceReviewPanel({
       className="rounded-md border border-primary/30 bg-card px-3 py-3 text-xs text-foreground space-y-2"
       data-testid="floor-plan-preference-review"
     >
-      <p className="text-sm font-medium text-heading" data-testid="floor-plan-preference-headline">
-        {copy.headline}
-      </p>
-      <p className="text-muted-foreground" data-testid="floor-plan-preference-detail">
-        {copy.detail}
-      </p>
-      <p className="text-muted-foreground" data-testid="floor-plan-preference-next">
-        {copy.nextStep}
-      </p>
-      {working && (
-        <p className="text-muted-foreground" data-testid="floor-plan-preference-working">
-          Current working layout: <span className="font-medium text-foreground">{working.name}</span>
-          {currentSeats > 0 ? ` · ${currentSeats} seated guest${currentSeats === 1 ? "" : "s"}` : " · no seating yet"}
-        </p>
-      )}
-      {!working && (
-        <p className="text-muted-foreground" data-testid="floor-plan-preference-no-working">
-          No working layout is designated. Use <span className="font-medium text-foreground">Set as working layout</span> on a plan — preference alone does not set it.
-        </p>
-      )}
-
-      {status === "pending" && preferred && canEdit && (
-        <div className="space-y-2 pt-1" data-testid="floor-plan-preference-actions">
-          {approvalCase === "B" && (
-            <div className="rounded border border-border bg-background/80 px-2 py-2 space-y-2" data-testid="floor-plan-case-b">
-              <p className="text-muted-foreground">
-                The current working layout has seating. Approving the preference keeps those seats on{" "}
-                <span className="font-medium text-foreground">{working?.name ?? "the current layout"}</span>
-                {" "}and starts seating work on{" "}
-                <span className="font-medium text-foreground">{preferred.name}</span>
-                {" "}(empty for new assignments). Decline or defer to keep the current arrangement without approving.
-              </p>
-              {!confirmB3 ? (
+      {isProposed && proposed && (
+        <>
+          <p className="text-sm font-medium text-heading" data-testid="floor-plan-preference-headline">
+            Proposed layout change: {proposed.name}
+          </p>
+          <p className="text-muted-foreground" data-testid="floor-plan-preference-detail">
+            The couple asked to switch after a physical arrangement was already approved. Your current
+            working layout stays until you accept this replacement. Seating assignments are never moved
+            or deleted automatically.
+          </p>
+          {working && (
+            <p className="text-muted-foreground" data-testid="floor-plan-preference-working">
+              Current working layout: <span className="font-medium text-foreground">{working.name}</span>
+              {currentSeats > 0 ? ` · ${currentSeats} seated guest${currentSeats === 1 ? "" : "s"}` : ""}
+            </p>
+          )}
+          {canEdit && (
+            <div className="space-y-2 pt-1" data-testid="floor-plan-preference-actions">
+              {seatingCase === "B" && (
+                <div className="rounded border border-border bg-background/80 px-2 py-2 space-y-2" data-testid="floor-plan-case-b">
+                  <p className="text-muted-foreground">
+                    The current working layout has seating. Accepting starts seating work on{" "}
+                    <span className="font-medium text-foreground">{proposed.name}</span>
+                    {" "}while keeping existing seats on{" "}
+                    <span className="font-medium text-foreground">{working?.name ?? "the current layout"}</span>.
+                  </p>
+                  {!confirmB ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={pending}
+                      data-testid="floor-plan-approve-b3-prompt"
+                      onClick={() => setConfirmB(true)}
+                    >
+                      Accept and start seating on {proposed.name}
+                    </Button>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        disabled={pending}
+                        data-testid="floor-plan-approve-b3-confirm"
+                        onClick={() =>
+                          runDecision({ decision: "accept", seatingChoice: "start_on_proposed" })
+                        }
+                      >
+                        {pending ? "Saving…" : "Confirm accept"}
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={pending}
+                        onClick={() => setConfirmB(false)}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
+              {seatingCase === "C" && operationalFloorPlanId && (
+                <div className="rounded border border-border bg-background/80 px-2 py-2 space-y-2" data-testid="floor-plan-case-c">
+                  <p className="text-muted-foreground">
+                    Both layouts have seating. Choose which seating arrangement stays in use. Assignments are preserved on both.
+                  </p>
+                  <div className="flex flex-col gap-1.5">
+                    {[{ id: operationalFloorPlanId, name: working?.name ?? "Current working", seats: currentSeats },
+                      { id: proposed.id, name: proposed.name, seats: proposedSeats }].map((opt) => (
+                      <label key={opt.id} className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="seating-in-use"
+                          value={opt.id}
+                          checked={caseCChoice === opt.id}
+                          onChange={() => setCaseCChoice(opt.id)}
+                          data-testid={`floor-plan-case-c-option-${opt.id}`}
+                        />
+                        <span>
+                          {opt.name}
+                          {opt.seats > 0 ? ` · ${opt.seats} seated` : ""}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={pending || !caseCChoice}
+                    data-testid="floor-plan-approve-case-c"
+                    onClick={() =>
+                      runDecision({ decision: "accept", seatingInUseFloorPlanId: caseCChoice })
+                    }
+                  >
+                    {pending ? "Saving…" : "Accept with this seating in use"}
+                  </Button>
+                </div>
+              )}
+              {seatingCase === "A" && (
                 <Button
                   type="button"
                   size="sm"
                   disabled={pending}
-                  data-testid="floor-plan-approve-b3-prompt"
-                  onClick={() => setConfirmB3(true)}
+                  data-testid="floor-plan-approve-preference"
+                  onClick={() => runDecision({ decision: "accept" })}
                 >
-                  Approve and start seating on {preferred.name}
+                  {pending ? "Saving…" : "Accept layout replacement"}
                 </Button>
-              ) : (
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    type="button"
-                    size="sm"
-                    disabled={pending}
-                    data-testid="floor-plan-approve-b3-confirm"
-                    onClick={() => runDecision({ decision: "approve", seatingChoice: "start_on_preferred" })}
-                  >
-                    {pending ? "Saving…" : "Confirm approve"}
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    disabled={pending}
-                    data-testid="floor-plan-approve-b3-cancel"
-                    onClick={() => setConfirmB3(false)}
-                  >
-                    Cancel
-                  </Button>
-                </div>
               )}
-            </div>
-          )}
-          {approvalCase === "C" && operationalFloorPlanId && (
-            <div className="rounded border border-border bg-background/80 px-2 py-2 space-y-2" data-testid="floor-plan-case-c">
-              <p className="text-muted-foreground">
-                Both layouts have seating. Choose which seating arrangement is in use. Both layouts and both assignment sets are preserved.
-              </p>
-              <div className="flex flex-col gap-1.5">
-                {[{ id: operationalFloorPlanId, name: working?.name ?? "Current working", seats: currentSeats },
-                  { id: preferred.id, name: preferred.name, seats: preferredSeats }].map((opt) => (
-                  <label key={opt.id} className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="seating-in-use"
-                      value={opt.id}
-                      checked={caseCChoice === opt.id}
-                      onChange={() => setCaseCChoice(opt.id)}
-                      data-testid={`floor-plan-case-c-option-${opt.id}`}
-                    />
-                    <span>
-                      {opt.name}
-                      {opt.seats > 0 ? ` · ${opt.seats} seated` : ""}
-                    </span>
-                  </label>
-                ))}
-              </div>
               <Button
                 type="button"
                 size="sm"
-                disabled={pending || !caseCChoice}
-                data-testid="floor-plan-approve-case-c"
-                onClick={() =>
-                  runDecision({ decision: "approve", seatingInUseFloorPlanId: caseCChoice })
-                }
+                variant="outline"
+                disabled={pending}
+                data-testid="floor-plan-decline-preference"
+                onClick={() => runDecision({ decision: "decline" })}
               >
-                {pending ? "Saving…" : "Approve preference with this seating in use"}
+                Keep current layout
               </Button>
             </div>
           )}
-          {approvalCase === "A" && (
-            <Button
-              type="button"
-              size="sm"
-              disabled={pending}
-              data-testid="floor-plan-approve-preference"
-              onClick={() => runDecision({ decision: "approve" })}
-            >
-              {pending ? "Saving…" : "Approve preference"}
-            </Button>
-          )}
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              disabled={pending}
-              data-testid="floor-plan-decline-preference"
-              onClick={() => runDecision({ decision: "decline" })}
-            >
-              Decline
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              disabled={pending}
-              data-testid="floor-plan-defer-preference"
-              onClick={() => runDecision({ decision: "defer" })}
-            >
-              Defer
-            </Button>
-          </div>
-        </div>
+        </>
       )}
 
-      {floorPlans.filter((p) => (seatCounts[p.id] ?? 0) > 0).length > 1 && canEdit && (
+      {multipleSeated && (
         <div className="pt-2 border-t border-border/60 space-y-1.5" data-testid="floor-plan-seating-in-use">
           <p className="font-medium text-heading">Seating arrangement in use</p>
           <p className="text-muted-foreground">
@@ -1037,8 +1017,8 @@ export function FloorPlanWorkspace({
               const seatingOpen = selected.clientAccess !== "hidden";
               const ready = Boolean(selected.finalizedAt);
               const layoutStatus = normalizeClientLayoutStatus(selected.clientLayoutStatus);
-              if (normalizeCouplePreferenceStatus(couplePreferenceStatus, coupleSelectedFloorPlanId) === "pending") {
-                return <p data-testid="floor-plan-next-review-preference">{pick}Review it below.</p>;
+              if (couplePreferenceStatus === "proposed_replacement") {
+                return <p data-testid="floor-plan-next-review-preference">{pick}They proposed a layout change after approval — review it below.</p>;
               }
               if (layoutStatus === "submitted") {
                 return (
@@ -1060,7 +1040,7 @@ export function FloorPlanWorkspace({
               if (ready) {
                 return (
                   <p data-testid="floor-plan-ready-confirmed">
-                    {pick}Ready for the day. Couple edits are locked until you make changes.
+                    {pick}Ready for the day. Physical editing is locked for staff and couple until you Make Changes.
                   </p>
                 );
               }
@@ -1131,7 +1111,7 @@ export function FloorPlanWorkspace({
       ) : null}
 
       {!preBooking && eventId && (
-        <PreferenceReviewPanel
+        <LayoutSelectionFollowUpPanel
           eventId={eventId}
           floorPlans={floorPlans}
           operationalFloorPlanId={operationalFloorPlanId}
@@ -1176,6 +1156,45 @@ export function FloorPlanWorkspace({
             .filter((p) => venueMayReviewSubmission({ clientLayoutStatus: p.clientLayoutStatus }))
             .map((submitted) => (
               <ClientSubmissionReviewPanel key={submitted.id} eventId={eventId} plan={submitted} />
+            ))
+        : null}
+
+      {!preBooking && eventId && canEdit
+        ? floorPlans
+            .filter((p) => normalizeClientLayoutStatus(p.clientLayoutStatus) === "approved" && !p.finalizedAt)
+            .map((approved) => (
+              <div
+                key={`reopen-${approved.id}`}
+                className="rounded-md border border-border bg-card px-3 py-2.5 text-xs space-y-2"
+                data-testid="floor-plan-approved-reopen"
+              >
+                <p className="text-sm font-medium text-heading">
+                  Approved arrangement: <span className="font-semibold">{approved.name}</span>
+                </p>
+                <p className="text-muted-foreground">
+                  Physical editing is locked so the approved arrangement stays intact. Reopen when the
+                  couple (or you) should propose further furniture changes. The approved revision is kept.
+                </p>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  data-testid="floor-plan-reopen-approved"
+                  onClick={() => {
+                    void (async () => {
+                      const result = await reopenClientFloorPlanLayoutAction(approved.id, eventId);
+                      if (!result.ok) {
+                        toast.error(result.message ?? "Could not reopen.");
+                        return;
+                      }
+                      toast.success("Physical editing reopened. Approved revision preserved.");
+                      router.refresh();
+                    })();
+                  }}
+                >
+                  Reopen physical editing
+                </Button>
+              </div>
             ))
         : null}
 
