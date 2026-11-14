@@ -23,16 +23,23 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FloorPlanShapeSvg, DISPLAY_SHAPE_STYLE } from "@/components/floor-plan/floor-plan-shapes";
+import { SeatingFloorCanvas } from "@/components/portal/seating-floor-canvas";
 import { celebrateLuv } from "@/lib/luv/celebrate";
 import { coupleCelebrationMessage } from "@/lib/luv/celebrations";
-import { getSeatingObservation } from "@/lib/luv/portal-observations";
 import { HTC_NATIVE_SELECT_CLASS } from "@/lib/ui/native-select";
 import {
   ACCESSIBILITY_LABELS, DIETARY_EMOJI, MEAL_EMOJI,
+  type PortalFloorPlanObject,
   type SeatingData, type SeatingTable, type SeatingGuest, type SeatingSuggestionHousehold,
   type SeatingFloorPlanSummary,
 } from "@/lib/portal/types";
 import type { DisplayShape } from "@/lib/floor-plans/types";
+import {
+  seatingOccupancyText,
+  seatingSummaryLine,
+  type SeatingCanvasObject,
+} from "@/lib/seating/canvas-presentation";
+import { compactFloorPlanLabel, resolveDisplayShape } from "@/lib/floor-plans/resolve-display-shape";
 
 const INCHES_PER_FOOT = 12;
 
@@ -210,7 +217,13 @@ function SeatingTableShape({
   onDragLeave: () => void;
   onDrop: (e: React.DragEvent) => void;
 }) {
-  const shape: DisplayShape = table.displayShape ?? "round";
+  const shape: DisplayShape = resolveDisplayShape({
+    displayShape: table.displayShape,
+    objectType: table.width === table.height ? "table_round" : "table_rect",
+    width: table.width,
+    height: table.height,
+    label: table.label,
+  });
   const style = DISPLAY_SHAPE_STYLE[shape];
   const overCapacity = table.capacity != null && table.guests.length > table.capacity;
   const stroke = overCapacity ? "#ef4444" : isSelected ? "var(--venue-primary)" : isDragOver ? "var(--venue-primary)" : style.stroke;
@@ -372,14 +385,21 @@ function TableInfoPanel({
     <div className="flex flex-col h-full overflow-hidden">
       <div className="px-4 pt-4 pb-3 border-b border-border">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-heading truncate">{table.label ?? "Table"}</h3>
+          <h3 className="text-sm font-semibold text-heading truncate">
+            {compactFloorPlanLabel(table.label)}
+          </h3>
           <button onClick={onClose} aria-label="Close table info" className="text-muted-foreground hover:text-foreground text-lg leading-none p-1">×</button>
         </div>
-        <p className="text-xs text-muted-foreground mt-1">
-          {table.guests.length} seated{table.capacity != null ? ` · ${remaining} remaining` : ""}
+        <p className="text-xs text-muted-foreground mt-1" data-testid="seating-table-occupancy">
+          {table.capacity != null
+            ? `${table.guests.length} of ${table.capacity} seats filled`
+            : seatingOccupancyText(table.guests.length, table.capacity)}
           {table.capacity != null && table.guests.length > table.capacity && (
             <span className="text-destructive"> · over capacity</span>
           )}
+          {remaining != null && remaining > 0 && table.guests.length <= (table.capacity ?? 0) ? (
+            <span>{` · ${remaining} open`}</span>
+          ) : null}
         </p>
 
         {(meals.length > 0 || accessibility.length > 0) && (
@@ -422,7 +442,7 @@ function TableInfoPanel({
           onClick={() => setAddOpen((v) => !v)}
           className="w-full flex items-center justify-between px-4 py-2.5 text-xs font-medium text-foreground hover:bg-muted/30"
         >
-          <span>+ Add Guests</span>
+          <span>Add guests to this table</span>
           <span className="text-muted-foreground">{addOpen ? "▲" : "▼"}</span>
         </button>
         {addOpen && (
@@ -536,8 +556,8 @@ function GuestWorkspacePanel({
   return (
     <div className="flex flex-col h-full overflow-hidden">
       <div className="px-4 pt-4 pb-3 border-b border-border">
-        <h3 className="text-sm font-semibold text-heading mb-2">Guest Workspace</h3>
-        <Input placeholder="Search guests…" value={search} onChange={(e) => setSearch(e.target.value)} className="h-7 text-xs" />
+        <h3 className="text-sm font-semibold text-heading mb-2">Your Guests</h3>
+        <Input placeholder="Search guests" value={search} onChange={(e) => setSearch(e.target.value)} className="h-9 text-xs" data-testid="seating-guest-search" />
       </div>
 
       <div className="flex-1 overflow-y-auto">
@@ -552,7 +572,7 @@ function GuestWorkspacePanel({
           </div>
         )}
 
-        <CollapsibleGroup icon="🪑" title="Unassigned" count={unassigned.length} defaultOpen>
+        <CollapsibleGroup icon="🪑" title="Unseated" count={unassigned.length} defaultOpen>
           {unassigned.length === 0 ? (
             <div className="text-center py-6 text-muted-foreground">
               <div className="text-2xl mb-1">🎉</div>
@@ -641,14 +661,16 @@ function GuestWorkspacePanel({
           </CollapsibleGroup>
         )}
 
-        <CollapsibleGroup icon="✅" title="Assigned" count={assigned.length}>
+        <CollapsibleGroup icon="✅" title="Seated" count={assigned.length} defaultOpen={assigned.length > 0}>
           {assigned.length === 0 ? (
             <div className="text-center py-6 text-xs text-muted-foreground">No one seated yet.</div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-3" data-testid="seating-assigned-list">
               {[...assignedByTable.entries()].map(([tableId, group]) => (
-                <div key={tableId}>
-                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">{group.label} ({group.guests.length})</p>
+                <div key={tableId} data-testid={`seating-assigned-table-${tableId}`}>
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">
+                    {compactFloorPlanLabel(group.label)} ({group.guests.length})
+                  </p>
                   <div className="space-y-1">{group.guests.map(renderChip)}</div>
                 </div>
               ))}
@@ -768,6 +790,8 @@ export default function SeatingSection({ token }: { token: string }) {
   // Narrow/touch: select guest → select table (no precision drag required).
   const [mobileAssignGuestId, setMobileAssignGuestId] = useState<string | null>(null);
   const [isNarrow, setIsNarrow] = useState(false);
+  /** Full furnished layout from the shared floor plan (non-seating + seating). */
+  const [layoutObjects, setLayoutObjects] = useState<PortalFloorPlanObject[]>([]);
 
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 767px), (pointer: coarse)");
@@ -796,10 +820,16 @@ export default function SeatingSection({ token }: { token: string }) {
   useEffect(() => {
     if (!floorPlanId) return;
     let cancelled = false;
-    void fetch(`/api/portal/seating?token=${token}&floorPlanId=${floorPlanId}`)
-      .then((res) => res.json())
-      .then((json) => {
-        if (!cancelled) setData(json as SeatingData);
+    setLoading(true);
+    void Promise.all([
+      fetch(`/api/portal/seating?token=${token}&floorPlanId=${floorPlanId}`).then((res) => res.json()),
+      fetch(`/api/portal/floor-plans/${floorPlanId}?token=${encodeURIComponent(token)}`).then((res) => res.json()),
+    ])
+      .then(([seatingJson, planJson]) => {
+        if (cancelled) return;
+        setData(seatingJson as SeatingData);
+        const objs = (planJson as { objects?: PortalFloorPlanObject[] })?.objects;
+        setLayoutObjects(Array.isArray(objs) ? objs : []);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -1049,8 +1079,8 @@ export default function SeatingSection({ token }: { token: string }) {
       ) : data?.floorPlan && (
         <div className="flex flex-wrap gap-2">
           {!confirmingSubmit ? (
-            <Button type="button" size="sm" onClick={() => setConfirmingSubmit(true)}>
-              {data.lastSubmission ? "Resubmit Seating" : "Submit Seating Plan"}
+            <Button type="button" size="sm" onClick={() => setConfirmingSubmit(true)} data-testid="seating-submit">
+              {data.lastSubmission ? "Resubmit seating plan" : "Send seating plan for review"}
             </Button>
           ) : (
             <div className="rounded-xl bg-muted/40 p-3 space-y-2 w-full">
@@ -1067,8 +1097,8 @@ export default function SeatingSection({ token }: { token: string }) {
               </div>
             </div>
           )}
-          <Button type="button" size="sm" variant="outline" disabled={delegating} onClick={() => toggleDelegate(true)}>
-            Ask Venue to Assist
+          <Button type="button" size="sm" variant="outline" disabled={delegating} onClick={() => toggleDelegate(true)} data-testid="seating-ask-venue">
+            Ask your venue for help
           </Button>
         </div>
       )}
@@ -1162,11 +1192,48 @@ export default function SeatingSection({ token }: { token: string }) {
     );
   }
 
-  const canvasWidth = data.floorPlan.roomWidthFt * INCHES_PER_FOOT;
-  const canvasHeight = data.floorPlan.roomDepthFt * INCHES_PER_FOOT;
+  const guestsByTableId = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const t of data.tables) map.set(t.id, t.guests.length);
+    return map;
+  }, [data.tables]);
+
+  const canvasObjects: SeatingCanvasObject[] = useMemo(() => {
+    if (layoutObjects.length > 0) {
+      return layoutObjects.map((o) => ({
+        id: o.id,
+        objectType: o.objectType,
+        label: o.label,
+        capacity: o.capacity,
+        x: o.x,
+        y: o.y,
+        width: o.width,
+        height: o.height,
+        rotation: o.rotation,
+        displayShape: o.displayShape,
+        guestCount: guestsByTableId.get(o.id) ?? 0,
+      }));
+    }
+    // Fallback when floor-plan detail is unavailable — seating tables only.
+    return data.tables.map((t) => ({
+      id: t.id,
+      objectType: t.displayShape === "oval" ? "table_oval" : t.width === t.height ? "table_round" : "table_rect",
+      label: t.label,
+      capacity: t.capacity,
+      x: t.x,
+      y: t.y,
+      width: t.width,
+      height: t.height,
+      rotation: t.rotation,
+      displayShape: t.displayShape,
+      guestCount: t.guests.length,
+    }));
+  }, [layoutObjects, data.tables, guestsByTableId]);
+
+  const everyoneSeated = Boolean(stats && stats.totalAttending > 0 && stats.totalAssigned >= stats.totalAttending);
 
   return (
-    <div className="flex flex-col h-full min-h-0">
+    <div className="flex flex-col h-full min-h-0 mx-auto w-full max-w-[1440px] px-4 md:px-6">
       {commitBar}
       {showAutoPreview.length > 0 && (
         <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center p-4">
@@ -1183,42 +1250,41 @@ export default function SeatingSection({ token }: { token: string }) {
         </div>
       )}
 
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-border flex-wrap">
-        <button onClick={() => setView("dashboard")} className="text-xs text-muted-foreground hover:text-foreground shrink-0" title="Back to seating overview">
-          ← Dashboard
-        </button>
-        <p className="text-sm font-medium text-heading truncate">{data.floorPlan.name}</p>
-        <div className="ml-auto flex items-center gap-2">
-          {pctAssigned === 100 && stats && stats.totalAttending > 0 ? (
-            <Badge>Everyone seated 🎉</Badge>
-          ) : (
-            <div className="flex items-center gap-2 w-40">
-              <div className="h-1.5 flex-1 rounded-full bg-muted overflow-hidden">
-                <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${pctAssigned}%` }} />
-              </div>
-              <span className="text-[11px] text-muted-foreground whitespace-nowrap">{pctAssigned}%</span>
-            </div>
-          )}
-          <Button
-            size="sm" variant="outline" className="text-xs"
-            disabled={autoAssigning || unassignedPool.length === 0 || !data.tables.length}
-            onClick={handleAutoAssign}
-          >
-            {autoAssigning ? "Calculating…" : "✨ Auto-assign"}
-          </Button>
+      <header className="px-0 pt-3 pb-2 space-y-1">
+        <div className="flex items-center gap-3 flex-wrap">
+          <button onClick={() => setView("dashboard")} className="text-xs text-muted-foreground hover:text-foreground shrink-0" title="Back to seating overview">
+            ← Overview
+          </button>
+          <h2 className="text-[22px] md:text-[24px] font-semibold text-heading">Guest Seating</h2>
+          <div className="ml-auto">
+            <Button
+              size="sm" variant="outline" className="text-xs"
+              disabled={autoAssigning || unassignedPool.length === 0 || !data.tables.length}
+              onClick={handleAutoAssign}
+            >
+              {autoAssigning ? "Calculating…" : "Auto-assign"}
+            </Button>
+          </div>
         </div>
-      </div>
-
-      <div className="flex items-center gap-3 px-4 pb-1 flex-wrap text-xs text-muted-foreground">
-        <span><strong className="text-foreground">{stats?.totalAssigned}</strong>/{stats?.totalAttending} seated</span>
-        <span><strong className="text-foreground">{stats?.tableCount}</strong> tables</span>
-        <span><strong className="text-foreground">{stats?.totalCapacity}</strong> seats</span>
+        <p className="text-[13px] text-muted-foreground">
+          Find a place for everyone, then send your seating plan to your venue.
+        </p>
+        {stats ? (
+          <p className="text-[13px] font-medium text-heading" data-testid="seating-summary-line">
+            {seatingSummaryLine({
+              totalAssigned: stats.totalAssigned,
+              totalAttending: stats.totalAttending,
+              tableCount: stats.tableCount,
+              totalCapacity: stats.totalCapacity,
+            })}
+          </p>
+        ) : null}
         {stats && stats.totalCapacity > 0 && stats.totalCapacity < stats.totalAttending && (
           <Badge variant="outline" className="text-amber-600 border-amber-200 bg-amber-50">
             Need {stats.totalAttending - stats.totalCapacity} more seats
           </Badge>
         )}
-      </div>
+      </header>
 
       {selectedGuestIds.size > 0 && (
         <SelectionBar
@@ -1231,109 +1297,59 @@ export default function SeatingSection({ token }: { token: string }) {
         />
       )}
 
-      {isNarrow && !data.isDelegated && data.tables.length > 0 && (
-        <div className="mx-4 mt-2 rounded-xl border border-border bg-card p-3 space-y-2 md:hidden">
-          <p className="text-xs font-medium text-heading">Seat a guest</p>
-          <p className="text-[11px] text-muted-foreground">
-            On phones, choose a guest and a table — no drag required.
+      {everyoneSeated && !data.lastSubmission ? (
+        <div
+          className="mt-2 mb-1 rounded-xl px-4 py-3"
+          style={{ background: "#EDF3EE", border: "1px solid #C5D8CA" }}
+          data-testid="seating-complete-banner"
+        >
+          <p className="text-sm font-semibold text-[#446B56]">Everyone has a seat!</p>
+          <p className="text-[13px] text-[#446B56]/90 mt-0.5">
+            {`All ${stats?.totalAttending ?? 0} guests have been assigned to a table. You can make changes anytime before submitting your seating plan.`}
           </p>
-          <select
-            className={`w-full text-sm border border-border rounded-lg px-2 py-2 bg-background ${HTC_NATIVE_SELECT_CLASS}`}
-            value={mobileAssignGuestId ?? ""}
-            onChange={(e) => setMobileAssignGuestId(e.target.value || null)}
-            aria-label="Guest to seat"
-          >
-            <option value="">Choose a guest…</option>
-            {unassignedPool.map((g) => (
-              <option key={g.guestId} value={g.guestId}>
-                {g.name}{g.needsReassignment ? " (needs table)" : ""}
-              </option>
-            ))}
-          </select>
-          <select
-            className={`w-full text-sm border border-border rounded-lg px-2 py-2 bg-background ${HTC_NATIVE_SELECT_CLASS}`}
-            value={selectedTableId ?? ""}
-            onChange={(e) => setSelectedTableId(e.target.value || null)}
-            aria-label="Table"
-          >
-            <option value="">Choose a table…</option>
-            {data.tables.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.label ?? "Table"}{t.capacity != null ? ` (${t.guests.length}/${t.capacity})` : ""}
-              </option>
-            ))}
-          </select>
-          <Button
-            type="button"
-            size="sm"
-            className="w-full"
-            disabled={!mobileAssignGuestId || !selectedTableId}
-            onClick={() => {
-              if (mobileAssignGuestId && selectedTableId) {
-                void assignGuest(mobileAssignGuestId, selectedTableId);
-                setMobileAssignGuestId(null);
-              }
-            }}
-          >
-            Confirm seat
-          </Button>
         </div>
-      )}
+      ) : null}
 
-      {stats && (() => {
-        const obs = getSeatingObservation(stats);
-        if (!obs) return null;
-        return (
-          <div className="mx-4 mt-3 rounded-xl px-4 py-3 flex items-start gap-2.5" style={{ background: "#FDF5F5", border: "1px solid #D8A7AA30" }}>
-            <span style={{ color: "#D8A7AA", fontSize: 14, lineHeight: 1.5 }}>💗</span>
-            <p className="text-sm leading-relaxed" style={{ color: "#5A3235" }}>{obs.text}</p>
-          </div>
-        );
-      })()}
-
-      <div className="flex flex-col md:flex-row flex-1 min-h-0 overflow-hidden">
-        <div className="flex-1 min-h-[280px] overflow-auto bg-muted/20 p-4">
-          <svg
-            viewBox={`0 0 ${canvasWidth} ${canvasHeight}`}
-            style={{ width: "100%", maxWidth: canvasWidth, height: "auto" }}
-            className="bg-card border border-border rounded-lg"
-            onClick={() => setSelectedTableId(null)}
-          >
-            {data.floorPlan.backgroundImageUrl && (
-              <image
-                href={data.floorPlan.backgroundImageUrl} x={0} y={0} width={canvasWidth} height={canvasHeight}
-                opacity={data.floorPlan.backgroundImageOpacity} preserveAspectRatio="none"
-              />
-            )}
-            {data.tables.map((table) => (
-              <SeatingTableShape
-                key={table.id}
-                table={table}
-                isSelected={selectedTableId === table.id}
-                isDragOver={dragOverTableId === table.id}
-                onSelect={() => setSelectedTableId(table.id === selectedTableId ? null : table.id)}
-                onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; setDragOverTableId(table.id); }}
-                onDragLeave={() => setDragOverTableId((id) => (id === table.id ? null : id))}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  const guestId = e.dataTransfer.getData("guestId");
-                  if (guestId) assignGuest(guestId, table.id);
-                  setDragOverTableId(null);
-                }}
-              />
-            ))}
-          </svg>
-
+      <div className="flex flex-col lg:flex-row flex-1 min-h-0 overflow-hidden gap-0 lg:gap-5 pb-4">
+        <div className="flex-[1_1_70%] min-w-0 min-h-[360px] lg:min-h-[560px]">
+          <SeatingFloorCanvas
+            roomWidthFt={data.floorPlan.roomWidthFt}
+            roomDepthFt={data.floorPlan.roomDepthFt}
+            backgroundImageUrl={data.floorPlan.backgroundImageUrl}
+            backgroundImageOpacity={data.floorPlan.backgroundImageOpacity}
+            objects={canvasObjects}
+            selectedId={selectedTableId}
+            dragOverId={dragOverTableId}
+            minHeightPx={isNarrow ? 380 : 560}
+            onSelect={setSelectedTableId}
+            onDragOver={(id, e) => {
+              e.preventDefault();
+              e.dataTransfer.dropEffect = "move";
+              setDragOverTableId(id);
+            }}
+            onDragLeave={(id) => setDragOverTableId((cur) => (cur === id ? null : cur))}
+            onDrop={(id, e) => {
+              e.preventDefault();
+              const guestId = e.dataTransfer.getData("guestId");
+              if (guestId) void assignGuest(guestId, id);
+              setDragOverTableId(null);
+            }}
+          />
           {data.tables.length === 0 && (
             <div className="text-center text-muted-foreground mt-8">
-              <div className="text-4xl mb-3">🪑</div>
-              <p className="text-sm font-medium">No tables on this floor plan yet.</p>
+              <p className="text-sm font-medium">No seating tables on this floor plan yet.</p>
               <p className="text-xs mt-1">Check with your venue — they add tables from their Floor Plan editor.</p>
             </div>
           )}
         </div>
 
-        <div className="h-80 md:h-auto w-full md:w-80 border-t md:border-t-0 md:border-l border-border flex flex-col bg-card overflow-hidden shrink-0">
+        <div
+          className={`w-full lg:w-[360px] xl:w-[380px] border border-[#E6E3DC] rounded-2xl flex flex-col bg-white overflow-hidden shrink-0 ${
+            isNarrow && selectedTable ? "fixed inset-x-0 bottom-0 z-40 max-h-[70vh] rounded-b-none shadow-lg" : "mt-3 lg:mt-0"
+          }`}
+          style={{ padding: 0 }}
+          data-testid="seating-guest-panel"
+        >
           {selectedTable ? (
             <TableInfoPanel
               table={selectedTable}

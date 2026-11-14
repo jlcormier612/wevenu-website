@@ -38,6 +38,7 @@ import {
   portalFloorPlanGuidance,
 } from "@/lib/floor-plans/portal-guidance";
 import type { DisplayShape, ObjectType } from "@/lib/floor-plans/types";
+import { resolveDisplayShape } from "@/lib/floor-plans/resolve-display-shape";
 import type {
   PortalFloorPlanCatalogItem,
   PortalFloorPlanDetail,
@@ -66,8 +67,14 @@ function catalogDimsLabel(item: PortalFloorPlanCatalogItem): string {
 
 function renderObjectStatic(obj: PortalFloorPlanObject): React.ReactNode {
   const legacyStyle = OBJECT_STYLE[obj.objectType as ObjectType] ?? OBJECT_STYLE.other;
-  const shape = obj.displayShape as DisplayShape | null;
-  const style = shape ? DISPLAY_SHAPE_STYLE[shape] : legacyStyle;
+  const shape = resolveDisplayShape({
+    displayShape: obj.displayShape,
+    objectType: obj.objectType,
+    width: obj.width,
+    height: obj.height,
+    label: obj.label,
+  });
+  const style = DISPLAY_SHAPE_STYLE[shape] ?? legacyStyle;
   const fill = obj.color ?? style.fill;
   const hw = obj.width / 2;
   const hh = obj.height / 2;
@@ -77,18 +84,11 @@ function renderObjectStatic(obj: PortalFloorPlanObject): React.ReactNode {
 
   return (
     <g key={obj.id} transform={transform}>
-      {obj.objectType === "text_label" ? null : shape ? (
+      {obj.objectType === "text_label" ? null : (
         <FloorPlanShapeSvg
           shape={shape} x={obj.x} y={obj.y} width={obj.width} height={obj.height}
           fill={fill} stroke={style.stroke} strokeWidth={1.5}
         />
-      ) : obj.objectType === "table_round" ? (
-        <circle cx={obj.x} cy={obj.y} r={hw} fill={fill} stroke={style.stroke} strokeWidth={1.5} />
-      ) : obj.objectType === "table_oval" ? (
-        <ellipse cx={obj.x} cy={obj.y} rx={hw} ry={hh} fill={fill} stroke={style.stroke} strokeWidth={1.5} />
-      ) : (
-        <rect x={obj.x - hw} y={obj.y - hh} width={obj.width} height={obj.height} rx={3}
-          fill={fill} stroke={style.stroke} strokeWidth={1.5} />
       )}
       {obj.objectType !== "text_label" && obj.label ? (
         <text x={obj.x} y={showCapacity ? obj.y - 5 : obj.y} textAnchor="middle" dominantBaseline="middle"
@@ -865,14 +865,18 @@ export default function FloorPlanSection({
           setOperationalId(plansRes.body.operationalFloorPlanId ?? null);
           const coupleSelected = plansRes.body.coupleSelectedFloorPlanId ?? null;
           setCoupleSelectedIdFromApi(coupleSelected);
-          setPreferenceStatus(plansRes.body.couplePreferenceStatus ?? null);
+          const prefStatus = plansRes.body.couplePreferenceStatus ?? null;
+          setPreferenceStatus(prefStatus);
           setApprovedId(plansRes.body.coupleApprovedFloorPlanId ?? null);
-          const preferred =
-            (coupleSelected && plans.find((p) => p.id === coupleSelected)?.id)
-            ?? (plansRes.body.operationalFloorPlanId
-              && plans.find((p) => p.id === plansRes.body.operationalFloorPlanId)?.id)
-            ?? plans[0]?.id
-            ?? null;
+          // Pending replacement: keep showing the operational Ready layout.
+          // The couple-selected pointer is the requested layout — never open it
+          // as an editable working canvas while the venue decides.
+          const operationalPtr = plansRes.body.operationalFloorPlanId
+            && plans.find((p) => p.id === plansRes.body.operationalFloorPlanId)?.id;
+          const couplePtr = coupleSelected && plans.find((p) => p.id === coupleSelected)?.id;
+          const preferred = prefStatus === "proposed_replacement"
+            ? (operationalPtr ?? couplePtr ?? plans[0]?.id ?? null)
+            : (couplePtr ?? operationalPtr ?? plans[0]?.id ?? null);
           setSelectedId(preferred);
           setError(null);
         }
@@ -1126,11 +1130,13 @@ export default function FloorPlanSection({
     multiOffer
     && !proposedReplacementPending
     && (layoutStatus === "approved" || selectedIsReady);
-  const canEditLayout = clientMayEditLayout({
+  // Pending replacement is view-only: never imply physical edits on either
+  // the operational Ready layout or the requested (non-operational) copy.
+  const canEditLayout = !proposedReplacementPending && clientMayEditLayout({
     clientLayoutStatus: layoutStatus,
     isReady: selectedIsReady,
   });
-  const canSubmitLayout = clientMaySubmitLayout({
+  const canSubmitLayout = !proposedReplacementPending && clientMaySubmitLayout({
     clientLayoutStatus: layoutStatus,
     isReady: selectedIsReady,
     // Once furniture review has begun (or Ready), a shared plan is the working layout
@@ -1370,9 +1376,30 @@ export default function FloorPlanSection({
               className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-card px-3 py-2.5"
               data-testid="floor-plan-current-layout-summary"
             >
-              <div className="min-w-0">
-                <p className="text-[11px] font-medium text-muted-foreground">Selected layout</p>
-                <p className="text-sm font-semibold text-heading truncate">{currentLayoutName}</p>
+              <div className="min-w-0 space-y-2">
+                {proposedReplacementPending ? (
+                  <>
+                    <div>
+                      <p className="text-[11px] font-medium text-muted-foreground">Current approved layout</p>
+                      <p className="text-sm font-semibold text-heading truncate" data-testid="floor-plan-approved-layout-name">
+                        {list.find((p) => p.id === operationalId)?.name
+                          ?? currentLayoutName}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-medium text-muted-foreground">Requested layout</p>
+                      <p className="text-sm font-semibold text-heading truncate" data-testid="floor-plan-requested-layout-name">
+                        {list.find((p) => p.id === coupleSelectedId)?.name
+                          ?? "Awaiting venue review"}
+                      </p>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-[11px] font-medium text-muted-foreground">Selected layout</p>
+                    <p className="text-sm font-semibold text-heading truncate">{currentLayoutName}</p>
+                  </>
+                )}
               </div>
               {canRequestDifferentLayout && (
                 <button
@@ -1408,7 +1435,9 @@ export default function FloorPlanSection({
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-heading truncate">{plan.name}</p>
                   <p className="text-[11px] text-muted-foreground">
-                    {selectedIsReady
+                    {proposedReplacementPending
+                      ? "View only — your current approved layout stays until your venue decides"
+                      : selectedIsReady
                       ? "Ready — furniture placement is set"
                       : layoutStatus === "submitted"
                         ? "Submitted — awaiting venue review"

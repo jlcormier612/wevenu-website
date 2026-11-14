@@ -272,6 +272,7 @@ describe("portal guidance", () => {
       seatingEnabled: false,
       proposedReplacementPending: true,
     });
-    assert.match(proposed.instruction, /different layout has been sent/i);
+    assert.match(proposed.instruction, /venue is reviewing your request/i);
+    assert.equal(proposed.headline, "Replacement requested");
   });
 });
