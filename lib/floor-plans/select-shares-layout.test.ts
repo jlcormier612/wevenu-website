@@ -27,8 +27,10 @@ describe("Floor plan select shares layout + seating (collaboration complete)", (
   });
 
   it("venue workspace surfaces Mark Ready after selection", () => {
-    assert.match(workspace, /floor-plan-next-mark-ready/);
-    assert.match(workspace, /Mark as Ready/);
+    assert.match(workspace, /floor-plan-workspace-next-step|venueFloorPlanNextStep/);
+    const statusHelper = readFileSync(resolve("lib/floor-plans/workspace-status.ts"), "utf8");
+    assert.match(statusHelper, /Mark it Ready when everything is finalized/);
+    assert.match(statusHelper, /Make Changes to reopen editing/);
   });
 
   it("does not revive client_access=edit", () => {

@@ -1,6 +1,7 @@
 /**
  * Compact, state-aware guidance for the couple Floor Plan portal.
- * Matches actual permissions and lifecycle — not generic tutorial copy.
+ * Matches actual permissions and lifecycle — exact CX copy from the
+ * Floor Plans prescriptive UX brief (not generic tutorial copy).
  */
 import {
   clientMayEditLayout,
@@ -9,10 +10,21 @@ import {
 } from "@/lib/floor-plans/client-layout-review";
 
 export type PortalFloorPlanGuidance = {
+  /** Single short contextual instruction under the header. */
+  instruction: string;
+  /**
+   * Short status-oriented phrase retained for callers/tests that still read
+   * `headline` — mirrors the instruction’s state without duplicating a second card.
+   */
   headline: string;
+  /** Alias of `instruction` for older call sites. */
   detail: string;
   /** When false, hide the submit CTA (view-only / seating-only / locked). */
   showSubmitPrompt: boolean;
+  /** Collapsed “How to edit your layout” — omit when the couple cannot edit. */
+  showEditingHelp: boolean;
+  /** Clear route to Guest Seating when furniture is locked but seating is open. */
+  showGuestSeatingRoute: boolean;
 };
 
 export function portalFloorPlanGuidance(input: {
@@ -27,103 +39,143 @@ export function portalFloorPlanGuidance(input: {
   seatingEnabled: boolean;
   proposedReplacementPending?: boolean;
 }): PortalFloorPlanGuidance {
+  const base = (
+    instruction: string,
+    opts: {
+      showSubmitPrompt?: boolean;
+      showEditingHelp?: boolean;
+      showGuestSeatingRoute?: boolean;
+      headline?: string;
+    } = {},
+  ): PortalFloorPlanGuidance => ({
+    instruction,
+    headline: opts.headline ?? instruction,
+    detail: instruction,
+    showSubmitPrompt: opts.showSubmitPrompt ?? false,
+    showEditingHelp: opts.showEditingHelp ?? false,
+    showGuestSeatingRoute: opts.showGuestSeatingRoute ?? false,
+  });
+
   if (input.needsChooser && !input.hasSelectedWorking) {
-    return {
-      headline: "Choose your starting layout",
-      detail:
-        "Your venue has prepared a few options for your celebration. Select the one that works best for you.",
-      showSubmitPrompt: false,
-    };
+    return base(
+      "Your venue has prepared a few options for your celebration. Select the one that works best for you.",
+      { headline: "Choose your starting layout" },
+    );
   }
 
   if (input.proposedReplacementPending) {
-    return {
-      headline: "Layout change requested",
-      detail:
-        "You asked to switch to another offered layout. Your venue will review that request. Your current approved arrangement stays in place until they accept a change.",
-      showSubmitPrompt: false,
-    };
+    return base(
+      "Your request to use a different layout has been sent to your venue. Your current approved layout remains in place for now.",
+      { headline: "Layout change requested" },
+    );
   }
 
   if (input.isReady) {
-    return {
-      headline: "Layout is ready for your event",
-      detail: input.seatingEnabled
-        ? "Furniture placement is locked. You can still assign guests to tables while seating is open."
-        : "Your venue marked this layout ready. Furniture placement is locked.",
-      showSubmitPrompt: false,
-    };
+    if (input.seatingEnabled) {
+      return base(
+        "Your floor plan is ready! You can still manage guest seating if your venue has enabled it.",
+        {
+          headline: "Ready",
+          showGuestSeatingRoute: true,
+        },
+      );
+    }
+    return base("Your floor plan is ready!", { headline: "Ready" });
   }
 
   const status = normalizeClientLayoutStatus(input.clientLayoutStatus);
 
   if (status === "submitted") {
-    return {
-      headline: "Your layout is with your venue for review",
-      detail:
-        "We'll let you know when it's approved or if any adjustments are needed.",
-      showSubmitPrompt: false,
-    };
+    return base(
+      "Your layout is with your venue for review. We'll let you know when it's ready.",
+      { headline: "Submitted for review" },
+    );
   }
 
   if (status === "changes_requested") {
-    return {
-      headline: "Your venue has requested a few adjustments",
-      detail:
-        "Review their notes, make your changes, and submit the updated layout.",
-      showSubmitPrompt: input.furnitureEditingAllowed,
-    };
+    const mayEdit =
+      clientMayEditLayout({
+        clientLayoutStatus: status,
+        isReady: input.isReady,
+      }) && input.furnitureEditingAllowed;
+    return base(
+      "Your venue has requested a few changes. Update your layout and send it back for review.",
+      {
+        headline: "Changes requested",
+        showSubmitPrompt: mayEdit,
+        showEditingHelp: mayEdit,
+      },
+    );
   }
 
   if (status === "approved") {
-    return {
-      headline: "Your venue has approved this arrangement",
-      detail: input.seatingEnabled
-        ? "You can continue managing guest seating if your venue has enabled it."
-        : "Furniture placement is locked. Seating opens when your venue enables it.",
-      showSubmitPrompt: false,
-    };
+    if (input.seatingEnabled) {
+      return base("Your venue has approved this arrangement.", {
+        headline: "Approved arrangement",
+        showGuestSeatingRoute: true,
+      });
+    }
+    return base("Your venue has approved this arrangement.", {
+      headline: "Approved arrangement",
+    });
   }
 
   // working
   if (!input.hasWorkingShared) {
-    return {
-      headline: "Waiting on a layout from your venue",
-      detail:
-        "When your venue shares a floor plan for this event, it will appear here.",
-      showSubmitPrompt: false,
-    };
+    return base(
+      "Your venue hasn't shared a floor plan yet. Once one is available, you'll find it here.",
+      { headline: "Your Floor Plan" },
+    );
   }
 
-  const mayEdit = clientMayEditLayout({
-    clientLayoutStatus: status,
-    isReady: input.isReady,
-  }) && input.furnitureEditingAllowed;
+  const mayEdit =
+    clientMayEditLayout({
+      clientLayoutStatus: status,
+      isReady: input.isReady,
+    }) && input.furnitureEditingAllowed;
 
   if (mayEdit) {
-    const addBit = input.coupleMayAddTables
-      ? " and add tables where permitted"
-      : "";
-    return {
-      headline: "Make it yours",
-      detail: `Move the unlocked tables and furniture${addBit}. Your changes save as you go. When you're happy with the arrangement, submit it to your venue for review.`,
-      showSubmitPrompt: true,
-    };
+    return base(
+      "Arrange your layout, save your changes, and send it to your venue when you're ready.",
+      {
+        headline: "Working",
+        showSubmitPrompt: true,
+        showEditingHelp: true,
+      },
+    );
   }
 
   if (input.seatingEnabled) {
-    return {
-      headline: "Find a seat for everyone",
-      detail:
-        "Your venue has prepared the layout, and you can assign guests to tables as your plans come together.",
-      showSubmitPrompt: false,
-    };
+    return base(
+      "Your layout is set. You can arrange your guests in Guest Seating.",
+      {
+        headline: "Layout set",
+        showGuestSeatingRoute: true,
+      },
+    );
   }
 
-  return {
-    headline: "Take a look around",
-    detail:
-      "Your venue has shared this layout so you can explore your event space. Furniture changes are managed by your venue.",
-    showSubmitPrompt: false,
-  };
+  return base("Here's the layout your venue has shared with you.", {
+    headline: "Shared layout",
+  });
+}
+
+/** Editing-help bullets that match effective permissions only. */
+export function portalFloorPlanEditingHelpItems(input: {
+  furnitureEditingAllowed: boolean;
+  coupleMayAddTables: boolean;
+  canSubmit: boolean;
+}): string[] {
+  if (!input.furnitureEditingAllowed) return [];
+  const items: string[] = [
+    "Drag unlocked furniture to rearrange your layout. Locked items stay where your venue placed them.",
+  ];
+  if (input.coupleMayAddTables) {
+    items.push("Add tables from the catalog when your venue permits it.");
+  }
+  items.push("Your changes save as you go.");
+  if (input.canSubmit) {
+    items.push("When you're happy with the arrangement, send it to your venue for review.");
+  }
+  return items;
 }

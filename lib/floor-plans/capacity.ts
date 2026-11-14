@@ -174,3 +174,21 @@ export function formatFloorPlanCapacitySentence(summary: FloorPlanCapacitySummar
 export function floorPlanCapacityNeedsAttention(summary: FloorPlanCapacitySummary): boolean {
   return summary.level !== "ok";
 }
+
+/**
+ * Compact neutral summary for the couple portal (e.g. "8 seats arranged · 80 guests expected").
+ * Does not surface shortfall language — use expandable details + full sentence for that.
+ */
+export function formatFloorPlanCapacityCompact(summary: FloorPlanCapacitySummary): string {
+  if (summary.tableCount === 0) {
+    return "No seating tables on this plan yet";
+  }
+  const seatsLabel =
+    summary.tablesWithCapacity === 0
+      ? `${summary.tableCount} table${summary.tableCount === 1 ? "" : "s"} without seat counts`
+      : `${summary.seatingCapacity} seat${summary.seatingCapacity === 1 ? "" : "s"} arranged`;
+  if (summary.guestCount != null) {
+    return `${seatsLabel} · ${summary.guestCount} guest${summary.guestCount === 1 ? "" : "s"} expected`;
+  }
+  return seatsLabel;
+}

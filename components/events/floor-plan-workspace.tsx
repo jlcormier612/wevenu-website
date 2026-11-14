@@ -50,6 +50,7 @@ import {
   needsSeatingHostResolution,
   offeredLayoutsView,
   preferenceReviewIsActionable,
+  venueFloorPlanNextStep,
 } from "@/lib/floor-plans/workspace-status";
 import { FloorPlanFlipPanel } from "@/components/events/floor-plan-flip-panel";
 import { FloorPlanRequiredStatus } from "@/components/events/floor-plan-required-status";
@@ -320,10 +321,10 @@ function FloorPlanCard({
             {isCoupleSelected && (
               <span
                 className="text-[10px] font-medium px-2 py-0.5 rounded-full border border-border text-muted-foreground"
-                title="The couple chose this layout as their preference. This is not furniture-placement approval."
+                title="The couple selected this layout. This is not furniture-placement approval."
                 data-testid="floor-plan-card-couple-preference"
               >
-                Couple preference
+                Selected layout
               </span>
             )}
             {isOperational && (
@@ -450,16 +451,15 @@ function ClientSubmissionReviewPanel({
       data-testid="floor-plan-client-submission-review"
     >
       <p className="text-sm font-medium text-heading">
-        Furniture placement submitted: <span className="font-semibold">{plan.name}</span>
+        Submitted for review: <span className="font-semibold">{plan.name}</span>
       </p>
       <p className="text-xs text-muted-foreground">
-        Submitted{" "}
+        Your couple has submitted this arrangement
         {plan.clientSubmittedAt
-          ? new Date(plan.clientSubmittedAt).toLocaleString()
-          : "recently"}
-        . Open the layout to inspect table and furniture placement, then approve or request changes.
-        Approving preserves this specific arrangement as a revision — later edits cannot silently
-        overwrite it.
+          ? ` (${new Date(plan.clientSubmittedAt).toLocaleString()})`
+          : ""}.
+        Inspect the layout, then approve or request changes. Approving preserves this arrangement as a
+        revision.
       </p>
       <div className="flex flex-wrap gap-2">
         <Button
@@ -479,7 +479,7 @@ function ClientSubmissionReviewPanel({
             });
           }}
         >
-          Approve furniture placement
+          Approve layout
         </Button>
         <Link
           href={`/events/${eventId}/floor-plans/${plan.id}`}
@@ -628,29 +628,62 @@ function LayoutSelectionFollowUpPanel({
       {isProposed && proposed && (
         <>
           <p className="text-sm font-medium text-heading" data-testid="floor-plan-preference-headline">
-            Proposed layout change: {proposed.name}
+            A different layout has been requested
           </p>
           <p className="text-muted-foreground" data-testid="floor-plan-preference-detail">
-            The couple asked to switch after a physical arrangement was already approved. Your current
-            working layout stays until you accept this replacement. Seating assignments are never moved
-            or deleted automatically.
+            Your couple would like to use{" "}
+            <span className="font-medium text-foreground">{proposed.name}</span>. Your current approved
+            arrangement
+            {working ? (
+              <>
+                , <span className="font-medium text-foreground">{working.name}</span>,
+              </>
+            ) : null}{" "}
+            will stay in place until you accept the change.
           </p>
-          {working && (
-            <p className="text-muted-foreground" data-testid="floor-plan-preference-working">
-              Current working layout: <span className="font-medium text-foreground">{working.name}</span>
-              {currentSeats > 0 ? ` · ${currentSeats} seated guest${currentSeats === 1 ? "" : "s"}` : ""}
+          <div
+            className="rounded border border-border bg-background/80 px-2 py-2 space-y-1"
+            data-testid="floor-plan-preference-summary"
+          >
+            <p data-testid="floor-plan-preference-working">
+              <span className="text-muted-foreground">Current layout:</span>{" "}
+              <span className="font-medium text-foreground">{working?.name ?? "Current arrangement"}</span>
             </p>
-          )}
+            <p>
+              <span className="text-muted-foreground">Requested layout:</span>{" "}
+              <span className="font-medium text-foreground">{proposed.name}</span>
+            </p>
+            <p>
+              <span className="text-muted-foreground">Existing seating:</span>{" "}
+              <span className="font-medium text-foreground">
+                {currentSeats > 0
+                  ? `${currentSeats} assignment${currentSeats === 1 ? "" : "s"}`
+                  : "None on the current layout"}
+                {seatingHostPlan
+                  ? ` · host ${seatingHostPlan.name}`
+                  : working && currentSeats > 0
+                    ? ` · host ${working.name}`
+                    : ""}
+              </span>
+            </p>
+          </div>
           {canEdit && (
             <div className="space-y-2 pt-1" data-testid="floor-plan-preference-actions">
               {seatingCase === "B" && (
                 <div className="rounded border border-border bg-background/80 px-2 py-2 space-y-2" data-testid="floor-plan-case-b">
-                  <p className="text-muted-foreground">
-                    The current working layout has seating. Accepting starts seating work on{" "}
-                    <span className="font-medium text-foreground">{proposed.name}</span>
-                    {" "}while keeping existing seats on{" "}
-                    <span className="font-medium text-foreground">{working?.name ?? "the current layout"}</span>.
-                  </p>
+                  <div className="space-y-2 text-muted-foreground">
+                    <p>
+                      <span className="font-medium text-foreground">Keep existing seating where it is</span>
+                      {" — "}Guest assignments remain with{" "}
+                      <span className="font-medium text-foreground">{working?.name ?? "the current layout"}</span>.
+                    </p>
+                    <p>
+                      <span className="font-medium text-foreground">Use the new layout for seating</span>
+                      {" — "}Guest assignments will not move automatically. You&apos;ll need to review seating
+                      for{" "}
+                      <span className="font-medium text-foreground">{proposed.name}</span>.
+                    </p>
+                  </div>
                   {!confirmB ? (
                     <Button
                       type="button"
@@ -659,7 +692,7 @@ function LayoutSelectionFollowUpPanel({
                       data-testid="floor-plan-approve-b3-prompt"
                       onClick={() => setConfirmB(true)}
                     >
-                      Accept and start seating on {proposed.name}
+                      Accept new layout
                     </Button>
                   ) : (
                     <div className="flex flex-wrap gap-2">
@@ -732,7 +765,7 @@ function LayoutSelectionFollowUpPanel({
                   data-testid="floor-plan-approve-preference"
                   onClick={() => runDecision({ decision: "accept" })}
                 >
-                  {pending ? "Saving…" : "Accept layout replacement"}
+                  {pending ? "Saving…" : "Accept new layout"}
                 </Button>
               )}
               <Button
@@ -1048,84 +1081,70 @@ export function FloorPlanWorkspace({
 
       {!preBooking && (
         <div
-          className="rounded-md border border-border bg-card px-3 py-2.5 text-sm text-foreground"
+          className="space-y-2 rounded-md border border-border bg-card px-3 py-3 sm:px-4"
           data-testid="floor-plan-selection-status"
         >
-          {coupleSelectedFloorPlanId ? (
-            (() => {
-              const selected = floorPlans.find((p) => p.id === coupleSelectedFloorPlanId);
-              const pick = (
-                <span data-testid="floor-plan-client-selected">
-                  Couple&apos;s pick: <span className="font-medium">{selected?.name ?? "Saved layout"}</span>.{" "}
-                </span>
-              );
-              if (!selected) return <p>{pick}</p>;
-              const seatingOpen = selected.clientAccess !== "hidden";
-              const ready = Boolean(selected.finalizedAt);
-              const layoutStatus = normalizeClientLayoutStatus(selected.clientLayoutStatus);
-              if (couplePreferenceStatus === "proposed_replacement") {
-                return <p data-testid="floor-plan-next-review-preference">{pick}They proposed a layout change after approval — review it below.</p>;
-              }
-              if (layoutStatus === "submitted") {
-                return (
-                  <p data-testid="floor-plan-next-review-submission">
-                    {pick}They sent their furniture placement ({clientLayoutStatusLabel(layoutStatus)}) — review it below.
-                  </p>
-                );
-              }
-              if (selected.sharedWithCouple && !seatingOpen) {
-                return (
-                  <p data-testid="floor-plan-next-share-seating">
-                    {pick}Shared, but seating is paused — turn on &quot;Couple can seat guests&quot; if they should seat guests.
-                  </p>
-                );
-              }
-              if (layoutStatus === "changes_requested") {
-                return <p data-testid="floor-plan-next-awaiting-resubmit">{pick}Waiting for them to update their furniture placement.</p>;
-              }
-              if (ready) {
-                return (
-                  <p data-testid="floor-plan-ready-confirmed">
-                    {pick}Ready for the day. Physical editing is locked for staff and couple until you Make Changes.
-                  </p>
-                );
-              }
-              if (layoutStatus === "approved" || (selected.sharedWithCouple && seatingOpen)) {
-                return (
-                  <p data-testid="floor-plan-next-mark-ready">
-                    {pick}Open it and <span className="font-medium">Mark as Ready</span>{" "}when it&apos;s set for the day.
-                  </p>
-                );
-              }
-              return (
-                <p data-testid="floor-plan-preference-awaiting-share">
-                  {pick}Turn on &quot;Couple can see it&quot; when they should see it.
+          {(() => {
+            const next = venueFloorPlanNextStep({
+              couplePreferenceStatus,
+              workingPlan,
+            });
+            const selected = coupleSelectedFloorPlanId
+              ? floorPlans.find((p) => p.id === coupleSelectedFloorPlanId)
+              : null;
+            return (
+              <>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span
+                    className="inline-flex text-[11px] font-medium px-2 py-0.5 rounded-full border border-border text-muted-foreground"
+                    data-testid="floor-plan-workspace-status-badge"
+                  >
+                    {next.badge}
+                  </span>
+                  {selected ? (
+                    <span className="text-[11px] text-muted-foreground" data-testid="floor-plan-client-selected">
+                      Selected layout: <span className="font-medium text-foreground">{selected.name}</span>
+                    </span>
+                  ) : activeOffers.length > 1 ? (
+                    <span className="text-[11px] text-muted-foreground" data-testid="floor-plan-client-pending">
+                      Waiting on couple selection among {activeOffers.length} offered layouts
+                    </span>
+                  ) : activeOffers.length === 1 ? (
+                    <span className="text-[11px] text-muted-foreground" data-testid="floor-plan-sole-offer-working">
+                      One offered layout
+                      {workingPlan ? <> — preparing <span className="font-medium text-foreground">{workingPlan.name}</span></> : null}
+                    </span>
+                  ) : (
+                    <span className="text-[11px] text-muted-foreground" data-testid="floor-plan-no-offers-status">
+                      {workingPlan
+                        ? <>Working layout: <span className="font-medium text-foreground">{workingPlan.name}</span></>
+                        : "No layout yet — add one below."}
+                    </span>
+                  )}
+                </div>
+                <p className="text-sm text-foreground" data-testid="floor-plan-workspace-next-step">
+                  {next.nextStep}
                 </p>
-              );
-            })()
-          ) : activeOffers.length === 1 ? (
-            <p data-testid="floor-plan-sole-offer-working">
-              One layout is offered to the couple
-              {workingPlan ? <> — you&apos;re preparing <span className="font-medium">{workingPlan.name}</span>.</> : "."}
-            </p>
-          ) : activeOffers.length > 1 ? (
-            <p data-testid="floor-plan-client-pending">
-              The couple is choosing between {activeOffers.length} layouts — nothing picked yet.
-            </p>
-          ) : workingPlan ? (
-            <p data-testid="floor-plan-no-offers-status">
-              You&apos;re preparing <span className="font-medium">{workingPlan.name}</span>. Turn on &quot;Couple can see it&quot; when they should see it.
-            </p>
-          ) : (
-            <p data-testid="floor-plan-no-offers-status">No layout yet — add one below.</p>
-          )}
+                {couplePreferenceStatus === "proposed_replacement" ? (
+                  <p className="sr-only" data-testid="floor-plan-next-review-preference">
+                    Replacement requested — review below.
+                  </p>
+                ) : null}
+                {workingPlan && normalizeClientLayoutStatus(workingPlan.clientLayoutStatus) === "submitted" ? (
+                  <p className="sr-only" data-testid="floor-plan-next-review-submission">
+                    Submitted for review — actions below.
+                  </p>
+                ) : null}
+              </>
+            );
+          })()}
         </div>
       )}
 
       {!preBooking && eventId && offeredLayouts.length > 0 ? (
         <div className="space-y-1.5" data-testid="floor-plan-offered-layouts">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Layouts offered to the couple</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Offered layouts</p>
             <button
               type="button"
               className="text-xs font-medium text-foreground underline-offset-2 hover:underline"
@@ -1149,7 +1168,7 @@ export function FloorPlanWorkspace({
                 data-couple-pick={o.isCouplePick ? "true" : "false"}
               >
                 {o.label}
-                {o.isCouplePick ? <span className="ml-1.5 font-semibold text-primary">· Couple&apos;s pick</span> : null}
+                {o.isCouplePick ? <span className="ml-1.5 font-semibold text-primary">· Selected layout</span> : null}
               </li>
             ))}
           </ul>

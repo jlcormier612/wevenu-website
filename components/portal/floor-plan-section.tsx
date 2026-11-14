@@ -15,6 +15,15 @@ import { FloorPlanShapeSvg, DISPLAY_SHAPE_STYLE } from "@/components/floor-plan/
 import { FloorPlanSubmitConfirmDialog } from "@/components/portal/floor-plan-submit-confirm-dialog";
 import { OBJECT_STYLE } from "@/lib/floor-plans/constants";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  floorPlanCapacityNeedsAttention,
+  formatFloorPlanCapacityCompact,
   formatFloorPlanCapacitySentence,
   summarizeFloorPlanCapacity,
 } from "@/lib/floor-plans/capacity";
@@ -24,7 +33,10 @@ import {
   clientMaySubmitLayout,
   normalizeClientLayoutStatus,
 } from "@/lib/floor-plans/client-layout-review";
-import { portalFloorPlanGuidance } from "@/lib/floor-plans/portal-guidance";
+import {
+  portalFloorPlanEditingHelpItems,
+  portalFloorPlanGuidance,
+} from "@/lib/floor-plans/portal-guidance";
 import type { DisplayShape, ObjectType } from "@/lib/floor-plans/types";
 import type {
   PortalFloorPlanCatalogItem,
@@ -352,11 +364,14 @@ function WorkingLayoutCanvas({
 
   return (
     <div className="space-y-2">
-      <div className="overflow-auto bg-[#F7F5F1] p-3" data-testid="floor-plan-working-canvas">
+      <div
+        className="overflow-auto bg-[#F7F5F1] p-3 min-h-[min(340px,55vh)] md:min-h-[420px]"
+        data-testid="floor-plan-working-canvas"
+      >
         <svg
           ref={svgRef}
           viewBox={`0 0 ${canvasW} ${canvasH}`}
-          className="w-full h-auto max-h-[50vh] mx-auto block touch-none"
+          className="w-full h-auto min-h-[min(340px,55vh)] max-h-[70vh] md:min-h-[420px] mx-auto block touch-none"
           role="img"
           aria-label={`Your floor plan: ${planName}`}
           onPointerMove={onPointerMove}
@@ -777,6 +792,12 @@ export default function FloorPlanSection({
   const [adding, setAdding] = React.useState(false);
   const [addError, setAddError] = React.useState<string | null>(null);
   const [catalogOpen, setCatalogOpen] = React.useState(false);
+  const [helpOpen, setHelpOpen] = React.useState(false);
+  const [capacityDetailsOpen, setCapacityDetailsOpen] = React.useState(false);
+  const [requestLayoutOpen, setRequestLayoutOpen] = React.useState(false);
+  const [requestSelecting, setRequestSelecting] = React.useState(false);
+  const [requestError, setRequestError] = React.useState<string | null>(null);
+
   const [catalog, setCatalog] = React.useState<PortalFloorPlanFurnitureCatalog | null>(null);
   const [catalogLoading, setCatalogLoading] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
@@ -1061,9 +1082,9 @@ export default function FloorPlanSection({
     ?? list.find((p) => p.isCoupleSelected)?.id
     ?? null;
   const showPackageView = hasSetups;
-  const needsChooser = !showPackageView && offers.length > 1;
+  const multiOffer = !showPackageView && offers.length > 1;
   /** Multi-offer: couple must select a working layout before furniture submit. */
-  const requiresPreferenceSelection = needsChooser;
+  const requiresPreferenceSelection = multiOffer;
   const proposedReplacementPending = preferenceStatus === "proposed_replacement";
   const selectedSummary = list.find((p) => p.id === selectedId) ?? null;
   const selectedIsCoupleChoice = Boolean(plan?.isCoupleSelected ?? selectedSummary?.isCoupleSelected);
@@ -1075,6 +1096,27 @@ export default function FloorPlanSection({
   const layoutStatus = normalizeClientLayoutStatus(
     plan?.clientLayoutStatus ?? selectedSummary?.clientLayoutStatus,
   );
+  const hasSelectedWorking = Boolean(coupleSelectedId) || (hasShared && !multiOffer);
+  const awaitingInitialSelection = multiOffer && !coupleSelectedId;
+  /** Pre-submit multi-offer selector (not instant switchers after submit/approval). */
+  const showPreSubmitSelector =
+    multiOffer
+    && !proposedReplacementPending
+    && !selectedIsReady
+    && (layoutStatus === "working" || layoutStatus === "changes_requested");
+  /** Post-submit / approved: static layout summary; replacement only when lifecycle allows. */
+  const showPostSubmitLayoutSummary =
+    multiOffer
+    && (
+      proposedReplacementPending
+      || selectedIsReady
+      || layoutStatus === "submitted"
+      || layoutStatus === "approved"
+    );
+  const canRequestDifferentLayout =
+    multiOffer
+    && !proposedReplacementPending
+    && (layoutStatus === "approved" || selectedIsReady);
   const canEditLayout = clientMayEditLayout({
     clientLayoutStatus: layoutStatus,
     isReady: selectedIsReady,
@@ -1097,9 +1139,9 @@ export default function FloorPlanSection({
         : list.some((p) => p.seatingEnabled === true)),
   );
   const guidance = portalFloorPlanGuidance({
-    needsChooser,
+    needsChooser: awaitingInitialSelection,
     hasWorkingShared: hasShared,
-    hasSelectedWorking: Boolean(coupleSelectedId) || (hasShared && !needsChooser),
+    hasSelectedWorking,
     clientLayoutStatus: layoutStatus,
     isReady: selectedIsReady,
     furnitureEditingAllowed: editable,
@@ -1107,28 +1149,109 @@ export default function FloorPlanSection({
     seatingEnabled,
     proposedReplacementPending,
   });
+  const editingHelpItems = portalFloorPlanEditingHelpItems({
+    furnitureEditingAllowed: editable,
+    coupleMayAddTables: mayAddTables,
+    canSubmit: Boolean(canSubmitLayout && guidance.showSubmitPrompt),
+  });
+  const capacitySummary = summarizeFloorPlanCapacity({
+    objects: (detail?.objects ?? []).map((o) => ({
+      objectType: o.objectType,
+      capacity: o.capacity,
+    })),
+    guestCount: detail?.eventGuestCount ?? guestCountProp,
+    spaceCapacity: detail?.spaceCapacity ?? null,
+  });
+  const capacityHasShortfall = floorPlanCapacityNeedsAttention(capacitySummary)
+    && (capacitySummary.level === "seating_short" || capacitySummary.level === "both_short");
+  const statusBadgeLabel = selectedIsReady
+    ? "Ready"
+    : proposedReplacementPending
+      ? "Replacement requested"
+      : clientLayoutStatusLabel(layoutStatus);
+  const currentLayoutName = selectedSummary?.name ?? plan?.name ?? null;
+
+  async function selectOfferLayout(offerId: string) {
+    setRequestSelecting(true);
+    setRequestError(null);
+    try {
+      const r = await fetch("/api/portal/floor-plan-offers/select", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ token, offerId }),
+      });
+      const d = await r.json() as { ok?: boolean; error?: string };
+      if (!r.ok || !d.ok) {
+        setRequestError(d.error ?? "Could not update your layout choice.");
+        return;
+      }
+      setRequestLayoutOpen(false);
+      setReloadTick((n) => n + 1);
+    } catch {
+      setRequestError("Could not update your layout choice. Nothing was changed — you can try again.");
+    } finally {
+      setRequestSelecting(false);
+    }
+  }
 
   if (!hasOffers && !hasShared) {
     return (
-      <div className="text-center py-16 text-muted-foreground" data-testid="floor-plan-waiting-no-offer">
-        <div className="text-3xl mb-3">🗺️</div>
-        <p className="text-sm font-medium text-heading">Waiting on a layout from your venue</p>
-        <p className="text-xs mt-1 max-w-sm mx-auto" data-testid="floor-plan-waiting-copy">
-          Your venue has not offered or shared a floor plan for this event yet. When they share one, it
-          appears here.
+      <div className="px-4 py-12 text-muted-foreground" data-testid="floor-plan-waiting-no-offer">
+        <h2
+          className="text-[24px] font-semibold leading-[30px] text-heading"
+          data-testid="floor-plan-empty-heading"
+        >
+          Your Floor Plan
+        </h2>
+        <p className="text-[13px] mt-3 max-w-sm" data-testid="floor-plan-waiting-copy">
+          Your venue hasn&apos;t shared a floor plan yet. Once one is available, you&apos;ll find it here.
         </p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4 px-4 md:px-0">
       <FloorPlanSubmitConfirmDialog
         open={submitConfirmOpen}
         pending={submitting}
         onCancel={cancelSubmitConfirm}
         onConfirm={() => void submitToVenue()}
       />
+
+      <Dialog open={requestLayoutOpen} onOpenChange={setRequestLayoutOpen}>
+        <DialogContent className="sm:max-w-md" data-testid="floor-plan-request-layout-dialog">
+          <DialogHeader>
+            <DialogTitle>Request a different layout</DialogTitle>
+            <DialogDescription>
+              Your current approved arrangement will stay in place while your venue reviews this request.
+              Guest seating is not moved automatically.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-2 pt-1">
+            {offers
+              .filter((o) => !o.isCurrentSelection)
+              .map((o) => (
+                <button
+                  key={o.offerId}
+                  type="button"
+                  disabled={requestSelecting}
+                  onClick={() => void selectOfferLayout(o.offerId)}
+                  className="min-h-11 rounded-xl border border-border bg-card px-3 py-2.5 text-left text-sm font-medium text-heading disabled:opacity-50"
+                  data-testid="floor-plan-request-layout-option"
+                >
+                  {o.name}
+                </button>
+              ))}
+          </div>
+          {requestError && (
+            <p className="text-xs text-destructive" data-testid="floor-plan-request-layout-error">
+              {requestError}
+            </p>
+          )}
+        </DialogContent>
+      </Dialog>
+
       {showPackageView ? (
         <WeddingSetupsSection
           token={token}
@@ -1136,7 +1259,9 @@ export default function FloorPlanSection({
           onSelected={() => setReloadTick((n) => n + 1)}
         />
       ) : null}
-      {needsChooser && (
+
+      {/* Initial multi-offer pick before a working shared plan exists */}
+      {awaitingInitialSelection && !hasShared && (
         <ChooseLayoutSection
           token={token}
           offers={offers}
@@ -1144,165 +1269,106 @@ export default function FloorPlanSection({
         />
       )}
 
-      {hasShared && (
-        <section className="space-y-4" data-testid="floor-plan-working-view">
-          <div>
-            <h2 className="text-lg font-semibold text-heading">Your Floor Plan</h2>
-            <p className="text-xs text-muted-foreground mt-0.5" data-testid="floor-plan-status-label">
-              {selectedIsReady
-                ? "This layout is Ready for the event. Furniture placement is locked."
-                : clientLayoutStatusLabel(layoutStatus)}
-            </p>
+      {(hasShared || (awaitingInitialSelection && hasShared)) && (
+        <section className="space-y-3" data-testid="floor-plan-working-view">
+          {/* A2 — Header */}
+          <header className="space-y-1.5 pb-0" data-testid="floor-plan-header">
+            <h2 className="text-[24px] font-semibold leading-[30px] text-heading">
+              Your Floor Plan
+            </h2>
+            <span
+              className="inline-flex text-[11px] font-medium px-2 py-0.5 rounded-full border border-border text-muted-foreground"
+              data-testid="floor-plan-status-label"
+            >
+              {statusBadgeLabel}
+            </span>
             {selectedIsReady && (
-              <p className="text-xs font-medium mt-1" style={{ color: SAGE }} data-testid="floor-plan-ready-badge">
-                Ready for the event
-              </p>
+              <span className="sr-only" data-testid="floor-plan-ready-badge">Ready for the event</span>
             )}
-          </div>
+          </header>
 
-          <div
-            className="rounded-2xl border border-border bg-card px-4 py-3 space-y-2"
-            data-testid="floor-plan-guidance"
-          >
-            <p className="text-sm font-medium text-heading" data-testid="floor-plan-guidance-headline">
+          {/* A3 — Contextual instruction */}
+          <div className="space-y-2" data-testid="floor-plan-guidance">
+            <p
+              className="text-[13px] leading-snug text-foreground"
+              data-testid="floor-plan-guidance-copy"
+            >
+              {guidance.instruction}
+            </p>
+            <p className="sr-only" data-testid="floor-plan-guidance-headline">
               {guidance.headline}
             </p>
-            <p className="text-xs text-muted-foreground" data-testid="floor-plan-guidance-copy">
-              {guidance.detail}
-            </p>
-            {selectedSummary?.name || plan?.name ? (
-              <p className="text-xs text-muted-foreground">
-                Layout: {selectedSummary?.name ?? plan?.name}
-                {selectedIsCoupleChoice ? " · Your selection" : ""}
-                {layoutStatus === "approved" ? " · Furniture approved" : ""}
-              </p>
-            ) : null}
-            {layoutStatus === "changes_requested" && reviewNote?.trim() && (
-              <p
-                className="text-xs rounded-lg border border-amber-200 bg-amber-50/80 px-3 py-2 text-amber-950"
+            {(layoutStatus === "changes_requested" || Boolean(reviewNote?.trim()))
+              && reviewNote?.trim() && (
+              <div
+                className="rounded-xl border border-border bg-card px-3 py-2.5 space-y-1"
                 data-testid="floor-plan-changes-note"
               >
-                From your venue: {reviewNote.trim()}
-              </p>
-            )}
-            {(() => {
-              const capacitySummary = summarizeFloorPlanCapacity({
-                objects: (detail?.objects ?? []).map((o) => ({
-                  objectType: o.objectType,
-                  capacity: o.capacity,
-                })),
-                guestCount: detail?.eventGuestCount ?? guestCountProp,
-                spaceCapacity: detail?.spaceCapacity ?? null,
-              });
-              if (capacitySummary.tableCount === 0) return null;
-              return (
-                <div
-                  className="rounded-xl border border-border bg-muted/20 px-3 py-2 space-y-1"
-                  data-testid="floor-plan-client-capacity"
-                >
-                  <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-                    Layout capacity
-                  </p>
-                  <p className="text-xs text-heading" data-testid="floor-plan-client-capacity-sentence">
-                    {formatFloorPlanCapacitySentence(capacitySummary)}
-                    {detail?.spaceName ? ` · ${detail.spaceName}` : ""}
-                  </p>
-                </div>
-              );
-            })()}
-            {canEditLayout && (
-              <ul className="text-[11px] text-muted-foreground space-y-1 list-disc pl-4">
-                <li>Locked items (gray lock mark) stay where your venue placed them.</li>
-                <li>
-                  {(plan?.coupleMayAddTables ?? selectedSummary?.coupleMayAddTables) === false
-                    ? "Your venue has turned off adding furniture on this layout."
-                    : "You may add tables your venue permits, within their inventory limits shown in the catalog."}
-                </li>
-                {seatingEnabled && (
-                  <li>Seat guests on the Seating tab when seating is open (separate from furniture review).</li>
-                )}
-              </ul>
-            )}
-            <div className="flex flex-wrap items-center gap-2 pt-1">
-              {canSubmitLayout && guidance.showSubmitPrompt && selectedId && (
-                <button
-                  type="button"
-                  disabled={submitting}
-                  onClick={openSubmitConfirm}
-                  className="text-xs font-semibold px-3 py-1.5 rounded-xl text-white disabled:opacity-50"
-                  style={{ background: SAGE }}
-                  data-testid="floor-plan-submit-to-venue"
-                >
-                  {submitting ? "Submitting…" : "Submit floor plan to venue"}
-                </button>
-              )}
-              {!canSubmitLayout
-                && hasShared
-                && !selectedIsReady
-                && (layoutStatus === "working" || layoutStatus === "changes_requested")
-                && requiresPreferenceSelection
-                && !coupleSelectedId && (
-                <p
-                  className="text-xs text-amber-800 w-full"
-                  data-testid="floor-plan-submit-needs-preference"
-                >
-                  Choose a starting layout above before you can submit furniture placement for review.
-                </p>
-              )}
-              {layoutStatus === "submitted" && !selectedIsReady && (
-                <span
-                  className="text-[11px] font-medium px-2 py-1 rounded-full border"
-                  style={{ borderColor: `${SAGE}55`, color: SAGE }}
-                  data-testid="floor-plan-submitted-badge"
-                >
-                  With venue for review
-                </span>
-              )}
-              {layoutStatus === "approved" && !selectedIsReady && (
-                <span
-                  className="text-[11px] font-medium px-2 py-1 rounded-full border border-primary/40 bg-primary/10 text-primary"
-                  data-testid="floor-plan-approved-badge"
-                >
-                  Approved by venue
-                </span>
-              )}
-            </div>
-            {(submitError || submitOk) && (
-              <div>
-                {submitError && (
-                  <p className="text-xs text-destructive" data-testid="floor-plan-submit-error">{submitError}</p>
-                )}
-                {submitOk && !submitError && (
-                  <p className="text-xs font-medium" style={{ color: SAGE }} data-testid="floor-plan-submit-success">
-                    Submitted to your venue. Placement is locked until they review.
-                  </p>
-                )}
+                <p className="text-[11px] font-semibold text-heading">Notes from your venue</p>
+                <p className="text-[13px] text-foreground whitespace-pre-wrap">{reviewNote.trim()}</p>
               </div>
             )}
           </div>
 
-          {list.length > 1 && (
-            <div className="flex flex-wrap gap-2">
-              {list.map((p) => {
-                const active = p.id === selectedId;
-                return (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() => setSelectedId(p.id)}
-                    className={`text-xs font-semibold px-3 py-1.5 rounded-xl border transition-colors ${
-                      active ? "border-transparent text-white" : "border-border text-heading bg-card"
-                    }`}
-                    style={active ? { background: SAGE } : undefined}
-                  >
-                    {p.name}
-                    {p.isCoupleSelected ? " · Your selection" : ""}
-                    {p.isCoupleApproved ? " · Approved" : ""}
-                    {p.isReady ? " · Ready" : ""}
-                    {!p.isCoupleSelected && (p.isOperational || p.id === operationalId) ? " · Venue working layout" : ""}
-                  </button>
-                );
-              })}
+          {/* A4 — Layout selection / summary */}
+          {showPreSubmitSelector && (
+            <div className="space-y-2" data-testid="floor-plan-layout-selector">
+              {awaitingInitialSelection && (
+                <p className="text-[12px] text-muted-foreground" data-testid="floor-plan-choose-preference-copy">
+                  Select the layout that works best for you — that becomes your working layout.
+                </p>
+              )}
+              <div className="flex flex-wrap gap-2 overflow-x-auto pb-0.5">
+                {offers.map((o) => {
+                  const active = Boolean(o.isCurrentSelection);
+                  return (
+                    <button
+                      key={o.offerId}
+                      type="button"
+                      disabled={requestSelecting}
+                      onClick={() => {
+                        if (active) return;
+                        void selectOfferLayout(o.offerId);
+                      }}
+                      className={`min-h-11 min-w-[7rem] shrink-0 rounded-xl border px-3 text-[13px] font-semibold transition-colors ${
+                        active
+                          ? "border-transparent text-white"
+                          : "border-border bg-card text-heading"
+                      }`}
+                      style={active ? { background: SAGE } : undefined}
+                      data-testid="floor-plan-layout-option"
+                      aria-pressed={active}
+                    >
+                      {o.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {showPostSubmitLayoutSummary && currentLayoutName && (
+            <div
+              className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-card px-3 py-2.5"
+              data-testid="floor-plan-current-layout-summary"
+            >
+              <div className="min-w-0">
+                <p className="text-[11px] font-medium text-muted-foreground">Selected layout</p>
+                <p className="text-sm font-semibold text-heading truncate">{currentLayoutName}</p>
+              </div>
+              {canRequestDifferentLayout && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRequestError(null);
+                    setRequestLayoutOpen(true);
+                  }}
+                  className="min-h-11 shrink-0 rounded-xl border border-border bg-card px-3 text-[13px] font-semibold text-heading"
+                  data-testid="floor-plan-request-different-layout"
+                >
+                  Request a different layout
+                </button>
+              )}
             </div>
           )}
 
@@ -1317,22 +1383,23 @@ export default function FloorPlanSection({
             </div>
           )}
 
+          {/* A5 — Canvas */}
           {plan && (
-            <div className="rounded-2xl border border-border bg-card overflow-hidden">
+            <div className="rounded-2xl border border-border bg-card overflow-hidden mt-1">
               <div className="px-4 py-3 border-b border-border flex items-center justify-between gap-2 flex-wrap">
-                <div>
-                  <p className="text-sm font-semibold text-heading">{plan.name}</p>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-heading truncate">{plan.name}</p>
                   <p className="text-[11px] text-muted-foreground">
                     {selectedIsReady
-                      ? "Ready for the event — furniture placement is set"
+                      ? "Ready — furniture placement is set"
                       : layoutStatus === "submitted"
                         ? "Submitted — awaiting venue review"
                         : layoutStatus === "approved"
                           ? "Approved — placement locked"
                           : layoutStatus === "changes_requested"
-                            ? "Updates requested — edit, then submit again"
-                            : selectedIsCoupleChoice || plan.isOperational
-                              ? "Working copy — drag unlocked items; changes save as you go"
+                            ? "Updates requested — edit, then send again"
+                            : editable
+                              ? "Drag unlocked items — changes save as you go"
                               : "Shared layout"}
                   </p>
                 </div>
@@ -1342,18 +1409,12 @@ export default function FloorPlanSection({
                       type="button"
                       disabled={adding || catalogLoading}
                       onClick={() => void openCatalog()}
-                      className="text-xs font-semibold px-3 py-1.5 rounded-xl border border-border text-heading bg-card disabled:opacity-50"
+                      className="min-h-11 text-[13px] font-semibold px-3 rounded-xl border border-border text-heading bg-card disabled:opacity-50"
                       data-testid="floor-plan-add-table"
                     >
                       {catalogLoading ? "Loading…" : "Add furniture"}
                     </button>
                   )}
-                  <p className="text-[11px] text-muted-foreground">
-                    {objects.length} element{objects.length === 1 ? "" : "s"}
-                    {objects.filter((o) => SEATABLE.has(o.objectType)).length > 0
-                      ? ` · ${objects.filter((o) => SEATABLE.has(o.objectType)).reduce((s, o) => s + (o.capacity ?? 0), 0)} seats`
-                      : ""}
-                  </p>
                 </div>
               </div>
               <WorkingLayoutCanvas
@@ -1509,15 +1570,147 @@ export default function FloorPlanSection({
             </div>
           )}
 
-          <p className="text-xs text-muted-foreground text-center" data-testid="floor-plan-seating-next-hint">
-            Seating is available now — open Seating to assign guests to tables.
-          </p>
+          {/* A6 — Primary action */}
+          <div className="space-y-2 pt-1" data-testid="floor-plan-primary-action-slot">
+            {canSubmitLayout && guidance.showSubmitPrompt && selectedId && (
+              <button
+                type="button"
+                disabled={submitting}
+                onClick={openSubmitConfirm}
+                className="w-full min-h-11 text-[14px] font-semibold px-4 rounded-xl text-white disabled:opacity-50"
+                style={{ background: SAGE }}
+                data-testid="floor-plan-submit-to-venue"
+              >
+                {submitting ? "Sending…" : "Send layout for review"}
+              </button>
+            )}
+            {!canSubmitLayout
+              && hasShared
+              && !selectedIsReady
+              && (layoutStatus === "working" || layoutStatus === "changes_requested")
+              && requiresPreferenceSelection
+              && !coupleSelectedId && (
+              <p
+                className="text-[13px] text-amber-800"
+                data-testid="floor-plan-submit-needs-preference"
+              >
+                Choose a starting layout above before you can send furniture placement for review.
+              </p>
+            )}
+            {layoutStatus === "submitted" && !selectedIsReady && (
+              <p
+                className="text-[13px] text-muted-foreground"
+                data-testid="floor-plan-submitted-badge"
+              >
+                Your layout is with your venue for review.
+              </p>
+            )}
+            {layoutStatus === "approved" && !selectedIsReady && (
+              <p
+                className="text-[13px] text-muted-foreground"
+                data-testid="floor-plan-approved-badge"
+              >
+                Your venue has approved this arrangement.
+              </p>
+            )}
+            {(submitError || submitOk) && (
+              <div>
+                {submitError && (
+                  <p className="text-xs text-destructive" data-testid="floor-plan-submit-error">{submitError}</p>
+                )}
+                {submitOk && !submitError && (
+                  <p className="text-xs font-medium" style={{ color: SAGE }} data-testid="floor-plan-submit-success">
+                    Sent to your venue. Placement is locked until they review.
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* A7 — Compact capacity */}
+          {capacitySummary.tableCount > 0 && (
+            <div className="space-y-1.5 py-1" data-testid="floor-plan-client-capacity">
+              <p
+                className="text-[13px] text-muted-foreground"
+                data-testid="floor-plan-client-capacity-sentence"
+              >
+                {formatFloorPlanCapacityCompact(capacitySummary)}
+              </p>
+              {capacityHasShortfall && (
+                <div>
+                  <button
+                    type="button"
+                    className="min-h-11 text-[13px] font-medium text-heading underline-offset-2 hover:underline"
+                    onClick={() => setCapacityDetailsOpen((v) => !v)}
+                    data-testid="floor-plan-capacity-details-toggle"
+                    aria-expanded={capacityDetailsOpen}
+                  >
+                    View seating capacity details
+                  </button>
+                  {capacityDetailsOpen && (
+                    <p
+                      className="mt-1 text-[13px] text-foreground"
+                      data-testid="floor-plan-capacity-details"
+                    >
+                      {formatFloorPlanCapacitySentence(capacitySummary)}
+                      {detail?.spaceName ? ` · ${detail.spaceName}` : ""}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* A8 — Editing help (collapsed) */}
+          {guidance.showEditingHelp && editingHelpItems.length > 0 && (
+            <div className="rounded-xl border border-border bg-card" data-testid="floor-plan-editing-help">
+              <button
+                type="button"
+                className="flex w-full min-h-11 items-center justify-between gap-2 px-3 text-left text-[13px] font-semibold text-heading"
+                onClick={() => setHelpOpen((v) => !v)}
+                aria-expanded={helpOpen}
+                data-testid="floor-plan-editing-help-toggle"
+              >
+                How to edit your layout
+                <span className="text-muted-foreground font-normal">{helpOpen ? "Hide" : "Show"}</span>
+              </button>
+              {helpOpen && (
+                <ul className="px-3 pb-3 text-[13px] text-muted-foreground space-y-1.5 list-disc pl-7">
+                  {editingHelpItems.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+
+          {/* C2 — Guest Seating route */}
+          {guidance.showGuestSeatingRoute && seatingEnabled && (
+            <div
+              className="rounded-xl border border-border bg-card px-3 py-3 space-y-2"
+              data-testid="floor-plan-seating-next-hint"
+            >
+              <p className="text-[13px] text-foreground">
+                Your layout is set. You can arrange your guests in Guest Seating.
+              </p>
+              <button
+                type="button"
+                className="min-h-11 w-full rounded-xl border border-border text-[13px] font-semibold text-heading"
+                onClick={() => {
+                  window.location.hash = "seating";
+                }}
+                data-testid="floor-plan-open-guest-seating"
+              >
+                Open Guest Seating
+              </button>
+            </div>
+          )}
         </section>
       )}
 
-      {needsChooser && !hasShared && (
-        <p className="text-xs text-muted-foreground text-center" data-testid="floor-plan-awaiting-selection-view">
-          Choose a layout above to open your working plan and seating.
+      {awaitingInitialSelection && !hasShared && (
+        <p className="text-[13px] text-muted-foreground text-center" data-testid="floor-plan-awaiting-selection-view">
+          Choose a layout above to open your working plan.
         </p>
       )}
     </div>

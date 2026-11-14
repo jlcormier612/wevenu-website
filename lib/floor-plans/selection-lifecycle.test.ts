@@ -126,8 +126,9 @@ describe("portal guidance", () => {
       coupleMayAddTables: true,
       seatingEnabled: true,
     });
-    assert.match(g.headline, /Make it yours/i);
+    assert.match(g.instruction, /Arrange your layout, save your changes/i);
     assert.equal(g.showSubmitPrompt, true);
+    assert.equal(g.showEditingHelp, true);
   });
 
   it("view-only", () => {
@@ -141,8 +142,9 @@ describe("portal guidance", () => {
       coupleMayAddTables: false,
       seatingEnabled: false,
     });
-    assert.match(g.headline, /Take a look around/i);
+    assert.match(g.instruction, /layout your venue has shared/i);
     assert.equal(g.showSubmitPrompt, false);
+    assert.equal(g.showEditingHelp, false);
   });
 
   it("submitted / approved / changes requested", () => {
@@ -156,8 +158,8 @@ describe("portal guidance", () => {
         furnitureEditingAllowed: false,
         coupleMayAddTables: false,
         seatingEnabled: true,
-      }).headline,
-      /with your venue/i,
+      }).instruction,
+      /with your venue for review/i,
     );
     assert.match(
       portalFloorPlanGuidance({
@@ -169,21 +171,49 @@ describe("portal guidance", () => {
         furnitureEditingAllowed: false,
         coupleMayAddTables: false,
         seatingEnabled: true,
-      }).headline,
+      }).instruction,
       /approved this arrangement/i,
     );
-    assert.match(
-      portalFloorPlanGuidance({
-        needsChooser: false,
-        hasWorkingShared: true,
-        hasSelectedWorking: true,
-        clientLayoutStatus: "changes_requested",
-        isReady: false,
-        furnitureEditingAllowed: true,
-        coupleMayAddTables: true,
-        seatingEnabled: false,
-      }).headline,
-      /requested a few adjustments/i,
-    );
+    const changes = portalFloorPlanGuidance({
+      needsChooser: false,
+      hasWorkingShared: true,
+      hasSelectedWorking: true,
+      clientLayoutStatus: "changes_requested",
+      isReady: false,
+      furnitureEditingAllowed: true,
+      coupleMayAddTables: true,
+      seatingEnabled: false,
+    });
+    assert.match(changes.instruction, /requested a few changes/i);
+    assert.match(changes.headline, /Changes requested/i);
+    assert.equal(changes.showSubmitPrompt, true);
+  });
+
+  it("seating-only and proposed replacement", () => {
+    const seating = portalFloorPlanGuidance({
+      needsChooser: false,
+      hasWorkingShared: true,
+      hasSelectedWorking: true,
+      clientLayoutStatus: "working",
+      isReady: false,
+      furnitureEditingAllowed: false,
+      coupleMayAddTables: false,
+      seatingEnabled: true,
+    });
+    assert.match(seating.instruction, /Guest Seating/i);
+    assert.equal(seating.showGuestSeatingRoute, true);
+
+    const proposed = portalFloorPlanGuidance({
+      needsChooser: false,
+      hasWorkingShared: true,
+      hasSelectedWorking: true,
+      clientLayoutStatus: "approved",
+      isReady: false,
+      furnitureEditingAllowed: false,
+      coupleMayAddTables: false,
+      seatingEnabled: false,
+      proposedReplacementPending: true,
+    });
+    assert.match(proposed.instruction, /different layout has been sent/i);
   });
 });

@@ -2,7 +2,53 @@
  * Floor Plans tab presentation helpers. Read-only — no lifecycle decisions.
  */
 import type { EventFloorPlanOfferWithTemplate } from "@/lib/floor-plan-offers/types";
+import { normalizeClientLayoutStatus } from "@/lib/floor-plans/client-layout-review";
 import type { FloorPlan } from "@/lib/floor-plans/types";
+
+/** Compact venue workspace next-step sentence (B2 vocabulary). */
+export function venueFloorPlanNextStep(input: {
+  couplePreferenceStatus: string | null | undefined;
+  workingPlan: Pick<FloorPlan, "clientLayoutStatus" | "finalizedAt" | "name"> | null;
+}): { badge: string; nextStep: string } {
+  if (input.couplePreferenceStatus === "proposed_replacement") {
+    return {
+      badge: "Replacement requested",
+      nextStep: "Your couple has requested a different layout.",
+    };
+  }
+  const working = input.workingPlan;
+  if (working?.finalizedAt) {
+    return {
+      badge: "Ready",
+      nextStep: "This arrangement is finalized. Choose Make Changes to reopen editing.",
+    };
+  }
+  const status = working
+    ? normalizeClientLayoutStatus(working.clientLayoutStatus)
+    : "working";
+  if (status === "submitted") {
+    return {
+      badge: "Awaiting Review",
+      nextStep: "Your couple has submitted a layout for your review.",
+    };
+  }
+  if (status === "approved") {
+    return {
+      badge: "Approved",
+      nextStep: "You've approved this arrangement. Mark it Ready when everything is finalized.",
+    };
+  }
+  if (status === "changes_requested") {
+    return {
+      badge: "Changes requested",
+      nextStep: "Waiting for your couple to update their layout and send it back.",
+    };
+  }
+  return {
+    badge: "Working",
+    nextStep: "Your layout is ready to edit and share.",
+  };
+}
 
 /**
  * Venue action card appears for proposed replacements, seating-in-use conflicts,

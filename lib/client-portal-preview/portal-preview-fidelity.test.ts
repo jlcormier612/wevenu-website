@@ -58,7 +58,7 @@ describe("Client portal preview fidelity", () => {
 
   it("Floor Plans preview only presents shared plans + offers (not unshared operational alone)", () => {
     assert.match(loader, /sharedWithCouple/);
-    assert.match(fpView, /Waiting on a layout from your venue|No Floor Plan shared yet/);
+    assert.match(fpView, /hasn't shared a floor plan yet|Your Floor Plan|No Floor Plan shared yet/);
     assert.match(fpView, /Choose your layout/);
     assert.match(fpView, /Choose this layout \(preview only\)/);
   });
