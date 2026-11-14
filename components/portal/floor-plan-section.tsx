@@ -1098,20 +1098,28 @@ export default function FloorPlanSection({
     plan?.clientLayoutStatus ?? selectedSummary?.clientLayoutStatus,
   );
   const hasSelectedWorking = Boolean(coupleSelectedId) || (hasShared && !multiOffer);
-  const awaitingInitialSelection = multiOffer && !coupleSelectedId;
-  /** Pre-submit multi-offer selector (not instant switchers after submit/approval). */
+  /** Initial chooser only before review starts — never during submitted / changes / approved / Ready. */
+  const awaitingInitialSelection =
+    multiOffer
+    && !coupleSelectedId
+    && layoutStatus === "working"
+    && !selectedIsReady
+    && !proposedReplacementPending;
+  /** Pre-submit multi-offer selector (not after furniture review has begun). */
   const showPreSubmitSelector =
     multiOffer
     && !proposedReplacementPending
     && !selectedIsReady
-    && (layoutStatus === "working" || layoutStatus === "changes_requested");
-  /** Post-submit / approved: static layout summary; replacement only when lifecycle allows. */
+    && layoutStatus === "working"
+    && Boolean(coupleSelectedId || awaitingInitialSelection);
+  /** Post-submit / changes / approved: static layout summary; replacement when lifecycle allows. */
   const showPostSubmitLayoutSummary =
     multiOffer
     && (
       proposedReplacementPending
       || selectedIsReady
       || layoutStatus === "submitted"
+      || layoutStatus === "changes_requested"
       || layoutStatus === "approved"
     );
   const canRequestDifferentLayout =
@@ -1125,7 +1133,16 @@ export default function FloorPlanSection({
   const canSubmitLayout = clientMaySubmitLayout({
     clientLayoutStatus: layoutStatus,
     isReady: selectedIsReady,
-    isCoupleSelected: selectedIsCoupleChoice || Boolean(coupleSelectedId) || !requiresPreferenceSelection,
+    // Once furniture review has begun (or Ready), a shared plan is the working layout
+    // even if the couple-selected pointer was never written for multi-offer.
+    isCoupleSelected:
+      selectedIsCoupleChoice
+      || Boolean(coupleSelectedId)
+      || !requiresPreferenceSelection
+      || layoutStatus === "changes_requested"
+      || layoutStatus === "submitted"
+      || layoutStatus === "approved"
+      || selectedIsReady,
     requiresPreferenceSelection,
   });
   const mayAddTables = Boolean(plan?.coupleMayAddTables !== false) && canEditLayout;
@@ -1588,7 +1605,7 @@ export default function FloorPlanSection({
             {!canSubmitLayout
               && hasShared
               && !selectedIsReady
-              && (layoutStatus === "working" || layoutStatus === "changes_requested")
+              && layoutStatus === "working"
               && requiresPreferenceSelection
               && !coupleSelectedId && (
               <p
