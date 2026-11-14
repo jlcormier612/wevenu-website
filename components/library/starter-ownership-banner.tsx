@@ -20,6 +20,7 @@ export function StarterOwnershipBanner({
   onCustomize,
   customizeHref,
   itemNoun = "activities",
+  compact = false,
 }: {
   templateName: string;
   /** Called to create a venue-owned copy; should return the new template id on success. */
@@ -27,6 +28,7 @@ export function StarterOwnershipBanner({
   /** Path prefix for navigation after customize, e.g. `/library/timeline-templates`. */
   customizeHref: (templateId: string) => string;
   itemNoun?: string;
+  compact?: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = React.useTransition();
@@ -46,15 +48,24 @@ export function StarterOwnershipBanner({
 
   return (
     <div
-      className="htc-surface-guidance space-y-2 px-3 py-3"
+      className={compact ? "htc-surface-guidance-compact space-y-1.5 px-3 py-2" : "htc-surface-guidance space-y-2 px-3 py-3"}
       data-testid="starter-ownership-banner"
     >
       <p className="text-sm font-medium text-heading">Hello to Cheers starter</p>
       <p className="text-xs text-muted-foreground">
-        &ldquo;{templateName}&rdquo; is a reusable starting point for your venue. Editing its{" "}
-        {itemNoun} changes this starter row. To keep the starter intact and build your own version,
-        customize it — that creates a separate venue-owned template you can rename and edit freely.
-        The original starter stays available in your Library.
+        {compact ? (
+          <>
+            Customize creates a separate venue-owned template you can edit. The original starter stays
+            available in your Library.
+          </>
+        ) : (
+          <>
+            &ldquo;{templateName}&rdquo; is a reusable starting point for your venue. Editing its{" "}
+            {itemNoun} changes this starter row. To keep the starter intact and build your own version,
+            customize it — that creates a separate venue-owned template you can rename and edit freely.
+            The original starter stays available in your Library.
+          </>
+        )}
       </p>
       <div className="flex flex-wrap gap-2 pt-1">
         <Button

@@ -3,6 +3,7 @@
  * Uses frozen ChoicesDefinition group rules (minSelect / maxSelect / selectionMode).
  */
 import type { ChoicesDefinitionGroup } from "@/lib/client-choices/types";
+import { selectionRuleLabel } from "@/lib/event-order-templates/selection-rule-label";
 
 export type SelectionProgress = {
   /** Short rule + live count for the group header. */
@@ -26,44 +27,25 @@ export function isAtSelectionMaximum(
 
 /**
  * Live progress wording from the configured rule.
- * Examples:
- * - Choose exactly 2 — 0 of 2 selected
- * - Choose exactly 3 — 2 of 3 selected
- * - Choose 2–4 — 3 selected
- * - Optional — choose up to 2 — 1 selected
- * - Pick one · required — 1 of 1 selected
+ * Optional max-N allows 0 through N.
  */
 export function selectionProgressLabel(
   group: Pick<ChoicesDefinitionGroup, "selectionMode" | "minSelect" | "maxSelect">,
   selectedCount: number,
 ): string {
   const count = Math.max(0, selectedCount);
-
+  const base = selectionRuleLabel(group);
   if (group.selectionMode === "single") {
-    const required = group.minSelect > 0;
-    const base = required ? "Pick one · required" : "Optional — choose 1 or skip";
     return `${base} — ${count} of 1 selected`;
   }
-
-  const min = group.minSelect;
   const max = group.maxSelect;
-
-  if (min > 0 && max != null && min === max) {
-    return `Choose exactly ${min} — ${count} of ${min} selected`;
+  if (group.minSelect > 0 && max != null && group.minSelect === max) {
+    return `${base} — ${count} of ${max} selected`;
   }
-  if (min > 0 && max != null) {
-    return `Choose ${min}–${max} — ${count} selected`;
+  if (group.minSelect === 0 && max != null && max > 0) {
+    return `${base} — ${count} of ${max} selected`;
   }
-  if (min > 0 && max == null) {
-    return `Choose at least ${min} — ${count} selected`;
-  }
-  if (min === 0 && max != null && max > 0) {
-    return `Optional — choose exactly ${max} or skip — ${count} of ${max} selected`;
-  }
-  if (min === 0 && max === 0) {
-    return `No selections — ${count} selected`;
-  }
-  return `Optional — choose any — ${count} selected`;
+  return `${base} — ${count} selected`;
 }
 
 function isSelectionRequirementMet(
@@ -71,15 +53,7 @@ function isSelectionRequirementMet(
   count: number,
 ): boolean {
   if (count < group.minSelect) return false;
-  if (
-    group.minSelect === 0 &&
-    group.maxSelect != null &&
-    group.maxSelect > 0 &&
-    count > 0 &&
-    count < group.maxSelect
-  ) {
-    return false;
-  }
+  if (group.maxSelect != null && count > group.maxSelect) return false;
   return true;
 }
 

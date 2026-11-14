@@ -6,6 +6,7 @@
 import * as React from "react";
 
 import { Input } from "@/components/ui/input";
+import { venueCommercialLabel } from "@/lib/event-order-templates/commercial-state";
 import { optionsForGroup } from "@/lib/event-order-templates/offerings";
 import type { EventOrderTemplateWithDetails } from "@/lib/event-order-templates/types";
 import type { ChoicesAnswers } from "@/lib/client-choices/types";
@@ -84,11 +85,7 @@ export function TemplateGroupAnswerChooser({
                       <span className="min-w-0 flex-1">
                         <span className="block text-sm font-medium text-heading">{o.label}</span>
                         <span className="block text-xs text-muted-foreground">
-                          {o.isIncluded
-                            ? "Included"
-                            : o.unitPrice != null
-                              ? `$${o.unitPrice.toFixed(2)}`
-                              : "Unpriced"}
+                          {venueCommercialLabel(o)}
                         </span>
                       </span>
                     </label>

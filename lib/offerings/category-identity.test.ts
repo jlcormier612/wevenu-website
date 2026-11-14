@@ -67,14 +67,12 @@ describe("offering category identity", () => {
     assert.match(provision, /event_order_template_sections/);
   });
 
-  it("guided builder lets the venue add and remove package sections in place", () => {
-    const wizard = readFileSync(
-      join(process.cwd(), "components/event-order-templates/guided-setup-wizard.tsx"),
+  it("template overview lets the venue add and remove package sections", () => {
+    const overview = readFileSync(
+      join(process.cwd(), "components/event-order-templates/event-order-template-overview.tsx"),
       "utf8",
     );
-    assert.match(wizard, /eo-guided-edit-package-categories/);
-    assert.match(wizard, /openPackageCategories/);
-    assert.match(wizard, /Add section/);
-    assert.match(wizard, /eo-guided-remove-section-/);
+    assert.match(overview, /Add section/);
+    assert.match(overview, /eo-guided-remove-section-/);
   });
 });

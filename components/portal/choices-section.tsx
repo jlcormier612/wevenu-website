@@ -4,21 +4,14 @@ import { useEffect, useState, useTransition } from "react";
 
 import { Loader2 } from "lucide-react";
 
+import { ChoicesInteractiveForm } from "@/components/client-choices/choices-interactive-form";
 import { Button } from "@/components/ui/button";
-import {
-  orderedVisibleChoiceGroups,
-  reconcileAnswersForDependencies,
-} from "@/lib/client-choices/conditional-groups";
+import { reconcileAnswersForDependencies } from "@/lib/client-choices/conditional-groups";
 import {
   clientChoicesDisplayLabel,
   isClientChoicesClientEditable,
 } from "@/lib/client-choices/constants";
 import type { ChoicesAnswers, ChoicesDefinition } from "@/lib/client-choices/types";
-import {
-  isAtSelectionMaximum,
-  selectionMaximumReachedMessage,
-  selectionProgressForGroup,
-} from "@/lib/client-choices/selection-progress";
 import { validateChoicesAnswers } from "@/lib/client-choices/validate-answers";
 import { pruneAnswersToDefinition } from "@/lib/event-order-templates/selection-definition";
 
@@ -64,36 +57,24 @@ export function ChoicesPortalSection({ token }: { token: string }) {
         setRows(list);
         const open = list.find((c) => isClientChoicesClientEditable(c.status)) ?? list[0];
         setActiveId(open?.id ?? null);
-        if (open) {
-          const loaded = applyLoadedAnswers(open.definition, open.answers ?? {});
-          setAnswers(loaded.answers);
-          if (loaded.dropped && isClientChoicesClientEditable(open.status)) {
-            setMessageTone("error");
-            setMessage(
-              "Some of your saved selections are no longer available — review the options below before submitting.",
-            );
-          }
-        } else {
-          setAnswers({});
-        }
+        if (open) hydrateAnswers(open);
+        else setAnswers({});
       })
       .catch(() => setRows(null));
   }, [token]);
 
   const active = rows?.find((r) => r.id === activeId) ?? null;
 
-  useEffect(() => {
-    if (active) {
-      const loaded = applyLoadedAnswers(active.definition, active.answers ?? {});
-      setAnswers(loaded.answers);
-      if (loaded.dropped && isClientChoicesClientEditable(active.status)) {
-        setMessageTone("error");
-        setMessage(
-          "Some of your saved selections are no longer available — review the options below before submitting.",
-        );
-      }
+  function hydrateAnswers(row: PortalChoices) {
+    const loaded = applyLoadedAnswers(row.definition, row.answers ?? {});
+    setAnswers(loaded.answers);
+    if (loaded.dropped && isClientChoicesClientEditable(row.status)) {
+      setMessageTone("error");
+      setMessage(
+        "Some of your saved selections are no longer available — review the options below before submitting.",
+      );
     }
-  }, [active?.id]);
+  }
 
   if (rows === undefined) {
     return (
@@ -112,36 +93,6 @@ export function ChoicesPortalSection({ token }: { token: string }) {
         </p>
       </div>
     );
-  }
-
-  function toggleOption(groupId: string, optionId: string, mode: "single" | "multi") {
-    if (!active) return;
-    const group = active.definition.groups.find((g) => g.id === groupId);
-    const current = answers[groupId]?.optionIds ?? [];
-    const alreadySelected = current.includes(optionId);
-
-    // Adding a new multi selection past max — block without replacing silently.
-    if (group && mode === "multi" && !alreadySelected && isAtSelectionMaximum(group, current.length)) {
-      setMessageTone("error");
-      setMessage(selectionMaximumReachedMessage(group));
-      return;
-    }
-
-    setMessage(null);
-    setMessageTone("info");
-    setAnswers((prev) => {
-      const cur = prev[groupId]?.optionIds ?? [];
-      let next: string[];
-      if (mode === "single") {
-        next = cur.includes(optionId) ? [] : [optionId];
-      } else {
-        next = cur.includes(optionId)
-          ? cur.filter((id) => id !== optionId)
-          : [...cur, optionId];
-      }
-      const tentative = { ...prev, [groupId]: { ...prev[groupId], optionIds: next } };
-      return reconcileAnswersForDependencies(active.definition, tentative);
-    });
   }
 
   function save(submit: boolean) {
@@ -174,14 +125,14 @@ export function ChoicesPortalSection({ token }: { token: string }) {
       setMessageTone("info");
       setMessage(submit ? "Submitted — your venue will review." : "Saved.");
       const refreshed = await fetch(`/api/portal/choices?token=${encodeURIComponent(token)}`).then((r) => r.json());
-      setRows(refreshed.choices ?? []);
+      const list = (refreshed.choices ?? []) as PortalChoices[];
+      setRows(list);
+      const current = list.find((c) => c.id === active.id) ?? list[0];
+      if (current) hydrateAnswers(current);
     });
   }
 
   const editable = active ? isClientChoicesClientEditable(active.status) : false;
-  const visibleGroups = active
-    ? orderedVisibleChoiceGroups(active.definition, answers)
-    : [];
 
   return (
     <div className="mx-auto max-w-2xl space-y-6 px-4 py-6">
@@ -199,7 +150,10 @@ export function ChoicesPortalSection({ token }: { token: string }) {
               key={r.id}
               type="button"
               className={`rounded-full border px-3 py-1 text-xs ${r.id === activeId ? "border-heading bg-muted" : "border-border"}`}
-              onClick={() => setActiveId(r.id)}
+              onClick={() => {
+                setActiveId(r.id);
+                hydrateAnswers(r);
+              }}
             >
               {r.name}
             </button>
@@ -217,186 +171,25 @@ export function ChoicesPortalSection({ token }: { token: string }) {
             ) : null}
           </div>
 
-          {(active.definition.fixedLines?.length ?? 0) > 0 ? (
-            <div
-              className="space-y-4 rounded-sm border border-border bg-muted/15 p-4"
-              data-testid="choices-definition-view"
-              data-mode="portal-fixed"
-            >
-              <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
-                Included with your event
-              </p>
-              {(() => {
-                const fixed = active.definition.fixedLines!.slice();
-                const sections = active.definition.sections
-                  .slice()
-                  .sort((a, b) => a.sortOrder - b.sortOrder);
-                const bySection = sections
-                  .map((section) => ({
-                    section,
-                    lines: fixed
-                      .filter((l) => l.sectionId === section.id)
-                      .sort((a, b) => a.sortOrder - b.sortOrder),
-                  }))
-                  .filter((entry) => entry.lines.length > 0);
-                const unsectioned = fixed
-                  .filter((l) => !l.sectionId || sections.every((s) => s.id !== l.sectionId))
-                  .sort((a, b) => a.sortOrder - b.sortOrder);
-                const blocks =
-                  bySection.length > 0
-                    ? bySection.map(({ section, lines }) => ({
-                        key: section.id,
-                        title: section.name,
-                        guidance: section.guidance,
-                        lines,
-                      }))
-                    : [
-                        {
-                          key: "included",
-                          title: null as string | null,
-                          guidance: null as string | null,
-                          lines: fixed.sort((a, b) => a.sortOrder - b.sortOrder),
-                        },
-                      ];
-                if (unsectioned.length > 0 && bySection.length > 0) {
-                  blocks.push({
-                    key: "unsectioned",
-                    title: null,
-                    guidance: null,
-                    lines: unsectioned,
-                  });
-                }
-                return blocks.map((block) => (
-                  <section key={block.key} className="space-y-2">
-                    {block.title ? (
-                      <h2 className="text-sm font-semibold text-heading">{block.title}</h2>
-                    ) : null}
-                    {block.guidance ? (
-                      <p className="text-xs text-muted-foreground">{block.guidance}</p>
-                    ) : null}
-                    <ul className="space-y-2">
-                      {block.lines.map((line) => (
-                        <li key={line.id} className="text-sm" data-testid="choices-fixed-line">
-                          <span className="font-medium text-heading">{line.description}</span>
-                          {line.descriptionDetail ? (
-                            <span className="mt-0.5 block text-xs text-muted-foreground">
-                              {line.descriptionDetail}
-                            </span>
-                          ) : null}
-                          <span className="mt-0.5 block text-xs text-muted-foreground">
-                            {line.includedByDefault ? "Included" : "Part of your offering"}
-                            {line.unitPrice != null
-                              ? ` · $${Number(line.unitPrice).toFixed(2)}`
-                              : ""}
-                            {line.unit ? ` / ${line.unit}` : ""}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  </section>
-                ));
-              })()}
-            </div>
-          ) : null}
-
-          {visibleGroups.map((group) => {
-            const deps = group.dependsOnOptionIds ?? [];
-            const isDependent = deps.length > 0;
-            const opts = active.definition.options
-              .filter((o) => o.groupId === group.id)
-              .sort((a, b) => a.sortOrder - b.sortOrder);
-            const selected = answers[group.id]?.optionIds ?? [];
-            const progress = selectionProgressForGroup(group, selected.length);
-            const atMax = progress.atMaximum;
-            return (
-              <fieldset
-                key={group.id}
-                className={`space-y-2 rounded-sm border border-border p-4 ${isDependent ? "ml-3 border-l-2 border-l-heading/40" : ""}`}
-                disabled={!editable}
-                data-testid={isDependent ? "choices-dependent-group" : "choices-group"}
-                data-group-name={group.name}
-                data-dependent={isDependent ? "true" : "false"}
-                data-selected-count={String(progress.selectedCount)}
-                data-at-maximum={atMax ? "true" : "false"}
-              >
-                <legend className="px-1 text-sm font-medium text-heading">{group.name}</legend>
-                <p
-                  className="text-xs text-muted-foreground"
-                  data-testid="choices-group-progress"
-                >
-                  {progress.label}
-                  {isDependent ? " · based on your selection above" : ""}
-                </p>
-                {/* Legacy harness seam — same live progress text */}
-                <span className="sr-only" data-testid="choices-group-rules">{progress.label}</span>
-                {group.instructions ? (
-                  <p className="text-xs text-muted-foreground">{group.instructions}</p>
-                ) : null}
-                {opts.length === 0 ? (
-                  <p className="text-xs text-muted-foreground" data-testid="choices-dependent-empty">
-                    No additional choices are configured for this selection yet.
-                  </p>
-                ) : (
-                  <div className="space-y-2">
-                    {opts.map((opt) => {
-                      const checked = selected.includes(opt.id);
-                      const blockedAdd = atMax && !checked && group.selectionMode === "multi";
-                      return (
-                        <label
-                          key={opt.id}
-                          className={`flex items-start gap-3 rounded-sm border px-3 py-2 text-sm ${
-                            checked
-                              ? "cursor-pointer border-heading bg-muted/30"
-                              : blockedAdd
-                                ? "cursor-not-allowed border-border opacity-60"
-                                : "cursor-pointer border-border"
-                          }`}
-                        >
-                          <input
-                            type={group.selectionMode === "single" ? "radio" : "checkbox"}
-                            name={group.id}
-                            value={opt.id}
-                            checked={checked}
-                            disabled={!editable || blockedAdd}
-                            aria-disabled={blockedAdd || undefined}
-                            title={blockedAdd ? selectionMaximumReachedMessage(group) : undefined}
-                            data-testid={`choices-option-${opt.id}`}
-                            data-option-id={opt.id}
-                            onChange={() => toggleOption(group.id, opt.id, group.selectionMode)}
-                            className="mt-0.5"
-                          />
-                          {opt.imageUrl?.trim() ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={opt.imageUrl.trim()}
-                              alt=""
-                              loading="lazy"
-                              decoding="async"
-                              className="h-12 w-12 shrink-0 rounded-md border border-border/60 bg-muted/30 object-contain"
-                              data-testid={`choices-option-photo-${opt.id}`}
-                            />
-                          ) : null}
-                          <span className="flex-1">
-                            <span className="font-medium">{opt.label}</span>
-                            {opt.description ? (
-                              <span className="block text-xs text-muted-foreground">{opt.description}</span>
-                            ) : null}
-                            <span className="block text-xs text-muted-foreground">
-                              {opt.isIncluded
-                                ? "Included"
-                                : opt.unitPrice != null
-                                  ? `+$${Number(opt.unitPrice).toFixed(2)}`
-                                  : "Additional"}
-                            </span>
-                          </span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                )}
-              </fieldset>
-            );
-          })}
+          <ChoicesInteractiveForm
+            definition={active.definition}
+            answers={answers}
+            editable={editable}
+            onAnswersChange={(next) => {
+              setAnswers(next);
+              setMessage(null);
+              setMessageTone("info");
+            }}
+            onBlocked={(blocked) => {
+              if (blocked) {
+                setMessageTone("error");
+                setMessage(blocked);
+              } else {
+                setMessage(null);
+                setMessageTone("info");
+              }
+            }}
+          />
 
           {message ? (
             <p

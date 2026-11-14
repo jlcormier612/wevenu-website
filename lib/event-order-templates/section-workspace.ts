@@ -79,24 +79,62 @@ export function dependentGroupsForOption(
 export type SectionCompletenessIssue = {
   groupId: string;
   groupName: string;
-  kind: "empty-dependent" | "empty-root";
+  kind: "empty-dependent" | "empty-root" | "unpriced-option";
   message: string;
 };
+
+function parentOptionLabelsForGroup(
+  group: EventOrderTemplateGroup,
+  options: EventOrderTemplateOption[],
+): string[] {
+  const labels: string[] = [];
+  const seen = new Set<string>();
+  for (const id of group.dependsOnOptionIds ?? []) {
+    const label = options.find((o) => o.id === id)?.label?.trim();
+    if (!label || seen.has(label)) continue;
+    seen.add(label);
+    labels.push(label);
+  }
+  return labels;
+}
 
 export function sectionCompletenessIssues(
   groups: EventOrderTemplateGroup[],
   options: EventOrderTemplateOption[],
 ): SectionCompletenessIssue[] {
   const issues: SectionCompletenessIssue[] = [];
+  const unpriced: SectionCompletenessIssue[] = [];
   for (const g of groups) {
-    const count = options.filter((o) => o.groupId === g.id).length;
-    if (count > 0) continue;
+    const groupOptions = options.filter((o) => o.groupId === g.id);
+    const count = groupOptions.length;
+    if (count > 0) {
+      const unresolved = groupOptions.some((o) => !o.isIncluded && o.unitPrice == null);
+      if (unresolved) {
+        const parents = parentOptionLabelsForGroup(g, options);
+        const label = parents.length === 1 ? `${parents[0]} · ${g.name}` : g.name;
+        unpriced.push({
+          groupId: g.id,
+          groupName: g.name,
+          kind: "unpriced-option",
+          message: `${label} still needs a price or an Included decision.`,
+        });
+      }
+      continue;
+    }
     if (isDependentGroup(g)) {
+      const parents = parentOptionLabelsForGroup(g, options);
+      const parent = parents.length === 1
+        ? parents[0]
+        : parents.length > 1
+          ? parents.join(" or ")
+          : null;
       issues.push({
         groupId: g.id,
         groupName: g.name,
         kind: "empty-dependent",
-        message: `“${g.name}” has no follow-up options yet — clients will see an empty branch when its parent is selected.`,
+        message: parent
+          ? `${parent} needs at least one choice in ${g.name}.`
+          : `“${g.name}” has no follow-up options yet — clients will see an empty branch when its parent is selected.`,
       });
     } else {
       issues.push({
@@ -107,7 +145,7 @@ export function sectionCompletenessIssues(
       });
     }
   }
-  return issues;
+  return [...issues, ...unpriced];
 }
 
 export function preferredCategoryIdsForSection(

@@ -179,7 +179,7 @@ describe("step 5 wiring", () => {
     const panel = read("components/event-orders/event-order-panel.tsx");
     assert.match(panel, /eo-section-setup-\$\{section\.id\}/);
     assert.match(panel, /eo-section-setup-unmatched-/);
-    assert.match(read("components/event-order-templates/guided-setup-wizard.tsx"), /SectionFloorPlanDefault/);
+    assert.match(read("components/event-order-templates/event-order-section-editor.tsx"), /SectionFloorPlanDefault/);
     assert.match(read("lib/event-orders/service.ts"), /floorPlanSetupName: s\.floorPlanSetupName, notOnFloorPlan: s\.notOnFloorPlan/);
   });
 });

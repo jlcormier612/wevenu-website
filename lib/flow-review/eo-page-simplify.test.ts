@@ -43,10 +43,16 @@ describe("EO page simplify (5–6)", () => {
 
   it("empty Event Order state uses plain language (no Setup Profile / deliverables jargon)", () => {
     assert.match(panel, /eo-empty-start/);
-    assert.match(panel, /Pick a template or start blank below\. The couple sees nothing until you send it\./);
+    assert.match(panel, /emptyEventOrderStartCopy/);
+    assert.match(panel, /The couple sees nothing until you send it/);
     assert.doesNotMatch(panel, /agreed deliverables record/);
     assert.doesNotMatch(panel, /Release to client portal from Overview/);
     assert.doesNotMatch(panel, /Events that use a sales Package only can skip this/);
+  });
+
+  it("Path B packet without Event Order puts submitted choices above empty-start", () => {
+    assert.match(workflow, /pathBPacketWithoutOrder/);
+    assert.match(workflow, /selectionPacketPresence/);
   });
 
   it("journey remains the single invoice CTA path on the EO tab", () => {

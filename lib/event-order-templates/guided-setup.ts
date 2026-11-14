@@ -4,6 +4,7 @@
  */
 import { isDependentGroup } from "@/lib/event-order-templates/group-dependencies";
 import { linesForSection } from "@/lib/event-order-templates/offerings";
+import { selectionRuleLabel } from "@/lib/event-order-templates/selection-rule-label";
 import {
   dependentGroupsForOption,
   groupsForSection,
@@ -642,26 +643,7 @@ export function resolvePlainSelectionRule(input: PlainSelectionRuleInput): {
 export function plainSelectionRuleLabel(
   g: Pick<EventOrderTemplateGroup, "selectionMode" | "minSelect" | "maxSelect">,
 ): string {
-  if (g.selectionMode === "single") {
-    if (g.minSelect > 0) return "Choose exactly 1";
-    return "Optional — choose 1 or skip";
-  }
-  if (g.minSelect > 0 && g.maxSelect != null && g.minSelect === g.maxSelect) {
-    return `Choose exactly ${g.minSelect}`;
-  }
-  if (g.minSelect > 0 && g.maxSelect != null) {
-    return `Choose ${g.minSelect}–${g.maxSelect}`;
-  }
-  if (g.minSelect > 0 && g.maxSelect == null) {
-    return `Choose at least ${g.minSelect}`;
-  }
-  if (g.minSelect === 0 && g.maxSelect === 0) {
-    return "No selections (skip only)";
-  }
-  if (g.minSelect === 0 && g.maxSelect != null) {
-    return `Optional — choose exactly ${g.maxSelect} or skip`;
-  }
-  return "Optional — choose any";
+  return selectionRuleLabel(g);
 }
 
 /** One-line health chip for a collapsed section header. */

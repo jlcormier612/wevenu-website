@@ -38,12 +38,19 @@ import {
   offeringsAvailableForAttach,
   updateOptionFieldsPreservingOfferingLink,
 } from "@/lib/client-choices-templates/option-catalog";
+import { enqueueOptionPersist } from "@/lib/event-order-templates/option-persist-queue";
 import {
   formatDependsOnSummary,
   isDependentGroup,
   parentOptionCandidates,
   sanitizeDependsOnOptionIds,
 } from "@/lib/event-order-templates/group-dependencies";
+import { venueCommercialLabel } from "@/lib/event-order-templates/commercial-state";
+import {
+  OptionCommercialControls,
+  commercialDraftFromOption,
+  commercialDraftToWrite,
+} from "@/components/event-order-templates/option-commercial-controls";
 import {
   dependentCategoryGroupInput,
   plainSelectionRuleLabel,
@@ -70,9 +77,7 @@ type OptionMode = "idle" | "catalog" | "custom";
 type OptionPanel = "idle" | "link" | "edit";
 
 function formatOptionPrice(o: { isIncluded: boolean; unitPrice: number | null }): string {
-  if (o.isIncluded) return "Included";
-  if (o.unitPrice != null) return `$${o.unitPrice.toFixed(2)}`;
-  return "Unpriced";
+  return venueCommercialLabel(o);
 }
 
 function groupRulesLabel(g: EventOrderTemplateGroup, ordinary = false): string {
@@ -396,17 +401,21 @@ export function EventOrderTemplateChoiceGroups({
   const [optionGroupId, setOptionGroupId] = React.useState<string>("");
   const [optionOfferingId, setOptionOfferingId] = React.useState<string>("");
   const [optionLabel, setOptionLabel] = React.useState("");
-  const [optionIncluded, setOptionIncluded] = React.useState(true);
-  const [optionPrice, setOptionPrice] = React.useState("");
   const [optionDefault, setOptionDefault] = React.useState(false);
+  const [optionCommercial, setOptionCommercial] = React.useState(commercialDraftFromOption({
+    isIncluded: false,
+    unitPrice: null,
+  }));
 
   const [optionPanel, setOptionPanel] = React.useState<OptionPanel>("idle");
   const [panelOptionId, setPanelOptionId] = React.useState<string>("");
   const [linkOfferingId, setLinkOfferingId] = React.useState("");
   const [editLabel, setEditLabel] = React.useState("");
-  const [editIncluded, setEditIncluded] = React.useState(true);
-  const [editPrice, setEditPrice] = React.useState("");
   const [editDefault, setEditDefault] = React.useState(false);
+  const [editCommercial, setEditCommercial] = React.useState(commercialDraftFromOption({
+    isIncluded: false,
+    unitPrice: null,
+  }));
 
   const lockedSectionName = lockedSectionId
     ? template.sections.find((s) => s.id === lockedSectionId)?.name ?? null
@@ -442,9 +451,8 @@ export function EventOrderTemplateChoiceGroups({
     setOptionMode("idle");
     setOptionOfferingId("");
     setOptionLabel("");
-    setOptionPrice("");
-    setOptionIncluded(true);
     setOptionDefault(false);
+    setOptionCommercial(commercialDraftFromOption({ isIncluded: false, unitPrice: null }));
   }
 
   function pickOffering(id: string) {
@@ -453,8 +461,10 @@ export function EventOrderTemplateChoiceGroups({
     if (!off) return;
     const draft = choicesOptionDraftFromOffering(off);
     setOptionLabel(draft.label);
-    setOptionIncluded(draft.isIncluded);
-    setOptionPrice(draft.unitPrice != null ? String(draft.unitPrice) : "");
+    setOptionCommercial(commercialDraftFromOption({
+      isIncluded: draft.isIncluded,
+      unitPrice: draft.unitPrice,
+    }));
   }
 
   function submitOption(offeringId: string | null) {
@@ -467,12 +477,13 @@ export function EventOrderTemplateChoiceGroups({
       const imageUrl = catalogOffering
         ? choicesOptionDraftFromOffering(catalogOffering).imageUrl
         : null;
+      const commercial = commercialDraftToWrite(optionCommercial);
       const r = await addEventOrderTemplateOptionAction(template.id, {
         groupId: optionGroupId,
         offeringId,
         label: optionLabel,
-        isIncluded: optionIncluded,
-        unitPrice: optionIncluded ? "0" : (optionPrice.trim() || null),
+        isIncluded: commercial.isIncluded,
+        unitPrice: commercial.unitPrice != null ? String(commercial.unitPrice) : null,
         isDefault: optionDefault,
         imageUrl,
       });
@@ -626,9 +637,8 @@ export function EventOrderTemplateChoiceGroups({
     setOptionGroupId(groupId);
     setOptionMode("custom");
     setOptionLabel("");
-    setOptionIncluded(true);
-    setOptionPrice("");
     setOptionDefault(false);
+    setOptionCommercial(commercialDraftFromOption({ isIncluded: false, unitPrice: null }));
   }
 
   function saveDeps(g: EventOrderTemplateGroup) {
@@ -678,14 +688,13 @@ export function EventOrderTemplateChoiceGroups({
     setOptionPanel("edit");
     setPanelOptionId(o.id);
     setEditLabel(o.label);
-    setEditIncluded(o.isIncluded);
-    setEditPrice(o.unitPrice != null ? String(o.unitPrice) : "");
     setEditDefault(o.isDefault);
+    setEditCommercial(commercialDraftFromOption(o));
   }
 
   function persistOptionWrite(o: EventOrderTemplateOption, input: Parameters<typeof updateEventOrderTemplateOptionAction>[2]) {
-    startTransition(async () => {
-      onPersist("saving");
+    onPersist("saving");
+    void enqueueOptionPersist(async () => {
       const r = await updateEventOrderTemplateOptionAction(template.id, o.id, input);
       if (!r.ok) {
         onPersist("error", r.errors?.label ?? r.message ?? "Could not update option.");
@@ -1134,21 +1143,13 @@ export function EventOrderTemplateChoiceGroups({
                                 placeholder="Customer-facing label"
                                 data-testid={`eo-option-edit-label-${o.id}`}
                               />
-                              <label className="flex items-center gap-2 text-sm">
-                                <input
-                                  type="checkbox"
-                                  checked={editIncluded}
-                                  onChange={(e) => setEditIncluded(e.target.checked)}
-                                />
-                                Included ($0)
-                              </label>
-                              {!editIncluded ? (
-                                <Input
-                                  value={editPrice}
-                                  onChange={(e) => setEditPrice(e.target.value)}
-                                  placeholder="Unit price"
-                                />
-                              ) : null}
+                              <OptionCommercialControls
+                                optionId={o.id}
+                                draft={editCommercial}
+                                onChange={setEditCommercial}
+                                pending={pending}
+                                showSave={false}
+                              />
                               <label className="flex items-center gap-2 text-sm">
                                 <input
                                   type="checkbox"
@@ -1164,21 +1165,13 @@ export function EventOrderTemplateChoiceGroups({
                                   disabled={pending || !editLabel.trim()}
                                   data-testid={`eo-option-edit-save-${o.id}`}
                                   onClick={() => {
-                                    const priceNum = editIncluded
-                                      ? 0
-                                      : editPrice.trim() === ""
-                                        ? null
-                                        : Number(editPrice);
+                                    const commercial = commercialDraftToWrite(editCommercial);
                                     persistOptionWrite(
                                       o,
                                       updateOptionFieldsPreservingOfferingLink(o, {
                                         label: editLabel,
-                                        isIncluded: editIncluded,
-                                        unitPrice: editIncluded
-                                          ? 0
-                                          : priceNum != null && Number.isFinite(priceNum)
-                                            ? priceNum
-                                            : null,
+                                        isIncluded: commercial.isIncluded,
+                                        unitPrice: commercial.unitPrice,
                                         isDefault: editDefault,
                                       }),
                                     );
@@ -1734,21 +1727,13 @@ export function EventOrderTemplateChoiceGroups({
               value={optionLabel}
               onChange={(e) => setOptionLabel(e.target.value)}
             />
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={optionIncluded}
-                onChange={(e) => setOptionIncluded(e.target.checked)}
-              />
-              Included ($0)
-            </label>
-            {!optionIncluded ? (
-              <Input
-                placeholder="Unit price"
-                value={optionPrice}
-                onChange={(e) => setOptionPrice(e.target.value)}
-              />
-            ) : null}
+            <OptionCommercialControls
+              optionId="new"
+              draft={optionCommercial}
+              onChange={setOptionCommercial}
+              pending={pending}
+              showSave={false}
+            />
             <label className="flex items-center gap-2 text-sm">
               <input
                 type="checkbox"
@@ -1781,21 +1766,13 @@ export function EventOrderTemplateChoiceGroups({
               onChange={(e) => setOptionLabel(e.target.value)}
               autoFocus
             />
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={optionIncluded}
-                onChange={(e) => setOptionIncluded(e.target.checked)}
-              />
-              Included ($0)
-            </label>
-            {!optionIncluded ? (
-              <Input
-                placeholder="Unit price"
-                value={optionPrice}
-                onChange={(e) => setOptionPrice(e.target.value)}
-              />
-            ) : null}
+            <OptionCommercialControls
+              optionId="new"
+              draft={optionCommercial}
+              onChange={setOptionCommercial}
+              pending={pending}
+              showSave={false}
+            />
             <label className="flex items-center gap-2 text-sm">
               <input
                 type="checkbox"

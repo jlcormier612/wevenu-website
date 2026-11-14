@@ -8,6 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import {
+  applySectionAbsenceCopy,
+  applySectionChoiceNote,
+  applyTemplateStructureCopy,
+} from "@/lib/event-order-templates/apply-presence-copy";
+import {
   defaultApplySelections,
   formatTemplateOfferingPrice,
   linesForSection,
@@ -30,6 +35,8 @@ export function TemplateApplyChooser({
 }) {
   const sections = [...template.sections].sort((a, b) => a.sortOrder - b.sortOrder);
   const loose = unsectionedLines(template.lines);
+  const groups = template.groups ?? [];
+  const structureCopy = applyTemplateStructureCopy(template.lines.length, groups.length);
 
   function toggle(lineId: string, selected: boolean) {
     onChange(selections.map((s) => (s.lineId === lineId ? { ...s, selected } : s)));
@@ -85,6 +92,8 @@ export function TemplateApplyChooser({
     <div className="space-y-6">
       {sections.map((section) => {
         const offerings = linesForSection(template.lines, section.id);
+        const choiceGroupCount = groups.filter((g) => g.sectionId === section.id).length;
+        const choiceNote = applySectionChoiceNote(choiceGroupCount);
         return (
           <div key={section.id} className="space-y-2">
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-heading">{section.name}</p>
@@ -92,9 +101,16 @@ export function TemplateApplyChooser({
               <p className="text-xs text-muted-foreground">{section.guidance}</p>
             ) : null}
             {offerings.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Section only — no offerings to select.</p>
+              <p className="text-sm text-muted-foreground" data-testid={`apply-section-absence-${section.id}`}>
+                {applySectionAbsenceCopy(offerings.length, choiceGroupCount)}
+              </p>
             ) : (
-              <ul className="space-y-2">{offerings.map(offeringRow)}</ul>
+              <>
+                <ul className="space-y-2">{offerings.map(offeringRow)}</ul>
+                {choiceNote ? (
+                  <p className="text-sm text-muted-foreground">{choiceNote}</p>
+                ) : null}
+              </>
             )}
           </div>
         );
@@ -105,9 +121,9 @@ export function TemplateApplyChooser({
           <ul className="space-y-2">{loose.map(offeringRow)}</ul>
         </div>
       ) : null}
-      {template.lines.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          This template is sections only. Applying it adds those categories to the Event Order.
+      {structureCopy ? (
+        <p className="text-sm text-muted-foreground" data-testid="apply-template-structure-copy">
+          {structureCopy}
         </p>
       ) : null}
     </div>

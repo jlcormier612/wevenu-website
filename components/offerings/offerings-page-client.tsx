@@ -33,11 +33,11 @@ export function OfferingsPageClient({
 
   return (
     <div className="htc-hospitality-page space-y-4 sm:space-y-6">
-      <CollectionBackLink href="/library/event-order-templates" label="Event Order plans" />
+      <CollectionBackLink href="/library" label="Library" />
       <div className="htc-hospitality-heading htc-hospitality-intro-accent">
         <PageHeader
-          title="Choices catalog"
-          description="Reusable menus, bar, services, and upgrades that power Event Order plans. Editing here does not send choices to clients."
+          title="Offerings Catalog"
+          description="Manage the services, packages, upgrades, and choices available for clients to select."
           actions={
             <Button
               type="button"
@@ -56,13 +56,13 @@ export function OfferingsPageClient({
       </div>
       <LibraryDependencyNote
         tone="calm"
-        detail="These choices power Event Order plans — open a plan to decide what couples can select. Optionally link a choice to a physical inventory item for stock awareness. Distinct from Available Inventory and from sales Packages."
-        action={{ href: "/library/event-order-templates", label: "Open Event Order plans" }}
+        detail="Event Order Templates use these offerings to define what's included and which choices clients can select. Editing the catalog does not send choices to clients or apply an Event Order. Optionally link an offering to a physical inventory item — stock is reserved when the couple approves the Event Order. Distinct from Available Inventory."
+        action={{ href: "/library/event-order-templates", label: "Open Event Order Templates" }}
         secondaryActions={[
           { href: "/library/inventory", label: "Manage Available Inventory" },
         ]}
       >
-        How the choices catalog works
+        How Offerings Catalog works
       </LibraryDependencyNote>
       <OfferingsLibrarySection
         ref={sectionRef}

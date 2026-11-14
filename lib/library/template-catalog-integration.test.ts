@@ -219,10 +219,10 @@ describe("Library guidance — catalog-first copy", () => {
     assert.doesNotMatch(src, /Checklist lines \(name, quantity, price\) are authored/);
   });
 
-  it("Event Order plans guidance emphasizes choices catalog + selectable groups", () => {
+  it("Event Order Templates guidance emphasizes Offerings Catalog + selectable groups", () => {
     const eo = readFileSync(resolve("app/(app)/library/event-order-templates/page.tsx"), "utf8");
-    assert.match(eo, /choices catalog/i);
-    assert.match(eo, /couple choices/i);
+    assert.match(eo, /Offerings Catalog/);
+    assert.match(eo, /client selections/i);
     assert.match(eo, /Distinct from sales Packages/i);
     const ch = readFileSync(resolve("app/(app)/library/choices-templates/page.tsx"), "utf8");
     assert.match(ch, /redirect\("\/library\/event-order-templates"\)/);

@@ -31,7 +31,7 @@ export function TemplateWorkflowChrome({
       aria-label="Template workflow"
       data-testid="eo-template-workflow-chrome"
       className={cn(
-        "sticky top-0 z-20 -mx-1 mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 shadow-sm",
+        "mb-1 flex flex-wrap items-center gap-2 text-xs",
         className,
       )}
     >
@@ -62,21 +62,15 @@ export function TemplateWorkflowChrome({
           );
         })}
       </ol>
-      <div className="ml-auto flex flex-wrap gap-2 text-xs">
-        {current === "preview" ? (
-          <Link href={editHref} className="font-medium text-[var(--venue-primary)] hover:underline" data-testid="eo-template-workflow-back-edit">
-            ← Back to edit
-          </Link>
-        ) : null}
-        {current === "edit" ? (
-          <Link href={previewHref} className="font-medium text-[var(--venue-primary)] hover:underline" data-testid="eo-template-workflow-to-preview">
-            Preview →
-          </Link>
-        ) : null}
-        <Link href={listHref} className="text-muted-foreground hover:text-foreground hover:underline">
-          Templates
+      {current === "preview" ? (
+        <Link
+          href={editHref}
+          className="ml-auto font-medium text-[var(--venue-primary)] hover:underline"
+          data-testid="eo-template-workflow-back-edit"
+        >
+          ← Back to edit
         </Link>
-      </div>
+      ) : null}
     </nav>
   );
 }

@@ -39,4 +39,11 @@ describe("portal Choices submit contract", () => {
     assert.match(panel, /choices-submission-summary/);
     assert.match(panel, /Couple-submitted choices/);
   });
+
+  it("rehydrates visible answers after submit using persisted packet, not id-only effect", () => {
+    assert.match(portal, /hydrateAnswers/);
+    assert.match(portal, /if \(current\) hydrateAnswers\(current\)/);
+    assert.match(portal, /hydrateAnswers\(r\)/);
+    assert.doesNotMatch(portal, /\[active\?\.id\]/);
+  });
 });

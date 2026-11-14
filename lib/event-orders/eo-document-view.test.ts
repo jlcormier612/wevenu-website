@@ -115,9 +115,9 @@ describe("template builder + starters", () => {
     const sheet = read("components/event-order-templates/offering-editor-sheet.tsx");
     assert.match(sheet, /defaultIncluded = false/);
     assert.match(sheet, /setIncluded\(defaultIncluded\)/);
-    const wizard = read("components/event-order-templates/guided-setup-wizard.tsx");
-    assert.match(wizard, /defaultIncluded: true/);
-    assert.match(wizard, /defaultIncluded: false/);
+    const section = read("components/event-order-templates/event-order-section-editor.tsx");
+    assert.match(section, /defaultIncluded: true/);
+    assert.match(section, /defaultIncluded: false/);
   });
 
   it("starter masters contain only sellable categories; legacy checklist starters stay archived", () => {

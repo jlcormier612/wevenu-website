@@ -9,17 +9,21 @@ function read(rel: string) {
 describe("Wave G2 — EO template edit washout", () => {
   it("uses hospitality page + working-card sections + calm orientation", () => {
     const detail = read("components/event-order-templates/event-order-template-detail.tsx");
-    const wizard = read("components/event-order-templates/guided-setup-wizard.tsx");
+    const overview = read("components/event-order-templates/event-order-template-overview.tsx");
     const choices = read("components/event-order-templates/package-choices-panel.tsx");
     const floorDefault = read("components/event-order-templates/section-floor-plan-default.tsx");
     const chrome = read("components/event-order-templates/template-workflow-chrome.tsx");
 
     assert.match(detail, /data-htc-phase12="eo-template-edit"/);
     assert.match(detail, /htc-hospitality-page/);
-    assert.match(detail, /htc-surface-guidance[\s\S]*eo-template-detail-intro|eo-template-detail-intro[\s\S]*htc-surface-guidance/);
-    assert.match(wizard, /htc-working-card/);
-    assert.match(wizard, /htc-surface-guidance[\s\S]*eo-guided-no-sections|eo-guided-no-sections[\s\S]*htc-surface-guidance/);
-    assert.match(choices, /eo-package-choices-empty[\s\S]*htc-surface-guidance|htc-surface-guidance[\s\S]*eo-package-choices-empty/);
+    assert.match(detail, /eo-template-detail-intro/);
+    assert.doesNotMatch(detail, /htc-surface-guidance[\s\S]*eo-template-detail-intro|eo-template-detail-intro[\s\S]*htc-surface-guidance/);
+    assert.match(overview, /htc-working-row/);
+    assert.doesNotMatch(overview, /htc-working-card/);
+    assert.match(overview, /eo-guided-no-sections/);
+    assert.doesNotMatch(overview, /htc-surface-guidance[\s\S]*eo-guided-no-sections|eo-guided-no-sections[\s\S]*htc-surface-guidance/);
+    assert.match(choices, /eo-package-choices-empty/);
+    assert.doesNotMatch(choices, /eo-package-choices-empty[\s\S]*htc-surface-guidance|htc-surface-guidance[\s\S]*eo-package-choices-empty/);
     assert.match(floorDefault, /bg-card/);
     assert.doesNotMatch(floorDefault, /bg-muted\/30/);
     assert.match(chrome, /htc-badge-active/);

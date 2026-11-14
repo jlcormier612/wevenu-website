@@ -8,6 +8,7 @@
  */
 import { clientChoicesDisplayLabel, isClientChoicesNeedsVenueReview } from "@/lib/client-choices/constants";
 import { selectionProgressLabel } from "@/lib/client-choices/selection-progress";
+import { clientCommercialLabel } from "@/lib/event-order-templates/commercial-state";
 import type { ChoicesAnswers, ChoicesDefinition } from "@/lib/client-choices/types";
 import { selectionDefinitionFromEventOrderTemplate } from "@/lib/event-order-templates/selection-definition";
 import type { EventOrderTemplateWithDetails } from "@/lib/event-order-templates/types";
@@ -64,12 +65,10 @@ export type CoupleChoicePreview =
 
 /** Couple-facing option price wording (same as the selection form), with included shown as $0 extra. */
 export function coupleChoiceOptionPriceLabel(
-  option: { isIncluded: boolean; unitPrice: number | null },
+  option: { isIncluded: boolean; unitPrice: number | null; description?: string | null; pricingModel?: string | null },
   allowQuantity: boolean,
 ): string {
-  if (option.isIncluded) return "Included — $0 extra";
-  if (option.unitPrice == null) return "Additional — price not set";
-  return `+$${Number(option.unitPrice).toFixed(2)}${allowQuantity ? " each" : ""}`;
+  return clientCommercialLabel(option, allowQuantity, "preview");
 }
 
 /** The group rule without the live count, worded exactly as the couple's form words it. */

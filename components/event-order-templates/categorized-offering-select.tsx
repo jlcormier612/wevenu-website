@@ -11,9 +11,6 @@ import {
 } from "@/lib/event-order-templates/section-workspace";
 import {
   filterOfferingsForAuthoringContext,
-  majorOfferingIds,
-  offeringRole,
-  offeringRoleLabel,
 } from "@/lib/offerings/hierarchy";
 import type { OfferingWithCategory } from "@/lib/offerings/types";
 
@@ -51,7 +48,6 @@ export function CategorizedOfferingSelect({
   const categories = React.useMemo(() => uniqueOfferingCategories(offerings), [offerings]);
   const [filter, setFilter] = React.useState<OfferingCategoryFilter>("preferred");
   const [query, setQuery] = React.useState("");
-  const majors = React.useMemo(() => majorOfferingIds(offerings), [offerings]);
 
   React.useEffect(() => {
     setFilter("preferred");
@@ -76,11 +72,11 @@ export function CategorizedOfferingSelect({
 
   const scopeHint =
     authoringScope.kind === "primary"
-      ? "Showing top-level major choices and standalone offerings (not nested menu items)."
+      ? "Choose from your offerings."
       : authoringScope.kind === "underMajor"
         ? hierarchy.items.length === 0
-          ? `Nothing is set up under “${authoringScope.parentLabel ?? "this choice"}” yet. Add categories and items under it on the Offerings page.`
-          : `Showing items associated with “${authoringScope.parentLabel ?? "this major choice"}” in your catalog.`
+          ? `No offerings for “${authoringScope.parentLabel ?? "this choice"}” yet.`
+          : `Choose from offerings under “${authoringScope.parentLabel ?? "this choice"}”.`
         : null;
 
   return (
@@ -131,20 +127,13 @@ export function CategorizedOfferingSelect({
         </p>
       ) : null}
       {filter === "preferred" && preferredEmpty && sectionName ? (
-        <p className="text-xs text-amber-800" data-testid="eo-offering-filter-empty">
-          No catalog Offerings match “{sectionName}” yet. Switch to All categories or another
-          category deliberately — items are never linked by name.
-        </p>
-      ) : null}
-      {filter === "preferred" && !preferredEmpty && sectionName ? (
-        <p className="text-xs text-muted-foreground">
-          Showing Offerings related to “{sectionName}”. Use All categories only when a
-          cross-category item is intentional.
+        <p className="text-xs text-muted-foreground" data-testid="eo-offering-filter-empty">
+          No matching offerings for “{sectionName}”. Try All categories or search by name.
         </p>
       ) : null}
       {filter === "all" ? (
         <p className="text-xs text-muted-foreground" data-testid="eo-offering-all-categories-note">
-          Browsing every catalog category. Prefer the suggested filter when possible.
+          Showing all offerings.
         </p>
       ) : null}
       <select
@@ -157,29 +146,21 @@ export function CategorizedOfferingSelect({
       >
         <option value="">{emptyLabel}</option>
         {visible.map((off) => {
-          const role = offeringRole(off, majors);
-          const cross =
-            filter === "all"
-            && sectionName
-            && off.categoryName
-            && !off.categoryName.toLowerCase().includes(sectionName.split(" ")[0]!.toLowerCase());
           return (
             <option key={off.id} value={off.id}>
               {off.parentOfferingName ? `${off.parentOfferingName} › ` : ""}
               {off.name}
-              {` · ${offeringRoleLabel(role)}`}
-              {off.categoryName ? ` · ${off.categoryName}` : " · uncategorized"}
+              {off.categoryName ? ` · ${off.categoryName}` : ""}
               {off.defaultUnitPrice != null
                 ? ` · $${off.defaultUnitPrice.toFixed(2)}`
-                : " · unpriced"}
-              {cross ? " · other category" : ""}
+                : ""}
             </option>
           );
         })}
       </select>
       {visible.length === 0 ? (
         <p className="text-xs text-muted-foreground">
-          No active Offerings in this filter. Create catalog items on the Offerings page, clear search, or switch category.
+          No offerings in this list. Clear search or try another category.
         </p>
       ) : null}
     </div>

@@ -14,10 +14,10 @@ function read(path: string): string {
 describe("C2 Library clarity — hub cards", () => {
   const hub = read("app/(app)/library/page.tsx");
 
-  it("keeps Packages & Pricing distinct from Event Order plans", () => {
+  it("keeps Packages & Pricing distinct from Event Order Templates", () => {
     assert.match(hub, /Packages & Pricing/);
-    assert.match(hub, /Event Order plans/);
-    assert.match(hub, /Choices catalog/);
+    assert.match(hub, /title="Event Order Templates"/);
+    assert.match(hub, /title="Offerings Catalog"/);
   });
 
   it("presents Available Inventory with saved starting lists secondary", () => {
@@ -25,10 +25,9 @@ describe("C2 Library clarity — hub cards", () => {
     assert.match(hub, /Saved starting lists/);
   });
 
-  it("does not peer Offerings or Inventory Templates as commercial heroes", () => {
-    assert.doesNotMatch(hub, /title="Offerings"/);
+  it("does not peer Inventory Templates as a commercial hero", () => {
     assert.doesNotMatch(hub, /title="Inventory Templates"/);
-    assert.doesNotMatch(hub, /title="Event Order Templates"/);
+    assert.doesNotMatch(hub, /title="Choices catalog"/);
   });
 
   it("Choices Templates remain absent from the hub", () => {
@@ -50,11 +49,11 @@ describe("C2 Library clarity — collection pages", () => {
     assert.match(list, /ensureEventInventoryAction/);
   });
 
-  it("Event Order plans remain distinct from sales Packages", () => {
+  it("Event Order Templates remain distinct from sales Packages", () => {
     const page = read("app/(app)/library/event-order-templates/page.tsx");
     assert.match(page, /Distinct from sales Packages/i);
-    assert.match(page, /Send is only for\s+plans with client choice groups/i);
-    assert.match(page, /neither creates an invoice/i);
+    assert.match(page, /Send[\s\S]*is only for templates with client choice groups/i);
+    assert.match(page, /neither creates an[\s\S]*invoice/i);
   });
 
   it("Packages page points sales packages away from Event Order authoring", () => {
@@ -65,16 +64,16 @@ describe("C2 Library clarity — collection pages", () => {
     assert.match(page, /not selected from the choices catalog/);
   });
 
-  it("Available Inventory and choices catalog remain editable without Use Template CTAs", () => {
+  it("Available Inventory and Offerings Catalog remain editable without Use Template CTAs", () => {
     const inventory = read("app/(app)/library/inventory/page.tsx");
     assert.match(inventory, /does not share with clients/i);
     assert.doesNotMatch(inventory, /Use Template/);
     assert.match(inventory, /Saved starting lists/);
     const offerings = read("components/offerings/offerings-page-client.tsx");
-    assert.match(offerings, /Choices catalog/);
-    assert.match(offerings, /power Event Order plans/);
+    assert.match(offerings, /Offerings Catalog/);
+    assert.match(offerings, /does not send choices to clients/i);
     assert.doesNotMatch(offerings, /Use Template/);
-    assert.match(offerings, /Open Event Order plans/);
+    assert.match(offerings, /Open Event Order Templates/);
   });
 
   it("Choices Templates route remains a redirect to Event Order templates", () => {

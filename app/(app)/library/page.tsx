@@ -102,15 +102,25 @@ function Group({
   title,
   children,
   compact,
+  equal,
 }: {
   title: string;
   children: React.ReactNode;
   compact?: boolean;
+  equal?: boolean;
 }) {
   return (
     <section className="space-y-3" data-testid={`library-group-${title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}>
       <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</h2>
-      <div className={compact ? "grid gap-2 sm:grid-cols-2 lg:grid-cols-3" : "grid gap-2 sm:grid-cols-1 md:grid-cols-1"}>
+      <div
+        className={
+          equal
+            ? "grid gap-2 sm:grid-cols-2"
+            : compact
+              ? "grid gap-2 sm:grid-cols-2 lg:grid-cols-3"
+              : "grid gap-2 sm:grid-cols-1 md:grid-cols-1"
+        }
+      >
         {children}
       </div>
     </section>
@@ -194,16 +204,22 @@ export default async function LibraryPage() {
         />
       </Group>
 
-      <Group title="Delivery">
+      <Group title="Delivery" equal>
         <ToolboxCard
           kind="primary"
-          title="Event Order plans"
-          description="Reusable delivery plans with included items and couple choices."
+          title="Event Order Templates"
+          description="Create and manage reusable client selection experiences."
           href="/library/event-order-templates"
           count={eventOrderTemplates.length}
           icon={Layers}
-          secondaryHref="/library/offerings"
-          secondaryLabel={`Choices catalog (${offerings.length})`}
+        />
+        <ToolboxCard
+          kind="primary"
+          title="Offerings Catalog"
+          description="Manage the services, packages, upgrades, and choices available for clients to select."
+          href="/library/offerings"
+          count={offerings.length}
+          icon={Package}
         />
       </Group>
 

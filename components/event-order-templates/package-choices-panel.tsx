@@ -1,8 +1,9 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Loader2, Plus, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronUp, Loader2, Plus, Trash2 } from "lucide-react";
 
 import {
   addEventOrderTemplateGroupAction,
@@ -10,14 +11,27 @@ import {
   includeCatalogChoiceGroupAction,
   removeEventOrderTemplateGroupAction,
   removeEventOrderTemplateOptionAction,
+  reorderEventOrderTemplateGroupsAction,
   updateEventOrderTemplateGroupAction,
+  updateEventOrderTemplateOptionAction,
 } from "@/app/(app)/library/event-order-templates/actions";
+import { updateOptionFieldsPreservingOfferingLink } from "@/lib/client-choices-templates/option-catalog";
+import { enqueueOptionPersist } from "@/lib/event-order-templates/option-persist-queue";
+import { OptionCommercialEditor } from "@/components/event-order-templates/option-commercial-controls";
 import { createOfferingChoiceGroupAction } from "@/app/(app)/library/offerings/actions";
 import { CategorizedOfferingSelect } from "@/components/event-order-templates/categorized-offering-select";
-import { SelectionRuleControls } from "@/components/event-order-templates/selection-rule-controls";
+import {
+  SelectionRuleControls,
+  SimpleSelectionRuleControls,
+} from "@/components/event-order-templates/selection-rule-controls";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  simpleSelectionLabel,
+  simpleSelectionToFields,
+  type SimpleSelectionState,
+} from "@/lib/event-order-templates/editor-presentation";
 import {
   impossibleSelectionGroupMessage,
   parseCoupleSelectCount,
@@ -44,6 +58,12 @@ import {
 } from "@/lib/offerings/choice-groups";
 import type { OfferingWithCategory } from "@/lib/offerings/types";
 
+type ProgressiveFocus = {
+  choiceId?: string | null;
+  optionId?: string | null;
+  categoryId?: string | null;
+};
+
 type Props = {
   template: EventOrderTemplateWithDetails;
   catalogOfferings: OfferingWithCategory[];
@@ -51,6 +71,9 @@ type Props = {
   sectionId: string;
   sectionName: string;
   onPersist: (phase: "saving" | "saved" | "error", message?: string) => void;
+  presentation?: "nested" | "progressive";
+  focus?: ProgressiveFocus;
+  baseHref?: string;
 };
 
 type TemplateGroup = EventOrderTemplateWithDetails["groups"][number];
@@ -68,6 +91,9 @@ export function PackageChoicesPanel({
   sectionId,
   sectionName,
   onPersist,
+  presentation = "nested",
+  focus,
+  baseHref,
 }: Props) {
   const router = useRouter();
   const [pending, startTransition] = React.useTransition();
@@ -178,6 +204,23 @@ export function PackageChoicesPanel({
     });
   }
 
+  function saveOptionCommercial(
+    option: TemplateOption,
+    next: { label: string; isIncluded: boolean; unitPrice: number | null },
+  ) {
+    onPersist("saving");
+    void enqueueOptionPersist(async () => {
+      const r = await updateEventOrderTemplateOptionAction(
+        template.id,
+        option.id,
+        updateOptionFieldsPreservingOfferingLink(option, next),
+      );
+      if (!r.ok) onPersist("error", r.errors?.label ?? r.message ?? "Could not save offering.");
+      else onPersist("saved");
+      refresh();
+    });
+  }
+
   function removeChoiceSet(groupId: string) {
     startTransition(async () => {
       onPersist("saving");
@@ -197,13 +240,21 @@ export function PackageChoicesPanel({
       instructions?: string;
       selectCountRaw?: string;
       required?: boolean;
+      simple?: SimpleSelectionState;
     },
   ): string | null {
     const required = patch.required ?? group.minSelect > 0;
     let selectionMode = group.selectionMode;
     let minSelect = group.minSelect;
     let maxSelect = group.maxSelect;
-    if (patch.selectCountRaw !== undefined) {
+    let allowQuantity = group.allowQuantity;
+    if (patch.simple) {
+      const resolved = simpleSelectionToFields(patch.simple);
+      selectionMode = resolved.selectionMode;
+      minSelect = resolved.minSelect;
+      maxSelect = resolved.maxSelect;
+      allowQuantity = resolved.allowQuantity;
+    } else if (patch.selectCountRaw !== undefined) {
       const parsed = parseCoupleSelectCount(patch.selectCountRaw);
       if (!parsed.ok) return parsed.message;
       if (parsed.count === 0 && required) {
@@ -247,7 +298,7 @@ export function PackageChoicesPanel({
         selectionMode,
         minSelect,
         maxSelect,
-        allowQuantity: group.allowQuantity,
+        allowQuantity,
         dependsOnOptionIds: group.dependsOnOptionIds ?? [],
       });
       if (!r.ok) onPersist("error", r.message ?? "Could not save selection group.");
@@ -365,6 +416,67 @@ export function PackageChoicesPanel({
     return null;
   }
 
+  function reorderDependentGroups(parentOptionId: string, categoryId: string, direction: -1 | 1) {
+    const dependents = template.groups
+      .filter((g) => (g.dependsOnOptionIds ?? []).includes(parentOptionId))
+      .sort((a, b) => a.sortOrder - b.sortOrder);
+    const ids = dependents.map((g) => g.id);
+    const index = ids.indexOf(categoryId);
+    const nextIndex = index + direction;
+    if (index < 0 || nextIndex < 0 || nextIndex >= ids.length) return;
+    const next = [...ids];
+    const [moved] = next.splice(index, 1);
+    next.splice(nextIndex, 0, moved);
+    startTransition(async () => {
+      onPersist("saving");
+      const r = await reorderEventOrderTemplateGroupsAction(template.id, next);
+      if (!r.ok) onPersist("error", r.message ?? "Could not reorder categories.");
+      else {
+        onPersist("saved");
+        refresh();
+      }
+    });
+  }
+
+  if (presentation === "progressive") {
+    return (
+      <ProgressiveChoices
+        template={template}
+        catalogOfferings={catalogOfferings}
+        catalogChoiceGroups={catalogChoiceGroups}
+        sectionName={sectionName}
+        choiceSets={choiceSets}
+        available={available}
+        pending={pending}
+        focus={focus ?? {}}
+        baseHref={baseHref ?? ""}
+        onCreateEmptySet={createEmptyChoiceSet}
+        onPickNewSet={(id) => {
+          setNewSetPick(id);
+          if (id) createChoiceSetWithOffering(id);
+        }}
+        newSetPick={newSetPick}
+        onRemoveSet={(groupId) => {
+          if (!confirm("Remove this selection group? Clients will no longer see it on this template.")) return;
+          removeChoiceSet(groupId);
+        }}
+        onSaveGroup={saveGroupFields}
+        onRemoveOption={removeOption}
+        onAddOfferingToSet={addOfferingToSet}
+        onIncludeCatalogGroup={includeCatalogGroup}
+        onCreateCategory={createCategoryUnderParent}
+        onRemoveChildGroup={(groupId) => {
+          if (!confirm("Remove this category from the template?")) return;
+          removeChildGroup(groupId);
+        }}
+        onAddCatalogOption={addCatalogOptionToGroup}
+        onAddWriteIn={addWriteInToGroup}
+        onReorderCategory={reorderDependentGroups}
+        onSaveOption={saveOptionCommercial}
+      />
+    );
+  }
+
   return (
     <div className="space-y-6" data-testid="eo-package-choices-panel">
       <p className="text-xs text-muted-foreground">
@@ -380,14 +492,14 @@ export function PackageChoicesPanel({
 
       {choiceSets.length === 0 ? (
         <div
-          className="htc-surface-guidance space-y-3 px-3.5 py-3"
+          className="space-y-3"
           data-testid="eo-package-choices-empty"
         >
           <p className="text-sm text-muted-foreground">
-            No couple choices yet. Add the first top choice (for example Plated Dinner) to start.
+            No client selections yet. Add an option to get started.
           </p>
           <div className="space-y-2" data-testid="eo-package-choices-add-first">
-            <Label className="text-xs text-muted-foreground">Add a top choice</Label>
+            <Label className="text-xs text-muted-foreground">Add an option</Label>
             <CategorizedOfferingSelect
               offerings={available}
               sectionName={sectionName}
@@ -397,7 +509,7 @@ export function PackageChoicesPanel({
                 if (id) createChoiceSetWithOffering(id);
               }}
               authoringScope={{ kind: "primary" }}
-              emptyLabel="Choose an Offering…"
+              emptyLabel="Choose from your offerings"
               testId="eo-couple-choice-offering-select"
               disabled={pending}
             />
@@ -472,6 +584,393 @@ export function PackageChoicesPanel({
           </Button>
         </div>
       )}
+    </div>
+  );
+}
+
+function progressiveHref(baseHref: string, focus: ProgressiveFocus): string {
+  const params = new URLSearchParams();
+  if (focus.choiceId) params.set("choice", focus.choiceId);
+  if (focus.optionId) params.set("offering", focus.optionId);
+  if (focus.categoryId) params.set("category", focus.categoryId);
+  const query = params.toString();
+  return query ? `${baseHref}?${query}` : baseHref;
+}
+
+function ProgressiveChoices({
+  template,
+  catalogOfferings,
+  catalogChoiceGroups,
+  sectionName,
+  choiceSets,
+  available,
+  pending,
+  focus,
+  baseHref,
+  onCreateEmptySet,
+  onPickNewSet,
+  newSetPick,
+  onRemoveSet,
+  onSaveGroup,
+  onRemoveOption,
+  onAddOfferingToSet,
+  onIncludeCatalogGroup,
+  onCreateCategory,
+  onRemoveChildGroup,
+  onAddCatalogOption,
+  onAddWriteIn,
+  onReorderCategory,
+  onSaveOption,
+}: {
+  template: EventOrderTemplateWithDetails;
+  catalogOfferings: OfferingWithCategory[];
+  catalogChoiceGroups: OfferingChoiceGroup[];
+  sectionName: string;
+  choiceSets: ReturnType<typeof choiceSetsForSection>;
+  available: OfferingWithCategory[];
+  pending: boolean;
+  focus: ProgressiveFocus;
+  baseHref: string;
+  onCreateEmptySet: () => void;
+  onPickNewSet: (id: string) => void;
+  newSetPick: string;
+  onRemoveSet: (groupId: string) => void;
+  onSaveGroup: ChoiceSetCardPropsSave;
+  onRemoveOption: (optionId: string) => void;
+  onAddOfferingToSet: (groupId: string, offeringId: string) => void;
+  onIncludeCatalogGroup: (
+    parent: { id: string; label: string; offeringId: string | null },
+    catalogGroupId: string,
+  ) => string | null;
+  onCreateCategory: CreateCategoryFn;
+  onRemoveChildGroup: (groupId: string) => void;
+  onAddCatalogOption: (groupId: string, offeringId: string) => void;
+  onAddWriteIn: (groupId: string, label: string) => string | null;
+  onReorderCategory: (parentOptionId: string, categoryId: string, direction: -1 | 1) => void;
+  onSaveOption: (
+    option: TemplateOption,
+    next: { label: string; isIncluded: boolean; unitPrice: number | null },
+  ) => void;
+}) {
+  const focusedSet = choiceSets.find((set) => set.group.id === focus.choiceId) ?? null;
+  const focusedOption = focusedSet?.options.find((opt) => opt.id === focus.optionId) ?? null;
+  const [nameDraft, setNameDraft] = React.useState(focusedSet?.group.name ?? "");
+  const [questionDraft, setQuestionDraft] = React.useState(focusedSet?.group.instructions ?? "");
+  React.useEffect(() => {
+    setNameDraft(focusedSet?.group.name ?? "");
+    setQuestionDraft(focusedSet?.group.instructions ?? "");
+  }, [focusedSet?.group.id, focusedSet?.group.name, focusedSet?.group.instructions]);
+
+  if (focus.categoryId && focusedSet && focusedOption) {
+    const category = template.groups.find((g) => g.id === focus.categoryId);
+    if (category) {
+      const optionsInGroup = template.options
+        .filter((o) => o.groupId === category.id)
+        .sort((a, b) => a.sortOrder - b.sortOrder);
+      const underParent = catalogOptionsEligibleForParentGroup(
+        catalogOfferings,
+        focusedOption.offeringId,
+        focusedOption.id,
+        template.groups,
+        template.options,
+      );
+      const eligibleCatalog = itemsEligibleForCategory(
+        underParent,
+        catalogChoiceGroups.find((g) => g.id === category.offeringChoiceGroupId) ?? null,
+      );
+      return (
+        <div className="space-y-4" data-testid="eo-level-3-offerings">
+          <ChildGroupEditor
+            group={category}
+            parentOption={focusedOption}
+            options={optionsInGroup}
+            eligibleCatalog={eligibleCatalog}
+            pending={pending}
+            presentation="progressive"
+            onSaveGroup={onSaveGroup}
+            onRemoveGroup={() => onRemoveChildGroup(category.id)}
+            onRemoveOption={onRemoveOption}
+            onAddCatalogOption={(offeringId) => onAddCatalogOption(category.id, offeringId)}
+            onAddWriteIn={(label) => onAddWriteIn(category.id, label)}
+            onSaveOption={onSaveOption}
+          />
+        </div>
+      );
+    }
+  }
+
+  if (focus.optionId && focusedSet && focusedOption) {
+    const view = parentChoiceView(
+      focusedOption,
+      catalogOfferings,
+      template.groups,
+      template.options,
+    );
+    return (
+      <div className="space-y-4" data-testid="eo-level-2-categories">
+        <OptionCommercialEditor
+          option={focusedOption}
+          pending={false}
+          onSave={(next) => onSaveOption(focusedOption, next)}
+        />
+        {view.dependentGroups.length === 0 ? (
+          <p className="text-sm text-muted-foreground" data-testid={`eo-no-child-groups-${focusedOption.id}`}>
+            Add a category for clients to choose from when they select {focusedOption.label}.
+          </p>
+        ) : (
+          <ul className="space-y-2">
+            {view.dependentGroups.map((category, index) => (
+              <li
+                key={category.id}
+                className="htc-working-row flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-card px-3 py-2"
+                data-testid={`eo-category-row-${category.id}`}
+              >
+                <div>
+                  <p className="text-sm font-medium text-heading">{category.name}</p>
+                  <p className="text-xs text-muted-foreground">{simpleSelectionLabel(category)}</p>
+                </div>
+                <div className="flex flex-wrap items-center gap-1">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    disabled={pending || index === 0}
+                    aria-label={`Move ${category.name} up`}
+                    onClick={() => onReorderCategory(focusedOption.id, category.id, -1)}
+                  >
+                    <ChevronUp className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    disabled={pending || index === view.dependentGroups.length - 1}
+                    aria-label={`Move ${category.name} down`}
+                    onClick={() => onReorderCategory(focusedOption.id, category.id, 1)}
+                  >
+                    <ChevronDown className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    render={
+                      <Link
+                        href={progressiveHref(baseHref, {
+                          choiceId: focusedSet.group.id,
+                          optionId: focusedOption.id,
+                          categoryId: category.id,
+                        })}
+                      />
+                    }
+                  >
+                    Edit
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    disabled={pending}
+                    onClick={() => onRemoveChildGroup(category.id)}
+                  >
+                    Remove
+                  </Button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+        <DependentGroupsUnderParent
+          parentOption={focusedOption}
+          dependentGroups={view.dependentGroups}
+          template={template}
+          catalogOfferings={catalogOfferings}
+          catalogChoiceGroups={catalogChoiceGroups}
+          pending={pending}
+          hideNestedEditors
+          onSaveGroup={onSaveGroup}
+          onIncludeCatalogGroup={onIncludeCatalogGroup}
+          onCreateCategory={onCreateCategory}
+          onRemoveChildGroup={onRemoveChildGroup}
+          onRemoveOption={onRemoveOption}
+          onAddCatalogOption={onAddCatalogOption}
+          onAddWriteIn={onAddWriteIn}
+        />
+      </div>
+    );
+  }
+
+  if (focusedSet) {
+    return (
+      <div className="space-y-4" data-testid="eo-level-1-choice">
+        {focusedSet.options.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Add an option so clients have something to choose.</p>
+        ) : (
+          <ul className="space-y-1.5" data-testid="eo-level-1-options">
+            {focusedSet.options.map((opt) => (
+              <li
+                key={opt.id}
+                className="htc-working-row flex flex-wrap items-center justify-between gap-2 rounded-md border border-[color:var(--htc-border-warm)] bg-card px-3 py-2"
+                data-testid={`eo-choice-option-${opt.id}`}
+              >
+                <div>
+                  <p className="text-sm font-medium text-heading">{opt.label}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {packageBuilderPriceLabel(opt.unitPrice, opt.isIncluded)}
+                  </p>
+                </div>
+                <div className="flex gap-1">
+                  <Button
+                    type="button"
+                    size="sm"
+                    render={
+                      <Link
+                        href={progressiveHref(baseHref, {
+                          choiceId: focusedSet.group.id,
+                          optionId: opt.id,
+                        })}
+                      />
+                    }
+                  >
+                    Edit
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="text-muted-foreground"
+                    disabled={pending}
+                    onClick={() => onRemoveOption(opt.id)}
+                  >
+                    Remove
+                  </Button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+        <CatalogPickerDisclosure label="Add an option" testId="eo-level-1-add-option">
+          <CategorizedOfferingSelect
+            offerings={available}
+            sectionName={sectionName}
+            value=""
+            onChange={(id) => { if (id) onAddOfferingToSet(focusedSet.group.id, id); }}
+            authoringScope={{ kind: "primary" }}
+            emptyLabel="Choose from your offerings"
+            testId="eo-couple-choice-offering-select"
+            disabled={pending}
+          />
+        </CatalogPickerDisclosure>
+        <details className="rounded-md border border-border bg-card px-3 py-2">
+          <summary className="cursor-pointer text-sm font-medium text-heading">How clients choose</summary>
+          <div className="mt-3 space-y-3">
+            <div className="space-y-2">
+              <Label htmlFor={`eo-choice-name-${focusedSet.group.id}`}>Name</Label>
+              <Input
+                id={`eo-choice-name-${focusedSet.group.id}`}
+                value={nameDraft}
+                disabled={pending}
+                data-testid="eo-level-1-name"
+                onChange={(e) => setNameDraft(e.target.value)}
+                onBlur={() => {
+                  if (nameDraft.trim() && nameDraft.trim() !== focusedSet.group.name) {
+                    onSaveGroup(focusedSet.group, { name: nameDraft.trim() });
+                  }
+                }}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor={`eo-choice-question-${focusedSet.group.id}`}>Question shown to client</Label>
+              <Input
+                id={`eo-choice-question-${focusedSet.group.id}`}
+                value={questionDraft}
+                disabled={pending}
+                placeholder="Which dinner service would you prefer?"
+                data-testid="eo-level-1-question"
+                onChange={(e) => setQuestionDraft(e.target.value)}
+                onBlur={() => {
+                  if ((focusedSet.group.instructions ?? "") !== questionDraft) {
+                    onSaveGroup(focusedSet.group, { instructions: questionDraft });
+                  }
+                }}
+              />
+            </div>
+            <SimpleSelectionRuleControls
+              group={focusedSet.group}
+              pending={pending}
+              testId="eo-level-1-rules"
+              onCommit={(simple) => onSaveGroup(focusedSet.group, { simple })}
+            />
+          </div>
+        </details>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3" data-testid="eo-package-choices-panel">
+      {choiceSets.length === 0 ? (
+        <p className="text-sm text-muted-foreground" data-testid="eo-package-choices-empty">
+          No client selections yet. Add a selection group to get started.
+        </p>
+      ) : (
+        <ul className="space-y-2">
+          {choiceSets.map((set) => (
+            <li
+              key={set.group.id}
+              className="htc-working-row flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-card px-3 py-2"
+              data-testid={`eo-selection-group-${set.group.id}`}
+            >
+              <div>
+                <p className="text-sm font-medium text-heading">{set.group.name}</p>
+                <p className="text-xs text-muted-foreground">{simpleSelectionLabel(set.group)}</p>
+              </div>
+              <div className="flex gap-1">
+                <Button
+                  type="button"
+                  size="sm"
+                  render={<Link href={progressiveHref(baseHref, { choiceId: set.group.id })} />}
+                >
+                  Edit
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  disabled={pending}
+                  onClick={() => onRemoveSet(set.group.id)}
+                >
+                  Remove
+                </Button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={pending}
+          data-testid="eo-add-choice-set"
+          onClick={onCreateEmptySet}
+        >
+          <Plus className="mr-1 h-4 w-4" />
+          Add selection group
+        </Button>
+        <CatalogPickerDisclosure label="Add an option" testId="eo-add-option-from-catalog">
+          <CategorizedOfferingSelect
+            offerings={available}
+            sectionName={sectionName}
+            value={newSetPick}
+            onChange={onPickNewSet}
+            authoringScope={{ kind: "primary" }}
+            emptyLabel="Choose from your offerings"
+            testId="eo-couple-choice-offering-select"
+            disabled={pending}
+          />
+        </CatalogPickerDisclosure>
+      </div>
     </div>
   );
 }
@@ -777,6 +1276,7 @@ function DependentGroupsUnderParent({
   catalogOfferings,
   catalogChoiceGroups,
   pending,
+  hideNestedEditors = false,
   onSaveGroup,
   onIncludeCatalogGroup,
   onCreateCategory,
@@ -791,6 +1291,7 @@ function DependentGroupsUnderParent({
   catalogOfferings: OfferingWithCategory[];
   catalogChoiceGroups: OfferingChoiceGroup[];
   pending: boolean;
+  hideNestedEditors?: boolean;
   onSaveGroup: ChoiceSetCardPropsSave;
   onIncludeCatalogGroup: (
     parent: { id: string; label: string; offeringId: string | null },
@@ -824,25 +1325,27 @@ function DependentGroupsUnderParent({
       className="mt-3 space-y-3"
       data-testid={`eo-parent-dependent-groups-${parentOption.id}`}
     >
-      <div>
-        <p className="text-xs font-medium text-heading">
-          Under {parentOption.label}: categories the couple picks from
-        </p>
-        <p className="text-xs text-muted-foreground">
-          Shown only when the couple chooses {parentOption.label}. Add a category (for example
-          Entrées or Desserts), then set how many items the couple picks from it.
-        </p>
-      </div>
+      {hideNestedEditors ? null : (
+        <div>
+          <p className="text-xs font-medium text-heading">
+            Under {parentOption.label}: categories the couple picks from
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Shown only when the couple chooses {parentOption.label}. Add a category (for example
+            Entrées or Desserts), then set how many items the couple picks from it.
+          </p>
+        </div>
+      )}
 
-      {dependentGroups.length === 0 ? (
+      {!hideNestedEditors && dependentGroups.length === 0 ? (
         <p className="text-xs text-muted-foreground" data-testid={`eo-no-child-groups-${parentOption.id}`}>
           {configuredUnderParent.length === 0
-            ? `No categories under ${parentOption.label} yet. Create one below, or set them up in Offerings.`
+            ? `Add a category for ${parentOption.label}.`
             : "No categories added yet. Choose one below."}
         </p>
       ) : null}
 
-      {dependentGroups.map((dg) => {
+      {hideNestedEditors ? null : dependentGroups.map((dg) => {
         const optionsInGroup = template.options
           .filter((o) => o.groupId === dg.id)
           .sort((a, b) => a.sortOrder - b.sortOrder);
@@ -932,11 +1435,13 @@ function DependentGroupsUnderParent({
           </>
         ) : configuredUnderParent.length === 0 ? (
           <p className="w-full text-xs text-muted-foreground" data-testid={`eo-catalog-groups-missing-${parentOption.id}`}>
-            No categories under {parentOption.label} in Offerings yet.
+            {parentOption.offeringId
+              ? "Create a category below, or add one in Offerings first."
+              : "Add a category so clients have options when they choose this."}
           </p>
         ) : (
           <p className="w-full text-xs text-muted-foreground">
-            Every category under {parentOption.label} is already added.
+            Every category for {parentOption.label} is already added.
           </p>
         )}
         {parentOption.offeringId ? (
@@ -999,6 +1504,7 @@ type ChoiceSetCardPropsSave = (
     instructions?: string;
     selectCountRaw?: string;
     required?: boolean;
+    simple?: SimpleSelectionState;
   },
 ) => string | null;
 
@@ -1008,23 +1514,31 @@ function ChildGroupEditor({
   options,
   eligibleCatalog,
   pending,
+  presentation = "nested",
   onSaveGroup,
   onRemoveGroup,
   onRemoveOption,
   onAddCatalogOption,
   onAddWriteIn,
+  onSaveOption,
 }: {
   group: TemplateGroup;
   parentOption: TemplateOption;
   options: TemplateOption[];
   eligibleCatalog: OfferingWithCategory[];
   pending: boolean;
+  presentation?: "nested" | "progressive";
   onSaveGroup: ChoiceSetCardPropsSave;
   onRemoveGroup: () => void;
   onRemoveOption: (optionId: string) => void;
   onAddCatalogOption: (offeringId: string) => void;
   onAddWriteIn: (label: string) => string | null;
+  onSaveOption?: (
+    option: TemplateOption,
+    next: { label: string; isIncluded: boolean; unitPrice: number | null },
+  ) => void;
 }) {
+  const progressive = presentation === "progressive";
   const [name, setName] = React.useState(group.name);
   const [instructions, setInstructions] = React.useState(group.instructions ?? "");
   const [count, setCount] = React.useState(() => countDraftFromGroup(group));
@@ -1053,136 +1567,54 @@ function ChildGroupEditor({
     setCountError(err);
   }
 
-  return (
-    <div
-      className="space-y-3 rounded border border-border/60 bg-background px-3 py-3"
-      data-testid={`eo-child-group-rules-${group.id}`}
-    >
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div className="min-w-[10rem] flex-1 space-y-1">
-          <Label className="text-xs text-muted-foreground">
-            {group.offeringChoiceGroupId ? "Category" : "Group name (legacy)"}
-          </Label>
-          <Input
-            value={name}
-            disabled={pending || Boolean(group.offeringChoiceGroupId)}
-            data-testid={`eo-child-group-name-${group.id}`}
-            onChange={(e) => setName(e.target.value)}
-            onBlur={() => {
-              if (group.offeringChoiceGroupId) return;
-              if (name.trim() && name.trim() !== group.name) {
-                onSaveGroup(group, { name: name.trim() });
-              } else {
-                setName(group.name);
-              }
-            }}
-          />
-          {group.offeringChoiceGroupId ? (
-            <p className="text-[0.7rem] text-muted-foreground">
-              From Offerings. Rename categories in Offerings; this template keeps the name it
-              had when added.
-            </p>
-          ) : (
-            <p className="text-[0.7rem] text-muted-foreground">
-              Legacy template group (created before catalog groups). Prefer including
-              catalog groups for new work.
-            </p>
-          )}
-        </div>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          disabled={pending}
-          data-testid={`eo-remove-child-group-${group.id}`}
-          onClick={onRemoveGroup}
-          aria-label={`Remove group ${group.name}`}
+  const offeringRows = (
+    <ul className="space-y-1.5" data-testid={`eo-child-group-options-${group.id}`}>
+      {options.map((opt) => (
+        <li
+          key={opt.id}
+          className="space-y-2 rounded-md border border-[color:var(--htc-border-warm)] bg-card px-3 py-2 text-sm"
+          data-testid={`eo-child-option-${opt.id}`}
         >
-          <Trash2 className="h-4 w-4" />
-        </Button>
-      </div>
-
-      <div className="space-y-1">
-        <Label className="text-xs text-muted-foreground">Instructions for the couple</Label>
-        <Input
-          value={instructions}
-          disabled={pending}
-          placeholder={`e.g. Choose 2 ${group.name.toLowerCase()} for your guests`}
-          data-testid={`eo-child-instructions-${group.id}`}
-          onChange={(e) => setInstructions(e.target.value)}
-          onBlur={() => {
-            if ((group.instructions ?? "") !== instructions) {
-              onSaveGroup(group, { instructions });
-            }
-          }}
-        />
-      </div>
-
-      <SelectionRuleControls
-        group={group}
-        selectCount={count}
-        required={required}
-        pending={pending}
-        countError={countError}
-        ids={{
-          rules: `eo-child-group-rule-controls-${group.id}`,
-          count: `eo-child-select-count-${group.id}`,
-          required: `eo-child-required-${group.id}`,
-          hint: `eo-child-rule-hint-${group.id}`,
-          preset: (n) => `eo-child-count-preset-${group.id}-${n}`,
-        }}
-        onSelectCountChange={(raw) => {
-          setCount(raw);
-          setCountError(null);
-        }}
-        onRequiredChange={setRequired}
-        onCommit={commitCount}
-      />
-      {impossible ? (
-        <p
-          className="text-xs text-destructive"
-          role="alert"
-          data-testid={`eo-child-group-impossible-${group.id}`}
-        >
-          {impossible}
-        </p>
-      ) : null}
-
-      <ul className="space-y-1.5" data-testid={`eo-child-group-options-${group.id}`}>
-        {options.map((opt) => (
-          <li
-            key={opt.id}
-            className="flex flex-wrap items-center justify-between gap-2 rounded border border-border/40 px-2 py-1.5 text-sm"
-            data-testid={`eo-child-option-${opt.id}`}
-          >
+          <div className="htc-working-row flex flex-wrap items-center justify-between gap-2">
             <span>
               <span className="text-heading">{opt.label}</span>
               <span className="ml-2 text-xs text-muted-foreground">
-                {opt.offeringId ? "Catalog" : "Write-in"}
-                {" · "}
-                {packageBuilderPriceLabel(opt.unitPrice, opt.isIncluded)}
+                {progressive
+                  ? packageBuilderPriceLabel(opt.unitPrice, opt.isIncluded)
+                  : `${opt.offeringId ? "From offerings" : "Custom"} · ${packageBuilderPriceLabel(opt.unitPrice, opt.isIncluded)}`}
               </span>
             </span>
             <Button
               type="button"
               variant="ghost"
               size="sm"
+              className="text-muted-foreground"
               disabled={pending}
               data-testid={`eo-remove-child-option-${opt.id}`}
               onClick={() => onRemoveOption(opt.id)}
               aria-label={`Remove ${opt.label}`}
             >
-              <Trash2 className="h-3.5 w-3.5" />
+              Remove
             </Button>
-          </li>
-        ))}
-        {options.length === 0 ? (
-          <li className="text-xs text-muted-foreground">No options in this group yet.</li>
-        ) : null}
-      </ul>
+          </div>
+          {onSaveOption ? (
+            <OptionCommercialEditor
+              option={opt}
+              pending={false}
+              onSave={(next) => onSaveOption(opt, next)}
+            />
+          ) : null}
+        </li>
+      ))}
+    </ul>
+  );
 
-      <div className="space-y-2" data-testid={`eo-add-catalog-option-${group.id}`}>
-        <Label className="text-xs text-muted-foreground">Add item</Label>
+  const addOfferingControls = (
+    <div className="flex flex-wrap items-start gap-2" data-testid={`eo-add-catalog-option-${group.id}`}>
+      <CatalogPickerDisclosure
+        label={progressive ? "Add an offering" : "Add item"}
+        testId={`eo-open-catalog-${group.id}`}
+      >
         {eligibleCatalog.length > 0 ? (
           <CategorizedOfferingSelect
             offerings={eligibleCatalog}
@@ -1204,18 +1636,16 @@ function ChildGroupEditor({
                   }
                 : { kind: "all" }
             }
-            emptyLabel={`Choose an item under ${parentOption.label}…`}
+            emptyLabel="Choose from your offerings"
             testId={`eo-child-catalog-select-${group.id}`}
             disabled={pending}
           />
         ) : (
           <p className="text-xs text-muted-foreground">
-            No more items under {parentOption.label} in Offerings. Use a write-in option, or add
-            items under {parentOption.label} on the Offerings page.
+            No more offerings for {parentOption.label}. Add a custom option, or add offerings first.
           </p>
         )}
-      </div>
-
+      </CatalogPickerDisclosure>
       <div className="space-y-2" data-testid={`eo-add-write-in-option-${group.id}`}>
         {!writeInOpen ? (
           <Button
@@ -1232,7 +1662,7 @@ function ChildGroupEditor({
         ) : (
           <div className="flex flex-wrap items-end gap-2">
             <div className="min-w-[10rem] flex-1 space-y-1">
-              <Label className="text-xs text-muted-foreground">Write-in option name</Label>
+              <Label className="text-xs text-muted-foreground">Custom option name</Label>
               <Input
                 value={writeInLabel}
                 disabled={pending}
@@ -1260,7 +1690,7 @@ function ChildGroupEditor({
                 setWriteInError(null);
               }}
             >
-              Save write-in
+              Save
             </Button>
             <Button
               type="button"
@@ -1283,6 +1713,248 @@ function ChildGroupEditor({
           </div>
         )}
       </div>
+    </div>
+  );
+
+  if (progressive) {
+    return (
+      <div className="space-y-4" data-testid={`eo-child-group-rules-${group.id}`}>
+        {options.length === 0 ? (
+          <div
+            className="rounded-md border border-dashed border-[color:var(--htc-border-warm)] bg-card px-3 py-4"
+            data-testid={`eo-child-group-empty-${group.id}`}
+          >
+            <p className="text-sm text-muted-foreground">
+              Add an offering so clients have something to choose.
+            </p>
+          </div>
+        ) : (
+          offeringRows
+        )}
+        {addOfferingControls}
+        {impossible ? (
+          <p
+            className="text-xs text-destructive"
+            role="alert"
+            data-testid={`eo-child-group-impossible-${group.id}`}
+          >
+            {impossible}
+          </p>
+        ) : null}
+        <details className="rounded-md border border-border bg-card px-3 py-2">
+          <summary className="cursor-pointer text-sm font-medium text-heading">How clients choose</summary>
+          <div className="mt-3 space-y-3">
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Category</Label>
+              <Input
+                value={name}
+                disabled={pending || Boolean(group.offeringChoiceGroupId)}
+                data-testid={`eo-child-group-name-${group.id}`}
+                onChange={(e) => setName(e.target.value)}
+                onBlur={() => {
+                  if (group.offeringChoiceGroupId) return;
+                  if (name.trim() && name.trim() !== group.name) {
+                    onSaveGroup(group, { name: name.trim() });
+                  } else {
+                    setName(group.name);
+                  }
+                }}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Client instruction</Label>
+              <Input
+                value={instructions}
+                disabled={pending}
+                placeholder={`e.g. Choose 2 ${group.name.toLowerCase()} for your guests`}
+                data-testid={`eo-child-instructions-${group.id}`}
+                onChange={(e) => setInstructions(e.target.value)}
+                onBlur={() => {
+                  if ((group.instructions ?? "") !== instructions) {
+                    onSaveGroup(group, { instructions });
+                  }
+                }}
+              />
+            </div>
+            <SimpleSelectionRuleControls
+              group={group}
+              pending={pending}
+              testId={`eo-child-group-rule-controls-${group.id}`}
+              onCommit={(simple) => onSaveGroup(group, { simple })}
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="text-muted-foreground hover:text-destructive"
+              disabled={pending}
+              data-testid={`eo-remove-child-group-${group.id}`}
+              onClick={onRemoveGroup}
+            >
+              Remove category
+            </Button>
+          </div>
+        </details>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="space-y-3 rounded border border-border/60 bg-background px-3 py-3"
+      data-testid={`eo-child-group-rules-${group.id}`}
+    >
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="min-w-[10rem] flex-1 space-y-1">
+          <Label className="text-xs text-muted-foreground">
+            {progressive
+              ? "Category"
+              : group.offeringChoiceGroupId
+                ? "Category"
+                : "Group name (legacy)"}
+          </Label>
+          <Input
+            value={name}
+            disabled={pending || Boolean(group.offeringChoiceGroupId)}
+            data-testid={`eo-child-group-name-${group.id}`}
+            onChange={(e) => setName(e.target.value)}
+            onBlur={() => {
+              if (group.offeringChoiceGroupId) return;
+              if (name.trim() && name.trim() !== group.name) {
+                onSaveGroup(group, { name: name.trim() });
+              } else {
+                setName(group.name);
+              }
+            }}
+          />
+          {progressive ? null : group.offeringChoiceGroupId ? (
+            <p className="text-[0.7rem] text-muted-foreground">
+              From Offerings. Rename categories in Offerings; this template keeps the name it
+              had when added.
+            </p>
+          ) : (
+            <p className="text-[0.7rem] text-muted-foreground">
+              Legacy template group (created before catalog groups). Prefer including
+              catalog groups for new work.
+            </p>
+          )}
+        </div>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          disabled={pending}
+          data-testid={`eo-remove-child-group-${group.id}`}
+          onClick={onRemoveGroup}
+          aria-label={`Remove group ${group.name}`}
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </div>
+
+      <div className="space-y-1">
+        <Label className="text-xs text-muted-foreground">
+          {progressive ? "Client instruction" : "Instructions for the couple"}
+        </Label>
+        <Input
+          value={instructions}
+          disabled={pending}
+          placeholder={`e.g. Choose 2 ${group.name.toLowerCase()} for your guests`}
+          data-testid={`eo-child-instructions-${group.id}`}
+          onChange={(e) => setInstructions(e.target.value)}
+          onBlur={() => {
+            if ((group.instructions ?? "") !== instructions) {
+              onSaveGroup(group, { instructions });
+            }
+          }}
+        />
+      </div>
+
+      {progressive ? (
+        <SimpleSelectionRuleControls
+          group={group}
+          pending={pending}
+          testId={`eo-child-group-rule-controls-${group.id}`}
+          onCommit={(simple) => onSaveGroup(group, { simple })}
+        />
+      ) : (
+        <SelectionRuleControls
+          group={group}
+          selectCount={count}
+          required={required}
+          pending={pending}
+          countError={countError}
+          ids={{
+            rules: `eo-child-group-rule-controls-${group.id}`,
+            count: `eo-child-select-count-${group.id}`,
+            required: `eo-child-required-${group.id}`,
+            hint: `eo-child-rule-hint-${group.id}`,
+            preset: (n) => `eo-child-count-preset-${group.id}-${n}`,
+          }}
+          onSelectCountChange={(raw) => {
+            setCount(raw);
+            setCountError(null);
+          }}
+          onRequiredChange={setRequired}
+          onCommit={commitCount}
+        />
+      )}
+      {impossible ? (
+        <p
+          className="text-xs text-destructive"
+          role="alert"
+          data-testid={`eo-child-group-impossible-${group.id}`}
+        >
+          {impossible}
+        </p>
+      ) : null}
+
+      {options.length === 0 ? (
+        <p className="text-xs text-muted-foreground">No options in this group yet.</p>
+      ) : (
+        offeringRows
+      )}
+      {addOfferingControls}
+    </div>
+  );
+}
+
+function CatalogPickerDisclosure({
+  label,
+  testId,
+  children,
+}: {
+  label: string;
+  testId?: string;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = React.useState(false);
+  if (!open) {
+    return (
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        data-testid={testId}
+        onClick={() => setOpen(true)}
+      >
+        <Plus className="mr-1 h-4 w-4" />
+        {label}
+      </Button>
+    );
+  }
+  return (
+    <div
+      className="min-w-[16rem] flex-1 space-y-2 rounded-md border border-[color:var(--htc-border-warm)] bg-card p-3"
+      data-testid={testId ? `${testId}-picker` : undefined}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-sm font-medium text-heading">{label}</p>
+        <Button type="button" variant="ghost" size="sm" onClick={() => setOpen(false)}>
+          Cancel
+        </Button>
+      </div>
+      {children}
     </div>
   );
 }

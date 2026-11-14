@@ -9,6 +9,11 @@ import {
   reconcileAnswersForDependencies,
 } from "@/lib/client-choices/conditional-groups";
 import type { ChoicesAnswers, ChoicesDefinition } from "@/lib/client-choices/types";
+import {
+  commercialState,
+  unresolvedCommercialOptions,
+  unresolvedCommercialSendMessage,
+} from "@/lib/event-order-templates/commercial-state";
 import { impossibleSelectionGroupMessage } from "@/lib/event-order-templates/guided-setup";
 
 export type ChoicesAnswersValidation =
@@ -89,21 +94,16 @@ export function validateChoicesAnswers(
         groupName: group.name,
       };
     }
-    // Optional with an exact configured count: skip entirely, or satisfy the count.
-    // Partial answers (e.g. 1 of 2) must not submit.
-    if (
-      group.minSelect === 0 &&
-      group.maxSelect != null &&
-      group.maxSelect > 0 &&
-      count > 0 &&
-      count < group.maxSelect
-    ) {
-      return {
-        ok: false,
-        message: `“${group.name}” requires exactly ${group.maxSelect} selections, or leave it blank to skip.`,
-        groupId: group.id,
-        groupName: group.name,
-      };
+    for (const id of unique) {
+      const opt = definition.options.find((o) => o.id === id);
+      if (opt && commercialState(opt) === "not_configured") {
+        return {
+          ok: false,
+          message: unresolvedCommercialSendMessage(1) ?? "This offering is not configured.",
+          groupId: group.id,
+          groupName: group.name,
+        };
+      }
     }
   }
   return { ok: true };
@@ -113,6 +113,15 @@ export function validateChoicesAnswers(
  * A required group with fewer options than it demands can never be answered,
  * so the couple could never submit or approve. Returns the first such message.
  */
+/** Send/share/release blocker: empty required groups or unresolved commercial terms. */
+export function unanswerableChoicesSendMessage(definition: ChoicesDefinition): string | null {
+  const required = unanswerableRequiredGroupMessage(definition);
+  if (required) {
+    return `${required} Fix it in the Event Order template before sending, or the couple can't approve.`;
+  }
+  return unresolvedCommercialSendMessage(unresolvedCommercialOptions(definition.options).length);
+}
+
 export function unanswerableRequiredGroupMessage(definition: ChoicesDefinition): string | null {
   const optionCount = new Map<string, number>();
   for (const opt of definition.options) {

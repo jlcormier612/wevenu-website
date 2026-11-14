@@ -31,11 +31,12 @@ describe("Wave G5 — Planning / Timeline template editors", () => {
 describe("Wave G5 — EO / Inventory / Questionnaire / Floor Plan editors", () => {
   it("EO back link sits above the primary card; attention uses blush", () => {
     const detail = read("components/event-order-templates/event-order-template-detail.tsx");
-    const wizard = read("components/event-order-templates/guided-setup-wizard.tsx");
+    const overview = read("components/event-order-templates/event-order-template-overview.tsx");
     assert.match(detail, /CollectionBackLink/);
     assert.doesNotMatch(detail, /backHref="\/library\/event-order-templates"/);
-    assert.match(wizard, /htc-surface-attention/);
-    assert.doesNotMatch(wizard, /border-amber-200 bg-amber-50/);
+    assert.match(overview, /attentionSummary/);
+    assert.match(overview, /eo-overview-attention-/);
+    assert.doesNotMatch(overview, /border-amber-200 bg-amber-50/);
   });
 
   it("inventory + questionnaire editors get primary hospitality cards", () => {

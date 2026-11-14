@@ -63,15 +63,15 @@ describe("couple choice preview — source selection", () => {
     assert.equal(preview.statusLabel, "Awaiting Client");
     assert.deepEqual(preview.groups.map((g) => g.name), ["Dinner service", "Plated entrées"]);
     const [service, entrees] = preview.groups;
-    assert.equal(service!.ruleLabel, "Pick one · required");
+    assert.equal(service!.ruleLabel, "Choose 1 · Required");
     assert.equal(service!.sectionName, "Dinner");
     assert.deepEqual(service!.options.map((o) => [o.label, o.priceLabel]), [
-      ["Buffet", "Included — $0 extra"],
-      ["Plated", "+$12.00"],
+      ["Buffet", "Included"],
+      ["Plated", "+$12"],
     ]);
-    assert.equal(entrees!.ruleLabel, "Choose exactly 2");
+    assert.equal(entrees!.ruleLabel, "Choose 2 · Required");
     assert.deepEqual(entrees!.shownWhen, ["Plated"]);
-    assert.equal(entrees!.options[0]!.priceLabel, "Additional — price not set");
+    assert.equal(entrees!.options[0]!.priceLabel, "Not configured");
   });
 
   it("packet takes precedence over the template", () => {
@@ -95,10 +95,10 @@ describe("couple choice preview — source selection", () => {
     assert.equal(preview.kind, "template");
     if (preview.kind !== "template") return;
     assert.equal(preview.templateName, "Standard Wedding EO");
-    assert.equal(preview.groups[0]!.ruleLabel, "Optional — choose 1 or skip");
+    assert.equal(preview.groups[0]!.ruleLabel, "Choose 1 or skip · Optional");
     assert.deepEqual(preview.groups[0]!.options.map((o) => [o.label, o.priceLabel, o.unitPrice]), [
-      ["Beer & wine", "Included — $0 extra", 0],
-      ["Full bar", "+$18.00", 18],
+      ["Beer & wine", "Included", 0],
+      ["Full bar", "+$18", 18],
     ]);
   });
 
@@ -117,13 +117,13 @@ describe("couple choice preview — source selection", () => {
 
 describe("couple choice preview — labels", () => {
   it("rule labels match the couple form wording without the live count", () => {
-    assert.equal(coupleChoiceRuleLabel({ selectionMode: "multi", minSelect: 1, maxSelect: 3 }), "Choose 1–3");
-    assert.equal(coupleChoiceRuleLabel({ selectionMode: "multi", minSelect: 2, maxSelect: null }), "Choose at least 2");
-    assert.equal(coupleChoiceRuleLabel({ selectionMode: "multi", minSelect: 0, maxSelect: null }), "Optional — choose any");
+    assert.equal(coupleChoiceRuleLabel({ selectionMode: "multi", minSelect: 1, maxSelect: 3 }), "Choose 1–3 · Required");
+    assert.equal(coupleChoiceRuleLabel({ selectionMode: "multi", minSelect: 2, maxSelect: null }), "Choose at least 2 · Required");
+    assert.equal(coupleChoiceRuleLabel({ selectionMode: "multi", minSelect: 0, maxSelect: null }), "Choose any · Optional");
   });
 
   it("price labels: included $0 extra, priced each when quantities apply", () => {
-    assert.equal(coupleChoiceOptionPriceLabel({ isIncluded: true, unitPrice: 50 }, false), "Included — $0 extra");
+    assert.equal(coupleChoiceOptionPriceLabel({ isIncluded: true, unitPrice: 50 }, false), "Included");
     assert.equal(coupleChoiceOptionPriceLabel({ isIncluded: false, unitPrice: 4.5 }, true), "+$4.50 each");
   });
 

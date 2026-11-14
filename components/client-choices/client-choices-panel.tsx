@@ -51,6 +51,7 @@ import {
   clientChoicesNextActor,
   isClientChoicesNeedsVenueReview,
 } from "@/lib/client-choices/constants";
+import { selectionPacketPresence } from "@/lib/event-orders/event-order-journey";
 import { pickActiveChoices } from "@/lib/client-choices/couple-choice-preview";
 import type { ClientChoices, ClientChoicesWithHistory } from "@/lib/client-choices/types";
 import type {
@@ -516,6 +517,7 @@ export function ClientChoicesPanel({
 
   const active = pickActiveChoices(choices);
   const otherChoices = choices.filter((c) => c.id !== active?.id);
+  const packet = selectionPacketPresence(choices);
 
   React.useEffect(() => {
     if (!templateId) {
@@ -550,7 +552,11 @@ export function ClientChoicesPanel({
         <CardDescription>
           {selectionRequestComposer
             ? "Choose a template, then send the couple a selection request."
-            : "Details and history. The couple makes choices on their Event Order link after you send it."}
+            : packet === "needs_review"
+              ? "The couple submitted selections. Review them, then create or update the Event Order from those selections — that does not invoice or share."
+              : packet === "awaiting"
+                ? "The couple already has a selection packet. Submitting is not payment and does not create Event Order lines."
+                : "Details and history. The couple makes choices on their Event Order link after you send it."}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

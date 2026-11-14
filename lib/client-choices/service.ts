@@ -24,7 +24,7 @@ import type {
   SendClientChoicesRequestResult,
 } from "@/lib/client-choices/types";
 import {
-  unanswerableRequiredGroupMessage,
+  unanswerableChoicesSendMessage,
   validateChoicesAnswers,
 } from "@/lib/client-choices/validate-answers";
 import * as eoTemplatesRepo from "@/lib/event-order-templates/repository";
@@ -39,10 +39,7 @@ import { ensureEventOrder } from "@/lib/event-orders/service";
 import { getCurrentVenue } from "@/lib/venue/service";
 
 function unanswerableSendMessage(definition: ChoicesDefinition): string | null {
-  const message = unanswerableRequiredGroupMessage(definition);
-  return message
-    ? `${message} Fix it in the Event Order template before sending, or the couple can't approve.`
-    : null;
+  return unanswerableChoicesSendMessage(definition);
 }
 
 async function withVenue<T>(

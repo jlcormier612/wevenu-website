@@ -30,7 +30,10 @@ import { Button } from "@/components/ui/button";
 import { isClientChoicesNeedsVenueReview } from "@/lib/client-choices/constants";
 import type { CoupleDocumentView } from "@/lib/event-orders/couple-document";
 import { eventOrderDocumentUrl } from "@/lib/event-orders/event-order-portal-link";
-import type { EventOrderJourneyAction } from "@/lib/event-orders/event-order-journey";
+import {
+  selectionPacketPresence,
+  type EventOrderJourneyAction,
+} from "@/lib/event-orders/event-order-journey";
 import { publicAppOrigin } from "@/lib/env";
 import { buildMergeData, mergeContent } from "@/lib/message-templates/merge";
 import type { CommercialNavTarget, CommercialStatusInput } from "@/lib/event-orders/commercial-status";
@@ -175,6 +178,10 @@ export function EventCommercialWorkflow({
   const [sendOpen, setSendOpen] = React.useState(false);
   const [pendingAction, setPendingAction] = React.useState<EventOrderJourneyAction | null>(null);
   const choicesNeedReview = choices.some((c) => isClientChoicesNeedsVenueReview(c.status));
+  const packet = selectionPacketPresence(choices);
+  const pathBPacketWithoutOrder = !eventOrder && packet !== "none";
+  const emphasizeChoices = pathBPacketWithoutOrder || choicesNeedReview;
+  const emphasizeOrder = !pathBPacketWithoutOrder;
   const coupleLink = eventOrder?.reviewToken
     ? eventOrderDocumentUrl(publicAppOrigin(), eventOrder.reviewToken)
     : null;
@@ -187,6 +194,22 @@ export function EventCommercialWorkflow({
     shareMergeData,
   );
   const canSend = Boolean(eventOrder && eventOrder.lines.length > 0 && clientId);
+  const choicesPanel = (
+    <ClientChoicesPanel
+      eventId={eventId}
+      eventOrderTemplates={eventOrderTemplates}
+      choices={choices}
+      financialImpact={null}
+      hasEventOrder={Boolean(eventOrder)}
+      showFinancialImpact={false}
+      selectionRequestComposer={false}
+      clientName={clientName}
+      clientEmail={clientEmail}
+      venueName={venueName}
+      eventName={overview.eventName}
+      eventDate={overview.eventDate}
+    />
+  );
 
   function openPreview() {
     setPreviewOpen(true);
@@ -334,11 +357,24 @@ export function EventCommercialWorkflow({
         />
       ) : null}
 
+      {pathBPacketWithoutOrder ? (
+      <StageSection
+        id="event-order-choices"
+        testId="event-order-choices"
+        title="Couple's choices — details and history"
+        emphasized={emphasizeChoices}
+        collapsedByDefault={false}
+      >
+        {choicesPanel}
+      </StageSection>
+      ) : null}
+
       <StageSection
         id="event-order-order"
         testId="event-order-order"
         title="Event Order document"
-        emphasized
+        emphasized={emphasizeOrder}
+        collapsedByDefault={pathBPacketWithoutOrder}
       >
         <EventOrderPanel
           eventId={eventId}
@@ -366,28 +402,15 @@ export function EventCommercialWorkflow({
       </StageSection>
 
       {/* Review/history only — Send to couple owns the selection request; no leftover Prepare/Send panel. */}
-      {choices.length > 0 ? (
+      {!pathBPacketWithoutOrder && choices.length > 0 ? (
       <StageSection
         id="event-order-choices"
         testId="event-order-choices"
         title="Couple's choices — details and history"
-        emphasized={false}
+        emphasized={emphasizeChoices}
         collapsedByDefault={!choicesNeedReview}
       >
-        <ClientChoicesPanel
-          eventId={eventId}
-          eventOrderTemplates={eventOrderTemplates}
-          choices={choices}
-          financialImpact={null}
-          hasEventOrder={Boolean(eventOrder)}
-          showFinancialImpact={false}
-          selectionRequestComposer={false}
-          clientName={clientName}
-          clientEmail={clientEmail}
-          venueName={venueName}
-          eventName={overview.eventName}
-          eventDate={overview.eventDate}
-        />
+        {choicesPanel}
       </StageSection>
       ) : null}
     </div>

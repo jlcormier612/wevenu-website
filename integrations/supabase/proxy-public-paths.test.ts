@@ -43,6 +43,16 @@ describe("White Glove public token paths", () => {
     assert.equal(isPublicPath("/invoices/inv-1/print"), false);
   });
 
+  it("does not expose Checkpoint fixture preview routes as public application paths", () => {
+    assert.equal(isPublicPath("/c2-fixture-preview"), false);
+    assert.equal(isPublicPath("/c2-fixture-preview/"), false);
+    assert.equal(isPublicPath("/c3-starter-preview"), false);
+    assert.equal(isPublicPath("/c3-starter-preview/"), false);
+    assert.equal(isPublicPath("/c3b-fixture-preview"), false);
+    assert.equal(isPublicPath("/c3b-fixture-preview/"), false);
+    assert.equal(isPublicPath("/rc1-fixture-preview"), false);
+  });
+
   it("serves the legal enforcement recovery page without a session", () => {
     assert.equal(isPublicPath("/system/legal-unavailable"), true);
     assert.equal(isPublicPath("/system/legal-unavailable/"), true);

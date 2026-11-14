@@ -15,17 +15,18 @@ describe("Commercial Library information architecture", () => {
     assert.match(page, /data-testid="library-commercial-ia"/);
   });
 
-  it("presents three primary commercial heroes", () => {
+  it("presents commercial heroes including equal Delivery destinations", () => {
     assert.match(page, /Packages & Pricing/);
     assert.match(page, /Available Inventory/);
-    assert.match(page, /Event Order plans/);
+    assert.match(page, /title="Event Order Templates"/);
+    assert.match(page, /title="Offerings Catalog"/);
   });
 
-  it("keeps Offerings and starting lists as secondary links", () => {
+  it("keeps starting lists secondary under Stock and does not merge Offerings with Inventory", () => {
     assert.match(page, /Saved starting lists/);
-    assert.match(page, /Choices catalog/);
-    assert.doesNotMatch(page, /title="Offerings"/);
+    assert.match(page, /Group title="Stock"/);
+    assert.match(page, /title="Available Inventory"/);
     assert.doesNotMatch(page, /title="Inventory Templates"/);
-    assert.doesNotMatch(page, /title="Event Order Templates"/);
+    assert.doesNotMatch(page, /Choices catalog/);
   });
 });

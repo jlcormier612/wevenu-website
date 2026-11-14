@@ -79,8 +79,10 @@ describe("packageStartingSelections — setup/inherit completeness", () => {
     const optionNames = master!.sections.flatMap((s) =>
       (s.choiceGroups ?? []).flatMap((g) => g.options.map((o) => o.name)),
     );
-    assert.ok(offeringNames.includes("Ceremony Coordination"));
-    assert.ok(offeringNames.includes("Day-of Coordination"));
+    assert.ok(optionNames.includes("Ceremony Coordination"));
+    assert.equal(offeringNames.includes("Ceremony Coordination"), false);
+    assert.ok(!offeringNames.includes("Day-of Coordination"));
+    assert.ok(optionNames.includes("Day-of Coordination"));
     assert.ok(optionNames.includes("Plated Dinner"));
     assert.ok(optionNames.includes("Arbor"));
     assert.equal(EVENT_ORDER_STARTER_MASTERS.length, 2);

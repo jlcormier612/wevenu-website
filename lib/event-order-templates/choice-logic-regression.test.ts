@@ -61,7 +61,7 @@ describe("EO choice logic — parent / group / option model", () => {
     assert.equal(optional.name, "Spirits");
     assert.equal(optional.minSelect, 0);
     assert.equal(optional.maxSelect, 2);
-    assert.equal(plainSelectionRuleLabel(optional), "Optional — choose exactly 2 or skip");
+    assert.equal(plainSelectionRuleLabel(optional), "Choose up to 2 · Optional");
   });
 
   it("does not silently treat blank select counts as an arbitrary number when parsing", () => {
@@ -112,7 +112,7 @@ describe("EO choice logic — parent / group / option model", () => {
       join(root, "components/event-order-templates/package-choices-panel.tsx"),
       "utf8",
     );
-    assert.match(panel, />Add item</);
+    assert.match(panel, /Add item/);
     assert.match(panel, /Add write-in option/);
     assert.match(panel, /Add a category from Offerings/);
     assert.doesNotMatch(panel, /New selection group name/);

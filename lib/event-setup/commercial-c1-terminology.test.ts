@@ -36,13 +36,13 @@ describe("C1 commercial terminology and entry points", () => {
     assert.match(workflow, /ClientChoicesPanel/);
   });
 
-  it("Library keeps Packages & Pricing distinct from Event Order plans", () => {
+  it("Library keeps Packages & Pricing distinct from Event Order Templates", () => {
     const library = read("app/(app)/library/page.tsx");
     assert.match(library, /Packages & Pricing/);
-    assert.match(library, /Event Order plans/);
+    assert.match(library, /title="Event Order Templates"/);
+    assert.match(library, /title="Offerings Catalog"/);
     assert.match(library, /Available Inventory/);
     assert.match(library, /Saved starting lists/);
-    assert.doesNotMatch(library, /title="Event Order Templates"/);
     assert.doesNotMatch(library, /title="Inventory Templates"/);
   });
 

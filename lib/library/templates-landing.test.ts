@@ -19,7 +19,7 @@ describe("Library landing page", () => {
     for (const title of [
       "Packages & Pricing",
       "Available Inventory",
-      "Event Order plans",
+      "Event Order Templates",
       "Contract Templates",
       "Questionnaires & Feedback",
       "Planning Templates",

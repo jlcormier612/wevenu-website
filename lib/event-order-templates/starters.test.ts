@@ -27,7 +27,9 @@ describe("Delivery Event Order starter masters", () => {
     ]);
     for (const section of reception.sections) {
       assert.ok(section.guidance);
-      assert.ok((section.offerings ?? []).length > 0);
+      const offeringCount = (section.offerings ?? []).length;
+      const groupCount = (section.choiceGroups ?? []).length;
+      assert.ok(offeringCount + groupCount > 0, `${section.name} needs offerings or choices`);
     }
   });
 
@@ -40,12 +42,19 @@ describe("Delivery Event Order starter masters", () => {
     assert.equal(names.includes("Event Schedule"), false);
   });
 
-  it("offerings may be priced or unpriced; starters use example prices", () => {
-    const priced = EVENT_ORDER_STARTER_MASTERS.flatMap((m) =>
+  it("example offerings ship unconfigured; ceremony is a choice, not a priced included line", () => {
+    const fixed = EVENT_ORDER_STARTER_MASTERS.flatMap((m) =>
       m.sections.flatMap((s) => s.offerings ?? []),
     );
-    assert.ok(priced.some((o) => o.pricingModel === "per_person"));
-    assert.ok(priced.some((o) => o.pricingModel === "per_unit"));
-    assert.ok(priced.some((o) => o.pricingModel === "flat"));
+    assert.equal(fixed.some((o) => o.name === "Ceremony Coordination"), false);
+    const options = EVENT_ORDER_STARTER_MASTERS.flatMap((m) =>
+      m.sections.flatMap((s) => (s.choiceGroups ?? []).flatMap((g) => g.options)),
+    );
+    const ceremony = options.find((o) => o.name === "Ceremony Coordination");
+    assert.equal(ceremony?.unitPrice ?? null, null);
+    assert.equal(ceremony?.isIncluded ?? false, false);
+    const dayOf = options.find((o) => o.name === "Day-of Coordination");
+    assert.equal(dayOf?.unitPrice ?? null, null);
+    assert.equal(dayOf?.isIncluded ?? false, false);
   });
 });

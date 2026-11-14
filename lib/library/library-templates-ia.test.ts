@@ -15,18 +15,19 @@ describe("Library Templates IA — commercial heroes + other templates", () => {
     assert.doesNotMatch(page, /Reusable assets & catalogs/);
   });
 
-  it("presents three primary commercial heroes", () => {
+  it("presents commercial heroes including equal Delivery destinations", () => {
     assert.match(page, /Packages & Pricing/);
     assert.match(page, /Available Inventory/);
-    assert.match(page, /Event Order plans/);
+    assert.match(page, /title="Event Order Templates"/);
+    assert.match(page, /title="Offerings Catalog"/);
   });
 
-  it("keeps Offerings and starting lists as secondary links", () => {
+  it("keeps starting lists secondary under Stock and does not merge Offerings with Inventory", () => {
     assert.match(page, /Saved starting lists/);
-    assert.match(page, /Choices catalog/);
-    assert.doesNotMatch(page, /title="Offerings"/);
+    assert.match(page, /Group title="Stock"/);
+    assert.match(page, /title="Available Inventory"/);
     assert.doesNotMatch(page, /title="Inventory Templates"/);
-    assert.doesNotMatch(page, /title="Event Order Templates"/);
+    assert.doesNotMatch(page, /Choices catalog/);
   });
 
   it("lists other applyable templates with Template badge kind", () => {
@@ -52,12 +53,12 @@ describe("Library dependency guidance — source + direct links + how used", () 
     assert.doesNotMatch(src, /All templates/);
   });
 
-  it("Event Order plans link choices catalog and explain selection", () => {
+  it("Event Order Templates link Offerings Catalog and explain selection", () => {
     const src = readFileSync(resolve("app/(app)/library/event-order-templates/page.tsx"), "utf8");
     assert.match(src, /LibraryDependencyNote/);
     assert.match(src, /href: "\/library\/offerings"/);
-    assert.match(src, /Manage choices catalog/);
-    assert.match(src, /couple choices/i);
+    assert.match(src, /Open Offerings Catalog/);
+    assert.match(src, /client selections/i);
     assert.doesNotMatch(src, /All templates/);
   });
 
@@ -104,7 +105,7 @@ describe("Library dependency guidance — source + direct links + how used", () 
 
   it("Offerings and Inventory catalogs reverse-link consumers without Use Template", () => {
     const offerings = readFileSync(resolve("components/offerings/offerings-page-client.tsx"), "utf8");
-    assert.match(offerings, /Open Event Order plans/);
+    assert.match(offerings, /Open Event Order Templates/);
     assert.doesNotMatch(offerings, /Open Choices Templates/);
     assert.doesNotMatch(offerings, /Use Template/);
     const inventory = readFileSync(resolve("app/(app)/library/inventory/page.tsx"), "utf8");
