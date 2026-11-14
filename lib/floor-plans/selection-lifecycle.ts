@@ -9,25 +9,17 @@
  *
  * Seating Case A/B/C protections are preserved; assignment rows are never rewritten.
  */
+import { normalizeClientLayoutStatus } from "@/lib/floor-plans/client-layout-review";
 import {
+  COUPLE_PREFERENCE_STATUSES,
   classifyPreferenceApprovalCase,
+  type CouplePreferenceStatus,
   type PreferenceApprovalCase,
 } from "@/lib/floor-plans/preference-lifecycle";
-import { normalizeClientLayoutStatus } from "@/lib/floor-plans/client-layout-review";
 
-export const SELECTION_STATUSES = [
-  "applied",
-  "proposed_replacement",
-  // Legacy preference statuses retained for historical rows / setups.
-  "pending",
-  "approved",
-  "declined",
-  "deferred",
-  "withdrawn",
-  "superseded",
-] as const;
-
-export type SelectionStatus = (typeof SELECTION_STATUSES)[number];
+/** Alias of couple preference / selection status vocabulary. */
+export const SELECTION_STATUSES = COUPLE_PREFERENCE_STATUSES;
+export type SelectionStatus = CouplePreferenceStatus;
 
 export type LayoutSelectOutcome =
   | {

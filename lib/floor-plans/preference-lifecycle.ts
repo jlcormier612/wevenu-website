@@ -5,7 +5,14 @@
  * Distinct from floor_plans.client_layout_status (furniture-layout review).
  */
 
+/**
+ * Layout-selection status on events / setups.
+ * New workflow: applied | proposed_replacement.
+ * Legacy preference ceremony: pending | approved | declined | deferred | withdrawn | superseded.
+ */
 export const COUPLE_PREFERENCE_STATUSES = [
+  "applied",
+  "proposed_replacement",
   "pending",
   "approved",
   "declined",
@@ -25,7 +32,11 @@ export type PreferenceDecision =
   | { decision: "decline" }
   | { decision: "defer" };
 
-/** Normalize legacy null status when a preference pointer exists. */
+/**
+ * Normalize selection / preference status.
+ * Unknown strings are ignored; a selected plan with a null status is treated as
+ * applied (current product: selection establishes working layout).
+ */
 export function normalizeCouplePreferenceStatus(
   status: string | null | undefined,
   coupleSelectedFloorPlanId: string | null | undefined,
@@ -33,7 +44,7 @@ export function normalizeCouplePreferenceStatus(
   if (status && (COUPLE_PREFERENCE_STATUSES as readonly string[]).includes(status)) {
     return status as CouplePreferenceStatus;
   }
-  if (coupleSelectedFloorPlanId) return "pending";
+  if (coupleSelectedFloorPlanId) return "applied";
   return null;
 }
 
@@ -167,6 +178,23 @@ export function venuePreferenceStatusCopy(input: {
 }): { headline: string; detail: string; nextStep: string } {
   const preferred = input.preferredName ?? "their preferred layout";
   switch (input.status) {
+    case "applied":
+      return {
+        headline: `Couple selection: ${preferred}`,
+        detail: input.isWorking
+          ? "The couple selected this layout and it is the working plan. Furniture review stays separate."
+          : "The couple selected this layout. Set or confirm the working layout if needed — sharing and seating stay separate.",
+        nextStep: input.shared
+          ? "Review furniture submissions when they send one. Seating access stays a separate control."
+          : "Share the floor plan when the couple should see and work on it.",
+      };
+    case "proposed_replacement":
+      return {
+        headline: `Proposed layout change: ${preferred}`,
+        detail:
+          "The couple asked to switch after a physical arrangement was already approved. The current working arrangement stays until you accept or keep it.",
+        nextStep: "Accept the replacement (with seating-host resolution if needed) or keep the current working layout.",
+      };
     case "pending":
       return {
         headline: `Pending preference: ${preferred}`,
@@ -234,6 +262,17 @@ export function couplePreferenceStatusCopy(input: {
 }): { headline: string; detail: string } {
   const name = input.preferredName ?? "this layout";
   switch (input.status) {
+    case "applied":
+      return {
+        headline: `Your layout: ${name}`,
+        detail: "This is your working layout. Arrange furniture as your venue allows, then submit when you are ready for review.",
+      };
+    case "proposed_replacement":
+      return {
+        headline: `Layout change requested: ${name}`,
+        detail:
+          "You asked to switch layouts. Your venue will review that request. The current approved arrangement stays until they accept a change.",
+      };
     case "pending":
       return {
         headline: `Preference saved: ${name}`,

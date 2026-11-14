@@ -108,9 +108,14 @@ describe("Phase 2 — ensureWorkingLayoutForEvent decoupling", () => {
 
 describe("Phase 2 — preference lifecycle pure transitions", () => {
   it("normalize treats legacy pointer without status as pending", () => {
-    assert.equal(normalizeCouplePreferenceStatus(null, "plan-1"), "pending");
+    assert.equal(normalizeCouplePreferenceStatus(null, "plan-1"), "applied");
     assert.equal(normalizeCouplePreferenceStatus(null, null), null);
     assert.equal(normalizeCouplePreferenceStatus("approved", "plan-1"), "approved");
+    assert.equal(normalizeCouplePreferenceStatus("applied", "plan-1"), "applied");
+    assert.equal(
+      normalizeCouplePreferenceStatus("proposed_replacement", "plan-2"),
+      "proposed_replacement",
+    );
   });
 
   it("couple select supersedes pending and preserves approved", () => {
