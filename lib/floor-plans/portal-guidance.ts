@@ -60,8 +60,8 @@ export function portalFloorPlanGuidance(input: {
   // in-flight or finalized arrangement never shows "choose your starting layout".
   if (input.proposedReplacementPending) {
     return base(
-      "Your request to use a different layout has been sent to your venue. Your current approved layout remains in place for now.",
-      { headline: "Layout change requested" },
+      "Your venue is reviewing your request. Your current approved floor plan remains unchanged.",
+      { headline: "Replacement requested" },
     );
   }
 

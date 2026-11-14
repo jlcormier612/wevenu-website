@@ -1,0 +1,53 @@
+{
+  "planId": "8e8e8a6d-946f-45a6-88ea-2e763f037fc6",
+  "planName": "Barn-master-floorplan",
+  "totalAssigned": 6,
+  "tables": [
+    {
+      "id": "303c2096-76a7-4358-9422-c4bfcd5ba154",
+      "label": "Ceremony Row 1",
+      "compact": "Row 1",
+      "count": 2,
+      "capacity": 8,
+      "shape": "rectangular",
+      "names": [
+        "Guest1 Assigned",
+        "Guest5 Assigned"
+      ]
+    },
+    {
+      "id": "f098b15c-0779-4273-9102-ac33bd5c9f25",
+      "label": "Ceremony Row 1",
+      "compact": "Row 1",
+      "count": 2,
+      "capacity": 8,
+      "shape": "rectangular",
+      "names": [
+        "Guest2 Assigned",
+        "Guest6 Assigned"
+      ]
+    },
+    {
+      "id": "0a6f2975-2502-4c1d-b2d4-c2c0d1e1153d",
+      "label": "Ceremony Row 2",
+      "compact": "Row 2",
+      "count": 1,
+      "capacity": 8,
+      "shape": "rectangular",
+      "names": [
+        "Guest3 Assigned"
+      ]
+    },
+    {
+      "id": "6f5639b3-9994-4cdb-93ce-161fe44138ef",
+      "label": "Ceremony Row 2",
+      "compact": "Row 2",
+      "count": 1,
+      "capacity": 8,
+      "shape": "rectangular",
+      "names": [
+        "Guest4 Assigned"
+      ]
+    }
+  ]
+}
