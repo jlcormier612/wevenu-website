@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --htc-botanical: #446b56;
+  --htc-border-warm: #e6e3dc;
+  --htc-soft-blush: #f7e9eb;
+  --heading: var(--forest-sage);
+  --htc-linen: #f3f0e9;
+  --foreground: var(--black);
+  --muted-foreground: color-mix(in oklch, var(--forest-sage) 82%, transparent);
+  --htc-border-calm: #d5e1eb;
+  --htc-calm-blue: #eaf1f7;
+  --htc-calm-blue-deep: #dfe9f1;
+  --card: var(--true-white);
+  --font-heading: "Cormorant Garamond", ui-serif, Georgia, serif;
+}
+body { margin: 0; font-family: Inter, system-ui, sans-serif; background: #f7f5f1; color: var(--foreground); }
+.page { padding: 2rem; max-width: 960px; margin: 0 auto; }
+.eyebrow { font-size: 0.875rem; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; color: #6b7a6b; margin: 0 0 0.75rem; }
+.font-heading { font-family: var(--font-heading); }
+.text-\[clamp\(2rem\,4\.5vw\,3\.5rem\)\] { font-size: clamp(2rem, 4.5vw, 3.5rem); }
+.font-normal { font-weight: 400; }
+.leading-\[1\.15\] { line-height: 1.15; }
+.tracking-tight { letter-spacing: -0.025em; }
+.text-\[rgb\(79\,95\,79\)\] { color: rgb(79, 95, 79); }
+h1 { margin: 0; }
+.card { margin-top: 2rem; background: #fff; border: 1px solid #e6dfd4; border-radius: 0.75rem; padding: 1rem 1.1rem; }
+.card-title { font-family: var(--font-heading); font-size: 1.15rem; color: rgb(79,95,79); margin: 0 0 0.75rem; }
+button { font-family: inherit; cursor: default; border-radius: 0.45rem; border: 1px solid transparent; }
+.htc-staff .btn { display: inline-flex; align-items: center; justify-content: center; }
+.htc-staff .htc-lead-tour-appt-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem; /* 8px */
+}
+
+.htc-staff .htc-lead-tour-confirm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem; /* 8px */
+  flex: 0 1 auto;
+}
+
+.htc-staff .htc-lead-tour-confirm-primary {
+  background: var(--htc-botanical);
+  color: #fff;
+  border-color: var(--htc-botanical);
+}
+
+.htc-staff .htc-lead-tour-confirm-primary:hover {
+  background: color-mix(in oklch, var(--htc-botanical) 88%, black);
+  color: #fff;
+}
+
+.htc-staff .htc-lead-tour-confirm-secondary,
+.htc-staff .htc-lead-tour-action-secondary {
+  border-color: var(--htc-border-warm);
+  background: #fff;
+  color: var(--heading);
+}
+
+.htc-staff .htc-lead-tour-action-destructive {
+  color: color-mix(in oklch, #6b3f44 75%, var(--heading));
+  height: auto;
+  min-height: 2.25rem; /* 36px desktop */
+  padding-block: 0;
+  padding-inline: 0.5rem;
+  font-size: 0.8125rem; /* 13px */
+  font-weight: 500;
+  line-height: 1.25;
+  white-space: nowrap;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+}
+
+.htc-staff .htc-lead-tour-action-destructive:hover {
+  background: var(--htc-soft-blush);
+  color: color-mix(in oklch, #6b3f44 85%, var(--heading));
+}
+
+/* Compact tour card actions — scoped; personal-link keeps its own touch target. */
+.htc-staff .htc-lead-tour-confirm-primary,
+.htc-staff .htc-lead-tour-confirm-secondary,
+.htc-staff .htc-lead-tour-action-secondary {
+  height: 2.25rem; /* 36px desktop */
+  min-height: 2.25rem;
+  padding-block: 0;
+  padding-inline: 0.9375rem; /* 15px */
+  font-size: 0.875rem; /* 14px */
+  font-weight: 500;
+  white-space: nowrap;
+  line-height: 1.25;
+}
+
+.htc-staff .htc-lead-tour-personal-link-btn {
+  height: auto;
+  min-height: 2.75rem; /* 44px floor */
+  padding-block: 0.55rem;
+  padding-inline: 0.75rem;
+  white-space: normal;
+  line-height: 1.3;
+}
+
+/* Match adjacent Lead Workspace size="sm" actions (Start booking file). */
+
+@media (max-width: 639px) {
+  .htc-staff .htc-lead-tour-confirm-actions {
+    flex: 1 1 100%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .htc-staff .htc-lead-tour-confirm-primary,
+  .htc-staff .htc-lead-tour-confirm-secondary,
+  .htc-staff .htc-lead-tour-action-secondary {
+    height: auto;
+    min-height: 2.75rem; /* 44px a11y floor (> 40px mobile minimum) */
+    padding-block: 0.4rem;
+    padding-inline: 0.875rem; /* 14px */
+    font-size: 0.8125rem; /* 13px */
+    white-space: normal; /* wrap only when necessary */
+    text-align: center;
+  }
+
+  .htc-staff .htc-lead-tour-action-destructive {
+    min-height: 2.75rem;
+  }
+
+  .htc-staff .htc-lead-tour-personal-link {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .htc-staff .htc-lead-tour-personal-link-btn {
+    width: 100%;
+    min-height: 3rem;
+    justify-content: center;
+  }
+}
+</style>
+</head>
+<body>
+<div class="htc-staff page" data-surface="refer">
+  <p class="eyebrow">A little thank-you for spreading the word</p>
+  <h1 class="font-heading text-[clamp(2rem,4.5vw,3.5rem)] font-normal leading-[1.15] tracking-tight text-[rgb(79,95,79)]">Share the Luv. Get a free month.</h1>
+</div>
+<div class="htc-staff page" data-surface="tours" style="padding-top:0">
+  <div class="card">
+    <p class="card-title">Tour &amp; follow-up — appointment actions</p>
+    <div class="htc-lead-tour-appt-actions">
+      <button class="btn htc-lead-tour-action-secondary" type="button">Reschedule</button>
+      <div class="htc-lead-tour-confirm-actions">
+        <button class="btn htc-lead-tour-confirm-primary" type="button">Mark as Confirmed</button>
+        <button class="btn htc-lead-tour-confirm-secondary" type="button">Send Confirmation Request</button>
+      </div>
+      <button class="btn htc-lead-tour-action-secondary" type="button">Mark Completed</button>
+      <button class="btn htc-lead-tour-action-destructive" type="button">Cancel</button>
+    </div>
+  </div>
+</div>
+</body>
+</html>

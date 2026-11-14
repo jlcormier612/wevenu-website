@@ -24,14 +24,16 @@ describe("Schedule Tour action height", () => {
     assert.match(detail, /TourScheduleActions includeCopyLink=\{false\} includeSchedule/);
   });
 
-  it("does not put Schedule Tour in the 44px confirm/personal-link cluster", () => {
-    const cluster = css.slice(
-      css.indexOf(".htc-staff .htc-lead-tour-confirm-primary,"),
+  it("does not put Schedule Tour in the compact tour-action or personal-link clusters", () => {
+    const compact = css.slice(
+      css.indexOf("/* Compact tour card actions"),
       css.indexOf("/* Match adjacent Lead Workspace size=\"sm\" actions"),
     );
-    assert.match(cluster, /htc-lead-tour-personal-link-btn/);
-    assert.match(cluster, /min-height:\s*2\.75rem/);
-    assert.doesNotMatch(cluster, /htc-lead-tour-schedule-btn/);
+    assert.match(compact, /htc-lead-tour-confirm-primary/);
+    assert.match(compact, /height:\s*2\.25rem/);
+    assert.match(compact, /htc-lead-tour-personal-link-btn/);
+    assert.match(compact, /min-height:\s*2\.75rem/);
+    assert.doesNotMatch(compact, /htc-lead-tour-schedule-btn/);
   });
 
   it("sizes Schedule Tour to adjacent h-8 / 2rem actions", () => {

@@ -174,7 +174,7 @@ export function ReferAVenuePage() {
         <p className="text-sm font-medium tracking-[0.14em] text-[color:var(--heritage-sage)] uppercase">
           A little thank-you for spreading the word
         </p>
-        <h1 className="font-serif text-3xl tracking-tight text-foreground sm:text-4xl">
+        <h1 className="font-heading text-[clamp(2rem,4.5vw,3.5rem)] font-normal leading-[1.15] tracking-tight text-[rgb(79,95,79)]">
           Share the Luv. Get a free month.
         </h1>
       </div>

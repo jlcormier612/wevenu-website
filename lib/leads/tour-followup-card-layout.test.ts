@@ -43,7 +43,7 @@ describe("tour-follow-up card layout", () => {
     assert.doesNotMatch(row, />\s*Edit\s*</);
     assert.match(row, /Send Confirmation Request/);
     assert.match(row, /Mark as Confirmed/);
-    assert.match(row, />\s*Completed\s*</);
+    assert.match(row, />\s*Mark Completed\s*</);
     assert.match(row, />\s*Cancel\s*</);
   });
 

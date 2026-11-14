@@ -560,7 +560,7 @@ function AppointmentRow({ appt, leadId, now, venueTimezone, onReschedule, onChan
                 disabled={pending}
                 onClick={openComplete}
               >
-                Completed
+                Mark Completed
               </Button>
               {isPast ? (
                 <Button
