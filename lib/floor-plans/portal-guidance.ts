@@ -56,13 +56,8 @@ export function portalFloorPlanGuidance(input: {
     showGuestSeatingRoute: opts.showGuestSeatingRoute ?? false,
   });
 
-  if (input.needsChooser && !input.hasSelectedWorking) {
-    return base(
-      "Your venue has prepared a few options for your celebration. Select the one that works best for you.",
-      { headline: "Choose your starting layout" },
-    );
-  }
-
+  // Ready / pending replacement outrank the initial chooser so a finalized
+  // arrangement never shows "choose your starting layout" copy.
   if (input.proposedReplacementPending) {
     return base(
       "Your request to use a different layout has been sent to your venue. Your current approved layout remains in place for now.",
@@ -81,6 +76,13 @@ export function portalFloorPlanGuidance(input: {
       );
     }
     return base("Your floor plan is ready!", { headline: "Ready" });
+  }
+
+  if (input.needsChooser && !input.hasSelectedWorking) {
+    return base(
+      "Your venue has prepared a few options for your celebration. Select the one that works best for you.",
+      { headline: "Choose your starting layout" },
+    );
   }
 
   const status = normalizeClientLayoutStatus(input.clientLayoutStatus);
