@@ -52,7 +52,7 @@ import {
   buildInquirySmsConsentText,
 } from "@/lib/communication/sms-consent";
 import type { ExistingLeadTourContext } from "@/lib/tours/existing-lead-tour-context";
-import { shouldSkipPreferredEventDateRequirement } from "@/lib/tours/existing-lead-tour-context";
+import { shouldSkipPreferredEventDateRequirement } from "@/lib/tours/preferred-event-date-requirement";
 import type { TourSlot } from "@/lib/tours/types";
 import { inkOn, publicFormSurfaceStyle } from "@/lib/theme/public-form-surface";
 

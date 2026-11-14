@@ -2,8 +2,12 @@
  * Progressive contract signing UI labels — client-first.
  */
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
+import { resolve } from "node:path";
 
+import { hashContractContent } from "@/lib/contracts/content-hash";
 import { deriveContractSigningUiState } from "@/lib/contracts/signers";
 
 describe("deriveContractSigningUiState", () => {
@@ -40,5 +44,21 @@ describe("deriveContractSigningUiState", () => {
       status: "signed", venueSigned: true, requiredClientTotal: 2, requiredClientSigned: 2, expiresAt: null,
     });
     assert.equal(r.label, "Fully Executed");
+  });
+
+  it("keeps node:crypto out of the client-imported signers module", () => {
+    const signers = readFileSync(resolve("lib/contracts/signers.ts"), "utf8");
+    const hash = readFileSync(resolve("lib/contracts/content-hash.ts"), "utf8");
+    assert.doesNotMatch(signers, /node:crypto|from ["']crypto["']/);
+    assert.match(hash, /from ["']node:crypto["']/);
+    assert.match(hash, /hashContractContent/);
+  });
+
+  it("preserves SHA-256 hex hashing for contract content", () => {
+    const sample = "hello contract";
+    assert.equal(
+      hashContractContent(sample),
+      createHash("sha256").update(sample, "utf8").digest("hex"),
+    );
   });
 });

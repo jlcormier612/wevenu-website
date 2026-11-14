@@ -3,7 +3,7 @@
  * Does not invent legal defaults.
  */
 import type { TextingRegistrationInput, TextingRegistrationView } from "@/lib/texting-registration/types";
-import { normalizeRegistrationNumber } from "@/lib/texting-registration/sensitive-field";
+import { normalizeRegistrationNumber } from "@/lib/texting-registration/registration-number";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 

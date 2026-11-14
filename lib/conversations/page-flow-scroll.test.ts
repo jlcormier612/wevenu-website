@@ -36,4 +36,12 @@ describe("page-flow scroll (Inbox)", () => {
     const inbox = readFileSync("app/(app)/messaging/conversation-inbox.tsx", "utf8");
     assert.match(inbox, /flow="page"/);
   });
+
+  it("workspace section helper waits then scrolls workspace main", () => {
+    const src = readFileSync("lib/conversations/page-flow-scroll.ts", "utf8");
+    assert.match(src, /export function waitForElementById/);
+    assert.match(src, /export async function scrollWorkspaceMainToId/);
+    assert.match(src, /scrollWorkspaceMainToElement\(target/);
+    assert.match(src, /target\.focus\(\{\s*preventScroll:\s*true\s*\}\)/);
+  });
 });

@@ -86,9 +86,13 @@ function TourRow({
   const [overflowPending, setOverflowPending] = React.useState(false);
   const [deleting, setDeleting] = React.useState(false);
   const [deletePending, setDeletePending] = React.useState(false);
+  const isPostTour = appt.status === "completed" || appt.status === "no_show";
+  const [detailsOpen, setDetailsOpen] = React.useState(isPostTour && !archivedView);
   const [showOutcomeForm, setShowOutcomeForm] = React.useState(false);
   const [outcome, setOutcome] = React.useState<string>(appt.outcome ?? "");
   const [notes, setNotes] = React.useState(appt.notes ?? "");
+  const [savedNotes, setSavedNotes] = React.useState(appt.notes ?? "");
+  const [savedOutcome, setSavedOutcome] = React.useState(appt.outcome ?? "");
   const [savingOutcome, setSavingOutcome] = React.useState(false);
   const [completeOpen, setCompleteOpen] = React.useState(false);
   const scheduledParts = appt.scheduledAt
@@ -117,7 +121,7 @@ function TourRow({
    * - scheduled / confirmed: open work — Select offers completed / cancelled / no_show
    *   (and scheduled). Confirmed is never a free-pick option.
    * - completed / cancelled: terminal for this workspace — badge only; no Select.
-   *   Archive/restore remain via overflow. Outcome links remain for completed.
+   *   Archive/restore remain via overflow. Details / notes remain for completed and no-show.
    * - no_show: keep Select for staff corrections among post-tour outcomes only
    *   (completed / cancelled / no_show). Do not offer scheduled reopen here.
    */
@@ -144,12 +148,22 @@ function TourRow({
       const res = await fetch("/api/tours/outcome", {
         method: "PATCH",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ appointmentId: appt.id, outcome: outcome || null, notes: notes || null }),
+        body: JSON.stringify({
+          appointmentId: appt.id,
+          notes: notes || null,
+          ...(isPostTour ? { outcome: outcome || null } : {}),
+        }),
       });
       const data = await res.json() as { ok: boolean };
-      if (data.ok) { toast.success("Tour outcome saved."); setShowOutcomeForm(false); }
-      else toast.error("Could not save outcome.");
-    } catch { toast.error("Could not save outcome."); }
+      if (data.ok) {
+        toast.success("Tour notes saved.");
+        setSavedNotes(notes);
+        setSavedOutcome(outcome);
+        setShowOutcomeForm(false);
+        router.refresh();
+      }
+      else toast.error("Could not save notes.");
+    } catch { toast.error("Could not save notes."); }
     finally { setSavingOutcome(false); }
   }
 
@@ -195,6 +209,10 @@ function TourRow({
         });
         toast.success(newStatus === "confirmed" ? "Tour marked confirmed." : "Status updated.");
         setCompleteOpen(false);
+        if (newStatus === "completed" || newStatus === "no_show") {
+          setDetailsOpen(true);
+          setShowOutcomeForm(true);
+        }
       } else toast.error(data.error ?? "Could not update status.");
     } catch { toast.error("Could not update status."); }
     finally { setUpdating(false); }
@@ -363,9 +381,9 @@ function TourRow({
                 })}
               </p>
             ) : null}
-            {appt.contactEmail && (
-              <p data-tours-email="">{appt.contactEmail}</p>
-            )}
+            {savedNotes.trim() && !detailsOpen ? (
+              <p data-tours-notes-preview="">{savedNotes.trim()}</p>
+            ) : null}
             {!appt.leadId && appt.origin === "walk_in" && (
               <p data-tours-aside="">
                 Walk-in — use {showStatusSelect ? "status and " : ""}archive actions on this row.
@@ -414,13 +432,33 @@ function TourRow({
             </Select>
           ) : null}
           <div className="htc-tours-row-tools" data-tours-row-tools="">
+            {!archivedView ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="htc-tours-details-toggle"
+                aria-expanded={detailsOpen}
+                aria-controls={`tour-details-${appt.id}`}
+                data-tours-details-toggle=""
+                onClick={() => {
+                  setDetailsOpen((open) => {
+                    const next = !open;
+                    if (next && isPostTour) setShowOutcomeForm(true);
+                    return next;
+                  });
+                }}
+              >
+                {detailsOpen ? "Hide details" : isPostTour ? "Tour notes" : "Details"}
+              </Button>
+            ) : null}
             {appt.leadId ? (
               <Button
                 size="sm"
                 variant="ghost"
                 className="htc-tours-lead-link"
                 render={<Link href={`/leads/${appt.leadId}`} />}
-                aria-label={`Open lead for ${displayName}`}
+                aria-label={`Open lead workspace for ${displayName}`}
               >
                 <ChevronRight className="h-4 w-4" />
               </Button>
@@ -430,44 +468,73 @@ function TourRow({
         </div>
       </div>
 
-      {!archivedView && appt.status === "completed" && (
-        <div className="htc-tours-outcome">
-          {appt.outcome && (
+      {!archivedView && detailsOpen && (
+        <div
+          className="htc-tours-outcome"
+          id={`tour-details-${appt.id}`}
+          data-tours-details=""
+        >
+          {appt.contactEmail ? (
+            <p data-tours-email="">
+              <a href={`mailto:${appt.contactEmail}`}>{appt.contactEmail}</a>
+            </p>
+          ) : null}
+          {(savedOutcome && isPostTour) ? (
             <p data-tours-outcome-summary="">
-              Outcome: <span>{OUTCOME_LABELS[appt.outcome as TourOutcome]}</span>
+              Outcome: <span>{OUTCOME_LABELS[savedOutcome as TourOutcome] ?? savedOutcome}</span>
               {appt.followUpSentAt && <span data-tours-followup-sent=""> · Follow-up sent</span>}
             </p>
-          )}
+          ) : null}
+          {savedNotes.trim() && !showOutcomeForm ? (
+            <p data-tours-saved-notes="">{savedNotes.trim()}</p>
+          ) : null}
           <div className="htc-tours-outcome-links">
-            <button type="button" onClick={() => setShowOutcomeForm(!showOutcomeForm)}>
-              {appt.outcome ? "Edit outcome" : "Record outcome"}
+            <button
+              type="button"
+              data-tours-notes-action=""
+              onClick={() => setShowOutcomeForm(!showOutcomeForm)}
+            >
+              {showOutcomeForm
+                ? "Close notes"
+                : savedNotes.trim() || savedOutcome
+                  ? "Edit notes"
+                  : (isPostTour ? "Record what happened" : "Add notes")}
             </button>
-            {!appt.followUpSentAt && (
+            {isPostTour && !appt.followUpSentAt && (
               <button type="button" onClick={handleMarkFollowUp}>
                 Mark follow-up sent
               </button>
             )}
           </div>
           {showOutcomeForm && (
-            <div className="htc-tours-outcome-form">
-              <Select value={outcome} onValueChange={setOutcome} items={OUTCOME_LABELS}>
-                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Tour outcome…" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="interested">Interested</SelectItem>
-                  <SelectItem value="considering">Considering</SelectItem>
-                  <SelectItem value="not_a_fit">Not a fit</SelectItem>
-                  <SelectItem value="booked">Booked</SelectItem>
-                  <SelectItem value="unknown">Unknown</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="htc-tours-outcome-form" data-tours-notes-form="">
+              {isPostTour ? (
+                <Select value={outcome} onValueChange={setOutcome} items={OUTCOME_LABELS}>
+                  <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Tour outcome…" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="interested">Interested</SelectItem>
+                    <SelectItem value="considering">Considering</SelectItem>
+                    <SelectItem value="not_a_fit">Not a fit</SelectItem>
+                    <SelectItem value="booked">Booked</SelectItem>
+                    <SelectItem value="unknown">Unknown</SelectItem>
+                  </SelectContent>
+                </Select>
+              ) : null}
               <div className="space-y-1">
                 <p className="text-[11px] font-medium text-muted-foreground">{internalNotesLabel("tour")}</p>
                 <p className="text-[11px] text-muted-foreground">{INTERNAL_NOTES_PRIVACY_HINT}</p>
-                <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notes from the tour…" className="text-xs" />
+                <Textarea
+                  rows={2}
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Notes from the tour…"
+                  className="text-xs"
+                  data-tours-notes-input=""
+                />
               </div>
               <div className="flex gap-2 justify-end">
                 <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setShowOutcomeForm(false)}>Cancel</Button>
-                <Button type="button" size="sm" className="h-7 text-xs" disabled={savingOutcome} onClick={handleSaveOutcome}>Save</Button>
+                <Button type="button" size="sm" className="h-7 text-xs" disabled={savingOutcome} onClick={handleSaveOutcome} data-tours-notes-save="">Save</Button>
               </div>
             </div>
           )}

@@ -85,6 +85,7 @@ import {
   Card, CardContent, CardDescription, CardHeader, CardTitle,
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { scrollWorkspaceMainToId } from "@/lib/conversations/page-flow-scroll";
 import { formatCurrency } from "@/lib/invoices/constants";
 import { invoiceHumanLabel } from "@/lib/invoices/display-name";
 import type { Invoice } from "@/lib/invoices/types";
@@ -586,6 +587,15 @@ export function EventDetail({
   const [returnDraft, setReturnDraft] = React.useState<BookingConfirmationDraft | null>(null);
   const [returnDraftError, setReturnDraftError] = React.useState<string | null>(null);
   const [activeTab, setActiveTab] = React.useState(openSetupPayments ? "invoice" : "overview");
+  function openWorkspaceSection(tab: "questionnaires" | "event-order" | "inventory") {
+    setActiveTab(tab);
+    if (typeof window !== "undefined" && window.location.hash.replace("#", "") !== tab) {
+      window.location.hash = tab;
+    }
+    window.setTimeout(() => {
+      void scrollWorkspaceMainToId(tab);
+    }, 80);
+  }
   const [setupPaymentsOpen, setSetupPaymentsOpen] = React.useState(openSetupPayments);
   const [messagePrefill, setMessagePrefill] = React.useState<{ subject: string; body: string } | null>(null);
   const [activeLuvDraftId, setActiveLuvDraftId] = React.useState<string | null>(null);
@@ -1015,10 +1025,7 @@ export function EventDetail({
                 size="sm"
                 variant="outline"
                 data-testid="open-questionnaires-card"
-                onClick={() => {
-                  setActiveTab("questionnaires");
-                  window.location.hash = "questionnaires";
-                }}
+                onClick={() => openWorkspaceSection("questionnaires")}
               >
                 Open Questionnaires
               </Button>
@@ -1059,10 +1066,7 @@ export function EventDetail({
                 type="button"
                 size="sm"
                 data-testid="open-event-order-card"
-                onClick={() => {
-                  setActiveTab("event-order");
-                  window.location.hash = "event-order";
-                }}
+                onClick={() => openWorkspaceSection("event-order")}
               >
                 Open Event Order
               </Button>
@@ -1071,10 +1075,7 @@ export function EventDetail({
                 size="sm"
                 variant="outline"
                 data-testid="open-inventory-card"
-                onClick={() => {
-                  setActiveTab("inventory");
-                  window.location.hash = "inventory";
-                }}
+                onClick={() => openWorkspaceSection("inventory")}
               >
                 Open event items
               </Button>
@@ -1303,7 +1304,7 @@ export function EventDetail({
             description="Collect the information you need from clients when the timing is right by sending your prepared questionnaires here."
             testId="event-questionnaires-tab"
           >
-            <div id="questionnaires">
+            <div id="questionnaires" tabIndex={-1}>
               <QuestionnaireFamilyPanel
                 eventId={event.id}
                 questionnaires={questionnaires.length > 0 ? questionnaires : (questionnaire ? [questionnaire] : [])}
@@ -1471,6 +1472,7 @@ export function EventDetail({
 
         {/* ── Event Order (canonical commercial workspace; P2-B composed) ─ */}
         <TabsContent value="event-order">
+          <div id="event-order" tabIndex={-1}>
           <EventCommercialWorkflow
             stripInput={{
               eventInventory: eventInventory
@@ -1534,10 +1536,12 @@ export function EventDetail({
               receptionStartTime: questionnaire?.receptionStartTime ?? null,
             }}
           />
+          </div>
         </TabsContent>
 
         {/* ── Event Inventory ──────────────────────────────────────── */}
         <TabsContent value="inventory">
+          <div id="inventory" tabIndex={-1}>
           <EventInventoryPanel
             eventId={event.id}
             eventInventory={eventInventory}
@@ -1551,6 +1555,7 @@ export function EventDetail({
               unitPrice: line.unitPrice,
             }))}
           />
+          </div>
         </TabsContent>
 
         {/* ── Invoice / Payments ────────────────────────────────────── */}

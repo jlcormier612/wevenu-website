@@ -74,9 +74,10 @@ describe("P2-A venue workspace tab rows", () => {
     assert.match(detail, /data-testid="open-questionnaires-card"/);
     assert.match(detail, /data-testid="open-event-order-card"/);
     assert.match(detail, /data-testid="open-inventory-card"/);
-    assert.match(detail, /setActiveTab\("questionnaires"\)/);
-    assert.match(detail, /setActiveTab\("event-order"\)/);
-    assert.match(detail, /setActiveTab\("inventory"\)/);
+    assert.match(detail, /openWorkspaceSection\("questionnaires"\)/);
+    assert.match(detail, /openWorkspaceSection\("event-order"\)/);
+    assert.match(detail, /openWorkspaceSection\("inventory"\)/);
+    assert.match(detail, /scrollWorkspaceMainToId/);
   });
 
   it("preserves commercial deep-link hash handling", () => {

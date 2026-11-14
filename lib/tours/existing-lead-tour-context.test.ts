@@ -38,6 +38,21 @@ describe("existing-lead tour preferred event date", () => {
     );
   });
 
+  it("keeps node:crypto HMAC out of the client-imported preferred-date helper", () => {
+    const helper = readFileSync(resolve("lib/tours/preferred-event-date-requirement.ts"), "utf8");
+    const origin = readFileSync(resolve("lib/tours/origin-context.ts"), "utf8");
+    const form = readFileSync(resolve("components/form/inquiry-form.tsx"), "utf8");
+    const ctx = readFileSync(resolve("lib/tours/existing-lead-tour-context.ts"), "utf8");
+    assert.doesNotMatch(helper, /node:crypto|from ["']crypto["']/);
+    assert.match(origin, /from ["']node:crypto["']/);
+    assert.match(origin, /createHmac/);
+    assert.match(origin, /verifyTourOriginToken/);
+    assert.match(form, /from ["']@\/lib\/tours\/preferred-event-date-requirement["']/);
+    assert.doesNotMatch(form, /shouldSkipPreferredEventDateRequirement\} from ["']@\/lib\/tours\/existing-lead-tour-context["']/);
+    assert.match(ctx, /shouldSkipPreferredEventDateRequirement/);
+    assert.match(ctx, /verifyTourOriginToken/);
+  });
+
   it("book page resolves server context from origin token and passes it to InquiryForm", () => {
     const book = readFileSync(resolve("app/book/[key]/page.tsx"), "utf8");
     assert.match(book, /resolveExistingLeadTourContext/);
