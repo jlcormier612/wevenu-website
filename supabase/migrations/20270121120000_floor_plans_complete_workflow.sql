@@ -81,26 +81,15 @@ comment on table public.floor_plan_layout_revisions is
 alter table public.floor_plan_layout_revisions enable row level security;
 
 drop policy if exists floor_plan_layout_revisions_select on public.floor_plan_layout_revisions;
-create policy floor_plan_layout_revisions_select on public.floor_plan_layout_revisions
-  for select using (venue_id = public.current_venue_id());
-
 drop policy if exists floor_plan_layout_revisions_insert on public.floor_plan_layout_revisions;
-create policy floor_plan_layout_revisions_insert on public.floor_plan_layout_revisions
-  for insert with check (
-    venue_id = public.current_venue_id()
-    and public.current_user_role() = any (array['owner', 'manager', 'coordinator'])
-  );
-
 drop policy if exists floor_plan_layout_revisions_update on public.floor_plan_layout_revisions;
-create policy floor_plan_layout_revisions_update on public.floor_plan_layout_revisions
-  for update using (
-    venue_id = public.current_venue_id()
-    and public.current_user_role() = any (array['owner', 'manager', 'coordinator'])
-  )
-  with check (
-    venue_id = public.current_venue_id()
-    and public.current_user_role() = any (array['owner', 'manager', 'coordinator'])
-  );
+drop policy if exists floor_plan_layout_revisions_all on public.floor_plan_layout_revisions;
+create policy floor_plan_layout_revisions_all on public.floor_plan_layout_revisions
+  for all
+  using (venue_id = public.current_user_venue_id())
+  with check (venue_id = public.current_user_venue_id());
+
+grant select, insert, update, delete on public.floor_plan_layout_revisions to authenticated;
 
 -- ── C. select_portal_floor_plan_offer — selection establishes working plan ───
 create or replace function public.select_portal_floor_plan_offer(
