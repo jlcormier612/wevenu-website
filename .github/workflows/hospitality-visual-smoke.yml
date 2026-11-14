@@ -146,3 +146,5 @@ jobs:
 
 # white-glove welcome messaging: retrigger hospitality required checks
 # byb-import-next-steps: retrigger hospitality required checks
+
+# floor-plans-complete-workflow: retrigger hospitality required checks on PR
