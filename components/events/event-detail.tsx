@@ -627,7 +627,20 @@ export function EventDetail({
     }
   }, [openSetupPayments, selectedPackage, invoices.length]);
 
-  // useLayoutEffect so /clients/{id}#documents selects Documents before paint
+  // When Floor Plans is selected, bring the workspace heading into view so staff
+  // are not left below unrelated celebration summary content (sticky-header aware).
+  React.useEffect(() => {
+    if (activeTab !== "floorplan") return;
+    const el = document.getElementById("event-floorplan-workspace")
+      ?? document.querySelector('[data-testid="event-floorplan-tab"]');
+    if (!el || !(el instanceof HTMLElement)) return;
+    const id = window.requestAnimationFrame(() => {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, [activeTab]);
+
+    // useLayoutEffect so /clients/{id}#documents selects Documents before paint
   // (avoids Overview flash after /events/{id}#documents → booking replace).
   React.useLayoutEffect(() => {
     const syncFromHash = () => {
@@ -1373,10 +1386,10 @@ export function EventDetail({
         </TabsContent>
 
         {/* ── Floor Plans ───────────────────────────────────────────── */}
-        <TabsContent value="floorplan">
+        <TabsContent value="floorplan" className="scroll-mt-24">
+          <div id="event-floorplan-workspace" className="scroll-mt-24">
           <RelationshipTabShell
             title="Floor Plans"
-            description="Arrange furniture for this event. Add a layout, place items, then share when the couple should see it."
             testId="event-floorplan-tab"
           >
             <FloorPlanWorkspace
@@ -1397,6 +1410,7 @@ export function EventDetail({
               canDelete={floorPlanCanDelete}
             />
           </RelationshipTabShell>
+          </div>
         </TabsContent>
 
         {/* ── Documents ────────────────────────────────────────────── */}

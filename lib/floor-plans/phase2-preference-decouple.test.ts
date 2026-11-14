@@ -100,7 +100,7 @@ describe("Phase 2 — ensureWorkingLayoutForEvent decoupling", () => {
   });
 
   it("sole offer is not preference approval", () => {
-    assert.match(workspace, /One layout is offered to the couple/);
+    assert.match(workspace, /One offered layout|floor-plan-sole-offer-working/);
     const sole = workspace.slice(workspace.indexOf('data-testid="floor-plan-sole-offer-working"'), workspace.indexOf('data-testid="floor-plan-client-pending"'));
     assert.doesNotMatch(sole, /Action\(/);
   });

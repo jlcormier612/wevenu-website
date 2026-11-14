@@ -105,7 +105,7 @@ describe("floor plan client layout review", () => {
     assert.match(mig, /awaiting_review/);
     assert.match(route, /submit_portal_floor_plan/);
     assert.match(portal, /floor-plan-submit-to-venue/);
-    assert.match(portal, /Submit floor plan to venue/);
+    assert.match(portal, /Send layout for review/);
     assert.match(portal, /floor-plan-guidance/);
     assert.match(portal, /floor-plan-client-capacity|formatFloorPlanCapacitySentence/);
     assert.match(workspace, /floor-plan-client-submission-review/);

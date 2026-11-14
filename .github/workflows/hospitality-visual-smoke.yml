@@ -150,3 +150,5 @@ jobs:
 # floor-plans-complete-workflow: retrigger hospitality required checks on PR
 
 # floor-plans migration hotfix: retrigger hospitality required checks
+
+# Retrigger required hospitality checks for Floor Plans UX PR #66

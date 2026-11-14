@@ -168,12 +168,10 @@ export function FloorPlanPortalView({
 
   if (!hasOffers && !hasShared) {
     return (
-      <div className="text-center py-16 text-muted-foreground" data-testid="floor-plan-portal-empty">
-        <div className="text-3xl mb-3">🗺️</div>
-        <p className="text-sm font-medium text-heading">Waiting on a layout from your venue</p>
-        <p className="text-xs mt-1 max-w-sm mx-auto">
-          Your venue has not offered a floor plan for this event yet. Once they do, your working layout
-          and seating will open here automatically.
+      <div className="px-4 py-12 text-muted-foreground" data-testid="floor-plan-portal-empty">
+        <h2 className="text-[24px] font-semibold leading-[30px] text-heading">Your Floor Plan</h2>
+        <p className="text-[13px] mt-3 max-w-sm">
+          Your venue hasn&apos;t shared a floor plan yet. Once one is available, you&apos;ll find it here.
         </p>
       </div>
     );

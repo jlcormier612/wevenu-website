@@ -82,31 +82,31 @@ describe("Floor plan collaboration complete (auto-assign, seating, couple move)"
 
   it("portal UX: waiting state, multi-offer chooser establishes working, guidance + submit", () => {
     assert.match(portalSection, /floor-plan-waiting-no-offer/);
-    assert.match(portalSection, /Waiting on a layout from your venue/);
+    assert.match(portalSection, /hasn't shared a floor plan yet|Your Floor Plan/);
     assert.match(portalSection, /ensure-assignment/);
-    assert.match(portalSection, /needsChooser = !showPackageView && offers\.length > 1/);
-    assert.match(portalSection, /requiresPreferenceSelection = needsChooser/);
-    assert.match(portalSection, /Use this layout|Choose your starting layout/);
-    assert.match(portalSection, /floor-plan-submit-needs-preference|Submit floor plan to venue/);
+    assert.match(portalSection, /multiOffer = !showPackageView && offers\.length > 1/);
+    assert.match(portalSection, /requiresPreferenceSelection = multiOffer/);
+    assert.match(portalSection, /Choose your starting layout|floor-plan-layout-selector|Request a different layout/);
+    assert.match(portalSection, /floor-plan-submit-needs-preference|Send layout for review/);
     assert.match(portalSection, /Your Floor Plan/);
     assert.match(portalSection, /floor-plan-working-canvas/);
     assert.match(portalSection, /move-object/);
     assert.match(portalSection, /floor-plan-add-table/);
     assert.match(portalSection, /floor-plan-submit-to-venue/);
     assert.match(portalSection, /floor-plan-guidance/);
-    assert.match(portalSection, /portalFloorPlanGuidance|Make it yours|Take a look around/);
+    assert.match(portalSection, /portalFloorPlanGuidance|Arrange your layout|Here's the layout/);
     assert.match(portalSection, /floor-plan-ready-badge/);
     assert.doesNotMatch(portalSection, /furniture is venue-owned/);
     assert.doesNotMatch(portalSection, /Save as preference/);
-    assert.match(portalView, /Waiting on a layout from your venue/);
-    assert.match(portalView, /Seating is available now/);
+    assert.match(portalView, /hasn't shared a floor plan yet|Your Floor Plan/);
+    assert.match(portalSection, /Open Guest Seating|Guest Seating/);
   });
 
   it("venue workspace keeps seating toggles and sole-offer simple-path guidance", () => {
-    assert.match(workspace, /floor-plan-next-mark-ready|floor-plan-preference-awaiting-share/);
-    assert.match(workspace, /floor-plan-ready-confirmed/);
+    assert.match(workspace, /floor-plan-workspace-next-step|venueFloorPlanNextStep/);
+    assert.match(workspace, /floor-plan-workspace-status-badge/);
     assert.match(workspace, /Seating open|Seating paused/);
-    assert.match(workspace, /One layout is offered to the couple|Sole offered layout/i);
+    assert.match(workspace, /One offered layout|floor-plan-sole-offer-working/i);
     assert.doesNotMatch(
       workspace,
       /then\s+<span[^>]*>Share for Seating<\/span>\s+so the couple can assign/,

@@ -4,7 +4,7 @@ import { resolve } from "node:path";
 import { describe, it } from "node:test";
 
 import { requiredStatusNeedsAttention } from "@/lib/floor-plans/required-vs-placed";
-import { offeredLayoutsView, preferenceReviewIsActionable } from "@/lib/floor-plans/workspace-status";
+import { offeredLayoutsView, preferenceReviewIsActionable, venueFloorPlanNextStep } from "@/lib/floor-plans/workspace-status";
 import type { EventFloorPlanOfferWithTemplate } from "@/lib/floor-plan-offers/types";
 
 const offer = (id: string, templateId: string, sortOrder: number, extra: Partial<EventFloorPlanOfferWithTemplate> = {}) =>
@@ -33,7 +33,7 @@ describe("Floor Plans tab — offered layouts and status", () => {
     const base = { status: null, hasPreferred: false, multipleSeated: false, hasError: false };
     assert.equal(preferenceReviewIsActionable(base), false);
     assert.equal(preferenceReviewIsActionable({ ...base, status: "approved", hasPreferred: true }), false);
-    assert.equal(preferenceReviewIsActionable({ ...base, status: "pending", hasPreferred: true }), true);
+    assert.equal(preferenceReviewIsActionable({ ...base, status: "proposed_replacement", hasPreferred: true }), true);
     assert.equal(preferenceReviewIsActionable({ ...base, multipleSeated: true }), true);
     assert.equal(preferenceReviewIsActionable({ ...base, hasError: true }), true);
   });
@@ -59,7 +59,45 @@ describe("Floor Plans tab — offered layouts and status", () => {
     assert.match(flags, /if \(hideWhenEmpty && !loadError && \(loading \|\| flags\.length === 0\)\) return null;/);
     assert.doesNotMatch(workspace, /bg-amber-50\/40/);
     assert.doesNotMatch(workspace, /Open one and choose Set as working layout/);
-    assert.match(workspace, /Mark as Ready<\/span>\{" "\}when it&apos;s set for the day\./);
-    assert.match(workspace, /The couple is choosing from the layouts above\. When they pick one, you'll review it here\./);
+    assert.match(workspace, /venueFloorPlanNextStep|floor-plan-workspace-next-step/);
+    assert.match(workspace, /Offered layouts|Selected layout/);
+    assert.match(workspace, /Approve layout|Request changes/);
+  });
+});
+
+describe("venueFloorPlanNextStep", () => {
+  it("covers working, review, ready, and replacement", () => {
+    assert.equal(
+      venueFloorPlanNextStep({
+        couplePreferenceStatus: "applied",
+        workingPlan: { clientLayoutStatus: "working", finalizedAt: null, name: "Reception" },
+      }).badge,
+      "Working",
+    );
+    assert.equal(
+      venueFloorPlanNextStep({
+        couplePreferenceStatus: "applied",
+        workingPlan: { clientLayoutStatus: "submitted", finalizedAt: null, name: "Reception" },
+      }).badge,
+      "Awaiting Review",
+    );
+    assert.equal(
+      venueFloorPlanNextStep({
+        couplePreferenceStatus: "proposed_replacement",
+        workingPlan: { clientLayoutStatus: "approved", finalizedAt: null, name: "Reception" },
+      }).badge,
+      "Replacement requested",
+    );
+    assert.match(
+      venueFloorPlanNextStep({
+        couplePreferenceStatus: "applied",
+        workingPlan: {
+          clientLayoutStatus: "approved",
+          finalizedAt: "2026-01-01T00:00:00Z",
+          name: "Reception",
+        },
+      }).nextStep,
+      /Make Changes/i,
+    );
   });
 });

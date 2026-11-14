@@ -129,3 +129,22 @@ describe("approved arrangement protection", () => {
     assert.match(setupUi, /Accept layout replacement|Keep current layout/);
   });
 });
+
+describe("Ready + proposed_replacement interaction", () => {
+  it("select RPC proposed_replacement path does not clear finalized_at or operational", () => {
+    const selectFn = migration
+      .split("create or replace function public.select_portal_floor_plan_offer")[1]!
+      .split("create or replace function public.floor_plan_objects_ready_lock")[0]!;
+    const proposeBlock = selectFn.split("couple_preference_status = 'proposed_replacement'")[0]!
+      + "couple_preference_status = 'proposed_replacement'"
+      + selectFn.split("couple_preference_status = 'proposed_replacement'")[1]!.split("return jsonb_build_object")[0];
+    assert.match(selectFn, /couple_preference_status = 'proposed_replacement'/);
+    assert.match(selectFn, /operationalFloorPlanId', v_event\.operational_floor_plan_id/);
+    assert.doesNotMatch(proposeBlock, /finalized_at\s*=/);
+    assert.doesNotMatch(proposeBlock, /operational_floor_plan_id\s*=/);
+    // Portal UI may offer Request a different layout while Ready; server records only.
+    const portal = readFileSync(resolve("components/portal/floor-plan-section.tsx"), "utf8");
+    assert.match(portal, /canRequestDifferentLayout/);
+    assert.match(portal, /layoutStatus === "approved" \|\| selectedIsReady/);
+  });
+});

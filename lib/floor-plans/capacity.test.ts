@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import {
+  formatFloorPlanCapacityCompact,
   formatFloorPlanCapacitySentence,
   floorPlanCapacityNeedsAttention,
   summarizeFloorPlanCapacity,
@@ -114,5 +115,17 @@ describe("summarizeFloorPlanCapacity", () => {
     });
     assert.equal(s.level, "incomplete");
     assert.equal(s.guestCount, null);
+  });
+});
+
+describe("formatFloorPlanCapacityCompact", () => {
+  it("renders the compact couple summary", () => {
+    const s = summarizeFloorPlanCapacity({
+      objects: [
+        { objectType: "table_round", capacity: 8 },
+      ],
+      guestCount: 80,
+    });
+    assert.equal(formatFloorPlanCapacityCompact(s), "8 seats arranged · 80 guests expected");
   });
 });
