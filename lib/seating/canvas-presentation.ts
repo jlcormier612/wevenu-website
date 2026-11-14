@@ -107,3 +107,33 @@ export function shouldShowOccupancyOnObject(width: number, height: number, zoom:
   const minSide = Math.min(width, height) * zoom;
   return minSide >= 36;
 }
+
+/**
+ * Canvas size for Fit plan / viewBox — same rule as the portal Floor Plan:
+ * at least the configured room, expanded to include every saved object that
+ * extends past the nominal boundary. Object positions are unchanged.
+ */
+export function seatingArrangementCanvasSize(input: {
+  roomWidthFt: number;
+  roomDepthFt: number;
+  objects: Array<{ x: number; y: number; width: number; height: number }>;
+}): { roomW: number; roomH: number; canvasW: number; canvasH: number } {
+  const configuredW = Number(input.roomWidthFt);
+  const configuredH = Number(input.roomDepthFt);
+  const roomW = (configuredW > 0 ? configuredW : 800 / 12) * 12;
+  const roomH = (configuredH > 0 ? configuredH : 600 / 12) * 12;
+  let maxX = roomW;
+  let maxY = roomH;
+  for (const obj of input.objects) {
+    const hw = Number(obj.width) / 2 || 0;
+    const hh = Number(obj.height) / 2 || 0;
+    maxX = Math.max(maxX, Number(obj.x) + hw);
+    maxY = Math.max(maxY, Number(obj.y) + hh);
+  }
+  return {
+    roomW,
+    roomH,
+    canvasW: Math.ceil(maxX),
+    canvasH: Math.ceil(maxY),
+  };
+}

@@ -8,6 +8,7 @@ import * as React from "react";
 import { FloorPlanShapeSvg } from "@/components/floor-plan/floor-plan-shapes";
 import {
   SEATING_CANVAS,
+  seatingArrangementCanvasSize,
   seatingObjectLabel,
   seatingObjectShape,
   seatingObjectStyle,
@@ -48,8 +49,11 @@ export function SeatingFloorCanvas({
   minHeightPx = 560,
   className,
 }: Props) {
-  const canvasWidth = Math.max(1, roomWidthFt) * 12;
-  const canvasHeight = Math.max(1, roomDepthFt) * 12;
+  const { roomW, roomH, canvasW, canvasH } = seatingArrangementCanvasSize({
+    roomWidthFt,
+    roomDepthFt,
+    objects,
+  });
   const [zoom, setZoom] = React.useState(1);
   const viewportRef = React.useRef<HTMLDivElement>(null);
 
@@ -59,7 +63,7 @@ export function SeatingFloorCanvas({
     const pad = 28;
     const availW = Math.max(120, el.clientWidth - pad * 2);
     const availH = Math.max(120, el.clientHeight - pad * 2);
-    const next = Math.min(availW / canvasWidth, availH / canvasHeight, 1.5);
+    const next = Math.min(availW / canvasW, availH / canvasH, 1.5);
     setZoom(Math.max(0.25, next));
   }
 
@@ -70,8 +74,8 @@ export function SeatingFloorCanvas({
     const ro = new ResizeObserver(() => fitPlan());
     ro.observe(el);
     return () => ro.disconnect();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- fit on room size change
-  }, [canvasWidth, canvasHeight]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fit on arrangement size change
+  }, [canvasW, canvasH]);
 
   return (
     <div
@@ -122,25 +126,40 @@ export function SeatingFloorCanvas({
         <div
           className="mx-auto my-6"
           style={{
-            width: canvasWidth * zoom,
-            height: canvasHeight * zoom,
+            width: canvasW * zoom,
+            height: canvasH * zoom,
           }}
         >
           <svg
-            width={canvasWidth * zoom}
-            height={canvasHeight * zoom}
-            viewBox={`0 0 ${canvasWidth} ${canvasHeight}`}
+            width={canvasW * zoom}
+            height={canvasH * zoom}
+            viewBox={`0 0 ${canvasW} ${canvasH}`}
             className="block"
             data-testid="seating-floor-svg"
+            data-canvas-w={canvasW}
+            data-canvas-h={canvasH}
+            data-room-w={roomW}
+            data-room-h={roomH}
           >
-            <rect x={0} y={0} width={canvasWidth} height={canvasHeight} fill="#FAFAF8" stroke="#E6E3DC" strokeWidth={1} strokeDasharray="6 4" />
+            <rect x={0} y={0} width={canvasW} height={canvasH} fill="#FAFAF8" />
+            <rect
+              x={0}
+              y={0}
+              width={roomW}
+              height={roomH}
+              fill="none"
+              stroke="#E6E3DC"
+              strokeWidth={1}
+              strokeDasharray="6 4"
+              data-testid="seating-room-boundary"
+            />
             {backgroundImageUrl ? (
               <image
                 href={backgroundImageUrl}
                 x={0}
                 y={0}
-                width={canvasWidth}
-                height={canvasHeight}
+                width={roomW}
+                height={roomH}
                 opacity={backgroundImageOpacity}
                 preserveAspectRatio="none"
               />
