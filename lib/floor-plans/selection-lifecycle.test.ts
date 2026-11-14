@@ -211,6 +211,21 @@ describe("portal guidance", () => {
     assert.equal(changes.showSubmitPrompt, true);
   });
 
+  it("Ready outranks chooser awaiting selection", () => {
+    const g = portalFloorPlanGuidance({
+      needsChooser: true,
+      hasWorkingShared: true,
+      hasSelectedWorking: false,
+      clientLayoutStatus: "approved",
+      isReady: true,
+      furnitureEditingAllowed: false,
+      coupleMayAddTables: false,
+      seatingEnabled: true,
+    });
+    assert.match(g.instruction, /floor plan is ready/i);
+    assert.doesNotMatch(g.instruction, /prepared a few options/i);
+  });
+
   it("seating-only and proposed replacement", () => {
     const seating = portalFloorPlanGuidance({
       needsChooser: false,
