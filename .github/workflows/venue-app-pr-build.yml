@@ -62,3 +62,5 @@ jobs:
           NEXT_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_pr_build_placeholder
 
 # Path-trigger for docs/infra-only PR #36 required check.
+
+# floor-plans migration hotfix: retrigger venue-app required check
