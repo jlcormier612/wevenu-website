@@ -127,6 +127,34 @@ describe("section workspace grouping", () => {
     assert.equal(issues[0]?.kind, "empty-dependent");
     assert.match(issues[0]?.message ?? "", /no follow-up options/i);
   });
+
+  it("names the parent offering when a nested category is empty", () => {
+    const dinner = group({ id: "g-dinner", name: "Dinner Service" });
+    const entrees = group({
+      id: "g-plated-entrees",
+      name: "Entrées",
+      dependsOnOptionIds: ["opt-plated"],
+    });
+    const issues = sectionCompletenessIssues(
+      [dinner, entrees],
+      [option({ id: "opt-plated", groupId: "g-dinner", label: "Plated Dinner" })],
+    );
+    const empty = issues.find((i) => i.kind === "empty-dependent");
+    assert.ok(empty);
+    assert.equal(empty?.message, "Plated Dinner needs at least one choice in Entrées.");
+    assert.equal(issues[0]?.kind, "empty-dependent");
+  });
+
+  it("flags unpriced non-included options as unresolved commercial terms", () => {
+    const dinner = group({ id: "g-dinner", name: "Dinner service" });
+    const issues = sectionCompletenessIssues(
+      [dinner],
+      [option({ id: "opt-plated", groupId: "g-dinner", label: "Plated Dinner", unitPrice: null })],
+    );
+    assert.equal(issues.length, 1);
+    assert.equal(issues[0]?.kind, "unpriced-option");
+    assert.equal(issues[0]?.message, "Dinner service still needs a price or an Included decision.");
+  });
 });
 
 describe("filterOfferingsForSectionPicker", () => {

@@ -309,6 +309,9 @@ export async function upgradeUncustomizedLegacyFlatStarter(
  * Additive: for uncustomized delivery starters that already have Dinner/Bar
  * parent groups, insert missing empty dependent groups with depends_on wired.
  * Never deletes, never mutates existing groups/options, never invents menu items.
+ * Populated starter follow-ups (groups that already have example options) are
+ * inserted only for new templates via insertStarterFromMaster — skip them here
+ * so existing venue copies are not given new menu-category shells.
  */
 export async function ensureConditionalChoiceScaffolding(
   client: DbClient,
@@ -362,6 +365,7 @@ export async function ensureConditionalChoiceScaffolding(
     if (!sectionId) continue;
     for (const group of section.choiceGroups ?? []) {
       if (!group.dependsOnOptionNames?.length) continue;
+      if (group.options.length > 0) continue;
       if (groupsByName.has(group.name)) continue;
       const dependsOn = group.dependsOnOptionNames
         .map((label) => optionIdsByLabel.get(label.trim()))

@@ -7,7 +7,7 @@ import { ensureOfferingStartersForCurrentVenue } from "@/lib/offerings/provision
 import { listOfferingCategories, listOfferings } from "@/lib/offerings/service";
 import { getCurrentVenue } from "@/lib/venue/service";
 
-export const metadata: Metadata = { title: "Offerings" };
+export const metadata: Metadata = { title: "Offerings Catalog" };
 
 export default async function OfferingsLibraryPage() {
   await ensureOfferingStartersForCurrentVenue();

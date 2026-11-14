@@ -14,22 +14,21 @@ describe("Offerings / choices catalog page copy", () => {
   const page = read("components/offerings/offerings-page-client.tsx");
   const section = read("components/offerings/offerings-library-section.tsx");
 
-  it("uses Choices catalog title and Event Order plan framing", () => {
-    assert.match(page, /title="Choices catalog"/);
-    assert.match(page, /power Event Order plans/);
+  it("uses Offerings Catalog title and Event Order Template framing", () => {
+    assert.match(page, /title="Offerings Catalog"/);
     assert.match(page, /does not send choices to clients/i);
   });
 
   it("explains the catalog once in a calm guidance card", () => {
     assert.match(page, /LibraryDependencyNote/);
-    assert.match(page, /How the choices catalog works/);
+    assert.match(page, /How Offerings Catalog works/);
     assert.equal((page.match(/<LibraryDependencyNote\b/g) ?? []).length, 1);
     assert.match(page, /LibraryDependencyNote[\s\S]*tone="calm"/);
     assert.doesNotMatch(page, /LibraryHowItWorks/);
   });
 
-  it("keeps Event Order plans and Available Inventory links", () => {
-    assert.match(page, /Open Event Order plans/);
+  it("keeps Event Order Templates and Available Inventory links", () => {
+    assert.match(page, /Open Event Order Templates/);
     assert.match(page, /Manage Available Inventory/);
     assert.match(page, /Distinct from Available Inventory/);
   });

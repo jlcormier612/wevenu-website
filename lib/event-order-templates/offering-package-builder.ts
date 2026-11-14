@@ -4,6 +4,7 @@
  * without requiring venue owners to author questions first.
  */
 import { choicesOptionDraftFromOffering } from "@/lib/client-choices-templates/option-catalog";
+import { venueCommercialLabel } from "@/lib/event-order-templates/commercial-state";
 import { isDependentGroup } from "@/lib/event-order-templates/group-dependencies";
 import {
   resolvePlainSelectionRule,
@@ -147,8 +148,8 @@ export function optionInputWriteIn(
     groupId,
     offeringId: null,
     label: label.trim(),
-    isIncluded: true,
-    unitPrice: "0",
+    isIncluded: false,
+    unitPrice: null,
     isDefault: false,
     imageUrl: null,
   };
@@ -337,14 +338,10 @@ export function packageBuilderPriceLabel(
   unitPrice: number | null | undefined,
   isIncluded: boolean,
 ): string {
-  if (isIncluded || unitPrice == null || unitPrice === 0) {
-    if (isIncluded && (unitPrice == null || unitPrice === 0)) {
-      return "No extra charge";
-    }
-  }
-  if (unitPrice == null) return "No price set";
-  if (unitPrice === 0) return "No extra charge";
-  return `$${unitPrice.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+  return venueCommercialLabel({
+    isIncluded,
+    unitPrice: unitPrice ?? null,
+  });
 }
 
 /**

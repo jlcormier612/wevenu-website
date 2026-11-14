@@ -1,3 +1,4 @@
+import { venueCommercialLabel } from "@/lib/event-order-templates/commercial-state";
 import { formatDependsOnSummary } from "@/lib/event-order-templates/group-dependencies";
 import {
   formatTemplateOfferingPrice,
@@ -111,11 +112,7 @@ export function EventOrderTemplatePreviewView({
                           <li key={o.id} className="border-b border-border/70 pb-2 last:border-0 text-sm">
                             <span className="font-medium text-heading">{o.label}</span>
                             <span className="ml-2 text-muted-foreground">
-                              {o.isIncluded
-                                ? "Included"
-                                : o.unitPrice != null
-                                  ? `$${o.unitPrice.toFixed(2)}`
-                                  : "Unpriced"}
+                              {venueCommercialLabel(o)}
                               {o.isDefault ? " · Default" : ""}
                             </span>
                           </li>

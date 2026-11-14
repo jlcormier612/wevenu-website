@@ -31,6 +31,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { DISPLAY_STATUS_LABEL, eventOrderDisplayStatus, formatMoney, formatOptionalMoney } from "@/lib/event-orders/constants";
+import { emptyEventOrderStartCopy, selectionPacketPresence } from "@/lib/event-orders/event-order-journey";
 import { boundHeadcountForApply } from "@/lib/events/headcount";
 import { eventOrderRequiresZeroTotalWarning } from "@/lib/event-orders/zero-total-warning";
 import { packageLinesIgnoreHeadcount } from "@/lib/event-orders/seed-package-inclusions";
@@ -540,12 +541,14 @@ export function EventOrderPanel({
         </Card>
       );
     }
+    const packet = selectionPacketPresence(choices);
+    const emptyCopy = emptyEventOrderStartCopy(packet);
     return (
-      <Card data-testid="eo-empty-start">
+      <Card data-testid="eo-empty-start" data-packet-presence={packet}>
         <CardHeader>
           <CardTitle className="text-base">Event Order</CardTitle>
           <CardDescription>
-            Pick a template or start blank below. The couple sees nothing until you send it.
+            {emptyCopy.description}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -556,7 +559,7 @@ export function EventOrderPanel({
               </p>
             )}
             <p className="max-w-md text-sm text-muted-foreground">
-              A template fills in sections and offerings for this event. You can edit the draft before you send it.
+              {emptyCopy.body}
             </p>
             <div className="flex w-full flex-col items-stretch gap-2 sm:flex-row sm:items-center">
               <Button type="button" size="sm" disabled={starting}

@@ -9,20 +9,19 @@ import { join } from "node:path";
 const root = process.cwd();
 
 describe("EO template builder — guided setup UX seams", () => {
-  it("detail hosts the guided setup wizard with plain-language orientation", () => {
+  it("detail hosts a compact template overview, not the expanded wizard", () => {
     const detail = readFileSync(
       join(root, "components/event-order-templates/event-order-template-detail.tsx"),
       "utf8",
     );
-    assert.match(detail, /GuidedSetupWizard/);
+    assert.match(detail, /EventOrderTemplateOverview/);
+    assert.doesNotMatch(detail, /GuidedSetupWizard/);
     assert.match(detail, /eo-template-detail-intro/);
-    assert.match(detail, /always on the package/i);
-    assert.match(detail, /Couple chooses/);
-    assert.match(detail, /optional add-on groups the couple can select together/i);
-    assert.match(detail, /staff-only extras toggled when you apply the template/i);
+    assert.match(detail, /Preview as Client/);
+    assert.match(detail, /Use \/ Send/);
+    assert.match(detail, /eo-template-readiness/);
     assert.doesNotMatch(detail, /follow-ups under each answer/i);
     assert.doesNotMatch(detail, /commercial build sheet/i);
-    assert.doesNotMatch(detail, /included automatically/i);
   });
 
   it("landing page explains templates without jargon-heavy intro", () => {
@@ -30,53 +29,41 @@ describe("EO template builder — guided setup UX seams", () => {
       join(root, "app/(app)/library/event-order-templates/page.tsx"),
       "utf8",
     );
-    assert.match(page, /Reusable packages for a wedding/i);
+    assert.match(page, /Create and manage reusable client selection experiences/);
     assert.match(page, /eo-templates-landing-example/);
-    assert.match(page, /always-on items|always on the package/i);
-    assert.match(page, /Offerings/i);
-    assert.match(page, /Preview shows the couple experience without sending/i);
+    assert.match(page, /Offerings Catalog/);
+    assert.match(page, /Preview shows[\s\S]*the client experience without sending/i);
     assert.doesNotMatch(page, /commercial build sheets/i);
     assert.doesNotMatch(page, /follow-ups under each answer/i);
   });
 
-  it("builder is one scrolling page — Included / Couple chooses / Add-ons per section, no pattern quiz", () => {
-    const wizard = readFileSync(
-      join(root, "components/event-order-templates/guided-setup-wizard.tsx"),
+  it("overview shows compact section cards; focused section editor is a dedicated route", () => {
+    const overview = readFileSync(
+      join(root, "components/event-order-templates/event-order-template-overview.tsx"),
       "utf8",
     );
-    const guided = readFileSync(
-      join(root, "lib/event-order-templates/guided-setup.ts"),
+    const section = readFileSync(
+      join(root, "components/event-order-templates/event-order-section-editor.tsx"),
       "utf8",
     );
-    assert.match(wizard, /eo-guided-setup-wizard/);
-    assert.match(wizard, /eo-guided-step-categories/);
-    assert.match(wizard, /eo-guided-step-workspace/);
-    assert.match(wizard, /eo-guided-step-fixed/);
-    assert.match(wizard, /eo-guided-step-choices/);
-    assert.match(wizard, /eo-guided-step-addons/);
-    assert.match(wizard, /sectionsOrdered\.map\(\(section\)/);
-    assert.match(wizard, /title="Included"/);
-    assert.match(wizard, /Couple chooses/);
-    assert.match(wizard, /title="Add-ons"/);
-    assert.match(wizard, /Add section/);
-    assert.match(wizard, /Specialist selection rules/);
-    assert.match(wizard, /eo-specialist-selection-rules/);
-    assert.match(wizard, /eo-guided-preview-non-sending/);
-    assert.match(wizard, /Preview only — no send, no finalize/);
-    assert.match(wizard, /\/library\/event-order-templates\/\$\{template\.id\}\/preview/);
-    assert.match(wizard, /eo-guided-category-\$\{cat\.key\}/);
-    assert.doesNotMatch(wizard, /setPhase|categoryIndex|eo-guided-continue/);
-    assert.match(guided, /\| "ceremony"/);
-    assert.match(guided, /key: "ceremony"/);
-    assert.doesNotMatch(wizard, /eo-guided-step-patterns/);
-    assert.doesNotMatch(wizard, /eo-guided-step-branches/);
-    assert.doesNotMatch(wizard, /How should clients make their selections/);
-    assert.doesNotMatch(wizard, /What happens when a client selects this option/);
-    assert.doesNotMatch(wizard, /Step 1 of 7/);
-    assert.doesNotMatch(wizard, /depends_on_option_ids/);
-    assert.doesNotMatch(wizard, /Advanced editor/i);
-    assert.doesNotMatch(wizard, /patternDraftBySection/);
-    assert.doesNotMatch(wizard, /eo-guided-pattern-choose_one/);
+    const route = readFileSync(
+      join(root, "app/(app)/library/event-order-templates/[id]/sections/[sectionId]/page.tsx"),
+      "utf8",
+    );
+    assert.match(overview, /eo-template-overview/);
+    assert.match(overview, /eo-overview-edit-/);
+    assert.match(overview, />\s*Edit\s*</);
+    assert.match(overview, /sectionOverviewSummary/);
+    assert.match(overview, /htc-working-row/);
+    assert.doesNotMatch(overview, /htc-working-card/);
+    assert.doesNotMatch(overview, /PackageChoicesPanel/);
+    assert.match(section, /What's included|What&apos;s included/);
+    assert.match(section, /What clients can choose/);
+    assert.match(section, /Advanced settings/);
+    assert.match(section, /presentation="progressive"/);
+    assert.match(route, /EventOrderSectionEditor/);
+    assert.doesNotMatch(section, /depends_on_option_ids/);
+    assert.doesNotMatch(overview, /How should clients make their selections/);
   });
 
   it("ordinary guided flow uses Offering package choices; specialist rules stay collapsed", () => {
@@ -84,8 +71,8 @@ describe("EO template builder — guided setup UX seams", () => {
       join(root, "components/event-order-templates/event-order-template-choice-groups.tsx"),
       "utf8",
     );
-    const wizard = readFileSync(
-      join(root, "components/event-order-templates/guided-setup-wizard.tsx"),
+    const section = readFileSync(
+      join(root, "components/event-order-templates/event-order-section-editor.tsx"),
       "utf8",
     );
     const panel = readFileSync(
@@ -94,66 +81,62 @@ describe("EO template builder — guided setup UX seams", () => {
     );
     assert.match(groups, /More settings/);
     assert.match(groups, /specialistMode/);
-    assert.match(wizard, /PackageChoicesPanel/);
-    assert.match(wizard, /specialistMode/);
-    assert.match(wizard, /eo-package-choices-panel|PackageChoicesPanel/);
+    assert.match(section, /PackageChoicesPanel/);
+    assert.match(section, /specialistMode/);
     assert.match(panel, /eo-package-choices-panel/);
     assert.match(panel, /CategorizedOfferingSelect/);
     assert.match(panel, /authoringScope=\{\{ kind: "primary" \}\}/);
-    assert.doesNotMatch(wizard, /guidedOrdinary/);
+    assert.match(panel, /presentation === "progressive"/);
   });
 
   it("ordinary guided catering flow is Offering-first — no question-builder step", () => {
-    const wizard = readFileSync(
-      join(root, "components/event-order-templates/guided-setup-wizard.tsx"),
+    const section = readFileSync(
+      join(root, "components/event-order-templates/event-order-section-editor.tsx"),
       "utf8",
     );
     const panel = readFileSync(
       join(root, "components/event-order-templates/package-choices-panel.tsx"),
       "utf8",
     );
-    assert.match(wizard, /Always on the package, covered by the package price/);
-    assert.match(wizard, /Staff-only extras billed on top of the package/);
-    assert.match(wizard, /Couple chooses/);
-    assert.match(wizard, /Add optional add-ons group/);
+    assert.match(section, /Items provided as part of the event/);
+    assert.match(section, /What clients can choose/);
     assert.match(panel, /eo-couple-choice-offering-select/);
     assert.match(panel, /categories the couple picks from/);
     assert.match(panel, /SelectionRuleControls/);
-    assert.match(panel, /Couples must choose/);
-    assert.match(panel, /arch \/ runner/);
-    assert.match(panel, /Try this path|Try a couple path/);
-    assert.match(panel, /eo-choice-path-preview/);
-    assert.match(panel, /eo-add-optional-addons-group/);
-    assert.match(panel, /optional add-ons/);
+    assert.match(panel, /SimpleSelectionRuleControls/);
+    assert.match(panel, /eo-level-1-choice/);
+    assert.match(panel, /eo-level-2-categories/);
+    assert.match(panel, /eo-level-3-offerings/);
     assert.match(panel, /Add write-in option/);
-    assert.match(panel, />Add item</);
+    assert.match(panel, /Add item/);
+    assert.match(panel, /Add an offering/);
     assert.match(panel, /Add a category from Offerings|Create category/);
     assert.doesNotMatch(panel, /How many from this group\?/);
-    assert.match(panel, /Instructions for the couple/);
     assert.match(panel, /eo-add-choice-set/);
+    assert.match(panel, /CatalogPickerDisclosure/);
+    assert.match(panel, /Choose from your offerings/);
+    assert.match(section, /editorLevelCopy/);
+    assert.match(section, /max-w-3xl/);
     assert.match(panel, /parentChoiceView/);
     assert.match(panel, /optionInputFromOffering/);
-    assert.match(panel, /optionInputWriteIn/);
-    assert.match(panel, /newOptionalAddOnsGroupInput/);
-    assert.doesNotMatch(wizard, /Add a primary question/);
-    assert.doesNotMatch(wizard, /Items always on this package/);
-    assert.doesNotMatch(wizard, /Choices couples make/);
-    assert.doesNotMatch(wizard, /Included in \{activeSection\.name\}/);
+    assert.doesNotMatch(section, /Add a primary question/);
     assert.doesNotMatch(panel, /Add a primary question/);
     assert.doesNotMatch(panel, /follow-up question/i);
   });
 
-  it("guided sections collapse by default with health chips; specialist rules stay under Advanced", () => {
-    const wizard = readFileSync(
-      join(root, "components/event-order-templates/guided-setup-wizard.tsx"),
+  it("overview cards stay collapsed; advanced settings stay under the section editor", () => {
+    const overview = readFileSync(
+      join(root, "components/event-order-templates/event-order-template-overview.tsx"),
       "utf8",
     );
-    assert.match(wizard, /sectionBuilderHealthChip/);
-    assert.match(wizard, /eo-guided-section-toggle-/);
-    assert.match(wizard, /eo-guided-section-health-/);
-    assert.match(wizard, /data-section-expanded/);
-    assert.match(wizard, /expandedSectionIds/);
-    assert.match(wizard, /Advanced — Specialist selection rules/);
+    const section = readFileSync(
+      join(root, "components/event-order-templates/event-order-section-editor.tsx"),
+      "utf8",
+    );
+    assert.match(overview, /data-section-expanded="false"/);
+    assert.match(overview, /eo-overview-edit-/);
+    assert.match(section, /Advanced settings/);
+    assert.match(section, /eo-specialist-selection-rules/);
   });
 
   it("preview validates under-selection with the shared choices validator", () => {

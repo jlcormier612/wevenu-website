@@ -6,6 +6,7 @@
  */
 import {
   isClientChoicesNeedsVenueReview,
+  toClientChoicesDisplayStatus,
 } from "@/lib/client-choices/constants";
 import type { CommercialWorkflowStepId } from "@/lib/event-orders/commercial-workflow-step";
 import type { CommercialNavTarget } from "@/lib/event-orders/commercial-status";
@@ -101,9 +102,66 @@ const ORDER_NAV: CommercialNavTarget = { kind: "tab", tab: "event-order", anchor
 const CHOICES_NAV: CommercialNavTarget = { kind: "tab", tab: "event-order", anchor: "event-order-choices" };
 const INVOICE_NAV: CommercialNavTarget = { kind: "tab", tab: "event-order", anchor: "event-order-invoice" };
 
+/** Library-sent selection packet, independent of Event Order shared_at. */
+export type SelectionPacketPresence = "none" | "awaiting" | "needs_review";
+
+export function selectionPacketPresence(
+  choices: ReadonlyArray<{ status: string }>,
+): SelectionPacketPresence {
+  if (choices.some((c) => isClientChoicesNeedsVenueReview(c.status))) return "needs_review";
+  if (choices.some((c) => {
+    const d = toClientChoicesDisplayStatus(c.status);
+    return d === "awaiting_client" || d === "changes_requested";
+  })) return "awaiting";
+  return "none";
+}
+
+export function emptyEventOrderStartCopy(presence: SelectionPacketPresence): {
+  description: string;
+  body: string;
+} {
+  if (presence === "needs_review") {
+    return {
+      description: "The couple already submitted selections. Create the Event Order from those selections below — that does not invoice or share.",
+      body: "You can still start a blank Event Order document if you need one separately. Submitted choices stay on the packet until you apply them.",
+    };
+  }
+  if (presence === "awaiting") {
+    return {
+      description: "The couple already has a selection packet. That is not an Event Order and is not payment.",
+      body: "You can start an Event Order document when you are ready. Their submit does not create lines or an invoice until you apply selections.",
+    };
+  }
+  return {
+    description: "Pick a template or start blank below. The couple sees nothing until you send it.",
+    body: "A template fills in sections and offerings for this event. You can edit the draft before you send it.",
+  };
+}
+
 function eventOrderRow(input: EventOrderJourneyInput): RowFacts {
   const eo = input.eventOrder;
+  const packet = selectionPacketPresence(input.choices);
   if (!eo) {
+    if (packet === "needs_review") {
+      return {
+        state: "Selections submitted — Event Order not created",
+        detail: "The couple already submitted their choices. Review them below, then create the Event Order from those selections. That does not invoice or share.",
+        primaryLabel: null,
+        action: null,
+        preview: false,
+        needsVenue: false,
+      };
+    }
+    if (packet === "awaiting") {
+      return {
+        state: "Choices sent — Event Order not created",
+        detail: "The couple already has a selection packet. Submitting is not payment and does not create Event Order lines.",
+        primaryLabel: null,
+        action: null,
+        preview: false,
+        needsVenue: false,
+      };
+    }
     return {
       state: "Not started",
       detail: "Use an Event Order plan or start blank below. The couple sees nothing until you send choices.",
@@ -146,7 +204,28 @@ function eventOrderRow(input: EventOrderJourneyInput): RowFacts {
 function approvalRow(input: EventOrderJourneyInput): RowFacts {
   const eo = input.eventOrder;
   const stale = Boolean(input.shareCommitmentStale);
+  const packet = selectionPacketPresence(input.choices);
   if (!eo?.sharedAt) {
+    if (packet === "needs_review") {
+      return {
+        state: "Choices submitted — venue to act",
+        detail: "Review their selections below. Creating the Event Order from them does not invoice, share, or collect payment.",
+        primaryLabel: "Review selections",
+        action: "review_choices",
+        preview: false,
+        needsVenue: true,
+      };
+    }
+    if (packet === "awaiting") {
+      return {
+        state: "Awaiting couple selections",
+        detail: "They already have a selection packet. Submitting is not payment and does not create Event Order lines.",
+        primaryLabel: null,
+        action: null,
+        preview: false,
+        needsVenue: false,
+      };
+    }
     return {
       state: "Not sent yet",
       detail: "The couple makes their choices and approves on their Event Order link — no portal invite needed.",

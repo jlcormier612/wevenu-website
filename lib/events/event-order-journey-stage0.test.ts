@@ -9,9 +9,11 @@ import { resolve } from "node:path";
 
 import {
   describeEventOrderJourney,
+  emptyEventOrderStartCopy,
   eventOrderOverviewSummary,
   isEventOrderApprovedNow,
   panelEmphasisForStep,
+  selectionPacketPresence,
   shouldShowChoicesFinancialImpact,
 } from "@/lib/event-orders/event-order-journey";
 
@@ -142,8 +144,56 @@ describe("Event Order journey rows (lead card pattern)", () => {
   it("overview summary names the next step", () => {
     assert.equal(
       eventOrderOverviewSummary({ choices: [], eventOrder: { status: "open", sharedAt: null }, hasEoInvoice: false }),
-      "Event Order: Draft — not sent yet",
+      "Event Order: Configure — not shared yet",
     );
+  });
+
+  it("Path B sent packet without Event Order is awaiting — not Not started", () => {
+    const { current, rows } = describeEventOrderJourney({
+      choices: [{ status: "sent" }],
+      eventOrder: null,
+      hasEoInvoice: false,
+    });
+    assert.equal(current.key, "approval");
+    assert.equal(current.state, "Awaiting couple selections");
+    assert.doesNotMatch(rows[0]!.state, /Not started/);
+    assert.doesNotMatch(rows[0]!.detail, /couple sees nothing/i);
+    assert.equal(
+      eventOrderOverviewSummary({ choices: [{ status: "sent" }], eventOrder: null, hasEoInvoice: false }),
+      "Couple approval: Awaiting couple selections",
+    );
+  });
+
+  it("Path B submitted packet without Event Order asks the venue to review selections", () => {
+    const { current, rows } = describeEventOrderJourney({
+      choices: [{ status: "submitted" }],
+      eventOrder: null,
+      hasEoInvoice: false,
+    });
+    assert.equal(current.key, "approval");
+    assert.equal(current.state, "Choices submitted — venue to act");
+    assert.equal(current.action, "review_choices");
+    assert.equal(current.primaryLabel, "Review selections");
+    assert.equal(current.nav.kind, "tab");
+    assert.equal(current.nav.kind === "tab" ? current.nav.anchor : null, "event-order-choices");
+    assert.equal(rows[0]!.state, "Selections submitted — Event Order not created");
+    assert.equal(rows[0]!.isCurrent, false);
+    assert.doesNotMatch(rows[0]!.detail, /couple sees nothing/i);
+    assert.doesNotMatch(
+      eventOrderOverviewSummary({ choices: [{ status: "submitted" }], eventOrder: null, hasEoInvoice: false }),
+      /Not started/,
+    );
+  });
+
+  it("Path A empty event without a packet still starts at Build Event Order", () => {
+    const { current } = describeEventOrderJourney({ choices: [], eventOrder: null, hasEoInvoice: false });
+    assert.equal(current.key, "event_order");
+    assert.equal(current.primaryLabel, "Build Event Order");
+    assert.equal(current.state, "Not started");
+    assert.equal(selectionPacketPresence([]), "none");
+    assert.match(emptyEventOrderStartCopy("none").description, /couple sees nothing/i);
+    assert.doesNotMatch(emptyEventOrderStartCopy("awaiting").description, /couple sees nothing/i);
+    assert.doesNotMatch(emptyEventOrderStartCopy("needs_review").description, /couple sees nothing/i);
   });
 
   it("emphasizes choices for build/awaiting/review and order for order/invoice", () => {

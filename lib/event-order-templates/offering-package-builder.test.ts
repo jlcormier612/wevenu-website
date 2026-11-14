@@ -85,7 +85,8 @@ describe("offering-package-builder", () => {
     const writeIn = optionInputWriteIn("g-spirits", "House specialty cocktail");
     assert.equal(writeIn.offeringId, null);
     assert.equal(writeIn.label, "House specialty cocktail");
-    assert.equal(writeIn.isIncluded, true);
+    assert.equal(writeIn.isIncluded, false);
+    assert.equal(writeIn.unitPrice, null);
   });
 
   it("drafts options from catalog Offerings with price snapshots", () => {
@@ -287,8 +288,8 @@ describe("offering-package-builder", () => {
   });
 
   it("price labels do not imply free merely because an item is on the package", () => {
-    assert.equal(packageBuilderPriceLabel(250, false), "$250");
-    assert.equal(packageBuilderPriceLabel(null, true), "No extra charge");
-    assert.equal(packageBuilderPriceLabel(null, false), "No price set");
+    assert.equal(packageBuilderPriceLabel(250, false), "Additional · $250");
+    assert.equal(packageBuilderPriceLabel(null, true), "Included");
+    assert.equal(packageBuilderPriceLabel(null, false), "Not configured");
   });
 });

@@ -613,15 +613,15 @@ describe("guided setup — review summary", () => {
     });
     assert.equal(
       plainSelectionRuleLabel({ selectionMode: "multi", minSelect: 3, maxSelect: 3 }),
-      "Choose exactly 3",
+      "Choose 3 · Required",
     );
     assert.equal(
       plainSelectionRuleLabel({ selectionMode: "single", minSelect: 1, maxSelect: 1 }),
-      "Choose exactly 1",
+      "Choose 1 · Required",
     );
     assert.equal(
       plainSelectionRuleLabel({ selectionMode: "multi", minSelect: 0, maxSelect: 2 }),
-      "Optional — choose exactly 2 or skip",
+      "Choose up to 2 · Optional",
     );
   });
 

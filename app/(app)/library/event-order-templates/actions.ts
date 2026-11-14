@@ -23,7 +23,10 @@ import type {
 function revalidateLibrary(templateId?: string) {
   revalidatePath("/library/event-order-templates");
   revalidatePath("/library");
-  if (templateId) revalidatePath(`/library/event-order-templates/${templateId}`);
+  if (templateId) {
+    revalidatePath(`/library/event-order-templates/${templateId}`);
+    revalidatePath(`/library/event-order-templates/${templateId}/sections`, "layout");
+  }
 }
 
 export async function createEventOrderTemplateAction(input: EventOrderTemplateInput): Promise<CreateEventOrderTemplateResult> {

@@ -12,7 +12,7 @@ import { getTemplates } from "@/lib/event-order-templates/service";
 import { EVENT_ORDER_STARTER_MASTERS } from "@/lib/event-order-templates/starters";
 import { getTemplateApplyClientGroups } from "@/lib/library/template-apply-targets-service";
 
-export const metadata: Metadata = { title: "Event Order plans" };
+export const metadata: Metadata = { title: "Event Order Templates" };
 
 export default async function EventOrderTemplatesPage() {
   await ensureEventOrderStartersForCurrentVenue();
@@ -30,8 +30,8 @@ export default async function EventOrderTemplatesPage() {
       <CollectionBackLink href="/library" label="Library" />
       <div className="htc-hospitality-heading htc-hospitality-intro-accent">
         <PageHeader
-          title="Event Order plans"
-          description="Reusable delivery plans with always-included items and couple choice groups from your choices catalog."
+          title="Event Order Templates"
+          description="Create and manage reusable client selection experiences."
           actions={<NewEventOrderTemplateButton />}
         />
       </div>
@@ -40,16 +40,15 @@ export default async function EventOrderTemplatesPage() {
           tone="calm"
           detail={
             <>
-              Always-included items stay on the plan; couple choices (like Buffet vs Plated) come from
-              your choices catalog — they only see the options you pick. Preview shows the couple
-              experience without sending. Use applies to an event&apos;s Event Order; Send is only for
-              plans with client choice groups. Apply copies a snapshot — later edits never rewrite a
-              booked Event Order. Distinct from sales Packages — neither creates an invoice.
+              Examples in a starter are not included or priced until you configure them. Items you
+              mark Included stay on the template; Additional items carry the price you enter. Client
+              selections (like Buffet vs Plated) come from the options you keep. Preview shows the client experience without sending. Apply copies a snapshot — later edits never rewrite
+              a booked Event Order. Distinct from sales Packages — neither creates an invoice.
             </>
           }
-          action={{ href: "/library/offerings", label: "Manage choices catalog" }}
+          action={{ href: "/library/offerings", label: "Open Offerings Catalog" }}
         >
-          How Event Order plans work
+          How Event Order Templates work
         </LibraryDependencyNote>
       </div>
       <EventOrderTemplateList

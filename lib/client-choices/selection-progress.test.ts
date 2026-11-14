@@ -13,28 +13,28 @@ describe("selection progress + max enforcement helpers", () => {
   it("formats exact-N live counts", () => {
     assert.equal(
       selectionProgressLabel({ selectionMode: "multi", minSelect: 2, maxSelect: 2 }, 0),
-      "Choose exactly 2 — 0 of 2 selected",
+      "Choose 2 · Required — 0 of 2 selected",
     );
     assert.equal(
       selectionProgressLabel({ selectionMode: "multi", minSelect: 3, maxSelect: 3 }, 2),
-      "Choose exactly 3 — 2 of 3 selected",
+      "Choose 3 · Required — 2 of 3 selected",
     );
   });
 
   it("formats min–max range and optional exact-or-skip groups", () => {
     assert.equal(
       selectionProgressLabel({ selectionMode: "multi", minSelect: 2, maxSelect: 4 }, 3),
-      "Choose 2–4 — 3 selected",
+      "Choose 2–4 · Required — 3 selected",
     );
     assert.equal(
       selectionProgressLabel({ selectionMode: "multi", minSelect: 0, maxSelect: 2 }, 1),
-      "Optional — choose exactly 2 or skip — 1 of 2 selected",
+      "Choose up to 2 · Optional — 1 of 2 selected",
     );
     const partial = selectionProgressForGroup(
       { selectionMode: "multi", minSelect: 0, maxSelect: 2 },
       1,
     );
-    assert.equal(partial.requirementMet, false);
+    assert.equal(partial.requirementMet, true);
     const skipped = selectionProgressForGroup(
       { selectionMode: "multi", minSelect: 0, maxSelect: 2 },
       0,
@@ -86,10 +86,12 @@ describe("selection progress + max enforcement helpers", () => {
 describe("portal + finalize seams", () => {
   it("portal uses live progress and blocks over-max adds", () => {
     const portal = readFileSync("components/portal/choices-section.tsx", "utf8");
-    assert.match(portal, /selectionProgressForGroup/);
-    assert.match(portal, /isAtSelectionMaximum/);
-    assert.match(portal, /selectionMaximumReachedMessage/);
-    assert.match(portal, /choices-group-progress/);
+    const form = readFileSync("components/client-choices/choices-interactive-form.tsx", "utf8");
+    assert.match(portal, /ChoicesInteractiveForm/);
+    assert.match(form, /selectionProgressForGroup/);
+    assert.match(form, /selectionMaximumReachedMessage/);
+    assert.match(form, /choices-group-progress/);
+    assert.match(form, /progress.atMaximum/);
   });
 
   it("finalize re-validates before Event Order mutations", () => {

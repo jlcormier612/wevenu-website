@@ -160,7 +160,7 @@ describe("validateChoicesAnswers", () => {
     if (!above.ok) assert.match(above.message, /at most 2/);
   });
 
-  it("optional exact-count groups allow skip or exact N, not partial", () => {
+  it("optional up-to-N groups allow skip, partial, or max", () => {
     const optionalExact: ChoicesDefinition = {
       ...definition,
       groups: [
@@ -201,8 +201,7 @@ describe("validateChoicesAnswers", () => {
     const partial = validateChoicesAnswers(optionalExact, {
       "g-spirits": { optionIds: ["o-a"] },
     });
-    assert.equal(partial.ok, false);
-    if (!partial.ok) assert.match(partial.message, /exactly 2|skip/i);
+    assert.equal(partial.ok, true);
   });
 
   it("rejects child answers under an unselected parent for plated vs buffet", () => {

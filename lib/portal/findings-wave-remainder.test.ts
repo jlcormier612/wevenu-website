@@ -77,9 +77,9 @@ describe("budget soft-remove + custom", () => {
 
 describe("EO template streamline + workflow chrome", () => {
   it("sticky incomplete checklist and Edit→Preview→Use chrome", () => {
-    const wizard = read("components/event-order-templates/guided-setup-wizard.tsx");
-    assert.match(wizard, /eo-guided-incomplete-checklist/);
-    assert.match(wizard, /Finish before Use \/ Send/);
+    const overview = read("components/event-order-templates/event-order-template-overview.tsx");
+    assert.match(overview, /attentionSummary/);
+    assert.match(overview, /eo-overview-attention-/);
     const chrome = read("components/event-order-templates/template-workflow-chrome.tsx");
     assert.match(chrome, /eo-template-workflow-chrome/);
     assert.match(chrome, /Edit/);
@@ -90,10 +90,11 @@ describe("EO template streamline + workflow chrome", () => {
   });
 
   it("elevation slices: collapse, path-preview, split Use/Send, unified rule, couple summary", () => {
-    const wizard = read("components/event-order-templates/guided-setup-wizard.tsx");
-    assert.match(wizard, /sectionBuilderHealthChip/);
-    assert.match(wizard, /eo-guided-section-toggle-/);
-    assert.match(wizard, /Advanced — Specialist selection rules/);
+    const overview = read("components/event-order-templates/event-order-template-overview.tsx");
+    const section = read("components/event-order-templates/event-order-section-editor.tsx");
+    assert.match(overview, /eo-overview-section-/);
+    assert.match(overview, /eo-overview-edit-/);
+    assert.match(section, /Advanced settings/);
 
     const panel = read("components/event-order-templates/package-choices-panel.tsx");
     assert.match(panel, /SelectionRuleControls/);

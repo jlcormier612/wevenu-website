@@ -306,13 +306,17 @@ describe("Catalog, isolation, and preview labels", () => {
 
   it("20. editor, preview, and apply UI are mobile-safe", () => {
     const editor = readFileSync(join(root, "components/event-order-templates/event-order-template-detail.tsx"), "utf8");
+    const section = readFileSync(join(root, "components/event-order-templates/event-order-section-editor.tsx"), "utf8");
+    const landing = readFileSync(join(root, "app/(app)/library/event-order-templates/page.tsx"), "utf8");
     const preview = readFileSync(join(root, "components/event-order-templates/event-order-template-preview.tsx"), "utf8");
+    const clientPreview = readFileSync(join(root, "components/event-order-templates/event-order-client-preview.tsx"), "utf8");
     const apply = readFileSync(join(root, "components/event-order-templates/apply-event-order-template-sheet.tsx"), "utf8");
     assert.match(editor, /overflow-x-hidden/);
-    assert.match(editor, /Manage Offerings/);
-    assert.match(editor, /package items \(no couple choice\)/);
+    assert.match(landing, /Open Offerings Catalog/);
+    assert.match(section, /What clients can choose/);
     assert.doesNotMatch(editor, /Add from Offerings/);
     assert.match(preview, /overflow-x-hidden/);
+    assert.match(clientPreview, /overflow-x-hidden/);
     assert.match(preview, /the template is not a commitment/);
     assert.doesNotMatch(preview, /is a commitment/);
     assert.match(apply, /w-full/);
@@ -343,9 +347,10 @@ describe("Catalog, isolation, and preview labels", () => {
     const options = reception!.sections.flatMap((s) =>
       (s.choiceGroups ?? []).flatMap((g) => g.options.map((o) => o.name)),
     );
-    assert.ok(fixed.includes("Day-of Coordination"));
+    assert.ok(!fixed.includes("Day-of Coordination"));
+    assert.ok(options.includes("Day-of Coordination"));
     assert.ok(options.includes("Plated Dinner"));
-    assert.ok(options.includes("Chiavari Chair"));
+    assert.ok(!options.includes("Chiavari Chair"));
     const provision = readFileSync(join(root, "lib/event-order-templates/provision.ts"), "utf8");
     assert.match(provision, /skipped.push\(master.key\)/);
     assert.match(provision, /source_master_key/);

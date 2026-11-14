@@ -58,8 +58,8 @@ describe("Template/catalog collection escape paths", () => {
       resolve("components/event-order-templates/event-order-template-detail.tsx"),
       "utf8",
     );
-    assert.match(src, /backHref="\/library\/event-order-templates"/);
-    assert.match(src, /backLabel="Event Order Templates"/);
+    assert.match(src, /href="\/library\/event-order-templates"/);
+    assert.match(src, /label="Event Order Templates"/);
   });
 
   it("keeps Inventory Template detail back to its collection", () => {

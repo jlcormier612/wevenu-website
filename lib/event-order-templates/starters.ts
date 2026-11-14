@@ -44,8 +44,7 @@ export type EventOrderStarterChoiceGroup = {
   /**
    * Parent option labels (same section / prior groups) that activate this group.
    * Resolved to option UUIDs at provision. Empty / omitted = always visible.
-   * Do not invent catalog menu items — dependents may ship with zero options
-   * (honest empty) until the venue configures real follow-up choices.
+   * Illustrative follow-up names may ship unpriced; do not invent venue prices.
    */
   dependsOnOptionNames?: string[];
   options: EventOrderStarterOption[];
@@ -66,9 +65,150 @@ export type EventOrderStarterMaster = {
   sections: EventOrderStarterSection[];
 };
 
+function unpriced(name: string, description?: string): EventOrderStarterOption {
+  return description ? { name, description } : { name };
+}
+
+function platedDinnerFollowUps(): EventOrderStarterChoiceGroup[] {
+  return [
+    {
+      name: "Entrées",
+      selectionMode: "single",
+      minSelect: 1,
+      maxSelect: 1,
+      dependsOnOptionNames: ["Plated Dinner"],
+      options: [
+        unpriced("Herb-Roasted Chicken"),
+        unpriced("Braised Beef"),
+        unpriced("Seasonal Vegetarian Entrée"),
+      ],
+    },
+    {
+      name: "Sides",
+      selectionMode: "multi",
+      minSelect: 0,
+      maxSelect: 2,
+      dependsOnOptionNames: ["Plated Dinner"],
+      options: [
+        unpriced("Roasted Potatoes"),
+        unpriced("Seasonal Vegetables"),
+        unpriced("Rice Pilaf"),
+      ],
+    },
+    {
+      name: "Desserts",
+      selectionMode: "single",
+      minSelect: 0,
+      maxSelect: 1,
+      dependsOnOptionNames: ["Plated Dinner"],
+      options: [
+        unpriced("Chocolate Cake"),
+        unpriced("Vanilla Cake"),
+        unpriced("Seasonal Fruit Dessert"),
+      ],
+    },
+  ];
+}
+
+function buffetDinnerFollowUps(): EventOrderStarterChoiceGroup[] {
+  return [
+    {
+      name: "Entrées",
+      selectionMode: "multi",
+      minSelect: 1,
+      maxSelect: 2,
+      dependsOnOptionNames: ["Buffet Dinner"],
+      options: [
+        unpriced("Roasted Chicken"),
+        unpriced("Pasta Primavera"),
+        unpriced("Braised Beef"),
+      ],
+    },
+    {
+      name: "Sides",
+      selectionMode: "multi",
+      minSelect: 0,
+      maxSelect: 2,
+      dependsOnOptionNames: ["Buffet Dinner"],
+      options: [
+        unpriced("Roasted Potatoes"),
+        unpriced("Seasonal Vegetables"),
+        unpriced("Rice Pilaf"),
+      ],
+    },
+    {
+      name: "Desserts",
+      selectionMode: "single",
+      minSelect: 0,
+      maxSelect: 1,
+      dependsOnOptionNames: ["Buffet Dinner"],
+      options: [
+        unpriced("Assorted Desserts"),
+        unpriced("Seasonal Fruit"),
+        unpriced("Mini Pastries"),
+      ],
+    },
+  ];
+}
+
+function dinnerServiceGroup(): EventOrderStarterChoiceGroup {
+  return {
+    name: "Dinner service",
+    selectionMode: "single",
+    minSelect: 1,
+    maxSelect: 1,
+    options: [
+      unpriced("Plated Dinner", "Per person"),
+      unpriced("Buffet Dinner", "Per person"),
+    ],
+  };
+}
+
+function beerAndWineFollowUps(): EventOrderStarterChoiceGroup[] {
+  return [
+    {
+      name: "Beer selections",
+      selectionMode: "multi",
+      minSelect: 0,
+      maxSelect: 2,
+      dependsOnOptionNames: ["Beer & Wine"],
+      options: [
+        unpriced("House Lager"),
+        unpriced("Seasonal IPA"),
+        unpriced("Non-Alcoholic Beer"),
+      ],
+    },
+    {
+      name: "Wine selections",
+      selectionMode: "multi",
+      minSelect: 0,
+      maxSelect: 2,
+      dependsOnOptionNames: ["Beer & Wine"],
+      options: [
+        unpriced("House Red"),
+        unpriced("House White"),
+        unpriced("Sparkling Wine"),
+      ],
+    },
+  ];
+}
+
+function optionalDayOfCoordinationGroup(): EventOrderStarterChoiceGroup {
+  return {
+    name: "Optional services",
+    selectionMode: "single",
+    minSelect: 0,
+    maxSelect: 1,
+    options: [
+      unpriced("Day-of Coordination", "Flat fee"),
+    ],
+  };
+}
+
 /**
  * Pre-correction flat line names (no choice groups). Used only to detect
  * uncustomized venue copies that are safe to upgrade in place.
+ * Chiavari Chair remains a historical fingerprint, not a new-starter offering.
  */
 export const LEGACY_FLAT_STARTER_LINE_NAMES: Record<EventOrderStarterMasterKey, readonly string[]> = {
   "EO-D-01": [
@@ -99,102 +239,50 @@ export const EVENT_ORDER_STARTER_MASTERS: readonly EventOrderStarterMaster[] = [
     sections: [
       {
         name: "Catering",
-        guidance: "The couple must choose one dinner service.",
+        guidance: "Example dinner services and dishes. Keep, remove, or configure each offering for your venue — nothing is priced or included until you decide.",
         choiceGroups: [
-          {
-            name: "Dinner service",
-            instructions: "Pick one — prices are per person.",
-            selectionMode: "single",
-            minSelect: 1,
-            maxSelect: 1,
-            options: [
-              { name: "Plated Dinner", description: "Per person", unitPrice: 85 },
-              { name: "Buffet Dinner", description: "Per person", unitPrice: 72 },
-            ],
-          },
-          {
-            name: "Plated dinner details",
-            instructions:
-              "Follow-up choices for plated service. None are pre-configured — your venue will add them here when ready.",
-            selectionMode: "single",
-            minSelect: 0,
-            maxSelect: null,
-            dependsOnOptionNames: ["Plated Dinner"],
-            options: [],
-          },
-          {
-            name: "Buffet dinner details",
-            instructions:
-              "Follow-up choices for buffet service. None are pre-configured — your venue will add them here when ready.",
-            selectionMode: "single",
-            minSelect: 0,
-            maxSelect: null,
-            dependsOnOptionNames: ["Buffet Dinner"],
-            options: [],
-          },
+          dinnerServiceGroup(),
+          ...platedDinnerFollowUps(),
+          ...buffetDinnerFollowUps(),
         ],
       },
       {
         name: "Bar",
-        guidance: "Bar packages are alternatives — choose one.",
+        guidance: "Example bar packages. Keep, remove, or configure them — packages are not assumed to be available or priced.",
         choiceGroups: [
           {
             name: "Bar package",
-            instructions: "Pick one bar package — prices are per person.",
             selectionMode: "single",
             minSelect: 1,
             maxSelect: 1,
             options: [
-              { name: "Beer & Wine", description: "Per person", unitPrice: 28 },
-              { name: "Full Bar", description: "Per person", unitPrice: 42 },
+              unpriced("Beer & Wine", "Per person"),
+              unpriced("Full Bar", "Per person"),
             ],
           },
-          {
-            name: "Beer & Wine details",
-            instructions:
-              "Follow-up choices for Beer & Wine. None are pre-configured — your venue will add them here when ready.",
-            selectionMode: "single",
-            minSelect: 0,
-            maxSelect: null,
-            dependsOnOptionNames: ["Beer & Wine"],
-            options: [],
-          },
-          {
-            name: "Full Bar details",
-            instructions:
-              "Follow-up choices for Full Bar. None are pre-configured — your venue will add them here when ready.",
-            selectionMode: "single",
-            minSelect: 0,
-            maxSelect: null,
-            dependsOnOptionNames: ["Full Bar"],
-            options: [],
-          },
+          ...beerAndWineFollowUps(),
         ],
       },
       {
         name: "Rentals",
-        guidance: "Optional rental products the couple may add.",
+        guidance: "Example rental offerings. Inventory stock is a separate system — do not treat stock items as Event Order offerings automatically.",
         choiceGroups: [
           {
             name: "Optional rentals",
-            instructions: "Add any rentals you want — priced per unit.",
             selectionMode: "multi",
             minSelect: 0,
             maxSelect: null,
             allowQuantity: true,
             options: [
-              { name: "Chiavari Chair", description: "Per chair", unitPrice: 8 },
-              { name: "Farm Table", description: "Per table", unitPrice: 85 },
+              unpriced("Farm Table", "Per table"),
             ],
           },
         ],
       },
       {
         name: "Services",
-        guidance: "Staffing and coordination included with this package.",
-        offerings: [
-          { name: "Day-of Coordination", unitPrice: 1200, pricingModel: "flat", includedByDefault: true },
-        ],
+        guidance: "Example optional services. Keep or remove them; they are not included or priced until you configure them.",
+        choiceGroups: [optionalDayOfCoordinationGroup()],
       },
     ],
   },
@@ -205,113 +293,65 @@ export const EVENT_ORDER_STARTER_MASTERS: readonly EventOrderStarterMaster[] = [
     sections: [
       {
         name: "Ceremony",
-        guidance: "Standard ceremony setup is included. Enhancements are optional paid add-ons.",
-        offerings: [
-          { name: "Ceremony Coordination", unitPrice: 500, pricingModel: "flat", includedByDefault: true },
-        ],
+        guidance: "Example ceremony offerings. Keep, remove, or configure them — nothing is included or priced until you decide.",
         choiceGroups: [
           {
+            name: "Ceremony services",
+            selectionMode: "single",
+            minSelect: 0,
+            maxSelect: 1,
+            options: [
+              unpriced("Ceremony Coordination", "Flat fee"),
+            ],
+          },
+          {
             name: "Ceremony enhancements",
-            instructions: "Optional paid add-ons — select only what you want to purchase.",
             selectionMode: "multi",
             minSelect: 0,
             maxSelect: null,
             options: [
-              { name: "Arbor", description: "Flat fee", unitPrice: 350 },
+              unpriced("Arbor", "Flat fee"),
             ],
           },
         ],
       },
       {
         name: "Catering",
-        guidance: "The couple must choose one dinner service.",
+        guidance: "Example dinner services and dishes. Keep, remove, or configure each offering for your venue — nothing is priced or included until you decide.",
         choiceGroups: [
-          {
-            name: "Dinner service",
-            instructions: "Pick one — prices are per person.",
-            selectionMode: "single",
-            minSelect: 1,
-            maxSelect: 1,
-            options: [
-              { name: "Plated Dinner", description: "Per person", unitPrice: 85 },
-              { name: "Buffet Dinner", description: "Per person", unitPrice: 72 },
-            ],
-          },
-          {
-            name: "Plated dinner details",
-            instructions:
-              "Follow-up choices for plated service. None are pre-configured — your venue will add them here when ready.",
-            selectionMode: "single",
-            minSelect: 0,
-            maxSelect: null,
-            dependsOnOptionNames: ["Plated Dinner"],
-            options: [],
-          },
-          {
-            name: "Buffet dinner details",
-            instructions:
-              "Follow-up choices for buffet service. None are pre-configured — your venue will add them here when ready.",
-            selectionMode: "single",
-            minSelect: 0,
-            maxSelect: null,
-            dependsOnOptionNames: ["Buffet Dinner"],
-            options: [],
-          },
+          dinnerServiceGroup(),
+          ...platedDinnerFollowUps(),
+          ...buffetDinnerFollowUps(),
         ],
       },
       {
         name: "Bar and beverages",
-        guidance: "Bar service is optional — decline by leaving unselected.",
+        guidance: "Example bar service. Leave unselected for no bar, or configure the package for your venue.",
         choiceGroups: [
           {
             name: "Bar package",
-            instructions: "Optional — pick one package, or leave unselected for no bar service. Price is per person.",
             selectionMode: "single",
             minSelect: 0,
             maxSelect: 1,
             options: [
-              { name: "Beer & Wine", description: "Per person", unitPrice: 28 },
+              unpriced("Beer & Wine", "Per person"),
             ],
           },
-          {
-            name: "Beer & Wine details",
-            instructions:
-              "Follow-up choices for Beer & Wine. None are pre-configured — your venue will add them here when ready.",
-            selectionMode: "single",
-            minSelect: 0,
-            maxSelect: null,
-            dependsOnOptionNames: ["Beer & Wine"],
-            options: [],
-          },
+          ...beerAndWineFollowUps(),
         ],
       },
       {
         name: "Rentals",
-        guidance: "Optional rental products the couple may add.",
-        choiceGroups: [
-          {
-            name: "Optional rentals",
-            instructions: "Add any rentals you want — priced per unit.",
-            selectionMode: "multi",
-            minSelect: 0,
-            maxSelect: null,
-            allowQuantity: true,
-            options: [
-              { name: "Chiavari Chair", description: "Per chair", unitPrice: 8 },
-            ],
-          },
-        ],
+        guidance: "Add rental offerings if you provide them. Inventory stock is managed separately.",
       },
       {
         name: "Services",
-        guidance: "Staffing and coordination included with this package.",
-        offerings: [
-          { name: "Day-of Coordination", unitPrice: 1200, pricingModel: "flat", includedByDefault: true },
-        ],
+        guidance: "Example optional services. Keep or remove them; they are not included or priced until you configure them.",
+        choiceGroups: [optionalDayOfCoordinationGroup()],
       },
     ],
   },
-] as const;
+];
 
 export function getEventOrderStarterMaster(key: string): EventOrderStarterMaster | undefined {
   return EVENT_ORDER_STARTER_MASTERS.find((m) => m.key === key);

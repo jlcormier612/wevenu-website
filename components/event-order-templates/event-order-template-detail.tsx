@@ -12,7 +12,7 @@ import {
   duplicateEventOrderTemplateAction,
   updateEventOrderTemplateAction,
 } from "@/app/(app)/library/event-order-templates/actions";
-import { GuidedSetupWizard } from "@/components/event-order-templates/guided-setup-wizard";
+import { EventOrderTemplateOverview } from "@/components/event-order-templates/event-order-template-overview";
 import { TemplateWorkflowChrome } from "@/components/event-order-templates/template-workflow-chrome";
 import { BusinessAssetHeader } from "@/components/business-assets/asset-header";
 import { CollectionBackLink } from "@/components/library/collection-back-link";
@@ -26,6 +26,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
+import { templatePreviewHref, templateReadiness } from "@/lib/event-order-templates/editor-presentation";
 import type { EventOrderTemplateWithDetails } from "@/lib/event-order-templates/types";
 import type { OfferingWithCategory } from "@/lib/offerings/types";
 
@@ -116,7 +117,7 @@ function EventOrderTemplateDetailsSheet({ template }: { template: EventOrderTemp
 }
 
 export function EventOrderTemplateDetail({
-  template, catalogOfferings = [], catalogChoiceGroups = [],
+  template,
 }: {
   template: EventOrderTemplateWithDetails;
   catalogOfferings?: OfferingWithCategory[];
@@ -126,6 +127,7 @@ export function EventOrderTemplateDetail({
   const [deleting, startDelete] = React.useTransition();
   const saveUi = useLibrarySaveStatus();
   const isStarter = Boolean(template.sourceMasterKey);
+  const readiness = templateReadiness(template);
 
   function onPersist(phase: "saving" | "saved" | "error", message?: string) {
     if (phase === "saving") saveUi.markSaving();
@@ -156,6 +158,12 @@ export function EventOrderTemplateDetail({
           title={template.name}
           status={
             <>
+              <Badge
+                variant={readiness.status === "ready" ? "outline" : "muted"}
+                data-testid="eo-template-readiness"
+              >
+                {readiness.status === "ready" ? "Ready" : "Draft"}
+              </Badge>
               {isStarter && !template.isArchived && <Badge variant="muted">{LIBRARY_LABELS.starter}</Badge>}
               {!isStarter && !template.isArchived && <Badge variant="outline">{LIBRARY_LABELS.yourTemplate}</Badge>}
               {template.isArchived ? <Badge variant="muted">{LIBRARY_LABELS.archived}</Badge> : null}
@@ -164,11 +172,25 @@ export function EventOrderTemplateDetail({
           lastUpdated={new Date(template.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
           primaryAction={
             <div className="flex flex-wrap items-center gap-2">
-              <LibrarySaveStatus status={saveUi.status} model="autosave" />
-              <Button type="button" variant="outline" size="sm" render={<Link href={`/library/event-order-templates/${template.id}/preview`} />}>
-                Preview
-              </Button>
+              <LibrarySaveStatus status={saveUi.status} model="explicit" />
               <EventOrderTemplateDetailsSheet template={template} />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                data-testid="eo-template-preview-as-client"
+                render={<Link href={templatePreviewHref(template.id)} />}
+              >
+                Preview as Client
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                data-testid="eo-template-use-send"
+                render={<Link href="/library/event-order-templates" />}
+              >
+                Use / Send
+              </Button>
             </div>
           }
         />
@@ -176,6 +198,7 @@ export function EventOrderTemplateDetail({
 
       {isStarter ? (
         <StarterOwnershipBanner
+          compact
           templateName={template.name}
           itemNoun="sections and offerings"
           customizeHref={(id) => `/library/event-order-templates/${id}`}
@@ -193,28 +216,17 @@ export function EventOrderTemplateDetail({
         />
       ) : null}
 
-      <div
-        className="htc-surface-guidance max-w-2xl px-3 py-2.5"
-        data-testid="eo-template-detail-intro"
-      >
-        <p className="text-sm leading-snug">
-          Each section: <span className="font-medium text-heading">Included</span>,{" "}
-          <span className="font-medium text-heading">Couple chooses</span>, and{" "}
-          <span className="font-medium text-heading">Add-ons</span>
-          {" "}(staff-only).{" "}
-          <Link href="/library/offerings" className="htc-record-link font-medium">
-            Manage Offerings →
-          </Link>
+      {template.description ? (
+        <p className="max-w-2xl text-sm text-muted-foreground" data-testid="eo-template-detail-intro">
+          {template.description}
         </p>
-        {template.description ? <p className="mt-1.5 text-sm text-foreground">{template.description}</p> : null}
-      </div>
+      ) : (
+        <p className="max-w-2xl text-sm text-muted-foreground" data-testid="eo-template-detail-intro">
+          Open a section to edit what&apos;s included and what clients can choose.
+        </p>
+      )}
 
-      <GuidedSetupWizard
-        template={template}
-        catalogOfferings={catalogOfferings}
-        catalogChoiceGroups={catalogChoiceGroups}
-        onPersist={onPersist}
-      />
+      <EventOrderTemplateOverview template={template} onPersist={onPersist} />
 
       <div className="flex justify-end">
         <Button type="button" variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive" disabled={deleting} onClick={handleDelete}>

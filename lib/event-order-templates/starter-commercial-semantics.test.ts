@@ -72,8 +72,9 @@ describe("EO starter commercial semantics", () => {
     assert.equal(dinner!.maxSelect, 1);
     const labels = dinner!.options.map((o) => o.name).sort();
     assert.deepEqual(labels, ["Buffet Dinner", "Plated Dinner"]);
-    assert.equal(dinner!.options.find((o) => o.name === "Plated Dinner")?.unitPrice, 85);
-    assert.equal(dinner!.options.find((o) => o.name === "Buffet Dinner")?.unitPrice, 72);
+    assert.equal(dinner!.options.find((o) => o.name === "Plated Dinner")?.unitPrice ?? null, null);
+    assert.equal(dinner!.options.find((o) => o.name === "Buffet Dinner")?.unitPrice ?? null, null);
+    assert.equal(dinner!.options.find((o) => o.name === "Plated Dinner")?.isIncluded ?? false, false);
     assert.ok(!starterFixedLineNames(master).includes("Plated Dinner"));
     assert.ok(!starterFixedLineNames(master).includes("Buffet Dinner"));
   });
@@ -87,8 +88,9 @@ describe("EO starter commercial semantics", () => {
     assert.equal(enhancements!.selectionMode, "multi");
     const arbor = enhancements!.options.find((o) => o.name === "Arbor");
     assert.ok(arbor);
-    assert.equal(arbor!.unitPrice, 350);
+    assert.equal(arbor!.unitPrice ?? null, null);
     assert.equal(arbor!.isIncluded ?? false, false);
+    assert.ok(!starterChoiceOptionNames(master).includes("Chiavari Chair"));
   });
 
   it("4. EO-D-02: bar package is optional (couple may decline); not contradictory multi-select packages", () => {
@@ -100,15 +102,23 @@ describe("EO starter commercial semantics", () => {
     assert.equal(bar!.maxSelect, 1);
     assert.equal(bar!.options.length, 1);
     assert.equal(bar!.options[0]!.name, "Beer & Wine");
-    assert.equal(bar!.options[0]!.unitPrice, 28);
+    assert.equal(bar!.options[0]!.unitPrice ?? null, null);
+    assert.equal(bar!.options[0]!.isIncluded ?? false, false);
   });
 
-  it("5. included ceremony/services are fixed included lines; package apply selects only those", () => {
+  it("5. Ceremony Coordination is an unconfigured example choice; Day-of is optional and unconfigured", () => {
     const master = getEventOrderStarterMaster("EO-D-02")!;
     const fixed = master.sections.flatMap((s) => s.offerings ?? []);
-    assert.ok(fixed.every((o) => o.includedByDefault === true));
-    assert.ok(fixed.some((o) => o.name === "Ceremony Coordination" && o.unitPrice === 500));
-    assert.ok(fixed.some((o) => o.name === "Day-of Coordination" && o.unitPrice === 1200));
+    assert.ok(!fixed.some((o) => o.name === "Ceremony Coordination"));
+    assert.ok(!fixed.some((o) => o.name === "Day-of Coordination"));
+    const ceremony = starterChoiceGroups(master).flatMap((g) => g.options).find((o) => o.name === "Ceremony Coordination");
+    assert.ok(ceremony);
+    assert.equal(ceremony!.unitPrice ?? null, null);
+    assert.equal(ceremony!.isIncluded ?? false, false);
+    const dayOf = starterChoiceGroups(master).flatMap((g) => g.options).find((o) => o.name === "Day-of Coordination");
+    assert.ok(dayOf);
+    assert.equal(dayOf!.unitPrice ?? null, null);
+    assert.equal(dayOf!.isIncluded ?? false, false);
 
     const lines = fixed.map((o, i) =>
       fakeLine({
@@ -270,6 +280,7 @@ describe("EO starter commercial semantics", () => {
     assert.equal(rentals.minSelect, 0);
     assert.equal(rentals.selectionMode, "multi");
     assert.equal(rentals.allowQuantity, true);
+    assert.deepEqual(rentals.options.map((o) => o.name), ["Farm Table"]);
   });
 
   it("10. provision upgrades legacy flats and preserves customized; load path uses ensure", () => {
@@ -287,38 +298,45 @@ describe("EO starter commercial semantics", () => {
   it("11. included-only defaults: defaultApplySelections selects included fixed lines only", () => {
     const included = fakeLine({
       id: "inc",
-      description: "Day-of Coordination",
+      description: "Ceremony Coordination",
       includedByDefault: true,
-      unitPrice: 1200,
+      unitPrice: 500,
     });
     // No optional fixed lines remain on corrected masters — package baseline is included-only.
     const defaults = defaultApplySelections([included]);
     assert.equal(defaults[0]?.selected, true);
   });
 
-  it("12. dinner/bar parent groups ship empty dependent scaffolds (no invented menu items)", () => {
+  it("12. dinner/bar parent groups ship illustrative unpriced follow-ups, not empty scaffolds", () => {
     for (const key of ["EO-D-01", "EO-D-02"] as const) {
       const master = getEventOrderStarterMaster(key)!;
-      const plated = starterChoiceGroups(master).find((g) => g.name === "Plated dinner details");
-      const buffet = starterChoiceGroups(master).find((g) => g.name === "Buffet dinner details");
-      assert.ok(plated, `${key} plated dependent`);
-      assert.ok(buffet, `${key} buffet dependent`);
-      assert.deepEqual(plated!.dependsOnOptionNames, ["Plated Dinner"]);
-      assert.deepEqual(buffet!.dependsOnOptionNames, ["Buffet Dinner"]);
-      assert.equal(plated!.options.length, 0);
-      assert.equal(buffet!.options.length, 0);
-      assert.equal(plated!.minSelect, 0);
-      assert.equal(buffet!.minSelect, 0);
-      const beer = starterChoiceGroups(master).find((g) => g.name === "Beer & Wine details");
+      const groups = starterChoiceGroups(master);
+      const platedEntrees = groups.find(
+        (g) => g.name === "Entrées" && (g.dependsOnOptionNames ?? []).includes("Plated Dinner"),
+      );
+      const buffetEntrees = groups.find(
+        (g) => g.name === "Entrées" && (g.dependsOnOptionNames ?? []).includes("Buffet Dinner"),
+      );
+      assert.ok(platedEntrees, `${key} plated Entrées`);
+      assert.ok(buffetEntrees, `${key} buffet Entrées`);
+      assert.equal(platedEntrees!.options.length, 3);
+      assert.equal(buffetEntrees!.options.length, 3);
+      assert.ok(platedEntrees!.options.every((o) => (o.unitPrice ?? null) == null && (o.isIncluded ?? false) === false));
+      const beer = groups.find((g) => g.name === "Beer selections");
+      const wine = groups.find((g) => g.name === "Wine selections");
       assert.ok(beer);
+      assert.ok(wine);
       assert.deepEqual(beer!.dependsOnOptionNames, ["Beer & Wine"]);
-      assert.equal(beer!.options.length, 0);
+      assert.deepEqual(wine!.dependsOnOptionNames, ["Beer & Wine"]);
+      assert.ok(beer!.options.length > 0);
+      assert.ok(wine!.options.length > 0);
     }
     const reception = getEventOrderStarterMaster("EO-D-01")!;
-    const fullBar = starterChoiceGroups(reception).find((g) => g.name === "Full Bar details");
-    assert.ok(fullBar);
-    assert.deepEqual(fullBar!.dependsOnOptionNames, ["Full Bar"]);
-    assert.equal(fullBar!.options.length, 0);
+    assert.equal(
+      starterChoiceGroups(reception).some((g) => g.name === "Full Bar details"),
+      false,
+    );
+    assert.equal(starterChoiceOptionNames(reception).includes("Chiavari Chair"), false);
   });
 
   it("13. provision resolves dependsOnOptionNames and additive scaffolding", () => {
@@ -326,6 +344,7 @@ describe("EO starter commercial semantics", () => {
     assert.match(provision, /depends_on_option_ids/);
     assert.match(provision, /dependsOnOptionNames/);
     assert.match(provision, /ensureConditionalChoiceScaffolding/);
+    assert.match(provision, /group.options.length > 0/);
     const migration = readFileSync(
       join(root, "supabase/migrations/20261423300000_event_order_conditional_choice_groups.sql"),
       "utf8",
