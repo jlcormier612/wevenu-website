@@ -51,6 +51,15 @@ describe("useEventOrderTemplate / sendEventOrderTemplate", () => {
     );
   });
 
+  it("Library Send refuses unconfigured offerings before creating a client_choices packet", () => {
+    const sendFn = src.slice(src.indexOf("export async function sendEventOrderTemplate"));
+    const guard = sendFn.indexOf("unanswerableChoicesSendMessage");
+    const create = sendFn.indexOf("createClientChoicesFromEventOrderTemplate");
+    const apply = sendFn.indexOf("startOrApplyEventOrderTemplate");
+    assert.ok(guard > 0 && create > guard);
+    assert.ok(apply > guard);
+  });
+
   it("Use without groups returns after apply without offerings send", () => {
     const useFn = src.slice(
       src.indexOf("export async function useEventOrderTemplate"),

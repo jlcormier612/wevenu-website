@@ -10,8 +10,10 @@ import {
   updateClientChoicesDraft,
 } from "@/lib/client-choices/service";
 import type { ChoicesAnswers } from "@/lib/client-choices/types";
+import { unanswerableChoicesSendMessage } from "@/lib/client-choices/validate-answers";
 import {
   defaultAnswersFromEventOrderTemplate,
+  selectionDefinitionFromEventOrderTemplate,
   templateHasSelectableGroups,
 } from "@/lib/event-order-templates/selection-definition";
 import type { TemplateApplySelection } from "@/lib/event-order-templates/offerings";
@@ -131,18 +133,25 @@ export async function sendEventOrderTemplate(
   const template = await templatesRepo.getTemplateWithDetails(supabase, venue.id, templateId);
   if (!template) return { ok: false, message: "Event Order Template not found." };
 
-  const applied = await startOrApplyEventOrderTemplate(
-    eventId, templateId, opts?.lineSelections,
-  );
-  if (!applied.ok) {
-    return { ok: false, message: applied.message ?? "Could not apply fixed offerings." };
-  }
-
   if (!templateHasSelectableGroups(template)) {
     return {
       ok: false,
       message: SEND_REQUIRES_SELECTABLE_GROUPS_MESSAGE,
     };
+  }
+
+  const unanswerable = unanswerableChoicesSendMessage(
+    selectionDefinitionFromEventOrderTemplate(template),
+  );
+  if (unanswerable) {
+    return { ok: false, message: unanswerable };
+  }
+
+  const applied = await startOrApplyEventOrderTemplate(
+    eventId, templateId, opts?.lineSelections,
+  );
+  if (!applied.ok) {
+    return { ok: false, message: applied.message ?? "Could not apply fixed offerings." };
   }
 
   const created = await createClientChoicesFromEventOrderTemplate(eventId, templateId);
