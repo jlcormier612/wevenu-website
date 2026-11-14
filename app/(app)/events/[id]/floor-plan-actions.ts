@@ -529,6 +529,7 @@ export async function decideSetupFloorPlanPreferenceAction(
   input:
     | { decision: "decline" }
     | { decision: "defer" }
+    | { decision: "accept"; seatingChoice?: "start_on_proposed"; seatingInUseFloorPlanId?: string }
     | { decision: "approve"; seatingChoice?: "start_on_preferred"; seatingInUseFloorPlanId?: string },
 ): Promise<FloorPlanActionResult> {
   const { decideSetupFloorPlanPreference } = await import("@/lib/floor-plans/setup-service");

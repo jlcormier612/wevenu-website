@@ -490,12 +490,12 @@ function WeddingSetupsSection({
       });
       const d = await r.json() as { ok?: boolean; error?: string };
       if (!r.ok || !d.ok) {
-        setError(d.error ?? "Could not save your preference for this setup.");
+        setError(d.error ?? "Could not select this layout for the setup.");
         return;
       }
       onSelected();
     } catch {
-      setError("Could not save your preference. Nothing was changed — you can try again.");
+      setError("Could not select this layout. Nothing was changed — you can try again.");
     } finally {
       setPendingKey(null);
     }
@@ -506,16 +506,15 @@ function WeddingSetupsSection({
       <div>
         <h2 className="text-lg font-semibold text-heading">Your wedding setups</h2>
         <p className="text-xs text-muted-foreground mt-0.5" data-testid="floor-plan-wedding-setups-copy">
-          Choose one preferred layout for each part of your day (for example ceremony, cocktail, and
-          reception). Alternatives appear only under the setup they belong to. Saving a preference asks your
-          venue to review it — it does not approve the layout or change what the venue will use by itself.
+          Choose one starting layout for each part of your day (for example ceremony, cocktail, and
+          reception). Alternatives appear only under the setup they belong to. Your selection becomes the
+          working layout for that setup — no extra venue approval step for the choice itself.
         </p>
       </div>
       {setups.map((setup) => {
-        const status = normalizeCouplePreferenceStatus(
-          setup.couplePreferenceStatus,
-          setup.coupleSelectedFloorPlanId,
-        );
+        const status = setup.couplePreferenceStatus ?? null;
+        const proposed = status === "proposed_replacement";
+        const applied = status === "applied" || status === "approved";
         return (
           <div
             key={setup.setupId}
@@ -527,8 +526,13 @@ function WeddingSetupsSection({
                 Required setup
               </p>
               <p className="text-sm font-semibold text-heading">{setup.name}</p>
-              {status === "pending" && setup.coupleSelectedFloorPlanId ? (
-                <p className="text-xs text-amber-800 mt-1">Preference pending venue review for this setup.</p>
+              {proposed ? (
+                <p className="text-xs text-amber-800 mt-1">
+                  Layout change requested for this setup — waiting on your venue. Current working layout stays until they accept.
+                </p>
+              ) : null}
+              {applied && setup.coupleSelectedFloorPlanId && !proposed ? (
+                <p className="text-xs text-muted-foreground mt-1">Your selection is the working layout for this setup.</p>
               ) : null}
             </div>
             {setup.layouts.length === 0 ? (
@@ -555,11 +559,11 @@ function WeddingSetupsSection({
                       >
                         <span className="font-medium text-heading">{layout.name}</span>
                         <span className="mt-1 block text-[0.7rem] text-muted-foreground">
-                          {selected ? "Your preference · " : ""}
-                          {layout.isApproved || (status === "approved" && layout.isWorking)
-                            ? "Venue will use"
-                            : layout.isWorking
-                              ? "Venue working layout"
+                          {selected ? "Your selection · " : ""}
+                          {layout.isWorking
+                            ? "Working layout for this setup"
+                            : proposed && selected
+                              ? "Proposed replacement"
                               : setup.layouts.length > 1
                                 ? "Alternative for this setup"
                                 : "Layout for this setup"}
@@ -1084,12 +1088,13 @@ export default function FloorPlanSection({
   const mayAddTables = Boolean(plan?.coupleMayAddTables !== false) && canEditLayout;
   const editable = hasShared && canEditLayout;
   const reviewNote = plan?.clientReviewNote ?? selectedSummary?.clientReviewNote ?? null;
-  // Portal list does not expose client_access; seating tab enforces its own gate.
-  // Prefer seating guidance only when this plan is designated seating-in-use.
+  // Effective seating permission from floor_plans.client_access (exposed as seatingEnabled).
   const seatingEnabled = Boolean(
-    plan?.isSeatingInUse
-      || selectedSummary?.isSeatingInUse
-      || list.some((p) => p.isSeatingInUse),
+    plan?.seatingEnabled === true
+      || selectedSummary?.seatingEnabled === true
+      || (selectedId
+        ? list.find((p) => p.id === selectedId)?.seatingEnabled === true
+        : list.some((p) => p.seatingEnabled === true)),
   );
   const guidance = portalFloorPlanGuidance({
     needsChooser,

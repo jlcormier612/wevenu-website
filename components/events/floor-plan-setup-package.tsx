@@ -2,7 +2,9 @@
 
 /**
  * Phase 3 — progressive venue setup package authoring.
- * Simple one-layout path stays available above; this panel is optional.
+ * Setup-scoped couple selection establishes that setup's working layout
+ * (no Approve / Decline / Defer ceremony). Post-approval switches are proposed
+ * replacements requiring deliberate venue review.
  */
 import * as React from "react";
 
@@ -21,7 +23,7 @@ import {
 } from "@/app/(app)/events/[id]/floor-plan-actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { normalizeCouplePreferenceStatus } from "@/lib/floor-plans/preference-lifecycle";
+import { classifyPreferenceApprovalCase } from "@/lib/floor-plans/preference-lifecycle";
 import type { SetupWithMembers } from "@/lib/floor-plans/setups";
 import type { FloorPlan } from "@/lib/floor-plans/types";
 
@@ -29,9 +31,15 @@ type Props = {
   eventId: string;
   floorPlans: FloorPlan[];
   canEdit: boolean;
+  seatCounts?: Record<string, number>;
 };
 
-export function FloorPlanSetupPackagePanel({ eventId, floorPlans, canEdit }: Props) {
+export function FloorPlanSetupPackagePanel({
+  eventId,
+  floorPlans,
+  canEdit,
+  seatCounts = {},
+}: Props) {
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const [setups, setSetups] = React.useState<SetupWithMembers[]>([]);
@@ -39,6 +47,7 @@ export function FloorPlanSetupPackagePanel({ eventId, floorPlans, canEdit }: Pro
   const [pending, startTransition] = React.useTransition();
   const [error, setError] = React.useState<string | null>(null);
   const [newName, setNewName] = React.useState("");
+  const [caseCChoice, setCaseCChoice] = React.useState<Record<string, string>>({});
 
   async function reload() {
     setLoading(true);
@@ -81,10 +90,9 @@ export function FloorPlanSetupPackagePanel({ eventId, floorPlans, canEdit }: Pro
         <div>
           <h3 className="text-sm font-semibold text-heading">Wedding setups</h3>
           <p className="mt-1 text-xs text-muted-foreground max-w-2xl">
-            For multi-part weddings, start with Ceremony + Reception so the couple can save one preference
-            per part of the day. Add Cocktail hour when needed. Do not offer ceremony and reception as
-            competing full-celebration choices in a single list — put each under its setup. Alternatives
-            belong under one setup only. A single-layout wedding can skip this.
+            For multi-part weddings, start with Ceremony + Reception so the couple can choose one
+            starting layout per part of the day. Their selection becomes that setup&apos;s working
+            layout — no separate Approve / Decline / Defer step. Furniture approval stays separate.
           </p>
         </div>
         <Button
@@ -112,11 +120,26 @@ export function FloorPlanSetupPackagePanel({ eventId, floorPlans, canEdit }: Pro
           ) : null}
 
           {setups.map((setup) => {
-            const status = normalizeCouplePreferenceStatus(
-              setup.couplePreferenceStatus,
-              setup.coupleSelectedFloorPlanId,
-            );
+            const status = setup.couplePreferenceStatus;
             const preferred = setup.members.find((m) => m.floorPlanId === setup.coupleSelectedFloorPlanId);
+            const working = setup.members.find((m) => m.floorPlanId === setup.operationalFloorPlanId);
+            const isProposed = status === "proposed_replacement" && Boolean(preferred);
+            const currentSeats = setup.operationalFloorPlanId
+              ? (seatCounts[setup.operationalFloorPlanId] ?? 0)
+              : 0;
+            const proposedSeats = setup.coupleSelectedFloorPlanId
+              ? (seatCounts[setup.coupleSelectedFloorPlanId] ?? 0)
+              : 0;
+            const seatingCase =
+              isProposed && setup.coupleSelectedFloorPlanId
+                ? classifyPreferenceApprovalCase({
+                    currentOperationalId: setup.operationalFloorPlanId,
+                    preferredId: setup.coupleSelectedFloorPlanId,
+                    currentHasSeats: currentSeats > 0,
+                    preferredHasSeats: proposedSeats > 0,
+                  })
+                : null;
+
             return (
               <div
                 key={setup.id}
@@ -157,6 +180,7 @@ export function FloorPlanSetupPackagePanel({ eventId, floorPlans, canEdit }: Pro
                     setup.members.map((m) => {
                       const isWorking = setup.operationalFloorPlanId === m.floorPlanId;
                       const isAlt = !isWorking && setup.members.length > 1;
+                      const isCouplePick = setup.coupleSelectedFloorPlanId === m.floorPlanId;
                       return (
                         <li
                           key={m.id}
@@ -168,8 +192,8 @@ export function FloorPlanSetupPackagePanel({ eventId, floorPlans, canEdit }: Pro
                             <span className="ml-2 text-[0.7rem] text-muted-foreground">
                               {isWorking ? "Working layout for this setup" : isAlt ? "Alternative in this setup" : "Layout"}
                               {m.sharedWithCouple ? " · Shared with couple" : " · Not shared"}
-                              {setup.coupleApprovedFloorPlanId === m.floorPlanId ? " · Venue will use" : ""}
-                              {setup.coupleSelectedFloorPlanId === m.floorPlanId ? " · Couple preference" : ""}
+                              {isCouplePick && isProposed ? " · Proposed replacement" : ""}
+                              {isCouplePick && !isProposed ? " · Couple selection" : ""}
                             </span>
                           </span>
                           {canEdit ? (
@@ -232,37 +256,74 @@ export function FloorPlanSetupPackagePanel({ eventId, floorPlans, canEdit }: Pro
                   </div>
                 ) : null}
 
-                {status === "pending" && preferred ? (
+                {isProposed && preferred ? (
                   <div
                     className="rounded-md border border-amber-500/40 bg-amber-500/5 p-2 space-y-2"
                     data-testid={`floor-plan-setup-preference-${setup.id}`}
                   >
                     <p className="text-xs text-heading">
-                      Couple preference for {setup.name}: “{preferred.floorPlanName}” (pending review). Approving
-                      here does not change other setups.
+                      Proposed layout change for {setup.name}: “{preferred.floorPlanName}”. Current working
+                      layout{working ? ` (“${working.floorPlanName}”)` : ""} stays until you accept. Seating
+                      assignments are never moved or deleted.
                     </p>
                     {canEdit ? (
                       <div className="flex flex-wrap gap-2">
+                        {seatingCase === "C" && setup.operationalFloorPlanId ? (
+                          <div className="w-full space-y-1.5 text-xs text-muted-foreground">
+                            <p>Both layouts have seating. Choose which seating arrangement stays in use.</p>
+                            {[{
+                              id: setup.operationalFloorPlanId,
+                              name: working?.floorPlanName ?? "Current working",
+                              seats: currentSeats,
+                            }, {
+                              id: preferred.floorPlanId,
+                              name: preferred.floorPlanName,
+                              seats: proposedSeats,
+                            }].map((opt) => (
+                              <label key={opt.id} className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="radio"
+                                  name={`setup-seating-${setup.id}`}
+                                  checked={caseCChoice[setup.id] === opt.id}
+                                  onChange={() =>
+                                    setCaseCChoice((prev) => ({ ...prev, [setup.id]: opt.id }))
+                                  }
+                                />
+                                <span>
+                                  {opt.name}
+                                  {opt.seats > 0 ? ` · ${opt.seats} seated` : ""}
+                                </span>
+                              </label>
+                            ))}
+                          </div>
+                        ) : null}
                         <Button
                           type="button"
                           size="sm"
-                          disabled={pending}
+                          disabled={pending || (seatingCase === "C" && !caseCChoice[setup.id])}
+                          data-testid={`floor-plan-setup-accept-replacement-${setup.id}`}
                           onClick={() =>
                             run(() =>
                               decideSetupFloorPlanPreferenceAction(eventId, setup.id, {
-                                decision: "approve",
-                                seatingChoice: "start_on_preferred",
+                                decision: "accept",
+                                seatingChoice:
+                                  seatingCase === "B" ? "start_on_proposed" : undefined,
+                                seatingInUseFloorPlanId:
+                                  seatingCase === "C" ? caseCChoice[setup.id] : undefined,
                               }),
                             )
                           }
                         >
-                          Approve preference
+                          {seatingCase === "B"
+                            ? "Accept and start seating on proposed"
+                            : "Accept layout replacement"}
                         </Button>
                         <Button
                           type="button"
                           size="sm"
                           variant="outline"
                           disabled={pending}
+                          data-testid={`floor-plan-setup-keep-current-${setup.id}`}
                           onClick={() =>
                             run(() =>
                               decideSetupFloorPlanPreferenceAction(eventId, setup.id, {
@@ -271,22 +332,7 @@ export function FloorPlanSetupPackagePanel({ eventId, floorPlans, canEdit }: Pro
                             )
                           }
                         >
-                          Decline
-                        </Button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="ghost"
-                          disabled={pending}
-                          onClick={() =>
-                            run(() =>
-                              decideSetupFloorPlanPreferenceAction(eventId, setup.id, {
-                                decision: "defer",
-                              }),
-                            )
-                          }
-                        >
-                          Defer
+                          Keep current layout
                         </Button>
                       </div>
                     ) : null}
@@ -318,23 +364,24 @@ export function FloorPlanSetupPackagePanel({ eventId, floorPlans, canEdit }: Pro
             <div className="flex flex-wrap gap-2 items-end" data-testid="floor-plan-setup-add">
               <div className="space-y-1 grow min-w-[12rem]">
                 <label className="text-xs text-muted-foreground" htmlFor="new-setup-name">
-                  Add a required setup
+                  Add another setup
                 </label>
                 <Input
                   id="new-setup-name"
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
-                  placeholder="e.g. Ceremony, Cocktail hour, Reception"
-                  data-testid="floor-plan-setup-name"
+                  placeholder="e.g. Cocktail hour"
+                  data-testid="floor-plan-setup-name-input"
                 />
               </div>
               <Button
                 type="button"
                 size="sm"
                 disabled={pending || !newName.trim()}
-                data-testid="floor-plan-setup-create"
+                data-testid="floor-plan-setup-add-submit"
                 onClick={() => {
                   const name = newName.trim();
+                  if (!name) return;
                   run(async () => {
                     const r = await createRequiredSetupAction(eventId, name);
                     if (r.ok) setNewName("");
@@ -342,14 +389,13 @@ export function FloorPlanSetupPackagePanel({ eventId, floorPlans, canEdit }: Pro
                   });
                 }}
               >
-                {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
                 Add setup
               </Button>
             </div>
           ) : null}
 
           {error ? (
-            <p className="text-sm text-destructive" data-testid="floor-plan-setup-error">{error}</p>
+            <p className="text-xs text-destructive" data-testid="floor-plan-setup-package-error">{error}</p>
           ) : null}
         </div>
       )}

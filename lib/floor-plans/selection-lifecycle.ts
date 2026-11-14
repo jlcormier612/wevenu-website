@@ -108,16 +108,12 @@ export function nextStateAfterLayoutSelect(input: {
 
   let seatingInUse = input.seatingInUseFloorPlanId;
 
-  if (seatingCase === "B") {
-    // Keep seats on the previous working plan; start new seating host on selected.
-    const prior = input.operationalFloorPlanId;
-    seatingInUse = input.selectedFloorPlanId;
-    // Prior seats remain on `prior` rows; seating-in-use moves to the new plan
-    // for new assignments. Spec Case B: deliberate start on preferred.
-    void prior;
-  } else if (seatingCase === "C") {
-    // Both have seats — do not silently change seating-in-use.
-    // Venue (or explicit resolve) must pick. Keep existing pointer.
+  if (seatingCase === "B" || seatingCase === "C") {
+    // Do not silently change seating-in-use. Assignment rows stay on their plans.
+    // Venue (or explicit seating-in-use control) must resolve deliberately.
+    if (!seatingInUse && input.operationalFloorPlanId && input.currentHasSeats) {
+      seatingInUse = input.operationalFloorPlanId;
+    }
   } else if (!seatingInUse && input.selectedHasSeats) {
     seatingInUse = input.selectedFloorPlanId;
   }
@@ -128,7 +124,7 @@ export function nextStateAfterLayoutSelect(input: {
     operationalFloorPlanId: input.selectedFloorPlanId,
     seatingInUseFloorPlanId: seatingInUse,
     selectionStatus: "applied",
-    needsSeatingResolution: seatingCase === "C",
+    needsSeatingResolution: seatingCase === "B" || seatingCase === "C",
   };
 }
 

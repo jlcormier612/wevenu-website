@@ -28,7 +28,7 @@ describe("selection lifecycle — pick establishes working", () => {
     }
   });
 
-  it("Case B keeps deliberate seating-in-use on selected without rewriting seats", () => {
+  it("Case B establishes working without silently changing seating-in-use", () => {
     const next = nextStateAfterLayoutSelect({
       selectedFloorPlanId: "b",
       operationalFloorPlanId: "a",
@@ -42,8 +42,9 @@ describe("selection lifecycle — pick establishes working", () => {
     assert.equal(next.mode, "establish_working");
     if (next.mode === "establish_working") {
       assert.equal(next.seatingCase, "B");
-      assert.equal(next.seatingInUseFloorPlanId, "b");
+      assert.equal(next.seatingInUseFloorPlanId, "a");
       assert.equal(next.operationalFloorPlanId, "b");
+      assert.equal(next.needsSeatingResolution, true);
     }
   });
 

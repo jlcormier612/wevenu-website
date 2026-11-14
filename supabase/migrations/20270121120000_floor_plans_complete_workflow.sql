@@ -280,12 +280,12 @@ begin
   end if;
 
   v_seating_in_use := v_event.seating_in_use_floor_plan_id;
-  if v_seating_case = 'B' then
-    -- Deliberate: start seating work on the newly selected plan; old seats remain.
-    v_seating_in_use := v_plan_id;
-  elsif v_seating_case = 'C' then
-    -- Keep existing seating-in-use; venue must resolve deliberately.
-    null;
+  if v_seating_case in ('B', 'C') then
+    -- Never silently retarget seating-in-use. Keep current pointer; if unset while
+    -- the prior working plan has seats, anchor it there so seats remain findable.
+    if v_seating_in_use is null and v_event.operational_floor_plan_id is not null then
+      v_seating_in_use := v_event.operational_floor_plan_id;
+    end if;
   elsif v_seating_in_use is null and v_selected_seats > 0 then
     v_seating_in_use := v_plan_id;
   end if;
@@ -318,14 +318,14 @@ begin
     'operationalFloorPlanId', v_plan_id,
     'seatingInUseFloorPlanId', v_seating_in_use,
     'seatingCase', v_seating_case,
-    'needsSeatingResolution', (v_seating_case = 'C'),
+    'needsSeatingResolution', (v_seating_case in ('B', 'C')),
     'autoAssigned', false
   );
 end;
 $$;
 
 comment on function public.select_portal_floor_plan_offer(text, uuid) is
-  'Couple selects an offered layout: establishes working plan + share (applied). After furniture approval, a different offer becomes proposed_replacement without replacing operational. Never rewrites guest_seat_assignments.';
+  'Couple selects an offered layout: establishes working plan + share (applied). After furniture approval, a different offer becomes proposed_replacement without replacing operational. Never rewrites guest_seat_assignments. Case B/C leave seating-in-use for deliberate resolution.';
 
 grant execute on function public.select_portal_floor_plan_offer(text, uuid) to anon, authenticated;
 
@@ -376,5 +376,366 @@ drop trigger if exists floor_plan_objects_ready_lock_trg on public.floor_plan_ob
 create trigger floor_plan_objects_ready_lock_trg
   before insert or update or delete on public.floor_plan_objects
   for each row execute function public.floor_plan_objects_ready_lock();
+
+-- ── E. Portal list/detail expose effective seating access (client_access) ────
+create or replace function public.get_portal_floor_plans(p_token text)
+returns jsonb
+language plpgsql
+security definer
+set search_path to 'public'
+as $$
+declare
+  v_ids record;
+  v_operational uuid;
+  v_couple_selected uuid;
+  v_pref_status text;
+  v_approved uuid;
+  v_seating_in_use uuid;
+begin
+  select * into v_ids from public._resolve_portal_ids(p_token);
+  if v_ids.event_id is null then
+    return jsonb_build_object('error', 'invalid_token');
+  end if;
+  if v_ids.access_level = 'financial' then
+    return jsonb_build_object(
+      'floorPlans', '[]'::jsonb,
+      'operationalFloorPlanId', null,
+      'coupleSelectedFloorPlanId', null,
+      'couplePreferenceStatus', null,
+      'coupleApprovedFloorPlanId', null,
+      'seatingInUseFloorPlanId', null
+    );
+  end if;
+
+  select
+    e.operational_floor_plan_id,
+    e.couple_selected_floor_plan_id,
+    e.couple_preference_status,
+    e.couple_approved_floor_plan_id,
+    e.seating_in_use_floor_plan_id
+  into v_operational, v_couple_selected, v_pref_status, v_approved, v_seating_in_use
+  from public.events e
+  where e.id = v_ids.event_id and e.venue_id = v_ids.venue_id;
+
+  if v_couple_selected is not null and v_pref_status is null then
+    v_pref_status := 'applied';
+  end if;
+
+  return jsonb_build_object(
+    'operationalFloorPlanId', v_operational,
+    'coupleSelectedFloorPlanId', v_couple_selected,
+    'couplePreferenceStatus', v_pref_status,
+    'coupleApprovedFloorPlanId', v_approved,
+    'seatingInUseFloorPlanId', v_seating_in_use,
+    'floorPlans', coalesce((
+      select jsonb_agg(
+        jsonb_build_object(
+          'id', fp.id,
+          'name', fp.name,
+          'isOperational', (v_operational is not null and fp.id = v_operational),
+          'isCoupleSelected', (v_couple_selected is not null and fp.id = v_couple_selected),
+          'isCoupleApproved', (v_approved is not null and fp.id = v_approved),
+          'isSeatingInUse', (v_seating_in_use is not null and fp.id = v_seating_in_use),
+          'seatingAccess', fp.client_access,
+          'seatingEnabled', (coalesce(fp.client_access, 'hidden') = 'view'),
+          'isReady', (fp.finalized_at is not null),
+          'clientLayoutStatus', coalesce(fp.client_layout_status, 'working'),
+          'clientSubmittedAt', fp.client_submitted_at,
+          'clientReviewNote', fp.client_review_note,
+          'clientReviewedAt', fp.client_reviewed_at,
+          'coupleMayAddTables', coalesce(fp.couple_may_add_tables, true),
+          'spaceId', fp.space_id,
+          'createdAt', fp.created_at
+        )
+        order by fp.created_at asc
+      )
+      from public.floor_plans fp
+      where fp.event_id = v_ids.event_id
+        and fp.venue_id = v_ids.venue_id
+        and fp.shared_with_couple = true
+    ), '[]'::jsonb)
+  );
+end;
+$$;
+
+grant execute on function public.get_portal_floor_plans(text) to anon, authenticated;
+
+create or replace function public.get_portal_floor_plan(p_token text, p_floor_plan_id uuid)
+returns jsonb
+language plpgsql
+security definer
+set search_path to 'public'
+as $$
+declare
+  v_ids record;
+  v_operational uuid;
+  v_couple_selected uuid;
+  v_pref_status text;
+  v_approved uuid;
+  v_seating_in_use uuid;
+  v_plan public.floor_plans%rowtype;
+  v_guest_count integer;
+  v_space_id uuid;
+  v_space_name text;
+  v_space_capacity integer;
+begin
+  select * into v_ids from public._resolve_portal_ids(p_token);
+  if v_ids.event_id is null then
+    return jsonb_build_object('error', 'invalid_token');
+  end if;
+  if v_ids.access_level = 'financial' then
+    return jsonb_build_object('error', 'insufficient_access');
+  end if;
+
+  select * into v_plan
+  from public.floor_plans fp
+  where fp.id = p_floor_plan_id
+    and fp.event_id = v_ids.event_id
+    and fp.venue_id = v_ids.venue_id
+    and fp.shared_with_couple = true;
+
+  if not found then
+    return jsonb_build_object('error', 'not_found_or_not_shared');
+  end if;
+
+  select
+    e.operational_floor_plan_id,
+    e.couple_selected_floor_plan_id,
+    e.couple_preference_status,
+    e.couple_approved_floor_plan_id,
+    e.seating_in_use_floor_plan_id,
+    e.guest_count,
+    e.space_id
+  into v_operational, v_couple_selected, v_pref_status, v_approved, v_seating_in_use, v_guest_count, v_space_id
+  from public.events e
+  where e.id = v_ids.event_id and e.venue_id = v_ids.venue_id;
+
+  if v_couple_selected is not null and v_pref_status is null then
+    v_pref_status := 'applied';
+  end if;
+
+  v_space_id := coalesce(v_plan.space_id, v_space_id);
+
+  if v_space_id is not null then
+    select vs.name, vs.capacity
+    into v_space_name, v_space_capacity
+    from public.venue_spaces vs
+    where vs.id = v_space_id
+      and vs.venue_id = v_ids.venue_id;
+  end if;
+
+  return jsonb_build_object(
+    'couplePreferenceStatus', v_pref_status,
+    'coupleApprovedFloorPlanId', v_approved,
+    'seatingInUseFloorPlanId', v_seating_in_use,
+    'plan', jsonb_build_object(
+      'id', v_plan.id,
+      'name', v_plan.name,
+      'spaceId', v_plan.space_id,
+      'isOperational', (v_operational is not null and v_plan.id = v_operational),
+      'isCoupleSelected', (v_couple_selected is not null and v_plan.id = v_couple_selected),
+      'isCoupleApproved', (v_approved is not null and v_plan.id = v_approved),
+      'isSeatingInUse', (v_seating_in_use is not null and v_plan.id = v_seating_in_use),
+      'seatingAccess', v_plan.client_access,
+      'seatingEnabled', (coalesce(v_plan.client_access, 'hidden') = 'view'),
+      'isReady', (v_plan.finalized_at is not null),
+      'clientLayoutStatus', coalesce(v_plan.client_layout_status, 'working'),
+      'clientSubmittedAt', v_plan.client_submitted_at,
+      'clientReviewNote', v_plan.client_review_note,
+      'clientReviewedAt', v_plan.client_reviewed_at,
+      'coupleMayAddTables', coalesce(v_plan.couple_may_add_tables, true),
+      'backgroundImageUrl', v_plan.background_image_url,
+      'backgroundImageOpacity', v_plan.background_image_opacity,
+      'roomWidthFt', v_plan.room_width_ft,
+      'roomDepthFt', v_plan.room_depth_ft,
+      'measurementUnit', v_plan.measurement_unit,
+      'notes', v_plan.notes
+    ),
+    'eventGuestCount', v_guest_count,
+    'spaceName', v_space_name,
+    'spaceCapacity', v_space_capacity,
+    'objects', coalesce((
+      select jsonb_agg(
+        jsonb_build_object(
+          'id', o.id,
+          'objectType', o.object_type,
+          'label', o.label,
+          'capacity', o.capacity,
+          'x', o.x,
+          'y', o.y,
+          'width', o.width,
+          'height', o.height,
+          'rotation', o.rotation,
+          'sortOrder', o.sort_order,
+          'color', o.color,
+          'notes', o.notes,
+          'displayShape', o.display_shape,
+          'inventoryItemId', o.inventory_item_id,
+          'locked', coalesce(o.locked, false)
+        )
+        order by o.sort_order, o.created_at
+      )
+      from public.floor_plan_objects o
+      where o.floor_plan_id = v_plan.id
+        and o.venue_id = v_ids.venue_id
+    ), '[]'::jsonb)
+  );
+end;
+$$;
+
+grant execute on function public.get_portal_floor_plan(text, uuid) to anon, authenticated;
+
+-- ── F. Setup-scoped selection establishes working layout (no preference Approve) ─
+create or replace function public.select_portal_setup_floor_plan_preference(
+  p_token text,
+  p_setup_id uuid,
+  p_floor_plan_id uuid
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path to 'public'
+as $$
+declare
+  v_ids record;
+  v_setup public.event_floor_plan_setups%rowtype;
+  v_plan public.floor_plans%rowtype;
+  v_op_status text;
+  v_has_approved_rev boolean := false;
+  v_current_seats int := 0;
+  v_selected_seats int := 0;
+  v_seating_case text := 'A';
+  v_seating_in_use uuid;
+begin
+  select * into v_ids from public._resolve_portal_ids(p_token);
+  if v_ids.event_id is null then
+    return jsonb_build_object('error', 'invalid_token');
+  end if;
+  if v_ids.access_level = 'financial' then
+    return jsonb_build_object('error', 'forbidden');
+  end if;
+
+  select * into v_setup
+  from public.event_floor_plan_setups s
+  where s.id = p_setup_id
+    and s.event_id = v_ids.event_id
+    and s.venue_id = v_ids.venue_id;
+  if v_setup.id is null then
+    return jsonb_build_object('error', 'setup_not_found');
+  end if;
+
+  if not exists (
+    select 1 from public.event_floor_plan_setup_members m
+    where m.setup_id = p_setup_id
+      and m.floor_plan_id = p_floor_plan_id
+      and m.venue_id = v_ids.venue_id
+  ) then
+    return jsonb_build_object('error', 'not_a_member_of_setup');
+  end if;
+
+  select * into v_plan
+  from public.floor_plans fp
+  where fp.id = p_floor_plan_id
+    and fp.event_id = v_ids.event_id
+    and fp.venue_id = v_ids.venue_id
+    and fp.shared_with_couple = true;
+  if v_plan.id is null then
+    return jsonb_build_object('error', 'not_shared_or_not_found');
+  end if;
+
+  if v_setup.operational_floor_plan_id is not null then
+    select coalesce(fp.client_layout_status, 'working') into v_op_status
+    from public.floor_plans fp
+    where fp.id = v_setup.operational_floor_plan_id;
+
+    select exists (
+      select 1 from public.floor_plan_layout_revisions r
+      where r.floor_plan_id = v_setup.operational_floor_plan_id
+        and r.status = 'approved'
+    ) into v_has_approved_rev;
+  end if;
+
+  -- After furniture approval on this setup's working plan: proposed replacement only.
+  if v_setup.operational_floor_plan_id is not null
+     and v_setup.operational_floor_plan_id is distinct from p_floor_plan_id
+     and (
+       coalesce(v_op_status, 'working') = 'approved'
+       or v_has_approved_rev
+     ) then
+    update public.event_floor_plan_setups
+    set
+      couple_selected_floor_plan_id = p_floor_plan_id,
+      couple_preference_status = 'proposed_replacement',
+      updated_at = now()
+    where id = p_setup_id
+      and venue_id = v_ids.venue_id;
+
+    return jsonb_build_object(
+      'ok', true,
+      'mode', 'proposed_replacement',
+      'setupId', p_setup_id,
+      'floorPlanId', p_floor_plan_id,
+      'couplePreferenceStatus', 'proposed_replacement',
+      'operationalFloorPlanId', v_setup.operational_floor_plan_id
+    );
+  end if;
+
+  if v_setup.operational_floor_plan_id is not null then
+    select count(*)::int into v_current_seats
+    from public.guest_seat_assignments g
+    where g.floor_plan_id = v_setup.operational_floor_plan_id;
+  end if;
+  select count(*)::int into v_selected_seats
+  from public.guest_seat_assignments g
+  where g.floor_plan_id = p_floor_plan_id;
+
+  if v_setup.operational_floor_plan_id is null
+     or v_setup.operational_floor_plan_id = p_floor_plan_id then
+    v_seating_case := 'A';
+  elsif v_current_seats > 0 and v_selected_seats > 0 then
+    v_seating_case := 'C';
+  elsif v_current_seats > 0 and v_selected_seats = 0 then
+    v_seating_case := 'B';
+  else
+    v_seating_case := 'A';
+  end if;
+
+  v_seating_in_use := v_setup.seating_in_use_floor_plan_id;
+  if v_seating_case in ('B', 'C') then
+    if v_seating_in_use is null and v_setup.operational_floor_plan_id is not null then
+      v_seating_in_use := v_setup.operational_floor_plan_id;
+    end if;
+  elsif v_seating_in_use is null and v_selected_seats > 0 then
+    v_seating_in_use := p_floor_plan_id;
+  end if;
+
+  update public.event_floor_plan_setups
+  set
+    couple_selected_floor_plan_id = p_floor_plan_id,
+    couple_preference_status = 'applied',
+    operational_floor_plan_id = p_floor_plan_id,
+    seating_in_use_floor_plan_id = v_seating_in_use,
+    updated_at = now()
+  where id = p_setup_id
+    and venue_id = v_ids.venue_id;
+
+  return jsonb_build_object(
+    'ok', true,
+    'mode', 'establish_working',
+    'setupId', p_setup_id,
+    'floorPlanId', p_floor_plan_id,
+    'couplePreferenceStatus', 'applied',
+    'operationalFloorPlanId', p_floor_plan_id,
+    'seatingInUseFloorPlanId', v_seating_in_use,
+    'seatingCase', v_seating_case,
+    'needsSeatingResolution', (v_seating_case in ('B', 'C'))
+  );
+end;
+$$;
+
+comment on function public.select_portal_setup_floor_plan_preference(text, uuid, uuid) is
+  'Setup-scoped couple selection establishes that setup working layout (applied). After furniture approval, a different member becomes proposed_replacement. Never rewrites guest_seat_assignments or other setups.';
+
+grant execute on function public.select_portal_setup_floor_plan_preference(text, uuid, uuid) to anon, authenticated;
 
 notify pgrst, 'reload schema';

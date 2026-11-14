@@ -69,11 +69,24 @@ describe("Phase 3 migration — explicit setups, no name inference, detach-safe"
     assert.match(migration, /never inferred/i);
   });
 
-  it("portal preference RPC is setup-scoped and preference-only", () => {
+  it("portal preference RPC historically was setup-scoped and preference-only (250)", () => {
     assert.match(migration, /select_portal_setup_floor_plan_preference/);
     assert.match(migration, /Does not set operational, share, or seating/);
     assert.match(migration, /Does not mutate other setups/);
     assert.match(migration, /get_portal_floor_plan_setups/);
+  });
+
+  it("complete-workflow migration makes setup select establish working layout", () => {
+    const workflow = readFileSync(
+      join(root, "supabase/migrations/20270121120000_floor_plans_complete_workflow.sql"),
+      "utf8",
+    );
+    const setupSelect = workflow
+      .split("create or replace function public.select_portal_setup_floor_plan_preference")[1]!;
+    assert.match(setupSelect, /operational_floor_plan_id = p_floor_plan_id/);
+    assert.match(setupSelect, /couple_preference_status = 'applied'/);
+    assert.match(setupSelect, /proposed_replacement/);
+    assert.doesNotMatch(setupSelect, /update public\.guest_seat_assignments|delete from public\.guest_seat_assignments/);
   });
 
   it("does not destructively backfill or reinterpret legacy events", () => {

@@ -46,7 +46,11 @@ import {
   createClientFloorPlanAction,
   duplicateClientFloorPlanAction,
 } from "@/app/(app)/clients/planning-actions";
-import { offeredLayoutsView, preferenceReviewIsActionable } from "@/lib/floor-plans/workspace-status";
+import {
+  needsSeatingHostResolution,
+  offeredLayoutsView,
+  preferenceReviewIsActionable,
+} from "@/lib/floor-plans/workspace-status";
 import { FloorPlanFlipPanel } from "@/components/events/floor-plan-flip-panel";
 import { FloorPlanRequiredStatus } from "@/components/events/floor-plan-required-status";
 import {
@@ -562,8 +566,17 @@ function LayoutSelectionFollowUpPanel({
           preferredHasSeats: proposedSeats > 0,
         })
       : null;
+  const seatingInUseSeats = seatingInUseFloorPlanId
+    ? (seatCounts[seatingInUseFloorPlanId] ?? 0)
+    : 0;
+  const seatingHostGap = needsSeatingHostResolution({
+    operationalFloorPlanId,
+    seatingInUseFloorPlanId,
+    operationalSeatCount: currentSeats,
+    seatingInUseSeatCount: seatingInUseSeats,
+  });
   const multipleSeated = floorPlans.filter((p) => (seatCounts[p.id] ?? 0) > 0).length > 1 && canEdit;
-  const needsSeatingResolution = seatingCase === "C";
+  const needsSeatingResolution = seatingCase === "C" || seatingHostGap;
 
   if (!preferenceReviewIsActionable({
     status,
@@ -574,6 +587,10 @@ function LayoutSelectionFollowUpPanel({
   })) {
     return null;
   }
+
+  const seatingHostPlan = seatingInUseFloorPlanId
+    ? floorPlans.find((p) => p.id === seatingInUseFloorPlanId) ?? null
+    : null;
 
   function runDecision(
     input:
@@ -733,17 +750,40 @@ function LayoutSelectionFollowUpPanel({
         </>
       )}
 
-      {multipleSeated && (
+      {seatingHostGap && !isProposed && (
+        <div
+          className="rounded border border-border bg-background/80 px-2 py-2 space-y-2"
+          data-testid="floor-plan-case-b-host"
+        >
+          <p className="text-sm font-medium text-heading">Seating still on a previous layout</p>
+          <p className="text-muted-foreground">
+            Working layout is{" "}
+            <span className="font-medium text-foreground">{working?.name ?? "the new plan"}</span>
+            , but seating assignments remain on{" "}
+            <span className="font-medium text-foreground">
+              {seatingHostPlan?.name ?? "the previous layout"}
+            </span>
+            . Assignments were not moved. Choose which seating arrangement is in use — this does not
+            transfer or delete seats.
+          </p>
+        </div>
+      )}
+
+      {(multipleSeated || seatingHostGap) && (
         <div className="pt-2 border-t border-border/60 space-y-1.5" data-testid="floor-plan-seating-in-use">
           <p className="font-medium text-heading">Seating arrangement in use</p>
           <p className="text-muted-foreground">
-            Multiple layouts have seats. Designate which seating arrangement is currently in use. This does not move or clear assignments.
+            Designate which seating arrangement is currently in use. This does not move or clear assignments.
           </p>
           <div className="flex flex-wrap gap-2">
             {floorPlans
-              .filter((p) => (seatCounts[p.id] ?? 0) > 0)
+              .filter((p) =>
+                (seatCounts[p.id] ?? 0) > 0
+                || (seatingHostGap && p.id === operationalFloorPlanId),
+              )
               .map((p) => {
                 const active = seatingInUseFloorPlanId === p.id;
+                const seats = seatCounts[p.id] ?? 0;
                 return (
                   <Button
                     key={p.id}
@@ -765,13 +805,19 @@ function LayoutSelectionFollowUpPanel({
                         toast.success(
                           active
                             ? "Cleared seating-in-use designation."
-                            : `Seating in use: ${p.name}`,
+                            : seats > 0
+                              ? `Seating in use: ${p.name}`
+                              : `New seating work starts on ${p.name} (prior seats stay on their layout)`,
                         );
                         router.refresh();
                       });
                     }}
                   >
-                    {active ? `In use: ${p.name}` : `Use seating on ${p.name}`}
+                    {active
+                      ? `In use: ${p.name}`
+                      : seats > 0
+                        ? `Use seating on ${p.name}`
+                        : `Start seating on ${p.name}`}
                   </Button>
                 );
               })}
@@ -1142,7 +1188,12 @@ export function FloorPlanWorkspace({
             </SheetHeader>
             <div className="px-4 pb-6">
               {tool === "setups" ? (
-                <FloorPlanSetupPackagePanel eventId={eventId} floorPlans={floorPlans} canEdit={canEdit} />
+                <FloorPlanSetupPackagePanel
+                  eventId={eventId}
+                  floorPlans={floorPlans}
+                  canEdit={canEdit}
+                  seatCounts={seatCounts}
+                />
               ) : tool === "flip" ? (
                 <FloorPlanFlipPanel eventId={eventId} floorPlans={floorPlans} canEdit={canEdit} />
               ) : null}
