@@ -2403,16 +2403,18 @@ html:has(.htc-staff) [data-slot="card"] {
 
 .htc-staff .htc-tours-row-content [data-tours-meta],
 .htc-staff .htc-tours-row-content [data-tours-aside],
-.htc-staff .htc-tours-row-content [data-tours-email] {
+.htc-staff .htc-tours-row-content [data-tours-notes-preview] {
   margin: 0;
   font-size: 0.75rem;
   line-height: 1.4;
   color: var(--muted-foreground);
 }
 
-.htc-staff .htc-tours-row-content [data-tours-email] {
-  overflow-wrap: anywhere;
-  word-break: break-word;
+.htc-staff .htc-tours-row-content [data-tours-notes-preview] {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .htc-staff .htc-tours-row-actions {
@@ -2470,6 +2472,13 @@ html:has(.htc-staff) [data-slot="card"] {
   font-size: 0.75rem;
 }
 
+.htc-staff .htc-tours-details-toggle {
+  height: 2.25rem;
+  min-height: 2.25rem;
+  font-size: 0.75rem;
+  padding-inline: 0.65rem;
+}
+
 .htc-staff .htc-tours-lead-link {
   height: 2.25rem;
   width: 2.25rem;
@@ -2496,6 +2505,29 @@ html:has(.htc-staff) [data-slot="card"] {
 
 .htc-staff .htc-tours-outcome [data-tours-followup-sent] {
   color: var(--htc-botanical);
+}
+
+.htc-staff .htc-tours-outcome [data-tours-email] {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: var(--muted-foreground);
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.htc-staff .htc-tours-outcome [data-tours-email] a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.htc-staff .htc-tours-outcome [data-tours-saved-notes] {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--heading);
+  white-space: pre-wrap;
 }
 
 .htc-staff .htc-tours-outcome-links {
@@ -2573,6 +2605,11 @@ html:has(.htc-staff) [data-slot="card"] {
 
   .htc-staff .htc-tours-row-tools {
     margin-left: 0;
+  }
+
+  .htc-staff .htc-tours-details-toggle {
+    min-height: 2.75rem;
+    height: auto;
   }
 
   .htc-staff .htc-tours-outcome {
@@ -2765,14 +2802,22 @@ html:has(.htc-staff) [data-slot="card"] {
 .htc-staff .htc-lead-tour-confirm-secondary,
 .htc-staff .htc-lead-tour-action-secondary,
 .htc-staff .htc-lead-tour-action-destructive,
-.htc-staff .htc-lead-tour-personal-link-btn,
-.htc-staff .htc-lead-tour-schedule-btn {
+.htc-staff .htc-lead-tour-personal-link-btn {
   height: auto;
   min-height: 2.75rem; /* 44px floor */
   padding-block: 0.55rem;
   padding-inline: 0.75rem;
   white-space: normal;
   line-height: 1.3;
+}
+
+/* Match adjacent Lead Workspace size="sm" actions (Start booking file). */
+.htc-staff .htc-lead-tour-schedule-btn {
+  height: 2rem;
+  min-height: 2rem;
+  padding-block: 0;
+  padding-inline: 0.75rem;
+  line-height: 1.25;
 }
 
 /*

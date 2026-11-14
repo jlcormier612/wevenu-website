@@ -78,7 +78,8 @@ import {
 import { recordExternalClientOutbound } from "@/lib/conversations/record-external-outbound";
 import { findOrCreateVenueCoupleConversation } from "@/lib/conversations/venue-couple-conversation";
 import { cancelRemindersForContract, createRemindersForContract, getReminderCadence } from "@/lib/notifications/obligations";
-import { CONTRACT_SIGNATURE_CONSENT_TEXT, hashContractContent } from "@/lib/contracts/signers";
+import { hashContractContent } from "@/lib/contracts/content-hash";
+import { CONTRACT_SIGNATURE_CONSENT_TEXT } from "@/lib/contracts/signers";
 import { applyRequiredSignerSignatureBlocks } from "@/lib/contracts/signature-blocks";
 import { captureContractBrandingSnapshot } from "@/lib/contracts/branding";
 import type { ClientSignerSeed } from "@/lib/contracts/repository";
@@ -87,7 +88,7 @@ import {
   type ContractWorkflowListRow,
 } from "@/lib/contracts/list-filters";
 
-export { hashContractContent } from "@/lib/contracts/signers";
+export { hashContractContent } from "@/lib/contracts/content-hash";
 
 async function withVenue<T>(
   fn: (supabase: Awaited<ReturnType<typeof createClient>>, venueId: string) => Promise<T>,

@@ -33,7 +33,7 @@ import {
   textingDisplayHeadline,
 } from "@/lib/texting-registration/human-facing";
 import { isBusinessIdentityComplete } from "@/lib/texting-registration/validation";
-import { maskRegistrationNumberLast4 } from "@/lib/texting-registration/sensitive-field";
+import { maskRegistrationNumberLast4 } from "@/lib/texting-registration/registration-number";
 import type { TextingSetupBundle } from "@/lib/texting-registration/service";
 import type {
   TextingPanelTone,

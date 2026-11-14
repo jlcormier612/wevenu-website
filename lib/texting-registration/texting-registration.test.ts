@@ -259,6 +259,21 @@ describe("sensitive registration number handling", () => {
     assert.equal(registrationNumberLast4("12-3456789"), "6789");
     assert.equal(maskRegistrationNumberLast4("6789"), "••••6789");
   });
+
+  it("keeps node:crypto out of the client-imported registration-number module", () => {
+    const display = readFileSync(path.resolve("lib/texting-registration/registration-number.ts"), "utf8");
+    const crypto = readFileSync(path.resolve("lib/texting-registration/sensitive-field.ts"), "utf8");
+    const client = readFileSync(path.resolve("components/settings/text-messaging-setup-section.tsx"), "utf8");
+    const validation = readFileSync(path.resolve("lib/texting-registration/validation.ts"), "utf8");
+    assert.doesNotMatch(display, /node:crypto|from ["']crypto["']/);
+    assert.match(crypto, /from ["']node:crypto["']/);
+    assert.match(crypto, /encryptSensitiveField/);
+    assert.match(crypto, /decryptSensitiveField/);
+    assert.match(client, /from ["']@\/lib\/texting-registration\/registration-number["']/);
+    assert.doesNotMatch(client, /texting-registration\/sensitive-field/);
+    assert.match(validation, /from ["']@\/lib\/texting-registration\/registration-number["']/);
+    assert.doesNotMatch(validation, /texting-registration\/sensitive-field/);
+  });
 });
 
 describe("status panel + smsReady coupling", () => {

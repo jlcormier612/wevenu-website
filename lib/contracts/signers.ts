@@ -1,12 +1,6 @@
-import { createHash } from "node:crypto";
-
 /** Shared consent language shown at every signature capture. */
 export const CONTRACT_SIGNATURE_CONSENT_TEXT =
   "I agree this constitutes my legal signature on this agreement.";
-
-export function hashContractContent(content: string): string {
-  return createHash("sha256").update(content, "utf8").digest("hex");
-}
 
 export type ContractSignerType = "venue" | "client";
 

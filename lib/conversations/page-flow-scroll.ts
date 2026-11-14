@@ -56,3 +56,43 @@ export function scrollWorkspaceMainToElement(
   }
   return true;
 }
+
+/** Wait until a hash/section target is in the document after a tab switch. */
+export function waitForElementById(
+  id: string,
+  attempts = 24,
+): Promise<HTMLElement | null> {
+  if (typeof document === "undefined") return Promise.resolve(null);
+  return new Promise((resolve) => {
+    let n = 0;
+    const tick = () => {
+      const el = document.getElementById(id);
+      if (el instanceof HTMLElement) {
+        resolve(el);
+        return;
+      }
+      if (++n >= attempts) {
+        resolve(null);
+        return;
+      }
+      requestAnimationFrame(tick);
+    };
+    tick();
+  });
+}
+
+/**
+ * After a workspace tab is activated, wait for the section, scroll the
+ * workspace main (sticky header safe), and move focus to the section.
+ */
+export async function scrollWorkspaceMainToId(
+  id: string,
+  behavior: ScrollBehavior = "smooth",
+): Promise<boolean> {
+  const target = await waitForElementById(id);
+  if (!target) return false;
+  if (!target.hasAttribute("tabindex")) target.setAttribute("tabindex", "-1");
+  const scrolled = scrollWorkspaceMainToElement(target, behavior);
+  target.focus({ preventScroll: true });
+  return scrolled;
+}
