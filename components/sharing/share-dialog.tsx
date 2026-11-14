@@ -58,6 +58,8 @@ export type ShareDialogProps = {
   /** Optional controlled open state (e.g. after a pre-share confirmation). */
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  /** Optional completeness or other notice rendered on the send surface. */
+  notice?: React.ReactNode;
   /** When true with onSchedule, offer Send now / Schedule send. */
   allowSchedule?: boolean;
   /** Persist a future send. scheduledFor is an ISO timestamp from the local datetime input. */
@@ -79,7 +81,7 @@ function defaultLocalScheduleValue(): string {
 
 export function ShareDialog({
   trigger, title, recipient, whatHappensNext, defaultMessage, sendLabel = "Send", onSend, onSent,
-  open: openControlled, onOpenChange, allowSchedule = false, onSchedule, scheduleLabel = "Schedule send",
+  open: openControlled, onOpenChange, notice, allowSchedule = false, onSchedule, scheduleLabel = "Schedule send",
 }: ShareDialogProps) {
   const [openUncontrolled, setOpenUncontrolled] = React.useState(false);
   const open = openControlled ?? openUncontrolled;
@@ -217,6 +219,8 @@ export function ShareDialog({
             </div>
 
             <p className="text-sm text-foreground">{whatHappensNext}</p>
+
+            {notice ? <div data-testid="share-dialog-notice">{notice}</div> : null}
 
             {scheduleEnabled ? (
               <div className="flex flex-wrap gap-2" data-testid="share-send-mode">

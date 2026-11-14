@@ -38,6 +38,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Textarea } from "@/components/ui/textarea";
 import { formatRelative } from "@/lib/leads/constants";
 import { TemplateApplyChooser } from "@/components/event-order-templates/apply-event-order-template-sheet";
+import { EventOrderCompletenessGuidance } from "@/components/event-order-templates/event-order-completeness-guidance";
 import {
   TemplateGroupAnswerChooser,
   initialAnswersForTemplate,
@@ -352,6 +353,12 @@ function UseOrSendEventOrderSheet({
                 >
                   Send to client is for templates with client choices. For a fixed Event Order, apply here, then open the event&apos;s Event Order to Finalize and Share.
                 </p>
+              ) : null}
+              {mode === "send" && detail && !sendBlockedNoGroups ? (
+                <EventOrderCompletenessGuidance
+                  template={detail}
+                  testId="eo-library-send-incomplete"
+                />
               ) : null}
             </div>
             <div className="flex shrink-0 flex-wrap justify-end gap-2 border-t border-border bg-popover pt-4" data-testid="event-order-use-footer">

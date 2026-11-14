@@ -243,8 +243,13 @@ describe("Checkpoint 3B readiness and labels", () => {
       join(root, "components/event-order-templates/event-order-client-preview.tsx"),
       "utf8",
     );
-    assert.match(preview, /COMPLETENESS_INTRO/);
-    assert.match(preview, /groupedCompletenessGuidance/);
+    const guidanceUi = readFileSync(
+      join(root, "components/event-order-templates/event-order-completeness-guidance.tsx"),
+      "utf8",
+    );
+    assert.match(preview, /EventOrderCompletenessGuidance/);
+    assert.match(guidanceUi, /COMPLETENESS_INTRO/);
+    assert.match(guidanceUi, /groupedCompletenessGuidance/);
   });
 
   it("selection-rule wording follows stored min/max", () => {

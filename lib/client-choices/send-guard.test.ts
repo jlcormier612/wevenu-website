@@ -34,6 +34,14 @@ describe("required choice groups need options before the couple sees them", () =
     assert.ok(guard > 0 && create > guard);
   });
 
+  it("Library Send also refuses before creating a packet", () => {
+    const send = readFileSync(resolve("lib/event-order-templates/use-send.ts"), "utf8");
+    const fn = send.slice(send.indexOf("export async function sendEventOrderTemplate"));
+    const guard = fn.indexOf("unanswerableChoicesSendMessage");
+    const create = fn.indexOf("createClientChoicesFromEventOrderTemplate");
+    assert.ok(guard > 0 && create > guard);
+  });
+
   it("the template builder warns on the top choice set as well as categories", () => {
     assert.match(panel, /impossibleSelectionGroupMessage\(set\.group, set\.options\.length\)/);
     assert.match(panel, /eo-choice-set-impossible-/);

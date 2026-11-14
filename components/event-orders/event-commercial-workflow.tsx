@@ -20,6 +20,8 @@ import {
   getEventOrderDocumentPreviewAction,
   sendEventOrderToCoupleAction,
 } from "@/app/(app)/events/[id]/event-order-actions";
+import { getEventOrderTemplateDetailAction } from "@/app/(app)/library/event-order-templates/actions";
+import { EventOrderCompletenessGuidance } from "@/components/event-order-templates/event-order-completeness-guidance";
 import { ArtifactReviewOverlay } from "@/components/artifacts/artifact-review-overlay";
 import { ClientChoicesPanel } from "@/components/client-choices/client-choices-panel";
 import { EventOrderDocumentView } from "@/components/event-orders/event-order-document-view";
@@ -39,7 +41,7 @@ import { buildMergeData, mergeContent } from "@/lib/message-templates/merge";
 import type { CommercialNavTarget, CommercialStatusInput } from "@/lib/event-orders/commercial-status";
 import type { SelectionsFinancialImpact } from "@/lib/client-choices/selections-billing";
 import type { ClientChoicesWithHistory } from "@/lib/client-choices/types";
-import type { EventOrderTemplate } from "@/lib/event-order-templates/types";
+import type { EventOrderTemplate, EventOrderTemplateWithDetails } from "@/lib/event-order-templates/types";
 import type { EventOrderWithDetails } from "@/lib/event-orders/types";
 import type { FloorPlan } from "@/lib/floor-plans/types";
 import type { InventoryItem } from "@/lib/inventory/types";
@@ -177,6 +179,29 @@ export function EventCommercialWorkflow({
   const [previewLoading, setPreviewLoading] = React.useState(false);
   const [sendOpen, setSendOpen] = React.useState(false);
   const [pendingAction, setPendingAction] = React.useState<EventOrderJourneyAction | null>(null);
+  const [sendTemplate, setSendTemplate] = React.useState<EventOrderTemplateWithDetails | null>(null);
+  const sendTemplateId = eventOrder?.templateId ?? null;
+
+  React.useEffect(() => {
+    if (!sendTemplateId) {
+      setSendTemplate(null);
+      return;
+    }
+    let cancelled = false;
+    void getEventOrderTemplateDetailAction(sendTemplateId).then((detail) => {
+      if (!cancelled) setSendTemplate(detail);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [sendTemplateId]);
+
+  const sendCompletenessBanner = sendTemplate ? (
+    <EventOrderCompletenessGuidance
+      template={sendTemplate}
+      testId="eo-event-order-send-incomplete"
+    />
+  ) : null;
   const choicesNeedReview = choices.some((c) => isClientChoicesNeedsVenueReview(c.status));
   const packet = selectionPacketPresence(choices);
   const pathBPacketWithoutOrder = !eventOrder && packet !== "none";
@@ -282,6 +307,8 @@ export function EventCommercialWorkflow({
 
   return (
     <div className="space-y-4" data-testid="event-commercial-workflow">
+      {sendCompletenessBanner}
+
       <EventOrderJourney
         input={{
           choices,
@@ -345,6 +372,14 @@ export function EventCommercialWorkflow({
           whatHappensNext="They get one link to their Event Order — no portal invite needed. They make their choices in each section and approve. This locks the current version; nothing is invoiced."
           defaultMessage={sendDefaultMessage}
           sendLabel="Send"
+          notice={
+            sendTemplate ? (
+              <EventOrderCompletenessGuidance
+                template={sendTemplate}
+                testId="eo-event-order-share-incomplete"
+              />
+            ) : null
+          }
           onSend={async (message) => {
             const result = await sendEventOrderToCoupleAction(eventOrder.id, eventId, message);
             if (result.ok) toast.success("Event Order sent to the couple.");
