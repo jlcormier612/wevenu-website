@@ -16,10 +16,7 @@ import type {
   ChoicesDefinition,
   ChoicesDefinitionFixedLine,
 } from "@/lib/client-choices/types";
-import {
-  formatTemplateOfferingPrice,
-  normalizeTemplatePricingModel,
-} from "@/lib/event-order-templates/offerings";
+import { choicesFixedLineMoneyLabel } from "@/lib/client-choices/price-labels";
 
 function linesForSection(
   lines: ChoicesDefinitionFixedLine[],
@@ -32,11 +29,7 @@ function linesForSection(
 }
 
 function FixedLineItem({ line }: { line: ChoicesDefinitionFixedLine }) {
-  const priceLabel = formatTemplateOfferingPrice({
-    unitPrice: line.unitPrice,
-    pricingModel: normalizeTemplatePricingModel(line.pricingModel),
-    unit: line.unit,
-  });
+  const priceLabel = choicesFixedLineMoneyLabel(line);
   return (
     <li className="border-b border-border/70 pb-3 last:border-0" data-testid="choices-fixed-line">
       <p className="text-sm font-medium text-heading">{line.description}</p>
@@ -44,7 +37,6 @@ function FixedLineItem({ line }: { line: ChoicesDefinitionFixedLine }) {
         <p className="mt-0.5 text-sm text-muted-foreground">{line.descriptionDetail}</p>
       ) : null}
       <p className="mt-1 text-sm text-foreground">
-        {line.includedByDefault ? "Included · " : ""}
         {priceLabel}
         {line.quantity !== 1 ? ` · Qty ${line.quantity}` : ""}
       </p>

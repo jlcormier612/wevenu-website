@@ -12,7 +12,10 @@ import {
   setChoiceOptionQuantity,
   toggleChoiceOption,
 } from "@/lib/client-choices/interactive-selection";
-import { choiceOptionPriceLabel } from "@/lib/client-choices/price-labels";
+import {
+  choiceOptionPriceLabel,
+  choicesPortalFixedLineSummary,
+} from "@/lib/client-choices/price-labels";
 import {
   selectionMaximumReachedMessage,
   selectionProgressForGroup,
@@ -86,11 +89,7 @@ function FixedLines({ definition }: { definition: ChoicesDefinition }) {
                   </span>
                 ) : null}
                 <span className="mt-0.5 block text-xs text-muted-foreground">
-                  {line.includedByDefault ? "Included" : "Part of your offering"}
-                  {line.unitPrice != null
-                    ? ` · $${Number(line.unitPrice).toFixed(2)}`
-                    : ""}
-                  {line.unit ? ` / ${line.unit}` : ""}
+                  {choicesPortalFixedLineSummary(line)}
                 </span>
               </li>
             ))}

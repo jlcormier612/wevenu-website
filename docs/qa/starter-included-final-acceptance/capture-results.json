@@ -1,0 +1,168 @@
+{
+  "app": "http://localhost:3017",
+  "venueId": "b1fb09c2-39f8-418e-a8a2-3885447cbdde",
+  "venueName": "Starter Final 1794702253193",
+  "ownerEmail": "starter-final-1794702253193@hellotocheers-test.invalid",
+  "eventId": "6ebf0519-f77d-4b1e-900b-951d5625333b",
+  "portalToken": "0d794bc103435448f135f57f335794374e081374e66d982eec13e6ee10b4b43a",
+  "ceremonyTemplateId": "ebf62e88-eec5-4c48-b9bd-1880d6b4bd20",
+  "eoId": "a77e5ab6-e75d-4917-b77b-48a8796f115e",
+  "appliedViaUi": true,
+  "sharedViaUi": false,
+  "lineCount": 2,
+  "fpStarterCount": 5,
+  "eoStarterCount": 2,
+  "findings": [
+    {
+      "severity": "PASS",
+      "area": "Deferred ownership after workspace provision",
+      "detail": "After provisionWorkspaceFromEnrollment (no p_is_owner), venue_staff count=0. Expected 0 until activation links the owner — matches deferred-membership design."
+    },
+    {
+      "severity": "PASS",
+      "area": "Owner activation attaches staff",
+      "detail": "After activation-equivalent p_is_owner=true, venue_staff count=1."
+    },
+    {
+      "severity": "PASS",
+      "area": "Included reference prices for presentation proof",
+      "detail": "Starter lacked priced Included lines; added Ceremony Coordination $500 and Day-of Coordination $1200 as venue reference values only."
+    },
+    {
+      "severity": "PASS",
+      "area": "Library reachable after owner activation",
+      "detail": "Owner can open Event Order starter library after activation-equivalent ownership.",
+      "shot": "01-V-eo-library"
+    },
+    {
+      "severity": "PASS",
+      "area": "Floor Plan starters before spaces configured for event",
+      "detail": "FP starters visible (space assigned later). Count=5.",
+      "shot": "02-V-fp-library"
+    },
+    {
+      "severity": "PASS",
+      "area": "Template Preview — Included without $",
+      "detail": "Preview shows Included without appending reference dollar amounts.",
+      "shot": "03-V-eo-preview"
+    },
+    {
+      "severity": "PASS",
+      "area": "Apply → event EO via normal UI",
+      "detail": "EO a77e5ab6-e75d-4917-b77b-48a8796f115e lines=2 appliedViaUi=true. No admin EO insert used.",
+      "shot": "05-V-eo-applied"
+    },
+    {
+      "severity": "BLOCKER",
+      "area": "Share via normal UI",
+      "detail": "Share did not set shared_at (sharedViaUi=false status=open). No snapshot DB insert used.",
+      "shot": "06-V-eo-shared"
+    },
+    {
+      "severity": "PASS",
+      "area": "Portal session for couple evidence",
+      "detail": "Send completed without a deliverable email; created the standard couple portal session so client screens can be opened (no EO content repair)."
+    },
+    {
+      "severity": "BLOCKER",
+      "area": "Client Event Order Included presentation",
+      "detail": "Order missing expected included content: Starter Final 1794702253193 Loading… Starter Final 1794702253193 💗",
+      "shot": "07-C-event-order"
+    },
+    {
+      "severity": "BLOCKER",
+      "area": "Client Choices Included presentation",
+      "detail": "Choices Included+$ still present or Included missing. snippet=Starter Final 1794702253193 Loading… Starter Final 1794702253193 💗",
+      "shot": "09-C-choices"
+    },
+    {
+      "severity": "IMPROVEMENT",
+      "area": "Submit is not payment",
+      "detail": "Payment-distinction copy not obvious."
+    },
+    {
+      "severity": "PASS",
+      "area": "Venue review after client submit",
+      "detail": "Venue Event Order shows post-submit review / charge path cues.",
+      "shot": "12-V-after-submit"
+    }
+  ],
+  "shots": [
+    {
+      "id": "01-V-eo-library",
+      "file": "01-V-eo-library.png",
+      "note": "Event Order starter library after activation"
+    },
+    {
+      "id": "02-V-fp-library",
+      "file": "02-V-fp-library.png",
+      "note": "Floor Plan starters available"
+    },
+    {
+      "id": "03-V-eo-preview",
+      "file": "03-V-eo-preview.png",
+      "note": "Event Order template Preview as Client"
+    },
+    {
+      "id": "04-V-eo-library-before-use",
+      "file": "04-V-eo-library-before-use.png",
+      "note": "EO library before Use on Ceremony + Reception"
+    },
+    {
+      "id": "04b-V-new-event",
+      "file": "04b-V-new-event.png",
+      "note": "Event after template Use attempt"
+    },
+    {
+      "id": "05-V-eo-applied",
+      "file": "05-V-eo-applied.png",
+      "note": "Event Order after Apply (venue workspace)"
+    },
+    {
+      "id": "06-V-eo-shared",
+      "file": "06-V-eo-shared.png",
+      "note": "Venue Event Order after Finalize/Share"
+    },
+    {
+      "id": "07-C-event-order",
+      "file": "07-C-event-order.png",
+      "note": "Client Event Order"
+    },
+    {
+      "id": "08-C-event-order-mobile",
+      "file": "08-C-event-order-mobile.png",
+      "note": "Client Event Order mobile"
+    },
+    {
+      "id": "09-C-choices",
+      "file": "09-C-choices.png",
+      "note": "Client Choices before submission"
+    },
+    {
+      "id": "10-C-choices-selected",
+      "file": "10-C-choices-selected.png",
+      "note": "Client Choices with selection"
+    },
+    {
+      "id": "11-C-choices-submitted",
+      "file": "11-C-choices-submitted.png",
+      "note": "Client Choices after submission"
+    },
+    {
+      "id": "12-V-after-submit",
+      "file": "12-V-after-submit.png",
+      "note": "Venue review after client submit"
+    },
+    {
+      "id": "13-V-guest-seating",
+      "file": "13-V-guest-seating.png",
+      "note": "Guest Seating / event seating surface"
+    },
+    {
+      "id": "14-C-floor-plan",
+      "file": "14-C-floor-plan.png",
+      "note": "Client Floor Plan"
+    }
+  ],
+  "recommendation": "BLOCKED — see blockers"
+}
