@@ -100,7 +100,7 @@ describe("Portal is foundational", () => {
 });
 
 describe("accepted event-type filtering", () => {
-  it("Used for remains the accepted ∩ catalog UI", () => {
+  it("Used for remains the catalog checkbox UI independent of inquiry settings", () => {
     const section = read("components/settings/setup-profiles-section.tsx");
     assert.match(section, /usedForOptions/);
     assert.match(section, /setup-profile-venue-default/);

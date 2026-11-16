@@ -8,6 +8,7 @@ import {
   deleteSetupProfileAction,
   saveSetupProfileAction,
 } from "@/app/(app)/settings/leads/setup-profiles/actions";
+import { LeadLifecycleConfirmDialog } from "@/components/leads/lifecycle-confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -22,7 +23,10 @@ import {
   profileHardGapSummary,
 } from "@/lib/event-setup/profile-config-gaps";
 import {
+  findSetupProfileAssignmentConflicts,
+  setupProfileReassignDialogCopy,
   suggestedSetupProfileName,
+  type SetupProfileAssignmentConflict,
   type SetupProfileUsedForOption,
 } from "@/lib/event-setup/setup-profile-event-types";
 import {
@@ -187,6 +191,7 @@ export function SetupProfilesSection({
   const router = useRouter();
   const [pending, startTransition] = React.useTransition();
   const [draft, setDraft] = React.useState<Draft | null>(null);
+  const [reassignConflicts, setReassignConflicts] = React.useState<SetupProfileAssignmentConflict[] | null>(null);
   const decisionSteps = steps.filter((step) => step !== "portal");
 
   function beginCreate(preselectedEventType?: string | null) {
@@ -199,6 +204,7 @@ export function SetupProfilesSection({
       next.eventTypes = [typeForName];
       next.name = suggestedSetupProfileName(typeForName);
     }
+    setReassignConflicts(null);
     setDraft(next);
   }
 
@@ -224,6 +230,7 @@ export function SetupProfilesSection({
         .filter((type): type is string => typeof type === "string" && acceptedKeys.has(type)),
       venueDefault: mine.some((row) => row.eventType == null),
     });
+    setReassignConflicts(null);
   }
 
   React.useEffect(() => {
@@ -267,44 +274,103 @@ export function SetupProfilesSection({
     });
   }
 
-  function save() {
-    if (!draft) return;
-    startTransition(async () => {
-      const safeRefs = sanitizeRefsAgainstLibrary(serializeTemplateRefs(draft.refs), {
-        playbooks,
-        venuePlaybooks,
-        timelines,
-        floorPlans,
-        questionnaires,
-        vendors,
-        inventoryTemplates,
-        eventOrderTemplates,
-      });
-      const hardSummary = profileHardGapSummary(
-        profileConfigGaps(draft.decisions, safeRefs, decisionSteps),
-      );
-      if (hardSummary) {
-        toast.error(
-          `${hardSummary} Mark the area Not included if you do not want Hello to Cheers to prepare it automatically.`,
-        );
-        return;
-      }
-      const result = await saveSetupProfileAction({
-        id: draft.id,
-        name: draft.name,
-        decisions: draft.decisions,
-        templateRefs: safeRefs,
-        eventTypes: draft.eventTypes,
-        venueDefault: draft.venueDefault,
-      });
-      if (!result.ok) {
-        toast.error(result.message);
-        return;
-      }
-      toast.success("Setup profile saved. New bookings apply this starting setup automatically.");
-      setDraft(null);
-      router.refresh();
+  function currentConflicts(current: Draft): SetupProfileAssignmentConflict[] {
+    return findSetupProfileAssignmentConflicts({
+      claimedEventTypes: current.eventTypes,
+      savingProfileId: current.id,
+      assignments,
+      profiles,
     });
+  }
+
+  async function persist(current: Draft, confirmedConflicts?: SetupProfileAssignmentConflict[]) {
+    const safeRefs = sanitizeRefsAgainstLibrary(serializeTemplateRefs(current.refs), {
+      playbooks,
+      venuePlaybooks,
+      timelines,
+      floorPlans,
+      questionnaires,
+      vendors,
+      inventoryTemplates,
+      eventOrderTemplates,
+    });
+    const hardSummary = profileHardGapSummary(
+      profileConfigGaps(current.decisions, safeRefs, decisionSteps),
+    );
+    if (hardSummary) {
+      toast.error(
+        `${hardSummary} Mark the area Not included if you do not want Hello to Cheers to prepare it automatically.`,
+      );
+      return;
+    }
+    const result = await saveSetupProfileAction({
+      id: current.id,
+      name: current.name,
+      decisions: current.decisions,
+      templateRefs: safeRefs,
+      eventTypes: current.eventTypes,
+      venueDefault: current.venueDefault,
+      confirmedConflicts: confirmedConflicts?.map((conflict) => ({
+        eventType: conflict.eventType,
+        profileId: conflict.profileId,
+      })),
+    });
+    if (!result.ok) {
+      if ("code" in result) {
+        setReassignConflicts(result.conflicts);
+        return;
+      }
+      toast.error(result.message);
+      return;
+    }
+    toast.success("Setup profile saved. New bookings apply this starting setup automatically.");
+    setReassignConflicts(null);
+    setDraft(null);
+    router.refresh();
+  }
+
+  function save() {
+    if (!draft || pending) return;
+    const safeRefs = sanitizeRefsAgainstLibrary(serializeTemplateRefs(draft.refs), {
+      playbooks,
+      venuePlaybooks,
+      timelines,
+      floorPlans,
+      questionnaires,
+      vendors,
+      inventoryTemplates,
+      eventOrderTemplates,
+    });
+    const hardSummary = profileHardGapSummary(
+      profileConfigGaps(draft.decisions, safeRefs, decisionSteps),
+    );
+    if (hardSummary) {
+      toast.error(
+        `${hardSummary} Mark the area Not included if you do not want Hello to Cheers to prepare it automatically.`,
+      );
+      return;
+    }
+    const conflicts = currentConflicts(draft);
+    if (conflicts.length > 0) {
+      setReassignConflicts(conflicts);
+      return;
+    }
+    startTransition(async () => {
+      await persist(draft);
+    });
+  }
+
+  function confirmReassign() {
+    if (!draft || pending || !reassignConflicts?.length) return;
+    const acknowledged = reassignConflicts;
+    startTransition(async () => {
+      await persist(draft, acknowledged);
+    });
+  }
+
+  function cancelReassign() {
+    if (pending) return;
+    setReassignConflicts(null);
   }
 
   function remove(profileId: string) {
@@ -486,6 +552,9 @@ export function SetupProfilesSection({
 
           <fieldset className="space-y-2" data-testid="setup-profile-used-for">
             <legend className="text-sm font-medium text-heading">Used for</legend>
+            <p className="text-xs text-muted-foreground">
+              Choose which event types should use this setup as their starting point. You can assign the same setup to several event types, and customize individual events later.
+            </p>
             <label className="flex items-center gap-2 text-sm">
               <input
                 type="checkbox"
@@ -512,13 +581,24 @@ export function SetupProfilesSection({
 
           <div className="flex flex-wrap gap-2">
             <Button type="submit" disabled={pending}>Save setup profile</Button>
-            <Button type="button" variant="outline" disabled={pending} onClick={() => setDraft(null)}>Cancel</Button>
+            <Button type="button" variant="outline" disabled={pending} onClick={() => { setReassignConflicts(null); setDraft(null); }}>Cancel</Button>
             {draft.id ? (
               <Button type="button" variant="ghost" disabled={pending} onClick={() => remove(draft.id!)}>Delete</Button>
             ) : null}
           </div>
         </form>
       ) : null}
+
+      <LeadLifecycleConfirmDialog
+        open={!!reassignConflicts?.length}
+        title={setupProfileReassignDialogCopy(reassignConflicts ?? []).title}
+        description={setupProfileReassignDialogCopy(reassignConflicts ?? []).description}
+        confirmLabel="Move and save"
+        confirming={pending}
+        testId="setup-profile-reassign-confirm"
+        onConfirm={confirmReassign}
+        onCancel={cancelReassign}
+      />
     </div>
   );
 }

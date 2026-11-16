@@ -5,6 +5,10 @@ import { revalidatePath } from "next/cache";
 import { deleteVenueSetupProfile, saveVenueSetupProfile } from "@/lib/event-setup/profiles";
 import type { SetupDecisions } from "@/lib/event-setup/state";
 import type { SetupTemplateRefs } from "@/lib/event-setup/profile";
+import type {
+  SetupProfileAssignmentConflict,
+  SetupProfileConflictAck,
+} from "@/lib/event-setup/setup-profile-event-types";
 import { applicableSetupSteps } from "@/lib/event-setup/state";
 import { capabilitiesFromVenue } from "@/lib/playbooks/capabilities";
 import { getCurrentVenue } from "@/lib/venue/service";
@@ -21,7 +25,12 @@ export async function saveSetupProfileAction(input: {
   templateRefs: SetupTemplateRefs;
   eventTypes: string[];
   venueDefault: boolean;
-}): Promise<{ ok: true } | { ok: false; message: string }> {
+  confirmedConflicts?: SetupProfileConflictAck[];
+}): Promise<
+  | { ok: true }
+  | { ok: false; message: string }
+  | { ok: false; code: "assignment_conflicts"; conflicts: SetupProfileAssignmentConflict[] }
+> {
   const venue = await getCurrentVenue();
   if (!venue) return { ok: false, message: "No venue found." };
   const result = await saveVenueSetupProfile({
@@ -29,7 +38,8 @@ export async function saveSetupProfileAction(input: {
     applicable: applicableSetupSteps(capabilitiesFromVenue(venue)),
   });
   if (result.ok) revalidate();
-  return result.ok ? { ok: true } : result;
+  if (result.ok) return { ok: true };
+  return result;
 }
 
 export async function deleteSetupProfileAction(
