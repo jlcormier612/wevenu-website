@@ -407,6 +407,22 @@ describe("Setup Profile assignment reassignment confirmation", () => {
     );
   });
 
+  it("persist narrows assignment_conflicts before reading result.message", () => {
+    const section = readFileSync(resolve("components/settings/setup-profiles-section.tsx"), "utf8");
+    const persistFn = section.slice(
+      section.indexOf("async function persist"),
+      section.indexOf("function save()"),
+    );
+    const conflictAt = persistFn.indexOf('"code" in result');
+    const messageAt = persistFn.indexOf("toast.error(result.message)");
+    assert.ok(conflictAt > 0);
+    assert.ok(messageAt > conflictAt);
+    assert.match(
+      persistFn,
+      /if \(!result\.ok\) \{\s*if \("code" in result\) \{\s*setReassignConflicts\(result\.conflicts\);/,
+    );
+  });
+
   it("Setup Profile editor uses the existing confirmation dialog and Move and save", () => {
     const section = readFileSync(resolve("components/settings/setup-profiles-section.tsx"), "utf8");
     assert.match(section, /LeadLifecycleConfirmDialog/);

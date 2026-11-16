@@ -315,11 +315,11 @@ export function SetupProfilesSection({
         profileId: conflict.profileId,
       })),
     });
-    if (!result.ok && "code" in result && result.code === "assignment_conflicts") {
-      setReassignConflicts(result.conflicts);
-      return;
-    }
     if (!result.ok) {
+      if ("code" in result) {
+        setReassignConflicts(result.conflicts);
+        return;
+      }
       toast.error(result.message);
       return;
     }
