@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { ContractTemplateList } from "@/components/contracts/contract-template-list";
 import { CollectionBackLink } from "@/components/library/collection-back-link";
+import { SetupHubReturnLink } from "@/components/setup-hub/phase-b1/setup-hub-return-link";
 import { LibraryHowItWorks } from "@/components/library/library-guidance";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { Button } from "@/components/ui/button";
@@ -18,18 +19,19 @@ export default async function ContractTemplatesLibraryPage() {
   const templates = await getTemplates(true);
   return (
     <div className="htc-hospitality-page space-y-4 sm:space-y-6">
+      <SetupHubReturnLink href="/setup-hub/make-htc-yours/booking-process" label="Back to your booking process" />
       <CollectionBackLink href="/library" label="Templates" />
       <div className="htc-hospitality-heading htc-hospitality-intro-accent">
         <PageHeader
           title="Contract Templates"
-          description="Reusable agreements with event details filled in from Hello to Cheers. Signed agreements live under Contracts."
+          description="Prepare reusable agreements for your venue. Event details can be filled in when you use a template."
           actions={
             <Button render={<Link href="/contracts/templates/new" />}>+ New Template</Button>
           }
         />
       </div>
       <LibraryHowItWorks tone="calm">
-        Agreement text and fields are authored in the contract template editor. When you apply a template to an event, event details fill in automatically — there is no separate catalog to manage for contract content.
+        Review your agreement before using it with clients. You can create your own version while keeping the original starter available.
       </LibraryHowItWorks>
 
       {templates.length === 0 ? (

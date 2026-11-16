@@ -256,15 +256,15 @@ export function QuickBooksConnectSection({
           {!isConnected && !isError && <Badge variant="muted">Not connected</Badge>}
         </div>
         <CardDescription>
-          Connect QuickBooks Online to automatically sync your customers, invoices,
-          payments, and refunds — no manual re-entry, no separate bookkeeping step.
+          Connect your QuickBooks account to help keep your customers, invoices, payments, and
+          refunds in sync.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="htc-surface-guidance px-3 py-2.5">
           <p className="text-xs text-muted-foreground">
-            <span className="font-semibold text-foreground">Before you start: </span>
-            Make sure you&apos;re a QuickBooks Primary Admin or Company Admin and know which QuickBooks company you want to connect.
+            You&apos;ll sign in to your own QuickBooks account and choose the company you want to
+            connect.
           </p>
         </div>
         {isConnected ? (
@@ -331,29 +331,18 @@ export function QuickBooksConnectSection({
             {!isConfigured ? (
               <div className="rounded-lg border border-border bg-muted/30 p-4">
                 <p className="text-sm text-muted-foreground">
-                  QuickBooks isn&apos;t available for your account yet. Contact support to get this connected.
+                  QuickBooks isn&apos;t ready to start in this environment yet. A working Connect
+                  button will appear here when Hello to Cheers can open QuickBooks onboarding.
                 </p>
               </div>
             ) : (
               <>
-                <ul className="space-y-1.5 text-sm text-muted-foreground">
-                  {[
-                    "Customers, invoices, payments, and refunds sync automatically",
-                    "Every sync retries on failure — nothing is silently dropped",
-                    "One-directional: Hello to Cheers stays the source of truth",
-                  ].map((item) => (
-                    <li key={item} className="flex items-start gap-2">
-                      <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
-                      {item}
-                    </li>
-                  ))}
-                </ul>
                 <a
                   href={connectUrl}
                   className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
                 >
                   <ExternalLink className="h-3.5 w-3.5" />
-                  Connect with QuickBooks
+                  Connect QuickBooks
                 </a>
                 <div>
                   <SetupGuideLink

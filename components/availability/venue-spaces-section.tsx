@@ -70,6 +70,7 @@ function SpaceForm({
             onChange={(e) => setName(e.target.value)}
             placeholder="Main Hall, Garden, Barn…"
             autoFocus
+            data-testid="space-name-input"
           />
         </div>
         <div className="space-y-1.5">
@@ -81,6 +82,7 @@ function SpaceForm({
             onChange={(e) => setCapacity(e.target.value)}
             placeholder="200"
             className="w-32"
+            data-testid="space-capacity-input"
           />
         </div>
       </div>
@@ -152,8 +154,13 @@ function SpaceForm({
       </div>
       <div className="flex items-center justify-end gap-2">
         <Button type="button" variant="ghost" size="sm" onClick={onCancel} disabled={pending}>Cancel</Button>
-        <Button type="button" size="sm" disabled={!name.trim() || pending}
-          onClick={() => onSave({ name, description, capacity, isActive, permittedUses: showUses ? permittedUses : [] })}>
+        <Button
+          type="button"
+          size="sm"
+          disabled={!name.trim() || pending}
+          data-testid="space-form-submit"
+          onClick={() => onSave({ name, description, capacity, isActive, permittedUses: showUses ? permittedUses : [] })}
+        >
           {pending ? <><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />Saving…</> : submitLabel}
         </Button>
       </div>
@@ -164,14 +171,17 @@ function SpaceForm({
 export function VenueSpacesSection({
   initialSpaces,
   spaceOperatingMode = "single",
+  startAdding = false,
 }: {
   initialSpaces: VenueSpace[];
   spaceOperatingMode?: "single" | "multi";
+  /** Phase A: open Add Space form immediately when no spaces exist. */
+  startAdding?: boolean;
 }) {
   const router = useRouter();
   const [spaces, setSpaces] = useSyncedState(initialSpaces);
   const [mode, setMode] = useSyncedState(spaceOperatingMode);
-  const [showAdd, setShowAdd] = React.useState(false);
+  const [showAdd, setShowAdd] = React.useState(startAdding);
   const [editingId, setEditingId] = React.useState<string | null>(null);
   const [addPending, startAdd] = React.useTransition();
   const [editPending, startEdit] = React.useTransition();
@@ -334,7 +344,13 @@ export function VenueSpacesSection({
           showUses={showUses}
         />
       ) : (
-        <Button type="button" variant="outline" size="sm" onClick={() => setShowAdd(true)}>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => setShowAdd(true)}
+          data-testid="availability-add-space"
+        >
           <Plus className="mr-1 h-3.5 w-3.5" /> Add Space
         </Button>
       )}

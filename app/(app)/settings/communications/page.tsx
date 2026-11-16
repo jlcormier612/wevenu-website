@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { SetupHubReturnLink } from "@/components/setup-hub/phase-b1/setup-hub-return-link";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { LuvHeart } from "@/components/dashboard/luv-widget";
 import { CommunicationIdentitySection } from "@/components/settings/communication-identity-section";
@@ -54,6 +55,7 @@ export default async function CommunicationsAutomationSettingsPage() {
 
   return (
     <div className="htc-hospitality-page space-y-4 sm:space-y-6">
+      <SetupHubReturnLink href="/setup-hub/make-htc-yours/communications" label="Back to your communications" />
       <div className="htc-hospitality-heading htc-hospitality-intro-accent">
         <PageHeader
           title="Communications & Automation"

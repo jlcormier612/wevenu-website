@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { RequiredVendorCategoriesPanel } from "@/components/vendors/required-vendor-categories-panel";
 import { VendorList } from "@/components/vendors/vendor-list";
+import { SetupHubReturnLink } from "@/components/setup-hub/phase-b1/setup-hub-return-link";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { Button } from "@/components/ui/button";
 import { getVenueRequiredVendorCategories } from "@/lib/vendors/required-categories";
@@ -17,6 +18,7 @@ export default async function VendorsPage() {
   ]);
   return (
     <div className="htc-hospitality-page space-y-4 sm:space-y-6">
+      <SetupHubReturnLink href="/setup-hub/make-htc-yours/event-experiences" label="Back to Your event experiences" />
       <div className="htc-hospitality-heading htc-hospitality-intro-accent">
         <PageHeader
           title="Vendors"

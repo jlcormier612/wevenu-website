@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { LibraryDocumentsManager } from "@/components/library/library-documents-manager";
+import { SetupHubReturnLink } from "@/components/setup-hub/phase-b1/setup-hub-return-link";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { getVenueDocuments } from "@/lib/documents/service";
 import { getCurrentVenue } from "@/lib/venue/service";
@@ -13,6 +14,7 @@ export default async function LibraryDocumentsPage() {
 
   return (
     <div className="htc-hospitality-page space-y-4 sm:space-y-6" data-htc-phase10="library-documents">
+      <SetupHubReturnLink href="/setup-hub/make-htc-yours/operational-resources" label="Back to your planning tools" />
       <div className="htc-hospitality-heading htc-hospitality-intro-accent">
         <PageHeader
           title="Documents"

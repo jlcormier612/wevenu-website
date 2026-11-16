@@ -20,7 +20,23 @@ export type LibraryPrimaryAction = {
   /** ghost = Preview, outline = Edit, default = Use */
   emphasis?: "preview" | "edit" | "use";
   disabled?: boolean;
+  hint?: string;
 };
+
+function starterHintForAction(
+  isStarter: boolean | undefined,
+  action: LibraryPrimaryAction,
+): string | null {
+  if (action.hint) return action.hint;
+  if (!isStarter) return null;
+  if (action.id === "customize") {
+    return "Customize creates your own copy and keeps this starter unchanged.";
+  }
+  if (action.id === "edit") {
+    return "Edit changes this template directly.";
+  }
+  return null;
+}
 
 export type LibraryAssetCardProps = {
   title: string;
@@ -41,7 +57,13 @@ export type LibraryAssetCardProps = {
   href?: string;
 };
 
-function PrimaryButton({ action }: { action: LibraryPrimaryAction }) {
+function PrimaryButton({
+  action,
+  hint,
+}: {
+  action: LibraryPrimaryAction;
+  hint?: string | null;
+}) {
   const variant =
     action.emphasis === "use"
       ? "default"
@@ -49,20 +71,16 @@ function PrimaryButton({ action }: { action: LibraryPrimaryAction }) {
         ? "outline"
         : "ghost";
 
-  if (action.href) {
-    return (
-      <Button
-        size="sm"
-        variant={variant}
-        disabled={action.disabled}
-        render={<Link href={action.href} />}
-      >
-        {action.label}
-      </Button>
-    );
-  }
-
-  return (
+  const button = action.href ? (
+    <Button
+      size="sm"
+      variant={variant}
+      disabled={action.disabled}
+      render={<Link href={action.href} />}
+    >
+      {action.label}
+    </Button>
+  ) : (
     <Button
       type="button"
       size="sm"
@@ -72,6 +90,14 @@ function PrimaryButton({ action }: { action: LibraryPrimaryAction }) {
     >
       {action.label}
     </Button>
+  );
+
+  if (!hint) return button;
+  return (
+    <div className="flex max-w-[16rem] flex-col items-start gap-0.5">
+      {button}
+      <span className="text-[11px] leading-snug text-muted-foreground">{hint}</span>
+    </div>
   );
 }
 
@@ -126,7 +152,11 @@ export function LibraryAssetCard({
         onKeyDown={(e) => e.stopPropagation()}
       >
         {primaryActions.map((action) => (
-          <PrimaryButton key={action.id} action={action} />
+          <PrimaryButton
+            key={action.id}
+            action={action}
+            hint={starterHintForAction(isStarter, action)}
+          />
         ))}
       </div>
     ) : null;

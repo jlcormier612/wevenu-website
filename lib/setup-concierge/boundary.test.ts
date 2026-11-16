@@ -36,14 +36,15 @@ describe("Setup Concierge privacy / import boundary", () => {
     assert.doesNotMatch(glob, /openai|OpenAI|chatbot|setup-ask/i);
   });
 
-  it("Setup Hub uses the concierge card, not the multi-finding dump", () => {
+  it("Setup Hub does not dump Luv findings; leftover four-chapter overview still uses the concierge card", () => {
     const overview = readFileSync(resolve("components/setup-hub/setup-hub-overview.tsx"), "utf8");
     assert.match(overview, /SetupConciergeCard/);
     assert.doesNotMatch(overview, /OperationalReadinessCard/);
     assert.doesNotMatch(overview, /Luv on your setup/);
     const page = readFileSync(resolve("app/(app)/setup-hub/page.tsx"), "utf8");
-    assert.match(page, /loadSetupConciergeEntry/);
+    assert.match(page, /SetupHubPhaseAOverview/);
     assert.doesNotMatch(page, /loadVenueReadiness/);
+    assert.doesNotMatch(page, /Luv on your setup/);
   });
 
   it("concierge loader ignores activation stamps and channel click telemetry", () => {

@@ -113,3 +113,115 @@ export async function isVenueReadyToInviteCouples(venueId: string): Promise<bool
   const client = await createClient();
   return repo.getReadyToInviteCouples(client, venueId);
 }
+
+export async function markWelcomeExplored(): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const result = await withVenue(async (client, venueId) => {
+      await repo.markWelcomeExplored(client, venueId);
+      return true;
+    });
+    return { ok: result === true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "mark_welcome_failed" };
+  }
+}
+
+export async function setExistingBookingsAnswer(
+  answer: "yes" | "no",
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const result = await withVenue(async (client, venueId) => {
+      await repo.setExistingBookingsAnswer(client, venueId, answer);
+      return true;
+    });
+    return { ok: result === true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "existing_bookings_failed" };
+  }
+}
+
+export async function setHostedEventTypes(
+  eventTypes: string[],
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const result = await withVenue(async (client, venueId) => {
+      await repo.setHostedEventTypes(client, venueId, eventTypes);
+      return true;
+    });
+    return { ok: result === true };
+  } catch (e) {
+    return { ok: false, error: repo.toCustomerFacingB1Error(e) };
+  }
+}
+
+export async function confirmEventExperienceReview(
+  eventType: string,
+  review: { profileId: string; profileUpdatedAt: string; confirmedAt: string },
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const result = await withVenue(async (client, venueId) => {
+      const state = await repo.getOrCreateState(client, venueId);
+      await repo.confirmEventExperienceReview(
+        client,
+        venueId,
+        eventType,
+        review,
+        state.eventExperienceReviews,
+      );
+      return true;
+    });
+    return { ok: result === true };
+  } catch (e) {
+    return { ok: false, error: repo.toCustomerFacingB1Error(e) };
+  }
+}
+
+export async function markBookingProcessReviewed(): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const result = await withVenue(async (client, venueId) => {
+      await repo.markBookingProcessReviewed(client, venueId);
+      return true;
+    });
+    return { ok: result === true };
+  } catch (e) {
+    return { ok: false, error: repo.toCustomerFacingB1Error(e) };
+  }
+}
+
+export async function markCommunicationsReviewed(): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const result = await withVenue(async (client, venueId) => {
+      await repo.markCommunicationsReviewed(client, venueId);
+      return true;
+    });
+    return { ok: result === true };
+  } catch (e) {
+    return { ok: false, error: repo.toCustomerFacingB1Error(e) };
+  }
+}
+
+export async function markOperationalResourcesReviewed(
+  choices: Record<string, "using" | "not_using">,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const result = await withVenue(async (client, venueId) => {
+      await repo.markOperationalResourcesReviewed(client, venueId, choices);
+      return true;
+    });
+    return { ok: result === true };
+  } catch (e) {
+    return { ok: false, error: repo.toCustomerFacingB1Error(e) };
+  }
+}
+
+export async function markBookingRulesReviewed(): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const result = await withVenue(async (client, venueId) => {
+      await repo.markBookingRulesReviewed(client, venueId);
+      return true;
+    });
+    return { ok: result === true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "booking_rules_failed" };
+  }
+}

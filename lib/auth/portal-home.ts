@@ -63,22 +63,31 @@ export function pickAuthenticatedHomePath(input: {
   roles: PortalRoles;
   /** When set and the identity has that role, prefer it over the chooser. */
   prefer?: PortalKind | null;
+  /**
+   * Phase A: post-login venue landing when onboarding is incomplete.
+   * Defaults to `/dashboard` for established venues / explicit prefer callers.
+   */
+  venueHome?: string | null;
 }): string {
   const next = safeInternalNextPath(input.next ?? null);
   if (next) return next;
 
   const { roles, prefer } = input;
+  const venueHome =
+    typeof input.venueHome === "string" && input.venueHome.startsWith("/")
+      ? input.venueHome
+      : "/dashboard";
   const available: PortalKind[] = [];
   if (roles.isVendor) available.push("vendor");
   if (roles.clientPortalPath) available.push("client");
   if (roles.isVenueStaff) available.push("venue");
 
   if (prefer && available.includes(prefer)) {
-    return homeForPortal(prefer, roles);
+    return homeForPortal(prefer, roles, venueHome);
   }
 
   if (available.length === 1) {
-    return homeForPortal(available[0]!, roles);
+    return homeForPortal(available[0]!, roles, venueHome);
   }
 
   if (available.length > 1) {
@@ -89,14 +98,14 @@ export function pickAuthenticatedHomePath(input: {
   return "/setup";
 }
 
-function homeForPortal(kind: PortalKind, roles: PortalRoles): string {
+function homeForPortal(kind: PortalKind, roles: PortalRoles, venueHome = "/dashboard"): string {
   switch (kind) {
     case "vendor":
       return "/vendor/dashboard";
     case "client":
       return roles.clientPortalPath ?? "/client/login";
     case "venue":
-      return "/dashboard";
+      return venueHome;
   }
 }
 

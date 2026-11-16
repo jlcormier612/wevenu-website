@@ -134,6 +134,7 @@ export function VenueSettings({
   actorCanManageOwners,
   actorStaffId = null,
   actorClarity = null,
+  fromSetupHub = false,
 }: {
   initial: VenueSetupInput;
   venueId: string;
@@ -143,6 +144,7 @@ export function VenueSettings({
   actorCanManageOwners?: boolean;
   actorStaffId?: string | null;
   actorClarity?: ActorOwnersClarity | null;
+  fromSetupHub?: boolean;
 }) {
   const [input, setInput] = React.useState<VenueSetupInput>(initial);
   const [publicReviewUrl, setPublicReviewUrl] = React.useState(initialReviewUrl);
@@ -189,7 +191,9 @@ export function VenueSettings({
   ): Promise<void> {
     const result = await action(input);
     if (result.ok) {
-      toast.success("Saved");
+      toast.success(
+        fromSetupHub ? "Your venue details have been saved." : "Saved",
+      );
       return;
     }
     if (result.errors && Object.keys(result.errors).length > 0) {
@@ -207,10 +211,23 @@ export function VenueSettings({
 
   return (
     <div className="space-y-6">
+      {fromSetupHub ? (
+        <div id="venue-details" className="scroll-mt-24 space-y-1">
+          <p className="text-base font-semibold text-heading">Your venue details</p>
+          <p className="text-sm text-muted-foreground">
+            Confirm the information clients should recognize as yours.
+          </p>
+        </div>
+      ) : null}
+
       {/* 1 — Venue information (name, business name, contact, address) */}
       <SettingsSection
         title="Venue information"
-        description="Name, business name, contact details, and address."
+        description={
+          fromSetupHub
+            ? "Tell us a little about your venue. You can always come back and update these details."
+            : "Name, business name, contact details, and address."
+        }
         onSave={() => save(saveVenueInfoAction, (key) => ["name", "email", "website"].includes(key))}
       >
         <VenueInfoStep {...stepProps} />
@@ -237,6 +254,15 @@ export function VenueSettings({
       >
         <BusinessHoursStep {...stepProps} />
       </SettingsSection>
+
+      {fromSetupHub ? (
+        <div id="look-and-feel" className="scroll-mt-24 space-y-1 pt-2">
+          <p className="text-base font-semibold text-heading">Your look &amp; feel</p>
+          <p className="text-sm text-muted-foreground">
+            Add your logo and choose the colors that reflect your venue.
+          </p>
+        </div>
+      ) : null}
 
       {/* 4a — Logo upload (functional, uses Supabase Storage) */}
       <Card>

@@ -24,6 +24,7 @@ export type LibraryOverflowItem = {
   destructive?: boolean;
   disabled?: boolean;
   separatorBefore?: boolean;
+  hint?: string;
 };
 
 export function LibraryOverflowMenu({
@@ -70,7 +71,14 @@ export function LibraryOverflowMenu({
                 render={<Link href={item.href} />}
               >
                 {item.icon}
-                {item.label}
+                <span className="flex min-w-0 flex-col">
+                  <span>{item.label}</span>
+                  {item.hint ? (
+                    <span className="whitespace-normal text-[11px] font-normal text-muted-foreground">
+                      {item.hint}
+                    </span>
+                  ) : null}
+                </span>
               </DropdownMenuItem>
             ) : (
               <DropdownMenuItem
@@ -80,7 +88,14 @@ export function LibraryOverflowMenu({
                 className={cn(item.destructive && "text-destructive focus:text-destructive")}
               >
                 {item.icon}
-                {item.label}
+                <span className="flex min-w-0 flex-col">
+                  <span>{item.label}</span>
+                  {item.hint ? (
+                    <span className="whitespace-normal text-[11px] font-normal text-muted-foreground">
+                      {item.hint}
+                    </span>
+                  ) : null}
+                </span>
               </DropdownMenuItem>
             )}
           </React.Fragment>

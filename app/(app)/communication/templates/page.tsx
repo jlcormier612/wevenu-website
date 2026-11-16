@@ -4,6 +4,7 @@ import { MessageTemplateList } from "@/components/communication/message-template
 import { MessageTemplateStarterPicker } from "@/components/communication/message-template-starter-picker";
 import { AddHelloToCheersStarters } from "@/components/communication/add-hello-to-cheers-starters";
 import { CollectionBackLink } from "@/components/library/collection-back-link";
+import { SetupHubReturnLink } from "@/components/setup-hub/phase-b1/setup-hub-return-link";
 import { LibraryHowItWorks } from "@/components/library/library-guidance";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { getTemplates } from "@/lib/message-templates/service";
@@ -21,11 +22,12 @@ export default async function MessageTemplatesPage() {
 
   return (
     <div className="htc-hospitality-page space-y-4 sm:space-y-6">
+      <SetupHubReturnLink href="/setup-hub/make-htc-yours/communications" label="Back to your communications" />
       <CollectionBackLink href="/library" label="Templates" />
       <div className="htc-hospitality-heading htc-hospitality-intro-accent">
         <PageHeader
           title="Message Templates"
-          description="Reusable email and text messages for couples — including Hello to Cheers starters you can Customize into your venue’s own editable copies."
+          description="Prepare reusable emails and text messages for inquiries, bookings, and planning."
           actions={
             <div className="flex flex-wrap items-center gap-2">
               <MessageTemplateStarterPicker existingTemplates={active} />
@@ -39,10 +41,8 @@ export default async function MessageTemplatesPage() {
         />
       </div>
       <LibraryHowItWorks tone="calm">
-        Message subject and body are authored in the template editor — there is no separate catalog
-        these templates select from. Customize a Hello to Cheers starter to create your venue’s
-        editable copy; the original starter stays unchanged. Editing a venue-owned template never
-        sends a message — send from Messaging after you review the draft.
+        Review a starter message or customize it to create your own editable copy. Nothing is sent
+        until you choose to send it.
       </LibraryHowItWorks>
 
       {templates.length === 0 ? (

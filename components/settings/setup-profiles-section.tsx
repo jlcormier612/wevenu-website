@@ -21,7 +21,10 @@ import {
   profileConfigGaps,
   profileHardGapSummary,
 } from "@/lib/event-setup/profile-config-gaps";
-import type { SetupProfileUsedForOption } from "@/lib/event-setup/setup-profile-event-types";
+import {
+  suggestedSetupProfileName,
+  type SetupProfileUsedForOption,
+} from "@/lib/event-setup/setup-profile-event-types";
 import {
   setupStepLabel,
   type SetupDecision,
@@ -160,6 +163,9 @@ export function SetupProfilesSection({
   questionnaires,
   inventoryTemplates,
   eventOrderTemplates,
+  initialCreate = false,
+  initialCreateEventType = null,
+  initialProfileId = null,
 }: {
   canEdit: boolean;
   steps: SetupStepKey[];
@@ -174,14 +180,26 @@ export function SetupProfilesSection({
   questionnaires: NamedOption[];
   inventoryTemplates: NamedOption[];
   eventOrderTemplates: NamedOption[];
+  initialCreate?: boolean;
+  initialCreateEventType?: string | null;
+  initialProfileId?: string | null;
 }) {
   const router = useRouter();
   const [pending, startTransition] = React.useTransition();
   const [draft, setDraft] = React.useState<Draft | null>(null);
   const decisionSteps = steps.filter((step) => step !== "portal");
 
-  function beginCreate() {
-    setDraft(emptyDraft(decisionSteps));
+  function beginCreate(preselectedEventType?: string | null) {
+    const next = emptyDraft(decisionSteps);
+    const typeForName =
+      preselectedEventType && usedForOptions.some((option) => option.value === preselectedEventType)
+        ? preselectedEventType
+        : null;
+    if (typeForName) {
+      next.eventTypes = [typeForName];
+      next.name = suggestedSetupProfileName(typeForName);
+    }
+    setDraft(next);
   }
 
   function beginEdit(profile: VenueSetupProfile) {
@@ -207,6 +225,28 @@ export function SetupProfilesSection({
       venueDefault: mine.some((row) => row.eventType == null),
     });
   }
+
+  React.useEffect(() => {
+    if (!canEdit) return;
+    if (initialProfileId) {
+      const profile = profiles.find((row) => row.id === initialProfileId);
+      // Mount-only: open the in-page editor from guided-setup query params.
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- beginEdit is the existing editor entry
+      if (profile) beginEdit(profile);
+      return;
+    }
+    if (initialCreate) {
+      if (
+        initialCreateEventType &&
+        !usedForOptions.some((option) => option.value === initialCreateEventType)
+      ) {
+        return;
+      }
+      beginCreate(initialCreateEventType);
+    }
+    // Mount-only: open the existing in-page editor from guided-setup query params.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function setDecision(step: SetupStepKey, decision: SetupDecision) {
     setDraft((current) => current ? { ...current, decisions: { ...current.decisions, [step]: decision } } : current);
@@ -301,7 +341,7 @@ export function SetupProfilesSection({
           </p>
         </div>
         {canEdit && !draft ? (
-          <Button type="button" onClick={beginCreate}>New setup profile</Button>
+          <Button type="button" onClick={() => beginCreate()}>New setup profile</Button>
         ) : null}
       </div>
 
@@ -365,6 +405,7 @@ export function SetupProfilesSection({
       {draft ? (
         <form
           className="space-y-5 rounded-lg border border-border px-4 py-4"
+          data-testid="setup-profile-draft"
           onSubmit={(event) => { event.preventDefault(); save(); }}
         >
           <div className="space-y-1">
@@ -373,7 +414,7 @@ export function SetupProfilesSection({
               id="setup-profile-name"
               value={draft.name}
               onChange={(event) => setDraft({ ...draft, name: event.target.value })}
-              placeholder="Standard Wedding Setup"
+              placeholder={suggestedSetupProfileName(draft.eventTypes[0] ?? null)}
             />
           </div>
 
@@ -492,8 +533,6 @@ function CapabilityDefaults({
   floorPlans,
   vendors,
   questionnaires,
-  inventoryTemplates,
-  eventOrderTemplates,
 }: {
   step: SetupStepKey;
   refs: SetupTemplateRefs;

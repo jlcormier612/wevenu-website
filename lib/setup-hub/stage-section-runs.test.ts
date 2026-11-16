@@ -87,10 +87,15 @@ describe("Phase 9 Setup Hub + Settings structural seams", () => {
     assert.match(overview, /setup-hub-make-it-yours-extras/);
   });
 
-  it("Phase 4 white-glove welcome gate and calm class remain on Setup Hub page", () => {
-    assert.match(setupPage, /htc-setup-hub-welcome/);
-    assert.match(setupPage, /onboardingType === "white_glove"/);
-    assert.match(setupPage, /Welcome to Hello to Cheers/);
+  it("Phase A first-login welcome remains on Setup Hub; white-glove calm tokens stay in CSS", () => {
+    assert.match(setupPage, /SetupHubPhaseAOverview/);
+    assert.match(setupPage, /htc-hospitality-page/);
+    assert.doesNotMatch(setupPage, /className="htc-hospitality-intro"/);
+    const welcome = read("components/setup-hub/phase-a/welcome-panel.tsx");
+    assert.match(welcome, /WELCOME TO HELLO TO CHEERS/);
+    assert.match(welcome, /Let&apos;s get your venue ready/);
+    assert.match(welcome, /phase-a-welcome-first/);
+    assert.match(css, /\.htc-staff \.htc-setup-hub-welcome/);
   });
 
   it("Settings directory keeps eucalyptus icon wells and core settings destinations", () => {

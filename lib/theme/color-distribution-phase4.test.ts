@@ -21,13 +21,16 @@ describe("Color Distribution Phase 4 — Setup / Contract calm (schedule review 
   const settings = read("app/(app)/settings/page.tsx");
   const clients = read("components/clients/client-list.tsx");
 
-  it("Setup Hub white-glove welcome uses staff-scoped calm class and keeps copy", () => {
-    assert.match(setup, /htc-setup-hub-welcome/);
-    assert.match(setup, /Welcome to Hello to Cheers/);
-    assert.match(setup, /We&apos;ve already done a lot of the setup for you/);
-    assert.match(setup, /invite couples/);
-    assert.doesNotMatch(setup, /htc-setup-hub-welcome[\s\S]{0,80}bg-muted/);
-    assert.match(setup, /<SetupHubOverview/);
+  it("Phase A Setup Hub welcome uses the hospitality page wrapper; white-glove calm tokens remain in CSS", () => {
+    assert.match(setup, /htc-hospitality-page/);
+    assert.match(setup, /SetupHubPhaseAOverview/);
+    assert.match(setup, /StarterProvisioningBanner/);
+    assert.doesNotMatch(setup, /className="htc-hospitality-intro"/);
+    const welcome = read("components/setup-hub/phase-a/welcome-panel.tsx");
+    assert.match(welcome, /WELCOME TO HELLO TO CHEERS/);
+    assert.match(welcome, /Let&apos;s get your venue ready/);
+    assert.match(css, /\.htc-staff \.htc-setup-hub-welcome/);
+    assert.match(css, /border-left:\s*3px solid var\(--htc-calm-blue-deep\)/);
   });
 
   it("Contract agreement guidance uses calm class and preserves disclaimer copy", () => {

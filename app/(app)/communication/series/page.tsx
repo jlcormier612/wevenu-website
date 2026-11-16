@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { AutomationsHelp } from "@/components/communication/automations-help";
+import { SetupHubReturnLink } from "@/components/setup-hub/phase-b1/setup-hub-return-link";
 import { SeriesList } from "@/components/communication/series-list";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { Button } from "@/components/ui/button";
@@ -16,6 +17,7 @@ export default async function SeriesPage() {
 
   return (
     <div className="htc-hospitality-page space-y-5 sm:space-y-6" data-htc-phase12="automations">
+      <SetupHubReturnLink href="/setup-hub/make-htc-yours/communications" label="Back to your communications" />
       <div className="htc-hospitality-heading htc-hospitality-intro-accent">
         <PageHeader
           title="Automations"

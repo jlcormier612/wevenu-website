@@ -81,7 +81,11 @@ describe("Bring Your Business choices — three equal paths", () => {
     const overview = readFileSync(join(process.cwd(), "components/setup-hub/setup-hub-overview.tsx"), "utf8");
     assert.match(overview, /intakeBringBusinessChoice/);
     const page = readFileSync(join(process.cwd(), "app/(app)/setup-hub/page.tsx"), "utf8");
-    assert.match(page, /getIntakeForVenue/);
+    assert.match(page, /SetupHubPhaseAOverview/);
+    assert.doesNotMatch(page, /getIntakeForVenue/);
+    const bring = readFileSync(join(process.cwd(), "app/(app)/setup-hub/bring-business/page.tsx"), "utf8");
+    assert.match(bring, /Migration Center/);
+    assert.match(bring, /BRING_YOUR_BUSINESS_ROUTES/);
   });
 });
 
@@ -94,7 +98,7 @@ describe("Import Wizard post-import next steps — migration-safe", () => {
     assert.match(src, /othing is emailed or invited automatically/i);
     assert.doesNotMatch(
       src,
-      /couples:\s*\{[^}]*Invite clients to the portal/s,
+      /couples:\s*\{[^]*Invite clients to the portal/,
     );
   });
 });

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { SetupHubReturnLink } from "@/components/setup-hub/phase-b1/setup-hub-return-link";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { SettingsTabs } from "@/components/settings/settings-tabs";
 import { WebsiteFormsSection } from "@/components/settings/website-forms-section";
@@ -36,6 +37,7 @@ export default async function LeadsBookingSettingsPage() {
 
   return (
     <div className="htc-hospitality-page space-y-4 sm:space-y-6">
+      <SetupHubReturnLink href="/setup-hub/make-htc-yours/booking-process" label="Back to your booking process" />
       <div className="htc-hospitality-heading htc-hospitality-intro-accent">
         <PageHeader
           title="Leads & Booking"
@@ -84,7 +86,7 @@ export default async function LeadsBookingSettingsPage() {
       )}
 
       {venue && (
-        <Card>
+        <Card id="inquiry" className="scroll-mt-20">
           <CardHeader>
             <CardTitle className="text-base">Inquiry Form</CardTitle>
             <CardDescription>

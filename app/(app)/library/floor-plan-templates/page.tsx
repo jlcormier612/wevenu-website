@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { CollectionBackLink } from "@/components/library/collection-back-link";
+import { SetupHubReturnLink } from "@/components/setup-hub/phase-b1/setup-hub-return-link";
 import { LibraryDependencyNote } from "@/components/library/library-guidance";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { FloorPlanTemplateStarterPicker } from "@/components/floor-plan-templates/floor-plan-template-starter-picker";
@@ -34,6 +35,7 @@ export default async function FloorPlanTemplatesPage() {
 
   return (
     <div className="htc-hospitality-page space-y-4 sm:space-y-6">
+      <SetupHubReturnLink href="/setup-hub/make-htc-yours/operational-resources" label="Back to your planning tools" />
       <CollectionBackLink href="/library" label="Templates" />
       <div className="htc-hospitality-heading htc-hospitality-intro-accent">
         <PageHeader
