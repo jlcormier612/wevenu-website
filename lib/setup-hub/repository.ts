@@ -282,10 +282,26 @@ export async function confirmEventExperienceReview(
   client: DbClient,
   venueId: string,
   eventType: string,
-  review: { profileId: string; profileUpdatedAt: string; confirmedAt: string },
+  review: {
+    profileId: string;
+    profileUpdatedAt: string;
+    confirmedAt: string;
+    resourcesReviewedAt?: string;
+  },
   currentReviews: SetupHubState["eventExperienceReviews"],
 ): Promise<void> {
-  const next = { ...currentReviews, [eventType]: review };
+  const current = currentReviews[eventType];
+  const merged = {
+    ...current,
+    ...review,
+    resourcesReviewedAt:
+      review.resourcesReviewedAt ??
+      (current?.profileId === review.profileId &&
+      current?.profileUpdatedAt === review.profileUpdatedAt
+        ? current.resourcesReviewedAt
+        : undefined),
+  };
+  const next = { ...currentReviews, [eventType]: merged };
   const { error } = await client.from("venue_setup_hub_state")
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     .update({ event_experience_reviews: next } as any)

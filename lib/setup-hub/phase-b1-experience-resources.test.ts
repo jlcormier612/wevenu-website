@@ -29,10 +29,11 @@ describe("experience resource rows", () => {
     assert.equal(planning?.inclusion, "Included");
     assert.equal(planning?.resources[0]?.designation, "Starter");
     assert.notEqual(planning?.resources[0]?.status, "Ready");
+    assert.equal(planning?.resources[0]?.status, "Starter ready for you");
     assert.equal(timeline?.inclusion, "Not included");
     assert.equal(timeline?.resources.length, 0);
-    assert.equal(floorPlans?.inclusion, "Needs a decision");
-    assert.equal(floorPlans?.resources.length, 0);
+    assert.equal(floorPlans?.inclusion, "Optional");
+    assert.match(floorPlans?.attention ?? "", /spaces configured/);
   });
 
   it("surfaces floor-plan space prerequisites without inventing a template", () => {

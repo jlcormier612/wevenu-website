@@ -28,17 +28,21 @@ export type SectionReadinessStatus =
 
 export const SECTION_STATUS_LABEL: Record<SectionReadinessStatus, string> = {
   not_started: "Not started",
-  starter_available: "Starter available",
+  starter_available: "Starter ready for you",
   needs_review: "Needs review",
   in_progress: "In progress",
   ready: "Ready",
   not_using: "Not using",
 };
 
+export const STARTER_READY_SUPPORTING =
+  "We've prepared a starting point. Take a look and make it yours.";
+
 export type EventExperienceReview = {
   profileId: string;
   profileUpdatedAt: string;
   confirmedAt: string;
+  resourcesReviewedAt?: string;
 };
 
 export type EventExperienceReviews = Partial<Record<string, EventExperienceReview>>;
@@ -53,9 +57,13 @@ export type SetupProfileSnapshot = {
 
 export type ExperienceFamilyDisplayStatus =
   | "Not started"
+  | "Not reviewed"
+  | "Reviewed"
   | "In progress"
   | "Ready"
   | "Needs attention";
+
+export type ExperiencePreparationStatus = "Not reviewed" | "Reviewed" | "Ready";
 
 export type SetupProfileAssignmentSnapshot = {
   profileId: string;
@@ -91,20 +99,21 @@ export function parseEventExperienceReviews(raw: unknown): EventExperienceReview
   for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
     if (!value || typeof value !== "object" || Array.isArray(value)) continue;
     const row = value as Record<string, unknown>;
-    if (
-      typeof row.profileId === "string" &&
-      row.profileId &&
-      typeof row.profileUpdatedAt === "string" &&
-      row.profileUpdatedAt &&
-      typeof row.confirmedAt === "string" &&
-      row.confirmedAt
-    ) {
-      out[key] = {
-        profileId: row.profileId,
-        profileUpdatedAt: row.profileUpdatedAt,
-        confirmedAt: row.confirmedAt,
-      };
-    }
+    const profileId = typeof row.profileId === "string" ? row.profileId : "";
+    const profileUpdatedAt = typeof row.profileUpdatedAt === "string" ? row.profileUpdatedAt : "";
+    const confirmedAt = typeof row.confirmedAt === "string" ? row.confirmedAt : "";
+    const resourcesReviewedAt =
+      typeof row.resourcesReviewedAt === "string" && row.resourcesReviewedAt
+        ? row.resourcesReviewedAt
+        : undefined;
+    if (!profileId || !profileUpdatedAt) continue;
+    if (!confirmedAt && !resourcesReviewedAt) continue;
+    out[key] = {
+      profileId,
+      profileUpdatedAt,
+      confirmedAt,
+      ...(resourcesReviewedAt ? { resourcesReviewedAt } : {}),
+    };
   }
   return out;
 }
@@ -197,8 +206,37 @@ export function isEventTypeReviewValid(input: {
 }): boolean {
   const profile = assignedProfileForEventType(input.eventType, input.assignments, input.profiles);
   const review = input.reviews[input.eventType];
-  if (!profile || !review) return false;
+  if (!profile || !review || !review.confirmedAt) return false;
   return review.profileId === profile.id && review.profileUpdatedAt === profile.updatedAt;
+}
+
+/**
+ * Step 3 resource-review confirmation. Legacy Ready rows without
+ * resourcesReviewedAt remain satisfied so existing confirmations are not
+ * silently downgraded.
+ */
+export function isEventTypeResourcesReviewed(input: {
+  eventType: string;
+  assignments: SetupProfileAssignmentSnapshot[];
+  profiles: SetupProfileSnapshot[];
+  reviews: EventExperienceReviews;
+}): boolean {
+  const profile = assignedProfileForEventType(input.eventType, input.assignments, input.profiles);
+  const review = input.reviews[input.eventType];
+  if (!profile || !review) return false;
+  if (review.profileId !== profile.id || review.profileUpdatedAt !== profile.updatedAt) return false;
+  return Boolean(review.resourcesReviewedAt || review.confirmedAt);
+}
+
+export function experiencePreparationStatus(input: {
+  eventType: string;
+  assignments: SetupProfileAssignmentSnapshot[];
+  profiles: SetupProfileSnapshot[];
+  reviews: EventExperienceReviews;
+}): ExperiencePreparationStatus {
+  if (isEventTypeReviewValid(input)) return "Ready";
+  if (isEventTypeResourcesReviewed(input)) return "Reviewed";
+  return "Not reviewed";
 }
 
 export function eventTypeReadiness(input: {
@@ -237,12 +275,21 @@ export function eventTypeReadiness(input: {
       reason: "ready",
     };
   }
+  if (isEventTypeResourcesReviewed(input)) {
+    return {
+      eventType: input.eventType,
+      status: "in_progress",
+      profile,
+      review,
+      reason: "needs_review",
+    };
+  }
   return {
     eventType: input.eventType,
-    status: review ? "needs_review" : "starter_available",
+    status: review?.confirmedAt || review?.resourcesReviewedAt ? "needs_review" : "starter_available",
     profile,
     review,
-    reason: review ? "stale" : "needs_review",
+    reason: review?.confirmedAt || review?.resourcesReviewedAt ? "stale" : "needs_review",
   };
 }
 
@@ -264,6 +311,12 @@ export function eventExperiencesStatus(input: {
     }),
   );
   if (cards.every((card) => card.status === "ready")) return "ready";
+  if (input.hostedEventTypes == null) {
+    if (cards.some((card) => card.reason === "stale")) return "needs_review";
+    if (cards.some((card) => card.status === "in_progress")) return "in_progress";
+    if (cards.some((card) => card.status === "starter_available")) return "starter_available";
+    return "not_started";
+  }
   if (cards.some((card) => card.reason === "needs_setup" || card.reason === "stale")) {
     return "needs_review";
   }
@@ -321,6 +374,10 @@ export function makeHtcYoursSectionStatuses(input: {
   };
 }
 
+function isInformationalSectionStatus(status: SectionReadinessStatus): boolean {
+  return status === "not_started" || status === "starter_available";
+}
+
 export function makeHtcYoursMilestoneStatusFromSections(sections: {
   brand: SectionReadinessStatus;
   booking: SectionReadinessStatus;
@@ -335,7 +392,7 @@ export function makeHtcYoursMilestoneStatusFromSections(sections: {
     sections.communications,
   ];
   if (required.every((status) => status === "ready")) return "ready";
-  if (required.every((status) => status === "not_started")) return "not_started";
+  if (required.every(isInformationalSectionStatus)) return "not_started";
   return "in_progress";
 }
 
@@ -355,7 +412,8 @@ export function experienceFamilyDisplayStatus(
   const hardGaps = assignedProfileHardGaps(card.profile);
   if (card.reason === "stale" || hardGaps.length > 0) return "Needs attention";
   if (card.reason === "ready") return "Ready";
-  return "In progress";
+  if (card.status === "in_progress" && card.review?.resourcesReviewedAt) return "Reviewed";
+  return "Not reviewed";
 }
 
 export function canConfirmEventTypeReview(input: {

@@ -2,11 +2,16 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { confirmEventExperienceReviewAction } from "@/app/(app)/setup-hub/actions";
+import {
+  confirmEventExperienceResourcesReviewedAction,
+  confirmEventExperienceReviewAction,
+} from "@/app/(app)/setup-hub/actions";
+import { ExperiencePrepNavigator } from "@/components/setup-hub/phase-b1/experience-prep-navigator";
 import { MarkExperienceReady } from "@/components/setup-hub/phase-b1/mark-experience-ready";
+import { ReviewExperienceResources } from "@/components/setup-hub/phase-b1/review-experience-resources";
 import { MilestoneDetailShell } from "@/components/setup-hub/phase-a/milestone-detail-shell";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { getSpaces } from "@/lib/availability/service";
 import { profileHardGapSummary } from "@/lib/event-setup/profile-config-gaps";
 import { getTemplates as getFloorPlanTemplates } from "@/lib/floor-plan-templates/service";
@@ -29,6 +34,8 @@ import {
   canConfirmEventTypeReview,
   eventTypeReadiness,
   experienceFamilyDisplayStatus,
+  experiencePreparationStatus,
+  isEventTypeResourcesReviewed,
 } from "@/lib/setup-hub/phase-b1-readiness";
 import {
   experiencePrepareReturn,
@@ -135,13 +142,29 @@ export default async function EventExperiencePreparePage({
     : [];
 
   const includedTools = tools.filter((tool) => tool.inclusion === "Included");
+  const resourceTools = tools.filter(
+    (tool) => tool.inclusion !== "Not included" && (tool.resources.length > 0 || Boolean(tool.attention)),
+  );
   const attentionItems = [
     ...assignedProfileHardGaps(fullProfile ?? null).map((gap) => gap.message),
     ...tools.filter((tool) => tool.attention).map((tool) => tool.attention!),
   ];
-  const configuredResources = includedTools.flatMap((tool) =>
+  const configuredResources = resourceTools.flatMap((tool) =>
     tool.resources.filter((row) => row.designation !== null && row.status !== "Needs attention"),
   );
+  const reviews = ctx.hubState?.eventExperienceReviews ?? {};
+  const resourcesReviewed = isEventTypeResourcesReviewed({
+    eventType: option.value,
+    assignments: ctx.assignments,
+    profiles: ctx.profiles,
+    reviews,
+  });
+  const prepStatus = experiencePreparationStatus({
+    eventType: option.value,
+    assignments: ctx.assignments,
+    profiles: ctx.profiles,
+    reviews,
+  });
 
   return (
     <div className="htc-hospitality-page">
@@ -159,11 +182,15 @@ export default async function EventExperiencePreparePage({
           </p>
         ) : null}
 
-        <section className="space-y-3 rounded-xl border border-border bg-card p-5">
+        <ExperiencePrepNavigator prepStatus={prepStatus} />
+
+        <section
+          id="experience-step-1"
+          className="scroll-mt-24 space-y-3 rounded-xl border border-border bg-card p-5"
+        >
           <h2 className="font-serif text-lg font-semibold text-heading">Your starting point</h2>
           <p className="text-sm text-muted-foreground">
-            A Setup Profile brings together the resources you want available for this type of event.
-            We&apos;ll start with a prepared option that you can personalize.
+            Start with a prepared experience, then make any changes that fit the way your venue works.
           </p>
           {fullProfile ? (
             <div className="space-y-2">
@@ -195,11 +222,14 @@ export default async function EventExperiencePreparePage({
           )}
         </section>
 
-        <section className="space-y-3 rounded-xl border border-border bg-card p-5">
+        <section
+          id="experience-step-2"
+          className="scroll-mt-24 space-y-3 rounded-xl border border-border bg-card p-5"
+        >
           <h2 className="font-serif text-lg font-semibold text-heading">Choose your planning tools</h2>
           <p className="text-sm text-muted-foreground">
-            Select the tools you normally use for this type of event. We&apos;ll help you prepare the
-            resources that go with them.
+            Decide which tools you&apos;ll use for this type of event. You can adjust individual events
+            later.
           </p>
           {fullProfile ? (
             <ul className="space-y-3">
@@ -210,6 +240,9 @@ export default async function EventExperiencePreparePage({
                     <Badge variant="muted">{tool.inclusion}</Badge>
                   </div>
                   <p className="text-sm text-muted-foreground">{tool.description}</p>
+                  {tool.step === "floor_plans" && tool.attention ? (
+                    <p className="text-xs text-muted-foreground">{tool.attention}</p>
+                  ) : null}
                 </li>
               ))}
             </ul>
@@ -220,21 +253,25 @@ export default async function EventExperiencePreparePage({
           )}
         </section>
 
-        <section className="space-y-3 rounded-xl border border-border bg-card p-5">
+        <section
+          id="experience-step-3"
+          className="scroll-mt-24 space-y-3 rounded-xl border border-border bg-card p-5"
+          data-testid="phase-b1-experience-resources"
+        >
           <h2 className="font-serif text-lg font-semibold text-heading">Prepare your resources</h2>
           <p className="text-sm text-muted-foreground">
-            Review the reusable resources you&apos;d like to start with. Our starters give you a head
-            start, and you can customize them to fit your venue.
+            Take a look at the resources your clients and team will start with. Customize anything
+            you&apos;d like before using this experience.
           </p>
           {fullProfile ? (
             <div className="space-y-4">
-              {includedTools.length === 0 ? (
+              {resourceTools.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
                   No planning tools are included yet. Included tools will appear here with their
                   resources.
                 </p>
               ) : (
-                includedTools.map((tool) => (
+                resourceTools.map((tool) => (
                   <div key={tool.step} className="space-y-2">
                     <h3 className="font-medium text-foreground">{tool.title}</h3>
                     {tool.attention ? (
@@ -245,9 +282,11 @@ export default async function EventExperiencePreparePage({
                         <li
                           key={`${tool.step}-${resource.id}`}
                           className="flex flex-col gap-2 rounded-lg border border-border p-3 sm:flex-row sm:items-center sm:justify-between"
+                          data-testid={`phase-b1-resource-row-${resource.id}`}
                         >
                           <div className="space-y-1">
                             <p className="text-sm font-medium text-foreground">{resource.name}</p>
+                            <p className="text-sm text-muted-foreground">{resource.purpose}</p>
                             <div className="flex flex-wrap gap-2">
                               {resource.designation ? (
                                 <Badge variant="muted">{resource.designation}</Badge>
@@ -259,33 +298,30 @@ export default async function EventExperiencePreparePage({
                           </div>
                           <div className="flex flex-wrap gap-2">
                             {resource.previewHref ? (
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                render={<Link href={resource.previewHref} />}
+                              <Link
+                                href={resource.previewHref}
+                                className={buttonVariants({ variant: "outline", size: "sm" })}
+                                data-testid="phase-b1-resource-preview"
                               >
                                 Preview
-                              </Button>
+                              </Link>
                             ) : null}
                             {resource.customizeHref ? (
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                render={<Link href={resource.customizeHref} />}
+                              <Link
+                                href={resource.customizeHref}
+                                className={buttonVariants({ variant: "outline", size: "sm" })}
+                                data-testid="phase-b1-resource-customize"
                               >
                                 Customize
-                              </Button>
+                              </Link>
                             ) : null}
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              render={<Link href={resource.manageHref} />}
+                            <Link
+                              href={resource.manageHref}
+                              className={buttonVariants({ variant: "outline", size: "sm" })}
+                              data-testid="phase-b1-resource-manage"
                             >
                               Manage
-                            </Button>
+                            </Link>
                           </div>
                         </li>
                       ))}
@@ -293,6 +329,11 @@ export default async function EventExperiencePreparePage({
                   </div>
                 ))
               )}
+              <ReviewExperienceResources
+                action={confirmEventExperienceResourcesReviewedAction.bind(null, option.value)}
+                alreadyReviewed={resourcesReviewed}
+                disabled={!fullProfile || !selected}
+              />
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">
@@ -301,12 +342,14 @@ export default async function EventExperiencePreparePage({
           )}
         </section>
 
-        <section className="space-y-3 rounded-xl border border-border bg-card p-5">
+        <section
+          id="experience-step-4"
+          className="scroll-mt-24 space-y-3 rounded-xl border border-border bg-card p-5"
+        >
           <h2 className="font-serif text-lg font-semibold text-heading">Review your experience</h2>
           <p className="text-sm text-muted-foreground">
-            Take a final look at what HTC will prepare when you create this type of event. Changes
-            you make here update this reusable starting experience. Changes you make on an individual
-            event stay with that event.
+            You&apos;re almost there. Confirm that this is the starting point you&apos;d like to use for
+            future events.
           </p>
           <dl className="space-y-2 text-sm">
             <div>
@@ -349,6 +392,7 @@ export default async function EventExperiencePreparePage({
             canConfirm={gate.ok}
             disabledReason={gate.ok ? undefined : gate.message}
             alreadyReady={card.reason === "ready"}
+            resourcesReviewed={resourcesReviewed}
           />
         </section>
       </MilestoneDetailShell>

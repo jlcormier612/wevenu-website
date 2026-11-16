@@ -10,7 +10,10 @@ import { Button } from "@/components/ui/button";
 import { getSpaces } from "@/lib/availability/service";
 import { getImportBatches } from "@/lib/import/batches";
 import { BRING_YOUR_BUSINESS_ROUTES } from "@/lib/setup-hub/bring-your-business";
-import { buildPhaseAMilestones } from "@/lib/setup-hub/phase-a-milestones";
+import {
+  bringBusinessNothingToBringOver,
+  buildPhaseAMilestones,
+} from "@/lib/setup-hub/phase-a-milestones";
 import { getSetupHubState } from "@/lib/setup-hub/service";
 import { getCurrentVenue } from "@/lib/venue/service";
 
@@ -36,6 +39,11 @@ export default async function BringBusinessPage() {
     venueBrandStarted: false,
     setupProfileCount: 0,
   });
+  const nothingToBringOver = bringBusinessNothingToBringOver({
+    existingBookingsAnswer: hubState?.existingBookingsAnswer ?? null,
+    hasMigrationImport,
+    bringYourBusinessPath: hubState?.bringYourBusinessPath ?? null,
+  });
 
   return (
     <div className="htc-hospitality-page">
@@ -45,10 +53,26 @@ export default async function BringBusinessPage() {
         intro="Already have weddings on the calendar? We'll help you bring your business into Hello to Cheers while keeping your existing bookings, important details, and commitments organized."
         statusLabel={milestones[2]?.statusLabel}
       >
-        <MilestoneGuidancePanel title="Before importing booked events">
-          Make sure your spaces and booking rules are configured first. This helps us assign your
-          existing bookings correctly and protect your calendar.
-        </MilestoneGuidancePanel>
+        {nothingToBringOver ? (
+          <div data-testid="phase-a-nothing-to-bring-over">
+            <MilestoneGuidancePanel title="Nothing to bring over">
+              You&apos;re all set here. If you have records to add later, you can still use{" "}
+              <Link
+                href={BRING_YOUR_BUSINESS_ROUTES.spreadsheetImport}
+                className="font-medium text-primary underline-offset-4 hover:underline"
+                data-testid="phase-a-import-data"
+              >
+                Import Data
+              </Link>
+              .
+            </MilestoneGuidancePanel>
+          </div>
+        ) : (
+          <MilestoneGuidancePanel title="Before importing booked events">
+            Make sure your spaces and booking rules are configured first. This helps us assign your
+            existing bookings correctly and protect your calendar.
+          </MilestoneGuidancePanel>
+        )}
 
         <MilestoneStepCard
           title="Leads"
@@ -90,7 +114,12 @@ export default async function BringBusinessPage() {
             <Button
               type="button"
               variant="outline"
-              render={<Link href={BRING_YOUR_BUSINESS_ROUTES.spreadsheetImport} />}
+              render={
+                <Link
+                  href={BRING_YOUR_BUSINESS_ROUTES.spreadsheetImport}
+                  data-testid="phase-a-import-data-button"
+                />
+              }
             >
               Import Data
             </Button>

@@ -24,6 +24,7 @@ describe("Phase B1 Milestone 02 guided copy and routes", () => {
     assert.match(src, /Your communications/);
     assert.match(src, /Review your messages and choose how you'd like to stay in touch\./);
     assert.match(src, /Review your communications/);
+    assert.match(src, /STARTER_READY_SUPPORTING/);
     assert.doesNotMatch(src, /Your operational resources/);
     assert.doesNotMatch(src, /Explore your planning tools/);
     assert.doesNotMatch(src, /Prepare once\. Make every event easier\./);
@@ -54,10 +55,13 @@ describe("Phase B1 Milestone 02 guided copy and routes", () => {
 
   it("booking process uses guided entries for packages, contracts, payments, Stripe, and QuickBooks", () => {
     const src = read("app/(app)/setup-hub/make-htc-yours/booking-process/page.tsx");
-    assert.match(src, /Packages and offerings/);
-    assert.match(src, /Choose what you offer, set your prices, and decide which packages you'd like to use\./);
+    assert.match(src, /Your packages & pricing/);
+    assert.match(src, /Price the packages you plan to offer, and archive any you won't use\./);
     assert.match(src, /Review packages/);
-    assert.match(src, /Unpriced packages aren't ready to offer/);
+    assert.match(src, /Packages need your attention/);
+    assert.match(src, /Every active package needs a price before you can mark your booking process ready\./);
+    assert.match(src, /phase-b1-review-packages/);
+    assert.match(src, /Add a price or archive each unpriced active package to continue\./);
     assert.match(src, /Review contracts/);
     assert.match(src, /Payment arrangements/);
     assert.match(src, /\/settings\/leads#booking/);
@@ -115,14 +119,18 @@ describe("Phase B1 Milestone 02 guided copy and routes", () => {
   it("event-family preparation view uses the approved four steps and readiness confirmation", () => {
     const src = read("app/(app)/setup-hub/make-htc-yours/event-experiences/[eventType]/page.tsx");
     assert.match(src, /Your starting point/);
-    assert.match(src, /A Setup Profile brings together the resources you want available/);
+    assert.match(src, /Start with a prepared experience, then make any changes that fit the way your venue works\./);
     assert.match(src, /Choose your planning tools/);
+    assert.match(src, /Decide which tools you&apos;ll use for this type of event\./);
     assert.match(src, /Prepare your resources/);
+    assert.match(src, /Take a look at the resources your clients and team will start with\./);
     assert.match(src, /Review your experience/);
+    assert.match(src, /You&apos;re almost there\. Confirm that this is the starting point you&apos;d like to use for/);
+    assert.match(src, /ExperiencePrepNavigator/);
+    assert.match(src, /ReviewExperienceResources/);
     assert.match(src, /MarkExperienceReady/);
     assert.match(src, /Back to Your event experiences/);
-    assert.match(src, /Changes\s+you make here update this reusable starting experience/);
-    assert.match(src, /Changes you make on an individual\s+event stay with that event/);
+    assert.match(src, /phase-b1-experience-resources/);
     assert.doesNotMatch(src, /Mark experience ready/);
   });
 
@@ -155,6 +163,7 @@ describe("Phase B1 Milestone 02 guided copy and routes", () => {
     assert.match(src, /Review email settings/);
     assert.match(src, /Set up text messaging so your team can communicate with leads and clients/);
     assert.match(src, /Set up text messaging/);
+    assert.match(src, /phase-b1-texting-status/);
     assert.match(src, /\/settings\/communications#texting/);
     assert.match(src, /Set up lead capture/);
     assert.match(src, /\/settings\/leads#inquiry/);

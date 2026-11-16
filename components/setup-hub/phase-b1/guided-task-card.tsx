@@ -9,6 +9,7 @@ export function GuidedTaskCard({
   title,
   description,
   statusLabel,
+  statusTestId,
   action,
   note,
   children,
@@ -17,6 +18,7 @@ export function GuidedTaskCard({
   title: string;
   description: string;
   statusLabel?: string;
+  statusTestId?: string;
   action: React.ReactNode;
   note?: string;
   children?: React.ReactNode;
@@ -33,7 +35,11 @@ export function GuidedTaskCard({
         <div className="min-w-0 flex-1 space-y-3">
           <h2 className="font-serif text-lg font-semibold text-heading">{title}</h2>
           <p className="text-sm text-muted-foreground">{description}</p>
-          {statusLabel ? <Badge variant="muted">{statusLabel}</Badge> : null}
+          {statusLabel ? (
+            <Badge variant="muted" data-testid={statusTestId}>
+              {statusLabel}
+            </Badge>
+          ) : null}
           <div>{action}</div>
           {children}
           {note ? <p className="text-xs text-muted-foreground">{note}</p> : null}

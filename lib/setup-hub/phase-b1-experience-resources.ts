@@ -21,8 +21,9 @@ export type NamedResource = {
 export type ExperienceResourceRow = {
   id: string;
   name: string;
+  purpose: string;
   designation: "Starter" | "Venue-created" | null;
-  status: "Needs attention" | "In progress" | null;
+  status: "Needs attention" | "Starter ready for you" | "Available" | null;
   previewHref: string | null;
   customizeHref: string | null;
   manageHref: string;
@@ -32,7 +33,7 @@ export type ExperienceToolRow = {
   step: ExperiencePlanningStep;
   title: string;
   description: string;
-  inclusion: "Included" | "Not included" | "Needs a decision";
+  inclusion: "Included" | "Optional" | "Not included";
   resources: ExperienceResourceRow[];
   attention: string | null;
 };
@@ -58,6 +59,7 @@ function libraryHref(
 function resourceRow(input: {
   item: NamedResource | undefined;
   fallbackName: string;
+  purpose: string;
   previewPath: (id: string) => string;
   customizePath: (id: string) => string;
   managePath: string;
@@ -70,6 +72,7 @@ function resourceRow(input: {
     return {
       id: input.fallbackName,
       name: input.fallbackName,
+      purpose: input.purpose,
       designation: null,
       status: input.missing ? "Needs attention" : null,
       previewHref: null,
@@ -80,8 +83,9 @@ function resourceRow(input: {
   return {
     id: input.item.id,
     name: input.item.name,
+    purpose: input.purpose,
     designation: designation(input.item),
-    status: input.item.sourceMasterKey ? "In progress" : "In progress",
+    status: input.item.sourceMasterKey ? "Starter ready for you" : "Available",
     previewHref: libraryHref(input.previewPath(input.item.id), input.eventType, input.heading),
     customizeHref: libraryHref(input.customizePath(input.item.id), input.eventType, input.heading),
     manageHref,
@@ -111,12 +115,13 @@ export function experienceToolRows(input: {
         ? "Included"
         : presentation === "skipped"
           ? "Not included"
-          : "Needs a decision";
+          : "Optional";
     const included = presentation === "included";
+    const showResources = included || (step === "floor_plans" && presentation !== "skipped");
     const resources: ExperienceResourceRow[] = [];
     let attention: string | null = null;
 
-    if (!included) {
+    if (!showResources) {
       return { step, title: copy.title, description: copy.description, inclusion, resources, attention };
     }
 
@@ -125,6 +130,7 @@ export function experienceToolRows(input: {
         resourceRow({
           item: lookup(input.playbooks, input.refs.planningPlaybookTemplateId),
           fallbackName: "Client planning template",
+          purpose: "A starting task list your clients can follow.",
           previewPath: (id) => `/library/playbooks/${id}/preview`,
           customizePath: (id) => `/library/playbooks/${id}`,
           managePath: "/library/playbooks",
@@ -135,6 +141,7 @@ export function experienceToolRows(input: {
         resourceRow({
           item: lookup(input.playbooks, input.refs.venuePlanningPlaybookTemplateId),
           fallbackName: "Venue planning template",
+          purpose: "A starting task list for your team.",
           previewPath: (id) => `/library/playbooks/${id}/preview`,
           customizePath: (id) => `/library/playbooks/${id}`,
           managePath: "/library/playbooks",
@@ -149,6 +156,7 @@ export function experienceToolRows(input: {
         resourceRow({
           item: lookup(input.timelines, input.refs.timelineTemplateId),
           fallbackName: "Timeline template",
+          purpose: "A starting schedule for this type of event.",
           previewPath: (id) => `/library/timeline-templates/${id}/preview`,
           customizePath: (id) => `/library/timeline-templates/${id}`,
           managePath: "/library/timeline-templates",
@@ -172,6 +180,7 @@ export function experienceToolRows(input: {
           resourceRow({
             item: undefined,
             fallbackName: "Floor plan template",
+            purpose: "A starting room layout you can adjust for this space.",
             previewPath: () => "/library/floor-plan-templates",
             customizePath: () => "/library/floor-plan-templates",
             managePath: "/library/floor-plan-templates",
@@ -186,6 +195,7 @@ export function experienceToolRows(input: {
             resourceRow({
               item: lookup(input.floorPlans, id),
               fallbackName: "Floor plan template",
+              purpose: "A starting room layout you can adjust for this space.",
               previewPath: (itemId) => `/library/floor-plan-templates/${itemId}/preview`,
               customizePath: (itemId) => `/library/floor-plan-templates/${itemId}`,
               managePath: "/library/floor-plan-templates",
@@ -207,8 +217,9 @@ export function experienceToolRows(input: {
         resources.push({
           id: "vendor-network",
           name: "Vendor network",
+          purpose: "Vendor details connected to this experience.",
           designation: null,
-          status: "In progress",
+          status: "Available",
           previewHref: null,
           customizeHref: null,
           manageHref: libraryHref("/vendors", input.eventType, input.heading),
@@ -219,6 +230,7 @@ export function experienceToolRows(input: {
             resourceRow({
               item: lookup(input.vendors, id),
               fallbackName: "Vendor",
+              purpose: "Vendor details connected to this experience.",
               previewPath: (itemId) => `/vendors/${itemId}`,
               customizePath: (itemId) => `/vendors/${itemId}/edit`,
               managePath: "/vendors",
@@ -237,6 +249,7 @@ export function experienceToolRows(input: {
           resourceRow({
             item: undefined,
             fallbackName: "Questionnaire template",
+            purpose: "Questions to gather planning details from clients.",
             previewPath: () => "/library/questionnaire-templates",
             customizePath: () => "/library/questionnaire-templates",
             managePath: "/library/questionnaire-templates",
@@ -251,6 +264,7 @@ export function experienceToolRows(input: {
             resourceRow({
               item: lookup(input.questionnaires, id),
               fallbackName: "Questionnaire template",
+              purpose: "Questions to gather planning details from clients.",
               previewPath: (itemId) => `/library/questionnaire-templates/${itemId}/preview`,
               customizePath: (itemId) => `/library/questionnaire-templates/${itemId}`,
               managePath: "/library/questionnaire-templates",

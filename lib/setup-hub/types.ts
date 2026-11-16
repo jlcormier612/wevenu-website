@@ -73,6 +73,7 @@ export type SetupHubState = {
     profileId: string;
     profileUpdatedAt: string;
     confirmedAt: string;
+    resourcesReviewedAt?: string;
   }>>;
   bookingProcessReviewedAt: string | null;
   communicationsReviewedAt: string | null;

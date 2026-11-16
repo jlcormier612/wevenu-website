@@ -99,7 +99,7 @@ export async function loadMilestone02Context(): Promise<Milestone02Context | nul
     inventory.length > 0;
 
   const venueBrandStarted = Boolean(
-    venue.email || venue.phone || venue.logoUrl || venue.heroImageUrl || hubState?.yourVenueReviewedAt,
+    venue.phone || venue.logoUrl || venue.heroImageUrl || hubState?.yourVenueReviewedAt,
   );
 
   const sections = makeHtcYoursSectionStatuses({
