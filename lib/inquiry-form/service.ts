@@ -8,8 +8,6 @@ import {
   filterValidAcceptedEventTypes,
   parseAcceptedEventTypes,
 } from "@/lib/event-types/canonical";
-import { removedAcceptedEventTypes } from "@/lib/event-setup/setup-profile-event-types";
-import { pruneSetupProfileAssignmentsForRemovedEventTypes } from "@/lib/event-setup/profiles";
 import type {
   InquiryFormFieldsConfig,
   InquiryFormQuestion,
@@ -167,12 +165,9 @@ export async function updateInquiryFormSettings(
   if (patch.inquiryEventDateMode) update.inquiry_event_date_mode = patch.inquiryEventDateMode;
   if (patch.inquiryFormFields) update.inquiry_form_fields = patch.inquiryFormFields;
 
-  let previousAccepted: unknown = null;
-  let nextAccepted: string[] | null = null;
   if (patch.acceptedEventTypes) {
     const valid = filterValidAcceptedEventTypes(patch.acceptedEventTypes);
     if (valid.length === 0) return { ok: false, error: "accepted_types_empty" };
-    nextAccepted = valid;
     update.accepted_inquiry_event_types = valid;
   }
   if (patch.inquiryCommunicationSettings) {
@@ -189,16 +184,6 @@ export async function updateInquiryFormSettings(
 
   const admin = createAdminClient();
 
-  if (nextAccepted) {
-    const { data: priorRow, error: priorError } = await admin
-      .from("venues")
-      .select("accepted_inquiry_event_types")
-      .eq("id", venue.id)
-      .maybeSingle<{ accepted_inquiry_event_types: unknown }>();
-    if (priorError) return { ok: false, error: priorError.message };
-    previousAccepted = priorRow?.accepted_inquiry_event_types ?? null;
-  }
-
   const { data, error } = await admin
     .from("venues")
     .update(update)
@@ -207,12 +192,6 @@ export async function updateInquiryFormSettings(
     .maybeSingle();
   if (error) return { ok: false, error: error.message };
   if (!data?.id) return { ok: false, error: "no_row_updated" };
-
-  if (nextAccepted) {
-    const removed = removedAcceptedEventTypes(previousAccepted, nextAccepted);
-    const pruned = await pruneSetupProfileAssignmentsForRemovedEventTypes(venue.id, removed);
-    if (!pruned.ok) return { ok: false, error: pruned.message };
-  }
 
   return { ok: true };
 }

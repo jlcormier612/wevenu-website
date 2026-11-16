@@ -16,7 +16,11 @@ import {
 import { profileHardGapSummary, profileHardConfigGaps } from "@/lib/event-setup/profile-config-gaps";
 import {
   assignmentTypesToPruneOnInquiryRemoval,
+  findSetupProfileAssignmentConflicts,
+  requiresAssignmentMoveConfirmation,
   validateSetupProfileEventTypes,
+  type SetupProfileAssignmentConflict,
+  type SetupProfileConflictAck,
 } from "@/lib/event-setup/setup-profile-event-types";
 import { applicableSetupSteps, type SetupDecisions, type SetupStepKey } from "@/lib/event-setup/state";
 import type { VenuePlanningCapabilities } from "@/lib/playbooks/capabilities";
@@ -76,7 +80,14 @@ export type SaveSetupProfileInput = {
   eventTypes: string[];
   venueDefault: boolean;
   applicable: readonly SetupStepKey[];
+  /** Event-type moves the user already confirmed for this save. */
+  confirmedConflicts?: readonly SetupProfileConflictAck[];
 };
+
+export type SaveSetupProfileResult =
+  | { ok: true; profileId: string }
+  | { ok: false; message: string }
+  | { ok: false; code: "assignment_conflicts"; conflicts: SetupProfileAssignmentConflict[] };
 
 async function requireManagerVenue(): Promise<{ ok: true; venueId: string } | { ok: false; message: string }> {
   const [venue, role] = await Promise.all([getCurrentVenue(), getCurrentUserRole()]);
@@ -89,7 +100,7 @@ async function requireManagerVenue(): Promise<{ ok: true; venueId: string } | { 
 
 export async function saveVenueSetupProfile(
   input: SaveSetupProfileInput,
-): Promise<{ ok: true; profileId: string } | { ok: false; message: string }> {
+): Promise<SaveSetupProfileResult> {
   const gate = await requireManagerVenue();
   if (!gate.ok) return gate;
   const name = input.name.trim();
@@ -98,19 +109,35 @@ export async function saveVenueSetupProfile(
   if (missing.length > 0) return { ok: false, message: "Choose included or not included for every area." };
 
   const supabase = await createClient();
-  const { data: venueRow, error: venueError } = await supabase
-    .from("venues")
-    .select("accepted_inquiry_event_types")
-    .eq("id", gate.venueId)
-    .maybeSingle<{ accepted_inquiry_event_types: unknown }>();
-  if (venueError) return { ok: false, message: venueError.message };
-
-  const validated = validateSetupProfileEventTypes(
-    input.eventTypes,
-    venueRow?.accepted_inquiry_event_types,
-  );
+  const validated = validateSetupProfileEventTypes(input.eventTypes);
   if (!validated.ok) return validated;
   const eventTypes = validated.eventTypes;
+
+  const [
+    { data: liveAssignments, error: liveAssignmentError },
+    { data: liveProfiles, error: liveProfileError },
+  ] = await Promise.all([
+    supabase
+      .from("venue_setup_profile_assignments")
+      .select("profile_id, event_type")
+      .eq("venue_id", gate.venueId),
+    supabase.from("venue_setup_profiles").select("id, name").eq("venue_id", gate.venueId),
+  ]);
+  if (liveAssignmentError) return { ok: false, message: liveAssignmentError.message };
+  if (liveProfileError) return { ok: false, message: liveProfileError.message };
+
+  const conflicts = findSetupProfileAssignmentConflicts({
+    claimedEventTypes: eventTypes,
+    savingProfileId: input.id ?? null,
+    assignments: ((liveAssignments ?? []) as AssignmentRow[]).map((row) => ({
+      profileId: row.profile_id,
+      eventType: row.event_type,
+    })),
+    profiles: ((liveProfiles ?? []) as { id: string; name: string }[]),
+  });
+  if (requiresAssignmentMoveConfirmation(conflicts, input.confirmedConflicts)) {
+    return { ok: false, code: "assignment_conflicts", conflicts };
+  }
 
   const decisions = parseSetupDecisions(input.decisions);
   delete decisions.portal;

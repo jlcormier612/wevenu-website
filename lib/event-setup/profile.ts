@@ -122,8 +122,6 @@ export function setupProfileUsedForLabel(eventTypes: readonly (string | null)[])
   if (eventTypes.length === 0) return "Not assigned";
   return eventTypes.map((type) => {
     if (type == null) return "Venue default";
-    if (type === "wedding") return "All Weddings";
-    if (type === "corporate") return "Corporate Events";
     const label = eventTypeLabel(type);
     return label ? label : type;
   }).join(" · ");

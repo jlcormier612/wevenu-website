@@ -39,7 +39,7 @@ export default async function ImportPage({
         label="Back to Bring your business over"
       />
       <div className="htc-hospitality-heading htc-hospitality-intro-accent space-y-1.5">
-        <h1 className="text-xl font-bold text-foreground">Import Data</h1>
+        <h1 className="font-heading text-3xl font-medium tracking-tight text-heading">Import Data</h1>
         <p className="text-sm text-muted-foreground mt-1">
           Bring a small, clean list of clients, leads, vendors, inventory templates, or package
           templates into Hello to Cheers. Import from CSV, Excel, Word, PDF, or a pasted list, then

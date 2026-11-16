@@ -16,6 +16,7 @@ export function LeadLifecycleConfirmDialog({
   onConfirm,
   onCancel,
   confirming = false,
+  testId,
 }: {
   open: boolean;
   title: string;
@@ -24,15 +25,16 @@ export function LeadLifecycleConfirmDialog({
   onConfirm: () => void;
   onCancel: () => void;
   confirming?: boolean;
+  testId?: string;
 }) {
   React.useEffect(() => {
     if (!open) return;
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onCancel();
+      if (e.key === "Escape" && !confirming) onCancel();
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, onCancel]);
+  }, [open, confirming, onCancel]);
 
   if (!open) return null;
 
@@ -50,12 +52,16 @@ export function LeadLifecycleConfirmDialog({
         aria-modal="true"
         aria-labelledby="lead-lifecycle-confirm-title"
         aria-describedby="lead-lifecycle-confirm-desc"
+        data-testid={testId}
         className="relative z-10 w-full max-w-md rounded-lg border border-border bg-card p-5 shadow-lg"
       >
         <h2 id="lead-lifecycle-confirm-title" className="text-base font-semibold text-heading">
           {title}
         </h2>
-        <p id="lead-lifecycle-confirm-desc" className="mt-2 text-sm text-muted-foreground leading-relaxed">
+        <p
+          id="lead-lifecycle-confirm-desc"
+          className="mt-2 whitespace-pre-line text-sm text-muted-foreground leading-relaxed"
+        >
           {description}
         </p>
         <div className="mt-5 flex flex-wrap justify-end gap-2">

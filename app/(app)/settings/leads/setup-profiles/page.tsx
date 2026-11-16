@@ -7,7 +7,6 @@ import { SetupProfilesSection } from "@/components/settings/setup-profiles-secti
 import { applicableSetupSteps } from "@/lib/event-setup/state";
 import { listVenueSetupProfiles } from "@/lib/event-setup/profiles";
 import { buildSetupProfileUsedForOptions } from "@/lib/event-setup/setup-profile-event-types";
-import { getInquiryFormSettings } from "@/lib/inquiry-form/service";
 import { capabilitiesFromVenue } from "@/lib/playbooks/capabilities";
 import { getTemplates as getPlaybookTemplates } from "@/lib/playbooks/service";
 import { getTemplates as getTimelineTemplates } from "@/lib/timeline-templates/service";
@@ -38,7 +37,7 @@ export default async function SetupProfilesPage({
   const role = await getCurrentUserRole();
   const canEdit = role === "owner" || role === "manager";
   const listed = venue ? await listVenueSetupProfiles(venue.id) : { profiles: [], assignments: [] };
-  const [playbooks, timelines, floorPlans, vendors, questionnaires, inventoryTemplates, eventOrderTemplates, inquirySettings] = venue
+  const [playbooks, timelines, floorPlans, vendors, questionnaires, inventoryTemplates, eventOrderTemplates] = venue
     ? await Promise.all([
       getPlaybookTemplates(),
       getTimelineTemplates(),
@@ -47,14 +46,11 @@ export default async function SetupProfilesPage({
       getQuestionnaireTemplates(),
       getInventoryTemplates(),
       getEventOrderTemplates(),
-      getInquiryFormSettings(),
     ])
-    : [[], [], [], [], [], [], [], null];
+    : [[], [], [], [], [], [], []];
 
   const steps = applicableSetupSteps(capabilitiesFromVenue(venue));
-  const usedForOptions = buildSetupProfileUsedForOptions(
-    inquirySettings?.acceptedEventTypes ?? null,
-  );
+  const usedForOptions = buildSetupProfileUsedForOptions();
 
   return (
     <div className="htc-hospitality-page space-y-4 sm:space-y-6">

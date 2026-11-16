@@ -71,7 +71,7 @@ describe("venue setup profiles", () => {
       "wedding",
     );
     assert.equal(resolved?.id, wedding.id);
-    assert.equal(setupProfileUsedForLabel(["wedding"]), "All Weddings");
+    assert.equal(setupProfileUsedForLabel(["wedding"]), "Wedding");
     assert.equal(missingProfileDecisions(STEPS, {}).length, STEPS.length);
   });
 
