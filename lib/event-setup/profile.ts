@@ -27,6 +27,8 @@ export type VenueSetupProfile = {
   name: string;
   decisions: SetupDecisions;
   templateRefs: SetupTemplateRefs;
+  /** Present when listed from persistence; used to invalidate Phase B1 review. */
+  updatedAt?: string;
 };
 
 export type SetupProfileAssignment = {

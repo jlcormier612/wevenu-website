@@ -125,6 +125,51 @@ export async function loadActivePortalSessions(): Promise<ActivePortalSessions> 
 }
 
 /**
+ * Phase A: post-login venue home when onboarding is incomplete.
+ * Uses ready_to_invite_couples OR venues.setup_completed so established
+ * venues are not redirected into Setup Hub unexpectedly.
+ */
+async function resolveVenueHomePath(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
+): Promise<"/setup-hub" | "/dashboard"> {
+  const { venueDefaultLandingPath } = await import("@/lib/setup-hub/phase-a-milestones");
+  const { data: venue, error: venueError } = await supabase
+    .from("venues")
+    .select("id, setup_completed")
+    .maybeSingle();
+
+  let venueId: string | null = venue?.id ?? null;
+  let setupCompleted = venue?.setup_completed === true;
+
+  if (!venueId || venueError) {
+    const { data: membershipPayload } = await supabase.rpc("list_my_venue_memberships");
+    const memberships = Array.isArray(membershipPayload?.memberships)
+      ? membershipPayload.memberships as Array<{ venue_id?: string; venueId?: string }>
+      : [];
+    if (memberships.length !== 1) return "/dashboard";
+    venueId = memberships[0]?.venue_id ?? memberships[0]?.venueId ?? null;
+    if (!venueId) return "/dashboard";
+    const { data: row } = await supabase
+      .from("venues")
+      .select("id, setup_completed")
+      .eq("id", venueId)
+      .maybeSingle();
+    setupCompleted = row?.setup_completed === true;
+  }
+
+  const { data: hub } = await supabase
+    .from("venue_setup_hub_state")
+    .select("ready_to_invite_couples")
+    .eq("venue_id", venueId)
+    .maybeSingle();
+  return venueDefaultLandingPath({
+    readyToInviteCouples: hub?.ready_to_invite_couples === true,
+    setupCompleted,
+  });
+}
+
+/**
  * Post-login home for the venue cookie jar (used by `/login` + venue signIn).
  * Vendor/client logins use their own actions and never call this.
  */
@@ -140,10 +185,15 @@ export async function resolveAuthenticatedHomePath(
   const prefer =
     options?.prefer ??
     (roles.isVenueStaff ? ("venue" as const) : null);
+  const venueHome =
+    roles.isVenueStaff && (prefer === "venue" || prefer == null)
+      ? await resolveVenueHomePath(supabase)
+      : "/dashboard";
   return pickAuthenticatedHomePath({
     next: options?.next,
     roles,
     prefer,
+    venueHome,
   });
 }
 

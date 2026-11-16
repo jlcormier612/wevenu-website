@@ -88,10 +88,12 @@ describe("Your People completion — explicit Team decision only", () => {
       isYourPeopleComplete({ deliberateTeamActionCount: 0, soloConfirmed: false }),
       false,
     );
+    const overview = readFileSync(resolve("components/setup-hub/setup-hub-overview.tsx"), "utf8");
+    assert.match(overview, /deliberateTeamActionCount/);
+    assert.doesNotMatch(overview, /hasActiveOwner/);
     const page = readFileSync(resolve("app/(app)/setup-hub/page.tsx"), "utf8");
-    assert.match(page, /invitedByUserId/);
-    assert.match(page, /deliberateTeamActionCount/);
     assert.doesNotMatch(page, /hasActiveOwner/);
+    assert.match(page, /SetupHubPhaseAOverview/);
   });
 
   it("deliberate Team invite/action completes without requiring acceptance", () => {

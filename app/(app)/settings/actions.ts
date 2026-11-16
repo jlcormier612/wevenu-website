@@ -27,7 +27,13 @@ export async function saveVenueInfoAction(
   input: VenueSetupInput,
 ): Promise<SaveSectionResult> {
   const result = await saveVenueInfoSection(input);
-  if (result.ok) revalidateWorkspace();
+  if (result.ok) {
+    revalidateWorkspace();
+    const { markStageReviewedAction } = await import("@/app/(app)/setup-hub/actions");
+    await markStageReviewedAction("your-venue");
+    revalidatePath("/setup-hub");
+    revalidatePath("/setup-hub/make-htc-yours");
+  }
   return result;
 }
 

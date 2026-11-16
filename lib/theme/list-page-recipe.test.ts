@@ -60,7 +60,6 @@ describe("List-page recipe — priority pages", () => {
       "app/(app)/tasks/page.tsx",
       "app/(app)/requests/page.tsx",
       "app/(app)/dashboard/page.tsx",
-      "app/(app)/setup-hub/page.tsx",
       "app/(app)/settings/page.tsx",
       "app/(app)/settings/availability/page.tsx",
       "app/(app)/settings/business/page.tsx",
@@ -83,6 +82,14 @@ describe("List-page recipe — priority pages", () => {
       const src = read(page);
       assert.match(src, /htc-hospitality-heading htc-hospitality-intro-accent/, page);
     }
+  });
+
+  it("Phase A Setup Hub keeps the hospitality page wrapper without linen intro fill", () => {
+    const page = read("app/(app)/setup-hub/page.tsx");
+    assert.match(page, /htc-hospitality-page/);
+    assert.match(page, /SetupHubPhaseAOverview/);
+    assert.doesNotMatch(page, /className="htc-hospitality-intro"/);
+    assert.doesNotMatch(page, /htc-linen-group|p9b-/);
   });
 
   it("Automations list uses white heading + strip (not eucalyptus intro fill)", () => {

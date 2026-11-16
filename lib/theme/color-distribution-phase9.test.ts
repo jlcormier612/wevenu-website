@@ -24,11 +24,11 @@ describe("Color Distribution Phase 9 — Setup Hub + Settings directory", () => 
   });
 
   it("Setup Hub uses Option A section labels without Phase 8 eucalyptus intro fill", () => {
-    assert.match(overview, /contiguousSetupStageRuns\(stages\)/);
+    assert.match(overview, /SETUP_CHAPTERS/);
     assert.match(overview, /htc-setup-stage-section-label/);
     assert.doesNotMatch(overview, /htc-hospitality-intro[^-]|htc-linen-group|p9b-/);
-    assert.match(setupPage, /htc-setup-hub-welcome/);
-    assert.match(setupPage, /htc-hospitality-heading htc-hospitality-intro-accent/);
+    assert.match(setupPage, /htc-hospitality-page/);
+    assert.match(setupPage, /SetupHubPhaseAOverview/);
     assert.doesNotMatch(setupPage, /className="htc-hospitality-intro"/);
   });
 

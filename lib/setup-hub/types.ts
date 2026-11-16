@@ -27,6 +27,12 @@ export type OnboardingType = "self_setup" | "white_glove";
 /** Explicit BYB choice when the venue has not imported data. */
 export type BringYourBusinessPath = "individual" | "skipped";
 
+/** Phase A Milestone 01 — explicit existing-bookings confirmation. */
+export type ExistingBookingsAnswer = "yes" | "no";
+
+/** Milestone card / readiness status — never Ready when required verification is unresolved. */
+export type MilestoneStatus = "not_started" | "in_progress" | "ready" | "needs_attention";
+
 export type SetupHubState = {
   venueId: string;
   onboardingType: OnboardingType;
@@ -47,6 +53,31 @@ export type SetupHubState = {
 
   readyToInviteCouples: boolean;
   readyToInviteCouplesAt: string | null;
+
+  /** Phase A: first-visit welcome dismissed after Explore / Continue setup. */
+  welcomeExploredAt: string | null;
+  /** Phase A Milestone 01: explicit yes/no — never inferred from zero events. */
+  existingBookingsAnswer: ExistingBookingsAnswer | null;
+  existingBookingsAnsweredAt: string | null;
+  /** Phase A Milestone 01: booking & availability rules reviewed. */
+  bookingRulesReviewedAt: string | null;
+
+  /**
+   * Phase B1: event types this venue deliberately hosts in HTC.
+   * Null = never selected. Independent of venues.accepted_inquiry_event_types.
+   */
+  hostedEventTypes: string[] | null;
+  hostedEventTypesSetAt: string | null;
+  /** Per event-type Setup Profile review confirmations. */
+  eventExperienceReviews: Partial<Record<string, {
+    profileId: string;
+    profileUpdatedAt: string;
+    confirmedAt: string;
+  }>>;
+  bookingProcessReviewedAt: string | null;
+  communicationsReviewedAt: string | null;
+  operationalResourcesReviewedAt: string | null;
+  operationalResourceChoices: Record<string, "using" | "not_using">;
 };
 
 export type LeadCaptureStageStatus = {

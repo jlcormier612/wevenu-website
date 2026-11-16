@@ -80,6 +80,21 @@ describe("pickAuthenticatedHomePath", () => {
     );
   });
 
+  it("honors venueHome for Phase A incomplete onboarding landing", () => {
+    assert.equal(
+      pickAuthenticatedHomePath({
+        prefer: "venue",
+        venueHome: "/setup-hub",
+        roles: {
+          isVendor: false,
+          clientPortalPath: null,
+          isVenueStaff: true,
+        },
+      }),
+      "/setup-hub",
+    );
+  });
+
   it("honors prefer when that portal is available", () => {
     assert.equal(
       pickAuthenticatedHomePath({

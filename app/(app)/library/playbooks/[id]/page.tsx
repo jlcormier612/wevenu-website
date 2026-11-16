@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { CollectionBackLink } from "@/components/library/collection-back-link";
+import { SetupHubReturnLink } from "@/components/setup-hub/phase-b1/setup-hub-return-link";
 import { PlaybookBuilder } from "@/components/playbooks/playbook-builder";
 import { PlaybookTemplateEditorHeader } from "@/components/playbooks/playbook-template-editor-header";
 import { getVenueDocuments } from "@/lib/documents/service";
@@ -27,6 +28,7 @@ export default async function PlaybookEditorPage({ params }: Props) {
       className="htc-hospitality-page space-y-5 sm:space-y-6"
       data-htc-phase12="planning-template-edit"
     >
+      <SetupHubReturnLink href="/setup-hub/make-htc-yours/event-experiences" label="Back to Your event experiences" />
       <CollectionBackLink href="/library/playbooks" label="Planning Templates" />
       <PlaybookTemplateEditorHeader
         template={template}

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { SetupHubReturnLink } from "@/components/setup-hub/phase-b1/setup-hub-return-link";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { SettingsTabs } from "@/components/settings/settings-tabs";
 import { SetupProfilesSection } from "@/components/settings/setup-profiles-section";
@@ -19,7 +20,20 @@ import { getCurrentUserRole, getCurrentVenue } from "@/lib/venue/service";
 
 export const metadata: Metadata = { title: "Setup Profiles — Settings" };
 
-export default async function SetupProfilesPage() {
+function firstParam(value: string | string[] | undefined): string | null {
+  if (Array.isArray(value)) return value[0] ?? null;
+  return value ?? null;
+}
+
+export default async function SetupProfilesPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const params = await searchParams;
+  const initialCreateEventType = firstParam(params.eventType);
+  const initialProfileId = firstParam(params.profileId);
+  const initialCreate = firstParam(params.create) === "1";
   const venue = await getCurrentVenue();
   const role = await getCurrentUserRole();
   const canEdit = role === "owner" || role === "manager";
@@ -44,6 +58,7 @@ export default async function SetupProfilesPage() {
 
   return (
     <div className="htc-hospitality-page space-y-4 sm:space-y-6">
+      <SetupHubReturnLink href="/setup-hub/make-htc-yours/event-experiences" label="Back to your event experiences" />
       <div className="htc-hospitality-heading htc-hospitality-intro-accent">
         <PageHeader
           title="Setup Profiles"
@@ -58,6 +73,9 @@ export default async function SetupProfilesPage() {
           profiles={listed.profiles}
           assignments={listed.assignments}
           usedForOptions={usedForOptions}
+          initialCreate={initialCreate}
+          initialCreateEventType={initialCreateEventType}
+          initialProfileId={initialProfileId}
           playbooks={playbooks.filter((template) => template.kind === "client" && !template.isArchived).map((template) => ({
             id: template.id,
             name: template.name,

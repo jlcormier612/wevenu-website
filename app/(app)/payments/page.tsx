@@ -6,6 +6,7 @@ import {
   PAYMENTS_SPOT_PATTERN_TYPES,
   SpotPatternRecommendationsPanel,
 } from "@/components/luv/spot-pattern-recommendations";
+import { SetupHubReturnLink } from "@/components/setup-hub/phase-b1/setup-hub-return-link";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { Button } from "@/components/ui/button";
 import { getPaymentSchedules } from "@/lib/payments/service";
@@ -20,6 +21,7 @@ export default async function PaymentsPage({ searchParams }: Props) {
 
   return (
     <div className="htc-hospitality-page space-y-4 sm:space-y-6" data-htc-phase8="payments">
+      <SetupHubReturnLink href="/setup-hub/make-htc-yours/booking-process" label="Back to your booking process" />
       <div className="htc-hospitality-heading htc-hospitality-intro-accent">
         <PageHeader
           title="Payments"

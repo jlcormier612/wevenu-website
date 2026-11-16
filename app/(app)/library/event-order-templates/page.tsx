@@ -5,6 +5,7 @@ import {
   NewEventOrderTemplateButton,
 } from "@/components/event-order-templates/event-order-template-list";
 import { CollectionBackLink } from "@/components/library/collection-back-link";
+import { SetupHubReturnLink } from "@/components/setup-hub/phase-b1/setup-hub-return-link";
 import { LibraryDependencyNote } from "@/components/library/library-guidance";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { ensureEventOrderStartersForCurrentVenue } from "@/lib/event-order-templates/provision";
@@ -27,6 +28,7 @@ export default async function EventOrderTemplatesPage() {
 
   return (
     <div className="htc-hospitality-page space-y-4 sm:space-y-6">
+      <SetupHubReturnLink href="/setup-hub/make-htc-yours/operational-resources" label="Back to your planning tools" />
       <CollectionBackLink href="/library" label="Library" />
       <div className="htc-hospitality-heading htc-hospitality-intro-accent">
         <PageHeader

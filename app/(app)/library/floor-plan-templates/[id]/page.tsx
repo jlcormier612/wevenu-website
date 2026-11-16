@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { FloorPlanTemplateEditor } from "@/components/floor-plan-templates/floor-plan-template-editor";
 import { FloorPlanTemplateEditorHeader } from "@/components/floor-plan-templates/floor-plan-template-editor-header";
 import { CollectionBackLink } from "@/components/library/collection-back-link";
+import { SetupHubReturnLink } from "@/components/setup-hub/phase-b1/setup-hub-return-link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getSpaces } from "@/lib/availability/service";
 import { canEditFloorPlans } from "@/lib/floor-plans/authorize";
@@ -40,6 +41,7 @@ export default async function FloorPlanTemplateEditorPage({ params }: Props) {
       className="htc-hospitality-page space-y-5 sm:space-y-6"
       data-htc-phase12="floor-plan-template-edit"
     >
+      <SetupHubReturnLink href="/setup-hub/make-htc-yours/event-experiences" label="Back to Your event experiences" />
       <CollectionBackLink href="/library/floor-plan-templates" label="Floor Plan Templates" />
       <FloorPlanTemplateEditorHeader
         template={template}

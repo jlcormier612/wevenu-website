@@ -510,25 +510,25 @@ export function FacebookConnectSection({
       return (
         <div className="space-y-3">
           {connectUrlLoading ? (
-            <p className="text-sm text-muted-foreground">Preparing Facebook Connect…</p>
+            <p className="text-sm text-muted-foreground">Checking your Facebook connection…</p>
           ) : !isConfigured ? (
             <div className="htc-surface-guidance p-4">
               <p className="text-sm text-muted-foreground">
-                Facebook / Instagram Lead Ads isn&apos;t available for your account yet. Contact support to get this
-                connected.
+                Facebook / Instagram Lead Ads isn&apos;t ready to start in this environment yet. A
+                working Connect button will appear here when Hello to Cheers can open Facebook
+                onboarding.
               </p>
             </div>
           ) : (
             <>
               <p className="text-xs text-muted-foreground">
-                Connecting takes two steps after Facebook: choose your Page, then choose which Lead Ads forms feed
-                Hello to Cheers.
+                You&apos;ll sign in to your own account and choose which Page and forms to connect.
               </p>
               <a
                 href={connectUrl}
                 className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
               >
-                <ExternalLink className="h-3.5 w-3.5" /> Connect with Facebook
+                <ExternalLink className="h-3.5 w-3.5" /> Connect Facebook
               </a>
               <div>
                 <SetupGuideLink
@@ -656,7 +656,7 @@ export function FacebookConnectSection({
           {isDisconnected && <Badge variant="muted">Not connected</Badge>}
         </div>
         <CardDescription>
-          Every lead submitted through your connected Lead Ads forms becomes a Lead in Hello to Cheers automatically.
+          Connect your Facebook Page and Lead Ads forms to bring new inquiries into Hello to Cheers automatically.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

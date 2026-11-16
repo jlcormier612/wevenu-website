@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { SetupHubReturnLink } from "@/components/setup-hub/phase-b1/setup-hub-return-link";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { SettingsTabs } from "@/components/settings/settings-tabs";
 import { StripeConnectSection } from "@/components/settings/stripe-connect-section";
@@ -23,6 +24,7 @@ export default async function FinancialsIntegrationsSettingsPage() {
 
   return (
     <div className="htc-hospitality-page space-y-4 sm:space-y-6">
+      <SetupHubReturnLink href="/setup-hub/make-htc-yours/booking-process" label="Back to your booking process" />
       <div className="htc-hospitality-heading htc-hospitality-intro-accent">
         <PageHeader
           title="Financials & Integrations"

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
+import { SetupHubReturnLink } from "@/components/setup-hub/phase-b1/setup-hub-return-link";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -33,6 +34,12 @@ export function LibraryPreviewChrome({
 }) {
   return (
     <div className={cn("min-h-[70vh] space-y-4 pb-10", className)}>
+      <div className="px-4 pt-4">
+        <SetupHubReturnLink
+          href="/setup-hub/make-htc-yours/event-experiences"
+          label="Back to Your event experiences"
+        />
+      </div>
       <div
         className={cn(
           "mx-auto flex flex-wrap items-center justify-between gap-2 px-4 pt-4",

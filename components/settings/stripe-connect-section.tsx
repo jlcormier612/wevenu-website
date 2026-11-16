@@ -87,15 +87,15 @@ export function StripeConnectSection({
           {!isConnected && <Badge variant="muted">Not connected</Badge>}
         </div>
         <CardDescription>
-          Connect your own Stripe account so couples can pay deposits and invoices directly —
-          money goes straight to your bank account. Hello to Cheers never holds or touches your funds.
+          Connect your Stripe account to accept deposits and invoice payments from clients. Stripe
+          processes payments directly for your venue.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="htc-surface-guidance px-3 py-2.5">
           <p className="text-xs text-muted-foreground">
-            <span className="font-semibold text-foreground">Before you start: </span>
-            Have your Stripe account and business verification information ready.
+            You&apos;ll securely connect or create your own Stripe account and complete any required
+            business verification with Stripe.
           </p>
         </div>
         {isConnected ? (
@@ -162,29 +162,18 @@ export function StripeConnectSection({
             {!isConfigured ? (
               <div className="rounded-lg border border-border bg-muted/30 p-4">
                 <p className="text-sm text-muted-foreground">
-                  Online payments aren&apos;t available for your account yet. Contact support to get this connected.
+                  Stripe Connect isn&apos;t ready to start in this environment yet. A working Connect
+                  button will appear here when Hello to Cheers can open Stripe onboarding.
                 </p>
               </div>
             ) : (
               <>
-                <ul className="space-y-1.5 text-sm text-muted-foreground">
-                  {[
-                    "Couples pay deposits and invoices directly, by card or bank transfer",
-                    "Balances update automatically the moment a payment lands",
-                    "Money goes straight to your own Stripe account and bank — Hello to Cheers never touches it",
-                  ].map((item) => (
-                    <li key={item} className="flex items-start gap-2">
-                      <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
-                      {item}
-                    </li>
-                  ))}
-                </ul>
                 <a
                   href={connectUrl}
                   className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
                 >
                   <ExternalLink className="h-3.5 w-3.5" />
-                  Connect with Stripe
+                  Connect Stripe
                 </a>
                 <div>
                   <SetupGuideLink

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { CollectionBackLink } from "@/components/library/collection-back-link";
+import { SetupHubReturnLink } from "@/components/setup-hub/phase-b1/setup-hub-return-link";
 import { TimelineTemplateEditor } from "@/components/timeline-templates/timeline-template-editor";
 import { TimelineTemplateEditorHeader } from "@/components/timeline-templates/timeline-template-editor-header";
 import { getSpaces } from "@/lib/availability/service";
@@ -31,6 +32,7 @@ export default async function TimelineTemplateEditorPage({ params }: Props) {
       className="htc-hospitality-page space-y-5 sm:space-y-6"
       data-htc-phase12="timeline-template-edit"
     >
+      <SetupHubReturnLink href="/setup-hub/make-htc-yours/event-experiences" label="Back to Your event experiences" />
       <CollectionBackLink href="/library/timeline-templates" label="Timeline Templates" />
       <TimelineTemplateEditorHeader
         template={template}

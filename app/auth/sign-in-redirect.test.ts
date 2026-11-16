@@ -74,12 +74,14 @@ describe("the hazard the login handoff exists to avoid is still real", () => {
   // stops being true these tests should be revisited together, rather than
   // someone finding a lone "don't call redirect()" rule with no stated reason.
   it("the (app) layout still redirects to a different entry point", () => {
-    for (const gate of ["/onboarding/intake", "/setup-hub", "/billing/suspended"]) {
+    for (const gate of ["/onboarding/ownership", "/billing/suspended"]) {
       assert.ok(
         APP_LAYOUT.includes(`redirect("${gate}")`),
         `app/(app)/layout.tsx no longer redirects to ${gate}`,
       );
     }
+    // Users with no venue membership still use the legacy intake route.
+    assert.match(APP_LAYOUT, /redirect\("\/onboarding\/intake"\)/);
   });
 
   it("the resolved post-login home is inside that gated tree", () => {

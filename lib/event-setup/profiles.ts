@@ -14,7 +14,10 @@ import {
   type VenueSetupProfile,
 } from "@/lib/event-setup/profile";
 import { profileHardGapSummary, profileHardConfigGaps } from "@/lib/event-setup/profile-config-gaps";
-import { validateSetupProfileEventTypes } from "@/lib/event-setup/setup-profile-event-types";
+import {
+  assignmentTypesToPruneOnInquiryRemoval,
+  validateSetupProfileEventTypes,
+} from "@/lib/event-setup/setup-profile-event-types";
 import { applicableSetupSteps, type SetupDecisions, type SetupStepKey } from "@/lib/event-setup/state";
 import type { VenuePlanningCapabilities } from "@/lib/playbooks/capabilities";
 import { getCurrentUserRole, getCurrentVenue } from "@/lib/venue/service";
@@ -29,6 +32,7 @@ type ProfileRow = {
   name: string;
   decisions: unknown;
   template_refs: unknown;
+  updated_at?: string | null;
 };
 
 type AssignmentRow = {
@@ -42,13 +46,14 @@ function mapProfile(row: ProfileRow): VenueSetupProfile {
     name: row.name,
     decisions: parseSetupDecisions(row.decisions),
     templateRefs: parseTemplateRefs(row.template_refs),
+    updatedAt: row.updated_at ?? undefined,
   };
 }
 
 export async function listVenueSetupProfiles(venueId: string): Promise<VenueSetupProfileList> {
   const supabase = await createClient();
   const [{ data: profiles, error: profileError }, { data: assignments, error: assignmentError }] = await Promise.all([
-    supabase.from("venue_setup_profiles").select("id, name, decisions, template_refs").eq("venue_id", venueId).order("name"),
+    supabase.from("venue_setup_profiles").select("id, name, decisions, template_refs, updated_at").eq("venue_id", venueId).order("name"),
     supabase.from("venue_setup_profile_assignments").select("profile_id, event_type").eq("venue_id", venueId),
   ]);
   if (profileError) throw profileError;
@@ -248,7 +253,7 @@ export async function pruneSetupProfileAssignmentsForRemovedEventTypes(
   venueId: string,
   removedEventTypes: readonly string[],
 ): Promise<{ ok: true } | { ok: false; message: string }> {
-  const types = [...new Set(removedEventTypes.filter(Boolean))];
+  const types = assignmentTypesToPruneOnInquiryRemoval(removedEventTypes);
   if (types.length === 0) return { ok: true };
   const admin = createAdminClient();
   const { error } = await admin

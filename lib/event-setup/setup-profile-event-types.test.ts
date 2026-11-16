@@ -10,8 +10,10 @@ import {
 } from "@/lib/event-setup/profile";
 import {
   SETUP_PROFILE_UNACCEPTED_EVENT_TYPE_MESSAGE,
+  assignmentTypesToPruneOnInquiryRemoval,
   buildSetupProfileUsedForOptions,
   removedAcceptedEventTypes,
+  suggestedSetupProfileName,
   validateSetupProfileEventTypes,
 } from "@/lib/event-setup/setup-profile-event-types";
 
@@ -31,8 +33,8 @@ const UNACCEPTED_SAMPLES = [
   "other",
 ];
 
-describe("setup profile Used for options (accepted ∩ catalog)", () => {
-  it("exposes exactly accepted types plus separate venue-default semantics", () => {
+describe("setup profile Used for options (accepted ∪ hosted families)", () => {
+  it("exposes accepted types plus hosted families, with separate venue-default semantics", () => {
     const options = buildSetupProfileUsedForOptions(FANCY_ACCEPTED);
     assert.deepEqual(
       options.map((o) => o.value),
@@ -43,6 +45,18 @@ describe("setup profile Used for options (accepted ∩ catalog)", () => {
     }
     // Venue default is not an event-type option — it is a separate checkbox in the UI.
     assert.equal(options.some((o) => o.value === "" || o.value == null), false);
+  });
+
+  it("keeps hosted families available when they are not accepted for public inquiries", () => {
+    const options = buildSetupProfileUsedForOptions(["wedding", "birthday"]);
+    assert.deepEqual(
+      options.map((o) => o.value),
+      ["wedding", "corporate", "social_event", "birthday"],
+    );
+    const corporate = options.find((o) => o.value === "corporate");
+    const social = options.find((o) => o.value === "social_event");
+    assert.equal(corporate?.label, "Corporate Event");
+    assert.equal(social?.label, "Social Event");
   });
 
   it("labels wedding as All Weddings while keeping value wedding", () => {
@@ -68,7 +82,7 @@ describe("setup profile Used for options (accepted ∩ catalog)", () => {
 });
 
 describe("setup profile assignment validation (fail closed)", () => {
-  it("accepts only currently accepted types", () => {
+  it("accepts currently accepted types", () => {
     const ok = validateSetupProfileEventTypes(
       ["wedding", "corporate"],
       FANCY_ACCEPTED,
@@ -77,7 +91,17 @@ describe("setup profile assignment validation (fail closed)", () => {
     if (ok.ok) assert.deepEqual(ok.eventTypes, ["wedding", "corporate"]);
   });
 
-  it("rejects unaccepted types and does not normalize them through", () => {
+  it("allows hosted families that are not accepted for public inquiries", () => {
+    const corporate = validateSetupProfileEventTypes(["corporate"], ["wedding"]);
+    assert.equal(corporate.ok, true);
+    if (corporate.ok) assert.deepEqual(corporate.eventTypes, ["corporate"]);
+
+    const social = validateSetupProfileEventTypes(["social_event"], ["wedding"]);
+    assert.equal(social.ok, true);
+    if (social.ok) assert.deepEqual(social.eventTypes, ["social_event"]);
+  });
+
+  it("rejects unaccepted non-hosted types and does not normalize them through", () => {
     const bad = validateSetupProfileEventTypes(["elopement"], FANCY_ACCEPTED);
     assert.equal(bad.ok, false);
     if (!bad.ok) assert.equal(bad.message, SETUP_PROFILE_UNACCEPTED_EVENT_TYPE_MESSAGE);
@@ -98,12 +122,38 @@ describe("setup profile assignment validation (fail closed)", () => {
   });
 });
 
+describe("suggested Setup Profile names", () => {
+  it("suggests type-specific names only for create", () => {
+    assert.equal(suggestedSetupProfileName("wedding"), "Standard Wedding Setup");
+    assert.equal(suggestedSetupProfileName("corporate"), "Corporate Event Setup");
+    assert.equal(suggestedSetupProfileName("social_event"), "Social Celebration Setup");
+    assert.equal(suggestedSetupProfileName(null), "Standard Wedding Setup");
+    const section = readFileSync(resolve("components/settings/setup-profiles-section.tsx"), "utf8");
+    assert.match(section, /if \(typeForName\) \{[\s\S]*next\.name = suggestedSetupProfileName\(typeForName\)/);
+    const beginEdit = section.slice(
+      section.indexOf("function beginEdit"),
+      section.indexOf("React.useEffect"),
+    );
+    assert.match(beginEdit, /name: profile.name/);
+    assert.doesNotMatch(beginEdit, /suggestedSetupProfileName/);
+  });
+});
+
 describe("accepted-type removal prunes assignments only", () => {
   it("computes removed types without inventing adds", () => {
     const previous = ["wedding", "corporate", "social_event", "birthday"];
     const next = ["wedding", "social_event", "birthday"];
     assert.deepEqual(removedAcceptedEventTypes(previous, next), ["corporate"]);
     assert.deepEqual(removedAcceptedEventTypes(next, previous), []);
+  });
+
+  it("does not prune hosted-family assignments when public inquiry types are removed", () => {
+    assert.deepEqual(
+      assignmentTypesToPruneOnInquiryRemoval(["corporate", "social_event", "birthday"]),
+      ["birthday"],
+    );
+    const profiles = readFileSync(resolve("lib/event-setup/profiles.ts"), "utf8");
+    assert.match(profiles, /assignmentTypesToPruneOnInquiryRemoval/);
   });
 
   it("wires prune into inquiry accepted-type update; leaves null default out of removed set", () => {

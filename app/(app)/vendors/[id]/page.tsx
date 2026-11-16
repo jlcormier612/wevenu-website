@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
+import { SetupHubReturnLink } from "@/components/setup-hub/phase-b1/setup-hub-return-link";
 import { VendorDetail } from "@/components/vendors/vendor-detail";
 import { getPinnedDocumentKeys, getVenueWorkspaceDocuments } from "@/lib/document-workspace/service";
 import { getVendor, getVendorReviews } from "@/lib/vendors/service";
@@ -25,6 +26,10 @@ export default async function VendorDetailPage({ params }: Props) {
     vendor.vendorRelationshipId ? getVendorRelationshipRollup(vendor.vendorRelationshipId) : Promise.resolve([]),
   ]);
   return (
+    <div className="space-y-4">
+      <div className="px-4 pt-4">
+        <SetupHubReturnLink href="/setup-hub/make-htc-yours/event-experiences" label="Back to Your event experiences" />
+      </div>
     <VendorDetail
       vendor={vendor}
       workspaceDocuments={workspaceDocuments}
@@ -32,5 +37,6 @@ export default async function VendorDetailPage({ params }: Props) {
       reviews={reviews}
       conversations={conversations}
     />
+    </div>
   );
 }

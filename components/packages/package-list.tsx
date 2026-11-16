@@ -150,7 +150,15 @@ export function PackageList({
         overflowPending={loadingId === pkg.id}
         overflowItems={archivedView ? [] : [
           { id: "edit", label: LIBRARY_LABELS.edit, href: `/packages/${pkg.id}`, icon: <Pencil className="mr-2 h-3.5 w-3.5" /> },
-          { id: "duplicate", label: LIBRARY_LABELS.duplicate, onClick: () => handleDuplicate(pkg), icon: <Copy className="mr-2 h-3.5 w-3.5" /> },
+          {
+            id: "duplicate",
+            label: LIBRARY_LABELS.duplicate,
+            onClick: () => handleDuplicate(pkg),
+            icon: <Copy className="mr-2 h-3.5 w-3.5" />,
+            hint: pkg.sourceMasterKey
+              ? "Duplicate this package to make your own version while keeping the original."
+              : undefined,
+          },
           {
             id: "archive",
             label: archiveToggleLabel(!pkg.isActive),

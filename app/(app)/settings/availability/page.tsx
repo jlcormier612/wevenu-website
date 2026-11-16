@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { CapacityRulesSection } from "@/components/availability/capacity-rules-section";
+import { SetupHubReturnLink } from "@/components/setup-hub/phase-b1/setup-hub-return-link";
 import { VenueSpacesSection } from "@/components/availability/venue-spaces-section";
 import { SetupGuideLink } from "@/components/help/setup-guide-link";
 import { PageHeader } from "@/components/shell/module-placeholder";
@@ -28,22 +29,205 @@ import { getCurrentUserRole, getCurrentVenue } from "@/lib/venue/service";
 
 export const metadata: Metadata = { title: "Availability & Capacity — Settings" };
 
-export default async function AvailabilityCapacitySettingsPage() {
-  const [spaces, capacityRules, tourAvailability, catalogTypes, role, tourSettings, venue] = await Promise.all([
-    getSpaces(),
-    getCapacityRules(),
-    getTourAvailability(),
-    getScheduleItemTypesForSettings(),
-    getCurrentUserRole(),
-    getTourSettings(),
-    getCurrentVenue(),
-  ]);
+function AvailabilityGuidance() {
+  return (
+    <details
+      className="htc-availability-settings-guidance overflow-hidden rounded-lg border"
+      data-testid="availability-settings-guidance"
+    >
+      <summary className="htc-availability-settings-guidance-intro cursor-pointer list-none px-4 py-3 sm:px-5">
+        <h2 className="text-base font-semibold text-heading">How date availability works</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Expand for guidance on holds, booked dates, and public availability. You control when a
+          date is protected.
+        </p>
+      </summary>
+      <div className="htc-availability-settings-guidance-body space-y-3 border-t px-4 py-4 text-sm leading-relaxed text-muted-foreground sm:px-5">
+        <p>
+          A preferred date from an inquiry does not reserve the date. A date is protected only when
+          you place a Hold or move a relationship to Booked. HTC does not decide that a contract,
+          payment, or other milestone means a booking — your venue&apos;s workflow determines when a
+          relationship is Booked.
+        </p>
+        <p>
+          <span className="font-medium text-heading">Public Available / Not available. </span>
+          Available means a prospect may submit an inquiry for that date — it is not a reservation
+          or a guarantee. At a multi-space venue, a date may stay open for inquiries when one event
+          is booked and another suitable space may still be available, depending on your settings
+          and capacity. An open date does not mean every space, time, or event configuration is
+          available. Not available means your venue&apos;s current availability rules prevent
+          another event from being accepted for that date — including holds, blocked dates,
+          capacity, and booked occupancy. Prospects often read Available as a real chance to hold
+          their event, and may be disappointed if you later explain that you cannot accommodate
+          them.
+        </p>
+        <p>
+          <span className="font-medium text-heading">When to block an entire day. </span>
+          Block an entire date when you do not want additional event inquiries that day — for
+          example a private buyout, a venue closure, or a day you do not want to accommodate another
+          event. Use Blocked Dates, a full-day calendar block, or a whole-venue hold. Having one
+          event booked is different: you do not need to block the whole date merely because one
+          space is occupied, if your venue can host another event in a different space and you allow
+          public inquiries for that situation below.
+        </p>
+        <p>
+          <span className="font-medium text-heading">Booked events and public availability. </span>
+          By default, a booked event closes that date for prospective clients — even when another
+          Event Space may be free. Venues that intentionally book multiple events on the same day
+          can enable the preference below to allow inquiries when capacity and availability rules
+          permit. That setting allows further inquiries; it does not promise a suitable space or
+          guarantee a booking. Your simultaneous-event capacity remains a separate limit on what
+          staff can book internally.
+        </p>
+        <p>
+          <span className="font-medium text-heading">Your responsibility. </span>
+          Choose holds, blocked dates, capacity, spaces, and the public-inquiry preference so the
+          public calendar matches how you actually book.
+        </p>
+        <p>
+          <span className="font-medium text-heading">Holds. </span>
+          Choose whether venue-created Holds prevent other bookings. This setting applies wherever
+          HTC checks availability.
+        </p>
+        <p>
+          <span className="font-medium text-heading">Tours. </span>
+          Choose whether tours can be scheduled when an event is occupying the date. This setting
+          applies wherever HTC checks availability.
+        </p>
+      </div>
+    </details>
+  );
+}
+
+function SpacesCard({
+  spaces,
+  spaceOperatingMode,
+  emphasize,
+  autoAdd,
+}: {
+  spaces: Awaited<ReturnType<typeof getSpaces>>;
+  spaceOperatingMode: "single" | "multi" | null | undefined;
+  emphasize: boolean;
+  autoAdd: boolean;
+}) {
+  return (
+    <Card
+      id="spaces"
+      className={`scroll-mt-20 ${emphasize ? "ring-2 ring-[color-mix(in_srgb,var(--heritage-sage)_45%,transparent)]" : ""}`}
+      data-testid="availability-spaces-card"
+    >
+      <CardHeader>
+        <CardTitle className="text-base">Event Spaces</CardTitle>
+        <CardDescription>
+          Define the named physical spaces within your venue (Ballroom, Garden, Barn…). Each space
+          can have its own capacity and permitted uses (Ceremony, Reception, and others). Uses are
+          what happens there — they are not separate spaces. If you have more than one space, add
+          them here before bringing over dated events in Bring Your Business.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {spaces.length === 0 ? (
+          <p className="rounded-md border border-border bg-muted/30 px-3 py-2 text-sm text-foreground">
+            Add your first space to protect your calendar and place bookings accurately.
+          </p>
+        ) : null}
+        <VenueSpacesSection
+          initialSpaces={spaces}
+          spaceOperatingMode={spaceOperatingMode ?? "single"}
+          startAdding={autoAdd && spaces.length === 0}
+        />
+        <SetupGuideLink
+          href="/help/what-should-i-set-up-before-i-start"
+          label="What Should I Set Up Before I Start?"
+        />
+      </CardContent>
+    </Card>
+  );
+}
+
+export default async function AvailabilityCapacitySettingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const params = await searchParams;
+  const focusRaw = params.focus;
+  const focus = Array.isArray(focusRaw) ? focusRaw[0] : focusRaw;
+  const addRaw = params.add;
+  const add = Array.isArray(addRaw) ? addRaw[0] : addRaw;
+
+  const [spaces, capacityRules, tourAvailability, catalogTypes, role, tourSettings, venue] =
+    await Promise.all([
+      getSpaces(),
+      getCapacityRules(),
+      getTourAvailability(),
+      getScheduleItemTypesForSettings(),
+      getCurrentUserRole(),
+      getTourSettings(),
+      getCurrentVenue(),
+    ]);
   const intake = venue?.id ? await getIntakeForVenue(venue.id) : null;
   const { windows, exceptions, loadError } = editorHydrationFromAvailability(tourAvailability);
   const canEditCatalog = role === "owner" || role === "manager";
+  const emphasizeSpaces = spaces.length === 0 || focus === "spaces";
+  const autoAdd = add === "1" || spaces.length === 0;
+
+  const spacesCard = (
+    <SpacesCard
+      spaces={spaces}
+      spaceOperatingMode={venue?.spaceOperatingMode}
+      emphasize={emphasizeSpaces}
+      autoAdd={autoAdd}
+    />
+  );
+
+  const rulesBlock = (
+    <div id="rules" className="scroll-mt-20 space-y-4" data-testid="availability-rules-section">
+      <Card id="date-holds" className="scroll-mt-20">
+        <CardHeader>
+          <CardTitle className="text-base">Date holds and availability</CardTitle>
+          <CardDescription>
+            A hold temporarily protects a date. It is not a booking, and it is separate from tours
+            and appointments.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-8">
+          <HoldAvailabilityControl initialBlocks={venue?.holdBlocksAvailability !== false} />
+          <SimultaneousPublicAvailabilityControl
+            initialAllows={venue?.allowSimultaneousPublicAvailability === true}
+          />
+          <TourEventOverlapControl initialAllows={venue?.allowToursDuringBookedEvents === true} />
+        </CardContent>
+      </Card>
+
+      <Card id="capacity" className="scroll-mt-20">
+        <CardHeader>
+          <CardTitle className="text-base">Scheduling Capacity</CardTitle>
+          <CardDescription>
+            Event and tour simultaneous limits and event turnaround are enforced when booking. A
+            missing simultaneous setting is treated as 1 — never unlimited. Turnaround of 0 means
+            events may be back-to-back. These limits guide staff scheduling and do not override the
+            separate preference under Date holds and availability for whether public inquiries can
+            stay open when another event is booked.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <CapacityRulesSection initialRules={capacityRules} />
+          <SetupGuideLink
+            href="/help/how-do-i-set-my-tour-availability"
+            label="How Do I Set My Tour Availability?"
+          />
+        </CardContent>
+      </Card>
+    </div>
+  );
 
   return (
     <div className="htc-hospitality-page space-y-4 sm:space-y-6">
+      <SetupHubReturnLink
+        href="/setup-hub/make-htc-yours/booking-process"
+        label="Back to Your booking process"
+      />
       <div className="htc-hospitality-heading htc-hospitality-intro-accent">
         <PageHeader
           title="Availability & Capacity"
@@ -52,53 +236,21 @@ export default async function AvailabilityCapacitySettingsPage() {
       </div>
       <SettingsTabs />
 
-      <section
-        className="htc-availability-settings-guidance overflow-hidden rounded-lg border"
-        data-testid="availability-settings-guidance"
-      >
-        <div className="htc-availability-settings-guidance-intro px-4 py-3 sm:px-5">
-          <h2 className="text-base font-semibold text-heading">How date availability works</h2>
-          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            You control when a date is protected.
-          </p>
-        </div>
-        <div className="htc-availability-settings-guidance-body space-y-3 border-t px-4 py-4 text-sm leading-relaxed text-muted-foreground sm:px-5">
-          <p>
-            A preferred date from an inquiry does not reserve the date. A date is protected only when you place a Hold or move a relationship to Booked. HTC does not decide that a contract, payment, or other milestone means a booking — your venue&apos;s workflow determines when a relationship is Booked.
-          </p>
-          <p>
-            <span className="font-medium text-heading">Public Available / Not available. </span>
-            Available means a prospect may submit an inquiry for that date — it is not a reservation or a guarantee. At a multi-space venue, a date may stay open for inquiries when one event is booked and another suitable space may still be available, depending on your settings and capacity. An open date does not mean every space, time, or event configuration is available. Not available means your venue&apos;s current availability rules prevent another event from being accepted for that date — including holds, blocked dates, capacity, and booked occupancy. Prospects often read Available as a real chance to hold their event, and may be disappointed if you later explain that you cannot accommodate them.
-          </p>
-          <p>
-            <span className="font-medium text-heading">When to block an entire day. </span>
-            Block an entire date when you do not want additional event inquiries that day — for example a private buyout, a venue closure, or a day you do not want to accommodate another event. Use Blocked Dates, a full-day calendar block, or a whole-venue hold. Having one event booked is different: you do not need to block the whole date merely because one space is occupied, if your venue can host another event in a different space and you allow public inquiries for that situation below.
-          </p>
-          <p>
-            <span className="font-medium text-heading">Booked events and public availability. </span>
-            By default, a booked event closes that date for prospective clients — even when another Event Space may be free. Venues that intentionally book multiple events on the same day can enable the preference below to allow inquiries when capacity and availability rules permit. That setting allows further inquiries; it does not promise a suitable space or guarantee a booking. Your simultaneous-event capacity remains a separate limit on what staff can book internally.
-          </p>
-          <p>
-            <span className="font-medium text-heading">Your responsibility. </span>
-            Choose holds, blocked dates, capacity, spaces, and the public-inquiry preference so the public calendar matches how you actually book.
-          </p>
-          <p>
-            <span className="font-medium text-heading">Holds. </span>
-            Choose whether venue-created Holds prevent other bookings. This setting applies wherever HTC checks availability.
-          </p>
-          <p>
-            <span className="font-medium text-heading">Tours. </span>
-            Choose whether tours can be scheduled when an event is occupying the date. This setting applies wherever HTC checks availability.
-          </p>
-        </div>
-      </section>
+      {/* Phase A: when no spaces exist, Add Space is first — guidance is collapsed. */}
+      {spaces.length === 0 ? spacesCard : null}
+
+      <AvailabilityGuidance />
+
+      {spaces.length > 0 ? spacesCard : null}
+
+      {focus === "rules" ? rulesBlock : null}
 
       <Card id="tour-availability" className="scroll-mt-20">
         <CardHeader>
           <CardTitle className="text-base">Weekly Availability &amp; Blocked Dates</CardTitle>
           <CardDescription>
-            When tours can be booked, and any dates you need to block off. This is Tour Availability —
-            separate from your general Business Hours in Settings → Business.
+            When tours can be booked, and any dates you need to block off. This is Tour Availability
+            — separate from your general Business Hours in Settings → Business.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -108,7 +260,10 @@ export default async function AvailabilityCapacitySettingsPage() {
             initialExceptions={exceptions}
             loadError={loadError}
           />
-          <SetupGuideLink href="/help/how-do-i-set-my-tour-availability" label="How Do I Set My Tour Availability?" />
+          <SetupGuideLink
+            href="/help/how-do-i-set-my-tour-availability"
+            label="How Do I Set My Tour Availability?"
+          />
         </CardContent>
       </Card>
 
@@ -116,8 +271,8 @@ export default async function AvailabilityCapacitySettingsPage() {
         <CardHeader>
           <CardTitle className="text-base">Appointments other than tours</CardTitle>
           <CardDescription>
-            Same preferences collected during setup. This is how your venue works — it does not
-            by itself enable online booking.
+            Same preferences collected during setup. This is how your venue works — it does not by
+            itself enable online booking.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -134,64 +289,16 @@ export default async function AvailabilityCapacitySettingsPage() {
         <CardHeader>
           <CardTitle className="text-base">Scheduled appointment types</CardTitle>
           <CardDescription>
-            Choose the kinds of appointments and reserved time your team can add on the Calendar. You can turn types on or off and add your own.
+            Choose the kinds of appointments and reserved time your team can add on the Calendar.
+            You can turn types on or off and add your own.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <ScheduledAppointmentTypesSection
-            initialTypes={catalogTypes}
-            canEdit={canEditCatalog}
-          />
+          <ScheduledAppointmentTypesSection initialTypes={catalogTypes} canEdit={canEditCatalog} />
         </CardContent>
       </Card>
 
-      <Card id="date-holds" className="scroll-mt-20">
-        <CardHeader>
-          <CardTitle className="text-base">Date holds and availability</CardTitle>
-          <CardDescription>
-            A hold temporarily protects a date. It is not a booking, and it is separate from tours and appointments.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-8">
-          <HoldAvailabilityControl initialBlocks={venue?.holdBlocksAvailability !== false} />
-          <SimultaneousPublicAvailabilityControl
-            initialAllows={venue?.allowSimultaneousPublicAvailability === true}
-          />
-          <TourEventOverlapControl initialAllows={venue?.allowToursDuringBookedEvents === true} />
-        </CardContent>
-      </Card>
-
-      <Card id="capacity" className="scroll-mt-20">
-        <CardHeader>
-          <CardTitle className="text-base">Scheduling Capacity</CardTitle>
-          <CardDescription>
-            Event and tour simultaneous limits and event turnaround are enforced when booking. A missing simultaneous setting is treated as 1 — never unlimited. Turnaround of 0 means events may be back-to-back. These limits guide staff scheduling and do not override the separate preference under Date holds and availability for whether public inquiries can stay open when another event is booked.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <CapacityRulesSection initialRules={capacityRules} />
-          <SetupGuideLink href="/help/how-do-i-set-my-tour-availability" label="How Do I Set My Tour Availability?" />
-        </CardContent>
-      </Card>
-
-      <Card id="spaces" className="scroll-mt-20">
-        <CardHeader>
-          <CardTitle className="text-base">Event Spaces</CardTitle>
-          <CardDescription>
-            Define the named physical spaces within your venue (Ballroom, Garden, Barn…).
-            Each space can have its own capacity and permitted uses (Ceremony, Reception, and others).
-            Uses are what happens there — they are not separate spaces. If you have more than one
-            space, add them here before bringing over dated events in Bring Your Business.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <VenueSpacesSection
-            initialSpaces={spaces}
-            spaceOperatingMode={venue?.spaceOperatingMode ?? "single"}
-          />
-          <SetupGuideLink href="/help/what-should-i-set-up-before-i-start" label="What Should I Set Up Before I Start?" />
-        </CardContent>
-      </Card>
+      {focus !== "rules" ? rulesBlock : null}
     </div>
   );
 }

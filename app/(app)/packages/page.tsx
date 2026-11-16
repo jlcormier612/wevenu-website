@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { CollectionBackLink } from "@/components/library/collection-back-link";
+import { SetupHubReturnLink } from "@/components/setup-hub/phase-b1/setup-hub-return-link";
 import { LibraryHowItWorks } from "@/components/library/library-guidance";
 import { PackageList } from "@/components/packages/package-list";
 import { PageHeader } from "@/components/shell/module-placeholder";
@@ -25,6 +26,7 @@ export default async function PackagesPage() {
 
   return (
     <div className="htc-hospitality-page space-y-4 sm:space-y-6">
+      <SetupHubReturnLink href="/setup-hub/make-htc-yours/booking-process" label="Back to your booking process" />
       <CollectionBackLink href="/library" label="Library" />
       <div className="htc-hospitality-heading htc-hospitality-intro-accent">
         <PageHeader
