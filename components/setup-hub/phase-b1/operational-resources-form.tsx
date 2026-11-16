@@ -128,7 +128,7 @@ export function OperationalResourcesForm({
           choice === "not_using"
             ? "Not using"
             : starterKeys[resource.key]
-              ? "Starter available"
+              ? "Starter ready for you"
               : "Not started";
         return (
           <GuidedTaskCard

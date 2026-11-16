@@ -9,7 +9,7 @@ import {
   GuidedTaskCard,
 } from "@/components/setup-hub/phase-b1/guided-task-card";
 import { MilestoneDetailShell } from "@/components/setup-hub/phase-a/milestone-detail-shell";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { getQuickBooksConnection } from "@/lib/quickbooks/service";
 import { loadMilestone02Context } from "@/lib/setup-hub/phase-b1-load";
 import {
@@ -31,10 +31,12 @@ export default async function BookingProcessSetupPage() {
   const unpriced = hasUnpricedActivePackages(ctx.packages);
   const packageStatus = unpriced
     ? "Needs attention"
-    : ctx.packages.length > 0
-      ? "In progress"
-      : "Not set up";
-  const contractStatus = ctx.contractStarterCount > 0 ? "In progress" : "Not set up";
+    : ctx.hubState?.bookingProcessReviewedAt
+      ? "Ready"
+      : ctx.packages.length > 0
+        ? "Starter ready for you"
+        : "Not set up";
+  const contractStatus = ctx.contractStarterCount > 0 ? "Starter ready for you" : "Not set up";
   const stripeStatus = stripeGuidedStatus({
     onboardingStatus: ctx.venue.stripeOnboardingStatus,
     chargesEnabled: ctx.venue.stripeChargesEnabled,
@@ -54,16 +56,28 @@ export default async function BookingProcessSetupPage() {
       >
         <GuidedTaskCard
           step="01"
-          title="Packages and offerings"
-          description="Choose what you offer, set your prices, and decide which packages you'd like to use."
+          title="Your packages & pricing"
+          description="Price the packages you plan to offer, and archive any you won't use. You can always add or update packages later."
           statusLabel={packageStatus}
           action={
-            <Button type="button" render={<Link href={withSetupHubReturn("/packages", "booking-process")} />}>
+            <Link
+              href={withSetupHubReturn("/packages", "booking-process")}
+              className={buttonVariants()}
+              data-testid="phase-b1-review-packages"
+            >
               Review packages
-            </Button>
+            </Link>
           }
-          note="HTC has prepared starter packages. Unpriced packages aren't ready to offer."
-        />
+        >
+          {unpriced ? (
+            <div className="space-y-1" data-testid="phase-b1-packages-attention">
+              <p className="text-sm font-semibold text-heading">Packages need your attention</p>
+              <p className="text-sm text-muted-foreground">
+                Every active package needs a price before you can mark your booking process ready.
+              </p>
+            </div>
+          ) : null}
+        </GuidedTaskCard>
 
         <GuidedTaskCard
           step="02"
@@ -155,7 +169,7 @@ export default async function BookingProcessSetupPage() {
             action={markBookingProcessReviewedAction}
             label="Confirm your booking process"
             disabled={unpriced}
-            disabledReason="Price or archive every active package before marking this ready. Unpriced starters are not ready to offer."
+            disabledReason="Add a price or archive each unpriced active package to continue."
             testId="phase-b1-confirm-booking"
           />
         </GuidedSectionComplete>

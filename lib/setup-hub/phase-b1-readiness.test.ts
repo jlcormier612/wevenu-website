@@ -14,9 +14,13 @@ import {
   eventExperiencesStatus,
   eventTypeReadiness,
   experienceFamilyDisplayStatus,
+  experiencePreparationStatus,
+  isEventTypeResourcesReviewed,
+  isEventTypeReviewValid,
   makeHtcYoursMilestoneStatusFromSections,
   makeHtcYoursSectionStatuses,
   parseEventExperienceReviews,
+  SECTION_STATUS_LABEL,
   venueBrandStatus,
 } from "@/lib/setup-hub/phase-b1-readiness";
 
@@ -107,6 +111,25 @@ describe("booking process status", () => {
 });
 
 describe("event experiences status", () => {
+  it("counts a saved resource review as owner progress even before hosted types are saved", () => {
+    assert.equal(
+      eventExperiencesStatus({
+        hostedEventTypes: null,
+        assignments: [weddingAssignment],
+        profiles: [weddingProfile],
+        reviews: {
+          wedding: {
+            profileId: weddingProfile.id,
+            profileUpdatedAt: weddingProfile.updatedAt,
+            confirmedAt: "",
+            resourcesReviewedAt: "2026-03-01T00:00:00.000Z",
+          },
+        },
+      }),
+      "in_progress",
+    );
+  });
+
   it("does not infer wedding selection or Ready from a provisioned profile", () => {
     assert.equal(
       eventExperiencesStatus({
@@ -307,7 +330,7 @@ describe("event experiences status", () => {
       profiles: [weddingProfile],
       reviews: {},
     });
-    assert.equal(experienceFamilyDisplayStatus(card), "In progress");
+    assert.equal(experienceFamilyDisplayStatus(card), "Not reviewed");
     assert.notEqual(experienceFamilyDisplayStatus(card), "Ready");
   });
 
@@ -384,6 +407,247 @@ describe("event experience reviews", () => {
     });
     assert.equal(corporateNotReady.reason, "not_selected");
     assert.notEqual(corporateNotReady.reason, "import_blocked");
+  });
+});
+
+describe("starter availability is informational", () => {
+  it("does not treat starter_available as milestone In progress", () => {
+    assert.equal(SECTION_STATUS_LABEL.starter_available, "Starter ready for you");
+    const sections = makeHtcYoursSectionStatuses({
+      venueBrandStarted: false,
+      yourVenueReviewedAt: null,
+      bookingProcessReviewedAt: null,
+      packages: [{ isActive: true, basePrice: null, sourceMasterKey: "PKG-01" }],
+      contractStarterCount: 1,
+      hostedEventTypes: null,
+      assignments: [weddingAssignment],
+      profiles: [weddingProfile],
+      reviews: {},
+      communicationsReviewedAt: null,
+      templateCount: 8,
+      pausedAutomationCount: 4,
+      operationalResourcesReviewedAt: null,
+      operationalStarterAvailable: true,
+    });
+    assert.equal(sections.brand, "not_started");
+    assert.equal(sections.booking, "starter_available");
+    assert.equal(sections.experiences, "starter_available");
+    assert.equal(sections.communications, "starter_available");
+    assert.equal(makeHtcYoursMilestoneStatusFromSections(sections), "not_started");
+  });
+
+  it("moves Make HTC yours to In progress after a saved owner confirmation", () => {
+    const sections = makeHtcYoursSectionStatuses({
+      venueBrandStarted: false,
+      yourVenueReviewedAt: null,
+      bookingProcessReviewedAt: "2026-01-02",
+      packages: [{ isActive: true, basePrice: 1800 }],
+      contractStarterCount: 1,
+      hostedEventTypes: null,
+      assignments: [weddingAssignment],
+      profiles: [weddingProfile],
+      reviews: {},
+      communicationsReviewedAt: null,
+      templateCount: 8,
+      pausedAutomationCount: 4,
+      operationalResourcesReviewedAt: null,
+      operationalStarterAvailable: true,
+    });
+    assert.equal(sections.booking, "ready");
+    assert.equal(makeHtcYoursMilestoneStatusFromSections(sections), "in_progress");
+  });
+});
+
+describe("event-experience resource review and readiness gating", () => {
+  it("persists Step 3 independently of Step 4 and keeps families independent", () => {
+    const reviews = parseEventExperienceReviews({
+      wedding: {
+        profileId: weddingProfile.id,
+        profileUpdatedAt: weddingProfile.updatedAt,
+        resourcesReviewedAt: "2026-03-01T00:00:00.000Z",
+      },
+    });
+    const weddingInput = {
+      eventType: "wedding",
+      assignments: [weddingAssignment, corporateAssignment],
+      profiles: [weddingProfile, corporateProfile],
+      reviews,
+    };
+    const corporateInput = {
+      eventType: "corporate",
+      assignments: [weddingAssignment, corporateAssignment],
+      profiles: [weddingProfile, corporateProfile],
+      reviews,
+    };
+    assert.equal(isEventTypeResourcesReviewed(weddingInput), true);
+    assert.equal(isEventTypeReviewValid(weddingInput), false);
+    assert.equal(experiencePreparationStatus(weddingInput), "Reviewed");
+    assert.equal(isEventTypeResourcesReviewed(corporateInput), false);
+    assert.equal(experiencePreparationStatus(corporateInput), "Not reviewed");
+    const weddingCard = eventTypeReadiness({
+      eventType: "wedding",
+      selected: true,
+      assignments: weddingInput.assignments,
+      profiles: weddingInput.profiles,
+      reviews,
+    });
+    assert.equal(weddingCard.status, "in_progress");
+    assert.notEqual(weddingCard.status, "ready");
+    assert.equal(experienceFamilyDisplayStatus(weddingCard), "Reviewed");
+  });
+
+  it("does not mark Ready until Step 3 is saved, then preserves Ready after confirmation", () => {
+    const unreviewed = eventTypeReadiness({
+      eventType: "wedding",
+      selected: true,
+      assignments: [weddingAssignment],
+      profiles: [weddingProfile],
+      reviews: {},
+    });
+    assert.equal(unreviewed.status, "starter_available");
+    const confirmed = parseEventExperienceReviews({
+      wedding: {
+        profileId: weddingProfile.id,
+        profileUpdatedAt: weddingProfile.updatedAt,
+        confirmedAt: "2026-03-02T00:00:00.000Z",
+        resourcesReviewedAt: "2026-03-01T00:00:00.000Z",
+      },
+    });
+    const readyCard = eventTypeReadiness({
+      eventType: "wedding",
+      selected: true,
+      assignments: [weddingAssignment],
+      profiles: [weddingProfile],
+      reviews: confirmed,
+    });
+    assert.equal(readyCard.status, "ready");
+    assert.equal(
+      experiencePreparationStatus({
+        eventType: "wedding",
+        assignments: [weddingAssignment],
+        profiles: [weddingProfile],
+        reviews: confirmed,
+      }),
+      "Ready",
+    );
+  });
+
+  it("preserves legacy confirmed experiences without resourcesReviewedAt", () => {
+    const legacy = parseEventExperienceReviews({
+      wedding: {
+        profileId: weddingProfile.id,
+        profileUpdatedAt: weddingProfile.updatedAt,
+        confirmedAt: "2026-03-01T00:00:00.000Z",
+      },
+    });
+    const input = {
+      eventType: "wedding",
+      assignments: [weddingAssignment],
+      profiles: [weddingProfile],
+      reviews: legacy,
+    };
+    assert.equal(isEventTypeReviewValid(input), true);
+    assert.equal(isEventTypeResourcesReviewed(input), true);
+    assert.equal(experiencePreparationStatus(input), "Ready");
+  });
+
+  it("invalidates resource review and Ready when the Setup Profile changes", () => {
+    const reviews = parseEventExperienceReviews({
+      wedding: {
+        profileId: weddingProfile.id,
+        profileUpdatedAt: weddingProfile.updatedAt,
+        confirmedAt: "2026-03-02T00:00:00.000Z",
+        resourcesReviewedAt: "2026-03-01T00:00:00.000Z",
+      },
+    });
+    const staleInput = {
+      eventType: "wedding",
+      assignments: [weddingAssignment],
+      profiles: [{ ...weddingProfile, updatedAt: "2026-04-01T00:00:00.000Z" }],
+      reviews,
+    };
+    assert.equal(isEventTypeReviewValid(staleInput), false);
+    assert.equal(isEventTypeResourcesReviewed(staleInput), false);
+    assert.equal(experiencePreparationStatus(staleInput), "Not reviewed");
+    const staleCard = eventTypeReadiness({
+      eventType: "wedding",
+      selected: true,
+      assignments: [weddingAssignment],
+      profiles: staleInput.profiles,
+      reviews,
+    });
+    assert.equal(staleCard.reason, "stale");
+  });
+
+  it("invalidates only the family whose assigned Setup Profile changed", () => {
+    const reviews = parseEventExperienceReviews({
+      wedding: {
+        profileId: weddingProfile.id,
+        profileUpdatedAt: weddingProfile.updatedAt,
+        confirmedAt: "2026-03-02T00:00:00.000Z",
+        resourcesReviewedAt: "2026-03-01T00:00:00.000Z",
+      },
+      corporate: {
+        profileId: corporateProfile.id,
+        profileUpdatedAt: corporateProfile.updatedAt,
+        confirmedAt: "2026-03-02T00:00:00.000Z",
+        resourcesReviewedAt: "2026-03-01T00:00:00.000Z",
+      },
+    });
+    const reassignedWedding = {
+      eventType: "wedding",
+      assignments: [{ profileId: corporateProfile.id, eventType: "wedding" as const }, corporateAssignment],
+      profiles: [weddingProfile, corporateProfile],
+      reviews,
+    };
+    const unchangedCorporate = {
+      eventType: "corporate",
+      assignments: [{ profileId: corporateProfile.id, eventType: "wedding" as const }, corporateAssignment],
+      profiles: [weddingProfile, corporateProfile],
+      reviews,
+    };
+    assert.equal(isEventTypeReviewValid(reassignedWedding), false);
+    assert.equal(isEventTypeResourcesReviewed(reassignedWedding), false);
+    assert.equal(isEventTypeReviewValid(unchangedCorporate), true);
+    assert.equal(isEventTypeResourcesReviewed(unchangedCorporate), true);
+    assert.equal(experiencePreparationStatus(unchangedCorporate), "Ready");
+  });
+
+  it("does not invalidate on unrelated venue edits or an unrelated profile timestamp", () => {
+    const reviews = parseEventExperienceReviews({
+      wedding: {
+        profileId: weddingProfile.id,
+        profileUpdatedAt: weddingProfile.updatedAt,
+        confirmedAt: "2026-03-02T00:00:00.000Z",
+        resourcesReviewedAt: "2026-03-01T00:00:00.000Z",
+      },
+    });
+    const input = {
+      eventType: "wedding",
+      assignments: [weddingAssignment, corporateAssignment],
+      profiles: [weddingProfile, { ...corporateProfile, updatedAt: "2026-05-01T00:00:00.000Z" }],
+      reviews,
+    };
+    assert.equal(isEventTypeReviewValid(input), true);
+    assert.equal(isEventTypeResourcesReviewed(input), true);
+    assert.equal(experiencePreparationStatus(input), "Ready");
+    const sections = makeHtcYoursSectionStatuses({
+      venueBrandStarted: true,
+      yourVenueReviewedAt: "2026-05-01T00:00:00.000Z",
+      bookingProcessReviewedAt: "2026-05-01T00:00:00.000Z",
+      packages: [{ isActive: true, basePrice: 2500 }],
+      contractStarterCount: 1,
+      hostedEventTypes: ["wedding"],
+      assignments: [weddingAssignment],
+      profiles: [weddingProfile],
+      reviews,
+      communicationsReviewedAt: "2026-05-01T00:00:00.000Z",
+      templateCount: 8,
+      pausedAutomationCount: 4,
+      operationalResourcesReviewedAt: "2026-05-01T00:00:00.000Z",
+      operationalStarterAvailable: true,
+    });
+    assert.equal(sections.experiences, "ready");
   });
 });
 

@@ -10,7 +10,7 @@ import { getSpaces } from "@/lib/availability/service";
 import { getImportBatches } from "@/lib/import/batches";
 import { buildPhaseAMilestones } from "@/lib/setup-hub/phase-a-milestones";
 import { loadMilestone02Context } from "@/lib/setup-hub/phase-b1-load";
-import { SECTION_STATUS_LABEL } from "@/lib/setup-hub/phase-b1-readiness";
+import { SECTION_STATUS_LABEL, STARTER_READY_SUPPORTING } from "@/lib/setup-hub/phase-b1-readiness";
 import { PHASE_B1_M02_ROUTES } from "@/lib/setup-hub/phase-b1-routes";
 
 export const metadata: Metadata = { title: "Make HTC yours — Setup" };
@@ -115,7 +115,11 @@ export default async function MakeHtcYoursPage() {
               Set up your booking process
             </Button>
           }
-        />
+        >
+          {ctx.sections.booking === "starter_available" ? (
+            <p className="text-sm text-muted-foreground">{STARTER_READY_SUPPORTING}</p>
+          ) : null}
+        </MilestoneStepCard>
 
         <MilestoneStepCard
           title="Your event experiences"
@@ -130,7 +134,11 @@ export default async function MakeHtcYoursPage() {
               Set up your event experiences
             </Button>
           }
-        />
+        >
+          {ctx.sections.experiences === "starter_available" ? (
+            <p className="text-sm text-muted-foreground">{STARTER_READY_SUPPORTING}</p>
+          ) : null}
+        </MilestoneStepCard>
 
         <MilestoneStepCard
           title="Your communications"
@@ -145,7 +153,11 @@ export default async function MakeHtcYoursPage() {
               Review your communications
             </Button>
           }
-        />
+        >
+          {ctx.sections.communications === "starter_available" ? (
+            <p className="text-sm text-muted-foreground">{STARTER_READY_SUPPORTING}</p>
+          ) : null}
+        </MilestoneStepCard>
       </MilestoneDetailShell>
     </div>
   );

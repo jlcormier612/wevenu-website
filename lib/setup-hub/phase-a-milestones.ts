@@ -61,6 +61,27 @@ function statusLabel(status: MilestoneStatus): string {
   }
 }
 
+export function bringBusinessNothingToBringOver(input: {
+  existingBookingsAnswer: ExistingBookingsAnswer | null;
+  hasMigrationImport: boolean;
+  bringYourBusinessPath: string | null;
+}): boolean {
+  if (input.hasMigrationImport) return false;
+  return (
+    bringBusinessStatus(input) === "ready" &&
+    (input.existingBookingsAnswer === "no" || input.bringYourBusinessPath === "skipped")
+  );
+}
+
+function bringBusinessStatusLabel(input: {
+  existingBookingsAnswer: ExistingBookingsAnswer | null;
+  hasMigrationImport: boolean;
+  bringYourBusinessPath: string | null;
+}): string {
+  if (bringBusinessNothingToBringOver(input)) return "Nothing to bring over";
+  return statusLabel(bringBusinessStatus(input));
+}
+
 /**
  * Milestone 01 calendar readiness.
  * Ready only when: ≥1 space, booking rules reviewed, existing-bookings answered,
@@ -180,11 +201,12 @@ export function buildPhaseAMilestones(input: PhaseAProgressInput): PhaseAMilesto
     operationalResourcesReviewedAt: hub?.operationalResourcesReviewedAt ?? null,
     operationalStarterAvailable: input.operationalStarterAvailable ?? false,
   });
-  const m3 = bringBusinessStatus({
+  const m3Input = {
     existingBookingsAnswer: hub?.existingBookingsAnswer ?? null,
     hasMigrationImport: input.hasMigrationImport,
     bringYourBusinessPath: hub?.bringYourBusinessPath ?? null,
-  });
+  };
+  const m3 = bringBusinessStatus(m3Input);
   const m4 = takeALookStatus({ readyToInviteCouples: hub?.readyToInviteCouples === true });
 
   return [
@@ -219,7 +241,7 @@ export function buildPhaseAMilestones(input: PhaseAProgressInput): PhaseAMilesto
       actionLabel: "Explore migration",
       href: PHASE_A_MILESTONE_ROUTES.bringBusiness,
       status: m3,
-      statusLabel: statusLabel(m3),
+      statusLabel: bringBusinessStatusLabel(m3Input),
     },
     {
       key: "takeALook",
@@ -246,16 +268,13 @@ export function phaseAProgressSummary(milestones: PhaseAMilestoneView[]): string
   const ready = milestones.filter((m) => m.status === "ready").length;
   const attention = milestones.filter((m) => m.status === "needs_attention").length;
   const inProgress = milestones.filter((m) => m.status === "in_progress").length;
-  if (ready === 0 && inProgress === 0 && attention === 0) {
-    return "You haven't started yet — begin with Protect your calendar when you're ready.";
-  }
   if (attention > 0) {
     return `${ready} of 4 milestones ready · ${attention} need attention before calendar safety is confirmed.`;
   }
   if (ready === 4) {
     return "All four milestones show Ready — activation still waits until full readiness is verified.";
   }
-  return `${ready} of 4 milestones ready · ${inProgress} in progress.`;
+  return `${ready} of 4 milestones ready · ${inProgress} in progress`;
 }
 
 /**

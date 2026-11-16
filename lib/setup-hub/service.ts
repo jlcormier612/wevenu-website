@@ -156,7 +156,12 @@ export async function setHostedEventTypes(
 
 export async function confirmEventExperienceReview(
   eventType: string,
-  review: { profileId: string; profileUpdatedAt: string; confirmedAt: string },
+  review: {
+    profileId: string;
+    profileUpdatedAt: string;
+    confirmedAt: string;
+    resourcesReviewedAt?: string;
+  },
 ): Promise<{ ok: boolean; error?: string }> {
   try {
     const result = await withVenue(async (client, venueId) => {
@@ -166,6 +171,37 @@ export async function confirmEventExperienceReview(
         venueId,
         eventType,
         review,
+        state.eventExperienceReviews,
+      );
+      return true;
+    });
+    return { ok: result === true };
+  } catch (e) {
+    return { ok: false, error: repo.toCustomerFacingB1Error(e) };
+  }
+}
+
+export async function confirmEventExperienceResourcesReviewed(
+  eventType: string,
+  review: { profileId: string; profileUpdatedAt: string; resourcesReviewedAt: string },
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const result = await withVenue(async (client, venueId) => {
+      const state = await repo.getOrCreateState(client, venueId);
+      const current = state.eventExperienceReviews[eventType];
+      const sameSnapshot =
+        current?.profileId === review.profileId &&
+        current?.profileUpdatedAt === review.profileUpdatedAt;
+      await repo.confirmEventExperienceReview(
+        client,
+        venueId,
+        eventType,
+        {
+          profileId: review.profileId,
+          profileUpdatedAt: review.profileUpdatedAt,
+          confirmedAt: sameSnapshot && current?.confirmedAt ? current.confirmedAt : "",
+          resourcesReviewedAt: review.resourcesReviewedAt,
+        },
         state.eventExperienceReviews,
       );
       return true;

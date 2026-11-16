@@ -86,6 +86,13 @@ describe("Bring Your Business choices — three equal paths", () => {
     const bring = readFileSync(join(process.cwd(), "app/(app)/setup-hub/bring-business/page.tsx"), "utf8");
     assert.match(bring, /Migration Center/);
     assert.match(bring, /BRING_YOUR_BUSINESS_ROUTES/);
+    assert.match(bring, /Nothing to bring over/);
+    assert.match(
+      bring,
+      /You&apos;re all set here\. If you have records to add later, you can still use/,
+    );
+    assert.match(bring, /phase-a-import-data/);
+    assert.match(bring, /spreadsheetImport/);
   });
 });
 

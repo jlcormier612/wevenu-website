@@ -41,6 +41,9 @@ describe("guided integration status", () => {
     assert.equal(textingGuidedStatus({ smsReady: false, phase: "ready" }), "In progress");
     assert.equal(textingGuidedStatus({ smsReady: true, phase: "ready" }), "Connected");
     assert.equal(textingGuidedStatus({ smsReady: false, phase: "not_started" }), "Not set up");
+    assert.equal(textingGuidedStatus({ smsReady: false }), "Not set up");
+    assert.notEqual(textingGuidedStatus({ smsReady: false, phase: null }), "Connected");
+    assert.notEqual(textingGuidedStatus({ smsReady: false, phase: "not_started" }), "Ready");
   });
 
   it("does not treat tour scheduling enabled as Connected", () => {

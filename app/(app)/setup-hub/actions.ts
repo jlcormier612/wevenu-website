@@ -99,9 +99,42 @@ export async function setHostedEventTypesAction(eventTypes: string[]) {
   return result;
 }
 
+export async function confirmEventExperienceResourcesReviewedAction(eventType: string) {
+  const { loadMilestone02Context } = await import("@/lib/setup-hub/phase-b1-load");
+  const { assignedProfileForEventType } = await import("@/lib/setup-hub/phase-b1-readiness");
+  const { effectiveHostedEventTypes, hostedEventTypeOption } = await import(
+    "@/lib/setup-hub/phase-b1-event-types"
+  );
+  const ctx = await loadMilestone02Context();
+  if (!ctx) return { ok: false, error: "No venue found." };
+  const option = hostedEventTypeOption(eventType);
+  if (!option) return { ok: false, error: "That event type is not part of this setup." };
+  const selected = effectiveHostedEventTypes(ctx.hubState?.hostedEventTypes ?? null);
+  if (!selected.includes(option.value)) {
+    return { ok: false, error: "Choose this event type before reviewing its resources." };
+  }
+  const profile = assignedProfileForEventType(option.value, ctx.assignments, ctx.profiles);
+  if (!profile) {
+    return { ok: false, error: "Assign a Setup Profile to this event type before reviewing resources." };
+  }
+  const result = await setupHub.confirmEventExperienceResourcesReviewed(eventType, {
+    profileId: profile.id,
+    profileUpdatedAt: profile.updatedAt,
+    resourcesReviewedAt: new Date().toISOString(),
+  });
+  if (result.ok) {
+    revalidateMilestone02();
+    revalidatePath(`/setup-hub/make-htc-yours/event-experiences/${encodeURIComponent(eventType)}`);
+  }
+  return result;
+}
+
 export async function confirmEventExperienceReviewAction(eventType: string) {
   const { loadMilestone02Context } = await import("@/lib/setup-hub/phase-b1-load");
-  const { canConfirmEventTypeReview } = await import("@/lib/setup-hub/phase-b1-readiness");
+  const {
+    canConfirmEventTypeReview,
+    isEventTypeResourcesReviewed,
+  } = await import("@/lib/setup-hub/phase-b1-readiness");
   const ctx = await loadMilestone02Context();
   if (!ctx) return { ok: false, error: "No venue found." };
   const gate = canConfirmEventTypeReview({
@@ -111,10 +144,22 @@ export async function confirmEventExperienceReviewAction(eventType: string) {
     profiles: ctx.profiles,
   });
   if (!gate.ok) return { ok: false, error: gate.message };
+  const reviews = ctx.hubState?.eventExperienceReviews ?? {};
+  const resourcesReviewed = isEventTypeResourcesReviewed({
+    eventType,
+    assignments: ctx.assignments,
+    profiles: ctx.profiles,
+    reviews,
+  });
+  if (!resourcesReviewed) {
+    return { ok: false, error: "Look over the resources for this experience before marking it ready." };
+  }
+  const current = reviews[eventType];
   const result = await setupHub.confirmEventExperienceReview(eventType, {
     profileId: gate.profile.id,
     profileUpdatedAt: gate.profile.updatedAt,
     confirmedAt: new Date().toISOString(),
+    resourcesReviewedAt: current?.resourcesReviewedAt,
   });
   if (result.ok) {
     revalidateMilestone02();

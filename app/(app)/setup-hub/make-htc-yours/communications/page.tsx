@@ -9,7 +9,7 @@ import {
   GuidedTaskCard,
 } from "@/components/setup-hub/phase-b1/guided-task-card";
 import { MilestoneDetailShell } from "@/components/setup-hub/phase-a/milestone-detail-shell";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { getFacebookConnection, getFacebookLeadForms } from "@/lib/facebook/service";
 import { facebookUiState } from "@/lib/facebook/ui-state";
 import { loadMilestone02Context } from "@/lib/setup-hub/phase-b1-load";
@@ -29,12 +29,12 @@ export const dynamic = "force-dynamic";
 export default async function CommunicationsSetupPage() {
   const ctx = await loadMilestone02Context();
   if (!ctx) return null;
-  const templateStatus = ctx.messageTemplateCount > 0 ? "In progress" : "Not set up";
+  const templateStatus = ctx.messageTemplateCount > 0 ? "Starter ready for you" : "Not set up";
   const automationStatus =
     ctx.activeAutomationCount > 0
       ? "In progress"
       : ctx.pausedAutomationCount > 0
-        ? "In progress"
+        ? "Starter ready for you"
         : "Not set up";
   async function safe<T>(fn: () => Promise<T>, fallback: T): Promise<T> {
     try {
@@ -128,15 +128,15 @@ export default async function CommunicationsSetupPage() {
           title="Text messaging setup"
           description="Set up text messaging so your team can communicate with leads and clients. You'll complete the required business registration and consent settings before sending texts."
           statusLabel={smsStatus}
+          statusTestId="phase-b1-texting-status"
           action={
-            <Button
-              type="button"
-              render={
-                <Link href={withSetupHubReturn("/settings/communications#texting", "communications")} />
-              }
+            <Link
+              href={withSetupHubReturn("/settings/communications#texting", "communications")}
+              className={buttonVariants()}
+              data-testid="phase-b1-texting-setup"
             >
               Set up text messaging
-            </Button>
+            </Link>
           }
         />
 

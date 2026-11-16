@@ -11,22 +11,24 @@ export function MarkExperienceReady({
   canConfirm,
   disabledReason,
   alreadyReady,
+  resourcesReviewed,
 }: {
   action: () => Promise<{ ok: boolean; error?: string }>;
   canConfirm: boolean;
   disabledReason?: string;
   alreadyReady: boolean;
+  resourcesReviewed: boolean;
 }) {
   const [checked, setChecked] = React.useState(false);
   const [pending, startTransition] = React.useTransition();
-  const enabled = canConfirm && checked && !alreadyReady && !pending;
+  const enabled = canConfirm && resourcesReviewed && checked && !alreadyReady && !pending;
 
   return (
     <div className="space-y-3" data-testid="phase-b1-mark-experience-ready">
       <label className="flex items-start gap-3 text-sm text-foreground">
         <Checkbox
           checked={alreadyReady || checked}
-          disabled={alreadyReady || pending || !canConfirm}
+          disabled={alreadyReady || pending || !canConfirm || !resourcesReviewed}
           onCheckedChange={(value) => setChecked(value === true)}
           data-testid="phase-b1-experience-ready-checkbox"
         />
@@ -51,6 +53,11 @@ export function MarkExperienceReady({
       </Button>
       {!canConfirm && disabledReason ? (
         <p className="text-xs text-muted-foreground">{disabledReason}</p>
+      ) : null}
+      {canConfirm && !resourcesReviewed && !alreadyReady ? (
+        <p className="text-xs text-muted-foreground">
+          Look over the resources for this experience before marking it ready.
+        </p>
       ) : null}
       {alreadyReady ? (
         <p className="text-xs text-muted-foreground">This experience is marked ready.</p>
