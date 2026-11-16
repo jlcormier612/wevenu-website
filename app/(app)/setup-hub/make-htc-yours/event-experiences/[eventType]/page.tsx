@@ -188,7 +188,7 @@ export default async function EventExperiencePreparePage({
           id="experience-step-1"
           className="scroll-mt-24 space-y-3 rounded-xl border border-border bg-card p-5"
         >
-          <h2 className="font-serif text-lg font-semibold text-heading">Your starting point</h2>
+          <h2 className="font-heading text-lg font-medium text-heading">Your starting point</h2>
           <p className="text-sm text-muted-foreground">
             Start with a prepared experience, then make any changes that fit the way your venue works.
           </p>
@@ -226,7 +226,7 @@ export default async function EventExperiencePreparePage({
           id="experience-step-2"
           className="scroll-mt-24 space-y-3 rounded-xl border border-border bg-card p-5"
         >
-          <h2 className="font-serif text-lg font-semibold text-heading">Choose your planning tools</h2>
+          <h2 className="font-heading text-lg font-medium text-heading">Choose your planning tools</h2>
           <p className="text-sm text-muted-foreground">
             Decide which tools you&apos;ll use for this type of event. You can adjust individual events
             later.
@@ -258,7 +258,7 @@ export default async function EventExperiencePreparePage({
           className="scroll-mt-24 space-y-3 rounded-xl border border-border bg-card p-5"
           data-testid="phase-b1-experience-resources"
         >
-          <h2 className="font-serif text-lg font-semibold text-heading">Prepare your resources</h2>
+          <h2 className="font-heading text-lg font-medium text-heading">Prepare your resources</h2>
           <p className="text-sm text-muted-foreground">
             Take a look at the resources your clients and team will start with. Customize anything
             you&apos;d like before using this experience.
@@ -346,7 +346,7 @@ export default async function EventExperiencePreparePage({
           id="experience-step-4"
           className="scroll-mt-24 space-y-3 rounded-xl border border-border bg-card p-5"
         >
-          <h2 className="font-serif text-lg font-semibold text-heading">Review your experience</h2>
+          <h2 className="font-heading text-lg font-medium text-heading">Review your experience</h2>
           <p className="text-sm text-muted-foreground">
             You&apos;re almost there. Confirm that this is the starting point you&apos;d like to use for
             future events.

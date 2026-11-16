@@ -78,7 +78,7 @@ export default async function BusinessBrandSettingsPage({
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
               YOUR VENUE
             </p>
-            <h1 className="font-serif text-3xl font-semibold tracking-tight text-heading">
+            <h1 className="font-heading text-3xl font-medium tracking-tight text-heading">
               Make it yours.
             </h1>
             <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">

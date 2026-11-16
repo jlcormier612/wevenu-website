@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { GuidedBackToOverviewLink } from "@/components/setup-hub/phase-b1/guided-task-card";
 import { HostedEventTypesForm } from "@/components/setup-hub/phase-b1/hosted-event-types-form";
 import { MilestoneDetailShell } from "@/components/setup-hub/phase-a/milestone-detail-shell";
 import { Badge } from "@/components/ui/badge";
@@ -39,7 +38,7 @@ export default async function EventExperiencesSetupPage() {
         {selected.length > 0 ? (
           <div className="space-y-4">
             <div className="space-y-1">
-              <h2 className="font-serif text-lg font-semibold text-heading">
+              <h2 className="font-heading text-lg font-medium text-heading">
                 Let&apos;s prepare your event experiences.
               </h2>
               <p className="text-sm text-muted-foreground">
@@ -67,7 +66,7 @@ export default async function EventExperiencesSetupPage() {
                     className="w-full space-y-3 rounded-xl border border-border bg-card p-5"
                     data-testid={`phase-b1-experience-${option.value}`}
                   >
-                    <h3 className="font-serif text-lg font-semibold text-heading">{copy.cardTitle}</h3>
+                    <h3 className="font-heading text-lg font-medium text-heading">{copy.cardTitle}</h3>
                     <Badge variant="muted">{status}</Badge>
                     <p className="text-sm text-muted-foreground">{copy.cardDescription}</p>
                     <Button type="button" render={<Link href={experiencePrepareHref(option.value)} />}>
@@ -91,7 +90,6 @@ export default async function EventExperiencesSetupPage() {
           Preparing an event experience is for future events — it isn&apos;t required before importing
           the bookings you already have.
         </p>
-        <GuidedBackToOverviewLink />
       </MilestoneDetailShell>
     </div>
   );

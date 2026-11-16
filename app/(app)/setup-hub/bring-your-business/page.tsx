@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ChevronLeft } from "lucide-react";
 
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { BringYourBusinessGuide } from "@/components/setup-hub/bring-your-business-guide";
@@ -45,19 +46,20 @@ export default async function BringYourBusinessGuidePage() {
 
   return (
     <div className="htc-hospitality-page space-y-4 sm:space-y-6">
+      <Link
+        href="/setup-hub/bring-business"
+        className="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-heading"
+        data-testid="phase-a-back-to-bring-business"
+      >
+        <ChevronLeft className="size-4" aria-hidden />
+        Back to Bring your business over
+      </Link>
       <div className="htc-hospitality-heading htc-hospitality-intro-accent">
         <PageHeader
           title="Bring Your Business"
           description="A guided path over the import tools you already have — clients, events, finances, and planning materials, in an order that keeps records connected."
         />
       </div>
-      <p className="text-xs text-muted-foreground">
-        <Link href="/setup-hub" className="hover:text-foreground hover:underline">
-          Setup
-        </Link>
-        {" · "}
-        Bring Your Business
-      </p>
       <BringYourBusinessGuide
         progress={progress}
         cutover={cutover}

@@ -27,7 +27,7 @@ export function PhaseAMilestoneCard({ milestone }: { milestone: PhaseAMilestoneV
       </div>
       <div className="min-w-0 flex-1 space-y-2">
         <div className="flex flex-wrap items-center gap-2">
-          <h3 className="text-lg font-semibold text-heading">{milestone.title}</h3>
+          <h3 className="font-heading text-lg font-medium text-heading">{milestone.title}</h3>
           <Badge variant={statusVariant(milestone.status)}>{milestone.statusLabel}</Badge>
         </div>
         <p className="text-sm leading-relaxed text-muted-foreground">{milestone.description}</p>

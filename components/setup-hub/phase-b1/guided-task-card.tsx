@@ -1,8 +1,4 @@
-import Link from "next/link";
-import { ChevronLeft } from "lucide-react";
-
 import { Badge } from "@/components/ui/badge";
-import { PHASE_B1_M02_ROUTES } from "@/lib/setup-hub/phase-b1-routes";
 
 export function GuidedTaskCard({
   step,
@@ -33,7 +29,7 @@ export function GuidedTaskCard({
           {step}
         </span>
         <div className="min-w-0 flex-1 space-y-3">
-          <h2 className="font-serif text-lg font-semibold text-heading">{title}</h2>
+          <h2 className="font-heading text-lg font-medium text-heading">{title}</h2>
           <p className="text-sm text-muted-foreground">{description}</p>
           {statusLabel ? (
             <Badge variant="muted" data-testid={statusTestId}>
@@ -60,21 +56,9 @@ export function GuidedSectionComplete({
 }) {
   return (
     <section className="space-y-3 pt-2">
-      <h2 className="font-serif text-lg font-semibold text-heading">{heading}</h2>
+      <h2 className="font-heading text-lg font-medium text-heading">{heading}</h2>
       <p className="text-sm text-muted-foreground">{description}</p>
       {children}
     </section>
-  );
-}
-
-export function GuidedBackToOverviewLink() {
-  return (
-    <Link
-      href={PHASE_B1_M02_ROUTES.overview}
-      className="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-heading"
-    >
-      <ChevronLeft className="size-4" aria-hidden />
-      Back to Make HTC yours
-    </Link>
   );
 }

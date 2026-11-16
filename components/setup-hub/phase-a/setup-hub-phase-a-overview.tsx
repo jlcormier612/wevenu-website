@@ -34,7 +34,7 @@ export function SetupHubPhaseAOverview(input: PhaseAProgressInput) {
           <h2
             id={MILESTONES_HEADING_ID}
             tabIndex={-1}
-            className="scroll-mt-24 font-serif text-2xl font-semibold tracking-tight text-heading sm:text-3xl outline-none"
+            className="scroll-mt-24 font-heading text-2xl font-medium tracking-tight text-heading outline-none"
           >
             Make yourself at home.
           </h2>
@@ -47,7 +47,7 @@ export function SetupHubPhaseAOverview(input: PhaseAProgressInput) {
           className="rounded-xl border border-border bg-muted/20 px-4 py-3 sm:px-5"
           data-testid="phase-a-progress-panel"
         >
-          <p className="text-sm font-semibold text-heading">Your progress</p>
+          <p className="text-sm font-medium text-heading">Your progress</p>
           <p className="mt-1 text-sm text-muted-foreground">
             We&apos;ll keep track of your progress as you prepare your venue.
           </p>

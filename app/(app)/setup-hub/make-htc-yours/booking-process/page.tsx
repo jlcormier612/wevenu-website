@@ -4,7 +4,6 @@ import Link from "next/link";
 import { markBookingProcessReviewedAction } from "@/app/(app)/setup-hub/actions";
 import { ConfirmSectionButton } from "@/components/setup-hub/phase-b1/confirm-section-button";
 import {
-  GuidedBackToOverviewLink,
   GuidedSectionComplete,
   GuidedTaskCard,
 } from "@/components/setup-hub/phase-b1/guided-task-card";
@@ -173,7 +172,6 @@ export default async function BookingProcessSetupPage() {
             testId="phase-b1-confirm-booking"
           />
         </GuidedSectionComplete>
-        <GuidedBackToOverviewLink />
       </MilestoneDetailShell>
     </div>
   );

@@ -11,6 +11,26 @@ export const PHASE_B1_M02_ROUTES = {
 
 export const PHASE_B1_RETURN_QUERY = "from=setup-hub";
 
+/** Contextual parents for editors opened from Phase A milestones (not only M02 sections). */
+export const SETUP_HUB_MILESTONE_RETURN = {
+  protectCalendar: {
+    returnPath: "/setup-hub/protect-calendar",
+    returnLabel: "Back to Protect your calendar",
+  },
+  makeHtcYours: {
+    returnPath: "/setup-hub/make-htc-yours",
+    returnLabel: "Back to Make HTC yours",
+  },
+  bringBusiness: {
+    returnPath: "/setup-hub/bring-business",
+    returnLabel: "Back to Bring your business over",
+  },
+  takeALook: {
+    returnPath: "/setup-hub/take-a-look",
+    returnLabel: "Back to Take a look, then go live",
+  },
+} as const;
+
 export const SETUP_HUB_SECTIONS = [
   "booking-process",
   "event-experiences",
@@ -45,9 +65,10 @@ export function isSetupHubSection(value: string | null | undefined): value is Se
 
 export function isSafeSetupHubReturnPath(path: string | null | undefined): path is string {
   if (!path) return false;
-  if (!path.startsWith("/setup-hub/make-htc-yours")) return false;
-  if (path.includes("://") || path.includes("//") || path.includes("\\")) return false;
-  return true;
+  if (path.includes("://") || path.includes("//") || path.includes("\\") || path.includes("..")) {
+    return false;
+  }
+  return path === "/setup-hub" || path.startsWith("/setup-hub/");
 }
 
 export function withSetupHubReturn(
