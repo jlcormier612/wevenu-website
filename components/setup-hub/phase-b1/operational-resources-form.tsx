@@ -6,7 +6,6 @@ import { toast } from "sonner";
 
 import { markOperationalResourcesReviewedAction } from "@/app/(app)/setup-hub/actions";
 import {
-  GuidedBackToOverviewLink,
   GuidedSectionComplete,
   GuidedTaskCard,
 } from "@/components/setup-hub/phase-b1/guided-task-card";
@@ -172,7 +171,6 @@ export function OperationalResourcesForm({
           Confirm your planning tools
         </Button>
       </GuidedSectionComplete>
-      <GuidedBackToOverviewLink />
     </div>
   );
 }

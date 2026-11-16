@@ -38,7 +38,7 @@ export function MilestoneDetailShell({
           </p>
           {statusLabel ? <Badge variant="muted">{statusLabel}</Badge> : null}
         </div>
-        <h1 className="font-serif text-3xl font-semibold tracking-tight text-heading">{title}</h1>
+        <h1 className="font-heading text-3xl font-medium tracking-tight text-heading">{title}</h1>
         <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
           {intro}
         </p>
@@ -58,7 +58,7 @@ export function MilestoneGuidancePanel({
 }) {
   return (
     <aside className="rounded-xl border border-border bg-muted/25 px-4 py-3 sm:px-5" role="note">
-      {title ? <p className="text-sm font-semibold text-heading">{title}</p> : null}
+      {title ? <p className="text-sm font-medium text-heading">{title}</p> : null}
       <div
         className={`text-sm leading-relaxed text-muted-foreground ${title ? "mt-1" : ""}`}
       >
@@ -86,7 +86,7 @@ export function MilestoneStepCard({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-base font-semibold text-heading">{title}</h2>
+            <h2 className="font-heading text-base font-medium text-heading">{title}</h2>
             {statusLabel ? <Badge variant="muted">{statusLabel}</Badge> : null}
           </div>
           <p className="text-sm text-muted-foreground">{description}</p>

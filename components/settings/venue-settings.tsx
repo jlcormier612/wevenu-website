@@ -213,7 +213,7 @@ export function VenueSettings({
     <div className="space-y-6">
       {fromSetupHub ? (
         <div id="venue-details" className="scroll-mt-24 space-y-1">
-          <p className="text-base font-semibold text-heading">Your venue details</p>
+          <p className="font-heading text-base font-medium text-heading">Your venue details</p>
           <p className="text-sm text-muted-foreground">
             Confirm the information clients should recognize as yours.
           </p>
@@ -257,7 +257,7 @@ export function VenueSettings({
 
       {fromSetupHub ? (
         <div id="look-and-feel" className="scroll-mt-24 space-y-1 pt-2">
-          <p className="text-base font-semibold text-heading">Your look &amp; feel</p>
+          <p className="font-heading text-base font-medium text-heading">Your look &amp; feel</p>
           <p className="text-sm text-muted-foreground">
             Add your logo and choose the colors that reflect your venue.
           </p>

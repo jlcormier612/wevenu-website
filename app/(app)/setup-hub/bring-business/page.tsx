@@ -11,6 +11,10 @@ import { getSpaces } from "@/lib/availability/service";
 import { getImportBatches } from "@/lib/import/batches";
 import { BRING_YOUR_BUSINESS_ROUTES } from "@/lib/setup-hub/bring-your-business";
 import {
+  SETUP_HUB_MILESTONE_RETURN,
+  withSetupHubReturn,
+} from "@/lib/setup-hub/phase-b1-routes";
+import {
   bringBusinessNothingToBringOver,
   buildPhaseAMilestones,
 } from "@/lib/setup-hub/phase-a-milestones";
@@ -58,7 +62,11 @@ export default async function BringBusinessPage() {
             <MilestoneGuidancePanel title="Nothing to bring over">
               You&apos;re all set here. If you have records to add later, you can still use{" "}
               <Link
-                href={BRING_YOUR_BUSINESS_ROUTES.spreadsheetImport}
+                href={withSetupHubReturn(
+                  BRING_YOUR_BUSINESS_ROUTES.spreadsheetImport,
+                  undefined,
+                  SETUP_HUB_MILESTONE_RETURN.bringBusiness,
+                )}
                 className="font-medium text-primary underline-offset-4 hover:underline"
                 data-testid="phase-a-import-data"
               >
@@ -106,7 +114,15 @@ export default async function BringBusinessPage() {
           <div className="flex flex-col gap-2 sm:flex-row">
             <Button
               type="button"
-              render={<Link href={BRING_YOUR_BUSINESS_ROUTES.migrationCenter} />}
+              render={
+                <Link
+                  href={withSetupHubReturn(
+                    BRING_YOUR_BUSINESS_ROUTES.migrationCenter,
+                    undefined,
+                    SETUP_HUB_MILESTONE_RETURN.bringBusiness,
+                  )}
+                />
+              }
               data-testid="phase-a-open-migration"
             >
               Open Migration Center
@@ -116,7 +132,11 @@ export default async function BringBusinessPage() {
               variant="outline"
               render={
                 <Link
-                  href={BRING_YOUR_BUSINESS_ROUTES.spreadsheetImport}
+                  href={withSetupHubReturn(
+                    BRING_YOUR_BUSINESS_ROUTES.spreadsheetImport,
+                    undefined,
+                    SETUP_HUB_MILESTONE_RETURN.bringBusiness,
+                  )}
                   data-testid="phase-a-import-data-button"
                 />
               }

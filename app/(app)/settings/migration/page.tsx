@@ -6,6 +6,7 @@ import { SettingsTabs } from "@/components/settings/settings-tabs";
 import { MigrationCenter } from "@/components/settings/migration-center";
 import { MigrationGuidancePanel } from "@/components/settings/migration-guidance-panel";
 import { SetupGuideLink } from "@/components/help/setup-guide-link";
+import { SetupHubReturnLink } from "@/components/setup-hub/phase-b1/setup-hub-return-link";
 import { getSourceProfilesAction } from "@/app/(app)/settings/migration-actions";
 import { getSpaces, getCapacityRules } from "@/lib/availability/service";
 import { evaluateCutoverPrerequisites } from "@/lib/setup-hub/bring-your-business";
@@ -36,6 +37,10 @@ export default async function MigrationCenterPage({
 
   return (
     <div className="htc-hospitality-page space-y-4 sm:space-y-6">
+      <SetupHubReturnLink
+        href="/setup-hub/bring-business"
+        label="Back to Bring your business over"
+      />
       <div className="htc-hospitality-heading htc-hospitality-intro-accent">
         <PageHeader
           title="Migration Center"

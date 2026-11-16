@@ -11,10 +11,16 @@ import { Button } from "@/components/ui/button";
 import { ensurePackageStartersForCurrentVenue } from "@/lib/packages/provision";
 import { getPackagesWithItems } from "@/lib/packages/service";
 import { PACKAGE_STARTER_MASTERS, type PackageStarterMasterKey } from "@/lib/packages/starters";
+import { isSetupHubReturn, withSetupHubReturn } from "@/lib/setup-hub/phase-b1-routes";
 
 export const metadata: Metadata = { title: "Packages & Pricing" };
 
-export default async function PackagesPage() {
+export default async function PackagesPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const params = await searchParams;
   await ensurePackageStartersForCurrentVenue();
   const packages = await getPackagesWithItems();
   const presentKeys = new Set(
@@ -23,6 +29,9 @@ export default async function PackagesPage() {
   const missingStarterKeys = PACKAGE_STARTER_MASTERS
     .map((m) => m.key)
     .filter((k) => !presentKeys.has(k)) as PackageStarterMasterKey[];
+  const newPackageHref = isSetupHubReturn(params.from)
+    ? withSetupHubReturn("/packages/new", "booking-process")
+    : "/packages/new";
 
   return (
     <div className="htc-hospitality-page space-y-4 sm:space-y-6">
@@ -33,7 +42,7 @@ export default async function PackagesPage() {
           title="Packages & Pricing"
           description="Priced offers you sell before booking. Inclusions are your commercial story — not Event Order choices."
           actions={
-            <Button type="button" render={<Link href="/packages/new" />}>
+            <Button type="button" render={<Link href={newPackageHref} />}>
               + New package
             </Button>
           }

@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { ImportWizard } from "@/components/settings/import-wizard";
 import { ImportHealthWidget } from "@/components/settings/import-health-widget";
 import { SetupGuideLink } from "@/components/help/setup-guide-link";
+import { SetupHubReturnLink } from "@/components/setup-hub/phase-b1/setup-hub-return-link";
 import type { EntityType } from "@/lib/import/types";
 import { getSpaces, getCapacityRules } from "@/lib/availability/service";
 import { evaluateCutoverPrerequisites } from "@/lib/setup-hub/bring-your-business";
@@ -33,6 +34,10 @@ export default async function ImportPage({
 
   return (
     <div className="htc-hospitality-page space-y-4 sm:space-y-6 max-w-3xl">
+      <SetupHubReturnLink
+        href="/setup-hub/bring-business"
+        label="Back to Bring your business over"
+      />
       <div className="htc-hospitality-heading htc-hospitality-intro-accent space-y-1.5">
         <h1 className="text-xl font-bold text-foreground">Import Data</h1>
         <p className="text-sm text-muted-foreground mt-1">

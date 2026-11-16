@@ -35,7 +35,7 @@ export function HostedEventTypesForm({
   return (
     <div className="space-y-4" data-testid="phase-b1-hosted-event-types">
       <fieldset className="space-y-3">
-        <legend className="font-serif text-lg font-semibold text-heading">
+        <legend className="font-heading text-lg font-medium text-heading">
           What types of events does your venue host?
         </legend>
         <p className="text-sm text-muted-foreground">

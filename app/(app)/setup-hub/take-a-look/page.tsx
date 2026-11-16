@@ -10,6 +10,10 @@ import { Button } from "@/components/ui/button";
 import { getSpaces } from "@/lib/availability/service";
 import { getImportBatches } from "@/lib/import/batches";
 import { buildPhaseAMilestones } from "@/lib/setup-hub/phase-a-milestones";
+import {
+  SETUP_HUB_MILESTONE_RETURN,
+  withSetupHubReturn,
+} from "@/lib/setup-hub/phase-b1-routes";
 import { getSetupHubState } from "@/lib/setup-hub/service";
 import { getCurrentVenue } from "@/lib/venue/service";
 
@@ -56,7 +60,15 @@ export default async function TakeALookPage() {
             <Button
               type="button"
               variant="outline"
-              render={<Link href="/settings/leads/setup-profiles" />}
+              render={
+                <Link
+                  href={withSetupHubReturn(
+                    "/settings/leads/setup-profiles",
+                    undefined,
+                    SETUP_HUB_MILESTONE_RETURN.takeALook,
+                  )}
+                />
+              }
             >
               Review Setup Profiles
             </Button>

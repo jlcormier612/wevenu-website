@@ -4,7 +4,6 @@ import Link from "next/link";
 import { markCommunicationsReviewedAction } from "@/app/(app)/setup-hub/actions";
 import { ConfirmSectionButton } from "@/components/setup-hub/phase-b1/confirm-section-button";
 import {
-  GuidedBackToOverviewLink,
   GuidedSectionComplete,
   GuidedTaskCard,
 } from "@/components/setup-hub/phase-b1/guided-task-card";
@@ -197,7 +196,6 @@ export default async function CommunicationsSetupPage() {
             testId="phase-b1-confirm-communications"
           />
         </GuidedSectionComplete>
-        <GuidedBackToOverviewLink />
       </MilestoneDetailShell>
     </div>
   );

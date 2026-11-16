@@ -15,6 +15,10 @@ import {
   buildPhaseAMilestones,
   PHASE_A_MILESTONE_ROUTES,
 } from "@/lib/setup-hub/phase-a-milestones";
+import {
+  SETUP_HUB_MILESTONE_RETURN,
+  withSetupHubReturn,
+} from "@/lib/setup-hub/phase-b1-routes";
 import { getSetupHubState } from "@/lib/setup-hub/service";
 import { getCurrentVenue } from "@/lib/venue/service";
 
@@ -41,10 +45,13 @@ export default async function ProtectCalendarPage() {
     setupProfileCount: 0,
   });
   const statusLabel = milestones[0]?.statusLabel;
-  const spacesHref =
+  const spacesHref = withSetupHubReturn(
     spaces.length === 0
       ? "/settings/availability?focus=spaces&add=1"
-      : "/settings/availability?focus=spaces";
+      : "/settings/availability?focus=spaces",
+    undefined,
+    SETUP_HUB_MILESTONE_RETURN.protectCalendar,
+  );
   const spacesActionLabel = spaces.length === 0 ? "Add your first space" : "Manage your spaces";
   const calendarReady = milestones[0]?.status === "ready";
 
@@ -81,7 +88,13 @@ export default async function ProtectCalendarPage() {
           title="Booking & availability rules"
           description="Decide how spaces can be used together and when events or tours may overlap."
           action={
-            <MarkBookingRulesLink href="/settings/availability?focus=rules" />
+            <MarkBookingRulesLink
+              href={withSetupHubReturn(
+                "/settings/availability?focus=rules",
+                undefined,
+                SETUP_HUB_MILESTONE_RETURN.protectCalendar,
+              )}
+            />
           }
         >
           {hubState?.bookingRulesReviewedAt ? (
