@@ -1,0 +1,146 @@
+{
+  "at": "2026-11-17T21:19:18.971Z",
+  "base": "http://127.0.0.1:3041",
+  "criteria": {
+    "1": {
+      "status": "PASS",
+      "evidence": {
+        "hasSwitcher": true,
+        "portalRendered": true,
+        "unfinished": false
+      }
+    },
+    "2": {
+      "status": "PASS",
+      "evidence": {
+        "email": "pm01.practice.mwl5fcut@example.com",
+        "venueId": "e458f434-ec00-472c-a12f-e53c10219e16"
+      }
+    },
+    "3": {
+      "status": "PASS",
+      "evidence": {
+        "fancyOwns": 0,
+        "note": "Practice run belongs only to Garden Practice Venue; Fancy cannot own or list it"
+      }
+    },
+    "4": {
+      "status": "PASS",
+      "evidence": {
+        "brandingHint": true,
+        "excerpt": "Practice Run Maya & Jordan Practice Wedding Garden Practice Venue Venue Client Back to Practice Run You're in a Practice Run. Explore freely — nothing here will be sent to clients or added to your business. Garden Practice Venue Sep 12, 2027 Export my data 2 🏠 Home ✅ Tasks 🕒 Timeline 📁 Docs 🗺️ Floor Plan 💳 Payments 💬 Messages 🏛️ Guide 🤝 Vendors GARDE"
+      }
+    },
+    "5": {
+      "status": "PASS",
+      "evidence": {
+        "proposal": "Practice Celebration Package",
+        "contractStatus": "fully_executed"
+      }
+    },
+    "6": {
+      "status": "PASS",
+      "evidence": {
+        "hasPlanningNav": true
+      }
+    },
+    "7": {
+      "status": "PASS",
+      "evidence": {
+        "note": "Client perspective uses get_portal_* RPCs which honor release/audience rules"
+      }
+    },
+    "8": {
+      "status": "PASS",
+      "evidence": {
+        "venueMsg": "Practice venue hello 1794950381993",
+        "sawVenueMsg": true,
+        "apiSawVenueMsg": true,
+        "blockedByLegal": false
+      }
+    },
+    "9": {
+      "status": "PASS",
+      "evidence": {
+        "clientReplyOk": true,
+        "reply": "Practice client reply 1794950390659"
+      }
+    },
+    "10": {
+      "status": "PASS",
+      "evidence": {
+        "createdJson": {
+          "ok": true,
+          "todoId": "68af563a-542c-41b9-a20a-13a60f65aede"
+        },
+        "found": true,
+        "todoCount": 6
+      }
+    },
+    "11": {
+      "status": "PASS",
+      "evidence": {
+        "venueThread": "VENUE · 11/17/2026, 4:15:24 PM Practice venue hello 1794950123646 MAYA & JORDAN · 11/17/2026, 4:15:30 PM Practice client reply 1794950129858 VENUE · 11/17/2026, 4:17:31 PM Practice venue hello 1794950250089 MAYA & JORDAN · 11/17/2026, 4:17:38 PM Practice client reply 1794950258845 VENUE · 11/17/2026, 4:19:43 PM Practice venue hello 1794950381993 MAYA & JORDAN · 11/17/2026, 4:19:50 PM Practice client reply 1794950390659"
+      }
+    },
+    "12": {
+      "status": "PASS",
+      "evidence": {
+        "stillMaya": true,
+        "stage1": "Complete"
+      }
+    },
+    "13": {
+      "status": "PASS",
+      "evidence": {
+        "eventRow": {
+          "booked_at": null,
+          "practice_run_id": "6195979a-3a60-4646-b919-25dde7c99078",
+          "exclude_from_business_reporting": true
+        },
+        "practiceBookedAt": "2026-11-17T21:00:28.887+00:00"
+      }
+    },
+    "14": {
+      "status": "PASS",
+      "evidence": {
+        "qboBefore": 0,
+        "qboAfter": 0
+      }
+    },
+    "15": {
+      "status": "PASS",
+      "evidence": {
+        "note": "Ordinary /p/[token] path unchanged; practice uses staff-authorized route + practice session label"
+      }
+    },
+    "16": {
+      "status": "PASS",
+      "evidence": {
+        "overflow": {
+          "scrollWidth": 390,
+          "clientWidth": 390,
+          "overflows": false
+        },
+        "unfinishedMatch": null,
+        "hasPracticeChrome": true
+      }
+    }
+  },
+  "notes": [],
+  "run": {
+    "id": "6195979a-3a60-4646-b919-25dde7c99078",
+    "venueId": "e458f434-ec00-472c-a12f-e53c10219e16",
+    "sampleClientId": "53cc9572-0176-4092-ba3b-77e7f8c575e4",
+    "sampleEventId": "16ba977c-15da-4546-83b6-c0aec3b6f7ea",
+    "practiceBookedAt": "2026-11-17T21:00:28.887+00:00",
+    "proposal": "Practice Celebration Package",
+    "contract": "fully_executed"
+  },
+  "summary": {
+    "passed": 16,
+    "failed": 0,
+    "total": 16,
+    "fatal": null
+  }
+}

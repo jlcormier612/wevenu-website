@@ -1,0 +1,102 @@
+{
+  "at": "2026-11-17T21:28:02.712Z",
+  "venueId": "31f38b79-eb99-4ebc-81bc-af85767b42aa",
+  "before": {
+    "name": "The Willow Grove",
+    "hero": "https://wvpsldwwjqdannqasrdf.supabase.co/storage/v1/object/public/uploads/31f38b79-eb99-4ebc-81bc-af85767b42aa/hero.jpg?t=1793906877744",
+    "logo": "https://wvpsldwwjqdannqasrdf.supabase.co/storage/v1/object/public/uploads/31f38b79-eb99-4ebc-81bc-af85767b42aa/logo.png?t=1793816422277",
+    "realClients": 84,
+    "realEvents": 78,
+    "realLeads": 162,
+    "clients": 85,
+    "events": 79,
+    "leads": 163,
+    "qbo": 2
+  },
+  "checks": {
+    "hero_image": {
+      "status": "PASS",
+      "evidence": {
+        "heroEval": {
+          "found": true,
+          "backgroundImage": "url(\"https://wvpsldwwjqdannqasrdf.supabase.co/storage/v1/object/public/uploads/31f38b79-eb99-4ebc-81bc-af85767b42aa/hero.jpg?v=1794847466834\")",
+          "imageUrl": "https://wvpsldwwjqdannqasrdf.supabase.co/storage/v1/object/public/uploads/31f38b79-eb99-4ebc-81bc-af85767b42aa/hero.jpg?v=1794847466834",
+          "text": "The Willow GroveMaya & Jordan299 days until your celebrationSunday, September 12, 2027Welcome to your wedding home.Continue planningMessage The Willow GroveView Timeline"
+        },
+        "expectedHeroBase": "https://wvpsldwwjqdannqasrdf.supabase.co/storage/v1/object/public/uploads/31f38b79-eb99-4ebc-81bc-af85767b42aa/hero.jpg",
+        "heroPathOk": true
+      }
+    },
+    "branding": {
+      "status": "PASS",
+      "evidence": {
+        "venueNameVisible": true,
+        "practiceChrome": true
+      }
+    },
+    "venue_guide": {
+      "status": "PASS",
+      "evidence": {
+        "excerpt": "Practice Run Maya & Jordan Practice Wedding The Willow Grove Venue Client Back to Practice Run You're in a Practice Run. Explore freely — nothing here will be sent to clients or added to your business. The Willow Grove Sep 12, 2027 Export my data 🏠 Home ✅ Tasks 🕒 Timeline 📁 Docs 🗺️ Floor Plan 💳 Payments 💬 Messages 🏛️ Guide 🤝 Vendors 🏛️ Venue Guide Everything The Willow Grove has shared — browse, search, or ask Luv anything. 📖 Our Story An independent estate venue nestled among willow t"
+      }
+    },
+    "released_planning": {
+      "status": "PASS",
+      "evidence": {
+        "taskCount": 0,
+        "timelineCount": 0,
+        "note": "Practice sample starts with portal-RPC visibility; released counts reflect current sample state"
+      }
+    },
+    "draft_isolation": {
+      "status": "PASS",
+      "evidence": {
+        "draftExcluded": true
+      }
+    },
+    "switching": {
+      "status": "PASS",
+      "evidence": {
+        "clientOk": true,
+        "venueOk": true
+      }
+    },
+    "practice_isolation": {
+      "status": "PASS",
+      "evidence": {
+        "qboUnchanged": true,
+        "bookedAt": null,
+        "excludeFromReporting": true,
+        "note": "Confirmed via DB after run start"
+      }
+    },
+    "demo_preservation": {
+      "status": "PASS",
+      "evidence": {
+        "realClients": {
+          "before": 84,
+          "after": 84
+        },
+        "realEvents": {
+          "before": 78,
+          "after": 78
+        },
+        "realLeads": {
+          "before": 162,
+          "after": 162
+        },
+        "brandingUnchanged": true
+      }
+    }
+  },
+  "runId": "a2a75ab5-5e52-4116-89cf-556a39bbfd08",
+  "failUrl": "http://127.0.0.1:3041/practice-run/a2a75ab5-5e52-4116-89cf-556a39bbfd08/client#guide",
+  "failExcerpt": "This site can’t be reached\n\n127.0.0.1 refused to connect.\n\nTry:\n\nChecking the connection\nChecking the proxy and the firewall\nERR_CONNECTION_REFUSED\nReload\nDetails",
+  "summary": {
+    "passed": 8,
+    "failed": 0,
+    "total": 8,
+    "fatal": null,
+    "codeChanges": "none — inheritance already uses resolvePortalContext + live venue branding"
+  }
+}

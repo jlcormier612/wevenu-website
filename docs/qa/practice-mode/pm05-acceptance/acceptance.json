@@ -1,0 +1,130 @@
+{
+  "at": "2026-11-17T22:34:37.658Z",
+  "base": "http://127.0.0.1:3041",
+  "criteria": {
+    "welcome_clarity": {
+      "status": "PASS",
+      "evidence": {
+        "hasCta": true
+      }
+    },
+    "enter_practice_run": {
+      "status": "PASS"
+    },
+    "proposal_stage_reachable": {
+      "status": "PASS",
+      "evidence": {
+        "note": "Stage card present; actions optional if already complete"
+      }
+    },
+    "contract_stage_reachable": {
+      "status": "PASS"
+    },
+    "planning_prepare_share": {
+      "status": "PASS"
+    },
+    "client_branded_portal": {
+      "status": "PASS"
+    },
+    "client_planning_action": {
+      "status": "PASS",
+      "evidence": {
+        "token": true
+      }
+    },
+    "client_message": {
+      "status": "PASS"
+    },
+    "venue_sees_client_update": {
+      "status": "PASS"
+    },
+    "venue_reply_visible": {
+      "status": "PASS"
+    },
+    "website_draft_boundary": {
+      "status": "PASS",
+      "evidence": {
+        "site": null
+      }
+    },
+    "finish_return_setup": {
+      "status": "PASS"
+    },
+    "resume_in_progress": {
+      "status": "PASS",
+      "evidence": {
+        "before": "d343f0d9-6e66-411d-a92f-04c7374cf075",
+        "after": "d343f0d9-6e66-411d-a92f-04c7374cf075"
+      }
+    },
+    "reset_after_completion": {
+      "status": "PASS",
+      "evidence": {
+        "previous": "d343f0d9-6e66-411d-a92f-04c7374cf075",
+        "next": "9cabc79e-af5d-4148-bd37-1fc35adac241",
+        "tasksBeforeReset": 5
+      }
+    },
+    "repeated_reset": {
+      "status": "PASS",
+      "evidence": {
+        "mid": "9cabc79e-af5d-4148-bd37-1fc35adac241",
+        "next": "38aea33a-8154-4edb-88f9-628a9113eb90"
+      }
+    },
+    "isolation": {
+      "status": "PASS",
+      "evidence": {
+        "eventRow": {
+          "booked_at": null,
+          "exclude_from_business_reporting": true,
+          "practice_run_id": "38aea33a-8154-4edb-88f9-628a9113eb90"
+        },
+        "qbo": {
+          "before": 0,
+          "after": 0
+        },
+        "realClients": {
+          "before": 0,
+          "after": 0
+        },
+        "willowEvents": {
+          "before": 80,
+          "after": 80
+        }
+      }
+    },
+    "mobile_ux": {
+      "status": "PASS",
+      "evidence": {
+        "overflow": {
+          "scrollWidth": 390,
+          "clientWidth": 390,
+          "overflows": false
+        }
+      }
+    }
+  },
+  "notes": [],
+  "ux": {
+    "polished": [
+      "Setup Hub milestone clearly separates Practice Run from go-live.",
+      "Client portal shows venue name and sample couple with Practice Run chrome.",
+      "Finish returns to Take a look with confident, non-mandatory next-step copy."
+    ],
+    "confusing": [],
+    "corrections": [
+      "Added explicit Finish vs Start over lifecycle with confirmation copy; unique practice emails per reset."
+    ],
+    "remaining": [
+      "Setup Hub “Finish setup & go to Dashboard” remains intentionally disabled (pre-existing Phase A gate)."
+    ]
+  },
+  "runIdStart": "d343f0d9-6e66-411d-a92f-04c7374cf075",
+  "summary": {
+    "passed": 17,
+    "failed": 0,
+    "total": 17,
+    "fatal": null
+  }
+}

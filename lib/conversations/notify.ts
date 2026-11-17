@@ -448,6 +448,29 @@ export function notifyCoupleOfVenuePortalMessage(conversationId: string, bodyPre
 
       const preview = bodyPreview.trim() || "(attachment)";
 
+      // Practice Run clients: in-app conversation only — no email/SMS fan-out.
+      {
+        const { createAdminClient } = await import("@/integrations/supabase/admin");
+        const admin = createAdminClient();
+        const { data: practiceRow } = await admin
+          .from("clients")
+          .select("practice_run_id")
+          .eq("id", ctx.clientId)
+          .eq("venue_id", ctx.venueId)
+          .maybeSingle();
+        if ((practiceRow as { practice_run_id?: string | null } | null)?.practice_run_id) {
+          await createCoupleNotification({
+            clientId: ctx.clientId,
+            type: "new_message",
+            title: `New message from ${ctx.venueName}`,
+            body: preview.slice(0, 100),
+            link: "#messages",
+            conversationId: ctx.conversationId,
+          });
+          return;
+        }
+      }
+
       await createCoupleNotification({
         clientId: ctx.clientId,
         type: "new_message",

@@ -96,10 +96,13 @@ async function notifyVenue(token: string, preview: string) {
         .maybeSingle<{ name: string; email: string | null }>(),
       supabase
         .from("clients")
-        .select("first_name, partner_first_name")
+        .select("first_name, partner_first_name, practice_run_id")
         .eq("id", session.client_id)
-        .maybeSingle<{ first_name: string; partner_first_name: string | null }>(),
+        .maybeSingle<{ first_name: string; partner_first_name: string | null; practice_run_id: string | null }>(),
     ]);
+
+    // Practice Run: keep the in-app thread, never email the venue about sample messages.
+    if (client?.practice_run_id) return;
 
     if (!venue?.email) return;
 

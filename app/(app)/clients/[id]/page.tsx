@@ -4,7 +4,9 @@ import { notFound, redirect } from "next/navigation";
 import { ClientEventSwitcher } from "@/components/clients/client-event-switcher";
 import { DeleteClientRecordButton } from "@/components/clients/delete-client-record-button";
 import { PreparingMessagesDeepLink } from "@/components/clients/preparing-messages-deep-link";
+import { PracticeContextBanner } from "@/components/setup-hub/practice-context-banner";
 import { BookingJourneyPanel } from "@/components/booking-journey/booking-journey-panel";
+import { findPracticeRunForSample } from "@/lib/practice-run/service";
 import { EventTaskList } from "@/components/playbooks/event-task-list";
 import { TimelineView } from "@/components/events/timeline/timeline-view";
 import { FloorPlanWorkspace } from "@/components/events/floor-plan-workspace";
@@ -129,7 +131,7 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
       timelineEntries, timelineSections, timelineTemplates, venue, spaces,
       floorPlans, floorPlanTemplates, vendors, vendorAssignments, eventOrder, eventOrderTemplates,
       offerings, inventoryItems, staffRole, dateHolds,
-      workspaceDocuments, pinnedDocumentKeys,
+      workspaceDocuments, pinnedDocumentKeys, practiceRun,
     ] = await Promise.all([
       client.relationshipId
         ? getRelationshipPhotoForVenue(client.relationshipId)
@@ -161,11 +163,13 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
       client.leadId ? getHolds({ leadId: client.leadId }) : Promise.resolve([]),
       getVenueWorkspaceDocuments({ clientId: client.id }),
       getPinnedDocumentKeys(),
+      findPracticeRunForSample({ clientId: client.id, leadId: client.leadId }),
     ]);
     const activeTimelineTemplates = timelineTemplates.filter((t) => !t.isArchived);
     const activePlaybookTemplates = templates.filter((t) => !t.isArchived);
     return (
       <div className="space-y-8">
+        {practiceRun ? <PracticeContextBanner run={practiceRun} /> : null}
         <PreparingMessagesDeepLink leadId={client.leadId} />
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex items-center gap-3">
@@ -695,8 +699,14 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
   const workspaceName = clientDisplayName(client.firstName, client.lastName, client.partnerFirstName, client.partnerLastName);
   const eventSetup = await loadEventSetup(event.id);
   const setupSteps = applicableSetupSteps(capabilitiesFromVenue(venue));
+  const practiceRun = await findPracticeRunForSample({
+    clientId: client.id,
+    leadId: client.leadId,
+    eventId: event.id,
+  });
   return (
     <div className="space-y-3">
+      {practiceRun ? <PracticeContextBanner run={practiceRun} /> : null}
       <div className="flex justify-end">
         <DeleteClientRecordButton clientId={client.id} fallbackName={workspaceName} />
       </div>

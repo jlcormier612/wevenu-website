@@ -40,10 +40,14 @@ export async function evaluateVenueEventVolume(input: {
   if (!crmSupabaseConfigured()) return null;
 
   const admin = createCrmAdminClient();
+  // Practice Run and internal verification Events must never drive SaaS volume.
+  // practice_run_id is added by 20270128120000_practice_runs.sql.
   const { data, error } = await admin
     .from("events")
-    .select("id, status, event_date, booked_at")
-    .eq("venue_id", input.venueId);
+    .select("id, status, event_date, booked_at, practice_run_id, exclude_from_business_reporting")
+    .eq("venue_id", input.venueId)
+    .is("practice_run_id", null)
+    .eq("exclude_from_business_reporting", false);
 
   if (error) {
     throw new Error(`event-volume load failed: ${error.message}`);

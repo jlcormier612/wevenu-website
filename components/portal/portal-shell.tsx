@@ -4730,6 +4730,7 @@ export function PortalShell({
   initialTimelineLastSubmittedAt = null, initialTimelineHasUnpublishedChanges = false,
   initialLegalGate,
   initialSection,
+  skipLegalGate = false,
 }: {
   token: string;
   context: PortalContext;
@@ -4742,6 +4743,11 @@ export function PortalShell({
   initialLegalGate?: CouplePortalLegalGateStatus;
   /** Server-resolved deep link (e.g. ?view=choices) so email redirects that drop #hash still land. */
   initialSection?: PortalSection;
+  /**
+   * Practice Run staff client-perspective only: sample celebration, not a real couple account.
+   * Skips the couple legal gate without writing legal acceptances.
+   */
+  skipLegalGate?: boolean;
 }) {
   const [activeSection, setActiveSection] = React.useState<PortalSection>(initialSection ?? "overview");
   const [workspaceFocus, setWorkspaceFocus] = React.useState<PortalWorkspaceFocus | null>(null);
@@ -4762,7 +4768,7 @@ export function PortalShell({
   const [showLuvIntro, setShowLuvIntro] = React.useState(false);
   const [moreOpen, setMoreOpen] = React.useState(false);
   const [needsLegalAcceptance, setNeedsLegalAcceptance] = React.useState(
-    () => initialLegalGate?.needsAcceptance ?? true,
+    () => (skipLegalGate ? false : (initialLegalGate?.needsAcceptance ?? true)),
   );
   const [legalDocuments, setLegalDocuments] = React.useState(
     () => initialLegalGate?.documents ?? [],
@@ -4770,7 +4776,7 @@ export function PortalShell({
   const [hasPriorLegalAcceptance, setHasPriorLegalAcceptance] =
     React.useState(false);
 
-  const hasServerLegalGate = Boolean(initialLegalGate);
+  const hasServerLegalGate = Boolean(initialLegalGate) || skipLegalGate;
   const planningCapabilities =
     context.venue.planningCapabilities ?? DEFAULT_PLANNING_CAPABILITIES;
   const navItems = NAV_ITEMS
@@ -4843,6 +4849,11 @@ export function PortalShell({
   }, [activeSection, planningCapabilities]);
 
   React.useEffect(() => {
+    // Practice Run client perspective: staff explores a sample, not a real couple account.
+    if (skipLegalGate) {
+      setNeedsLegalAcceptance(false);
+      return;
+    }
     // Re-check on every visit/mount so version bumps are caught even when SSR
     // already supplied a gate status (stale acceptance vs newly active docs).
     let cancelled = false;
@@ -4872,7 +4883,7 @@ export function PortalShell({
     return () => {
       cancelled = true;
     };
-  }, [token, hasServerLegalGate]);
+  }, [token, hasServerLegalGate, skipLegalGate]);
 
   // Deep-linkable by #hash (e.g. #guests, #seating/submit) — section tabs plus
   // optional within-section focus for domain CTAs (Impl 3). Hash / focus only
