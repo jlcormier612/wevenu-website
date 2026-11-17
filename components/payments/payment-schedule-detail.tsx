@@ -71,6 +71,8 @@ import type {
 } from "@/lib/payments/types";
 import type { Invoice } from "@/lib/invoices/types";
 import { formatCurrency } from "@/lib/invoices/constants";
+import { InvoiceActivityHistory } from "@/components/invoices/invoice-activity-history";
+import type { InvoiceActivity } from "@/lib/invoices/activity-history";
 import {
   planTotalsReconcile,
   scheduleHasPaymentActivity,
@@ -589,7 +591,7 @@ function LineItemRow({
 
 // ---- Main component ---------------------------------------------------------
 
-export function PaymentScheduleDetail({ schedule, invoice, currentUserRole, acceptedPaymentMethods }: { schedule: PaymentScheduleWithDetails; invoice?: Invoice | null; currentUserRole?: string | null; acceptedPaymentMethods?: string[] | null }) {
+export function PaymentScheduleDetail({ schedule, invoice, currentUserRole, acceptedPaymentMethods, activity = [] }: { schedule: PaymentScheduleWithDetails; invoice?: Invoice | null; currentUserRole?: string | null; acceptedPaymentMethods?: string[] | null; activity?: InvoiceActivity[] }) {
   const router = useRouter();
   const [items, setItems] = React.useState(schedule.lineItems);
   const [showAdd, setShowAdd] = React.useState(false);
@@ -699,6 +701,8 @@ export function PaymentScheduleDetail({ schedule, invoice, currentUserRole, acce
           </p>
         </div>
       )}
+
+      <InvoiceActivityHistory activity={activity} />
 
       {commitmentMismatch && invoice && !planHasActivity && (
         <PaymentPlanNeedsReview

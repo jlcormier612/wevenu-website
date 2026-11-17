@@ -10,6 +10,7 @@ import {
 } from "@/lib/import/client-event-commit";
 import { createClientForVenue, createClient_ } from "@/lib/clients/service";
 import type { ClientInput } from "@/lib/clients/types";
+import { knownOriginalBookingDate } from "@/lib/booking-journey/import-booked-event";
 
 type DbClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -54,19 +55,24 @@ export async function commitImportedClientAndEvent(opts: {
     return { ok: true, clientId: opts.existingClientId, eventId: added.eventId, duplicate: added.duplicate };
   }
 
+  const lifecycleBookedAt = knownOriginalBookingDate(input.originalBookedOn);
+  const lifecycleOpts = {
+    markAsAlreadyBooked: opts.classification.kind === "upcoming",
+    lifecycleBookedAt,
+  };
   const result = opts.isAdmin
     ? await createClientForVenue(
         opts.venueId,
         input,
         true,
         opts.classification.kind === "historical",
-        opts.classification.kind === "upcoming" ? { markAsAlreadyBooked: true } : undefined,
+        lifecycleOpts,
       )
     : await createClient_(
         input,
         true,
         opts.classification.kind === "historical",
-        opts.classification.kind === "upcoming" ? { markAsAlreadyBooked: true } : undefined,
+        lifecycleOpts,
       );
 
   if (!result.ok) {

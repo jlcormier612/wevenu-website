@@ -94,17 +94,16 @@ export const BYB_PREPARE_CHECKLIST: {
   {
     label: "Contracts and financial records",
     support: "optional",
-    detail: "Booked-event invoices, payment schedules, and a signed agreement on an event that already exists. A spreadsheet of invoices is not a supported importer yet.",
+    detail: "Contracts, invoices, receipts, refunds, credits, and future installments. A spreadsheet row is one agreement, invoice, payment, or installment. Ambiguous events wait for your choice.",
   },
   {
     label: "Planning documents and reusable templates",
     support: "optional",
-    detail: "Documents, floor-plan files, timeline entries, packages, and inventory templates. Questionnaires, automations, consent, guest lists, and staff are not imported — set those up in Hello to Cheers.",
+    detail: "Tasks, timelines, questionnaires and answers, floor-plan files, documents, event selections, and vendor coordination. Automations, consent, guest lists, and staff are not imported — set those up in Hello to Cheers.",
   },
 ];
 
 export const BYB_CANNOT_IMPORT = [
-  "Questionnaires and form answers",
   "Automations from another system",
   "Communication consent",
   "Guest lists (clients manage those in their portal)",
@@ -151,7 +150,7 @@ export const BYB_STAGE_COPY: Record<
   planning: {
     title: "Bring your planning materials",
     summary:
-      "Documents, floor plans, timelines, vendor assignments, and package or inventory templates. Historical events do not invent planning.",
+      "Tasks, timelines, questionnaires, floor-plan files, documents, selections, and vendor coordination already done for an event. Import does not replace that work with a starter playbook, and nothing is released to the client.",
   },
   review: {
     title: "Review and finish",

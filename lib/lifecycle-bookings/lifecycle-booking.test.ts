@@ -99,9 +99,9 @@ describe("Lifecycle booking writers", () => {
     assert.match(clientsSvc, /else if \(eventId\)/);
   });
 
-  it("imported booked clients are Bookings; unknown dates are not fabricated", () => {
-    assert.match(commitment, /recordImportLifecycle/);
-    assert.match(commitment, /occurredAt: knownDate/);
+  it("financial import does not stamp a booking or a lifecycle row", () => {
+    assert.doesNotMatch(commitment, /recordLifecycleBooking/);
+    assert.doesNotMatch(commitment, /ensureEventBookedAt/);
     assert.match(lifecycleSvc, /raw === null\) return null/);
     assert.match(review, /When did you book them/);
     assert.doesNotMatch(review, /Mark as already booked/);
@@ -177,7 +177,7 @@ describe("Reporting distinctions", () => {
 
   it("Revenue copy is financial and does not name Booking as commitment", () => {
     assert.match(revenuePage, /Revenue by source/);
-    assert.match(revenuePage, /not the same clock|mixed date clocks/);
+    assert.match(revenuePage, /Unpaid balance on invoices issued in this period/);
     assert.doesNotMatch(revenuePage, /Financially Committed/);
   });
 
@@ -195,9 +195,8 @@ describe("events.booked_at remains payment timing", () => {
     assert.doesNotMatch(lifecycleSvc, /setEventBookedAt/);
   });
 
-  it("active commitment still stamps events.booked_at only from bookedAt field", () => {
-    assert.match(commitment, /if \(n\.bookedAt\?\.trim\(\)\)/);
-    assert.match(commitment, /ensureEventBookedAt/);
-    assert.match(commitment, /never treat this as lifecycle Booking/);
+  it("financial import does not write events.booked_at", () => {
+    assert.doesNotMatch(commitment, /ensureEventBookedAt/);
+    assert.doesNotMatch(commitment, /recordLifecycleBooking/);
   });
 });

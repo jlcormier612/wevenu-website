@@ -182,7 +182,7 @@ describe("buildBusinessSnapshotCards", () => {
     assert.match(cards[0]!.secondary, /\$86,500/);
     assert.match(cards[0]!.tertiary, /3 new this month/);
     assert.match(cards[1]!.primary, /18 booked events/);
-    assert.match(cards[1]!.secondary, /\$142,500 contracted/);
+    assert.match(cards[1]!.secondary, /\$142,500 invoiced/);
     assert.match(cards[2]!.primary, /\$90,000/);
     assert.match(cards[2]!.secondary, /All-time collected/);
     assert.match(cards[3]!.primary, /\$18,400/);

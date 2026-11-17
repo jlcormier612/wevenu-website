@@ -16,7 +16,7 @@
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getCurrentVenue } from "@/lib/venue/service";
-import { getCanonicalBookings, type CanonicalBooking } from "@/lib/metrics/booking";
+import { type CanonicalBooking } from "@/lib/metrics/booking";
 import type { TrendPoint } from "@/components/dashboard-system/trend-chart";
 import { eventTypeLabel, normalizeEventType } from "@/lib/event-types/canonical";
 import { onlyBusinessReporting, loadReportingExclusions } from "@/lib/reporting/business-scope";
@@ -104,41 +104,29 @@ export function bookingsToTrend(
 }
 
 /**
- * Contracted-revenue observations (commitment date × invoice net).
- * Client grain switching rebuckets these without a second query.
+ * Contracted-revenue observations. Each invoice is dated by its issue date.
+ * A missing issue date is left out of a date window.
  */
 export async function getRevenueObservations(window: DateWindow): Promise<TrendObservation[]> {
   if (!isSupabaseConfigured) return [];
   const venue = await getCurrentVenue();
   if (!venue) return [];
   const supabase = await createClient();
+  const { dateInWindow, isoDateOrNull } = await import("@/lib/reporting/performance-dates");
 
-  const { data: bookings } = await supabase
-    .from("canonical_bookings")
-    .select("client_id, booked_at")
-    .eq("venue_id", venue.id)
-    .gte("booked_at", window.from)
-    .lte("booked_at", window.to);
-  const exclusions = await loadReportingExclusions(supabase, venue.id);
-  const bookingRows = ((bookings ?? []) as { client_id: string; booked_at: string }[])
-    .filter((b) => !exclusions.clientIds.has(b.client_id));
-  if (bookingRows.length === 0) return [];
-
-  const clientIds = [...new Set(bookingRows.map((b) => b.client_id))];
   const { data: invoices } = await supabase
     .from("invoices")
-    .select("client_id, subtotal, discount_amount, status")
+    .select("client_id, subtotal, discount_amount, issued_at")
     .eq("venue_id", venue.id)
-    .neq("status", "void")
-    .in("client_id", clientIds);
-
-  const bookedAtByClient = new Map(bookingRows.map((b) => [b.client_id, b.booked_at]));
+    .neq("status", "void");
+  const exclusions = await loadReportingExclusions(supabase, venue.id);
   const out: TrendObservation[] = [];
-  for (const inv of (invoices ?? []) as { client_id: string; subtotal: number; discount_amount: number }[]) {
-    const bookedAt = bookedAtByClient.get(inv.client_id);
-    if (!bookedAt) continue;
+  for (const inv of (invoices ?? []) as { client_id: string | null; subtotal: number; discount_amount: number; issued_at: string | null }[]) {
+    if (!inv.client_id || exclusions.clientIds.has(inv.client_id)) continue;
+    const issuedOn = isoDateOrNull(inv.issued_at);
+    if (!dateInWindow(issuedOn, window)) continue;
     out.push({
-      at: bookedAt,
+      at: issuedOn ?? "",
       amount: Number(inv.subtotal) - Number(inv.discount_amount),
     });
   }
@@ -218,7 +206,15 @@ export async function getLeadsTrend(
   };
 }
 
-export type EventDrillRow = { id: string; clientId: string | null; name: string; eventDate: string | null; eventType: string | null; guestCount: number | null };
+export type EventDrillRow = {
+  id: string;
+  clientId: string | null;
+  name: string;
+  eventDate: string | null;
+  eventType: string | null;
+  guestCount: number | null;
+  status?: string | null;
+};
 
 /** Events in range, for the Events report's trend/type breakdown/detail list. Plain scoped read — event count is not a canonical-registry metric (no ambiguity/duplicate-formula risk existed to resolve). */
 export async function getEventsInRange(window: DateWindow): Promise<EventDrillRow[]> {
@@ -229,13 +225,13 @@ export async function getEventsInRange(window: DateWindow): Promise<EventDrillRo
 
   const { data } = await onlyBusinessReporting(
     supabase.from("events")
-      .select("id, client_id, name, event_date, event_type, guest_count")
+      .select("id, client_id, name, event_date, event_type, guest_count, status")
       .eq("venue_id", venue.id)
       .gte("event_date", window.from).lte("event_date", window.to)
       .order("event_date", { ascending: true }),
   );
-  return ((data ?? []) as { id: string; client_id: string | null; name: string; event_date: string | null; event_type: string | null; guest_count: number | null }[])
-    .map((r) => ({ id: r.id, clientId: r.client_id, name: r.name, eventDate: r.event_date, eventType: r.event_type, guestCount: r.guest_count }));
+  return ((data ?? []) as { id: string; client_id: string | null; name: string; event_date: string | null; event_type: string | null; guest_count: number | null; status: string | null }[])
+    .map((r) => ({ id: r.id, clientId: r.client_id, name: r.name, eventDate: r.event_date, eventType: r.event_type, guestCount: r.guest_count, status: r.status }));
 }
 
 /** Simple average — not a Metric Registry entry (no ambiguity ever existed for "average guest count"), same discipline as every other plain scoped read in this file. */
@@ -329,19 +325,28 @@ export async function getPaymentsCollectedDetail(window: DateWindow): Promise<Pa
 
   const { data } = await supabase
     .from("payment_line_items")
-    .select("id, label, paid_amount, amount, refunded_amount, paid_at, schedule_id, payment_schedules!inner(client_id, clients!inner(first_name, last_name))")
+    .select("id, label, paid_amount, amount, refunded_amount, paid_at, schedule_id, payment_schedules!inner(client_id, invoice_id, clients!inner(first_name, last_name))")
     .eq("venue_id", venue.id)
-    .in("status", ["paid", "partially_refunded", "refunded"])
+    .in("status", ["paid", "partially_paid", "partially_refunded", "refunded"])
     .gte("paid_at", window.from).lte("paid_at", window.to + "T23:59:59")
     .order("paid_at", { ascending: false });
 
   type Row = {
     id: string; label: string; paid_amount: number | null; amount: number; refunded_amount: number | null; paid_at: string;
-    payment_schedules: { client_id: string; clients: { first_name: string; last_name: string } | null } | null;
+    payment_schedules: { client_id: string; invoice_id: string | null; clients: { first_name: string; last_name: string } | null } | null;
   };
   const exclusions = await loadReportingExclusions(supabase, venue.id);
-  return ((data ?? []) as unknown as Row[])
+  const { data: movementRows } = await supabase
+    .from("financial_movements")
+    .select("invoice_id")
+    .eq("venue_id", venue.id)
+    .eq("origin", "import");
+  const importedInvoices = new Set(
+    ((movementRows ?? []) as { invoice_id: string | null }[]).map((row) => row.invoice_id).filter((id): id is string => !!id),
+  );
+  const lineRows = ((data ?? []) as unknown as Row[])
     .filter((r) => !exclusions.clientIds.has(r.payment_schedules?.client_id ?? ""))
+    .filter((r) => !importedInvoices.has(r.payment_schedules?.invoice_id ?? ""))
     .map((r) => ({
     id: r.id,
     clientId: r.payment_schedules?.client_id ?? "",
@@ -350,13 +355,35 @@ export async function getPaymentsCollectedDetail(window: DateWindow): Promise<Pa
     amount: Number(r.paid_amount ?? r.amount) - Number(r.refunded_amount ?? 0),
     paidAt: r.paid_at,
   }));
+
+  const { data: activities } = await supabase
+    .from("financial_movements")
+    .select("id, kind, amount, occurred_on, reference_number, client_id, clients(first_name, last_name)")
+    .eq("venue_id", venue.id)
+    .eq("origin", "import")
+    .in("kind", ["payment", "refund", "reallocation_in", "reallocation_out"]);
+  const { dateInWindow, isoDateOrNull } = await import("@/lib/reporting/performance-dates");
+  const activityRows = ((activities ?? []) as unknown as {
+    id: string; kind: string; amount: number; occurred_on: string | null; reference_number: string | null;
+    client_id: string | null; clients: { first_name: string; last_name: string } | null;
+  }[])
+    .filter((row) => !!row.client_id && !exclusions.clientIds.has(row.client_id) && dateInWindow(isoDateOrNull(row.occurred_on), window))
+    .map((row) => ({
+      id: row.id,
+      clientId: row.client_id ?? "",
+      clientName: row.clients ? `${row.clients.first_name} ${row.clients.last_name}` : "Client",
+      label: row.reference_number ? `${row.kind} ${row.reference_number}` : row.kind,
+      amount: row.kind === "refund" || row.kind === "reallocation_out" ? -Number(row.amount) : Number(row.amount),
+      paidAt: row.occurred_on ?? "",
+    }));
+  return [...lineRows, ...activityRows];
 }
 
 export type OutstandingDetailRow = { clientId: string; clientName: string; booked: number; collected: number; outstanding: number; hasOverdue: boolean };
 
 /**
  * Per-client breakdown of Outstanding Balance — booked/collected use the
- * exact same booked_at/paid_at window filters canonical_gross_booked_revenue()
+ * exact same issued_at/paid_at window filters canonical_gross_booked_revenue()
  * and canonical_payments_collected() themselves use, so these rows sum to
  * the same total as the headline Outstanding Balance card for the same
  * range. `hasOverdue` is deliberately a separate, current-state fact (is
@@ -369,49 +396,42 @@ export async function getOutstandingBalanceDetail(window: DateWindow): Promise<O
   if (!venue) return [];
   const supabase = await createClient();
 
-  const { data: bookings } = await supabase.from("canonical_bookings").select("client_id, booked_at")
-    .eq("venue_id", venue.id).gte("booked_at", window.from).lte("booked_at", window.to);
+  const { data: invoiceRows } = await supabase.from("invoices")
+    .select("client_id, balance_due, status, issued_at")
+    .eq("venue_id", venue.id)
+    .in("status", ["sent", "partially_paid", "paid"]);
   const exclusions = await loadReportingExclusions(supabase, venue.id);
-  const bookingRows = ((bookings ?? []) as { client_id: string; booked_at: string }[])
-    .filter((b) => !exclusions.clientIds.has(b.client_id));
-  if (bookingRows.length === 0) return [];
-  const clientIds = bookingRows.map((b) => b.client_id);
+  const { dateInWindow, isoDateOrNull } = await import("@/lib/reporting/performance-dates");
+  const windowedInvoices = ((invoiceRows ?? []) as { client_id: string | null; balance_due: number; issued_at: string | null }[])
+    .filter((row) => !!row.client_id && !exclusions.clientIds.has(row.client_id) && dateInWindow(isoDateOrNull(row.issued_at), window));
+  if (windowedInvoices.length === 0) return [];
+  const clientIds = [...new Set(windowedInvoices.map((row) => row.client_id as string))];
 
-  const [{ data: clients }, { data: invoices }, { data: payments }, { data: overdue }] = await Promise.all([
+  const [{ data: clients }, { data: overdue }] = await Promise.all([
     supabase.from("clients").select("id, first_name, last_name").in("id", clientIds),
-    supabase.from("invoices").select("client_id, subtotal, discount_amount, status").eq("venue_id", venue.id).neq("status", "void").in("client_id", clientIds),
-    supabase.from("payment_line_items").select("schedule_id, paid_amount, amount, refunded_amount, paid_at, payment_schedules!inner(client_id)")
-      .eq("venue_id", venue.id).in("status", ["paid", "partially_refunded", "refunded"])
-      .gte("paid_at", window.from).lte("paid_at", window.to + "T23:59:59"),
     supabase.from("payment_line_items").select("schedule_id, payment_schedules!inner(client_id)").eq("venue_id", venue.id).eq("status", "overdue").in("payment_schedules.client_id", clientIds),
   ]);
 
   const nameByClient = new Map((clients ?? []).map((c: { id: string; first_name: string; last_name: string }) => [c.id, `${c.first_name} ${c.last_name}`]));
-  const bookedByClient = new Map<string, number>();
-  for (const inv of (invoices ?? []) as { client_id: string; subtotal: number; discount_amount: number }[]) {
-    bookedByClient.set(inv.client_id, (bookedByClient.get(inv.client_id) ?? 0) + (Number(inv.subtotal) - Number(inv.discount_amount)));
-  }
-  const collectedByClient = new Map<string, number>();
-  for (const p of (payments ?? []) as unknown as { paid_amount: number | null; amount: number; refunded_amount: number | null; payment_schedules: { client_id: string } | null }[]) {
-    const cid = p.payment_schedules?.client_id;
-    if (!cid) continue;
-    collectedByClient.set(cid, (collectedByClient.get(cid) ?? 0) + (Number(p.paid_amount ?? p.amount) - Number(p.refunded_amount ?? 0)));
+  const outstandingByClient = new Map<string, number>();
+  for (const inv of windowedInvoices) {
+    const clientId = inv.client_id as string;
+    outstandingByClient.set(clientId, (outstandingByClient.get(clientId) ?? 0) + Number(inv.balance_due));
   }
   const overdueClientIds = new Set(
     ((overdue ?? []) as unknown as { payment_schedules: { client_id: string } | null }[]).map((r) => r.payment_schedules?.client_id).filter((v): v is string => !!v),
   );
 
   return clientIds
-    .map((cid) => {
-      const booked = bookedByClient.get(cid) ?? 0;
-      const collected = collectedByClient.get(cid) ?? 0;
-      return {
-        clientId: cid, clientName: nameByClient.get(cid) ?? "Client",
-        booked, collected, outstanding: booked - collected,
-        hasOverdue: overdueClientIds.has(cid),
-      };
-    })
-    .filter((r) => r.outstanding !== 0)
+    .map((cid) => ({
+      clientId: cid,
+      clientName: nameByClient.get(cid) ?? "Client",
+      booked: 0,
+      collected: 0,
+      outstanding: outstandingByClient.get(cid) ?? 0,
+      hasOverdue: overdueClientIds.has(cid),
+    }))
+    .filter((r) => r.outstanding > 0.009)
     .sort((a, b) => b.outstanding - a.outstanding);
 }
 
@@ -424,22 +444,20 @@ export async function getCategoryDetail(category: string, window: DateWindow): P
   if (!venue) return [];
   const supabase = await createClient();
 
-  const { data: bookings } = await supabase.from("canonical_bookings").select("client_id, booked_at")
-    .eq("venue_id", venue.id).gte("booked_at", window.from).lte("booked_at", window.to);
-  const bookedClientIds = new Set((bookings ?? []).map((b: { client_id: string }) => b.client_id));
-  if (bookedClientIds.size === 0) return [];
-
   const { data } = await supabase
     .from("invoice_line_items")
-    .select("amount, revenue_category, invoices!inner(client_id, venue_id, status, clients!inner(first_name, last_name))")
+    .select("amount, revenue_category, invoices!inner(client_id, venue_id, status, issued_at, clients!inner(first_name, last_name))")
     .eq("invoices.venue_id", venue.id).neq("invoices.status", "void")
     .eq("revenue_category", category === "Uncategorized" ? null as unknown as string : category);
 
-  type Row = { amount: number; invoices: { client_id: string; clients: { first_name: string; last_name: string } | null } | null };
+  const { dateInWindow, isoDateOrNull } = await import("@/lib/reporting/performance-dates");
+  const exclusions = await loadReportingExclusions(supabase, venue.id);
+  type Row = { amount: number; invoices: { client_id: string; issued_at: string | null; clients: { first_name: string; last_name: string } | null } | null };
   const totals = new Map<string, { name: string; amount: number }>();
   for (const row of (data ?? []) as unknown as Row[]) {
     const clientId = row.invoices?.client_id;
-    if (!clientId || !bookedClientIds.has(clientId)) continue;
+    if (!clientId || exclusions.clientIds.has(clientId)) continue;
+    if (!dateInWindow(isoDateOrNull(row.invoices?.issued_at), window)) continue;
     const name = row.invoices?.clients ? `${row.invoices.clients.first_name} ${row.invoices.clients.last_name}` : "Client";
     const cur = totals.get(clientId) ?? { name, amount: 0 };
     cur.amount += Number(row.amount);

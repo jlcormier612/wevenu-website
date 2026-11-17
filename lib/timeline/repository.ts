@@ -16,6 +16,12 @@ import {
   venueItemVisibleToClient,
   VENUE_OWNED_DEFAULT_AUDIENCES,
 } from "@/lib/timeline/audience-ownership";
+import {
+  selectStaffVisibleImportedClientEntries,
+  submittedTimelineIds,
+  type StaffImportedClientTimelineEntry,
+} from "@/lib/timeline/imported-client-visibility";
+export type { StaffImportedClientTimelineEntry };
 import { provenanceFromTemplateApply, timingColumnsForUntypedDisplaySave, timingDbColumns, type TimingProvenance } from "@/lib/timeline/timing-provenance";
 import {
   applyScheduleLinkedContentProtection,
@@ -528,6 +534,58 @@ export async function shareClientVenueTimelineWithCouple(
     sharedCount += 1;
   }
   return { sharedCount, alreadySharedCount, venueOwnedCount: venueOwned.length };
+}
+
+/** Client-owned imports the venue can read. Not a submission and not the shared Timeline. */
+export async function getStaffVisibleImportedClientEntries(
+  client: DbClient,
+  venueId: string,
+  eventId: string,
+): Promise<StaffImportedClientTimelineEntry[]> {
+  const [{ data, error }, submission] = await Promise.all([
+    client.from("timeline_entries")
+      .select("id, title, entry_time, notes, owner, lock_state, source_space_use_key")
+      .eq("venue_id", venueId)
+      .eq("event_id", eventId)
+      .eq("owner", "client")
+      .is("source_space_use_key", null),
+    client.from("timeline_submissions")
+      .select("snapshot")
+      .eq("venue_id", venueId)
+      .eq("event_id", eventId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle<{ snapshot: unknown }>(),
+  ]);
+  if (error) throw error;
+  if (submission.error) throw submission.error;
+  const visible = selectStaffVisibleImportedClientEntries(
+    ((data ?? []) as {
+      id: string;
+      title: string;
+      entry_time: string | null;
+      notes: string | null;
+      owner: string;
+      lock_state: string;
+      source_space_use_key: string | null;
+    }[]).map((row) => ({
+      id: row.id,
+      title: row.title,
+      entryTime: row.entry_time?.slice(0, 5) ?? null,
+      notes: row.notes,
+      owner: row.owner,
+      lockState: row.lock_state,
+      sourceSpaceUseKey: row.source_space_use_key,
+    })),
+    submittedTimelineIds(submission.data?.snapshot),
+  );
+  return visible.map((row) => ({
+    id: row.id,
+    title: row.title,
+    entryTime: row.entryTime,
+    owner: "client",
+    lockState: row.lockState,
+  }));
 }
 
 /**

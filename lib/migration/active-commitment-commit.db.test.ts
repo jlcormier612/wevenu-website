@@ -33,6 +33,7 @@ const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
 const MIGRATION_PORTAL = resolve("supabase/migrations/20261325000000_active_commitment_portal_share.sql");
 const MIGRATION = resolve("supabase/migrations/20261324000000_active_financial_cutover.sql");
 const MIGRATION_BOOKED_AT = resolve("supabase/migrations/20261328000000_event_booked_at.sql");
+const MIGRATION_PHASE_C = resolve("supabase/migrations/20270126120000_phase_c_financial_history.sql");
 
 function psql(sql: string): { status: number | null; stdout: string; stderr: string } {
   const result = spawnSync("psql", [LOCAL_DB, "-v", "ON_ERROR_STOP=1", "-c", sql], {
@@ -48,7 +49,7 @@ function localReady(): boolean {
 }
 
 function applyMigration(): void {
-  applyLocalMigrationFiles([MIGRATION, MIGRATION_PORTAL, MIGRATION_BOOKED_AT], {
+  applyLocalMigrationFiles([MIGRATION, MIGRATION_PORTAL, MIGRATION_BOOKED_AT, MIGRATION_PHASE_C], {
     dbUrl: LOCAL_DB,
     alreadyHoldingLock: true,
   });
@@ -242,7 +243,7 @@ describe("Smith Wedding full-stack commit + portal acceptance", () => {
     const invoice = invoiceRes.data as { total: number; balance_due: number; status: string; is_couple_visible: boolean };
     assert.equal(Number(invoice.total), 18500);
     assert.equal(Number(invoice.balance_due), 13500);
-    assert.equal(invoice.status, "sent");
+    assert.equal(invoice.status, "partially_paid");
     assert.equal(invoice.is_couple_visible, false);
 
     const { data: payLines } = await supabase.from("payment_line_items")

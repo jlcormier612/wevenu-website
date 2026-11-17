@@ -23,7 +23,9 @@ import { EventOrderDriftBanner } from "@/components/invoices/event-order-drift-b
 import { InvoiceLineItemsEditor } from "@/components/invoices/invoice-line-items-editor";
 import { RecordOfflinePaymentDialog } from "@/components/invoices/record-offline-payment-dialog";
 import { PaymentPlanEditor, PaymentPlanNeedsReview } from "@/components/payments/payment-plan-editor";
+import { InvoiceActivityHistory } from "@/components/invoices/invoice-activity-history";
 import { InvoicePrintDocument } from "@/components/invoices/invoice-print-document";
+import type { InvoiceActivity } from "@/lib/invoices/activity-history";
 import { InvoiceStatusBadge } from "@/components/invoices/invoice-status-badge";
 import { BusinessAssetActionRow, BusinessAssetHeader } from "@/components/business-assets/asset-header";
 import type { WaitingOn } from "@/components/business-assets/waiting-state";
@@ -86,6 +88,7 @@ export function InvoiceDetail({
   scheduleLines = null,
   scheduleNotes = null,
   scheduleTiming = null,
+  activity = [],
 }: {
   invoice: InvoiceWithLineItems;
   packages: Package[];
@@ -130,6 +133,7 @@ export function InvoiceDetail({
     executedAt: string | null;
     today: string;
   } | null;
+  activity?: InvoiceActivity[];
 }) {
   const router = useRouter();
   const [status, setStatus] = React.useState<InvoiceStatus>(invoice.status);
@@ -526,6 +530,8 @@ export function InvoiceDetail({
           </div>
         </CardContent>
       </Card>
+
+      <InvoiceActivityHistory activity={activity} />
 
       {/* Line items */}
       <Card>

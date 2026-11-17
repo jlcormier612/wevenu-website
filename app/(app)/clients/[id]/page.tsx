@@ -62,7 +62,7 @@ import type { Request } from "@/lib/requests/types";
 import { getSeatingReadinessSummary } from "@/lib/seating/service";
 import { getTeamMembers } from "@/lib/team/service";
 import {
-  getEntryAttachmentsForEvent, getEntryLinksForEvent, getRelatedLinksForEvent, getSections, getTimelineEntries,
+  getEntryAttachmentsForEvent, getEntryLinksForEvent, getImportedClientTimelineEntries, getRelatedLinksForEvent, getSections, getTimelineEntries,
 } from "@/lib/timeline/service";
 import { getTemplatesForLibrary as getTimelineTemplatesForLibrary } from "@/lib/timeline-templates/service";
 import { LEAD_SOURCES } from "@/lib/leads/constants";
@@ -706,7 +706,7 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
         currentEventId={eventId}
       />
     <EventDetail
-      event={event} availableVendors={availableVendors} invoices={eventInvoices} documents={documents}
+      event={event} importedClientTimeline={await getImportedClientTimelineEntries(eventId)} availableVendors={availableVendors} invoices={eventInvoices} documents={documents}
       vendorDocuments={vendorDocuments}
       workspaceDocuments={workspaceDocuments}
       pinnedDocumentKeys={pinnedDocumentKeys}

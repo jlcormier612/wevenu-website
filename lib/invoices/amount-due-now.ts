@@ -6,6 +6,8 @@
 
 export type AmountDueNowLine = {
   amount: number;
+  /** Money already received on this installment. Used when status is partially_paid. */
+  paidAmount?: number | null;
   dueDate: string | null;
   status: string;
   label?: string;
@@ -25,7 +27,7 @@ export type AmountDueNowResult =
   | { kind: "paid_in_full" }
   | { kind: "balance_only"; reason: "no_schedule" | "no_open_lines" };
 
-const OPEN_STATUSES = new Set(["pending", "overdue", "processing"]);
+const OPEN_STATUSES = new Set(["pending", "overdue", "processing", "partially_paid"]);
 
 /** Date-only YYYY-MM-DD: missing date is treated as due now. */
 export function isInstallmentCurrentlyDue(dueDate: string | null, today: string): boolean {
@@ -48,8 +50,10 @@ export function pickNextOpenPaymentLine<T extends AmountDueNowLine & { sortOrder
 }
 
 function installmentFields(next: AmountDueNowLine): NextInstallmentFields {
+  const paid = next.status === "partially_paid" ? Number(next.paidAmount ?? 0) : 0;
+  const stillDue = Math.max(0, Math.round((next.amount - paid) * 100) / 100);
   return {
-    amount: next.amount,
+    amount: stillDue,
     dueDate: next.dueDate,
     label: next.label ?? null,
     obligationKind: next.obligationKind ?? null,

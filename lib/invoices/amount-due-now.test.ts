@@ -39,6 +39,20 @@ describe("resolveAmountDueNow", () => {
     assert.equal(r.reason, "no_schedule");
   });
 
+  it("treats a partially paid installment as still due for the unpaid remainder", () => {
+    const r = resolveAmountDueNow({
+      balanceDue: 60,
+      today: "2026-11-17",
+      scheduleLines: [
+        { amount: 100, paidAmount: 40, dueDate: "2026-11-02", status: "partially_paid", label: "Native installment" },
+      ],
+    });
+    assert.equal(r.kind, "next_installment");
+    if (r.kind !== "next_installment") return;
+    assert.equal(r.amount, 60);
+    assert.equal(r.label, "Native installment");
+  });
+
   it("is paid in full when balance is zero", () => {
     assert.equal(resolveAmountDueNow({ balanceDue: 0, scheduleLines: [] }).kind, "paid_in_full");
   });

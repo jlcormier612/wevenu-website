@@ -87,7 +87,7 @@ describe("Business Funnel composition seams", () => {
   });
 
   it("documents mixed-clock Outstanding and leadless Direct Add note", () => {
-    assert.match(BUSINESS_FUNNEL_OUTSTANDING_LIMITATION, /different clocks/);
+    assert.match(BUSINESS_FUNNEL_OUTSTANDING_LIMITATION, /unpaid balance/i);
     assert.match(BUSINESS_FUNNEL_LEADLESS_NOTE, /never a lead/i);
     assert.match(component, /outstandingLimitation/);
     assert.match(component, /leadlessNote/);

@@ -814,7 +814,7 @@ One of the most important distinctions is between **sales activity** and **money
 
 A Booking is part of the sales lifecycle.
 
-**Contracted, Collected, and Outstanding** are financial measures.
+**Invoiced, Collected, and Outstanding** are financial measures. Invoiced uses the invoice issue date. Contracted value is the signed agreement and is not substituted for that date.
 
 They answer different questions and should not be treated as interchangeable.
 

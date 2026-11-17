@@ -13,6 +13,8 @@ import {
   computeInvoiceBalanceDue,
   computeNetPaid,
 } from "@/lib/payments/invoice-balance";
+import { collectedFromActivity, invoiceDisplayBalance } from "@/lib/invoices/activity-history";
+import { listInvoiceActivity } from "@/lib/invoices/activity-history-load";
 import { getPaymentSchedule, getPaymentSchedules } from "@/lib/payments/service";
 import { safeInvoiceReturnPath } from "@/lib/invoices/return-path";
 import { safePaymentScheduleReturnPath } from "@/lib/payments/starters";
@@ -39,20 +41,28 @@ export default async function InvoiceDetailPage({ params, searchParams }: Props)
     getCurrentVenue(),
   ]);
   if (!invoice || !venue) notFound();
+  const activity = await listInvoiceActivity(invoice.id);
+  const hasImportActivity = activity.length > 0;
   const returnTo = safeInvoiceReturnPath(returnToRaw);
   const returnToPaymentSchedule = safePaymentScheduleReturnPath(returnToRaw);
   const linkedSummary = scheduleSummaries.find((s) => s.invoiceId === invoice.id) ?? null;
   const linked = linkedSummary ? await getPaymentSchedule(linkedSummary.id) : null;
   // Authoritative balance = total − cancelled − net retained (same as DB trigger + reconcile).
-  const balanceDue = linked
+  const scheduleBalance = linked
     ? computeInvoiceBalanceDue(invoice.total, linked.lineItems)
-    : invoice.balanceDue;
+    : null;
+  const balanceDue = invoiceDisplayBalance({
+    storedBalance: invoice.balanceDue,
+    scheduleBalance,
+    hasImportActivity,
+  });
   const invoiceView = { ...invoice, balanceDue };
   const amountDueNow = resolveAmountDueNow({
     balanceDue,
     scheduleLines: linked
       ? linked.lineItems.map((i) => ({
           amount: i.amount,
+          paidAmount: i.paidAmount,
           dueDate: i.dueDate,
           status: i.status,
           label: i.label,
@@ -62,7 +72,11 @@ export default async function InvoiceDetailPage({ params, searchParams }: Props)
       : null,
     today: venueToday(venue.timezone),
   });
-  const paidToDate = linked ? computeNetPaid(linked.lineItems) : null;
+  const paidToDate = hasImportActivity
+    ? collectedFromActivity(activity)
+    : linked
+      ? computeNetPaid(linked.lineItems)
+      : null;
   const cancelledPlanAmount = linked ? computeCancelledPlanAmount(linked.lineItems) : 0;
   // Booking Financial Architecture Phase 3b — null for any invoice that
   // isn't sent+Event-Order-linked, or that has no undismissed drift.
@@ -106,6 +120,7 @@ export default async function InvoiceDetailPage({ params, searchParams }: Props)
           : null
       }
       scheduleNotes={linked?.notes ?? null}
+      activity={activity}
       scheduleTiming={
         linked
           ? {

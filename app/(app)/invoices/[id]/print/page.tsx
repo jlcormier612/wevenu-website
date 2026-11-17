@@ -36,6 +36,7 @@ export default async function InvoicePrintPage({ params }: Props) {
   const scheduleLines = linked
     ? linked.lineItems.map((i) => ({
         amount: i.amount,
+        paidAmount: i.paidAmount,
         dueDate: i.dueDate,
         status: i.status,
         label: i.label,
@@ -52,8 +53,8 @@ export default async function InvoicePrintPage({ params }: Props) {
     amountDueNow.kind === "next_installment"
       ? linked?.lineItems.find(
           (i) =>
-            i.amount === amountDueNow.amount
-            && i.label === (amountDueNow.label ?? i.label)
+            i.label === (amountDueNow.label ?? i.label)
+            && (i.dueDate ?? null) === (amountDueNow.dueDate ?? null)
             && (i.status === "pending" || i.status === "overdue" || i.status === "processing" || i.status === "partially_paid"),
         ) ?? null
       : null;

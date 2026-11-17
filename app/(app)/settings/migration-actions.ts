@@ -12,8 +12,10 @@ import {
   listSessionsForCurrentVenue,
   retryOwnRecord,
   reviewOwnRecord,
+  assignFinancialTarget,
   resolveFloorPlanImportRecord,
   runDedupeForOwnSession,
+  startAdminSession,
   startSelfServiceSession,
 } from "@/lib/migration/service";
 import * as repo from "@/lib/migration/repository";
@@ -51,15 +53,24 @@ export async function proposeMigrationFieldMappingAction(headers: string[], enti
   return proposeFieldMapping(headers, luvEntity);
 }
 
-export async function listMigrationSessionsAction() {
-  return listSessionsForCurrentVenue();
+export async function listMigrationSessionsAction(venueId?: string) {
+  return listSessionsForCurrentVenue(venueId);
 }
 
 export async function getMigrationSessionSummaryAction(sessionId: string) {
   return getOwnSessionSummary(sessionId);
 }
 
-export async function getMigrationSessionRecordsAction(sessionId: string, status?: string) {
+export async function getMigrationSessionRecordsAction(sessionId: string, status?: string, venueId?: string) {
+  if (venueId) {
+    const { resolveAdminActor } = await import("@/lib/migration/service");
+    const actor = await resolveAdminActor(venueId);
+    if ("ok" in actor) return [];
+    const session = await repo.getSession(actor.client, actor.venueId, sessionId);
+    if (!session) return [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return repo.listRecords(actor.client, sessionId, status as any);
+  }
   const venue = await getCurrentVenue();
   if (!venue) return [];
   const supabase = await createClient();
@@ -80,32 +91,48 @@ export async function getMigrationVendorMatchLabelsAction(): Promise<Record<stri
   return labels;
 }
 
-export async function startMigrationSessionAction(sourceKey: SourceKey) {
-  const result = await startSelfServiceSession(sourceKey);
+export async function startMigrationSessionAction(sourceKey: SourceKey, venueId?: string) {
+  const result = venueId
+    ? await startAdminSession(venueId, sourceKey, null)
+    : await startSelfServiceSession(sourceKey);
   if (result.ok) revalidatePath("/settings/migration");
   return result;
 }
 
-export async function addMigrationRowsAction(sessionId: string, entityType: MigrationEntityType, rows: SourceRow[]) {
-  const result = await addRowsToOwnSession(sessionId, entityType, rows);
+export async function addMigrationRowsAction(sessionId: string, entityType: MigrationEntityType, rows: SourceRow[], venueId?: string) {
+  const result = await addRowsToOwnSession(sessionId, entityType, rows, venueId);
   if (result.ok) revalidatePath("/settings/migration");
   return result;
 }
 
-export async function runMigrationDedupeAction(sessionId: string) {
-  const result = await runDedupeForOwnSession(sessionId);
+export async function runMigrationDedupeAction(sessionId: string, venueId?: string) {
+  const result = await runDedupeForOwnSession(sessionId, venueId);
   if (result.ok) revalidatePath("/settings/migration");
   return result;
 }
 
-export async function reviewMigrationRecordAction(sessionId: string, recordId: string, decision: "approve" | "reject" | "approve_historical") {
-  const result = await reviewOwnRecord(sessionId, recordId, decision);
+export async function reviewMigrationRecordAction(sessionId: string, recordId: string, decision: "approve" | "reject" | "approve_historical", venueId?: string) {
+  const result = await reviewOwnRecord(sessionId, recordId, decision, venueId);
   if (result.ok) revalidatePath("/settings/migration");
   return result;
 }
 
-export async function retryMigrationRecordAction(sessionId: string, recordId: string) {
-  const result = await retryOwnRecord(sessionId, recordId);
+export async function assignFinancialTargetAction(
+  sessionId: string,
+  recordId: string,
+  choice: { eventId?: string | null; clientLevel?: boolean },
+  venueId?: string,
+) {
+  const result = await assignFinancialTarget(sessionId, recordId, choice, venueId);
+  if (result.ok) {
+    revalidatePath("/settings/migration");
+    revalidatePath("/setup-hub/bring-your-business");
+  }
+  return result;
+}
+
+export async function retryMigrationRecordAction(sessionId: string, recordId: string, venueId?: string) {
+  const result = await retryOwnRecord(sessionId, recordId, venueId);
   if (result.ok) {
     revalidatePath("/settings/migration");
     revalidatePath("/clients");
@@ -114,8 +141,8 @@ export async function retryMigrationRecordAction(sessionId: string, recordId: st
   return result;
 }
 
-export async function commitMigrationSessionAction(sessionId: string) {
-  const result = await commitOwnSession(sessionId);
+export async function commitMigrationSessionAction(sessionId: string, venueId?: string) {
+  const result = await commitOwnSession(sessionId, venueId);
   if (result.ok) {
     revalidatePath("/settings/migration");
     revalidatePath("/clients");
@@ -208,8 +235,8 @@ export async function getMigrationSessionSourceFilesAction(sessionId: string) {
   return getOwnSessionSourceFiles(sessionId);
 }
 
-export async function getMigrationSessionResumeStateAction(sessionId: string) {
-  return getOwnSessionResumeState(sessionId);
+export async function getMigrationSessionResumeStateAction(sessionId: string, venueId?: string) {
+  return getOwnSessionResumeState(sessionId, venueId);
 }
 
 export async function proposeActiveCommitmentFromTextAction(rawText: string) {
@@ -238,20 +265,20 @@ export async function proposeActiveCommitmentFromFileAction(formData: FormData) 
 
   const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
   const storagePath = `${venue.id}/migration/active-commitment/${crypto.randomUUID()}-${safeName}`;
-  const { error: uploadError } = await supabase.storage.from("documents").upload(storagePath, buffer, {
+  const admin = (await import("@/integrations/supabase/admin")).createAdminClient();
+  const { error: uploadError } = await admin.storage.from("contract-representations").upload(storagePath, buffer, {
     upsert: false,
     contentType: file.type || "application/octet-stream",
   });
   if (uploadError) {
     return { ok: false as const, message: uploadError.message || "Could not retain the original file." };
   }
-  const { data: urlData } = supabase.storage.from("documents").getPublicUrl(storagePath);
 
   const retainedDocument = {
     name: file.name.replace(/\.[^.]+$/, "") || file.name,
     fileName: file.name,
     storagePath,
-    storageUrl: urlData.publicUrl,
+    storageUrl: `private://contract-representations/${storagePath}`,
     mimeType: file.type || "application/octet-stream",
     fileSize: file.size,
     category: "contract" as const,

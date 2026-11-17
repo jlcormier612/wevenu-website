@@ -257,6 +257,24 @@ export async function insertEvent(
   return data.id;
 }
 
+/**
+ * Source booking date for an imported Event.
+ * Null provenance means the original date is unknown. Does not write booked_at.
+ */
+export async function stampOriginalBookingDate(
+  client: DbClient,
+  venueId: string,
+  eventId: string,
+  originalBookedOn: string | null,
+): Promise<void> {
+  const patch = originalBookedOn
+    ? { original_booked_on: originalBookedOn, original_booking_provenance: "source" }
+    : { original_booked_on: null, original_booking_provenance: null };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("events") as any).update(patch).eq("id", eventId).eq("venue_id", venueId);
+  if (error) throw error;
+}
+
 export async function updateEvent(client: DbClient, venueId: string, eventId: string, input: EventInput): Promise<void> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (client.from("events") as any)

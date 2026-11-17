@@ -48,6 +48,7 @@ import {
   proposeMigrationFieldMappingAction,
   retryMigrationRecordAction,
   reviewMigrationRecordAction,
+  assignFinancialTargetAction,
   runMigrationDedupeAction,
   startMigrationSessionAction,
 } from "@/app/(app)/settings/migration-actions";
@@ -102,11 +103,12 @@ const ENTITY_LABEL: Record<MigrationEntityType, string> = {
   event_vendor_assignment: "Event vendor assignments (photographer, caterer, …)",
   timeline_entry: "Timeline entries (near-event / finalized day-of)",
   floor_plan: "Floor plans (Space masters, event layouts, reference files)",
+  planning_material: "Planning materials (tasks, timelines, questionnaires, selections)",
 };
 const COMMITTABLE_ENTITIES: MigrationEntityType[] = [
   "calendar_block", "date_hold", "client", "lead", "vendor", "package", "event", "tour",
   "document", "active_commitment", "event_vendor_assignment", "timeline_entry",
-  "floor_plan",
+  "floor_plan", "planning_material",
 ];
 
 const FIELD_KEYS_BY_ENTITY: Record<MigrationEntityType, { key: string; label: string; required: boolean }[]> = {
@@ -230,11 +232,15 @@ const FIELD_KEYS_BY_ENTITY: Record<MigrationEntityType, { key: string; label: st
     { key: "sourceId", label: "Their own record ID", required: false },
   ],
   active_commitment: [
-    { key: "clientEmail", label: "Client email", required: true },
-    { key: "eventDate", label: "Event date (YYYY-MM-DD)", required: true },
-    { key: "eventId", label: "Event id (optional if email+date unique)", required: false },
-    { key: "contractedTotal", label: "Contracted total", required: true },
-    { key: "packageName", label: "Package / commitment name", required: true },
+    { key: "recordKind", label: "Row kind (contract, invoice, movement, installment, vendor_agreement)", required: false },
+    { key: "clientEmail", label: "Client email", required: false },
+    { key: "eventDate", label: "Event date (YYYY-MM-DD)", required: false },
+    { key: "eventId", label: "Event id", required: false },
+    { key: "sourceEventId", label: "Source event id", required: false },
+    { key: "eventSpace", label: "Event space", required: false },
+    { key: "clientLevel", label: "Client-level invoice (yes/no)", required: false },
+    { key: "contractedTotal", label: "Contracted total (single-commitment rows)", required: false },
+    { key: "packageName", label: "Package / commitment name", required: false },
     { key: "paidAmount", label: "Already paid amount", required: false },
     { key: "paidDate", label: "Paid date", required: false },
     { key: "paidMethod", label: "Paid method (other, check, …)", required: false },
@@ -243,8 +249,36 @@ const FIELD_KEYS_BY_ENTITY: Record<MigrationEntityType, { key: string; label: st
     { key: "remainingAmount2", label: "Remaining payment 2 amount", required: false },
     { key: "remainingDueDate2", label: "Remaining payment 2 due date", required: false },
     { key: "scheduleLinesJson", label: "Full schedule JSON (overrides paid/remaining columns)", required: false },
-    { key: "contractTitle", label: "Externally executed agreement title", required: false },
+    { key: "contractTitle", label: "Agreement title", required: false },
     { key: "contractSignedAt", label: "Signed date (outside HTC)", required: false },
+    { key: "agreementValue", label: "Agreement value", required: false },
+    { key: "amendsSourceId", label: "Amends agreement source id", required: false },
+    { key: "invoiceNumber", label: "Invoice number", required: false },
+    { key: "issuedAt", label: "Invoice issue date", required: false },
+    { key: "invoiceStatus", label: "Invoice status", required: false },
+    { key: "invoiceTotal", label: "Invoice total", required: false },
+    { key: "subtotal", label: "Subtotal", required: false },
+    { key: "discountAmount", label: "Discount", required: false },
+    { key: "taxAmount", label: "Tax", required: false },
+    { key: "linesJson", label: "Invoice lines JSON", required: false },
+    { key: "lineDescription", label: "Line description", required: false },
+    { key: "lineAmount", label: "Line amount", required: false },
+    { key: "notes", label: "Notes", required: false },
+    { key: "movementKind", label: "Activity kind", required: false },
+    { key: "amount", label: "Activity or installment amount", required: false },
+    { key: "method", label: "Payment method", required: false },
+    { key: "reference", label: "Payment reference", required: false },
+    { key: "occurredOn", label: "Activity date", required: false },
+    { key: "invoiceSourceId", label: "Invoice source id", required: false },
+    { key: "counterInvoiceSourceId", label: "Other invoice source id", required: false },
+    { key: "relatedSourceId", label: "Related activity source id", required: false },
+    { key: "adjustmentEffect", label: "Adjustment effect", required: false },
+    { key: "dueDate", label: "Installment due date", required: false },
+    { key: "installmentLabel", label: "Installment label", required: false },
+    { key: "installmentSourceId", label: "Installment source id", required: false },
+    { key: "vendorName", label: "Vendor name", required: false },
+    { key: "executedFilePath", label: "Private file path", required: false },
+    { key: "fileName", label: "Original file name", required: false },
     { key: "shareSignedAgreementWithCouple", label: "Share with couple? (yes/no)", required: false },
     { key: "documentFileName", label: "Signed PDF file name", required: false },
     { key: "documentStoragePath", label: "Signed PDF storage path", required: false },
@@ -317,6 +351,41 @@ const FIELD_KEYS_BY_ENTITY: Record<MigrationEntityType, { key: string; label: st
     { key: "eventDate", label: "Event date (YYYY-MM-DD)", required: false },
     { key: "sourceId", label: "Stable source id", required: false },
   ],
+  planning_material: [
+    { key: "recordKind", label: "Record kind (task, timeline, questionnaire, document, floor_plan, event_order, vendor_assignment)", required: true },
+    { key: "sourceId", label: "Their own record ID", required: true },
+    { key: "eventId", label: "Event id", required: false },
+    { key: "clientEmail", label: "Client email", required: false },
+    { key: "eventDate", label: "Event date (YYYY-MM-DD)", required: false },
+    { key: "title", label: "Title", required: false },
+    { key: "description", label: "Description", required: false },
+    { key: "notes", label: "Notes", required: false },
+    { key: "dueDate", label: "Due date (YYYY-MM-DD)", required: false },
+    { key: "completedAt", label: "Completed on (YYYY-MM-DD)", required: false },
+    { key: "taskStatus", label: "Task status (pending or complete)", required: false },
+    { key: "ownership", label: "Ownership (venue or client)", required: false },
+    { key: "assigneeEmail", label: "Assignee email", required: false },
+    { key: "timelineRole", label: "Timeline role (manual, client, or schedule)", required: false },
+    { key: "entryTime", label: "Start time (HH:MM)", required: false },
+    { key: "endTime", label: "End time (HH:MM)", required: false },
+    { key: "occurredOn", label: "Occurred on (YYYY-MM-DD)", required: false },
+    { key: "spaceName", label: "Space name", required: false },
+    { key: "questions", label: "Questions", required: false },
+    { key: "answers", label: "Answers", required: false },
+    { key: "questionnaireStatus", label: "Questionnaire status (draft or submitted)", required: false },
+    { key: "submittedAt", label: "Submitted on (YYYY-MM-DD)", required: false },
+    { key: "fileName", label: "File name", required: false },
+    { key: "storagePath", label: "Storage path", required: false },
+    { key: "storageUrl", label: "Storage URL", required: false },
+    { key: "category", label: "Document category", required: false },
+    { key: "lineDescription", label: "Selected item", required: false },
+    { key: "quantity", label: "Quantity", required: false },
+    { key: "unitPrice", label: "Unit price", required: false },
+    { key: "included", label: "Included (yes or no)", required: false },
+    { key: "selected", label: "Selected (yes, or catalog)", required: false },
+    { key: "vendorName", label: "Vendor name", required: false },
+    { key: "arrivalTime", label: "Vendor arrival (HH:MM)", required: false },
+  ],
 };
 
 /** Includes legacy "conflict" only so residual rows (Item 4 claim recovery) still appear. Writers do not produce that status. */
@@ -383,6 +452,11 @@ function outcomeSentence(summary: SessionSummary): string {
 
 function recordHeadline(r: MigrationRecord): string {
   const p = r.normalizedPayload ?? {};
+  if (p.recordKind) {
+    const kind = String(p.recordKind);
+    const label = String(p.invoiceNumber ?? p.contractTitle ?? p.movementKind ?? p.installmentLabel ?? kind);
+    return `${kind}: ${label}`;
+  }
   const name =
     [p.firstName, p.lastName].filter(Boolean).join(" ")
     || String(p.businessName ?? p.name ?? p.title ?? "").trim()
@@ -420,6 +494,7 @@ export function MigrationCenter({
   sourceProfiles,
   cutover,
   venueId,
+  adminVenueId,
   initialSource = null,
   hideSourcePicker = false,
   embedded = false,
@@ -428,6 +503,8 @@ export function MigrationCenter({
   sourceProfiles: SourceProfile[];
   cutover: CutoverPrerequisite;
   venueId: string;
+  /** When set, session reads and writes use the HQ admin actor for this venue. */
+  adminVenueId?: string;
   /** URL `?source=` — customer-facing lanes only. */
   initialSource?: string | null;
   hideSourcePicker?: boolean;
@@ -445,6 +522,7 @@ export function MigrationCenter({
 
   const router = useRouter();
   const pathname = usePathname();
+  const scopeVenue = adminVenueId;
   const [lane, setLaneState] = React.useState<SourceSelectionLane>(() =>
     hideSourcePicker ? "another_system" : laneFromSourceQuery(initialSource),
   );
@@ -459,7 +537,10 @@ export function MigrationCenter({
   const [rows, setRows] = React.useState<CsvRow[]>([]);
   const [pendingFile, setPendingFile] = React.useState<File | null>(null);
   const [mapping, setMapping] = React.useState<Record<string, string>>({});
+  const [hydrated, setHydrated] = React.useState(false);
+  React.useEffect(() => { setHydrated(true); }, []);
   const fileRef = React.useRef<HTMLInputElement>(null);
+  const pasteRef = React.useRef<HTMLTextAreaElement>(null);
   const [suggesting, startSuggest] = React.useTransition();
   const [smartText, setSmartText] = React.useState("");
   const [smartNotes, setSmartNotes] = React.useState<string[]>([]);
@@ -530,7 +611,7 @@ export function MigrationCenter({
   const activeSession = sessions.find((s) => s.id === activeSessionId) ?? null;
 
   const refreshSessions = React.useCallback(() => {
-    startLoading(async () => setSessions(await listMigrationSessionsAction()));
+    startLoading(async () => setSessions(await listMigrationSessionsAction(scopeVenue)));
   }, []);
 
   React.useEffect(() => { refreshSessions(); }, [refreshSessions]);
@@ -541,14 +622,14 @@ export function MigrationCenter({
     setCleanupOverrides(new Set());
     startLoading(async () => {
       const [resumeState, files] = await Promise.all([
-        getMigrationSessionResumeStateAction(sessionId),
+        getMigrationSessionResumeStateAction(sessionId, scopeVenue),
         getMigrationSessionSourceFilesAction(sessionId),
       ]);
       setResume(resumeState);
       setSourceFiles(files);
       if (resumeState && (resumeState.state === "needs_review" || resumeState.state === "partially_done")) {
         const [needsDecision, labels] = await Promise.all([
-          Promise.all(NEEDS_DECISION_STATUSES.map((status) => getMigrationSessionRecordsAction(sessionId, status))).then((parts) => parts.flat()),
+          Promise.all(NEEDS_DECISION_STATUSES.map((status) => getMigrationSessionRecordsAction(sessionId, status, scopeVenue))).then((parts) => parts.flat()),
           getMigrationVendorMatchLabelsAction(),
         ]);
         setDecisionRecords(needsDecision as MigrationRecord[]);
@@ -559,7 +640,7 @@ export function MigrationCenter({
       }
       // Resume may have advanced a settled session (e.g. Don't import only) to
       // committed — refresh History so the badge matches Complete.
-      setSessions(await listMigrationSessionsAction());
+      setSessions(await listMigrationSessionsAction(scopeVenue));
     });
   }, []);
 
@@ -587,6 +668,33 @@ export function MigrationCenter({
         toast.success(`Read ${results.data.length} rows from ${file.name}.`);
       },
       error: () => toast.error("Could not read that file."),
+    });
+  }
+
+  function applyPastedList(text: string) {
+    const trimmed = text.trim();
+    if (pasteRef.current) pasteRef.current.dataset.parse = trimmed ? `len-${trimmed.length}` : "empty";
+    if (!trimmed) {
+      toast.error("Paste a CSV or list first.");
+      return;
+    }
+    Papa.parse<CsvRow>(trimmed, {
+      header: true,
+      skipEmptyLines: true,
+      complete: (results) => {
+        const hs = results.meta.fields ?? [];
+        if (pasteRef.current) pasteRef.current.dataset.parse = `rows-${results.data.length}-headers-${hs.length}`;
+        if (hs.length === 0 || results.data.length === 0) {
+          toast.error("That list has no rows.");
+          return;
+        }
+        setHeaders(hs);
+        setRows(results.data);
+        setPendingFile(null);
+        setMapping(autoMapHeaders(hs, FIELD_KEYS_BY_ENTITY[entityType]));
+        toast.success(`Read ${results.data.length} pasted row${results.data.length === 1 ? "" : "s"}.`);
+      },
+      error: () => toast.error("Could not read that list."),
     });
   }
 
@@ -669,10 +777,10 @@ export function MigrationCenter({
       toast.error(cutover.message ?? "Add Event Spaces before importing dated Events.");
       return;
     }
-    if (rows.length === 0) { toast.error("Choose a file first."); return; }
+    if (rows.length === 0) { toast.error("Add a CSV file or paste a list first."); return; }
     setStarting(true);
     try {
-      const started = await startMigrationSessionAction(importSourceKey);
+      const started = await startMigrationSessionAction(importSourceKey, scopeVenue);
       if (!started.ok) { toast.error(started.message); return; }
       const sourceFile = pendingFile;
       // Map + stage rows before source-file retention. Retention is a separate
@@ -684,9 +792,9 @@ export function MigrationCenter({
         for (const [key, col] of Object.entries(mapping)) mapped[key] = (row[col] ?? "").trim() || null;
         return mapped;
       });
-      const added = await addMigrationRowsAction(started.session.id, entityType, sourceRows);
+      const added = await addMigrationRowsAction(started.session.id, entityType, sourceRows, scopeVenue);
       if (!added.ok) { toast.error(added.message); return; }
-      const deduped = await runMigrationDedupeAction(started.session.id);
+      const deduped = await runMigrationDedupeAction(started.session.id, scopeVenue);
       if (!deduped.ok) { toast.error(deduped.message); return; }
       toast.success("Files recognized and checked for duplicates — review below.");
       const retained = sourceFile ? await uploadSourceFile(started.session.id, sourceFile) : null;
@@ -710,7 +818,7 @@ export function MigrationCenter({
 
   function handleContinueProcessing(sessionId: string) {
     startLoading(async () => {
-      const result = await runMigrationDedupeAction(sessionId);
+      const result = await runMigrationDedupeAction(sessionId, scopeVenue);
       if (!result.ok) { toast.error(result.message); return; }
       openSession(sessionId);
       refreshSessions();
@@ -719,7 +827,7 @@ export function MigrationCenter({
 
   function handleDecision(sessionId: string, recordId: string, decision: "approve" | "reject" | "approve_historical") {
     startLoading(async () => {
-      const result = await reviewMigrationRecordAction(sessionId, recordId, decision);
+      const result = await reviewMigrationRecordAction(sessionId, recordId, decision, scopeVenue);
       if (result.ok) openSession(sessionId);
       else toast.error(result.message);
     });
@@ -727,7 +835,7 @@ export function MigrationCenter({
 
   function handleRetryRecord(sessionId: string, recordId: string) {
     startLoading(async () => {
-      const result = await retryMigrationRecordAction(sessionId, recordId);
+      const result = await retryMigrationRecordAction(sessionId, recordId, scopeVenue);
       if (result.ok) {
         toast.success("Imported after retry.");
         openSession(sessionId);
@@ -741,12 +849,12 @@ export function MigrationCenter({
 
   function handleCommit(sessionId: string) {
     startLoading(async () => {
-      const result = await commitMigrationSessionAction(sessionId);
+      const result = await commitMigrationSessionAction(sessionId, scopeVenue);
       if (!result.ok) { toast.error(result.message); return; }
       // Toast from the real post-commit session summary — never celebrate
       // "success" while unresolved records remain (including ones that were
       // already needs_review before this commit pass).
-      const resumeState = await getMigrationSessionResumeStateAction(sessionId);
+      const resumeState = await getMigrationSessionResumeStateAction(sessionId, scopeVenue);
       if (resumeState) {
         const guidance = formatPartialImportGuidance(resumeState.summary.counts);
         if (guidance.tone === "attention") toast.message(`${guidance.headline}. ${guidance.detail}`);
@@ -1014,7 +1122,7 @@ export function MigrationCenter({
             </div>
           ) : null}
 
-          <div className="rounded-lg border border-dashed border-border p-4 space-y-2">
+          <div className="rounded-lg border border-dashed border-border p-4 space-y-2" data-hydrated={hydrated ? "true" : "false"}>
             <p className="text-xs font-medium text-heading">CSV files</p>
             <div className="flex flex-wrap items-center gap-2">
               <Button
@@ -1043,6 +1151,28 @@ export function MigrationCenter({
               Upload a CSV export from {lane === "honeybook" || lane === "tripleseat" ? selectedProfile.displayName : "your current system"}.
               We&apos;ll keep a copy of this file with your import history. This never connects to or logs into another platform on your behalf.
             </p>
+            <label className="block text-xs font-medium text-heading" htmlFor="migration-paste-list">
+              Or paste a list
+            </label>
+            <textarea
+              id="migration-paste-list"
+              data-testid="migration-paste-list"
+              ref={pasteRef}
+              rows={4}
+              className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-xs"
+              placeholder="recordKind,sourceId,clientEmail,..."
+              disabled={eventImportBlocked}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={eventImportBlocked}
+              data-testid="migration-use-pasted-list"
+              onClick={() => applyPastedList(pasteRef.current?.value ?? "")}
+            >
+              Use this list
+            </Button>
             <p className="text-[11px] text-muted-foreground leading-relaxed">
               Have an Excel spreadsheet or another supported file?{" "}
               <Link
@@ -1193,7 +1323,41 @@ export function MigrationCenter({
                       ) : r.status !== "needs_review" && !liveConflict ? (
                         <Button size="sm" onClick={() => handleDecision(activeSession.id, r.id, "approve")} disabled={loading}>Import anyway</Button>
                       ) : canRetry ? (
-                        <Button size="sm" onClick={() => handleRetryRecord(activeSession.id, r.id)} disabled={loading}>Try again</Button>
+                        <div className="flex flex-col items-end gap-2">
+                          {displayError.includes("HELD:") ? (
+                            <form
+                              className="flex flex-wrap items-center justify-end gap-2"
+                              onSubmit={(event) => {
+                                event.preventDefault();
+                                const eventId = String(new FormData(event.currentTarget).get("eventId") ?? "");
+                                startLoading(async () => {
+                                  const result = await assignFinancialTargetAction(activeSession.id, r.id, { eventId }, scopeVenue);
+                                  if (!result.ok) toast.error(result.message);
+                                  openSession(activeSession.id);
+                                });
+                              }}
+                            >
+                              <input name="eventId" placeholder="Event id" className="h-8 w-40 rounded-md border border-border px-2 text-xs" />
+                              <Button size="sm" type="submit" disabled={loading}>Use this event</Button>
+                              <Button
+                                size="sm"
+                                type="button"
+                                variant="outline"
+                                disabled={loading}
+                                onClick={() => {
+                                  startLoading(async () => {
+                                    const result = await assignFinancialTargetAction(activeSession.id, r.id, { clientLevel: true }, scopeVenue);
+                                    if (!result.ok) toast.error(result.message);
+                                    openSession(activeSession.id);
+                                  });
+                                }}
+                              >
+                                Keep on the client
+                              </Button>
+                            </form>
+                          ) : null}
+                          <Button size="sm" onClick={() => handleRetryRecord(activeSession.id, r.id)} disabled={loading}>Try again</Button>
+                        </div>
                       ) : (
                         <AlertTriangle className="h-4 w-4 shrink-0 text-amber-500" />
                       )}

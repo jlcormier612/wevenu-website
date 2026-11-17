@@ -97,6 +97,11 @@ export type ClientInput = {
   sourceClientId?: string;
   /** Import only — source-system event id, distinct from the person id. */
   sourceEventId?: string;
+  /**
+   * Import only. YYYY-MM-DD when the source file has a real booking date.
+   * Empty means unknown. Never the import day or the event day.
+   */
+  originalBookedOn?: string;
 };
 
 

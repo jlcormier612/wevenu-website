@@ -78,6 +78,13 @@ function mappedDate(row: CsvRow, mapping: FieldMapping, key: string): string {
   return parsed.value ?? "";
 }
 
+/** A source date that is not a real calendar day stays blank (unknown). */
+function knownSourceDate(row: CsvRow, mapping: FieldMapping, key: string): string {
+  const parsed = normalizeImportDate(val(row, mapping, key));
+  if (!parsed.ok || !parsed.value) return "";
+  return parsed.value;
+}
+
 export function rowToClientInput(row: CsvRow, mapping: FieldMapping): ClientInput {
   return {
     firstName:        val(row, mapping, "firstName"),
@@ -102,6 +109,7 @@ export function rowToClientInput(row: CsvRow, mapping: FieldMapping): ClientInpu
     bookingStatus:    val(row, mapping, "bookingStatus"),
     sourceClientId:   val(row, mapping, "sourceClientId"),
     sourceEventId:    val(row, mapping, "sourceEventId"),
+    originalBookedOn: knownSourceDate(row, mapping, "originalBookedOn"),
   };
 }
 
@@ -128,7 +136,7 @@ export function rowToLeadInput(row: CsvRow, mapping: FieldMapping): LeadInput {
     source:           sourceKey,
     originalSourceLabel: originalLabel,
     inquiryMessage:   val(row, mapping, "inquiryMessage"),
-    inquiryDate:      "",
+    inquiryDate:      knownSourceDate(row, mapping, "inquiryDate"),
     dateFlexibility:  val(row, mapping, "dateFlexibility"),
     salesStage:       val(row, mapping, "salesStage"),
     followUpDate:     mappedDate(row, mapping, "followUpDate"),
@@ -290,6 +298,8 @@ const RELIABLE_HEADER_ALIASES: Record<string, string[]> = {
   followUpDate: ["followupdate", "nextfollowup"],
   nextActionText: ["nextaction"],
   bookingStatus: ["bookingstatus", "bookedstatus", "eventstatus"],
+  originalBookedOn: ["originalbookingdate", "bookingdate", "datebooked", "bookedon", "bookeddate"],
+  inquiryDate: ["inquirydate", "dateinquired", "inquiredon"],
   businessName: ["vendorname", "businessname", "company", "companyname"],
 };
 

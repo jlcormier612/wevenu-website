@@ -6,6 +6,8 @@ import { SupportSection } from "@/components/hq/venue-detail/support-section";
 import { OnboardingSendUpdate } from "@/components/hq/onboarding-send-update";
 import { WhiteGloveOperatorPanel } from "@/components/hq/white-glove-operator-panel";
 import { ImportWizard } from "@/components/settings/import-wizard";
+import { MigrationCenter } from "@/components/settings/migration-center";
+import { getSourceProfilesAction } from "@/app/(app)/settings/migration-actions";
 import { requireAdminUser } from "@/lib/hq/crm-service";
 import { getVenueHqDetail } from "@/lib/hq/venue-detail-service";
 import { getOnboardingEngagementWithName, ensureOnboardingEngagement } from "@/lib/hq/onboarding-service";
@@ -21,10 +23,11 @@ export default async function OnboardingWorkspacePage({ params }: Props) {
   const actor = await requireAdminUser();
   if (!actor) redirect("/login");
 
-  const [detail, { engagement, assignedName }, operatorView] = await Promise.all([
+  const [detail, { engagement, assignedName }, operatorView, sourceProfiles] = await Promise.all([
     getVenueHqDetail(venueId),
     getOnboardingEngagementWithName(venueId),
     getWhiteGloveOperatorView(venueId),
+    getSourceProfilesAction(),
   ]);
   if (!detail) notFound();
 
@@ -70,6 +73,48 @@ export default async function OnboardingWorkspacePage({ params }: Props) {
           </p>
         </div>
         <ImportWizard venueId={venueId} />
+      </div>
+
+      <div id="hq-planning-import" className="rounded-xl border border-border bg-card p-6" data-testid="hq-planning-import">
+        <div className="mb-4">
+          <h2 className="font-heading text-sm font-semibold text-heading">
+            Planning materials for {detail.venue.name}
+          </h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            The same planning import the venue uses. Existing tasks, timelines, files, and selections stay on this venue and are not released or sent.
+          </p>
+        </div>
+        <MigrationCenter
+          sourceProfiles={sourceProfiles}
+          cutover={{ readyForDatedEvents: true, spacesCount: 1, hasCapacityRules: true, message: null }}
+          venueId={venueId}
+          adminVenueId={venueId}
+          initialSource="another_system"
+          hideSourcePicker
+          embedded
+          initialEntityType="planning_material"
+        />
+      </div>
+
+      <div id="hq-money-import" className="rounded-xl border border-border bg-card p-6" data-testid="hq-money-import">
+        <div className="mb-4">
+          <h2 className="font-heading text-sm font-semibold text-heading">
+            Contracts and money for {detail.venue.name}
+          </h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            The same Money import the venue uses. Historical agreements, invoices, and payments stay private and are not charged or sent.
+          </p>
+        </div>
+        <MigrationCenter
+          sourceProfiles={sourceProfiles}
+          cutover={{ readyForDatedEvents: true, spacesCount: 1, hasCapacityRules: true, message: null }}
+          venueId={venueId}
+          adminVenueId={venueId}
+          initialSource="another_system"
+          hideSourcePicker
+          embedded
+          initialEntityType="active_commitment"
+        />
       </div>
 
       <SupportSection

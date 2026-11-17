@@ -53,6 +53,7 @@ import type { VenueSpace } from "@/lib/availability/types";
 import { BookingDocumentsTab } from "@/components/events/booking-documents-tab";
 import { EventTaskList } from "@/components/playbooks/event-task-list";
 import type { LinkableConversationMessage } from "@/components/playbooks/event-task-list";
+import type { StaffImportedClientTimelineEntry } from "@/lib/timeline/imported-client-visibility";
 import type { TimelineEntry, TimelineEntryAttachment, TimelineEntryLink, TimelineRelatedLink, TimelineSection } from "@/lib/timeline/types";
 import { InvoiceStatusBadge } from "@/components/invoices/invoice-status-badge";
 import { SetupPaymentsSheet } from "@/components/booking-journey/setup-payments-sheet";
@@ -401,6 +402,7 @@ function ComingSoonTab({
 
 export function EventDetail({
   event,
+  importedClientTimeline = [],
   availableVendors = [],
   invoices = [],
   documents = [],
@@ -481,6 +483,7 @@ export function EventDetail({
   applicableSetupSteps = [],
 }: {
   event: EventWithDetails;
+  importedClientTimeline?: StaffImportedClientTimelineEntry[];
   availableVendors?: import("@/lib/vendors/types").Vendor[];
   invoices?: Invoice[];
   documents?: Document[];
@@ -1382,6 +1385,23 @@ export function EventDetail({
               teamMembers={teamMembers}
               timelineTemplates={timelineTemplates}
             />
+            {importedClientTimeline.length > 0 ? (
+              <section className="mt-4 rounded-lg border border-border bg-card p-4" data-testid="imported-client-timeline">
+                <h3 className="text-sm font-semibold text-heading">Imported client timeline</h3>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Brought over with this event. These items stay client-owned. They are not a client submission and are not shared with the client.
+                </p>
+                <ul className="mt-3 space-y-2">
+                  {importedClientTimeline.map((entry) => (
+                    <li key={entry.id} className="flex flex-wrap items-center gap-2 text-sm">
+                      {entry.entryTime ? <span className="font-semibold text-heading">{entry.entryTime}</span> : null}
+                      <span>{entry.title}</span>
+                      <span className="rounded-full bg-muted px-2 py-0.5 text-xs">Client</span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ) : null}
           </RelationshipTabShell>
         </TabsContent>
 

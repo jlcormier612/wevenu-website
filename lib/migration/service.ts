@@ -86,6 +86,7 @@ import {
   commitActiveCommitment,
   type NormalizedActiveCommitment,
 } from "@/lib/migration/active-commitment";
+import { commitFinancialRecord, financialCommitOrder, linkImportedMovementRelationships, type NormalizedFinancialRecord } from "@/lib/migration/financial-import";
 import {
   isVenueGuestListImportRemoved,
   VENUE_GUEST_LIST_IMPORT_REMOVED_MESSAGE,
@@ -116,7 +117,7 @@ async function resolveVenueActor(): Promise<Actor | { ok: false; message: string
   return { client: supabase, venueId: venue.id, createdByType: "venue", createdBy: user.id };
 }
 
-async function resolveAdminActor(venueId: string): Promise<Actor | { ok: false; message: string }> {
+export async function resolveAdminActor(venueId: string): Promise<Actor | { ok: false; message: string }> {
   const actor = await requireAdminUser();
   if (!actor) return { ok: false, message: "Not signed in as an HQ admin." };
   return { client: createAdminClient(), venueId, createdByType: "hq_staff", createdBy: actor.userId };
@@ -162,8 +163,8 @@ export async function getSessionForVenue(venueId: string, sessionId: string, adm
   return repo.getSession(actor.client, venueId, sessionId);
 }
 
-export async function listSessionsForCurrentVenue(): Promise<MigrationSession[]> {
-  const actor = await resolveVenueActor();
+export async function listSessionsForCurrentVenue(venueId?: string): Promise<MigrationSession[]> {
+  const actor = venueId ? await resolveAdminActor(venueId) : await resolveVenueActor();
   if (isError(actor)) return [];
   return repo.listSessions(actor.client, actor.venueId);
 }
@@ -435,7 +436,7 @@ export async function getSessionSummary(client: AnyDbClient, session: MigrationS
 const COMMITTABLE_ENTITY_TYPES: MigrationEntityType[] = [
   "calendar_block", "date_hold", "vendor", "lead", "client", "package", "event", "tour",
   "document", "active_commitment", "event_vendor_assignment", "timeline_entry",
-  "floor_plan",
+  "floor_plan", "planning_material",
 ];
 
 const BATCH_ENTITY: Partial<Record<MigrationEntityType, EntityType>> = {
@@ -579,6 +580,14 @@ export async function commitSession(client: AnyDbClient, session: MigrationSessi
       }
       const batchId = batch && batch.ok ? batch.id : null;
 
+      if (entityType === "active_commitment") {
+        candidates.sort((a, b) => {
+          const [aKind, aRow] = financialCommitOrder(a);
+          const [bKind, bRow] = financialCommitOrder(b);
+          return aKind - bKind || aRow - bRow;
+        });
+      }
+
       const createdIds: string[] = [];
       let claimedCount = 0;
       for (const candidate of candidates) {
@@ -655,6 +664,16 @@ export async function commitSession(client: AnyDbClient, session: MigrationSessi
           await repo.releaseClaim(client, record.id);
         }
       }
+      if (entityType === "active_commitment") {
+        await linkImportedMovementRelationships(
+          client as Parameters<typeof linkImportedMovementRelationships>[0],
+          session.venueId,
+          candidates.map((candidate) => {
+            const payload = candidate.normalizedPayload as { sourceId?: string; relatedSourceId?: string | null } | null;
+            return { sourceId: payload?.sourceId ?? null, relatedSourceId: payload?.relatedSourceId ?? null };
+          }),
+        );
+      }
       if (claimedCount === 0) continue;
       await finalizeImportBatch(batchId, { imported: createdIds.length, skipped: 0, errors: claimedCount - createdIds.length }, batchClient);
     }
@@ -688,9 +707,9 @@ export const DUPLICATE_LIKELY_RETRY_REFUSAL =
  * placeholder entity and never bypasses a trigger to force a result.
  */
 export async function retryOwnRecord(
-  sessionId: string, recordId: string,
+  sessionId: string, recordId: string, venueId?: string,
 ): Promise<{ ok: true; committed: boolean } | { ok: false; message: string }> {
-  const actor = await resolveVenueActor();
+  const actor = venueId ? await resolveAdminActor(venueId) : await resolveVenueActor();
   if (isError(actor)) return actor;
   const session = await repo.getSession(actor.client, actor.venueId, sessionId);
   if (!session) return { ok: false, message: "Migration session not found." };
@@ -815,10 +834,37 @@ export async function retryOwnRecord(
   return { ok: true, committed: true };
 }
 
+export async function assignFinancialTarget(
+  sessionId: string,
+  recordId: string,
+  choice: { eventId?: string | null; clientLevel?: boolean },
+  venueId?: string,
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  const actor = venueId ? await resolveAdminActor(venueId) : await resolveVenueActor();
+  if (isError(actor)) return actor;
+  const session = await repo.getSession(actor.client, actor.venueId, sessionId);
+  if (!session) return { ok: false, message: "Migration session not found." };
+  const existing = await repo.getRecord(actor.client, sessionId, recordId);
+  if (!existing?.normalizedPayload) return { ok: false, message: "That record cannot be updated." };
+  const payload = {
+    ...existing.normalizedPayload,
+    eventId: choice.clientLevel ? null : (choice.eventId?.trim() || null),
+    clientLevel: !!choice.clientLevel,
+  };
+  await repo.updateRecord(actor.client, recordId, {
+    normalizedPayload: payload,
+    status: "needs_review",
+    validationErrors: null,
+  });
+  const retried = await retryOwnRecord(sessionId, recordId, venueId);
+  if (!retried.ok) return retried;
+  return { ok: true };
+}
+
 export async function addRowsToOwnSession(
-  sessionId: string, entityType: MigrationEntityType, rows: SourceRow[],
+  sessionId: string, entityType: MigrationEntityType, rows: SourceRow[], venueId?: string,
 ): Promise<{ ok: true; added: number } | { ok: false; message: string }> {
-  const actor = await resolveVenueActor();
+  const actor = venueId ? await resolveAdminActor(venueId) : await resolveVenueActor();
   if (isError(actor)) return actor;
   const session = await repo.getSession(actor.client, actor.venueId, sessionId);
   if (!session) return { ok: false, message: "Migration session not found." };
@@ -837,8 +883,8 @@ export async function addRowsToOwnSession(
   return { ok: true, ...result };
 }
 
-export async function runDedupeForOwnSession(sessionId: string): Promise<{ ok: true } | { ok: false; message: string }> {
-  const actor = await resolveVenueActor();
+export async function runDedupeForOwnSession(sessionId: string, venueId?: string): Promise<{ ok: true } | { ok: false; message: string }> {
+  const actor = venueId ? await resolveAdminActor(venueId) : await resolveVenueActor();
   if (isError(actor)) return actor;
   const session = await repo.getSession(actor.client, actor.venueId, sessionId);
   if (!session) return { ok: false, message: "Migration session not found." };
@@ -846,8 +892,8 @@ export async function runDedupeForOwnSession(sessionId: string): Promise<{ ok: t
   return { ok: true };
 }
 
-export async function getOwnSessionSummary(sessionId: string): Promise<SessionSummary | null> {
-  const actor = await resolveVenueActor();
+export async function getOwnSessionSummary(sessionId: string, venueId?: string): Promise<SessionSummary | null> {
+  const actor = venueId ? await resolveAdminActor(venueId) : await resolveVenueActor();
   if (isError(actor)) return null;
   const session = await repo.getSession(actor.client, actor.venueId, sessionId);
   if (!session) return null;
@@ -855,9 +901,9 @@ export async function getOwnSessionSummary(sessionId: string): Promise<SessionSu
 }
 
 export async function reviewOwnRecord(
-  sessionId: string, recordId: string, decision: "approve" | "reject" | "approve_historical",
+  sessionId: string, recordId: string, decision: "approve" | "reject" | "approve_historical", venueId?: string,
 ): Promise<{ ok: true } | { ok: false; message: string }> {
-  const actor = await resolveVenueActor();
+  const actor = venueId ? await resolveAdminActor(venueId) : await resolveVenueActor();
   if (isError(actor)) return actor;
   const session = await repo.getSession(actor.client, actor.venueId, sessionId);
   if (!session) return { ok: false, message: "Migration session not found." };
@@ -929,8 +975,8 @@ export async function getFloorPlanImportCatalog(): Promise<{
   return loadFloorPlanMatchCatalog(actor.client, actor.venueId);
 }
 
-export async function commitOwnSession(sessionId: string): Promise<{ ok: true; outcome: CommitOutcome } | { ok: false; message: string }> {
-  const actor = await resolveVenueActor();
+export async function commitOwnSession(sessionId: string, venueId?: string): Promise<{ ok: true; outcome: CommitOutcome } | { ok: false; message: string }> {
+  const actor = venueId ? await resolveAdminActor(venueId) : await resolveVenueActor();
   if (isError(actor)) return actor;
   const session = await repo.getSession(actor.client, actor.venueId, sessionId);
   if (!session) return { ok: false, message: "Migration session not found." };
@@ -1017,8 +1063,8 @@ export async function reconcileSessionStatusIfSettled(
   return { ...session, status: "committed" };
 }
 
-export async function getOwnSessionResumeState(sessionId: string): Promise<{ state: SessionResumeState; summary: SessionSummary } | null> {
-  const actor = await resolveVenueActor();
+export async function getOwnSessionResumeState(sessionId: string, venueId?: string): Promise<{ state: SessionResumeState; summary: SessionSummary } | null> {
+  const actor = venueId ? await resolveAdminActor(venueId) : await resolveVenueActor();
   if (isError(actor)) return null;
   let session = await repo.getSession(actor.client, actor.venueId, sessionId);
   if (!session) return null;
@@ -1417,8 +1463,13 @@ async function commitOneRecord(
       return { ok: true, entityId: documentId };
     }
     if (entityType === "active_commitment") {
-      const n = record.normalizedPayload as unknown as NormalizedActiveCommitment;
-      const result = await commitActiveCommitment(client, session.venueId, n);
+      const payload = record.normalizedPayload as unknown as NormalizedActiveCommitment & Partial<NormalizedFinancialRecord>;
+      if (payload.recordKind) {
+        const result = await commitFinancialRecord(client, session.venueId, payload as NormalizedFinancialRecord);
+        if (!result.ok) return { ok: false, error: result.error };
+        return { ok: true, entityId: result.entityId };
+      }
+      const result = await commitActiveCommitment(client, session.venueId, payload);
       if (!result.ok) return { ok: false, error: result.error };
       return { ok: true, entityId: result.eventId };
     }
@@ -1449,6 +1500,10 @@ async function commitOneRecord(
     }
     if (entityType === "floor_plan") {
       return commitFloorPlanImport(client, session.venueId, record.normalizedPayload ?? {});
+    }
+    if (entityType === "planning_material") {
+      const { commitPlanningRecord } = await import("@/lib/migration/planning-import");
+      return commitPlanningRecord(client, session.venueId, record.normalizedPayload ?? {});
     }
     return { ok: false, error: `Committing "${entityType}" records isn't supported yet.` };
   } catch (err) {

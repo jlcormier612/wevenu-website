@@ -63,9 +63,9 @@ export function BusinessFunnel({
     },
     {
       key: "bookedRevenue",
-      label: "Contracted",
+      label: "Invoiced",
       value: formatMoney(period.bookedRevenue),
-      clock: "Signed value (financial date)",
+      clock: "Invoice issue date",
       tone: "contracted",
     },
     {
@@ -77,9 +77,9 @@ export function BusinessFunnel({
     },
     {
       key: "outstanding",
-      label: "Period net",
+      label: "Outstanding",
       value: formatMoney(period.outstanding),
-      clock: "Contracted − collected (mixed clocks)",
+      clock: "Unpaid balance on invoices issued in this period",
       tone: "outstanding",
     },
   ];

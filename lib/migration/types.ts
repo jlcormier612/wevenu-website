@@ -57,7 +57,9 @@ export type MigrationEntityType =
   /** Venue-owned timeline_entries when proximity/finalized/force says import. */
   | "timeline_entry"
   /** Floor plan source files (Document SoR + optional Space template / Event plan). */
-  | "floor_plan";
+  | "floor_plan"
+  /** Tasks, timelines, questionnaires, documents, selections, and vendor coordination. */
+  | "planning_material";
 
 export type SessionStatus =
   | "uploaded"

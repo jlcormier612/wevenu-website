@@ -4,6 +4,7 @@
  */
 
 import type { createClient } from "@/integrations/supabase/server";
+import { createAdminClient } from "@/integrations/supabase/admin";
 import { resolveEventForMigration } from "@/lib/migration/resolve-refs";
 import * as vendorsRepo from "@/lib/vendors/repository";
 import { markAssignmentBooked } from "@/lib/vendor-availability/sync";
@@ -41,6 +42,12 @@ export type AssignmentCommitResult =
     createdVendor?: boolean;
   }
   | { ok: false; error: string };
+
+/** Past events stay out of the active-business importer unless the caller is preserving historical coordination. */
+export function pastEventAssignmentBlocked(eventDate: string | null, allowPastEvent: boolean, today: string): boolean {
+  if (allowPastEvent || !eventDate) return false;
+  return eventDate < today;
+}
 
 export function validateEventVendorAssignment(n: NormalizedEventVendorAssignment): string | null {
   if (!n.eventId?.trim() && !n.clientEmail?.trim() && !n.clientId?.trim()) {
@@ -112,6 +119,7 @@ export async function commitEventVendorAssignmentQuietly(
   client: DbClient,
   venueId: string,
   n: NormalizedEventVendorAssignment,
+  options?: { allowPastEvent?: boolean },
 ): Promise<AssignmentCommitResult> {
   const validationError = validateEventVendorAssignment(n);
   if (validationError) return { ok: false, error: validationError };
@@ -119,11 +127,8 @@ export async function commitEventVendorAssignmentQuietly(
   const resolved = await resolveEventForMigration(client, venueId, n);
   if (!resolved.ok) return resolved;
 
-  if (resolved.eventDate) {
-    const today = new Date().toISOString().slice(0, 10);
-    if (resolved.eventDate < today) {
-      return { ok: false, error: "Vendor assignments for past Events are not imported as active business." };
-    }
+  if (pastEventAssignmentBlocked(resolved.eventDate, !!options?.allowPastEvent, new Date().toISOString().slice(0, 10))) {
+    return { ok: false, error: "Vendor assignments for past Events are not imported as active business." };
   }
 
   const vendor = await resolveVendorId(client, venueId, n);
@@ -157,13 +162,13 @@ export async function commitEventVendorAssignmentQuietly(
   }
 
   // Native Assign fires an in-app vendor_notifications row via DB trigger.
-  // Quiet migration must not leave that alert (and never sends email/claim).
-  try {
-    await client.from("vendor_notifications")
-      .delete()
-      .eq("assignment_id", inserted.assignment.id)
-      .eq("type", "assigned_to_event");
-  } catch { /* best-effort; assignment itself must succeed */ }
+  // The venue session cannot always delete that row, so the service role
+  // removes only this assignment alert. No email or claim is sent.
+  const { error: alertError } = await createAdminClient().from("vendor_notifications")
+    .delete()
+    .eq("assignment_id", inserted.assignment.id)
+    .eq("type", "assigned_to_event");
+  if (alertError) throw alertError;
 
   const { data: event } = await client.from("events")
     .select("event_date, event_end_date, name, status")

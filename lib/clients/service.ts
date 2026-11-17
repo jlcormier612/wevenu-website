@@ -416,32 +416,39 @@ async function createClientCore(
     clientId = await repo.insertClient(supabase, venueId, input, undefined, historicalImport);
     eventId = null;
     if (lifecycleOpts?.markAsAlreadyBooked && input.eventDate) {
-      const { bookClient } = await import("@/lib/booking-journey/book-client");
-      const occasion = datedEventFromClient(input, false);
-      const booked = await bookClient(supabase, {
-        venueId,
-        clientId,
-        source: "manual",
-        spaceId: input.spaceId,
-        lifecycleOrigin: "import",
-        event: {
-          name: occasion.name,
-          eventType: occasion.eventType ?? "",
-          eventDate: occasion.eventDate,
-          eventEndDate: occasion.eventEndDate ?? "",
-          startTime: occasion.startTime ?? "",
-          endTime: occasion.endTime ?? "",
-          setupTime: occasion.setupTime ?? "",
-          teardownTime: occasion.teardownTime ?? "",
-          guestCount: occasion.guestCount ?? "",
-        },
-      });
-      if (!booked.ok) {
+      try {
+        const { insertImportedBookedEvent } = await import("@/lib/booking-journey/import-booked-event");
+        eventId = await insertImportedBookedEvent(supabase, {
+          venueId,
+          clientId,
+          input,
+          kind: "upcoming",
+          eventDate: input.eventDate,
+        });
+      } catch (err) {
         await repo.abandonUnbookedImportedClient(supabase, venueId, clientId);
-        return { ok: false, message: booked.message };
+        const fail = occupancyClientFailure(err);
+        if (fail) return fail;
+        const blocked = calendarBlockFailureFromUnknown(err);
+        if (blocked) return { ok: false, message: blocked.message };
+        throw err;
       }
-      eventId = booked.eventId;
+      const { error: statusError } = await supabase.from("clients")
+        .update({ status: "confirmed" })
+        .eq("id", clientId)
+        .eq("venue_id", venueId);
+      if (statusError) console.error("Imported client confirmed status failed:", statusError.message);
     }
+  }
+  if (asHistorical && eventId) {
+    const { stampOriginalBookingDate } = await import("@/lib/events/repository");
+    const { knownOriginalBookingDate } = await import("@/lib/booking-journey/import-booked-event");
+    await stampOriginalBookingDate(
+      supabase,
+      venueId,
+      eventId,
+      knownOriginalBookingDate(input.originalBookedOn),
+    );
   }
 
   if (!historicalImport && !importAsHistoricalRecord) {

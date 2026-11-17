@@ -39,6 +39,13 @@ export async function resolveAuthorizedDocumentFileUrl(input: {
 }): Promise<string | null> {
   if (!input.storagePath && !input.storageUrl) return null;
 
+  if (input.storageUrl?.startsWith("private://contract-representations/")) {
+    const path = input.storageUrl.slice("private://contract-representations/".length);
+    const admin = createAdminClient();
+    const { data, error } = await admin.storage.from("contract-representations").createSignedUrl(path, SIGNED_TTL_SECONDS);
+    if (!error && data?.signedUrl) return data.signedUrl;
+  }
+
   if (input.storagePath) {
     const fromDocuments = await createDocumentsSignedUrl(input.storagePath);
     if (fromDocuments) return fromDocuments;

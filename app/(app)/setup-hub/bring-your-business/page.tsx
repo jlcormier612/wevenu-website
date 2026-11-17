@@ -32,7 +32,7 @@ function parseKind(raw: string | undefined): EntityType | undefined {
 
 function entityForStage(stage: string): MigrationEntityType {
   if (stage === "money") return "active_commitment";
-  if (stage === "planning") return "document";
+  if (stage === "planning") return "planning_material";
   return "event";
 }
 

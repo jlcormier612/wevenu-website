@@ -189,6 +189,37 @@ export async function loadBookedMembershipSets(input?: {
       .map((row) => row.client_id)
       .filter((id): id is string => Boolean(id)),
   )];
+  const { data: upcomingBooked, error: upcomingError } = await supabase
+    .from("events")
+    .select("client_id")
+    .eq("venue_id", venueId)
+    .in("status", ["confirmed", "in_progress"])
+    .gte("event_date", today);
+  if (upcomingError) throw upcomingError;
+  const upcomingClientIds = [...new Set(
+    ((upcomingBooked ?? []) as { client_id: string | null }[])
+      .map((row) => row.client_id)
+      .filter((id): id is string => Boolean(id)),
+  )];
+  if (upcomingClientIds.length > 0) {
+    const { data: upcomingClients, error: upcomingClientError } = await supabase
+      .from("clients")
+      .select("id, status, relationship_id")
+      .eq("venue_id", venueId)
+      .in("id", upcomingClientIds);
+    if (upcomingClientError) throw upcomingClientError;
+    for (const row of (upcomingClients ?? []) as {
+      id: string;
+      status: string;
+      relationship_id: string | null;
+    }[]) {
+      if (row.status === "cancelled") continue;
+      if (row.relationship_id && archivedIds.has(row.relationship_id)) continue;
+      currentClientIds.add(row.id);
+      pastClientIds.delete(row.id);
+    }
+  }
+
   if (historicalClientIds.length > 0) {
     const { data: historicalClients, error: historicalClientError } = await supabase
       .from("clients")

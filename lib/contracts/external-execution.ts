@@ -47,7 +47,7 @@ export async function recordExternallyExecutedContract(
 
   const signedAtIso = input.signedAt
     ? (input.signedAt.includes("T") ? input.signedAt : `${input.signedAt}T12:00:00.000Z`)
-    : new Date().toISOString();
+    : null;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (client.from("contracts") as any)

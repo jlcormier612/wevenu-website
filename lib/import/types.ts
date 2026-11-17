@@ -24,6 +24,7 @@ export const COUPLE_FIELDS: ImportFieldDef[] = [
   { key: "teardownTime",     label: "Teardown Time (HH:MM)",   required: false },
   { key: "spaceName",        label: "Event Space Name",        required: false },
   { key: "bookingStatus",    label: "Booking Status (booked or past)", required: false },
+  { key: "originalBookedOn", label: "Original Booking Date (YYYY-MM-DD)", required: false },
   { key: "internalNotes",    label: "Internal notes",          required: false },
   { key: "sourceClientId",   label: "Source client ID",        required: false },
   { key: "sourceEventId",    label: "Source event ID",         required: false },
@@ -46,6 +47,7 @@ export const LEAD_FIELDS: ImportFieldDef[] = [
   { key: "salesStage",       label: "Lead Status",             required: false },
   { key: "followUpDate",     label: "Follow-up Date (YYYY-MM-DD)", required: false },
   { key: "nextActionText",   label: "Next Action",             required: false },
+  { key: "inquiryDate",      label: "Inquiry Date (YYYY-MM-DD)", required: false },
   { key: "inquiryMessage",   label: "Inquiry Notes",           required: false },
   { key: "sourceRecordId",   label: "Source record ID",        required: false },
 ];

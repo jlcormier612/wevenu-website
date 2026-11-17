@@ -14,8 +14,8 @@ import * as eventOrdersRepo from "@/lib/event-orders/repository";
 import * as invoicesRepo from "@/lib/invoices/repository";
 import * as paymentsRepo from "@/lib/payments/repository";
 import * as documentsRepo from "@/lib/documents/repository";
-import { ensureEventBookedAt } from "@/lib/events/repository";
 import { recordExternallyExecutedContract } from "@/lib/contracts/external-execution";
+import { recordLegacyPaidMovement } from "@/lib/migration/financial-import";
 import { shareExternallyExecutedAgreementWithCouple } from "@/lib/contracts/external-share";
 import {
   commitmentOrderLines,
@@ -225,22 +225,7 @@ export async function commitActiveCommitment(
 
   const resolved = await resolveEventId(client, venueId, n);
   if (!resolved.ok) return resolved;
-  const resolvedClientId = resolved.clientId;
   const resolvedEventId = resolved.eventId;
-
-  async function recordImportLifecycle(): Promise<void> {
-    const { recordLifecycleBooking } = await import("@/lib/lifecycle-bookings/service");
-    const knownDate = n.lifecycleBookedAt?.trim() || null;
-    const recorded = await recordLifecycleBooking(client, {
-      venueId,
-      clientId: resolvedClientId,
-      origin: "import",
-      occurredAt: knownDate,
-      actorUserId: opts?.actorUserId ?? null,
-      metadata: { source: "active_commitment_import", dateKnown: !!knownDate },
-    });
-    if (!recorded.ok) console.error("Import lifecycle booking failed:", recorded.message);
-  }
 
   const existingOrder = await eventOrdersRepo.getEventOrderByEvent(client, venueId, resolvedEventId);
   const { data: existingInvoices } = await client.from("invoices")
@@ -259,13 +244,6 @@ export async function commitActiveCommitment(
         .select("id").eq("venue_id", venueId).eq("event_id", resolved.eventId)
         .eq("execution_origin", "external").eq("status", "signed").limit(1)
         .maybeSingle<{ id: string }>();
-      // Lifecycle mark is independent of financial idempotency — safe to retry.
-      // Payment-timing booked_at is also safe to stamp on idempotent retry when
-      // the import supplies an explicit historical date.
-      if (n.bookedAt?.trim()) {
-        await ensureEventBookedAt(client, venueId, resolvedEventId, n.bookedAt.trim().slice(0, 10));
-      }
-      await recordImportLifecycle();
       return {
         ok: true,
         eventId: resolved.eventId,
@@ -371,13 +349,17 @@ export async function commitActiveCommitment(
       })),
     );
 
-    await invoicesRepo.updateInvoiceStatus(client, venueId, invoiceId, "sent", {
-      eventOrderRevisionAtFreeze: order.revision,
-    });
-    // Default private; explicit share decision below may publish.
+    // Historical invoices stay private. Do not use the live Mark Sent workflow,
+    // which would stamp issued_at to now and publish the invoice.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (client.from("invoices") as any)
-      .update({ is_couple_visible: false })
+      .update({
+        status: "sent",
+        is_couple_visible: false,
+        issued_at: null,
+        event_order_revision_at_freeze: order.revision,
+        import_source_id: n.sourceId?.trim() || null,
+      })
       .eq("id", invoiceId)
       .eq("venue_id", venueId);
     await invoicesRepo.insertActivity(
@@ -415,14 +397,43 @@ export async function commitActiveCommitment(
       }, lineSort++);
 
       if (sched.alreadyPaid) {
-        const marked = await paymentsRepo.markItemPaid(client, venueId, item.id, {
-          paidAmount: sched.amount,
-          paymentMethod: sched.paymentMethod?.trim() || "other",
-          referenceNumber: sched.referenceNumber?.trim() || "",
-          paidDate: sched.paidDate || new Date().toISOString().slice(0, 10),
-          notes: HISTORICAL_PAYMENT_PROVENANCE,
+        const paidDay = sched.paidDate?.trim().slice(0, 10) || null;
+        if (paidDay) {
+          const marked = await paymentsRepo.markItemPaid(client, venueId, item.id, {
+            paidAmount: sched.amount,
+            paymentMethod: sched.paymentMethod?.trim() || "other",
+            referenceNumber: sched.referenceNumber?.trim() || "",
+            paidDate: paidDay,
+            notes: HISTORICAL_PAYMENT_PROVENANCE,
+          });
+          if (!marked.ok) throw new Error(marked.message);
+        } else {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const { error: paidError } = await (client.from("payment_line_items") as any)
+            .update({
+              status: "paid",
+              paid_at: null,
+              paid_amount: money(sched.amount),
+              payment_method: sched.paymentMethod?.trim() || "other",
+              reference_number: sched.referenceNumber?.trim() || null,
+              notes: HISTORICAL_PAYMENT_PROVENANCE,
+            })
+            .eq("id", item.id)
+            .eq("venue_id", venueId);
+          if (paidError) throw paidError;
+        }
+        await recordLegacyPaidMovement(client, venueId, {
+          sourceId: `${n.sourceId?.trim() || invoiceId}:payment:${item.id}`,
+          invoiceId,
+          clientId: resolved.clientId,
+          eventId: resolved.eventId,
+          scheduleId,
+          lineItemId: item.id,
+          amount: money(sched.amount),
+          occurredOn: paidDay,
+          method: sched.paymentMethod?.trim() || "other",
+          reference: sched.referenceNumber?.trim() || null,
         });
-        if (!marked.ok) throw new Error(marked.message);
         await paymentsRepo.insertPaymentActivity(
           client, venueId, scheduleId, "payment_received",
           `Historical payment recorded: $${money(sched.amount).toLocaleString()}`,
@@ -502,17 +513,6 @@ export async function commitActiveCommitment(
       });
       if (!shared.ok) throw new Error(shared.message);
     }
-
-    // Stamp payment-timing booked_at only after the commitment write succeeded.
-    // Doing this before the try left booked_at set when compensation rolled back
-    // EO/invoice/schedule — outside the compensation boundary.
-    // Explicit historical date only — never reinterpret contractSignedAt.
-    // Payment timing only — never treat this as lifecycle Booking.
-    if (n.bookedAt?.trim()) {
-      await ensureEventBookedAt(client, venueId, resolvedEventId, n.bookedAt.trim().slice(0, 10));
-    }
-
-    await recordImportLifecycle();
 
     return {
       ok: true,

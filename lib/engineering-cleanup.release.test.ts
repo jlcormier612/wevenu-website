@@ -50,19 +50,12 @@ describe("engineering cleanup — silent-false-success deletes", () => {
 });
 
 describe("engineering cleanup — active commitment booked_at boundary", () => {
-  it("stamps events.booked_at only after a successful commitment write", () => {
+  it("financial import does not stamp events.booked_at during commit", () => {
     const src = readFileSync(resolve(root, "lib/migration/active-commitment.ts"), "utf8");
     const commitStart = src.indexOf("export async function commitActiveCommitment");
-    const tryIdx = src.indexOf("\n  try {", commitStart);
-    const catchIdx = src.indexOf("\n  } catch (err) {", tryIdx);
-    const createPath = src.slice(tryIdx, catchIdx);
-    assert.match(createPath, /ensureEventBookedAt/);
-    assert.match(createPath, /Doing this before the try left booked_at set when compensation rolled back/);
-    // Create-path stamp must happen after financial/document writes, not before them.
-    assert.ok(
-      createPath.indexOf('failAfterHook(opts, "document")') < createPath.indexOf("ensureEventBookedAt"),
-      "create-path booked_at must stamp after document step",
-    );
+    const body = src.slice(commitStart);
+    assert.doesNotMatch(body, /ensureEventBookedAt/);
+    assert.doesNotMatch(body, /updateInvoiceStatus\(/);
   });
 });
 
