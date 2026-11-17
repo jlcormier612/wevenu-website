@@ -4,6 +4,7 @@ import { describe, it } from "node:test";
 
 import {
   classifyPersonMatch,
+  classifyPersonMatchFromCandidates,
   countedEntityLabel,
   personImportConfirmLabel,
   resolvePersonMatchAction,
@@ -76,6 +77,20 @@ describe("classifyPersonMatch", () => {
     assert.equal(d.kind, "new");
     assert.equal(d.defaultAction, "create_new");
   });
+
+  it("classifies against a list of known people with the same email/name rules", () => {
+    const exact = classifyPersonMatchFromCandidates(
+      { firstName: "Ava", lastName: "Chen", email: "office@venue.test" },
+      [existing],
+    );
+    const likely = classifyPersonMatchFromCandidates(
+      { firstName: "Jordan", lastName: "Lee", email: "office@venue.test" },
+      [existing],
+    );
+    assert.equal(exact.kind, "exact");
+    assert.equal(likely.kind, "likely");
+    assert.equal(likely.defaultAction, "skip");
+  });
 });
 
 describe("resolvePersonMatchAction", () => {
@@ -92,6 +107,7 @@ describe("resolvePersonMatchAction", () => {
       null,
     );
     assert.equal(resolvePersonMatchAction(fresh, "use_existing"), "create_new");
+    assert.equal(resolvePersonMatchAction(fresh, "create_same_person"), "create_new");
   });
 });
 
@@ -107,11 +123,34 @@ describe("summarizePersonImportPlan", () => {
     assert.equal(counts.useExistingCount, 1);
     assert.equal(counts.skipCount, 2);
     assert.equal(counts.attentionCount, 1);
+    assert.equal(counts.heldCount, 0);
     assert.equal(personImportConfirmLabel(counts, "Clients"), "Create 1 new client · use 1 existing · skip 2");
     assert.equal(personImportConfirmLabel({ ...counts, createCount: 2, skipCount: 1 }, "Clients"), "Create 2 new clients · use 1 existing · skip 1");
-    assert.equal(personImportConfirmLabel({ createCount: 1, useExistingCount: 0, skipCount: 0, attentionCount: 0 }, "Leads"), "Create 1 new lead");
-    assert.equal(personImportConfirmLabel({ createCount: 2, useExistingCount: 0, skipCount: 0, attentionCount: 0 }, "Vendors"), "Create 2 new vendors");
+    assert.equal(personImportConfirmLabel({ createCount: 1, useExistingCount: 0, skipCount: 0, attentionCount: 0, heldCount: 0, alreadyImportedCount: 0 }, "Leads"), "Create 1 new lead");
+    assert.equal(personImportConfirmLabel({ createCount: 2, useExistingCount: 0, skipCount: 0, attentionCount: 0, heldCount: 0, alreadyImportedCount: 0 }, "Vendors"), "Create 2 new vendors");
     assert.doesNotMatch(personImportConfirmLabel(counts, "Clients"), /Import 4/);
+  });
+
+  it("counts unresolved review rows as held, not as automatic skips", () => {
+    const counts = summarizePersonImportPlan([
+      { previewSkipped: false, kind: "new", action: "create_new" },
+      { previewSkipped: false, kind: "likely", action: null, needsReview: true },
+      { previewSkipped: false, kind: "exact", action: "skip", alreadyImported: true },
+    ]);
+    assert.equal(counts.createCount, 1);
+    assert.equal(counts.heldCount, 1);
+    assert.equal(counts.alreadyImportedCount, 1);
+    assert.equal(counts.skipCount, 1);
+    assert.match(personImportConfirmLabel(counts, "Leads"), /hold 1 for review/);
+  });
+
+  it("counts a same-person extra inquiry as a create, not as use-existing", () => {
+    const counts = summarizePersonImportPlan([
+      { previewSkipped: false, kind: "new", action: "create_new" },
+      { previewSkipped: false, kind: "exact", action: "create_same_person", needsReview: true },
+    ]);
+    assert.equal(counts.createCount, 2);
+    assert.equal(counts.useExistingCount, 0);
   });
 });
 
@@ -134,7 +173,7 @@ describe("import wizard match review gating", () => {
     assert.match(src, /disabled=\{confirmDisabled\}/);
     assert.match(src, /byb-import-plan/);
     assert.match(src, /byb-match-review/);
-    assert.match(src, /Use existing keeps the person already in Hello to Cheers/);
+    assert.match(src, /Use existing keeps the person already in Hello to Cheers|Possible matches are shown for your decision|We found possible matches/);
     assert.match(src, /data-hydrated=\{pasteReady \? "true" : "false"\}/);
     assert.match(src, /disabled=\{working \|\| !pasteReady\}/);
     assert.match(src, /countedEntityLabel/);

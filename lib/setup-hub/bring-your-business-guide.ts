@@ -58,7 +58,7 @@ export const BRING_YOUR_BUSINESS_GUIDE_STEPS: readonly GuideStepDefinition[] = [
         required: "First name and last name.",
         optional: "Partner, email, phone, preferred date, date flexibility, event type, guest count, source, status, follow-up, notes.",
         template: "A CSV template is available on the Leads import step.",
-        duplicates: "The same person and preferred date is not imported twice. A second inquiry with a different date becomes another Lead on the same relationship.",
+        duplicates: "Possible matches are shown for your decision. Hello to Cheers will not merge or skip similar records unless you confirm. Exact repeats of a record you already imported are left out automatically.",
         afterward: "Review them on Leads. Preferred dates do not book the calendar. Historical imports stay quiet — no automations or outreach.",
         href: "/setup-hub/bring-your-business?stage=leads",
         hrefLabel: "Import leads",

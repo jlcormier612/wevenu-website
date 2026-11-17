@@ -1,0 +1,376 @@
+{
+  "ssVenueId": "e1eb6440-e298-4a1c-b9b8-29d6c81ad8df",
+  "ssVenueName": "Phase B.2 VC SS mwk36vqj",
+  "hqVenueId": "63ee33fc-1036-42aa-9f62-225bcd6cddf0",
+  "hqVenueName": "Phase B.2 VC HQ mwk36vqj",
+  "verdicts": {
+    "ss": "GREEN",
+    "ss-2": "YELLOW",
+    "ss-7": "GREEN",
+    "ss-1": "GREEN",
+    "ss-5": "GREEN",
+    "ss-4": "GREEN",
+    "ss-2b": "GREEN",
+    "ss-3": "GREEN",
+    "ss-3b": "GREEN",
+    "ss-8": "GREEN",
+    "ss-9": "GREEN",
+    "safety": "GREEN",
+    "hq": "GREEN",
+    "hq-2": "YELLOW",
+    "hq-7": "GREEN",
+    "hq-1": "GREEN",
+    "hq-5": "GREEN",
+    "hq-4": "GREEN",
+    "hq-2b": "GREEN",
+    "hq-3": "GREEN",
+    "hq-3b": "GREEN",
+    "hq-8": "GREEN",
+    "hq-9": "GREEN",
+    "parity": "RED"
+  },
+  "checks": [
+    {
+      "category": "ss",
+      "name": "Self-service venue reached Bring Your Business on localhost:3040",
+      "pass": true,
+      "detail": "http://localhost:3040/setup-hub/bring-your-business?stage=leads&entry=files"
+    },
+    {
+      "category": "ss-2",
+      "name": "Both file rows were visible for review",
+      "pass": true,
+      "detail": "Needs a decision\n\nWe found possible matches. Matching names, emails, phones, or dates are clues — not proof. Choose whether this is the same record, a separate inquiry for this person, a separate inquiry for a different person, or something to leave out. Hello to Cheers will not guess.\n\nINCOMING\n\nRiley Prospect\n\nriley.prospect@byb.test\n\nALREADY IN HELLO TO CHEERS\n\nNo match — this will create a new record.\n\nNew person — No matching person in Hello to Cheers.\n\nSame record\nSeparate inquiry for this person\nSeparate inquiry for a different person\nDon't import\n\nSeparate inquiry for a different person\n\nINCOMING\n\nRiley Prospect\n\nriley.prospect@byb.test\n\nMatches row 1 in this file\n\nALSO IN THIS FILE\n\nRiley Prospect & Sam Prospect\n\nriley.prospect@byb.test\n\n555-0101\n\nPreferred date on file: 2027-06-12\n\nPossible exact match — Matched by: Same email, Same couple names. Also matches row 1 in this file. Matching name. Different preferred date — this may be a separate inquiry or an update. Same event type. Hello to Cheers will not decide this for you.\n\nWhy it was flagged: Same email, Same couple names\n\nMatching name\nDifferent preferred date — this may be a separate inquiry or an update\nSame event "
+    },
+    {
+      "category": "ss-2",
+      "name": "Venue confirmed a separate inquiry for the same person and imported both dates",
+      "pass": true,
+      "detail": "2 ready to import\nBack to Setup\n1. Prepare\n2. Leads\n3. Clients\n4. Vendors\n5. Money\n6. Planning\n7. Review\nBring over leads\n\nUpload inquiries who have not booked. Preferred dates, partners, follow-up, and notes stay on the Lead. They do not create a booking or reserve the calendar.\n\nImport complete\n\nFrom Pasted list\n\nImported\n2\n\nRECOMMENDED NEXT STEP\n\nReview imported leads\n\nHistorical imports stay quiet (no automations or outreach). Open Leads to review, then follow up yourself when you're ready.\n\nReview imported l"
+    },
+    {
+      "category": "ss-7",
+      "name": "Reimport of the accepted file was recognized as already imported",
+      "pass": true,
+      "detail": "0 ready to import · 2 already imported\nBack to Setup\n1. Prepare\n2. Leads\n3. Clients\n4. Vendors\n5. Money\n6. Planning\n7. Review\nBring over leads\n\nUpload inquiries who have not booked. Preferred dates, partners, follow-up, and notes stay on the Lead. They do not create a booking or reserve the calendar.\n\nImport complete\n\nFrom Pasted list\n\nImported\n0\nLeft outused an existing person, missing fields, or you chose skip — see below\n2\n2 rows not imported\nDownload CSV\nRow 1 — This inquiry is already in Hello to Cheers. No second Lead was creat"
+    },
+    {
+      "category": "ss-1",
+      "name": "Same person/email/date was flagged and Same record kept existing data",
+      "pass": true,
+      "detail": "0 ready to import · 1 same record\nNeeds a decision\n\nWe found possible matches. Matching names, emails, phones, or dates are clues — not proof. Choose whether this is the same record, a separate inquiry for this person, a separate inquiry for a different person, or something to leave out. Hello to Cheers will not guess.\n\nINCOMING\n\nRiley Prospect\n\nriley.prospect@byb.test\n\nALREADY IN HELLO TO CHEERS\n\nRiley Prospect & Sam Prospect\n\nriley.prospect@byb.test\n\n555-0101\n\nPreferred date on file: 2027-06-12\n\nPossible exact match — Matched by: Same email. Matching name. Same preferred date. Same event type. Hello to Cheers will not decide this for you.\n\nWhy it was flagged: Same email\n\nMatching name\nSame preferred date\nSame event type\n\nDifferences\n\nInquiry notes: incoming Updated notes and budget — do not overwrite · existing Preferred\nBack to Setup\n1. Prepare\n2. Leads\n3. Clients\n4. Vendors\n5. Money\n6. Planning\n7. Review\nBring over leads\n\nUpload inquiries who have not booked. Preferred dates, partners, follow-up, and notes stay on the Lead. They do not create a booking or reserve the calendar.\n\nImport complete\n\nFrom Pasted list\n\nImported\n0\nLeft outused an existing person, missing fields, or you chose skip — see below\n1\n1 row not"
+    },
+    {
+      "category": "ss-5",
+      "name": "Avery source-ID row imported",
+      "pass": true,
+      "detail": "Back to Setup\n1. Prepare\n2. Leads\n3. Clients\n4. Vendors\n5. Money\n6. Planning\n7. Review\nBring over leads\n\nUpload inquiries who have not booked. Preferred dates, partners, follow-up, and notes stay on the Lead. They do not create a booking or reserve the calendar.\n\nImport complete\n\nFrom Pasted list\n\nImported\n1\n\nRECOMMENDED NEXT STEP\n\nReview imported leads\n\nHistorical imports stay quiet (no automatio"
+    },
+    {
+      "category": "ss-5",
+      "name": "Changed source-ID record showed differences and did not auto-create a second Lead",
+      "pass": true,
+      "detail": "0 ready to import · 1 same record\nNeeds a decision\n\nWe found possible matches. Matching names, emails, phones, or dates are clues — not proof. Choose whether this is the same record, a separate inquiry for this person, a separate inquiry for a different person, or something to leave out. Hello to Cheers will not guess.\n\nINCOMING\n\nAvery Source\n\navery.source@byb.test\n\nALREADY IN HELLO TO CHEERS\n\nAvery Source\n\navery.source@byb.test\n\nPreferred date on file: 2027-11-11\n\nPossible exact match — This looks like a record you already imported, and some details have changed. Matched by: Same inquiry text. Matching name. Same preferred date. Hello to Cheers will not decide this for you.\n\nWhy it was flagged: Same inquiry text\n\nMatching name\nSame preferred date\n\nThis looks like a record you already brought in, with updated details. Choo\nBack to Setup\n1. Prepare\n2. Leads\n3. Clients\n4. Vendors\n5. Money\n6. Planning\n7. Review\nBring over leads\n\nUpload inquiries who have not booked. Preferred dates, partners, follow-up, and notes stay on the Lead. They do not create a booking or reserve the calendar.\n\nImport complete\n\nFrom Pasted list\n\nImported\n0\nLeft outused an existing person, missing fields, or you chose skip — see below\n1\n1 row not"
+    },
+    {
+      "category": "ss-4",
+      "name": "Blank-date inquiries were reviewable and kept as more inquiries for this person",
+      "pass": true,
+      "detail": "2 ready to import\nNeeds a decision\n\nWe found possible matches. Matching names, emails, phones, or dates are clues — not proof. Choose whether this is the same record, a separate inquiry for this person, a separate inquiry for a different person, or something to leave out. Hello to Cheers will not guess.\n\nINCOMING\n\nRiley Prospect\n\nriley.prospect@byb.test\n\nALREADY IN HELLO TO CHEERS\n\nRiley Prospect & Sam Prospect\n\nriley.prospect@byb.test\n\n555-0101\n\nPreferred date on file: 2027-06-12\n\nPossible exact match — Matched by: Same email. Matching name. Incoming row has no preferred date. Same event type. Hello to Cheers will not decide this for you.\n\nWhy it was flagged: Same email\n\nMatching name\nIncoming row has no preferred date\nSame event type\n\nDifferences\n\nPhone: incoming — · existing 555-0101\nPreferred date: inco"
+    },
+    {
+      "category": "ss-2b",
+      "name": "A later file Riley inquiry was reviewable as the same person",
+      "pass": true,
+      "detail": "1 ready to import\nNeeds a decision\n\nWe found possible matches. Matching names, emails, phones, or dates are clues — not proof. Choose whether this is the same record, a separate inquiry for this person, a separate inquiry for a different person, or something to leave out. Hello to Cheers will not guess.\n\nINCOMING\n\nRiley Prospect\n\nriley.prospect@byb.test\n\nALREADY IN HELLO TO CHEERS\n\nRiley Prospect & Sam Prospect\n\nriley.prospect@byb.test\n\n555-0101\n\nPreferred date on file: 2027-06-12\n\nPossible exact match — Matched by: Same email, Same couple names. Matching name. Different preferred date — this may be a separate inquiry or an update. Same event type. Hello to Cheers will not decide this for you.\n\nWhy it was flagged: Same email, Same couple names\n\nMatching name\nDifferent preferred date — this may be a separate"
+    },
+    {
+      "category": "ss-2b",
+      "name": "Venue confirmed the later-file Riley inquiry for this person",
+      "pass": true,
+      "detail": "Back to Setup\n1. Prepare\n2. Leads\n3. Clients\n4. Vendors\n5. Money\n6. Planning\n7. Review\nBring over leads\n\nUpload inquiries who have not booked. Preferred dates, partners, follow-up, and notes stay on the Lead. They do not create a booking or reserve the calendar.\n\nImport complete\n\nFrom Pasted list\n\nImported\n1\n\nRECOMMENDED NEXT STEP\n\nReview imported leads\n\nHistorical imports stay quiet (no automations or outreach). Open Leads to review, then follow up yourself when you're ready.\n\nReview imported l"
+    },
+    {
+      "category": "ss-3",
+      "name": "Same email different names was warned, not auto-merged",
+      "pass": true,
+      "detail": "Needs a decision\n\nWe found possible matches. Matching names, emails, phones, or dates are clues — not proof. Choose whether this is the same record, a separate inquiry for this person, a separate inquiry for a different person, or something to leave out. Hello to Cheers will not guess.\n\nINCOMING\n\nOther Office\n\nriley.prospect@byb.test\n\nALREADY IN HELLO TO CHEERS\n\nRiley Prospect & Sam Prospect\n\nriley.prospect@byb.test\n\n555-0101\n\nPreferred date on file: 2027-06-12\n\nPossible match — Matched by: Same email. Different preferred date — this may be a separate inquiry or an update. Hello to Cheers will not decide this for you.\n\nWhy it was flagged: Same email\n\nDifferent preferred date — this may be a separate inquiry or an update\n\nDifferences\n\nName: incoming Other Office · existing Riley Prospect\nPh"
+    },
+    {
+      "category": "ss-3b",
+      "name": "Venue chose a different person for the shared-email office inquiry",
+      "pass": true,
+      "detail": "1 ready to import\nBack to Setup\n1. Prepare\n2. Leads\n3. Clients\n4. Vendors\n5. Money\n6. Planning\n7. Review\nBring over leads\n\nUpload inquiries who have not booked. Preferred dates, partners, follow-up, and notes stay on the Lead. They do not create a booking or reserve the calendar.\n\nImport complete\n\nFrom Pasted list\n\nImported\n1\n\nRECOMMENDED NEXT STEP\n\nReview imported leads\n\nHistorical imports stay quiet (no automations or outreach). Open Leads to review, then follow up yourself when you're ready.\n\nReview imported l"
+    },
+    {
+      "category": "ss-8",
+      "name": "Morgan booked Client imported",
+      "pass": true,
+      "detail": "Back to Setup\n1. Prepare\n2. Leads\n3. Clients\n4. Vendors\n5. Money\n6. Planning\n7. Review\nBring over clients and their events\n\nImport booked customers together with their events. Upcoming bookings follow your calendar. Past events stay Clients. A preferred date without a booking belongs on Leads.\n\nImport complete\n\nFrom Pasted list\n\nImported\n1\n\nRECOMMENDED NEXT STEP\n\nOpen All Bookings\n\nUpcoming booked"
+    },
+    {
+      "category": "ss-8",
+      "name": "New unbooked Morgan inquiry imported as another inquiry for this person",
+      "pass": true,
+      "detail": "1 ready to import\nBack to Setup\n1. Prepare\n2. Leads\n3. Clients\n4. Vendors\n5. Money\n6. Planning\n7. Review\nBring over leads\n\nUpload inquiries who have not booked. Preferred dates, partners, follow-up, and notes stay on the Lead. They do not create a booking or reserve the calendar.\n\nImport complete\n\nFrom Pasted list\n\nImported\n1\n\nRECOMMENDED NEXT STEP\n\nReview imported leads\n\nHistorical imports stay quiet (no automatio"
+    },
+    {
+      "category": "ss-9",
+      "name": "Unresolved potential match stayed held while the unambiguous row imported",
+      "pass": true,
+      "detail": "1 ready to import · 1 need review\n1 row still needs your decision. Ready rows can still be imported; unresolved rows stay held.\nBack to Setup\n1. Prepare\n2. Leads\n3. Clients\n4. Vendors\n5. Money\n6. Planning\n7. Review\nBring over leads\n\nUpload inquiries who have not booked. Preferred dates, partners, follow-up, and notes stay on the Lead. They do not create a booking or reserve the calendar.\n\nImport complete\n\nFrom Pasted list\n\nImported\n1\nLeft outused an existing person, missing fields, or you chose skip — see below\n1\n1 row not imported\nDownload CSV\nRow 1 — Held for your decision — this row was not imported.\n\nRECOMMENDED NEXT"
+    },
+    {
+      "category": "ss-2",
+      "name": "Persisted distinct Riley inquiries for 2027-06-12 and 2028-05-03",
+      "pass": true,
+      "detail": "[{\"id\":\"c1bc4d99-33b0-4e9e-812a-8e45b4cfe4e4\",\"date\":\"2027-06-12\",\"rel\":\"f28380a0-8b5c-41c4-924b-e4a113c4de9f\",\"stage\":\"new_inquiry\",\"notes\":\"Preferred June date — not booked\"},{\"id\":\"4254420f-1425-4594-9fa7-a72bad4784d6\",\"date\":\"2029-04-18\",\"rel\":\"f28380a0-8b5c-41c4-924b-e4a113c4de9f\",\"stage\":\"new_inquiry\",\"notes\":\"Third inquiry from a later file\"},{\"id\":\"33d42370-8fc0-43ed-a0f6-ae0898088cbb\",\"date\":\"2028-05-03\",\"rel\":\"f28380a0-8b5c-41c4-924b-e4a113c4de9f\",\"stage\":\"new_inquiry\",\"notes\":\"Second inquiry different date\"},{\"id\":\"96b101ee-bccb-44c7-be35-4ae38365e9b6\",\"date\":\"2027-08-01\",\"rel\":\"e5e88ccf-4925-4a17-ba59-c7b337096bde\",\"stage\":\"new_inquiry\",\"notes\":null},{\"id\":\"b653ec9a-3500-43d0-bbe7-a83424042854\",\"date\":null,\"rel\":\"f28380a0-8b5c-41c4-924b-e4a113c4de9f\",\"stage\":\"new_inquiry\",\"notes\":\"Bridal show follow-up — no date yet\"},{\"id\":\"def13426-6560-4bbb-9baf-a5d3f0bd3a10\",\"date\":null,\"rel\":\"f28380a0-8b5c-41c4-924b-e4a113c4de9f\",\"stage\":\"new_inquiry\",\"notes\":\"Weekday phone call — no date yet\"}]"
+    },
+    {
+      "category": "ss-2",
+      "name": "Same-file Riley dates share one person relationship",
+      "pass": false,
+      "detail": "{\"rileyRels\":[\"f28380a0-8b5c-41c4-924b-e4a113c4de9f\",\"e5e88ccf-4925-4a17-ba59-c7b337096bde\"],\"riley\":[{\"id\":\"c1bc4d99-33b0-4e9e-812a-8e45b4cfe4e4\",\"date\":\"2027-06-12\",\"rel\":\"f28380a0-8b5c-41c4-924b-e4a113c4de9f\"},{\"id\":\"4254420f-1425-4594-9fa7-a72bad4784d6\",\"date\":\"2029-04-18\",\"rel\":\"f28380a0-8b5c-41c4-924b-e4a113c4de9f\"},{\"id\":\"33d42370-8fc0-43ed-a0f6-ae0898088cbb\",\"date\":\"2028-05-03\",\"rel\":\"f28380a0-8b5c-41c4-924b-e4a113c4de9f\"},{\"id\":\"96b101ee-bccb-44c7-be35-4ae38365e9b6\",\"date\":\"2027-08-01\",\"rel\":\"e5e88ccf-4925-4a17-ba59-c7b337096bde\"},{\"id\":\"b653ec9a-3500-43d0-bbe7-a83424042854\",\"date\":null,\"rel\":\"f28380a0-8b5c-41c4-924b-e4a113c4de9f\"},{\"id\":\"def13426-6560-4bbb-9baf-a5d3f0bd3a10\",\"date\":null,\"rel\":\"f28380a0-8b5c-41c4-924b-e4a113c4de9f\"}]}"
+    },
+    {
+      "category": "ss-2b",
+      "name": "Later-file Riley inquiry reused that same relationship",
+      "pass": true,
+      "detail": "[{\"id\":\"4254420f-1425-4594-9fa7-a72bad4784d6\",\"date\":\"2029-04-18\",\"rel\":\"f28380a0-8b5c-41c4-924b-e4a113c4de9f\"}]"
+    },
+    {
+      "category": "ss-7",
+      "name": "Riley dated inquiries were not duplicated on reimport",
+      "pass": true,
+      "detail": "[\"\",\"\",\"2027-06-12\",\"2027-08-01\",\"2028-05-03\",\"2029-04-18\"]"
+    },
+    {
+      "category": "ss-1",
+      "name": "Updated June notes/budget did not overwrite the existing Lead",
+      "pass": true,
+      "detail": "Preferred June date — not booked"
+    },
+    {
+      "category": "ss-5",
+      "name": "Avery remains one Lead with original budget/notes and source record ID",
+      "pass": true,
+      "detail": "{\"avery\":[{\"id\":\"f563198e-50ea-44a2-ac70-1dcb73b2a3e5\",\"first_name\":\"Avery\",\"last_name\":\"Source\",\"email\":\"avery.source@byb.test\",\"partner_first_name\":null,\"partner_last_name\":null,\"event_date\":\"2027-11-11\",\"event_type\":null,\"guest_count\":null,\"estimated_budget\":18000,\"source\":\"other\",\"sales_stage\":\"new_inquiry\",\"follow_up_date\":null,\"next_action_text\":null,\"inquiry_message\":\"Original Avery inquiry\",\"source_data\":{\"source_record_id\":\"SRC-AVERY-1\",\"import_fingerprint\":\"rid:src-avery-1::n:avery|source|avery.source@byb.test|::p:||::d:2027-11-11||other::m:original avery inquiry::x:|18000||||\"},\"venue_id\":\"e1eb6440-e298-4a1c-b9b8-29d6c81ad8df\",\"relationship_id\":\"1f4e2771-0b0c-4beb-8969-993f6e2992c5\",\"is_historical_import\":true}],\"source\":{\"source_record_id\":\"SRC-AVERY-1\",\"import_fingerprint\":\"rid:src-avery-1::n:avery|source|avery.source@byb.test|::p:||::d:2027-11-11||other::m:original avery inquiry::x:|18000||||\"}}"
+    },
+    {
+      "category": "ss-4",
+      "name": "Distinguishable blank-date Riley inquiries persisted on the same person",
+      "pass": true,
+      "detail": "[{\"id\":\"b653ec9a-3500-43d0-bbe7-a83424042854\",\"source\":\"the_knot\",\"notes\":\"Bridal show follow-up — no date yet\",\"rel\":\"f28380a0-8b5c-41c4-924b-e4a113c4de9f\"},{\"id\":\"def13426-6560-4bbb-9baf-a5d3f0bd3a10\",\"source\":\"website\",\"notes\":\"Weekday phone call — no date yet\",\"rel\":\"f28380a0-8b5c-41c4-924b-e4a113c4de9f\"}]"
+    },
+    {
+      "category": "ss-3",
+      "name": "Other Office was created as a different person on a separate relationship",
+      "pass": true,
+      "detail": "[{\"id\":\"96b101ee-bccb-44c7-be35-4ae38365e9b6\",\"name\":\"Other Office\",\"rel\":\"e5e88ccf-4925-4a17-ba59-c7b337096bde\",\"email\":\"riley.prospect@byb.test\"}]"
+    },
+    {
+      "category": "ss-9",
+      "name": "Casey imported while the unresolved Riley row stayed out",
+      "pass": true,
+      "detail": "[{\"id\":\"c512816d-65ba-4a61-b104-09e534870b78\",\"date\":\"2027-12-12\"}]"
+    },
+    {
+      "category": "ss-8",
+      "name": "Morgan booking unchanged as a single Event",
+      "pass": true,
+      "detail": "{\"clients\":[{\"id\":\"30aec1bf-4009-4725-a8b5-32246f943021\",\"first_name\":\"Morgan\",\"last_name\":\"Booked\",\"email\":\"morgan.booked@byb.test\",\"event_date\":\"2027-09-12\",\"status\":\"confirmed\",\"venue_id\":\"e1eb6440-e298-4a1c-b9b8-29d6c81ad8df\",\"relationship_id\":\"3f4f18f8-6c6d-4a2f-b9c5-e29591be17cd\"}],\"events\":[{\"id\":\"492b385b-6bf7-49cd-8821-2807354ec4f3\",\"client_id\":\"30aec1bf-4009-4725-a8b5-32246f943021\",\"name\":\"Morgan Booked — Wedding\",\"status\":\"confirmed\",\"event_date\":\"2027-09-12\",\"booked_at\":\"2026-11-16\",\"space_id\":\"86668a98-c04c-4547-95be-8601814cd44e\",\"venue_id\":\"e1eb6440-e298-4a1c-b9b8-29d6c81ad8df\"}]}"
+    },
+    {
+      "category": "ss-8",
+      "name": "Morgan unbooked inquiry persisted as a Lead on the booked client's relationship",
+      "pass": true,
+      "detail": "{\"clientRel\":\"3f4f18f8-6c6d-4a2f-b9c5-e29591be17cd\",\"events\":[{\"id\":\"492b385b-6bf7-49cd-8821-2807354ec4f3\",\"client_id\":\"30aec1bf-4009-4725-a8b5-32246f943021\",\"name\":\"Morgan Booked — Wedding\",\"status\":\"confirmed\",\"event_date\":\"2027-09-12\",\"booked_at\":\"2026-11-16\",\"space_id\":\"86668a98-c04c-4547-95be-8601814cd44e\",\"venue_id\":\"e1eb6440-e298-4a1c-b9b8-29d6c81ad8df\"}],\"leads\":[{\"id\":\"c3af5783-36d8-45f2-be88-f116eeadb012\",\"date\":\"2027-09-12\",\"stage\":\"booked\",\"rel\":\"3f4f18f8-6c6d-4a2f-b9c5-e29591be17cd\"},{\"id\":\"bb484435-c6de-4a9e-a1d0-c11718abcb0d\",\"date\":\"2028-02-02\",\"stage\":\"new_inquiry\",\"rel\":\"3f4f18f8-6c6d-4a2f-b9c5-e29591be17cd\"}]}"
+    },
+    {
+      "category": "safety",
+      "name": "Self-service venue isolated",
+      "pass": true,
+      "detail": "e1eb6440-e298-4a1c-b9b8-29d6c81ad8df"
+    },
+    {
+      "category": "safety",
+      "name": "No QBO / invites / contracts / payments / messages on self-service",
+      "pass": true,
+      "detail": "{\"qbo\":[],\"invites\":[]}"
+    },
+    {
+      "category": "hq",
+      "name": "HQ admin reached White-Glove onboarding import",
+      "pass": true,
+      "detail": "http://localhost:3040/admin/onboarding/63ee33fc-1036-42aa-9f62-225bcd6cddf0"
+    },
+    {
+      "category": "hq-2",
+      "name": "Both file rows were visible for review",
+      "pass": true,
+      "detail": "Needs a decision\n\nWe found possible matches. Matching names, emails, phones, or dates are clues — not proof. Choose whether this is the same record, a separate inquiry for this person, a separate inquiry for a different person, or something to leave out. Hello to Cheers will not guess.\n\nINCOMING\n\nRiley Prospect\n\nriley.prospect@byb.test\n\nALREADY IN HELLO TO CHEERS\n\nNo match — this will create a new record.\n\nNew person — No matching person in Hello to Cheers.\n\nSame record\nSeparate inquiry for this person\nSeparate inquiry for a different person\nDon't import\n\nSeparate inquiry for a different person\n\nINCOMING\n\nRiley Prospect\n\nriley.prospect@byb.test\n\nMatches row 1 in this file\n\nALSO IN THIS FILE\n\nRiley Prospect & Sam Prospect\n\nriley.prospect@byb.test\n\n555-0101\n\nPreferred date on file: 2027-06-12\n\nPossible exact match — Matched by: Same email, Same couple names. Also matches row 1 in this file. Matching name. Different preferred date — this may be a separate inquiry or an update. Same event type. Hello to Cheers will not decide this for you.\n\nWhy it was flagged: Same email, Same couple names\n\nMatching name\nDifferent preferred date — this may be a separate inquiry or an update\nSame event "
+    },
+    {
+      "category": "hq-2",
+      "name": "Venue confirmed a separate inquiry for the same person and imported both dates",
+      "pass": true,
+      "detail": "2 ready to import\n← Customer Success\nPhase B.2 VC HQ mwk36vqj\nNot Started\n\nUnassigned\n\nStart Onboarding\nAssign to me (jennifer+byb.vchqa.mwk36vqj@hellotocheers.com)\nSave\nWhite Glove — Phase B.2 VC HQ mwk36vqj\n\nProduct HQ is the source of truth for setup progress and customer access. CRM checklist tasks track engagement only — they do not grant access.\n\nStatus: unknown · Work on the real venue Setup Hub and migration tools below.\n\nIntake not submitted yet.\n\nNo materials uploaded.\n\nSetup Hub status\n\nVenue informati"
+    },
+    {
+      "category": "hq-7",
+      "name": "Reimport of the accepted file was recognized as already imported",
+      "pass": true,
+      "detail": "0 ready to import · 2 already imported\n← Customer Success\nPhase B.2 VC HQ mwk36vqj\nNot Started\n\nUnassigned\n\nStart Onboarding\nAssign to me (jennifer+byb.vchqa.mwk36vqj@hellotocheers.com)\nSave\nWhite Glove — Phase B.2 VC HQ mwk36vqj\n\nProduct HQ is the source of truth for setup progress and customer access. CRM checklist tasks track engagement only — they do not grant access.\n\nStatus: unknown · Work on the real venue Setup Hub and migration tools below.\n\nIntake not submitted yet.\n\nNo materials uploaded.\n\nSetup Hub status\n\nVenue informati"
+    },
+    {
+      "category": "hq-1",
+      "name": "Same person/email/date was flagged and Same record kept existing data",
+      "pass": true,
+      "detail": "0 ready to import · 1 same record\nNeeds a decision\n\nWe found possible matches. Matching names, emails, phones, or dates are clues — not proof. Choose whether this is the same record, a separate inquiry for this person, a separate inquiry for a different person, or something to leave out. Hello to Cheers will not guess.\n\nINCOMING\n\nRiley Prospect\n\nriley.prospect@byb.test\n\nALREADY IN HELLO TO CHEERS\n\nRiley Prospect & Sam Prospect\n\nriley.prospect@byb.test\n\n555-0101\n\nPreferred date on file: 2027-06-12\n\nPossible exact match — Matched by: Same email. Matching name. Same preferred date. Same event type. Hello to Cheers will not decide this for you.\n\nWhy it was flagged: Same email\n\nMatching name\nSame preferred date\nSame event type\n\nDifferences\n\nInquiry notes: incoming Updated notes and budget — do not overwrite · existing Preferred\n← Customer Success\nPhase B.2 VC HQ mwk36vqj\nNot Started\n\nUnassigned\n\nStart Onboarding\nAssign to me (jennifer+byb.vchqa.mwk36vqj@hellotocheers.com)\nSave\nWhite Glove — Phase B.2 VC HQ mwk36vqj\n\nProduct HQ is the source of truth for setup progress and customer access. CRM checklist tasks track engagement only — they do not grant access.\n\nStatus: unknown · Work on the real venue Setup Hub and migratio"
+    },
+    {
+      "category": "hq-5",
+      "name": "Avery source-ID row imported",
+      "pass": true,
+      "detail": "← Customer Success\nPhase B.2 VC HQ mwk36vqj\nNot Started\n\nUnassigned\n\nStart Onboarding\nAssign to me (jennifer+byb.vchqa.mwk36vqj@hellotocheers.com)\nSave\nWhite Glove — Phase B.2 VC HQ mwk36vqj\n\nProduct HQ is the source of truth for setup progress and customer access. CRM checklist tasks track engagement only — they do not grant access.\n\nStatus: unknown · Work on the real venue Setup Hub and migratio"
+    },
+    {
+      "category": "hq-5",
+      "name": "Changed source-ID record showed differences and did not auto-create a second Lead",
+      "pass": true,
+      "detail": "0 ready to import · 1 same record\nNeeds a decision\n\nWe found possible matches. Matching names, emails, phones, or dates are clues — not proof. Choose whether this is the same record, a separate inquiry for this person, a separate inquiry for a different person, or something to leave out. Hello to Cheers will not guess.\n\nINCOMING\n\nAvery Source\n\navery.source@byb.test\n\nALREADY IN HELLO TO CHEERS\n\nAvery Source\n\navery.source@byb.test\n\nPreferred date on file: 2027-11-11\n\nPossible exact match — This looks like a record you already imported, and some details have changed. Matched by: Same inquiry text. Matching name. Same preferred date. Hello to Cheers will not decide this for you.\n\nWhy it was flagged: Same inquiry text\n\nMatching name\nSame preferred date\n\nThis looks like a record you already brought in, with updated details. Choo\n← Customer Success\nPhase B.2 VC HQ mwk36vqj\nNot Started\n\nUnassigned\n\nStart Onboarding\nAssign to me (jennifer+byb.vchqa.mwk36vqj@hellotocheers.com)\nSave\nWhite Glove — Phase B.2 VC HQ mwk36vqj\n\nProduct HQ is the source of truth for setup progress and customer access. CRM checklist tasks track engagement only — they do not grant access.\n\nStatus: unknown · Work on the real venue Setup Hub and migratio"
+    },
+    {
+      "category": "hq-4",
+      "name": "Blank-date inquiries were reviewable and kept as more inquiries for this person",
+      "pass": true,
+      "detail": "2 ready to import\nNeeds a decision\n\nWe found possible matches. Matching names, emails, phones, or dates are clues — not proof. Choose whether this is the same record, a separate inquiry for this person, a separate inquiry for a different person, or something to leave out. Hello to Cheers will not guess.\n\nINCOMING\n\nRiley Prospect\n\nriley.prospect@byb.test\n\nALREADY IN HELLO TO CHEERS\n\nRiley Prospect & Sam Prospect\n\nriley.prospect@byb.test\n\n555-0101\n\nPreferred date on file: 2027-06-12\n\nPossible exact match — Matched by: Same email. Matching name. Incoming row has no preferred date. Same event type. Hello to Cheers will not decide this for you.\n\nWhy it was flagged: Same email\n\nMatching name\nIncoming row has no preferred date\nSame event type\n\nDifferences\n\nPhone: incoming — · existing 555-0101\nPreferred date: inco"
+    },
+    {
+      "category": "hq-2b",
+      "name": "A later file Riley inquiry was reviewable as the same person",
+      "pass": true,
+      "detail": "1 ready to import\nNeeds a decision\n\nWe found possible matches. Matching names, emails, phones, or dates are clues — not proof. Choose whether this is the same record, a separate inquiry for this person, a separate inquiry for a different person, or something to leave out. Hello to Cheers will not guess.\n\nINCOMING\n\nRiley Prospect\n\nriley.prospect@byb.test\n\nALREADY IN HELLO TO CHEERS\n\nRiley Prospect & Sam Prospect\n\nriley.prospect@byb.test\n\n555-0101\n\nPreferred date on file: 2027-06-12\n\nPossible exact match — Matched by: Same email, Same couple names. Matching name. Different preferred date — this may be a separate inquiry or an update. Same event type. Hello to Cheers will not decide this for you.\n\nWhy it was flagged: Same email, Same couple names\n\nMatching name\nDifferent preferred date — this may be a separate"
+    },
+    {
+      "category": "hq-2b",
+      "name": "Venue confirmed the later-file Riley inquiry for this person",
+      "pass": true,
+      "detail": "← Customer Success\nPhase B.2 VC HQ mwk36vqj\nNot Started\n\nUnassigned\n\nStart Onboarding\nAssign to me (jennifer+byb.vchqa.mwk36vqj@hellotocheers.com)\nSave\nWhite Glove — Phase B.2 VC HQ mwk36vqj\n\nProduct HQ is the source of truth for setup progress and customer access. CRM checklist tasks track engagement only — they do not grant access.\n\nStatus: unknown · Work on the real venue Setup Hub and migration tools below.\n\nIntake not submitted yet.\n\nNo materials uploaded.\n\nSetup Hub status\n\nVenue informati"
+    },
+    {
+      "category": "hq-3",
+      "name": "Same email different names was warned, not auto-merged",
+      "pass": true,
+      "detail": "Needs a decision\n\nWe found possible matches. Matching names, emails, phones, or dates are clues — not proof. Choose whether this is the same record, a separate inquiry for this person, a separate inquiry for a different person, or something to leave out. Hello to Cheers will not guess.\n\nINCOMING\n\nOther Office\n\nriley.prospect@byb.test\n\nALREADY IN HELLO TO CHEERS\n\nRiley Prospect & Sam Prospect\n\nriley.prospect@byb.test\n\n555-0101\n\nPreferred date on file: 2027-06-12\n\nPossible match — Matched by: Same email. Different preferred date — this may be a separate inquiry or an update. Hello to Cheers will not decide this for you.\n\nWhy it was flagged: Same email\n\nDifferent preferred date — this may be a separate inquiry or an update\n\nDifferences\n\nName: incoming Other Office · existing Riley Prospect\nPh"
+    },
+    {
+      "category": "hq-3b",
+      "name": "Venue chose a different person for the shared-email office inquiry",
+      "pass": true,
+      "detail": "1 ready to import\n← Customer Success\nPhase B.2 VC HQ mwk36vqj\nNot Started\n\nUnassigned\n\nStart Onboarding\nAssign to me (jennifer+byb.vchqa.mwk36vqj@hellotocheers.com)\nSave\nWhite Glove — Phase B.2 VC HQ mwk36vqj\n\nProduct HQ is the source of truth for setup progress and customer access. CRM checklist tasks track engagement only — they do not grant access.\n\nStatus: unknown · Work on the real venue Setup Hub and migration tools below.\n\nIntake not submitted yet.\n\nNo materials uploaded.\n\nSetup Hub status\n\nVenue informati"
+    },
+    {
+      "category": "hq-8",
+      "name": "Morgan booked Client imported",
+      "pass": true,
+      "detail": "← Customer Success\nPhase B.2 VC HQ mwk36vqj\nNot Started\n\nUnassigned\n\nStart Onboarding\nAssign to me (jennifer+byb.vchqa.mwk36vqj@hellotocheers.com)\nSave\nWhite Glove — Phase B.2 VC HQ mwk36vqj\n\nProduct HQ is the source of truth for setup progress and customer access. CRM checklist tasks track engagement only — they do not grant access.\n\nStatus: unknown · Work on the real venue Setup Hub and migratio"
+    },
+    {
+      "category": "hq-8",
+      "name": "New unbooked Morgan inquiry imported as another inquiry for this person",
+      "pass": true,
+      "detail": "1 ready to import\n← Customer Success\nPhase B.2 VC HQ mwk36vqj\nNot Started\n\nUnassigned\n\nStart Onboarding\nAssign to me (jennifer+byb.vchqa.mwk36vqj@hellotocheers.com)\nSave\nWhite Glove — Phase B.2 VC HQ mwk36vqj\n\nProduct HQ is the source of truth for setup progress and customer access. CRM checklist tasks track engagement only — they do not grant access.\n\nStatus: unknown · Work on the real venue Setup Hub and migratio"
+    },
+    {
+      "category": "hq-9",
+      "name": "Unresolved potential match stayed held while the unambiguous row imported",
+      "pass": true,
+      "detail": "1 ready to import · 1 need review\n1 row still needs your decision. Ready rows can still be imported; unresolved rows stay held.\n← Customer Success\nPhase B.2 VC HQ mwk36vqj\nNot Started\n\nUnassigned\n\nStart Onboarding\nAssign to me (jennifer+byb.vchqa.mwk36vqj@hellotocheers.com)\nSave\nWhite Glove — Phase B.2 VC HQ mwk36vqj\n\nProduct HQ is the source of truth for setup progress and customer access. CRM checklist tasks track engagement only — they do not grant access.\n\nStatus: unknown · Work on the real venue Setup Hub and migration tools below.\n\nIntake not submitted yet.\n\nNo materials uploaded.\n\nSetup Hub status\n\nVenue informati"
+    },
+    {
+      "category": "hq-2",
+      "name": "HQ persisted distinct Riley inquiries for both dates",
+      "pass": true,
+      "detail": "[{\"id\":\"abe68a58-f7e2-4080-ad15-363843bfd926\",\"date\":\"2027-06-12\",\"rel\":\"672e14e2-96e1-4930-986a-3e23212e6826\",\"notes\":\"Preferred June date — not booked\"},{\"id\":\"07e8036b-ca0c-40fd-9c57-a1a01624d55b\",\"date\":\"2027-08-01\",\"rel\":\"b5ae8f59-1d82-44c0-82b2-0d57ebd55cef\",\"notes\":null},{\"id\":\"b97aed08-5788-4fc6-95b7-e19fe3951840\",\"date\":\"2028-05-03\",\"rel\":\"672e14e2-96e1-4930-986a-3e23212e6826\",\"notes\":\"Second inquiry different date\"},{\"id\":\"fef30fb4-826d-4477-bec9-b6fdf97ffed3\",\"date\":null,\"rel\":\"672e14e2-96e1-4930-986a-3e23212e6826\",\"notes\":\"Bridal show follow-up — no date yet\"},{\"id\":\"6191f713-1e97-4117-b218-517f4c04852c\",\"date\":null,\"rel\":\"672e14e2-96e1-4930-986a-3e23212e6826\",\"notes\":\"Weekday phone call — no date yet\"},{\"id\":\"ff313da5-f277-45e4-b0f6-ba7d2c1cc53a\",\"date\":\"2029-04-18\",\"rel\":\"672e14e2-96e1-4930-986a-3e23212e6826\",\"notes\":\"Third inquiry from a later file\"}]"
+    },
+    {
+      "category": "hq-2",
+      "name": "HQ same-file Riley dates share one person relationship",
+      "pass": false,
+      "detail": "{\"hqRileyRels\":[\"672e14e2-96e1-4930-986a-3e23212e6826\",\"b5ae8f59-1d82-44c0-82b2-0d57ebd55cef\"],\"hqRiley\":[{\"id\":\"abe68a58-f7e2-4080-ad15-363843bfd926\",\"date\":\"2027-06-12\",\"rel\":\"672e14e2-96e1-4930-986a-3e23212e6826\"},{\"id\":\"07e8036b-ca0c-40fd-9c57-a1a01624d55b\",\"date\":\"2027-08-01\",\"rel\":\"b5ae8f59-1d82-44c0-82b2-0d57ebd55cef\"},{\"id\":\"b97aed08-5788-4fc6-95b7-e19fe3951840\",\"date\":\"2028-05-03\",\"rel\":\"672e14e2-96e1-4930-986a-3e23212e6826\"},{\"id\":\"fef30fb4-826d-4477-bec9-b6fdf97ffed3\",\"date\":null,\"rel\":\"672e14e2-96e1-4930-986a-3e23212e6826\"},{\"id\":\"6191f713-1e97-4117-b218-517f4c04852c\",\"date\":null,\"rel\":\"672e14e2-96e1-4930-986a-3e23212e6826\"},{\"id\":\"ff313da5-f277-45e4-b0f6-ba7d2c1cc53a\",\"date\":\"2029-04-18\",\"rel\":\"672e14e2-96e1-4930-986a-3e23212e6826\"}]}"
+    },
+    {
+      "category": "hq-2b",
+      "name": "HQ later-file Riley inquiry reused that same relationship",
+      "pass": true,
+      "detail": "[{\"id\":\"ff313da5-f277-45e4-b0f6-ba7d2c1cc53a\",\"date\":\"2029-04-18\",\"rel\":\"672e14e2-96e1-4930-986a-3e23212e6826\"}]"
+    },
+    {
+      "category": "hq-7",
+      "name": "HQ retry did not duplicate dated Riley inquiries",
+      "pass": true,
+      "detail": "[\"\",\"\",\"2027-06-12\",\"2027-08-01\",\"2028-05-03\",\"2029-04-18\"]"
+    },
+    {
+      "category": "hq-1",
+      "name": "HQ Same record did not overwrite June notes",
+      "pass": true,
+      "detail": "Preferred June date — not booked"
+    },
+    {
+      "category": "hq-5",
+      "name": "HQ Avery remains one Lead with original budget and source ID",
+      "pass": true,
+      "detail": "{\"hqAvery\":[{\"id\":\"b0481446-447b-4f53-b307-bc51bb33de87\",\"first_name\":\"Avery\",\"last_name\":\"Source\",\"email\":\"avery.source@byb.test\",\"partner_first_name\":null,\"partner_last_name\":null,\"event_date\":\"2027-11-11\",\"event_type\":null,\"guest_count\":null,\"estimated_budget\":18000,\"source\":\"other\",\"sales_stage\":\"new_inquiry\",\"follow_up_date\":null,\"next_action_text\":null,\"inquiry_message\":\"Original Avery inquiry\",\"source_data\":{\"source_record_id\":\"SRC-AVERY-1\",\"import_fingerprint\":\"rid:src-avery-1::n:avery|source|avery.source@byb.test|::p:||::d:2027-11-11||other::m:original avery inquiry::x:|18000||||\"},\"venue_id\":\"63ee33fc-1036-42aa-9f62-225bcd6cddf0\",\"relationship_id\":\"e7bc2665-67a2-44fb-89b7-04ef1c952bff\",\"is_historical_import\":true}],\"source\":{\"source_record_id\":\"SRC-AVERY-1\",\"import_fingerprint\":\"rid:src-avery-1::n:avery|source|avery.source@byb.test|::p:||::d:2027-11-11||other::m:original avery inquiry::x:|18000||||\"}}"
+    },
+    {
+      "category": "hq-4",
+      "name": "HQ persisted two distinguishable blank-date Riley inquiries on the same person",
+      "pass": true,
+      "detail": "[{\"id\":\"fef30fb4-826d-4477-bec9-b6fdf97ffed3\",\"source\":\"the_knot\",\"notes\":\"Bridal show follow-up — no date yet\",\"rel\":\"672e14e2-96e1-4930-986a-3e23212e6826\"},{\"id\":\"6191f713-1e97-4117-b218-517f4c04852c\",\"source\":\"website\",\"notes\":\"Weekday phone call — no date yet\",\"rel\":\"672e14e2-96e1-4930-986a-3e23212e6826\"}]"
+    },
+    {
+      "category": "hq-3",
+      "name": "HQ created Other Office as a different person on a separate relationship",
+      "pass": true,
+      "detail": "[{\"id\":\"07e8036b-ca0c-40fd-9c57-a1a01624d55b\",\"rel\":\"b5ae8f59-1d82-44c0-82b2-0d57ebd55cef\",\"email\":\"riley.prospect@byb.test\"}]"
+    },
+    {
+      "category": "hq-9",
+      "name": "HQ Casey imported while unresolved Riley stayed out",
+      "pass": true,
+      "detail": "[{\"id\":\"93bd060d-9e0e-4bb8-8532-fa95416c7eed\",\"first_name\":\"Casey\",\"last_name\":\"Clear\",\"email\":\"casey.clear@byb.test\",\"partner_first_name\":null,\"partner_last_name\":null,\"event_date\":\"2027-12-12\",\"event_type\":null,\"guest_count\":null,\"estimated_budget\":null,\"source\":\"other\",\"sales_stage\":\"new_inquiry\",\"follow_up_date\":null,\"next_action_text\":null,\"inquiry_message\":\"Unambiguous new inquiry\",\"source_data\":{\"import_fingerprint\":\"rid:::n:casey|clear|casey.clear@byb.test|::p:||::d:2027-12-12||other::m:unambiguous new inquiry::x:|||||\"},\"venue_id\":\"63ee33fc-1036-42aa-9f62-225bcd6cddf0\",\"relationship_id\":\"d6e87dc3-8681-4300-bb46-570568551067\",\"is_historical_import\":true}]"
+    },
+    {
+      "category": "hq-8",
+      "name": "HQ Morgan booking unchanged and inquiry is an unbooked Lead on that client relationship",
+      "pass": true,
+      "detail": "{\"clientRel\":\"27a1e622-3dd3-44b6-becc-9c0abf8149c5\",\"events\":[{\"id\":\"4043d1d1-9502-48d0-823f-37a25eb7a69d\",\"client_id\":\"1e236f2c-c18b-4f29-9358-6586c6a66afe\",\"name\":\"Morgan Booked — Wedding\",\"status\":\"confirmed\",\"event_date\":\"2027-09-12\",\"booked_at\":\"2026-11-16\",\"space_id\":\"1ca1613d-2948-4c41-8c9e-08b3a83ca27d\",\"venue_id\":\"63ee33fc-1036-42aa-9f62-225bcd6cddf0\"}],\"leads\":[{\"id\":\"ffa3a146-fcbe-428d-aa4d-f8d3e3703b70\",\"date\":\"2027-09-12\",\"stage\":\"booked\",\"rel\":\"27a1e622-3dd3-44b6-becc-9c0abf8149c5\"},{\"id\":\"3323c403-0b41-41d4-8ea8-3cfea0f10248\",\"date\":\"2028-02-02\",\"stage\":\"new_inquiry\",\"rel\":\"27a1e622-3dd3-44b6-becc-9c0abf8149c5\"}]}"
+    },
+    {
+      "category": "safety",
+      "name": "HQ venue isolated",
+      "pass": true,
+      "detail": "63ee33fc-1036-42aa-9f62-225bcd6cddf0"
+    },
+    {
+      "category": "safety",
+      "name": "No QBO / invites / contracts / payments / messages on HQ venue",
+      "pass": true,
+      "detail": "{\"qbo\":[],\"invites\":[]}"
+    },
+    {
+      "category": "safety",
+      "name": "Lead imports did not create booked Riley Events",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "category": "parity",
+      "name": "HQ and self-service persisted equivalent Riley counts and single-person reuse",
+      "pass": false,
+      "detail": "{\"ssLeads\":6,\"hqLeads\":6,\"ssRels\":[\"f28380a0-8b5c-41c4-924b-e4a113c4de9f\",\"e5e88ccf-4925-4a17-ba59-c7b337096bde\"],\"hqRels\":[\"672e14e2-96e1-4930-986a-3e23212e6826\",\"b5ae8f59-1d82-44c0-82b2-0d57ebd55cef\"],\"ssOther\":1,\"hqOther\":1}"
+    }
+  ]
+}

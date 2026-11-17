@@ -131,6 +131,7 @@ export function rowToLeadInput(row: CsvRow, mapping: FieldMapping): LeadInput {
     salesStage:       val(row, mapping, "salesStage"),
     followUpDate:     mappedDate(row, mapping, "followUpDate"),
     nextActionText:   val(row, mapping, "nextActionText"),
+    sourceRecordId:   val(row, mapping, "sourceRecordId"),
   };
 }
 

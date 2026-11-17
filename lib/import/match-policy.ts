@@ -11,7 +11,7 @@
 
 export type PersonMatchKind = "exact" | "likely" | "new";
 
-export type PersonMatchAction = "use_existing" | "create_new" | "skip";
+export type PersonMatchAction = "use_existing" | "create_same_person" | "create_new" | "skip";
 
 export type PersonMatchCandidate = {
   id: string;
@@ -58,6 +58,22 @@ function fromCandidate(candidate: PersonMatchCandidate | null): Pick<PersonMatch
     matchedName: `${candidate.firstName} ${candidate.lastName}`.trim(),
     matchedEmail: candidate.email,
   };
+}
+
+/**
+ * Classify one incoming person against known candidates (database or earlier
+ * rows in the same file). Email-only hits stay likely; name+email is exact.
+ */
+export function classifyPersonMatchFromCandidates(
+  incoming: IncomingPerson,
+  candidates: readonly PersonMatchCandidate[],
+): PersonMatchDecision {
+  const email = norm(incoming.email);
+  const byEmail = email
+    ? candidates.find((candidate) => norm(candidate.email) === email) ?? null
+    : null;
+  const byName = candidates.find((candidate) => namesEqual(incoming, candidate)) ?? null;
+  return classifyPersonMatch(incoming, byEmail, byName);
 }
 
 /**
@@ -130,8 +146,15 @@ export function resolvePersonMatchAction(
   decision: PersonMatchDecision,
   requested?: PersonMatchAction | null,
 ): PersonMatchAction {
-  if (requested === "use_existing" || requested === "create_new" || requested === "skip") {
-    if (decision.kind === "new" && requested === "use_existing") return "create_new";
+  if (
+    requested === "use_existing"
+    || requested === "create_same_person"
+    || requested === "create_new"
+    || requested === "skip"
+  ) {
+    if (decision.kind === "new" && (requested === "use_existing" || requested === "create_same_person")) {
+      return "create_new";
+    }
     return requested;
   }
   return decision.defaultAction;
@@ -154,12 +177,16 @@ export type PersonImportPlanCounts = {
   useExistingCount: number;
   skipCount: number;
   attentionCount: number;
+  heldCount: number;
+  alreadyImportedCount: number;
 };
 
 export type PersonImportPlanRow = {
   previewSkipped: boolean;
   kind: PersonMatchKind;
-  action: PersonMatchAction;
+  action: PersonMatchAction | null;
+  needsReview?: boolean;
+  alreadyImported?: boolean;
 };
 
 export function summarizePersonImportPlan(rows: readonly PersonImportPlanRow[]): PersonImportPlanCounts {
@@ -168,9 +195,21 @@ export function summarizePersonImportPlan(rows: readonly PersonImportPlanRow[]):
     useExistingCount: 0,
     skipCount: 0,
     attentionCount: 0,
+    heldCount: 0,
+    alreadyImportedCount: 0,
   };
   for (const row of rows) {
-    if (row.kind === "likely") counts.attentionCount += 1;
+    if (row.alreadyImported) {
+      counts.alreadyImportedCount += 1;
+      counts.skipCount += 1;
+      continue;
+    }
+    if (row.needsReview && !row.action && !row.previewSkipped) {
+      counts.heldCount += 1;
+      counts.attentionCount += 1;
+      continue;
+    }
+    if (row.kind === "likely" || row.needsReview) counts.attentionCount += 1;
     if (row.previewSkipped || row.action === "skip") {
       counts.skipCount += 1;
       continue;
@@ -205,6 +244,9 @@ export function personImportConfirmLabel(
   }
   if (counts.skipCount > 0) {
     parts.push(`skip ${counts.skipCount}`);
+  }
+  if (counts.heldCount > 0) {
+    parts.push(`hold ${counts.heldCount} for review`);
   }
   if (parts.length === 0) return `Nothing to import`;
   return parts.join(" · ");

@@ -24,6 +24,7 @@ import type {
   TaskInput,
 } from "@/lib/leads/types";
 import { isSalesStage, migrateLegacyStatusToSalesStage, type SalesStage } from "@/lib/leads/sales-stages";
+import { leadImportFingerprint } from "@/lib/import/venue-controlled-match";
 
 type DbClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -646,6 +647,8 @@ export async function insertLead(
         const sourceData: Record<string, unknown> = {
           ...(input.originalSourceLabel ? { original_source_label: input.originalSourceLabel } : {}),
           ...(input.dateFlexibility?.trim() ? { date_flexibility: input.dateFlexibility.trim() } : {}),
+          ...(input.sourceRecordId?.trim() ? { source_record_id: input.sourceRecordId.trim() } : {}),
+          import_fingerprint: leadImportFingerprint(input),
         };
         return Object.keys(sourceData).length > 0 ? sourceData : undefined;
       })(),
@@ -695,6 +698,19 @@ export type ActiveLeadMatchRow = {
   eventDate: string | null;
 };
 
+export type ActiveLeadInquiryRow = ActiveLeadMatchRow & {
+  eventType: string | null;
+  guestCount: number | null;
+  source: string | null;
+  inquiryMessage: string | null;
+  partnerFirstName: string | null;
+  partnerLastName: string | null;
+  followUpDate: string | null;
+  nextActionText: string | null;
+  salesStage: string | null;
+  sourceData: Record<string, unknown> | null;
+};
+
 function mapLeadMatchRow(row: {
   id: string;
   first_name: string;
@@ -741,6 +757,135 @@ export async function findActiveLeadByName(
     .maybeSingle<{ id: string; first_name: string; last_name: string; email: string | null; event_date: string | null }>();
   if (error) throw error;
   return data ? mapLeadMatchRow(data) : null;
+}
+
+const ACTIVE_INQUIRY_SELECT =
+  "id, first_name, last_name, email, event_date, event_type, guest_count, source, inquiry_message, partner_first_name, partner_last_name, follow_up_date, next_action_text, sales_stage, source_data";
+
+type ActiveInquiryDbRow = {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string | null;
+  event_date: string | null;
+  event_type: string | null;
+  guest_count: number | null;
+  source: string | null;
+  inquiry_message: string | null;
+  partner_first_name: string | null;
+  partner_last_name: string | null;
+  follow_up_date: string | null;
+  next_action_text: string | null;
+  sales_stage: string | null;
+  source_data: Record<string, unknown> | null;
+};
+
+function mapLeadInquiryRow(row: ActiveInquiryDbRow): ActiveLeadInquiryRow {
+  return {
+    ...mapLeadMatchRow(row),
+    eventType: row.event_type,
+    guestCount: row.guest_count,
+    source: row.source,
+    inquiryMessage: row.inquiry_message,
+    partnerFirstName: row.partner_first_name,
+    partnerLastName: row.partner_last_name,
+    followUpDate: row.follow_up_date,
+    nextActionText: row.next_action_text,
+    salesStage: row.sales_stage,
+    sourceData: row.source_data,
+  };
+}
+
+/** Active (not booked/lost/cancelled) inquiries for one email — import retry matching. */
+export async function listActiveLeadsByEmail(
+  client: DbClient, venueId: string, email: string,
+): Promise<ActiveLeadInquiryRow[]> {
+  const trimmed = email.trim();
+  if (!trimmed) return [];
+  const { data, error } = await client.from("leads").select(ACTIVE_INQUIRY_SELECT)
+    .eq("venue_id", venueId)
+    .not("sales_stage", "in", "(booked,lost,cancelled)")
+    .ilike("email", trimmed)
+    .returns<ActiveInquiryDbRow[]>();
+  if (error) throw error;
+  return (data ?? []).map(mapLeadInquiryRow);
+}
+
+const IMPORT_MATCH_SELECT =
+  "id, relationship_id, first_name, last_name, email, phone, partner_first_name, partner_last_name, partner_email, inquiry_message, event_date, event_type, sales_stage, guest_count, source, follow_up_date, next_action_text, estimated_budget, source_data";
+
+export type ImportMatchLeadRow = {
+  id: string;
+  relationshipId: string | null;
+  firstName: string;
+  lastName: string;
+  email: string | null;
+  phone: string | null;
+  partnerFirstName: string | null;
+  partnerLastName: string | null;
+  partnerEmail: string | null;
+  inquiryMessage: string | null;
+  eventDate: string | null;
+  eventType: string | null;
+  salesStage: string | null;
+  guestCount: number | null;
+  source: string | null;
+  followUpDate: string | null;
+  nextActionText: string | null;
+  estimatedBudget: number | null;
+  sourceData: Record<string, unknown> | null;
+};
+
+/** All current Leads at a venue for import review — includes booked. Soft-merged secondaries excluded. */
+export async function listImportMatchLeads(
+  client: DbClient, venueId: string,
+): Promise<ImportMatchLeadRow[]> {
+  const { data, error } = await client.from("leads").select(IMPORT_MATCH_SELECT)
+    .eq("venue_id", venueId)
+    .is("merged_into_lead_id", null)
+    .returns<{
+      id: string;
+      relationship_id: string | null;
+      first_name: string;
+      last_name: string;
+      email: string | null;
+      phone: string | null;
+      partner_first_name: string | null;
+      partner_last_name: string | null;
+      partner_email: string | null;
+      inquiry_message: string | null;
+      event_date: string | null;
+      event_type: string | null;
+      sales_stage: string | null;
+      guest_count: number | null;
+      source: string | null;
+      follow_up_date: string | null;
+      next_action_text: string | null;
+      estimated_budget: number | null;
+      source_data: Record<string, unknown> | null;
+    }[]>();
+  if (error) throw error;
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    relationshipId: row.relationship_id,
+    firstName: row.first_name,
+    lastName: row.last_name,
+    email: row.email,
+    phone: row.phone,
+    partnerFirstName: row.partner_first_name,
+    partnerLastName: row.partner_last_name,
+    partnerEmail: row.partner_email,
+    inquiryMessage: row.inquiry_message,
+    eventDate: row.event_date,
+    eventType: row.event_type,
+    salesStage: row.sales_stage,
+    guestCount: row.guest_count,
+    source: row.source,
+    followUpDate: row.follow_up_date,
+    nextActionText: row.next_action_text,
+    estimatedBudget: row.estimated_budget,
+    sourceData: row.source_data,
+  }));
 }
 
 export async function updateLeadSalesStage(

@@ -26,6 +26,7 @@ import {
   loadSavedMapping, saveMapping, suggestHeaderMapping,
 } from "@/lib/import/utils";
 import { classifyImportPreview } from "@/lib/import/preview-integrity";
+import { signalLabel, type DuplicateSignal } from "@/lib/leads/duplicate-detection";
 import {
   importCouplesAction, importLeadsAction, importVendorsAction, importInventoryAction, importPackagesAction,
   parseImportFileAction, parseImportTextAction, proposeFieldMappingAction, previewPersonMatchesAction,
@@ -530,6 +531,7 @@ function StepPreview({
   const { readyCount, skipCount, warnCount, unmapped } = summary;
   const previewStatuses = summary.rows.slice(0, 5);
   const peopleReview = matchRows.length > 0;
+  const leadReview = entity === "leads" && peopleReview;
   const plan = peopleReview
     ? summarizePersonImportPlan(matchRows.map((row, index) => {
       const previewRow = summary.rows[index];
@@ -539,10 +541,13 @@ function StepPreview({
           || previewRow.disposition === "skip_invalid"
           || previewRow.disposition === "skip_within_file_duplicate"),
       );
+      const unresolved = Boolean(row.needsReview) && !row.alreadyImported && !previewSkipped;
       return {
         previewSkipped,
         kind: row.kind,
-        action: matchActions[index] ?? row.defaultAction,
+        action: matchActions[index] ?? (unresolved ? null : row.defaultAction),
+        needsReview: unresolved,
+        alreadyImported: Boolean(row.alreadyImported),
       };
     }))
     : null;
@@ -560,10 +565,11 @@ function StepPreview({
         <p className="text-sm text-muted-foreground mt-1" data-testid="byb-import-plan">
           {plan ? (
             <>
-              {plan.createCount} new
-              {plan.useExistingCount > 0 ? ` · ${plan.useExistingCount} already in Hello to Cheers` : ""}
-              {plan.skipCount > 0 ? ` · ${plan.skipCount} will be left out` : ""}
-              {plan.attentionCount > 0 ? ` · ${plan.attentionCount} likely matches need your decision` : ""}
+              {plan.createCount} ready to import
+              {plan.useExistingCount > 0 ? ` · ${plan.useExistingCount} same record` : ""}
+              {plan.alreadyImportedCount > 0 ? ` · ${plan.alreadyImportedCount} already imported` : ""}
+              {plan.skipCount - plan.alreadyImportedCount > 0 ? ` · ${plan.skipCount - plan.alreadyImportedCount} skipped` : ""}
+              {plan.heldCount > 0 ? ` · ${plan.heldCount} need review` : ""}
             </>
           ) : (
             <>
@@ -634,14 +640,20 @@ function StepPreview({
       {matchReviewReady && matchRows.length > 0 ? (
         <div className="space-y-2" data-testid="byb-match-review">
           <div>
-            <p className="text-sm font-medium text-foreground">Review each person</p>
+            <p className="text-sm font-medium text-foreground">{leadReview ? "Needs a decision" : "Review each person"}</p>
             <p className="text-xs text-muted-foreground">
-              Use existing keeps the person already in Hello to Cheers and, for clients, adds a distinct event date when it is not already there. Create new adds a separate person. Skip leaves the row out. Email alone is not enough to treat two people as the same.
+              {leadReview
+                ? "We found possible matches. Matching names, emails, phones, or dates are clues — not proof. Choose whether this is the same record, a separate inquiry for this person, a separate inquiry for a different person, or something to leave out. Hello to Cheers will not guess."
+                : "Use existing keeps the person already in Hello to Cheers and, for clients, adds a distinct event date when it is not already there. Create new adds a separate person. Skip leaves the row out. Email alone is not enough to treat two people as the same."}
             </p>
           </div>
+          {leadReview && plan && plan.heldCount > 0 ? (
+            <p className="text-xs text-amber-800 dark:text-amber-200" data-testid="byb-held-count">
+              {plan.heldCount} {plan.heldCount === 1 ? "row still needs" : "rows still need"} your decision. Ready rows can still be imported; unresolved rows stay held.
+            </p>
+          ) : null}
           <ul className="space-y-2">
             {matchRows.map((row, index) => {
-              const action = matchActions[index] ?? row.defaultAction;
               const previewRow = summary.rows[index];
               const previewSkipped = Boolean(
                 previewRow
@@ -649,58 +661,130 @@ function StepPreview({
                   || previewRow.disposition === "skip_invalid"
                   || previewRow.disposition === "skip_within_file_duplicate"),
               );
+              const unresolved = Boolean(row.needsReview) && !row.alreadyImported && !previewSkipped;
+              const action = matchActions[index] ?? (unresolved ? null : row.defaultAction);
+              const leadChoices: Array<{ option: PersonMatchAction; label: string; testId: string }> = [
+                { option: "use_existing", label: "Same record", testId: "byb-match-choice-same" },
+                { option: "create_same_person", label: "Separate inquiry for this person", testId: "byb-match-choice-same-person" },
+                { option: "create_new", label: "Separate inquiry for a different person", testId: "byb-match-choice-different" },
+                { option: "skip", label: "Don't import", testId: "byb-match-choice-skip" },
+              ];
+              const peopleChoices: Array<{ option: PersonMatchAction; label: string; testId: string }> = [
+                { option: "use_existing", label: "Use existing", testId: "byb-match-choice-same" },
+                { option: "create_new", label: "Create new", testId: "byb-match-choice-separate" },
+                { option: "skip", label: "Skip", testId: "byb-match-choice-skip" },
+              ];
+              const choices = leadReview ? leadChoices : peopleChoices;
               return (
-                <li key={row.row} className="space-y-2 rounded-md border border-border bg-card px-3 py-2.5">
+                <li key={row.row} className="space-y-2 rounded-md border border-border bg-card px-3 py-2.5" data-testid={`byb-match-row-${row.row}`}>
                   <div className="grid gap-2 sm:grid-cols-2">
                     <div>
                       <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Incoming</p>
                       <p className="text-xs font-medium text-heading">{row.name || `Row ${row.row}`}</p>
                       <p className="text-xs text-muted-foreground">{row.email || "No email on this row"}</p>
+                      {row.matchedEventDate || row.fileMatchRow ? (
+                        <p className="text-xs text-muted-foreground">
+                          {row.fileMatchRow ? `Matches row ${row.fileMatchRow} in this file` : null}
+                        </p>
+                      ) : null}
                     </div>
                     <div>
-                      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Already in Hello to Cheers</p>
-                      {row.kind === "new" ? (
+                      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                        {row.fileMatchRow ? "Also in this file" : "Already in Hello to Cheers"}
+                      </p>
+                      {row.kind === "new" && !row.fileMatchRow ? (
                         <p className="text-xs text-muted-foreground">No match — this will create a new record.</p>
                       ) : (
                         <>
                           <p className="text-xs font-medium text-heading">{row.matchedName ?? "Existing person"}</p>
                           <p className="text-xs text-muted-foreground">{row.matchedEmail || "No email on file"}</p>
+                          {row.matchedPhone ? <p className="text-xs text-muted-foreground">{row.matchedPhone}</p> : null}
+                          {row.matchedEventDate ? (
+                            <p className="text-xs text-muted-foreground">Preferred date on file: {row.matchedEventDate}</p>
+                          ) : null}
                         </>
                       )}
                     </div>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    {row.kind === "exact" ? "Exact match" : row.kind === "likely" ? "Likely match" : "New person"} — {row.reason}
+                    {row.alreadyImported
+                      ? "Already imported"
+                      : row.kind === "exact"
+                        ? "Possible exact match"
+                        : row.kind === "likely"
+                          ? "Possible match"
+                          : "New person"}
+                    {" — "}
+                    {row.reason}
                   </p>
+                  {row.signals && row.signals.length > 0 ? (
+                    <p className="text-xs text-muted-foreground">
+                      Why it was flagged: {row.signals.map((signal) => signalLabel(signal as DuplicateSignal)).join(", ")}
+                    </p>
+                  ) : null}
+                  {row.inquiryNotes && row.inquiryNotes.length > 0 ? (
+                    <ul className="text-xs text-muted-foreground list-disc pl-4 space-y-0.5">
+                      {row.inquiryNotes.map((note) => (
+                        <li key={note}>{note}</li>
+                      ))}
+                    </ul>
+                  ) : null}
+                  {row.differences && row.differences.length > 0 ? (
+                    <div className="rounded-md border border-border bg-muted/30 px-2 py-1.5 space-y-1">
+                      <p className="text-[11px] font-medium text-heading">
+                        {row.changedSinceImport
+                          ? "This looks like a record you already brought in, with updated details. Choosing Same record keeps what is already in Hello to Cheers."
+                          : "Differences"}
+                      </p>
+                      <ul className="text-xs text-muted-foreground space-y-0.5">
+                        {row.differences.map((diff) => (
+                          <li key={diff.label}>
+                            <span className="font-medium text-heading">{diff.label}:</span> incoming {diff.incoming} · existing {diff.existing}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
                   {previewSkipped ? (
                     <p className="text-xs text-destructive">{previewRow?.message ?? "This row cannot be imported as entered."}</p>
+                  ) : row.alreadyImported ? (
+                    <p className="text-xs text-muted-foreground" data-testid="byb-already-imported">
+                      Exact repeat of a record already imported. It will be left out automatically.
+                    </p>
                   ) : (
                     <div className="flex flex-wrap gap-2">
-                      {(["use_existing", "create_new", "skip"] as PersonMatchAction[]).map((option) => (
+                      {choices.map((choice) => (
                         <button
-                          key={option}
+                          key={choice.option}
                           type="button"
-                          disabled={row.kind === "new" && option === "use_existing"}
+                          data-testid={choice.testId}
+                          disabled={row.kind === "new" && !row.fileMatchRow && (choice.option === "use_existing" || choice.option === "create_same_person")}
                           className={`rounded-md border px-2 py-1 text-xs ${
-                            action === option
+                            action === choice.option
                               ? "border-primary bg-primary/10 font-medium text-heading"
                               : "border-border text-muted-foreground hover:text-foreground"
                           }`}
-                          onClick={() => onMatchAction(index, option)}
+                          onClick={() => onMatchAction(index, choice.option)}
                         >
-                          {option === "use_existing" ? "Use existing" : option === "create_new" ? "Create new" : "Skip"}
+                          {choice.label}
                         </button>
                       ))}
                     </div>
                   )}
                   <p className="text-[11px] text-muted-foreground">
-                    Selected: {previewSkipped
-                      ? "Skip — this row is not ready"
-                      : action === "use_existing"
-                        ? "Use existing"
-                        : action === "skip"
-                          ? "Skip"
-                          : "Create new"}
+                    {previewSkipped
+                      ? "This row is not ready"
+                      : row.alreadyImported
+                        ? "Already imported — left out"
+                        : action === "use_existing"
+                          ? (leadReview ? "Same record — keep existing, nothing overwritten" : "Use existing")
+                          : action === "skip"
+                            ? (leadReview ? "Don't import" : "Skip")
+                            : action === "create_same_person"
+                              ? "Separate inquiry for this person — two inquiries, one person"
+                              : action === "create_new"
+                                ? (leadReview ? "Separate inquiry for a different person" : "Create new")
+                                : "Needs your decision"}
                   </p>
                 </li>
               );
@@ -1037,6 +1121,7 @@ export function ImportWizard({
   const [matchRows, setMatchRows] = React.useState<PersonMatchPreviewRow[]>([]);
   const [matchActions, setMatchActions] = React.useState<Array<PersonMatchAction | null>>([]);
   const [matchReviewReady, setMatchReviewReady] = React.useState(true);
+  const [matchPreviewKey, setMatchPreviewKey] = React.useState<string | null>(null);
 
   // White Glove: operator clicked "Use in Import Wizard" on a received material.
   // Fetch via authorized signed URL and feed the existing parse path — no second upload.
@@ -1195,7 +1280,7 @@ export function ImportWizard({
         res = venueId ? await importCouplesForVenueAction(venueId, inputRows, sourceLabel, matchActions) : await importCouplesAction(inputRows, sourceLabel, matchActions);
       } else if (entity === "leads") {
         const inputRows = rows.map((r) => rowToLeadInput(r, mapping));
-        res = venueId ? await importLeadsForVenueAction(venueId, inputRows) : await importLeadsAction(inputRows, sourceLabel, matchActions);
+        res = venueId ? await importLeadsForVenueAction(venueId, inputRows, sourceLabel, matchActions) : await importLeadsAction(inputRows, sourceLabel, matchActions);
       } else if (entity === "vendors") {
         const inputRows = rows.map((r) => rowToVendorInput(r, mapping));
         res = venueId ? await importVendorsForVenueAction(venueId, inputRows) : await importVendorsAction(inputRows, sourceLabel);
@@ -1224,6 +1309,7 @@ export function ImportWizard({
     setResult(null);
     setMatchRows([]);
     setMatchActions([]);
+    setMatchPreviewKey(null);
   }
 
   const totalSteps = 4; // 0 = entity select, 1-4 = upload/map/preview/results (entity select is outside progress)
@@ -1273,23 +1359,33 @@ export function ImportWizard({
           onNext={() => {
             setStep(3);
             if (entity === "couples" || entity === "leads") {
+              const previewKey = JSON.stringify({ entity, mapping, rowCount: rows.length });
+              if (matchPreviewKey === previewKey && matchRows.length === rows.length) {
+                setMatchReviewReady(true);
+                return;
+              }
               setMatchReviewReady(false);
               const people = entity === "couples"
                 ? rows.map((r) => rowToClientInput(r, mapping))
                 : rows.map((r) => rowToLeadInput(r, mapping));
               void previewPersonMatchesAction(entity, people, venueId).then((preview) => {
                 setMatchRows(preview);
-                setMatchActions(preview.map((row) => row.defaultAction));
+                setMatchActions(preview.map((row) => (
+                  row.needsReview && !row.alreadyImported ? null : row.defaultAction
+                )));
+                setMatchPreviewKey(previewKey);
                 setMatchReviewReady(true);
               }).catch(() => {
                 setMatchRows([]);
                 setMatchActions([]);
+                setMatchPreviewKey(null);
                 setMatchReviewReady(false);
                 toast.error("Could not check existing people. Go back and try Preview again.");
               });
             } else {
               setMatchRows([]);
               setMatchActions([]);
+              setMatchPreviewKey(null);
               setMatchReviewReady(true);
             }
           }}

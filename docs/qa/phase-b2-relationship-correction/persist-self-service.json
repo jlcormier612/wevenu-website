@@ -1,0 +1,369 @@
+{
+  "label": "self-service",
+  "venueId": "e1eb6440-e298-4a1c-b9b8-29d6c81ad8df",
+  "clients": [
+    {
+      "id": "30aec1bf-4009-4725-a8b5-32246f943021",
+      "first_name": "Morgan",
+      "last_name": "Booked",
+      "email": "morgan.booked@byb.test",
+      "event_date": "2027-09-12",
+      "status": "confirmed",
+      "venue_id": "e1eb6440-e298-4a1c-b9b8-29d6c81ad8df",
+      "relationship_id": "3f4f18f8-6c6d-4a2f-b9c5-e29591be17cd"
+    }
+  ],
+  "events": [
+    {
+      "id": "492b385b-6bf7-49cd-8821-2807354ec4f3",
+      "client_id": "30aec1bf-4009-4725-a8b5-32246f943021",
+      "name": "Morgan Booked — Wedding",
+      "status": "confirmed",
+      "event_date": "2027-09-12",
+      "booked_at": "2026-11-16",
+      "space_id": "86668a98-c04c-4547-95be-8601814cd44e",
+      "venue_id": "e1eb6440-e298-4a1c-b9b8-29d6c81ad8df"
+    }
+  ],
+  "leads": [
+    {
+      "id": "c1bc4d99-33b0-4e9e-812a-8e45b4cfe4e4",
+      "first_name": "Riley",
+      "last_name": "Prospect",
+      "email": "riley.prospect@byb.test",
+      "partner_first_name": "Sam",
+      "partner_last_name": "Prospect",
+      "event_date": "2027-06-12",
+      "event_type": "wedding",
+      "guest_count": 120,
+      "estimated_budget": null,
+      "source": "website",
+      "sales_stage": "new_inquiry",
+      "follow_up_date": null,
+      "next_action_text": null,
+      "inquiry_message": "Preferred June date — not booked",
+      "source_data": {
+        "import_fingerprint": "rid:::n:riley|prospect|riley.prospect@byb.test|555-0101::p:sam|prospect|::d:2027-06-12|wedding|website::m:preferred june date — not booked::x:120|||||"
+      },
+      "venue_id": "e1eb6440-e298-4a1c-b9b8-29d6c81ad8df",
+      "relationship_id": "f28380a0-8b5c-41c4-924b-e4a113c4de9f",
+      "is_historical_import": true
+    },
+    {
+      "id": "4254420f-1425-4594-9fa7-a72bad4784d6",
+      "first_name": "Riley",
+      "last_name": "Prospect",
+      "email": "riley.prospect@byb.test",
+      "partner_first_name": "Sam",
+      "partner_last_name": "Prospect",
+      "event_date": "2029-04-18",
+      "event_type": "wedding",
+      "guest_count": 110,
+      "estimated_budget": null,
+      "source": "website",
+      "sales_stage": "new_inquiry",
+      "follow_up_date": null,
+      "next_action_text": null,
+      "inquiry_message": "Third inquiry from a later file",
+      "source_data": {
+        "import_fingerprint": "rid:::n:riley|prospect|riley.prospect@byb.test|555-0101::p:sam|prospect|::d:2029-04-18|wedding|website::m:third inquiry from a later file::x:110|||||"
+      },
+      "venue_id": "e1eb6440-e298-4a1c-b9b8-29d6c81ad8df",
+      "relationship_id": "f28380a0-8b5c-41c4-924b-e4a113c4de9f",
+      "is_historical_import": true
+    },
+    {
+      "id": "33d42370-8fc0-43ed-a0f6-ae0898088cbb",
+      "first_name": "Riley",
+      "last_name": "Prospect",
+      "email": "riley.prospect@byb.test",
+      "partner_first_name": "Sam",
+      "partner_last_name": "Prospect",
+      "event_date": "2028-05-03",
+      "event_type": "wedding",
+      "guest_count": 80,
+      "estimated_budget": null,
+      "source": "website",
+      "sales_stage": "new_inquiry",
+      "follow_up_date": null,
+      "next_action_text": null,
+      "inquiry_message": "Second inquiry different date",
+      "source_data": {
+        "import_fingerprint": "rid:::n:riley|prospect|riley.prospect@byb.test|555-0101::p:sam|prospect|::d:2028-05-03|wedding|website::m:second inquiry different date::x:80|||||"
+      },
+      "venue_id": "e1eb6440-e298-4a1c-b9b8-29d6c81ad8df",
+      "relationship_id": "f28380a0-8b5c-41c4-924b-e4a113c4de9f",
+      "is_historical_import": true
+    },
+    {
+      "id": "96b101ee-bccb-44c7-be35-4ae38365e9b6",
+      "first_name": "Other",
+      "last_name": "Office",
+      "email": "riley.prospect@byb.test",
+      "partner_first_name": null,
+      "partner_last_name": null,
+      "event_date": "2027-08-01",
+      "event_type": null,
+      "guest_count": null,
+      "estimated_budget": null,
+      "source": "other",
+      "sales_stage": "new_inquiry",
+      "follow_up_date": null,
+      "next_action_text": null,
+      "inquiry_message": null,
+      "source_data": {
+        "import_fingerprint": "rid:::n:other|office|riley.prospect@byb.test|::p:||::d:2027-08-01||other::m:::x:|||||"
+      },
+      "venue_id": "e1eb6440-e298-4a1c-b9b8-29d6c81ad8df",
+      "relationship_id": "e5e88ccf-4925-4a17-ba59-c7b337096bde",
+      "is_historical_import": true
+    },
+    {
+      "id": "f563198e-50ea-44a2-ac70-1dcb73b2a3e5",
+      "first_name": "Avery",
+      "last_name": "Source",
+      "email": "avery.source@byb.test",
+      "partner_first_name": null,
+      "partner_last_name": null,
+      "event_date": "2027-11-11",
+      "event_type": null,
+      "guest_count": null,
+      "estimated_budget": 18000,
+      "source": "other",
+      "sales_stage": "new_inquiry",
+      "follow_up_date": null,
+      "next_action_text": null,
+      "inquiry_message": "Original Avery inquiry",
+      "source_data": {
+        "source_record_id": "SRC-AVERY-1",
+        "import_fingerprint": "rid:src-avery-1::n:avery|source|avery.source@byb.test|::p:||::d:2027-11-11||other::m:original avery inquiry::x:|18000||||"
+      },
+      "venue_id": "e1eb6440-e298-4a1c-b9b8-29d6c81ad8df",
+      "relationship_id": "1f4e2771-0b0c-4beb-8969-993f6e2992c5",
+      "is_historical_import": true
+    },
+    {
+      "id": "c3af5783-36d8-45f2-be88-f116eeadb012",
+      "first_name": "Morgan",
+      "last_name": "Booked",
+      "email": "morgan.booked@byb.test",
+      "partner_first_name": null,
+      "partner_last_name": null,
+      "event_date": "2027-09-12",
+      "event_type": "Wedding",
+      "guest_count": 90,
+      "estimated_budget": null,
+      "source": "other",
+      "sales_stage": "booked",
+      "follow_up_date": null,
+      "next_action_text": null,
+      "inquiry_message": null,
+      "source_data": null,
+      "venue_id": "e1eb6440-e298-4a1c-b9b8-29d6c81ad8df",
+      "relationship_id": "3f4f18f8-6c6d-4a2f-b9c5-e29591be17cd",
+      "is_historical_import": false
+    },
+    {
+      "id": "b653ec9a-3500-43d0-bbe7-a83424042854",
+      "first_name": "Riley",
+      "last_name": "Prospect",
+      "email": "riley.prospect@byb.test",
+      "partner_first_name": null,
+      "partner_last_name": null,
+      "event_date": null,
+      "event_type": "wedding",
+      "guest_count": 75,
+      "estimated_budget": null,
+      "source": "the_knot",
+      "sales_stage": "new_inquiry",
+      "follow_up_date": null,
+      "next_action_text": null,
+      "inquiry_message": "Bridal show follow-up — no date yet",
+      "source_data": {
+        "import_fingerprint": "rid:::n:riley|prospect|riley.prospect@byb.test|::p:||::d:|wedding|the_knot::m:bridal show follow-up — no date yet::x:75|||||"
+      },
+      "venue_id": "e1eb6440-e298-4a1c-b9b8-29d6c81ad8df",
+      "relationship_id": "f28380a0-8b5c-41c4-924b-e4a113c4de9f",
+      "is_historical_import": true
+    },
+    {
+      "id": "def13426-6560-4bbb-9baf-a5d3f0bd3a10",
+      "first_name": "Riley",
+      "last_name": "Prospect",
+      "email": "riley.prospect@byb.test",
+      "partner_first_name": null,
+      "partner_last_name": null,
+      "event_date": null,
+      "event_type": "wedding",
+      "guest_count": 90,
+      "estimated_budget": null,
+      "source": "website",
+      "sales_stage": "new_inquiry",
+      "follow_up_date": null,
+      "next_action_text": null,
+      "inquiry_message": "Weekday phone call — no date yet",
+      "source_data": {
+        "import_fingerprint": "rid:::n:riley|prospect|riley.prospect@byb.test|::p:||::d:|wedding|website::m:weekday phone call — no date yet::x:90|||||"
+      },
+      "venue_id": "e1eb6440-e298-4a1c-b9b8-29d6c81ad8df",
+      "relationship_id": "f28380a0-8b5c-41c4-924b-e4a113c4de9f",
+      "is_historical_import": true
+    },
+    {
+      "id": "bb484435-c6de-4a9e-a1d0-c11718abcb0d",
+      "first_name": "Morgan",
+      "last_name": "Booked",
+      "email": "morgan.booked@byb.test",
+      "partner_first_name": null,
+      "partner_last_name": null,
+      "event_date": "2028-02-02",
+      "event_type": "wedding",
+      "guest_count": null,
+      "estimated_budget": null,
+      "source": "other",
+      "sales_stage": "new_inquiry",
+      "follow_up_date": null,
+      "next_action_text": null,
+      "inquiry_message": "Unbooked second inquiry after the existing booking",
+      "source_data": {
+        "import_fingerprint": "rid:::n:morgan|booked|morgan.booked@byb.test|::p:||::d:2028-02-02|wedding|other::m:unbooked second inquiry after the existing booking::x:|||||"
+      },
+      "venue_id": "e1eb6440-e298-4a1c-b9b8-29d6c81ad8df",
+      "relationship_id": "3f4f18f8-6c6d-4a2f-b9c5-e29591be17cd",
+      "is_historical_import": true
+    },
+    {
+      "id": "c512816d-65ba-4a61-b104-09e534870b78",
+      "first_name": "Casey",
+      "last_name": "Clear",
+      "email": "casey.clear@byb.test",
+      "partner_first_name": null,
+      "partner_last_name": null,
+      "event_date": "2027-12-12",
+      "event_type": null,
+      "guest_count": null,
+      "estimated_budget": null,
+      "source": "other",
+      "sales_stage": "new_inquiry",
+      "follow_up_date": null,
+      "next_action_text": null,
+      "inquiry_message": "Unambiguous new inquiry",
+      "source_data": {
+        "import_fingerprint": "rid:::n:casey|clear|casey.clear@byb.test|::p:||::d:2027-12-12||other::m:unambiguous new inquiry::x:|||||"
+      },
+      "venue_id": "e1eb6440-e298-4a1c-b9b8-29d6c81ad8df",
+      "relationship_id": "ec45f8c2-a6f5-4788-a950-2c02d3238931",
+      "is_historical_import": true
+    }
+  ],
+  "batches": [
+    {
+      "id": "a729173c-1311-4e85-849b-850db19191fe",
+      "entity_type": "leads",
+      "imported_count": 1,
+      "skipped_count": 1,
+      "error_count": 0,
+      "source_label": null,
+      "rolled_back_at": null
+    },
+    {
+      "id": "5e42367f-d568-4209-a6dc-682be300261e",
+      "entity_type": "leads",
+      "imported_count": 1,
+      "skipped_count": 0,
+      "error_count": 0,
+      "source_label": null,
+      "rolled_back_at": null
+    },
+    {
+      "id": "d1df241a-b978-43b6-ad70-9fc3b76a11a1",
+      "entity_type": "couples",
+      "imported_count": 1,
+      "skipped_count": 0,
+      "error_count": 0,
+      "source_label": null,
+      "rolled_back_at": null
+    },
+    {
+      "id": "0cd0e995-de4f-4c86-aa82-21006ab745f7",
+      "entity_type": "leads",
+      "imported_count": 1,
+      "skipped_count": 0,
+      "error_count": 0,
+      "source_label": null,
+      "rolled_back_at": null
+    },
+    {
+      "id": "f878f951-0973-46a2-b9f4-6b8f8a76e1ff",
+      "entity_type": "leads",
+      "imported_count": 1,
+      "skipped_count": 0,
+      "error_count": 0,
+      "source_label": null,
+      "rolled_back_at": null
+    },
+    {
+      "id": "fbc9f6e2-6e6f-478e-94ab-98b5dbf1fe74",
+      "entity_type": "leads",
+      "imported_count": 2,
+      "skipped_count": 0,
+      "error_count": 0,
+      "source_label": null,
+      "rolled_back_at": null
+    },
+    {
+      "id": "9dfe802e-fbb4-4f48-9ec8-79bc01408636",
+      "entity_type": "leads",
+      "imported_count": 0,
+      "skipped_count": 1,
+      "error_count": 0,
+      "source_label": null,
+      "rolled_back_at": null
+    },
+    {
+      "id": "029975a7-78bf-41a5-bf59-78d5b98e0fc1",
+      "entity_type": "leads",
+      "imported_count": 1,
+      "skipped_count": 0,
+      "error_count": 0,
+      "source_label": null,
+      "rolled_back_at": null
+    },
+    {
+      "id": "59eeee0a-0189-4a19-9bb7-88e63d37e939",
+      "entity_type": "leads",
+      "imported_count": 0,
+      "skipped_count": 1,
+      "error_count": 0,
+      "source_label": null,
+      "rolled_back_at": null
+    },
+    {
+      "id": "fd2452f0-882f-4397-9b8e-55382d9a66c9",
+      "entity_type": "leads",
+      "imported_count": 0,
+      "skipped_count": 2,
+      "error_count": 0,
+      "source_label": null,
+      "rolled_back_at": null
+    },
+    {
+      "id": "0e979882-647f-4ecc-af08-d605e4051cb6",
+      "entity_type": "leads",
+      "imported_count": 2,
+      "skipped_count": 0,
+      "error_count": 0,
+      "source_label": null,
+      "rolled_back_at": null
+    }
+  ],
+  "qbo": [],
+  "invites": [],
+  "setupStates": [],
+  "contracts": [],
+  "payments": [],
+  "messages": [],
+  "sms": [],
+  "scheduled": [],
+  "errors": {}
+}

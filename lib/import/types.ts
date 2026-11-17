@@ -45,6 +45,7 @@ export const LEAD_FIELDS: ImportFieldDef[] = [
   { key: "followUpDate",     label: "Follow-up Date (YYYY-MM-DD)", required: false },
   { key: "nextActionText",   label: "Next Action",             required: false },
   { key: "inquiryMessage",   label: "Inquiry Notes",           required: false },
+  { key: "sourceRecordId",   label: "Source record ID",        required: false },
 ];
 
 export const VENDOR_FIELDS: ImportFieldDef[] = [

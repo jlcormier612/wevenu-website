@@ -3,6 +3,7 @@
  * and recoverable field validation. Used by the Import wizard preview and
  * mirrored on the server for authoritative skip decisions.
  */
+import { clientEventWithinFileKey } from "@/lib/import/inquiry-identity";
 import { ENTITY_FIELDS, type EntityType, type FieldMapping, type ImportFieldDef } from "@/lib/import/types";
 import { parsePackageIncludedItems } from "@/lib/import/package-items";
 import { parsePackagePriceInput } from "@/lib/packages/constants";
@@ -177,9 +178,8 @@ function val(row: CsvRow, mapping: FieldMapping, key: string): string {
 }
 
 /**
- * Within-file identity for people (clients / leads preview).
- * Email is the only auto-skip key. Blank emails never match each other
- * via an empty-email key — same-name + no email is warn_ambiguous_name.
+ * Normalized email token used inside person+date / inquiry keys.
+ * Email alone is not a duplicate. Blank emails never match each other.
  */
 export function personEmailWithinFileKey(email: string): string | null {
   const e = email.trim().toLowerCase();
@@ -293,7 +293,7 @@ export function classifyImportPreview(
   const requiredKeys = fields.filter((f) => f.required).map((f) => f.key);
   const unmapped = analyzeUnmappedColumns(headers, mapping, rows);
 
-  const emailSeen = new Map<string, number>();
+  const personEventSeen = new Map<string, number>();
   const nameSeen = new Map<string, number>();
   const catalogSeen = new Map<string, number>();
 
@@ -339,24 +339,28 @@ export function classifyImportPreview(
       continue;
     }
 
-    // Within-file duplicates
-    if (entity === "couples" || entity === "leads") {
+    // Within-file duplicates — same rules as the commit engines.
+    // Clients: same person + same event date. Leads: shared inquiry identity.
+    // Email alone is never an automatic skip.
+    if (entity === "couples") {
       const email = val(row, mapping, "email");
       const first = val(row, mapping, "firstName");
       const last = val(row, mapping, "lastName");
-      const emailKey = personEmailWithinFileKey(email);
-      if (emailKey) {
-        const prior = emailSeen.get(emailKey);
+      const dateParsed = normalizeImportDate(val(row, mapping, "eventDate"));
+      const eventDate = dateParsed.ok ? dateParsed.value : "";
+      const eventKey = clientEventWithinFileKey(first, last, email, eventDate);
+      if (eventKey) {
+        const prior = personEventSeen.get(eventKey);
         if (prior != null) {
           previews.push({
             rowNumber,
             disposition: "skip_within_file_duplicate",
-            message: `Duplicate of row ${prior} in this file (same email) — will be skipped`,
+            message: `Duplicate of row ${prior} in this file (same person and event date) — will be skipped`,
             duplicateOfRow: prior,
           });
           continue;
         }
-        emailSeen.set(emailKey, rowNumber);
+        personEventSeen.set(eventKey, rowNumber);
       } else {
         const nk = personNameKey(first, last);
         if (nk) {
@@ -369,7 +373,28 @@ export function classifyImportPreview(
                 `Same name as row ${prior}, and neither has an email — will attempt import; if a matching client already exists after earlier rows, this row may be skipped`,
               duplicateOfRow: prior,
             });
-            // Still counted as ready for the import button — do not auto-skip
+            nameSeen.set(nk, rowNumber);
+            continue;
+          }
+          nameSeen.set(nk, rowNumber);
+        }
+      }
+    } else if (entity === "leads") {
+      const first = val(row, mapping, "firstName");
+      const last = val(row, mapping, "lastName");
+      const email = val(row, mapping, "email");
+      if (!personEmailWithinFileKey(email)) {
+        const nk = personNameKey(first, last);
+        if (nk) {
+          const prior = nameSeen.get(nk);
+          if (prior != null) {
+            previews.push({
+              rowNumber,
+              disposition: "warn_ambiguous_name",
+              message:
+                `Same name as row ${prior}, and neither has an email — review this row; Hello to Cheers will not decide whether they are the same person`,
+              duplicateOfRow: prior,
+            });
             nameSeen.set(nk, rowNumber);
             continue;
           }

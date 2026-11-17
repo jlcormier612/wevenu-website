@@ -91,8 +91,8 @@ function baseOptions(client: unknown, historicalImport: boolean): IngestLeadOpti
 describe("CSV Import wizard — quiet lead import", () => {
   it("importLeadsAction passes historicalImport true into createLead", () => {
     const body = sliceImportLeadsAction();
-    assert.match(body, /createLead\(\s*(?:row|normalizedLead),\s*"import",\s*true\s*\)/);
-    assert.doesNotMatch(body, /createLead\(\s*(?:row|normalizedLead),\s*"import"\s*\)\s*;/);
+    assert.match(body, /createLead\([\s\S]*"import",[\s\S]*true\s*\)/);
+    assert.doesNotMatch(body, /createLead\([\s\S]*"import"\s*\)\s*;/);
   });
 
   it("Migration Center lead commit keeps historicalImport true", () => {
@@ -105,7 +105,8 @@ describe("CSV Import wizard — quiet lead import", () => {
       leadsService,
       /export async function createLeadForVenue\([\s\S]*?historicalImport\s*=\s*true/,
     );
-    assert.match(adminImport, /createLeadForVenue\(\s*venueId,\s*row\s*\)/);
+    assert.match(adminImport, /createLeadForVenue\(\s*venueId,\s*\{/);
+    assert.match(adminImport, /identityDecision: importedLeadIdentityDecision/);
   });
 
   it("insertLead threads isHistoricalImport into the atomic create payload", () => {

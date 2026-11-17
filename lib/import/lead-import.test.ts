@@ -28,12 +28,11 @@ describe("parseImportedLeadSalesStage", () => {
 });
 
 describe("self-service Lead import extra inquiries", () => {
-  it("keeps same-person rows with different preferred dates as separate inquiries", () => {
-    assert.match(csvLeads, /same person and preferred date/);
-    assert.match(csvLeads, /additional inquiry/);
-    assert.doesNotMatch(
-      csvLeads.slice(0, csvLeads.indexOf("const decision")),
-      /same email/,
-    );
+  it("holds same-person rows for a venue decision instead of auto-creating or auto-skipping", () => {
+    assert.match(csvLeads, /classifyVenueControlledMatch/);
+    assert.match(csvLeads, /resolveImportMatchAction/);
+    assert.match(csvLeads, /Held for your decision|venueMatchSkipMessage/);
+    assert.doesNotMatch(csvLeads, /leadInquiryRetryKey/);
+    assert.doesNotMatch(csvLeads, /merge_leads_v1|confirmMergeLeads/);
   });
 });
