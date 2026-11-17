@@ -2,14 +2,15 @@
  * Practice Run couple photo — approved starter image for Maya & Jordan.
  * Bundled under public/practice (from the Willow Grove Hayes marketing asset).
  * Shared across Practice Runs; never deleted on reset.
+ *
+ * Store a same-origin relative path so Sandbox/Production never depend on
+ * NEXT_PUBLIC_APP_URL (which can be wrong in container runtimes).
  */
-
-import { publicAppOrigin } from "@/lib/env";
 
 export const PRACTICE_COUPLE_PHOTO_PUBLIC_PATH = "/practice/maya-jordan-couple.png";
 
-export function practiceCouplePhotoUrl(origin = publicAppOrigin()): string {
-  return `${origin.replace(/\/$/, "")}${PRACTICE_COUPLE_PHOTO_PUBLIC_PATH}`;
+export function practiceCouplePhotoUrl(): string {
+  return PRACTICE_COUPLE_PHOTO_PUBLIC_PATH;
 }
 
 /**

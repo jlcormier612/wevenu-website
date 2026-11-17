@@ -81,9 +81,12 @@ describe("Practice Run PM-05 lifecycle", () => {
   it("seeds Maya & Jordan couple photo from the approved practice asset", () => {
     const photo = read("lib/practice-run/practice-couple-photo.ts");
     assert.match(photo, /maya-jordan-couple\.png/);
+    assert.match(photo, /PRACTICE_COUPLE_PHOTO_PUBLIC_PATH/);
+    assert.doesNotMatch(photo, /publicAppOrigin/);
     assert.match(photo, /seedPracticeCouplePhoto/);
     assert.match(photo, /client_photo_shared: true/);
     const sample = read("lib/practice-run/sample-wedding.ts");
     assert.match(sample, /seedPracticeCouplePhoto/);
+    assert.match(sample, /attached\.sampleRelationshipId/);
   });
 });

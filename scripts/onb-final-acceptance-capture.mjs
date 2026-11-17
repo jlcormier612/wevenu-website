@@ -191,18 +191,15 @@ try {
   if (!run) throw new Error("No active Practice Run after start/continue");
   results.runId = run.id;
 
-  // Ensure couple photo seeded (deployed code seeds on create/resume)
+  // Verify deployed seed (do not force-overwrite — acceptance must prove automatic seeding)
   if (run.sample_relationship_id) {
-    const photoUrl = `${BASE}/practice/maya-jordan-couple.png`;
-    await admin
+    const { data: rel } = await admin
       .from("venue_customer_relationships")
-      .update({
-        client_photo_url: photoUrl,
-        client_photo_shared: true,
-        venue_display_source: "client",
-      })
+      .select("client_photo_url,client_photo_shared,venue_display_source")
       .eq("id", run.sample_relationship_id)
-      .eq("venue_id", VENUE_ID);
+      .eq("venue_id", VENUE_ID)
+      .maybeSingle();
+    results.notes.push({ couplePhotoSeed: rel });
   }
 
   await snap("05-venue-planning");
@@ -219,21 +216,37 @@ try {
   await page.waitForSelector('[data-testid="practice-client-portal"]', { timeout: 90000 });
   await page.waitForTimeout(2500);
   await snap("06-client-portal-photo");
-  const photoPresent = await page.evaluate(() => {
-    const imgs = [...document.querySelectorAll("img")];
-    return imgs.some(
-      (img) =>
-        (img.src || "").includes("maya-jordan-couple")
-        || (img.src || "").includes("hayes-couple")
-        || Boolean(img.closest("[data-portal-hero]")?.dataset?.couplePhoto === "shown")
-        || (img.alt || "").toLowerCase().includes("photo"),
+  const photoProbe = await page.evaluate(() => {
+    const imgs = [...document.querySelectorAll("[data-portal-hero] img, img")];
+    const match = imgs.find((img) =>
+      (img.getAttribute("src") || img.src || "").includes("maya-jordan-couple"),
     );
+    if (!match) {
+      return {
+        found: false,
+        src: null,
+        complete: false,
+        naturalWidth: 0,
+        heroShown: Boolean(
+          document.querySelector("[data-portal-hero][data-couple-photo='shown']"),
+        ),
+      };
+    }
+    return {
+      found: true,
+      src: match.getAttribute("src") || match.src,
+      complete: match.complete,
+      naturalWidth: match.naturalWidth || 0,
+      heroShown: Boolean(
+        document.querySelector("[data-portal-hero][data-couple-photo='shown']"),
+      ),
+    };
   });
-  const heroHasCouple = await page.locator("[data-portal-hero][data-couple-photo='shown']").count();
-  set("client_couple_photo", photoPresent || heroHasCouple > 0 ? "PASS" : "FAIL", {
-    photoPresent,
-    heroHasCouple,
-  });
+  set(
+    "client_couple_photo",
+    photoProbe.found && photoProbe.naturalWidth > 0 ? "PASS" : "FAIL",
+    photoProbe,
+  );
 
   // Client task
   const { data: sessions } = await admin
@@ -348,13 +361,20 @@ try {
     },
   );
 
-  // Isolation
-  run = afterReset || (await activeRun());
+  // Isolation — re-fetch active run so sample_event_id is present after reset seeding
+  run = await activeRun();
+  if (!run?.sample_event_id) {
+    for (let i = 0; i < 30; i++) {
+      await page.waitForTimeout(500);
+      run = await activeRun();
+      if (run?.sample_event_id) break;
+    }
+  }
   const { data: eventRow } = await admin
     .from("events")
     .select("booked_at,exclude_from_business_reporting,practice_run_id")
-    .eq("id", run.sample_event_id)
-    .single();
+    .eq("id", run?.sample_event_id)
+    .maybeSingle();
   const afterWillow = (
     await admin.from("events").select("id", { count: "exact", head: true }).eq("venue_id", WILLOW)
   ).count;
