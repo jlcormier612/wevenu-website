@@ -246,7 +246,7 @@ export async function advancePracticeContractSimulation(
   const current = ctx.run.journey.contract.simulatedStatus;
   const next = nextContractSimStatus(current);
   if (!next) {
-    let journey = {
+    let journey: PracticeJourney = {
       ...ctx.run.journey,
       contract: {
         ...ctx.run.journey.contract,
@@ -316,6 +316,6 @@ export async function practiceBookCelebration(
   };
 }
 
-export async function resumePracticeStageId(run: PracticeRun): PracticeStageId {
+export function resumePracticeStageId(run: PracticeRun): PracticeStageId {
   return firstIncompleteStage(run.journey) ?? "explore_planning";
 }
