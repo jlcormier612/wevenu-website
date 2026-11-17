@@ -59,9 +59,9 @@ Older documents (`docs/release-readiness-status.md`, `docs/trust-risk-register.m
 
 ## 3. Next Up
 
-1. **ONB-FINAL** — Complete Easy Onboarding experience (**PLANNED**), after Practice Mode app code is authorized for commit/deploy.
+1. **ONB-FINAL** — Complete Easy Onboarding experience (**IN PROGRESS**). Practice Mode polish committed on PR #80; merge/deploy gated on required CI.
 2. **TS-001** — pre-existing typecheck baseline remains **OPEN**. Separate from Practice Mode.
-3. **Production** remains unauthorized. Do not deploy Practice Mode application code without founder authorization.
+3. **Production** remains unauthorized.
 
 ---
 
@@ -82,7 +82,7 @@ Older documents (`docs/release-readiness-status.md`, `docs/trust-risk-register.m
 | **PM-03** | Real client portal and perspective switching | **COMPLETE — VERIFIED** | Garden Practice Venue / Maya & Jordan run `6195979a-…`. Venue\|Client switcher; staff-authorized Practice Run client route renders real `PortalShell` with venue branding; practice portal session (no invite email); bidirectional Practice Run conversation (in-app only; email fan-out blocked); client todo persist; proposal/agreement snapshots from PM-02; no booking/QBO side effects. Acceptance **16/16 PASS**. Focused tests 4/4. Evidence: `~/Desktop/HTC-PM03-acceptance/` and `docs/qa/practice-mode/pm03-acceptance/`. No additive migration. Application code remains uncommitted/undeployed on `feat/practice-mode-pm01`. | Keep closed. |
 | **PM-04** | Practice Run planning & client collaboration | **COMPLETE — VERIFIED** | Garden Practice Venue / Maya & Jordan run `6195979a-…`. Prepare → share → Client → review on real planning tools: tasks (5), timeline (13), questionnaire, documents (shared vs venue-only), draft wedding website (unpublished), Event Order/inventory shells, playbook release gate for client tasks. Client complete-task + portal message roundtrip persist; venue sees both. Isolation: no `booked_at`, reporting-excluded, QBO 0, no real clients. Acceptance **12/12 PASS**. Focused tests 15/15. Evidence: `~/Desktop/HTC-PM04-acceptance/` and `docs/qa/practice-mode/pm04-acceptance/`. No new migration. Application code remains uncommitted/undeployed on `feat/practice-mode-pm01`. | Keep closed. |
 | **PM-05** | Reset, cleanup, and integrated acceptance | **COMPLETE — VERIFIED** | Garden Practice Venue disposable. Finish vs Start over lifecycle (`finishedAt` soft finish; archive + fresh sample on reset; unique practice emails; artifact cleanup). Integrated acceptance **17/17 PASS** including finish→resume, reset after completion, repeated reset, Venue↔Client messaging, isolation (QBO 0, real clients 0, Willow events unchanged 80). Focused Practice Mode tests **35/35**. First-time UX: clearer support copy, lifecycle panel, non-mandatory return to Setup. Evidence: `~/Desktop/HTC-PM05-acceptance/` and `docs/qa/practice-mode/pm05-acceptance/`. No new migration. Application code remains uncommitted/undeployed on `feat/practice-mode-pm01`. | Keep closed. Next: ONB-FINAL after founder auth to commit/deploy Practice Mode. |
-| **ONB-FINAL** | Complete Easy Onboarding experience | **PLANNED** | All four Setup Hub milestones with Practice Run. | After PM-05 commit/deploy authorization. |
+| **ONB-FINAL** | Complete Easy Onboarding experience | **IN PROGRESS** | Final polish committed: Maya & Jordan couple photo (`public/practice/maya-jordan-couple.png`, seeded on sample create/resume), copy/spacing fix, go-live eligibility hint. PR [#80](https://github.com/jlcormier612/wevenu-website/pull/80) tip `597da308`. Merge blocked until required CI (venue-app build + hospitality smoke) completes. Sandbox deploy + deployed ONB-FINAL acceptance pending merge. | Wait for CI → merge to `main` → Deploy Sandbox → run `scripts/onb-final-acceptance-capture.mjs`. |
 | **LUV-FINAL** | Luv functionality, boundaries, and privacy review | **PLANNED** | Separate from Practice Mode. | Independent track. |
 | **JOURNEY-FINAL** | End-to-end new-venue journey | **PLANNED** | Full new-venue path through go-live. | After ONB-FINAL. |
 | **LAUNCH-FINAL** | Remaining technical, billing, legal, and Production gates | **OPEN** | Includes TS-001 and Production gates. | Founder authorization required. |
@@ -399,6 +399,7 @@ TS-001 stays **OPEN**. Application code is not committed, merged, or deployed. N
 | 2026-11-17 | PM-03 COMPLETE — VERIFIED (local app + Sandbox DB). Client perspective, branding inheritance, two-way practice messaging. Evidence `~/Desktop/HTC-PM03-acceptance/`. Application code uncommitted/undeployed. TS-001 unchanged. Production unchanged. |
 | 2026-11-17 | PM-04 Practice Run planning collaboration COMPLETE — VERIFIED on disposable Garden Practice Venue. Prepare/share planning seed, client collaboration loop, isolation 12/12 PASS. Focused tests 15/15. Evidence `~/Desktop/HTC-PM04-acceptance/`. No new migration. Application code still uncommitted/undeployed on `feat/practice-mode-pm01`. PM-01–PM-03 preserved. PM-05 next. TS-001 OPEN. Production unchanged. |
 | 2026-11-17 | PM-05 Practice Run reset/cleanup + integrated acceptance COMPLETE — VERIFIED. Finish vs Start over; repeated reset; 17/17 browser acceptance; 35/35 focused tests. Evidence `~/Desktop/HTC-PM05-acceptance/`. No new migration. PM-01–PM-04 preserved. Application code still uncommitted/undeployed. Next: ONB-FINAL after founder commit/deploy auth. TS-001 OPEN. Production unchanged. |
+| 2026-11-17 | Practice Mode polish + couple photo: commits `baff338b` / `597da308` on `feat/practice-mode-pm01`, PR #80. Merge blocked by required CI (not bypassed). ONB-FINAL Sandbox acceptance harness added. Production unchanged. TS-001 OPEN. |
 
 ---
 
