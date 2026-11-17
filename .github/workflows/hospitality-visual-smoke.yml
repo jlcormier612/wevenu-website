@@ -1,6 +1,8 @@
 # Hospitality visual smoke: source guards + real screenshot-vs-baseline compare.
 # A source-code check alone is insufficient — pixel compare must run and fail
 # on meaningful regressions. Live Sandbox capture is workflow_dispatch (secrets).
+# Path-filter note: required checks must still run when practice-run/lib changes
+# land without matching app/(app) paths — include this workflow file in the PR.
 
 name: Hospitality visual smoke
 
