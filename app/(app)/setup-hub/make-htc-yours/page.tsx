@@ -7,6 +7,7 @@ import {
 } from "@/components/setup-hub/phase-a/milestone-detail-shell";
 import { Button } from "@/components/ui/button";
 import { getSpaces } from "@/lib/availability/service";
+import { phaseAImportFlags } from "@/lib/import/activity";
 import { getImportBatches } from "@/lib/import/batches";
 import { buildPhaseAMilestones } from "@/lib/setup-hub/phase-a-milestones";
 import { loadMilestone02Context } from "@/lib/setup-hub/phase-b1-load";
@@ -21,13 +22,12 @@ export default async function MakeHtcYoursPage() {
   if (!ctx) return null;
 
   const [spaces, importBatches] = await Promise.all([getSpaces(), getImportBatches()]);
-  const hasMigrationImport = importBatches.some(
-    (b) => !b.rolledBackAt && b.importedCount > 0 && Boolean(b.migrationSessionId),
-  );
+  const { hasImportedActivity, hasMigrationImport } = phaseAImportFlags(importBatches);
   const milestones = buildPhaseAMilestones({
     hubState: ctx.hubState,
     spacesCount: spaces.length,
     hasMigrationImport,
+    hasImportedActivity,
     venueBrandStarted: ctx.venueBrandStarted,
     setupProfileCount: ctx.profiles.length,
     packages: ctx.packages,

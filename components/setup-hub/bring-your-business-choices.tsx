@@ -5,19 +5,21 @@ import { ChevronRight, HelpCircle } from "lucide-react";
 
 import { StageAcknowledgeButton } from "@/components/setup-hub/stage-acknowledge-button";
 import { setBringYourBusinessPathAction } from "@/app/(app)/setup-hub/actions";
-import { BRING_YOUR_BUSINESS_ROUTES } from "@/lib/setup-hub/bring-your-business";
+import { BRING_YOUR_BUSINESS_ROUTES, bringYourBusinessHref } from "@/lib/setup-hub/bring-your-business";
 import {
-  BRING_BUSINESS_OPTIONS,
   bringBusinessIntakeHeading,
-  bringBusinessMigrationHref,
   type BringBusinessChoice,
 } from "@/lib/onboarding/types";
+import {
+  BYB_ENTRY_CHOICES,
+  BYB_ENTRY_HEADLINE,
+  BYB_STARTING_FRESH,
+} from "@/lib/setup-hub/bring-your-business-journey";
 import type { BringYourBusinessPath } from "@/lib/setup-hub/types";
 
 /**
  * Setup Hub — Bring Your Business.
- * Three equally respected paths: import, add individually, skip for now.
- * Intake bring_business_choice is acknowledged when present; it is not a new source of truth.
+ * Same three customer-facing choices as the unified journey. Named sources are not shown.
  */
 export function BringYourBusinessChoices({
   done,
@@ -33,10 +35,6 @@ export function BringYourBusinessChoices({
   intakeBringBusinessChoice?: BringBusinessChoice | null;
 }) {
   const intakeHeading = bringBusinessIntakeHeading(intakeBringBusinessChoice);
-  const intakeMigrationHref =
-    intakeBringBusinessChoice && intakeBringBusinessChoice !== "starting_fresh"
-      ? bringBusinessMigrationHref(intakeBringBusinessChoice)
-      : null;
 
   if (done) {
     return (
@@ -50,29 +48,20 @@ export function BringYourBusinessChoices({
             <ChevronRight className="h-3 w-3" />
           </Link>
         ) : path === "individual" ? (
-          <>
-            <Link
-              href={BRING_YOUR_BUSINESS_ROUTES.spreadsheetImport}
-              className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
-            >
-              Keep adding individually
-              <ChevronRight className="h-3 w-3" />
-            </Link>
-            <Link
-              href={BRING_YOUR_BUSINESS_ROUTES.migrationCenter}
-              className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground hover:underline"
-            >
-              Prefer to import instead?
-              <ChevronRight className="h-3 w-3" />
-            </Link>
-          </>
+          <Link
+            href={bringYourBusinessHref("prepare")}
+            className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+          >
+            Keep adding individually
+            <ChevronRight className="h-3 w-3" />
+          </Link>
         ) : path === "skipped" ? (
           <div className="space-y-1">
             {intakeBringBusinessChoice === "starting_fresh" ? (
               <p className="text-xs text-muted-foreground">Start fresh — that matches what you told us at setup.</p>
             ) : null}
             <Link
-              href={intakeMigrationHref ?? BRING_YOUR_BUSINESS_ROUTES.guidedExperience}
+              href={BRING_YOUR_BUSINESS_ROUTES.guidedExperience}
               className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
             >
               Changed your mind? Bring your business over
@@ -86,17 +75,7 @@ export function BringYourBusinessChoices({
 
   return (
     <div className="space-y-3 pt-1">
-      <p className="text-xs text-muted-foreground">
-        Two ways into the same Setup Hub:{" "}
-        <span className="font-medium text-foreground">starting fresh</span> (use Chapters 1–3, then
-        skip here) or{" "}
-        <span className="font-medium text-foreground">bringing an existing business</span> (
-        <Link href={BRING_YOUR_BUSINESS_ROUTES.guidedExperience} className="font-medium text-primary hover:underline">
-          Bring Your Business
-        </Link>
-        {" "}guides you through import). For dated events, finish Calendar &amp; Availability first so bookings land on the
-        right space.
-      </p>
+      <p className="text-xs text-muted-foreground">{BYB_ENTRY_HEADLINE.replace(/\.$/, "")} — recommended order, skippable anytime.</p>
       {calendarReadyHint ? (
         <p className="text-xs text-amber-800 dark:text-amber-200">
           {calendarReadyHint}{" "}
@@ -112,15 +91,6 @@ export function BringYourBusinessChoices({
           <p className="text-xs text-muted-foreground">
             You already chose this during setup. You can still pick a different path below.
           </p>
-          {intakeMigrationHref ? (
-            <Link
-              href={intakeMigrationHref}
-              className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
-            >
-              Continue with that source
-              <ChevronRight className="h-3 w-3" />
-            </Link>
-          ) : null}
         </div>
       ) : null}
 
@@ -131,69 +101,23 @@ export function BringYourBusinessChoices({
       ) : null}
 
       <div className="space-y-2">
-        <div className="htc-surface-guidance space-y-2 p-3 text-sm">
-          <p className="font-medium">Import my business</p>
-          <p className="text-xs text-muted-foreground">
-            Follow Bring Your Business for a recommended order, or go straight to Migration Center.
-            HoneyBook, Tripleseat, or another system — all fine. Exports are files you upload; Hello to Cheers does not connect live to those products.
-          </p>
+        {BYB_ENTRY_CHOICES.map((choice) => (
           <Link
-            href={BRING_YOUR_BUSINESS_ROUTES.guidedExperience}
-            className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+            key={choice.id}
+            href={choice.href}
+            className="htc-surface-guidance flex items-start justify-between gap-3 p-3 text-sm hover:border-primary"
           >
-            Open Bring Your Business
-            <ChevronRight className="h-3 w-3" />
+            <span>
+              <span className="font-medium">{choice.title}</span>
+              <span className="mt-1 block text-xs text-muted-foreground">{choice.description}</span>
+            </span>
+            <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" />
           </Link>
-          <div className="space-y-1.5">
-            {BRING_BUSINESS_OPTIONS.filter((o) => o.key !== "starting_fresh").map((opt) => {
-              const href =
-                opt.key === "honeybook"
-                  ? `${BRING_YOUR_BUSINESS_ROUTES.migrationCenter}?source=honeybook`
-                  : opt.key === "tripleseat"
-                    ? `${BRING_YOUR_BUSINESS_ROUTES.migrationCenter}?source=tripleseat`
-                    : `${BRING_YOUR_BUSINESS_ROUTES.migrationCenter}?source=another_system`;
-              return (
-                <Link
-                  key={opt.key}
-                  href={href}
-                  className="flex items-center justify-between rounded-md border border-transparent px-2 py-1.5 text-xs hover:border-primary hover:bg-muted/30"
-                >
-                  <span>
-                    <span className="font-medium">{opt.title.replace(/^Yes — /, "")}</span>
-                    <span className="mt-1 block text-muted-foreground">{opt.description}</span>
-                  </span>
-                  <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" />
-                </Link>
-              );
-            })}
-          </div>
-        </div>
+        ))}
 
         <div className="htc-surface-guidance space-y-2 p-3 text-sm">
-          <p className="font-medium">Add things individually</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Enter clients and commitments yourself as you go. Not inferior to importing — just a different pace.
-          </p>
-          <div className="mt-2 flex flex-wrap items-center gap-3">
-            <StageAcknowledgeButton
-              action={() => setBringYourBusinessPathAction("individual")}
-              label="I'll add things myself"
-            />
-            <Link
-              href={BRING_YOUR_BUSINESS_ROUTES.spreadsheetImport}
-              className="htc-record-link inline-flex items-center gap-1 text-xs"
-            >
-              Open Import
-              <ChevronRight className="h-3 w-3" />
-            </Link>
-          </div>
-        </div>
-
-        <div className="htc-surface-guidance space-y-2 p-3 text-sm">
-          <p className="font-medium">I&apos;m starting fresh / skip for now</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Nothing to bring over yet. You can always import later.
-          </p>
+          <p className="font-medium">{BYB_STARTING_FRESH.title}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{BYB_STARTING_FRESH.description}</p>
           <div className="mt-2">
             <StageAcknowledgeButton
               action={() => setBringYourBusinessPathAction("skipped")}

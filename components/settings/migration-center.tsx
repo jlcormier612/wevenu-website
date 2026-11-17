@@ -68,9 +68,8 @@ import {
   MIGRATION_CENTER_INTRO,
   SOURCE_SELECTION_LANES,
   laneAllowsImport,
-  laneForRecognizedSource,
   laneFromSourceQuery,
-  namedSourceProfiles,
+  hasSourceSpecificAcceleration,
   sourceHistoryLabel,
   sourceKeyForLane,
   sourceSelectionGuidance,
@@ -422,12 +421,18 @@ export function MigrationCenter({
   cutover,
   venueId,
   initialSource = null,
+  hideSourcePicker = false,
+  embedded = false,
+  initialEntityType,
 }: {
   sourceProfiles: SourceProfile[];
   cutover: CutoverPrerequisite;
   venueId: string;
-  /** URL `?source=` — first-class lane including starting_fresh / honeybook / … */
+  /** URL `?source=` — customer-facing lanes only. */
   initialSource?: string | null;
+  hideSourcePicker?: boolean;
+  embedded?: boolean;
+  initialEntityType?: MigrationEntityType;
 }) {
   const [sessions, setSessions] = React.useState<MigrationSession[]>([]);
   const [activeSessionId, setActiveSessionId] = React.useState<string | null>(null);
@@ -440,14 +445,16 @@ export function MigrationCenter({
 
   const router = useRouter();
   const pathname = usePathname();
-  const namedProfiles = React.useMemo(() => namedSourceProfiles(sourceProfiles), [sourceProfiles]);
   const [lane, setLaneState] = React.useState<SourceSelectionLane>(() =>
-    laneFromSourceQuery(initialSource),
+    hideSourcePicker ? "another_system" : laneFromSourceQuery(initialSource),
   );
+  const [recognizedSourceKey, setRecognizedSourceKey] = React.useState<SourceKey | null>(null);
   const allowsImport = laneAllowsImport(lane);
   const sourceKey = sourceKeyForLane(lane);
-  const importSourceKey: SourceKey = sourceKey ?? "generic_csv";
-  const [entityType, setEntityType] = React.useState<MigrationEntityType>("client");
+  const importSourceKey: SourceKey = recognizedSourceKey ?? sourceKey ?? "generic_csv";
+  const [entityType, setEntityType] = React.useState<MigrationEntityType>(
+    initialEntityType ?? "client",
+  );
   const [headers, setHeaders] = React.useState<string[]>([]);
   const [rows, setRows] = React.useState<CsvRow[]>([]);
   const [pendingFile, setPendingFile] = React.useState<File | null>(null);
@@ -492,19 +499,28 @@ export function MigrationCenter({
   const setLane = React.useCallback(
     (next: SourceSelectionLane) => {
       setLaneState(next);
+      if (embedded || hideSourcePicker) return;
       if (next === DEFAULT_SOURCE_SELECTION_LANE) {
         router.replace(pathname, { scroll: false });
       } else {
         router.replace(`${pathname}?source=${encodeURIComponent(next)}`, { scroll: false });
       }
     },
-    [pathname, router],
+    [pathname, router, embedded, hideSourcePicker],
   );
 
   React.useEffect(() => {
+    if (hideSourcePicker) {
+      setLaneState("another_system");
+      return;
+    }
     const fromQuery = laneFromSourceQuery(initialSource);
     setLaneState((current) => (current === fromQuery ? current : fromQuery));
-  }, [initialSource]);
+  }, [initialSource, hideSourcePicker]);
+
+  React.useEffect(() => {
+    if (initialEntityType) setEntityType(initialEntityType);
+  }, [initialEntityType]);
 
   const selectedProfile =
     (sourceKey ? sourceProfiles.find((p) => p.key === sourceKey) : null) ??
@@ -562,21 +578,13 @@ export function MigrationCenter({
         // third-party "E-mail Address" auto-map without forcing Luv or manual work.
         setMapping(autoMapHeaders(hs, fields));
 
-        // Best-effort recognition only — never forces a source; venue can keep
-        // "another system" / manual mapping. Uses existing recognizeSource().
+        // Best-effort recognition only — adapters may accelerate mapping.
+        // Named systems are never shown as a customer-facing source.
         const detected = recognizeSource(hs);
-        const detectedLane = detected ? laneForRecognizedSource(detected) : null;
-        if (detectedLane && namedProfiles.some((p) => p.key === detected)) {
-          const label = namedProfiles.find((p) => p.key === detected)?.displayName ?? detected;
-          if (lane !== detectedLane) {
-            setLane(detectedLane);
-            toast.success(`This file looks like a ${label} export — we selected it for you. You can change that anytime.`);
-          } else {
-            toast.success(`Read ${results.data.length} rows from ${file.name}.`);
-          }
-        } else {
-          toast.success(`Read ${results.data.length} rows from ${file.name}.`);
+        if (detected && hasSourceSpecificAcceleration(detected)) {
+          setRecognizedSourceKey(detected);
         }
+        toast.success(`Read ${results.data.length} rows from ${file.name}.`);
       },
       error: () => toast.error("Could not read that file."),
     });
@@ -893,13 +901,16 @@ export function MigrationCenter({
   return (
     <div className="space-y-6">
       <Card>
+        {embedded ? null : (
         <CardHeader>
           <CardTitle className="text-base">{MIGRATION_CENTER_INTRO.title}</CardTitle>
           <CardDescription>{MIGRATION_CENTER_INTRO.body}</CardDescription>
         </CardHeader>
+        )}
         <CardContent className="space-y-4">
+          {hideSourcePicker ? null : (
           <div className="space-y-2">
-            <p className="text-xs font-medium text-heading">Where are you moving from?</p>
+            <p className="text-xs font-medium text-heading">How do you want to start?</p>
             <RadioGroup
               value={lane}
               onValueChange={(v) => setLane(v as SourceSelectionLane)}
@@ -919,6 +930,7 @@ export function MigrationCenter({
               ))}
             </RadioGroup>
           </div>
+          )}
 
           <div className="htc-surface-guidance space-y-1 px-3 py-2.5">
             <p className="text-sm font-medium text-heading">{guidance.headline}</p>
@@ -1207,7 +1219,7 @@ export function MigrationCenter({
               <div className="rounded-lg border border-success/30 bg-success/5 p-3 text-sm text-foreground space-y-2">
                 <p>Everything from this file has been resolved — {outcomeSentence(resume.summary)}.</p>
                 <p className="text-xs text-muted-foreground">
-                  Nothing was emailed, invited, or charged. Find contacts under Clients → Contacts, events on Calendar, and continue from{" "}
+                  Nothing was emailed, invited, or charged. Find booked clients under All Bookings, past clients under Past, events on Calendar, and continue from{" "}
                   <Link href={BRING_YOUR_BUSINESS_ROUTES.guidedExperience} className="font-medium text-primary hover:underline">
                     Bring Your Business
                   </Link>

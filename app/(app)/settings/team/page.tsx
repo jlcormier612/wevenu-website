@@ -79,32 +79,13 @@ export default async function TeamDataSettingsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Import Existing Data</CardTitle>
+          <CardTitle className="text-base">Bring your business with you</CardTitle>
           <CardDescription>
-            Small clean lists of clients, leads, vendors, inventory templates, or package templates — CSV, Excel, Word, PDF, or paste. Map your columns before anything is saved.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-3">
-            <Link href="/settings/import?type=couples" className="text-sm font-medium text-primary hover:underline">Import Clients →</Link>
-            <Link href="/settings/import?type=leads" className="text-sm font-medium text-primary hover:underline">Import Leads →</Link>
-            <Link href="/settings/import?type=vendors" className="text-sm font-medium text-primary hover:underline">Import Vendors →</Link>
-            <Link href="/settings/import?type=inventory" className="text-sm font-medium text-primary hover:underline">Import Inventory →</Link>
-            <Link href="/settings/import?type=packages" className="text-sm font-medium text-primary hover:underline">Import Packages →</Link>
-            <Link href="/settings/import" className="text-sm font-medium text-primary hover:underline">Open Import Data →</Link>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Migration Center</CardTitle>
-          <CardDescription>
-            Bringing over a real calendar or booked-event paperwork? Import events, tours, date holds, calendar blocks, documents, and invoices, payment schedules, and signed agreements — with review before anything is created.
+            Bring over people, dates, bookings, agreements, and planning files in one recommended journey. You can skip a stage and come back later.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-2">
-          <Link href="/settings/migration" className="text-sm font-medium text-primary hover:underline">Open Migration Center →</Link>
+          <Link href="/setup-hub/bring-your-business" className="text-sm font-medium text-primary hover:underline">Open Bring Your Business →</Link>
           <div>
             <Link href="/help/what-should-i-set-up-before-i-start" className="text-xs text-muted-foreground hover:text-primary hover:underline">
               How to bring your business over →

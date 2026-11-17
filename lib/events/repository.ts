@@ -175,10 +175,31 @@ export async function getEvent(client: DbClient, venueId: string, eventId: strin
   };
 }
 
-/** Check whether a client already has an event linked to them. */
+/** Events for one client. Multiple booked/historical events are allowed. */
+export async function listEventsForClient(
+  client: DbClient,
+  venueId: string,
+  clientId: string,
+): Promise<Array<{ id: string; eventDate: string | null; status: string }>> {
+  const { data, error } = await client.from("events")
+    .select("id, event_date, status")
+    .eq("venue_id", venueId)
+    .eq("client_id", clientId)
+    .neq("status", "cancelled");
+  if (error) throw error;
+  return ((data ?? []) as Array<{ id: string; event_date: string | null; status: string }>).map((row) => ({
+    id: row.id,
+    eventDate: row.event_date,
+    status: row.status,
+  }));
+}
+
+/** First linked event — never maybeSingle, because a client may have several. */
 export async function getEventIdForClient(client: DbClient, venueId: string, clientId: string): Promise<string | null> {
   const { data } = await client.from("events").select("id")
     .eq("venue_id", venueId).eq("client_id", clientId)
+    .order("event_date", { ascending: true })
+    .limit(1)
     .maybeSingle<{ id: string }>();
   return data?.id ?? null;
 }

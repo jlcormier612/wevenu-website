@@ -91,6 +91,8 @@ export type ClientInput = {
   identityDecision?: import("@/lib/identity/decision").IdentityDecision;
   /** Import/migration only — SQL safe-reuse still applies; venue UI is not available. */
   skipIdentityReview?: boolean;
+  /** Import only — booked / past / preferred. Not a Client table column. */
+  bookingStatus?: string;
 };
 
 

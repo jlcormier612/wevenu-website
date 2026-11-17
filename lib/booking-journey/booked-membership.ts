@@ -9,6 +9,10 @@
  * Current, Past, and Cancelled are views of that lifecycle.
  * Contract, invoice, payment, canonical_bookings, portal activity, and
  * proposal acceptance do not make a relationship Booked.
+ *
+ * Historical completed Events (status complete, past date) are Past in
+ * the Clients list even when they never went through book_relationship.
+ * They are not current Booked membership and do not open the portal.
  */
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
@@ -103,14 +107,16 @@ export async function loadBookedMembershipSets(input?: {
     sales_stage: string | null;
     relationship_id: string | null;
   }[]).filter((row) => !row.relationship_id || !archivedIds.has(row.relationship_id));
-  if (bookedLeads.length === 0) return empty;
   const leadById = new Map(bookedLeads.map((row) => [row.id, row]));
 
-  const { data: clients, error: clientError } = await supabase
-    .from("clients")
-    .select("id, lead_id, status, relationship_id")
-    .eq("venue_id", venueId)
-    .in("lead_id", [...leadById.keys()]);
+  const bookedLeadIds = [...leadById.keys()];
+  const { data: clients, error: clientError } = bookedLeadIds.length === 0
+    ? { data: [] as { id: string; lead_id: string | null; status: string; relationship_id: string | null }[], error: null }
+    : await supabase
+      .from("clients")
+      .select("id, lead_id, status, relationship_id")
+      .eq("venue_id", venueId)
+      .in("lead_id", bookedLeadIds);
   if (clientError) throw clientError;
   const clientRows = ((clients ?? []) as {
     id: string;
@@ -122,14 +128,15 @@ export async function loadBookedMembershipSets(input?: {
     if (row.relationship_id && archivedIds.has(row.relationship_id)) return false;
     return true;
   });
-  if (clientRows.length === 0) return empty;
 
-  const { data: events, error: eventError } = await supabase
-    .from("events")
-    .select("client_id, status, event_date")
-    .eq("venue_id", venueId)
-    .in("client_id", clientRows.map((row) => row.id))
-    .neq("status", "cancelled");
+  const { data: events, error: eventError } = clientRows.length === 0
+    ? { data: [] as { client_id: string | null; status: string; event_date: string | null }[], error: null }
+    : await supabase
+      .from("events")
+      .select("client_id, status, event_date")
+      .eq("venue_id", venueId)
+      .in("client_id", clientRows.map((row) => row.id))
+      .neq("status", "cancelled");
   if (eventError) throw eventError;
 
   const eventsByClient = new Map<string, { status: string; event_date: string | null }[]>();
@@ -167,6 +174,37 @@ export async function loadBookedMembershipSets(input?: {
       if (client.lead_id) currentLeadIds.add(client.lead_id);
     } else if (kind === "past") {
       pastClientIds.add(client.id);
+    }
+  }
+
+  const { data: historicalEvents, error: historicalError } = await supabase
+    .from("events")
+    .select("client_id, event_date, status")
+    .eq("venue_id", venueId)
+    .eq("status", "complete")
+    .lt("event_date", today);
+  if (historicalError) throw historicalError;
+  const historicalClientIds = [...new Set(
+    ((historicalEvents ?? []) as { client_id: string | null }[])
+      .map((row) => row.client_id)
+      .filter((id): id is string => Boolean(id)),
+  )];
+  if (historicalClientIds.length > 0) {
+    const { data: historicalClients, error: historicalClientError } = await supabase
+      .from("clients")
+      .select("id, status, relationship_id")
+      .eq("venue_id", venueId)
+      .in("id", historicalClientIds);
+    if (historicalClientError) throw historicalClientError;
+    for (const row of (historicalClients ?? []) as {
+      id: string;
+      status: string;
+      relationship_id: string | null;
+    }[]) {
+      if (row.status === "cancelled") continue;
+      if (row.relationship_id && archivedIds.has(row.relationship_id)) continue;
+      if (currentClientIds.has(row.id)) continue;
+      pastClientIds.add(row.id);
     }
   }
 

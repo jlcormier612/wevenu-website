@@ -98,7 +98,7 @@ describe("Color Distribution Phase 5 — Tasks plate-clear + Availability guidan
 
   it("excludes EO Example and Payment review from Phase 5 calm; Migration owned by Phase 6", () => {
     // Phase 6 owns Migration calm hierarchy — panel must not reuse Phase 5 class names.
-    assert.match(migrationPage, /MigrationGuidancePanel/);
+    assert.match(migrationPage, /legacyMigrationRedirectHref/);
     assert.doesNotMatch(migrationPanel, /htc-availability-settings-guidance|htc-task-center-plate-clear/);
     assert.match(migrationPanel, /htc-migration-guidance/);
     assert.match(eo, /LibraryDependencyNote/);

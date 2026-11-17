@@ -20,12 +20,13 @@ describe("migration language honesty", () => {
     assert.doesNotMatch(wizard, /Coming soon/i);
   });
 
-  it("Import Data vocabulary stays the five supported entities", () => {
-    assert.match(
-      importPage,
-      /VALID_TYPES = new Set<EntityType>\(\["couples", "leads", "vendors", "inventory", "packages"\]\)/,
-    );
-    assert.doesNotMatch(importPage, /VALID_TYPES[\s\S]{0,120}"event"/);
+  it("relationship import vocabulary is Leads, Clients, and Vendors", () => {
+    const bybPage = readFileSync(resolve("app/(app)/setup-hub/bring-your-business/page.tsx"), "utf8");
+    assert.match(bybPage, /relationshipEntity/);
+    assert.match(bybPage, /"leads"/);
+    assert.match(bybPage, /"couples"/);
+    assert.match(bybPage, /"vendors"/);
+    assert.match(importPage, /legacyImportRedirectHref/);
   });
 
   it("Migration Center still exposes Events and active commitment (not Coming soon)", () => {
@@ -51,21 +52,18 @@ describe("migration language honesty", () => {
     assert.doesNotMatch(article, /\(Active commitment\)/);
   });
 
-  it("Import Data page uses one concise Migration Center section without technical CSV caveats", () => {
-    assert.match(importPage, /Bringing over existing bookings or financial records/);
-    assert.match(importPage, /\/settings\/migration/);
-    assert.match(importPage, /\/settings\/availability/);
+  it("legacy import and migration pages redirect without technical CSV caveats", () => {
+    assert.match(importPage, /legacyImportRedirectHref/);
+    assert.match(migrationPage, /legacyMigrationRedirectHref/);
     assert.doesNotMatch(importPage, /Active Commitment/);
     assert.doesNotMatch(importPage, /Standalone payment CSV/);
-    assert.doesNotMatch(importPage, /Those records are not imported on this page/);
     assert.doesNotMatch(widget, /Standalone payment CSV/);
     assert.doesNotMatch(widget, /Not on Import Data/);
   });
 
-  it("both settings pages keep the shared setup help link", () => {
-    assert.match(importPage, /\/help\/what-should-i-set-up-before-i-start/);
-    assert.match(migrationPage, /\/help\/what-should-i-set-up-before-i-start/);
-    assert.match(importPage, /How to bring your business over/);
-    assert.match(migrationPage, /How to bring your business over/);
+  it("Bring Your Business keeps the shared setup help path on the hub choices", () => {
+    const choices = readFileSync(resolve("components/setup-hub/bring-your-business-choices.tsx"), "utf8");
+    assert.match(choices, /\/help\/what-should-i-set-up-before-i-start/);
+    assert.match(choices, /How to bring your business over/);
   });
 });

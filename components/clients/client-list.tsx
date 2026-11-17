@@ -6,7 +6,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Search } from "lucide-react";
 
-import { ClientStatusBadge } from "@/components/clients/client-status-badge";
+import { ClientListStatusBadge } from "@/components/clients/client-status-badge";
 import { PortalActivationRowActions } from "@/components/clients/portal-activation-row-actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,7 @@ import {
 } from "@/lib/clients/constants";
 import {
   CLIENT_LIST_FILTERS,
+  clientListRowKind,
   clientMatchesListFilter,
   countClientListFilters,
   isPortalActivationFilter,
@@ -208,12 +209,7 @@ export function ClientList({
       ) : null}
       {filter === "contacts" ? (
         <p className="text-sm text-muted-foreground" data-testid="contacts-filter-hint">
-          These are clients without an active booking — including people you imported.
-          They are not booked events.{" "}
-          <Link href="/setup-hub/bring-your-business" className="font-medium text-primary hover:underline">
-            Bring over their events
-          </Link>
-          {" "}when you are ready.
+          These are clients without an active booking yet. They are not booked events.
         </p>
       ) : null}
       <div className="htc-hospitality-toolbar space-y-3">
@@ -277,7 +273,7 @@ export function ClientList({
           </p>
           <div className="flex flex-wrap items-center justify-center gap-2">
             <Button render={<Link href="/clients/new" />}>Add your first client</Button>
-            <Button render={<Link href="/settings/import?type=couples" />} variant="outline">Import Clients</Button>
+            <Button render={<Link href="/setup-hub/bring-your-business?stage=clients" />} variant="outline">Import Clients</Button>
           </div>
         </div>
       )}
@@ -352,7 +348,7 @@ export function ClientList({
                           : portalActivationStateLabel(portalState)}
                       </TableCell>
                     ) : (
-                      <TableCell><ClientStatusBadge status={client.status} /></TableCell>
+                      <TableCell><ClientListStatusBadge kind={clientListRowKind(client, filterCtx)} /></TableCell>
                     )}
                     {!portalMode ? (
                       <TableCell className="text-sm">

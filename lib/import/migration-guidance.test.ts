@@ -15,11 +15,10 @@ const teamPage = readFileSync(resolve("app/(app)/settings/team/page.tsx"), "utf8
 const sourceSelection = readFileSync(resolve("lib/migration/source-selection.ts"), "utf8");
 
 describe("migration guidance onboarding", () => {
-  it("Migration Center page mounts the guidance panel before the engine UI", () => {
-    assert.match(migrationPage, /MigrationGuidancePanel/);
+  it("Migration Center page redirects into Bring Your Business; panel copy remains for reuse", () => {
+    assert.match(migrationPage, /legacyMigrationRedirectHref/);
     assert.match(panel, /How to bring your existing business over/);
     assert.match(panel, /Suggested order|Prepare|Calendar|Agreements & money/);
-    assert.match(panel, /\/settings\/import/);
     assert.match(panel, /\/settings\/availability/);
   });
 
@@ -28,7 +27,7 @@ describe("migration guidance onboarding", () => {
     assert.doesNotMatch(migrationPage, /active commitments \(Event Order/i);
     assert.doesNotMatch(panel, /Active [Cc]ommitment/);
     assert.match(migrationCenter, /Booked-event finances \(invoice, payments, signed agreement\)/);
-    assert.match(importPage, /booked-event finances|invoices, payment schedules, and signed agreements/i);
+    assert.match(importPage, /legacyImportRedirectHref/);
   });
 
   it("canonical help article is a practical migration checklist", () => {
@@ -45,11 +44,10 @@ describe("migration guidance onboarding", () => {
     assert.match(article, /Migration Center/);
   });
 
-  it("Team & Data entry points describe both paths honestly", () => {
-    assert.match(teamPage, /Open Import Data/);
-    assert.match(teamPage, /Open Migration Center/);
-    assert.match(teamPage, /events, tours, date holds/);
+  it("Team & Data entry points send venues into Bring Your Business", () => {
+    assert.match(teamPage, /Open Bring Your Business/);
     assert.match(teamPage, /How to bring your business over/);
+    assert.doesNotMatch(teamPage, /Open Import Data|Open Migration Center/);
   });
 
   it("Migration Center intro mentions calendar and booked-event finances", () => {

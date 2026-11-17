@@ -297,6 +297,61 @@ export async function findActiveDuplicateClient(
   return data ?? null;
 }
 
+export type ActivePersonMatchRow = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string | null;
+};
+
+function mapPersonMatchRow(row: {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string | null;
+}): ActivePersonMatchRow {
+  return {
+    id: row.id,
+    firstName: row.first_name,
+    lastName: row.last_name,
+    email: row.email,
+  };
+}
+
+/** Email lookup only — callers classify name agreement separately. */
+export async function findActiveClientByEmail(
+  client: DbClient, venueId: string, email: string,
+): Promise<ActivePersonMatchRow | null> {
+  const trimmed = email.trim();
+  if (!trimmed) return null;
+  const { data, error } = await client.from("clients").select("id, first_name, last_name, email")
+    .eq("venue_id", venueId)
+    .neq("status", "cancelled")
+    .ilike("email", trimmed)
+    .limit(1)
+    .maybeSingle<{ id: string; first_name: string; last_name: string; email: string | null }>();
+  if (error) throw error;
+  return data ? mapPersonMatchRow(data) : null;
+}
+
+/** Name lookup only — callers classify email agreement separately. */
+export async function findActiveClientByName(
+  client: DbClient, venueId: string, firstName: string, lastName: string,
+): Promise<ActivePersonMatchRow | null> {
+  const first = firstName.trim();
+  const last = lastName.trim();
+  if (!first || !last) return null;
+  const { data, error } = await client.from("clients").select("id, first_name, last_name, email")
+    .eq("venue_id", venueId)
+    .neq("status", "cancelled")
+    .ilike("first_name", first)
+    .ilike("last_name", last)
+    .limit(1)
+    .maybeSingle<{ id: string; first_name: string; last_name: string; email: string | null }>();
+  if (error) throw error;
+  return data ? mapPersonMatchRow(data) : null;
+}
+
 function clientAtomicPayload(input: ClientInput, leadId?: string | null, historicalImport = false) {
   return {
     leadId: leadId || null,
@@ -407,6 +462,20 @@ export async function insertClientWithDatedEvent(
   return { clientId: row.client_id, eventId: row.event_id };
 }
 
+/** Import rollback: delete a client only when no Event was established. */
+export async function abandonUnbookedImportedClient(
+  client: DbClient,
+  venueId: string,
+  clientId: string,
+): Promise<void> {
+  const { count } = await client.from("events")
+    .select("id", { count: "exact", head: true })
+    .eq("venue_id", venueId)
+    .eq("client_id", clientId);
+  if ((count ?? 0) > 0) return;
+  await client.from("clients").delete().eq("id", clientId).eq("venue_id", venueId);
+}
+
 export async function updateClientInfo(client: DbClient, venueId: string, clientId: string, input: ClientInput): Promise<void> {
   const row = toClientRow(venueId, input);
 
@@ -422,7 +491,9 @@ export async function updateClientInfo(client: DbClient, venueId: string, client
   // form already makes these read-only in that case; this is
   // defense-in-depth against a stale form bypassing that.
   const { data: linkedEvent } = await client.from("events").select("id")
-    .eq("client_id", clientId).eq("venue_id", venueId).maybeSingle<{ id: string }>();
+    .eq("client_id", clientId).eq("venue_id", venueId)
+    .limit(1)
+    .maybeSingle<{ id: string }>();
   if (linkedEvent) {
     delete row.event_type;
     delete row.event_date;

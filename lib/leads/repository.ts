@@ -642,7 +642,13 @@ export async function insertLead(
       // vocabulary — a CSV row's free-text source that didn't match one is
       // remapped to "other" upstream, with the original text preserved here
       // rather than silently dropped.
-      sourceData: input.originalSourceLabel ? { original_source_label: input.originalSourceLabel } : undefined,
+      sourceData: (() => {
+        const sourceData: Record<string, unknown> = {
+          ...(input.originalSourceLabel ? { original_source_label: input.originalSourceLabel } : {}),
+          ...(input.dateFlexibility?.trim() ? { date_flexibility: input.dateFlexibility.trim() } : {}),
+        };
+        return Object.keys(sourceData).length > 0 ? sourceData : undefined;
+      })(),
       // Migration Center — Historical Import Mode. Read inside ingest_lead()
       // (called by create_lead_atomic) to set leads.is_historical_import,
       // which the notify_new_lead trigger checks to suppress the venue's
@@ -679,6 +685,62 @@ export async function findActiveDuplicate(
   const { data, error } = await q.limit(1).maybeSingle<{ id: string }>();
   if (error) throw error;
   return data ?? null;
+}
+
+export type ActiveLeadMatchRow = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string | null;
+  eventDate: string | null;
+};
+
+function mapLeadMatchRow(row: {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string | null;
+  event_date?: string | null;
+}): ActiveLeadMatchRow {
+  return {
+    id: row.id,
+    firstName: row.first_name,
+    lastName: row.last_name,
+    email: row.email,
+    eventDate: row.event_date ?? null,
+  };
+}
+
+export async function findActiveLeadByEmail(
+  client: DbClient, venueId: string, email: string,
+): Promise<ActiveLeadMatchRow | null> {
+  const trimmed = email.trim();
+  if (!trimmed) return null;
+  const { data, error } = await client.from("leads").select("id, first_name, last_name, email, event_date")
+    .eq("venue_id", venueId)
+    .not("sales_stage", "in", "(booked,lost,cancelled)")
+    .ilike("email", trimmed)
+    .limit(1)
+    .maybeSingle<{ id: string; first_name: string; last_name: string; email: string | null; event_date: string | null }>();
+  if (error) throw error;
+  return data ? mapLeadMatchRow(data) : null;
+}
+
+export async function findActiveLeadByName(
+  client: DbClient, venueId: string, firstName: string, lastName: string,
+): Promise<ActiveLeadMatchRow | null> {
+  const first = firstName.trim();
+  const last = lastName.trim();
+  if (!first || !last) return null;
+  const { data, error } = await client.from("leads").select("id, first_name, last_name, email, event_date")
+    .eq("venue_id", venueId)
+    .not("sales_stage", "in", "(booked,lost,cancelled)")
+    .ilike("first_name", first)
+    .ilike("last_name", last)
+    .limit(1)
+    .maybeSingle<{ id: string; first_name: string; last_name: string; email: string | null; event_date: string | null }>();
+  if (error) throw error;
+  return data ? mapLeadMatchRow(data) : null;
 }
 
 export async function updateLeadSalesStage(

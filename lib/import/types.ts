@@ -23,20 +23,28 @@ export const COUPLE_FIELDS: ImportFieldDef[] = [
   { key: "setupTime",        label: "Setup Time (HH:MM)",      required: false },
   { key: "teardownTime",     label: "Teardown Time (HH:MM)",   required: false },
   { key: "spaceName",        label: "Event Space Name",        required: false },
+  { key: "bookingStatus",    label: "Booking Status (booked or past)", required: false },
   { key: "internalNotes",    label: "Internal notes",          required: false },
 ];
 
 export const LEAD_FIELDS: ImportFieldDef[] = [
-  { key: "firstName",       label: "First Name",              required: true  },
-  { key: "lastName",        label: "Last Name",               required: true  },
-  { key: "email",           label: "Email",                   required: false },
-  { key: "phone",           label: "Phone",                   required: false },
-  { key: "eventDate",       label: "Event Date (YYYY-MM-DD)", required: false },
-  { key: "eventType",       label: "Event Type",              required: false },
-  { key: "guestCount",      label: "Guest Count",             required: false },
-  { key: "estimatedBudget", label: "Budget",                  required: false },
-  { key: "source",          label: "Source",                  required: false },
-  { key: "inquiryMessage",  label: "Inquiry Notes",           required: false },
+  { key: "firstName",        label: "First Name",              required: true  },
+  { key: "lastName",         label: "Last Name",               required: true  },
+  { key: "partnerFirstName", label: "Partner First Name",      required: false },
+  { key: "partnerLastName",  label: "Partner Last Name",       required: false },
+  { key: "partnerEmail",     label: "Partner Email",           required: false },
+  { key: "email",            label: "Email",                   required: false },
+  { key: "phone",            label: "Phone",                   required: false },
+  { key: "eventDate",        label: "Preferred Date (YYYY-MM-DD)", required: false },
+  { key: "dateFlexibility",  label: "Date Flexibility",        required: false },
+  { key: "eventType",        label: "Event Type",              required: false },
+  { key: "guestCount",       label: "Guest Count",             required: false },
+  { key: "estimatedBudget",  label: "Budget",                  required: false },
+  { key: "source",           label: "Source",                  required: false },
+  { key: "salesStage",       label: "Lead Status",             required: false },
+  { key: "followUpDate",     label: "Follow-up Date (YYYY-MM-DD)", required: false },
+  { key: "nextActionText",   label: "Next Action",             required: false },
+  { key: "inquiryMessage",   label: "Inquiry Notes",           required: false },
 ];
 
 export const VENDOR_FIELDS: ImportFieldDef[] = [

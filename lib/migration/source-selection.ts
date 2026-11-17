@@ -1,16 +1,10 @@
 /**
  * Migration Center — venue-facing source selection (UX only).
  *
- * Does not change adapters, sessions, or DB profiles. The only systems with
- * real source-specific import handling today are HoneyBook and Tripleseat
- * (file recognition + name normalization; no live/API/OAuth connection).
- * Weven, The Knot, WeddingWire, and Planning Pod remain in `source_profiles`
- * for history/attribution and fall through to generic CSV — they must not
- * appear here as "recognized" systems.
- *
- * Principle: source-specific adapters are accelerators, not membership tiers.
- * "I'm starting from scratch" is a first-class neutral lane — reversible and
- * never an invalid empty selection.
+ * Customer-facing lanes never name HoneyBook or Tripleseat. Adapters may still
+ * recognize a file after upload and accelerate mapping. Weven, The Knot,
+ * WeddingWire, and Planning Pod remain in `source_profiles` for attribution
+ * and fall through to generic CSV.
  */
 import type { SourceKey, SourceProfile } from "@/lib/migration/types";
 
@@ -31,32 +25,19 @@ export const SOURCE_SELECTION_LANES: {
   description: string;
 }[] = [
   {
-    id: "honeybook",
-    label: "HoneyBook",
-    description:
-      "We'll recognize the HoneyBook export and guide you through bringing your information into Hello to Cheers.",
-  },
-  {
-    id: "tripleseat",
-    label: "Tripleseat",
-    description:
-      "We'll recognize the Tripleseat export and guide you through bringing your information into Hello to Cheers.",
-  },
-  {
     id: "another_system",
-    label: "Another system",
+    label: "Import from another system",
     description:
-      "No problem. We'll guide you through exporting, mapping, and reviewing your information.",
+      "Upload files you've exported from your current software. We'll help organize and match your information before anything is added.",
   },
   {
     id: "starting_fresh",
-    label: "I'm starting from scratch",
-    description:
-      "Nothing to bring over right now. You can change this anytime and import later.",
+    label: "I'm starting fresh",
+    description: "Skip importing and start setting up your business in Hello to Cheers.",
   },
 ];
 
-export const DEFAULT_SOURCE_SELECTION_LANE: SourceSelectionLane = "starting_fresh";
+export const DEFAULT_SOURCE_SELECTION_LANE: SourceSelectionLane = "another_system";
 
 /** True only for HoneyBook and Tripleseat — not Weven, The Knot, or generic CSV. */
 export function hasSourceSpecificAcceleration(key: SourceKey): boolean {
@@ -85,13 +66,18 @@ export function laneAllowsImport(lane: SourceSelectionLane): boolean {
   return lane !== "starting_fresh";
 }
 
-/** Resolve URL/query `source=` into a lane. Unknown values stay neutral. */
+/** Resolve URL/query `source=` into a lane. Named systems are not customer-facing. */
 export function laneFromSourceQuery(raw: string | null | undefined): SourceSelectionLane {
   const value = raw?.trim().toLowerCase() || "";
-  if (value === "honeybook") return "honeybook";
-  if (value === "tripleseat") return "tripleseat";
-  if (value === "another_system" || value === "generic_csv") return "another_system";
   if (value === "starting_fresh" || value === "not_sure") return "starting_fresh";
+  if (
+    value === "honeybook"
+    || value === "tripleseat"
+    || value === "another_system"
+    || value === "generic_csv"
+  ) {
+    return "another_system";
+  }
   return DEFAULT_SOURCE_SELECTION_LANE;
 }
 
@@ -111,9 +97,9 @@ export function sourceSelectionGuidance(
 ): { headline: string; body: string } {
   if (lane === "starting_fresh") {
     return {
-      headline: "Starting from scratch",
+      headline: "Starting fresh",
       body:
-        "You don't need to import anything right now. If you change your mind, choose a system above and bring your information in whenever you're ready.",
+        "You don't need to import anything right now. If you change your mind, upload a file and bring your information in whenever you're ready.",
     };
   }
 
@@ -134,16 +120,16 @@ export function sourceSelectionGuidance(
   }
 
   return {
-    headline: `Moving from ${profile.displayName}`,
+    headline: "We'll help organize this file",
     body:
-      "Upload an export from this system. We may recognize and organize columns automatically — you can always adjust the mapping before we import. This never connects to or logs into another platform on your behalf.",
+      "Upload an export. We may recognize and organize columns automatically — you can always adjust the mapping before we import. This never connects to or logs into another platform on your behalf.",
   };
 }
 
 export const MIGRATION_CENTER_INTRO = {
   title: "Bring your business with you",
   body:
-    "Choose where you're moving from, then pick what you're bringing over — clients, calendar records, documents, or booked-event invoices and signed agreements. If you don't see your system, use Another system with a CSV. Small contact or template lists can also use Import Data. Or start from scratch and import later.",
+    "Upload what you're bringing over — people, calendar records, documents, or booked-event invoices and signed agreements. We'll match columns and let you review before anything is created.",
 } as const;
 
 /** Customer-facing import history (not internal "migration" jargon). */
@@ -156,9 +142,8 @@ export const IMPORT_HISTORY_COPY = {
 
 /** History / session label — generic_csv is a first-class path, not a lesser tier. */
 export function sourceHistoryLabel(
-  profile: SourceProfile | undefined,
-  sourceKey: SourceKey,
+  _profile: SourceProfile | undefined,
+  _sourceKey: SourceKey,
 ): string {
-  if (sourceKey === "generic_csv") return "Another system";
-  return profile?.displayName ?? sourceKey;
+  return "Imported file";
 }

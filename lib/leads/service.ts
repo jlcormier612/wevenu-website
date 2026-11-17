@@ -140,6 +140,23 @@ export async function findActiveDuplicateLeadForVenue(venueId: string, email: st
   return repo.findActiveDuplicate(createAdminClient(), venueId, email, firstName, lastName);
 }
 
+export async function matchIncomingLead(incoming: {
+  firstName: string;
+  lastName: string;
+  email?: string | null;
+}) {
+  const { classifyPersonMatch } = await import("@/lib/import/match-policy");
+  if (!isSupabaseConfigured) return { ...classifyPersonMatch(incoming, null, null), matchedEventDate: null as string | null };
+  const venue = await getCurrentVenue();
+  if (!venue) return { ...classifyPersonMatch(incoming, null, null), matchedEventDate: null as string | null };
+  const supabase = await createClient();
+  const byEmail = await repo.findActiveLeadByEmail(supabase, venue.id, incoming.email ?? "");
+  const byName = await repo.findActiveLeadByName(supabase, venue.id, incoming.firstName, incoming.lastName);
+  const decision = classifyPersonMatch(incoming, byEmail, byName);
+  const matched = byEmail?.id === decision.matchedId ? byEmail : byName?.id === decision.matchedId ? byName : null;
+  return { ...decision, matchedEventDate: matched?.eventDate ?? null };
+}
+
 /**
  * Request-scoped only (`cache`) — dedupes generateMetadata + page + same-request
  * authz helpers. Never cross-request / cross-tenant.
@@ -264,7 +281,65 @@ async function createLeadCore(
   });
 
   if (!outcome.ok) return { ok: false, message: outcome.error };
+  try {
+    await applyImportedLeadDetails(supabase, venueId, outcome.leadId, input);
+  } catch (err) {
+    console.error("Imported lead details could not be saved:", err);
+  }
   return { ok: true, leadId: outcome.leadId };
+}
+
+/** Follow-up, notes, and pipeline status after a quiet Lead create. Never books. */
+async function applyImportedLeadDetails(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  venueId: string,
+  leadId: string,
+  input: LeadInput,
+): Promise<void> {
+  const noteParts: string[] = [];
+  if (input.dateFlexibility?.trim()) {
+    noteParts.push(`Date flexibility: ${input.dateFlexibility.trim()}`);
+  }
+  if (noteParts.length > 0) {
+    await repo.insertNote(supabase, venueId, leadId, noteParts.join("\n"));
+  }
+  if (input.followUpDate?.trim() || input.nextActionText?.trim() || input.nextActionDue?.trim()) {
+    await repo.updateRelationshipFields(supabase, venueId, leadId, {
+      nextActionText: input.nextActionText ?? "",
+      nextActionDue: input.nextActionDue ?? "",
+      followUpDate: input.followUpDate ?? "",
+      lastContactedAt: "",
+      tourDate: "",
+      tourTime: "",
+      tourCompleted: false,
+      tourNotes: "",
+      tourActualDate: "",
+      tourActualTime: "",
+    });
+  }
+  const { parseImportedLeadSalesStage } = await import("@/lib/import/lead-import");
+  const parsed = parseImportedLeadSalesStage(input.salesStage);
+  if (parsed.kind === "stage") {
+    const lost = parsed.stage === "lost"
+      ? { reason: "other" as const, detail: "Imported historical status" }
+      : undefined;
+    await repo.updateLeadSalesStage(
+      supabase,
+      venueId,
+      leadId,
+      parsed.stage,
+      undefined,
+      lost,
+    );
+  } else if (parsed.kind === "tour" || parsed.kind === "unknown") {
+    const raw = parsed.kind === "unknown" ? parsed.raw : "tour scheduled";
+    await repo.insertNote(
+      supabase,
+      venueId,
+      leadId,
+      `Imported status “${raw}” was saved as a note. Tours are imported separately and this Lead was not marked Booked.`,
+    );
+  }
 }
 
 /**

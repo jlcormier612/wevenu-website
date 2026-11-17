@@ -86,29 +86,20 @@ export const BRING_BUSINESS_OPTIONS: {
   description: string;
 }[] = [
   {
-    key: "honeybook",
-    title: "Yes — I use HoneyBook",
-    description:
-      "We'll note that you're coming from HoneyBook and help you export what you want us to use — nothing moves over automatically.",
-  },
-  {
-    key: "tripleseat",
-    title: "Yes — I use Tripleseat",
-    description:
-      "We'll note that you're coming from Tripleseat and help you export what you want us to use — nothing moves over automatically.",
-  },
-  {
     key: "another_system",
-    title: "Yes — I use another system",
+    title: "Import from another system",
     description:
-      "Tell us what you use; we'll help you gather the pieces that matter — nothing imports on its own.",
+      "Upload files you've exported from your current software. We'll help organize and match your information before anything is added.",
   },
   {
     key: "starting_fresh",
-    title: "No — I'm starting fresh",
-    description: "We'll set you up with everything you need to get started.",
+    title: "I'm starting fresh",
+    description: "Skip importing and start setting up your business in Hello to Cheers.",
   },
 ];
+
+/** Stored intake keys still accepted; they are not customer-facing source names. */
+export const LEGACY_BRING_BUSINESS_KEYS: BringBusinessChoice[] = ["honeybook", "tripleseat"];
 
 export type OnboardingIntakeInput = {
   venueName: string;
@@ -155,18 +146,16 @@ export function bringBusinessMigrationHref(
   choice: BringBusinessChoice,
 ): string | null {
   if (choice === "starting_fresh") return null;
-  if (choice === "honeybook") return "/settings/migration?source=honeybook";
-  if (choice === "tripleseat") return "/settings/migration?source=tripleseat";
-  return "/settings/migration?source=another_system";
+  return "/setup-hub/bring-your-business?entry=import";
 }
 
 /** Hub acknowledgement of the intake Bring Business answer — not a new source of truth. */
 export function bringBusinessIntakeHeading(
   choice: BringBusinessChoice | null | undefined,
 ): string | null {
-  if (choice === "honeybook") return "Bring your HoneyBook business into Hello to Cheers";
-  if (choice === "tripleseat") return "Bring your Tripleseat business into Hello to Cheers";
-  if (choice === "another_system") return "Bring your existing business into Hello to Cheers";
+  if (choice === "honeybook" || choice === "tripleseat" || choice === "another_system") {
+    return "Bring your existing business into Hello to Cheers";
+  }
   if (choice === "starting_fresh") return "Start fresh";
   return null;
 }

@@ -2,8 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 
-import { createClient_, findActiveDuplicateClient } from "@/lib/clients/service";
-import { isPastEventDate } from "@/lib/migration/historical-record";
+import { commitImportedClientAndEvent, classifyClientImportRow } from "@/lib/clients/import-booked-client";
+import { matchIncomingClient, matchIncomingClientForVenue } from "@/lib/clients/service";
+import {
+  personMatchSkipMessage,
+  resolvePersonMatchAction,
+  type PersonMatchAction,
+} from "@/lib/import/match-policy";
 import { resolveSpaceId } from "@/lib/migration/resolve-refs";
 import { DISPLAY_SHAPES } from "@/components/floor-plan/floor-plan-shapes";
 import { acceptCreatedImportRow, createImportBatch, finalizeImportBatch, getImportBatches, rollbackImportBatch, type RollbackResult } from "@/lib/import/batches";
@@ -20,21 +25,30 @@ import {
 } from "@/lib/import/preview-integrity";
 import type { InventoryImportRow, PackageImportRow } from "@/lib/import/utils";
 import { createCategory, createItem as createInventoryItem, findActiveDuplicateInventoryItem, getCategories } from "@/lib/inventory/service";
-import { createLead, findActiveDuplicateLead, leadInputToRawIntake } from "@/lib/leads/service";
-import { logDuplicateBatchRejection } from "@/lib/lead-intake/pipeline";
+import { LEAD_BOOKED_STATUS_HOLD, parseImportedLeadSalesStage } from "@/lib/import/lead-import";
+import { createLead, matchIncomingLead } from "@/lib/leads/service";
 import { proposeFieldMapping, proposeStructuredRows } from "@/lib/luv/import-assist";
 import { addPackageItems, createPackage, findActiveDuplicatePackage } from "@/lib/packages/service";
 import { createVendor, findActiveDuplicateVendor } from "@/lib/vendors/service";
 import { getCurrentVenue } from "@/lib/venue/service";
 import { createClient } from "@/integrations/supabase/server";
-import { getSpaces, getCapacityRules } from "@/lib/availability/service";
-import { evaluateCutoverPrerequisites } from "@/lib/setup-hub/bring-your-business";
 import type { ClientInput } from "@/lib/clients/types";
 import type { InventoryItemInput, InventoryShape } from "@/lib/inventory/types";
 import type { LeadInput } from "@/lib/leads/types";
 import type { PackageInput } from "@/lib/packages/types";
 import type { VendorInput } from "@/lib/vendors/types";
 import type { EntityType, ImportBatch, ImportResult } from "@/lib/import/types";
+
+async function venueRequiresNamedSpace(): Promise<boolean> {
+  const venue = await getCurrentVenue();
+  if (!venue) return false;
+  const supabase = await createClient();
+  const { data } = await supabase.from("venue_capacity_rules")
+    .select("max_simultaneous_events")
+    .eq("venue_id", venue.id)
+    .maybeSingle<{ max_simultaneous_events: number }>();
+  return (data?.max_simultaneous_events ?? 1) >= 2;
+}
 
 async function withResolvedSpace(input: ClientInput): Promise<{ ok: true; input: ClientInput } | { ok: false; message: string }> {
   const raw = input.spaceId.trim();
@@ -119,7 +133,61 @@ export async function proposeFieldMappingAction(headers: string[], entity: Entit
   return proposeFieldMapping(headers, entity);
 }
 
-export async function importCouplesAction(rows: ClientInput[], sourceLabel?: string): Promise<ImportResult> {
+export type PersonMatchPreviewRow = {
+  row: number;
+  name: string;
+  email: string;
+  kind: "exact" | "likely" | "new";
+  reason: string;
+  defaultAction: PersonMatchAction;
+  matchedId: string | null;
+  matchedName: string | null;
+  matchedEmail: string | null;
+};
+
+export async function previewPersonMatchesAction(
+  entity: "couples" | "leads",
+  rows: Array<{
+    firstName: string;
+    lastName: string;
+    email?: string | null;
+    partnerFirstName?: string | null;
+    partnerLastName?: string | null;
+  }>,
+  venueId?: string,
+): Promise<PersonMatchPreviewRow[]> {
+  const out: PersonMatchPreviewRow[] = [];
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    const decision = entity === "couples"
+      ? venueId
+        ? await matchIncomingClientForVenue(venueId, row)
+        : await matchIncomingClient(row)
+      : await matchIncomingLead({
+          firstName: row.firstName,
+          lastName: row.lastName,
+          email: row.email,
+        });
+    out.push({
+      row: i + 1,
+      name: `${row.firstName} ${row.lastName}`.trim(),
+      email: (row.email ?? "").trim(),
+      kind: decision.kind,
+      reason: decision.reason,
+      defaultAction: decision.defaultAction,
+      matchedId: decision.matchedId,
+      matchedName: decision.matchedName,
+      matchedEmail: decision.matchedEmail,
+    });
+  }
+  return out;
+}
+
+export async function importCouplesAction(
+  rows: ClientInput[],
+  sourceLabel?: string,
+  matchActions?: Array<PersonMatchAction | null>,
+): Promise<ImportResult> {
   const errors: ImportResult["errors"] = [];
   const createdIds: string[] = [];
   const venue = await getCurrentVenue();
@@ -130,14 +198,9 @@ export async function importCouplesAction(rows: ClientInput[], sourceLabel?: str
   if (!tracked.ok) return tracked.result;
   if (!venue) return { imported: 0, errors: [{ row: 0, message: "No venue found.", kind: "error" }], batchId: null };
   const batchId = tracked.batchId;
-  const spaces = await getSpaces();
-  const capacityRules = await getCapacityRules();
-  const cutover = evaluateCutoverPrerequisites({
-    spacesCount: spaces.length,
-    hasCapacityRules: capacityRules != null,
-    maxSimultaneousEvents: capacityRules?.maxSimultaneousEvents ?? null,
-  });
-  const seenEmails = new Set<string>();
+  const seenEvents = new Set<string>();
+  const requiresSpace = await venueRequiresNamedSpace();
+  const supabase = await createClient();
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
@@ -164,66 +227,95 @@ export async function importCouplesAction(rows: ClientInput[], sourceLabel?: str
       errors.push({ row: i + 1, message: `Guest count must be a whole number (got "${row.guestCount.trim()}").`, kind: "error" });
       continue;
     }
-    const emailKey = personEmailWithinFileKey(normalizedRow.email ?? "");
-    if (emailKey) {
-      if (seenEmails.has(emailKey)) {
-        errors.push({ row: i + 1, message: "Skipped — duplicate of an earlier row in this same file (same email)", kind: "skipped" });
-        continue;
-      }
-      seenEmails.add(emailKey);
-    }
-    if (!cutover.readyForDatedEvents && normalizedRow.eventDate?.trim()) {
-      errors.push({ row: i + 1, message: cutover.message ?? "Add Event Spaces before importing dated Events.", kind: "error" });
+    const personKey = `${(normalizedRow.firstName ?? "").trim().toLowerCase()}|${(normalizedRow.lastName ?? "").trim().toLowerCase()}|${personEmailWithinFileKey(normalizedRow.email ?? "")}`;
+    const eventKey = `${personKey}|${normalizedRow.eventDate}`;
+    if (seenEvents.has(eventKey)) {
+      errors.push({ row: i + 1, message: "Skipped — this event is already in this same file (same person and date)", kind: "skipped" });
       continue;
     }
-    const dup = await decideHistoricalImportDuplicate(
-      i + 1,
-      () => findActiveDuplicateClient(normalizedRow.email ?? "", normalizedRow.firstName, normalizedRow.lastName),
-      "Skipped — matches an already-active client",
-    );
-    if (dup.action !== "create") {
-      errors.push(dup.error);
+    seenEvents.add(eventKey);
+    const decision = await matchIncomingClient({
+      firstName: normalizedRow.firstName,
+      lastName: normalizedRow.lastName,
+      email: normalizedRow.email,
+      partnerFirstName: normalizedRow.partnerFirstName,
+      partnerLastName: normalizedRow.partnerLastName,
+    });
+    const action = resolvePersonMatchAction(decision, matchActions?.[i] ?? null);
+    if (action === "skip") {
+      errors.push({
+        row: i + 1,
+        message: personMatchSkipMessage(decision, action),
+        kind: "skipped",
+      });
       continue;
     }
     try {
       const spaced = await withResolvedSpace(normalizedRow);
-      if (!spaced.ok) {
-        errors.push({ row: i + 1, message: spaced.message, kind: "error" });
+      const spaceError = spaced.ok ? null : spaced.message;
+      const classified = classifyClientImportRow({
+        eventDate: normalizedRow.eventDate,
+        bookingStatus: normalizedRow.bookingStatus,
+        spaceId: spaced.ok ? spaced.input.spaceId : "",
+        requiresSpace,
+        spaceResolutionError: spaceError,
+      });
+      if (classified.kind === "hold") {
+        errors.push({ row: i + 1, message: classified.message, kind: "error" });
         continue;
       }
-      // Past event dates create a historical Event (does not invent commercial
-      // booked state for future dates — those stay on the client until booked).
-      const asHistorical = isPastEventDate(spaced.input.eventDate);
-      const result = await createClient_(
-        { ...spaced.input, skipIdentityReview: true },
-        true,
-        asHistorical,
-      );
-      if (result.ok) {
-        const accepted = await acceptCreatedImportRow({
-          entityType: "couples",
-          batchId,
-          createdId: result.clientId,
-          venueId: venue.id,
-          rowNumber: i + 1,
-        });
-        if (accepted.accepted) createdIds.push(result.clientId);
-        else errors.push(accepted.error);
-      } else {
-        const msg = "message" in result ? result.message : "errors" in result ? Object.values(result.errors ?? {}).join(", ") : "Unknown error";
-        errors.push({ row: i + 1, message: msg ?? "Unknown error", kind: "error" });
+      const result = await commitImportedClientAndEvent({
+        supabase,
+        venueId: venue.id,
+        input: spaced.ok ? spaced.input : normalizedRow,
+        classification: classified,
+        existingClientId: action === "use_existing" ? decision.matchedId : null,
+        isAdmin: false,
+      });
+      if (!result.ok) {
+        errors.push({ row: i + 1, message: result.message, kind: "error" });
+        continue;
       }
+      if (result.duplicate) {
+        errors.push({
+          row: i + 1,
+          message: "This event is already in Hello to Cheers. No second Event was created.",
+          kind: "skipped",
+        });
+        continue;
+      }
+      if (action === "use_existing") {
+        createdIds.push(result.eventId);
+        continue;
+      }
+      const accepted = await acceptCreatedImportRow({
+        entityType: "couples",
+        batchId,
+        createdId: result.clientId,
+        venueId: venue.id,
+        rowNumber: i + 1,
+      });
+      if (accepted.accepted) createdIds.push(result.clientId);
+      else errors.push(accepted.error);
     } catch (e) {
       errors.push({ row: i + 1, message: e instanceof Error ? e.message : "Unknown error", kind: "error" });
     }
   }
   const skipped = errors.filter((e) => e.kind === "skipped").length;
   await finalizeImportBatch(batchId, { imported: createdIds.length, skipped, errors: errors.length - skipped });
-  if (createdIds.length > 0) revalidatePath("/clients");
+  revalidatePath("/setup-hub/bring-your-business");
+  if (createdIds.length > 0) {
+    revalidatePath("/clients");
+    revalidatePath("/calendar");
+  }
   return { imported: createdIds.length, errors, batchId };
 }
 
-export async function importLeadsAction(rows: LeadInput[], sourceLabel?: string): Promise<ImportResult> {
+export async function importLeadsAction(
+  rows: LeadInput[],
+  sourceLabel?: string,
+  matchActions?: Array<PersonMatchAction | null>,
+): Promise<ImportResult> {
   const errors: ImportResult["errors"] = [];
   const createdIds: string[] = [];
   const venue = await getCurrentVenue();
@@ -243,26 +335,23 @@ export async function importLeadsAction(rows: LeadInput[], sourceLabel?: string)
       continue;
     }
 
-    // Within-file: email is the only auto-skip key. Blank emails never match
-    // each other — same-name rows without email are imported as separate people.
-    const emailKey = personEmailWithinFileKey(row.email ?? "");
-    if (emailKey) {
-      if (seenKeys.has(emailKey)) {
-        errors.push({ row: i + 1, message: "Skipped — duplicate of an earlier row in this same file (same email)", kind: "skipped" });
-        if (venue) {
-          const supabase = await createClient();
-          void logDuplicateBatchRejection(supabase, venue.id, row.source || "other", "import", row, leadInputToRawIntake(row));
-        }
-        continue;
-      }
-      seenKeys.add(emailKey);
-    }
-
     const eventDateNorm = normalizeImportDate(row.eventDate ?? "");
     if (!eventDateNorm.ok) {
       errors.push({ row: i + 1, message: eventDateNorm.message, kind: "error" });
       continue;
     }
+    const followUpNorm = normalizeImportDate(row.followUpDate ?? "");
+    if (!followUpNorm.ok) {
+      errors.push({ row: i + 1, message: followUpNorm.message, kind: "error" });
+      continue;
+    }
+    const personKey = `${row.firstName.trim().toLowerCase()}|${row.lastName.trim().toLowerCase()}|${personEmailWithinFileKey(row.email ?? "")}|${eventDateNorm.value ?? ""}`;
+    if (seenKeys.has(personKey)) {
+      errors.push({ row: i + 1, message: "Skipped — duplicate of an earlier row in this same file (same person and preferred date)", kind: "skipped" });
+      continue;
+    }
+    seenKeys.add(personKey);
+
     const budgetNorm = normalizeImportAmount(row.estimatedBudget ?? "");
     if (!budgetNorm.ok) {
       errors.push({ row: i + 1, message: budgetNorm.message, kind: "error" });
@@ -275,22 +364,42 @@ export async function importLeadsAction(rows: LeadInput[], sourceLabel?: string)
     const normalizedLead: LeadInput = {
       ...row,
       eventDate: eventDateNorm.value ?? "",
+      followUpDate: followUpNorm.value ?? "",
       estimatedBudget: budgetNorm.value,
     };
 
-    // Release Readiness Blocker #1 — find_or_create_relationship dedupes
-    // the enduring Relationship, never the Lead/Opportunity row itself, so
-    // a re-run import (or a CSV that already contains an active lead)
-    // silently doubled the pipeline. Skipped, not silently created —
-    // reported the same way a missing-field row already is.
-    const dup = await decideHistoricalImportDuplicate(
-      i + 1,
-      () => findActiveDuplicateLead(normalizedLead.email ?? "", normalizedLead.firstName, normalizedLead.lastName),
-      "Skipped — matches an already-active lead",
-    );
-    if (dup.action !== "create") {
-      errors.push(dup.error);
+    const bookedStatus = parseImportedLeadSalesStage(normalizedLead.salesStage);
+    if (bookedStatus.kind === "booked") {
+      errors.push({ row: i + 1, message: LEAD_BOOKED_STATUS_HOLD, kind: "error" });
       continue;
+    }
+
+    const decision = await matchIncomingLead({
+      firstName: normalizedLead.firstName,
+      lastName: normalizedLead.lastName,
+      email: normalizedLead.email,
+    });
+    const action = resolvePersonMatchAction(decision, matchActions?.[i] ?? null);
+    if (action === "skip") {
+      errors.push({
+        row: i + 1,
+        message: personMatchSkipMessage(decision, action),
+        kind: "skipped",
+      });
+      continue;
+    }
+    if (action === "use_existing") {
+      const existingDate = (decision.matchedEventDate ?? "").slice(0, 10);
+      const incomingDate = (normalizedLead.eventDate ?? "").slice(0, 10);
+      if (existingDate === incomingDate) {
+        errors.push({
+          row: i + 1,
+          message: "This inquiry is already in Hello to Cheers. No second Lead was created.",
+          kind: "skipped",
+        });
+        continue;
+      }
+      // Same person, additional inquiry — create another Lead on the relationship.
     }
     try {
       // Historical / CSV Import must not enroll lead_created sequences or
@@ -317,6 +426,7 @@ export async function importLeadsAction(rows: LeadInput[], sourceLabel?: string)
   }
   const skipped = errors.filter((e) => e.kind === "skipped").length;
   await finalizeImportBatch(batchId, { imported: createdIds.length, skipped, errors: errors.length - skipped });
+  revalidatePath("/setup-hub/bring-your-business");
   if (createdIds.length > 0) revalidatePath("/leads");
   return { imported: createdIds.length, errors, batchId };
 }
@@ -394,6 +504,7 @@ export async function importVendorsAction(rows: VendorInput[], sourceLabel?: str
   // Compensation/rollback undo this venue's relationship only.
   const skipped = errors.filter((e) => e.kind === "skipped").length;
   await finalizeImportBatch(batchId, { imported: createdIds.length, skipped, errors: errors.length - skipped });
+  revalidatePath("/setup-hub/bring-your-business");
   if (createdIds.length > 0) revalidatePath("/vendors");
   return { imported: createdIds.length, errors, batchId };
 }
@@ -498,6 +609,7 @@ export async function importInventoryAction(rows: InventoryImportRow[], sourceLa
   }
   const skipped = errors.filter((e) => e.kind === "skipped").length;
   await finalizeImportBatch(batchId, { imported: createdIds.length, skipped, errors: errors.length - skipped });
+  revalidatePath("/setup-hub/bring-your-business");
   if (createdIds.length > 0) revalidatePath("/library/inventory");
   return { imported: createdIds.length, errors, batchId };
 }
@@ -583,6 +695,7 @@ export async function importPackagesAction(rows: PackageImportRow[], sourceLabel
   }
   const skipped = errors.filter((e) => e.kind === "skipped").length;
   await finalizeImportBatch(batchId, { imported: createdIds.length, skipped, errors: errors.length - skipped });
+  revalidatePath("/setup-hub/bring-your-business");
   if (createdIds.length > 0) revalidatePath("/library/packages");
   return { imported: createdIds.length, errors, batchId };
 }

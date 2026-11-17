@@ -28,11 +28,11 @@ export async function ImportHealthWidget() {
   ]);
 
   const stats = [
-    { label: "Clients",   count: clients.length,   importPath: "/settings/import?type=couples",   resultPath: "/clients?filter=contacts" },
-    { label: "Leads",     count: leads.length,     importPath: "/settings/import?type=leads",     resultPath: "/leads"            },
-    { label: "Vendors",   count: vendors.length,   importPath: "/settings/import?type=vendors",   resultPath: "/vendors"          },
-    { label: "Inventory Templates", count: inventory.length, importPath: "/settings/import?type=inventory", resultPath: "/library/inventory" },
-    { label: "Package Templates",   count: packages.length,  importPath: "/settings/import?type=packages",  resultPath: "/packages"  },
+    { label: "Clients",   count: clients.length,   importPath: "/setup-hub/bring-your-business?stage=clients",   resultPath: "/clients" },
+    { label: "Leads",     count: leads.length,     importPath: "/setup-hub/bring-your-business?stage=leads",     resultPath: "/leads"            },
+    { label: "Vendors",   count: vendors.length,   importPath: "/setup-hub/bring-your-business?stage=vendors",   resultPath: "/vendors"          },
+    { label: "Inventory Templates", count: inventory.length, importPath: "/setup-hub/bring-your-business?stage=planning&kind=inventory", resultPath: "/library/inventory" },
+    { label: "Package Templates",   count: packages.length,  importPath: "/setup-hub/bring-your-business?stage=planning&kind=packages",  resultPath: "/packages"  },
   ];
 
   const history = batches.filter((b) => !b.rolledBackAt);
@@ -43,7 +43,7 @@ export async function ImportHealthWidget() {
   return (
     <div className="space-y-4">
       {showLive ? (
-        <div className="rounded-sm border border-border bg-card p-4 space-y-3">
+        <div className="rounded-sm border border-border bg-card p-4 space-y-3" data-testid="byb-live-totals">
           <div className="space-y-1">
             <h2 className="text-sm font-semibold text-foreground">In Hello to Cheers now</h2>
             <p className="text-xs text-muted-foreground">
@@ -53,7 +53,12 @@ export async function ImportHealthWidget() {
 
           <div className="space-y-2">
             {stats.map((s) => (
-              <div key={s.label} className="flex items-center justify-between">
+              <div
+                key={s.label}
+                className="flex items-center justify-between"
+                data-testid={`byb-live-${s.label.toLowerCase().split(" ")[0]}`}
+                data-count={s.count}
+              >
                 <div className="flex items-center gap-2">
                   {s.count > 0
                     ? <Check className="h-3.5 w-3.5 text-success" />
@@ -75,9 +80,9 @@ export async function ImportHealthWidget() {
       {history.length > 0 ? (
         <div className="rounded-sm border border-border bg-card p-4 space-y-3">
           <div className="space-y-1">
-            <h2 className="text-sm font-semibold text-foreground">CSV import history</h2>
+            <h2 className="text-sm font-semibold text-foreground">Import history</h2>
             <p className="text-xs text-muted-foreground">
-              Each row is one CSV import run, from import history — not the live totals above. Migration Center has its own session history.
+              Each row is one import run — not the live totals above.
             </p>
           </div>
           <div className="space-y-2">

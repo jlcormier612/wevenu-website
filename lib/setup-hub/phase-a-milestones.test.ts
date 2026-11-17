@@ -214,6 +214,37 @@ describe("bring-business labeling", () => {
     );
   });
 
+  it("counts people-list wizard imports as imported activity even without a migration session", () => {
+    const cards = buildPhaseAMilestones({
+      hubState: {
+        ...emptyHub,
+        bringYourBusinessPath: "skipped",
+        existingBookingsAnswer: "no",
+        existingBookingsAnsweredAt: "2026-01-01",
+      },
+      spacesCount: 0,
+      hasMigrationImport: false,
+      hasImportedActivity: true,
+      venueBrandStarted: false,
+      setupProfileCount: 0,
+    });
+    assert.equal(cards[2]?.status, "in_progress");
+    assert.notEqual(cards[2]?.statusLabel, "Nothing to bring over");
+    assert.equal(cards[2]?.actionLabel, "Continue bringing your business over");
+  });
+
+  it("does not treat skipped stages or starting-fresh as Nothing to bring over when imports exist", () => {
+    assert.equal(
+      bringBusinessNothingToBringOver({
+        existingBookingsAnswer: "no",
+        hasMigrationImport: false,
+        hasImportedActivity: true,
+        bringYourBusinessPath: "skipped",
+      }),
+      false,
+    );
+  });
+
   it("does not label an actual import as Nothing to bring over", () => {
     assert.equal(
       bringBusinessStatus({

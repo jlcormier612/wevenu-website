@@ -14,6 +14,7 @@
  * returnClientToBooked, an import the venue marked already booked, and
  * Create Event when a client is chosen. Commercial milestones do not
  * call this. A second call does not create another event.
+ * Additional distinct Events use addImportedEventToClient.
  *
  * Sequence exit, the lifecycle booking row, the tour-converted
  * signal, and setup-profile inheritance run only after the transaction

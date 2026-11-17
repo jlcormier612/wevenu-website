@@ -199,6 +199,44 @@ export const getClient = cache(async (clientId: string): Promise<ClientWithDetai
 // ---- create -----------------------------------------------------------------
 
 /** Migration Center — mirrors lib/leads/service.ts's findActiveDuplicateLead(). */
+export async function matchIncomingClient(incoming: {
+  firstName: string;
+  lastName: string;
+  email?: string | null;
+  partnerFirstName?: string | null;
+  partnerLastName?: string | null;
+}) {
+  const { classifyPersonMatch } = await import("@/lib/import/match-policy");
+  const venue = await getCurrentVenue();
+  if (!venue) {
+    return classifyPersonMatch(incoming, null, null);
+  }
+  const supabase = await createClient();
+  const byEmail = await repo.findActiveClientByEmail(supabase, venue.id, incoming.email ?? "");
+  const byName = await repo.findActiveClientByName(supabase, venue.id, incoming.firstName, incoming.lastName);
+  return classifyPersonMatch(incoming, byEmail, byName);
+}
+
+/** White-Glove match — same classifyPersonMatch policy as self-service. */
+export async function matchIncomingClientForVenue(
+  venueId: string,
+  incoming: {
+    firstName: string;
+    lastName: string;
+    email?: string | null;
+    partnerFirstName?: string | null;
+    partnerLastName?: string | null;
+  },
+) {
+  const { classifyPersonMatch } = await import("@/lib/import/match-policy");
+  const actor = await requireAdminUser();
+  if (!actor) return classifyPersonMatch(incoming, null, null);
+  const admin = createAdminClient();
+  const byEmail = await repo.findActiveClientByEmail(admin, venueId, incoming.email ?? "");
+  const byName = await repo.findActiveClientByName(admin, venueId, incoming.firstName, incoming.lastName);
+  return classifyPersonMatch(incoming, byEmail, byName);
+}
+
 export async function findActiveDuplicateClient(email: string, firstName: string, lastName: string): Promise<{ id: string } | null> {
   if (!isSupabaseConfigured) return null;
   const venue = await getCurrentVenue();
@@ -280,23 +318,40 @@ async function createClientCore(
     eventId = null;
     if (lifecycleOpts?.markAsAlreadyBooked && input.eventDate) {
       const { bookClient } = await import("@/lib/booking-journey/book-client");
+      const occasion = datedEventFromClient(input, false);
       const booked = await bookClient(supabase, {
         venueId,
         clientId,
         source: "manual",
         spaceId: input.spaceId,
         lifecycleOrigin: "import",
+        event: {
+          name: occasion.name,
+          eventType: occasion.eventType ?? "",
+          eventDate: occasion.eventDate,
+          eventEndDate: occasion.eventEndDate ?? "",
+          startTime: occasion.startTime ?? "",
+          endTime: occasion.endTime ?? "",
+          setupTime: occasion.setupTime ?? "",
+          teardownTime: occasion.teardownTime ?? "",
+          guestCount: occasion.guestCount ?? "",
+        },
       });
-      if (!booked.ok) return { ok: false, message: booked.message };
+      if (!booked.ok) {
+        await repo.abandonUnbookedImportedClient(supabase, venueId, clientId);
+        return { ok: false, message: booked.message };
+      }
       eventId = booked.eventId;
     }
   }
 
-  void enqueueQuickBooksSync(venueId, "customer", clientId, {
-    firstName: input.firstName, lastName: input.lastName,
-    partnerFirstName: input.partnerFirstName, partnerLastName: input.partnerLastName,
-    email: input.email, phone: input.phone,
-  });
+  if (!historicalImport && !importAsHistoricalRecord) {
+    void enqueueQuickBooksSync(venueId, "customer", clientId, {
+      firstName: input.firstName, lastName: input.lastName,
+      partnerFirstName: input.partnerFirstName, partnerLastName: input.partnerLastName,
+      email: input.email, phone: input.phone,
+    });
+  }
 
   // Stop sales sequences only when the venue has actually booked
   // (historical import or an explicit already-booked import). Preparing a

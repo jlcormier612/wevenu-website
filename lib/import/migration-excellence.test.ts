@@ -16,12 +16,13 @@ const migrationService = readFileSync(resolve("lib/migration/service.ts"), "utf8
 const genericCsv = readFileSync(resolve("lib/migration/sources/generic-csv.ts"), "utf8");
 
 describe("client → Event migration contract", () => {
-  it("treats past dates as historical Event creates on Import Data and MC", () => {
+  it("Client import and Migration Center both establish Events through canonical booking or historical complete", () => {
     assert.equal(isPastEventDate("2020-01-01", "2026-10-20"), true);
     assert.equal(isPastEventDate("2027-06-15", "2026-10-20"), false);
-    assert.match(venueImport, /isPastEventDate\(spaced\.input\.eventDate\)/);
-    assert.match(venueImport, /createClient_\([\s\S]*true,\s*asHistorical/);
-    assert.match(adminImport, /createClientForVenue\(venueId, input, true, asHistorical\)/);
+    assert.match(venueImport, /commitImportedClientAndEvent/);
+    assert.match(adminImport, /commitImportedClientAndEvent/);
+    assert.match(adminImport, /matchIncomingClientForVenue/);
+    assert.match(migrationService, /markAsAlreadyBooked: true/);
     assert.match(migrationService, /const asHistorical = isPastEventDate\(n\.eventDate\)/);
   });
 });

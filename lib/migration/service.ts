@@ -1076,8 +1076,14 @@ async function commitOneRecord(
       // Past event dates always create a historical Event. The
       // importAsHistoricalRecord flag is still set by approve_historical for
       // availability-conflict review, but any past date commits as historical.
+      if (!n.eventDate?.trim()) {
+        return {
+          ok: false,
+          error: "Client import needs a confirmed event date. Import this person as a Lead if they have not booked.",
+        };
+      }
       const asHistorical = isPastEventDate(n.eventDate);
-      const requiresSpace = !asHistorical && !!n.eventDate && await venueRequiresEventSpace(client, session.venueId);
+      const requiresSpace = !asHistorical && await venueRequiresEventSpace(client, session.venueId);
       const space = await resolveSpaceId(client, session.venueId, n.spaceId, n.spaceName);
       if (requiresSpace) {
         if (!space.ok) return { ok: false, error: pastConflictForReview(n.eventDate, space.error) };
@@ -1089,10 +1095,24 @@ async function commitOneRecord(
       }
       const input = toClientInput({ ...n, spaceId: space.ok ? space.spaceId : null });
       const result = isAdmin
-        ? await createClientForVenue(session.venueId, input, true, asHistorical)
-        : await createClient_(input, true, asHistorical);
+        ? await createClientForVenue(
+            session.venueId,
+            input,
+            true,
+            asHistorical,
+            asHistorical ? undefined : { markAsAlreadyBooked: true },
+          )
+        : await createClient_(
+            input,
+            true,
+            asHistorical,
+            asHistorical ? undefined : { markAsAlreadyBooked: true },
+          );
       if (!result.ok) {
         return { ok: false, error: pastConflictForReview(n.eventDate, result.message ?? "Could not create client.") };
+      }
+      if (!result.eventId) {
+        return { ok: false, error: "Client import did not establish an Event. The booking was not imported." };
       }
       return { ok: true, entityId: result.clientId };
     }
@@ -1282,6 +1302,43 @@ async function commitOneRecord(
       }
       if (!clientRef.clientId) {
         return { ok: false, error: "An event is created only when a relationship is booked. Import the client as already booked." };
+      }
+      const existingEvents = await eventsRepo.listEventsForClient(client, session.venueId, clientRef.clientId);
+      const { findDuplicateImportedEvent } = await import("@/lib/import/client-event-commit");
+      const duplicate = findDuplicateImportedEvent(existingEvents, input.eventDate);
+      if (duplicate) return { ok: true, entityId: duplicate.id };
+      if (existingEvents.length > 0) {
+        const { addImportedEventToClient } = await import("@/lib/booking-journey/add-imported-event");
+        const added = await addImportedEventToClient(client, {
+          venueId: session.venueId,
+          clientId: clientRef.clientId,
+          input: {
+            firstName: input.name,
+            lastName: "",
+            email: "",
+            phone: "",
+            partnerFirstName: "",
+            partnerLastName: "",
+            partnerEmail: "",
+            eventType: input.eventType,
+            eventDate: input.eventDate,
+            endDate: input.eventEndDate,
+            guestCount: input.guestCount,
+            ceremonyTime: input.startTime,
+            receptionTime: input.endTime,
+            setupTime: input.setupTime,
+            teardownTime: input.teardownTime,
+            rehearsalDate: "",
+            internalNotes: "",
+            spaceId: input.spaceId,
+            skipIdentityReview: true,
+          },
+          kind: asHistorical ? "historical" : "upcoming",
+          eventDate: input.eventDate,
+          eventName: input.name,
+        });
+        if (!added.ok) return { ok: false, error: added.message };
+        return { ok: true, entityId: added.eventId };
       }
       const { bookClient } = await import("@/lib/booking-journey/book-client");
       const booked = await bookClient(client, {

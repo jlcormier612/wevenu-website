@@ -20,7 +20,7 @@ describe("Color Distribution Phase 6 — Migration guidance + Import cutover", (
   const css = read("app/globals.css");
 
   it("MigrationGuidancePanel uses single shell with calm intro and white instructional body", () => {
-    assert.match(migrationPage, /MigrationGuidancePanel/);
+    assert.match(migrationPage, /legacyMigrationRedirectHref/);
     assert.match(migrationPanel, /htc-migration-guidance/);
     assert.match(migrationPanel, /htc-migration-guidance-intro/);
     assert.match(migrationPanel, /htc-migration-guidance-body/);
@@ -66,19 +66,15 @@ describe("Color Distribution Phase 6 — Migration guidance + Import cutover", (
     assert.match(migrationPanel, /n: "5"/);
   });
 
-  it("Import cutover pointer uses compact calm class without restyling the wizard", () => {
-    assert.match(importPage, /htc-import-cutover-pointer/);
-    assert.match(importPage, /data-testid="import-cutover-pointer"/);
-    assert.match(importPage, /Bringing over existing bookings or financial records\?/);
-    assert.match(importPage, /\/settings\/migration/);
-    assert.match(importPage, /\/settings\/availability/);
-    assert.match(importPage, /ImportWizard/);
-    assert.match(importPage, /ImportHealthWidget/);
-    // Calm class appears once; wizard mount is after the pointer.
-    assert.equal((importPage.match(/htc-import-cutover-pointer/g) ?? []).length, 1);
-    const pointerIdx = importPage.indexOf("htc-import-cutover-pointer");
-    const wizardIdx = importPage.indexOf("<ImportWizard");
-    assert.ok(pointerIdx > 0 && wizardIdx > pointerIdx);
+  it("legacy Import Data and Migration Center pages redirect into Bring Your Business", () => {
+    assert.match(importPage, /legacyImportRedirectHref/);
+    assert.match(importPage, /redirect\(/);
+    assert.match(migrationPage, /legacyMigrationRedirectHref/);
+    assert.match(migrationPage, /redirect\(/);
+    const byb = read("app/(app)/setup-hub/bring-your-business/page.tsx");
+    assert.match(byb, /ImportWizard/);
+    assert.match(byb, /ImportHealthWidget/);
+    assert.match(byb, /MigrationCenter/);
   });
 
   it("Phase 6 CSS: migration intro/body hierarchy + import cutover full calm", () => {

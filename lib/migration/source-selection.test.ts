@@ -64,25 +64,27 @@ describe("Migration Center source selection", () => {
     assert.doesNotMatch(labels, /Weven|The Knot|WeddingWire|Planning Pod|Event Temple|Aisle Planner|Perfect Venue|Eventbrite/i);
   });
 
-  it("exposes HoneyBook, Tripleseat, Another system, and starting from scratch as first-class radios", () => {
+  it("exposes Import from another system and starting fresh without named systems", () => {
     assert.deepEqual(
       SOURCE_SELECTION_LANES.map((l) => l.id),
-      ["honeybook", "tripleseat", "another_system", "starting_fresh"],
+      ["another_system", "starting_fresh"],
     );
+    const labels = SOURCE_SELECTION_LANES.map((l) => l.label).join(" ");
+    assert.doesNotMatch(labels, /HoneyBook|Tripleseat/i);
     assert.equal(SOURCE_SELECTION_LANES.some((l) => l.label === "A system we recognize"), false);
     assert.equal(SOURCE_SELECTION_LANES.some((l) => /not sure/i.test(l.label)), false);
-    assert.match(
+    assert.equal(
       SOURCE_SELECTION_LANES.find((l) => l.id === "starting_fresh")!.label,
-      /starting from scratch/i,
+      "I'm starting fresh",
     );
   });
 
-  it("defaults to starting from scratch as the reversible neutral state", () => {
-    assert.equal(DEFAULT_SOURCE_SELECTION_LANE, "starting_fresh");
+  it("defaults to import-from-another-system so the upload path is ready", () => {
+    assert.equal(DEFAULT_SOURCE_SELECTION_LANE, "another_system");
     assert.equal(laneAllowsImport("starting_fresh"), false);
     assert.equal(sourceKeyForLane("starting_fresh"), null);
-    assert.equal(laneFromSourceQuery(null), "starting_fresh");
-    assert.equal(laneFromSourceQuery(""), "starting_fresh");
+    assert.equal(laneFromSourceQuery(null), "another_system");
+    assert.equal(laneFromSourceQuery(""), "another_system");
     assert.equal(laneFromSourceQuery("starting_fresh"), "starting_fresh");
     assert.equal(laneFromSourceQuery("not_sure"), "starting_fresh");
   });
@@ -94,11 +96,11 @@ describe("Migration Center source selection", () => {
     assert.equal(laneAllowsImport("honeybook"), true);
   });
 
-  it("maps HoneyBook and Tripleseat lanes to their real source keys", () => {
+  it("maps named-system queries to the universal import lane", () => {
     assert.equal(sourceKeyForLane("honeybook"), "honeybook");
     assert.equal(sourceKeyForLane("tripleseat"), "tripleseat");
-    assert.equal(laneFromSourceQuery("honeybook"), "honeybook");
-    assert.equal(laneFromSourceQuery("tripleseat"), "tripleseat");
+    assert.equal(laneFromSourceQuery("honeybook"), "another_system");
+    assert.equal(laneFromSourceQuery("tripleseat"), "another_system");
     assert.equal(laneFromSourceQuery("another_system"), "another_system");
     assert.equal(laneFromSourceQuery("generic_csv"), "another_system");
   });
@@ -129,10 +131,10 @@ describe("Migration Center source selection", () => {
     assert.doesNotMatch(another.body.toLowerCase(), /unsupported|not available|cannot migrate/);
     assert.match(unsure.body.toLowerCase(), /guide|spreadsheet|csv/);
     assert.doesNotMatch(unsure.body.toLowerCase(), /unsupported|dead end/);
-    assert.match(fresh.body.toLowerCase(), /import later|change your mind/);
+    assert.match(fresh.body.toLowerCase(), /change your mind|whenever you're ready/);
   });
 
-  it("offers stronger guidance only for HoneyBook and Tripleseat", () => {
+  it("does not name HoneyBook or Tripleseat in customer guidance", () => {
     const honey = sourceSelectionGuidance(
       "honeybook",
       PROFILES.find((p) => p.key === "honeybook")!,
@@ -141,17 +143,16 @@ describe("Migration Center source selection", () => {
       "tripleseat",
       PROFILES.find((p) => p.key === "tripleseat")!,
     );
-    assert.match(honey.body, /recognize/i);
-    assert.match(triple.body, /recognize/i);
+    assert.doesNotMatch(honey.headline + honey.body, /HoneyBook|Tripleseat/i);
+    assert.doesNotMatch(triple.headline + triple.body, /HoneyBook|Tripleseat/i);
     assert.match(honey.body, /never connects to or logs into/i);
     assert.doesNotMatch(honey.body.toLowerCase(), /oauth|api key|live connection/);
   });
 
-  it("introduces Migration Center as inclusive, not list-gated", () => {
+  it("introduces the importer as inclusive, not list-gated", () => {
     assert.equal(MIGRATION_CENTER_INTRO.title, "Bring your business with you");
-    assert.match(MIGRATION_CENTER_INTRO.body, /don't see your system/i);
-    assert.match(MIGRATION_CENTER_INTRO.body, /CSV/i);
     assert.match(MIGRATION_CENTER_INTRO.body, /booked-event invoices/i);
+    assert.doesNotMatch(MIGRATION_CENTER_INTRO.body, /HoneyBook|Tripleseat/i);
   });
 
   it("does not name unverified systems in Another system copy", () => {
@@ -159,11 +160,11 @@ describe("Migration Center source selection", () => {
     assert.doesNotMatch(another.description, /Event Temple|Aisle Planner|Perfect Venue|Eventbrite/i);
   });
 
-  it("labels generic_csv history as Another system, not a lesser tier", () => {
-    assert.equal(sourceHistoryLabel(genericSourceProfile(PROFILES) ?? undefined, "generic_csv"), "Another system");
+  it("labels import history without naming another product", () => {
+    assert.equal(sourceHistoryLabel(genericSourceProfile(PROFILES) ?? undefined, "generic_csv"), "Imported file");
     assert.equal(
       sourceHistoryLabel(PROFILES.find((p) => p.key === "honeybook"), "honeybook"),
-      "HoneyBook",
+      "Imported file",
     );
   });
 
@@ -193,7 +194,6 @@ describe("Migration Center UI matches adapter reality", () => {
     assert.match(ui, /Choose file/);
     assert.match(ui, /className="sr-only"/);
     assert.match(ui, /laneAllowsImport/);
-    assert.match(ui, /starting_fresh/);
     assert.match(ui, /CSV files/);
     assert.match(ui, /Upload a CSV export from/);
   });
@@ -219,11 +219,11 @@ describe("Migration Center UI matches adapter reality", () => {
     assert.match(wizard, /accept=\{ACCEPTED_EXTENSIONS\}/);
   });
 
-  it("renders reversible starting-from-scratch as a first-class radio", () => {
+  it("hides named-system radios and redirects the standalone page into Bring Your Business", () => {
     assert.match(ui, /SOURCE_SELECTION_LANES\.map/);
-    assert.match(ui, /DEFAULT_SOURCE_SELECTION_LANE/);
-    assert.match(ui, /initialSource/);
-    assert.match(page, /initialSource/);
+    assert.match(ui, /hideSourcePicker/);
+    assert.match(page, /legacyMigrationRedirectHref/);
+    assert.doesNotMatch(ui, /This file looks like a /);
   });
 
   it("uses import history copy, not migration jargon empty state", () => {
