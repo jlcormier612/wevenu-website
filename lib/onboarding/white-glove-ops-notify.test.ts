@@ -39,7 +39,7 @@ describe("white glove ops intake notify", () => {
       materialsCount: 2,
     });
     assert.match(payload.subject, /White Glove intake submitted/);
-    assert.match(payload.text, /HoneyBook/);
+    assert.match(payload.text, /honeybook|Import from another system/i);
     assert.match(payload.text, /2 file\(s\) uploaded/);
     assert.match(payload.text, /admin\/onboarding\/venue-1/);
     assert.match(payload.text, /Next action:/);

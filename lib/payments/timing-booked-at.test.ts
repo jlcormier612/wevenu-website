@@ -105,20 +105,12 @@ describe("Payment timing — genuine commercial booking moment stamps", () => {
 });
 
 describe("Payment timing — migration booked_at", () => {
-  it("uses explicit bookedAt only — not contractSignedAt", () => {
+  it("financial import does not write events.booked_at", () => {
     const commitSrc = readFileSync(resolve("lib/migration/active-commitment.ts"), "utf8");
-    const modelSrc = readFileSync(resolve("lib/migration/active-commitment-model.ts"), "utf8");
-    assert.match(commitSrc, /n\.bookedAt\?\.trim\(\)/);
-    assert.match(commitSrc, /ensureEventBookedAt\(client, venueId, resolvedEventId, n\.bookedAt/);
-    assert.doesNotMatch(
-      commitSrc,
-      /ensureEventBookedAt\([^)]*contractSignedAt/,
-    );
-    // Invariant lives on the NormalizedActiveCommitment type (client-safe model)
-    // and is restated at the ensureEventBookedAt call site in the commit module.
-    assert.match(modelSrc, /never derive booked_at from the signed date/i);
-    assert.match(commitSrc, /never reinterpret contractSignedAt/i);
-    assert.match(commitSrc, /never treat this as lifecycle Booking/i);
+    const financialSrc = readFileSync(resolve("lib/migration/financial-import.ts"), "utf8");
+    assert.doesNotMatch(commitSrc, /ensureEventBookedAt/);
+    assert.doesNotMatch(financialSrc, /ensureEventBookedAt|enqueueQuickBooksSync|stripe/);
+    assert.match(financialSrc, /origin: "import"/);
   });
 });
 

@@ -12,7 +12,8 @@ import { clientDisplayName } from "@/lib/clients/constants";
 import { getClient } from "@/lib/clients/service";
 import { getClientInvitation } from "@/lib/client-auth/service";
 import { getContracts } from "@/lib/contracts/service";
-import { getEvent } from "@/lib/events/service";
+import { getEvent, listEventsForClient } from "@/lib/events/service";
+import { clientWorkspaceHref, resolveClientWorkspaceEventId } from "@/lib/events/workspace-event";
 import { formatCurrency } from "@/lib/invoices/constants";
 import { getActiveEnrollmentsForRelationship, getSequences } from "@/lib/message-sequences/service";
 import { getPaymentSchedule, getPaymentSchedules } from "@/lib/payments/service";
@@ -37,10 +38,11 @@ export default async function BookedPage({ params, searchParams }: Props) {
   const { eventId } = await searchParams;
   const client = await getClient(id);
   if (!client) notFound();
-  const resolvedEventId = eventId ?? client.linkedEventId ?? null;
+  const clientEvents = await listEventsForClient(id);
+  const resolvedEventId = resolveClientWorkspaceEventId(clientEvents, eventId, client.linkedEventId);
   const event = resolvedEventId ? await getEvent(resolvedEventId) : null;
   if (!event?.bookedAt || !resolvedEventId) {
-    redirect(`/clients/${client.id}`);
+    redirect(clientWorkspaceHref(client.id, resolvedEventId));
   }
 
   // Celebration belongs to the booking transition, not to the screen that
@@ -48,7 +50,7 @@ export default async function BookedPage({ params, searchParams }: Props) {
   // goes from null to a timestamp. Consuming it is the one-shot gate.
   const celebrate = await consumeBookingCelebration(resolvedEventId);
   if (!celebrate) {
-    redirect(`/clients/${client.id}`);
+    redirect(clientWorkspaceHref(client.id, resolvedEventId));
   }
 
   const journey = await loadBookingJourneyForClient({

@@ -25,7 +25,7 @@ export default async function VendorsPage() {
           description="Vendors you make available to couples. Recommend or prefer them, mark required or in-house, and invite them to claim their profile."
           actions={
             <div className="flex flex-wrap items-center gap-2">
-              <Button variant="outline" render={<Link href="/settings/import?type=vendors" />}>
+              <Button variant="outline" render={<Link href="/setup-hub/bring-your-business?stage=vendors" />}>
                 Import Vendors
               </Button>
               <Button render={<Link href="/vendors/new" />}>

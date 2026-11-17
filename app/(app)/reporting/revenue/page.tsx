@@ -85,14 +85,14 @@ export default async function RevenueReportPage({ searchParams }: Props) {
 
   return (
     <div className="htc-hospitality-page space-y-6">
-      <ReportHeader title="Revenue" description="Contracted value, money collected, and period net activity. Booking counts live on Bookings." />
+      <ReportHeader title="Revenue" description="Invoiced value, money collected, and the unpaid balance on invoices issued in the period. Booking counts live on Bookings. Contracted value is the signed agreement and is not this invoice-date total." />
       <DateRangeControl current={range.preset} label={range.label} />
 
       <ComparisonCardGrid>
         <ComparisonCard
-          label="Contracted" value={grossRevenue ?? 0} previousValue={prevGrossRevenue}
+          label="Invoiced" value={grossRevenue ?? 0} previousValue={prevGrossRevenue}
           comparisonLabel={range.comparisonLabel} polarity="up-good" tone="contracted" format={formatMoney}
-          sub="Signed agreement value with a first payment collected."
+          sub="Invoice value issued in this period. Undated invoices stay in the all-time total."
         />
         <ComparisonCard
           label="Payments Collected" value={paymentsCollected ?? 0} previousValue={prevPaymentsCollected}
@@ -101,15 +101,15 @@ export default async function RevenueReportPage({ searchParams }: Props) {
           href={hrefWith(params, { detail: "payments" })}
         />
         <ComparisonCard
-          label="Period net" value={outstanding ?? 0} previousValue={prevOutstanding}
+          label="Outstanding" value={outstanding ?? 0} previousValue={prevOutstanding}
           comparisonLabel={range.comparisonLabel} polarity="up-bad" tone="outstanding" format={formatMoney}
-          sub="Contracted − collected for this period (different date clocks). Not a current receivables balance."
+          sub="Unpaid balance on invoices issued in this period. Draft and void invoices are excluded."
           href={hrefWith(params, { detail: "outstanding" })}
         />
         <ComparisonCard
-          label="Avg. contracted value" value={avgValue ?? 0} previousValue={prevAvgValue}
+          label="Avg. invoice" value={avgValue ?? 0} previousValue={prevAvgValue}
           comparisonLabel={range.comparisonLabel} polarity="up-good" tone="contracted" format={formatMoney}
-          sub="Average signed value among clients with a first collected payment — not Booking count."
+          sub="Invoiced value divided by events with an invoice. An invoice without an event counts once."
         />
       </ComparisonCardGrid>
 
@@ -132,10 +132,10 @@ export default async function RevenueReportPage({ searchParams }: Props) {
 
       {detailKind === "outstanding" && (
         <DetailPanel
-          title={`Period net by client (${outstandingDetail?.length ?? 0})`}
+          title={`Outstanding by client (${outstandingDetail?.length ?? 0})`}
           closeHref={closeHref}
           isEmpty={(outstandingDetail?.length ?? 0) === 0}
-          emptyText="No period net activity in this range."
+          emptyText="No outstanding balance in this range."
         >
           {(outstandingDetail ?? []).slice(0, 30).map((o) => (
             <DetailRow key={o.clientId}>
@@ -161,9 +161,9 @@ export default async function RevenueReportPage({ searchParams }: Props) {
         available={grainOptions}
         charts={[
           {
-            title: "Contracted trend",
+            title: "Invoiced trend",
             descriptionSuffix:
-              "by commitment date (signed + first payment). Separate clock from collected.",
+              "by invoice issue date. Separate clock from collected.",
             observations: contractedObs,
             emptyText: "No contracted revenue in this date range.",
             valueFormat: "money",
@@ -185,15 +185,15 @@ export default async function RevenueReportPage({ searchParams }: Props) {
         <CardHeader>
           <CardTitle className="text-base">Revenue by source</CardTitle>
           <CardDescription>
-            Contracted breakdown uses the same clients and event booked dates as the Contracted headline above — row amounts should sum to that headline for this range.
+            Invoiced breakdown uses each invoice issue date, the same date as the Invoiced headline above — row amounts should sum to that headline for this range.
             Collected is when money arrived (payment date). Missing source is listed as Not recorded. This is money, not a booking count.
-            Period net is not broken out by source because contracted and collected use different date clocks.
+            Outstanding is the unpaid balance on invoices issued in this period. It is not invoiced minus collected.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid gap-6 sm:grid-cols-2">
             <div>
-              <p className="mb-2 text-sm font-medium text-heading">Contracted</p>
+              <p className="mb-2 text-sm font-medium text-heading">Invoiced</p>
               {revenueBySource.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No contracted revenue in this range.</p>
               ) : (
@@ -234,7 +234,7 @@ export default async function RevenueReportPage({ searchParams }: Props) {
         <CardHeader>
           <CardTitle className="text-base">Revenue by Category</CardTitle>
           <CardDescription>
-            Same Contracted population as the headline (event booked date). Category amounts should sum to Contracted for this range. Click a category for the clients behind it.
+            Same Invoiced population as the headline (invoice issue date). Category amounts should sum to Invoiced for this range. Click a category for the clients behind it.
           </CardDescription>
         </CardHeader>
         <CardContent>

@@ -161,6 +161,7 @@ export function PaymentAccessShell({
 
   const mappedLines = lines.map((l) => ({
     amount: l.amount,
+    paidAmount: l.paidAmount,
     dueDate: l.dueDate ?? null,
     status: l.status,
     label: l.label ?? undefined,

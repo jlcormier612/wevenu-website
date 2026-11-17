@@ -186,6 +186,15 @@ export type LeadInput = {
   inquiryDate: string;
   /** Set by CSV import when the spreadsheet's source text didn't match a registered source — preserves the original label since `source` itself falls back to "other". */
   originalSourceLabel?: string | null;
+  /** Preferred-date flexibility. Durable on source_data; never occupancy. */
+  dateFlexibility?: string;
+  /** Optional source-system record ID. Proven retry identity when present. */
+  sourceRecordId?: string;
+  /** Imported pipeline status. Booked is rejected on the Lead path. */
+  salesStage?: string;
+  followUpDate?: string;
+  nextActionText?: string;
+  nextActionDue?: string;
   /** Venue identity decision when a possible match exists. */
   identityDecision?: import("@/lib/identity/decision").IdentityDecision;
 };
@@ -220,7 +229,7 @@ export type LeadActionResult =
   | { ok: false; errors?: LeadErrors; message?: string };
 
 export type CreateLeadResult =
-  | { ok: true; leadId: string }
+  | { ok: true; leadId: string; relationshipId?: string | null }
   | { ok: false; errors?: LeadErrors; message?: string }
   | {
       ok: false;

@@ -150,6 +150,19 @@ export function clientMatchesListFilter(
   }
 }
 
+export type ClientListRowKind = "contact" | "booked" | "past" | "cancelled";
+
+/** Clients list chip — membership and event date, not clients.status. */
+export function clientListRowKind(
+  client: ClientListFilterRecord,
+  ctx: ClientListFilterContext,
+): ClientListRowKind {
+  if (client.status === "cancelled") return "cancelled";
+  if (isPastBooking(client, ctx)) return "past";
+  if (isBookedClient(client, ctx) && !isUnbookedContact(client, ctx)) return "booked";
+  return "contact";
+}
+
 export function countClientListFilters(
   clients: ClientListFilterRecord[],
   ctx: ClientListFilterContext,

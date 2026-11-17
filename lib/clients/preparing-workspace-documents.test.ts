@@ -30,7 +30,7 @@ function unbookedBranch(src: string): string {
 }
 
 function bookedBranch(src: string): string {
-  const start = src.indexOf("const eventId = client.linkedEventId;");
+  const start = src.indexOf("const eventId = resolveClientWorkspaceEventId");
   assert.ok(start > 0);
   return src.slice(start);
 }

@@ -78,6 +78,13 @@ function mappedDate(row: CsvRow, mapping: FieldMapping, key: string): string {
   return parsed.value ?? "";
 }
 
+/** A source date that is not a real calendar day stays blank (unknown). */
+function knownSourceDate(row: CsvRow, mapping: FieldMapping, key: string): string {
+  const parsed = normalizeImportDate(val(row, mapping, key));
+  if (!parsed.ok || !parsed.value) return "";
+  return parsed.value;
+}
+
 export function rowToClientInput(row: CsvRow, mapping: FieldMapping): ClientInput {
   return {
     firstName:        val(row, mapping, "firstName"),
@@ -99,6 +106,10 @@ export function rowToClientInput(row: CsvRow, mapping: FieldMapping): ClientInpu
     internalNotes:    val(row, mapping, "internalNotes"),
     // Space name/UUID is resolved at commit via withResolvedSpace.
     spaceId:          val(row, mapping, "spaceId") || val(row, mapping, "spaceName"),
+    bookingStatus:    val(row, mapping, "bookingStatus"),
+    sourceClientId:   val(row, mapping, "sourceClientId"),
+    sourceEventId:    val(row, mapping, "sourceEventId"),
+    originalBookedOn: knownSourceDate(row, mapping, "originalBookedOn"),
   };
 }
 
@@ -114,9 +125,9 @@ export function rowToLeadInput(row: CsvRow, mapping: FieldMapping): LeadInput {
     lastName:         val(row, mapping, "lastName"),
     email:            val(row, mapping, "email"),
     phone:            val(row, mapping, "phone"),
-    partnerFirstName: "",
-    partnerLastName:  "",
-    partnerEmail:     "",
+    partnerFirstName: val(row, mapping, "partnerFirstName"),
+    partnerLastName:  val(row, mapping, "partnerLastName"),
+    partnerEmail:     val(row, mapping, "partnerEmail"),
     eventType:        val(row, mapping, "eventType"),
     eventDate:        mappedDate(row, mapping, "eventDate"),
     endDate:          "",
@@ -125,7 +136,12 @@ export function rowToLeadInput(row: CsvRow, mapping: FieldMapping): LeadInput {
     source:           sourceKey,
     originalSourceLabel: originalLabel,
     inquiryMessage:   val(row, mapping, "inquiryMessage"),
-    inquiryDate:      "",
+    inquiryDate:      knownSourceDate(row, mapping, "inquiryDate"),
+    dateFlexibility:  val(row, mapping, "dateFlexibility"),
+    salesStage:       val(row, mapping, "salesStage"),
+    followUpDate:     mappedDate(row, mapping, "followUpDate"),
+    nextActionText:   val(row, mapping, "nextActionText"),
+    sourceRecordId:   val(row, mapping, "sourceRecordId"),
   };
 }
 
@@ -152,6 +168,7 @@ export function rowToVendorInput(row: CsvRow, mapping: FieldMapping): VendorInpu
     pricingTier:        tier.ok ? tier.value : val(row, mapping, "pricingTier"),
     notes:              val(row, mapping, "notes"),
     specialPricingNote: "",
+    sourceVendorId:     val(row, mapping, "sourceVendorId"),
   };
 }
 
@@ -220,13 +237,19 @@ const TEMPLATE_SAMPLE_VALUES: Record<EntityType, Record<string, string>> = {
     eventDate: "2027-06-12", endDate: "2027-06-12", eventType: "Wedding", guestCount: "120",
     ceremonyTime: "16:00", receptionTime: "22:00", setupTime: "14:00", teardownTime: "23:00",
     spaceName: "Ballroom",
+    bookingStatus: "booked",
     internalNotes: "Prefers weekend tours",
   },
   leads: {
     firstName: "Emma", lastName: "Johnson",
+    partnerFirstName: "James", partnerLastName: "Smith",
+    partnerEmail: "james.smith@example.com",
     email: "emma.johnson@example.com", phone: "555-0142",
-    eventDate: "2027-06-12", eventType: "Wedding", guestCount: "120",
+    eventDate: "2027-06-12", dateFlexibility: "Weekends in June",
+    eventType: "Wedding", guestCount: "120",
     estimatedBudget: "15000", source: "Website",
+    salesStage: "New Inquiry", followUpDate: "2026-12-01",
+    nextActionText: "Send lookbook",
     inquiryMessage: "Interested in a June 2027 date",
   },
   vendors: {
@@ -255,6 +278,57 @@ export function buildTemplateCsv(entity: EntityType): string {
   const header = fields.map((f) => escape(f.label)).join(",");
   const sample = fields.map((f) => escape(samples[f.key] ?? "")).join(",");
   return `${header}\n${sample}\n`;
+}
+
+function normalizeHeaderToken(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+const RELIABLE_HEADER_ALIASES: Record<string, string[]> = {
+  firstName: ["firstname", "partner1firstname", "clientfirstname", "firstname1"],
+  lastName: ["lastname", "partner1lastname", "clientlastname", "lastname1"],
+  partnerFirstName: ["partner2firstname", "partnerfirstname"],
+  partnerLastName: ["partner2lastname", "partnerlastname"],
+  email: ["email", "emailaddress", "email1", "partner1email"],
+  partnerEmail: ["partner2email", "partneremail"],
+  phone: ["phone", "phonenumber", "mobile"],
+  eventDate: ["eventdate", "preferreddate", "weddingdate", "date"],
+  dateFlexibility: ["dateflexibility", "flexibledates", "dateflex"],
+  salesStage: ["leadstatus", "status", "salesstage", "pipeline"],
+  followUpDate: ["followupdate", "nextfollowup"],
+  nextActionText: ["nextaction"],
+  bookingStatus: ["bookingstatus", "bookedstatus", "eventstatus"],
+  originalBookedOn: ["originalbookingdate", "bookingdate", "datebooked", "bookedon", "bookeddate"],
+  inquiryDate: ["inquirydate", "dateinquired", "inquiredon"],
+  businessName: ["vendorname", "businessname", "company", "companyname"],
+};
+
+/**
+ * Map columns only when the header is the field label, field key, or a
+ * conservative alias. Never invent a mapping for "Column 1".
+ */
+export function suggestHeaderMapping(entity: EntityType, headers: string[]): FieldMapping {
+  const fields = ENTITY_FIELDS[entity];
+  const used = new Set<string>();
+  const mapping: FieldMapping = {};
+  for (const field of fields) {
+    const aliases = new Set([
+      normalizeHeaderToken(field.label),
+      normalizeHeaderToken(field.key),
+      ...(RELIABLE_HEADER_ALIASES[field.key] ?? []),
+    ]);
+    const match = headers.find((col) => {
+      if (used.has(col)) return false;
+      return aliases.has(normalizeHeaderToken(col));
+    });
+    mapping[field.key] = match ?? null;
+    if (match) used.add(match);
+  }
+  return mapping;
+}
+
+export function mappingMissesRequiredFields(entity: EntityType, mapping: FieldMapping): boolean {
+  return ENTITY_FIELDS[entity].some((field) => field.required && !mapping[field.key]);
 }
 
 export function validateRequiredFields(

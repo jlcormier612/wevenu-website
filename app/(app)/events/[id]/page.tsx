@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 
 import { EventToBookingRedirect } from "@/components/events/event-to-booking-redirect";
-import { searchParamsToQueryString } from "@/lib/events/event-booking-redirect";
+import { searchParamsToQueryString, withEventIdSearch } from "@/lib/events/event-booking-redirect";
 import { getEvent } from "@/lib/events/service";
 
 type Props = {
@@ -24,7 +24,7 @@ export default async function EventDetailRedirectPage({ params, searchParams }: 
   const event = await getEvent(id);
   if (!event || !event.clientId) notFound();
 
-  const search = searchParamsToQueryString(sp);
+  const search = withEventIdSearch(searchParamsToQueryString(sp), id);
   const targetBase = `/clients/${event.clientId}${search}`;
   // Inline script runs before React hydration so /events/{id}#documents
   // never strand on the intermediate route.

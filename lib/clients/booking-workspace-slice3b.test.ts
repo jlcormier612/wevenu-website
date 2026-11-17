@@ -9,7 +9,7 @@ import { describe, it } from "node:test";
 const page = readFileSync(resolve("app/(app)/clients/[id]/page.tsx"), "utf8");
 
 function bookedBranch(src: string): string {
-  const start = src.indexOf("const eventId = client.linkedEventId;");
+  const start = src.indexOf("const eventId = resolveClientWorkspaceEventId");
   assert.ok(start > 0, "booked branch start");
   const end = src.indexOf("return (", start);
   assert.ok(end > start, "booked branch return");

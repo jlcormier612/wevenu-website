@@ -281,7 +281,7 @@ describe("historical imports remain independent of Setup Profile readiness", () 
 
 describe("Import Data heading matches approved HTC page-heading typography", () => {
   it("uses Cormorant medium heading classes, not bold", () => {
-    const page = readFileSync(resolve("app/(app)/settings/import/page.tsx"), "utf8");
+    const page = readFileSync(resolve("components/setup-hub/bring-your-business-experience.tsx"), "utf8");
     assert.match(page, /font-heading text-3xl font-medium tracking-tight text-heading/);
     assert.doesNotMatch(page, /text-xl font-bold text-foreground/);
     const header = readFileSync(resolve("components/shell/module-placeholder.tsx"), "utf8");

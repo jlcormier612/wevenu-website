@@ -32,7 +32,7 @@ async function processHistoricalRows(
     const dup = await decideHistoricalImportDuplicate(
       i + 1,
       () => find(rows[i]),
-      "Skipped — matches an already-active client",
+      "Skipped — this person is already in Hello to Cheers. No second record was created.",
     );
     if (dup.action !== "create") {
       errors.push(dup.error);
@@ -67,7 +67,7 @@ async function processTrackedImport(
     const dup = await decideHistoricalImportDuplicate(
       i + 1,
       () => find(rows[i]),
-      "Skipped — matches an already-active client",
+      "Skipped — this person is already in Hello to Cheers. No second record was created.",
     );
     if (dup.action !== "create") {
       errors.push(dup.error);
@@ -91,7 +91,7 @@ describe("C3 historical import duplicate detection fails closed", () => {
     );
     assert.deepEqual(result.created, []);
     assert.equal(result.errors[0]?.kind, "skipped");
-    assert.match(result.errors[0]?.message ?? "", /already-active client/);
+    assert.match(result.errors[0]?.message ?? "", /already in Hello to Cheers/);
   });
 
   it("B. no duplicate exists → create", async () => {
@@ -241,9 +241,21 @@ describe("C4 import success requires durable batch association", () => {
       csvImport.indexOf("export async function importCouplesAction"),
       csvImport.indexOf("export async function importLeadsAction"),
     );
-    const createAt = couples.indexOf("createClient_");
+    const createAt = couples.indexOf("commitImportedClientAndEvent");
     const acceptAt = couples.indexOf("acceptCreatedImportRow");
     const pushAt = couples.indexOf("createdIds.push(result.clientId)");
     assert.ok(createAt >= 0 && acceptAt > createAt && pushAt > acceptAt);
+    assert.match(couples, /classifyClientEventMatch/);
+    const hqCouples = adminImport.slice(
+      adminImport.indexOf("export async function importCouplesForVenueAction"),
+      adminImport.indexOf("export async function importLeadsForVenueAction"),
+    );
+    assert.match(hqCouples, /commitImportedClientAndEvent/);
+    assert.match(hqCouples, /classifyClientEventMatch/);
+    assert.match(hqCouples, /use_existing/);
+    const hqCreateAt = hqCouples.indexOf("commitImportedClientAndEvent");
+    const hqAcceptAt = hqCouples.indexOf("acceptCreatedImportRow");
+    const hqPushAt = hqCouples.indexOf("createdIds.push(result.clientId)");
+    assert.ok(hqCreateAt >= 0 && hqAcceptAt > hqCreateAt && hqPushAt > hqAcceptAt);
   });
 });

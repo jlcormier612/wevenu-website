@@ -34,9 +34,12 @@ export default async function EventsReportPage({ searchParams }: Props) {
     getEventsInRange(window),
     getEventsInRange(prevWindow),
   ]);
-  const types = eventsByType(events);
-  const avgGuests = averageGuestCount(events);
-  const prevAvgGuests = averageGuestCount(prevEvents);
+  const activeEvents = events.filter((event) => event.status !== "cancelled");
+  const prevActiveEvents = prevEvents.filter((event) => event.status !== "cancelled");
+  const cancelledCount = events.length - activeEvents.length;
+  const types = eventsByType(activeEvents);
+  const avgGuests = averageGuestCount(activeEvents);
+  const prevAvgGuests = averageGuestCount(prevActiveEvents);
   const typePercents = allocateIntegerPercents(types.map((t) => t.count));
   const typeSlices = types.map((t, i) => ({
     key: t.type,
@@ -51,7 +54,7 @@ export default async function EventsReportPage({ searchParams }: Props) {
       <DateRangeControl current={range.preset} label={range.label} />
 
       <ComparisonCardGrid className="sm:grid-cols-2 lg:grid-cols-2 max-w-xl">
-        <ComparisonCard label="Events" value={events.length} previousValue={prevEvents.length} comparisonLabel={range.comparisonLabel} polarity="neutral" tone="ops" />
+        <ComparisonCard label="Events" value={activeEvents.length} previousValue={prevActiveEvents.length} comparisonLabel={range.comparisonLabel} polarity="neutral" tone="ops" />
         <ComparisonCard label="Average Guest Count" value={avgGuests} previousValue={avgGuests > 0 ? prevAvgGuests : null} comparisonLabel={range.comparisonLabel} polarity="neutral" tone="ops" />
       </ComparisonCardGrid>
 
@@ -62,7 +65,7 @@ export default async function EventsReportPage({ searchParams }: Props) {
           window={window}
           initialGrain={grain}
           available={grainOptions}
-          observations={events
+          observations={activeEvents
             .filter((e) => e.eventDate)
             .map((e) => ({ at: e.eventDate! }))}
           emptyText="No events in this date range."
@@ -73,7 +76,7 @@ export default async function EventsReportPage({ searchParams }: Props) {
           title="Event Types"
           description="Share of events on the calendar in this range by type."
           slices={typeSlices}
-          total={events.length}
+          total={activeEvents.length}
           emptyText="No events in this date range."
           unitSingular="event"
           unitPlural="events"
@@ -84,7 +87,10 @@ export default async function EventsReportPage({ searchParams }: Props) {
       <Card className={events.length === 0 ? "htc-report-empty-card" : undefined}>
         <CardHeader>
           <CardTitle className="text-base">Events</CardTitle>
-          <CardDescription>Click an event to open its workspace.</CardDescription>
+          <CardDescription>
+            Click an event to open its workspace.
+            {cancelledCount > 0 ? ` ${cancelledCount} cancelled ${cancelledCount === 1 ? "event remains" : "events remain"} in this list.` : ""}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {events.length === 0 ? (
@@ -100,7 +106,10 @@ export default async function EventsReportPage({ searchParams }: Props) {
                 // interactive instead.
                 const content = (
                   <>
-                    <span className="font-medium text-foreground">{e.name}</span>
+                    <span className="font-medium text-foreground">
+                      {e.name}
+                      {e.status === "cancelled" ? <span className="ml-2 text-xs font-normal text-muted-foreground">Cancelled</span> : null}
+                    </span>
                     <span className="flex items-center gap-3 text-muted-foreground">
                       {e.eventType && <span>{eventTypeLabel(e.eventType) || e.eventType}</span>}
                       <span className="tabular-nums">{e.eventDate ? new Date(e.eventDate + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—"}</span>

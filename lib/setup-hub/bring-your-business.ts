@@ -4,15 +4,61 @@
  * CSV Import remains for small ad-hoc spreadsheet adds; same field fidelity.
  */
 export const BRING_YOUR_BUSINESS_ROUTES = {
-  /** Customer-facing guided sequence wrapping Import Data + Migration Center. */
+  /** Customer-facing journey. */
   guidedExperience: "/setup-hub/bring-your-business",
-  /** Full cutover: clients, calendar, holds, tours, blocks, packages. */
+  /** Compatibility route — redirects into the journey. */
   migrationCenter: "/settings/migration",
-  /** Small spreadsheet add — same create paths, not a second domain model. */
+  /** Compatibility route — redirects into the journey. */
   spreadsheetImport: "/settings/import",
   /** Spaces / capacity / tour availability — required before dated Events. */
   calendarAvailability: "/settings/availability",
 } as const;
+
+export type BringYourBusinessStage =
+  | "entry"
+  | "prepare"
+  | "leads"
+  | "clients"
+  | "vendors"
+  | "people"
+  | "dates"
+  | "money"
+  | "planning"
+  | "review";
+
+export const BRING_YOUR_BUSINESS_STAGES: BringYourBusinessStage[] = [
+  "entry", "prepare", "leads", "clients", "vendors", "people", "dates", "money", "planning", "review",
+];
+
+export function bringYourBusinessHref(stage?: BringYourBusinessStage, extra?: Record<string, string>): string {
+  const params = new URLSearchParams();
+  if (stage && stage !== "entry") params.set("stage", stage);
+  if (extra) {
+    for (const [key, value] of Object.entries(extra)) {
+      if (value) params.set(key, value);
+    }
+  }
+  const query = params.toString();
+  return query ? `${BRING_YOUR_BUSINESS_ROUTES.guidedExperience}?${query}` : BRING_YOUR_BUSINESS_ROUTES.guidedExperience;
+}
+
+export function parseBringYourBusinessStage(
+  raw: string | null | undefined,
+  kind?: string | null,
+): BringYourBusinessStage {
+  const value = raw?.trim().toLowerCase() ?? "";
+  const entity = kind?.trim().toLowerCase() ?? "";
+  if (value === "people") {
+    if (entity === "leads") return "leads";
+    if (entity === "vendors") return "vendors";
+    return "clients";
+  }
+  if (value === "dates" || value === "events" || value === "migration" || value === "couples") return "clients";
+  if (value === "import" || value === "spreadsheet") return "prepare";
+  if (value === "finances") return "money";
+  if ((BRING_YOUR_BUSINESS_STAGES as string[]).includes(value)) return value as BringYourBusinessStage;
+  return "entry";
+}
 
 export type BringYourBusinessRouteKey = keyof typeof BRING_YOUR_BUSINESS_ROUTES;
 
@@ -43,7 +89,7 @@ export function evaluateCutoverPrerequisites(input: {
       readyForDatedEvents: true,
       spacesCount: input.spacesCount,
       hasCapacityRules: input.hasCapacityRules,
-      message: "You can import clients now. If you host in named spaces, add them in Calendar & Availability first so Events land on the right space.",
+      message: "Leads and vendors can import now. If you host in named spaces, add them in Calendar & Availability before importing booked clients so events land on the right space.",
     };
   }
   return {

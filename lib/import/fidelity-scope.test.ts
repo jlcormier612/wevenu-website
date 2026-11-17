@@ -24,11 +24,11 @@ const importActionsSrc = readFileSync(
 );
 
 describe("Import Data scope honesty", () => {
-  it("documents past-date historical Events and future dates staying on the client", () => {
-    assert.match(wizardSrc, /Past dates create historical Events/i);
-    assert.match(wizardSrc, /Future event dates stay on the client/i);
-    assert.match(importActionsSrc, /isPastEventDate/);
-    assert.match(importActionsSrc, /asHistorical/);
+  it("documents that Client import creates the Event and Lead preferred dates do not", () => {
+    assert.match(wizardSrc, /Clients import with their events/i);
+    assert.match(wizardSrc, /Preferred dates do not book the calendar/i);
+    assert.match(importActionsSrc, /commitImportedClientAndEvent/);
+    assert.match(importActionsSrc, /classifyClientImportRow/);
   });
 
   it("imports package composition via included items when mapped", () => {
@@ -89,6 +89,37 @@ describe("Import Data scope honesty", () => {
       },
     );
     assert.equal(lead.guestCount, "85");
+    const leadFull = rowToLeadInput(
+      {
+        "First Name": "L",
+        "Last Name": "D",
+        "Partner First Name": "Sam",
+        "Date Flexibility": "Weekends",
+        "Lead Status": "Outreach Sent",
+      },
+      {
+        firstName: "First Name",
+        lastName: "Last Name",
+        partnerFirstName: "Partner First Name",
+        dateFlexibility: "Date Flexibility",
+        salesStage: "Lead Status",
+        email: null,
+        phone: null,
+        eventDate: null,
+        eventType: null,
+        guestCount: null,
+        estimatedBudget: null,
+        source: null,
+        inquiryMessage: null,
+        partnerLastName: null,
+        partnerEmail: null,
+        followUpDate: null,
+        nextActionText: null,
+      },
+    );
+    assert.equal(leadFull.partnerFirstName, "Sam");
+    assert.equal(leadFull.dateFlexibility, "Weekends");
+    assert.equal(leadFull.salesStage, "Outreach Sent");
 
     const pkg = rowToPackageInput(
       {

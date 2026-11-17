@@ -64,7 +64,7 @@ describe("List-page recipe — priority pages", () => {
       "app/(app)/settings/availability/page.tsx",
       "app/(app)/settings/business/page.tsx",
       "app/(app)/settings/team/page.tsx",
-      "app/(app)/settings/import/page.tsx",
+      "components/setup-hub/bring-your-business-experience.tsx",
       "app/(app)/communication/series/page.tsx",
       "app/(app)/communication/series/new/page.tsx",
       "app/(app)/library/documents/page.tsx",
@@ -98,10 +98,13 @@ describe("List-page recipe — priority pages", () => {
     assert.doesNotMatch(page, /htc-hospitality-intro htc-hospitality-intro-accent/);
   });
 
-  it("Setup Bring Your Business how-to / HoneyBook path uses calm guidance", () => {
+  it("Setup Bring Your Business uses calm guidance without named systems", () => {
     const byb = read("components/setup-hub/bring-your-business-choices.tsx");
+    const journey = read("lib/setup-hub/bring-your-business-journey.ts");
     assert.match(byb, /htc-surface-guidance/);
-    assert.match(byb, /HoneyBook/);
+    assert.match(journey, /Import from another system/);
+    assert.doesNotMatch(byb, /HoneyBook|Tripleseat/);
+    assert.doesNotMatch(journey, /HoneyBook|Tripleseat/);
     assert.doesNotMatch(byb, /border-primary\/30 bg-primary\/5/);
   });
 
@@ -241,8 +244,8 @@ describe("List-page recipe — priority pages", () => {
     assert.match(tasks, /htc-record-link text-sm font-medium/);
     assert.match(tasks, /border-border bg-card text-heading/);
     assert.match(library, /htc-record-link text-sm font-medium/);
-    assert.match(byb, /Add things individually[\s\S]*htc-surface-guidance|htc-surface-guidance[\s\S]*Add things individually/);
-    assert.match(byb, /starting fresh[\s\S]*htc-surface-guidance|htc-surface-guidance[\s\S]*starting fresh/);
+    assert.match(byb, /BYB_ENTRY_CHOICES[\s\S]*htc-surface-guidance|htc-surface-guidance[\s\S]*BYB_ENTRY_CHOICES/);
+    assert.match(byb, /BYB_STARTING_FRESH[\s\S]*htc-surface-guidance|htc-surface-guidance[\s\S]*BYB_STARTING_FRESH/);
     assert.match(settings, /htc-settings-directory-card/);
     assert.match(settings, /htc-record-link text-sm font-medium/);
     assert.match(help, /htc-help-article-list/);

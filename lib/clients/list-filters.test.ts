@@ -5,6 +5,7 @@ import { describe, it } from "node:test";
 import {
   CLIENT_LIST_FILTERS,
   clientListFilterHref,
+  clientListRowKind,
   clientMatchesListFilter,
   comingUpHorizonEnd,
   countClientListFilters,
@@ -172,6 +173,28 @@ describe("Needs Attention, Past, and Cancelled", () => {
     assert.equal(clientMatchesListFilter(rows[6], "all", filterCtx), false);
     assert.equal(clientMatchesListFilter(rows[6], "past", filterCtx), false);
     assert.equal(clientMatchesListFilter(rows[6], "coming_up", filterCtx), false);
+  });
+});
+
+describe("clientListRowKind", () => {
+  it("labels an imported contact Contact, a booked future event Booked, and a complete past date Past", () => {
+    const membership = ctx({ bookedClientIds: new Set(["booked", "past"]) });
+    assert.equal(
+      clientListRowKind(client({ id: "contact", eventDate: "2020-01-01" }), membership),
+      "contact",
+    );
+    assert.equal(
+      clientListRowKind(client({ id: "booked", eventDate: "2028-08-12" }), membership),
+      "booked",
+    );
+    assert.equal(
+      clientListRowKind(client({ id: "past", eventDate: "2020-05-01" }), membership),
+      "past",
+    );
+    assert.equal(
+      clientListRowKind(client({ id: "cancelled", status: "cancelled", eventDate: TODAY }), membership),
+      "cancelled",
+    );
   });
 });
 

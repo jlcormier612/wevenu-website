@@ -32,6 +32,11 @@ import {
 } from "@/lib/leads/validation";
 import { parseMoneyInput } from "@/lib/leads/constants";
 import { getCurrentVenue } from "@/lib/venue/service";
+import {
+  importFingerprintFromData,
+  sourceRecordIdFromData,
+  type ImportMatchRecord,
+} from "@/lib/import/venue-controlled-match";
 
 function estimatedBudgetFromInput(raw: string | null | undefined): number | null {
   const parsed = parseMoneyInput(raw ?? "");
@@ -138,6 +143,226 @@ export async function findActiveDuplicateLeadForVenue(venueId: string, email: st
   const actor = await requireAdminUser();
   if (!actor) return null;
   return repo.findActiveDuplicate(createAdminClient(), venueId, email, firstName, lastName);
+}
+
+function inquiryIdentityFromRow(row: repo.ActiveLeadInquiryRow) {
+  const sourceData = row.sourceData ?? {};
+  return {
+    firstName: row.firstName,
+    lastName: row.lastName,
+    email: row.email,
+    eventDate: row.eventDate,
+    partnerFirstName: row.partnerFirstName,
+    partnerLastName: row.partnerLastName,
+    eventType: row.eventType,
+    guestCount: row.guestCount,
+    source: row.source,
+    originalSourceLabel: typeof sourceData.original_source_label === "string" ? sourceData.original_source_label : "",
+    inquiryMessage: row.inquiryMessage,
+    followUpDate: row.followUpDate,
+    nextActionText: row.nextActionText,
+    dateFlexibility: typeof sourceData.date_flexibility === "string" ? sourceData.date_flexibility : "",
+    salesStage: row.salesStage,
+  };
+}
+
+async function matchIncomingLeadWithClient(
+  supabase: Parameters<typeof repo.findActiveLeadByEmail>[0],
+  venueId: string,
+  incoming: {
+    firstName: string;
+    lastName: string;
+    email?: string | null;
+    eventDate?: string | null;
+    partnerFirstName?: string | null;
+    partnerLastName?: string | null;
+    eventType?: string | null;
+    guestCount?: string | number | null;
+    source?: string | null;
+    originalSourceLabel?: string | null;
+    inquiryMessage?: string | null;
+    followUpDate?: string | null;
+    nextActionText?: string | null;
+    dateFlexibility?: string | null;
+    salesStage?: string | null;
+  },
+) {
+  const { classifyPersonMatch } = await import("@/lib/import/match-policy");
+  const { classifyLeadImportMatch } = await import("@/lib/import/inquiry-identity");
+  const byEmail = await repo.findActiveLeadByEmail(supabase, venueId, incoming.email ?? "");
+  const byName = await repo.findActiveLeadByName(supabase, venueId, incoming.firstName, incoming.lastName);
+  const person = classifyPersonMatch(incoming, byEmail, byName);
+  const emailInquiries = await repo.listActiveLeadsByEmail(supabase, venueId, incoming.email ?? "");
+  const existingInquiries = emailInquiries.map(inquiryIdentityFromRow);
+  const matched = byEmail?.id === person.matchedId ? byEmail : byName?.id === person.matchedId ? byName : null;
+  return {
+    ...classifyLeadImportMatch(person, incoming, existingInquiries),
+    matchedEventDate: matched?.eventDate ?? null,
+    existingInquiries,
+  };
+}
+
+export async function matchIncomingLead(incoming: {
+  firstName: string;
+  lastName: string;
+  email?: string | null;
+  eventDate?: string | null;
+  partnerFirstName?: string | null;
+  partnerLastName?: string | null;
+  eventType?: string | null;
+  guestCount?: string | number | null;
+  source?: string | null;
+  originalSourceLabel?: string | null;
+  inquiryMessage?: string | null;
+  followUpDate?: string | null;
+  nextActionText?: string | null;
+  dateFlexibility?: string | null;
+  salesStage?: string | null;
+}) {
+  const { classifyPersonMatch } = await import("@/lib/import/match-policy");
+  const { classifyLeadImportMatch } = await import("@/lib/import/inquiry-identity");
+  const empty = {
+    ...classifyLeadImportMatch(classifyPersonMatch(incoming, null, null), incoming, []),
+    matchedEventDate: null as string | null,
+    existingInquiries: [] as ReturnType<typeof inquiryIdentityFromRow>[],
+  };
+  if (!isSupabaseConfigured) return empty;
+  const venue = await getCurrentVenue();
+  if (!venue) return empty;
+  const supabase = await createClient();
+  return matchIncomingLeadWithClient(supabase, venue.id, incoming);
+}
+
+function importMatchRecordFromLead(row: repo.ImportMatchLeadRow): ImportMatchRecord {
+  return {
+    leadId: row.id,
+    clientId: null,
+    relationshipId: row.relationshipId,
+    firstName: row.firstName,
+    lastName: row.lastName,
+    email: row.email,
+    phone: row.phone,
+    partnerFirstName: row.partnerFirstName,
+    partnerLastName: row.partnerLastName,
+    partnerEmail: row.partnerEmail,
+    inquiryMessage: row.inquiryMessage,
+    eventDate: row.eventDate,
+    eventType: row.eventType,
+    salesStage: row.salesStage,
+    guestCount: row.guestCount,
+    source: row.source,
+    followUpDate: row.followUpDate,
+    nextActionText: row.nextActionText,
+    estimatedBudget: row.estimatedBudget,
+    sourceRecordId: sourceRecordIdFromData(row.sourceData),
+    importFingerprint: importFingerprintFromData(row.sourceData),
+  };
+}
+
+async function listImportMatchRecordsWithClient(
+  supabase: Parameters<typeof repo.listImportMatchLeads>[0],
+  venueId: string,
+) {
+  const leads = await repo.listImportMatchLeads(supabase, venueId);
+  const records = leads.map(importMatchRecordFromLead);
+  const { data: clients } = await supabase.from("clients").select(
+    "id, lead_id, relationship_id, first_name, last_name, email, phone, partner_first_name, partner_last_name, partner_email, event_date, event_type, status, guest_count",
+  ).eq("venue_id", venueId);
+  for (const row of clients ?? []) {
+    const r = row as {
+      id: string;
+      lead_id: string | null;
+      relationship_id: string | null;
+      first_name: string;
+      last_name: string;
+      email: string | null;
+      phone: string | null;
+      partner_first_name: string | null;
+      partner_last_name: string | null;
+      partner_email: string | null;
+      event_date: string | null;
+      event_type: string | null;
+      status: string | null;
+      guest_count: number | null;
+    };
+    if (r.lead_id && records.some((existing) => existing.leadId === r.lead_id)) {
+      const existing = records.find((item) => item.leadId === r.lead_id);
+      if (existing && !existing.clientId) existing.clientId = r.id;
+      continue;
+    }
+    records.push({
+      leadId: r.lead_id,
+      clientId: r.id,
+      relationshipId: r.relationship_id,
+      firstName: r.first_name,
+      lastName: r.last_name,
+      email: r.email,
+      phone: r.phone,
+      partnerFirstName: r.partner_first_name,
+      partnerLastName: r.partner_last_name,
+      partnerEmail: r.partner_email,
+      inquiryMessage: null,
+      eventDate: r.event_date,
+      eventType: r.event_type,
+      salesStage: r.status,
+      guestCount: r.guest_count,
+      source: null,
+      followUpDate: null,
+      nextActionText: null,
+      estimatedBudget: null,
+      sourceRecordId: null,
+      importFingerprint: null,
+    });
+  }
+  return records;
+}
+
+export async function listImportMatchRecords() {
+  if (!isSupabaseConfigured) return [];
+  const venue = await getCurrentVenue();
+  if (!venue) return [];
+  const supabase = await createClient();
+  return listImportMatchRecordsWithClient(supabase, venue.id);
+}
+
+export async function listImportMatchRecordsForVenue(venueId: string) {
+  const actor = await requireAdminUser();
+  if (!actor) return [];
+  return listImportMatchRecordsWithClient(createAdminClient(), venueId);
+}
+
+/** White-Glove match — same inquiry identity and retry policy as self-service. */
+export async function matchIncomingLeadForVenue(
+  venueId: string,
+  incoming: {
+    firstName: string;
+    lastName: string;
+    email?: string | null;
+    eventDate?: string | null;
+    partnerFirstName?: string | null;
+    partnerLastName?: string | null;
+    eventType?: string | null;
+    guestCount?: string | number | null;
+    source?: string | null;
+    originalSourceLabel?: string | null;
+    inquiryMessage?: string | null;
+    followUpDate?: string | null;
+    nextActionText?: string | null;
+    dateFlexibility?: string | null;
+    salesStage?: string | null;
+  },
+) {
+  const { classifyPersonMatch } = await import("@/lib/import/match-policy");
+  const { classifyLeadImportMatch } = await import("@/lib/import/inquiry-identity");
+  const empty = {
+    ...classifyLeadImportMatch(classifyPersonMatch(incoming, null, null), incoming, []),
+    matchedEventDate: null as string | null,
+    existingInquiries: [] as ReturnType<typeof inquiryIdentityFromRow>[],
+  };
+  if (!isSupabaseConfigured) return empty;
+  const actor = await requireAdminUser();
+  if (!actor) return empty;
+  return matchIncomingLeadWithClient(createAdminClient(), venueId, incoming);
 }
 
 /**
@@ -264,7 +489,65 @@ async function createLeadCore(
   });
 
   if (!outcome.ok) return { ok: false, message: outcome.error };
-  return { ok: true, leadId: outcome.leadId };
+  try {
+    await applyImportedLeadDetails(supabase, venueId, outcome.leadId, input);
+  } catch (err) {
+    console.error("Imported lead details could not be saved:", err);
+  }
+  return { ok: true, leadId: outcome.leadId, relationshipId: outcome.relationshipId };
+}
+
+/** Follow-up, notes, and pipeline status after a quiet Lead create. Never books. */
+async function applyImportedLeadDetails(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  venueId: string,
+  leadId: string,
+  input: LeadInput,
+): Promise<void> {
+  const noteParts: string[] = [];
+  if (input.dateFlexibility?.trim()) {
+    noteParts.push(`Date flexibility: ${input.dateFlexibility.trim()}`);
+  }
+  if (noteParts.length > 0) {
+    await repo.insertNote(supabase, venueId, leadId, noteParts.join("\n"));
+  }
+  if (input.followUpDate?.trim() || input.nextActionText?.trim() || input.nextActionDue?.trim()) {
+    await repo.updateRelationshipFields(supabase, venueId, leadId, {
+      nextActionText: input.nextActionText ?? "",
+      nextActionDue: input.nextActionDue ?? "",
+      followUpDate: input.followUpDate ?? "",
+      lastContactedAt: "",
+      tourDate: "",
+      tourTime: "",
+      tourCompleted: false,
+      tourNotes: "",
+      tourActualDate: "",
+      tourActualTime: "",
+    });
+  }
+  const { parseImportedLeadSalesStage } = await import("@/lib/import/lead-import");
+  const parsed = parseImportedLeadSalesStage(input.salesStage);
+  if (parsed.kind === "stage") {
+    const lost = parsed.stage === "lost"
+      ? { reason: "other" as const, detail: "Imported historical status" }
+      : undefined;
+    await repo.updateLeadSalesStage(
+      supabase,
+      venueId,
+      leadId,
+      parsed.stage,
+      undefined,
+      lost,
+    );
+  } else if (parsed.kind === "tour" || parsed.kind === "unknown") {
+    const raw = parsed.kind === "unknown" ? parsed.raw : "tour scheduled";
+    await repo.insertNote(
+      supabase,
+      venueId,
+      leadId,
+      `Imported status “${raw}” was saved as a note. Tours are imported separately and this Lead was not marked Booked.`,
+    );
+  }
 }
 
 /**

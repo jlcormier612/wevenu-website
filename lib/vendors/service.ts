@@ -109,27 +109,223 @@ export async function findActiveDuplicateVendorForVenue(venueId: string, busines
   return repo.findActiveDuplicateVendor(createAdminClient(), venueId, businessName, email);
 }
 
-export async function createVendor(input: VendorInput): Promise<CreateVendorResult> {
+export async function listImportVendorRecords() {
+  const venue = await getCurrentVenue();
+  if (!venue) return [];
+  return listImportVendorRecordsWithClient(await createClient(), venue.id);
+}
+
+export async function listImportVendorRecordsForVenue(venueId: string) {
+  const actor = await requireAdminUser();
+  if (!actor) return [];
+  return listImportVendorRecordsWithClient(createAdminClient(), venueId);
+}
+
+async function listImportVendorRecordsWithClient(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  venueId: string,
+) {
+  const { sourceVendorIdFromData, importFingerprintFromData } = await import("@/lib/import/vendor-match");
+  const relatedQuery = await supabase
+    .from("venue_vendor_relationships")
+    .select("id, vendor_id, status, source_data, vendors!inner(id, business_name, email, phone, website_url, contact_name, is_claimed)")
+    .eq("venue_id", venueId)
+    .neq("status", "removed");
+  const related = relatedQuery.error
+    ? (await supabase
+      .from("venue_vendor_relationships")
+      .select("id, vendor_id, status, vendors!inner(id, business_name, email, phone, website_url, contact_name, is_claimed)")
+      .eq("venue_id", venueId)
+      .neq("status", "removed")).data
+    : relatedQuery.data;
+  const venueRows = ((related ?? []) as Array<{
+    id: string;
+    vendor_id: string;
+    source_data?: Record<string, unknown> | null;
+    vendors: {
+      id: string;
+      business_name: string;
+      email: string | null;
+      phone: string | null;
+      website_url: string | null;
+      contact_name: string | null;
+      is_claimed: boolean;
+    } | Array<{
+      id: string;
+      business_name: string;
+      email: string | null;
+      phone: string | null;
+      website_url: string | null;
+      contact_name: string | null;
+      is_claimed: boolean;
+    }>;
+  }>).flatMap((row) => {
+    const vendor = Array.isArray(row.vendors) ? row.vendors[0] : row.vendors;
+    if (!vendor) return [];
+    return [{
+      vendorId: vendor.id,
+      relationshipId: row.id,
+      connectedToThisVenue: true,
+      businessName: vendor.business_name,
+      email: vendor.email,
+      phone: vendor.phone,
+      websiteUrl: vendor.website_url,
+      contactName: vendor.contact_name,
+      isClaimed: vendor.is_claimed,
+      sourceVendorId: sourceVendorIdFromData(row.source_data),
+      importFingerprint: importFingerprintFromData(row.source_data),
+    }];
+  });
+  return venueRows;
+}
+
+export async function findGlobalVendorImportCandidates(
+  emails: string[],
+  names: string[],
+  alreadyConnectedVendorIds: Set<string>,
+  venueId?: string,
+) {
+  if (venueId) {
+    const actor = await requireAdminUser();
+    if (!actor) return [];
+  }
+  const supabase = venueId ? createAdminClient() : await createClient();
+  const { sourceVendorIdFromData, importFingerprintFromData } = await import("@/lib/import/vendor-match");
+  void sourceVendorIdFromData;
+  void importFingerprintFromData;
+  const trimmedEmails = [...new Set(emails.map((value) => value.trim()).filter(Boolean))];
+  const trimmedNames = [...new Set(names.map((value) => value.trim()).filter(Boolean))];
+  const found: Array<{
+    vendorId: string;
+    relationshipId: null;
+    connectedToThisVenue: false;
+    businessName: string;
+    email: string | null;
+    phone: string | null;
+    websiteUrl: string | null;
+    contactName: string | null;
+    isClaimed: boolean;
+    sourceVendorId: null;
+    importFingerprint: null;
+  }> = [];
+  const seen = new Set(alreadyConnectedVendorIds);
+  if (trimmedEmails.length > 0) {
+    const { data } = await supabase.from("vendors")
+      .select("id, business_name, email, phone, website_url, contact_name, is_claimed")
+      .in("email", trimmedEmails)
+      .limit(40);
+    for (const row of data ?? []) {
+      const r = row as {
+        id: string;
+        business_name: string;
+        email: string | null;
+        phone: string | null;
+        website_url: string | null;
+        contact_name: string | null;
+        is_claimed: boolean;
+      };
+      if (seen.has(r.id)) continue;
+      seen.add(r.id);
+      found.push({
+        vendorId: r.id,
+        relationshipId: null,
+        connectedToThisVenue: false,
+        businessName: r.business_name,
+        email: r.email,
+        phone: r.phone,
+        websiteUrl: r.website_url,
+        contactName: r.contact_name,
+        isClaimed: r.is_claimed,
+        sourceVendorId: null,
+        importFingerprint: null,
+      });
+    }
+  }
+  if (trimmedNames.length > 0) {
+    const { data } = await supabase.from("vendors")
+      .select("id, business_name, email, phone, website_url, contact_name, is_claimed")
+      .in("business_name", trimmedNames)
+      .limit(40);
+    for (const row of data ?? []) {
+      const r = row as {
+        id: string;
+        business_name: string;
+        email: string | null;
+        phone: string | null;
+        website_url: string | null;
+        contact_name: string | null;
+        is_claimed: boolean;
+      };
+      if (seen.has(r.id)) continue;
+      seen.add(r.id);
+      found.push({
+        vendorId: r.id,
+        relationshipId: null,
+        connectedToThisVenue: false,
+        businessName: r.business_name,
+        email: r.email,
+        phone: r.phone,
+        websiteUrl: r.website_url,
+        contactName: r.contact_name,
+        isClaimed: r.is_claimed,
+        sourceVendorId: null,
+        importFingerprint: null,
+      });
+    }
+  }
+  return found;
+}
+
+export async function createVendor(
+  input: VendorInput,
+  confirmed?: repo.ConfirmedVendorImportDecision,
+): Promise<CreateVendorResult> {
   const errors = validateVendorInput(input);
   if (Object.keys(errors).length > 0) return { ok: false, errors };
   const result = await withVenue(async (supabase, venueId) => {
-    // Dedup before minting a global vendors row: reactivate/reuse venue
-    // relationship, or attach to an existing global identity, else create.
-    const { vendorId } = await repo.resolveOrCreateVendor(supabase, venueId, input);
-    return { ok: true, vendorId } as CreateVendorResult;
+    const created = await repo.resolveOrCreateVendor(supabase, venueId, input, confirmed);
+    await stampVendorImportSourceData(supabase, created.relationshipId, input);
+    return { ok: true, vendorId: created.vendorId } as CreateVendorResult;
   });
   return result as CreateVendorResult;
 }
 
 /** White-Glove Migration (Hospitality Success Platform §2.2a step 4) — see createClientForVenue's doc comment for the pattern this mirrors. */
-export async function createVendorForVenue(venueId: string, input: VendorInput): Promise<CreateVendorResult> {
+export async function createVendorForVenue(
+  venueId: string,
+  input: VendorInput,
+  confirmed?: repo.ConfirmedVendorImportDecision,
+): Promise<CreateVendorResult> {
   const actor = await requireAdminUser();
   if (!actor) return { ok: false, message: "Not signed in as an HQ admin." };
   const errors = validateVendorInput(input);
   if (Object.keys(errors).length > 0) return { ok: false, errors };
   const admin = createAdminClient();
-  const { vendorId } = await repo.resolveOrCreateVendor(admin, venueId, input);
-  return { ok: true, vendorId };
+  const created = await repo.resolveOrCreateVendor(admin, venueId, input, confirmed);
+  await stampVendorImportSourceData(admin, created.relationshipId, input);
+  return { ok: true, vendorId: created.vendorId };
+}
+
+async function stampVendorImportSourceData(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  relationshipId: string | null,
+  input: VendorInput,
+): Promise<void> {
+  if (!relationshipId) return;
+  const { vendorSourceData } = await import("@/lib/import/vendor-match");
+  const stamped = await supabase.from("venue_vendor_relationships")
+    .update({ source_data: vendorSourceData({
+      businessName: input.businessName,
+      email: input.email,
+      phone: input.phone,
+      websiteUrl: input.websiteUrl,
+      contactName: input.contactName,
+      category: input.category,
+      notes: input.notes,
+      sourceVendorId: input.sourceVendorId,
+    }) })
+    .eq("id", relationshipId);
+  if (stamped.error) console.error("Vendor import source_data stamp failed:", stamped.error.message);
 }
 
 export async function updateVendor_(vendorId: string, input: VendorInput): Promise<VendorActionResult> {

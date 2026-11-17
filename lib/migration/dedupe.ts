@@ -79,22 +79,28 @@ export async function dedupeClientLike(
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = client as any;
-  if (email) {
-    const byEmail = await clientsRepo.findActiveDuplicateClient(db, venueId, email, firstName, lastName);
-    if (byEmail) return { matchType: "exact", matchedEntityId: byEmail.id, matchConfidence: 100 };
-    // Changed-email hole: email differs (or is new) but first+last still match an
-    // active client. Never exact — human review via duplicate_likely only.
-    if (firstName && lastName) {
-      const byName = await clientsRepo.findActiveDuplicateClient(db, venueId, "", firstName, lastName);
-      if (byName) {
-        return { matchType: "likely", matchedEntityId: byName.id, matchConfidence: 70 };
-      }
-    }
-    return NO_MATCH;
+  const { classifyPersonMatch } = await import("@/lib/import/match-policy");
+  const byEmail = email ? await clientsRepo.findActiveClientByEmail(db, venueId, email) : null;
+  const byName = firstName && lastName
+    ? await clientsRepo.findActiveClientByName(db, venueId, firstName, lastName)
+    : null;
+  const classified = classifyPersonMatch(
+    {
+      firstName,
+      lastName,
+      email,
+      partnerFirstName: normalized.partnerFirstName,
+      partnerLastName: normalized.partnerLastName,
+    },
+    byEmail,
+    byName,
+  );
+  if (classified.kind === "exact") {
+    return { matchType: "exact", matchedEntityId: classified.matchedId, matchConfidence: 100 };
   }
-
-  const byName = await clientsRepo.findActiveDuplicateClient(db, venueId, "", firstName, lastName);
-  if (byName) return { matchType: "exact", matchedEntityId: byName.id, matchConfidence: 100 };
+  if (classified.kind === "likely") {
+    return { matchType: "likely", matchedEntityId: classified.matchedId, matchConfidence: 70 };
+  }
   return NO_MATCH;
 }
 
@@ -112,20 +118,18 @@ export async function dedupeLeadLike(
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = client as any;
-  if (email) {
-    const byEmail = await leadsRepo.findActiveDuplicate(db, venueId, email, firstName, lastName);
-    if (byEmail) return { matchType: "exact", matchedEntityId: byEmail.id, matchConfidence: 100 };
-    if (firstName && lastName) {
-      const byName = await leadsRepo.findActiveDuplicate(db, venueId, "", firstName, lastName);
-      if (byName) {
-        return { matchType: "likely", matchedEntityId: byName.id, matchConfidence: 70 };
-      }
-    }
-    return NO_MATCH;
+  const { classifyPersonMatch } = await import("@/lib/import/match-policy");
+  const byEmail = email ? await leadsRepo.findActiveLeadByEmail(db, venueId, email) : null;
+  const byName = firstName && lastName
+    ? await leadsRepo.findActiveLeadByName(db, venueId, firstName, lastName)
+    : null;
+  const classified = classifyPersonMatch({ firstName, lastName, email }, byEmail, byName);
+  if (classified.kind === "exact") {
+    return { matchType: "exact", matchedEntityId: classified.matchedId, matchConfidence: 100 };
   }
-
-  const byName = await leadsRepo.findActiveDuplicate(db, venueId, "", firstName, lastName);
-  if (byName) return { matchType: "exact", matchedEntityId: byName.id, matchConfidence: 100 };
+  if (classified.kind === "likely") {
+    return { matchType: "likely", matchedEntityId: classified.matchedId, matchConfidence: 70 };
+  }
   return NO_MATCH;
 }
 

@@ -103,8 +103,8 @@ export async function getLeadTopOfFunnelEvidence(window: DateWindow): Promise<Le
     .from("leads")
     .select("id, source_data")
     .eq("venue_id", venue.id)
-    .gte("created_at", `${window.from}T00:00:00.000Z`)
-    .lte("created_at", `${window.to}T23:59:59.999Z`);
+    .gte("performance_inquiry_on", window.from)
+    .lte("performance_inquiry_on", window.to);
 
   type Row = { id: string; source_data: Record<string, unknown> | null };
   const rows = (data ?? []) as Row[];
@@ -216,8 +216,8 @@ export async function getAcquisitionSourceCohortBreakdown(
       .from("leads")
       .select("id, acquisition_source, first_booked_at, sales_stage, status")
       .eq("venue_id", venue.id)
-      .gte("created_at", `${window.from}T00:00:00.000Z`)
-      .lte("created_at", `${window.to}T23:59:59.999Z`),
+      .gte("performance_inquiry_on", window.from)
+      .lte("performance_inquiry_on", window.to),
   );
 
   type LeadRow = {
@@ -333,8 +333,8 @@ export async function getEventTypeCohortBreakdown(
       .from("leads")
       .select("id, event_type, first_booked_at, sales_stage, status")
       .eq("venue_id", venue.id)
-      .gte("created_at", `${window.from}T00:00:00.000Z`)
-      .lte("created_at", `${window.to}T23:59:59.999Z`),
+      .gte("performance_inquiry_on", window.from)
+      .lte("performance_inquiry_on", window.to),
   );
 
   type LeadRow = {

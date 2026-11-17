@@ -6,16 +6,16 @@ import { describe, it } from "node:test";
 const root = process.cwd();
 
 describe("Revenue breakdown alignment with Contracted headline", () => {
-  it("by-category and by-source use events.booked_at population helper, not canonical_bookings alone", () => {
+  it("by-category and by-source use invoice issued_at, not canonical_bookings alone", () => {
     const revenue = readFileSync(join(root, "lib/metrics/revenue.ts"), "utf8");
     const attribution = readFileSync(join(root, "lib/metrics/attribution.ts"), "utf8");
     assert.match(revenue, /listGrossBookedRevenueClientIds/);
-    assert.match(revenue, /from\("events"\)/);
+    assert.match(revenue, /from\("invoices"\)/);
+    assert.match(revenue, /issued_at/);
     assert.match(revenue, /getGrossBookedRevenueByCategory/);
-    assert.match(
-      revenue,
-      /listGrossBookedRevenueClientIds\(window\)/,
-      "category breakout must use the Contracted client set",
+    assert.doesNotMatch(
+      revenue.slice(revenue.indexOf("listGrossBookedRevenueClientIds")),
+      /from\("events"\)/,
     );
     assert.doesNotMatch(
       revenue.slice(revenue.indexOf("getGrossBookedRevenueByCategory")),

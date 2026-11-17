@@ -199,6 +199,143 @@ export const getClient = cache(async (clientId: string): Promise<ClientWithDetai
 // ---- create -----------------------------------------------------------------
 
 /** Migration Center — mirrors lib/leads/service.ts's findActiveDuplicateLead(). */
+export async function matchIncomingClient(incoming: {
+  firstName: string;
+  lastName: string;
+  email?: string | null;
+  partnerFirstName?: string | null;
+  partnerLastName?: string | null;
+}) {
+  const { classifyPersonMatch } = await import("@/lib/import/match-policy");
+  const venue = await getCurrentVenue();
+  if (!venue) {
+    return classifyPersonMatch(incoming, null, null);
+  }
+  const supabase = await createClient();
+  const byEmail = await repo.findActiveClientByEmail(supabase, venue.id, incoming.email ?? "");
+  const byName = await repo.findActiveClientByName(supabase, venue.id, incoming.firstName, incoming.lastName);
+  return classifyPersonMatch(incoming, byEmail, byName);
+}
+
+/** White-Glove match — same classifyPersonMatch policy as self-service. */
+export async function matchIncomingClientForVenue(
+  venueId: string,
+  incoming: {
+    firstName: string;
+    lastName: string;
+    email?: string | null;
+    partnerFirstName?: string | null;
+    partnerLastName?: string | null;
+  },
+) {
+  const { classifyPersonMatch } = await import("@/lib/import/match-policy");
+  const actor = await requireAdminUser();
+  if (!actor) return classifyPersonMatch(incoming, null, null);
+  const admin = createAdminClient();
+  const byEmail = await repo.findActiveClientByEmail(admin, venueId, incoming.email ?? "");
+  const byName = await repo.findActiveClientByName(admin, venueId, incoming.firstName, incoming.lastName);
+  return classifyPersonMatch(incoming, byEmail, byName);
+}
+
+export async function listImportClientEventRecords() {
+  const venue = await getCurrentVenue();
+  if (!venue) return [];
+  return listImportClientEventRecordsWithClient(await createClient(), venue.id);
+}
+
+export async function listImportClientEventRecordsForVenue(venueId: string) {
+  const actor = await requireAdminUser();
+  if (!actor) return [];
+  return listImportClientEventRecordsWithClient(createAdminClient(), venueId);
+}
+
+async function listImportClientEventRecordsWithClient(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  venueId: string,
+) {
+  const { sourceClientIdFromData, sourceEventIdFromData, importFingerprintFromData } = await import(
+    "@/lib/import/client-event-match"
+  );
+  const { data: events, error } = await supabase
+    .from("events")
+    .select("id, client_id, event_date, event_type, guest_count, source_data, clients!inner(id, first_name, last_name, email, phone, partner_first_name, partner_last_name, internal_notes, relationship_id, source_data, status)")
+    .eq("venue_id", venueId)
+    .neq("status", "cancelled");
+  if (error) {
+    const fallback = await supabase
+      .from("events")
+      .select("id, client_id, event_date, event_type, guest_count, clients!inner(id, first_name, last_name, email, phone, partner_first_name, partner_last_name, internal_notes, relationship_id, status)")
+      .eq("venue_id", venueId)
+      .neq("status", "cancelled");
+    if (fallback.error) throw fallback.error;
+    return mapClientEventRows(fallback.data ?? [], sourceClientIdFromData, sourceEventIdFromData, importFingerprintFromData);
+  }
+  return mapClientEventRows(events ?? [], sourceClientIdFromData, sourceEventIdFromData, importFingerprintFromData);
+}
+
+function mapClientEventRows(
+  rows: unknown[],
+  sourceClientIdFromData: (data: Record<string, unknown> | null | undefined) => string | null,
+  sourceEventIdFromData: (data: Record<string, unknown> | null | undefined) => string | null,
+  importFingerprintFromData: (data: Record<string, unknown> | null | undefined) => string | null,
+) {
+  return (rows as Array<{
+    id: string;
+    client_id: string;
+    event_date: string | null;
+    event_type: string | null;
+    guest_count: number | null;
+    source_data?: Record<string, unknown> | null;
+    clients: {
+      id: string;
+      first_name: string;
+      last_name: string;
+      email: string | null;
+      phone: string | null;
+      partner_first_name: string | null;
+      partner_last_name: string | null;
+      internal_notes: string | null;
+      relationship_id: string | null;
+      source_data?: Record<string, unknown> | null;
+      status: string;
+    } | Array<{
+      id: string;
+      first_name: string;
+      last_name: string;
+      email: string | null;
+      phone: string | null;
+      partner_first_name: string | null;
+      partner_last_name: string | null;
+      internal_notes: string | null;
+      relationship_id: string | null;
+      source_data?: Record<string, unknown> | null;
+      status: string;
+    }>;
+  }>).flatMap((row) => {
+    const client = Array.isArray(row.clients) ? row.clients[0] : row.clients;
+    if (!client || client.status === "cancelled") return [];
+    return [{
+      clientId: client.id,
+      eventId: row.id,
+      relationshipId: client.relationship_id,
+      firstName: client.first_name,
+      lastName: client.last_name,
+      email: client.email,
+      phone: client.phone,
+      partnerFirstName: client.partner_first_name,
+      partnerLastName: client.partner_last_name,
+      eventDate: row.event_date,
+      eventType: row.event_type,
+      guestCount: row.guest_count,
+      internalNotes: client.internal_notes,
+      sourceClientId: sourceClientIdFromData(client.source_data) ?? sourceClientIdFromData(row.source_data),
+      sourceEventId: sourceEventIdFromData(row.source_data),
+      clientFingerprint: importFingerprintFromData(client.source_data),
+      eventFingerprint: importFingerprintFromData(row.source_data),
+    }];
+  });
+}
+
 export async function findActiveDuplicateClient(email: string, firstName: string, lastName: string): Promise<{ id: string } | null> {
   if (!isSupabaseConfigured) return null;
   const venue = await getCurrentVenue();
@@ -279,24 +416,48 @@ async function createClientCore(
     clientId = await repo.insertClient(supabase, venueId, input, undefined, historicalImport);
     eventId = null;
     if (lifecycleOpts?.markAsAlreadyBooked && input.eventDate) {
-      const { bookClient } = await import("@/lib/booking-journey/book-client");
-      const booked = await bookClient(supabase, {
-        venueId,
-        clientId,
-        source: "manual",
-        spaceId: input.spaceId,
-        lifecycleOrigin: "import",
-      });
-      if (!booked.ok) return { ok: false, message: booked.message };
-      eventId = booked.eventId;
+      try {
+        const { insertImportedBookedEvent } = await import("@/lib/booking-journey/import-booked-event");
+        eventId = await insertImportedBookedEvent(supabase, {
+          venueId,
+          clientId,
+          input,
+          kind: "upcoming",
+          eventDate: input.eventDate,
+        });
+      } catch (err) {
+        await repo.abandonUnbookedImportedClient(supabase, venueId, clientId);
+        const fail = occupancyClientFailure(err);
+        if (fail) return fail;
+        const blocked = calendarBlockFailureFromUnknown(err);
+        if (blocked) return { ok: false, message: blocked.message };
+        throw err;
+      }
+      const { error: statusError } = await supabase.from("clients")
+        .update({ status: "confirmed" })
+        .eq("id", clientId)
+        .eq("venue_id", venueId);
+      if (statusError) console.error("Imported client confirmed status failed:", statusError.message);
     }
   }
+  if (asHistorical && eventId) {
+    const { stampOriginalBookingDate } = await import("@/lib/events/repository");
+    const { knownOriginalBookingDate } = await import("@/lib/booking-journey/import-booked-event");
+    await stampOriginalBookingDate(
+      supabase,
+      venueId,
+      eventId,
+      knownOriginalBookingDate(input.originalBookedOn),
+    );
+  }
 
-  void enqueueQuickBooksSync(venueId, "customer", clientId, {
-    firstName: input.firstName, lastName: input.lastName,
-    partnerFirstName: input.partnerFirstName, partnerLastName: input.partnerLastName,
-    email: input.email, phone: input.phone,
-  });
+  if (!historicalImport && !importAsHistoricalRecord) {
+    void enqueueQuickBooksSync(venueId, "customer", clientId, {
+      firstName: input.firstName, lastName: input.lastName,
+      partnerFirstName: input.partnerFirstName, partnerLastName: input.partnerLastName,
+      email: input.email, phone: input.phone,
+    });
+  }
 
   // Stop sales sequences only when the venue has actually booked
   // (historical import or an explicit already-booked import). Preparing a

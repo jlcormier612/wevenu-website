@@ -371,7 +371,7 @@ export default async function SalesReportPage({ searchParams }: Props) {
 
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="htc-report-metric-tile" data-tone="contracted" data-report-metric-tile="">
-              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Contracted</p>
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Invoiced</p>
               <p className="text-lg font-semibold tabular-nums text-heading">{formatMoney(grossRevenue ?? 0)}</p>
             </div>
             <div className="htc-report-metric-tile" data-tone="collected" data-report-metric-tile="">
@@ -449,10 +449,10 @@ export default async function SalesReportPage({ searchParams }: Props) {
               )}
             </div>
             <div>
-              <p className="mb-2 text-sm font-medium text-heading">Contracted revenue by source</p>
-              <p className="mb-2 text-[11px] text-muted-foreground">Contracted value only. Missing source is Not recorded.</p>
+              <p className="mb-2 text-sm font-medium text-heading">Invoiced value by source</p>
+              <p className="mb-2 text-[11px] text-muted-foreground">Invoiced value by issue date. Missing source is Not recorded.</p>
               {revenueBySource.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No contracted revenue in this period.</p>
+                <p className="text-sm text-muted-foreground">No invoiced value in this period.</p>
               ) : (
                 <div className="divide-y divide-border">
                   {revenueBySource.map((s) => (

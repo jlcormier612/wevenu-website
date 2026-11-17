@@ -8,8 +8,9 @@ import type { EntityType, ImportBatch } from "@/lib/import/types";
 export const BRING_YOUR_BUSINESS_GUIDE_HREF = "/setup-hub/bring-your-business";
 
 export type BringYourBusinessGuideStepId =
-  | "people"
-  | "venue-events"
+  | "leads"
+  | "clients"
+  | "vendors"
   | "packages-financials"
   | "planning"
   | "review";
@@ -35,7 +36,7 @@ export type GuideCategory = {
 
 export type GuideStepDefinition = {
   id: BringYourBusinessGuideStepId;
-  number: 1 | 2 | 3 | 4 | 5;
+  number: 1 | 2 | 3 | 4 | 5 | 6;
   title: string;
   summary: string;
   categories: readonly GuideCategory[];
@@ -43,99 +44,74 @@ export type GuideStepDefinition = {
 
 export const BRING_YOUR_BUSINESS_GUIDE_STEPS: readonly GuideStepDefinition[] = [
   {
-    id: "people",
+    id: "leads",
     number: 1,
-    title: "People",
-    summary: "Bring over clients, leads, and vendors.",
+    title: "Leads",
+    summary: "Bring over prospective customers who have not booked.",
     categories: [
-      {
-        id: "clients",
-        title: "Clients",
-        summary: "People you already work with — booked or not.",
-        canImport: "Names, contact details, and optional event dates. Future dates stay on the client until you attach a booking. Past dates can create a historical event.",
-        fileTypes: "CSV, Excel (.xlsx/.xls), Word (.docx), PDF, or a pasted list via Import Data. Migration Center accepts CSV for larger client files.",
-        required: "First name and last name.",
-        optional: "Partner name, email, phone, event date, event type, guest count, times, space name, notes.",
-        template: "A CSV template is available on Import Data.",
-        duplicates: "Rows that match an existing client are skipped — they are not overwritten and a second copy is not created.",
-        afterward: "Imported clients appear under Clients → Contacts until they have an active booking. All Bookings only shows clients with a booking. Nothing is emailed or invited.",
-        href: "/settings/import?type=couples",
-        hrefLabel: "Import clients",
-      },
       {
         id: "leads",
         title: "Leads",
-        summary: "Open inquiries that are not booked yet.",
-        canImport: "Inquirer names plus optional contact details, event date, budget, and notes.",
-        fileTypes: "CSV, Excel, Word, PDF, or a pasted list via Import Data.",
+        summary: "Open inquiries, including someone with a preferred event date.",
+        canImport: "Names, partners, email, phone, preferred date, date flexibility, event type, guest count, source, lead status, follow-up, notes, and additional inquiries for the same person.",
+        fileTypes: "CSV, Excel, Word, PDF, or a pasted list. You do not have to name the software the file came from.",
         required: "First name and last name.",
-        optional: "Email, phone, event date, event type, guest count, budget, source, notes.",
-        template: "A CSV template is available on Import Data.",
-        duplicates: "Matching existing leads are skipped.",
-        afterward: "Review them on Leads. Historical imports stay quiet — no automations or outreach.",
-        href: "/settings/import?type=leads",
+        optional: "Partner, email, phone, preferred date, date flexibility, event type, guest count, source, status, follow-up, notes.",
+        template: "A CSV template is available on the Leads import step.",
+        duplicates: "Possible matches are shown for your decision. Hello to Cheers will not merge or skip similar records unless you confirm. Exact repeats of a record you already imported are left out automatically.",
+        afterward: "Review them on Leads. Preferred dates do not book the calendar. Historical imports stay quiet — no automations or outreach.",
+        href: "/setup-hub/bring-your-business?stage=leads",
         hrefLabel: "Import leads",
       },
+    ],
+  },
+  {
+    id: "clients",
+    number: 2,
+    title: "Clients and their events",
+    summary: "Bring over booked customers together with their events — upcoming and past.",
+    categories: [
+      {
+        id: "clients",
+        title: "Clients and their events",
+        summary: "A Client import creates or matches the customer and establishes the Event.",
+        canImport: "Customer identity plus confirmed event date, times, type, guests, spaces, and booked or past status. A preferred date without a booking belongs on Leads.",
+        fileTypes: "CSV, Excel, Word, PDF, or a pasted list. You do not have to name the software the file came from.",
+        required: "First name, last name, and a confirmed event date.",
+        optional: "Partner, email, phone, times, space, guest count, event type, booking status, notes.",
+        template: "A CSV template is available on the Clients import step.",
+        duplicates: "Possible matches are shown for your decision. You choose whether this is the same Client and same Event, the same Client with an additional Event, a different Client, or something to leave out. A matching date is not proof it is the same Event. Exact repeats of an Event you already imported are left out automatically.",
+        afterward: "Upcoming booked clients appear under All Bookings and Calendar. Past clients appear under Past. Nothing is emailed or invited.",
+        href: "/setup-hub/bring-your-business?stage=clients",
+        hrefLabel: "Import clients and events",
+      },
+    ],
+  },
+  {
+    id: "vendors",
+    number: 3,
+    title: "Vendors",
+    summary: "Bring over vendor relationships you already work with.",
+    categories: [
       {
         id: "vendors",
         title: "Vendors",
         summary: "Preferred vendors you already work with.",
         canImport: "Business name plus optional category, contact, and notes.",
-        fileTypes: "CSV, Excel, Word, PDF, or a pasted list via Import Data.",
+        fileTypes: "CSV, Excel, Word, PDF, or a pasted list.",
         required: "Vendor name.",
         optional: "Category, contact name, email, phone, website, pricing tier, notes.",
-        template: "A CSV template is available on Import Data.",
-        duplicates: "Matching vendors are skipped.",
+        template: "A CSV template is available on the Vendors import step.",
+        duplicates: "Possible matches are shown for your decision. Matching email or business name is not proof of identity. You choose Same Vendor, Different Vendor, or Don't import. Exact repeats of a vendor relationship you already imported are left out automatically.",
         afterward: "They appear on Vendors. Connecting them to events is a later step — nothing is sent automatically.",
-        href: "/settings/import?type=vendors",
+        href: "/setup-hub/bring-your-business?stage=vendors",
         hrefLabel: "Import vendors",
       },
     ],
   },
   {
-    id: "venue-events",
-    number: 2,
-    title: "Venue and events",
-    summary: "Configure relevant spaces and availability, then bring over upcoming and existing events, tours, holds, and calendar blocks.",
-    categories: [
-      {
-        id: "spaces",
-        title: "Spaces and availability",
-        summary: "Named spaces and capacity so dated events land in the right place.",
-        canImport: "This step is configuration, not a file import. Add event spaces and how many events you can host at once.",
-        fileTypes: "Not a file import.",
-        required: "Multi-space venues need at least one event space before dated events can import.",
-        optional: "Tour availability if you offer tours.",
-        template: "None — use Availability & Capacity.",
-        duplicates: "Does not create duplicate spaces from a file.",
-        afterward: "Dated events, tours, holds, and blocks can use those spaces.",
-        href: BRING_YOUR_BUSINESS_ROUTES.calendarAvailability,
-        hrefLabel: "Open Availability & Capacity",
-      },
-      {
-        id: "events",
-        title: "Events, tours, holds, and blocks",
-        summary: "Upcoming and existing calendar commitments.",
-        canImport: "Events with dates, spaces, and booking status; tours; date holds; calendar blocks. Clients should exist first so events attach to the right people.",
-        fileTypes: "CSV in Migration Center. Excel, Word, or PDF contact lists belong on Import Data — they do not create operational events by themselves.",
-        required: "Event date (and a space when you host in more than one space).",
-        optional: "Times, guest count, status, client match fields.",
-        template: "Column mapping and review happen in Migration Center before anything is created.",
-        duplicates: "Rows that look like existing events are held for review — they are not silently duplicated.",
-        afterward: "Imported events appear on Calendar. Clients with a booking appear under All Bookings. Contacts without a booking stay under Contacts.",
-        href: `${BRING_YOUR_BUSINESS_ROUTES.migrationCenter}?source=another_system`,
-        hrefLabel: "Bring over events",
-        dependsOn: {
-          label: "Bring over clients first if the events belong to people already on your books.",
-          href: "/settings/import?type=couples",
-          hrefLabel: "Import clients",
-        },
-      },
-    ],
-  },
-  {
     id: "packages-financials",
-    number: 3,
+    number: 4,
     title: "Packages and financial information",
     summary: "Bring over package information and supported existing-event financial records.",
     categories: [
@@ -150,7 +126,7 @@ export const BRING_YOUR_BUSINESS_GUIDE_STEPS: readonly GuideStepDefinition[] = [
         template: "A CSV template is available on Import Data.",
         duplicates: "Matching packages are skipped.",
         afterward: "Review them in Library → Packages. Starter packages already in Hello to Cheers are separate from what you import.",
-        href: "/settings/import?type=packages",
+        href: "/setup-hub/bring-your-business?stage=planning&kind=packages",
         hrefLabel: "Import packages",
       },
       {
@@ -158,18 +134,18 @@ export const BRING_YOUR_BUSINESS_GUIDE_STEPS: readonly GuideStepDefinition[] = [
         title: "Existing-event finances",
         summary: "Invoices, payment schedules, and signed agreements already in place.",
         canImport: "Supported booked-event financial records: invoice, payments, and a signed agreement file attached to an existing client and event.",
-        fileTypes: "PDF or Word (.docx) in Migration Center (Booked-event finances). A spreadsheet of invoices is not a supported importer.",
+        fileTypes: "CSV or a pasted list in Migration Center, plus PDF agreements stored privately.",
         required: "The client and their event must already exist in Hello to Cheers.",
         optional: "The original signed file, so it stays on the event.",
         template: "No spreadsheet template — upload the agreement or booking document and review the proposed commitment.",
         duplicates: "Review before import. Hello to Cheers does not silently change existing financial obligations.",
         afterward: "Review balances on the event. No payment requests, invoices, or contract executions are sent automatically.",
-        href: `${BRING_YOUR_BUSINESS_ROUTES.migrationCenter}?source=another_system`,
+        href: "/setup-hub/bring-your-business?stage=money",
         hrefLabel: "Bring over finances",
         dependsOn: {
           label: "Event finances require the relevant clients and events to exist first.",
-          href: `${BRING_YOUR_BUSINESS_ROUTES.migrationCenter}?source=another_system`,
-          hrefLabel: "Bring over events",
+          href: "/setup-hub/bring-your-business?stage=clients",
+          hrefLabel: "Import clients and events",
         },
       },
       {
@@ -183,14 +159,14 @@ export const BRING_YOUR_BUSINESS_GUIDE_STEPS: readonly GuideStepDefinition[] = [
         template: "A CSV template is available on Import Data.",
         duplicates: "Matching items are skipped.",
         afterward: "They appear in Library → Inventory. Photos and floor-plan shapes can be added later.",
-        href: "/settings/import?type=inventory",
+        href: "/setup-hub/bring-your-business?stage=planning&kind=inventory",
         hrefLabel: "Import inventory",
       },
     ],
   },
   {
     id: "planning",
-    number: 4,
+    number: 5,
     title: "Planning resources",
     summary: "Bring over supported documents, timelines, floor plans, and other planning materials.",
     categories: [
@@ -205,12 +181,12 @@ export const BRING_YOUR_BUSINESS_GUIDE_STEPS: readonly GuideStepDefinition[] = [
         template: "None as a standalone spreadsheet of contracts. Use Migration Center Documents.",
         duplicates: "Review before import. Existing files are not silently replaced.",
         afterward: "Open the client or event to see attached files. Nothing is released to the client portal automatically.",
-        href: `${BRING_YOUR_BUSINESS_ROUTES.migrationCenter}?source=another_system`,
+        href: "/setup-hub/bring-your-business?stage=planning",
         hrefLabel: "Bring over documents",
         dependsOn: {
           label: "Documents attach to clients or events that already exist.",
-          href: "/settings/import?type=couples",
-          hrefLabel: "Import clients",
+          href: "/setup-hub/bring-your-business?stage=clients",
+          hrefLabel: "Import clients and events",
         },
       },
       {
@@ -224,49 +200,49 @@ export const BRING_YOUR_BUSINESS_GUIDE_STEPS: readonly GuideStepDefinition[] = [
         template: "None — upload the drawings you already use.",
         duplicates: "Each uploaded file is kept. Review names so you can find them later.",
         afterward: "Find them with your floor plans. Apply them to events when you are preparing the client experience.",
-        href: `${BRING_YOUR_BUSINESS_ROUTES.migrationCenter}?source=another_system`,
+        href: "/setup-hub/bring-your-business?stage=planning",
         hrefLabel: "Bring over floor plans",
       },
       {
         id: "timelines",
         title: "Timelines",
-        summary: "Day-of or near-event timeline entries on existing events.",
-        canImport: "Timeline rows attached to an event that already exists.",
+        summary: "Timeline entries already written for an event, including completed history.",
+        canImport: "Manual, client-owned, and schedule entries on an event that already exists. Schedule rows stay on the schedule so they are not copied twice.",
         fileTypes: "CSV in Migration Center.",
         required: "A matching event.",
         optional: "Times and descriptions for each entry.",
         template: "Column mapping in Migration Center.",
         duplicates: "Review before import.",
         afterward: "Open the event workspace to refine the timeline. Clients are not notified.",
-        href: `${BRING_YOUR_BUSINESS_ROUTES.migrationCenter}?source=another_system`,
+        href: "/setup-hub/bring-your-business?stage=planning",
         hrefLabel: "Bring over timelines",
         dependsOn: {
           label: "Timeline entries attach to events that already exist.",
-          href: `${BRING_YOUR_BUSINESS_ROUTES.migrationCenter}?source=another_system`,
-          hrefLabel: "Bring over events",
+          href: "/setup-hub/bring-your-business?stage=clients",
+          hrefLabel: "Import clients and events",
         },
       },
     ],
   },
   {
     id: "review",
-    number: 5,
+    number: 6,
     title: "Review and get started",
     summary: "Find imported records, resolve issues, and prepare existing events for use in Hello to Cheers.",
     categories: [
       {
-        id: "find-contacts",
-        title: "Find imported contacts",
-        summary: "Clients without a booking live under Contacts, not All Bookings.",
-        canImport: "Nothing new — this is where imported people already are.",
+        id: "find-clients",
+        title: "Find imported clients",
+        summary: "Upcoming booked clients are under All Bookings. Past clients are under Past.",
+        canImport: "Nothing new — this is where imported clients and events already are.",
         fileTypes: "Not an import.",
         required: "—",
         optional: "—",
         template: "—",
         duplicates: "—",
-        afterward: "From a contact, bring over their event when you are ready. Do not invite until you mean to.",
-        href: "/clients?filter=contacts",
-        hrefLabel: "Open Contacts",
+        afterward: "Open the event to continue planning. Do not invite until you mean to.",
+        href: "/clients",
+        hrefLabel: "Open All Bookings",
       },
       {
         id: "review-events",
@@ -312,7 +288,6 @@ export const BRING_YOUR_BUSINESS_WILL_NOT = [
 export const BRING_YOUR_BUSINESS_WILL_NOT_DO_AUTOMATICALLY =
   "Importing does not invite clients, send email or SMS, release the portal, execute contracts, or request payments. Review before you confirm. Imports are not a full undo — treat them as lasting records.";
 
-const PEOPLE_ENTITIES: EntityType[] = ["couples", "leads", "vendors"];
 const PACKAGE_ENTITIES: EntityType[] = ["packages", "inventory"];
 
 export type GuideBatchEvidence = Pick<
@@ -332,8 +307,8 @@ function statusFromEntityTypes(
   if (relevant.length === 0) return "not_started";
   const imported = relevant.reduce((sum, b) => sum + b.importedCount, 0);
   const errors = relevant.reduce((sum, b) => sum + b.errorCount, 0);
-  if (errors > 0) return "needs_attention";
   if (imported > 0) return "imported";
+  if (errors > 0) return "needs_attention";
   return "not_started";
 }
 
@@ -343,11 +318,16 @@ export function evaluateGuideProgress(input: {
   uploadedMaterialsCount: number;
   path: "individual" | "skipped" | null;
 }): Record<BringYourBusinessGuideStepId, GuideStepStatus> {
-  const people = statusFromEntityTypes(input.batches, PEOPLE_ENTITIES);
+  const leads = statusFromEntityTypes(input.batches, ["leads"]);
+  const clients = statusFromEntityTypes(input.batches, ["couples"]);
+  const vendors = statusFromEntityTypes(input.batches, ["vendors"]);
   const packages = statusFromEntityTypes(input.batches, PACKAGE_ENTITIES);
 
-  let venueEvents: GuideStepStatus = "not_started";
-  if (input.hasMigrationImport) venueEvents = "imported";
+  const clientsStatus: GuideStepStatus = clients !== "not_started"
+    ? clients
+    : input.hasMigrationImport
+      ? "imported"
+      : "not_started";
 
   let planning: GuideStepStatus = "not_started";
   if (input.uploadedMaterialsCount > 0) planning = "imported";
@@ -357,8 +337,9 @@ export function evaluateGuideProgress(input: {
     : "not_started";
 
   return {
-    people: people === "not_started" && optionalOrSkipped === "optional" ? "optional" : people,
-    "venue-events": venueEvents === "not_started" && optionalOrSkipped === "optional" ? "optional" : venueEvents,
+    leads: leads === "not_started" && optionalOrSkipped === "optional" ? "optional" : leads,
+    clients: clientsStatus === "not_started" && optionalOrSkipped === "optional" ? "optional" : clientsStatus,
+    vendors: vendors === "not_started" && optionalOrSkipped === "optional" ? "optional" : vendors,
     "packages-financials": packages === "not_started" && optionalOrSkipped === "optional" ? "optional" : packages,
     planning: planning === "not_started" && optionalOrSkipped === "optional" ? "optional" : planning,
     // Never complete just because the review page was opened.

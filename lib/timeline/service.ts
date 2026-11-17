@@ -40,6 +40,14 @@ async function withVenue<T>(
 
 // ---- Entries -------------------------------------------------------------------
 
+export async function getImportedClientTimelineEntries(eventId: string): Promise<repo.StaffImportedClientTimelineEntry[]> {
+  if (!isSupabaseConfigured || !eventId) return [];
+  const venue = await getCurrentVenue();
+  if (!venue) return [];
+  const supabase = await createClient();
+  return repo.getStaffVisibleImportedClientEntries(supabase, venue.id, eventId);
+}
+
 export async function getTimelineEntries(eventId: string): Promise<TimelineEntry[]> {
   if (!isSupabaseConfigured) return [];
   const venue = await getCurrentVenue();

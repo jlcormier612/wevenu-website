@@ -36,8 +36,8 @@ export async function getLeadsBySource(window: DateWindow): Promise<LeadsBySourc
       .from("leads")
       .select("acquisition_source")
       .eq("venue_id", venue.id)
-      .gte("created_at", `${window.from}T00:00:00.000Z`)
-      .lte("created_at", `${window.to}T23:59:59.999Z`),
+      .gte("performance_inquiry_on", window.from)
+      .lte("performance_inquiry_on", window.to),
   );
 
   const sources = ((data ?? []) as { acquisition_source: string | null }[]).map(

@@ -41,6 +41,20 @@ const FIELD_ALIASES: Record<string, readonly string[]> = {
   guestCount: ["guestcount", "guests", "estimatedguests", "headcount"],
   internalNotes: ["internalnotes", "notes", "note", "comments", "comment", "notescomments"],
   sourceId: ["sourceid", "id", "recordid", "accountid", "contactid", "externalid"],
+  contractSignedAt: ["signedat", "signeddate", "datesigned", "contractsignedat"],
+  paidMethod: ["method", "paymentmethod", "paidmethod"],
+  paidReference: ["reference", "referencenumber", "paidreference", "checknumber"],
+  amendsSourceId: ["amendssourceid", "amends", "originalagreementid"],
+  linesJson: ["linesjson", "lineitems", "invoicelines"],
+  lineDescription: ["linedescription", "description"],
+  recordKind: ["recordkind", "kind"],
+  timelineRole: ["timelinerole", "role"],
+  completedAt: ["completedat", "completedon", "completiondate"],
+  taskStatus: ["taskstatus"],
+  ownership: ["ownership", "owner"],
+  questionnaireStatus: ["questionnairestatus"],
+  submittedAt: ["submittedat", "submittedon"],
+  lineAmount: ["lineamount", "lineunitprice"],
 };
 
 export function autoMapHeaders(

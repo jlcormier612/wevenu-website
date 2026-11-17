@@ -393,9 +393,45 @@ export function decideVendorResolve(
   return { action: "create_new" };
 }
 
+export type ConfirmedVendorImportDecision =
+  | { action: "use_existing"; vendorId: string }
+  | { action: "create_new" };
+
 export async function resolveOrCreateVendor(
   client: DbClient, venueId: string, input: VendorInput,
-): Promise<{ vendorId: string; reused: boolean }> {
+  confirmed?: ConfirmedVendorImportDecision,
+): Promise<{ vendorId: string; reused: boolean; relationshipId: string | null }> {
+  if (confirmed?.action === "use_existing") {
+    const venueRel = await client.from("venue_vendor_relationships")
+      .select("id, status")
+      .eq("venue_id", venueId)
+      .eq("vendor_id", confirmed.vendorId)
+      .maybeSingle<{ id: string; status: string }>();
+    if (venueRel.data) {
+      if (venueRel.data.status === "inactive") {
+        await reactivateVendor(client, venueId, confirmed.vendorId);
+      }
+      return { vendorId: confirmed.vendorId, reused: true, relationshipId: venueRel.data.id };
+    }
+    await upsertVenueRelationship(client, venueId, confirmed.vendorId, input, "active");
+    const attached = await client.from("venue_vendor_relationships")
+      .select("id")
+      .eq("venue_id", venueId)
+      .eq("vendor_id", confirmed.vendorId)
+      .maybeSingle<{ id: string }>();
+    return { vendorId: confirmed.vendorId, reused: true, relationshipId: attached.data?.id ?? null };
+  }
+
+  if (confirmed?.action === "create_new") {
+    const vendorId = await insertVendor(client, venueId, input);
+    const created = await client.from("venue_vendor_relationships")
+      .select("id")
+      .eq("venue_id", venueId)
+      .eq("vendor_id", vendorId)
+      .maybeSingle<{ id: string }>();
+    return { vendorId, reused: false, relationshipId: created.data?.id ?? null };
+  }
+
   const venueMatch = await findVenueVendorRelationshipMatch(
     client, venueId, input.businessName, input.email,
   );
@@ -409,16 +445,16 @@ export async function resolveOrCreateVendor(
       await reactivateVendor(client, venueId, decision.vendorId);
     }
     await upsertVenueRelationship(client, venueId, decision.vendorId, input, "active");
-    return { vendorId: decision.vendorId, reused: true };
+    return { vendorId: decision.vendorId, reused: true, relationshipId: null };
   }
 
   if (decision.action === "attach_global") {
     await upsertVenueRelationship(client, venueId, decision.vendorId, input, "active");
-    return { vendorId: decision.vendorId, reused: true };
+    return { vendorId: decision.vendorId, reused: true, relationshipId: null };
   }
 
   const vendorId = await insertVendor(client, venueId, input);
-  return { vendorId, reused: false };
+  return { vendorId, reused: false, relationshipId: null };
 }
 
 export async function insertVendor(client: DbClient, venueId: string, input: VendorInput): Promise<string> {

@@ -94,7 +94,7 @@ describe("analyzeUnmappedColumns", () => {
 });
 
 describe("classifyImportPreview", () => {
-  it("flags unmapped data and email within-file duplicates for clients", () => {
+  it("flags unmapped data and does not treat email-only as a client duplicate", () => {
     const headers = ["First Name", "Last Name", "Email", "Extra"];
     const mapping = {
       firstName: "First Name",
@@ -121,9 +121,40 @@ describe("classifyImportPreview", () => {
     ];
     const summary = classifyImportPreview("couples", headers, mapping, rows);
     assert.ok(summary.unmapped.withData.includes("Extra"));
-    assert.equal(summary.rows[1]?.disposition, "skip_within_file_duplicate");
+    assert.equal(summary.rows[1]?.disposition, "ready");
     assert.equal(summary.rows[2]?.disposition, "skip_required");
     assert.ok(summary.readyCount >= 1);
+  });
+
+  it("flags same-person same-date client rows for review instead of skipping", () => {
+    const headers = ["First Name", "Last Name", "Email", "Event Date"];
+    const mapping = {
+      firstName: "First Name",
+      lastName: "Last Name",
+      email: "Email",
+      partnerFirstName: null,
+      partnerLastName: null,
+      phone: null,
+      eventDate: "Event Date",
+      endDate: null,
+      eventType: null,
+      guestCount: null,
+      ceremonyTime: null,
+      receptionTime: null,
+      setupTime: null,
+      teardownTime: null,
+      spaceName: null,
+      internalNotes: null,
+    };
+    const rows = [
+      { "First Name": "Dana", "Last Name": "Booked", Email: "dana@x.com", "Event Date": "2027-10-10" },
+      { "First Name": "Dana", "Last Name": "Booked", Email: "dana@x.com", "Event Date": "2028-03-04" },
+      { "First Name": "Dana", "Last Name": "Booked", Email: "dana@x.com", "Event Date": "2027-10-10" },
+    ];
+    const summary = classifyImportPreview("couples", headers, mapping, rows);
+    assert.equal(summary.rows[0]?.disposition, "ready");
+    assert.equal(summary.rows[1]?.disposition, "ready");
+    assert.equal(summary.rows[2]?.disposition, "warn_ambiguous_name");
   });
 
   it("warns on same name without email instead of skipping", () => {
@@ -205,6 +236,94 @@ describe("classifyImportPreview", () => {
     assert.equal(summary.rows[2]?.disposition, "ready");
   });
 
+  it("keeps same-person Lead rows with different preferred dates as importable", () => {
+    const headers = ["First Name", "Last Name", "Email", "Preferred Date"];
+    const mapping = {
+      firstName: "First Name",
+      lastName: "Last Name",
+      email: "Email",
+      phone: null,
+      eventDate: "Preferred Date",
+      eventType: null,
+      estimatedBudget: null,
+      source: null,
+      inquiryMessage: null,
+      partnerFirstName: null,
+      partnerLastName: null,
+      partnerEmail: null,
+      endDate: null,
+      guestCount: null,
+      inquiryDate: null,
+    };
+    const rows = [
+      { "First Name": "Riley", "Last Name": "Prospect", Email: "riley@x.com", "Preferred Date": "2027-06-12" },
+      { "First Name": "Riley", "Last Name": "Prospect", Email: "riley@x.com", "Preferred Date": "2028-05-03" },
+      { "First Name": "Riley", "Last Name": "Prospect", Email: "riley@x.com", "Preferred Date": "6/12/2027" },
+    ];
+    const summary = classifyImportPreview("leads", headers, mapping, rows);
+    assert.equal(summary.rows[0]?.disposition, "ready");
+    assert.equal(summary.rows[1]?.disposition, "ready");
+    assert.equal(summary.rows[2]?.disposition, "ready");
+  });
+
+  it("does not mark an email-only different name as a Lead within-file duplicate", () => {
+    const headers = ["First Name", "Last Name", "Email", "Preferred Date"];
+    const mapping = {
+      firstName: "First Name",
+      lastName: "Last Name",
+      email: "Email",
+      phone: null,
+      eventDate: "Preferred Date",
+      eventType: null,
+      estimatedBudget: null,
+      source: null,
+      inquiryMessage: null,
+      partnerFirstName: null,
+      partnerLastName: null,
+      partnerEmail: null,
+      endDate: null,
+      guestCount: null,
+      inquiryDate: null,
+    };
+    const rows = [
+      { "First Name": "Riley", "Last Name": "Prospect", Email: "riley@x.com", "Preferred Date": "2027-06-12" },
+      { "First Name": "Other", "Last Name": "Office", Email: "riley@x.com", "Preferred Date": "2027-08-01" },
+    ];
+    const summary = classifyImportPreview("leads", headers, mapping, rows);
+    assert.equal(summary.rows[0]?.disposition, "ready");
+    assert.equal(summary.rows[1]?.disposition, "ready");
+  });
+
+  it("keeps distinguishable blank-date Lead inquiries and skips identical ones", () => {
+    const headers = ["First Name", "Last Name", "Email", "Source", "Inquiry Notes"];
+    const mapping = {
+      firstName: "First Name",
+      lastName: "Last Name",
+      email: "Email",
+      phone: null,
+      eventDate: null,
+      eventType: null,
+      estimatedBudget: null,
+      source: "Source",
+      inquiryMessage: "Inquiry Notes",
+      partnerFirstName: null,
+      partnerLastName: null,
+      partnerEmail: null,
+      endDate: null,
+      guestCount: null,
+      inquiryDate: null,
+    };
+    const rows = [
+      { "First Name": "Riley", "Last Name": "Prospect", Email: "riley@x.com", Source: "Website", "Inquiry Notes": "Weekday call" },
+      { "First Name": "Riley", "Last Name": "Prospect", Email: "riley@x.com", Source: "The Knot", "Inquiry Notes": "Bridal show" },
+      { "First Name": "Riley", "Last Name": "Prospect", Email: "riley@x.com", Source: "Website", "Inquiry Notes": "Weekday call" },
+    ];
+    const summary = classifyImportPreview("leads", headers, mapping, rows);
+    assert.equal(summary.rows[0]?.disposition, "ready");
+    assert.equal(summary.rows[1]?.disposition, "ready");
+    assert.equal(summary.rows[2]?.disposition, "ready");
+  });
+
   it("dedupes inventory and packages by normalized name within the file", () => {
     const headers = ["Item Name", "Quantity"];
     const mapping = {
@@ -229,12 +348,14 @@ describe("classifyImportPreview", () => {
 
 describe("CSV import actions — integrity wiring", () => {
   it("keeps historicalImport true on lead import", () => {
-    assert.match(quietImport, /createLead\(\s*normalizedLead,\s*"import",\s*true\s*\)|createLead\(\s*row,\s*"import",\s*true\s*\)/);
+    assert.match(quietImport, /createLead\(/);
+    assert.match(quietImport, /identityDecision: importedLeadIdentityDecision/);
+    assert.match(quietImport, /,\s*"import",\s*true/);
   });
 
   it("applies within-file dedupe for couples, vendors, inventory, and packages", () => {
-    assert.match(csvImport, /personEmailWithinFileKey/);
-    assert.match(csvImport, /vendorWithinFileKey/);
+    assert.match(csvImport, /classifyClientEventMatch/);
+    assert.match(csvImport, /classifyVendorMatch/);
     assert.match(csvImport, /catalogNameWithinFileKey/);
     assert.match(csvImport, /normalizeImportDate/);
     assert.match(csvImport, /normalizeImportQuantity/);

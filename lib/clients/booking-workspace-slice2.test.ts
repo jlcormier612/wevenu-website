@@ -13,7 +13,7 @@ import { describe, it } from "node:test";
 const page = readFileSync(resolve("app/(app)/clients/[id]/page.tsx"), "utf8");
 
 function bookedBranch(src: string): string {
-  const start = src.indexOf("const eventId = client.linkedEventId;");
+  const start = src.indexOf("const eventId = resolveClientWorkspaceEventId");
   assert.ok(start > 0, "booked branch start");
   const end = src.indexOf("return (", start);
   assert.ok(end > start, "booked branch return");
@@ -101,9 +101,10 @@ describe("Slice 2 — booked path pipelines dependents off parents", () => {
 
   it("keeps celebration redirect serial before workspace reads", () => {
     const full = page;
-    const celeb = full.indexOf("bookingCelebrationPending(client.linkedEventId)");
-    const eventId = full.indexOf("const eventId = client.linkedEventId;");
-    assert.ok(celeb > 0 && eventId > celeb);
+    const resolveAt = full.indexOf("const eventId = resolveClientWorkspaceEventId");
+    const celeb = full.indexOf("bookingCelebrationPending(eventId)");
+    const batch = full.indexOf("const eventInvoicesPromise");
+    assert.ok(resolveAt > 0 && celeb > resolveAt && batch > celeb);
   });
 
   it("still wires core workspace props into EventDetail", () => {

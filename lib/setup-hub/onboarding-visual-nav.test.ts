@@ -79,14 +79,15 @@ describe("Easy Onboarding back-navigation hierarchy", () => {
     const communications = read("app/(app)/settings/communications/page.tsx");
     const migration = read("app/(app)/settings/migration/page.tsx");
     const bring = read("app/(app)/setup-hub/bring-business/page.tsx");
+    const byb = read("app/(app)/setup-hub/bring-your-business/page.tsx");
     assert.match(brand, /Back to Make HTC yours/);
     assert.match(brand, /phase-a-back-to-milestone-02/);
     assert.match(packages, /SetupHubReturnLink/);
     assert.match(packages, /Back to your booking process/);
     assert.match(communications, /Back to your communications/);
-    assert.match(migration, /Back to Bring your business over/);
-    assert.match(bring, /SETUP_HUB_MILESTONE_RETURN\.bringBusiness/);
-    assert.match(bring, /phase-a-open-migration/);
+    assert.match(migration, /legacyMigrationRedirectHref/);
+    assert.match(bring, /redirect\(/);
+    assert.match(byb, /BringYourBusinessExperience/);
   });
 
   it("does not replace ordinary navigation when from=setup-hub is absent", () => {

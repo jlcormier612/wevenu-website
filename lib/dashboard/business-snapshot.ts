@@ -23,6 +23,7 @@ import {
   getPaymentsCollected,
 } from "@/lib/metrics/revenue";
 import { getCurrentVenue } from "@/lib/venue/service";
+import { leadPerformanceOn } from "@/lib/reporting/performance-dates";
 import { venueToday } from "@/lib/venue/timezone";
 
 /** @deprecated Import from `@/lib/leads/open-lifecycle` — re-exported for existing callers. */
@@ -51,6 +52,8 @@ export type OpenLeadRow = {
   created_at: string | null;
   /** Pipeline reporting category when resolved; preferred over sales_stage. */
   canonical_stage?: string | null;
+  is_historical_import?: boolean | null;
+  inquiry_date?: string | null;
 };
 
 /**
@@ -81,8 +84,12 @@ export function computeOpenLeadFlow(
       value += Number(r.estimated_budget);
       budgetsPresent += 1;
     }
-    const created = (r.created_at ?? "").slice(0, 10);
-    if (created && created >= monthStartIso) newThisMonth += 1;
+    const performanceOn = leadPerformanceOn({
+      isHistoricalImport: r.is_historical_import,
+      inquiryDate: r.inquiry_date,
+      createdAt: r.created_at,
+    });
+    if (performanceOn && performanceOn >= monthStartIso) newThisMonth += 1;
   }
   return { count, value, budgetsPresent, newThisMonth };
 }
@@ -148,8 +155,8 @@ export function buildBusinessSnapshotCards(input: {
         : formatCount(input.bookedCount, "booked event", "booked events"),
       secondary: bookedEmpty
         ? "Your first booked event will appear here."
-        : `${formatUsd(input.bookedValue)} contracted`,
-      tertiary: bookedEmpty ? "" : "Relationships you have marked Booked",
+        : `${formatUsd(input.bookedValue)} invoiced`,
+      tertiary: bookedEmpty ? "" : "Booked events still ahead",
       href: clientListFilterHref("all"),
       actionLabel: "View booked business",
       empty: bookedEmpty,
@@ -203,14 +210,14 @@ export const getBusinessSnapshot = cache(async function getBusinessSnapshot(): P
   const today = venueToday(venue.timezone);
   const monthStart = monthStartFromToday(today);
 
-  const [{ data: leadRows }, { data: stageRows }, bookedIds, bookedValue, cashCollected, outstandingBalance] =
+  const [{ data: leadRows }, { data: stageRows }, bookedIds, activeEvents, bookedValue, cashCollected, outstandingBalance] =
     await forensicTime("snapshot_queries_wall", () =>
       Promise.all([
       // Lean open-opportunity query only — Dashboard Focus uses a separate
       // Focus-population loader; do not re-fetch the full CRM dump here.
       supabase
         .from("leads")
-        .select("sales_stage, estimated_budget, created_at, pipeline_stage_id")
+        .select("sales_stage, estimated_budget, created_at, pipeline_stage_id, is_historical_import, inquiry_date")
         .eq("venue_id", venue.id)
         .not("sales_stage", "in", `(${[...TERMINAL_LEAD_LIFECYCLE_STATES].join(",")})`),
       supabase
@@ -218,6 +225,13 @@ export const getBusinessSnapshot = cache(async function getBusinessSnapshot(): P
         .select("id, canonical_stage")
         .eq("venue_id", venue.id),
       getCurrentBookedClientIds(),
+      supabase
+        .from("events")
+        .select("id", { count: "exact", head: true })
+        .eq("venue_id", venue.id)
+        .in("status", ["confirmed", "in_progress"])
+        .gte("event_date", today)
+        .eq("exclude_from_business_reporting", false),
       getGrossBookedRevenue(),
       getPaymentsCollected(),
       getOutstandingBalance(),
@@ -235,10 +249,14 @@ export const getBusinessSnapshot = cache(async function getBusinessSnapshot(): P
     estimated_budget: number | null;
     created_at: string | null;
     pipeline_stage_id: string | null;
+    is_historical_import?: boolean | null;
+    inquiry_date?: string | null;
   }[]).map((r) => ({
     sales_stage: r.sales_stage,
     estimated_budget: r.estimated_budget,
     created_at: r.created_at,
+    is_historical_import: r.is_historical_import,
+    inquiry_date: r.inquiry_date,
     canonical_stage: r.pipeline_stage_id
       ? (canonicalByStageId.get(r.pipeline_stage_id) ?? null)
       : null,
@@ -248,48 +266,18 @@ export const getBusinessSnapshot = cache(async function getBusinessSnapshot(): P
   let outstandingClientCount = 0;
   if ((outstandingBalance ?? 0) > 0 && bookedIds.size > 0) {
     const clientIds = [...bookedIds];
-    const [{ data: invoices }, { data: payments }] = await Promise.all([
-      supabase
-        .from("invoices")
-        .select("client_id, subtotal, discount_amount, status")
-        .eq("venue_id", venue.id)
-        .neq("status", "void")
-        .in("client_id", clientIds),
-      supabase
-        .from("payment_line_items")
-        .select("paid_amount, amount, refunded_amount, payment_schedules!inner(client_id)")
-        .eq("venue_id", venue.id)
-        .in("status", ["paid", "partially_refunded", "refunded"])
-        .in("payment_schedules.client_id", clientIds),
-    ]);
-    const bookedBy = new Map<string, number>();
-    for (const inv of (invoices ?? []) as {
-      client_id: string; subtotal: number; discount_amount: number;
-    }[]) {
-      bookedBy.set(
-        inv.client_id,
-        (bookedBy.get(inv.client_id) ?? 0) + (Number(inv.subtotal) - Number(inv.discount_amount)),
-      );
-    }
-    const collectedBy = new Map<string, number>();
-    for (const p of (payments ?? []) as unknown as {
-      paid_amount: number | null;
-      amount: number;
-      refunded_amount: number | null;
-      payment_schedules: { client_id: string } | null;
-    }[]) {
-      const cid = p.payment_schedules?.client_id;
-      if (!cid) continue;
-      collectedBy.set(
-        cid,
-        (collectedBy.get(cid) ?? 0)
-          + (Number(p.paid_amount ?? p.amount) - Number(p.refunded_amount ?? 0)),
-      );
-    }
-    for (const cid of clientIds) {
-      const owed = (bookedBy.get(cid) ?? 0) - (collectedBy.get(cid) ?? 0);
-      if (owed > 0) outstandingClientCount += 1;
-    }
+    const { data: openInvoices } = await supabase
+      .from("invoices")
+      .select("client_id, balance_due")
+      .eq("venue_id", venue.id)
+      .in("status", ["sent", "partially_paid", "paid"])
+      .gt("balance_due", 0)
+      .in("client_id", clientIds);
+    outstandingClientCount = new Set(
+      ((openInvoices ?? []) as { client_id: string | null }[])
+        .map((row) => row.client_id)
+        .filter((id): id is string => !!id),
+    ).size;
   }
 
   const cards = buildBusinessSnapshotCards({
@@ -297,7 +285,7 @@ export const getBusinessSnapshot = cache(async function getBusinessSnapshot(): P
     openLeadValue: leadFlow.value,
     openLeadBudgetsPresent: leadFlow.budgetsPresent,
     openLeadsNewThisMonth: leadFlow.newThisMonth,
-    bookedCount: bookedIds.size,
+    bookedCount: activeEvents.count ?? 0,
     bookedValue: bookedValue ?? 0,
     cashCollected: Math.max(0, cashCollected ?? 0),
     outstandingBalance: Math.max(0, outstandingBalance ?? 0),

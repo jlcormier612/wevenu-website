@@ -30,7 +30,7 @@ export default async function InventoryLibraryPage() {
               <Button render={<Link href="/library/inventory/new" />}>
                 + Add item
               </Button>
-              <Button variant="outline" render={<Link href="/settings/import?type=inventory" />}>
+              <Button variant="outline" render={<Link href="/setup-hub/bring-your-business?stage=planning&kind=inventory" />}>
                 Import Inventory
               </Button>
             </div>

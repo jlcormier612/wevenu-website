@@ -61,7 +61,7 @@ describe("Help & Guides final IA", () => {
     }
     const reports = PUBLISHABLE_HELP_ARTICLES.find((a) => a.slug === "how-should-i-read-my-reports");
     assert.ok(reports);
-    assert.match(reports.body, /Contracted, Collected, and Outstanding/);
+    assert.match(reports.body, /Invoiced, Collected, and Outstanding/);
     const leadClient = PUBLISHABLE_HELP_ARTICLES.find((a) => a.slug === "whats-the-difference-between-a-lead-and-a-client");
     assert.ok(leadClient);
     assert.match(leadClient.body, /A \*\*Client\*\* is a Lead who has become a booking/);

@@ -332,6 +332,72 @@ function normalizeRow(row: SourceRow, entityType: MigrationEntityType): Normaliz
   }
 
   if (entityType === "active_commitment") {
+    const kind = str(row, "recordKind") ?? str(row, "kind");
+    if (kind) {
+      const sourceId = str(row, "sourceId") ?? str(row, "id") ?? str(row, "recordId");
+      if (!sourceId) return { ok: false, error: "Financial rows need a source id so a retry will not duplicate them." };
+      let lines: NormalizedActiveCommitment["lines"] | undefined;
+      const linesJson = str(row, "linesJson");
+      if (linesJson) {
+        try {
+          const parsed = JSON.parse(linesJson);
+          if (Array.isArray(parsed)) lines = parsed;
+        } catch {
+          return { ok: false, error: "linesJson must be valid JSON." };
+        }
+      } else if (str(row, "lineDescription") || str(row, "lineAmount")) {
+        lines = [{
+          description: str(row, "lineDescription") ?? "Imported line",
+          quantity: str(row, "lineQuantity") ?? "1",
+          unitPrice: str(row, "lineAmount") ?? str(row, "lineUnitPrice") ?? "0",
+        }];
+      }
+      const normalized = {
+        recordKind: kind,
+        sourceId,
+        clientEmail: str(row, "clientEmail") ?? str(row, "email"),
+        clientId: str(row, "clientId"),
+        eventId: str(row, "eventId"),
+        sourceEventId: str(row, "sourceEventId"),
+        eventDate: str(row, "eventDate"),
+        eventSpace: str(row, "eventSpace") ?? str(row, "space"),
+        clientLevel: ["yes", "true", "1"].includes((str(row, "clientLevel") ?? "").toLowerCase()),
+        contractTitle: str(row, "contractTitle") ?? str(row, "title"),
+        contractContent: str(row, "contractContent"),
+        agreementValue: str(row, "agreementValue"),
+        signedAt: str(row, "signedAt") ?? str(row, "contractSignedAt"),
+        signerName: str(row, "signerName") ?? str(row, "contractSignerName"),
+        amendsSourceId: str(row, "amendsSourceId"),
+        executedFilePath: str(row, "executedFilePath"),
+        fileName: str(row, "fileName"),
+        vendorId: str(row, "vendorId"),
+        vendorName: str(row, "vendorName"),
+        invoiceNumber: str(row, "invoiceNumber"),
+        issuedAt: str(row, "issuedAt") ?? str(row, "issueDate"),
+        invoiceStatus: str(row, "invoiceStatus") ?? str(row, "status"),
+        subtotal: str(row, "subtotal"),
+        discountAmount: str(row, "discountAmount"),
+        taxAmount: str(row, "taxAmount"),
+        invoiceTotal: str(row, "invoiceTotal") ?? str(row, "total"),
+        lines,
+        notes: str(row, "notes"),
+        statedRemaining: str(row, "statedRemaining") ?? str(row, "remainingBalance"),
+        movementKind: str(row, "movementKind"),
+        amount: str(row, "amount") ?? str(row, "paidAmount"),
+        occurredOn: str(row, "occurredOn") ?? str(row, "paidDate"),
+        method: str(row, "method") ?? str(row, "paidMethod"),
+        reference: str(row, "reference") ?? str(row, "paidReference"),
+        invoiceSourceId: str(row, "invoiceSourceId"),
+        counterInvoiceSourceId: str(row, "counterInvoiceSourceId"),
+        relatedSourceId: str(row, "relatedSourceId"),
+        adjustmentEffect: str(row, "adjustmentEffect"),
+        installmentLabel: str(row, "installmentLabel") ?? str(row, "label"),
+        dueDate: str(row, "dueDate"),
+        installmentSourceId: str(row, "installmentSourceId"),
+      };
+      return { ok: true, entityType, normalized };
+    }
+
     const contractedTotal = str(row, "contractedTotal") ?? str(row, "total") ?? str(row, "contractTotal");
     if (!contractedTotal) {
       return { ok: false, error: "Booked-event finances need a contractedTotal." };
@@ -520,6 +586,53 @@ function normalizeRow(row: SourceRow, entityType: MigrationEntityType): Normaliz
       eventDate: str(row, "eventDate"),
       sourceId: str(row, "sourceId") ?? storagePath,
       notes: str(row, "notes"),
+    };
+    return { ok: true, entityType, normalized };
+  }
+
+  if (entityType === "planning_material") {
+    const kind = str(row, "recordKind") ?? str(row, "kind");
+    const sourceId = str(row, "sourceId") ?? str(row, "id") ?? str(row, "recordId");
+    if (!kind) return { ok: false, error: "Planning rows need a record kind." };
+    if (!sourceId) return { ok: false, error: "Planning rows need a source id so a retry will not duplicate them." };
+    const normalized = {
+      recordKind: kind,
+      sourceId,
+      eventId: str(row, "eventId"),
+      clientEmail: str(row, "clientEmail") ?? str(row, "email"),
+      clientId: str(row, "clientId"),
+      eventDate: str(row, "eventDate"),
+      title: str(row, "title") ?? str(row, "name"),
+      description: str(row, "description"),
+      notes: str(row, "notes"),
+      dueDate: str(row, "dueDate"),
+      completedAt: str(row, "completedAt"),
+      taskStatus: str(row, "taskStatus") ?? str(row, "status"),
+      ownership: str(row, "ownership"),
+      assigneeEmail: str(row, "assigneeEmail"),
+      timelineRole: str(row, "timelineRole"),
+      entryTime: str(row, "entryTime") ?? str(row, "startTime"),
+      endTime: str(row, "endTime"),
+      occurredOn: str(row, "occurredOn"),
+      spaceName: str(row, "spaceName"),
+      spaceId: str(row, "spaceId"),
+      questions: str(row, "questions"),
+      answers: str(row, "answers"),
+      questionnaireStatus: str(row, "questionnaireStatus"),
+      submittedAt: str(row, "submittedAt"),
+      fileName: str(row, "fileName"),
+      storagePath: str(row, "storagePath"),
+      storageUrl: str(row, "storageUrl"),
+      mimeType: str(row, "mimeType"),
+      category: str(row, "category"),
+      lineDescription: str(row, "lineDescription"),
+      quantity: str(row, "quantity"),
+      unitPrice: str(row, "unitPrice"),
+      included: str(row, "included"),
+      selected: str(row, "selected"),
+      vendorName: str(row, "vendorName") ?? str(row, "vendorBusinessName"),
+      vendorId: str(row, "vendorId"),
+      arrivalTime: str(row, "arrivalTime"),
     };
     return { ok: true, entityType, normalized };
   }

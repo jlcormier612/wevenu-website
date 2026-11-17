@@ -112,7 +112,7 @@ export const BUSINESS_FUNNEL_LEADLESS_NOTE =
   "Clients you added already booked (they were never a lead) count in Bookings and in money, but not in Lead → Tour or Lead → Booking rates.";
 
 export const BUSINESS_FUNNEL_OUTSTANDING_LIMITATION =
-  "Period net is contracted value (commitment date) minus payments collected (payment date) for this period. Those are different clocks — not a current receivables balance.";
+  "Outstanding is the unpaid balance on invoices issued in this period. Draft and void invoices are excluded. It is not invoiced minus collected.";
 
 async function countPeriodTours(window: DateWindow): Promise<number> {
   if (!isSupabaseConfigured) return 0;
@@ -140,8 +140,8 @@ async function countPeriodBusinessFunnelLeads(window: DateWindow): Promise<numbe
       .from("leads")
       .select("id", { count: "exact", head: true })
       .eq("venue_id", venue.id)
-      .gte("created_at", `${window.from}T00:00:00.000Z`)
-      .lte("created_at", `${window.to}T23:59:59.999Z`),
+      .gte("performance_inquiry_on", window.from)
+      .lte("performance_inquiry_on", window.to),
   );
   return count ?? 0;
 }
@@ -159,8 +159,8 @@ async function loadBusinessFunnelCohort(window: DateWindow): Promise<BusinessFun
       .from("leads")
       .select("id, status, sales_stage, first_booked_at")
       .eq("venue_id", venue.id)
-      .gte("created_at", `${window.from}T00:00:00.000Z`)
-      .lte("created_at", `${window.to}T23:59:59.999Z`),
+      .gte("performance_inquiry_on", window.from)
+      .lte("performance_inquiry_on", window.to),
   );
 
   type LeadRow = {

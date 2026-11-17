@@ -15,24 +15,24 @@ import {
 } from "./bring-your-business-guide";
 
 describe("Bring Your Business guided sequence", () => {
-  it("defines five guidance steps in the approved order", () => {
+  it("defines the three relationship categories before follow-up money and planning", () => {
     assert.deepEqual(
       BRING_YOUR_BUSINESS_GUIDE_STEPS.map((s) => s.id),
-      ["people", "venue-events", "packages-financials", "planning", "review"],
+      ["leads", "clients", "vendors", "packages-financials", "planning", "review"],
     );
-    assert.equal(BRING_YOUR_BUSINESS_GUIDE_STEPS[0].title, "People");
-    assert.equal(BRING_YOUR_BUSINESS_GUIDE_STEPS[1].title, "Venue and events");
-    assert.equal(BRING_YOUR_BUSINESS_GUIDE_STEPS[2].title, "Packages and financial information");
-    assert.equal(BRING_YOUR_BUSINESS_GUIDE_STEPS[3].title, "Planning resources");
-    assert.equal(BRING_YOUR_BUSINESS_GUIDE_STEPS[4].title, "Review and get started");
+    assert.equal(BRING_YOUR_BUSINESS_GUIDE_STEPS[0].title, "Leads");
+    assert.equal(BRING_YOUR_BUSINESS_GUIDE_STEPS[1].title, "Clients and their events");
+    assert.equal(BRING_YOUR_BUSINESS_GUIDE_STEPS[2].title, "Vendors");
+    assert.equal(BRING_YOUR_BUSINESS_GUIDE_STEPS[3].title, "Packages and financial information");
+    assert.equal(BRING_YOUR_BUSINESS_GUIDE_STEPS[4].title, "Planning resources");
+    assert.equal(BRING_YOUR_BUSINESS_GUIDE_STEPS[5].title, "Review and get started");
   });
 
-  it("routes every import action to existing Import Data or Migration Center tools", () => {
+  it("routes every import action into the unified Bring Your Business journey or existing records", () => {
     const hrefs = BRING_YOUR_BUSINESS_GUIDE_STEPS.flatMap((s) => s.categories.map((c) => c.href));
     for (const href of hrefs) {
       assert.ok(
-        href.startsWith("/settings/import")
-          || href.startsWith("/settings/migration")
+        href.startsWith("/setup-hub/bring-your-business")
           || href.startsWith("/settings/availability")
           || href.startsWith("/clients")
           || href.startsWith("/calendar")
@@ -41,9 +41,11 @@ describe("Bring Your Business guided sequence", () => {
       );
       assert.equal(isPreGraduationAllowedPath(BRING_YOUR_BUSINESS_GUIDE_HREF), true);
     }
-    assert.ok(hrefs.some((h) => h.includes("/settings/import?type=couples")));
-    assert.ok(hrefs.some((h) => h.includes("/settings/migration")));
-    assert.doesNotMatch(hrefs.join("\n"), /honeybook\.com|tripleseat\.com/);
+    assert.ok(hrefs.some((h) => h.includes("stage=clients")));
+    assert.ok(hrefs.some((h) => h.includes("stage=leads")));
+    assert.ok(hrefs.some((h) => h.includes("stage=vendors")));
+    assert.doesNotMatch(hrefs.join("\n"), /filter=contacts/);
+    assert.doesNotMatch(hrefs.join("\n"), /honeybook\.com|tripleseat\.com|HoneyBook|Tripleseat/);
   });
 
   it("states financial and planning prerequisites in plain language", () => {
@@ -79,12 +81,13 @@ describe("evaluateGuideProgress", () => {
 
   it("stays not started until durable imports exist", () => {
     const progress = evaluateGuideProgress(empty);
-    assert.equal(progress.people, "not_started");
-    assert.equal(progress["venue-events"], "not_started");
+    assert.equal(progress.leads, "not_started");
+    assert.equal(progress.clients, "not_started");
+    assert.equal(progress.vendors, "not_started");
     assert.equal(progress.review, "not_started");
   });
 
-  it("marks people brought over from import_batches, not from opening a page", () => {
+  it("marks clients brought over from import_batches, not from opening a page", () => {
     const progress = evaluateGuideProgress({
       ...empty,
       batches: [{
@@ -96,11 +99,26 @@ describe("evaluateGuideProgress", () => {
         migrationSessionId: null,
       }],
     });
-    assert.equal(progress.people, "imported");
-    assert.equal(progress["venue-events"], "not_started");
+    assert.equal(progress.clients, "imported");
+    assert.equal(progress.leads, "not_started");
   });
 
-  it("flags needs attention when a batch has errors", () => {
+  it("flags needs attention when a batch has errors and nothing succeeded", () => {
+    const progress = evaluateGuideProgress({
+      ...empty,
+      batches: [{
+        entityType: "couples",
+        importedCount: 0,
+        errorCount: 4,
+        skippedCount: 0,
+        rolledBackAt: null,
+        migrationSessionId: null,
+      }],
+    });
+    assert.equal(progress.clients, "needs_attention");
+  });
+
+  it("keeps a category brought over when some rows succeeded even if later rows were held", () => {
     const progress = evaluateGuideProgress({
       ...empty,
       batches: [{
@@ -112,7 +130,7 @@ describe("evaluateGuideProgress", () => {
         migrationSessionId: null,
       }],
     });
-    assert.equal(progress.people, "needs_attention");
+    assert.equal(progress.clients, "imported");
   });
 
   it("ignores rolled-back batches", () => {
@@ -127,24 +145,24 @@ describe("evaluateGuideProgress", () => {
         migrationSessionId: null,
       }],
     });
-    assert.equal(progress.people, "not_started");
+    assert.equal(progress.clients, "not_started");
   });
 
-  it("uses Migration Center evidence for events and does not invent a percentage", () => {
+  it("uses Migration Center evidence for client events and does not invent a percentage", () => {
     const progress = evaluateGuideProgress({
       ...empty,
       hasMigrationImport: true,
     });
-    assert.equal(progress["venue-events"], "imported");
+    assert.equal(progress.clients, "imported");
     assert.equal(progress.review, "not_started");
   });
 
   it("treats skip / add-individually as optional, not complete", () => {
     const skipped = evaluateGuideProgress({ ...empty, path: "skipped" });
-    assert.equal(skipped.people, "optional");
+    assert.equal(skipped.leads, "optional");
     assert.equal(skipped.review, "not_started");
     const individual = evaluateGuideProgress({ ...empty, path: "individual" });
-    assert.equal(individual.people, "optional");
+    assert.equal(individual.clients, "optional");
   });
 });
 
@@ -210,10 +228,15 @@ describe("Setup Hub starting choice + guide page", () => {
     assert.match(layout, /onboarding\/white-glove\//);
   });
 
-  it("surfaces imported contacts on Clients → Contacts, not as booked events", () => {
+  it("keeps the live Contacts list filter without treating it as a Client import success path", () => {
     const list = readFileSync(join(process.cwd(), "components/clients/client-list.tsx"), "utf8");
     assert.match(list, /imported-contacts-hint/);
     assert.match(list, /setFilter\("contacts"\)/);
     assert.match(list, /They are not booked events/);
+    assert.doesNotMatch(list, /people you imported/);
+    const wizard = readFileSync(join(process.cwd(), "components/settings/import-wizard.tsx"), "utf8");
+    assert.doesNotMatch(wizard, /Bring over their events next/);
+    assert.doesNotMatch(wizard, /filter=contacts/);
+    assert.match(wizard, /Open All Bookings/);
   });
 });

@@ -91,6 +91,17 @@ export type ClientInput = {
   identityDecision?: import("@/lib/identity/decision").IdentityDecision;
   /** Import/migration only — SQL safe-reuse still applies; venue UI is not available. */
   skipIdentityReview?: boolean;
+  /** Import only — booked / past / preferred. Not a Client table column. */
+  bookingStatus?: string;
+  /** Import only — source-system person/client id, scoped to this venue import. */
+  sourceClientId?: string;
+  /** Import only — source-system event id, distinct from the person id. */
+  sourceEventId?: string;
+  /**
+   * Import only. YYYY-MM-DD when the source file has a real booking date.
+   * Empty means unknown. Never the import day or the event day.
+   */
+  originalBookedOn?: string;
 };
 
 

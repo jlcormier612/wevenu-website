@@ -15,6 +15,7 @@ export type InvoiceOutboundScheduleLine = {
   id: string;
   label: string;
   amount: number;
+  paidAmount?: number | null;
   dueDate: string | null;
   status: string;
   obligationKind?: string | null;
@@ -159,6 +160,7 @@ export async function loadInvoiceOutboundContext(
     scheduleLines = (detail?.lineItems ?? []).map((li) => ({
       id: li.id,
       amount: li.amount,
+      paidAmount: li.paidAmount,
       dueDate: li.dueDate,
       status: li.status,
       label: li.label,

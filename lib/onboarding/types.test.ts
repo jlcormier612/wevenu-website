@@ -12,12 +12,14 @@ import {
 } from "./types";
 
 describe("onboarding intake customer-facing choices", () => {
-  it("exposes exactly four bring-business choices", () => {
-    assert.equal(BRING_BUSINESS_OPTIONS.length, 4);
+  it("exposes customer-facing bring-business choices without named systems", () => {
+    assert.equal(BRING_BUSINESS_OPTIONS.length, 2);
     assert.deepEqual(
       BRING_BUSINESS_OPTIONS.map((o) => o.key),
-      ["honeybook", "tripleseat", "another_system", "starting_fresh"],
+      ["another_system", "starting_fresh"],
     );
+    const blob = BRING_BUSINESS_OPTIONS.map((o) => `${o.title} ${o.description}`).join(" ");
+    assert.doesNotMatch(blob, /HoneyBook|Tripleseat/i);
   });
 
   it("does not expose Planning Pod, spreadsheet, Weven, Knot, or not sure", () => {
@@ -40,12 +42,8 @@ describe("onboarding intake customer-facing choices", () => {
     const byKey = Object.fromEntries(
       BRING_BUSINESS_OPTIONS.map((o) => [o.key, o.description]),
     );
-    assert.match(byKey.honeybook, /help you export/i);
-    assert.match(byKey.honeybook, /nothing moves over automatically/i);
-    assert.match(byKey.tripleseat, /help you export/i);
-    assert.match(byKey.tripleseat, /nothing moves over automatically/i);
-    assert.match(byKey.another_system, /help you gather/i);
-    assert.match(byKey.another_system, /nothing imports on its own/i);
+    assert.match(byKey.another_system, /exported from your current software/i);
+    assert.match(byKey.another_system, /match your information/i);
     for (const text of Object.values(byKey)) {
       assert.equal(/automatic(ally)? migrate|imports? automatically from this answer alone/i.test(text), false);
     }
@@ -53,19 +51,19 @@ describe("onboarding intake customer-facing choices", () => {
 
   it("maps bring-business choices to migration routes", () => {
     assert.equal(bringBusinessMigrationHref("starting_fresh"), null);
-    assert.match(bringBusinessMigrationHref("honeybook")!, /honeybook/);
-    assert.match(bringBusinessMigrationHref("tripleseat")!, /tripleseat/);
-    assert.match(bringBusinessMigrationHref("another_system")!, /another_system/);
+    assert.match(bringBusinessMigrationHref("honeybook")!, /bring-your-business/);
+    assert.match(bringBusinessMigrationHref("tripleseat")!, /bring-your-business/);
+    assert.match(bringBusinessMigrationHref("another_system")!, /bring-your-business/);
   });
 
   it("echoes the intake Bring Business answer without inventing a new source of truth", () => {
     assert.equal(
       bringBusinessIntakeHeading("honeybook"),
-      "Bring your HoneyBook business into Hello to Cheers",
+      "Bring your existing business into Hello to Cheers",
     );
     assert.equal(
       bringBusinessIntakeHeading("tripleseat"),
-      "Bring your Tripleseat business into Hello to Cheers",
+      "Bring your existing business into Hello to Cheers",
     );
     assert.equal(
       bringBusinessIntakeHeading("another_system"),

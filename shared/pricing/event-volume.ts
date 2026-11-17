@@ -3,8 +3,9 @@
  *
  * Rules:
  * - Count by calendar year of `eventDate` (venue civil date), not bookedAt year.
- * - Qualifying: status in confirmed | in_progress | complete AND bookedAt set.
- * - Cancelled excluded even if bookedAt remains.
+ * - Qualifying: status in confirmed | in_progress | complete.
+ * - A missing original booking date does not disqualify the Event.
+ * - Cancelled excluded. Draft excluded.
  * - Each event counted once (start-date year for multi-day).
  * - Peak year is the highest count among the current calendar year and future
  *   calendar years only (past years excluded). `asOfDate` selects "today".
@@ -25,8 +26,8 @@ export type EventVolumeInputEvent = {
   status: EventVolumeStatus | string;
   /** ISO civil date YYYY-MM-DD (venue event start date) */
   eventDate: string;
-  /** Booking commitment stamp; null/undefined = not a qualifying booked event */
-  bookedAt: string | null | undefined;
+  /** Retained for callers. Qualification uses status and event year, not this stamp. */
+  bookedAt?: string | null | undefined;
 };
 
 export type EventVolumeEvaluation = {
@@ -40,11 +41,7 @@ export type EventVolumeEvaluation = {
 const QUALIFYING = new Set(["confirmed", "in_progress", "complete"]);
 
 export function isQualifyingVolumeEvent(event: EventVolumeInputEvent): boolean {
-  if (!QUALIFYING.has(event.status)) return false;
-  if (event.bookedAt == null || String(event.bookedAt).trim() === "") {
-    return false;
-  }
-  return true;
+  return QUALIFYING.has(event.status);
 }
 
 /** Extract calendar year from YYYY-MM-DD (or ISO datetime prefix). */

@@ -1,0 +1,26 @@
+{
+  "logic": "Group persisted Leads by confirmed first+last name, then compare relationship IDs. Do not treat a shared email as person identity. Other Office shares riley.prospect@byb.test after the venue confirmed a different person.",
+  "sourceEvidence": "docs/qa/phase-b2-relationship-correction/persist-self-service.json and persist-hq-white-glove.json",
+  "originalHarnessBug": "ss-2, hq-2, and parity used leadFacts(email=riley.prospect@byb.test), which counted Other Office as a second Riley relationship.",
+  "result": "GREEN",
+  "passed": 23,
+  "total": 23,
+  "selfService": {
+    "venueId": "e1eb6440-e298-4a1c-b9b8-29d6c81ad8df",
+    "rileyProspectInquiries": 5,
+    "rileyRelationshipId": "f28380a0-8b5c-41c4-924b-e4a113c4de9f",
+    "otherOfficeRelationshipId": "e5e88ccf-4925-4a17-ba59-c7b337096bde",
+    "morganClientId": "30aec1bf-4009-4725-a8b5-32246f943021",
+    "morganEventId": "492b385b-6bf7-49cd-8821-2807354ec4f3",
+    "morganInquiryId": "bb484435-c6de-4a9e-a1d0-c11718abcb0d"
+  },
+  "hq": {
+    "venueId": "63ee33fc-1036-42aa-9f62-225bcd6cddf0",
+    "rileyProspectInquiries": 5,
+    "rileyRelationshipId": "672e14e2-96e1-4930-986a-3e23212e6826",
+    "otherOfficeRelationshipId": "b5ae8f59-1d82-44c0-82b2-0d57ebd55cef",
+    "morganClientId": "1e236f2c-c18b-4f29-9358-6586c6a66afe",
+    "morganEventId": "4043d1d1-9502-48d0-823f-37a25eb7a69d",
+    "morganInquiryId": "3323c403-0b41-41d4-8ea8-3cfea0f10248"
+  }
+}

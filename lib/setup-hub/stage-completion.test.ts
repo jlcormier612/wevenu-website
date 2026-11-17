@@ -162,8 +162,11 @@ describe("Bring Your Business completion — explicit path or Migration Center",
       false,
     );
     const page = readFileSync(resolve("app/(app)/setup-hub/page.tsx"), "utf8");
-    assert.match(page, /migrationSessionId/);
-    assert.match(page, /hasMigrationImport/);
+    assert.match(page, /phaseAImportFlags/);
+    assert.match(page, /hasImportedActivity/);
+    const activity = readFileSync(resolve("lib/import/activity.ts"), "utf8");
+    assert.match(activity, /hasSuccessfulImportActivity/);
+    assert.match(activity, /hasDatedMigrationImport/);
     const batches = readFileSync(resolve("lib/import/batches.ts"), "utf8");
     assert.match(batches, /migrationSessionId/);
     assert.match(batches, /migration_session_id/);

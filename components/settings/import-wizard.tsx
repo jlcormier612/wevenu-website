@@ -5,6 +5,7 @@ import { useTransition } from "react";
 import Papa from "papaparse";
 import { Upload, ChevronRight, ChevronLeft, Check, AlertCircle, FileText, Sparkles } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -13,14 +14,23 @@ import {
   type EntityType, type FieldMapping, type ImportResult,
 } from "@/lib/import/types";
 import {
+  countedEntityLabel,
+  personImportConfirmLabel,
+  summarizePersonImportPlan,
+  type PersonMatchAction,
+} from "@/lib/import/match-policy";
+import { looksTabular } from "@/lib/import/tabular";
+import {
   buildTemplateCsv, getSampleValue, looksLikeHeaderRow, isSyntheticColumnHeaders,
   rowToClientInput, rowToLeadInput, rowToVendorInput, rowToInventoryInput, rowToPackageInput,
-  loadSavedMapping, saveMapping,
+  loadSavedMapping, saveMapping, suggestHeaderMapping,
 } from "@/lib/import/utils";
 import { classifyImportPreview } from "@/lib/import/preview-integrity";
+import { signalLabel, type DuplicateSignal } from "@/lib/leads/duplicate-detection";
 import {
   importCouplesAction, importLeadsAction, importVendorsAction, importInventoryAction, importPackagesAction,
-  parseImportFileAction, parseImportTextAction, proposeFieldMappingAction,
+  parseImportFileAction, parseImportTextAction, proposeFieldMappingAction, previewPersonMatchesAction,
+  type PersonMatchPreviewRow,
 } from "@/app/(app)/settings/import/actions";
 import {
   importCouplesForVenueAction, importLeadsForVenueAction, importVendorsForVenueAction,
@@ -30,8 +40,8 @@ import {
 type CsvRow = Record<string, string>;
 
 const ENTITY_META: Record<EntityType, { label: string; resultPath: string; description: string }> = {
-  couples:   { label: "Clients",   resultPath: "/clients?filter=contacts", description: "Import clients with contact details. Past event dates create a historical calendar Event; future dates stay on the client until you book (Migration Center event import or book from the client). Imported contacts without a booking appear under Clients → Contacts." },
-  leads:     { label: "Leads",     resultPath: "/leads",            description: "Import inquiries into your leads pipeline. Historical imports stay quiet (no automations, new-lead alerts, or scheduled outreach)." },
+  couples:   { label: "Clients",   resultPath: "/clients", description: "Import booked customers together with their events. Upcoming bookings follow your calendar. Past events stay Clients. A preferred date without a booking belongs on Leads." },
+  leads:     { label: "Leads",     resultPath: "/leads",            description: "Import inquiries who have not booked. Preferred dates, partners, follow-up, and notes stay on the Lead. They do not create a booking or reserve the calendar. Historical imports stay quiet (no automations, new-lead alerts, or scheduled outreach)." },
   vendors:   { label: "Vendors",   resultPath: "/vendors",          description: "Import your existing vendor contacts and relationships." },
   inventory: { label: "Inventory Templates", resultPath: "/library/inventory", description: "Import your tables, chairs, decor, and other physical inventory." },
   packages:  { label: "Package Templates",   resultPath: "/packages",  description: "Import package name, description, category, base price, and optional included line items (description|qty|unit). Inventory links are not imported." },
@@ -39,10 +49,10 @@ const ENTITY_META: Record<EntityType, { label: string; resultPath: string; descr
 
 const NEXT_STEP: Record<EntityType, { cta: string; href: string; detail: string }> = {
   couples: {
-    cta:    "Find imported contacts",
-    href:   "/clients?filter=contacts",
+    cta:    "Open All Bookings",
+    href:   "/clients",
     detail:
-      "They appear under Contacts — All Bookings only shows clients with an active booking. Nothing is emailed or invited automatically. Next, bring over their events.",
+      "Upcoming booked clients appear under All Bookings and Calendar. Past clients appear under Past. A Client import is not complete unless the event was established. Nothing is emailed or invited automatically.",
   },
   leads: {
     cta:    "Review imported leads",
@@ -72,12 +82,22 @@ const NEXT_STEP: Record<EntityType, { cta: string; href: string; detail: string 
 function StepEntitySelect({
   onSelect,
   datedEventsMessage,
+  allowedEntities,
 }: {
   onSelect: (e: EntityType) => void;
   datedEventsMessage?: string | null;
+  allowedEntities: EntityType[];
 }) {
+  const [ready, setReady] = React.useState(false);
+  React.useEffect(() => {
+    setReady(true);
+  }, []);
   return (
-    <div className="space-y-4">
+    <div
+      className="space-y-4"
+      data-testid="byb-entity-select"
+      data-hydrated={ready ? "true" : "false"}
+    >
       <div>
         <h2 className="text-base font-semibold text-foreground">What are you importing?</h2>
         <p className="text-sm text-muted-foreground mt-1">
@@ -86,14 +106,15 @@ function StepEntitySelect({
       </div>
       {datedEventsMessage ? (
         <p className="text-xs text-amber-800 dark:text-amber-200">
-          {datedEventsMessage} Clients without an event date can still be imported.
+          {datedEventsMessage} Leads can still be imported. Client bookings that need a space will be held for review.
         </p>
       ) : null}
       <div className="grid gap-3 sm:grid-cols-3">
-        {(["couples", "leads", "vendors", "inventory", "packages"] as EntityType[]).map((e) => (
+        {allowedEntities.map((e) => (
           <button
             key={e}
             type="button"
+            data-testid={`byb-entity-${e}`}
             onClick={() => onSelect(e)}
             className="rounded-xl border border-border bg-card hover:border-primary hover:bg-accent transition-colors p-4 text-left space-y-1 group"
           >
@@ -116,14 +137,6 @@ function StepEntitySelect({
 
 const ACCEPTED_EXTENSIONS = ".csv,.xlsx,.xls,.docx,.pdf";
 
-function looksTabular(text: string): boolean {
-  const lines = text.trim().split("\n").filter(Boolean);
-  if (lines.length < 2) return false;
-  const delimiterCount = (line: string) => Math.max((line.match(/\t/g) ?? []).length, (line.match(/,/g) ?? []).length);
-  const first = delimiterCount(lines[0]);
-  return first > 0 && lines.slice(1, 5).every((l) => delimiterCount(l) === first);
-}
-
 function StepUpload({
   entity,
   onParsed,
@@ -136,9 +149,13 @@ function StepUpload({
   const [dragging, setDragging] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [working, setWorking] = React.useState(false);
-  const [pasteText, setPasteText] = React.useState("");
-  const [showPaste, setShowPaste] = React.useState(false);
+  const [pasteReady, setPasteReady] = React.useState(false);
+  const pasteRef = React.useRef<HTMLTextAreaElement>(null);
   const inputRef = React.useRef<HTMLInputElement>(null);
+
+  React.useEffect(() => {
+    setPasteReady(true);
+  }, []);
 
   function parseCsv(file: File) {
     Papa.parse<CsvRow>(file, {
@@ -179,11 +196,15 @@ function StepUpload({
     else setError("That file type isn't supported. Try .csv, .xlsx, .docx, .pdf, or paste your list below.");
   }
 
-  async function handlePasteSubmit() {
-    if (!pasteText.trim()) return;
+  async function submitPastedText(raw: string) {
+    const text = raw.trim();
+    if (!text) {
+      setError("Paste a list first.");
+      return;
+    }
     setError(null);
-    if (looksTabular(pasteText)) {
-      const result = Papa.parse<CsvRow>(pasteText.trim(), { header: true, skipEmptyLines: true });
+    if (looksTabular(text)) {
+      const result = Papa.parse<CsvRow>(text, { header: true, skipEmptyLines: true });
       const headers = result.meta.fields ?? [];
       if (headers.length > 0 && result.data.length > 0) {
         onParsed(headers, result.data, "Pasted list", false);
@@ -193,7 +214,7 @@ function StepUpload({
     // Doesn't look like clean columns — hand off to Luv.
     setWorking(true);
     try {
-      const result = await parseImportTextAction(pasteText, entity);
+      const result = await parseImportTextAction(text, entity);
       if (!result.ok) { setError(result.message); return; }
       onParsed(result.headers, result.rows as CsvRow[], "Pasted list", result.assisted);
     } catch (err) {
@@ -201,6 +222,13 @@ function StepUpload({
     } finally {
       setWorking(false);
     }
+  }
+
+  function handlePasteSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const fromForm = String(new FormData(event.currentTarget).get("paste") ?? "");
+    const fromRef = pasteRef.current?.value ?? "";
+    void submitPastedText(fromForm || fromRef);
   }
 
   function handleDownloadTemplate() {
@@ -233,7 +261,7 @@ function StepUpload({
       </div>
 
       <div
-        className={`rounded-xl border-2 border-dashed transition-colors cursor-pointer py-12 flex flex-col items-center gap-3 ${
+        className={`rounded-xl border-2 border-dashed transition-colors cursor-pointer py-6 sm:py-10 flex flex-col items-center gap-3 ${
           dragging ? "border-primary bg-accent" : "border-border hover:border-muted-foreground"
         } ${working ? "pointer-events-none opacity-60" : ""}`}
         onClick={() => inputRef.current?.click()}
@@ -255,25 +283,34 @@ function StepUpload({
         />
       </div>
 
-      <div>
-        <button type="button" onClick={() => setShowPaste((v) => !v)} className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">
-          {showPaste ? "Hide paste box" : "Or paste your list instead"}
-        </button>
-        {showPaste && (
-          <div className="mt-2 space-y-2">
-            <textarea
-              value={pasteText}
-              onChange={(e) => setPasteText(e.target.value)}
-              rows={6}
-              placeholder="Paste anything — a table copied from a spreadsheet, or a plain list like &quot;ABC Florals, Jane Smith, jane@abcflorals.com, 555-1234&quot;."
-              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-            />
-            <Button type="button" size="sm" onClick={handlePasteSubmit} disabled={!pasteText.trim() || working}>
-              {working ? "Reading…" : "Use this list"}
-            </Button>
-          </div>
-        )}
-      </div>
+      <form
+        className="space-y-2"
+        data-testid="byb-paste-entry"
+        data-hydrated={pasteReady ? "true" : "false"}
+        onSubmit={handlePasteSubmit}
+      >
+        <p className="text-sm font-medium text-foreground">Or paste a list</p>
+        <p className="text-xs text-muted-foreground">
+          Paste a spreadsheet table or a simple list. You will map the columns before anything is added.
+        </p>
+        <textarea
+          ref={pasteRef}
+          name="paste"
+          rows={5}
+          data-testid="byb-paste-textarea"
+          placeholder='Paste a table, or a list like "Claire Nodate, claire@example.com"'
+          className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+        />
+        <Button
+          type="submit"
+          size="sm"
+          disabled={working || !pasteReady}
+          data-testid="byb-use-paste"
+          data-hydrated={pasteReady ? "true" : "false"}
+        >
+          {working ? "Reading…" : "Use this list"}
+        </Button>
+      </form>
 
       {error && (
         <div className="flex items-center gap-2 text-destructive text-sm">
@@ -398,6 +435,20 @@ function StepMapFields({
         First row of my file is column headers
       </label>
 
+      {!requiredMapped ? (
+        <div
+          className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-100"
+          data-testid="byb-mapping-needs-review"
+        >
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+          <p>
+            We could not match the required columns automatically. Choose{" "}
+            {fields.filter((f) => f.required).map((f) => f.label).join(" and ")} before continuing.
+            Nothing will be imported until you do — we will not guess or drop those fields.
+          </p>
+        </div>
+      ) : null}
+
       <div className="rounded-xl border border-border divide-y divide-border">
         {fields.map((field) => {
           const selected = mapping[field.key] ?? "";
@@ -456,6 +507,10 @@ function StepPreview({
   onImport,
   onBack,
   isPending,
+  matchRows,
+  matchActions,
+  onMatchAction,
+  matchReviewReady,
 }: {
   entity: EntityType;
   headers: string[];
@@ -465,24 +520,70 @@ function StepPreview({
   onImport: () => void;
   onBack: () => void;
   isPending: boolean;
+  matchRows: PersonMatchPreviewRow[];
+  matchActions: Array<PersonMatchAction | null>;
+  onMatchAction: (index: number, action: PersonMatchAction) => void;
+  matchReviewReady: boolean;
 }) {
   const fields = ENTITY_FIELDS[entity];
   const preview = rows.slice(0, 5);
   const summary = classifyImportPreview(entity, headers, mapping, rows);
   const { readyCount, skipCount, warnCount, unmapped } = summary;
   const previewStatuses = summary.rows.slice(0, 5);
+  const peopleReview = matchRows.length > 0;
+  const leadReview = entity === "leads" && peopleReview;
+  const clientReview = entity === "couples" && peopleReview;
+  const vendorReview = entity === "vendors" && peopleReview;
+  const venueReview = leadReview || clientReview || vendorReview;
+  const plan = peopleReview
+    ? summarizePersonImportPlan(matchRows.map((row, index) => {
+      const previewRow = summary.rows[index];
+      const previewSkipped = Boolean(
+        previewRow
+        && (previewRow.disposition === "skip_required"
+          || previewRow.disposition === "skip_invalid"
+          || previewRow.disposition === "skip_within_file_duplicate"),
+      );
+      const unresolved = Boolean(row.needsReview) && !row.alreadyImported && !previewSkipped;
+      return {
+        previewSkipped,
+        kind: row.kind,
+        action: matchActions[index] ?? (unresolved ? null : row.defaultAction),
+        needsReview: unresolved,
+        alreadyImported: Boolean(row.alreadyImported),
+      };
+    }))
+    : null;
+  const confirmLabel = plan
+    ? personImportConfirmLabel(plan, ENTITY_META[entity].label)
+    : `Import ${countedEntityLabel(readyCount, ENTITY_META[entity].label)}`;
+  const confirmDisabled = isPending
+    || !matchReviewReady
+    || (plan ? plan.createCount + plan.useExistingCount + plan.skipCount === 0 : readyCount === 0);
 
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-base font-semibold text-foreground">Preview</h2>
-        <p className="text-sm text-muted-foreground mt-1">
-          {readyCount} of {rows.length} rows are ready to import
-          {skipCount > 0 && (
-            <span className="text-destructive"> · {skipCount} will be skipped (see notes below)</span>
-          )}
-          {warnCount > 0 && (
-            <span className="text-amber-800 dark:text-amber-200"> · {warnCount} need your attention but will still import</span>
+        <h2 className="text-base font-semibold text-foreground">{peopleReview ? "Review before adding" : "Preview"}</h2>
+        <p className="text-sm text-muted-foreground mt-1" data-testid="byb-import-plan">
+          {plan ? (
+            <>
+              {plan.createCount} ready to import
+              {plan.useExistingCount > 0 ? ` · ${plan.useExistingCount} same record` : ""}
+              {plan.alreadyImportedCount > 0 ? ` · ${plan.alreadyImportedCount} already imported` : ""}
+              {plan.skipCount - plan.alreadyImportedCount > 0 ? ` · ${plan.skipCount - plan.alreadyImportedCount} skipped` : ""}
+              {plan.heldCount > 0 ? ` · ${plan.heldCount} need review` : ""}
+            </>
+          ) : (
+            <>
+              {readyCount} of {rows.length} rows are ready to import
+              {skipCount > 0 && (
+                <span className="text-destructive"> · {skipCount} will be skipped (see notes below)</span>
+              )}
+              {warnCount > 0 && (
+                <span className="text-amber-800 dark:text-amber-200"> · {warnCount} need your attention but will still import</span>
+              )}
+            </>
           )}
         </p>
         {assisted && (
@@ -516,14 +617,246 @@ function StepPreview({
         </div>
       )}
 
-      {entity === "couples" && mapping.eventDate && (
+      {entity === "couples" && (
         <div className="rounded-lg border border-border bg-muted/40 px-3 py-2.5 space-y-1">
-          <p className="text-sm font-medium text-foreground">Past dates create historical Events</p>
+          <p className="text-sm font-medium text-foreground">Clients import with their events</p>
           <p className="text-xs text-muted-foreground">
-            Rows with a past event date create a historical calendar Event linked to the client (does not change future availability rules beyond what that Event records). Future event dates stay on the client only — book or use Migration Center event import for operational Events. No portal invitations are sent.
+            Each row needs a confirmed event date. Upcoming dates book the calendar using your availability rules. Past dates become historical events and stay Clients. Rows missing dates, spaces, or conflicting bookings are held — they are not successful imports. No portal invitations are sent.
           </p>
         </div>
       )}
+      {entity === "leads" && (
+        <div className="rounded-lg border border-border bg-muted/40 px-3 py-2.5 space-y-1">
+          <p className="text-sm font-medium text-foreground">Preferred dates do not book the calendar</p>
+          <p className="text-xs text-muted-foreground">
+            A Lead is someone who has not booked, even if they have a preferred date. Booked customers belong in Clients and their events.
+          </p>
+        </div>
+      )}
+
+      {!matchReviewReady ? (
+        <p className="text-sm text-muted-foreground" data-testid="byb-match-checking">
+          Checking for possible matches in Hello to Cheers…
+        </p>
+      ) : null}
+
+      {matchReviewReady && matchRows.length > 0 ? (
+        <div className="space-y-2" data-testid="byb-match-review">
+          <div>
+            <p className="text-sm font-medium text-foreground">{venueReview ? "Needs a decision" : "Review each person"}</p>
+            <p className="text-xs text-muted-foreground">
+              {clientReview
+                ? "We found possible matches. Matching names, emails, phones, or dates are clues — not proof. Choose whether this is the same Client and same Event, the same Client with an additional Event, a different Client, or something to leave out. Hello to Cheers will not guess."
+                : vendorReview
+                  ? "We found possible matches. Matching business names, emails, phones, or websites are clues — not proof. Choose whether this is the same Vendor, a different Vendor, or something to leave out. Hello to Cheers will not guess."
+                : leadReview
+                  ? "We found possible matches. Matching names, emails, phones, or dates are clues — not proof. Choose whether this is the same record, a separate inquiry for this person, a separate inquiry for a different person, or something to leave out. Hello to Cheers will not guess."
+                  : "Use existing keeps the person already in Hello to Cheers. Create new adds a separate person. Skip leaves the row out. Email alone is not enough to treat two people as the same."}
+            </p>
+          </div>
+          {venueReview && plan && plan.heldCount > 0 ? (
+            <p className="text-xs text-amber-800 dark:text-amber-200" data-testid="byb-held-count">
+              {plan.heldCount} {plan.heldCount === 1 ? "row still needs" : "rows still need"} your decision. Ready rows can still be imported; unresolved rows stay held.
+            </p>
+          ) : null}
+          <ul className="space-y-2">
+            {matchRows.map((row, index) => {
+              const previewRow = summary.rows[index];
+              const previewSkipped = Boolean(
+                previewRow
+                && (previewRow.disposition === "skip_required"
+                  || previewRow.disposition === "skip_invalid"
+                  || previewRow.disposition === "skip_within_file_duplicate"),
+              );
+              const unresolved = Boolean(row.needsReview) && !row.alreadyImported && !previewSkipped;
+              const action = matchActions[index] ?? (unresolved ? null : row.defaultAction);
+              const leadChoices: Array<{ option: PersonMatchAction; label: string; testId: string }> = [
+                { option: "use_existing", label: "Same record", testId: "byb-match-choice-same" },
+                { option: "create_same_person", label: "Separate inquiry for this person", testId: "byb-match-choice-same-person" },
+                { option: "create_new", label: "Separate inquiry for a different person", testId: "byb-match-choice-different" },
+                { option: "skip", label: "Don't import", testId: "byb-match-choice-skip" },
+              ];
+              const clientChoices: Array<{ option: PersonMatchAction; label: string; testId: string }> = [
+                { option: "use_existing", label: "Same Client, same Event", testId: "byb-match-choice-same" },
+                { option: "create_same_person", label: "Same Client, additional Event", testId: "byb-match-choice-same-person" },
+                { option: "create_new", label: "Different Client", testId: "byb-match-choice-different" },
+                { option: "skip", label: "Don't import", testId: "byb-match-choice-skip" },
+              ];
+              const vendorChoices: Array<{ option: PersonMatchAction; label: string; testId: string }> = [
+                { option: "use_existing", label: "Same Vendor", testId: "byb-match-choice-same" },
+                { option: "create_new", label: "Different Vendor", testId: "byb-match-choice-different" },
+                { option: "skip", label: "Don't import", testId: "byb-match-choice-skip" },
+              ];
+              const peopleChoices: Array<{ option: PersonMatchAction; label: string; testId: string }> = [
+                { option: "use_existing", label: "Use existing", testId: "byb-match-choice-same" },
+                { option: "create_new", label: "Create new", testId: "byb-match-choice-separate" },
+                { option: "skip", label: "Skip", testId: "byb-match-choice-skip" },
+              ];
+              const choices = clientReview
+                ? clientChoices
+                : vendorReview
+                  ? vendorChoices
+                  : leadReview
+                    ? leadChoices
+                    : peopleChoices;
+              return (
+                <li key={row.row} className="space-y-2 rounded-md border border-border bg-card px-3 py-2.5" data-testid={`byb-match-row-${row.row}`}>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <div>
+                      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Incoming</p>
+                      <p className="text-xs font-medium text-heading">{row.name || `Row ${row.row}`}</p>
+                      <p className="text-xs text-muted-foreground">{row.email || "No email on this row"}</p>
+                      {row.incomingEventDate ? (
+                        <p className="text-xs text-muted-foreground">
+                          Incoming event: {row.incomingEventDate}{row.incomingEventType ? ` · ${row.incomingEventType}` : ""}
+                        </p>
+                      ) : null}
+                      {row.matchedEventDate || row.fileMatchRow ? (
+                        <p className="text-xs text-muted-foreground">
+                          {row.fileMatchRow ? `Matches row ${row.fileMatchRow} in this file` : null}
+                        </p>
+                      ) : null}
+                    </div>
+                    <div>
+                      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                        {row.fileMatchRow ? "Also in this file" : "Already in Hello to Cheers"}
+                      </p>
+                      {row.kind === "new" && !row.fileMatchRow ? (
+                        <p className="text-xs text-muted-foreground">No match — this will create a new record.</p>
+                      ) : (
+                        <>
+                          <p className="text-xs font-medium text-heading">{row.matchedName ?? "Existing person"}</p>
+                          <p className="text-xs text-muted-foreground">{row.matchedEmail || "No email on file"}</p>
+                          {row.matchedPhone ? <p className="text-xs text-muted-foreground">{row.matchedPhone}</p> : null}
+                          {row.matchedEventDate ? (
+                            <p className="text-xs text-muted-foreground">
+                              {clientReview ? "Event on file: " : "Preferred date on file: "}
+                              {row.matchedEventDate}
+                            </p>
+                          ) : null}
+                          {clientReview && row.matchedEvents && row.matchedEvents.length > 0 ? (
+                            <p className="text-xs text-muted-foreground">
+                              {row.matchedEvents.length === 1
+                                ? "This client already has 1 Event"
+                                : `This client already has ${row.matchedEvents.length} Events`}
+                            </p>
+                          ) : null}
+                          {vendorReview && row.connectedToThisVenue ? (
+                            <p className="text-xs text-muted-foreground">Already connected to this venue</p>
+                          ) : null}
+                          {vendorReview && row.connectedToThisVenue === false && row.matchedId ? (
+                            <p className="text-xs text-muted-foreground">Known in Hello to Cheers, not yet connected to this venue</p>
+                          ) : null}
+                          {vendorReview && row.isClaimed ? (
+                            <p className="text-xs text-muted-foreground">Claimed profile — import will not change their business details</p>
+                          ) : null}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {row.alreadyImported
+                      ? "Already imported"
+                      : row.kind === "exact"
+                        ? "Possible exact match"
+                        : row.kind === "likely"
+                          ? "Possible match"
+                          : "New person"}
+                    {" — "}
+                    {row.reason}
+                  </p>
+                  {row.signals && row.signals.length > 0 ? (
+                    <p className="text-xs text-muted-foreground">
+                      Why it was flagged: {row.signals.map((signal) => signalLabel(signal as DuplicateSignal)).join(", ")}
+                    </p>
+                  ) : null}
+                  {row.inquiryNotes && row.inquiryNotes.length > 0 ? (
+                    <ul className="text-xs text-muted-foreground list-disc pl-4 space-y-0.5">
+                      {row.inquiryNotes.map((note) => (
+                        <li key={note}>{note}</li>
+                      ))}
+                    </ul>
+                  ) : null}
+                  {row.differences && row.differences.length > 0 ? (
+                    <div className="rounded-md border border-border bg-muted/30 px-2 py-1.5 space-y-1">
+                      <p className="text-[11px] font-medium text-heading">
+                        {row.changedSinceImport
+                          ? "This looks like a record you already brought in, with updated details. Choosing Same record keeps what is already in Hello to Cheers."
+                          : "Differences"}
+                      </p>
+                      <ul className="text-xs text-muted-foreground space-y-0.5">
+                        {row.differences.map((diff) => (
+                          <li key={diff.label}>
+                            <span className="font-medium text-heading">{diff.label}:</span> incoming {diff.incoming} · existing {diff.existing}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
+                  {previewSkipped ? (
+                    <p className="text-xs text-destructive">{previewRow?.message ?? "This row cannot be imported as entered."}</p>
+                  ) : row.alreadyImported ? (
+                    <p className="text-xs text-muted-foreground" data-testid="byb-already-imported">
+                      Exact repeat of a record already imported. It will be left out automatically.
+                    </p>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      {choices.map((choice) => (
+                        <button
+                          key={choice.option}
+                          type="button"
+                          data-testid={choice.testId}
+                          disabled={
+                            (row.kind === "new" && !row.fileMatchRow && (choice.option === "use_existing" || choice.option === "create_same_person"))
+                            || (choice.option === "use_existing" && !row.matchedId)
+                          }
+                          className={`rounded-md border px-2 py-1 text-xs ${
+                            action === choice.option
+                              ? "border-primary bg-primary/10 font-medium text-heading"
+                              : "border-border text-muted-foreground hover:text-foreground"
+                          }`}
+                          onClick={() => onMatchAction(index, choice.option)}
+                        >
+                          {choice.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <p className="text-[11px] text-muted-foreground">
+                    {previewSkipped
+                      ? "This row is not ready"
+                      : row.alreadyImported
+                        ? "Already imported — left out"
+                        : action === "use_existing"
+                          ? (clientReview
+                            ? "Same Client, same Event — keep existing, nothing overwritten"
+                            : vendorReview
+                              ? "Same Vendor — use the existing relationship or connect this venue"
+                              : leadReview
+                                ? "Same record — keep existing, nothing overwritten"
+                                : "Use existing")
+                          : action === "skip"
+                            ? (venueReview ? "Don't import" : "Skip")
+                            : action === "create_same_person"
+                              ? (clientReview
+                                ? "Same Client, additional Event — booking rules still apply"
+                                : "Separate inquiry for this person — two inquiries, one person")
+                              : action === "create_new"
+                                ? (clientReview
+                                  ? "Different Client — create a separate Client with this Event"
+                                  : vendorReview
+                                    ? "Different Vendor — create a distinct Vendor"
+                                    : leadReview
+                                      ? "Separate inquiry for a different person"
+                                      : "Create new")
+                                : "Needs your decision"}
+                  </p>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ) : null}
 
       {entity === "packages" && (
         <div className="rounded-lg border border-border bg-muted/40 px-3 py-2.5 space-y-1">
@@ -554,6 +887,7 @@ function StepPreview({
         </ul>
       )}
 
+      {peopleReview ? null : (
       <div className="overflow-x-auto rounded-xl border border-border">
         <table className="w-full text-xs">
           <thead>
@@ -601,17 +935,23 @@ function StepPreview({
           </tbody>
         </table>
       </div>
+      )}
 
-      {rows.length > 5 && (
+      {!peopleReview && rows.length > 5 && (
         <p className="text-xs text-muted-foreground">Showing first 5 of {rows.length} rows.</p>
       )}
 
-      <div className="flex justify-between">
+      <div className="flex justify-between gap-3">
         <Button variant="ghost" size="sm" onClick={onBack} disabled={isPending}>
           <ChevronLeft className="h-4 w-4 mr-1" /> Back
         </Button>
-        <Button size="sm" onClick={onImport} disabled={isPending || readyCount === 0}>
-          {isPending ? "Importing…" : `Import ${readyCount} ${ENTITY_META[entity].label}`}
+        <Button
+          size="sm"
+          onClick={onImport}
+          disabled={confirmDisabled}
+          data-testid="byb-import-confirm"
+        >
+          {isPending ? "Importing…" : !matchReviewReady ? "Checking matches…" : confirmLabel}
         </Button>
       </div>
     </div>
@@ -677,7 +1017,10 @@ function StepResults({
         </div>
         {skipped > 0 && (
           <div className="flex items-center justify-between px-4 py-2.5">
-            <span className="text-sm text-foreground">Skipped <span className="text-xs text-muted-foreground ml-1">missing fields or already active — see below</span></span>
+            <span className="text-sm text-foreground">
+              Left out
+              <span className="ml-1 text-xs text-muted-foreground">used an existing person, missing fields, or you chose skip — see below</span>
+            </span>
             <span className="text-sm font-medium text-muted-foreground">{skipped}</span>
           </div>
         )}
@@ -705,8 +1048,8 @@ function StepResults({
             </button>
           </div>
           <ul className="space-y-1">
-            {result.errors.slice(0, 8).map((e) => (
-              <li key={e.row} className="text-xs text-muted-foreground">
+            {result.errors.slice(0, 8).map((e, index) => (
+              <li key={`${e.row}-${index}`} className="text-xs text-muted-foreground">
                 <span className="font-medium">Row {e.row}</span> — {e.message}
               </li>
             ))}
@@ -735,14 +1078,6 @@ function StepResults({
             >
               {next.cta} →
             </Link>
-            {entity === "couples" ? (
-              <Link
-                href="/setup-hub/bring-your-business"
-                className="block text-xs font-medium text-primary hover:underline"
-              >
-                Bring over their events next
-              </Link>
-            ) : null}
           </div>
         );
       })()}
@@ -814,6 +1149,8 @@ function deriveHeadersRows(rawHeaders: string[], rawRows: CsvRow[], hasHeaderRow
  * to the given venue via the admin actions rather than the caller's own
  * session (an HQ admin has no venue of their own).
  */
+const ALL_ENTITIES: EntityType[] = ["couples", "leads", "vendors", "inventory", "packages"];
+
 export function ImportWizard({
   initialEntity,
   venueId,
@@ -821,6 +1158,7 @@ export function ImportWizard({
   embedded,
   onDone,
   cutover,
+  allowedEntities = ALL_ENTITIES,
 }: {
   initialEntity?: EntityType;
   venueId?: string;
@@ -830,7 +1168,9 @@ export function ImportWizard({
   embedded?: boolean;
   onDone?: () => void;
   cutover?: { readyForDatedEvents: boolean; message: string | null };
+  allowedEntities?: EntityType[];
 }) {
+  const router = useRouter();
   const [step, setStep]         = React.useState<number>(initialEntity ? 1 : 0);
   const [entity, setEntity]     = React.useState<EntityType | null>(initialEntity ?? null);
   const [rawHeaders, setRawHeaders] = React.useState<string[]>([]);
@@ -843,6 +1183,10 @@ export function ImportWizard({
   const [seedNotice, setSeedNotice] = React.useState<string | null>(null);
   const [seedBusy, setSeedBusy] = React.useState(false);
   const [pending, startTransition] = useTransition();
+  const [matchRows, setMatchRows] = React.useState<PersonMatchPreviewRow[]>([]);
+  const [matchActions, setMatchActions] = React.useState<Array<PersonMatchAction | null>>([]);
+  const [matchReviewReady, setMatchReviewReady] = React.useState(true);
+  const [matchPreviewKey, setMatchPreviewKey] = React.useState<string | null>(null);
 
   // White Glove: operator clicked "Use in Import Wizard" on a received material.
   // Fetch via authorized signed URL and feed the existing parse path — no second upload.
@@ -963,20 +1307,7 @@ export function ImportWizard({
       const saved = loadSavedMapping(entity!, h);
       if (saved) { setMapping(saved); return; }
     }
-    // Auto-match by lowercase similarity — only meaningful with real
-    // headers; against "Column N" placeholders nothing matches, which is
-    // correct (every field starts unmapped rather than guessed wrong).
-    const fields = ENTITY_FIELDS[entity!];
-    const initial: FieldMapping = {};
-    for (const field of fields) {
-      const match = h.find(
-        (col) =>
-          col.toLowerCase().replace(/\s+/g, "") === field.label.toLowerCase().replace(/\s+/g, "") ||
-          col.toLowerCase().replace(/\s+/g, "") === field.key.toLowerCase()
-      );
-      initial[field.key] = match ?? null;
-    }
-    setMapping(initial);
+    setMapping(suggestHeaderMapping(entity!, h));
   }
 
   function handleParsed(h: string[], r: CsvRow[], name: string, wasAssisted: boolean) {
@@ -1011,13 +1342,13 @@ export function ImportWizard({
       let res: ImportResult;
       if (entity === "couples") {
         const inputRows = rows.map((r) => rowToClientInput(r, mapping));
-        res = venueId ? await importCouplesForVenueAction(venueId, inputRows) : await importCouplesAction(inputRows, sourceLabel);
+        res = venueId ? await importCouplesForVenueAction(venueId, inputRows, sourceLabel, matchActions) : await importCouplesAction(inputRows, sourceLabel, matchActions);
       } else if (entity === "leads") {
         const inputRows = rows.map((r) => rowToLeadInput(r, mapping));
-        res = venueId ? await importLeadsForVenueAction(venueId, inputRows) : await importLeadsAction(inputRows, sourceLabel);
+        res = venueId ? await importLeadsForVenueAction(venueId, inputRows, sourceLabel, matchActions) : await importLeadsAction(inputRows, sourceLabel, matchActions);
       } else if (entity === "vendors") {
         const inputRows = rows.map((r) => rowToVendorInput(r, mapping));
-        res = venueId ? await importVendorsForVenueAction(venueId, inputRows) : await importVendorsAction(inputRows, sourceLabel);
+        res = venueId ? await importVendorsForVenueAction(venueId, inputRows, sourceLabel, matchActions) : await importVendorsAction(inputRows, sourceLabel, matchActions);
       } else if (entity === "inventory") {
         const inputRows = rows.map((r) => rowToInventoryInput(r, mapping));
         res = venueId ? await importInventoryForVenueAction(venueId, inputRows) : await importInventoryAction(inputRows, sourceLabel);
@@ -1027,6 +1358,7 @@ export function ImportWizard({
       }
       setResult(res);
       setStep(4);
+      router.refresh();
     });
   }
 
@@ -1040,6 +1372,9 @@ export function ImportWizard({
     setMapping({});
     setAssisted(false);
     setResult(null);
+    setMatchRows([]);
+    setMatchActions([]);
+    setMatchPreviewKey(null);
   }
 
   const totalSteps = 4; // 0 = entity select, 1-4 = upload/map/preview/results (entity select is outside progress)
@@ -1059,12 +1394,16 @@ export function ImportWizard({
       ) : null}
       {datedEventsMessage && entity === "couples" ? (
         <p className="mb-4 text-xs text-amber-800 dark:text-amber-200">
-          {datedEventsMessage} Clients without an event date can still be imported.
+          {datedEventsMessage} Leads can still be imported. Client bookings that need a space will be held for review.
         </p>
       ) : null}
 
       {step === 0 && (
-        <StepEntitySelect onSelect={handleEntitySelect} datedEventsMessage={datedEventsMessage} />
+        <StepEntitySelect
+          onSelect={handleEntitySelect}
+          datedEventsMessage={datedEventsMessage}
+          allowedEntities={allowedEntities}
+        />
       )}
 
       {step === 1 && entity && (
@@ -1082,7 +1421,41 @@ export function ImportWizard({
           rows={rows}
           mapping={mapping}
           onChange={setMapping}
-          onNext={() => setStep(3)}
+          onNext={() => {
+            setStep(3);
+            if (entity === "couples" || entity === "leads" || entity === "vendors") {
+              const previewKey = JSON.stringify({ entity, mapping, rowCount: rows.length });
+              if (matchPreviewKey === previewKey && matchRows.length === rows.length) {
+                setMatchReviewReady(true);
+                return;
+              }
+              setMatchReviewReady(false);
+              const people = entity === "couples"
+                ? rows.map((r) => rowToClientInput(r, mapping))
+                : entity === "vendors"
+                  ? rows.map((r) => rowToVendorInput(r, mapping))
+                  : rows.map((r) => rowToLeadInput(r, mapping));
+              void previewPersonMatchesAction(entity, people, venueId).then((preview) => {
+                setMatchRows(preview);
+                setMatchActions(preview.map((row) => (
+                  row.needsReview && !row.alreadyImported ? null : row.defaultAction
+                )));
+                setMatchPreviewKey(previewKey);
+                setMatchReviewReady(true);
+              }).catch(() => {
+                setMatchRows([]);
+                setMatchActions([]);
+                setMatchPreviewKey(null);
+                setMatchReviewReady(false);
+                toast.error("Could not check existing records. Go back and try Preview again.");
+              });
+            } else {
+              setMatchRows([]);
+              setMatchActions([]);
+              setMatchPreviewKey(null);
+              setMatchReviewReady(true);
+            }
+          }}
           onBack={() => setStep(1)}
           hasHeaderRow={hasHeaderRow}
           headerRowLikely={looksLikeHeaderRow(rawHeaders)}
@@ -1100,6 +1473,16 @@ export function ImportWizard({
           onImport={handleImport}
           onBack={() => setStep(2)}
           isPending={pending}
+          matchRows={matchRows}
+          matchActions={matchActions}
+          matchReviewReady={matchReviewReady}
+          onMatchAction={(index, action) => {
+            setMatchActions((current) => {
+              const next = current.slice();
+              next[index] = action;
+              return next;
+            });
+          }}
         />
       )}
 

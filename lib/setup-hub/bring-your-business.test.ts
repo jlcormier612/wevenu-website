@@ -60,21 +60,19 @@ describe("Setup Hub chapter order — Calendar before Bring Your Business", () =
 });
 
 describe("Bring Your Business choices — three equal paths", () => {
-  it("persists individual and skipped, and routes Import / individual / skip without forcing Migration", () => {
+  it("persists skipped and routes the three customer-facing choices into the unified journey", () => {
     const src = readFileSync(join(process.cwd(), "components/setup-hub/bring-your-business-choices.tsx"), "utf8");
-    assert.match(src, /Import my business/);
-    assert.match(src, /Add things individually/);
-    assert.match(src, /starting fresh|Skip for now/i);
-    assert.match(src, /setBringYourBusinessPathAction\("individual"\)/);
+    assert.match(src, /BYB_ENTRY_CHOICES/);
+    assert.match(src, /BYB_STARTING_FRESH/);
+    assert.match(src, /Skip for now/i);
     assert.match(src, /setBringYourBusinessPathAction\("skipped"\)/);
-    assert.match(src, /spreadsheetImport|\/settings\/import/);
+    assert.doesNotMatch(src, /HoneyBook|Tripleseat/i);
   });
 
   it("acknowledges the intake Bring Business choice without writing a new source of truth", () => {
     const src = readFileSync(join(process.cwd(), "components/setup-hub/bring-your-business-choices.tsx"), "utf8");
     assert.match(src, /intakeBringBusinessChoice/);
     assert.match(src, /bringBusinessIntakeHeading/);
-    assert.match(src, /bringBusinessMigrationHref/);
     assert.match(src, /You already chose this during setup/);
     assert.match(src, /Start fresh — that matches what you told us at setup/);
     assert.doesNotMatch(src, /from\("venue_setup_hub_state"\)/);
@@ -84,25 +82,19 @@ describe("Bring Your Business choices — three equal paths", () => {
     assert.match(page, /SetupHubPhaseAOverview/);
     assert.doesNotMatch(page, /getIntakeForVenue/);
     const bring = readFileSync(join(process.cwd(), "app/(app)/setup-hub/bring-business/page.tsx"), "utf8");
-    assert.match(bring, /Migration Center/);
     assert.match(bring, /BRING_YOUR_BUSINESS_ROUTES/);
-    assert.match(bring, /Nothing to bring over/);
-    assert.match(
-      bring,
-      /You&apos;re all set here\. If you have records to add later, you can still use/,
-    );
-    assert.match(bring, /phase-a-import-data/);
-    assert.match(bring, /spreadsheetImport/);
+    assert.match(bring, /redirect\(/);
   });
 });
 
 describe("Import Wizard post-import next steps — migration-safe", () => {
   it("does not push portal invite as the primary next step after client import", () => {
     const src = readFileSync(join(process.cwd(), "components/settings/import-wizard.tsx"), "utf8");
-    assert.match(src, /Find imported contacts/);
-    assert.match(src, /clients\?filter=contacts/);
-    assert.match(src, /Bring over their events next/);
+    assert.match(src, /Open All Bookings/);
+    assert.match(src, /href:\s*"\/clients"/);
+    assert.match(src, /Past clients appear under Past/i);
     assert.match(src, /othing is emailed or invited automatically/i);
+    assert.doesNotMatch(src, /filter=contacts/);
     assert.doesNotMatch(
       src,
       /couples:\s*\{[^]*Invite clients to the portal/,

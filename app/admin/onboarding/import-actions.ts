@@ -16,13 +16,51 @@ import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { requireAdminUser } from "@/lib/hq/crm-service";
 import { getOnboardingEngagement } from "@/lib/hq/onboarding-service";
-import { createClientForVenue, findActiveDuplicateClientForVenue } from "@/lib/clients/service";
-import { resolveSpaceId } from "@/lib/migration/resolve-refs";
+import { commitImportedClientAndEvent, classifyClientImportRow } from "@/lib/clients/import-booked-client";
+import { listImportClientEventRecordsForVenue } from "@/lib/clients/service";
 import { isPastEventDate } from "@/lib/migration/historical-record";
+import {
+  type PersonMatchAction,
+} from "@/lib/import/match-policy";
+import {
+  classifyClientEventMatch,
+  clientEventMatchSkipMessage,
+  incomingClientEventFromInput,
+  importMatchRecordFromIncomingClient,
+  importedClientIdentityDecision,
+  rememberCreatedImportClientEvent,
+  resolveConfirmedClientEventAction,
+  type ClientEventMatchRecord,
+} from "@/lib/import/client-event-match";
+import {
+  classifyVendorMatch,
+  incomingVendorFromInput,
+  importMatchRecordFromIncomingVendor,
+  rememberCreatedImportVendor,
+  resolveConfirmedVendorAction,
+  vendorMatchSkipMessage,
+  type VendorMatchRecord,
+} from "@/lib/import/vendor-match";
+import {
+  classifyVenueControlledMatch,
+  importedLeadIdentityDecision,
+  incomingPersonFromLeadInput,
+  importMatchRecordFromIncoming,
+  rememberCreatedImportLead,
+  resolveImportMatchAction,
+  venueMatchSkipMessage,
+  type ImportMatchRecord,
+} from "@/lib/import/venue-controlled-match";
+import { normalizeImportAmount, normalizeImportDate } from "@/lib/import/preview-integrity";
+import { LEAD_BOOKED_STATUS_HOLD, parseImportedLeadSalesStage } from "@/lib/import/lead-import";
+import { resolveSpaceId } from "@/lib/migration/resolve-refs";
 import { evaluateCutoverPrerequisites } from "@/lib/setup-hub/bring-your-business";
-import { createLeadForVenue, findActiveDuplicateLeadForVenue, leadInputToRawIntake } from "@/lib/leads/service";
-import { logDuplicateBatchRejection } from "@/lib/lead-intake/pipeline";
-import { createVendorForVenue, findActiveDuplicateVendorForVenue } from "@/lib/vendors/service";
+import { createLeadForVenue, listImportMatchRecordsForVenue } from "@/lib/leads/service";
+import {
+  createVendorForVenue,
+  findGlobalVendorImportCandidates,
+  listImportVendorRecordsForVenue,
+} from "@/lib/vendors/service";
 import {
   createItemForVenue, findActiveDuplicateInventoryItemForVenue,
   getCategoriesForVenue, createCategoryForVenue,
@@ -35,8 +73,6 @@ import { decideHistoricalImportDuplicate, haltUntrackedHistoricalImport } from "
 import {
   catalogNameWithinFileKey,
   normalizeImportVendorPricingTier,
-  personEmailWithinFileKey,
-  vendorWithinFileKey,
 } from "@/lib/import/preview-integrity";
 import type { ClientInput } from "@/lib/clients/types";
 import type { InventoryItemInput, InventoryShape } from "@/lib/inventory/types";
@@ -57,7 +93,12 @@ async function engagementIdFor(venueId: string): Promise<string | null> {
   return engagement?.id ?? null;
 }
 
-export async function importCouplesForVenueAction(venueId: string, rows: ClientInput[], sourceLabel?: string): Promise<ImportResult> {
+export async function importCouplesForVenueAction(
+  venueId: string,
+  rows: ClientInput[],
+  sourceLabel?: string,
+  matchActions?: Array<PersonMatchAction | null>,
+): Promise<ImportResult> {
   const actor = await requireAdminUser();
   if (!actor) return { imported: 0, errors: [{ row: 0, message: "Not signed in as an HQ admin.", kind: "error" }], batchId: null };
 
@@ -70,7 +111,8 @@ export async function importCouplesForVenueAction(venueId: string, rows: ClientI
   );
   if (!tracked.ok) return tracked.result;
   const batchId = tracked.batchId;
-  const seenEmails = new Set<string>();
+  const existing = await listImportClientEventRecordsForVenue(venueId);
+  const priorInFile: ClientEventMatchRecord[] = [];
   const [{ count: spacesCount }, { data: rules }] = await Promise.all([
     admin.from("venue_spaces").select("id", { count: "exact", head: true }).eq("venue_id", venueId).eq("is_active", true),
     admin.from("venue_capacity_rules").select("max_simultaneous_events").eq("venue_id", venueId)
@@ -81,6 +123,7 @@ export async function importCouplesForVenueAction(venueId: string, rows: ClientI
     hasCapacityRules: !!rules,
     maxSimultaneousEvents: rules?.max_simultaneous_events ?? 1,
   });
+  const requiresSpace = (rules?.max_simultaneous_events ?? 1) >= 2;
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
@@ -88,56 +131,101 @@ export async function importCouplesForVenueAction(venueId: string, rows: ClientI
       errors.push({ row: i + 1, message: "Missing required fields: first name, last name", kind: "skipped" });
       continue;
     }
-    const emailKey = personEmailWithinFileKey(row.email ?? "");
-    if (emailKey) {
-      if (seenEmails.has(emailKey)) {
-        errors.push({ row: i + 1, message: "Skipped — duplicate of an earlier row in this same file (same email)", kind: "skipped" });
-        continue;
-      }
-      seenEmails.add(emailKey);
+    const eventDateNorm = normalizeImportDate(row.eventDate ?? "");
+    const endDateNorm = normalizeImportDate(row.endDate ?? "");
+    if (!eventDateNorm.ok) {
+      errors.push({ row: i + 1, message: eventDateNorm.message, kind: "error" });
+      continue;
     }
-    if (!cutover.readyForDatedEvents && row.eventDate?.trim()) {
+    if (!endDateNorm.ok) {
+      errors.push({ row: i + 1, message: endDateNorm.message, kind: "error" });
+      continue;
+    }
+    const normalizedRow: ClientInput = {
+      ...row,
+      eventDate: eventDateNorm.value ?? "",
+      endDate: endDateNorm.value ?? "",
+    };
+    if (row.guestCount?.trim() && !/^\d+$/.test(row.guestCount.trim())) {
+      errors.push({ row: i + 1, message: `Guest count must be a whole number (got "${row.guestCount.trim()}").`, kind: "error" });
+      continue;
+    }
+    if (!cutover.readyForDatedEvents && normalizedRow.eventDate && !isPastEventDate(normalizedRow.eventDate)) {
       errors.push({ row: i + 1, message: cutover.message ?? "Add Event Spaces before importing dated Events.", kind: "error" });
       continue;
     }
-    const dup = await decideHistoricalImportDuplicate(
-      i + 1,
-      () => findActiveDuplicateClientForVenue(venueId, row.email ?? "", row.firstName, row.lastName),
-      "Skipped — matches an already-active client",
-    );
-    if (dup.action !== "create") {
-      errors.push(dup.error);
+    const incoming = incomingClientEventFromInput(normalizedRow);
+    const match = classifyClientEventMatch(incoming, existing, priorInFile);
+    const action = resolveConfirmedClientEventAction(match, matchActions?.[i] ?? null);
+    priorInFile.push(importMatchRecordFromIncomingClient(incoming, i + 1));
+    if (action === "held" || action === "skip" || action === "use_existing") {
+      errors.push({
+        row: i + 1,
+        message: clientEventMatchSkipMessage(match, action),
+        kind: "skipped",
+      });
       continue;
     }
     try {
-      const raw = row.spaceId.trim();
-      let input = row;
+      const raw = (normalizedRow.spaceId ?? "").trim();
+      let spaceId = "";
+      let spaceError: string | null = null;
       if (raw) {
         const uuidLike = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(raw);
         const resolved = await resolveSpaceId(admin, venueId, uuidLike ? raw : null, uuidLike ? null : raw);
-        if (!resolved.ok) {
-          errors.push({ row: i + 1, message: resolved.error, kind: "error" });
-          continue;
-        }
-        input = { ...row, spaceId: resolved.spaceId ?? "" };
+        if (!resolved.ok) spaceError = resolved.error;
+        else spaceId = resolved.spaceId ?? "";
       }
-      const asHistorical = isPastEventDate(input.eventDate);
-      const result = await createClientForVenue(venueId, input, true, asHistorical);
-      if (result.ok) {
-        const accepted = await acceptCreatedImportRow({
-          entityType: "couples",
-          batchId,
-          createdId: result.clientId,
-          venueId,
-          rowNumber: i + 1,
-          client: admin,
-        });
-        if (accepted.accepted) createdIds.push(result.clientId);
-        else errors.push(accepted.error);
-      } else {
-        const msg = "message" in result ? result.message : "errors" in result ? Object.values(result.errors ?? {}).join(", ") : "Unknown error";
-        errors.push({ row: i + 1, message: msg ?? "Unknown error", kind: "error" });
+      const classified = classifyClientImportRow({
+        eventDate: normalizedRow.eventDate,
+        bookingStatus: normalizedRow.bookingStatus,
+        spaceId,
+        requiresSpace,
+        spaceResolutionError: spaceError,
+      });
+      if (classified.kind === "hold") {
+        errors.push({ row: i + 1, message: classified.message, kind: "error" });
+        continue;
       }
+      const result = await commitImportedClientAndEvent({
+        supabase: admin,
+        venueId,
+        input: {
+          ...normalizedRow,
+          spaceId,
+          identityDecision: importedClientIdentityDecision(match, action),
+        },
+        classification: classified,
+        existingClientId: action === "create_same_person" ? match.matchedClientId : null,
+        isAdmin: true,
+        allowAdditionalEvent: action === "create_same_person",
+      });
+      if (!result.ok) {
+        errors.push({ row: i + 1, message: result.message, kind: "error" });
+        continue;
+      }
+      rememberCreatedImportClientEvent(
+        existing,
+        incoming,
+        i + 1,
+        result.clientId,
+        result.eventId,
+        match.relationshipId,
+      );
+      if (action === "create_same_person") {
+        createdIds.push(result.eventId);
+        continue;
+      }
+      const accepted = await acceptCreatedImportRow({
+        entityType: "couples",
+        batchId,
+        createdId: result.clientId,
+        venueId,
+        rowNumber: i + 1,
+        client: admin,
+      });
+      if (accepted.accepted) createdIds.push(result.clientId);
+      else errors.push(accepted.error);
     } catch (e) {
       errors.push({ row: i + 1, message: e instanceof Error ? e.message : "Unknown error", kind: "error" });
     }
@@ -148,7 +236,12 @@ export async function importCouplesForVenueAction(venueId: string, rows: ClientI
   return { imported: createdIds.length, errors, batchId };
 }
 
-export async function importLeadsForVenueAction(venueId: string, rows: LeadInput[], sourceLabel?: string): Promise<ImportResult> {
+export async function importLeadsForVenueAction(
+  venueId: string,
+  rows: LeadInput[],
+  sourceLabel?: string,
+  matchActions?: Array<PersonMatchAction | null>,
+): Promise<ImportResult> {
   const actor = await requireAdminUser();
   if (!actor) return { imported: 0, errors: [{ row: 0, message: "Not signed in as an HQ admin.", kind: "error" }], batchId: null };
 
@@ -161,7 +254,8 @@ export async function importLeadsForVenueAction(venueId: string, rows: LeadInput
   );
   if (!tracked.ok) return tracked.result;
   const batchId = tracked.batchId;
-  const seenKeys = new Set<string>();
+  const existing = await listImportMatchRecordsForVenue(venueId);
+  const priorInFile: ImportMatchRecord[] = [];
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
@@ -170,29 +264,64 @@ export async function importLeadsForVenueAction(venueId: string, rows: LeadInput
       continue;
     }
 
-    // Email-only within-file skip — blank emails never match each other.
-    const emailKey = personEmailWithinFileKey(row.email ?? "");
-    if (emailKey) {
-      if (seenKeys.has(emailKey)) {
-        errors.push({ row: i + 1, message: "Skipped — duplicate of an earlier row in this same file (same email)", kind: "skipped" });
-        void logDuplicateBatchRejection(admin, venueId, row.source || "other", "import", row, leadInputToRawIntake(row));
-        continue;
-      }
-      seenKeys.add(emailKey);
+    const eventDateNorm = normalizeImportDate(row.eventDate ?? "");
+    if (!eventDateNorm.ok) {
+      errors.push({ row: i + 1, message: eventDateNorm.message, kind: "error" });
+      continue;
+    }
+    const followUpNorm = normalizeImportDate(row.followUpDate ?? "");
+    if (!followUpNorm.ok) {
+      errors.push({ row: i + 1, message: followUpNorm.message, kind: "error" });
+      continue;
     }
 
-    const dup = await decideHistoricalImportDuplicate(
-      i + 1,
-      () => findActiveDuplicateLeadForVenue(venueId, row.email ?? "", row.firstName, row.lastName),
-      "Skipped — matches an already-active lead",
-    );
-    if (dup.action !== "create") {
-      errors.push(dup.error);
+    const budgetNorm = normalizeImportAmount(row.estimatedBudget ?? "");
+    if (!budgetNorm.ok) {
+      errors.push({ row: i + 1, message: budgetNorm.message, kind: "error" });
+      continue;
+    }
+    if (row.guestCount?.trim() && !/^\d+$/.test(row.guestCount.trim())) {
+      errors.push({ row: i + 1, message: `Guest count must be a whole number (got "${row.guestCount.trim()}").`, kind: "error" });
+      continue;
+    }
+    const normalizedLead: LeadInput = {
+      ...row,
+      eventDate: eventDateNorm.value ?? "",
+      followUpDate: followUpNorm.value ?? "",
+      estimatedBudget: budgetNorm.value,
+    };
+
+    const bookedStatus = parseImportedLeadSalesStage(normalizedLead.salesStage);
+    if (bookedStatus.kind === "booked") {
+      errors.push({ row: i + 1, message: LEAD_BOOKED_STATUS_HOLD, kind: "error" });
+      continue;
+    }
+
+    const incoming = incomingPersonFromLeadInput(normalizedLead);
+    const match = classifyVenueControlledMatch(incoming, existing, priorInFile);
+    const action = resolveImportMatchAction(match, matchActions?.[i] ?? null);
+    priorInFile.push(importMatchRecordFromIncoming(incoming, i + 1));
+    if (action === "held" || action === "skip" || action === "use_existing") {
+      errors.push({
+        row: i + 1,
+        message: venueMatchSkipMessage(match, action),
+        kind: "skipped",
+      });
       continue;
     }
     try {
-      const result = await createLeadForVenue(venueId, row);
+      const result = await createLeadForVenue(venueId, {
+        ...normalizedLead,
+        identityDecision: importedLeadIdentityDecision(match, action),
+      });
       if (result.ok) {
+        rememberCreatedImportLead(
+          existing,
+          incoming,
+          i + 1,
+          result.leadId,
+          result.relationshipId ?? match.relationshipId,
+        );
         const accepted = await acceptCreatedImportRow({
           entityType: "leads",
           batchId,
@@ -217,7 +346,12 @@ export async function importLeadsForVenueAction(venueId: string, rows: LeadInput
   return { imported: createdIds.length, errors, batchId };
 }
 
-export async function importVendorsForVenueAction(venueId: string, rows: VendorInput[], sourceLabel?: string): Promise<ImportResult> {
+export async function importVendorsForVenueAction(
+  venueId: string,
+  rows: VendorInput[],
+  sourceLabel?: string,
+  matchActions?: Array<PersonMatchAction | null>,
+): Promise<ImportResult> {
   const actor = await requireAdminUser();
   if (!actor) return { imported: 0, errors: [{ row: 0, message: "Not signed in as an HQ admin.", kind: "error" }], batchId: null };
 
@@ -230,7 +364,15 @@ export async function importVendorsForVenueAction(venueId: string, rows: VendorI
   );
   if (!tracked.ok) return tracked.result;
   const batchId = tracked.batchId;
-  const seenVendorKeys = new Set<string>();
+  const venueVendors = await listImportVendorRecordsForVenue(venueId);
+  const globals = await findGlobalVendorImportCandidates(
+    rows.map((row) => row.email ?? ""),
+    rows.map((row) => row.businessName),
+    new Set(venueVendors.map((row) => row.vendorId)),
+    venueId,
+  );
+  const existing: VendorMatchRecord[] = [...venueVendors, ...globals];
+  const priorInFile: VendorMatchRecord[] = [];
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
@@ -238,32 +380,35 @@ export async function importVendorsForVenueAction(venueId: string, rows: VendorI
       errors.push({ row: i + 1, message: "Missing required field: business name", kind: "skipped" });
       continue;
     }
-    const withinKey = vendorWithinFileKey(row.businessName, row.email ?? "");
-    if (withinKey) {
-      if (seenVendorKeys.has(withinKey)) {
-        errors.push({ row: i + 1, message: "Skipped — duplicate of an earlier row in this same file", kind: "skipped" });
-        continue;
-      }
-      seenVendorKeys.add(withinKey);
-    }
     const tierNorm = normalizeImportVendorPricingTier(row.pricingTier ?? "");
     if (!tierNorm.ok) {
       errors.push({ row: i + 1, message: tierNorm.message, kind: "error" });
       continue;
     }
     const normalizedVendor = { ...row, pricingTier: tierNorm.value };
-    const dup = await decideHistoricalImportDuplicate(
-      i + 1,
-      () => findActiveDuplicateVendorForVenue(venueId, normalizedVendor.businessName, normalizedVendor.email ?? ""),
-      "Skipped — matches a vendor already in this venue's directory",
-    );
-    if (dup.action !== "create") {
-      errors.push(dup.error);
+    const incoming = incomingVendorFromInput(normalizedVendor);
+    const match = classifyVendorMatch(incoming, existing, priorInFile);
+    const action = resolveConfirmedVendorAction(match, matchActions?.[i] ?? null);
+    priorInFile.push(importMatchRecordFromIncomingVendor(incoming, i + 1));
+    if (action === "held" || action === "skip") {
+      errors.push({
+        row: i + 1,
+        message: vendorMatchSkipMessage(match, action),
+        kind: "skipped",
+      });
       continue;
     }
     try {
-      const result = await createVendorForVenue(venueId, normalizedVendor);
+      const confirmed = action === "use_existing" && match.matchedVendorId
+        ? { action: "use_existing" as const, vendorId: match.matchedVendorId }
+        : { action: "create_new" as const };
+      const result = await createVendorForVenue(venueId, normalizedVendor, confirmed);
       if (result.ok) {
+        rememberCreatedImportVendor(existing, incoming, i + 1, result.vendorId, null, true);
+        if (action === "use_existing") {
+          createdIds.push(result.vendorId);
+          continue;
+        }
         const accepted = await acceptCreatedImportRow({
           entityType: "vendors",
           batchId,

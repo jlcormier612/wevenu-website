@@ -23,7 +23,13 @@ export type PhaseAMilestoneKey = keyof typeof PHASE_A_MILESTONE_ROUTES;
 export type PhaseAProgressInput = {
   hubState: SetupHubState | null;
   spacesCount: number;
+  /** Dated Migration Center session. Does not include people-list wizard batches. */
   hasMigrationImport: boolean;
+  /**
+   * Successful creates from either import engine. Live CRM records created
+   * by hand are not imported activity.
+   */
+  hasImportedActivity?: boolean;
   /** Brand/contact minimum for Milestone 02 descriptive progress. */
   venueBrandStarted: boolean;
   /** Kept for call-site compatibility. Never used as Milestone 02 Ready proof. */
@@ -61,12 +67,20 @@ function statusLabel(status: MilestoneStatus): string {
   }
 }
 
+function importedActivity(input: {
+  hasMigrationImport: boolean;
+  hasImportedActivity?: boolean;
+}): boolean {
+  return input.hasImportedActivity ?? input.hasMigrationImport;
+}
+
 export function bringBusinessNothingToBringOver(input: {
   existingBookingsAnswer: ExistingBookingsAnswer | null;
   hasMigrationImport: boolean;
+  hasImportedActivity?: boolean;
   bringYourBusinessPath: string | null;
 }): boolean {
-  if (input.hasMigrationImport) return false;
+  if (importedActivity(input)) return false;
   return (
     bringBusinessStatus(input) === "ready" &&
     (input.existingBookingsAnswer === "no" || input.bringYourBusinessPath === "skipped")
@@ -76,10 +90,22 @@ export function bringBusinessNothingToBringOver(input: {
 function bringBusinessStatusLabel(input: {
   existingBookingsAnswer: ExistingBookingsAnswer | null;
   hasMigrationImport: boolean;
+  hasImportedActivity?: boolean;
   bringYourBusinessPath: string | null;
 }): string {
   if (bringBusinessNothingToBringOver(input)) return "Nothing to bring over";
   return statusLabel(bringBusinessStatus(input));
+}
+
+function bringBusinessActionLabel(input: {
+  existingBookingsAnswer: ExistingBookingsAnswer | null;
+  hasMigrationImport: boolean;
+  hasImportedActivity?: boolean;
+  bringYourBusinessPath: string | null;
+}): string {
+  if (importedActivity(input)) return "Continue bringing your business over";
+  if (bringBusinessNothingToBringOver(input)) return "Continue setup";
+  return "Bring your business over";
 }
 
 /**
@@ -156,9 +182,10 @@ export function makeHtcYoursStatus(input: {
 export function bringBusinessStatus(input: {
   existingBookingsAnswer: ExistingBookingsAnswer | null;
   hasMigrationImport: boolean;
+  hasImportedActivity?: boolean;
   bringYourBusinessPath: string | null;
 }): MilestoneStatus {
-  if (input.hasMigrationImport) return "in_progress"; // import exists; verification is Phase C
+  if (importedActivity(input)) return "in_progress"; // import exists; verification is Phase C
   if (input.existingBookingsAnswer === "no" || input.bringYourBusinessPath === "skipped") {
     return "ready";
   }
@@ -204,6 +231,7 @@ export function buildPhaseAMilestones(input: PhaseAProgressInput): PhaseAMilesto
   const m3Input = {
     existingBookingsAnswer: hub?.existingBookingsAnswer ?? null,
     hasMigrationImport: input.hasMigrationImport,
+    hasImportedActivity: input.hasImportedActivity,
     bringYourBusinessPath: hub?.bringYourBusinessPath ?? null,
   };
   const m3 = bringBusinessStatus(m3Input);
@@ -238,7 +266,7 @@ export function buildPhaseAMilestones(input: PhaseAProgressInput): PhaseAMilesto
       title: "Bring your business over",
       description:
         "Move your leads, booked clients and events, vendors, and existing commitments into HTC.",
-      actionLabel: "Explore migration",
+      actionLabel: bringBusinessActionLabel(m3Input),
       href: PHASE_A_MILESTONE_ROUTES.bringBusiness,
       status: m3,
       statusLabel: bringBusinessStatusLabel(m3Input),

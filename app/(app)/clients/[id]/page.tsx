@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 
+import { ClientEventSwitcher } from "@/components/clients/client-event-switcher";
 import { DeleteClientRecordButton } from "@/components/clients/delete-client-record-button";
 import { PreparingMessagesDeepLink } from "@/components/clients/preparing-messages-deep-link";
 import { BookingJourneyPanel } from "@/components/booking-journey/booking-journey-panel";
@@ -32,7 +33,8 @@ import {
 } from "@/lib/contracts/service";
 import { getDocuments, getEventDocumentsFromVendors } from "@/lib/documents/service";
 import { getPinnedDocumentKeys, getVenueWorkspaceDocuments } from "@/lib/document-workspace/service";
-import { getEvent } from "@/lib/events/service";
+import { getEvent, listEventsForClient } from "@/lib/events/service";
+import { resolveClientWorkspaceEventId } from "@/lib/events/workspace-event";
 import { getEventSpaceAssignments } from "@/lib/events/space-assignments";
 import { formatEventSpaceAssignmentsDisplay } from "@/lib/venue-spaces/uses";
 import { getQuestionnaires, getQuestionnaireActivities } from "@/lib/events/questionnaire";
@@ -60,7 +62,7 @@ import type { Request } from "@/lib/requests/types";
 import { getSeatingReadinessSummary } from "@/lib/seating/service";
 import { getTeamMembers } from "@/lib/team/service";
 import {
-  getEntryAttachmentsForEvent, getEntryLinksForEvent, getRelatedLinksForEvent, getSections, getTimelineEntries,
+  getEntryAttachmentsForEvent, getEntryLinksForEvent, getImportedClientTimelineEntries, getRelatedLinksForEvent, getSections, getTimelineEntries,
 } from "@/lib/timeline/service";
 import { getTemplatesForLibrary as getTimelineTemplatesForLibrary } from "@/lib/timeline-templates/service";
 import { LEAD_SOURCES } from "@/lib/leads/constants";
@@ -309,11 +311,13 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
     );
   }
 
-  if (await bookingCelebrationPending(client.linkedEventId)) {
-    redirect(`/clients/${client.id}/booked?eventId=${client.linkedEventId}`);
-  }
+  const clientEvents = await listEventsForClient(id);
+  const eventId = resolveClientWorkspaceEventId(clientEvents, sp.eventId, client.linkedEventId);
+  if (!eventId) notFound();
 
-  const eventId = client.linkedEventId;
+  if (await bookingCelebrationPending(eventId)) {
+    redirect(`/clients/${client.id}/booked?eventId=${eventId}`);
+  }
   // Slice 2 — collapse the Wave A → Wave B serial barrier.
   // Independent reads still fan out together. Dependent reads chain from their
   // parent promise so they start as soon as that parent resolves, overlapping
@@ -696,8 +700,13 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
       <div className="flex justify-end">
         <DeleteClientRecordButton clientId={client.id} fallbackName={workspaceName} />
       </div>
+      <ClientEventSwitcher
+        clientId={client.id}
+        events={clientEvents}
+        currentEventId={eventId}
+      />
     <EventDetail
-      event={event} availableVendors={availableVendors} invoices={eventInvoices} documents={documents}
+      event={event} importedClientTimeline={await getImportedClientTimelineEntries(eventId)} availableVendors={availableVendors} invoices={eventInvoices} documents={documents}
       vendorDocuments={vendorDocuments}
       workspaceDocuments={workspaceDocuments}
       pinnedDocumentKeys={pinnedDocumentKeys}

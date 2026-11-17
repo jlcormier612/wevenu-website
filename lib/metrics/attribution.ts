@@ -7,7 +7,8 @@ import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { listLifecycleBookingsInPeriod } from "@/lib/lifecycle-bookings/service";
 import { listGrossBookedRevenueClientIds } from "@/lib/metrics/revenue";
-import { onlyBusinessReporting } from "@/lib/reporting/business-scope";
+import { loadReportingExclusions, onlyBusinessReporting } from "@/lib/reporting/business-scope";
+import { dateInWindow, isoDateOrNull } from "@/lib/reporting/performance-dates";
 import { getCurrentVenue } from "@/lib/venue/service";
 import {
   computeSourceCoverage,
@@ -43,8 +44,8 @@ export async function getLeadSourceCoverage(window: { from: string; to: string }
       .from("leads")
       .select("acquisition_source")
       .eq("venue_id", venue.id)
-      .gte("created_at", `${window.from}T00:00:00.000Z`)
-      .lte("created_at", `${window.to}T23:59:59.999Z`),
+      .gte("performance_inquiry_on", window.from)
+      .lte("performance_inquiry_on", window.to),
   );
   return computeSourceCoverage(
     ((data ?? []) as { acquisition_source: string | null }[]).map((r) => r.acquisition_source),
@@ -162,7 +163,7 @@ export async function getLifecycleBookingsByAcquisitionSource(window?: DateWindo
 
 /**
  * Gross Booked Revenue by acquisition source — same Contracted population as
- * `canonical_gross_booked_revenue` (first `events.booked_at` per client in range).
+ * `canonical_gross_booked_revenue` (each invoice dated by issued_at).
  * Per invoice: event→client→lead.acquisition_source when event_id set; else client→lead.
  * Multi-event clients with one originating lead remain attributed (schema: one lead_id).
  * Leadless / missing acquisition_source → Unknown.
@@ -178,17 +179,11 @@ export async function getGrossBookedRevenueByAcquisitionSource(
   if (!venue) return [];
   const supabase = await createClient();
 
-  const bookedClientIds = await listGrossBookedRevenueClientIds(window);
-  if (bookedClientIds.size === 0) return [];
-
-  const clientIds = [...bookedClientIds];
-
   const { data: invoices } = await supabase
     .from("invoices")
-    .select("id, client_id, event_id, subtotal, discount_amount, status")
+    .select("id, client_id, event_id, subtotal, discount_amount, status, issued_at")
     .eq("venue_id", venue.id)
-    .neq("status", "void")
-    .in("client_id", clientIds);
+    .neq("status", "void");
 
   type Inv = {
     id: string;
@@ -196,10 +191,18 @@ export async function getGrossBookedRevenueByAcquisitionSource(
     event_id: string | null;
     subtotal: number | null;
     discount_amount: number | null;
+    issued_at: string | null;
   };
+  const population = await listGrossBookedRevenueClientIds(window);
+  const exclusions = await loadReportingExclusions(supabase, venue.id);
   const invRows = (invoices ?? []) as Inv[];
-  const bookedSet = new Set(clientIds);
-  const attributable = invRows.filter((inv) => inv.client_id && bookedSet.has(inv.client_id));
+  const attributable = invRows.filter((inv) => (
+    !!inv.client_id
+    && population.has(inv.client_id)
+    && !exclusions.clientIds.has(inv.client_id)
+    && dateInWindow(isoDateOrNull(inv.issued_at), window ?? {})
+  ));
+  if (attributable.length === 0) return [];
 
   const sourceByInv = await resolveDeterministicFinancialAcquisitionSource(
     supabase,

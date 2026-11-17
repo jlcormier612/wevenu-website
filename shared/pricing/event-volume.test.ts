@@ -163,7 +163,7 @@ describe("evaluateEventVolume", () => {
     );
   });
 
-  it("requires bookedAt — status alone is insufficient", () => {
+  it("counts a confirmed event when the original booking date is unknown", () => {
     const result = evaluateEventVolume({
       events: [
         {
@@ -171,6 +171,20 @@ describe("evaluateEventVolume", () => {
           status: "confirmed",
           eventDate: "2026-01-01",
           bookedAt: null,
+        },
+      ],
+    });
+    assert.equal(result.peakCount, 1);
+  });
+
+  it("does not count a draft event", () => {
+    const result = evaluateEventVolume({
+      events: [
+        {
+          id: "1",
+          status: "draft",
+          eventDate: "2026-01-01",
+          bookedAt: "2025-01-01",
         },
       ],
     });
