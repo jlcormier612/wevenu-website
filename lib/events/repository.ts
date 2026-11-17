@@ -180,17 +180,19 @@ export async function listEventsForClient(
   client: DbClient,
   venueId: string,
   clientId: string,
-): Promise<Array<{ id: string; eventDate: string | null; status: string }>> {
+): Promise<Array<{ id: string; eventDate: string | null; status: string; name: string }>> {
   const { data, error } = await client.from("events")
-    .select("id, event_date, status")
+    .select("id, event_date, status, name")
     .eq("venue_id", venueId)
     .eq("client_id", clientId)
-    .neq("status", "cancelled");
+    .neq("status", "cancelled")
+    .order("event_date", { ascending: true });
   if (error) throw error;
-  return ((data ?? []) as Array<{ id: string; event_date: string | null; status: string }>).map((row) => ({
+  return ((data ?? []) as Array<{ id: string; event_date: string | null; status: string; name: string }>).map((row) => ({
     id: row.id,
     eventDate: row.event_date,
     status: row.status,
+    name: row.name,
   }));
 }
 

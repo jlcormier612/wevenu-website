@@ -100,6 +100,8 @@ export function rowToClientInput(row: CsvRow, mapping: FieldMapping): ClientInpu
     // Space name/UUID is resolved at commit via withResolvedSpace.
     spaceId:          val(row, mapping, "spaceId") || val(row, mapping, "spaceName"),
     bookingStatus:    val(row, mapping, "bookingStatus"),
+    sourceClientId:   val(row, mapping, "sourceClientId"),
+    sourceEventId:    val(row, mapping, "sourceEventId"),
   };
 }
 
@@ -158,6 +160,7 @@ export function rowToVendorInput(row: CsvRow, mapping: FieldMapping): VendorInpu
     pricingTier:        tier.ok ? tier.value : val(row, mapping, "pricingTier"),
     notes:              val(row, mapping, "notes"),
     specialPricingNote: "",
+    sourceVendorId:     val(row, mapping, "sourceVendorId"),
   };
 }
 

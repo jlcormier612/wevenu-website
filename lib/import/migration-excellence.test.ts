@@ -21,7 +21,7 @@ describe("client → Event migration contract", () => {
     assert.equal(isPastEventDate("2027-06-15", "2026-10-20"), false);
     assert.match(venueImport, /commitImportedClientAndEvent/);
     assert.match(adminImport, /commitImportedClientAndEvent/);
-    assert.match(adminImport, /matchIncomingClientForVenue/);
+    assert.match(adminImport, /classifyClientEventMatch/);
     assert.match(migrationService, /markAsAlreadyBooked: true/);
     assert.match(migrationService, /const asHistorical = isPastEventDate\(n\.eventDate\)/);
   });

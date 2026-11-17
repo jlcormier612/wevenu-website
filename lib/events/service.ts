@@ -69,6 +69,13 @@ export async function getEventIdForClient(clientId: string): Promise<string | nu
   return repo.getEventIdForClient(await createClient(), venue.id, clientId);
 }
 
+export async function listEventsForClient(clientId: string) {
+  if (!isSupabaseConfigured) return [];
+  const venue = await getCurrentVenue();
+  if (!venue) return [];
+  return repo.listEventsForClient(await createClient(), venue.id, clientId);
+}
+
 // ---- create -----------------------------------------------------------------
 
 export async function createEvent(input: EventInput): Promise<CreateEventResult> {

@@ -340,8 +340,8 @@ export function classifyImportPreview(
     }
 
     // Within-file duplicates — same rules as the commit engines.
-    // Clients: same person + same event date. Leads: shared inquiry identity.
-    // Email alone is never an automatic skip.
+    // Clients and Vendors: possible matches stay ready for venue review.
+    // Email or date alone is never an automatic skip.
     if (entity === "couples") {
       const email = val(row, mapping, "email");
       const first = val(row, mapping, "firstName");
@@ -354,10 +354,12 @@ export function classifyImportPreview(
         if (prior != null) {
           previews.push({
             rowNumber,
-            disposition: "skip_within_file_duplicate",
-            message: `Duplicate of row ${prior} in this file (same person and event date) — will be skipped`,
+            disposition: "warn_ambiguous_name",
+            message:
+              `Same person and event date as row ${prior} — review whether this is the same Event, an additional Event, or a different Client`,
             duplicateOfRow: prior,
           });
+          personEventSeen.set(eventKey, rowNumber);
           continue;
         }
         personEventSeen.set(eventKey, rowNumber);
@@ -370,7 +372,7 @@ export function classifyImportPreview(
               rowNumber,
               disposition: "warn_ambiguous_name",
               message:
-                `Same name as row ${prior}, and neither has an email — will attempt import; if a matching client already exists after earlier rows, this row may be skipped`,
+                `Same name as row ${prior}, and neither has an email — review this row; Hello to Cheers will not decide whether they are the same Client`,
               duplicateOfRow: prior,
             });
             nameSeen.set(nk, rowNumber);
@@ -408,10 +410,12 @@ export function classifyImportPreview(
         if (prior != null) {
           previews.push({
             rowNumber,
-            disposition: "skip_within_file_duplicate",
-            message: `Duplicate of row ${prior} in this file — will be skipped`,
+            disposition: "warn_ambiguous_name",
+            message:
+              `Possible match of row ${prior} in this file — review whether this is the same Vendor or a different Vendor`,
             duplicateOfRow: prior,
           });
+          catalogSeen.set(key, rowNumber);
           continue;
         }
         catalogSeen.set(key, rowNumber);

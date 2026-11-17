@@ -34,6 +34,7 @@ export async function commitImportedClientAndEvent(opts: {
   classification: { kind: ImportedBookingKind; eventDate: string };
   existingClientId: string | null;
   isAdmin: boolean;
+  allowAdditionalEvent?: boolean;
 }): Promise<ImportedClientCommitResult> {
   const input: ClientInput = { ...opts.input, eventDate: opts.classification.eventDate, skipIdentityReview: true };
 
@@ -44,8 +45,12 @@ export async function commitImportedClientAndEvent(opts: {
       input,
       kind: opts.classification.kind,
       eventDate: opts.classification.eventDate,
+      allowAdditional: opts.allowAdditionalEvent === true,
     });
     if (!added.ok) return added;
+    if (!added.duplicate) {
+      await stampClientEventSourceData(opts.supabase, opts.existingClientId, added.eventId, input);
+    }
     return { ok: true, clientId: opts.existingClientId, eventId: added.eventId, duplicate: added.duplicate };
   }
 
@@ -70,5 +75,37 @@ export async function commitImportedClientAndEvent(opts: {
   if (!result.eventId) {
     return { ok: false, message: "Client import did not establish an Event. The booking was not imported." };
   }
+  await stampClientEventSourceData(opts.supabase, result.clientId, result.eventId, input);
   return { ok: true, clientId: result.clientId, eventId: result.eventId, duplicate: false };
+}
+
+async function stampClientEventSourceData(
+  supabase: DbClient,
+  clientId: string,
+  eventId: string,
+  input: ClientInput,
+): Promise<void> {
+  const { clientEventSourceData } = await import("@/lib/import/client-event-match");
+  const data = clientEventSourceData({
+    firstName: input.firstName,
+    lastName: input.lastName,
+    email: input.email,
+    phone: input.phone,
+    partnerFirstName: input.partnerFirstName,
+    partnerLastName: input.partnerLastName,
+    eventDate: input.eventDate,
+    eventType: input.eventType,
+    guestCount: input.guestCount,
+    internalNotes: input.internalNotes,
+    ceremonyTime: input.ceremonyTime,
+    receptionTime: input.receptionTime,
+    spaceId: input.spaceId,
+    bookingStatus: input.bookingStatus,
+    sourceClientId: input.sourceClientId,
+    sourceEventId: input.sourceEventId,
+  });
+  const clientStamp = await supabase.from("clients").update({ source_data: data.client }).eq("id", clientId);
+  const eventStamp = await supabase.from("events").update({ source_data: data.event }).eq("id", eventId);
+  if (clientStamp.error) console.error("Client import source_data stamp failed:", clientStamp.error.message);
+  if (eventStamp.error) console.error("Event import source_data stamp failed:", eventStamp.error.message);
 }

@@ -245,13 +245,13 @@ describe("C4 import success requires durable batch association", () => {
     const acceptAt = couples.indexOf("acceptCreatedImportRow");
     const pushAt = couples.indexOf("createdIds.push(result.clientId)");
     assert.ok(createAt >= 0 && acceptAt > createAt && pushAt > acceptAt);
-    assert.match(couples, /duplicate/);
+    assert.match(couples, /classifyClientEventMatch/);
     const hqCouples = adminImport.slice(
       adminImport.indexOf("export async function importCouplesForVenueAction"),
       adminImport.indexOf("export async function importLeadsForVenueAction"),
     );
     assert.match(hqCouples, /commitImportedClientAndEvent/);
-    assert.match(hqCouples, /matchIncomingClientForVenue/);
+    assert.match(hqCouples, /classifyClientEventMatch/);
     assert.match(hqCouples, /use_existing/);
     const hqCreateAt = hqCouples.indexOf("commitImportedClientAndEvent");
     const hqAcceptAt = hqCouples.indexOf("acceptCreatedImportRow");

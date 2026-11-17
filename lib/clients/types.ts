@@ -93,6 +93,10 @@ export type ClientInput = {
   skipIdentityReview?: boolean;
   /** Import only — booked / past / preferred. Not a Client table column. */
   bookingStatus?: string;
+  /** Import only — source-system person/client id, scoped to this venue import. */
+  sourceClientId?: string;
+  /** Import only — source-system event id, distinct from the person id. */
+  sourceEventId?: string;
 };
 
 

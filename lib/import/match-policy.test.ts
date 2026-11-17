@@ -169,7 +169,7 @@ describe("import wizard match review gating", () => {
   it("does not let Import run until person matches have been loaded", () => {
     const src = readFileSync(new URL("../../components/settings/import-wizard.tsx", import.meta.url), "utf8");
     assert.match(src, /matchReviewReady/);
-    assert.match(src, /Checking whether anyone is already in Hello to Cheers/);
+    assert.match(src, /Checking for possible matches in Hello to Cheers/);
     assert.match(src, /disabled=\{confirmDisabled\}/);
     assert.match(src, /byb-import-plan/);
     assert.match(src, /byb-match-review/);

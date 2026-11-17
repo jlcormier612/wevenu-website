@@ -35,3 +35,11 @@ export function searchParamsToQueryString(
   }
   return qs.size > 0 ? `?${qs.toString()}` : "";
 }
+
+/** Calendar and legacy Event links open the matching Client Event. */
+export function withEventIdSearch(search: string, eventId: string): string {
+  const qs = new URLSearchParams(search.startsWith("?") ? search.slice(1) : search);
+  qs.set("eventId", eventId);
+  const value = qs.toString();
+  return value ? `?${value}` : `?eventId=${eventId}`;
+}

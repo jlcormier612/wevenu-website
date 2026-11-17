@@ -25,17 +25,19 @@ describe("HQ White-Glove client+event parity with self-service", () => {
     assert.doesNotMatch(hqCouples, /createClientForVenue\(/);
   });
 
-  it("treats same person + same date as a retry skip and a different date as an extra Event", () => {
-    assert.match(hqCouples, /seenEvents/);
-    assert.match(hqCouples, /same person and date/);
-    assert.match(hqCouples, /existingClientId: action === "use_existing"/);
-    assert.match(hqCouples, /This event is already in Hello to Cheers/);
+  it("does not auto-skip same-date Events; venue confirmation drives additional Events", () => {
+    assert.match(hqCouples, /classifyClientEventMatch/);
+    assert.match(hqCouples, /resolveConfirmedClientEventAction/);
+    assert.match(hqCouples, /allowAdditionalEvent: action === "create_same_person"/);
+    assert.match(hqCouples, /existingClientId: action === "create_same_person"/);
+    assert.doesNotMatch(hqCouples, /seenEvents/);
+    assert.doesNotMatch(hqCouples, /same person and date/);
     assert.doesNotMatch(hqCouples, /seenEmails/);
   });
 
   it("never silently merges email-only likely matches", () => {
-    assert.match(hqCouples, /resolvePersonMatchAction/);
-    assert.match(hqCouples, /personMatchSkipMessage/);
+    assert.match(hqCouples, /resolveConfirmedClientEventAction/);
+    assert.match(hqCouples, /clientEventMatchSkipMessage/);
     assert.match(selfServe, /previewPersonMatchesAction[\s\S]*venueId/);
   });
 
@@ -43,6 +45,7 @@ describe("HQ White-Glove client+event parity with self-service", () => {
     assert.match(bookClient, /A second call does not create another event/);
     assert.match(extra, /bookClient stays idempotent/);
     assert.match(extra, /addImportedEventToClient/);
+    assert.match(extra, /if \(duplicate && !opts.allowAdditional\)/);
   });
 
   it("keeps occupancy holds and historical complete on the shared classifier", () => {

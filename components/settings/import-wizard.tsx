@@ -532,6 +532,9 @@ function StepPreview({
   const previewStatuses = summary.rows.slice(0, 5);
   const peopleReview = matchRows.length > 0;
   const leadReview = entity === "leads" && peopleReview;
+  const clientReview = entity === "couples" && peopleReview;
+  const vendorReview = entity === "vendors" && peopleReview;
+  const venueReview = leadReview || clientReview || vendorReview;
   const plan = peopleReview
     ? summarizePersonImportPlan(matchRows.map((row, index) => {
       const previewRow = summary.rows[index];
@@ -633,21 +636,25 @@ function StepPreview({
 
       {!matchReviewReady ? (
         <p className="text-sm text-muted-foreground" data-testid="byb-match-checking">
-          Checking whether anyone is already in Hello to Cheers…
+          Checking for possible matches in Hello to Cheers…
         </p>
       ) : null}
 
       {matchReviewReady && matchRows.length > 0 ? (
         <div className="space-y-2" data-testid="byb-match-review">
           <div>
-            <p className="text-sm font-medium text-foreground">{leadReview ? "Needs a decision" : "Review each person"}</p>
+            <p className="text-sm font-medium text-foreground">{venueReview ? "Needs a decision" : "Review each person"}</p>
             <p className="text-xs text-muted-foreground">
-              {leadReview
-                ? "We found possible matches. Matching names, emails, phones, or dates are clues — not proof. Choose whether this is the same record, a separate inquiry for this person, a separate inquiry for a different person, or something to leave out. Hello to Cheers will not guess."
-                : "Use existing keeps the person already in Hello to Cheers and, for clients, adds a distinct event date when it is not already there. Create new adds a separate person. Skip leaves the row out. Email alone is not enough to treat two people as the same."}
+              {clientReview
+                ? "We found possible matches. Matching names, emails, phones, or dates are clues — not proof. Choose whether this is the same Client and same Event, the same Client with an additional Event, a different Client, or something to leave out. Hello to Cheers will not guess."
+                : vendorReview
+                  ? "We found possible matches. Matching business names, emails, phones, or websites are clues — not proof. Choose whether this is the same Vendor, a different Vendor, or something to leave out. Hello to Cheers will not guess."
+                : leadReview
+                  ? "We found possible matches. Matching names, emails, phones, or dates are clues — not proof. Choose whether this is the same record, a separate inquiry for this person, a separate inquiry for a different person, or something to leave out. Hello to Cheers will not guess."
+                  : "Use existing keeps the person already in Hello to Cheers. Create new adds a separate person. Skip leaves the row out. Email alone is not enough to treat two people as the same."}
             </p>
           </div>
-          {leadReview && plan && plan.heldCount > 0 ? (
+          {venueReview && plan && plan.heldCount > 0 ? (
             <p className="text-xs text-amber-800 dark:text-amber-200" data-testid="byb-held-count">
               {plan.heldCount} {plan.heldCount === 1 ? "row still needs" : "rows still need"} your decision. Ready rows can still be imported; unresolved rows stay held.
             </p>
@@ -669,12 +676,29 @@ function StepPreview({
                 { option: "create_new", label: "Separate inquiry for a different person", testId: "byb-match-choice-different" },
                 { option: "skip", label: "Don't import", testId: "byb-match-choice-skip" },
               ];
+              const clientChoices: Array<{ option: PersonMatchAction; label: string; testId: string }> = [
+                { option: "use_existing", label: "Same Client, same Event", testId: "byb-match-choice-same" },
+                { option: "create_same_person", label: "Same Client, additional Event", testId: "byb-match-choice-same-person" },
+                { option: "create_new", label: "Different Client", testId: "byb-match-choice-different" },
+                { option: "skip", label: "Don't import", testId: "byb-match-choice-skip" },
+              ];
+              const vendorChoices: Array<{ option: PersonMatchAction; label: string; testId: string }> = [
+                { option: "use_existing", label: "Same Vendor", testId: "byb-match-choice-same" },
+                { option: "create_new", label: "Different Vendor", testId: "byb-match-choice-different" },
+                { option: "skip", label: "Don't import", testId: "byb-match-choice-skip" },
+              ];
               const peopleChoices: Array<{ option: PersonMatchAction; label: string; testId: string }> = [
                 { option: "use_existing", label: "Use existing", testId: "byb-match-choice-same" },
                 { option: "create_new", label: "Create new", testId: "byb-match-choice-separate" },
                 { option: "skip", label: "Skip", testId: "byb-match-choice-skip" },
               ];
-              const choices = leadReview ? leadChoices : peopleChoices;
+              const choices = clientReview
+                ? clientChoices
+                : vendorReview
+                  ? vendorChoices
+                  : leadReview
+                    ? leadChoices
+                    : peopleChoices;
               return (
                 <li key={row.row} className="space-y-2 rounded-md border border-border bg-card px-3 py-2.5" data-testid={`byb-match-row-${row.row}`}>
                   <div className="grid gap-2 sm:grid-cols-2">
@@ -682,6 +706,11 @@ function StepPreview({
                       <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Incoming</p>
                       <p className="text-xs font-medium text-heading">{row.name || `Row ${row.row}`}</p>
                       <p className="text-xs text-muted-foreground">{row.email || "No email on this row"}</p>
+                      {row.incomingEventDate ? (
+                        <p className="text-xs text-muted-foreground">
+                          Incoming event: {row.incomingEventDate}{row.incomingEventType ? ` · ${row.incomingEventType}` : ""}
+                        </p>
+                      ) : null}
                       {row.matchedEventDate || row.fileMatchRow ? (
                         <p className="text-xs text-muted-foreground">
                           {row.fileMatchRow ? `Matches row ${row.fileMatchRow} in this file` : null}
@@ -700,7 +729,26 @@ function StepPreview({
                           <p className="text-xs text-muted-foreground">{row.matchedEmail || "No email on file"}</p>
                           {row.matchedPhone ? <p className="text-xs text-muted-foreground">{row.matchedPhone}</p> : null}
                           {row.matchedEventDate ? (
-                            <p className="text-xs text-muted-foreground">Preferred date on file: {row.matchedEventDate}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {clientReview ? "Event on file: " : "Preferred date on file: "}
+                              {row.matchedEventDate}
+                            </p>
+                          ) : null}
+                          {clientReview && row.matchedEvents && row.matchedEvents.length > 0 ? (
+                            <p className="text-xs text-muted-foreground">
+                              {row.matchedEvents.length === 1
+                                ? "This client already has 1 Event"
+                                : `This client already has ${row.matchedEvents.length} Events`}
+                            </p>
+                          ) : null}
+                          {vendorReview && row.connectedToThisVenue ? (
+                            <p className="text-xs text-muted-foreground">Already connected to this venue</p>
+                          ) : null}
+                          {vendorReview && row.connectedToThisVenue === false && row.matchedId ? (
+                            <p className="text-xs text-muted-foreground">Known in Hello to Cheers, not yet connected to this venue</p>
+                          ) : null}
+                          {vendorReview && row.isClaimed ? (
+                            <p className="text-xs text-muted-foreground">Claimed profile — import will not change their business details</p>
                           ) : null}
                         </>
                       )}
@@ -758,7 +806,10 @@ function StepPreview({
                           key={choice.option}
                           type="button"
                           data-testid={choice.testId}
-                          disabled={row.kind === "new" && !row.fileMatchRow && (choice.option === "use_existing" || choice.option === "create_same_person")}
+                          disabled={
+                            (row.kind === "new" && !row.fileMatchRow && (choice.option === "use_existing" || choice.option === "create_same_person"))
+                            || (choice.option === "use_existing" && !row.matchedId)
+                          }
                           className={`rounded-md border px-2 py-1 text-xs ${
                             action === choice.option
                               ? "border-primary bg-primary/10 font-medium text-heading"
@@ -777,13 +828,27 @@ function StepPreview({
                       : row.alreadyImported
                         ? "Already imported — left out"
                         : action === "use_existing"
-                          ? (leadReview ? "Same record — keep existing, nothing overwritten" : "Use existing")
+                          ? (clientReview
+                            ? "Same Client, same Event — keep existing, nothing overwritten"
+                            : vendorReview
+                              ? "Same Vendor — use the existing relationship or connect this venue"
+                              : leadReview
+                                ? "Same record — keep existing, nothing overwritten"
+                                : "Use existing")
                           : action === "skip"
-                            ? (leadReview ? "Don't import" : "Skip")
+                            ? (venueReview ? "Don't import" : "Skip")
                             : action === "create_same_person"
-                              ? "Separate inquiry for this person — two inquiries, one person"
+                              ? (clientReview
+                                ? "Same Client, additional Event — booking rules still apply"
+                                : "Separate inquiry for this person — two inquiries, one person")
                               : action === "create_new"
-                                ? (leadReview ? "Separate inquiry for a different person" : "Create new")
+                                ? (clientReview
+                                  ? "Different Client — create a separate Client with this Event"
+                                  : vendorReview
+                                    ? "Different Vendor — create a distinct Vendor"
+                                    : leadReview
+                                      ? "Separate inquiry for a different person"
+                                      : "Create new")
                                 : "Needs your decision"}
                   </p>
                 </li>
@@ -1283,7 +1348,7 @@ export function ImportWizard({
         res = venueId ? await importLeadsForVenueAction(venueId, inputRows, sourceLabel, matchActions) : await importLeadsAction(inputRows, sourceLabel, matchActions);
       } else if (entity === "vendors") {
         const inputRows = rows.map((r) => rowToVendorInput(r, mapping));
-        res = venueId ? await importVendorsForVenueAction(venueId, inputRows) : await importVendorsAction(inputRows, sourceLabel);
+        res = venueId ? await importVendorsForVenueAction(venueId, inputRows, sourceLabel, matchActions) : await importVendorsAction(inputRows, sourceLabel, matchActions);
       } else if (entity === "inventory") {
         const inputRows = rows.map((r) => rowToInventoryInput(r, mapping));
         res = venueId ? await importInventoryForVenueAction(venueId, inputRows) : await importInventoryAction(inputRows, sourceLabel);
@@ -1358,7 +1423,7 @@ export function ImportWizard({
           onChange={setMapping}
           onNext={() => {
             setStep(3);
-            if (entity === "couples" || entity === "leads") {
+            if (entity === "couples" || entity === "leads" || entity === "vendors") {
               const previewKey = JSON.stringify({ entity, mapping, rowCount: rows.length });
               if (matchPreviewKey === previewKey && matchRows.length === rows.length) {
                 setMatchReviewReady(true);
@@ -1367,7 +1432,9 @@ export function ImportWizard({
               setMatchReviewReady(false);
               const people = entity === "couples"
                 ? rows.map((r) => rowToClientInput(r, mapping))
-                : rows.map((r) => rowToLeadInput(r, mapping));
+                : entity === "vendors"
+                  ? rows.map((r) => rowToVendorInput(r, mapping))
+                  : rows.map((r) => rowToLeadInput(r, mapping));
               void previewPersonMatchesAction(entity, people, venueId).then((preview) => {
                 setMatchRows(preview);
                 setMatchActions(preview.map((row) => (
@@ -1380,7 +1447,7 @@ export function ImportWizard({
                 setMatchActions([]);
                 setMatchPreviewKey(null);
                 setMatchReviewReady(false);
-                toast.error("Could not check existing people. Go back and try Preview again.");
+                toast.error("Could not check existing records. Go back and try Preview again.");
               });
             } else {
               setMatchRows([]);

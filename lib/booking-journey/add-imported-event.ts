@@ -49,12 +49,14 @@ export async function addImportedEventToClient(
     kind: ImportedBookingKind;
     eventDate: string;
     eventName?: string;
+    /** Venue confirmed an additional Event. Same date is allowed; occupancy still applies. */
+    allowAdditional?: boolean;
   },
 ): Promise<AddImportedEventResult> {
   const eventName = opts.eventName?.trim() || importedEventDisplayName(opts.input);
   const existing = await eventsRepo.listEventsForClient(supabase, opts.venueId, opts.clientId);
   const duplicate = findDuplicateImportedEvent(existing, opts.eventDate);
-  if (duplicate) {
+  if (duplicate && !opts.allowAdditional) {
     return { ok: true, eventId: duplicate.id, duplicate: true };
   }
 

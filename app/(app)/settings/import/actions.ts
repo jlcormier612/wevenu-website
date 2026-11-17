@@ -3,12 +3,32 @@
 import { revalidatePath } from "next/cache";
 
 import { commitImportedClientAndEvent, classifyClientImportRow } from "@/lib/clients/import-booked-client";
-import { matchIncomingClient, matchIncomingClientForVenue } from "@/lib/clients/service";
 import {
-  personMatchSkipMessage,
-  resolvePersonMatchAction,
+  listImportClientEventRecords,
+  listImportClientEventRecordsForVenue,
+} from "@/lib/clients/service";
+import {
   type PersonMatchAction,
 } from "@/lib/import/match-policy";
+import {
+  classifyClientEventMatch,
+  clientEventMatchSkipMessage,
+  incomingClientEventFromInput,
+  importMatchRecordFromIncomingClient,
+  importedClientIdentityDecision,
+  rememberCreatedImportClientEvent,
+  resolveConfirmedClientEventAction,
+  type ClientEventMatchRecord,
+} from "@/lib/import/client-event-match";
+import {
+  classifyVendorMatch,
+  incomingVendorFromInput,
+  importMatchRecordFromIncomingVendor,
+  rememberCreatedImportVendor,
+  resolveConfirmedVendorAction,
+  vendorMatchSkipMessage,
+  type VendorMatchRecord,
+} from "@/lib/import/vendor-match";
 import {
   classifyVenueControlledMatch,
   importedLeadIdentityDecision,
@@ -30,8 +50,6 @@ import {
   normalizeImportDate,
   normalizeImportQuantity,
   normalizeImportVendorPricingTier,
-  personEmailWithinFileKey,
-  vendorWithinFileKey,
 } from "@/lib/import/preview-integrity";
 import type { InventoryImportRow, PackageImportRow } from "@/lib/import/utils";
 import { createCategory, createItem as createInventoryItem, findActiveDuplicateInventoryItem, getCategories } from "@/lib/inventory/service";
@@ -39,7 +57,12 @@ import { LEAD_BOOKED_STATUS_HOLD, parseImportedLeadSalesStage } from "@/lib/impo
 import { createLead, listImportMatchRecords, listImportMatchRecordsForVenue } from "@/lib/leads/service";
 import { proposeFieldMapping, proposeStructuredRows } from "@/lib/luv/import-assist";
 import { addPackageItems, createPackage, findActiveDuplicatePackage } from "@/lib/packages/service";
-import { createVendor, findActiveDuplicateVendor } from "@/lib/vendors/service";
+import {
+  createVendor,
+  findGlobalVendorImportCandidates,
+  listImportVendorRecords,
+  listImportVendorRecordsForVenue,
+} from "@/lib/vendors/service";
 import { getCurrentVenue } from "@/lib/venue/service";
 import { createClient } from "@/integrations/supabase/server";
 import type { ClientInput } from "@/lib/clients/types";
@@ -164,13 +187,18 @@ export type PersonMatchPreviewRow = {
   inquiryNotes?: string[];
   differences?: Array<{ label: string; incoming: string; existing: string }>;
   inquiryDisposition?: "retry" | "additional" | "new" | "uncertain";
+  incomingEventDate?: string | null;
+  incomingEventType?: string | null;
+  matchedEvents?: Array<{ eventId: string | null; eventDate: string | null; eventType: string | null }>;
+  connectedToThisVenue?: boolean;
+  isClaimed?: boolean;
 };
 
 export async function previewPersonMatchesAction(
-  entity: "couples" | "leads",
+  entity: "couples" | "leads" | "vendors",
   rows: Array<{
-    firstName: string;
-    lastName: string;
+    firstName?: string;
+    lastName?: string;
     email?: string | null;
     phone?: string | null;
     partnerFirstName?: string | null;
@@ -178,7 +206,12 @@ export async function previewPersonMatchesAction(
     partnerEmail?: string | null;
     eventDate?: string | null;
     eventType?: string | null;
-    guestCount?: string | null;
+    guestCount?: string | number | null;
+    internalNotes?: string | null;
+    ceremonyTime?: string | null;
+    receptionTime?: string | null;
+    spaceId?: string | null;
+    bookingStatus?: string | null;
     source?: string | null;
     originalSourceLabel?: string | null;
     inquiryMessage?: string | null;
@@ -188,41 +221,151 @@ export async function previewPersonMatchesAction(
     salesStage?: string | null;
     estimatedBudget?: string | null;
     sourceRecordId?: string | null;
+    sourceClientId?: string | null;
+    sourceEventId?: string | null;
+    sourceVendorId?: string | null;
+    businessName?: string | null;
+    websiteUrl?: string | null;
+    contactName?: string | null;
+    category?: string | null;
+    notes?: string | null;
   }>,
   venueId?: string,
 ): Promise<PersonMatchPreviewRow[]> {
   const out: PersonMatchPreviewRow[] = [];
-  const existingLeads = entity === "leads"
-    ? (venueId ? await listImportMatchRecordsForVenue(venueId) : await listImportMatchRecords())
-    : [];
+  if (entity === "couples") {
+    const existing = venueId
+      ? await listImportClientEventRecordsForVenue(venueId)
+      : await listImportClientEventRecords();
+    const priorInFile: ClientEventMatchRecord[] = [];
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const incoming = incomingClientEventFromInput({
+        firstName: row.firstName ?? "",
+        lastName: row.lastName ?? "",
+        email: row.email,
+        phone: row.phone,
+        partnerFirstName: row.partnerFirstName,
+        partnerLastName: row.partnerLastName,
+        eventDate: row.eventDate,
+        eventType: row.eventType,
+        guestCount: row.guestCount,
+        internalNotes: row.internalNotes,
+        ceremonyTime: row.ceremonyTime,
+        receptionTime: row.receptionTime,
+        spaceId: row.spaceId,
+        bookingStatus: row.bookingStatus,
+        sourceClientId: row.sourceClientId,
+        sourceEventId: row.sourceEventId,
+      });
+      const match = classifyClientEventMatch(incoming, existing, priorInFile);
+      out.push({
+        row: i + 1,
+        name: `${row.firstName ?? ""} ${row.lastName ?? ""}`.trim(),
+        email: (row.email ?? "").trim(),
+        kind: match.kind,
+        reason: match.reason,
+        defaultAction: match.defaultAction,
+        matchedId: match.matchedClientId,
+        matchedName: match.matchedName,
+        matchedEmail: match.matchedEmail,
+        matchedPhone: match.matchedPhone,
+        matchedEventDate: match.matchedEventDate,
+        needsReview: match.needsReview,
+        alreadyImported: match.alreadyImported,
+        changedSinceImport: match.changedSinceImport,
+        fileMatchRow: match.fileMatchRow,
+        signals: match.signals,
+        inquiryNotes: match.inquiryNotes,
+        differences: match.differences,
+        incomingEventDate: incoming.eventDate || null,
+        incomingEventType: incoming.eventType || null,
+        matchedEvents: match.matchedEvents,
+      });
+      priorInFile.push(importMatchRecordFromIncomingClient(incoming, i + 1));
+    }
+    return out;
+  }
+
+  if (entity === "vendors") {
+    const venueVendors = venueId
+      ? await listImportVendorRecordsForVenue(venueId)
+      : await listImportVendorRecords();
+    const globals = await findGlobalVendorImportCandidates(
+      rows.map((row) => row.email ?? ""),
+      rows.map((row) => row.businessName ?? ""),
+      new Set(venueVendors.map((row) => row.vendorId)),
+      venueId,
+    );
+    const existing = [...venueVendors, ...globals];
+    const priorInFile: VendorMatchRecord[] = [];
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const incoming = incomingVendorFromInput({
+        businessName: row.businessName ?? "",
+        email: row.email,
+        phone: row.phone,
+        websiteUrl: row.websiteUrl,
+        contactName: row.contactName,
+        category: row.category,
+        notes: row.notes,
+        sourceVendorId: row.sourceVendorId,
+      });
+      const match = classifyVendorMatch(incoming, existing, priorInFile);
+      out.push({
+        row: i + 1,
+        name: (row.businessName ?? "").trim(),
+        email: (row.email ?? "").trim(),
+        kind: match.kind,
+        reason: match.reason,
+        defaultAction: match.defaultAction,
+        matchedId: match.matchedVendorId,
+        matchedName: match.matchedName,
+        matchedEmail: match.matchedEmail,
+        matchedPhone: match.matchedPhone,
+        needsReview: match.needsReview,
+        alreadyImported: match.alreadyImported,
+        changedSinceImport: match.changedSinceImport,
+        fileMatchRow: match.fileMatchRow,
+        signals: match.signals,
+        inquiryNotes: match.inquiryNotes,
+        differences: match.differences,
+        connectedToThisVenue: match.connectedToThisVenue,
+        isClaimed: match.isClaimed,
+      });
+      priorInFile.push(importMatchRecordFromIncomingVendor(incoming, i + 1));
+    }
+    return out;
+  }
+
+  const existingLeads = venueId ? await listImportMatchRecordsForVenue(venueId) : await listImportMatchRecords();
   const priorInFile: ImportMatchRecord[] = [];
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
-    if (entity === "couples") {
-      const decision = venueId
-        ? await matchIncomingClientForVenue(venueId, row)
-        : await matchIncomingClient(row);
-      out.push({
-        row: i + 1,
-        name: `${row.firstName} ${row.lastName}`.trim(),
-        email: (row.email ?? "").trim(),
-        kind: decision.kind,
-        reason: decision.reason,
-        defaultAction: decision.defaultAction,
-        matchedId: decision.matchedId,
-        matchedName: decision.matchedName,
-        matchedEmail: decision.matchedEmail,
-        needsReview: decision.kind === "likely",
-        alreadyImported: false,
-      });
-      continue;
-    }
-
-    const incoming = incomingPersonFromLeadInput(row);
+    const incoming = incomingPersonFromLeadInput({
+      firstName: row.firstName ?? "",
+      lastName: row.lastName ?? "",
+      email: row.email,
+      phone: row.phone,
+      partnerFirstName: row.partnerFirstName,
+      partnerLastName: row.partnerLastName,
+      partnerEmail: row.partnerEmail,
+      eventDate: row.eventDate,
+      eventType: row.eventType,
+      guestCount: row.guestCount != null ? String(row.guestCount) : "",
+      source: row.source,
+      inquiryMessage: row.inquiryMessage,
+      followUpDate: row.followUpDate,
+      nextActionText: row.nextActionText,
+      dateFlexibility: row.dateFlexibility,
+      salesStage: row.salesStage,
+      estimatedBudget: row.estimatedBudget,
+      sourceRecordId: row.sourceRecordId,
+    });
     const match = classifyVenueControlledMatch(incoming, existingLeads, priorInFile);
     out.push({
       row: i + 1,
-      name: `${row.firstName} ${row.lastName}`.trim(),
+      name: `${row.firstName ?? ""} ${row.lastName ?? ""}`.trim(),
       email: (row.email ?? "").trim(),
       kind: match.kind,
       reason: match.reason,
@@ -261,9 +404,10 @@ export async function importCouplesAction(
   if (!tracked.ok) return tracked.result;
   if (!venue) return { imported: 0, errors: [{ row: 0, message: "No venue found.", kind: "error" }], batchId: null };
   const batchId = tracked.batchId;
-  const seenEvents = new Set<string>();
   const requiresSpace = await venueRequiresNamedSpace();
   const supabase = await createClient();
+  const existing = await listImportClientEventRecords();
+  const priorInFile: ClientEventMatchRecord[] = [];
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
@@ -290,25 +434,14 @@ export async function importCouplesAction(
       errors.push({ row: i + 1, message: `Guest count must be a whole number (got "${row.guestCount.trim()}").`, kind: "error" });
       continue;
     }
-    const personKey = `${(normalizedRow.firstName ?? "").trim().toLowerCase()}|${(normalizedRow.lastName ?? "").trim().toLowerCase()}|${personEmailWithinFileKey(normalizedRow.email ?? "")}`;
-    const eventKey = `${personKey}|${normalizedRow.eventDate}`;
-    if (seenEvents.has(eventKey)) {
-      errors.push({ row: i + 1, message: "Skipped — this event is already in this same file (same person and date)", kind: "skipped" });
-      continue;
-    }
-    seenEvents.add(eventKey);
-    const decision = await matchIncomingClient({
-      firstName: normalizedRow.firstName,
-      lastName: normalizedRow.lastName,
-      email: normalizedRow.email,
-      partnerFirstName: normalizedRow.partnerFirstName,
-      partnerLastName: normalizedRow.partnerLastName,
-    });
-    const action = resolvePersonMatchAction(decision, matchActions?.[i] ?? null);
-    if (action === "skip") {
+    const incoming = incomingClientEventFromInput(normalizedRow);
+    const match = classifyClientEventMatch(incoming, existing, priorInFile);
+    const action = resolveConfirmedClientEventAction(match, matchActions?.[i] ?? null);
+    priorInFile.push(importMatchRecordFromIncomingClient(incoming, i + 1));
+    if (action === "held" || action === "skip" || action === "use_existing") {
       errors.push({
         row: i + 1,
-        message: personMatchSkipMessage(decision, action),
+        message: clientEventMatchSkipMessage(match, action),
         kind: "skipped",
       });
       continue;
@@ -330,24 +463,28 @@ export async function importCouplesAction(
       const result = await commitImportedClientAndEvent({
         supabase,
         venueId: venue.id,
-        input: spaced.ok ? spaced.input : normalizedRow,
+        input: {
+          ...(spaced.ok ? spaced.input : normalizedRow),
+          identityDecision: importedClientIdentityDecision(match, action),
+        },
         classification: classified,
-        existingClientId: action === "use_existing" ? decision.matchedId : null,
+        existingClientId: action === "create_same_person" ? match.matchedClientId : null,
         isAdmin: false,
+        allowAdditionalEvent: action === "create_same_person",
       });
       if (!result.ok) {
         errors.push({ row: i + 1, message: result.message, kind: "error" });
         continue;
       }
-      if (result.duplicate) {
-        errors.push({
-          row: i + 1,
-          message: "This event is already in Hello to Cheers. No second Event was created.",
-          kind: "skipped",
-        });
-        continue;
-      }
-      if (action === "use_existing") {
+      rememberCreatedImportClientEvent(
+        existing,
+        incoming,
+        i + 1,
+        result.clientId,
+        result.eventId,
+        match.relationshipId,
+      );
+      if (action === "create_same_person") {
         createdIds.push(result.eventId);
         continue;
       }
@@ -488,7 +625,11 @@ export async function importLeadsAction(
   return { imported: createdIds.length, errors, batchId };
 }
 
-export async function importVendorsAction(rows: VendorInput[], sourceLabel?: string): Promise<ImportResult> {
+export async function importVendorsAction(
+  rows: VendorInput[],
+  sourceLabel?: string,
+  matchActions?: Array<PersonMatchAction | null>,
+): Promise<ImportResult> {
   const errors: ImportResult["errors"] = [];
   const createdIds: string[] = [];
   const venue = await getCurrentVenue();
@@ -499,7 +640,14 @@ export async function importVendorsAction(rows: VendorInput[], sourceLabel?: str
   if (!tracked.ok) return tracked.result;
   if (!venue) return { imported: 0, errors: [{ row: 0, message: "No venue found.", kind: "error" }], batchId: null };
   const batchId = tracked.batchId;
-  const seenVendorKeys = new Set<string>();
+  const venueVendors = await listImportVendorRecords();
+  const globals = await findGlobalVendorImportCandidates(
+    rows.map((row) => row.email ?? ""),
+    rows.map((row) => row.businessName),
+    new Set(venueVendors.map((row) => row.vendorId)),
+  );
+  const existing: VendorMatchRecord[] = [...venueVendors, ...globals];
+  const priorInFile: VendorMatchRecord[] = [];
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
@@ -507,32 +655,35 @@ export async function importVendorsAction(rows: VendorInput[], sourceLabel?: str
       errors.push({ row: i + 1, message: "Missing required field: business name", kind: "skipped" });
       continue;
     }
-    const withinKey = vendorWithinFileKey(row.businessName, row.email ?? "");
-    if (withinKey) {
-      if (seenVendorKeys.has(withinKey)) {
-        errors.push({ row: i + 1, message: "Skipped — duplicate of an earlier row in this same file", kind: "skipped" });
-        continue;
-      }
-      seenVendorKeys.add(withinKey);
-    }
     const tierNorm = normalizeImportVendorPricingTier(row.pricingTier ?? "");
     if (!tierNorm.ok) {
       errors.push({ row: i + 1, message: tierNorm.message, kind: "error" });
       continue;
     }
     const normalizedVendor = { ...row, pricingTier: tierNorm.value };
-    const dup = await decideHistoricalImportDuplicate(
-      i + 1,
-      () => findActiveDuplicateVendor(normalizedVendor.businessName, normalizedVendor.email ?? ""),
-      "Skipped — matches a vendor already in your directory",
-    );
-    if (dup.action !== "create") {
-      errors.push(dup.error);
+    const incoming = incomingVendorFromInput(normalizedVendor);
+    const match = classifyVendorMatch(incoming, existing, priorInFile);
+    const action = resolveConfirmedVendorAction(match, matchActions?.[i] ?? null);
+    priorInFile.push(importMatchRecordFromIncomingVendor(incoming, i + 1));
+    if (action === "held" || action === "skip") {
+      errors.push({
+        row: i + 1,
+        message: vendorMatchSkipMessage(match, action),
+        kind: "skipped",
+      });
       continue;
     }
     try {
-      const result = await createVendor(normalizedVendor);
+      const confirmed = action === "use_existing" && match.matchedVendorId
+        ? { action: "use_existing" as const, vendorId: match.matchedVendorId }
+        : { action: "create_new" as const };
+      const result = await createVendor(normalizedVendor, confirmed);
       if (result.ok) {
+        rememberCreatedImportVendor(existing, incoming, i + 1, result.vendorId, null, true);
+        if (action === "use_existing") {
+          createdIds.push(result.vendorId);
+          continue;
+        }
         const accepted = await acceptCreatedImportRow({
           entityType: "vendors",
           batchId,

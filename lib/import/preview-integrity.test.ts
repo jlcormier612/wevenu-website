@@ -126,7 +126,7 @@ describe("classifyImportPreview", () => {
     assert.ok(summary.readyCount >= 1);
   });
 
-  it("skips same-person same-date client rows and keeps extra dates importable", () => {
+  it("flags same-person same-date client rows for review instead of skipping", () => {
     const headers = ["First Name", "Last Name", "Email", "Event Date"];
     const mapping = {
       firstName: "First Name",
@@ -154,7 +154,7 @@ describe("classifyImportPreview", () => {
     const summary = classifyImportPreview("couples", headers, mapping, rows);
     assert.equal(summary.rows[0]?.disposition, "ready");
     assert.equal(summary.rows[1]?.disposition, "ready");
-    assert.equal(summary.rows[2]?.disposition, "skip_within_file_duplicate");
+    assert.equal(summary.rows[2]?.disposition, "warn_ambiguous_name");
   });
 
   it("warns on same name without email instead of skipping", () => {
@@ -354,8 +354,8 @@ describe("CSV import actions — integrity wiring", () => {
   });
 
   it("applies within-file dedupe for couples, vendors, inventory, and packages", () => {
-    assert.match(csvImport, /personEmailWithinFileKey/);
-    assert.match(csvImport, /vendorWithinFileKey/);
+    assert.match(csvImport, /classifyClientEventMatch/);
+    assert.match(csvImport, /classifyVendorMatch/);
     assert.match(csvImport, /catalogNameWithinFileKey/);
     assert.match(csvImport, /normalizeImportDate/);
     assert.match(csvImport, /normalizeImportQuantity/);

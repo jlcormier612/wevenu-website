@@ -308,6 +308,8 @@ export type VendorInput = {
   pricingTier:        string;
   notes:              string;
   specialPricingNote: string;
+  /** Import only — source-system vendor id, scoped to this venue import. */
+  sourceVendorId?: string;
 };
 
 export type VendorAssignmentInput = {

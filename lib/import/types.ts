@@ -25,6 +25,8 @@ export const COUPLE_FIELDS: ImportFieldDef[] = [
   { key: "spaceName",        label: "Event Space Name",        required: false },
   { key: "bookingStatus",    label: "Booking Status (booked or past)", required: false },
   { key: "internalNotes",    label: "Internal notes",          required: false },
+  { key: "sourceClientId",   label: "Source client ID",        required: false },
+  { key: "sourceEventId",    label: "Source event ID",         required: false },
 ];
 
 export const LEAD_FIELDS: ImportFieldDef[] = [
@@ -57,6 +59,7 @@ export const VENDOR_FIELDS: ImportFieldDef[] = [
   { key: "websiteUrl",   label: "Website URL",   required: false },
   { key: "pricingTier",  label: "Pricing tier",  required: false },
   { key: "notes",        label: "Notes",         required: false },
+  { key: "sourceVendorId", label: "Source vendor ID", required: false },
 ];
 
 export const INVENTORY_FIELDS: ImportFieldDef[] = [

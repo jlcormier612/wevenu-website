@@ -9,6 +9,7 @@ import { describe, it } from "node:test";
 import {
   bookingWorkspacePathFromEvent,
   searchParamsToQueryString,
+  withEventIdSearch,
 } from "@/lib/events/event-booking-redirect";
 
 describe("bookingWorkspacePathFromEvent", () => {
@@ -66,6 +67,16 @@ describe("searchParamsToQueryString", () => {
   });
 });
 
+describe("withEventIdSearch", () => {
+  it("adds eventId so Calendar links open the matching Client Event", () => {
+    assert.equal(withEventIdSearch("", "event-9"), "?eventId=event-9");
+    assert.equal(
+      withEventIdSearch("?conversation=thread-9", "event-9"),
+      "?conversation=thread-9&eventId=event-9",
+    );
+  });
+});
+
 describe("event → booking redirect wiring", () => {
   it("events/[id] uses browser replace (not server redirect) so hash survives", () => {
     const page = readFileSync(resolve("app/(app)/events/[id]/page.tsx"), "utf8");
@@ -92,6 +103,7 @@ describe("event → booking redirect wiring", () => {
     assert.match(src, /hashchange/);
     assert.match(src, /setActiveTab\(tab\)/);
     assert.match(src, /window\.location\.hash\.replace\("#", ""\)/);
-    assert.match(src, /URLSearchParams\(window\.location\.search\)\.get\("tab"\)/);
+    assert.match(src, /new URLSearchParams\(window\.location\.search\)/);
+    assert.match(src, /params\.get\("tab"\)/);
   });
 });
