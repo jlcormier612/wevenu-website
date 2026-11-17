@@ -1195,6 +1195,23 @@ export async function venueSignContract(
     const contract = await repo.getContract(supabase, venueId, id);
     if (!contract) return { ok: false, message: "Contract not found." } as ContractActionResult;
 
+    if (contract.clientId) {
+      const { data: practiceRow } = await supabase
+        .from("clients")
+        .select("practice_run_id")
+        .eq("venue_id", venueId)
+        .eq("id", contract.clientId)
+        .maybeSingle();
+      const practiceRunId = (practiceRow as { practice_run_id?: string | null } | null)?.practice_run_id;
+      if (typeof practiceRunId === "string" && practiceRunId.trim()) {
+        return {
+          ok: false,
+          message:
+            "Practice Runs simulate venue countersignature inside the guided journey. Genuine electronic signatures are not created.",
+        } as ContractActionResult;
+      }
+    }
+
     const safety = assertCustomerSafeContractContent(contract.content, { allowPlaceholders: true });
     if (!safety.ok) return { ok: false, message: safety.message } as ContractActionResult;
 
@@ -1286,6 +1303,28 @@ export async function sendContract(
         ok: false,
         message: "This agreement was executed outside Hello to Cheers. It cannot be sent for HTC e-signature — attach the original signed file as a document instead.",
       } as ContractActionResult;
+    }
+
+    if (contract.clientId) {
+      const { data: practiceRow } = await supabase
+        .from("clients")
+        .select("practice_run_id")
+        .eq("venue_id", venueId)
+        .eq("id", contract.clientId)
+        .maybeSingle();
+      const practiceRunId = (practiceRow as { practice_run_id?: string | null } | null)?.practice_run_id;
+      const { practiceSideEffectBlockResult } = await import("@/lib/practice-run/isolation");
+      const blocked = practiceSideEffectBlockResult({
+        practiceRunId,
+        kind: "client_invitation",
+      });
+      if (blocked) {
+        return {
+          ok: false,
+          message:
+            "Practice Runs simulate sending agreements inside the guided journey. Real signing invitations are not sent.",
+        } as ContractActionResult;
+      }
     }
 
     // Client-first: venue signature is not required to issue the contract.

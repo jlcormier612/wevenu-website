@@ -1,0 +1,132 @@
+{
+  "at": "2026-11-17T22:01:53.826Z",
+  "base": "http://127.0.0.1:3041",
+  "criteria": {
+    "preparation": {
+      "status": "PASS",
+      "evidence": {
+        "excerpt": "Prepared for this Practice Run Tasks: 5 · Practice-only example Timeline: 13 · Hello to Cheers starter Documents ready to share: 2 · Venue-only: 2 Questionnaire: Prepared · Practice-only example Wedding website: Draft ready (not published) Shared resources follow real release rules. Unshared drafts "
+      }
+    },
+    "venue_tasks_timeline": {
+      "status": "PASS",
+      "evidence": {
+        "tasks": 5,
+        "timeline": 13
+      }
+    },
+    "draft_before_share": {
+      "status": "PASS",
+      "evidence": {
+        "privateHidden": true
+      }
+    },
+    "share_state": {
+      "status": "PASS",
+      "evidence": {
+        "sharedAt": "2026-11-17T22:02:03.298Z"
+      }
+    },
+    "client_released_tasks": {
+      "status": "PASS",
+      "evidence": {
+        "count": 5
+      }
+    },
+    "client_action_persist": {
+      "status": "PASS",
+      "evidence": {
+        "clientTaskDone": true,
+        "clientActionDetail": {
+          "kind": "complete-task",
+          "status": 200,
+          "patchJson": {
+            "ok": true
+          },
+          "taskId": "65931664-7365-47bf-a4ab-25e69e7d3435"
+        }
+      }
+    },
+    "questionnaire_accessible": {
+      "status": "PASS",
+      "evidence": {
+        "questionnaireOk": true,
+        "id": "2d48f0e9-7356-4db6-8832-7605c067a76a"
+      }
+    },
+    "document_visibility": {
+      "status": "PASS",
+      "evidence": {
+        "docsOk": true
+      }
+    },
+    "website_safe": {
+      "status": "PASS",
+      "evidence": {
+        "site": {
+          "id": "5bb140dc-858c-43c4-b24d-0a25935e8d0c",
+          "status": "draft",
+          "is_published": false
+        }
+      }
+    },
+    "messaging": {
+      "status": "PASS",
+      "evidence": {
+        "sawBoth": true,
+        "postOk": true,
+        "threadHasVenue": true,
+        "threadHasClient": true,
+        "dbHasVenue": true,
+        "dbHasClient": true
+      }
+    },
+    "isolation": {
+      "status": "PASS",
+      "evidence": {
+        "eventRow": {
+          "booked_at": null,
+          "exclude_from_business_reporting": true,
+          "practice_run_id": "6195979a-3a60-4646-b919-25dde7c99078"
+        },
+        "qbo": {
+          "before": 0,
+          "after": 0
+        },
+        "realClients": {
+          "before": 0,
+          "after": 0
+        }
+      }
+    },
+    "mobile_ux": {
+      "status": "PASS",
+      "evidence": {
+        "overflow": {
+          "overflows": false
+        },
+        "unfinished": false
+      }
+    }
+  },
+  "notes": [
+    {
+      "docsCount": 3,
+      "privateLeak": false
+    },
+    {
+      "messagingTyped": "PM04 collab 1794952936251",
+      "expected": "PM04 collab 1794952936251"
+    },
+    {
+      "finishSkipped": "already complete or not yet enabled"
+    }
+  ],
+  "runId": "6195979a-3a60-4646-b919-25dde7c99078",
+  "summary": {
+    "passed": 12,
+    "failed": 0,
+    "total": 12,
+    "fatal": null
+  }
+}

@@ -89,6 +89,21 @@ export async function bookClient(
   const { venueId, clientId } = input;
   if (!clientId) return { ok: false, message: "A client is required to book." };
 
+  // Practice Run hard stop — never operationally book a practice-linked client.
+  {
+    const { data: practiceRow } = await supabase
+      .from("clients")
+      .select("practice_run_id")
+      .eq("venue_id", venueId)
+      .eq("id", clientId)
+      .maybeSingle();
+    const practiceRunId = (practiceRow as { practice_run_id?: string | null } | null)?.practice_run_id;
+    if (typeof practiceRunId === "string" && practiceRunId.trim()) {
+      const { practiceSideEffectBlockedMessage } = await import("@/lib/practice-run/isolation");
+      return { ok: false, message: practiceSideEffectBlockedMessage("public_availability_block") };
+    }
+  }
+
   const guest = emptyToNull(input.event?.guestCount);
   const parsedGuest = guest ? Number.parseInt(guest, 10) : Number.NaN;
   const confirmed = input.confirmedOccupancy ?? null;

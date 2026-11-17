@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 
 import { LeadDetail } from "@/components/leads/lead-detail";
+import { PracticeContextBanner } from "@/components/setup-hub/practice-context-banner";
 import { withTimeout } from "@/lib/async/with-timeout";
 import { getHolds, getSpaces, getCapacityRules } from "@/lib/availability/service";
 import { effectiveMaxSimultaneousEvents } from "@/lib/availability/event-occupancy";
@@ -19,6 +20,7 @@ import { leadDisplayName } from "@/lib/leads/constants";
 import { getLead } from "@/lib/leads/service";
 import { getActiveTemplate } from "@/lib/pipeline-templates/service";
 import { getPackagesWithItems } from "@/lib/packages/service";
+import { findPracticeRunForSample } from "@/lib/practice-run/service";
 import { getCurrentStaffMember, getTeamMembers } from "@/lib/team/service";
 import { getTourAppointmentsForLead } from "@/lib/tours/service";
 import { getConversationIdForRelationship } from "@/lib/conversations/service";
@@ -248,45 +250,49 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
   // treats Date.now() as impure during render; see the identical pattern in
   // app/(app)/leads/page.tsx and app/(app)/clients/page.tsx.
   const now = new Date().toISOString();
+  const practiceRun = await findPracticeRunForSample({ leadId: page.lead.id });
   return (
-    <LeadDetail
-      lead={page.lead}
-      now={now}
-      relationshipArchived={Boolean(page.archiveState?.archivedAt)}
-      holds={page.holds}
-      spaces={page.spaces}
-      maxSimultaneousEvents={effectiveMaxSimultaneousEvents(page.capacityRules)}
-      documents={page.documents}
-      workspaceDocuments={page.workspaceDocuments}
-      pinnedDocumentKeys={[...page.pinnedKeys]}
-      luvDrafts={page.luvDrafts}
-      deferDocuments={page.documentsDeferred}
-      deferLuvDrafts={page.luvDraftsDeferred}
-      autoLuvDraft={autoLuvDraft}
-      tourAppointments={page.tourAppointments}
-      conversationId={page.conversationId}
-      messageAttention={page.messageAttention}
-      conversationInternalNotes={page.conversationInternalNotes}
-      bookingJourney={page.bookingJourney}
-      packages={page.packages}
-      smsPermission={page.smsPermission}
-      textingConfigured={page.textingConfigured}
-      duplicateReview={page.duplicateReview}
-      venueStages={page.venueStages}
-      staffOptions={page.staffOptions}
-      currentStaffId={page.currentStaffId}
-      photoUrl={page.photo?.displayedPhotoUrl ?? null}
-      venueTimezone={page.venueTimezone}
-      contextualObservations={page.contextualObservations}
-      followUpDraftCapable={page.followUpDraftCapable}
-      followUpDraftEligible={page.followUpDraftEligible}
-      followUpDraftIneligibleReason={page.followUpDraftIneligibleReason}
-      followUpProactiveRecommended={page.followUpProactiveRecommended}
-      spaceOperatingMode={page.spaceOperatingMode}
-      holdBlocksAvailability={page.holdBlocksAvailability}
-      spacePreferences={page.spacePreferences}
-      spaceAssignments={page.spaceAssignments}
-      openSetupPayments={setupPayments === "1"}
-    />
+    <>
+      {practiceRun ? <PracticeContextBanner run={practiceRun} /> : null}
+      <LeadDetail
+        lead={page.lead}
+        now={now}
+        relationshipArchived={Boolean(page.archiveState?.archivedAt)}
+        holds={page.holds}
+        spaces={page.spaces}
+        maxSimultaneousEvents={effectiveMaxSimultaneousEvents(page.capacityRules)}
+        documents={page.documents}
+        workspaceDocuments={page.workspaceDocuments}
+        pinnedDocumentKeys={[...page.pinnedKeys]}
+        luvDrafts={page.luvDrafts}
+        deferDocuments={page.documentsDeferred}
+        deferLuvDrafts={page.luvDraftsDeferred}
+        autoLuvDraft={autoLuvDraft}
+        tourAppointments={page.tourAppointments}
+        conversationId={page.conversationId}
+        messageAttention={page.messageAttention}
+        conversationInternalNotes={page.conversationInternalNotes}
+        bookingJourney={page.bookingJourney}
+        packages={page.packages}
+        smsPermission={page.smsPermission}
+        textingConfigured={page.textingConfigured}
+        duplicateReview={page.duplicateReview}
+        venueStages={page.venueStages}
+        staffOptions={page.staffOptions}
+        currentStaffId={page.currentStaffId}
+        photoUrl={page.photo?.displayedPhotoUrl ?? null}
+        venueTimezone={page.venueTimezone}
+        contextualObservations={page.contextualObservations}
+        followUpDraftCapable={page.followUpDraftCapable}
+        followUpDraftEligible={page.followUpDraftEligible}
+        followUpDraftIneligibleReason={page.followUpDraftIneligibleReason}
+        followUpProactiveRecommended={page.followUpProactiveRecommended}
+        spaceOperatingMode={page.spaceOperatingMode}
+        holdBlocksAvailability={page.holdBlocksAvailability}
+        spacePreferences={page.spacePreferences}
+        spaceAssignments={page.spaceAssignments}
+        openSetupPayments={setupPayments === "1"}
+      />
+    </>
   );
 }

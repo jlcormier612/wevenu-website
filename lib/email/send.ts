@@ -66,6 +66,14 @@ export function resolveSendEmailReplyTo(opts: {
 }
 
 export async function sendEmail(payload: EmailPayload): Promise<SendResult> {
+  // Practice Run hard stop — never deliver to practice sample addresses.
+  const { isPracticeSampleEmail, practiceSideEffectBlockedMessage } = await import(
+    "@/lib/practice-run/isolation"
+  );
+  if (isPracticeSampleEmail(payload.to)) {
+    return { ok: false, message: practiceSideEffectBlockedMessage("email") };
+  }
+
   const mode = getCommunicationMode();
   if (mode === "disabled") {
     return { ok: false, message: "Sending is turned off in this environment." };

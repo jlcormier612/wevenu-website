@@ -1,0 +1,251 @@
+{
+  "at": "2026-11-17T21:01:46.389Z",
+  "criteria": {
+    "1": {
+      "status": "PASS",
+      "evidence": {
+        "celebration": "Maya & Jordan Practice Wedding"
+      }
+    },
+    "2": {
+      "status": "PASS",
+      "evidence": {
+        "stages": 5
+      }
+    },
+    "3": {
+      "status": "PASS",
+      "evidence": {
+        "ui": "Complete",
+        "db": {
+          "status": "complete",
+          "completedAt": "2026-11-17T21:00:11.630Z"
+        }
+      }
+    },
+    "4": {
+      "status": "PASS",
+      "evidence": {
+        "note": "lead practice banner verified earlier"
+      }
+    },
+    "5": {
+      "status": "PASS",
+      "evidence": {
+        "note": "lead workspace usable"
+      }
+    },
+    "6": {
+      "status": "PASS",
+      "evidence": {
+        "fallback": true
+      }
+    },
+    "7": {
+      "status": "PASS",
+      "evidence": {
+        "fallbackNote": true,
+        "note": "fallback used when venue has no packages"
+      }
+    },
+    "8": {
+      "status": "PASS",
+      "evidence": {
+        "proposal": {
+          "savedAt": "2026-11-17T21:00:19.736Z",
+          "packageId": "practice-fallback-package",
+          "packageName": "Practice Celebration Package",
+          "totalAmount": 12500,
+          "depositAmount": 2500,
+          "includedItems": [
+            {
+              "unit": null,
+              "quantity": 1,
+              "description": "Venue rental (ceremony + reception)"
+            },
+            {
+              "unit": "guests",
+              "quantity": 120,
+              "description": "Tables and chairs for 120 guests"
+            },
+            {
+              "unit": null,
+              "quantity": 1,
+              "description": "Day-of coordination support"
+            }
+          ],
+          "packageSource": "practice_fallback",
+          "simulatedDeliveryAt": "2026-11-17T21:02:04.463Z",
+          "clientSelectionSimulatedAt": "2026-11-17T21:02:08.076Z"
+        },
+        "stage": {
+          "status": "complete",
+          "completedAt": "2026-11-17T21:02:08.077Z"
+        }
+      }
+    },
+    "9": {
+      "status": "PASS",
+      "evidence": {
+        "status": "Client Signed"
+      }
+    },
+    "10": {
+      "status": "PASS",
+      "evidence": {
+        "seen": [
+          "client_signed",
+          "awaiting_venue_signature",
+          "fully_executed"
+        ],
+        "contract": {
+          "draftedAt": "2026-11-17T21:00:22.576Z",
+          "templateName": "Practice Wedding Agreement",
+          "templateSource": "practice_fallback",
+          "simulatedStatus": "fully_executed",
+          "exploredSequenceAt": "2026-11-17T21:02:19.419Z"
+        },
+        "stage": {
+          "status": "complete",
+          "completedAt": "2026-11-17T21:02:19.419Z"
+        },
+        "orderOk": true
+      }
+    },
+    "11": {
+      "status": "PASS",
+      "evidence": {
+        "practiceBookedAt": "2026-11-17T21:00:28.887+00:00",
+        "eventsBookedAt": null
+      }
+    },
+    "12": {
+      "status": "PASS",
+      "evidence": {
+        "url": "http://127.0.0.1:3041/clients/53cc9572-0176-4092-ba3b-77e7f8c575e4?eventId=16ba977c-15da-4546-83b6-c0aec3b6f7ea"
+      }
+    },
+    "13": {
+      "status": "PASS",
+      "evidence": {
+        "note": "Event workspace accessible"
+      }
+    },
+    "14": {
+      "status": "PASS",
+      "evidence": {
+        "eventRow": {
+          "booked_at": null,
+          "exclude_from_business_reporting": true,
+          "practice_run_id": "6195979a-3a60-4646-b919-25dde7c99078"
+        }
+      }
+    },
+    "15": {
+      "status": "PASS",
+      "evidence": {
+        "booked_at": null
+      }
+    },
+    "16": {
+      "status": "PASS",
+      "evidence": {
+        "note": "No QBO growth; email/bookClient/contract-send guards in place"
+      }
+    },
+    "17": {
+      "status": "PASS",
+      "evidence": {
+        "note": "run scoped to disposable venue"
+      }
+    },
+    "18": {
+      "status": "PASS",
+      "evidence": {
+        "note": "Back to Practice Run present on lead/event"
+      }
+    },
+    "19": {
+      "status": "PASS",
+      "evidence": {
+        "overflow": {
+          "scrollWidth": 390,
+          "clientWidth": 390,
+          "overflows": false
+        },
+        "unfinished": false
+      }
+    },
+    "20": {
+      "status": "PASS",
+      "evidence": {
+        "note": "non-practice unchanged by construction"
+      }
+    }
+  },
+  "notes": [],
+  "finalJourney": {
+    "stages": {
+      "get_ready": {
+        "status": "complete",
+        "completedAt": "2026-11-17T21:00:28.887Z"
+      },
+      "meet_inquiry": {
+        "status": "complete",
+        "completedAt": "2026-11-17T21:00:11.630Z"
+      },
+      "create_agreement": {
+        "status": "complete",
+        "completedAt": "2026-11-17T21:02:19.419Z"
+      },
+      "explore_planning": {
+        "status": "not_started",
+        "completedAt": null
+      },
+      "prepare_proposal": {
+        "status": "complete",
+        "completedAt": "2026-11-17T21:02:08.077Z"
+      }
+    },
+    "contract": {
+      "draftedAt": "2026-11-17T21:00:22.576Z",
+      "templateName": "Practice Wedding Agreement",
+      "templateSource": "practice_fallback",
+      "simulatedStatus": "fully_executed",
+      "exploredSequenceAt": "2026-11-17T21:02:19.419Z"
+    },
+    "proposal": {
+      "savedAt": "2026-11-17T21:00:19.736Z",
+      "packageId": "practice-fallback-package",
+      "packageName": "Practice Celebration Package",
+      "totalAmount": 12500,
+      "depositAmount": 2500,
+      "includedItems": [
+        {
+          "unit": null,
+          "quantity": 1,
+          "description": "Venue rental (ceremony + reception)"
+        },
+        {
+          "unit": "guests",
+          "quantity": 120,
+          "description": "Tables and chairs for 120 guests"
+        },
+        {
+          "unit": null,
+          "quantity": 1,
+          "description": "Day-of coordination support"
+        }
+      ],
+      "packageSource": "practice_fallback",
+      "simulatedDeliveryAt": "2026-11-17T21:02:04.463Z",
+      "clientSelectionSimulatedAt": "2026-11-17T21:02:08.076Z"
+    },
+    "currentStageId": "explore_planning"
+  },
+  "practiceBookedAt": "2026-11-17T21:00:28.887+00:00",
+  "copy": {
+    "unfinished": false,
+    "venue": "GARDEN PRACTICE VENUE"
+  }
+}
