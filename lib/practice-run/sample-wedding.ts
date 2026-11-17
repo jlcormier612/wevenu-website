@@ -143,12 +143,17 @@ export async function createSampleWedding(
     resolvedRelationshipId =
       (clientRow as { relationship_id?: string | null } | null)?.relationship_id ?? null;
   }
-  await seedPracticeCouplePhoto(client, venueId, resolvedRelationshipId);
-
-  return practiceRepo.attachPracticeSample(client, venueId, run.id, {
+  const attached = await practiceRepo.attachPracticeSample(client, venueId, run.id, {
     leadId,
     clientId,
     eventId,
     relationshipId: resolvedRelationshipId,
   });
+  // Seed after attach so we always use the final sample_relationship_id.
+  await seedPracticeCouplePhoto(
+    client,
+    venueId,
+    attached.sampleRelationshipId ?? resolvedRelationshipId,
+  );
+  return attached;
 }
