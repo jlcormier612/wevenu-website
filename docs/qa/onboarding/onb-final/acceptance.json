@@ -1,0 +1,205 @@
+{
+  "at": "2026-11-17T23:57:20.099Z",
+  "base": "https://app.sandbox.hellotocheers.com",
+  "servingHint": null,
+  "criteria": {
+    "setup_hub_overview": {
+      "status": "PASS"
+    },
+    "bring_your_business": {
+      "status": "PASS",
+      "evidence": {
+        "url": "https://app.sandbox.hellotocheers.com/setup-hub/bring-your-business",
+        "note": "Entry/review surface reachable"
+      }
+    },
+    "guided_setup": {
+      "status": "PASS"
+    },
+    "practice_enter": {
+      "status": "PASS"
+    },
+    "planning_prepare_share": {
+      "status": "PASS",
+      "evidence": {
+        "practiceBookedAt": "2026-11-17T23:57:50.058+00:00",
+        "planning": {
+          "counts": {
+            "tasks": 5,
+            "timeline": 12,
+            "questionnaires": 1,
+            "documentsShared": 1,
+            "documentsPrivate": 1
+          },
+          "sources": {
+            "tasks": "practice_fallback",
+            "website": "practice_fallback",
+            "timeline": "htc_starter",
+            "documents": "practice_fallback",
+            "inventory": "practice_fallback",
+            "eventOrder": "practice_fallback",
+            "questionnaire": "practice_fallback"
+          },
+          "sharedAt": null,
+          "preparedAt": "2026-11-17T23:57:57.118Z",
+          "reviewedAt": null,
+          "resourceIds": {
+            "taskIds": [
+              "4643b076-482d-48a3-b164-7d6ca3761ece",
+              "95d8bc05-f848-4d0c-95a8-c10918a75c46",
+              "532b0bd0-524a-4b81-85c4-602aab019c92",
+              "83bf932e-815e-421b-8e3b-74a11997d272",
+              "1803e0a2-fa51-4d7a-94c9-7c7a3903c5a3"
+            ],
+            "websiteId": null,
+            "inventoryId": "7a995293-e246-4d35-864d-6bef65169b37",
+            "eventOrderId": "f1c1cafb-07bc-4b5f-9879-062f437f6db9",
+            "privateTaskIds": [
+              "1803e0a2-fa51-4d7a-94c9-7c7a3903c5a3"
+            ],
+            "releaseTaskIds": [
+              "95d8bc05-f848-4d0c-95a8-c10918a75c46"
+            ],
+            "questionnaireId": "4cb4a776-02d2-4aa3-a5da-259bbdb5aa4d",
+            "timelineEntryIds": [
+              "fb5509ae-a002-4de0-8f4f-5fdf31d0e5ec",
+              "ffe37d5d-873a-494e-852f-9a6dd2f486c1",
+              "dfe9143c-5f77-4982-8cce-32d4445f6bc4",
+              "cfa5edfe-02c3-4cb7-b6f7-2f1ff53eaf83",
+              "aa7432a2-d59e-4c1b-ab22-1c94e5505ffb",
+              "1833e314-3915-41d3-9c2e-a5a339ea22fe",
+              "33f0ac44-ceb5-472a-8bb5-aa894d81a7aa",
+              "0dbc4606-4a50-41ae-aa55-2fceed547a38",
+              "f38bc54e-fab3-4d32-83d8-b497f13a364b",
+              "af70089d-e459-4006-b029-445a8d385cc5",
+              "6df3e11b-fc68-4c42-89ce-1e591ba89a0c",
+              "e539d53e-06de-476f-81d8-ceb81c274126"
+            ],
+            "sharedDocumentIds": [
+              "b999fc78-6703-4c40-9e2d-a85011c047cc"
+            ],
+            "privateDocumentIds": [
+              "ada74445-817d-49f9-a050-a8075f8be7ae"
+            ]
+          },
+          "clientTriedAt": null
+        },
+        "contractStatus": "fully_executed"
+      }
+    },
+    "client_couple_photo": {
+      "status": "PASS",
+      "evidence": {
+        "found": true,
+        "src": "/practice/maya-jordan-couple.png",
+        "complete": true,
+        "naturalWidth": 572,
+        "heroShown": true
+      }
+    },
+    "client_planning_action": {
+      "status": "PASS",
+      "evidence": {
+        "taskCount": 3,
+        "clientAction": true
+      }
+    },
+    "client_message": {
+      "status": "PASS"
+    },
+    "venue_sees_client_message": {
+      "status": "PASS"
+    },
+    "venue_reply": {
+      "status": "PASS"
+    },
+    "finish_return": {
+      "status": "PASS"
+    },
+    "reset_restart": {
+      "status": "PASS",
+      "evidence": {
+        "before": "d667c8b6-bda0-4367-9602-de0258dcfc72",
+        "after": "6abfa51c-fcd8-4ccd-8fcd-44f02ecb950c"
+      }
+    },
+    "reset_couple_photo": {
+      "status": "PASS",
+      "evidence": {
+        "resetPhoto": {
+          "found": true,
+          "src": "/practice/maya-jordan-couple.png",
+          "naturalWidth": 572
+        },
+        "resetRel": {
+          "client_photo_url": "/practice/maya-jordan-couple.png",
+          "client_photo_shared": true
+        }
+      }
+    },
+    "go_live_control": {
+      "status": "PASS",
+      "evidence": {
+        "finishEnabled": false,
+        "finishDisabled": true,
+        "hasHint": true,
+        "note": "Intentionally disabled until readiness declared; hint explains next step"
+      }
+    },
+    "isolation": {
+      "status": "PASS",
+      "evidence": {
+        "eventRow": {
+          "booked_at": null,
+          "exclude_from_business_reporting": true,
+          "practice_run_id": "6abfa51c-fcd8-4ccd-8fcd-44f02ecb950c"
+        },
+        "willow": {
+          "before": 80,
+          "after": 80
+        },
+        "qbo": {
+          "before": 0,
+          "after": 0
+        },
+        "realClients": {
+          "before": 0,
+          "after": 0
+        }
+      }
+    },
+    "mobile_ux": {
+      "status": "PASS",
+      "evidence": {
+        "overflow": false
+      }
+    }
+  },
+  "notes": [
+    {
+      "couplePhotoSeed": {
+        "client_photo_url": "/practice/maya-jordan-couple.png",
+        "client_photo_shared": true,
+        "venue_display_source": "client"
+      }
+    },
+    {
+      "completedTaskId": "4643b076-482d-48a3-b164-7d6ca3761ece",
+      "taskCount": 3
+    },
+    {
+      "postResetCouplePhoto": {
+        "client_photo_url": "/practice/maya-jordan-couple.png",
+        "client_photo_shared": true
+      }
+    }
+  ],
+  "gaps": [],
+  "runId": "d667c8b6-bda0-4367-9602-de0258dcfc72",
+  "summary": {
+    "passed": 16,
+    "failed": 0,
+    "total": 16,
+    "fatal": null
+  }
+}
