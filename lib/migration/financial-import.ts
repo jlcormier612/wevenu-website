@@ -83,7 +83,7 @@ export type FinancialCommitResult =
 
 const PRIVATE_BUCKET = "contract-representations";
 
-function held(message: string): FinancialCommitResult {
+function held(message: string): { ok: false; error: string } {
   return { ok: false, error: `${HELD_PREFIX} ${message}` };
 }
 

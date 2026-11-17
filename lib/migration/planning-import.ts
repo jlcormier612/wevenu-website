@@ -99,7 +99,7 @@ export function planningTimelineRole(value: string | null | undefined): "manual"
   return null;
 }
 
-function hold(message: string): PlanningCommitResult {
+function hold(message: string): { ok: false; error: string } {
   return { ok: false, error: message.startsWith(HELD_PREFIX) ? message : `${HELD_PREFIX} ${message}` };
 }
 

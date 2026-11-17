@@ -281,23 +281,27 @@ export function classifyVenueControlledMatch(
     };
   }
 
-  let best: { record: ImportMatchRecord; signals: DuplicateSignal[]; fileRow: number | null } | null = null;
+  const bestMatch: {
+    current: { record: ImportMatchRecord; signals: DuplicateSignal[]; fileRow: number | null } | null;
+  } = { current: null };
   const consider = (record: ImportMatchRecord, fileRow: number | null) => {
     const signals = signalsAgainstRecord(incoming, record);
     const named = samePrimaryName(incoming, record);
     if (signals.length === 0 && !named) return;
+    const current = bestMatch.current;
     if (
-      !best
-      || signals.length > best.signals.length
-      || (signals.length === best.signals.length && named && !samePrimaryName(incoming, best.record))
-      || (signals.length === best.signals.length && Boolean(record.relationshipId) && !best.record.relationshipId)
+      !current
+      || signals.length > current.signals.length
+      || (signals.length === current.signals.length && named && !samePrimaryName(incoming, current.record))
+      || (signals.length === current.signals.length && Boolean(record.relationshipId) && !current.record.relationshipId)
     ) {
-      best = { record, signals, fileRow };
+      bestMatch.current = { record, signals, fileRow };
     }
   };
   for (const row of existing) consider(row, null);
   for (const row of priorInFile) consider(row, row.fileRow ?? null);
 
+  const best = bestMatch.current;
   if (!best) {
     return {
       kind: "new",
