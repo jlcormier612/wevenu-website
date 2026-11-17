@@ -83,6 +83,8 @@ describe("Practice Run PM-05 lifecycle", () => {
     assert.match(photo, /maya-jordan-couple\.png/);
     assert.match(photo, /PRACTICE_COUPLE_PHOTO_PUBLIC_PATH/);
     assert.doesNotMatch(photo, /publicAppOrigin/);
+    assert.match(photo, /SUPABASE_SERVICE_ROLE_KEY/);
+    assert.match(photo, /trg_guard_relationship_client_photo|service role/i);
     assert.match(photo, /seedPracticeCouplePhoto/);
     assert.match(photo, /client_photo_shared: true/);
     const sample = read("lib/practice-run/sample-wedding.ts");
