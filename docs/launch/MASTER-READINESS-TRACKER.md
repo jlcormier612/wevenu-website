@@ -13,15 +13,15 @@ Older documents (`docs/release-readiness-status.md`, `docs/trust-risk-register.m
 
 ## 1. Executive summary
 
-**Overall:** Sandbox product work is active. Phase B is accepted through B.3. Reporting integrity is complete. Phase C (Contracts & Money) is **COMPLETE — VERIFIED**. Founder approval was granted on 2026-11-17. Application code is not committed, merged, or deployed. Production launch is a separate track and is **not** authorized.
+**Overall:** Phase B, MS-RPT, Phase C, and Phase D are merged to `main` and deployed to Sandbox. Pull request #78 merged as `deffb7d6368a8f091071a0fe251de931824de754`. Deploy Sandbox run `44153035245` succeeded. The running venue-app image is `htc-sandbox-venue-app:deffb7d6368a8f091071a0fe251de931824de754` on task definition `htc-sandbox-venue-app:1216`. A focused Willow Grove smoke passed. Production launch is a separate track and is **not** authorized. TS-001 remains open.
 
 | Track | Status |
 |---|---|
-| Phase B — Bring Your Business | **COMPLETE — VERIFIED** (B.1–B.3 local commits; B.2/B.3 founder-accepted) |
-| Reporting integrity | **COMPLETE — VERIFIED** |
-| Phase C — Contracts & Money | **COMPLETE — VERIFIED** |
-| Phase D — Planning Materials | **COMPLETE — VERIFIED** |
-| Final integrated migration acceptance | **OPEN** — C and D are verified; this acceptance has not started |
+| Phase B — Bring Your Business | **COMPLETE — VERIFIED** and on Sandbox (`deffb7d6`) |
+| Reporting integrity | **COMPLETE — VERIFIED** and on Sandbox (`deffb7d6`) |
+| Phase C — Contracts & Money | **COMPLETE — VERIFIED** and on Sandbox (`deffb7d6`) |
+| Phase D — Planning Materials | **COMPLETE — VERIFIED** and on Sandbox (`deffb7d6`) |
+| Final integrated migration release | **ON SANDBOX** — PR #78, deploy run `44153035245`, focused Willow Grove smoke passed. Production is not authorized. |
 | Production launch | **OPEN** — no Production customers; env/legal/ops items remain |
 
 **Migration blockers:** none.  
@@ -58,9 +58,9 @@ Older documents (`docs/release-readiness-status.md`, `docs/trust-risk-register.m
 
 ## 3. Next Up
 
-1. **TS-001** — pre-existing typecheck baseline remains **OPEN**. It is a separate launch-readiness item and is not closed by MS-C or MS-D.
-2. **MS-D** — Phase D is **COMPLETE — VERIFIED**. Do not reopen it from this closeout. Do not start the integrated acceptance from this closeout.
-3. **Application code for Phase C** — accepted and uncommitted. Not merged or deployed. Do not treat it as production-ready.
+1. **TS-001** — pre-existing typecheck baseline remains **OPEN**. It is a separate launch-readiness item and is not closed by the Sandbox integration release.
+2. **Known baseline test failures** remain separately tracked. They are not new regressions from this release.
+3. **Production** remains unauthorized. Do not deploy this release to Production.
 
 ---
 
@@ -379,6 +379,7 @@ TS-001 stays **OPEN**. Application code is not committed, merged, or deployed. N
 | 2026-11-17 | Founder approved MS-C. Status COMPLETE — VERIFIED. Known limitations preserved. TS-001 remains OPEN separately. Phase D not started. Application code not committed, merged, or deployed. |
 | 2026-11-17 | Phase D planning import implemented on the existing migration engine. Vocabulary migration `7cf7401` applied by run `44137654693`. Disposable acceptance on `Phase C Disposable mwkeg1c2`. Status IMPLEMENTED — AWAITING APPROVAL. Not merged or deployed. TS-001 remains open. |
 | 2026-11-17 | Founder approved MS-D subject to client Timeline visibility. Imported client entry is visible to venue staff, still client-owned, not submitted, and not shared. Bloom Floral retry added no vendor alert. Status COMPLETE — VERIFIED. TS-001 remains OPEN. Phases B and C were not reopened. Application code was not committed, merged, or deployed. |
+| 2026-11-17 | Founder authorized the GREEN integration candidate `763bf33b`. PR #78 merged as `deffb7d6368a8f091071a0fe251de931824de754`. Deploy Sandbox run `44153035245` succeeded. Venue-app task definition `htc-sandbox-venue-app:1216` serves that SHA. Focused Willow Grove smoke passed: Dashboard shows 49 booked events and $996,300 invoiced, cash collected $316,459, outstanding $305,375; Contracts All 78; Payments All 78; Setup Hub and Bring Your Business entry are present; Avery & Jordan Cole Wedding opens with Timeline items 0, Floor Plans empty state, and Event Order not started. TS-001 remains OPEN. Production was not deployed. |
 
 ---
 
