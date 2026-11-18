@@ -26,8 +26,15 @@ import {
   type LuvAskContractFact,
   type LuvAskDocumentFact,
   type LuvAskPaymentFacts,
+  type LuvAskPlanningFacts,
   type LuvAskPortalContext,
 } from "@/lib/luv/portal-context/types";
+import {
+  buildLuvAskPlanningFacts,
+  type PlanningQuestionnaireInput,
+  type PlanningTaskInput,
+  type PlanningTimelineEntryInput,
+} from "@/lib/luv/portal-context/planning";
 
 export type PortalContextScheduleInput = PortalPaymentScheduleLike & {
   displayName?: string | null;
@@ -218,6 +225,12 @@ export function buildLuvAskPortalContext(input: {
   documents?: PortalContextDocumentInput[];
   /** contractId → signers; omit entries when not loaded */
   contractSignersById?: Record<string, PortalContextContractSignerInput[]>;
+  tasks?: PlanningTaskInput[] | null;
+  questionnaires?: PlanningQuestionnaireInput[] | null;
+  timelineEntries?: PlanningTimelineEntryInput[] | null;
+  timelineAvailable?: boolean;
+  /** When false, leave planning null (Phase 2A-only callers). Default true when any planning input is passed. */
+  includePlanning?: boolean;
   now?: Date;
 }): LuvAskPortalContext {
   const ctx = emptyLuvAskPortalContext();
@@ -250,6 +263,26 @@ export function buildLuvAskPortalContext(input: {
 
   ctx.contracts = contractFacts;
   ctx.documents = documentFacts;
+
+  const includePlanning =
+    input.includePlanning
+    ?? (
+      input.tasks != null
+      || input.questionnaires != null
+      || input.timelineEntries != null
+      || input.timelineAvailable != null
+    );
+  if (includePlanning) {
+    const planning: LuvAskPlanningFacts = buildLuvAskPlanningFacts({
+      tasks: input.tasks,
+      questionnaires: input.questionnaires,
+      timelineEntries: input.timelineEntries,
+      timelineAvailable: input.timelineAvailable,
+      now: input.now,
+    });
+    ctx.planning = planning;
+  }
+
   return ctx;
 }
 

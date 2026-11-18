@@ -1,6 +1,7 @@
 /**
  * Load authoritative portal payloads and build LuvAskPortalContext.
- * Reuses the same RPCs as /api/portal/payments and /api/portal/documents.
+ * Reuses the same RPCs as portal payments / documents / tasks / questionnaire / timeline.
+ * Called only from Ask Luv POST — never from portal home or venue GET paths.
  */
 
 import { createAdminClient } from "@/integrations/supabase/admin";
@@ -12,6 +13,10 @@ import {
   selectCanonicalPaymentSchedules,
   type PortalPaymentScheduleLike,
 } from "@/lib/portal/payment-schedules";
+import {
+  resolvePortalTasks,
+  resolvePortalTimeline,
+} from "@/lib/portal/service";
 
 type DocRow = {
   id?: string;
@@ -82,10 +87,22 @@ async function loadContractSignersById(
 export async function loadLuvAskPortalContext(token: string): Promise<LuvAskPortalContext> {
   const supabase = await createClient();
 
-  const [paymentsRes, documentsRes, onlinePaymentsReady] = await Promise.all([
+  const [
+    paymentsRes,
+    documentsRes,
+    onlinePaymentsReady,
+    tasks,
+    questionnaireRes,
+    timeline,
+  ] = await Promise.all([
     supabase.rpc("get_portal_payments", { p_token: token }),
     supabase.rpc("get_couple_documents", { p_token: token }),
     loadOnlinePaymentsReady(token),
+    resolvePortalTasks(token).catch(() => []),
+    supabase.rpc("get_questionnaire_for_portal", { p_token: token }),
+    resolvePortalTimeline(token)
+      .then((t) => ({ ok: true as const, timeline: t }))
+      .catch(() => ({ ok: false as const, timeline: null })),
   ]);
 
   const payPayload = (paymentsRes.data ?? {}) as {
@@ -104,11 +121,42 @@ export async function loadLuvAskPortalContext(token: string): Promise<LuvAskPort
     .map((d) => d.id!) as string[];
   const contractSignersById = await loadContractSignersById(contractIds);
 
+  const questionnaireRows = Array.isArray(questionnaireRes.data)
+    ? (questionnaireRes.data as Record<string, unknown>[])
+    : [];
+
   return buildLuvAskPortalContext({
     schedules,
     invoices,
     onlinePaymentsReady,
     documents,
     contractSignersById,
+    includePlanning: true,
+    tasks: tasks.map((t) => ({
+      title: t.title,
+      status: t.status,
+      dueDate: t.dueDate,
+      isRequired: t.isRequired,
+      visibility: t.visibility,
+    })),
+    questionnaires: questionnaireRows.map((q) => ({
+      title: typeof q.title === "string" ? q.title : typeof q.name === "string" ? q.name : null,
+      name: typeof q.name === "string" ? q.name : null,
+      kind: typeof q.kind === "string" ? q.kind : null,
+      status: typeof q.status === "string" ? q.status : null,
+      submittedAt: typeof q.submittedAt === "string" ? q.submittedAt : null,
+      completedAt: typeof q.completedAt === "string" ? q.completedAt : null,
+    })),
+    timelineAvailable: timeline.ok,
+    timelineEntries: timeline.ok
+      ? timeline.timeline.entries.map((e) => ({
+          title: e.title,
+          entryTime: e.entryTime,
+          endTime: e.endTime,
+          dayOffset: e.dayOffset,
+          owner: e.owner,
+          audiences: e.audiences,
+        }))
+      : [],
   });
 }

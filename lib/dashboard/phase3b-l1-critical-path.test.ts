@@ -99,6 +99,12 @@ const READY_FACTS: VenueReadinessFacts = {
 describe("Phase 3B — Dashboard L1 critical path (locked live sources)", () => {
   const service = readFileSync(resolve("lib/dashboard/service.ts"), "utf8");
   const page = readFileSync(resolve("app/(app)/dashboard/page.tsx"), "utf8");
+  // Wave C2: L1 / Focus assembly lives in the focus Suspense island, not page.tsx.
+  const focusIsland = readFileSync(
+    resolve("components/dashboard/dashboard-focus-island.tsx"),
+    "utf8",
+  );
+  const l1Assembly = `${page}\n${focusIsland}`;
 
   it("1. persisted recommendation alone cannot produce L1 when validity is not established on GET", () => {
     for (const rec of [
@@ -316,7 +322,7 @@ describe("Phase 3B — Dashboard L1 critical path (locked live sources)", () => 
 
   it("10. Dashboard GET does not call getLuvObservations for L1", () => {
     assert.doesNotMatch(service, /getLuvObservations/);
-    assert.doesNotMatch(page, /getLuvObservations/);
+    assert.doesNotMatch(l1Assembly, /getLuvObservations/);
     assert.match(service, /computeSetupGapObservations/);
     assert.match(service, /readinessDashboardObservations/);
     assert.match(service, /getCommunicationObservations/);
@@ -330,21 +336,24 @@ describe("Phase 3B — Dashboard L1 critical path (locked live sources)", () => 
     assert.doesNotMatch(service, /syncClientAskGapRecommendations/);
     assert.doesNotMatch(service, /syncTourFollowupPatternRecommendation/);
     assert.doesNotMatch(service, /syncPhase5SpotPatternRecommendations/);
-    assert.match(page, /recommendations:\s*\[\]/);
+    assert.match(l1Assembly, /recommendations:\s*\[\]/);
   });
 
   it("12. Dashboard GET does not compute venue insights for L1", () => {
     assert.doesNotMatch(service, /getVenueInsights/);
     assert.doesNotMatch(service, /compute_venue_insights/);
     assert.doesNotMatch(service, /computeInsightObservations/);
-    assert.doesNotMatch(page, /\[\.\.\.data\.luvObservations,\s*\.\.\.data\.insightObservations\]/);
-    assert.match(page, /observations:\s*data\.luvObservations/);
+    assert.doesNotMatch(
+      l1Assembly,
+      /\[\.\.\.data\.luvObservations,\s*\.\.\.data\.insightObservations\]/,
+    );
+    assert.match(l1Assembly, /observations:\s*data\.luvObservations/);
   });
 
   it("13. Focus / Event Readiness behavior remains unchanged", () => {
-    assert.match(page, /Today's Focus/);
-    assert.match(page, /classifyBriefingItems/);
-    assert.match(page, /classifyUpcomingItems/);
+    assert.match(l1Assembly, /Today's Focus/);
+    assert.match(l1Assembly, /classifyBriefingItems/);
+    assert.match(l1Assembly, /classifyUpcomingItems/);
     assert.match(service, /getFocusNeedsAttentionBriefing/);
     assert.match(service, /loadFocusPopulationLeads/);
     const readiness = aggregateFocusEntry([

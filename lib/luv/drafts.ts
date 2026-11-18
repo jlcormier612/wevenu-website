@@ -30,8 +30,13 @@ import {
   evaluateCompletedTour,
 } from "@/lib/luv/completed-tour-intelligence";
 import { followUpDraftBlockReason } from "@/lib/luv/draft-recommendation-surface";
+import {
+  latestVenueOutboundAt,
+  resolveFollowUpDraftRedundancy,
+} from "@/lib/luv/draft-redundancy";
 import { resolveFollowUpDraftEligibility } from "@/lib/luv/follow-up-draft-eligibility";
 import { loadFollowUpTourState } from "@/lib/luv/follow-up-tour-loader";
+import { pendingReviewDrafts } from "@/lib/luv/draft-status";
 import {
   deriveFollowUpProhibitions,
   deriveFollowUpWorkflowIntent,
@@ -459,6 +464,38 @@ export async function generateFollowUpDraft(lead: Lead): Promise<
           ?? "Luv can’t draft a follow-up for this inquiry right now.",
       };
     }
+
+    // Withdraw superseded pendings first so redundancy counts actionable only.
+    const { data: existingDraftRows } = await supabase
+      .from("luv_drafts")
+      .select("*")
+      .eq("venue_id", venue.id)
+      .eq("entity_type", "lead")
+      .eq("entity_id", lead.id)
+      .eq("draft_type", "follow_up_email")
+      .neq("status", "discarded");
+    const afterWithdraw = await lazilyWithdrawIneligibleDrafts(
+      supabase,
+      venue.id,
+      lead.id,
+      (existingDraftRows as DraftRow[] | null) ?? [],
+    );
+    const actionablePending = pendingReviewDrafts(
+      afterWithdraw
+        .filter((r) => r.draft_type === "follow_up_email")
+        .map(mapDraft),
+    );
+    const redundancy = resolveFollowUpDraftRedundancy({
+      actionablePendingFollowUpCount: actionablePending.length,
+      recentVenueOutboundAt: latestVenueOutboundAt(messages),
+    });
+    if (redundancy.block) {
+      return {
+        ok: false,
+        message: redundancy.reason ?? "A follow-up draft isn’t needed right now.",
+      };
+    }
+
     const { workflowIntent, communicationPurpose, communicationExcerpt } = gate;
     const prompt = buildFollowUpPrompt(
       lead,

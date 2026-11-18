@@ -21,6 +21,9 @@ export const LUV_ASK_NEXT_STEP_TYPES = [
   "phrase_question",
   "open_payments",
   "open_documents",
+  "open_tasks",
+  "open_questionnaire",
+  "open_timeline",
 ] as const;
 
 export type LuvAskNextStepType = (typeof LUV_ASK_NEXT_STEP_TYPES)[number];

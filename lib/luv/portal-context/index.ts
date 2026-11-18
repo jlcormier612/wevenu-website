@@ -3,11 +3,18 @@ export type {
   LuvAskDocumentFact,
   LuvAskNextScheduledPayment,
   LuvAskPaymentFacts,
+  LuvAskPlanningFacts,
   LuvAskPortalContext,
   LuvAskPortalProvenance,
+  LuvAskQuestionnaireFact,
+  LuvAskTaskFact,
+  LuvAskTimelineEntryFact,
   LuvAskUnscheduledBalance,
 } from "@/lib/luv/portal-context/types";
-export { emptyLuvAskPortalContext } from "@/lib/luv/portal-context/types";
+export {
+  emptyLuvAskPlanningFacts,
+  emptyLuvAskPortalContext,
+} from "@/lib/luv/portal-context/types";
 export {
   buildLuvAskContractFact,
   buildLuvAskDocumentFact,
@@ -15,6 +22,7 @@ export {
   buildLuvAskPortalContext,
   hasAuthoritativeNextPayment,
 } from "@/lib/luv/portal-context/build";
+export { buildLuvAskPlanningFacts } from "@/lib/luv/portal-context/planning";
 export {
   formatPortalContextForPrompt,
   formatPortalContextPlaceholderForPrompt,

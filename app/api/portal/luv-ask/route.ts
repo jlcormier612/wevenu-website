@@ -5,7 +5,8 @@
  * Knowledge layers:
  *   1. HTC product knowledge — couple-safe Help article projections
  *   2. Venue Guide — published client-facing venue information
- *   3. Portal context — this couple's payments / contracts / documents (Phase 2A)
+ *   3. Portal context — payments / contracts / documents + planning tasks /
+ *      questionnaires / published timeline (Ask POST only — never on portal GET)
  *
  * Luv Intelligence V1: structured outcome + information-gap next steps + signal persistence.
  *

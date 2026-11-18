@@ -80,6 +80,51 @@ export type LuvAskDocumentFact = {
   statusLabel: string | null;
 };
 
+export type LuvAskTaskFact = {
+  title: string;
+  status: "open" | "overdue" | "blocked" | "completed";
+  dueDate: string | null;
+  dueDateLabel: string | null;
+  isRequired: boolean;
+};
+
+export type LuvAskQuestionnaireFact = {
+  title: string;
+  kind: string | null;
+  status: "open" | "in_progress" | "completed";
+};
+
+export type LuvAskTimelineEntryFact = {
+  title: string;
+  entryTime: string | null;
+  endTime: string | null;
+  dayOffset: number;
+  owner: "venue" | "client";
+};
+
+/**
+ * Couple-visible planning snapshot (tasks / questionnaires / published timeline).
+ * Loaded only on Ask Luv POST — never invent missing items.
+ */
+export type LuvAskPlanningFacts = {
+  openTaskCount: number;
+  overdueTaskCount: number;
+  completedTaskCount: number;
+  openTasks: LuvAskTaskFact[];
+  completedTasks: LuvAskTaskFact[];
+  nextSuggestedTask: {
+    title: string;
+    dueDateLabel: string | null;
+    status: LuvAskTaskFact["status"];
+  } | null;
+  questionnaires: LuvAskQuestionnaireFact[];
+  openQuestionnaireCount: number;
+  completedQuestionnaireCount: number;
+  /** False when timeline payload could not be loaded. */
+  timelineAvailable: boolean;
+  timelineEntries: LuvAskTimelineEntryFact[];
+};
+
 /**
  * Typed portal snapshot for Ask Luv.
  * Absent arrays/null fields mean "not available" — never false guesses.
@@ -89,7 +134,25 @@ export type LuvAskPortalContext = {
   payments: LuvAskPaymentFacts | null;
   contracts: LuvAskContractFact[];
   documents: LuvAskDocumentFact[];
+  /** Null when planning pack was not loaded for this turn. */
+  planning: LuvAskPlanningFacts | null;
 };
+
+export function emptyLuvAskPlanningFacts(): LuvAskPlanningFacts {
+  return {
+    openTaskCount: 0,
+    overdueTaskCount: 0,
+    completedTaskCount: 0,
+    openTasks: [],
+    completedTasks: [],
+    nextSuggestedTask: null,
+    questionnaires: [],
+    openQuestionnaireCount: 0,
+    completedQuestionnaireCount: 0,
+    timelineAvailable: false,
+    timelineEntries: [],
+  };
+}
 
 export function emptyLuvAskPortalContext(): LuvAskPortalContext {
   return {
@@ -97,5 +160,6 @@ export function emptyLuvAskPortalContext(): LuvAskPortalContext {
     payments: null,
     contracts: [],
     documents: [],
+    planning: null,
   };
 }

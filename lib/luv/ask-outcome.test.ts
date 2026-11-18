@@ -263,7 +263,16 @@ describe("AC-08 / AC-11 — Signals + unavailable", () => {
   it("default gap next steps stay within V1 allowlist", () => {
     const steps = defaultNextStepsForGap({ hasPublishedContacts: true });
     assert.ok(steps.every((s) =>
-      ["browse_venue_guide", "contact_venue", "phrase_question", "open_payments", "open_documents"].includes(s),
+      [
+        "browse_venue_guide",
+        "contact_venue",
+        "phrase_question",
+        "open_payments",
+        "open_documents",
+        "open_tasks",
+        "open_questionnaire",
+        "open_timeline",
+      ].includes(s),
     ));
   });
 });
