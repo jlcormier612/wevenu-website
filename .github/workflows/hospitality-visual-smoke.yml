@@ -9,6 +9,7 @@
 # (Bumped for ONB-FINAL acceptance evidence PR.)
 # (Bumped for Twilio A2P number-status automation PR #85 — required checks.)
 # (Bumped for Resend notification retry Sandbox release PR — required checks.)
+# (Bumped for Resend VN terminal NOT NULL hotfix PR #89 — required checks.)
 
 name: Hospitality visual smoke
 

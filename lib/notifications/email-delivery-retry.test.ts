@@ -6,6 +6,7 @@ import {
   computeEmailDeliveryBackoffMs,
   parseRetryAfterSeconds,
   resolveDeliveryDisposition,
+  venueNotificationFailureUpdate,
 } from "@/lib/notifications/email-delivery-retry";
 
 describe("parseRetryAfterSeconds", () => {
@@ -60,6 +61,20 @@ describe("resolveDeliveryDisposition", () => {
     assert.equal(d.kind, "terminal");
     assert.equal(d.attemptCount, 1);
     assert.equal(d.code, "invalid_recipient");
+  });
+
+  it("venue terminal update keeps email_next_attempt_at non-null (NOT NULL column)", () => {
+    const d = resolveDeliveryDisposition({
+      code: "invalid_recipient",
+      message: "bad recipient",
+      attemptCountBefore: 0,
+      jitterRatio: 0,
+    });
+    assert.equal(d.kind, "terminal");
+    const patch = venueNotificationFailureUpdate(d);
+    assert.equal(patch.needs_email, false);
+    assert.equal(typeof patch.email_next_attempt_at, "string");
+    assert.notEqual(patch.email_next_attempt_at, null);
   });
 
   it("defers rate_limit with backoff and Retry-After", () => {
