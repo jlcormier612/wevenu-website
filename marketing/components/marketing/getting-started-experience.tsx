@@ -187,8 +187,8 @@ export function GettingStartedExperience() {
                 <Image
                   src={A.practiceVenue}
                   alt={page.practiceRun.venueAlt}
-                  width={1280}
-                  height={820}
+                  width={966}
+                  height={806}
                   sizes="(max-width: 899px) 100vw, 46vw"
                 />
               </div>
@@ -202,8 +202,8 @@ export function GettingStartedExperience() {
                 <Image
                   src={A.practiceClient}
                   alt={page.practiceRun.clientAlt}
-                  width={1280}
-                  height={820}
+                  width={1193}
+                  height={995}
                   sizes="(max-width: 899px) 100vw, 46vw"
                 />
               </div>

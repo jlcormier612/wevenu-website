@@ -9,8 +9,8 @@ export const GETTING_STARTED_ASSETS = {
   importEntry: "/marketing/getting-started/getting-started-import-entry.png",
   connectedWorkspace: "/marketing/getting-started/getting-started-connected-workspace.png",
   setupHub: "/marketing/getting-started/getting-started-setup-hub-overview.png",
-  practiceVenue: "/marketing/getting-started/getting-started-practice-venue-v3.png",
-  practiceClient: "/marketing/getting-started/getting-started-practice-client-v3.png",
+  practiceVenue: "/marketing/getting-started/getting-started-practice-venue-v4.png",
+  practiceClient: "/marketing/getting-started/getting-started-practice-client-v4.png",
 } as const;
 
 export const GETTING_STARTED_PAGE = {
@@ -92,7 +92,7 @@ export const GETTING_STARTED_PAGE = {
       "Practice Run planning collaboration for Maya & Jordan with Prepare, Share, Explore as Client, and Review steps",
     clientLabel: "THEIR CLIENT EXPERIENCE",
     clientAlt:
-      "Maya & Jordan Practice Run client portal Home with their engagement portrait, Willow Grove branding, venue hero, and planning navigation",
+      "Maya & Jordan Practice Run client portal Home with Willow Grove branding, venue hero, planning navigation, and Your Next Steps",
   },
   closing: {
     eyebrow: "READY WHEN YOU ARE",

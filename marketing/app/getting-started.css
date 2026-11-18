@@ -2,6 +2,8 @@
 
 .gs-page {
   --gs-forest: rgb(79, 95, 79);
+  /* Exact Our Story token (.htc-story --story-linen) — warmer beige than global --linen */
+  --story-linen: #ebe5da;
   background: var(--true-white);
   color: var(--gs-forest);
 }
@@ -110,8 +112,8 @@
 
 /* ── Hero ── */
 .gs-hero {
-  /* Explicit linen — must not inherit white from .gs-page */
-  background: var(--linen);
+  /* Explicit warm beige — must not inherit white from .gs-page */
+  background: var(--story-linen);
   padding: 7.5rem 0 4rem;
 }
 
@@ -153,7 +155,7 @@
   overflow: hidden;
   border-radius: 1.25rem;
   border: 1px solid color-mix(in srgb, var(--taupe-medium) 45%, transparent);
-  background: var(--linen);
+  background: var(--story-linen);
   box-shadow: 0 28px 56px -40px rgba(36, 51, 43, 0.35);
   aspect-ratio: 3 / 2;
 }
@@ -167,10 +169,10 @@
 
 /*
  * Bring Your Business — after Make It Yours in the narrative.
- * Rhythm: hero linen → MIY white → BYB linen → practice white → closing botanical.
+ * Rhythm: hero story-linen → MIY white → BYB story-linen → practice white → closing botanical.
  */
 .gs-byb {
-  background: var(--linen);
+  background: var(--story-linen);
   padding: 4.5rem 0;
   border-top: 1px solid color-mix(in srgb, var(--taupe-medium) 36%, transparent);
 }
@@ -469,7 +471,8 @@
 }
 
 .gs-practice-frame {
-  aspect-ratio: 1280 / 820;
+  /* Matched pair: venue v4 + extended client v4 share one aspect */
+  aspect-ratio: 966 / 806;
 }
 
 .gs-practice-frame img {
@@ -539,7 +542,9 @@
 
   .gs-practice-cue {
     display: flex;
+    align-self: center;
     padding-inline: 0.15rem;
+    padding-top: 0;
   }
 
   /* Closing body: keep each deliberate line as one centered measure */
