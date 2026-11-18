@@ -288,8 +288,8 @@ export const HOME_COPY = {
   gettingStarted: {
     kicker: "A Fresh Start, Without Starting Over",
     headline: "Like what you see? Getting started is the best part.",
-    subhead: "Bring your business. Make it yours. Try it all.",
-    lede: "Hello to Cheers helps bring your clients, events, financial history, and planning resources into one connected workspace. Then, a guided setup and ready-to-use starters help make everything feel like yours — and Practice Run lets you experience it before inviting anyone.",
+    subhead: "Make it yours. Bring your business. Try it all.",
+    lede: "Start with a guided setup and ready-to-use starters that help make Hello to Cheers feel like yours. Bring your clients, events, financial history, and planning resources into one connected workspace. Then explore it all through Practice Run before inviting your first client.",
     cta: { href: "/getting-started", label: "Explore Getting Started" },
   },
   founder: {
