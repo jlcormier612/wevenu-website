@@ -660,62 +660,192 @@ function StageExplorePlanning({
     { label: "Payments overview", hash: "invoice", testId: "practice-link-payments" },
   ];
 
-  return (
-    <div className="space-y-4" data-testid="practice-planning-collaboration">
-      <ol className="space-y-2 text-sm text-muted-foreground" data-testid="practice-planning-steps">
-        <li>1. Review your sample wedding workspace.</li>
-        <li>2. Prepare planning resources for Maya &amp; Jordan.</li>
-        <li>3. Share selected resources with the Client perspective.</li>
-        <li>4. Switch to Client and try a few couple activities.</li>
-        <li>5. Return here to review what changed.</li>
-      </ol>
+  type PlanningStepId = "prepare" | "share" | "explore" | "review";
+  const currentStep: PlanningStepId = !run.practiceBookedAt || !planning?.preparedAt
+    ? "prepare"
+    : !planning.sharedAt
+      ? "share"
+      : !planning.clientTriedAt && !complete
+        ? "explore"
+        : "review";
 
-      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-        <Button
-          type="button"
-          disabled={Boolean(busy) || !run.practiceBookedAt}
-          onClick={() => void onPrepare()}
-          data-testid="practice-prepare-planning"
+  const steps: { id: PlanningStepId; label: string }[] = [
+    { id: "prepare", label: "Prepare" },
+    { id: "share", label: "Share" },
+    { id: "explore", label: "Explore as Client" },
+    { id: "review", label: "Review" },
+  ];
+  const stepIndex = steps.findIndex((s) => s.id === currentStep);
+
+  function stepPill(step: { id: PlanningStepId; label: string }, index: number, opts?: { showTestId?: boolean }) {
+    const isCurrent = step.id === currentStep;
+    const isDone = index < stepIndex || (step.id === "review" && complete);
+    return (
+      <span
+        className={
+          isCurrent
+            ? "rounded-full bg-[var(--htc-eucalyptus-surface)] px-2.5 py-1 text-xs font-semibold text-heading ring-1 ring-[color:var(--htc-eucalyptus)]"
+            : isDone
+              ? "rounded-full px-2.5 py-1 text-xs font-medium text-heading"
+              : "rounded-full px-2.5 py-1 text-xs text-muted-foreground"
+        }
+        data-testid={opts?.showTestId === false ? undefined : `practice-planning-step-${step.id}`}
+        data-active={isCurrent ? "true" : "false"}
+      >
+        {step.label}
+      </span>
+    );
+  }
+
+  function stepArrow() {
+    return (
+      <span className="px-0.5 text-xs text-muted-foreground" aria-hidden>
+        →
+      </span>
+    );
+  }
+
+  return (
+    <div className="space-y-5" data-testid="practice-planning-collaboration">
+      <nav
+        aria-label="Planning collaboration progress"
+        data-testid="practice-planning-steps"
+        data-current-step={currentStep}
+      >
+        {/* Mobile: deliberate two-row balance — Prepare→Share / Explore→Review */}
+        <div
+          className="flex flex-col items-center gap-2 sm:hidden"
+          data-testid="practice-planning-steps-mobile"
         >
-          {busy === "planning-prepare"
-            ? "Preparing…"
-            : planning?.preparedAt
-              ? "Refresh planning resources"
-              : "Prepare planning resources"}
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          disabled={Boolean(busy) || !planning?.preparedAt}
-          onClick={() => void onShare()}
-          data-testid="practice-share-planning"
+          <div className="flex items-center justify-center gap-1">
+            {stepPill(steps[0], 0, { showTestId: false })}
+            {stepArrow()}
+            {stepPill(steps[1], 1, { showTestId: false })}
+          </div>
+          <div className="flex items-center justify-center gap-1">
+            {stepPill(steps[2], 2, { showTestId: false })}
+            {stepArrow()}
+            {stepPill(steps[3], 3, { showTestId: false })}
+          </div>
+        </div>
+        {/* Desktop: single progressive row (owns step test ids) */}
+        <div
+          className="hidden flex-wrap items-center gap-x-1 gap-y-2 sm:flex"
+          data-testid="practice-planning-steps-desktop"
         >
-          {busy === "planning-share"
-            ? "Sharing…"
-            : planning?.sharedAt
-              ? "Shared with Client"
-              : "Share with Client perspective"}
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          disabled={Boolean(busy) || !planning?.sharedAt}
-          render={<Link href={clientHref} data-testid="practice-open-client-planning" />}
-          onClick={() => {
-            void onClientTried();
-          }}
-        >
-          Open Client perspective
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          disabled={Boolean(busy) || complete || !planning?.preparedAt}
-          onClick={() => void onReviewed()}
-          data-testid="practice-finish-planning-review"
-        >
-          {busy === "planning-review" ? "Saving…" : "I've reviewed client updates"}
-        </Button>
+          {steps.map((step, index) => (
+            <div key={step.id} className="flex items-center gap-1">
+              {index > 0 ? stepArrow() : null}
+              {stepPill(step, index)}
+            </div>
+          ))}
+        </div>
+      </nav>
+
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+        {currentStep === "prepare" ? (
+          <Button
+            type="button"
+            disabled={Boolean(busy) || !run.practiceBookedAt}
+            onClick={() => void onPrepare()}
+            data-testid="practice-prepare-planning"
+          >
+            {busy === "planning-prepare"
+              ? "Preparing…"
+              : planning?.preparedAt
+                ? "Refresh planning resources"
+                : "Prepare planning resources"}
+          </Button>
+        ) : null}
+        {currentStep === "share" ? (
+          <Button
+            type="button"
+            disabled={Boolean(busy) || !planning?.preparedAt}
+            onClick={() => void onShare()}
+            data-testid="practice-share-planning"
+          >
+            {busy === "planning-share"
+              ? "Sharing…"
+              : planning?.sharedAt
+                ? "Shared with Client"
+                : "Share with Client perspective"}
+          </Button>
+        ) : null}
+        {currentStep === "explore" ? (
+          <Button
+            type="button"
+            disabled={Boolean(busy) || !planning?.sharedAt}
+            render={<Link href={clientHref} data-testid="practice-open-client-planning" />}
+            onClick={() => {
+              void onClientTried();
+            }}
+          >
+            Open Client perspective
+          </Button>
+        ) : null}
+        {currentStep === "review" ? (
+          <Button
+            type="button"
+            disabled={Boolean(busy) || complete || !planning?.preparedAt}
+            onClick={() => void onReviewed()}
+            data-testid="practice-finish-planning-review"
+          >
+            {busy === "planning-review" ? "Saving…" : "I've reviewed client updates"}
+          </Button>
+        ) : null}
+
+        <div className="flex flex-wrap gap-2 sm:ml-auto">
+          {currentStep !== "prepare" && run.practiceBookedAt ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              disabled={Boolean(busy)}
+              onClick={() => void onPrepare()}
+              data-testid="practice-prepare-planning"
+            >
+              {busy === "planning-prepare" ? "Preparing…" : "Refresh resources"}
+            </Button>
+          ) : null}
+          {currentStep !== "share" && planning?.preparedAt ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              disabled={Boolean(busy)}
+              onClick={() => void onShare()}
+              data-testid="practice-share-planning"
+            >
+              {planning?.sharedAt ? "Shared" : "Share"}
+            </Button>
+          ) : null}
+          {currentStep !== "explore" && planning?.sharedAt ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              disabled={Boolean(busy)}
+              render={<Link href={clientHref} data-testid="practice-open-client-planning" />}
+              onClick={() => {
+                void onClientTried();
+              }}
+            >
+              Client view
+            </Button>
+          ) : null}
+          {currentStep !== "review" && planning?.preparedAt && !complete ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              disabled={Boolean(busy)}
+              onClick={() => void onReviewed()}
+              data-testid="practice-finish-planning-review"
+            >
+              Mark reviewed
+            </Button>
+          ) : null}
+        </div>
       </div>
 
       {!run.practiceBookedAt ? (
@@ -758,31 +888,34 @@ function StageExplorePlanning({
         </div>
       ) : null}
 
-      <div className="grid gap-2 sm:grid-cols-2" data-testid="practice-planning-destinations">
-        {destinations.map((dest) => {
-          const href = planningHref(run, dest.hash);
-          if (!href) return null;
-          return (
-            <Button
-              key={dest.hash}
-              type="button"
-              size="sm"
-              variant="outline"
-              className="justify-start"
-              render={<Link href={href} data-testid={dest.testId} />}
-              onClick={() => {
-                void onBegin();
-              }}
-            >
-              {dest.label}
-            </Button>
-          );
-        })}
+      <div className="space-y-2" data-testid="practice-planning-destinations">
+        <p className="text-sm font-medium text-heading">Explore the planning tools</p>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {destinations.map((dest) => {
+            const href = planningHref(run, dest.hash);
+            if (!href) return null;
+            return (
+              <Button
+                key={dest.hash}
+                type="button"
+                size="sm"
+                variant="outline"
+                className="justify-start"
+                render={<Link href={href} data-testid={dest.testId} />}
+                onClick={() => {
+                  void onBegin();
+                }}
+              >
+                {dest.label}
+              </Button>
+            );
+          })}
+        </div>
+        <p className="text-xs text-muted-foreground">
+          These open the real sample Event tools. Practice-linked changes stay isolated. Payments show
+          sample information only — nothing is charged or synced.
+        </p>
       </div>
-      <p className="text-xs text-muted-foreground">
-        These open the real sample Event tools. Practice-linked changes stay isolated. Payments show
-        sample information only — nothing is charged or synced.
-      </p>
     </div>
   );
 }

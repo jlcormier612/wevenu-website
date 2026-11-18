@@ -10,8 +10,8 @@ function read(path: string): string {
 describe("Practice Run PM-04 planning collaboration", () => {
   it("extends explore_planning copy for prepare → share → client → review", () => {
     const journey = read("lib/practice-run/journey.ts");
-    assert.match(journey, /Plan with Maya/);
-    assert.match(journey, /share what the couple should see/i);
+    assert.match(journey, /Bring their celebration to life/);
+    assert.match(journey, /Prepare their planning experience/i);
     assert.match(journey, /PracticePlanningSnapshot/);
     assert.match(journey, /emptyPracticePlanning/);
     const ui = read("components/setup-hub/practice-run-journey.tsx");
@@ -19,6 +19,11 @@ describe("Practice Run PM-04 planning collaboration", () => {
     assert.match(ui, /practice-share-planning/);
     assert.match(ui, /practice-open-client-planning/);
     assert.match(ui, /practice-finish-planning-review/);
+    assert.match(ui, /practice-planning-step-\$\{step\.id\}/);
+    assert.match(ui, /practice-planning-steps-mobile/);
+    assert.match(ui, /practice-planning-steps-desktop/);
+    assert.match(ui, /Explore as Client/);
+    assert.match(ui, /Explore the planning tools/);
     assert.doesNotMatch(ui, /Coming soon|Coming next|PM-0[0-9]/i);
   });
 

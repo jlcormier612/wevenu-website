@@ -26,6 +26,17 @@ describe("Setup Hub readiness copy", () => {
       readiness,
       /You&apos;ve decided you&apos;re ready\. We&apos;ll stop showing setup guidance, but you can continue configuring your venue anytime\./,
     );
+    assert.match(readiness, /setup-ready-undeclared/);
+    assert.match(
+      readiness,
+      /Saying you&apos;re ready doesn&apos;t invite couples or turn anything on/,
+    );
+    // Declared confirmation must not appear in the undeclared block.
+    const undeclared = readiness.slice(
+      readiness.indexOf("setup-ready-undeclared"),
+      readiness.indexOf("We&apos;re ready to start working with couples") + 80,
+    );
+    assert.doesNotMatch(undeclared, /You&apos;ve decided you&apos;re ready/);
     assert.doesNotMatch(readiness, /We&apos;re ready to invite couples/);
     assert.doesNotMatch(readiness, /ready to invite couples!/);
     assert.doesNotMatch(readiness, /You told us you&apos;re ready to invite couples in/);
