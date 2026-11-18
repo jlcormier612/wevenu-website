@@ -29,6 +29,13 @@ import {
 import { loadVenueTwilioSecret } from "@/lib/sms/venue-twilio-secrets";
 import type { TwilioCredentials } from "@/lib/sms/twilio-http";
 import {
+  buildA2pEventStreamsDestinationUrl,
+  ensureVenueA2pEventStreamSink,
+  ensureVenueA2pEventStreamSubscription,
+} from "@/lib/texting-provisioning/event-streams-ops";
+import { isPhoneA2pRegistered } from "@/lib/texting-provisioning/phone-a2p-status";
+import { advanceProvisioningUntilSettled } from "@/lib/texting-provisioning/resume-after-phone-registered";
+import {
   attachPhoneToMessagingService,
   buyVenuePhoneNumber,
   configureMessagingServiceWebhooks,
@@ -46,6 +53,35 @@ import {
 } from "@/lib/texting-provisioning/twilio-ops";
 import { assertTextingPhaseTransition } from "@/lib/texting-registration/lifecycle";
 import type { TextingPhase } from "@/lib/texting-registration/types";
+
+async function requeueProvisioningWait(input: {
+  venueId: string;
+  step: TextingProvisioningStep;
+  message: string;
+  delayMs?: number;
+}): Promise<{ advanced: false; step: TextingProvisioningStep; waiting: true }> {
+  const delayMs = input.delayMs ?? 30_000;
+  const nextAt = new Date(Date.now() + delayMs);
+  await markStepFailed({
+    venueId: input.venueId,
+    step: input.step,
+    errorMessage: input.message,
+    errorCode: "waiting",
+    retryAt: nextAt,
+  });
+  const admin = createAdminClient();
+  await admin
+    .from("venue_texting_provisioning_steps")
+    .update({
+      status: "pending",
+      last_error_message: input.message,
+      next_attempt_at: nextAt.toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("venue_id", input.venueId)
+    .eq("step", input.step);
+  return { advanced: false, step: input.step, waiting: true };
+}
 
 type TransientCreds = {
   authToken?: string;
@@ -408,6 +444,37 @@ export async function processVenueTextingProvisioning(
         await markStepSucceeded({ venueId, step, resourceSid: account.messagingServiceSid });
         break;
       }
+      case "configure_event_streams": {
+        account = account ?? (await getVenueTwilioAccountExtended(venueId));
+        if (!account?.twilioAccountSid) throw new Error("Missing subaccount.");
+        const creds = await venueCredentials(venueId, account.twilioAccountSid);
+        const destinationUrl = buildA2pEventStreamsDestinationUrl(appBaseUrl());
+        const sink = await ensureVenueA2pEventStreamSink({
+          venueId,
+          credentials: creds,
+          destinationUrl,
+          existingSinkSid: account.eventStreamSinkSid,
+        });
+        if (!sink.ok) throw Object.assign(new Error(sink.message), sink);
+        const subscription = await ensureVenueA2pEventStreamSubscription({
+          venueId,
+          credentials: creds,
+          sinkSid: sink.resourceSid!,
+          existingSubscriptionSid: account.eventStreamSubscriptionSid,
+        });
+        if (!subscription.ok) throw Object.assign(new Error(subscription.message), subscription);
+        await upsertVenueTwilioAccount({
+          venueId,
+          eventStreamSinkSid: sink.resourceSid!,
+          eventStreamSubscriptionSid: subscription.resourceSid!,
+        });
+        await markStepSucceeded({
+          venueId,
+          step,
+          resourceSid: subscription.resourceSid!,
+        });
+        break;
+      }
       case "submit_secondary_profile": {
         if (!business?.legalBusinessName || !business.registrationNumber) {
           await setRegistrationPhase({
@@ -734,35 +801,121 @@ export async function processVenueTextingProvisioning(
           phoneNumberSid: account.phoneNumberSid,
         });
         if (!outcome.ok) throw Object.assign(new Error(outcome.message), outcome);
+        // Attachment starts carrier registration — never invent REGISTERED here.
+        await upsertVenueTwilioAccount({
+          venueId,
+          phoneA2pStatus: account.phoneA2pStatus && isPhoneA2pRegistered(account.phoneA2pStatus)
+            ? account.phoneA2pStatus
+            : "PENDING_REGISTRATION",
+          phoneA2pStatusUpdatedAt: new Date().toISOString(),
+          status: "pending_compliance",
+          statusDetail: "Waiting for texting number registration",
+        });
+        await setRegistrationPhase({ venueId, toPhase: "setting_up_number" });
         await markStepSucceeded({ venueId, step, resourceSid: account.phoneNumberSid });
         break;
       }
       case "await_number_a2p": {
-        // Mock / sandbox: treat attached number as registered once attached.
         account = account ?? (await getVenueTwilioAccountExtended(venueId));
-        await upsertVenueTwilioAccount({
-          venueId,
-          phoneA2pStatus: "REGISTERED",
-        });
-        await markStepSucceeded({
+        if (!account?.phoneNumberSid) {
+          throw new Error("Missing phone number for A2P registration wait.");
+        }
+
+        // Secondary safety: Brand/Campaign must still be terminal-approved.
+        // Never infer phone REGISTERED from campaign/MS membership alone.
+        const brand = (account.a2pBrandStatus ?? "").toUpperCase();
+        const campaign = (account.a2pCampaignStatus ?? "").toUpperCase();
+        if (brand && brand !== "APPROVED") {
+          throw Object.assign(new Error("Brand is no longer approved."), {
+            retryable: false,
+            code: "brand_not_approved",
+          });
+        }
+        if (campaign && campaign !== "VERIFIED" && campaign !== "APPROVED") {
+          throw Object.assign(new Error("Campaign is no longer verified."), {
+            retryable: false,
+            code: "campaign_not_verified",
+          });
+        }
+
+        const phoneStatus = (account.phoneA2pStatus ?? "").toUpperCase();
+        if (phoneStatus === "FAILURE") {
+          await setRegistrationPhase({
+            venueId,
+            toPhase: "needs_attention",
+            attentionCode: "number_registration_failed",
+            attentionMessage:
+              "We couldn’t finish setting up your texting number. Please contact support so we can continue.",
+            attentionFixHint: "No change is required to your business details unless support asks.",
+          });
+          await upsertVenueTwilioAccount({
+            venueId,
+            status: "error",
+            statusDetail: "Phone number registration failed",
+          });
+          throw Object.assign(new Error("Phone number registration failed."), {
+            retryable: false,
+            code: "number_registration_failed",
+          });
+        }
+
+        if (isPhoneA2pRegistered(account.phoneA2pStatus)) {
+          await markStepSucceeded({
+            venueId,
+            step,
+            resourceSid: account.phoneNumberSid,
+          });
+          break;
+        }
+
+        if (!account.phoneA2pStatus) {
+          await upsertVenueTwilioAccount({
+            venueId,
+            phoneA2pStatus: "PENDING_REGISTRATION",
+            phoneA2pStatusUpdatedAt: new Date().toISOString(),
+            statusDetail: "Waiting for texting number registration",
+          });
+        }
+
+        if (!account.eventStreamSinkSid || !account.eventStreamSubscriptionSid) {
+          console.error("[texting-provisioning] missing Event Streams config while awaiting number A2P", {
+            venueId,
+            step,
+            timestamp: new Date().toISOString(),
+          });
+        }
+
+        return requeueProvisioningWait({
           venueId,
           step,
-          resourceSid: account?.phoneNumberSid ?? null,
+          message: "Waiting for phone number registration event",
+          delayMs: 60_000,
         });
-        break;
       }
       case "mark_ready": {
         account = account ?? (await getVenueTwilioAccountExtended(venueId));
         if (!account?.phoneNumberSid || !account.defaultFromE164 || !account.a2pCampaignSid) {
           throw new Error("Cannot mark ready — missing sender or campaign.");
         }
+        if ((account.a2pBrandStatus ?? "").toUpperCase() !== "APPROVED") {
+          throw new Error("Cannot mark ready — Brand is not APPROVED.");
+        }
+        if (
+          (account.a2pCampaignStatus ?? "").toUpperCase() !== "VERIFIED"
+          && (account.a2pCampaignStatus ?? "").toUpperCase() !== "APPROVED"
+        ) {
+          throw new Error("Cannot mark ready — Campaign is not verified.");
+        }
+        if (!isPhoneA2pRegistered(account.phoneA2pStatus)) {
+          throw new Error("Cannot mark ready — phone number is not REGISTERED.");
+        }
         await upsertVenueTwilioAccount({
           venueId,
           status: "ready",
           statusDetail: null,
-          a2pBrandStatus: account.a2pBrandStatus ?? "APPROVED",
-          a2pCampaignStatus: account.a2pCampaignStatus ?? "VERIFIED",
-          phoneA2pStatus: account.phoneA2pStatus ?? "REGISTERED",
+          a2pBrandStatus: account.a2pBrandStatus,
+          a2pCampaignStatus: account.a2pCampaignStatus,
+          phoneA2pStatus: account.phoneA2pStatus,
         });
         await setRegistrationPhase({ venueId, toPhase: "ready" });
         await markStepSucceeded({ venueId, step, resourceSid: account.twilioAccountSid });
@@ -819,8 +972,14 @@ export async function processTextingProvisioningQueue(limit = 5): Promise<{
   let waiting = 0;
   let failed = 0;
   for (const venueId of venueIds) {
-    const result = await processVenueTextingProvisioning(venueId);
-    if (result.advanced) advanced += 1;
+    // Bounded multi-step advance so a 2-minute cron tick can finish
+    // await_number_a2p → mark_ready after a verified REGISTERED event.
+    const result = await advanceProvisioningUntilSettled({
+      venueId,
+      maxSteps: 4,
+      processFn: processVenueTextingProvisioning,
+    });
+    if (result.stepsAdvanced > 0) advanced += 1;
     else if (result.waiting) waiting += 1;
     else if (result.error) failed += 1;
   }

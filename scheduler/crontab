@@ -31,3 +31,7 @@
 # Phase 6 Refer a Venue — qualification evaluation + optional reward issuance/reconcile.
 # Hourly at :35; isolated from Phase 3/4/5 ticks.
 35 * * * * /app/invoke.sh referrals-process "$VENUE_APP_BASE_URL/api/internal/pricing/referrals/process" 120
+# Texting self-service provisioning recovery (Brand/Campaign waits + phone A2P → Ready).
+# Every 2 minutes — matches facebook-sync cadence; CRON_SECRET via invoke.sh.
+# Idempotent + leased via venue_texting_provisioning_steps.next_attempt_at.
+*/2 * * * * /app/invoke.sh texting-provision-process "$VENUE_APP_BASE_URL/api/texting/provision/process"

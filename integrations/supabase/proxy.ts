@@ -41,6 +41,7 @@ export const PUBLIC_PATHS = [
   "/api/messaging/webhook",  // Resend delivery webhook (no user session)
   "/api/messaging/sms-inbound", // Twilio inbound SMS webhook (no user session; verifies its own signature)
   "/api/messaging/sms-status",  // Twilio outbound SMS status callback (no user session; verifies its own signature)
+  "/api/messaging/a2p-events",  // Twilio Event Streams A2P number-registration webhook (signature + optional Basic Auth)
   "/sign",           // public contract signing - /sign/{token}
   "/brochure",       // D7B - public brochure view - /brochure/{share_token}
   "/api/brochures/public", // D7B - public brochure PDF - /api/brochures/public/{share_token}/pdf

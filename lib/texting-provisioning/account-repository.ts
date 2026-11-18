@@ -19,6 +19,10 @@ export type VenueTwilioAccountWrite = {
   a2pBrandStatus?: string | null;
   a2pCampaignStatus?: string | null;
   phoneA2pStatus?: string | null;
+  phoneA2pStatusUpdatedAt?: string | null;
+  phoneA2pLastEventAt?: string | null;
+  eventStreamSinkSid?: string | null;
+  eventStreamSubscriptionSid?: string | null;
   complianceSubmittedAt?: string | null;
   provisioningGeneration?: number;
   status?: VenueTwilioAccountStatus;
@@ -38,6 +42,10 @@ type Row = {
   a2p_brand_status: string | null;
   a2p_campaign_status: string | null;
   phone_a2p_status: string | null;
+  phone_a2p_status_updated_at: string | null;
+  phone_a2p_last_event_at: string | null;
+  event_stream_sink_sid: string | null;
+  event_stream_subscription_sid: string | null;
   compliance_submitted_at: string | null;
   provisioning_generation: number;
   status: VenueTwilioAccountStatus;
@@ -57,6 +65,10 @@ const SELECT_COLS = [
   "a2p_brand_status",
   "a2p_campaign_status",
   "phone_a2p_status",
+  "phone_a2p_status_updated_at",
+  "phone_a2p_last_event_at",
+  "event_stream_sink_sid",
+  "event_stream_subscription_sid",
   "compliance_submitted_at",
   "provisioning_generation",
   "status",
@@ -68,6 +80,10 @@ export type VenueTwilioAccountExtended = VenueTwilioAccount & {
   a2pBrandStatus: string | null;
   a2pCampaignStatus: string | null;
   phoneA2pStatus: string | null;
+  phoneA2pStatusUpdatedAt: string | null;
+  phoneA2pLastEventAt: string | null;
+  eventStreamSinkSid: string | null;
+  eventStreamSubscriptionSid: string | null;
   complianceSubmittedAt: string | null;
   provisioningGeneration: number;
 };
@@ -88,6 +104,10 @@ function mapRow(row: Row): VenueTwilioAccountExtended {
     a2pBrandStatus: row.a2p_brand_status,
     a2pCampaignStatus: row.a2p_campaign_status,
     phoneA2pStatus: row.phone_a2p_status,
+    phoneA2pStatusUpdatedAt: row.phone_a2p_status_updated_at,
+    phoneA2pLastEventAt: row.phone_a2p_last_event_at,
+    eventStreamSinkSid: row.event_stream_sink_sid,
+    eventStreamSubscriptionSid: row.event_stream_subscription_sid,
     complianceSubmittedAt: row.compliance_submitted_at,
     provisioningGeneration: row.provisioning_generation ?? 1,
   };
@@ -163,6 +183,18 @@ export async function upsertVenueTwilioAccount(
   if (patch.a2pBrandStatus !== undefined) row.a2p_brand_status = patch.a2pBrandStatus;
   if (patch.a2pCampaignStatus !== undefined) row.a2p_campaign_status = patch.a2pCampaignStatus;
   if (patch.phoneA2pStatus !== undefined) row.phone_a2p_status = patch.phoneA2pStatus;
+  if (patch.phoneA2pStatusUpdatedAt !== undefined) {
+    row.phone_a2p_status_updated_at = patch.phoneA2pStatusUpdatedAt;
+  }
+  if (patch.phoneA2pLastEventAt !== undefined) {
+    row.phone_a2p_last_event_at = patch.phoneA2pLastEventAt;
+  }
+  if (patch.eventStreamSinkSid !== undefined) {
+    row.event_stream_sink_sid = patch.eventStreamSinkSid;
+  }
+  if (patch.eventStreamSubscriptionSid !== undefined) {
+    row.event_stream_subscription_sid = patch.eventStreamSubscriptionSid;
+  }
   if (patch.complianceSubmittedAt !== undefined) {
     row.compliance_submitted_at = patch.complianceSubmittedAt;
   }

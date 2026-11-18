@@ -212,7 +212,9 @@ export function isVenueTwilioSendReady(account: VenueTwilioAccount | null): bool
   if (campaign && campaign !== "VERIFIED" && campaign !== "APPROVED") return false;
 
   const phoneA2p = normalizedStatus(account.phoneA2pStatus);
-  if (phoneA2p && phoneA2p !== "REGISTERED" && phoneA2p !== "SUCCESS" && phoneA2p !== "APPROVED") {
+  // Fail closed: explicit verified phone registration is required.
+  // Never treat a missing phone A2P status as send-ready.
+  if (phoneA2p !== "REGISTERED" && phoneA2p !== "SUCCESS" && phoneA2p !== "APPROVED") {
     return false;
   }
 
