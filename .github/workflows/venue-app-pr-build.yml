@@ -4,7 +4,10 @@
 #
 # Uses placeholder NEXT_PUBLIC_* values sufficient for `next build` typecheck/compile.
 # Does not deploy. Does not touch Sandbox or Production.
-# Path-filter note: include this workflow file when docs/scripts PRs still need the required check.
+# Path-filter note: required check contexts must report for script-only and
+# workflow-only PRs (branch protection expects them). Keep this workflow file
+# and scripts/** / .github/workflows/** in the path list so those PRs are not
+# merge-blocked by silent skipped checks. Do not remove required checks.
 
 name: Venue app PR build
 
@@ -23,6 +26,8 @@ on:
       - "tsconfig.json"
       - "next.config.*"
       - "Dockerfile"
+      - "scripts/**"
+      - ".github/workflows/**"
       - ".github/workflows/venue-app-pr-build.yml"
 
 concurrency:

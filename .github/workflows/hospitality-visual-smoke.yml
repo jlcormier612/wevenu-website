@@ -3,6 +3,8 @@
 # on meaningful regressions. Live Sandbox capture is workflow_dispatch (secrets).
 # Path-filter note: required checks must still run when practice-run/lib changes
 # land without matching app/(app) paths — include this workflow file in the PR.
+# Also cover scripts/** and all workflow YAML so inspector-only / script-only /
+# workflow-only PRs report the required hospitality check contexts (no silent skip).
 # (Also bumped for service-role practice couple photo seed PR.)
 # (Bumped for ONB-FINAL acceptance evidence PR.)
 # (Bumped for Twilio A2P number-status automation PR #85 — required checks.)
@@ -33,10 +35,12 @@ on:
       - "lib/reporting/**"
       - "lib/setup-hub/**"
       - "lib/navigation/attention*"
+      - "scripts/**"
       - "scripts/qa/hospitality-visual-baselines.mts"
       - "scripts/qa/compare-png-baselines.mts"
       - "scripts/qa/compare-png-baselines.test.ts"
       - "docs/design/hospitality-visual-baselines/approved/**"
+      - ".github/workflows/**"
       - ".github/workflows/hospitality-visual-smoke.yml"
       - ".github/workflows/deploy-sandbox.yml"
 
