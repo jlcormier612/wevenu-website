@@ -16,12 +16,50 @@ import { buildVenueNotificationEmail } from "@/lib/notifications/venue-notificat
 import { wrapConversationMessageHtml } from "@/lib/email/conversation-brand";
 import { appendEmailSignatureText, emailBrandFromVenue } from "@/lib/email/venue-brand";
 import { recordExternalClientOutbound } from "@/lib/conversations/record-external-outbound";
+import {
+  applyReminderDeliveryFailure,
+  applyVenueNotificationDeliveryFailure,
+} from "@/lib/notifications/apply-email-delivery-failure";
+import {
+  EmailDeliveryFailure,
+  emailDeliveryLeaseUntil,
+} from "@/lib/notifications/email-delivery-retry";
 import { applyReminderScope } from "@/lib/notifications/reminder-scope";
 import { nextRecurringReminderAt } from "@/lib/notifications/schedule-times";
 import { resolveMessageReceivedRecipients } from "@/lib/notifications/message-received-recipients";
 import type { ProcessResult } from "@/lib/notifications/types";
 import { cadenceIntervalDays, type CadenceLabel } from "@/lib/notifications/obligations";
 import { getVenueTimezone } from "@/lib/venue/timezone";
+
+function throwIfSendFailed(
+  sendResult: Awaited<ReturnType<typeof sendEmail>>,
+): asserts sendResult is Extract<Awaited<ReturnType<typeof sendEmail>>, { ok: true }> {
+  if (!sendResult.ok) {
+    throw new EmailDeliveryFailure({
+      message: sendResult.message,
+      code: sendResult.code,
+      retryAfterSeconds: sendResult.retryAfterSeconds,
+      retryUnsafe: sendResult.retryUnsafe,
+    });
+  }
+}
+
+async function claimReminderForSend(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
+  reminderId: string,
+  now: string,
+): Promise<{ id: string; attempt_count: number } | null> {
+  const { data } = await supabase
+    .from("task_reminders")
+    .update({ next_attempt_at: emailDeliveryLeaseUntil() })
+    .eq("id", reminderId)
+    .eq("status", "pending")
+    .lte("next_attempt_at", now)
+    .select("id, attempt_count")
+    .maybeSingle();
+  return data ?? null;
+}
 
 const BATCH_SIZE = 50;
 
@@ -37,6 +75,7 @@ function getServiceClient() {
 type PaymentReminderRow = {
   id: string; venue_id: string; payment_line_item_id: string; reminder_type: string;
   scheduled_for: string; after_due_recur_interval_days: number | null;
+  attempt_count?: number;
   payment_line_items: {
     id: string; label: string; amount: number; due_date: string | null; status: string; schedule_id: string;
   } | null;
@@ -45,6 +84,7 @@ type PaymentReminderRow = {
 type ContractReminderRow = {
   id: string; venue_id: string; contract_id: string; reminder_type: string;
   scheduled_for: string; after_due_recur_interval_days: number | null;
+  attempt_count?: number;
   contracts: { id: string; title: string; status: string; expires_at: string | null; client_id: string | null; sign_token: string } | null;
 };
 
@@ -82,11 +122,13 @@ async function processPaymentReminders(
     .from("task_reminders")
     .select(`
       id, venue_id, payment_line_item_id, reminder_type, scheduled_for, after_due_recur_interval_days,
+      attempt_count, next_attempt_at,
       payment_line_items ( id, label, amount, due_date, status, schedule_id )
     `)
     .eq("status", "pending")
     .not("payment_line_item_id", "is", null)
     .lte("scheduled_for", now)
+    .lte("next_attempt_at", now)
     .order("scheduled_for")
     .limit(BATCH_SIZE);
 
@@ -99,6 +141,13 @@ async function processPaymentReminders(
 
   for (const reminder of reminders as PaymentReminderRow[]) {
     result.processed++;
+    const claimed = await claimReminderForSend(supabase, reminder.id, now);
+    if (!claimed) {
+      result.skipped++;
+      continue;
+    }
+    const attemptCountBefore = claimed.attempt_count ?? 0;
+    let recipientEmail: string | null = null;
     try {
       const item = reminder.payment_line_items;
       if (!item || item.status !== "pending") {
@@ -117,6 +166,7 @@ async function processPaymentReminders(
       const { data: client } = await supabase.from("clients")
         .select("first_name, partner_first_name, email").eq("id", schedule.client_id).maybeSingle();
       if (!client?.email) { result.skipped++; continue; }
+      recipientEmail = client.email;
 
       const { VENUE_EMAIL_BRAND_SELECT } = await import("@/lib/email/venue-brand");
       const { data: venue } = await supabase.from("venues")
@@ -150,7 +200,7 @@ async function processPaymentReminders(
         replyTo: venue?.email ?? undefined,
         threadId: threadId ?? undefined,
       });
-      if (!sendResult.ok) throw new Error(sendResult.message);
+      throwIfSendFailed(sendResult);
 
       const providerId = sendResult.method === "resend" ? sendResult.providerId ?? null : null;
       await supabase.from("notification_log").insert({
@@ -189,10 +239,17 @@ async function processPaymentReminders(
         });
       }
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      result.errors.push(`Payment reminder ${reminder.id}: ${msg}`);
+      const disposition = await applyReminderDeliveryFailure(supabase, {
+        reminderId: reminder.id,
+        venueId: reminder.venue_id,
+        notifyRole: "couple",
+        channel: "email",
+        attemptCountBefore,
+        err,
+        recipientEmail,
+      });
+      result.errors.push(`Payment reminder ${reminder.id}: ${disposition.message}`);
       result.failed++;
-      await supabase.from("task_reminders").update({ status: "pending" }).eq("id", reminder.id);
     }
   }
 }
@@ -208,11 +265,13 @@ async function processContractReminders(
     .from("task_reminders")
     .select(`
       id, venue_id, contract_id, reminder_type, scheduled_for, after_due_recur_interval_days,
+      attempt_count, next_attempt_at,
       contracts ( id, title, status, expires_at, client_id, sign_token )
     `)
     .eq("status", "pending")
     .not("contract_id", "is", null)
     .lte("scheduled_for", now)
+    .lte("next_attempt_at", now)
     .order("scheduled_for")
     .limit(BATCH_SIZE);
 
@@ -225,6 +284,13 @@ async function processContractReminders(
 
   for (const reminder of reminders as ContractReminderRow[]) {
     result.processed++;
+    const claimed = await claimReminderForSend(supabase, reminder.id, now);
+    if (!claimed) {
+      result.skipped++;
+      continue;
+    }
+    const attemptCountBefore = claimed.attempt_count ?? 0;
+    let recipientEmail: string | null = null;
     try {
       const contract = reminder.contracts;
       if (!contract || contract.status !== "sent") {
@@ -237,6 +303,7 @@ async function processContractReminders(
 
       const { data: client } = await supabase.from("clients").select("email").eq("id", contract.client_id).maybeSingle();
       if (!client?.email) { result.skipped++; continue; }
+      recipientEmail = client.email;
 
       const { VENUE_EMAIL_BRAND_SELECT } = await import("@/lib/email/venue-brand");
       const { data: venue } = await supabase.from("venues")
@@ -263,7 +330,7 @@ async function processContractReminders(
         replyTo: venue?.email ?? undefined,
         threadId: threadId ?? undefined,
       });
-      if (!sendResult.ok) throw new Error(sendResult.message);
+      throwIfSendFailed(sendResult);
 
       const providerId = sendResult.method === "resend" ? sendResult.providerId ?? null : null;
       await supabase.from("notification_log").insert({
@@ -286,10 +353,17 @@ async function processContractReminders(
       await supabase.from("task_reminders").update({ status: "sent", sent_at: new Date().toISOString() }).eq("id", reminder.id);
       result.sent++;
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      result.errors.push(`Contract reminder ${reminder.id}: ${msg}`);
+      const disposition = await applyReminderDeliveryFailure(supabase, {
+        reminderId: reminder.id,
+        venueId: reminder.venue_id,
+        notifyRole: "couple",
+        channel: "email",
+        attemptCountBefore,
+        err,
+        recipientEmail,
+      });
+      result.errors.push(`Contract reminder ${reminder.id}: ${disposition.message}`);
       result.failed++;
-      await supabase.from("task_reminders").update({ status: "pending" }).eq("id", reminder.id);
     }
   }
 }
@@ -409,6 +483,8 @@ type VenueNotificationEmailRow = {
   title: string;
   body: string | null;
   link: string | null;
+  email_attempt_count?: number;
+  email_next_attempt_at?: string | null;
 };
 
 async function alreadyLoggedRecipient(
@@ -433,6 +509,7 @@ async function dispatchMessageReceivedEmail(
   supabase: ReturnType<typeof getServiceClient>,
   row: VenueNotificationEmailRow,
   result: ProcessResult,
+  attemptCountBefore: number,
 ): Promise<void> {
   const recipients = await resolveMessageReceivedRecipients(supabase as never, row);
   if (recipients.length === 0) {
@@ -451,36 +528,54 @@ async function dispatchMessageReceivedEmail(
   });
   const text = email.text;
 
-  for (const recipient of recipients) {
-    if (await alreadyLoggedRecipient(supabase, row.id, recipient.email)) {
-      continue;
+  let lastRecipientEmail: string | null = null;
+  let lastRecipientRole = "coordinator";
+  try {
+    for (const recipient of recipients) {
+      if (await alreadyLoggedRecipient(supabase, row.id, recipient.email)) {
+        continue;
+      }
+      lastRecipientEmail = recipient.email;
+      lastRecipientRole = recipient.role === "owner" ? "team" : "coordinator";
+      const sendResult = await sendEmail({
+        to: recipient.email,
+        subject: email.subject,
+        text,
+        html: email.html,
+      });
+      throwIfSendFailed(sendResult);
+
+      await supabase.from("notification_log").insert({
+        venue_id: row.venue_id,
+        source_type: "system",
+        source_id: row.id,
+        // notification_log.recipient_role check: coordinator | couple | vendor | team
+        recipient_role: lastRecipientRole,
+        recipient_email: recipient.email,
+        channel: "email",
+        status: "sent",
+        subject: row.title,
+        body_preview: text.slice(0, 500),
+        provider_message_id: sendResult.method === "resend" ? sendResult.providerId ?? null : null,
+        sent_at: new Date().toISOString(),
+      });
     }
-    const sendResult = await sendEmail({
-      to: recipient.email,
-      subject: email.subject,
-      text,
-      html: email.html,
-    });
-    if (!sendResult.ok) throw new Error(sendResult.message);
 
-    await supabase.from("notification_log").insert({
-      venue_id: row.venue_id,
-      source_type: "system",
-      source_id: row.id,
-      // notification_log.recipient_role check: coordinator | couple | vendor | team
-      recipient_role: recipient.role === "owner" ? "team" : "coordinator",
-      recipient_email: recipient.email,
-      channel: "email",
-      status: "sent",
+    await supabase.from("venue_notifications").update({ emailed_at: new Date().toISOString() }).eq("id", row.id);
+    result.sent++;
+  } catch (err) {
+    const disposition = await applyVenueNotificationDeliveryFailure(supabase, {
+      notificationId: row.id,
+      venueId: row.venue_id,
+      attemptCountBefore,
+      err,
+      recipientEmail: lastRecipientEmail,
+      recipientRole: lastRecipientRole,
       subject: row.title,
-      body_preview: text.slice(0, 500),
-      provider_message_id: sendResult.method === "resend" ? sendResult.providerId ?? null : null,
-      sent_at: new Date().toISOString(),
     });
+    result.errors.push(`Venue notification ${row.id}: ${disposition.message}`);
+    result.failed++;
   }
-
-  await supabase.from("venue_notifications").update({ emailed_at: new Date().toISOString() }).eq("id", row.id);
-  result.sent++;
 }
 
 export async function processVenueNotificationEmails(options?: {
@@ -491,12 +586,14 @@ export async function processVenueNotificationEmails(options?: {
 }): Promise<ProcessResult> {
   const result: ProcessResult = { processed: 0, sent: 0, failed: 0, skipped: 0, errors: [] };
   const supabase = getServiceClient();
+  const now = new Date().toISOString();
 
   let query = supabase
     .from("venue_notifications")
-    .select("id, venue_id, type, title, body, link")
+    .select("id, venue_id, type, title, body, link, email_attempt_count, email_next_attempt_at")
     .eq("needs_email", true)
     .is("emailed_at", null)
+    .lte("email_next_attempt_at", now)
     .limit(BATCH_SIZE);
 
   if (options?.venueId) query = query.eq("venue_id", options.venueId);
@@ -509,9 +606,25 @@ export async function processVenueNotificationEmails(options?: {
 
   for (const row of rows as VenueNotificationEmailRow[]) {
     result.processed++;
+
+    const { data: claimed } = await supabase
+      .from("venue_notifications")
+      .update({ email_next_attempt_at: emailDeliveryLeaseUntil() })
+      .eq("id", row.id)
+      .eq("needs_email", true)
+      .is("emailed_at", null)
+      .lte("email_next_attempt_at", now)
+      .select("id, email_attempt_count")
+      .maybeSingle<{ id: string; email_attempt_count: number }>();
+    if (!claimed) {
+      result.skipped++;
+      continue;
+    }
+    const attemptCountBefore = claimed.email_attempt_count ?? 0;
+
     try {
       if (row.type === "message_received") {
-        await dispatchMessageReceivedEmail(supabase, row, result);
+        await dispatchMessageReceivedEmail(supabase, row, result, attemptCountBefore);
         continue;
       }
 
@@ -538,7 +651,7 @@ export async function processVenueNotificationEmails(options?: {
         text,
         html: email.html,
       });
-      if (!sendResult.ok) throw new Error(sendResult.message);
+      throwIfSendFailed(sendResult);
 
       await supabase.from("notification_log").insert({
         venue_id: row.venue_id, source_type: "system", source_id: row.id,
@@ -550,11 +663,18 @@ export async function processVenueNotificationEmails(options?: {
       await supabase.from("venue_notifications").update({ emailed_at: new Date().toISOString() }).eq("id", row.id);
       result.sent++;
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      result.errors.push(`Venue notification ${row.id}: ${msg}`);
+      // message_received handles its own failure path inside dispatch.
+      if (row.type === "message_received") continue;
+      const disposition = await applyVenueNotificationDeliveryFailure(supabase, {
+        notificationId: row.id,
+        venueId: row.venue_id,
+        attemptCountBefore,
+        err,
+        recipientRole: "coordinator",
+        subject: row.title,
+      });
+      result.errors.push(`Venue notification ${row.id}: ${disposition.message}`);
       result.failed++;
-      // Left with emailed_at still null — retried next tick, matching the
-      // reminder engine's own retry-by-leaving-pending pattern.
     }
   }
 

@@ -18,7 +18,13 @@
 import { createClient } from "@supabase/supabase-js";
 
 import { recordExternalClientOutbound } from "@/lib/conversations/record-external-outbound";
+import { sendEmail } from "@/lib/email/send";
 import { appendEmailSignatureText, emailBrandFromVenue, escapeHtml } from "@/lib/email/venue-brand";
+import { applyReminderDeliveryFailure } from "@/lib/notifications/apply-email-delivery-failure";
+import {
+  EmailDeliveryFailure,
+  emailDeliveryLeaseUntil,
+} from "@/lib/notifications/email-delivery-retry";
 import { applyReminderScope } from "@/lib/notifications/reminder-scope";
 import { nextRecurringReminderAt } from "@/lib/notifications/schedule-times";
 import {
@@ -67,6 +73,7 @@ export async function processReminders(scope?: ReminderProcessScope): Promise<Pr
     .from("task_reminders")
     .select(`
       id, venue_id, event_task_id, tour_appointment_id, reminder_type, notify_role, scheduled_for, after_due_recur_interval_days,
+      attempt_count, next_attempt_at,
       event_tasks (
         id, title, event_id, visibility, owner_type, status, due_date,
         event_tasks_event:events ( id, name, event_date, client_id,
@@ -79,6 +86,7 @@ export async function processReminders(scope?: ReminderProcessScope): Promise<Pr
     `)
     .eq("status", "pending")
     .lte("scheduled_for", now)
+    .lte("next_attempt_at", now)
     .order("scheduled_for")
     .limit(BATCH_SIZE);
 
@@ -91,6 +99,21 @@ export async function processReminders(scope?: ReminderProcessScope): Promise<Pr
 
   for (const reminder of reminders as unknown as ReminderRow[]) {
     result.processed++;
+
+    // Claim lease so concurrent cron workers do not double-send.
+    const { data: claimed } = await supabase
+      .from("task_reminders")
+      .update({ next_attempt_at: emailDeliveryLeaseUntil() })
+      .eq("id", reminder.id)
+      .eq("status", "pending")
+      .lte("next_attempt_at", now)
+      .select("id, attempt_count")
+      .maybeSingle<{ id: string; attempt_count: number }>();
+    if (!claimed) {
+      result.skipped++;
+      continue;
+    }
+    const attemptCountBefore = claimed.attempt_count ?? 0;
 
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -213,58 +236,38 @@ export async function processReminders(scope?: ReminderProcessScope): Promise<Pr
         bodyPreview = emailContent.html.replace(/<[^>]+>/g, "").slice(0, 500);
         outboundBody = emailContent.text;
 
-        if (role === "couple") {
-          // Couple-facing: established sendEmail + threadId (same as proposal/contract).
-          const { sendEmail } = await import("@/lib/email/send");
-          const { resolveVenueCoupleThreadId } = await import(
-            "@/lib/conversations/resolve-couple-thread"
-          );
-          const threadId = await resolveVenueCoupleThreadId(supabase, reminder.venue_id, {
-            clientId: event?.client_id ?? null,
-            leadId: tourAppt?.lead_id ?? null,
+        // All roles use sendEmail so Resend failures classify + honor Retry-After.
+        const { resolveVenueCoupleThreadId } = await import(
+          "@/lib/conversations/resolve-couple-thread"
+        );
+        const venueEmail =
+          (venueRow as { email?: string | null } | null)?.email ?? undefined;
+        const threadId =
+          role === "couple"
+            ? await resolveVenueCoupleThreadId(supabase, reminder.venue_id, {
+                clientId: event?.client_id ?? null,
+                leadId: tourAppt?.lead_id ?? null,
+              })
+            : null;
+        const sendResult = await sendEmail({
+          to: recipientEmail,
+          subject: emailContent.subject,
+          text: emailContent.text,
+          html: emailContent.html,
+          replyTo: venueEmail,
+          threadId: threadId ?? undefined,
+        });
+        if (!sendResult.ok) {
+          throw new EmailDeliveryFailure({
+            message: sendResult.message,
+            code: sendResult.code,
+            retryAfterSeconds: sendResult.retryAfterSeconds,
+            retryUnsafe: sendResult.retryUnsafe,
           });
-          const venueEmail =
-            (venueRow as { email?: string | null } | null)?.email ?? undefined;
-          const sendResult = await sendEmail({
-            to: recipientEmail,
-            subject: emailContent.subject,
-            text: emailContent.text,
-            html: emailContent.html,
-            replyTo: venueEmail,
-            threadId: threadId ?? undefined,
-          });
-          if (!sendResult.ok) throw new Error(sendResult.message);
-          providerMessageId =
-            sendResult.method === "resend" ? sendResult.providerId ?? null : null;
-          sent = true;
-        } else {
-          // Coordinator/staff: preserve existing raw Resend path and branding.
-          const apiKey = process.env.RESEND_API_KEY;
-          const fromEmail = process.env.FROM_EMAIL ?? "Hello to Cheers <onboarding@resend.dev>";
-          if (apiKey) {
-            const resendResponse = await fetch("https://api.resend.com/emails", {
-              method: "POST",
-              headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
-              body: JSON.stringify({
-                from: fromEmail,
-                to: recipientEmail,
-                subject: emailContent.subject,
-                html: emailContent.html,
-                text: emailContent.text,
-              }),
-            });
-            if (!resendResponse.ok) {
-              const err = await resendResponse.json().catch(() => ({})) as { message?: string };
-              throw new Error(err.message ?? `Resend HTTP ${resendResponse.status}`);
-            }
-            const resendData = await resendResponse.json() as { id?: string };
-            providerMessageId = resendData.id ?? null;
-            sent = true;
-          } else {
-            console.log(`[notifications] DEV send to ${recipientEmail}: ${subject}`);
-            sent = true;
-          }
         }
+        providerMessageId =
+          sendResult.method === "resend" ? sendResult.providerId ?? null : null;
+        sent = true;
       } else {
         // SMS / in_app / push — not yet implemented, skip gracefully
         result.skipped++;
@@ -336,24 +339,16 @@ export async function processReminders(scope?: ReminderProcessScope): Promise<Pr
 
       result.sent++;
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      result.errors.push(`Reminder ${reminder.id}: ${msg}`);
-      result.failed++;
-
-      await supabase.from("task_reminders")
-        .update({ status: "pending" })  // keep pending for retry
-        .eq("id", reminder.id);
-
-      await supabase.from("notification_log").insert({
-        venue_id: reminder.venue_id,
-        source_type: "task_reminder",
-        source_id: reminder.id,
-        recipient_role: reminder.notify_role,
+      const disposition = await applyReminderDeliveryFailure(supabase, {
+        reminderId: reminder.id,
+        venueId: reminder.venue_id,
+        notifyRole: reminder.notify_role,
         channel: determineChannel(reminder.notify_role as NotificationRole, "task_reminder"),
-        status: "failed",
-        error_message: msg,
-        sent_at: new Date().toISOString(),
+        attemptCountBefore,
+        err,
       });
+      result.errors.push(`Reminder ${reminder.id}: ${disposition.message}`);
+      result.failed++;
     }
   }
 
