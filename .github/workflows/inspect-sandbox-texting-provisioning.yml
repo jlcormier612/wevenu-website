@@ -1,0 +1,66 @@
+# Read-only dump of live Sandbox texting self-service provisioning state.
+# Used to assess whether activating the A2P */2 provision scheduler could
+# unexpectedly mutate Twilio resources.
+#
+# workflow_dispatch only. Never mutates the database. Never calls Twilio.
+# Never deploys. Never invokes application provisioning endpoints.
+#
+# Credential: SANDBOX_DB_URL must be a GitHub *Secret* on the "sandbox"
+# Environment — never a Variable. This workflow never echoes that value.
+#
+# Pattern mirrors inspect-sandbox-booking-db.yml.
+
+name: Inspect Sandbox Texting Provisioning
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+# Same concurrency group as Apply Sandbox Migration / booking inspect so only
+# one Sandbox DB job runs at a time.
+#
+# cancel-in-progress: false means an *in-progress* run is not cancelled when a
+# newer run is queued. GitHub may still supersede / replace a *pending* run in
+# the same concurrency group when a newer run is enqueued — do not treat
+# "false" as a guarantee that every queued inspect will eventually execute.
+concurrency:
+  group: sandbox-database
+  cancel-in-progress: false
+
+jobs:
+  inspect:
+    name: Inspect texting provisioning queue (read-only)
+    runs-on: ubuntu-latest
+    environment: sandbox
+    env:
+      SANDBOX_DB_URL: ${{ secrets.SANDBOX_DB_URL }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Ensure psql is available
+        timeout-minutes: 3
+        run: |
+          if command -v psql >/dev/null 2>&1; then
+            echo "psql already present: $(psql --version)"
+          else
+            echo "psql not preinstalled on this runner - installing non-interactively."
+            export DEBIAN_FRONTEND=noninteractive
+            export NEEDRESTART_MODE=a
+            sudo apt-get update -qq
+            sudo apt-get install -qq -y --no-install-recommends postgresql-client
+          fi
+
+      - name: Fail closed if Sandbox DB secret missing
+        run: |
+          if [ -z "$SANDBOX_DB_URL" ]; then
+            echo "::error::SANDBOX_DB_URL secret is not set on the sandbox Environment. Nothing was touched."
+            exit 1
+          fi
+
+      - name: Run read-only texting provisioning inventory
+        run: |
+          chmod +x scripts/inspect-sandbox-texting-provisioning.sh
+          bash scripts/inspect-sandbox-texting-provisioning.sh "$SANDBOX_DB_URL"
