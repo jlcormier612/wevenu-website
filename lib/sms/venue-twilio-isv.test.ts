@@ -127,6 +127,8 @@ describe("venue Twilio ISV config readiness", () => {
     assert.equal(isVenueTwilioSendReady({ ...base, phoneNumberSid: null }), false);
     assert.equal(isVenueTwilioSendReady({ ...base, a2pBrandSid: null }), false);
     assert.equal(isVenueTwilioSendReady({ ...base, a2pCampaignSid: null }), false);
+    assert.equal(isVenueTwilioSendReady({ ...base, phoneA2pStatus: null }), false);
+    assert.equal(isVenueTwilioSendReady({ ...base, phoneA2pStatus: "PENDING_REGISTRATION" }), false);
     assert.equal(isVenueTwilioSendReady({ ...base, defaultFromE164: "  ", phoneNumberSid: "PN" }), false);
     assert.equal(isVenueTwilioSendReady(null), false);
   });

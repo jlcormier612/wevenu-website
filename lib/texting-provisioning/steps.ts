@@ -10,6 +10,7 @@ export const TEXTING_PROVISIONING_STEPS = [
   "store_secret",
   "create_messaging_service",
   "configure_webhooks",
+  "configure_event_streams",
   "submit_secondary_profile",
   "submit_a2p_trust_product",
   "submit_brand",

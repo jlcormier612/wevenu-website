@@ -5,6 +5,7 @@
 # land without matching app/(app) paths — include this workflow file in the PR.
 # (Also bumped for service-role practice couple photo seed PR.)
 # (Bumped for ONB-FINAL acceptance evidence PR.)
+# (Bumped for Twilio A2P number-status automation PR #85 — required checks.)
 
 name: Hospitality visual smoke
 
