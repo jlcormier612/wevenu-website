@@ -54,6 +54,7 @@ export const MARKETING_NAV = [
   { href: CHAPTERS.why.href, label: "Our Story" },
   { href: CHAPTERS.product.href, label: "The Platform" },
   { href: CHAPTERS.features.href, label: "All Features" },
+  { href: "/getting-started", label: "Getting Started" },
   { href: CHAPTERS.pricing.href, label: "Pricing" },
   { href: "/contact", label: "Contact" },
 ] as const;
@@ -63,6 +64,7 @@ export const FOOTER_EXPLORE = [
   { href: CHAPTERS.why.href, label: "Our Story" },
   { href: CHAPTERS.product.href, label: "The Platform" },
   { href: CHAPTERS.features.href, label: "All Features" },
+  { href: "/getting-started", label: "Getting Started" },
   { href: CHAPTERS.pricing.href, label: "Pricing" },
   { href: "/walkthrough", label: "Schedule a Walkthrough" },
   { href: "/contact", label: "Contact" },
