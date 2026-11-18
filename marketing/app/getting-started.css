@@ -24,7 +24,7 @@
   font-weight: 500;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: color-mix(in srgb, var(--heritage-sage) 82%, transparent);
+  color: color-mix(in srgb, var(--heritage-sage) 90%, transparent);
 }
 
 .gs-headline {
@@ -51,7 +51,8 @@
   margin: 0;
   font-size: 1.0625rem;
   line-height: 1.7;
-  color: color-mix(in srgb, var(--gs-forest) 72%, transparent);
+  /* 88% — was 72%; clears ~4.5:1 on linen/white without leaving forest-sage family */
+  color: color-mix(in srgb, var(--gs-forest) 88%, transparent);
 }
 
 .gs-cta-row {
@@ -109,6 +110,8 @@
 
 /* ── Hero ── */
 .gs-hero {
+  /* Explicit linen — must not inherit white from .gs-page */
+  background: var(--linen);
   padding: 7.5rem 0 4rem;
 }
 
@@ -162,11 +165,14 @@
   object-position: 58% 35%;
 }
 
-/* ── Bring Your Business ── */
+/*
+ * Bring Your Business — after Make It Yours in the narrative.
+ * Rhythm: hero linen → MIY white → BYB linen → practice white → closing botanical.
+ */
 .gs-byb {
   background: var(--linen);
   padding: 4.5rem 0;
-  border-top: 1px solid color-mix(in srgb, var(--taupe-medium) 40%, transparent);
+  border-top: 1px solid color-mix(in srgb, var(--taupe-medium) 36%, transparent);
 }
 
 .gs-byb-intro {
@@ -202,9 +208,11 @@
   height: 100%;
   box-sizing: border-box;
   padding: 1.75rem;
-  background: var(--true-white);
-  border: 1px solid color-mix(in srgb, var(--taupe-medium) 55%, transparent);
+  /* Established light botanical token (--eucalyptus), not a new hex */
+  background: var(--eucalyptus);
+  border: 1px solid color-mix(in srgb, var(--botanical) 12%, transparent);
   border-radius: 1rem;
+  box-shadow: none;
 }
 
 .gs-byb-group-title {
@@ -220,7 +228,8 @@
   margin: 0.65rem 0 0;
   font-size: 1rem;
   line-height: 1.65;
-  color: color-mix(in srgb, var(--gs-forest) 72%, transparent);
+  /* 92% on eucalyptus clears WCAG AA for normal text (~4.57:1) */
+  color: color-mix(in srgb, var(--gs-forest) 92%, transparent);
 }
 
 .gs-byb-emphasis {
@@ -266,7 +275,7 @@
   font-weight: 500;
   letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: color-mix(in srgb, var(--heritage-sage) 80%, transparent);
+  color: color-mix(in srgb, var(--heritage-sage) 88%, transparent);
 }
 
 .gs-shot-frame {
@@ -301,7 +310,7 @@
   margin: 0.85rem 0 0;
   font-size: 0.875rem;
   line-height: 1.55;
-  color: color-mix(in srgb, var(--gs-forest) 62%, transparent);
+  color: color-mix(in srgb, var(--gs-forest) 80%, transparent);
   /* Use the showcase width so both sentences can sit on one desktop line */
   max-width: none;
 }
@@ -311,11 +320,14 @@
   display: inline;
 }
 
-/* ── Make It Yours ── */
+/*
+ * Make It Yours — first detailed chapter after the hero.
+ * White surface after linen hero.
+ */
 .gs-miy {
   background: var(--true-white);
   padding: 4.5rem 0;
-  border-top: 1px solid color-mix(in srgb, var(--taupe-medium) 36%, transparent);
+  border-top: 1px solid color-mix(in srgb, var(--taupe-medium) 40%, transparent);
 }
 
 .gs-miy-grid {
@@ -380,7 +392,7 @@
 
 /* ── Practice Run ── */
 .gs-practice {
-  background: var(--linen);
+  background: var(--true-white);
   padding: 4.5rem 0;
   border-top: 1px solid color-mix(in srgb, var(--taupe-medium) 40%, transparent);
 }
@@ -425,7 +437,17 @@
   margin: 0.65rem 0 0;
   font-size: 0.9rem;
   line-height: 1.55;
-  color: color-mix(in srgb, var(--gs-forest) 62%, transparent);
+  color: color-mix(in srgb, var(--gs-forest) 80%, transparent);
+}
+
+/*
+ * Closing CTA heart — approved Hospitality dusty-rose mark via ClosingCta.
+ * Botanical surface otherwise paints the heart blush (#f7e9eb), which reads
+ * as missing against the green band. Restore dusty-rose for this page only.
+ */
+.gs-page .gs-closing .signature-closing-actions .story-end-heart {
+  color: var(--dusty-rose);
+  opacity: 0.88;
 }
 
 .gs-practice-pair {

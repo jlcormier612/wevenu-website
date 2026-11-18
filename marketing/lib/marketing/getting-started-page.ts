@@ -1,6 +1,7 @@
 /**
  * Getting Started marketing page — approved five-section creative direction.
  * Copy is locked; do not rewrite or substitute alternate messaging.
+ * Narrative chapter order (after hero): Make It Yours → Bring Your Business → Practice → close.
  */
 
 export const GETTING_STARTED_ASSETS = {
@@ -22,8 +23,8 @@ export const GETTING_STARTED_PAGE = {
     eyebrow: "GETTING STARTED",
     headline: "And here's the best part.",
     support: "Getting started is easier than you think.",
-    body: "Bring your business with you, make Hello to Cheers your own, and explore the experience before you invite a single client. We've thought carefully about every step, so you can spend less time getting set up and more time enjoying what's ahead.",
-    primaryCta: { href: "#bring-your-business", label: "See how it works" },
+    body: "Start by making Hello to Cheers your own. Bring your business with you, then explore the experience before inviting your first client. We've thoughtfully designed every step so you can spend less time getting set up and more time enjoying what's ahead.",
+    primaryCta: { href: "#make-it-yours", label: "See how it works" },
     secondaryCta: { href: "/walkthrough", label: "Schedule a Walkthrough" },
     imageAlt:
       "Venue owner smiling at a laptop in a sunlit hospitality office with florals and a garden view",
@@ -97,7 +98,7 @@ export const GETTING_STARTED_PAGE = {
     eyebrow: "READY WHEN YOU ARE",
     headline: "Your next chapter starts here.",
     body: [
-      "Bring what you've built. Make it your own. See what's possible.",
+      "Make it your own. Bring what you've built. See what's possible.",
       "We'll help you feel right at home in Hello to Cheers.",
     ] as const,
     primaryCta: { href: "/pricing", label: "Get Started" },

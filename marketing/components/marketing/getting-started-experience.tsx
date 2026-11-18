@@ -12,7 +12,9 @@ import "@/app/getting-started.css";
 
 /**
  * Getting Started — five-section sales-conversion page.
- * Copy and section order are locked to the approved creative direction.
+ * Narrative order aligns with Setup Hub milestones:
+ * configure (Make It Yours) → Bring Your Business → Practice → close.
+ * Section interiors stay as approved; only chapter order changes.
  */
 export function GettingStartedExperience() {
   const page = GETTING_STARTED_PAGE;
@@ -59,7 +61,39 @@ export function GettingStartedExperience() {
         </div>
       </section>
 
-      {/* 2. Bring Your Business */}
+      {/* 2. Make It Yours (configure / operating environment — before import) */}
+      <section className="gs-miy" id="make-it-yours" aria-labelledby="gs-miy-heading">
+        <div className="gs-wrap">
+          <div className="gs-miy-grid">
+            <div className="gs-miy-copy">
+              <p className="gs-eyebrow">{page.makeItYours.eyebrow}</p>
+              <h2 id="gs-miy-heading" className="gs-headline">
+                {page.makeItYours.headline}
+              </h2>
+              <p className="gs-body">{page.makeItYours.body}</p>
+              <div className="gs-miy-secondary">
+                <p className="gs-miy-secondary-title">{page.makeItYours.secondary}</p>
+                <p className="gs-body">{page.makeItYours.secondaryBody}</p>
+              </div>
+              <p className="gs-body gs-miy-closing">{page.makeItYours.closing}</p>
+            </div>
+
+            <figure className="gs-shot gs-miy-shot">
+              <div className="gs-shot-frame">
+                <Image
+                  src={A.setupHub}
+                  alt={page.makeItYours.setupAlt}
+                  width={984}
+                  height={768}
+                  sizes="(max-width: 899px) 100vw, 55vw"
+                />
+              </div>
+            </figure>
+          </div>
+        </div>
+      </section>
+
+      {/* 3. Bring Your Business (import chapter — after configuration story) */}
       <section
         className="gs-byb"
         id={page.bringYourBusiness.id}
@@ -128,38 +162,6 @@ export function GettingStartedExperience() {
                 {page.bringYourBusiness.reassurance[1]}
               </span>
             </p>
-          </div>
-        </div>
-      </section>
-
-      {/* 3. Make It Yours */}
-      <section className="gs-miy" aria-labelledby="gs-miy-heading">
-        <div className="gs-wrap">
-          <div className="gs-miy-grid">
-            <div className="gs-miy-copy">
-              <p className="gs-eyebrow">{page.makeItYours.eyebrow}</p>
-              <h2 id="gs-miy-heading" className="gs-headline">
-                {page.makeItYours.headline}
-              </h2>
-              <p className="gs-body">{page.makeItYours.body}</p>
-              <div className="gs-miy-secondary">
-                <p className="gs-miy-secondary-title">{page.makeItYours.secondary}</p>
-                <p className="gs-body">{page.makeItYours.secondaryBody}</p>
-              </div>
-              <p className="gs-body gs-miy-closing">{page.makeItYours.closing}</p>
-            </div>
-
-            <figure className="gs-shot gs-miy-shot">
-              <div className="gs-shot-frame">
-                <Image
-                  src={A.setupHub}
-                  alt={page.makeItYours.setupAlt}
-                  width={984}
-                  height={768}
-                  sizes="(max-width: 899px) 100vw, 55vw"
-                />
-              </div>
-            </figure>
           </div>
         </div>
       </section>
