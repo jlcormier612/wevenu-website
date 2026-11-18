@@ -20,10 +20,10 @@ export const GETTING_STARTED_PAGE = {
       "Bring your venue business into Hello to Cheers — from connected client and event history to personalized setup and a real Practice Run before you go live.",
   },
   hero: {
-    eyebrow: "GETTING STARTED",
-    headline: "And here's the best part.",
-    support: "Getting started is easier than you think.",
-    body: "Start by making Hello to Cheers your own. Bring your business with you, then explore the experience before inviting your first client. We've thoughtfully designed every step so you can spend less time getting set up and more time enjoying what's ahead.",
+    eyebrow: "A FRESH START, WITHOUT STARTING OVER",
+    headline: "Like what you see? Getting started is the best part.",
+    support: "Make it yours. Bring your business. Try it all.",
+    body: "Start with a guided setup and ready-to-use starters that help make Hello to Cheers feel like yours. Bring your clients, events, financial history, and planning resources into one connected workspace. Then explore it all through Practice Run before inviting your first client.",
     primaryCta: { href: "#make-it-yours", label: "See how it works" },
     secondaryCta: { href: "/walkthrough", label: "Schedule a Walkthrough" },
     imageAlt:
