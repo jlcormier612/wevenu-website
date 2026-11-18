@@ -27,9 +27,13 @@ describe("inspect-sandbox-texting-provisioning script safety", () => {
   });
 
   it("contains no DML/DDL mutation verbs outside comments", () => {
+    // Strip shell (#) and SQL (--) comments before scanning for mutation verbs.
     const body = script
       .split("\n")
-      .filter((line) => !line.trimStart().startsWith("#"))
+      .filter((line) => {
+        const t = line.trimStart();
+        return !t.startsWith("#") && !t.startsWith("--");
+      })
       .join("\n");
     // Allow READ ONLY / ROLLBACK only — no INSERT/UPDATE/DELETE/TRUNCATE/CREATE/DROP/ALTER/GRANT.
     assert.doesNotMatch(body, /\bINSERT\b/i);
@@ -81,6 +85,34 @@ describe("inspect-sandbox-texting-provisioning script safety", () => {
     );
   });
 
+  it("Section H shows full next-4 sequence and separate mutating subset", () => {
+    assert.match(script, /next_up_to_4_steps_full/);
+    assert.match(script, /mutating_steps_in_next_4/);
+    assert.match(script, /claimable_no_mutation_in_next_4_known_steps/);
+    // Lookahead must LEFT JOIN mutation_steps (not INNER) so waits remain visible.
+    const sectionH = script.slice(script.indexOf("=== H. Claimable venues"));
+    assert.match(sectionH, /LEFT JOIN mutation_steps/);
+    assert.doesNotMatch(
+      sectionH,
+      /JOIN mutation_steps ms ON ms\.step = so\.step\nWHERE/,
+    );
+    // Must not drop claimable wait-only venues from the report.
+    assert.match(
+      sectionH,
+      /Includes claimable venues even when the next-4 window has no mutations/,
+    );
+  });
+
+  it("venue-level lookahead also keeps non-mutating steps (LEFT JOIN)", () => {
+    const lookahead = script.slice(
+      script.indexOf("lookahead AS ("),
+      script.indexOf("SELECT\n  vc.venue_id"),
+    );
+    assert.match(lookahead, /LEFT JOIN mutation_steps/);
+    assert.match(lookahead, /next_up_to_4_steps/);
+    assert.match(lookahead, /mutation_in_next_4/);
+  });
+
   it("mirrors terminal claim exclusions from claimDueProvisioningVenueIds", () => {
     for (const code of [
       "FAILED",
@@ -113,6 +145,14 @@ describe("inspect-sandbox-texting-provisioning workflow safety", () => {
     assert.match(workflow, /environment:\s*sandbox/);
     assert.match(workflow, /secrets\.SANDBOX_DB_URL/);
     assert.match(workflow, /group:\s*sandbox-database/);
+    assert.match(workflow, /cancel-in-progress:\s*false/);
+  });
+
+  it("documents that pending concurrency runs may still be replaced", () => {
+    assert.match(
+      workflow,
+      /supersede \/ replace a \*pending\* run|replace a \*pending\* run|pending.*replaced|pending.*supersede/i,
+    );
     assert.match(workflow, /cancel-in-progress:\s*false/);
   });
 

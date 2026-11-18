@@ -346,7 +346,11 @@ ORDER BY first_incomplete_ord NULLS LAST, s.venue_id
 LIMIT 50;
 
 \echo
-\echo === H. Claimable venues with potential Twilio mutation in next 4 steps ===
+\echo === H. Claimable venues — full next-4 sequence + mutating subset ===
+\echo Shows every step in the next-four window (including waits). Separately lists
+\echo which of those steps are classified as potential Twilio/external mutations.
+\echo Includes claimable venues even when the next-4 window has no mutations
+\echo (so wait-only windows are visible and not mistaken for "no claimable work").
 WITH step_order(step, ord) AS (
   VALUES
     ('create_subaccount', 1), ('create_api_key', 2), ('store_secret', 3),
@@ -395,23 +399,50 @@ first_incomplete AS (
       WHERE earlier.venue_id = s.venue_id AND earlier.generation = 1
         AND earlier.status IS DISTINCT FROM 'succeeded' AND eo.ord < o.ord
     )
+),
+claimable AS (
+  SELECT fi.venue_id, fi.first_step, fi.first_ord
+  FROM due_claim_candidates d
+  JOIN first_incomplete fi ON fi.venue_id = d.venue_id
+  LEFT JOIN public.venue_twilio_accounts a ON a.venue_id = d.venue_id
+  LEFT JOIN public.venue_texting_registrations r ON r.venue_id = d.venue_id
+  LEFT JOIN protected p ON p.venue_id = d.venue_id
+  WHERE p.venue_id IS NULL
+    AND coalesce(a.status, '') IS DISTINCT FROM 'ready'
+    AND coalesce(r.phase, '') NOT IN ('needs_attention', 'failed', 'ready')
 )
 SELECT
-  fi.venue_id::text AS venue_id,
-  fi.first_step,
-  string_agg(so.step, ',' ORDER BY so.ord) AS next_up_to_4_steps
-FROM due_claim_candidates d
-JOIN first_incomplete fi ON fi.venue_id = d.venue_id
-JOIN public.venue_twilio_accounts a ON a.venue_id = d.venue_id
-LEFT JOIN public.venue_texting_registrations r ON r.venue_id = d.venue_id
-LEFT JOIN protected p ON p.venue_id = d.venue_id
-JOIN step_order so ON so.ord BETWEEN fi.first_ord AND fi.first_ord + 3
-JOIN mutation_steps ms ON ms.step = so.step
-WHERE p.venue_id IS NULL
-  AND coalesce(a.status, '') IS DISTINCT FROM 'ready'
-  AND coalesce(r.phase, '') NOT IN ('needs_attention', 'failed', 'ready')
-GROUP BY fi.venue_id, fi.first_step
-ORDER BY fi.venue_id;
+  c.venue_id::text AS venue_id,
+  c.first_step,
+  string_agg(so.step, ',' ORDER BY so.ord) AS next_up_to_4_steps_full,
+  coalesce(
+    string_agg(so.step, ',' ORDER BY so.ord) FILTER (WHERE ms.step IS NOT NULL),
+    '(none)'
+  ) AS mutating_steps_in_next_4,
+  CASE
+    WHEN bool_or(ms.step IS NOT NULL) THEN 'potential_twilio_mutation_if_claimed'
+    -- Conservative (matches Section G): missing configure_event_streams after
+    -- later succeeded steps means ensureProvisioningSteps may add that
+    -- mutation step and reorder firstIncomplete after deploy — never "safe".
+    WHEN EXISTS (
+      SELECT 1 FROM public.venue_texting_provisioning_steps later
+      JOIN step_order lo ON lo.step = later.step
+      WHERE later.venue_id = c.venue_id AND later.generation = 1
+        AND later.status = 'succeeded' AND lo.ord >= 5
+    )
+    AND NOT EXISTS (
+      SELECT 1 FROM public.venue_texting_provisioning_steps ces
+      WHERE ces.venue_id = c.venue_id AND ces.generation = 1
+        AND ces.step = 'configure_event_streams'
+    )
+    THEN 'potential_twilio_mutation_if_claimed'
+    ELSE 'claimable_no_mutation_in_next_4_known_steps'
+  END AS mutation_risk
+FROM claimable c
+JOIN step_order so ON so.ord BETWEEN c.first_ord AND c.first_ord + 3
+LEFT JOIN mutation_steps ms ON ms.step = so.step
+GROUP BY c.venue_id, c.first_step
+ORDER BY c.venue_id;
 
 \echo
 \echo === Scheduler contract reminder ===

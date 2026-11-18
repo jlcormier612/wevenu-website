@@ -19,8 +19,12 @@ permissions:
   contents: read
 
 # Same concurrency group as Apply Sandbox Migration / booking inspect so only
-# one Sandbox DB job runs at a time. cancel-in-progress: false means a new
-# inspect queues behind an in-flight migration — it does NOT cancel it.
+# one Sandbox DB job runs at a time.
+#
+# cancel-in-progress: false means an *in-progress* run is not cancelled when a
+# newer run is queued. GitHub may still supersede / replace a *pending* run in
+# the same concurrency group when a newer run is enqueued — do not treat
+# "false" as a guarantee that every queued inspect will eventually execute.
 concurrency:
   group: sandbox-database
   cancel-in-progress: false
