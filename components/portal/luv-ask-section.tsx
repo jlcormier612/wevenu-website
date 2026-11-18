@@ -51,7 +51,13 @@ type QA = {
   nextSteps?: LuvAskNextStepType[];
 };
 
-export type LuvAskNavigateTarget = "guide" | "payments" | "documents";
+export type LuvAskNavigateTarget =
+  | "guide"
+  | "payments"
+  | "documents"
+  | "tasks"
+  | "questionnaire"
+  | "timeline";
 
 function AnswerBubble({
   qa,
@@ -87,6 +93,18 @@ function AnswerBubble({
     }
     if (step === "open_documents") {
       onNavigate?.("documents");
+      return;
+    }
+    if (step === "open_tasks") {
+      onNavigate?.("tasks");
+      return;
+    }
+    if (step === "open_questionnaire") {
+      onNavigate?.("questionnaire");
+      return;
+    }
+    if (step === "open_timeline") {
+      onNavigate?.("timeline");
     }
   }
 
@@ -175,7 +193,7 @@ export function LuvAskSection({
 }: {
   token: string;
   onNavigateToGuide?: () => void;
-  /** Optional deeper navigation for gap next steps (payments / documents / guide). */
+  /** Optional deeper navigation for gap next steps (guide / payments / docs / planning). */
   onNavigate?: (target: LuvAskNavigateTarget) => void;
 }) {
   const [answers, setAnswers] = React.useState<QA[]>([]);

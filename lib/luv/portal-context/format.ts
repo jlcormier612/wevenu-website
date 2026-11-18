@@ -98,12 +98,78 @@ export function formatPortalContextForPrompt(
     }
   }
 
+  const plan = ctx.planning;
+  if (!plan) {
+    parts.push(`Planning: (not loaded for this turn)`);
+  } else {
+    parts.push(`Planning tasks:`);
+    parts.push(
+      `- Open: ${plan.openTaskCount}; overdue: ${plan.overdueTaskCount}; completed: ${plan.completedTaskCount}`,
+    );
+    if (plan.nextSuggestedTask) {
+      const n = plan.nextSuggestedTask;
+      parts.push(
+        `- Suggested next: "${n.title}"` +
+          (n.dueDateLabel ? ` (due ${n.dueDateLabel})` : "") +
+          (n.status === "overdue" ? " — overdue" : ""),
+      );
+    } else if (plan.openTaskCount === 0) {
+      parts.push(`- No open couple-visible planning tasks are currently listed.`);
+    }
+    for (const t of plan.openTasks) {
+      parts.push(
+        `- OPEN "${t.title}" [${t.status}]` +
+          (t.dueDateLabel ? ` due ${t.dueDateLabel}` : "") +
+          (t.isRequired ? " (required)" : ""),
+      );
+    }
+    for (const t of plan.completedTasks) {
+      parts.push(`- COMPLETED "${t.title}"`);
+    }
+
+    parts.push(`Questionnaires:`);
+    if (plan.questionnaires.length === 0) {
+      parts.push(`- None visible in the portal right now.`);
+    } else {
+      parts.push(
+        `- Open/in progress: ${plan.openQuestionnaireCount}; completed: ${plan.completedQuestionnaireCount}`,
+      );
+      for (const q of plan.questionnaires) {
+        parts.push(
+          `- "${q.title}"${q.kind ? ` [${q.kind}]` : ""} — ${q.status}`,
+        );
+      }
+    }
+
+    parts.push(`Published / shared timeline:`);
+    if (!plan.timelineAvailable) {
+      parts.push(`- Timeline details are not available in this turn.`);
+    } else if (plan.timelineEntries.length === 0) {
+      parts.push(`- No couple-visible timeline entries are listed yet.`);
+    } else {
+      for (const e of plan.timelineEntries) {
+        const time =
+          e.entryTime
+            ? e.endTime
+              ? `${e.entryTime}–${e.endTime}`
+              : e.entryTime
+            : "time TBD";
+        parts.push(
+          `- Day ${e.dayOffset}: ${time} — "${e.title}" (${e.owner})`,
+        );
+      }
+    }
+  }
+
   parts.push(
     `Rules for using this layer:`,
     `- Prefer these facts over generic HTC instructions when answering about THIS couple's current state.`,
     `- Example: if lifecycle is Awaiting Venue Signature, do NOT tell them to sign from Documents — they already signed.`,
     `- If a payment schedule is absent, do NOT invent a due date; point them to Payments.`,
     `- Invoice "Issued" is not a signature request.`,
+    `- For "what should we work on next?" / "what haven't we finished?" use Planning tasks and Questionnaires only — never invent unfinished work.`,
+    `- Timeline times come only from published/shared couple-visible entries; never invent florist/vendor call times not listed.`,
+    `- If planning facts are missing, say so and point them to Tasks, Questionnaire, or Timeline via nextSteps.`,
   );
 
   return parts.join("\n");
