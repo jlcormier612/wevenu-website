@@ -114,12 +114,13 @@ export function SetupReadiness({
               </Button>
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-2" data-testid="setup-ready-undeclared">
               <p className="text-sm text-muted-foreground">
                 You don&apos;t need everything above finished to say yes — this is your call, whenever it feels right.
               </p>
               <p className="text-sm text-muted-foreground">
-                You&apos;ve decided you&apos;re ready. We&apos;ll stop showing setup guidance, but you can continue configuring your venue anytime.
+                Saying you&apos;re ready doesn&apos;t invite couples or turn anything on. It simply marks that you&apos;re
+                ready to start working in Hello to Cheers — you can keep configuring anytime.
               </p>
               <Button type="button" disabled={pending} onClick={() => toggle(true)}>
                 We&apos;re ready to start working with couples

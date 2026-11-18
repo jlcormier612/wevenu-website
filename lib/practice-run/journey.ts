@@ -172,9 +172,9 @@ export const PRACTICE_STAGE_COPY: Record<
   },
   explore_planning: {
     title: "Prepare, share, and collaborate",
-    heading: "Plan with Maya & Jordan",
+    heading: "Bring their celebration to life.",
     explanation:
-      "Prepare realistic planning resources for this sample wedding, share what the couple should see, try the Client perspective, then review their activity back on the venue side.",
+      "See how Hello to Cheers brings everything together for Maya & Jordan. Prepare their planning experience, share it with them, then step into their shoes to see what they'll love.",
     primaryLabel: "Prepare planning resources",
     secondaryLabel: "Open celebration workspace",
   },
