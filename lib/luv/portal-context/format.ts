@@ -174,3 +174,51 @@ export function formatPortalContextForPrompt(
 
   return parts.join("\n");
 }
+
+/**
+ * Short customer-facing payment summary for privacy-scoped Ask answers.
+ * Returns null when no authoritative payment facts are loaded.
+ */
+export function formatOwnPaymentSummaryForAskPrivacy(
+  ctx: LuvAskPortalContext | null | undefined,
+): string | null {
+  const pay = ctx?.payments;
+  if (!pay) return null;
+  const lines: string[] = [];
+  if (pay.hasPaymentPlan) {
+    if (pay.amountPaid != null) {
+      lines.push(`You’ve paid ${formatLuvAskMoney(pay.amountPaid)} so far.`);
+    }
+    if (pay.remainingBalance != null) {
+      lines.push(
+        `Your remaining plan balance is ${formatLuvAskMoney(pay.remainingBalance)}.`,
+      );
+    }
+    if (pay.nextScheduledPayment) {
+      const n = pay.nextScheduledPayment;
+      lines.push(
+        `Your next scheduled payment is ${n.label}: ${formatLuvAskMoney(n.amount)} due ${n.dueDateLabel}${n.isOverdue ? " (overdue)" : ""}.`,
+      );
+    }
+  }
+  for (const u of pay.unscheduledBalances) {
+    lines.push(
+      `Invoice "${u.label}" shows a balance of ${formatLuvAskMoney(u.balance)} with no payment schedule.`,
+    );
+  }
+  if (lines.length === 0) {
+    if (!pay.hasPaymentPlan && pay.unscheduledBalances.length === 0) {
+      return "No payment plan or invoice balance is currently available in your portal.";
+    }
+    return null;
+  }
+  return lines.join(" ");
+}
+
+/** Drop payment facts from portal context (deterministic isolation for unrelated-person asks). */
+export function withoutPaymentsForAskPrivacy(
+  ctx: LuvAskPortalContext | null | undefined,
+): LuvAskPortalContext | null {
+  if (!ctx) return null;
+  return { ...ctx, payments: null };
+}
