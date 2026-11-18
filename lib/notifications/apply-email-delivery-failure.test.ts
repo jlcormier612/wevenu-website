@@ -106,6 +106,8 @@ describe("applyVenueNotificationDeliveryFailure", () => {
     assert.equal(d.kind, "terminal");
     assert.equal(updates[0]?.payload.needs_email, false);
     assert.equal("emailed_at" in (updates[0]?.payload ?? {}), false);
+    assert.equal(typeof updates[0]?.payload.email_next_attempt_at, "string");
+    assert.notEqual(updates[0]?.payload.email_next_attempt_at, null);
     assert.equal(inserts[0]?.payload.status, "failed");
   });
 

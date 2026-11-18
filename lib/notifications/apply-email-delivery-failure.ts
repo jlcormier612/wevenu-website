@@ -86,10 +86,15 @@ export async function applyVenueNotificationDeliveryFailure(
     jitterRatio: opts.jitterRatio,
   });
 
-  await supabase
+  const { error: updateError } = await supabase
     .from("venue_notifications")
     .update(venueNotificationFailureUpdate(disposition))
     .eq("id", opts.notificationId);
+  if (updateError) {
+    throw new Error(
+      `venue_notifications delivery failure update failed for ${opts.notificationId}: ${updateError.message}`,
+    );
+  }
 
   await supabase.from("notification_log").insert({
     venue_id: opts.venueId,

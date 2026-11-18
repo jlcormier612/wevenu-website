@@ -217,7 +217,8 @@ export function venueNotificationFailureUpdate(
       email_attempt_count: disposition.attemptCount,
       email_last_error_code: disposition.code,
       email_last_error_message: disposition.message.slice(0, 500),
-      email_next_attempt_at: null,
+      // Column is NOT NULL (default now()); null would make the UPDATE a no-op.
+      email_next_attempt_at: new Date().toISOString(),
     };
   }
   return {
