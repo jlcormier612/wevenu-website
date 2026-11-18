@@ -72,6 +72,7 @@ describe("venue notification prefs gate email only (not in-app)", () => {
     );
     assert.match(fn, /\.eq\("needs_email", true\)/);
     assert.match(fn, /\.is\("emailed_at", null\)/);
+    assert.match(fn, /\.lte\("email_next_attempt_at"/);
   });
 
   it("tour_confirmed still fires from status transition (prospect_link RPC + manual path)", () => {
