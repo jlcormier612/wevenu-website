@@ -204,6 +204,9 @@ export const LUV_ASK_NEXT_STEP_LABELS: Record<LuvAskNextStepType, string> = {
   phrase_question: "Help me phrase a question",
   open_payments: "Open Payments",
   open_documents: "Open Documents",
+  open_tasks: "Open Tasks",
+  open_questionnaire: "Open Questionnaire",
+  open_timeline: "Open Timeline",
 };
 
 export const PHRASE_QUESTION_FOLLOW_UP =

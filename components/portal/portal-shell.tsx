@@ -3341,7 +3341,15 @@ function FloatingLuvWidget({
                 LuvAskSection: React.ComponentType<{
                   token: string;
                   onNavigateToGuide?: () => void;
-                  onNavigate?: (target: "guide" | "payments" | "documents") => void;
+                  onNavigate?: (
+                    target:
+                      | "guide"
+                      | "payments"
+                      | "documents"
+                      | "tasks"
+                      | "questionnaire"
+                      | "timeline",
+                  ) => void;
                 }>;
               };
               return (

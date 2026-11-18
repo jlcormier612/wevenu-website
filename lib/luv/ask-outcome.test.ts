@@ -9,6 +9,8 @@ import { resolve } from "node:path";
 import {
   defaultNextStepsForGap,
   knowledgeLayerForOutcome,
+  LUV_ASK_NEXT_STEP_LABELS,
+  LUV_ASK_NEXT_STEP_TYPES,
   parseLuvAskModelResponse,
   unavailableAskResponse,
 } from "@/lib/luv/ask-outcome";
@@ -274,6 +276,26 @@ describe("AC-08 / AC-11 — Signals + unavailable", () => {
         "open_timeline",
       ].includes(s),
     ));
+  });
+
+  it("next-step labels cover every allowlisted type including planning destinations", () => {
+    for (const step of LUV_ASK_NEXT_STEP_TYPES) {
+      assert.equal(typeof LUV_ASK_NEXT_STEP_LABELS[step], "string");
+      assert.ok(LUV_ASK_NEXT_STEP_LABELS[step].length > 0, `missing label for ${step}`);
+    }
+    assert.equal(LUV_ASK_NEXT_STEP_LABELS.open_tasks, "Open Tasks");
+    assert.equal(LUV_ASK_NEXT_STEP_LABELS.open_questionnaire, "Open Questionnaire");
+    assert.equal(LUV_ASK_NEXT_STEP_LABELS.open_timeline, "Open Timeline");
+  });
+
+  it("portal Ask UI navigates planning next steps to section destinations", () => {
+    const ui = read("components/portal/luv-ask-section.tsx");
+    assert.match(ui, /step === "open_tasks"/);
+    assert.match(ui, /onNavigate\?\.\("tasks"\)/);
+    assert.match(ui, /step === "open_questionnaire"/);
+    assert.match(ui, /onNavigate\?\.\("questionnaire"\)/);
+    assert.match(ui, /step === "open_timeline"/);
+    assert.match(ui, /onNavigate\?\.\("timeline"\)/);
   });
 });
 
