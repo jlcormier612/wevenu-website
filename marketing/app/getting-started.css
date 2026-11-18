@@ -65,17 +65,17 @@
 }
 
 /*
- * Hero secondary CTA — one outer pill outline only.
- * Border lives on the rounded <a>; never on the inner label span
- * (inset/span borders created a rectangular outline around the text).
+ * Hero secondary CTA — match approved white secondary used on homepage hero
+ * and Our Story welcome (solid white + light charcoal border).
+ * Border lives on the rounded <a>; never on the inner label span.
  */
 .gs-page a.gs-hero-secondary {
-  border: 1.5px solid var(--botanical) !important;
+  border: 1px solid rgba(36, 51, 43, 0.22) !important;
   /* Match primary py-3 height after adding border */
-  padding-block: calc(0.75rem - 1.5px) !important;
+  padding-block: calc(0.75rem - 1px) !important;
   padding-inline: 1.5rem !important;
-  background-color: transparent !important;
-  color: var(--botanical) !important;
+  background-color: #ffffff !important;
+  color: #24332b !important;
   font-weight: 500;
   opacity: 1 !important;
   box-shadow: none !important;
@@ -97,16 +97,16 @@
 }
 
 .gs-page a.gs-hero-secondary:hover {
-  background-color: color-mix(in srgb, var(--soft-sage) 42%, white) !important;
-  border-color: var(--botanical) !important;
-  color: var(--botanical) !important;
+  background-color: color-mix(in srgb, #ffffff 88%, #e8ebe4) !important;
+  border-color: rgba(36, 51, 43, 0.4) !important;
+  color: #24332b !important;
   box-shadow: none !important;
 }
 
 .gs-page a.gs-hero-secondary:focus-visible {
-  /* Keep keyboard focus on the outer control (MarketingCta ring utilities) */
-  border-color: var(--botanical) !important;
-  color: var(--botanical) !important;
+  /* Keep keyboard focus ring from MarketingCta; preserve white secondary chrome */
+  border-color: rgba(36, 51, 43, 0.4) !important;
+  color: #24332b !important;
   box-shadow: none !important;
 }
 
