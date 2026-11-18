@@ -4,6 +4,7 @@
 #
 # Uses placeholder NEXT_PUBLIC_* values sufficient for `next build` typecheck/compile.
 # Does not deploy. Does not touch Sandbox or Production.
+# Path-filter note: include this workflow file when docs/scripts PRs still need the required check.
 
 name: Venue app PR build
 

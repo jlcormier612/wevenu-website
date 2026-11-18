@@ -208,6 +208,79 @@ try {
     /Maya|Practice Run|See it all/i.test(await page.locator("body").innerText()) ? "PASS" : "FAIL",
   );
 
+  // Venue: walk stages enough to unlock practice-book → prepare + share planning
+  async function clickIfEnabled(testId, waitMs = 1200) {
+    const btn = page.getByTestId(testId);
+    if ((await btn.count()) && (await btn.isEnabled())) {
+      await btn.click();
+      await page.waitForTimeout(waitMs);
+      return true;
+    }
+    return false;
+  }
+
+  await clickIfEnabled("practice-confirm-explored-inquiry");
+  await page.getByTestId("practice-stage-card-prepare_proposal").scrollIntoViewIfNeeded();
+  await clickIfEnabled("practice-prepare-sample-proposal", 2000);
+  await page.waitForSelector('[data-testid="practice-proposal-snapshot"]', { timeout: 60000 }).catch(() => null);
+  await clickIfEnabled("practice-simulate-proposal-delivery", 1500);
+  await clickIfEnabled("practice-simulate-client-selection", 1500);
+
+  await page.getByTestId("practice-stage-card-create_agreement").scrollIntoViewIfNeeded();
+  await clickIfEnabled("practice-prepare-sample-contract", 2000);
+  await page.waitForSelector('[data-testid="practice-contract-snapshot"]', { timeout: 60000 }).catch(() => null);
+  for (let i = 0; i < 10; i++) {
+    run = await activeRun();
+    const status = run?.journey?.contract?.simulatedStatus;
+    if (status === "fully_executed") break;
+    const adv = page.getByTestId("practice-advance-contract-simulation");
+    try {
+      await adv.click({ timeout: 5000 });
+      await page.waitForTimeout(1500);
+    } catch {
+      await page.waitForTimeout(800);
+    }
+  }
+
+  await page.getByTestId("practice-stage-card-get_ready").scrollIntoViewIfNeeded();
+  for (let i = 0; i < 12; i++) {
+    run = await activeRun();
+    if (run?.practice_booked_at) break;
+    const book = page.getByTestId("practice-book-celebration");
+    if (await book.count()) {
+      try {
+        await book.click({ timeout: 4000, force: true });
+        await page.waitForTimeout(2000);
+      } catch {
+        await page.reload({ waitUntil: "domcontentloaded" });
+        await page.waitForSelector('[data-testid="practice-run-shell"]', { timeout: 90000 });
+        await page.getByTestId("practice-stage-card-get_ready").scrollIntoViewIfNeeded();
+      }
+    } else {
+      await page.waitForTimeout(500);
+    }
+  }
+
+  run = await activeRun();
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.waitForSelector('[data-testid="practice-run-shell"]', { timeout: 90000 });
+  await page.getByTestId("practice-stage-card-explore_planning").scrollIntoViewIfNeeded();
+  await page.getByTestId("practice-prepare-planning").click({ timeout: 60000 });
+  await page.waitForSelector('[data-testid="practice-planning-snapshot"]', { timeout: 90000 });
+  await page.waitForTimeout(1200);
+  await page.getByTestId("practice-share-planning").click();
+  await page.waitForTimeout(2000);
+  run = await activeRun();
+  set(
+    "planning_prepare_share",
+    run?.practice_booked_at && run?.journey?.planning ? "PASS" : "FAIL",
+    {
+      practiceBookedAt: run?.practice_booked_at ?? null,
+      planning: run?.journey?.planning ?? null,
+      contractStatus: run?.journey?.contract?.simulatedStatus ?? null,
+    },
+  );
+
   // Client with photo
   await Promise.all([
     page.waitForURL(/\/practice-run\/.*\/client/, { timeout: 90000 }),
@@ -248,7 +321,8 @@ try {
     photoProbe,
   );
 
-  // Client task
+  // Client task — require a real completable task after prepare/share
+  run = await activeRun();
   const { data: sessions } = await admin
     .from("client_portal_sessions")
     .select("access_token")
@@ -258,22 +332,24 @@ try {
     .limit(1);
   const token = sessions?.[0]?.access_token;
   let clientAction = false;
+  let taskCount = 0;
   if (token) {
     const tasksRes = await page.request.get(`${BASE}/api/portal/tasks?token=${encodeURIComponent(token)}`);
     const tasksJson = await tasksRes.json().catch(() => ({}));
     const tasks = Array.isArray(tasksJson.tasks) ? tasksJson.tasks : [];
+    taskCount = tasks.length;
     const completable = tasks.find((t) => t.canComplete && t.status !== "complete");
     if (completable) {
       const patch = await page.request.post(`${BASE}/api/portal/complete-task`, {
         data: { token, taskId: completable.id },
       });
       clientAction = patch.ok();
+      results.notes.push({ completedTaskId: completable.id, taskCount });
     } else {
-      clientAction = tasks.length >= 0;
-      results.notes.push({ clientTasks: tasks.length });
+      results.notes.push({ clientTasks: taskCount, completable: false });
     }
   }
-  set("client_planning_action", token && clientAction ? "PASS" : "FAIL");
+  set("client_planning_action", token && clientAction ? "PASS" : "FAIL", { taskCount, clientAction });
   await snap("07-client-planning");
 
   const clientMsg = `ONB client ${Date.now()}`;
@@ -334,10 +410,51 @@ try {
     { before: beforeReset?.id, after: afterReset?.id },
   );
   if (afterReset) {
-    await page.goto(`${BASE}/setup-hub/practice-run?run=${encodeURIComponent(afterReset.id)}`, {
+    let seeded = afterReset;
+    for (let i = 0; i < 40; i++) {
+      seeded = await activeRun();
+      if (seeded?.sample_relationship_id && seeded?.sample_event_id) break;
+      await page.waitForTimeout(500);
+    }
+    await page.goto(`${BASE}/setup-hub/practice-run?run=${encodeURIComponent(seeded.id)}`, {
       waitUntil: "domcontentloaded",
     });
     await snap("10-reset-restart");
+    // Prove couple photo re-seeds on reset (service-role seed + relative asset)
+    let resetRel = null;
+    for (let i = 0; i < 20; i++) {
+      const { data } = await admin
+        .from("venue_customer_relationships")
+        .select("client_photo_url,client_photo_shared")
+        .eq("id", seeded.sample_relationship_id)
+        .eq("venue_id", VENUE_ID)
+        .maybeSingle();
+      resetRel = data;
+      if (resetRel?.client_photo_url?.includes("maya-jordan-couple")) break;
+      await page.waitForTimeout(400);
+    }
+    results.notes.push({ postResetCouplePhoto: resetRel });
+    await page.getByTestId("practice-perspective-client").click();
+    await page.waitForURL(/client/, { timeout: 90000 });
+    await page.waitForSelector('[data-testid="practice-client-portal"]', { timeout: 90000 });
+    await page.waitForTimeout(2500);
+    await snap("10b-reset-client-photo");
+    const resetPhoto = await page.evaluate(() => {
+      const imgs = [...document.querySelectorAll("img")];
+      const match = imgs.find((img) =>
+        (img.getAttribute("src") || img.src || "").includes("maya-jordan-couple"),
+      );
+      return match
+        ? { found: true, src: match.getAttribute("src") || match.src, naturalWidth: match.naturalWidth || 0 }
+        : { found: false, naturalWidth: 0 };
+    });
+    set(
+      "reset_couple_photo",
+      resetPhoto.found && resetPhoto.naturalWidth > 0 && resetRel?.client_photo_url?.includes("maya-jordan-couple")
+        ? "PASS"
+        : "FAIL",
+      { resetPhoto, resetRel },
+    );
   }
 
   // Go-live readiness card

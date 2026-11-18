@@ -4,6 +4,7 @@
 # Path-filter note: required checks must still run when practice-run/lib changes
 # land without matching app/(app) paths — include this workflow file in the PR.
 # (Also bumped for service-role practice couple photo seed PR.)
+# (Bumped for ONB-FINAL acceptance evidence PR.)
 
 name: Hospitality visual smoke
 
