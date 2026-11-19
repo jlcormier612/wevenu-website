@@ -1,0 +1,34 @@
+PASS [A] api-success — {"http":200,"sent":1,"deferred":0,"failed":0,"sentGuestIds":["a7e1cd7a-aeb6-4f4a-b32c-6d6ae94b020e"]}
+PASS [A] guest-status-sent — {"id":"a7e1cd7a-aeb6-4f4a-b32c-6d6ae94b020e","invitation_status":"sent","rsvp_sent_at":"2026-11-19T22:19:24.314802+00:00"}
+PASS [A] invitation-email-row — rows=1
+PASS [A] provider-id-present — provider_id=01a1f5e4-a2c…
+PASS [A] resend-delivered — http=200 hits=1
+PASS [A] ui-shows-guest — guest list
+PASS [A] ui-shows-sent — Sent label near Alpha
+PASS [A] ui-screenshot — /Users/jensmac/Desktop/HTC-RESEND-SCALE-PHASE-D/phase-d-guests-pdmwo44ikz.png
+PASS [B] same-attempt-api-ok — {"http":200,"sent":1,"deferred":0}
+PASS [B] same-attempt-no-duplicate-resend — before=1 after=1
+PASS [B] retry-restored-sent — {"invitation_status":"sent","rsvp_sent_at":"2026-11-19T22:19:34.636119+00:00"}
+PASS [B] receipt-found-for-attempt — {"status":"found","id":"d822c662-4e94-482c-b43d-3edcdd8b03e4","providerId":"01a1f5e4-a2c2-7112-9bc3-6a93aa496322"}
+PASS [B] direct-recovery-ok — {"ok":true,"persisted":1}
+PASS [B] direct-recovery-guest-sent — {"invitation_status":"sent"}
+PASS [B] direct-recovery-provider-receipt — sim_pdmwo44ikz_beta
+PASS [B] recovery-then-api-no-resend — {"api":{"http":200,"sent":1},"resendBefore":0,"resendAfter":0}
+PASS [C] next-day-reminder-not-suppressed — {"http":200,"sent":1,"deferred":0,"failed":0}
+PASS [C] yesterday-receipt-untouched — yday_rows=1
+PASS [C] today-reminder-row — today_rows=1
+PASS [C] same-day-reminder-retry-ok — {"http":200,"sent":1,"resendHits":1}
+PASS [C] next-day-update-not-suppressed — {"http":200,"sent":1,"failed":0}
+PASS [C] historical-invitation-preserved — invitation_receipts=1
+PASS [D] bulk-fill-6 — granted=6
+FAIL [D] bulk-deferred — {"http":200,"sent":1,"deferred":0}
+FAIL [D] deferred-not-marked-sent — {"invitation_status":"sent","rsvp_sent_at":"2026-11-19T22:19:41.058729+00:00"}
+PASS [D] invalid-token — {"ok":false,"error":"Invalid token.","_http":401}
+PASS [D] expired-token — {"ok":false,"error":"Invalid token.","_http":401}
+PASS [D] cross-client-rejected — {"sent":0,"errors":["No guests with email addresses found."]}
+PASS [D] cross-venue-rejected — {"sent":0}
+PASS [D] anon-pacing-denied — permission denied for function acquire_resend_send_slot
+PASS [D] critical-slot-works — {"at_ms":8795126763163,"total":1,"reason":null,"granted":true,"bulk_count":0,"critical_count":1,"retry_after_ms":0}
+PASS [Z] cleanup — removed 6 guests + sessions
+
+NOT GREEN Phase D acceptance
