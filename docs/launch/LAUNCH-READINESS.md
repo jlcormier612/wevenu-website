@@ -2,10 +2,10 @@
 
 **Authoritative prelaunch register.**  
 **Created:** 2026-11-18  
-**Last updated:** 2026-11-19 (Wave 7A Sandbox release in progress — PR #101 pending merge/deploy; stale-test GREEN/CLOSED; NAV-PERF OPEN)  
-**Sandbox serving SHA (verified):** `c1b993f6c6842bbda0f3c71ae6162eca53f9aa32`  
-**Rollback target:** ECS `htc-sandbox-venue-app:1231` / image `c1b993f6…`  
-**Active workstream:** NAV-PERF (Wave 6 on Sandbox; Wave 7A approved for Sandbox; launch bar not yet GREEN)  
+**Last updated:** 2026-11-19 (Wave 7A Sandbox **KEEP** — functional PASS; booking TTFB improved; NAV-PERF remains OPEN)  
+**Sandbox serving SHA (verified):** `75e88023bd6881b7397e66b55ad69bdafc77177a`  
+**Rollback target:** ECS `htc-sandbox-venue-app:1231` / image `c1b993f6…` (pre-7A)  
+**Active workstream:** NAV-PERF (Wave 7A kept on Sandbox; launch bar not yet GREEN; no Wave 7B)  
 **Production:** unauthorized — no Production customers, payments, or deploy.
 
 This file is the permanent Launch Readiness Register for coordinated prelaunch.  
@@ -18,7 +18,7 @@ Historical trackers (`docs/launch/MASTER-READINESS-TRACKER.md`, older release-re
 | Dimension | Status |
 |-----------|--------|
 | Sandbox product surface (onboarding, Practice Run, migration, portals, contracts/payments, reporting, Luv lifecycle/privacy/redundancy, messaging safeguards, approved marketing) | **Substantial Sandbox acceptance** — see §2 |
-| Venue navigation performance | **ACTIVE** — Wave 6 on Sandbox `c1b993f6`; warm TTFB med **786** / p90 **1422**; Focus med **2377**; NAV-PERF OPEN (P1) |
+| Venue navigation performance | **ACTIVE** — Wave 7A on Sandbox `75e88023` (KEEP); booking warm TTFB med **867** (was **1765** on Wave 6 booking baseline); identity≈**2553**; NAV-PERF OPEN (P1) |
 | Production infrastructure / live Stripe / legal / ops | **OPEN** — Production gates not satisfied |
 | Overall Production launch | **NOT READY** — Sandbox ≠ Production |
 
@@ -63,7 +63,7 @@ Preserve GREEN/CLOSED unless new regression evidence appears.
 
 | ID | Description | Priority | Status | Owner | Acceptance criteria | Evidence / reference | Dependency |
 |----|-------------|----------|--------|-------|---------------------|----------------------|------------|
-| **NAV-PERF** | Venue navigation performance — required for launch acceptance | P1 | **OPEN** (Wave 6 on Sandbox; launch bar not yet met; Wave 5 not released) | Engineering | Founder-accepted launch feel after real-content remasure. Keep OPEN until accepted | Wave 6 PR [#98](https://github.com/jlcormier612/wevenu-website/pull/98) merge `c1b993f6`; deploy [44456487512](https://github.com/jlcormier612/wevenu-website/actions/runs/44456487512); image `htc-sandbox-venue-app:c1b993f6…` task `:1231`. Fancy remasure: warm TTFB med **786** / p90 **1422** (0× ≥3 s this window); Focus med **2377**; layout wall med **247** (CW, parallel mode). Functional PASS (Fancy venue, unauth→login, OpenAI 0). Wave 4 p90 class not reproduced here; Focus not at Wave 2/3 launch feel. Remaining: Focus/gates, booking SSR, ECS CPU amplifier. Evidence `docs/qa/launch-performance/nav-perf-wave6/AFTER-DEPLOY-REPORT.md`; Desktop `~/Desktop/HTC-NAV-PERF-WAVE6-AFTER/`. | None — **ACTIVE** |
+| **NAV-PERF** | Venue navigation performance — required for launch acceptance | P1 | **OPEN** (Wave 7A **KEEP** on Sandbox; launch bar not yet met; no Wave 7B) | Engineering | Founder-accepted launch feel after real-content remasure. Keep OPEN until accepted | Wave 7A PR [#101](https://github.com/jlcormier612/wevenu-website/pull/101) merge `75e88023`; stale-test PR [#100](https://github.com/jlcormier612/wevenu-website/pull/100) `f5131ba4`; deploy [44465522630](https://github.com/jlcormier612/wevenu-website/actions/runs/44465522630) → ECS `:1232` image `75e88023…`. Booking remasure (n=8 warm): TTFB med **867** / p90 **1916** vs Wave 6 booking baseline **1765** / **2700**; identity med **2553** vs **2629**; Cancel available with identity; OpenAI 0; functional acceptance PASS. Focus/dashboard launch bar still not closed. Evidence `docs/qa/launch-performance/nav-perf-wave7a/`; Desktop `~/Desktop/HTC-NAV-PERF-WAVE7A-SANDBOX/`. Rollback `:1231`/`c1b993f6`. | None — **ACTIVE** |
 | **LUV-CONSENT** | Channel consent not loaded into draft eligibility (`channelConsentOk` defaults true); send path intended to recheck | P1 | OPEN | Engineering | Draft eligibility + accept/send boundary use authoritative consent; unit + Sandbox proof; no paid AI | Lifecycle closure 2026-11-18; `relationship-lifecycle-loader.ts` | After NAV-PERF unless founder reprioritizes |
 | **JOURNEY-FINAL** | Full new-venue Sandbox customer journey (provision → setup → book → portal → payments Test) | P1 | OPEN | Joint | Disposable-venue E2E harness PASS on current Sandbox tip; evidence package | MASTER JOURNEY-FINAL; ONB-FINAL closed | Prefer after NAV-PERF |
 | **TS-001** | TypeScript baseline / typecheck debt | P1 | OPEN | Engineering | Agreed baseline green in CI without weakening checks | MASTER TS-001 | Independent |
@@ -93,7 +93,7 @@ Preserve GREEN/CLOSED unless new regression evidence appears.
 ## 4. Current active workstream
 
 **NAV-PERF — Venue navigation performance (P1, required for launch)**  
-Wave 5 **not released**. Wave 6 layout first-byte + bootstrap parallelization **serving on Sandbox** `c1b993f6`. Remasure: warm TTFB med 786 / p90 1422; Focus med 2377 — launch bar still not met. Wave 7A booking streaming is **local-only** (not on Sandbox). Known test failures above were **pre-existing on `origin/main`**, not introduced by Wave 7A. **Keep NAV-PERF OPEN.**  
+Wave 7A booking identity-shell streaming + Cancel/Return parity is **serving on Sandbox** `75e88023` (ECS `:1232`). Founder disposition: **KEEP**. Booking warm TTFB improved vs Wave 6 booking baseline; identity/detail roughly flat; primary Cancel parity with identity. Stale-test GREEN/CLOSED preserved. **Do not start Wave 7B.** NAV-PERF remains **OPEN** (Focus/overall launch feel not closed).  
 No Production changes.
 
 ---
@@ -159,4 +159,5 @@ All must be GREEN (or founder-documented exception) before live customers/paymen
 | 2026-11-18 | NAV-PERF Wave 2 merged PR #94 → `7191fffa`, Sandbox deployed, remasure + functional PASS. NAV-PERF remains **OPEN**. Other GREEN/CLOSED rows preserved. |
 | 2026-11-18 | NAV-PERF Wave 3 coded on `perf/nav-perf-wave3` (lean Focus invoices/schedules/lines/requests + readiness candidate events; no date cutoff). Fancy Focus parity 0 mismatches; query bundle −64% bytes. **No commit/deploy yet.** NAV-PERF remains **OPEN**. Other GREEN/CLOSED rows preserved. |
 | 2026-11-18 | NAV-PERF Wave 3 merged PR #96 → `83569a10`, Sandbox deployed, remasure + nav + functional. Cold TTFB −31%; Focus medians not improved vs Wave 2. NAV-PERF remains **OPEN**. Other GREEN/CLOSED rows preserved. |
-| 2026-11-19 | Prelaunch known-failure triage (Timeline empty TemplatePicker + questionnaires tab). Both fail identically on clean `origin/main` and Wave 7A — **incorrect/outdated source contracts**, not product defects; not Wave 7A regressions. Adjacent stale tab/Luv/setup-copy assertions corrected. Sandbox verify PASS (`sandbox-verify.json`). Added §5a prelaunch failure policy. Branch `fix/prelaunch-known-test-failures` (uncommitted pending founder). NAV-PERF remains OPEN; Wave 7A not blocked by these tests. |
+| 2026-11-19 | Prelaunch known-failure triage (Timeline empty TemplatePicker + questionnaires tab). Both fail identically on clean `origin/main` and Wave 7A — **incorrect/outdated source contracts**, not product defects; not Wave 7A regressions. Adjacent stale tab/Luv/setup-copy assertions corrected. Sandbox verify PASS (`sandbox-verify.json`). Added §5a prelaunch failure policy. Merged PR [#100](https://github.com/jlcormier612/wevenu-website/pull/100) → `f5131ba4`. |
+| 2026-11-19 | NAV-PERF Wave 7A merged PR [#101](https://github.com/jlcormier612/wevenu-website/pull/101) → `75e88023`; Sandbox deploy [44465522630](https://github.com/jlcormier612/wevenu-website/actions/runs/44465522630) ECS `:1232`. Functional acceptance PASS; booking warm TTFB **867** vs baseline **1765**; Cancel with identity; OpenAI 0. Founder recommendation **KEEP**. No Wave 7B. NAV-PERF remains **OPEN**. |

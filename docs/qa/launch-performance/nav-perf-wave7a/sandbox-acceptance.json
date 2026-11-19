@@ -1,0 +1,77 @@
+{
+  "measuredAt": "2026-11-19T05:56:03.976Z",
+  "app": "https://app.sandbox.hellotocheers.com",
+  "expectedSha": "75e88023bd6881b7397e66b55ad69bdafc77177a",
+  "openai": 0,
+  "checks": [
+    {
+      "name": "booked-identity-actions",
+      "ok": true,
+      "notes": [
+        "fallback=false",
+        "edit=true",
+        "day=true",
+        "cancel=true",
+        "detailReady=true",
+        "detailError=false"
+      ]
+    },
+    {
+      "name": "contracts-payments-questionnaires-chrome",
+      "ok": true,
+      "notes": [
+        "paymentsTab=true",
+        "qCard=true"
+      ]
+    },
+    {
+      "name": "timeline-chrome",
+      "ok": true,
+      "notes": [
+        "ok=true"
+      ]
+    },
+    {
+      "name": "cancelled-return",
+      "ok": true,
+      "notes": [
+        "return=true",
+        "noCancel=true"
+      ]
+    },
+    {
+      "name": "preparing-no-cancel",
+      "ok": true,
+      "notes": [
+        "client=d6167059-3782-401d-9996-9a208de51251"
+      ]
+    },
+    {
+      "name": "unknown-client-denied",
+      "ok": true,
+      "notes": []
+    },
+    {
+      "name": "cross-venue-denied",
+      "ok": true,
+      "notes": [
+        "foreign=45176285-451f-481f-9690-d924cbdc7869"
+      ]
+    },
+    {
+      "name": "no-paid-openai",
+      "ok": true,
+      "notes": [
+        "openai=0"
+      ]
+    },
+    {
+      "name": "mutate-skipped-readonly",
+      "ok": true,
+      "notes": [
+        "WAVE7A_MUTATE_DISPOSABLE unset"
+      ]
+    }
+  ],
+  "allOk": true
+}
