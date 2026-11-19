@@ -5,10 +5,12 @@ import {
   RESEND_PACING_CRITICAL_RESERVED,
   RESEND_PACING_MAX_BULK,
   RESEND_PACING_MAX_TOTAL,
+  RESEND_PACING_RETRY_AFTER_MS_MAX,
   RESEND_PACING_WINDOW_MS,
   RESEND_PROVIDER_RPS,
   acquireManySequential,
   maxGrantsInAnySlidingWindow,
+  retryAfterFromOldest,
   tryAcquireSlidingSlot,
   type SlidingAcquireEvent,
 } from "./window-slot";
@@ -105,5 +107,50 @@ describe("Resend sliding-window slot pacing", () => {
     }
     assert.equal(grantTimes.length, RESEND_PACING_MAX_TOTAL);
     assert.equal(maxGrantsInAnySlidingWindow(grantTimes), RESEND_PACING_MAX_TOTAL);
+  });
+
+  it("clamps retry_after under far-future / extreme oldest timestamps", () => {
+    assert.equal(retryAfterFromOldest(1_000, 1000, null), 1);
+    // Normal: oldest ages out in 501ms
+    assert.equal(retryAfterFromOldest(1_000, 1000, 500), 501);
+    // Already aged conceptually → still at least 1
+    assert.equal(retryAfterFromOldest(5_000, 1000, 1_000), 1);
+    // Far-future oldest would overflow 32-bit integer without clamp
+    const far = retryAfterFromOldest(1_700_000_000_000, 1000, 2_200_000_000_000);
+    assert.equal(far, RESEND_PACING_RETRY_AFTER_MS_MAX);
+    assert.ok(Number.isInteger(far) && far > 0);
+    // Non-finite → safe minimum (never grants via overflow)
+    assert.equal(retryAfterFromOldest(Number.NaN, 1000, 1), 1);
+  });
+
+  it("prunes far-future pollution then enforces normal caps (no overflow, no extra capacity)", () => {
+    const nowMs = 1_700_000_100_000;
+    const events: SlidingAcquireEvent[] = Array.from({ length: RESEND_PACING_MAX_TOTAL }, (_, i) => ({
+      atMs: 2_500_000_000_000 + i, // far future — malformed
+      priority: "critical" as const,
+    }));
+    // First acquire prunes pollution and grants under normal policy
+    const first = tryAcquireSlidingSlot(events, "critical", { nowMs });
+    assert.equal(first.granted, true);
+    assert.equal(events.length, 1);
+    assert.equal(events[0]!.atMs, nowMs);
+    // Fill to cap; still exactly maxTotal — pollution did not expand capacity
+    for (let i = 0; i < RESEND_PACING_MAX_TOTAL - 1; i++) {
+      assert.equal(tryAcquireSlidingSlot(events, "critical", { nowMs }).granted, true);
+    }
+    assert.equal(events.length, RESEND_PACING_MAX_TOTAL);
+    assert.equal(tryAcquireSlidingSlot(events, "critical", { nowMs }).granted, false);
+  });
+
+  it("normal window denial retry stays small and nonnegative", () => {
+    const events: SlidingAcquireEvent[] = [];
+    const nowMs = 1_700_000_200_000;
+    for (let i = 0; i < RESEND_PACING_MAX_TOTAL; i++) {
+      assert.equal(tryAcquireSlidingSlot(events, "critical", { nowMs }).granted, true);
+    }
+    const denied = tryAcquireSlidingSlot(events, "bulk", { nowMs: nowMs + 10 });
+    assert.equal(denied.granted, false);
+    assert.ok(denied.retryAfterMs >= 1);
+    assert.ok(denied.retryAfterMs <= RESEND_PACING_WINDOW_MS + 1);
   });
 });
