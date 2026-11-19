@@ -1,0 +1,195 @@
+{
+  "measuredAt": "2026-11-19T02:33:10.615Z",
+  "venueId": "a415ac52-cd74-42a6-8df7-7a8f6e71d080",
+  "candidateEvents": 8,
+  "eventsLoaded": 8,
+  "beforeQueryBundle": [
+    {
+      "label": "fat_parallel_r1",
+      "ms": 265,
+      "rows": 1,
+      "bytes": 319866
+    },
+    {
+      "label": "fat_parallel_r2",
+      "ms": 185,
+      "rows": 1,
+      "bytes": 319866
+    }
+  ],
+  "afterQueryBundle": [
+    {
+      "label": "lean_focus_path_r1",
+      "ms": 174,
+      "rows": 1,
+      "bytes": 115908
+    },
+    {
+      "label": "lean_focus_path_r2",
+      "ms": 144,
+      "rows": 1,
+      "bytes": 115908
+    }
+  ],
+  "payloadBytes": {
+    "beforeMedian": 319866,
+    "afterMedian": 115908,
+    "beforeMsMedian": 225,
+    "afterMsMedian": 159
+  },
+  "parity": {
+    "baselineCount": 8,
+    "afterCount": 8,
+    "mismatches": 0,
+    "details": []
+  },
+  "afterFocusItems": [
+    {
+      "id": "briefing-requests-c43ca64a-5e76-41ec-86d9-c8cebfbe854b",
+      "category": "requests",
+      "status": "needs_attention",
+      "eventId": "c43ca64a-5e76-41ec-86d9-c8cebfbe854b",
+      "eventName": "LUV-CTX-QA Approaching Event",
+      "eventDate": "2026-10-12",
+      "label": "Requests",
+      "detail": "1 waiting on you",
+      "link": "/requests/b1c780e7-a4ce-4eb7-b2ce-0cad34c8afd7",
+      "conditionKey": "v1:requests:c43ca64a-5e76-41ec-86d9-c8cebfbe854b:b1c780e7-a4ce-4eb7-b2ce-0cad34c8afd7:submitted:",
+      "requestIds": [
+        "b1c780e7-a4ce-4eb7-b2ce-0cad34c8afd7"
+      ],
+      "requestStatuses": [
+        "submitted"
+      ]
+    },
+    {
+      "id": "briefing-payments-b16f8c7a-5754-4354-9ce3-ac6e25085525",
+      "category": "payments",
+      "status": "needs_attention",
+      "eventId": "b16f8c7a-5754-4354-9ce3-ac6e25085525",
+      "eventName": "Ron Cormier & Jen Cormier — Corporate Event",
+      "eventDate": "2026-10-24",
+      "label": "Payments",
+      "detail": "4 payments overdue.",
+      "link": "/invoices/4eeeb3b1-8425-4c3f-8e68-624e48814158",
+      "conditionKey": "v1:payments:b16f8c7a-5754-4354-9ce3-ac6e25085525:24d22cb1-fb97-4d88-9358-2c078b0ad5d4:overdue:2026-09-29|78643113-0ce0-402c-a6e9-37b19be88aff:overdue:2026-09-29|9dec0e03-67f7-4ccf-801c-fa3c19e95810:overdue:2026-09-29|e600aa49-9a9e-4190-86e4-779b932fa05d:overdue:2026-09-29",
+      "invoiceIds": [
+        "4eeeb3b1-8425-4c3f-8e68-624e48814158",
+        "56f8ea63-aec4-4b8f-a964-ed4491be1794"
+      ],
+      "overdueLineCount": 4,
+      "balanceDueSum": 4500
+    },
+    {
+      "id": "briefing-payments-2d2d9293-24c5-4e16-a9f7-4ef67eb958df",
+      "category": "payments",
+      "status": "needs_attention",
+      "eventId": "2d2d9293-24c5-4e16-a9f7-4ef67eb958df",
+      "eventName": "SelUse Proof5492 Wedding",
+      "eventDate": "2026-11-29",
+      "label": "Payments",
+      "detail": "3 payments overdue.",
+      "link": "/invoices/77f2f506-e821-4265-a305-b5428370106b",
+      "conditionKey": "v1:payments:2d2d9293-24c5-4e16-a9f7-4ef67eb958df:51e2e6da-2b5d-4a22-b0b1-b656bc39192c:overdue:2026-10-30|812beeda-c821-4581-8141-697f87d97eda:overdue:2026-09-30|9899bc38-e4ab-468a-af5d-2bebf96ec8c9:overdue:2026-08-01",
+      "invoiceIds": [
+        "77f2f506-e821-4265-a305-b5428370106b"
+      ],
+      "overdueLineCount": 3,
+      "balanceDueSum": 13125
+    },
+    {
+      "id": "briefing-contract-6f41b3c4-549a-4a1d-a2ff-108a09b8687c",
+      "category": "contracts",
+      "status": "needs_attention",
+      "eventId": "6f41b3c4-549a-4a1d-a2ff-108a09b8687c",
+      "eventName": "LVSE-LVSEMVSAD1DQ-WeddingA-Barn",
+      "eventDate": "2029-10-02",
+      "label": "Contract",
+      "detail": "Drafted — not yet sent.",
+      "link": "/contracts/597791f9-eb83-4238-9906-7f3e786a53f0",
+      "conditionKey": "v1:contracts:6f41b3c4-549a-4a1d-a2ff-108a09b8687c:597791f9-eb83-4238-9906-7f3e786a53f0:draft",
+      "contractIds": [
+        "597791f9-eb83-4238-9906-7f3e786a53f0"
+      ],
+      "contractStatuses": [
+        "draft"
+      ]
+    },
+    {
+      "id": "briefing-contract-b2080775-802c-4bc7-8513-c6fc11000a0a",
+      "category": "contracts",
+      "status": "needs_attention",
+      "eventId": "b2080775-802c-4bc7-8513-c6fc11000a0a",
+      "eventName": "LVSE-LVSEMVSAD1DQ-WeddingB-Ballroom",
+      "eventDate": "2029-10-02",
+      "label": "Contract",
+      "detail": "Drafted — not yet sent.",
+      "link": "/contracts/e4d9bf55-9134-46b9-8581-cf11578c52b7",
+      "conditionKey": "v1:contracts:b2080775-802c-4bc7-8513-c6fc11000a0a:e4d9bf55-9134-46b9-8581-cf11578c52b7:draft",
+      "contractIds": [
+        "e4d9bf55-9134-46b9-8581-cf11578c52b7"
+      ],
+      "contractStatuses": [
+        "draft"
+      ]
+    },
+    {
+      "id": "briefing-contract-85c55895-b82c-4ef3-8d66-c3ebc82f1ef7",
+      "category": "contracts",
+      "status": "needs_attention",
+      "eventId": "85c55895-b82c-4ef3-8d66-c3ebc82f1ef7",
+      "eventName": "LVSE-LVSEMVSAFSZL-WeddingA-Barn",
+      "eventDate": "2029-10-13",
+      "label": "Contract",
+      "detail": "Drafted — not yet sent.",
+      "link": "/contracts/404ecfff-fdbd-44a5-9e74-76ea044c8b8c",
+      "conditionKey": "v1:contracts:85c55895-b82c-4ef3-8d66-c3ebc82f1ef7:404ecfff-fdbd-44a5-9e74-76ea044c8b8c:draft",
+      "contractIds": [
+        "404ecfff-fdbd-44a5-9e74-76ea044c8b8c"
+      ],
+      "contractStatuses": [
+        "draft"
+      ]
+    },
+    {
+      "id": "briefing-contract-9f569e99-cca9-4b5e-be5c-bbe0b60affc4",
+      "category": "contracts",
+      "status": "needs_attention",
+      "eventId": "9f569e99-cca9-4b5e-be5c-bbe0b60affc4",
+      "eventName": "LVSE-LVSEMVSAFSZL-WeddingB-Ballroom",
+      "eventDate": "2029-10-13",
+      "label": "Contract",
+      "detail": "Drafted — not yet sent.",
+      "link": "/contracts/4ac0360a-a080-4386-aad2-d2d9f8aeaf7e",
+      "conditionKey": "v1:contracts:9f569e99-cca9-4b5e-be5c-bbe0b60affc4:4ac0360a-a080-4386-aad2-d2d9f8aeaf7e:draft",
+      "contractIds": [
+        "4ac0360a-a080-4386-aad2-d2d9f8aeaf7e"
+      ],
+      "contractStatuses": [
+        "draft"
+      ]
+    },
+    {
+      "id": "briefing-payments-ebf74f77-2944-474a-b735-48762ecb6842",
+      "category": "payments",
+      "status": "needs_attention",
+      "eventId": "ebf74f77-2944-474a-b735-48762ecb6842",
+      "eventName": "B2P 96736-9a50 & Portal Partner",
+      "eventDate": "2060-07-17",
+      "label": "Payments",
+      "detail": "1 payment overdue.",
+      "link": "/invoices/f7afa8d8-aa69-4a57-8a23-465983d01689",
+      "conditionKey": "v1:payments:ebf74f77-2944-474a-b735-48762ecb6842:7ca1600a-b6a0-4284-b412-5b38962008cf:overdue:2026-10-23",
+      "invoiceIds": [
+        "02dd6f09-08a3-486e-a059-e5d6e47e233f",
+        "4489c869-38fd-4ae1-8cad-cc7043d1d527",
+        "8dc4f9ae-840e-4ade-847e-678d76ee23c6",
+        "c2ecb07f-6e63-48fb-bbeb-65c9d1a0d838",
+        "e022d948-2d8b-44ab-9582-7ea9e1e1e2b6",
+        "f7afa8d8-aa69-4a57-8a23-465983d01689"
+      ],
+      "overdueLineCount": 1,
+      "balanceDueSum": 3189.81
+    }
+  ]
+}

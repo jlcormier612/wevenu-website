@@ -97,6 +97,42 @@ export async function getInvoices(client: DbClient, venueId: string, filters?: {
   return (data as unknown as InvoiceRow[]).map((r) => mapInvoice(r));
 }
 
+/**
+ * Dashboard Focus Event-Readiness briefing only.
+ * Selects fields used by computePaymentsReadiness + paymentsAttentionHref.
+ * Omits joins, branding, notes, and unused money rollups. Do not use for
+ * invoice list UI or mutation flows.
+ */
+export async function getInvoicesForDashboardBriefing(
+  client: DbClient,
+  venueId: string,
+): Promise<Invoice[]> {
+  const { data, error } = await client.from("invoices")
+    .select("id, venue_id, client_id, event_id, invoice_number, status, balance_due, due_date, issued_at, created_at, updated_at")
+    .eq("venue_id", venueId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return ((data ?? []) as unknown as InvoiceRow[]).map((r) =>
+    mapInvoice({
+      ...r,
+      display_name: null,
+      subtotal: 0,
+      discount_amount: 0,
+      tax_amount: 0,
+      total: 0,
+      notes: null,
+      event_order_id: null,
+      event_order_dismissed_fingerprint: null,
+      amends_invoice_id: null,
+      event_order_revision_at_freeze: null,
+      quickbooks_sync_status: "not_synced",
+      branding_snapshot: null,
+      clients: null,
+      events: null,
+    }),
+  );
+}
+
 export async function getInvoice(client: DbClient, venueId: string, id: string): Promise<InvoiceWithLineItems | null> {
   const [invRes, itemsRes, amendedByRes, activitiesRes] = await Promise.all([
     client.from("invoices").select("*, clients(first_name, last_name, partner_first_name, partner_last_name, event_date), events(name, event_date, booked_at)").eq("id", id).eq("venue_id", venueId).maybeSingle<InvoiceRow>(),

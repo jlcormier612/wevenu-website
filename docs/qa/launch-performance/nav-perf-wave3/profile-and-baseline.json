@@ -1,0 +1,371 @@
+{
+  "measuredAt": "2026-11-19T02:26:41.563Z",
+  "venueId": "a415ac52-cd74-42a6-8df7-7a8f6e71d080",
+  "today": "2026-11-19",
+  "counts": {
+    "events": 139,
+    "contracts": 60,
+    "invoices": 64,
+    "schedules": 45,
+    "lines": 149,
+    "requests": 3,
+    "candidateEvents": 9,
+    "relatedEvents": 18,
+    "focusItems": 8
+  },
+  "profile": [
+    {
+      "label": "lines_fat_r1",
+      "ms": 139,
+      "rows": 149,
+      "bytes": 126051,
+      "err": null
+    },
+    {
+      "label": "lines_fat_r2",
+      "ms": 42,
+      "rows": 149,
+      "bytes": 126051,
+      "err": null
+    },
+    {
+      "label": "invoices_fat_r1",
+      "ms": 166,
+      "rows": 64,
+      "bytes": 77072,
+      "err": null
+    },
+    {
+      "label": "invoices_fat_r2",
+      "ms": 69,
+      "rows": 64,
+      "bytes": 77072,
+      "err": null
+    },
+    {
+      "label": "contracts_lean_r1",
+      "ms": 181,
+      "rows": 60,
+      "bytes": 61881,
+      "err": null
+    },
+    {
+      "label": "contracts_lean_r2",
+      "ms": 119,
+      "rows": 60,
+      "bytes": 61881,
+      "err": null
+    },
+    {
+      "label": "lines_lean_r1",
+      "ms": 71,
+      "rows": 149,
+      "bytes": 30631,
+      "err": null
+    },
+    {
+      "label": "lines_lean_r2",
+      "ms": 53,
+      "rows": 149,
+      "bytes": 30631,
+      "err": null
+    },
+    {
+      "label": "schedules_fat_r1",
+      "ms": 116,
+      "rows": 45,
+      "bytes": 27988,
+      "err": null
+    },
+    {
+      "label": "schedules_fat_r2",
+      "ms": 58,
+      "rows": 45,
+      "bytes": 27988,
+      "err": null
+    },
+    {
+      "label": "events_all_r1",
+      "ms": 211,
+      "rows": 139,
+      "bytes": 24857,
+      "err": null
+    },
+    {
+      "label": "events_all_r2",
+      "ms": 40,
+      "rows": 139,
+      "bytes": 24857,
+      "err": null
+    },
+    {
+      "label": "invoices_lean_r1",
+      "ms": 117,
+      "rows": 64,
+      "bytes": 18802,
+      "err": null
+    },
+    {
+      "label": "invoices_lean_r2",
+      "ms": 54,
+      "rows": 64,
+      "bytes": 18802,
+      "err": null
+    },
+    {
+      "label": "schedules_lean_r1",
+      "ms": 82,
+      "rows": 45,
+      "bytes": 9458,
+      "err": null
+    },
+    {
+      "label": "schedules_lean_r2",
+      "ms": 34,
+      "rows": 45,
+      "bytes": 9458,
+      "err": null
+    },
+    {
+      "label": "requests_fat_r1",
+      "ms": 81,
+      "rows": 3,
+      "bytes": 1947,
+      "err": null
+    },
+    {
+      "label": "requests_fat_r2",
+      "ms": 45,
+      "rows": 3,
+      "bytes": 1947,
+      "err": null
+    },
+    {
+      "label": "requests_lean_r1",
+      "ms": 42,
+      "rows": 3,
+      "bytes": 627,
+      "err": null
+    },
+    {
+      "label": "requests_lean_r2",
+      "ms": 37,
+      "rows": 3,
+      "bytes": 627,
+      "err": null
+    }
+  ],
+  "payloadCompare": {
+    "invoices": {
+      "fat": {
+        "label": "invoices_fat_r2",
+        "ms": 69,
+        "rows": 64,
+        "bytes": 77072,
+        "err": null
+      },
+      "lean": {
+        "label": "invoices_lean_r2",
+        "ms": 54,
+        "rows": 64,
+        "bytes": 18802,
+        "err": null
+      }
+    },
+    "schedules": {
+      "fat": {
+        "label": "schedules_fat_r2",
+        "ms": 58,
+        "rows": 45,
+        "bytes": 27988,
+        "err": null
+      },
+      "lean": {
+        "label": "schedules_lean_r2",
+        "ms": 34,
+        "rows": 45,
+        "bytes": 9458,
+        "err": null
+      }
+    },
+    "lines": {
+      "fat": {
+        "label": "lines_fat_r2",
+        "ms": 42,
+        "rows": 149,
+        "bytes": 126051,
+        "err": null
+      },
+      "lean": {
+        "label": "lines_lean_r2",
+        "ms": 53,
+        "rows": 149,
+        "bytes": 30631,
+        "err": null
+      }
+    },
+    "requests": {
+      "fat": {
+        "label": "requests_fat_r2",
+        "ms": 45,
+        "rows": 3,
+        "bytes": 1947,
+        "err": null
+      },
+      "lean": {
+        "label": "requests_lean_r2",
+        "ms": 37,
+        "rows": 3,
+        "bytes": 627,
+        "err": null
+      }
+    }
+  },
+  "candidateFilterParity": {
+    "mismatches": 0,
+    "details": []
+  },
+  "relatedFilterParity": {
+    "mismatch": false
+  },
+  "baselineFocusItems": [
+    {
+      "id": "briefing-requests-c43ca64a-5e76-41ec-86d9-c8cebfbe854b",
+      "category": "requests",
+      "status": "needs_attention",
+      "eventId": "c43ca64a-5e76-41ec-86d9-c8cebfbe854b",
+      "eventName": "LUV-CTX-QA Approaching Event",
+      "eventDate": "2026-10-12",
+      "label": "Requests",
+      "link": "/requests/b1c780e7-a4ce-4eb7-b2ce-0cad34c8afd7",
+      "requestIds": [
+        "b1c780e7-a4ce-4eb7-b2ce-0cad34c8afd7"
+      ],
+      "requestStatuses": [
+        "submitted"
+      ]
+    },
+    {
+      "id": "briefing-payments-b16f8c7a-5754-4354-9ce3-ac6e25085525",
+      "category": "payments",
+      "status": "needs_attention",
+      "eventId": "b16f8c7a-5754-4354-9ce3-ac6e25085525",
+      "eventName": "Ron Cormier & Jen Cormier — Corporate Event",
+      "eventDate": "2026-10-24",
+      "label": "Payments",
+      "detail": "4 payments overdue.",
+      "link": "/invoices/4eeeb3b1-8425-4c3f-8e68-624e48814158",
+      "invoiceIds": [
+        "4eeeb3b1-8425-4c3f-8e68-624e48814158",
+        "56f8ea63-aec4-4b8f-a964-ed4491be1794"
+      ],
+      "overdueLineCount": 4,
+      "balanceDueSum": 4500
+    },
+    {
+      "id": "briefing-payments-2d2d9293-24c5-4e16-a9f7-4ef67eb958df",
+      "category": "payments",
+      "status": "needs_attention",
+      "eventId": "2d2d9293-24c5-4e16-a9f7-4ef67eb958df",
+      "eventName": "SelUse Proof5492 Wedding",
+      "eventDate": "2026-11-29",
+      "label": "Payments",
+      "detail": "3 payments overdue.",
+      "link": "/invoices/77f2f506-e821-4265-a305-b5428370106b",
+      "invoiceIds": [
+        "77f2f506-e821-4265-a305-b5428370106b"
+      ],
+      "overdueLineCount": 3,
+      "balanceDueSum": 13125
+    },
+    {
+      "id": "briefing-contract-6f41b3c4-549a-4a1d-a2ff-108a09b8687c",
+      "category": "contracts",
+      "status": "needs_attention",
+      "eventId": "6f41b3c4-549a-4a1d-a2ff-108a09b8687c",
+      "eventName": "LVSE-LVSEMVSAD1DQ-WeddingA-Barn",
+      "eventDate": "2029-10-02",
+      "label": "Contract",
+      "detail": "Drafted — not yet sent.",
+      "link": "/contracts/597791f9-eb83-4238-9906-7f3e786a53f0",
+      "contractIds": [
+        "597791f9-eb83-4238-9906-7f3e786a53f0"
+      ],
+      "contractStatuses": [
+        "draft"
+      ]
+    },
+    {
+      "id": "briefing-contract-b2080775-802c-4bc7-8513-c6fc11000a0a",
+      "category": "contracts",
+      "status": "needs_attention",
+      "eventId": "b2080775-802c-4bc7-8513-c6fc11000a0a",
+      "eventName": "LVSE-LVSEMVSAD1DQ-WeddingB-Ballroom",
+      "eventDate": "2029-10-02",
+      "label": "Contract",
+      "detail": "Drafted — not yet sent.",
+      "link": "/contracts/e4d9bf55-9134-46b9-8581-cf11578c52b7",
+      "contractIds": [
+        "e4d9bf55-9134-46b9-8581-cf11578c52b7"
+      ],
+      "contractStatuses": [
+        "draft"
+      ]
+    },
+    {
+      "id": "briefing-contract-85c55895-b82c-4ef3-8d66-c3ebc82f1ef7",
+      "category": "contracts",
+      "status": "needs_attention",
+      "eventId": "85c55895-b82c-4ef3-8d66-c3ebc82f1ef7",
+      "eventName": "LVSE-LVSEMVSAFSZL-WeddingA-Barn",
+      "eventDate": "2029-10-13",
+      "label": "Contract",
+      "detail": "Drafted — not yet sent.",
+      "link": "/contracts/404ecfff-fdbd-44a5-9e74-76ea044c8b8c",
+      "contractIds": [
+        "404ecfff-fdbd-44a5-9e74-76ea044c8b8c"
+      ],
+      "contractStatuses": [
+        "draft"
+      ]
+    },
+    {
+      "id": "briefing-contract-9f569e99-cca9-4b5e-be5c-bbe0b60affc4",
+      "category": "contracts",
+      "status": "needs_attention",
+      "eventId": "9f569e99-cca9-4b5e-be5c-bbe0b60affc4",
+      "eventName": "LVSE-LVSEMVSAFSZL-WeddingB-Ballroom",
+      "eventDate": "2029-10-13",
+      "label": "Contract",
+      "detail": "Drafted — not yet sent.",
+      "link": "/contracts/4ac0360a-a080-4386-aad2-d2d9f8aeaf7e",
+      "contractIds": [
+        "4ac0360a-a080-4386-aad2-d2d9f8aeaf7e"
+      ],
+      "contractStatuses": [
+        "draft"
+      ]
+    },
+    {
+      "id": "briefing-payments-ebf74f77-2944-474a-b735-48762ecb6842",
+      "category": "payments",
+      "status": "needs_attention",
+      "eventId": "ebf74f77-2944-474a-b735-48762ecb6842",
+      "eventName": "B2P 96736-9a50 & Portal Partner",
+      "eventDate": "2060-07-17",
+      "label": "Payments",
+      "detail": "1 payment overdue.",
+      "link": "/invoices/f7afa8d8-aa69-4a57-8a23-465983d01689",
+      "invoiceIds": [
+        "02dd6f09-08a3-486e-a059-e5d6e47e233f",
+        "4489c869-38fd-4ae1-8cad-cc7043d1d527",
+        "8dc4f9ae-840e-4ade-847e-678d76ee23c6",
+        "c2ecb07f-6e63-48fb-bbeb-65c9d1a0d838",
+        "e022d948-2d8b-44ab-9582-7ea9e1e1e2b6",
+        "f7afa8d8-aa69-4a57-8a23-465983d01689"
+      ],
+      "overdueLineCount": 1,
+      "balanceDueSum": 3189.81
+    }
+  ]
+}

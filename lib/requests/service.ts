@@ -93,6 +93,36 @@ export async function getRequestsForVenue(
   return (data ?? []).map(rowToRequest);
 }
 
+/**
+ * Dashboard Focus Event-Readiness briefing only.
+ * Selects fields used by computeRequestsReadiness + requestsAttentionHref.
+ * Omits response blobs and assignment metadata. Do not use for request UI.
+ */
+export async function getRequestsForDashboardBriefing(
+  supabase: Awaited<ReturnType<typeof createClient>>, venueId: string,
+): Promise<Request[]> {
+  const { data } = await supabase.from("requests")
+    .select("id, venue_id, client_id, event_id, title, request_type, status, visibility, due_date, created_at, updated_at")
+    .eq("venue_id", venueId)
+    .order("due_date", { ascending: true, nullsFirst: false })
+    .order("created_at", { ascending: false });
+  return (data ?? []).map((row) =>
+    rowToRequest({
+      ...row,
+      description: null,
+      requested_by_user_id: null,
+      assigned_to_staff_id: null,
+      source_feature: null,
+      source_id: null,
+      response_text: null,
+      response_file_url: null,
+      client_action_enabled: true,
+      completed_at: null,
+      reviewed_at: null,
+    }),
+  );
+}
+
 /** Batch lookup for callers (e.g. Planning) that hold a set of request ids and need current status/due date/etc. Keyed by request id. */
 export async function getRequestsByIds(requestIds: string[]): Promise<Record<string, Request>> {
   if (!isSupabaseConfigured || requestIds.length === 0) return {};

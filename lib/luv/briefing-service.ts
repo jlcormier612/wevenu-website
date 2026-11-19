@@ -33,15 +33,23 @@ import {
 import { forensicCount, forensicTime } from "@/lib/dashboard/forensic-timing";
 import { createClient } from "@/integrations/supabase/server";
 import { getContracts, getContractsForDashboardBriefing } from "@/lib/contracts/repository";
-import { getInvoices } from "@/lib/invoices/repository";
-import { getAllLineItems, getSchedules } from "@/lib/payments/repository";
-import { getRequestsForVenue } from "@/lib/requests/service";
+import { getInvoices, getInvoicesForDashboardBriefing } from "@/lib/invoices/repository";
+import {
+  getAllLineItems,
+  getLineItemsForDashboardBriefing,
+  getSchedules,
+  getSchedulesForDashboardBriefing,
+} from "@/lib/payments/repository";
+import { getRequestsForDashboardBriefing, getRequestsForVenue } from "@/lib/requests/service";
 import { computeContractsReadiness, computePaymentsReadiness, computeRequestsReadiness } from "@/lib/readiness/compute";
+import { selectFocusCandidateEventIds, type FocusScheduleLine } from "@/lib/luv/focus-candidate-events";
 import { coordinatorCelebrationMessage, type CelebrationType } from "@/lib/luv/celebrations";
 import type { Contract } from "@/lib/contracts/types";
 import type { Invoice } from "@/lib/invoices/types";
 import type { Request as PortalRequest } from "@/lib/requests/types";
 import type { BriefingItem, LuvBriefing } from "@/lib/luv/briefing-types";
+
+export { selectFocusCandidateEventIds } from "@/lib/luv/focus-candidate-events";
 
 type DbClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -62,12 +70,37 @@ function daysFromNow(days: number): string {
   return new Date(Date.now() + days * 86_400_000).toISOString();
 }
 
+function buildScheduleLinesByEventId(
+  schedules: Array<{ id: string; eventId: string | null }>,
+  lineItems: Array<{ id: string; scheduleId: string; status: string; dueDate: string | null; amount: number }>,
+): Map<string, FocusScheduleLine[]> {
+  const linesByScheduleId = new Map<string, typeof lineItems>();
+  for (const line of lineItems) {
+    const list = linesByScheduleId.get(line.scheduleId) ?? [];
+    list.push(line);
+    linesByScheduleId.set(line.scheduleId, list);
+  }
+  const scheduleLinesByEventId = new Map<string, FocusScheduleLine[]>();
+  for (const schedule of schedules) {
+    if (!schedule.eventId) continue;
+    const lines = (linesByScheduleId.get(schedule.id) ?? []).map((l) => ({
+      id: l.id,
+      status: l.status,
+      dueDate: l.dueDate,
+      amount: l.amount,
+    }));
+    const existing = scheduleLinesByEventId.get(schedule.eventId) ?? [];
+    scheduleLinesByEventId.set(schedule.eventId, existing.concat(lines));
+  }
+  return scheduleLinesByEventId;
+}
+
 function buildNeedsAttentionNow(input: {
   events: EventRow[];
   contracts: Contract[];
   invoices: Invoice[];
   requests: PortalRequest[];
-  scheduleLinesByEventId: Map<string, { id: string; status: string; dueDate: string | null; amount: number }[]>;
+  scheduleLinesByEventId: Map<string, FocusScheduleLine[]>;
 }): BriefingItem[] {
   const contractsByEvent = byEventId(input.contracts as (Contract & { eventId: string | null })[]);
   const invoicesByEvent = byEventId(input.invoices as (Invoice & { eventId: string | null })[]);
@@ -131,20 +164,60 @@ function buildNeedsAttentionNow(input: {
   return needsAttentionNow;
 }
 
+/**
+ * Focus Dashboard path: lean field selects + candidate-event event fetch.
+ * Full Daily Briefing keeps fat venue-wide loads for coming-up / celebrations.
+ */
+async function loadFocusReadinessInputs(supabase: DbClient, venueId: string) {
+  const [contracts, invoices, requests, schedules, lineItems] = await Promise.all([
+    getContractsForDashboardBriefing(supabase, venueId),
+    getInvoicesForDashboardBriefing(supabase, venueId),
+    getRequestsForDashboardBriefing(supabase, venueId),
+    getSchedulesForDashboardBriefing(supabase, venueId),
+    getLineItemsForDashboardBriefing(supabase, venueId),
+  ]);
+
+  const scheduleLinesByEventId = buildScheduleLinesByEventId(schedules, lineItems);
+  const candidateIds = selectFocusCandidateEventIds({
+    contracts: contracts as Contract[],
+    invoices: invoices as Invoice[],
+    requests: requests as PortalRequest[],
+    scheduleLinesByEventId,
+  });
+  forensicCount("briefing_candidate_events", candidateIds.size);
+
+  let events: EventRow[] = [];
+  if (candidateIds.size > 0) {
+    const eventsRes = await supabase.from("events")
+      .select("id, name, event_date, client_id, status")
+      .eq("venue_id", venueId)
+      .neq("status", "cancelled")
+      .in("id", [...candidateIds]);
+    events = (eventsRes.data ?? []) as EventRow[];
+  }
+
+  return {
+    events,
+    contracts: contracts as Contract[],
+    invoices: invoices as Invoice[],
+    requests: requests as PortalRequest[],
+    scheduleLinesByEventId,
+  };
+}
+
 async function loadReadinessInputs(
   supabase: DbClient,
   venueId: string,
   opts?: { leanContracts?: boolean },
 ) {
-  const leanContracts = opts?.leanContracts === true;
+  if (opts?.leanContracts === true) {
+    return loadFocusReadinessInputs(supabase, venueId);
+  }
+
   const [eventsRes, contracts, invoices, requests, schedules, lineItems] = await Promise.all([
     supabase.from("events").select("id, name, event_date, client_id, status")
       .eq("venue_id", venueId).neq("status", "cancelled"),
-    // Focus Dashboard path: lean contracts (no content / signer attach).
-    // Full Daily Briefing keeps getContracts() for parity with Documents.
-    leanContracts
-      ? getContractsForDashboardBriefing(supabase, venueId)
-      : getContracts(supabase, venueId),
+    getContracts(supabase, venueId),
     getInvoices(supabase, venueId),
     getRequestsForVenue(supabase, venueId),
     getSchedules(supabase, venueId),
@@ -152,27 +225,16 @@ async function loadReadinessInputs(
   ]);
 
   const events = (eventsRes.data ?? []) as EventRow[];
-
-  // Same source Event Readiness uses: overdue comes from schedule lines,
-  // never from a draft/void invoice.due_date alone.
-  const linesByScheduleId = new Map<string, typeof lineItems>();
-  for (const line of lineItems) {
-    const list = linesByScheduleId.get(line.scheduleId) ?? [];
-    list.push(line);
-    linesByScheduleId.set(line.scheduleId, list);
-  }
-  const scheduleLinesByEventId = new Map<string, { id: string; status: string; dueDate: string | null; amount: number }[]>();
-  for (const schedule of schedules) {
-    if (!schedule.eventId) continue;
-    const lines = (linesByScheduleId.get(schedule.id) ?? []).map((l) => ({
+  const scheduleLinesByEventId = buildScheduleLinesByEventId(
+    schedules.map((s) => ({ id: s.id, eventId: s.eventId })),
+    lineItems.map((l) => ({
       id: l.id,
+      scheduleId: l.scheduleId,
       status: l.status,
       dueDate: l.dueDate,
       amount: l.amount,
-    }));
-    const existing = scheduleLinesByEventId.get(schedule.eventId) ?? [];
-    scheduleLinesByEventId.set(schedule.eventId, existing.concat(lines));
-  }
+    })),
+  );
 
   return {
     events,
