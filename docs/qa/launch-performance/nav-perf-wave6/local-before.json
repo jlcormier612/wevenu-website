@@ -1,0 +1,218 @@
+{
+  "variant": "before",
+  "app": "http://127.0.0.1:3000",
+  "measuredAt": "2026-11-19T03:57:40.324Z",
+  "note": "LOCAL only — do not claim Sandbox improvement. before=HTC_LAYOUT_BOOTSTRAP_SERIAL=1.",
+  "serialEnv": "(unset)",
+  "dashboardWarm": {
+    "ttfb": {
+      "n": 5,
+      "median": 949,
+      "p90": 1730,
+      "values": [
+        950,
+        1730,
+        949,
+        880,
+        759
+      ]
+    },
+    "greeting": {
+      "n": 5,
+      "median": 1908,
+      "p90": 2641,
+      "values": [
+        1855,
+        2641,
+        1908,
+        2269,
+        1652
+      ]
+    },
+    "focus": {
+      "n": 5,
+      "median": 2275,
+      "p90": 4453,
+      "values": [
+        2649,
+        4453,
+        1990,
+        2275,
+        1940
+      ]
+    },
+    "useful": {
+      "n": 5,
+      "median": 2275,
+      "p90": 4453,
+      "values": [
+        2649,
+        4453,
+        1990,
+        2275,
+        1940
+      ]
+    },
+    "openai": 0,
+    "errors": []
+  },
+  "leads": {
+    "ttfb": {
+      "n": 1,
+      "median": 1753,
+      "p90": 1753,
+      "values": [
+        1753
+      ]
+    },
+    "greeting": {
+      "n": 0,
+      "median": null,
+      "p90": null,
+      "values": []
+    },
+    "focus": {
+      "n": 0,
+      "median": null,
+      "p90": null,
+      "values": []
+    },
+    "useful": {
+      "n": 1,
+      "median": 5744,
+      "p90": 5744,
+      "values": [
+        5744
+      ]
+    },
+    "openai": 0,
+    "errors": []
+  },
+  "booking": {
+    "ttfb": {
+      "n": 1,
+      "median": 7455,
+      "p90": 7455,
+      "values": [
+        7455
+      ]
+    },
+    "greeting": {
+      "n": 0,
+      "median": null,
+      "p90": null,
+      "values": []
+    },
+    "focus": {
+      "n": 0,
+      "median": null,
+      "p90": null,
+      "values": []
+    },
+    "useful": {
+      "n": 1,
+      "median": 16711,
+      "p90": 16711,
+      "values": [
+        16711
+      ]
+    },
+    "openai": 0,
+    "errors": []
+  },
+  "regression": {
+    "fancyVenueGreeting": true,
+    "unauthRedirectsToLogin": true,
+    "unauthUrl": "http://127.0.0.1:3000/login?next=%2Fdashboard"
+  },
+  "samples": [
+    {
+      "route": "dashboard",
+      "mode": "cold",
+      "sample": 1,
+      "ttfbMs": 1401,
+      "greetingMs": 2475,
+      "focusMs": 2480,
+      "usefulMs": 2480,
+      "venueOk": true,
+      "openai": 0
+    },
+    {
+      "route": "dashboard",
+      "mode": "warm",
+      "sample": 1,
+      "ttfbMs": 950,
+      "greetingMs": 1855,
+      "focusMs": 2649,
+      "usefulMs": 2649,
+      "venueOk": true,
+      "openai": 0
+    },
+    {
+      "route": "dashboard",
+      "mode": "warm",
+      "sample": 2,
+      "ttfbMs": 1730,
+      "greetingMs": 2641,
+      "focusMs": 4453,
+      "usefulMs": 4453,
+      "venueOk": true,
+      "openai": 0
+    },
+    {
+      "route": "dashboard",
+      "mode": "warm",
+      "sample": 3,
+      "ttfbMs": 949,
+      "greetingMs": 1908,
+      "focusMs": 1990,
+      "usefulMs": 1990,
+      "venueOk": true,
+      "openai": 0
+    },
+    {
+      "route": "dashboard",
+      "mode": "warm",
+      "sample": 4,
+      "ttfbMs": 880,
+      "greetingMs": 2269,
+      "focusMs": 2275,
+      "usefulMs": 2275,
+      "venueOk": true,
+      "openai": 0
+    },
+    {
+      "route": "dashboard",
+      "mode": "warm",
+      "sample": 5,
+      "ttfbMs": 759,
+      "greetingMs": 1652,
+      "focusMs": 1940,
+      "usefulMs": 1940,
+      "venueOk": true,
+      "openai": 0
+    },
+    {
+      "route": "leads_list",
+      "mode": "warm",
+      "sample": 1,
+      "ttfbMs": 1753,
+      "greetingMs": null,
+      "focusMs": null,
+      "usefulMs": 5744,
+      "venueOk": null,
+      "openai": 0
+    },
+    {
+      "route": "booking_workspace",
+      "mode": "warm",
+      "sample": 1,
+      "ttfbMs": 7455,
+      "greetingMs": null,
+      "focusMs": null,
+      "usefulMs": 16711,
+      "venueOk": null,
+      "openai": 0
+    }
+  ]
+}

@@ -1,0 +1,218 @@
+{
+  "variant": "after",
+  "app": "http://127.0.0.1:3000",
+  "measuredAt": "2026-11-19T03:58:41.771Z",
+  "note": "LOCAL only — do not claim Sandbox improvement. before=HTC_LAYOUT_BOOTSTRAP_SERIAL=1.",
+  "serialEnv": "(unset)",
+  "dashboardWarm": {
+    "ttfb": {
+      "n": 5,
+      "median": 812,
+      "p90": 880,
+      "values": [
+        880,
+        812,
+        681,
+        715,
+        877
+      ]
+    },
+    "greeting": {
+      "n": 5,
+      "median": 1676,
+      "p90": 1784,
+      "values": [
+        1777,
+        1676,
+        1627,
+        1610,
+        1784
+      ]
+    },
+    "focus": {
+      "n": 5,
+      "median": 1914,
+      "p90": 2063,
+      "values": [
+        2063,
+        1962,
+        1914,
+        1864,
+        1885
+      ]
+    },
+    "useful": {
+      "n": 5,
+      "median": 1914,
+      "p90": 2063,
+      "values": [
+        2063,
+        1962,
+        1914,
+        1864,
+        1885
+      ]
+    },
+    "openai": 0,
+    "errors": []
+  },
+  "leads": {
+    "ttfb": {
+      "n": 1,
+      "median": 801,
+      "p90": 801,
+      "values": [
+        801
+      ]
+    },
+    "greeting": {
+      "n": 0,
+      "median": null,
+      "p90": null,
+      "values": []
+    },
+    "focus": {
+      "n": 0,
+      "median": null,
+      "p90": null,
+      "values": []
+    },
+    "useful": {
+      "n": 1,
+      "median": 5738,
+      "p90": 5738,
+      "values": [
+        5738
+      ]
+    },
+    "openai": 0,
+    "errors": []
+  },
+  "booking": {
+    "ttfb": {
+      "n": 1,
+      "median": 2203,
+      "p90": 2203,
+      "values": [
+        2203
+      ]
+    },
+    "greeting": {
+      "n": 0,
+      "median": null,
+      "p90": null,
+      "values": []
+    },
+    "focus": {
+      "n": 0,
+      "median": null,
+      "p90": null,
+      "values": []
+    },
+    "useful": {
+      "n": 1,
+      "median": 9833,
+      "p90": 9833,
+      "values": [
+        9833
+      ]
+    },
+    "openai": 0,
+    "errors": []
+  },
+  "regression": {
+    "fancyVenueGreeting": true,
+    "unauthRedirectsToLogin": true,
+    "unauthUrl": "http://127.0.0.1:3000/login?next=%2Fdashboard"
+  },
+  "samples": [
+    {
+      "route": "dashboard",
+      "mode": "cold",
+      "sample": 1,
+      "ttfbMs": 832,
+      "greetingMs": 1782,
+      "focusMs": 2077,
+      "usefulMs": 2077,
+      "venueOk": true,
+      "openai": 0
+    },
+    {
+      "route": "dashboard",
+      "mode": "warm",
+      "sample": 1,
+      "ttfbMs": 880,
+      "greetingMs": 1777,
+      "focusMs": 2063,
+      "usefulMs": 2063,
+      "venueOk": true,
+      "openai": 0
+    },
+    {
+      "route": "dashboard",
+      "mode": "warm",
+      "sample": 2,
+      "ttfbMs": 812,
+      "greetingMs": 1676,
+      "focusMs": 1962,
+      "usefulMs": 1962,
+      "venueOk": true,
+      "openai": 0
+    },
+    {
+      "route": "dashboard",
+      "mode": "warm",
+      "sample": 3,
+      "ttfbMs": 681,
+      "greetingMs": 1627,
+      "focusMs": 1914,
+      "usefulMs": 1914,
+      "venueOk": true,
+      "openai": 0
+    },
+    {
+      "route": "dashboard",
+      "mode": "warm",
+      "sample": 4,
+      "ttfbMs": 715,
+      "greetingMs": 1610,
+      "focusMs": 1864,
+      "usefulMs": 1864,
+      "venueOk": true,
+      "openai": 0
+    },
+    {
+      "route": "dashboard",
+      "mode": "warm",
+      "sample": 5,
+      "ttfbMs": 877,
+      "greetingMs": 1784,
+      "focusMs": 1885,
+      "usefulMs": 1885,
+      "venueOk": true,
+      "openai": 0
+    },
+    {
+      "route": "leads_list",
+      "mode": "warm",
+      "sample": 1,
+      "ttfbMs": 801,
+      "greetingMs": null,
+      "focusMs": null,
+      "usefulMs": 5738,
+      "venueOk": null,
+      "openai": 0
+    },
+    {
+      "route": "booking_workspace",
+      "mode": "warm",
+      "sample": 1,
+      "ttfbMs": 2203,
+      "greetingMs": null,
+      "focusMs": null,
+      "usefulMs": 9833,
+      "venueOk": null,
+      "openai": 0
+    }
+  ]
+}

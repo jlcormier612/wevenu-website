@@ -1,0 +1,886 @@
+{
+  "measuredAt": "2026-11-19T03:46:36.441Z",
+  "expectedSha": "83569a103d9b4c7ebfc93ef151ed8ab9d28e1f67",
+  "app": "https://app.sandbox.hellotocheers.com",
+  "ecsNote": "Correlate wallStartIso with CloudWatch CPU; task :1230 desired/running=1, cpu=512, memory=1024",
+  "supabaseProbes": [
+    {
+      "name": "auth_getUser",
+      "samples": [
+        140,
+        56,
+        52,
+        54,
+        60
+      ],
+      "median": 56,
+      "p90": 140,
+      "note": "Client→Supabase API wall time (network + PostgREST). Not PostgreSQL execution time."
+    },
+    {
+      "name": "rpc_current_user_venue_id",
+      "samples": [
+        58,
+        89,
+        42,
+        66,
+        54
+      ],
+      "median": 58,
+      "p90": 89,
+      "note": "Client→Supabase API wall time (network + PostgREST). Not PostgreSQL execution time."
+    },
+    {
+      "name": "rpc_list_my_venue_memberships",
+      "samples": [
+        98,
+        45,
+        43,
+        54,
+        42
+      ],
+      "median": 45,
+      "p90": 98,
+      "note": "Client→Supabase API wall time (network + PostgREST). Not PostgreSQL execution time."
+    },
+    {
+      "name": "rpc_clear_stale_active_venue_context",
+      "samples": [
+        42,
+        45,
+        60,
+        53,
+        51
+      ],
+      "median": 51,
+      "p90": 60,
+      "note": "Client→Supabase API wall time (network + PostgREST). Not PostgreSQL execution time."
+    },
+    {
+      "name": "rpc_current_user_role",
+      "samples": [
+        58,
+        62,
+        36,
+        53,
+        45
+      ],
+      "median": 53,
+      "p90": 62,
+      "note": "Client→Supabase API wall time (network + PostgREST). Not PostgreSQL execution time."
+    }
+  ],
+  "dashboardWarm": {
+    "ttfb": {
+      "n": 8,
+      "median": 907,
+      "p90": 1681,
+      "min": 644,
+      "max": 1681,
+      "values": [
+        684,
+        1681,
+        692,
+        918,
+        648,
+        1013,
+        907,
+        644
+      ]
+    },
+    "useful": {
+      "n": 8,
+      "median": 1723,
+      "p90": 2886,
+      "min": 1514,
+      "max": 2886,
+      "values": [
+        1723,
+        2886,
+        1514,
+        1589,
+        1810,
+        1967,
+        1592,
+        1557
+      ]
+    },
+    "greeting": {
+      "n": 8,
+      "median": 1550,
+      "p90": 2092,
+      "min": 1159,
+      "max": 2092,
+      "values": [
+        1592,
+        2092,
+        1159,
+        1301,
+        1521,
+        1889,
+        1299,
+        1550
+      ]
+    },
+    "focus": {
+      "n": 8,
+      "median": 1723,
+      "p90": 2886,
+      "min": 1514,
+      "max": 2886,
+      "values": [
+        1723,
+        2886,
+        1514,
+        1589,
+        1810,
+        1967,
+        1592,
+        1557
+      ]
+    },
+    "errors": []
+  },
+  "healthyDashWarm": {
+    "ttfb": {
+      "n": 7,
+      "median": 692,
+      "p90": 1013,
+      "min": 644,
+      "max": 1013,
+      "values": [
+        684,
+        692,
+        918,
+        648,
+        1013,
+        907,
+        644
+      ]
+    },
+    "useful": {
+      "n": 7,
+      "median": 1592,
+      "p90": 1967,
+      "min": 1514,
+      "max": 1967,
+      "values": [
+        1723,
+        1514,
+        1589,
+        1810,
+        1967,
+        1592,
+        1557
+      ]
+    },
+    "greeting": {
+      "n": 7,
+      "median": 1521,
+      "p90": 1889,
+      "min": 1159,
+      "max": 1889,
+      "values": [
+        1592,
+        1159,
+        1301,
+        1521,
+        1889,
+        1299,
+        1550
+      ]
+    },
+    "focus": {
+      "n": 7,
+      "median": 1592,
+      "p90": 1967,
+      "min": 1514,
+      "max": 1967,
+      "values": [
+        1723,
+        1514,
+        1589,
+        1810,
+        1967,
+        1592,
+        1557
+      ]
+    },
+    "errors": []
+  },
+  "slowDashWarm": {
+    "ttfb": {
+      "n": 0,
+      "median": null,
+      "p90": null,
+      "min": null,
+      "max": null,
+      "values": []
+    },
+    "useful": {
+      "n": 0,
+      "median": null,
+      "p90": null,
+      "min": null,
+      "max": null,
+      "values": []
+    },
+    "greeting": {
+      "n": 0,
+      "median": null,
+      "p90": null,
+      "min": null,
+      "max": null,
+      "values": []
+    },
+    "focus": {
+      "n": 0,
+      "median": null,
+      "p90": null,
+      "min": null,
+      "max": null,
+      "values": []
+    },
+    "errors": []
+  },
+  "byRoute": {
+    "dashboard": {
+      "ttfb": {
+        "n": 9,
+        "median": 907,
+        "p90": 1681,
+        "min": 644,
+        "max": 1681,
+        "values": [
+          1317,
+          684,
+          1681,
+          692,
+          918,
+          648,
+          1013,
+          907,
+          644
+        ]
+      },
+      "useful": {
+        "n": 9,
+        "median": 1723,
+        "p90": 3048,
+        "min": 1514,
+        "max": 3048,
+        "values": [
+          3048,
+          1723,
+          2886,
+          1514,
+          1589,
+          1810,
+          1967,
+          1592,
+          1557
+        ]
+      },
+      "greeting": {
+        "n": 9,
+        "median": 1550,
+        "p90": 2246,
+        "min": 1159,
+        "max": 2246,
+        "values": [
+          2246,
+          1592,
+          2092,
+          1159,
+          1301,
+          1521,
+          1889,
+          1299,
+          1550
+        ]
+      },
+      "focus": {
+        "n": 9,
+        "median": 1723,
+        "p90": 3048,
+        "min": 1514,
+        "max": 3048,
+        "values": [
+          3048,
+          1723,
+          2886,
+          1514,
+          1589,
+          1810,
+          1967,
+          1592,
+          1557
+        ]
+      },
+      "errors": []
+    },
+    "leads_list": {
+      "ttfb": {
+        "n": 4,
+        "median": 605,
+        "p90": 889,
+        "min": 513,
+        "max": 889,
+        "values": [
+          513,
+          889,
+          605,
+          579
+        ]
+      },
+      "useful": {
+        "n": 4,
+        "median": 2484,
+        "p90": 2883,
+        "min": 2007,
+        "max": 2883,
+        "values": [
+          2484,
+          2883,
+          2166,
+          2007
+        ]
+      },
+      "greeting": {
+        "n": 0,
+        "median": null,
+        "p90": null,
+        "min": null,
+        "max": null,
+        "values": []
+      },
+      "focus": {
+        "n": 0,
+        "median": null,
+        "p90": null,
+        "min": null,
+        "max": null,
+        "values": []
+      },
+      "errors": []
+    },
+    "lead_workspace": {
+      "ttfb": {
+        "n": 4,
+        "median": 1131,
+        "p90": 1535,
+        "min": 439,
+        "max": 1535,
+        "values": [
+          439,
+          1535,
+          1131,
+          817
+        ]
+      },
+      "useful": {
+        "n": 4,
+        "median": 1216,
+        "p90": 1643,
+        "min": 537,
+        "max": 1643,
+        "values": [
+          537,
+          1643,
+          1216,
+          922
+        ]
+      },
+      "greeting": {
+        "n": 0,
+        "median": null,
+        "p90": null,
+        "min": null,
+        "max": null,
+        "values": []
+      },
+      "focus": {
+        "n": 0,
+        "median": null,
+        "p90": null,
+        "min": null,
+        "max": null,
+        "values": []
+      },
+      "errors": []
+    },
+    "event_redirect": {
+      "ttfb": {
+        "n": 4,
+        "median": 1152,
+        "p90": 1414,
+        "min": 766,
+        "max": 1414,
+        "values": [
+          1414,
+          766,
+          1152,
+          818
+        ]
+      },
+      "useful": {
+        "n": 4,
+        "median": 2085,
+        "p90": 2326,
+        "min": 1434,
+        "max": 2326,
+        "values": [
+          2085,
+          1539,
+          2326,
+          1434
+        ]
+      },
+      "greeting": {
+        "n": 0,
+        "median": null,
+        "p90": null,
+        "min": null,
+        "max": null,
+        "values": []
+      },
+      "focus": {
+        "n": 0,
+        "median": null,
+        "p90": null,
+        "min": null,
+        "max": null,
+        "values": []
+      },
+      "errors": []
+    },
+    "booking_workspace": {
+      "ttfb": {
+        "n": 4,
+        "median": 2203,
+        "p90": 9460,
+        "min": 514,
+        "max": 9460,
+        "values": [
+          659,
+          9460,
+          2203,
+          514
+        ]
+      },
+      "useful": {
+        "n": 4,
+        "median": 3617,
+        "p90": 12478,
+        "min": 1555,
+        "max": 12478,
+        "values": [
+          1555,
+          12478,
+          3617,
+          3412
+        ]
+      },
+      "greeting": {
+        "n": 0,
+        "median": null,
+        "p90": null,
+        "min": null,
+        "max": null,
+        "values": []
+      },
+      "focus": {
+        "n": 0,
+        "median": null,
+        "p90": null,
+        "min": null,
+        "max": null,
+        "values": []
+      },
+      "errors": []
+    }
+  },
+  "samples": [
+    {
+      "route": "dashboard",
+      "mode": "cold",
+      "sample": 1,
+      "wallStartIso": "2026-11-19T03:45:24.737Z",
+      "ttfbMs": 1317,
+      "responseEndMs": 2985,
+      "dclMs": 2996,
+      "usefulMs": 3048,
+      "greetingMs": 2246,
+      "focusMs": 3048,
+      "finalUrl": "https://app.sandbox.hellotocheers.com/dashboard",
+      "dpl": "83569a103d9b4c7ebfc93ef151ed8ab9d28e1f67",
+      "openaiOrLuvAsk": 0
+    },
+    {
+      "route": "dashboard",
+      "mode": "warm",
+      "sample": 1,
+      "wallStartIso": "2026-11-19T03:45:28.240Z",
+      "ttfbMs": 684,
+      "responseEndMs": 1589,
+      "dclMs": 1590,
+      "usefulMs": 1723,
+      "greetingMs": 1592,
+      "focusMs": 1723,
+      "finalUrl": "https://app.sandbox.hellotocheers.com/dashboard",
+      "dpl": "83569a103d9b4c7ebfc93ef151ed8ab9d28e1f67",
+      "openaiOrLuvAsk": 0
+    },
+    {
+      "route": "dashboard",
+      "mode": "warm",
+      "sample": 2,
+      "wallStartIso": "2026-11-19T03:45:30.461Z",
+      "ttfbMs": 1681,
+      "responseEndMs": 2453,
+      "dclMs": 2455,
+      "usefulMs": 2886,
+      "greetingMs": 2092,
+      "focusMs": 2886,
+      "finalUrl": "https://app.sandbox.hellotocheers.com/dashboard",
+      "dpl": "83569a103d9b4c7ebfc93ef151ed8ab9d28e1f67",
+      "openaiOrLuvAsk": 0
+    },
+    {
+      "route": "dashboard",
+      "mode": "warm",
+      "sample": 3,
+      "wallStartIso": "2026-11-19T03:45:33.825Z",
+      "ttfbMs": 692,
+      "responseEndMs": 1516,
+      "dclMs": 1516,
+      "usefulMs": 1514,
+      "greetingMs": 1159,
+      "focusMs": 1514,
+      "finalUrl": "https://app.sandbox.hellotocheers.com/dashboard",
+      "dpl": "83569a103d9b4c7ebfc93ef151ed8ab9d28e1f67",
+      "openaiOrLuvAsk": 0
+    },
+    {
+      "route": "dashboard",
+      "mode": "warm",
+      "sample": 4,
+      "wallStartIso": "2026-11-19T03:45:35.798Z",
+      "ttfbMs": 918,
+      "responseEndMs": 1331,
+      "dclMs": 1332,
+      "usefulMs": 1589,
+      "greetingMs": 1301,
+      "focusMs": 1589,
+      "finalUrl": "https://app.sandbox.hellotocheers.com/dashboard",
+      "dpl": "83569a103d9b4c7ebfc93ef151ed8ab9d28e1f67",
+      "openaiOrLuvAsk": 0
+    },
+    {
+      "route": "dashboard",
+      "mode": "warm",
+      "sample": 5,
+      "wallStartIso": "2026-11-19T03:45:37.846Z",
+      "ttfbMs": 648,
+      "responseEndMs": 1597,
+      "dclMs": 1598,
+      "usefulMs": 1810,
+      "greetingMs": 1521,
+      "focusMs": 1810,
+      "finalUrl": "https://app.sandbox.hellotocheers.com/dashboard",
+      "dpl": "83569a103d9b4c7ebfc93ef151ed8ab9d28e1f67",
+      "openaiOrLuvAsk": 0
+    },
+    {
+      "route": "dashboard",
+      "mode": "warm",
+      "sample": 6,
+      "wallStartIso": "2026-11-19T03:45:40.095Z",
+      "ttfbMs": 1013,
+      "responseEndMs": 1937,
+      "dclMs": 1938,
+      "usefulMs": 1967,
+      "greetingMs": 1889,
+      "focusMs": 1967,
+      "finalUrl": "https://app.sandbox.hellotocheers.com/dashboard",
+      "dpl": "83569a103d9b4c7ebfc93ef151ed8ab9d28e1f67",
+      "openaiOrLuvAsk": 0
+    },
+    {
+      "route": "dashboard",
+      "mode": "warm",
+      "sample": 7,
+      "wallStartIso": "2026-11-19T03:45:42.502Z",
+      "ttfbMs": 907,
+      "responseEndMs": 1440,
+      "dclMs": 1441,
+      "usefulMs": 1592,
+      "greetingMs": 1299,
+      "focusMs": 1592,
+      "finalUrl": "https://app.sandbox.hellotocheers.com/dashboard",
+      "dpl": "83569a103d9b4c7ebfc93ef151ed8ab9d28e1f67",
+      "openaiOrLuvAsk": 0
+    },
+    {
+      "route": "dashboard",
+      "mode": "warm",
+      "sample": 8,
+      "wallStartIso": "2026-11-19T03:45:44.616Z",
+      "ttfbMs": 644,
+      "responseEndMs": 1408,
+      "dclMs": 1410,
+      "usefulMs": 1557,
+      "greetingMs": 1550,
+      "focusMs": 1557,
+      "finalUrl": "https://app.sandbox.hellotocheers.com/dashboard",
+      "dpl": "83569a103d9b4c7ebfc93ef151ed8ab9d28e1f67",
+      "openaiOrLuvAsk": 0
+    },
+    {
+      "route": "leads_list",
+      "mode": "cold",
+      "sample": 1,
+      "wallStartIso": "2026-11-19T03:45:46.640Z",
+      "ttfbMs": 513,
+      "responseEndMs": 2095,
+      "dclMs": 2106,
+      "usefulMs": 2484,
+      "greetingMs": null,
+      "focusMs": null,
+      "finalUrl": "https://app.sandbox.hellotocheers.com/leads",
+      "dpl": "83569a103d9b4c7ebfc93ef151ed8ab9d28e1f67",
+      "openaiOrLuvAsk": 0
+    },
+    {
+      "route": "leads_list",
+      "mode": "warm",
+      "sample": 1,
+      "wallStartIso": "2026-11-19T03:45:49.586Z",
+      "ttfbMs": 889,
+      "responseEndMs": 2701,
+      "dclMs": 2706,
+      "usefulMs": 2883,
+      "greetingMs": null,
+      "focusMs": null,
+      "finalUrl": "https://app.sandbox.hellotocheers.com/leads",
+      "dpl": "83569a103d9b4c7ebfc93ef151ed8ab9d28e1f67",
+      "openaiOrLuvAsk": 0
+    },
+    {
+      "route": "leads_list",
+      "mode": "warm",
+      "sample": 2,
+      "wallStartIso": "2026-11-19T03:45:53.007Z",
+      "ttfbMs": 605,
+      "responseEndMs": 1772,
+      "dclMs": 1777,
+      "usefulMs": 2166,
+      "greetingMs": null,
+      "focusMs": null,
+      "finalUrl": "https://app.sandbox.hellotocheers.com/leads",
+      "dpl": "83569a103d9b4c7ebfc93ef151ed8ab9d28e1f67",
+      "openaiOrLuvAsk": 0
+    },
+    {
+      "route": "leads_list",
+      "mode": "warm",
+      "sample": 3,
+      "wallStartIso": "2026-11-19T03:45:55.648Z",
+      "ttfbMs": 579,
+      "responseEndMs": 1552,
+      "dclMs": 1611,
+      "usefulMs": 2007,
+      "greetingMs": null,
+      "focusMs": null,
+      "finalUrl": "https://app.sandbox.hellotocheers.com/leads",
+      "dpl": "83569a103d9b4c7ebfc93ef151ed8ab9d28e1f67",
+      "openaiOrLuvAsk": 0
+    },
+    {
+      "route": "lead_workspace",
+      "mode": "cold",
+      "sample": 1,
+      "wallStartIso": "2026-11-19T03:45:58.109Z",
+      "ttfbMs": 439,
+      "responseEndMs": 0,
+      "dclMs": 0,
+      "usefulMs": 537,
+      "greetingMs": null,
+      "focusMs": null,
+      "finalUrl": "https://app.sandbox.hellotocheers.com/leads/ab37d13c-5802-4b51-b4b8-31972da26393",
+      "dpl": "83569a103d9b4c7ebfc93ef151ed8ab9d28e1f67",
+      "openaiOrLuvAsk": 0
+    },
+    {
+      "route": "lead_workspace",
+      "mode": "warm",
+      "sample": 1,
+      "wallStartIso": "2026-11-19T03:45:59.085Z",
+      "ttfbMs": 1535,
+      "responseEndMs": 0,
+      "dclMs": 0,
+      "usefulMs": 1643,
+      "greetingMs": null,
+      "focusMs": null,
+      "finalUrl": "https://app.sandbox.hellotocheers.com/leads/ab37d13c-5802-4b51-b4b8-31972da26393",
+      "dpl": "83569a103d9b4c7ebfc93ef151ed8ab9d28e1f67",
+      "openaiOrLuvAsk": 0
+    },
+    {
+      "route": "lead_workspace",
+      "mode": "warm",
+      "sample": 2,
+      "wallStartIso": "2026-11-19T03:46:01.179Z",
+      "ttfbMs": 1131,
+      "responseEndMs": 1467,
+      "dclMs": 1470,
+      "usefulMs": 1216,
+      "greetingMs": null,
+      "focusMs": null,
+      "finalUrl": "https://app.sandbox.hellotocheers.com/leads/ab37d13c-5802-4b51-b4b8-31972da26393",
+      "dpl": "83569a103d9b4c7ebfc93ef151ed8ab9d28e1f67",
+      "openaiOrLuvAsk": 0
+    },
+    {
+      "route": "lead_workspace",
+      "mode": "warm",
+      "sample": 3,
+      "wallStartIso": "2026-11-19T03:46:02.835Z",
+      "ttfbMs": 817,
+      "responseEndMs": 1278,
+      "dclMs": 1280,
+      "usefulMs": 922,
+      "greetingMs": null,
+      "focusMs": null,
+      "finalUrl": "https://app.sandbox.hellotocheers.com/leads/ab37d13c-5802-4b51-b4b8-31972da26393",
+      "dpl": "83569a103d9b4c7ebfc93ef151ed8ab9d28e1f67",
+      "openaiOrLuvAsk": 0
+    },
+    {
+      "route": "event_redirect",
+      "mode": "cold",
+      "sample": 1,
+      "wallStartIso": "2026-11-19T03:46:04.230Z",
+      "ttfbMs": 1414,
+      "responseEndMs": 0,
+      "dclMs": 0,
+      "usefulMs": 2085,
+      "greetingMs": null,
+      "focusMs": null,
+      "finalUrl": "https://app.sandbox.hellotocheers.com/clients/49aba826-0bd3-4891-ac9f-02a18b2b6962?eventId=74a2487d-40fc-418f-a6bc-54abef28b6e1",
+      "dpl": "83569a103d9b4c7ebfc93ef151ed8ab9d28e1f67",
+      "openaiOrLuvAsk": 0
+    },
+    {
+      "route": "event_redirect",
+      "mode": "warm",
+      "sample": 1,
+      "wallStartIso": "2026-11-19T03:46:06.763Z",
+      "ttfbMs": 766,
+      "responseEndMs": 0,
+      "dclMs": 0,
+      "usefulMs": 1539,
+      "greetingMs": null,
+      "focusMs": null,
+      "finalUrl": "https://app.sandbox.hellotocheers.com/clients/49aba826-0bd3-4891-ac9f-02a18b2b6962?eventId=74a2487d-40fc-418f-a6bc-54abef28b6e1",
+      "dpl": "83569a103d9b4c7ebfc93ef151ed8ab9d28e1f67",
+      "openaiOrLuvAsk": 0
+    },
+    {
+      "route": "event_redirect",
+      "mode": "warm",
+      "sample": 2,
+      "wallStartIso": "2026-11-19T03:46:08.749Z",
+      "ttfbMs": 1152,
+      "responseEndMs": 1661,
+      "dclMs": 1664,
+      "usefulMs": 2326,
+      "greetingMs": null,
+      "focusMs": null,
+      "finalUrl": "https://app.sandbox.hellotocheers.com/clients/49aba826-0bd3-4891-ac9f-02a18b2b6962?eventId=74a2487d-40fc-418f-a6bc-54abef28b6e1",
+      "dpl": "83569a103d9b4c7ebfc93ef151ed8ab9d28e1f67",
+      "openaiOrLuvAsk": 0
+    },
+    {
+      "route": "event_redirect",
+      "mode": "warm",
+      "sample": 3,
+      "wallStartIso": "2026-11-19T03:46:11.582Z",
+      "ttfbMs": 818,
+      "responseEndMs": 0,
+      "dclMs": 0,
+      "usefulMs": 1434,
+      "greetingMs": null,
+      "focusMs": null,
+      "finalUrl": "https://app.sandbox.hellotocheers.com/clients/49aba826-0bd3-4891-ac9f-02a18b2b6962?eventId=74a2487d-40fc-418f-a6bc-54abef28b6e1",
+      "dpl": "83569a103d9b4c7ebfc93ef151ed8ab9d28e1f67",
+      "openaiOrLuvAsk": 0
+    },
+    {
+      "route": "booking_workspace",
+      "mode": "cold",
+      "sample": 1,
+      "wallStartIso": "2026-11-19T03:46:13.474Z",
+      "ttfbMs": 659,
+      "responseEndMs": 1433,
+      "dclMs": 1436,
+      "usefulMs": 1555,
+      "greetingMs": null,
+      "focusMs": null,
+      "finalUrl": "https://app.sandbox.hellotocheers.com/clients/49aba826-0bd3-4891-ac9f-02a18b2b6962?eventId=74a2487d-40fc-418f-a6bc-54abef28b6e1",
+      "dpl": "83569a103d9b4c7ebfc93ef151ed8ab9d28e1f67",
+      "openaiOrLuvAsk": 0
+    },
+    {
+      "route": "booking_workspace",
+      "mode": "warm",
+      "sample": 1,
+      "wallStartIso": "2026-11-19T03:46:15.478Z",
+      "ttfbMs": 9460,
+      "responseEndMs": 12075,
+      "dclMs": 12081,
+      "usefulMs": 12478,
+      "greetingMs": null,
+      "focusMs": null,
+      "finalUrl": "https://app.sandbox.hellotocheers.com/clients/49aba826-0bd3-4891-ac9f-02a18b2b6962?eventId=74a2487d-40fc-418f-a6bc-54abef28b6e1",
+      "dpl": "83569a103d9b4c7ebfc93ef151ed8ab9d28e1f67",
+      "openaiOrLuvAsk": 0
+    },
+    {
+      "route": "booking_workspace",
+      "mode": "warm",
+      "sample": 2,
+      "wallStartIso": "2026-11-19T03:46:28.414Z",
+      "ttfbMs": 2203,
+      "responseEndMs": 3271,
+      "dclMs": 3277,
+      "usefulMs": 3617,
+      "greetingMs": null,
+      "focusMs": null,
+      "finalUrl": "https://app.sandbox.hellotocheers.com/clients/49aba826-0bd3-4891-ac9f-02a18b2b6962?eventId=74a2487d-40fc-418f-a6bc-54abef28b6e1",
+      "dpl": "83569a103d9b4c7ebfc93ef151ed8ab9d28e1f67",
+      "openaiOrLuvAsk": 0
+    },
+    {
+      "route": "booking_workspace",
+      "mode": "warm",
+      "sample": 3,
+      "wallStartIso": "2026-11-19T03:46:32.597Z",
+      "ttfbMs": 514,
+      "responseEndMs": 2925,
+      "dclMs": 2928,
+      "usefulMs": 3412,
+      "greetingMs": null,
+      "focusMs": null,
+      "finalUrl": "https://app.sandbox.hellotocheers.com/clients/49aba826-0bd3-4891-ac9f-02a18b2b6962?eventId=74a2487d-40fc-418f-a6bc-54abef28b6e1",
+      "dpl": "83569a103d9b4c7ebfc93ef151ed8ab9d28e1f67",
+      "openaiOrLuvAsk": 0
+    }
+  ],
+  "instrumentationGaps": [
+    "No Server-Timing on layout — TTFB stages (getUser/bootstrap/getCurrentVenue) not separately visible on Sandbox documents",
+    "dashboard_forensic_timing covers Suspense islands AFTER first byte, not layout TTFB",
+    "No Node event-loop delay metric exported",
+    "Supabase probes are API wall time, not PostgreSQL EXPLAIN"
+  ]
+}

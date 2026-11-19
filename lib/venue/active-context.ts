@@ -6,12 +6,21 @@ import { cache } from "react";
 
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
+import { layoutFbExtra, layoutFbTime } from "@/lib/shell/layout-first-byte-timing";
 import {
   clearActiveVenueCookie,
   syncActiveVenueCookieFromDb,
 } from "@/lib/venue/active-context-cookie";
 import { classifyActiveVenueCase } from "@/lib/venue/active-context-logic";
 import { consumeOnboardingHandoff } from "@/lib/venue/onboarding-handoff";
+
+/**
+ * Local A/B only: HTC_LAYOUT_BOOTSTRAP_SERIAL=1 restores pre–Wave 6 serial
+ * membership + venue-id reads after clear_stale (for before/after timing).
+ */
+function bootstrapReadsSerial(): boolean {
+  return process.env.HTC_LAYOUT_BOOTSTRAP_SERIAL === "1";
+}
 
 export type VenueMembershipSummary = {
   venueId: string;
@@ -71,7 +80,7 @@ export const bootstrapActiveVenueContext = cache(async (): Promise<ActiveVenueBo
   const supabase = await createClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await layoutFbTime("bootstrap_get_user", () => supabase.auth.getUser());
   if (!user) {
     await clearActiveVenueCookie();
     return { status: "unauthenticated" };
@@ -80,14 +89,38 @@ export const bootstrapActiveVenueContext = cache(async (): Promise<ActiveVenueBo
   // One-time onboarding handoff (purchase activation) — establish the
   // intended venue before ordinary classification. No-op when none exists.
   // Does not change B_keep_valid for users without a pending handoff.
-  await consumeOnboardingHandoff();
+  // MUST remain before clear_stale and before venue-id / membership reads.
+  await layoutFbTime("bootstrap_consume_handoff", () => consumeOnboardingHandoff());
 
   // Clear stale DB context when membership no longer valid (Case E cleanup).
-  await supabase.rpc("clear_stale_active_venue_context");
+  // MUST remain after handoff and before membership / venue-id reads.
+  await layoutFbTime("bootstrap_clear_stale", () =>
+    supabase.rpc("clear_stale_active_venue_context"),
+  );
 
-  const memberships = await listMyVenueMemberships();
-  const { data: venueId } = await supabase.rpc("current_user_venue_id");
-  const activeId = (venueId as string | null) ?? null;
+  // After clear_stale: membership list and active venue id are independent reads.
+  let memberships: VenueMembershipSummary[];
+  let activeId: string | null;
+  if (bootstrapReadsSerial()) {
+    layoutFbExtra("bootstrap_reads_mode", "serial");
+    memberships = await layoutFbTime("bootstrap_list_memberships", () => listMyVenueMemberships());
+    const { data: venueId } = await layoutFbTime("bootstrap_current_user_venue_id", () =>
+      supabase.rpc("current_user_venue_id"),
+    );
+    activeId = (venueId as string | null) ?? null;
+  } else {
+    layoutFbExtra("bootstrap_reads_mode", "parallel");
+    const [membershipsResult, venueIdResult] = await layoutFbTime(
+      "bootstrap_memberships_and_venue_id_parallel",
+      () =>
+        Promise.all([
+          listMyVenueMemberships(),
+          supabase.rpc("current_user_venue_id"),
+        ]),
+    );
+    memberships = membershipsResult;
+    activeId = ((venueIdResult.data as string | null) ?? null);
+  }
   const membershipValid = Boolean(activeId && memberships.some((m) => m.venueId === activeId));
 
   const classified = classifyActiveVenueCase({
@@ -95,6 +128,7 @@ export const bootstrapActiveVenueContext = cache(async (): Promise<ActiveVenueBo
     dbContextVenueId: activeId,
     dbContextMembershipValid: membershipValid,
   });
+  layoutFbExtra("bootstrap_case", classified);
 
   if (classified === "D_none") {
     await clearActiveVenueCookie();
@@ -108,7 +142,7 @@ export const bootstrapActiveVenueContext = cache(async (): Promise<ActiveVenueBo
 
   if (classified === "A_auto_single") {
     const only = memberships[0];
-    const set = await setActiveVenue(only.venueId);
+    const set = await layoutFbTime("bootstrap_set_active_venue", () => setActiveVenue(only.venueId));
     if (!set.ok) {
       await clearActiveVenueCookie();
       return { status: "needs_selection", memberships };

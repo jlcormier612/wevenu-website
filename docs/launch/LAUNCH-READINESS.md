@@ -2,9 +2,9 @@
 
 **Authoritative prelaunch register.**  
 **Created:** 2026-11-18  
-**Last updated:** 2026-11-18 (NAV-PERF Wave 3 Sandbox remasure — still OPEN for launch bar)  
+**Last updated:** 2026-11-18 (NAV-PERF Wave 6 layout first-byte — still OPEN; Wave 5 not released; undeployed)  
 **Sandbox serving SHA (verified):** `83569a103d9b4c7ebfc93ef151ed8ab9d28e1f67`  
-**Active workstream:** NAV-PERF (Wave 3 deployed; launch bar not yet GREEN)  
+**Active workstream:** NAV-PERF (Wave 6 layout instrumentation + safe bootstrap parallelization ready for founder review)  
 **Production:** unauthorized — no Production customers, payments, or deploy.
 
 This file is the permanent Launch Readiness Register for coordinated prelaunch.  
@@ -17,7 +17,7 @@ Historical trackers (`docs/launch/MASTER-READINESS-TRACKER.md`, older release-re
 | Dimension | Status |
 |-----------|--------|
 | Sandbox product surface (onboarding, Practice Run, migration, portals, contracts/payments, reporting, Luv lifecycle/privacy/redundancy, messaging safeguards, approved marketing) | **Substantial Sandbox acceptance** — see §2 |
-| Venue navigation performance | **ACTIVE** — Wave 3 on Sandbox `83569a10`; cold Focus 3817 ms / warm Focus 1841 ms; NAV-PERF still OPEN (P1) |
+| Venue navigation performance | **ACTIVE** — Wave 6 layout first-byte ready (undeployed); Wave 5 **not released**; serving still `83569a10`; NAV-PERF OPEN (P1) |
 | Production infrastructure / live Stripe / legal / ops | **OPEN** — Production gates not satisfied |
 | Overall Production launch | **NOT READY** — Sandbox ≠ Production |
 
@@ -62,7 +62,7 @@ Preserve GREEN/CLOSED unless new regression evidence appears.
 
 | ID | Description | Priority | Status | Owner | Acceptance criteria | Evidence / reference | Dependency |
 |----|-------------|----------|--------|-------|---------------------|----------------------|------------|
-| **NAV-PERF** | Venue navigation performance — required for launch acceptance | P1 | **OPEN** (Wave 3 shipped; launch bar not yet met) | Engineering | Wave 1–3 on Sandbox with real Focus/greeting remasure (not skeletons). Keep OPEN until founder accepts launch feel | Wave 3 PR [#96](https://github.com/jlcormier612/wevenu-website/pull/96) merge `83569a10`; deploy [44446307468](https://github.com/jlcormier612/wevenu-website/actions/runs/44446307468); image `htc-sandbox-venue-app:83569a10…` task `:1230`. Candidate parity 0 mismatches. Fancy remasure: cold Focus **3817** / warm **1841** (Wave 2 cold 3437 / warm 1628 — Focus not improved). Cold TTFB **1484** (−31% vs Wave 2). Functional PASS. Nav: slowest cold events_list 3603. Evidence `docs/qa/launch-performance/nav-perf-wave3/AFTER-DEPLOY-REPORT.md`; Desktop `~/Desktop/HTC-NAV-PERF-WAVE3-AFTER/`. Remaining: Focus wall time, `/api/notifications`, events/lead workspace. | None — **ACTIVE** |
+| **NAV-PERF** | Venue navigation performance — required for launch acceptance | P1 | **OPEN** (Wave 6 implemented locally; **not deployed**; Wave 5 not released) | Engineering | Founder-accepted launch feel after real-content remasure. Keep OPEN until accepted | Waves 1–4 evidence preserved. Wave 5 **not released**. First-byte diagnosis: layout-bound TTFB. **Wave 6 (undeployed):** layout first-byte log spans + safe parallel of post-`clear_stale` membership ∥ venue-id reads; handoff→clear_stale order preserved. Local A/B Dashboard warm TTFB med **949→812**, layout wall med **799→469**. Booking SSR + gates path remain. Evidence `docs/qa/launch-performance/nav-perf-wave6/WAVE6-REPORT.md`; Desktop `~/Desktop/HTC-NAV-PERF-WAVE6/`. Recommend controlled Sandbox release on approval. | None — **ACTIVE** |
 | **LUV-CONSENT** | Channel consent not loaded into draft eligibility (`channelConsentOk` defaults true); send path intended to recheck | P1 | OPEN | Engineering | Draft eligibility + accept/send boundary use authoritative consent; unit + Sandbox proof; no paid AI | Lifecycle closure 2026-11-18; `relationship-lifecycle-loader.ts` | After NAV-PERF unless founder reprioritizes |
 | **JOURNEY-FINAL** | Full new-venue Sandbox customer journey (provision → setup → book → portal → payments Test) | P1 | OPEN | Joint | Disposable-venue E2E harness PASS on current Sandbox tip; evidence package | MASTER JOURNEY-FINAL; ONB-FINAL closed | Prefer after NAV-PERF |
 | **TS-001** | TypeScript baseline / typecheck debt | P1 | OPEN | Engineering | Agreed baseline green in CI without weakening checks | MASTER TS-001 | Independent |
@@ -87,8 +87,8 @@ Preserve GREEN/CLOSED unless new regression evidence appears.
 ## 4. Current active workstream
 
 **NAV-PERF — Venue navigation performance (P1, required for launch)**  
-Wave 3 merged (PR #96) and serving on Sandbox `83569a10`. Lean Focus loaders + candidate filter verified (parity 0 mismatches). End-to-end remasure: cold TTFB improved; **real Focus medians did not beat Wave 2**. **Keep OPEN** — founder launch-bar decision still required; next cut should target notifications / remaining SSR wall, not another field-select pass.  
-No Production changes.
+Wave 5 **not released**. Wave 6 layout first-byte instrumentation + safe bootstrap parallelization implemented in worktree (local verify PASS) — **awaiting founder approval for Sandbox release**. Booking SSR remains a follow-up. **Keep OPEN.**  
+No Production changes; no commit/push/merge/deploy without approval.
 
 ---
 
