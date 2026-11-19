@@ -1,0 +1,35 @@
+{
+  "venue": "a415ac52-cd74-42a6-8df7-7a8f6e71d080",
+  "cold": {
+    "fat": {
+      "ms": 689,
+      "contracts": 60,
+      "signers": 107,
+      "contractsMs": 518,
+      "signersMs": 171
+    },
+    "slim": {
+      "ms": 196,
+      "contracts": 34,
+      "signers": 37,
+      "contractsMs": 98,
+      "signersMs": 98
+    }
+  },
+  "warm": {
+    "fat": {
+      "ms": 236,
+      "contracts": 60,
+      "signers": 107,
+      "contractsMs": 98,
+      "signersMs": 138
+    },
+    "slim": {
+      "ms": 178,
+      "contracts": 34,
+      "signers": 37,
+      "contractsMs": 98,
+      "signersMs": 80
+    }
+  }
+}

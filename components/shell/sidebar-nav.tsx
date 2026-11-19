@@ -23,6 +23,9 @@ import {
 import { filterNavSectionsForRole } from "@/lib/navigation/financial-nav";
 import { cn } from "@/lib/utils";
 
+/** Bound refresh so soft-nav does not re-hit /api/navigation/attention every route. */
+const ATTENTION_TTL_MS = 60_000;
+
 function applyAttentionPayload(d: Partial<NavAttentionCounts>): NavAttentionCounts {
   return {
     leads: Number(d.leads) || 0,
@@ -44,24 +47,38 @@ export function SidebarNav({
   const pathname = usePathname();
   const navPending = useNavigationPending();
   const [counts, setCounts] = React.useState<NavAttentionCounts>(emptyNavAttentionCounts);
+  const lastFetchedAt = React.useRef(0);
+  const inflight = React.useRef<Promise<void> | null>(null);
+
+  const loadAttention = React.useCallback((force = false) => {
+    const now = Date.now();
+    if (!force && lastFetchedAt.current > 0 && now - lastFetchedAt.current < ATTENTION_TTL_MS) {
+      return;
+    }
+    if (inflight.current) return;
+    inflight.current = fetch("/api/navigation/attention")
+      .then((r) => r.json())
+      .then((d: Partial<NavAttentionCounts>) => {
+        setCounts(applyAttentionPayload(d));
+        lastFetchedAt.current = Date.now();
+      })
+      .catch(() => {})
+      .finally(() => {
+        inflight.current = null;
+      });
+  }, []);
 
   React.useEffect(() => {
-    let cancelled = false;
-    function loadAttention() {
-      fetch("/api/navigation/attention")
-        .then((r) => r.json())
-        .then((d: Partial<NavAttentionCounts>) => {
-          if (!cancelled) setCounts(applyAttentionPayload(d));
-        })
-        .catch(() => {});
+    loadAttention(false);
+  }, [pathname, loadAttention]);
+
+  React.useEffect(() => {
+    function onRefresh() {
+      loadAttention(true);
     }
-    loadAttention();
-    window.addEventListener(NAV_ATTENTION_REFRESH_EVENT, loadAttention);
-    return () => {
-      cancelled = true;
-      window.removeEventListener(NAV_ATTENTION_REFRESH_EVENT, loadAttention);
-    };
-  }, [pathname]);
+    window.addEventListener(NAV_ATTENTION_REFRESH_EVENT, onRefresh);
+    return () => window.removeEventListener(NAV_ATTENTION_REFRESH_EVENT, onRefresh);
+  }, [loadAttention]);
 
   const sections = filterNavSectionsForRole(NAV_SECTIONS, staffRole);
 
@@ -102,6 +119,7 @@ export function SidebarNav({
               >
                 <Link
                   href={href}
+                  prefetch={false}
                   onClick={navigationPendingOnClick(navPending?.begin, href, () => onNavigate?.())}
                   aria-current={isActive ? "page" : undefined}
                   className="flex min-w-0 flex-1 items-center gap-3 focus-visible:outline-none"
@@ -119,6 +137,7 @@ export function SidebarNav({
                 {badgeLabel && item.id === "leads" ? (
                   <Link
                     href={UNSEEN_LEADS_ATTENTION_HREF}
+                    prefetch={false}
                     onClick={onNavigate}
                     className={NAV_ATTENTION_BADGE_CLASS}
                     title={navBadgeAriaLabel(item.id, badgeLabel)}

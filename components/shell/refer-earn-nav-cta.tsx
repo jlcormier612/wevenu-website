@@ -18,6 +18,7 @@ export function ReferEarnNavCta({ className }: { className?: string }) {
   return (
     <Link
       href={REFER_EARN_NAV_HREF}
+      prefetch={false}
       data-testid="refer-earn-nav-cta"
       aria-label={REFER_EARN_NAV_LABEL}
       title={REFER_EARN_NAV_LABEL}

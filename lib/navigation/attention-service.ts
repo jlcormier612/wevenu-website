@@ -39,12 +39,14 @@ type SlimContractRow = {
   expires_at: string | null;
   created_at: string;
   amends_contract_id: string | null;
-  title: string;
 };
 
 /**
- * Same action-required population as full contract list rollup + count, without
- * selecting contract.content or client/event joins.
+ * Same action-required population as full contract list rollup + count.
+ *
+ * Wave 1 (NAV-PERF): only load draft/sent rows (the only statuses that can be
+ * action-required tips), drop title/content joins, and fetch signers only for
+ * `sent` rows (drafts are action-required without signer progress).
  */
 async function countActionRequiredContracts(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -52,25 +54,28 @@ async function countActionRequiredContracts(
 ): Promise<number> {
   const { data, error } = await supabase
     .from("contracts")
-    .select("id, status, expires_at, created_at, amends_contract_id, title")
+    .select("id, status, expires_at, created_at, amends_contract_id")
     .eq("venue_id", venueId)
+    .in("status", ["draft", "sent"])
     .order("created_at", { ascending: false });
   if (error) throw error;
   const rows = (data ?? []) as SlimContractRow[];
   if (rows.length === 0) return 0;
 
-  const { data: signerRows, error: sErr } = await supabase
-    .from("contract_signers")
-    .select("contract_id, signer_type, signed_at, is_required")
-    .eq("venue_id", venueId)
-    .in(
-      "contract_id",
-      rows.map((c) => c.id),
-    );
-  if (sErr) throw sErr;
+  const sentIds = rows.filter((r) => r.status === "sent").map((r) => r.id);
+  let signerRows: SignerProgressRow[] = [];
+  if (sentIds.length > 0) {
+    const { data: signers, error: sErr } = await supabase
+      .from("contract_signers")
+      .select("contract_id, signer_type, signed_at, is_required")
+      .eq("venue_id", venueId)
+      .in("contract_id", sentIds);
+    if (sErr) throw sErr;
+    signerRows = (signers ?? []) as SignerProgressRow[];
+  }
 
   const byContract = new Map<string, SignerProgressRow[]>();
-  for (const row of (signerRows ?? []) as SignerProgressRow[]) {
+  for (const row of signerRows) {
     const list = byContract.get(row.contract_id) ?? [];
     list.push(row);
     byContract.set(row.contract_id, list);
@@ -89,7 +94,7 @@ async function countActionRequiredContracts(
       clientId: null,
       eventId: null,
       templateId: null,
-      title: r.title,
+      title: "",
       content: "",
       status: r.status,
       executionOrigin: "htc",
