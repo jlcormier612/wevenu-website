@@ -9,7 +9,7 @@
  */
 
 import { NextResponse } from "next/server";
-import { createClient } from "@/integrations/supabase/server";
+import { createAdminClient } from "@/integrations/supabase/admin";
 import { isEmailConfigured, sendEmail } from "@/lib/email/send";
 
 type InvitePayload = {
@@ -26,30 +26,35 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: "Missing required fields." }, { status: 400 });
     }
 
-    const supabase = await createClient();
+    // Portal couple sessions are not readable under anon RLS. Resolve the
+    // access_token with the service role (same pattern as resolvePortalContext),
+    // then scope every subsequent read to that session's venue/client.
+    const admin = createAdminClient();
 
-    // Resolve portal session → get venue/client context
-    const { data: session } = await supabase
+    const { data: session } = await admin
       .from("client_portal_sessions")
-      .select("venue_id, client_id")
+      .select("venue_id, client_id, expires_at")
       .eq("access_token", token)
-      .maybeSingle<{ venue_id: string; client_id: string }>();
+      .maybeSingle<{ venue_id: string; client_id: string; expires_at: string | null }>();
     if (!session) return NextResponse.json({ ok: false, error: "Invalid token." }, { status: 401 });
+    if (session.expires_at && new Date(session.expires_at).getTime() <= Date.now()) {
+      return NextResponse.json({ ok: false, error: "Invalid token." }, { status: 401 });
+    }
 
     // Load context for the email
-    const { data: client } = await supabase
+    const { data: client } = await admin
       .from("clients")
       .select("first_name, partner_first_name")
       .eq("id", session.client_id)
       .maybeSingle<{ first_name: string; partner_first_name: string | null }>();
 
-    const { data: venue } = await supabase
+    const { data: venue } = await admin
       .from("venues")
       .select("name, email, primary_color, logo_url")
       .eq("id", session.venue_id)
       .maybeSingle<{ name: string; email: string | null; primary_color: string; logo_url: string | null }>();
 
-    const { data: event } = await supabase
+    const { data: event } = await admin
       .from("events")
       .select("event_date, name")
       .eq("client_id", session.client_id)
@@ -58,7 +63,7 @@ export async function POST(request: Request) {
       .limit(1)
       .maybeSingle<{ event_date: string; name: string }>();
 
-    const { data: website } = await supabase
+    const { data: website } = await admin
       .from("couple_websites")
       .select("slug")
       .eq("client_id", session.client_id)
@@ -67,7 +72,7 @@ export async function POST(request: Request) {
       .maybeSingle<{ slug: string }>();
 
     // Fetch selected guests with email + rsvp_token
-    const { data: guests } = await supabase
+    const { data: guests } = await admin
       .from("couple_guests")
       .select("id, first_name, last_name, email, rsvp_token")
       .in("id", guestIds)
@@ -159,8 +164,9 @@ export async function POST(request: Request) {
     }
 
     // Log only guests whose send was accepted by the provider (or DEV simulated).
+    // SECURITY DEFINER RPC — validates token again server-side.
     if (results.sentGuestIds.length > 0) {
-      void supabase.rpc("log_invitations_sent", {
+      void admin.rpc("log_invitations_sent", {
         p_token: token,
         p_guest_ids: results.sentGuestIds,
         p_email_type: emailType,
