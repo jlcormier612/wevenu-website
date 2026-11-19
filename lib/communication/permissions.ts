@@ -44,6 +44,16 @@ export type PermissionCheck =
   | { ok: true; status: CommunicationPermissionStatus }
   | { ok: false; status: CommunicationPermissionStatus; message: string };
 
+/**
+ * Explicit permission read contract.
+ * - ok + found=false: successful query, no row → treat as not_opted_in (existing policy).
+ * - ok + found=true: successful query with a status row.
+ * - ok=false: query/transport failure — callers must fail closed (never invent eligibility).
+ */
+export type CommunicationPermissionReadResult =
+  | { ok: true; status: CommunicationPermissionStatus; found: boolean }
+  | { ok: false; message: string };
+
 export function normalizeSmsAddressKey(phone: string): string | null {
   const e164 = toE164(phone);
   if (!e164) return null;
@@ -123,19 +133,71 @@ export function isSmsOutboundAllowed(status: CommunicationPermissionStatus): boo
   return status === "opted_in";
 }
 
-export async function getCommunicationPermission(
+/**
+ * Channel consent for Luv draft eligibility / accept boundary.
+ * Mirrors assertChannelAllowed outbound rules (not sms_consent_request):
+ *   - Missing / unknown status → not_opted_in (never invent opted_in).
+ *   - SMS: only opted_in is OK.
+ *   - Email: hard blocks only; not_opted_in remains sendable for relationship email.
+ */
+export function isOutboundChannelConsentOk(
+  channel: CommunicationChannel,
+  status: CommunicationPermissionStatus | null | undefined,
+): boolean {
+  const resolved: CommunicationPermissionStatus = status ?? "not_opted_in";
+  if (isHardBlocked(resolved)) return false;
+  if (channel === "sms") return isSmsOutboundAllowed(resolved);
+  return true;
+}
+
+/**
+ * Venue-scoped permission read with explicit success vs query-failure.
+ * Successful empty result → status not_opted_in (found=false).
+ * Query failure → ok=false (never map errors to not_opted_in).
+ */
+export async function readCommunicationPermission(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   client: any,
   input: { venueId: string; channel: CommunicationChannel; addressKey: string },
-): Promise<CommunicationPermissionStatus> {
-  const { data } = await client
+): Promise<CommunicationPermissionReadResult> {
+  const { data, error } = await client
     .from("communication_permissions")
     .select("status")
     .eq("venue_id", input.venueId)
     .eq("channel", input.channel)
     .eq("address_key", input.addressKey)
     .maybeSingle();
-  return (data?.status as CommunicationPermissionStatus | undefined) ?? "not_opted_in";
+  if (error) {
+    return {
+      ok: false,
+      message: "Couldn't verify messaging permission right now. Please try again.",
+    };
+  }
+  if (!data?.status) {
+    return { ok: true, status: "not_opted_in", found: false };
+  }
+  return {
+    ok: true,
+    status: data.status as CommunicationPermissionStatus,
+    found: true,
+  };
+}
+
+/**
+ * Status-only helper. Successful missing row → not_opted_in.
+ * Query failures throw (fail closed) — do not silently treat errors as not_opted_in.
+ * Prefer readCommunicationPermission / assertChannelAllowed at send boundaries.
+ */
+export async function getCommunicationPermission(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  client: any,
+  input: { venueId: string; channel: CommunicationChannel; addressKey: string },
+): Promise<CommunicationPermissionStatus> {
+  const result = await readCommunicationPermission(client, input);
+  if (!result.ok) {
+    throw new Error(result.message);
+  }
+  return result.status;
 }
 
 export async function assertChannelAllowed(
@@ -165,11 +227,19 @@ export async function assertChannelAllowed(
         : "This email address isn't valid.",
     };
   }
-  const status = await getCommunicationPermission(client, {
+  const read = await readCommunicationPermission(client, {
     venueId: input.venueId,
     channel: input.channel,
     addressKey,
   });
+  if (!read.ok) {
+    return {
+      ok: false,
+      status: "not_opted_in",
+      message: read.message,
+    };
+  }
+  const status = read.status;
   if (isHardBlocked(status)) {
     return { ok: false, status, message: blockMessage(input.channel, status) };
   }

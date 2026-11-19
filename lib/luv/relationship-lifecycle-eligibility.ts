@@ -49,8 +49,16 @@ export type RelationshipLifecycleFacts = {
   eventDatePast?: boolean;
   /** Booking/event cancelled (when known). */
   bookingCancelled?: boolean;
-  /** Email/SMS channel still permitted for the intended send. */
+  /**
+   * Consent for the channel under evaluation (email or sms).
+   * Loader always sets this from communication_permissions — never invent opted_in.
+   * Pure callers may omit; omit means “not evaluated here” (not affirmative).
+   */
   channelConsentOk?: boolean;
+  /** Email channel outbound allowed (hard-block rules). */
+  emailConsentOk?: boolean;
+  /** SMS channel outbound allowed (opted_in required). */
+  smsConsentOk?: boolean;
 };
 
 export type SalesFollowUpBlockReasonCode =
@@ -244,6 +252,8 @@ export function isIntentEligibleForLifecycle(
   intent: FollowUpWorkflowIntent,
   decision: RelationshipLifecycleDecision,
 ): boolean {
+  // Channel consent is a hard gate — not superseded by answer_questions.
+  if (decision.salesFollowUpBlockReasonCode === "consent_revoked") return false;
   if (decision.salesFollowUpAllowed) return true;
   if (POST_COMMITMENT_ALLOWED_INTENTS.has(intent)) return true;
   if (isSalesFollowUpIntent(intent)) return false;
@@ -286,6 +296,14 @@ export function shouldWithdrawSalesFollowUpDraft(input: {
   if (draftType !== "follow_up_email" && draftType !== "follow_up_text") {
     return { withdraw: false, reasonCode: null, reason: null };
   }
+  // Consent revocation withdraws even purpose-built answer_questions drafts.
+  if (input.decision.salesFollowUpBlockReasonCode === "consent_revoked") {
+    return {
+      withdraw: true,
+      reasonCode: input.decision.salesFollowUpBlockReasonCode,
+      reason: input.decision.salesFollowUpBlockReason,
+    };
+  }
   const intent = (input.context?.workflowIntent ?? "gentle_check_in") as FollowUpWorkflowIntent;
   const purpose = input.context?.communicationPurpose ?? "none";
   if (purpose === "unresolved_question" || purpose === "explicit_request") {
@@ -301,6 +319,24 @@ export function shouldWithdrawSalesFollowUpDraft(input: {
     };
   }
   return { withdraw: false, reasonCode: null, reason: null };
+}
+
+/**
+ * Pick channel consent for a draft type from loaded facts.
+ * Unknown / omitted channel flags do not become affirmative consent.
+ */
+export function channelConsentOkForDraftType(
+  draftType: string | null | undefined,
+  facts: Pick<RelationshipLifecycleFacts, "channelConsentOk" | "emailConsentOk" | "smsConsentOk">,
+): boolean {
+  if (draftType === "follow_up_text") {
+    if (typeof facts.smsConsentOk === "boolean") return facts.smsConsentOk;
+    if (typeof facts.channelConsentOk === "boolean") return facts.channelConsentOk;
+    return false;
+  }
+  if (typeof facts.emailConsentOk === "boolean") return facts.emailConsentOk;
+  if (typeof facts.channelConsentOk === "boolean") return facts.channelConsentOk;
+  return false;
 }
 
 /** Compatibility helper — same supersession rule used by dashboard observations. */

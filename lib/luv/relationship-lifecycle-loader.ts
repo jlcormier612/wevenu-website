@@ -4,6 +4,13 @@
  */
 
 import type { createClient } from "@/integrations/supabase/server";
+import {
+  isOutboundChannelConsentOk,
+  normalizeEmailAddressKey,
+  normalizeSmsAddressKey,
+  readCommunicationPermission,
+  type CommunicationChannel,
+} from "@/lib/communication/permissions";
 import type { RelationshipLifecycleFacts } from "@/lib/luv/relationship-lifecycle-eligibility";
 
 type DbClient = Awaited<ReturnType<typeof createClient>>;
@@ -17,21 +24,58 @@ function isEventDatePast(eventDate: string | null | undefined, nowMs: number): b
   return Number.isFinite(endOfEventDay) && endOfEventDay < nowMs;
 }
 
+export function luvDraftTypeToChannel(
+  draftType: string | null | undefined,
+): CommunicationChannel {
+  return draftType === "follow_up_text" ? "sms" : "email";
+}
+
+/**
+ * Consent for the lead's current email/phone (same normalize + venue scope as send).
+ * Query failure → false (fail closed). Successful empty row → channel policy via
+ * isOutboundChannelConsentOk (email allows not_opted_in; SMS does not).
+ */
+async function resolveChannelConsentOk(
+  supabase: DbClient,
+  venueId: string,
+  channel: CommunicationChannel,
+  rawAddress: string | null | undefined,
+): Promise<boolean> {
+  if (!rawAddress?.trim()) return false;
+  const addressKey = channel === "sms"
+    ? normalizeSmsAddressKey(rawAddress)
+    : normalizeEmailAddressKey(rawAddress);
+  if (!addressKey) return false;
+  const read = await readCommunicationPermission(supabase, {
+    venueId,
+    channel,
+    addressKey,
+  });
+  if (!read.ok) return false;
+  return isOutboundChannelConsentOk(channel, read.status);
+}
+
 /**
  * Batch-friendly facts for one lead. Uses the same commercial evidence
- * sources as dashboard tour-follow-up supersession.
+ * sources as dashboard tour-follow-up supersession, plus authoritative
+ * communication_permissions for the intended channel(s).
  */
 export async function loadRelationshipLifecycleFacts(
   supabase: DbClient,
   venueId: string,
   leadId: string,
-  options?: { nowMs?: number },
+  options?: {
+    nowMs?: number;
+    /** Channel under evaluation (default email — Luv follow-up drafts). */
+    channel?: CommunicationChannel;
+  },
 ): Promise<RelationshipLifecycleFacts> {
   const nowMs = options?.nowMs ?? Date.now();
+  const channel: CommunicationChannel = options?.channel ?? "email";
 
   const { data: lead } = await supabase
     .from("leads")
-    .select("id, first_booked_at, lost_at, status, sales_stage")
+    .select("id, first_booked_at, lost_at, status, sales_stage, email, phone")
     .eq("venue_id", venueId)
     .eq("id", leadId)
     .maybeSingle<{
@@ -40,6 +84,8 @@ export async function loadRelationshipLifecycleFacts(
       lost_at: string | null;
       status: string | null;
       sales_stage: string | null;
+      email: string | null;
+      phone: string | null;
     }>();
 
   const { data: clients } = await supabase
@@ -116,6 +162,12 @@ export async function loadRelationshipLifecycleFacts(
     }
   }
 
+  const [emailConsentOk, smsConsentOk] = await Promise.all([
+    resolveChannelConsentOk(supabase, venueId, "email", lead?.email),
+    resolveChannelConsentOk(supabase, venueId, "sms", lead?.phone),
+  ]);
+  const channelConsentOk = channel === "sms" ? smsConsentOk : emailConsentOk;
+
   return {
     firstBookedAt: lead?.first_booked_at ?? null,
     clientLifecycleBookedAt,
@@ -126,8 +178,8 @@ export async function loadRelationshipLifecycleFacts(
     paymentReceived,
     eventDatePast,
     bookingCancelled,
-    // Consent is rechecked on channel send paths; default OK for draft eligibility
-    // unless a caller supplies channelConsentOk: false.
-    channelConsentOk: true,
+    emailConsentOk,
+    smsConsentOk,
+    channelConsentOk,
   };
 }
