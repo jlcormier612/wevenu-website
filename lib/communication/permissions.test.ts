@@ -4,6 +4,7 @@ import { describe, it } from "node:test";
 
 import {
   isHardBlocked,
+  isOutboundChannelConsentOk,
   isSmsOutboundAllowed,
   normalizeEmailAddressKey,
   normalizeSmsAddressKey,
@@ -61,5 +62,13 @@ describe("communication permissions", () => {
     assert.match(src, /purpose\?: "outbound" \| "sms_consent_request"/);
     assert.match(src, /sms_consent_request/);
     assert.equal(isSmsOutboundAllowed("not_opted_in"), false);
+  });
+
+  it("isOutboundChannelConsentOk mirrors outbound send rules without inventing opt-in", () => {
+    assert.equal(isOutboundChannelConsentOk("email", "not_opted_in"), true);
+    assert.equal(isOutboundChannelConsentOk("email", "opted_out"), false);
+    assert.equal(isOutboundChannelConsentOk("sms", "not_opted_in"), false);
+    assert.equal(isOutboundChannelConsentOk("sms", null), false);
+    assert.equal(isOutboundChannelConsentOk("sms", "opted_in"), true);
   });
 });

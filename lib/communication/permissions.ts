@@ -123,6 +123,23 @@ export function isSmsOutboundAllowed(status: CommunicationPermissionStatus): boo
   return status === "opted_in";
 }
 
+/**
+ * Channel consent for Luv draft eligibility / accept boundary.
+ * Mirrors assertChannelAllowed outbound rules (not sms_consent_request):
+ *   - Missing / unknown status → not_opted_in (never invent opted_in).
+ *   - SMS: only opted_in is OK.
+ *   - Email: hard blocks only; not_opted_in remains sendable for relationship email.
+ */
+export function isOutboundChannelConsentOk(
+  channel: CommunicationChannel,
+  status: CommunicationPermissionStatus | null | undefined,
+): boolean {
+  const resolved: CommunicationPermissionStatus = status ?? "not_opted_in";
+  if (isHardBlocked(resolved)) return false;
+  if (channel === "sms") return isSmsOutboundAllowed(resolved);
+  return true;
+}
+
 export async function getCommunicationPermission(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   client: any,

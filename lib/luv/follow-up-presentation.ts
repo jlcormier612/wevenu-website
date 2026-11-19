@@ -130,7 +130,7 @@ export async function loadLeadFollowUpPresentation(
     loadProposalSentFact(supabase, venue.id, lead.id),
     loadFollowUpTourState(supabase, venue.id, lead.id),
     loadLeadThreadMessages(supabase, venue.id, lead.relationshipId),
-    loadRelationshipLifecycleFacts(supabase, venue.id, lead.id),
+    loadRelationshipLifecycleFacts(supabase, venue.id, lead.id, { channel: "email" }),
   ]);
   const tour = tourState.tour;
   const inquiryOrigin = normalizeInquiryMessageOrigin(lead.inquiryMessageOrigin);

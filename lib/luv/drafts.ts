@@ -46,12 +46,16 @@ import {
   type FollowUpWorkflowIntent,
 } from "@/lib/luv/follow-up-workflow-context";
 import {
+  channelConsentOkForDraftType,
   draftHasLifecycleWithdrawal,
   resolveRelationshipLifecycle,
   shouldWithdrawSalesFollowUpDraft,
   type LifecycleDraftContext,
 } from "@/lib/luv/relationship-lifecycle-eligibility";
-import { loadRelationshipLifecycleFacts } from "@/lib/luv/relationship-lifecycle-loader";
+import {
+  loadRelationshipLifecycleFacts,
+  luvDraftTypeToChannel,
+} from "@/lib/luv/relationship-lifecycle-loader";
 import {
   getLuvSettings,
   isLuvDraftingEnabled,
@@ -419,7 +423,7 @@ export async function generateFollowUpDraft(lead: Lead): Promise<
       loadProposalSentFact(supabase, venue.id, lead.id),
       loadFollowUpTourState(supabase, venue.id, lead.id),
       loadLeadThreadMessages(supabase, venue.id, lead.relationshipId),
-      loadRelationshipLifecycleFacts(supabase, venue.id, lead.id),
+      loadRelationshipLifecycleFacts(supabase, venue.id, lead.id, { channel: "email" }),
     ]);
     const tour = tourState.tour;
     const inquiryOrigin = normalizeInquiryMessageOrigin(lead.inquiryMessageOrigin);
@@ -567,9 +571,10 @@ async function lazilyWithdrawIneligibleDrafts(
   const pending = rows.filter((r) => r.status === "pending_review");
   if (pending.length === 0) return rows;
 
-  const facts = await loadRelationshipLifecycleFacts(supabase, venueId, leadId);
-  const decision = resolveRelationshipLifecycle(facts);
-  if (decision.salesFollowUpAllowed) return rows;
+  // Load both email + SMS consent once; evaluate per draft channel.
+  const facts = await loadRelationshipLifecycleFacts(supabase, venueId, leadId, {
+    channel: "email",
+  });
 
   const nowIso = new Date().toISOString();
   const updatedById = new Map<string, DraftRow>();
@@ -577,6 +582,12 @@ async function lazilyWithdrawIneligibleDrafts(
   for (const row of pending) {
     const ctx = (row.context ?? {}) as LifecycleDraftContext;
     if (draftHasLifecycleWithdrawal(ctx)) {
+      updatedById.set(row.id, row);
+      continue;
+    }
+    const channelConsentOk = channelConsentOkForDraftType(row.draft_type, facts);
+    const decision = resolveRelationshipLifecycle({ ...facts, channelConsentOk });
+    if (decision.salesFollowUpAllowed) {
       updatedById.set(row.id, row);
       continue;
     }
@@ -665,12 +676,15 @@ export async function updateDraftStatus(
   }
 
   if (existing.entity_type === "lead") {
+    const channel = luvDraftTypeToChannel(existing.draft_type);
     const facts = await loadRelationshipLifecycleFacts(
       supabase,
       venue.id,
       existing.entity_id,
+      { channel },
     );
-    const decision = resolveRelationshipLifecycle(facts);
+    const channelConsentOk = channelConsentOkForDraftType(existing.draft_type, facts);
+    const decision = resolveRelationshipLifecycle({ ...facts, channelConsentOk });
     const ctx = (existing.context ?? {}) as LifecycleDraftContext;
     if (draftHasLifecycleWithdrawal(ctx)) {
       return {
