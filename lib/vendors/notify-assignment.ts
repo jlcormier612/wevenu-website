@@ -120,6 +120,8 @@ export async function notifyVendorOfEventAssignmentAsync(
     if (!vendor.email) return;
 
     await sendEmail({
+      category: "vendor_invite",
+      priority: "critical",
       to: vendor.email,
       subject: `You've been selected for ${eventLabel} at ${input.venueName}`,
       text: buildVendorAssignmentText({

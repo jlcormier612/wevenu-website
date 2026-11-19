@@ -76,6 +76,8 @@ export async function POST(request: Request) {
         subject: emailBodies.subject,
         text: emailBodies.text,
         html: emailBodies.html,
+        category: "participant_invite",
+        priority: "critical",
       });
     }
   }

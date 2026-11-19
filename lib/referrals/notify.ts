@@ -19,6 +19,8 @@ export async function notifyReferralRewardEarned(input: {
   await sendEmail({
     to: input.toEmail.trim(),
     subject: "Your Hello to Cheers thank-you credit is ready",
+    category: "referral",
+    priority: "critical",
     text: [
       `Hi ${input.venueName},`,
       "",
@@ -42,6 +44,8 @@ export async function notifyReferralRewardApplied(input: {
   await sendEmail({
     to: input.toEmail.trim(),
     subject: "Your Hello to Cheers thank-you credit was applied",
+    category: "referral",
+    priority: "critical",
     text: [
       `Hi ${input.venueName},`,
       "",

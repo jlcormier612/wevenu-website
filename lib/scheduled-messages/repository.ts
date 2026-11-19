@@ -98,11 +98,43 @@ export async function getDueBatch(client: AnyDbClient, limit = 50): Promise<Sche
   return (data as ScheduledMessageRow[]).map(mapScheduledMessage);
 }
 
+/** Reclaim rows stuck in 'sending' after a crash/redeploy (2 minute lease). */
+export async function reclaimStaleSending(
+  client: AnyDbClient,
+  olderThanMs = 120_000,
+): Promise<number> {
+  const cutoff = new Date(Date.now() - olderThanMs).toISOString();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (client.from("scheduled_messages") as any)
+    .update({ status: "scheduled" })
+    .eq("status", "sending")
+    .lt("updated_at", cutoff)
+    .select("id");
+  if (error) throw error;
+  return Array.isArray(data) ? data.length : 0;
+}
+
+/**
+ * Atomic claim: scheduled → sending. Returns false if another worker won.
+ */
+export async function claimForSend(client: AnyDbClient, id: string): Promise<boolean> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (client.from("scheduled_messages") as any)
+    .update({ status: "sending" })
+    .eq("id", id)
+    .eq("status", "scheduled")
+    .select("id")
+    .maybeSingle();
+  if (error) throw error;
+  return Boolean(data?.id);
+}
+
 export async function markSent(client: AnyDbClient, id: string): Promise<void> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (client.from("scheduled_messages") as any)
     .update({ status: "sent", sent_at: new Date().toISOString() })
-    .eq("id", id);
+    .eq("id", id)
+    .in("status", ["sending", "scheduled"]);
   if (error) throw error;
 }
 
@@ -110,7 +142,8 @@ export async function markFailed(client: AnyDbClient, id: string, errorMessage: 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (client.from("scheduled_messages") as any)
     .update({ status: "failed", error_message: errorMessage.slice(0, 500) })
-    .eq("id", id);
+    .eq("id", id)
+    .in("status", ["sending", "scheduled"]);
   if (error) throw error;
 }
 

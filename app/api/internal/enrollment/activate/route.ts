@@ -417,6 +417,8 @@ export async function POST(request: Request) {
             await sendEmail({
               to: pendingOwner.email,
               subject: `You're invited as an Owner of ${venueName} on Hello to Cheers`,
+              category: "team_invite",
+              priority: "critical",
               text: buildOwnerInviteText({
                 memberName: pendingOwner.full_name,
                 venueName,

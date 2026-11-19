@@ -26,6 +26,8 @@ export type DeliveryFailureCode =
   | ResendFailureCode
   | "disabled"
   | "misconfigured"
+  | "capacity"
+  | "pacing_unavailable"
   | "unknown";
 
 export type DeliveryDisposition =
@@ -58,6 +60,9 @@ export function computeEmailDeliveryBackoffMs(
   let delay = exp;
   if (opts?.code === "quota") {
     delay = Math.max(delay, QUOTA_MIN_DELAY_MS);
+  }
+  if (opts?.code === "capacity" || opts?.code === "pacing_unavailable") {
+    delay = Math.max(delay, (opts.retryAfterSeconds ?? 1) * 1000);
   }
   if (opts?.retryAfterSeconds != null && opts.retryAfterSeconds > 0) {
     delay = Math.max(delay, opts.retryAfterSeconds * 1000);

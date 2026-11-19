@@ -1,5 +1,5 @@
-const RESEND_URL = "https://api.resend.com/emails";
-const FROM = process.env.FROM_EMAIL ?? "Hello to Cheers <onboarding@resend.dev>";
+import { sendEmail } from "@/lib/email/send";
+
 // Prefer HTC_INTERNAL_EMAIL; WEVENU_INTERNAL_EMAIL kept as legacy env alias only.
 const INTERNAL_EMAIL =
   process.env.HTC_INTERNAL_EMAIL ??
@@ -30,7 +30,7 @@ function html(type: string, subject: string | null, body: string, rating: number
     ? `<table style="margin-top:16px;border-top:1px solid #EDE9E3;padding-top:12px;width:100%">${metaRows}</table>`
     : "";
   return `<!DOCTYPE html><html><body style="font-family:sans-serif;max-width:560px;margin:40px auto;color:#2D2B28">
-<p style="font-size:18px;font-weight:700;margin-bottom:4px">📬 ${label}</p>
+<p style="font-size:18px;font-weight:700;margin-bottom:8px">📬 ${label}</p>
 <p style="font-size:13px;color:#9A9188;margin-bottom:20px">from ${userEmail} · ${venueName}</p>
 ${subject ? `<p style="font-size:14px;font-weight:600;margin-bottom:8px">${subject.replace(/&/g, "&amp;").replace(/</g, "&lt;")}</p>` : ""}
 ${ratingHtml}
@@ -51,22 +51,17 @@ export async function sendFeedbackEmail({
   venueName: string;
   metadata?: Meta;
 }): Promise<void> {
-  const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) {
-    console.log(`[feedback] DEV notify → ${type} from ${userEmail}: ${body.slice(0, 60)}`);
-    return;
-  }
   const label   = TYPE_LABELS[type] ?? type;
   const subject_ = `[Hello to Cheers Feedback] ${label}${subject ? `: ${subject}` : ""}`;
-  await fetch(RESEND_URL, {
-    method:  "POST",
-    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      from:    FROM,
-      to:      INTERNAL_EMAIL,
-      subject: subject_,
-      html:    html(type, subject, body, rating, userEmail, venueName, metadata),
-      text:    `${label} from ${userEmail} (${venueName})\n\n${subject ? subject + "\n\n" : ""}${rating != null ? `Rating: ${rating}/10\n\n` : ""}${body}`,
-    }),
-  }).catch(err => console.error("[feedback] notify failed:", err));
+  const result = await sendEmail({
+    to: INTERNAL_EMAIL,
+    subject: subject_,
+    html: html(type, subject, body, rating, userEmail, venueName, metadata),
+    text: `${label} from ${userEmail} (${venueName})\n\n${subject ? subject + "\n\n" : ""}${rating != null ? `Rating: ${rating}/10\n\n` : ""}${body}`,
+    category: "feedback_ops",
+    priority: "bulk",
+  });
+  if (!result.ok) {
+    console.error("[feedback] notify failed:", result.message);
+  }
 }

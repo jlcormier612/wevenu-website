@@ -316,6 +316,8 @@ async function deliverTourSystemEmail(opts: {
     text: opts.text,
     html: opts.html,
     threadId: conversationId ?? undefined,
+    category: "tour_notice",
+    priority: "critical",
   });
   const providerId = emailResult.ok && emailResult.method === "resend" ? emailResult.providerId : undefined;
   // A "mailto" fallback opens the *user's* mail client — meaningless in

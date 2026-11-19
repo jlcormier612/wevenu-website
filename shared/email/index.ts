@@ -15,6 +15,25 @@ export {
   sendRawEmail,
   type RawEmailPayload,
 } from "./client";
+export { postResendEmail } from "./resend-http";
+export {
+  RESEND_PACING_MAX_TOTAL,
+  RESEND_PACING_MAX_BULK,
+  RESEND_PACING_WINDOW_MS,
+  RESEND_PROVIDER_RPS,
+  maxGrantsInAnySlidingWindow,
+} from "./pacing/window-slot";
+export {
+  DEFAULT_SEND_CATEGORY,
+  priorityForCategory,
+  type EmailSendCategory,
+  type EmailSendPriority,
+} from "./pacing/priority";
+export {
+  acquireResendSendSlot,
+  createMemoryResendSlotStore,
+  setResendSlotStoreForTests,
+} from "./pacing/acquire";
 export {
   sendRelationshipEmail,
   sendInquiryConfirmationEmail,

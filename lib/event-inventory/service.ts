@@ -302,6 +302,8 @@ async function notifyInventoryShared(
     const { emailBrandFromVenue } = await import("@/lib/email/venue-brand");
     const { wrapConversationMessageHtml } = await import("@/lib/email/conversation-brand");
     const emailResult = await sendEmail({
+      category: "inventory_choice",
+      priority: "critical",
       to: client.email,
       subject: `${venue.name ?? "Your venue"}: Inventory for ${event.name}`,
       text: [`Hi ${client.firstName},`, "", body, "", venue.name ?? ""].join("\n"),

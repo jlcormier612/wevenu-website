@@ -96,6 +96,8 @@ export async function notifyVendorOfEventRemovalAsync(
     if (!vendor.email) return;
 
     await sendEmail({
+      category: "vendor_invite",
+      priority: "critical",
       to: vendor.email,
       subject: `You've been removed from ${eventLabel} at ${input.venueName}`,
       text: buildVendorRemovedText({

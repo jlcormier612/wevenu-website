@@ -256,6 +256,10 @@ export async function processReminders(scope?: ReminderProcessScope): Promise<Pr
           html: emailContent.html,
           replyTo: venueEmail,
           threadId: threadId ?? undefined,
+          category: isTourReminder ? "tour_reminder" : "task_reminder",
+          priority: "bulk",
+          idempotencyKey: `task-reminder/${reminder.id}/${attemptCountBefore}`,
+          pacingMaxWaitMs: 0,
         });
         if (!sendResult.ok) {
           throw new EmailDeliveryFailure({

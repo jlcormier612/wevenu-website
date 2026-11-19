@@ -183,6 +183,8 @@ export async function sendContactPortalInvite(
   const brand = emailBrandFromVenue(venue);
   const emailResult = await sendEmail({
     to: contact.email,
+    category: "participant_invite",
+    priority: "critical",
     subject: `You're invited to the ${coupleName} wedding portal`,
     text: [
       `Hi ${contact.firstName},`,

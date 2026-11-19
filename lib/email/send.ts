@@ -5,6 +5,9 @@
  * Falls back gracefully when no key is present — callers receive a mailto: URL
  * to open the user's native email client.
  *
+ * All Resend POSTs go through shared/email/resend-http.ts so venue, shared,
+ * and coordinated senders share distributed team-rate pacing (RESEND-SCALE).
+ *
  * Required env vars:
  *   RESEND_API_KEY   — server only, never expose to browser
  *   FROM_EMAIL       — optional, e.g. "Wildflower Estate <invoices@wildflower.com>"
@@ -22,6 +25,9 @@ import {
   type ResendFailureCode,
 } from "@/lib/email/resend-failure";
 import { parseRetryAfterSeconds } from "@/lib/email/retry-after";
+import type { EmailSendCategory, EmailSendPriority } from "@shared/email/pacing/priority";
+import { DEFAULT_SEND_CATEGORY, priorityForCategory } from "@shared/email/pacing/priority";
+import { postResendEmail } from "@shared/email/resend-http";
 
 export type EmailAttachment = {
   /** Public URL Resend can fetch (preferred for conversation uploads). */
@@ -39,6 +45,17 @@ export type EmailPayload = {
   replyTo?: string;   // venue contact email
   threadId?: string;  // when set, Reply-To routes through inbound for thread matching
   attachments?: EmailAttachment[];
+  /** Inventory category — drives default priority when priority omitted. */
+  category?: EmailSendCategory;
+  priority?: EmailSendPriority;
+  /** Resend Idempotency-Key (1–256 chars). Same key + payload within 24h → original response. */
+  idempotencyKey?: string;
+  tags?: Array<{ name: string; value: string }>;
+  openTracking?: boolean;
+  clickTracking?: boolean;
+  userAgent?: string;
+  /** Override pacing wait (ms). Bulk defaults to 0. */
+  pacingMaxWaitMs?: number;
 };
 
 export type SendResult =
@@ -46,7 +63,7 @@ export type SendResult =
   | {
       ok: false;
       message: string;
-      code?: ResendFailureCode | "disabled" | "misconfigured";
+      code?: ResendFailureCode | "disabled" | "misconfigured" | "capacity" | "pacing_unavailable";
       retryUnsafe?: boolean;
       /** Parsed from provider Retry-After when present (seconds). */
       retryAfterSeconds?: number;
@@ -106,6 +123,10 @@ export async function sendEmail(payload: EmailPayload): Promise<SendResult> {
 
   // --- Resend API path ---
   if (apiKey) {
+    // Default uncategorized → bulk so omitted classification cannot steal
+    // critical reserved capacity (RESEND-SCALE hardening).
+    const category = payload.category ?? DEFAULT_SEND_CATEGORY;
+    const priority = payload.priority ?? priorityForCategory(category);
     const body: Record<string, unknown> = {
       from: fromEmail,
       to: [recipient],
@@ -114,8 +135,8 @@ export async function sendEmail(payload: EmailPayload): Promise<SendResult> {
       // Enable delivery + engagement tracking so signals flow back into Hello to Cheers
       // via the /api/messaging/webhook route. These fire email.opened and
       // email.clicked events which become lead_signal_events entries.
-      open_tracking: true,
-      click_tracking: true,
+      open_tracking: payload.openTracking ?? true,
+      click_tracking: payload.clickTracking ?? true,
     };
     if (payload.html) body.html = payload.html;
     // Reply-To: route through inbound address if configured, otherwise venue email
@@ -133,24 +154,48 @@ export async function sendEmail(payload: EmailPayload): Promise<SendResult> {
         return item;
       });
     }
+    if (payload.tags?.length) body.tags = payload.tags;
 
-    const res = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
+    const posted = await postResendEmail({
+      apiKey,
+      body,
+      category,
+      priority,
+      idempotencyKey: payload.idempotencyKey,
+      userAgent: payload.userAgent,
+      maxWaitMs: payload.pacingMaxWaitMs,
     });
 
-    if (!res.ok) {
-      const err = await res.text();
-      const classified = classifyResendHttpFailure({ status: res.status, bodyText: err });
-      if (classified.code === "quota" || classified.code === "rate_limit") {
-        // Marker scraped by Sandbox CloudWatch metric filter → early-warning alarm.
-        console.warn(formatResendLimitLogLine(classified.code, res.status));
+    if (!posted.ok) {
+      if (posted.kind === "pacing") {
+        if (posted.code === "capacity") {
+          console.warn(formatResendLimitLogLine("rate_limit", 429));
+        }
+        return {
+          ok: false,
+          message: posted.message,
+          code: posted.code,
+          retryUnsafe: posted.retryUnsafe,
+          retryAfterSeconds: posted.retryAfterSeconds,
+        };
       }
-      const retryAfterSeconds = parseRetryAfterSeconds(res.headers.get("retry-after")) ?? undefined;
+      if (posted.kind === "network") {
+        return {
+          ok: false,
+          message: posted.message,
+          code: "temporary",
+          retryUnsafe: false,
+        };
+      }
+      const classified = classifyResendHttpFailure({
+        status: posted.status,
+        bodyText: posted.bodyText,
+      });
+      if (classified.code === "quota" || classified.code === "rate_limit") {
+        console.warn(formatResendLimitLogLine(classified.code, posted.status));
+      }
+      const retryAfterSeconds =
+        parseRetryAfterSeconds(posted.retryAfterHeader) ?? undefined;
       return {
         ok: false,
         message: classified.message,
@@ -159,13 +204,13 @@ export async function sendEmail(payload: EmailPayload): Promise<SendResult> {
         retryAfterSeconds,
       };
     }
-    // Resend's own message id — without this, no delivery/open/click/bounce
-    // webhook can ever be matched back to this send (it matches on this id
-    // alone). Previously discarded entirely; see docs/communication-trust-
-    // experience.md, Phase 1 — this was the root cause of every real send
-    // being permanently untrackable regardless of which table it lived in.
-    const data = await res.json().catch(() => null) as { id?: string } | null;
-    return { ok: true, method: "resend", providerId: data?.id, sandboxRedirectedFrom };
+
+    return {
+      ok: true,
+      method: "resend",
+      providerId: posted.providerId,
+      sandboxRedirectedFrom,
+    };
   }
 
   // --- mailto fallback ---

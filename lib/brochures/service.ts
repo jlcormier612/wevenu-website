@@ -318,6 +318,8 @@ export async function sendBrochureToLead(brochureId: string, leadId: string, cus
 
     const sendResult = await sendEmail({
       to: lead.email,
+      category: "brochure",
+      priority: "critical",
       subject: `${brochure.name} — ${venueName}`,
       text: `Hi ${lead.firstName || recipientName},\n\n${intro}\n\nView it here: ${url}\n\n— ${venueName}`,
       html: renderBrandedEmailHtml(emailBrandFromVenue(venue), [

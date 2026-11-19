@@ -159,6 +159,8 @@ async function sendClientInviteEmail(
     subject: content.subject,
     text: content.text,
     html: content.html,
+    category: "client_portal_invite",
+    priority: "critical",
   });
 }
 

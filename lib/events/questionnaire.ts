@@ -332,6 +332,8 @@ export async function sendQuestionnaireToCoupleForVenue(
       text,
       html: wrapConversationMessageHtml(brand, text),
       replyTo: venueEmail ?? undefined,
+      category: "questionnaire",
+      priority: "critical",
     });
     if (!emailResult.ok) {
       return { ok: false, formUrl, message: `The form link was created, but the email couldn't be sent: ${emailResult.message}` };

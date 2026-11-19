@@ -218,6 +218,8 @@ export async function submitProposalCoupleEmail(input: {
     html: content.html,
     replyTo: (venue?.email as string | null) ?? undefined,
     threadId: conversationId ?? undefined,
+    category: "proposal",
+    priority: "critical",
   });
 
   const submitted = emailResult.ok && emailResult.method === "resend";

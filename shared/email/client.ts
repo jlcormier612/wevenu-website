@@ -11,8 +11,13 @@
  * Back-compat aliases (marketing ops notify already used these):
  *   FROM_EMAIL  → same as EMAIL_FROM
  *   RELATIONSHIP_INBOUND_ADDRESS → same as RESEND_INBOUND_ADDRESS
+ *
+ * All live POSTs go through resend-http.ts (distributed pacing).
  */
 
+import type { EmailSendCategory, EmailSendPriority } from "./pacing/priority";
+import { DEFAULT_SEND_CATEGORY, priorityForCategory } from "./pacing/priority";
+import { postResendEmail } from "./resend-http";
 import type { RawSendResult } from "./types";
 
 export type RawEmailPayload = {
@@ -28,6 +33,9 @@ export type RawEmailPayload = {
    * original email instead of sending another.
    */
   idempotencyKey?: string;
+  category?: EmailSendCategory;
+  priority?: EmailSendPriority;
+  pacingMaxWaitMs?: number;
 };
 
 export function getEmailFromAddress(): string {
@@ -94,6 +102,8 @@ export async function sendRawEmail(payload: RawEmailPayload): Promise<RawSendRes
     return { ok: true, delivery: "simulated" };
   }
 
+  const category = payload.category ?? DEFAULT_SEND_CATEGORY;
+  const priority = payload.priority ?? priorityForCategory(category);
   const body: Record<string, unknown> = {
     from,
     to,
@@ -105,26 +115,33 @@ export async function sendRawEmail(payload: RawEmailPayload): Promise<RawSendRes
   if (payload.tags?.length) body.tags = payload.tags;
 
   try {
-    const res = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-        ...(payload.idempotencyKey?.trim()
-          ? { "Idempotency-Key": payload.idempotencyKey.trim().slice(0, 256) }
-          : {}),
-      },
-      body: JSON.stringify(body),
+    const posted = await postResendEmail({
+      apiKey,
+      body,
+      category,
+      priority,
+      idempotencyKey: payload.idempotencyKey,
+      maxWaitMs: payload.pacingMaxWaitMs,
     });
 
-    if (!res.ok) {
-      const detail = await res.text();
-      console.error("[email] Resend send failed", res.status, detail);
-      return { ok: false, delivery: "failed", message: `Resend ${res.status}: ${detail}` };
+    if (!posted.ok) {
+      if (posted.kind === "pacing") {
+        console.error("[email] pacing blocked send", posted.code, posted.message);
+        return { ok: false, delivery: "failed", message: posted.message };
+      }
+      if (posted.kind === "network") {
+        console.error("[email] Resend request error", posted.message);
+        return { ok: false, delivery: "failed", message: posted.message };
+      }
+      console.error("[email] Resend send failed", posted.status, posted.bodyText);
+      return {
+        ok: false,
+        delivery: "failed",
+        message: `Resend ${posted.status}: ${posted.bodyText}`,
+      };
     }
 
-    const data = (await res.json().catch(() => null)) as { id?: string } | null;
-    return { ok: true, delivery: "sent", providerId: data?.id };
+    return { ok: true, delivery: "sent", providerId: posted.providerId };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown send error";
     console.error("[email] Resend request error", message);

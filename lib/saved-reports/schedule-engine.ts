@@ -98,6 +98,10 @@ export async function sendDueSavedReports(): Promise<ScheduleResult> {
         subject: email.subject,
         text: email.text,
         html: email.html,
+        category: "saved_report",
+        priority: "bulk",
+        idempotencyKey: `saved-report/${row.schedule_id}/${hash}`,
+        pacingMaxWaitMs: 0,
       });
 
       await supabase.rpc("mark_saved_report_schedule_sent", { p_schedule_id: row.schedule_id, p_hash: hash });

@@ -96,6 +96,8 @@ export async function notifyPaidUnbookedTour(opts: {
     subject: email.subject,
     text: email.text,
     html: email.html,
+    category: "tour_notice",
+    priority: "critical",
   });
 }
 

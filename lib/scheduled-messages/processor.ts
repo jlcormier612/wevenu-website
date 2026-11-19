@@ -106,6 +106,10 @@ async function processOne(supabase: ReturnType<typeof createAdminClient>, msg: S
         html,
         threadId: conversationId ?? undefined,
         replyTo: venue?.email ?? undefined,
+        category: "scheduled_sequence",
+        priority: "bulk",
+        idempotencyKey: `scheduled-msg/${msg.id}/${dest.role}`,
+        pacingMaxWaitMs: 0,
       });
       const accepted = acceptOutboundEmail(result);
       if (!accepted.ok) {
@@ -197,11 +201,18 @@ export async function processDueScheduledMessages(): Promise<ProcessScheduledRes
   const supabase = createAdminClient();
   const result: ProcessScheduledResult = { processed: 0, sent: 0, failed: 0 };
 
+  await repo.reclaimStaleSending(supabase).catch((e) =>
+    console.error("scheduled_messages reclaim stale sending failed:", e),
+  );
+
   const due = await repo.getDueBatch(supabase);
   for (const msg of due) {
     if (msg.sequenceEnrollmentId && await isEnrollmentSequencePaused(supabase, msg.sequenceEnrollmentId)) {
       continue; // paused — leave it scheduled, don't send, don't count as processed
     }
+    const claimed = await repo.claimForSend(supabase, msg.id);
+    if (!claimed) continue;
+
     result.processed += 1;
     try {
       const outcome = await processOne(supabase, msg);
