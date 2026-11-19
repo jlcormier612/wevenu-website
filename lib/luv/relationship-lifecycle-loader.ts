@@ -5,10 +5,10 @@
 
 import type { createClient } from "@/integrations/supabase/server";
 import {
-  getCommunicationPermission,
   isOutboundChannelConsentOk,
   normalizeEmailAddressKey,
   normalizeSmsAddressKey,
+  readCommunicationPermission,
   type CommunicationChannel,
 } from "@/lib/communication/permissions";
 import type { RelationshipLifecycleFacts } from "@/lib/luv/relationship-lifecycle-eligibility";
@@ -30,6 +30,11 @@ export function luvDraftTypeToChannel(
   return draftType === "follow_up_text" ? "sms" : "email";
 }
 
+/**
+ * Consent for the lead's current email/phone (same normalize + venue scope as send).
+ * Query failure → false (fail closed). Successful empty row → channel policy via
+ * isOutboundChannelConsentOk (email allows not_opted_in; SMS does not).
+ */
 async function resolveChannelConsentOk(
   supabase: DbClient,
   venueId: string,
@@ -41,12 +46,13 @@ async function resolveChannelConsentOk(
     ? normalizeSmsAddressKey(rawAddress)
     : normalizeEmailAddressKey(rawAddress);
   if (!addressKey) return false;
-  const status = await getCommunicationPermission(supabase, {
+  const read = await readCommunicationPermission(supabase, {
     venueId,
     channel,
     addressKey,
   });
-  return isOutboundChannelConsentOk(channel, status);
+  if (!read.ok) return false;
+  return isOutboundChannelConsentOk(channel, read.status);
 }
 
 /**

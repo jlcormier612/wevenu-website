@@ -197,6 +197,10 @@ describe("LUV-CONSENT channel consent semantics", () => {
       fileURLToPath(new URL("./relationship-lifecycle-loader.ts", import.meta.url)),
       "utf8",
     );
+    const permissions = readFileSync(
+      fileURLToPath(new URL("../communication/permissions.ts", import.meta.url)),
+      "utf8",
+    );
     const conversations = readFileSync(
       fileURLToPath(new URL("../conversations/service.ts", import.meta.url)),
       "utf8",
@@ -205,8 +209,31 @@ describe("LUV-CONSENT channel consent semantics", () => {
     assert.match(drafts, /channelConsentOkForDraftType/);
     assert.match(drafts, /luvDraftTypeToChannel/);
     assert.match(drafts, /loadRelationshipLifecycleFacts/);
-    assert.match(loader, /getCommunicationPermission/);
+    assert.match(loader, /readCommunicationPermission/);
     assert.doesNotMatch(loader, /channelConsentOk:\s*true/);
+    assert.match(permissions, /readCommunicationPermission/);
+    assert.match(permissions, /if \(error\)/);
     assert.match(conversations, /assertChannelAllowed/);
+  });
+
+  it("revocation between draft creation and acceptance withdraws / blocks accept", () => {
+    const permitted = resolveFollowUpDraftEligibility({
+      tour: { kind: "none" },
+      nextActionText: null,
+      lifecycleFacts: { channelConsentOk: true, emailConsentOk: true },
+    });
+    assert.equal(permitted.draftCapable, true);
+
+    const revoked = resolveRelationshipLifecycle({
+      channelConsentOk: false,
+      emailConsentOk: false,
+    });
+    const acceptGate = shouldWithdrawSalesFollowUpDraft({
+      draftType: "follow_up_email",
+      context: { workflowIntent: "gentle_check_in", communicationPurpose: "none" },
+      decision: revoked,
+    });
+    assert.equal(acceptGate.withdraw, true);
+    assert.equal(acceptGate.reasonCode, "consent_revoked");
   });
 });
