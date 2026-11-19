@@ -12,10 +12,14 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { isEmailConfigured, sendEmail } from "@/lib/email/send";
 import {
+  backfillProviderIds,
   buildInviteSuccessMessage,
   buildPersistenceFailureResponse,
+  confirmInvitationLog,
+  findProviderReceipt,
   guestRsvpIdempotencyKey,
-  invitationLogFailed,
+  persistAcceptedInvitationsDirectly,
+  type AcceptedDelivery,
   type LogInvitationsResult,
 } from "./persistence";
 
@@ -106,6 +110,7 @@ export async function POST(request: Request) {
       deferredGuestIds: [] as string[],
       sentGuestIds: [] as string[],
     };
+    const acceptedDeliveries: AcceptedDelivery[] = [];
     const configured = isEmailConfigured();
 
     for (const guest of guests as { id: string; first_name: string; email: string; rsvp_token: string }[]) {
@@ -134,6 +139,27 @@ export async function POST(request: Request) {
         console.log(`[invite] DEV: would send to ${guest.email}: ${rsvpUrl}`);
         results.sent++;
         results.sentGuestIds.push(guest.id);
+        acceptedDeliveries.push({ guestId: guest.id, email: guest.email, providerId: null });
+        continue;
+      }
+
+      // Durable no-resend recovery: if a prior attempt already stored a Resend
+      // message id, sync status only — never call the provider again (works
+      // even after the ~24h Idempotency-Key window).
+      const priorReceipt = await findProviderReceipt(admin, {
+        guestId: guest.id,
+        emailType,
+        venueId: session.venue_id,
+        clientId: session.client_id,
+      });
+      if (priorReceipt) {
+        results.sent++;
+        results.sentGuestIds.push(guest.id);
+        acceptedDeliveries.push({
+          guestId: guest.id,
+          email: guest.email,
+          providerId: priorReceipt.providerId,
+        });
         continue;
       }
 
@@ -144,8 +170,8 @@ export async function POST(request: Request) {
         text: `${subject}\n\nRSVP: ${rsvpUrl}`,
         category: "guest_rsvp_invite",
         priority: "bulk",
-        // Stable key: retry after persistence failure reuses this so Resend
-        // returns the original acceptance for ~24h instead of a second send.
+        // invitation: stable key (24h provider dedupe for persistence retry).
+        // reminder/update: day-bucketed so legitimate next-day sends are not suppressed.
         idempotencyKey: guestRsvpIdempotencyKey(guest.id, emailType),
         pacingMaxWaitMs: 0,
       });
@@ -154,6 +180,11 @@ export async function POST(request: Request) {
         // Provider accepted — only then count as sent (never before acceptance).
         results.sent++;
         results.sentGuestIds.push(guest.id);
+        acceptedDeliveries.push({
+          guestId: guest.id,
+          email: guest.email,
+          providerId: sendResult.providerId ?? null,
+        });
         continue;
       }
 
@@ -178,20 +209,50 @@ export async function POST(request: Request) {
     // Must await: fire-and-forget is dropped when the App Router finishes the
     // response, leaving invitation_status stuck at ready despite sent>0.
     if (results.sentGuestIds.length > 0) {
+      const expected = results.sentGuestIds.length;
       const { data: logData, error: logError } = await admin.rpc("log_invitations_sent", {
         p_token: token,
         p_guest_ids: results.sentGuestIds,
         p_email_type: emailType,
       });
-      if (invitationLogFailed(logError, logData as LogInvitationsResult)) {
-        const detail =
-          logError?.message ??
-          (logData as LogInvitationsResult)?.error ??
-          "unknown_log_failure";
-        console.error("[invite] log_invitations_sent failed:", detail);
-        return NextResponse.json(buildPersistenceFailureResponse(results, detail), {
-          status: 503,
+      const confirmed = confirmInvitationLog(logError, logData as LogInvitationsResult, expected);
+      if (confirmed.confirmed) {
+        await backfillProviderIds(admin, {
+          venueId: session.venue_id,
+          clientId: session.client_id,
+          emailType,
+          accepted: acceptedDeliveries,
         });
+      } else {
+        console.error("[invite] log_invitations_sent not confirmed:", confirmed.detail);
+        const recovery = await persistAcceptedInvitationsDirectly(admin, {
+          venueId: session.venue_id,
+          clientId: session.client_id,
+          emailType,
+          coupleFirstName: client?.first_name,
+          accepted: acceptedDeliveries,
+        });
+        if (!recovery.ok || recovery.persisted < expected) {
+          // Only claim no-resend safety when receipts are actually on disk.
+          let receiptsOnDisk = 0;
+          for (const d of acceptedDeliveries) {
+            const receipt = await findProviderReceipt(admin, {
+              guestId: d.guestId,
+              emailType,
+              venueId: session.venue_id,
+              clientId: session.client_id,
+            });
+            if (receipt) receiptsOnDisk += 1;
+          }
+          return NextResponse.json(
+            buildPersistenceFailureResponse(results, confirmed.detail, {
+              durableRecoveryAttempted: true,
+              retrySafeWithoutResend: receiptsOnDisk === expected,
+            }),
+            { status: 503 },
+          );
+        }
+        // Direct recovery persisted guest status + provider_id receipts.
       }
     }
 
