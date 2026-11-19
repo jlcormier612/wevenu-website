@@ -96,8 +96,8 @@ describe("/api/portal/luv-ask launch-readiness", () => {
 
   it("gates OpenAI on the same draftingEnabled setting", () => {
     assert.match(luvAsk, /getLuvSettingsForVenueId/);
-    assert.match(luvAsk, /isLuvDraftingEffectivelyEnabled\(settings\)/);
-    const gateIdx = luvAsk.indexOf("isLuvDraftingEffectivelyEnabled(settings)");
+    assert.match(luvAsk, /isLuvDraftingEnabled\(settings\)/);
+    const gateIdx = luvAsk.indexOf("isLuvDraftingEnabled(settings)");
     const fetchIdx = luvAsk.indexOf("await openAiChatCompletion", gateIdx);
     assert.ok(gateIdx > 0 && fetchIdx > gateIdx);
   });

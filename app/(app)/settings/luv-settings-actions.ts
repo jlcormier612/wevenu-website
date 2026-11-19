@@ -1,5 +1,7 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
+
 import {
   LuvSettingsPersistError,
   LuvSettingsUnauthorizedError,
@@ -14,6 +16,8 @@ export type SaveLuvSettingsResult =
 export async function saveLuvSettingsAction(settings: LuvSettings): Promise<SaveLuvSettingsResult> {
   try {
     await saveLuvSettings(settings);
+    revalidatePath("/settings/communications");
+    revalidatePath("/dashboard");
     return { ok: true };
   } catch (err) {
     if (err instanceof LuvSettingsUnauthorizedError) {

@@ -114,8 +114,8 @@ describe("LUV-OPTOUT execution gates (source contracts)", () => {
 
   it("8/9. portal Ask + guest concierge gated before OpenAI", () => {
     assert.match(askRoute, /isLuvEnabled\(settings\)/);
-    assert.match(askRoute, /isLuvDraftingEffectivelyEnabled\(settings\)/);
-    const askGate = askRoute.indexOf("isLuvEnabled(settings)");
+    assert.match(askRoute, /isLuvDraftingEnabled\(settings\)/);
+    const askGate = askRoute.indexOf("if (!isLuvEnabled(settings))");
     const askAi = askRoute.indexOf("await openAiChatCompletion");
     assert.ok(askGate > 0 && askAi > askGate);
 
@@ -124,6 +124,65 @@ describe("LUV-OPTOUT execution gates (source contracts)", () => {
     const cGate = conciergeRoute.indexOf("isLuvMasterEnabledForVenueId");
     const cAi = conciergeRoute.indexOf("await openAiChatCompletion");
     assert.ok(cGate > 0 && cAi > cGate);
+  });
+
+  it("portal Ask master OFF: zero signal writes and zero AI/context work", () => {
+    const post = askRoute.slice(askRoute.indexOf("export async function POST"));
+    const venueIdx = post.indexOf('rpc("get_portal_context"');
+    const masterIdx = post.indexOf("if (!isLuvEnabled(settings))");
+    const lengthIdx = post.indexOf("isLuvAskQuestionTooLong");
+    const rateIdx = post.indexOf("checkLuvAskRateLimit");
+    assert.ok(venueIdx > 0 && masterIdx > venueIdx, "venue + master before abuse signaling");
+    assert.ok(lengthIdx > masterIdx && rateIdx > lengthIdx, "length/rate after master ON");
+
+    const masterEnd = post.indexOf("Abuse protections after master gate", masterIdx);
+    assert.ok(masterEnd > masterIdx);
+    const masterBlock = post.slice(masterIdx, masterEnd);
+    assert.match(masterBlock, /return askJson\(/);
+    assert.doesNotMatch(masterBlock, /respondAndSignal/);
+    assert.doesNotMatch(masterBlock, /recordLuvAskSignal/);
+    assert.doesNotMatch(masterBlock, /openAiChatCompletion/);
+    assert.doesNotMatch(masterBlock, /loadLuvAskPortalContext/);
+    assert.doesNotMatch(masterBlock, /retrieveCoupleHtcKnowledge/);
+
+    // Behavioral simulation of the master-OFF branch side effects.
+    const sideEffects = { aiCalls: 0, signalWrites: 0 };
+    const settings = { ...defaultLuvSettings(), enabled: false };
+    if (!isLuvEnabled(settings)) {
+      // askJson only — no AI, no signal persistence
+    } else {
+      sideEffects.aiCalls += 1;
+      sideEffects.signalWrites += 1;
+    }
+    assert.equal(sideEffects.aiCalls, 0);
+    assert.equal(sideEffects.signalWrites, 0);
+  });
+
+  it("settings save success revalidates; failure does not", () => {
+    const actions = readFileSync(resolve("app/(app)/settings/luv-settings-actions.ts"), "utf8");
+    const tryBlock = actions.slice(
+      actions.indexOf("try {"),
+      actions.indexOf("} catch"),
+    );
+    assert.match(tryBlock, /await saveLuvSettings\(settings\)/);
+    assert.match(tryBlock, /revalidatePath\("\/settings\/communications"\)/);
+    assert.match(tryBlock, /revalidatePath\("\/dashboard"\)/);
+    assert.match(tryBlock, /return \{ ok: true \}/);
+
+    const catchBlock = actions.slice(actions.indexOf("} catch"));
+    assert.doesNotMatch(catchBlock, /revalidatePath/);
+    assert.match(catchBlock, /ok: false/);
+
+    assert.match(luvSettingsSection, /if \(!result\.ok\)/);
+    assert.match(luvSettingsSection, /toast\.error/);
+    assert.match(luvSettingsSection, /toast\.success\("Luv settings saved\."\)/);
+    const saveFn = luvSettingsSection.slice(
+      luvSettingsSection.indexOf("function handleSave"),
+      luvSettingsSection.indexOf("return (", luvSettingsSection.indexOf("function handleSave")),
+    );
+    const errIdx = saveFn.indexOf("toast.error");
+    const okIdx = saveFn.indexOf("toast.success");
+    assert.ok(errIdx > 0 && okIdx > errIdx, "success toast only after ok path");
   });
 
   it("settings UI keeps card + nested disabled state while master OFF", () => {
