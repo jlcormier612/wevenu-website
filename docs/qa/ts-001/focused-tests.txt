@@ -1,0 +1,731 @@
+▶ first_team_login eligibility (invite prerequisite)
+  ✔ suppresses login gap when no team invite has been sent (0.703542ms)
+  ✔ keeps login gap incomplete after invite until login completes (0.087208ms)
+  ✔ activation service wires the team-login prerequisite (0.126625ms)
+  ✔ GAP_COPY first_team_login asserts an invite (eligibility must gate it) (0.048917ms)
+✔ first_team_login eligibility (invite prerequisite) (1.494541ms)
+▶ Date Hold active-state presentation
+  ✔ A. no active hold → Place hold CTA uses desired date (19.090875ms)
+  ✔ B. active hold → Held list plus Place another hold CTA (0.472208ms)
+  ✔ C. release moves hold into historical Released list (0.193833ms)
+  ✔ D. after release, Place hold again defaults to desired event date (0.326834ms)
+  ✔ E. intentional date override still available on the create form (0.221792ms)
+  ✔ F. createHold allows a second same-lead/date hold unless resources and windows overlap (0.187625ms)
+  ✔ Active Holds window uses HTC 12-hour formatTime, not raw HH:mm (1.23475ms)
+  ✔ G. unexpired active holds stay Held; elapsed or closed statuses do not (0.165042ms)
+  ✔ H. expired historical + separate active hold → date still protected (0.222166ms)
+  ✔ I. expired hold can be reactivated; converted cannot (0.198334ms)
+  ✔ J. Booked lead is protected by booking — not 'Not protected'; Place hold hidden (0.247958ms)
+✔ Date Hold active-state presentation (23.380416ms)
+▶ confirmed booking occupancy
+  ✔ requires a date and a space when the venue can host more than one event (0.828625ms)
+  ✔ prefills from the lead and does not treat a hold as already confirmed (0.273166ms)
+  ✔ passes the submitted occupancy into the one booking transaction (0.10625ms)
+  ✔ writes assignments before booked_at and converts overlapping holds in the same function (0.106625ms)
+  ✔ contract and payment automation do not book (0.5305ms)
+  ✔ does not source required vendors from Setup Profile requiredVendorIds (0.138125ms)
+  ✔ persists component scheduledDate and validates within the overall range (0.322083ms)
+  ✔ marks exactly which fields an assigned space is missing (0.836542ms)
+  ✔ names a component date problem before missing times, matching field order (0.072625ms)
+  ✔ Confirm booking with a missing component time shows what is missing next to the button (0.159375ms)
+✔ confirmed booking occupancy (4.030208ms)
+▶ invitation email through the real sendEmail path
+  ✔ posts the recipient and accept link and returns the provider id (42.852834ms)
+  ✔ returns provider failure without throwing (0.896042ms)
+✔ invitation email through the real sendEmail path (44.326584ms)
+▶ invitation transmit through intercepted sendEmail
+  ✔ stores the stubbed provider id and does not call the portal opened (0.570959ms)
+✔ invitation transmit through intercepted sendEmail (0.628417ms)
+▶ optionCatalogLinkStatus
+  ✔ marks template-only when offering_id is null (1.74225ms)
+  ✔ shows catalog name and label difference (1.780291ms)
+  ✔ preserves archived link with clear status (0.168209ms)
+  ✔ does not unlink when offering missing from loaded catalog (0.080042ms)
+✔ optionCatalogLinkStatus (8.25225ms)
+▶ attach / clear / edit preserving snapshot
+  ✔ attaches offering_id without changing label or price (0.1625ms)
+  ✔ clears offering link and keeps template-only snapshots (0.065667ms)
+  ✔ edits label without losing offering link (0.067125ms)
+  ✔ label/price edits preserve snapshotted imageUrl (0.073292ms)
+  ✔ new-option draft may snapshot catalog price once; attach path does not refresh (0.131125ms)
+✔ attach / clear / edit preserving snapshot (0.643583ms)
+▶ picker and no name-based attach
+  ✔ excludes archived offerings from attach picker (8.373083ms)
+  ✔ module source has no name-based attach helper (0.1765ms)
+✔ picker and no name-based attach (8.619042ms)
+▶ freeze / provenance carry-through
+  ✔ selection freeze retains offeringId for catalog-backed options and null for template-only (0.302958ms)
+✔ freeze / provenance carry-through (0.344125ms)
+▶ contract list filters — venue action required
+  ✔ All is first; Action Required is second; a fresh load selects All (1.302125ms)
+  ✔ preserves an explicit URL filter and falls back to All (0.079875ms)
+  ✔ All includes every status, and search still narrows that set (0.259583ms)
+  ✔ counts only Draft and Awaiting Venue Signature (0.156ms)
+  ✔ keeps Expired distinct from Cancelled (0.059041ms)
+✔ contract list filters — venue action required (2.416ms)
+▶ contracts page operational job
+  ✔ states the Action Required job and keeps search (0.419875ms)
+✔ contracts page operational job (0.479459ms)
+▶ contract list rollup — explicit amends_contract_id only
+  ✔ keeps a standalone contract as one row (2.90125ms)
+  ✔ shows only the current tip of an amends chain (0.115292ms)
+  ✔ does not infer a family from the same client, title, or event (14.321708ms)
+  ✔ does not double-count a family in the venue-action badge (0.149167ms)
+  ✔ uses the latest descendant of a three-version chain as the list row (0.094833ms)
+  ✔ keeps a dangling amends pointer as its own current row (0.057542ms)
+  ✔ does not hide cyclic lineage (0.086916ms)
+  ✔ search finds the current agreement by a historical family title (0.065875ms)
+  ✔ does not count a superseded fully executed parent as action required (0.057083ms)
+✔ contract list rollup — explicit amends_contract_id only (18.05825ms)
+▶ contract list deep links remain instance-level
+  ✔ detail page still loads a contract by id, including historical versions (4.204583ms)
+✔ contract list deep links remain instance-level (4.252958ms)
+▶ user-facing document category roll-up
+  ✔ maps every WorkspaceCategory to exactly one user-facing group (0.690875ms)
+  ✔ maps Contracts → Contracts (0.067333ms)
+  ✔ maps Invoices and Financial → Financial (0.054333ms)
+  ✔ maps planning-related types → Planning (0.0505ms)
+  ✔ maps Vendor Documents → Vendors (0.045667ms)
+  ✔ maps Communication, Exports, Other → Other (0.0445ms)
+  ✔ All / filterByUserFacingGroup returns every document for all (0.091709ms)
+  ✔ filters by rolled-up group without losing documents from All (0.095917ms)
+  ✔ hides empty categories from populatedUserFacingGroups (1.059292ms)
+  ✔ no document is lost from All because of grouping (0.186208ms)
+✔ user-facing document category roll-up (3.140958ms)
+▶ categoryMatchesSection — discovery only
+  ✔ matches exact and alias labels without inventing links (0.659833ms)
+✔ categoryMatchesSection — discovery only (1.159458ms)
+▶ section workspace grouping
+  ✔ scopes groups to a section and nests dependents under parent options (1.746ms)
+  ✔ flags empty dependent branches as incomplete (0.250584ms)
+  ✔ names the parent offering when a nested category is empty (0.134709ms)
+  ✔ flags unpriced non-included options as unresolved commercial terms (0.072666ms)
+✔ section workspace grouping (2.3325ms)
+▶ filterOfferingsForSectionPicker
+  ✔ prefers category-matched offerings and does not silently dump all categories (0.209708ms)
+✔ filterOfferingsForSectionPicker (0.26675ms)
+▶ selectionDefinitionFromEventOrderTemplate
+  ✔ freezes sections, fixed lines, groups, and options into ChoicesDefinition shape (1.51125ms)
+  ✔ freezes per_person pricingModel from Per person option descriptions (0.104625ms)
+  ✔ zeros unitPrice for included options (0.083042ms)
+✔ selectionDefinitionFromEventOrderTemplate (3.494083ms)
+▶ defaultAnswersFromEventOrderTemplate
+  ✔ pre-selects isDefault options; single mode takes first default only (0.181708ms)
+  ✔ omits groups with no defaults (0.087875ms)
+✔ defaultAnswersFromEventOrderTemplate (0.339083ms)
+▶ selectionDefinitionNeedsHydration
+  ✔ detects legacy packets missing fixedLines while the template still has lines (0.1595ms)
+  ✔ is false once fixedLines (and groups) are frozen (0.111084ms)
+  ✔ detects missing groups/options when the template has selectable offerings (0.070959ms)
+  ✔ detects when the venue removes an option from the linked template (0.074541ms)
+  ✔ detects min/max rule drift on an existing group (0.093959ms)
+  ✔ is false when selectable structure matches the freeze (0.060333ms)
+✔ selectionDefinitionNeedsHydration (0.700584ms)
+▶ pruneAnswersToDefinition
+  ✔ drops answers for removed groups and unknown option ids (0.138167ms)
+✔ pruneAnswersToDefinition (0.174708ms)
+▶ templateHasSelectableGroups
+  ✔ is true when groups exist (0.06025ms)
+  ✔ is false for fixed-only templates (0.036833ms)
+✔ templateHasSelectableGroups (0.143792ms)
+▶ Phase 1 migration presence
+  ✔ ships event_order_template_groups / options and client_choices.event_order_template_id (0.171083ms)
+✔ Phase 1 migration presence (0.199959ms)
+▶ Event Order $0 total warning
+  ✔ requires warning when total is exactly 0 with lines (1.237291ms)
+  ✔ does not warn when total is above 0 (0.460542ms)
+  ✔ does not warn for empty order even at total 0 when lineCount is provided (0.065791ms)
+  ✔ warning copy discloses intentional $0 without blocking finalize/share (0.174125ms)
+  ✔ starter masters are delivery sections with guidance, not invoices (3.940666ms)
+✔ Event Order $0 total warning (8.117791ms)
+▶ Event Order totals and fingerprints
+  ✔ sumLines computes running total from line amounts (0.646959ms)
+  ✔ fingerprint changes when a line price changes (committed price independence surface) (1.249375ms)
+  ✔ fingerprint is stable when only catalog-side fields outside the line snapshot change (0.348333ms)
+✔ Event Order totals and fingerprints (2.471042ms)
+▶ Event Order finalize / reopen / share gates
+  ✔ finalize attempt requires at least one line (UI gate) (0.113042ms)
+  ✔ finalize is blocked when already finalized (0.090791ms)
+  ✔ reopen is blocked unless currently finalized (0.064167ms)
+  ✔ share is only allowed when finalized (0.498125ms)
+  ✔ display status labels remain venue-facing across open / finalized / amended (0.136666ms)
+✔ Event Order finalize / reopen / share gates (1.01375ms)
+▶ Event Order finalized immutability (application-layer mutation rules)
+  ✔ blocks every section/line mutator when finalized (0.082333ms)
+  ✔ allows section/line mutators when open (0.030458ms)
+  ✔ reopen clears the mutation block path (status returns to open contract) (0.031458ms)
+✔ Event Order finalized immutability (application-layer mutation rules) (0.190084ms)
+▶ template copy independence (starter → instance semantics)
+  ✔ starter sections remain named delivery categories with guidance (0.189792ms)
+  ✔ applied template lines snapshot offering provenance when a library offering is referenced (0.282417ms)
+  ✔ starter master names are production-facing (no Test/D7A/CERT/dev labels) (1.282125ms)
+  ✔ blank start (no template) is represented as zero structure to apply (0.298667ms)
+✔ template copy independence (starter → instance semantics) (3.106833ms)
+▶ feature flag contract
+  ✔ Event Order is always available (optional by use) — no entitlement gate (0.055709ms)
+✔ feature flag contract (0.08825ms)
+▶ Event Order PDF Included / Additional labels
+  ✔ labels Included and Additional lines distinctly on the PDF description (701.630333ms)
+✔ Event Order PDF Included / Additional labels (701.746083ms)
+▶ inquiry form custom question ordering
+  ✔ settings builder section order is Standard → Custom → Communication (2.416041ms)
+  ✔ moves questions up and down and no-ops at ends (8.907458ms)
+  ✔ handles empty and single-question lists (1.221416ms)
+  ✔ persists sort_order from array index on save rows (0.424625ms)
+  ✔ orders loaded questions by sort_order for public rendering (0.262583ms)
+  ✔ maps public RPC camelCase custom questions (not only DB snake_case) (0.113209ms)
+  ✔ preview draft preserves configured question order (0.324583ms)
+✔ inquiry form custom question ordering (16.762375ms)
+▶ inquiry form required/optional and deletion safety
+  ✔ required validation follows the required flag for new and existing questions (0.15475ms)
+  ✔ deleting one question from the persist list does not drop siblings (0.091834ms)
+  ✔ historical answers stay readable when the live question id is gone (0.118833ms)
+✔ inquiry form required/optional and deletion safety (0.46975ms)
+▶ lead space preference visibility
+  ✔ single mode never shows use-keyed preference UI (0.5875ms)
+  ✔ wedding shows ceremony and reception first and keeps cocktail hour (0.286083ms)
+  ✔ corporate keeps ceremony/reception when configured and hides wedding-only uses (0.112834ms)
+  ✔ social event is not restricted to cocktail hour (0.115ms)
+  ✔ inactive spaces do not invent a ceremony UI (0.068083ms)
+  ✔ unrestricted spaces do not invent ceremony/reception columns (0.06475ms)
+✔ lead space preference visibility (1.822208ms)
+▶ lead space preference shape
+  ✔ accepts venue_space, external, undecided, and not_applicable for wedding ceremony (2.777375ms)
+  ✔ rejects not_applicable with space_id or external_location (0.45275ms)
+  ✔ accepts cocktail_hour as a configured use (0.207417ms)
+  ✔ keeps a persisted ceremony preference valid for social when the venue offers it (0.220417ms)
+  ✔ does not invent rehearsal_dinner_only as a persistable use (0.129ms)
+  ✔ rejects ceremony rows for a corporate allowed-use list (0.105459ms)
+  ✔ rejects external location on non-wedding uses (0.15275ms)
+  ✔ enforces kind shape constraints (0.11925ms)
+✔ lead space preference shape (4.581334ms)
+▶ booking seed eligibility
+  ✔ skips inactive, disallowed, and foreign-venue spaces (0.269958ms)
+✔ booking seed eligibility (0.359416ms)
+▶ occupancy anchor from preferences
+  ✔ wedding prefers reception venue-space over ceremony (0.2755ms)
+  ✔ corporate uses the first relevant venue-space preference (0.141292ms)
+  ✔ returns null when no venue-space preference exists (0.104875ms)
+  ✔ not_applicable never contributes an occupancy anchor (0.110125ms)
+✔ occupancy anchor from preferences (0.786792ms)
+▶ preference is not an assignment
+  ✔ lead preference writes never insert event_space_assignments (0.466375ms)
+  ✔ migration adds not_applicable without converting existing undecided rows (0.282042ms)
+  ✔ one catalog: space_id stays NOT NULL and no second space table is created (0.756ms)
+  ✔ lead detail shows relevant uses in multi mode; Event Space when none or single mode (0.275459ms)
+✔ preference is not an assignment (1.910292ms)
+[legal] proxy enforcement unavailable {
+  reason: 'missing_service_role',
+  pathname: '/dashboard',
+  userId: '11111111-1111-1111-1111-111111111111',
+  errorName: 'undefined',
+  errorMessage: null
+}
+[legal] proxy enforcement unavailable {
+  reason: 'missing_service_role',
+  pathname: '/api/clients',
+  userId: '11111111-1111-1111-1111-111111111111',
+  errorName: 'undefined',
+  errorMessage: null
+}
+[legal] proxy enforcement unavailable {
+  reason: 'admin_client_failure',
+  pathname: '/clients',
+  userId: '11111111-1111-1111-1111-111111111111',
+  errorName: 'Error',
+  errorMessage: 'admin init failed'
+}
+[legal] proxy enforcement unavailable {
+  reason: 'engine_error',
+  pathname: '/dashboard',
+  userId: '11111111-1111-1111-1111-111111111111',
+  errorName: 'Error',
+  errorMessage: 'engine exploded'
+}
+[legal] proxy enforcement unavailable {
+  reason: 'engine_error',
+  pathname: '/dashboard',
+  userId: '11111111-1111-1111-1111-111111111111',
+  errorName: 'Error',
+  errorMessage: 'boom'
+}
+[legal] proxy enforcement fail-open (local override): missing service role
+▶ isLegalEnforcementFailOpenEnabled
+  ✔ is false by default (1.436ms)
+  ✔ allows explicit local development override (0.22675ms)
+  ✔ rejects the flag when NODE_ENV=production (0.171291ms)
+  ✔ rejects the flag for HTC sandbox/production and ECS markers (0.172792ms)
+✔ isLegalEnforcementFailOpenEnabled (2.697459ms)
+▶ buildLegalEnforcementFailureDecision
+  ✔ redirects protected pages to the recovery path (1.96275ms)
+  ✔ blocks protected APIs with enforcement-unavailable code (0.195709ms)
+✔ buildLegalEnforcementFailureDecision (2.270542ms)
+▶ recovery and exempt paths stay reachable
+  ✔ skips legal enforcement for recovery, welcome, auth, and public legal paths (0.242208ms)
+✔ recovery and exempt paths stay reachable (0.384167ms)
+▶ decideLegalProxyEnforcement fail-closed
+  ✔ fails closed on missing service role for a protected page (3.472ms)
+  ✔ fails closed on missing service role for a protected API (0.28ms)
+  ✔ fails closed when admin client initialization throws (2.134ms)
+  ✔ fails closed when the acceptance engine throws (0.628125ms)
+  ✔ does not create acceptance records when enforcement fails (0.630458ms)
+  ✔ allows healthy current-version users (3.253542ms)
+  ✔ redirects outdated-version users to Welcome (1.396833ms)
+  ✔ keeps vendor-only users on vendor legal context (not venue_owner) (0.500958ms)
+  ✔ multi-venue venue prefer still resolves via injected resolver (no silent allow) (2.697917ms)
+  ✔ local fail-open override still allows when explicitly enabled (0.334958ms)
+✔ decideLegalProxyEnforcement fail-closed (15.7185ms)
+▶ observationsForDraftSurface
+  ✔ keeps draft recommendations when proactive outreach is recommended (0.830667ms)
+  ✔ suppresses strong-interest + draft under proactive silence (Oct 12 contradiction) (0.201ms)
+  ✔ dedupes identical observations in one view (0.067958ms)
+  ✔ keeps unanswered-question recommendations when proactive is on (0.091459ms)
+  ✔ drops zero-value tautologies (0.058458ms)
+✔ observationsForDraftSurface (1.775166ms)
+▶ neutralizeFollowUpUrgingCopy
+  ✔ drops urging detail and keeps factual interest (0.21425ms)
+✔ neutralizeFollowUpUrgingCopy (0.262916ms)
+▶ followUpDraftBlockReason
+  ✔ returns null when draftCapable — completed tour is not a capability block (0.102125ms)
+  ✔ uses capability block reason when drafting is closed (0.063125ms)
+  ✔ returns null when eligible (legacy alias) (0.055875ms)
+✔ followUpDraftBlockReason (0.326917ms)
+▶ observationUrgesFollowUp
+  ✔ detects draft recommendations and urging copy (0.400916ms)
+✔ observationUrgesFollowUp (0.5025ms)
+▶ Luv action destinations stay trustworthy
+  ✔ draft follow-up links use the canonical ?luv=follow_up_email param (2.704291ms)
+  ✔ observation draft/navigate links point at real app routes (0.807542ms)
+✔ Luv action destinations stay trustworthy (4.713291ms)
+▶ Luv settings honesty for launch
+  ✔ never persists suggest_only autonomy from the save path (0.298417ms)
+  ✔ distinguishes drafting-disabled from missing API key (0.220542ms)
+  ✖ Dashboard Luv respects observationsEnabled end-to-end (3.316ms)
+  ✔ normalizes legacy ?luv=followup into follow_up_email (0.570459ms)
+✖ Luv settings honesty for launch (4.778208ms)
+▶ selectLuvDashboardEntry dismissal metadata
+  ✔ persisted recommendation cannot occupy L1 or carry a dismiss id (1.058375ms)
+✔ selectLuvDashboardEntry dismissal metadata (1.204334ms)
+▶ owner draft capability vs proactive recommendation
+  ✔ 1. eligible active lead with proactive recommendation can draft (9.749667ms)
+  ✔ 2. eligible active lead without proactive recommendation can still draft (1.191583ms)
+  ✔ 3. completed tour does not itself disable drafting (0.193833ms)
+  ✔ 4. recommendation visibility and draft capability are independently determined (0.358125ms)
+  ✔ 5. unanswered customer question yields answer_questions intent + draft capable (11.788666ms)
+  ✔ 6. recent venue outreach → proactive silence, draft still capable (0.3355ms)
+  ✔ 7. generate path uses draftCapable, not proactive silence (0.481541ms)
+  ✔ 8. lead Luv tab does not double-render Noticed inside the draft panel (0.583208ms)
+  ✔ 9. Oct 12 screenshot: interest + silence cannot coexist after surface assembly (0.383292ms)
+  ✔ 10. privacy: drafts path never loads tour notes or internal notes into prompt (0.263208ms)
+✔ owner draft capability vs proactive recommendation (36.884625ms)
+▶ pipeline stage is never evidence — primitives
+  ✔ locks the architectural sentence (7.53375ms)
+  ✔ booked / lost require stamps, not a stage string (0.173375ms)
+  ✔ tour scheduled / confirmed require tour_appointments.status (0.111417ms)
+  ✔ P-A1 tour contact includes completed, cancelled, no_show, and walk-in (0.088708ms)
+  ✔ proposal / contract / payment require workflow records (0.097833ms)
+  ✔ draft helper stays aligned with the locked proposal rule (0.069583ms)
+✔ pipeline stage is never evidence — primitives (8.992375ms)
+▶ changing / omitting / misordering stage cannot invent actions
+  ✔ S3: any stage without contact/tour/booked/lost records stays unattended (0.438625ms)
+  ✔ S3: omitted or out-of-order stage still does not invent contact (0.213709ms)
+  ✔ S4: next_action + any stage does not manufacture tour-prep or first-contact work (0.479042ms)
+  ✖ upcoming tour all-set requires tour_appointments.status, not stage (40.126ms)
+  ✔ tour follow-up is not superseded by a booked/lost stage string (0.205833ms)
+  ✔ tour-followup pattern: stage booked without first_booked_at still counts (0.223417ms)
+  ✔ contact evidence never comes from stage (0.069041ms)
+✖ changing / omitting / misordering stage cannot invent actions (42.878541ms)
+▶ customer-facing drafts — stage cannot invent verified facts
+  ✔ proposal_sent / tour_scheduled / booked / paid / contract_sent stages add no verified actions (3.160334ms)
+  ✔ omitted / empty stage still cannot invent a proposal or tour (0.119375ms)
+  ✔ workflow intent comes from tour_appointments, not stage (0.06775ms)
+✔ customer-facing drafts — stage cannot invent verified facts (3.484042ms)
+▶ source lock — Luv never treats sales_stage as proof
+  ✔ observations never claim Tour scheduled / Proposal sent from stage (0.357667ms)
+  ✔ drafts load proposal from commercial_proposals and tour from tour_appointments (0.177792ms)
+  ✔ supersession and tour-followup pattern use stamps, not stage (0.101334ms)
+  ✔ S3 evaluator does not read salesStage (0.084334ms)
+✔ source lock — Luv never treats sales_stage as proof (0.778833ms)
+▶ P-A1 — unattended inquiry cluster
+  ✔ below threshold → no pattern (1.829958ms)
+  ✔ 3 qualifying unattended inquiries → pattern (0.648208ms)
+  ✔ P-A1 CTA reviews the dedicated unattended-inquiry population (2.116292ms)
+  ✔ insufficient venue history → no pattern even at cluster size (0.262083ms)
+  ✔ reuses S3 semantics (contacted / tour record / too new excluded; stage is not) (0.542375ms)
+  ✔ mixed population — only genuinely unattended leads count toward the cluster (0.30075ms)
+  ✔ outside 14-day window → excluded from cluster (0.226458ms)
+  ✔ venue isolation — other venue leads do not qualify (0.546125ms)
+  ✔ resolved condition (below threshold) → evaluator returns null (lifecycle clear) (0.107709ms)
+✔ P-A1 — unattended inquiry cluster (7.433083ms)
+▶ P-A4 — payment-attention cluster
+  ✔ below threshold → no pattern (0.366792ms)
+  ✔ 3 qualifying upcoming payment-attention events → pattern (0.983625ms)
+  ✔ uses authoritative S2 payment-attention logic (1.288083ms)
+  ✔ venue isolation (0.267792ms)
+  ✔ no duplicate competing aggregate cards when pattern active (0.703333ms)
+  ✔ resolved condition → null (0.261917ms)
+✔ P-A4 — payment-attention cluster (4.152083ms)
+▶ P-P1 — inquiry volume increase
+  ✔ below 5 current inquiries → no pattern (0.294917ms)
+  ✔ <25% increase → no pattern (0.085041ms)
+  ✔ <2 absolute increase → no pattern (0.109041ms)
+  ✔ no prior baseline → no pattern (cannot claim increase) (0.07425ms)
+  ✔ qualifying increase → pattern with evidence copy (0.327042ms)
+  ✔ P-P1 still qualifies as Inform L2 — no CTA invented; suppressed from Leads panel (1.157792ms)
+  ✔ correct current/prior 14-day counts + venue isolation (1.018166ms)
+✔ P-P1 — inquiry volume increase (3.455125ms)
+▶ Phase 5 — Dashboard L1 exclusion + supersession
+  ✔ Phase 5 patterns are never Dashboard L1 (0.10125ms)
+  ✔ Phase 5 pattern does not win Dashboard L1 card (0.562583ms)
+  ✔ active P-A1 suppresses global S3 observations; record ids remain filterable (0.081958ms)
+  ✔ dismissed-in-cooldown P-A1 still suppresses global S3 (0.052833ms)
+✔ Phase 5 — Dashboard L1 exclusion + supersession (0.866458ms)
+▶ Booking metric repair — canonical Lead→Booked
+  ✔ migration sync RPC + pattern types exist (0.158041ms)
+  ✔ get_venue_trends uses first_booked_at — not status=won (0.420375ms)
+  ✔ compute_venue_insights momentum uses first_booked_at — not clients.created_at (0.744416ms)
+  ✔ wiring syncs Phase 5 patterns; L1 gate excludes them; Leads omits Inform P-P1 (0.822167ms)
+  ✔ P-A1 sync enriches candidates with shared contact evidence before evaluating (0.388333ms)
+  ✔ tour volume for P-P1 does not use exclude_from_business_reporting (3.036083ms)
+  ✔ manual and automation Lead→Booked share first_booked_at clock (0.542333ms)
+  ✔ cluster size constant is 3+ within 14 days (0.105708ms)
+✔ Booking metric repair — canonical Lead→Booked (6.459625ms)
+▶ tour follow-up pattern — threshold and distinct leads
+  ✔ 0 qualifying leads → no recommendation (0.59025ms)
+  ✔ 1 distinct qualifying lead → no recommendation (1.235208ms)
+  ✔ 2 distinct qualifying leads → no recommendation (0.094792ms)
+  ✔ 3 distinct qualifying leads → recommendation with count (0.187959ms)
+  ✔ duplicate tours for the same lead do not inflate the count (0.12425ms)
+✔ tour follow-up pattern — threshold and distinct leads (2.795208ms)
+▶ tour follow-up pattern — population filters
+  ✔ sales_stage booked/lost/won/cancelled without stamps still qualifies (0.159167ms)
+  ✔ authoritative first_booked_at / lost_at exclude a lead (0.078459ms)
+  ✔ follow_up_sent_at removes a lead from the qualifying population (0.091209ms)
+  ✔ outside-window tour does not count (0.076709ms)
+  ✔ wrong venue cannot contribute (0.085917ms)
+  ✔ non-completed status does not count (0.074375ms)
+  ✔ missing lead_id does not count (0.050833ms)
+  ✔ repeated evaluation is idempotent for the same inputs (0.837584ms)
+✔ tour follow-up pattern — population filters (1.638541ms)
+▶ tour follow-up pattern — Dashboard selection / dismissal semantics
+  ✔ persisted tour_followup_pattern cannot occupy the Dashboard Luv card (0.493667ms)
+  ✔ does not create observation: dismissal — persisted pattern is not L1 (0.05925ms)
+  ✔ dismissed pattern stays hidden (visibility) so refresh cannot resurrect it (0.049ms)
+  ✔ Calendar Focus /tours does not suppress the tour follow-up pattern (0.132417ms)
+  ✔ when pattern is active, individual tour-no-followup observations are not selected (0.057667ms)
+  ✔ CREATE → DISMISS → SYNC/refresh-equivalent → V2 still not visible (0.115333ms)
+  ✔ without a V2 pattern row, V1 tour-no-followup stays Level-3 and cannot win Dashboard (0.035083ms)
+✔ tour follow-up pattern — Dashboard selection / dismissal semantics (1.04775ms)
+▶ tour follow-up pattern — wiring / venue safety / V1 Ask-gap unchanged
+  ✔ migration uses current_user_venue_id and never venue_users LIMIT 1 (0.328583ms)
+  ✔ harden migration refuses ON CONFLICT update while recently dismissed (0.155417ms)
+  ✔ recommendation-service keeps dismissed pattern for selection cooldown only (0.072ms)
+  ✔ recommendation-service syncs after Ask-gap and before get (0.376709ms)
+  ✔ sync aborts without clearing when tour read fails (0.2585ms)
+  ✔ V1 Ask-gap threshold and Fancy exotic evaluation remain unchanged (0.914167ms)
+✔ tour follow-up pattern — wiring / venue safety / V1 Ask-gap unchanged (2.240958ms)
+▶ inquiry authorship
+  ✔ empty message + unknown origin → NO (3.16675ms)
+  ✔ unknown origin + text → NO (0.327708ms)
+  ✔ venue origin + text → NO (0.296542ms)
+  ✔ customer origin + empty message → YES (0.457042ms)
+  ✔ customer origin + relationship_id null → can qualify (0.196584ms)
+✔ inquiry authorship (5.928917ms)
+▶ contact evidence
+  ✔ customer-origin inquiry + no contact → YES (2.404125ms)
+  ✔ customer-facing venue staff message → NO (0.398ms)
+  ✔ customer inbound only → can remain P-A1 (0.138291ms)
+  ✔ internal note only does not satisfy first response (0.071125ms)
+  ✔ system outbound only does not satisfy first response (0.098542ms)
+  ✔ last_contacted_at populated → NO (0.064583ms)
+  ✔ last_contacted_at null despite staff message → still excluded (0.067958ms)
+  ✔ completed tour → NO (0.052167ms)
+  ✔ scheduled tour → NO (0.035166ms)
+  ✔ confirmed tour → NO (0.032ms)
+  ✔ cancelled tour → NO (0.029375ms)
+  ✔ no_show tour → NO (0.026958ms)
+  ✔ walk-in completed → NO (0.042958ms)
+✔ contact evidence (3.831458ms)
+▶ booking / lost
+  ✔ first_booked_at populated → NO (0.062584ms)
+  ✔ lost_at populated → NO (1.69075ms)
+  ✔ sales_stage booked + no first_booked_at + unknown origin → NO (0.074042ms)
+  ✔ sales_stage booked is not a fallback — customer origin can still qualify (0.098584ms)
+✔ booking / lost (2.036041ms)
+▶ age window (created_at)
+  ✔ 47h59m → NO (0.095709ms)
+  ✔ exactly 48h → YES (0.054125ms)
+  ✔ exactly 14d → YES (0.048791ms)
+  ✔ >14d → NO for cluster; S3 observation window still YES (0.050666ms)
+✔ age window (created_at) (0.305834ms)
+▶ cluster
+  ✔ two final qualifiers → no pattern (0.179958ms)
+  ✔ three final qualifiers → pattern (3.52775ms)
+  ✔ three candidates with one invalid origin → no pattern (0.092708ms)
+  ✔ three candidates with one completed tour → no pattern (0.0705ms)
+  ✔ three candidates with one booked stamp → no pattern (0.049916ms)
+  ✔ cluster count uses unique final qualifying lead IDs (0.055875ms)
+  ✔ website clause uses only the final qualifying population (0.2715ms)
+✔ cluster (4.347291ms)
+▶ CTA + destination
+  ✔ stores qualifying IDs and the dedicated population href (0.352334ms)
+✔ CTA + destination (0.391959ms)
+▶ privacy
+  ✔ does not import Internal Notes into customer-facing drafts (0.185708ms)
+  ✔ S3 reached-out language is gated on customer origin (0.103459ms)
+✔ privacy (0.326583ms)
+▶ applyResendDeliveryEvent invitations
+  ✔ correlates a delivery to the invitation and does not change invitation status (1.797834ms)
+  ✔ records a bounce after delivery and does not let a later open clear the failure (13.742667ms)
+  ✔ advances an open to a click and ignores a later open (0.209708ms)
+  ✔ does not let an earlier provider event erase a later delivery status (0.153459ms)
+  ✔ ignores an unknown provider id (0.292709ms)
+  ✔ still updates a conversation message and leaves invitations alone (0.440709ms)
+✔ applyResendDeliveryEvent invitations (17.379125ms)
+▶ applyReminderScope
+  ✔ returns every row when neither filter is set (2.835041ms)
+  ✔ keeps only the listed ids (0.1785ms)
+  ✔ keeps only the venue (0.27275ms)
+  ✔ drops an id that belongs to a different venue when both filters are set (0.163583ms)
+  ✔ treats an empty id list as no id filter (0.347833ms)
+✔ applyReminderScope (5.236ms)
+▶ reminder processors use the shared AND scope
+  ✔ task, payment, and contract queries call applyReminderScope once each (0.20125ms)
+  ✖ cron and Settings pass no scope, and the QA harness passes ids only (0.313417ms)
+✖ reminder processors use the shared AND scope (0.793083ms)
+▶ mergeSharedEventOrderIntoCoupleDocuments
+  ✔ does not expose an unshared or missing order (2.678792ms)
+  ✔ prepends a shared final Event Order alongside other documents (0.142125ms)
+  ✔ marks agreed status when clientAgreedAt is set (0.066917ms)
+  ✔ does not duplicate when an event_order row already exists (0.053792ms)
+✔ mergeSharedEventOrderIntoCoupleDocuments (3.786333ms)
+▶ P2-D documents UI + route wiring
+  ✔ couple documents section renders Event Order card and opens event-order (0.269875ms)
+  ✔ documents GET merges via get_event_order_for_portal (0.098834ms)
+✔ P2-D documents UI + route wiring (0.438458ms)
+▶ mergeFinalizedInventoryIntoCoupleDocuments
+  ✔ ignores non-finalized inventory (1.030292ms)
+  ✔ prepends finalized inventory once (0.117833ms)
+✔ mergeFinalizedInventoryIntoCoupleDocuments (1.635541ms)
+▶ scheduled-message relationship lookup with multiple leads
+  ✔ merge context takes the newest lead instead of maybeSingle on every lead (0.873042ms)
+  ✔ recipient contact takes the newest lead instead of maybeSingle on every lead (0.097292ms)
+  ✔ resolves merge context to the newest lead when two leads share the relationship (17.789833ms)
+  ✔ resolves recipient contact to the newest lead when two leads share the relationship (0.148333ms)
+✔ scheduled-message relationship lookup with multiple leads (19.721333ms)
+▶ resolveDefaultTimelineTemplateId
+  ✔ prefers event-type + space default over broader defaults (1.455209ms)
+  ✔ returns undefined when no defaults are marked (0.096208ms)
+✔ resolveDefaultTimelineTemplateId (2.842334ms)
+▶ Phase 4 group eligibility
+  ✔ does not count spaces — only active memberships with qualifying subs (0.57125ms)
+  ✔ keeps past_due as qualifying during dunning (0.063708ms)
+  ✔ requires two qualifying venues for group eligibility (0.855667ms)
+  ✔ Checkout reservation bridges second-venue group pricing without charging venue 1 midcycle (0.093917ms)
+  ✔ flags duplicate property names for founder review (0.075584ms)
+  ✔ same owner email without membership never implies organization (0.046375ms)
+✔ Phase 4 group eligibility (2.256417ms)
+▶ Phase 4 best-offer + amounts
+  ✔ applies catalog group amounts (0.104ms)
+  ✔ Group only → 10%; Weven beats Group; Founding beats Group at equal 10% (0.201958ms)
+  ✔ Group + Founding + Weven → Weven 20% (0.06375ms)
+✔ Phase 4 best-offer + amounts (0.489083ms)
+▶ Phase 4 Checkout resolution
+  ✔ second-venue Checkout uses group 10% when reservation bridges eligibility (0.677ms)
+  ✔ Add Another Venue suppresses Founding so Group coupon applies while soft-100 remains (0.147959ms)
+  ✔ Founding still wins over Group at Checkout when both apply (0.133792ms)
+  ✔ Weven wins over Group at Checkout (0.11575ms)
+✔ Phase 4 Checkout resolution (1.146ms)
+▶ Phase 4 billing reconcile + Phase 3 safety
+  ✔ defers coupon mutation when an HTC tier-upgrade schedule is active (0.220958ms)
+  ✔ applies group prospectively when no schedule owns the subscription (0.099875ms)
+  ✔ removes group prospectively and preserves Founding grant (0.0835ms)
+  ✔ tier upgrade amount previews with group (0.105417ms)
+✔ Phase 4 billing reconcile + Phase 3 safety (0.559042ms)
+▶ Phase 4 organization store lifecycle
+  ✔ enforces one active billing org per venue and reservation fulfill/release (1.881209ms)
+  ✔ does not release a reservation that still has a payable Checkout Session (0.175084ms)
+  ✔ fulfills activation idempotently and queues prospective adjustments (0.656667ms)
+  ✔ resolves Checkout group eligibility from durable reservation only (0.214167ms)
+✔ Phase 4 organization store lifecycle (3.003125ms)
+▶ Phase 4 Stripe group coupon executor
+  ✔ refuses independent mutation when a schedule is attached (0.219625ms)
+  ✔ applies coupon with proration_behavior none and confirms (0.077208ms)
+  ✔ confirms coupons from expanded discounts[].source.coupon (API 2024+) (0.103375ms)
+✔ Phase 4 Stripe group coupon executor (0.454ms)
+▶ referral validation
+  ✔ requires core fields and rejects form URLs as email (0.861625ms)
+✔ referral validation (1.303ms)
+▶ reward valuation
+  ✔ values standard, founding, weven, group, and founder fixed (2.227167ms)
+  ✔ keeps valuation snapshot immutable after tier change input (0.192042ms)
+✔ reward valuation (2.519875ms)
+▶ submission safeguards
+  ✔ accepts a valid referral and never promises a reward (1.26ms)
+  ✔ blocks self-referral by domain (0.232208ms)
+  ✔ blocks same-organization property referral (0.225209ms)
+  ✔ flags duplicate submissions from the same referrer (0.265584ms)
+✔ submission safeguards (2.119042ms)
+▶ attribution + qualification + stripe credit
+  ✔ runs conversion → qualify → approve → issue → apply without duplicates (2.377375ms)
+  ✔ does not qualify unpaid / canceled referred venues (0.447416ms)
+✔ attribution + qualification + stripe credit (2.898417ms)
+▶ policy config
+  ✔ reads qualification days from env without hardcoding into valuation (0.541459ms)
+✔ policy config (0.652ms)
+▶ established purchase evidence
+  ✔ treats subscription, subscribedAt, token, activation, venue, or child sub as established (0.520541ms)
+  ✔ does not treat a bare checkout session as an established purchase (0.068083ms)
+✔ established purchase evidence (1.04ms)
+▶ checkout.session.completed classification
+  ✔ first purchase with no relationship creates (0.254083ms)
+  ✔ same session replays the existing purchase (0.069583ms)
+  ✔ different venue creates and does not reuse A (0.083667ms)
+  ✔ same email and same normalized venue holds without selecting A as the new purchase (0.061125ms)
+  ✔ unestablished CRM lead without bound session reuses for first purchase (0.063416ms)
+  ✔ unestablished CRM lead with bound session still reuses via session (0.071ms)
+  ✔ multiple unestablished same-name drafts hold instead of guessing (0.06725ms)
+  ✔ unestablished lead that already owns a different session holds (0.078666ms)
+✔ checkout.session.completed classification (0.942792ms)
+▶ subscription.created before checkout.completed
+  ✔ does not attach a new subscription to an established purchase (0.149958ms)
+  ✔ enriches the purchase that already owns the subscription (0.062208ms)
+  ✔ may attach to an unpaid draft that already has this checkout session (0.053958ms)
+  ✔ defers when the event has no session and the draft is not yet subscribed (0.041ms)
+  ✔ does not retarget an established purchase even if its session was already overwritten (0.048417ms)
+✔ subscription.created before checkout.completed (0.461833ms)
+▶ purchase identity source contracts
+  ✔ checkout start refuses to retarget an established purchase (0.154333ms)
+  ✔ subscription lifecycle does not email-match and does not create a purchase (0.102625ms)
+  ✔ inquiry contact ingest still uses the non-purchase path (0.056167ms)
+  ✔ hold persists before onboarding and does not reuse the old token (0.134917ms)
+  ✔ activation replay immutability migration remains on HEAD (0.086208ms)
+✔ purchase identity source contracts (0.606792ms)
+▶ file-store purchase identity ordering
+  ✔ reproduces Gate 5 ordering and keeps purchase A, hold, replay, and a different venue apart (137.014208ms)
+✔ file-store purchase identity ordering (137.120041ms)
+ℹ tests 384
+ℹ suites 93
+ℹ pass 381
+ℹ fail 3
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2194.7195
+
+✖ failing tests:
+
+test at lib/luv/launch-completion.test.ts:60:3
+✖ Dashboard Luv respects observationsEnabled end-to-end (3.316ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /data\.luvObservationsEnabled/. Input:
+  
+  'import type { Metadata } from "next";\n' +
+    'import { Suspense } from "react";\n' +
+    '\n' +
+    'import { DashboardFocusIsland } from "@/components/dashboard/dashboard-focus-island";\n' +
+    'import { DashboardHeaderIsland } from "@/components/dashboard/dashboard-header-island";\n' +
+    'import {\n' +
+    '  DashboardFocusFallback,\n' +
+    '  DashboardHeaderFallback,\n' +
+    '  DashboardSnapshotFallback,\n' +
+    '} from "@/components/dashboard/dashboard-section-fallbacks";\n' +
+    'import { DashboardSnapshotIsland } from "@/components/dashboard/dashboard-snapshot-island";\n' +
+    '\n' +
+    'export const metadata: Metadata = { title: "Dashboard" };\n' +
+    '\n' +
+    '/**\n' +
+    ' * Venue Dashboard — concise awareness / briefing surface.\n' +
+    ' *\n' +
+    ' * Section order (must stay distinct):\n' +
+    ' *   1. Greeting\n' +
+    ' *   2. Business Snapshot — compact business-state numbers (not Reports)\n' +
+    " *   3. Today's Focus — what requires attention TODAY (actionable NOW)\n" +
+    ' *   4. Luv\n' +
+    " *   5. Coming up — what's coming (awareness, not another task queue)\n" +
+    ' *   6. View Reports\n' +
+    ' *\n' +
+    ' * Wave C2: header, snapshot, and focus stream in parallel Suspense islands.\n' +
+    ' * NAV-PERF Wave 2: header uses getDashboardHeaderData (light); Focus uses\n' +
+    ' * getDashboardData; snapshot uses getBusinessSnapshot — all request-scoped cache.\n' +
+    ' */\n' +
+    'export default function DashboardPage() {\n' +
+    '  return (\n' +
+    '    <div\n' +
+    '      className="htc-hospitality-page space-y-4 sm:space-y-6"\n' +
+    '      data-testid="dashboard-streaming-root"\n' +
+    '    >\n' +
+    '      <Suspense fallback={<DashboardHeaderFallback />}>\n' +
+    '        <DashboardHeaderIsland />\n' +
+    '      </Suspense>\n' +
+    '\n' +
+    '      <Suspense fallback={<DashboardSnapshotFallback />}>\n' +
+    '        <DashboardSnapshotIsland />\n' +
+    '      </Suspense>\n' +
+    '\n' +
+    '      <Suspense fallback={<DashboardFocusFallback />}>\n' +
+    '        <DashboardFocusIsland />\n' +
+    '      </Suspense>\n' +
+    '    </div>\n' +
+    '  );\n' +
+    '}\n'
+  
+      at TestContext.<anonymous> (/Users/jensmac/Developer/wevenu-website/.worktrees/ts-001-baseline/lib/luv/launch-completion.test.ts:62:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Suite.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Suite.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: `import type { Metadata } from "next";\nimport { Suspense } from "react";\n\nimport { DashboardFocusIsland } from "@/components/dashboard/dashboard-focus-island";\nimport { DashboardHeaderIsland } from "@/components/dashboard/dashboard-header-island";\nimport {\n  DashboardFocusFallback,\n  DashboardHeaderFallback,\n  DashboardSnapshotFallback,\n} from "@/components/dashboard/dashboard-section-fallbacks";\nimport { DashboardSnapshotIsland } from "@/components/dashboard/dashboard-snapshot-island";\n\nexport const metadata: Metadata = { title: "Dashboard" };\n\n/**\n * Venue Dashboard — concise awareness / briefing surface.\n *\n * Section order (must stay distinct):\n *   1. Greeting\n *   2. Business Snapshot — compact business-state numbers (not Reports)\n *   3. Today's Focus — what requires attention TODAY (actionable NOW)\n *   4. Luv\n *   5. Coming up — what's coming (awareness, not another task queue)\n *   6. View Reports\n *\n * Wave C2: header, snapshot, and focus stream in parallel Suspense islands.\n * NAV-PERF Wave 2: header uses getDashboardHeaderData (light); Focus uses\n * getDashboardData; snapshot uses getBusinessSnapshot — all request-scoped cache.\n */\nexport default function DashboardPage() {\n  return (\n    <div\n      className="htc-hospitality-page space-y-4 sm:space-y-6"\n      data-testid="dashboard-streaming-root"\n    >\n      <Suspense fallback={<DashboardHeaderFallback />}>\n        <DashboardHeaderIsland />\n      </Suspense>\n\n      <Suspense fallback={<DashboardSnapshotFallback />}>\n        <DashboardSnapshotIsland />\n      </Suspense>\n\n      <Suspense fallback={<DashboardFocusFallback />}>\n        <DashboardFocusIsland />\n      </Suspense>\n    </div>\n  );\n}\n`,
+    expected: /data\.luvObservationsEnabled/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at lib/luv/pipeline-stage-evidence.test.ts:213:3
+✖ upcoming tour all-set requires tour_appointments.status, not stage (40.126ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + {
+  +   label: 'Review tour logistics',
+  +   link: '/leads/lead-1',
+  +   type: 'navigate'
+  + }
+  - undefined
+  
+      at TestContext.<anonymous> (/Users/jensmac/Developer/wevenu-website/.worktrees/ts-001-baseline/lib/luv/pipeline-stage-evidence.test.ts:235:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Suite.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Suite.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: { label: 'Review tour logistics', link: '/leads/lead-1', type: 'navigate' },
+    expected: undefined,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at lib/notifications/reminder-scope.test.ts:79:3
+✖ cron and Settings pass no scope, and the QA harness passes ids only (0.313417ms)
+  Error: ENOENT: no such file or directory, open 'scripts/qa/couple-threading-reminder-processor-verify.mts'
+      at readFileSync (node:fs:436:20)
+      at TestContext.<anonymous> (/Users/jensmac/Developer/wevenu-website/.worktrees/ts-001-baseline/lib/notifications/reminder-scope.test.ts:82:21)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Suite.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Promise.all (index 0)
+      at async Suite.run (node:internal/test_runner/test:1619:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    errno: -2,
+    code: 'ENOENT',
+    syscall: 'open',
+    path: 'scripts/qa/couple-threading-reminder-processor-verify.mts'
+  }

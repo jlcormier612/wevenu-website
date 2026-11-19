@@ -60,6 +60,12 @@ jobs:
             "NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_pr_build_placeholder" \
             > .env.production
 
+      # Full-repo `tsc --noEmit` (includes *.test.ts). `next build` typechecks
+      # app compile paths only and previously left test-fixture debt invisible.
+      # Fail-closed: no error allowance, no exclude of tests, no strict weakening.
+      - name: TypeScript check (tsc --noEmit)
+        run: npx tsc --noEmit
+
       - name: next build (includes TypeScript)
         run: npm run build
         env:

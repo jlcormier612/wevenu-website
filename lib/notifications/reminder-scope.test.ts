@@ -35,7 +35,7 @@ const rows: Row[] = [
 ];
 
 function selected(scope?: ReminderScope) {
-  return applyReminderScope(filterQuery(rows), scope).rows().map((row) => row.id);
+  return applyReminderScope(filterQuery(rows), scope).rows().map((row: Row) => row.id);
 }
 
 describe("applyReminderScope", () => {

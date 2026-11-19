@@ -88,11 +88,17 @@ describe("contract list filters — venue action required", () => {
     ];
     assert.equal(rows.filter((row) => contractMatchesListFilter(row, "all")).length, rows.length);
     const searched = rows.filter(
-      (row) => contractMatchesListFilter(row, "all") && contractMatchesWorkflowSearch(row, "Ada"),
+      (row) =>
+        contractMatchesListFilter(row, "all") &&
+        contractMatchesWorkflowSearch({ ...row, listFamilyTitles: [] }, "Ada"),
     );
     assert.deepEqual(searched.map((row) => row.id), ["d", "fe", "e"]);
     assert.equal(
-      rows.filter((row) => contractMatchesListFilter(row, "cancelled") && contractMatchesWorkflowSearch(row, "Ada")).length,
+      rows.filter(
+        (row) =>
+          contractMatchesListFilter(row, "cancelled") &&
+          contractMatchesWorkflowSearch({ ...row, listFamilyTitles: [] }, "Ada"),
+      ).length,
       0,
     );
   });

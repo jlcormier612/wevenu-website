@@ -28,6 +28,8 @@ function hoursAgo(hours: number): string {
 }
 
 function lead(overrides: Partial<UnattendedInquiryEvidence> = {}): UnattendedInquiryEvidence {
+  // Explicit field assignment (no trailing ...overrides) so Partial cannot
+  // reintroduce `undefined` for `string | null` ContextualLead fields.
   return {
     id: overrides.id ?? "L1",
     venueId: overrides.venueId ?? VENUE,
@@ -40,18 +42,28 @@ function lead(overrides: Partial<UnattendedInquiryEvidence> = {}): UnattendedInq
     tourStatus: overrides.tourStatus ?? null,
     tourOrigin: overrides.tourOrigin ?? null,
     relationshipId: overrides.relationshipId === undefined ? "rel-1" : overrides.relationshipId,
-    ...overrides,
+    acquisitionSource: overrides.acquisitionSource ?? null,
   };
 }
 
 function clusterLead(id: string, overrides: Partial<UnattendedInquiryEvidence> = {}) {
   const e = lead({ id, ...overrides });
   return {
-    ...e,
+    id: e.id,
+    venueId: e.venueId,
+    createdAt: e.createdAt,
+    inquiryMessageOrigin: e.inquiryMessageOrigin,
+    firstBookedAt: e.firstBookedAt ?? null,
+    lostAt: e.lostAt ?? null,
+    lastContactedAt: e.lastContactedAt ?? null,
+    hasVenueStaffOutbound: e.hasVenueStaffOutbound,
+    tourStatus: e.tourStatus,
+    tourOrigin: e.tourOrigin,
+    relationshipId: e.relationshipId,
     firstName: "Pat",
     lastName: id,
     salesStage: "new_inquiry",
-    acquisitionSource: e.acquisitionSource,
+    acquisitionSource: e.acquisitionSource ?? null,
   };
 }
 

@@ -64,6 +64,9 @@ function order(partial: Partial<EventOrder> = {}): EventOrder {
     createdAt: "2026-01-01T00:00:00Z",
     updatedAt: "2026-01-01T00:00:00Z",
     ...partial,
+    clientAgreedAt: partial.clientAgreedAt ?? null,
+    clientAgreedName: partial.clientAgreedName ?? null,
+    clientAgreedRevision: partial.clientAgreedRevision ?? null,
   };
 }
 

@@ -322,6 +322,7 @@ describe("decideLegalProxyEnforcement fail-closed", () => {
                 acceptedVersion: "2026-07-15.2",
                 acceptanceMethod: "Venue Signup",
                 acceptedAt: "2026-07-15T00:00:00.000Z",
+                createdAt: "2026-07-15T00:00:00.000Z",
                 ipAddress: null,
                 userAgent: null,
                 relationshipId: null,

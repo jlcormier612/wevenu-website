@@ -109,6 +109,13 @@ describe("owner draft capability vs proactive recommendation", () => {
         mode: "actionable",
         purpose: "unresolved_question",
         excerpt: "Is Saturday setup included?",
+        observation: {
+          id: "obs-actionable",
+          kind: "fact",
+          priority: "medium",
+          message: "Is Saturday setup included?",
+          link: "/leads/L1",
+        },
       },
       leadStatus: "active",
     });

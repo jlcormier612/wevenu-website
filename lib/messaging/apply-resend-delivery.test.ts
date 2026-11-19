@@ -69,7 +69,15 @@ function payload(type: string, emailId: string): ResendDeliveryPayload {
 
 describe("applyResendDeliveryEvent invitations", () => {
   it("correlates a delivery to the invitation and does not change invitation status", async () => {
-    const invitation = {
+    const invitation: {
+      id: string;
+      venue_id: string;
+      status: string;
+      delivery_status: string;
+      provider_message_id: string;
+      delivered_at?: string;
+      delivery_error?: string;
+    } = {
       id: "inv-1",
       venue_id: "venue-1",
       status: "pending",
@@ -96,7 +104,15 @@ describe("applyResendDeliveryEvent invitations", () => {
   });
 
   it("records a bounce after delivery and does not let a later open clear the failure", async () => {
-    const invitation = {
+    const invitation: {
+      id: string;
+      venue_id: string;
+      status: string;
+      delivery_status: string;
+      delivered_at?: string;
+      provider_message_id: string;
+      delivery_error?: string;
+    } = {
       id: "inv-1",
       venue_id: "venue-1",
       status: "pending",

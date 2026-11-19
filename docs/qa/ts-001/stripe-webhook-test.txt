@@ -1,0 +1,18 @@
+(node:7607) ExperimentalWarning: Module mocking is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:7607) DeprecationWarning: mock.module(): options.namedExports is deprecated. Use options.exports instead.
+▶ Connect account.updated webhook
+  ✔ rejects an invalid signature (4.853792ms)
+  ✔ disables charges on the matching venue and refreshes verified_at (1.531667ms)
+  ✔ re-enables charges when Stripe reports charges_enabled true (0.43425ms)
+  ✔ is idempotent on duplicate event delivery (0.654208ms)
+  ✔ ignores an unknown connected account without touching other venues (0.312959ms)
+✔ Connect account.updated webhook (10.580708ms)
+ℹ tests 5
+ℹ suites 1
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 353.334416

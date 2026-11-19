@@ -70,6 +70,8 @@ function offering(
     createdAt: "",
     updatedAt: "",
     ...partial,
+    parentOfferingId: partial.parentOfferingId ?? null,
+    parentOfferingIds: partial.parentOfferingIds ?? [],
   };
 }
 
