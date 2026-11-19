@@ -10,30 +10,60 @@
  *   - { ok: true, sent: 0 } is a valid RPC payload and must NOT be treated
  *     as success when the route expected N > 0 persistences
  *
- * Durable recovery reuses invitation_emails.provider_id (existing column)
- * so a later retry can sync guest status without calling Resend again —
- * including after the ~24h Idempotency-Key window expires.
+ * Delivery-attempt identity (no schema change):
+ *   - invitation: one stable attempt per guest (lifetime receipt)
+ *   - reminder/update: UTC-day attempt bucket (matches idempotency keys)
+ *
+ * Durable recovery reuses invitation_emails.provider_id on the attempt's
+ * history row so retries can sync status without Resend — including after
+ * the ~24h Idempotency-Key window.
  */
 
 export const GUEST_RSVP_IDEMPOTENCY_HOURS = 24;
 
+export function normalizeInviteEmailType(emailType: string): string {
+  return (emailType || "invitation").toLowerCase();
+}
+
+/** Reminder/update attempts are day-scoped; invitation is a single stable attempt. */
+export function isDayScopedEmailType(emailType: string): boolean {
+  const normalized = normalizeInviteEmailType(emailType);
+  return normalized === "reminder" || normalized === "update";
+}
+
+/** UTC day bounds for the current delivery attempt (reminder/update). */
+export function deliveryAttemptDayBounds(now: Date = new Date()): {
+  day: string;
+  startIso: string;
+  endExclusiveIso: string;
+} {
+  const day = now.toISOString().slice(0, 10);
+  const start = new Date(`${day}T00:00:00.000Z`);
+  const end = new Date(start.getTime() + 86_400_000);
+  return {
+    day,
+    startIso: start.toISOString(),
+    endExclusiveIso: end.toISOString(),
+  };
+}
+
 /**
- * Invitation keys stay stable so a same-day persistence retry can reuse
- * Resend's Idempotency-Key when no durable provider_id receipt exists yet.
+ * Invitation keys stay stable so a persistence retry can reuse Resend's
+ * Idempotency-Key when no durable provider_id receipt exists yet.
  *
  * Reminder/update keys are day-bucketed so a legitimate next-day reminder
- * is not suppressed by yesterday's key (invitation vs reminder remain distinct).
+ * is not suppressed by yesterday's key.
  */
 export function guestRsvpIdempotencyKey(
   guestId: string,
   emailType: string,
   now: Date = new Date(),
 ): string {
-  const normalized = (emailType || "invitation").toLowerCase();
+  const normalized = normalizeInviteEmailType(emailType);
   if (normalized === "invitation") {
     return `guest-rsvp/${guestId}/invitation`;
   }
-  const day = now.toISOString().slice(0, 10); // UTC day bucket
+  const { day } = deliveryAttemptDayBounds(now);
   return `guest-rsvp/${guestId}/${normalized}/${day}`;
 }
 
@@ -90,6 +120,8 @@ export type AcceptedDelivery = {
   guestId: string;
   email: string;
   providerId?: string | null;
+  /** When set, backfill targets this invitation_emails row id only. */
+  historyRowId?: string | null;
 };
 
 export type PersistenceFailureBody = {
@@ -97,19 +129,15 @@ export type PersistenceFailureBody = {
   code: "persistence_failed";
   error: string;
   message: string;
-  /** Confirmed DB-logged sends — always 0 on persistence failure. */
   sent: 0;
   sentGuestIds: [];
-  /** Provider accepted these; DB status may still be ready. */
   accepted: number;
   acceptedGuestIds: string[];
   deferred: number;
   deferredGuestIds: string[];
   failed: number;
   errors: string[];
-  /** Unconditional retry is NOT safe after the provider idempotency window. */
   retrySafe: false;
-  /** True when a durable provider_id receipt exists for no-resend recovery. */
   retrySafeWithoutResend: boolean;
   providerIdempotencyWindowHours: typeof GUEST_RSVP_IDEMPOTENCY_HOURS;
   retryMayDuplicateAfterIdempotencyWindow: true;
@@ -170,26 +198,96 @@ export type InvitePersistenceAdmin = {
   from: (table: string) => any;
 };
 
+export type ProviderReceiptLookup =
+  | { status: "found"; id: string; providerId: string }
+  | { status: "absent" }
+  | { status: "error"; detail: string };
+
+type ReceiptQueryOpts = {
+  guestId: string;
+  emailType: string;
+  venueId: string;
+  clientId: string;
+  now?: Date;
+  /** When true, only rows with null provider_id (for targeting backfill). */
+  providerIdNull?: boolean;
+};
+
 /**
- * Look up an existing provider receipt so retries skip Resend entirely.
+ * Build the attempt-scoped invitation_emails query.
+ * Invitation: lifetime. Reminder/update: current UTC day only.
+ */
+export function applyAttemptScopeToReceiptQuery(
+  query: any,
+  emailType: string,
+  now: Date = new Date(),
+): any {
+  if (!isDayScopedEmailType(emailType)) return query;
+  const { startIso, endExclusiveIso } = deliveryAttemptDayBounds(now);
+  return query.gte("sent_at", startIso).lt("sent_at", endExclusiveIso);
+}
+
+/**
+ * Look up a provider receipt for THIS delivery attempt only.
+ * Fail-closed: DB errors return status "error" (callers must not send).
  */
 export async function findProviderReceipt(
   admin: InvitePersistenceAdmin,
-  opts: { guestId: string; emailType: string; venueId: string; clientId: string },
-): Promise<{ id: string; providerId: string } | null> {
-  const { data, error } = await admin
+  opts: {
+    guestId: string;
+    emailType: string;
+    venueId: string;
+    clientId: string;
+    now?: Date;
+  },
+): Promise<ProviderReceiptLookup> {
+  const now = opts.now ?? new Date();
+  let query = admin
     .from("invitation_emails")
-    .select("id, provider_id")
+    .select("id, provider_id, sent_at")
     .eq("guest_id", opts.guestId)
-    .eq("email_type", opts.emailType)
+    .eq("email_type", normalizeInviteEmailType(opts.emailType))
     .eq("venue_id", opts.venueId)
     .eq("client_id", opts.clientId)
-    .not("provider_id", "is", null)
-    .order("sent_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (error || !data?.provider_id) return null;
-  return { id: data.id as string, providerId: data.provider_id as string };
+    .not("provider_id", "is", null);
+
+  query = applyAttemptScopeToReceiptQuery(query, opts.emailType, now);
+
+  const { data, error } = await query.order("sent_at", { ascending: false }).limit(1).maybeSingle();
+
+  if (error) return { status: "error", detail: error.message };
+  if (!data?.provider_id) return { status: "absent" };
+  return {
+    status: "found",
+    id: data.id as string,
+    providerId: data.provider_id as string,
+  };
+}
+
+/**
+ * Resolve the single invitation_emails row that should receive provider_id
+ * for this attempt (newest null-provider row in attempt scope).
+ */
+export async function findAttemptHistoryRowForBackfill(
+  admin: InvitePersistenceAdmin,
+  opts: ReceiptQueryOpts,
+): Promise<ProviderReceiptLookup | { status: "found_null"; id: string }> {
+  const now = opts.now ?? new Date();
+  let query = admin
+    .from("invitation_emails")
+    .select("id, provider_id, sent_at")
+    .eq("guest_id", opts.guestId)
+    .eq("email_type", normalizeInviteEmailType(opts.emailType))
+    .eq("venue_id", opts.venueId)
+    .eq("client_id", opts.clientId)
+    .is("provider_id", null);
+
+  query = applyAttemptScopeToReceiptQuery(query, opts.emailType, now);
+
+  const { data, error } = await query.order("sent_at", { ascending: false }).limit(1).maybeSingle();
+  if (error) return { status: "error", detail: error.message };
+  if (!data?.id) return { status: "absent" };
+  return { status: "found_null", id: data.id as string };
 }
 
 /**
@@ -205,19 +303,21 @@ export async function persistAcceptedInvitationsDirectly(
     emailType: string;
     coupleFirstName: string | null | undefined;
     accepted: AcceptedDelivery[];
+    now?: Date;
   },
 ): Promise<{ ok: true; persisted: number } | { ok: false; detail: string; persisted: number }> {
   let persisted = 0;
+  const now = opts.now ?? new Date();
+  const emailType = normalizeInviteEmailType(opts.emailType);
   const subjectPrefix =
-    opts.emailType === "reminder"
+    emailType === "reminder"
       ? "Reminder: RSVP for "
-      : opts.emailType === "update"
+      : emailType === "update"
         ? "An update from "
         : "You're invited! ";
   const subject = `${subjectPrefix}${opts.coupleFirstName ?? "Our"}'s Wedding`;
 
   for (const row of opts.accepted) {
-    // Match RPC CASE: do not downgrade responded/declined.
     const { data: existing, error: readErr } = await admin
       .from("couple_guests")
       .select("id, invitation_status, rsvp_sent_at")
@@ -241,9 +341,9 @@ export async function persistAcceptedInvitationsDirectly(
     const { error: updErr } = await admin
       .from("couple_guests")
       .update({
-        rsvp_sent_at: existing.rsvp_sent_at ?? new Date().toISOString(),
+        rsvp_sent_at: existing.rsvp_sent_at ?? now.toISOString(),
         invitation_status: nextStatus,
-        updated_at: new Date().toISOString(),
+        updated_at: now.toISOString(),
       })
       .eq("id", row.guestId)
       .eq("venue_id", opts.venueId)
@@ -252,29 +352,31 @@ export async function persistAcceptedInvitationsDirectly(
       return { ok: false, detail: updErr.message, persisted };
     }
 
-    // If a provider receipt already exists, do not insert a duplicate history row.
     const prior = await findProviderReceipt(admin, {
       guestId: row.guestId,
-      emailType: opts.emailType,
+      emailType,
       venueId: opts.venueId,
       clientId: opts.clientId,
+      now,
     });
-    if (!prior) {
+    if (prior.status === "error") {
+      return { ok: false, detail: prior.detail, persisted };
+    }
+    if (prior.status === "absent") {
       const { error: insErr } = await admin.from("invitation_emails").insert({
         venue_id: opts.venueId,
         client_id: opts.clientId,
         guest_id: row.guestId,
-        email_type: opts.emailType,
+        email_type: emailType,
         recipient: row.email,
         subject,
         status: "sent",
         provider_id: row.providerId ?? null,
+        sent_at: now.toISOString(),
       });
       if (insErr) {
         return { ok: false, detail: insErr.message, persisted };
       }
-    } else if (row.providerId && prior.providerId !== row.providerId) {
-      // Keep the original receipt; status sync above is enough.
     }
 
     persisted += 1;
@@ -291,8 +393,8 @@ export async function persistAcceptedInvitationsDirectly(
 }
 
 /**
- * After a confirmed RPC log, backfill provider_id onto the newest matching
- * invitation_emails rows that lack one — durable receipt for future retries.
+ * After a confirmed RPC log, set provider_id on exactly one attempt-scoped
+ * history row (by id). Never bulk-updates unrelated historical rows.
  */
 export async function backfillProviderIds(
   admin: InvitePersistenceAdmin,
@@ -301,24 +403,47 @@ export async function backfillProviderIds(
     clientId: string;
     emailType: string;
     accepted: AcceptedDelivery[];
+    now?: Date;
   },
 ): Promise<void> {
+  const now = opts.now ?? new Date();
+  const emailType = normalizeInviteEmailType(opts.emailType);
+
   for (const row of opts.accepted) {
     if (!row.providerId) continue;
-    const prior = await findProviderReceipt(admin, {
-      guestId: row.guestId,
-      emailType: opts.emailType,
-      venueId: opts.venueId,
-      clientId: opts.clientId,
-    });
-    if (prior) continue;
+
+    // Prefer an explicit row id from this request when available.
+    let targetId = row.historyRowId ?? null;
+
+    if (!targetId) {
+      const existing = await findProviderReceipt(admin, {
+        guestId: row.guestId,
+        emailType,
+        venueId: opts.venueId,
+        clientId: opts.clientId,
+        now,
+      });
+      if (existing.status === "found") continue; // this attempt already has a receipt
+      if (existing.status === "error") continue; // fail soft on backfill only
+
+      const candidate = await findAttemptHistoryRowForBackfill(admin, {
+        guestId: row.guestId,
+        emailType,
+        venueId: opts.venueId,
+        clientId: opts.clientId,
+        now,
+      });
+      if (candidate.status !== "found_null") continue;
+      targetId = candidate.id;
+    }
+
     await admin
       .from("invitation_emails")
       .update({ provider_id: row.providerId })
-      .eq("guest_id", row.guestId)
-      .eq("email_type", opts.emailType)
+      .eq("id", targetId)
       .eq("venue_id", opts.venueId)
       .eq("client_id", opts.clientId)
+      .eq("guest_id", row.guestId)
       .is("provider_id", null);
   }
 }

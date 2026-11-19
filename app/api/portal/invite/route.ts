@@ -143,22 +143,28 @@ export async function POST(request: Request) {
         continue;
       }
 
-      // Durable no-resend recovery: if a prior attempt already stored a Resend
-      // message id, sync status only — never call the provider again (works
-      // even after the ~24h Idempotency-Key window).
+      // Durable no-resend recovery for THIS delivery attempt only
+      // (invitation = lifetime; reminder/update = UTC day). Fail closed on
+      // lookup errors — never treat a failed lookup as "absent" and resend.
       const priorReceipt = await findProviderReceipt(admin, {
         guestId: guest.id,
         emailType,
         venueId: session.venue_id,
         clientId: session.client_id,
       });
-      if (priorReceipt) {
+      if (priorReceipt.status === "error") {
+        results.failed++;
+        results.errors.push(`${guest.email}: receipt lookup failed — ${priorReceipt.detail}`);
+        continue;
+      }
+      if (priorReceipt.status === "found") {
         results.sent++;
         results.sentGuestIds.push(guest.id);
         acceptedDeliveries.push({
           guestId: guest.id,
           email: guest.email,
           providerId: priorReceipt.providerId,
+          historyRowId: priorReceipt.id,
         });
         continue;
       }
@@ -242,7 +248,7 @@ export async function POST(request: Request) {
               venueId: session.venue_id,
               clientId: session.client_id,
             });
-            if (receipt) receiptsOnDisk += 1;
+            if (receipt.status === "found") receiptsOnDisk += 1;
           }
           return NextResponse.json(
             buildPersistenceFailureResponse(results, confirmed.detail, {
