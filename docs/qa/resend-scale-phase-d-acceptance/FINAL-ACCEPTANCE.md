@@ -28,7 +28,7 @@
 
 **Product PRs already on `main` (not part of docs PR #106):** [#105](https://github.com/jlcormier612/wevenu-website/pull/105), [#107](https://github.com/jlcormier612/wevenu-website/pull/107), [#108](https://github.com/jlcormier612/wevenu-website/pull/108) → merge `f143df94`.
 
-Artifacts: `acceptance-phase-d-pdmwo468og.json`, `acceptance-phase-d-final.json`, `phase-d-rollout-closure.json`, `rpc-roles-post-migration.txt`, `acceptance-r3-GREEN.log`.
+Artifacts: `acceptance-phase-d-pdmwo468og.json`, `acceptance-phase-d-final.json`, `phase-d-rollout-closure.json`, `rpc-roles-post-migration.txt`, `acceptance-r3-GREEN.txt`.
 
 ---
 
@@ -42,7 +42,7 @@ Phase D acceptance was **not** green on first attempt. Preserve these failures:
 | `pdmwo45j4o` (r2) | **NOT GREEN** | `bulk-fill-6` undercount (`granted=5`) | Correct fill timing vs sliding window |
 | `pdmwo468og` (r3) | **GREEN** | — | Final acceptance |
 
-Logs: `acceptance-r1-deferred-fixture-miss.log`, `acceptance-r2-fill-undercount.log`, `acceptance-r3-GREEN.log`.
+Logs: `acceptance-r1-deferred-fixture-miss.txt`, `acceptance-r2-fill-undercount.txt`, `acceptance-r3-GREEN.txt`.
 
 **Prior Phase C** Sandbox rollout on `9de88f75` remained **OPEN / KEEP** with residuals (live guest invite click-through; optional `retry_after_ms` clamp). Those residuals were addressed by subsequent Phase D product work (#107/#108) and this acceptance — Phase C itself is **not** rewritten as a passing final gate.
 
