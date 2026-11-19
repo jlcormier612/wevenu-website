@@ -1,0 +1,164 @@
+{
+  "measuredAt": "2026-11-19T06:16:03.154Z",
+  "app": "https://app.sandbox.hellotocheers.com",
+  "servingSha": "75e88023bd6881b7397e66b55ad69bdafc77177a",
+  "note": "Fast remasure harness (no long fallback wait). Compare to Wave 6 sandbox-baseline.json.",
+  "samples": [
+    {
+      "mode": "cold",
+      "sample": 0,
+      "ttfbMs": 772,
+      "identityMs": 3462,
+      "primaryActionParityMs": 3465,
+      "detailReadyMs": 3466,
+      "sawFallback": false
+    },
+    {
+      "mode": "warm",
+      "sample": 1,
+      "ttfbMs": 1916,
+      "identityMs": 2573,
+      "primaryActionParityMs": 2576,
+      "detailReadyMs": 2577,
+      "sawFallback": false
+    },
+    {
+      "mode": "warm",
+      "sample": 2,
+      "ttfbMs": 789,
+      "identityMs": 9650,
+      "primaryActionParityMs": 9652,
+      "detailReadyMs": 9656,
+      "sawFallback": false
+    },
+    {
+      "mode": "warm",
+      "sample": 3,
+      "ttfbMs": 783,
+      "identityMs": 3449,
+      "primaryActionParityMs": 3452,
+      "detailReadyMs": 3453,
+      "sawFallback": false
+    },
+    {
+      "mode": "warm",
+      "sample": 4,
+      "ttfbMs": 1186,
+      "identityMs": 1795,
+      "primaryActionParityMs": 1798,
+      "detailReadyMs": 1799,
+      "sawFallback": false
+    },
+    {
+      "mode": "warm",
+      "sample": 5,
+      "ttfbMs": 848,
+      "identityMs": 1865,
+      "primaryActionParityMs": 1867,
+      "detailReadyMs": 1869,
+      "sawFallback": false
+    },
+    {
+      "mode": "warm",
+      "sample": 6,
+      "ttfbMs": 958,
+      "identityMs": 2553,
+      "primaryActionParityMs": 2555,
+      "detailReadyMs": 2556,
+      "sawFallback": false
+    },
+    {
+      "mode": "warm",
+      "sample": 7,
+      "ttfbMs": 867,
+      "identityMs": 2049,
+      "primaryActionParityMs": 2051,
+      "detailReadyMs": 2053,
+      "sawFallback": true
+    },
+    {
+      "mode": "warm",
+      "sample": 8,
+      "ttfbMs": 442,
+      "identityMs": 1907,
+      "primaryActionParityMs": 1912,
+      "detailReadyMs": 1913,
+      "sawFallback": false
+    }
+  ],
+  "summary": {
+    "warm": {
+      "ttfb": {
+        "n": 8,
+        "median": 867,
+        "p90": 1916,
+        "min": 442,
+        "max": 1916,
+        "values": [
+          1916,
+          789,
+          783,
+          1186,
+          848,
+          958,
+          867,
+          442
+        ]
+      },
+      "identity": {
+        "n": 8,
+        "median": 2553,
+        "p90": 9650,
+        "min": 1795,
+        "max": 9650,
+        "values": [
+          2573,
+          9650,
+          3449,
+          1795,
+          1865,
+          2553,
+          2049,
+          1907
+        ]
+      },
+      "primaryActionParity": {
+        "n": 8,
+        "median": 2555,
+        "p90": 9652,
+        "min": 1798,
+        "max": 9652,
+        "values": [
+          2576,
+          9652,
+          3452,
+          1798,
+          1867,
+          2555,
+          2051,
+          1912
+        ]
+      },
+      "detailReady": {
+        "n": 8,
+        "median": 2556,
+        "p90": 9656,
+        "min": 1799,
+        "max": 9656,
+        "values": [
+          2577,
+          9656,
+          3453,
+          1799,
+          1869,
+          2556,
+          2053,
+          1913
+        ]
+      }
+    },
+    "sawFallbackAny": true,
+    "openaiTotal": 0,
+    "errors": []
+  }
+}
