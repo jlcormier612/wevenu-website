@@ -2,8 +2,8 @@
 
 **Branch:** `perf/nav-perf-wave1`  
 **Base:** `4787fbaba2b4da14d447e4e220f8a16923fab5a2`  
-**Sandbox serving:** still `4787fbab` (Wave 1 **not** deployed)  
-**Date:** 2026-11-18
+**Sandbox serving:** `a3825094` (Wave 1 deployed; see `AFTER-DEPLOY-REPORT.md`)  
+**Date:** 2026-11-18 / remasure 2026-11-19
 
 ## Files changed
 
@@ -44,7 +44,7 @@ From `nav-perf-baseline` on serving `4787fbab`:
 Evidence: `contract-scan-compare.json`, `badge-parity.json`
 
 ### Deployed Sandbox nav timings
-**Not re-measured after Wave 1** — app image still pre-change. Do not treat DB scan gains as full page useful-time gains until Sandbox deploy + `nav-perf-baseline.mts` re-run.
+Re-run complete on `a3825094` — see `AFTER-DEPLOY-REPORT.md` and `after/baseline.json`. Leads cold useful 7243→3667 ms; sidebar top-8 RSC prefetch gone; Dashboard cold still ~6s (document SSR).
 
 ## Notifications
 Not expanded. After Wave 1 deploy, re-check whether `/api/notifications` remains a top waterfall entry once RSC prefetch contention is gone.

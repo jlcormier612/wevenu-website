@@ -1,0 +1,149 @@
+{
+  "checks": [
+    {
+      "name": "serving_dpl",
+      "pass": true,
+      "detail": "dpl=a38250946044e786e894d9d449ee6d5ab1f5e016"
+    },
+    {
+      "name": "desktop_nav_leads",
+      "pass": true,
+      "detail": "https://app.sandbox.hellotocheers.com/leads"
+    },
+    {
+      "name": "attention_ok",
+      "pass": true,
+      "detail": "[{\"status\":200,\"ms\":-1}]"
+    },
+    {
+      "name": "notifications_ok",
+      "pass": true,
+      "detail": "[{\"status\":200,\"ms\":-1}]"
+    },
+    {
+      "name": "lead_workspace",
+      "pass": true,
+      "detail": "tabs=7"
+    },
+    {
+      "name": "event_workspace",
+      "pass": true,
+      "detail": "https://app.sandbox.hellotocheers.com/clients/49aba826-0bd3-4891-ac9f-02a18b2b6962?eventId=74a2487d-40fc-418f-a6bc-54abef28b6e1"
+    },
+    {
+      "name": "mobile_nav_leads",
+      "pass": true,
+      "detail": "https://app.sandbox.hellotocheers.com/leads"
+    },
+    {
+      "name": "venue_isolation_attention",
+      "pass": true,
+      "detail": "{\"status\":200,\"keys\":[\"leads\",\"tours\",\"inbox\",\"tasks\",\"payments\",\"contracts\"]}"
+    },
+    {
+      "name": "attention_force_refresh",
+      "pass": true,
+      "detail": "network_after_dispatch=2 fetch={\"status\":200,\"keys\":[\"leads\",\"tours\",\"inbox\",\"tasks\",\"payments\",\"contracts\"]}"
+    },
+    {
+      "name": "no_openai_on_nav",
+      "pass": true,
+      "detail": "0 openai/luv-ask"
+    },
+    {
+      "name": "contracts_page",
+      "pass": true,
+      "detail": "https://app.sandbox.hellotocheers.com/contracts"
+    },
+    {
+      "name": "payments_page",
+      "pass": true,
+      "detail": "https://app.sandbox.hellotocheers.com/payments"
+    },
+    {
+      "name": "sidebar_rsc_paths_observed",
+      "pass": true,
+      "detail": "count=44 unique=24 sample=/payments,/leads/new,/leads,/leads/d4b97d1c-6ccf-4130-be88-cc34de6088b5,/leads/9bc5e47b-972c-442e-b622-76614bad99ff,/leads/95629b46-e721-469c-b91a-881c37682832,/leads/263a6a9a-be3e-471d-b2bd-baded7cfcbc4,/leads/d85d2532-f562-49d3-98a5-12ead44d3e6f,/leads/fa179285-37e3-49cc-982c-408bc3922c2d,/leads/f6646a4e-b6dc-4927-b9f2-97b75268c1f7,/leads/ba96423d-7d7d-4aa2-8040-4be0d96d4f8f,/leads/a631df82-2560-49be-b8be-4871d3467f5b,/leads/03789c37-2a42-4fc0-8de8-7d8bc2aee51b,/leads/pipeline,/library/pipeline-templates"
+    }
+  ],
+  "attention": [
+    {
+      "status": 200,
+      "ms": -1
+    },
+    {
+      "status": 200,
+      "ms": -1
+    },
+    {
+      "status": 200,
+      "ms": -1
+    },
+    {
+      "status": 200,
+      "ms": -1
+    },
+    {
+      "status": 200,
+      "ms": -1
+    },
+    {
+      "status": 200,
+      "ms": -1
+    },
+    {
+      "status": 200,
+      "ms": -1
+    }
+  ],
+  "notifs": [
+    {
+      "status": 200,
+      "ms": -1
+    },
+    {
+      "status": 200,
+      "ms": -1
+    },
+    {
+      "status": 200,
+      "ms": -1
+    },
+    {
+      "status": 200,
+      "ms": -1
+    },
+    {
+      "status": 200,
+      "ms": -1
+    }
+  ],
+  "aiHits": [],
+  "uniquePrefetch": [
+    "/payments",
+    "/leads/new",
+    "/leads",
+    "/leads/d4b97d1c-6ccf-4130-be88-cc34de6088b5",
+    "/leads/9bc5e47b-972c-442e-b622-76614bad99ff",
+    "/leads/95629b46-e721-469c-b91a-881c37682832",
+    "/leads/263a6a9a-be3e-471d-b2bd-baded7cfcbc4",
+    "/leads/d85d2532-f562-49d3-98a5-12ead44d3e6f",
+    "/leads/fa179285-37e3-49cc-982c-408bc3922c2d",
+    "/leads/f6646a4e-b6dc-4927-b9f2-97b75268c1f7",
+    "/leads/ba96423d-7d7d-4aa2-8040-4be0d96d4f8f",
+    "/leads/a631df82-2560-49be-b8be-4871d3467f5b",
+    "/leads/03789c37-2a42-4fc0-8de8-7d8bc2aee51b",
+    "/leads/pipeline",
+    "/library/pipeline-templates",
+    "/clients",
+    "/setup-hub/bring-your-business",
+    "/leads/ab37d13c-5802-4b51-b4b8-31972da26393/edit",
+    "/events/74a2487d-40fc-418f-a6bc-54abef28b6e1/day-sheet",
+    "/events/74a2487d-40fc-418f-a6bc-54abef28b6e1/edit",
+    "/leads/a2a238d6-8d23-4431-85a3-5c7751f381fe",
+    "/clients/49aba826-0bd3-4891-ac9f-02a18b2b6962/edit",
+    "/contracts/new",
+    "/library/contracts"
+  ],
+  "dpl": "a38250946044e786e894d9d449ee6d5ab1f5e016"
+}

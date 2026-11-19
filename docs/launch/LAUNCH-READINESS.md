@@ -2,9 +2,9 @@
 
 **Authoritative prelaunch register.**  
 **Created:** 2026-11-18  
-**Last updated:** 2026-11-18 (NAV-PERF Wave 1 implemented — awaiting Sandbox deploy for remeasure)  
-**Sandbox serving SHA (verified):** `4787fbaba2b4da14d447e4e220f8a16923fab5a2` *(Wave 1 code not deployed yet)*  
-**Active branch:** `perf/nav-perf-wave1`  
+**Last updated:** 2026-11-18 (NAV-PERF Wave 1 merged + Sandbox remeasure — still OPEN for launch bar)  
+**Sandbox serving SHA (verified):** `a38250946044e786e894d9d449ee6d5ab1f5e016`  
+**Active workstream:** NAV-PERF (Wave 1 accepted on Sandbox; Wave 2 candidate = dashboard SSR)  
 **Production:** unauthorized — no Production customers, payments, or deploy.
 
 This file is the permanent Launch Readiness Register for coordinated prelaunch.  
@@ -17,7 +17,7 @@ Historical trackers (`docs/launch/MASTER-READINESS-TRACKER.md`, older release-re
 | Dimension | Status |
 |-----------|--------|
 | Sandbox product surface (onboarding, Practice Run, migration, portals, contracts/payments, reporting, Luv lifecycle/privacy/redundancy, messaging safeguards, approved marketing) | **Substantial Sandbox acceptance** — see §2 |
-| Venue navigation performance | **ACTIVE** — NAV-PERF Wave 1 implemented in branch; Sandbox remeasure pending deploy approval (P1, required for launch) |
+| Venue navigation performance | **ACTIVE** — NAV-PERF Wave 1 on Sandbox `a3825094`; Leads cold useful −49%; Dashboard SSR still ~6s (P1, required for launch) |
 | Production infrastructure / live Stripe / legal / ops | **OPEN** — Production gates not satisfied |
 | Overall Production launch | **NOT READY** — Sandbox ≠ Production |
 
@@ -62,7 +62,7 @@ Preserve GREEN/CLOSED unless new regression evidence appears.
 
 | ID | Description | Priority | Status | Owner | Acceptance criteria | Evidence / reference | Dependency |
 |----|-------------|----------|--------|-------|---------------------|----------------------|------------|
-| **NAV-PERF** | Venue navigation performance — required for launch acceptance | P1 | **IN PROGRESS** (Wave 1 coded; Sandbox remeasure blocked on deploy) | Engineering | Wave 1: sidebar `prefetch={false}` + slim attention contract scan + 60s TTL with force refresh. Sandbox cold/warm useful remeasure PASS vs baseline; badges unchanged; no Luv/OpenAI on nav | Baseline `docs/qa/launch-performance/nav-perf-baseline/`; Wave 1 `docs/qa/launch-performance/nav-perf-wave1/` (DB scan cold 689→196ms; badge parity 18=18). **Deployed Sandbox nav timings not yet re-run.** | None — **ACTIVE** |
+| **NAV-PERF** | Venue navigation performance — required for launch acceptance | P1 | **OPEN** (Wave 1 shipped; launch bar not yet met) | Engineering | Wave 1 on Sandbox: sidebar prefetch off + slim attention + TTL. Founder-accepted useful timings vs baseline; badges/venue isolation OK; no OpenAI on nav. Keep OPEN until staff nav feels launch-acceptable | PR [#92](https://github.com/jlcormier612/wevenu-website/pull/92) merge `a3825094`; deploy [44436477330](https://github.com/jlcormier612/wevenu-website/actions/runs/44436477330); before/after `docs/qa/launch-performance/nav-perf-wave1/AFTER-DEPLOY-REPORT.md` + `after/`; Desktop `~/Desktop/HTC-NAV-PERF-WAVE1-AFTER/`. Leads cold 7243→3667 ms (−49%); top-8 sidebar RSC 5→0; Dashboard cold still ~5933 ms (document SSR). **Wave 2 needed: dashboard SSR (+ notifications).** | None — **ACTIVE** |
 | **LUV-CONSENT** | Channel consent not loaded into draft eligibility (`channelConsentOk` defaults true); send path intended to recheck | P1 | OPEN | Engineering | Draft eligibility + accept/send boundary use authoritative consent; unit + Sandbox proof; no paid AI | Lifecycle closure 2026-11-18; `relationship-lifecycle-loader.ts` | After NAV-PERF unless founder reprioritizes |
 | **JOURNEY-FINAL** | Full new-venue Sandbox customer journey (provision → setup → book → portal → payments Test) | P1 | OPEN | Joint | Disposable-venue E2E harness PASS on current Sandbox tip; evidence package | MASTER JOURNEY-FINAL; ONB-FINAL closed | Prefer after NAV-PERF |
 | **TS-001** | TypeScript baseline / typecheck debt | P1 | OPEN | Engineering | Agreed baseline green in CI without weakening checks | MASTER TS-001 | Independent |
@@ -87,7 +87,7 @@ Preserve GREEN/CLOSED unless new regression evidence appears.
 ## 4. Current active workstream
 
 **NAV-PERF — Venue navigation performance (P1, required for launch)**  
-Wave 1 implemented on `perf/nav-perf-wave1`. Awaiting founder approval to commit/push/merge and deploy Sandbox for before/after nav remeasure.  
+Wave 1 merged (PR #92) and serving on Sandbox `a3825094`. Remeasure shows real Leads/Events gains from removing sidebar RSC contention; Dashboard cold remains document-SSR bound (~6s). **Keep OPEN** until founder accepts the launch performance bar; smallest next step = Wave 2 dashboard SSR.  
 No Production changes.
 
 ---
@@ -135,3 +135,4 @@ All must be GREEN (or founder-documented exception) before live customers/paymen
 |------|--------|
 | 2026-11-18 | Register created. Seeded from MASTER tracker + LUV-FINAL acceptance on `4787fbab`. Active workstream = NAV-PERF discovery. |
 | 2026-11-18 | NAV-PERF Wave 1 coded on `perf/nav-perf-wave1` (sidebar prefetch off, attention slim scan + 60s TTL). LUV-CONSENT remains P1. LAUNCH-FINAL clarified as umbrella gate (five P0s). Sandbox still serves `4787fbab` without Wave 1. |
+| 2026-11-18 | NAV-PERF Wave 1 merged PR #92 → `a3825094`, Sandbox deployed, before/after remasure + spot-checks. NAV-PERF remains **OPEN** (Wave 2 = dashboard SSR). Other GREEN/CLOSED rows preserved. |
