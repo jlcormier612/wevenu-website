@@ -1,0 +1,166 @@
+{
+  "before": {
+    "n": 10,
+    "total_ms": {
+      "median": 799,
+      "p90": 1739,
+      "max": 2986
+    },
+    "spans": {
+      "bootstrap_clear_stale": {
+        "n": 10,
+        "median": 111,
+        "p90": 436,
+        "max": 567
+      },
+      "bootstrap_consume_handoff": {
+        "n": 10,
+        "median": 49,
+        "p90": 103,
+        "max": 120
+      },
+      "bootstrap_current_user_venue_id": {
+        "n": 10,
+        "median": 95,
+        "p90": 123,
+        "max": 168
+      },
+      "bootstrap_get_user": {
+        "n": 10,
+        "median": 3,
+        "p90": 10,
+        "max": 11
+      },
+      "bootstrap_list_memberships": {
+        "n": 10,
+        "median": 90,
+        "p90": 222,
+        "max": 724
+      },
+      "layout_bootstrap": {
+        "n": 10,
+        "median": 390,
+        "p90": 977,
+        "max": 1301
+      },
+      "layout_complete_before_first_byte": {
+        "n": 10,
+        "median": 799,
+        "p90": 1739,
+        "max": 2986
+      },
+      "layout_create_client": {
+        "n": 10,
+        "median": 52,
+        "p90": 174,
+        "max": 613
+      },
+      "layout_gates_parallel": {
+        "n": 10,
+        "median": 148,
+        "p90": 655,
+        "max": 1686
+      },
+      "layout_get_current_venue": {
+        "n": 10,
+        "median": 0,
+        "p90": 0,
+        "max": 0
+      },
+      "layout_get_user": {
+        "n": 10,
+        "median": 55,
+        "p90": 105,
+        "max": 202
+      },
+      "layout_start": {
+        "n": 10,
+        "median": 0,
+        "p90": 0,
+        "max": 0
+      }
+    },
+    "modes": [
+      "serial"
+    ]
+  },
+  "after": {
+    "n": 10,
+    "total_ms": {
+      "median": 469,
+      "p90": 980,
+      "max": 1381
+    },
+    "spans": {
+      "bootstrap_clear_stale": {
+        "n": 10,
+        "median": 87,
+        "p90": 90,
+        "max": 161
+      },
+      "bootstrap_consume_handoff": {
+        "n": 10,
+        "median": 67,
+        "p90": 83,
+        "max": 89
+      },
+      "bootstrap_get_user": {
+        "n": 10,
+        "median": 3,
+        "p90": 4,
+        "max": 8
+      },
+      "bootstrap_memberships_and_venue_id_parallel": {
+        "n": 10,
+        "median": 139,
+        "p90": 355,
+        "max": 389
+      },
+      "layout_bootstrap": {
+        "n": 10,
+        "median": 296,
+        "p90": 537,
+        "max": 541
+      },
+      "layout_complete_before_first_byte": {
+        "n": 10,
+        "median": 469,
+        "p90": 980,
+        "max": 1381
+      },
+      "layout_create_client": {
+        "n": 10,
+        "median": 35,
+        "p90": 100,
+        "max": 685
+      },
+      "layout_gates_parallel": {
+        "n": 10,
+        "median": 82,
+        "p90": 167,
+        "max": 327
+      },
+      "layout_get_current_venue": {
+        "n": 10,
+        "median": 0,
+        "p90": 0,
+        "max": 0
+      },
+      "layout_get_user": {
+        "n": 10,
+        "median": 54,
+        "p90": 62,
+        "max": 103
+      },
+      "layout_start": {
+        "n": 10,
+        "median": 0,
+        "p90": 0,
+        "max": 0
+      }
+    },
+    "modes": [
+      "parallel"
+    ]
+  }
+}

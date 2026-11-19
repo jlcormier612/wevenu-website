@@ -77,10 +77,12 @@ describe("one-time venue onboarding handoff", () => {
   });
 
   it("bootstrap consumes the handoff before ordinary classification", () => {
-    const consumeAt = bootstrap.indexOf("await consumeOnboardingHandoff()");
+    const consumeAt = bootstrap.indexOf("consumeOnboardingHandoff");
+    const clearAt = bootstrap.indexOf("clear_stale_active_venue_context");
     const classifyAt = bootstrap.indexOf("classifyActiveVenueCase({");
     assert.ok(consumeAt > 0);
-    assert.ok(classifyAt > consumeAt);
+    assert.ok(clearAt > consumeAt, "clear_stale must follow handoff");
+    assert.ok(classifyAt > clearAt, "classify must follow clear_stale");
     assert.match(bootstrap, /Does not change B_keep_valid/);
   });
 

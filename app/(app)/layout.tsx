@@ -8,6 +8,12 @@ import { createAdminClient } from "@/integrations/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/env";
 import { needsInitialOwnershipStep } from "@/lib/onboarding/initial-ownership";
 import { getActiveVenueMembership } from "@/lib/authorization/membership";
+import {
+  layoutFbExtra,
+  layoutFbSetVenue,
+  layoutFbTime,
+  withLayoutFirstByteTiming,
+} from "@/lib/shell/layout-first-byte-timing";
 import { bootstrapActiveVenueContext } from "@/lib/venue/active-context";
 import { getCurrentUserRole, getCurrentVenue } from "@/lib/venue/service";
 import { recordStaffActivity } from "@/lib/activation/service";
@@ -20,20 +26,27 @@ export const dynamic = "force-dynamic";
  * Ready to invite couples is a Setup Hub declaration, not a workspace wall.
  * White Glove customers without completed handoff/activation stay out of the
  * product workspace (waiting / intake is token-scoped outside this layout).
+ *
+ * NAV-PERF Wave 6: layout first-byte timing wraps the auth/venue path that
+ * blocks streaming; bootstrap parallelizes independent post-clear_stale reads.
  */
 export default async function WorkspaceLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  return withLayoutFirstByteTiming(() => workspaceLayoutInner(children));
+}
+
+async function workspaceLayoutInner(children: React.ReactNode) {
   if (!isSupabaseConfigured) {
     redirect("/login");
   }
 
-  const supabase = await createClient("venue");
+  const supabase = await layoutFbTime("layout_create_client", () => createClient("venue"));
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await layoutFbTime("layout_get_user", () => supabase.auth.getUser());
 
   if (!user) {
     redirect("/login");
@@ -55,7 +68,7 @@ export default async function WorkspaceLayout({
       return "";
     }
   })();
-  const boot = await bootstrapActiveVenueContext();
+  const boot = await layoutFbTime("layout_bootstrap", () => bootstrapActiveVenueContext());
 
   if (boot.status === "unauthenticated") {
     redirect("/login");
@@ -66,6 +79,7 @@ export default async function WorkspaceLayout({
     if (!pathname.startsWith("/onboarding/intake")) {
       redirect("/onboarding/intake");
     }
+    layoutFbExtra("layout_gate", "no_memberships");
     return <>{children}</>;
   }
   if (boot.status === "needs_selection") {
@@ -73,37 +87,43 @@ export default async function WorkspaceLayout({
     if (!pathname.startsWith("/select-venue")) {
       redirect("/select-venue");
     }
+    layoutFbExtra("layout_gate", "needs_selection");
     return <>{children}</>;
   }
 
-  const venue = await getCurrentVenue();
+  const venue = await layoutFbTime("layout_get_current_venue", () => getCurrentVenue());
   if (!venue) {
     // Context claimed ready but venue row missing — fail closed to picker/intake.
     redirect("/select-venue");
   }
+  layoutFbSetVenue(venue.id);
 
   // White Glove + membership + staff role: independent after venue is known.
   const admin = createAdminClient();
-  const [enrollmentResult, membership, staffRole] = await Promise.all([
-    admin
-      .from("venue_enrollments")
-      .select("onboarding_type, status, white_glove_status, intake_token, owner_email, owner_first_name, owner_last_name, purchaser_is_owner")
-      .eq("venue_id", venue.id)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle<{
-        onboarding_type: string;
-        status: string;
-        white_glove_status: string | null;
-        intake_token: string | null;
-        owner_email: string;
-        owner_first_name: string | null;
-        owner_last_name: string | null;
-        purchaser_is_owner: boolean | null;
-      }>(),
-    getActiveVenueMembership(),
-    getCurrentUserRole(),
-  ]);
+  const [enrollmentResult, membership, staffRole] = await layoutFbTime(
+    "layout_gates_parallel",
+    () =>
+      Promise.all([
+        admin
+          .from("venue_enrollments")
+          .select("onboarding_type, status, white_glove_status, intake_token, owner_email, owner_first_name, owner_last_name, purchaser_is_owner")
+          .eq("venue_id", venue.id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle<{
+            onboarding_type: string;
+            status: string;
+            white_glove_status: string | null;
+            intake_token: string | null;
+            owner_email: string;
+            owner_first_name: string | null;
+            owner_last_name: string | null;
+            purchaser_is_owner: boolean | null;
+          }>(),
+        getActiveVenueMembership(),
+        getCurrentUserRole(),
+      ]),
+  );
   const enrollment = enrollmentResult.data;
 
   if (
@@ -133,12 +153,14 @@ export default async function WorkspaceLayout({
   }
 
   if (enrollment && membership && !pathname.startsWith("/onboarding/ownership")) {
-    const { count: ownerCount } = await admin
-      .from("venue_staff")
-      .select("id", { count: "exact", head: true })
-      .eq("venue_id", venue.id)
-      .eq("is_active", true)
-      .or("is_owner.eq.true,owner_invite_pending.eq.true");
+    const { count: ownerCount } = await layoutFbTime("layout_owner_count", () =>
+      admin
+        .from("venue_staff")
+        .select("id", { count: "exact", head: true })
+        .eq("venue_id", venue.id)
+        .eq("is_active", true)
+        .or("is_owner.eq.true,owner_invite_pending.eq.true"),
+    );
     if (
       needsInitialOwnershipStep({
         actorEmail: membership.email,
@@ -171,9 +193,11 @@ export default async function WorkspaceLayout({
   // The Documents viewer frames print pages; they must render without the
   // sidebar and header around them.
   if (headerList.get("sec-fetch-dest") === "iframe") {
+    layoutFbExtra("layout_gate", "iframe");
     return <>{children}</>;
   }
 
+  layoutFbExtra("layout_gate", "workspace_shell");
   return (
     <>
       <BillingAttentionBanner />
