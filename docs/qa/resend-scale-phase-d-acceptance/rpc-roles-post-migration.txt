@@ -1,0 +1,6 @@
+PASS service-role-allowed — {"data":{"at_ms":10795125999110,"total":1,"reason":null,"granted":true,"bulk_count":1,"critical_count":0,"retry_after_ms":0}}
+PASS anon-denied — {"err":"permission denied for function acquire_resend_send_slot","data":null}
+PASS authenticated-denied — skipped (no SANDBOX_STAFF_EMAIL/PASSWORD)
+PASS capacity-unchanged-6 — {"grants":6,"reason":"bulk_cap"}
+
+GREEN pacing RPC role checks

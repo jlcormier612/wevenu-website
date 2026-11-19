@@ -1,0 +1,24 @@
+{
+  "merge_sha": "f143df944b322518afa670d7d58e51ef0b18f2e6",
+  "pr_108_head": "7b9728066e0f0da6bc1f28fe42d01370369f223a",
+  "migration": "20270203120000_resend_pacing_revoke_client_roles.sql",
+  "migration_run": "44625106512",
+  "deploy_run": "44625430288",
+  "deployed_sha": "f143df944b322518afa670d7d58e51ef0b18f2e6",
+  "ecs": {
+    "venue-app": ":1235",
+    "marketing": ":1213",
+    "workspace": ":1214",
+    "scheduler": ":1162"
+  },
+  "ops_alert_lambda": "unchanged ZF2kMkD4bu7IsUn8RxUBC2ecq1MJg7w20oO3CIutXfA=",
+  "acceptance": "GREEN",
+  "run": "pdmwo468og",
+  "pr_106": "OPEN",
+  "production": "untouched",
+  "primary_dirty": 746,
+  "recommendation": {
+    "resend_scale": "GREEN_CLOSED_CANDIDATE_AWAITING_FOUNDER",
+    "pr_106": "READY_TO_FINALIZE_AFTER_FOUNDER_REVIEW"
+  }
+}

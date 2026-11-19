@@ -1,0 +1,223 @@
+{
+  "at": "2026-11-19T22:20:27.456Z",
+  "expect_sha": "f143df944b322518afa670d7d58e51ef0b18f2e6",
+  "app": "https://app.sandbox.hellotocheers.com",
+  "run": "pdmwo45j4o",
+  "pass": false,
+  "bySection": {
+    "A": {
+      "pass": 8,
+      "fail": 0
+    },
+    "B": {
+      "pass": 8,
+      "fail": 0
+    },
+    "C": {
+      "pass": 6,
+      "fail": 0
+    },
+    "D": {
+      "pass": 8,
+      "fail": 1
+    },
+    "Z": {
+      "pass": 1,
+      "fail": 0
+    }
+  },
+  "checks": [
+    {
+      "section": "A",
+      "name": "api-success",
+      "ok": true,
+      "detail": "{\"http\":200,\"sent\":1,\"deferred\":0,\"failed\":0,\"sentGuestIds\":[\"000ae39f-78b7-470a-9575-63a7cabf5f99\"]}"
+    },
+    {
+      "section": "A",
+      "name": "guest-status-sent",
+      "ok": true,
+      "detail": "{\"id\":\"000ae39f-78b7-470a-9575-63a7cabf5f99\",\"invitation_status\":\"sent\",\"rsvp_sent_at\":\"2026-11-19T22:20:10.860314+00:00\"}"
+    },
+    {
+      "section": "A",
+      "name": "invitation-email-row",
+      "ok": true,
+      "detail": "rows=1"
+    },
+    {
+      "section": "A",
+      "name": "provider-id-present",
+      "ok": true,
+      "detail": "provider_id=01a1f5e5-58a…"
+    },
+    {
+      "section": "A",
+      "name": "resend-delivered",
+      "ok": true,
+      "detail": "http=200 hits=1"
+    },
+    {
+      "section": "A",
+      "name": "ui-shows-guest",
+      "ok": true,
+      "detail": "guest list"
+    },
+    {
+      "section": "A",
+      "name": "ui-shows-sent",
+      "ok": true,
+      "detail": "Sent label near Alpha"
+    },
+    {
+      "section": "A",
+      "name": "ui-screenshot",
+      "ok": true,
+      "detail": "/Users/jensmac/Desktop/HTC-RESEND-SCALE-PHASE-D/phase-d-guests-pdmwo45j4o.png"
+    },
+    {
+      "section": "B",
+      "name": "same-attempt-api-ok",
+      "ok": true,
+      "detail": "{\"http\":200,\"sent\":1,\"deferred\":0}"
+    },
+    {
+      "section": "B",
+      "name": "same-attempt-no-duplicate-resend",
+      "ok": true,
+      "detail": "before=1 after=1"
+    },
+    {
+      "section": "B",
+      "name": "retry-restored-sent",
+      "ok": true,
+      "detail": "{\"invitation_status\":\"sent\",\"rsvp_sent_at\":\"2026-11-19T22:20:20.067948+00:00\"}"
+    },
+    {
+      "section": "B",
+      "name": "receipt-found-for-attempt",
+      "ok": true,
+      "detail": "{\"status\":\"found\",\"id\":\"d799b24b-01a2-4e38-a191-1054b313a63e\",\"providerId\":\"01a1f5e5-58a9-7894-b005-2540d8e6a104\"}"
+    },
+    {
+      "section": "B",
+      "name": "direct-recovery-ok",
+      "ok": true,
+      "detail": "{\"ok\":true,\"persisted\":1}"
+    },
+    {
+      "section": "B",
+      "name": "direct-recovery-guest-sent",
+      "ok": true,
+      "detail": "{\"invitation_status\":\"sent\"}"
+    },
+    {
+      "section": "B",
+      "name": "direct-recovery-provider-receipt",
+      "ok": true,
+      "detail": "sim_pdmwo45j4o_beta"
+    },
+    {
+      "section": "B",
+      "name": "recovery-then-api-no-resend",
+      "ok": true,
+      "detail": "{\"api\":{\"http\":200,\"sent\":1},\"resendBefore\":0,\"resendAfter\":0}"
+    },
+    {
+      "section": "C",
+      "name": "next-day-reminder-not-suppressed",
+      "ok": true,
+      "detail": "{\"http\":200,\"sent\":1,\"deferred\":0,\"failed\":0}"
+    },
+    {
+      "section": "C",
+      "name": "yesterday-receipt-untouched",
+      "ok": true,
+      "detail": "yday_rows=1"
+    },
+    {
+      "section": "C",
+      "name": "today-reminder-row",
+      "ok": true,
+      "detail": "today_rows=1"
+    },
+    {
+      "section": "C",
+      "name": "same-day-reminder-retry-ok",
+      "ok": true,
+      "detail": "{\"http\":200,\"sent\":1,\"resendHits\":1}"
+    },
+    {
+      "section": "C",
+      "name": "next-day-update-not-suppressed",
+      "ok": true,
+      "detail": "{\"http\":200,\"sent\":1,\"failed\":0}"
+    },
+    {
+      "section": "C",
+      "name": "historical-invitation-preserved",
+      "ok": true,
+      "detail": "invitation_receipts=1"
+    },
+    {
+      "section": "D",
+      "name": "bulk-fill-6",
+      "ok": false,
+      "detail": "granted=5 wallNow=1795126825913"
+    },
+    {
+      "section": "D",
+      "name": "bulk-deferred",
+      "ok": true,
+      "detail": "{\"http\":200,\"sent\":0,\"deferred\":1,\"message\":\"0 sent, 1 deferred (delivery capacity full — retry those guests), 0 failed.\"}"
+    },
+    {
+      "section": "D",
+      "name": "deferred-not-marked-sent",
+      "ok": true,
+      "detail": "{\"invitation_status\":\"ready\",\"rsvp_sent_at\":null}"
+    },
+    {
+      "section": "D",
+      "name": "invalid-token",
+      "ok": true,
+      "detail": "{\"ok\":false,\"error\":\"Invalid token.\",\"_http\":401}"
+    },
+    {
+      "section": "D",
+      "name": "expired-token",
+      "ok": true,
+      "detail": "{\"ok\":false,\"error\":\"Invalid token.\",\"_http\":401}"
+    },
+    {
+      "section": "D",
+      "name": "cross-client-rejected",
+      "ok": true,
+      "detail": "{\"sent\":0,\"errors\":[\"No guests with email addresses found.\"]}"
+    },
+    {
+      "section": "D",
+      "name": "cross-venue-rejected",
+      "ok": true,
+      "detail": "{\"sent\":0}"
+    },
+    {
+      "section": "D",
+      "name": "anon-pacing-denied",
+      "ok": true,
+      "detail": "permission denied for function acquire_resend_send_slot"
+    },
+    {
+      "section": "D",
+      "name": "critical-slot-works",
+      "ok": true,
+      "detail": "{\"at_ms\":8795126810533,\"total\":1,\"reason\":null,\"granted\":true,\"bulk_count\":0,\"critical_count\":1,\"retry_after_ms\":0}"
+    },
+    {
+      "section": "Z",
+      "name": "cleanup",
+      "ok": true,
+      "detail": "removed 6 guests + sessions"
+    }
+  ]
+}
