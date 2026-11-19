@@ -26,8 +26,13 @@ const EMAIL = "jennifer@hellotocheers.com";
 const LEAD_ID = process.env.NAV_LEAD_ID ?? "ab37d13c-5802-4b51-b4b8-31972da26393";
 const EVENT_ID = process.env.NAV_EVENT_ID ?? "74a2487d-40fc-418f-a6bc-54abef28b6e1";
 
-const OUT = resolve("docs/qa/launch-performance/nav-perf-baseline");
-const DESKTOP = join(homedir(), "Desktop/HTC-NAV-PERF-BASELINE");
+const OUT = resolve(
+  process.env.NAV_PERF_OUT ?? "docs/qa/launch-performance/nav-perf-baseline",
+);
+const DESKTOP = join(
+  homedir(),
+  process.env.NAV_PERF_DESKTOP ?? "Desktop/HTC-NAV-PERF-BASELINE",
+);
 mkdirSync(OUT, { recursive: true });
 mkdirSync(DESKTOP, { recursive: true });
 

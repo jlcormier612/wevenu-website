@@ -1,0 +1,862 @@
+{
+  "measuredAt": "2026-11-19T01:34:36.624Z",
+  "expectedSha": "a38250946044e786e894d9d449ee6d5ab1f5e016",
+  "venue": "Jen's Fancy Venue",
+  "leadId": "ab37d13c-5802-4b51-b4b8-31972da26393",
+  "eventId": "74a2487d-40fc-418f-a6bc-54abef28b6e1",
+  "samples": [
+    {
+      "route": "dashboard",
+      "mode": "cold",
+      "url": "https://app.sandbox.hellotocheers.com/dashboard",
+      "usefulSelector": "[data-testid=\"dashboard-streaming-root\"]",
+      "clickOrGotoStartMs": 0,
+      "domContentLoadedMs": 5915,
+      "usefulVisibleMs": 5933,
+      "interactiveMs": 5933,
+      "documentResponseMs": 5914,
+      "transferSizeApprox": 159433,
+      "requestCount": 37,
+      "supabaseRequestCount": 1,
+      "nextDataOrRscCount": 30,
+      "openaiOrLuvAskCount": 0,
+      "longestRequests": [
+        {
+          "url": "https://app.sandbox.hellotocheers.com/dashboard",
+          "durationMs": 4414,
+          "resourceType": "document"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/brand/hello-to-cheers-logo-primary-transparent.png",
+          "durationMs": 70,
+          "resourceType": "image"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/_next/static/chunks/24n2qn1cckv4v.js?dpl=a38250946044e786e894d9d449ee6d5ab1f5e016",
+          "durationMs": 52,
+          "resourceType": "script"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/_next/static/chunks/2sf087v-yx2ne.js?dpl=a38250946044e786e894d9d449ee6d5ab1f5e016",
+          "durationMs": 52,
+          "resourceType": "script"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/_next/static/chunks/123o9urlj9zqs.js?dpl=a38250946044e786e894d9d449ee6d5ab1f5e016",
+          "durationMs": 52,
+          "resourceType": "script"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/_next/static/chunks/35mpmh34vn-jo.js?dpl=a38250946044e786e894d9d449ee6d5ab1f5e016",
+          "durationMs": 52,
+          "resourceType": "script"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/_next/static/chunks/2p--u0_1e17uc.js?dpl=a38250946044e786e894d9d449ee6d5ab1f5e016",
+          "durationMs": 52,
+          "resourceType": "script"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/_next/static/chunks/3fyg6mayw1t0o.js?dpl=a38250946044e786e894d9d449ee6d5ab1f5e016",
+          "durationMs": 52,
+          "resourceType": "script"
+        }
+      ],
+      "timedOut": false
+    },
+    {
+      "route": "leads_list",
+      "mode": "cold",
+      "url": "https://app.sandbox.hellotocheers.com/leads",
+      "usefulSelector": "main a[href*=\"/leads/\"]",
+      "clickOrGotoStartMs": 0,
+      "domContentLoadedMs": 3515,
+      "usefulVisibleMs": 3667,
+      "interactiveMs": 3667,
+      "documentResponseMs": 3511,
+      "transferSizeApprox": 159433,
+      "requestCount": 39,
+      "supabaseRequestCount": 1,
+      "nextDataOrRscCount": 34,
+      "openaiOrLuvAskCount": 0,
+      "longestRequests": [
+        {
+          "url": "https://app.sandbox.hellotocheers.com/api/navigation/attention",
+          "durationMs": 1585,
+          "resourceType": "fetch"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/leads",
+          "durationMs": 1346,
+          "resourceType": "document"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/api/notifications",
+          "durationMs": 1303,
+          "resourceType": "fetch"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/_next/static/chunks/0v_jf_k-a47j9.js?dpl=a38250946044e786e894d9d449ee6d5ab1f5e016",
+          "durationMs": 56,
+          "resourceType": "script"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/_next/static/chunks/00rp2qbfdtuoo.js?dpl=a38250946044e786e894d9d449ee6d5ab1f5e016",
+          "durationMs": 56,
+          "resourceType": "script"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/_next/static/chunks/0je7x-uagwj0s.js?dpl=a38250946044e786e894d9d449ee6d5ab1f5e016",
+          "durationMs": 56,
+          "resourceType": "script"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/_next/static/chunks/1rm737diirj6u.js?dpl=a38250946044e786e894d9d449ee6d5ab1f5e016",
+          "durationMs": 37,
+          "resourceType": "script"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/_next/static/chunks/31i4ijh18mpuo.js?dpl=a38250946044e786e894d9d449ee6d5ab1f5e016",
+          "durationMs": 37,
+          "resourceType": "script"
+        }
+      ],
+      "timedOut": false
+    },
+    {
+      "route": "lead_workspace",
+      "mode": "cold",
+      "url": "https://app.sandbox.hellotocheers.com/leads/ab37d13c-5802-4b51-b4b8-31972da26393",
+      "usefulSelector": "main [role=\"tablist\"]",
+      "clickOrGotoStartMs": 0,
+      "domContentLoadedMs": 1741,
+      "usefulVisibleMs": 1815,
+      "interactiveMs": 1815,
+      "documentResponseMs": 1738,
+      "transferSizeApprox": 159433,
+      "requestCount": 44,
+      "supabaseRequestCount": 1,
+      "nextDataOrRscCount": 38,
+      "openaiOrLuvAskCount": 0,
+      "longestRequests": [
+        {
+          "url": "https://app.sandbox.hellotocheers.com/leads/ab37d13c-5802-4b51-b4b8-31972da26393",
+          "durationMs": 867,
+          "resourceType": "document"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/api/navigation/attention",
+          "durationMs": 727,
+          "resourceType": "fetch"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/api/notifications",
+          "durationMs": 288,
+          "resourceType": "fetch"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/_next/static/chunks/2tgwq8-999nc5.js?dpl=a38250946044e786e894d9d449ee6d5ab1f5e016",
+          "durationMs": 157,
+          "resourceType": "script"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/_next/static/chunks/1wblt92wj9teq.js?dpl=a38250946044e786e894d9d449ee6d5ab1f5e016",
+          "durationMs": 151,
+          "resourceType": "script"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/_next/static/chunks/3a5ejmwfdvjlc.js?dpl=a38250946044e786e894d9d449ee6d5ab1f5e016",
+          "durationMs": 150,
+          "resourceType": "script"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/_next/static/chunks/2whd4560j9b4z.js?dpl=a38250946044e786e894d9d449ee6d5ab1f5e016",
+          "durationMs": 148,
+          "resourceType": "script"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/_next/static/chunks/01_ory6xb3g86.js?dpl=a38250946044e786e894d9d449ee6d5ab1f5e016",
+          "durationMs": 75,
+          "resourceType": "script"
+        }
+      ],
+      "timedOut": false
+    },
+    {
+      "route": "events_list",
+      "mode": "cold",
+      "url": "https://app.sandbox.hellotocheers.com/events",
+      "usefulSelector": "main a[href*=\"/events/\"], main a[href*=\"/clients/\"]",
+      "clickOrGotoStartMs": 0,
+      "domContentLoadedMs": 800,
+      "usefulVisibleMs": 2503,
+      "interactiveMs": 2503,
+      "documentResponseMs": 1485,
+      "transferSizeApprox": 301610,
+      "requestCount": 70,
+      "supabaseRequestCount": 2,
+      "nextDataOrRscCount": 59,
+      "openaiOrLuvAskCount": 0,
+      "longestRequests": [
+        {
+          "url": "https://app.sandbox.hellotocheers.com/clients",
+          "durationMs": 848,
+          "resourceType": "document"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/api/navigation/attention",
+          "durationMs": 808,
+          "resourceType": "fetch"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/events",
+          "durationMs": 784,
+          "resourceType": "document"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/api/notifications",
+          "durationMs": 485,
+          "resourceType": "fetch"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/brand/hello-to-cheers-logo-primary-transparent.png",
+          "durationMs": 46,
+          "resourceType": "image"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/_next/static/chunks/43oo67ja7eins.js?dpl=a38250946044e786e894d9d449ee6d5ab1f5e016",
+          "durationMs": 33,
+          "resourceType": "script"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/_next/static/chunks/3rri5qdqgh0qh.js?dpl=a38250946044e786e894d9d449ee6d5ab1f5e016",
+          "durationMs": 33,
+          "resourceType": "script"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/brand/hello-to-cheers-logo-primary-transparent.png",
+          "durationMs": 23,
+          "resourceType": "image"
+        }
+      ],
+      "timedOut": false
+    },
+    {
+      "route": "event_workspace",
+      "mode": "cold",
+      "url": "https://app.sandbox.hellotocheers.com/events/74a2487d-40fc-418f-a6bc-54abef28b6e1",
+      "usefulSelector": "main",
+      "clickOrGotoStartMs": 0,
+      "domContentLoadedMs": 2007,
+      "usefulVisibleMs": 2586,
+      "interactiveMs": 2586,
+      "documentResponseMs": 2004,
+      "transferSizeApprox": 302245,
+      "requestCount": 72,
+      "supabaseRequestCount": 2,
+      "nextDataOrRscCount": 64,
+      "openaiOrLuvAskCount": 0,
+      "longestRequests": [
+        {
+          "url": "https://app.sandbox.hellotocheers.com/clients/49aba826-0bd3-4891-ac9f-02a18b2b6962?eventId=74a2487d-40fc-418f-a6bc-54abef28b6e1",
+          "durationMs": 1314,
+          "resourceType": "document"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/events/74a2487d-40fc-418f-a6bc-54abef28b6e1",
+          "durationMs": 550,
+          "resourceType": "document"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/_next/static/chunks/0cgtbbketzush.js?dpl=a38250946044e786e894d9d449ee6d5ab1f5e016",
+          "durationMs": 194,
+          "resourceType": "script"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/_next/static/chunks/2_al202yk5zmc.js?dpl=a38250946044e786e894d9d449ee6d5ab1f5e016",
+          "durationMs": 194,
+          "resourceType": "script"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/_next/static/chunks/31yw619waxi-m.js?dpl=a38250946044e786e894d9d449ee6d5ab1f5e016",
+          "durationMs": 174,
+          "resourceType": "script"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/_next/static/chunks/2jk0dhenlp46l.js?dpl=a38250946044e786e894d9d449ee6d5ab1f5e016",
+          "durationMs": 173,
+          "resourceType": "script"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/_next/static/chunks/0vqml0foc-tge.js?dpl=a38250946044e786e894d9d449ee6d5ab1f5e016",
+          "durationMs": 173,
+          "resourceType": "script"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/_next/static/chunks/0u13cbxi3tcz6.js?dpl=a38250946044e786e894d9d449ee6d5ab1f5e016",
+          "durationMs": 166,
+          "resourceType": "script"
+        }
+      ],
+      "timedOut": false
+    },
+    {
+      "route": "settings",
+      "mode": "cold",
+      "url": "https://app.sandbox.hellotocheers.com/settings",
+      "usefulSelector": "main",
+      "clickOrGotoStartMs": 0,
+      "domContentLoadedMs": 1605,
+      "usefulVisibleMs": 1658,
+      "interactiveMs": 1658,
+      "documentResponseMs": 1556,
+      "transferSizeApprox": 159433,
+      "requestCount": 30,
+      "supabaseRequestCount": 1,
+      "nextDataOrRscCount": 27,
+      "openaiOrLuvAskCount": 0,
+      "longestRequests": [
+        {
+          "url": "https://app.sandbox.hellotocheers.com/settings",
+          "durationMs": 1555,
+          "resourceType": "document"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/brand/hello-to-cheers-logo-primary-transparent.png",
+          "durationMs": 51,
+          "resourceType": "image"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/_next/static/chunks/24n2qn1cckv4v.js?dpl=a38250946044e786e894d9d449ee6d5ab1f5e016",
+          "durationMs": 50,
+          "resourceType": "script"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/_next/static/chunks/3oxlv8iimm-y2.js?dpl=a38250946044e786e894d9d449ee6d5ab1f5e016",
+          "durationMs": 50,
+          "resourceType": "script"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/_next/static/chunks/2sf087v-yx2ne.js?dpl=a38250946044e786e894d9d449ee6d5ab1f5e016",
+          "durationMs": 50,
+          "resourceType": "script"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/_next/static/chunks/123o9urlj9zqs.js?dpl=a38250946044e786e894d9d449ee6d5ab1f5e016",
+          "durationMs": 50,
+          "resourceType": "script"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/_next/static/chunks/35mpmh34vn-jo.js?dpl=a38250946044e786e894d9d449ee6d5ab1f5e016",
+          "durationMs": 50,
+          "resourceType": "script"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/_next/static/chunks/2p--u0_1e17uc.js?dpl=a38250946044e786e894d9d449ee6d5ab1f5e016",
+          "durationMs": 50,
+          "resourceType": "script"
+        }
+      ],
+      "timedOut": false
+    },
+    {
+      "route": "setup_hub",
+      "mode": "cold",
+      "url": "https://app.sandbox.hellotocheers.com/setup-hub",
+      "usefulSelector": "main",
+      "clickOrGotoStartMs": 0,
+      "domContentLoadedMs": 803,
+      "usefulVisibleMs": 895,
+      "interactiveMs": 895,
+      "documentResponseMs": 788,
+      "transferSizeApprox": 159433,
+      "requestCount": 31,
+      "supabaseRequestCount": 1,
+      "nextDataOrRscCount": 28,
+      "openaiOrLuvAskCount": 0,
+      "longestRequests": [
+        {
+          "url": "https://app.sandbox.hellotocheers.com/setup-hub",
+          "durationMs": 785,
+          "resourceType": "document"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/_next/static/chunks/3nakjgnv011xi.js?dpl=a38250946044e786e894d9d449ee6d5ab1f5e016",
+          "durationMs": 58,
+          "resourceType": "script"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/_next/static/chunks/31i4ijh18mpuo.js?dpl=a38250946044e786e894d9d449ee6d5ab1f5e016",
+          "durationMs": 55,
+          "resourceType": "script"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/_next/static/chunks/24n2qn1cckv4v.js?dpl=a38250946044e786e894d9d449ee6d5ab1f5e016",
+          "durationMs": 55,
+          "resourceType": "script"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/_next/static/chunks/2cmzao5avij99.js?dpl=a38250946044e786e894d9d449ee6d5ab1f5e016",
+          "durationMs": 55,
+          "resourceType": "script"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/_next/static/chunks/turbopack-0hl8amrq-f2mf.js?dpl=a38250946044e786e894d9d449ee6d5ab1f5e016",
+          "durationMs": 55,
+          "resourceType": "script"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/_next/static/chunks/35so_4do1s35b.js?dpl=a38250946044e786e894d9d449ee6d5ab1f5e016",
+          "durationMs": 55,
+          "resourceType": "script"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/_next/static/chunks/3wp4_j__a50iu.js?dpl=a38250946044e786e894d9d449ee6d5ab1f5e016",
+          "durationMs": 55,
+          "resourceType": "script"
+        }
+      ],
+      "timedOut": false
+    },
+    {
+      "route": "dashboard",
+      "mode": "warm",
+      "url": "https://app.sandbox.hellotocheers.com/dashboard",
+      "usefulSelector": "[data-testid=\"dashboard-streaming-root\"]",
+      "clickOrGotoStartMs": 0,
+      "domContentLoadedMs": 3398,
+      "usefulVisibleMs": 3412,
+      "interactiveMs": 3412,
+      "documentResponseMs": 3394,
+      "transferSizeApprox": 142177,
+      "requestCount": 46,
+      "supabaseRequestCount": 1,
+      "nextDataOrRscCount": 36,
+      "openaiOrLuvAskCount": 0,
+      "longestRequests": [
+        {
+          "url": "https://app.sandbox.hellotocheers.com/dashboard",
+          "durationMs": 2194,
+          "resourceType": "document"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/api/notifications",
+          "durationMs": 1069,
+          "resourceType": "fetch"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/leads/95629b46-e721-469c-b91a-881c37682832?tab=tasks&_rsc=IOe_mmh6jQxP6_Ru",
+          "durationMs": 786,
+          "resourceType": "fetch"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/leads/83190942-f0ff-4b2a-8225-f0d68dda7892?tab=tasks&_rsc=IOe_mmh6jQxP6_Ru",
+          "durationMs": 731,
+          "resourceType": "fetch"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/leads/9bc5e47b-972c-442e-b622-76614bad99ff?tab=tasks&_rsc=IOe_mmh6jQxP6_Ru",
+          "durationMs": 620,
+          "resourceType": "fetch"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/brand/hello-to-cheers-logo-primary-transparent.png",
+          "durationMs": 184,
+          "resourceType": "image"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/_next/static/media/CormorantGaramond%5Bwght%5D-s.p.0vov1dgqurkav.ttf?dpl=a38250946044e786e894d9d449ee6d5ab1f5e016",
+          "durationMs": 2,
+          "resourceType": "font"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/_next/static/media/47df9ba1c7236d3b-s.p.2adce56gso3ku.woff2?dpl=a38250946044e786e894d9d449ee6d5ab1f5e016",
+          "durationMs": 1,
+          "resourceType": "font"
+        }
+      ],
+      "timedOut": false
+    },
+    {
+      "route": "leads_list",
+      "mode": "warm",
+      "url": "https://app.sandbox.hellotocheers.com/leads",
+      "usefulSelector": "main a[href*=\"/leads/\"]",
+      "clickOrGotoStartMs": 0,
+      "domContentLoadedMs": 2366,
+      "usefulVisibleMs": 2469,
+      "interactiveMs": 2469,
+      "documentResponseMs": 2363,
+      "transferSizeApprox": 142177,
+      "requestCount": 45,
+      "supabaseRequestCount": 1,
+      "nextDataOrRscCount": 40,
+      "openaiOrLuvAskCount": 0,
+      "longestRequests": [
+        {
+          "url": "https://app.sandbox.hellotocheers.com/api/navigation/attention",
+          "durationMs": 1131,
+          "resourceType": "fetch"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/api/notifications",
+          "durationMs": 962,
+          "resourceType": "fetch"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/leads",
+          "durationMs": 748,
+          "resourceType": "document"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/leads/95629b46-e721-469c-b91a-881c37682832?_rsc=j79Vj4yH5aoiafxS",
+          "durationMs": 397,
+          "resourceType": "fetch"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/leads/d4b97d1c-6ccf-4130-be88-cc34de6088b5?_rsc=j79Vj4yH5aoiafxS",
+          "durationMs": 384,
+          "resourceType": "fetch"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/leads/83190942-f0ff-4b2a-8225-f0d68dda7892?_rsc=j79Vj4yH5aoiafxS",
+          "durationMs": 383,
+          "resourceType": "fetch"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/leads/9bc5e47b-972c-442e-b622-76614bad99ff?_rsc=j79Vj4yH5aoiafxS",
+          "durationMs": 376,
+          "resourceType": "fetch"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/brand/hello-to-cheers-logo-primary-transparent.png",
+          "durationMs": 25,
+          "resourceType": "image"
+        }
+      ],
+      "timedOut": false
+    },
+    {
+      "route": "lead_workspace",
+      "mode": "warm",
+      "url": "https://app.sandbox.hellotocheers.com/leads/ab37d13c-5802-4b51-b4b8-31972da26393",
+      "usefulSelector": "main [role=\"tablist\"]",
+      "clickOrGotoStartMs": 0,
+      "domContentLoadedMs": 2215,
+      "usefulVisibleMs": 2343,
+      "interactiveMs": 2343,
+      "documentResponseMs": 2211,
+      "transferSizeApprox": 142177,
+      "requestCount": 52,
+      "supabaseRequestCount": 1,
+      "nextDataOrRscCount": 45,
+      "openaiOrLuvAskCount": 0,
+      "longestRequests": [
+        {
+          "url": "https://app.sandbox.hellotocheers.com/leads/ab37d13c-5802-4b51-b4b8-31972da26393",
+          "durationMs": 1505,
+          "resourceType": "document"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/leads/03789c37-2a42-4fc0-8de8-7d8bc2aee51b?_rsc=Kez35faBD_1Rl9F_",
+          "durationMs": 730,
+          "resourceType": "fetch"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/api/notifications",
+          "durationMs": 608,
+          "resourceType": "fetch"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/leads/ba96423d-7d7d-4aa2-8040-4be0d96d4f8f?_rsc=JvpUaZLSa7oiMo2C",
+          "durationMs": 586,
+          "resourceType": "fetch"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/leads/a631df82-2560-49be-b8be-4871d3467f5b?_rsc=8zO_ZUNslBz0Ge_r",
+          "durationMs": 544,
+          "resourceType": "fetch"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/brand/hello-to-cheers-logo-primary-transparent.png",
+          "durationMs": 18,
+          "resourceType": "image"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/_next/static/chunks/33eys__058ypj.js?dpl=a38250946044e786e894d9d449ee6d5ab1f5e016",
+          "durationMs": 8,
+          "resourceType": "script"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/_next/static/chunks/24f1wz3ke3i8f.js?dpl=a38250946044e786e894d9d449ee6d5ab1f5e016",
+          "durationMs": 8,
+          "resourceType": "script"
+        }
+      ],
+      "timedOut": false
+    },
+    {
+      "route": "events_list",
+      "mode": "warm",
+      "url": "https://app.sandbox.hellotocheers.com/events",
+      "usefulSelector": "main a[href*=\"/events/\"], main a[href*=\"/clients/\"]",
+      "clickOrGotoStartMs": 0,
+      "domContentLoadedMs": 646,
+      "usefulVisibleMs": 2238,
+      "interactiveMs": 2238,
+      "documentResponseMs": 1205,
+      "transferSizeApprox": 284354,
+      "requestCount": 72,
+      "supabaseRequestCount": 2,
+      "nextDataOrRscCount": 60,
+      "openaiOrLuvAskCount": 0,
+      "longestRequests": [
+        {
+          "url": "https://app.sandbox.hellotocheers.com/clients",
+          "durationMs": 749,
+          "resourceType": "document"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/api/navigation/attention",
+          "durationMs": 668,
+          "resourceType": "fetch"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/events",
+          "durationMs": 632,
+          "resourceType": "document"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/api/notifications",
+          "durationMs": 600,
+          "resourceType": "fetch"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/api/notifications",
+          "durationMs": 404,
+          "resourceType": "fetch"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/brand/hello-to-cheers-logo-primary-transparent.png",
+          "durationMs": 33,
+          "resourceType": "image"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/brand/hello-to-cheers-logo-primary-transparent.png",
+          "durationMs": 23,
+          "resourceType": "image"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/_next/static/media/CormorantGaramond%5Bwght%5D-s.p.0vov1dgqurkav.ttf?dpl=a38250946044e786e894d9d449ee6d5ab1f5e016",
+          "durationMs": 6,
+          "resourceType": "font"
+        }
+      ],
+      "timedOut": false
+    },
+    {
+      "route": "event_workspace",
+      "mode": "warm",
+      "url": "https://app.sandbox.hellotocheers.com/events/74a2487d-40fc-418f-a6bc-54abef28b6e1",
+      "usefulSelector": "main",
+      "clickOrGotoStartMs": 0,
+      "domContentLoadedMs": 2000,
+      "usefulVisibleMs": 3508,
+      "interactiveMs": 3508,
+      "documentResponseMs": 1994,
+      "transferSizeApprox": 284989,
+      "requestCount": 77,
+      "supabaseRequestCount": 2,
+      "nextDataOrRscCount": 67,
+      "openaiOrLuvAskCount": 0,
+      "longestRequests": [
+        {
+          "url": "https://app.sandbox.hellotocheers.com/events/74a2487d-40fc-418f-a6bc-54abef28b6e1",
+          "durationMs": 1445,
+          "resourceType": "document"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/clients/49aba826-0bd3-4891-ac9f-02a18b2b6962?eventId=74a2487d-40fc-418f-a6bc-54abef28b6e1",
+          "durationMs": 1413,
+          "resourceType": "document"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/api/notifications",
+          "durationMs": 408,
+          "resourceType": "fetch"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/setup-hub/bring-your-business?stage=clients&_rsc=xcbOjrr-RCmFDb7T",
+          "durationMs": 264,
+          "resourceType": "fetch"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/setup-hub/bring-your-business?_rsc=J7zho40XcKFpLFOY",
+          "durationMs": 236,
+          "resourceType": "fetch"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/brand/hello-to-cheers-logo-primary-transparent.png",
+          "durationMs": 70,
+          "resourceType": "image"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/brand/hello-to-cheers-logo-primary-transparent.png",
+          "durationMs": 18,
+          "resourceType": "image"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/_next/static/chunks/0cgtbbketzush.js?dpl=a38250946044e786e894d9d449ee6d5ab1f5e016",
+          "durationMs": 8,
+          "resourceType": "script"
+        }
+      ],
+      "timedOut": false
+    },
+    {
+      "route": "settings",
+      "mode": "warm",
+      "url": "https://app.sandbox.hellotocheers.com/settings",
+      "usefulSelector": "main",
+      "clickOrGotoStartMs": 0,
+      "domContentLoadedMs": 681,
+      "usefulVisibleMs": 715,
+      "interactiveMs": 715,
+      "documentResponseMs": 666,
+      "transferSizeApprox": 142177,
+      "requestCount": 36,
+      "supabaseRequestCount": 1,
+      "nextDataOrRscCount": 31,
+      "openaiOrLuvAskCount": 0,
+      "longestRequests": [
+        {
+          "url": "https://app.sandbox.hellotocheers.com/settings",
+          "durationMs": 666,
+          "resourceType": "document"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/brand/hello-to-cheers-logo-primary-transparent.png",
+          "durationMs": 24,
+          "resourceType": "image"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/_next/static/media/CormorantGaramond%5Bwght%5D-s.p.0vov1dgqurkav.ttf?dpl=a38250946044e786e894d9d449ee6d5ab1f5e016",
+          "durationMs": 4,
+          "resourceType": "font"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/_next/static/media/47df9ba1c7236d3b-s.p.2adce56gso3ku.woff2?dpl=a38250946044e786e894d9d449ee6d5ab1f5e016",
+          "durationMs": 3,
+          "resourceType": "font"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/_next/static/media/797e433ab948586e-s.p.0r6juujl39pe6.woff2?dpl=a38250946044e786e894d9d449ee6d5ab1f5e016",
+          "durationMs": 0,
+          "resourceType": "font"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/_next/static/media/83afe278b6a6bb3c-s.p.2bn3s6zvc0dyp.woff2?dpl=a38250946044e786e894d9d449ee6d5ab1f5e016",
+          "durationMs": 0,
+          "resourceType": "font"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/_next/static/chunks/1mjo0uoeb6l4g.css?dpl=a38250946044e786e894d9d449ee6d5ab1f5e016",
+          "durationMs": 0,
+          "resourceType": "stylesheet"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/_next/static/chunks/2r3mnn6_eb2wg.css?dpl=a38250946044e786e894d9d449ee6d5ab1f5e016",
+          "durationMs": 0,
+          "resourceType": "stylesheet"
+        }
+      ],
+      "timedOut": false
+    },
+    {
+      "route": "setup_hub",
+      "mode": "warm",
+      "url": "https://app.sandbox.hellotocheers.com/setup-hub",
+      "usefulSelector": "main",
+      "clickOrGotoStartMs": 0,
+      "domContentLoadedMs": 885,
+      "usefulVisibleMs": 920,
+      "interactiveMs": 920,
+      "documentResponseMs": 868,
+      "transferSizeApprox": 142177,
+      "requestCount": 33,
+      "supabaseRequestCount": 1,
+      "nextDataOrRscCount": 28,
+      "openaiOrLuvAskCount": 0,
+      "longestRequests": [
+        {
+          "url": "https://app.sandbox.hellotocheers.com/setup-hub",
+          "durationMs": 868,
+          "resourceType": "document"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/brand/hello-to-cheers-logo-primary-transparent.png",
+          "durationMs": 20,
+          "resourceType": "image"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/_next/static/media/CormorantGaramond%5Bwght%5D-s.p.0vov1dgqurkav.ttf?dpl=a38250946044e786e894d9d449ee6d5ab1f5e016",
+          "durationMs": 6,
+          "resourceType": "font"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/_next/static/chunks/3nakjgnv011xi.js?dpl=a38250946044e786e894d9d449ee6d5ab1f5e016",
+          "durationMs": 3,
+          "resourceType": "script"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/_next/static/chunks/1rm737diirj6u.js?dpl=a38250946044e786e894d9d449ee6d5ab1f5e016",
+          "durationMs": 2,
+          "resourceType": "script"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/_next/static/media/47df9ba1c7236d3b-s.p.2adce56gso3ku.woff2?dpl=a38250946044e786e894d9d449ee6d5ab1f5e016",
+          "durationMs": 1,
+          "resourceType": "font"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/_next/static/media/797e433ab948586e-s.p.0r6juujl39pe6.woff2?dpl=a38250946044e786e894d9d449ee6d5ab1f5e016",
+          "durationMs": 1,
+          "resourceType": "font"
+        },
+        {
+          "url": "https://app.sandbox.hellotocheers.com/_next/static/media/83afe278b6a6bb3c-s.p.2bn3s6zvc0dyp.woff2?dpl=a38250946044e786e894d9d449ee6d5ab1f5e016",
+          "durationMs": 0,
+          "resourceType": "font"
+        }
+      ],
+      "timedOut": false
+    }
+  ],
+  "slowestCold": [
+    {
+      "route": "dashboard",
+      "usefulVisibleMs": 5933,
+      "requestCount": 37
+    },
+    {
+      "route": "leads_list",
+      "usefulVisibleMs": 3667,
+      "requestCount": 39
+    },
+    {
+      "route": "event_workspace",
+      "usefulVisibleMs": 2586,
+      "requestCount": 72
+    },
+    {
+      "route": "events_list",
+      "usefulVisibleMs": 2503,
+      "requestCount": 70
+    },
+    {
+      "route": "lead_workspace",
+      "usefulVisibleMs": 1815,
+      "requestCount": 44
+    }
+  ]
+}
