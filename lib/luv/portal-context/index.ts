@@ -24,8 +24,10 @@ export {
 } from "@/lib/luv/portal-context/build";
 export { buildLuvAskPlanningFacts } from "@/lib/luv/portal-context/planning";
 export {
+  formatOwnPaymentSummaryForAskPrivacy,
   formatPortalContextForPrompt,
   formatPortalContextPlaceholderForPrompt,
+  withoutPaymentsForAskPrivacy,
 } from "@/lib/luv/portal-context/format";
 export {
   LUV_ASK_CHIP_NEXT_PAYMENT,

@@ -31,6 +31,12 @@ import {
 import { recordLuvAskSignal } from "@/lib/luv/ask-signals";
 import { buildCoupleAskLuvSystemPrompt } from "@/lib/luv/couple-ask-prompt";
 import { retrieveCoupleHtcKnowledge } from "@/lib/luv/couple-htc-knowledge";
+import {
+  buildPrivacyScopedAskAnswer,
+  classifyCoupleAskPrivacyScope,
+  shouldShortCircuitPrivacyAsk,
+} from "@/lib/luv/ask-privacy-scope";
+import { formatOwnPaymentSummaryForAskPrivacy } from "@/lib/luv/portal-context/format";
 import { loadLuvAskPortalContext } from "@/lib/luv/portal-context/load";
 import {
   getLuvSettingsForVenueId,
@@ -157,6 +163,56 @@ export async function POST(request: Request) {
     portalContext = await loadLuvAskPortalContext(token);
   } catch (err) {
     console.error("luv-ask portal context load failed:", err);
+  }
+
+  const portalClient = (portalCtx as {
+    client?: {
+      firstName?: string | null;
+      lastName?: string | null;
+      partnerFirstName?: string | null;
+      partnerLastName?: string | null;
+      first_name?: string | null;
+      last_name?: string | null;
+      partner_first_name?: string | null;
+      partner_last_name?: string | null;
+    };
+  } | null)?.client;
+  const coupleNames = [
+    portalClient?.firstName,
+    portalClient?.lastName,
+    portalClient?.partnerFirstName,
+    portalClient?.partnerLastName,
+    portalClient?.first_name,
+    portalClient?.last_name,
+    portalClient?.partner_first_name,
+    portalClient?.partner_last_name,
+  ].filter((n): n is string => typeof n === "string" && n.trim().length > 0);
+
+  const privacyScope = classifyCoupleAskPrivacyScope({
+    question: trimmedQuestion,
+    coupleNames,
+  });
+
+  // Deterministic privacy short-circuit: refuse unrelated-person private/financial
+  // asks without volunteering THIS couple's balances (and without OpenAI).
+  if (shouldShortCircuitPrivacyAsk(privacyScope)) {
+    const scoped = buildPrivacyScopedAskAnswer({
+      scope: privacyScope,
+      ownPaymentSummary: formatOwnPaymentSummaryForAskPrivacy(portalContext),
+    });
+    const nextSteps =
+      privacyScope.kind === "mixed_own_and_unrelated_private" && scoped.includeOwnPayments
+        ? (["open_payments", "phrase_question"] as LuvAskNextStepType[])
+        : (["phrase_question"] as LuvAskNextStepType[]);
+    return respondAndSignal(token, trimmedQuestion, {
+      answer: scoped.answer,
+      guideSection: null,
+      outcome:
+        privacyScope.kind === "mixed_own_and_unrelated_private" && scoped.includeOwnPayments
+          ? "answered_portal_context"
+          : "information_gap",
+      nextSteps,
+    });
   }
 
   const importantContacts = (projected?.importantContacts ?? []) as {

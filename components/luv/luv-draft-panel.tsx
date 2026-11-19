@@ -10,7 +10,7 @@
 
 import * as React from "react";
 
-import { ArrowRight, Check, ChevronDown, ChevronRight, ClipboardCopy, Loader2, RefreshCw, RotateCcw, Trash2 } from "lucide-react";
+import { ArrowRight, Check, ChevronDown, ChevronRight, ClipboardCopy, Loader2, RotateCcw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -32,6 +32,7 @@ import {
   withDraftStatus,
   withoutDraft,
 } from "@/lib/luv/draft-status";
+import { resolveFollowUpDraftRedundancy } from "@/lib/luv/draft-redundancy";
 import type { LuvDraft } from "@/lib/luv/drafts";
 import type { LuvObservation } from "@/lib/luv/types";
 import type { Lead } from "@/lib/leads/types";
@@ -269,15 +270,39 @@ export function LuvDraftPanel({
   const withdrawnDrafts = lifecycleWithdrawnDrafts(allDrafts);
   const pastDrafts = draftHistoryDrafts(allDrafts);
 
+  // UI mirror of server redundancy — uses already-loaded pending drafts only (no GET AI).
+  const pendingRedundancy = resolveFollowUpDraftRedundancy({
+    actionablePendingFollowUpCount: pendingDrafts.length,
+  });
+  const [outboundRedundancyReason, setOutboundRedundancyReason] = React.useState<string | null>(
+    null,
+  );
+  const redundancyBlocksGenerate =
+    pendingRedundancy.block || Boolean(outboundRedundancyReason);
+  const redundancyExplain =
+    pendingRedundancy.reason
+    ?? outboundRedundancyReason
+    ?? null;
+
   function handleGenerate() {
+    if (pendingRedundancy.block) {
+      toast.message(pendingRedundancy.reason ?? "Review the pending draft below.");
+      return;
+    }
     startGenerate(async () => {
       try {
         const result = await generateFollowUpDraftAction(lead);
         if (result.ok) {
+          setOutboundRedundancyReason(null);
           setAllDrafts((p) => [result.draft, ...p]);
           toast.success("Luv drafted a follow-up for you to review.");
         } else {
-          toast.error(result.message ?? "Luv couldn't generate a draft right now.");
+          const msg = result.message ?? "Luv couldn't generate a draft right now.";
+          // Surface recent-outbound redundancy from the authoritative server gate.
+          if (/reached out recently|already a follow-up draft/i.test(msg)) {
+            setOutboundRedundancyReason(msg);
+          }
+          toast.error(msg);
         }
       } catch {
         toast.error("Luv couldn't generate a draft right now. Please try again.");
@@ -305,13 +330,42 @@ export function LuvDraftPanel({
           currentPath={`/leads/${lead.id}`}
           onSameRecordDraft={() => void handleGenerate()}
           sameRecordDraftBusy={generating}
-          sameRecordDraftEligible={followUpDraftEligible}
-          sameRecordDraftIneligibleReason={followUpDraftIneligibleReason ?? undefined}
+          sameRecordDraftEligible={followUpDraftEligible && !redundancyBlocksGenerate}
+          sameRecordDraftIneligibleReason={
+            redundancyBlocksGenerate
+              ? (redundancyExplain ?? undefined)
+              : (followUpDraftIneligibleReason ?? undefined)
+          }
         />
       ) : null}
 
       {/* Owner-initiated draft capability — independent of proactive recommendations */}
-      {followUpDraftEligible && (
+      {followUpDraftEligible && redundancyBlocksGenerate && redundancyExplain ? (
+      <div
+        className="rounded-sm border border-[#D8A7AA]/25 bg-[#D8A7AA]/5 px-4 py-4"
+        data-testid="luv-draft-redundancy-blocked"
+      >
+        <div className="flex items-start gap-3">
+          <LuvHeart size={16} />
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-heading">
+              {pendingRedundancy.block
+                ? "Review your pending follow-up draft"
+                : "Another draft isn’t needed right now"}
+            </p>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              {redundancyExplain}
+            </p>
+            {pendingRedundancy.block ? (
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Open the pending draft below to edit, copy, or send. Manual Messages stay available anytime.
+              </p>
+            ) : null}
+          </div>
+        </div>
+      </div>
+      ) : null}
+      {followUpDraftEligible && !redundancyBlocksGenerate && (
       <div className="rounded-sm border border-[#D8A7AA]/25 bg-[#D8A7AA]/5 px-4 py-4">
         <div className="flex items-start gap-3">
           <LuvHeart size={16} />
@@ -326,17 +380,12 @@ export function LuvDraftPanel({
         <div className="mt-3 flex items-center gap-2">
           <Button type="button" size="sm" onClick={handleGenerate} disabled={generating}
             style={{ borderColor: `${DUSTY_ROSE}60`, background: `color-mix(in oklch, ${DUSTY_ROSE} 15%, var(--card))`, color: "var(--heading)" }}
-            className="hover:opacity-90">
+            className="hover:opacity-90"
+            data-testid="luv-draft-generate-cta">
             {generating
               ? <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />Luv is drafting…</>
               : <><LuvHeart size={12} /><span className="ml-1.5">Draft a follow-up email</span></>}
           </Button>
-          {pendingDrafts.length > 0 && (
-            <Button type="button" variant="ghost" size="sm" className="text-muted-foreground"
-              onClick={handleGenerate} disabled={generating}>
-              <RefreshCw className="mr-1 h-3.5 w-3.5" /> Draft another
-            </Button>
-          )}
         </div>
       </div>
       )}

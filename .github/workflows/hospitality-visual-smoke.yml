@@ -1,50 +1,23 @@
 # Hospitality visual smoke: source guards + real screenshot-vs-baseline compare.
 # A source-code check alone is insufficient — pixel compare must run and fail
 # on meaningful regressions. Live Sandbox capture is workflow_dispatch (secrets).
-# Path-filter note: required checks must still run when practice-run/lib changes
-# land without matching app/(app) paths — include this workflow file in the PR.
-# Also cover scripts/** and all workflow YAML so inspector-only / script-only /
-# workflow-only PRs report the required hospitality check contexts (no silent skip).
-# (Also bumped for service-role practice couple photo seed PR.)
-# (Bumped for ONB-FINAL acceptance evidence PR.)
-# (Bumped for Twilio A2P number-status automation PR #85 — required checks.)
-# (Bumped for Resend notification retry Sandbox release PR — required checks.)
-# (Bumped for Resend VN terminal NOT NULL hotfix PR #89 — required checks.)
+#
+# Required check contexts (ruleset on main):
+#   - Hospitality presentation source guards
+#   - Screenshot vs approved baseline compare
+#
+# These jobs ALWAYS run on pull_request → main so the contexts never go missing
+# on Luv/backend-only diffs. Heavy visual steps run only when presentation paths
+# change (or on workflow_dispatch). Skipped presentation scope still reports
+# success for the required job names — it never claims success after a failed
+# visual step.
 
 name: Hospitality visual smoke
 
 on:
   workflow_dispatch: {}
   pull_request:
-    paths:
-      - "app/(app)/reporting/**"
-      - "app/(app)/library/**"
-      - "app/(app)/settings/**"
-      - "app/(app)/communication/templates/**"
-      - "app/(app)/dashboard/**"
-      - "app/(app)/setup-hub/**"
-      - "components/reporting/**"
-      - "components/billing/**"
-      - "components/document-workspace/**"
-      - "components/relationship-photos/**"
-      - "components/shell/**"
-      - "components/dashboard-system/**"
-      - "components/client-choices/**"
-      - "components/portal/**"
-      - "lib/client-choices/**"
-      - "app/globals.css"
-      - "lib/theme/**"
-      - "lib/reporting/**"
-      - "lib/setup-hub/**"
-      - "lib/navigation/attention*"
-      - "scripts/**"
-      - "scripts/qa/hospitality-visual-baselines.mts"
-      - "scripts/qa/compare-png-baselines.mts"
-      - "scripts/qa/compare-png-baselines.test.ts"
-      - "docs/design/hospitality-visual-baselines/approved/**"
-      - ".github/workflows/**"
-      - ".github/workflows/hospitality-visual-smoke.yml"
-      - ".github/workflows/deploy-sandbox.yml"
+    branches: [main]
 
 concurrency:
   group: hospitality-visual-${{ github.event.pull_request.number || github.ref }}
@@ -56,12 +29,48 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect hospitality presentation scope
+        id: scope
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "visual=true" >> "$GITHUB_OUTPUT"
+            echo "Hospitality presentation scope: forced on (workflow_dispatch)"
+            exit 0
+          fi
+          BASE="${{ github.event.pull_request.base.sha }}"
+          HEAD="${{ github.event.pull_request.head.sha }}"
+          CHANGED="$(git diff --name-only "${BASE}...${HEAD}")"
+          echo "Changed files:"
+          echo "$CHANGED"
+          # Keep in sync with former path filter — presentation / shell / baselines / this workflow.
+          if echo "$CHANGED" | grep -E -q \
+            '^(app/\(app\)/reporting/|app/\(app\)/library/|app/\(app\)/settings/|app/\(app\)/communication/templates/|app/\(app\)/dashboard/|app/\(app\)/setup-hub/|components/reporting/|components/billing/|components/document-workspace/|components/relationship-photos/|components/shell/|components/dashboard-system/|components/client-choices/|components/portal/|lib/client-choices/|app/globals\.css|lib/theme/|lib/reporting/|lib/setup-hub/|lib/navigation/attention|scripts/|docs/design/hospitality-visual-baselines/approved/|\.github/workflows/)'; then
+            echo "visual=true" >> "$GITHUB_OUTPUT"
+            echo "Hospitality presentation scope: RUN visual source guards"
+          else
+            echo "visual=false" >> "$GITHUB_OUTPUT"
+            echo "Hospitality presentation scope: skip heavy guards (required check still reports)"
+          fi
+
       - uses: actions/setup-node@v4
+        if: steps.scope.outputs.visual == 'true'
         with:
           node-version: "22"
           cache: npm
-      - run: npm ci
+
+      - if: steps.scope.outputs.visual == 'true'
+        run: npm ci
+
+      - name: Assert required hospitality checks always report
+        if: steps.scope.outputs.visual == 'true'
+        run: npx tsx --test scripts/qa/hospitality-required-checks-always-report.test.ts
+
       - name: KPI + funnel + presentation source guards
+        if: steps.scope.outputs.visual == 'true'
         run: |
           npx tsx --test \
             lib/theme/hospitality-reporting-kpi-parity.test.ts \
@@ -69,19 +78,66 @@ jobs:
             lib/event-types/event-type-display.test.ts \
             lib/reporting/trend-buckets.test.ts
 
+      - name: Skip visual source guards (non-presentation PR)
+        if: steps.scope.outputs.visual != 'true'
+        run: |
+          set -euo pipefail
+          # Cheap contract without npm: pull_request must not be path-filtered.
+          ! grep -A20 '^  pull_request:' .github/workflows/hospitality-visual-smoke.yml | grep -q 'paths:'
+          grep -q 'name: Hospitality presentation source guards' .github/workflows/hospitality-visual-smoke.yml
+          echo "No hospitality presentation paths changed on this PR."
+          echo "Required check 'Hospitality presentation source guards' reports success without weakening visual gates."
+
   visual-baseline-compare:
     name: Screenshot vs approved baseline compare
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect hospitality presentation scope
+        id: scope
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "visual=true" >> "$GITHUB_OUTPUT"
+            echo "Hospitality presentation scope: forced on (workflow_dispatch)"
+            exit 0
+          fi
+          BASE="${{ github.event.pull_request.base.sha }}"
+          HEAD="${{ github.event.pull_request.head.sha }}"
+          CHANGED="$(git diff --name-only "${BASE}...${HEAD}")"
+          echo "Changed files:"
+          echo "$CHANGED"
+          if echo "$CHANGED" | grep -E -q \
+            '^(app/\(app\)/reporting/|app/\(app\)/library/|app/\(app\)/settings/|app/\(app\)/communication/templates/|app/\(app\)/dashboard/|app/\(app\)/setup-hub/|components/reporting/|components/billing/|components/document-workspace/|components/relationship-photos/|components/shell/|components/dashboard-system/|components/client-choices/|components/portal/|lib/client-choices/|app/globals\.css|lib/theme/|lib/reporting/|lib/setup-hub/|lib/navigation/attention|scripts/|docs/design/hospitality-visual-baselines/approved/|\.github/workflows/)'; then
+            echo "visual=true" >> "$GITHUB_OUTPUT"
+            echo "Hospitality presentation scope: RUN screenshot baseline compare"
+          else
+            echo "visual=false" >> "$GITHUB_OUTPUT"
+            echo "Hospitality presentation scope: skip pixel compare (required check still reports)"
+          fi
+
       - uses: actions/setup-node@v4
+        if: steps.scope.outputs.visual == 'true'
         with:
           node-version: "22"
           cache: npm
-      - run: npm ci
+
+      - if: steps.scope.outputs.visual == 'true'
+        run: npm ci
+
+      - name: Assert required hospitality checks always report
+        if: steps.scope.outputs.visual == 'true'
+        run: npx tsx --test scripts/qa/hospitality-required-checks-always-report.test.ts
+
       - name: Prove comparator fails on regressions and passes on match
+        if: steps.scope.outputs.visual == 'true'
         run: npx tsx --test scripts/qa/compare-png-baselines.test.ts
+
       - name: Simulate rendered capture vs approved (must pass) then prove failure
+        if: steps.scope.outputs.visual == 'true'
         run: |
           set -euo pipefail
           mkdir -p docs/design/hospitality-visual-baselines/current
@@ -100,7 +156,9 @@ jobs:
             exit 1
           fi
           echo "regression correctly failed pixel compare"
+
       - name: Deploy identity step present and fails on SHA mismatch
+        if: steps.scope.outputs.visual == 'true'
         run: |
           set -euo pipefail
           wf=".github/workflows/deploy-sandbox.yml"
@@ -112,6 +170,15 @@ jobs:
           grep -q "Could not resolve ECR digest" "$wf"
           grep -q "DEPLOY_IDENTITY sha=" "$wf"
           echo "deploy identity verification step OK"
+
+      - name: Skip screenshot baseline compare (non-presentation PR)
+        if: steps.scope.outputs.visual != 'true'
+        run: |
+          set -euo pipefail
+          ! grep -A20 '^  pull_request:' .github/workflows/hospitality-visual-smoke.yml | grep -q 'paths:'
+          grep -q 'name: Screenshot vs approved baseline compare' .github/workflows/hospitality-visual-smoke.yml
+          echo "No hospitality presentation paths changed on this PR."
+          echo "Required check 'Screenshot vs approved baseline compare' reports success without skipping a failed visual test."
 
   sandbox-capture-compare:
     name: Live Sandbox capture + pixel compare
@@ -155,24 +222,3 @@ jobs:
             docs/design/hospitality-visual-baselines/diffs/
             docs/design/hospitality-visual-baselines/last-compare.json
             docs/design/hospitality-visual-baselines/last-run.json
-
-# Keep path-filtered required checks discoverable for non-UI PRs via workflow edits.
-
-# fresh-walk closure: ensure hospitality required checks report on this PR
-
-# white-glove welcome messaging: retrigger hospitality required checks
-# byb-import-next-steps: retrigger hospitality required checks
-
-# floor-plans-complete-workflow: retrigger hospitality required checks on PR
-
-# floor-plans migration hotfix: retrigger hospitality required checks
-
-# Retrigger required hospitality checks for Floor Plans UX PR #66
-
-# Retrigger hospitality required checks
-
-# Floor Plans evidence corrections: retrigger hospitality required checks
-
-# migration sandbox release tracker: retrigger hospitality required checks
-
-
