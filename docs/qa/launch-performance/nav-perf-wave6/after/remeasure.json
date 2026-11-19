@@ -1,0 +1,921 @@
+{
+  "measuredAt": "2026-11-19T04:22:24.802Z",
+  "expectedSha": "c1b993f6c6842bbda0f3c71ae6162eca53f9aa32",
+  "app": "https://app.sandbox.hellotocheers.com",
+  "wallWindow": {
+    "start": "2026-11-19T04:21:25.562Z",
+    "end": "2026-11-19T04:22:22.400Z"
+  },
+  "dashboardWarm": {
+    "ttfb": {
+      "n": 8,
+      "median": 786,
+      "p90": 1422,
+      "min": 591,
+      "max": 1422,
+      "values": [
+        1422,
+        814,
+        591,
+        771,
+        786,
+        919,
+        775,
+        771
+      ]
+    },
+    "greeting": {
+      "n": 8,
+      "median": 1675,
+      "p90": 2191,
+      "min": 1191,
+      "max": 2191,
+      "values": [
+        1816,
+        1242,
+        1486,
+        1675,
+        1191,
+        1804,
+        2191,
+        1642
+      ]
+    },
+    "kpi": {
+      "n": 8,
+      "median": 1678,
+      "p90": 2194,
+      "min": 1194,
+      "max": 2194,
+      "values": [
+        1819,
+        1252,
+        1493,
+        1678,
+        1194,
+        1810,
+        2194,
+        1646
+      ]
+    },
+    "focus": {
+      "n": 8,
+      "median": 2377,
+      "p90": 2615,
+      "min": 1484,
+      "max": 2615,
+      "values": [
+        2615,
+        2050,
+        1679,
+        2471,
+        1484,
+        1995,
+        2377,
+        2435
+      ]
+    },
+    "useful": {
+      "n": 8,
+      "median": 2377,
+      "p90": 2615,
+      "min": 1484,
+      "max": 2615,
+      "values": [
+        2615,
+        2050,
+        1679,
+        2471,
+        1484,
+        1995,
+        2377,
+        2435
+      ]
+    },
+    "openai": 0,
+    "errors": [],
+    "dpls": [
+      "c1b993f6c6842bbda0f3c71ae6162eca53f9aa32"
+    ]
+  },
+  "healthyDashWarm": {
+    "ttfb": {
+      "n": 7,
+      "median": 775,
+      "p90": 919,
+      "min": 591,
+      "max": 919,
+      "values": [
+        814,
+        591,
+        771,
+        786,
+        919,
+        775,
+        771
+      ]
+    },
+    "greeting": {
+      "n": 7,
+      "median": 1642,
+      "p90": 2191,
+      "min": 1191,
+      "max": 2191,
+      "values": [
+        1242,
+        1486,
+        1675,
+        1191,
+        1804,
+        2191,
+        1642
+      ]
+    },
+    "kpi": {
+      "n": 7,
+      "median": 1646,
+      "p90": 2194,
+      "min": 1194,
+      "max": 2194,
+      "values": [
+        1252,
+        1493,
+        1678,
+        1194,
+        1810,
+        2194,
+        1646
+      ]
+    },
+    "focus": {
+      "n": 7,
+      "median": 2050,
+      "p90": 2471,
+      "min": 1484,
+      "max": 2471,
+      "values": [
+        2050,
+        1679,
+        2471,
+        1484,
+        1995,
+        2377,
+        2435
+      ]
+    },
+    "useful": {
+      "n": 7,
+      "median": 2050,
+      "p90": 2471,
+      "min": 1484,
+      "max": 2471,
+      "values": [
+        2050,
+        1679,
+        2471,
+        1484,
+        1995,
+        2377,
+        2435
+      ]
+    },
+    "openai": 0,
+    "errors": [],
+    "dpls": [
+      "c1b993f6c6842bbda0f3c71ae6162eca53f9aa32"
+    ]
+  },
+  "slowDashWarm": {
+    "ttfb": {
+      "n": 0,
+      "median": null,
+      "p90": null,
+      "min": null,
+      "max": null,
+      "values": []
+    },
+    "greeting": {
+      "n": 0,
+      "median": null,
+      "p90": null,
+      "min": null,
+      "max": null,
+      "values": []
+    },
+    "kpi": {
+      "n": 0,
+      "median": null,
+      "p90": null,
+      "min": null,
+      "max": null,
+      "values": []
+    },
+    "focus": {
+      "n": 0,
+      "median": null,
+      "p90": null,
+      "min": null,
+      "max": null,
+      "values": []
+    },
+    "useful": {
+      "n": 0,
+      "median": null,
+      "p90": null,
+      "min": null,
+      "max": null,
+      "values": []
+    },
+    "openai": 0,
+    "errors": [],
+    "dpls": []
+  },
+  "byRoute": {
+    "dashboard": {
+      "ttfb": {
+        "n": 9,
+        "median": 786,
+        "p90": 1422,
+        "min": 591,
+        "max": 1422,
+        "values": [
+          995,
+          1422,
+          814,
+          591,
+          771,
+          786,
+          919,
+          775,
+          771
+        ]
+      },
+      "greeting": {
+        "n": 9,
+        "median": 1642,
+        "p90": 2191,
+        "min": 1191,
+        "max": 2191,
+        "values": [
+          1403,
+          1816,
+          1242,
+          1486,
+          1675,
+          1191,
+          1804,
+          2191,
+          1642
+        ]
+      },
+      "kpi": {
+        "n": 9,
+        "median": 1646,
+        "p90": 2194,
+        "min": 1194,
+        "max": 2194,
+        "values": [
+          1407,
+          1819,
+          1252,
+          1493,
+          1678,
+          1194,
+          1810,
+          2194,
+          1646
+        ]
+      },
+      "focus": {
+        "n": 9,
+        "median": 2202,
+        "p90": 2615,
+        "min": 1484,
+        "max": 2615,
+        "values": [
+          2202,
+          2615,
+          2050,
+          1679,
+          2471,
+          1484,
+          1995,
+          2377,
+          2435
+        ]
+      },
+      "useful": {
+        "n": 9,
+        "median": 2202,
+        "p90": 2615,
+        "min": 1484,
+        "max": 2615,
+        "values": [
+          2202,
+          2615,
+          2050,
+          1679,
+          2471,
+          1484,
+          1995,
+          2377,
+          2435
+        ]
+      },
+      "openai": 0,
+      "errors": [],
+      "dpls": [
+        "c1b993f6c6842bbda0f3c71ae6162eca53f9aa32"
+      ]
+    },
+    "leads_list": {
+      "ttfb": {
+        "n": 4,
+        "median": 693,
+        "p90": 849,
+        "min": 546,
+        "max": 849,
+        "values": [
+          849,
+          546,
+          693,
+          557
+        ]
+      },
+      "greeting": {
+        "n": 0,
+        "median": null,
+        "p90": null,
+        "min": null,
+        "max": null,
+        "values": []
+      },
+      "kpi": {
+        "n": 0,
+        "median": null,
+        "p90": null,
+        "min": null,
+        "max": null,
+        "values": []
+      },
+      "focus": {
+        "n": 0,
+        "median": null,
+        "p90": null,
+        "min": null,
+        "max": null,
+        "values": []
+      },
+      "useful": {
+        "n": 4,
+        "median": 2853,
+        "p90": 2948,
+        "min": 1971,
+        "max": 2948,
+        "values": [
+          2853,
+          2948,
+          2086,
+          1971
+        ]
+      },
+      "openai": 0,
+      "errors": [],
+      "dpls": [
+        "c1b993f6c6842bbda0f3c71ae6162eca53f9aa32"
+      ]
+    },
+    "events_list": {
+      "ttfb": {
+        "n": 0,
+        "median": null,
+        "p90": null,
+        "min": null,
+        "max": null,
+        "values": []
+      },
+      "greeting": {
+        "n": 0,
+        "median": null,
+        "p90": null,
+        "min": null,
+        "max": null,
+        "values": []
+      },
+      "kpi": {
+        "n": 0,
+        "median": null,
+        "p90": null,
+        "min": null,
+        "max": null,
+        "values": []
+      },
+      "focus": {
+        "n": 0,
+        "median": null,
+        "p90": null,
+        "min": null,
+        "max": null,
+        "values": []
+      },
+      "useful": {
+        "n": 4,
+        "median": 757,
+        "p90": 1885,
+        "min": 617,
+        "max": 1885,
+        "values": [
+          617,
+          757,
+          1885,
+          659
+        ]
+      },
+      "openai": 0,
+      "errors": [
+        "events_list/cold#1: page.evaluate: Execution context was destroyed, most likely because of a navigation",
+        "events_list/warm#1: page.evaluate: Execution context was destroyed, most likely because of a navigation",
+        "events_list/warm#2: page.evaluate: Execution context was destroyed, most likely because of a navigation",
+        "events_list/warm#3: page.evaluate: Execution context was destroyed, most likely because of a navigation"
+      ],
+      "dpls": []
+    },
+    "lead_workspace": {
+      "ttfb": {
+        "n": 4,
+        "median": 654,
+        "p90": 1094,
+        "min": 558,
+        "max": 1094,
+        "values": [
+          558,
+          581,
+          654,
+          1094
+        ]
+      },
+      "greeting": {
+        "n": 0,
+        "median": null,
+        "p90": null,
+        "min": null,
+        "max": null,
+        "values": []
+      },
+      "kpi": {
+        "n": 0,
+        "median": null,
+        "p90": null,
+        "min": null,
+        "max": null,
+        "values": []
+      },
+      "focus": {
+        "n": 0,
+        "median": null,
+        "p90": null,
+        "min": null,
+        "max": null,
+        "values": []
+      },
+      "useful": {
+        "n": 4,
+        "median": 754,
+        "p90": 1185,
+        "min": 668,
+        "max": 1185,
+        "values": [
+          668,
+          683,
+          754,
+          1185
+        ]
+      },
+      "openai": 0,
+      "errors": [],
+      "dpls": [
+        "c1b993f6c6842bbda0f3c71ae6162eca53f9aa32"
+      ]
+    },
+    "booking_workspace": {
+      "ttfb": {
+        "n": 4,
+        "median": 1419,
+        "p90": 1653,
+        "min": 877,
+        "max": 1653,
+        "values": [
+          1419,
+          878,
+          1653,
+          877
+        ]
+      },
+      "greeting": {
+        "n": 0,
+        "median": null,
+        "p90": null,
+        "min": null,
+        "max": null,
+        "values": []
+      },
+      "kpi": {
+        "n": 0,
+        "median": null,
+        "p90": null,
+        "min": null,
+        "max": null,
+        "values": []
+      },
+      "focus": {
+        "n": 0,
+        "median": null,
+        "p90": null,
+        "min": null,
+        "max": null,
+        "values": []
+      },
+      "useful": {
+        "n": 4,
+        "median": 2557,
+        "p90": 2801,
+        "min": 1777,
+        "max": 2801,
+        "values": [
+          2801,
+          2441,
+          2557,
+          1777
+        ]
+      },
+      "openai": 0,
+      "errors": [],
+      "dpls": [
+        "c1b993f6c6842bbda0f3c71ae6162eca53f9aa32"
+      ]
+    }
+  },
+  "functional": {
+    "fancyVenueOkCount": 9,
+    "unauthRedirectsToLogin": true,
+    "unauthUrl": "https://app.sandbox.hellotocheers.com/login?next=%2Fdashboard",
+    "openaiTotal": 0,
+    "dplMatchesExpected": true
+  },
+  "samples": [
+    {
+      "route": "dashboard",
+      "mode": "cold",
+      "sample": 1,
+      "wallStartIso": "2026-11-19T04:21:25.562Z",
+      "ttfbMs": 995,
+      "greetingMs": 1403,
+      "kpiMs": 1407,
+      "focusMs": 2202,
+      "usefulMs": 2202,
+      "dpl": "c1b993f6c6842bbda0f3c71ae6162eca53f9aa32",
+      "venueOk": true,
+      "openaiOrLuvAsk": 0
+    },
+    {
+      "route": "dashboard",
+      "mode": "warm",
+      "sample": 1,
+      "wallStartIso": "2026-11-19T04:21:28.209Z",
+      "ttfbMs": 1422,
+      "greetingMs": 1816,
+      "kpiMs": 1819,
+      "focusMs": 2615,
+      "usefulMs": 2615,
+      "dpl": "c1b993f6c6842bbda0f3c71ae6162eca53f9aa32",
+      "venueOk": true,
+      "openaiOrLuvAsk": 0
+    },
+    {
+      "route": "dashboard",
+      "mode": "warm",
+      "sample": 2,
+      "wallStartIso": "2026-11-19T04:21:31.279Z",
+      "ttfbMs": 814,
+      "greetingMs": 1242,
+      "kpiMs": 1252,
+      "focusMs": 2050,
+      "usefulMs": 2050,
+      "dpl": "c1b993f6c6842bbda0f3c71ae6162eca53f9aa32",
+      "venueOk": true,
+      "openaiOrLuvAsk": 0
+    },
+    {
+      "route": "dashboard",
+      "mode": "warm",
+      "sample": 3,
+      "wallStartIso": "2026-11-19T04:21:33.791Z",
+      "ttfbMs": 591,
+      "greetingMs": 1486,
+      "kpiMs": 1493,
+      "focusMs": 1679,
+      "usefulMs": 1679,
+      "dpl": "c1b993f6c6842bbda0f3c71ae6162eca53f9aa32",
+      "venueOk": true,
+      "openaiOrLuvAsk": 0
+    },
+    {
+      "route": "dashboard",
+      "mode": "warm",
+      "sample": 4,
+      "wallStartIso": "2026-11-19T04:21:35.933Z",
+      "ttfbMs": 771,
+      "greetingMs": 1675,
+      "kpiMs": 1678,
+      "focusMs": 2471,
+      "usefulMs": 2471,
+      "dpl": "c1b993f6c6842bbda0f3c71ae6162eca53f9aa32",
+      "venueOk": true,
+      "openaiOrLuvAsk": 0
+    },
+    {
+      "route": "dashboard",
+      "mode": "warm",
+      "sample": 5,
+      "wallStartIso": "2026-11-19T04:21:38.869Z",
+      "ttfbMs": 786,
+      "greetingMs": 1191,
+      "kpiMs": 1194,
+      "focusMs": 1484,
+      "usefulMs": 1484,
+      "dpl": "c1b993f6c6842bbda0f3c71ae6162eca53f9aa32",
+      "venueOk": true,
+      "openaiOrLuvAsk": 0
+    },
+    {
+      "route": "dashboard",
+      "mode": "warm",
+      "sample": 6,
+      "wallStartIso": "2026-11-19T04:21:40.796Z",
+      "ttfbMs": 919,
+      "greetingMs": 1804,
+      "kpiMs": 1810,
+      "focusMs": 1995,
+      "usefulMs": 1995,
+      "dpl": "c1b993f6c6842bbda0f3c71ae6162eca53f9aa32",
+      "venueOk": true,
+      "openaiOrLuvAsk": 0
+    },
+    {
+      "route": "dashboard",
+      "mode": "warm",
+      "sample": 7,
+      "wallStartIso": "2026-11-19T04:21:43.235Z",
+      "ttfbMs": 775,
+      "greetingMs": 2191,
+      "kpiMs": 2194,
+      "focusMs": 2377,
+      "usefulMs": 2377,
+      "dpl": "c1b993f6c6842bbda0f3c71ae6162eca53f9aa32",
+      "venueOk": true,
+      "openaiOrLuvAsk": 0
+    },
+    {
+      "route": "dashboard",
+      "mode": "warm",
+      "sample": 8,
+      "wallStartIso": "2026-11-19T04:21:46.065Z",
+      "ttfbMs": 771,
+      "greetingMs": 1642,
+      "kpiMs": 1646,
+      "focusMs": 2435,
+      "usefulMs": 2435,
+      "dpl": "c1b993f6c6842bbda0f3c71ae6162eca53f9aa32",
+      "venueOk": true,
+      "openaiOrLuvAsk": 0
+    },
+    {
+      "route": "leads_list",
+      "mode": "cold",
+      "sample": 1,
+      "wallStartIso": "2026-11-19T04:21:48.957Z",
+      "ttfbMs": 849,
+      "greetingMs": null,
+      "kpiMs": null,
+      "focusMs": null,
+      "usefulMs": 2853,
+      "dpl": "c1b993f6c6842bbda0f3c71ae6162eca53f9aa32",
+      "venueOk": null,
+      "openaiOrLuvAsk": 0
+    },
+    {
+      "route": "leads_list",
+      "mode": "warm",
+      "sample": 1,
+      "wallStartIso": "2026-11-19T04:21:52.269Z",
+      "ttfbMs": 546,
+      "greetingMs": null,
+      "kpiMs": null,
+      "focusMs": null,
+      "usefulMs": 2948,
+      "dpl": "c1b993f6c6842bbda0f3c71ae6162eca53f9aa32",
+      "venueOk": null,
+      "openaiOrLuvAsk": 0
+    },
+    {
+      "route": "leads_list",
+      "mode": "warm",
+      "sample": 2,
+      "wallStartIso": "2026-11-19T04:21:55.663Z",
+      "ttfbMs": 693,
+      "greetingMs": null,
+      "kpiMs": null,
+      "focusMs": null,
+      "usefulMs": 2086,
+      "dpl": "c1b993f6c6842bbda0f3c71ae6162eca53f9aa32",
+      "venueOk": null,
+      "openaiOrLuvAsk": 0
+    },
+    {
+      "route": "leads_list",
+      "mode": "warm",
+      "sample": 3,
+      "wallStartIso": "2026-11-19T04:21:58.202Z",
+      "ttfbMs": 557,
+      "greetingMs": null,
+      "kpiMs": null,
+      "focusMs": null,
+      "usefulMs": 1971,
+      "dpl": "c1b993f6c6842bbda0f3c71ae6162eca53f9aa32",
+      "venueOk": null,
+      "openaiOrLuvAsk": 0
+    },
+    {
+      "route": "events_list",
+      "mode": "cold",
+      "sample": 1,
+      "wallStartIso": "2026-11-19T04:22:00.641Z",
+      "ttfbMs": null,
+      "greetingMs": null,
+      "kpiMs": null,
+      "focusMs": null,
+      "usefulMs": 617,
+      "dpl": null,
+      "venueOk": null,
+      "openaiOrLuvAsk": 0,
+      "error": "page.evaluate: Execution context was destroyed, most likely because of a navigation"
+    },
+    {
+      "route": "events_list",
+      "mode": "warm",
+      "sample": 1,
+      "wallStartIso": "2026-11-19T04:22:02.909Z",
+      "ttfbMs": null,
+      "greetingMs": null,
+      "kpiMs": null,
+      "focusMs": null,
+      "usefulMs": 757,
+      "dpl": null,
+      "venueOk": null,
+      "openaiOrLuvAsk": 0,
+      "error": "page.evaluate: Execution context was destroyed, most likely because of a navigation"
+    },
+    {
+      "route": "events_list",
+      "mode": "warm",
+      "sample": 2,
+      "wallStartIso": "2026-11-19T04:22:04.379Z",
+      "ttfbMs": null,
+      "greetingMs": null,
+      "kpiMs": null,
+      "focusMs": null,
+      "usefulMs": 1885,
+      "dpl": null,
+      "venueOk": null,
+      "openaiOrLuvAsk": 0,
+      "error": "page.evaluate: Execution context was destroyed, most likely because of a navigation"
+    },
+    {
+      "route": "events_list",
+      "mode": "warm",
+      "sample": 3,
+      "wallStartIso": "2026-11-19T04:22:06.857Z",
+      "ttfbMs": null,
+      "greetingMs": null,
+      "kpiMs": null,
+      "focusMs": null,
+      "usefulMs": 659,
+      "dpl": null,
+      "venueOk": null,
+      "openaiOrLuvAsk": 0,
+      "error": "page.evaluate: Execution context was destroyed, most likely because of a navigation"
+    },
+    {
+      "route": "lead_workspace",
+      "mode": "cold",
+      "sample": 1,
+      "wallStartIso": "2026-11-19T04:22:08.189Z",
+      "ttfbMs": 558,
+      "greetingMs": null,
+      "kpiMs": null,
+      "focusMs": null,
+      "usefulMs": 668,
+      "dpl": "c1b993f6c6842bbda0f3c71ae6162eca53f9aa32",
+      "venueOk": null,
+      "openaiOrLuvAsk": 0
+    },
+    {
+      "route": "lead_workspace",
+      "mode": "warm",
+      "sample": 1,
+      "wallStartIso": "2026-11-19T04:22:09.294Z",
+      "ttfbMs": 581,
+      "greetingMs": null,
+      "kpiMs": null,
+      "focusMs": null,
+      "usefulMs": 683,
+      "dpl": "c1b993f6c6842bbda0f3c71ae6162eca53f9aa32",
+      "venueOk": null,
+      "openaiOrLuvAsk": 0
+    },
+    {
+      "route": "lead_workspace",
+      "mode": "warm",
+      "sample": 2,
+      "wallStartIso": "2026-11-19T04:22:10.427Z",
+      "ttfbMs": 654,
+      "greetingMs": null,
+      "kpiMs": null,
+      "focusMs": null,
+      "usefulMs": 754,
+      "dpl": "c1b993f6c6842bbda0f3c71ae6162eca53f9aa32",
+      "venueOk": null,
+      "openaiOrLuvAsk": 0
+    },
+    {
+      "route": "lead_workspace",
+      "mode": "warm",
+      "sample": 3,
+      "wallStartIso": "2026-11-19T04:22:11.624Z",
+      "ttfbMs": 1094,
+      "greetingMs": null,
+      "kpiMs": null,
+      "focusMs": null,
+      "usefulMs": 1185,
+      "dpl": "c1b993f6c6842bbda0f3c71ae6162eca53f9aa32",
+      "venueOk": null,
+      "openaiOrLuvAsk": 0
+    },
+    {
+      "route": "booking_workspace",
+      "mode": "cold",
+      "sample": 1,
+      "wallStartIso": "2026-11-19T04:22:13.246Z",
+      "ttfbMs": 1419,
+      "greetingMs": null,
+      "kpiMs": null,
+      "focusMs": null,
+      "usefulMs": 2801,
+      "dpl": "c1b993f6c6842bbda0f3c71ae6162eca53f9aa32",
+      "venueOk": null,
+      "openaiOrLuvAsk": 0
+    },
+    {
+      "route": "booking_workspace",
+      "mode": "warm",
+      "sample": 1,
+      "wallStartIso": "2026-11-19T04:22:16.504Z",
+      "ttfbMs": 878,
+      "greetingMs": null,
+      "kpiMs": null,
+      "focusMs": null,
+      "usefulMs": 2441,
+      "dpl": "c1b993f6c6842bbda0f3c71ae6162eca53f9aa32",
+      "venueOk": null,
+      "openaiOrLuvAsk": 0
+    },
+    {
+      "route": "booking_workspace",
+      "mode": "warm",
+      "sample": 2,
+      "wallStartIso": "2026-11-19T04:22:19.382Z",
+      "ttfbMs": 1653,
+      "greetingMs": null,
+      "kpiMs": null,
+      "focusMs": null,
+      "usefulMs": 2557,
+      "dpl": "c1b993f6c6842bbda0f3c71ae6162eca53f9aa32",
+      "venueOk": null,
+      "openaiOrLuvAsk": 0
+    },
+    {
+      "route": "booking_workspace",
+      "mode": "warm",
+      "sample": 3,
+      "wallStartIso": "2026-11-19T04:22:22.400Z",
+      "ttfbMs": 877,
+      "greetingMs": null,
+      "kpiMs": null,
+      "focusMs": null,
+      "usefulMs": 1777,
+      "dpl": "c1b993f6c6842bbda0f3c71ae6162eca53f9aa32",
+      "venueOk": null,
+      "openaiOrLuvAsk": 0
+    }
+  ]
+}

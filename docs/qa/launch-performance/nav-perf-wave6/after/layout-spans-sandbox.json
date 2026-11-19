@@ -1,0 +1,635 @@
+{
+  "n": 30,
+  "rows": [
+    {
+      "total_ms": 1210,
+      "durations_ms": {
+        "layout_start": 0,
+        "layout_create_client": 11,
+        "layout_get_user": 128,
+        "bootstrap_get_user": 2,
+        "bootstrap_consume_handoff": 81,
+        "bootstrap_clear_stale": 46,
+        "bootstrap_memberships_and_venue_id_parallel": 625,
+        "layout_bootstrap": 756,
+        "layout_get_current_venue": 0,
+        "layout_gates_parallel": 308,
+        "layout_complete_before_first_byte": 1210
+      },
+      "extras": {
+        "bootstrap_reads_mode": "parallel",
+        "bootstrap_case": "B_keep_valid",
+        "layout_gate": "workspace_shell"
+      }
+    },
+    {
+      "total_ms": 329,
+      "durations_ms": {
+        "layout_start": 0,
+        "layout_create_client": 4,
+        "layout_get_user": 87,
+        "bootstrap_get_user": 2,
+        "bootstrap_consume_handoff": 60,
+        "bootstrap_clear_stale": 33,
+        "bootstrap_memberships_and_venue_id_parallel": 75,
+        "layout_bootstrap": 170,
+        "layout_get_current_venue": 0,
+        "layout_gates_parallel": 64,
+        "layout_complete_before_first_byte": 329
+      },
+      "extras": {
+        "bootstrap_reads_mode": "parallel",
+        "bootstrap_case": "B_keep_valid",
+        "layout_gate": "workspace_shell"
+      }
+    },
+    {
+      "total_ms": 771,
+      "durations_ms": {
+        "layout_start": 0,
+        "layout_create_client": 2,
+        "layout_get_user": 24,
+        "bootstrap_get_user": 1,
+        "bootstrap_consume_handoff": 39,
+        "bootstrap_clear_stale": 348,
+        "bootstrap_memberships_and_venue_id_parallel": 309,
+        "layout_bootstrap": 698,
+        "layout_get_current_venue": 0,
+        "layout_gates_parallel": 45,
+        "layout_complete_before_first_byte": 771
+      },
+      "extras": {
+        "bootstrap_reads_mode": "parallel",
+        "bootstrap_case": "B_keep_valid",
+        "layout_gate": "workspace_shell"
+      }
+    },
+    {
+      "total_ms": 268,
+      "durations_ms": {
+        "layout_start": 0,
+        "layout_create_client": 2,
+        "layout_get_user": 33,
+        "bootstrap_get_user": 1,
+        "bootstrap_consume_handoff": 23,
+        "bootstrap_clear_stale": 18,
+        "bootstrap_memberships_and_venue_id_parallel": 38,
+        "layout_bootstrap": 82,
+        "layout_get_current_venue": 0,
+        "layout_gates_parallel": 149,
+        "layout_complete_before_first_byte": 268
+      },
+      "extras": {
+        "bootstrap_reads_mode": "parallel",
+        "bootstrap_case": "B_keep_valid",
+        "layout_gate": "workspace_shell"
+      }
+    },
+    {
+      "total_ms": 226,
+      "durations_ms": {
+        "layout_start": 0,
+        "layout_create_client": 2,
+        "layout_get_user": 35,
+        "bootstrap_get_user": 1,
+        "bootstrap_consume_handoff": 25,
+        "bootstrap_clear_stale": 39,
+        "bootstrap_memberships_and_venue_id_parallel": 50,
+        "layout_bootstrap": 116,
+        "layout_get_current_venue": 0,
+        "layout_gates_parallel": 72,
+        "layout_complete_before_first_byte": 226
+      },
+      "extras": {
+        "bootstrap_reads_mode": "parallel",
+        "bootstrap_case": "B_keep_valid",
+        "layout_gate": "workspace_shell"
+      }
+    },
+    {
+      "total_ms": 362,
+      "durations_ms": {
+        "layout_start": 0,
+        "layout_create_client": 2,
+        "layout_get_user": 24,
+        "bootstrap_get_user": 1,
+        "bootstrap_consume_handoff": 143,
+        "bootstrap_clear_stale": 35,
+        "bootstrap_memberships_and_venue_id_parallel": 93,
+        "layout_bootstrap": 273,
+        "layout_get_current_venue": 0,
+        "layout_gates_parallel": 60,
+        "layout_complete_before_first_byte": 362
+      },
+      "extras": {
+        "bootstrap_reads_mode": "parallel",
+        "bootstrap_case": "B_keep_valid",
+        "layout_gate": "workspace_shell"
+      }
+    },
+    {
+      "total_ms": 305,
+      "durations_ms": {
+        "layout_start": 0,
+        "layout_create_client": 2,
+        "layout_get_user": 48,
+        "bootstrap_get_user": 2,
+        "bootstrap_consume_handoff": 43,
+        "bootstrap_clear_stale": 61,
+        "bootstrap_memberships_and_venue_id_parallel": 99,
+        "layout_bootstrap": 207,
+        "layout_get_current_venue": 0,
+        "layout_gates_parallel": 46,
+        "layout_complete_before_first_byte": 305
+      },
+      "extras": {
+        "bootstrap_reads_mode": "parallel",
+        "bootstrap_case": "B_keep_valid",
+        "layout_gate": "workspace_shell"
+      }
+    },
+    {
+      "total_ms": 455,
+      "durations_ms": {
+        "layout_start": 0,
+        "layout_create_client": 2,
+        "layout_get_user": 53,
+        "bootstrap_get_user": 2,
+        "bootstrap_consume_handoff": 69,
+        "bootstrap_clear_stale": 18,
+        "bootstrap_memberships_and_venue_id_parallel": 29,
+        "layout_bootstrap": 119,
+        "layout_get_current_venue": 3,
+        "layout_gates_parallel": 276,
+        "layout_complete_before_first_byte": 455
+      },
+      "extras": {
+        "bootstrap_reads_mode": "parallel",
+        "bootstrap_case": "B_keep_valid",
+        "layout_gate": "workspace_shell"
+      }
+    },
+    {
+      "total_ms": 354,
+      "durations_ms": {
+        "layout_start": 0,
+        "layout_create_client": 2,
+        "layout_get_user": 27,
+        "bootstrap_get_user": 2,
+        "bootstrap_consume_handoff": 61,
+        "bootstrap_clear_stale": 36,
+        "bootstrap_memberships_and_venue_id_parallel": 52,
+        "layout_bootstrap": 152,
+        "layout_get_current_venue": 9,
+        "layout_gates_parallel": 161,
+        "layout_complete_before_first_byte": 354
+      },
+      "extras": {
+        "bootstrap_reads_mode": "parallel",
+        "bootstrap_case": "B_keep_valid",
+        "layout_gate": "workspace_shell"
+      }
+    },
+    {
+      "total_ms": 204,
+      "durations_ms": {
+        "layout_start": 0,
+        "layout_create_client": 2,
+        "layout_get_user": 26,
+        "bootstrap_get_user": 1,
+        "bootstrap_consume_handoff": 30,
+        "bootstrap_clear_stale": 24,
+        "bootstrap_memberships_and_venue_id_parallel": 46,
+        "layout_bootstrap": 103,
+        "layout_get_current_venue": 0,
+        "layout_gates_parallel": 72,
+        "layout_complete_before_first_byte": 204
+      },
+      "extras": {
+        "bootstrap_reads_mode": "parallel",
+        "bootstrap_case": "B_keep_valid",
+        "layout_gate": "workspace_shell"
+      }
+    },
+    {
+      "total_ms": 228,
+      "durations_ms": {
+        "layout_start": 0,
+        "layout_create_client": 2,
+        "layout_get_user": 33,
+        "bootstrap_get_user": 1,
+        "bootstrap_consume_handoff": 56,
+        "bootstrap_clear_stale": 30,
+        "bootstrap_memberships_and_venue_id_parallel": 46,
+        "layout_bootstrap": 135,
+        "layout_get_current_venue": 0,
+        "layout_gates_parallel": 55,
+        "layout_complete_before_first_byte": 228
+      },
+      "extras": {
+        "bootstrap_reads_mode": "parallel",
+        "bootstrap_case": "B_keep_valid",
+        "layout_gate": "workspace_shell"
+      }
+    },
+    {
+      "total_ms": 188,
+      "durations_ms": {
+        "layout_start": 0,
+        "layout_create_client": 2,
+        "layout_get_user": 32,
+        "bootstrap_get_user": 1,
+        "bootstrap_consume_handoff": 38,
+        "bootstrap_clear_stale": 31,
+        "bootstrap_memberships_and_venue_id_parallel": 42,
+        "layout_bootstrap": 113,
+        "layout_get_current_venue": 0,
+        "layout_gates_parallel": 38,
+        "layout_complete_before_first_byte": 188
+      },
+      "extras": {
+        "bootstrap_reads_mode": "parallel",
+        "bootstrap_case": "B_keep_valid",
+        "layout_gate": "workspace_shell"
+      }
+    },
+    {
+      "total_ms": 155,
+      "durations_ms": {
+        "layout_start": 0,
+        "layout_create_client": 1,
+        "layout_get_user": 24,
+        "bootstrap_get_user": 1,
+        "bootstrap_consume_handoff": 29,
+        "bootstrap_clear_stale": 26,
+        "bootstrap_memberships_and_venue_id_parallel": 31,
+        "layout_bootstrap": 88,
+        "layout_get_current_venue": 0,
+        "layout_gates_parallel": 40,
+        "layout_complete_before_first_byte": 155
+      },
+      "extras": {
+        "bootstrap_reads_mode": "parallel",
+        "bootstrap_case": "B_keep_valid",
+        "layout_gate": "workspace_shell"
+      }
+    },
+    {
+      "total_ms": 200,
+      "durations_ms": {
+        "layout_start": 0,
+        "layout_create_client": 1,
+        "layout_get_user": 47,
+        "bootstrap_get_user": 1,
+        "bootstrap_consume_handoff": 23,
+        "bootstrap_clear_stale": 20,
+        "bootstrap_memberships_and_venue_id_parallel": 46,
+        "layout_bootstrap": 91,
+        "layout_get_current_venue": 0,
+        "layout_gates_parallel": 60,
+        "layout_complete_before_first_byte": 200
+      },
+      "extras": {
+        "bootstrap_reads_mode": "parallel",
+        "bootstrap_case": "B_keep_valid",
+        "layout_gate": "workspace_shell"
+      }
+    },
+    {
+      "total_ms": 225,
+      "durations_ms": {
+        "layout_start": 0,
+        "layout_create_client": 2,
+        "layout_get_user": 19,
+        "bootstrap_get_user": 1,
+        "bootstrap_consume_handoff": 18,
+        "bootstrap_clear_stale": 35,
+        "bootstrap_memberships_and_venue_id_parallel": 44,
+        "layout_bootstrap": 99,
+        "layout_get_current_venue": 69,
+        "layout_gates_parallel": 34,
+        "layout_complete_before_first_byte": 225
+      },
+      "extras": {
+        "bootstrap_reads_mode": "parallel",
+        "bootstrap_case": "B_keep_valid",
+        "layout_gate": "workspace_shell"
+      }
+    },
+    {
+      "total_ms": 403,
+      "durations_ms": {
+        "layout_start": 0,
+        "layout_create_client": 3,
+        "layout_get_user": 99,
+        "bootstrap_get_user": 2,
+        "bootstrap_consume_handoff": 35,
+        "bootstrap_clear_stale": 82,
+        "bootstrap_memberships_and_venue_id_parallel": 67,
+        "layout_bootstrap": 187,
+        "layout_get_current_venue": 0,
+        "layout_gates_parallel": 104,
+        "layout_complete_before_first_byte": 403
+      },
+      "extras": {
+        "bootstrap_reads_mode": "parallel",
+        "bootstrap_case": "B_keep_valid",
+        "layout_gate": "workspace_shell"
+      }
+    },
+    {
+      "total_ms": 237,
+      "durations_ms": {
+        "layout_start": 0,
+        "layout_create_client": 2,
+        "layout_get_user": 37,
+        "bootstrap_get_user": 1,
+        "bootstrap_consume_handoff": 34,
+        "bootstrap_clear_stale": 33,
+        "bootstrap_memberships_and_venue_id_parallel": 43,
+        "layout_bootstrap": 113,
+        "layout_get_current_venue": 47,
+        "layout_gates_parallel": 36,
+        "layout_complete_before_first_byte": 237
+      },
+      "extras": {
+        "bootstrap_reads_mode": "parallel",
+        "bootstrap_case": "B_keep_valid",
+        "layout_gate": "workspace_shell"
+      }
+    },
+    {
+      "total_ms": 304,
+      "durations_ms": {
+        "layout_start": 0,
+        "layout_create_client": 1,
+        "layout_get_user": 57,
+        "bootstrap_get_user": 1,
+        "bootstrap_consume_handoff": 57,
+        "bootstrap_clear_stale": 35,
+        "bootstrap_memberships_and_venue_id_parallel": 76,
+        "layout_bootstrap": 170,
+        "layout_get_current_venue": 0,
+        "layout_gates_parallel": 74,
+        "layout_complete_before_first_byte": 304
+      },
+      "extras": {
+        "bootstrap_reads_mode": "parallel",
+        "bootstrap_case": "B_keep_valid",
+        "layout_gate": "workspace_shell"
+      }
+    },
+    {
+      "total_ms": 247,
+      "durations_ms": {
+        "layout_start": 0,
+        "layout_create_client": 2,
+        "layout_get_user": 28,
+        "bootstrap_get_user": 1,
+        "bootstrap_consume_handoff": 25,
+        "bootstrap_clear_stale": 23,
+        "bootstrap_memberships_and_venue_id_parallel": 53,
+        "layout_bootstrap": 101,
+        "layout_get_current_venue": 52,
+        "layout_gates_parallel": 61,
+        "layout_complete_before_first_byte": 247
+      },
+      "extras": {
+        "bootstrap_reads_mode": "parallel",
+        "bootstrap_case": "B_keep_valid",
+        "layout_gate": "workspace_shell"
+      }
+    },
+    {
+      "total_ms": 200,
+      "durations_ms": {
+        "layout_start": 0,
+        "layout_create_client": 2,
+        "layout_get_user": 63,
+        "bootstrap_get_user": 2,
+        "bootstrap_consume_handoff": 39,
+        "bootstrap_clear_stale": 22,
+        "bootstrap_memberships_and_venue_id_parallel": 31,
+        "layout_bootstrap": 95,
+        "layout_get_current_venue": 0,
+        "layout_gates_parallel": 37,
+        "layout_complete_before_first_byte": 200
+      },
+      "extras": {
+        "bootstrap_reads_mode": "parallel",
+        "bootstrap_case": "B_keep_valid",
+        "layout_gate": "workspace_shell"
+      }
+    },
+    {
+      "total_ms": 260,
+      "durations_ms": {
+        "layout_start": 0,
+        "layout_create_client": 1,
+        "layout_get_user": 38,
+        "bootstrap_get_user": 1,
+        "bootstrap_consume_handoff": 43,
+        "bootstrap_clear_stale": 29,
+        "bootstrap_memberships_and_venue_id_parallel": 40,
+        "layout_bootstrap": 113,
+        "layout_get_current_venue": 44,
+        "layout_gates_parallel": 61,
+        "layout_complete_before_first_byte": 260
+      },
+      "extras": {
+        "bootstrap_reads_mode": "parallel",
+        "bootstrap_case": "B_keep_valid",
+        "layout_gate": "workspace_shell"
+      }
+    },
+    {
+      "total_ms": 314,
+      "durations_ms": {
+        "layout_start": 0,
+        "layout_create_client": 1,
+        "layout_get_user": 33,
+        "bootstrap_get_user": 1,
+        "bootstrap_consume_handoff": 47,
+        "bootstrap_clear_stale": 24,
+        "bootstrap_memberships_and_venue_id_parallel": 40,
+        "layout_bootstrap": 113,
+        "layout_get_current_venue": 0,
+        "layout_gates_parallel": 164,
+        "layout_complete_before_first_byte": 314
+      },
+      "extras": {
+        "bootstrap_reads_mode": "parallel",
+        "bootstrap_case": "B_keep_valid",
+        "layout_gate": "workspace_shell"
+      }
+    },
+    {
+      "total_ms": 175,
+      "durations_ms": {
+        "layout_start": 0,
+        "layout_create_client": 2,
+        "layout_get_user": 26,
+        "bootstrap_get_user": 1,
+        "bootstrap_consume_handoff": 34,
+        "bootstrap_clear_stale": 17,
+        "bootstrap_memberships_and_venue_id_parallel": 25,
+        "layout_bootstrap": 78,
+        "layout_get_current_venue": 0,
+        "layout_gates_parallel": 67,
+        "layout_complete_before_first_byte": 175
+      },
+      "extras": {
+        "bootstrap_reads_mode": "parallel",
+        "bootstrap_case": "B_keep_valid",
+        "layout_gate": "workspace_shell"
+      }
+    },
+    {
+      "total_ms": 229,
+      "durations_ms": {
+        "layout_start": 0,
+        "layout_create_client": 1,
+        "layout_get_user": 27,
+        "bootstrap_get_user": 1,
+        "bootstrap_consume_handoff": 48,
+        "bootstrap_clear_stale": 47,
+        "bootstrap_memberships_and_venue_id_parallel": 71,
+        "layout_bootstrap": 168,
+        "layout_get_current_venue": 0,
+        "layout_gates_parallel": 31,
+        "layout_complete_before_first_byte": 229
+      },
+      "extras": {
+        "bootstrap_reads_mode": "parallel",
+        "bootstrap_case": "B_keep_valid",
+        "layout_gate": "workspace_shell"
+      }
+    },
+    {
+      "total_ms": 183,
+      "durations_ms": {
+        "layout_start": 0,
+        "layout_create_client": 1,
+        "layout_get_user": 22,
+        "bootstrap_get_user": 1,
+        "bootstrap_consume_handoff": 28,
+        "bootstrap_clear_stale": 64,
+        "bootstrap_memberships_and_venue_id_parallel": 28,
+        "layout_bootstrap": 122,
+        "layout_get_current_venue": 0,
+        "layout_gates_parallel": 36,
+        "layout_complete_before_first_byte": 183
+      },
+      "extras": {
+        "bootstrap_reads_mode": "parallel",
+        "bootstrap_case": "B_keep_valid",
+        "layout_gate": "workspace_shell"
+      }
+    },
+    {
+      "total_ms": 216,
+      "durations_ms": {
+        "layout_start": 0,
+        "layout_create_client": 3,
+        "layout_get_user": 37,
+        "bootstrap_get_user": 1,
+        "bootstrap_consume_handoff": 58,
+        "bootstrap_clear_stale": 28,
+        "bootstrap_memberships_and_venue_id_parallel": 35,
+        "layout_bootstrap": 123,
+        "layout_get_current_venue": 0,
+        "layout_gates_parallel": 50,
+        "layout_complete_before_first_byte": 216
+      },
+      "extras": {
+        "bootstrap_reads_mode": "parallel",
+        "bootstrap_case": "B_keep_valid",
+        "layout_gate": "workspace_shell"
+      }
+    },
+    {
+      "total_ms": 601,
+      "durations_ms": {
+        "layout_start": 0,
+        "layout_create_client": 68,
+        "layout_get_user": 37,
+        "bootstrap_get_user": 1,
+        "bootstrap_consume_handoff": 56,
+        "bootstrap_clear_stale": 25,
+        "bootstrap_memberships_and_venue_id_parallel": 59,
+        "layout_bootstrap": 142,
+        "layout_get_current_venue": 0,
+        "layout_gates_parallel": 353,
+        "layout_complete_before_first_byte": 601
+      },
+      "extras": {
+        "bootstrap_reads_mode": "parallel",
+        "bootstrap_case": "B_keep_valid",
+        "layout_gate": "workspace_shell"
+      }
+    },
+    {
+      "total_ms": 234,
+      "durations_ms": {
+        "layout_start": 0,
+        "layout_create_client": 2,
+        "layout_get_user": 89,
+        "bootstrap_get_user": 1,
+        "bootstrap_consume_handoff": 31,
+        "bootstrap_clear_stale": 32,
+        "bootstrap_memberships_and_venue_id_parallel": 42,
+        "layout_bootstrap": 106,
+        "layout_get_current_venue": 0,
+        "layout_gates_parallel": 35,
+        "layout_complete_before_first_byte": 234
+      },
+      "extras": {
+        "bootstrap_reads_mode": "parallel",
+        "bootstrap_case": "B_keep_valid",
+        "layout_gate": "workspace_shell"
+      }
+    },
+    {
+      "total_ms": 318,
+      "durations_ms": {
+        "layout_start": 0,
+        "layout_create_client": 1,
+        "layout_get_user": 28,
+        "bootstrap_get_user": 1,
+        "bootstrap_consume_handoff": 102,
+        "bootstrap_clear_stale": 22,
+        "bootstrap_memberships_and_venue_id_parallel": 63,
+        "layout_bootstrap": 189,
+        "layout_get_current_venue": 0,
+        "layout_gates_parallel": 97,
+        "layout_complete_before_first_byte": 318
+      },
+      "extras": {
+        "bootstrap_reads_mode": "parallel",
+        "bootstrap_case": "B_keep_valid",
+        "layout_gate": "workspace_shell"
+      }
+    },
+    {
+      "total_ms": 181,
+      "durations_ms": {
+        "layout_start": 0,
+        "layout_create_client": 4,
+        "layout_get_user": 29,
+        "bootstrap_get_user": 1,
+        "bootstrap_consume_handoff": 20,
+        "bootstrap_clear_stale": 18,
+        "bootstrap_memberships_and_venue_id_parallel": 29,
+        "layout_bootstrap": 69,
+        "layout_get_current_venue": 10,
+        "layout_gates_parallel": 67,
+        "layout_complete_before_first_byte": 181
+      },
+      "extras": {
+        "bootstrap_reads_mode": "parallel",
+        "bootstrap_case": "B_keep_valid",
+        "layout_gate": "workspace_shell"
+      }
+    }
+  ]
+}

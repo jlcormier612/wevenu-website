@@ -79,3 +79,5 @@ jobs:
 # nav-perf wave2 acceptance docs: retrigger venue-app required check
 
 # nav-perf wave3 acceptance docs: retrigger venue-app required check
+
+# Ruleset requires this check name on main PRs; path filter still scopes when code changes.
