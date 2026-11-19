@@ -29,8 +29,18 @@ const PRIVATE_RE =
 const OWN_FINANCIAL_RE =
   /\b(our|ours|my|mine|we)\b[\s\S]{0,48}\b(payment|payments|paid|pay|balance|balances|invoice|invoices|owe|owing|due|deposit|financial|finances|contract|contracts)\b|\b(payment|payments|paid|pay|balance|balances|invoice|invoices|owe|owing|due|deposit|financial|finances|contract|contracts)\b[\s\S]{0,48}\b(our|ours|my|mine)\b/i;
 
-/** Common English words that look capitalized but are not person names. */
-const NAME_STOP = new Set([
+/**
+ * Explicit third-party references that do not require a Proper-case name.
+ * Kept narrow so venue/planning wording does not overblock.
+ */
+const OTHER_PARTY_PHRASE_RE =
+  /\b(?:another|other|different)\s+(?:couple|client|guest|person|party)(?:'s)?\b|\bsomeone\s+else(?:'s)?\b|\banother\s+(?:person|couple|client)(?:'s)?\b/i;
+
+/**
+ * Words that look like names (or possessives) but are venue / product / question
+ * vocabulary — never treat as a foreign person.
+ */
+const TOKEN_STOP = new Set([
   "what",
   "when",
   "where",
@@ -60,12 +70,58 @@ const NAME_STOP = new Set([
   "contract",
   "contracts",
   "questionnaire",
+  "questionnaires",
   "timeline",
   "tasks",
   "task",
   "hello",
   "cheers",
   "luv",
+  // Capitalized venue / planning terms that must not look like people
+  "reception",
+  "ceremony",
+  "parking",
+  "coordinator",
+  "deposit",
+  "balance",
+  "invoice",
+  "invoices",
+  "package",
+  "packages",
+  "wedding",
+  "event",
+  "events",
+  "client",
+  "couple",
+  "guest",
+  "guests",
+  "vendor",
+  "vendors",
+  "setup",
+  "breakdown",
+  "timeline",
+  "choices",
+  "insurance",
+  "seating",
+  "floor",
+  "plan",
+  "plans",
+  "fancy",
+  "grove",
+  "barn",
+  "farm",
+  "october",
+  "november",
+  "december",
+  "january",
+  "february",
+  "march",
+  "april",
+  "may",
+  "june",
+  "july",
+  "august",
+  "september",
 ]);
 
 function normalizeToken(s: string): string {
@@ -81,22 +137,37 @@ function coupleNameSet(names: string[]): Set<string> {
   return set;
 }
 
+function pushUnique(out: string[], token: string) {
+  const n = normalizeToken(token);
+  if (n.length < 2) return;
+  if (TOKEN_STOP.has(n)) return;
+  if (!out.includes(n)) out.push(n);
+}
+
 /**
- * Extract likely person-name tokens from a question (simple Proper-case heuristic).
+ * Extract likely person-name tokens:
+ * - Proper-case spans (Ron Cormier)
+ * - Case-insensitive possessives (ron's / cormier's)
  */
 export function extractLikelyPersonNameTokens(question: string): string[] {
-  const matches = question.match(/\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?\b/g) ?? [];
   const out: string[] = [];
-  for (const m of matches) {
-    const parts = m.split(/\s+/);
-    for (const p of parts) {
-      const n = normalizeToken(p);
-      if (n.length < 2) continue;
-      if (NAME_STOP.has(n)) continue;
-      if (!out.includes(n)) out.push(n);
-    }
+
+  const proper = question.match(/\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?\b/g) ?? [];
+  for (const m of proper) {
+    for (const p of m.split(/\s+/)) pushUnique(out, p);
   }
+
+  // Possessives work for lowercase third-party names: "ron cormier's balance"
+  const possessive = question.matchAll(/\b([A-Za-z][A-Za-z'-]{1,40})'s\b/g);
+  for (const m of possessive) {
+    pushUnique(out, m[1] ?? "");
+  }
+
   return out;
+}
+
+export function hasExplicitOtherPartyPhrase(question: string): boolean {
+  return OTHER_PARTY_PHRASE_RE.test(question);
 }
 
 export function classifyCoupleAskPrivacyScope(input: {
@@ -108,14 +179,24 @@ export function classifyCoupleAskPrivacyScope(input: {
   const couple = coupleNameSet(input.coupleNames);
   const tokens = extractLikelyPersonNameTokens(q);
   const foreign = tokens.filter((t) => !couple.has(t));
+  const explicitOther = hasExplicitOtherPartyPhrase(q);
   const financial = FINANCIAL_RE.test(q) || PRIVATE_RE.test(q);
   const ownFinancial = OWN_FINANCIAL_RE.test(q);
+  const thirdParty = foreign.length > 0 || explicitOther;
 
-  if (foreign.length > 0 && financial && ownFinancial) {
-    return { kind: "mixed_own_and_unrelated_private", financial: true, foreignNameHints: foreign };
+  if (thirdParty && financial && ownFinancial) {
+    return {
+      kind: "mixed_own_and_unrelated_private",
+      financial: true,
+      foreignNameHints: foreign,
+    };
   }
-  if (foreign.length > 0 && financial) {
-    return { kind: "unrelated_person_private", financial: true, foreignNameHints: foreign };
+  if (thirdParty && financial) {
+    return {
+      kind: "unrelated_person_private",
+      financial: true,
+      foreignNameHints: foreign,
+    };
   }
   if (ownFinancial) {
     return { kind: "own_portal", financial: true, foreignNameHints: [] };

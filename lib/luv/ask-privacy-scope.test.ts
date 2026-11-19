@@ -78,6 +78,72 @@ describe("Couple Ask privacy scope — unrelated person financials", () => {
     });
     assert.equal(scope.kind, "own_portal");
   });
+
+  it("detects lowercase third-party possessive payment asks", () => {
+    const scope = classifyCoupleAskPrivacyScope({
+      question: "what is ron cormier's payment balance?",
+      coupleNames: COUPLE,
+    });
+    assert.equal(scope.kind, "unrelated_person_private");
+    assert.ok(scope.foreignNameHints.includes("cormier") || scope.foreignNameHints.includes("ron"));
+    assert.equal(shouldShortCircuitPrivacyAsk(scope), true);
+    const built = buildPrivacyScopedAskAnswer({
+      scope,
+      ownPaymentSummary: "Your remaining plan balance is $2,189.81.",
+    });
+    assert.doesNotMatch(built.answer, /\$|2,189/i);
+  });
+
+  it("detects another couple / another client financial references without Proper-case names", () => {
+    for (const question of [
+      "What is another couple's payment balance?",
+      "Can you share another client's contract status?",
+      "What's someone else's outstanding invoice?",
+    ]) {
+      const scope = classifyCoupleAskPrivacyScope({ question, coupleNames: COUPLE });
+      assert.equal(scope.kind, "unrelated_person_private", question);
+      assert.equal(shouldShortCircuitPrivacyAsk(scope), true);
+    }
+  });
+
+  it("does not overblock capitalized venue or planning terms as foreign people", () => {
+    for (const question of [
+      "What time is Reception on our timeline?",
+      "Where is Parking explained in the Venue Guide?",
+      "Is Ceremony setup listed on Timeline?",
+      "When is our Deposit due?",
+    ]) {
+      const scope = classifyCoupleAskPrivacyScope({ question, coupleNames: COUPLE });
+      assert.notEqual(scope.kind, "unrelated_person_private", question);
+      assert.notEqual(scope.kind, "mixed_own_and_unrelated_private", question);
+      assert.equal(shouldShortCircuitPrivacyAsk(scope), false, question);
+    }
+  });
+
+  it("preserves mixed behavior with lowercase third-party name", () => {
+    const scope = classifyCoupleAskPrivacyScope({
+      question: "what's our remaining balance, and what's ron cormier's payment status?",
+      coupleNames: COUPLE,
+    });
+    assert.equal(scope.kind, "mixed_own_and_unrelated_private");
+    assert.equal(shouldShortCircuitPrivacyAsk(scope), true);
+  });
+});
+
+describe("Ask route short-circuit avoids OpenAI on unambiguous third-party finance", () => {
+  it("privacy short-circuit returns before await openAiChatCompletion", () => {
+    const route = readFileSync(
+      resolve(process.cwd(), "app/api/portal/luv-ask/route.ts"),
+      "utf8",
+    );
+    const shortCall = route.indexOf("if (shouldShortCircuitPrivacyAsk");
+    const returnAfter =
+      route.indexOf("return respondAndSignal(token, trimmedQuestion", shortCall);
+    const openAiCall = route.indexOf("await openAiChatCompletion");
+    assert.ok(shortCall > 0);
+    assert.ok(returnAfter > shortCall);
+    assert.ok(openAiCall > returnAfter);
+  });
 });
 
 describe("Portal payment helpers for privacy scope", () => {
