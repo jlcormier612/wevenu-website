@@ -27,20 +27,19 @@ function triggerValues(row: string): string[] {
 }
 
 describe("Booked workspace two-row nav + Luv tab", () => {
-  it("renders two deliberate rows of seven with the required order", () => {
+  it("renders two deliberate P2-A tab rows with Luv on row 2", () => {
     const row1 = triggerValues(rowBlock(eventDetail, "booked-tab-row-1"));
     const row2 = triggerValues(rowBlock(eventDetail, "booked-tab-row-2"));
+    // P2-A: Questionnaires / Inventory / Event Order moved off tab rows to
+    // Overview workspace cards + hash-addressable TabsContent.
     assert.deepEqual(row1, [
       "overview",
       "playbook",
       "timeline",
       "floorplan",
       "vendors",
-      "inventory",
-      "event-order",
     ]);
     assert.deepEqual(row2, [
-      "questionnaires",
       "documents",
       "invoice",
       "messages",
@@ -48,16 +47,18 @@ describe("Booked workspace two-row nav + Luv tab", () => {
       "notes",
       "luv",
     ]);
-    assert.equal(row1.length, 7);
-    assert.equal(row2.length, 7);
-    assert.equal(row2[6], "luv");
+    assert.equal(row1.length, 5);
+    assert.equal(row2.length, 6);
+    assert.equal(row2[5], "luv");
+    assert.match(eventDetail, /TabsContent value="questionnaires"/);
+    assert.match(eventDetail, /data-testid="open-questionnaires-card"/);
   });
 
-  it("uses grid cols-7 per row (not flex-wrap accidental wrapping)", () => {
+  it("uses fixed grid cols per row (not flex-wrap accidental wrapping)", () => {
     const row1 = rowBlock(eventDetail, "booked-tab-row-1");
     const row2 = rowBlock(eventDetail, "booked-tab-row-2");
-    assert.match(row1, /grid-cols-7/);
-    assert.match(row2, /grid-cols-7/);
+    assert.match(row1, /grid-cols-5/);
+    assert.match(row2, /grid-cols-6/);
     const nav = eventDetail.slice(
       eventDetail.indexOf('data-testid="booked-workspace-tab-nav"'),
       eventDetail.indexOf('TabsContent value="overview"'),
@@ -107,7 +108,8 @@ describe("Booked workspace two-row nav + Luv tab", () => {
   });
 
   it("lead Luv tab remains intact", () => {
-    assert.match(leadDetail, /TabsTrigger value="luv"/);
+    // TabsTrigger props may wrap across lines; require value="luv" on the trigger.
+    assert.match(leadDetail, /<TabsTrigger[\s\S]*?value="luv"/);
     assert.match(leadDetail, /LuvDraftPanel/);
     assert.match(leadDetail, /TabsContent value="luv"/);
   });

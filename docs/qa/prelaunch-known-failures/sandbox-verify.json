@@ -1,0 +1,50 @@
+{
+  "measuredAt": "2026-11-19T05:12:42.996Z",
+  "app": "https://app.sandbox.hellotocheers.com",
+  "openai": 0,
+  "checks": [
+    {
+      "name": "questionnaires-not-on-tab-rows",
+      "ok": true,
+      "notes": [
+        "row1=\"Planning Overview\\nPlanning Tasks\\nTimeline\\nFloor Plans\\nVendors\"",
+        "hasQTab=false"
+      ]
+    },
+    {
+      "name": "questionnaires-overview-card",
+      "ok": true,
+      "notes": [
+        "card=true",
+        "open=true"
+      ]
+    },
+    {
+      "name": "questionnaires-card-opens-panel",
+      "ok": true,
+      "notes": [
+        "panel=true",
+        "urlHash=#questionnaires"
+      ]
+    },
+    {
+      "name": "timeline-empty-state",
+      "ok": true,
+      "notes": [
+        "noTimeline=true",
+        "addFirst=true",
+        "templateChrome=true"
+      ]
+    },
+    {
+      "name": "timeline-empty-fixture",
+      "ok": true,
+      "notes": [
+        "event=c43ca64a-5e76-41ec-86d9-c8cebfbe854b",
+        "emptyOk=true",
+        "pickerOk=true"
+      ]
+    }
+  ],
+  "allOk": true
+}
