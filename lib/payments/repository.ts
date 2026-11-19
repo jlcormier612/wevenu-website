@@ -98,11 +98,60 @@ export async function getSchedules(client: DbClient, venueId: string): Promise<P
   return (data as unknown as ScheduleRow[]).map(mapSchedule);
 }
 
+/**
+ * Dashboard Focus Event-Readiness briefing only.
+ * Returns schedule id ↔ event_id joins used to attach line items to events.
+ * Omits client/event embeds and schedule money fields. Do not use for
+ * payment UI or mutation flows.
+ */
+export async function getSchedulesForDashboardBriefing(
+  client: DbClient,
+  venueId: string,
+): Promise<Array<{ id: string; eventId: string | null }>> {
+  const { data, error } = await client.from("payment_schedules")
+    .select("id, event_id")
+    .eq("venue_id", venueId);
+  if (error) throw error;
+  return ((data ?? []) as Array<{ id: string; event_id: string | null }>).map((r) => ({
+    id: r.id,
+    eventId: r.event_id,
+  }));
+}
+
 export async function getAllLineItems(client: DbClient, venueId: string): Promise<PaymentLineItem[]> {
   const { data, error } = await client.from("payment_line_items").select("*")
     .eq("venue_id", venueId).order("due_date", { ascending: true, nullsFirst: false });
   if (error) throw error;
   return (data as ItemRow[]).map(mapItem);
+}
+
+/**
+ * Dashboard Focus Event-Readiness briefing only.
+ * Selects fields used by computePaymentsReadiness + paymentsAttentionDismissalKey.
+ * Omits Stripe/QBO/refund/label columns. Do not use for payment UI.
+ */
+export async function getLineItemsForDashboardBriefing(
+  client: DbClient,
+  venueId: string,
+): Promise<Array<{ id: string; scheduleId: string; status: PaymentLineItem["status"]; dueDate: string | null; amount: number }>> {
+  const { data, error } = await client.from("payment_line_items")
+    .select("id, schedule_id, status, due_date, amount")
+    .eq("venue_id", venueId)
+    .order("due_date", { ascending: true, nullsFirst: false });
+  if (error) throw error;
+  return ((data ?? []) as Array<{
+    id: string;
+    schedule_id: string;
+    status: PaymentLineItem["status"];
+    due_date: string | null;
+    amount: number;
+  }>).map((r) => ({
+    id: r.id,
+    scheduleId: r.schedule_id,
+    status: r.status,
+    dueDate: r.due_date,
+    amount: Number(r.amount),
+  }));
 }
 
 export async function getSchedule(client: DbClient, venueId: string, id: string): Promise<PaymentScheduleWithDetails | null> {

@@ -1,0 +1,37 @@
+{
+  "measuredAt": "2026-11-19T02:38:20.735Z",
+  "venueId": "a415ac52-cd74-42a6-8df7-7a8f6e71d080",
+  "counts": {
+    "allEvents": 156,
+    "activeEvents": 139,
+    "cancelledEvents": 17,
+    "candidateEvents": 8,
+    "fullItems": 8,
+    "candidateItems": 8,
+    "cancelledLeakItems": 0
+  },
+  "parity": {
+    "mismatches": 0,
+    "details": []
+  },
+  "fullIds": [
+    "briefing-requests-c43ca64a-5e76-41ec-86d9-c8cebfbe854b",
+    "briefing-payments-b16f8c7a-5754-4354-9ce3-ac6e25085525",
+    "briefing-payments-2d2d9293-24c5-4e16-a9f7-4ef67eb958df",
+    "briefing-contract-6f41b3c4-549a-4a1d-a2ff-108a09b8687c",
+    "briefing-contract-b2080775-802c-4bc7-8513-c6fc11000a0a",
+    "briefing-contract-85c55895-b82c-4ef3-8d66-c3ebc82f1ef7",
+    "briefing-contract-9f569e99-cca9-4b5e-be5c-bbe0b60affc4",
+    "briefing-payments-ebf74f77-2944-474a-b735-48762ecb6842"
+  ],
+  "candidateIds": [
+    "briefing-requests-c43ca64a-5e76-41ec-86d9-c8cebfbe854b",
+    "briefing-payments-b16f8c7a-5754-4354-9ce3-ac6e25085525",
+    "briefing-payments-2d2d9293-24c5-4e16-a9f7-4ef67eb958df",
+    "briefing-contract-6f41b3c4-549a-4a1d-a2ff-108a09b8687c",
+    "briefing-contract-b2080775-802c-4bc7-8513-c6fc11000a0a",
+    "briefing-contract-85c55895-b82c-4ef3-8d66-c3ebc82f1ef7",
+    "briefing-contract-9f569e99-cca9-4b5e-be5c-bbe0b60affc4",
+    "briefing-payments-ebf74f77-2944-474a-b735-48762ecb6842"
+  ]
+}
