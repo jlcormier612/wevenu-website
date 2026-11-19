@@ -71,11 +71,13 @@ function countsInWindow(
   windowMs: number,
 ): { criticalCount: number; bulkCount: number; total: number; oldestAtMs: number | null } {
   const start = nowMs - windowMs;
+  // Ignore stamps more than one window into the future (malformed / test pollution).
+  const futureBound = nowMs + windowMs;
   let criticalCount = 0;
   let bulkCount = 0;
   let oldestAtMs: number | null = null;
   for (const e of events) {
-    if (e.atMs <= start) continue;
+    if (e.atMs <= start || e.atMs > futureBound) continue;
     if (oldestAtMs == null || e.atMs < oldestAtMs) oldestAtMs = e.atMs;
     if (e.priority === "critical") criticalCount += 1;
     else bulkCount += 1;
@@ -83,9 +85,26 @@ function countsInWindow(
   return { criticalCount, bulkCount, total: criticalCount + bulkCount, oldestAtMs };
 }
 
-function retryAfterFromOldest(nowMs: number, windowMs: number, oldestAtMs: number | null): number {
+/** Max retry_after_ms returned to callers (fits Postgres integer / JS safe int). */
+export const RESEND_PACING_RETRY_AFTER_MS_MAX = 2_147_483_647;
+
+/**
+ * Milliseconds until the oldest in-window event ages out.
+ * Clamped to [1, RESEND_PACING_RETRY_AFTER_MS_MAX] so extreme / far-future
+ * timestamps cannot overflow integer transports or throw in SQL (::integer).
+ * Never returns 0 or negative — denial paths must wait at least 1ms.
+ */
+export function retryAfterFromOldest(
+  nowMs: number,
+  windowMs: number,
+  oldestAtMs: number | null,
+): number {
   if (oldestAtMs == null) return 1;
-  return Math.max(1, oldestAtMs + windowMs - nowMs + 1);
+  const raw = oldestAtMs + windowMs - nowMs + 1;
+  if (!Number.isFinite(raw)) return 1;
+  if (raw <= 1) return 1;
+  if (raw >= RESEND_PACING_RETRY_AFTER_MS_MAX) return RESEND_PACING_RETRY_AFTER_MS_MAX;
+  return Math.floor(raw);
 }
 
 /**
@@ -107,10 +126,12 @@ export function tryAcquireSlidingSlot(
   const windowMs = opts.windowMs ?? RESEND_PACING_WINDOW_MS;
   const nowMs = opts.nowMs;
 
-  // Drop events outside 2× window (same prune horizon as SQL).
+  // Drop events outside 2× lookback and clearly-future malformed stamps (same as SQL).
   const pruneBefore = nowMs - windowMs * 2;
+  const futureBound = nowMs + windowMs;
   for (let i = events.length - 1; i >= 0; i--) {
-    if (events[i]!.atMs <= pruneBefore) events.splice(i, 1);
+    const at = events[i]!.atMs;
+    if (at <= pruneBefore || at > futureBound) events.splice(i, 1);
   }
 
   const { criticalCount, bulkCount, total, oldestAtMs } = countsInWindow(events, nowMs, windowMs);

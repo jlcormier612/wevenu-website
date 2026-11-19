@@ -1,0 +1,79 @@
+{
+  "at": "2026-11-19T20:51:32.784Z",
+  "serving_expect": "9de88f75",
+  "app": "https://app.sandbox.hellotocheers.com",
+  "run": "rsmwo0z7y8",
+  "pass": false,
+  "checks": [
+    {
+      "name": "fixture-guests",
+      "ok": true,
+      "detail": "3 disposable guests"
+    },
+    {
+      "name": "portal-session",
+      "ok": true,
+      "detail": "resend_scale_rsmwo0z7y8_"
+    },
+    {
+      "name": "bulk-capacity-fill",
+      "ok": true,
+      "detail": "granted=6"
+    },
+    {
+      "name": "live-invite-rls-defect",
+      "ok": true,
+      "detail": "Deployed invite route returns Invalid token under anon RLS; hotfix uses createAdminClient"
+    },
+    {
+      "name": "deferred-identified",
+      "ok": false,
+      "detail": "blocked_http=401 body={\"ok\":false,\"error\":\"Invalid token.\",\"_http\":401}"
+    },
+    {
+      "name": "deferred-not-logged-sent",
+      "ok": true,
+      "detail": "ok"
+    },
+    {
+      "name": "retry-send-success",
+      "ok": false,
+      "detail": "{}"
+    },
+    {
+      "name": "sent-guest-marked",
+      "ok": false,
+      "detail": "{\"id\":\"2a46d1a6-7267-451e-837a-f51f697349c5\",\"invitation_status\":\"ready\",\"rsvp_sent_at\":null}"
+    },
+    {
+      "name": "partial-batch-accurate",
+      "ok": false,
+      "detail": "{}"
+    },
+    {
+      "name": "ui-portal-loaded",
+      "ok": true,
+      "detail": "portal shell"
+    },
+    {
+      "name": "ui-shows-alpha",
+      "ok": true,
+      "detail": "guest list visible"
+    },
+    {
+      "name": "ui-screenshot",
+      "ok": true,
+      "detail": "/Users/jensmac/Desktop/HTC-RESEND-SCALE-GUEST-RSVP/guests-rsmwo0z7y8.png"
+    },
+    {
+      "name": "unsent-still-retryable",
+      "ok": true,
+      "detail": "[{\"id\":\"2a46d1a6-7267-451e-837a-f51f697349c5\",\"invitation_status\":\"ready\"},{\"id\":\"fd617182-0368-4b96-b5c7-269fe1647222\",\"invitation_status\":\"ready\"},{\"id\":\"aad4aca3-333a-44ee-bb03-01dd11ffb18e\",\"invitation_status\":\"ready\"}]"
+    },
+    {
+      "name": "cleanup",
+      "ok": true,
+      "detail": "removed 3 guests + session"
+    }
+  ]
+}

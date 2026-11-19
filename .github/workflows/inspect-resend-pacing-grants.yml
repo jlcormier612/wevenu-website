@@ -1,0 +1,36 @@
+# Read-only dump of live Sandbox acquire_resend_send_slot privileges.
+# workflow_dispatch only. Never mutates the database.
+name: Inspect Resend Pacing Grants
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sandbox-database
+  cancel-in-progress: false
+
+jobs:
+  inspect:
+    name: Inspect pacing RPC privileges
+    runs-on: ubuntu-latest
+    environment: sandbox
+    env:
+      SANDBOX_DB_URL: ${{ secrets.SANDBOX_DB_URL }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install psql
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Dump live privileges
+        run: |
+          if [ -z "$SANDBOX_DB_URL" ]; then
+            echo "::error::SANDBOX_DB_URL secret is not set on the sandbox Environment."
+            exit 1
+          fi
+          chmod +x scripts/inspect-resend-pacing-grants.sh
+          bash scripts/inspect-resend-pacing-grants.sh "$SANDBOX_DB_URL"
