@@ -4,31 +4,17 @@
 #
 # Uses placeholder NEXT_PUBLIC_* values sufficient for `next build` typecheck/compile.
 # Does not deploy. Does not touch Sandbox or Production.
-# Path-filter note: required check contexts must report for script-only and
-# workflow-only PRs (branch protection expects them). Keep this workflow file
-# and scripts/** / .github/workflows/** in the path list so those PRs are not
-# merge-blocked by silent skipped checks. Do not remove required checks.
+#
+# Required check context (ruleset): "Production-style venue-app build"
+# This workflow always starts on PRs to main so that context always reports.
+# Docs-only PRs take an explicit lightweight success path; everything else runs
+# the full TypeScript + production-style build. Ambiguous detection → full build.
 
 name: Venue app PR build
 
 on:
   pull_request:
     branches: [main]
-    paths:
-      - "app/**"
-      - "components/**"
-      - "lib/**"
-      - "shared/**"
-      - "integrations/**"
-      - "proxy.ts"
-      - "package.json"
-      - "package-lock.json"
-      - "tsconfig.json"
-      - "next.config.*"
-      - "Dockerfile"
-      - "scripts/**"
-      - ".github/workflows/**"
-      - ".github/workflows/venue-app-pr-build.yml"
 
 concurrency:
   group: venue-app-pr-build-${{ github.event.pull_request.number }}
@@ -44,40 +30,81 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Need base..head for an authoritative changed-file list.
+          fetch-depth: 0
+
+      - name: Classify PR change set
+        id: scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE="${{ github.event.pull_request.base.sha }}"
+          HEAD="${{ github.event.pull_request.head.sha }}"
+          if ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+            echo "::warning::Base SHA unavailable; failing closed to full build."
+            echo "mode=full" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if ! git cat-file -e "$HEAD^{commit}" 2>/dev/null; then
+            echo "::warning::Head SHA unavailable; failing closed to full build."
+            echo "mode=full" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          mapfile -t FILES < <(git diff --name-only "$BASE"..."$HEAD")
+          if [ "${#FILES[@]}" -eq 0 ]; then
+            echo "::warning::Empty changed-file list; failing closed to full build."
+            echo "mode=full" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          {
+            echo "Changed files (${#FILES[@]}):"
+            printf '  %s\n' "${FILES[@]}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          MODE_LINE="$(bash scripts/ci/classify-venue-pr-scope.sh "${FILES[@]}")"
+          MODE="${MODE_LINE#mode=}"
+          echo "Classification: $MODE" >> "$GITHUB_STEP_SUMMARY"
+          echo "mode=$MODE" >> "$GITHUB_OUTPUT"
+
+      - name: Docs-only — required check satisfied without full build
+        if: steps.scope.outputs.mode == 'docs'
+        run: |
+          echo "Docs-only change set confirmed."
+          echo "Full TypeScript check and next build are not required for this PR."
+          echo "Required check context 'Production-style venue-app build' reports success."
 
       - uses: actions/setup-node@v4
+        if: steps.scope.outputs.mode == 'full'
         with:
           node-version: "22"
           cache: npm
 
       - name: Install dependencies
+        if: steps.scope.outputs.mode == 'full'
         run: npm ci
 
       - name: Write build env
+        if: steps.scope.outputs.mode == 'full'
         run: |
           printf '%s\n' \
             "NEXT_PUBLIC_SUPABASE_URL=https://example.supabase.co" \
             "NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_pr_build_placeholder" \
             > .env.production
 
+      # Full-repo `tsc --noEmit` (includes *.test.ts). `next build` typechecks
+      # app compile paths only and previously left test-fixture debt invisible.
+      # Fail-closed: no error allowance, no exclude of tests, no strict weakening.
+      - name: TypeScript check (tsc --noEmit)
+        if: steps.scope.outputs.mode == 'full'
+        run: npx tsc --noEmit
+
       - name: next build (includes TypeScript)
+        if: steps.scope.outputs.mode == 'full'
         run: npm run build
         env:
           NEXT_TELEMETRY_DISABLED: "1"
           NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
           NEXT_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_pr_build_placeholder
-
-# Path-trigger for docs/infra-only PR #36 required check.
-
-# floor-plans migration hotfix: retrigger venue-app required check
-
-# migration sandbox release tracker: retrigger venue-app required check
-
-# nav-perf wave1 acceptance docs: retrigger venue-app required check
-
-
-# nav-perf wave2 acceptance docs: retrigger venue-app required check
-
-# nav-perf wave3 acceptance docs: retrigger venue-app required check
-
-# Ruleset requires this check name on main PRs; path filter still scopes when code changes.

@@ -1,6 +1,8 @@
 {
   "compilerOptions": {
-    "target": "ES2017",
+    // ES2018+ required for test source that uses the `s` (dotAll) regex flag.
+    // Does not weaken `strict`; aligns lib capability with existing test patterns.
+    "target": "ES2018",
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "skipLibCheck": true,

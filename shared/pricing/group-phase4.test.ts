@@ -609,20 +609,20 @@ describe("Phase 4 Stripe group coupon executor", () => {
   });
 
   it("applies coupon with proration_behavior none and confirms", async () => {
-    let updatedParams: Record<string, unknown> | null = null;
+    const updateBox: { params: Record<string, unknown> | null } = { params: null };
     const stripe = {
       subscriptions: {
         async retrieve() {
           return {
             id: "sub_1",
             schedule: null,
-            discounts: updatedParams
+            discounts: updateBox.params
               ? [{ coupon: "coupon_group_10" }]
               : [],
           };
         },
         async update(_id: string, params: Record<string, unknown>) {
-          updatedParams = params;
+          updateBox.params = params;
           return {
             id: "sub_1",
             schedule: null,
@@ -648,7 +648,7 @@ describe("Phase 4 Stripe group coupon executor", () => {
     });
     assert.equal(result.ok, true);
     assert.equal(result.confirmedCouponId, "coupon_group_10");
-    assert.equal(updatedParams?.proration_behavior, "none");
+    assert.equal(updateBox.params?.proration_behavior, "none");
   });
 
   it("confirms coupons from expanded discounts[].source.coupon (API 2024+)", async () => {

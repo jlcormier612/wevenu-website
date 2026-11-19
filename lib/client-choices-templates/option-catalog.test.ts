@@ -35,6 +35,8 @@ function offering(partial: Partial<Offering> & Pick<Offering, "id" | "name">): O
     createdAt: ts,
     updatedAt: ts,
     ...partial,
+    parentOfferingId: partial.parentOfferingId ?? null,
+    parentOfferingIds: partial.parentOfferingIds ?? [],
   };
 }
 

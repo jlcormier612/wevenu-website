@@ -1,10 +1,13 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { mergeFinalizedInventoryIntoCoupleDocuments } from "@/lib/portal/couple-documents-inventory";
+import {
+  mergeFinalizedInventoryIntoCoupleDocuments,
+  type CouplePortalDocumentLike,
+} from "@/lib/portal/couple-documents-inventory";
 
 describe("mergeFinalizedInventoryIntoCoupleDocuments", () => {
   it("ignores non-finalized inventory", () => {
-    const base = [{ id: "x", docType: "upload", name: "File" }];
+    const base: CouplePortalDocumentLike[] = [{ id: "x", docType: "upload", name: "File" }];
     assert.deepEqual(
       mergeFinalizedInventoryIntoCoupleDocuments(base, {
         id: "inv1",
@@ -16,7 +19,7 @@ describe("mergeFinalizedInventoryIntoCoupleDocuments", () => {
   });
 
   it("prepends finalized inventory once", () => {
-    const base = [{ id: "x", docType: "upload", name: "File" }];
+    const base: CouplePortalDocumentLike[] = [{ id: "x", docType: "upload", name: "File" }];
     const merged = mergeFinalizedInventoryIntoCoupleDocuments(base, {
       id: "inv1",
       status: "finalized",

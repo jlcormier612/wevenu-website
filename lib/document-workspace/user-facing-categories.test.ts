@@ -10,7 +10,7 @@ import {
 } from "@/lib/document-workspace/user-facing-categories";
 import { WORKSPACE_CATEGORIES, type WorkspaceCategory, type WorkspaceDocument } from "@/lib/document-workspace/types";
 
-function stub(category: WorkspaceCategory, id = category): WorkspaceDocument {
+function stub(category: WorkspaceCategory, id: string = category): WorkspaceDocument {
   return {
     docType: "document",
     id,

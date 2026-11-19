@@ -29,6 +29,7 @@ const service = readFileSync(resolve("lib/availability/service.ts"), "utf8");
 function hold(over: Partial<DateHold> & Pick<DateHold, "id" | "holdDate" | "status">): DateHold {
   const spaceId = over.spaceId ?? "space-1";
   const spaceName = over.spaceName ?? "Covered Bridge";
+  const holdDate = over.holdDate;
   return {
     venueId: "v1",
     leadId: "lead-1",
@@ -39,12 +40,18 @@ function hold(over: Partial<DateHold> & Pick<DateHold, "id" | "holdDate" | "stat
     endTime: null,
     expiresAt: over.expiresAt ?? null,
     notes: null,
+    preferenceId: over.preferenceId ?? null,
     createdAt: "2026-09-27T00:00:00Z",
     updatedAt: "2026-09-27T00:00:00Z",
     leadName: "Wilma Flintstone",
     spaceName,
     spaceNames: over.spaceNames ?? (spaceName ? [spaceName] : []),
     ...over,
+    // Required after spread so Partial cannot leave endDate undefined.
+    id: over.id,
+    holdDate,
+    endDate: over.endDate ?? holdDate,
+    status: over.status,
   };
 }
 
@@ -131,19 +138,20 @@ describe("Date Hold active-state presentation", () => {
   });
 
   it("Active Holds window uses HTC 12-hour formatTime, not raw HH:mm", () => {
+    const day = { holdDate: "2027-02-14", endDate: "2027-02-14" } as const;
     assert.equal(
-      holdWindowLabel({ startTime: "16:00", endTime: "18:00" }),
+      holdWindowLabel({ ...day, startTime: "16:00", endTime: "18:00" }),
       "4:00–6:00 PM",
     );
     assert.equal(
-      holdWindowLabel({ startTime: "18:00", endTime: "23:00" }),
+      holdWindowLabel({ ...day, startTime: "18:00", endTime: "23:00" }),
       "6:00–11:00 PM",
     );
-    assert.equal(holdWindowLabel({ startTime: null, endTime: null }), null);
-    assert.equal(holdWindowLabel({ startTime: "00:00", endTime: "12:00" }), "12:00 AM–12:00 PM");
-    assert.equal(holdWindowLabel({ startTime: "12:00", endTime: "13:00" }), "12:00–1:00 PM");
-    assert.equal(holdWindowLabel({ startTime: "09:00", endTime: "11:00" }), "9:00–11:00 AM");
-    assert.equal(holdWindowLabel({ startTime: "10:00", endTime: "14:00" }), "10:00 AM–2:00 PM");
+    assert.equal(holdWindowLabel({ ...day, startTime: null, endTime: null }), null);
+    assert.equal(holdWindowLabel({ ...day, startTime: "00:00", endTime: "12:00" }), "12:00 AM–12:00 PM");
+    assert.equal(holdWindowLabel({ ...day, startTime: "12:00", endTime: "13:00" }), "12:00–1:00 PM");
+    assert.equal(holdWindowLabel({ ...day, startTime: "09:00", endTime: "11:00" }), "9:00–11:00 AM");
+    assert.equal(holdWindowLabel({ ...day, startTime: "10:00", endTime: "14:00" }), "10:00 AM–2:00 PM");
     assert.match(section, /holdWindowLabel\(hold\)/);
     assert.doesNotMatch(section, /function holdWindowLabel/);
     assert.doesNotMatch(section, /\$\{start\}–\$\{end\}/);

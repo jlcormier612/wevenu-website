@@ -66,6 +66,7 @@ describe("confirmed booking occupancy", () => {
       holds: [{
         status: "active",
         holdDate: "2099-04-01",
+        endDate: "2099-04-01",
         startTime: "10:00:00",
         endTime: "12:00:00",
         spaceId: "garden",

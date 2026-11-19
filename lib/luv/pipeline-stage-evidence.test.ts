@@ -232,7 +232,11 @@ describe("changing / omitting / misordering stage cannot invent actions", () => 
     });
     assert.ok(ready);
     assert.match(ready!.message, /all set/);
-    assert.equal(ready!.recommendation, undefined);
+    // Product all-set includes a logistics next step (not invented from stage).
+    // Locked in observation-quality.test.ts — stage still cannot invent the card.
+    assert.equal(ready!.recommendation?.type, "navigate");
+    assert.equal(ready!.recommendation?.link, "/leads/lead-1");
+    assert.match(ready!.recommendation?.label ?? "", /tour logistics/i);
   });
 
   it("tour follow-up is not superseded by a booked/lost stage string", () => {
@@ -293,10 +297,16 @@ describe("customer-facing drafts — stage cannot invent verified facts", () => 
       "paid",
       "contract_sent",
     ]) {
-      const prompt = buildFollowUpPrompt(leadForDraft({ salesStage, status: salesStage }), "Fancy", "Jen", "warm", {
-        proposalSent: false,
-        tour: { kind: "none" },
-      });
+      const prompt = buildFollowUpPrompt(
+        leadForDraft({ salesStage, status: salesStage } as Partial<Lead>),
+        "Fancy",
+        "Jen",
+        "warm",
+        {
+          proposalSent: false,
+          tour: { kind: "none" },
+        },
+      );
       assert.match(prompt, /Pipeline stage \(venue workflow context/);
       assert.match(prompt, /Pipeline \/ sales stage is never authoritative proof/);
       assert.match(prompt, /Verified facts:\*\* none for completed actions/);

@@ -1,0 +1,59 @@
+{
+  "compilerOptions": {
+    "target": "ES2017",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "react-jsx",
+    "incremental": true,
+    "paths": {
+      "@/*": ["./*"],
+      "@shared/relationships": ["./shared/relationships/index.ts"],
+      "@shared/relationships/*": ["./shared/relationships/*"],
+      "@shared/product-sync": ["./shared/product-sync/index.ts"],
+      "@shared/product-sync/*": ["./shared/product-sync/*"],
+      "@shared/email": ["./shared/email/index.ts"],
+      "@shared/email/*": ["./shared/email/*"],
+      "@shared/product-account": ["./shared/product-account/index.ts"],
+      "@shared/product-account/*": ["./shared/product-account/*"],
+      "@shared/analytics": ["./shared/analytics/index.ts"],
+      "@shared/analytics/*": ["./shared/analytics/*"],
+      "@shared/brand": ["./shared/brand/logo.ts"],
+      "@shared/brand/*": ["./shared/brand/*"],
+      "@shared/pricing": ["./shared/pricing/index.ts"],
+      "@shared/pricing/*": ["./shared/pricing/*"]
+    }
+  },
+  "include": [
+    "next-env.d.ts",
+    "app/**/*.ts",
+    "app/**/*.tsx",
+    "components/**/*.ts",
+    "components/**/*.tsx",
+    "lib/**/*.ts",
+    "lib/**/*.tsx",
+    "integrations/**/*.ts",
+    "integrations/**/*.tsx",
+    "shared/**/*.ts",
+    "shared/**/*.tsx",
+    "proxy.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "marketing",
+    "workspace",
+    "scripts",
+    "docs",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/*.test.mts"
+  ]
+}

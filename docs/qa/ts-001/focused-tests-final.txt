@@ -1,0 +1,614 @@
+▶ first_team_login eligibility (invite prerequisite)
+  ✔ suppresses login gap when no team invite has been sent (0.677459ms)
+  ✔ keeps login gap incomplete after invite until login completes (0.093583ms)
+  ✔ activation service wires the team-login prerequisite (0.136208ms)
+  ✔ GAP_COPY first_team_login asserts an invite (eligibility must gate it) (0.057292ms)
+✔ first_team_login eligibility (invite prerequisite) (1.653792ms)
+▶ Date Hold active-state presentation
+  ✔ A. no active hold → Place hold CTA uses desired date (29.050084ms)
+  ✔ B. active hold → Held list plus Place another hold CTA (0.458ms)
+  ✔ C. release moves hold into historical Released list (0.194208ms)
+  ✔ D. after release, Place hold again defaults to desired event date (0.158541ms)
+  ✔ E. intentional date override still available on the create form (0.066875ms)
+  ✔ F. createHold allows a second same-lead/date hold unless resources and windows overlap (0.067209ms)
+  ✔ Active Holds window uses HTC 12-hour formatTime, not raw HH:mm (0.7065ms)
+  ✔ G. unexpired active holds stay Held; elapsed or closed statuses do not (0.141166ms)
+  ✔ H. expired historical + separate active hold → date still protected (0.462125ms)
+  ✔ I. expired hold can be reactivated; converted cannot (0.199333ms)
+  ✔ J. Booked lead is protected by booking — not 'Not protected'; Place hold hidden (0.280417ms)
+✔ Date Hold active-state presentation (32.661917ms)
+▶ confirmed booking occupancy
+  ✔ requires a date and a space when the venue can host more than one event (0.851292ms)
+  ✔ prefills from the lead and does not treat a hold as already confirmed (0.284583ms)
+  ✔ passes the submitted occupancy into the one booking transaction (0.114458ms)
+  ✔ writes assignments before booked_at and converts overlapping holds in the same function (0.113292ms)
+  ✔ contract and payment automation do not book (0.562917ms)
+  ✔ does not source required vendors from Setup Profile requiredVendorIds (0.131875ms)
+  ✔ persists component scheduledDate and validates within the overall range (0.295042ms)
+  ✔ marks exactly which fields an assigned space is missing (1.553625ms)
+  ✔ names a component date problem before missing times, matching field order (0.140375ms)
+  ✔ Confirm booking with a missing component time shows what is missing next to the button (0.215625ms)
+✔ confirmed booking occupancy (5.231083ms)
+▶ invitation email through the real sendEmail path
+  ✔ posts the recipient and accept link and returns the provider id (35.03725ms)
+  ✔ returns provider failure without throwing (0.865166ms)
+✔ invitation email through the real sendEmail path (36.576792ms)
+▶ invitation transmit through intercepted sendEmail
+  ✔ stores the stubbed provider id and does not call the portal opened (0.636708ms)
+✔ invitation transmit through intercepted sendEmail (0.769ms)
+▶ optionCatalogLinkStatus
+  ✔ marks template-only when offering_id is null (0.56925ms)
+  ✔ shows catalog name and label difference (0.09925ms)
+  ✔ preserves archived link with clear status (0.120667ms)
+  ✔ does not unlink when offering missing from loaded catalog (0.064042ms)
+✔ optionCatalogLinkStatus (1.51275ms)
+▶ attach / clear / edit preserving snapshot
+  ✔ attaches offering_id without changing label or price (0.145083ms)
+  ✔ clears offering link and keeps template-only snapshots (0.067625ms)
+  ✔ edits label without losing offering link (0.098792ms)
+  ✔ label/price edits preserve snapshotted imageUrl (0.073292ms)
+  ✔ new-option draft may snapshot catalog price once; attach path does not refresh (0.526333ms)
+✔ attach / clear / edit preserving snapshot (1.313125ms)
+▶ picker and no name-based attach
+  ✔ excludes archived offerings from attach picker (1.955958ms)
+  ✔ module source has no name-based attach helper (0.772084ms)
+✔ picker and no name-based attach (2.874917ms)
+▶ freeze / provenance carry-through
+  ✔ selection freeze retains offeringId for catalog-backed options and null for template-only (0.277958ms)
+✔ freeze / provenance carry-through (0.3165ms)
+▶ contract list filters — venue action required
+  ✔ All is first; Action Required is second; a fresh load selects All (9.747209ms)
+  ✔ preserves an explicit URL filter and falls back to All (0.110583ms)
+  ✔ All includes every status, and search still narrows that set (0.291791ms)
+  ✔ counts only Draft and Awaiting Venue Signature (0.170375ms)
+  ✔ keeps Expired distinct from Cancelled (0.071416ms)
+✔ contract list filters — venue action required (11.75225ms)
+▶ contracts page operational job
+  ✔ states the Action Required job and keeps search (1.404875ms)
+✔ contracts page operational job (1.477875ms)
+▶ contract list rollup — explicit amends_contract_id only
+  ✔ keeps a standalone contract as one row (0.412875ms)
+  ✔ shows only the current tip of an amends chain (0.114917ms)
+  ✔ does not infer a family from the same client, title, or event (10.868833ms)
+  ✔ does not double-count a family in the venue-action badge (0.140458ms)
+  ✔ uses the latest descendant of a three-version chain as the list row (0.092334ms)
+  ✔ keeps a dangling amends pointer as its own current row (0.054291ms)
+  ✔ does not hide cyclic lineage (0.080541ms)
+  ✔ search finds the current agreement by a historical family title (0.063833ms)
+  ✔ does not count a superseded fully executed parent as action required (0.069417ms)
+✔ contract list rollup — explicit amends_contract_id only (12.3165ms)
+▶ contract list deep links remain instance-level
+  ✔ detail page still loads a contract by id, including historical versions (0.844ms)
+✔ contract list deep links remain instance-level (1.05075ms)
+▶ user-facing document category roll-up
+  ✔ maps every WorkspaceCategory to exactly one user-facing group (2.719542ms)
+  ✔ maps Contracts → Contracts (0.067542ms)
+  ✔ maps Invoices and Financial → Financial (0.059333ms)
+  ✔ maps planning-related types → Planning (0.055125ms)
+  ✔ maps Vendor Documents → Vendors (0.0625ms)
+  ✔ maps Communication, Exports, Other → Other (0.050875ms)
+  ✔ All / filterByUserFacingGroup returns every document for all (0.102125ms)
+  ✔ filters by rolled-up group without losing documents from All (0.09375ms)
+  ✔ hides empty categories from populatedUserFacingGroups (2.633959ms)
+  ✔ no document is lost from All because of grouping (1.995083ms)
+✔ user-facing document category roll-up (9.337167ms)
+▶ categoryMatchesSection — discovery only
+  ✔ matches exact and alias labels without inventing links (0.675417ms)
+✔ categoryMatchesSection — discovery only (1.76825ms)
+▶ section workspace grouping
+  ✔ scopes groups to a section and nests dependents under parent options (2.332459ms)
+  ✔ flags empty dependent branches as incomplete (0.236625ms)
+  ✔ names the parent offering when a nested category is empty (0.132959ms)
+  ✔ flags unpriced non-included options as unresolved commercial terms (0.074125ms)
+✔ section workspace grouping (2.903709ms)
+▶ filterOfferingsForSectionPicker
+  ✔ prefers category-matched offerings and does not silently dump all categories (0.207583ms)
+✔ filterOfferingsForSectionPicker (0.271083ms)
+▶ selectionDefinitionFromEventOrderTemplate
+  ✔ freezes sections, fixed lines, groups, and options into ChoicesDefinition shape (1.450875ms)
+  ✔ freezes per_person pricingModel from Per person option descriptions (0.102459ms)
+  ✔ zeros unitPrice for included options (0.089666ms)
+✔ selectionDefinitionFromEventOrderTemplate (2.325375ms)
+▶ defaultAnswersFromEventOrderTemplate
+  ✔ pre-selects isDefault options; single mode takes first default only (0.18ms)
+  ✔ omits groups with no defaults (0.09575ms)
+✔ defaultAnswersFromEventOrderTemplate (0.366208ms)
+▶ selectionDefinitionNeedsHydration
+  ✔ detects legacy packets missing fixedLines while the template still has lines (0.180334ms)
+  ✔ is false once fixedLines (and groups) are frozen (0.123584ms)
+  ✔ detects missing groups/options when the template has selectable offerings (0.078ms)
+  ✔ detects when the venue removes an option from the linked template (0.084125ms)
+  ✔ detects min/max rule drift on an existing group (0.113375ms)
+  ✔ is false when selectable structure matches the freeze (0.063291ms)
+✔ selectionDefinitionNeedsHydration (0.793334ms)
+▶ pruneAnswersToDefinition
+  ✔ drops answers for removed groups and unknown option ids (0.176125ms)
+✔ pruneAnswersToDefinition (0.227834ms)
+▶ templateHasSelectableGroups
+  ✔ is true when groups exist (0.084625ms)
+  ✔ is false for fixed-only templates (0.091708ms)
+✔ templateHasSelectableGroups (8.048833ms)
+▶ Phase 1 migration presence
+  ✔ ships event_order_template_groups / options and client_choices.event_order_template_id (0.192625ms)
+✔ Phase 1 migration presence (0.232291ms)
+▶ Event Order $0 total warning
+  ✔ requires warning when total is exactly 0 with lines (0.544583ms)
+  ✔ does not warn when total is above 0 (0.065667ms)
+  ✔ does not warn for empty order even at total 0 when lineCount is provided (0.051959ms)
+  ✔ warning copy discloses intentional $0 without blocking finalize/share (0.156291ms)
+  ✔ starter masters are delivery sections with guidance, not invoices (0.104708ms)
+✔ Event Order $0 total warning (1.675458ms)
+▶ Event Order totals and fingerprints
+  ✔ sumLines computes running total from line amounts (2.354791ms)
+  ✔ fingerprint changes when a line price changes (committed price independence surface) (0.151334ms)
+  ✔ fingerprint is stable when only catalog-side fields outside the line snapshot change (0.08075ms)
+✔ Event Order totals and fingerprints (2.70975ms)
+▶ Event Order finalize / reopen / share gates
+  ✔ finalize attempt requires at least one line (UI gate) (0.103333ms)
+  ✔ finalize is blocked when already finalized (0.094709ms)
+  ✔ reopen is blocked unless currently finalized (0.071ms)
+  ✔ share is only allowed when finalized (0.058042ms)
+  ✔ display status labels remain venue-facing across open / finalized / amended (0.085541ms)
+✔ Event Order finalize / reopen / share gates (0.517666ms)
+▶ Event Order finalized immutability (application-layer mutation rules)
+  ✔ blocks every section/line mutator when finalized (0.087125ms)
+  ✔ allows section/line mutators when open (0.033584ms)
+  ✔ reopen clears the mutation block path (status returns to open contract) (2.504125ms)
+✔ Event Order finalized immutability (application-layer mutation rules) (2.761417ms)
+▶ template copy independence (starter → instance semantics)
+  ✔ starter sections remain named delivery categories with guidance (0.337542ms)
+  ✔ applied template lines snapshot offering provenance when a library offering is referenced (0.178875ms)
+  ✔ starter master names are production-facing (no Test/D7A/CERT/dev labels) (0.470583ms)
+  ✔ blank start (no template) is represented as zero structure to apply (0.088125ms)
+✔ template copy independence (starter → instance semantics) (1.273417ms)
+▶ feature flag contract
+  ✔ Event Order is always available (optional by use) — no entitlement gate (0.093ms)
+✔ feature flag contract (0.179125ms)
+▶ Event Order PDF Included / Additional labels
+  ✔ labels Included and Additional lines distinctly on the PDF description (466.63725ms)
+✔ Event Order PDF Included / Additional labels (466.781292ms)
+▶ inquiry form custom question ordering
+  ✔ settings builder section order is Standard → Custom → Communication (3.2345ms)
+  ✔ moves questions up and down and no-ops at ends (1.485ms)
+  ✔ handles empty and single-question lists (0.088375ms)
+  ✔ persists sort_order from array index on save rows (0.131709ms)
+  ✔ orders loaded questions by sort_order for public rendering (0.112125ms)
+  ✔ maps public RPC camelCase custom questions (not only DB snake_case) (1.046292ms)
+  ✔ preview draft preserves configured question order (0.416167ms)
+✔ inquiry form custom question ordering (7.770208ms)
+▶ inquiry form required/optional and deletion safety
+  ✔ required validation follows the required flag for new and existing questions (0.345542ms)
+  ✔ deleting one question from the persist list does not drop siblings (0.928209ms)
+  ✔ historical answers stay readable when the live question id is gone (0.161125ms)
+✔ inquiry form required/optional and deletion safety (1.748ms)
+▶ lead space preference visibility
+  ✔ single mode never shows use-keyed preference UI (1.300375ms)
+  ✔ wedding shows ceremony and reception first and keeps cocktail hour (1.6545ms)
+  ✔ corporate keeps ceremony/reception when configured and hides wedding-only uses (0.131542ms)
+  ✔ social event is not restricted to cocktail hour (0.114667ms)
+  ✔ inactive spaces do not invent a ceremony UI (0.070917ms)
+  ✔ unrestricted spaces do not invent ceremony/reception columns (0.0675ms)
+✔ lead space preference visibility (10.824583ms)
+▶ lead space preference shape
+  ✔ accepts venue_space, external, undecided, and not_applicable for wedding ceremony (0.992041ms)
+  ✔ rejects not_applicable with space_id or external_location (0.081125ms)
+  ✔ accepts cocktail_hour as a configured use (0.083166ms)
+  ✔ keeps a persisted ceremony preference valid for social when the venue offers it (0.09525ms)
+  ✔ does not invent rehearsal_dinner_only as a persistable use (0.052917ms)
+  ✔ rejects ceremony rows for a corporate allowed-use list (0.043625ms)
+  ✔ rejects external location on non-wedding uses (0.041208ms)
+  ✔ enforces kind shape constraints (0.049875ms)
+✔ lead space preference shape (1.608333ms)
+▶ booking seed eligibility
+  ✔ skips inactive, disallowed, and foreign-venue spaces (0.09475ms)
+✔ booking seed eligibility (0.127541ms)
+▶ occupancy anchor from preferences
+  ✔ wedding prefers reception venue-space over ceremony (0.108458ms)
+  ✔ corporate uses the first relevant venue-space preference (0.046959ms)
+  ✔ returns null when no venue-space preference exists (0.045458ms)
+  ✔ not_applicable never contributes an occupancy anchor (0.042708ms)
+✔ occupancy anchor from preferences (0.30625ms)
+▶ preference is not an assignment
+  ✔ lead preference writes never insert event_space_assignments (0.2025ms)
+  ✔ migration adds not_applicable without converting existing undecided rows (0.129167ms)
+  ✔ one catalog: space_id stays NOT NULL and no second space table is created (0.166458ms)
+  ✔ lead detail shows relevant uses in multi mode; Event Space when none or single mode (0.239041ms)
+✔ preference is not an assignment (0.797875ms)
+[legal] proxy enforcement unavailable {
+  reason: 'missing_service_role',
+  pathname: '/dashboard',
+  userId: '11111111-1111-1111-1111-111111111111',
+  errorName: 'undefined',
+  errorMessage: null
+}
+[legal] proxy enforcement unavailable {
+  reason: 'missing_service_role',
+  pathname: '/api/clients',
+  userId: '11111111-1111-1111-1111-111111111111',
+  errorName: 'undefined',
+  errorMessage: null
+}
+[legal] proxy enforcement unavailable {
+  reason: 'admin_client_failure',
+  pathname: '/clients',
+  userId: '11111111-1111-1111-1111-111111111111',
+  errorName: 'Error',
+  errorMessage: 'admin init failed'
+}
+[legal] proxy enforcement unavailable {
+  reason: 'engine_error',
+  pathname: '/dashboard',
+  userId: '11111111-1111-1111-1111-111111111111',
+  errorName: 'Error',
+  errorMessage: 'engine exploded'
+}
+[legal] proxy enforcement unavailable {
+  reason: 'engine_error',
+  pathname: '/dashboard',
+  userId: '11111111-1111-1111-1111-111111111111',
+  errorName: 'Error',
+  errorMessage: 'boom'
+}
+[legal] proxy enforcement fail-open (local override): missing service role
+▶ isLegalEnforcementFailOpenEnabled
+  ✔ is false by default (0.790458ms)
+  ✔ allows explicit local development override (0.193833ms)
+  ✔ rejects the flag when NODE_ENV=production (0.163792ms)
+  ✔ rejects the flag for HTC sandbox/production and ECS markers (0.180709ms)
+✔ isLegalEnforcementFailOpenEnabled (1.995084ms)
+▶ buildLegalEnforcementFailureDecision
+  ✔ redirects protected pages to the recovery path (0.961041ms)
+  ✔ blocks protected APIs with enforcement-unavailable code (0.174291ms)
+✔ buildLegalEnforcementFailureDecision (1.232541ms)
+▶ recovery and exempt paths stay reachable
+  ✔ skips legal enforcement for recovery, welcome, auth, and public legal paths (0.212208ms)
+✔ recovery and exempt paths stay reachable (0.277834ms)
+▶ decideLegalProxyEnforcement fail-closed
+  ✔ fails closed on missing service role for a protected page (4.22825ms)
+  ✔ fails closed on missing service role for a protected API (0.303708ms)
+  ✔ fails closed when admin client initialization throws (0.281792ms)
+  ✔ fails closed when the acceptance engine throws (0.312958ms)
+  ✔ does not create acceptance records when enforcement fails (0.221625ms)
+  ✔ allows healthy current-version users (0.240709ms)
+  ✔ redirects outdated-version users to Welcome (0.41375ms)
+  ✔ keeps vendor-only users on vendor legal context (not venue_owner) (0.182958ms)
+  ✔ multi-venue venue prefer still resolves via injected resolver (no silent allow) (0.186166ms)
+  ✔ local fail-open override still allows when explicitly enabled (0.1515ms)
+✔ decideLegalProxyEnforcement fail-closed (6.696875ms)
+▶ observationsForDraftSurface
+  ✔ keeps draft recommendations when proactive outreach is recommended (0.761958ms)
+  ✔ suppresses strong-interest + draft under proactive silence (Oct 12 contradiction) (0.187167ms)
+  ✔ dedupes identical observations in one view (0.073292ms)
+  ✔ keeps unanswered-question recommendations when proactive is on (0.081084ms)
+  ✔ drops zero-value tautologies (0.064ms)
+✔ observationsForDraftSurface (2.085209ms)
+▶ neutralizeFollowUpUrgingCopy
+  ✔ drops urging detail and keeps factual interest (0.213333ms)
+✔ neutralizeFollowUpUrgingCopy (0.274292ms)
+▶ followUpDraftBlockReason
+  ✔ returns null when draftCapable — completed tour is not a capability block (0.10575ms)
+  ✔ uses capability block reason when drafting is closed (0.072375ms)
+  ✔ returns null when eligible (legacy alias) (0.0625ms)
+✔ followUpDraftBlockReason (0.354791ms)
+▶ observationUrgesFollowUp
+  ✔ detects draft recommendations and urging copy (0.103416ms)
+✔ observationUrgesFollowUp (0.143625ms)
+▶ Luv action destinations stay trustworthy
+  ✔ draft follow-up links use the canonical ?luv=follow_up_email param (2.211084ms)
+  ✔ observation draft/navigate links point at real app routes (0.438917ms)
+✔ Luv action destinations stay trustworthy (4.50275ms)
+▶ Luv settings honesty for launch
+  ✔ never persists suggest_only autonomy from the save path (0.15ms)
+  ✔ distinguishes drafting-disabled from missing API key (0.102458ms)
+  ✔ Dashboard Luv respects observationsEnabled end-to-end (0.13625ms)
+  ✔ normalizes legacy ?luv=followup into follow_up_email (0.054125ms)
+✔ Luv settings honesty for launch (0.578834ms)
+▶ selectLuvDashboardEntry dismissal metadata
+  ✔ persisted recommendation cannot occupy L1 or carry a dismiss id (0.3895ms)
+✔ selectLuvDashboardEntry dismissal metadata (0.465959ms)
+▶ owner draft capability vs proactive recommendation
+  ✔ 1. eligible active lead with proactive recommendation can draft (0.776541ms)
+  ✔ 2. eligible active lead without proactive recommendation can still draft (0.285667ms)
+  ✔ 3. completed tour does not itself disable drafting (0.0675ms)
+  ✔ 4. recommendation visibility and draft capability are independently determined (0.095958ms)
+  ✔ 5. unanswered customer question yields answer_questions intent + draft capable (1.102625ms)
+  ✔ 6. recent venue outreach → proactive silence, draft still capable (0.089875ms)
+  ✔ 7. generate path uses draftCapable, not proactive silence (0.202375ms)
+  ✔ 8. lead Luv tab does not double-render Noticed inside the draft panel (0.227ms)
+  ✔ 9. Oct 12 screenshot: interest + silence cannot coexist after surface assembly (0.308ms)
+  ✔ 10. privacy: drafts path never loads tour notes or internal notes into prompt (0.256042ms)
+✔ owner draft capability vs proactive recommendation (4.233583ms)
+▶ pipeline stage is never evidence — primitives
+  ✔ locks the architectural sentence (0.589292ms)
+  ✔ booked / lost require stamps, not a stage string (0.375667ms)
+  ✔ tour scheduled / confirmed require tour_appointments.status (0.250083ms)
+  ✔ P-A1 tour contact includes completed, cancelled, no_show, and walk-in (0.246625ms)
+  ✔ proposal / contract / payment require workflow records (0.254708ms)
+  ✔ draft helper stays aligned with the locked proposal rule (0.234333ms)
+✔ pipeline stage is never evidence — primitives (2.855209ms)
+▶ changing / omitting / misordering stage cannot invent actions
+  ✔ S3: any stage without contact/tour/booked/lost records stays unattended (0.719875ms)
+  ✔ S3: omitted or out-of-order stage still does not invent contact (0.217ms)
+  ✔ S4: next_action + any stage does not manufacture tour-prep or first-contact work (0.184916ms)
+  ✔ upcoming tour all-set requires tour_appointments.status, not stage (85.627584ms)
+  ✔ tour follow-up is not superseded by a booked/lost stage string (0.70475ms)
+  ✔ tour-followup pattern: stage booked without first_booked_at still counts (0.22ms)
+  ✔ contact evidence never comes from stage (0.077125ms)
+✔ changing / omitting / misordering stage cannot invent actions (88.007458ms)
+▶ customer-facing drafts — stage cannot invent verified facts
+  ✔ proposal_sent / tour_scheduled / booked / paid / contract_sent stages add no verified actions (9.395958ms)
+  ✔ omitted / empty stage still cannot invent a proposal or tour (0.081833ms)
+  ✔ workflow intent comes from tour_appointments, not stage (0.066584ms)
+✔ customer-facing drafts — stage cannot invent verified facts (9.607708ms)
+▶ source lock — Luv never treats sales_stage as proof
+  ✔ observations never claim Tour scheduled / Proposal sent from stage (0.299917ms)
+  ✔ drafts load proposal from commercial_proposals and tour from tour_appointments (0.135959ms)
+  ✔ supersession and tour-followup pattern use stamps, not stage (0.081917ms)
+  ✔ S3 evaluator does not read salesStage (0.08025ms)
+✔ source lock — Luv never treats sales_stage as proof (0.651583ms)
+▶ P-A1 — unattended inquiry cluster
+  ✔ below threshold → no pattern (4.336209ms)
+  ✔ 3 qualifying unattended inquiries → pattern (0.474792ms)
+  ✔ P-A1 CTA reviews the dedicated unattended-inquiry population (1.037792ms)
+  ✔ insufficient venue history → no pattern even at cluster size (0.101292ms)
+  ✔ reuses S3 semantics (contacted / tour record / too new excluded; stage is not) (0.248625ms)
+  ✔ mixed population — only genuinely unattended leads count toward the cluster (0.138666ms)
+  ✔ outside 14-day window → excluded from cluster (0.10325ms)
+  ✔ venue isolation — other venue leads do not qualify (0.079167ms)
+  ✔ resolved condition (below threshold) → evaluator returns null (lifecycle clear) (0.081417ms)
+✔ P-A1 — unattended inquiry cluster (7.442667ms)
+▶ P-A4 — payment-attention cluster
+  ✔ below threshold → no pattern (0.368875ms)
+  ✔ 3 qualifying upcoming payment-attention events → pattern (0.319709ms)
+  ✔ uses authoritative S2 payment-attention logic (0.10525ms)
+  ✔ venue isolation (0.061ms)
+  ✔ no duplicate competing aggregate cards when pattern active (0.206541ms)
+  ✔ resolved condition → null (0.070167ms)
+✔ P-A4 — payment-attention cluster (1.266333ms)
+▶ P-P1 — inquiry volume increase
+  ✔ below 5 current inquiries → no pattern (0.131417ms)
+  ✔ <25% increase → no pattern (0.03375ms)
+  ✔ <2 absolute increase → no pattern (0.044792ms)
+  ✔ no prior baseline → no pattern (cannot claim increase) (0.029667ms)
+  ✔ qualifying increase → pattern with evidence copy (0.093875ms)
+  ✔ P-P1 still qualifies as Inform L2 — no CTA invented; suppressed from Leads panel (0.450792ms)
+  ✔ correct current/prior 14-day counts + venue isolation (0.098833ms)
+✔ P-P1 — inquiry volume increase (0.967ms)
+▶ Phase 5 — Dashboard L1 exclusion + supersession
+  ✔ Phase 5 patterns are never Dashboard L1 (0.096042ms)
+  ✔ Phase 5 pattern does not win Dashboard L1 card (0.326584ms)
+  ✔ active P-A1 suppresses global S3 observations; record ids remain filterable (0.067958ms)
+  ✔ dismissed-in-cooldown P-A1 still suppresses global S3 (0.04825ms)
+✔ Phase 5 — Dashboard L1 exclusion + supersession (0.603ms)
+▶ Booking metric repair — canonical Lead→Booked
+  ✔ migration sync RPC + pattern types exist (0.137709ms)
+  ✔ get_venue_trends uses first_booked_at — not status=won (0.13375ms)
+  ✔ compute_venue_insights momentum uses first_booked_at — not clients.created_at (0.130959ms)
+  ✔ wiring syncs Phase 5 patterns; L1 gate excludes them; Leads omits Inform P-P1 (0.366833ms)
+  ✔ P-A1 sync enriches candidates with shared contact evidence before evaluating (0.351792ms)
+  ✔ tour volume for P-P1 does not use exclude_from_business_reporting (0.091958ms)
+  ✔ manual and automation Lead→Booked share first_booked_at clock (0.192667ms)
+  ✔ cluster size constant is 3+ within 14 days (0.03825ms)
+✔ Booking metric repair — canonical Lead→Booked (1.531083ms)
+▶ tour follow-up pattern — threshold and distinct leads
+  ✔ 0 qualifying leads → no recommendation (0.596708ms)
+  ✔ 1 distinct qualifying lead → no recommendation (0.875291ms)
+  ✔ 2 distinct qualifying leads → no recommendation (0.108125ms)
+  ✔ 3 distinct qualifying leads → recommendation with count (0.168ms)
+  ✔ duplicate tours for the same lead do not inflate the count (0.126083ms)
+✔ tour follow-up pattern — threshold and distinct leads (3.90825ms)
+▶ tour follow-up pattern — population filters
+  ✔ sales_stage booked/lost/won/cancelled without stamps still qualifies (0.173208ms)
+  ✔ authoritative first_booked_at / lost_at exclude a lead (0.08375ms)
+  ✔ follow_up_sent_at removes a lead from the qualifying population (0.096166ms)
+  ✔ outside-window tour does not count (0.078542ms)
+  ✔ wrong venue cannot contribute (0.088125ms)
+  ✔ non-completed status does not count (0.064542ms)
+  ✔ missing lead_id does not count (0.58625ms)
+  ✔ repeated evaluation is idempotent for the same inputs (0.854666ms)
+✔ tour follow-up pattern — population filters (2.216416ms)
+▶ tour follow-up pattern — Dashboard selection / dismissal semantics
+  ✔ persisted tour_followup_pattern cannot occupy the Dashboard Luv card (0.668417ms)
+  ✔ does not create observation: dismissal — persisted pattern is not L1 (0.17275ms)
+  ✔ dismissed pattern stays hidden (visibility) so refresh cannot resurrect it (0.133792ms)
+  ✔ Calendar Focus /tours does not suppress the tour follow-up pattern (0.30225ms)
+  ✔ when pattern is active, individual tour-no-followup observations are not selected (0.183375ms)
+  ✔ CREATE → DISMISS → SYNC/refresh-equivalent → V2 still not visible (0.446ms)
+  ✔ without a V2 pattern row, V1 tour-no-followup stays Level-3 and cannot win Dashboard (0.104916ms)
+✔ tour follow-up pattern — Dashboard selection / dismissal semantics (2.313042ms)
+▶ tour follow-up pattern — wiring / venue safety / V1 Ask-gap unchanged
+  ✔ migration uses current_user_venue_id and never venue_users LIMIT 1 (0.433792ms)
+  ✔ harden migration refuses ON CONFLICT update while recently dismissed (0.171708ms)
+  ✔ recommendation-service keeps dismissed pattern for selection cooldown only (0.073708ms)
+  ✔ recommendation-service syncs after Ask-gap and before get (0.063208ms)
+  ✔ sync aborts without clearing when tour read fails (0.071208ms)
+  ✔ V1 Ask-gap threshold and Fancy exotic evaluation remain unchanged (0.755ms)
+✔ tour follow-up pattern — wiring / venue safety / V1 Ask-gap unchanged (1.718917ms)
+▶ inquiry authorship
+  ✔ empty message + unknown origin → NO (1.69625ms)
+  ✔ unknown origin + text → NO (0.083041ms)
+  ✔ venue origin + text → NO (0.077958ms)
+  ✔ customer origin + empty message → YES (0.140334ms)
+  ✔ customer origin + relationship_id null → can qualify (0.071916ms)
+✔ inquiry authorship (3.39725ms)
+▶ contact evidence
+  ✔ customer-origin inquiry + no contact → YES (0.167416ms)
+  ✔ customer-facing venue staff message → NO (0.082542ms)
+  ✔ customer inbound only → can remain P-A1 (0.10475ms)
+  ✔ internal note only does not satisfy first response (0.064458ms)
+  ✔ system outbound only does not satisfy first response (0.098125ms)
+  ✔ last_contacted_at populated → NO (0.06675ms)
+  ✔ last_contacted_at null despite staff message → still excluded (0.076875ms)
+  ✔ completed tour → NO (0.055042ms)
+  ✔ scheduled tour → NO (0.039292ms)
+  ✔ confirmed tour → NO (0.034333ms)
+  ✔ cancelled tour → NO (0.030625ms)
+  ✔ no_show tour → NO (0.02825ms)
+  ✔ walk-in completed → NO (0.041334ms)
+✔ contact evidence (1.136333ms)
+▶ booking / lost
+  ✔ first_booked_at populated → NO (0.074375ms)
+  ✔ lost_at populated → NO (0.04925ms)
+  ✔ sales_stage booked + no first_booked_at + unknown origin → NO (0.037375ms)
+  ✔ sales_stage booked is not a fallback — customer origin can still qualify (0.074792ms)
+✔ booking / lost (0.301708ms)
+▶ age window (created_at)
+  ✔ 47h59m → NO (0.074667ms)
+  ✔ exactly 48h → YES (0.882042ms)
+  ✔ exactly 14d → YES (0.061166ms)
+  ✔ >14d → NO for cluster; S3 observation window still YES (0.057417ms)
+✔ age window (created_at) (1.14075ms)
+▶ cluster
+  ✔ two final qualifiers → no pattern (0.195125ms)
+  ✔ three final qualifiers → pattern (2.736583ms)
+  ✔ three candidates with one invalid origin → no pattern (0.209041ms)
+  ✔ three candidates with one completed tour → no pattern (0.176083ms)
+  ✔ three candidates with one booked stamp → no pattern (0.123917ms)
+  ✔ cluster count uses unique final qualifying lead IDs (0.1295ms)
+  ✔ website clause uses only the final qualifying population (0.75225ms)
+✔ cluster (4.529416ms)
+▶ CTA + destination
+  ✔ stores qualifying IDs and the dedicated population href (0.387084ms)
+✔ CTA + destination (0.423416ms)
+▶ privacy
+  ✔ does not import Internal Notes into customer-facing drafts (0.411166ms)
+  ✔ S3 reached-out language is gated on customer origin (0.347666ms)
+✔ privacy (3.78775ms)
+▶ applyResendDeliveryEvent invitations
+  ✔ correlates a delivery to the invitation and does not change invitation status (3.704417ms)
+  ✔ records a bounce after delivery and does not let a later open clear the failure (3.290375ms)
+  ✔ advances an open to a click and ignores a later open (0.135292ms)
+  ✔ does not let an earlier provider event erase a later delivery status (0.088625ms)
+  ✔ ignores an unknown provider id (0.07725ms)
+  ✔ still updates a conversation message and leaves invitations alone (0.118166ms)
+✔ applyResendDeliveryEvent invitations (8.215667ms)
+▶ applyReminderScope
+  ✔ returns every row when neither filter is set (1.294958ms)
+  ✔ keeps only the listed ids (0.08975ms)
+  ✔ keeps only the venue (0.07375ms)
+  ✔ drops an id that belongs to a different venue when both filters are set (0.061625ms)
+  ✔ treats an empty id list as no id filter (0.063458ms)
+✔ applyReminderScope (2.350292ms)
+▶ reminder processors use the shared AND scope
+  ✔ task, payment, and contract queries call applyReminderScope once each (0.156875ms)
+  ✔ cron and Settings pass no scope, and the QA harness passes ids only (0.265417ms)
+✔ reminder processors use the shared AND scope (0.510833ms)
+▶ mergeSharedEventOrderIntoCoupleDocuments
+  ✔ does not expose an unshared or missing order (1.015458ms)
+  ✔ prepends a shared final Event Order alongside other documents (0.135917ms)
+  ✔ marks agreed status when clientAgreedAt is set (0.070167ms)
+  ✔ does not duplicate when an event_order row already exists (0.064792ms)
+✔ mergeSharedEventOrderIntoCoupleDocuments (2.019ms)
+▶ P2-D documents UI + route wiring
+  ✔ couple documents section renders Event Order card and opens event-order (0.24925ms)
+  ✔ documents GET merges via get_event_order_for_portal (0.098042ms)
+✔ P2-D documents UI + route wiring (0.42425ms)
+▶ mergeFinalizedInventoryIntoCoupleDocuments
+  ✔ ignores non-finalized inventory (1.021375ms)
+  ✔ prepends finalized inventory once (0.117125ms)
+✔ mergeFinalizedInventoryIntoCoupleDocuments (1.836625ms)
+▶ scheduled-message relationship lookup with multiple leads
+  ✔ merge context takes the newest lead instead of maybeSingle on every lead (1.581667ms)
+  ✔ recipient contact takes the newest lead instead of maybeSingle on every lead (0.129667ms)
+  ✔ resolves merge context to the newest lead when two leads share the relationship (20.434125ms)
+  ✔ resolves recipient contact to the newest lead when two leads share the relationship (0.145167ms)
+✔ scheduled-message relationship lookup with multiple leads (24.048917ms)
+▶ resolveDefaultTimelineTemplateId
+  ✔ prefers event-type + space default over broader defaults (0.54375ms)
+  ✔ returns undefined when no defaults are marked (0.111ms)
+✔ resolveDefaultTimelineTemplateId (1.309875ms)
+▶ Phase 4 group eligibility
+  ✔ does not count spaces — only active memberships with qualifying subs (0.671292ms)
+  ✔ keeps past_due as qualifying during dunning (0.082541ms)
+  ✔ requires two qualifying venues for group eligibility (0.817166ms)
+  ✔ Checkout reservation bridges second-venue group pricing without charging venue 1 midcycle (0.118583ms)
+  ✔ flags duplicate property names for founder review (0.095291ms)
+  ✔ same owner email without membership never implies organization (0.054542ms)
+✔ Phase 4 group eligibility (3.006541ms)
+▶ Phase 4 best-offer + amounts
+  ✔ applies catalog group amounts (0.110791ms)
+  ✔ Group only → 10%; Weven beats Group; Founding beats Group at equal 10% (0.216834ms)
+  ✔ Group + Founding + Weven → Weven 20% (0.074416ms)
+✔ Phase 4 best-offer + amounts (0.513084ms)
+▶ Phase 4 Checkout resolution
+  ✔ second-venue Checkout uses group 10% when reservation bridges eligibility (0.681375ms)
+  ✔ Add Another Venue suppresses Founding so Group coupon applies while soft-100 remains (0.163292ms)
+  ✔ Founding still wins over Group at Checkout when both apply (0.124459ms)
+  ✔ Weven wins over Group at Checkout (0.116041ms)
+✔ Phase 4 Checkout resolution (1.1635ms)
+▶ Phase 4 billing reconcile + Phase 3 safety
+  ✔ defers coupon mutation when an HTC tier-upgrade schedule is active (0.229708ms)
+  ✔ applies group prospectively when no schedule owns the subscription (0.103292ms)
+  ✔ removes group prospectively and preserves Founding grant (0.091375ms)
+  ✔ tier upgrade amount previews with group (0.102208ms)
+✔ Phase 4 billing reconcile + Phase 3 safety (0.579625ms)
+▶ Phase 4 organization store lifecycle
+  ✔ enforces one active billing org per venue and reservation fulfill/release (0.782167ms)
+  ✔ does not release a reservation that still has a payable Checkout Session (0.12225ms)
+  ✔ fulfills activation idempotently and queues prospective adjustments (0.588584ms)
+  ✔ resolves Checkout group eligibility from durable reservation only (0.220541ms)
+✔ Phase 4 organization store lifecycle (1.840208ms)
+▶ Phase 4 Stripe group coupon executor
+  ✔ refuses independent mutation when a schedule is attached (0.232125ms)
+  ✔ applies coupon with proration_behavior none and confirms (0.085834ms)
+  ✔ confirms coupons from expanded discounts[].source.coupon (API 2024+) (0.107041ms)
+✔ Phase 4 Stripe group coupon executor (0.485417ms)
+▶ referral validation
+  ✔ requires core fields and rejects form URLs as email (0.896ms)
+✔ referral validation (1.593583ms)
+▶ reward valuation
+  ✔ values standard, founding, weven, group, and founder fixed (1.477125ms)
+  ✔ keeps valuation snapshot immutable after tier change input (0.205458ms)
+✔ reward valuation (1.783209ms)
+▶ submission safeguards
+  ✔ accepts a valid referral and never promises a reward (1.224584ms)
+  ✔ blocks self-referral by domain (0.242375ms)
+  ✔ blocks same-organization property referral (0.24125ms)
+  ✔ flags duplicate submissions from the same referrer (0.35725ms)
+✔ submission safeguards (2.221458ms)
+▶ attribution + qualification + stripe credit
+  ✔ runs conversion → qualify → approve → issue → apply without duplicates (2.982375ms)
+  ✔ does not qualify unpaid / canceled referred venues (0.588708ms)
+✔ attribution + qualification + stripe credit (3.702042ms)
+▶ policy config
+  ✔ reads qualification days from env without hardcoding into valuation (0.117666ms)
+✔ policy config (0.150458ms)
+▶ established purchase evidence
+  ✔ treats subscription, subscribedAt, token, activation, venue, or child sub as established (0.517958ms)
+  ✔ does not treat a bare checkout session as an established purchase (0.082417ms)
+✔ established purchase evidence (1.194459ms)
+▶ checkout.session.completed classification
+  ✔ first purchase with no relationship creates (0.266666ms)
+  ✔ same session replays the existing purchase (0.071167ms)
+  ✔ different venue creates and does not reuse A (0.08275ms)
+  ✔ same email and same normalized venue holds without selecting A as the new purchase (0.079084ms)
+  ✔ unestablished CRM lead without bound session reuses for first purchase (0.090542ms)
+  ✔ unestablished CRM lead with bound session still reuses via session (0.087334ms)
+  ✔ multiple unestablished same-name drafts hold instead of guessing (0.07225ms)
+  ✔ unestablished lead that already owns a different session holds (0.093291ms)
+✔ checkout.session.completed classification (1.04025ms)
+▶ subscription.created before checkout.completed
+  ✔ does not attach a new subscription to an established purchase (0.123209ms)
+  ✔ enriches the purchase that already owns the subscription (0.0385ms)
+  ✔ may attach to an unpaid draft that already has this checkout session (0.057292ms)
+  ✔ defers when the event has no session and the draft is not yet subscribed (0.048958ms)
+  ✔ does not retarget an established purchase even if its session was already overwritten (0.054583ms)
+✔ subscription.created before checkout.completed (0.419334ms)
+▶ purchase identity source contracts
+  ✔ checkout start refuses to retarget an established purchase (0.107083ms)
+  ✔ subscription lifecycle does not email-match and does not create a purchase (0.089459ms)
+  ✔ inquiry contact ingest still uses the non-purchase path (0.0465ms)
+  ✔ hold persists before onboarding and does not reuse the old token (0.105917ms)
+  ✔ activation replay immutability migration remains on HEAD (0.057417ms)
+✔ purchase identity source contracts (0.461625ms)
+▶ file-store purchase identity ordering
+  ✔ reproduces Gate 5 ordering and keeps purchase A, hold, replay, and a different venue apart (91.557875ms)
+✔ file-store purchase identity ordering (91.643167ms)
+ℹ tests 384
+ℹ suites 93
+ℹ pass 384
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1394.856375

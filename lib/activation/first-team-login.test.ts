@@ -30,7 +30,7 @@ describe("first_team_login eligibility (invite prerequisite)", () => {
     const obs = computeSetupGapObservations(checklist);
     assert.equal(obs.some((o) => o.id === `setup-gap-${FIRST_TEAM_LOGIN_KEY}`), false);
     assert.doesNotMatch(
-      obs.map((o) => o.suggestion ?? "").join(" "),
+      obs.map((o) => o.message ?? "").join(" "),
       /An invited team member who hasn't logged in/i,
     );
   });

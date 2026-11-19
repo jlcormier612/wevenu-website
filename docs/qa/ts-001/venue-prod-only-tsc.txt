@@ -1,0 +1,2 @@
+error TS5058: The specified path does not exist: 'docs/qa/ts-001/tsconfig.prod-only.root.json'.
+EXIT:1

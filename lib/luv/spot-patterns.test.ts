@@ -508,10 +508,8 @@ describe("P-P1 — inquiry volume increase", () => {
     );
     assert.match(active!.body, /previous 14-day window|tours/i);
     assert.deepEqual(active!.ctas, []);
-    assert.equal(
-      active!.ctas.some((cta) => cta.target === "/leads" || /view inquiries/i.test(cta.label)),
-      false,
-    );
+    // Empty ctas (already deepEqual'd) — no View inquiries /leads CTA.
+    assert.equal(active!.ctas.length, 0);
     const src = read("lib/luv/spot-patterns.ts");
     const fnStart = src.indexOf("export function evaluateInquiryVolumeIncrease");
     const fnEnd = src.indexOf("export function countLeadsCreatedInRange", fnStart);

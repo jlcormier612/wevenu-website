@@ -52,9 +52,11 @@ describe("invitation email through the real sendEmail path", () => {
     process.env.RESEND_API_KEY = "re_test_not_a_secret";
     process.env.FROM_EMAIL = "Hello to Cheers <invites@mail.hellotocheers.test>";
     const content = invitationPayload();
-    let posted: { url: string; body: Record<string, unknown> } | null = null;
+    const postedBox: { value: { url: string; body: Record<string, unknown> } | null } = {
+      value: null,
+    };
     globalThis.fetch = async (input, init) => {
-      posted = {
+      postedBox.value = {
         url: String(input),
         body: JSON.parse(String(init?.body ?? "{}")) as Record<string, unknown>,
       };
@@ -68,11 +70,12 @@ describe("invitation email through the real sendEmail path", () => {
       html: content.html,
     });
 
-    assert.equal(posted?.url, "https://api.resend.com/emails");
-    assert.deepEqual(posted?.body.to, [RECIPIENT]);
-    assert.match(String(posted?.body.subject), /Jen's Fancy Venue planning workspace/);
-    assert.match(String(posted?.body.text), new RegExp(clientInviteAcceptUrl(TOKEN).replace(/[?]/g, "\\?")));
-    assert.match(String(posted?.body.html), /token=11111111-1111-4111-8111-111111111111/);
+    assert.ok(postedBox.value);
+    assert.equal(postedBox.value.url, "https://api.resend.com/emails");
+    assert.deepEqual(postedBox.value.body.to, [RECIPIENT]);
+    assert.match(String(postedBox.value.body.subject), /Jen's Fancy Venue planning workspace/);
+    assert.match(String(postedBox.value.body.text), new RegExp(clientInviteAcceptUrl(TOKEN).replace(/[?]/g, "\\?")));
+    assert.match(String(postedBox.value.body.html), /token=11111111-1111-4111-8111-111111111111/);
     assert.equal(result.ok, true);
     if (result.ok) {
       assert.equal(result.method, "resend");

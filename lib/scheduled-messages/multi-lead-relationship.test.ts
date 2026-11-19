@@ -63,7 +63,10 @@ function fakeClient() {
           const newest = [...LEADS].sort((a, b) => b.updated_at.localeCompare(a.updated_at))[0];
           return { data: newest, error: null };
         },
-        then(resolve: (value: { data: unknown; error: null }) => void, reject?: (reason: unknown) => void) {
+        then(
+          resolve: (value: { data: unknown; error: { code: string; message: string } | null }) => void,
+          reject?: (reason: unknown) => void,
+        ) {
           builder.maybeSingle().then((result) => {
             if (table === "venue_staff" || table === "payment_schedules" || table === "payment_line_items") {
               resolve({ data: [], error: null });

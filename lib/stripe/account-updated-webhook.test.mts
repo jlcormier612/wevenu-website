@@ -109,7 +109,7 @@ const admin = {
 };
 
 mock.module("@/integrations/supabase/admin", {
-  exports: { createAdminClient: () => admin },
+  namedExports: { createAdminClient: () => admin },
 });
 
 const WEBHOOK_SECRET = "whsec_fixture_account_updated";

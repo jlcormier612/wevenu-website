@@ -144,6 +144,8 @@ export function isEstablishedPurchaseRelationship(
     activationToken?: string | null;
     activationCompletedAt?: string | null;
     productSync?: { venueId?: string | null } | null;
+    /** Present on drafts; intentionally ignored — checkout session alone is not established. */
+    stripeCheckoutSessionId?: string | null;
   },
   subscriptions: Array<{ relationshipId: string; stripeSubscriptionId?: string | null }> = [],
 ): boolean {
