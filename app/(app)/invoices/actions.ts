@@ -259,6 +259,8 @@ export async function sendInvoiceAndPaymentPlanAction(
       html: email.html,
       replyTo: email.replyTo,
       threadId: threadId ?? undefined,
+      category: "payment_notice",
+      priority: "critical",
     });
     if (result.ok && result.method === "resend") {
       const { recordExternalClientOutbound } = await import("@/lib/conversations/record-external-outbound");
@@ -348,6 +350,8 @@ export async function sendRevisedInvoiceAndPaymentPlanAction(
       html: email.html,
       replyTo: email.replyTo,
       threadId: threadId ?? undefined,
+      category: "payment_notice",
+      priority: "critical",
     });
     if (result.ok && result.method === "resend") {
       const { recordExternalClientOutbound } = await import("@/lib/conversations/record-external-outbound");

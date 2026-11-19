@@ -77,7 +77,10 @@ describe("password recovery helpers", () => {
     assert.match(actions, /sendBrandedPasswordRecoveryEmail/);
     assert.match(actions, /changePasswordWhileSignedIn/);
     assert.match(sendPath, /generateLink/);
-    assert.match(sendPath, /click_tracking:\s*false/);
+    assert.match(sendPath, /clickTracking:\s*false/);
+    assert.match(sendPath, /openTracking:\s*false/);
+    assert.match(sendPath, /sendEmail\(/);
+    assert.match(sendPath, /password_recovery/);
     assert.match(sendPath, /PASSWORD_RECOVERY_EMAIL_SUBJECT/);
     const vendorShell = readFileSync("components/vendor-app/vendor-app-shell.tsx", "utf8");
     const userMenu = readFileSync("components/shell/user-menu.tsx", "utf8");

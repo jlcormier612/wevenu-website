@@ -10,6 +10,7 @@
 
 import { NextResponse } from "next/server";
 import { createClient } from "@/integrations/supabase/server";
+import { isEmailConfigured, sendEmail } from "@/lib/email/send";
 
 type InvitePayload = {
   token: string;
@@ -79,15 +80,21 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: true, sent: 0, failed: 0, errors: ["No guests with email addresses found."] });
     }
 
-    const apiKey = process.env.RESEND_API_KEY;
-    const fromEmail = process.env.FROM_EMAIL ?? "Hello to Cheers <onboarding@resend.dev>";
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
     const coupleName = [client?.first_name, client?.partner_first_name].filter(Boolean).join(" & ");
     const eventDate = event?.event_date
       ? new Date(event.event_date + "T12:00:00").toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })
       : null;
 
-    const results = { sent: 0, failed: 0, errors: [] as string[] };
+    const results = {
+      sent: 0,
+      deferred: 0,
+      failed: 0,
+      errors: [] as string[],
+      deferredGuestIds: [] as string[],
+      sentGuestIds: [] as string[],
+    };
+    const configured = isEmailConfigured();
 
     for (const guest of guests as { id: string; first_name: string; email: string; rsvp_token: string }[]) {
       const rsvpUrl = `${appUrl}/rsvp/${guest.rsvp_token}`;
@@ -111,34 +118,68 @@ export async function POST(request: Request) {
         message,
       });
 
-      if (apiKey) {
-        try {
-          const res = await fetch("https://api.resend.com/emails", {
-            method: "POST",
-            headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
-            body: JSON.stringify({ from: fromEmail, to: guest.email, subject, html }),
-          });
-          if (res.ok) results.sent++;
-          else { results.failed++; results.errors.push(`${guest.email}: HTTP ${res.status}`); }
-        } catch (err) {
-          results.failed++;
-          results.errors.push(`${guest.email}: ${err instanceof Error ? err.message : "send failed"}`);
-        }
-      } else {
-        // Dev mode: log instead of send
+      if (!configured) {
         console.log(`[invite] DEV: would send to ${guest.email}: ${rsvpUrl}`);
         results.sent++;
+        results.sentGuestIds.push(guest.id);
+        continue;
       }
+
+      const sendResult = await sendEmail({
+        to: guest.email,
+        subject,
+        html,
+        text: `${subject}\n\nRSVP: ${rsvpUrl}`,
+        category: "guest_rsvp_invite",
+        priority: "bulk",
+        idempotencyKey: `guest-rsvp/${guest.id}/${emailType}`,
+        pacingMaxWaitMs: 0,
+      });
+
+      if (sendResult.ok && sendResult.method === "resend") {
+        // Provider accepted — only then count as sent (never before acceptance).
+        results.sent++;
+        results.sentGuestIds.push(guest.id);
+        continue;
+      }
+
+      if (!sendResult.ok && (sendResult.code === "capacity" || sendResult.code === "pacing_unavailable" || sendResult.code === "rate_limit" || sendResult.code === "quota" || sendResult.code === "temporary")) {
+        // Not discarded: guest remains unsent; venue can retry. No automatic outbox
+        // for guest RSVP (would be a larger architectural addition — see Phase B report).
+        results.deferred++;
+        results.deferredGuestIds.push(guest.id);
+        results.errors.push(`${guest.email}: deferred — ${sendResult.message}`);
+        continue;
+      }
+
+      results.failed++;
+      results.errors.push(
+        `${guest.email}: ${sendResult.ok ? "unsupported delivery method" : sendResult.message}`,
+      );
     }
 
-    // Log in DB (non-blocking)
-    void supabase.rpc("log_invitations_sent", {
-      p_token: token,
-      p_guest_ids: guestIds,
-      p_email_type: emailType,
-    });
+    // Log only guests whose send was accepted by the provider (or DEV simulated).
+    if (results.sentGuestIds.length > 0) {
+      void supabase.rpc("log_invitations_sent", {
+        p_token: token,
+        p_guest_ids: results.sentGuestIds,
+        p_email_type: emailType,
+      });
+    }
 
-    return NextResponse.json({ ok: true, ...results });
+    return NextResponse.json({
+      ok: true,
+      sent: results.sent,
+      deferred: results.deferred,
+      failed: results.failed,
+      errors: results.errors,
+      deferredGuestIds: results.deferredGuestIds,
+      sentGuestIds: results.sentGuestIds,
+      message:
+        results.deferred > 0
+          ? `${results.sent} sent, ${results.deferred} deferred (delivery capacity full — retry those guests), ${results.failed} failed.`
+          : undefined,
+    });
   } catch (err) {
     return NextResponse.json({ ok: false, error: err instanceof Error ? err.message : "Unknown error." }, { status: 500 });
   }

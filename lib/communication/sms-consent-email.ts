@@ -211,6 +211,8 @@ export async function requestSmsConsentEmailForLead(
     text: bodies.text,
     html: bodies.html,
     replyTo: venue.email ?? undefined,
+    category: "sms_consent",
+    priority: "critical",
   });
   if (!sent.ok) {
     await admin

@@ -35,6 +35,8 @@ export async function notifyInquiry(submission: InquirySubmission): Promise<void
     text,
     // Same inquiry id → Resend returns the original send within 24h.
     idempotencyKey: `inquiry-notify:${submission.kind}:${submission.id}`,
+    category: "ops_internal",
+    priority: "critical",
   });
   if (!result.ok) {
     console.error("[inquiries] notify failed", result.message);

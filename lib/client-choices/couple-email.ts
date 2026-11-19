@@ -183,6 +183,8 @@ export async function submitClientChoicesCoupleEmail(input: {
     html: content.html,
     replyTo: (venue?.email as string | null) ?? undefined,
     threadId: conversationId ?? undefined,
+    category: "client_choice",
+    priority: "critical",
   });
 
   const submitted = emailResult.ok && emailResult.method === "resend";

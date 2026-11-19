@@ -89,6 +89,8 @@ export async function notifyInventoryFinalized(input: {
       text,
       html,
       replyTo: input.venueEmail ?? undefined,
+      category: "inventory_choice",
+      priority: "critical",
     });
     emailSubmitted = emailResult.ok;
     emailMessage = emailResult.ok ? undefined : emailResult.message;

@@ -4,7 +4,7 @@
  * transmitClientInvitation is the same function inviteClient calls after insert.
  */
 import assert from "node:assert/strict";
-import { afterEach, describe, it } from "node:test";
+import { afterEach, beforeEach, describe, it } from "node:test";
 
 import { portalActivationState } from "@/lib/activation/portal-open-milestone";
 import { portalPendingDeliveryLabel } from "@/lib/activation/portal-open-milestone";
@@ -17,12 +17,21 @@ import {
   type InvitationDeliveryRow,
 } from "@/lib/client-auth/invite-delivery";
 import { sendEmail } from "@/lib/email/send";
+import {
+  createMemoryResendSlotStore,
+  setResendSlotStoreForTests,
+} from "@shared/email/pacing/acquire";
 
 const ENV_KEYS = ["COMMUNICATION_MODE", "RESEND_API_KEY", "FROM_EMAIL", "NEXT_PUBLIC_APP_URL"] as const;
 const snapshot: Record<string, string | undefined> = {};
 for (const key of ENV_KEYS) snapshot[key] = process.env[key];
 
 const originalFetch = globalThis.fetch;
+
+beforeEach(() => {
+  // Fail-closed pacing must not block intercepted Resend POSTs in unit tests.
+  setResendSlotStoreForTests(createMemoryResendSlotStore());
+});
 
 afterEach(() => {
   const env = process.env as Record<string, string | undefined>;
@@ -31,6 +40,7 @@ afterEach(() => {
     else env[key] = snapshot[key];
   }
   globalThis.fetch = originalFetch;
+  setResendSlotStoreForTests(null);
 });
 
 const RECIPIENT = "invitee@mail.hellotocheers.test";

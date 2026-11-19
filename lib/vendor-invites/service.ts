@@ -50,6 +50,8 @@ export async function sendVendorInvite(
     subject: `${venueName} has included you as a vendor on Hello to Cheers`,
     text: buildVendorInviteText({ vendorName: vendor.business_name, venueName, acceptUrl }),
     html: buildVendorInviteHtml({ vendorName: vendor.business_name, venueName, acceptUrl }),
+    category: "vendor_invite",
+    priority: "critical",
   });
 
   if (!result.ok) return { ok: false, message: result.message };

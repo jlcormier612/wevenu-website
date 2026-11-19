@@ -166,6 +166,8 @@ export async function POST(request: NextRequest) {
       text: thankYou.text,
       html: thankYou.html,
       replyTo: fromEmail,
+      category: "inquiry_ack",
+      priority: "critical",
     }).then(
       (result) => {
         if (!result.ok) console.error("[public/forms/submit] thank-you not accepted", result.code ?? "failed");
@@ -199,6 +201,8 @@ export async function POST(request: NextRequest) {
       subject: venueEmail.subject,
       text: venueEmail.text,
       html: venueEmail.html,
+      category: "form_submission",
+      priority: "critical",
     }).then(
       (result) => recordNotificationStatus(admin, outcome.attemptId, result.ok ? "sent" : "failed", "venue"),
       () => recordNotificationStatus(admin, outcome.attemptId, "failed", "venue"),

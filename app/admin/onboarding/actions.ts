@@ -88,7 +88,7 @@ export async function sendOnboardingUpdateAction(
   if (!toEmail.trim() || !subject.trim() || !body.trim()) {
     return { ok: false, message: "Recipient, subject, and message are all required." };
   }
-  const result = await sendEmail({ to: toEmail, subject, text: body, html: body.replace(/\n/g, "<br />") });
+  const result = await sendEmail({ to: toEmail, subject, text: body, html: body.replace(/\n/g, "<br />"), category: "onboarding_ops", priority: "critical" });
   if (!result.ok) return { ok: false, message: result.message };
   void recordEngagementEvent({ venueId, eventType: "hq.onboarding_update_sent", actorType: "hq_admin", actorId: actor.userId });
   revalidate(venueId);

@@ -4,7 +4,7 @@
  */
 
 export type ScheduledMessageChannel = "email" | "sms";
-export type ScheduledMessageStatus = "scheduled" | "sent" | "failed" | "cancelled";
+export type ScheduledMessageStatus = "scheduled" | "sending" | "sent" | "failed" | "cancelled";
 
 export type ScheduledMessage = {
   id: string;

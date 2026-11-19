@@ -107,7 +107,52 @@ def _classify(alarm_name: str | None) -> tuple[str, str, str]:
     )
 
 
-def _send_resend(api_key: str, subject: str, text: str) -> tuple[bool, str]:
+def _acquire_resend_slot(service_role: str, priority: str = "critical") -> tuple[bool, str]:
+    """
+    Same Postgres RPC as shared/email pacing (fail-closed).
+    Ops alerts are critical so they may use reserved capacity.
+    """
+    payload = json.dumps(
+        {
+            "p_priority": priority,
+            "p_max_total": 9,
+            "p_max_bulk": 6,
+            "p_window_ms": 1000,
+            "p_now_ms": int(datetime.now(timezone.utc).timestamp() * 1000),
+        }
+    ).encode("utf-8")
+    req = urllib.request.Request(
+        f"{SUPABASE_URL}/rest/v1/rpc/acquire_resend_send_slot",
+        data=payload,
+        headers={
+            "Authorization": f"Bearer {service_role}",
+            "apikey": service_role,
+            "Content-Type": "application/json",
+            "User-Agent": USER_AGENT,
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            body = json.loads(resp.read().decode("utf-8"))
+            if isinstance(body, dict) and body.get("granted") is True:
+                return True, "granted"
+            return False, "capacity"
+    except Exception as exc:  # noqa: BLE001 — fail closed; never send without a slot
+        return False, f"pacing_unavailable:{type(exc).__name__}"
+
+
+def _send_resend(
+    api_key: str,
+    subject: str,
+    text: str,
+    service_role: str,
+    idempotency_key: str | None = None,
+) -> tuple[bool, str]:
+    paced, pace_ref = _acquire_resend_slot(service_role, "critical")
+    if not paced:
+        return False, f"pacing_{pace_ref}"
+
     payload = json.dumps(
         {
             "from": OPS_FROM,
@@ -116,14 +161,17 @@ def _send_resend(api_key: str, subject: str, text: str) -> tuple[bool, str]:
             "text": text[:8000],
         }
     ).encode("utf-8")
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+        "User-Agent": USER_AGENT,
+    }
+    if idempotency_key:
+        headers["Idempotency-Key"] = idempotency_key[:256]
     req = urllib.request.Request(
         "https://api.resend.com/emails",
         data=payload,
-        headers={
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-            "User-Agent": USER_AGENT,
-        },
+        headers=headers,
         method="POST",
     )
     try:
@@ -458,7 +506,16 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         email_ref = "skipped"
         if send_email:
             subject, text = _format_email(parsed, incident_id)
-            email_ok, email_ref = _send_resend(api_key, subject, text)
+            if not service_key:
+                email_ok, email_ref = False, "pacing_unavailable:no_service_key"
+            else:
+                email_ok, email_ref = _send_resend(
+                    api_key,
+                    subject,
+                    text,
+                    service_key,
+                    idempotency_key=f"ops-alert/{parsed['message_id']}",
+                )
             if email_ok:
                 _put("OpsAlertEmailSuccess", 1.0)
                 print(f"OpsAlertEmailSuccess id={email_ref} subject_len={len(subject)}")

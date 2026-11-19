@@ -199,6 +199,10 @@ async function processPaymentReminders(
         html,
         replyTo: venue?.email ?? undefined,
         threadId: threadId ?? undefined,
+        category: "payment_notice",
+        priority: "critical",
+        idempotencyKey: `obligation-payment/${reminder.id}/${attemptCountBefore}`,
+        pacingMaxWaitMs: 0,
       });
       throwIfSendFailed(sendResult);
 
@@ -329,6 +333,10 @@ async function processContractReminders(
         html,
         replyTo: venue?.email ?? undefined,
         threadId: threadId ?? undefined,
+        category: "contract_signature",
+        priority: "critical",
+        idempotencyKey: `obligation-contract/${reminder.id}/${attemptCountBefore}`,
+        pacingMaxWaitMs: 0,
       });
       throwIfSendFailed(sendResult);
 
@@ -542,6 +550,10 @@ async function dispatchMessageReceivedEmail(
         subject: email.subject,
         text,
         html: email.html,
+        category: "venue_notification",
+        priority: "bulk",
+        idempotencyKey: `venue-notif/${row.id}/${recipient.email}/${attemptCountBefore}`,
+        pacingMaxWaitMs: 0,
       });
       throwIfSendFailed(sendResult);
 
@@ -650,6 +662,10 @@ export async function processVenueNotificationEmails(options?: {
         subject: email.subject,
         text,
         html: email.html,
+        category: "venue_notification",
+        priority: "bulk",
+        idempotencyKey: `venue-notif/${row.id}/${attemptCountBefore}`,
+        pacingMaxWaitMs: 0,
       });
       throwIfSendFailed(sendResult);
 

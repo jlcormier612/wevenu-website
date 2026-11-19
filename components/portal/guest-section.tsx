@@ -1219,19 +1219,36 @@ export function GuestSection({ token }: { token: string }) {
       const withoutEmail = targets.filter(g => !g.email);
 
       if (withEmail.length > 0) {
-        await fetch("/api/portal/invite", {
+        const res = await fetch("/api/portal/invite", {
           method: "POST", headers: { "content-type": "application/json" },
           body: JSON.stringify({ token, guestIds: withEmail.map(g => g.id), emailType: "invitation" }),
         });
+        const data = await res.json() as {
+          ok: boolean;
+          sent?: number;
+          deferred?: number;
+          failed?: number;
+          message?: string;
+          error?: string;
+        };
+        if (!data.ok) {
+          toast.error(data.error ?? "Could not send invitations.");
+        } else if ((data.deferred ?? 0) > 0 || (data.failed ?? 0) > 0) {
+          toast.message(
+            data.message
+              ?? `${data.sent ?? 0} sent, ${data.deferred ?? 0} deferred (retry those guests), ${data.failed ?? 0} failed.`,
+          );
+        } else {
+          toast.success(`Invitation sent to ${data.sent ?? 0} guest${(data.sent ?? 0) !== 1 ? "s" : ""}.`);
+        }
       }
       if (withoutEmail.length > 0) {
         await fetch("/api/portal/guests", {
           method: "PATCH", headers: { "content-type": "application/json" },
           body: JSON.stringify({ token, guestIds: withoutEmail.map(g => g.id), invitationStatus: "sent" }),
         });
+        toast.success(`Marked ${withoutEmail.length} guest${withoutEmail.length !== 1 ? "s" : ""} sent (no email on file — invite them your own way).`);
       }
-      if (withEmail.length > 0) toast.success(`Invitation sent to ${withEmail.length} guest${withEmail.length !== 1 ? "s" : ""}.`);
-      if (withoutEmail.length > 0) toast.success(`Marked ${withoutEmail.length} guest${withoutEmail.length !== 1 ? "s" : ""} sent (no email on file — invite them your own way).`);
     } else {
       await fetch("/api/portal/guests", {
         method: "PATCH", headers: { "content-type": "application/json" },
@@ -1408,9 +1425,23 @@ export function GuestSection({ token }: { token: string }) {
       method: "POST", headers: { "content-type": "application/json" },
       body: JSON.stringify({ token, guestIds: pendingWithEmail.map(g => g.id), emailType: "reminder" }),
     });
-    const data = await res.json() as { ok: boolean; sent?: number };
-    if (data.ok) toast.success(`Reminder sent to ${data.sent} guests.`);
-    else toast.error("Could not send reminders.");
+    const data = await res.json() as {
+      ok: boolean;
+      sent?: number;
+      deferred?: number;
+      failed?: number;
+      message?: string;
+      error?: string;
+    };
+    if (!data.ok) toast.error(data.error ?? "Could not send reminders.");
+    else if ((data.deferred ?? 0) > 0 || (data.failed ?? 0) > 0) {
+      toast.message(
+        data.message
+          ?? `${data.sent ?? 0} reminders sent, ${data.deferred ?? 0} deferred (retry those guests), ${data.failed ?? 0} failed.`,
+      );
+    } else {
+      toast.success(`Reminder sent to ${data.sent ?? 0} guests.`);
+    }
   }
 
   // Vendor Meals (Guest Experience — Phase 3) are real guest records but

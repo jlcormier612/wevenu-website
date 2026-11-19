@@ -77,6 +77,8 @@ export async function sendTierUpgradeNotice(input: {
   const rendered = renderEmailTemplate(draft.templateId, draft.vars);
   const sendResult = await sendRawEmail({
     to,
+    category: "enrollment_lifecycle",
+    priority: "critical",
     subject: rendered.subject || draft.subject,
     text: rendered.text,
     html: rendered.html,

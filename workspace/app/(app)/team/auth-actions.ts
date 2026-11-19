@@ -189,6 +189,8 @@ export async function inviteTeamMemberAction(
 
   await sendRawEmail({
     to: email,
+    category: "account_invite",
+    priority: "critical",
     subject: `You're invited to Hello to Cheers Relationship Workspace`,
     text: [
       `Hi ${name},`,

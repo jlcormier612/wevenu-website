@@ -307,6 +307,8 @@ export async function inviteStaffMember(input: StaffInviteInput): Promise<TeamAc
           acceptUrl,
           administratorName: adminName,
         }),
+        category: "team_invite",
+        priority: "critical",
       });
     } else {
       await sendEmail({
@@ -324,6 +326,8 @@ export async function inviteStaffMember(input: StaffInviteInput): Promise<TeamAc
           acceptUrl,
           accessTitleLabel: accessTitle,
         }),
+        category: "team_invite",
+        priority: "critical",
       });
     }
 
@@ -545,6 +549,8 @@ export async function inviteRecordedOwner(staffId: string): Promise<TeamActionRe
         acceptUrl,
         administratorName: adminName,
       }),
+      category: "team_invite",
+      priority: "critical",
     });
 
     void recordEngagementEvent({

@@ -1074,6 +1074,8 @@ async function sendContractInviteEmails(
         html: buildContractInviteHtml(ctx),
         replyTo: venue.email ?? undefined,
         threadId: conversationId ?? undefined,
+        category: "contract_signature",
+        priority: "critical",
       });
       if (result.ok) {
         if (contract.clientId) {
@@ -1143,6 +1145,8 @@ async function sendContractInviteEmails(
     html: buildContractInviteHtml(ctx),
     replyTo: venue.email ?? undefined,
     threadId: conversationId ?? undefined,
+    category: "contract_signature",
+    priority: "critical",
   });
   if (result.ok) {
     await recordExternalClientOutbound(supabase, {

@@ -68,6 +68,10 @@ export async function sendDailyDigests(): Promise<DigestResult> {
         subject: ctx.subjectLine,
         html:    buildDigestHtml(ctx),
         text:    buildDigestText(ctx),
+        category: "digest",
+        priority: "bulk",
+        idempotencyKey: `digest/${venue.venue_id}/${hash}`,
+        pacingMaxWaitMs: 0,
       });
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -41,6 +41,9 @@ export type SendRelationshipEmailInput = {
   meta?: Record<string, string | number | boolean | null>;
   /** Forwarded to Resend as Idempotency-Key when the transport is live. */
   idempotencyKey?: string;
+  /** Resend pacing category (defaults to enrollment_lifecycle). */
+  category?: import("./pacing/priority").EmailSendCategory;
+  priority?: import("./pacing/priority").EmailSendPriority;
   /**
    * When false, skip timeline/comms (rare — prefer always logging).
    * Default true.
@@ -95,6 +98,8 @@ export async function sendRelationshipEmail(
     undefined;
 
   const sendResult = await sendRawEmail({
+    category: input.category ?? "enrollment_lifecycle",
+    priority: input.priority,
     to,
     subject: rendered.subject,
     text: rendered.text,

@@ -1826,15 +1826,30 @@ export function WebsiteEditor({
         method: "POST", headers: { "content-type": "application/json" },
         body: JSON.stringify({ token, guestIds: alreadyResponded.map(g => g.id), emailType: "update" }),
       });
-      const data = await res.json() as { ok: boolean; sent?: number };
-      if (data.ok) {
-        toast.success(`Update sent to ${data.sent ?? alreadyResponded.length} guest${alreadyResponded.length !== 1 ? "s" : ""}.`);
+      const data = await res.json() as {
+        ok: boolean;
+        sent?: number;
+        deferred?: number;
+        failed?: number;
+        message?: string;
+        error?: string;
+      };
+      if (!data.ok) {
+        toast.error(data.error ?? "Could not send the update. Please try again.");
+      } else if ((data.deferred ?? 0) > 0 || (data.failed ?? 0) > 0) {
+        toast.message(
+          data.message
+            ?? `${data.sent ?? 0} updates sent, ${data.deferred ?? 0} deferred (retry those guests), ${data.failed ?? 0} failed.`,
+        );
+        // Do not dismiss the nudge until every update was accepted.
+      } else {
+        toast.success(`Update sent to ${data.sent ?? 0} guest${(data.sent ?? 0) !== 1 ? "s" : ""}.`);
         setNudges(n => n.filter(x => x.id !== nudgeId));
         await fetch("/api/portal/website/change-nudges", {
           method: "POST", headers: { "content-type": "application/json" },
           body: JSON.stringify({ token, nudgeId, notified: true }),
         });
-      } else toast.error("Could not send the update. Please try again.");
+      }
     } finally { setNotifyingNudge(null); }
   }
 
@@ -2188,9 +2203,34 @@ export function WebsiteEditor({
                       setSendingInvites(true);
                       try {
                         const res = await fetch("/api/portal/invite", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ token, guestIds: selectedGuests }) });
-                        const data = await res.json() as { ok: boolean; sent?: number };
-                        if (data.ok) { toast.success(`${data.sent} invitation${data.sent !== 1 ? "s" : ""} sent!`); setShowInvite(false); setSelectedGuests([]); }
-                        else toast.error("Some invitations failed.");
+                        const data = await res.json() as {
+                          ok: boolean;
+                          sent?: number;
+                          deferred?: number;
+                          failed?: number;
+                          deferredGuestIds?: string[];
+                          sentGuestIds?: string[];
+                          message?: string;
+                          error?: string;
+                        };
+                        if (!data.ok) {
+                          toast.error(data.error ?? "Could not send invitations.");
+                          return;
+                        }
+                        const sentIds = new Set(data.sentGuestIds ?? []);
+                        // Keep deferred/failed selected so the couple can retry;
+                        // clear only guests the provider accepted.
+                        setSelectedGuests(prev => prev.filter(id => !sentIds.has(id)));
+                        if ((data.deferred ?? 0) > 0 || (data.failed ?? 0) > 0) {
+                          toast.message(
+                            data.message
+                              ?? `${data.sent ?? 0} sent, ${data.deferred ?? 0} deferred (retry those guests), ${data.failed ?? 0} failed.`,
+                          );
+                        } else {
+                          toast.success(`${data.sent ?? 0} invitation${(data.sent ?? 0) !== 1 ? "s" : ""} sent!`);
+                          setShowInvite(false);
+                          setSelectedGuests([]);
+                        }
                       } finally { setSendingInvites(false); }
                     }}
                     className="w-full rounded-xl py-2.5 text-sm font-semibold bg-primary text-primary-foreground disabled:opacity-50">

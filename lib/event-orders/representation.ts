@@ -185,6 +185,8 @@ export async function shareEventOrderCore(
       const { wrapConversationMessageHtml } = await import("@/lib/email/conversation-brand");
       const { emailBrandFromVenue } = await import("@/lib/email/venue-brand");
       const emailResult = await sendEmail({
+      category: "event_order",
+      priority: "critical",
         to: client.email,
         subject: `${venue.name ?? "Your venue"}: Event Order for ${event.name}`,
         text,

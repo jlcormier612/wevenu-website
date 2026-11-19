@@ -113,12 +113,19 @@ describe("SMS send trust", () => {
     setEnv("NODE_ENV", "test");
     process.env.COMMUNICATION_MODE = "sandbox";
     delete process.env.COMMUNICATION_SANDBOX_PHONE;
+    // Fixture must satisfy isVenueTwilioSendReady (A2P phone REGISTERED) so the
+    // sandbox-phone gate is what fails — not "texting isn’t set up".
     process.env.TWILIO_VENUE_ACCOUNTS_JSON = JSON.stringify([{
       venue_id: "test-venue",
       twilio_account_sid: "ACaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       messaging_service_sid: "MGaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       default_from_e164: "+15551110001",
       phone_number_sid: "PNaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      a2p_brand_sid: "BNaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      a2p_campaign_sid: "QEaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      a2p_brand_status: "APPROVED",
+      a2p_campaign_status: "VERIFIED",
+      phone_a2p_status: "REGISTERED",
       status: "ready",
     }]);
     process.env.TWILIO_VENUE_SECRETS_JSON = JSON.stringify({

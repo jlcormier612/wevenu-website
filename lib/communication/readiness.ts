@@ -164,6 +164,8 @@ export async function sendTestEmail(): Promise<TestSendResult> {
     to: venue.email,
     subject: "Hello to Cheers test message",
     text: `This is a test message from Hello to Cheers to confirm email is working for ${venue.name}. If you received this, email is set up correctly.`,
+    category: "readiness_test",
+    priority: "critical",
   });
   const accepted = acceptOutboundEmail(result);
   if (!accepted.ok) return { ok: false, message: accepted.message };

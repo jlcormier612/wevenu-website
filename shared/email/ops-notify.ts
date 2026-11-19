@@ -39,6 +39,8 @@ export async function sendOpsInternalEmail(input: {
     text: input.text,
     idempotencyKey: input.idempotencyKey,
     tags: input.tags,
+    category: "ops_internal",
+    priority: "critical",
   });
 
   if (!result.ok) {

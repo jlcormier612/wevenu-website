@@ -431,6 +431,8 @@ export async function sendConversationMessage(
       html,
       threadId: conversationId,
       replyTo: venue?.email ?? undefined,
+      category: "conversation_message",
+      priority: "critical",
       attachments: pending.map((a) => ({ path: a.url, filename: a.name })),
     });
     const accepted = acceptOutboundEmail(emailResult);

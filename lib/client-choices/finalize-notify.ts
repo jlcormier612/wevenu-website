@@ -90,6 +90,8 @@ export async function notifyClientChoicesFinalized(input: {
       text,
       html,
       replyTo: input.venueEmail ?? undefined,
+      category: "client_choice",
+      priority: "critical",
     });
     emailSubmitted = emailResult.ok;
     emailMessage = emailResult.ok ? undefined : emailResult.message;

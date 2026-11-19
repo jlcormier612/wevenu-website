@@ -1,8 +1,5 @@
 import { htcEmailLogoHeaderHtml } from "@/shared/brand/logo";
-
-const RESEND_URL = "https://api.resend.com/emails";
-
-const FROM = process.env.FROM_EMAIL ?? "Hello to Cheers <onboarding@resend.dev>";
+import { sendEmail } from "@/lib/email/send";
 
 function html(senderName: string, preview: string, ctaUrl: string, ctaLabel: string, eventName?: string): string {
   const escaped = preview.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -39,12 +36,7 @@ export async function sendMessageEmail({
   subject?: string;
   eventName?: string;
 }): Promise<void> {
-  const apiKey = process.env.RESEND_API_KEY;
   const resolvedSubject = subject ?? `💬 New message from ${senderName}`;
-  if (!apiKey) {
-    console.log(`[messages] DEV notify → ${to} | ${resolvedSubject} | ${senderName}: ${bodyPreview.slice(0, 60)}`);
-    return;
-  }
   const textParts = [
     `You have a new message from ${senderName}.`,
     eventName ? `Event: ${eventName}` : null,
@@ -54,16 +46,14 @@ export async function sendMessageEmail({
     `Reply at: ${ctaUrl}`,
   ].filter((line): line is string => line !== null);
 
-  await fetch(RESEND_URL, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      from: FROM,
-      to,
-      subject: resolvedSubject,
-      html: html(senderName, bodyPreview, ctaUrl, ctaLabel, eventName),
-      text: textParts.join("\n"),
-    }),
-  }).catch(err => console.error("[messages] notify failed:", err));
+  const result = await sendEmail({
+    to,
+    subject: resolvedSubject,
+    html: html(senderName, bodyPreview, ctaUrl, ctaLabel, eventName),
+    text: textParts.join("\n"),
+    category: "message_alert",
+  });
+  if (!result.ok) {
+    console.error("[messages] notify failed:", result.message);
+  }
 }
-
