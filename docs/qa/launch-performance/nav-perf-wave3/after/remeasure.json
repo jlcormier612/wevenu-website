@@ -1,0 +1,213 @@
+{
+  "measuredAt": "2026-11-19T02:56:53.880Z",
+  "expectedSha": "83569a103d9b4c7ebfc93ef151ed8ab9d28e1f67",
+  "venue": "Jen's Fancy Venue",
+  "definition": "greeting/kpi/focus exclude Suspense fallbacks; greeting = real h1 Good *; kpi = Lead Flow visible; focus = Today's Focus with fallback detached",
+  "wave2Compare": {
+    "cold": {
+      "ttfbMs": 2156,
+      "greetingMs": 3146,
+      "kpiMs": 3150,
+      "focusMs": 3437
+    },
+    "warm": {
+      "ttfbMs": 616,
+      "greetingMs": 1545,
+      "kpiMs": 1548,
+      "focusMs": 1628
+    },
+    "note": "Wave 2 Sandbox remasure medians (3 samples). Wave 3 excludes skeletons."
+  },
+  "medians": {
+    "cold": {
+      "n": 3,
+      "ttfbMs": 1484,
+      "greetingMs": 2517,
+      "kpiMs": 2519,
+      "focusMs": 3817,
+      "interactiveMs": 3818,
+      "usefulRootMs": 1887,
+      "documentResponseEndMs": 3589
+    },
+    "warm": {
+      "n": 3,
+      "ttfbMs": 1156,
+      "greetingMs": 1549,
+      "kpiMs": 1552,
+      "focusMs": 1841,
+      "interactiveMs": 1842,
+      "usefulRootMs": 1254,
+      "documentResponseEndMs": 1757
+    }
+  },
+  "samples": [
+    {
+      "mode": "cold",
+      "sample": 1,
+      "ttfbMs": 1712,
+      "greetingMs": 2790,
+      "kpiMs": 2796,
+      "focusMs": 4595,
+      "interactiveMs": 4597,
+      "usefulRootMs": 1998,
+      "documentResponseEndMs": 4092,
+      "notif": [
+        {
+          "status": 200,
+          "ms": -1
+        }
+      ],
+      "attention": [
+        {
+          "status": 200,
+          "ms": -1
+        }
+      ],
+      "openaiOrLuvAsk": 0,
+      "dpl": "83569a103d9b4c7ebfc93ef151ed8ab9d28e1f67",
+      "venueLine": "Wednesday, November 18, 2026 · Here's what's happening at Jen's Fancy Venue today.",
+      "kpiLeadFlow": "Lead Flow",
+      "focusTitleOk": true
+    },
+    {
+      "mode": "cold",
+      "sample": 2,
+      "ttfbMs": 1484,
+      "greetingMs": 2517,
+      "kpiMs": 2519,
+      "focusMs": 3817,
+      "interactiveMs": 3818,
+      "usefulRootMs": 1714,
+      "documentResponseEndMs": 3589,
+      "notif": [
+        {
+          "status": 200,
+          "ms": -1
+        }
+      ],
+      "attention": [
+        {
+          "status": 200,
+          "ms": -1
+        }
+      ],
+      "openaiOrLuvAsk": 0,
+      "dpl": "83569a103d9b4c7ebfc93ef151ed8ab9d28e1f67",
+      "venueLine": "Wednesday, November 18, 2026 · Here's what's happening at Jen's Fancy Venue today.",
+      "kpiLeadFlow": "Lead Flow",
+      "focusTitleOk": true
+    },
+    {
+      "mode": "cold",
+      "sample": 3,
+      "ttfbMs": 1081,
+      "greetingMs": 1889,
+      "kpiMs": 1892,
+      "focusMs": 2684,
+      "interactiveMs": 2686,
+      "usefulRootMs": 1887,
+      "documentResponseEndMs": 2347,
+      "notif": [
+        {
+          "status": 200,
+          "ms": -1
+        }
+      ],
+      "attention": [
+        {
+          "status": 200,
+          "ms": -1
+        }
+      ],
+      "openaiOrLuvAsk": 0,
+      "dpl": "83569a103d9b4c7ebfc93ef151ed8ab9d28e1f67",
+      "venueLine": "Wednesday, November 18, 2026 · Here's what's happening at Jen's Fancy Venue today.",
+      "kpiLeadFlow": "Lead Flow",
+      "focusTitleOk": true
+    },
+    {
+      "mode": "warm",
+      "sample": 1,
+      "ttfbMs": 1156,
+      "greetingMs": 1549,
+      "kpiMs": 1552,
+      "focusMs": 1841,
+      "interactiveMs": 1842,
+      "usefulRootMs": 1254,
+      "documentResponseEndMs": 1757,
+      "notif": [
+        {
+          "status": 200,
+          "ms": -1
+        }
+      ],
+      "attention": [
+        {
+          "status": 200,
+          "ms": -1
+        }
+      ],
+      "openaiOrLuvAsk": 0,
+      "dpl": "83569a103d9b4c7ebfc93ef151ed8ab9d28e1f67",
+      "venueLine": "Wednesday, November 18, 2026 · Here's what's happening at Jen's Fancy Venue today.",
+      "kpiLeadFlow": "Lead Flow",
+      "focusTitleOk": true
+    },
+    {
+      "mode": "warm",
+      "sample": 2,
+      "ttfbMs": 573,
+      "greetingMs": 1470,
+      "kpiMs": 1473,
+      "focusMs": 1511,
+      "interactiveMs": 1512,
+      "usefulRootMs": 670,
+      "documentResponseEndMs": 1224,
+      "notif": [
+        {
+          "status": 200,
+          "ms": -1
+        }
+      ],
+      "attention": [
+        {
+          "status": 200,
+          "ms": -1
+        }
+      ],
+      "openaiOrLuvAsk": 0,
+      "dpl": "83569a103d9b4c7ebfc93ef151ed8ab9d28e1f67",
+      "venueLine": "Wednesday, November 18, 2026 · Here's what's happening at Jen's Fancy Venue today.",
+      "kpiLeadFlow": "Lead Flow",
+      "focusTitleOk": true
+    },
+    {
+      "mode": "warm",
+      "sample": 3,
+      "ttfbMs": 9248,
+      "greetingMs": 10136,
+      "kpiMs": 10141,
+      "focusMs": 10943,
+      "interactiveMs": 10945,
+      "usefulRootMs": 9335,
+      "documentResponseEndMs": 10915,
+      "notif": [
+        {
+          "status": 200,
+          "ms": -1
+        }
+      ],
+      "attention": [
+        {
+          "status": 200,
+          "ms": -1
+        }
+      ],
+      "openaiOrLuvAsk": 0,
+      "dpl": "83569a103d9b4c7ebfc93ef151ed8ab9d28e1f67",
+      "venueLine": "Wednesday, November 18, 2026 · Here's what's happening at Jen's Fancy Venue today.",
+      "kpiLeadFlow": "Lead Flow",
+      "focusTitleOk": true
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "checks": [
+    {
+      "name": "greeting_venue",
+      "pass": true,
+      "detail": "Wednesday, November 18, 2026 · Here's what's happening at Jen's Fancy Venue today."
+    },
+    {
+      "name": "kpis_present",
+      "pass": true,
+      "detail": "cash_snip=OVERVIEW Dashboard YOUR RELATIONSHIPS Leads Clients Vendors SCHEDULING Calendar "
+    },
+    {
+      "name": "focus_and_coming_up",
+      "pass": true,
+      "detail": "visible"
+    },
+    {
+      "name": "desktop_nav_leads",
+      "pass": true,
+      "detail": "https://app.sandbox.hellotocheers.com/leads"
+    },
+    {
+      "name": "contracts_page",
+      "pass": true,
+      "detail": "https://app.sandbox.hellotocheers.com/contracts"
+    },
+    {
+      "name": "attention_ok",
+      "pass": true,
+      "detail": "{\"status\":200,\"keys\":[\"leads\",\"tours\",\"inbox\",\"tasks\",\"payments\",\"contracts\"]}"
+    },
+    {
+      "name": "mobile_nav_leads",
+      "pass": true,
+      "detail": "https://app.sandbox.hellotocheers.com/leads"
+    },
+    {
+      "name": "no_openai",
+      "pass": true,
+      "detail": "0"
+    },
+    {
+      "name": "wave1_no_hot_sidebar_rsc",
+      "pass": true,
+      "detail": "hot=none total_rsc_paths=13"
+    }
+  ]
+}
