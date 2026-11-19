@@ -1232,7 +1232,8 @@ export function GuestSection({ token }: { token: string }) {
           error?: string;
         };
         if (!data.ok) {
-          toast.error(data.error ?? "Could not send invitations.");
+          // Includes persistence_failed (provider accepted, DB log failed).
+          toast.error(data.error ?? data.message ?? "Could not send invitations.");
         } else if ((data.deferred ?? 0) > 0 || (data.failed ?? 0) > 0) {
           toast.message(
             data.message
@@ -1433,7 +1434,7 @@ export function GuestSection({ token }: { token: string }) {
       message?: string;
       error?: string;
     };
-    if (!data.ok) toast.error(data.error ?? "Could not send reminders.");
+    if (!data.ok) toast.error(data.error ?? data.message ?? "Could not send reminders.");
     else if ((data.deferred ?? 0) > 0 || (data.failed ?? 0) > 0) {
       toast.message(
         data.message

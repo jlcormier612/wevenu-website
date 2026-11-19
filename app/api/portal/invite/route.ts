@@ -11,6 +11,13 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { isEmailConfigured, sendEmail } from "@/lib/email/send";
+import {
+  buildInviteSuccessMessage,
+  buildPersistenceFailureResponse,
+  guestRsvpIdempotencyKey,
+  invitationLogFailed,
+  type LogInvitationsResult,
+} from "./persistence";
 
 type InvitePayload = {
   token: string;
@@ -137,7 +144,9 @@ export async function POST(request: Request) {
         text: `${subject}\n\nRSVP: ${rsvpUrl}`,
         category: "guest_rsvp_invite",
         priority: "bulk",
-        idempotencyKey: `guest-rsvp/${guest.id}/${emailType}`,
+        // Stable key: retry after persistence failure reuses this so Resend
+        // returns the original acceptance for ~24h instead of a second send.
+        idempotencyKey: guestRsvpIdempotencyKey(guest.id, emailType),
         pacingMaxWaitMs: 0,
       });
 
@@ -151,6 +160,7 @@ export async function POST(request: Request) {
       if (!sendResult.ok && (sendResult.code === "capacity" || sendResult.code === "pacing_unavailable" || sendResult.code === "rate_limit" || sendResult.code === "quota" || sendResult.code === "temporary")) {
         // Not discarded: guest remains unsent; venue can retry. No automatic outbox
         // for guest RSVP (would be a larger architectural addition — see Phase B report).
+        // Deferred must never be passed to log_invitations_sent.
         results.deferred++;
         results.deferredGuestIds.push(guest.id);
         results.errors.push(`${guest.email}: deferred — ${sendResult.message}`);
@@ -165,12 +175,24 @@ export async function POST(request: Request) {
 
     // Log only guests whose send was accepted by the provider (or DEV simulated).
     // SECURITY DEFINER RPC — validates token again server-side.
+    // Must await: fire-and-forget is dropped when the App Router finishes the
+    // response, leaving invitation_status stuck at ready despite sent>0.
     if (results.sentGuestIds.length > 0) {
-      void admin.rpc("log_invitations_sent", {
+      const { data: logData, error: logError } = await admin.rpc("log_invitations_sent", {
         p_token: token,
         p_guest_ids: results.sentGuestIds,
         p_email_type: emailType,
       });
+      if (invitationLogFailed(logError, logData as LogInvitationsResult)) {
+        const detail =
+          logError?.message ??
+          (logData as LogInvitationsResult)?.error ??
+          "unknown_log_failure";
+        console.error("[invite] log_invitations_sent failed:", detail);
+        return NextResponse.json(buildPersistenceFailureResponse(results, detail), {
+          status: 503,
+        });
+      }
     }
 
     return NextResponse.json({
@@ -181,10 +203,7 @@ export async function POST(request: Request) {
       errors: results.errors,
       deferredGuestIds: results.deferredGuestIds,
       sentGuestIds: results.sentGuestIds,
-      message:
-        results.deferred > 0
-          ? `${results.sent} sent, ${results.deferred} deferred (delivery capacity full — retry those guests), ${results.failed} failed.`
-          : undefined,
+      message: buildInviteSuccessMessage(results),
     });
   } catch (err) {
     return NextResponse.json({ ok: false, error: err instanceof Error ? err.message : "Unknown error." }, { status: 500 });
