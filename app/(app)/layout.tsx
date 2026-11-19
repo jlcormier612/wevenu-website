@@ -82,24 +82,29 @@ export default async function WorkspaceLayout({
     redirect("/select-venue");
   }
 
-  // White Glove: block full product until enrollment is activated (handoff done).
+  // White Glove + membership + staff role: independent after venue is known.
   const admin = createAdminClient();
-  const { data: enrollment } = await admin
-    .from("venue_enrollments")
-    .select("onboarding_type, status, white_glove_status, intake_token, owner_email, owner_first_name, owner_last_name, purchaser_is_owner")
-    .eq("venue_id", venue.id)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle<{
-      onboarding_type: string;
-      status: string;
-      white_glove_status: string | null;
-      intake_token: string | null;
-      owner_email: string;
-      owner_first_name: string | null;
-      owner_last_name: string | null;
-      purchaser_is_owner: boolean | null;
-    }>();
+  const [enrollmentResult, membership, staffRole] = await Promise.all([
+    admin
+      .from("venue_enrollments")
+      .select("onboarding_type, status, white_glove_status, intake_token, owner_email, owner_first_name, owner_last_name, purchaser_is_owner")
+      .eq("venue_id", venue.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle<{
+        onboarding_type: string;
+        status: string;
+        white_glove_status: string | null;
+        intake_token: string | null;
+        owner_email: string;
+        owner_first_name: string | null;
+        owner_last_name: string | null;
+        purchaser_is_owner: boolean | null;
+      }>(),
+    getActiveVenueMembership(),
+    getCurrentUserRole(),
+  ]);
+  const enrollment = enrollmentResult.data;
 
   if (
     enrollment?.onboarding_type === "white_glove" &&
@@ -127,7 +132,6 @@ export default async function WorkspaceLayout({
     }
   }
 
-  const membership = await getActiveVenueMembership();
   if (enrollment && membership && !pathname.startsWith("/onboarding/ownership")) {
     const { count: ownerCount } = await admin
       .from("venue_staff")
@@ -169,8 +173,6 @@ export default async function WorkspaceLayout({
   if (headerList.get("sec-fetch-dest") === "iframe") {
     return <>{children}</>;
   }
-
-  const staffRole = await getCurrentUserRole();
 
   return (
     <>

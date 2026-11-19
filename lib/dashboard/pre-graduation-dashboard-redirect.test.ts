@@ -17,8 +17,13 @@ describe("ready_to_invite_couples is not a workspace access wall", () => {
     assert.doesNotMatch(page, /isVenueReadyToInviteCouples/);
     assert.doesNotMatch(page, /import \{ redirect \} from "next\/navigation"/);
     assert.doesNotMatch(page, /redirect\("\/setup-hub"\)/);
-    assert.match(page, /getDashboardData\(\)/);
-    assert.match(page, /title="Today's Focus"/);
+    assert.match(page, /DashboardFocusIsland/);
+    const focusIsland = readFileSync(
+      resolve("components/dashboard/dashboard-focus-island.tsx"),
+      "utf8",
+    );
+    assert.match(focusIsland, /getDashboardData\(\)/);
+    assert.match(focusIsland, /title="Today's Focus"/);
   });
 
   it("does not withhold Dashboard data because the flag is false", () => {

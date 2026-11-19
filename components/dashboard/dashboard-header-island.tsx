@@ -4,7 +4,7 @@ import { Greeting } from "@/components/dashboard/greeting";
 import { MilestoneToast } from "@/components/dashboard/milestone-toast";
 import { DashboardLuvIntro } from "@/components/dashboard/luv-intro";
 import { Button } from "@/components/ui/button";
-import { getDashboardData } from "@/lib/dashboard/service";
+import { getDashboardHeaderData } from "@/lib/dashboard/service";
 import {
   forensicExtra,
   forensicRecordL1,
@@ -12,17 +12,17 @@ import {
   withDashboardForensic,
 } from "@/lib/dashboard/forensic-timing";
 
-/** Greeting + primary action. Shares request-scoped getDashboardData(). */
+/** Greeting + primary action — light path; does not await Focus briefing. */
 export async function DashboardHeaderIsland() {
   return withDashboardForensic(async () => {
-    const data = await forensicTime("get_dashboard_data", () => getDashboardData());
+    const data = await forensicTime("get_dashboard_header_data", () => getDashboardHeaderData());
     if (!data) {
-      forensicExtra("dashboard_data", "null");
+      forensicExtra("dashboard_header_data", "null");
       forensicRecordL1({
         source: "NONE",
         type: null,
         candidate: null,
-        path: "dashboard_unavailable",
+        path: "dashboard_header_unavailable",
       });
       return (
         <div className="htc-hospitality-heading htc-hospitality-intro-accent">
@@ -44,7 +44,7 @@ export async function DashboardHeaderIsland() {
         </div>
         <DashboardLuvIntro
           show={data.showLuvIntro}
-          setupHref={data.onboarding.show ? "/setup-hub" : "/setup-hub"}
+          setupHref={data.onboardingShow ? "/setup-hub" : "/setup-hub"}
         />
       </>
     );

@@ -94,7 +94,7 @@ describe("Phase 3B forensic instrumentation wiring", () => {
     const snapshot = read("components/dashboard/dashboard-snapshot-island.tsx");
     const focus = read("components/dashboard/dashboard-focus-island.tsx");
     assert.match(header, /withDashboardForensic/);
-    assert.match(header, /forensicTime\("get_dashboard_data"/);
+    assert.match(header, /forensicTime\("get_dashboard_header_data"/);
     assert.match(snapshot, /withDashboardForensic/);
     assert.match(snapshot, /forensicTime\("business_snapshot"/);
     assert.match(focus, /withDashboardForensic/);
@@ -112,9 +112,10 @@ describe("Phase 3B forensic instrumentation wiring", () => {
     assert.doesNotMatch(service, /forensicTime\("get_venue_insights"/);
     assert.doesNotMatch(service, /forensicTime\("read_venue_recommendations"/);
     assert.match(service, /forensicTime\("dismissed_observation_ids"/);
-    assert.match(service, /forensicTime\("activation_score"/);
+    // Activation / milestone timed on the light header path (shared via cache).
+    assert.match(service, /forensicTime\("header_activation_score"/);
+    assert.match(service, /forensicTime\("header_next_pending_milestone"/);
     assert.match(service, /forensicTime\("load_venue_readiness"/);
-    assert.match(service, /forensicTime\("next_pending_milestone"/);
   });
 
   it("records L1 winning source on the real selection path", () => {

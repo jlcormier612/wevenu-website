@@ -1,0 +1,11 @@
+{
+  "fatMs": 316,
+  "leanMs": 380,
+  "fatBytes": 278541,
+  "leanBytes": 61881,
+  "fatRows": 60,
+  "leanRows": 60,
+  "eventBuckets": 9,
+  "readinessStatusMismatches": 0,
+  "samples": []
+}
