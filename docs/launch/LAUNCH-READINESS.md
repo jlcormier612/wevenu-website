@@ -2,9 +2,10 @@
 
 **Authoritative prelaunch register.**  
 **Created:** 2026-11-18  
-**Last updated:** 2026-11-19 (NAV-PERF Wave 6 Sandbox deployed — still OPEN; Wave 5 not released)  
+**Last updated:** 2026-11-19 (Stale-test GREEN/CLOSED + §5a failure policy; Wave 7A Sandbox release authorized — pending merge/deploy)  
 **Sandbox serving SHA (verified):** `c1b993f6c6842bbda0f3c71ae6162eca53f9aa32`  
-**Active workstream:** NAV-PERF (Wave 6 on Sandbox; launch bar not yet GREEN)  
+**Rollback target:** ECS `htc-sandbox-venue-app:1231` / image `c1b993f6…`  
+**Active workstream:** NAV-PERF (Wave 6 on Sandbox; Wave 7A approved for Sandbox; launch bar not yet GREEN)  
 **Production:** unauthorized — no Production customers, payments, or deploy.
 
 This file is the permanent Launch Readiness Register for coordinated prelaunch.  
@@ -81,13 +82,18 @@ Preserve GREEN/CLOSED unless new regression evidence appears.
 | **LUV-PLAN-INTEL** | Richer post-booking planning intelligence (beyond safety gates) | P2 | DEFERRED | Engineering | Explicitly non-blocking after LUV-FINAL safety GREEN |
 | **MKT-SCREENSHOTS** | Marketing screenshots of verified setup/migration/practice | P2 | OPEN | Joint | After JOURNEY-FINAL claims are frozen |
 | **PERF-WAVE-LEGACY** | Historical C1 Lead optimize branches | P2 | DEFERRED | Engineering | Prior `docs/qa/launch-performance/*`; re-evaluate only under NAV-PERF |
+| **TEST-STALE-TIMELINE-EMPTY** | Source contract looked for wrong empty-branch end marker (`itemCount={totalCount}` vs actual `itemCount={0}`) | P2 | **GREEN/CLOSED** | Engineering | Product empty state has Add First Entry + one TemplatePicker; Sandbox verified | `docs/qa/prelaunch-known-failures/`; Desktop `~/Desktop/HTC-PRELAUNCH-KNOWN-FAILURES/`; fix branch `fix/prelaunch-known-test-failures` | Not Wave 7A; not launch-blocking |
+| **TEST-STALE-Q-TAB** | `booking-assignment` expected Questionnaires `TabsTrigger` on first TabsList; P2-A moved Q to Overview card + hash TabsContent | P2 | **GREEN/CLOSED** | Engineering | Questionnaires reachable via card; assignment/completion rules unchanged; Sandbox verified | Same evidence pack; aligned with `workspace-tab-nav-p2a.test.ts` | Not Wave 7A; not launch-blocking |
+| **TEST-STALE-TAB-LUV** | `booked-workspace-tabs-luv` still asserted pre-P2-A 7×7 tab grid incl. questionnaires/inventory/event-order | P2 | **GREEN/CLOSED** | Engineering | Adjacent stale contract; updated to P2-A 5+6 rows; Luv remains on row 2 | Same pack | Discovered while triaging TEST-STALE-Q-TAB |
+| **TEST-STALE-SETUP-COPY** | P2-A setup copy still required “Inventory & Event Order card”; product says “Celebration summary card” | P2 | **GREEN/CLOSED** | Engineering | Copy-only stale assertion; no product change | Same pack | Adjacent |
+| **TEST-STALE-LEAD-LUV-ASSERT** | Lead Luv check required single-line `TabsTrigger value="luv"`; JSX is multiline | P2 | **GREEN/CLOSED** | Engineering | Lead Luv tab still present; assertion fixed | Same pack | Adjacent |
 
 ---
 
 ## 4. Current active workstream
 
 **NAV-PERF — Venue navigation performance (P1, required for launch)**  
-Wave 5 **not released**. Wave 6 layout first-byte + bootstrap parallelization **serving on Sandbox** `c1b993f6`. Remasure: warm TTFB med 786 / p90 1422; Focus med 2377 — launch bar still not met. Next slice TBD (Focus/gates or booking SSR). **Keep OPEN.**  
+Wave 5 **not released**. Wave 6 layout first-byte + bootstrap parallelization **serving on Sandbox** `c1b993f6`. Remasure: warm TTFB med 786 / p90 1422; Focus med 2377 — launch bar still not met. Wave 7A booking streaming is **local-only** (not on Sandbox). Known test failures above were **pre-existing on `origin/main`**, not introduced by Wave 7A. **Keep NAV-PERF OPEN.**  
 No Production changes.
 
 ---
@@ -102,6 +108,19 @@ No Production changes.
 6. No Production changes until relevant launch gates are approved.
 7. Keep this register concise; link evidence rather than pasting full QA reports.
 8. Distinguish Sandbox GREEN from Production readiness.
+
+### 5a. Permanent prelaunch failure policy
+
+Applies to every prelaunch investigation and CI/local failure:
+
+1. **Record and triage** every observed failure, unexplained error, or suspected regression in this register (unique ID + disposition). Nothing may silently disappear.
+2. **“Pre-existing” is not automatic acceptance.** Pre-existing failures must still be classified (product defect vs incorrect/outdated test vs fixture/environment) and either fixed or escalated for founder review.
+3. **Do not weaken, skip, delete, or quarantine tests** merely to obtain a green CI/local result.
+4. **Customer-impacting product defects** require a correct fix plus verification evidence before GREEN/CLOSED.
+5. **Launch blockers** include security, data isolation, booking, contracts, payments, and data-integrity defects (typically P0; escalate immediately if discovered).
+6. **Other defects** need documented severity (P0/P1/P2) and founder disposition when not fixed in-scope.
+7. **Previously accepted GREEN** workstreams reopen only when new evidence demonstrates a problem.
+8. Tests may be corrected only after verifying intended product behavior; fixtures must not fake away real defects.
 
 ---
 
@@ -140,3 +159,4 @@ All must be GREEN (or founder-documented exception) before live customers/paymen
 | 2026-11-18 | NAV-PERF Wave 2 merged PR #94 → `7191fffa`, Sandbox deployed, remasure + functional PASS. NAV-PERF remains **OPEN**. Other GREEN/CLOSED rows preserved. |
 | 2026-11-18 | NAV-PERF Wave 3 coded on `perf/nav-perf-wave3` (lean Focus invoices/schedules/lines/requests + readiness candidate events; no date cutoff). Fancy Focus parity 0 mismatches; query bundle −64% bytes. **No commit/deploy yet.** NAV-PERF remains **OPEN**. Other GREEN/CLOSED rows preserved. |
 | 2026-11-18 | NAV-PERF Wave 3 merged PR #96 → `83569a10`, Sandbox deployed, remasure + nav + functional. Cold TTFB −31%; Focus medians not improved vs Wave 2. NAV-PERF remains **OPEN**. Other GREEN/CLOSED rows preserved. |
+| 2026-11-19 | Prelaunch known-failure triage (Timeline empty TemplatePicker + questionnaires tab). Both fail identically on clean `origin/main` and Wave 7A — **incorrect/outdated source contracts**, not product defects; not Wave 7A regressions. Adjacent stale tab/Luv/setup-copy assertions corrected. Sandbox verify PASS (`sandbox-verify.json`). Added §5a prelaunch failure policy. Branch `fix/prelaunch-known-test-failures` (uncommitted pending founder). NAV-PERF remains OPEN; Wave 7A not blocked by these tests. |

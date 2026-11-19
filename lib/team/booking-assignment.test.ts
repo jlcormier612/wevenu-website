@@ -109,18 +109,33 @@ describe("booking team assignment", () => {
 
 describe("team tab removed from event planning nav", () => {
   const detail = readFileSync("components/events/event-detail.tsx", "utf8");
-  const start = detail.indexOf("<TabsList");
-  const end = detail.indexOf("</TabsList>", start);
-  const list = detail.slice(start, end);
+  const row1Start = detail.indexOf('data-testid="booked-tab-row-1"');
+  const row1End = detail.indexOf("</TabsList>", row1Start);
+  const row1 = detail.slice(row1Start, row1End);
+  const row2Start = detail.indexOf('data-testid="booked-tab-row-2"');
+  const row2End = detail.indexOf("</TabsList>", row2Start);
+  const row2 = detail.slice(row2Start, row2End);
 
   it("does not offer Team as a top-level tab", () => {
-    assert.doesNotMatch(list, /TabsTrigger value="team"/);
+    assert.doesNotMatch(row1, /TabsTrigger value="team"/);
+    assert.doesNotMatch(row2, /TabsTrigger value="team"/);
+    assert.doesNotMatch(detail, /TabsTrigger value="team"/);
   });
 
   it("keeps the other planning tabs", () => {
-    for (const value of ["overview", "playbook", "timeline", "floorplan", "vendors", "questionnaires", "documents", "invoice", "messages"]) {
-      assert.match(list, new RegExp(`TabsTrigger value="${value}"`));
+    // P2-A: Questionnaires / Inventory / Event Order are hash-addressable
+    // TabsContent opened from Overview cards — not TabsTrigger rows.
+    for (const value of ["overview", "playbook", "timeline", "floorplan", "vendors"]) {
+      assert.match(row1, new RegExp(`TabsTrigger value="${value}"`));
     }
+    for (const value of ["documents", "invoice", "messages", "activity", "notes", "luv"]) {
+      assert.match(row2, new RegExp(`TabsTrigger value="${value}"`));
+    }
+    assert.doesNotMatch(row1, /TabsTrigger value="questionnaires"/);
+    assert.doesNotMatch(row2, /TabsTrigger value="questionnaires"/);
+    assert.match(detail, /TabsContent value="questionnaires"/);
+    assert.match(detail, /data-testid="open-questionnaires-card"/);
+    assert.match(detail, /openWorkspaceSection\("questionnaires"\)/);
   });
 });
 
