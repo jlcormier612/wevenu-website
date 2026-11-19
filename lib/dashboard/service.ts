@@ -293,7 +293,65 @@ export async function loadFocusPopulationLeads(
 
 // ---- main service function --------------------------------------------------
 
-/** Request-scoped: header + focus islands can share one Dashboard assembly. */
+export type DashboardHeaderData = {
+  venueName: string;
+  ownerFirstName: string | null;
+  nextPendingMilestone: DashboardData["nextPendingMilestone"];
+  showLuvIntro: boolean;
+  onboardingShow: boolean;
+  /** Shared with Focus assembly via request cache — avoid a second activation pass. */
+  activationScore: ActivationScore | null;
+  readyToInviteCouples: boolean;
+  luvSettings: Awaited<ReturnType<typeof getLuvSettings>> | null;
+};
+
+/**
+ * Light header path for Suspense streaming — greeting / milestone / Luv intro
+ * only. Must not await Focus briefing or venue-wide readiness assembly.
+ */
+export const getDashboardHeaderData = cache(async function getDashboardHeaderData(): Promise<DashboardHeaderData | null> {
+  if (!isSupabaseConfigured) return null;
+  const venue = await forensicTime("header_auth_venue", () => getCurrentVenue());
+  if (!venue) return null;
+  forensicSetVenue(venue.id);
+
+  const [currentStaff, luvSettings, activationScore, nextPendingMilestone, readyToInviteCouples] =
+    await forensicTime("header_parallel_wall", () =>
+      Promise.all([
+        forensicTime("header_current_staff", () => getCurrentStaffMember(venue.id)),
+        forensicTime("header_luv_settings", () => getLuvSettings().catch(() => null)),
+        forensicTime("header_activation_score", () => getActivationScore(venue.id).catch(() => null)),
+        forensicTime("header_next_pending_milestone", () =>
+          getNextPendingMilestone(venue.id).catch(() => null),
+        ),
+        forensicTime("header_ready_to_invite", () =>
+          isVenueReadyToInviteCouples(venue.id).catch(() => true),
+        ),
+      ]),
+    );
+
+  return {
+    venueName: venue.name,
+    ownerFirstName: resolveDashboardGreetingFirstName({
+      fullName: currentStaff?.name ?? null,
+      venueName: venue.name,
+    }),
+    nextPendingMilestone,
+    showLuvIntro: shouldShowDashboardLuvIntro({
+      readyToInviteCouples,
+      luvIntroSeenAt: venue.luvIntroSeenAt,
+      activationPhase: activationScore?.phase ?? null,
+      venueCreatedAt: venue.createdAt,
+    }),
+    // Continuous Setup card stays hidden; keep a boolean for intro CTA only.
+    onboardingShow: false,
+    activationScore,
+    readyToInviteCouples,
+    luvSettings,
+  };
+});
+
+/** Request-scoped: Focus island assembly (header uses getDashboardHeaderData). */
 export const getDashboardData = cache(async function getDashboardData(): Promise<DashboardData | null> {
   if (!isSupabaseConfigured) return null;
   const venue = await forensicTime("auth_venue_resolution", () => getCurrentVenue());
@@ -324,13 +382,15 @@ export const getDashboardData = cache(async function getDashboardData(): Promise
     generatedAt: new Date().toISOString(),
   };
 
+  // Start / reuse light header assembly in parallel with Focus wave1 so staff /
+  // activation / milestone work is not sequenced after the heavy briefing.
+  const headerPromise = getDashboardHeaderData();
+
   const [
     focusLeads,
     tasksRes,
     eventsRes,
     paymentsRes,
-    currentStaff,
-    luvSettings,
     briefing,
   ] = await forensicTime("wave1_parallel_wall", () =>
     Promise.all([
@@ -370,14 +430,14 @@ export const getDashboardData = cache(async function getDashboardData(): Promise
           .order("due_date", { ascending: true })
           .limit(15),
       ),
-      // Authenticated staff membership — greeting uses this person, not a preferred owner.
-      forensicTime("current_staff", () => getCurrentStaffMember(venue.id)),
-      forensicTime("luv_settings", () => getLuvSettings().catch(() => null)),
       forensicTime("get_focus_briefing", () =>
         getFocusNeedsAttentionBriefing(venue.id).catch(() => emptyBriefing),
       ),
     ]),
   );
+
+  const header = await forensicTime("header_join", () => headerPromise);
+  if (!header) return null;
 
   if (tasksRes.error) throw tasksRes.error;
   if (eventsRes.error) throw eventsRes.error;
@@ -498,10 +558,11 @@ export const getDashboardData = cache(async function getDashboardData(): Promise
   const overduePayments = allPaymentItems.filter((r) => r.status === "overdue" || (r.due_date < today && r.status === "pending")).map(mapDashPayment);
   const upcomingPayments = allPaymentItems.filter((r) => r.due_date >= today && r.status === "pending").slice(0, 8).map(mapDashPayment);
 
-  const ownerFirstName = resolveDashboardGreetingFirstName({
-    fullName: currentStaff?.name ?? null,
-    venueName: venue.name,
-  });
+  const ownerFirstName = header.ownerFirstName;
+  const activationScore = header.activationScore;
+  const nextPendingMilestone = header.nextPendingMilestone;
+  const readyToInviteCouples = header.readyToInviteCouples;
+  const luvSettings = header.luvSettings;
 
   // Live L1 sources only — no broad observation engine, no insights compute,
   // no persisted-recommendation read. Contract/document families have no other
@@ -509,13 +570,12 @@ export const getDashboardData = cache(async function getDashboardData(): Promise
   // recreated). Setup-gap and readiness reuse the live calculations already
   // required for guided setup / readiness. Communication reuses its existing
   // observation calculation for the authorized L1 families.
+  // Activation / milestone / ready-to-invite / Luv settings come from the
+  // cached header path (above) — do not re-fetch on this wave.
   const [
     communicationObservationsRaw,
     dismissedObservationIds,
-    activationScore,
     venueReadiness,
-    nextPendingMilestone,
-    readyToInviteCouples,
   ] = await forensicTime("wave2_parallel_wall", () =>
     Promise.all([
       forensicTime("get_communication_observations", () =>
@@ -524,16 +584,7 @@ export const getDashboardData = cache(async function getDashboardData(): Promise
       forensicTime("dismissed_observation_ids", () =>
         getDismissedObservationIds().catch(() => new Set<string>()),
       ),
-      forensicTime("activation_score", () => getActivationScore(venue.id).catch(() => null)),
       forensicTime("load_venue_readiness", () => loadVenueReadiness().catch(() => null)),
-      forensicTime("next_pending_milestone", () =>
-        getNextPendingMilestone(venue.id).catch(() => null),
-      ),
-      // Read-only. On failure, suppress setup guidance rather than inventing
-      // ready=false and contradicting a possible saved declaration. Never write.
-      forensicTime("ready_to_invite_couples", () =>
-        isVenueReadyToInviteCouples(venue.id).catch(() => true),
-      ),
     ]),
   );
 

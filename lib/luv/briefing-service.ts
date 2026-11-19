@@ -32,7 +32,7 @@ import {
 } from "@/lib/dashboard-system/attention-identity";
 import { forensicCount, forensicTime } from "@/lib/dashboard/forensic-timing";
 import { createClient } from "@/integrations/supabase/server";
-import { getContracts } from "@/lib/contracts/repository";
+import { getContracts, getContractsForDashboardBriefing } from "@/lib/contracts/repository";
 import { getInvoices } from "@/lib/invoices/repository";
 import { getAllLineItems, getSchedules } from "@/lib/payments/repository";
 import { getRequestsForVenue } from "@/lib/requests/service";
@@ -131,11 +131,20 @@ function buildNeedsAttentionNow(input: {
   return needsAttentionNow;
 }
 
-async function loadReadinessInputs(supabase: DbClient, venueId: string) {
+async function loadReadinessInputs(
+  supabase: DbClient,
+  venueId: string,
+  opts?: { leanContracts?: boolean },
+) {
+  const leanContracts = opts?.leanContracts === true;
   const [eventsRes, contracts, invoices, requests, schedules, lineItems] = await Promise.all([
     supabase.from("events").select("id, name, event_date, client_id, status")
       .eq("venue_id", venueId).neq("status", "cancelled"),
-    getContracts(supabase, venueId),
+    // Focus Dashboard path: lean contracts (no content / signer attach).
+    // Full Daily Briefing keeps getContracts() for parity with Documents.
+    leanContracts
+      ? getContractsForDashboardBriefing(supabase, venueId)
+      : getContracts(supabase, venueId),
     getInvoices(supabase, venueId),
     getRequestsForVenue(supabase, venueId),
     getSchedules(supabase, venueId),
@@ -182,7 +191,7 @@ async function loadReadinessInputs(supabase: DbClient, venueId: string) {
 export async function getFocusNeedsAttentionBriefing(venueId: string): Promise<LuvBriefing> {
   const supabase: DbClient = await createClient();
   const readiness = await forensicTime("briefing_load_readiness_inputs", () =>
-    loadReadinessInputs(supabase, venueId),
+    loadReadinessInputs(supabase, venueId, { leanContracts: true }),
   );
   forensicCount("briefing_events", readiness.events.length);
   forensicCount("briefing_contracts", readiness.contracts.length);

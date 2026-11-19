@@ -23,6 +23,7 @@ describe("Daily Briefing payment attention", () => {
       briefing.indexOf("export async function getDailyBriefing"),
     );
     assert.match(focusFn, /buildNeedsAttentionNow/);
+    assert.match(focusFn, /leanContracts:\s*true/);
     assert.doesNotMatch(focusFn, /luv_briefing_views/);
     assert.doesNotMatch(focusFn, /comingUpThisWeek\.push/);
     assert.doesNotMatch(focusFn, /luv_celebrations/);

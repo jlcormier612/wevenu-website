@@ -194,17 +194,23 @@ describe("buildBusinessSnapshotCards", () => {
 describe("Dashboard Business Snapshot wiring", () => {
   it("renders Business Snapshot after Greeting and before Today's Focus", () => {
     const page = read("app/(app)/dashboard/page.tsx");
-    assert.match(page, /BusinessSnapshotSection/);
-    assert.match(page, /getBusinessSnapshot/);
-    const greetingIdx = page.indexOf("<Greeting");
-    const snapIdx = page.indexOf("<BusinessSnapshotSection");
-    const focusIdx = page.indexOf('title="Today\'s Focus"');
-    const reportsIdx = page.indexOf(">View Reports<");
-    assert.ok(greetingIdx >= 0, "Greeting missing");
-    assert.ok(snapIdx > greetingIdx, "Business Snapshot must follow Greeting");
-    assert.ok(focusIdx > snapIdx, "Today's Focus must follow Business Snapshot");
-    assert.ok(reportsIdx > snapIdx, "View Reports must follow Business Snapshot");
+    assert.match(page, /DashboardHeaderIsland/);
+    assert.match(page, /DashboardSnapshotIsland/);
+    assert.match(page, /DashboardFocusIsland/);
+    const headerIdx = page.indexOf("<DashboardHeaderIsland");
+    const snapIdx = page.indexOf("<DashboardSnapshotIsland");
+    const focusIdx = page.indexOf("<DashboardFocusIsland");
+    assert.ok(headerIdx >= 0, "Header island missing");
+    assert.ok(snapIdx > headerIdx, "Business Snapshot island must follow Greeting island");
+    assert.ok(focusIdx > snapIdx, "Focus island must follow Business Snapshot");
     assert.doesNotMatch(page, /Your Next Steps/);
+
+    const snapIsland = read("components/dashboard/dashboard-snapshot-island.tsx");
+    assert.match(snapIsland, /BusinessSnapshotSection/);
+    assert.match(snapIsland, /getBusinessSnapshot/);
+    const focusIsland = read("components/dashboard/dashboard-focus-island.tsx");
+    assert.match(focusIsland, /title="Today's Focus"/);
+    assert.match(focusIsland, /View Reports/);
   });
 
   it("UI has equal-height cards, no Upcoming snapshot card, and open-leads destination", () => {

@@ -1,0 +1,237 @@
+{
+  "measuredAt": "2026-11-19T01:50:33.666Z",
+  "servingExpected": "a38250946044e786e894d9d449ee6d5ab1f5e016",
+  "venue": "Jen's Fancy Venue",
+  "db": {
+    "note": "DB timings via service role from laptop — network to Supabase, not ECS colocated. Relative ranking is the signal; absolute ms are lower bound vs in-app auth path.",
+    "briefingWallMs": 516,
+    "snapshotWallMs": 141,
+    "briefingPieces": [
+      {
+        "label": "briefing_contracts_fat",
+        "ms": 516,
+        "err": null,
+        "rows": 60
+      },
+      {
+        "label": "briefing_invoices_all",
+        "ms": 337,
+        "err": null,
+        "rows": 64
+      },
+      {
+        "label": "briefing_events_all",
+        "ms": 328,
+        "err": null,
+        "rows": 139
+      },
+      {
+        "label": "briefing_line_items_all",
+        "ms": 317,
+        "err": null,
+        "rows": 149
+      },
+      {
+        "label": "briefing_requests_all",
+        "ms": 317,
+        "err": "Could not find the table 'public.portal_requests' in the schema cache"
+      },
+      {
+        "label": "briefing_schedules_all",
+        "ms": 279,
+        "err": null,
+        "rows": 45
+      }
+    ],
+    "snapshotPieces": [
+      {
+        "label": "snap_open_leads",
+        "ms": 141,
+        "err": null,
+        "rows": 273
+      },
+      {
+        "label": "snap_pipeline_stages",
+        "ms": 140,
+        "err": null,
+        "rows": 8
+      },
+      {
+        "label": "snap_active_events_count",
+        "ms": 104,
+        "err": null,
+        "count": 133
+      },
+      {
+        "label": "rpc_payments_collected",
+        "ms": 102,
+        "err": null
+      },
+      {
+        "label": "rpc_gross_booked",
+        "ms": 97,
+        "err": null
+      },
+      {
+        "label": "rpc_outstanding",
+        "ms": 89,
+        "err": null
+      }
+    ],
+    "focusPieces": [
+      {
+        "label": "dash_tasks",
+        "ms": 86,
+        "err": null,
+        "rows": 15
+      },
+      {
+        "label": "focus_archived_rels",
+        "ms": 79,
+        "err": null,
+        "rows": 0
+      },
+      {
+        "label": "dash_payments_pending",
+        "ms": 74,
+        "err": null,
+        "rows": 15
+      },
+      {
+        "label": "focus_followup_leads",
+        "ms": 66,
+        "err": null,
+        "rows": 161
+      },
+      {
+        "label": "dash_events_30d",
+        "ms": 66,
+        "err": null,
+        "rows": 8
+      }
+    ],
+    "layoutSeq": [
+      {
+        "label": "layout_venue_row",
+        "ms": 109
+      },
+      {
+        "label": "layout_enrollment",
+        "ms": 73
+      },
+      {
+        "label": "layout_staff_count",
+        "ms": 73
+      }
+    ]
+  },
+  "http": {
+    "samples": [
+      {
+        "sample": 1,
+        "status": 200,
+        "marks": {
+          "ttfb_commit": 2204,
+          "root_attached": 3031,
+          "heading_visible": 3034,
+          "snapshot_lead_flow": 3038,
+          "focus_visible": 4333,
+          "coming_up_visible": 4335
+        },
+        "headerRace": "heading",
+        "perf": {
+          "responseStart": 2194,
+          "responseEnd": 4102,
+          "domContentLoaded": 4103,
+          "transferSize": 29201,
+          "encodedBodySize": 28901
+        },
+        "api": [
+          {
+            "url": "/api/notifications",
+            "ms": -1
+          },
+          {
+            "url": "/api/navigation/attention",
+            "ms": -1
+          }
+        ],
+        "bodyChars": 1633,
+        "openai": 0
+      },
+      {
+        "sample": 2,
+        "status": 200,
+        "marks": {
+          "ttfb_commit": 1358,
+          "root_attached": 1548,
+          "heading_visible": 1550,
+          "snapshot_lead_flow": 2333,
+          "focus_visible": 2335,
+          "coming_up_visible": 2336
+        },
+        "headerRace": "heading",
+        "perf": {
+          "responseStart": 1355,
+          "responseEnd": 2258,
+          "domContentLoaded": 2266,
+          "transferSize": 29201,
+          "encodedBodySize": 28901
+        },
+        "api": [
+          {
+            "url": "/api/notifications",
+            "ms": -1
+          },
+          {
+            "url": "/api/navigation/attention",
+            "ms": -1
+          }
+        ],
+        "bodyChars": 1633,
+        "openai": 0
+      },
+      {
+        "sample": 3,
+        "status": 200,
+        "marks": {
+          "ttfb_commit": 1225,
+          "root_attached": 1552,
+          "heading_visible": 1553,
+          "snapshot_lead_flow": 2336,
+          "focus_visible": 3624,
+          "coming_up_visible": 3625
+        },
+        "headerRace": "heading",
+        "perf": {
+          "responseStart": 1222,
+          "responseEnd": 3149,
+          "domContentLoaded": 3153,
+          "transferSize": 29201,
+          "encodedBodySize": 28901
+        },
+        "api": [
+          {
+            "url": "/api/notifications",
+            "ms": -1
+          },
+          {
+            "url": "/api/navigation/attention",
+            "ms": -1
+          }
+        ],
+        "bodyChars": 1633,
+        "openai": 0
+      }
+    ],
+    "median": {
+      "ttfb_commit": 1358,
+      "root_attached": 1552,
+      "heading_visible": 1553,
+      "snapshot_lead_flow": 2336,
+      "focus_visible": 3624,
+      "coming_up_visible": 3625,
+      "responseEnd": 3149
+    }
+  }
+}

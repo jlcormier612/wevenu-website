@@ -298,6 +298,26 @@ export async function getContracts(client: DbClient, venueId: string): Promise<C
 }
 
 /**
+ * Dashboard Focus Event-Readiness briefing only.
+ * Omits `content` (large HTML blobs) and skips signer attach — readiness uses
+ * status / executionOrigin / ids for attention links, not signature tallies.
+ * Do not use for Documents list or signing flows.
+ */
+export async function getContractsForDashboardBriefing(
+  client: DbClient,
+  venueId: string,
+): Promise<Contract[]> {
+  const { data, error } = await client.from("contracts")
+    .select(CONTRACT_WORKSPACE_LIST_SELECT)
+    .eq("venue_id", venueId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return ((data ?? []) as unknown as ContractRow[]).map((row) =>
+    mapContract({ ...row, content: row.content ?? "" }),
+  );
+}
+
+/**
  * Client Workspace / Booking Documents list path.
  * Scope: client_id = clientId OR event_id = eventId (venue RLS still applies).
  * Omits contract `content`; signers are loaded only for the scoped IDs.
