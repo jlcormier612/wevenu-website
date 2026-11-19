@@ -47,6 +47,8 @@ describe("Resend send-path coverage (RESEND-SCALE Phase B)", () => {
     assert.match(src, /method === ["']resend["']/);
     assert.match(src, /log_invitations_sent/);
     assert.match(src, /p_guest_ids:\s*results\.sentGuestIds/);
+    assert.match(src, /await admin\.rpc\("log_invitations_sent"/);
+    assert.doesNotMatch(src, /void admin\.rpc\("log_invitations_sent"/);
     // Portal tokens are not readable under anon RLS — must use admin lookup.
     assert.match(src, /createAdminClient/);
     assert.match(src, /expires_at/);

@@ -23,4 +23,11 @@ describe("portal invite token lookup (RESEND-SCALE residual)", () => {
     assert.match(src, /p_guest_ids:\s*results\.sentGuestIds/);
     assert.match(src, /deferredGuestIds/);
   });
+
+  it("awaits invitation logging and confirms expected persist count (Phase D)", () => {
+    assert.match(src, /await admin\.rpc\("log_invitations_sent"/);
+    assert.doesNotMatch(src, /void admin\.rpc\("log_invitations_sent"/);
+    assert.match(src, /confirmInvitationLog/);
+    assert.match(src, /persistAcceptedInvitationsDirectly/);
+  });
 });

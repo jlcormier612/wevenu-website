@@ -11,6 +11,17 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { isEmailConfigured, sendEmail } from "@/lib/email/send";
+import {
+  backfillProviderIds,
+  buildInviteSuccessMessage,
+  buildPersistenceFailureResponse,
+  confirmInvitationLog,
+  findProviderReceipt,
+  guestRsvpIdempotencyKey,
+  persistAcceptedInvitationsDirectly,
+  type AcceptedDelivery,
+  type LogInvitationsResult,
+} from "./persistence";
 
 type InvitePayload = {
   token: string;
@@ -99,6 +110,7 @@ export async function POST(request: Request) {
       deferredGuestIds: [] as string[],
       sentGuestIds: [] as string[],
     };
+    const acceptedDeliveries: AcceptedDelivery[] = [];
     const configured = isEmailConfigured();
 
     for (const guest of guests as { id: string; first_name: string; email: string; rsvp_token: string }[]) {
@@ -127,6 +139,33 @@ export async function POST(request: Request) {
         console.log(`[invite] DEV: would send to ${guest.email}: ${rsvpUrl}`);
         results.sent++;
         results.sentGuestIds.push(guest.id);
+        acceptedDeliveries.push({ guestId: guest.id, email: guest.email, providerId: null });
+        continue;
+      }
+
+      // Durable no-resend recovery for THIS delivery attempt only
+      // (invitation = lifetime; reminder/update = UTC day). Fail closed on
+      // lookup errors — never treat a failed lookup as "absent" and resend.
+      const priorReceipt = await findProviderReceipt(admin, {
+        guestId: guest.id,
+        emailType,
+        venueId: session.venue_id,
+        clientId: session.client_id,
+      });
+      if (priorReceipt.status === "error") {
+        results.failed++;
+        results.errors.push(`${guest.email}: receipt lookup failed — ${priorReceipt.detail}`);
+        continue;
+      }
+      if (priorReceipt.status === "found") {
+        results.sent++;
+        results.sentGuestIds.push(guest.id);
+        acceptedDeliveries.push({
+          guestId: guest.id,
+          email: guest.email,
+          providerId: priorReceipt.providerId,
+          historyRowId: priorReceipt.id,
+        });
         continue;
       }
 
@@ -137,7 +176,9 @@ export async function POST(request: Request) {
         text: `${subject}\n\nRSVP: ${rsvpUrl}`,
         category: "guest_rsvp_invite",
         priority: "bulk",
-        idempotencyKey: `guest-rsvp/${guest.id}/${emailType}`,
+        // invitation: stable key (24h provider dedupe for persistence retry).
+        // reminder/update: day-bucketed so legitimate next-day sends are not suppressed.
+        idempotencyKey: guestRsvpIdempotencyKey(guest.id, emailType),
         pacingMaxWaitMs: 0,
       });
 
@@ -145,12 +186,18 @@ export async function POST(request: Request) {
         // Provider accepted — only then count as sent (never before acceptance).
         results.sent++;
         results.sentGuestIds.push(guest.id);
+        acceptedDeliveries.push({
+          guestId: guest.id,
+          email: guest.email,
+          providerId: sendResult.providerId ?? null,
+        });
         continue;
       }
 
       if (!sendResult.ok && (sendResult.code === "capacity" || sendResult.code === "pacing_unavailable" || sendResult.code === "rate_limit" || sendResult.code === "quota" || sendResult.code === "temporary")) {
         // Not discarded: guest remains unsent; venue can retry. No automatic outbox
         // for guest RSVP (would be a larger architectural addition — see Phase B report).
+        // Deferred must never be passed to log_invitations_sent.
         results.deferred++;
         results.deferredGuestIds.push(guest.id);
         results.errors.push(`${guest.email}: deferred — ${sendResult.message}`);
@@ -165,12 +212,54 @@ export async function POST(request: Request) {
 
     // Log only guests whose send was accepted by the provider (or DEV simulated).
     // SECURITY DEFINER RPC — validates token again server-side.
+    // Must await: fire-and-forget is dropped when the App Router finishes the
+    // response, leaving invitation_status stuck at ready despite sent>0.
     if (results.sentGuestIds.length > 0) {
-      void admin.rpc("log_invitations_sent", {
+      const expected = results.sentGuestIds.length;
+      const { data: logData, error: logError } = await admin.rpc("log_invitations_sent", {
         p_token: token,
         p_guest_ids: results.sentGuestIds,
         p_email_type: emailType,
       });
+      const confirmed = confirmInvitationLog(logError, logData as LogInvitationsResult, expected);
+      if (confirmed.confirmed) {
+        await backfillProviderIds(admin, {
+          venueId: session.venue_id,
+          clientId: session.client_id,
+          emailType,
+          accepted: acceptedDeliveries,
+        });
+      } else {
+        console.error("[invite] log_invitations_sent not confirmed:", confirmed.detail);
+        const recovery = await persistAcceptedInvitationsDirectly(admin, {
+          venueId: session.venue_id,
+          clientId: session.client_id,
+          emailType,
+          coupleFirstName: client?.first_name,
+          accepted: acceptedDeliveries,
+        });
+        if (!recovery.ok || recovery.persisted < expected) {
+          // Only claim no-resend safety when receipts are actually on disk.
+          let receiptsOnDisk = 0;
+          for (const d of acceptedDeliveries) {
+            const receipt = await findProviderReceipt(admin, {
+              guestId: d.guestId,
+              emailType,
+              venueId: session.venue_id,
+              clientId: session.client_id,
+            });
+            if (receipt.status === "found") receiptsOnDisk += 1;
+          }
+          return NextResponse.json(
+            buildPersistenceFailureResponse(results, confirmed.detail, {
+              durableRecoveryAttempted: true,
+              retrySafeWithoutResend: receiptsOnDisk === expected,
+            }),
+            { status: 503 },
+          );
+        }
+        // Direct recovery persisted guest status + provider_id receipts.
+      }
     }
 
     return NextResponse.json({
@@ -181,10 +270,7 @@ export async function POST(request: Request) {
       errors: results.errors,
       deferredGuestIds: results.deferredGuestIds,
       sentGuestIds: results.sentGuestIds,
-      message:
-        results.deferred > 0
-          ? `${results.sent} sent, ${results.deferred} deferred (delivery capacity full — retry those guests), ${results.failed} failed.`
-          : undefined,
+      message: buildInviteSuccessMessage(results),
     });
   } catch (err) {
     return NextResponse.json({ ok: false, error: err instanceof Error ? err.message : "Unknown error." }, { status: 500 });
