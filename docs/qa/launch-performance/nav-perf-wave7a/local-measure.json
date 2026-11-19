@@ -1,0 +1,156 @@
+{
+  "measuredAt": "2026-11-19T05:01:08.403Z",
+  "app": "http://127.0.0.1:3017",
+  "clientIdHash": "fancy-nav-perf-booked-fixture",
+  "note": "LOCAL only. primaryActionParity requires Cancel for booked fixture (Edit alone does not count).",
+  "samples": [
+    {
+      "mode": "cold",
+      "sample": 1,
+      "ttfbMs": 2055,
+      "identityMs": 4457,
+      "editActionMs": 4468,
+      "primaryActionParityMs": 4480,
+      "detailReadyMs": 4500,
+      "fallbackDurationMs": 1423,
+      "sawFallback": true,
+      "layoutShiftScore": 0,
+      "openai": 0
+    },
+    {
+      "mode": "warm",
+      "sample": 1,
+      "ttfbMs": 857,
+      "identityMs": 2192,
+      "editActionMs": 2205,
+      "primaryActionParityMs": 2216,
+      "detailReadyMs": 2331,
+      "fallbackDurationMs": 674,
+      "sawFallback": true,
+      "layoutShiftScore": 0,
+      "openai": 0
+    },
+    {
+      "mode": "warm",
+      "sample": 2,
+      "ttfbMs": 632,
+      "identityMs": 1996,
+      "editActionMs": 2007,
+      "primaryActionParityMs": 2019,
+      "detailReadyMs": 2034,
+      "fallbackDurationMs": 580,
+      "sawFallback": true,
+      "layoutShiftScore": 0,
+      "openai": 0
+    },
+    {
+      "mode": "warm",
+      "sample": 3,
+      "ttfbMs": 639,
+      "identityMs": 1940,
+      "editActionMs": 1952,
+      "primaryActionParityMs": 1963,
+      "detailReadyMs": 1978,
+      "fallbackDurationMs": 514,
+      "sawFallback": true,
+      "layoutShiftScore": 0,
+      "openai": 0
+    }
+  ],
+  "summary": {
+    "ttfb": {
+      "n": 4,
+      "median": 857,
+      "p90": 2055,
+      "min": 632,
+      "max": 2055,
+      "values": [
+        2055,
+        857,
+        632,
+        639
+      ]
+    },
+    "identity": {
+      "n": 4,
+      "median": 2192,
+      "p90": 4457,
+      "min": 1940,
+      "max": 4457,
+      "values": [
+        4457,
+        2192,
+        1996,
+        1940
+      ]
+    },
+    "editAction": {
+      "n": 4,
+      "median": 2205,
+      "p90": 4468,
+      "min": 1952,
+      "max": 4468,
+      "values": [
+        4468,
+        2205,
+        2007,
+        1952
+      ]
+    },
+    "primaryActionParity": {
+      "n": 4,
+      "median": 2216,
+      "p90": 4480,
+      "min": 1963,
+      "max": 4480,
+      "values": [
+        4480,
+        2216,
+        2019,
+        1963
+      ]
+    },
+    "detailReady": {
+      "n": 4,
+      "median": 2331,
+      "p90": 4500,
+      "min": 1978,
+      "max": 4500,
+      "values": [
+        4500,
+        2331,
+        2034,
+        1978
+      ]
+    },
+    "fallbackDuration": {
+      "n": 4,
+      "median": 674,
+      "p90": 1423,
+      "min": 514,
+      "max": 1423,
+      "values": [
+        1423,
+        674,
+        580,
+        514
+      ]
+    },
+    "layoutShift": {
+      "n": 4,
+      "median": 0,
+      "p90": 0,
+      "min": 0,
+      "max": 0,
+      "values": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "sawFallbackAny": true,
+    "openaiTotal": 0,
+    "errors": []
+  }
+}

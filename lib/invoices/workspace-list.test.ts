@@ -17,6 +17,7 @@ import type { Invoice } from "@/lib/invoices/types";
 const repoSrc = readFileSync(resolve("lib/invoices/repository.ts"), "utf8");
 const serviceSrc = readFileSync(resolve("lib/invoices/service.ts"), "utf8");
 const pageSrc = readFileSync(resolve("app/(app)/clients/[id]/page.tsx"), "utf8");
+const bookedDetail = readFileSync(resolve("app/(app)/clients/[id]/booked-workspace-detail.tsx"), "utf8");
 const eoLinkSrc = readFileSync(resolve("components/event-orders/event-order-invoice-link.tsx"), "utf8");
 
 type Call = { table: string; method: string; args: unknown[] };
@@ -281,8 +282,8 @@ describe("Slice 3B — Client Workspace semantics preserved", () => {
 
 describe("Slice 3B — wiring + isolation", () => {
   it("Client Workspace uses scoped invoices; markers chain from that list", () => {
-    assert.match(pageSrc, /getInvoicesForClientOrEvent\(id, eventId\)/);
-    assert.match(pageSrc, /getInvoiceLineMarkers\(eventInvoices\.map\(\(inv\) => inv\.id\)\)/);
+    assert.match(bookedDetail, /getInvoicesForClientOrEvent\(id, eventId\)/);
+    assert.match(bookedDetail, /getInvoiceLineMarkers\(eventInvoices\.map\(\(inv\) => inv\.id\)\)/);
     assert.doesNotMatch(pageSrc, /getInvoices\(\{\}\)/);
     assert.doesNotMatch(pageSrc, /all\.filter\(\(inv\) => inv\.eventId === eventId \|\| inv\.clientId === id\)/);
   });

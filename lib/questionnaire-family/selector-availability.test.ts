@@ -79,7 +79,7 @@ describe("questionnaire category selectors", () => {
 
   it("event page ensures library starters before loading templates", () => {
     const page = readFileSync(
-      new URL("../../app/(app)/clients/[id]/page.tsx", import.meta.url),
+      new URL("../../app/(app)/clients/[id]/booked-workspace-detail.tsx", import.meta.url),
       "utf8",
     );
     assert.match(page, /ensureQuestionnaireFamilyForCurrentVenue\(\)\.then\(\(\) => getQuestionnaireTemplates\(\)\)/);

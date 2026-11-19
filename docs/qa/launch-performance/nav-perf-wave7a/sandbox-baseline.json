@@ -1,0 +1,59 @@
+{
+  "measuredAt": "2026-11-19T04:51:32Z",
+  "app": "https://app.sandbox.hellotocheers.com",
+  "servingSha": "c1b993f6",
+  "note": "Deployed baseline (no Wave 7A). Same harness; sawFallback=false; identity\u2248detail.",
+  "summary": {
+    "ttfb": {
+      "n": 3,
+      "median": 1765,
+      "p90": 2700,
+      "min": 974,
+      "max": 2700,
+      "values": [
+        2700,
+        1765,
+        974
+      ]
+    },
+    "identity": {
+      "n": 3,
+      "median": 2629,
+      "p90": 4491,
+      "min": 2510,
+      "max": 4491,
+      "values": [
+        4491,
+        2629,
+        2510
+      ]
+    },
+    "actions": {
+      "n": 3,
+      "median": 2631,
+      "p90": 4498,
+      "min": 2512,
+      "max": 4498,
+      "values": [
+        4498,
+        2631,
+        2512
+      ]
+    },
+    "detailReady": {
+      "n": 3,
+      "median": 2633,
+      "p90": 4502,
+      "min": 2513,
+      "max": 4502,
+      "values": [
+        4502,
+        2633,
+        2513
+      ]
+    },
+    "sawFallbackAny": false,
+    "openaiTotal": 0,
+    "errors": []
+  }
+}

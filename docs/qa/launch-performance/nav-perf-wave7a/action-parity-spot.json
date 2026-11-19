@@ -1,0 +1,93 @@
+{
+  "measuredAt": "2026-11-19T05:01:50.548Z",
+  "app": "http://127.0.0.1:3017",
+  "results": [
+    {
+      "name": "booked-owner",
+      "path": "/clients/49aba826-0bd3-4891-ac9f-02a18b2b6962?eventId=74a2487d-40fc-418f-a6bc-54abef28b6e1",
+      "ok": true,
+      "sawFallback": true,
+      "cancel": true,
+      "returnBooked": false,
+      "edit": true,
+      "daySheet": true,
+      "detailReady": true,
+      "detailError": false,
+      "httpStatus": 200,
+      "notes": [
+        "saw-fallback",
+        "detail-ready",
+        "cancel=true",
+        "return=false"
+      ]
+    },
+    {
+      "name": "cancelled-return",
+      "path": "/clients/771c6386-1ed3-401b-a416-aed2303ed519?eventId=faea2533-2bac-44fa-ba95-46e227a3b4ba",
+      "ok": true,
+      "sawFallback": true,
+      "cancel": false,
+      "returnBooked": true,
+      "edit": true,
+      "daySheet": true,
+      "detailReady": true,
+      "detailError": false,
+      "httpStatus": 200,
+      "notes": [
+        "saw-fallback",
+        "detail-ready",
+        "cancel=false",
+        "return=true"
+      ]
+    },
+    {
+      "name": "preparing-no-event",
+      "path": "/clients/d6167059-3782-401d-9996-9a208de51251",
+      "ok": true,
+      "sawFallback": false,
+      "cancel": false,
+      "returnBooked": false,
+      "edit": false,
+      "daySheet": false,
+      "detailReady": false,
+      "detailError": false,
+      "httpStatus": 200,
+      "notes": [
+        "no-booked-cancel-chrome"
+      ]
+    },
+    {
+      "name": "unknown-client",
+      "path": "/clients/00000000-0000-4000-8000-000000000099",
+      "ok": true,
+      "sawFallback": false,
+      "cancel": false,
+      "returnBooked": false,
+      "edit": false,
+      "daySheet": false,
+      "detailReady": false,
+      "detailError": false,
+      "httpStatus": 200,
+      "notes": [
+        "denied-as-expected"
+      ]
+    },
+    {
+      "name": "cross-venue-client",
+      "path": "/clients/45176285-451f-481f-9690-d924cbdc7869",
+      "ok": true,
+      "sawFallback": false,
+      "cancel": false,
+      "returnBooked": false,
+      "edit": false,
+      "daySheet": false,
+      "detailReady": false,
+      "detailError": false,
+      "httpStatus": 200,
+      "notes": [
+        "denied-as-expected"
+      ]
+    }
+  ],
+  "allOk": true
+}

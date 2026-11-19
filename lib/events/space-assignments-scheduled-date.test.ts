@@ -34,7 +34,7 @@ describe("event space assignment scheduledDate persistence", () => {
 
   it("booking workspace passes scheduleComponents into EventDetail", () => {
     const page = readFileSync(
-      new URL("../../app/(app)/clients/[id]/page.tsx", import.meta.url),
+      new URL("../../app/(app)/clients/[id]/booked-workspace-detail.tsx", import.meta.url),
       "utf8",
     );
     assert.match(page, /scheduleComponents=\{scheduleComponents\}/);

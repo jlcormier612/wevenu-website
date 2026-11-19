@@ -13,6 +13,7 @@ import {
 } from "@/lib/conversations/attachment-document";
 
 const page = readFileSync(resolve("app/(app)/clients/[id]/page.tsx"), "utf8");
+const detail = readFileSync(resolve("app/(app)/clients/[id]/booked-workspace-detail.tsx"), "utf8");
 const leadPage = readFileSync(resolve("app/(app)/leads/[id]/page.tsx"), "utf8");
 const leadDetail = readFileSync(resolve("components/leads/lead-detail.tsx"), "utf8");
 const eventDetail = readFileSync(resolve("components/events/event-detail.tsx"), "utf8");
@@ -24,15 +25,9 @@ const retrieval = readFileSync(
 function unbookedBranch(src: string): string {
   const start = src.indexOf("if (!client.linkedEventId)");
   assert.ok(start > 0);
-  const end = src.indexOf("if (await bookingCelebrationPending", start);
+  const end = src.indexOf("listEventsForClient", start);
   assert.ok(end > start);
   return src.slice(start, end);
-}
-
-function bookedBranch(src: string): string {
-  const start = src.indexOf("const eventId = resolveClientWorkspaceEventId");
-  assert.ok(start > 0);
-  return src.slice(start);
 }
 
 describe("preparing client workspace Documents", () => {
@@ -98,10 +93,8 @@ describe("documentsWorkspaceHref destinations", () => {
 });
 
 describe("booked client Documents stay on the booking workspace", () => {
-  const booked = bookedBranch(page);
-
   it("loads event documents plus this client's unscoped files, and honors #documents", () => {
-    assert.match(booked, /getVenueWorkspaceDocuments\(\{ eventId, clientId: id \}\)/);
+    assert.match(detail, /getVenueWorkspaceDocuments\(\{ eventId, clientId: id \}\)/);
     assert.match(eventDetail, /#documents/);
     assert.match(eventDetail, /window\.location\.hash\.replace\("#", ""\)/);
   });

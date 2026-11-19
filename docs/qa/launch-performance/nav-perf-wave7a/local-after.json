@@ -1,0 +1,93 @@
+{
+  "measuredAt": "2026-11-19T04:51:18Z",
+  "app": "http://127.0.0.1:3017",
+  "note": "Local webpack next dev in worktree after Wave 7A. Cold includes compile.",
+  "summaryFromRun": {
+    "identity": {
+      "n": 4,
+      "median": 2220,
+      "p90": 13947,
+      "min": 2220,
+      "max": 13947,
+      "values": [
+        13947,
+        5613,
+        2227,
+        2220
+      ]
+    },
+    "actions": {
+      "n": 4,
+      "median": 5638,
+      "p90": 13979,
+      "min": 2236,
+      "max": 13979,
+      "values": [
+        13979,
+        5638,
+        2243,
+        2236
+      ]
+    },
+    "detailReady": {
+      "n": 4,
+      "median": 5657,
+      "p90": 13984,
+      "min": 2344,
+      "max": 13984,
+      "values": [
+        13984,
+        5657,
+        2344,
+        2344
+      ]
+    },
+    "sawFallbackAny": true,
+    "openaiTotal": 0,
+    "errors": [],
+    "ttfb": {
+      "n": 4,
+      "median": 4229,
+      "p90": 10099,
+      "min": 1290,
+      "max": 10099,
+      "values": [
+        10099,
+        4229,
+        1426,
+        1290
+      ]
+    }
+  },
+  "warmOnlyExcludingColdCompile": {
+    "identity_median": 2227,
+    "actions_median": 2243,
+    "detail_median": 2344
+  },
+  "serverTimingSamplesMs": {
+    "page_return_before_first_byte": [
+      1101,
+      491,
+      395,
+      369
+    ],
+    "booked_detail_promise_all": [
+      2192,
+      2276,
+      843,
+      896
+    ],
+    "ensure_questionnaire_family_plus_templates": [
+      1896,
+      1962,
+      610,
+      720
+    ],
+    "get_or_ensure_event_recommendations": [
+      1556,
+      1776,
+      601,
+      585
+    ]
+  }
+}
