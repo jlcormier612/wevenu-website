@@ -13,6 +13,7 @@
 import type { EntityType, FieldMapping, ImportFieldDef } from "@/lib/import/types";
 import { ENTITY_FIELDS } from "@/lib/import/types";
 import { isOpenAiConfigured, openAiChatCompletion } from "@/lib/ai/openai";
+import { isLuvMasterEnabledForCurrentVenue } from "@/lib/luv/settings";
 
 export type LuvImportProposal =
   // aiStructured distinguishes a real Luv proposal (headers are actual field
@@ -98,7 +99,8 @@ export async function proposeStructuredRows(rawText: string, entity: EntityType)
   if (!rawText.trim()) {
     return { ok: false, message: "There's no readable text to work with." };
   }
-  if (!isOpenAiConfigured()) {
+  // Luv-branded assist respects master Enable Luv; manual/non-AI fallback stays.
+  if (!(await isLuvMasterEnabledForCurrentVenue()) || !isOpenAiConfigured()) {
     return splitDelimitedRows(rawText);
   }
 
@@ -164,6 +166,9 @@ Return ONLY a JSON object with one entry per field key above, each value either 
  */
 export async function proposeFieldMapping(headers: string[], entity: EntityType): Promise<LuvFieldMappingProposal> {
   if (headers.length === 0) return { ok: false, message: "There are no columns to map." };
+  if (!(await isLuvMasterEnabledForCurrentVenue())) {
+    return { ok: false, message: "Luv is turned off in Settings. You can still map columns manually." };
+  }
   if (!isOpenAiConfigured()) {
     return { ok: false, message: "Luv's mapping assist isn't configured in this environment." };
   }

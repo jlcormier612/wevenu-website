@@ -12,8 +12,8 @@ const openaiHelper = readFileSync(resolve("lib/ai/openai.ts"), "utf8");
 describe("/api/luv/draft launch-readiness", () => {
   it("gates OpenAI on draftingEnabled via existing settings", () => {
     assert.match(draftRoute, /getLuvSettings\(/);
-    assert.match(draftRoute, /isLuvDraftingEnabled\(settings\)/);
-    const gateIdx = draftRoute.indexOf("isLuvDraftingEnabled(settings)");
+    assert.match(draftRoute, /isLuvDraftingEffectivelyEnabled\(settings\)/);
+    const gateIdx = draftRoute.indexOf("isLuvDraftingEffectivelyEnabled(settings)");
     const openAiIdx = draftRoute.indexOf("await openAiChatCompletion", gateIdx);
     assert.ok(gateIdx > 0 && openAiIdx > gateIdx);
   });
@@ -50,9 +50,9 @@ describe("/api/luv/draft launch-readiness", () => {
 describe("lib/luv/drafts.ts launch-readiness", () => {
   it("gates generation on getLuvSettings draftingEnabled before OpenAI", () => {
     assert.match(drafts, /getLuvSettings\(/);
-    assert.match(drafts, /isLuvDraftingEnabled\(settings\)/);
+    assert.match(drafts, /isLuvDraftingEffectivelyEnabled\(settings\)/);
     const fnStart = drafts.indexOf("export async function generateFollowUpDraft");
-    const gateIdx = drafts.indexOf("isLuvDraftingEnabled(settings)", fnStart);
+    const gateIdx = drafts.indexOf("isLuvDraftingEffectivelyEnabled(settings)", fnStart);
     const callIdx = drafts.indexOf("await generateDraftText", fnStart);
     assert.ok(fnStart > 0 && gateIdx > fnStart && callIdx > gateIdx);
   });

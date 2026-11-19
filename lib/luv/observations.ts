@@ -194,10 +194,10 @@ export async function getLuvObservations(
   supabase: DbClient,
   venueId: string,
   today: string,
-  settings?: Pick<LuvSettings, "observationsEnabled">,
+  settings?: Pick<LuvSettings, "enabled" | "observationsEnabled">,
   scope?: LuvObservationRecordScope,
 ): Promise<LuvObservation[]> {
-  if (settings?.observationsEnabled === false) return [];
+  if (settings && (settings.enabled === false || settings.observationsEnabled === false)) return [];
   const observations: LuvObservation[] = [];
   const wantLead = recordScopeWantsLeadPipeline(scope);
   const wantEvent = recordScopeWantsEventWindow(scope);

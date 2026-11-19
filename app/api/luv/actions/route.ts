@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/integrations/supabase/server";
+import { isLuvMasterEnabledForCurrentVenue } from "@/lib/luv/settings";
 
 export async function POST(request: Request) {
+  if (!(await isLuvMasterEnabledForCurrentVenue())) {
+    return NextResponse.json({ error: "Luv is turned off in Settings." }, { status: 403 });
+  }
+
   const { recommendationId, actionType } = (await request.json()) as {
     recommendationId: string;
     actionType:       string;

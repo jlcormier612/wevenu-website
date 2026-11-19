@@ -1,11 +1,16 @@
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { createClient } from "@/integrations/supabase/server";
+import { isLuvMasterEnabledForCurrentVenue } from "@/lib/luv/settings";
 
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  if (!(await isLuvMasterEnabledForCurrentVenue())) {
+    return NextResponse.json({ error: "Luv is turned off in Settings." }, { status: 403 });
+  }
+
   const { id } = await params;
   const { action } = (await request.json()) as { action: string };
 

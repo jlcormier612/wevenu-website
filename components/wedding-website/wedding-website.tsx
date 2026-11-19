@@ -1838,7 +1838,15 @@ function PasswordGate({
 // "found" state until the code has actually been validated server-side
 // (previously a client-side length check accepted any 11+ character
 // string, showing a working-looking form for a code that was never real).
-function RsvpSection({ accentColor, tc }: { accentColor: string; tc: ThemeConfig }) {
+function RsvpSection({
+  accentColor,
+  tc,
+  luvEnabled = true,
+}: {
+  accentColor: string;
+  tc: ThemeConfig;
+  luvEnabled?: boolean;
+}) {
   const [token, setToken] = React.useState("");
   const [checking, setChecking] = React.useState(false);
   const [context, setContext] = React.useState<RsvpContext | null>(null);
@@ -1881,7 +1889,9 @@ function RsvpSection({ accentColor, tc }: { accentColor: string; tc: ThemeConfig
     return (
       <div className="space-y-4">
         <RsvpPage context={context} rsvpToken={token.trim()} />
-        <GuestConciergeWidget rsvpToken={token.trim()} accentColor={accentColor} tc={tc} />
+        {luvEnabled ? (
+          <GuestConciergeWidget rsvpToken={token.trim()} accentColor={accentColor} tc={tc} />
+        ) : null}
       </div>
     );
   }
@@ -2323,10 +2333,15 @@ export type SectionRenderContext = {
   disableScrollReveal?: boolean;
   activeSection: string | null;
   onSectionClick?: (key: string) => void;
+  /** Master Enable Luv — hide guest concierge when false. */
+  luvEnabled?: boolean;
 };
 
 export function createSectionRenderer(ctx: SectionRenderContext) {
-  const { tc, content, site, color, editMode, disableScrollReveal = false, activeSection, onSectionClick } = ctx;
+  const {
+    tc, content, site, color, editMode, disableScrollReveal = false, activeSection, onSectionClick,
+    luvEnabled = true,
+  } = ctx;
   const eventDate = site.event?.eventDate;
 
   // Wraps each section in an edit overlay when editMode=true, and — on the
@@ -3008,7 +3023,7 @@ export function createSectionRenderer(ctx: SectionRenderContext) {
                       <p className="opacity-50 text-xs mt-1">{site.rsvpStats.attending} of {site.rsvpStats.total} guests have responded</p>
                     )}
                   </div>
-                  <div className="max-w-xl mx-auto"><RsvpSection accentColor={color} tc={tc} /></div>
+                  <div className="max-w-xl mx-auto"><RsvpSection accentColor={color} tc={tc} luvEnabled={luvEnabled} /></div>
                 </div>
               );
               return (
@@ -3035,6 +3050,7 @@ export function WeddingWebsite({
   disableScrollReveal = false,
   activeSection = null,
   onSectionClick,
+  luvEnabled = true,
 }: {
   site: PublicWebsite;
   slug: string;
@@ -3043,6 +3059,8 @@ export function WeddingWebsite({
   disableScrollReveal?: boolean;
   activeSection?: string | null;
   onSectionClick?: (key: string) => void;
+  /** Master Enable Luv — when false, hide guest concierge. */
+  luvEnabled?: boolean;
 }) {
   // resolveTheme is pure (no side effects), so it's safe to compute once,
   // up front, and reuse for the password gate too — the gate now shows the
@@ -3128,7 +3146,7 @@ export function WeddingWebsite({
   }
 
   const { renderSection, renderSectionPair } = createSectionRenderer({
-    tc, content, site, color, editMode, disableScrollReveal, activeSection, onSectionClick,
+    tc, content, site, color, editMode, disableScrollReveal, activeSection, onSectionClick, luvEnabled,
   });
 
   return (

@@ -7,6 +7,7 @@ import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getBetaOverview } from "@/lib/hq/beta-service";
 import { getLuvObservations } from "@/lib/luv/observations";
+import { isLuvMasterEnabledForVenueId } from "@/lib/luv/settings";
 import type { LuvObservation } from "@/lib/luv/types";
 import type {
   HqCouple,
@@ -143,7 +144,11 @@ export async function getVenueHqDetail(venueId: string): Promise<HqVenueDetail |
       // queries getLuvObservations always makes, just called from HQ
       // instead of the coordinator's own dashboard. Replaces the rules-
       // based placeholder LuvInsights previously computed on its own.
-      getLuvObservations(supabase, venueId, today).catch(() => [] as LuvObservation[]),
+      // LUV-OPTOUT: do not generate new Luv analysis for opted-out venues.
+      (async () => {
+        if (!(await isLuvMasterEnabledForVenueId(venueId))) return [] as LuvObservation[];
+        return getLuvObservations(supabase, venueId, today).catch(() => [] as LuvObservation[]);
+      })(),
     ]);
 
   if (venueRes.error || !venueRes.data) return null;

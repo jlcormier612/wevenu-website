@@ -10,6 +10,7 @@ import {
   type DigestItem,
 } from "@/lib/email/daily-digest";
 import { getLuvObservations } from "@/lib/luv/observations";
+import { isLuvMasterEnabledForVenueId } from "@/lib/luv/settings";
 import { publicAppOrigin } from "@/lib/env";
 import * as crypto from "crypto";
 
@@ -151,7 +152,9 @@ async function buildDigestContext(
   // real engine every dashboard load uses; takes the single highest-
   // priority observation as the digest's one-line callout, same as any
   // other Luv surface never recomputing a second way.
-  const luvObservations = await getLuvObservations(supabase, venue.venue_id, todayIso).catch(() => []);
+  const luvObservations = (await isLuvMasterEnabledForVenueId(venue.venue_id))
+    ? await getLuvObservations(supabase, venue.venue_id, todayIso).catch(() => [])
+    : [];
   const topLuvObservation = luvObservations[0] ?? null;
   const luvObservation = topLuvObservation
     ? { message: topLuvObservation.message, link: `${APP_URL}${topLuvObservation.link}` }

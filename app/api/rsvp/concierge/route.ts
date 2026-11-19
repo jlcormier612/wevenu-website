@@ -12,8 +12,10 @@
  */
 
 import { NextResponse } from "next/server";
+import { createAdminClient } from "@/integrations/supabase/admin";
 import { createClient } from "@/integrations/supabase/server";
 import { isOpenAiConfigured, openAiChatCompletion } from "@/lib/ai/openai";
+import { isLuvMasterEnabledForVenueId } from "@/lib/luv/settings";
 import {
   projectGuideForAudience,
   type VenueGuideRaw,
@@ -158,6 +160,31 @@ export async function POST(request: Request) {
   const ctx = data as ConciergeContext | null;
   if (!ctx || ctx.error) {
     return NextResponse.json({ error: "invalid_token" }, { status: 401 });
+  }
+
+  // Venue identity from the validated guest token — never client-supplied.
+  let venueId: string | null = null;
+  try {
+    const admin = createAdminClient();
+    const { data: guest, error: guestErr } = await admin
+      .from("couple_guests")
+      .select("venue_id")
+      .eq("rsvp_token", rsvpToken)
+      .maybeSingle<{ venue_id: string }>();
+    if (guestErr || !guest?.venue_id) {
+      return NextResponse.json({ error: "invalid_token" }, { status: 401 });
+    }
+    venueId = guest.venue_id;
+  } catch {
+    return NextResponse.json(
+      { answer: "Luv isn't available right now — please reach out to the couple directly." },
+    );
+  }
+
+  if (!(await isLuvMasterEnabledForVenueId(venueId))) {
+    return NextResponse.json(
+      { answer: "Luv isn't available right now — please reach out to the couple directly." },
+    );
   }
 
   // Token validated first so an invalid guest token is always rejected,

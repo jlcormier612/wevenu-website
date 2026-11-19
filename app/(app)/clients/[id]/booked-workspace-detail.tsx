@@ -56,6 +56,7 @@ import { getTemplatesForLibrary as getTimelineTemplatesForLibrary } from "@/lib/
 import { LEAD_SOURCES } from "@/lib/leads/constants";
 import { createClient } from "@/integrations/supabase/server";
 import { getCurrentUserRole, getCurrentVenue } from "@/lib/venue/service";
+import { isLuvMasterEnabledForVenueId } from "@/lib/luv/settings";
 import {
   canDeleteFloorPlanRows,
   canEditFloorPlans,
@@ -167,6 +168,9 @@ async function renderBookedWorkspaceDetail({
   // teamMembers only needs venue id — start via cached getCurrentVenue, not after
   // the full independent batch (was Wave B only because venue lived in Wave A).
   const teamMembersPromise = venuePromise.then((v) => (v ? getTeamMembers(v.id) : []));
+  const luvEnabledPromise = venuePromise.then((v) =>
+    v ? isLuvMasterEnabledForVenueId(v.id) : Promise.resolve(false),
+  );
 
   // Slice 3A — scope contracts to this client OR event; omit full content.
   const contractsPromise = getContractsForClientOrEvent(id, eventId);
@@ -259,7 +263,7 @@ async function renderBookedWorkspaceDetail({
     eventOrder, packages, eventOrderTemplates, packagesWithItems, selectedPackage, bookingJourney, offerings, paymentSchedules,
     eventRequests, photo, leadExtras, conversationBundle,
     invoiceLineMarkers, activityLists, requestsById, taskContacts, teamMembers, clientChoicesRaw, contextualObservations,
-    luvLeadBundle,
+    luvLeadBundle, luvEnabled,
   ] = await Promise.all([
     getVendors(), eventInvoicesPromise, getDocuments("event", eventId), getEventDocumentsFromVendors(eventId),
     getVenueWorkspaceDocuments({ eventId, clientId: id }), getPinnedDocumentKeys().then((s) => [...s]),
@@ -316,6 +320,7 @@ async function renderBookedWorkspaceDetail({
     clientChoicesRawPromise,
     contextualObservationsPromise,
     luvLeadBundlePromise,
+    luvEnabledPromise,
   ]);
   bookingFbDeferredBoundary("booked_detail_promise_all", performance.now() - deferredStarted);
   const floorPlanCanEdit = canEditFloorPlans(staffRole);
@@ -578,6 +583,7 @@ async function renderBookedWorkspaceDetail({
       followUpDraftCapable={luvLeadBundle.followUpDraftCapable}
       followUpDraftIneligibleReason={luvLeadBundle.followUpDraftIneligibleReason}
       followUpProactiveRecommended={luvLeadBundle.followUpProactiveRecommended}
+      luvEnabled={luvEnabled}
       eventSetup={eventSetup}
       applicableSetupSteps={setupSteps}
     />

@@ -37,7 +37,7 @@ describe("Luv observation record scope", () => {
 
   it("record surfaces pass scope into getLuvObservations; Dashboard does not", () => {
     const contextual = readFileSync(resolve("lib/luv/contextual-record.ts"), "utf8");
-    assert.match(contextual, /getLuvObservations\(supabase, venueId, today, undefined, record\)/);
+    assert.match(contextual, /getLuvObservations\(supabase, venueId, today, settings, record\)/);
     assert.match(contextual, /filterObservationsForRecord\(all, record\)/);
 
     const dashboard = readFileSync(resolve("lib/dashboard/service.ts"), "utf8");

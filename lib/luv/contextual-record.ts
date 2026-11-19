@@ -10,6 +10,10 @@ import {
   filterObservationsForRecord,
 } from "@/lib/luv/contextual-signals";
 import { getLuvObservations } from "@/lib/luv/observations";
+import {
+  getLuvSettingsForVenueId,
+  isLuvObservationsEffectivelyEnabled,
+} from "@/lib/luv/settings";
 import type { LuvObservation } from "@/lib/luv/types";
 import { venueToday } from "@/lib/venue/timezone";
 
@@ -25,8 +29,11 @@ export async function getContextualObservationsForRecord(
     invoiceId?: string;
   },
 ): Promise<LuvObservation[]> {
+  const settings = await getLuvSettingsForVenueId(venueId);
+  if (!isLuvObservationsEffectivelyEnabled(settings)) return [];
+
   const supabase = await createClient();
   const today = venueToday(venueTimezone ?? null);
-  const all = await getLuvObservations(supabase, venueId, today, undefined, record).catch(() => [] as LuvObservation[]);
+  const all = await getLuvObservations(supabase, venueId, today, settings, record).catch(() => [] as LuvObservation[]);
   return filterObservationsForRecord(all, record);
 }

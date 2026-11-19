@@ -41,6 +41,7 @@ import { loadLuvAskPortalContext } from "@/lib/luv/portal-context/load";
 import {
   getLuvSettingsForVenueId,
   isLuvDraftingEnabled,
+  isLuvEnabled,
   luvAskVoiceInstruction,
 } from "@/lib/luv/settings";
 import {
@@ -90,7 +91,30 @@ export async function POST(request: Request) {
   }
 
   const trimmedQuestion = question.trim();
+  const supabase = await createClient();
 
+  // Resolve venue from validated portal token before any Luv side effects.
+  const { data: portalCtx } = await supabase.rpc("get_portal_context", { p_token: token });
+  const venueId = (portalCtx as { venue?: { id?: string } } | null)?.venue?.id;
+  if (!venueId) {
+    return askJson(
+      unavailableAskResponse(
+        "Luv isn't configured yet — ask your venue coordinator directly.",
+      ),
+    );
+  }
+
+  // Master OFF / settings read fail-closed → friendly response, no signal, no AI.
+  const settings = await getLuvSettingsForVenueId(venueId);
+  if (!isLuvEnabled(settings)) {
+    return askJson(
+      unavailableAskResponse(
+        "Luv isn't available right now — ask your venue coordinator directly.",
+      ),
+    );
+  }
+
+  // Abuse protections after master gate — only signal when Luv is enabled.
   if (isLuvAskQuestionTooLong(question)) {
     return respondAndSignal(
       token,
@@ -110,8 +134,6 @@ export async function POST(request: Request) {
     );
   }
 
-  const supabase = await createClient();
-
   const { data: venueInfo, error: infoErr } = await supabase.rpc("get_venue_info_for_portal", {
     p_token: token,
   });
@@ -122,19 +144,6 @@ export async function POST(request: Request) {
     "clients",
   );
 
-  const { data: portalCtx } = await supabase.rpc("get_portal_context", { p_token: token });
-  const venueId = (portalCtx as { venue?: { id?: string } } | null)?.venue?.id;
-  if (!venueId) {
-    return respondAndSignal(
-      token,
-      trimmedQuestion,
-      unavailableAskResponse(
-        "Luv isn't configured yet — ask your venue coordinator directly.",
-      ),
-    );
-  }
-
-  const settings = await getLuvSettingsForVenueId(venueId);
   if (!isLuvDraftingEnabled(settings)) {
     return respondAndSignal(
       token,

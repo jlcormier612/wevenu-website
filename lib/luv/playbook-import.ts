@@ -12,6 +12,7 @@
 
 import type { PlaybookKind } from "@/lib/playbooks/types";
 import { isOpenAiConfigured, openAiChatCompletion } from "@/lib/ai/openai";
+import { isLuvMasterEnabledForCurrentVenue } from "@/lib/luv/settings";
 
 export type ProposedPlaybookTask = {
   title: string;
@@ -106,7 +107,7 @@ export async function proposePlaybookDraft(rawText: string, kind: PlaybookKind):
   if (!rawText.trim()) {
     return { ok: false, message: "There's no text to work with — paste your checklist first." };
   }
-  if (!isOpenAiConfigured()) {
+  if (!(await isLuvMasterEnabledForCurrentVenue()) || !isOpenAiConfigured()) {
     return splitChecklistLines(rawText);
   }
 

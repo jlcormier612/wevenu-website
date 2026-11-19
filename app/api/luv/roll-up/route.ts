@@ -3,9 +3,11 @@ import { createClient } from "@/integrations/supabase/server";
 import { generateRollUp, buildPromptData } from "@/lib/luv/roll-up-service";
 import { isOpenAiConfigured, OPENAI_MODEL_DEFAULT } from "@/lib/ai/openai";
 import type { VenueAnalytics, HealthScores } from "@/lib/analytics/types";
+import { isLuvMasterEnabledForCurrentVenue } from "@/lib/luv/settings";
 import type { LuvRollUp } from "@/lib/luv/roll-up-types";
 
-// GET — return recent roll-ups for this venue (latest first, up to 5)
+// GET — return recent roll-ups for this venue (latest first, up to 5).
+// Historical reads remain available; generation is gated on POST.
 export async function GET() {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("get_luv_rollups", { p_limit: 5 });
@@ -16,6 +18,13 @@ export async function GET() {
 
 // POST — generate a new roll-up and persist it
 export async function POST() {
+  if (!(await isLuvMasterEnabledForCurrentVenue())) {
+    return NextResponse.json(
+      { error: "luv_disabled", message: "Luv is turned off in Settings." },
+      { status: 403 },
+    );
+  }
+
   if (!isOpenAiConfigured()) {
     return NextResponse.json(
       { error: "luv_not_configured", message: "Luv isn't configured yet." },

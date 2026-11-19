@@ -1,4 +1,5 @@
 import { createClient } from "@/integrations/supabase/server";
+import { isLuvMasterEnabledForCurrentVenue } from "@/lib/luv/settings";
 import { syncClientAskGapRecommendations } from "./ask-gap-recommendations";
 import { isObservationDismissType } from "./observation-dismiss";
 import { filterVisibleRecommendations } from "./recommendation-visibility";
@@ -90,9 +91,11 @@ export async function readVenueRecommendations(): Promise<VenueRecommendation[]>
 /**
  * REFRESH then READ: generate + sync venue-wide recommendation layers, then
  * return the persisted set. Explicit caller opt-in only — never Dashboard GET.
+ * Master Enable Luv OFF → no manufacture / sync writes; returns [].
  */
 export async function refreshVenueRecommendations(): Promise<VenueRecommendation[]> {
   try {
+    if (!(await isLuvMasterEnabledForCurrentVenue())) return [];
     const supabase = await createClient();
     await supabase.rpc("generate_venue_recommendations");
     // Guide-gap layer: Couple Ask information_gap aggregates → luv_recommendations.

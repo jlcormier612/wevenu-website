@@ -4739,6 +4739,7 @@ export function PortalShell({
   initialLegalGate,
   initialSection,
   skipLegalGate = false,
+  luvEnabled = true,
 }: {
   token: string;
   context: PortalContext;
@@ -4756,6 +4757,8 @@ export function PortalShell({
    * Skips the couple legal gate without writing legal acceptances.
    */
   skipLegalGate?: boolean;
+  /** Master Enable Luv for this portal venue. */
+  luvEnabled?: boolean;
 }) {
   const [activeSection, setActiveSection] = React.useState<PortalSection>(initialSection ?? "overview");
   const [workspaceFocus, setWorkspaceFocus] = React.useState<PortalWorkspaceFocus | null>(null);
@@ -4954,11 +4957,15 @@ export function PortalShell({
       })
       .catch(() => {});
     // Luv Experience Completion, Work Stream 5 — one-time intro card.
+    if (!luvEnabled) {
+      setShowLuvIntro(false);
+      return;
+    }
     fetch(`/api/portal/luv-intro?token=${token}`)
       .then(r => r.json())
       .then((d: { seen?: boolean }) => setShowLuvIntro(d.seen === false))
       .catch(() => {});
-  }, [token, needsLegalAcceptance]);
+  }, [token, needsLegalAcceptance, luvEnabled]);
 
   // Nav badges: Tasks (open unified cards), Payments (overdue only), Messages (unread).
   React.useEffect(() => {
@@ -5372,7 +5379,7 @@ export function PortalShell({
               latestJournalEntry={profile?.latestJournalEntry ?? null}
               onNavigate={navigateTo}
               recentActivity={recentActivity}
-              showLuvIntro={showLuvIntro}
+              showLuvIntro={luvEnabled && showLuvIntro}
               onDismissLuvIntro={dismissLuvIntro}
             />
           </div>
@@ -5435,11 +5442,13 @@ export function PortalShell({
       </footer>
 
       {/* Persistent across every tab, not just Overview — Program 5. */}
+      {luvEnabled ? (
       <FloatingLuvWidget
         token={token}
         onNavigateToGuide={() => navigateTo("guide")}
         onNavigate={(section) => navigateTo(section)}
       />
+      ) : null}
     </div>
   );
 }

@@ -479,6 +479,7 @@ export function EventDetail({
   followUpDraftCapable = true,
   followUpDraftIneligibleReason = null,
   followUpProactiveRecommended = true,
+  luvEnabled = true,
   eventSetup = { decisions: {}, collapsedAt: null },
   applicableSetupSteps = [],
 }: {
@@ -581,6 +582,8 @@ export function EventDetail({
   followUpDraftCapable?: boolean;
   followUpDraftIneligibleReason?: string | null;
   followUpProactiveRecommended?: boolean;
+  /** Master Enable Luv — when false, hide Luv tab/panels/CTAs. */
+  luvEnabled?: boolean;
   eventSetup?: EventSetupState;
   applicableSetupSteps?: SetupStepKey[];
 }) {
@@ -1144,9 +1147,11 @@ export function EventDetail({
                   <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{internalNoteItems.length}</span>
                 )}
               </TabsTrigger>
+              {luvEnabled ? (
               <TabsTrigger value="luv" className={`${bookedTabTriggerClass} gap-1`}>
                 <LuvHeart size={12} /> Luv
               </TabsTrigger>
+              ) : null}
             </TabsList>
           </div>
           {daysUntil(event.eventDate) < 0 && (
@@ -1161,6 +1166,7 @@ export function EventDetail({
         {/* ── Overview ──────────────────────────────────────────────── */}
         <TabsContent value="overview" className="space-y-4">
           <div id="requests-summary-card" />
+          {luvEnabled ? (
           <ContextualLuvObservationsPanel
             observations={contextualObservations}
             currentPath={event.clientId ? `/clients/${event.clientId}` : undefined}
@@ -1176,6 +1182,7 @@ export function EventDetail({
             sameRecordDraftEligible={draftCapable}
             sameRecordDraftIneligibleReason={followUpDraftIneligibleReason ?? undefined}
           />
+          ) : null}
           <EventSetupPanel
             eventId={event.id}
             clientId={event.clientId}
@@ -1724,6 +1731,7 @@ export function EventDetail({
         </TabsContent>
 
         {/* ── Luv — same drafting surface as Lead, booked client/event context ── */}
+        {luvEnabled ? (
         <TabsContent value="luv">
           <Card>
             <CardHeader>
@@ -1764,6 +1772,7 @@ export function EventDetail({
             </CardContent>
           </Card>
         </TabsContent>
+        ) : null}
 
         {/* ── Feedback — post-wedding only ──────────────────────────── */}
         {daysUntil(event.eventDate) < 0 && (
