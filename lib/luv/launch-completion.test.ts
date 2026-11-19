@@ -10,6 +10,10 @@ const communication = readFileSync(resolve("lib/luv/communication-observations.t
 const draftRoute = readFileSync(resolve("app/api/luv/draft/route.ts"), "utf8");
 const settingsSave = readFileSync(resolve("lib/luv/settings.ts"), "utf8");
 const dashboardPage = readFileSync(resolve("app/(app)/dashboard/page.tsx"), "utf8");
+const dashboardFocusIsland = readFileSync(
+  resolve("components/dashboard/dashboard-focus-island.tsx"),
+  "utf8",
+);
 const dashboardService = readFileSync(resolve("lib/dashboard/service.ts"), "utf8");
 const leadPage = readFileSync(resolve("app/(app)/leads/[id]/page.tsx"), "utf8");
 
@@ -58,9 +62,17 @@ describe("Luv settings honesty for launch", () => {
   });
 
   it("Dashboard Luv respects observationsEnabled end-to-end", () => {
+    // Service still gates observation payload + exposes the flag.
     assert.match(dashboardService, /luvObservationsEnabled:\s*observationsOn/);
-    assert.match(dashboardPage, /data\.luvObservationsEnabled/);
-    assert.match(dashboardPage, /DashboardLuvEntryCard/);
+    // NAV-PERF streaming: page mounts Focus island; island (not page.tsx)
+    // reads the flag and mounts DashboardLuvEntryCard.
+    assert.match(dashboardPage, /DashboardFocusIsland/);
+    assert.match(dashboardFocusIsland, /data\.luvObservationsEnabled/);
+    assert.match(dashboardFocusIsland, /DashboardLuvEntryCard/);
+    assert.match(
+      dashboardFocusIsland,
+      /const luvEntry = data\.luvObservationsEnabled\s*\?[\s\S]*selectLuvDashboardEntry/,
+    );
   });
 
   it("normalizes legacy ?luv=followup into follow_up_email", () => {
@@ -90,6 +102,5 @@ describe("selectLuvDashboardEntry dismissal metadata", () => {
       }],
     });
     assert.equal(entry, null);
-    assert.equal(entry?.dismissRecommendationId, undefined);
   });
 });

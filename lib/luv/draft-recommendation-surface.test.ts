@@ -119,6 +119,6 @@ describe("followUpDraftBlockReason", () => {
 describe("observationUrgesFollowUp", () => {
   it("detects draft recommendations and urging copy", () => {
     assert.equal(observationUrgesFollowUp(hot), true);
-    assert.equal(observationUrgesFollowUp({ message: "Stage is touring", detail: null, recommendation: undefined }), false);
+    assert.equal(observationUrgesFollowUp({ message: "Stage is touring", detail: undefined, recommendation: undefined }), false);
   });
 });

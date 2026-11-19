@@ -7,11 +7,14 @@ import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import { resolve } from "node:path";
 
-import { mergeSharedEventOrderIntoCoupleDocuments } from "@/lib/portal/couple-documents-event-order";
+import {
+  mergeSharedEventOrderIntoCoupleDocuments,
+  type CouplePortalDocumentLike,
+} from "@/lib/portal/couple-documents-event-order";
 
 describe("mergeSharedEventOrderIntoCoupleDocuments", () => {
   it("does not expose an unshared or missing order", () => {
-    const base = [{ id: "c1", docType: "contract", name: "Contract" }];
+    const base: CouplePortalDocumentLike[] = [{ id: "c1", docType: "contract", name: "Contract" }];
     assert.deepEqual(mergeSharedEventOrderIntoCoupleDocuments(base, null), base);
     assert.deepEqual(
       mergeSharedEventOrderIntoCoupleDocuments(base, {
@@ -23,7 +26,7 @@ describe("mergeSharedEventOrderIntoCoupleDocuments", () => {
   });
 
   it("prepends a shared final Event Order alongside other documents", () => {
-    const base = [
+    const base: CouplePortalDocumentLike[] = [
       { id: "c1", docType: "contract", name: "Contract" },
       { id: "i1", docType: "invoice", name: "Invoice" },
     ];
@@ -42,16 +45,21 @@ describe("mergeSharedEventOrderIntoCoupleDocuments", () => {
   });
 
   it("marks agreed status when clientAgreedAt is set", () => {
-    const merged = mergeSharedEventOrderIntoCoupleDocuments([], {
-      id: "eo1",
-      sharedAt: "2026-10-20T12:00:00Z",
-      clientAgreedAt: "2026-10-21T12:00:00Z",
-    });
-    assert.equal(merged[0].status, "agreed");
+    const merged = mergeSharedEventOrderIntoCoupleDocuments(
+      [] as CouplePortalDocumentLike[],
+      {
+        id: "eo1",
+        sharedAt: "2026-10-20T12:00:00Z",
+        clientAgreedAt: "2026-10-21T12:00:00Z",
+      },
+    );
+    assert.equal(merged[0]?.status, "agreed");
   });
 
   it("does not duplicate when an event_order row already exists", () => {
-    const base = [{ id: "event-order:eo1", docType: "event_order", name: "Event Order" }];
+    const base: CouplePortalDocumentLike[] = [
+      { id: "event-order:eo1", docType: "event_order", name: "Event Order" },
+    ];
     const merged = mergeSharedEventOrderIntoCoupleDocuments(base, {
       id: "eo1",
       sharedAt: "2026-10-20T12:00:00Z",

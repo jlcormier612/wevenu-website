@@ -14,7 +14,10 @@ import { applyInquiryFormDraftToPublicConfig } from "@/lib/inquiry-form/preview-
 import { validateCustomAnswers } from "@/lib/inquiry-form/validation";
 import type { InquiryFormQuestion, PublicInquiryFormConfig } from "@/lib/inquiry-form/types";
 import { DEFAULT_INQUIRY_FORM_FIELDS } from "@/lib/inquiry-form/constants";
-import { DEFAULT_INQUIRY_COMMUNICATION_SETTINGS } from "@/lib/communication/sms-consent";
+import {
+  DEFAULT_INQUIRY_COMMUNICATION_SETTINGS,
+  effectivePublicCommunicationSettings,
+} from "@/lib/communication/sms-consent";
 
 function q(
   id: string,
@@ -139,7 +142,9 @@ describe("inquiry form custom question ordering", () => {
       acceptedEventTypes: ["wedding"],
       customQuestions: [q("old", "Old", 0)],
       ga4MeasurementId: null,
-      inquiryCommunicationSettings: { ...DEFAULT_INQUIRY_COMMUNICATION_SETTINGS },
+      inquiryCommunicationSettings: effectivePublicCommunicationSettings(
+        DEFAULT_INQUIRY_COMMUNICATION_SETTINGS,
+      ),
     };
     const preview = applyInquiryFormDraftToPublicConfig(base, {
       inquiryEventDateMode: "request_preferred",

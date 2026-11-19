@@ -311,7 +311,11 @@ describe("reward valuation", () => {
       arrangements: [fixed],
     });
     assert.equal(founderFixed.amountCents, 14900);
-    assert.equal(founderFixed.snapshot.excludes.includes("white_glove"), true);
+    const excludes = founderFixed.snapshot.excludes;
+    assert.equal(
+      Array.isArray(excludes) && excludes.includes("white_glove"),
+      true,
+    );
     assert.equal(listAmountCents("professional"), 34900);
   });
 

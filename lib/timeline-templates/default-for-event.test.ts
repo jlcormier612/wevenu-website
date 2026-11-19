@@ -14,8 +14,6 @@ function tpl(partial: Partial<TimelineTemplate> & Pick<TimelineTemplate, "id" | 
     sourceMasterKey: null,
     createdAt: "",
     updatedAt: "",
-    itemCount: 0,
-    spaceName: null,
     ...partial,
   };
 }

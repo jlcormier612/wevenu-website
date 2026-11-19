@@ -1,0 +1,60 @@
+▶ Luv action destinations stay trustworthy
+  ✔ draft follow-up links use the canonical ?luv=follow_up_email param (0.5555ms)
+  ✔ observation draft/navigate links point at real app routes (0.379333ms)
+✔ Luv action destinations stay trustworthy (1.398375ms)
+▶ Luv settings honesty for launch
+  ✔ never persists suggest_only autonomy from the save path (0.156542ms)
+  ✔ distinguishes drafting-disabled from missing API key (0.099042ms)
+  ✔ Dashboard Luv respects observationsEnabled end-to-end (0.120166ms)
+  ✔ normalizes legacy ?luv=followup into follow_up_email (0.049125ms)
+✔ Luv settings honesty for launch (0.537542ms)
+▶ selectLuvDashboardEntry dismissal metadata
+  ✔ persisted recommendation cannot occupy L1 or carry a dismiss id (0.365958ms)
+✔ selectLuvDashboardEntry dismissal metadata (0.429875ms)
+▶ pipeline stage is never evidence — primitives
+  ✔ locks the architectural sentence (0.570375ms)
+  ✔ booked / lost require stamps, not a stage string (0.095333ms)
+  ✔ tour scheduled / confirmed require tour_appointments.status (0.088792ms)
+  ✔ P-A1 tour contact includes completed, cancelled, no_show, and walk-in (0.0805ms)
+  ✔ proposal / contract / payment require workflow records (0.093208ms)
+  ✔ draft helper stays aligned with the locked proposal rule (0.068917ms)
+✔ pipeline stage is never evidence — primitives (1.54975ms)
+▶ changing / omitting / misordering stage cannot invent actions
+  ✔ S3: any stage without contact/tour/booked/lost records stays unattended (0.418083ms)
+  ✔ S3: omitted or out-of-order stage still does not invent contact (0.127083ms)
+  ✔ S4: next_action + any stage does not manufacture tour-prep or first-contact work (0.155375ms)
+  ✔ upcoming tour all-set requires tour_appointments.status, not stage (13.161875ms)
+  ✔ tour follow-up is not superseded by a booked/lost stage string (0.205041ms)
+  ✔ tour-followup pattern: stage booked without first_booked_at still counts (0.202959ms)
+  ✔ contact evidence never comes from stage (0.089958ms)
+✔ changing / omitting / misordering stage cannot invent actions (14.537541ms)
+▶ customer-facing drafts — stage cannot invent verified facts
+  ✔ proposal_sent / tour_scheduled / booked / paid / contract_sent stages add no verified actions (2.833ms)
+  ✔ omitted / empty stage still cannot invent a proposal or tour (0.066583ms)
+  ✔ workflow intent comes from tour_appointments, not stage (0.051042ms)
+✔ customer-facing drafts — stage cannot invent verified facts (3.004208ms)
+▶ source lock — Luv never treats sales_stage as proof
+  ✔ observations never claim Tour scheduled / Proposal sent from stage (0.414792ms)
+  ✔ drafts load proposal from commercial_proposals and tour from tour_appointments (0.218958ms)
+  ✔ supersession and tour-followup pattern use stamps, not stage (0.105958ms)
+  ✔ S3 evaluator does not read salesStage (0.081833ms)
+✔ source lock — Luv never treats sales_stage as proof (0.880458ms)
+▶ applyReminderScope
+  ✔ returns every row when neither filter is set (1.302334ms)
+  ✔ keeps only the listed ids (0.086625ms)
+  ✔ keeps only the venue (0.074125ms)
+  ✔ drops an id that belongs to a different venue when both filters are set (0.06175ms)
+  ✔ treats an empty id list as no id filter (0.062792ms)
+✔ applyReminderScope (2.305709ms)
+▶ reminder processors use the shared AND scope
+  ✔ task, payment, and contract queries call applyReminderScope once each (0.168791ms)
+  ✔ cron and Settings pass no scope, and the QA harness passes ids only (0.599042ms)
+✔ reminder processors use the shared AND scope (0.856791ms)
+ℹ tests 34
+ℹ suites 9
+ℹ pass 34
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 390.3735

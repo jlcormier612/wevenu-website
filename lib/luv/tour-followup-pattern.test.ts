@@ -301,8 +301,6 @@ describe("tour follow-up pattern — Dashboard selection / dismissal semantics",
       recommendations: [recommendation()],
     });
     assert.equal(entry, null);
-    assert.equal(entry?.dismissRecommendationId, undefined);
-    assert.equal(entry?.dismissObservationId, undefined);
   });
 
   it("dismissed pattern stays hidden (visibility) so refresh cannot resurrect it", () => {
@@ -358,14 +356,6 @@ describe("tour follow-up pattern — Dashboard selection / dismissal semantics",
       ],
     });
     assert.equal(entry, null);
-    assert.notEqual(
-      entry?.message,
-      "Clients have asked about exotic animals 3 times in the last 30 days.",
-    );
-    assert.notEqual(
-      entry?.message,
-      "Alex completed their tour 15h ago — follow up while it's fresh.",
-    );
   });
 
   it("CREATE → DISMISS → SYNC/refresh-equivalent → V2 still not visible", () => {
