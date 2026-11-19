@@ -89,9 +89,13 @@ describe("P2-A venue workspace tab rows", () => {
 });
 
 describe("P2-A setup copy and couple portal gating", () => {
-  it("setup copy points at the Inventory & Event Order card, not tabs", () => {
-    assert.match(setup, /Inventory &amp; Event Order card|Inventory & Event Order card/);
+  it("setup copy points at the Celebration summary card, not Inventory/Event Order tabs", () => {
+    // Current product copy: Items for this event / Event Orders live on the
+    // Celebration summary card — not on dedicated tab-row triggers.
+    assert.match(setup, /Celebration summary card/);
     assert.doesNotMatch(setup, /Inventory and Event Order tabs/);
+    assert.doesNotMatch(setup, /TabsTrigger value="inventory"/);
+    assert.doesNotMatch(setup, /TabsTrigger value="event-order"/);
   });
 
   it("couple portal P2-D Documents-first: hide passive Inventory/Order; keep deep-link mounts", () => {

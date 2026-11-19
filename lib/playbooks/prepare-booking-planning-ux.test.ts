@@ -58,15 +58,20 @@ describe("Prepare Booking / Planning UX — single checklist entry + pre-book Ap
 
   it("empty TimelineView mounts exactly one TemplatePicker with Add First Entry", () => {
     const view = readFileSync(resolve("components/events/timeline/timeline-view.tsx"), "utf8");
-    const emptyStart = view.indexOf("if (totalCount === 0 && sections.length === 0");
-    assert.ok(emptyStart >= 0);
-    const afterEmpty = view.indexOf("return (\n    <div className=\"space-y-4\">\n      <TimelineSummaryBar itemCount={totalCount}", emptyStart);
-    assert.ok(afterEmpty > emptyStart);
+    // Empty branch uses itemCount={0}; populated toolbar uses itemCount={totalCount}.
+    const emptyStart = view.indexOf("if (totalCount === 0 && sections.length === 0 && addFormOpenFor === null)");
+    assert.ok(emptyStart >= 0, "missing empty-timeline early return");
+    const afterEmpty = view.indexOf("\n  return (\n    <div className=\"space-y-4\">\n      <TimelineSummaryBar\n        itemCount={totalCount}", emptyStart);
+    assert.ok(afterEmpty > emptyStart, "could not locate populated TimelineView return after empty branch");
     const emptyBranch = view.slice(emptyStart, afterEmpty);
     const pickerCount = (emptyBranch.match(/<TemplatePicker/g) ?? []).length;
     assert.equal(pickerCount, 1, `expected 1 TemplatePicker in empty state, found ${pickerCount}`);
     assert.match(emptyBranch, /Add First Entry/);
+    assert.match(emptyBranch, /No timeline yet/);
+    assert.match(emptyBranch, /itemCount=\{0\}/);
     assert.doesNotMatch(emptyBranch, /flex items-center justify-end/);
+    // Empty state must not also mount the populated toolbar picker.
+    assert.doesNotMatch(emptyBranch, /existingEntryCount=\{totalCount\}/);
   });
 
   it("populated TimelineView retains a toolbar TemplatePicker", () => {
