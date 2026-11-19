@@ -1,0 +1,57 @@
+{
+  "at": "2026-11-19T23:02:15.289Z",
+  "expect_sha": "7cde5d974cebbb9f32e13a67ac0e1245affa0610",
+  "pass": true,
+  "checks": [
+    {
+      "name": "page-loaded",
+      "ok": true,
+      "detail": "http=200 dpl=7cde5d974cebbb9f32e13a67ac0e1245affa0610 url=https://app.sandbox.hellotocheers.com/leads/b78fc13f-753b-480e-b948-30d42d04a768?luv=follow_up_email"
+    },
+    {
+      "name": "serving-sha-header",
+      "ok": true,
+      "detail": "dpl=7cde5d974cebbb9f32e13a67ac0e1245affa0610 expected=7cde5d97…"
+    },
+    {
+      "name": "eligible-email-draft-cta",
+      "ok": true,
+      "detail": "Draft a follow-up email CTA visible on Luv tab"
+    },
+    {
+      "name": "non-send-review-accessible",
+      "ok": true,
+      "detail": "Lead + Luv chrome present without crash"
+    },
+    {
+      "name": "email-opt-out-blocks-cta",
+      "ok": true,
+      "detail": "cta=false blocked=true text=Communication consent is no longer in place for this channel."
+    },
+    {
+      "name": "pending-draft-visible-while-eligible",
+      "ok": true,
+      "detail": "pending=true"
+    },
+    {
+      "name": "revocation-withdraws-pending-draft-ui",
+      "ok": true,
+      "detail": "withdrawn=true noLonger=true pendingAfter=false"
+    },
+    {
+      "name": "leads-nav-ok",
+      "ok": true,
+      "detail": "http=200"
+    },
+    {
+      "name": "cleanup",
+      "ok": true,
+      "detail": "disposable lead/draft/perms removed"
+    }
+  ],
+  "limitations": [
+    "Did not call paid OpenAI — pending draft inserted via DB.",
+    "SMS drafting UI not claimed (email-primary).",
+    "Serving SHA verified via Link dpl= header and ECS task image."
+  ]
+}
