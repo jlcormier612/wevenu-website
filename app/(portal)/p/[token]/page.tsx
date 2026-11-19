@@ -11,6 +11,7 @@ import {
   resolveCouplePortalLegalIdentity,
 } from "@/lib/legal/service";
 import type { CouplePortalLegalGateStatus } from "@/lib/legal/types";
+import { isLuvMasterEnabledForVenueId } from "@/lib/luv/settings";
 import { resolvePortalContext, resolvePortalTasks, resolvePortalTimeline, resolvePortalVendorTasks } from "@/lib/portal/service";
 
 type Props = {
@@ -86,11 +87,14 @@ export default async function PortalPage({ params, searchParams }: Props) {
                 ? "seating"
                 : undefined;
 
-  const [tasks, vendorTasks, timeline, legalGate] = await Promise.all([
+  const [tasks, vendorTasks, timeline, legalGate, luvEnabled] = await Promise.all([
     resolvePortalTasks(token),
     resolvePortalVendorTasks(token),
     resolvePortalTimeline(token),
     resolvePortalLegalGate(token),
+    context.venue?.id
+      ? isLuvMasterEnabledForVenueId(context.venue.id)
+      : Promise.resolve(false),
   ]);
 
   return (
@@ -105,6 +109,7 @@ export default async function PortalPage({ params, searchParams }: Props) {
       initialTimelineLastSubmittedAt={timeline.lastSubmittedAt}
       initialTimelineHasUnpublishedChanges={timeline.hasUnpublishedChanges}
       initialLegalGate={legalGate}
+      luvEnabled={luvEnabled}
     />
   );
 }

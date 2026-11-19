@@ -7,7 +7,6 @@ import { resolve } from "node:path";
 import { describe, it } from "node:test";
 
 const eventDetail = readFileSync(resolve("components/events/event-detail.tsx"), "utf8");
-const clientsPage = readFileSync(resolve("app/(app)/clients/[id]/page.tsx"), "utf8");
 const leadDetail = readFileSync(resolve("components/leads/lead-detail.tsx"), "utf8");
 const drafts = readFileSync(resolve("lib/luv/drafts.ts"), "utf8");
 const luvActions = readFileSync(resolve("app/(app)/leads/[id]/luv-actions.ts"), "utf8");
@@ -66,14 +65,21 @@ describe("Booked workspace two-row nav + Luv tab", () => {
     assert.doesNotMatch(nav, /TabsList className="flex-wrap"/);
   });
 
-  it("booked Luv tab is always present and hosts LuvDraftPanel with originating lead", () => {
+  it("booked Luv tab hosts LuvDraftPanel with originating lead when Luv is enabled", () => {
     assert.match(eventDetail, /TabsTrigger value="luv"/);
     assert.match(eventDetail, /TabsContent value="luv"/);
     assert.match(eventDetail, /LuvDraftPanel/);
     assert.match(eventDetail, /lead=\{luvLead\}/);
-    assert.match(clientsPage, /getDraftsForLead/);
-    assert.match(clientsPage, /loadLeadFollowUpPresentation/);
-    assert.match(clientsPage, /luvLead=\{luvLeadBundle\.luvLead\}/);
+    assert.match(eventDetail, /luvEnabled/);
+    // Booked detail (Wave 7A island) owns the Luv draft pack load.
+    const bookedDetail = readFileSync(
+      resolve("app/(app)/clients/[id]/booked-workspace-detail.tsx"),
+      "utf8",
+    );
+    assert.match(bookedDetail, /getDraftsForLead/);
+    assert.match(bookedDetail, /loadLeadFollowUpPresentation/);
+    assert.match(bookedDetail, /luvLead=\{luvLeadBundle\.luvLead\}/);
+    assert.match(bookedDetail, /luvEnabled=\{luvEnabled\}/);
   });
 
   it("Luv tab stays available when observations are empty (emptyHint on tab, Overview still hard-vanishes)", () => {

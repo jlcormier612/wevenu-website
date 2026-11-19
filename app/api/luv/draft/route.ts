@@ -5,7 +5,12 @@ import {
   buildDashboardDraftPrompt,
   buildDashboardDraftSystemPrompt,
 } from "@/lib/luv/dashboard-draft-prompt";
-import { getLuvSettings, isLuvDraftingEnabled, normalizePreferredTone } from "@/lib/luv/settings";
+import {
+  getLuvSettings,
+  isLuvDraftingEffectivelyEnabled,
+  isLuvEnabled,
+  normalizePreferredTone,
+} from "@/lib/luv/settings";
 
 /**
  * Non-streaming generation — same OpenAI path as lib/luv/drafts.ts.
@@ -27,7 +32,13 @@ export async function POST(request: Request) {
 
   const venueName = venueData?.name ?? "your venue";
   const settings = await getLuvSettings();
-  if (!isLuvDraftingEnabled(settings)) {
+  if (!isLuvEnabled(settings)) {
+    return NextResponse.json(
+      { error: "Luv is turned off in Settings. Turn on Enable Luv under Communications → Luv to generate drafts." },
+      { status: 403 },
+    );
+  }
+  if (!isLuvDraftingEffectivelyEnabled(settings)) {
     return NextResponse.json(
       { error: "Luv drafting is turned off in Settings. Turn it on under Communications → Luv to generate drafts." },
       { status: 403 }

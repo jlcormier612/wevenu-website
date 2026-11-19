@@ -54,7 +54,7 @@ describe("Client Workspace Luv — initial-render scope", () => {
   });
 
   it("record helper scopes the shared engine then still filters for the record", () => {
-    assert.match(contextual, /getLuvObservations\(supabase, venueId, today, undefined, record\)/);
+    assert.match(contextual, /getLuvObservations\(supabase, venueId, today, settings, record\)/);
     assert.match(contextual, /filterObservationsForRecord\(all, record\)/);
   });
 

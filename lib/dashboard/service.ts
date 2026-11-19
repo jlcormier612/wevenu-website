@@ -601,7 +601,8 @@ export const getDashboardData = cache(async function getDashboardData(): Promise
       ? computeSetupGapObservations(activationScore.checklist)
       : [];
   const readinessObservations = venueReadiness ? readinessDashboardObservations(venueReadiness) : [];
-  const observationsOn = luvSettings?.observationsEnabled !== false;
+  const masterOn = luvSettings != null && luvSettings.enabled !== false;
+  const observationsOn = masterOn && luvSettings.observationsEnabled !== false;
   // Preserve existing remaining-source order: communication, then setup-gap,
   // then readiness. First eligible live L1 candidate still wins.
   const luvObservations = observationsOn
@@ -655,8 +656,9 @@ export const getDashboardData = cache(async function getDashboardData(): Promise
     momentumSegments: { heatingUp: [], coolingOff: [] },
     activationScore,
     nextPendingMilestone,
+    luvEnabled: masterOn,
     luvObservationsEnabled: observationsOn,
-    showLuvIntro: shouldShowDashboardLuvIntro({
+    showLuvIntro: masterOn && shouldShowDashboardLuvIntro({
       readyToInviteCouples,
       luvIntroSeenAt: venue.luvIntroSeenAt,
       activationPhase: activationScore?.phase ?? null,

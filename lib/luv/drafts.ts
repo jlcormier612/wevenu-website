@@ -58,7 +58,8 @@ import {
 } from "@/lib/luv/relationship-lifecycle-loader";
 import {
   getLuvSettings,
-  isLuvDraftingEnabled,
+  isLuvDraftingEffectivelyEnabled,
+  isLuvEnabled,
   luvToneInstruction,
   normalizePreferredTone,
 } from "@/lib/luv/settings";
@@ -402,7 +403,10 @@ export async function generateFollowUpDraft(lead: Lead): Promise<
     if (!venue) return { ok: false, message: "No venue found." };
 
     const settings = await getLuvSettings();
-    if (!isLuvDraftingEnabled(settings)) {
+    if (!isLuvEnabled(settings)) {
+      return { ok: false, message: "Luv is turned off in Settings." };
+    }
+    if (!isLuvDraftingEffectivelyEnabled(settings)) {
       return { ok: false, message: "Luv drafting is disabled in Settings." };
     }
 

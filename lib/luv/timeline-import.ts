@@ -1,4 +1,5 @@
 import { isOpenAiConfigured, openAiChatCompletion } from "@/lib/ai/openai";
+import { isLuvMasterEnabledForCurrentVenue } from "@/lib/luv/settings";
 /**
  * Luv — Bring Your Existing Timeline (Timeline Templates import, 2026-07-10).
  *
@@ -113,7 +114,7 @@ export async function proposeTimelineDraft(rawText: string): Promise<LuvTimeline
   if (!rawText.trim()) {
     return { ok: false, message: "There's no text to work with — paste or upload your timeline first." };
   }
-  if (!isOpenAiConfigured()) {
+  if (!(await isLuvMasterEnabledForCurrentVenue()) || !isOpenAiConfigured()) {
     return splitTimelineLines(rawText);
   }
 

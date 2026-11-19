@@ -8,6 +8,7 @@
 
 import type { MessageTemplateCategory } from "@/lib/message-templates/types";
 import { isOpenAiConfigured, openAiChatCompletion } from "@/lib/ai/openai";
+import { isLuvMasterEnabledForCurrentVenue } from "@/lib/luv/settings";
 
 export type ImportChannel = "email" | "sms" | "both";
 
@@ -77,7 +78,7 @@ export async function proposeMessageTemplate(
   if (!rawText.trim()) {
     return { ok: false, message: "There's no text to work with — paste your message first." };
   }
-  if (!isOpenAiConfigured()) {
+  if (!(await isLuvMasterEnabledForCurrentVenue()) || !isOpenAiConfigured()) {
     return plainTemplateSplit(rawText, channel);
   }
 

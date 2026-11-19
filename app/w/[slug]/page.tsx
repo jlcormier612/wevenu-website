@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { WeddingWebsite } from "@/components/wedding-website/wedding-website";
+import { createAdminClient } from "@/integrations/supabase/admin";
 import { createClient } from "@/integrations/supabase/server";
+import { isLuvMasterEnabledForVenueId } from "@/lib/luv/settings";
 import type { PublicWebsite } from "@/lib/wedding-website/types";
 
 type Props = {
@@ -38,5 +40,21 @@ export default async function WeddingWebsitePage({ params, searchParams }: Props
 
   if (!site || site.error === "not_found") notFound();
 
-  return <WeddingWebsite site={site} slug={slug} />;
+  // Venue id from published site row — not client-supplied.
+  let luvEnabled = false;
+  try {
+    const admin = createAdminClient();
+    const { data: row, error } = await admin
+      .from("couple_websites")
+      .select("venue_id")
+      .eq("slug", slug)
+      .maybeSingle<{ venue_id: string }>();
+    if (!error && row?.venue_id) {
+      luvEnabled = await isLuvMasterEnabledForVenueId(row.venue_id);
+    }
+  } catch {
+    luvEnabled = false;
+  }
+
+  return <WeddingWebsite site={site} slug={slug} luvEnabled={luvEnabled} />;
 }

@@ -40,7 +40,8 @@ import { formatOwnPaymentSummaryForAskPrivacy } from "@/lib/luv/portal-context/f
 import { loadLuvAskPortalContext } from "@/lib/luv/portal-context/load";
 import {
   getLuvSettingsForVenueId,
-  isLuvDraftingEnabled,
+  isLuvDraftingEffectivelyEnabled,
+  isLuvEnabled,
   luvAskVoiceInstruction,
 } from "@/lib/luv/settings";
 import {
@@ -135,7 +136,7 @@ export async function POST(request: Request) {
   }
 
   const settings = await getLuvSettingsForVenueId(venueId);
-  if (!isLuvDraftingEnabled(settings)) {
+  if (!isLuvEnabled(settings) || !isLuvDraftingEffectivelyEnabled(settings)) {
     return respondAndSignal(
       token,
       trimmedQuestion,

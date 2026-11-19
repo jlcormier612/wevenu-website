@@ -15,7 +15,8 @@ import {
   isFollowUpSilenceBlock,
   observationsForDraftSurface,
 } from "@/lib/luv/draft-recommendation-surface";
-import { loadLeadFollowUpPresentation } from "@/lib/luv/follow-up-presentation";
+import { loadLeadFollowUpPresentation } from "@/lib/luv/follow-up-presentation"
+import { isLuvEnabled, loadLuvSettings } from "@/lib/luv/settings";
 import { leadDisplayName } from "@/lib/leads/constants";
 import { getLead } from "@/lib/leads/service";
 import { getActiveTemplate } from "@/lib/pipeline-templates/service";
@@ -188,6 +189,9 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
       }
 
       const proactiveRecommended = followUpPresentation.proactiveRecommended;
+      const luvSettingsLoad = await loadLuvSettings();
+      const luvEnabled = luvSettingsLoad.ok && isLuvEnabled(luvSettingsLoad.settings);
+
       const contextualObservations = observationsForDraftSurface(
         rawObservations,
         proactiveRecommended,
@@ -221,6 +225,7 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
         duplicateReview,
         bookingJourney,
         contextualObservations,
+        luvEnabled,
         followUpDraftCapable: followUpPresentation.draftCapable,
         followUpDraftEligible: followUpPresentation.draftCapable,
         followUpDraftIneligibleReason: followUpPresentation.draftIneligibleReason,
@@ -285,6 +290,7 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
         photoUrl={page.photo?.displayedPhotoUrl ?? null}
         venueTimezone={page.venueTimezone}
         contextualObservations={page.contextualObservations}
+        luvEnabled={page.luvEnabled}
         followUpDraftCapable={page.followUpDraftCapable}
         followUpDraftEligible={page.followUpDraftEligible}
         followUpDraftIneligibleReason={page.followUpDraftIneligibleReason}
