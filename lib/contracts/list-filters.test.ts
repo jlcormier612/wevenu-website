@@ -149,7 +149,8 @@ describe("contracts page operational job", () => {
     const attention = readFileSync(resolve("lib/navigation/attention-service.ts"), "utf8");
     assert.match(attention, /rollupContractsToCurrentAgreements/);
     assert.match(attention, /countActionRequiredContracts|countVenueActionRequiredContracts/);
-    // Must not load full contract catalog helpers for badge counts.
+    // Wave 1: draft/sent only — still not the full catalog helpers.
+    assert.match(attention, /\.in\("status",\s*\["draft",\s*"sent"\]\)/);
     assert.doesNotMatch(attention, /\bgetContracts\s*\(/);
     assert.doesNotMatch(attention, /\bgetAllLineItems\b/);
     assert.doesNotMatch(attention, /\bgetSchedules\s*\(/);

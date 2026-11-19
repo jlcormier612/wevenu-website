@@ -3,6 +3,7 @@ import Link from "next/link";
 import { CalendarCheck, MapPin } from "lucide-react";
 
 import { PageHeader } from "@/components/shell/module-placeholder";
+import { NavAttentionRefreshOnMount } from "@/components/shell/nav-attention-refresh-on-mount";
 import { TourArchivedSection, TourList, TourSectionEmpty } from "@/components/tours/tour-list";
 import { Button } from "@/components/ui/button";
 import { markVenueToursSeen } from "@/lib/navigation/attention-service";
@@ -36,6 +37,7 @@ export default async function ToursPage() {
 
   return (
     <div className="htc-hospitality-page htc-tours-workspace space-y-5 sm:space-y-6">
+      <NavAttentionRefreshOnMount />
       <div className="htc-hospitality-heading htc-hospitality-intro-accent">
         <PageHeader
           title="Tours"

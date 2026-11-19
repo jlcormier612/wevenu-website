@@ -29,6 +29,7 @@ import { loadConversationInternalNotes } from "@/lib/notes/load-conversation-int
 import { createClient } from "@/integrations/supabase/server";
 import { getSmsPermissionEvidenceForContact } from "@/lib/communication/contact-permission-view";
 import { getDuplicateReviewForLead } from "@/lib/leads/duplicate-review";
+import { NavAttentionRefreshOnMount } from "@/components/shell/nav-attention-refresh-on-mount";
 import { markLeadVenueSeen } from "@/lib/navigation/attention-service";
 import { getRelationshipPhotoForVenue } from "@/lib/relationship-photos/service";
 import { isSmsConfigured } from "@/lib/sms/send";
@@ -253,6 +254,7 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
   const practiceRun = await findPracticeRunForSample({ leadId: page.lead.id });
   return (
     <>
+      <NavAttentionRefreshOnMount />
       {practiceRun ? <PracticeContextBanner run={practiceRun} /> : null}
       <LeadDetail
         lead={page.lead}
