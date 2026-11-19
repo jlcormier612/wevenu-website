@@ -15,14 +15,15 @@ import { resolve } from "node:path";
 import { describe, it } from "node:test";
 
 const page = readFileSync(resolve("app/(app)/clients/[id]/page.tsx"), "utf8");
+const bookedDetail = readFileSync(resolve("app/(app)/clients/[id]/booked-workspace-detail.tsx"), "utf8");
 const clientsService = readFileSync(resolve("lib/clients/service.ts"), "utf8");
 const venueService = readFileSync(resolve("lib/venue/service.ts"), "utf8");
 
 function bookedBranch(src: string): string {
-  const start = src.indexOf("const eventId = resolveClientWorkspaceEventId");
-  assert.ok(start > 0, "booked branch start");
+  const start = src.indexOf("// Slice 2 — collapse the Wave A → Wave B serial barrier.");
+  assert.ok(start > 0, "booked detail start");
   const end = src.indexOf("return (", start);
-  assert.ok(end > start, "booked branch return");
+  assert.ok(end > start, "booked detail return");
   return src.slice(start, end);
 }
 
@@ -43,7 +44,7 @@ describe("Slice 1 — request-scoped getClient cache", () => {
     assert.match(page, /export async function generateMetadata/);
     const meta = page.slice(page.indexOf("export async function generateMetadata"), page.indexOf("export default async function BookingWorkspacePage"));
     assert.match(meta, /getClient\(id\)/);
-    assert.match(page, /const client = await getClient\(id\)/);
+    assert.match(page, /getClient\(id\)/);
   });
 });
 
@@ -63,7 +64,7 @@ describe("Slice 1 — request-scoped getCurrentUserRole cache", () => {
 });
 
 describe("Slice 1 — BookingWorkspacePage dependency-correct batches", () => {
-  const booked = bookedBranch(page);
+  const booked = bookedBranch(bookedDetail);
 
   it("collapses independent reads into a parallel Promise.all (Slice 1; Slice 2 pipelines dependents)", () => {
     assert.match(booked, /getCurrentUserRole\(\)/);
@@ -100,7 +101,7 @@ describe("Slice 1 — BookingWorkspacePage dependency-correct batches", () => {
   });
 
   it("still wires core workspace props into EventDetail", () => {
-    const render = page.slice(page.lastIndexOf("<EventDetail"));
+    const render = bookedDetail.slice(bookedDetail.lastIndexOf("<EventDetail"));
     for (const prop of [
       "contracts={contracts}",
       "invoices={eventInvoices}",

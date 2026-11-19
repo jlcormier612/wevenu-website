@@ -44,9 +44,12 @@ describe("clientWorkspaceHref", () => {
 describe("Client workspace honors eventId without leaking other records", () => {
   it("Booking workspace resolves ?eventId= against this Client's Events", () => {
     const page = readFileSync(resolve("app/(app)/clients/[id]/page.tsx"), "utf8");
+    const detail = readFileSync(resolve("app/(app)/clients/[id]/booked-workspace-detail.tsx"), "utf8");
+    const fallback = readFileSync(resolve("components/clients/booking-identity-fallback.tsx"), "utf8");
     assert.match(page, /listEventsForClient/);
     assert.match(page, /resolveClientWorkspaceEventId/);
-    assert.match(page, /ClientEventSwitcher/);
+    assert.match(detail, /ClientEventSwitcher/);
+    assert.match(fallback, /ClientEventSwitcher/);
   });
 
   it("Calendar Event links land on the matching Client Event", () => {

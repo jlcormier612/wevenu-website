@@ -1,9 +1,8 @@
 /**
  * Phase 3 Performance — Slice 2: Client Workspace serial-barrier collapse.
  *
- * Source-level contracts: dependent reads chain from parent promises (no
- * artificial Wave A → Wave B full-batch wait); duplicate clients contact
- * select is gone; unbooked photo is parallelized; data dependencies remain.
+ * Wave 7A: booked data graph lives in booked-workspace-detail.tsx (single
+ * Suspense island). Page keeps auth, celebration, and identity shell.
  */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -11,9 +10,10 @@ import { resolve } from "node:path";
 import { describe, it } from "node:test";
 
 const page = readFileSync(resolve("app/(app)/clients/[id]/page.tsx"), "utf8");
+const detail = readFileSync(resolve("app/(app)/clients/[id]/booked-workspace-detail.tsx"), "utf8");
 
 function bookedBranch(src: string): string {
-  const start = src.indexOf("const eventId = resolveClientWorkspaceEventId");
+  const start = src.indexOf("// Slice 2 — collapse the Wave A → Wave B serial barrier.");
   assert.ok(start > 0, "booked branch start");
   const end = src.indexOf("return (", start);
   assert.ok(end > start, "booked branch return");
@@ -23,13 +23,13 @@ function bookedBranch(src: string): string {
 function unbookedBranch(src: string): string {
   const start = src.indexOf("if (!client.linkedEventId)");
   assert.ok(start > 0, "unbooked branch start");
-  const end = src.indexOf("if (await bookingCelebrationPending", start);
+  const end = src.indexOf("listEventsForClient", start);
   assert.ok(end > start, "unbooked branch end");
   return src.slice(start, end);
 }
 
 describe("Slice 2 — booked path pipelines dependents off parents", () => {
-  const booked = bookedBranch(page);
+  const booked = bookedBranch(detail);
 
   it("documents Slice 2 pipelining (no Wave A → Wave B barrier)", () => {
     assert.match(booked, /Slice 2/);
@@ -46,8 +46,6 @@ describe("Slice 2 — booked path pipelines dependents off parents", () => {
   it("keeps invoice-id → line-marker dependency via parent.then", () => {
     assert.match(booked, /eventInvoicesPromise\.then/);
     assert.match(booked, /getInvoiceLineMarkers\(eventInvoices\.map/);
-    // Slice 3B: scoped fetch replaces venue-wide + app filter; markers still
-    // chain from the scoped eventInvoicesPromise.
     const markersFromScoped = booked.indexOf(
       "getInvoiceLineMarkers(eventInvoices.map((inv) => inv.id))",
     );
@@ -91,24 +89,21 @@ describe("Slice 2 — booked path pipelines dependents off parents", () => {
   });
 
   it("does not serial-await createClient before the Promise.all batch", () => {
-    // createClient lives only inside leadExtrasPromise (parallel), not as a
-    // blocking await ahead of starting independent reads.
     const createIdx = booked.indexOf("const supabase = await createClient()");
     assert.ok(createIdx > 0);
     assert.ok(booked.lastIndexOf("leadExtrasPromise", createIdx) > 0);
     assert.ok(booked.indexOf("const eventInvoicesPromise") < createIdx);
   });
 
-  it("keeps celebration redirect serial before workspace reads", () => {
-    const full = page;
-    const resolveAt = full.indexOf("const eventId = resolveClientWorkspaceEventId");
-    const celeb = full.indexOf("bookingCelebrationPending(eventId)");
-    const batch = full.indexOf("const eventInvoicesPromise");
-    assert.ok(resolveAt > 0 && celeb > resolveAt && batch > celeb);
+  it("keeps celebration redirect serial before deferred workspace reads", () => {
+    const resolveAt = page.indexOf("const eventId = resolveClientWorkspaceEventId");
+    const celeb = page.indexOf('bookingFbTime("booking_celebration_pending"');
+    const deferred = page.indexOf("<BookedWorkspaceDetail");
+    assert.ok(resolveAt > 0 && celeb > resolveAt && deferred > celeb);
   });
 
   it("still wires core workspace props into EventDetail", () => {
-    const render = page.slice(page.lastIndexOf("<EventDetail"));
+    const render = detail.slice(detail.lastIndexOf("<EventDetail"));
     for (const prop of [
       "contracts={contracts}",
       "invoices={eventInvoices}",

@@ -14,6 +14,7 @@ import { describe, it } from "node:test";
  */
 const REPO = resolve("lib/conversations/repository.ts");
 const CLIENT_PAGE = resolve("app/(app)/clients/[id]/page.tsx");
+const BOOKED_DETAIL = resolve("app/(app)/clients/[id]/booked-workspace-detail.tsx");
 const EVENT_DETAIL = resolve("components/events/event-detail.tsx");
 const REL_TAB = resolve("components/conversations/relationship-conversation-tab.tsx");
 const VENDOR_THREAD = resolve("components/vendor-app/vendor-conversation-thread.tsx");
@@ -36,7 +37,7 @@ describe("venue CRM Conversation resolves venue_couple (same as portal)", () => 
   });
 
   it("client EventDetail Conversation tab is wired via getConversationIdForRelationship", () => {
-    const page = readFileSync(CLIENT_PAGE, "utf8");
+    const page = readFileSync(BOOKED_DETAIL, "utf8");
     assert.match(page, /getConversationIdForRelationship/);
     assert.match(page, /conversationId=\{conversationId\}/);
     assert.match(page, /EventDetail/);

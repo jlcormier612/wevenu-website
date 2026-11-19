@@ -7,17 +7,18 @@ import { resolve } from "node:path";
 import { describe, it } from "node:test";
 
 const page = readFileSync(resolve("app/(app)/clients/[id]/page.tsx"), "utf8");
+const bookedDetail = readFileSync(resolve("app/(app)/clients/[id]/booked-workspace-detail.tsx"), "utf8");
 
 function bookedBranch(src: string): string {
-  const start = src.indexOf("const eventId = resolveClientWorkspaceEventId");
-  assert.ok(start > 0, "booked branch start");
+  const start = src.indexOf("// Slice 2 — collapse the Wave A → Wave B serial barrier.");
+  assert.ok(start > 0, "booked detail start");
   const end = src.indexOf("return (", start);
-  assert.ok(end > start, "booked branch return");
+  assert.ok(end > start, "booked detail return");
   return src.slice(start, end);
 }
 
 describe("Slice 3B — Client Workspace invoice scoping wiring", () => {
-  const booked = bookedBranch(page);
+  const booked = bookedBranch(bookedDetail);
 
   it("loads invoices via client|event scoped API (not venue-wide getInvoices)", () => {
     assert.match(booked, /getInvoicesForClientOrEvent\(id, eventId\)/);
@@ -34,6 +35,6 @@ describe("Slice 3B — Client Workspace invoice scoping wiring", () => {
     assert.match(booked, /packageBookingCommitmentInvoiceIds\(invoiceLineMarkers\)/);
     assert.match(booked, /frozenEventOrderLineIds\(/);
     assert.match(booked, /inv\.eventOrderId === eventOrder\.id/);
-    assert.match(page, /invoices=\{eventInvoices\}/);
+    assert.match(bookedDetail, /invoices=\{eventInvoices\}/);
   });
 });

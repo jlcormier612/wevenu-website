@@ -2,7 +2,7 @@
 
 **Authoritative prelaunch register.**  
 **Created:** 2026-11-18  
-**Last updated:** 2026-11-19 (Stale-test GREEN/CLOSED + §5a failure policy; Wave 7A Sandbox release authorized — pending merge/deploy)  
+**Last updated:** 2026-11-19 (Wave 7A Sandbox release in progress — PR #101 pending merge/deploy; stale-test GREEN/CLOSED; NAV-PERF OPEN)  
 **Sandbox serving SHA (verified):** `c1b993f6c6842bbda0f3c71ae6162eca53f9aa32`  
 **Rollback target:** ECS `htc-sandbox-venue-app:1231` / image `c1b993f6…`  
 **Active workstream:** NAV-PERF (Wave 6 on Sandbox; Wave 7A approved for Sandbox; launch bar not yet GREEN)  

@@ -21,6 +21,7 @@ import {
 const repoSrc = readFileSync(resolve("lib/contracts/repository.ts"), "utf8");
 const serviceSrc = readFileSync(resolve("lib/contracts/service.ts"), "utf8");
 const pageSrc = readFileSync(resolve("app/(app)/clients/[id]/page.tsx"), "utf8");
+const bookedDetail = readFileSync(resolve("app/(app)/clients/[id]/booked-workspace-detail.tsx"), "utf8");
 const bookingDocsSrc = readFileSync(resolve("components/events/booking-documents-tab.tsx"), "utf8");
 const newContractPage = readFileSync(resolve("app/(app)/contracts/new/page.tsx"), "utf8");
 const editTemplatePage = readFileSync(resolve("app/(app)/contracts/templates/[id]/edit/page.tsx"), "utf8");
@@ -302,8 +303,8 @@ describe("Slice 3A — template metadata vs detail content", () => {
 
 describe("Slice 3A — wiring + venue isolation", () => {
   it("Client Workspace uses scoped contracts + metadata templates", () => {
-    assert.match(pageSrc, /getContractsForClientOrEvent\(id, eventId\)/);
-    assert.match(pageSrc, /getTemplatesMetadata as getContractTemplates/);
+    assert.match(bookedDetail, /getContractsForClientOrEvent\(id, eventId\)/);
+    assert.match(bookedDetail, /getTemplatesMetadata as getContractTemplates/);
     assert.doesNotMatch(pageSrc, /getContracts\(\)/);
     assert.doesNotMatch(pageSrc, /contractsFilteredPromise/);
     assert.doesNotMatch(pageSrc, /all\.filter\(\(c\) => c\.eventId === eventId \|\| c\.clientId === id\)/);

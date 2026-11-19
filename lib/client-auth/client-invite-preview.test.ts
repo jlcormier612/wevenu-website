@@ -205,7 +205,7 @@ describe("Client invite prepare/preview/confirm seams", () => {
 
     const list = source("app/(app)/clients/page.tsx");
     assert.doesNotMatch(list, /ensureQuestionnaireFamilyForCurrentVenue/);
-    const detail = source("app/(app)/clients/[id]/page.tsx");
+    const detail = source("app/(app)/clients/[id]/booked-workspace-detail.tsx");
     assert.match(detail, /ensureQuestionnaireFamilyForCurrentVenue/);
   });
 });

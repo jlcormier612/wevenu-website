@@ -7,12 +7,13 @@ import { resolve } from "node:path";
 import { describe, it } from "node:test";
 
 const page = readFileSync(resolve("app/(app)/clients/[id]/page.tsx"), "utf8");
+const bookedDetail = readFileSync(resolve("app/(app)/clients/[id]/booked-workspace-detail.tsx"), "utf8");
 const eventDetail = readFileSync(resolve("components/events/event-detail.tsx"), "utf8");
 const panel = readFileSync(resolve("components/luv/contextual-observations-panel.tsx"), "utf8");
 const contextual = readFileSync(resolve("lib/luv/contextual-record.ts"), "utf8");
 
 function bookedBranch(src: string): string {
-  const start = src.indexOf("const eventId = resolveClientWorkspaceEventId");
+  const start = src.indexOf("// Slice 2 — collapse the Wave A → Wave B serial barrier.");
   assert.ok(start > 0, "booked branch start");
   const end = src.indexOf("return (", start);
   assert.ok(end > start, "booked branch return");
@@ -20,14 +21,14 @@ function bookedBranch(src: string): string {
 }
 
 describe("Client Workspace Luv — initial-render scope", () => {
-  const booked = bookedBranch(page);
+  const booked = bookedBranch(bookedDetail);
 
   it("booked workspace still loads record-filtered Luv observations", () => {
     assert.match(booked, /getContextualObservationsForRecord\(venue\.id, venue\.timezone/);
     assert.match(booked, /eventId,/);
     assert.match(booked, /clientId: id/);
     assert.match(booked, /contractIds: contracts\.map\(\(c\) => c\.id\)/);
-    assert.match(page, /contextualObservations=\{contextualObservations\}/);
+    assert.match(bookedDetail, /contextualObservations=\{contextualObservations\}/);
   });
 
   it("EventDetail still renders the L3 panel from those observations", () => {
@@ -58,7 +59,7 @@ describe("Client Workspace Luv — initial-render scope", () => {
   });
 
   it("does not introduce a second Luv engine on the Client Workspace page", () => {
-    assert.doesNotMatch(page, /getLuvObservations\(/);
-    assert.match(page, /from "@\/lib\/luv\/contextual-record"/);
+    assert.doesNotMatch(bookedDetail, /getLuvObservations\(/);
+    assert.match(bookedDetail, /from "@\/lib\/luv\/contextual-record"/);
   });
 });
