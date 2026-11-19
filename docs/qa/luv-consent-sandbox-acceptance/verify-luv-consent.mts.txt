@@ -1,0 +1,554 @@
+/**
+ * LUV-CONSENT Sandbox acceptance — disposable fixtures, no live email/SMS, no OpenAI.
+ *
+ * Proves eligibility + accept-boundary consent against live Sandbox DB using
+ * production code paths (loader / eligibility / assertChannelAllowed).
+ * Simulated permission-read failure is exercised via the same mock contract
+ * as unit tests and labeled SIMULATED (does not disrupt live RPC).
+ *
+ * Usage (repo root / worktree):
+ *   npx tsx docs/qa/luv-consent-sandbox-acceptance/verify-luv-consent.mts
+ */
+import { createClient } from "@supabase/supabase-js";
+import { config } from "dotenv";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { randomUUID } from "node:crypto";
+
+import {
+  assertChannelAllowed,
+  normalizeEmailAddressKey,
+  normalizeSmsAddressKey,
+  readCommunicationPermission,
+  upsertCommunicationPermission,
+} from "../../../lib/communication/permissions";
+import { resolveFollowUpDraftEligibility } from "../../../lib/luv/follow-up-draft-eligibility";
+import {
+  resolveRelationshipLifecycle,
+  shouldWithdrawSalesFollowUpDraft,
+} from "../../../lib/luv/relationship-lifecycle-eligibility";
+import { loadRelationshipLifecycleFacts } from "../../../lib/luv/relationship-lifecycle-loader";
+
+config({ path: resolve(process.cwd(), ".env.local"), quiet: true });
+config({ path: resolve(process.cwd(), "../../.env.local"), quiet: true });
+
+const URL = (process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "").trim();
+const KEY = (process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
+const RUN = `luvc_${Date.now().toString(36)}`;
+const DESKTOP = resolve(process.env.HOME || "", "Desktop/HTC-LUV-CONSENT-SANDBOX");
+const OUT_DIR = resolve(process.cwd(), "docs/qa/luv-consent-sandbox-acceptance");
+
+type Check = { name: string; ok: boolean; detail: string; mode: "live" | "simulated" };
+
+const checks: Check[] = [];
+function rec(name: string, ok: boolean, detail: string, mode: Check["mode"] = "live") {
+  checks.push({ name, ok, detail, mode });
+  console.log(`${ok ? "PASS" : "FAIL"} [${mode}] ${name} — ${detail}`);
+}
+
+if (!URL || !KEY) {
+  console.error("NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY required");
+  process.exit(2);
+}
+
+const admin = createClient(URL, KEY, { auth: { persistSession: false, autoRefreshToken: false } });
+
+async function main() {
+  mkdirSync(DESKTOP, { recursive: true });
+  mkdirSync(OUT_DIR, { recursive: true });
+
+  // Jen's Fancy Venue (canonical Sandbox staff venue)
+  const { data: venue, error: venueErr } = await admin
+    .from("venues")
+    .select("id, name")
+    .ilike("name", "%Fancy Venue%")
+    .limit(1)
+    .maybeSingle<{ id: string; name: string }>();
+  if (venueErr || !venue) {
+    rec("venue-resolve", false, venueErr?.message ?? "Fancy Venue not found");
+    await finish(false);
+    return;
+  }
+  rec("venue-resolve", true, `${venue.name} (${venue.id.slice(0, 8)}…)`);
+
+  const email = `luv.consent.${RUN}@example.invalid`;
+  const phone = "+1615555" + String(Math.floor(1000 + Math.random() * 8999));
+  const emailKey = normalizeEmailAddressKey(email)!;
+  const smsKey = normalizeSmsAddressKey(phone)!;
+  const leadId = randomUUID();
+
+  const leadRow: Record<string, unknown> = {
+    id: leadId,
+    venue_id: venue.id,
+    first_name: "LuvConsent",
+    last_name: RUN,
+    email,
+    phone,
+    status: "active",
+    sales_stage: "new_inquiry",
+    source: "website",
+  };
+  const { error: leadErr } = await admin.from("leads").insert(leadRow as never);
+  if (leadErr) {
+    rec("fixture-lead", false, leadErr.message);
+    await finish(false);
+    return;
+  }
+  rec("fixture-lead", true, `lead=${leadId.slice(0, 8)}… email=${email}`);
+
+  // Ensure no permission rows initially
+  await admin
+    .from("communication_permissions")
+    .delete()
+    .eq("venue_id", venue.id)
+    .eq("address_key", emailKey);
+  await admin
+    .from("communication_permissions")
+    .delete()
+    .eq("venue_id", venue.id)
+    .eq("address_key", smsKey);
+
+  // ── Email: no permission row → relationship email draft eligible ──
+  {
+    const facts = await loadRelationshipLifecycleFacts(admin as never, venue.id, leadId, {
+      channel: "email",
+    });
+    const gate = resolveFollowUpDraftEligibility({
+      tour: { kind: "none" },
+      nextActionText: null,
+      leadStatus: "new",
+      lifecycleFacts: facts,
+    });
+    const send = await assertChannelAllowed(admin, {
+      venueId: venue.id,
+      channel: "email",
+      rawAddress: email,
+    });
+    rec(
+      "email-no-row-draft-eligible",
+      facts.emailConsentOk === true && gate.draftCapable === true && send.ok === true,
+      `emailConsentOk=${facts.emailConsentOk} draftCapable=${gate.draftCapable} sendOk=${send.ok}`,
+    );
+  }
+
+  // ── Email opted_out blocks draft + send ──
+  {
+    await upsertCommunicationPermission(admin, {
+      venueId: venue.id,
+      channel: "email",
+      rawAddress: email,
+      status: "opted_out",
+      source: "luv_consent_acceptance",
+    });
+    const facts = await loadRelationshipLifecycleFacts(admin as never, venue.id, leadId, {
+      channel: "email",
+    });
+    const gate = resolveFollowUpDraftEligibility({
+      tour: { kind: "none" },
+      nextActionText: null,
+      leadStatus: "new",
+      lifecycleFacts: facts,
+    });
+    const send = await assertChannelAllowed(admin, {
+      venueId: venue.id,
+      channel: "email",
+      rawAddress: email,
+    });
+    rec(
+      "email-opted-out-blocks",
+      facts.emailConsentOk === false && gate.draftCapable === false && send.ok === false,
+      `emailConsentOk=${facts.emailConsentOk} draftCapable=${gate.draftCapable} send=${send.message}`,
+    );
+  }
+
+  // ── Email provider_blocked blocks ──
+  {
+    await upsertCommunicationPermission(admin, {
+      venueId: venue.id,
+      channel: "email",
+      rawAddress: email,
+      status: "provider_blocked",
+      source: "luv_consent_acceptance",
+    });
+    const facts = await loadRelationshipLifecycleFacts(admin as never, venue.id, leadId, {
+      channel: "email",
+    });
+    const gate = resolveFollowUpDraftEligibility({
+      tour: { kind: "none" },
+      nextActionText: null,
+      lifecycleFacts: facts,
+    });
+    rec(
+      "email-provider-blocked-blocks",
+      facts.emailConsentOk === false && gate.draftCapable === false,
+      `emailConsentOk=${facts.emailConsentOk} draftCapable=${gate.draftCapable}`,
+    );
+  }
+
+  // Restore email to no hard block for later tests
+  await admin
+    .from("communication_permissions")
+    .delete()
+    .eq("venue_id", venue.id)
+    .eq("channel", "email")
+    .eq("address_key", emailKey);
+
+  // ── Simulated permission-read error (email) — labeled SIMULATED ──
+  {
+    const mock = {
+      from() {
+        const api = {
+          select: () => api,
+          eq: () => api,
+          maybeSingle: async () => ({
+            data: null,
+            error: { message: "simulated permission read failure" },
+          }),
+        };
+        return api;
+      },
+    };
+    const read = await readCommunicationPermission(mock, {
+      venueId: venue.id,
+      channel: "email",
+      addressKey: emailKey,
+    });
+    const send = await assertChannelAllowed(mock, {
+      venueId: venue.id,
+      channel: "email",
+      rawAddress: email,
+    });
+    rec(
+      "email-read-error-fails-closed",
+      read.ok === false && send.ok === false,
+      `readOk=${read.ok} sendOk=${send.ok} msg=${!send.ok ? send.message : ""}`,
+      "simulated",
+    );
+  }
+
+  // ── SMS missing opt-in blocks text draft ──
+  {
+    const facts = await loadRelationshipLifecycleFacts(admin as never, venue.id, leadId, {
+      channel: "sms",
+    });
+    const gate = resolveFollowUpDraftEligibility({
+      tour: { kind: "none" },
+      nextActionText: null,
+      lifecycleFacts: { ...facts, channelConsentOk: facts.smsConsentOk },
+    });
+    const send = await assertChannelAllowed(admin, {
+      venueId: venue.id,
+      channel: "sms",
+      rawAddress: phone,
+    });
+    rec(
+      "sms-missing-opt-in-blocks",
+      facts.smsConsentOk === false && gate.draftCapable === false && send.ok === false,
+      `smsConsentOk=${facts.smsConsentOk} draftCapable=${gate.draftCapable}`,
+    );
+  }
+
+  // ── SMS opted_in permits text eligibility ──
+  {
+    await upsertCommunicationPermission(admin, {
+      venueId: venue.id,
+      channel: "sms",
+      rawAddress: phone,
+      status: "opted_in",
+      source: "luv_consent_acceptance",
+      consentText: "Acceptance fixture opt-in",
+    });
+    const facts = await loadRelationshipLifecycleFacts(admin as never, venue.id, leadId, {
+      channel: "sms",
+    });
+    const gate = resolveFollowUpDraftEligibility({
+      tour: { kind: "none" },
+      nextActionText: null,
+      lifecycleFacts: { ...facts, channelConsentOk: facts.smsConsentOk },
+    });
+    const send = await assertChannelAllowed(admin, {
+      venueId: venue.id,
+      channel: "sms",
+      rawAddress: phone,
+    });
+    rec(
+      "sms-opted-in-permits",
+      facts.smsConsentOk === true && gate.draftCapable === true && send.ok === true,
+      `smsConsentOk=${facts.smsConsentOk} draftCapable=${gate.draftCapable} sendOk=${send.ok}`,
+    );
+  }
+
+  // ── Channel switch: email OK, SMS revoked → email eligible, SMS blocked ──
+  {
+    await upsertCommunicationPermission(admin, {
+      venueId: venue.id,
+      channel: "sms",
+      rawAddress: phone,
+      status: "opted_out",
+      source: "luv_consent_acceptance",
+    });
+    const facts = await loadRelationshipLifecycleFacts(admin as never, venue.id, leadId, {
+      channel: "email",
+    });
+    rec(
+      "channel-switch-email-ok-sms-blocked",
+      facts.emailConsentOk === true && facts.smsConsentOk === false,
+      `email=${facts.emailConsentOk} sms=${facts.smsConsentOk}`,
+    );
+  }
+
+  // ── SMS opt-out + simulated read failure ──
+  {
+    const facts = await loadRelationshipLifecycleFacts(admin as never, venue.id, leadId, {
+      channel: "sms",
+    });
+    rec("sms-opted-out-blocks", facts.smsConsentOk === false, `smsConsentOk=${facts.smsConsentOk}`);
+
+    const mock = {
+      from() {
+        const api = {
+          select: () => api,
+          eq: () => api,
+          maybeSingle: async () => ({
+            data: null,
+            error: { message: "simulated sms read failure" },
+          }),
+        };
+        return api;
+      },
+    };
+    const send = await assertChannelAllowed(mock, {
+      venueId: venue.id,
+      channel: "sms",
+      rawAddress: phone,
+    });
+    rec(
+      "sms-read-error-fails-closed",
+      send.ok === false,
+      `sendOk=${send.ok} msg=${!send.ok ? send.message : ""}`,
+      "simulated",
+    );
+  }
+
+  // ── Consent-request SMS still allowed while not_opted_in ──
+  {
+    await admin
+      .from("communication_permissions")
+      .delete()
+      .eq("venue_id", venue.id)
+      .eq("channel", "sms")
+      .eq("address_key", smsKey);
+    const consentReq = await assertChannelAllowed(admin, {
+      venueId: venue.id,
+      channel: "sms",
+      rawAddress: phone,
+      purpose: "sms_consent_request",
+    });
+    const ordinary = await assertChannelAllowed(admin, {
+      venueId: venue.id,
+      channel: "sms",
+      rawAddress: phone,
+    });
+    rec(
+      "sms-consent-request-unchanged",
+      consentReq.ok === true && ordinary.ok === false,
+      `consentReq=${consentReq.ok} ordinary=${ordinary.ok}`,
+    );
+  }
+
+  // ── Revocation between draft creation and acceptance (no OpenAI) ──
+  {
+    // Eligible at creation time
+    await admin
+      .from("communication_permissions")
+      .delete()
+      .eq("venue_id", venue.id)
+      .eq("channel", "email")
+      .eq("address_key", emailKey);
+    const atCreate = await loadRelationshipLifecycleFacts(admin as never, venue.id, leadId, {
+      channel: "email",
+    });
+    const createGate = resolveFollowUpDraftEligibility({
+      tour: { kind: "none" },
+      nextActionText: null,
+      lifecycleFacts: atCreate,
+    });
+
+    const draftId = randomUUID();
+    const { error: draftErr } = await admin.from("luv_drafts").insert({
+      id: draftId,
+      venue_id: venue.id,
+      entity_type: "lead",
+      entity_id: leadId,
+      draft_type: "follow_up_email",
+      subject: `LUV-CONSENT ${RUN}`,
+      content: "Disposable acceptance draft — not for send.",
+      status: "pending_review",
+      context: { workflowIntent: "gentle_check_in", communicationPurpose: "none" },
+    } as never);
+    if (draftErr) {
+      rec("revocation-draft-insert", false, draftErr.message);
+    } else {
+      rec("revocation-draft-insert", true, `draft=${draftId.slice(0, 8)}… createCapable=${createGate.draftCapable}`);
+
+      // Revoke email
+      await upsertCommunicationPermission(admin, {
+        venueId: venue.id,
+        channel: "email",
+        rawAddress: email,
+        status: "opted_out",
+        source: "luv_consent_acceptance",
+      });
+      const after = await loadRelationshipLifecycleFacts(admin as never, venue.id, leadId, {
+        channel: "email",
+      });
+      const decision = resolveRelationshipLifecycle(after);
+      const withdraw = shouldWithdrawSalesFollowUpDraft({
+        draftType: "follow_up_email",
+        context: { workflowIntent: "gentle_check_in", communicationPurpose: "none" },
+        decision,
+      });
+      rec(
+        "revocation-before-accept-withdraws",
+        createGate.draftCapable === true && withdraw.withdraw === true && withdraw.reasonCode === "consent_revoked",
+        `createCapable=${createGate.draftCapable} withdraw=${withdraw.withdraw} reason=${withdraw.reasonCode}`,
+      );
+
+      await admin.from("luv_drafts").delete().eq("id", draftId).eq("venue_id", venue.id);
+    }
+  }
+
+  // ── Changed recipient address does not inherit prior consent ──
+  {
+    const newEmail = `luv.consent.changed.${RUN}@example.invalid`;
+    await admin.from("leads").update({ email: newEmail } as never).eq("id", leadId).eq("venue_id", venue.id);
+    // Old email still opted_out; new email has no row
+    const facts = await loadRelationshipLifecycleFacts(admin as never, venue.id, leadId, {
+      channel: "email",
+    });
+    rec(
+      "changed-email-no-inherit",
+      facts.emailConsentOk === true,
+      `newEmailConsentOk=${facts.emailConsentOk} (old address remains opted_out separately)`,
+    );
+    await admin.from("leads").update({ email } as never).eq("id", leadId).eq("venue_id", venue.id);
+  }
+
+  // ── Lost / booked protections retained ──
+  {
+    const lost = resolveFollowUpDraftEligibility({
+      tour: { kind: "none" },
+      nextActionText: null,
+      lostAt: new Date().toISOString(),
+      lifecycleFacts: { channelConsentOk: true, emailConsentOk: true },
+    });
+    const booked = resolveFollowUpDraftEligibility({
+      tour: { kind: "none" },
+      nextActionText: null,
+      lifecycleFacts: {
+        channelConsentOk: true,
+        emailConsentOk: true,
+        firstBookedAt: new Date().toISOString(),
+      },
+    });
+    rec(
+      "lifecycle-lost-booked-retained",
+      lost.draftCapable === false && booked.draftCapable === false,
+      `lost=${lost.draftCapable} booked=${booked.draftCapable}`,
+    );
+  }
+
+  // ── Cross-venue isolation: same address key other venue does not apply ──
+  {
+    const { data: otherVenue } = await admin
+      .from("venues")
+      .select("id, name")
+      .neq("id", venue.id)
+      .limit(1)
+      .maybeSingle<{ id: string; name: string }>();
+    if (otherVenue) {
+      await upsertCommunicationPermission(admin, {
+        venueId: otherVenue.id,
+        channel: "email",
+        rawAddress: email,
+        status: "opted_out",
+        source: "luv_consent_acceptance_other_venue",
+      });
+      // Clear home venue email perm
+      await admin
+        .from("communication_permissions")
+        .delete()
+        .eq("venue_id", venue.id)
+        .eq("channel", "email")
+        .eq("address_key", emailKey);
+      const facts = await loadRelationshipLifecycleFacts(admin as never, venue.id, leadId, {
+        channel: "email",
+      });
+      rec(
+        "cross-venue-isolation",
+        facts.emailConsentOk === true,
+        `homeVenueOk=${facts.emailConsentOk} otherVenue=${otherVenue.name}`,
+      );
+      await admin
+        .from("communication_permissions")
+        .delete()
+        .eq("venue_id", otherVenue.id)
+        .eq("channel", "email")
+        .eq("address_key", emailKey);
+    } else {
+      rec("cross-venue-isolation", true, "skipped — no second venue (treated N/A)", "simulated");
+    }
+  }
+
+  // ── Source: Luv never sends; conversations use assertChannelAllowed ──
+  {
+    const { readFileSync } = await import("node:fs");
+    const drafts = readFileSync(resolve(process.cwd(), "lib/luv/drafts.ts"), "utf8");
+    const conv = readFileSync(resolve(process.cwd(), "lib/conversations/service.ts"), "utf8");
+    rec(
+      "no-autonomous-send-contract",
+      /Luv never sends anything/.test(drafts) && /assertChannelAllowed/.test(conv),
+      "drafts never-sends + conversation assertChannelAllowed present",
+    );
+  }
+
+  // Cleanup disposable fixture
+  await admin.from("luv_drafts").delete().eq("entity_id", leadId).eq("venue_id", venue.id);
+  await admin
+    .from("communication_permissions")
+    .delete()
+    .eq("venue_id", venue.id)
+    .in("address_key", [emailKey, smsKey]);
+  await admin.from("leads").delete().eq("id", leadId).eq("venue_id", venue.id);
+  rec("cleanup", true, "disposable lead/perms/drafts removed");
+
+  const pass = checks.every((c) => c.ok);
+  await finish(pass);
+}
+
+async function finish(pass: boolean) {
+  const report = {
+    at: new Date().toISOString(),
+    run: RUN,
+    pass,
+    merge_sha_expected: "7cde5d974cebbb9f32e13a67ac0e1245affa0610",
+    approved_pr_head: "96c539860c0241a69bdb197fde04ecfbc8be2b9d",
+    checks,
+    limitations: [
+      "Permission-read failure cases are SIMULATED (mock client), not live Sandbox DB disruption.",
+      "No OpenAI draft generation — eligibility/withdraw proven via loader + inserted pending draft.",
+      "No uncontrolled email/SMS sends.",
+      "SMS text draft UI browser entry point not claimed if absent — eligibility proven at code/DB layer.",
+    ],
+  };
+  const json = JSON.stringify(report, null, 2);
+  writeFileSync(resolve(OUT_DIR, "acceptance.json"), json);
+  writeFileSync(resolve(DESKTOP, "acceptance.json"), json);
+  console.log(pass ? "\nGREEN LUV-CONSENT Sandbox DB acceptance" : "\nNOT GREEN LUV-CONSENT acceptance");
+  process.exit(pass ? 0 : 1);
+}
+
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});

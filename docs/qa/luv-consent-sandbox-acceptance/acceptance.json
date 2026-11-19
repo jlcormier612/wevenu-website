@@ -1,0 +1,129 @@
+{
+  "at": "2026-11-19T22:54:18.837Z",
+  "run": "luvc_mwo5de65",
+  "pass": true,
+  "merge_sha_expected": "7cde5d974cebbb9f32e13a67ac0e1245affa0610",
+  "approved_pr_head": "96c539860c0241a69bdb197fde04ecfbc8be2b9d",
+  "checks": [
+    {
+      "name": "venue-resolve",
+      "ok": true,
+      "detail": "Jen's Fancy Venue (a415ac52…)",
+      "mode": "live"
+    },
+    {
+      "name": "fixture-lead",
+      "ok": true,
+      "detail": "lead=cf92e002… email=luv.consent.luvc_mwo5de65@example.invalid",
+      "mode": "live"
+    },
+    {
+      "name": "email-no-row-draft-eligible",
+      "ok": true,
+      "detail": "emailConsentOk=true draftCapable=true sendOk=true",
+      "mode": "live"
+    },
+    {
+      "name": "email-opted-out-blocks",
+      "ok": true,
+      "detail": "emailConsentOk=false draftCapable=false send=Email can't be sent to this address because it has been unsubscribed.",
+      "mode": "live"
+    },
+    {
+      "name": "email-provider-blocked-blocks",
+      "ok": true,
+      "detail": "emailConsentOk=false draftCapable=false",
+      "mode": "live"
+    },
+    {
+      "name": "email-read-error-fails-closed",
+      "ok": true,
+      "detail": "readOk=false sendOk=false msg=Couldn't verify messaging permission right now. Please try again.",
+      "mode": "simulated"
+    },
+    {
+      "name": "sms-missing-opt-in-blocks",
+      "ok": true,
+      "detail": "smsConsentOk=false draftCapable=false",
+      "mode": "live"
+    },
+    {
+      "name": "sms-opted-in-permits",
+      "ok": true,
+      "detail": "smsConsentOk=true draftCapable=true sendOk=true",
+      "mode": "live"
+    },
+    {
+      "name": "channel-switch-email-ok-sms-blocked",
+      "ok": true,
+      "detail": "email=true sms=false",
+      "mode": "live"
+    },
+    {
+      "name": "sms-opted-out-blocks",
+      "ok": true,
+      "detail": "smsConsentOk=false",
+      "mode": "live"
+    },
+    {
+      "name": "sms-read-error-fails-closed",
+      "ok": true,
+      "detail": "sendOk=false msg=Couldn't verify messaging permission right now. Please try again.",
+      "mode": "simulated"
+    },
+    {
+      "name": "sms-consent-request-unchanged",
+      "ok": true,
+      "detail": "consentReq=true ordinary=false",
+      "mode": "live"
+    },
+    {
+      "name": "revocation-draft-insert",
+      "ok": true,
+      "detail": "draft=a5865828… createCapable=true",
+      "mode": "live"
+    },
+    {
+      "name": "revocation-before-accept-withdraws",
+      "ok": true,
+      "detail": "createCapable=true withdraw=true reason=consent_revoked",
+      "mode": "live"
+    },
+    {
+      "name": "changed-email-no-inherit",
+      "ok": true,
+      "detail": "newEmailConsentOk=true (old address remains opted_out separately)",
+      "mode": "live"
+    },
+    {
+      "name": "lifecycle-lost-booked-retained",
+      "ok": true,
+      "detail": "lost=false booked=false",
+      "mode": "live"
+    },
+    {
+      "name": "cross-venue-isolation",
+      "ok": true,
+      "detail": "homeVenueOk=true otherVenue=Dbg 1794541914177",
+      "mode": "live"
+    },
+    {
+      "name": "no-autonomous-send-contract",
+      "ok": true,
+      "detail": "drafts never-sends + conversation assertChannelAllowed present",
+      "mode": "live"
+    },
+    {
+      "name": "cleanup",
+      "ok": true,
+      "detail": "disposable lead/perms/drafts removed",
+      "mode": "live"
+    }
+  ],
+  "limitations": [
+    "Permission-read failure cases are SIMULATED (mock client), not live Sandbox DB disruption.",
+    "No OpenAI draft generation — eligibility/withdraw proven via loader + inserted pending draft.",
+    "No uncontrolled email/SMS sends.",
+    "SMS text draft UI browser entry point not claimed if absent — eligibility proven at code/DB layer."
+  ]
+}

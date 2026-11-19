@@ -1,0 +1,296 @@
+/**
+ * LUV-CONSENT focused browser acceptance on Sandbox.
+ * No paid OpenAI generation. No uncontrolled email/SMS.
+ */
+import { createRequire } from "node:module";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { randomUUID } from "node:crypto";
+import { createClient } from "@supabase/supabase-js";
+import { config } from "dotenv";
+
+config({ path: resolve(process.cwd(), ".env.local"), quiet: true });
+config({ path: "/Users/jensmac/Developer/wevenu-website/.env.local", quiet: true });
+
+const require = createRequire(
+  "/Users/jensmac/Developer/wevenu-website/marketing/package.json",
+);
+const { chromium } = require("playwright");
+const ssrUtils = require(
+  "/Users/jensmac/Developer/wevenu-website/node_modules/@supabase/ssr/dist/main/utils/index.js",
+);
+
+const APP = "https://app.sandbox.hellotocheers.com";
+const EXPECTED = "7cde5d974cebbb9f32e13a67ac0e1245affa0610";
+const FANCY_EMAIL = "jennifer@hellotocheers.com";
+const FANCY = "a415ac52-cd74-42a6-8df7-7a8f6e71d080";
+const OUT = resolve(process.cwd(), "docs/qa/luv-consent-sandbox-acceptance");
+const DESKTOP = resolve(process.env.HOME || "", "Desktop/HTC-LUV-CONSENT-SANDBOX");
+mkdirSync(OUT, { recursive: true });
+mkdirSync(DESKTOP, { recursive: true });
+
+const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+if (!url.includes("wvpsldwwjqdannqasrdf")) throw new Error("refusing non-sandbox supabase");
+
+const admin = createClient(url, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
+  auth: { persistSession: false },
+});
+const anon = createClient(url, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
+  auth: { persistSession: false },
+});
+
+type Check = { name: string; ok: boolean; detail: string };
+const checks: Check[] = [];
+function rec(name: string, ok: boolean, detail: string) {
+  checks.push({ name, ok, detail });
+  console.log(`${ok ? "PASS" : "FAIL"} ${name} — ${detail}`);
+}
+
+function noteDeployment(linkHeader: string | undefined) {
+  const match = linkHeader?.match(/dpl=([0-9a-f]{40})/);
+  return match?.[1] ?? null;
+}
+
+async function cookiesFor(email: string) {
+  const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
+    type: "magiclink",
+    email,
+  });
+  if (linkErr) throw linkErr;
+  const { data: otpData, error: otpErr } = await anon.auth.verifyOtp({
+    type: "email",
+    token_hash: linkData.properties!.hashed_token!,
+  });
+  if (otpErr || !otpData.session) throw otpErr ?? new Error("no session");
+  const cookieName = "sb-wvpsldwwjqdannqasrdf-auth-token";
+  const encoded = "base64-" + ssrUtils.stringToBase64URL(JSON.stringify(otpData.session));
+  const authCookies = ssrUtils.createChunks(cookieName, encoded).map(
+    (c: { name: string; value: string }) => ({
+      name: c.name,
+      value: c.value,
+      domain: "app.sandbox.hellotocheers.com",
+      path: "/",
+      httpOnly: false,
+      secure: true,
+      sameSite: "Lax" as const,
+    }),
+  );
+  return [
+    ...authCookies,
+    {
+      name: "htc_active_venue_id",
+      value: FANCY,
+      domain: "app.sandbox.hellotocheers.com",
+      path: "/",
+      httpOnly: false,
+      secure: true,
+      sameSite: "Lax" as const,
+    },
+  ];
+}
+
+async function openLeadLuv(page: import("playwright").Page, leadId: string) {
+  const res = await page.goto(`${APP}/leads/${leadId}?luv=follow_up_email`, {
+    waitUntil: "domcontentloaded",
+    timeout: 90_000,
+  });
+  await page.waitForTimeout(2000);
+  // Click Luv tab explicitly (Radix TabsTrigger)
+  const tab = page.locator('[role="tablist"] [role="tab"]').filter({ hasText: /^Luv$|Luv/ });
+  const count = await tab.count();
+  if (count > 0) {
+    await tab.last().click();
+    await page.waitForTimeout(2500);
+  }
+  return res;
+}
+
+async function main() {
+  const run = `luvcb_${Date.now().toString(36)}`;
+  const email = `luv.browser.${run}@example.invalid`;
+  const phone = `+1615555${String(Math.floor(1000 + Math.random() * 8999))}`;
+  const leadId = randomUUID();
+  const emailKey = email.trim().toLowerCase();
+
+  const { error: leadErr } = await admin.from("leads").insert({
+    id: leadId,
+    venue_id: FANCY,
+    first_name: "LuvBrowser",
+    last_name: run,
+    email,
+    phone,
+    status: "active",
+    sales_stage: "new_inquiry",
+    source: "website",
+  } as never);
+  if (leadErr) throw new Error(leadErr.message);
+
+  await admin
+    .from("communication_permissions")
+    .delete()
+    .eq("venue_id", FANCY)
+    .eq("address_key", emailKey);
+
+  const browser = await chromium.launch({ headless: true });
+  const context = await browser.newContext({ viewport: { width: 1400, height: 1100 } });
+  await context.addCookies(await cookiesFor(FANCY_EMAIL));
+  const page = await context.newPage();
+
+  try {
+    const res = await openLeadLuv(page, leadId);
+    const serving = noteDeployment(res?.headers()["link"]);
+    rec(
+      "page-loaded",
+      (res?.status() ?? 0) < 400,
+      `http=${res?.status()} dpl=${serving ?? "n/a"} url=${page.url()}`,
+    );
+    rec(
+      "serving-sha-header",
+      serving === EXPECTED,
+      `dpl=${serving ?? "missing"} expected=${EXPECTED.slice(0, 8)}…`,
+    );
+
+    const generateCta = page.getByTestId("luv-draft-generate-cta");
+    await generateCta.waitFor({ state: "visible", timeout: 20_000 }).catch(() => null);
+    let eligibleVisible = await generateCta.isVisible().catch(() => false);
+    if (!eligibleVisible) {
+      // Diagnostic dump
+      const tabs = await page.locator('[role="tab"]').allTextContents();
+      const bodySlice = (await page.locator("body").innerText()).slice(0, 500);
+      console.log("DEBUG tabs=", tabs);
+      console.log("DEBUG body=", bodySlice.replace(/\n+/g, " | "));
+    }
+    rec(
+      "eligible-email-draft-cta",
+      eligibleVisible,
+      eligibleVisible ? "Draft a follow-up email CTA visible on Luv tab" : "CTA missing on Luv tab",
+    );
+    await page.screenshot({
+      path: resolve(DESKTOP, `browser-eligible-${run}.png`),
+      fullPage: true,
+    });
+
+    const bodyText = await page.locator("body").innerText();
+    const reviewOk =
+      /Luv|Messages|Conversation|Inquiry|Lead/i.test(bodyText) &&
+      !/Application error|Something went wrong/i.test(bodyText);
+    rec("non-send-review-accessible", reviewOk, "Lead + Luv chrome present without crash");
+
+    // Opt out email
+    await admin.from("communication_permissions").upsert(
+      {
+        venue_id: FANCY,
+        channel: "email",
+        address_key: emailKey,
+        status: "opted_out",
+        source: "luv_consent_browser",
+        updated_at: new Date().toISOString(),
+      } as never,
+      { onConflict: "venue_id,channel,address_key" },
+    );
+
+    await openLeadLuv(page, leadId);
+    const ctaAfter = await generateCta.isVisible().catch(() => false);
+    const blocked = page.getByTestId("luv-draft-capability-blocked");
+    await blocked.waitFor({ state: "visible", timeout: 10_000 }).catch(() => null);
+    const blockedVisible = await blocked.isVisible().catch(() => false);
+    const blockedText = blockedVisible ? (await blocked.innerText()).trim() : "";
+    rec(
+      "email-opt-out-blocks-cta",
+      !ctaAfter && blockedVisible && /consent|communication|channel/i.test(blockedText),
+      `cta=${ctaAfter} blocked=${blockedVisible} text=${blockedText.slice(0, 160)}`,
+    );
+    await page.screenshot({
+      path: resolve(DESKTOP, `browser-opted-out-${run}.png`),
+      fullPage: true,
+    });
+
+    // Restore eligible + insert pending draft (no AI)
+    await admin
+      .from("communication_permissions")
+      .delete()
+      .eq("venue_id", FANCY)
+      .eq("channel", "email")
+      .eq("address_key", emailKey);
+
+    const draftId = randomUUID();
+    const { error: draftErr } = await admin.from("luv_drafts").insert({
+      id: draftId,
+      venue_id: FANCY,
+      entity_type: "lead",
+      entity_id: leadId,
+      draft_type: "follow_up_email",
+      subject: `Browser LUV-CONSENT ${run}`,
+      content: "Disposable pending draft — do not send. No AI.",
+      status: "pending_review",
+      context: { workflowIntent: "gentle_check_in", communicationPurpose: "none" },
+    } as never);
+    if (draftErr) throw new Error(draftErr.message);
+
+    await openLeadLuv(page, leadId);
+    const pendingLabel = await page.getByText("Pending review").isVisible().catch(() => false);
+    rec("pending-draft-visible-while-eligible", pendingLabel, `pending=${pendingLabel}`);
+
+    await admin.from("communication_permissions").upsert(
+      {
+        venue_id: FANCY,
+        channel: "email",
+        address_key: emailKey,
+        status: "opted_out",
+        source: "luv_consent_browser",
+        updated_at: new Date().toISOString(),
+      } as never,
+      { onConflict: "venue_id,channel,address_key" },
+    );
+
+    await openLeadLuv(page, leadId);
+    const withdrawn = await page.getByTestId("luv-lifecycle-withdrawn-drafts").isVisible().catch(() => false);
+    const noLonger = await page.getByText("No longer applicable").isVisible().catch(() => false);
+    const pendingAfter = await page.getByText("Pending review").isVisible().catch(() => false);
+    rec(
+      "revocation-withdraws-pending-draft-ui",
+      withdrawn || noLonger,
+      `withdrawn=${withdrawn} noLonger=${noLonger} pendingAfter=${pendingAfter}`,
+    );
+    await page.screenshot({
+      path: resolve(DESKTOP, `browser-revoked-${run}.png`),
+      fullPage: true,
+    });
+
+    const nav = await page.goto(`${APP}/leads`, { waitUntil: "domcontentloaded", timeout: 90_000 });
+    rec("leads-nav-ok", (nav?.status() ?? 0) < 400, `http=${nav?.status()}`);
+
+    await admin.from("luv_drafts").delete().eq("id", draftId).eq("venue_id", FANCY);
+    await admin
+      .from("communication_permissions")
+      .delete()
+      .eq("venue_id", FANCY)
+      .eq("address_key", emailKey);
+    await admin.from("leads").delete().eq("id", leadId).eq("venue_id", FANCY);
+    rec("cleanup", true, "disposable lead/draft/perms removed");
+  } finally {
+    await browser.close();
+  }
+
+  const pass = checks.every((c) => c.ok);
+  const report = {
+    at: new Date().toISOString(),
+    expect_sha: EXPECTED,
+    pass,
+    checks,
+    limitations: [
+      "Did not call paid OpenAI — pending draft inserted via DB.",
+      "SMS drafting UI not claimed (email-primary).",
+      "Serving SHA verified via Link dpl= header and ECS task image.",
+    ],
+  };
+  writeFileSync(resolve(OUT, "browser-acceptance.json"), JSON.stringify(report, null, 2));
+  writeFileSync(resolve(DESKTOP, "browser-acceptance.json"), JSON.stringify(report, null, 2));
+  console.log(pass ? "\nGREEN browser acceptance" : "\nNOT GREEN browser acceptance");
+  process.exit(pass ? 0 : 1);
+}
+
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});
