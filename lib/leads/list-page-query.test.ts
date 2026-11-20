@@ -12,8 +12,10 @@ import {
   type LeadsListSort,
 } from "@/lib/leads/list-query";
 import {
+  LEADS_LIST_COUNTS_RPC,
   LEADS_LIST_PAGE_COUNT_STAGES,
   LEADS_LIST_PAGE_RPC,
+  LEADS_LIST_ROWS_RPC,
   leadMatchesListPage,
   resolvedListSalesStage,
   selectLeadsListPage,
@@ -347,10 +349,14 @@ describe("resolved list stage matches the index mapper", () => {
   });
 });
 
-describe("Phase 1C live Leads page uses paged query", () => {
-  it("defines the database function and wires getLeadsListPage through queryLeadsListPage", () => {
-    const sql = readFileSync(
+describe("Phase 1 recovery — live list stays on Wave 1 until dual gates pass", () => {
+  it("keeps candidate RPCs off getLeadsListPage and splits rows from counts", () => {
+    const combined = readFileSync(
       resolve("supabase/migrations/20270205120000_leads_list_page_query.sql"),
+      "utf8",
+    );
+    const hot = readFileSync(
+      resolve("supabase/migrations/20270206120000_leads_list_hot_path.sql"),
       "utf8",
     );
     const service = readFileSync(resolve("lib/leads/service.ts"), "utf8");
@@ -360,21 +366,20 @@ describe("Phase 1C live Leads page uses paged query", () => {
     const livePage = service.slice(pageStart, pageEnd);
 
     assert.equal(LEADS_LIST_PAGE_RPC, "query_leads_list_page");
-    assert.match(sql, /function public\.query_leads_list_page/);
-    assert.match(sql, /security invoker/);
-    assert.match(sql, /function public\.normalize_lead_event_type/);
-    assert.match(sql, /corporate_event/);
-    assert.match(sql, /birthday_milestone/);
-    assert.match(sql, /rehearsal dinner/);
-    assert.match(sql, /when l\.sales_stage = 'cancelled' then 'cancelled'/);
-    assert.match(sql, /when l\.status = 'qualified' then 'outreach_sent'/);
-    assert.match(sql, /when l\.status = 'won' then 'booked'/);
-    assert.match(sql, /merged_into_lead_id is null/);
-    assert.match(sql, /archived_at is not null/);
-    assert.match(sql, /interval '7 days'/);
+    assert.equal(LEADS_LIST_ROWS_RPC, "query_leads_list_rows");
+    assert.equal(LEADS_LIST_COUNTS_RPC, "query_leads_list_counts");
+    assert.match(combined, /function public\.query_leads_list_page/);
+    assert.match(hot, /function public\.query_leads_list_rows/);
+    assert.match(hot, /function public\.query_leads_list_counts/);
+    assert.match(hot, /Not wired to live UI until dual gates pass/);
     assert.match(repo, /export async function queryLeadsListPage/);
-    assert.match(repo, /LEADS_LIST_PAGE_RPC/);
-    assert.match(livePage, /queryLeadsListPage/);
-    assert.doesNotMatch(livePage, /getLeadsListIndex/);
+    assert.match(repo, /export async function queryLeadsListPageHotPath/);
+    assert.match(repo, /LEADS_LIST_ROWS_RPC/);
+    assert.match(repo, /LEADS_LIST_COUNTS_RPC/);
+    assert.match(livePage, /getLeadsListIndex/);
+    assert.doesNotMatch(
+      livePage,
+      /queryLeadsListPage|queryLeadsListPageHotPath|query_leads_list_/,
+    );
   });
 });
