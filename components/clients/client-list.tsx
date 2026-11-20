@@ -3,7 +3,7 @@
 import * as React from "react";
 
 import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { Search } from "lucide-react";
 
 import { ClientListStatusBadge } from "@/components/clients/client-status-badge";
@@ -37,6 +37,13 @@ import {
   comingUpHorizonEnd,
   type ClientListFilterKey,
 } from "@/lib/clients/list-filters";
+import {
+  clientsFilterHref,
+  filterFromPopState,
+  resolveClientListFilter,
+  shouldPersistStickyFilter,
+  softClientsHistoryState,
+} from "@/lib/clients/soft-url";
 import type { Client } from "@/lib/clients/types";
 import {
   ATTENTION_CHIP,
@@ -97,7 +104,6 @@ export function ClientList({
   }>;
   portalActivationProgress?: { opened: number; target: number };
 }) {
-  const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const urlFilter = parseClientListFilter(searchParams.get("filter"));
@@ -107,27 +113,54 @@ export function ClientList({
     if (saved && isPortalActivationFilter(saved)) return "all";
     return saved ?? "all";
   });
+  /** Soft-URL committed filter — wins over stale useSearchParams after history sync. */
+  const [softCommitted, setSoftCommitted] = React.useState<ClientListFilterKey | null>(null);
   const [sort, setSort] = React.useState<SortKey>("event_asc");
-  const filter = urlFilter ?? storedFilter;
+  const filter = resolveClientListFilter({
+    softCommitted,
+    urlFilter,
+    stickyFilter: storedFilter,
+  });
   const portalMode = isPortalActivationFilter(filter);
+  const searchParamsKey = searchParams.toString();
 
-  // URL is the source of truth while present (Dashboard deep-link). Persist
-  // sticky operational filters only — not the Luv portal-activation handoff.
+  // Real App Router navigations (Dashboard / Booked→Clients deep-links) update
+  // searchParams — adopt them and clear soft commit so URL wins explicitly.
   React.useEffect(() => {
     if (!urlFilter) return;
-    if (isPortalActivationFilter(urlFilter)) return;
-    persistFilter(urlFilter);
-  }, [urlFilter]);
+    setSoftCommitted(urlFilter);
+    if (shouldPersistStickyFilter(urlFilter)) {
+      setStoredFilter(urlFilter);
+      persistFilter(urlFilter);
+    }
+  }, [urlFilter, searchParamsKey]);
 
   const setFilter = React.useCallback((next: ClientListFilterKey) => {
-    if (!isPortalActivationFilter(next)) {
+    setSoftCommitted(next);
+    if (shouldPersistStickyFilter(next)) {
       setStoredFilter(next);
       persistFilter(next);
     }
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("filter", next);
-    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
-  }, [pathname, router, searchParams]);
+    const href = clientsFilterHref(pathname, searchParamsKey, next);
+    const state = softClientsHistoryState(next);
+    // Soft-URL: History API only — no router.replace / layout remount.
+    window.history.pushState(state, "", href);
+  }, [pathname, searchParamsKey]);
+
+  React.useEffect(() => {
+    function onPopState(event: PopStateEvent) {
+      const next =
+        filterFromPopState(event.state, window.location.search) ??
+        storedFilter;
+      setSoftCommitted(next);
+      if (shouldPersistStickyFilter(next)) {
+        setStoredFilter(next);
+        persistFilter(next);
+      }
+    }
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, [storedFilter]);
 
   // Venue-local today, passed from the server — same string the Dashboard count uses.
   const comingUpOut = React.useMemo(() => comingUpHorizonEnd(today), [today]);
@@ -175,7 +208,12 @@ export function ClientList({
   );
 
   return (
-    <div className="space-y-4">
+    <div
+      className="space-y-4"
+      data-testid="clients-list-root"
+      data-clients-soft-filter={softCommitted != null ? "1" : "0"}
+      data-clients-filter={filter}
+    >
       {portalMode && portalActivationProgress ? (
         <div
           className="rounded-lg border border-border bg-muted/20 px-4 py-3 space-y-1"
