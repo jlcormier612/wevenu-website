@@ -178,27 +178,36 @@ export function selectLeadsListPage(
   const matched = leads.filter((lead) => leadMatchesListPage(lead, params, nowMs));
   const sorted = [...matched].sort((a, b) => compareLeadsForListPage(a, b, sort));
   const excludeIds = params.excludeIds ?? [];
-  const windowed =
-    excludeIds.length > 0
-      ? nextProgressiveWindow(sorted, excludeIds, pageSize)
-      : sliceLeadWindow(
-          sorted,
-          params.offset != null
-            ? params.offset
-            : params.page != null
-              ? Math.max(0, (params.page - 1) * pageSize)
-              : 0,
-          pageSize,
-        );
-  const offset = excludeIds.length > 0 ? 0 : windowed.offset;
   const statusCounts = Object.fromEntries(
     buildStatusCounts(leads, params.currentBookedCount ?? 0),
+  );
+  if (excludeIds.length > 0) {
+    const progressive = nextProgressiveWindow(sorted, excludeIds, pageSize);
+    return {
+      leads: progressive.pageItems,
+      totalLeads: leads.length,
+      totalMatching: progressive.totalMatching,
+      offset: 0,
+      pageSize: progressive.pageSize,
+      hasMore: progressive.hasMore,
+      statusCounts,
+      eventTypeCounts: buildEventTypeCounts(leads),
+    };
+  }
+  const windowed = sliceLeadWindow(
+    sorted,
+    params.offset != null
+      ? params.offset
+      : params.page != null
+        ? Math.max(0, (params.page - 1) * pageSize)
+        : 0,
+    pageSize,
   );
   return {
     leads: windowed.pageItems,
     totalLeads: leads.length,
     totalMatching: windowed.totalMatching,
-    offset,
+    offset: windowed.offset,
     pageSize: windowed.pageSize,
     hasMore: windowed.hasMore,
     statusCounts,
