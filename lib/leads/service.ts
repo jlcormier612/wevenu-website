@@ -9,6 +9,18 @@ import { createClient } from "@/integrations/supabase/server";
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/env";
 import * as repo from "@/lib/leads/repository";
+import {
+  buildEventTypeCounts,
+  buildStatusCounts,
+  filterLeadsForList,
+  nextProgressiveWindow,
+  sliceLeadWindow,
+  LEADS_PAGE_SIZE,
+  type LeadsListPageResult,
+  type LeadsListParams,
+  type LeadsListSort,
+  type LeadsListAttention,
+} from "@/lib/leads/list-query";
 import { LeadTourWriteError, TOUR_TIME_REQUIRED } from "@/lib/leads/relationship-tour";
 import { requireAdminUser } from "@/lib/hq/crm-service";
 import type {
@@ -94,6 +106,122 @@ export async function getLeads(filters?: { q?: string; status?: string }): Promi
   if (!venue) return [];
   const supabase = await createClient();
   return repo.getLeads(supabase, venue.id, filters);
+}
+
+export type { LeadsListPageResult, LeadsListParams };
+
+/**
+ * Server-backed Leads list window: lean index for global counts/search/filters,
+ * then a bounded offset/limit window for RSC or progressive load (not
+ * client-only slice of a full select * + tours payload).
+ */
+export async function getLeadsListPage(
+  params: LeadsListParams = {},
+): Promise<LeadsListPageResult> {
+  const pageSize = params.pageSize ?? LEADS_PAGE_SIZE;
+  const empty: LeadsListPageResult = {
+    leads: [],
+    totalLeads: 0,
+    totalMatching: 0,
+    offset: 0,
+    pageSize,
+    hasMore: false,
+    page: 1,
+    totalPages: 1,
+    statusCounts: { all: 0, booked: params.currentBookedCount ?? 0, lost: 0 },
+    eventTypeCounts: [],
+    indexTruncated: false,
+    indexError: null,
+    params: {
+      q: params.q ?? "",
+      status: params.status ?? (params.outcome === "lost" ? "lost" : "all"),
+      eventType: params.eventType ?? "all",
+      sort: (params.sort ?? "newest") as LeadsListSort,
+      attention: (params.attention ?? "all") as LeadsListAttention,
+      outcome: params.outcome ?? "active",
+      offset: 0,
+    },
+  };
+  if (!isSupabaseConfigured) return empty;
+  const venue = await getCurrentVenue();
+  if (!venue) return empty;
+  const supabase = await createClient();
+  const indexResult = await repo.getLeadsListIndex(supabase, venue.id);
+  if (indexResult.truncated) {
+    return {
+      ...empty,
+      indexTruncated: true,
+      indexError: repo.LEADS_LIST_INDEX_TRUNCATED_MESSAGE,
+    };
+  }
+  const index = indexResult.leads;
+  const outcome = params.outcome ?? "active";
+  const status = params.status ?? (outcome === "lost" ? "lost" : "all");
+  const attention = (params.attention ?? "all") as LeadsListAttention;
+  const eventType = params.eventType ?? "all";
+  const sort = (params.sort ?? "newest") as LeadsListSort;
+  const q = params.q ?? "";
+  const currentBookedCount = params.currentBookedCount ?? 0;
+  const offset =
+    params.offset != null
+      ? params.offset
+      : params.page != null
+        ? Math.max(0, (params.page - 1) * pageSize)
+        : 0;
+
+  const statusCountsMap = buildStatusCounts(index, currentBookedCount);
+  const statusCounts: Record<string, number> = Object.fromEntries(statusCountsMap);
+  const eventTypeCounts = buildEventTypeCounts(index);
+
+  const filtered = filterLeadsForList(index, {
+    ...params,
+    status,
+    attention,
+    eventType,
+    sort,
+    outcome,
+    q,
+  });
+
+  const excludeIds = params.excludeIds ?? [];
+  const windowed =
+    excludeIds.length > 0
+      ? (() => {
+          const progressive = nextProgressiveWindow(filtered, excludeIds, pageSize);
+          return {
+            pageItems: progressive.pageItems,
+            offset: 0,
+            pageSize: progressive.pageSize,
+            totalMatching: progressive.totalMatching,
+            hasMore: progressive.hasMore,
+          };
+        })()
+      : sliceLeadWindow(filtered, offset, pageSize);
+  const totalPages = Math.max(1, Math.ceil(windowed.totalMatching / pageSize) || 1);
+
+  return {
+    leads: windowed.pageItems,
+    totalLeads: index.length,
+    totalMatching: windowed.totalMatching,
+    offset: windowed.offset,
+    pageSize: windowed.pageSize,
+    hasMore: windowed.hasMore,
+    page: Math.floor(windowed.offset / pageSize) + 1,
+    totalPages,
+    statusCounts,
+    eventTypeCounts,
+    indexTruncated: false,
+    indexError: null,
+    params: {
+      q,
+      status,
+      eventType,
+      sort,
+      attention,
+      outcome,
+      offset: windowed.offset,
+    },
+  };
 }
 
 /**

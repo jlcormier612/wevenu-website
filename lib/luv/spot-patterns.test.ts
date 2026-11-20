@@ -733,12 +733,13 @@ describe("Booking metric repair — canonical Lead→Booked", () => {
     assert.match(shared, /conversation_messages/);
     assert.match(shared, /walk_in/);
     assert.match(shared, /cancelled/);
-    const leadsPage = read("app/(app)/leads/page.tsx");
-    assert.match(leadsPage, /getUnattendedInquiryLeadIdsForCurrentVenue/);
-    assert.match(leadsPage, /unattended_inquiry/);
+    const island = read("components/leads/leads-list-island.tsx");
+    assert.match(island, /getUnattendedInquiryLeadIdsForCurrentVenue/);
+    assert.match(island, /unattended_inquiry/);
     const list = read("components/leads/lead-list.tsx");
     assert.match(list, /unattendedInquiryLeadIds/);
-    assert.match(list, /unattendedIdSet\.has/);
+    const query = read("lib/leads/list-query.ts");
+    assert.match(query, /unattendedIdSet\.has/);
   });
 
   it("tour volume for P-P1 does not use exclude_from_business_reporting", () => {

@@ -154,10 +154,10 @@ describe("canonical writer and Booked shortcut removal", () => {
 
 describe("shared membership surfaces", () => {
   it("Leads Booked chip uses current membership and links to Clients All Bookings", () => {
-    const page = read("app/(app)/leads/page.tsx");
+    const island = read("components/leads/leads-list-island.tsx");
     const list = read("components/leads/lead-list.tsx");
-    assert.match(page, /loadBookedMembershipSets/);
-    assert.match(page, /currentBookedCount=\{bookedMembership.currentClientIds.size\}/);
+    assert.match(island, /loadBookedMembershipSets/);
+    assert.match(island, /currentBookedCount:\s*bookedMembership\.currentClientIds\.size/);
     assert.match(list, /currentBookedCount/);
     assert.match(list, /href="\/clients\?filter=all"/);
     assert.doesNotMatch(list, /stage === "booked" \|\| stage === "won"/);

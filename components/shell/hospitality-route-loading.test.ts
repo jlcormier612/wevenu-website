@@ -30,7 +30,8 @@ describe("hospitality route loading shells (Wave B)", () => {
     const files = collectLoadingFiles(ROOT).map((f) => f.replace(/\\/g, "/"));
     const required = [
       "app/(app)/dashboard/loading.tsx",
-      "app/(app)/leads/loading.tsx",
+      // Leads list uses streamed Suspense islands (no full-route loading.tsx)
+      // to avoid skeleton flicker before the bounded list payload.
       "app/(app)/leads/[id]/loading.tsx",
       "app/(app)/clients/loading.tsx",
       "app/(app)/clients/[id]/loading.tsx",
@@ -55,6 +56,13 @@ describe("hospitality route loading shells (Wave B)", () => {
       const body = readFileSync(rel, "utf8");
       assert.match(body, /HospitalityRouteLoading/);
     }
+    assert.equal(
+      files.some((f) => f.endsWith("app/(app)/leads/loading.tsx")),
+      false,
+      "leads/loading.tsx must stay removed (NAV-PERF list streaming)",
+    );
+    const leadsPage = readFileSync("app/(app)/leads/page.tsx", "utf8");
+    assert.match(leadsPage, /LeadsListFallback|leads-list-fallback/);
   });
 
   it("does not use null Suspense fallback on the Clients list", () => {

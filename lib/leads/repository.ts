@@ -513,6 +513,150 @@ function mapTask(r: TaskRow): LeadTask {
 
 // ---- list / single ----------------------------------------------------------
 
+/**
+ * Lean column set for the Leads index / list page.
+ * Omits inquiry_message + source_data (large blobs unused by the table) and
+ * skips tour hydration — list UI does not read tour fields.
+ */
+export const LEAD_LIST_SELECT = [
+  "id",
+  "venue_id",
+  "sales_stage",
+  "status",
+  "source",
+  "pipeline_stage_id",
+  "first_name",
+  "last_name",
+  "email",
+  "phone",
+  "preferred_communication_channels",
+  "partner_first_name",
+  "partner_last_name",
+  "partner_email",
+  "event_type",
+  "event_date",
+  "planned_event_space_id",
+  "end_date",
+  "guest_count",
+  "estimated_budget",
+  "inquiry_date",
+  "next_action_text",
+  "next_action_due",
+  "follow_up_date",
+  "last_contacted_at",
+  "commitment_score",
+  "responsiveness_score",
+  "interest_score",
+  "scores_updated_at",
+  "relationship_id",
+  "intake_confidence",
+  "exclude_from_business_reporting",
+  "lost_reason",
+  "lost_reason_detail",
+  "lost_at",
+  "first_booked_at",
+  "venue_seen_at",
+  "assigned_staff_id",
+  "merged_into_lead_id",
+  "merged_at",
+  "created_at",
+  "updated_at",
+].join(",");
+
+/**
+ * PostgREST/Supabase default max rows per request is typically 1000.
+ * Page the lean index so larger venues are not silently truncated.
+ */
+export const LEADS_LIST_INDEX_CHUNK = 1000;
+/** Safety ceiling — never present a capped slice as a complete global index. */
+export const LEADS_LIST_INDEX_HARD_CAP = 20_000;
+
+export const LEADS_LIST_INDEX_TRUNCATED_MESSAGE =
+  "This venue has more leads than the list can load safely. Refresh and try again, or contact support if this continues.";
+
+export type LeadsListIndexResult = {
+  leads: Lead[];
+  /**
+   * True only when a row beyond HARD_CAP exists (exact-cap venues are NOT
+   * truncated). Callers must not treat capped rows as complete counts/search.
+   */
+  truncated: boolean;
+};
+
+/**
+ * Leads list index — every eligible row, lean columns, no tour join.
+ * Callers filter/sort server-side then render a progressive display window.
+ */
+export async function getLeadsListIndex(
+  client: DbClient,
+  venueId: string,
+  filters?: { includeArchived?: boolean },
+): Promise<LeadsListIndexResult> {
+  let archivedIds: string[] = [];
+  if (!filters?.includeArchived) {
+    const { data: archived } = await client
+      .from("venue_customer_relationships")
+      .select("id")
+      .eq("venue_id", venueId)
+      .not("archived_at", "is", null);
+    archivedIds = ((archived ?? []) as Array<{ id: string }>).map((r) => r.id);
+  }
+
+  const rows: LeadRow[] = [];
+  for (let from = 0; from < LEADS_LIST_INDEX_HARD_CAP; from += LEADS_LIST_INDEX_CHUNK) {
+    const to = Math.min(from + LEADS_LIST_INDEX_CHUNK - 1, LEADS_LIST_INDEX_HARD_CAP - 1);
+    let q = client
+      .from("leads")
+      .select(LEAD_LIST_SELECT)
+      .eq("venue_id", venueId)
+      .is("merged_into_lead_id", null);
+    if (archivedIds.length > 0) {
+      q = q.not("relationship_id", "in", `(${archivedIds.join(",")})`);
+    }
+    const { data, error } = await q
+      .order("inquiry_date", { ascending: false })
+      .order("created_at", { ascending: false })
+      .range(from, to);
+    if (error) throw error;
+    const chunk = (data ?? []) as unknown as LeadRow[];
+    rows.push(...chunk);
+    if (chunk.length < LEADS_LIST_INDEX_CHUNK) {
+      return {
+        leads: rows.map((r) => mapLead(r, EMPTY_TOUR)),
+        truncated: false,
+      };
+    }
+    if (rows.length >= LEADS_LIST_INDEX_HARD_CAP) break;
+  }
+
+  // Exact HARD_CAP is complete only when no 20,001st eligible row exists.
+  const capped = rows.slice(0, LEADS_LIST_INDEX_HARD_CAP);
+  let probeQ = client
+    .from("leads")
+    .select("id")
+    .eq("venue_id", venueId)
+    .is("merged_into_lead_id", null);
+  if (archivedIds.length > 0) {
+    probeQ = probeQ.not("relationship_id", "in", `(${archivedIds.join(",")})`);
+  }
+  const { data: probe, error: probeError } = await probeQ
+    .order("inquiry_date", { ascending: false })
+    .order("created_at", { ascending: false })
+    .range(LEADS_LIST_INDEX_HARD_CAP, LEADS_LIST_INDEX_HARD_CAP);
+  if (probeError) throw probeError;
+  const truncated = ((probe ?? []) as Array<{ id: string }>).length > 0;
+
+  if (truncated) {
+    // Never hand callers a partial index to label as complete global counts.
+    return { leads: [], truncated: true };
+  }
+
+  return {
+    leads: capped.map((r) => mapLead(r, EMPTY_TOUR)),
+    truncated: false,
+  };
+}
+
 export async function getLeads(
   client: DbClient,
   venueId: string,

@@ -339,8 +339,10 @@ describe("CTA + destination", () => {
     const list = readFileSync(resolve("components/leads/lead-list.tsx"), "utf8");
     assert.match(list, /unattendedInquiryLeadIds/);
     assert.doesNotMatch(list, /attention=unseen.*unattended/);
-    const page = readFileSync(resolve("app/(app)/leads/page.tsx"), "utf8");
-    assert.match(page, /getUnattendedInquiryLeadIdsForCurrentVenue/);
+    const island = readFileSync(resolve("components/leads/leads-list-island.tsx"), "utf8");
+    assert.match(island, /getUnattendedInquiryLeadIdsForCurrentVenue/);
+    const query = readFileSync(resolve("lib/leads/list-query.ts"), "utf8");
+    assert.match(query, /unattendedInquiryLeadIds/);
     const loader = readFileSync(resolve("lib/luv/unattended-inquiry-population.ts"), "utf8");
     assert.match(loader, /loadQualifyingUnattendedInquiryLeadIds/);
     const contact = readFileSync(resolve("lib/luv/unattended-inquiry-contact.ts"), "utf8");

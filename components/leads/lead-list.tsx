@@ -15,6 +15,7 @@ function momentumLabel(score: number, status: string): { tier: "hot" | "warm" | 
   return { tier: "early" };
 }
 
+import { loadMoreLeadsAction } from "@/app/(app)/leads/actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,17 +38,23 @@ import {
   formatCurrency,
   leadDisplayName,
   sourceLabel,
-  statusLabel,
 } from "@/lib/leads/constants";
-import { isOpenLeadLifecycle, isOpenLeadOpportunity } from "@/lib/leads/open-lifecycle";
 import type { Lead, LeadStatus } from "@/lib/leads/types";
-import { normalizeEventType } from "@/lib/event-types/canonical";
-import { isStaleWithoutContact } from "@/lib/leads/stale-contact";
 import { salesStageLabel } from "@/lib/leads/sales-stages";
 import { LeadUnseenIndicator } from "@/components/leads/lead-unseen-indicator";
 import { LeadMessageAttentionIndicator } from "@/components/leads/lead-message-attention-indicator";
 import type { LeadMessageAttention } from "@/lib/leads/message-attention";
-import { isUnseenLeadAttention } from "@/lib/navigation/attention";
+import type { LeadsListAttention, LeadsListSort } from "@/lib/leads/list-query";
+import { LEADS_PAGE_SIZE } from "@/lib/leads/list-query";
+import {
+  appendLeadWindow,
+  buildLeadsListHref,
+  leadsFilterFingerprint,
+  nextSearchDraftFromCommitted,
+  progressiveWindowLabel,
+  shouldApplyLoadMoreResult,
+  shouldCommitSearchDraft,
+} from "@/lib/leads/list-navigation";
 import {
   ATTENTION_CHIP,
   ATTENTION_CHIP_COUNT,
@@ -60,9 +67,8 @@ import { cn } from "@/lib/utils";
 
 type FilterKey = "all" | LeadStatus;
 type EventTypeFilter = "all" | string;
-type SortKey = "newest" | "oldest" | "az" | "za" | "event_asc" | "event_desc" | "budget_high" | "budget_low" | "last_contacted" | "commitment_high";
 
-const SORT_OPTIONS: { value: SortKey; label: string }[] = [
+const SORT_OPTIONS: { value: LeadsListSort; label: string }[] = [
   { value: "newest",        label: "Most Recent" },
   { value: "oldest",        label: "Oldest" },
   { value: "az",            label: "A → Z" },
@@ -75,154 +81,143 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
   { value: "commitment_high", label: "Most Progress" },
 ];
 
-function sortLeads(leads: Lead[], sort: SortKey): Lead[] {
-  return [...leads].sort((a, b) => {
-    switch (sort) {
-      case "oldest":        return (a.inquiryDate ?? "") < (b.inquiryDate ?? "") ? -1 : 1;
-      case "az":            return (a.firstName ?? "").localeCompare(b.firstName ?? "");
-      case "za":            return (b.firstName ?? "").localeCompare(a.firstName ?? "");
-      case "event_asc":     return (a.eventDate ?? "9999") < (b.eventDate ?? "9999") ? -1 : 1;
-      case "event_desc":    return (b.eventDate ?? "") < (a.eventDate ?? "") ? -1 : 1;
-      case "budget_high":   return (b.estimatedBudget ?? 0) - (a.estimatedBudget ?? 0);
-      case "budget_low":    return (a.estimatedBudget ?? 0) - (b.estimatedBudget ?? 0);
-      case "last_contacted":return (b.lastContactedAt ?? "") < (a.lastContactedAt ?? "") ? -1 : 1;
-      case "commitment_high": return (b.commitmentScore ?? 0) - (a.commitmentScore ?? 0);
-      default:              return (b.inquiryDate ?? "") < (a.inquiryDate ?? "") ? -1 : 1;
-    }
-  });
+type AttentionFilter = LeadsListAttention;
+
+function stageDisplayName(lead: Lead): string {
+  return salesStageLabel(lead.salesStage ?? lead.status);
 }
 
 export function LeadList({
-  leads,
+  leads: initialLeads,
+  totalLeads,
+  totalMatching: initialTotalMatching,
+  pageSize = LEADS_PAGE_SIZE,
+  hasMore: initialHasMore,
+  statusCounts: statusCountsIn,
+  eventTypeCounts,
   initialAttention,
   initialOutcome = "active",
+  initialQuery = "",
+  initialStatus = "all",
+  initialEventType = "all",
+  initialSort = "newest",
   unattendedInquiryLeadIds = [],
   currentBookedCount = 0,
-  messageAttentionByLeadId = {},
+  messageAttentionByLeadId: initialMessageAttention = {},
+  indexError = null,
 }: {
+  /** First progressive window from the server. */
   leads: Lead[];
+  totalLeads: number;
+  totalMatching: number;
+  pageSize?: number;
+  hasMore: boolean;
+  statusCounts: Record<string, number>;
+  eventTypeCounts: Array<[string, number]>;
   /** Dashboard/Luv deep-link: same 7-day stale-contact condition as generate_venue_recommendations. */
   initialAttention?: "stale_contact" | "open" | "active" | "unseen" | "unattended_inquiry" | null;
   /** lost = the Lost outcome list. Booked is a link to Clients, not a lead filter. */
   initialOutcome?: "active" | "lost";
+  initialQuery?: string;
+  initialStatus?: string;
+  initialEventType?: string;
+  initialSort?: LeadsListSort;
   /** Server-recomputed P-A1 qualifying IDs (same evaluator as the cluster). */
   unattendedInquiryLeadIds?: readonly string[];
   /** Current Booked membership — same population as Clients → All Bookings. */
   currentBookedCount?: number;
   /** Decision C — needs_response message attention, distinct from venue_seen_at. */
   messageAttentionByLeadId?: Record<string, LeadMessageAttention>;
+  /** Recoverable index failure — never show partial counts as complete. */
+  indexError?: string | null;
 }) {
   const router = useRouter();
-  const unattendedIdSet = React.useMemo(
-    () => new Set(unattendedInquiryLeadIds),
-    [unattendedInquiryLeadIds],
+  void unattendedInquiryLeadIds;
+
+  const committedAttention: AttentionFilter =
+    initialAttention === "active" ? "open" : (initialAttention ?? "all");
+  const committedStatus =
+    (initialStatus as FilterKey) || (initialOutcome === "lost" ? "lost" : "all");
+  const committedOutcome = initialOutcome === "lost" || committedStatus === "lost"
+    ? ("lost" as const)
+    : ("active" as const);
+
+  const committed = {
+    q: initialQuery,
+    status: committedStatus,
+    eventType: initialEventType || "all",
+    sort: initialSort,
+    attention: committedAttention,
+    outcome: committedOutcome,
+  };
+
+  const fingerprint = leadsFilterFingerprint(committed);
+
+  const [queryDraft, setQueryDraft] = React.useState(initialQuery);
+  const [statusFilter, setStatusFilter] = React.useState<FilterKey>(committedStatus);
+  const [eventTypeFilter, setEventTypeFilter] = React.useState<EventTypeFilter>(
+    committed.eventType,
   );
-  const [query, setQuery] = React.useState("");
-  const [statusFilter, setStatusFilter] = React.useState<string>(initialOutcome === "lost" ? "lost" : "all");
-  const [eventTypeFilter, setEventTypeFilter] = React.useState<EventTypeFilter>("all");
-  const [sort, setSort] = React.useState<SortKey>(
-    initialAttention === "stale_contact" ? "last_contacted" : "newest",
-  );
-  const [attentionFilter, setAttentionFilter] = React.useState<"all" | "stale_contact" | "open" | "unseen" | "unattended_inquiry">(
-    initialAttention === "stale_contact" ? "stale_contact"
-      : initialAttention === "open" ? "open"
-      : initialAttention === "unseen" ? "unseen"
-      : initialAttention === "unattended_inquiry" ? "unattended_inquiry"
-      : "all",
+  const [sort, setSort] = React.useState<LeadsListSort>(committed.sort);
+  const [attentionFilter, setAttentionFilter] = React.useState<AttentionFilter>(
+    committed.attention,
   );
 
-  const queue = React.useMemo(
-    () => leads.filter((l) => isOpenLeadLifecycle(l.salesStage ?? l.status)),
-    [leads],
+  const [displayedLeads, setDisplayedLeads] = React.useState<Lead[]>(initialLeads);
+  const [totalMatching, setTotalMatching] = React.useState(initialTotalMatching);
+  const [hasMore, setHasMore] = React.useState(initialHasMore);
+  const [messageAttentionByLeadId, setMessageAttentionByLeadId] = React.useState(
+    initialMessageAttention,
   );
+  const [loadingMore, setLoadingMore] = React.useState(false);
+  const [loadMoreError, setLoadMoreError] = React.useState<string | null>(null);
 
-  function isLostLead(lead: Lead): boolean {
-    return String(lead.salesStage ?? lead.status) === "lost";
-  }
+  const lastRequestedQueryRef = React.useRef(initialQuery);
+  const searchGenRef = React.useRef(0);
+  const loadMoreGenRef = React.useRef(0);
+  const fingerprintRef = React.useRef(fingerprint);
+  fingerprintRef.current = fingerprint;
 
-  /** Same open definition as Dashboard Lead Flow — reporting category, not exclude flag. */
-  function leadIsOpenOpportunity(lead: Lead): boolean {
-    return isOpenLeadOpportunity({ salesStage: lead.salesStage ?? lead.status });
-  }
+  // Sync draft/chips from committed URL without clobbering newer keystrokes.
+  React.useEffect(() => {
+    setStatusFilter(committedStatus);
+    setEventTypeFilter(committed.eventType);
+    setSort(committed.sort);
+    setAttentionFilter(committed.attention);
+    setQueryDraft((draft) =>
+      nextSearchDraftFromCommitted({
+        draft,
+        committedUrlQuery: initialQuery,
+        lastRequestedQuery: lastRequestedQueryRef.current,
+      }),
+    );
+    lastRequestedQueryRef.current = initialQuery;
+  }, [
+    fingerprint,
+    initialQuery,
+    committedStatus,
+    committed.eventType,
+    committed.sort,
+    committed.attention,
+  ]);
 
-  function stageDisplayName(lead: Lead): string {
-    return salesStageLabel(lead.salesStage ?? lead.status) || statusLabel(lead.salesStage ?? lead.status);
-  }
-
-  const filtered = React.useMemo(() => {
-    const q = query.toLowerCase().trim();
-    const nowMs = Date.now();
-    if (attentionFilter === "unattended_inquiry") {
-      const base = leads.filter((l) => {
-        if (!unattendedIdSet.has(l.id)) return false;
-        if (!q) return true;
-        return [
-          l.firstName, l.lastName, l.partnerFirstName, l.partnerLastName,
-          l.email, l.phone, l.eventType, l.source,
-        ].some((v) => v?.toLowerCase().includes(q));
-      });
-      return sortLeads(base, sort);
-    }
-    const base = (statusFilter === "lost" ? leads.filter(isLostLead) : queue).filter((l) => {
-      const stage = l.salesStage ?? l.status;
-      if (statusFilter !== "all" && statusFilter !== "lost") {
-        if (stage !== statusFilter) {
-          return false;
-        }
-      }
-      if (eventTypeFilter !== "all") {
-        // Group by canonical key so "Wedding" / "wedding" never become two filters.
-        if (normalizeEventType(l.eventType) !== eventTypeFilter) return false;
-      }
-      if (attentionFilter === "stale_contact") {
-        // Same open-lifecycle + opportunity-age rule as generate_venue_recommendations
-        // (coalesce last contact → inquiry → created; never treat null contact as ancient).
-        if (!leadIsOpenOpportunity(l)) {
-          return false;
-        }
-        if (l.excludeFromBusinessReporting) return false;
-        if (!isStaleWithoutContact({
-          lastContactedAt: l.lastContactedAt,
-          inquiryDate: l.inquiryDate,
-          createdAt: l.createdAt,
-        }, nowMs)) {
-          return false;
-        }
-      }
-      if (attentionFilter === "open") {
-        // Same open-lead definition as Dashboard Lead Flow (non-terminal reporting category).
-        if (!leadIsOpenOpportunity(l)) return false;
-      }
-      if (attentionFilter === "unseen") {
-        // Same population as Leads nav attention badge + row New indicator.
-        if (!isUnseenLeadAttention({
-          venueSeenAt: l.venueSeenAt,
-          salesStage: l.salesStage ?? l.status,
-        })) {
-          return false;
-        }
-      }
-      if (!q) return true;
-      return [
-        l.firstName, l.lastName, l.partnerFirstName, l.partnerLastName,
-        l.email, l.phone, l.eventType, l.source,
-      ].some((v) => v?.toLowerCase().includes(q));
-    });
-    return sortLeads(base, sort);
-  }, [queue, leads, query, statusFilter, eventTypeFilter, sort, attentionFilter, unattendedIdSet]);
+  // Filter/search/sort change → restart progressive window at first chunk.
+  React.useEffect(() => {
+    loadMoreGenRef.current += 1;
+    setDisplayedLeads(initialLeads);
+    setTotalMatching(initialTotalMatching);
+    setHasMore(initialHasMore);
+    setMessageAttentionByLeadId(initialMessageAttention);
+    setLoadingMore(false);
+    setLoadMoreError(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reset only when filter fingerprint changes
+  }, [fingerprint]);
 
   const statusCounts = React.useMemo(() => {
-    const population = queue;
-    const map = new Map<string, number>([["all", population.length]]);
-    ACTIVE_STATUSES.forEach((s) => map.set(s, 0));
-    population.forEach((l) => {
-      const stage = l.salesStage ?? l.status;
-      map.set(stage, (map.get(stage) ?? 0) + 1);
-    });
-    map.set("booked", currentBookedCount);
-    map.set("lost", leads.filter(isLostLead).length);
+    const map = new Map<string, number>(Object.entries(statusCountsIn));
+    if (!map.has("booked")) map.set("booked", currentBookedCount);
     return map;
-  }, [queue, leads, currentBookedCount]);
+  }, [statusCountsIn, currentBookedCount]);
 
   type StageChip = { key: string; label: string; kind: "active" | "booked" | "lost" };
   const activeChips: StageChip[] = [
@@ -239,28 +234,142 @@ export function LeadList({
     { key: "lost", label: "Lost", kind: "lost" },
   ];
 
-  const activeEventTypes = React.useMemo(() => {
-    const population = queue;
-    const seen = new Map<string, number>();
-    population.forEach((l) => {
-      const key = normalizeEventType(l.eventType);
-      if (!key) return;
-      seen.set(key, (seen.get(key) ?? 0) + 1);
-    });
-    return [...seen.entries()].sort((a, b) => b[1] - a[1]);
-  }, [queue]);
-
   const hasActiveFilters =
-    statusFilter !== "all" || eventTypeFilter !== "all" || query || attentionFilter !== "all";
+    statusFilter !== "all" || eventTypeFilter !== "all" || queryDraft || attentionFilter !== "all";
+
+  function navigateCommitted(next: Partial<{
+    q: string;
+    status: string;
+    eventType: string;
+    sort: LeadsListSort;
+    attention: AttentionFilter;
+    outcome: "active" | "lost";
+  }>) {
+    const href = buildLeadsListHref({
+      q: next.q ?? committed.q,
+      status: next.status ?? committed.status,
+      eventType: next.eventType ?? committed.eventType,
+      sort: next.sort ?? committed.sort,
+      attention: next.attention ?? committed.attention,
+      outcome: next.outcome ?? committed.outcome,
+    });
+    if (next.q != null) lastRequestedQueryRef.current = next.q;
+    router.replace(href);
+  }
 
   function showAllActiveLeads() {
+    searchGenRef.current += 1;
+    lastRequestedQueryRef.current = "";
+    setQueryDraft("");
     setAttentionFilter("all");
     setStatusFilter("all");
+    setEventTypeFilter("all");
     router.replace("/leads");
   }
 
+  // Debounced search — generation-gated so stale timers cannot overwrite newer drafts.
+  React.useEffect(() => {
+    const generation = ++searchGenRef.current;
+    const handle = window.setTimeout(() => {
+      if (
+        !shouldCommitSearchDraft({
+          draft: queryDraft,
+          committedUrlQuery: initialQuery,
+          generation,
+          currentGeneration: searchGenRef.current,
+        })
+      ) {
+        return;
+      }
+      lastRequestedQueryRef.current = queryDraft;
+      navigateCommitted({ q: queryDraft });
+    }, 300);
+    return () => window.clearTimeout(handle);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- debounce draft only
+  }, [queryDraft]);
+
+  async function onShowMore() {
+    if (loadingMore || !hasMore || indexError) return;
+    const gen = ++loadMoreGenRef.current;
+    const requestFingerprint = fingerprint;
+    const excludeIds = displayedLeads.map((l) => l.id);
+    setLoadingMore(true);
+    setLoadMoreError(null);
+    try {
+      const result = await loadMoreLeadsAction({
+        q: committed.q,
+        status: committed.status,
+        eventType: committed.eventType,
+        sort: committed.sort,
+        attention: committed.attention,
+        outcome: committed.outcome,
+        excludeIds,
+        filterFingerprint: requestFingerprint,
+        limit: pageSize,
+      });
+      if (
+        !shouldApplyLoadMoreResult({
+          requestGeneration: gen,
+          currentGeneration: loadMoreGenRef.current,
+          requestFingerprint,
+          currentFingerprint: fingerprintRef.current,
+        })
+      ) {
+        return;
+      }
+      if (!result.ok) {
+        setLoadMoreError(result.message);
+        return;
+      }
+      if (result.filterFingerprint !== fingerprintRef.current) return;
+      setDisplayedLeads((prev) => appendLeadWindow(prev, result.leads));
+      setMessageAttentionByLeadId((prev) => ({
+        ...prev,
+        ...result.messageAttentionByLeadId,
+      }));
+      setTotalMatching(result.totalMatching);
+      setHasMore(result.hasMore);
+    } catch {
+      if (gen !== loadMoreGenRef.current) return;
+      setLoadMoreError("Could not load more leads. Try again.");
+    } finally {
+      if (gen === loadMoreGenRef.current) setLoadingMore(false);
+    }
+  }
+
+  const queueEmpty = (statusCounts.get("all") ?? 0) === 0 && statusFilter !== "lost";
+  const showProgressive = totalMatching > 0 && displayedLeads.length > 0;
+
+  if (indexError) {
+    return (
+      <div
+        className="rounded-[0.75rem] border border-[color:color-mix(in_oklch,var(--htc-soft-rose)_45%,var(--htc-border-warm))] bg-[var(--htc-soft-blush)] px-4 py-6 text-center"
+        role="alert"
+        data-testid="leads-index-error"
+      >
+        <p className="font-heading text-base font-medium text-heading">Leads list unavailable</p>
+        <p className="mt-2 text-sm text-muted-foreground">{indexError}</p>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="mt-4"
+          onClick={() => router.refresh()}
+        >
+          Try again
+        </Button>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-4">
+    <div
+      className="space-y-4"
+      data-testid="leads-list-root"
+      data-leads-page-size={pageSize}
+      data-leads-shown={displayedLeads.length}
+      data-leads-total-matching={totalMatching}
+    >
     <div className="space-y-3">
       {attentionFilter === "stale_contact" && (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-[0.75rem] border border-[color:color-mix(in_oklch,var(--htc-soft-rose)_45%,var(--htc-border-warm))] bg-[var(--htc-soft-blush)] px-3 py-2 text-sm">
@@ -323,15 +432,23 @@ export function LeadList({
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
           <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            value={queryDraft}
+            onChange={(e) => setQueryDraft(e.target.value)}
             placeholder="Search by name, email, event type…"
             className="border-[color:var(--htc-border-warm)] bg-card pl-9"
           />
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
           <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" />
-          <Select value={sort} onValueChange={(v) => setSort(v as SortKey)} items={SORT_OPTIONS}>
+          <Select
+            value={sort}
+            onValueChange={(v) => {
+              const next = v as LeadsListSort;
+              setSort(next);
+              navigateCommitted({ sort: next, q: queryDraft });
+            }}
+            items={SORT_OPTIONS}
+          >
             <SelectTrigger className="h-9 w-44 border-[color:var(--htc-border-warm)] bg-card text-sm text-muted-foreground">
               <SelectValue placeholder="Most Recent" />
             </SelectTrigger>
@@ -346,7 +463,6 @@ export function LeadList({
         <span className="text-xs text-muted-foreground font-medium mr-0.5">Stage:</span>
         {stageChips.map((chip) => {
           const count = statusCounts.get(chip.key) ?? 0;
-          /* New Inquiry with population uses blush attention (Clients Needs Attention pattern). */
           const attentionIdle = chip.key === "new_inquiry" && count > 0;
           const chipClass = (active: boolean) =>
             cn(
@@ -378,9 +494,22 @@ export function LeadList({
                   showAllActiveLeads();
                   return;
                 }
-                setStatusFilter(chip.key);
-                if (chip.kind === "lost") router.replace("/leads?view=lost");
-                else if (initialOutcome === "lost") router.replace("/leads");
+                setStatusFilter(chip.key as FilterKey);
+                if (chip.kind === "lost") {
+                  setAttentionFilter("all");
+                  navigateCommitted({
+                    status: "lost",
+                    outcome: "lost",
+                    attention: "all",
+                    q: queryDraft,
+                  });
+                } else {
+                  navigateCommitted({
+                    status: chip.key,
+                    outcome: "active",
+                    q: queryDraft,
+                  });
+                }
               }}
               className={chipClass(active)}
             >
@@ -394,20 +523,26 @@ export function LeadList({
         All is active sales work. Booked and Lost are outcomes and are not included in All.
       </p>
 
-      {activeEventTypes.length > 1 && (
+      {eventTypeCounts.length > 1 && (
         <div className="flex flex-wrap gap-1.5 items-center">
           <span className="text-xs text-muted-foreground font-medium mr-0.5">
             <SlidersHorizontal className="inline h-3 w-3 mr-1" />Type:
           </span>
-          <button type="button" onClick={() => setEventTypeFilter("all")}
+          <button type="button" onClick={() => {
+            setEventTypeFilter("all");
+            navigateCommitted({ eventType: "all", q: queryDraft });
+          }}
             className={cn(
               "inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium transition-colors",
               eventTypeFilter === "all" ? SELECTED_CHIP : IDLE_CHIP,
             )}>
             All
           </button>
-          {activeEventTypes.map(([type, count]) => (
-            <button key={type} type="button" onClick={() => setEventTypeFilter(type)}
+          {eventTypeCounts.map(([type, count]) => (
+            <button key={type} type="button" onClick={() => {
+              setEventTypeFilter(type);
+              navigateCommitted({ eventType: type, q: queryDraft });
+            }}
               className={cn(
                 "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors",
                 eventTypeFilter === type ? SELECTED_CHIP : IDLE_CHIP,
@@ -424,13 +559,13 @@ export function LeadList({
       </div>
 
       {hasActiveFilters && (
-        <button type="button" onClick={() => { setQuery(""); setStatusFilter("all"); setEventTypeFilter("all"); showAllActiveLeads(); }}
+        <button type="button" onClick={() => showAllActiveLeads()}
           className="text-xs text-muted-foreground hover:text-foreground transition-colors underline-offset-2 hover:underline">
           Clear all filters
         </button>
       )}
 
-      {leads.length === 0 && (
+      {totalLeads === 0 && (
         <div className="flex flex-col items-center justify-center rounded-sm border border-dashed border-border bg-card/40 py-16 text-center">
           <p className="font-heading text-lg font-medium text-heading">No leads yet</p>
           <p className="mt-1 mb-4 text-sm text-muted-foreground">
@@ -442,7 +577,7 @@ export function LeadList({
         </div>
       )}
 
-      {statusFilter === "lost" && filtered.length === 0 && (statusCounts.get("lost") ?? 0) === 0 && leads.length > 0 && (
+      {statusFilter === "lost" && totalMatching === 0 && (statusCounts.get("lost") ?? 0) === 0 && totalLeads > 0 && (
         <div className="flex flex-col items-center justify-center rounded-sm border border-dashed border-border bg-card/40 py-16 text-center">
           <p className="font-heading text-lg font-medium text-heading">No lost opportunities</p>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -451,7 +586,7 @@ export function LeadList({
         </div>
       )}
 
-      {statusFilter !== "lost" && queue.length === 0 && leads.length > 0 && (
+      {statusFilter !== "lost" && queueEmpty && totalLeads > 0 && (
         <div className="flex flex-col items-center justify-center rounded-sm border border-dashed border-border bg-card/40 py-16 text-center">
           <p className="font-heading text-lg font-medium text-heading">No active leads</p>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -460,22 +595,22 @@ export function LeadList({
         </div>
       )}
 
-      {statusFilter === "lost" && filtered.length === 0 && (statusCounts.get("lost") ?? 0) > 0 && (
+      {statusFilter === "lost" && totalMatching === 0 && (statusCounts.get("lost") ?? 0) > 0 && (
         <div className="rounded-sm border border-dashed border-border py-10 text-center">
           <p className="text-sm text-muted-foreground">No lost opportunities match your filters.</p>
         </div>
       )}
 
-      {statusFilter !== "lost" && queue.length > 0 && filtered.length === 0 && (
+      {statusFilter !== "lost" && !queueEmpty && totalMatching === 0 && (
         <div className="rounded-sm border border-dashed border-border py-10 text-center">
           <p className="text-sm text-muted-foreground">No leads match your filters.</p>
-          <Button variant="link" size="sm" className="mt-1" onClick={() => { setQuery(""); setStatusFilter("all"); setEventTypeFilter("all"); }}>
+          <Button variant="link" size="sm" className="mt-1" onClick={() => showAllActiveLeads()}>
             Clear filters
           </Button>
         </div>
       )}
 
-      {filtered.length > 0 && (
+      {displayedLeads.length > 0 && (
         <div className="htc-hospitality-table">
           <Table>
             <TableHeader>
@@ -492,7 +627,7 @@ export function LeadList({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map((lead) => {
+              {displayedLeads.map((lead) => {
                 const stage = lead.salesStage ?? lead.status;
                 return (
                 <TableRow key={lead.id} className="group">
@@ -555,6 +690,33 @@ export function LeadList({
               })}
             </TableBody>
           </Table>
+        </div>
+      )}
+
+      {showProgressive && (
+        <div
+          className="flex flex-col items-center gap-2 pt-2"
+          data-testid="leads-progressive"
+        >
+          <p className="text-xs text-muted-foreground" data-testid="leads-showing-label">
+            {progressiveWindowLabel(displayedLeads.length, totalMatching)}
+          </p>
+          {hasMore && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={loadingMore}
+              onClick={() => void onShowMore()}
+              data-testid="leads-show-more"
+              className="border-[color:var(--htc-border-warm)]"
+            >
+              {loadingMore ? "Loading…" : "Show 20 more ↓"}
+            </Button>
+          )}
+          {loadMoreError && (
+            <p className="text-xs text-destructive" role="alert">{loadMoreError}</p>
+          )}
         </div>
       )}
     </div>
