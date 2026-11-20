@@ -1,5 +1,6 @@
+import { Suspense } from "react";
 import { LeadList } from "@/components/leads/lead-list";
-import { loadBookedMembershipSets } from "@/lib/booking-journey/booked-membership";
+import { LeadsBookedChipCount } from "@/components/leads/leads-booked-chip-count";
 import { getLeadsListPage } from "@/lib/leads/service";
 import { loadLeadMessageAttentionMap } from "@/lib/leads/message-attention";
 import type { LeadsListAttention, LeadsListSort } from "@/lib/leads/list-query";
@@ -65,39 +66,19 @@ export async function LeadsListIsland({
     offset: 0 as const,
   };
 
-  // Wave 1: booked membership and lean index are independent for the common path.
-  // Unattended attention needs qualifying IDs before filter — keep that dependency ordered.
-  let bookedMembership: Awaited<ReturnType<typeof loadBookedMembershipSets>>;
+  // Step 2: list + attention on the critical path. Booked chip count streams in
+  // under Suspense (authoritative membership stays correct, just deferred).
+  // Unattended attention still needs qualifying IDs before the page query.
   let unattendedInquiryLeadIds: string[] = [];
-  let listPage: Awaited<ReturnType<typeof getLeadsListPage>>;
-
   if (needsUnattendedIds) {
-    [bookedMembership, unattendedInquiryLeadIds] = await Promise.all([
-      loadBookedMembershipSets(),
-      getUnattendedInquiryLeadIdsForCurrentVenue(),
-    ]);
-    listPage = await getLeadsListPage({
-      ...listParamsBase,
-      unattendedInquiryLeadIds,
-      currentBookedCount: bookedMembership.currentClientIds.size,
-    });
-  } else {
-    [bookedMembership, listPage] = await Promise.all([
-      loadBookedMembershipSets(),
-      getLeadsListPage({
-        ...listParamsBase,
-        unattendedInquiryLeadIds: [],
-        currentBookedCount: 0,
-      }),
-    ]);
-    listPage = {
-      ...listPage,
-      statusCounts: {
-        ...listPage.statusCounts,
-        booked: bookedMembership.currentClientIds.size,
-      },
-    };
+    unattendedInquiryLeadIds = await getUnattendedInquiryLeadIdsForCurrentVenue();
   }
+
+  const listPage = await getLeadsListPage({
+    ...listParamsBase,
+    unattendedInquiryLeadIds,
+    currentBookedCount: 0,
+  });
 
   const messageAttentionByLeadId: Record<string, { conversationId: string; href: string }> = {};
   if (isSupabaseConfigured && listPage.leads.length > 0) {
@@ -127,7 +108,12 @@ export async function LeadsListIsland({
       initialEventType={listPage.params.eventType}
       initialSort={listPage.params.sort}
       unattendedInquiryLeadIds={unattendedInquiryLeadIds}
-      currentBookedCount={bookedMembership.currentClientIds.size}
+      currentBookedCount={0}
+      bookedCountSlot={
+        <Suspense fallback={<span aria-hidden="true">…</span>}>
+          <LeadsBookedChipCount />
+        </Suspense>
+      }
       messageAttentionByLeadId={messageAttentionByLeadId}
       indexError={listPage.indexError}
     />

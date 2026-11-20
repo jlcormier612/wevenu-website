@@ -156,9 +156,12 @@ describe("shared membership surfaces", () => {
   it("Leads Booked chip uses current membership and links to Clients All Bookings", () => {
     const island = read("components/leads/leads-list-island.tsx");
     const list = read("components/leads/lead-list.tsx");
-    assert.match(island, /loadBookedMembershipSets/);
-    assert.match(island, /currentBookedCount:\s*bookedMembership\.currentClientIds\.size/);
-    assert.match(list, /currentBookedCount/);
+    const chipCount = read("components/leads/leads-booked-chip-count.tsx");
+    assert.match(island, /LeadsBookedChipCount/);
+    assert.match(island, /bookedCountSlot/);
+    assert.match(chipCount, /loadBookedMembershipSets/);
+    assert.match(chipCount, /currentClientIds\.size/);
+    assert.match(list, /bookedCountSlot/);
     assert.match(list, /href="\/clients\?filter=all"/);
     assert.doesNotMatch(list, /stage === "booked" \|\| stage === "won"/);
     assert.doesNotMatch(list, /leads\.filter\(isBookedLead\)/);

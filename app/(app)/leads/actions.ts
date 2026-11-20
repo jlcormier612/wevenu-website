@@ -2,7 +2,6 @@
 
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
-import { loadBookedMembershipSets } from "@/lib/booking-journey/booked-membership";
 import { loadLeadMessageAttentionMap } from "@/lib/leads/message-attention";
 import type { LeadMessageAttention } from "@/lib/leads/message-attention";
 import {
@@ -79,12 +78,11 @@ export async function loadMoreLeadsAction(
     };
   }
 
-  const [bookedMembership, unattendedInquiryLeadIds] = await Promise.all([
-    loadBookedMembershipSets(),
+  // Booked membership is not returned from Show more — do not block the next page on it.
+  const unattendedInquiryLeadIds =
     attention === "unattended_inquiry"
-      ? getUnattendedInquiryLeadIdsForCurrentVenue()
-      : Promise.resolve([] as string[]),
-  ]);
+      ? await getUnattendedInquiryLeadIdsForCurrentVenue()
+      : [];
 
   const listPage = await getLeadsListPage({
     q,
@@ -96,7 +94,7 @@ export async function loadMoreLeadsAction(
     excludeIds: input.excludeIds,
     pageSize: limit,
     unattendedInquiryLeadIds,
-    currentBookedCount: bookedMembership.currentClientIds.size,
+    currentBookedCount: 0,
   });
 
   if (listPage.indexTruncated) {
