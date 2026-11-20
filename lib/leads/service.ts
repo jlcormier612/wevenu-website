@@ -111,9 +111,9 @@ export async function getLeads(filters?: { q?: string; status?: string }): Promi
 export type { LeadsListPageResult, LeadsListParams };
 
 /**
- * Live Leads list window (Wave 1 path restored after Phase 1D FAIL).
- * Lean index + in-memory filter/sort/window. The paged SQL candidate stays
- * off this path until both speed and correctness gates pass.
+ * Live Leads list window (Wave 1 path).
+ * Hot-path RPCs stay off this path: query gates passed, but browser remasure
+ * after wire (`fbc175f4`) did not beat Wave 1 Filter — live list rolled back.
  */
 export async function getLeadsListPage(
   params: LeadsListParams = {},

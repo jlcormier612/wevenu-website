@@ -773,7 +773,7 @@ export async function queryLeadsListPage(
 
 /**
  * Candidate hot path: page rows + counts in parallel.
- * Not used by getLeadsListPage until speed and correctness gates both pass.
+ * Not used by getLeadsListPage after browser remasure failed to beat Wave 1 Filter.
  */
 export async function queryLeadsListPageHotPath(
   client: DbClient,

@@ -1,9 +1,9 @@
 /**
  * Phase 1 paged Leads candidate — semantics for DB paging.
  *
- * Live list is back on Wave 1 (`getLeadsListIndex`) after Phase 1D FAIL.
- * Candidate RPCs stay off the live path until both gates pass:
- * correctness (ids/order/totals) and speed (beat Wave 1 on scoreboard hops).
+ * Live list is on Wave 1 (`getLeadsListIndex`). Split hot-path RPCs remain
+ * candidates: query correctness + query speed passed, but browser remasure
+ * after wire did not beat Wave 1 Filter.
  */
 
 import { normalizeEventType } from "@/lib/event-types/canonical";

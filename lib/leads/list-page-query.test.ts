@@ -349,8 +349,8 @@ describe("resolved list stage matches the index mapper", () => {
   });
 });
 
-describe("Phase 1 recovery — live list stays on Wave 1 until dual gates pass", () => {
-  it("keeps candidate RPCs off getLeadsListPage and splits rows from counts", () => {
+describe("Phase 1 — live list stays on Wave 1 after browser remasure rollback", () => {
+  it("keeps hot-path RPCs off getLeadsListPage and splits rows from counts", () => {
     const combined = readFileSync(
       resolve("supabase/migrations/20270205120000_leads_list_page_query.sql"),
       "utf8",
