@@ -1,9 +1,9 @@
 /**
- * Phase 1 paged Leads candidate — semantics for DB paging.
+ * Phase 1 paged Leads — semantics for DB paging.
  *
- * Live list is back on Wave 1 (`getLeadsListIndex`) after Phase 1D FAIL.
- * Candidate RPCs stay off the live path until both gates pass:
- * correctness (ids/order/totals) and speed (beat Wave 1 on scoreboard hops).
+ * Live list uses the split hot path (`query_leads_list_rows` +
+ * `query_leads_list_counts`) after dual gates PASS. The combined
+ * `query_leads_list_page` RPC remains unused by the live UI.
  */
 
 import { normalizeEventType } from "@/lib/event-types/canonical";
@@ -27,9 +27,9 @@ import { isUnseenLeadAttention } from "@/lib/navigation/attention";
 
 /** Legacy combined candidate. Not called by the live list page. */
 export const LEADS_LIST_PAGE_RPC = "query_leads_list_page";
-/** Hot-path page rows only. Not called by the live list page. */
+/** Live hot-path page rows only. */
 export const LEADS_LIST_ROWS_RPC = "query_leads_list_rows";
-/** Hot-path counts only. Not called by the live list page. */
+/** Live hot-path counts only. */
 export const LEADS_LIST_COUNTS_RPC = "query_leads_list_counts";
 
 /**

@@ -10,11 +10,6 @@ import { createAdminClient } from "@/integrations/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/env";
 import * as repo from "@/lib/leads/repository";
 import {
-  buildEventTypeCounts,
-  buildStatusCounts,
-  filterLeadsForList,
-  nextProgressiveWindow,
-  sliceLeadWindow,
   LEADS_PAGE_SIZE,
   type LeadsListPageResult,
   type LeadsListParams,
@@ -111,9 +106,9 @@ export async function getLeads(filters?: { q?: string; status?: string }): Promi
 export type { LeadsListPageResult, LeadsListParams };
 
 /**
- * Live Leads list window (Wave 1 path restored after Phase 1D FAIL).
- * Lean index + in-memory filter/sort/window. The paged SQL candidate stays
- * off this path until both speed and correctness gates pass.
+ * Live Leads list window — split hot path after dual gates PASS
+ * (correctness + query-path speed vs Wave 1).
+ * Rows RPC + counts RPC in parallel; not the combined query_leads_list_page.
  */
 export async function getLeadsListPage(
   params: LeadsListParams = {},
@@ -146,82 +141,7 @@ export async function getLeadsListPage(
   const venue = await getCurrentVenue();
   if (!venue) return empty;
   const supabase = await createClient();
-  const indexResult = await repo.getLeadsListIndex(supabase, venue.id);
-  if (indexResult.truncated) {
-    return {
-      ...empty,
-      indexTruncated: true,
-      indexError: repo.LEADS_LIST_INDEX_TRUNCATED_MESSAGE,
-    };
-  }
-  const index = indexResult.leads;
-  const outcome = params.outcome ?? "active";
-  const status = params.status ?? (outcome === "lost" ? "lost" : "all");
-  const attention = (params.attention ?? "all") as LeadsListAttention;
-  const eventType = params.eventType ?? "all";
-  const sort = (params.sort ?? "newest") as LeadsListSort;
-  const q = params.q ?? "";
-  const currentBookedCount = params.currentBookedCount ?? 0;
-  const offset =
-    params.offset != null
-      ? params.offset
-      : params.page != null
-        ? Math.max(0, (params.page - 1) * pageSize)
-        : 0;
-
-  const statusCountsMap = buildStatusCounts(index, currentBookedCount);
-  const statusCounts: Record<string, number> = Object.fromEntries(statusCountsMap);
-  const eventTypeCounts = buildEventTypeCounts(index);
-
-  const filtered = filterLeadsForList(index, {
-    ...params,
-    status,
-    attention,
-    eventType,
-    sort,
-    outcome,
-    q,
-  });
-
-  const excludeIds = params.excludeIds ?? [];
-  const windowed =
-    excludeIds.length > 0
-      ? (() => {
-          const progressive = nextProgressiveWindow(filtered, excludeIds, pageSize);
-          return {
-            pageItems: progressive.pageItems,
-            offset: 0,
-            pageSize: progressive.pageSize,
-            totalMatching: progressive.totalMatching,
-            hasMore: progressive.hasMore,
-          };
-        })()
-      : sliceLeadWindow(filtered, offset, pageSize);
-  const totalPages = Math.max(1, Math.ceil(windowed.totalMatching / pageSize) || 1);
-
-  return {
-    leads: windowed.pageItems,
-    totalLeads: index.length,
-    totalMatching: windowed.totalMatching,
-    offset: windowed.offset,
-    pageSize: windowed.pageSize,
-    hasMore: windowed.hasMore,
-    page: Math.floor(windowed.offset / pageSize) + 1,
-    totalPages,
-    statusCounts,
-    eventTypeCounts,
-    indexTruncated: false,
-    indexError: null,
-    params: {
-      q,
-      status,
-      eventType,
-      sort,
-      attention,
-      outcome,
-      offset: windowed.offset,
-    },
-  };
+  return repo.queryLeadsListPageHotPath(supabase, venue.id, params);
 }
 
 /**
