@@ -25,6 +25,14 @@ import type {
 } from "@/lib/leads/types";
 import { isSalesStage, migrateLegacyStatusToSalesStage, type SalesStage } from "@/lib/leads/sales-stages";
 import { leadImportFingerprint } from "@/lib/import/venue-controlled-match";
+import { LEADS_LIST_PAGE_RPC } from "@/lib/leads/list-page-query";
+import {
+  LEADS_PAGE_SIZE,
+  type LeadsListAttention,
+  type LeadsListPageResult,
+  type LeadsListParams,
+  type LeadsListSort,
+} from "@/lib/leads/list-query";
 
 type DbClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -654,6 +662,108 @@ export async function getLeadsListIndex(
   return {
     leads: capped.map((r) => mapLead(r, EMPTY_TOUR)),
     truncated: false,
+  };
+}
+
+type LeadsListPageRpcPayload = {
+  leads?: LeadRow[];
+  total_leads?: number;
+  total_matching?: number;
+  offset?: number;
+  page_size?: number;
+  has_more?: boolean;
+  status_counts?: Record<string, number>;
+  event_type_counts?: unknown;
+};
+
+function leadsListCountPairs(value: unknown): Array<[string, number]> {
+  if (!Array.isArray(value)) return [];
+  const pairs: Array<[string, number]> = [];
+  for (const entry of value) {
+    if (!Array.isArray(entry) || entry.length < 2) continue;
+    const key = String(entry[0] ?? "");
+    if (!key) continue;
+    pairs.push([key, Number(entry[1] ?? 0)]);
+  }
+  return pairs;
+}
+
+/**
+ * Phase 1 paged read. Same filters and order as the prior in-memory list.
+ * Used by getLeadsListPage after Phase 1B shadow compare PASS.
+ */
+export async function queryLeadsListPage(
+  client: DbClient,
+  venueId: string,
+  params: LeadsListParams = {},
+  now: Date = new Date(),
+): Promise<LeadsListPageResult> {
+  const pageSize = params.pageSize ?? LEADS_PAGE_SIZE;
+  const outcome = params.outcome ?? "active";
+  const status = params.status ?? (outcome === "lost" ? "lost" : "all");
+  const attention = (params.attention ?? "all") as LeadsListAttention;
+  const eventType = params.eventType ?? "all";
+  const sort = (params.sort ?? "newest") as LeadsListSort;
+  const q = params.q ?? "";
+  const offset =
+    params.excludeIds && params.excludeIds.length > 0
+      ? 0
+      : params.offset != null
+        ? params.offset
+        : params.page != null
+          ? Math.max(0, (params.page - 1) * pageSize)
+          : 0;
+
+  const { data, error } = await client.rpc(LEADS_LIST_PAGE_RPC, {
+    p_venue_id: venueId,
+    p_outcome: outcome,
+    p_status: status,
+    p_event_type: eventType,
+    p_attention: attention,
+    p_q: q,
+    p_sort: sort,
+    p_offset: offset,
+    p_limit: pageSize,
+    p_exclude_ids: [...(params.excludeIds ?? [])],
+    p_unattended_ids: [...(params.unattendedInquiryLeadIds ?? [])],
+    p_now: now.toISOString(),
+  });
+  if (error) throw error;
+
+  const payload = (data ?? {}) as LeadsListPageRpcPayload;
+  const leads = (payload.leads ?? []).map((row) => mapLead(row, EMPTY_TOUR));
+  const reportedOffset = Number(payload.offset ?? offset);
+  const reportedSize = Number(payload.page_size ?? pageSize);
+  const totalMatching = Number(payload.total_matching ?? 0);
+  const totalPages = Math.max(1, Math.ceil(totalMatching / reportedSize) || 1);
+  const statusCounts: Record<string, number> = {};
+  for (const [key, value] of Object.entries(payload.status_counts ?? {})) {
+    statusCounts[key] = Number(value ?? 0);
+  }
+  statusCounts.booked = params.currentBookedCount ?? 0;
+
+  return {
+    leads,
+    totalLeads: Number(payload.total_leads ?? 0),
+    totalMatching,
+    offset: reportedOffset,
+    pageSize: reportedSize,
+    hasMore: Boolean(payload.has_more),
+    page: Math.floor(reportedOffset / reportedSize) + 1,
+    totalPages,
+    statusCounts,
+    eventTypeCounts: leadsListCountPairs(payload.event_type_counts),
+    indexTruncated: false,
+    indexError: null,
+    params: {
+      q,
+      status,
+      eventType,
+      sort,
+      attention,
+      outcome,
+      offset: reportedOffset,
+    },
   };
 }
 
