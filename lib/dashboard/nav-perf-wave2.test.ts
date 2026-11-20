@@ -29,7 +29,8 @@ describe("NAV-PERF Wave 2 — dashboard SSR critical path", () => {
     assert.match(briefing, /getContractsForDashboardBriefing/);
   });
 
-  it("getDashboardData reuses cached header activation fields (no second activation pass)", () => {
+  it("getDashboardFocusCore reuses cached header activation fields (no second activation pass)", () => {
+    assert.match(service, /export const getDashboardFocusCore = cache/);
     assert.match(service, /const headerPromise = getDashboardHeaderData\(\)/);
     assert.match(service, /activationScore = header\.activationScore/);
     const wave2 = service.slice(
@@ -39,6 +40,15 @@ describe("NAV-PERF Wave 2 — dashboard SSR critical path", () => {
     assert.doesNotMatch(wave2, /getActivationScore/);
     assert.doesNotMatch(wave2, /getNextPendingMilestone/);
     assert.doesNotMatch(wave2, /isVenueReadyToInviteCouples/);
+  });
+
+  it("Focus island renders from focus core; Luv entry awaits full getDashboardData", () => {
+    const focusIsland = readFileSync(resolve("components/dashboard/dashboard-focus-island.tsx"), "utf8");
+    assert.match(focusIsland, /getDashboardFocusCore/);
+    assert.match(focusIsland, /DashboardLuvEntryIsland/);
+    assert.match(focusIsland, /getDashboardData/);
+    assert.match(service, /export const getDashboardData = cache/);
+    assert.match(service, /getDashboardFocusCore\(\)/);
   });
 
   it("workspace layout parallelizes enrollment, membership, and staff role after venue", () => {

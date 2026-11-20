@@ -15,9 +15,11 @@ function read(path: string): string {
 describe("Leads All vs unseen attention", () => {
   it("/leads with no params is the full active population and does not default unseen", () => {
     const page = read("app/(app)/leads/page.tsx");
-    assert.match(page, /getLeads\(\)/);
-    assert.match(page, /attention === "unseen" \? "unseen"/);
-    assert.doesNotMatch(page, /initialAttention = "unseen"/);
+    const island = read("components/leads/leads-list-island.tsx");
+    assert.match(page, /LeadsListIsland/);
+    assert.match(island, /getLeadsListPage/);
+    assert.match(island, /attention === "unseen"/);
+    assert.doesNotMatch(island, /initialAttention = "unseen"/);
     const list = read("components/leads/lead-list.tsx");
     assert.match(list, /: "all"/);
   });
@@ -34,12 +36,12 @@ describe("Leads All vs unseen attention", () => {
   });
 
   it("/leads?attention=unseen remains an explicit attention view", () => {
-    const page = read("app/(app)/leads/page.tsx");
+    const island = read("components/leads/leads-list-island.tsx");
     const list = read("components/leads/lead-list.tsx");
-    assert.match(page, /attention === "unseen"/);
+    const query = read("lib/leads/list-query.ts");
+    assert.match(island, /attention === "unseen"/);
     assert.match(list, /attentionFilter === "unseen"/);
-    assert.match(list, /attentionFilter === "unseen"/);
-    assert.match(list, /isUnseenLeadAttention/);
+    assert.match(query, /isUnseenLeadAttention/);
   });
 
   it("All and Show all active leads clear unseen attention and strip the URL", () => {
@@ -55,22 +57,25 @@ describe("Leads All vs unseen attention", () => {
   });
 
   it("stage counts on All use the full active queue, not the unseen subset", () => {
-    const list = read("components/leads/lead-list.tsx");
-    const counts = list.slice(
-      list.indexOf("const statusCounts"),
-      list.indexOf("const activeEventTypes"),
+    const query = read("lib/leads/list-query.ts");
+    const counts = query.slice(
+      query.indexOf("export function buildStatusCounts"),
+      query.indexOf("export function buildEventTypeCounts"),
     );
-    assert.match(counts, /const population = queue;/);
-    assert.doesNotMatch(counts, /attentionFilter === "unseen"/);
+    assert.match(counts, /allLeads\.filter\(isActiveQueueLead\)/);
+    assert.doesNotMatch(counts, /attention === "unseen"/);
     assert.match(counts, /map\.set\("lost"/);
     assert.match(counts, /currentBookedCount/);
   });
 
   it("Booked and Lost remain outcomes outside All", () => {
+    const query = read("lib/leads/list-query.ts");
+    assert.match(query, /isOpenLeadLifecycle/);
+    assert.match(query, /isLostLead/);
+    assert.match(query, /outcome === "lost"/);
     const list = read("components/leads/lead-list.tsx");
-    assert.match(list, /const queue = React\.useMemo\(/);
-    assert.match(list, /isOpenLeadLifecycle\(l\.salesStage \?\? l\.status\)/);
-    assert.match(list, /statusFilter === "lost" \? leads\.filter\(isLostLead\) : queue/);
+    assert.match(list, /kind: "booked"/);
+    assert.match(list, /href="\/clients\?filter=all"/);
   });
 
   it("markLeadVenueSeen is venue_seen_at only and does not change All membership", () => {
@@ -78,22 +83,28 @@ describe("Leads All vs unseen attention", () => {
     assert.match(service, /export async function markLeadVenueSeen/);
     assert.match(service, /venue_seen_at/);
     assert.doesNotMatch(service.slice(service.indexOf("export async function markLeadVenueSeen"), service.indexOf("export async function markVenueToursSeen")), /sales_stage/);
-    const list = read("components/leads/lead-list.tsx");
-    assert.match(list, /if \(attentionFilter === "unseen"\)/);
-    assert.match(list, /isUnseenLeadAttention/);
-    const allFilteredStart = list.indexOf("const filtered");
-    const unseenGate = list.indexOf('if (attentionFilter === "unseen")');
-    assert.ok(unseenGate > allFilteredStart);
-    const beforeUnseen = list.slice(allFilteredStart, unseenGate);
+    const query = read("lib/leads/list-query.ts");
+    assert.match(query, /attention === "unseen"/);
+    assert.match(query, /isUnseenLeadAttention/);
+    const filterFn = query.slice(
+      query.indexOf("export function filterLeadsForList"),
+      query.indexOf("export function paginateLeads"),
+    );
+    const unseenGate = filterFn.indexOf('attention === "unseen"');
+    assert.ok(unseenGate > 0);
+    const beforeUnseen = filterFn.slice(0, unseenGate);
     assert.doesNotMatch(beforeUnseen, /venueSeenAt/);
   });
 
   it("a new unseen lead does not hide previously seen active leads from All", () => {
-    const list = read("components/leads/lead-list.tsx");
-    const filtered = list.slice(list.indexOf("const filtered"), list.indexOf("const statusCounts"));
-    assert.match(filtered, /attentionFilter === "unseen"/);
+    const query = read("lib/leads/list-query.ts");
+    const filterFn = query.slice(
+      query.indexOf("export function filterLeadsForList"),
+      query.indexOf("export function paginateLeads"),
+    );
+    assert.match(filterFn, /attention === "unseen"/);
     assert.doesNotMatch(
-      filtered.slice(0, filtered.indexOf('if (attentionFilter === "unseen")')),
+      filterFn.slice(0, filterFn.indexOf('attention === "unseen"')),
       /venueSeenAt/,
     );
   });

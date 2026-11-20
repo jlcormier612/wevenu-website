@@ -121,10 +121,11 @@ describe("lead unseen row indicator presentation", () => {
   });
 
   it("unseen attention filter uses the same eligibility helper as the badge", () => {
-    assert.match(listSrc, /isUnseenLeadAttention/);
-    const unseenGate = listSrc.indexOf('if (attentionFilter === "unseen")');
+    const querySrc = readFileSync(resolve("lib/leads/list-query.ts"), "utf8");
+    assert.match(querySrc, /isUnseenLeadAttention/);
+    const unseenGate = querySrc.indexOf('attention === "unseen"');
     assert.ok(unseenGate > 0);
-    const unseenBlock = listSrc.slice(unseenGate, unseenGate + 280);
+    const unseenBlock = querySrc.slice(unseenGate, unseenGate + 280);
     assert.match(unseenBlock, /isUnseenLeadAttention/);
     assert.doesNotMatch(unseenBlock, /leadIsOpenOpportunity/);
   });

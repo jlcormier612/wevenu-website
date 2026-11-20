@@ -22,7 +22,7 @@ describe("Leads event-type filter chips", () => {
   });
 
   it("lead-list groups filters via normalizeEventType", () => {
-    const src = readFileSync(resolve("components/leads/lead-list.tsx"), "utf8");
+    const src = readFileSync(resolve("lib/leads/list-query.ts"), "utf8");
     assert.match(src, /normalizeEventType\(l\.eventType\)/);
     assert.doesNotMatch(src, /seen\.set\(l\.eventType/);
   });

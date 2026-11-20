@@ -513,6 +513,90 @@ function mapTask(r: TaskRow): LeadTask {
 
 // ---- list / single ----------------------------------------------------------
 
+/**
+ * Lean column set for the Leads index / list page.
+ * Omits inquiry_message + source_data (large blobs unused by the table) and
+ * skips tour hydration — list UI does not read tour fields.
+ */
+export const LEAD_LIST_SELECT = [
+  "id",
+  "venue_id",
+  "sales_stage",
+  "status",
+  "source",
+  "pipeline_stage_id",
+  "first_name",
+  "last_name",
+  "email",
+  "phone",
+  "preferred_communication_channels",
+  "partner_first_name",
+  "partner_last_name",
+  "partner_email",
+  "event_type",
+  "event_date",
+  "planned_event_space_id",
+  "end_date",
+  "guest_count",
+  "estimated_budget",
+  "inquiry_date",
+  "next_action_text",
+  "next_action_due",
+  "follow_up_date",
+  "last_contacted_at",
+  "commitment_score",
+  "responsiveness_score",
+  "interest_score",
+  "scores_updated_at",
+  "relationship_id",
+  "intake_confidence",
+  "exclude_from_business_reporting",
+  "lost_reason",
+  "lost_reason_detail",
+  "lost_at",
+  "first_booked_at",
+  "venue_seen_at",
+  "assigned_staff_id",
+  "merged_into_lead_id",
+  "merged_at",
+  "created_at",
+  "updated_at",
+].join(",");
+
+/**
+ * Leads list index — every eligible row, lean columns, no tour join.
+ * Callers paginate / filter server-side before rendering a page window.
+ */
+export async function getLeadsListIndex(
+  client: DbClient,
+  venueId: string,
+  filters?: { includeArchived?: boolean },
+): Promise<Lead[]> {
+  let q = client
+    .from("leads")
+    .select(LEAD_LIST_SELECT)
+    .eq("venue_id", venueId)
+    .is("merged_into_lead_id", null);
+  if (!filters?.includeArchived) {
+    const { data: archived } = await client
+      .from("venue_customer_relationships")
+      .select("id")
+      .eq("venue_id", venueId)
+      .not("archived_at", "is", null);
+    const archivedIds = ((archived ?? []) as Array<{ id: string }>).map((r) => r.id);
+    if (archivedIds.length > 0) {
+      q = q.not("relationship_id", "in", `(${archivedIds.join(",")})`);
+    }
+  }
+  const { data, error } = await q
+    .order("inquiry_date", { ascending: false })
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  // Lean select string is not in generated Database typings — assert after error check.
+  const rows = (data ?? []) as unknown as LeadRow[];
+  return rows.map((r) => mapLead(r, EMPTY_TOUR));
+}
+
 export async function getLeads(
   client: DbClient,
   venueId: string,

@@ -1,58 +1,65 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
 import { GitBranch } from "lucide-react";
 
-import { LeadList } from "@/components/leads/lead-list";
+import { LeadsListIsland } from "@/components/leads/leads-list-island";
 import {
   LEADS_SPOT_PATTERN_TYPES,
   SpotPatternRecommendationsPanel,
 } from "@/components/luv/spot-pattern-recommendations";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { Button } from "@/components/ui/button";
-import { loadBookedMembershipSets } from "@/lib/booking-journey/booked-membership";
-import { ensureStandardSalesPipelineForCurrentVenue, getLeads } from "@/lib/leads/service";
-import { loadLeadMessageAttentionMap } from "@/lib/leads/message-attention";
-import { getUnattendedInquiryLeadIdsForCurrentVenue } from "@/lib/luv/unattended-inquiry-population";
-import { UNATTENDED_INQUIRY_ATTENTION } from "@/lib/luv/unattended-inquiry";
-import { createClient } from "@/integrations/supabase/server";
-import { isSupabaseConfigured } from "@/lib/env";
+import { ensureStandardSalesPipelineForCurrentVenue } from "@/lib/leads/service";
 
 export const metadata: Metadata = { title: "Leads" };
 
-type Props = { searchParams: Promise<{ attention?: string; view?: string }> };
+type Props = {
+  searchParams: Promise<{
+    attention?: string;
+    view?: string;
+    q?: string;
+    stage?: string;
+    eventType?: string;
+    sort?: string;
+    page?: string;
+  }>;
+};
+
+function LeadsListFallback() {
+  return (
+    <div
+      className="space-y-3 rounded-[0.75rem] border border-[color:var(--htc-border-warm)] bg-card/40 p-4"
+      role="status"
+      aria-busy="true"
+      aria-label="Loading leads list"
+      data-testid="leads-list-fallback"
+    >
+      <div className="h-9 max-w-md animate-pulse rounded-md bg-[var(--htc-eucalyptus-surface-pale)]" />
+      <div className="h-8 max-w-xl animate-pulse rounded-md bg-[var(--htc-eucalyptus-surface-pale)] opacity-80" />
+      <div className="space-y-2 pt-2">
+        {Array.from({ length: 6 }, (_, i) => (
+          <div
+            key={i}
+            className="h-10 animate-pulse rounded-md bg-[var(--htc-eucalyptus-surface-pale)]"
+            style={{ opacity: 1 - i * 0.08 }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+async function LeadsSpotIsland() {
+  return <SpotPatternRecommendationsPanel types={LEADS_SPOT_PATTERN_TYPES} />;
+}
 
 export default async function LeadsPage({ searchParams }: Props) {
   await ensureStandardSalesPipelineForCurrentVenue();
-  const [leads, bookedMembership] = await Promise.all([
-    getLeads(),
-    loadBookedMembershipSets(),
-  ]);
-  const { attention, view } = await searchParams;
-  const initialOutcome = view === "lost" ? "lost" as const : "active" as const;
-  const initialAttention = initialOutcome === "lost"
-    ? null
-    : attention === "stale_contact" ? "stale_contact" as const
-    : attention === "open" ? "open" as const
-    : attention === "active" ? "open" as const
-    : attention === "unseen" ? "unseen" as const
-    : attention === UNATTENDED_INQUIRY_ATTENTION ? "unattended_inquiry" as const
-    : null;
-  const unattendedInquiryLeadIds = initialAttention === "unattended_inquiry"
-    ? await getUnattendedInquiryLeadIdsForCurrentVenue()
-    : [];
-  const messageAttentionByLeadId: Record<string, { conversationId: string; href: string }> = {};
-  if (isSupabaseConfigured && leads.length > 0) {
-    const supabase = await createClient();
-    const map = await loadLeadMessageAttentionMap(
-      supabase,
-      leads.map((l) => ({ id: l.id, relationshipId: l.relationshipId })),
-    );
-    for (const [id, attention] of map) {
-      messageAttentionByLeadId[id] = attention;
-    }
-  }
+  const params = await searchParams;
+
   return (
-    <div className="htc-hospitality-page space-y-4 sm:space-y-6">
+    <div className="htc-hospitality-page space-y-4 sm:space-y-6" data-testid="leads-streaming-root">
       <div className="htc-hospitality-heading htc-hospitality-intro-accent">
         <PageHeader
           title="Leads"
@@ -69,15 +76,12 @@ export default async function LeadsPage({ searchParams }: Props) {
           }
         />
       </div>
-      <SpotPatternRecommendationsPanel types={LEADS_SPOT_PATTERN_TYPES} />
-      <LeadList
-        leads={leads}
-        initialAttention={initialAttention}
-        initialOutcome={initialOutcome}
-        unattendedInquiryLeadIds={unattendedInquiryLeadIds}
-        currentBookedCount={bookedMembership.currentClientIds.size}
-        messageAttentionByLeadId={messageAttentionByLeadId}
-      />
+      <Suspense fallback={null}>
+        <LeadsSpotIsland />
+      </Suspense>
+      <Suspense fallback={<LeadsListFallback />}>
+        <LeadsListIsland searchParams={params} />
+      </Suspense>
     </div>
   );
 }

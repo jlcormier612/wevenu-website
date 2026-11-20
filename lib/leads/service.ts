@@ -9,6 +9,17 @@ import { createClient } from "@/integrations/supabase/server";
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/env";
 import * as repo from "@/lib/leads/repository";
+import {
+  buildEventTypeCounts,
+  buildStatusCounts,
+  filterLeadsForList,
+  paginateLeads,
+  LEADS_PAGE_SIZE,
+  type LeadsListPageResult,
+  type LeadsListParams,
+  type LeadsListSort,
+  type LeadsListAttention,
+} from "@/lib/leads/list-query";
 import { LeadTourWriteError, TOUR_TIME_REQUIRED } from "@/lib/leads/relationship-tour";
 import { requireAdminUser } from "@/lib/hq/crm-service";
 import type {
@@ -94,6 +105,85 @@ export async function getLeads(filters?: { q?: string; status?: string }): Promi
   if (!venue) return [];
   const supabase = await createClient();
   return repo.getLeads(supabase, venue.id, filters);
+}
+
+export type { LeadsListPageResult, LeadsListParams };
+
+/**
+ * Server-backed Leads list page: lean index for global counts/search/filters,
+ * then a bounded window of rows for RSC serialization (not client-only slice
+ * of a full select * + tours payload).
+ */
+export async function getLeadsListPage(
+  params: LeadsListParams = {},
+): Promise<LeadsListPageResult> {
+  const empty: LeadsListPageResult = {
+    leads: [],
+    totalLeads: 0,
+    totalMatching: 0,
+    page: 1,
+    pageSize: params.pageSize ?? LEADS_PAGE_SIZE,
+    totalPages: 1,
+    statusCounts: { all: 0, booked: params.currentBookedCount ?? 0, lost: 0 },
+    eventTypeCounts: [],
+    params: {
+      q: params.q ?? "",
+      status: params.status ?? (params.outcome === "lost" ? "lost" : "all"),
+      eventType: params.eventType ?? "all",
+      sort: (params.sort ?? "newest") as LeadsListSort,
+      attention: (params.attention ?? "all") as LeadsListAttention,
+      outcome: params.outcome ?? "active",
+      page: 1,
+    },
+  };
+  if (!isSupabaseConfigured) return empty;
+  const venue = await getCurrentVenue();
+  if (!venue) return empty;
+  const supabase = await createClient();
+  const index = await repo.getLeadsListIndex(supabase, venue.id);
+  const outcome = params.outcome ?? "active";
+  const status = params.status ?? (outcome === "lost" ? "lost" : "all");
+  const attention = (params.attention ?? "all") as LeadsListAttention;
+  const eventType = params.eventType ?? "all";
+  const sort = (params.sort ?? "newest") as LeadsListSort;
+  const q = params.q ?? "";
+  const pageSize = params.pageSize ?? LEADS_PAGE_SIZE;
+  const currentBookedCount = params.currentBookedCount ?? 0;
+
+  const statusCountsMap = buildStatusCounts(index, currentBookedCount);
+  const statusCounts: Record<string, number> = Object.fromEntries(statusCountsMap);
+  const eventTypeCounts = buildEventTypeCounts(index);
+
+  const filtered = filterLeadsForList(index, {
+    ...params,
+    status,
+    attention,
+    eventType,
+    sort,
+    outcome,
+    q,
+  });
+  const paged = paginateLeads(filtered, params.page ?? 1, pageSize);
+
+  return {
+    leads: paged.pageItems,
+    totalLeads: index.length,
+    totalMatching: paged.totalMatching,
+    page: paged.page,
+    pageSize: paged.pageSize,
+    totalPages: paged.totalPages,
+    statusCounts,
+    eventTypeCounts,
+    params: {
+      q,
+      status,
+      eventType,
+      sort,
+      attention,
+      outcome,
+      page: paged.page,
+    },
+  };
 }
 
 /**

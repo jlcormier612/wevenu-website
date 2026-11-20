@@ -24,8 +24,9 @@ export const metadata: Metadata = { title: "Dashboard" };
  *   6. View Reports
  *
  * Wave C2: header, snapshot, and focus stream in parallel Suspense islands.
- * NAV-PERF Wave 2: header uses getDashboardHeaderData (light); Focus uses
- * getDashboardData; snapshot uses getBusinessSnapshot — all request-scoped cache.
+ * NAV-PERF Wave 2/remediation: header uses getDashboardHeaderData (light);
+ * Focus/Coming Up use getDashboardFocusCore; Luv entry uses getDashboardData
+ * (wave2); snapshot uses getBusinessSnapshot — all request-scoped cache.
  */
 export default function DashboardPage() {
   return (

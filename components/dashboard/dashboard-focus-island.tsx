@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { CalendarClock, ChevronRight } from "lucide-react";
 
@@ -5,7 +6,7 @@ import { DashboardLuvEntryCard } from "@/components/dashboard/luv-dashboard-entr
 import { AttentionList } from "@/components/dashboard-system/attention-list";
 import { ComingUpRow } from "@/components/dashboard-system/coming-up-row";
 import { FocusAttentionRow } from "@/components/dashboard-system/focus-attention-row";
-import { getDashboardData } from "@/lib/dashboard/service";
+import { getDashboardData, getDashboardFocusCore } from "@/lib/dashboard/service";
 import {
   forensicCount,
   forensicExtra,
@@ -23,10 +24,38 @@ import { listDismissedDashboardAttentionKeys } from "@/lib/dashboard-system/atte
 import { filterDismissedFocusItems } from "@/lib/dashboard-system/attention-identity";
 import { selectLuvDashboardEntry } from "@/lib/dashboard-system/luv-entry";
 
-/** Today's Focus, Luv entry, Coming Up, Reports link. */
+/** Luv entry streams after Focus/Coming Up — wave2 must not block those sections. */
+async function DashboardLuvEntryIsland() {
+  const data = await forensicTime("get_dashboard_data_luv", () => getDashboardData());
+  if (!data?.luvObservationsEnabled) {
+    forensicRecordL1({
+      source: "NONE",
+      type: "observations_disabled",
+      candidate: null,
+      path: "luv_observations_disabled",
+    });
+    return null;
+  }
+
+  const dismissedKeys = new Set(await listDismissedDashboardAttentionKeys());
+  const focusItems = filterDismissedFocusItems(classifyBriefingItems(data), dismissedKeys).slice(0, 10);
+  forensicCount("luv_observations_in", data.luvObservations.length);
+  forensicCount("insight_observations_in", data.insightObservations.length);
+  forensicCount("recommendations_in", data.recommendations.length);
+
+  const luvEntry = selectLuvDashboardEntry({
+    focusItems,
+    observations: data.luvObservations,
+    recommendations: [],
+  });
+  if (!luvEntry) return null;
+  return <DashboardLuvEntryCard entry={luvEntry} />;
+}
+
+/** Today's Focus, Luv entry (deferred), Coming Up, Reports link. */
 export async function DashboardFocusIsland() {
   return withDashboardForensic(async () => {
-    const data = await forensicTime("get_dashboard_data", () => getDashboardData());
+    const data = await forensicTime("get_dashboard_focus_core", () => getDashboardFocusCore());
     if (!data) return null;
 
     const assembly = await forensicTime("rsc_focus_l1_assembly", async () => {
@@ -40,27 +69,11 @@ export async function DashboardFocusIsland() {
       forensicCount("focus_items_classified", allFocusItems.length);
       forensicCount("focus_items_shown", focusItems.length);
       forensicCount("upcoming_items_shown", upcomingItems.length);
-      forensicCount("luv_observations_in", data.luvObservations.length);
-      forensicCount("insight_observations_in", data.insightObservations.length);
-      forensicCount("recommendations_in", data.recommendations.length);
 
-      const luvEntry = data.luvObservationsEnabled
-        ? selectLuvDashboardEntry({
-            focusItems,
-            observations: data.luvObservations,
-            recommendations: [],
-          })
-        : (forensicRecordL1({
-            source: "NONE",
-            type: "observations_disabled",
-            candidate: null,
-            path: "luv_observations_disabled",
-          }), null);
-
-      return { allFocusItems, focusItems, upcomingItems, luvEntry };
+      return { allFocusItems, focusItems, upcomingItems };
     });
 
-    const { allFocusItems, focusItems, upcomingItems, luvEntry } = assembly;
+    const { allFocusItems, focusItems, upcomingItems } = assembly;
     forensicExtra("rsc_serialization", "UNKNOWN");
 
     return (
@@ -83,7 +96,9 @@ export async function DashboardFocusIsland() {
           />
         </section>
 
-        {luvEntry && <DashboardLuvEntryCard entry={luvEntry} />}
+        <Suspense fallback={null}>
+          <DashboardLuvEntryIsland />
+        </Suspense>
 
         <section data-testid="coming-up-section">
           <AttentionList

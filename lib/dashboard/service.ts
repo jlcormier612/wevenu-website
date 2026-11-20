@@ -351,8 +351,11 @@ export const getDashboardHeaderData = cache(async function getDashboardHeaderDat
   };
 });
 
-/** Request-scoped: Focus island assembly (header uses getDashboardHeaderData). */
-export const getDashboardData = cache(async function getDashboardData(): Promise<DashboardData | null> {
+/**
+ * Focus + Coming Up assembly (wave1) without Luv observation wave2.
+ * Request-scoped; shared by getDashboardData via cache().
+ */
+export const getDashboardFocusCore = cache(async function getDashboardFocusCore(): Promise<DashboardData | null> {
   if (!isSupabaseConfigured) return null;
   const venue = await forensicTime("auth_venue_resolution", () => getCurrentVenue());
   if (!venue) return null;
@@ -563,61 +566,8 @@ export const getDashboardData = cache(async function getDashboardData(): Promise
   const nextPendingMilestone = header.nextPendingMilestone;
   const readyToInviteCouples = header.readyToInviteCouples;
   const luvSettings = header.luvSettings;
-
-  // Live L1 sources only — no broad observation engine, no insights compute,
-  // no persisted-recommendation read. Contract/document families have no other
-  // current-GET source after that removal and are therefore omitted (not
-  // recreated). Setup-gap and readiness reuse the live calculations already
-  // required for guided setup / readiness. Communication reuses its existing
-  // observation calculation for the authorized L1 families.
-  // Activation / milestone / ready-to-invite / Luv settings come from the
-  // cached header path (above) — do not re-fetch on this wave.
-  const [
-    communicationObservationsRaw,
-    dismissedObservationIds,
-    venueReadiness,
-  ] = await forensicTime("wave2_parallel_wall", () =>
-    Promise.all([
-      forensicTime("get_communication_observations", () =>
-        getCommunicationObservations(supabase, venue.id).catch(() => []),
-      ),
-      forensicTime("dismissed_observation_ids", () =>
-        getDismissedObservationIds().catch(() => new Set<string>()),
-      ),
-      forensicTime("load_venue_readiness", () => loadVenueReadiness().catch(() => null)),
-    ]),
-  );
-
-  // Aggregate delivery celebration / failure-count cards removed from
-  // getCommunicationObservations (Health no longer exposes those lists).
-  const communicationObservations = communicationObservationsRaw.filter((obs) =>
-    obs.id.startsWith("comm-stale-unopened-"),
-  );
-  forensicCount("communication_observations", communicationObservations.length);
-  forensicCount("dismissed_ids", dismissedObservationIds.size);
-
-  const setupGapObservations =
-    activationScore && shouldIncludeDashboardSetupGapObservations(readyToInviteCouples)
-      ? computeSetupGapObservations(activationScore.checklist)
-      : [];
-  const readinessObservations = venueReadiness ? readinessDashboardObservations(venueReadiness) : [];
   const masterOn = luvSettings != null && luvSettings.enabled !== false;
   const observationsOn = masterOn && luvSettings.observationsEnabled !== false;
-  // Preserve existing remaining-source order: communication, then setup-gap,
-  // then readiness. First eligible live L1 candidate still wins.
-  const luvObservations = observationsOn
-    ? filterVisibleObservations(
-        [...communicationObservations, ...setupGapObservations, ...readinessObservations],
-        dismissedObservationIds,
-      )
-    : [];
-  const insightObservations: typeof luvObservations = [];
-  const recommendations: import("@/lib/luv/recommendation-types").VenueRecommendation[] = [];
-
-  forensicCount("setup_gap_observations", setupGapObservations.length);
-  forensicCount("readiness_observations", readinessObservations.length);
-  forensicCount("luv_observations_visible", luvObservations.length);
-  forensicCount("insight_observations_visible", insightObservations.length);
 
   return {
     venueName: venue.name,
@@ -643,13 +593,15 @@ export const getDashboardData = cache(async function getDashboardData(): Promise
     upcomingEvents,
     upcomingEventCount: upcomingEvents.length,
     clientListCounts: EMPTY_CLIENT_COUNTS,
-    luvObservations,
+    // Wave2 Luv observations are filled by getDashboardData — Focus/Coming Up
+    // must not wait on communication/readiness fetches.
+    luvObservations: [],
     trendObservations: [],
     storyObservation: null,
     memoryObservations: [],
-    insightObservations,
+    insightObservations: [],
     healthScore: null,
-    recommendations,
+    recommendations: [],
     actionObservations: [],
     pendingActionObservations: [],
     performanceObservations: [],
@@ -664,6 +616,80 @@ export const getDashboardData = cache(async function getDashboardData(): Promise
       activationPhase: activationScore?.phase ?? null,
       venueCreatedAt: venue.createdAt,
     }),
+  };
+});
+
+/** Full Dashboard data: Focus core + deferred Luv observation wave. */
+export const getDashboardData = cache(async function getDashboardData(): Promise<DashboardData | null> {
+  const core = await forensicTime("focus_core_join", () => getDashboardFocusCore());
+  if (!core) return null;
+
+  if (!core.luvObservationsEnabled) {
+    forensicCount("luv_observations_visible", 0);
+    forensicCount("insight_observations_visible", 0);
+    return core;
+  }
+
+  const venue = await getCurrentVenue();
+  if (!venue) return core;
+  const supabase = await createClient();
+  // Reuse cached header — do not re-run ready-to-invite / activation.
+  const header = await getDashboardHeaderData();
+  const readyToInviteCouples = header?.readyToInviteCouples ?? false;
+
+  // Live L1 sources only — no broad observation engine, no insights compute,
+  // no persisted-recommendation read. Contract/document families have no other
+  // current-GET source after that removal and are therefore omitted (not
+  // recreated). Setup-gap and readiness reuse the live calculations already
+  // required for guided setup / readiness. Communication reuses its existing
+  // observation calculation for the authorized L1 families.
+  // Activation / milestone / Luv settings come from the cached Focus core /
+  // header path — do not re-fetch activation on this wave.
+  const [
+    communicationObservationsRaw,
+    dismissedObservationIds,
+    venueReadiness,
+  ] = await forensicTime("wave2_parallel_wall", () =>
+    Promise.all([
+      forensicTime("get_communication_observations", () =>
+        getCommunicationObservations(supabase, venue.id).catch(() => []),
+      ),
+      forensicTime("dismissed_observation_ids", () =>
+        getDismissedObservationIds().catch(() => new Set<string>()),
+      ),
+      forensicTime("load_venue_readiness", () => loadVenueReadiness().catch(() => null)),
+    ]),
+  );
+
+  const communicationObservations = communicationObservationsRaw.filter((obs) =>
+    obs.id.startsWith("comm-stale-unopened-"),
+  );
+  forensicCount("communication_observations", communicationObservations.length);
+  forensicCount("dismissed_ids", dismissedObservationIds.size);
+
+  const activationScore = core.activationScore;
+  const setupGapObservations =
+    activationScore && shouldIncludeDashboardSetupGapObservations(readyToInviteCouples)
+      ? computeSetupGapObservations(activationScore.checklist)
+      : [];
+  const readinessObservations = venueReadiness ? readinessDashboardObservations(venueReadiness) : [];
+  const luvObservations = filterVisibleObservations(
+    [...communicationObservations, ...setupGapObservations, ...readinessObservations],
+    dismissedObservationIds,
+  );
+  const insightObservations: typeof luvObservations = [];
+  const recommendations: import("@/lib/luv/recommendation-types").VenueRecommendation[] = [];
+
+  forensicCount("setup_gap_observations", setupGapObservations.length);
+  forensicCount("readiness_observations", readinessObservations.length);
+  forensicCount("luv_observations_visible", luvObservations.length);
+  forensicCount("insight_observations_visible", insightObservations.length);
+
+  return {
+    ...core,
+    luvObservations,
+    insightObservations,
+    recommendations,
   };
 });
 

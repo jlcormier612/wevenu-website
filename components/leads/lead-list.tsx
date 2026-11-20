@@ -3,7 +3,7 @@
 import * as React from "react";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { ArrowUpDown, Search, SlidersHorizontal } from "lucide-react";
 
 function momentumLabel(score: number, status: string): { tier: "hot" | "warm" | "growing" | "early" | "quiet" } {
@@ -37,17 +37,14 @@ import {
   formatCurrency,
   leadDisplayName,
   sourceLabel,
-  statusLabel,
 } from "@/lib/leads/constants";
-import { isOpenLeadLifecycle, isOpenLeadOpportunity } from "@/lib/leads/open-lifecycle";
 import type { Lead, LeadStatus } from "@/lib/leads/types";
-import { normalizeEventType } from "@/lib/event-types/canonical";
-import { isStaleWithoutContact } from "@/lib/leads/stale-contact";
 import { salesStageLabel } from "@/lib/leads/sales-stages";
 import { LeadUnseenIndicator } from "@/components/leads/lead-unseen-indicator";
 import { LeadMessageAttentionIndicator } from "@/components/leads/lead-message-attention-indicator";
 import type { LeadMessageAttention } from "@/lib/leads/message-attention";
-import { isUnseenLeadAttention } from "@/lib/navigation/attention";
+import type { LeadsListSort } from "@/lib/leads/list-query";
+import { UNATTENDED_INQUIRY_ATTENTION } from "@/lib/luv/unattended-inquiry";
 import {
   ATTENTION_CHIP,
   ATTENTION_CHIP_COUNT,
@@ -60,9 +57,8 @@ import { cn } from "@/lib/utils";
 
 type FilterKey = "all" | LeadStatus;
 type EventTypeFilter = "all" | string;
-type SortKey = "newest" | "oldest" | "az" | "za" | "event_asc" | "event_desc" | "budget_high" | "budget_low" | "last_contacted" | "commitment_high";
 
-const SORT_OPTIONS: { value: SortKey; label: string }[] = [
+const SORT_OPTIONS: { value: LeadsListSort; label: string }[] = [
   { value: "newest",        label: "Most Recent" },
   { value: "oldest",        label: "Oldest" },
   { value: "az",            label: "A → Z" },
@@ -75,36 +71,82 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
   { value: "commitment_high", label: "Most Progress" },
 ];
 
-function sortLeads(leads: Lead[], sort: SortKey): Lead[] {
-  return [...leads].sort((a, b) => {
-    switch (sort) {
-      case "oldest":        return (a.inquiryDate ?? "") < (b.inquiryDate ?? "") ? -1 : 1;
-      case "az":            return (a.firstName ?? "").localeCompare(b.firstName ?? "");
-      case "za":            return (b.firstName ?? "").localeCompare(a.firstName ?? "");
-      case "event_asc":     return (a.eventDate ?? "9999") < (b.eventDate ?? "9999") ? -1 : 1;
-      case "event_desc":    return (b.eventDate ?? "") < (a.eventDate ?? "") ? -1 : 1;
-      case "budget_high":   return (b.estimatedBudget ?? 0) - (a.estimatedBudget ?? 0);
-      case "budget_low":    return (a.estimatedBudget ?? 0) - (b.estimatedBudget ?? 0);
-      case "last_contacted":return (b.lastContactedAt ?? "") < (a.lastContactedAt ?? "") ? -1 : 1;
-      case "commitment_high": return (b.commitmentScore ?? 0) - (a.commitmentScore ?? 0);
-      default:              return (b.inquiryDate ?? "") < (a.inquiryDate ?? "") ? -1 : 1;
-    }
-  });
+type AttentionFilter =
+  | "all"
+  | "stale_contact"
+  | "open"
+  | "unseen"
+  | "unattended_inquiry";
+
+function stageDisplayName(lead: Lead): string {
+  return salesStageLabel(lead.salesStage ?? lead.status);
+}
+
+function buildLeadsHref(opts: {
+  q: string;
+  status: string;
+  eventType: string;
+  sort: LeadsListSort;
+  attention: AttentionFilter;
+  outcome: "active" | "lost";
+  page: number;
+}): string {
+  const sp = new URLSearchParams();
+  if (opts.outcome === "lost" || opts.status === "lost") {
+    sp.set("view", "lost");
+  } else if (opts.status !== "all") {
+    sp.set("stage", opts.status);
+  }
+  if (opts.q.trim()) sp.set("q", opts.q.trim());
+  if (opts.eventType !== "all") sp.set("eventType", opts.eventType);
+  if (opts.sort !== "newest") sp.set("sort", opts.sort);
+  if (opts.attention === "stale_contact") sp.set("attention", "stale_contact");
+  else if (opts.attention === "open") sp.set("attention", "open");
+  else if (opts.attention === "unseen") sp.set("attention", "unseen");
+  else if (opts.attention === "unattended_inquiry") {
+    sp.set("attention", UNATTENDED_INQUIRY_ATTENTION);
+  }
+  if (opts.page > 1) sp.set("page", String(opts.page));
+  const qs = sp.toString();
+  return qs ? `/leads?${qs}` : "/leads";
 }
 
 export function LeadList({
   leads,
+  totalLeads,
+  totalMatching,
+  page,
+  pageSize,
+  totalPages,
+  statusCounts: statusCountsIn,
+  eventTypeCounts,
   initialAttention,
   initialOutcome = "active",
+  initialQuery = "",
+  initialStatus = "all",
+  initialEventType = "all",
+  initialSort = "newest",
   unattendedInquiryLeadIds = [],
   currentBookedCount = 0,
   messageAttentionByLeadId = {},
 }: {
+  /** Current server page only. */
   leads: Lead[];
+  totalLeads: number;
+  totalMatching: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  statusCounts: Record<string, number>;
+  eventTypeCounts: Array<[string, number]>;
   /** Dashboard/Luv deep-link: same 7-day stale-contact condition as generate_venue_recommendations. */
   initialAttention?: "stale_contact" | "open" | "active" | "unseen" | "unattended_inquiry" | null;
   /** lost = the Lost outcome list. Booked is a link to Clients, not a lead filter. */
   initialOutcome?: "active" | "lost";
+  initialQuery?: string;
+  initialStatus?: string;
+  initialEventType?: string;
+  initialSort?: LeadsListSort;
   /** Server-recomputed P-A1 qualifying IDs (same evaluator as the cluster). */
   unattendedInquiryLeadIds?: readonly string[];
   /** Current Booked membership — same population as Clients → All Bookings. */
@@ -113,116 +155,35 @@ export function LeadList({
   messageAttentionByLeadId?: Record<string, LeadMessageAttention>;
 }) {
   const router = useRouter();
-  const unattendedIdSet = React.useMemo(
-    () => new Set(unattendedInquiryLeadIds),
-    [unattendedInquiryLeadIds],
+  const pathname = usePathname();
+  void unattendedInquiryLeadIds;
+  void pathname;
+
+  const [query, setQuery] = React.useState(initialQuery);
+  const [statusFilter, setStatusFilter] = React.useState<FilterKey>(
+    (initialStatus as FilterKey) || (initialOutcome === "lost" ? "lost" : "all"),
   );
-  const [query, setQuery] = React.useState("");
-  const [statusFilter, setStatusFilter] = React.useState<string>(initialOutcome === "lost" ? "lost" : "all");
-  const [eventTypeFilter, setEventTypeFilter] = React.useState<EventTypeFilter>("all");
-  const [sort, setSort] = React.useState<SortKey>(
-    initialAttention === "stale_contact" ? "last_contacted" : "newest",
+  const [eventTypeFilter, setEventTypeFilter] = React.useState<EventTypeFilter>(
+    initialEventType || "all",
   );
-  const [attentionFilter, setAttentionFilter] = React.useState<"all" | "stale_contact" | "open" | "unseen" | "unattended_inquiry">(
-    initialAttention === "stale_contact" ? "stale_contact"
-      : initialAttention === "open" ? "open"
-      : initialAttention === "unseen" ? "unseen"
-      : initialAttention === "unattended_inquiry" ? "unattended_inquiry"
-      : "all",
+  const [sort, setSort] = React.useState<LeadsListSort>(initialSort);
+  const [attentionFilter, setAttentionFilter] = React.useState<AttentionFilter>(
+    initialAttention === "active" ? "open" : (initialAttention ?? "all"),
   );
 
-  const queue = React.useMemo(
-    () => leads.filter((l) => isOpenLeadLifecycle(l.salesStage ?? l.status)),
-    [leads],
-  );
-
-  function isLostLead(lead: Lead): boolean {
-    return String(lead.salesStage ?? lead.status) === "lost";
-  }
-
-  /** Same open definition as Dashboard Lead Flow — reporting category, not exclude flag. */
-  function leadIsOpenOpportunity(lead: Lead): boolean {
-    return isOpenLeadOpportunity({ salesStage: lead.salesStage ?? lead.status });
-  }
-
-  function stageDisplayName(lead: Lead): string {
-    return salesStageLabel(lead.salesStage ?? lead.status) || statusLabel(lead.salesStage ?? lead.status);
-  }
-
-  const filtered = React.useMemo(() => {
-    const q = query.toLowerCase().trim();
-    const nowMs = Date.now();
-    if (attentionFilter === "unattended_inquiry") {
-      const base = leads.filter((l) => {
-        if (!unattendedIdSet.has(l.id)) return false;
-        if (!q) return true;
-        return [
-          l.firstName, l.lastName, l.partnerFirstName, l.partnerLastName,
-          l.email, l.phone, l.eventType, l.source,
-        ].some((v) => v?.toLowerCase().includes(q));
-      });
-      return sortLeads(base, sort);
-    }
-    const base = (statusFilter === "lost" ? leads.filter(isLostLead) : queue).filter((l) => {
-      const stage = l.salesStage ?? l.status;
-      if (statusFilter !== "all" && statusFilter !== "lost") {
-        if (stage !== statusFilter) {
-          return false;
-        }
-      }
-      if (eventTypeFilter !== "all") {
-        // Group by canonical key so "Wedding" / "wedding" never become two filters.
-        if (normalizeEventType(l.eventType) !== eventTypeFilter) return false;
-      }
-      if (attentionFilter === "stale_contact") {
-        // Same open-lifecycle + opportunity-age rule as generate_venue_recommendations
-        // (coalesce last contact → inquiry → created; never treat null contact as ancient).
-        if (!leadIsOpenOpportunity(l)) {
-          return false;
-        }
-        if (l.excludeFromBusinessReporting) return false;
-        if (!isStaleWithoutContact({
-          lastContactedAt: l.lastContactedAt,
-          inquiryDate: l.inquiryDate,
-          createdAt: l.createdAt,
-        }, nowMs)) {
-          return false;
-        }
-      }
-      if (attentionFilter === "open") {
-        // Same open-lead definition as Dashboard Lead Flow (non-terminal reporting category).
-        if (!leadIsOpenOpportunity(l)) return false;
-      }
-      if (attentionFilter === "unseen") {
-        // Same population as Leads nav attention badge + row New indicator.
-        if (!isUnseenLeadAttention({
-          venueSeenAt: l.venueSeenAt,
-          salesStage: l.salesStage ?? l.status,
-        })) {
-          return false;
-        }
-      }
-      if (!q) return true;
-      return [
-        l.firstName, l.lastName, l.partnerFirstName, l.partnerLastName,
-        l.email, l.phone, l.eventType, l.source,
-      ].some((v) => v?.toLowerCase().includes(q));
-    });
-    return sortLeads(base, sort);
-  }, [queue, leads, query, statusFilter, eventTypeFilter, sort, attentionFilter, unattendedIdSet]);
+  React.useEffect(() => {
+    setQuery(initialQuery);
+    setStatusFilter((initialStatus as FilterKey) || (initialOutcome === "lost" ? "lost" : "all"));
+    setEventTypeFilter(initialEventType || "all");
+    setSort(initialSort);
+    setAttentionFilter(initialAttention === "active" ? "open" : (initialAttention ?? "all"));
+  }, [initialQuery, initialStatus, initialEventType, initialSort, initialAttention, initialOutcome]);
 
   const statusCounts = React.useMemo(() => {
-    const population = queue;
-    const map = new Map<string, number>([["all", population.length]]);
-    ACTIVE_STATUSES.forEach((s) => map.set(s, 0));
-    population.forEach((l) => {
-      const stage = l.salesStage ?? l.status;
-      map.set(stage, (map.get(stage) ?? 0) + 1);
-    });
-    map.set("booked", currentBookedCount);
-    map.set("lost", leads.filter(isLostLead).length);
+    const map = new Map<string, number>(Object.entries(statusCountsIn));
+    if (!map.has("booked")) map.set("booked", currentBookedCount);
     return map;
-  }, [queue, leads, currentBookedCount]);
+  }, [statusCountsIn, currentBookedCount]);
 
   type StageChip = { key: string; label: string; kind: "active" | "booked" | "lost" };
   const activeChips: StageChip[] = [
@@ -239,28 +200,51 @@ export function LeadList({
     { key: "lost", label: "Lost", kind: "lost" },
   ];
 
-  const activeEventTypes = React.useMemo(() => {
-    const population = queue;
-    const seen = new Map<string, number>();
-    population.forEach((l) => {
-      const key = normalizeEventType(l.eventType);
-      if (!key) return;
-      seen.set(key, (seen.get(key) ?? 0) + 1);
-    });
-    return [...seen.entries()].sort((a, b) => b[1] - a[1]);
-  }, [queue]);
-
   const hasActiveFilters =
     statusFilter !== "all" || eventTypeFilter !== "all" || query || attentionFilter !== "all";
+
+  function navigate(next: {
+    q?: string;
+    status?: string;
+    eventType?: string;
+    sort?: LeadsListSort;
+    attention?: AttentionFilter;
+    outcome?: "active" | "lost";
+    page?: number;
+  }) {
+    const href = buildLeadsHref({
+      q: next.q ?? query,
+      status: next.status ?? statusFilter,
+      eventType: next.eventType ?? eventTypeFilter,
+      sort: next.sort ?? sort,
+      attention: next.attention ?? attentionFilter,
+      outcome: next.outcome ?? (statusFilter === "lost" ? "lost" : "active"),
+      page: next.page ?? 1,
+    });
+    router.replace(href);
+  }
 
   function showAllActiveLeads() {
     setAttentionFilter("all");
     setStatusFilter("all");
+    setQuery("");
+    setEventTypeFilter("all");
     router.replace("/leads");
   }
 
+  React.useEffect(() => {
+    const handle = window.setTimeout(() => {
+      if (query === initialQuery) return;
+      navigate({ q: query, page: 1 });
+    }, 300);
+    return () => window.clearTimeout(handle);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- debounce search only
+  }, [query]);
+
+  const queueEmpty = (statusCounts.get("all") ?? 0) === 0 && statusFilter !== "lost";
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" data-testid="leads-list-root" data-leads-page={page} data-leads-page-size={pageSize} data-leads-total-matching={totalMatching}>
     <div className="space-y-3">
       {attentionFilter === "stale_contact" && (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-[0.75rem] border border-[color:color-mix(in_oklch,var(--htc-soft-rose)_45%,var(--htc-border-warm))] bg-[var(--htc-soft-blush)] px-3 py-2 text-sm">
@@ -331,7 +315,15 @@ export function LeadList({
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
           <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" />
-          <Select value={sort} onValueChange={(v) => setSort(v as SortKey)} items={SORT_OPTIONS}>
+          <Select
+            value={sort}
+            onValueChange={(v) => {
+              const next = v as LeadsListSort;
+              setSort(next);
+              navigate({ sort: next, page: 1 });
+            }}
+            items={SORT_OPTIONS}
+          >
             <SelectTrigger className="h-9 w-44 border-[color:var(--htc-border-warm)] bg-card text-sm text-muted-foreground">
               <SelectValue placeholder="Most Recent" />
             </SelectTrigger>
@@ -378,9 +370,17 @@ export function LeadList({
                   showAllActiveLeads();
                   return;
                 }
-                setStatusFilter(chip.key);
-                if (chip.kind === "lost") router.replace("/leads?view=lost");
-                else if (initialOutcome === "lost") router.replace("/leads");
+                setStatusFilter(chip.key as FilterKey);
+                if (chip.kind === "lost") {
+                  setAttentionFilter("all");
+                  navigate({ status: "lost", outcome: "lost", attention: "all", page: 1 });
+                } else {
+                  navigate({
+                    status: chip.key,
+                    outcome: "active",
+                    page: 1,
+                  });
+                }
               }}
               className={chipClass(active)}
             >
@@ -394,20 +394,26 @@ export function LeadList({
         All is active sales work. Booked and Lost are outcomes and are not included in All.
       </p>
 
-      {activeEventTypes.length > 1 && (
+      {eventTypeCounts.length > 1 && (
         <div className="flex flex-wrap gap-1.5 items-center">
           <span className="text-xs text-muted-foreground font-medium mr-0.5">
             <SlidersHorizontal className="inline h-3 w-3 mr-1" />Type:
           </span>
-          <button type="button" onClick={() => setEventTypeFilter("all")}
+          <button type="button" onClick={() => {
+            setEventTypeFilter("all");
+            navigate({ eventType: "all", page: 1 });
+          }}
             className={cn(
               "inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium transition-colors",
               eventTypeFilter === "all" ? SELECTED_CHIP : IDLE_CHIP,
             )}>
             All
           </button>
-          {activeEventTypes.map(([type, count]) => (
-            <button key={type} type="button" onClick={() => setEventTypeFilter(type)}
+          {eventTypeCounts.map(([type, count]) => (
+            <button key={type} type="button" onClick={() => {
+              setEventTypeFilter(type);
+              navigate({ eventType: type, page: 1 });
+            }}
               className={cn(
                 "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors",
                 eventTypeFilter === type ? SELECTED_CHIP : IDLE_CHIP,
@@ -424,13 +430,18 @@ export function LeadList({
       </div>
 
       {hasActiveFilters && (
-        <button type="button" onClick={() => { setQuery(""); setStatusFilter("all"); setEventTypeFilter("all"); showAllActiveLeads(); }}
+        <button type="button" onClick={() => {
+          setQuery("");
+          setStatusFilter("all");
+          setEventTypeFilter("all");
+          showAllActiveLeads();
+        }}
           className="text-xs text-muted-foreground hover:text-foreground transition-colors underline-offset-2 hover:underline">
           Clear all filters
         </button>
       )}
 
-      {leads.length === 0 && (
+      {totalLeads === 0 && (
         <div className="flex flex-col items-center justify-center rounded-sm border border-dashed border-border bg-card/40 py-16 text-center">
           <p className="font-heading text-lg font-medium text-heading">No leads yet</p>
           <p className="mt-1 mb-4 text-sm text-muted-foreground">
@@ -442,7 +453,7 @@ export function LeadList({
         </div>
       )}
 
-      {statusFilter === "lost" && filtered.length === 0 && (statusCounts.get("lost") ?? 0) === 0 && leads.length > 0 && (
+      {statusFilter === "lost" && totalMatching === 0 && (statusCounts.get("lost") ?? 0) === 0 && totalLeads > 0 && (
         <div className="flex flex-col items-center justify-center rounded-sm border border-dashed border-border bg-card/40 py-16 text-center">
           <p className="font-heading text-lg font-medium text-heading">No lost opportunities</p>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -451,7 +462,7 @@ export function LeadList({
         </div>
       )}
 
-      {statusFilter !== "lost" && queue.length === 0 && leads.length > 0 && (
+      {statusFilter !== "lost" && queueEmpty && totalLeads > 0 && (
         <div className="flex flex-col items-center justify-center rounded-sm border border-dashed border-border bg-card/40 py-16 text-center">
           <p className="font-heading text-lg font-medium text-heading">No active leads</p>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -460,22 +471,27 @@ export function LeadList({
         </div>
       )}
 
-      {statusFilter === "lost" && filtered.length === 0 && (statusCounts.get("lost") ?? 0) > 0 && (
+      {statusFilter === "lost" && totalMatching === 0 && (statusCounts.get("lost") ?? 0) > 0 && (
         <div className="rounded-sm border border-dashed border-border py-10 text-center">
           <p className="text-sm text-muted-foreground">No lost opportunities match your filters.</p>
         </div>
       )}
 
-      {statusFilter !== "lost" && queue.length > 0 && filtered.length === 0 && (
+      {statusFilter !== "lost" && !queueEmpty && totalMatching === 0 && (
         <div className="rounded-sm border border-dashed border-border py-10 text-center">
           <p className="text-sm text-muted-foreground">No leads match your filters.</p>
-          <Button variant="link" size="sm" className="mt-1" onClick={() => { setQuery(""); setStatusFilter("all"); setEventTypeFilter("all"); }}>
+          <Button variant="link" size="sm" className="mt-1" onClick={() => {
+            setQuery("");
+            setStatusFilter("all");
+            setEventTypeFilter("all");
+            showAllActiveLeads();
+          }}>
             Clear filters
           </Button>
         </div>
       )}
 
-      {filtered.length > 0 && (
+      {leads.length > 0 && (
         <div className="htc-hospitality-table">
           <Table>
             <TableHeader>
@@ -492,7 +508,7 @@ export function LeadList({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map((lead) => {
+              {leads.map((lead) => {
                 const stage = lead.salesStage ?? lead.status;
                 return (
                 <TableRow key={lead.id} className="group">
@@ -555,6 +571,37 @@ export function LeadList({
               })}
             </TableBody>
           </Table>
+        </div>
+      )}
+
+      {totalMatching > pageSize && (
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-2" data-testid="leads-pagination">
+          <p className="text-xs text-muted-foreground">
+            Showing {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, totalMatching)} of {totalMatching}
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={page <= 1}
+              onClick={() => navigate({ page: page - 1 })}
+            >
+              Previous
+            </Button>
+            <span className="text-xs text-muted-foreground">
+              Page {page} of {totalPages}
+            </span>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={page >= totalPages}
+              onClick={() => navigate({ page: page + 1 })}
+            >
+              Next
+            </Button>
+          </div>
         </div>
       )}
     </div>
