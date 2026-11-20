@@ -133,8 +133,9 @@ describe("NAV-PERF Leads list architecture", () => {
     assert.doesNotMatch(page, /getLeads\(\)/);
     assert.match(island, /getLeadsListPage/);
     assert.match(island, /offset:\s*0/);
-    assert.match(island, /Promise\.all/);
-    assert.match(island, /loadBookedMembershipSets/);
+    assert.match(island, /LeadsBookedChipCount/);
+    assert.match(island, /bookedCountSlot/);
+    assert.doesNotMatch(island, /loadBookedMembershipSets/);
     assert.match(island, /loadLeadMessageAttentionMap/);
     assert.match(island, /listPage\.leads\.map/);
     assert.match(list, /loadMoreLeadsAction/);

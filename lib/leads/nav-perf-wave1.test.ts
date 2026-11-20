@@ -29,12 +29,17 @@ describe("NAV-PERF Wave 1 — Leads sales workflow", () => {
     assert.match(starters, /ensure_standard_sales_pipeline/);
   });
 
-  it("parallelizes booked membership with lean index on the common path", () => {
+  it("defers booked chip count off the list critical path", () => {
     const island = readFileSync(resolve("components/leads/leads-list-island.tsx"), "utf8");
-    assert.match(island, /Promise\.all\(/);
-    assert.match(island, /loadBookedMembershipSets/);
+    const list = readFileSync(resolve("components/leads/lead-list.tsx"), "utf8");
+    const actions = readFileSync(resolve("app/(app)/leads/actions.ts"), "utf8");
     assert.match(island, /getLeadsListPage/);
-    assert.match(island, /booked: bookedMembership\.currentClientIds\.size/);
+    assert.match(island, /LeadsBookedChipCount/);
+    assert.match(island, /bookedCountSlot/);
+    assert.match(island, /Suspense/);
+    assert.doesNotMatch(island, /loadBookedMembershipSets/);
+    assert.match(list, /bookedCountSlot/);
+    assert.doesNotMatch(actions, /loadBookedMembershipSets/);
   });
 
   it("gates session persist until restore settles; cancel leaves session", () => {

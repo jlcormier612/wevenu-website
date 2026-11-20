@@ -113,6 +113,7 @@ export function LeadList({
   initialSort = "newest",
   unattendedInquiryLeadIds = [],
   currentBookedCount = 0,
+  bookedCountSlot = null,
   messageAttentionByLeadId: initialMessageAttention = {},
   indexError = null,
 }: {
@@ -136,6 +137,8 @@ export function LeadList({
   unattendedInquiryLeadIds?: readonly string[];
   /** Current Booked membership — same population as Clients → All Bookings. */
   currentBookedCount?: number;
+  /** Deferred Booked chip count (Suspense). Prefer over currentBookedCount on first paint. */
+  bookedCountSlot?: React.ReactNode;
   /** Decision C — needs_response message attention, distinct from venue_seen_at. */
   messageAttentionByLeadId?: Record<string, LeadMessageAttention>;
   /** Recoverable index failure — never show partial counts as complete. */
@@ -656,7 +659,7 @@ export function LeadList({
             return (
               <Link key={chip.key} href="/clients?filter=all" className={chipClass(false)}>
                 {chip.label}
-                <span className={countClass(false)}>{count}</span>
+                <span className={countClass(false)}>{bookedCountSlot ?? count}</span>
               </Link>
             );
           }
