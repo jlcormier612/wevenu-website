@@ -60,7 +60,11 @@ import {
   readLeadsListSession,
   saveLeadsListWorkingContext,
 } from "@/lib/leads/list-session.client";
-import { shouldRestoreProgressiveSession } from "@/lib/leads/list-session";
+import {
+  planLeadsListRestore,
+  shouldPersistLeadsListSession,
+  type LeadsListRestorePhase,
+} from "@/lib/leads/list-session";
 import {
   ATTENTION_CHIP,
   ATTENTION_CHIP_COUNT,
@@ -184,17 +188,34 @@ export function LeadList({
   const fingerprintRef = React.useRef(fingerprint);
   fingerprintRef.current = fingerprint;
   const restoredFingerprintRef = React.useRef<string | null>(null);
+  const restorePhaseRef = React.useRef<LeadsListRestorePhase>("idle");
+  const [restoreSettled, setRestoreSettled] = React.useState(false);
   const displayedLeadsRef = React.useRef(displayedLeads);
   displayedLeadsRef.current = displayedLeads;
 
-  function persistWorkingContext(leadIds?: readonly string[]) {
+  function persistWorkingContext(
+    leadIds?: readonly string[],
+    opts?: { force?: boolean; scrollY?: number },
+  ) {
     if (typeof window === "undefined") return;
     const ids = leadIds ?? displayedLeadsRef.current.map((l) => l.id);
+    const existing = readLeadsListSession();
+    if (
+      !shouldPersistLeadsListSession({
+        phase: restorePhaseRef.current,
+        force: opts?.force,
+        existing,
+        nextLeadIds: ids,
+        fingerprint,
+      })
+    ) {
+      return;
+    }
     saveLeadsListWorkingContext({
       href: buildLeadsListHref(committed),
       fingerprint,
       leadIds: ids,
-      scrollY: window.scrollY,
+      scrollY: opts?.scrollY ?? window.scrollY,
     });
   }
 
@@ -225,6 +246,8 @@ export function LeadList({
   React.useEffect(() => {
     loadMoreGenRef.current += 1;
     restoredFingerprintRef.current = null;
+    restorePhaseRef.current = "idle";
+    setRestoreSettled(false);
     setDisplayedLeads(initialLeads);
     setTotalMatching(initialTotalMatching);
     setHasMore(initialHasMore);
@@ -235,30 +258,41 @@ export function LeadList({
   }, [fingerprint]);
 
   // Wave 1: restore progressive window + scroll when returning with matching filters.
-  // Prefix check avoids concealing newly created / reordered leads.
+  // Pending restore must not be overwritten by the scroll/persist effect (20-row clobber).
   React.useEffect(() => {
-    if (indexError) return;
-    if (restoredFingerprintRef.current === fingerprint) return;
-    const session = readLeadsListSession();
-    const serverFirstIds = initialLeads.map((l) => l.id);
-    if (
-      !session ||
-      !shouldRestoreProgressiveSession({
-        session,
-        urlFingerprint: fingerprint,
-        serverFirstIds,
-        pageSize,
-      })
-    ) {
-      persistWorkingContext(serverFirstIds);
-      restoredFingerprintRef.current = fingerprint;
+    if (indexError) {
+      restorePhaseRef.current = "done";
+      setRestoreSettled(true);
       return;
     }
+    if (restoredFingerprintRef.current === fingerprint) return;
+
+    const session = readLeadsListSession();
+    const serverFirstIds = initialLeads.map((l) => l.id);
+    const plan = planLeadsListRestore({
+      session,
+      urlFingerprint: fingerprint,
+      serverFirstIds,
+      pageSize,
+    });
+
+    if (plan.action === "use_server_window") {
+      // Authoritative first window — safe to persist; URL filters already apply.
+      restorePhaseRef.current = "done";
+      restoredFingerprintRef.current = fingerprint;
+      persistWorkingContext(serverFirstIds, { force: true });
+      setRestoreSettled(true);
+      return;
+    }
+
+    restorePhaseRef.current = "pending";
     restoredFingerprintRef.current = fingerprint;
     const gen = ++loadMoreGenRef.current;
-    const targetCount = session.leadIds.length;
+    const pendingScrollY = plan.scrollY;
     let cancelled = false;
     setLoadingMore(true);
+    setLoadMoreError(null);
+
     void (async () => {
       try {
         const result = await loadMoreLeadsAction({
@@ -270,9 +304,12 @@ export function LeadList({
           outcome: committed.outcome,
           excludeIds: [],
           filterFingerprint: fingerprint,
-          limit: targetCount,
+          limit: plan.limit,
         });
-        if (cancelled) return;
+        if (cancelled) {
+          // Navigation away / fingerprint change — leave saved session intact.
+          return;
+        }
         if (
           !shouldApplyLoadMoreResult({
             requestGeneration: gen,
@@ -283,36 +320,71 @@ export function LeadList({
         ) {
           return;
         }
-        if (!result.ok) return;
+        if (!result.ok) {
+          // Fall back to authoritative first 20 already on screen.
+          setDisplayedLeads(initialLeads);
+          setTotalMatching(initialTotalMatching);
+          setHasMore(initialHasMore);
+          setMessageAttentionByLeadId(initialMessageAttention);
+          setLoadMoreError(null);
+          restorePhaseRef.current = "done";
+          persistWorkingContext(serverFirstIds, { force: true });
+          setRestoreSettled(true);
+          return;
+        }
         setDisplayedLeads(result.leads);
         setTotalMatching(result.totalMatching);
         setHasMore(result.hasMore);
         setMessageAttentionByLeadId(result.messageAttentionByLeadId);
-        persistWorkingContext(result.leads.map((l) => l.id));
-        requestAnimationFrame(() => {
-          window.scrollTo(0, session.scrollY);
+        restorePhaseRef.current = "done";
+        persistWorkingContext(result.leads.map((l) => l.id), {
+          force: true,
+          scrollY: pendingScrollY,
         });
+        setRestoreSettled(true);
+        requestAnimationFrame(() => {
+          window.scrollTo(0, pendingScrollY);
+        });
+      } catch {
+        if (cancelled) return;
+        setDisplayedLeads(initialLeads);
+        setTotalMatching(initialTotalMatching);
+        setHasMore(initialHasMore);
+        setMessageAttentionByLeadId(initialMessageAttention);
+        setLoadMoreError(null);
+        restorePhaseRef.current = "done";
+        persistWorkingContext(serverFirstIds, { force: true });
+        setRestoreSettled(true);
       } finally {
         if (!cancelled) setLoadingMore(false);
       }
     })();
+
     return () => {
       cancelled = true;
+      // Strict Mode remount / nav away mid-flight: do not leave phase stuck
+      // pending with restoredFingerprint set (that would skip a real restore).
+      // Session stays intact — cancelled restore must not clobber storage.
+      if (restorePhaseRef.current === "pending") {
+        restorePhaseRef.current = "idle";
+        restoredFingerprintRef.current = null;
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- restore once per fingerprint
   }, [fingerprint, indexError]);
 
-  // Keep shell "Leads" return href + scroll fresh while working the list.
+  // Persist scroll/href only after restore has settled — never clobber a larger session.
   React.useEffect(() => {
     if (typeof window === "undefined") return;
+    if (!restoreSettled) return;
     const onScroll = () => {
       persistWorkingContext();
     };
     window.addEventListener("scroll", onScroll, { passive: true });
     persistWorkingContext();
     return () => window.removeEventListener("scroll", onScroll);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- fingerprint + row count
-  }, [fingerprint, displayedLeads.length]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- settle + row count
+  }, [fingerprint, displayedLeads.length, restoreSettled]);
 
   const statusCounts = React.useMemo(() => {
     const map = new Map<string, number>(Object.entries(statusCountsIn));

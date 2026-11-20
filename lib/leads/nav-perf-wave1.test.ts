@@ -15,7 +15,7 @@ describe("NAV-PERF Wave 1 — Leads sales workflow", () => {
     assert.doesNotMatch(list, /prefetch=\{true\}/);
   });
 
-  it("schedules pipeline ensure after response; Board still blocks on ensure", () => {
+  it("schedules pipeline ensure after response with observable failure logging", () => {
     const leads = readFileSync(resolve("app/(app)/leads/page.tsx"), "utf8");
     const board = readFileSync(resolve("app/(app)/leads/pipeline/page.tsx"), "utf8");
     const starters = readFileSync(resolve("lib/provisioning/starters.ts"), "utf8");
@@ -23,6 +23,8 @@ describe("NAV-PERF Wave 1 — Leads sales workflow", () => {
     assert.match(leads, /after\(/);
     assert.match(leads, /ensureStandardSalesPipelineForCurrentVenue/);
     assert.doesNotMatch(leads, /await ensureStandardSalesPipelineForCurrentVenue/);
+    assert.match(leads, /leads_pipeline_ensure_failed/);
+    assert.match(leads, /\.catch\(/);
     assert.match(board, /await ensureStandardSalesPipelineForCurrentVenue/);
     assert.match(starters, /ensure_standard_sales_pipeline/);
   });
@@ -35,17 +37,24 @@ describe("NAV-PERF Wave 1 — Leads sales workflow", () => {
     assert.match(island, /booked: bookedMembership\.currentClientIds\.size/);
   });
 
-  it("preserves Leads working context via session + shell return href", () => {
+  it("gates session persist until restore settles; cancel leaves session", () => {
     const list = readFileSync(resolve("components/leads/lead-list.tsx"), "utf8");
     const sidebar = readFileSync(resolve("components/shell/sidebar-nav.tsx"), "utf8");
     const session = readFileSync(resolve("lib/leads/list-session.ts"), "utf8");
-    assert.match(list, /shouldRestoreProgressiveSession/);
-    assert.match(list, /saveLeadsListWorkingContext|persistWorkingContext/);
-    assert.match(list, /clearLeadsListSession/);
+    const actions = readFileSync(resolve("app/(app)/leads/actions.ts"), "utf8");
+    assert.match(list, /planLeadsListRestore/);
+    assert.match(list, /shouldPersistLeadsListSession/);
+    assert.match(list, /restorePhaseRef/);
+    assert.match(list, /restoreSettled/);
+    assert.match(list, /if \(!restoreSettled\) return/);
+    assert.match(list, /restorePhaseRef\.current === "pending"/);
+    assert.match(list, /restoredFingerprintRef\.current = null/);
+    assert.match(session, /shouldPersistLeadsListSession/);
+    assert.match(session, /LEADS_LIST_RESTORE_MAX_ROWS/);
+    assert.match(session, /clampLeadsRestoreCount/);
+    assert.match(actions, /clampLeadsRestoreCount/);
     assert.match(sidebar, /leadsShellHrefFromSession/);
     assert.match(sidebar, /readLeadsListSession/);
-    assert.match(session, /shouldRestoreProgressiveSession/);
-    assert.match(session, /leadsShellHrefFromSession/);
   });
 
   it("keeps Booked chip as Clients link and progressive Show more action", () => {

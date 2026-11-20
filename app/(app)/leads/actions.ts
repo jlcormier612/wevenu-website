@@ -11,6 +11,7 @@ import {
   type LeadsListSort,
 } from "@/lib/leads/list-query";
 import { leadsFilterFingerprint } from "@/lib/leads/list-navigation";
+import { clampLeadsRestoreCount } from "@/lib/leads/list-session";
 import { createLead, getLeadsListPage } from "@/lib/leads/service";
 import type { CreateLeadResult, Lead, LeadInput } from "@/lib/leads/types";
 import { getUnattendedInquiryLeadIdsForCurrentVenue } from "@/lib/luv/unattended-inquiry-population";
@@ -52,7 +53,8 @@ export type LoadMoreLeadsResult = {
 export async function loadMoreLeadsAction(
   input: LoadMoreLeadsInput,
 ): Promise<LoadMoreLeadsResult> {
-  const limit = input.limit ?? LEADS_PAGE_SIZE;
+  // Bound progressive/restore windows — sessionStorage cannot drive unbounded loads.
+  const limit = clampLeadsRestoreCount(input.limit ?? LEADS_PAGE_SIZE);
   const attention = input.attention ?? "all";
   const outcome = input.outcome ?? "active";
   const q = input.q ?? "";
