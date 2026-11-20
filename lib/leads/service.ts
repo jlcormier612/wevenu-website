@@ -10,6 +10,11 @@ import { createAdminClient } from "@/integrations/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/env";
 import * as repo from "@/lib/leads/repository";
 import {
+  buildEventTypeCounts,
+  buildStatusCounts,
+  filterLeadsForList,
+  nextProgressiveWindow,
+  sliceLeadWindow,
   LEADS_PAGE_SIZE,
   type LeadsListPageResult,
   type LeadsListParams,
@@ -106,9 +111,9 @@ export async function getLeads(filters?: { q?: string; status?: string }): Promi
 export type { LeadsListPageResult, LeadsListParams };
 
 /**
- * Server-backed Leads list window via paged DB read (Phase 1C).
- * Same filter / sort / Show more / count contract as the prior full-index path.
- * Wave 1 restore still uses excludeIds / progressive windows on this result.
+ * Live Leads list window (Wave 1 path restored after Phase 1D FAIL).
+ * Lean index + in-memory filter/sort/window. The paged SQL candidate stays
+ * off this path until both speed and correctness gates pass.
  */
 export async function getLeadsListPage(
   params: LeadsListParams = {},
@@ -141,7 +146,82 @@ export async function getLeadsListPage(
   const venue = await getCurrentVenue();
   if (!venue) return empty;
   const supabase = await createClient();
-  return repo.queryLeadsListPage(supabase, venue.id, params);
+  const indexResult = await repo.getLeadsListIndex(supabase, venue.id);
+  if (indexResult.truncated) {
+    return {
+      ...empty,
+      indexTruncated: true,
+      indexError: repo.LEADS_LIST_INDEX_TRUNCATED_MESSAGE,
+    };
+  }
+  const index = indexResult.leads;
+  const outcome = params.outcome ?? "active";
+  const status = params.status ?? (outcome === "lost" ? "lost" : "all");
+  const attention = (params.attention ?? "all") as LeadsListAttention;
+  const eventType = params.eventType ?? "all";
+  const sort = (params.sort ?? "newest") as LeadsListSort;
+  const q = params.q ?? "";
+  const currentBookedCount = params.currentBookedCount ?? 0;
+  const offset =
+    params.offset != null
+      ? params.offset
+      : params.page != null
+        ? Math.max(0, (params.page - 1) * pageSize)
+        : 0;
+
+  const statusCountsMap = buildStatusCounts(index, currentBookedCount);
+  const statusCounts: Record<string, number> = Object.fromEntries(statusCountsMap);
+  const eventTypeCounts = buildEventTypeCounts(index);
+
+  const filtered = filterLeadsForList(index, {
+    ...params,
+    status,
+    attention,
+    eventType,
+    sort,
+    outcome,
+    q,
+  });
+
+  const excludeIds = params.excludeIds ?? [];
+  const windowed =
+    excludeIds.length > 0
+      ? (() => {
+          const progressive = nextProgressiveWindow(filtered, excludeIds, pageSize);
+          return {
+            pageItems: progressive.pageItems,
+            offset: 0,
+            pageSize: progressive.pageSize,
+            totalMatching: progressive.totalMatching,
+            hasMore: progressive.hasMore,
+          };
+        })()
+      : sliceLeadWindow(filtered, offset, pageSize);
+  const totalPages = Math.max(1, Math.ceil(windowed.totalMatching / pageSize) || 1);
+
+  return {
+    leads: windowed.pageItems,
+    totalLeads: index.length,
+    totalMatching: windowed.totalMatching,
+    offset: windowed.offset,
+    pageSize: windowed.pageSize,
+    hasMore: windowed.hasMore,
+    page: Math.floor(windowed.offset / pageSize) + 1,
+    totalPages,
+    statusCounts,
+    eventTypeCounts,
+    indexTruncated: false,
+    indexError: null,
+    params: {
+      q,
+      status,
+      eventType,
+      sort,
+      attention,
+      outcome,
+      offset: windowed.offset,
+    },
+  };
 }
 
 /**

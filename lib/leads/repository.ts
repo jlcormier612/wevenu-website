@@ -25,7 +25,11 @@ import type {
 } from "@/lib/leads/types";
 import { isSalesStage, migrateLegacyStatusToSalesStage, type SalesStage } from "@/lib/leads/sales-stages";
 import { leadImportFingerprint } from "@/lib/import/venue-controlled-match";
-import { LEADS_LIST_PAGE_RPC } from "@/lib/leads/list-page-query";
+import {
+  LEADS_LIST_COUNTS_RPC,
+  LEADS_LIST_PAGE_RPC,
+  LEADS_LIST_ROWS_RPC,
+} from "@/lib/leads/list-page-query";
 import {
   LEADS_PAGE_SIZE,
   type LeadsListAttention,
@@ -689,8 +693,8 @@ function leadsListCountPairs(value: unknown): Array<[string, number]> {
 }
 
 /**
- * Phase 1 paged read. Same filters and order as the prior in-memory list.
- * Used by getLeadsListPage after Phase 1B shadow compare PASS.
+ * Phase 1 candidate paged read (legacy combined RPC).
+ * Not used by the live Leads page — recovery restored Wave 1 index path.
  */
 export async function queryLeadsListPage(
   client: DbClient,
@@ -753,6 +757,92 @@ export async function queryLeadsListPage(
     totalPages,
     statusCounts,
     eventTypeCounts: leadsListCountPairs(payload.event_type_counts),
+    indexTruncated: false,
+    indexError: null,
+    params: {
+      q,
+      status,
+      eventType,
+      sort,
+      attention,
+      outcome,
+      offset: reportedOffset,
+    },
+  };
+}
+
+/**
+ * Candidate hot path: page rows + counts in parallel.
+ * Not used by getLeadsListPage until speed and correctness gates both pass.
+ */
+export async function queryLeadsListPageHotPath(
+  client: DbClient,
+  venueId: string,
+  params: LeadsListParams = {},
+  now: Date = new Date(),
+): Promise<LeadsListPageResult> {
+  const pageSize = params.pageSize ?? LEADS_PAGE_SIZE;
+  const outcome = params.outcome ?? "active";
+  const status = params.status ?? (outcome === "lost" ? "lost" : "all");
+  const attention = (params.attention ?? "all") as LeadsListAttention;
+  const eventType = params.eventType ?? "all";
+  const sort = (params.sort ?? "newest") as LeadsListSort;
+  const q = params.q ?? "";
+  const offset =
+    params.excludeIds && params.excludeIds.length > 0
+      ? 0
+      : params.offset != null
+        ? params.offset
+        : params.page != null
+          ? Math.max(0, (params.page - 1) * pageSize)
+          : 0;
+
+  const rowArgs = {
+    p_venue_id: venueId,
+    p_outcome: outcome,
+    p_status: status,
+    p_event_type: eventType,
+    p_attention: attention,
+    p_q: q,
+    p_sort: sort,
+    p_offset: offset,
+    p_limit: pageSize,
+    p_exclude_ids: [...(params.excludeIds ?? [])],
+    p_unattended_ids: [...(params.unattendedInquiryLeadIds ?? [])],
+    p_now: now.toISOString(),
+  };
+
+  const [rowsRes, countsRes] = await Promise.all([
+    client.rpc(LEADS_LIST_ROWS_RPC, rowArgs),
+    client.rpc(LEADS_LIST_COUNTS_RPC, { p_venue_id: venueId }),
+  ]);
+  if (rowsRes.error) throw rowsRes.error;
+  if (countsRes.error) throw countsRes.error;
+
+  const rows = (rowsRes.data ?? {}) as LeadsListPageRpcPayload;
+  const counts = (countsRes.data ?? {}) as LeadsListPageRpcPayload;
+  const leads = (rows.leads ?? []).map((row) => mapLead(row, EMPTY_TOUR));
+  const reportedOffset = Number(rows.offset ?? offset);
+  const reportedSize = Number(rows.page_size ?? pageSize);
+  const totalMatching = Number(rows.total_matching ?? 0);
+  const totalPages = Math.max(1, Math.ceil(totalMatching / reportedSize) || 1);
+  const statusCounts: Record<string, number> = {};
+  for (const [key, value] of Object.entries(counts.status_counts ?? {})) {
+    statusCounts[key] = Number(value ?? 0);
+  }
+  statusCounts.booked = params.currentBookedCount ?? 0;
+
+  return {
+    leads,
+    totalLeads: Number(counts.total_leads ?? 0),
+    totalMatching,
+    offset: reportedOffset,
+    pageSize: reportedSize,
+    hasMore: Boolean(rows.has_more),
+    page: Math.floor(reportedOffset / reportedSize) + 1,
+    totalPages,
+    statusCounts,
+    eventTypeCounts: leadsListCountPairs(counts.event_type_counts),
     indexTruncated: false,
     indexError: null,
     params: {

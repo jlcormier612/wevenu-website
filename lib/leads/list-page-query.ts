@@ -1,12 +1,9 @@
 /**
- * Phase 1 paged Leads read — semantics for `query_leads_list_page`.
+ * Phase 1 paged Leads candidate — semantics for DB paging.
  *
- * Live list (`getLeadsListPage`) uses the SQL function after Phase 1B shadow
- * compare PASS. `selectLeadsListPage` is the in-memory spec:
- * same queue, filters, and order as `filterLeadsForList` / `sortLeadsForList`,
- * with an explicit tie-break so the database does not depend on input order.
- * Tie-break matches the index order (inquiry_date desc, created_at desc, id desc),
- * except newest/oldest, whose primary key is already inquiry_date.
+ * Live list is back on Wave 1 (`getLeadsListIndex`) after Phase 1D FAIL.
+ * Candidate RPCs stay off the live path until both gates pass:
+ * correctness (ids/order/totals) and speed (beat Wave 1 on scoreboard hops).
  */
 
 import { normalizeEventType } from "@/lib/event-types/canonical";
@@ -28,8 +25,12 @@ import { isStaleWithoutContact } from "@/lib/leads/stale-contact";
 import type { Lead } from "@/lib/leads/types";
 import { isUnseenLeadAttention } from "@/lib/navigation/attention";
 
-/** Postgres function. Not called by the live list page. */
+/** Legacy combined candidate. Not called by the live list page. */
 export const LEADS_LIST_PAGE_RPC = "query_leads_list_page";
+/** Hot-path page rows only. Not called by the live list page. */
+export const LEADS_LIST_ROWS_RPC = "query_leads_list_rows";
+/** Hot-path counts only. Not called by the live list page. */
+export const LEADS_LIST_COUNTS_RPC = "query_leads_list_counts";
 
 /**
  * Resolved stage used by the list index (`resolveSalesStage` with no tour).
