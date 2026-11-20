@@ -90,8 +90,12 @@ describe("Standard pipeline baseline", () => {
     assert.doesNotMatch(board, /getActiveTemplate/);
     assert.doesNotMatch(leads, /activeTemplate\?\.stages/);
     assert.doesNotMatch(board, /activeTemplate\?\.stages/);
+    // Wave 1: list schedules ensure off the critical path; Board still awaits.
     assert.match(leads, /ensureStandardSalesPipelineForCurrentVenue/);
+    assert.match(leads, /after\(/);
+    assert.doesNotMatch(leads, /await ensureStandardSalesPipelineForCurrentVenue/);
     assert.match(board, /ensureStandardSalesPipelineForCurrentVenue/);
+    assert.match(board, /await ensureStandardSalesPipelineForCurrentVenue/);
   });
 
   it("Customize Pipeline stays venue-scoped (no cross-venue overwrite)", () => {

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { after } from "next/server";
 import { Suspense } from "react";
 import { GitBranch } from "lucide-react";
 
@@ -54,8 +55,21 @@ async function LeadsSpotIsland() {
 }
 
 export default async function LeadsPage({ searchParams }: Props) {
-  await ensureStandardSalesPipelineForCurrentVenue();
   const params = await searchParams;
+
+  // Wave 1: keep Standard pipeline idempotent ensure off the list critical path.
+  // Board view + venue provisioning still await ensure for first-use correctness.
+  // Failures are logged for observability without blocking or breaking the page.
+  after(() => {
+    void ensureStandardSalesPipelineForCurrentVenue().catch((err: unknown) => {
+      console.error(
+        JSON.stringify({
+          event: "leads_pipeline_ensure_failed",
+          message: err instanceof Error ? err.message : "unknown",
+        }),
+      );
+    });
+  });
 
   return (
     <div className="htc-hospitality-page space-y-4 sm:space-y-6" data-testid="leads-streaming-root">
