@@ -11,7 +11,8 @@ import { isStaleWithoutContact } from "@/lib/leads/stale-contact";
 import { isUnseenLeadAttention } from "@/lib/navigation/attention";
 import type { Lead } from "@/lib/leads/types";
 
-export const LEADS_PAGE_SIZE = 50;
+/** Initial / progressive chunk size for the Leads table. */
+export const LEADS_PAGE_SIZE = 20;
 
 export type LeadsListAttention =
   | "stale_contact"
@@ -38,6 +39,9 @@ export type LeadsListParams = {
   eventType?: string;
   sort?: LeadsListSort;
   attention?: LeadsListAttention;
+  /** 0-based offset into the filtered matching set (progressive load). */
+  offset?: number;
+  /** @deprecated Prefer offset; kept for transitional callers. */
   page?: number;
   /** Lost outcome list (view=lost). */
   outcome?: "active" | "lost";
@@ -194,18 +198,47 @@ export function paginateLeads<T>(
   };
 }
 
+/** Slice a progressive window from a filtered matching set. */
+export function sliceLeadWindow<T>(
+  items: readonly T[],
+  offset: number,
+  limit: number = LEADS_PAGE_SIZE,
+): {
+  pageItems: T[];
+  offset: number;
+  pageSize: number;
+  totalMatching: number;
+  hasMore: boolean;
+} {
+  const totalMatching = items.length;
+  const safeOffset = Math.max(0, Math.min(offset, totalMatching));
+  const pageItems = items.slice(safeOffset, safeOffset + limit) as T[];
+  return {
+    pageItems,
+    offset: safeOffset,
+    pageSize: limit,
+    totalMatching,
+    hasMore: safeOffset + pageItems.length < totalMatching,
+  };
+}
+
 export type LeadsListPageResult = {
-  /** Current page rows only — never the full venue collection. */
+  /** Current window rows only — never the full venue collection. */
   leads: Lead[];
   /** All non-archived venue leads (for discoverability / empty-state). */
   totalLeads: number;
   totalMatching: number;
-  page: number;
+  offset: number;
   pageSize: number;
+  hasMore: boolean;
+  /** @deprecated Prefer offset/hasMore. */
+  page: number;
+  /** @deprecated Prefer hasMore. */
   totalPages: number;
   statusCounts: Record<string, number>;
   eventTypeCounts: Array<[string, number]>;
+  indexTruncated: boolean;
   params: Required<
     Pick<LeadsListParams, "q" | "status" | "eventType" | "sort" | "attention" | "outcome">
-  > & { page: number };
+  > & { offset: number };
 };

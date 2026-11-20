@@ -564,37 +564,68 @@ export const LEAD_LIST_SELECT = [
 ].join(",");
 
 /**
+ * PostgREST/Supabase default max rows per request is typically 1000.
+ * Page the lean index so larger venues are not silently truncated.
+ */
+export const LEADS_LIST_INDEX_CHUNK = 1000;
+/** Safety ceiling — surface truncation rather than unbounded memory growth. */
+export const LEADS_LIST_INDEX_HARD_CAP = 20_000;
+
+export type LeadsListIndexResult = {
+  leads: Lead[];
+  /** True when the hard cap stopped further fetches (population may be incomplete). */
+  truncated: boolean;
+};
+
+/**
  * Leads list index — every eligible row, lean columns, no tour join.
- * Callers paginate / filter server-side before rendering a page window.
+ * Callers filter/sort server-side then render a progressive display window.
  */
 export async function getLeadsListIndex(
   client: DbClient,
   venueId: string,
   filters?: { includeArchived?: boolean },
-): Promise<Lead[]> {
-  let q = client
-    .from("leads")
-    .select(LEAD_LIST_SELECT)
-    .eq("venue_id", venueId)
-    .is("merged_into_lead_id", null);
+): Promise<LeadsListIndexResult> {
+  let archivedIds: string[] = [];
   if (!filters?.includeArchived) {
     const { data: archived } = await client
       .from("venue_customer_relationships")
       .select("id")
       .eq("venue_id", venueId)
       .not("archived_at", "is", null);
-    const archivedIds = ((archived ?? []) as Array<{ id: string }>).map((r) => r.id);
+    archivedIds = ((archived ?? []) as Array<{ id: string }>).map((r) => r.id);
+  }
+
+  const rows: LeadRow[] = [];
+  let truncated = false;
+  for (let from = 0; from < LEADS_LIST_INDEX_HARD_CAP; from += LEADS_LIST_INDEX_CHUNK) {
+    const to = Math.min(from + LEADS_LIST_INDEX_CHUNK - 1, LEADS_LIST_INDEX_HARD_CAP - 1);
+    let q = client
+      .from("leads")
+      .select(LEAD_LIST_SELECT)
+      .eq("venue_id", venueId)
+      .is("merged_into_lead_id", null);
     if (archivedIds.length > 0) {
       q = q.not("relationship_id", "in", `(${archivedIds.join(",")})`);
     }
+    const { data, error } = await q
+      .order("inquiry_date", { ascending: false })
+      .order("created_at", { ascending: false })
+      .range(from, to);
+    if (error) throw error;
+    const chunk = (data ?? []) as unknown as LeadRow[];
+    rows.push(...chunk);
+    if (chunk.length < LEADS_LIST_INDEX_CHUNK) break;
+    if (rows.length >= LEADS_LIST_INDEX_HARD_CAP) {
+      truncated = true;
+      break;
+    }
   }
-  const { data, error } = await q
-    .order("inquiry_date", { ascending: false })
-    .order("created_at", { ascending: false });
-  if (error) throw error;
-  // Lean select string is not in generated Database typings — assert after error check.
-  const rows = (data ?? []) as unknown as LeadRow[];
-  return rows.map((r) => mapLead(r, EMPTY_TOUR));
+
+  return {
+    leads: rows.map((r) => mapLead(r, EMPTY_TOUR)),
+    truncated,
+  };
 }
 
 export async function getLeads(

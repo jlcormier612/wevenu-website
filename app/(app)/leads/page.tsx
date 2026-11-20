@@ -22,7 +22,6 @@ type Props = {
     stage?: string;
     eventType?: string;
     sort?: string;
-    page?: string;
   }>;
 };
 

@@ -15,7 +15,6 @@ export type LeadsListSearchParams = {
   stage?: string;
   eventType?: string;
   sort?: string;
-  page?: string;
 };
 
 function parseSort(raw: string | undefined): LeadsListSort {
@@ -46,7 +45,7 @@ function parseAttention(
   return "all";
 }
 
-/** Bounded list window + global counts; message attention only for the page. */
+/** First progressive window + global counts; message attention only for that window. */
 export async function LeadsListIsland({
   searchParams,
 }: {
@@ -54,7 +53,6 @@ export async function LeadsListIsland({
 }) {
   const outcome = searchParams.view === "lost" ? ("lost" as const) : ("active" as const);
   const attention = parseAttention(searchParams.attention, outcome);
-  const page = Math.max(1, Number.parseInt(searchParams.page ?? "1", 10) || 1);
 
   const [bookedMembership, unattendedInquiryLeadIds] = await Promise.all([
     loadBookedMembershipSets(),
@@ -70,7 +68,7 @@ export async function LeadsListIsland({
     sort: parseSort(searchParams.sort),
     attention,
     outcome,
-    page,
+    offset: 0,
     unattendedInquiryLeadIds,
     currentBookedCount: bookedMembership.currentClientIds.size,
   });
@@ -92,9 +90,8 @@ export async function LeadsListIsland({
       leads={listPage.leads}
       totalLeads={listPage.totalLeads}
       totalMatching={listPage.totalMatching}
-      page={listPage.page}
       pageSize={listPage.pageSize}
-      totalPages={listPage.totalPages}
+      hasMore={listPage.hasMore}
       statusCounts={listPage.statusCounts}
       eventTypeCounts={listPage.eventTypeCounts}
       initialAttention={attention === "all" ? null : attention}

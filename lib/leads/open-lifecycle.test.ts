@@ -122,7 +122,7 @@ describe("Leads surfaces", () => {
     assert.match(query, /isOpenLeadOpportunity/);
     assert.match(list, /kind: "booked"/);
     assert.match(list, /href="\/clients\?filter=all"/);
-    assert.match(list, /view", "lost"/);
+    assert.match(list, /buildLeadsListHref|outcome: "lost"/);
     assert.doesNotMatch(list, /scope === "closed"/);
 
     const getLeadsFn = repo.slice(repo.indexOf("export async function getLeads("), repo.indexOf("export async function getLead("));

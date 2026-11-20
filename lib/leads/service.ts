@@ -13,7 +13,7 @@ import {
   buildEventTypeCounts,
   buildStatusCounts,
   filterLeadsForList,
-  paginateLeads,
+  sliceLeadWindow,
   LEADS_PAGE_SIZE,
   type LeadsListPageResult,
   type LeadsListParams,
@@ -110,22 +110,26 @@ export async function getLeads(filters?: { q?: string; status?: string }): Promi
 export type { LeadsListPageResult, LeadsListParams };
 
 /**
- * Server-backed Leads list page: lean index for global counts/search/filters,
- * then a bounded window of rows for RSC serialization (not client-only slice
- * of a full select * + tours payload).
+ * Server-backed Leads list window: lean index for global counts/search/filters,
+ * then a bounded offset/limit window for RSC or progressive load (not
+ * client-only slice of a full select * + tours payload).
  */
 export async function getLeadsListPage(
   params: LeadsListParams = {},
 ): Promise<LeadsListPageResult> {
+  const pageSize = params.pageSize ?? LEADS_PAGE_SIZE;
   const empty: LeadsListPageResult = {
     leads: [],
     totalLeads: 0,
     totalMatching: 0,
+    offset: 0,
+    pageSize,
+    hasMore: false,
     page: 1,
-    pageSize: params.pageSize ?? LEADS_PAGE_SIZE,
     totalPages: 1,
     statusCounts: { all: 0, booked: params.currentBookedCount ?? 0, lost: 0 },
     eventTypeCounts: [],
+    indexTruncated: false,
     params: {
       q: params.q ?? "",
       status: params.status ?? (params.outcome === "lost" ? "lost" : "all"),
@@ -133,22 +137,28 @@ export async function getLeadsListPage(
       sort: (params.sort ?? "newest") as LeadsListSort,
       attention: (params.attention ?? "all") as LeadsListAttention,
       outcome: params.outcome ?? "active",
-      page: 1,
+      offset: 0,
     },
   };
   if (!isSupabaseConfigured) return empty;
   const venue = await getCurrentVenue();
   if (!venue) return empty;
   const supabase = await createClient();
-  const index = await repo.getLeadsListIndex(supabase, venue.id);
+  const indexResult = await repo.getLeadsListIndex(supabase, venue.id);
+  const index = indexResult.leads;
   const outcome = params.outcome ?? "active";
   const status = params.status ?? (outcome === "lost" ? "lost" : "all");
   const attention = (params.attention ?? "all") as LeadsListAttention;
   const eventType = params.eventType ?? "all";
   const sort = (params.sort ?? "newest") as LeadsListSort;
   const q = params.q ?? "";
-  const pageSize = params.pageSize ?? LEADS_PAGE_SIZE;
   const currentBookedCount = params.currentBookedCount ?? 0;
+  const offset =
+    params.offset != null
+      ? params.offset
+      : params.page != null
+        ? Math.max(0, (params.page - 1) * pageSize)
+        : 0;
 
   const statusCountsMap = buildStatusCounts(index, currentBookedCount);
   const statusCounts: Record<string, number> = Object.fromEntries(statusCountsMap);
@@ -163,17 +173,21 @@ export async function getLeadsListPage(
     outcome,
     q,
   });
-  const paged = paginateLeads(filtered, params.page ?? 1, pageSize);
+  const windowed = sliceLeadWindow(filtered, offset, pageSize);
+  const totalPages = Math.max(1, Math.ceil(windowed.totalMatching / pageSize) || 1);
 
   return {
-    leads: paged.pageItems,
+    leads: windowed.pageItems,
     totalLeads: index.length,
-    totalMatching: paged.totalMatching,
-    page: paged.page,
-    pageSize: paged.pageSize,
-    totalPages: paged.totalPages,
+    totalMatching: windowed.totalMatching,
+    offset: windowed.offset,
+    pageSize: windowed.pageSize,
+    hasMore: windowed.hasMore,
+    page: Math.floor(windowed.offset / pageSize) + 1,
+    totalPages,
     statusCounts,
     eventTypeCounts,
+    indexTruncated: indexResult.truncated,
     params: {
       q,
       status,
@@ -181,7 +195,7 @@ export async function getLeadsListPage(
       sort,
       attention,
       outcome,
-      page: paged.page,
+      offset: windowed.offset,
     },
   };
 }

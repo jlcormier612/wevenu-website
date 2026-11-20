@@ -7,10 +7,11 @@ import {
   buildStatusCounts,
   filterLeadsForList,
   LEADS_PAGE_SIZE,
-  paginateLeads,
+  sliceLeadWindow,
   sortLeadsForList,
 } from "@/lib/leads/list-query";
 import type { Lead } from "@/lib/leads/types";
+import { appendLeadWindow } from "@/lib/leads/list-navigation";
 
 function lead(partial: Partial<Lead> & Pick<Lead, "id" | "firstName" | "salesStage">): Lead {
   return {
@@ -72,26 +73,31 @@ describe("Leads list-query pagination + counts", () => {
     }),
   );
 
-  it("paginates without dropping or duplicating ids across pages", () => {
+  it("progressively windows without dropping or duplicating ids", () => {
+    assert.equal(LEADS_PAGE_SIZE, 20);
     const filtered = filterLeadsForList(population, { outcome: "active", sort: "newest" });
     assert.equal(filtered.length, 100);
     const seen = new Set<string>();
-    const totalPages = Math.ceil(filtered.length / LEADS_PAGE_SIZE);
-    for (let page = 1; page <= totalPages; page++) {
-      const { pageItems } = paginateLeads(filtered, page, LEADS_PAGE_SIZE);
+    let shown: typeof filtered = [];
+    let offset = 0;
+    while (offset < filtered.length) {
+      const { pageItems, hasMore } = sliceLeadWindow(filtered, offset, LEADS_PAGE_SIZE);
+      shown = appendLeadWindow(shown, pageItems);
       for (const row of pageItems) {
         assert.equal(seen.has(row.id), false, `duplicate ${row.id}`);
         seen.add(row.id);
       }
+      offset = shown.length;
+      if (!hasMore) break;
     }
     assert.equal(seen.size, filtered.length);
   });
 
-  it("search matches across the full eligible set, not only page 1", () => {
+  it("search matches across the full eligible set, not only the first window", () => {
     const filtered = filterLeadsForList(population, { q: "unique-search", outcome: "active" });
     assert.equal(filtered.length, 1);
     assert.equal(filtered[0]?.id, "l7");
-    const page = paginateLeads(filtered, 1, LEADS_PAGE_SIZE);
+    const page = sliceLeadWindow(filtered, 0, LEADS_PAGE_SIZE);
     assert.equal(page.totalMatching, 1);
     assert.equal(page.pageItems[0]?.id, "l7");
   });
@@ -113,9 +119,11 @@ describe("Leads list-query pagination + counts", () => {
 });
 
 describe("NAV-PERF Leads list architecture", () => {
-  it("uses lean list index + server page window; defers spot patterns; no full-route loading.tsx", () => {
+  it("uses lean list index + progressive 20 window; defers spot patterns; no full-route loading.tsx", () => {
     const page = readFileSync(resolve("app/(app)/leads/page.tsx"), "utf8");
     const island = readFileSync(resolve("components/leads/leads-list-island.tsx"), "utf8");
+    const list = readFileSync(resolve("components/leads/lead-list.tsx"), "utf8");
+    const actions = readFileSync(resolve("app/(app)/leads/actions.ts"), "utf8");
     const repo = readFileSync(resolve("lib/leads/repository.ts"), "utf8");
     const service = readFileSync(resolve("lib/leads/service.ts"), "utf8");
 
@@ -124,11 +132,18 @@ describe("NAV-PERF Leads list architecture", () => {
     assert.match(page, /LeadsSpotIsland|SpotPatternRecommendationsPanel/);
     assert.doesNotMatch(page, /getLeads\(\)/);
     assert.match(island, /getLeadsListPage/);
+    assert.match(island, /offset:\s*0/);
     assert.match(island, /loadLeadMessageAttentionMap/);
     assert.match(island, /listPage\.leads\.map/);
+    assert.match(list, /loadMoreLeadsAction/);
+    assert.match(list, /Show 20 more/);
+    assert.match(list, /shouldCommitSearchDraft/);
+    assert.match(actions, /export async function loadMoreLeadsAction/);
     assert.match(service, /getLeadsListIndex/);
     assert.match(repo, /export async function getLeadsListIndex/);
     assert.match(repo, /LEAD_LIST_SELECT/);
+    assert.match(repo, /LEADS_LIST_INDEX_CHUNK/);
+    assert.match(repo, /\.range\(/);
     assert.match(repo, /EMPTY_TOUR/);
     assert.doesNotMatch(
       repo.slice(

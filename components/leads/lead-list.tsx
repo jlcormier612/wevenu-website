@@ -3,7 +3,7 @@
 import * as React from "react";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { ArrowUpDown, Search, SlidersHorizontal } from "lucide-react";
 
 function momentumLabel(score: number, status: string): { tier: "hot" | "warm" | "growing" | "early" | "quiet" } {
@@ -15,6 +15,7 @@ function momentumLabel(score: number, status: string): { tier: "hot" | "warm" | 
   return { tier: "early" };
 }
 
+import { loadMoreLeadsAction } from "@/app/(app)/leads/actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,8 +44,15 @@ import { salesStageLabel } from "@/lib/leads/sales-stages";
 import { LeadUnseenIndicator } from "@/components/leads/lead-unseen-indicator";
 import { LeadMessageAttentionIndicator } from "@/components/leads/lead-message-attention-indicator";
 import type { LeadMessageAttention } from "@/lib/leads/message-attention";
-import type { LeadsListSort } from "@/lib/leads/list-query";
-import { UNATTENDED_INQUIRY_ATTENTION } from "@/lib/luv/unattended-inquiry";
+import type { LeadsListAttention, LeadsListSort } from "@/lib/leads/list-query";
+import { LEADS_PAGE_SIZE } from "@/lib/leads/list-query";
+import {
+  appendLeadWindow,
+  buildLeadsListHref,
+  nextSearchDraftFromCommitted,
+  progressiveWindowLabel,
+  shouldCommitSearchDraft,
+} from "@/lib/leads/list-navigation";
 import {
   ATTENTION_CHIP,
   ATTENTION_CHIP_COUNT,
@@ -71,53 +79,36 @@ const SORT_OPTIONS: { value: LeadsListSort; label: string }[] = [
   { value: "commitment_high", label: "Most Progress" },
 ];
 
-type AttentionFilter =
-  | "all"
-  | "stale_contact"
-  | "open"
-  | "unseen"
-  | "unattended_inquiry";
+type AttentionFilter = LeadsListAttention;
 
 function stageDisplayName(lead: Lead): string {
   return salesStageLabel(lead.salesStage ?? lead.status);
 }
 
-function buildLeadsHref(opts: {
+function filterFingerprint(opts: {
   q: string;
   status: string;
   eventType: string;
   sort: LeadsListSort;
   attention: AttentionFilter;
   outcome: "active" | "lost";
-  page: number;
 }): string {
-  const sp = new URLSearchParams();
-  if (opts.outcome === "lost" || opts.status === "lost") {
-    sp.set("view", "lost");
-  } else if (opts.status !== "all") {
-    sp.set("stage", opts.status);
-  }
-  if (opts.q.trim()) sp.set("q", opts.q.trim());
-  if (opts.eventType !== "all") sp.set("eventType", opts.eventType);
-  if (opts.sort !== "newest") sp.set("sort", opts.sort);
-  if (opts.attention === "stale_contact") sp.set("attention", "stale_contact");
-  else if (opts.attention === "open") sp.set("attention", "open");
-  else if (opts.attention === "unseen") sp.set("attention", "unseen");
-  else if (opts.attention === "unattended_inquiry") {
-    sp.set("attention", UNATTENDED_INQUIRY_ATTENTION);
-  }
-  if (opts.page > 1) sp.set("page", String(opts.page));
-  const qs = sp.toString();
-  return qs ? `/leads?${qs}` : "/leads";
+  return [
+    opts.q,
+    opts.status,
+    opts.eventType,
+    opts.sort,
+    opts.attention,
+    opts.outcome,
+  ].join("|");
 }
 
 export function LeadList({
-  leads,
+  leads: initialLeads,
   totalLeads,
-  totalMatching,
-  page,
-  pageSize,
-  totalPages,
+  totalMatching: initialTotalMatching,
+  pageSize = LEADS_PAGE_SIZE,
+  hasMore: initialHasMore,
   statusCounts: statusCountsIn,
   eventTypeCounts,
   initialAttention,
@@ -128,15 +119,14 @@ export function LeadList({
   initialSort = "newest",
   unattendedInquiryLeadIds = [],
   currentBookedCount = 0,
-  messageAttentionByLeadId = {},
+  messageAttentionByLeadId: initialMessageAttention = {},
 }: {
-  /** Current server page only. */
+  /** First progressive window from the server. */
   leads: Lead[];
   totalLeads: number;
   totalMatching: number;
-  page: number;
-  pageSize: number;
-  totalPages: number;
+  pageSize?: number;
+  hasMore: boolean;
   statusCounts: Record<string, number>;
   eventTypeCounts: Array<[string, number]>;
   /** Dashboard/Luv deep-link: same 7-day stale-contact condition as generate_venue_recommendations. */
@@ -155,29 +145,84 @@ export function LeadList({
   messageAttentionByLeadId?: Record<string, LeadMessageAttention>;
 }) {
   const router = useRouter();
-  const pathname = usePathname();
   void unattendedInquiryLeadIds;
-  void pathname;
 
-  const [query, setQuery] = React.useState(initialQuery);
-  const [statusFilter, setStatusFilter] = React.useState<FilterKey>(
-    (initialStatus as FilterKey) || (initialOutcome === "lost" ? "lost" : "all"),
-  );
+  const committedAttention: AttentionFilter =
+    initialAttention === "active" ? "open" : (initialAttention ?? "all");
+  const committedStatus =
+    (initialStatus as FilterKey) || (initialOutcome === "lost" ? "lost" : "all");
+  const committedOutcome = initialOutcome === "lost" || committedStatus === "lost"
+    ? ("lost" as const)
+    : ("active" as const);
+
+  const committed = {
+    q: initialQuery,
+    status: committedStatus,
+    eventType: initialEventType || "all",
+    sort: initialSort,
+    attention: committedAttention,
+    outcome: committedOutcome,
+  };
+
+  const fingerprint = filterFingerprint(committed);
+
+  const [queryDraft, setQueryDraft] = React.useState(initialQuery);
+  const [statusFilter, setStatusFilter] = React.useState<FilterKey>(committedStatus);
   const [eventTypeFilter, setEventTypeFilter] = React.useState<EventTypeFilter>(
-    initialEventType || "all",
+    committed.eventType,
   );
-  const [sort, setSort] = React.useState<LeadsListSort>(initialSort);
+  const [sort, setSort] = React.useState<LeadsListSort>(committed.sort);
   const [attentionFilter, setAttentionFilter] = React.useState<AttentionFilter>(
-    initialAttention === "active" ? "open" : (initialAttention ?? "all"),
+    committed.attention,
   );
 
+  const [displayedLeads, setDisplayedLeads] = React.useState<Lead[]>(initialLeads);
+  const [totalMatching, setTotalMatching] = React.useState(initialTotalMatching);
+  const [hasMore, setHasMore] = React.useState(initialHasMore);
+  const [messageAttentionByLeadId, setMessageAttentionByLeadId] = React.useState(
+    initialMessageAttention,
+  );
+  const [loadingMore, setLoadingMore] = React.useState(false);
+  const [loadMoreError, setLoadMoreError] = React.useState<string | null>(null);
+
+  const lastRequestedQueryRef = React.useRef(initialQuery);
+  const searchGenRef = React.useRef(0);
+  const loadMoreGenRef = React.useRef(0);
+
+  // Sync draft/chips from committed URL without clobbering newer keystrokes.
   React.useEffect(() => {
-    setQuery(initialQuery);
-    setStatusFilter((initialStatus as FilterKey) || (initialOutcome === "lost" ? "lost" : "all"));
-    setEventTypeFilter(initialEventType || "all");
-    setSort(initialSort);
-    setAttentionFilter(initialAttention === "active" ? "open" : (initialAttention ?? "all"));
-  }, [initialQuery, initialStatus, initialEventType, initialSort, initialAttention, initialOutcome]);
+    setStatusFilter(committedStatus);
+    setEventTypeFilter(committed.eventType);
+    setSort(committed.sort);
+    setAttentionFilter(committed.attention);
+    setQueryDraft((draft) =>
+      nextSearchDraftFromCommitted({
+        draft,
+        committedUrlQuery: initialQuery,
+        lastRequestedQuery: lastRequestedQueryRef.current,
+      }),
+    );
+    lastRequestedQueryRef.current = initialQuery;
+  }, [
+    fingerprint,
+    initialQuery,
+    committedStatus,
+    committed.eventType,
+    committed.sort,
+    committed.attention,
+  ]);
+
+  // Filter/search/sort change → restart progressive window at first chunk.
+  React.useEffect(() => {
+    loadMoreGenRef.current += 1;
+    setDisplayedLeads(initialLeads);
+    setTotalMatching(initialTotalMatching);
+    setHasMore(initialHasMore);
+    setMessageAttentionByLeadId(initialMessageAttention);
+    setLoadingMore(false);
+    setLoadMoreError(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reset only when filter fingerprint changes
+  }, [fingerprint]);
 
   const statusCounts = React.useMemo(() => {
     const map = new Map<string, number>(Object.entries(statusCountsIn));
@@ -201,50 +246,106 @@ export function LeadList({
   ];
 
   const hasActiveFilters =
-    statusFilter !== "all" || eventTypeFilter !== "all" || query || attentionFilter !== "all";
+    statusFilter !== "all" || eventTypeFilter !== "all" || queryDraft || attentionFilter !== "all";
 
-  function navigate(next: {
-    q?: string;
-    status?: string;
-    eventType?: string;
-    sort?: LeadsListSort;
-    attention?: AttentionFilter;
-    outcome?: "active" | "lost";
-    page?: number;
-  }) {
-    const href = buildLeadsHref({
-      q: next.q ?? query,
-      status: next.status ?? statusFilter,
-      eventType: next.eventType ?? eventTypeFilter,
-      sort: next.sort ?? sort,
-      attention: next.attention ?? attentionFilter,
-      outcome: next.outcome ?? (statusFilter === "lost" ? "lost" : "active"),
-      page: next.page ?? 1,
+  function navigateCommitted(next: Partial<{
+    q: string;
+    status: string;
+    eventType: string;
+    sort: LeadsListSort;
+    attention: AttentionFilter;
+    outcome: "active" | "lost";
+  }>) {
+    const href = buildLeadsListHref({
+      q: next.q ?? committed.q,
+      status: next.status ?? committed.status,
+      eventType: next.eventType ?? committed.eventType,
+      sort: next.sort ?? committed.sort,
+      attention: next.attention ?? committed.attention,
+      outcome: next.outcome ?? committed.outcome,
     });
+    if (next.q != null) lastRequestedQueryRef.current = next.q;
     router.replace(href);
   }
 
   function showAllActiveLeads() {
+    searchGenRef.current += 1;
+    lastRequestedQueryRef.current = "";
+    setQueryDraft("");
     setAttentionFilter("all");
     setStatusFilter("all");
-    setQuery("");
     setEventTypeFilter("all");
     router.replace("/leads");
   }
 
+  // Debounced search — generation-gated so stale timers cannot overwrite newer drafts.
   React.useEffect(() => {
+    const generation = ++searchGenRef.current;
     const handle = window.setTimeout(() => {
-      if (query === initialQuery) return;
-      navigate({ q: query, page: 1 });
+      if (
+        !shouldCommitSearchDraft({
+          draft: queryDraft,
+          committedUrlQuery: initialQuery,
+          generation,
+          currentGeneration: searchGenRef.current,
+        })
+      ) {
+        return;
+      }
+      lastRequestedQueryRef.current = queryDraft;
+      navigateCommitted({ q: queryDraft });
     }, 300);
     return () => window.clearTimeout(handle);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- debounce search only
-  }, [query]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- debounce draft only
+  }, [queryDraft]);
+
+  async function onShowMore() {
+    if (loadingMore || !hasMore) return;
+    const gen = ++loadMoreGenRef.current;
+    setLoadingMore(true);
+    setLoadMoreError(null);
+    try {
+      const result = await loadMoreLeadsAction({
+        q: committed.q,
+        status: committed.status,
+        eventType: committed.eventType,
+        sort: committed.sort,
+        attention: committed.attention,
+        outcome: committed.outcome,
+        offset: displayedLeads.length,
+        limit: pageSize,
+      });
+      if (gen !== loadMoreGenRef.current) return;
+      if (!result.ok) {
+        setLoadMoreError(result.message);
+        return;
+      }
+      setDisplayedLeads((prev) => appendLeadWindow(prev, result.leads));
+      setMessageAttentionByLeadId((prev) => ({
+        ...prev,
+        ...result.messageAttentionByLeadId,
+      }));
+      setTotalMatching(result.totalMatching);
+      setHasMore(result.hasMore);
+    } catch {
+      if (gen !== loadMoreGenRef.current) return;
+      setLoadMoreError("Could not load more leads. Try again.");
+    } finally {
+      if (gen === loadMoreGenRef.current) setLoadingMore(false);
+    }
+  }
 
   const queueEmpty = (statusCounts.get("all") ?? 0) === 0 && statusFilter !== "lost";
+  const showProgressive = totalMatching > 0 && displayedLeads.length > 0;
 
   return (
-    <div className="space-y-4" data-testid="leads-list-root" data-leads-page={page} data-leads-page-size={pageSize} data-leads-total-matching={totalMatching}>
+    <div
+      className="space-y-4"
+      data-testid="leads-list-root"
+      data-leads-page-size={pageSize}
+      data-leads-shown={displayedLeads.length}
+      data-leads-total-matching={totalMatching}
+    >
     <div className="space-y-3">
       {attentionFilter === "stale_contact" && (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-[0.75rem] border border-[color:color-mix(in_oklch,var(--htc-soft-rose)_45%,var(--htc-border-warm))] bg-[var(--htc-soft-blush)] px-3 py-2 text-sm">
@@ -307,8 +408,8 @@ export function LeadList({
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
           <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            value={queryDraft}
+            onChange={(e) => setQueryDraft(e.target.value)}
             placeholder="Search by name, email, event type…"
             className="border-[color:var(--htc-border-warm)] bg-card pl-9"
           />
@@ -320,7 +421,7 @@ export function LeadList({
             onValueChange={(v) => {
               const next = v as LeadsListSort;
               setSort(next);
-              navigate({ sort: next, page: 1 });
+              navigateCommitted({ sort: next, q: queryDraft });
             }}
             items={SORT_OPTIONS}
           >
@@ -338,7 +439,6 @@ export function LeadList({
         <span className="text-xs text-muted-foreground font-medium mr-0.5">Stage:</span>
         {stageChips.map((chip) => {
           const count = statusCounts.get(chip.key) ?? 0;
-          /* New Inquiry with population uses blush attention (Clients Needs Attention pattern). */
           const attentionIdle = chip.key === "new_inquiry" && count > 0;
           const chipClass = (active: boolean) =>
             cn(
@@ -373,12 +473,17 @@ export function LeadList({
                 setStatusFilter(chip.key as FilterKey);
                 if (chip.kind === "lost") {
                   setAttentionFilter("all");
-                  navigate({ status: "lost", outcome: "lost", attention: "all", page: 1 });
+                  navigateCommitted({
+                    status: "lost",
+                    outcome: "lost",
+                    attention: "all",
+                    q: queryDraft,
+                  });
                 } else {
-                  navigate({
+                  navigateCommitted({
                     status: chip.key,
                     outcome: "active",
-                    page: 1,
+                    q: queryDraft,
                   });
                 }
               }}
@@ -401,7 +506,7 @@ export function LeadList({
           </span>
           <button type="button" onClick={() => {
             setEventTypeFilter("all");
-            navigate({ eventType: "all", page: 1 });
+            navigateCommitted({ eventType: "all", q: queryDraft });
           }}
             className={cn(
               "inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium transition-colors",
@@ -412,7 +517,7 @@ export function LeadList({
           {eventTypeCounts.map(([type, count]) => (
             <button key={type} type="button" onClick={() => {
               setEventTypeFilter(type);
-              navigate({ eventType: type, page: 1 });
+              navigateCommitted({ eventType: type, q: queryDraft });
             }}
               className={cn(
                 "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors",
@@ -430,12 +535,7 @@ export function LeadList({
       </div>
 
       {hasActiveFilters && (
-        <button type="button" onClick={() => {
-          setQuery("");
-          setStatusFilter("all");
-          setEventTypeFilter("all");
-          showAllActiveLeads();
-        }}
+        <button type="button" onClick={() => showAllActiveLeads()}
           className="text-xs text-muted-foreground hover:text-foreground transition-colors underline-offset-2 hover:underline">
           Clear all filters
         </button>
@@ -480,18 +580,13 @@ export function LeadList({
       {statusFilter !== "lost" && !queueEmpty && totalMatching === 0 && (
         <div className="rounded-sm border border-dashed border-border py-10 text-center">
           <p className="text-sm text-muted-foreground">No leads match your filters.</p>
-          <Button variant="link" size="sm" className="mt-1" onClick={() => {
-            setQuery("");
-            setStatusFilter("all");
-            setEventTypeFilter("all");
-            showAllActiveLeads();
-          }}>
+          <Button variant="link" size="sm" className="mt-1" onClick={() => showAllActiveLeads()}>
             Clear filters
           </Button>
         </div>
       )}
 
-      {leads.length > 0 && (
+      {displayedLeads.length > 0 && (
         <div className="htc-hospitality-table">
           <Table>
             <TableHeader>
@@ -508,7 +603,7 @@ export function LeadList({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {leads.map((lead) => {
+              {displayedLeads.map((lead) => {
                 const stage = lead.salesStage ?? lead.status;
                 return (
                 <TableRow key={lead.id} className="group">
@@ -574,34 +669,30 @@ export function LeadList({
         </div>
       )}
 
-      {totalMatching > pageSize && (
-        <div className="flex flex-wrap items-center justify-between gap-2 pt-2" data-testid="leads-pagination">
-          <p className="text-xs text-muted-foreground">
-            Showing {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, totalMatching)} of {totalMatching}
+      {showProgressive && (
+        <div
+          className="flex flex-col items-center gap-2 pt-2"
+          data-testid="leads-progressive"
+        >
+          <p className="text-xs text-muted-foreground" data-testid="leads-showing-label">
+            {progressiveWindowLabel(displayedLeads.length, totalMatching)}
           </p>
-          <div className="flex items-center gap-2">
+          {hasMore && (
             <Button
               type="button"
               variant="outline"
               size="sm"
-              disabled={page <= 1}
-              onClick={() => navigate({ page: page - 1 })}
+              disabled={loadingMore}
+              onClick={() => void onShowMore()}
+              data-testid="leads-show-more"
+              className="border-[color:var(--htc-border-warm)]"
             >
-              Previous
+              {loadingMore ? "Loading…" : "Show 20 more ↓"}
             </Button>
-            <span className="text-xs text-muted-foreground">
-              Page {page} of {totalPages}
-            </span>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={page >= totalPages}
-              onClick={() => navigate({ page: page + 1 })}
-            >
-              Next
-            </Button>
-          </div>
+          )}
+          {loadMoreError && (
+            <p className="text-xs text-destructive" role="alert">{loadMoreError}</p>
+          )}
         </div>
       )}
     </div>
