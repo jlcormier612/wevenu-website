@@ -10,6 +10,7 @@ import {
   type LeadsListAttention,
   type LeadsListSort,
 } from "@/lib/leads/list-query";
+import { leadsFilterFingerprint } from "@/lib/leads/list-navigation";
 import { createLead, getLeadsListPage } from "@/lib/leads/service";
 import type { CreateLeadResult, Lead, LeadInput } from "@/lib/leads/types";
 import { getUnattendedInquiryLeadIdsForCurrentVenue } from "@/lib/luv/unattended-inquiry-population";
@@ -27,8 +28,10 @@ export type LoadMoreLeadsInput = {
   sort?: LeadsListSort;
   attention?: LeadsListAttention;
   outcome?: "active" | "lost";
-  /** Current number of rows already shown (next fetch starts here). */
-  offset: number;
+  /** Ids already displayed — next window excludes these (mutation-safe). */
+  excludeIds: readonly string[];
+  /** Client filter fingerprint; echoed so stale responses can be dropped. */
+  filterFingerprint: string;
   limit?: number;
 };
 
@@ -37,11 +40,12 @@ export type LoadMoreLeadsResult = {
   leads: Lead[];
   messageAttentionByLeadId: Record<string, LeadMessageAttention>;
   totalMatching: number;
-  offset: number;
   hasMore: boolean;
+  filterFingerprint: string;
 } | {
   ok: false;
   message: string;
+  filterFingerprint?: string;
 };
 
 /** Progressive Leads window — next chunk only; filters apply to the full eligible set. */
@@ -49,9 +53,29 @@ export async function loadMoreLeadsAction(
   input: LoadMoreLeadsInput,
 ): Promise<LoadMoreLeadsResult> {
   const limit = input.limit ?? LEADS_PAGE_SIZE;
-  const offset = Math.max(0, input.offset);
   const attention = input.attention ?? "all";
   const outcome = input.outcome ?? "active";
+  const q = input.q ?? "";
+  const status = input.status ?? (outcome === "lost" ? "lost" : "all");
+  const eventType = input.eventType ?? "all";
+  const sort = input.sort ?? "newest";
+  const filterFingerprint = leadsFilterFingerprint({
+    q,
+    status,
+    eventType,
+    sort,
+    attention,
+    outcome,
+  });
+
+  // Client sent a fingerprint from a different filter set — refuse rather than append.
+  if (input.filterFingerprint !== filterFingerprint) {
+    return {
+      ok: false,
+      message: "Filters changed. Refresh the list and try again.",
+      filterFingerprint,
+    };
+  }
 
   const [bookedMembership, unattendedInquiryLeadIds] = await Promise.all([
     loadBookedMembershipSets(),
@@ -61,17 +85,25 @@ export async function loadMoreLeadsAction(
   ]);
 
   const listPage = await getLeadsListPage({
-    q: input.q ?? "",
-    status: input.status ?? (outcome === "lost" ? "lost" : "all"),
-    eventType: input.eventType ?? "all",
-    sort: input.sort ?? "newest",
+    q,
+    status,
+    eventType,
+    sort,
     attention,
     outcome,
-    offset,
+    excludeIds: input.excludeIds,
     pageSize: limit,
     unattendedInquiryLeadIds,
     currentBookedCount: bookedMembership.currentClientIds.size,
   });
+
+  if (listPage.indexTruncated) {
+    return {
+      ok: false,
+      message: listPage.indexError ?? "Lead list is temporarily unavailable.",
+      filterFingerprint,
+    };
+  }
 
   const messageAttentionByLeadId: Record<string, LeadMessageAttention> = {};
   if (isSupabaseConfigured && listPage.leads.length > 0) {
@@ -90,8 +122,8 @@ export async function loadMoreLeadsAction(
     leads: listPage.leads,
     messageAttentionByLeadId,
     totalMatching: listPage.totalMatching,
-    offset: listPage.offset,
     hasMore: listPage.hasMore,
+    filterFingerprint,
   };
 }
 

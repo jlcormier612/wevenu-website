@@ -39,9 +39,14 @@ export type LeadsListParams = {
   eventType?: string;
   sort?: LeadsListSort;
   attention?: LeadsListAttention;
-  /** 0-based offset into the filtered matching set (progressive load). */
+  /** 0-based offset into the filtered matching set (initial window). */
   offset?: number;
-  /** @deprecated Prefer offset; kept for transitional callers. */
+  /**
+   * Progressive load: ids already shown. Next window skips these so inserts /
+   * deletes / stage moves between requests cannot silently omit or duplicate.
+   */
+  excludeIds?: readonly string[];
+  /** @deprecated Prefer offset / excludeIds; kept for transitional callers. */
   page?: number;
   /** Lost outcome list (view=lost). */
   outcome?: "active" | "lost";
@@ -222,6 +227,33 @@ export function sliceLeadWindow<T>(
   };
 }
 
+/**
+ * Next progressive chunk after excluding already-displayed ids.
+ * Survives inserts/deletes/stage moves between requests without offset gaps.
+ */
+export function nextProgressiveWindow<T extends { id: string }>(
+  filtered: readonly T[],
+  excludeIds: ReadonlySet<string> | readonly string[],
+  limit: number = LEADS_PAGE_SIZE,
+): {
+  pageItems: T[];
+  pageSize: number;
+  totalMatching: number;
+  hasMore: boolean;
+  remainingAfter: number;
+} {
+  const excluded = excludeIds instanceof Set ? excludeIds : new Set(excludeIds);
+  const remaining = filtered.filter((row) => !excluded.has(row.id));
+  const pageItems = remaining.slice(0, limit);
+  return {
+    pageItems,
+    pageSize: limit,
+    totalMatching: filtered.length,
+    hasMore: remaining.length > pageItems.length,
+    remainingAfter: Math.max(0, remaining.length - pageItems.length),
+  };
+}
+
 export type LeadsListPageResult = {
   /** Current window rows only — never the full venue collection. */
   leads: Lead[];
@@ -238,6 +270,8 @@ export type LeadsListPageResult = {
   statusCounts: Record<string, number>;
   eventTypeCounts: Array<[string, number]>;
   indexTruncated: boolean;
+  /** Set when truncated — never pair with non-empty counts presented as complete. */
+  indexError: string | null;
   params: Required<
     Pick<LeadsListParams, "q" | "status" | "eventType" | "sort" | "attention" | "outcome">
   > & { offset: number };

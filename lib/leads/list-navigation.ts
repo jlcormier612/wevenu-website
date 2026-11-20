@@ -79,6 +79,40 @@ export function appendLeadWindow<T extends { id: string }>(
   return out;
 }
 
+/**
+ * After a mid-flight filter change, a pending Show-more response must be ignored.
+ * Generation mismatch OR filter fingerprint mismatch → drop the append.
+ */
+export function shouldApplyLoadMoreResult(args: {
+  requestGeneration: number;
+  currentGeneration: number;
+  requestFingerprint: string;
+  currentFingerprint: string;
+}): boolean {
+  if (args.requestGeneration !== args.currentGeneration) return false;
+  if (args.requestFingerprint !== args.currentFingerprint) return false;
+  return true;
+}
+
+/** Stable filter fingerprint for progressive-load race checks (client + action). */
+export function leadsFilterFingerprint(opts: {
+  q: string;
+  status: string;
+  eventType: string;
+  sort: string;
+  attention: string;
+  outcome: string;
+}): string {
+  return [
+    opts.q,
+    opts.status,
+    opts.eventType,
+    opts.sort,
+    opts.attention,
+    opts.outcome,
+  ].join("|");
+}
+
 export function progressiveWindowLabel(shown: number, totalMatching: number): string {
   if (totalMatching === 0) return "Showing 0 of 0 leads";
   return `Showing ${shown} of ${totalMatching} leads`;

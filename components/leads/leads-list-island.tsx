@@ -103,6 +103,7 @@ export async function LeadsListIsland({
       unattendedInquiryLeadIds={unattendedInquiryLeadIds}
       currentBookedCount={bookedMembership.currentClientIds.size}
       messageAttentionByLeadId={messageAttentionByLeadId}
+      indexError={listPage.indexError}
     />
   );
 }

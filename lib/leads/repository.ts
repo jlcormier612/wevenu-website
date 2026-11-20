@@ -568,12 +568,18 @@ export const LEAD_LIST_SELECT = [
  * Page the lean index so larger venues are not silently truncated.
  */
 export const LEADS_LIST_INDEX_CHUNK = 1000;
-/** Safety ceiling — surface truncation rather than unbounded memory growth. */
+/** Safety ceiling — never present a capped slice as a complete global index. */
 export const LEADS_LIST_INDEX_HARD_CAP = 20_000;
+
+export const LEADS_LIST_INDEX_TRUNCATED_MESSAGE =
+  "This venue has more leads than the list can load safely. Refresh and try again, or contact support if this continues.";
 
 export type LeadsListIndexResult = {
   leads: Lead[];
-  /** True when the hard cap stopped further fetches (population may be incomplete). */
+  /**
+   * True only when a row beyond HARD_CAP exists (exact-cap venues are NOT
+   * truncated). Callers must not treat capped rows as complete counts/search.
+   */
   truncated: boolean;
 };
 
@@ -597,7 +603,6 @@ export async function getLeadsListIndex(
   }
 
   const rows: LeadRow[] = [];
-  let truncated = false;
   for (let from = 0; from < LEADS_LIST_INDEX_HARD_CAP; from += LEADS_LIST_INDEX_CHUNK) {
     const to = Math.min(from + LEADS_LIST_INDEX_CHUNK - 1, LEADS_LIST_INDEX_HARD_CAP - 1);
     let q = client
@@ -615,16 +620,40 @@ export async function getLeadsListIndex(
     if (error) throw error;
     const chunk = (data ?? []) as unknown as LeadRow[];
     rows.push(...chunk);
-    if (chunk.length < LEADS_LIST_INDEX_CHUNK) break;
-    if (rows.length >= LEADS_LIST_INDEX_HARD_CAP) {
-      truncated = true;
-      break;
+    if (chunk.length < LEADS_LIST_INDEX_CHUNK) {
+      return {
+        leads: rows.map((r) => mapLead(r, EMPTY_TOUR)),
+        truncated: false,
+      };
     }
+    if (rows.length >= LEADS_LIST_INDEX_HARD_CAP) break;
+  }
+
+  // Exact HARD_CAP is complete only when no 20,001st eligible row exists.
+  const capped = rows.slice(0, LEADS_LIST_INDEX_HARD_CAP);
+  let probeQ = client
+    .from("leads")
+    .select("id")
+    .eq("venue_id", venueId)
+    .is("merged_into_lead_id", null);
+  if (archivedIds.length > 0) {
+    probeQ = probeQ.not("relationship_id", "in", `(${archivedIds.join(",")})`);
+  }
+  const { data: probe, error: probeError } = await probeQ
+    .order("inquiry_date", { ascending: false })
+    .order("created_at", { ascending: false })
+    .range(LEADS_LIST_INDEX_HARD_CAP, LEADS_LIST_INDEX_HARD_CAP);
+  if (probeError) throw probeError;
+  const truncated = ((probe ?? []) as Array<{ id: string }>).length > 0;
+
+  if (truncated) {
+    // Never hand callers a partial index to label as complete global counts.
+    return { leads: [], truncated: true };
   }
 
   return {
-    leads: rows.map((r) => mapLead(r, EMPTY_TOUR)),
-    truncated,
+    leads: capped.map((r) => mapLead(r, EMPTY_TOUR)),
+    truncated: false,
   };
 }
 

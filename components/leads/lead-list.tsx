@@ -49,8 +49,10 @@ import { LEADS_PAGE_SIZE } from "@/lib/leads/list-query";
 import {
   appendLeadWindow,
   buildLeadsListHref,
+  leadsFilterFingerprint,
   nextSearchDraftFromCommitted,
   progressiveWindowLabel,
+  shouldApplyLoadMoreResult,
   shouldCommitSearchDraft,
 } from "@/lib/leads/list-navigation";
 import {
@@ -85,24 +87,6 @@ function stageDisplayName(lead: Lead): string {
   return salesStageLabel(lead.salesStage ?? lead.status);
 }
 
-function filterFingerprint(opts: {
-  q: string;
-  status: string;
-  eventType: string;
-  sort: LeadsListSort;
-  attention: AttentionFilter;
-  outcome: "active" | "lost";
-}): string {
-  return [
-    opts.q,
-    opts.status,
-    opts.eventType,
-    opts.sort,
-    opts.attention,
-    opts.outcome,
-  ].join("|");
-}
-
 export function LeadList({
   leads: initialLeads,
   totalLeads,
@@ -120,6 +104,7 @@ export function LeadList({
   unattendedInquiryLeadIds = [],
   currentBookedCount = 0,
   messageAttentionByLeadId: initialMessageAttention = {},
+  indexError = null,
 }: {
   /** First progressive window from the server. */
   leads: Lead[];
@@ -143,6 +128,8 @@ export function LeadList({
   currentBookedCount?: number;
   /** Decision C — needs_response message attention, distinct from venue_seen_at. */
   messageAttentionByLeadId?: Record<string, LeadMessageAttention>;
+  /** Recoverable index failure — never show partial counts as complete. */
+  indexError?: string | null;
 }) {
   const router = useRouter();
   void unattendedInquiryLeadIds;
@@ -164,7 +151,7 @@ export function LeadList({
     outcome: committedOutcome,
   };
 
-  const fingerprint = filterFingerprint(committed);
+  const fingerprint = leadsFilterFingerprint(committed);
 
   const [queryDraft, setQueryDraft] = React.useState(initialQuery);
   const [statusFilter, setStatusFilter] = React.useState<FilterKey>(committedStatus);
@@ -188,6 +175,8 @@ export function LeadList({
   const lastRequestedQueryRef = React.useRef(initialQuery);
   const searchGenRef = React.useRef(0);
   const loadMoreGenRef = React.useRef(0);
+  const fingerprintRef = React.useRef(fingerprint);
+  fingerprintRef.current = fingerprint;
 
   // Sync draft/chips from committed URL without clobbering newer keystrokes.
   React.useEffect(() => {
@@ -300,8 +289,10 @@ export function LeadList({
   }, [queryDraft]);
 
   async function onShowMore() {
-    if (loadingMore || !hasMore) return;
+    if (loadingMore || !hasMore || indexError) return;
     const gen = ++loadMoreGenRef.current;
+    const requestFingerprint = fingerprint;
+    const excludeIds = displayedLeads.map((l) => l.id);
     setLoadingMore(true);
     setLoadMoreError(null);
     try {
@@ -312,14 +303,25 @@ export function LeadList({
         sort: committed.sort,
         attention: committed.attention,
         outcome: committed.outcome,
-        offset: displayedLeads.length,
+        excludeIds,
+        filterFingerprint: requestFingerprint,
         limit: pageSize,
       });
-      if (gen !== loadMoreGenRef.current) return;
+      if (
+        !shouldApplyLoadMoreResult({
+          requestGeneration: gen,
+          currentGeneration: loadMoreGenRef.current,
+          requestFingerprint,
+          currentFingerprint: fingerprintRef.current,
+        })
+      ) {
+        return;
+      }
       if (!result.ok) {
         setLoadMoreError(result.message);
         return;
       }
+      if (result.filterFingerprint !== fingerprintRef.current) return;
       setDisplayedLeads((prev) => appendLeadWindow(prev, result.leads));
       setMessageAttentionByLeadId((prev) => ({
         ...prev,
@@ -337,6 +339,28 @@ export function LeadList({
 
   const queueEmpty = (statusCounts.get("all") ?? 0) === 0 && statusFilter !== "lost";
   const showProgressive = totalMatching > 0 && displayedLeads.length > 0;
+
+  if (indexError) {
+    return (
+      <div
+        className="rounded-[0.75rem] border border-[color:color-mix(in_oklch,var(--htc-soft-rose)_45%,var(--htc-border-warm))] bg-[var(--htc-soft-blush)] px-4 py-6 text-center"
+        role="alert"
+        data-testid="leads-index-error"
+      >
+        <p className="font-heading text-base font-medium text-heading">Leads list unavailable</p>
+        <p className="mt-2 text-sm text-muted-foreground">{indexError}</p>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="mt-4"
+          onClick={() => router.refresh()}
+        >
+          Try again
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div

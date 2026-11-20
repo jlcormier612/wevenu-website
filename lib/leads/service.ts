@@ -13,6 +13,7 @@ import {
   buildEventTypeCounts,
   buildStatusCounts,
   filterLeadsForList,
+  nextProgressiveWindow,
   sliceLeadWindow,
   LEADS_PAGE_SIZE,
   type LeadsListPageResult,
@@ -130,6 +131,7 @@ export async function getLeadsListPage(
     statusCounts: { all: 0, booked: params.currentBookedCount ?? 0, lost: 0 },
     eventTypeCounts: [],
     indexTruncated: false,
+    indexError: null,
     params: {
       q: params.q ?? "",
       status: params.status ?? (params.outcome === "lost" ? "lost" : "all"),
@@ -145,6 +147,13 @@ export async function getLeadsListPage(
   if (!venue) return empty;
   const supabase = await createClient();
   const indexResult = await repo.getLeadsListIndex(supabase, venue.id);
+  if (indexResult.truncated) {
+    return {
+      ...empty,
+      indexTruncated: true,
+      indexError: repo.LEADS_LIST_INDEX_TRUNCATED_MESSAGE,
+    };
+  }
   const index = indexResult.leads;
   const outcome = params.outcome ?? "active";
   const status = params.status ?? (outcome === "lost" ? "lost" : "all");
@@ -173,7 +182,21 @@ export async function getLeadsListPage(
     outcome,
     q,
   });
-  const windowed = sliceLeadWindow(filtered, offset, pageSize);
+
+  const excludeIds = params.excludeIds ?? [];
+  const windowed =
+    excludeIds.length > 0
+      ? (() => {
+          const progressive = nextProgressiveWindow(filtered, excludeIds, pageSize);
+          return {
+            pageItems: progressive.pageItems,
+            offset: 0,
+            pageSize: progressive.pageSize,
+            totalMatching: progressive.totalMatching,
+            hasMore: progressive.hasMore,
+          };
+        })()
+      : sliceLeadWindow(filtered, offset, pageSize);
   const totalPages = Math.max(1, Math.ceil(windowed.totalMatching / pageSize) || 1);
 
   return {
@@ -187,7 +210,8 @@ export async function getLeadsListPage(
     totalPages,
     statusCounts,
     eventTypeCounts,
-    indexTruncated: indexResult.truncated,
+    indexTruncated: false,
+    indexError: null,
     params: {
       q,
       status,
