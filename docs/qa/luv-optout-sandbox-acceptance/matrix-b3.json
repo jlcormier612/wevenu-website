@@ -1,0 +1,44 @@
+{
+  "matrix": [
+    {
+      "id": "B3-db-off",
+      "result": "PASS",
+      "evidence": "{\"venue_id\":\"a415ac52-cd74-42a6-8df7-7a8f6e71d080\",\"observations_enabled\":true,\"drafting_enabled\":true,\"autonomy_level\":\"draft_for_review\",\"preferred_tone\":\"warm\",\"created_at\":\"2026-09-13T02:48:49.168169+00:00\",\"updated_at\":\"2026-11-19T23:56:19.876019+00:00\",\"enabled\":false}"
+    },
+    {
+      "id": "B3-api-observation-patch-403",
+      "result": "PASS",
+      "evidence": "status=403 body={\"error\":\"Luv is turned off in Settings.\"}"
+    },
+    {
+      "id": "B3-api-recommendation-patch-403",
+      "result": "PASS",
+      "evidence": "status=403 body={\"error\":\"Luv is turned off in Settings.\"}"
+    },
+    {
+      "id": "B3-event-no-ask-luv",
+      "result": "PASS",
+      "evidence": "event"
+    },
+    {
+      "id": "B3-portal-no-ask-luv",
+      "result": "PASS",
+      "evidence": "portal"
+    },
+    {
+      "id": "B3-website-no-ask-luv",
+      "result": "PASS",
+      "evidence": "ask=false"
+    },
+    {
+      "id": "B3-portal-ask-api-blocked",
+      "result": "FAIL",
+      "evidence": "status=200 body={\"answer\":\"Luv isn't available right now — ask your venue coordinator directly.\",\"guideSection\":null,\"outcome\":\"unavailable\",\"nextSteps\":[]}"
+    },
+    {
+      "id": "D3-db-on",
+      "result": "PASS",
+      "evidence": "{\"venue_id\":\"a415ac52-cd74-42a6-8df7-7a8f6e71d080\",\"observations_enabled\":true,\"drafting_enabled\":true,\"autonomy_level\":\"draft_for_review\",\"preferred_tone\":\"warm\",\"created_at\":\"2026-09-13T02:48:49.168169+00:00\",\"updated_at\":\"2026-11-19T23:56:43.161684+00:00\",\"enabled\":true}"
+    }
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "baselineSettings": {
+    "venue_id": "a415ac52-cd74-42a6-8df7-7a8f6e71d080",
+    "observations_enabled": true,
+    "drafting_enabled": true,
+    "autonomy_level": "draft_for_review",
+    "preferred_tone": "warm",
+    "created_at": "2026-09-13T02:48:49.168169+00:00",
+    "updated_at": "2026-10-13T00:40:29.527311+00:00",
+    "enabled": true
+  },
+  "baselinePending": [
+    "00e208e6-3324-43c3-9d35-ad90f3c69051",
+    "275ea23c-28e6-43b1-bd78-5708a4605f07",
+    "54368e6c-5cbe-4cd3-b183-967dd323918b",
+    "5d8afc1e-ef9e-45a0-a3ba-17b5195d9b88",
+    "672d4014-e435-4881-94c3-ae67fd0344d9",
+    "6b3ce51a-c1e5-474b-b88f-8aabbb6d9e33",
+    "7df0ecb9-fb08-4078-84cc-bd19a055342f",
+    "cdba8b6d-8bfe-4386-9a31-c500ad0dd4ee",
+    "d26fc6e8-6491-40d6-bd30-d9d1b8915bc0",
+    "d323785c-3686-4b6b-b77c-3402cb970e0e",
+    "e0aff972-1965-4ef0-b18f-5332cd9e93ac",
+    "fbc72a11-6993-4e04-ac4b-57f55f8d0433",
+    "fc296328-b888-48a4-b136-2013baa24547"
+  ],
+  "meadowBefore": {
+    "venue_id": "05f16a15-1752-4855-8a3b-aad5c593d8d9",
+    "observations_enabled": true,
+    "drafting_enabled": true,
+    "autonomy_level": "draft_for_review",
+    "preferred_tone": "warm",
+    "created_at": "2026-10-11T22:46:19.978002+00:00",
+    "updated_at": "2026-10-15T00:00:14.350083+00:00",
+    "enabled": true
+  },
+  "dpl": "cfeca21abc933618d57c8f3835fc7405a18f28be",
+  "health": {
+    "ok": true,
+    "checks": {
+      "env": "ok",
+      "supabase": "ok"
+    }
+  }
+}

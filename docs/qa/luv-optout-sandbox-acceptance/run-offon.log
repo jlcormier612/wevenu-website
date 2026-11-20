@@ -1,0 +1,5 @@
+url https://app.sandbox.hellotocheers.com/settings/communications
+has Enable Luv? true
+has Luv —? true
+Enable Luv count 1
+FAIL B2-find-master-switch — no switch near Enable Luv

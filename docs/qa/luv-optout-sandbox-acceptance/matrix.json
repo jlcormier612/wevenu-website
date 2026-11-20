@@ -1,0 +1,156 @@
+{
+  "expectSha": "cfeca21abc933618d57c8f3835fc7405a18f28be",
+  "dpl": "cfeca21abc933618d57c8f3835fc7405a18f28be",
+  "health": {
+    "ok": true,
+    "checks": {
+      "env": "ok",
+      "supabase": "ok"
+    }
+  },
+  "matrix": [
+    {
+      "id": "DPL",
+      "result": "PASS",
+      "evidence": "dpl=cfeca21abc933618d57c8f3835fc7405a18f28be expect=cfeca21abc933618d57c8f3835fc7405a18f28be"
+    },
+    {
+      "id": "HEALTH",
+      "result": "PASS",
+      "evidence": "{\"ok\":true,\"checks\":{\"env\":\"ok\",\"supabase\":\"ok\"}}"
+    },
+    {
+      "id": "A-master-default-ON",
+      "result": "PASS",
+      "evidence": "aria-checked=null db.enabled=true"
+    },
+    {
+      "id": "A-nested-preserved",
+      "result": "PASS",
+      "evidence": "{\"venue_id\":\"a415ac52-cd74-42a6-8df7-7a8f6e71d080\",\"observations_enabled\":true,\"drafting_enabled\":true,\"autonomy_level\":\"draft_for_review\",\"preferred_tone\":\"warm\",\"created_at\":\"2026-09-13T02:48:49.168169+00:00\",\"updated_at\":\"2026-10-13T00:40:29.527311+00:00\",\"enabled\":true}"
+    },
+    {
+      "id": "A-dashboard-loads",
+      "result": "PASS",
+      "evidence": "ops=true"
+    },
+    {
+      "id": "A-lead-luv-surface-present-or-eligible",
+      "result": "PASS",
+      "evidence": "luv_markers=true (presence depends on eligibility; page loaded)"
+    },
+    {
+      "id": "B-save-OFF",
+      "result": "FAIL",
+      "evidence": "{\"venue_id\":\"a415ac52-cd74-42a6-8df7-7a8f6e71d080\",\"observations_enabled\":true,\"drafting_enabled\":true,\"autonomy_level\":\"draft_for_review\",\"preferred_tone\":\"warm\",\"created_at\":\"2026-09-13T02:48:49.168169+00:00\",\"updated_at\":\"2026-11-19T23:50:02.023242+00:00\",\"enabled\":true}"
+    },
+    {
+      "id": "B-nested-still-present",
+      "result": "PASS",
+      "evidence": "{\"venue_id\":\"a415ac52-cd74-42a6-8df7-7a8f6e71d080\",\"observations_enabled\":true,\"drafting_enabled\":true,\"autonomy_level\":\"draft_for_review\",\"preferred_tone\":\"warm\",\"created_at\":\"2026-09-13T02:48:49.168169+00:00\",\"updated_at\":\"2026-11-19T23:50:02.023242+00:00\",\"enabled\":true}"
+    },
+    {
+      "id": "B-nested-controls-disabled-ui",
+      "result": "PASS",
+      "evidence": "disabled_controls=2"
+    },
+    {
+      "id": "B-dashboard-ops-without-luv",
+      "result": "PASS",
+      "evidence": "ops=true luvHidden=true"
+    },
+    {
+      "id": "B-lead-luv-absent",
+      "result": "PASS",
+      "evidence": "snippet=OVERVIEW  Dashboard  YOUR RELATIONSHIPS  Leads 99+ Clients Vendors  SCHEDULING  Calendar Tours  COMMUNICATION  Inbox Automations  LIBRARY  Templates Documents  FINANCIALS  Contracts 18 Payments 25  TO"
+    },
+    {
+      "id": "B-event-luv-absent",
+      "result": "PASS",
+      "evidence": "hasAskLuv=false"
+    },
+    {
+      "id": "B-portal-ask-luv-absent",
+      "result": "PASS",
+      "evidence": "hasAskLuv=false"
+    },
+    {
+      "id": "B-guest-concierge-absent",
+      "result": "PASS",
+      "evidence": "hasAskLuv=false"
+    },
+    {
+      "id": "B-api-draft-blocked",
+      "result": "FAIL",
+      "evidence": "status=200 body=### Let’s Connect\n\nWe’d love to hear more about your wedding plans and what matters most to you. Whether you’re just beginning your venue search or ready to take the next step, our team is here to answer your questions and help you envision your celebration at [Venue Name]. Reach out anytime—we’d be delighted to connect!"
+    },
+    {
+      "id": "B-api-rollup-blocked",
+      "result": "FAIL",
+      "evidence": "status=200 body={\"ok\":true,\"id\":\"180e267a-3ecf-4712-92af-b8cfe5c43cb2\",\"generatedAt\":\"2026-11-19T23:50:36.878Z\",\"observations\":{\"whatIsWorking\":\"The funnel is showing strong momentum: 76 couples have booked from 102 proposals, with website leads converting especially well at 46%. Planning activity is beginning to build, with 11 couples using Planning Playbooks and RSVP completion at 100% among participating couples.\",\"needsAttention\":\"The most urgent priority is the three events with $156k overdue, especially S"
+    },
+    {
+      "id": "B-api-portal-ask-blocked",
+      "result": "PASS",
+      "evidence": "status=400 body={\"error\":\"missing_token_or_question\"}"
+    },
+    {
+      "id": "B-api-observation-blocked",
+      "result": "FAIL",
+      "evidence": "status=405 body="
+    },
+    {
+      "id": "C-pending-drafts-retained",
+      "result": "PASS",
+      "evidence": "before=13 after=13"
+    },
+    {
+      "id": "C-settings-nested-retained",
+      "result": "PASS",
+      "evidence": "{\"venue_id\":\"a415ac52-cd74-42a6-8df7-7a8f6e71d080\",\"observations_enabled\":true,\"drafting_enabled\":true,\"autonomy_level\":\"draft_for_review\",\"preferred_tone\":\"warm\",\"created_at\":\"2026-09-13T02:48:49.168169+00:00\",\"updated_at\":\"2026-11-19T23:50:02.023242+00:00\",\"enabled\":true}"
+    },
+    {
+      "id": "D-reenable-ON",
+      "result": "PASS",
+      "evidence": "{\"venue_id\":\"a415ac52-cd74-42a6-8df7-7a8f6e71d080\",\"observations_enabled\":true,\"drafting_enabled\":true,\"autonomy_level\":\"draft_for_review\",\"preferred_tone\":\"warm\",\"created_at\":\"2026-09-13T02:48:49.168169+00:00\",\"updated_at\":\"2026-11-19T23:50:42.453561+00:00\",\"enabled\":true}"
+    },
+    {
+      "id": "D-nested-restored",
+      "result": "PASS",
+      "evidence": "{\"venue_id\":\"a415ac52-cd74-42a6-8df7-7a8f6e71d080\",\"observations_enabled\":true,\"drafting_enabled\":true,\"autonomy_level\":\"draft_for_review\",\"preferred_tone\":\"warm\",\"created_at\":\"2026-09-13T02:48:49.168169+00:00\",\"updated_at\":\"2026-11-19T23:50:42.453561+00:00\",\"enabled\":true}"
+    },
+    {
+      "id": "D-dashboard-loads-after-on",
+      "result": "PASS",
+      "evidence": "reloaded"
+    },
+    {
+      "id": "D-pending-still-available",
+      "result": "PASS",
+      "evidence": "count=13"
+    },
+    {
+      "id": "E-isolation-meadow-unchanged",
+      "result": "PASS",
+      "evidence": "{\"meadowBefore\":{\"venue_id\":\"05f16a15-1752-4855-8a3b-aad5c593d8d9\",\"observations_enabled\":true,\"drafting_enabled\":true,\"autonomy_level\":\"draft_for_review\",\"preferred_tone\":\"warm\",\"created_at\":\"2026-10-11T22:46:19.978002+00:00\",\"updated_at\":\"2026-10-15T00:00:14.350083+00:00\",\"enabled\":true},\"meadowAfter\":{\"venue_id\":\"05f16a15-1752-4855-8a3b-aad5c593d8d9\",\"observations_enabled\":true,\"drafting_enabled\":true,\"autonomy_level\":\"draft_for_review\",\"preferred_tone\":\"warm\",\"created_at\":\"2026-10-11T22:46:19.978002+00:00\",\"updated_at\":\"2026-10-15T00:00:14.350083+00:00\",\"enabled\":true}}"
+    },
+    {
+      "id": "E-messages-loads",
+      "result": "PASS",
+      "evidence": "url=https://app.sandbox.hellotocheers.com/messaging"
+    },
+    {
+      "id": "E-dashboard-regression",
+      "result": "PASS",
+      "evidence": "ok"
+    },
+    {
+      "id": "SAFE-fancy-left-ON",
+      "result": "PASS",
+      "evidence": "final"
+    }
+  ],
+  "pass": 24,
+  "fail": 4,
+  "live": true
+}
