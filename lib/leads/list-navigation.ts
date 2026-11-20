@@ -15,6 +15,57 @@ export type LeadsListNavState = {
   outcome: "active" | "lost";
 };
 
+const SORT_VALUES: readonly LeadsListSort[] = [
+  "newest",
+  "oldest",
+  "az",
+  "za",
+  "event_asc",
+  "event_desc",
+  "budget_high",
+  "budget_low",
+  "last_contacted",
+  "commitment_high",
+];
+
+function parseSortParam(raw: string | null): LeadsListSort {
+  return SORT_VALUES.includes(raw as LeadsListSort) ? (raw as LeadsListSort) : "newest";
+}
+
+function parseAttentionParam(
+  raw: string | null,
+  outcome: "active" | "lost",
+): LeadsListAttention | "all" {
+  if (outcome === "lost") return "all";
+  if (raw === "stale_contact") return "stale_contact";
+  if (raw === "open" || raw === "active") return "open";
+  if (raw === "unseen") return "unseen";
+  if (raw === UNATTENDED_INQUIRY_ATTENTION) return "unattended_inquiry";
+  return "all";
+}
+
+/** Parse /leads search params into committed nav state (soft Filter + popstate). */
+export function parseLeadsListNavState(
+  search: string | URLSearchParams,
+): LeadsListNavState {
+  const sp = typeof search === "string"
+    ? new URLSearchParams(search.startsWith("?") ? search.slice(1) : search)
+    : search;
+  const view = sp.get("view");
+  const stage = sp.get("stage");
+  const outcome: "active" | "lost" = view === "lost" || stage === "lost" ? "lost" : "active";
+  const status =
+    outcome === "lost" ? "lost" : stage && stage !== "all" ? stage : "all";
+  return {
+    q: sp.get("q") ?? "",
+    status,
+    eventType: sp.get("eventType") ?? "all",
+    sort: parseSortParam(sp.get("sort")),
+    attention: parseAttentionParam(sp.get("attention"), outcome),
+    outcome,
+  };
+}
+
 /** Build /leads href from committed filter state (no progressive offset in URL). */
 export function buildLeadsListHref(opts: LeadsListNavState): string {
   const sp = new URLSearchParams();
@@ -93,6 +144,9 @@ export function shouldApplyLoadMoreResult(args: {
   if (args.requestFingerprint !== args.currentFingerprint) return false;
   return true;
 }
+
+/** Soft Filter replace uses the same generation + fingerprint gate as Show more. */
+export const shouldApplySoftFilterResult = shouldApplyLoadMoreResult;
 
 /** Stable filter fingerprint for progressive-load race checks (client + action). */
 export function leadsFilterFingerprint(opts: {

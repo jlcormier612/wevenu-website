@@ -272,6 +272,8 @@ export type LeadsListPageResult = {
   indexTruncated: boolean;
   /** Set when truncated — never pair with non-empty counts presented as complete. */
   indexError: string | null;
+  /** List actions: venue locked out (layout normally redirects; actions must refuse too). */
+  accessDenied?: "suspended" | null;
   params: Required<
     Pick<LeadsListParams, "q" | "status" | "eventType" | "sort" | "attention" | "outcome">
   > & { offset: number };

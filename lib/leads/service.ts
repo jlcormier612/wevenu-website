@@ -140,6 +140,16 @@ export async function getLeadsListPage(
   if (!isSupabaseConfigured) return empty;
   const venue = await getCurrentVenue();
   if (!venue) return empty;
+  // Shared list-path guard (Show more + soft Filter): layout redirects on
+  // document nav, but server actions must not keep serving rows after suspend.
+  if (venue.accessDisabled || venue.accountStatus === "suspended") {
+    return {
+      ...empty,
+      indexTruncated: true,
+      indexError: "Venue access is suspended.",
+      accessDenied: "suspended",
+    };
+  }
   const supabase = await createClient();
   return repo.queryLeadsListPageHotPath(supabase, venue.id, params);
 }

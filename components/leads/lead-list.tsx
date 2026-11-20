@@ -15,7 +15,10 @@ function momentumLabel(score: number, status: string): { tier: "hot" | "warm" | 
   return { tier: "early" };
 }
 
-import { loadMoreLeadsAction } from "@/app/(app)/leads/actions";
+import {
+  loadMoreLeadsAction,
+  replaceLeadsListAction,
+} from "@/app/(app)/leads/actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -51,9 +54,12 @@ import {
   buildLeadsListHref,
   leadsFilterFingerprint,
   nextSearchDraftFromCommitted,
+  parseLeadsListNavState,
   progressiveWindowLabel,
   shouldApplyLoadMoreResult,
+  shouldApplySoftFilterResult,
   shouldCommitSearchDraft,
+  type LeadsListNavState,
 } from "@/lib/leads/list-navigation";
 import {
   clearLeadsListSession,
@@ -147,33 +153,37 @@ export function LeadList({
   const router = useRouter();
   void unattendedInquiryLeadIds;
 
-  const committedAttention: AttentionFilter =
+  const propsAttention: AttentionFilter =
     initialAttention === "active" ? "open" : (initialAttention ?? "all");
-  const committedStatus =
+  const propsStatus =
     (initialStatus as FilterKey) || (initialOutcome === "lost" ? "lost" : "all");
-  const committedOutcome = initialOutcome === "lost" || committedStatus === "lost"
+  const propsOutcome = initialOutcome === "lost" || propsStatus === "lost"
     ? ("lost" as const)
     : ("active" as const);
 
-  const committed = {
+  const propsCommitted: LeadsListNavState = {
     q: initialQuery,
-    status: committedStatus,
+    status: propsStatus,
     eventType: initialEventType || "all",
     sort: initialSort,
-    attention: committedAttention,
-    outcome: committedOutcome,
+    attention: propsAttention,
+    outcome: propsOutcome,
   };
+  const propsFingerprint = leadsFilterFingerprint(propsCommitted);
 
+  /** Soft Filter keeps local committed filters without remounting the workspace layout. */
+  const [softCommitted, setSoftCommitted] = React.useState<LeadsListNavState | null>(null);
+  const committed = softCommitted ?? propsCommitted;
   const fingerprint = leadsFilterFingerprint(committed);
 
   const [queryDraft, setQueryDraft] = React.useState(initialQuery);
-  const [statusFilter, setStatusFilter] = React.useState<FilterKey>(committedStatus);
+  const [statusFilter, setStatusFilter] = React.useState<FilterKey>(propsStatus);
   const [eventTypeFilter, setEventTypeFilter] = React.useState<EventTypeFilter>(
-    committed.eventType,
+    propsCommitted.eventType,
   );
-  const [sort, setSort] = React.useState<LeadsListSort>(committed.sort);
+  const [sort, setSort] = React.useState<LeadsListSort>(propsCommitted.sort);
   const [attentionFilter, setAttentionFilter] = React.useState<AttentionFilter>(
-    committed.attention,
+    propsCommitted.attention,
   );
 
   const [displayedLeads, setDisplayedLeads] = React.useState<Lead[]>(initialLeads);
@@ -184,10 +194,13 @@ export function LeadList({
   );
   const [loadingMore, setLoadingMore] = React.useState(false);
   const [loadMoreError, setLoadMoreError] = React.useState<string | null>(null);
+  const [filterBusy, setFilterBusy] = React.useState(false);
+  const [filterError, setFilterError] = React.useState<string | null>(null);
 
   const lastRequestedQueryRef = React.useRef(initialQuery);
   const searchGenRef = React.useRef(0);
   const loadMoreGenRef = React.useRef(0);
+  const softFilterGenRef = React.useRef(0);
   const fingerprintRef = React.useRef(fingerprint);
   fingerprintRef.current = fingerprint;
   const restoredFingerprintRef = React.useRef<string | null>(null);
@@ -195,6 +208,7 @@ export function LeadList({
   const [restoreSettled, setRestoreSettled] = React.useState(false);
   const displayedLeadsRef = React.useRef(displayedLeads);
   displayedLeadsRef.current = displayedLeads;
+  const skippingPopRef = React.useRef(false);
 
   function persistWorkingContext(
     leadIds?: readonly string[],
@@ -222,31 +236,33 @@ export function LeadList({
     });
   }
 
-  // Sync draft/chips from committed URL without clobbering newer keystrokes.
+  // Sync draft/chips from committed filters without clobbering newer keystrokes.
   React.useEffect(() => {
-    setStatusFilter(committedStatus);
+    setStatusFilter(committed.status as FilterKey);
     setEventTypeFilter(committed.eventType);
     setSort(committed.sort);
     setAttentionFilter(committed.attention);
     setQueryDraft((draft) =>
       nextSearchDraftFromCommitted({
         draft,
-        committedUrlQuery: initialQuery,
+        committedUrlQuery: committed.q,
         lastRequestedQuery: lastRequestedQueryRef.current,
       }),
     );
-    lastRequestedQueryRef.current = initialQuery;
+    lastRequestedQueryRef.current = committed.q;
   }, [
     fingerprint,
-    initialQuery,
-    committedStatus,
+    committed.q,
+    committed.status,
     committed.eventType,
     committed.sort,
     committed.attention,
   ]);
 
-  // Filter/search/sort change → restart progressive window at first chunk.
+  // Full RSC remount / cold URL / refresh — reset soft overlay from server props.
   React.useEffect(() => {
+    setSoftCommitted(null);
+    softFilterGenRef.current += 1;
     loadMoreGenRef.current += 1;
     restoredFingerprintRef.current = null;
     restorePhaseRef.current = "idle";
@@ -257,8 +273,10 @@ export function LeadList({
     setMessageAttentionByLeadId(initialMessageAttention);
     setLoadingMore(false);
     setLoadMoreError(null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- reset only when filter fingerprint changes
-  }, [fingerprint]);
+    setFilterBusy(false);
+    setFilterError(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- props fingerprint only
+  }, [propsFingerprint]);
 
   // Wave 1: restore progressive window + scroll when returning with matching filters.
   // Pending restore must not be overwritten by the scroll/persist effect (20-row clobber).
@@ -413,6 +431,99 @@ export function LeadList({
   const hasActiveFilters =
     statusFilter !== "all" || eventTypeFilter !== "all" || queryDraft || attentionFilter !== "all";
 
+  async function applySoftFilter(
+    next: LeadsListNavState,
+    opts?: { history?: "push" | "replace" | "none" },
+  ) {
+    const href = buildLeadsListHref(next);
+    const nextFingerprint = leadsFilterFingerprint(next);
+    const gen = ++softFilterGenRef.current;
+    loadMoreGenRef.current += 1;
+    if (next.q != null) lastRequestedQueryRef.current = next.q;
+
+    setStatusFilter(next.status as FilterKey);
+    setEventTypeFilter(next.eventType);
+    setSort(next.sort);
+    setAttentionFilter(next.attention);
+    setFilterError(null);
+    setFilterBusy(true);
+    setLoadMoreError(null);
+    setLoadingMore(false);
+    restoredFingerprintRef.current = null;
+    restorePhaseRef.current = "idle";
+    setRestoreSettled(false);
+
+    const historyMode = opts?.history ?? "push";
+    if (historyMode !== "none" && typeof window !== "undefined") {
+      skippingPopRef.current = true;
+      if (historyMode === "replace") {
+        window.history.replaceState({ softLeadsFilter: true }, "", href);
+      } else {
+        window.history.pushState({ softLeadsFilter: true }, "", href);
+      }
+      queueMicrotask(() => {
+        skippingPopRef.current = false;
+      });
+    }
+
+    try {
+      const result = await replaceLeadsListAction({
+        q: next.q,
+        status: next.status,
+        eventType: next.eventType,
+        sort: next.sort,
+        attention: next.attention,
+        outcome: next.outcome,
+        filterFingerprint: nextFingerprint,
+        limit: pageSize,
+      });
+      if (
+        !shouldApplySoftFilterResult({
+          requestGeneration: gen,
+          currentGeneration: softFilterGenRef.current,
+          requestFingerprint: nextFingerprint,
+          currentFingerprint: nextFingerprint,
+        })
+      ) {
+        return;
+      }
+      // Prefer live fingerprint after concurrent soft commits.
+      if (gen !== softFilterGenRef.current) return;
+
+      if (!result.ok) {
+        if (result.accessDenied === "suspended") {
+          window.location.assign("/billing/suspended");
+          return;
+        }
+        setFilterError(result.message);
+        return;
+      }
+      if (result.filterFingerprint !== nextFingerprint) return;
+
+      setSoftCommitted(next);
+      fingerprintRef.current = nextFingerprint;
+      setDisplayedLeads(result.leads);
+      setTotalMatching(result.totalMatching);
+      setHasMore(result.hasMore);
+      setMessageAttentionByLeadId(result.messageAttentionByLeadId);
+      if (typeof window !== "undefined") {
+        saveLeadsListWorkingContext({
+          href: buildLeadsListHref(next),
+          fingerprint: nextFingerprint,
+          leadIds: result.leads.map((l) => l.id),
+          scrollY: window.scrollY,
+        });
+      }
+      restorePhaseRef.current = "done";
+      setRestoreSettled(true);
+    } catch {
+      if (gen !== softFilterGenRef.current) return;
+      setFilterError("Could not update filters. Try again.");
+    } finally {
+      if (gen === softFilterGenRef.current) setFilterBusy(false);
+    }
+  }
+
   function navigateCommitted(next: Partial<{
     q: string;
     status: string;
@@ -421,16 +532,19 @@ export function LeadList({
     attention: AttentionFilter;
     outcome: "active" | "lost";
   }>) {
-    const href = buildLeadsListHref({
+    const merged: LeadsListNavState = {
       q: next.q ?? committed.q,
       status: next.status ?? committed.status,
       eventType: next.eventType ?? committed.eventType,
       sort: next.sort ?? committed.sort,
       attention: next.attention ?? committed.attention,
       outcome: next.outcome ?? committed.outcome,
-    });
-    if (next.q != null) lastRequestedQueryRef.current = next.q;
-    router.replace(href);
+    };
+    // Search debounce uses replace so typing does not flood history; chips push.
+    const history = next.q != null && Object.keys(next).every((k) => k === "q")
+      ? "replace"
+      : "push";
+    void applySoftFilter(merged, { history });
   }
 
   function showAllActiveLeads() {
@@ -441,8 +555,33 @@ export function LeadList({
     setStatusFilter("all");
     setEventTypeFilter("all");
     clearLeadsListSession();
-    router.replace("/leads");
+    void applySoftFilter(
+      {
+        q: "",
+        status: "all",
+        eventType: "all",
+        sort: "newest",
+        attention: "all",
+        outcome: "active",
+      },
+      { history: "push" },
+    );
   }
+
+  // Browser back/forward — re-apply filters without workspace layout remount.
+  React.useEffect(() => {
+    function onPopState() {
+      if (skippingPopRef.current) return;
+      if (typeof window === "undefined") return;
+      if (!window.location.pathname.startsWith("/leads")) return;
+      if (window.location.pathname !== "/leads") return;
+      const next = parseLeadsListNavState(window.location.search);
+      void applySoftFilter(next, { history: "none" });
+    }
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount once; applySoftFilter closes over latest via refs/state setters
+  }, []);
 
   // Debounced search — generation-gated so stale timers cannot overwrite newer drafts.
   React.useEffect(() => {
@@ -451,7 +590,7 @@ export function LeadList({
       if (
         !shouldCommitSearchDraft({
           draft: queryDraft,
-          committedUrlQuery: initialQuery,
+          committedUrlQuery: committed.q,
           generation,
           currentGeneration: searchGenRef.current,
         })
@@ -463,7 +602,7 @@ export function LeadList({
     }, 300);
     return () => window.clearTimeout(handle);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- debounce draft only
-  }, [queryDraft]);
+  }, [queryDraft, committed.q]);
 
   async function onShowMore() {
     if (loadingMore || !hasMore || indexError) return;
@@ -495,6 +634,10 @@ export function LeadList({
         return;
       }
       if (!result.ok) {
+        if (result.accessDenied === "suspended") {
+          window.location.assign("/billing/suspended");
+          return;
+        }
         setLoadMoreError(result.message);
         return;
       }
@@ -545,13 +688,21 @@ export function LeadList({
 
   return (
     <div
-      className="space-y-4"
+      className={cn("space-y-4 transition-opacity", filterBusy && "opacity-70")}
       data-testid="leads-list-root"
       data-leads-page-size={pageSize}
       data-leads-shown={displayedLeads.length}
       data-leads-total-matching={totalMatching}
+      data-leads-soft-filter={softCommitted ? "1" : "0"}
+      data-leads-filter-busy={filterBusy ? "1" : "0"}
+      aria-busy={filterBusy || undefined}
     >
     <div className="space-y-3">
+      {filterError && (
+        <p className="text-xs text-destructive" role="alert" data-testid="leads-filter-error">
+          {filterError}
+        </p>
+      )}
       {attentionFilter === "stale_contact" && (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-[0.75rem] border border-[color:color-mix(in_oklch,var(--htc-soft-rose)_45%,var(--htc-border-warm))] bg-[var(--htc-soft-blush)] px-3 py-2 text-sm">
           <p className="text-foreground">

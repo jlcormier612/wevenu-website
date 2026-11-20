@@ -6,6 +6,7 @@ import {
   buildLeadsListHref,
   hasMoreLeads,
   nextSearchDraftFromCommitted,
+  parseLeadsListNavState,
   progressiveWindowLabel,
   shouldCommitSearchDraft,
 } from "@/lib/leads/list-navigation";
@@ -99,6 +100,28 @@ describe("Leads list navigation state consistency", () => {
       }),
       "/leads",
     );
+  });
+
+  it("round-trips href parse for soft Filter / popstate", () => {
+    const state = {
+      q: "garden",
+      status: "tour_scheduled",
+      eventType: "wedding",
+      sort: "az" as const,
+      attention: "unseen" as const,
+      outcome: "active" as const,
+    };
+    const href = buildLeadsListHref(state);
+    const qs = href.includes("?") ? href.slice(href.indexOf("?")) : "";
+    assert.deepEqual(parseLeadsListNavState(qs), state);
+    assert.deepEqual(parseLeadsListNavState("view=lost"), {
+      q: "",
+      status: "lost",
+      eventType: "all",
+      sort: "newest",
+      attention: "all",
+      outcome: "lost",
+    });
   });
 });
 
