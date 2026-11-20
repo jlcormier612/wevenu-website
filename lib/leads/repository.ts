@@ -772,8 +772,8 @@ export async function queryLeadsListPage(
 }
 
 /**
- * Live hot path: page rows + counts in parallel.
- * Wired from getLeadsListPage after dual gates PASS (correctness + speed).
+ * Candidate hot path: page rows + counts in parallel.
+ * Not used by getLeadsListPage until speed and correctness gates both pass.
  */
 export async function queryLeadsListPageHotPath(
   client: DbClient,

@@ -145,23 +145,16 @@ describe("NAV-PERF Leads list architecture", () => {
     assert.match(page, /after\(/);
     assert.doesNotMatch(page, /await ensureStandardSalesPipelineForCurrentVenue/);
     assert.match(actions, /export async function loadMoreLeadsAction/);
-    assert.match(repo, /export async function getLeadsListIndex/);
-    assert.match(
-      service.slice(
-        service.indexOf("export async function getLeadsListPage"),
-        service.indexOf("export function leadIdentityKey"),
-      ),
-      /queryLeadsListPageHotPath/,
-    );
+    assert.match(service, /getLeadsListIndex/);
     assert.doesNotMatch(
       service.slice(
         service.indexOf("export async function getLeadsListPage"),
         service.indexOf("export function leadIdentityKey"),
       ),
-      /getLeadsListIndex|queryLeadsListPage\(/,
+      /queryLeadsListPage/,
     );
+    assert.match(repo, /export async function getLeadsListIndex/);
     assert.match(repo, /export async function queryLeadsListPage/);
-    assert.match(repo, /export async function queryLeadsListPageHotPath/);
     assert.match(repo, /LEAD_LIST_SELECT/);
     assert.match(repo, /LEADS_LIST_INDEX_CHUNK/);
     assert.match(repo, /\.range\(/);

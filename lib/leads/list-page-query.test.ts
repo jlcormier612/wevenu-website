@@ -349,8 +349,8 @@ describe("resolved list stage matches the index mapper", () => {
   });
 });
 
-describe("Phase 1 — live list uses split hot path after dual gates", () => {
-  it("wires queryLeadsListPageHotPath and keeps combined RPC off the live page", () => {
+describe("Phase 1 recovery — live list stays on Wave 1 until dual gates pass", () => {
+  it("keeps candidate RPCs off getLeadsListPage and splits rows from counts", () => {
     const combined = readFileSync(
       resolve("supabase/migrations/20270205120000_leads_list_page_query.sql"),
       "utf8",
@@ -371,13 +371,15 @@ describe("Phase 1 — live list uses split hot path after dual gates", () => {
     assert.match(combined, /function public\.query_leads_list_page/);
     assert.match(hot, /function public\.query_leads_list_rows/);
     assert.match(hot, /function public\.query_leads_list_counts/);
+    assert.match(hot, /Not wired to live UI until dual gates pass/);
     assert.match(repo, /export async function queryLeadsListPage/);
     assert.match(repo, /export async function queryLeadsListPageHotPath/);
     assert.match(repo, /LEADS_LIST_ROWS_RPC/);
     assert.match(repo, /LEADS_LIST_COUNTS_RPC/);
-    assert.match(livePage, /queryLeadsListPageHotPath/);
-    assert.doesNotMatch(livePage, /getLeadsListIndex/);
-    assert.doesNotMatch(livePage, /queryLeadsListPage\(/);
-    assert.doesNotMatch(livePage, /query_leads_list_page/);
+    assert.match(livePage, /getLeadsListIndex/);
+    assert.doesNotMatch(
+      livePage,
+      /queryLeadsListPage|queryLeadsListPageHotPath|query_leads_list_/,
+    );
   });
 });
