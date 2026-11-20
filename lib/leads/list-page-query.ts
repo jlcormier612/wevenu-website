@@ -1,16 +1,12 @@
 /**
- * Phase 1A paged Leads read — semantics only.
+ * Phase 1 paged Leads read — semantics for `query_leads_list_page`.
  *
- * The live Leads page still loads `getLeadsListIndex` and slices in memory.
- * Do not point that page at `query_leads_list_page` until a Sandbox shadow
- * compare of ids, order, and totals passes.
- *
- * `selectLeadsListPage` is the in-memory spec for that SQL function:
+ * Live list (`getLeadsListPage`) uses the SQL function after Phase 1B shadow
+ * compare PASS. `selectLeadsListPage` is the in-memory spec:
  * same queue, filters, and order as `filterLeadsForList` / `sortLeadsForList`,
  * with an explicit tie-break so the database does not depend on input order.
- * Tie-break matches today's stable sort of the index
- * (inquiry_date desc, created_at desc, id desc), except newest/oldest, whose
- * primary key is already inquiry_date.
+ * Tie-break matches the index order (inquiry_date desc, created_at desc, id desc),
+ * except newest/oldest, whose primary key is already inquiry_date.
  */
 
 import { normalizeEventType } from "@/lib/event-types/canonical";

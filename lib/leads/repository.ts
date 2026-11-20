@@ -689,8 +689,8 @@ function leadsListCountPairs(value: unknown): Array<[string, number]> {
 }
 
 /**
- * Phase 1A paged read. Same filters and order as the in-memory list.
- * Not used by the live Leads page until shadow compare passes.
+ * Phase 1 paged read. Same filters and order as the prior in-memory list.
+ * Used by getLeadsListPage after Phase 1B shadow compare PASS.
  */
 export async function queryLeadsListPage(
   client: DbClient,

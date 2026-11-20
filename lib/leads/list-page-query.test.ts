@@ -347,8 +347,8 @@ describe("resolved list stage matches the index mapper", () => {
   });
 });
 
-describe("Phase 1A stays off the live Leads page", () => {
-  it("defines the database function and does not call it from getLeadsListPage", () => {
+describe("Phase 1C live Leads page uses paged query", () => {
+  it("defines the database function and wires getLeadsListPage through queryLeadsListPage", () => {
     const sql = readFileSync(
       resolve("supabase/migrations/20270205120000_leads_list_page_query.sql"),
       "utf8",
@@ -374,7 +374,7 @@ describe("Phase 1A stays off the live Leads page", () => {
     assert.match(sql, /interval '7 days'/);
     assert.match(repo, /export async function queryLeadsListPage/);
     assert.match(repo, /LEADS_LIST_PAGE_RPC/);
-    assert.match(livePage, /getLeadsListIndex/);
-    assert.doesNotMatch(livePage, /queryLeadsListPage|query_leads_list_page/);
+    assert.match(livePage, /queryLeadsListPage/);
+    assert.doesNotMatch(livePage, /getLeadsListIndex/);
   });
 });
