@@ -4,7 +4,6 @@ import { notFound } from "next/navigation";
 import { ClientEditForm } from "@/components/clients/client-edit-form";
 import { CollectionBackLink } from "@/components/library/collection-back-link";
 import { RelationshipPhotoEditor } from "@/components/relationship-photos/relationship-photo-editor";
-import { PageHeader } from "@/components/shell/module-placeholder";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { clientDisplayName } from "@/lib/clients/constants";
@@ -39,26 +38,30 @@ export default async function EditClientPage({ params }: Props) {
   const displayName = clientDisplayName(client.firstName, client.lastName, client.partnerFirstName, client.partnerLastName);
 
   return (
-    <div className="htc-hospitality-page space-y-5 sm:space-y-6" data-htc-phase12="client-edit">
+    <div className="htc-hospitality-page space-y-4 sm:space-y-5" data-htc-phase12="client-edit">
       <CollectionBackLink href={`/clients/${client.id}`} label={displayName} />
-      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
-        <PageHeader
-          title={`Edit · ${displayName}`}
-          description={client.linkedEventId
-            ? "Update this client's contact information. Event details are edited on the event."
+      <div className="min-w-0 space-y-1" data-testid="client-edit-heading">
+        <h1 className="font-heading text-2xl font-medium tracking-tight text-heading">
+          Edit contact
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          {client.linkedEventId
+            ? "Update names, email, and phone. Event details stay on the booking."
             : "Update client information and event details."}
-        />
+        </p>
       </div>
       <Card className="htc-working-card gap-0 py-0">
-        <CardHeader className="py-4">
-          <CardTitle>{client.linkedEventId ? "Contact information" : "Client details"}</CardTitle>
-          <CardDescription>
+        <CardHeader className="space-y-1 py-3">
+          <CardTitle className="text-base">
+            {client.linkedEventId ? "Contact information" : "Client details"}
+          </CardTitle>
+          <CardDescription className="text-sm">
             {client.linkedEventId
-              ? "Names, email, phone, and partner. Original inquiry and source stay as they were."
+              ? "Person 1 / Person 2 fields below. Original inquiry and source stay as they were."
               : "Changes are logged to the activity timeline."}
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6 py-5">
+        <CardContent className="space-y-5 py-4">
           {client.relationshipId && venue ? (
             <>
               <RelationshipPhotoEditor
@@ -66,6 +69,7 @@ export default async function EditClientPage({ params }: Props) {
                 venueId={venue.id}
                 initial={photo!}
                 clientId={client.id}
+                compact
               />
               <Separator />
             </>

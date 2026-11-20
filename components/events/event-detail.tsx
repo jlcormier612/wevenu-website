@@ -33,7 +33,9 @@ import type { InternalNoteRollupItem } from "@/lib/notes/internal-notes-rollup";
 import { EventStatusBadge } from "@/components/events/event-status-badge";
 import { EventVendorRecommendationsSection } from "@/components/events/vendors/event-vendor-recommendations-section";
 import { EventVendorsSection } from "@/components/events/vendors/event-vendors-section";
+import { BookingContactSummary } from "@/components/events/booking-contact-summary";
 import { RelationshipPhotoAvatar } from "@/components/relationship-photos/relationship-photo-avatar";
+import { bookingClientHeadingName } from "@/lib/clients/booking-identity";
 import { updateDraftStatusAction } from "@/app/(app)/leads/[id]/luv-actions";
 import { LuvHeart } from "@/components/dashboard/luv-widget";
 import { ContextualLuvObservationsPanel } from "@/components/luv/contextual-observations-panel";
@@ -107,10 +109,7 @@ import {
   formatEventDateRange,
 } from "@/lib/events/constants";
 import {
-  componentDisplayLabel,
-  formatComponentTimeRange,
   formatDayOfBookingWindow,
-  groupBookingSummaryByDate,
   type BookingSummaryComponent,
 } from "@/lib/events/booking-summary";
 import type { EventWithDetails } from "@/lib/events/types";
@@ -169,19 +168,34 @@ function AnniversaryBanner({ eventId, ordinal }: { eventId: string; ordinal: str
 function EventHeroCard({
   event,
   spaceLine,
-  scheduleComponents = null,
   editableAssignments = null,
   spaces = [],
   clientId = null,
+  relationshipContact = null,
 }: {
   event: EventWithDetails;
   spaceLine: string | null;
-  scheduleComponents?: BookingSummaryComponent[] | null;
   editableAssignments?: EventSpaceAssignmentInput[] | null;
   spaces?: VenueSpace[];
   clientId?: string | null;
+  relationshipContact?: {
+    clientId: string;
+    firstName: string | null;
+    lastName: string | null;
+    partnerFirstName: string | null;
+    partnerLastName: string | null;
+    phone: string | null;
+    email: string | null;
+    partnerEmail: string | null;
+  } | null;
 }) {
-  const [countdown, setCountdown] = React.useState<string>("");
+  const [countdown, setCountdown] = React.useState<string>(() => {
+    const days = daysUntil(event.eventDate);
+    if (days === 0) return "Today";
+    if (days === 1) return "Tomorrow";
+    if (days > 0) return `In ${days} days`;
+    return `${Math.abs(days)} days ago`;
+  });
   const [editOpen, setEditOpen] = React.useState(false);
   React.useEffect(() => {
     const days = daysUntil(event.eventDate);
@@ -202,10 +216,6 @@ function EventHeroCard({
   const days = daysUntil(event.eventDate);
   const urgent = days >= 0 && days <= 14;
 
-  const dayGroups = scheduleComponents && scheduleComponents.length > 0
-    ? groupBookingSummaryByDate(scheduleComponents)
-    : [];
-  const useComponentSchedule = dayGroups.length > 0;
   const canEditSchedule = Boolean(
     editableAssignments
     && editableAssignments.length > 0
@@ -221,6 +231,10 @@ function EventHeroCard({
     multiDay,
   });
   const timeLabel = dayOfWindow ?? "All day";
+  const spaceLines = (spaceLine?.trim() || "")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
 
   return (
     <Card
@@ -228,7 +242,8 @@ function EventHeroCard({
       className="htc-surface-summary htc-surface-summary-pale gap-3 ring-0 shadow-none self-start"
       data-testid="event-booking-summary"
     >
-      <CardContent className="flex flex-col text-left">
+      <CardContent className="flex flex-col gap-0 text-left">
+        {/* Section A — Event details */}
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1 space-y-0">
             {eventTypeLabel(event.eventType) ? (
@@ -251,21 +266,19 @@ function EventHeroCard({
               ) : null}
             </p>
           </div>
-          <div className="flex shrink-0 flex-col items-end gap-2">
-            <EventStatusBadge status={event.status} bookedAt={event.bookedAt} />
-            {canEditSchedule ? (
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                data-testid="edit-booking-schedule"
-                onClick={() => setEditOpen(true)}
-              >
-                <Pencil className="mr-1 h-3.5 w-3.5" />
-                Edit schedule
-              </Button>
-            ) : null}
-          </div>
+          {canEditSchedule ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="shrink-0"
+              data-testid="edit-booking-schedule"
+              onClick={() => setEditOpen(true)}
+            >
+              <Pencil className="mr-1 h-3.5 w-3.5" />
+              Edit schedule
+            </Button>
+          ) : null}
         </div>
 
         {canEditSchedule && editableAssignments ? (
@@ -282,95 +295,53 @@ function EventHeroCard({
           />
         ) : null}
 
-        {useComponentSchedule ? (
-          <div className="mt-3 space-y-3" data-testid="event-booking-component-schedule">
-            {dayOfWindow ? (
-              <div className="min-w-0" data-testid="event-day-of-booking-window">
-                <p className="text-xs text-muted-foreground">
-                  {multiDay ? "Overall booking window" : "Day-of schedule"}
-                </p>
-                <p
-                  className="mt-0.5 text-sm leading-snug text-foreground"
-                  title={
-                    multiDay
-                      ? "Overall booking window — not the hour-by-hour schedule for each day"
-                      : undefined
-                  }
-                >
-                  {dayOfWindow}
-                </p>
-              </div>
-            ) : null}
-            <div className="min-w-0">
-              <p className="text-xs text-muted-foreground">Estimated</p>
-              <p className="mt-0.5 text-sm leading-snug text-foreground">
-                {event.guestCount != null ? `${event.guestCount.toLocaleString()} guests` : "Not recorded"}
-              </p>
-            </div>
-            <div className="min-w-0">
-              <p className="text-xs text-muted-foreground">Guaranteed</p>
-              <p className="mt-0.5 text-sm leading-snug text-foreground">
-                {event.guaranteedGuestCount != null
-                  ? `${event.guaranteedGuestCount.toLocaleString()} guests`
-                  : "Not set"}
-              </p>
-            </div>
-            {dayGroups.map((group) => (
-              <div key={group.date ?? "unset"} className="min-w-0 space-y-1.5">
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  {group.label}
-                </p>
-                <ul className="space-y-1.5">
-                  {group.components.map((c, i) => (
-                    <li
-                      key={`${c.useKey}-${i}`}
-                      className="rounded-md border border-border/50 bg-card px-2.5 py-1.5 text-sm"
-                      data-testid={`booking-component-${c.useKey}`}
-                    >
-                      <p className="font-medium leading-snug text-heading">
-                        {componentDisplayLabel(c)}
-                      </p>
-                      <p className="mt-0.5 leading-snug text-muted-foreground">
-                        {formatComponentTimeRange(c.startTime, c.endTime)}
-                        {" · "}
-                        {c.spaceName?.trim() || "Space not set"}
-                      </p>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
+        <dl className="mt-2.5 grid grid-cols-1 content-start gap-x-4 gap-y-2 text-sm sm:grid-cols-3">
+          <div className="min-w-0" data-testid="event-day-of-booking-window">
+            <dt className="text-xs text-muted-foreground">
+              {multiDay ? "Overall booking window" : "Time"}
+            </dt>
+            <dd className="mt-0.5 leading-snug text-foreground">{timeLabel}</dd>
           </div>
-        ) : (
-          <dl className="mt-2.5 grid flex-1 grid-cols-1 content-start gap-x-4 gap-y-2 text-sm sm:grid-cols-2 lg:grid-cols-3">
-            <div className="min-w-0" data-testid="event-day-of-booking-window">
-              <dt className="text-xs text-muted-foreground">
-                {multiDay ? "Overall booking window" : "Time"}
-              </dt>
-              <dd className="mt-0.5 leading-snug text-foreground">{timeLabel}</dd>
-            </div>
-            <div className="min-w-0">
-              <dt className="text-xs text-muted-foreground">Estimated</dt>
-              <dd className="mt-0.5 leading-snug text-foreground">
-                {event.guestCount != null ? `${event.guestCount.toLocaleString()} guests` : "Not recorded"}
-              </dd>
-            </div>
-            <div className="min-w-0">
-              <dt className="text-xs text-muted-foreground">Guaranteed</dt>
-              <dd className="mt-0.5 leading-snug text-foreground">
-                {event.guaranteedGuestCount != null
-                  ? `${event.guaranteedGuestCount.toLocaleString()} guests`
-                  : "Not set"}
-              </dd>
-            </div>
-            <div className="min-w-0 sm:col-span-2 lg:col-span-1">
-              <dt className="text-xs text-muted-foreground">Spaces</dt>
-              <dd className="mt-0.5 whitespace-pre-line leading-snug text-foreground">
-                {spaceLine?.trim() || "No space assigned"}
-              </dd>
-            </div>
-          </dl>
-        )}
+          <div className="min-w-0" data-testid="event-estimated-guests">
+            <dt className="text-xs text-muted-foreground">Estimated guests</dt>
+            <dd className="mt-0.5 leading-snug text-foreground">
+              {event.guestCount != null ? `${event.guestCount.toLocaleString()} guests` : "Not recorded"}
+            </dd>
+          </div>
+          <div className="min-w-0" data-testid="event-final-guest-count">
+            <dt className="text-xs text-muted-foreground">Final guest count</dt>
+            <dd className="mt-0.5 leading-snug text-foreground">
+              {event.guaranteedGuestCount != null
+                ? `${event.guaranteedGuestCount.toLocaleString()} guests`
+                : "Not yet provided"}
+            </dd>
+          </div>
+        </dl>
+
+        {/* Section B — Contact information */}
+        {relationshipContact ? (
+          <>
+            <div className="my-4 border-t border-border" aria-hidden />
+            <BookingContactSummary contact={relationshipContact} />
+          </>
+        ) : null}
+
+        {/* Section C — Spaces (expands for multiple assignments) */}
+        <div className="my-4 border-t border-border" aria-hidden />
+        <div data-testid="event-booking-spaces">
+          <h3 className="text-sm font-medium text-heading">Spaces</h3>
+          {spaceLines.length > 0 ? (
+            <ul className="mt-2 space-y-1.5">
+              {spaceLines.map((line) => (
+                <li key={line} className="text-sm leading-snug text-foreground">
+                  {line}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-2 text-sm leading-snug text-foreground">No space assigned</p>
+          )}
+        </div>
       </CardContent>
     </Card>
   );
@@ -755,6 +726,12 @@ export function EventDetail({
   const bookedTabTriggerClass =
     "h-9 w-full justify-center whitespace-nowrap px-1 py-1.5 text-center text-[11px] sm:px-1.5 sm:text-sm";
 
+  const clientHeadingName = bookingClientHeadingName({
+    contact: relationshipContact,
+    clientName: event.clientName,
+    eventName: event.name,
+  });
+
   return (
     <div className="space-y-5">
       <PipelineBookedConfirmDialog
@@ -782,43 +759,17 @@ export function EventDetail({
           });
         }}
       />
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-1.5">
+      {/* Header — Lead workspace structure: nav/actions → identity → meta → contact → original lead */}
+      <div className="space-y-3" data-testid="booking-detail-header">
+        {/* Row 1 — navigation + actions */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <Button variant="ghost" size="sm" className="-ml-2 text-muted-foreground" render={<Link href="/clients" />}>
             <ArrowLeft className="mr-1 h-3.5 w-3.5" /> Bookings
           </Button>
-          <div className="flex items-center gap-3">
-            <RelationshipPhotoAvatar
-              photoUrl={photoUrl}
-              name={relationshipContact
-                ? [relationshipContact.firstName, relationshipContact.partnerFirstName].filter(Boolean).join(" & ") || event.name
-                : (event.clientName ?? event.name)}
-              editHref={
-                relationshipContact?.clientId
-                  ? `/clients/${relationshipContact.clientId}/edit`
-                  : undefined
-              }
-            />
-            <h1 className="font-heading text-2xl font-medium text-heading">{event.name}</h1>
-          </div>
-          {originatingLeadId && (
-            <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-              <Link
-                href={`/leads/${originatingLeadId}`}
-                className="htc-record-link"
-                data-testid="view-original-lead"
-              >
-                View original lead
-              </Link>
-            </div>
-          )}
-        </div>
-
-        <div
-          className="flex w-full min-w-0 flex-col gap-2 sm:w-auto sm:shrink-0 sm:flex-row sm:items-center sm:gap-2"
-          data-testid="event-header-actions"
-        >
+          <div
+            className="flex w-full min-w-0 flex-col gap-2 sm:w-auto sm:shrink-0 sm:flex-row sm:items-center sm:gap-2"
+            data-testid="event-header-actions"
+          >
           <div className="flex min-w-0 flex-wrap items-center gap-2">
             <EventStatusBadge status={event.status} bookedAt={event.bookedAt} />
             <Button
@@ -959,6 +910,39 @@ export function EventDetail({
               </DropdownMenu>
             </div>
           )}
+          </div>
+        </div>
+
+        {/* Client identity + original lead only */}
+        <div className="flex min-w-0 items-start gap-3">
+          <RelationshipPhotoAvatar
+            photoUrl={photoUrl}
+            name={clientHeadingName}
+            editHref={
+              relationshipContact?.clientId
+                ? `/clients/${relationshipContact.clientId}/edit`
+                : undefined
+            }
+          />
+          <div className="min-w-0 space-y-0.5">
+            <h1
+              className="font-heading text-2xl font-medium leading-tight text-heading sm:text-3xl"
+              data-testid="booking-client-heading"
+            >
+              {clientHeadingName}
+            </h1>
+            {originatingLeadId ? (
+              <div className="text-sm text-muted-foreground">
+                <Link
+                  href={`/leads/${originatingLeadId}`}
+                  className="htc-record-link"
+                  data-testid="view-original-lead"
+                >
+                  View original lead
+                </Link>
+              </div>
+            ) : null}
+          </div>
         </div>
       </div>
 
@@ -997,10 +981,10 @@ export function EventDetail({
         <EventHeroCard
           event={event}
           spaceLine={spaceAssignmentsDisplay ?? spaceName}
-          scheduleComponents={scheduleComponents}
           editableAssignments={editableSpaceAssignments}
           spaces={spaces}
           clientId={event.clientId}
+          relationshipContact={relationshipContact ?? null}
         />
         <div
           data-testid="client-staffing-column"
