@@ -133,11 +133,17 @@ describe("NAV-PERF Leads list architecture", () => {
     assert.doesNotMatch(page, /getLeads\(\)/);
     assert.match(island, /getLeadsListPage/);
     assert.match(island, /offset:\s*0/);
+    assert.match(island, /Promise\.all/);
+    assert.match(island, /loadBookedMembershipSets/);
     assert.match(island, /loadLeadMessageAttentionMap/);
     assert.match(island, /listPage\.leads\.map/);
     assert.match(list, /loadMoreLeadsAction/);
     assert.match(list, /Show 20 more/);
     assert.match(list, /shouldCommitSearchDraft/);
+    assert.match(list, /prefetch=\{false\}/);
+    assert.match(list, /saveLeadsListWorkingContext|persistWorkingContext/);
+    assert.match(page, /after\(/);
+    assert.doesNotMatch(page, /await ensureStandardSalesPipelineForCurrentVenue/);
     assert.match(actions, /export async function loadMoreLeadsAction/);
     assert.match(service, /getLeadsListIndex/);
     assert.match(repo, /export async function getLeadsListIndex/);

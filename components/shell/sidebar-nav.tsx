@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 
 import {
   navigationPendingOnClick,
@@ -21,6 +21,8 @@ import {
   type NavAttentionCounts,
 } from "@/lib/navigation/attention";
 import { filterNavSectionsForRole } from "@/lib/navigation/financial-nav";
+import { readLeadsListSession } from "@/lib/leads/list-session.client";
+import { leadsShellHrefFromSession } from "@/lib/leads/list-session";
 import { cn } from "@/lib/utils";
 
 /** Bound refresh so soft-nav does not re-hit /api/navigation/attention every route. */
@@ -45,6 +47,7 @@ export function SidebarNav({
   staffRole?: string | null;
 }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const navPending = useNavigationPending();
   const [counts, setCounts] = React.useState<NavAttentionCounts>(emptyNavAttentionCounts);
   const lastFetchedAt = React.useRef(0);
@@ -103,7 +106,19 @@ export function SidebarNav({
             const Icon = item.icon;
             const badgeCount = badgeCountForNavItem(item.id, counts);
             const badgeLabel = formatAttentionBadge(badgeCount);
-            const href = navAttentionHref(item.id, item.href, badgeCount);
+            const baseHref = navAttentionHref(item.id, item.href, badgeCount);
+            // Wave 1: from Lead Detail, restore last list filters via session href.
+            const href =
+              item.id === "leads"
+                ? leadsShellHrefFromSession({
+                    pathname,
+                    search: searchParams?.toString()
+                      ? `?${searchParams.toString()}`
+                      : "",
+                    defaultHref: baseHref,
+                    sessionHref: readLeadsListSession()?.href ?? null,
+                  })
+                : baseHref;
 
             return (
               <div

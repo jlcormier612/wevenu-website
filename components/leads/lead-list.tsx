@@ -56,6 +56,12 @@ import {
   shouldCommitSearchDraft,
 } from "@/lib/leads/list-navigation";
 import {
+  clearLeadsListSession,
+  readLeadsListSession,
+  saveLeadsListWorkingContext,
+} from "@/lib/leads/list-session.client";
+import { shouldRestoreProgressiveSession } from "@/lib/leads/list-session";
+import {
   ATTENTION_CHIP,
   ATTENTION_CHIP_COUNT,
   IDLE_CHIP,
@@ -177,6 +183,20 @@ export function LeadList({
   const loadMoreGenRef = React.useRef(0);
   const fingerprintRef = React.useRef(fingerprint);
   fingerprintRef.current = fingerprint;
+  const restoredFingerprintRef = React.useRef<string | null>(null);
+  const displayedLeadsRef = React.useRef(displayedLeads);
+  displayedLeadsRef.current = displayedLeads;
+
+  function persistWorkingContext(leadIds?: readonly string[]) {
+    if (typeof window === "undefined") return;
+    const ids = leadIds ?? displayedLeadsRef.current.map((l) => l.id);
+    saveLeadsListWorkingContext({
+      href: buildLeadsListHref(committed),
+      fingerprint,
+      leadIds: ids,
+      scrollY: window.scrollY,
+    });
+  }
 
   // Sync draft/chips from committed URL without clobbering newer keystrokes.
   React.useEffect(() => {
@@ -204,6 +224,7 @@ export function LeadList({
   // Filter/search/sort change → restart progressive window at first chunk.
   React.useEffect(() => {
     loadMoreGenRef.current += 1;
+    restoredFingerprintRef.current = null;
     setDisplayedLeads(initialLeads);
     setTotalMatching(initialTotalMatching);
     setHasMore(initialHasMore);
@@ -212,6 +233,86 @@ export function LeadList({
     setLoadMoreError(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- reset only when filter fingerprint changes
   }, [fingerprint]);
+
+  // Wave 1: restore progressive window + scroll when returning with matching filters.
+  // Prefix check avoids concealing newly created / reordered leads.
+  React.useEffect(() => {
+    if (indexError) return;
+    if (restoredFingerprintRef.current === fingerprint) return;
+    const session = readLeadsListSession();
+    const serverFirstIds = initialLeads.map((l) => l.id);
+    if (
+      !session ||
+      !shouldRestoreProgressiveSession({
+        session,
+        urlFingerprint: fingerprint,
+        serverFirstIds,
+        pageSize,
+      })
+    ) {
+      persistWorkingContext(serverFirstIds);
+      restoredFingerprintRef.current = fingerprint;
+      return;
+    }
+    restoredFingerprintRef.current = fingerprint;
+    const gen = ++loadMoreGenRef.current;
+    const targetCount = session.leadIds.length;
+    let cancelled = false;
+    setLoadingMore(true);
+    void (async () => {
+      try {
+        const result = await loadMoreLeadsAction({
+          q: committed.q,
+          status: committed.status,
+          eventType: committed.eventType,
+          sort: committed.sort,
+          attention: committed.attention,
+          outcome: committed.outcome,
+          excludeIds: [],
+          filterFingerprint: fingerprint,
+          limit: targetCount,
+        });
+        if (cancelled) return;
+        if (
+          !shouldApplyLoadMoreResult({
+            requestGeneration: gen,
+            currentGeneration: loadMoreGenRef.current,
+            requestFingerprint: fingerprint,
+            currentFingerprint: fingerprintRef.current,
+          })
+        ) {
+          return;
+        }
+        if (!result.ok) return;
+        setDisplayedLeads(result.leads);
+        setTotalMatching(result.totalMatching);
+        setHasMore(result.hasMore);
+        setMessageAttentionByLeadId(result.messageAttentionByLeadId);
+        persistWorkingContext(result.leads.map((l) => l.id));
+        requestAnimationFrame(() => {
+          window.scrollTo(0, session.scrollY);
+        });
+      } finally {
+        if (!cancelled) setLoadingMore(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- restore once per fingerprint
+  }, [fingerprint, indexError]);
+
+  // Keep shell "Leads" return href + scroll fresh while working the list.
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    const onScroll = () => {
+      persistWorkingContext();
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    persistWorkingContext();
+    return () => window.removeEventListener("scroll", onScroll);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fingerprint + row count
+  }, [fingerprint, displayedLeads.length]);
 
   const statusCounts = React.useMemo(() => {
     const map = new Map<string, number>(Object.entries(statusCountsIn));
@@ -264,6 +365,7 @@ export function LeadList({
     setAttentionFilter("all");
     setStatusFilter("all");
     setEventTypeFilter("all");
+    clearLeadsListSession();
     router.replace("/leads");
   }
 
@@ -322,7 +424,11 @@ export function LeadList({
         return;
       }
       if (result.filterFingerprint !== fingerprintRef.current) return;
-      setDisplayedLeads((prev) => appendLeadWindow(prev, result.leads));
+      setDisplayedLeads((prev) => {
+        const next = appendLeadWindow(prev, result.leads);
+        persistWorkingContext(next.map((l) => l.id));
+        return next;
+      });
       setMessageAttentionByLeadId((prev) => ({
         ...prev,
         ...result.messageAttentionByLeadId,
@@ -640,7 +746,12 @@ export function LeadList({
                       <LeadMessageAttentionIndicator
                         attention={messageAttentionByLeadId[lead.id] ?? null}
                       />
-                      <Link href={`/leads/${lead.id}`} className="htc-record-link truncate">
+                      <Link
+                        href={`/leads/${lead.id}`}
+                        prefetch={false}
+                        className="htc-record-link truncate"
+                        onClick={() => persistWorkingContext()}
+                      >
                         {leadDisplayName(lead.firstName, lead.lastName, lead.partnerFirstName, lead.partnerLastName)}
                       </Link>
                     </div>
@@ -681,7 +792,17 @@ export function LeadList({
                     {formatDate(lead.inquiryDate)}
                   </TableCell>
                   <TableCell>
-                    <Button variant="ghost" size="sm" render={<Link href={`/leads/${lead.id}`} />}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      render={
+                        <Link
+                          href={`/leads/${lead.id}`}
+                          prefetch={false}
+                          onClick={() => persistWorkingContext()}
+                        />
+                      }
+                    >
                       View →
                     </Button>
                   </TableCell>

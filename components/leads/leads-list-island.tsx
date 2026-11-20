@@ -53,25 +53,51 @@ export async function LeadsListIsland({
 }) {
   const outcome = searchParams.view === "lost" ? ("lost" as const) : ("active" as const);
   const attention = parseAttention(searchParams.attention, outcome);
+  const needsUnattendedIds = attention === "unattended_inquiry";
 
-  const [bookedMembership, unattendedInquiryLeadIds] = await Promise.all([
-    loadBookedMembershipSets(),
-    attention === "unattended_inquiry"
-      ? getUnattendedInquiryLeadIdsForCurrentVenue()
-      : Promise.resolve([] as string[]),
-  ]);
-
-  const listPage = await getLeadsListPage({
+  const listParamsBase = {
     q: searchParams.q ?? "",
     status: searchParams.stage ?? (outcome === "lost" ? "lost" : "all"),
     eventType: searchParams.eventType ?? "all",
     sort: parseSort(searchParams.sort),
     attention,
     outcome,
-    offset: 0,
-    unattendedInquiryLeadIds,
-    currentBookedCount: bookedMembership.currentClientIds.size,
-  });
+    offset: 0 as const,
+  };
+
+  // Wave 1: booked membership and lean index are independent for the common path.
+  // Unattended attention needs qualifying IDs before filter — keep that dependency ordered.
+  let bookedMembership: Awaited<ReturnType<typeof loadBookedMembershipSets>>;
+  let unattendedInquiryLeadIds: string[] = [];
+  let listPage: Awaited<ReturnType<typeof getLeadsListPage>>;
+
+  if (needsUnattendedIds) {
+    [bookedMembership, unattendedInquiryLeadIds] = await Promise.all([
+      loadBookedMembershipSets(),
+      getUnattendedInquiryLeadIdsForCurrentVenue(),
+    ]);
+    listPage = await getLeadsListPage({
+      ...listParamsBase,
+      unattendedInquiryLeadIds,
+      currentBookedCount: bookedMembership.currentClientIds.size,
+    });
+  } else {
+    [bookedMembership, listPage] = await Promise.all([
+      loadBookedMembershipSets(),
+      getLeadsListPage({
+        ...listParamsBase,
+        unattendedInquiryLeadIds: [],
+        currentBookedCount: 0,
+      }),
+    ]);
+    listPage = {
+      ...listPage,
+      statusCounts: {
+        ...listPage.statusCounts,
+        booked: bookedMembership.currentClientIds.size,
+      },
+    };
+  }
 
   const messageAttentionByLeadId: Record<string, { conversationId: string; href: string }> = {};
   if (isSupabaseConfigured && listPage.leads.length > 0) {
