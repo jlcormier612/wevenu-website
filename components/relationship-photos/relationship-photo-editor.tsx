@@ -25,12 +25,15 @@ export function RelationshipPhotoEditor({
   initial,
   leadId,
   clientId,
+  compact = false,
 }: {
   relationshipId: string;
   venueId: string;
   initial: VenueFacingPhotoState;
   leadId?: string;
   clientId?: string;
+  /** Tighter photo block for Edit Contact — same upload/persistence behavior. */
+  compact?: boolean;
 }) {
   const router = useRouter();
   const [state, setState] = React.useState(initial);
@@ -46,12 +49,18 @@ export function RelationshipPhotoEditor({
   const showingVenue = state.effectiveDisplaySource === "venue";
 
   return (
-    <div className="space-y-4">
+    <div className={compact ? "space-y-2" : "space-y-4"}>
       <div>
         <p className="text-sm font-medium text-heading">Photo</p>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Add a photo to this Lead and Client record. You can upload one here or use a photo the couple has shared with you. The photo stays with the relationship if this lead becomes a client.
-        </p>
+        {!compact ? (
+          <p className="mt-1 text-sm text-muted-foreground">
+            Add a photo to this Lead and Client record. You can upload one here or use a photo the couple has shared with you. The photo stays with the relationship if this lead becomes a client.
+          </p>
+        ) : (
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Optional. Change keeps the photo on this Lead and Client record.
+          </p>
+        )}
       </div>
 
       <ImageUpload
@@ -59,10 +68,10 @@ export function RelationshipPhotoEditor({
         bucket="uploads"
         path={path}
         label="Photo"
-        hint="JPG, PNG, or WEBP up to 5 MB. Uploading sets the photo on this record."
+        hint={compact ? "JPG, PNG, or WEBP up to 5 MB." : "JPG, PNG, or WEBP up to 5 MB. Uploading sets the photo on this record."}
         aspectRatio="aspect-square"
         objectFit="cover"
-        className="max-w-[16rem]"
+        className={compact ? "max-w-[8rem]" : "max-w-[16rem]"}
         onUpload={async (url) => {
           const result = await setVenuePhotoAction(relationshipId, url, opts);
           if (!result.ok) {
