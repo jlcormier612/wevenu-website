@@ -6,6 +6,7 @@ import { createRequire } from "node:module";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { createClient } from "@supabase/supabase-js";
 import { config } from "dotenv";
+import { refuseProtectedVenueHardcodes } from "@/lib/qa/protected-venues";
 
 config({ path: ".env.local" });
 
@@ -20,6 +21,8 @@ const ssrUtils = require(
 const APP = "https://app.sandbox.hellotocheers.com";
 const FANCY_EMAIL = "jennifer@hellotocheers.com";
 const FANCY = "a415ac52-cd74-42a6-8df7-7a8f6e71d080";
+refuseProtectedVenueHardcodes({ venueIds: [FANCY], purpose: "scripts/qa/contract-balance-deposit-not-paid-browser.mts" });
+
 const OUT_DIR = "docs/qa/contract-balance-deposit-not-paid";
 const EXPECTED_PREFIX = process.env.EXPECTED_SHA_PREFIX ?? "";
 const TOTAL = 35_000;

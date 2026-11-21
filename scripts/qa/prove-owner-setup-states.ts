@@ -4,8 +4,11 @@
  */
 import { createClient } from "@supabase/supabase-js";
 import { writeFileSync, mkdirSync } from "node:fs";
+import { refuseProtectedVenueHardcodes } from "@/lib/qa/protected-venues";
 
 const FANCY = "a415ac52-cd74-42a6-8df7-7a8f6e71d080";
+refuseProtectedVenueHardcodes({ venueIds: [FANCY], purpose: "scripts/qa/prove-owner-setup-states.ts" });
+
 
 async function main() {
   const sb = createClient(

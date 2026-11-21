@@ -1,12 +1,14 @@
 /**
  * Wave 1 Sandbox fixture: Wedding Expo — QA public form + optional QR.
- * Usage: npx tsx --env-file=.env.local scripts/qa/public-forms-wave1-fixture.ts
+ * Requires a disposable venue — never Fancy / Willow / Daisy.
+ * Usage:
+ *   DISPOSABLE_VENUE_ID=<uuid> npx tsx --env-file=.env.local scripts/qa/public-forms-wave1-fixture.ts
  */
 import { createClient } from "@supabase/supabase-js";
 import { mkdirSync, writeFileSync } from "fs";
 import { resolve } from "path";
+import { assertWritableQaVenue } from "@/lib/qa/protected-venues";
 
-const FANCY = "a415ac52-cd74-42a6-8df7-7a8f6e71d080";
 const OUT = resolve("docs/qa/public-forms-qr-architecture");
 const BASE = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.sandbox.hellotocheers.com";
 
@@ -17,6 +19,19 @@ async function main() {
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     { auth: { persistSession: false } },
   );
+
+  const venueId = process.env.DISPOSABLE_VENUE_ID;
+  if (!venueId) {
+    console.error("REFUSED: set DISPOSABLE_VENUE_ID to an isolated disposable venue.");
+    process.exit(1);
+  }
+  const { data: venue } = await sb.from("venues").select("id, name").eq("id", venueId).maybeSingle();
+  assertWritableQaVenue({
+    venueId,
+    venueName: venue?.name,
+    purpose: "public-forms-wave1-fixture",
+  });
+  const FANCY = venueId; // historical local binding name — disposable only
 
   // Verify migration applied
   const { data: tables, error: tErr } = await sb.from("public_forms").select("id").limit(1);

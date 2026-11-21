@@ -6,6 +6,7 @@ import { createRequire } from "node:module";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { createClient } from "@supabase/supabase-js";
 import { config } from "dotenv";
+import { refuseProtectedVenueHardcodes } from "@/lib/qa/protected-venues";
 
 config({ path: ".env.local", quiet: true });
 
@@ -22,6 +23,8 @@ const EXPECTED = process.env.EXPECTED_TIP_PREFIX ?? "ee3b67a9";
 const EMAIL = "jennifer@hellotocheers.com";
 /** Jen's Fancy Venue — reliable staff access + 6.25% default tax. */
 const VENUE = "a415ac52-cd74-42a6-8df7-7a8f6e71d080";
+refuseProtectedVenueHardcodes({ venueIds: [VENUE], purpose: "scripts/qa/tax-rehearsal-contract-browser.mts" });
+
 const BARN = "3b36ec69-b17d-4351-8186-68d96dd6dfe7";
 const BARN_NAME = "Barn";
 const OUT_DIR = "docs/qa/tax-discount-workflow";

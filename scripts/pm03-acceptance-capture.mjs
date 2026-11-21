@@ -16,6 +16,21 @@ const VENUE_ID = "e458f434-ec00-472c-a12f-e53c10219e16";
 const RUN_ID = "6195979a-3a60-4646-b919-25dde7c99078";
 const EMAIL = "pm01.practice.mwl5fcut@example.com";
 const FANCY = "a415ac52-cd74-42a6-8df7-7a8f6e71d080";
+
+// HTC QA fail-closed: refuse curated venue writes unless explicitly overridden.
+if (process.env.HTC_ALLOW_PROTECTED_QA_WRITES !== "1") {
+  const __htcProtected = new Set([
+    "31f38b79-eb99-4ebc-81bc-af85767b42aa",
+    "a415ac52-cd74-42a6-8df7-7a8f6e71d080",
+    "5c84e74e-355d-4ce1-9e6b-913a9267f543",
+  ]);
+  for (const __id of [typeof FANCY !== "undefined" ? FANCY : null, typeof WILLOW !== "undefined" ? WILLOW : null, typeof DAISY !== "undefined" ? DAISY : null, typeof VENUE !== "undefined" ? VENUE : null, typeof FANCY_VENUE !== "undefined" ? FANCY_VENUE : null].filter(Boolean)) {
+    if (__htcProtected.has(__id)) {
+      throw new Error("REFUSED: write-capable QA must not target curated Sandbox venues. venueId=" + __id + ". Use a disposable venue or set HTC_ALLOW_PROTECTED_QA_WRITES=1 for founder-only override.");
+    }
+  }
+}
+
 const OUT = join(process.cwd(), "docs/qa/practice-mode/pm03-acceptance");
 const DESKTOP = join(homedir(), "Desktop/HTC-PM03-acceptance");
 mkdirSync(OUT, { recursive: true });

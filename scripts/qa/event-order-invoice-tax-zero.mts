@@ -9,6 +9,7 @@ import { createRequire } from "node:module";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { createClient } from "@supabase/supabase-js";
 import { config } from "dotenv";
+import { refuseProtectedVenueHardcodes } from "@/lib/qa/protected-venues";
 
 config({ path: ".env.local", quiet: true });
 const require = createRequire("/Users/jensmac/Developer/wevenu-website/marketing/package.json");
@@ -19,6 +20,8 @@ const ssrUtils = require(
 
 const APP = "https://app.sandbox.hellotocheers.com";
 const FANCY = "a415ac52-cd74-42a6-8df7-7a8f6e71d080";
+refuseProtectedVenueHardcodes({ venueIds: [FANCY], purpose: "scripts/qa/event-order-invoice-tax-zero.mts" });
+
 const STAFF = "jennifer@hellotocheers.com";
 const INVOICE_ID = process.env.INVOICE_ID ?? "4489c869-38fd-4ae1-8cad-cc7043d1d527";
 const EXPECTED_SHA = process.env.EXPECTED_SHA ?? "";

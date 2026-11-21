@@ -9,6 +9,7 @@ import { createRequire } from "node:module";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { createClient } from "@supabase/supabase-js";
 import { config } from "dotenv";
+import { refuseProtectedVenueHardcodes } from "@/lib/qa/protected-venues";
 
 config({ path: ".env.local", quiet: true });
 
@@ -24,6 +25,8 @@ const APP = "https://app.sandbox.hellotocheers.com";
 const EXPECTED_PREFIX = process.env.EXPECTED_TIP_PREFIX ?? "";
 const FANCY_EMAIL = "jennifer@hellotocheers.com";
 const FANCY = "a415ac52-cd74-42a6-8df7-7a8f6e71d080";
+refuseProtectedVenueHardcodes({ venueIds: [FANCY], purpose: "scripts/qa/luv-draft-eligibility-matrix-browser.mts" });
+
 const OUT_DIR = "docs/qa/luv-draft-cta-fix";
 const OUT = `${OUT_DIR}/eligibility-matrix-results.json`;
 const SILENCE = "There's nothing that needs a follow-up right now.";

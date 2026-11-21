@@ -4,10 +4,13 @@
 import { createClient } from "@supabase/supabase-js";
 import { config } from "dotenv";
 import { writeFileSync, mkdirSync } from "node:fs";
+import { refuseProtectedVenueHardcodes } from "@/lib/qa/protected-venues";
 
 config({ path: ".env.local", quiet: true });
 
 const FANCY = "a415ac52-cd74-42a6-8df7-7a8f6e71d080";
+refuseProtectedVenueHardcodes({ venueIds: [FANCY], purpose: "scripts/qa/dup-tour-orphan-audit.mts" });
+
 const OUT = "docs/qa/duplicate-lead-tour-orphan";
 
 async function main() {

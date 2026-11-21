@@ -15,6 +15,7 @@ const ssrUtils = require(
 );
 
 import {
+import { refuseProtectedVenueHardcodes } from "@/lib/qa/protected-venues";
   buildClientInviteEmail,
   clientInvitePreviewAcceptUrl,
   CLIENT_INVITE_CTA_LABEL,
@@ -22,6 +23,8 @@ import {
 
 const APP = "https://app.sandbox.hellotocheers.com";
 const FANCY = "a415ac52-cd74-42a6-8df7-7a8f6e71d080";
+refuseProtectedVenueHardcodes({ venueIds: [FANCY], purpose: "scripts/qa/client-invite-email-spacing-acceptance.mts" });
+
 const EMAIL = "jennifer@hellotocheers.com";
 const EXPECTED_SHA = process.env.EXPECTED_SHA ?? "REPLACE_AFTER_DEPLOY";
 const OUT = "docs/qa/client-invite-email-spacing";

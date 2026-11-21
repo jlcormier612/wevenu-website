@@ -9,8 +9,11 @@
  */
 import { createClient } from "@supabase/supabase-js";
 import { randomUUID } from "node:crypto";
+import { refuseProtectedVenueHardcodes } from "@/lib/qa/protected-venues";
 
 const FANCY = "a415ac52-cd74-42a6-8df7-7a8f6e71d080";
+refuseProtectedVenueHardcodes({ venueIds: [FANCY], purpose: "scripts/_tmp-luv-phase5-spot-fixtures.mts" });
+
 const TAG = "LUV-P5-QA";
 
 function isoDaysFromNow(days: number): string {

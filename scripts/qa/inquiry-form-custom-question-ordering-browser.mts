@@ -7,6 +7,7 @@ import { createRequire } from "node:module";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { createClient } from "@supabase/supabase-js";
 import { config } from "dotenv";
+import { refuseProtectedVenueHardcodes } from "@/lib/qa/protected-venues";
 
 config({ path: ".env.local", quiet: true });
 
@@ -22,6 +23,8 @@ const APP = "https://app.sandbox.hellotocheers.com";
 const EXPECTED = "14f58a8a3eb14d5545742417d20bbccb15e5f0aa";
 const FANCY_EMAIL = "jennifer@hellotocheers.com";
 const FANCY = "a415ac52-cd74-42a6-8df7-7a8f6e71d080";
+refuseProtectedVenueHardcodes({ venueIds: [FANCY], purpose: "scripts/qa/inquiry-form-custom-question-ordering-browser.mts" });
+
 const EMBED = "2551bc9f8f6d4b9aabfcab9b8795edf6";
 const OUT_DIR = "docs/qa/inquiry-form-custom-question-ordering";
 const OUT = `${OUT_DIR}/browser-results.json`;

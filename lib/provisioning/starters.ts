@@ -166,6 +166,19 @@ const STEPS: SeedStep[] = [
       await seedStandardWeddingSetupProfile(venueId);
     },
   },
+  {
+    // Draft Public Forms starters (never auto-published). Idempotent by starter_key / name.
+    key: "public_forms",
+    run: async (venueId, client) => {
+      const { seedPublicFormStarters } = await import("@/lib/public-forms/starters");
+      const result = await seedPublicFormStarters(venueId, client);
+      if (result.failed.length) {
+        throw new Error(
+          result.failed.map((f) => `${f.key}: ${f.message}`).join("; "),
+        );
+      }
+    },
+  },
 ];
 
 export const STARTER_SEED_STEP_KEYS = STEPS.map((s) => s.key);
@@ -426,11 +439,15 @@ export async function ensureVenueStarters(
   const snap = await getStarterProvisioningSnapshot(venueId, db);
 
   if (snap.status === "complete" && !opts?.recreateDeleted) {
-    // Healthy venue — do not resurrect intentional deletions.
+    // Healthy venue — do not resurrect intentional Library deletions.
+    // Public Forms starters were historically omitted from provisioning; fill
+    // only missing drafts (idempotent; never overwrites; never publishes).
+    const { seedPublicFormStarters } = await import("@/lib/public-forms/starters");
+    const pf = await seedPublicFormStarters(venueId, db);
     return {
-      ok: true,
-      seeded: snap.seededSteps,
-      failed: [],
+      ok: pf.failed.length === 0,
+      seeded: pf.created.length ? [...snap.seededSteps, "public_forms"] : snap.seededSteps,
+      failed: pf.failed,
       status: "complete",
     };
   }

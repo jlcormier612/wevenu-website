@@ -8,9 +8,12 @@
 import { createClient } from "@supabase/supabase-js";
 import { writeFileSync, mkdirSync } from "node:fs";
 import { resolve } from "node:path";
+import { refuseProtectedVenueHardcodes } from "@/lib/qa/protected-venues";
 
 const DAISY = "5c84e74e-355d-4ce1-9e6b-913a9267f543";
 const FANCY = "a415ac52-cd74-42a6-8df7-7a8f6e71d080";
+refuseProtectedVenueHardcodes({ venueIds: [FANCY, DAISY], purpose: "scripts/qa/prove-payment-rcj-amounts-and-stripe.ts" });
+
 const NAMED_TOKEN = "a3f37893d77359c7c8352b04aa65347761c50af2bf083af4bbbb594ddde2f683";
 const NAMED_LINE = "d354875d-d9ef-44ca-acea-a45167dd7cb9";
 const OUT = resolve("docs/qa/payment-rcj-regression");

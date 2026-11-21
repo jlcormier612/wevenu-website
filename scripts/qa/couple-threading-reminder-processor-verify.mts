@@ -15,11 +15,14 @@ import { randomUUID } from "node:crypto";
 import { processReminders } from "../../lib/notifications/engine.ts";
 import { processObligationReminders } from "../../lib/notifications/obligation-engine.ts";
 import { resolveVenueCoupleThreadId } from "../../lib/conversations/resolve-couple-thread.ts";
+import { refuseProtectedVenueHardcodes } from "@/lib/qa/protected-venues";
 
 config({ path: ".env.local", quiet: true });
 
 const OUT = "docs/qa/couple-email-threading-gaps";
 const FANCY = "a415ac52-cd74-42a6-8df7-7a8f6e71d080";
+refuseProtectedVenueHardcodes({ venueIds: [FANCY], purpose: "scripts/qa/couple-threading-reminder-processor-verify.mts" });
+
 const FANCY_BARN = "3b36ec69-b17d-4351-8186-68d96dd6dfe7";
 const STAMP = String(Date.now()).slice(-8);
 const CLIENT_EMAIL = `rem-proc-${STAMP}@mail.hellotocheers.test`;
