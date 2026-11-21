@@ -287,23 +287,9 @@ export const HOME_COPY = {
   },
   gettingStarted: {
     kicker: "A Fresh Start, Without Starting Over",
-    headline: "Switching shouldn't be the hard part.",
-    subhead: "Set it up once. Make every event easier.",
-    lede: "You've already built your business, your processes, and your relationships. Hello to Cheers helps you bring it all together in a workspace designed around you.",
-    benefits: [
-      {
-        title: "Bring what you've built.",
-        body: "Bring your existing contacts, event details, offerings, inventory, and more into one connected workspace.",
-      },
-      {
-        title: "Get up and running.",
-        body: "Follow a guided setup that helps you organize your information, prepare your workspace, and get ready to welcome your team and clients.",
-      },
-      {
-        title: "You don't have to do it alone.",
-        body: "We're here to help, and optional White Glove Setup is available if you'd rather we do it for you.",
-      },
-    ],
+    headline: "Like what you see? Getting started is the best part.",
+    subhead: "Make it yours. Bring your business. Try it all.",
+    lede: "Start with a guided setup and ready-to-use starters that help make Hello to Cheers feel like yours. Bring your clients, events, financial history, and planning resources into one connected workspace. Then explore it all through Practice Run before inviting your first client.",
     cta: { href: "/getting-started", label: "Explore Getting Started" },
   },
   founder: {

@@ -224,15 +224,6 @@ export function HomepageHybrid() {
             <p className="getting-started-subhead">{c.gettingStarted.subhead}</p>
             <p className="getting-started-lede">{c.gettingStarted.lede}</p>
 
-            <ul className="getting-started-benefits" aria-label="Getting started benefits">
-              {c.gettingStarted.benefits.map((benefit) => (
-                <li key={benefit.title} className="getting-started-benefit">
-                  <h3 className="getting-started-benefit-title">{benefit.title}</h3>
-                  <p className="getting-started-benefit-body">{benefit.body}</p>
-                </li>
-              ))}
-            </ul>
-
             <div className="getting-started-cta">
               <Link className="btn btn-primary" href={c.gettingStarted.cta.href}>
                 {c.gettingStarted.cta.label}

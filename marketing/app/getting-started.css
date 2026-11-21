@@ -1,0 +1,587 @@
+/* Getting Started — five-section editorial page */
+
+.gs-page {
+  --gs-forest: rgb(79, 95, 79);
+  /* Exact Our Story token (.htc-story --story-linen) — warmer beige than global --linen */
+  --story-linen: #ebe5da;
+  background: var(--true-white);
+  color: var(--gs-forest);
+}
+
+.gs-wrap {
+  margin-inline: auto;
+  max-width: 72rem;
+  padding-inline: 1.5rem;
+}
+
+.gs-wrap-wide {
+  margin-inline: auto;
+  max-width: 84rem;
+  padding-inline: 1.25rem;
+}
+
+.gs-eyebrow {
+  margin: 0;
+  font-size: 0.7125rem;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--heritage-sage) 90%, transparent);
+}
+
+.gs-headline {
+  margin: 0;
+  font-family: var(--font-heading), "Cormorant Garamond", Georgia, serif;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  color: var(--gs-forest);
+  line-height: 1.12;
+  text-wrap: balance;
+}
+
+.gs-support {
+  margin: 0;
+  font-family: var(--font-heading), "Cormorant Garamond", Georgia, serif;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--gs-forest);
+  line-height: 1.25;
+  text-wrap: balance;
+}
+
+.gs-body {
+  margin: 0;
+  font-size: 1.0625rem;
+  line-height: 1.7;
+  /* 88% — was 72%; clears ~4.5:1 on linen/white without leaving forest-sage family */
+  color: color-mix(in srgb, var(--gs-forest) 88%, transparent);
+}
+
+.gs-cta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+  align-items: center;
+}
+
+/*
+ * Hero secondary CTA — match approved white secondary used on homepage hero
+ * and Our Story welcome (solid white + light charcoal border).
+ * Border lives on the rounded <a>; never on the inner label span.
+ */
+.gs-page a.gs-hero-secondary {
+  border: 1px solid rgba(36, 51, 43, 0.22) !important;
+  /* Match primary py-3 height after adding border */
+  padding-block: calc(0.75rem - 1px) !important;
+  padding-inline: 1.5rem !important;
+  background-color: #ffffff !important;
+  color: #24332b !important;
+  font-weight: 500;
+  opacity: 1 !important;
+  box-shadow: none !important;
+  text-decoration: none !important;
+}
+
+.gs-page a.gs-hero-secondary > span {
+  /* Label only — no border/shadow/outline (those created the inner rectangle) */
+  width: auto !important;
+  min-width: 0 !important;
+  flex-grow: 0 !important;
+  flex-basis: auto !important;
+  border: none !important;
+  box-shadow: none !important;
+  background: none !important;
+  outline: none !important;
+  color: inherit !important;
+  text-decoration: none !important;
+}
+
+.gs-page a.gs-hero-secondary:hover {
+  background-color: color-mix(in srgb, #ffffff 88%, #e8ebe4) !important;
+  border-color: rgba(36, 51, 43, 0.4) !important;
+  color: #24332b !important;
+  box-shadow: none !important;
+}
+
+.gs-page a.gs-hero-secondary:focus-visible {
+  /* Keep keyboard focus ring from MarketingCta; preserve white secondary chrome */
+  border-color: rgba(36, 51, 43, 0.4) !important;
+  color: #24332b !important;
+  box-shadow: none !important;
+}
+
+/* ── Hero ── */
+.gs-hero {
+  /* Explicit warm beige — must not inherit white from .gs-page */
+  background: var(--story-linen);
+  padding: 7.5rem 0 4rem;
+}
+
+.gs-hero-grid {
+  display: grid;
+  gap: 2.25rem;
+  align-items: center;
+}
+
+.gs-hero-copy {
+  max-width: 34rem;
+}
+
+.gs-hero .gs-eyebrow {
+  margin-bottom: 1.5rem;
+}
+
+.gs-hero .gs-headline {
+  font-size: clamp(2.6rem, 5vw, 4.35rem);
+}
+
+.gs-hero .gs-support {
+  margin-top: 0.75rem;
+  font-size: clamp(1.55rem, 2.6vw, 2.15rem);
+  color: color-mix(in srgb, var(--gs-forest) 88%, transparent);
+}
+
+.gs-hero .gs-body {
+  margin-top: 1.25rem;
+  max-width: 33.5rem;
+}
+
+.gs-hero .gs-cta-row {
+  margin-top: 1.75rem;
+}
+
+.gs-hero-photo {
+  margin: 0;
+  overflow: hidden;
+  border-radius: 1.25rem;
+  border: 1px solid color-mix(in srgb, var(--taupe-medium) 45%, transparent);
+  background: var(--story-linen);
+  box-shadow: 0 28px 56px -40px rgba(36, 51, 43, 0.35);
+  aspect-ratio: 3 / 2;
+}
+
+.gs-hero-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 58% 35%;
+}
+
+/*
+ * Bring Your Business — after Make It Yours in the narrative.
+ * Rhythm: hero story-linen → MIY white → BYB story-linen → practice white → closing botanical.
+ */
+.gs-byb {
+  background: var(--story-linen);
+  padding: 4.5rem 0;
+  border-top: 1px solid color-mix(in srgb, var(--taupe-medium) 36%, transparent);
+}
+
+.gs-byb-intro {
+  max-width: 46rem;
+}
+
+.gs-byb-intro .gs-eyebrow {
+  margin-bottom: 1.25rem;
+}
+
+.gs-byb-intro .gs-headline {
+  font-size: clamp(2.15rem, 3.8vw, 3.35rem);
+}
+
+.gs-byb-intro .gs-body {
+  margin-top: 1.15rem;
+  max-width: 42rem;
+}
+
+.gs-byb-groups {
+  margin: 2.25rem 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  align-items: stretch;
+}
+
+.gs-byb-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 1.75rem;
+  /* Established light botanical token (--eucalyptus), not a new hex */
+  background: var(--eucalyptus);
+  border: 1px solid color-mix(in srgb, var(--botanical) 12%, transparent);
+  border-radius: 1rem;
+  box-shadow: none;
+}
+
+.gs-byb-group-title {
+  margin: 0;
+  font-family: var(--font-heading), "Cormorant Garamond", Georgia, serif;
+  font-size: 1.45rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--gs-forest);
+}
+
+.gs-byb-group-body {
+  margin: 0.65rem 0 0;
+  font-size: 1rem;
+  line-height: 1.65;
+  /* 92% on eucalyptus clears WCAG AA for normal text (~4.57:1) */
+  color: color-mix(in srgb, var(--gs-forest) 92%, transparent);
+}
+
+.gs-byb-emphasis {
+  margin-top: 2.5rem;
+  max-width: 42rem;
+}
+
+.gs-byb-emphasis-title {
+  margin: 0;
+  font-family: var(--font-heading), "Cormorant Garamond", Georgia, serif;
+  font-size: clamp(1.85rem, 2.85vw, 2.45rem);
+  font-weight: 500;
+  letter-spacing: -0.015em;
+  line-height: 1.2;
+  color: var(--gs-forest);
+}
+
+/* Desktop: two balanced phrases; mobile wraps naturally as one flow */
+@media (min-width: 900px) {
+  .gs-byb-emphasis-line {
+    display: block;
+  }
+}
+
+.gs-byb-emphasis .gs-body {
+  margin-top: 0.85rem;
+}
+
+.gs-byb-showcase {
+  margin-top: 2.25rem;
+  display: grid;
+  gap: 1.35rem;
+}
+
+.gs-shot {
+  margin: 0;
+}
+
+.gs-shot-label {
+  display: block;
+  margin-bottom: 0.55rem;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--heritage-sage) 88%, transparent);
+}
+
+.gs-shot-frame {
+  overflow: hidden;
+  border-radius: 1rem;
+  border: 1px solid color-mix(in srgb, var(--taupe-medium) 48%, transparent);
+  background: white;
+  box-shadow: 0 18px 40px -34px rgba(36, 51, 43, 0.45);
+}
+
+.gs-shot-frame img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.gs-byb-shot-a .gs-shot-frame img {
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  object-position: top center;
+  background: white;
+}
+
+.gs-byb-shot-b .gs-shot-frame img {
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+  object-position: top center;
+}
+
+.gs-byb-reassure {
+  margin: 0.85rem 0 0;
+  font-size: 0.875rem;
+  line-height: 1.55;
+  color: color-mix(in srgb, var(--gs-forest) 80%, transparent);
+  /* Use the showcase width so both sentences can sit on one desktop line */
+  max-width: none;
+}
+
+.gs-byb-reassure-line {
+  /* Inline flow — one continuous line when space allows; natural wrap otherwise */
+  display: inline;
+}
+
+/*
+ * Make It Yours — first detailed chapter after the hero.
+ * White surface after linen hero.
+ */
+.gs-miy {
+  background: var(--true-white);
+  padding: 4.5rem 0;
+  border-top: 1px solid color-mix(in srgb, var(--taupe-medium) 40%, transparent);
+}
+
+.gs-miy-grid {
+  display: grid;
+  gap: 2rem;
+  align-items: center;
+}
+
+.gs-miy-copy {
+  max-width: 30rem;
+}
+
+.gs-miy-copy .gs-eyebrow {
+  margin-bottom: 1.25rem;
+}
+
+.gs-miy-copy .gs-headline {
+  font-size: clamp(2.05rem, 3.5vw, 3.05rem);
+}
+
+.gs-miy-copy > .gs-body {
+  margin-top: 1.1rem;
+}
+
+.gs-miy-secondary {
+  margin: 1.65rem 0 0;
+}
+
+.gs-miy-secondary-title {
+  margin: 0;
+  font-family: var(--font-heading), "Cormorant Garamond", Georgia, serif;
+  font-size: clamp(1.5rem, 2.2vw, 1.85rem);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  color: var(--gs-forest);
+}
+
+.gs-miy-secondary .gs-body {
+  margin-top: 0.65rem;
+}
+
+.gs-miy-closing {
+  margin-top: 1.15rem;
+}
+
+.gs-miy-shot {
+  width: 100%;
+}
+
+.gs-miy-shot .gs-shot-frame {
+  box-shadow: 0 22px 48px -36px rgba(36, 51, 43, 0.5);
+}
+
+.gs-miy-shot img {
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  object-position: top center;
+  background: var(--linen);
+}
+
+/* ── Practice Run ── */
+.gs-practice {
+  background: var(--true-white);
+  padding: 4.5rem 0;
+  border-top: 1px solid color-mix(in srgb, var(--taupe-medium) 40%, transparent);
+}
+
+.gs-practice-intro {
+  max-width: 48rem;
+  margin-inline: auto;
+  text-align: center;
+}
+
+.gs-practice-intro .gs-eyebrow {
+  margin-bottom: 1.25rem;
+}
+
+.gs-practice-intro .gs-headline {
+  font-size: clamp(2.15rem, 3.8vw, 3.35rem);
+}
+
+.gs-practice-intro .gs-body {
+  margin-top: 1.1rem;
+  margin-inline: auto;
+  /* Slightly wider so “together.” / “Run.” stay with preceding words */
+  max-width: 44.5rem;
+  text-wrap: pretty;
+}
+
+.gs-practice-intro .gs-body + .gs-body {
+  margin-top: 0.85rem;
+}
+
+.gs-practice-emphasis {
+  margin: 1.35rem 0 0;
+  font-family: var(--font-heading), "Cormorant Garamond", Georgia, serif;
+  font-size: clamp(1.55rem, 2.5vw, 2.05rem);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  color: var(--gs-forest);
+}
+
+.gs-practice-reassure {
+  margin: 0.65rem 0 0;
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: color-mix(in srgb, var(--gs-forest) 80%, transparent);
+}
+
+/*
+ * Closing CTA heart — approved Hospitality dusty-rose mark via ClosingCta.
+ * Botanical surface otherwise paints the heart blush (#f7e9eb), which reads
+ * as missing against the green band. Restore dusty-rose for this page only.
+ */
+.gs-page .gs-closing .signature-closing-actions .story-end-heart {
+  color: var(--dusty-rose);
+  opacity: 0.88;
+}
+
+.gs-practice-pair {
+  margin-top: 1.75rem;
+  display: grid;
+  gap: 1.15rem;
+  align-items: start;
+}
+
+.gs-practice-cue {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  color: color-mix(in srgb, var(--gs-forest) 45%, transparent);
+  font-size: 1.5rem;
+  line-height: 1;
+  padding-top: 1.5rem;
+}
+
+.gs-practice-frame {
+  /* Matched pair: venue v4 + extended client v4 share one aspect */
+  aspect-ratio: 966 / 806;
+}
+
+.gs-practice-frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top center;
+}
+
+.gs-practice-venue .gs-shot-frame,
+.gs-practice-client .gs-shot-frame {
+  box-shadow: 0 18px 40px -34px rgba(36, 51, 43, 0.45);
+}
+
+/* ── Responsive ── */
+@media (min-width: 900px) {
+  .gs-hero {
+    padding: 8.25rem 0 5rem;
+  }
+
+  .gs-hero-grid {
+    grid-template-columns: minmax(0, 0.48fr) minmax(0, 0.52fr);
+    gap: 3rem;
+  }
+
+  .gs-byb {
+    padding: 5.25rem 0;
+  }
+
+  .gs-byb-groups {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1.25rem;
+  }
+
+  .gs-byb-card {
+    padding: 1.875rem; /* 30px — within 28–32px */
+  }
+
+  .gs-byb-showcase {
+    gap: 1.5rem;
+  }
+
+  .gs-miy {
+    padding: 5.25rem 0;
+  }
+
+  .gs-miy-grid {
+    /* Slightly larger Setup Hub shot while keeping the secondary heading on one line */
+    grid-template-columns: minmax(0, 0.39fr) minmax(0, 0.61fr);
+    gap: 2.15rem;
+    align-items: center;
+  }
+
+  .gs-miy-secondary-title {
+    font-size: clamp(1.45rem, 1.7vw, 1.78rem);
+  }
+
+  .gs-practice {
+    padding: 5.25rem 0;
+  }
+
+  .gs-practice-pair {
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    gap: 0.75rem;
+    align-items: start;
+  }
+
+  .gs-practice-cue {
+    display: flex;
+    align-self: center;
+    padding-inline: 0.15rem;
+    padding-top: 0;
+  }
+
+  /* Closing body: keep each deliberate line as one centered measure */
+  .gs-page .gs-closing .signature-closing-lines {
+    max-width: 40rem;
+  }
+
+  .gs-page .gs-closing .signature-closing-lines p {
+    text-wrap: balance;
+  }
+}
+
+@media (max-width: 899px) {
+  .gs-hero {
+    padding: 6.25rem 0 3.25rem;
+  }
+
+  .gs-hero-photo {
+    aspect-ratio: 4 / 3;
+  }
+
+  .gs-hero-photo img {
+    object-position: 62% 28%;
+  }
+
+  .gs-byb,
+  .gs-miy,
+  .gs-practice {
+    padding: 3.5rem 0;
+  }
+
+  .gs-byb-card {
+    padding: 1.5rem;
+  }
+
+  .gs-cta-row > a {
+    flex: 1 1 auto;
+    min-width: min(100%, 12rem);
+  }
+}

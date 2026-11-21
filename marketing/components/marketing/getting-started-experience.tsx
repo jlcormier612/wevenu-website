@@ -1,115 +1,247 @@
 import Image from "next/image";
 import Link from "next/link";
 
+import { MarketingCta } from "@/components/marketing/marketing-cta";
 import { SignatureClosingCta } from "@/components/marketing/signature-closing-cta";
-import { GETTING_STARTED_PAGE } from "@/lib/marketing/getting-started-page";
-import { TYPE_HERO_SHELL, TYPE_LABEL } from "@/lib/marketing/rhythm";
+import {
+  GETTING_STARTED_ASSETS as A,
+  GETTING_STARTED_PAGE,
+} from "@/lib/marketing/getting-started-page";
+
+import "@/app/getting-started.css";
 
 /**
- * Introductory Getting Started page — accurate claims only.
+ * Getting Started — five-section sales-conversion page.
+ * Narrative order aligns with Setup Hub milestones:
+ * configure (Make It Yours) → Bring Your Business → Practice → close.
+ * Section interiors stay as approved; only chapter order changes.
  */
 export function GettingStartedExperience() {
   const page = GETTING_STARTED_PAGE;
 
   return (
-    <div className="bg-[var(--true-white)]">
-      <section className={TYPE_HERO_SHELL}>
-        <div className="mx-auto max-w-[65ch]">
-          <p className={`${TYPE_LABEL} text-[var(--heritage-sage)]`}>{page.hero.kicker}</p>
-          <h1 className="mt-5 font-heading text-[2.52rem] font-medium leading-[1.16] tracking-tight text-[var(--forest-sage)] md:text-[4.2rem]">
-            {page.hero.headline}
-          </h1>
-          <p className="mt-8 text-base leading-[1.7] text-[var(--forest-sage)]/70 md:text-lg">
-            {page.hero.lede}
-          </p>
+    <div className="gs-page">
+      {/* 1. Hero */}
+      <section className="gs-hero" aria-labelledby="gs-hero-heading">
+        <div className="gs-wrap">
+          <div className="gs-hero-grid">
+            <div className="gs-hero-copy">
+              <p className="gs-eyebrow">{page.hero.eyebrow}</p>
+              <h1 id="gs-hero-heading" className="gs-headline">
+                {page.hero.headline}
+              </h1>
+              <p className="gs-support">{page.hero.support}</p>
+              <p className="gs-body">{page.hero.body}</p>
+              <div className="gs-cta-row">
+                <MarketingCta
+                  href={page.hero.primaryCta.href}
+                  label={page.hero.primaryCta.label}
+                  variant="primary"
+                />
+                <MarketingCta
+                  href={page.hero.secondaryCta.href}
+                  label={page.hero.secondaryCta.label}
+                  variant="secondary"
+                  className="gs-hero-secondary"
+                />
+              </div>
+            </div>
+
+            <figure className="gs-hero-photo">
+              <Image
+                src={A.hero}
+                alt={page.hero.imageAlt}
+                width={1024}
+                height={682}
+                priority
+                sizes="(max-width: 899px) 100vw, 52vw"
+              />
+            </figure>
+          </div>
         </div>
       </section>
 
-      <section className="border-t border-[var(--taupe-medium)]/40 bg-[var(--linen)] px-6 py-20 md:py-28">
-        <div className="mx-auto grid max-w-6xl gap-10 lg:grid-cols-[0.95fr_1.05fr] lg:items-start">
-          <div className="space-y-8">
-            {page.principles.map((item) => (
-              <article key={item.title} className="max-w-[48ch]">
-                <h2 className="font-heading text-[1.55rem] font-medium tracking-tight text-[var(--forest-sage)] md:text-[1.85rem]">
-                  {item.title}
-                </h2>
-                <p className="mt-3 text-base leading-[1.7] text-[var(--forest-sage)]/75">
-                  {item.body}
-                </p>
-              </article>
+      {/* 2. Make It Yours (configure / operating environment — before import) */}
+      <section className="gs-miy" id="make-it-yours" aria-labelledby="gs-miy-heading">
+        <div className="gs-wrap">
+          <div className="gs-miy-grid">
+            <div className="gs-miy-copy">
+              <p className="gs-eyebrow">{page.makeItYours.eyebrow}</p>
+              <h2 id="gs-miy-heading" className="gs-headline">
+                {page.makeItYours.headline}
+              </h2>
+              <p className="gs-body">{page.makeItYours.body}</p>
+              <div className="gs-miy-secondary">
+                <p className="gs-miy-secondary-title">{page.makeItYours.secondary}</p>
+                <p className="gs-body">{page.makeItYours.secondaryBody}</p>
+              </div>
+              <p className="gs-body gs-miy-closing">{page.makeItYours.closing}</p>
+            </div>
+
+            <figure className="gs-shot gs-miy-shot">
+              <div className="gs-shot-frame">
+                <Image
+                  src={A.setupHub}
+                  alt={page.makeItYours.setupAlt}
+                  width={984}
+                  height={768}
+                  sizes="(max-width: 899px) 100vw, 55vw"
+                />
+              </div>
+            </figure>
+          </div>
+        </div>
+      </section>
+
+      {/* 3. Bring Your Business (import chapter — after configuration story) */}
+      <section
+        className="gs-byb"
+        id={page.bringYourBusiness.id}
+        aria-labelledby="gs-byb-heading"
+      >
+        <div className="gs-wrap">
+          <header className="gs-byb-intro">
+            <p className="gs-eyebrow">{page.bringYourBusiness.eyebrow}</p>
+            <h2 id="gs-byb-heading" className="gs-headline">
+              {page.bringYourBusiness.headline}
+            </h2>
+            <p className="gs-body">{page.bringYourBusiness.intro}</p>
+          </header>
+
+          <ul className="gs-byb-groups">
+            {page.bringYourBusiness.groups.map((group) => (
+              <li key={group.title} className="gs-byb-card">
+                <h3 className="gs-byb-group-title">{group.title}</h3>
+                <p className="gs-byb-group-body">{group.body}</p>
+              </li>
             ))}
+          </ul>
+
+          <div className="gs-byb-emphasis">
+            <p className="gs-byb-emphasis-title">
+              <span className="gs-byb-emphasis-line">
+                {page.bringYourBusiness.emphasis[0]}
+              </span>{" "}
+              <span className="gs-byb-emphasis-line">
+                {page.bringYourBusiness.emphasis[1]}
+              </span>
+            </p>
+            <p className="gs-body">{page.bringYourBusiness.emphasisBody}</p>
           </div>
 
-          <figure className="overflow-hidden rounded-[1.25rem] border border-[var(--taupe-medium)]/40 bg-white shadow-[0_28px_56px_-40px_rgba(36,51,43,0.4)]">
-            <Image
-              src="/marketing/homepage-v3/setup-hub.png"
-              alt="Hello to Cheers Setup Hub — guided venue configuration"
-              width={1100}
-              height={720}
-              className="h-auto w-full object-cover object-top"
-            />
-            <figcaption className="px-5 py-4 text-sm text-[var(--forest-sage)]/65">
-              Setup Hub — authentic Sandbox configuration experience
-            </figcaption>
-          </figure>
+          <div className="gs-byb-showcase">
+            <figure className="gs-shot gs-byb-shot-a">
+              <span className="gs-shot-label">{page.bringYourBusiness.shotALabel}</span>
+              <div className="gs-shot-frame">
+                <Image
+                  src={A.importEntry}
+                  alt={page.bringYourBusiness.shotAAlt}
+                  width={1024}
+                  height={451}
+                  sizes="(max-width: 899px) 100vw, 88vw"
+                />
+              </div>
+            </figure>
+            <figure className="gs-shot gs-byb-shot-b">
+              <span className="gs-shot-label">{page.bringYourBusiness.shotBLabel}</span>
+              <div className="gs-shot-frame">
+                <Image
+                  src={A.connectedWorkspace}
+                  alt={page.bringYourBusiness.shotBAlt}
+                  width={1440}
+                  height={1100}
+                  sizes="(max-width: 899px) 100vw, 88vw"
+                />
+              </div>
+            </figure>
+            <p className="gs-byb-reassure">
+              <span className="gs-byb-reassure-line">
+                {page.bringYourBusiness.reassurance[0]}
+              </span>{" "}
+              <span className="gs-byb-reassure-line">
+                {page.bringYourBusiness.reassurance[1]}
+              </span>
+            </p>
+          </div>
         </div>
       </section>
 
-      <section className="px-6 py-20 md:py-28">
-        <div className="mx-auto max-w-[65ch]">
-          <h2 className="font-heading text-[2rem] font-medium tracking-tight text-[var(--forest-sage)] md:text-[2.6rem]">
-            {page.importHonesty.title}
-          </h2>
-          <div className="mt-6 space-y-5 text-base leading-[1.7] text-[var(--forest-sage)]/75 md:text-lg">
-            {page.importHonesty.paragraphs.map((paragraph) => (
-              <p key={paragraph.slice(0, 48)}>{paragraph}</p>
-            ))}
+      {/* 4. Practice Run */}
+      <section className="gs-practice" aria-labelledby="gs-practice-heading">
+        <div className="gs-wrap-wide">
+          <header className="gs-practice-intro">
+            <p className="gs-eyebrow">{page.practiceRun.eyebrow}</p>
+            <h2 id="gs-practice-heading" className="gs-headline">
+              {page.practiceRun.headline}
+            </h2>
+            <p className="gs-body">{page.practiceRun.body}</p>
+            <p className="gs-body">{page.practiceRun.secondary}</p>
+            <p className="gs-practice-emphasis">{page.practiceRun.emphasis}</p>
+            <p className="gs-practice-reassure">{page.practiceRun.reassurance}</p>
+          </header>
+
+          <div className="gs-practice-pair">
+            <figure className="gs-shot gs-practice-venue">
+              <span className="gs-shot-label">{page.practiceRun.venueLabel}</span>
+              <div className="gs-shot-frame gs-practice-frame">
+                <Image
+                  src={A.practiceVenue}
+                  alt={page.practiceRun.venueAlt}
+                  width={966}
+                  height={806}
+                  sizes="(max-width: 899px) 100vw, 46vw"
+                />
+              </div>
+            </figure>
+            <div className="gs-practice-cue" aria-hidden="true">
+              →
+            </div>
+            <figure className="gs-shot gs-practice-client">
+              <span className="gs-shot-label">{page.practiceRun.clientLabel}</span>
+              <div className="gs-shot-frame gs-practice-frame">
+                <Image
+                  src={A.practiceClient}
+                  alt={page.practiceRun.clientAlt}
+                  width={1193}
+                  height={995}
+                  sizes="(max-width: 899px) 100vw, 46vw"
+                />
+              </div>
+            </figure>
           </div>
         </div>
       </section>
 
-      <section className="border-t border-[var(--taupe-medium)]/40 bg-[var(--calm-blue,#eaf1f7)] px-6 py-20 md:py-28">
-        <div className="mx-auto max-w-[65ch]">
-          <h2 className="font-heading text-[2rem] font-medium tracking-tight text-[var(--forest-sage)] md:text-[2.6rem]">
-            {page.whiteGlove.title}
-          </h2>
-          <p className="mt-6 text-base leading-[1.7] text-[var(--forest-sage)]/75 md:text-lg">
-            {page.whiteGlove.body}
-          </p>
-          <div className="mt-10">
-            <Link
-              href={page.whiteGlove.cta.href}
-              className="inline-flex min-h-12 items-center justify-center rounded-full bg-[var(--botanical,#446b56)] px-6 text-sm font-medium text-white transition hover:opacity-90"
-            >
-              {page.whiteGlove.cta.label}
-            </Link>
-          </div>
-        </div>
-      </section>
-
+      {/* 5. Closing CTA */}
       <SignatureClosingCta
-        headingId="getting-started-close-heading"
-        headline={page.nextSteps.title}
-        body={page.nextSteps.body}
-        bodyVariant="paragraphs"
-        surface="white"
+        headingId="gs-closing-heading"
+        className="gs-closing"
+        eyebrow={page.closing.eyebrow}
+        headline={page.closing.headline}
+        body={page.closing.body}
+        bodyVariant="lines"
+        surface="botanical"
         actions={[
           {
-            href: page.nextSteps.primaryCta.href,
-            label: page.nextSteps.primaryCta.label,
-            variant: "secondary",
-          },
-          {
-            href: page.nextSteps.secondaryCta.href,
-            label: page.nextSteps.secondaryCta.label,
+            href: page.closing.primaryCta.href,
+            label: page.closing.primaryCta.label,
             variant: "primary",
           },
           {
-            href: page.nextSteps.tertiaryCta.href,
-            label: page.nextSteps.tertiaryCta.label,
+            href: page.closing.secondaryCta.href,
+            label: page.closing.secondaryCta.label,
             variant: "secondary",
           },
         ]}
+        note={
+          <>
+            {page.closing.noteBefore}
+            <Link href={page.closing.noteHref} className="underline underline-offset-4">
+              {page.closing.noteLinkLabel}
+            </Link>
+            {page.closing.noteAfter}
+          </>
+        }
       />
     </div>
   );

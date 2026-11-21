@@ -225,9 +225,15 @@
   }
 }
 
+/*
+ * Resting opacity must stay visible. `.is-lit` only soft-glows.
+ * Opacity 0 until IntersectionObserver left botanical closings
+ * (Getting Started, Trust, etc.) looking heartless when hydration
+ * lagged or screenshots captured before `.is-lit`.
+ */
 .story-end-heart {
   color: var(--dusty-rose);
-  opacity: 0;
+  opacity: 0.72;
 }
 
 .story-end-heart.is-lit {

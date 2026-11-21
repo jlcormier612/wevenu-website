@@ -38,10 +38,12 @@ export function MarketingCta({
         className,
       )}
     >
-      {/* Full-width span keeps multi-line labels centered inside the pill */}
-      <span className="w-full min-w-0 grow basis-full text-center text-balance">
-        {label}
-      </span>
+      {/*
+        Inline label — avoid a full-width block span that can paint its own
+        rectangular box inside rounded outlined buttons.
+        text-balance still helps wrapping labels stay centered via text-align.
+      */}
+      <span className="min-w-0 text-center text-balance">{label}</span>
     </Link>
   );
 }
