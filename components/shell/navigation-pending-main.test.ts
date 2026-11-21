@@ -24,6 +24,14 @@ describe("Navigation pending main overlay (white-main fix)", () => {
     assert.match(src, /HospitalityRouteLoading/);
   });
 
+  it("does not clear pending on pathname match alone (that caused post-deploy white main)", () => {
+    const src = readFileSync(resolve("components/shell/navigation-pending.tsx"), "utf8");
+    assert.match(src, /mainHasUsableContent/);
+    assert.match(src, /CONTENT_POLL_MS/);
+    // Must not clear solely via scheduleClearAfterMinVisible on pathname===target
+    assert.doesNotMatch(src, /scheduleClearAfterMinVisible/);
+  });
+
   it("does not restore forbidden workspace-level loading.tsx", () => {
     assert.equal(existsSync(resolve("app/(app)/loading.tsx")), false);
   });

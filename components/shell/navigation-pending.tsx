@@ -6,13 +6,16 @@ import { usePathname } from "next/navigation";
 import { HospitalityRouteLoading } from "@/components/shell/hospitality-route-loading";
 
 /**
- * Immediate soft-nav feedback that does not wait for the server RSC flight.
- * Click sets pending (React state + sessionStorage so a layout remount cannot
- * wipe the indicator). Pathname match / popstate / safety timeout clears.
+ * Immediate nav feedback that does not wait for the server RSC flight.
  *
- * Main overlay: document navigations previously left `main` empty (white
- * screen) while only a hairline top bar showed. Overlay fills main without
- * wrapping the App Router `children` slot (that + loading.tsx caused #S:0).
+ * Why #124 was not enough: we cleared pending when `pathname` matched the
+ * target. App Router updates the URL before `main` has streamed content, so
+ * the overlay vanished and left a white/cream empty main — the bug users still
+ * saw on Sandbox after deploy.
+ *
+ * Fix: keep pending until `main` has real page content (or stuck timeout).
+ * Persist target in sessionStorage so force-dynamic remounts can restore it.
+ * Overlay is a sibling inside main — never wraps App Router `children`.
  */
 const NavigationPendingContext = React.createContext<{
   pendingHref: string | null;
@@ -21,8 +24,8 @@ const NavigationPendingContext = React.createContext<{
 
 const STORAGE_KEY = "htc-nav-pending-href";
 const STUCK_CLEAR_MS = 12_000;
-/** Keep the bar/overlay paintable on fast soft-nav. */
-const MIN_VISIBLE_MS = 140;
+const CONTENT_POLL_MS = 50;
+const CONTENT_MIN_CHARS = 48;
 
 function pathOnly(href: string): string {
   return href.split("?")[0]?.split("#")[0] ?? href;
@@ -42,89 +45,120 @@ function writeStoredPending(href: string | null) {
     if (!href) sessionStorage.removeItem(STORAGE_KEY);
     else sessionStorage.setItem(STORAGE_KEY, href);
   } catch {
-    /* private mode / quota — state-only fallback */
+    /* private mode / quota */
   }
 }
 
-function variantForPath(pathname: string): "dashboard" | "list" | "detail" | "reporting" | "calendar" | "payments" {
+function variantForPath(
+  pathname: string,
+): "dashboard" | "list" | "detail" | "reporting" | "calendar" | "payments" {
   if (pathname === "/dashboard" || pathname === "/") return "dashboard";
   if (pathname.startsWith("/reporting")) return "reporting";
   if (pathname.startsWith("/calendar")) return "calendar";
   if (pathname.startsWith("/payments") || pathname.startsWith("/invoices")) return "payments";
-  // /leads/<uuid>, /clients/<uuid>, /events/<uuid>, …
   if (/^\/[^/]+\/[^/]+/.test(pathname)) return "detail";
   return "list";
+}
+
+function mainHasUsableContent(): boolean {
+  if (typeof document === "undefined") return false;
+  const main = document.querySelector("[data-workspace-main]");
+  if (!main) return false;
+  // Page slot is the first padding wrapper; overlay is a sibling after it.
+  const pageSlot = main.querySelector(":scope > div:not([data-testid='navigation-pending-main'])");
+  if (!pageSlot) return false;
+  const text = (pageSlot.textContent ?? "").replace(/\s+/g, " ").trim();
+  if (text.length < CONTENT_MIN_CHARS) return false;
+  // Still only a route loading shell inside the page slot.
+  if (pageSlot.querySelector('[data-testid="hospitality-route-loading"]') && text.length < 120) {
+    return false;
+  }
+  return true;
+}
+
+function atTargetPath(pathname: string, target: string): boolean {
+  return pathname === target || pathname.startsWith(`${target}/`);
 }
 
 export function NavigationPendingProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [pendingHref, setPendingHref] = React.useState<string | null>(null);
   const stuckTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
-  const clearTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pollTimer = React.useRef<ReturnType<typeof setInterval> | null>(null);
   const shownAt = React.useRef(0);
   const pathnameAtBegin = React.useRef(pathname);
-  const hydrated = React.useRef(false);
 
   const clearPendingNow = React.useEffectEvent(() => {
     if (stuckTimer.current) {
       clearTimeout(stuckTimer.current);
       stuckTimer.current = null;
     }
-    if (clearTimer.current) {
-      clearTimeout(clearTimer.current);
-      clearTimer.current = null;
+    if (pollTimer.current) {
+      clearInterval(pollTimer.current);
+      pollTimer.current = null;
     }
     writeStoredPending(null);
     setPendingHref(null);
   });
 
-  const scheduleClearAfterMinVisible = React.useEffectEvent(() => {
-    if (clearTimer.current) {
-      clearTimeout(clearTimer.current);
-      clearTimer.current = null;
-    }
-    const elapsed = shownAt.current ? Date.now() - shownAt.current : MIN_VISIBLE_MS;
-    const wait = Math.max(0, MIN_VISIBLE_MS - elapsed);
-    clearTimer.current = setTimeout(() => {
-      clearPendingNow();
-    }, wait);
-  });
-
-  // Survive force-dynamic layout remount: restore pending from sessionStorage.
-  React.useEffect(() => {
-    if (hydrated.current) return;
-    hydrated.current = true;
-    const stored = readStoredPending();
-    if (!stored) return;
-    if (pathname === stored || pathname.startsWith(`${stored}/`)) {
-      writeStoredPending(null);
-      return;
-    }
-    pathnameAtBegin.current = pathname;
-    shownAt.current = Date.now();
-    setPendingHref(stored);
+  const armStuckTimer = React.useEffectEvent(() => {
+    if (stuckTimer.current) clearTimeout(stuckTimer.current);
     stuckTimer.current = setTimeout(() => {
       clearPendingNow();
     }, STUCK_CLEAR_MS);
-  }, [pathname, clearPendingNow]);
+  });
 
+  // Restore before paint on mount (survives force-dynamic layout remount).
+  // Keep showing even if URL already matches — content may still be empty.
+  React.useLayoutEffect(() => {
+    const stored = readStoredPending();
+    if (!stored) return;
+    pathnameAtBegin.current = pathname;
+    shownAt.current = Date.now();
+    setPendingHref(stored);
+    armStuckTimer();
+    // intentionally mount-only
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Clear only once we are on the target AND main has real content.
   React.useEffect(() => {
     if (!pendingHref) return;
     const target = pathOnly(pendingHref);
-    if (pathname === pathnameAtBegin.current) return;
-    if (pathname === target || pathname.startsWith(`${target}/`)) {
-      scheduleClearAfterMinVisible();
+
+    if (pollTimer.current) {
+      clearInterval(pollTimer.current);
+      pollTimer.current = null;
     }
-  }, [pathname, pendingHref, scheduleClearAfterMinVisible]);
+
+    const tick = () => {
+      if (!atTargetPath(pathname, target) && pathname === pathnameAtBegin.current) {
+        return; // still on origin route
+      }
+      if (atTargetPath(pathname, target) && mainHasUsableContent()) {
+        clearPendingNow();
+      }
+    };
+
+    tick();
+    pollTimer.current = setInterval(tick, CONTENT_POLL_MS);
+    return () => {
+      if (pollTimer.current) {
+        clearInterval(pollTimer.current);
+        pollTimer.current = null;
+      }
+    };
+  }, [pathname, pendingHref, clearPendingNow]);
 
   React.useEffect(() => {
     const onPop = () => {
-      if (pendingHref) scheduleClearAfterMinVisible();
-      else clearPendingNow();
+      // Back/forward: keep overlay until content, or clear if nothing pending.
+      if (!pendingHref) clearPendingNow();
+      else armStuckTimer();
     };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
-  }, [pendingHref, scheduleClearAfterMinVisible, clearPendingNow]);
+  }, [pendingHref, clearPendingNow, armStuckTimer]);
 
   const value = React.useMemo(
     () => ({
@@ -136,13 +170,10 @@ export function NavigationPendingProvider({ children }: { children: React.ReactN
         shownAt.current = Date.now();
         writeStoredPending(path);
         setPendingHref(path);
-        if (stuckTimer.current) clearTimeout(stuckTimer.current);
-        stuckTimer.current = setTimeout(() => {
-          clearPendingNow();
-        }, STUCK_CLEAR_MS);
+        armStuckTimer();
       },
     }),
-    [pendingHref, pathname, clearPendingNow],
+    [pendingHref, pathname, armStuckTimer],
   );
 
   return (
