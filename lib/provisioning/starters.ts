@@ -167,7 +167,7 @@ const STEPS: SeedStep[] = [
     },
   },
   {
-    // Draft Public Forms starters (never auto-published). Idempotent by starter_key / name.
+    // Draft Public Forms starters (never auto-published). Idempotent by starter_key.
     key: "public_forms",
     run: async (venueId, client) => {
       const { seedPublicFormStarters } = await import("@/lib/public-forms/starters");
@@ -440,14 +440,41 @@ export async function ensureVenueStarters(
 
   if (snap.status === "complete" && !opts?.recreateDeleted) {
     // Healthy venue — do not resurrect intentional Library deletions.
-    // Public Forms starters were historically omitted from provisioning; fill
-    // only missing drafts (idempotent; never overwrites; never publishes).
+    // Public Forms were historically omitted from provisioning. One-time
+    // gap-fill only when `public_forms` is not yet recorded in seeded_steps.
+    // After that, deleted starters stay deleted unless recreateDeleted=true.
+    if (snap.seededSteps.includes("public_forms")) {
+      return {
+        ok: true,
+        seeded: snap.seededSteps,
+        failed: [],
+        status: "complete",
+      };
+    }
+
     const { seedPublicFormStarters } = await import("@/lib/public-forms/starters");
     const pf = await seedPublicFormStarters(venueId, db);
+    if (pf.failed.length) {
+      return {
+        ok: false,
+        seeded: snap.seededSteps,
+        failed: pf.failed,
+        status: "incomplete",
+      };
+    }
+
+    const nextSteps = [...snap.seededSteps, "public_forms"];
+    await upsertProvisionRow(db, venueId, {
+      status: "complete",
+      seeded_steps: nextSteps,
+      failed_steps: [],
+      last_error: null,
+      completed_at: snap.completedAt ?? new Date().toISOString(),
+    });
     return {
-      ok: pf.failed.length === 0,
-      seeded: pf.created.length ? [...snap.seededSteps, "public_forms"] : snap.seededSteps,
-      failed: pf.failed,
+      ok: true,
+      seeded: nextSteps,
+      failed: [],
       status: "complete",
     };
   }

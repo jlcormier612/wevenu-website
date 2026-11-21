@@ -4,7 +4,14 @@
  * Starters are venue-owned draft forms installed into Templates → Public Forms.
  * They are never auto-published. Existing customized forms are never overwritten.
  *
- * Idempotency: `starter_key` column when present; otherwise exact `internal_name`.
+ * Collision policy:
+ * - Platform ownership is `starter_key` only (never claim by internal_name alone).
+ * - A venue-authored form with the same display name is left untouched; the
+ *   platform starter is still installed under starter_key (names may coexist).
+ *
+ * Idempotency / concurrency: unique (venue_id, starter_key) via DB + RPC.
+ * Incomplete recovery: only for rows that already carry starter_key.
+ *
  * SMS consent is NOT collected here (product policy — venue inquiry form only).
  * Each starter includes a required contact-permission custom question.
  */
@@ -37,6 +44,17 @@ export type PublicFormStarterMaster = {
   fieldConfig: PublicFormFieldConfig;
   questions: PublicFormStarterQuestion[];
 };
+
+/** Verified Willow Grove Sandbox backfill form IDs (PUBLIC-FORMS-BACKFILL.json). */
+export const WILLOW_GROVE_PUBLIC_FORM_STARTER_IDS = {
+  venueId: "31f38b79-eb99-4ebc-81bc-af85767b42aa",
+  forms: {
+    general_venue_inquiry: "f80e069f-e231-42ad-962f-6deb83e2421d",
+    wedding_expo_lead_capture: "3cbf6f4e-1595-40d4-bc98-602ecefa9f84",
+    open_house_tour_interest: "b56d4251-1275-49ef-a38a-99df1ee36065",
+    private_social_event_inquiry: "16eb3c94-906d-4a32-a433-a04e40c0387f",
+  },
+} as const;
 
 const CONTACT_PERMISSION: PublicFormStarterQuestion = {
   questionText: "I agree to be contacted by this venue about my inquiry.",
@@ -166,37 +184,98 @@ export const PUBLIC_FORM_STARTER_MASTERS: readonly PublicFormStarterMaster[] = [
 export type PublicFormStarterSeedResult = {
   created: string[];
   skipped: string[];
+  repaired: string[];
   failed: Array<{ key: string; message: string }>;
 };
 
-async function findExistingStarter(
+function questionsPayload(master: PublicFormStarterMaster) {
+  return master.questions.map((q) => ({
+    question_text: q.questionText,
+    question_type: q.questionType,
+    required: q.required,
+    options: q.options ?? null,
+    sort_order: q.sortOrder,
+  }));
+}
+
+type RpcSeedStatus = "created" | "skipped" | "repaired";
+
+async function seedOneViaRpc(
   client: DbClient,
   venueId: string,
   master: PublicFormStarterMaster,
-): Promise<string | null> {
-  const byKey = await client
+): Promise<RpcSeedStatus | "unavailable"> {
+  const { data, error } = await client.rpc("seed_public_form_starter", {
+    p_venue_id: venueId,
+    p_starter_key: master.key,
+    p_internal_name: master.internalName,
+    p_public_title: master.publicTitle,
+    p_description: master.description,
+    p_field_config: master.fieldConfig,
+    p_questions: questionsPayload(master),
+  });
+  if (error) {
+    if (/function|schema cache|does not exist|42883/i.test(error.message)) {
+      return "unavailable";
+    }
+    throw new Error(error.message);
+  }
+  const status = (data as { status?: string } | null)?.status;
+  if (status === "created" || status === "skipped" || status === "repaired") return status;
+  throw new Error(`unexpected_rpc_status:${String(status)}`);
+}
+
+/**
+ * Client-side fallback when RPC is not yet migrated.
+ * Still keys only on starter_key; recovers incomplete platform starters;
+ * rolls back form insert if question insert fails.
+ */
+async function seedOneFallback(
+  client: DbClient,
+  venueId: string,
+  master: PublicFormStarterMaster,
+): Promise<RpcSeedStatus> {
+  const existing = await client
     .from("public_forms")
-    .select("id")
+    .select("id, status")
     .eq("venue_id", venueId)
     .eq("starter_key", master.key)
     .maybeSingle();
-  if (!byKey.error && byKey.data?.id) return byKey.data.id as string;
 
-  const byName = await client
-    .from("public_forms")
-    .select("id")
-    .eq("venue_id", venueId)
-    .eq("internal_name", master.internalName)
-    .maybeSingle();
-  if (!byName.error && byName.data?.id) return byName.data.id as string;
-  return null;
-}
+  if (existing.error && !/starter_key|schema cache|column/i.test(existing.error.message)) {
+    throw new Error(existing.error.message);
+  }
 
-async function insertStarterForm(
-  client: DbClient,
-  venueId: string,
-  master: PublicFormStarterMaster,
-): Promise<string> {
+  if (existing.data?.id) {
+    const formId = existing.data.id as string;
+    const { count, error: cErr } = await client
+      .from("public_form_questions")
+      .select("id", { count: "exact", head: true })
+      .eq("public_form_id", formId);
+    if (cErr) throw new Error(cErr.message);
+    if ((count ?? 0) >= master.questions.length) return "skipped";
+
+    const { error: delErr } = await client
+      .from("public_form_questions")
+      .delete()
+      .eq("public_form_id", formId);
+    if (delErr) throw new Error(delErr.message);
+    const qRows = master.questions.map((q) => ({
+      public_form_id: formId,
+      venue_id: venueId,
+      question_text: q.questionText,
+      question_type: q.questionType,
+      required: q.required,
+      options: q.options ?? null,
+      sort_order: q.sortOrder,
+    }));
+    if (qRows.length) {
+      const { error: qErr } = await client.from("public_form_questions").insert(qRows);
+      if (qErr) throw new Error(qErr.message);
+    }
+    return "repaired";
+  }
+
   const baseRow = {
     venue_id: venueId,
     internal_name: master.internalName,
@@ -212,14 +291,15 @@ async function insertStarterForm(
     .insert({ ...baseRow, starter_key: master.key })
     .select("id")
     .single();
+
   if (!withKey.error && withKey.data?.id) {
     formId = withKey.data.id as string;
+  } else if (withKey.error && /duplicate|unique/i.test(withKey.error.message)) {
+    return "skipped";
   } else if (withKey.error && /starter_key|schema cache|column/i.test(withKey.error.message)) {
-    const withoutKey = await client.from("public_forms").insert(baseRow).select("id").single();
-    if (withoutKey.error || !withoutKey.data?.id) {
-      throw new Error(withoutKey.error?.message ?? withKey.error.message);
-    }
-    formId = withoutKey.data.id as string;
+    // Pre-migration: cannot safely claim ownership without starter_key.
+    // Avoid installing by name alone.
+    throw new Error("starter_key_column_required");
   } else if (withKey.error) {
     throw new Error(withKey.error.message);
   }
@@ -237,15 +317,18 @@ async function insertStarterForm(
   }));
   if (questionRows.length) {
     const { error: qErr } = await client.from("public_form_questions").insert(questionRows);
-    if (qErr) throw new Error(qErr.message);
+    if (qErr) {
+      // Roll back incomplete platform starter so retry can recreate cleanly.
+      await client.from("public_forms").delete().eq("id", formId).eq("venue_id", venueId);
+      throw new Error(qErr.message);
+    }
   }
-  return formId;
+  return "created";
 }
 
 /**
  * Idempotent: installs missing Public Forms starters as drafts.
- * Never overwrites existing forms (matched by starter_key or internal_name).
- * Safe to call for new venues and for existing-venue backfill.
+ * Never overwrites customized forms. Never claims same-name forms without starter_key.
  */
 export async function seedPublicFormStarters(
   venueId: string,
@@ -254,17 +337,18 @@ export async function seedPublicFormStarters(
   const db = client ?? createAdminClient();
   const created: string[] = [];
   const skipped: string[] = [];
+  const repaired: string[] = [];
   const failed: Array<{ key: string; message: string }> = [];
 
   for (const master of PUBLIC_FORM_STARTER_MASTERS) {
     try {
-      const existing = await findExistingStarter(db, venueId, master);
-      if (existing) {
-        skipped.push(master.key);
-        continue;
+      let status = await seedOneViaRpc(db, venueId, master);
+      if (status === "unavailable") {
+        status = await seedOneFallback(db, venueId, master);
       }
-      await insertStarterForm(db, venueId, master);
-      created.push(master.key);
+      if (status === "created") created.push(master.key);
+      else if (status === "repaired") repaired.push(master.key);
+      else skipped.push(master.key);
     } catch (e) {
       failed.push({
         key: master.key,
@@ -273,5 +357,5 @@ export async function seedPublicFormStarters(
     }
   }
 
-  return { created, skipped, failed };
+  return { created, skipped, repaired, failed };
 }

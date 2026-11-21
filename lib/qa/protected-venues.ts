@@ -15,6 +15,17 @@ export const PROTECTED_SANDBOX_VENUE_ID_SET: ReadonlySet<string> = new Set(
 export const PROTECTED_SANDBOX_VENUE_NAME_RE =
   /^(The Willow Grove|Jen'?s Fancy Venue|Sweet Daisy Barn(?:\s*&\s*Farm)?)$/i;
 
+/**
+ * Dual-key founder maintenance override. A single env flag must never silently
+ * disable automated QA write protection.
+ */
+export function isFounderProtectedQaMaintenanceEnabled(): boolean {
+  return (
+    process.env.HTC_FOUNDER_PROTECTED_QA_MAINTENANCE === "1" &&
+    process.env.HTC_ALLOW_PROTECTED_QA_WRITES === "1"
+  );
+}
+
 export function isProtectedSandboxVenueId(venueId: string | null | undefined): boolean {
   return Boolean(venueId && PROTECTED_SANDBOX_VENUE_ID_SET.has(venueId));
 }
@@ -32,6 +43,7 @@ export function assertWritableQaVenue(input: {
   venueName?: string | null;
   purpose?: string;
 }): void {
+  if (isFounderProtectedQaMaintenanceEnabled()) return;
   if (isProtectedSandboxVenueId(input.venueId) || isProtectedSandboxVenueName(input.venueName)) {
     const purpose = input.purpose ? ` (${input.purpose})` : "";
     throw new Error(
@@ -50,7 +62,7 @@ export function looksLikeDisposableVenueName(name: string | null | undefined): b
 
 /**
  * Fail-closed gate for scripts that still hardcode curated venue IDs.
- * Throws unless HTC_ALLOW_PROTECTED_QA_WRITES=1 (founder-only override).
+ * Throws unless both founder maintenance env vars are set (explicit dual-key).
  * Read-only scripts should not call this; write scripts must call it at startup
  * with every venue ID they intend to mutate.
  */
@@ -58,7 +70,7 @@ export function refuseProtectedVenueHardcodes(input: {
   venueIds: Array<string | null | undefined>;
   purpose?: string;
 }): void {
-  if (process.env.HTC_ALLOW_PROTECTED_QA_WRITES === "1") return;
+  if (isFounderProtectedQaMaintenanceEnabled()) return;
   for (const id of input.venueIds) {
     if (!id) continue;
     assertWritableQaVenue({ venueId: id, purpose: input.purpose ?? "hardcoded protected venue" });
@@ -73,14 +85,14 @@ export function assertWritableVenueIdInPayload(
   payload: unknown,
   purpose = "qa mutation",
 ): void {
-  if (process.env.HTC_ALLOW_PROTECTED_QA_WRITES === "1") return;
+  if (isFounderProtectedQaMaintenanceEnabled()) return;
   const ids = collectVenueIds(payload);
   for (const id of ids) {
     assertWritableQaVenue({ venueId: id, purpose });
   }
 }
 
-function collectVenueIds(value: unknown, out: string[] = []): string[] {
+export function collectVenueIds(value: unknown, out: string[] = []): string[] {
   if (value == null) return out;
   if (Array.isArray(value)) {
     for (const item of value) collectVenueIds(item, out);
