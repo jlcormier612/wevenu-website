@@ -79,7 +79,7 @@ function makeMockDb(opts?: {
         if (failFormInsert) {
           return { data: null, error: { message: "insert_denied" } };
         }
-        const row = { ...(state.payload as Row), id: `form-${forms.length + 1}` };
+        const row: Row = { ...(state.payload as Row), id: `form-${forms.length + 1}` };
         if (
           row.starter_key &&
           forms.some((f) => f.venue_id === row.venue_id && f.starter_key === row.starter_key)
