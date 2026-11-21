@@ -205,7 +205,7 @@ describe("Public Forms starters", () => {
 
   it("migration keys only verified Willow IDs and defines seed RPC", () => {
     const mig = readFileSync(
-      join(root, "supabase/migrations/20261420000000_public_form_starter_key.sql"),
+      join(root, "supabase/migrations/20270207120000_public_form_starter_key.sql"),
       "utf8",
     );
     assert.match(mig, /seed_public_form_starter/);
@@ -351,7 +351,7 @@ describe("Public Forms starter seeding behavior", () => {
     const ids = Object.values(WILLOW_GROVE_PUBLIC_FORM_STARTER_IDS.forms);
     assert.equal(new Set(ids).size, 4);
     const mig = readFileSync(
-      join(root, "supabase/migrations/20261420000000_public_form_starter_key.sql"),
+      join(root, "supabase/migrations/20270207120000_public_form_starter_key.sql"),
       "utf8",
     );
     for (const id of ids) assert.match(mig, new RegExp(id));
@@ -469,7 +469,7 @@ describe("Public Forms customization preservation", () => {
 
 describe("Public Forms RPC security (SQL contract — not live Postgres)", () => {
   const mig = readFileSync(
-    join(root, "supabase/migrations/20261420000000_public_form_starter_key.sql"),
+    join(root, "supabase/migrations/20270207120000_public_form_starter_key.sql"),
     "utf8",
   );
 
@@ -511,7 +511,7 @@ describe("Public Forms RPC security (SQL contract — not live Postgres)", () =>
 
 describe("Public Forms migration safety (SQL contract)", () => {
   const mig = readFileSync(
-    join(root, "supabase/migrations/20261420000000_public_form_starter_key.sql"),
+    join(root, "supabase/migrations/20270207120000_public_form_starter_key.sql"),
     "utf8",
   );
 

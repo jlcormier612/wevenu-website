@@ -1,5 +1,5 @@
 /**
- * READ-ONLY preflight before applying 20261420000000_public_form_starter_key.sql.
+ * READ-ONLY preflight before applying 20270207120000_public_form_starter_key.sql.
  * Reports collisions / unknown-provenance name matches. Never writes.
  *
  * Works before and after the migration (tolerates missing starter_key column).
