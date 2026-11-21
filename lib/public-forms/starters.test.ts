@@ -16,11 +16,12 @@ type Row = Record<string, unknown>;
 function makeMockDb(opts?: {
   rpcImpl?: (args: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>;
   initialForms?: Row[];
+  initialQuestions?: Row[];
   failQuestionsOnce?: boolean;
   failFormInsert?: boolean;
 }) {
   const forms: Row[] = [...(opts?.initialForms ?? [])];
-  const questions: Row[] = [];
+  const questions: Row[] = [...(opts?.initialQuestions ?? [])];
   let failQuestions = opts?.failQuestionsOnce === true;
   const failFormInsert = opts?.failFormInsert === true;
   const rpcCalls: Record<string, unknown>[] = [];
@@ -156,6 +157,24 @@ function makeMockDb(opts?: {
   };
 }
 
+function seedGeneralThenCustomize(customizer: (db: ReturnType<typeof makeMockDb>) => void) {
+  return async () => {
+    const db = makeMockDb();
+    const first = await seedPublicFormStarters("venue-c", db as never);
+    assert.equal(first.created.length, 4);
+    const form = db._forms.find((f) => f.starter_key === "general_venue_inquiry");
+    assert.ok(form);
+    customizer(db);
+    const beforeForms = structuredClone(db._forms);
+    const beforeQs = structuredClone(db._questions);
+    const second = await seedPublicFormStarters("venue-c", db as never);
+    assert.equal(second.created.length, 0);
+    assert.ok(second.skipped.includes("general_venue_inquiry"));
+    assert.deepEqual(db._forms, beforeForms);
+    assert.deepEqual(db._questions, beforeQs);
+  };
+}
+
 describe("Public Forms starters", () => {
   it("defines exactly four launch starters with draft-safe identities", () => {
     assert.equal(PUBLIC_FORM_STARTER_MASTERS.length, 4);
@@ -247,22 +266,33 @@ describe("Public Forms starter seeding behavior", () => {
     for (const m of PUBLIC_FORM_STARTER_MASTERS) assert.ok(keys.has(m.key));
   });
 
-  it("repairs incomplete platform starter (starter_key present, zero questions)", async () => {
+  it("does not rewrite existing starter when question count is below template", async () => {
     const db = makeMockDb({
       initialForms: [
         {
-          id: "incomplete-1",
+          id: "customized-1",
           venue_id: "venue-r",
           internal_name: "General Venue Inquiry",
           status: "draft",
           starter_key: "general_venue_inquiry",
         },
       ],
+      initialQuestions: [
+        {
+          public_form_id: "customized-1",
+          question_text: "Only one venue-kept question",
+          sort_order: 1,
+        },
+      ],
     });
     const result = await seedPublicFormStarters("venue-r", db as never);
     assert.equal(result.failed.length, 0, JSON.stringify(result.failed));
-    assert.ok(result.repaired.includes("general_venue_inquiry"), JSON.stringify(result));
-    assert.ok(db._questions.some((q) => q.public_form_id === "incomplete-1"));
+    assert.ok(result.skipped.includes("general_venue_inquiry"), JSON.stringify(result));
+    assert.equal(result.repaired.length, 0);
+    const kept = db._questions.filter((q) => q.public_form_id === "customized-1");
+    assert.equal(kept.length, 1);
+    assert.equal(kept[0].question_text, "Only one venue-kept question");
+    assert.equal(db._forms.find((f) => f.id === "customized-1")?.starter_key, "general_venue_inquiry");
   });
 
   it("does not change published status on skip", async () => {
@@ -289,10 +319,14 @@ describe("Public Forms starter seeding behavior", () => {
     assert.equal(db._forms.find((f) => f.id === "pub-1")?.status, "published");
   });
 
-  it("uses RPC when available", async () => {
+  it("uses RPC when available and passes only canonical masters", async () => {
     const seen = new Set<string>();
     const db = makeMockDb({
       rpcImpl: async (args) => {
+        assert.ok(
+          PUBLIC_FORM_STARTER_MASTERS.some((m) => m.key === args.p_starter_key),
+          "non-canonical starter_key",
+        );
         const key = String(args.p_starter_key);
         if (seen.has(key)) {
           return { data: { status: "skipped", form_id: `id-${key}` }, error: null };
@@ -306,6 +340,11 @@ describe("Public Forms starter seeding behavior", () => {
     assert.equal(first.created.length, 4);
     assert.equal(second.skipped.length, 4);
     assert.equal(db._rpcCalls.length, 8);
+    for (const call of db._rpcCalls) {
+      const master = PUBLIC_FORM_STARTER_MASTERS.find((m) => m.key === call.p_starter_key)!;
+      assert.equal(call.p_internal_name, master.internalName);
+      assert.equal(call.p_public_title, master.publicTitle);
+    }
   });
 
   it("Willow verified IDs match migration", () => {
@@ -339,6 +378,137 @@ describe("Public Forms starter seeding behavior", () => {
   });
 });
 
+describe("Public Forms customization preservation", () => {
+  it(
+    "remove one starter question, rerun: question stays removed",
+    seedGeneralThenCustomize((db) => {
+      const form = db._forms.find((f) => f.starter_key === "general_venue_inquiry")!;
+      const idx = db._questions.findIndex((q) => q.public_form_id === form.id);
+      assert.ok(idx >= 0);
+      db._questions.splice(idx, 1);
+    }),
+  );
+
+  it(
+    "edit question wording, rerun: edit remains",
+    seedGeneralThenCustomize((db) => {
+      const form = db._forms.find((f) => f.starter_key === "general_venue_inquiry")!;
+      const q = db._questions.find((row) => row.public_form_id === form.id)!;
+      q.question_text = "Venue-edited wording";
+    }),
+  );
+
+  it(
+    "add a question, rerun: addition remains",
+    seedGeneralThenCustomize((db) => {
+      const form = db._forms.find((f) => f.starter_key === "general_venue_inquiry")!;
+      db._questions.push({
+        public_form_id: form.id,
+        question_text: "Venue-added question",
+        sort_order: 99,
+      });
+    }),
+  );
+
+  it(
+    "rename a form, rerun: name remains",
+    seedGeneralThenCustomize((db) => {
+      const form = db._forms.find((f) => f.starter_key === "general_venue_inquiry")!;
+      form.internal_name = "Our Custom Inquiry Name";
+      form.public_title = "Ask us anything";
+    }),
+  );
+
+  it(
+    "publish a form, rerun: published status remains",
+    seedGeneralThenCustomize((db) => {
+      const form = db._forms.find((f) => f.starter_key === "general_venue_inquiry")!;
+      form.status = "published";
+    }),
+  );
+
+  it("deleted completed starter is not recreated by seedPublicFormStarters alone", async () => {
+    // seedPublicFormStarters would recreate a missing starter_key; intentional
+    // deletion is enforced by ensureVenueStarters seeded_steps lifecycle.
+    const src = readFileSync(join(root, "lib/provisioning/starters.ts"), "utf8");
+    assert.match(src, /if \(snap\.seededSteps\.includes\("public_forms"\)\)/);
+    assert.match(src, /recreateDeleted/);
+    assert.doesNotMatch(
+      src.slice(src.indexOf("export async function ensureVenueStarters")),
+      /seedPublicFormStarters[\s\S]*recreateDeleted === false[\s\S]*seedPublicFormStarters/,
+    );
+  });
+
+  it("same-name customer-created form remains unchanged when starter installs", async () => {
+    const db = makeMockDb({
+      initialForms: [
+        {
+          id: "custom-keep",
+          venue_id: "venue-s",
+          internal_name: "Wedding Expo Lead Capture",
+          public_title: "Our expo form",
+          status: "published",
+          starter_key: null,
+        },
+      ],
+      initialQuestions: [
+        { public_form_id: "custom-keep", question_text: "Custom only", sort_order: 1 },
+      ],
+    });
+    await seedPublicFormStarters("venue-s", db as never);
+    const custom = db._forms.find((f) => f.id === "custom-keep")!;
+    assert.equal(custom.starter_key ?? null, null);
+    assert.equal(custom.public_title, "Our expo form");
+    assert.equal(custom.status, "published");
+    assert.equal(
+      db._questions.filter((q) => q.public_form_id === "custom-keep").length,
+      1,
+    );
+  });
+});
+
+describe("Public Forms RPC security (SQL contract — not live Postgres)", () => {
+  const mig = readFileSync(
+    join(root, "supabase/migrations/20261420000000_public_form_starter_key.sql"),
+    "utf8",
+  );
+
+  it("EXECUTE is granted only to service_role; authenticated/anon revoked", () => {
+    assert.match(
+      mig,
+      /grant execute on function public\.seed_public_form_starter\(\s*uuid, text, text, text, text, jsonb, jsonb\s*\)\s+to service_role/i,
+    );
+    assert.match(mig, /revoke all on function public\.seed_public_form_starter[\s\S]*from authenticated/i);
+    assert.match(mig, /revoke all on function public\.seed_public_form_starter[\s\S]*from anon/i);
+    assert.doesNotMatch(
+      mig,
+      /grant execute on function public\.seed_public_form_starter[\s\S]*to authenticated/i,
+    );
+  });
+
+  it("function body requires service_role at runtime", () => {
+    assert.match(mig, /auth\.role\(\) is distinct from 'service_role'/);
+    assert.match(mig, /service_role required/);
+  });
+
+  it("does not contain question-count-based destructive repair", () => {
+    assert.doesNotMatch(mig, /v_q_count/);
+    assert.doesNotMatch(mig, /delete from public\.public_form_questions/);
+    assert.doesNotMatch(mig, /'repaired'/);
+  });
+
+  it("seedPublicFormStarters uses admin client by default (trusted path)", () => {
+    const src = readFileSync(join(root, "lib/public-forms/starters.ts"), "utf8");
+    assert.match(src, /const db = client \?\? createAdminClient\(\)/);
+    assert.match(src, /PUBLIC_FORM_STARTER_MASTERS/);
+  });
+
+  it("PENDING: live Postgres permission denial for authenticated role", () => {
+    // Documented gap: apply migration then prove with an authenticated JWT.
+    assert.ok(true, "live DB EXECUTE denial pending Sandbox migration apply");
+  });
+});
+
 describe("Public Forms migration safety (SQL contract)", () => {
   const mig = readFileSync(
     join(root, "supabase/migrations/20261420000000_public_form_starter_key.sql"),
@@ -354,11 +524,6 @@ describe("Public Forms migration safety (SQL contract)", () => {
   });
 
   it("does not broad-claim by internal_name across venues", () => {
-    assert.doesNotMatch(
-      mig,
-      /update public\.public_forms\s+set starter_key[\s\S]*internal_name = 'General Venue Inquiry'\s+and starter_key is null(?![\s\S]*id =)/,
-    );
-    // Every UPDATE that sets starter_key must pin id + venue_id.
     const updates = [...mig.matchAll(/update public\.public_forms[\s\S]*?;/gi)];
     assert.equal(updates.length, 4);
     for (const u of updates) {
@@ -372,7 +537,7 @@ describe("Public Forms migration safety (SQL contract)", () => {
     assert.doesNotMatch(mig, /status\s*=\s*'published'/);
     assert.match(mig, /and starter_key = p_starter_key/);
     assert.match(mig, /security definer/);
-    assert.match(mig, /revoke all on function public\.seed_public_form_starter/);
+    assert.match(mig, /set search_path = public/);
   });
 });
 

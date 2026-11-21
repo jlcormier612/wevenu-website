@@ -10,7 +10,8 @@
  *   platform starter is still installed under starter_key (names may coexist).
  *
  * Idempotency / concurrency: unique (venue_id, starter_key) via DB + RPC.
- * Incomplete recovery: only for rows that already carry starter_key.
+ * Existing starter_key rows are never modified (customization preserved).
+ * Seed RPC is service_role-only; content comes from PUBLIC_FORM_STARTER_MASTERS.
  *
  * SMS consent is NOT collected here (product policy — venue inquiry form only).
  * Each starter includes a required contact-permission custom question.
@@ -184,6 +185,7 @@ export const PUBLIC_FORM_STARTER_MASTERS: readonly PublicFormStarterMaster[] = [
 export type PublicFormStarterSeedResult = {
   created: string[];
   skipped: string[];
+  /** @deprecated Always empty — question-count repair was removed to preserve customization. */
   repaired: string[];
   failed: Array<{ key: string; message: string }>;
 };
@@ -198,8 +200,12 @@ function questionsPayload(master: PublicFormStarterMaster) {
   }));
 }
 
-type RpcSeedStatus = "created" | "skipped" | "repaired";
+type RpcSeedStatus = "created" | "skipped";
 
+/**
+ * Trusted path: service_role RPC with HTC canonical master content only.
+ * Existing starter_key rows are skipped unchanged (customization preserved).
+ */
 async function seedOneViaRpc(
   client: DbClient,
   venueId: string,
@@ -221,14 +227,17 @@ async function seedOneViaRpc(
     throw new Error(error.message);
   }
   const status = (data as { status?: string } | null)?.status;
-  if (status === "created" || status === "skipped" || status === "repaired") return status;
+  if (status === "created" || status === "skipped") return status;
+  // Legacy "repaired" responses (if any pre-correction DB) are treated as skip.
+  if (status === "repaired") return "skipped";
   throw new Error(`unexpected_rpc_status:${String(status)}`);
 }
 
 /**
  * Client-side fallback when RPC is not yet migrated.
- * Still keys only on starter_key; recovers incomplete platform starters;
- * rolls back form insert if question insert fails.
+ * Keys only on starter_key. Never repairs/overwrites an existing starter_key row
+ * (question count is not a signal of incompleteness — venues may delete questions).
+ * Rolls back form insert if question insert fails so retry can create cleanly.
  */
 async function seedOneFallback(
   client: DbClient,
@@ -246,35 +255,8 @@ async function seedOneFallback(
     throw new Error(existing.error.message);
   }
 
-  if (existing.data?.id) {
-    const formId = existing.data.id as string;
-    const { count, error: cErr } = await client
-      .from("public_form_questions")
-      .select("id", { count: "exact", head: true })
-      .eq("public_form_id", formId);
-    if (cErr) throw new Error(cErr.message);
-    if ((count ?? 0) >= master.questions.length) return "skipped";
-
-    const { error: delErr } = await client
-      .from("public_form_questions")
-      .delete()
-      .eq("public_form_id", formId);
-    if (delErr) throw new Error(delErr.message);
-    const qRows = master.questions.map((q) => ({
-      public_form_id: formId,
-      venue_id: venueId,
-      question_text: q.questionText,
-      question_type: q.questionType,
-      required: q.required,
-      options: q.options ?? null,
-      sort_order: q.sortOrder,
-    }));
-    if (qRows.length) {
-      const { error: qErr } = await client.from("public_form_questions").insert(qRows);
-      if (qErr) throw new Error(qErr.message);
-    }
-    return "repaired";
-  }
+  // Any existing platform starter identity = already provisioned / customized. Do not touch.
+  if (existing.data?.id) return "skipped";
 
   const baseRow = {
     venue_id: venueId,
@@ -298,7 +280,6 @@ async function seedOneFallback(
     return "skipped";
   } else if (withKey.error && /starter_key|schema cache|column/i.test(withKey.error.message)) {
     // Pre-migration: cannot safely claim ownership without starter_key.
-    // Avoid installing by name alone.
     throw new Error("starter_key_column_required");
   } else if (withKey.error) {
     throw new Error(withKey.error.message);
@@ -329,6 +310,7 @@ async function seedOneFallback(
 /**
  * Idempotent: installs missing Public Forms starters as drafts.
  * Never overwrites customized forms. Never claims same-name forms without starter_key.
+ * Uses createAdminClient by default (service_role) — required for the seed RPC.
  */
 export async function seedPublicFormStarters(
   venueId: string,
@@ -337,7 +319,6 @@ export async function seedPublicFormStarters(
   const db = client ?? createAdminClient();
   const created: string[] = [];
   const skipped: string[] = [];
-  const repaired: string[] = [];
   const failed: Array<{ key: string; message: string }> = [];
 
   for (const master of PUBLIC_FORM_STARTER_MASTERS) {
@@ -347,7 +328,6 @@ export async function seedPublicFormStarters(
         status = await seedOneFallback(db, venueId, master);
       }
       if (status === "created") created.push(master.key);
-      else if (status === "repaired") repaired.push(master.key);
       else skipped.push(master.key);
     } catch (e) {
       failed.push({
@@ -357,5 +337,5 @@ export async function seedPublicFormStarters(
     }
   }
 
-  return { created, skipped, repaired, failed };
+  return { created, skipped, repaired: [], failed };
 }

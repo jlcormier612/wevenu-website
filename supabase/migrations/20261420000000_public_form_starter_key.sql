@@ -52,10 +52,12 @@ create unique index if not exists public_forms_venue_starter_key_uidx
 -- ---------------------------------------------------------------------------
 -- 2. Atomic seed RPC (form + questions in one transaction)
 -- ---------------------------------------------------------------------------
+-- Trusted provisioning only: EXECUTE granted solely to service_role.
 -- Concurrency: unique (venue_id, starter_key) is the authority.
--- Incomplete recovery: only for rows that already carry starter_key (platform-owned).
--- Never overwrites status, titles, or questions on healthy complete starters.
+-- Existing starter_key rows are NEVER modified (no question-count repair).
+-- Customization (edit/add/delete questions, rename, publish) is preserved.
 -- Never claims a same-name form that lacks starter_key.
+-- Content arguments are supplied by the trusted HTC server path only.
 
 create or replace function public.seed_public_form_starter(
   p_venue_id uuid,
@@ -73,12 +75,16 @@ set search_path = public
 as $$
 declare
   v_form_id uuid;
-  v_q_count int;
-  v_expected int;
   v_status text;
   v_q jsonb;
   v_idx int;
+  v_expected int;
 begin
+  -- Fail closed: not a staff-facing API. Service role only.
+  if auth.role() is distinct from 'service_role' then
+    raise exception 'seed_public_form_starter: service_role required';
+  end if;
+
   if p_venue_id is null or p_starter_key is null or length(trim(p_starter_key)) = 0 then
     raise exception 'seed_public_form_starter: venue_id and starter_key required';
   end if;
@@ -92,14 +98,9 @@ begin
     raise exception 'seed_public_form_starter: unknown starter_key %', p_starter_key;
   end if;
 
-  -- Staff of the venue OR service_role (provisioning). Fail closed otherwise.
-  if auth.role() is distinct from 'service_role'
-     and public.current_user_venue_id() is distinct from p_venue_id then
-    raise exception 'seed_public_form_starter: venue access denied';
-  end if;
-
   v_expected := coalesce(jsonb_array_length(p_questions), 0);
 
+  -- Already provisioned (or customized / partially customized): leave untouched.
   select id, status
     into v_form_id, v_status
   from public.public_forms
@@ -108,39 +109,8 @@ begin
   limit 1;
 
   if v_form_id is not null then
-    select count(*)::int into v_q_count
-    from public.public_form_questions
-    where public_form_id = v_form_id;
-
-    if v_q_count >= v_expected and v_expected > 0 then
-      return jsonb_build_object(
-        'status', 'skipped',
-        'form_id', v_form_id,
-        'form_status', v_status
-      );
-    end if;
-
-    -- Incomplete platform starter: replace questions only (never change form status/content).
-    delete from public.public_form_questions where public_form_id = v_form_id;
-    if v_expected > 0 then
-      for v_idx in 0 .. v_expected - 1 loop
-        v_q := p_questions -> v_idx;
-        insert into public.public_form_questions (
-          public_form_id, venue_id, question_text, question_type, required, options, sort_order
-        ) values (
-          v_form_id,
-          p_venue_id,
-          v_q ->> 'question_text',
-          v_q ->> 'question_type',
-          coalesce((v_q ->> 'required')::boolean, false),
-          case when v_q ? 'options' then v_q -> 'options' else null end,
-          coalesce((v_q ->> 'sort_order')::smallint, 0)
-        );
-      end loop;
-    end if;
-
     return jsonb_build_object(
-      'status', 'repaired',
+      'status', 'skipped',
       'form_id', v_form_id,
       'form_status', v_status
     );
@@ -161,38 +131,17 @@ begin
     returning id into v_form_id;
   exception
     when unique_violation then
-      -- Concurrent insert won — load winner and ensure questions.
+      -- Concurrent insert won — do not touch the winner's questions or metadata.
       select id, status into v_form_id, v_status
       from public.public_forms
       where venue_id = p_venue_id and starter_key = p_starter_key
       limit 1;
 
-      select count(*)::int into v_q_count
-      from public.public_form_questions
-      where public_form_id = v_form_id;
-
-      if v_q_count < v_expected then
-        delete from public.public_form_questions where public_form_id = v_form_id;
-        if v_expected > 0 then
-          for v_idx in 0 .. v_expected - 1 loop
-            v_q := p_questions -> v_idx;
-            insert into public.public_form_questions (
-              public_form_id, venue_id, question_text, question_type, required, options, sort_order
-            ) values (
-              v_form_id,
-              p_venue_id,
-              v_q ->> 'question_text',
-              v_q ->> 'question_type',
-              coalesce((v_q ->> 'required')::boolean, false),
-              case when v_q ? 'options' then v_q -> 'options' else null end,
-              coalesce((v_q ->> 'sort_order')::smallint, 0)
-            );
-          end loop;
-        end if;
-        return jsonb_build_object('status', 'repaired', 'form_id', v_form_id, 'form_status', v_status);
-      end if;
-
-      return jsonb_build_object('status', 'skipped', 'form_id', v_form_id, 'form_status', v_status);
+      return jsonb_build_object(
+        'status', 'skipped',
+        'form_id', v_form_id,
+        'form_status', v_status
+      );
   end;
 
   if v_expected > 0 then
@@ -224,11 +173,19 @@ revoke all on function public.seed_public_form_starter(
   uuid, text, text, text, text, jsonb, jsonb
 ) from public;
 
+revoke all on function public.seed_public_form_starter(
+  uuid, text, text, text, text, jsonb, jsonb
+) from authenticated;
+
+revoke all on function public.seed_public_form_starter(
+  uuid, text, text, text, text, jsonb, jsonb
+) from anon;
+
 grant execute on function public.seed_public_form_starter(
   uuid, text, text, text, text, jsonb, jsonb
-) to authenticated, service_role;
+) to service_role;
 
 comment on function public.seed_public_form_starter(
   uuid, text, text, text, text, jsonb, jsonb
 ) is
-  'Atomically install or repair one Public Forms platform starter (draft). Unique (venue_id, starter_key) is concurrency authority. Does not claim same-name customer forms.';
+  'Trusted service_role-only atomic install of one Public Forms platform starter (draft). Skips existing starter_key rows without modifying questions/status. Unique (venue_id, starter_key) is concurrency authority.';
