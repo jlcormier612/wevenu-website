@@ -129,9 +129,10 @@ describe("Wave G5 — relationship workspace tabs", () => {
 });
 
 describe("Wave G5 follow-up — Reports / EO fields / planning contrast", () => {
-  it("Reports shell links back to Templates", () => {
+  it("Reports shell is a top-level destination (no Templates back link)", () => {
     const shell = read("components/reporting/reports-layout-shell.tsx");
-    assert.match(shell, /CollectionBackLink[\s\S]*href="\/library"[\s\S]*label="Templates"/);
+    assert.match(shell, /title="Reports"/);
+    assert.doesNotMatch(shell, /CollectionBackLink/);
   });
 
   it("EO offering picker fields are white card surfaces", () => {

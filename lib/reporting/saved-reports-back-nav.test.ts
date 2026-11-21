@@ -3,15 +3,13 @@ import { describe, it } from "node:test";
 import { readFileSync } from "node:fs";
 
 describe("Saved Reports navigation", () => {
-  it("shows a Templates back link on the Reports shell", () => {
+  it("keeps Reports as a top-level shell without a Templates back link", () => {
     const shell = readFileSync("components/reporting/reports-layout-shell.tsx", "utf8");
     assert.match(shell, /PageHeader/);
     assert.match(shell, /title="Reports"/);
     assert.doesNotMatch(shell, /Saved Reports/);
     assert.match(shell, /ReportTabs/);
-    assert.match(shell, /CollectionBackLink/);
-    assert.match(shell, /label="Templates"/);
-    assert.match(shell, /href="\/library"/);
+    assert.doesNotMatch(shell, /CollectionBackLink/);
   });
 
   it("keeps Library Brochures Templates back link (library collection escape)", () => {

@@ -9,8 +9,8 @@ import { resolve } from "node:path";
 const page = readFileSync(resolve("app/(app)/library/page.tsx"), "utf8");
 
 describe("Commercial Library information architecture", () => {
-  it("titles the page Library with sell/stock/deliver framing", () => {
-    assert.match(page, /title="Library"/);
+  it("titles the page Templates with sell/stock/deliver framing", () => {
+    assert.match(page, /title="Templates"/);
     assert.match(page, /What you sell, what you have, and what you deliver/);
     assert.match(page, /data-testid="library-commercial-ia"/);
   });
