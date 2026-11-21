@@ -98,16 +98,27 @@ function emitLayoutFirstByteSummary(ctx: LayoutTimingCtx): void {
   ctx.emitted = true;
   const totalMs = Math.round(nowMs() - ctx.t0);
   layoutFbBoundary("layout_complete_before_first_byte", totalMs);
-  console.info(
-    JSON.stringify({
-      event: "layout_first_byte_timing",
-      correlation_id: ctx.correlationId,
-      venue_hash: ctx.venueHash,
-      deployment_id: ctx.deploymentId,
-      before_first_byte: true,
-      total_ms: totalMs,
-      durations_ms: ctx.durationsMs,
-      extras: ctx.extras,
-    }),
-  );
+  const payload = {
+    event: "layout_first_byte_timing",
+    correlation_id: ctx.correlationId,
+    venue_hash: ctx.venueHash,
+    deployment_id: ctx.deploymentId,
+    before_first_byte: true,
+    total_ms: totalMs,
+    durations_ms: ctx.durationsMs,
+    extras: ctx.extras,
+    emitted_at: new Date().toISOString(),
+  };
+  console.info(JSON.stringify(payload));
+  // Step 1 measurement only — opt-in file sink for local hop splits.
+  const sink = process.env.HTC_LAYOUT_FB_FILE?.trim();
+  if (sink) {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const fs = require("node:fs") as typeof import("node:fs");
+      fs.appendFileSync(sink, `${JSON.stringify(payload)}\n`);
+    } catch {
+      /* ignore sink failures */
+    }
+  }
 }

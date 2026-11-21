@@ -86,6 +86,14 @@ function mainHasUsableContent(): boolean {
   if (!pageSlot) return false;
   const text = (pageSlot.textContent ?? "").replace(/\s+/g, " ").trim();
   if (text.length < CONTENT_MIN_CHARS) return false;
+  // Sync module heading (Leads-style first paint) means the destination arrived.
+  // Do not keep the freeze-frame up waiting for the full list body.
+  if (pageSlot.querySelector(".htc-hospitality-heading")) {
+    return true;
+  }
+  if (pageSlot.querySelector('[data-testid$="-streaming-root"]')) {
+    return true;
+  }
   if (pageSlot.querySelector('[data-testid="hospitality-route-loading"]') && text.length < 120) {
     return false;
   }
@@ -96,6 +104,15 @@ function atTargetPath(pathname: string, target: string): boolean {
   return pathname === target || pathname.startsWith(`${target}/`);
 }
 
+function pageSlotText(): string {
+  if (typeof document === "undefined") return "";
+  const main = document.querySelector("[data-workspace-main]");
+  const pageSlot = main?.querySelector(
+    ":scope > div:not([data-testid='navigation-pending-main'])",
+  );
+  return (pageSlot?.textContent ?? "").replace(/\s+/g, " ").trim();
+}
+
 export function NavigationPendingProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [pendingHref, setPendingHref] = React.useState<string | null>(null);
@@ -103,6 +120,8 @@ export function NavigationPendingProvider({ children }: { children: React.ReactN
   const stuckTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const pollTimer = React.useRef<ReturnType<typeof setInterval> | null>(null);
   const pathnameAtBegin = React.useRef(pathname);
+  /** Text fingerprint at click — must change before we clear (avoids clearing on stale old page). */
+  const originSlotText = React.useRef("");
 
   const clearPendingNow = React.useEffectEvent(() => {
     if (stuckTimer.current) {
@@ -114,6 +133,7 @@ export function NavigationPendingProvider({ children }: { children: React.ReactN
       pollTimer.current = null;
     }
     writeStoredPending(null, null);
+    originSlotText.current = "";
     setPendingHref(null);
     setSnapshotHtml(null);
   });
@@ -150,9 +170,12 @@ export function NavigationPendingProvider({ children }: { children: React.ReactN
       if (!atTargetPath(pathname, target) && pathname === pathnameAtBegin.current) {
         return;
       }
-      if (atTargetPath(pathname, target) && mainHasUsableContent()) {
-        clearPendingNow();
-      }
+      if (!atTargetPath(pathname, target)) return;
+      if (!mainHasUsableContent()) return;
+      // Require the live page slot to differ from the origin page (not stale content).
+      const live = pageSlotText();
+      if (originSlotText.current && live === originSlotText.current) return;
+      clearPendingNow();
     };
 
     tick();
@@ -182,6 +205,7 @@ export function NavigationPendingProvider({ children }: { children: React.ReactN
         const path = pathOnly(href);
         if (!path || path === pathname) return;
         const snap = capturePageSlotHtml();
+        originSlotText.current = pageSlotText();
         pathnameAtBegin.current = pathname;
         writeStoredPending(path, snap);
         setSnapshotHtml(snap);

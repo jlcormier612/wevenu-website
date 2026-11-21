@@ -23,9 +23,11 @@ describe("Navigation pending — keep previous page painted", () => {
     assert.doesNotMatch(src, /HospitalityRouteLoading/);
   });
 
-  it("clears snapshot only when target path has usable content", () => {
+  it("clears snapshot when destination module heading streams (first paint)", () => {
     const src = readFileSync(resolve("components/shell/navigation-pending.tsx"), "utf8");
     assert.match(src, /mainHasUsableContent/);
+    assert.match(src, /htc-hospitality-heading/);
+    assert.match(src, /streaming-root/);
     assert.match(src, /CONTENT_POLL_MS/);
     assert.doesNotMatch(src, /scheduleClearAfterMinVisible/);
   });

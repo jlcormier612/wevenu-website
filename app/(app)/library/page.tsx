@@ -1,11 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { after } from "next/server";
+import { Suspense } from "react";
 
 import {
   BookOpen, Boxes, CalendarClock, ClipboardList, FileSignature, FileText,
   Layers, LayoutGrid, Mail, Megaphone, Package, QrCode,
 } from "lucide-react";
 
+import { NavListBodyFallback } from "@/components/shell/nav-list-body-fallback";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { Badge } from "@/components/ui/badge";
 import { getTemplates as getContractTemplates } from "@/lib/contracts/service";
@@ -127,13 +130,8 @@ function Group({
   );
 }
 
-export default async function LibraryPage() {
+async function LibraryBodyIsland() {
   const venue = await getCurrentVenue();
-  await Promise.all([
-    ensureBrochureStartersForCurrentVenue(),
-    ensureSavedReportStartersForCurrentVenue(),
-    ensureOfferingStartersForCurrentVenue(),
-  ]);
   const [
     contractTemplates, playbookTemplatesAll, timelineTemplatesAll, floorPlanTemplatesAll,
     packagesAll, inventoryItemsAll, qrCampaigns, publicForms, messageTemplates, inventoryTemplates,
@@ -168,14 +166,7 @@ export default async function LibraryPage() {
   const savedLists = inventoryTemplates.filter((t) => !t.isArchived);
 
   return (
-    <div className="htc-hospitality-page space-y-6 sm:space-y-8" data-testid="library-commercial-ia">
-      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
-        <PageHeader
-          title="Library"
-          description="What you sell, what you have, and what you deliver — reusable resources for bookings and events."
-        />
-      </div>
-
+    <div className="space-y-6 sm:space-y-8" data-testid="library-commercial-ia">
       {starterProvisioning?.needsAttention ? (
         <StarterProvisioningBanner snapshot={starterProvisioning} />
       ) : null}
@@ -235,6 +226,40 @@ export default async function LibraryPage() {
         <ToolboxCard kind="catalog" title="Brochures" description="Brandable venue overviews." href="/library/brochures" count={brochures.length} icon={Megaphone} />
         <ToolboxCard title="Saved Reports" description="Reports you’ve saved to reopen quickly." href="/reporting/saved" count={savedReports.length} icon={FileText} />
       </Group>
+    </div>
+  );
+}
+
+export default function LibraryPage() {
+  after(() => {
+    void Promise.all([
+      ensureBrochureStartersForCurrentVenue(),
+      ensureSavedReportStartersForCurrentVenue(),
+      ensureOfferingStartersForCurrentVenue(),
+    ]).catch((err: unknown) => {
+      console.error(
+        JSON.stringify({
+          event: "library_starter_ensure_failed",
+          message: err instanceof Error ? err.message : "unknown",
+        }),
+      );
+    });
+  });
+
+  return (
+    <div
+      className="htc-hospitality-page space-y-6 sm:space-y-8"
+      data-testid="templates-streaming-root"
+    >
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
+        <PageHeader
+          title="Library"
+          description="What you sell, what you have, and what you deliver — reusable resources for bookings and events."
+        />
+      </div>
+      <Suspense fallback={<NavListBodyFallback label="Loading library" />}>
+        <LibraryBodyIsland />
+      </Suspense>
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
 
 import { PaymentScheduleList } from "@/components/payments/payment-schedule-list";
 import {
@@ -7,6 +8,7 @@ import {
   SpotPatternRecommendationsPanel,
 } from "@/components/luv/spot-pattern-recommendations";
 import { SetupHubReturnLink } from "@/components/setup-hub/phase-b1/setup-hub-return-link";
+import { NavListBodyFallback } from "@/components/shell/nav-list-body-fallback";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { Button } from "@/components/ui/button";
 import { getPaymentSchedules } from "@/lib/payments/service";
@@ -15,13 +17,29 @@ export const metadata: Metadata = { title: "Payments" };
 
 type Props = { searchParams: Promise<{ filter?: string }> };
 
+async function PaymentsBodyIsland({ filter }: { filter?: string }) {
+  const schedules = await getPaymentSchedules();
+  return (
+    <>
+      <SpotPatternRecommendationsPanel types={PAYMENTS_SPOT_PATTERN_TYPES} />
+      <PaymentScheduleList schedules={schedules} initialFilter={filter} />
+    </>
+  );
+}
+
 export default async function PaymentsPage({ searchParams }: Props) {
   const { filter } = await searchParams;
-  const schedules = await getPaymentSchedules();
 
   return (
-    <div className="htc-hospitality-page space-y-4 sm:space-y-6" data-htc-phase8="payments">
-      <SetupHubReturnLink href="/setup-hub/make-htc-yours/booking-process" label="Back to your booking process" />
+    <div
+      className="htc-hospitality-page space-y-4 sm:space-y-6"
+      data-htc-phase8="payments"
+      data-testid="payments-streaming-root"
+    >
+      <SetupHubReturnLink
+        href="/setup-hub/make-htc-yours/booking-process"
+        label="Back to your booking process"
+      />
       <div className="htc-hospitality-heading htc-hospitality-intro-accent">
         <PageHeader
           title="Payments"
@@ -29,8 +47,9 @@ export default async function PaymentsPage({ searchParams }: Props) {
           actions={<Button render={<Link href="/payments/new" />}>+ New Schedule</Button>}
         />
       </div>
-      <SpotPatternRecommendationsPanel types={PAYMENTS_SPOT_PATTERN_TYPES} />
-      <PaymentScheduleList schedules={schedules} initialFilter={filter} />
+      <Suspense fallback={<NavListBodyFallback label="Loading payments" />}>
+        <PaymentsBodyIsland filter={filter} />
+      </Suspense>
     </div>
   );
 }

@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 
 import { StarterProvisioningBanner } from "@/components/library/starter-provisioning-banner";
 import { SetupHubPhaseAOverview } from "@/components/setup-hub/phase-a/setup-hub-phase-a-overview";
+import { NavListBodyFallback } from "@/components/shell/nav-list-body-fallback";
+import { PageHeader } from "@/components/shell/module-placeholder";
 import { getSpaces } from "@/lib/availability/service";
 import { phaseAImportFlags } from "@/lib/import/activity";
 import { getImportBatches } from "@/lib/import/batches";
@@ -11,9 +14,11 @@ import { getStarterProvisioningSnapshot } from "@/lib/provisioning/starters";
 export const metadata: Metadata = { title: "Setup" };
 export const dynamic = "force-dynamic";
 
-export default async function SetupHubPage() {
+async function SetupBodyIsland() {
   const ctx = await loadMilestone02Context();
-  if (!ctx) return null;
+  if (!ctx) {
+    return <p className="text-sm text-muted-foreground">Select a venue to continue setup.</p>;
+  }
 
   const [spaces, importBatches, starterProvisioning] = await Promise.all([
     getSpaces(),
@@ -24,7 +29,7 @@ export default async function SetupHubPage() {
   const { hasImportedActivity, hasMigrationImport } = phaseAImportFlags(importBatches);
 
   return (
-    <div className="htc-hospitality-page space-y-4 sm:space-y-6">
+    <>
       {starterProvisioning.needsAttention ? (
         <StarterProvisioningBanner snapshot={starterProvisioning} />
       ) : null}
@@ -43,6 +48,22 @@ export default async function SetupHubPage() {
         pausedAutomationCount={ctx.pausedAutomationCount}
         operationalStarterAvailable={ctx.operationalStarterAvailable}
       />
+    </>
+  );
+}
+
+export default function SetupHubPage() {
+  return (
+    <div className="htc-hospitality-page space-y-4 sm:space-y-6" data-testid="setup-streaming-root">
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
+        <PageHeader
+          title="Setup"
+          description="Get your venue ready — brand, booking process, and the tools you use every day."
+        />
+      </div>
+      <Suspense fallback={<NavListBodyFallback label="Loading setup" />}>
+        <SetupBodyIsland />
+      </Suspense>
     </div>
   );
 }
