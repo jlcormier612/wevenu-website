@@ -9,7 +9,6 @@ import {
   DashboardSnapshotFallback,
 } from "@/components/dashboard/dashboard-section-fallbacks";
 import { DashboardSnapshotIsland } from "@/components/dashboard/dashboard-snapshot-island";
-import { PageHeader } from "@/components/shell/module-placeholder";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
@@ -25,8 +24,7 @@ export const metadata: Metadata = { title: "Dashboard" };
  *   6. View Reports
  *
  * Wave C2: header, snapshot, and focus stream in parallel Suspense islands.
- * NAV speed Step 2: sync module heading first so sidebar hops first-paint
- * before greeting/snapshot/focus data arrives.
+ * Greeting owns the page banner — do not add a sync "Dashboard" PageHeader.
  */
 export default function DashboardPage() {
   return (
@@ -34,13 +32,6 @@ export default function DashboardPage() {
       className="htc-hospitality-page space-y-4 sm:space-y-6"
       data-testid="dashboard-streaming-root"
     >
-      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
-        <PageHeader
-          title="Dashboard"
-          description="Your venue briefing — what's happening now and what needs attention today."
-        />
-      </div>
-
       <Suspense fallback={<DashboardHeaderFallback />}>
         <DashboardHeaderIsland />
       </Suspense>

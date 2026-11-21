@@ -34,7 +34,7 @@ import { StarterProvisioningBanner } from "@/components/library/starter-provisio
 import { getStarterProvisioningSnapshot } from "@/lib/provisioning/starters";
 import { getCurrentVenue } from "@/lib/venue/service";
 
-export const metadata: Metadata = { title: "Library" };
+export const metadata: Metadata = { title: "Templates" };
 
 type LibraryCard = {
   title: string;
@@ -253,7 +253,7 @@ export default function LibraryPage() {
     >
       <div className="htc-hospitality-heading htc-hospitality-intro-accent">
         <PageHeader
-          title="Library"
+          title="Templates"
           description="What you sell, what you have, and what you deliver — reusable resources for bookings and events."
         />
       </div>

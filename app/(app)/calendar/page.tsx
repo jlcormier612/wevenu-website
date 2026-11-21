@@ -3,7 +3,6 @@ import { Suspense } from "react";
 
 import { CalendarPageClient } from "@/components/calendar/calendar-page-client";
 import { NavListBodyFallback } from "@/components/shell/nav-list-body-fallback";
-import { PageHeader } from "@/components/shell/module-placeholder";
 import { getSpaces } from "@/lib/availability/service";
 import { getScheduleItemTypesForPicker } from "@/lib/calendar/schedule-item-catalog-service";
 import { resolveCalendarView, type CalendarViewParams } from "@/lib/calendar/view-data";
@@ -75,14 +74,9 @@ async function CalendarBodyIsland({ params }: { params: CalendarViewParams }) {
 export default async function CalendarPage({ searchParams }: Props) {
   const params = await searchParams;
 
+  // No sync PageHeader here — CalendarPageClient already owns the canonical banner.
   return (
     <div className="htc-hospitality-page space-y-4 sm:space-y-6" data-testid="calendar-streaming-root">
-      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
-        <PageHeader
-          title="Calendar"
-          description="Month, week, day, and agenda views for tours, holds, and events."
-        />
-      </div>
       <Suspense fallback={<NavListBodyFallback label="Loading calendar" />}>
         <CalendarBodyIsland params={params} />
       </Suspense>
