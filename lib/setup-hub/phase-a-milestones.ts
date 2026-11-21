@@ -196,7 +196,8 @@ export function bringBusinessStatus(input: {
 }
 
 export function takeALookStatus(input: { readyToInviteCouples: boolean }): MilestoneStatus {
-  // Phase A: framework only — never Ready / never complete activation.
+  // Milestone 04 Ready only after the owner declares ready_to_invite_couples.
+  // Practice Run and optional integrations are never required.
   if (input.readyToInviteCouples) return "ready";
   return "not_started";
 }
