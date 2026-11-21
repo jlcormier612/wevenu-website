@@ -21,7 +21,7 @@ export type LegalDocument = {
 export const PRIVACY_POLICY: LegalDocument = {
   title: "Privacy Policy",
   slug: "privacy",
-  effectiveDate: "September 23, 2026",
+  effectiveDate: "November 21, 2026",
   notice:
     "This Privacy Policy explains how Hello to Cheers collects, uses, shares, and protects information when you use our websites, products, and related services. Please review it carefully. We will update this page when our practices change.",
   sections: [
@@ -111,6 +111,12 @@ export const PRIVACY_POLICY: LegalDocument = {
       ],
     },
     {
+      heading: "How our AI provider handles information",
+      paragraphs: [
+        "Hello to Cheers uses OpenAI's API to support certain Luv features. Information submitted to these features may be processed by OpenAI to generate responses. Under OpenAI's published API data policies, information submitted through the API is not used to train OpenAI's models by default unless the API customer opts in. OpenAI may retain certain information for abuse monitoring and security purposes, subject to its applicable policies and data controls. Hello to Cheers does not use information submitted to Luv for advertising.",
+      ],
+    },
+    {
       heading: "8. Data Retention",
       paragraphs: [
         "We retain information for as long as needed to provide the Services, comply with legal obligations, resolve disputes, and enforce agreements.",
@@ -130,7 +136,7 @@ export const PRIVACY_POLICY: LegalDocument = {
       heading: "10. Your Choices and Rights",
       paragraphs: [
         "Depending on your location, you may have rights to access, correct, delete, export, or restrict certain personal information, or to object to certain processing.",
-        "You may manage cookie preferences at /cookies where available, and unsubscribe from promotional emails using the link in those messages. Service and billing messages may still be sent as needed to operate your account.",
+        "You may manage your cookie preferences at /cookies where available. If Hello to Cheers sends you promotional emails, those messages will provide a way to opt out of future promotional communications from us. Service, billing, security, and other transactional or relationship messages may still be sent as necessary to operate your account or respond to your requests.",
         "To exercise privacy rights, contact privacy@hellotocheers.com. We may need to verify your request before responding.",
       ],
     },
