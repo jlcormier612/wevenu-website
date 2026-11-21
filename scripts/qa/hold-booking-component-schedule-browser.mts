@@ -7,6 +7,7 @@ import { createRequire } from "node:module";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { createClient } from "@supabase/supabase-js";
 import { config } from "dotenv";
+import { refuseProtectedVenueHardcodes } from "@/lib/qa/protected-venues";
 
 config({ path: ".env.local", quiet: true });
 
@@ -22,6 +23,8 @@ const APP = "https://app.sandbox.hellotocheers.com";
 const EXPECTED_PREFIX = process.env.EXPECTED_TIP_PREFIX ?? "ca39c073";
 const FANCY_EMAIL = "jennifer@hellotocheers.com";
 const FANCY = "a415ac52-cd74-42a6-8df7-7a8f6e71d080";
+refuseProtectedVenueHardcodes({ venueIds: [FANCY], purpose: "scripts/qa/hold-booking-component-schedule-browser.mts" });
+
 const BARN = "3b36ec69-b17d-4351-8186-68d96dd6dfe7";
 const BRIDGE = "40f81c67-199d-47f8-bf7d-79c118e34198";
 const OUT_DIR = "docs/qa/hold-booking-component-schedule";

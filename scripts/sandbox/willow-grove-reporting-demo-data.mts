@@ -11,7 +11,9 @@
  *
  * Usage:
  *   npx tsx scripts/sandbox/willow-grove-reporting-demo-data.mts --dry-run
- *   npx tsx scripts/sandbox/willow-grove-reporting-demo-data.mts --apply
+ *   FOUNDERS_ONLY=1 npx tsx scripts/sandbox/willow-grove-reporting-demo-data.mts --apply
+ *
+ * Apply writes require FOUNDERS_ONLY=1 — Willow Grove is a curated demo venue.
  */
 import { config } from "dotenv";
 import { createClient } from "@supabase/supabase-js";
@@ -183,6 +185,13 @@ async function main() {
   }
   if (!key) {
     console.error("Missing SUPABASE_SERVICE_ROLE_KEY");
+    process.exit(1);
+  }
+  if (apply && process.env.FOUNDERS_ONLY !== "1") {
+    console.error(
+      "REFUSED: --apply against The Willow Grove requires FOUNDERS_ONLY=1. " +
+        "Automated QA must use disposable venues; see lib/qa/protected-venues.ts.",
+    );
     process.exit(1);
   }
 

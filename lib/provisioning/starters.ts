@@ -166,6 +166,19 @@ const STEPS: SeedStep[] = [
       await seedStandardWeddingSetupProfile(venueId);
     },
   },
+  {
+    // Draft Public Forms starters (never auto-published). Idempotent by starter_key.
+    key: "public_forms",
+    run: async (venueId, client) => {
+      const { seedPublicFormStarters } = await import("@/lib/public-forms/starters");
+      const result = await seedPublicFormStarters(venueId, client);
+      if (result.failed.length) {
+        throw new Error(
+          result.failed.map((f) => `${f.key}: ${f.message}`).join("; "),
+        );
+      }
+    },
+  },
 ];
 
 export const STARTER_SEED_STEP_KEYS = STEPS.map((s) => s.key);
@@ -426,10 +439,41 @@ export async function ensureVenueStarters(
   const snap = await getStarterProvisioningSnapshot(venueId, db);
 
   if (snap.status === "complete" && !opts?.recreateDeleted) {
-    // Healthy venue — do not resurrect intentional deletions.
+    // Healthy venue — do not resurrect intentional Library deletions.
+    // Public Forms were historically omitted from provisioning. One-time
+    // gap-fill only when `public_forms` is not yet recorded in seeded_steps.
+    // After that, deleted starters stay deleted unless recreateDeleted=true.
+    if (snap.seededSteps.includes("public_forms")) {
+      return {
+        ok: true,
+        seeded: snap.seededSteps,
+        failed: [],
+        status: "complete",
+      };
+    }
+
+    const { seedPublicFormStarters } = await import("@/lib/public-forms/starters");
+    const pf = await seedPublicFormStarters(venueId, db);
+    if (pf.failed.length) {
+      return {
+        ok: false,
+        seeded: snap.seededSteps,
+        failed: pf.failed,
+        status: "incomplete",
+      };
+    }
+
+    const nextSteps = [...snap.seededSteps, "public_forms"];
+    await upsertProvisionRow(db, venueId, {
+      status: "complete",
+      seeded_steps: nextSteps,
+      failed_steps: [],
+      last_error: null,
+      completed_at: snap.completedAt ?? new Date().toISOString(),
+    });
     return {
       ok: true,
-      seeded: snap.seededSteps,
+      seeded: nextSteps,
       failed: [],
       status: "complete",
     };

@@ -7,6 +7,7 @@
 import { createRequire } from "node:module";
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { createClient } from "@supabase/supabase-js";
+import { refuseProtectedVenueHardcodes } from "@/lib/qa/protected-venues";
 
 const require = createRequire(
   "/Users/jensmac/Developer/wevenu-website/marketing/package.json",
@@ -47,6 +48,8 @@ const encoded = "base64-" + ssrUtils.stringToBase64URL(JSON.stringify(session));
 const chunks = ssrUtils.createChunks(cookieName, encoded);
 
 const FANCY_VENUE = "a415ac52-cd74-42a6-8df7-7a8f6e71d080";
+refuseProtectedVenueHardcodes({ venueIds: [FANCY_VENUE], purpose: "scripts/qa/venue-notification-clear-browser.mts" });
+
 const marker = `browser-notif-clear-${Date.now()}`;
 const { error: seedErr } = await admin.from("venue_notifications").insert([
   {

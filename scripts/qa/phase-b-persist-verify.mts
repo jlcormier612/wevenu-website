@@ -1,11 +1,14 @@
 import { writeFileSync } from "node:fs";
 import { createClient } from "@supabase/supabase-js";
 import { config } from "dotenv";
+import { refuseProtectedVenueHardcodes } from "@/lib/qa/protected-venues";
 config({ path: ".env.local", quiet: true });
 
 const FANCY = "a415ac52-cd74-42a6-8df7-7a8f6e71d080";
 const WILLOW = "31f38b79-eb99-4ebc-81bc-af85767b42aa";
 const VENUE = "f016be73-5ada-4922-b600-0ad2ee6121dc";
+refuseProtectedVenueHardcodes({ venueIds: [FANCY, WILLOW, VENUE], purpose: "scripts/qa/phase-b-persist-verify.mts" });
+
 const OUT = `${process.env.HOME}/Desktop/HTC-Phase-B-Browser-Acceptance`;
 
 if (!process.env.NEXT_PUBLIC_SUPABASE_URL?.includes("wvpsldwwjqdannqasrdf")) {

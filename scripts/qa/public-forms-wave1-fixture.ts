@@ -1,22 +1,36 @@
 /**
  * Wave 1 Sandbox fixture: Wedding Expo — QA public form + optional QR.
- * Usage: npx tsx --env-file=.env.local scripts/qa/public-forms-wave1-fixture.ts
+ * Requires a disposable venue — never Fancy / Willow / Daisy.
+ * Usage:
+ *   DISPOSABLE_VENUE_ID=<uuid> npx tsx --env-file=.env.local scripts/qa/public-forms-wave1-fixture.ts
  */
-import { createClient } from "@supabase/supabase-js";
 import { mkdirSync, writeFileSync } from "fs";
 import { resolve } from "path";
+import { createGuardedQaAdmin } from "@/lib/qa/guarded-admin";
+import { assertWritableQaVenue } from "@/lib/qa/protected-venues";
 
-const FANCY = "a415ac52-cd74-42a6-8df7-7a8f6e71d080";
 const OUT = resolve("docs/qa/public-forms-qr-architecture");
 const BASE = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.sandbox.hellotocheers.com";
 
 async function main() {
   mkdirSync(OUT, { recursive: true });
-  const sb = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { persistSession: false } },
-  );
+
+  const venueId = process.env.DISPOSABLE_VENUE_ID;
+  if (!venueId) {
+    console.error("REFUSED: set DISPOSABLE_VENUE_ID to an isolated disposable venue.");
+    process.exit(1);
+  }
+  const sb = createGuardedQaAdmin({
+    purpose: "public-forms-wave1-fixture",
+    disposableVenueId: venueId,
+  });
+  const { data: venue } = await sb.from("venues").select("id, name").eq("id", venueId).maybeSingle();
+  assertWritableQaVenue({
+    venueId,
+    venueName: venue?.name,
+    purpose: "public-forms-wave1-fixture",
+  });
+  const FANCY = venueId; // historical local binding name — disposable only
 
   // Verify migration applied
   const { data: tables, error: tErr } = await sb.from("public_forms").select("id").limit(1);
@@ -58,14 +72,22 @@ async function main() {
     }
     form = data as Record<string, unknown>;
   } else if (form.status !== "published") {
-    await sb.from("public_forms").update({ status: "published" }).eq("id", form.id);
+    await sb
+      .from("public_forms")
+      .update({ status: "published", venue_id: FANCY })
+      .eq("venue_id", FANCY)
+      .eq("id", form.id);
     form.status = "published";
   }
 
   const formId = String(form.id);
 
-  // Replace questions for deterministic QA
-  await sb.from("public_form_questions").delete().eq("public_form_id", formId);
+  // Replace questions for deterministic QA (venue-scoped delete — never id-only)
+  await sb
+    .from("public_form_questions")
+    .delete()
+    .eq("venue_id", FANCY)
+    .eq("public_form_id", formId);
   const { error: qErr } = await sb.from("public_form_questions").insert([
     {
       public_form_id: formId,
@@ -129,7 +151,11 @@ async function main() {
     }
     qr = data as Record<string, unknown>;
   } else if (qr.public_form_id !== formId) {
-    await sb.from("qr_campaigns").update({ public_form_id: formId }).eq("id", qr.id);
+    await sb
+      .from("qr_campaigns")
+      .update({ public_form_id: formId, venue_id: FANCY })
+      .eq("venue_id", FANCY)
+      .eq("id", qr.id);
     qr.public_form_id = formId;
   }
 

@@ -8,9 +8,12 @@ import { createClient } from "@supabase/supabase-js";
 import { execSync } from "node:child_process";
 import { writeFileSync, mkdirSync } from "node:fs";
 import { resolve } from "node:path";
+import { refuseProtectedVenueHardcodes } from "@/lib/qa/protected-venues";
 
 const FANCY = "a415ac52-cd74-42a6-8df7-7a8f6e71d080";
 const DAISY = "5c84e74e-355d-4ce1-9e6b-913a9267f543";
+refuseProtectedVenueHardcodes({ venueIds: [FANCY, DAISY], purpose: "scripts/qa/prove-customer-action-notification-prefs.ts" });
+
 const MAILBOX = "jyagnesak@yahoo.com";
 const OUT = resolve("docs/qa/customer-action-notification-prefs");
 

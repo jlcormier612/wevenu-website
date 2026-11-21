@@ -6,6 +6,7 @@
  */
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { refuseProtectedVenueHardcodes } from "@/lib/qa/protected-venues";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const service = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
@@ -16,6 +17,8 @@ if (!service || !anon) throw new Error("Missing Sandbox keys");
 const admin = createClient(url, service, { auth: { persistSession: false } });
 
 const FANCY_VENUE = "a415ac52-cd74-42a6-8df7-7a8f6e71d080";
+refuseProtectedVenueHardcodes({ venueIds: [FANCY_VENUE], purpose: "scripts/qa/venue-notification-clear-proof.mts" });
+
 const FANCY_EMAIL = "jennifer@hellotocheers.com";
 
 const results: Record<string, { ok: boolean; detail: string }> = {};

@@ -8,6 +8,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { createClient } from "@supabase/supabase-js";
 import { config } from "dotenv";
+import { refuseProtectedVenueHardcodes } from "@/lib/qa/protected-venues";
 
 config({ path: ".env.local", quiet: true });
 
@@ -25,6 +26,8 @@ const MEADOW_OWNER_EMAIL = "jlcormier612@gmail.com";
 const FANCY_EMAIL = "jennifer@hellotocheers.com";
 const MEADOWBROOK = "05f16a15-1752-4855-8a3b-aad5c593d8d9";
 const FANCY = "a415ac52-cd74-42a6-8df7-7a8f6e71d080";
+refuseProtectedVenueHardcodes({ venueIds: [FANCY], purpose: "scripts/qa/setup-ready-suppresses-dashboard-luv-browser.mts" });
+
 const OUT_DIR = resolve("docs/qa/setup-ready-suppresses-dashboard-luv");
 mkdirSync(OUT_DIR, { recursive: true });
 

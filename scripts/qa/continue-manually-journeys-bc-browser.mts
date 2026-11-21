@@ -7,6 +7,7 @@ import { createRequire } from "node:module";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { createClient } from "@supabase/supabase-js";
 import { config } from "dotenv";
+import { refuseProtectedVenueHardcodes } from "@/lib/qa/protected-venues";
 
 config({ path: ".env.local", quiet: true });
 
@@ -21,6 +22,8 @@ const ssrUtils = require(
 const APP = "https://app.sandbox.hellotocheers.com";
 const FANCY_EMAIL = "jennifer@hellotocheers.com";
 const FANCY = "a415ac52-cd74-42a6-8df7-7a8f6e71d080";
+refuseProtectedVenueHardcodes({ venueIds: [FANCY], purpose: "scripts/qa/continue-manually-journeys-bc-browser.mts" });
+
 const PKG = "8832b4e1-c9f0-45e2-85e4-72b29598028e"; // Garden Package
 const OUT_DIR = "docs/qa/continue-manually-direct-contract";
 const EXPECTED_PREFIX = process.env.EXPECTED_TIP_PREFIX ?? "";

@@ -8,6 +8,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { createClient } from "@supabase/supabase-js";
 import { config } from "dotenv";
 import { randomBytes } from "node:crypto";
+import { refuseProtectedVenueHardcodes } from "@/lib/qa/protected-venues";
 
 config({ path: ".env.local", quiet: true });
 const require = createRequire("/Users/jensmac/Developer/wevenu-website/marketing/package.json");
@@ -18,6 +19,8 @@ const ssrUtils = require(
 
 const APP = "https://app.sandbox.hellotocheers.com";
 const FANCY = "a415ac52-cd74-42a6-8df7-7a8f6e71d080";
+refuseProtectedVenueHardcodes({ venueIds: [FANCY], purpose: "scripts/qa/floor-plan-collaboration-lifecycle.mts" });
+
 const JEN = "67458154-e6fe-41e3-830e-ea39844e4e19";
 const SPACE = "3b36ec69-b17d-4351-8186-68d96dd6dfe7";
 const TPL = "026fb633-2dce-4c73-87c8-144bb29a0318"; // Reception Only

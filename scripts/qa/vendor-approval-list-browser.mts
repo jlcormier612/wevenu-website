@@ -7,6 +7,7 @@ import { createRequire } from "node:module";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { createClient } from "@supabase/supabase-js";
 import { config } from "dotenv";
+import { refuseProtectedVenueHardcodes } from "@/lib/qa/protected-venues";
 
 config({ path: ".env.local", quiet: true });
 
@@ -24,6 +25,8 @@ const EXPECTED = "PENDING_SHA"; // replaced at commit time
 const MEAD_EMAIL = "jlcormier612@gmail.com";
 const MEAD = "05f16a15-1752-4855-8a3b-aad5c593d8d9";
 const FANCY = "a415ac52-cd74-42a6-8df7-7a8f6e71d080";
+refuseProtectedVenueHardcodes({ venueIds: [FANCY], purpose: "scripts/qa/vendor-approval-list-browser.mts" });
+
 const OUT_DIR = "docs/qa/vendor-approval-list-reflect";
 const OUT = `${OUT_DIR}/browser-results.json`;
 
