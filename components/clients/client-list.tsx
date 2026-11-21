@@ -8,6 +8,10 @@ import { Search } from "lucide-react";
 
 import { ClientListStatusBadge } from "@/components/clients/client-status-badge";
 import { PortalActivationRowActions } from "@/components/clients/portal-activation-row-actions";
+import {
+  navigationPendingOnClick,
+  useNavigationPending,
+} from "@/components/shell/navigation-pending";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -106,6 +110,7 @@ export function ClientList({
 }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const navPending = useNavigationPending();
   const urlFilter = parseClientListFilter(searchParams.get("filter"));
   const [query, setQuery] = React.useState("");
   const [storedFilter, setStoredFilter] = React.useState<ClientListFilterKey>(() => {
@@ -358,6 +363,19 @@ export function ClientList({
                 const portal = portalActivationByClientId[client.id];
                 const portalState = portal?.state ?? "not_invited";
                 const needsAttention = attentionClientIds.has(client.id);
+                const openHref = `/clients/${client.id}`;
+                const openTitle = clientDisplayName(
+                  client.firstName,
+                  client.lastName,
+                  client.partnerFirstName,
+                  client.partnerLastName,
+                );
+                const onOpenBooking = navigationPendingOnClick(
+                  navPending?.begin,
+                  openHref,
+                  undefined,
+                  { optimisticTitle: openTitle },
+                );
                 return (
                   <TableRow
                     key={client.id}
@@ -366,8 +384,12 @@ export function ClientList({
                     data-attention={!portalMode && needsAttention ? "true" : undefined}
                   >
                     <TableCell className="font-medium text-foreground">
-                      <Link href={`/clients/${client.id}`} className="htc-record-link">
-                        {clientDisplayName(client.firstName, client.lastName, client.partnerFirstName, client.partnerLastName)}
+                      <Link
+                        href={openHref}
+                        className="htc-record-link"
+                        onClick={onOpenBooking}
+                      >
+                        {openTitle}
                       </Link>
                       {client.email && <p className="text-xs text-muted-foreground">{client.email}</p>}
                     </TableCell>
@@ -409,7 +431,15 @@ export function ClientList({
                           }}
                         />
                       ) : (
-                        <Button variant="ghost" size="sm" render={<Link href={`/clients/${client.id}`} />}>View →</Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          render={
+                            <Link href={openHref} onClick={onOpenBooking} />
+                          }
+                        >
+                          View →
+                        </Button>
                       )}
                     </TableCell>
                   </TableRow>

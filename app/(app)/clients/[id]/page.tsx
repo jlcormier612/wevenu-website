@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
-import { BookedWorkspaceDetail } from "@/app/(app)/clients/[id]/booked-workspace-detail";
-import { BookingIdentityFallback } from "@/components/clients/booking-identity-fallback";
+import { BookedIdentityGate } from "@/app/(app)/clients/[id]/booked-identity-gate";
+import { BookingClientNameFallback } from "@/components/clients/booking-client-name-fallback";
 import { DeleteClientRecordButton } from "@/components/clients/delete-client-record-button";
 import { PreparingMessagesDeepLink } from "@/components/clients/preparing-messages-deep-link";
 import { PracticeContextBanner } from "@/components/setup-hub/practice-context-banner";
@@ -27,7 +27,7 @@ import { workspaceDateText } from "@/lib/availability/workspace-date-language";
 import { clientDisplayName } from "@/lib/clients/constants";
 import { getClient } from "@/lib/clients/service";
 import { getPinnedDocumentKeys, getVenueWorkspaceDocuments } from "@/lib/document-workspace/service";
-import { getEvent, listEventsForClient } from "@/lib/events/service";
+import { listEventsForClient } from "@/lib/events/service";
 import { resolveClientWorkspaceEventId } from "@/lib/events/workspace-event";
 import { getTemplates as getFloorPlanTemplates } from "@/lib/floor-plan-templates/service";
 import {
@@ -43,7 +43,6 @@ import { getVendors } from "@/lib/vendors/service";
 import { getTemplates as getEventOrderTemplates } from "@/lib/event-order-templates/service";
 import { listActiveOfferings } from "@/lib/offerings/service";
 import { getPackages, getPackagesWithItems } from "@/lib/packages/service";
-import { bookingCelebrationPending } from "@/lib/booking-journey/booking-celebration";
 import { loadBookingJourneyForClient } from "@/lib/booking-journey/load";
 import { getItems as getInventoryItems } from "@/lib/inventory/service";
 import { getRelationshipPhotoForVenue } from "@/lib/relationship-photos/service";
@@ -77,7 +76,10 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
   return withBookingFirstByteTiming(async () => {
   const { id } = await params;
   const sp = await searchParams;
-  const client = await bookingFbTime("get_client", () => getClient(id));
+  // Parallel identity reads — both only need the route id (not each other).
+  const [client, clientEvents] = await bookingFbTime("identity_client_and_events", () =>
+    Promise.all([getClient(id), listEventsForClient(id)]),
+  );
   if (!client) notFound();
   bookingFbSetVenue(client.venueId);
 
@@ -274,44 +276,24 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
     );
   }
 
-  const clientEvents = await bookingFbTime("list_events_for_client", () => listEventsForClient(id));
   const eventId = resolveClientWorkspaceEventId(clientEvents, sp.eventId, client.linkedEventId);
   if (!eventId) notFound();
 
-  if (await bookingFbTime("booking_celebration_pending", () => bookingCelebrationPending(eventId))) {
-    redirect(`/clients/${client.id}/booked?eventId=${eventId}`);
-  }
-
-  const event = await bookingFbTime("get_event_identity", () => getEvent(eventId));
-  if (!event) notFound();
-  bookingFbExtra("path", "booked");
-  bookingFbExtra("deferred_boundary", "booked_workspace_detail");
-
-  const workspaceName = clientDisplayName(
-    client.firstName,
-    client.lastName,
-    client.partnerFirstName,
-    client.partnerLastName,
-  );
-
+  // Name-only shell first (client + events already loaded). Celebration +
+  // getEvent + deferred workspace stay inside BookedIdentityGate / Suspense.
   return (
-    <div className="space-y-3">
-      <div className="flex justify-end">
-        <DeleteClientRecordButton clientId={client.id} fallbackName={workspaceName} />
-      </div>
+    <div className="space-y-3" data-testid="clients-detail-streaming-root">
       <Suspense
         fallback={
-          <BookingIdentityFallback
+          <BookingClientNameFallback
             client={client}
-            event={event}
             eventId={eventId}
             clientEvents={clientEvents}
           />
         }
       >
-        <BookedWorkspaceDetail
+        <BookedIdentityGate
           client={client}
-          event={event}
           eventId={eventId}
           clientEvents={clientEvents}
           setupPayments={sp.setupPayments}

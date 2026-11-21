@@ -50,4 +50,20 @@ describe("Navigation pending — keep previous page painted", () => {
       /replaceLeadsListAction/,
     );
   });
+
+  it("supports chrome-only optimistic booking title on client open", () => {
+    const src = readFileSync(resolve("components/shell/navigation-pending.tsx"), "utf8");
+    assert.match(src, /optimisticTitle/);
+    assert.match(src, /OptimisticBookingPendingChrome/);
+    assert.match(src, /writeOptimisticBooking/);
+    const list = readFileSync(resolve("components/clients/client-list.tsx"), "utf8");
+    assert.match(list, /optimisticTitle: openTitle/);
+    assert.match(list, /navigationPendingOnClick/);
+    const chrome = readFileSync(
+      resolve("components/clients/optimistic-booking-pending-chrome.tsx"),
+      "utf8",
+    );
+    assert.doesNotMatch(chrome, /BookingIdentityStatusActions/);
+    assert.doesNotMatch(chrome, /updateEventStatusAction/);
+  });
 });

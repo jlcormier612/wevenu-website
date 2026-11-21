@@ -7,8 +7,13 @@ import { resolve } from "node:path";
 import { describe, it } from "node:test";
 
 const page = readFileSync(resolve("app/(app)/clients/[id]/page.tsx"), "utf8");
+const gate = readFileSync(resolve("app/(app)/clients/[id]/booked-identity-gate.tsx"), "utf8");
 const detail = readFileSync(resolve("app/(app)/clients/[id]/booked-workspace-detail.tsx"), "utf8");
 const fallback = readFileSync(resolve("components/clients/booking-identity-fallback.tsx"), "utf8");
+const nameFallback = readFileSync(
+  resolve("components/clients/booking-client-name-fallback.tsx"),
+  "utf8",
+);
 const statusActions = readFileSync(
   resolve("components/clients/booking-identity-status-actions.tsx"),
   "utf8",
@@ -17,21 +22,34 @@ const timing = readFileSync(resolve("lib/shell/booking-first-byte-timing.ts"), "
 const eventDetail = readFileSync(resolve("components/events/event-detail.tsx"), "utf8");
 
 describe("NAV-PERF Wave 7A — booking streaming foundation", () => {
-  it("page uses exactly one Suspense boundary for booked detail", () => {
-    assert.equal((page.match(/<Suspense/g) ?? []).length, 1);
-    assert.match(page, /BookedWorkspaceDetail/);
-    assert.match(page, /BookingIdentityFallback/);
+  it("page streams name shell first; gate owns celebration + event + detail Suspense", () => {
+    assert.match(page, /BookedIdentityGate/);
+    assert.match(page, /BookingClientNameFallback/);
+    assert.match(page, /clients-detail-streaming-root/);
+    assert.match(page, /identity_client_and_events/);
     assert.match(page, /withBookingFirstByteTiming/);
-    assert.match(page, /get_event_identity/);
+    assert.equal((page.match(/<Suspense/g) ?? []).length, 1);
+    assert.equal((gate.match(/<Suspense/g) ?? []).length, 1);
+    assert.match(gate, /BookedWorkspaceDetail/);
+    assert.match(gate, /BookingIdentityFallback/);
+    assert.match(gate, /identity_celebration_and_event/);
   });
 
   it("fallback exposes real identity actions without financial placeholders", () => {
     assert.match(fallback, /data-testid="booking-identity-fallback"/);
     assert.match(fallback, /BookingIdentityStatusActions/);
     assert.match(fallback, /data-testid="event-booking-summary"/);
+    assert.match(fallback, /htc-hospitality-heading/);
     assert.doesNotMatch(fallback, /formatCurrency/);
     assert.doesNotMatch(fallback, /invoices\.length/);
     assert.doesNotMatch(fallback, /unbilledAmount|financialImpact/);
+  });
+
+  it("name-only fallback has no status actions (server still owns Cancel/Return)", () => {
+    assert.match(nameFallback, /booking-client-name-fallback/);
+    assert.match(nameFallback, /htc-hospitality-heading/);
+    assert.doesNotMatch(nameFallback, /BookingIdentityStatusActions/);
+    assert.doesNotMatch(nameFallback, /updateEventStatusAction/);
   });
 
   it("shell Cancel/Return reuse EventDetail eligibility and the same server actions", () => {

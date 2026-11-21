@@ -47,7 +47,9 @@ export function BookingIdentityFallback({
           <Button variant="ghost" size="sm" className="-ml-2 text-muted-foreground" render={<Link href="/clients" />}>
             <ArrowLeft className="mr-1 h-3.5 w-3.5" /> Bookings
           </Button>
-          <h1 className="font-heading text-2xl font-medium text-heading">{title}</h1>
+          <h1 className="htc-hospitality-heading font-heading text-2xl font-medium text-heading">
+            {title}
+          </h1>
         </div>
         <BookingIdentityStatusActions
           eventId={event.id}
