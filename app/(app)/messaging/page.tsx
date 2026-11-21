@@ -1,41 +1,49 @@
 /**
  * Inbox — the canonical Conversation workspace for venues.
- *
- * RC2, Milestone 5: conversation_experience_enabled defaults true for every
- * venue. The pre-Conversations couple_threads inbox was removed in Debt Gate
- * Pass 1 (D04) after confirmation it was unreachable from live routes.
  */
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
+import { ConversationInbox } from "@/app/(app)/messaging/conversation-inbox";
+import { NavListBodyFallback } from "@/components/shell/nav-list-body-fallback";
+import { PageHeader } from "@/components/shell/module-placeholder";
+import { getInquiryFormSettings } from "@/lib/inquiry-form/service";
 import { getTeamMembers, getCurrentStaffMember } from "@/lib/team/service";
 import { getCurrentVenue } from "@/lib/venue/service";
-import { getInquiryFormSettings } from "@/lib/inquiry-form/service";
-import { ConversationInbox } from "@/app/(app)/messaging/conversation-inbox";
 
 export const metadata: Metadata = { title: "Inbox" };
 
-export default async function MessagingPage() {
+async function InboxBodyIsland() {
   const venue = await getCurrentVenue();
   const [teamMembers, currentStaff, inquirySettings] = venue
     ? await Promise.all([
-      getTeamMembers(venue.id),
-      getCurrentStaffMember(venue.id),
-      getInquiryFormSettings(),
-    ])
+        getTeamMembers(venue.id),
+        getCurrentStaffMember(venue.id),
+        getInquiryFormSettings(),
+      ])
     : [[], null, null];
-  // ConversationInbox reads ?conversation= (RC2, Milestone 4 — deep-linking
-  // in from Search and Request cross-links) via useSearchParams, which
-  // requires a Suspense boundary in the app router.
+
   return (
-    <Suspense fallback={null}>
-      <div className="flex min-w-0 w-full flex-col">
-        <ConversationInbox
-          teamMembers={teamMembers}
-          currentStaffId={currentStaff?.id ?? null}
-          acceptedInquiryEventTypes={inquirySettings?.acceptedEventTypes ?? null}
+    <ConversationInbox
+      teamMembers={teamMembers}
+      currentStaffId={currentStaff?.id ?? null}
+      acceptedInquiryEventTypes={inquirySettings?.acceptedEventTypes ?? null}
+    />
+  );
+}
+
+export default function MessagingPage() {
+  return (
+    <div className="flex min-w-0 w-full flex-col" data-testid="inbox-streaming-root">
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent px-3 pt-3 sm:px-4 lg:px-6">
+        <PageHeader
+          title="Inbox"
+          description="Conversations with couples and vendors across your venue."
         />
       </div>
-    </Suspense>
+      <Suspense fallback={<NavListBodyFallback label="Loading inbox" />}>
+        <InboxBodyIsland />
+      </Suspense>
+    </div>
   );
 }

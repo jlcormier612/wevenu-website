@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { ClientList } from "@/components/clients/client-list";
-import { HospitalityRouteLoading } from "@/components/shell/hospitality-route-loading";
+import { NavListBodyFallback } from "@/components/shell/nav-list-body-fallback";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,7 +18,7 @@ import { venueToday } from "@/lib/venue/timezone";
 
 export const metadata: Metadata = { title: "Clients" };
 
-export default async function ClientsPage() {
+async function ClientsListIsland() {
   const [clients, attentionClientIds, venue, bookedIds] = await Promise.all([
     getClients(),
     getClientAttentionFlags(),
@@ -31,13 +31,16 @@ export default async function ClientsPage() {
     ? await getBookedClientPortalActivationRows(venue.id, bookedIds)
     : new Map();
   let openedCount = 0;
-  const portalActivationByClientId: Record<string, {
-    state: ReturnType<typeof portalActivationState>;
-    invitationId: string | null;
-    invitationStatus: "pending" | "accepted" | "revoked" | null;
-    deliveryStatus: string | null;
-    providerMessageId: string | null;
-  }> = {};
+  const portalActivationByClientId: Record<
+    string,
+    {
+      state: ReturnType<typeof portalActivationState>;
+      invitationId: string | null;
+      invitationStatus: "pending" | "accepted" | "revoked" | null;
+      deliveryStatus: string | null;
+      providerMessageId: string | null;
+    }
+  > = {};
   for (const [clientId, row] of portalRows) {
     const state = portalActivationState({
       lastAccessedAt: row.lastAccessedAt,
@@ -54,31 +57,42 @@ export default async function ClientsPage() {
   }
 
   return (
-    <div className="htc-hospitality-page space-y-4 sm:space-y-6">
+    <ClientList
+      clients={clients}
+      attentionClientIds={attentionClientIds}
+      bookedClientIds={bookedIds}
+      today={today}
+      portalActivationByClientId={portalActivationByClientId}
+      portalActivationProgress={{
+        opened: openedCount,
+        target: THREE_COUPLES_PORTAL_TARGET,
+      }}
+    />
+  );
+}
+
+export default function ClientsPage() {
+  return (
+    <div className="htc-hospitality-page space-y-4 sm:space-y-6" data-testid="clients-streaming-root">
       <div className="htc-hospitality-heading htc-hospitality-intro-accent">
         <PageHeader
           title="Clients"
           description="All Bookings is the active book. Contacts are clients without a booking yet. Coming up is event dates from today through the next 30 days. Needs Attention is an active booking with a past-due payment, a past-due required task, or a message that needs a response. Cancelled and Past are history."
           actions={
             <div className="flex flex-wrap items-center gap-2">
-              <Button variant="outline" render={<Link href="/setup-hub/bring-your-business?stage=clients" />}>Import Clients</Button>
+              <Button
+                variant="outline"
+                render={<Link href="/setup-hub/bring-your-business?stage=clients" />}
+              >
+                Import Clients
+              </Button>
               <Button render={<Link href="/clients/new" />}>+ New Client</Button>
             </div>
           }
         />
       </div>
-      <Suspense fallback={<HospitalityRouteLoading variant="list" label="Loading client list" />}>
-        <ClientList
-          clients={clients}
-          attentionClientIds={attentionClientIds}
-          bookedClientIds={bookedIds}
-          today={today}
-          portalActivationByClientId={portalActivationByClientId}
-          portalActivationProgress={{
-            opened: openedCount,
-            target: THREE_COUPLES_PORTAL_TARGET,
-          }}
-        />
+      <Suspense fallback={<NavListBodyFallback label="Loading client list" />}>
+        <ClientsListIsland />
       </Suspense>
     </div>
   );

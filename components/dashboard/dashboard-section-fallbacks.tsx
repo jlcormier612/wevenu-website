@@ -18,7 +18,11 @@ export function DashboardHeaderFallback() {
       aria-label="Loading greeting"
       data-testid="dashboard-header-fallback"
     >
-      <Bone className="h-7 w-56" />
+      {/* Real title text so sidebar nav can first-paint before greeting data. */}
+      <h1 className="font-heading text-3xl font-medium tracking-tight text-heading">Dashboard</h1>
+      <p className="text-[0.95rem] leading-relaxed text-muted-foreground">
+        Loading your briefing…
+      </p>
       <Bone className="h-4 w-full max-w-md opacity-70" />
     </div>
   );

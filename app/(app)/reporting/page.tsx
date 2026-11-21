@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 
 import { BookingsBySourceChart } from "@/components/reporting/bookings-by-source-chart";
 import { BusinessFunnel } from "@/components/reporting/business-funnel";
@@ -6,6 +7,7 @@ import { ClientTrendPanel } from "@/components/reporting/client-trend-panel";
 import { DateRangeControl } from "@/components/reporting/date-range-control";
 import { ReportHeader } from "@/components/reporting/report-header";
 import { SourceCompositionChart } from "@/components/reporting/source-composition-chart";
+import { NavListBodyFallback } from "@/components/shell/nav-list-body-fallback";
 import { Button } from "@/components/ui/button";
 import { getBusinessFunnel } from "@/lib/metrics/business-funnel";
 import { getPeriodBookingsBySource } from "@/lib/metrics/bookings-by-source";
@@ -24,13 +26,11 @@ import {
 
 type Props = { searchParams: Promise<Record<string, string | string[] | undefined>> };
 
-/**
- * Reporting Overview — one cohesive period + cohort story (colored hospitality KPIs),
- * then source composition and lead volume. Duplicate ComparisonCard KPI grid removed
- * after 40c7bb55 had left a plain funnel alongside a second metric strip.
- */
-export default async function ReportingOverviewPage({ searchParams }: Props) {
-  const params = await searchParams;
+async function ReportingBodyIsland({
+  params,
+}: {
+  params: Record<string, string | string[] | undefined>;
+}) {
   const range = resolveDateRangeFromParams(params);
   const window = { from: range.from, to: range.to };
   const grainRaw = typeof params.grain === "string" ? params.grain : undefined;
@@ -56,11 +56,7 @@ export default async function ReportingOverviewPage({ searchParams }: Props) {
   ]);
 
   return (
-    <div className="htc-hospitality-page space-y-6">
-      <ReportHeader
-        title="Overview"
-        description="How the business moved during the selected period."
-      />
+    <>
       <DateRangeControl current={range.preset} label={range.label} />
 
       <BusinessFunnel
@@ -71,8 +67,8 @@ export default async function ReportingOverviewPage({ searchParams }: Props) {
       />
 
       <p className="text-xs text-muted-foreground">
-        {`${currentlyBooked} ${currentlyBooked === 1 ? "relationship is" : "relationships are"} currently in Booked on your pipeline.`}
-        {" "}That snapshot can differ from Bookings above, which count when you first marked them booked.
+        {`${currentlyBooked} ${currentlyBooked === 1 ? "relationship is" : "relationships are"} currently in Booked on your pipeline.`}{" "}
+        That snapshot can differ from Bookings above, which count when you first marked them booked.
         {undatedBookings > 0
           ? ` ${undatedBookings} ${undatedBookings === 1 ? "Booking does" : "Bookings do"} not have a known date, so ${undatedBookings === 1 ? "it is" : "they are"} not included in this period's Bookings count.`
           : ""}
@@ -110,12 +106,60 @@ export default async function ReportingOverviewPage({ searchParams }: Props) {
       />
 
       <div className="flex flex-wrap gap-2 pt-2">
-        <Button variant="outline" size="sm" render={<Link href={reportingHref("/reporting/sales", range)} />}>View Sales</Button>
-        <Button variant="outline" size="sm" render={<Link href={reportingHref("/reporting/bookings", range)} />}>View Bookings</Button>
-        <Button variant="outline" size="sm" render={<Link href={reportingHref("/reporting/revenue", range)} />}>View Revenue</Button>
-        <Button variant="outline" size="sm" render={<Link href={reportingHref("/reporting/events", range)} />}>View Events</Button>
-        <Button variant="outline" size="sm" render={<Link href="/reporting/saved" />}>Saved</Button>
+        <Button
+          variant="outline"
+          size="sm"
+          render={<Link href={reportingHref("/reporting/sales", range)} />}
+        >
+          View Sales
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          render={<Link href={reportingHref("/reporting/bookings", range)} />}
+        >
+          View Bookings
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          render={<Link href={reportingHref("/reporting/revenue", range)} />}
+        >
+          View Revenue
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          render={<Link href={reportingHref("/reporting/events", range)} />}
+        >
+          View Events
+        </Button>
+        <Button variant="outline" size="sm" render={<Link href="/reporting/saved" />}>
+          Saved
+        </Button>
       </div>
+    </>
+  );
+}
+
+/**
+ * Reporting Overview — one cohesive period + cohort story (colored hospitality KPIs),
+ * then source composition and lead volume.
+ */
+export default async function ReportingOverviewPage({ searchParams }: Props) {
+  const params = await searchParams;
+
+  return (
+    <div className="htc-hospitality-page space-y-6" data-testid="reports-streaming-root">
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
+        <ReportHeader
+          title="Overview"
+          description="How the business moved during the selected period."
+        />
+      </div>
+      <Suspense fallback={<NavListBodyFallback label="Loading reports" />}>
+        <ReportingBodyIsland params={params} />
+      </Suspense>
     </div>
   );
 }

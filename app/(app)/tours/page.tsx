@@ -1,14 +1,20 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
 import { CalendarCheck, MapPin } from "lucide-react";
 
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { NavAttentionRefreshOnMount } from "@/components/shell/nav-attention-refresh-on-mount";
+import { NavListBodyFallback } from "@/components/shell/nav-list-body-fallback";
 import { TourArchivedSection, TourList, TourSectionEmpty } from "@/components/tours/tour-list";
 import { Button } from "@/components/ui/button";
 import { markVenueToursSeen } from "@/lib/navigation/attention-service";
 import { partitionTourAppointmentsForVenueList } from "@/lib/tours/list-order";
-import { getArchivedTourAppointments, getTourAppointments, getTourSettings } from "@/lib/tours/service";
+import {
+  getArchivedTourAppointments,
+  getTourAppointments,
+  getTourSettings,
+} from "@/lib/tours/service";
 import { listUnresolvedProtectionRequests } from "@/lib/tours/protection";
 import { getCurrentUserRole, getCurrentVenue } from "@/lib/venue/service";
 import { PaidUnbookedProtectionList } from "@/components/tours/paid-unbooked-protection-list";
@@ -16,15 +22,16 @@ import { canRefundTourFee } from "@/lib/tours/protection-rules";
 
 export const metadata: Metadata = { title: "Tours" };
 
-export default async function ToursPage() {
-  const [appointments, archivedAppointments, tourSettings, unresolvedProtection, role, venue] = await Promise.all([
-    getTourAppointments(),
-    getArchivedTourAppointments(),
-    getTourSettings(),
-    listUnresolvedProtectionRequests(),
-    getCurrentUserRole(),
-    getCurrentVenue(),
-  ]);
+async function ToursBodyIsland() {
+  const [appointments, archivedAppointments, tourSettings, unresolvedProtection, role, venue] =
+    await Promise.all([
+      getTourAppointments(),
+      getArchivedTourAppointments(),
+      getTourSettings(),
+      listUnresolvedProtectionRequests(),
+      getCurrentUserRole(),
+      getCurrentVenue(),
+    ]);
 
   // Staff opened Tours — clear unseen tour appointment attention (protection
   // follow-ups remain until resolved).
@@ -36,32 +43,29 @@ export default async function ToursPage() {
   const tz = venue?.timezone ?? null;
 
   return (
-    <div className="htc-hospitality-page htc-tours-workspace space-y-5 sm:space-y-6">
-      <NavAttentionRefreshOnMount />
-      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
-        <PageHeader
-          title="Tours"
-          description="Upcoming, past, and cancelled venue tour appointments."
-          actions={
-            tourSettings?.tourSchedulingEnabled ? (
-              <Button size="sm" variant="outline" render={<Link href="/settings/leads#tours" />}>
-                <MapPin className="mr-1.5 h-3.5 w-3.5" /> Booking Settings
-              </Button>
-            ) : undefined
-          }
-        />
-      </div>
+    <>
+      {tourSettings?.tourSchedulingEnabled ? (
+        <div className="-mt-2 mb-2">
+          <Button size="sm" variant="outline" render={<Link href="/settings/leads#tours" />}>
+            <MapPin className="mr-1.5 h-3.5 w-3.5" /> Booking Settings
+          </Button>
+        </div>
+      ) : null}
 
       {unresolvedProtection.length > 0 && (
         <section className="htc-tours-followup" data-tours-followup="">
           <header data-tours-section-header="">
             <h2 data-tours-section-title="">Needs follow-up ({unresolvedProtection.length})</h2>
             <p data-tours-section-desc="">
-              Payment or card-on-file succeeded, but the requested time was no longer available. No tour was booked.
+              Payment or card-on-file succeeded, but the requested time was no longer available. No
+              tour was booked.
             </p>
           </header>
           <div data-tours-section-body="">
-            <PaidUnbookedProtectionList requests={unresolvedProtection} canRefund={canRefundTourFee(role)} />
+            <PaidUnbookedProtectionList
+              requests={unresolvedProtection}
+              canRefund={canRefundTourFee(role)}
+            />
           </div>
         </section>
       )}
@@ -71,7 +75,8 @@ export default async function ToursPage() {
           <CalendarCheck className="mx-auto h-10 w-10 text-muted-foreground" aria-hidden />
           <p data-tours-empty-title="">No tours yet</p>
           <p data-tours-empty-copy="">
-            Once tour scheduling is enabled and couples book a visit, their appointments will appear here.
+            Once tour scheduling is enabled and couples book a visit, their appointments will appear
+            here.
           </p>
           {!tourSettings?.tourSchedulingEnabled && (
             <Button size="sm" variant="outline" render={<Link href="/settings/leads" />}>
@@ -101,7 +106,9 @@ export default async function ToursPage() {
           <section className="htc-tours-section" data-tours-section="past">
             <header data-tours-section-header="">
               <h2 data-tours-section-title="">Past ({past.length})</h2>
-              <p data-tours-section-desc="">Completed and no-show tours, plus any overdue appointments still open.</p>
+              <p data-tours-section-desc="">
+                Completed and no-show tours, plus any overdue appointments still open.
+              </p>
             </header>
             <div data-tours-section-body="">
               {past.length > 0 ? (
@@ -119,7 +126,8 @@ export default async function ToursPage() {
             <header data-tours-section-header="">
               <h2 data-tours-section-title="">Cancelled ({cancelled.length})</h2>
               <p data-tours-section-desc="">
-                Cancelled appointments stay visible here until you archive them. Cancelled is not the same as Archived.
+                Cancelled appointments stay visible here until you archive them. Cancelled is not
+                the same as Archived.
               </p>
             </header>
             <div data-tours-section-body="">
@@ -141,10 +149,7 @@ export default async function ToursPage() {
           )}
 
           {archivedAppointments.length > 0 ? (
-            <TourArchivedSection
-              appointments={archivedAppointments}
-              venueTimezone={tz}
-            />
+            <TourArchivedSection appointments={archivedAppointments} venueTimezone={tz} />
           ) : (
             <section className="htc-tours-section" data-tours-section="archived-empty">
               <header data-tours-section-header="">
@@ -163,6 +168,26 @@ export default async function ToursPage() {
           )}
         </div>
       )}
+    </>
+  );
+}
+
+export default function ToursPage() {
+  return (
+    <div
+      className="htc-hospitality-page htc-tours-workspace space-y-5 sm:space-y-6"
+      data-testid="tours-streaming-root"
+    >
+      <NavAttentionRefreshOnMount />
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
+        <PageHeader
+          title="Tours"
+          description="Upcoming, past, and cancelled venue tour appointments."
+        />
+      </div>
+      <Suspense fallback={<NavListBodyFallback label="Loading tours" />}>
+        <ToursBodyIsland />
+      </Suspense>
     </div>
   );
 }

@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 
 import { TaskCenter, type TaskRow } from "@/components/tasks/task-center";
+import { NavListBodyFallback } from "@/components/shell/nav-list-body-fallback";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { createClient } from "@/integrations/supabase/server";
 import { getCurrentVenue, getCurrentUserRole } from "@/lib/venue/service";
@@ -19,17 +21,9 @@ export const metadata: Metadata = { title: "Task Center" };
 export const revalidate = 0;
 export const dynamic = "force-dynamic";
 
-export default async function TaskCenterPage() {
+async function TaskCenterBodyIsland() {
   if (!isSupabaseConfigured) {
-    return (
-      <div className="space-y-6">
-        <PageHeader
-          title="Task Center"
-          description="Tasks your venue needs to complete across leads and events."
-        />
-        <p className="text-sm text-muted-foreground">Configure Supabase to see tasks.</p>
-      </div>
-    );
+    return <p className="text-sm text-muted-foreground">Configure Supabase to see tasks.</p>;
   }
 
   const venue = await getCurrentVenue();
@@ -205,29 +199,20 @@ export default async function TaskCenterPage() {
   const watchCount = watchTasks.length;
 
   return (
-    <div className="htc-hospitality-page space-y-5 sm:space-y-6" data-htc-phase12="tasks">
+    <div className="space-y-5 sm:space-y-6" data-htc-phase12="tasks">
       <div
-        className="htc-hospitality-heading htc-hospitality-intro-accent htc-task-center-intro flex flex-col gap-2.5 sm:flex-row sm:items-start sm:justify-between sm:gap-4"
-        data-testid="task-center-intro"
+        className="htc-task-center-intro-counts flex flex-col gap-0.5 text-xs text-muted-foreground sm:items-end"
+        data-testid="task-center-intro-counts"
       >
-        <PageHeader
-          title="Task Center"
-          description="Tasks your venue needs to complete across leads and events."
-        />
-        <div
-          className="htc-task-center-intro-counts flex flex-col gap-0.5 text-xs text-muted-foreground sm:shrink-0 sm:items-end sm:pt-1"
-          data-testid="task-center-intro-counts"
-        >
+        <span>
+          <span className="font-medium text-heading">{doAttention}</span> team items need attention
+        </span>
+        {watchCount > 0 && (
           <span>
-            <span className="font-medium text-heading">{doAttention}</span> team items need attention
+            <span className="font-medium text-heading">{watchCount}</span>
+            {` client item${watchCount !== 1 ? "s" : ""} to watch`}
           </span>
-          {watchCount > 0 && (
-            <span>
-              <span className="font-medium text-heading">{watchCount}</span>
-              {` client item${watchCount !== 1 ? "s" : ""} to watch`}
-            </span>
-          )}
-        </div>
+        )}
       </div>
       <TaskCenter
         doOverdue={doOverdue}
@@ -240,6 +225,22 @@ export default async function TaskCenterPage() {
         currentStaffId={currentStaff?.id ?? null}
         currentRole={currentRole}
       />
+    </div>
+  );
+}
+
+export default function TaskCenterPage() {
+  return (
+    <div className="htc-hospitality-page space-y-4 sm:space-y-6" data-testid="task-center-streaming-root">
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
+        <PageHeader
+          title="Task Center"
+          description="Tasks your venue needs to complete across leads and events."
+        />
+      </div>
+      <Suspense fallback={<NavListBodyFallback label="Loading tasks" />}>
+        <TaskCenterBodyIsland />
+      </Suspense>
     </div>
   );
 }

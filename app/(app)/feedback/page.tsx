@@ -56,7 +56,7 @@ const CHANNELS: {
 
 export default function FeedbackPage() {
   return (
-    <div className="htc-hospitality-page space-y-4 sm:space-y-6">
+    <div className="htc-hospitality-page space-y-4 sm:space-y-6" data-testid="feedback-streaming-root">
       <div className="htc-hospitality-heading htc-hospitality-intro-accent">
         <PageHeader
           title="Get Help or Provide Feedback"

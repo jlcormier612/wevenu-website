@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
 import {
   Building2,
   CalendarClock,
@@ -10,6 +11,7 @@ import {
   UsersRound,
 } from "lucide-react";
 
+import { NavListBodyFallback } from "@/components/shell/nav-list-body-fallback";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { getCurrentVenue } from "@/lib/venue/service";
 import { getQuickBooksConnection } from "@/lib/quickbooks/service";
@@ -26,15 +28,12 @@ type SettingsCategory = {
   summary?: string;
 };
 
-/**
- * Settings home — the navigation layer. Each category below is a real,
- * independently-routed settings area (app/(app)/settings/<slug>), not an
- * accordion on this page. See docs from the Settings IA restructure for
- * what moved where.
- */
-export default async function SettingsPage() {
+async function SettingsBodyIsland() {
   const [venue, quickbooksConnection, tourAvailability, legalHistory] = await Promise.all([
-    getCurrentVenue(), getQuickBooksConnection(), getTourAvailability(), listLegalAcceptancesForCurrentUser(),
+    getCurrentVenue(),
+    getQuickBooksConnection(),
+    getTourAvailability(),
+    listLegalAcceptancesForCurrentUser(),
   ]);
 
   const blockedDateCount = tourAvailability.ok ? tourAvailability.exceptions.length : null;
@@ -59,9 +58,10 @@ export default async function SettingsPage() {
       title: "Availability & Capacity",
       icon: CalendarClock,
       description: "Tour hours, blocked dates, spaces, and operating limits.",
-      summary: blockedDateCount == null
-        ? undefined
-        : `${blockedDateCount} blocked date${blockedDateCount === 1 ? "" : "s"}`,
+      summary:
+        blockedDateCount == null
+          ? undefined
+          : `${blockedDateCount} blocked date${blockedDateCount === 1 ? "" : "s"}`,
     },
     {
       href: "/settings/communications",
@@ -86,7 +86,8 @@ export default async function SettingsPage() {
       href: "/settings/referrals",
       title: "Refer a Venue",
       icon: HeartHandshake,
-      description: "Share the Luv and earn a free month when a venue you refer becomes a paying customer.",
+      description:
+        "Share the Luv and earn a free month when a venue you refer becomes a paying customer.",
     },
     {
       href: "/settings/team",
@@ -96,18 +97,15 @@ export default async function SettingsPage() {
     },
   ];
 
-  const mostRecentAcceptance = legalHistory.length > 0
-    ? legalHistory.reduce((latest, item) => (item.acceptedAt > latest.acceptedAt ? item : latest))
-    : null;
+  const mostRecentAcceptance =
+    legalHistory.length > 0
+      ? legalHistory.reduce((latest, item) =>
+          item.acceptedAt > latest.acceptedAt ? item : latest,
+        )
+      : null;
 
   return (
-    <div className="htc-hospitality-page space-y-4 sm:space-y-6">
-      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
-        <PageHeader
-          title="Settings"
-          description="Make Hello to Cheers work the way your venue works."
-        />
-      </div>
+    <>
       <div
         className="htc-settings-directory grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
         data-htc-phase9="settings-directory"
@@ -132,20 +130,49 @@ export default async function SettingsPage() {
         ))}
       </div>
 
-      {/* Legal acceptance stays on record and reachable, without being
-          presented as a business-configuration task — see the Settings IA
-          restructure notes on why Legal History no longer has a prominent
-          section here. */}
       <p className="text-xs text-muted-foreground">
         Account &amp; legal
         {mostRecentAcceptance && (
-          <> · Terms accepted {new Date(mostRecentAcceptance.acceptedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</>
+          <>
+            {" "}
+            · Terms accepted{" "}
+            {new Date(mostRecentAcceptance.acceptedAt).toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+            })}
+          </>
         )}
         {" · "}
-        <Link href="/legal/privacy_policy" className="hover:underline">Privacy</Link>
+        <Link href="/legal/privacy_policy" className="hover:underline">
+          Privacy
+        </Link>
         {" · "}
-        <Link href="/legal/cookie_policy" className="hover:underline">Cookies</Link>
+        <Link href="/legal/cookie_policy" className="hover:underline">
+          Cookies
+        </Link>
       </p>
+    </>
+  );
+}
+
+/**
+ * Settings home — the navigation layer. Each category below is a real,
+ * independently-routed settings area (app/(app)/settings/<slug>), not an
+ * accordion on this page.
+ */
+export default function SettingsPage() {
+  return (
+    <div className="htc-hospitality-page space-y-4 sm:space-y-6" data-testid="settings-streaming-root">
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
+        <PageHeader
+          title="Settings"
+          description="Make Hello to Cheers work the way your venue works."
+        />
+      </div>
+      <Suspense fallback={<NavListBodyFallback label="Loading settings" />}>
+        <SettingsBodyIsland />
+      </Suspense>
     </div>
   );
 }
