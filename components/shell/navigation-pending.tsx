@@ -3,26 +3,25 @@
 import * as React from "react";
 import { usePathname } from "next/navigation";
 
-import { HospitalityRouteLoading } from "@/components/shell/hospitality-route-loading";
-
 /**
- * Immediate nav feedback that does not wait for the server RSC flight.
+ * Keep the last painted page visible during App Router navigations.
  *
- * Why #124 was not enough: we cleared pending when `pathname` matched the
- * target. App Router updates the URL before `main` has streamed content, so
- * the overlay vanished and left a white/cream empty main — the bug users still
- * saw on Sandbox after deploy.
+ * Root cause of white main: sidebar navigations empty the App Router page slot
+ * in `main` for a long beat while RSC streams. A skeleton overlay (#124/#125)
+ * only covered that emptiness and made the wait feel worse.
  *
- * Fix: keep pending until `main` has real page content (or stuck timeout).
- * Persist target in sessionStorage so force-dynamic remounts can restore it.
- * Overlay is a sibling inside main — never wraps App Router `children`.
+ * Fix: on sidebar click, snapshot the current page slot HTML into a sibling
+ * overlay (does NOT wrap App Router `children` — that caused #S:0). Keep the
+ * snapshot until the new page has usable content. Soft-URL / paging untouched.
  */
 const NavigationPendingContext = React.createContext<{
   pendingHref: string | null;
+  snapshotHtml: string | null;
   begin: (href: string) => void;
 } | null>(null);
 
 const STORAGE_KEY = "htc-nav-pending-href";
+const SNAPSHOT_KEY = "htc-nav-pending-snapshot";
 const STUCK_CLEAR_MS = 12_000;
 const CONTENT_POLL_MS = 50;
 const CONTENT_MIN_CHARS = 48;
@@ -40,36 +39,53 @@ function readStoredPending(): string | null {
   }
 }
 
-function writeStoredPending(href: string | null) {
+function readStoredSnapshot(): string | null {
   try {
-    if (!href) sessionStorage.removeItem(STORAGE_KEY);
-    else sessionStorage.setItem(STORAGE_KEY, href);
+    const v = sessionStorage.getItem(SNAPSHOT_KEY);
+    return v && v.length > 0 ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredPending(href: string | null, snapshotHtml: string | null) {
+  try {
+    if (!href) {
+      sessionStorage.removeItem(STORAGE_KEY);
+      sessionStorage.removeItem(SNAPSHOT_KEY);
+    } else {
+      sessionStorage.setItem(STORAGE_KEY, href);
+      if (snapshotHtml) sessionStorage.setItem(SNAPSHOT_KEY, snapshotHtml);
+      else sessionStorage.removeItem(SNAPSHOT_KEY);
+    }
   } catch {
     /* private mode / quota */
   }
 }
 
-function variantForPath(
-  pathname: string,
-): "dashboard" | "list" | "detail" | "reporting" | "calendar" | "payments" {
-  if (pathname === "/dashboard" || pathname === "/") return "dashboard";
-  if (pathname.startsWith("/reporting")) return "reporting";
-  if (pathname.startsWith("/calendar")) return "calendar";
-  if (pathname.startsWith("/payments") || pathname.startsWith("/invoices")) return "payments";
-  if (/^\/[^/]+\/[^/]+/.test(pathname)) return "detail";
-  return "list";
+function capturePageSlotHtml(): string | null {
+  if (typeof document === "undefined") return null;
+  const main = document.querySelector("[data-workspace-main]");
+  if (!main) return null;
+  const pageSlot = main.querySelector(
+    ":scope > div:not([data-testid='navigation-pending-main'])",
+  );
+  if (!pageSlot) return null;
+  const text = (pageSlot.textContent ?? "").replace(/\s+/g, " ").trim();
+  if (text.length < CONTENT_MIN_CHARS) return null;
+  return pageSlot.outerHTML;
 }
 
 function mainHasUsableContent(): boolean {
   if (typeof document === "undefined") return false;
   const main = document.querySelector("[data-workspace-main]");
   if (!main) return false;
-  // Page slot is the first padding wrapper; overlay is a sibling after it.
-  const pageSlot = main.querySelector(":scope > div:not([data-testid='navigation-pending-main'])");
+  const pageSlot = main.querySelector(
+    ":scope > div:not([data-testid='navigation-pending-main'])",
+  );
   if (!pageSlot) return false;
   const text = (pageSlot.textContent ?? "").replace(/\s+/g, " ").trim();
   if (text.length < CONTENT_MIN_CHARS) return false;
-  // Still only a route loading shell inside the page slot.
   if (pageSlot.querySelector('[data-testid="hospitality-route-loading"]') && text.length < 120) {
     return false;
   }
@@ -83,9 +99,9 @@ function atTargetPath(pathname: string, target: string): boolean {
 export function NavigationPendingProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [pendingHref, setPendingHref] = React.useState<string | null>(null);
+  const [snapshotHtml, setSnapshotHtml] = React.useState<string | null>(null);
   const stuckTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const pollTimer = React.useRef<ReturnType<typeof setInterval> | null>(null);
-  const shownAt = React.useRef(0);
   const pathnameAtBegin = React.useRef(pathname);
 
   const clearPendingNow = React.useEffectEvent(() => {
@@ -97,8 +113,9 @@ export function NavigationPendingProvider({ children }: { children: React.ReactN
       clearInterval(pollTimer.current);
       pollTimer.current = null;
     }
-    writeStoredPending(null);
+    writeStoredPending(null, null);
     setPendingHref(null);
+    setSnapshotHtml(null);
   });
 
   const armStuckTimer = React.useEffectEvent(() => {
@@ -108,20 +125,18 @@ export function NavigationPendingProvider({ children }: { children: React.ReactN
     }, STUCK_CLEAR_MS);
   });
 
-  // Restore before paint on mount (survives force-dynamic layout remount).
-  // Keep showing even if URL already matches — content may still be empty.
+  // Restore after force-dynamic layout remount (snapshot + href).
   React.useLayoutEffect(() => {
     const stored = readStoredPending();
     if (!stored) return;
     pathnameAtBegin.current = pathname;
-    shownAt.current = Date.now();
     setPendingHref(stored);
+    setSnapshotHtml(readStoredSnapshot());
     armStuckTimer();
     // intentionally mount-only
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Clear only once we are on the target AND main has real content.
   React.useEffect(() => {
     if (!pendingHref) return;
     const target = pathOnly(pendingHref);
@@ -133,7 +148,7 @@ export function NavigationPendingProvider({ children }: { children: React.ReactN
 
     const tick = () => {
       if (!atTargetPath(pathname, target) && pathname === pathnameAtBegin.current) {
-        return; // still on origin route
+        return;
       }
       if (atTargetPath(pathname, target) && mainHasUsableContent()) {
         clearPendingNow();
@@ -152,7 +167,6 @@ export function NavigationPendingProvider({ children }: { children: React.ReactN
 
   React.useEffect(() => {
     const onPop = () => {
-      // Back/forward: keep overlay until content, or clear if nothing pending.
       if (!pendingHref) clearPendingNow();
       else armStuckTimer();
     };
@@ -163,17 +177,19 @@ export function NavigationPendingProvider({ children }: { children: React.ReactN
   const value = React.useMemo(
     () => ({
       pendingHref,
+      snapshotHtml,
       begin: (href: string) => {
         const path = pathOnly(href);
         if (!path || path === pathname) return;
+        const snap = capturePageSlotHtml();
         pathnameAtBegin.current = pathname;
-        shownAt.current = Date.now();
-        writeStoredPending(path);
+        writeStoredPending(path, snap);
+        setSnapshotHtml(snap);
         setPendingHref(path);
         armStuckTimer();
       },
     }),
-    [pendingHref, pathname, armStuckTimer],
+    [pendingHref, snapshotHtml, pathname, armStuckTimer],
   );
 
   return (
@@ -199,23 +215,24 @@ export function NavigationPendingProvider({ children }: { children: React.ReactN
 
 /**
  * Sibling overlay inside `<main>` — never wraps the App Router children slot.
+ * Shows a freeze-frame of the previous page while the new route streams in.
  */
 export function NavigationPendingMainOverlay() {
   const ctx = React.useContext(NavigationPendingContext);
   const pendingHref = ctx?.pendingHref ?? null;
-  if (!pendingHref) return null;
+  const snapshotHtml = ctx?.snapshotHtml ?? null;
 
-  const variant = variantForPath(pathOnly(pendingHref));
+  if (!pendingHref || !snapshotHtml) return null;
 
   return (
     <div
       data-testid="navigation-pending-main"
+      data-nav-snapshot="true"
       className="pointer-events-none absolute inset-0 z-[40] overflow-y-auto bg-background"
       aria-busy="true"
+      aria-hidden
     >
-      <div className="mx-auto w-full max-w-6xl p-4 sm:p-6 lg:p-10">
-        <HospitalityRouteLoading variant={variant} label="Loading" />
-      </div>
+      <div dangerouslySetInnerHTML={{ __html: snapshotHtml }} />
     </div>
   );
 }

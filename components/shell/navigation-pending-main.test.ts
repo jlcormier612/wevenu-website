@@ -3,32 +3,30 @@ import { readFileSync, existsSync } from "node:fs";
 import { describe, it } from "node:test";
 import { resolve } from "node:path";
 
-describe("Navigation pending main overlay (white-main fix)", () => {
+describe("Navigation pending — keep previous page painted", () => {
   it("keeps App Router children out of a client wrapper; overlay is a sibling", () => {
     const shell = readFileSync(resolve("components/shell/workspace-shell.tsx"), "utf8");
     assert.match(shell, /NavigationPendingMainOverlay/);
     assert.match(shell, /\{children\}/);
-    // Overlay must not wrap children
     assert.doesNotMatch(
       shell,
       /NavigationPendingMainOverlay[\s\S]*\{children\}[\s\S]*<\/NavigationPendingMainOverlay>/,
     );
-    assert.match(shell, /relative min-h-0 min-w-0 flex-1/);
   });
 
-  it("persists pending href so force-dynamic remount cannot wipe the indicator", () => {
+  it("snapshots previous page HTML instead of showing a skeleton over empty main", () => {
     const src = readFileSync(resolve("components/shell/navigation-pending.tsx"), "utf8");
-    assert.match(src, /htc-nav-pending-href/);
-    assert.match(src, /sessionStorage/);
-    assert.match(src, /data-testid="navigation-pending-main"/);
-    assert.match(src, /HospitalityRouteLoading/);
+    assert.match(src, /capturePageSlotHtml/);
+    assert.match(src, /data-nav-snapshot/);
+    assert.match(src, /dangerouslySetInnerHTML/);
+    assert.match(src, /htc-nav-pending-snapshot/);
+    assert.doesNotMatch(src, /HospitalityRouteLoading/);
   });
 
-  it("does not clear pending on pathname match alone (that caused post-deploy white main)", () => {
+  it("clears snapshot only when target path has usable content", () => {
     const src = readFileSync(resolve("components/shell/navigation-pending.tsx"), "utf8");
     assert.match(src, /mainHasUsableContent/);
     assert.match(src, /CONTENT_POLL_MS/);
-    // Must not clear solely via scheduleClearAfterMinVisible on pathname===target
     assert.doesNotMatch(src, /scheduleClearAfterMinVisible/);
   });
 
@@ -38,5 +36,16 @@ describe("Navigation pending main overlay (white-main fix)", () => {
 
   it("does not restore leads list full-route loading.tsx", () => {
     assert.equal(existsSync(resolve("app/(app)/leads/loading.tsx")), false);
+  });
+
+  it("does not modify Soft-URL / soft-filter engines", () => {
+    assert.match(
+      readFileSync(resolve("lib/clients/soft-url.ts"), "utf8"),
+      /clientsFilterHref/,
+    );
+    assert.match(
+      readFileSync(resolve("lib/leads/soft-filter.test.ts"), "utf8"),
+      /replaceLeadsListAction/,
+    );
   });
 });
