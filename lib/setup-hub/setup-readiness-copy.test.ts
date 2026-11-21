@@ -49,6 +49,7 @@ describe("Setup Hub readiness behavior unchanged", () => {
     assert.match(actions, /setReadyToInviteCouplesAction/);
     assert.match(actions, /setupHub\.setReadyToInviteCouples\(ready\)/);
     assert.match(actions, /revalidatePath\("\/setup-hub"\)/);
+    assert.match(actions, /revalidatePath\("\/setup-hub\/take-a-look"\)/);
     assert.match(actions, /revalidatePath\("\/dashboard"\)/);
     assert.match(service, /setReadyToInviteCouples/);
     assert.match(repository, /ready_to_invite_couples: true/);

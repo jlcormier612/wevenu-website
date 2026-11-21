@@ -54,6 +54,7 @@ export async function setReadyToInviteCouplesAction(ready: boolean) {
   const result = await setupHub.setReadyToInviteCouples(ready);
   if (result.ok) {
     revalidatePath("/setup-hub");
+    revalidatePath("/setup-hub/take-a-look");
     revalidatePath("/dashboard");
   }
   return result;
