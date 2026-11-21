@@ -3,6 +3,13 @@
 import * as React from "react";
 import { usePathname } from "next/navigation";
 
+import { OptimisticBookingPendingChrome } from "@/components/clients/optimistic-booking-pending-chrome";
+import {
+  isClientDetailPath,
+  readOptimisticBooking,
+  writeOptimisticBooking,
+} from "@/lib/shell/optimistic-booking";
+
 /**
  * Keep the last painted page visible during App Router navigations.
  *
@@ -13,11 +20,13 @@ import { usePathname } from "next/navigation";
  * Fix: on sidebar click, snapshot the current page slot HTML into a sibling
  * overlay (does NOT wrap App Router `children` — that caused #S:0). Keep the
  * snapshot until the new page has usable content. Soft-URL / paging untouched.
+ *
+ * Clients list → booking: optional chrome-only optimistic title (no actions).
  */
 const NavigationPendingContext = React.createContext<{
   pendingHref: string | null;
   snapshotHtml: string | null;
-  begin: (href: string) => void;
+  begin: (href: string, opts?: { optimisticTitle?: string }) => void;
 } | null>(null);
 
 const STORAGE_KEY = "htc-nav-pending-href";
@@ -25,6 +34,8 @@ const SNAPSHOT_KEY = "htc-nav-pending-snapshot";
 const STUCK_CLEAR_MS = 12_000;
 const CONTENT_POLL_MS = 50;
 const CONTENT_MIN_CHARS = 48;
+
+export type BeginNavigationOpts = { optimisticTitle?: string };
 
 function pathOnly(href: string): string {
   return href.split("?")[0]?.split("#")[0] ?? href;
@@ -133,6 +144,7 @@ export function NavigationPendingProvider({ children }: { children: React.ReactN
       pollTimer.current = null;
     }
     writeStoredPending(null, null);
+    writeOptimisticBooking(null);
     originSlotText.current = "";
     setPendingHref(null);
     setSnapshotHtml(null);
@@ -201,9 +213,15 @@ export function NavigationPendingProvider({ children }: { children: React.ReactN
     () => ({
       pendingHref,
       snapshotHtml,
-      begin: (href: string) => {
+      begin: (href: string, opts?: BeginNavigationOpts) => {
         const path = pathOnly(href);
         if (!path || path === pathname) return;
+        const title = opts?.optimisticTitle?.trim();
+        if (title && isClientDetailPath(path)) {
+          writeOptimisticBooking({ path, title });
+        } else {
+          writeOptimisticBooking(null);
+        }
         const snap = capturePageSlotHtml();
         originSlotText.current = pageSlotText();
         pathnameAtBegin.current = pathname;
@@ -245,18 +263,32 @@ export function NavigationPendingMainOverlay() {
   const ctx = React.useContext(NavigationPendingContext);
   const pendingHref = ctx?.pendingHref ?? null;
   const snapshotHtml = ctx?.snapshotHtml ?? null;
+  const optimistic =
+    pendingHref && isClientDetailPath(pendingHref)
+      ? readOptimisticBooking()
+      : null;
+  const showOptimistic =
+    Boolean(pendingHref) &&
+    optimistic != null &&
+    optimistic.path === pendingHref;
 
-  if (!pendingHref || !snapshotHtml) return null;
+  if (!pendingHref) return null;
+  if (!showOptimistic && !snapshotHtml) return null;
 
   return (
     <div
       data-testid="navigation-pending-main"
-      data-nav-snapshot="true"
+      data-nav-snapshot={showOptimistic ? "false" : "true"}
+      data-nav-optimistic={showOptimistic ? "true" : undefined}
       className="pointer-events-none absolute inset-0 z-[40] overflow-y-auto bg-background"
       aria-busy="true"
       aria-hidden
     >
-      <div dangerouslySetInnerHTML={{ __html: snapshotHtml }} />
+      {showOptimistic && optimistic ? (
+        <OptimisticBookingPendingChrome title={optimistic.title} />
+      ) : (
+        <div dangerouslySetInnerHTML={{ __html: snapshotHtml! }} />
+      )}
     </div>
   );
 }
@@ -266,12 +298,13 @@ export function useNavigationPending() {
 }
 
 export function navigationPendingOnClick(
-  begin: ((href: string) => void) | undefined,
+  begin: ((href: string, opts?: BeginNavigationOpts) => void) | undefined,
   href: string,
   extra?: React.MouseEventHandler<HTMLAnchorElement>,
+  opts?: BeginNavigationOpts,
 ): React.MouseEventHandler<HTMLAnchorElement> {
   return (event) => {
-    begin?.(href);
+    begin?.(href, opts);
     extra?.(event);
   };
 }

@@ -23,7 +23,8 @@ function bookedBranch(src: string): string {
 function unbookedBranch(src: string): string {
   const start = src.indexOf("if (!client.linkedEventId)");
   assert.ok(start > 0, "unbooked branch start");
-  const end = src.indexOf("listEventsForClient", start);
+  // Booked path continues after the unbooked early-return block.
+  const end = src.indexOf("resolveClientWorkspaceEventId", start);
   assert.ok(end > start, "unbooked branch end");
   return src.slice(start, end);
 }
@@ -95,11 +96,19 @@ describe("Slice 2 — booked path pipelines dependents off parents", () => {
     assert.ok(booked.indexOf("const eventInvoicesPromise") < createIdx);
   });
 
-  it("keeps celebration redirect serial before deferred workspace reads", () => {
+  it("keeps celebration redirect before deferred workspace reads (parallel with getEvent)", () => {
+    const gate = readFileSync(
+      resolve("app/(app)/clients/[id]/booked-identity-gate.tsx"),
+      "utf8",
+    );
     const resolveAt = page.indexOf("const eventId = resolveClientWorkspaceEventId");
-    const celeb = page.indexOf('bookingFbTime("booking_celebration_pending"');
-    const deferred = page.indexOf("<BookedWorkspaceDetail");
-    assert.ok(resolveAt > 0 && celeb > resolveAt && deferred > celeb);
+    const gateAt = page.indexOf("<BookedIdentityGate");
+    const celeb = gate.indexOf("bookingCelebrationPending");
+    const deferred = gate.indexOf("<BookedWorkspaceDetail");
+    assert.ok(resolveAt > 0 && gateAt > resolveAt);
+    assert.ok(celeb > 0 && deferred > celeb);
+    assert.match(gate, /identity_celebration_and_event/);
+    assert.match(gate, /redirect\(`\/clients\/\$\{client\.id\}\/booked/);
   });
 
   it("still wires core workspace props into EventDetail", () => {
