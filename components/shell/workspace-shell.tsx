@@ -1,7 +1,10 @@
 import type { ReactNode } from "react";
 
 import { Wordmark } from "@/components/brand/wordmark";
-import { NavigationPendingProvider } from "@/components/shell/navigation-pending";
+import {
+  NavigationPendingMainOverlay,
+  NavigationPendingProvider,
+} from "@/components/shell/navigation-pending";
 import { SidebarNav } from "@/components/shell/sidebar-nav";
 import { WorkspaceMainScrollBridge } from "@/components/shell/workspace-main-scroll-bridge";
 import { WorkspaceShellHeader } from "@/components/shell/workspace-shell-header";
@@ -80,7 +83,7 @@ export function WorkspaceShell({
 
           <main
             data-workspace-main=""
-            className="min-h-0 min-w-0 flex-1 overflow-x-clip overflow-y-scroll overscroll-y-contain bg-background"
+            className="relative min-h-0 min-w-0 flex-1 overflow-x-clip overflow-y-scroll overscroll-y-contain bg-background"
           >
             <div
               className={cn(
@@ -92,6 +95,8 @@ export function WorkspaceShell({
             >
               {children}
             </div>
+            {/* Sibling overlay only — must not wrap `children` (see #S:0 note above). */}
+            <NavigationPendingMainOverlay />
           </main>
           <WorkspaceMainScrollBridge />
         </div>
