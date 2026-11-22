@@ -22,12 +22,14 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
   await ensureProgram4Data();
   const sessionUser = await getSessionMember();
   if (!sessionUser) {
-    redirect("/login");
+    // Login page resolves Auth+ACL: staff continue; non-ACL sessions see
+    // access-denied (proxy no longer loops /login ↔ /business).
+    redirect("/login?reason=no_access");
   }
 
   const actor = await getActingMember();
   if (!actor) {
-    redirect("/login");
+    redirect("/login?reason=no_access");
   }
   const impersonating = await isImpersonating();
   const permissions = permissionsForRole(actor.role);

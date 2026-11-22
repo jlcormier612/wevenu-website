@@ -8,11 +8,11 @@ export default async function HomePage() {
   await ensureProgram4Data();
   const session = await getSessionMember();
   if (!session) {
-    redirect("/login");
+    redirect("/login?reason=no_access");
   }
   const actor = await getActingMember();
   if (!actor) {
-    redirect("/login");
+    redirect("/login?reason=no_access");
   }
   const permissions = permissionsForRole(actor.role);
   if (permissions.includes("view_business_dashboard")) {

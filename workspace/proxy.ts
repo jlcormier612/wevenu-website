@@ -101,9 +101,11 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  if ((pathname === "/login" || pathname.startsWith("/login/")) && isAuthed && pathname === "/login") {
-    return NextResponse.redirect(new URL("/business", request.url));
-  }
+  // Do NOT bounce authenticated Supabase users away from /login here.
+  // Proxy only knows Auth session presence — not htc_internal_staff ACL.
+  // Auto-redirecting /login → /business caused a loop for venue/portal users
+  // with a valid Auth cookie but no Workspace ACL (AppShell → /login → …).
+  // Staff vs non-staff routing is handled on the login page after ACL resolve.
 
   return response;
 }
