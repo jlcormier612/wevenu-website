@@ -73,5 +73,8 @@ describe("R1 shell chrome", () => {
 
   it("defaults theme to light hospitality", () => {
     assert.match(rootLayout, /defaultTheme="light"/);
+    assert.match(rootLayout, /forcedTheme="light"/);
+    assert.match(rootLayout, /enableSystem=\{false\}/);
   });
 });
+

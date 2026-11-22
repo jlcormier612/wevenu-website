@@ -1,13 +1,12 @@
 "use client";
 
 import * as React from "react";
-
 import { ThemeProvider as NextThemesProvider } from "next-themes";
 
 /**
- * Application theme provider (light / dark / system) backed by next-themes.
- * Uses the `class` strategy so Tailwind's `dark:` variants and the design
- * tokens in globals.css respond to the active theme.
+ * Workspace is light-mode only (founder decision, Release 2).
+ * Callers must pass forcedTheme="light" and enableSystem={false}.
+ * Dark preference recovery is handled by the blocking script in app/layout.tsx.
  */
 export function ThemeProvider({
   children,

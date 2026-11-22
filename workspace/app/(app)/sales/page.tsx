@@ -95,12 +95,12 @@ export default async function SalesPage({
       <PageHeader
         eyebrow="Sales"
         title="Every venue, one record"
-        description="Convert inquiries to subscribed. Closed Won stays on this board after subscribe — the same record also appears in Customer Success. Dragging to Closed Won does not enter CS; only a successful Stripe subscribe does."
+        description="From first inquiry to subscribed customer."
         action={canEdit ? <AddRelationshipForm /> : undefined}
       />
 
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap gap-2">
+        <div className="flex max-w-full flex-wrap gap-2 overflow-x-auto pb-1">
           {STAGE_FILTERS.map((f) => {
             const active = stageFilter === f.value;
             const base =
@@ -123,11 +123,7 @@ export default async function SalesPage({
               <Link
                 key={f.value}
                 href={base}
-                className={
-                  active
-                    ? "inline-flex items-center rounded-sm bg-[var(--forest-sage)] px-3 py-1.5 text-sm text-[var(--true-white)]"
-                    : "inline-flex items-center rounded-sm bg-[var(--true-white)] px-3 py-1.5 text-sm text-[var(--forest-sage)] ring-1 ring-[color-mix(in_srgb,var(--taupe-medium)_50%,transparent)] hover:bg-[var(--header-linen)]"
-                }
+                className={active ? "ws-chip-active" : "ws-chip"}
               >
                 {f.label}
                 <AutoArrivalBadge count={newCount} active={active} />
@@ -138,21 +134,13 @@ export default async function SalesPage({
         <div className="flex gap-2">
           <Link
             href={pipelineHref}
-            className={
-              view === "pipeline"
-                ? "rounded-sm bg-[var(--soft-sage)]/50 px-3 py-1.5 text-sm"
-                : "rounded-sm px-3 py-1.5 text-sm ws-muted hover:text-foreground"
-            }
+            className={view === "pipeline" ? "ws-chip-active" : "ws-chip"}
           >
             Pipeline
           </Link>
           <Link
             href={listHref}
-            className={
-              view === "list"
-                ? "rounded-sm bg-[var(--soft-sage)]/50 px-3 py-1.5 text-sm"
-                : "rounded-sm px-3 py-1.5 text-sm ws-muted hover:text-foreground"
-            }
+            className={view === "list" ? "ws-chip-active" : "ws-chip"}
           >
             List
           </Link>
@@ -163,49 +151,104 @@ export default async function SalesPage({
         <SalesPipelineBoard relationships={relationships} />
       ) : (
         <Panel>
-          <DataTable
-            headers={[
-              "Venue",
-              "Stage",
-              "Health",
-              "Plan",
-              "Founder",
-              "Owner",
-              "Last contact",
-              "Tasks",
-            ]}
-            rows={relationships.map((r) => {
-              const assignee = getTeamMember(r.assignedTeamMemberId);
-              const tasks = getOpenTaskCount(r.id);
-              const stage = deriveSalesStage(r);
-              return [
-                <div key={`${r.id}-venue`}>
-                  <Link
-                    href={`/relationships/${r.id}?from=sales`}
-                    className="font-medium hover:text-[var(--heritage-sage)]"
-                  >
-                    {r.venue.name}
-                  </Link>
-                  <p className="mt-0.5 text-xs ws-muted">
-                    {r.venue.city}, {r.venue.state}
-                  </p>
-                </div>,
-                <StatusPill key={`${r.id}-status`}>
-                  {SALES_STAGE_LABELS[stage]}
-                </StatusPill>,
-                <span key={`${r.id}-health`}>
-                  {r.health
-                    ? `${HEALTH_LABELS[r.health]} ${HEALTH_EMOJI[r.health]}`
-                    : "—"}
-                </span>,
-                r.planName,
-                yesNo(r.foundingMember),
-                assignee?.name ?? "—",
-                formatRelativeDay(r.lastContactAt),
-                String(tasks),
-              ];
-            })}
-          />
+          <div className="hidden md:block">
+            <DataTable
+              headers={[
+                "Venue",
+                "Stage",
+                "Health",
+                "Plan",
+                "Founder",
+                "Owner",
+                "Last contact",
+                "Tasks",
+              ]}
+              rows={relationships.map((r) => {
+                const assignee = getTeamMember(r.assignedTeamMemberId);
+                const tasks = getOpenTaskCount(r.id);
+                const stage = deriveSalesStage(r);
+                return [
+                  <div key={`${r.id}-venue`}>
+                    <Link
+                      href={`/relationships/${r.id}?from=sales`}
+                      className="font-medium hover:text-[var(--htc-primary)]"
+                    >
+                      {r.venue.name}
+                    </Link>
+                    <p className="mt-0.5 text-xs ws-muted">
+                      {r.venue.city}, {r.venue.state}
+                    </p>
+                  </div>,
+                  <StatusPill key={`${r.id}-status`}>
+                    {SALES_STAGE_LABELS[stage]}
+                  </StatusPill>,
+                  <span key={`${r.id}-health`}>
+                    {r.health
+                      ? `${HEALTH_LABELS[r.health]} ${HEALTH_EMOJI[r.health]}`
+                      : "—"}
+                  </span>,
+                  r.planName,
+                  yesNo(r.foundingMember),
+                  assignee?.name ?? "—",
+                  formatRelativeDay(r.lastContactAt),
+                  String(tasks),
+                ];
+              })}
+            />
+          </div>
+
+          <div className="space-y-3 md:hidden">
+            {relationships.length === 0 ? (
+              <p className="py-8 text-center text-sm ws-muted">
+                No relationships in this view.
+              </p>
+            ) : (
+              relationships.map((r) => {
+                const assignee = getTeamMember(r.assignedTeamMemberId);
+                const tasks = getOpenTaskCount(r.id);
+                const stage = deriveSalesStage(r);
+                return (
+                  <article key={r.id} className="ws-pipeline-card">
+                    <Link
+                      href={`/relationships/${r.id}?from=sales`}
+                      className="font-medium text-[var(--htc-text)] hover:text-[var(--htc-primary)]"
+                    >
+                      {r.venue.name}
+                    </Link>
+                    <p className="mt-1 text-xs ws-muted">
+                      {r.venue.city}, {r.venue.state}
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <StatusPill>{SALES_STAGE_LABELS[stage]}</StatusPill>
+                      <span className="text-xs ws-muted">
+                        {r.health
+                          ? `${HEALTH_LABELS[r.health]} ${HEALTH_EMOJI[r.health]}`
+                          : "—"}
+                      </span>
+                    </div>
+                    <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                      <div>
+                        <dt className="ws-muted">Plan</dt>
+                        <dd>{r.planName}</dd>
+                      </div>
+                      <div>
+                        <dt className="ws-muted">Owner</dt>
+                        <dd>{assignee?.name ?? "—"}</dd>
+                      </div>
+                      <div>
+                        <dt className="ws-muted">Last contact</dt>
+                        <dd>{formatRelativeDay(r.lastContactAt)}</dd>
+                      </div>
+                      <div>
+                        <dt className="ws-muted">Tasks</dt>
+                        <dd>{tasks}</dd>
+                      </div>
+                    </dl>
+                  </article>
+                );
+              })
+            )}
+          </div>
         </Panel>
       )}
     </div>
