@@ -10,9 +10,9 @@ import {
   StatusPill,
 } from "@/components/shared/ui";
 import {
+  getBoardRelationships,
   getOpenTaskCount,
   getRelationship,
-  getRelationships,
   getTeamMember,
 } from "@/lib/data/store";
 import { tickWorkflows } from "@/lib/program3/engine";
@@ -76,7 +76,7 @@ export default async function SalesPage({
     await acknowledgeStageAutoArrivals("sales", stageFilter).catch(() => null);
   }
 
-  const all = getRelationships().filter(isInSalesView);
+  const all = getBoardRelationships().filter(isInSalesView);
 
   const relationships =
     stageFilter === "all"

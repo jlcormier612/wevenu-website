@@ -351,6 +351,8 @@ export type Notification = {
   meta?: NotificationMeta;
 };
 
+export type CrmRole = "customer" | "sandbox_demo" | "disposable";
+
 export type Relationship = {
   id: string;
   venue: VenueInfo;
@@ -358,6 +360,8 @@ export type Relationship = {
   status: RelationshipStatus;
   health: RelationshipHealth;
   healthScore?: number;
+  /** Isolation class for operational reporting. Default / absent = customer. */
+  crmRole?: CrmRole;
   /** Sales board stage (pre-customer). Same record as Customer Success. */
   salesStage?: SalesStage;
   /** Customer Success lifecycle stage (post-subscribe). */

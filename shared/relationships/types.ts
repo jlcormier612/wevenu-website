@@ -379,12 +379,21 @@ export type OpenFeedbackItem = {
   source?: "product" | "marketing_support" | "manual";
 };
 
+/**
+ * CRM reporting role. `customer` is operational (dashboards / MRR / conversions).
+ * `sandbox_demo` = known Sandbox demo venue registry. `disposable` = acceptance fixture.
+ * Sync still records events for demo/disposable — they are excluded from ops metrics only.
+ */
+export type CrmRole = "customer" | "sandbox_demo" | "disposable";
+
 export type Relationship = {
   id: string;
   venue: VenueInfo;
   owner: Contact;
   status: RelationshipStatus;
   health: RelationshipHealth;
+  /** Isolation class for operational reporting. Default / absent = customer. */
+  crmRole?: CrmRole;
   /** Heuristic 0–100; recomputed on lifecycle ticks / snapshot load */
   healthScore?: RelationshipHealthScore;
   /**

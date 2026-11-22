@@ -8,6 +8,7 @@ import {
   getFounderProgramCapacity,
 } from "@shared/relationships";
 
+import { toOperationalWorkspaceData } from "@/lib/data/operational";
 import type {
   Relationship,
   Subscription,
@@ -120,9 +121,10 @@ export function computeFounderDashboardMetrics(
   data: WorkspaceData,
   now = new Date(),
 ): FounderDashboardMetrics {
-  const relationships = data.relationships;
-  const subscriptions = data.subscriptions;
-  const timeline = data.timelineEvents;
+  const ops = toOperationalWorkspaceData(data);
+  const relationships = ops.relationships;
+  const subscriptions = ops.subscriptions;
+  const timeline = ops.timelineEvents;
 
   const founders = relationships
     .filter((r) => r.foundingMember)

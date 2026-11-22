@@ -5,10 +5,16 @@ import {
   getFounderProgramCapacity,
   getLiveStoreMemoryEpoch,
   hasLiveRelationshipsSync,
+  isOperationalRelationship,
+  isSandboxDemoVenueId,
   loadLiveStoreSync,
   type LiveRelationshipStore,
 } from "@shared/relationships";
 
+import {
+  filterOperationalNotifications,
+  isBoardVisibleRelationship,
+} from "@/lib/data/operational";
 import { seedData } from "@/lib/data/seed";
 import { normalizeRelationshipStatus } from "@/lib/pipeline";
 import {
@@ -67,8 +73,10 @@ function todayPrefix(now = new Date()): string {
 }
 
 function computeFounderProgram(relationships: Relationship[]): FounderProgramStats {
-  const founding = relationships.filter((r) => r.foundingMember);
-  const welcomeBack = relationships.filter((r) => r.welcomeBackRequested);
+  // Founder capacity / remaining must ignore demo + disposable fixtures.
+  const ops = relationships.filter((r) => isOperationalRelationship(r));
+  const founding = ops.filter((r) => r.foundingMember);
+  const welcomeBack = ops.filter((r) => r.welcomeBackRequested);
   const capacity = getFounderProgramCapacity();
   const currentCount = founding.length;
   return {
@@ -367,6 +375,16 @@ export function getRelationships(): Relationship[] {
   return getWorkspaceSnapshot().relationshipsSorted;
 }
 
+/** Sales / CS boards — hide sandbox_demo registry rows; keep disposable fixtures. */
+export function getBoardRelationships(): Relationship[] {
+  return getRelationships().filter(isBoardVisibleRelationship);
+}
+
+/** Metrics / Today — customer role only. */
+export function getOperationalRelationships(): Relationship[] {
+  return getRelationships().filter((r) => isOperationalRelationship(r));
+}
+
 export function getRelationship(id: string): Relationship | undefined {
   return getData().relationships.find((r) => r.id === id);
 }
@@ -422,8 +440,9 @@ export function getWhiteGloveRelationships(): Relationship[] {
 }
 
 export function getNotifications(opts?: { unreadOnly?: boolean }): Notification[] {
-  return getData()
-    .notifications.filter((n) => !opts?.unreadOnly || !n.read)
+  const data = getData();
+  return filterOperationalNotifications(data.notifications, data.relationships)
+    .filter((n) => !opts?.unreadOnly || !n.read)
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
@@ -431,14 +450,27 @@ export function getNotifications(opts?: { unreadOnly?: boolean }): Notification[
 export function getSupportInboxItems(opts?: {
   surface?: "vendor" | "client" | "all";
   status?: "open" | "resolved" | "all";
+  /** When true (default), hide items tied to sandbox demo venues / non-ops CRM. */
+  operationalOnly?: boolean;
 }) {
   const live = hasLiveRelationshipsSync() ? loadLiveStoreSync() : null;
   const items = live?.supportInboxItems ?? [];
   const surface = opts?.surface ?? "all";
   const status = opts?.status ?? "open";
+  const operationalOnly = opts?.operationalOnly !== false;
+  const relById = new Map(getRelationships().map((r) => [r.id, r]));
   return [...items]
     .filter((i) => (surface === "all" ? true : i.surface === surface))
     .filter((i) => (status === "all" ? true : i.status === status))
+    .filter((i) => {
+      if (!operationalOnly) return true;
+      if (isSandboxDemoVenueId(i.relatedVenueId)) return false;
+      if (i.relatedRelationshipId) {
+        const rel = relById.get(i.relatedRelationshipId);
+        if (rel && !isOperationalRelationship(rel)) return false;
+      }
+      return true;
+    })
     .sort(
       (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
     );
@@ -449,7 +481,7 @@ export function getFounderProgram(): FounderProgramStats {
 }
 
 export function getFoundingRelationships(): Relationship[] {
-  return getRelationships().filter((r) => r.foundingMember);
+  return getOperationalRelationships().filter((r) => r.foundingMember);
 }
 
 export function getReports(): ReportSnapshot {
@@ -480,7 +512,7 @@ export type DashboardBuckets = {
 export function getDashboardBuckets(): DashboardBuckets {
   const snapshot = getData();
   const day = todayPrefix();
-  const relationships = getRelationships();
+  const relationships = getOperationalRelationships();
 
   const newInquiries = relationships.filter(
     (r) => r.status === "inquiry" && r.createdAt.startsWith(day),
@@ -521,7 +553,11 @@ export function getDashboardBuckets(): DashboardBuckets {
       return new Date(bAt).getTime() - new Date(aAt).getTime();
     });
 
-  const upcomingWalkthroughs = getWalkthroughs({ status: "upcoming" });
+  const opsIds = new Set(relationships.map((r) => r.id));
+
+  const upcomingWalkthroughs = getWalkthroughs({ status: "upcoming" }).filter(
+    (w) => opsIds.has(w.relationshipId),
+  );
 
   const upcomingOnboardingSessions = relationships.filter(
     (r) =>
@@ -533,6 +569,7 @@ export function getDashboardBuckets(): DashboardBuckets {
   const supportRequests = relationships.filter(relationshipHasOpenSupport);
 
   const recentActivity = [...snapshot.timelineEvents]
+    .filter((e) => opsIds.has(e.relationshipId))
     .sort((a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime())
     .slice(0, 12);
 

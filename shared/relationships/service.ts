@@ -20,6 +20,7 @@ import {
   restoreFromNeedsSupport,
   type SalesStage,
 } from "./sales-cs";
+import { stampCrmIsolation } from "./demo-isolation";
 import { promoteStatus, stageLabelForStatus } from "./status";
 import { withLiveStore } from "./store";
 import type {
@@ -37,6 +38,21 @@ import type {
   Walkthrough,
 } from "./types";
 import { ensureWhiteGloveChecklistInStore } from "./white-glove-checklist";
+
+function stampFromFind(
+  relationship: Relationship,
+  input: FindOrCreateInput,
+  productVenueId?: string | null,
+) {
+  stampCrmIsolation(relationship, {
+    productVenueId:
+      productVenueId?.trim() || relationship.productSync?.venueId || null,
+    stripeCustomerId:
+      input.stripeCustomerId?.trim() || relationship.stripeCustomerId || null,
+    venueName: input.venueName ?? relationship.venue.name,
+    email: input.email ?? relationship.owner.email,
+  });
+}
 
 function recountOpenFeedback(relationship: Relationship): number {
   const items = relationship.openFeedbackItems ?? [];
@@ -562,6 +578,7 @@ export async function findOrCreateRelationship(
       if (stripeCheckoutSessionId && !existing.stripeCheckoutSessionId) {
         existing.stripeCheckoutSessionId = stripeCheckoutSessionId;
       }
+      stampFromFind(existing, input);
       existing.lastContactAt = now;
       existing.updatedAt = now;
       return { relationship: existing, created: false };
@@ -572,6 +589,7 @@ export async function findOrCreateRelationship(
     if (stripeCheckoutSessionId) {
       relationship.stripeCheckoutSessionId = stripeCheckoutSessionId;
     }
+    stampFromFind(relationship, input);
     store.relationships.push(relationship);
     return { relationship, created: true };
   });
@@ -981,6 +999,13 @@ export async function syncRelationshipFromProduct(opts: {
       };
       relationship.updatedAt = now;
     }
+
+    stampCrmIsolation(relationship, {
+      productVenueId,
+      stripeCustomerId: stripeCustomerId || relationship.stripeCustomerId,
+      venueName: relationship.venue.name,
+      email: relationship.owner.email,
+    });
 
     let eventAppended = false;
     const timeline = opts.timeline;
@@ -1982,6 +2007,8 @@ export async function mutateRelationship(opts: {
 
     relationship.lastContactAt = occurredAt;
     relationship.updatedAt = occurredAt;
+
+    stampFromFind(relationship, opts.find, opts.productVenueId);
 
     return { relationship, created };
   });
