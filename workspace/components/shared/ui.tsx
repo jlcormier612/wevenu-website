@@ -17,9 +17,13 @@ export function PageHeader({
     <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
       <div className="max-w-2xl">
         {eyebrow ? <p className="ws-eyebrow mb-2">{eyebrow}</p> : null}
-        <h1 className="font-heading text-4xl tracking-tight md:text-[2.75rem]">{title}</h1>
+        <h1 className="font-heading text-[1.875rem] tracking-tight text-[var(--htc-forest)] md:text-[2.375rem]">
+          {title}
+        </h1>
         {description ? (
-          <p className="mt-3 text-[1.05rem] leading-relaxed ws-muted">{description}</p>
+          <p className="mt-3 text-[0.95rem] leading-relaxed text-[var(--htc-muted)] md:text-[1.05rem]">
+            {description}
+          </p>
         ) : null}
       </div>
       {action}
@@ -74,7 +78,7 @@ export function StatTile({
     return (
       <Link
         href={href}
-        className="ws-panel block p-5 hover:border-[var(--heritage-sage)]/50"
+        className="ws-panel block p-5 hover:border-[var(--htc-primary)]/50"
       >
         {inner}
       </Link>
@@ -130,7 +134,7 @@ export function RelationshipLink({
       href={href ?? `/relationships/${id}`}
       className="group block rounded-sm py-1"
     >
-      <span className="font-medium text-foreground group-hover:text-[var(--heritage-sage)]">
+      <span className="font-medium text-foreground group-hover:text-[var(--htc-primary)]">
         {name}
       </span>
       {subtitle ? <span className="mt-0.5 block text-sm ws-muted">{subtitle}</span> : null}
@@ -151,11 +155,11 @@ export function DataTable({
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[640px] text-left text-sm">
+      <table className="w-full min-w-[640px] text-left text-[13px]">
         <thead>
-          <tr className="border-b border-[color-mix(in_srgb,var(--taupe-medium)_50%,transparent)]">
+          <tr className="border-b border-[var(--htc-border)] bg-[var(--htc-linen)]">
             {headers.map((h) => (
-              <th key={h} className="ws-eyebrow pb-3 pr-4 font-medium">
+              <th key={h} className="ws-eyebrow px-3 pb-3 pt-3 pr-4 font-semibold">
                 {h}
               </th>
             ))}
@@ -165,10 +169,10 @@ export function DataTable({
           {rows.map((cells, i) => (
             <tr
               key={i}
-              className="border-b border-[color-mix(in_srgb,var(--taupe-light)_70%,transparent)] last:border-0"
+              className="border-b border-[var(--htc-border)] last:border-0 hover:bg-[color-mix(in_srgb,var(--htc-soft-sage)_55%,transparent)]"
             >
               {cells.map((cell, j) => (
-                <td key={j} className="py-3.5 pr-4 align-top">
+                <td key={j} className="px-3 py-3.5 pr-4 align-top text-[var(--htc-text)]">
                   {cell}
                 </td>
               ))}

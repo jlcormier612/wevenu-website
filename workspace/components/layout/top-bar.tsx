@@ -21,13 +21,10 @@ export function TopBar({
   const unread = getNotifications({ unreadOnly: true }).slice(0, 3);
 
   return (
-    <header className="sticky top-0 z-20 border-b border-border/40 bg-background/92 backdrop-blur-sm">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-6 px-8 py-4">
-        <p className="hidden text-sm text-muted-foreground md:block">
-          One relationship. One timeline. One source of truth.
-        </p>
-        <div className="flex flex-1 items-center justify-end gap-4">
-          <div className="hidden text-right lg:block">
+    <header className="sticky top-0 z-20 border-b border-[var(--htc-border)] bg-[var(--htc-warm-white)]">
+      <div className="mx-auto flex h-[60px] max-w-[1440px] items-center justify-end gap-4 px-4 md:h-16 md:gap-6 md:px-8">
+        <div className="flex min-w-0 flex-1 items-center justify-end gap-3 md:gap-4">
+          <div className="hidden min-w-0 text-right lg:block">
             {unread.length === 0 ? (
               <p className="text-sm text-muted-foreground">No new alerts</p>
             ) : (
@@ -45,7 +42,7 @@ export function TopBar({
                         <span className="ml-2 text-muted-foreground">
                           {formatRelativeDay(n.createdAt)}
                         </span>
-                        <span className="ml-2 text-xs text-[var(--heritage-sage)]">
+                        <span className="ml-2 text-xs text-[var(--htc-primary)]">
                           {notificationDestinationLabel(n, rel?.venue.name)}
                         </span>
                       </NotificationNavLink>
@@ -58,7 +55,7 @@ export function TopBar({
           <div className="flex items-center gap-3">
             <ThemeToggle />
             <div
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--soft-sage)]/50 text-xs font-medium text-[var(--forest-sage)]"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--htc-soft-sage)] text-xs font-medium text-[var(--htc-forest)]"
               title={`${actor.name} · ${ROLE_LABELS[actor.role]}`}
             >
               {actor.initials}
@@ -75,7 +72,7 @@ export function TopBar({
             <form action={logoutAction}>
               <button
                 type="submit"
-                className="text-xs text-primary underline-offset-4 hover:underline"
+                className="text-sm text-[var(--htc-primary)] underline-offset-4 hover:underline"
               >
                 Sign out
               </button>
