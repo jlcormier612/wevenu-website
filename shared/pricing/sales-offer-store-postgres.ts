@@ -29,6 +29,16 @@ import type {
 } from "./sales-offer-types";
 import type { SaasPlanKey } from "./types";
 
+/** Staff team ids are `tm_*`; Auth user ids are UUIDs. Only persist UUID columns. */
+function uuidOrNull(value: string | null | undefined): string | null {
+  if (!value) return null;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    value,
+  )
+    ? value
+    : null;
+}
+
 type OfferRow = {
   id: string;
   relationship_id: string;
@@ -209,7 +219,7 @@ async function insertRevision(
     revision: offer.revision,
     status: offer.status,
     snapshot: snapshotFromRecord(offer),
-    changed_by_user_id: changedByUserId,
+    changed_by_user_id: uuidOrNull(changedByUserId),
     changed_by_email: changedByEmail,
     change_summary: changeSummary,
   });
@@ -284,9 +294,9 @@ export function createPostgresSalesOfferStore(
         expiresAt: n.expiresAt,
         replacesStandardPromos: n.replacesStandardPromos,
         revision: 1,
-        createdByUserId: input.createdByUserId ?? null,
+        createdByUserId: uuidOrNull(input.createdByUserId),
         createdByEmail: input.createdByEmail ?? null,
-        updatedByUserId: input.createdByUserId ?? null,
+        updatedByUserId: uuidOrNull(input.createdByUserId),
         updatedByEmail: input.createdByEmail ?? null,
         supersedesOfferId: null,
         supersededByOfferId: null,
@@ -394,7 +404,7 @@ export function createPostgresSalesOfferStore(
           replaces_standard_promos: n.replacesStandardPromos,
           revision: nextRevision,
           terms_hash: validated.termsHash,
-          updated_by_user_id: input.updatedByUserId ?? null,
+          updated_by_user_id: uuidOrNull(input.updatedByUserId),
           updated_by_email: input.updatedByEmail ?? null,
           updated_at: now,
         })
@@ -410,7 +420,7 @@ export function createPostgresSalesOfferStore(
       await insertRevision(
         client,
         saved,
-        input.updatedByUserId ?? null,
+        uuidOrNull(input.updatedByUserId),
         input.updatedByEmail ?? null,
         input.changeSummary ?? "Updated draft",
       );
@@ -439,7 +449,7 @@ export function createPostgresSalesOfferStore(
           revision: existing.revision + 1,
           discarded_at: now,
           updated_at: now,
-          updated_by_user_id: input.updatedByUserId ?? null,
+          updated_by_user_id: uuidOrNull(input.updatedByUserId),
           updated_by_email: input.updatedByEmail ?? null,
         })
         .eq("id", existing.id)
@@ -453,7 +463,7 @@ export function createPostgresSalesOfferStore(
       await insertRevision(
         client,
         saved,
-        input.updatedByUserId ?? null,
+        uuidOrNull(input.updatedByUserId),
         input.updatedByEmail ?? null,
         "Discarded draft",
       );
