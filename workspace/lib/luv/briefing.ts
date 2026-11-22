@@ -8,14 +8,18 @@ import {
   countWords,
   daysSinceContact,
 } from "./insights";
+import { formatLuvGreeting } from "./time-of-day";
 import type { LuvBriefing, LuvBriefingBullet, LuvInsight } from "./types";
 
-function timeOfDayGreeting(now: Date): string {
-  const hour = now.getHours();
-  if (hour < 12) return "Good morning";
-  if (hour < 17) return "Good afternoon";
-  return "Good evening";
-}
+/** Empty operational board — truthful calm copy (never invent relationship counts). */
+export const LUV_CALM_EMPTY_BULLET =
+  "The board looks calm. You're ready for your first customer conversations.";
+
+export const LUV_CALM_EMPTY_CLOSING =
+  "I'll suggest follow-ups when the first conversations begin.";
+
+export const LUV_FOLLOW_UP_CLOSING =
+  "Would you like me to draft today's follow-ups?";
 
 function overnightCutoff(now: Date): Date {
   const d = new Date(now);
@@ -360,26 +364,42 @@ export function buildDailyBriefing(
     );
   }
 
+  const hasOperationalRelationships = data.relationships.length > 0;
+
   if (bullets.length === 0) {
     bullets.push({
       id: "b_calm",
-      text: "The board looks calm — a good stretch to deepen two relationships.",
+      text: hasOperationalRelationships
+        ? "The board looks calm — a good stretch to deepen the relationships already on it."
+        : LUV_CALM_EMPTY_BULLET,
     });
-    for (const insight of insights
-      .filter((i) => i.actions.includes("draft") || i.actions.includes("send_email"))
-      .slice(0, 3)) {
-      addFollowUp(followUpInsights, insight);
+    // Only attach follow-up drafts when there are eligible operational
+    // relationships with actionable insights — never invent opportunities.
+    if (hasOperationalRelationships) {
+      for (const insight of insights
+        .filter(
+          (i) =>
+            i.actions.includes("draft") || i.actions.includes("send_email"),
+        )
+        .slice(0, 3)) {
+        addFollowUp(followUpInsights, insight);
+      }
     }
   }
 
-  const uniqueFollowUps = [...new Map(followUpInsights.map((i) => [i.id, i])).values()]
-    .sort((a, b) => b.priority - a.priority)
-    .slice(0, 8);
+  const uniqueFollowUps = hasOperationalRelationships
+    ? [...new Map(followUpInsights.map((i) => [i.id, i])).values()]
+        .sort((a, b) => b.priority - a.priority)
+        .slice(0, 8)
+    : [];
 
-  if (uniqueFollowUps.length < 3) {
+  if (hasOperationalRelationships && uniqueFollowUps.length < 3) {
     for (const insight of insights) {
       if (uniqueFollowUps.length >= 5) break;
-      if (!insight.actions.includes("draft") && !insight.actions.includes("send_email")) {
+      if (
+        !insight.actions.includes("draft") &&
+        !insight.actions.includes("send_email")
+      ) {
         continue;
       }
       if (uniqueFollowUps.some((i) => i.id === insight.id)) continue;
@@ -388,10 +408,13 @@ export function buildDailyBriefing(
   }
 
   return {
-    greeting: `${timeOfDayGreeting(now)}, ${name}.`,
+    greeting: formatLuvGreeting(name, now),
     firstName: name,
     bullets,
-    closing: "Would you like me to draft today's follow-ups?",
+    closing:
+      uniqueFollowUps.length > 0
+        ? LUV_FOLLOW_UP_CLOSING
+        : LUV_CALM_EMPTY_CLOSING,
     followUpInsights: uniqueFollowUps,
     generatedAt: now.toISOString(),
   };
