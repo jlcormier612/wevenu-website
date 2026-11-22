@@ -10,7 +10,6 @@ import {
   StatusPill,
 } from "@/components/shared/ui";
 import { loadLifecycleSettings } from "@/lib/lifecycle-settings";
-import { DEMO_LOGIN } from "@/lib/program4/demo-login";
 import { AVAILABILITY_LABELS, DEPARTMENT_LABELS, ROLE_LABELS } from "@/lib/program4/labels";
 import { ALL_PERMISSIONS, ROLE_PERMISSIONS } from "@/lib/program4/permissions";
 import {
@@ -23,7 +22,9 @@ import {
   ensureProgram4Data,
   getTeamProfilesSync,
 } from "@/lib/program4/store";
+import { getWorkspaceAuthProvider } from "@/lib/supabase/workspace-auth-config";
 import { whiteGloveTimelineLabel } from "@shared/relationships";
+
 
 export const metadata = { title: "Settings" };
 
@@ -166,20 +167,16 @@ export default async function SettingsPage() {
         </ul>
       </Panel>
 
-      <Panel title="Auth (Project 8)" className="mt-6">
+      <Panel title="Staff authentication" className="mt-6">
         <p className="text-sm leading-relaxed ws-muted">
-          File-based sessions under{" "}
-          <code className="rounded-sm bg-[var(--warm-gray)] px-1.5 py-0.5">workspace/.data/</code>
-          . Passwords are scrypt-hashed — not production SSO. Demo login:{" "}
+          Provider:{" "}
           <code className="rounded-sm bg-[var(--warm-gray)] px-1.5 py-0.5 text-foreground">
-            {DEMO_LOGIN.email}
-          </code>{" "}
-          /{" "}
-          <code className="rounded-sm bg-[var(--warm-gray)] px-1.5 py-0.5 text-foreground">
-            {DEMO_LOGIN.password}
+            {getWorkspaceAuthProvider()}
           </code>
-          . Owner/Admin impersonate from a teammate&apos;s profile — there is no global View
-          as.
+          . Workspace access requires Supabase Auth plus an active{" "}
+          <code className="rounded-sm bg-[var(--warm-gray)] px-1.5 py-0.5">htc_internal_staff</code>{" "}
+          membership. Demo credentials are not displayed or auto-provisioned. Owner/Admin may
+          impersonate from a teammate&apos;s profile — there is no global View as.
         </p>
       </Panel>
     </div>

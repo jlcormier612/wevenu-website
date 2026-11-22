@@ -19,6 +19,7 @@ import {
   roleToDepartment,
   upsertCredential,
   upsertInvite,
+  workspaceBaseUrl,
 } from "@/lib/program4/auth-store";
 import { hashPassword, verifyPassword } from "@/lib/program4/password";
 import { ROLE_LABELS, TEAM_ROLES } from "@/lib/program4/labels";
@@ -33,6 +34,12 @@ import {
   shouldUseSecureCookies,
 } from "@/lib/program4/session";
 import {
+  acceptStaffInvite,
+  createStaffInvite,
+  resolveStaffAfterAuth,
+} from "@/lib/program4/staff-auth-service";
+import { getStaffAclRepository } from "@/lib/program4/staff-acl";
+import {
   ensureProgram4Data,
   getTeamProfileSync,
   getTeamProfilesSync,
@@ -40,6 +47,7 @@ import {
   upsertTeamProfile,
 } from "@/lib/program4/store";
 import type { TeamInvite, TeamMemberProfile, TeamRole } from "@/lib/program4/types";
+import { isSupabaseStaffAuthEnabled } from "@/lib/supabase/workspace-auth-config";
 
 /** CRM sessions: Secure on HTTPS/production; plain http://localhost keeps Secure off. */
 function cookieBase() {
@@ -51,7 +59,7 @@ function cookieBase() {
   };
 }
 
-/** 30 days — longer than HMR cycles / overnight laptop sleep for local QA. */
+/** 30 days — legacy JSONL sessions only. */
 const SESSION_COOKIE_MAX_AGE_SEC = 60 * 60 * 24 * 30;
 
 async function clearLegacyCookies(jar: Awaited<ReturnType<typeof cookies>>) {
@@ -74,6 +82,49 @@ export async function loginAction(
 
   if (!email || !password) {
     return { error: "Email and password are required." };
+  }
+
+  if (isSupabaseStaffAuthEnabled()) {
+    const { createWorkspaceAuthClient } = await import("@/lib/supabase/server");
+    const supabase = await createWorkspaceAuthClient();
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    if (error || !data.user) {
+      return { error: "Invalid email or password." };
+    }
+    const resolved = await resolveStaffAfterAuth(
+      data.user.id,
+      data.user.email ?? email,
+    );
+    if (!resolved.ok) {
+      await supabase.auth.signOut();
+      return { error: resolved.error };
+    }
+    // Sync Program4 profile mirror for CRM UI that still reads JSONL roster.
+    const staff = resolved.staff;
+    const existing = getTeamProfileSync(staff.teamMemberId);
+    await upsertTeamProfile({
+      id: staff.teamMemberId,
+      name: staff.displayName,
+      email: staff.email,
+      initials: initialsFromName(staff.displayName),
+      role: staff.role,
+      title: existing?.title || roleDefaultTitle(staff.role),
+      department: existing?.department || roleToDepartment(staff.role),
+      commissionPlanId: existing?.commissionPlanId ?? null,
+      goals: existing?.goals ?? [],
+      availability: existing?.availability ?? "available",
+      territory: existing?.territory ?? null,
+      active: true,
+      joinedAt: existing?.joinedAt ?? staff.createdAt,
+    });
+    const jar = await cookies();
+    jar.delete(SESSION_COOKIE);
+    jar.delete(IMPERSONATE_COOKIE);
+    await clearLegacyCookies(jar);
+    redirect(next);
   }
 
   const cred = getCredentialByEmailSync(email);
@@ -100,12 +151,45 @@ export async function loginAction(
 
 export async function logoutAction() {
   const jar = await cookies();
+  if (isSupabaseStaffAuthEnabled()) {
+    try {
+      const { createWorkspaceAuthClient } = await import("@/lib/supabase/server");
+      const supabase = await createWorkspaceAuthClient();
+      await supabase.auth.signOut();
+    } catch {
+      /* still clear local cookies */
+    }
+  }
   const sid = jar.get(SESSION_COOKIE)?.value;
   if (sid) await deleteSession(sid);
   jar.delete(SESSION_COOKIE);
   jar.delete(IMPERSONATE_COOKIE);
   await clearLegacyCookies(jar);
   redirect("/login");
+}
+
+export async function requestPasswordResetAction(
+  _prev: { error?: string; ok?: boolean } | null,
+  formData: FormData,
+): Promise<{ error?: string; ok?: boolean }> {
+  if (!isSupabaseStaffAuthEnabled()) {
+    return { error: "Password reset requires Supabase staff auth." };
+  }
+  const email = String(formData.get("email") || "")
+    .trim()
+    .toLowerCase();
+  if (!email) return { error: "Email is required." };
+
+  // Always return ok to avoid account enumeration; only send if ACL member exists.
+  const staff = await getStaffAclRepository().getByEmail(email);
+  if (staff?.active) {
+    const { createWorkspaceAuthClient } = await import("@/lib/supabase/server");
+    const supabase = await createWorkspaceAuthClient();
+    await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${workspaceBaseUrl()}/login/reset`,
+    });
+  }
+  return { ok: true };
 }
 
 export async function inviteTeamMemberAction(
@@ -134,6 +218,64 @@ export async function inviteTeamMemberAction(
     return { error: "Invalid role." };
   }
 
+  if (isSupabaseStaffAuthEnabled()) {
+    const { createWorkspaceAuthClient } = await import("@/lib/supabase/server");
+    const supabase = await createWorkspaceAuthClient();
+    const { data } = await supabase.auth.getUser();
+    if (!data.user) return { error: "You must be signed in to invite teammates." };
+
+    const created = await createStaffInvite({
+      email,
+      displayName: name,
+      role,
+      invitedByUserId: data.user.id,
+    });
+    if (!created.ok) return { error: created.error };
+
+    // Mirror inactive roster row for UI.
+    await upsertTeamProfile({
+      id: created.invite.teamMemberId!,
+      name,
+      email,
+      initials: initialsFromName(name),
+      role,
+      title: roleDefaultTitle(role),
+      department: roleToDepartment(role),
+      commissionPlanId: null,
+      goals: [],
+      availability: "available",
+      territory: null,
+      active: false,
+      joinedAt: new Date().toISOString(),
+    });
+
+    const acceptUrl = `${workspaceBaseUrl()}/invite/${encodeURIComponent(created.token)}`;
+    await sendRawEmail({
+      to: email,
+      category: "account_invite",
+      priority: "critical",
+      subject: `You're invited to Hello to Cheers Relationship Workspace`,
+      text: [
+        `Hi ${name},`,
+        ``,
+        `${sessionMember.name} invited you to the Hello to Cheers Relationship Workspace as ${ROLE_LABELS[role]}.`,
+        ``,
+        `Accept your invite and create a password:`,
+        acceptUrl,
+      ].join("\n"),
+      html: `
+        <p>Hi ${escapeHtml(name)},</p>
+        <p><strong>${escapeHtml(sessionMember.name)}</strong> invited you as <strong>${escapeHtml(ROLE_LABELS[role])}</strong>.</p>
+        <p><a href="${acceptUrl}">Accept invite &amp; create password</a></p>
+      `,
+      tags: [{ name: "category", value: "team_invite" }],
+    });
+
+    revalidatePath("/team");
+    revalidatePath("/settings");
+    return { ok: true, inviteUrl: acceptUrl };
+  }
+
   const existing = getTeamProfilesSync().find((m) => m.email.toLowerCase() === email);
   let memberId = existing?.id ?? null;
 
@@ -156,7 +298,6 @@ export async function inviteTeamMemberAction(
     await upsertTeamProfile(created);
     memberId = created.id;
   } else {
-    // Refresh name/role on re-invite of inactive / seed members without credentials
     await upsertTeamProfile({
       ...existing,
       name: name || existing.name,
@@ -166,7 +307,6 @@ export async function inviteTeamMemberAction(
     });
   }
 
-  // Revoke prior pending invites for same email
   for (const inv of getPendingInvitesSync()) {
     if (inv.email === email) {
       await upsertInvite({ ...inv, status: "revoked" });
@@ -229,16 +369,73 @@ export async function acceptInviteAction(
   const password = String(formData.get("password") || "");
   const confirm = String(formData.get("confirm") || "");
 
-  const invite = getInviteByTokenSync(token);
-  if (!invite || invite.status !== "pending") {
-    return { error: "This invite is invalid or has already been used." };
-  }
-
   if (password.length < 8) {
     return { error: "Password must be at least 8 characters." };
   }
   if (password !== confirm) {
     return { error: "Passwords do not match." };
+  }
+
+  if (isSupabaseStaffAuthEnabled()) {
+    const { createWorkspaceAdminClient } = await import("@/lib/supabase/server");
+    const admin = createWorkspaceAdminClient();
+    const repo = getStaffAclRepository();
+    const { hashInviteToken } = await import("@/lib/program4/staff-acl");
+    const invite = await repo.getInviteByTokenHash(hashInviteToken(token));
+    if (!invite || invite.status !== "pending") {
+      return { error: "This invite is invalid or has already been used." };
+    }
+
+    const { data: created, error } = await admin.auth.admin.createUser({
+      email: invite.email,
+      password,
+      email_confirm: true,
+      user_metadata: {
+        htc_workspace_invite: true,
+        display_name: invite.displayName,
+      },
+    });
+    if (error || !created.user) {
+      // User may already exist — try update password only if email matches pending invite path via sign-in later
+      return {
+        error:
+          error?.message?.includes("already")
+            ? "An account with this email already exists. Sign in, then contact an owner."
+            : "Could not create account. Try again or contact an owner.",
+      };
+    }
+
+    const accepted = await acceptStaffInvite({
+      token,
+      userId: created.user.id,
+      email: invite.email,
+    });
+    if (!accepted.ok) {
+      return { error: accepted.error };
+    }
+
+    await upsertTeamProfile({
+      id: accepted.staff.teamMemberId,
+      name: accepted.staff.displayName,
+      email: accepted.staff.email,
+      initials: initialsFromName(accepted.staff.displayName),
+      role: accepted.staff.role,
+      title: roleDefaultTitle(accepted.staff.role),
+      department: roleToDepartment(accepted.staff.role),
+      commissionPlanId: null,
+      goals: [],
+      availability: "available",
+      territory: null,
+      active: true,
+      joinedAt: accepted.staff.createdAt,
+    });
+
+    redirect("/login?accepted=1");
+  }
+
+  const invite = getInviteByTokenSync(token);
+  if (!invite || invite.status !== "pending") {
+    return { error: "This invite is invalid or has already been used." };
   }
 
   let member =
@@ -302,7 +499,13 @@ export async function startImpersonateAction(formData: FormData) {
 
   const targetId = String(formData.get("memberId") || "").trim();
   if (!targetId || targetId === sessionMember.id) return;
-  if (!getTeamProfileSync(targetId)) return;
+
+  if (isSupabaseStaffAuthEnabled()) {
+    const acl = await getStaffAclRepository().getByTeamMemberId(targetId);
+    if (!acl?.active && !getTeamProfileSync(targetId)?.active) return;
+  } else if (!getTeamProfileSync(targetId)) {
+    return;
+  }
 
   const jar = await cookies();
   jar.set(IMPERSONATE_COOKIE, targetId, cookieBase());

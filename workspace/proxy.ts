@@ -1,23 +1,96 @@
 /**
  * Auth gate (Next.js 16 `proxy` convention).
- * Project 8 — require real session cookie `ws_session` for app routes.
- * Public: `/login`, `/invite/*`, `/activate/*`
- * Static public assets (e.g. `/brand/*.png`) are excluded via matcher so
- * `next/image` optimization can fetch them without a session cookie.
+ * R1A: Supabase Workspace auth cookie (isolated) OR legacy `ws_session`.
+ * Public: `/login`, `/invite/*`, `/activate/*`, `/login/reset`
+ * Static public assets excluded via matcher.
  */
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { createServerClient } from "@supabase/ssr";
 
-export function proxy(request: NextRequest) {
+import {
+  getWorkspaceAuthProvider,
+  workspaceAuthCookieName,
+  workspaceSupabaseAnonKey,
+  workspaceSupabaseUrl,
+} from "@/lib/supabase/workspace-auth-config";
+
+function hasLegacySession(request: NextRequest): boolean {
+  return Boolean(request.cookies.get("ws_session")?.value?.trim());
+}
+
+function hasWorkspaceSupabaseCookie(request: NextRequest): boolean {
+  const name = workspaceAuthCookieName();
+  // @supabase/ssr may chunk cookies as name.0, name.1, …
+  return request.cookies
+    .getAll()
+    .some((c) => c.name === name || c.name.startsWith(`${name}.`));
+}
+
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const sessionId = request.cookies.get("ws_session")?.value;
-  const isAuthed = Boolean(sessionId?.trim());
+  const provider = getWorkspaceAuthProvider();
 
   const isPublic =
     pathname === "/login" ||
+    pathname.startsWith("/login/") ||
     pathname.startsWith("/invite/") ||
     pathname.startsWith("/activate/") ||
     pathname.startsWith("/_next");
+
+  let isAuthed = false;
+  let response = NextResponse.next({
+    request: {
+      headers: (() => {
+        const h = new Headers(request.headers);
+        h.set("x-pathname", pathname);
+        return h;
+      })(),
+    },
+  });
+
+  if (provider === "legacy_jsonl") {
+    isAuthed = hasLegacySession(request);
+  } else if (provider === "memory") {
+    // Memory provider is for unit tests; proxy treats presence of legacy or sb cookie as hint.
+    isAuthed = hasLegacySession(request) || hasWorkspaceSupabaseCookie(request);
+  } else {
+    // supabase — refresh session and require a valid user; ACL enforced in requireWorkspaceStaff.
+    const url = workspaceSupabaseUrl();
+    const anonKey = workspaceSupabaseAnonKey();
+    if (url && anonKey) {
+      const cookieName = workspaceAuthCookieName();
+      const supabase = createServerClient(url, anonKey, {
+        cookieOptions: { name: cookieName },
+        cookies: {
+          getAll() {
+            return request.cookies.getAll();
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value }) => {
+              request.cookies.set(name, value);
+            });
+            response = NextResponse.next({
+              request: {
+                headers: (() => {
+                  const h = new Headers(request.headers);
+                  h.set("x-pathname", pathname);
+                  return h;
+                })(),
+              },
+            });
+            cookiesToSet.forEach(({ name, value, options }) => {
+              response.cookies.set(name, value, options);
+            });
+          },
+        },
+      });
+      const { data } = await supabase.auth.getUser();
+      isAuthed = Boolean(data.user);
+    } else {
+      isAuthed = hasWorkspaceSupabaseCookie(request);
+    }
+  }
 
   if (!isAuthed && !isPublic) {
     const loginUrl = request.nextUrl.clone();
@@ -26,27 +99,15 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  if (pathname === "/login" && isAuthed) {
+  if ((pathname === "/login" || pathname.startsWith("/login/")) && isAuthed && pathname === "/login") {
     return NextResponse.redirect(new URL("/business", request.url));
   }
 
-  const requestHeaders = new Headers(request.headers);
-  requestHeaders.set("x-pathname", pathname);
-
-  return NextResponse.next({
-    request: { headers: requestHeaders },
-  });
+  return response;
 }
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except:
-     * - api
-     * - _next/static, _next/image
-     * - favicon.ico
-     * - public asset files (svg, png, jpg, etc.) — same pattern as product app
-     */
     "/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };
