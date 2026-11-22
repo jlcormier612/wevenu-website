@@ -4,6 +4,15 @@ type CalendlyQa = {
   position?: number;
 };
 
+type CalendlyTracking = {
+  utm_campaign?: string | null;
+  utm_source?: string | null;
+  utm_medium?: string | null;
+  utm_content?: string | null;
+  utm_term?: string | null;
+  salesforce_uuid?: string | null;
+};
+
 export type CalendlyWebhookBody = {
   event?: string;
   created_at?: string;
@@ -15,6 +24,7 @@ export type CalendlyWebhookBody = {
     reschedule_url?: string;
     timezone?: string;
     questions_and_answers?: CalendlyQa[];
+    tracking?: CalendlyTracking;
     cancellation?: { canceled_by?: string; reason?: string };
     scheduled_event?: {
       start_time?: string;
@@ -56,12 +66,19 @@ export function extractCalendlyInvitee(body: CalendlyWebhookBody): {
   message?: string;
   reason?: string | null;
   sourceId?: string;
+  /** Opaque HTC handoff from utm_content when present. */
+  handoffToken?: string;
+  tracking?: CalendlyTracking;
 } | null {
   const payload = body.payload;
   const email = payload?.email?.trim();
   if (!email) return null;
 
   const questions = payload?.questions_and_answers;
+  const tracking = payload?.tracking;
+  const handoffRaw = tracking?.utm_content?.trim() || "";
+  const handoffToken = handoffRaw || undefined;
+
   return {
     email,
     name: payload?.name?.trim() || undefined,
@@ -70,5 +87,7 @@ export function extractCalendlyInvitee(body: CalendlyWebhookBody): {
     message: notesFromQuestions(questions),
     reason: payload?.cancellation?.reason?.trim() || null,
     sourceId: payload?.uri || payload?.scheduled_event?.uri || undefined,
+    handoffToken,
+    tracking: tracking || undefined,
   };
 }

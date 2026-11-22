@@ -94,6 +94,10 @@ export async function POST(request: Request) {
       ok: true,
       id: submission.id,
       ...(submission.replayed ? { replayed: true } : {}),
+      // Opaque scheduling handoff only — never return internal relationship ids.
+      ...(submission.handoffToken
+        ? { handoffToken: submission.handoffToken }
+        : {}),
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unable to submit.";

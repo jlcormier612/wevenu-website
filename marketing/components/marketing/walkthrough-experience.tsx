@@ -1,8 +1,15 @@
+"use client";
+
 import Image from "next/image";
+import { useMemo, useState } from "react";
 
 import { TrustRule } from "@/components/marketing/brand-accents";
 import { CalendlyEmbed } from "@/components/marketing/calendly-embed";
 import { ClosingCta } from "@/components/marketing/closing-cta";
+import {
+  LeadForm,
+  type LeadFormSuccessPayload,
+} from "@/components/marketing/lead-form";
 import { MarketingCta } from "@/components/marketing/marketing-cta";
 import {
   EDITORIAL_FRAME,
@@ -31,13 +38,26 @@ type WalkthroughExperienceProps = {
 };
 
 /**
- * Schedule a Walkthrough — approved three-section editorial page.
- * 1) Editorial introduction  2) Calendly booking  3) Quiet Contact alternative
+ * Schedule a Walkthrough — intro → shared HTC intake → Calendly (after CRM save).
+ * Intake fields match Contact. Calendly is gated behind durable relationship create/match.
  */
 export function WalkthroughExperience({
   calendlyUrl,
 }: WalkthroughExperienceProps) {
   const page = WALKTHROUGH_PAGE;
+  const [intake, setIntake] = useState<LeadFormSuccessPayload | null>(null);
+
+  const calendlyPrefill = useMemo(
+    () =>
+      intake
+        ? {
+            name: `${intake.firstName} ${intake.lastName}`.trim(),
+            email: intake.email,
+            handoffToken: intake.handoffToken,
+          }
+        : null,
+    [intake],
+  );
 
   return (
     <div className="bg-[var(--true-white)]">
@@ -83,54 +103,108 @@ export function WalkthroughExperience({
         </div>
       </section>
 
-      {/* ── 02 Calendly booking ── */}
+      {/* ── 02 Unified HTC intake (same fields as Contact) ── */}
       <section
-        id="schedule"
+        id="intake"
         className={`${SECTION_SCROLL} bg-[var(--true-white)]`}
-        aria-labelledby="walkthrough-booking-heading"
+        aria-labelledby="walkthrough-intake-heading"
       >
-        <div className="mx-auto max-w-4xl text-center">
+        <div className="mx-auto max-w-3xl text-center">
           <TrustRule className="mx-auto mb-5" />
           <h2
-            id="walkthrough-booking-heading"
+            id="walkthrough-intake-heading"
             className={`${HEADING_AFTER_EYEBROW} ${WALKTHROUGH_H2}`}
           >
-            {calendlyUrl
-              ? page.booking.headline
-              : page.bookingUnavailable.headline}
+            {page.intake.headline}
           </h2>
           <p
             className={`${TYPE_TITLE_TO_BODY} mx-auto ${TYPE_BODY} ${INK_MUTED} ${TYPE_MEASURE}`}
           >
-            {calendlyUrl ? page.booking.body : page.bookingUnavailable.body}
+            {page.intake.body}
           </p>
         </div>
 
-        <div className="mx-auto mt-12 max-w-4xl md:mt-14">
-          {calendlyUrl ? (
-            <CalendlyEmbed
-              url={calendlyUrl}
-              labelledBy="walkthrough-booking-heading"
-            />
-          ) : (
-            <div className="rounded-sm border border-[var(--taupe-medium)]/45 bg-[var(--linen)]/55 px-6 py-10 text-center md:px-10 md:py-12">
-              <p className={`mx-auto ${TYPE_BODY} ${INK_MUTED} ${TYPE_MEASURE}`}>
-                Online scheduling is not available yet. Reach out and we&apos;ll
-                arrange a time that works for your venue.
-              </p>
-              <div className="mt-8 flex justify-center">
-                <MarketingCta
-                  href={page.bookingUnavailable.cta.href}
-                  label={page.bookingUnavailable.cta.label}
-                  variant="secondary"
-                />
-              </div>
+        <div className="mx-auto mt-10 max-w-lg md:mt-12">
+          {!intake ? (
+            <div className="rounded-[2rem] border border-[var(--taupe-light)] bg-[var(--true-white)] px-6 py-8 shadow-[0_18px_40px_-34px_rgba(47,55,47,0.18)] md:px-8 md:py-10">
+              <LeadForm
+                intent="walkthrough"
+                submitLabel={page.intake.submitLabel}
+                messagePlaceholder={page.intake.messagePlaceholder}
+                buttonAccent="botanical"
+                onSuccess={(payload) => {
+                  setIntake(payload);
+                  // Reveal calendar without losing the intake confirmation.
+                  requestAnimationFrame(() => {
+                    document
+                      .getElementById("schedule")
+                      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  });
+                }}
+              />
             </div>
+          ) : (
+            <p
+              className={`mx-auto ${TYPE_BODY} ${INK_MUTED} ${TYPE_MEASURE}`}
+              role="status"
+            >
+              {page.booking.afterIntake}
+            </p>
           )}
         </div>
       </section>
 
-      {/* ── 03 Quiet Contact alternative — compact closing ── */}
+      {/* ── 03 Calendly — only after durable intake ── */}
+      {intake ? (
+        <section
+          id="schedule"
+          className={`${SECTION_SCROLL} border-t border-[var(--taupe-medium)]/40 bg-[var(--true-white)]`}
+          aria-labelledby="walkthrough-booking-heading"
+        >
+          <div className="mx-auto max-w-4xl text-center">
+            <TrustRule className="mx-auto mb-5" />
+            <h2
+              id="walkthrough-booking-heading"
+              className={`${HEADING_AFTER_EYEBROW} ${WALKTHROUGH_H2}`}
+            >
+              {calendlyUrl
+                ? page.booking.headline
+                : page.bookingUnavailable.headline}
+            </h2>
+            <p
+              className={`${TYPE_TITLE_TO_BODY} mx-auto ${TYPE_BODY} ${INK_MUTED} ${TYPE_MEASURE}`}
+            >
+              {calendlyUrl ? page.booking.body : page.bookingUnavailable.body}
+            </p>
+          </div>
+
+          <div className="mx-auto mt-12 max-w-4xl md:mt-14">
+            {calendlyUrl ? (
+              <CalendlyEmbed
+                url={calendlyUrl}
+                labelledBy="walkthrough-booking-heading"
+                prefill={calendlyPrefill}
+              />
+            ) : (
+              <div className="rounded-sm border border-[var(--taupe-medium)]/45 bg-[var(--linen)]/55 px-6 py-10 text-center md:px-10 md:py-12">
+                <p className={`mx-auto ${TYPE_BODY} ${INK_MUTED} ${TYPE_MEASURE}`}>
+                  Online scheduling is not available yet. We&apos;ve saved your
+                  walkthrough request and will follow up personally.
+                </p>
+                <div className="mt-8 flex justify-center">
+                  <MarketingCta
+                    href={page.bookingUnavailable.cta.href}
+                    label={page.bookingUnavailable.cta.label}
+                    variant="secondary"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+      ) : null}
+
+      {/* ── 04 Quiet Contact alternative — compact closing ── */}
       <section
         className="scroll-mt-28 border-t border-[var(--taupe-medium)]/40 bg-[var(--linen)] px-6 py-14 md:py-20"
         aria-labelledby="walkthrough-contact-heading"

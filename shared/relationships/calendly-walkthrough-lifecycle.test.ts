@@ -104,9 +104,20 @@ describe("Calendly walkthrough CRM lifecycle (file fixtures)", () => {
       name: "Existing Lead",
       venueName: "Existing Venue",
       message: "Email request first",
-      referralSource: "Website Walkthrough",
+      referralSource: "Schedule a Walkthrough",
     });
     assert.equal(soft.relationship.status, "walkthrough_requested");
+    assert.ok(soft.handoffToken);
+    // Abandoned scheduling: interest recorded, no fake upcoming appointment.
+    {
+      const store = await loadLiveStore();
+      assert.equal(
+        store.walkthroughs.filter(
+          (w) => w.relationshipId === soft.relationship.id,
+        ).length,
+        0,
+      );
+    }
 
     const booked = await ingestWalkthroughRequest({
       email: "existing-lead@example.invalid",
@@ -114,7 +125,8 @@ describe("Calendly walkthrough CRM lifecycle (file fixtures)", () => {
       venueName: "Existing Venue",
       scheduledAt: "2026-12-02T17:00:00.000Z",
       sourceId: "https://api.calendly.com/scheduled_events/CCC/invitees/DDD",
-      referralSource: "Calendly",
+      handoffToken: soft.handoffToken,
+      referralSource: "Schedule a Walkthrough",
     });
     assert.equal(booked.relationship.id, soft.relationship.id);
     assert.equal(booked.relationship.status, "walkthrough_scheduled");

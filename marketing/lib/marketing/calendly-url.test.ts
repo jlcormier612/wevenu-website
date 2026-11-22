@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { resolveCalendlyEmbedUrl } from "@/lib/marketing/calendly-url";
+import {
+  buildCalendlySchedulingUrl,
+  resolveCalendlyEmbedUrl,
+} from "@/lib/marketing/calendly-url";
 import { MORE_INFO_CTA, PRIMARY_CTA } from "@/lib/marketing/nav";
 
 describe("resolveCalendlyEmbedUrl", () => {
@@ -23,6 +26,28 @@ describe("resolveCalendlyEmbedUrl", () => {
     assert.equal(
       resolveCalendlyEmbedUrl("https://example.com/schedule"),
       null,
+    );
+  });
+});
+
+describe("buildCalendlySchedulingUrl", () => {
+  it("prefills name/email and attaches opaque handoff as utm_content", () => {
+    const url = buildCalendlySchedulingUrl(
+      "https://calendly.com/jennifer-hellotocheers/new-meeting",
+      {
+        name: "Ada Venue",
+        email: "ada@example.com",
+        handoffToken: "htc_aaaaaaaaaaaaaaaaaaaaaaaa",
+      },
+    );
+    const parsed = new URL(url);
+    assert.equal(parsed.searchParams.get("name"), "Ada Venue");
+    assert.equal(parsed.searchParams.get("email"), "ada@example.com");
+    assert.equal(parsed.searchParams.get("utm_source"), "htc_website");
+    assert.equal(parsed.searchParams.get("utm_medium"), "walkthrough_intake");
+    assert.equal(
+      parsed.searchParams.get("utm_content"),
+      "htc_aaaaaaaaaaaaaaaaaaaaaaaa",
     );
   });
 });
