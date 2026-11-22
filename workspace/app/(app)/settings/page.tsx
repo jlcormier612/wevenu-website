@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import Link from "next/link";
 
 import { logoutAction } from "@/app/(app)/team/auth-actions";
@@ -29,6 +30,9 @@ export const metadata = { title: "Settings" };
 export default async function SettingsPage() {
   await ensureProgram4Data();
   const actor = await getActingMember();
+  if (!actor) {
+    redirect("/login");
+  }
   const sessionUser = await getSessionMember();
   const impersonating = await isImpersonating();
   const team = getTeamProfilesSync().filter((m) => m.active);

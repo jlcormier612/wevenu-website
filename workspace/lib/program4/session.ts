@@ -1,10 +1,9 @@
 import { cookies } from "next/headers";
+import { NextResponse } from "next/server";
 
-import {
-  getSessionSync,
-} from "./auth-store";
+import { getSessionSync } from "./auth-store";
 import { roleHasPermission } from "./permissions";
-import { DEFAULT_ACTOR_ID, getTeamProfileSync, getTeamProfilesSync } from "./store";
+import { getTeamProfileSync } from "./store";
 import type { Permission, TeamMemberProfile, TeamRole } from "./types";
 
 /** Opaque session id → team member (real login). */
@@ -40,7 +39,9 @@ export async function getSessionMemberId(): Promise<string | null> {
 export async function getSessionMember(): Promise<TeamMemberProfile | null> {
   const id = await getSessionMemberId();
   if (!id) return null;
-  return getTeamProfileSync(id) ?? null;
+  const member = getTeamProfileSync(id) ?? null;
+  if (!member || !member.active) return null;
+  return member;
 }
 
 export async function getImpersonateMemberId(): Promise<string | null> {
@@ -54,12 +55,12 @@ export async function getImpersonateMemberId(): Promise<string | null> {
 /**
  * Effective actor for permissions / UI.
  * Session user unless Owner/Admin is impersonating someone.
+ *
+ * R0: returns null when unauthenticated — never falls back to a seed Owner.
  */
-export async function getActingMemberId(): Promise<string> {
+export async function getActingMemberId(): Promise<string | null> {
   const sessionMember = await getSessionMember();
-  if (!sessionMember) {
-    return DEFAULT_ACTOR_ID;
-  }
+  if (!sessionMember) return null;
 
   if (roleCanImpersonate(sessionMember.role)) {
     const imp = await getImpersonateMemberId();
@@ -71,14 +72,17 @@ export async function getActingMemberId(): Promise<string> {
   return sessionMember.id;
 }
 
-export async function getActingMember(): Promise<TeamMemberProfile> {
+export async function getActingMember(): Promise<TeamMemberProfile | null> {
   const id = await getActingMemberId();
-  return getTeamProfileSync(id) ?? getTeamProfilesSync()[0]!;
+  if (!id) return null;
+  const member = getTeamProfileSync(id) ?? null;
+  if (!member || !member.active) return null;
+  return member;
 }
 
-export async function getActingRole(): Promise<TeamRole> {
+export async function getActingRole(): Promise<TeamRole | null> {
   const member = await getActingMember();
-  return member.role;
+  return member?.role ?? null;
 }
 
 export async function isImpersonating(): Promise<boolean> {
@@ -88,11 +92,64 @@ export async function isImpersonating(): Promise<boolean> {
   return Boolean(imp && imp !== sessionMember.id);
 }
 
+/** False when there is no valid staff session (fail closed). */
 export async function actorCan(permission: Permission): Promise<boolean> {
   const role = await getActingRole();
+  if (!role) return false;
   return roleHasPermission(role, permission);
 }
 
 export async function requirePermission(permission: Permission): Promise<boolean> {
   return actorCan(permission);
+}
+
+export function unauthorizedJson(message = "Unauthorized"): NextResponse {
+  return NextResponse.json({ error: message }, { status: 401 });
+}
+
+export function forbiddenJson(message = "Forbidden"): NextResponse {
+  return NextResponse.json({ error: message }, { status: 403 });
+}
+
+export type WorkspaceStaffAuth =
+  | { ok: true; session: TeamMemberProfile; actor: TeamMemberProfile }
+  | { ok: false; response: NextResponse };
+
+/**
+ * Fail-closed staff gate for Workspace API routes and sensitive actions.
+ * Requires a valid active session; optional permission checked on the
+ * effective (possibly impersonated) actor.
+ */
+export async function requireWorkspaceStaff(
+  permission?: Permission | Permission[],
+): Promise<WorkspaceStaffAuth> {
+  const session = await getSessionMember();
+  if (!session) {
+    return { ok: false, response: unauthorizedJson() };
+  }
+
+  const actor = await getActingMember();
+  if (!actor) {
+    return { ok: false, response: unauthorizedJson() };
+  }
+
+  if (permission) {
+    const needed = Array.isArray(permission) ? permission : [permission];
+    const allowed = needed.some((p) => roleHasPermission(actor.role, p));
+    if (!allowed) {
+      return { ok: false, response: forbiddenJson() };
+    }
+  }
+
+  return { ok: true, session, actor };
+}
+
+/** True when request is HTTPS or production (for Secure cookies). */
+export function shouldUseSecureCookies(): boolean {
+  if (process.env.NODE_ENV === "production") return true;
+  const url =
+    process.env.WORKSPACE_URL?.trim() ||
+    process.env.NEXT_PUBLIC_WORKSPACE_URL?.trim() ||
+    "";
+  return /^https:\/\//i.test(url);
 }

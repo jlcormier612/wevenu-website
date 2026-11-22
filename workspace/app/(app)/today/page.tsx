@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import Link from "next/link";
 
 import { LuvBriefingCard } from "@/components/luv/luv-briefing";
@@ -30,6 +31,9 @@ export const metadata = { title: "Today" };
 export default async function TodayPage() {
   await ensureProgram4Data();
   const actor = await getActingMember();
+  if (!actor) {
+    redirect("/login");
+  }
   const canResolveSupport =
     (await actorCan("edit_relationships")) ||
     (await actorCan("manage_communications"));

@@ -89,6 +89,9 @@ export default async function BusinessPage() {
   }
 
   const actor = await getActingMember();
+  if (!actor) {
+    redirect("/login");
+  }
   const metrics = computeBusinessDashboardMetrics(getData());
   const { briefing, drafts } = loadLuvBriefing(actor);
   const maxNewSubs = Math.max(...metrics.subscriptionGrowth.map((m) => m.newSubs), 1);

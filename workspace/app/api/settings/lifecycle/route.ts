@@ -4,10 +4,12 @@ import {
   loadLifecycleSettings,
   saveLifecycleSettings,
 } from "@/lib/lifecycle-settings";
-import { actorCan } from "@/lib/program4/session";
+import { actorCan, requireWorkspaceStaff } from "@/lib/program4/session";
 import { ensureProgram4Data } from "@/lib/program4/store";
 
 export async function GET() {
+  const auth = await requireWorkspaceStaff();
+  if (!auth.ok) return auth.response;
   await ensureProgram4Data();
   if (!(await actorCan("view_relationships"))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -17,6 +19,8 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const auth = await requireWorkspaceStaff();
+  if (!auth.ok) return auth.response;
   await ensureProgram4Data();
   if (!(await actorCan("manage_settings"))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });

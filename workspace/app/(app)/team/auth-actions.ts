@@ -30,6 +30,7 @@ import {
   actorCan,
   getSessionMember,
   roleCanImpersonate,
+  shouldUseSecureCookies,
 } from "@/lib/program4/session";
 import {
   ensureProgram4Data,
@@ -40,13 +41,15 @@ import {
 } from "@/lib/program4/store";
 import type { TeamInvite, TeamMemberProfile, TeamRole } from "@/lib/program4/types";
 
-/** CRM sessions are local/demo auth — never Secure on http://localhost or the cookie is dropped. */
-const COOKIE_BASE = {
-  httpOnly: true,
-  sameSite: "lax" as const,
-  path: "/",
-  secure: false,
-};
+/** CRM sessions: Secure on HTTPS/production; plain http://localhost keeps Secure off. */
+function cookieBase() {
+  return {
+    httpOnly: true,
+    sameSite: "lax" as const,
+    path: "/",
+    secure: shouldUseSecureCookies(),
+  };
+}
 
 /** 30 days — longer than HMR cycles / overnight laptop sleep for local QA. */
 const SESSION_COOKIE_MAX_AGE_SEC = 60 * 60 * 24 * 30;
@@ -86,7 +89,7 @@ export async function loginAction(
   const session = await createSession(member.id);
   const jar = await cookies();
   jar.set(SESSION_COOKIE, session.id, {
-    ...COOKIE_BASE,
+    ...cookieBase(),
     maxAge: SESSION_COOKIE_MAX_AGE_SEC,
   });
   jar.delete(IMPERSONATE_COOKIE);
@@ -302,7 +305,7 @@ export async function startImpersonateAction(formData: FormData) {
   if (!getTeamProfileSync(targetId)) return;
 
   const jar = await cookies();
-  jar.set(IMPERSONATE_COOKIE, targetId, COOKIE_BASE);
+  jar.set(IMPERSONATE_COOKIE, targetId, cookieBase());
   revalidatePath("/", "layout");
 }
 

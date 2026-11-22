@@ -39,6 +39,9 @@ export async function completeTaskInWorkspace(
   }
 
   const actor = await getActingMember();
+  if (!actor) {
+    throw new Error("Unauthorized");
+  }
   const now = new Date().toISOString();
 
   const inLive =

@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { redirect, notFound } from "next/navigation";
 
 import { WhiteGloveImplementationPanel } from "@/components/relationships/white-glove-implementation-panel";
 import { getRelationship, getTasks } from "@/lib/data/store";
@@ -46,6 +46,9 @@ export default async function WhiteGloveImplementationPage({
   if (!relationship) notFound();
 
   const actor = await getActingMember();
+  if (!actor) {
+    redirect("/login");
+  }
   const settings = await loadLifecycleSettings();
   const allTasks = getTasks({ relationshipId: id });
   const tasks = allTasks.filter(

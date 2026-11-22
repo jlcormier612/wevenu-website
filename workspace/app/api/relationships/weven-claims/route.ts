@@ -2,9 +2,9 @@ import { NextResponse } from "next/server";
 
 import type { WevenClaimReviewStatus } from "@shared/pricing";
 
-import { actorCan } from "@/lib/program4/session";
+import { actorCan, requireWorkspaceStaff } from "@/lib/program4/session";
 import { ensureProgram4Data } from "@/lib/program4/store";
-import { getActingMember } from "@/lib/program4/session";
+import {} from "@/lib/program4/session";
 
 export const runtime = "nodejs";
 
@@ -21,6 +21,8 @@ const REVIEW_STATUSES = new Set<WevenClaimReviewStatus>([
  * Verification never auto-mutates Stripe billing.
  */
 export async function GET(request: Request) {
+  const auth = await requireWorkspaceStaff("manage_welcome_back");
+  if (!auth.ok) return auth.response;
   await ensureProgram4Data();
   if (!(await actorCan("manage_welcome_back"))) {
     return NextResponse.json(
@@ -81,6 +83,8 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const auth = await requireWorkspaceStaff("manage_welcome_back");
+  if (!auth.ok) return auth.response;
   await ensureProgram4Data();
   if (!(await actorCan("manage_welcome_back"))) {
     return NextResponse.json(
@@ -119,7 +123,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const actor = await getActingMember();
+  const actor = auth.actor;
 
   try {
     const {

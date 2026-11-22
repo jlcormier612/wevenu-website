@@ -61,6 +61,9 @@ export async function resolveWelcomeBackInWorkspace(
   }
 
   const actor = await getActingMember();
+  if (!actor) {
+    throw new Error("Unauthorized");
+  }
   const now = new Date().toISOString();
   const note = input.note?.trim() || undefined;
 

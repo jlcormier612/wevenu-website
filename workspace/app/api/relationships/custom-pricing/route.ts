@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { actorCan, getSessionMember } from "@/lib/program4/session";
+import { actorCan, getSessionMember, requireWorkspaceStaff } from "@/lib/program4/session";
 
 export const runtime = "nodejs";
 
@@ -65,6 +65,8 @@ async function proxyVenueApp(
  * Authenticated founders only; Stripe mutations execute on venue-app.
  */
 export async function GET(request: Request) {
+  const auth = await requireWorkspaceStaff();
+  if (!auth.ok) return auth.response;
   const denied = await requireFounderSession();
   if (denied) return denied;
 
@@ -77,6 +79,8 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const auth = await requireWorkspaceStaff();
+  if (!auth.ok) return auth.response;
   const denied = await requireFounderSession();
   if (denied) return denied;
 

@@ -9,7 +9,7 @@ import {
   createCrmAdminClient,
   crmSupabaseConfigured,
 } from "@shared/relationships/pg-client";
-import { getSessionMember } from "@/lib/program4/session";
+import { getSessionMember, requireWorkspaceStaff } from "@/lib/program4/session";
 
 export const runtime = "nodejs";
 
@@ -17,6 +17,8 @@ export const runtime = "nodejs";
  * Founder CRM — list organizations, eligibility, pending adjustments.
  */
 export async function GET() {
+  const auth = await requireWorkspaceStaff();
+  if (!auth.ok) return auth.response;
   const member = await getSessionMember();
   if (!member) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { syncRelationshipToProduct } from "@shared/product-sync";
 
-import { actorCan } from "@/lib/program4/session";
+import { actorCan, requireWorkspaceStaff } from "@/lib/program4/session";
 import { ensureProgram4Data } from "@/lib/program4/store";
 
 /**
@@ -10,6 +10,8 @@ import { ensureProgram4Data } from "@/lib/program4/store";
  * Re-runs or resumes the idempotent provisioning pipeline.
  */
 export async function POST(request: Request) {
+  const auth = await requireWorkspaceStaff("manage_product_sync");
+  if (!auth.ok) return auth.response;
   await ensureProgram4Data();
 
   if (!(await actorCan("manage_product_sync"))) {

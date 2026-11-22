@@ -1,7 +1,6 @@
 import Link from "next/link";
 
 import { LoginForm } from "@/components/team/login-form";
-import { DEMO_LOGIN } from "@/lib/program4/demo-login";
 import { ensureProgram4Data } from "@/lib/program4/store";
 
 export const metadata = { title: "Sign in" };
@@ -30,17 +29,6 @@ export default async function LoginPage({
           next={params.next ?? "/business"}
           accepted={params.accepted === "1"}
         />
-
-        <p className="mt-6 text-center text-xs leading-relaxed ws-muted">
-          Demo:{" "}
-          <code className="rounded-sm bg-[var(--warm-gray)] px-1.5 py-0.5 text-foreground">
-            {DEMO_LOGIN.email}
-          </code>{" "}
-          /{" "}
-          <code className="rounded-sm bg-[var(--warm-gray)] px-1.5 py-0.5 text-foreground">
-            {DEMO_LOGIN.password}
-          </code>
-        </p>
 
         <p className="mt-4 text-center text-sm ws-muted">
           <Link href="/" className="text-[var(--heritage-sage)] underline-offset-4 hover:underline">

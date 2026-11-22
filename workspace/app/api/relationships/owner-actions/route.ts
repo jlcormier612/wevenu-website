@@ -17,7 +17,7 @@ import {
   ensureProgram3Data,
   newId,
 } from "@/lib/program3/store";
-import { actorCan, getActingMember } from "@/lib/program4/session";
+import { actorCan, requireWorkspaceStaff } from "@/lib/program4/session";
 import { ensureProgram4Data } from "@/lib/program4/store";
 
 type OwnerAction = "create_task" | "send_message" | "add_note";
@@ -27,6 +27,8 @@ type OwnerAction = "create_task" | "send_message" | "add_note";
  * POST { relationshipId, action, ... }
  */
 export async function POST(request: Request) {
+  const auth = await requireWorkspaceStaff(["edit_relationships", "manage_communications", "manage_tasks"]);
+  if (!auth.ok) return auth.response;
   await ensureProgram4Data();
   await ensureProgram3Data();
 
@@ -61,7 +63,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Relationship not found" }, { status: 404 });
   }
 
-  const actor = await getActingMember();
+  const actor = auth.actor;
   const now = new Date().toISOString();
   const inLive =
     hasLiveRelationshipsSync() &&
