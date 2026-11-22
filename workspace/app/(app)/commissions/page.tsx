@@ -46,7 +46,7 @@ export default async function CommissionsPage({
     subscriptions: data.subscriptions,
   });
 
-  const period = params.period || periodKeyFromIso("2026-07-21T12:00:00.000Z");
+  const period = params.period || periodKeyFromIso(new Date().toISOString());
   const repFilter = params.rep || "";
 
   let entries = getCommissionLedgerSync({ periodKey: period });
