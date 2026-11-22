@@ -99,6 +99,14 @@ export {
   type LaunchCheckoutPricing,
 } from "./resolve-checkout";
 
+export {
+  couponRestrictedProductIds,
+  subscriptionCouponAllowsOneTimeProduct,
+  EXPECTED_GATHER_CHECKOUT_TOTALS_CENTS,
+  type CouponAppliesTo,
+  type SubscriptionCouponOneTimeCheck,
+} from "./subscription-coupon-scope";
+
 export type * from "./group-types";
 
 export {
