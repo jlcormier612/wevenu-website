@@ -90,7 +90,7 @@ export default async function BusinessPage() {
 
   const actor = await getActingMember();
   if (!actor) {
-    redirect("/login");
+    redirect("/login?reason=no_access");
   }
   const metrics = computeBusinessDashboardMetrics(getData());
   const { briefing, drafts } = loadLuvBriefing(actor);
