@@ -58,7 +58,9 @@ export async function proxy(request: NextRequest) {
     // supabase — refresh session and require a valid user; ACL enforced in requireWorkspaceStaff.
     const url = workspaceSupabaseUrl();
     const anonKey = workspaceSupabaseAnonKey();
-    if (url && anonKey) {
+    if (url && anonKey && hasWorkspaceSupabaseCookie(request)) {
+      // Skip Auth network round-trip when no Workspace session cookie exists
+      // (anonymous redirect stays cheap; avoids getUser on every public asset miss).
       const cookieName = workspaceAuthCookieName();
       const supabase = createServerClient(url, anonKey, {
         cookieOptions: { name: cookieName },
@@ -88,7 +90,7 @@ export async function proxy(request: NextRequest) {
       const { data } = await supabase.auth.getUser();
       isAuthed = Boolean(data.user);
     } else {
-      isAuthed = hasWorkspaceSupabaseCookie(request);
+      isAuthed = false;
     }
   }
 
