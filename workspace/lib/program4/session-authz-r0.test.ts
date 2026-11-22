@@ -138,11 +138,13 @@ describe("R0 API inventory gates", () => {
     }
   });
 
-  it("inbound email uses webhook authorize (not staff session)", () => {
+  it("inbound email uses fail-closed Svix authorize (not staff session)", () => {
     const src = readFileSync(join(apiRoot, "email/inbound/route.ts"), "utf8");
-    assert.match(src, /authorize\(/);
+    assert.match(src, /authorizeInboundWebhook/);
     assert.equal(src.includes("requireWorkspaceStaff"), false);
+    assert.equal(src.includes("secrets.length === 0) return true"), false);
   });
+
 
   it("proxy still excludes /api (R0 uses per-route requireWorkspaceStaff)", () => {
     assert.match(proxySrc, /\(\?!api/);

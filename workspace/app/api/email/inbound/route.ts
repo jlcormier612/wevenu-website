@@ -7,21 +7,23 @@
  * Setup:
  *   1. Resend → Inbound → verify domain + MX
  *   2. RESEND_INBOUND_ADDRESS=inbox@replies.yourdomain.com
- *   3. RESEND_WEBHOOK_SECRET=… (query ?secret= or Svix headers)
- *   4. Point inbound endpoint to https://<workspace-host>/api/email/inbound?secret=…
+ *   3. Create a Resend webhook for this Workspace URL and set
+ *      RESEND_WEBHOOK_SECRET to that endpoint's Signing Secret (whsec_…).
+ *      Comma-separate secrets during rotation. Do not reuse an unrelated
+ *      endpoint's secret.
+ *   4. Point inbound webhook to https://<workspace-host>/api/email/inbound
+ *      (Svix headers only — no query-string secret).
+ *
+ * Auth is fail-closed: missing/empty RESEND_WEBHOOK_SECRET → 401.
  *
  * On match: append inbound communication + timeline, promote salesStage →
  * responded (never regress), stop active sequence enrollments, notify.
  *
- * Local test without MX — POST a hand-built payload (secret optional when unset):
- *   curl -s -X POST 'http://localhost:3002/api/email/inbound' \
- *     -H 'Content-Type: application/json' \
- *     -d '{"from":"prospect@example.com","to":["relationship+rel_XXXX@replies.example.com"],"subject":"Re: Hello","text":"Thanks — interested in a walkthrough."}'
- *
- * Dry-run (no writes): add `"dryRun": true` in JSON body, or `?dry_run=1`.
+ * Dry-run (no writes): add `"dryRun": true` in JSON body, or `?dry_run=1`
+ * (still requires a valid Svix signature).
  */
 
-import { createHmac, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { type NextRequest, NextResponse } from "next/server";
 
 import {
@@ -36,6 +38,7 @@ import {
   type SalesStage,
 } from "@shared/relationships";
 
+import { authorizeInboundWebhook } from "@/lib/email/inbound-webhook-auth";
 import { getRelationship } from "@/lib/data/store";
 import {
   appendLocalCommunication,
@@ -51,63 +54,6 @@ type InboundBody = InboundEmailPayload & {
 
 function newId(prefix: string) {
   return `${prefix}_${randomUUID().replace(/-/g, "").slice(0, 12)}`;
-}
-
-function webhookSecrets(): string[] {
-  const raw = process.env.RESEND_WEBHOOK_SECRET?.trim() ?? "";
-  if (!raw) return [];
-  return raw.split(",").map((s) => s.trim()).filter(Boolean);
-}
-
-function verifyQuerySecret(request: NextRequest): boolean {
-  const secrets = webhookSecrets();
-  if (secrets.length === 0) return true;
-  const provided = request.nextUrl.searchParams.get("secret");
-  return Boolean(provided && secrets.includes(provided));
-}
-
-function verifySvixSignature(body: string, headers: Headers, secret: string): boolean {
-  const svixId = headers.get("svix-id") ?? "";
-  const svixTimestamp = headers.get("svix-timestamp") ?? "";
-  const svixSignature = headers.get("svix-signature") ?? "";
-  if (!svixId || !svixTimestamp || !svixSignature) return false;
-
-  const ts = parseInt(svixTimestamp, 10);
-  if (Number.isNaN(ts) || Math.abs(Date.now() / 1000 - ts) > 300) return false;
-
-  const key = secret.startsWith("whsec_")
-    ? Buffer.from(secret.slice("whsec_".length), "base64")
-    : Buffer.from(secret, "utf8");
-
-  const toSign = `${svixId}.${svixTimestamp}.${body}`;
-  const expected = createHmac("sha256", key).update(toSign).digest("base64");
-  const signatures = svixSignature.split(" ").map((s) => s.replace(/^v1,/, ""));
-  return signatures.some((sig) => sig === expected);
-}
-
-function authorize(request: NextRequest, rawBody: string): boolean {
-  const secrets = webhookSecrets();
-  if (secrets.length === 0) return true;
-
-  if (verifyQuerySecret(request)) return true;
-
-  if (
-    request.headers.get("svix-id") ||
-    request.headers.get("svix-signature")
-  ) {
-    return secrets.some((secret) => verifySvixSignature(rawBody, request.headers, secret));
-  }
-
-  // Dev-only unsigned simulation when NODE_ENV is not production.
-  if (
-    process.env.NODE_ENV !== "production" &&
-    (request.nextUrl.searchParams.get("test") === "1" ||
-      request.headers.get("x-wevenu-inbound-test") === "1")
-  ) {
-    return true;
-  }
-
-  return false;
 }
 
 function plainBody(payload: InboundEmailPayload): string {
@@ -193,7 +139,7 @@ async function applyLocalOverlays(opts: {
 
 export async function POST(request: NextRequest) {
   const rawBody = await request.text();
-  if (!authorize(request, rawBody)) {
+  if (!authorizeInboundWebhook(rawBody, request.headers)) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
