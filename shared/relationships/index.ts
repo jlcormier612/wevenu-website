@@ -127,6 +127,7 @@ export {
   withLiveStore,
   emptyLiveStore,
   warmLiveStore,
+  getLiveStoreMemoryEpoch,
 } from "./store";
 export { usePostgresCrmStore, crmSupabaseConfigured } from "./pg-client";
 export {

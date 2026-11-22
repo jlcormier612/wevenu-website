@@ -7,7 +7,7 @@
 
 import { randomUUID } from "crypto";
 
-import { withLiveStore } from "./store";
+import { warmLiveStore, withLiveStore } from "./store";
 import type { LiveRelationshipStore, RelationshipTask, TaskPriority } from "./types";
 
 /** Canonical Implementation Checklist titles (order = sortOrder). */
@@ -144,13 +144,38 @@ export async function ensureWhiteGloveChecklist(
   return result;
 }
 
+function whiteGloveRelationshipNeedsChecklist(
+  store: LiveRelationshipStore,
+  relationshipId: string,
+): boolean {
+  const existingTitles = new Set(
+    (store.tasks ?? [])
+      .filter((t) => t.relationshipId === relationshipId && isChecklistTask(t))
+      .map((t) => t.title),
+  );
+  return WHITE_GLOVE_CHECKLIST_TITLES.some((title) => !existingTitles.has(title));
+}
+
 /**
  * Backfill every live White Glove relationship missing checklist tasks.
  * Safe to call from workspace page loads (idempotent).
+ *
+ * Uses the warm cache to skip `withLiveStore` when every WG venue already has
+ * a complete checklist (common path on Tasks / White Glove page loads).
  */
 export async function ensureWhiteGloveChecklistsForLiveStore(opts?: {
   ownerId?: string;
 }): Promise<{ relationshipsTouched: number; tasksCreated: number }> {
+  const warmed = await warmLiveStore();
+  const needsWrite = warmed.relationships.some(
+    (relationship) =>
+      relationship.onboardingType === "white_glove" &&
+      whiteGloveRelationshipNeedsChecklist(warmed, relationship.id),
+  );
+  if (!needsWrite) {
+    return { relationshipsTouched: 0, tasksCreated: 0 };
+  }
+
   const { result } = await withLiveStore((store) => {
     let relationshipsTouched = 0;
     let tasksCreated = 0;
