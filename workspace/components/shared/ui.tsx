@@ -145,14 +145,15 @@ export function RelationshipLink({
 export function DataTable({
   headers,
   rows,
+  emptyMessage = "Nothing here yet.",
+  emptyHint,
 }: {
   headers: string[];
   rows: React.ReactNode[][];
+  /** Shown in the table body when there are no rows. Headers stay visible. */
+  emptyMessage?: string;
+  emptyHint?: string;
 }) {
-  if (rows.length === 0) {
-    return <EmptyState message="Nothing here yet." />;
-  }
-
   return (
     <div className="overflow-x-auto">
       <table className="w-full min-w-[640px] text-left text-[13px]">
@@ -166,18 +167,35 @@ export function DataTable({
           </tr>
         </thead>
         <tbody>
-          {rows.map((cells, i) => (
-            <tr
-              key={i}
-              className="border-b border-[var(--htc-border)] last:border-0 hover:bg-[color-mix(in_srgb,var(--htc-soft-sage)_55%,transparent)]"
-            >
-              {cells.map((cell, j) => (
-                <td key={j} className="px-3 py-3.5 pr-4 align-top text-[var(--htc-text)]">
-                  {cell}
-                </td>
-              ))}
+          {rows.length === 0 ? (
+            <tr>
+              <td
+                colSpan={headers.length}
+                className="px-3 py-10 text-center align-middle"
+              >
+                <p className="font-medium text-[var(--htc-text)]">{emptyMessage}</p>
+                {emptyHint ? (
+                  <p className="mt-1 text-sm ws-muted">{emptyHint}</p>
+                ) : null}
+              </td>
             </tr>
-          ))}
+          ) : (
+            rows.map((cells, i) => (
+              <tr
+                key={i}
+                className="border-b border-[var(--htc-border)] last:border-0 hover:bg-[color-mix(in_srgb,var(--htc-soft-sage)_55%,transparent)]"
+              >
+                {cells.map((cell, j) => (
+                  <td
+                    key={j}
+                    className="px-3 py-3.5 pr-4 align-top text-[var(--htc-text)]"
+                  >
+                    {cell}
+                  </td>
+                ))}
+              </tr>
+            ))
+          )}
         </tbody>
       </table>
     </div>
