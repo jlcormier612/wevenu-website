@@ -134,6 +134,31 @@ async function loadPostgresStore(): Promise<LoadedPostgres> {
   return { version: 0, store: normalizeStore(payload as LiveRelationshipStore) };
 }
 
+/**
+ * Cheap durable version read — used so warmLiveStore can detect external
+ * writers (marketing ingest, CRM purge scripts) without reloading the full
+ * store on every request when unchanged.
+ */
+async function peekPostgresStoreVersion(): Promise<number | null> {
+  const admin = createCrmAdminClient();
+  const { data, error } = await admin
+    .from("htc_crm_store_meta")
+    .select("version")
+    .eq("id", 1)
+    .maybeSingle();
+  if (error) {
+    throw new Error(`htc_crm_store_meta version peek failed: ${error.message}`);
+  }
+  return typeof data?.version === "number" ? data.version : null;
+}
+
+/** Test/ops helper — drop process-local CRM cache (forces next warm to reload). */
+export function clearLiveStoreMemoryCache(): void {
+  memoryCache = null;
+  memoryVersion = null;
+  memoryEpoch += 1;
+}
+
 async function savePostgresStore(
   store: LiveRelationshipStore,
   expectedVersion: number | null,
@@ -161,21 +186,31 @@ async function savePostgresStore(
   return next;
 }
 
-/** Ensure the in-memory cache matches Postgres (call from app layouts). */
+/**
+ * Ensure the in-memory cache matches Postgres (call from app layouts).
+ *
+ * Revalidates against `htc_crm_store_meta.version` on every call so an
+ * external writer (another ECS task, marketing ingest, CRM-only purge) cannot
+ * leave this process serving a stale full-store snapshot forever.
+ */
 export async function warmLiveStore(): Promise<LiveRelationshipStore> {
   if (!usePostgresCrmStore()) {
     const store = await loadFileStore();
     return setCache(store, null);
   }
-  if (memoryCache) {
-    return normalizeStore(memoryCache);
-  }
   if (!warmInFlight) {
-    warmInFlight = loadPostgresStore()
-      .then(({ store, version }) => setCache(store, version))
-      .finally(() => {
-        warmInFlight = null;
-      });
+    warmInFlight = (async () => {
+      if (memoryCache && memoryVersion !== null) {
+        const durableVersion = await peekPostgresStoreVersion();
+        if (durableVersion === memoryVersion) {
+          return normalizeStore(memoryCache);
+        }
+      }
+      const { store, version } = await loadPostgresStore();
+      return setCache(store, version);
+    })().finally(() => {
+      warmInFlight = null;
+    });
   }
   return warmInFlight;
 }
