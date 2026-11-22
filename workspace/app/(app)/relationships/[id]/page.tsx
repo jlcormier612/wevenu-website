@@ -275,6 +275,9 @@ export default async function RelationshipDetailPage({
           ownerEmail={relationship.owner.email}
           planId={relationship.planId}
           canManage={canProvisionProduct}
+          foundingMember={Boolean(relationship.foundingMember)}
+          welcomeBackRequested={Boolean(relationship.welcomeBackRequested)}
+          welcomeBackVerified={relationship.welcomeBackVerified}
         />
       ) : null}
       <StatusMoveControl relationship={relationship} />

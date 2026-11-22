@@ -1,10 +1,24 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { formatUsdFromCents } from "@shared/pricing/catalog";
+import {
+  FOUNDING_PERCENT_OFF,
+  WEVEN_PERCENT_OFF,
+  formatUsdFromCents,
+  listAmountCents,
+} from "@shared/pricing/catalog";
 import type { SaasPlanKey } from "@shared/pricing/types";
 import { Panel, StatusPill } from "@/components/shared/ui";
+import { cn } from "@/lib/utils";
+
+type EligibleProjection = {
+  known: boolean;
+  amountCents: number | null;
+  label: string;
+  explanation: string;
+};
 
 type Preview = {
   planDisplayName: string;
@@ -24,6 +38,8 @@ type Preview = {
   expiresAt: string | null;
   promoNote: string;
   lines: string[];
+  afterIntroStandardEstimateCents: number;
+  afterIntroEligibleProjection: EligibleProjection;
 };
 
 type OfferRow = {
@@ -75,6 +91,9 @@ type Props = {
   ownerEmail: string;
   planId: string;
   canManage: boolean;
+  foundingMember?: boolean;
+  welcomeBackRequested?: boolean;
+  welcomeBackVerified?: string;
 };
 
 type EditorState = {
@@ -86,7 +105,7 @@ type EditorState = {
   percentOff: string;
   amountOffDollars: string;
   fixedRateDollars: string;
-  durationMode: "ongoing" | "billing_cycles";
+  durationPreset: "ongoing" | "3" | "6" | "12" | "custom";
   durationBillingCycles: string;
   afterIntroPricing: "standard_list" | "eligible_discount";
   percentUpgradePolicy: "follow" | "end";
@@ -98,7 +117,24 @@ type EditorState = {
   whiteGloveMode: "none" | "standard_499" | "weven_399" | "custom" | "waived";
   whiteGloveCustomDollars: string;
   expiresAt: string;
+  showTierUpgrade: boolean;
 };
+
+const PLANS: Array<{
+  key: SaasPlanKey;
+  name: string;
+  price: string;
+  range: string;
+}> = [
+  { key: "starter", name: "Gather", price: "$199/month", range: "0–25 events / year" },
+  { key: "growing", name: "Celebrate", price: "$249/month", range: "26–75 events / year" },
+  {
+    key: "professional",
+    name: "Flourish",
+    price: "$349/month",
+    range: "76+ events / year",
+  },
+];
 
 function dollarsToCents(raw: string): number | null {
   const t = raw.trim().replace(/\$/g, "");
@@ -120,6 +156,22 @@ function planFromCrm(planId: string): SaasPlanKey {
   return "starter";
 }
 
+function durationFromOffer(
+  mode: string,
+  cycles: number | null,
+): Pick<EditorState, "durationPreset" | "durationBillingCycles"> {
+  if (mode !== "billing_cycles" || !cycles) {
+    return { durationPreset: "ongoing", durationBillingCycles: "3" };
+  }
+  if (cycles === 3 || cycles === 6 || cycles === 12) {
+    return {
+      durationPreset: String(cycles) as "3" | "6" | "12",
+      durationBillingCycles: String(cycles),
+    };
+  }
+  return { durationPreset: "custom", durationBillingCycles: String(cycles) };
+}
+
 function defaultEditor(planId: string, venueName: string): EditorState {
   return {
     internalName: `${venueName} custom offer`,
@@ -128,9 +180,9 @@ function defaultEditor(planId: string, venueName: string): EditorState {
     planKey: planFromCrm(planId),
     pricingKind: "standard",
     percentOff: "15",
-    amountOffDollars: "40",
-    fixedRateDollars: "175",
-    durationMode: "ongoing",
+    amountOffDollars: "50",
+    fixedRateDollars: "199",
+    durationPreset: "ongoing",
     durationBillingCycles: "3",
     afterIntroPricing: "standard_list",
     percentUpgradePolicy: "follow",
@@ -142,10 +194,12 @@ function defaultEditor(planId: string, venueName: string): EditorState {
     whiteGloveMode: "none",
     whiteGloveCustomDollars: "299",
     expiresAt: "",
+    showTierUpgrade: false,
   };
 }
 
 function editorFromOffer(offer: OfferRow): EditorState {
+  const dur = durationFromOffer(offer.durationMode, offer.durationBillingCycles);
   return {
     internalName: offer.internalName,
     internalNotes: offer.internalNotes ?? "",
@@ -155,8 +209,7 @@ function editorFromOffer(offer: OfferRow): EditorState {
     percentOff: String(offer.percentOff ?? 15),
     amountOffDollars: centsToDollarsInput(offer.amountOffCents),
     fixedRateDollars: centsToDollarsInput(offer.fixedRateCents),
-    durationMode: offer.durationMode as EditorState["durationMode"],
-    durationBillingCycles: String(offer.durationBillingCycles ?? 3),
+    ...dur,
     afterIntroPricing: offer.afterIntroPricing as EditorState["afterIntroPricing"],
     percentUpgradePolicy:
       offer.percentUpgradePolicy as EditorState["percentUpgradePolicy"],
@@ -178,6 +231,7 @@ function editorFromOffer(offer: OfferRow): EditorState {
       offer.whiteGloveMode === "custom" ? offer.whiteGloveAmountCents : 29900,
     ),
     expiresAt: offer.expiresAt ? offer.expiresAt.slice(0, 10) : "",
+    showTierUpgrade: offer.pricingKind !== "standard",
   };
 }
 
@@ -189,6 +243,21 @@ function buildTerms(editor: EditorState) {
   const p = dollarsToCents(editor.replaceFlourishDollars);
   if (g != null) fixedReplacementPrices.growing = g;
   if (p != null) fixedReplacementPrices.professional = p;
+
+  const isSpecial = editor.pricingKind !== "standard";
+  let durationMode: "ongoing" | "billing_cycles" = "ongoing";
+  let durationBillingCycles: number | null = null;
+  if (isSpecial) {
+    if (editor.durationPreset === "ongoing") {
+      durationMode = "ongoing";
+    } else if (editor.durationPreset === "custom") {
+      durationMode = "billing_cycles";
+      durationBillingCycles = Number.parseInt(editor.durationBillingCycles, 10);
+    } else {
+      durationMode = "billing_cycles";
+      durationBillingCycles = Number.parseInt(editor.durationPreset, 10);
+    }
+  }
 
   return {
     planKey: editor.planKey,
@@ -205,11 +274,8 @@ function buildTerms(editor: EditorState) {
       editor.pricingKind === "fixed_rate"
         ? dollarsToCents(editor.fixedRateDollars)
         : null,
-    durationMode: editor.durationMode,
-    durationBillingCycles:
-      editor.durationMode === "billing_cycles"
-        ? Number.parseInt(editor.durationBillingCycles, 10)
-        : null,
+    durationMode,
+    durationBillingCycles,
     afterIntroPricing: editor.afterIntroPricing,
     percentUpgradePolicy: editor.percentUpgradePolicy,
     amountUpgradePolicy: editor.amountUpgradePolicy,
@@ -253,6 +319,71 @@ function formatWhen(iso: string | null | undefined): string {
   });
 }
 
+function Section({
+  title,
+  copy,
+  children,
+  className,
+}: {
+  title: string;
+  copy: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <section
+      className={cn(
+        "rounded-lg border border-[color-mix(in_srgb,var(--htc-border)_80%,transparent)] bg-[var(--htc-warm-white)] p-5 shadow-[0_1px_0_rgba(41,45,41,0.04)]",
+        className,
+      )}
+    >
+      <h3 className="font-heading text-xl text-[var(--htc-forest)]">{title}</h3>
+      <p className="mt-1 text-sm leading-relaxed text-[var(--htc-muted)]">
+        {copy}
+      </p>
+      <div className="mt-4 space-y-4">{children}</div>
+    </section>
+  );
+}
+
+function ChoiceCard({
+  selected,
+  title,
+  detail,
+  onClick,
+  disabled,
+}: {
+  selected: boolean;
+  title: string;
+  detail?: string;
+  onClick: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      className={cn(
+        "rounded-md border px-3 py-3 text-left transition",
+        selected
+          ? "border-[var(--htc-primary)] bg-[color-mix(in_srgb,var(--htc-primary)_8%,white)] ring-1 ring-[var(--htc-primary)]"
+          : "border-[var(--htc-border)] bg-white hover:border-[color-mix(in_srgb,var(--htc-forest)_40%,var(--htc-border))]",
+        disabled && "opacity-50",
+      )}
+    >
+      <span className="block text-sm font-medium text-[var(--htc-text)]">
+        {title}
+      </span>
+      {detail ? (
+        <span className="mt-0.5 block text-xs text-[var(--htc-muted)]">
+          {detail}
+        </span>
+      ) : null}
+    </button>
+  );
+}
+
 export function SalesOffersPanel({
   relationshipId,
   venueName,
@@ -260,12 +391,17 @@ export function SalesOffersPanel({
   ownerEmail,
   planId,
   canManage,
+  foundingMember = false,
+  welcomeBackRequested = false,
+  welcomeBackVerified = "none",
 }: Props) {
   const [offers, setOffers] = useState<OfferRow[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [relationshipMissing, setRelationshipMissing] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [mode, setMode] = useState<"list" | "edit" | "preview">("list");
+  const [dirty, setDirty] = useState(false);
+  const [mode, setMode] = useState<"list" | "edit">("list");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [expectedRevision, setExpectedRevision] = useState(1);
   const [editor, setEditor] = useState<EditorState>(() =>
@@ -273,10 +409,15 @@ export function SalesOffersPanel({
   );
   const [livePreview, setLivePreview] = useState<Preview | null>(null);
   const [revisions, setRevisions] = useState<RevisionRow[]>([]);
-  const [showHistory, setShowHistory] = useState(false);
+
+  const patchEditor = useCallback((patch: Partial<EditorState>) => {
+    setEditor((s) => ({ ...s, ...patch }));
+    setDirty(true);
+  }, []);
 
   const load = useCallback(async () => {
     setError(null);
+    setRelationshipMissing(false);
     const res = await fetch(
       `/api/relationships/sales-offers?relationshipId=${encodeURIComponent(relationshipId)}`,
     );
@@ -284,12 +425,19 @@ export function SalesOffersPanel({
       ok?: boolean;
       offers?: OfferRow[];
       error?: string;
+      code?: string;
     };
+    if (res.status === 404 && data.code === "relationship_not_found") {
+      setRelationshipMissing(true);
+      setOffers([]);
+      setError(data.error || "This relationship is no longer available.");
+      return;
+    }
     if (!res.ok || !data.ok) {
       setError(data.error || "Could not load offers.");
       return;
     }
-    setOffers(data.offers || []);
+    setOffers((data.offers || []).filter((o) => o.status !== "discarded"));
   }, [relationshipId]);
 
   useEffect(() => {
@@ -311,14 +459,19 @@ export function SalesOffersPanel({
       preview?: Preview;
       issues?: Array<{ message: string }>;
       error?: string;
+      code?: string;
     };
+    if (res.status === 404 && data.code === "relationship_not_found") {
+      setRelationshipMissing(true);
+      setLivePreview(null);
+      setError(data.error || "This relationship is no longer available.");
+      return;
+    }
     if (!res.ok || !data.ok || !data.preview) {
       setLivePreview(null);
-      setError(
-        data.issues?.map((i) => i.message).join(" ") ||
-          data.error ||
-          "Preview unavailable",
-      );
+      if (data.issues?.length) {
+        setError(data.issues.map((i) => i.message).join(" "));
+      }
       return;
     }
     setError(null);
@@ -326,36 +479,55 @@ export function SalesOffersPanel({
   }
 
   useEffect(() => {
-    if (mode === "edit" || mode === "preview") {
-      const t = setTimeout(() => {
-        void refreshPreview();
-      }, 250);
-      return () => clearTimeout(t);
-    }
-    return undefined;
+    if (mode !== "edit" || relationshipMissing) return;
+    const t = setTimeout(() => {
+      void refreshPreview();
+    }, 220);
+    return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editor, mode]);
+  }, [editor, mode, relationshipMissing]);
 
-  const listPriceHint = useMemo(() => {
-    const map: Record<SaasPlanKey, string> = {
-      starter: "$199/mo · 0–25 events",
-      growing: "$249/mo · 26–75 events",
-      professional: "$349/mo · 76+ events",
+  const liveCalc = useMemo(() => {
+    const list = listAmountCents(editor.planKey);
+    let monthly = list;
+    if (editor.pricingKind === "percent_off") {
+      const pct = Number.parseInt(editor.percentOff, 10);
+      if (Number.isFinite(pct) && pct >= 0 && pct <= 100) {
+        monthly = Math.round(list * (1 - pct / 100));
+      }
+    } else if (editor.pricingKind === "amount_off") {
+      const off = dollarsToCents(editor.amountOffDollars);
+      if (off != null) monthly = Math.max(0, list - off);
+    } else if (editor.pricingKind === "fixed_rate") {
+      const rate = dollarsToCents(editor.fixedRateDollars);
+      if (rate != null) monthly = rate;
+    }
+    return {
+      list,
+      monthly,
+      savings: Math.max(0, list - monthly),
+      planName: PLANS.find((p) => p.key === editor.planKey)?.name || "Gather",
     };
-    return map[editor.planKey];
-  }, [editor.planKey]);
+  }, [editor]);
+
+  const wevenHint =
+    welcomeBackRequested &&
+    welcomeBackVerified !== "rejected" &&
+    welcomeBackVerified !== "expired";
 
   function openCreate() {
+    if (relationshipMissing) return;
     setEditingId(null);
     setExpectedRevision(1);
     setEditor(defaultEditor(planId, venueName));
     setRevisions([]);
-    setShowHistory(false);
     setMessage(null);
+    setDirty(false);
     setMode("edit");
   }
 
   async function openOffer(offer: OfferRow) {
+    if (relationshipMissing) return;
     setBusy(true);
     setError(null);
     try {
@@ -367,7 +539,13 @@ export function SalesOffersPanel({
         offer?: OfferRow;
         revisions?: RevisionRow[];
         error?: string;
+        code?: string;
       };
+      if (res.status === 404 && data.code === "relationship_not_found") {
+        setRelationshipMissing(true);
+        setError(data.error || "This relationship is no longer available.");
+        return;
+      }
       if (!res.ok || !data.ok || !data.offer) {
         setError(data.error || "Could not open offer.");
         return;
@@ -377,8 +555,8 @@ export function SalesOffersPanel({
       setEditor(editorFromOffer(data.offer));
       setLivePreview(data.offer.preview);
       setRevisions(data.revisions || []);
-      setShowHistory(true);
-      setMode(data.offer.status === "draft" ? "edit" : "preview");
+      setDirty(false);
+      setMode("edit");
       setMessage(null);
     } finally {
       setBusy(false);
@@ -386,6 +564,7 @@ export function SalesOffersPanel({
   }
 
   async function saveDraft() {
+    if (relationshipMissing) return;
     setBusy(true);
     setError(null);
     setMessage(null);
@@ -417,6 +596,11 @@ export function SalesOffersPanel({
         issues?: Array<{ message: string }>;
         code?: string;
       };
+      if (res.status === 404 && data.code === "relationship_not_found") {
+        setRelationshipMissing(true);
+        setError(data.error || "This relationship is no longer available.");
+        return;
+      }
       if (!res.ok || !data.ok || !data.offer) {
         setError(
           data.issues?.map((i) => i.message).join(" ") ||
@@ -429,14 +613,14 @@ export function SalesOffersPanel({
       setExpectedRevision(data.offer.revision);
       setEditor(editorFromOffer(data.offer));
       setLivePreview(data.offer.preview);
-      setMessage("Draft saved. No Stripe checkout was created.");
+      setDirty(false);
+      setMessage("Draft saved. No checkout link was created.");
       await load();
       const revRes = await fetch(
         `/api/relationships/sales-offers?relationshipId=${encodeURIComponent(relationshipId)}&offerId=${encodeURIComponent(data.offer.id)}&revisions=1`,
       );
       const revData = (await revRes.json()) as { revisions?: RevisionRow[] };
       setRevisions(revData.revisions || []);
-      setShowHistory(true);
     } finally {
       setBusy(false);
     }
@@ -459,7 +643,13 @@ export function SalesOffersPanel({
         ok?: boolean;
         offer?: OfferRow;
         error?: string;
+        code?: string;
       };
+      if (res.status === 404 && data.code === "relationship_not_found") {
+        setRelationshipMissing(true);
+        setError(data.error || "This relationship is no longer available.");
+        return;
+      }
       if (!res.ok || !data.ok || !data.offer) {
         setError(data.error || "Duplicate failed");
         return;
@@ -476,7 +666,7 @@ export function SalesOffersPanel({
     if (!editingId) return;
     if (
       !window.confirm(
-        "Discard this unused draft? This cannot be undone, but prior revision history is retained.",
+        "Discard this unused draft? Prior revision history is retained.",
       )
     ) {
       return;
@@ -494,13 +684,23 @@ export function SalesOffersPanel({
           expectedRevision,
         }),
       });
-      const data = (await res.json()) as { ok?: boolean; error?: string };
+      const data = (await res.json()) as {
+        ok?: boolean;
+        error?: string;
+        code?: string;
+      };
+      if (res.status === 404 && data.code === "relationship_not_found") {
+        setRelationshipMissing(true);
+        setError(data.error || "This relationship is no longer available.");
+        return;
+      }
       if (!res.ok || !data.ok) {
         setError(data.error || "Discard failed");
         return;
       }
       setMode("list");
       setEditingId(null);
+      setDirty(false);
       setMessage("Draft discarded.");
       await load();
     } finally {
@@ -508,9 +708,42 @@ export function SalesOffersPanel({
     }
   }
 
-  if (!canManage) {
-    return null;
+  function backToList() {
+    if (
+      dirty &&
+      !window.confirm("You have unsaved changes. Leave without saving?")
+    ) {
+      return;
+    }
+    setMode("list");
+    setEditingId(null);
+    setDirty(false);
   }
+
+  if (!canManage) return null;
+
+  if (relationshipMissing) {
+    return (
+      <Panel title="Custom offers">
+        <div className="rounded-lg border border-[color-mix(in_srgb,var(--htc-dusty)_35%,var(--htc-border))] bg-[color-mix(in_srgb,var(--htc-dusty)_8%,white)] p-5">
+          <h3 className="font-heading text-lg text-[var(--htc-forest)]">
+            This relationship is no longer available
+          </h3>
+          <p className="mt-2 text-sm leading-relaxed text-[var(--htc-muted)]">
+            {error ||
+              "The Sales record for this offer may have been removed after a prior review. Custom offers cannot be edited against a missing relationship."}
+          </p>
+          <Link href="/sales" className="ws-btn ws-btn-primary mt-4 inline-flex">
+            Back to Sales
+          </Link>
+        </div>
+      </Panel>
+    );
+  }
+
+  const isSpecial = editor.pricingKind !== "standard";
+  const showAfterIntro =
+    isSpecial && editor.durationPreset !== "ongoing";
 
   return (
     <Panel
@@ -526,30 +759,17 @@ export function SalesOffersPanel({
             Create Custom Offer
           </button>
         ) : (
-          <button
-            type="button"
-            className="ws-btn"
-            onClick={() => {
-              setMode("list");
-              setEditingId(null);
-            }}
-          >
-            Back to offers
+          <button type="button" className="ws-btn" onClick={backToList}>
+            Back to Offers
           </button>
         )
       }
     >
       <p className="mb-4 text-sm text-[var(--htc-muted)]">
-        Pre-purchase subscription proposals for{" "}
-        <span className="text-[var(--htc-ink)]">{venueName}</span>
-        {ownerName || ownerEmail ? (
-          <>
-            {" "}
-            · {ownerName || ownerEmail}
-          </>
-        ) : null}
-        . Drafts do not create Stripe checkouts, subscriptions, or Customer
-        Success records.
+        Build a special subscription proposal for{" "}
+        <span className="text-[var(--htc-text)]">{venueName}</span>
+        {ownerName || ownerEmail ? <> · {ownerName || ownerEmail}</> : null}.
+        Drafts do not create checkout links or activate subscriptions.
       </p>
 
       {error ? (
@@ -568,17 +788,17 @@ export function SalesOffersPanel({
           {offers.length === 0 ? (
             <p className="text-sm text-[var(--htc-muted)]">
               No custom offers yet. Create a draft to negotiate pricing before
-              the venue subscribes.
+              the venue subscribes — separate from Send Subscription Link.
             </p>
           ) : (
             offers.map((offer) => (
               <div
                 key={offer.id}
-                className="flex flex-wrap items-center justify-between gap-3 border-b border-[color-mix(in_srgb,var(--taupe-medium)_30%,transparent)] pb-3 last:border-0"
+                className="flex flex-wrap items-center justify-between gap-3 border-b border-[color-mix(in_srgb,var(--htc-border)_70%,transparent)] pb-3 last:border-0"
               >
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <p className="font-medium text-[var(--htc-ink)]">
+                    <p className="font-medium text-[var(--htc-text)]">
                       {offer.internalName}
                     </p>
                     <StatusPill tone={statusTone(offer.status)}>
@@ -597,9 +817,6 @@ export function SalesOffersPanel({
                         offer.whiteGloveAmountCents,
                     )}{" "}
                     · Updated {formatWhen(offer.updatedAt)}
-                    {offer.expiresAt
-                      ? ` · Expires ${formatWhen(offer.expiresAt)}`
-                      : ""}
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -626,491 +843,728 @@ export function SalesOffersPanel({
         </div>
       ) : null}
 
-      {(mode === "edit" || mode === "preview") && (
-        <div className="space-y-6" data-testid="sales-offer-editor">
-          <div className="grid gap-4 md:grid-cols-2">
+      {mode === "edit" ? (
+        <div
+          className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]"
+          data-testid="sales-offer-editor"
+        >
+          <div className="space-y-5">
             <label className="block text-sm">
-              <span className="mb-1 block font-medium">Internal offer name</span>
+              <span className="mb-1 block font-medium text-[var(--htc-text)]">
+                Internal offer name
+              </span>
               <input
                 className="ws-input w-full"
                 value={editor.internalName}
-                disabled={mode !== "edit"}
-                onChange={(e) =>
-                  setEditor((s) => ({ ...s, internalName: e.target.value }))
-                }
+                onChange={(e) => patchEditor({ internalName: e.target.value })}
               />
             </label>
-            <label className="block text-sm">
-              <span className="mb-1 block font-medium">Offer expiration</span>
-              <input
-                type="date"
-                className="ws-input w-full"
-                value={editor.expiresAt}
-                disabled={mode !== "edit"}
-                onChange={(e) =>
-                  setEditor((s) => ({ ...s, expiresAt: e.target.value }))
-                }
-              />
-              <span className="mt-1 block text-xs text-[var(--htc-muted)]">
-                When the offer can no longer be accepted (separate from pricing
-                duration).
-              </span>
-            </label>
-          </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
-            <label className="block text-sm">
-              <span className="mb-1 block font-medium">Subscription tier</span>
-              <select
-                className="ws-input w-full"
-                value={editor.planKey}
-                disabled={mode !== "edit"}
-                onChange={(e) =>
-                  setEditor((s) => ({
-                    ...s,
-                    planKey: e.target.value as SaasPlanKey,
-                  }))
-                }
-              >
-                <option value="starter">Gather — $199/mo</option>
-                <option value="growing">Celebrate — $249/mo</option>
-                <option value="professional">Flourish — $349/mo</option>
-              </select>
-              <span className="mt-1 block text-xs text-[var(--htc-muted)]">
-                {listPriceHint}
-              </span>
-            </label>
+            {/* 1. Subscription & Price */}
+            <Section
+              title="Subscription & Price"
+              copy="Choose the subscription plan and the special monthly price you'd like to offer."
+            >
+              <div>
+                <p className="mb-2 text-sm font-medium text-[var(--htc-text)]">
+                  Plan
+                </p>
+                <div className="grid gap-2 sm:grid-cols-3">
+                  {PLANS.map((p) => (
+                    <ChoiceCard
+                      key={p.key}
+                      selected={editor.planKey === p.key}
+                      title={`${p.name} — ${p.price}`}
+                      detail={p.range}
+                      onClick={() => patchEditor({ planKey: p.key })}
+                    />
+                  ))}
+                </div>
+              </div>
 
-            <label className="block text-sm">
-              <span className="mb-1 block font-medium">Pricing mode</span>
-              <select
-                className="ws-input w-full"
-                value={editor.pricingKind}
-                disabled={mode !== "edit"}
-                data-testid="pricing-kind"
-                onChange={(e) =>
-                  setEditor((s) => ({
-                    ...s,
-                    pricingKind: e.target
-                      .value as EditorState["pricingKind"],
-                  }))
-                }
-              >
-                <option value="standard">Standard tier price</option>
-                <option value="percent_off">Percentage discount</option>
-                <option value="amount_off">Fixed-dollar monthly discount</option>
-                <option value="fixed_rate">Fixed monthly subscription price</option>
-              </select>
-            </label>
-          </div>
+              <div>
+                <p className="mb-2 text-sm font-medium text-[var(--htc-text)]">
+                  How would you like to price this offer?
+                </p>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <ChoiceCard
+                    selected={editor.pricingKind === "standard"}
+                    title="Regular subscription price"
+                    onClick={() => patchEditor({ pricingKind: "standard" })}
+                  />
+                  <ChoiceCard
+                    selected={editor.pricingKind === "percent_off"}
+                    title="Percentage off"
+                    onClick={() =>
+                      patchEditor({
+                        pricingKind: "percent_off",
+                        showTierUpgrade: true,
+                      })
+                    }
+                  />
+                  <ChoiceCard
+                    selected={editor.pricingKind === "amount_off"}
+                    title="Dollar amount off each month"
+                    onClick={() =>
+                      patchEditor({
+                        pricingKind: "amount_off",
+                        showTierUpgrade: true,
+                      })
+                    }
+                  />
+                  <ChoiceCard
+                    selected={editor.pricingKind === "fixed_rate"}
+                    title="Set a specific monthly price"
+                    onClick={() =>
+                      patchEditor({
+                        pricingKind: "fixed_rate",
+                        showTierUpgrade: true,
+                      })
+                    }
+                  />
+                </div>
+              </div>
 
-          {editor.pricingKind === "percent_off" ? (
-            <div className="grid gap-4 md:grid-cols-2" data-testid="percent-config">
-              <label className="block text-sm">
-                <span className="mb-1 block font-medium">Percent off</span>
-                <input
-                  className="ws-input w-full"
-                  value={editor.percentOff}
-                  disabled={mode !== "edit"}
-                  onChange={(e) =>
-                    setEditor((s) => ({ ...s, percentOff: e.target.value }))
-                  }
-                />
-              </label>
-              <label className="block text-sm">
-                <span className="mb-1 block font-medium">On tier upgrade</span>
-                <select
-                  className="ws-input w-full"
-                  value={editor.percentUpgradePolicy}
-                  disabled={mode !== "edit"}
-                  onChange={(e) =>
-                    setEditor((s) => ({
-                      ...s,
-                      percentUpgradePolicy: e.target
-                        .value as EditorState["percentUpgradePolicy"],
-                    }))
-                  }
-                >
-                  <option value="follow">Same % follows into the new tier</option>
-                  <option value="end">End discount on upgrade</option>
-                </select>
-              </label>
-            </div>
-          ) : null}
-
-          {editor.pricingKind === "amount_off" ? (
-            <div className="grid gap-4 md:grid-cols-2">
-              <label className="block text-sm">
-                <span className="mb-1 block font-medium">Monthly discount ($)</span>
-                <input
-                  className="ws-input w-full"
-                  value={editor.amountOffDollars}
-                  disabled={mode !== "edit"}
-                  onChange={(e) =>
-                    setEditor((s) => ({
-                      ...s,
-                      amountOffDollars: e.target.value,
-                    }))
-                  }
-                />
-              </label>
-              <label className="block text-sm">
-                <span className="mb-1 block font-medium">On tier upgrade</span>
-                <select
-                  className="ws-input w-full"
-                  value={editor.amountUpgradePolicy}
-                  disabled={mode !== "edit"}
-                  onChange={(e) =>
-                    setEditor((s) => ({
-                      ...s,
-                      amountUpgradePolicy: e.target
-                        .value as EditorState["amountUpgradePolicy"],
-                    }))
-                  }
-                >
-                  <option value="follow">Same $ off continues on new list</option>
-                  <option value="end">End discount on upgrade</option>
-                </select>
-              </label>
-            </div>
-          ) : null}
-
-          {editor.pricingKind === "fixed_rate" ? (
-            <div className="space-y-4" data-testid="fixed-rate-config">
-              <label className="block text-sm md:w-1/2">
-                <span className="mb-1 block font-medium">
-                  Fixed monthly price ($)
-                </span>
-                <input
-                  className="ws-input w-full"
-                  value={editor.fixedRateDollars}
-                  disabled={mode !== "edit"}
-                  onChange={(e) =>
-                    setEditor((s) => ({
-                      ...s,
-                      fixedRateDollars: e.target.value,
-                    }))
-                  }
-                />
-              </label>
-              <label className="block text-sm md:w-1/2">
-                <span className="mb-1 block font-medium">On tier upgrade</span>
-                <select
-                  className="ws-input w-full"
-                  value={editor.fixedUpgradePolicy}
-                  disabled={mode !== "edit"}
-                  onChange={(e) =>
-                    setEditor((s) => ({
-                      ...s,
-                      fixedUpgradePolicy: e.target
-                        .value as EditorState["fixedUpgradePolicy"],
-                    }))
-                  }
-                >
-                  <option value="keep">Keep negotiated price</option>
-                  <option value="end">End custom price on upgrade</option>
-                  <option value="replace">Use agreed replacement prices</option>
-                </select>
-              </label>
-              {editor.fixedUpgradePolicy === "replace" ? (
-                <div className="grid gap-4 rounded-md border border-[color-mix(in_srgb,var(--taupe-medium)_35%,transparent)] p-4 md:grid-cols-3">
-                  {editor.planKey === "starter" ? (
-                    <label className="block text-sm">
-                      <span className="mb-1 block font-medium">
-                        Celebrate replacement ($)
-                      </span>
-                      <input
-                        className="ws-input w-full"
-                        value={editor.replaceGrowingDollars}
-                        disabled={mode !== "edit"}
-                        onChange={(e) =>
-                          setEditor((s) => ({
-                            ...s,
-                            replaceGrowingDollars: e.target.value,
-                          }))
-                        }
-                      />
-                    </label>
-                  ) : null}
-                  {editor.planKey === "starter" || editor.planKey === "growing" ? (
-                    <label className="block text-sm">
-                      <span className="mb-1 block font-medium">
-                        Flourish replacement ($)
-                      </span>
-                      <input
-                        className="ws-input w-full"
-                        value={editor.replaceFlourishDollars}
-                        disabled={mode !== "edit"}
-                        onChange={(e) =>
-                          setEditor((s) => ({
-                            ...s,
-                            replaceFlourishDollars: e.target.value,
-                          }))
-                        }
-                      />
-                    </label>
-                  ) : null}
-                  <label className="block text-sm">
-                    <span className="mb-1 block font-medium">
-                      Fallback if path unset
-                    </span>
-                    <select
+              {editor.pricingKind === "percent_off" ? (
+                <label className="block text-sm" data-testid="percent-config">
+                  <span className="mb-1 block font-medium">Percent off</span>
+                  <div className="flex max-w-[160px] items-center gap-2">
+                    <input
                       className="ws-input w-full"
-                      value={editor.fixedUpgradeFallback}
-                      disabled={mode !== "edit"}
+                      value={editor.percentOff}
                       onChange={(e) =>
-                        setEditor((s) => ({
-                          ...s,
-                          fixedUpgradeFallback: e.target
-                            .value as EditorState["fixedUpgradeFallback"],
-                        }))
+                        patchEditor({ percentOff: e.target.value })
+                      }
+                    />
+                    <span className="text-[var(--htc-muted)]">%</span>
+                  </div>
+                </label>
+              ) : null}
+
+              {editor.pricingKind === "amount_off" ? (
+                <label className="block text-sm">
+                  <span className="mb-1 block font-medium">
+                    Dollar amount off each month
+                  </span>
+                  <div className="flex max-w-[180px] items-center gap-2">
+                    <span className="text-[var(--htc-muted)]">$</span>
+                    <input
+                      className="ws-input w-full"
+                      value={editor.amountOffDollars}
+                      onChange={(e) =>
+                        patchEditor({ amountOffDollars: e.target.value })
+                      }
+                    />
+                  </div>
+                </label>
+              ) : null}
+
+              {editor.pricingKind === "fixed_rate" ? (
+                <label className="block text-sm" data-testid="fixed-rate-config">
+                  <span className="mb-1 block font-medium">
+                    Specific monthly price
+                  </span>
+                  <div className="flex max-w-[180px] items-center gap-2">
+                    <span className="text-[var(--htc-muted)]">$</span>
+                    <input
+                      className="ws-input w-full"
+                      value={editor.fixedRateDollars}
+                      onChange={(e) =>
+                        patchEditor({ fixedRateDollars: e.target.value })
+                      }
+                    />
+                  </div>
+                </label>
+              ) : null}
+
+              <div
+                className="rounded-md bg-[color-mix(in_srgb,var(--htc-soft-sage)_55%,white)] px-4 py-3"
+                data-testid="live-price-calc"
+              >
+                <p className="text-sm text-[var(--htc-muted)]">
+                  Regular {liveCalc.planName} price:{" "}
+                  {formatUsdFromCents(liveCalc.list)}/month
+                </p>
+                <p className="mt-1 text-lg font-medium text-[var(--htc-forest)]">
+                  Your offer:{" "}
+                  <strong>{formatUsdFromCents(liveCalc.monthly)}/month</strong>
+                </p>
+                {liveCalc.savings > 0 ? (
+                  <p className="mt-1 text-sm text-[var(--htc-text)]">
+                    Customer saves:{" "}
+                    <strong>
+                      {formatUsdFromCents(liveCalc.savings)}/month
+                    </strong>
+                  </p>
+                ) : (
+                  <p className="mt-1 text-sm text-[var(--htc-muted)]">
+                    Same as the regular subscription price.
+                  </p>
+                )}
+              </div>
+            </Section>
+
+            {/* 2. Special Offer Terms */}
+            <Section
+              title="Special Offer Terms"
+              copy="Decide how long the special price lasts and how long the customer has to accept your offer."
+            >
+              {isSpecial ? (
+                <>
+                  <div>
+                    <p className="mb-2 text-sm font-medium">
+                      How long should this special price last?
+                    </p>
+                    <p className="mb-2 text-xs text-[var(--htc-muted)]">
+                      Limited-duration pricing begins when the customer
+                      subscribes (billing cycles), not when you create this
+                      draft.
+                    </p>
+                    <div className="grid gap-2 sm:grid-cols-3">
+                      {(
+                        [
+                          ["ongoing", "Ongoing"],
+                          ["3", "3 months"],
+                          ["6", "6 months"],
+                          ["12", "12 months"],
+                          ["custom", "Custom number of months"],
+                        ] as const
+                      ).map(([value, label]) => (
+                        <ChoiceCard
+                          key={value}
+                          selected={editor.durationPreset === value}
+                          title={label}
+                          onClick={() =>
+                            patchEditor({
+                              durationPreset: value,
+                              durationBillingCycles:
+                                value === "custom"
+                                  ? editor.durationBillingCycles
+                                  : value === "ongoing"
+                                    ? editor.durationBillingCycles
+                                    : value,
+                            })
+                          }
+                        />
+                      ))}
+                    </div>
+                    {editor.durationPreset === "custom" ? (
+                      <label className="mt-3 block max-w-[180px] text-sm">
+                        <span className="mb-1 block font-medium">Months</span>
+                        <input
+                          className="ws-input w-full"
+                          value={editor.durationBillingCycles}
+                          onChange={(e) =>
+                            patchEditor({
+                              durationBillingCycles: e.target.value,
+                            })
+                          }
+                        />
+                      </label>
+                    ) : null}
+                  </div>
+
+                  {showAfterIntro ? (
+                    <div data-testid="after-intro-choices">
+                      <p className="mb-2 text-sm font-medium">
+                        When the special pricing ends, what should the customer
+                        pay?
+                      </p>
+                      <div className="grid gap-2">
+                        <ChoiceCard
+                          selected={editor.afterIntroPricing === "standard_list"}
+                          title="Regular subscription price"
+                          detail={`The standard price for their subscription tier at that time. Estimate at today’s prices: ${formatUsdFromCents(listAmountCents(editor.planKey))}/month.`}
+                          onClick={() =>
+                            patchEditor({ afterIntroPricing: "standard_list" })
+                          }
+                        />
+                        <ChoiceCard
+                          selected={
+                            editor.afterIntroPricing === "eligible_discount"
+                          }
+                          title="Their eligible discounted price"
+                          detail={
+                            wevenHint
+                              ? `Apply their existing former Weven (${WEVEN_PERCENT_OFF}% off) if still eligible. Estimate at today’s prices: ${formatUsdFromCents(Math.round(listAmountCents(editor.planKey) * (1 - WEVEN_PERCENT_OFF / 100)))}/month.`
+                              : foundingMember
+                                ? `Apply their Founding (${FOUNDING_PERCENT_OFF}% off) if still eligible. Estimate at today’s prices: ${formatUsdFromCents(Math.round(listAmountCents(editor.planKey) * (1 - FOUNDING_PERCENT_OFF / 100)))}/month.`
+                                : "Apply their existing Founding, former Weven, or other qualifying discount, if still eligible. No verified eligibility is on file for this prospect — after the special period they would typically return to the then-current regular tier price unless eligibility is confirmed later."
+                          }
+                          onClick={() =>
+                            patchEditor({
+                              afterIntroPricing: "eligible_discount",
+                            })
+                          }
+                        />
+                      </div>
+                      <p className="mt-2 text-xs text-[var(--htc-muted)]">
+                        Estimates use today’s list prices. Future charges follow
+                        the then-current tier list and eligibility — not a
+                        guaranteed frozen amount.
+                      </p>
+                    </div>
+                  ) : null}
+
+                  <div>
+                    <button
+                      type="button"
+                      className="text-sm font-medium text-[var(--htc-primary)] underline-offset-2 hover:underline"
+                      onClick={() =>
+                        patchEditor({
+                          showTierUpgrade: !editor.showTierUpgrade,
+                        })
                       }
                     >
-                      <option value="standard_list">Standard list price</option>
-                      <option value="eligible_discount">
-                        Eligible standard discount
-                      </option>
-                    </select>
-                  </label>
-                </div>
-              ) : null}
-            </div>
-          ) : null}
+                      {editor.showTierUpgrade ? "Hide" : "Show"}: What happens
+                      if this venue moves to a higher plan?
+                    </button>
+                    {editor.showTierUpgrade ? (
+                      <div className="mt-3 space-y-3 rounded-md border border-[var(--htc-border)] bg-[var(--htc-linen)]/40 p-4">
+                        {editor.pricingKind === "percent_off" ? (
+                          <div className="grid gap-2 sm:grid-cols-2">
+                            <ChoiceCard
+                              selected={editor.percentUpgradePolicy === "follow"}
+                              title="Same % follows into the new tier"
+                              detail="Default. Example: 15% off Celebrate becomes 15% off Flourish list."
+                              onClick={() =>
+                                patchEditor({ percentUpgradePolicy: "follow" })
+                              }
+                            />
+                            <ChoiceCard
+                              selected={editor.percentUpgradePolicy === "end"}
+                              title="End the discount on upgrade"
+                              onClick={() =>
+                                patchEditor({ percentUpgradePolicy: "end" })
+                              }
+                            />
+                          </div>
+                        ) : null}
+                        {editor.pricingKind === "amount_off" ? (
+                          <div className="grid gap-2 sm:grid-cols-2">
+                            <ChoiceCard
+                              selected={editor.amountUpgradePolicy === "follow"}
+                              title="Same $ off continues on the new list"
+                              onClick={() =>
+                                patchEditor({ amountUpgradePolicy: "follow" })
+                              }
+                            />
+                            <ChoiceCard
+                              selected={editor.amountUpgradePolicy === "end"}
+                              title="End the discount on upgrade"
+                              onClick={() =>
+                                patchEditor({ amountUpgradePolicy: "end" })
+                              }
+                            />
+                          </div>
+                        ) : null}
+                        {editor.pricingKind === "fixed_rate" ? (
+                          <div className="space-y-3">
+                            <div className="grid gap-2">
+                              <ChoiceCard
+                                selected={editor.fixedUpgradePolicy === "keep"}
+                                title="Keep negotiated price"
+                                detail="The same monthly amount continues after an upgrade."
+                                onClick={() =>
+                                  patchEditor({ fixedUpgradePolicy: "keep" })
+                                }
+                              />
+                              <ChoiceCard
+                                selected={editor.fixedUpgradePolicy === "end"}
+                                title="End negotiated price on upgrade"
+                                onClick={() =>
+                                  patchEditor({ fixedUpgradePolicy: "end" })
+                                }
+                              />
+                              <ChoiceCard
+                                selected={
+                                  editor.fixedUpgradePolicy === "replace"
+                                }
+                                title="Use an agreed replacement price"
+                                onClick={() =>
+                                  patchEditor({
+                                    fixedUpgradePolicy: "replace",
+                                  })
+                                }
+                              />
+                            </div>
+                            {editor.fixedUpgradePolicy === "replace" ? (
+                              <div className="grid gap-3 sm:grid-cols-2">
+                                {editor.planKey === "starter" ? (
+                                  <label className="block text-sm">
+                                    <span className="mb-1 block font-medium">
+                                      Celebrate replacement ($)
+                                    </span>
+                                    <input
+                                      className="ws-input w-full"
+                                      value={editor.replaceGrowingDollars}
+                                      onChange={(e) =>
+                                        patchEditor({
+                                          replaceGrowingDollars: e.target.value,
+                                        })
+                                      }
+                                    />
+                                  </label>
+                                ) : null}
+                                {editor.planKey !== "professional" ? (
+                                  <label className="block text-sm">
+                                    <span className="mb-1 block font-medium">
+                                      Flourish replacement ($)
+                                    </span>
+                                    <input
+                                      className="ws-input w-full"
+                                      value={editor.replaceFlourishDollars}
+                                      onChange={(e) =>
+                                        patchEditor({
+                                          replaceFlourishDollars:
+                                            e.target.value,
+                                        })
+                                      }
+                                    />
+                                  </label>
+                                ) : null}
+                                <label className="block text-sm sm:col-span-2">
+                                  <span className="mb-1 block font-medium">
+                                    If a path has no agreed price
+                                  </span>
+                                  <select
+                                    className="ws-input w-full"
+                                    value={editor.fixedUpgradeFallback}
+                                    onChange={(e) =>
+                                      patchEditor({
+                                        fixedUpgradeFallback: e.target
+                                          .value as EditorState["fixedUpgradeFallback"],
+                                      })
+                                    }
+                                  >
+                                    <option value="standard_list">
+                                      Regular subscription price
+                                    </option>
+                                    <option value="eligible_discount">
+                                      Eligible discounted price
+                                    </option>
+                                  </select>
+                                </label>
+                              </div>
+                            ) : null}
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </div>
+                </>
+              ) : (
+                <p className="text-sm text-[var(--htc-muted)]">
+                  You selected the regular subscription price, so there is no
+                  temporary special pricing period. You can still set how long
+                  the customer has to accept this offer below.
+                </p>
+              )}
 
-          <div className="grid gap-4 md:grid-cols-2">
-            <label className="block text-sm">
-              <span className="mb-1 block font-medium">Special pricing duration</span>
-              <select
-                className="ws-input w-full"
-                value={editor.durationMode}
-                disabled={mode !== "edit"}
-                onChange={(e) =>
-                  setEditor((s) => ({
-                    ...s,
-                    durationMode: e.target.value as EditorState["durationMode"],
-                  }))
-                }
+              <label className="block text-sm">
+                <span className="mb-1 block font-medium">Offer valid until</span>
+                <input
+                  type="date"
+                  className="ws-input max-w-[220px]"
+                  value={editor.expiresAt}
+                  onChange={(e) => patchEditor({ expiresAt: e.target.value })}
+                />
+                <span className="mt-1 block text-xs text-[var(--htc-muted)]">
+                  The customer must accept this offer by this date. This does
+                  not control how long special subscription pricing lasts after
+                  they subscribe.
+                </span>
+              </label>
+            </Section>
+
+            {/* 3. White Glove */}
+            <Section
+              title="White Glove Onboarding"
+              copy="Choose whether to include personalized onboarding and what to charge."
+            >
+              <div
+                className="grid gap-2 sm:grid-cols-2"
+                data-testid="white-glove-config"
               >
-                <option value="ongoing">Ongoing</option>
-                <option value="billing_cycles">Fixed number of billing cycles</option>
-              </select>
-            </label>
-            {editor.durationMode === "billing_cycles" ? (
-              <>
-                <label className="block text-sm">
-                  <span className="mb-1 block font-medium">Billing cycles</span>
+                <ChoiceCard
+                  selected={editor.whiteGloveMode === "none"}
+                  title="Not included"
+                  onClick={() => patchEditor({ whiteGloveMode: "none" })}
+                />
+                <ChoiceCard
+                  selected={editor.whiteGloveMode === "standard_499"}
+                  title="Standard onboarding — $499"
+                  onClick={() =>
+                    patchEditor({ whiteGloveMode: "standard_499" })
+                  }
+                />
+                <ChoiceCard
+                  selected={editor.whiteGloveMode === "weven_399"}
+                  title="Former Weven onboarding — $399"
+                  onClick={() => patchEditor({ whiteGloveMode: "weven_399" })}
+                />
+                <ChoiceCard
+                  selected={editor.whiteGloveMode === "custom"}
+                  title="Custom price"
+                  onClick={() => patchEditor({ whiteGloveMode: "custom" })}
+                />
+                <ChoiceCard
+                  selected={editor.whiteGloveMode === "waived"}
+                  title="Complimentary — $0"
+                  onClick={() => patchEditor({ whiteGloveMode: "waived" })}
+                />
+              </div>
+              {editor.whiteGloveMode === "custom" ? (
+                <label className="block max-w-[200px] text-sm">
+                  <span className="mb-1 block font-medium">
+                    Custom White Glove amount ($)
+                  </span>
                   <input
                     className="ws-input w-full"
-                    value={editor.durationBillingCycles}
-                    disabled={mode !== "edit"}
+                    value={editor.whiteGloveCustomDollars}
                     onChange={(e) =>
-                      setEditor((s) => ({
-                        ...s,
-                        durationBillingCycles: e.target.value,
-                      }))
+                      patchEditor({ whiteGloveCustomDollars: e.target.value })
                     }
                   />
                 </label>
-                <label className="block text-sm md:col-span-2">
-                  <span className="mb-1 block font-medium">
-                    After introductory pricing ends
-                  </span>
-                  <select
-                    className="ws-input w-full"
-                    value={editor.afterIntroPricing}
-                    disabled={mode !== "edit"}
-                    onChange={(e) =>
-                      setEditor((s) => ({
-                        ...s,
-                        afterIntroPricing: e.target
-                          .value as EditorState["afterIntroPricing"],
-                      }))
-                    }
-                  >
-                    <option value="standard_list">
-                      Resume then-current tier standard list price
-                    </option>
-                    <option value="eligible_discount">
-                      Resume eligible standard discount if still earned
-                    </option>
-                  </select>
-                </label>
-              </>
-            ) : null}
-          </div>
+              ) : null}
+              {editor.whiteGloveMode === "waived" ? (
+                <p className="text-sm text-[var(--htc-forest)]">
+                  White Glove onboarding will be included at no charge.
+                </p>
+              ) : null}
+              <p className="text-xs text-[var(--htc-muted)]">
+                One-time White Glove charges stay separate from the monthly
+                subscription price.
+              </p>
+            </Section>
 
-          <div className="grid gap-4 md:grid-cols-2" data-testid="white-glove-config">
-            <label className="block text-sm">
-              <span className="mb-1 block font-medium">White Glove</span>
-              <select
-                className="ws-input w-full"
-                value={editor.whiteGloveMode}
-                disabled={mode !== "edit"}
-                onChange={(e) =>
-                  setEditor((s) => ({
-                    ...s,
-                    whiteGloveMode: e.target
-                      .value as EditorState["whiteGloveMode"],
-                  }))
-                }
+            {/* 4. Review */}
+            <Section
+              title="Review Your Offer"
+              copy="Review exactly what you're proposing before saving."
+              className="border-[color-mix(in_srgb,var(--htc-primary)_25%,var(--htc-border))] bg-[color-mix(in_srgb,var(--htc-soft-sage)_35%,white)]"
+            >
+              <div
+                className="rounded-lg border border-[color-mix(in_srgb,var(--htc-forest)_18%,transparent)] bg-white p-5"
+                data-testid="offer-preview"
               >
-                <option value="none">Not included</option>
-                <option value="standard_499">Standard $499</option>
-                <option value="weven_399">Former Weven $399</option>
-                <option value="custom">Custom amount</option>
-                <option value="waived">Waived ($0)</option>
-              </select>
-            </label>
-            {editor.whiteGloveMode === "custom" ? (
+                {livePreview ? (
+                  <div className="space-y-3 text-sm leading-relaxed text-[var(--htc-text)]">
+                    <p className="ws-eyebrow">Your Special Offer</p>
+                    <h4 className="font-heading text-2xl text-[var(--htc-forest)]">
+                      {livePreview.planDisplayName}
+                    </h4>
+                    <p className="text-3xl font-medium tracking-tight text-[var(--htc-forest)]">
+                      {formatUsdFromCents(livePreview.monthlyRecurringCents)}
+                      /month
+                    </p>
+                    <p>
+                      Regularly{" "}
+                      {formatUsdFromCents(livePreview.listAmountCents)}
+                      /month
+                      {livePreview.monthlySavingsCents > 0
+                        ? ` — Save ${formatUsdFromCents(livePreview.monthlySavingsCents)}/month`
+                        : ""}
+                    </p>
+                    <p>{livePreview.durationLabel}.</p>
+                    {isSpecial && editor.durationPreset !== "ongoing" ? (
+                      <p>
+                        {editor.afterIntroPricing === "standard_list"
+                          ? `After the special period, the subscription continues at the regular ${livePreview.planDisplayName} rate in effect at that time (estimate today: ${formatUsdFromCents(livePreview.afterIntroStandardEstimateCents)}/month).`
+                          : livePreview.afterIntroEligibleProjection.known &&
+                              livePreview.afterIntroEligibleProjection
+                                .amountCents != null
+                            ? `After the special period: ${livePreview.afterIntroEligibleProjection.label} — estimate ${formatUsdFromCents(livePreview.afterIntroEligibleProjection.amountCents)}/month at today’s prices.`
+                            : livePreview.afterIntroEligibleProjection
+                                .explanation}
+                      </p>
+                    ) : null}
+                    {isSpecial ? (
+                      <p className="text-[var(--htc-muted)]">
+                        {livePreview.tierUpgradeLabel}
+                      </p>
+                    ) : null}
+                    <p>
+                      White Glove onboarding:{" "}
+                      {editor.whiteGloveMode === "none"
+                        ? "Not included"
+                        : editor.whiteGloveMode === "waived"
+                          ? "Included complimentary ($0)"
+                          : `${formatUsdFromCents(livePreview.whiteGloveAmountCents)} one-time`}
+                      .
+                    </p>
+                    <div className="border-t border-[var(--htc-border)] pt-3">
+                      <p>
+                        <strong>Estimated initial payment</strong> (before
+                        applicable taxes):{" "}
+                        {formatUsdFromCents(livePreview.initialPaymentCents)}
+                      </p>
+                      <p className="mt-1">
+                        <strong>Then</strong>{" "}
+                        {formatUsdFromCents(livePreview.futureMonthlyCents)}
+                        /month during special pricing.
+                      </p>
+                      <p className="mt-1">
+                        Offer valid until:{" "}
+                        {livePreview.expiresAt
+                          ? formatWhen(livePreview.expiresAt)
+                          : "No acceptance deadline set"}
+                      </p>
+                    </div>
+                    <p className="text-xs text-[var(--htc-muted)]">
+                      {livePreview.promoNote}
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-sm text-[var(--htc-muted)]">
+                    Adjust the offer to generate a validated preview.
+                  </p>
+                )}
+              </div>
+
               <label className="block text-sm">
-                <span className="mb-1 block font-medium">Custom WG amount ($)</span>
-                <input
-                  className="ws-input w-full"
-                  value={editor.whiteGloveCustomDollars}
-                  disabled={mode !== "edit"}
+                <span className="mb-1 block font-medium">
+                  Internal notes (never customer-visible)
+                </span>
+                <textarea
+                  className="ws-input min-h-[72px] w-full"
+                  value={editor.internalNotes}
                   onChange={(e) =>
-                    setEditor((s) => ({
-                      ...s,
-                      whiteGloveCustomDollars: e.target.value,
-                    }))
+                    patchEditor({ internalNotes: e.target.value })
                   }
                 />
               </label>
-            ) : null}
-          </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
-            <label className="block text-sm md:col-span-2">
-              <span className="mb-1 block font-medium">
-                Internal notes (never customer-visible)
-              </span>
-              <textarea
-                className="ws-input min-h-[88px] w-full"
-                value={editor.internalNotes}
-                disabled={mode !== "edit"}
-                onChange={(e) =>
-                  setEditor((s) => ({ ...s, internalNotes: e.target.value }))
-                }
-              />
-            </label>
-            <label className="block text-sm md:col-span-2">
-              <span className="mb-1 block font-medium">Reason</span>
-              <input
-                className="ws-input w-full"
-                value={editor.reason}
-                disabled={mode !== "edit"}
-                onChange={(e) =>
-                  setEditor((s) => ({ ...s, reason: e.target.value }))
-                }
-              />
-            </label>
-          </div>
+              {revisions.length > 0 ? (
+                <div data-testid="offer-revision-history">
+                  <h4 className="mb-2 text-sm font-medium">Revision history</h4>
+                  <ul className="space-y-1.5 text-xs text-[var(--htc-muted)]">
+                    {revisions.map((r) => (
+                      <li key={r.id}>
+                        Rev {r.revision} · {formatWhen(r.createdAt)}
+                        {r.changedByEmail ? ` · ${r.changedByEmail}` : ""}
+                        {r.changeSummary ? ` — ${r.changeSummary}` : ""}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
 
-          <div
-            className="rounded-md border border-[color-mix(in_srgb,var(--htc-forest)_20%,transparent)] bg-[color-mix(in_srgb,var(--htc-forest)_4%,white)] p-4"
-            data-testid="offer-preview"
-          >
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <h3 className="font-heading text-lg text-[var(--htc-forest)]">
-                Offer preview
-              </h3>
-              <button
-                type="button"
-                className="ws-btn"
-                onClick={() => setMode(mode === "preview" ? "edit" : "preview")}
-              >
-                {mode === "preview" ? "Back to editor" : "Preview only"}
-              </button>
-            </div>
-            {livePreview ? (
-              <div className="space-y-2 text-sm">
-                <p>
-                  <strong>{venueName}</strong> · {livePreview.planDisplayName} (
-                  {livePreview.capacityLabel})
-                </p>
-                <p>
-                  Standard monthly:{" "}
-                  {formatUsdFromCents(livePreview.listAmountCents)}
-                </p>
-                <p>
-                  Custom monthly:{" "}
-                  <strong>
-                    {formatUsdFromCents(livePreview.monthlyRecurringCents)}
-                  </strong>
-                  {livePreview.monthlySavingsCents > 0
-                    ? ` · saves ${formatUsdFromCents(livePreview.monthlySavingsCents)}/mo`
-                    : ""}
-                </p>
-                <p>Duration: {livePreview.durationLabel}</p>
-                <p>Tier upgrades: {livePreview.tierUpgradeLabel}</p>
-                <p>{livePreview.afterIntroLabel}</p>
-                <p>White Glove: {livePreview.whiteGloveLabel}</p>
-                <p className="pt-2">
-                  <strong>Pays now (before tax):</strong>{" "}
-                  {formatUsdFromCents(livePreview.initialPaymentCents)}
-                </p>
-                <p>
-                  <strong>Pays later (recurring):</strong>{" "}
-                  {formatUsdFromCents(livePreview.futureMonthlyCents)}/mo during
-                  special pricing
-                </p>
-                {livePreview.expiresAt ? (
-                  <p>Offer expires: {formatWhen(livePreview.expiresAt)}</p>
-                ) : (
-                  <p>Offer expiration: none set</p>
-                )}
-                <p className="text-[var(--htc-muted)]">{livePreview.promoNote}</p>
-              </div>
-            ) : (
-              <p className="text-sm text-[var(--htc-muted)]">
-                Adjust fields to generate a validated preview.
-              </p>
-            )}
-          </div>
-
-          {showHistory && revisions.length > 0 ? (
-            <div data-testid="offer-revision-history">
-              <h3 className="mb-2 font-heading text-lg">Revision history</h3>
-              <ul className="space-y-2 text-sm">
-                {revisions.map((r) => (
-                  <li
-                    key={r.id}
-                    className="border-b border-[color-mix(in_srgb,var(--taupe-medium)_25%,transparent)] pb-2"
-                  >
-                    Rev {r.revision} · {r.status} · {formatWhen(r.createdAt)}
-                    {r.changedByEmail ? ` · ${r.changedByEmail}` : ""}
-                    {r.changeSummary ? ` — ${r.changeSummary}` : ""}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-
-          {mode === "edit" ? (
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                className="ws-btn ws-btn-primary"
-                disabled={busy}
-                onClick={() => void saveDraft()}
-                data-testid="save-offer-draft"
-              >
-                {busy ? "Saving…" : "Save draft"}
-              </button>
-              {editingId ? (
+              <div className="flex flex-wrap gap-2 pt-1">
+                <button
+                  type="button"
+                  className="ws-btn ws-btn-primary"
+                  disabled={busy}
+                  onClick={() => void saveDraft()}
+                  data-testid="save-offer-draft"
+                >
+                  {busy ? "Saving…" : "Save Draft"}
+                </button>
                 <button
                   type="button"
                   className="ws-btn"
                   disabled={busy}
-                  onClick={() => void discardCurrent()}
+                  onClick={() => {
+                    document
+                      .querySelector("[data-testid='offer-preview']")
+                      ?.scrollIntoView({ behavior: "smooth", block: "center" });
+                  }}
                 >
-                  Discard draft
+                  Preview Offer
                 </button>
+                {editingId ? (
+                  <>
+                    <button
+                      type="button"
+                      className="ws-btn"
+                      disabled={busy}
+                      onClick={() => void duplicateOffer(editingId)}
+                    >
+                      Duplicate
+                    </button>
+                    <button
+                      type="button"
+                      className="ws-btn"
+                      disabled={busy}
+                      onClick={() => void discardCurrent()}
+                    >
+                      Discard Draft
+                    </button>
+                  </>
+                ) : null}
+                <button
+                  type="button"
+                  className="ws-btn"
+                  disabled={busy}
+                  onClick={backToList}
+                >
+                  Back to Offers
+                </button>
+              </div>
+              <p className="text-xs text-[var(--htc-muted)]">
+                Sending to the customer is coming in a later stage. Standard
+                Send Subscription Link remains available above for ordinary
+                checkout.
+              </p>
+            </Section>
+          </div>
+
+          {/* Sticky summary */}
+          <aside className="lg:sticky lg:top-6 lg:self-start">
+            <div className="rounded-lg border border-[var(--htc-border)] bg-[var(--htc-warm-white)] p-4 shadow-[0_1px_0_rgba(41,45,41,0.04)]">
+              <p className="ws-eyebrow">Live summary</p>
+              <p className="mt-2 font-heading text-xl text-[var(--htc-forest)]">
+                {liveCalc.planName}
+              </p>
+              <p className="mt-1 text-2xl font-medium text-[var(--htc-forest)]">
+                {formatUsdFromCents(liveCalc.monthly)}
+                <span className="text-base font-normal text-[var(--htc-muted)]">
+                  /mo
+                </span>
+              </p>
+              {liveCalc.savings > 0 ? (
+                <p className="mt-1 text-sm text-[var(--htc-text)]">
+                  Saves {formatUsdFromCents(liveCalc.savings)}/mo vs regular
+                </p>
+              ) : null}
+              <dl className="mt-4 space-y-2 text-xs text-[var(--htc-muted)]">
+                <div className="flex justify-between gap-2">
+                  <dt>Duration</dt>
+                  <dd className="text-right text-[var(--htc-text)]">
+                    {!isSpecial
+                      ? "Regular price"
+                      : editor.durationPreset === "ongoing"
+                        ? "Ongoing"
+                        : editor.durationPreset === "custom"
+                          ? `${editor.durationBillingCycles} months`
+                          : `${editor.durationPreset} months`}
+                  </dd>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <dt>White Glove</dt>
+                  <dd className="text-right text-[var(--htc-text)]">
+                    {livePreview
+                      ? formatUsdFromCents(livePreview.whiteGloveAmountCents)
+                      : "—"}
+                  </dd>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <dt>Valid until</dt>
+                  <dd className="text-right text-[var(--htc-text)]">
+                    {editor.expiresAt || "Not set"}
+                  </dd>
+                </div>
+              </dl>
+              {dirty ? (
+                <p className="mt-3 text-xs text-[var(--htc-dusty)]">
+                  Unsaved changes
+                </p>
               ) : null}
             </div>
-          ) : null}
+          </aside>
         </div>
-      )}
+      ) : null}
     </Panel>
   );
 }

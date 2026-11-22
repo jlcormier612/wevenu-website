@@ -444,6 +444,7 @@ export type * from "./sales-offer-types";
 export {
   validateSalesOfferTerms,
   computeSalesOfferPreview,
+  projectEligibleDiscount,
   monthlyRecurringFromNormalized,
   hashNormalizedTerms,
   crmPlanIdToSaasPlanKey,
