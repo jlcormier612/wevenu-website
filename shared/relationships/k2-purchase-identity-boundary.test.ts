@@ -276,7 +276,11 @@ describe("purchase identity source contracts", () => {
     assert.doesNotMatch(contact, /checkoutStartGuard/);
     const findStart = service.indexOf("function findExisting(");
     const findBody = service.slice(findStart, service.indexOf("function absorbStripeDrafts("));
-    assert.match(findBody, /Email is the strongest identity signal/);
+    assert.match(findBody, /Email \+ venue together/);
+    assert.doesNotMatch(
+      findBody,
+      /Email is the strongest identity signal — never duplicate by email/,
+    );
   });
 
   it("hold persists before onboarding and does not reuse the old token", () => {
@@ -422,17 +426,21 @@ describe("file-store purchase identity ordering", () => {
       0,
     );
 
+    // Distinct venue + same email must open its own checkout draft (Batch 3.1).
     const startedC = await ingestCheckoutStarted({
       email,
       venueName: "K2 Gate5fix Bravo Hall",
       plan: "gather",
       checkoutSessionId: "cs_c",
     });
-    assert.equal(startedC?.relationship.id, aId);
-    assert.deepEqual(ids(startedC!.relationship), aBefore);
+    assert.ok(startedC);
+    assert.notEqual(startedC.relationship.id, aId);
+    assert.equal(startedC.relationship.venue.name, "K2 Gate5fix Bravo Hall");
+    assert.equal(startedC.relationship.stripeCheckoutSessionId, "cs_c");
 
     const purchaseC = await purchased("cs_c", "sub_c", "cus_c", "K2 Gate5fix Bravo Hall");
     assert.equal(purchaseC.purchaseHold ?? false, false);
+    assert.equal(purchaseC.relationship.id, startedC.relationship.id);
     assert.notEqual(purchaseC.relationship.id, aId);
     assert.equal(purchaseC.relationship.stripeCheckoutSessionId, "cs_c");
     assert.equal(purchaseC.relationship.stripeSubscriptionId, "sub_c");
@@ -467,13 +475,25 @@ describe("file-store purchase identity ordering", () => {
       venueName: "Inquiry Hall",
       message: "first",
     });
-    const secondInquiry = await ingestContactForm({
+    const sameVenueReturn = await ingestContactForm({
+      email: inquiryEmail,
+      name: "Inquiry Person",
+      venueName: "Inquiry Hall",
+      message: "same venue return",
+    });
+    assert.equal(sameVenueReturn.relationship.id, firstInquiry.relationship.id);
+    assert.equal(sameVenueReturn.created, false);
+
+    // Distinct venue name with the same email must not merge (Batch 3.1).
+    const renamedVenue = await ingestContactForm({
       email: inquiryEmail,
       name: "Inquiry Person",
       venueName: "Inquiry Hall Renamed",
-      message: "second",
+      message: "second venue",
     });
-    assert.equal(secondInquiry.relationship.id, firstInquiry.relationship.id);
-    assert.equal(secondInquiry.created, false);
+    assert.notEqual(renamedVenue.relationship.id, firstInquiry.relationship.id);
+    assert.equal(renamedVenue.created, true);
+    assert.equal(renamedVenue.relationship.venue.name, "Inquiry Hall Renamed");
+    assert.equal(firstInquiry.relationship.venue.name, "Inquiry Hall");
   });
 });
