@@ -80,6 +80,7 @@ describe("Workspace lower-privilege RBAC matrix", () => {
       "relationships/product-sync/route.ts",
       "relationships/custom-pricing/route.ts",
       "relationships/referrals/route.ts",
+      "relationships/sales-offers/route.ts",
     ]) {
       const src = readFileSync(join(root, rel), "utf8");
       assert.match(src, /requireWorkspaceStaff/);
