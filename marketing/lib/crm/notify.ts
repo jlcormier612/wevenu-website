@@ -1,4 +1,7 @@
-import { enrollmentSummaryLines } from "./enrollment-summary";
+import {
+  enrollmentSummaryLines,
+  type EnrollmentNotifyContext,
+} from "./enrollment-summary";
 import type { VenueEnrollmentRecord } from "./types";
 import { sendOpsInternalEmail } from "@shared/email";
 
@@ -12,9 +15,10 @@ import { sendOpsInternalEmail } from "@shared/email";
  */
 export async function notifySubscriptionEnrollment(
   record: VenueEnrollmentRecord,
+  context: EnrollmentNotifyContext = {},
 ): Promise<void> {
   const subject = `New Hello to Cheers Subscription — ${record.venueName}`;
-  const text = enrollmentSummaryLines(record).join("\n");
+  const text = enrollmentSummaryLines(record, context).join("\n");
   const sessionKey = record.stripeCheckoutSessionId?.trim() || record.id;
   const result = await sendOpsInternalEmail({
     subject,

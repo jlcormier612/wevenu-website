@@ -38,8 +38,12 @@ export type VenueEnrollmentRecord = {
   welcomeBackVerified: WelcomeBackVerifiedStatus;
   onboardingType: OnboardingType;
   paymentStatus: "successful" | "pending" | "failed";
-  /** Monthly recurring revenue in cents from Stripe price when known */
+  /** Monthly recurring revenue in cents after applicable recurring discounts */
   mrrCents?: number | null;
+  /** Human label for the applied recurring discount (coupon name), if any */
+  discountName?: string | null;
+  /** One-time White Glove amount in cents when onboardingType is white_glove */
+  whiteGloveAmountCents?: number | null;
 };
 
 export type CreateVenueEnrollmentInput = {
@@ -55,6 +59,8 @@ export type CreateVenueEnrollmentInput = {
   onboardingType: OnboardingType;
   paymentStatus?: VenueEnrollmentRecord["paymentStatus"];
   mrrCents?: number | null;
+  discountName?: string | null;
+  whiteGloveAmountCents?: number | null;
   /**
    * Subscriber first/last name, collected directly at checkout (never split
    * from Stripe's billing name). Used to greet the person in the welcome

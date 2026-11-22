@@ -81,6 +81,14 @@ export async function createVenueEnrollment(
         welcomeBackRequested: input.welcomeBackRequested || existing.welcomeBackRequested,
         onboardingType: input.onboardingType || existing.onboardingType,
         mrrCents: input.mrrCents ?? existing.mrrCents ?? null,
+        discountName:
+          input.discountName !== undefined
+            ? input.discountName
+            : (existing.discountName ?? null),
+        whiteGloveAmountCents:
+          input.whiteGloveAmountCents !== undefined
+            ? input.whiteGloveAmountCents
+            : (existing.whiteGloveAmountCents ?? null),
         updatedAt: now,
       }
     : {
@@ -102,6 +110,8 @@ export async function createVenueEnrollment(
         onboardingType: input.onboardingType,
         paymentStatus: input.paymentStatus ?? "successful",
         mrrCents: input.mrrCents ?? null,
+        discountName: input.discountName ?? null,
+        whiteGloveAmountCents: input.whiteGloveAmountCents ?? null,
       };
 
   if (existing) {
@@ -147,7 +157,9 @@ export async function createVenueEnrollment(
   }
 
   if (!existing) {
-    await notifySubscriptionEnrollment(record);
+    await notifySubscriptionEnrollment(record, {
+      relationshipId: synced.relationshipId,
+    });
   }
 
   // Order: token minted in enterOnboardingAfterPurchase → durable Postgres

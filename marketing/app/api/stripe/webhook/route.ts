@@ -18,12 +18,17 @@ import {
 import { syncSubscriptionLifecycleToRelationship } from "@/lib/relationships/bridge";
 import { getMarketingSiteUrl, getStripe, shouldProvisionFromCheckoutSession } from "@/lib/stripe/config";
 import {
+  couponIdsFromSubscription,
   estimateMrrCentsFromPlan,
   mrrCentsFromStripeSubscription,
+  summarizeRecurringDiscount,
+  type RecurringCouponLike,
 } from "@/lib/stripe/mrr";
 import {
   FOUNDING_PERCENT_OFF,
   WEVEN_PERCENT_OFF,
+  WEVEN_WHITE_GLOVE_AMOUNT_CENTS,
+  WHITE_GLOVE_AMOUNT_CENTS,
   getPricingOfferStore,
   isPricingLaunchV1Ready,
   requireDurablePricingOfferStore,
@@ -166,7 +171,7 @@ async function loadSubscriptionForMrr(
   if (!subscriptionId) return null;
   try {
     return await stripe.subscriptions.retrieve(subscriptionId, {
-      expand: ["items.data.price"],
+      expand: ["items.data.price", "discounts"],
     });
   } catch (error) {
     console.warn("[stripe] unable to load subscription for MRR", error);
@@ -174,15 +179,58 @@ async function loadSubscriptionForMrr(
   }
 }
 
-function resolveMrrCents(
+async function loadCouponsForSubscription(
+  stripe: Stripe,
+  subscription: Stripe.Subscription,
+): Promise<Record<string, RecurringCouponLike>> {
+  const couponsById: Record<string, RecurringCouponLike> = {};
+  for (const couponId of couponIdsFromSubscription(subscription)) {
+    try {
+      const coupon = await stripe.coupons.retrieve(couponId, {
+        expand: ["applies_to"],
+      });
+      couponsById[couponId] = {
+        id: coupon.id,
+        name: coupon.name,
+        percent_off: coupon.percent_off,
+        amount_off: coupon.amount_off,
+        applies_to: coupon.applies_to ?? null,
+        valid: coupon.valid,
+      };
+    } catch (error) {
+      console.warn("[stripe] unable to load coupon for MRR", {
+        couponId,
+        error,
+      });
+    }
+  }
+  return couponsById;
+}
+
+async function resolveMrrFromSubscription(
+  stripe: Stripe,
   subscription: Stripe.Subscription | null,
   plan: string,
-): number {
-  if (subscription) {
-    const fromStripe = mrrCentsFromStripeSubscription(subscription);
-    if (fromStripe > 0) return fromStripe;
+): Promise<{
+  mrrCents: number;
+  discountName: string | null;
+  couponsById: Record<string, RecurringCouponLike>;
+}> {
+  if (!subscription) {
+    return {
+      mrrCents: estimateMrrCentsFromPlan(plan),
+      discountName: null,
+      couponsById: {},
+    };
   }
-  return estimateMrrCentsFromPlan(plan);
+  const couponsById = await loadCouponsForSubscription(stripe, subscription);
+  const fromStripe = mrrCentsFromStripeSubscription(subscription, couponsById);
+  const discount = summarizeRecurringDiscount(subscription, couponsById);
+  return {
+    mrrCents: fromStripe > 0 ? fromStripe : estimateMrrCentsFromPlan(plan),
+    discountName: discount?.name ?? null,
+    couponsById,
+  };
 }
 
 async function createBillingPortalUrl(
@@ -258,7 +306,36 @@ async function handleCheckoutCompleted(
       : session.subscription?.id ?? null;
 
   const subscription = await loadSubscriptionForMrr(stripe, subscriptionId);
-  const mrrCents = resolveMrrCents(subscription, plan);
+  const { mrrCents, discountName } = await resolveMrrFromSubscription(
+    stripe,
+    subscription,
+    plan,
+  );
+
+  let whiteGloveAmountCents: number | null = null;
+  if (onboardingType === "white_glove") {
+    const wgPriceId =
+      checkoutOffer?.whiteGlovePriceId?.trim() ||
+      meta.white_glove_price_id?.trim() ||
+      null;
+    if (wgPriceId) {
+      try {
+        const wgPrice = await stripe.prices.retrieve(wgPriceId);
+        whiteGloveAmountCents =
+          typeof wgPrice.unit_amount === "number" ? wgPrice.unit_amount : null;
+      } catch (error) {
+        console.warn("[stripe] unable to load White Glove price for notify", {
+          wgPriceId,
+          error,
+        });
+      }
+    }
+    if (whiteGloveAmountCents == null) {
+      whiteGloveAmountCents = wevenDeclared
+        ? WEVEN_WHITE_GLOVE_AMOUNT_CENTS
+        : WHITE_GLOVE_AMOUNT_CENTS;
+    }
+  }
 
   if (
     !shouldProvisionFromCheckoutSession({
@@ -294,6 +371,8 @@ async function handleCheckoutCompleted(
       onboardingType,
       paymentStatus: session.payment_status === "paid" ? "successful" : "pending",
       mrrCents,
+      discountName,
+      whiteGloveAmountCents,
     });
 
     // Phase 4 — link reservation to this Session (fulfillment waits for venue activation).
@@ -454,12 +533,23 @@ async function handleSubscriptionLifecycle(
   );
 
   let mrrSource: Stripe.Subscription = subscription;
-  if (mrrCentsFromStripeSubscription(subscription) <= 0 && !deleted) {
+  const preliminaryCoupons = await loadCouponsForSubscription(
+    stripe,
+    subscription,
+  );
+  if (
+    mrrCentsFromStripeSubscription(subscription, preliminaryCoupons) <= 0 &&
+    !deleted
+  ) {
     const loaded = await loadSubscriptionForMrr(stripe, subscription.id);
     if (loaded) mrrSource = loaded;
   }
 
-  const mrrCents = resolveMrrCents(mrrSource, plan ?? "");
+  const { mrrCents } = await resolveMrrFromSubscription(
+    stripe,
+    mrrSource,
+    plan ?? "",
+  );
 
   await syncSubscriptionLifecycleToRelationship({
     email,
