@@ -151,6 +151,21 @@ export type SalesOfferUpdateInput = {
   changeSummary?: string | null;
 };
 
+/** Verified or strongly indicated eligibility for post-intro projections. */
+export type SalesOfferEligibilityHints = {
+  foundingEligible?: boolean;
+  /** Former Weven — welcome-back requested / verified, or known Weven grant. */
+  wevenEligible?: boolean;
+  groupEligible?: boolean;
+};
+
+export type SalesOfferEligibleProjection = {
+  known: boolean;
+  amountCents: number | null;
+  label: string;
+  explanation: string;
+};
+
 export type SalesOfferComputedPreview = {
   planKey: SaasPlanKey;
   planDisplayName: string;
@@ -171,6 +186,9 @@ export type SalesOfferComputedPreview = {
   replacesStandardPromos: boolean;
   promoNote: string;
   lines: string[];
+  /** Estimate at today's list for the selected tier (not a guaranteed future charge). */
+  afterIntroStandardEstimateCents: number;
+  afterIntroEligibleProjection: SalesOfferEligibleProjection;
 };
 
 export type SalesOfferValidationIssue = {

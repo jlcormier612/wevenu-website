@@ -151,6 +151,23 @@ describe("sales-offer Stage 1 validation", () => {
     assert.equal("internalNotes" in preview, false);
     assert.ok(preview.lines.every((l) => !/internal/i.test(l) || /does not/.test(l)));
   });
+
+  it("projects eligible discounts only when eligibility is indicated", () => {
+    const { projectEligibleDiscount } = require("./sales-offer-compute") as typeof import("./sales-offer-compute");
+    const unknown = projectEligibleDiscount("growing", {});
+    assert.equal(unknown.known, false);
+    assert.equal(unknown.amountCents, null);
+
+    const weven = projectEligibleDiscount("growing", { wevenEligible: true });
+    assert.equal(weven.known, true);
+    assert.equal(weven.amountCents, 19920);
+
+    const founding = projectEligibleDiscount("growing", {
+      foundingEligible: true,
+    });
+    assert.equal(founding.known, true);
+    assert.equal(founding.amountCents, 22410);
+  });
 });
 
 describe("sales-offer Stage 1 store", () => {

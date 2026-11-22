@@ -7,6 +7,7 @@ import {
   SalesOfferNotFoundError,
   SalesOfferValidationError,
   validateSalesOfferTerms,
+  type SalesOfferEligibilityHints,
   type SalesOfferTermsInput,
 } from "@shared/pricing";
 import { getSalesOfferStore } from "@shared/pricing/sales-offer-store-access";
@@ -39,9 +40,26 @@ async function requireLiveRelationship(relationshipId: string) {
   return store.relationships.find((r) => r.id === relationshipId) ?? null;
 }
 
-function serializeOffer(offer: Awaited<
-  ReturnType<ReturnType<typeof getSalesOfferStore>["getById"]>
->) {
+function eligibilityFromRelationship(relationship: {
+  foundingMember?: boolean;
+  welcomeBackRequested?: boolean;
+  welcomeBackVerified?: string;
+}): SalesOfferEligibilityHints {
+  const verified = relationship.welcomeBackVerified;
+  const wevenEligible =
+    Boolean(relationship.welcomeBackRequested) &&
+    verified !== "rejected" &&
+    verified !== "expired";
+  return {
+    foundingEligible: Boolean(relationship.foundingMember),
+    wevenEligible,
+  };
+}
+
+function serializeOffer(
+  offer: Awaited<ReturnType<ReturnType<typeof getSalesOfferStore>["getById"]>>,
+  eligibility: SalesOfferEligibilityHints = {},
+) {
   if (!offer) return null;
   const validated = validateSalesOfferTerms({
     planKey: offer.planKey,
@@ -62,8 +80,9 @@ function serializeOffer(offer: Awaited<
     expiresAt: offer.expiresAt,
     replacesStandardPromos: offer.replacesStandardPromos,
   });
-  const preview =
-    validated.ok ? computeSalesOfferPreview(validated.normalized) : null;
+  const preview = validated.ok
+    ? computeSalesOfferPreview(validated.normalized, eligibility)
+    : null;
   return {
     ...offer,
     preview,
@@ -94,10 +113,18 @@ export async function GET(request: Request) {
 
   const relationship = await requireLiveRelationship(relationshipId);
   if (!relationship) {
-    return NextResponse.json({ error: "Relationship not found" }, { status: 404 });
+    return NextResponse.json(
+      {
+        error:
+          "This Sales relationship is no longer available. It may have been removed after a prior review. Return to Sales and open a current prospect.",
+        code: "relationship_not_found",
+      },
+      { status: 404 },
+    );
   }
 
   const store = getSalesOfferStore();
+  const eligibility = eligibilityFromRelationship(relationship);
 
   if (offerId) {
     const offer = await store.getById(offerId);
@@ -109,7 +136,7 @@ export async function GET(request: Request) {
       : undefined;
     return NextResponse.json({
       ok: true,
-      offer: serializeOffer(offer),
+      offer: serializeOffer(offer, eligibility),
       revisions,
       relationship: {
         id: relationship.id,
@@ -118,7 +145,11 @@ export async function GET(request: Request) {
         ownerName: `${relationship.owner.firstName} ${relationship.owner.lastName}`.trim(),
         planId: relationship.planId,
         subscribedAt: relationship.subscribedAt ?? null,
+        foundingMember: Boolean(relationship.foundingMember),
+        welcomeBackRequested: Boolean(relationship.welcomeBackRequested),
+        welcomeBackVerified: relationship.welcomeBackVerified ?? "none",
       },
+      eligibility,
       stage: 1,
       stripeSideEffects: false,
     });
@@ -127,7 +158,7 @@ export async function GET(request: Request) {
   const offers = await store.listByRelationship(relationshipId);
   return NextResponse.json({
     ok: true,
-    offers: offers.map((o) => serializeOffer(o)),
+    offers: offers.map((o) => serializeOffer(o, eligibility)),
     relationship: {
       id: relationship.id,
       venueName: relationship.venue.name,
@@ -135,7 +166,11 @@ export async function GET(request: Request) {
       ownerName: `${relationship.owner.firstName} ${relationship.owner.lastName}`.trim(),
       planId: relationship.planId,
       subscribedAt: relationship.subscribedAt ?? null,
+      foundingMember: Boolean(relationship.foundingMember),
+      welcomeBackRequested: Boolean(relationship.welcomeBackRequested),
+      welcomeBackVerified: relationship.welcomeBackVerified ?? "none",
     },
+    eligibility,
     stage: 1,
     stripeSideEffects: false,
   });
@@ -165,12 +200,20 @@ export async function POST(request: Request) {
 
   const relationship = await requireLiveRelationship(relationshipId);
   if (!relationship) {
-    return NextResponse.json({ error: "Relationship not found" }, { status: 404 });
+    return NextResponse.json(
+      {
+        error:
+          "This Sales relationship is no longer available. It may have been removed after a prior review. Return to Sales and open a current prospect.",
+        code: "relationship_not_found",
+      },
+      { status: 404 },
+    );
   }
 
   const store = getSalesOfferStore();
   const actorEmail = session?.email || "founder";
   const actorId = session?.id || null;
+  const eligibility = eligibilityFromRelationship(relationship);
 
   try {
     if (action === "create") {
@@ -195,7 +238,7 @@ export async function POST(request: Request) {
       });
       return NextResponse.json({
         ok: true,
-        offer: serializeOffer(offer),
+        offer: serializeOffer(offer, eligibility),
         stripeSideEffects: false,
       });
     }
@@ -235,7 +278,7 @@ export async function POST(request: Request) {
       });
       return NextResponse.json({
         ok: true,
-        offer: serializeOffer(offer),
+        offer: serializeOffer(offer, eligibility),
         stripeSideEffects: false,
       });
     }
@@ -259,7 +302,7 @@ export async function POST(request: Request) {
       });
       return NextResponse.json({
         ok: true,
-        offer: serializeOffer(offer),
+        offer: serializeOffer(offer, eligibility),
         stripeSideEffects: false,
       });
     }
@@ -278,7 +321,7 @@ export async function POST(request: Request) {
       });
       return NextResponse.json({
         ok: true,
-        offer: serializeOffer(offer),
+        offer: serializeOffer(offer, eligibility),
         stripeSideEffects: false,
       });
     }
@@ -297,8 +340,9 @@ export async function POST(request: Request) {
       }
       return NextResponse.json({
         ok: true,
-        preview: computeSalesOfferPreview(validated.normalized),
+        preview: computeSalesOfferPreview(validated.normalized, eligibility),
         termsHash: validated.termsHash,
+        eligibility,
         stripeSideEffects: false,
       });
     }

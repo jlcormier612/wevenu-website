@@ -7,18 +7,23 @@ import { createHash } from "node:crypto";
 
 import {
   FOUNDING_PERCENT_OFF,
+  GROUP_PERCENT_OFF,
   WEVEN_PERCENT_OFF,
   WHITE_GLOVE_AMOUNT_CENTS,
   WEVEN_WHITE_GLOVE_AMOUNT_CENTS,
   amountAfterPercentOff,
+  foundingAmountCents,
   formatUsdFromCents,
   getCatalogEntry,
   listAmountCents,
+  wevenAmountCents,
 } from "./catalog";
 import type { SaasPlanKey } from "./types";
 import type {
   NormalizedSalesOfferTerms,
   SalesOfferComputedPreview,
+  SalesOfferEligibilityHints,
+  SalesOfferEligibleProjection,
   SalesOfferFixedReplacementPrices,
   SalesOfferTermsInput,
   SalesOfferValidationIssue,
@@ -436,23 +441,71 @@ function tierUpgradeLabel(terms: NormalizedSalesOfferTerms): string {
 }
 
 /**
+ * Project the best non-stacking standard discount estimate for a plan,
+ * based only on verified/indicated eligibility — never invent Weven/Founding.
+ */
+export function projectEligibleDiscount(
+  planKey: SaasPlanKey,
+  hints: SalesOfferEligibilityHints = {},
+): SalesOfferEligibleProjection {
+  const list = listAmountCents(planKey);
+  // Non-stacking precedence matches checkout: Weven → Founding → group.
+  if (hints.wevenEligible) {
+    return {
+      known: true,
+      amountCents: wevenAmountCents(planKey),
+      label: `Eligible former Weven (${WEVEN_PERCENT_OFF}% off)`,
+      explanation: `Estimate at today’s ${getCatalogEntry(planKey).name} list — ${formatUsdFromCents(wevenAmountCents(planKey))}/mo. Actual future amount follows then-current list and eligibility.`,
+    };
+  }
+  if (hints.foundingEligible) {
+    return {
+      known: true,
+      amountCents: foundingAmountCents(planKey),
+      label: `Eligible Founding (${FOUNDING_PERCENT_OFF}% off)`,
+      explanation: `Estimate at today’s ${getCatalogEntry(planKey).name} list — ${formatUsdFromCents(foundingAmountCents(planKey))}/mo. Actual future amount follows then-current list and eligibility.`,
+    };
+  }
+  if (hints.groupEligible) {
+    const groupCents = amountAfterPercentOff(list, GROUP_PERCENT_OFF);
+    return {
+      known: true,
+      amountCents: groupCents,
+      label: `Eligible additional-venue (${GROUP_PERCENT_OFF}% off)`,
+      explanation: `Estimate at today’s list — ${formatUsdFromCents(groupCents)}/mo.`,
+    };
+  }
+  return {
+    known: false,
+    amountCents: null,
+    label: "Eligible discounted price",
+    explanation:
+      "No verified Founding, former Weven, or additional-venue eligibility is on file for this prospect. If they later qualify, that discount can apply after the special period — otherwise the then-current regular tier price applies.",
+  };
+}
+
+/**
  * Build founder + customer-style preview from validated terms.
  * Does not include internal notes.
  */
 export function computeSalesOfferPreview(
   terms: NormalizedSalesOfferTerms,
+  eligibility: SalesOfferEligibilityHints = {},
 ): SalesOfferComputedPreview {
   const catalog = getCatalogEntry(terms.planKey);
   const monthly = monthlyRecurringFromNormalized(terms);
   const savings = Math.max(0, terms.listAmountCents - monthly);
   const wg = terms.whiteGloveAmountCents;
   const initial = monthly + wg;
+  const eligibleProjection = projectEligibleDiscount(terms.planKey, eligibility);
 
   const afterIntroMonthly =
     terms.durationMode === "billing_cycles"
       ? terms.afterIntroPricing === "standard_list"
         ? terms.listAmountCents
-        : null
+        : eligibleProjection.known
+          ? eligibleProjection.amountCents
+          : null
       : null;
 
   const lines: string[] = [
@@ -466,9 +519,13 @@ export function computeSalesOfferPreview(
   ];
 
   if (terms.durationMode === "billing_cycles") {
-    if (afterIntroMonthly != null) {
+    if (terms.afterIntroPricing === "standard_list") {
       lines.push(
-        `After intro: ${formatUsdFromCents(afterIntroMonthly)}/mo at today’s ${catalog.name} list (actual amount follows then-current tier list if upgraded).`,
+        `After intro (estimate at today’s prices): ${formatUsdFromCents(terms.listAmountCents)}/mo regular ${catalog.name}. Actual amount follows then-current tier list.`,
+      );
+    } else if (eligibleProjection.known && eligibleProjection.amountCents != null) {
+      lines.push(
+        `After intro (estimate): ${formatUsdFromCents(eligibleProjection.amountCents)}/mo — ${eligibleProjection.label}.`,
       );
     } else {
       lines.push(afterIntroLabel(terms));
@@ -503,6 +560,8 @@ export function computeSalesOfferPreview(
     replacesStandardPromos: terms.replacesStandardPromos,
     promoNote,
     lines,
+    afterIntroStandardEstimateCents: terms.listAmountCents,
+    afterIntroEligibleProjection: eligibleProjection,
   };
 }
 
