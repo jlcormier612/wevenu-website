@@ -10,12 +10,13 @@ import {
   type SalesOfferTermsInput,
 } from "@shared/pricing";
 import { getSalesOfferStore } from "@shared/pricing/sales-offer-store-access";
-import { getRelationship } from "@/lib/data/store";
+import { loadLiveStore } from "@shared/relationships";
 import {
   actorCan,
   getSessionMember,
   requireWorkspaceStaff,
 } from "@/lib/program4/session";
+import { ensureProgram4Data } from "@/lib/program4/store";
 
 export const runtime = "nodejs";
 
@@ -29,6 +30,13 @@ async function requireFounderPricingAuth(): Promise<Response | null> {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   return null;
+}
+
+/** Match lifecycle — resolve against live CRM store, not sync seed snapshot. */
+async function requireLiveRelationship(relationshipId: string) {
+  await ensureProgram4Data();
+  const store = await loadLiveStore();
+  return store.relationships.find((r) => r.id === relationshipId) ?? null;
 }
 
 function serializeOffer(offer: Awaited<
@@ -84,7 +92,7 @@ export async function GET(request: Request) {
     );
   }
 
-  const relationship = getRelationship(relationshipId);
+  const relationship = await requireLiveRelationship(relationshipId);
   if (!relationship) {
     return NextResponse.json({ error: "Relationship not found" }, { status: 404 });
   }
@@ -155,7 +163,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const relationship = getRelationship(relationshipId);
+  const relationship = await requireLiveRelationship(relationshipId);
   if (!relationship) {
     return NextResponse.json({ error: "Relationship not found" }, { status: 404 });
   }
