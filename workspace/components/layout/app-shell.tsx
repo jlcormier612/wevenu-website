@@ -1,4 +1,3 @@
-import { warmLiveStore } from "@shared/relationships";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
@@ -19,12 +18,8 @@ import {
 } from "@/lib/sales-cs";
 
 export async function AppShell({ children }: { children: React.ReactNode }) {
+  // warmLiveStore runs once in app/(app)/layout.tsx before this shell.
   await ensureProgram4Data();
-  try {
-    await warmLiveStore();
-  } catch (error) {
-    console.error("[crm] warmLiveStore failed", error);
-  }
   const sessionUser = await getSessionMember();
   if (!sessionUser) {
     redirect("/login");

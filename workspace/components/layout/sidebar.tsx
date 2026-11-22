@@ -61,6 +61,10 @@ export function Sidebar({
             <Link
               key={item.href}
               href={showSupportBadge ? openSupportHref : item.href}
+              // Default Link prefetch stamps every CRM route (full AppShell + Auth
+              // getUser + ACL) on a single Workspace task and makes clicks appear
+              // dead while the queue drains. Prefetch on hover/focus still works.
+              prefetch={false}
               className={cn(
                 "flex items-center justify-between gap-2 rounded-sm px-3 py-2.5 text-[0.95rem] tracking-wide transition-colors",
                 active

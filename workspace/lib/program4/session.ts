@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { cache } from "react";
 
 import { getSessionSync } from "./auth-store";
 import { roleHasPermission } from "./permissions";
@@ -73,25 +74,32 @@ function profileFromAcl(staff: {
   };
 }
 
-async function getSupabaseSessionMember(): Promise<TeamMemberProfile | null> {
-  if (getWorkspaceAuthProvider() === "memory") {
-    // Tests inject auth via AsyncLocal / cookie stub — resolved in auth test harness.
-    const { getMemoryAuthUserId } = await import("./staff-auth-memory");
-    const userId = getMemoryAuthUserId();
-    if (!userId) return null;
-    const staff = await requireActiveInternalStaff(userId);
+/**
+ * Request-scoped staff resolution for Supabase mode.
+ * AppShell + pages call getSessionMember / getActingMember / actorCan repeatedly;
+ * without dedupe each call hits Auth getUser + ACL (R1B nav latency).
+ */
+const getSupabaseSessionMember = cache(
+  async (): Promise<TeamMemberProfile | null> => {
+    if (getWorkspaceAuthProvider() === "memory") {
+      // Tests inject auth via AsyncLocal / cookie stub — resolved in auth test harness.
+      const { getMemoryAuthUserId } = await import("./staff-auth-memory");
+      const userId = getMemoryAuthUserId();
+      if (!userId) return null;
+      const staff = await requireActiveInternalStaff(userId);
+      if (!staff) return null;
+      return profileFromAcl(staff);
+    }
+
+    const { createWorkspaceAuthClient } = await import("@/lib/supabase/server");
+    const supabase = await createWorkspaceAuthClient();
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data.user) return null;
+    const staff = await requireActiveInternalStaff(data.user.id);
     if (!staff) return null;
     return profileFromAcl(staff);
-  }
-
-  const { createWorkspaceAuthClient } = await import("@/lib/supabase/server");
-  const supabase = await createWorkspaceAuthClient();
-  const { data, error } = await supabase.auth.getUser();
-  if (error || !data.user) return null;
-  const staff = await requireActiveInternalStaff(data.user.id);
-  if (!staff) return null;
-  return profileFromAcl(staff);
-}
+  },
+);
 
 async function getLegacySessionMember(): Promise<TeamMemberProfile | null> {
   const sid = await getSessionId();
