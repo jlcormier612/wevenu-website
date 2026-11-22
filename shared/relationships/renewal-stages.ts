@@ -21,7 +21,7 @@ import {
   type CustomerSuccessStage,
 } from "./sales-cs";
 import { normalizeLifecycleStatus } from "./status";
-import { withLiveStore } from "./store";
+import { warmLiveStore, withLiveStore } from "./store";
 import type { LiveRelationshipStore, Relationship } from "./types";
 
 const MS_PER_DAY = 86_400_000;
@@ -274,13 +274,36 @@ function toTickResult(
 }
 
 /**
+ * True when applying the tick would mutate durable fields (stage / renewalDate).
+ * Probes a clone so the warm in-memory cache is never dirtied.
+ */
+function renewalTickWouldMutate(row: Relationship, now: Date): boolean {
+  if (!row.subscribedAt?.trim()) return false;
+  const probe = structuredClone(row);
+  const beforeRenewal = probe.renewalDate ?? null;
+  const applied = applyRenewalStageEvaluation(probe, now);
+  return applied.changed || (probe.renewalDate ?? null) !== beforeRenewal;
+}
+
+/**
  * Tick all subscribed relationships for anniversary CS stage moves.
  * Call from cron, `POST …/lifecycle` `{ "action": "tick_renewals" }`,
  * or lightly on CS / relationship page load for local demo feedback.
+ *
+ * Page-load callers: skip `withLiveStore` (extra Postgres load + fingerprint)
+ * when a warm-cache probe shows no durable mutations are needed.
  */
 export async function tickRenewalStages(
   now: Date = new Date(),
 ): Promise<TickRenewalResult[]> {
+  const warmed = await warmLiveStore();
+  const needsWrite = warmed.relationships.some((row) =>
+    renewalTickWouldMutate(row, now),
+  );
+  if (!needsWrite) {
+    return [];
+  }
+
   const nowIso = now.toISOString();
   const { result } = await withLiveStore((store) => {
     const out: TickRenewalResult[] = [];

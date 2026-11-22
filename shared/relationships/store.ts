@@ -36,6 +36,8 @@ const CONFLICT_BACKOFF_MAX_MS = 2_000;
 /** Process-local snapshot so sync callers see the latest durable load/save. */
 let memoryCache: LiveRelationshipStore | null = null;
 let memoryVersion: number | null = null;
+/** Bumps on every cache write so workspace getData() can memoize safely. */
+let memoryEpoch = 0;
 let warmInFlight: Promise<LiveRelationshipStore> | null = null;
 let mutationChain: Promise<void> = Promise.resolve();
 
@@ -66,8 +68,14 @@ async function backoffBeforeRetry(attempt: number): Promise<void> {
 
 function setCache(store: LiveRelationshipStore, version?: number | null): LiveRelationshipStore {
   memoryCache = normalizeStore(store);
+  memoryEpoch += 1;
   if (typeof version === "number") memoryVersion = version;
   return normalizeStore(memoryCache);
+}
+
+/** Monotonic epoch for process-local CRM cache invalidation (workspace memo). */
+export function getLiveStoreMemoryEpoch(): number {
+  return memoryEpoch;
 }
 
 export function emptyLiveStore(): LiveRelationshipStore {

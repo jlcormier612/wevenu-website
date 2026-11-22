@@ -1,6 +1,9 @@
+import { cache } from "react";
+
 import {
   computeFounderRemaining,
   getFounderProgramCapacity,
+  getLiveStoreMemoryEpoch,
   hasLiveRelationshipsSync,
   loadLiveStoreSync,
   type LiveRelationshipStore,
@@ -213,15 +216,17 @@ function applyProgram3Overlays(data: WorkspaceData): WorkspaceData {
 function buildWorkspaceData(): WorkspaceData {
   const live = loadLiveStoreSync();
   const hasLive = live.relationships.length > 0;
-  const seed = structuredClone(seedData);
-
   const roster = teamMembersFromProgram4();
 
+  // Only clone seed when we actually fall back to it — live Sandbox/prod
+  // paths must not pay structuredClone on every accessor call.
   if (!hasLive && useSeedFallback()) {
+    const seed = structuredClone(seedData);
     return applyProgram3Overlays({ ...seed, teamMembers: roster });
   }
 
   if (!hasLive) {
+    const seed = structuredClone(seedData);
     return applyProgram3Overlays({
       ...seed,
       teamMembers: roster,
@@ -286,12 +291,68 @@ function buildWorkspaceData(): WorkspaceData {
   });
 }
 
+type WorkspaceSnapshot = {
+  epoch: number;
+  data: WorkspaceData;
+  timelineByRelationship: Map<string, TimelineEvent[]>;
+  relationshipsSorted: Relationship[];
+};
+
+/**
+ * Process-local snapshot keyed by CRM memory epoch (invalidates on warm/save).
+ * Today / CS / Tasks call getData() dozens–hundreds of times per render;
+ * without memoization each call re-reads Program 3 JSONL and rebuilds.
+ *
+ * React.cache() adds request isolation when the Next RSC dispatcher is active;
+ * the epoch memo covers Node/tsx and multi-call paths where cache is a no-op.
+ */
+let snapshotMemo: WorkspaceSnapshot | null = null;
+
+function buildTimelineIndex(data: WorkspaceData): Map<string, TimelineEvent[]> {
+  const map = new Map<string, TimelineEvent[]>();
+  for (const event of data.timelineEvents) {
+    const list = map.get(event.relationshipId);
+    if (list) list.push(event);
+    else map.set(event.relationshipId, [event]);
+  }
+  for (const list of map.values()) {
+    list.sort(
+      (a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime(),
+    );
+  }
+  return map;
+}
+
+function getWorkspaceSnapshotUncached(): WorkspaceSnapshot {
+  const epoch = getLiveStoreMemoryEpoch();
+  if (snapshotMemo && snapshotMemo.epoch === epoch) {
+    return snapshotMemo;
+  }
+  const data = buildWorkspaceData();
+  snapshotMemo = {
+    epoch,
+    data,
+    timelineByRelationship: buildTimelineIndex(data),
+    relationshipsSorted: [...data.relationships].sort(
+      (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+    ),
+  };
+  return snapshotMemo;
+}
+
+const getWorkspaceSnapshotCached = cache(getWorkspaceSnapshotUncached);
+
+function getWorkspaceSnapshot(): WorkspaceSnapshot {
+  return getWorkspaceSnapshotCached();
+}
+
 export function getData(): WorkspaceData {
-  return buildWorkspaceData();
+  return getWorkspaceSnapshot().data;
 }
 
 export function resetData(): void {
   // Seed-only reset for tests; live store is the durable source of truth.
+  snapshotMemo = null;
 }
 
 export function getTeamMembers(): TeamMember[] {
@@ -303,9 +364,7 @@ export function getTeamMember(id: string): TeamMember | undefined {
 }
 
 export function getRelationships(): Relationship[] {
-  return [...getData().relationships].sort(
-    (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
-  );
+  return getWorkspaceSnapshot().relationshipsSorted;
 }
 
 export function getRelationship(id: string): Relationship | undefined {
@@ -313,9 +372,9 @@ export function getRelationship(id: string): Relationship | undefined {
 }
 
 export function getTimelineForRelationship(relationshipId: string): TimelineEvent[] {
-  return getData()
-    .timelineEvents.filter((e) => e.relationshipId === relationshipId)
-    .sort((a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime());
+  return (
+    getWorkspaceSnapshot().timelineByRelationship.get(relationshipId) ?? []
+  );
 }
 
 export function getTasks(opts?: {
