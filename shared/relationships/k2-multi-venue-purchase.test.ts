@@ -185,15 +185,19 @@ describe("K2 purchase match", () => {
     assert.equal(duplicate.action, "hold");
   });
 
-  it("R findExisting stays email-first and purchase matching is a separate path", () => {
+  it("R findExisting uses Stripe then email+venue; purchase matching stays separate", () => {
     const src = readFileSync(resolve("shared/relationships/service.ts"), "utf8");
     const findStart = src.indexOf("function findExisting(");
     const findEnd = src.indexOf("function absorbStripeDrafts(");
     const findBody = src.slice(findStart, findEnd);
-    assert.match(findBody, /Email is the strongest identity signal/);
-    const emailAt = findBody.indexOf("normalizeEmail(r.owner.email)");
+    assert.match(findBody, /Email \+ venue together/);
+    assert.doesNotMatch(
+      findBody,
+      /Email is the strongest identity signal — never duplicate by email/,
+    );
     const sessionAt = findBody.indexOf("r.stripeCheckoutSessionId");
-    assert.ok(emailAt > 0 && sessionAt > emailAt);
+    const emailVenueAt = findBody.indexOf("Email + venue together");
+    assert.ok(sessionAt > 0 && emailVenueAt > sessionAt);
     assert.match(src, /purchaseMatch\?: boolean/);
     assert.match(src, /decision\.action === "hold"/);
     assert.match(src, /stripeCustomerId: undefined/);

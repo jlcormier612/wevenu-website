@@ -326,6 +326,14 @@ export function decidePurchaseMatch<T extends PurchaseIdentity>(
   return { action: "create" };
 }
 
+/** Provisional venue label when inbound data has no venue name. */
+export const PROVISIONAL_VENUE_NAME = "Unknown venue";
+
+function isProvisionalVenueName(name: string | null | undefined): boolean {
+  const key = normalizeVenueName(name);
+  return !key || key === normalizeVenueName(PROVISIONAL_VENUE_NAME);
+}
+
 function findExisting(
   store: LiveRelationshipStore,
   input: FindOrCreateInput,
@@ -336,15 +344,7 @@ function findExisting(
   const stripeCheckoutSessionId = input.stripeCheckoutSessionId?.trim() || "";
   const stripeSubscriptionId = input.stripeSubscriptionId?.trim() || "";
 
-  // 1. Email is the strongest identity signal — never duplicate by email.
-  if (email) {
-    const byEmail = store.relationships.find(
-      (r) => normalizeEmail(r.owner.email) === email,
-    );
-    if (byEmail) return byEmail;
-  }
-
-  // 2. Stripe ids link checkout-start drafts → completed purchase / lifecycle.
+  // 1. Authoritative Stripe ids (checkout draft → purchase / lifecycle).
   if (stripeCustomerId) {
     const byCustomer = store.relationships.find(
       (r) => r.stripeCustomerId?.trim() === stripeCustomerId,
@@ -370,7 +370,29 @@ function findExisting(
     if (bySession) return bySession;
   }
 
-  // 3. Venue name only when emails are compatible (empty or equal).
+  // 2. Email + venue together — a contact may represent multiple venues.
+  if (email && venueKey) {
+    return store.relationships.find(
+      (r) =>
+        normalizeEmail(r.owner.email) === email &&
+        normalizeVenueName(r.venue.name) === venueKey,
+    );
+  }
+
+  // 3. Email with no venue — continue only a provisional/unknown-venue row.
+  // Never attach to a named venue relationship solely because emails match.
+  if (email && !venueKey) {
+    const provisional = store.relationships.filter(
+      (r) =>
+        normalizeEmail(r.owner.email) === email &&
+        isProvisionalVenueName(r.venue.name),
+    );
+    if (provisional.length === 1) return provisional[0];
+    return undefined;
+  }
+
+  // 4. Venue only — match when existing email is empty or equal (no unsafe merge
+  // of two different contacts onto one named venue).
   if (venueKey) {
     return store.relationships.find((r) => {
       if (normalizeVenueName(r.venue.name) !== venueKey) return false;
@@ -505,9 +527,7 @@ function createRelationship(input: FindOrCreateInput, now: string): Relationship
     firstName = "";
   }
 
-  const venueName =
-    input.venueName?.trim() ||
-    (email ? `${email.split("@")[0]} venue` : "Unknown venue");
+  const venueName = input.venueName?.trim() || PROVISIONAL_VENUE_NAME;
 
   return {
     id: `rel_${randomUUID().replace(/-/g, "").slice(0, 12)}`,
@@ -543,9 +563,27 @@ function createRelationship(input: FindOrCreateInput, now: string): Relationship
   };
 }
 
+function noteSharedContactEmail(
+  store: LiveRelationshipStore,
+  relationship: Relationship,
+  email: string,
+): void {
+  if (!email) return;
+  const siblings = store.relationships.filter(
+    (r) => r.id !== relationship.id && normalizeEmail(r.owner.email) === email,
+  );
+  if (siblings.length === 0) return;
+  const siblingIds = siblings.map((r) => r.id).join(", ");
+  const note = `Same contact email as ${siblingIds}; distinct venue relationship.`;
+  relationship.notes = relationship.notes
+    ? `${relationship.notes}\n${note}`
+    : note;
+}
+
 /**
- * Find an existing relationship by email (preferred), Stripe ids, or normalized
- * venue name — or create a new one. Never creates a duplicate for the same email.
+ * Find an existing relationship by Stripe ids, email+venue, or compatible venue
+ * name — or create a new one. Same email with a different venue creates a
+ * separate relationship (one person may represent multiple venue businesses).
  */
 export async function findOrCreateRelationship(
   input: FindOrCreateInput,
@@ -590,6 +628,7 @@ export async function findOrCreateRelationship(
       relationship.stripeCheckoutSessionId = stripeCheckoutSessionId;
     }
     stampFromFind(relationship, input);
+    noteSharedContactEmail(store, relationship, email);
     store.relationships.push(relationship);
     return { relationship, created: true };
   });
@@ -1762,6 +1801,7 @@ export async function mutateRelationship(opts: {
         if (stripeSubscriptionId) {
           relationship.stripeSubscriptionId = stripeSubscriptionId;
         }
+        noteSharedContactEmail(store, relationship, email);
         store.relationships.push(relationship);
         created = true;
         absorbStripeDrafts(store, relationship, {
@@ -1781,6 +1821,7 @@ export async function mutateRelationship(opts: {
         if (stripeSubscriptionId) {
           relationship.stripeSubscriptionId = stripeSubscriptionId;
         }
+        noteSharedContactEmail(store, relationship, email);
         store.relationships.push(relationship);
         created = true;
       } else {

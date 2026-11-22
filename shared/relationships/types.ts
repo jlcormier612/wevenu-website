@@ -1,12 +1,13 @@
 /**
  * Shared Relationship model — source of truth for marketing + workspace.
  *
- * Deduplication rule (findOrCreate):
- * 1. Match primary contact email (case-insensitive), OR
- * 2. Match stripeCustomerId / stripeCheckoutSessionId (checkout draft → purchase), OR
- * 3. Match normalized venue name (lowercase, trim, strip punctuation) when emails compatible
- * If email matches a different venue name, prefer the email match and update
- * venue name only when empty. Never create a second record for the same email.
+ * Deduplication rule (findOrCreate / inquiry matching):
+ * 1. Match authoritative Stripe ids (customer / subscription / checkout session) when present.
+ * 2. Match normalized email + normalized venue name together (a person may own multiple venues).
+ * 3. Email alone never merges distinct venue businesses; missing venue → provisional "Unknown venue"
+ *    continuity only among other provisional rows for that email.
+ * 4. Venue name alone matches only when the existing row has no email (or the same email).
+ * Purchase ingest uses decidePurchaseMatch (separate path) — not this email-global rule.
  * Field updates merge: fill empties, ratchet booleans/status upward — never wipe stronger data.
  */
 
