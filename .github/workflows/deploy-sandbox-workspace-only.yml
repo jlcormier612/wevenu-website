@@ -1,0 +1,472 @@
+# Workspace-only Sandbox deploy.
+# Builds/pushes htc-sandbox-workspace for an explicit commit SHA that must
+# already be on origin/main, then updates ONLY WorkspaceImage via CloudFormation
+# (UsePreviousValue for venue/marketing/scheduler images and all other params).
+#
+# Why CFN (not ecs:RegisterTaskDefinition):
+# The live GHA role can update services via the CFN execution role, but does
+# NOT include ecs:DescribeTaskDefinition / ecs:RegisterTaskDefinition
+# (same constraint as deploy-sandbox-marketing-only.yml).
+#
+# Does not touch Production. Does not build venue-app / marketing / scheduler.
+# Manual workflow_dispatch only — no push/PR automatic triggers.
+
+name: Deploy Sandbox Workspace Only
+
+on:
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: "Full git commit SHA already on origin/main (immutable)"
+        required: true
+        type: string
+
+concurrency:
+  group: deploy-sandbox-workspace-only
+  cancel-in-progress: false
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+
+jobs:
+  build-and-deploy:
+    name: Build & deploy workspace
+    runs-on: ubuntu-latest
+    environment: sandbox
+    steps:
+      - name: Validate SHA input format
+        id: input
+        env:
+          RAW: ${{ inputs.sha }}
+        run: |
+          set -euo pipefail
+          SHA=$(echo "$RAW" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')
+          if ! echo "$SHA" | grep -Eq '^[0-9a-f]{40}$'; then
+            echo "::error::sha must be a full 40-character lowercase hex commit (got length ${#SHA})"
+            exit 1
+          fi
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "Validated SHA input $SHA"
+
+      - name: Checkout requested SHA
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.input.outputs.sha }}
+          fetch-depth: 0
+
+      - name: Require SHA is already on origin/main
+        env:
+          SHA: ${{ steps.input.outputs.sha }}
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin main
+          MAIN=$(git rev-parse origin/main)
+          HEAD=$(git rev-parse HEAD)
+          if [ "$HEAD" != "$SHA" ]; then
+            echo "::error::Checked-out HEAD $HEAD does not match requested SHA $SHA"
+            exit 1
+          fi
+          if ! git merge-base --is-ancestor "$SHA" origin/main; then
+            echo "::error::SHA $SHA is not an ancestor of origin/main ($MAIN). Unmerged feature tips are rejected."
+            exit 1
+          fi
+          echo "SHA $SHA is on origin/main (main tip $MAIN)"
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Assert Sandbox targets only
+        env:
+          STACK: ${{ vars.CFN_STACK_NAME }}
+          ROLE: ${{ vars.CFN_EXECUTION_ROLE_ARN }}
+        run: |
+          set -euo pipefail
+          echo "CFN_STACK_NAME=$STACK"
+          echo "AWS_ROLE_ARN length=${#ROLE}"
+          case "$STACK" in
+            htc-sandbox|htc-sandbox-*) ;;
+            *)
+              echo "::error::Refusing non-sandbox stack name: $STACK"
+              exit 1
+              ;;
+          esac
+          if echo "$STACK" | grep -Eqi 'prod|production'; then
+            echo "::error::Refusing production-looking stack name: $STACK"
+            exit 1
+          fi
+          ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
+          echo "AWS_ACCOUNT=$ACCOUNT"
+          # Documented Sandbox account for HTC (htc-sandbox).
+          if [ "$ACCOUNT" != "405254329873" ]; then
+            echo "::error::Refusing unexpected AWS account $ACCOUNT (expected Sandbox 405254329873)"
+            exit 1
+          fi
+          REGION=$(aws configure get region || echo "${AWS_REGION}")
+          echo "AWS_REGION_EFFECTIVE=$REGION"
+          if [ "$REGION" != "us-east-1" ]; then
+            echo "::error::Refusing unexpected region $REGION"
+            exit 1
+          fi
+
+      - name: Log in to ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # Same-image verification / redeploys: reuse the ECR tag when it already
+      # exists so we do not bake a different digest under the same SHA tag.
+      - name: Detect existing workspace image
+        id: image
+        env:
+          IMAGE_URI: ${{ steps.ecr-login.outputs.registry }}/htc-sandbox-workspace:${{ steps.input.outputs.sha }}
+          SHA: ${{ steps.input.outputs.sha }}
+        run: |
+          set -euo pipefail
+          set +e
+          OUT=$(aws ecr batch-get-image \
+            --repository-name htc-sandbox-workspace \
+            --image-ids "imageTag=${SHA}" \
+            --query 'images[0].imageId.imageDigest' \
+            --output text 2>/tmp/ws-image-detect.err)
+          RC=$?
+          set -e
+          if [ "$RC" -ne 0 ]; then
+            echo "::error::ECR batch-get-image failed while detecting existing tag $SHA"
+            cat /tmp/ws-image-detect.err >&2 || true
+            exit "$RC"
+          fi
+          if [ -n "$OUT" ] && [ "$OUT" != "None" ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "digest=$OUT" >> "$GITHUB_OUTPUT"
+            echo "Reusing existing $IMAGE_URI ($OUT)"
+            exit 0
+          fi
+          echo "exists=false" >> "$GITHUB_OUTPUT"
+          echo "No existing image for tag $SHA — will build and push"
+
+      - name: Prefetch base images (private ECR, then Public ECR)
+        if: steps.image.outputs.exists != 'true'
+        run: |
+          set -euo pipefail
+          REGISTRY="${{ steps.ecr-login.outputs.registry }}"
+          retry_pull() {
+            local image="$1"
+            local local_tag="$2"
+            local attempt=1
+            local delay=5
+            while [ "$attempt" -le 5 ]; do
+              echo "Pull attempt $attempt/5: $image"
+              if docker pull "$image"; then
+                docker tag "$image" "$local_tag"
+                return 0
+              fi
+              sleep "$delay"
+              attempt=$((attempt + 1))
+              delay=$((delay * 2))
+            done
+            return 1
+          }
+          pull_base() {
+            local private_tag="$1"
+            local public_image="$2"
+            local local_tag="$public_image"
+            if docker pull "${REGISTRY}/htc-ci-bases:${private_tag}"; then
+              docker tag "${REGISTRY}/htc-ci-bases:${private_tag}" "$local_tag"
+              return 0
+            fi
+            if retry_pull "$public_image" "$local_tag"; then
+              docker tag "$local_tag" "${REGISTRY}/htc-ci-bases:${private_tag}"
+              docker push "${REGISTRY}/htc-ci-bases:${private_tag}" || true
+              return 0
+            fi
+            echo "::error::Failed to pull ${local_tag}"
+            return 1
+          }
+          pull_base node-22-alpine public.ecr.aws/docker/library/node:22-alpine
+          pull_base alpine-3.20 public.ecr.aws/docker/library/alpine:3.20
+
+      - name: Build workspace image
+        if: steps.image.outputs.exists != 'true'
+        env:
+          IMAGE_URI: ${{ steps.ecr-login.outputs.registry }}/htc-sandbox-workspace:${{ steps.input.outputs.sha }}
+          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+        run: |
+          set -euo pipefail
+          REWRITTEN="$(mktemp)"
+          ./scripts/ci/rewrite-sandbox-dockerfile-bases.sh \
+            workspace/Dockerfile \
+            "$REWRITTEN" \
+            "$ECR_REGISTRY"
+          if grep -E '^FROM[[:space:]]+public\.ecr\.aws/docker/library/' "$REWRITTEN"; then
+            echo "::error::rewritten Dockerfile still references public.ecr.aws/docker/library"
+            exit 1
+          fi
+          attempt=1
+          delay=10
+          while [ "$attempt" -le 3 ]; do
+            echo "Build attempt $attempt/3 for workspace"
+            if docker build --pull=false -f "$REWRITTEN" \
+              --build-arg "NEXT_PUBLIC_APP_URL=https://app.sandbox.hellotocheers.com" \
+              --build-arg "NEXT_PUBLIC_MARKETING_URL=https://sandbox.hellotocheers.com" \
+              --build-arg "NEXT_PUBLIC_PRODUCT_APP_URL=https://app.sandbox.hellotocheers.com" \
+              --build-arg "NEXT_PUBLIC_SITE_URL=https://sandbox.hellotocheers.com" \
+              --build-arg "NEXT_PUBLIC_WORKSPACE_URL=https://workspace.sandbox.hellotocheers.com" \
+              -t "$IMAGE_URI" .; then
+              rm -f "$REWRITTEN"
+              exit 0
+            fi
+            sleep "$delay"
+            attempt=$((attempt + 1))
+            delay=$((delay * 2))
+          done
+          rm -f "$REWRITTEN"
+          echo "::error::docker build failed for workspace after 3 attempts"
+          exit 1
+
+      - name: Push workspace image
+        if: steps.image.outputs.exists != 'true'
+        env:
+          IMAGE_URI: ${{ steps.ecr-login.outputs.registry }}/htc-sandbox-workspace:${{ steps.input.outputs.sha }}
+        run: docker push "$IMAGE_URI"
+
+      - name: Resolve pushed image digest
+        id: digest
+        env:
+          SHA: ${{ steps.input.outputs.sha }}
+          EXISTING: ${{ steps.image.outputs.digest }}
+          EXISTS: ${{ steps.image.outputs.exists }}
+        run: |
+          set -euo pipefail
+          if [ "$EXISTS" = "true" ] && [ -n "$EXISTING" ] && [ "$EXISTING" != "None" ]; then
+            DIGEST="$EXISTING"
+          else
+            DIGEST=$(aws ecr batch-get-image \
+              --repository-name htc-sandbox-workspace \
+              --image-ids "imageTag=${SHA}" \
+              --query 'images[0].imageId.imageDigest' \
+              --output text)
+          fi
+          if [ -z "$DIGEST" ] || [ "$DIGEST" = "None" ]; then
+            echo "::error::Unable to resolve workspace image digest for $SHA"
+            exit 1
+          fi
+          echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
+          echo "WORKSPACE_IMAGE_DIGEST=$DIGEST"
+
+      - name: Snapshot non-workspace task definitions (pre-deploy)
+        run: |
+          set -euo pipefail
+          aws ecs describe-services --cluster htc-sandbox \
+            --services htc-sandbox-venue-app htc-sandbox-marketing htc-sandbox-scheduler \
+            --query 'services[].{name:serviceName,td:taskDefinition,desired:desiredCount,running:runningCount}' \
+            --output json \
+            > /tmp/pre-non-workspace-tds.json
+          cat /tmp/pre-non-workspace-tds.json
+          aws ecs describe-services --cluster htc-sandbox \
+            --services htc-sandbox-workspace \
+            --query 'services[0].{name:serviceName,td:taskDefinition,desired:desiredCount,running:runningCount}' \
+            --output json \
+            > /tmp/pre-workspace-td.json
+          cat /tmp/pre-workspace-td.json
+
+      - name: Update WorkspaceImage only via CloudFormation
+        env:
+          IMAGE_URI: ${{ steps.ecr-login.outputs.registry }}/htc-sandbox-workspace:${{ steps.input.outputs.sha }}
+          SHA: ${{ steps.input.outputs.sha }}
+          STACK: ${{ vars.CFN_STACK_NAME }}
+          ROLE: ${{ vars.CFN_EXECUTION_ROLE_ARN }}
+        run: |
+          set -euo pipefail
+          CS="ws-only-${SHA:0:12}-$(date +%s)"
+          echo "Change set: $CS"
+          echo "WorkspaceImage=$IMAGE_URI"
+          # Only WorkspaceImage changes. Every other parameter keeps the live
+          # stack value so venue/marketing/scheduler images are untouched.
+          PARAMS=(
+            "ParameterKey=WorkspaceImage,ParameterValue=$IMAGE_URI"
+            "ParameterKey=EnvironmentName,UsePreviousValue=true"
+            "ParameterKey=VenueAppImage,UsePreviousValue=true"
+            "ParameterKey=MarketingImage,UsePreviousValue=true"
+            "ParameterKey=SchedulerImage,UsePreviousValue=true"
+            "ParameterKey=VenueAppHostname,UsePreviousValue=true"
+            "ParameterKey=MarketingHostname,UsePreviousValue=true"
+            "ParameterKey=WorkspaceHostname,UsePreviousValue=true"
+            "ParameterKey=CertificateArn,UsePreviousValue=true"
+            "ParameterKey=FromEmailAddress,UsePreviousValue=true"
+            "ParameterKey=EmailReplyTo,UsePreviousValue=true"
+            "ParameterKey=InquiryNotifyEmail,UsePreviousValue=true"
+            "ParameterKey=SupabaseUrl,UsePreviousValue=true"
+            "ParameterKey=SupabaseAnonKey,UsePreviousValue=true"
+            "ParameterKey=ResendInboundAddress,UsePreviousValue=true"
+            "ParameterKey=CronSecret,UsePreviousValue=true"
+            "ParameterKey=NotificationsSecret,UsePreviousValue=true"
+            "ParameterKey=CommunicationMode,UsePreviousValue=true"
+            "ParameterKey=StripePriceStarter,UsePreviousValue=true"
+            "ParameterKey=StripePriceGrowing,UsePreviousValue=true"
+            "ParameterKey=StripePriceGrowingFounder,UsePreviousValue=true"
+            "ParameterKey=StripePriceProfessional,UsePreviousValue=true"
+            "ParameterKey=StripePriceProfessionalFounder,UsePreviousValue=true"
+            "ParameterKey=StripePriceWhiteGlove,UsePreviousValue=true"
+            "ParameterKey=StripeFoundingCouponId,UsePreviousValue=true"
+            "ParameterKey=StripePriceGather199,UsePreviousValue=true"
+            "ParameterKey=StripeFoundingPercentCouponId,UsePreviousValue=true"
+            "ParameterKey=PricingLaunchV1,UsePreviousValue=true"
+            "ParameterKey=StripeWevenPercentCouponId,UsePreviousValue=true"
+            "ParameterKey=StripePriceWhiteGloveWeven,UsePreviousValue=true"
+            "ParameterKey=PricingWevenV1,UsePreviousValue=true"
+            "ParameterKey=StripeGroupPercentCouponId,UsePreviousValue=true"
+            "ParameterKey=PricingGroupV1,UsePreviousValue=true"
+            "ParameterKey=StripeSaasProductId,UsePreviousValue=true"
+            "ParameterKey=PricingFounderV1,UsePreviousValue=true"
+            "ParameterKey=ReferralProgramV1,UsePreviousValue=true"
+            "ParameterKey=ReferralRewardIssue,UsePreviousValue=true"
+            "ParameterKey=ReferralQualificationDays,UsePreviousValue=true"
+            "ParameterKey=PricingTierUpgradeStore,UsePreviousValue=true"
+            "ParameterKey=TierUpgradeApplyStripe,UsePreviousValue=true"
+            "ParameterKey=TierUpgradeSendNotice,UsePreviousValue=true"
+          )
+          # Use the LIVE stack template so deploying an older SHA cannot
+          # accidentally roll infra/template drift from that commit.
+          aws cloudformation get-template --stack-name "$STACK" --template-stage Processed \
+            --output json > /tmp/htc-ecs-stack-raw.json
+          python3 - <<'PY'
+          import json
+          raw = json.load(open("/tmp/htc-ecs-stack-raw.json"))
+          body = raw["TemplateBody"]
+          if isinstance(body, dict):
+              json.dump(body, open("/tmp/htc-ecs-stack-live.json", "w"))
+          else:
+              open("/tmp/htc-ecs-stack-live.json", "w").write(body)
+          PY
+          aws cloudformation create-change-set \
+            --stack-name "$STACK" \
+            --change-set-name "$CS" \
+            --template-body file:///tmp/htc-ecs-stack-live.json \
+            --capabilities CAPABILITY_NAMED_IAM \
+            --role-arn "$ROLE" \
+            --change-set-type UPDATE \
+            --parameters "${PARAMS[@]}"
+
+          for _ in $(seq 1 40); do
+            st=$(aws cloudformation describe-change-set --stack-name "$STACK" --change-set-name "$CS" --query Status --output text)
+            case "$st" in CREATE_COMPLETE|FAILED) break ;; esac
+            sleep 2
+          done
+
+          aws cloudformation describe-change-set --stack-name "$STACK" --change-set-name "$CS" --output json \
+            > /tmp/ws-only-changeset.json
+          python3 <<'PY'
+          import json, sys
+          d = json.load(open("/tmp/ws-only-changeset.json"))
+          status, reason = d.get("Status"), d.get("StatusReason") or ""
+          if status == "FAILED" and "didn't contain changes" in reason:
+              print("No stack changes (WorkspaceImage already current).")
+              open("/tmp/ws-only-empty", "w").write("1")
+              sys.exit(0)
+          if status != "CREATE_COMPLETE":
+              print(f"::error::Change set status {status}: {reason}")
+              sys.exit(1)
+          changes = d.get("Changes") or []
+          for c in changes:
+              rc = c["ResourceChange"]
+              print(f"  {rc.get('Action')} {rc.get('LogicalResourceId')} {rc.get('ResourceType')}")
+          # Refuse any Modify/Remove/Add that is not Workspace-related.
+          blocked = []
+          for c in changes:
+              rc = c["ResourceChange"]
+              action = rc.get("Action")
+              if action not in ("Modify", "Remove", "Add"):
+                  continue
+              lid = rc.get("LogicalResourceId") or ""
+              if "Workspace" in lid:
+                  continue
+              blocked.append(lid)
+          if blocked:
+              print("::error::Change set would touch non-workspace resources: " + ", ".join(blocked))
+              sys.exit(1)
+          PY
+          if [ -f /tmp/ws-only-empty ]; then
+            echo "CHANGE_SET_EMPTY=1" >> "$GITHUB_ENV"
+          else
+            echo "CHANGE_SET_NAME=$CS" >> "$GITHUB_ENV"
+            aws cloudformation execute-change-set --stack-name "$STACK" --change-set-name "$CS"
+            aws cloudformation wait stack-update-complete --stack-name "$STACK"
+          fi
+
+      - name: Wait for workspace service stable
+        env:
+          STACK: ${{ vars.CFN_STACK_NAME }}
+          SHA: ${{ steps.input.outputs.sha }}
+          DIGEST: ${{ steps.digest.outputs.digest }}
+        run: |
+          set -euo pipefail
+          aws ecs wait services-stable \
+            --cluster htc-sandbox \
+            --services htc-sandbox-workspace
+          aws ecs describe-services \
+            --cluster htc-sandbox \
+            --services htc-sandbox-workspace \
+            --query 'services[0].{taskDefinition:taskDefinition,running:runningCount,desired:desiredCount,rollout:deployments[0].rolloutState}' \
+            --output json
+          CFN_IMG=$(aws cloudformation describe-stacks --stack-name "$STACK" \
+            --query "Stacks[0].Parameters[?ParameterKey=='WorkspaceImage'].ParameterValue" \
+            --output text)
+          echo "CFN_WORKSPACE_IMAGE=$CFN_IMG"
+          echo "$CFN_IMG" | grep -q "$SHA" \
+            || { echo "::error::Stack WorkspaceImage does not contain expected SHA $SHA"; exit 1; }
+          echo "EXPECTED_DIGEST=$DIGEST"
+
+      - name: Verify workspace routes and non-workspace TDs unchanged
+        run: |
+          set -euo pipefail
+          BASE=https://workspace.sandbox.hellotocheers.com
+          fail=0
+          # Login must render; protected pages redirect to login (3xx).
+          code=$(curl -sS -o /tmp/ws-login -w '%{http_code}' --max-time 30 "$BASE/login" || echo 000)
+          echo "/login -> $code"
+          if [ "$code" != "200" ]; then
+            echo "::error::/login returned $code"
+            fail=1
+          fi
+          # Demo credentials must not appear on login HTML.
+          if grep -Eqi 'cheers-demo|Demo:' /tmp/ws-login; then
+            echo "::error::Login page still exposes demo credentials"
+            fail=1
+          fi
+          for path in /business /relationships /support; do
+            code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 30 "$BASE$path" || echo 000)
+            echo "$path -> $code (expect 3xx to login)"
+            case "$code" in
+              301|302|303|307|308) ;;
+              *)
+                echo "::error::$path expected redirect, got $code"
+                fail=1
+                ;;
+            esac
+          done
+
+          python3 <<'PY'
+          import json, subprocess, sys
+          pre = {r["name"]: r["td"] for r in json.load(open("/tmp/pre-non-workspace-tds.json"))}
+          out = subprocess.check_output([
+            "aws","ecs","describe-services","--cluster","htc-sandbox",
+            "--services","htc-sandbox-venue-app","htc-sandbox-marketing","htc-sandbox-scheduler",
+            "--query","services[].{name:serviceName,td:taskDefinition}","--output","json"
+          ], text=True)
+          post = {r["name"]: r["td"] for r in json.loads(out)}
+          changed = False
+          for name, td in pre.items():
+              now = post.get(name)
+              print(f"untouched_check {name} pre={td} post={now}")
+              if now != td:
+                  print(f"::error::{name} task definition changed during workspace-only deploy")
+                  changed = True
+          sys.exit(1 if changed else 0)
+          PY
+          exit "$fail"
