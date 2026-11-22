@@ -53,6 +53,9 @@ export function WalkthroughExperience({
         ? {
             name: `${intake.firstName} ${intake.lastName}`.trim(),
             email: intake.email,
+            // Prefills Calendly a1 ("Venue / business name") so website visitors
+            // do not re-enter venue after HTC intake.
+            venueName: intake.venue,
             handoffToken: intake.handoffToken,
           }
         : null,

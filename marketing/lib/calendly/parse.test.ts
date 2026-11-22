@@ -27,17 +27,36 @@ describe("extractCalendlyInvitee", () => {
     assert.equal(invitee!.scheduledAt, "2026-12-20T15:00:00.000Z");
   });
 
-  it("still extracts venue from custom questions when present", () => {
+  it("extracts venue from the approved Venue / business name question", () => {
     const invitee = extractCalendlyInvitee({
       event: "invitee.created",
       payload: {
         email: "pat@example.com",
         questions_and_answers: [
-          { question: "Venue / business name", answer: "River Hall" },
+          { question: "Venue / business name", answer: "River Hall", position: 0 },
+          {
+            question: "Please share anything that will help prepare for our meeting.",
+            answer: "Looking forward to it",
+            position: 1,
+          },
         ],
         scheduled_event: { start_time: "2026-12-21T15:00:00.000Z" },
       },
     });
     assert.equal(invitee?.venueName, "River Hall");
+  });
+
+  it("treats blank venue answers as missing (review path)", () => {
+    const invitee = extractCalendlyInvitee({
+      event: "invitee.created",
+      payload: {
+        email: "pat@example.com",
+        questions_and_answers: [
+          { question: "Venue / business name", answer: "   ", position: 0 },
+        ],
+        scheduled_event: { start_time: "2026-12-21T15:00:00.000Z" },
+      },
+    });
+    assert.equal(invitee?.venueName, undefined);
   });
 });

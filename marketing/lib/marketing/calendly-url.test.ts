@@ -31,18 +31,20 @@ describe("resolveCalendlyEmbedUrl", () => {
 });
 
 describe("buildCalendlySchedulingUrl", () => {
-  it("prefills name/email and attaches opaque handoff as utm_content", () => {
+  it("prefills name/email/venue(a1) and attaches opaque handoff as utm_content", () => {
     const url = buildCalendlySchedulingUrl(
       "https://calendly.com/jennifer-hellotocheers/new-meeting",
       {
         name: "Ada Venue",
         email: "ada@example.com",
+        venueName: "Ada Garden Hall",
         handoffToken: "htc_aaaaaaaaaaaaaaaaaaaaaaaa",
       },
     );
     const parsed = new URL(url);
     assert.equal(parsed.searchParams.get("name"), "Ada Venue");
     assert.equal(parsed.searchParams.get("email"), "ada@example.com");
+    assert.equal(parsed.searchParams.get("a1"), "Ada Garden Hall");
     assert.equal(parsed.searchParams.get("utm_source"), "htc_website");
     assert.equal(parsed.searchParams.get("utm_medium"), "walkthrough_intake");
     assert.equal(

@@ -38,15 +38,27 @@ export type CalendlyWebhookBody = {
 
 function venueFromQuestions(questions: CalendlyQa[] | undefined): string | undefined {
   if (!questions?.length) return undefined;
-  const venueQ = questions.find((q) => {
-    const label = (q.question || "").toLowerCase();
+  // Prefer the approved HTC label, then any venue/business/company/org question.
+  const exact = questions.find((q) => {
+    const label = (q.question || "").trim().toLowerCase();
     return (
-      label.includes("venue") ||
-      label.includes("business") ||
-      label.includes("company") ||
-      label.includes("organization")
+      label === "venue / business name" ||
+      label === "venue/business name" ||
+      label === "venue name" ||
+      label === "business name"
     );
   });
+  const venueQ =
+    exact ||
+    questions.find((q) => {
+      const label = (q.question || "").toLowerCase();
+      return (
+        label.includes("venue") ||
+        label.includes("business") ||
+        label.includes("company") ||
+        label.includes("organization")
+      );
+    });
   return venueQ?.answer?.trim() || undefined;
 }
 
