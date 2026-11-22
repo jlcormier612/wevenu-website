@@ -6,6 +6,7 @@ import { LuvRelationshipAdvisor } from "@/components/luv/luv-relationship-adviso
 import { LegalComplianceCard } from "@/components/relationships/legal-compliance-card";
 import { LifecycleActions } from "@/components/relationships/lifecycle-actions";
 import { ProductSyncPanel } from "@/components/relationships/product-sync-panel";
+import { SalesOffersPanel } from "@/components/relationships/sales-offers-panel";
 import {
   RelationshipDetails,
   RelationshipSnapshot,
@@ -266,6 +267,16 @@ export default async function RelationshipDetailPage({
             : null
         }
       />
+      {!relationship.subscribedAt ? (
+        <SalesOffersPanel
+          relationshipId={id}
+          venueName={relationship.venue.name}
+          ownerName={`${relationship.owner.firstName} ${relationship.owner.lastName}`.trim()}
+          ownerEmail={relationship.owner.email}
+          planId={relationship.planId}
+          canManage={canProvisionProduct}
+        />
+      ) : null}
       <StatusMoveControl relationship={relationship} />
       <CustomerSuccessPanels relationship={relationship} />
       <LegalComplianceCard

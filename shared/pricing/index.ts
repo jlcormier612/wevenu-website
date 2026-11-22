@@ -437,3 +437,25 @@ export {
   type ReferralServiceContext,
   type ReferralVenueBillingSnapshot,
 } from "./referral-service";
+
+// Batch 3.3 Stage 1 — pre-purchase sales offers (pure compute; store via sales-offer-store-access)
+export type * from "./sales-offer-types";
+
+export {
+  validateSalesOfferTerms,
+  computeSalesOfferPreview,
+  monthlyRecurringFromNormalized,
+  hashNormalizedTerms,
+  crmPlanIdToSaasPlanKey,
+  saasPlanKeyToCrmPlanId,
+  snapshotFromRecord,
+} from "./sales-offer-compute";
+
+export {
+  createMemorySalesOfferStore,
+  SalesOfferConflictError,
+  SalesOfferValidationError,
+  SalesOfferNotFoundError,
+  SalesOfferForbiddenError,
+  type SalesOfferStore,
+} from "./sales-offer-store";

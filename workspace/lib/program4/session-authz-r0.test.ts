@@ -51,6 +51,7 @@ const STAFF_PROTECTED_REL = [
   "relationships/tier-upgrades/route.ts",
   "relationships/referrals/route.ts",
   "relationships/custom-pricing/route.ts",
+  "relationships/sales-offers/route.ts",
   "relationships/organizations/route.ts",
 ];
 
