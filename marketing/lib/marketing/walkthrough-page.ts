@@ -1,6 +1,6 @@
 /**
- * Schedule a Walkthrough — approved three-section editorial page.
- * Copy is locked to the creative specification.
+ * Schedule a Walkthrough — approved editorial page + unified HTC intake.
+ * Intake fields match Contact; Calendly opens only after durable CRM save.
  */
 
 export const WALKTHROUGH_PAGE = {
@@ -13,9 +13,17 @@ export const WALKTHROUGH_PAGE = {
     imageAlt:
       "Venue professional discussing event plans during a personalized video walkthrough.",
   },
+  intake: {
+    headline: "Tell us a little about your venue.",
+    body: "Share a few details first — then choose a time that works for you.",
+    messagePlaceholder: "Tell us a little about your venue",
+    submitLabel: "Continue to scheduling",
+  },
   booking: {
     headline: "Find a time that works for you.",
     body: "Choose a convenient time below, and we'll take care of the rest.",
+    afterIntake:
+      "Thanks — we've saved your details. Pick a time below to finish scheduling your walkthrough.",
   },
   bookingUnavailable: {
     headline: "Scheduling is almost ready.",

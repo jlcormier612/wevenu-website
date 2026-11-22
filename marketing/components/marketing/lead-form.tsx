@@ -8,6 +8,16 @@ import { INQUIRY_HONEYPOT_FIELD } from "@/lib/inquiries/spam";
 import { HOVER_FILL } from "@/lib/marketing/rhythm";
 import { cn } from "@/lib/utils";
 
+export type LeadFormSuccessPayload = {
+  id: string;
+  handoffToken?: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  venue: string;
+  message: string;
+};
+
 type LeadFormProps = {
   intent: "walkthrough" | "contact" | "support";
   /** Override default submit button copy (fields + ingest path stay the same). */
@@ -25,6 +35,13 @@ type LeadFormProps = {
    */
   buttonAccent?: "botanical" | "heritage";
   className?: string;
+  /**
+   * When set (walkthrough scheduling), call after durable CRM save instead of
+   * replacing the form with the static thank-you copy alone.
+   */
+  onSuccess?: (payload: LeadFormSuccessPayload) => void;
+  /** Override the default thank-you line when onSuccess is not used. */
+  successMessage?: string;
 };
 
 /**
@@ -37,13 +54,15 @@ export function LeadForm({
   messagePlaceholder = "Tell us a little about your venue",
   buttonAccent = "heritage",
   className,
+  onSuccess,
+  successMessage,
 }: LeadFormProps) {
   const submitLabel =
     submitLabelProp ??
     (moreInfo
       ? "Submit"
       : intent === "walkthrough"
-        ? "Schedule a Walkthrough"
+        ? "Continue to scheduling"
         : intent === "support"
           ? "Send Support Request"
           : "Send Message");
@@ -74,13 +93,14 @@ export function LeadForm({
       return;
     }
 
+    const message = String(form.get("message") ?? "");
     const fields: Record<string, string> = {
       firstName,
       lastName,
       name: `${firstName} ${lastName}`,
       email,
       venue,
-      message: String(form.get("message") ?? ""),
+      message,
       // Include honeypot so the server can reject bot fills (empty for humans).
       [INQUIRY_HONEYPOT_FIELD]: String(form.get(INQUIRY_HONEYPOT_FIELD) ?? ""),
     };
@@ -105,7 +125,12 @@ export function LeadForm({
           idempotencyKey: idempotencyKeyRef.current,
         }),
       });
-      const data = (await res.json()) as { ok?: boolean; error?: string };
+      const data = (await res.json()) as {
+        ok?: boolean;
+        error?: string;
+        id?: string;
+        handoffToken?: string;
+      };
       if (!res.ok || !data.ok) {
         throw new Error(data.error ?? "Unable to send your message.");
       }
@@ -119,6 +144,15 @@ export function LeadForm({
       }
       idempotencyKeyRef.current = null;
       setStatus("done");
+      onSuccess?.({
+        id: data.id || "",
+        handoffToken: data.handoffToken,
+        firstName,
+        lastName,
+        email,
+        venue,
+        message,
+      });
     } catch (err) {
       // Keep the same idempotency key so a visitor retry of this attempt is safe.
       setStatus("error");
@@ -126,12 +160,17 @@ export function LeadForm({
     }
   }
 
-  if (status === "done") {
+  if (status === "done" && !onSuccess) {
     return (
       <p className={cn("text-base leading-[1.7] text-[var(--forest-sage)]/75", className)}>
-        Thank you — we&apos;ve received your message and will be in touch shortly.
+        {successMessage ??
+          "Thank you — we've received your message and will be in touch shortly."}
       </p>
     );
+  }
+
+  if (status === "done" && onSuccess) {
+    return null;
   }
 
   const ariaLabel =

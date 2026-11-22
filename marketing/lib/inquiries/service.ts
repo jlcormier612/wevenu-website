@@ -132,7 +132,10 @@ export async function submitInquiry(
     }
   }
 
-  return submission;
+  return {
+    ...submission,
+    ...(synced.handoffToken ? { handoffToken: synced.handoffToken } : {}),
+  };
 }
 
 async function findPriorInquiryBySourceId(

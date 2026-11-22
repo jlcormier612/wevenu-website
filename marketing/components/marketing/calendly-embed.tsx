@@ -2,7 +2,11 @@
 
 import { useMemo, useState, useSyncExternalStore } from "react";
 
-import { resolveCalendlyEmbedUrl } from "@/lib/marketing/calendly-url";
+import {
+  buildCalendlySchedulingUrl,
+  resolveCalendlyEmbedUrl,
+  type CalendlyHandoffPrefill,
+} from "@/lib/marketing/calendly-url";
 import { TYPE_BODY, TYPE_MEASURE } from "@/lib/marketing/rhythm";
 import { cn } from "@/lib/utils";
 
@@ -33,6 +37,8 @@ type CalendlyEmbedProps = {
   className?: string;
   /** Optional heading id for aria-labelledby on the booking region. */
   labelledBy?: string;
+  /** Name/email prefill + opaque handoff (utm_content). */
+  prefill?: CalendlyHandoffPrefill | null;
 };
 
 /**
@@ -44,8 +50,12 @@ export function CalendlyEmbed({
   url,
   className,
   labelledBy,
+  prefill,
 }: CalendlyEmbedProps) {
-  const resolved = useMemo(() => resolveCalendlyEmbedUrl(url), [url]);
+  const resolved = useMemo(() => {
+    const base = resolveCalendlyEmbedUrl(url);
+    return base ? buildCalendlySchedulingUrl(base, prefill) : null;
+  }, [url, prefill]);
   const hostname = useClientHostname();
   const src = resolved ? withEmbedParams(resolved, hostname) : "";
   const [loadedSrc, setLoadedSrc] = useState<string | null>(null);

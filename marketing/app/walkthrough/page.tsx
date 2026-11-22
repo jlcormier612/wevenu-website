@@ -25,8 +25,8 @@ export default async function WalkthroughPage({
     redirect(MORE_INFO_CTA.href);
   }
 
-  // Embed when NEXT_PUBLIC_CALENDLY_URL is a real calendly.com URL.
-  // LeadForm /api/inquiries remain available on Contact and Support.
+  // Calendly opens only after the shared HTC intake form saves to CRM.
+  // Contact keeps the same fields for Request Information.
   const calendlyUrl = resolveCalendlyEmbedUrl(
     process.env.NEXT_PUBLIC_CALENDLY_URL,
   );

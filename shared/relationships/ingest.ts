@@ -19,6 +19,13 @@ import type {
 } from "./types";
 import { ensureWhiteGloveChecklist } from "./white-glove-checklist";
 import { randomUUID } from "crypto";
+import {
+  CALENDLY_HANDOFF_META_KEY,
+  findRelationshipByCalendlyHandoffToken,
+  isCalendlyHandoffToken,
+  mintCalendlyHandoffToken,
+} from "./calendly-handoff";
+import { normalizeEmail, normalizeVenueName } from "./normalize";
 
 async function maybeEnsureWhiteGloveChecklist(
   result: FindOrCreateResult | null | undefined,
@@ -147,12 +154,34 @@ export async function ingestWalkthroughRequest(input: {
   sourceId?: string;
   referralSource?: string;
   assignedTeamMemberId?: string;
-}): Promise<FindOrCreateResult> {
+  /**
+   * Opaque HTC→Calendly handoff. When present on a scheduled booking, binds to
+   * the originating intake relationship (email alone is never enough).
+   */
+  handoffToken?: string | null;
+  /**
+   * Direct/shared Calendly path with no reliable venue identity — mark for
+   * sales review (provisional Unknown venue continuity).
+   */
+  identityReviewRequired?: boolean;
+}): Promise<FindOrCreateResult & { handoffToken?: string }> {
   const prior = await findRelationshipByTimelineSourceId(input.sourceId, [
     "walkthrough_requested",
     "walkthrough_scheduled",
   ]);
-  if (prior) return prior;
+  if (prior) {
+    const existingToken = prior.relationship
+      ? await findExistingHandoffToken(prior.relationship.id)
+      : null;
+    return existingToken
+      ? { ...prior, handoffToken: existingToken }
+      : prior;
+  }
+
+  // Authoritative bind: handoff wins over email/venue guessing.
+  const handoffMatch = await findRelationshipByCalendlyHandoffToken(
+    input.handoffToken,
+  );
 
   const person = personFromFields({
     name: input.name,
@@ -162,47 +191,84 @@ export async function ingestWalkthroughRequest(input: {
   const rawWhen = input.scheduledAt?.trim() || "";
   const parsedWhen = rawWhen ? new Date(rawWhen) : null;
   const hasDate = Boolean(parsedWhen && !Number.isNaN(parsedWhen.getTime()));
-  // Placeholder row time when requested-but-unscheduled (status stays walkthrough_requested).
-  const scheduledAt = hasDate
-    ? parsedWhen!.toISOString()
-    : new Date(Date.now() + 7 * 86_400_000).toISOString();
+  const scheduledAt = hasDate ? parsedWhen!.toISOString() : null;
   const whenLabel = hasDate
-    ? new Date(scheduledAt).toLocaleString("en-US", {
+    ? new Date(scheduledAt!).toLocaleString("en-US", {
         dateStyle: "medium",
         timeStyle: "short",
       })
     : null;
 
-  return (await mutateRelationship({
+  // Mint handoff on intake (requested, not yet booked). Reuse when booking
+  // carries the same token so Calendly can round-trip it.
+  const handoffToken =
+    (isCalendlyHandoffToken(input.handoffToken)
+      ? input.handoffToken!.trim()
+      : null) ||
+    (!hasDate ? mintCalendlyHandoffToken() : null);
+
+  const venueName =
+    handoffMatch?.relationship.venue.name ||
+    input.venueName?.trim() ||
+    undefined;
+  const email =
+    handoffMatch?.relationship.owner.email?.trim() || input.email.trim();
+  const needsReview =
+    Boolean(input.identityReviewRequired) ||
+    (hasDate && !handoffMatch && !normalizeVenueName(venueName));
+
+  const result = (await mutateRelationship({
     find: {
-      email: input.email,
-      venueName: input.venueName,
-      firstName: person.firstName,
-      lastName: person.lastName,
-      referralSource: input.referralSource ?? "Website Walkthrough",
+      email,
+      venueName,
+      firstName: person.firstName || handoffMatch?.relationship.owner.firstName,
+      lastName: person.lastName || handoffMatch?.relationship.owner.lastName,
+      referralSource:
+        input.referralSource ??
+        (hasDate ? "Calendly" : "Schedule a Walkthrough"),
       assignedTeamMemberId: input.assignedTeamMemberId,
     },
     patch: {
       status: hasDate ? "walkthrough_scheduled" : "walkthrough_requested",
-      // Soft / email walkthrough request (no real datetime) stays Sales Inquiry.
+      // Soft intake (no real datetime) stays Sales Inquiry / walkthrough_requested.
       // Only Calendly / ops with a real scheduledAt → Walkthrough Scheduled.
       salesStage: hasDate ? "walkthrough_scheduled" : "inquiry",
-      nextMilestone: hasDate ? "Upcoming walkthrough" : "Qualify & schedule walkthrough",
-      nextMilestoneAt: hasDate ? scheduledAt : undefined,
+      nextMilestone: hasDate
+        ? "Upcoming walkthrough"
+        : "Qualify & schedule walkthrough",
+      nextMilestoneAt: hasDate ? scheduledAt! : undefined,
       assignedTeamMemberId: input.assignedTeamMemberId,
+      notes: needsReview
+        ? appendReviewFlag(
+            handoffMatch?.relationship.notes || undefined,
+            "Calendly booking arrived without a reliable venue handoff — review before treating as confirmed venue identity.",
+          )
+        : undefined,
     },
     event: {
       type: hasDate ? "walkthrough_scheduled" : "walkthrough_requested",
-      title: hasDate ? "Walkthrough scheduled" : "Walkthrough requested",
+      title: hasDate
+        ? needsReview
+          ? "Walkthrough scheduled (identity review)"
+          : "Walkthrough scheduled"
+        : "Walkthrough requested",
       body:
         safeBody([
           input.message,
           whenLabel ? `Scheduled for ${whenLabel}` : null,
+          needsReview
+            ? "Flagged for review: missing HTC handoff / venue identity."
+            : null,
         ]) || undefined,
       occurredAt: new Date().toISOString(),
       meta: {
         sourceId: input.sourceId ?? null,
         scheduledAt: hasDate ? scheduledAt : null,
+        ...(handoffToken
+          ? { [CALENDLY_HANDOFF_META_KEY]: handoffToken }
+          : {}),
+        ...(needsReview ? { identityReviewRequired: true } : {}),
+        ...(handoffMatch ? { handoffBound: true } : {}),
       },
     },
     communication: {
@@ -210,28 +276,64 @@ export async function ingestWalkthroughRequest(input: {
       subject: hasDate ? "Walkthrough scheduled" : "Walkthrough request",
       body: safeBody([
         input.message,
-        input.venueName ? `Venue: ${input.venueName}` : null,
+        venueName ? `Venue: ${venueName}` : null,
         hasDate ? `Scheduled: ${scheduledAt}` : null,
       ]),
       direction: "inbound",
       occurredAt: new Date().toISOString(),
-      authorName: [person.firstName, person.lastName].filter(Boolean).join(" ") || input.email,
+      authorName:
+        [person.firstName, person.lastName].filter(Boolean).join(" ") || email,
     },
-    walkthrough: {
-      scheduledAt,
-      assignedTeamMemberId: input.assignedTeamMemberId || "tm_sara",
-      status: "upcoming",
-      notes: input.message?.trim() || undefined,
-      location: input.venueName?.trim() || undefined,
-    },
+    // Never create a fake upcoming appointment for abandoned / unscheduled intake.
+    walkthrough: hasDate
+      ? {
+          scheduledAt: scheduledAt!,
+          assignedTeamMemberId: input.assignedTeamMemberId || "tm_sara",
+          status: "upcoming" as const,
+          notes: input.message?.trim() || undefined,
+          location: venueName || undefined,
+        }
+      : undefined,
     notification: {
-      type: "walkthrough_scheduled",
-      title: hasDate ? "Walkthrough scheduled" : "Walkthrough requested",
+      type: hasDate ? "walkthrough_scheduled" : "new_inquiry",
+      title: hasDate
+        ? needsReview
+          ? "Walkthrough scheduled — review venue identity"
+          : "Walkthrough scheduled"
+        : "Walkthrough requested",
       body: hasDate
-        ? `${input.venueName?.trim() || person.firstName || input.email} booked a walkthrough for ${whenLabel}.`
-        : `${input.venueName?.trim() || person.firstName || input.email} requested a walkthrough.`,
+        ? `${venueName || person.firstName || email} booked a walkthrough for ${whenLabel}.${
+            needsReview ? " Identity review required." : ""
+          }`
+        : `${venueName || person.firstName || email} requested a walkthrough.`,
     },
   }))!;
+
+  return handoffToken ? { ...result, handoffToken } : result;
+}
+
+async function findExistingHandoffToken(
+  relationshipId: string,
+): Promise<string | null> {
+  const store = await loadLiveStore();
+  const event = store.timelineEvents.find(
+    (e) =>
+      e.relationshipId === relationshipId &&
+      (e.type === "walkthrough_requested" ||
+        e.type === "walkthrough_scheduled") &&
+      isCalendlyHandoffToken(String(e.meta?.[CALENDLY_HANDOFF_META_KEY] ?? "")),
+  );
+  const token = String(event?.meta?.[CALENDLY_HANDOFF_META_KEY] ?? "").trim();
+  return token || null;
+}
+
+function appendReviewFlag(
+  existing: string | undefined,
+  flag: string,
+): string {
+  const prior = existing?.trim() || "";
+  if (prior.includes(flag)) return prior;
+  return prior ? `${prior}\n\n${flag}` : flag;
 }
 
 /** Calendly invitee.canceled — mark upcoming walkthrough cancelled + timeline. */
@@ -242,6 +344,7 @@ export async function ingestWalkthroughCanceled(input: {
   scheduledAt?: string | null;
   reason?: string | null;
   sourceId?: string;
+  handoffToken?: string | null;
 }): Promise<FindOrCreateResult | null> {
   const prior = await findRelationshipByTimelineSourceId(input.sourceId, [
     "walkthrough_cancelled",
@@ -251,10 +354,54 @@ export async function ingestWalkthroughCanceled(input: {
   const { setWalkthroughStatus } = await import("./service");
   const person = personFromFields({ name: input.name });
   const store = await loadLiveStore();
-  const email = input.email.trim().toLowerCase();
-  const existing = store.relationships.find(
-    (r) => (r.owner.email || "").trim().toLowerCase() === email,
+  const email = normalizeEmail(input.email);
+  const venueKey = normalizeVenueName(input.venueName);
+
+  // Prefer handoff → email+venue → unique email → walkthrough time match.
+  // Never grab an arbitrary same-email named venue when multiple exist.
+  const handoffMatch = await findRelationshipByCalendlyHandoffToken(
+    input.handoffToken,
   );
+  let existing = handoffMatch?.relationship;
+  if (!existing && email && venueKey) {
+    existing = store.relationships.find(
+      (r) =>
+        normalizeEmail(r.owner.email) === email &&
+        normalizeVenueName(r.venue.name) === venueKey,
+    );
+  }
+  if (!existing && email) {
+    const sameEmail = store.relationships.filter(
+      (r) => normalizeEmail(r.owner.email) === email,
+    );
+    if (sameEmail.length === 1) {
+      existing = sameEmail[0];
+    } else if (sameEmail.length > 1) {
+      const targetStart = input.scheduledAt?.trim()
+        ? new Date(input.scheduledAt).toISOString()
+        : null;
+      if (targetStart) {
+        const byTime = sameEmail.find((r) =>
+          store.walkthroughs.some(
+            (w) =>
+              w.relationshipId === r.id &&
+              w.status === "upcoming" &&
+              w.scheduledAt === targetStart,
+          ),
+        );
+        if (byTime) existing = byTime;
+      }
+      if (!existing) {
+        const provisional = sameEmail.filter(
+          (r) =>
+            !normalizeVenueName(r.venue.name) ||
+            normalizeVenueName(r.venue.name) ===
+              normalizeVenueName("Unknown venue"),
+        );
+        if (provisional.length === 1) existing = provisional[0];
+      }
+    }
+  }
   if (!existing) {
     // Do not create a Relationship on cancel alone.
     return null;

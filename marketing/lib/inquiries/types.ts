@@ -20,6 +20,11 @@ export type InquirySubmission = {
   fields: Record<string, string>;
   /** True when a retry replayed an already-ingested sourceId (no new notify). */
   replayed?: boolean;
+  /**
+   * Opaque Calendly handoff for walkthrough intake (utm_content).
+   * Not an internal relationship id.
+   */
+  handoffToken?: string;
 };
 
 export type SubmitInquiryInput = {

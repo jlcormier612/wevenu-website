@@ -53,7 +53,7 @@ function personNameFields(f: Record<string, string>): {
 
 export async function syncInquiryToRelationship(
   submission: InquirySubmission,
-): Promise<{ relationshipId: string } | null> {
+): Promise<{ relationshipId: string; handoffToken?: string } | null> {
   try {
     const f = submission.fields;
     const person = personNameFields(f);
@@ -80,8 +80,12 @@ export async function syncInquiryToRelationship(
           message: composeWalkthroughMessage(f),
           scheduledAt: f.scheduledAt || f.preferredDate || null,
           sourceId: submission.id,
+          referralSource: "Schedule a Walkthrough",
         });
-        return { relationshipId: result.relationship.id };
+        return {
+          relationshipId: result.relationship.id,
+          handoffToken: result.handoffToken,
+        };
       }
       case "welcome_back_request": {
         const result = await ingestWelcomeBackRequest({
@@ -244,8 +248,10 @@ export async function syncCalendlyCreatedToRelationship(input: {
   scheduledAt?: string | null;
   message?: string;
   sourceId?: string;
+  handoffToken?: string;
 }): Promise<void> {
   try {
+    const hasHandoff = Boolean(input.handoffToken?.trim());
     await ingestWalkthroughRequest({
       name: input.name,
       email: input.email,
@@ -253,7 +259,11 @@ export async function syncCalendlyCreatedToRelationship(input: {
       message: input.message,
       scheduledAt: input.scheduledAt,
       sourceId: input.sourceId,
-      referralSource: "Calendly",
+      handoffToken: input.handoffToken,
+      // Preferred journey uses HTC handoff. Direct/shared Calendly links without
+      // handoff stay provisional and are flagged when venue is also missing.
+      identityReviewRequired: !hasHandoff && !input.venueName?.trim(),
+      referralSource: hasHandoff ? "Schedule a Walkthrough" : "Calendly",
     });
   } catch (error) {
     console.error("[relationships] failed to sync Calendly invitee.created", error);
@@ -268,6 +278,7 @@ export async function syncCalendlyCanceledToRelationship(input: {
   scheduledAt?: string | null;
   reason?: string | null;
   sourceId?: string;
+  handoffToken?: string;
 }): Promise<void> {
   try {
     await ingestWalkthroughCanceled({
@@ -277,6 +288,7 @@ export async function syncCalendlyCanceledToRelationship(input: {
       scheduledAt: input.scheduledAt,
       reason: input.reason,
       sourceId: input.sourceId,
+      handoffToken: input.handoffToken,
     });
   } catch (error) {
     console.error("[relationships] failed to sync Calendly invitee.canceled", error);
