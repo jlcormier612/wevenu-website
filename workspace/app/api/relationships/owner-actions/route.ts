@@ -106,19 +106,8 @@ export async function POST(request: Request) {
       createdAt: now,
     };
 
-    await appendLocalTask(taskRow);
-
-    await appendLocalTimeline({
-      id: timelineId,
-      relationshipId,
-      type: "note_added",
-      title: `Task created: ${title}`,
-      body: description?.slice(0, 280),
-      occurredAt: now,
-      actorId: actor?.id,
-      meta: { source: "owner_actions", task_id: taskId },
-    });
-
+    // Live CRM: durable write must succeed before ok. Never report success after
+    // only an ephemeral local JSONL write.
     if (inLive) {
       const liveTask = await appendRelationshipTask(taskRow);
       if (!liveTask) {
@@ -137,6 +126,20 @@ export async function POST(request: Request) {
         meta: { source: "owner_actions", task_id: taskId },
       });
     }
+
+    // Local overlay for seed / hybrid UI (same ids). Runs after live success so
+    // a local-only write cannot produce ok:true while live CRM is in use.
+    await appendLocalTask(taskRow);
+    await appendLocalTimeline({
+      id: timelineId,
+      relationshipId,
+      type: "note_added",
+      title: `Task created: ${title}`,
+      body: description?.slice(0, 280),
+      occurredAt: now,
+      actorId: actor?.id,
+      meta: { source: "owner_actions", task_id: taskId },
+    });
 
     return NextResponse.json({
       ok: true,
