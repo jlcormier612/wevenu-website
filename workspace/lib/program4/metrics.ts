@@ -2,6 +2,7 @@ import type {
   ReportSnapshot,
   WorkspaceData,
 } from "@/lib/types";
+import { toOperationalWorkspaceData } from "@/lib/data/operational";
 import { normalizeRelationshipStatus } from "@/lib/pipeline";
 import {
   computeFounderRemaining,
@@ -69,14 +70,16 @@ function monthKey(iso: string): string {
 }
 
 export function computeBusinessMetrics(data: WorkspaceData): BusinessMetrics {
-  const relationships = data.relationships.map((r) => ({
+  const ops = toOperationalWorkspaceData(data);
+  const relationships = ops.relationships.map((r) => ({
     ...r,
     status: normalizeRelationshipStatus(r.status),
   }));
-  const subscriptions = data.subscriptions;
-  const walkthroughs = data.walkthroughs;
-  const invoices = data.invoices;
-  const reports = data.reports;
+  const subscriptions = ops.subscriptions;
+  const walkthroughs = ops.walkthroughs;
+  const invoices = ops.invoices;
+  const reports = ops.reports;
+  data = ops;
 
   const activeSubs = subscriptions.filter(
     (s) => s.status === "active" || s.status === "trialing",

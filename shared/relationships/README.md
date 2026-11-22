@@ -2,6 +2,24 @@
 
 One venue relationship, one timeline, one source of truth — shared by the **marketing** site and the **Relationship Workspace**.
 
+## Demo / disposable isolation (Sandbox)
+
+Known Sandbox **demo venue IDs** (Fancy + curated theater venues) and their Stripe test customer ids are listed in `demo-isolation.ts`. Ingest / product sync / Stripe mirrors **still write** timeline and subscriptions for those venues (no silent event loss), but stamp `crmRole: "sandbox_demo"`. Workspace operational metrics, Today buckets, unread badges, Sales/CS boards, and Support inbox **exclude** them.
+
+This is an **explicit allowlist**, not “exclude all Sandbox.” A brand-new Sandbox venue checkout remains `crmRole: "customer"` and counts toward MRR / conversions.
+
+### Disposable acceptance fixtures
+
+| Marker | Example |
+|--------|---------|
+| Venue name prefix | `[DISPOSABLE-{ticket}] My Probe Venue` |
+| Owner email | `qa+disposable@hellotocheers.com` |
+| Explicit | `crmRole: "disposable"` or `meta.disposable: true` |
+
+Disposable rows stay visible on Sales/CS boards (so acceptance can exercise workflows) but are **excluded from operational MRR / dashboards**. Tear down by deleting CRM mirrors with the disposable tag/prefix after the test — never leave untagged fixtures.
+
+Add/remove demo venues by editing `SANDBOX_DEMO_VENUE_IDS` / `SANDBOX_DEMO_STRIPE_CUSTOMER_IDS` in `demo-isolation.ts` (code review required).
+
 ## Architecture
 
 ```

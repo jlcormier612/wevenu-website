@@ -16,6 +16,23 @@ export {
   planDisplayName,
 } from "./normalize";
 export {
+  type CrmRole as DemoIsolationCrmRole,
+  SANDBOX_DEMO_VENUE_IDS,
+  SANDBOX_DEMO_STRIPE_CUSTOMER_IDS,
+  DISPOSABLE_VENUE_NAME_RE,
+  DISPOSABLE_FIXTURE_GUIDE,
+  isSandboxDemoVenueId,
+  isSandboxDemoStripeCustomerId,
+  isDisposableVenueName,
+  isDisposableEmail,
+  resolveCrmRole,
+  isOperationalRelationship,
+  stampCrmIsolation,
+  filterOperationalRelationships,
+  operationalRelationshipIdSet,
+  filterByOperationalRelationshipId,
+} from "./demo-isolation";
+export {
   getFounderProgramCapacity,
   computeFounderRemaining,
   resolveFounderSpotsRemaining,

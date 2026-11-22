@@ -10,9 +10,9 @@ import {
   StatusPill,
 } from "@/components/shared/ui";
 import {
+  getBoardRelationships,
   getCommunications,
   getRelationship,
-  getRelationships,
   getSubscriptions,
   getTasks,
   getTeamMember,
@@ -109,7 +109,7 @@ export default async function CustomerSuccessPage({
   // created via product feedback) so Needs Support is never an empty kanban
   // while the sidebar badge counts them.
   const byId = new Map<string, Relationship>();
-  for (const r of getRelationships()) {
+  for (const r of getBoardRelationships()) {
     if (isInCustomerSuccessView(r) || relationshipHasOpenSupport(r)) {
       byId.set(r.id, r);
     }

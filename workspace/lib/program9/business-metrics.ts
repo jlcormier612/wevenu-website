@@ -12,6 +12,7 @@ import {
   WHITE_GLOVE_CHECKLIST_MARKER,
 } from "@shared/relationships";
 
+import { toOperationalWorkspaceData } from "@/lib/data/operational";
 import { normalizeRelationshipStatus, toPipelineStatus } from "@/lib/pipeline";
 import type {
   Relationship,
@@ -224,15 +225,17 @@ export function computeBusinessDashboardMetrics(
   data: WorkspaceData,
   now = new Date("2026-07-21T12:00:00.000Z"),
 ): BusinessDashboardMetrics {
-  const relationships = data.relationships.map((r) => ({
+  const ops = toOperationalWorkspaceData(data);
+  const relationships = ops.relationships.map((r) => ({
     ...r,
     status: normalizeRelationshipStatus(r.status),
   }));
-  const subscriptions = data.subscriptions;
-  const invoices = data.invoices;
-  const walkthroughs = data.walkthroughs;
-  const tasks = data.tasks;
-  const timeline = data.timelineEvents;
+  const subscriptions = ops.subscriptions;
+  const invoices = ops.invoices;
+  const walkthroughs = ops.walkthroughs;
+  const tasks = ops.tasks;
+  const timeline = ops.timelineEvents;
+  data = ops;
 
   const activeSubs = subscriptions.filter(
     (s) => s.status === "active" || s.status === "trialing",
