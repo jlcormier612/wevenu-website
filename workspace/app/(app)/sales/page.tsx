@@ -28,18 +28,19 @@ import {
   isSalesAutoArrivalStage,
   type SalesStage,
 } from "@/lib/sales-cs";
-import {
-  formatRelativeDay,
-  HEALTH_EMOJI,
-  HEALTH_LABELS,
-  yesNo,
-} from "@/lib/utils";
+import { formatRelativeDay } from "@/lib/utils";
 import {
   acknowledgeStageAutoArrivals,
   hasLiveRelationshipsSync,
 } from "@shared/relationships";
 
 export const metadata = { title: "Sales" };
+
+function nextActionLabel(openTaskCount: number): string {
+  if (openTaskCount <= 0) return "—";
+  if (openTaskCount === 1) return "1 open task";
+  return `${openTaskCount} open tasks`;
+}
 
 const STAGE_FILTERS: { label: string; value: SalesStage | "all" }[] = [
   { label: "All", value: "all" },
@@ -156,13 +157,12 @@ export default async function SalesPage({
               headers={[
                 "Venue",
                 "Stage",
-                "Health",
-                "Plan",
-                "Founder",
                 "Owner",
-                "Last contact",
-                "Tasks",
+                "Next Action",
+                "Updated",
               ]}
+              emptyMessage="No relationships yet"
+              emptyHint="Rows appear when the first inquiry arrives. Columns stay ready."
               rows={relationships.map((r) => {
                 const assignee = getTeamMember(r.assignedTeamMemberId);
                 const tasks = getOpenTaskCount(r.id);
@@ -182,16 +182,9 @@ export default async function SalesPage({
                   <StatusPill key={`${r.id}-status`}>
                     {SALES_STAGE_LABELS[stage]}
                   </StatusPill>,
-                  <span key={`${r.id}-health`}>
-                    {r.health
-                      ? `${HEALTH_LABELS[r.health]} ${HEALTH_EMOJI[r.health]}`
-                      : "—"}
-                  </span>,
-                  r.planName,
-                  yesNo(r.foundingMember),
                   assignee?.name ?? "—",
-                  formatRelativeDay(r.lastContactAt),
-                  String(tasks),
+                  nextActionLabel(tasks),
+                  formatRelativeDay(r.updatedAt),
                 ];
               })}
             />
@@ -199,9 +192,14 @@ export default async function SalesPage({
 
           <div className="space-y-3 md:hidden">
             {relationships.length === 0 ? (
-              <p className="py-8 text-center text-sm ws-muted">
-                No relationships in this view.
-              </p>
+              <div className="py-8 text-center">
+                <p className="font-medium text-[var(--htc-text)]">
+                  No relationships yet
+                </p>
+                <p className="mt-1 text-sm ws-muted">
+                  Rows appear when the first inquiry arrives. Columns stay ready.
+                </p>
+              </div>
             ) : (
               relationships.map((r) => {
                 const assignee = getTeamMember(r.assignedTeamMemberId);
@@ -220,28 +218,19 @@ export default async function SalesPage({
                     </p>
                     <div className="mt-3 flex flex-wrap gap-2">
                       <StatusPill>{SALES_STAGE_LABELS[stage]}</StatusPill>
-                      <span className="text-xs ws-muted">
-                        {r.health
-                          ? `${HEALTH_LABELS[r.health]} ${HEALTH_EMOJI[r.health]}`
-                          : "—"}
-                      </span>
                     </div>
                     <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">
-                      <div>
-                        <dt className="ws-muted">Plan</dt>
-                        <dd>{r.planName}</dd>
-                      </div>
                       <div>
                         <dt className="ws-muted">Owner</dt>
                         <dd>{assignee?.name ?? "—"}</dd>
                       </div>
                       <div>
-                        <dt className="ws-muted">Last contact</dt>
-                        <dd>{formatRelativeDay(r.lastContactAt)}</dd>
+                        <dt className="ws-muted">Next Action</dt>
+                        <dd>{nextActionLabel(tasks)}</dd>
                       </div>
                       <div>
-                        <dt className="ws-muted">Tasks</dt>
-                        <dd>{tasks}</dd>
+                        <dt className="ws-muted">Updated</dt>
+                        <dd>{formatRelativeDay(r.updatedAt)}</dd>
                       </div>
                     </dl>
                   </article>
