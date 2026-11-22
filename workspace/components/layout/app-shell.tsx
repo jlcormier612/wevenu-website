@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { Sidebar } from "@/components/layout/sidebar";
 import { TopBar } from "@/components/layout/top-bar";
+import { WorkspaceChrome } from "@/components/layout/workspace-chrome";
 import { ImpersonateBanner } from "@/components/team/impersonate-controls";
 import { getNotifications, getRelationships } from "@/lib/data/store";
 import { permissionForPath, permissionsForRole } from "@/lib/program4/permissions";
@@ -62,21 +63,25 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen">
-      <Sidebar
-        unreadCount={unreadCount}
-        openSupportCount={openSupportCount}
-        openSupportHref={openSupportHref}
-        permissions={permissions}
-        homeHref={homeHref}
-      />
-      <div className="pl-[var(--sidebar-width)]">
-        {impersonating ? (
+    <WorkspaceChrome
+      homeHref={homeHref}
+      sidebar={
+        <Sidebar
+          unreadCount={unreadCount}
+          openSupportCount={openSupportCount}
+          openSupportHref={openSupportHref}
+          permissions={permissions}
+          homeHref={homeHref}
+        />
+      }
+      topBar={<TopBar actor={actor} sessionUser={sessionUser} />}
+      banner={
+        impersonating ? (
           <ImpersonateBanner realUser={sessionUser} actingAs={actor} />
-        ) : null}
-        <TopBar actor={actor} sessionUser={sessionUser} />
-        <main className="ws-enter mx-auto max-w-6xl px-8 py-8">{children}</main>
-      </div>
-    </div>
+        ) : null
+      }
+    >
+      {children}
+    </WorkspaceChrome>
   );
 }

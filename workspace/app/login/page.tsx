@@ -45,10 +45,10 @@ export default async function LoginPage({
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-6">
-      <div className="ws-panel w-full max-w-md p-8 md:p-10">
+    <div className="ws-login-shell flex min-h-screen items-center justify-center px-6 py-10">
+      <div className="ws-panel w-full max-w-md p-8 shadow-[0_10px_28px_rgba(41,45,41,0.08)] md:p-10">
         <p className="ws-eyebrow">Hello to Cheers</p>
-        <h1 className="mt-3 font-heading text-4xl tracking-tight">
+        <h1 className="mt-3 font-heading text-[2.125rem] tracking-tight text-[var(--htc-forest)] md:text-4xl">
           Relationship Workspace
         </h1>
         {denied ? (
@@ -85,7 +85,7 @@ export default async function LoginPage({
         <p className="mt-4 text-center text-sm ws-muted">
           <Link
             href="/"
-            className="text-[var(--heritage-sage)] underline-offset-4 hover:underline"
+            className="text-[var(--htc-primary)] underline-offset-4 hover:underline"
           >
             Back
           </Link>

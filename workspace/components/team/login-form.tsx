@@ -33,7 +33,7 @@ export function LoginForm({ next, accepted }: { next: string; accepted?: boolean
           type="email"
           required
           autoComplete="username"
-          className="mt-2 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2.5 text-sm outline-none focus:border-[var(--heritage-sage)] text-foreground"
+          className="ws-control mt-2 w-full px-3 py-2.5 text-sm outline-none focus:border-[var(--htc-primary)]"
         />
       </label>
       <div>
@@ -48,7 +48,7 @@ export function LoginForm({ next, accepted }: { next: string; accepted?: boolean
             required
             autoComplete="current-password"
             placeholder="••••••••"
-            className="w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2.5 pr-10 text-sm outline-none focus:border-[var(--heritage-sage)] text-foreground"
+            className="ws-control w-full px-3 py-2.5 pr-10 text-sm outline-none focus:border-[var(--htc-primary)]"
           />
           <button
             type="button"
@@ -69,7 +69,7 @@ export function LoginForm({ next, accepted }: { next: string; accepted?: boolean
       <button
         type="submit"
         disabled={pending}
-        className="w-full rounded-sm bg-[var(--forest-sage)] px-4 py-3 text-sm font-medium text-[var(--true-white)] hover:bg-[var(--heritage-sage)] disabled:opacity-60"
+        className="ws-btn-primary w-full disabled:opacity-60"
       >
         {pending ? "Signing in…" : "Sign in"}
       </button>

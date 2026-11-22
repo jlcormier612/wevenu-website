@@ -36,8 +36,8 @@ export function Sidebar({
   });
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-30 flex w-[var(--sidebar-width)] flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
-      <div className="px-5 pt-7 pb-5">
+    <aside className="flex h-full w-[var(--sidebar-width)] flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
+      <div className="px-4 pt-6 pb-4 md:px-5 md:pt-7 md:pb-5">
         <Link href={homeHref} className="block" aria-label="Hello to Cheers Relationship Workspace">
           <Image
             src={HTC_LOGO_PUBLIC_PATH}
@@ -61,14 +61,10 @@ export function Sidebar({
             <Link
               key={item.href}
               href={showSupportBadge ? openSupportHref : item.href}
-              // Default Link prefetch stamps every CRM route (full AppShell + Auth
-              // getUser + ACL) on a single Workspace task and makes clicks appear
-              // dead while the queue drains. Prefetch on hover/focus still works.
-              prefetch={false}
               className={cn(
-                "flex items-center justify-between gap-2 rounded-sm px-3 py-2.5 text-[0.95rem] tracking-wide transition-colors",
+                "flex items-center justify-between gap-2 rounded-[8px] px-3 py-2.5 text-sm tracking-wide transition-colors",
                 active
-                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                  ? "ws-nav-active"
                   : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
               )}
             >
@@ -79,7 +75,7 @@ export function Sidebar({
                     "shrink-0 rounded-sm px-1.5 py-0.5 text-[0.65rem] font-medium tabular-nums",
                     active
                       ? "bg-sidebar-primary/15 text-sidebar-primary"
-                      : "bg-[color-mix(in_srgb,var(--dusty-rose)_28%,transparent)] text-[var(--dusty-rose)]",
+                      : "bg-[color-mix(in_srgb,var(--htc-dusty)_28%,transparent)] text-[var(--htc-dusty)]",
                   )}
                   title={`${openSupportCount} open support item${openSupportCount === 1 ? "" : "s"}`}
                 >
@@ -91,7 +87,7 @@ export function Sidebar({
         })}
       </nav>
 
-      <div className="border-t border-sidebar-border px-6 py-5">
+      <div className="border-t border-sidebar-border px-5 py-4 md:px-6 md:py-5">
         <p className="text-sm text-sidebar-foreground/70">
           {unreadCount > 0 ? (
             <>
@@ -102,12 +98,6 @@ export function Sidebar({
             "All caught up"
           )}
         </p>
-        <Link
-          href="/login"
-          className="mt-2 inline-block text-sm text-sidebar-primary underline-offset-4 hover:underline"
-        >
-          Sign out (stub)
-        </Link>
       </div>
     </aside>
   );
