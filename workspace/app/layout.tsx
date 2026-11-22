@@ -34,6 +34,14 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
+/**
+ * next-themes persists `theme` in localStorage (default storageKey).
+ * Founder decision: Workspace is light-only. This blocking script runs before
+ * paint so a previously saved `dark` preference cannot flash dark UI, and
+ * rewrites storage to `light` without touching auth cookies.
+ */
+const FORCE_LIGHT_SCRIPT = `(function(){try{localStorage.setItem("theme","light");}catch(e){}var r=document.documentElement;r.classList.remove("dark");r.classList.add("light");r.style.colorScheme="light";})();`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -43,13 +51,18 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${sourceSans.variable} ${cormorant.variable} h-full`}
+      className={`${sourceSans.variable} ${cormorant.variable} light h-full`}
+      style={{ colorScheme: "light" }}
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: FORCE_LIGHT_SCRIPT }} />
+      </head>
       <body className="min-h-full">
         <ThemeProvider
           attribute="class"
           defaultTheme="light"
-          enableSystem
+          forcedTheme="light"
+          enableSystem={false}
           disableTransitionOnChange
         >
           {children}

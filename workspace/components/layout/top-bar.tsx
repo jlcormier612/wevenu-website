@@ -1,6 +1,5 @@
 import { logoutAction } from "@/app/(app)/team/auth-actions";
 import { NotificationNavLink } from "@/components/notifications/notification-nav-link";
-import { ThemeToggle } from "@/components/providers/theme-toggle";
 import { getNotifications, getRelationship } from "@/lib/data/store";
 import {
   notificationDestinationLabel,
@@ -53,7 +52,6 @@ export function TopBar({
             )}
           </div>
           <div className="flex items-center gap-3">
-            <ThemeToggle />
             <div
               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--htc-soft-sage)] text-xs font-medium text-[var(--htc-forest)]"
               title={`${actor.name} · ${ROLE_LABELS[actor.role]}`}

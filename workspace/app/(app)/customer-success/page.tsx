@@ -55,10 +55,8 @@ const STAGE_FILTERS: { label: string; value: CustomerSuccessStage | "all" }[] = 
   ...CS_STAGE_COLUMNS.map((c) => ({ label: c.label, value: c.stage })),
 ];
 
-const CHIP_ACTIVE =
-  "inline-flex items-center rounded-sm bg-[var(--forest-sage)] px-3 py-1.5 text-sm text-[var(--true-white)]";
-const CHIP_IDLE =
-  "inline-flex items-center rounded-sm bg-[var(--true-white)] px-3 py-1.5 text-sm text-[var(--forest-sage)] ring-1 ring-[color-mix(in_srgb,var(--taupe-medium)_50%,transparent)] hover:bg-[var(--header-linen)]";
+const CHIP_ACTIVE = "ws-chip-active";
+const CHIP_IDLE = "ws-chip";
 
 function isCsStageFilter(value: string | undefined): value is CustomerSuccessStage {
   return CS_STAGE_COLUMNS.some((c) => c.stage === value);
@@ -166,8 +164,8 @@ export default async function CustomerSuccessPage({
     <div>
       <PageHeader
         eyebrow="Customer Success"
-        title="Customer Success"
-        description="Every customer after subscribe. One relationship. Flags are attention filters — not pipeline stages. Welcome Back never gates checkout."
+        title="After subscribe"
+        description="Onboarding, customer health, and ongoing relationships."
       />
 
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
@@ -240,21 +238,13 @@ export default async function CustomerSuccessPage({
         <div className="flex gap-2">
           <Link
             href={pipelineHref}
-            className={
-              view === "pipeline"
-                ? "rounded-sm bg-[var(--soft-sage)]/50 px-3 py-1.5 text-sm"
-                : "rounded-sm px-3 py-1.5 text-sm ws-muted hover:text-foreground"
-            }
+            className={view === "pipeline" ? "ws-chip-active" : "ws-chip"}
           >
             Pipeline
           </Link>
           <Link
             href={listHref}
-            className={
-              view === "list"
-                ? "rounded-sm bg-[var(--soft-sage)]/50 px-3 py-1.5 text-sm"
-                : "rounded-sm px-3 py-1.5 text-sm ws-muted hover:text-foreground"
-            }
+            className={view === "list" ? "ws-chip-active" : "ws-chip"}
           >
             List
           </Link>

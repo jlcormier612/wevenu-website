@@ -100,42 +100,51 @@ export function CustomerSuccessBoard({
       ) : null}
 
       <div className="flex gap-3 overflow-x-auto pb-4">
-        {byColumn.map((col) => (
+        {byColumn.map((col, index) => (
           <div
             key={col.stage}
-            className={`flex w-[17.5rem] shrink-0 flex-col rounded-sm border bg-[color-mix(in_srgb,var(--header-linen)_55%,var(--true-white))] ${
+            className={`ws-pipeline-column w-[17.5rem] ${
+              index % 2 === 1 ? "ws-pipeline-column-alt" : ""
+            } ${
               col.autoArrivals > 0
-                ? "border-[color-mix(in_srgb,var(--heritage-sage)_45%,transparent)]"
-                : "border-[color-mix(in_srgb,var(--taupe-medium)_40%,transparent)]"
+                ? "border-[color-mix(in_srgb,var(--htc-primary)_45%,transparent)]"
+                : ""
             }`}
           >
-            <div className="border-b border-[color-mix(in_srgb,var(--taupe-medium)_35%,transparent)] px-3 py-3">
-              <p className="ws-eyebrow">{col.short}</p>
-              <p className="mt-1 flex items-center font-heading text-lg leading-tight">
+            <div className="border-b border-[var(--htc-border)] px-3 py-3">
+              <div className="flex items-baseline justify-between gap-2">
+                <p className="ws-eyebrow">{col.short}</p>
+                <p
+                  className={`text-sm font-semibold ${
+                    col.stage === "needs_support" && col.items.length > 0
+                      ? "text-[var(--htc-dusty)]"
+                      : "text-[var(--htc-forest)]"
+                  }`}
+                >
+                  {col.items.length}
+                  {col.stage === "needs_support" && col.items.length > 0
+                    ? " open"
+                    : ""}
+                </p>
+              </div>
+              <p className="mt-1 flex items-center font-heading text-lg leading-tight text-[var(--htc-forest)]">
                 <Link
                   href={`/customer-success?stage=${col.stage}`}
-                  className="hover:text-[var(--heritage-sage)]"
+                  className="hover:text-[var(--htc-primary)]"
                 >
                   {col.label}
                 </Link>
                 <AutoArrivalDot count={col.autoArrivals} />
               </p>
-              <p
-                className={`mt-1 text-xs ${
-                  col.stage === "needs_support" && col.items.length > 0
-                    ? "font-medium text-[var(--dusty-rose)]"
-                    : "ws-muted"
-                }`}
-              >
-                {col.items.length}
-                {col.stage === "needs_support" && col.items.length > 0
-                  ? " open"
-                  : ""}
-              </p>
             </div>
-            <div className="flex flex-1 flex-col gap-2 p-2 min-h-[12rem]">
+            <div className="flex flex-1 flex-col gap-2 p-2 min-h-[8rem]">
               {col.items.length === 0 ? (
-                <p className="px-2 py-6 text-center text-xs ws-muted">Empty</p>
+                <div className="ws-pipeline-card px-3 py-4 text-center">
+                  <p className="text-sm font-semibold text-[var(--htc-text)]">
+                    Empty
+                  </p>
+                  <p className="mt-1 text-xs ws-muted">New work lands here.</p>
+                </div>
               ) : (
                 col.items.map((r) => {
                   const stage = deriveCustomerSuccessStage(r);
@@ -174,11 +183,11 @@ export function CustomerSuccessBoard({
                   return (
                     <article
                       key={r.id}
-                      className={`rounded-sm bg-[var(--true-white)] p-3 shadow-[0_1px_0_color-mix(in_srgb,var(--taupe-medium)_35%,transparent)] ${
+                      className={`ws-pipeline-card ${
                         wbPending
-                          ? "ring-1 ring-[color-mix(in_srgb,var(--dusty-rose)_40%,transparent)]"
+                          ? "ring-1 ring-[color-mix(in_srgb,var(--htc-dusty)_40%,transparent)]"
                           : isNewArrival
-                            ? "ring-1 ring-[color-mix(in_srgb,var(--heritage-sage)_35%,transparent)]"
+                            ? "ring-1 ring-[color-mix(in_srgb,var(--htc-primary)_35%,transparent)]"
                             : ""
                       }`}
                     >
@@ -187,7 +196,7 @@ export function CustomerSuccessBoard({
                           href={`/relationships/${r.id}?from=customer-success${
                             relationshipHasOpenSupport(r) ? "&panel=support" : ""
                           }`}
-                          className="font-medium hover:text-[var(--heritage-sage)]"
+                          className="font-medium text-[var(--htc-text)] hover:text-[var(--htc-primary)]"
                         >
                           {r.venue.name}
                         </Link>
@@ -293,7 +302,7 @@ export function CustomerSuccessBoard({
                       <label className="mt-3 block text-[0.65rem] uppercase tracking-wider ws-muted">
                         Move to
                         <select
-                          className="mt-1 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_50%,transparent)] bg-[var(--natural-cream)] px-2 py-1.5 text-xs text-foreground"
+                          className="ws-control mt-1 w-full px-2 py-1.5 text-xs"
                           value={stage}
                           disabled={movingId === r.id}
                           onChange={(e) => {

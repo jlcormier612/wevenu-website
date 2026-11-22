@@ -89,35 +89,36 @@
 }
 
 /*
- * Dark theme: keep theme toggle, but do not use full forest-sage / olive
- * content canvas. Body uses near-ink surface from locked primary text.
+ * Workspace is light-mode only (Release 2). If a stale `.dark` class is ever
+ * present, keep the locked light hospitality tokens — never switch surfaces.
  */
 .dark {
-  --background: var(--htc-text);
-  --foreground: var(--htc-warm-white);
-  --heading: var(--htc-warm-white);
-  --card: color-mix(in srgb, var(--htc-text) 88%, var(--htc-forest));
-  --card-foreground: var(--htc-warm-white);
-  --muted: color-mix(in srgb, var(--htc-text) 82%, var(--htc-forest));
-  --muted-foreground: color-mix(in srgb, var(--htc-warm-white) 72%, transparent);
-  --border: color-mix(in srgb, var(--htc-warm-white) 22%, transparent);
-  --input: color-mix(in srgb, var(--htc-warm-white) 26%, transparent);
-  --ring: var(--htc-soft-sage);
-  --primary: var(--htc-soft-sage);
-  --primary-foreground: var(--htc-text);
+  --background: var(--htc-canvas);
+  --foreground: var(--htc-text);
+  --heading: var(--htc-forest);
+  --card: var(--htc-warm-white);
+  --card-foreground: var(--htc-text);
+  --muted: var(--htc-linen);
+  --muted-foreground: var(--htc-muted);
+  --border: var(--htc-border);
+  --input: var(--htc-border);
+  --ring: var(--htc-primary);
+  --primary: var(--htc-primary);
+  --primary-foreground: var(--htc-warm-white);
 
-  --sidebar: color-mix(in srgb, var(--htc-text) 78%, var(--htc-taupe));
-  --sidebar-foreground: var(--htc-warm-white);
-  --sidebar-primary: var(--htc-soft-sage);
-  --sidebar-primary-foreground: var(--htc-text);
-  --sidebar-accent: color-mix(in srgb, var(--htc-soft-sage) 28%, transparent);
-  --sidebar-accent-foreground: var(--htc-warm-white);
-  --sidebar-border: color-mix(in srgb, var(--htc-warm-white) 16%, transparent);
-  --sidebar-ring: var(--htc-soft-sage);
+  --sidebar: var(--htc-taupe);
+  --sidebar-foreground: var(--htc-text);
+  --sidebar-primary: var(--htc-primary);
+  --sidebar-primary-foreground: var(--htc-warm-white);
+  --sidebar-accent: var(--htc-soft-sage);
+  --sidebar-accent-foreground: var(--htc-forest);
+  --sidebar-border: var(--htc-border);
+  --sidebar-ring: var(--htc-primary);
 
-  --header-linen: color-mix(in srgb, var(--htc-text) 85%, var(--htc-linen));
-  --warm-gray: var(--htc-text);
-  --natural-cream: color-mix(in srgb, var(--htc-text) 88%, var(--htc-forest));
+  --header-linen: var(--htc-warm-white);
+  --warm-gray: var(--htc-canvas);
+  --natural-cream: var(--htc-warm-white);
+  color-scheme: light;
 }
 
 @layer base {
@@ -176,10 +177,6 @@
   @apply text-xs font-semibold tracking-[0.14em] uppercase text-[var(--htc-forest)];
 }
 
-.dark .ws-eyebrow {
-  @apply text-[var(--htc-soft-sage)]/90;
-}
-
 .ws-panel {
   @apply rounded-[12px] border border-[var(--htc-border)] bg-card text-card-foreground;
 }
@@ -201,17 +198,31 @@
   @apply rounded-[10px] border border-[var(--htc-border)] bg-[var(--htc-warm-white)] px-4 py-2.5 text-sm font-semibold text-[var(--htc-forest)];
 }
 
+.ws-chip {
+  @apply inline-flex items-center rounded-[10px] bg-[var(--htc-warm-white)] px-3 py-1.5 text-sm text-[var(--htc-forest)] ring-1 ring-[var(--htc-border)] hover:bg-[var(--htc-linen)];
+}
+
+.ws-chip-active {
+  @apply inline-flex items-center rounded-[10px] bg-[var(--htc-primary)] px-3 py-1.5 text-sm font-semibold text-[var(--htc-warm-white)] ring-1 ring-[var(--htc-primary)];
+}
+
+.ws-pipeline-column {
+  @apply flex w-[16.25rem] shrink-0 flex-col rounded-[12px] border border-[var(--htc-border)] bg-[var(--htc-linen)];
+}
+
+.ws-pipeline-column-alt {
+  background-color: color-mix(in srgb, var(--htc-soft-sage) 55%, var(--htc-linen));
+}
+
+.ws-pipeline-card {
+  @apply rounded-[12px] border border-[var(--htc-border)] bg-[var(--htc-warm-white)] p-3;
+}
+
 .ws-control {
   border: 1px solid var(--htc-border);
   background-color: var(--htc-warm-white);
   color: var(--htc-text);
   border-radius: 10px;
-}
-
-.dark .ws-control {
-  border-color: var(--border);
-  background-color: color-mix(in srgb, var(--htc-warm-white) 10%, transparent);
-  color: var(--foreground);
 }
 
 .ws-control:focus,
@@ -228,12 +239,6 @@
   border-radius: 10px;
 }
 
-.dark .ws-control-muted {
-  border-color: var(--border);
-  background-color: color-mix(in srgb, var(--htc-warm-white) 8%, transparent);
-  color: var(--foreground);
-}
-
 .ws-nav-active {
   background-color: var(--htc-soft-sage);
   color: var(--htc-forest);
@@ -241,29 +246,11 @@
   box-shadow: inset 3px 0 0 var(--htc-primary);
 }
 
-.dark .ws-nav-active {
-  background-color: color-mix(in srgb, var(--htc-soft-sage) 28%, transparent);
-  color: var(--htc-warm-white);
-  box-shadow: inset 3px 0 0 var(--htc-soft-sage);
-}
-
 .ws-login-shell {
   background:
     radial-gradient(80% 60% at 0% 0%, color-mix(in srgb, var(--htc-soft-sage) 75%, transparent), transparent 55%),
     radial-gradient(70% 50% at 100% 100%, color-mix(in srgb, var(--htc-dusty) 16%, transparent), transparent 50%),
     var(--htc-canvas);
-}
-
-.dark .ws-login-shell {
-  background: var(--background);
-}
-
-.dark input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="file"]):not([type="submit"]):not([type="button"]):not([type="image"]):not([type="reset"]),
-.dark textarea,
-.dark select {
-  color: var(--foreground);
-  background-color: color-mix(in srgb, var(--htc-warm-white) 10%, transparent);
-  border-color: var(--border);
 }
 
 [data-theme-lock="light"] input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="file"]):not([type="submit"]):not([type="button"]):not([type="image"]):not([type="reset"]),

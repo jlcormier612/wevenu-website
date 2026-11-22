@@ -53,7 +53,7 @@ export function AddRelationshipForm() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="rounded-sm bg-[var(--forest-sage)] px-3 py-1.5 text-sm text-[var(--true-white)] hover:bg-[var(--heritage-sage)]"
+        className="ws-btn-primary"
       >
         Add Relationship
       </button>
@@ -93,7 +93,7 @@ export function AddRelationshipForm() {
         <button
           type="submit"
           disabled={pending}
-          className="rounded-sm bg-[var(--forest-sage)] px-4 py-2 text-sm text-[var(--true-white)] disabled:opacity-60"
+          className="ws-btn-primary disabled:opacity-60"
         >
           {pending ? "Saving…" : "Save Relationship"}
         </button>

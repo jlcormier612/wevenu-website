@@ -64,7 +64,7 @@ export function LuvBriefingCard({
           <button
             type="button"
             onClick={() => setOpen(true)}
-            className="rounded-sm bg-[var(--forest-sage)] px-4 py-2.5 text-sm text-[var(--natural-cream)] hover:opacity-90"
+            className="ws-btn-primary"
           >
             Draft today&apos;s follow-ups
           </button>
