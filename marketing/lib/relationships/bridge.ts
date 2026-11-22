@@ -252,6 +252,7 @@ export async function syncCalendlyCreatedToRelationship(input: {
 }): Promise<void> {
   try {
     const hasHandoff = Boolean(input.handoffToken?.trim());
+    const hasVenue = Boolean(input.venueName?.trim());
     await ingestWalkthroughRequest({
       name: input.name,
       email: input.email,
@@ -260,9 +261,10 @@ export async function syncCalendlyCreatedToRelationship(input: {
       scheduledAt: input.scheduledAt,
       sourceId: input.sourceId,
       handoffToken: input.handoffToken,
-      // Preferred journey uses HTC handoff. Direct/shared Calendly links without
-      // handoff stay provisional and are flagged when venue is also missing.
-      identityReviewRequired: !hasHandoff && !input.venueName?.trim(),
+      // Handoff remains authoritative when present. Direct Calendly with a
+      // required venue answer matches email+venue. Only flag when neither
+      // handoff nor venue identity is available.
+      identityReviewRequired: !hasHandoff && !hasVenue,
       referralSource: hasHandoff ? "Schedule a Walkthrough" : "Calendly",
     });
   } catch (error) {
