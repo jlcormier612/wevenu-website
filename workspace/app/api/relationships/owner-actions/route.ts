@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { sendRelationshipEmail } from "@shared/email";
 import {
   appendCommunication,
+  appendRelationshipTask,
   appendTimelineEvent,
   hasLiveRelationshipsSync,
   loadLiveStoreSync,
@@ -91,31 +92,30 @@ export async function POST(request: Request) {
     const description = body.description?.trim() || undefined;
     const taskId = newId("task");
     const timelineId = newId("te");
-
-    await appendLocalTask({
+    const ownerId =
+      relationship.assignedTeamMemberId || actor?.id || "unassigned";
+    const taskRow = {
       id: taskId,
       relationshipId,
       title,
       description,
-      ownerId: relationship.assignedTeamMemberId || actor?.id || "unassigned",
+      ownerId,
       dueDate: due,
-      priority: "medium",
-      status: "open",
+      priority: "medium" as const,
+      status: "open" as const,
       createdAt: now,
-    });
+    };
 
-    await appendLocalTimeline({
-      id: timelineId,
-      relationshipId,
-      type: "note_added",
-      title: `Task created: ${title}`,
-      body: description?.slice(0, 280),
-      occurredAt: now,
-      actorId: actor?.id,
-      meta: { source: "owner_actions", task_id: taskId },
-    });
-
+    // Live CRM: durable write must succeed before ok. Never report success after
+    // only an ephemeral local JSONL write.
     if (inLive) {
+      const liveTask = await appendRelationshipTask(taskRow);
+      if (!liveTask) {
+        return NextResponse.json(
+          { error: "Could not persist task to CRM store" },
+          { status: 500 },
+        );
+      }
       await appendTimelineEvent(relationshipId, {
         id: timelineId,
         type: "note_added",
@@ -126,6 +126,20 @@ export async function POST(request: Request) {
         meta: { source: "owner_actions", task_id: taskId },
       });
     }
+
+    // Local overlay for seed / hybrid UI (same ids). Runs after live success so
+    // a local-only write cannot produce ok:true while live CRM is in use.
+    await appendLocalTask(taskRow);
+    await appendLocalTimeline({
+      id: timelineId,
+      relationshipId,
+      type: "note_added",
+      title: `Task created: ${title}`,
+      body: description?.slice(0, 280),
+      occurredAt: now,
+      actorId: actor?.id,
+      meta: { source: "owner_actions", task_id: taskId },
+    });
 
     return NextResponse.json({
       ok: true,

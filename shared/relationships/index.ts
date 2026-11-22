@@ -151,6 +151,7 @@ export {
   resolveWelcomeBackVerification,
   resolveOpenFeedback,
   resolveSupportInboxItem,
+  appendRelationshipTask,
   completeRelationshipTask,
   setWalkthroughStatus,
   personFromFields,

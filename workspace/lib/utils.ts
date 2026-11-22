@@ -44,8 +44,13 @@ export function formatDateTime(iso: string): string {
 }
 
 /** Relative-ish labels for the snapshot ("Yesterday", "3 days ago", etc.). */
-export function formatRelativeDay(iso: string, now = new Date()): string {
+export function formatRelativeDay(
+  iso: string | null | undefined,
+  now = new Date(),
+): string {
+  if (!iso) return "—";
   const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "—";
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const startOfThat = new Date(date.getFullYear(), date.getMonth(), date.getDate());
   const diffDays = Math.round((startOfToday.getTime() - startOfThat.getTime()) / 86_400_000);

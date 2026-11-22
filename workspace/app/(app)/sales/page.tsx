@@ -194,7 +194,9 @@ export default async function SalesPage({
                   {SALES_STAGE_LABELS[stage]}
                 </StatusPill>,
                 <span key={`${r.id}-health`}>
-                  {HEALTH_LABELS[r.health]} {HEALTH_EMOJI[r.health]}
+                  {r.health
+                    ? `${HEALTH_LABELS[r.health]} ${HEALTH_EMOJI[r.health]}`
+                    : "—"}
                 </span>,
                 r.planName,
                 yesNo(r.foundingMember),
