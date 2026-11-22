@@ -53,8 +53,14 @@ export async function ensureProgram4Data(): Promise<void> {
     await seedPromise;
   }
   // Project 8 — seed Jennifer demo credentials if missing
-  const { ensureAuthSeed } = await import("./auth-store");
-  await ensureAuthSeed();
+  // R1A: never auto-provision demo credentials when Supabase/memory staff auth is active.
+  const { isLegacyJsonlAuthEnabled } = await import(
+    "@/lib/supabase/workspace-auth-config"
+  );
+  if (isLegacyJsonlAuthEnabled()) {
+    const { ensureAuthSeed } = await import("./auth-store");
+    await ensureAuthSeed();
+  }
 }
 
 export function getTeamProfilesSync(): TeamMemberProfile[] {

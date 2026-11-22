@@ -3,10 +3,15 @@ import { NextResponse } from "next/server";
 
 import { getSessionSync } from "./auth-store";
 import { roleHasPermission } from "./permissions";
+import { requireActiveInternalStaff } from "./staff-acl";
 import { getTeamProfileSync } from "./store";
 import type { Permission, TeamMemberProfile, TeamRole } from "./types";
+import {
+  getWorkspaceAuthProvider,
+  isSupabaseStaffAuthEnabled,
+} from "@/lib/supabase/workspace-auth-config";
 
-/** Opaque session id → team member (real login). */
+/** Opaque legacy JSONL session id → team member (legacy_jsonl only). */
 export const SESSION_COOKIE = "ws_session";
 
 /** Owner/Admin temporary support impersonation (HubSpot-style). */
@@ -28,26 +33,107 @@ export async function getSessionId(): Promise<string | null> {
   return raw || null;
 }
 
-/** Real logged-in member (ignores impersonation). */
-export async function getSessionMemberId(): Promise<string | null> {
+function profileFromAcl(staff: {
+  teamMemberId: string;
+  email: string;
+  displayName: string;
+  role: TeamRole;
+  active: boolean;
+  createdAt: string;
+}): TeamMemberProfile {
+  const existing = getTeamProfileSync(staff.teamMemberId);
+  if (existing) {
+    return {
+      ...existing,
+      email: staff.email,
+      name: staff.displayName || existing.name,
+      role: staff.role,
+      active: staff.active,
+    };
+  }
+  const parts = staff.displayName.trim().split(/\s+/).filter(Boolean);
+  const initials =
+    parts.length >= 2
+      ? `${parts[0]![0] ?? ""}${parts[parts.length - 1]![0] ?? ""}`.toUpperCase()
+      : (parts[0] ?? "??").slice(0, 2).toUpperCase();
+  return {
+    id: staff.teamMemberId,
+    name: staff.displayName,
+    email: staff.email,
+    initials,
+    role: staff.role,
+    title: staff.role,
+    department: "leadership",
+    commissionPlanId: null,
+    goals: [],
+    availability: "available",
+    territory: null,
+    active: staff.active,
+    joinedAt: staff.createdAt,
+  };
+}
+
+async function getSupabaseSessionMember(): Promise<TeamMemberProfile | null> {
+  if (getWorkspaceAuthProvider() === "memory") {
+    // Tests inject auth via AsyncLocal / cookie stub — resolved in auth test harness.
+    const { getMemoryAuthUserId } = await import("./staff-auth-memory");
+    const userId = getMemoryAuthUserId();
+    if (!userId) return null;
+    const staff = await requireActiveInternalStaff(userId);
+    if (!staff) return null;
+    return profileFromAcl(staff);
+  }
+
+  const { createWorkspaceAuthClient } = await import("@/lib/supabase/server");
+  const supabase = await createWorkspaceAuthClient();
+  const { data, error } = await supabase.auth.getUser();
+  if (error || !data.user) return null;
+  const staff = await requireActiveInternalStaff(data.user.id);
+  if (!staff) return null;
+  return profileFromAcl(staff);
+}
+
+async function getLegacySessionMember(): Promise<TeamMemberProfile | null> {
   const sid = await getSessionId();
   if (!sid) return null;
   const session = getSessionSync(sid);
-  return session?.memberId ?? null;
-}
-
-export async function getSessionMember(): Promise<TeamMemberProfile | null> {
-  const id = await getSessionMemberId();
-  if (!id) return null;
-  const member = getTeamProfileSync(id) ?? null;
+  if (!session?.memberId) return null;
+  const member = getTeamProfileSync(session.memberId) ?? null;
   if (!member || !member.active) return null;
   return member;
 }
 
+/** Real logged-in member (ignores impersonation). */
+export async function getSessionMemberId(): Promise<string | null> {
+  const member = await getSessionMember();
+  return member?.id ?? null;
+}
+
+export async function getSessionMember(): Promise<TeamMemberProfile | null> {
+  if (isSupabaseStaffAuthEnabled()) {
+    return getSupabaseSessionMember();
+  }
+  return getLegacySessionMember();
+}
+
 export async function getImpersonateMemberId(): Promise<string | null> {
-  const jar = await cookies();
-  const raw = jar.get(IMPERSONATE_COOKIE)?.value?.trim();
+  let raw: string | undefined;
+  try {
+    const jar = await cookies();
+    raw = jar.get(IMPERSONATE_COOKIE)?.value?.trim();
+  } catch {
+    // Unit tests / non-request contexts have no cookie store.
+    return null;
+  }
   if (!raw) return null;
+  if (isSupabaseStaffAuthEnabled()) {
+    const acl = await import("./staff-acl");
+    const byTeam = await acl.getStaffAclRepository().getByTeamMemberId(raw);
+    if (byTeam?.active) return byTeam.teamMemberId;
+    // Allow impersonating Program4-only seed profiles still present locally
+    if (getTeamProfileSync(raw)?.active) return raw;
+    return null;
+  }
   if (!getTeamProfileSync(raw)) return null;
   return raw;
 }
@@ -56,7 +142,7 @@ export async function getImpersonateMemberId(): Promise<string | null> {
  * Effective actor for permissions / UI.
  * Session user unless Owner/Admin is impersonating someone.
  *
- * R0: returns null when unauthenticated — never falls back to a seed Owner.
+ * R0/R1A: returns null when unauthenticated — never falls back to a seed Owner.
  */
 export async function getActingMemberId(): Promise<string | null> {
   const sessionMember = await getSessionMember();
@@ -75,6 +161,13 @@ export async function getActingMemberId(): Promise<string | null> {
 export async function getActingMember(): Promise<TeamMemberProfile | null> {
   const id = await getActingMemberId();
   if (!id) return null;
+
+  if (isSupabaseStaffAuthEnabled()) {
+    const acl = await import("./staff-acl");
+    const staff = await acl.getStaffAclRepository().getByTeamMemberId(id);
+    if (staff?.active) return profileFromAcl(staff);
+  }
+
   const member = getTeamProfileSync(id) ?? null;
   if (!member || !member.active) return null;
   return member;
