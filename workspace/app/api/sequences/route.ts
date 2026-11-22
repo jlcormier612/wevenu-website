@@ -12,8 +12,11 @@ import {
   getSequenceEnrollmentsSync,
   getSequencesSync,
 } from "@/lib/program3/store";
+import { requireWorkspaceStaff } from "@/lib/program4/session";
 
 export async function GET() {
+  const auth = await requireWorkspaceStaff("view_workflows");
+  if (!auth.ok) return auth.response;
   await ensureProgram3Data();
   return NextResponse.json({
     sequences: getSequencesSync(),
@@ -22,6 +25,8 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const auth = await requireWorkspaceStaff("manage_workflows");
+  if (!auth.ok) return auth.response;
   await ensureProgram3Data();
   const body = (await request.json()) as {
     action?: string;

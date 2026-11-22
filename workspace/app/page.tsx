@@ -11,6 +11,9 @@ export default async function HomePage() {
     redirect("/login");
   }
   const actor = await getActingMember();
+  if (!actor) {
+    redirect("/login");
+  }
   const permissions = permissionsForRole(actor.role);
   if (permissions.includes("view_business_dashboard")) {
     redirect("/business");

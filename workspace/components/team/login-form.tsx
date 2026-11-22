@@ -3,7 +3,6 @@
 import { useActionState } from "react";
 
 import { loginAction } from "@/app/(app)/team/auth-actions";
-import { DEMO_LOGIN } from "@/lib/program4/demo-login";
 
 export function LoginForm({ next, accepted }: { next: string; accepted?: boolean }) {
   const [state, action, pending] = useActionState(loginAction, null);
@@ -28,7 +27,6 @@ export function LoginForm({ next, accepted }: { next: string; accepted?: boolean
           type="email"
           required
           autoComplete="username"
-          defaultValue={DEMO_LOGIN.email}
           className="mt-2 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2.5 text-sm outline-none focus:border-[var(--heritage-sage)] text-foreground"
         />
       </label>

@@ -7,7 +7,7 @@ import {
 } from "@shared/relationships";
 import type { WalkthroughStatus } from "@shared/relationships";
 
-import { getActingMember, actorCan } from "@/lib/program4/session";
+import { actorCan, requireWorkspaceStaff } from "@/lib/program4/session";
 import { ensureProgram4Data } from "@/lib/program4/store";
 
 const STATUSES = new Set<WalkthroughStatus>([
@@ -21,6 +21,8 @@ const STATUSES = new Set<WalkthroughStatus>([
  * Permission: manage_walkthroughs
  */
 export async function POST(request: Request) {
+  const auth = await requireWorkspaceStaff("manage_walkthroughs");
+  if (!auth.ok) return auth.response;
   await ensureProgram4Data();
 
   if (!(await actorCan("manage_walkthroughs"))) {
@@ -69,7 +71,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const actor = await getActingMember();
+  const actor = auth.actor;
   const result = await ingestWalkthroughRequest({
     email,
     name: ownerName,
@@ -93,6 +95,8 @@ export async function POST(request: Request) {
  * Permission: manage_walkthroughs
  */
 export async function PATCH(request: Request) {
+  const auth = await requireWorkspaceStaff("manage_walkthroughs");
+  if (!auth.ok) return auth.response;
   await ensureProgram4Data();
 
   if (!(await actorCan("manage_walkthroughs"))) {
@@ -119,7 +123,7 @@ export async function PATCH(request: Request) {
     );
   }
 
-  const actor = await getActingMember();
+  const actor = auth.actor;
   const result = await setWalkthroughStatus(
     body.walkthroughId,
     body.status as WalkthroughStatus,

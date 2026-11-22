@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import type { WelcomeBackAction } from "@shared/relationships";
 
-import { actorCan } from "@/lib/program4/session";
+import { actorCan, requireWorkspaceStaff } from "@/lib/program4/session";
 import { ensureProgram4Data } from "@/lib/program4/store";
 import { resolveWelcomeBackInWorkspace } from "@/lib/welcome-back/resolve";
 
@@ -13,6 +13,8 @@ const ACTIONS = new Set<WelcomeBackAction>([
 ]);
 
 export async function POST(request: Request) {
+  const auth = await requireWorkspaceStaff("manage_welcome_back");
+  if (!auth.ok) return auth.response;
   await ensureProgram4Data();
 
   if (!(await actorCan("manage_welcome_back"))) {

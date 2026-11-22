@@ -25,6 +25,9 @@ export async function dismissLuvInsightAction(formData: FormData) {
   if (!insightId) return { ok: false as const, error: "missing_insight" };
 
   const actor = await getActingMember();
+  if (!actor) {
+    throw new Error("Unauthorized");
+  }
   await dismissInsight({
     insightId,
     relationshipId,
@@ -52,6 +55,9 @@ export async function createLuvTaskAction(formData: FormData) {
 
   await ensureProgram3Data();
   const actor = await getActingMember();
+  if (!actor) {
+    throw new Error("Unauthorized");
+  }
   const due = new Date();
   due.setDate(due.getDate() + 2);
 
@@ -88,6 +94,9 @@ export async function useLuvDraftAction(formData: FormData) {
 
   await ensureProgram3Data();
   const actor = await getActingMember();
+  if (!actor) {
+    throw new Error("Unauthorized");
+  }
   const now = new Date().toISOString();
 
   const isSend = mode === "send" || mode === "simulated_send";

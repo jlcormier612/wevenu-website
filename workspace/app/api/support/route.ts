@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { resolveSupportInboxItem } from "@shared/relationships";
 
-import { actorCan, getActingMember } from "@/lib/program4/session";
+import { actorCan, requireWorkspaceStaff } from "@/lib/program4/session";
 import { ensureProgram4Data } from "@/lib/program4/store";
 
 /**
@@ -10,6 +10,8 @@ import { ensureProgram4Data } from "@/lib/program4/store";
  * POST { action: "resolve", itemId, note? }
  */
 export async function POST(request: Request) {
+  const auth = await requireWorkspaceStaff(["edit_relationships", "manage_communications"]);
+  if (!auth.ok) return auth.response;
   await ensureProgram4Data();
 
   const canAct =
@@ -36,7 +38,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "itemId required" }, { status: 400 });
   }
 
-  const actor = await getActingMember();
+  const actor = auth.actor;
   const result = await resolveSupportInboxItem({
     itemId: body.itemId.trim(),
     note: body.note ?? (actor ? `Resolved by ${actor.name}` : null),

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { ingestManualRelationship } from "@shared/relationships";
 
-import { getActingMember, actorCan } from "@/lib/program4/session";
+import { actorCan, requireWorkspaceStaff } from "@/lib/program4/session";
 import { ensureProgram4Data } from "@/lib/program4/store";
 
 /**
@@ -10,6 +10,8 @@ import { ensureProgram4Data } from "@/lib/program4/store";
  * Permission: edit_relationships
  */
 export async function POST(request: Request) {
+  const auth = await requireWorkspaceStaff("edit_relationships");
+  if (!auth.ok) return auth.response;
   await ensureProgram4Data();
 
   if (!(await actorCan("edit_relationships"))) {
@@ -36,7 +38,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "email required" }, { status: 400 });
   }
 
-  const actor = await getActingMember();
+  const actor = auth.actor;
   const result = await ingestManualRelationship({
     venueName,
     ownerName: body.ownerName,

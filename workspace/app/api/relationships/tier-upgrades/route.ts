@@ -7,7 +7,7 @@ import {
   type TierUpgradeStatus,
 } from "@shared/pricing";
 
-import { actorCan, getSessionMember } from "@/lib/program4/session";
+import { actorCan, getSessionMember, requireWorkspaceStaff } from "@/lib/program4/session";
 
 export const runtime = "nodejs";
 
@@ -26,7 +26,7 @@ const STATUSES = new Set<TierUpgradeStatus>([
 ]);
 
 async function requireFounderSession(): Promise<Response | null> {
-  // Do not fall through to DEFAULT_ACTOR_ID — unauthenticated callers must be denied.
+  // Unauthenticated callers must be denied (no seed-owner fallback).
   const session = await getSessionMember();
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -43,6 +43,8 @@ async function requireFounderSession(): Promise<Response | null> {
  * Billing mutations never happen here.
  */
 export async function GET(request: Request) {
+  const auth = await requireWorkspaceStaff();
+  if (!auth.ok) return auth.response;
   const denied = await requireFounderSession();
   if (denied) return denied;
 
@@ -146,6 +148,8 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const auth = await requireWorkspaceStaff();
+  if (!auth.ok) return auth.response;
   if (!(await actorCan("manage_welcome_back"))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }

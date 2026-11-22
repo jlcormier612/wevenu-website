@@ -31,6 +31,9 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   const actor = await getActingMember();
+  if (!actor) {
+    redirect("/login");
+  }
   const impersonating = await isImpersonating();
   const permissions = permissionsForRole(actor.role);
   const unreadCount = getNotifications({ unreadOnly: true }).length;

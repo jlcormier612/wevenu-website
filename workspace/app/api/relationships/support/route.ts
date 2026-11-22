@@ -4,7 +4,7 @@ import { sendRelationshipEmail } from "@shared/email";
 import { greetingFirstName, resolveOpenFeedback } from "@shared/relationships";
 
 import { getRelationship } from "@/lib/data/store";
-import { actorCan, getActingMember } from "@/lib/program4/session";
+import { actorCan, requireWorkspaceStaff } from "@/lib/program4/session";
 import { ensureProgram4Data } from "@/lib/program4/store";
 
 /**
@@ -12,6 +12,8 @@ import { ensureProgram4Data } from "@/lib/program4/store";
  * POST { relationshipId, action: "resolve" | "reply", ... }
  */
 export async function POST(request: Request) {
+  const auth = await requireWorkspaceStaff(["edit_relationships", "manage_communications"]);
+  if (!auth.ok) return auth.response;
   await ensureProgram4Data();
 
   const canAct =
@@ -38,7 +40,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "relationshipId required" }, { status: 400 });
   }
 
-  const actor = await getActingMember();
+  const actor = auth.actor;
 
   if (body.action === "reply") {
     const subject = body.subject?.trim();

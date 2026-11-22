@@ -19,7 +19,7 @@ import {
 import { enqueueProductSync } from "@shared/product-sync";
 
 import { loadLifecycleSettings } from "@/lib/lifecycle-settings";
-import { actorCan, getActingMember } from "@/lib/program4/session";
+import { actorCan, requireWorkspaceStaff } from "@/lib/program4/session";
 import { ensureProgram4Data } from "@/lib/program4/store";
 
 export const runtime = "nodejs";
@@ -64,8 +64,10 @@ function planToStripeTier(planId: PlanId | string): "starter" | "growing" | "pro
  * Customer Lifecycle Engine — owner/ops actions on a Relationship.
  */
 export async function POST(request: Request) {
+  const auth = await requireWorkspaceStaff();
+  if (!auth.ok) return auth.response;
   await ensureProgram4Data();
-  const actor = await getActingMember();
+  const actor = auth.actor;
   const body = (await request.json()) as {
     action?: Action;
     relationshipId?: string;

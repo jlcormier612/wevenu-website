@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { redirect, notFound } from "next/navigation";
 
 import { LuvMark } from "@/components/luv/luv-mark";
 import { LuvRelationshipAdvisor } from "@/components/luv/luv-relationship-advisor";
@@ -118,6 +118,9 @@ export default async function RelationshipDetailPage({
   if (!relationship) notFound();
 
   const actor = await getActingMember();
+  if (!actor) {
+    redirect("/login");
+  }
   const { insights, drafts, actorFirstName } = loadLuvRelationshipAdvisor(
     relationship,
     actor,

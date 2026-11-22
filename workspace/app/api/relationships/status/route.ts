@@ -17,12 +17,15 @@ import {
   hasLiveRelationshipsSync,
   updateRelationshipFields,
 } from "@shared/relationships";
+import { requireWorkspaceStaff } from "@/lib/program4/session";
 
 function newId(prefix: string) {
   return `${prefix}_${randomUUID().replace(/-/g, "").slice(0, 12)}`;
 }
 
 export async function POST(request: Request) {
+  const auth = await requireWorkspaceStaff("edit_relationships");
+  if (!auth.ok) return auth.response;
   await ensureProgram3Data();
   const body = (await request.json()) as {
     relationshipId?: string;
