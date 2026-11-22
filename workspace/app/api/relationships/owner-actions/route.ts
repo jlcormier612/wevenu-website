@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { sendRelationshipEmail } from "@shared/email";
 import {
   appendCommunication,
+  appendRelationshipTask,
   appendTimelineEvent,
   hasLiveRelationshipsSync,
   loadLiveStoreSync,
@@ -91,18 +92,21 @@ export async function POST(request: Request) {
     const description = body.description?.trim() || undefined;
     const taskId = newId("task");
     const timelineId = newId("te");
-
-    await appendLocalTask({
+    const ownerId =
+      relationship.assignedTeamMemberId || actor?.id || "unassigned";
+    const taskRow = {
       id: taskId,
       relationshipId,
       title,
       description,
-      ownerId: relationship.assignedTeamMemberId || actor?.id || "unassigned",
+      ownerId,
       dueDate: due,
-      priority: "medium",
-      status: "open",
+      priority: "medium" as const,
+      status: "open" as const,
       createdAt: now,
-    });
+    };
+
+    await appendLocalTask(taskRow);
 
     await appendLocalTimeline({
       id: timelineId,
@@ -116,6 +120,13 @@ export async function POST(request: Request) {
     });
 
     if (inLive) {
+      const liveTask = await appendRelationshipTask(taskRow);
+      if (!liveTask) {
+        return NextResponse.json(
+          { error: "Could not persist task to CRM store" },
+          { status: 500 },
+        );
+      }
       await appendTimelineEvent(relationshipId, {
         id: timelineId,
         type: "note_added",

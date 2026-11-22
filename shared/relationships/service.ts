@@ -1166,6 +1166,36 @@ export async function appendTimelineEvent(
 }
 
 /**
+ * Append a Relationship task to the live CRM store.
+ * Used by owner-actions create_task (and other live task writers).
+ */
+export async function appendRelationshipTask(
+  task: RelationshipTask,
+): Promise<RelationshipTask | null> {
+  if (!task?.id?.trim() || !task.relationshipId?.trim()) return null;
+
+  const { result } = await withLiveStore((store) => {
+    const relationship = store.relationships.find(
+      (r) => r.id === task.relationshipId,
+    );
+    if (!relationship) return null;
+    if (!store.tasks) store.tasks = [];
+    const row: RelationshipTask = {
+      ...task,
+      id: task.id.trim(),
+      relationshipId: task.relationshipId.trim(),
+    };
+    const idx = store.tasks.findIndex((t) => t.id === row.id);
+    if (idx >= 0) store.tasks[idx] = row;
+    else store.tasks.push(row);
+    relationship.updatedAt = row.createdAt || new Date().toISOString();
+    return row;
+  });
+
+  return result;
+}
+
+/**
  * Mark a Relationship task completed and append a timeline row.
  * Used by workspace Complete (White Glove checklist and other live tasks).
  */
