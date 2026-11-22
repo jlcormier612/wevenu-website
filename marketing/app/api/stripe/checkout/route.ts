@@ -36,6 +36,7 @@ import {
   isPricingWevenV1Ready,
   requireDurablePricingOfferStore,
   resolveReservationGroupEligibility,
+  subscriptionCouponAllowsOneTimeProduct,
 } from "@shared/pricing";
 import { requireDurableGroupOrgStore } from "@shared/pricing/group-org-store-access";
 import { createCrmAdminClient } from "@shared/relationships/pg-client";
@@ -467,9 +468,11 @@ export async function POST(request: Request) {
     ];
 
     if (onboardingPackage.stripePriceEnv) {
-      // Weven White Glove uses a dedicated $399 Price so the 20% subscription
-      // coupon (restricted via Stripe applies_to on plan products) does not
-      // reduce the one-time onboarding charge.
+      // White Glove is a one-time add-on. Subscription percent coupons
+      // (Founding 10%, Weven 20%, Group 10%) must use Stripe `applies_to`
+      // restricted to plan products so they never reduce WG ($499 standard /
+      // $399 Former Weven honor-system price). Weven also uses a dedicated
+      // $399 Price for the WG line itself.
       const addonEnv =
         wevenDeclared && onboardingPackage.id === "white_glove"
           ? "STRIPE_PRICE_WHITE_GLOVE_WEVEN"
@@ -483,6 +486,48 @@ export async function POST(request: Request) {
       }
       lineItems.push({ price: addonPriceId, quantity: 1 });
       metadata.white_glove_price_id = addonPriceId;
+    }
+
+    // Guard: refuse Checkout when a percent coupon would also discount the
+    // one-time White Glove product (unrestricted founding coupon → $449.10).
+    if (pricing.foundingCouponId && lineItems.length > 1) {
+      const addonPriceId = lineItems[1]?.price;
+      if (addonPriceId) {
+        const [coupon, addonPrice] = await Promise.all([
+          stripe.coupons.retrieve(pricing.foundingCouponId, {
+            expand: ["applies_to"],
+          }),
+          stripe.prices.retrieve(addonPriceId),
+        ]);
+        const oneTimeProductId =
+          typeof addonPrice.product === "string"
+            ? addonPrice.product
+            : addonPrice.product.id;
+        const scope = subscriptionCouponAllowsOneTimeProduct({
+          couponAppliesTo: coupon.applies_to ?? null,
+          oneTimeProductId,
+        });
+        if (!scope.ok) {
+          console.error(
+            "[checkout] Subscription percent coupon is unsafe with White Glove",
+            {
+              couponId: pricing.foundingCouponId,
+              reason: scope.reason,
+              oneTimeProductId,
+              addonPriceId,
+            },
+          );
+          return NextResponse.json(
+            {
+              error:
+                "Subscription checkout is temporarily unavailable. Pricing coupon configuration must exclude one-time onboarding.",
+              code: "subscription_coupon_misconfigured",
+              reason: scope.reason,
+            },
+            { status: 503 },
+          );
+        }
+      }
     }
 
     const sessionParams: Parameters<typeof stripe.checkout.sessions.create>[0] = {
