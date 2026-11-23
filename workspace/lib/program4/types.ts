@@ -49,7 +49,13 @@ export type Permission =
   | "manage_commissions"
   | "view_team"
   | "manage_team"
-  | "manage_settings";
+  | "manage_settings"
+  /** Stage 1F — read-only customer portal viewing (venue/client/vendor). */
+  | "view_customer_portals"
+  /** Stage 1F — White Glove / pre-handoff configuration authority. */
+  | "configure_white_glove"
+  /** Stage 1F — authorized post-handoff assistance edits. */
+  | "assist_customer_accounts";
 
 export type TeamGoal = {
   id: string;

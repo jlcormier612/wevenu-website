@@ -8,6 +8,7 @@ import {
   launchWhiteGloveWorkspace,
   loadLiveStore,
   reactivateRelationshipAccount,
+  recordCustomerHandoff,
   recordSubscriptionLinkSent,
   refreshRelationshipHealth,
   resolveRelationshipStandardDiscount,
@@ -36,6 +37,7 @@ type Action =
   | "manual_subscription"
   | "resend_welcome"
   | "launch_workspace"
+  | "record_customer_handoff"
   | "suspend"
   | "reactivate"
   | "send_payment_reminder"
@@ -539,6 +541,27 @@ export async function POST(request: Request) {
         message: launched.message,
         relationship: launched.relationship,
         customerAccessGranted: false,
+      });
+    }
+    case "record_customer_handoff": {
+      if (
+        !(await actorCan("configure_white_glove")) &&
+        !(await actorCan("manage_onboarding")) &&
+        !(await actorCan("manage_product_sync"))
+      ) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+      const handed = await recordCustomerHandoff({
+        relationshipId,
+        actorId: actor.id,
+        note: typeof body.note === "string" ? body.note : null,
+      });
+      if (!handed.ok) {
+        return NextResponse.json({ error: handed.message }, { status: 400 });
+      }
+      return NextResponse.json({
+        ok: true,
+        relationship: handed.relationship,
       });
     }
     case "suspend": {

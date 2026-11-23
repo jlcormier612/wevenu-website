@@ -511,6 +511,11 @@ export type Relationship = {
   dunning?: DunningState | null;
   /** Project 10 — idempotent product provisioning state */
   productSync?: ProductSyncState;
+  /**
+   * Lightweight relationship-scoped flags (Stage 1F customer handoff, isolation hints).
+   * Not a second ownership system — stamps only.
+   */
+  meta?: Record<string, string | number | boolean | null>;
 };
 
 /**

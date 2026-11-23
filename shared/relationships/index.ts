@@ -105,6 +105,7 @@ export {
   tickPaymentDunning,
   refreshRelationshipHealth,
   recordSubscriptionLinkSent,
+  recordCustomerHandoff,
   whiteGloveTimelineLabel,
   DEFAULT_WHITE_GLOVE_TIMELINE_DAYS,
   ACTIVATION_TOKEN_TTL_MS,

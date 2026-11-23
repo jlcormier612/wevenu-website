@@ -86,6 +86,37 @@ export const bootstrapActiveVenueContext = cache(async (): Promise<ActiveVenueBo
     return { status: "unauthenticated" };
   }
 
+  // Stage 1F — active HTC support context (HQ admin) takes precedence over
+  // ordinary membership bootstrap so staff can open a customer venue without
+  // creating a venue_staff row.
+  const supportCtx = await layoutFbTime("bootstrap_support_context", async () => {
+    const { data } = await supabase.rpc("htc_get_support_context");
+    return data as {
+      ok?: boolean;
+      active?: boolean;
+      venue_id?: string | null;
+      mode?: string | null;
+      portal?: string | null;
+    } | null;
+  });
+  if (supportCtx?.ok && supportCtx.active && supportCtx.venue_id) {
+    const venueId = String(supportCtx.venue_id);
+    await syncActiveVenueCookieFromDb(venueId);
+    layoutFbExtra("bootstrap_case", "F_support_context");
+    return {
+      status: "ready",
+      venueId,
+      memberships: [
+        {
+          venueId,
+          venueName: "Support session",
+          role: supportCtx.mode === "assist" ? "owner" : "viewer",
+          isOwner: supportCtx.mode === "assist",
+        },
+      ],
+    };
+  }
+
   // One-time onboarding handoff (purchase activation) — establish the
   // intended venue before ordinary classification. No-op when none exists.
   // Does not change B_keep_valid for users without a pending handoff.

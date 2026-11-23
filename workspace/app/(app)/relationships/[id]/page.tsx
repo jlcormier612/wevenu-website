@@ -5,6 +5,7 @@ import { LuvMark } from "@/components/luv/luv-mark";
 import { LuvRelationshipAdvisor } from "@/components/luv/luv-relationship-advisor";
 import { LegalComplianceCard } from "@/components/relationships/legal-compliance-card";
 import { LifecycleActions } from "@/components/relationships/lifecycle-actions";
+import { PortalAccessControls } from "@/components/relationships/portal-access-controls";
 import { ProductSyncPanel } from "@/components/relationships/product-sync-panel";
 import { SalesOffersSummary } from "@/components/relationships/sales-offers-summary";
 import { StandardDiscountEligibilityPanel } from "@/components/relationships/standard-discount-eligibility-panel";
@@ -166,6 +167,12 @@ export default async function RelationshipDetailPage({
   const canManageCommunications = await actorCan("manage_communications");
   const canResolveSupport = canEditRelationships || canManageCommunications;
   const canOwnerTools = canEditRelationships || canManageCommunications;
+  const canViewCustomerPortals = await actorCan("view_customer_portals");
+  const canAssistCustomerAccounts = await actorCan("assist_customer_accounts");
+  const canConfigureWhiteGlove = await actorCan("configure_white_glove");
+  const customerHandoffAt = (
+    relationship.meta as { customerHandoffAt?: string } | undefined
+  )?.customerHandoffAt;
   const showWelcomeBackActions =
     canVerifyWelcomeBack &&
     relationship.welcomeBackRequested &&
@@ -300,6 +307,30 @@ export default async function RelationshipDetailPage({
             : null
         }
       />
+      {showCustomerActions ? (
+        <Panel title="Customer portal access" className="mt-6">
+          <PortalAccessControls
+            relationshipId={id}
+            productVenueId={relationship.productSync?.venueId ?? null}
+            canView={canViewCustomerPortals}
+            canAssist={canAssistCustomerAccounts}
+            canConfigureWg={canConfigureWhiteGlove}
+            handedOff={Boolean(customerHandoffAt)}
+            isWhiteGlove={
+              relationship.onboardingType === "white_glove" ||
+              relationship.status === "white_glove_implementation"
+            }
+            canRecordHandoff={
+              canConfigureWhiteGlove || canManageOnboarding || canProvisionProduct
+            }
+          />
+          {customerHandoffAt ? (
+            <p className="mt-2 text-xs ws-muted">
+              Customer handoff recorded {new Date(customerHandoffAt).toLocaleString()}.
+            </p>
+          ) : null}
+        </Panel>
+      ) : null}
       {!relationship.subscribedAt ? (
         <>
           <StandardDiscountEligibilityPanel

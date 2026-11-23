@@ -27,7 +27,9 @@
       "@shared/brand": ["../shared/brand/logo.ts"],
       "@shared/brand/*": ["../shared/brand/*"],
       "@shared/pricing": ["../shared/pricing/index.ts"],
-      "@shared/pricing/*": ["../shared/pricing/*"]
+      "@shared/pricing/*": ["../shared/pricing/*"],
+      "@shared/support-access": ["../shared/support-access/token.ts"],
+      "@shared/support-access/*": ["../shared/support-access/*"]
     }
   },
   "include": [

@@ -6,6 +6,8 @@ import { useEffect, useState, useTransition } from "react";
 
 import type { SupportInboxItem } from "@shared/relationships";
 
+import { PartnerPortalAccess } from "@/components/support/partner-portal-access";
+
 const TYPE_LABELS: Record<string, string> = {
   support: "Get Help",
   bug: "Bug",
@@ -172,6 +174,15 @@ export function SupportInboxList({
                 <span>No related venue</span>
               )}
             </div>
+            {item.surface === "client" || item.surface === "vendor" ? (
+              <PartnerPortalAccess
+                surface={item.surface}
+                venueId={item.relatedVenueId ?? null}
+                clientId={item.clientId ?? null}
+                vendorId={item.vendorId ?? null}
+                relationshipId={item.relatedRelationshipId ?? null}
+              />
+            ) : null}
           </article>
         );
       })}

@@ -44,7 +44,7 @@ export async function updateTeamMemberAction(formData: FormData) {
   const department = DEPARTMENTS.has(departmentRaw)
     ? departmentRaw
     : existing.department;
-  const territoryRaw = String(formData.get("territory") || "").trim();
+  // Territory field is hidden in Stage 1F UI — preserve existing value.
   const commissionPlanId = String(formData.get("commissionPlanId") || "").trim();
 
   const firstName = String(formData.get("firstName") || "").trim();
@@ -95,7 +95,7 @@ export async function updateTeamMemberAction(formData: FormData) {
     title: title || existing.title,
     department,
     availability,
-    territory: territoryRaw || null,
+    territory: existing.territory ?? null,
     commissionPlanId: commissionPlanId || null,
   };
 
