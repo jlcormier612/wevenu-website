@@ -43,8 +43,18 @@ export async function createClient(scope: AuthSessionScope = "venue") {
   });
 }
 
-/** Vendor portal session — never shares venue staff cookies. */
+/**
+ * Vendor portal session — never shares venue staff cookies for real vendors.
+ * HTC support into the vendor portal reuses the venue (HQ) jar so
+ * `current_user_vendor_id()` can resolve via `htc_support_context`.
+ */
 export async function createVendorClient() {
+  const cookieStore = await cookies();
+  const supportPortal = cookieStore.get("htc_support_portal")?.value?.trim();
+  const supportMode = cookieStore.get("htc_support_mode")?.value?.trim();
+  if (supportPortal === "vendor" && supportMode) {
+    return createClient("venue");
+  }
   return createClient("vendor");
 }
 

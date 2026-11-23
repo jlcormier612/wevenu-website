@@ -128,6 +128,13 @@ export function PortalAccessControls({
           ? " Customer handoff recorded — assist requires assistance permission."
           : null}
       </p>
+      {isWhiteGlove ? (
+        <p className="text-xs ws-muted" data-testid="white-glove-milestone-note">
+          White Glove milestones stay distinct: CRM implementation / handoff stamps ownership
+          transfer; Product HQ “Finish White Glove Setup” grants customer product access. They
+          do not replace each other.
+        </p>
+      ) : null}
       {error ? <p className="text-xs text-[var(--dusty-rose)]">{error}</p> : null}
     </div>
   );

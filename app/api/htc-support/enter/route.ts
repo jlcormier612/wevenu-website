@@ -6,6 +6,10 @@ import {
 } from "@shared/support-access";
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { createClient } from "@/integrations/supabase/server";
+import {
+  resolveClientPortalPath,
+  resolveVendorPortalPath,
+} from "@/lib/htc-support/resolve-customer-portal-dest";
 
 export const dynamic = "force-dynamic";
 
@@ -23,9 +27,37 @@ function publicAppOrigin(request: Request): string {
   return new URL(request.url).origin;
 }
 
+function attachSupportCookies(
+  res: NextResponse,
+  opts: { mode: string; portal: string },
+) {
+  res.cookies.set("htc_support_banner", "1", {
+    httpOnly: false,
+    sameSite: "lax",
+    secure: true,
+    path: "/",
+    maxAge: 7200,
+  });
+  res.cookies.set("htc_support_mode", opts.mode, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: true,
+    path: "/",
+    maxAge: 7200,
+  });
+  res.cookies.set("htc_support_portal", opts.portal, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: true,
+    path: "/",
+    maxAge: 7200,
+  });
+}
+
 /**
  * Exchange a short-lived CRM support token for an active htc_support_context
- * on the caller's HQ-admin auth identity, then open the real venue app.
+ * on the caller's HQ-admin auth identity, then open the real customer surface:
+ * venue staff app, couple portal (/p/{token}), or vendor portal (/vendor/*).
  */
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -119,33 +151,33 @@ export async function GET(request: Request) {
   }
 
   let dest = "/dashboard";
-  if (claims.portal === "client" && claims.clientId) {
-    // Prefer CRM return + client list; genuine portal requires a portal token.
-    dest = `/clients/${claims.clientId}`;
-  } else if (claims.portal === "vendor" && claims.vendorId) {
-    dest = `/vendors/${claims.vendorId}`;
+  if (claims.portal === "client") {
+    if (!claims.clientId || !claims.venueId) {
+      return NextResponse.json(
+        { error: "clientId and venueId required for client portal support" },
+        { status: 400 },
+      );
+    }
+    const resolved = await resolveClientPortalPath(createAdminClient(), {
+      clientId: claims.clientId,
+      venueId: claims.venueId,
+    });
+    if (!resolved.ok) {
+      return NextResponse.json({ error: resolved.error }, { status: 404 });
+    }
+    dest = resolved.path;
+  } else if (claims.portal === "vendor") {
+    if (!claims.vendorId) {
+      return NextResponse.json(
+        { error: "vendorId required for vendor portal support" },
+        { status: 400 },
+      );
+    }
+    dest = resolveVendorPortalPath();
   }
 
   const res = NextResponse.redirect(new URL(dest, origin));
-  res.cookies.set("htc_support_banner", "1", {
-    httpOnly: false,
-    sameSite: "lax",
-    secure: true,
-    path: "/",
-    maxAge: 7200,
-  });
-  // Soft hint for middleware mutation gate (claims also live in DB context).
-  res.cookies.set(
-    "htc_support_mode",
-    claims.mode,
-    {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: true,
-      path: "/",
-      maxAge: 7200,
-    },
-  );
+  attachSupportCookies(res, { mode: claims.mode, portal: claims.portal });
   void workspaceAppBaseUrl;
   return res;
 }
