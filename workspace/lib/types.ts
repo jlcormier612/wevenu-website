@@ -440,6 +440,10 @@ export type Relationship = {
   } | null;
   /** Project 10 — idempotent product provisioning state */
   productSync?: ProductSyncState;
+  /**
+   * Lightweight relationship-scoped flags (Stage 1F customer handoff, isolation hints).
+   */
+  meta?: Record<string, string | number | boolean | null>;
 };
 
 export type FounderProgramStats = {
