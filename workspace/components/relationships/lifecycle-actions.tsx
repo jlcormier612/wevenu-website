@@ -1,11 +1,38 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { greetingFirstName } from "@shared/relationships/normalize";
 
 type OwnerPanel = "task" | "message" | "note" | null;
+type ReviewMode = "send" | "copy" | null;
+type ConfirmSendKind = "resend_welcome" | "send_payment_reminder" | null;
+
+type SubscriptionPreview = {
+  mode: "send" | "copy";
+  relationshipId: string;
+  venueName: string;
+  recipientName: string;
+  recipientEmail: string;
+  planId: string;
+  onboardingType: "self_guided" | "white_glove";
+  terms: {
+    planDisplayName: string;
+    listAmountLabel: string;
+    eligibilityLabel: string;
+    discountBasis: string;
+    recurringMonthlyLabel: string;
+    whiteGloveLabel: string;
+    initialChargeLabel: string;
+    taxesNote: string;
+    billingTerms: string;
+  };
+  email: { subject: string; text: string; html: string };
+  checkoutLinkNote: string;
+  expiresNote: string;
+};
 
 type Props = {
   relationshipId: string;
@@ -22,6 +49,8 @@ type Props = {
   canManageBilling: boolean;
   /** Set a Task / Send a Message / Make a Note — Sales + CS when permitted. */
   canOwnerTools: boolean;
+  /** Owner/Admin — Create Custom Offer */
+  canCreateCustomOffer?: boolean;
   ownerEmail?: string;
   ownerFirstName?: string;
   venueName?: string;
@@ -43,6 +72,7 @@ export function LifecycleActions({
   canSuspend,
   canManageBilling,
   canOwnerTools,
+  canCreateCustomOffer = false,
   ownerEmail,
   ownerFirstName,
   venueName,
@@ -53,6 +83,9 @@ export function LifecycleActions({
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
   const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
+  const [checkoutExpiresAt, setCheckoutExpiresAt] = useState<string | null>(
+    null,
+  );
   const [plan, setPlan] = useState(planId === "none" ? "gather" : planId);
   const [wg, setWg] = useState(onboardingType === "white_glove");
 
@@ -63,6 +96,12 @@ export function LifecycleActions({
   const replyGreeting = `Hi ${greetName},\n\n`;
 
   const [ownerPanel, setOwnerPanel] = useState<OwnerPanel>(null);
+  const [reviewMode, setReviewMode] = useState<ReviewMode>(null);
+  const [preview, setPreview] = useState<SubscriptionPreview | null>(null);
+  const [termsFingerprint, setTermsFingerprint] = useState<string | null>(null);
+  const [reviewBusy, setReviewBusy] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [confirmSendKind, setConfirmSendKind] = useState<ConfirmSendKind>(null);
   const [taskTitle, setTaskTitle] = useState("");
   const [taskDue, setTaskDue] = useState(() => {
     const d = new Date();
@@ -79,7 +118,116 @@ export function LifecycleActions({
 
   function toggleOwnerPanel(panel: Exclude<OwnerPanel, null>) {
     setMessage(null);
+    setReviewMode(null);
+    setPreview(null);
+    setConfirmSendKind(null);
     setOwnerPanel((cur) => (cur === panel ? null : panel));
+  }
+
+  function closeReview() {
+    setReviewMode(null);
+    setPreview(null);
+    setTermsFingerprint(null);
+    setReviewBusy(false);
+    setConfirming(false);
+  }
+
+  async function openSubscriptionReview(mode: "send" | "copy") {
+    setMessage(null);
+    setOwnerPanel(null);
+    setConfirmSendKind(null);
+    setCheckoutUrl(null);
+    setCheckoutExpiresAt(null);
+    setReviewMode(mode);
+    setReviewBusy(true);
+    setPreview(null);
+    try {
+      const res = await fetch("/api/relationships/lifecycle", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "preview_subscription_link",
+          relationshipId,
+          plan,
+          onboardingType: wg ? "white_glove" : "self_guided",
+          previewMode: mode,
+        }),
+      });
+      const data = (await res.json()) as {
+        ok?: boolean;
+        error?: string;
+        preview?: SubscriptionPreview;
+        termsFingerprint?: string;
+      };
+      if (!res.ok || !data.preview) {
+        setMessage(data.error || "Could not load subscription review");
+        closeReview();
+        return;
+      }
+      setPreview(data.preview);
+      setTermsFingerprint(data.termsFingerprint ?? null);
+    } catch {
+      setMessage("Could not load subscription review");
+      closeReview();
+    } finally {
+      setReviewBusy(false);
+    }
+  }
+
+  async function confirmSubscriptionReview() {
+    if (!reviewMode || confirming) return;
+    setConfirming(true);
+    setMessage(null);
+    try {
+      const res = await fetch("/api/relationships/lifecycle", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "send_subscription_link",
+          relationshipId,
+          plan,
+          onboardingType: wg ? "white_glove" : "self_guided",
+          emailLink: reviewMode === "send",
+          confirm: true,
+          termsFingerprint,
+        }),
+      });
+      const data = (await res.json()) as {
+        ok?: boolean;
+        error?: string;
+        message?: string;
+        url?: string;
+        emailed?: boolean;
+        emailDelivery?: string;
+        emailError?: string;
+        expiresAt?: string;
+        recovery?: string;
+      };
+      if (!res.ok) {
+        setMessage(data.error || "Confirmation failed");
+        return;
+      }
+      if (data.url) {
+        setCheckoutUrl(data.url);
+        setCheckoutExpiresAt(data.expiresAt ?? null);
+        if (reviewMode === "copy") {
+          try {
+            await navigator.clipboard.writeText(data.url);
+          } catch {
+            /* compact link shown below */
+          }
+        }
+      }
+      setMessage(
+        data.emailError
+          ? data.message || data.emailError
+          : data.message || "Done.",
+      );
+      closeReview();
+      startTransition(() => router.refresh());
+    } finally {
+      setConfirming(false);
+    }
   }
 
   async function run(action: string, extra: Record<string, unknown> = {}) {
@@ -229,28 +377,29 @@ export function LifecycleActions({
         {canSendLink ? (
           <>
             <ActionButton
-              disabled={pending}
-              onClick={() => run("send_subscription_link", { emailLink: true })}
+              disabled={pending || reviewBusy || confirming}
+              onClick={() => void openSubscriptionReview("send")}
+              active={reviewMode === "send"}
             >
               Send Subscription Link
             </ActionButton>
             <ActionButton
-              disabled={pending}
-              onClick={async () => {
-                const data = await run("send_subscription_link", { emailLink: false });
-                if (data?.url) {
-                  try {
-                    await navigator.clipboard.writeText(data.url);
-                    setMessage("Link generated and copied — not emailed.");
-                  } catch {
-                    /* url shown below */
-                  }
-                }
-              }}
+              disabled={pending || reviewBusy || confirming}
+              onClick={() => void openSubscriptionReview("copy")}
+              active={reviewMode === "copy"}
             >
               Copy Subscription Link
             </ActionButton>
           </>
+        ) : null}
+        {canCreateCustomOffer && !showCustomerActions ? (
+          <Link
+            href={`/relationships/${relationshipId}/offers/new`}
+            className="inline-flex items-center rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3.5 py-2 text-sm font-medium text-[var(--forest-sage)] hover:border-[var(--heritage-sage)]"
+            data-testid="create-custom-offer-action"
+          >
+            Create Custom Offer
+          </Link>
         ) : null}
         {canManualSub ? (
           <ActionButton
@@ -270,7 +419,16 @@ export function LifecycleActions({
           </ActionButton>
         ) : null}
         {showCustomerActions && canSendLink ? (
-          <ActionButton disabled={pending} onClick={() => run("resend_welcome")}>
+          <ActionButton
+            disabled={pending}
+            active={confirmSendKind === "resend_welcome"}
+            onClick={() => {
+              setMessage(null);
+              setConfirmSendKind((cur) =>
+                cur === "resend_welcome" ? null : "resend_welcome",
+              );
+            }}
+          >
             Resend Welcome Email
           </ActionButton>
         ) : null}
@@ -443,7 +601,13 @@ export function LifecycleActions({
           <>
             <ActionButton
               disabled={pending}
-              onClick={() => run("send_payment_reminder")}
+              active={confirmSendKind === "send_payment_reminder"}
+              onClick={() => {
+                setMessage(null);
+                setConfirmSendKind((cur) =>
+                  cur === "send_payment_reminder" ? null : "send_payment_reminder",
+                );
+              }}
             >
               Send Payment Reminder
             </ActionButton>
@@ -461,6 +625,180 @@ export function LifecycleActions({
           </>
         ) : null}
       </div>
+
+      {reviewMode ? (
+        <div
+          className="mt-4 space-y-4 rounded-sm border border-[color-mix(in_srgb,var(--heritage-sage)_40%,transparent)] bg-[var(--true-white)] p-4"
+          data-testid="subscription-link-review"
+        >
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="ws-eyebrow">
+                {reviewMode === "send"
+                  ? "Review — Send Subscription Link"
+                  : "Review — Copy Subscription Link"}
+              </p>
+              <p className="mt-1 text-sm ws-muted">
+                Nothing is sent and no Stripe Checkout Session is created until
+                you confirm.
+              </p>
+            </div>
+            <ActionButton disabled={reviewBusy || confirming} onClick={closeReview}>
+              Cancel
+            </ActionButton>
+          </div>
+
+          {reviewBusy || !preview ? (
+            <p className="text-sm ws-muted">Loading commercial terms…</p>
+          ) : (
+            <>
+              <dl className="grid gap-3 text-sm sm:grid-cols-2">
+                <div>
+                  <dt className="ws-muted">Customer / venue</dt>
+                  <dd className="font-medium">{preview.venueName}</dd>
+                </div>
+                <div>
+                  <dt className="ws-muted">Recipient</dt>
+                  <dd className="font-medium">
+                    {preview.recipientName}
+                    <span className="mt-0.5 block text-xs ws-muted">
+                      {preview.recipientEmail || "No email on file"}
+                    </span>
+                  </dd>
+                </div>
+                <div>
+                  <dt className="ws-muted">Subscription tier</dt>
+                  <dd className="font-medium">{preview.terms.planDisplayName}</dd>
+                </div>
+                <div>
+                  <dt className="ws-muted">Standard monthly price</dt>
+                  <dd className="font-medium">{preview.terms.listAmountLabel}</dd>
+                </div>
+                <div className="sm:col-span-2">
+                  <dt className="ws-muted">Standard discount</dt>
+                  <dd className="font-medium">{preview.terms.eligibilityLabel}</dd>
+                  <dd className="mt-0.5 text-xs ws-muted">
+                    {preview.terms.discountBasis}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="ws-muted">Recurring monthly amount</dt>
+                  <dd className="font-medium">
+                    {preview.terms.recurringMonthlyLabel}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="ws-muted">White Glove</dt>
+                  <dd className="font-medium">{preview.terms.whiteGloveLabel}</dd>
+                </div>
+                <div className="sm:col-span-2">
+                  <dt className="ws-muted">Expected initial charge</dt>
+                  <dd className="font-medium">
+                    {preview.terms.initialChargeLabel}
+                  </dd>
+                  <dd className="mt-0.5 text-xs ws-muted">
+                    {preview.terms.taxesNote}
+                  </dd>
+                </div>
+                <div className="sm:col-span-2">
+                  <dt className="ws-muted">Billing terms</dt>
+                  <dd className="text-sm">{preview.terms.billingTerms}</dd>
+                </div>
+              </dl>
+
+              {reviewMode === "send" ? (
+                <div className="rounded-sm border border-[var(--htc-border)] bg-[var(--htc-linen)]/40 p-3">
+                  <p className="ws-eyebrow">Customer email</p>
+                  <p className="mt-2 text-sm font-medium">{preview.email.subject}</p>
+                  <pre className="mt-2 max-h-56 overflow-auto whitespace-pre-wrap rounded-sm bg-[var(--true-white)] p-3 text-xs leading-relaxed text-foreground">
+                    {preview.email.text}
+                  </pre>
+                </div>
+              ) : null}
+
+              <p className="text-sm ws-muted">{preview.checkoutLinkNote}</p>
+              <p className="text-xs ws-muted">{preview.expiresNote}</p>
+
+              <div className="flex flex-wrap gap-2">
+                <ActionButton
+                  primary
+                  disabled={
+                    confirming ||
+                    (reviewMode === "send" && !preview.recipientEmail)
+                  }
+                  onClick={() => void confirmSubscriptionReview()}
+                >
+                  {confirming
+                    ? "Working…"
+                    : reviewMode === "send"
+                      ? "Confirm & Send"
+                      : "Confirm & Generate Link"}
+                </ActionButton>
+                <ActionButton disabled={confirming} onClick={closeReview}>
+                  Cancel
+                </ActionButton>
+              </div>
+            </>
+          )}
+        </div>
+      ) : null}
+
+      {confirmSendKind === "resend_welcome" ? (
+        <div className="mt-4 space-y-3 rounded-sm border border-[var(--htc-border)] bg-[var(--true-white)] p-4">
+          <p className="ws-eyebrow">Confirm — Resend Welcome Email</p>
+          <p className="text-sm">
+            Recipient:{" "}
+            <strong>{ownerEmail?.trim() || "No owner email"}</strong>
+          </p>
+          <p className="text-sm ws-muted">
+            Sends the welcome / activation email for this customer relationship.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <ActionButton
+              primary
+              disabled={pending || !ownerEmail?.trim()}
+              onClick={() => {
+                setConfirmSendKind(null);
+                void run("resend_welcome");
+              }}
+            >
+              Confirm & Send
+            </ActionButton>
+            <ActionButton onClick={() => setConfirmSendKind(null)}>
+              Cancel
+            </ActionButton>
+          </div>
+        </div>
+      ) : null}
+
+      {confirmSendKind === "send_payment_reminder" ? (
+        <div className="mt-4 space-y-3 rounded-sm border border-[var(--htc-border)] bg-[var(--true-white)] p-4">
+          <p className="ws-eyebrow">Confirm — Send Payment Reminder</p>
+          <p className="text-sm">
+            Recipient:{" "}
+            <strong>{ownerEmail?.trim() || "No owner email"}</strong>
+          </p>
+          <p className="text-sm ws-muted">
+            Sends a payment reminder email. May also record a payment-failed
+            dunning signal.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <ActionButton
+              primary
+              disabled={pending || !ownerEmail?.trim()}
+              onClick={() => {
+                setConfirmSendKind(null);
+                void run("send_payment_reminder");
+              }}
+            >
+              Confirm & Send
+            </ActionButton>
+            <ActionButton onClick={() => setConfirmSendKind(null)}>
+              Cancel
+            </ActionButton>
+          </div>
+        </div>
+      ) : null}
 
       {canOwnerTools && ownerPanel === "task" ? (
         <div className="mt-4 space-y-3 rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_45%,transparent)] bg-[var(--true-white)] p-4">
@@ -559,7 +897,7 @@ export function LifecycleActions({
                 })
               }
             >
-              Send message
+              Confirm & Send
             </ActionButton>
             <ActionButton disabled={ownerBusy} onClick={() => setOwnerPanel(null)}>
               Cancel
@@ -606,16 +944,37 @@ export function LifecycleActions({
       ) : null}
 
       {checkoutUrl ? (
-        <div className="mt-4 rounded-sm border border-[color-mix(in_srgb,var(--soft-sage)_50%,transparent)] bg-[color-mix(in_srgb,var(--soft-sage)_12%,var(--true-white))] p-3 text-sm">
-          <p className="ws-eyebrow">Checkout URL</p>
-          <p className="mt-1 break-all font-mono text-xs">{checkoutUrl}</p>
-          <button
-            type="button"
-            className="mt-2 text-sm text-[var(--heritage-sage)] underline-offset-4 hover:underline"
-            onClick={() => void copyUrl()}
-          >
-            Copy to clipboard
-          </button>
+        <div
+          className="mt-4 rounded-sm border border-[color-mix(in_srgb,var(--soft-sage)_50%,transparent)] bg-[color-mix(in_srgb,var(--soft-sage)_12%,var(--true-white))] p-3 text-sm"
+          data-testid="generated-checkout-link"
+        >
+          <p className="ws-eyebrow">Checkout link</p>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <code className="max-w-full truncate rounded-sm bg-[var(--true-white)] px-2 py-1 font-mono text-xs">
+              {checkoutUrl.length > 64
+                ? `${checkoutUrl.slice(0, 40)}…${checkoutUrl.slice(-12)}`
+                : checkoutUrl}
+            </code>
+            <button
+              type="button"
+              className="text-sm text-[var(--heritage-sage)] underline-offset-4 hover:underline"
+              onClick={() => void copyUrl()}
+            >
+              Copy link
+            </button>
+          </div>
+          {checkoutExpiresAt ? (
+            <p className="mt-2 text-xs ws-muted">
+              Typically expires ~24h after creation (
+              {new Date(checkoutExpiresAt).toLocaleString()}). Generate a new
+              link if needed. Copying does not email the customer.
+            </p>
+          ) : (
+            <p className="mt-2 text-xs ws-muted">
+              Copying does not email the customer. Generate a new link if the
+              previous session expired.
+            </p>
+          )}
         </div>
       ) : null}
 
