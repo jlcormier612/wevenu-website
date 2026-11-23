@@ -340,7 +340,14 @@ export async function updateSession(
 
   const vendorPath = isVendorAppPath(pathname);
 
-  if (vendorPath && !vendorUser) {
+  // HTC support into the real vendor portal uses the venue (HQ) jar +
+  // htc_support_context — there is no vendor-jar session by design.
+  const htcSupportVendor =
+    Boolean(venueUser) &&
+    request.cookies.get("htc_support_portal")?.value === "vendor" &&
+    Boolean(request.cookies.get("htc_support_mode")?.value?.trim());
+
+  if (vendorPath && !vendorUser && !htcSupportVendor) {
     const next = `${pathname}${request.nextUrl.search || ""}`;
     const loginUrl = new URL("/vendor/login", request.nextUrl.origin);
     const safe = safeInternalNextPath(next, request.nextUrl.origin);
@@ -383,9 +390,10 @@ export async function updateSession(
   }
 
   // Path-scoped principal for legal enforcement. /welcome itself is skipped
-  // by shouldSkipLegalEnforcement; vendor app paths always use the vendor jar.
-  const user = vendorPath ? vendorUser : venueUser;
-  const supabase = vendorPath ? vendorSupabase : venueSupabase;
+  // by shouldSkipLegalEnforcement; normal vendor app paths use the vendor jar.
+  // HTC vendor support uses the HQ venue jar (see htcSupportVendor above).
+  const user = vendorPath && !htcSupportVendor ? vendorUser : venueUser;
+  const supabase = vendorPath && !htcSupportVendor ? vendorSupabase : venueSupabase;
 
   // Wevenu HQ (/admin/* and /api/admin/*) - defense in depth alongside the
   // layout-level check in app/admin/layout.tsx. See
@@ -468,7 +476,7 @@ export async function updateSession(
       pathname,
       search: request.nextUrl.search,
       supabase,
-      prefer: vendorPath ? "vendor" : "venue",
+      prefer: vendorPath && !htcSupportVendor ? "vendor" : "venue",
       activeVenueId,
     });
     if (legalDecision.action === "redirect_welcome") {
