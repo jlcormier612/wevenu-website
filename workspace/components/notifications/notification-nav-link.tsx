@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import { useTransition, type ReactNode } from "react";
 
 /**
- * Link that marks a CRM notification read on click, then navigates.
- * Mark-read is best-effort — navigation always proceeds.
+ * Link that dismisses a CRM alert for the acting member on click, then navigates.
+ * Dismissal is best-effort — navigation always proceeds.
  */
 export function NotificationNavLink({
   notificationId,
@@ -24,9 +24,9 @@ export function NotificationNavLink({
   const router = useRouter();
   const [, startTransition] = useTransition();
 
-  async function markRead() {
+  async function dismissForActor() {
     try {
-      await fetch("/api/notifications/read", {
+      await fetch("/api/notifications/dismiss", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ids: [notificationId] }),
@@ -42,7 +42,7 @@ export function NotificationNavLink({
       className={className}
       onClick={() => {
         onNavigate?.();
-        void markRead().then(() => {
+        void dismissForActor().then(() => {
           startTransition(() => router.refresh());
         });
       }}

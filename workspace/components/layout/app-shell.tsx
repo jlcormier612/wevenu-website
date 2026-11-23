@@ -10,6 +10,7 @@ import {
   getRelationships,
   getSupportInboxItems,
 } from "@/lib/data/store";
+import { getDismissedNotificationIdsSync } from "@/lib/notifications/dismissals";
 import { permissionForPath, permissionsForRole } from "@/lib/program4/permissions";
 import {
   getActingMember,
@@ -39,11 +40,14 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
   }
   const impersonating = await isImpersonating();
   const permissions = permissionsForRole(actor.role);
-  const unreadNotifications = getNotifications({ unreadOnly: true });
+  const dismissedIds = getDismissedNotificationIdsSync(actor.id);
+  const unreadNotifications = getNotifications({ unreadOnly: true }).filter(
+    (n) => !dismissedIds.has(n.id),
+  );
   const unreadCount = unreadNotifications.length;
   const relationships = getRelationships();
   const openSupportRels = relationships.filter(relationshipHasOpenSupport);
-  const topBarNotifications = unreadNotifications.slice(0, 8).map((n) => {
+  const topBarNotifications = unreadNotifications.map((n) => {
     const rel = relationships.find((r) => r.id === n.relationshipId);
     return {
       id: n.id,
