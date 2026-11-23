@@ -9,12 +9,27 @@ import { createClient } from "@/integrations/supabase/server";
 
 export const dynamic = "force-dynamic";
 
+/** Public browser origin — never redirect to the ECS task private hostname. */
+function publicAppOrigin(request: Request): string {
+  const fromEnv = process.env.NEXT_PUBLIC_APP_URL?.trim().replace(/\/$/, "");
+  if (fromEnv) return fromEnv;
+  const forwarded =
+    request.headers.get("x-forwarded-host")?.split(",")[0]?.trim() ||
+    request.headers.get("host")?.trim();
+  if (forwarded && !/^(ip-|10\.|172\.(1[6-9]|2\d|3[0-1])\.|192\.168\.)/i.test(forwarded)) {
+    const proto = request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim() || "https";
+    return `${proto}://${forwarded}`;
+  }
+  return new URL(request.url).origin;
+}
+
 /**
  * Exchange a short-lived CRM support token for an active htc_support_context
  * on the caller's HQ-admin auth identity, then open the real venue app.
  */
 export async function GET(request: Request) {
   const url = new URL(request.url);
+  const origin = publicAppOrigin(request);
   const token = url.searchParams.get("token")?.trim() || "";
   if (!token) {
     return NextResponse.json({ error: "token required" }, { status: 400 });
@@ -34,7 +49,7 @@ export async function GET(request: Request) {
   // Staff must already be signed into the product app as themselves (HQ identity).
   // Do not magic-link as a customer. If unauthenticated, send to login with return.
   if (!user) {
-    const login = new URL("/login", url.origin);
+    const login = new URL("/login", origin);
     login.searchParams.set("next", `/api/htc-support/enter?token=${encodeURIComponent(token)}`);
     return NextResponse.redirect(login);
   }
@@ -111,7 +126,7 @@ export async function GET(request: Request) {
     dest = `/vendors/${claims.vendorId}`;
   }
 
-  const res = NextResponse.redirect(new URL(dest, url.origin));
+  const res = NextResponse.redirect(new URL(dest, origin));
   res.cookies.set("htc_support_banner", "1", {
     httpOnly: false,
     sameSite: "lax",
