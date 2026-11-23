@@ -25,6 +25,9 @@ export const ALL_PERMISSIONS: Permission[] = [
   "view_team",
   "manage_team",
   "manage_settings",
+  "view_customer_portals",
+  "configure_white_glove",
+  "assist_customer_accounts",
 ];
 
 export const ROLE_LABELS: Record<TeamRole, string> = {
@@ -83,6 +86,8 @@ export const ROLE_PERMISSIONS: Record<TeamRole, readonly Permission[]> = {
     "view_workflows",
     "view_reports",
     "view_team",
+    "view_customer_portals",
+    "assist_customer_accounts",
   ],
 
   implementation: [
@@ -94,6 +99,8 @@ export const ROLE_PERMISSIONS: Record<TeamRole, readonly Permission[]> = {
     "manage_tasks",
     "view_communications",
     "view_team",
+    "view_customer_portals",
+    "configure_white_glove",
   ],
 
   support: [
@@ -104,6 +111,7 @@ export const ROLE_PERMISSIONS: Record<TeamRole, readonly Permission[]> = {
     "view_communications",
     "manage_communications",
     "view_team",
+    "view_customer_portals",
   ],
 
   finance: [

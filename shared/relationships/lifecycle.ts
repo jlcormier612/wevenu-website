@@ -1067,5 +1067,51 @@ export type LifecycleForceStatus = Extract<
   | "former_customer"
 >;
 
+/**
+ * Stage 1F — record lightweight customer handoff after HTC-assisted setup.
+ * Does not invent a parallel ownership system; stamps relationship.meta only.
+ */
+export async function recordCustomerHandoff(input: {
+  relationshipId: string;
+  actorId?: string;
+  note?: string | null;
+}): Promise<{ ok: true; relationship: Relationship } | { ok: false; message: string }> {
+  const store = await loadLiveStore();
+  const existing = store.relationships.find((r) => r.id === input.relationshipId);
+  if (!existing) return { ok: false, message: "Relationship not found" };
+
+  const now = new Date().toISOString();
+  const { result } = await withLiveStore((s) => {
+    const rel = s.relationships.find((r) => r.id === input.relationshipId);
+    if (!rel) return null;
+    const prevMeta =
+      rel.meta && typeof rel.meta === "object" && !Array.isArray(rel.meta)
+        ? { ...(rel.meta as Record<string, string | number | boolean | null>) }
+        : {};
+    rel.meta = {
+      ...prevMeta,
+      customerHandoffAt: now,
+      customerHandoffBy: input.actorId ?? null,
+      customerHandoffNote: input.note?.trim() || null,
+    };
+    s.timelineEvents.push({
+      id: shortId("evt"),
+      relationshipId: rel.id,
+      type: "note",
+      title: "Customer handoff recorded",
+      body:
+        input.note?.trim() ||
+        "HTC-assisted setup complete — customer takes ownership. Support access defaults to read-only.",
+      occurredAt: now,
+      actorId: input.actorId,
+      meta: { trigger: "lifecycle.record_customer_handoff" },
+    });
+    return rel;
+  });
+
+  if (!result) return { ok: false, message: "Could not record handoff" };
+  return { ok: true, relationship: result };
+}
+
 /** Ensure checklist exists (re-export convenience). */
 export { ensureWhiteGloveChecklist };

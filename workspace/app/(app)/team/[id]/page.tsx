@@ -99,11 +99,6 @@ export default async function TeamMemberPage({
         <StatusPill tone={member.availability === "available" ? "good" : "muted"}>
           {AVAILABILITY_LABELS[member.availability]}
         </StatusPill>
-        {member.territory ? (
-          <StatusPill tone="neutral">Territory: {member.territory}</StatusPill>
-        ) : (
-          <StatusPill tone="muted">Territory: stub</StatusPill>
-        )}
         {!member.active ? <StatusPill tone="muted">Inactive (pending invite)</StatusPill> : null}
       </div>
 
@@ -331,15 +326,6 @@ export default async function TeamMemberPage({
                       </option>
                     ))}
                   </select>
-                </label>
-                <label className="block text-sm">
-                  <span className="ws-eyebrow">Territory (stub)</span>
-                  <input
-                    name="territory"
-                    defaultValue={member.territory ?? ""}
-                    placeholder="e.g. Southeast"
-                    className="mt-2 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2.5 text-sm outline-none focus:border-[var(--heritage-sage)] text-foreground"
-                  />
                 </label>
               </div>
             </div>

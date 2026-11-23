@@ -216,6 +216,25 @@ export async function updateSession(
 ): Promise<NextResponse> {
   const { pathname } = request.nextUrl;
 
+  // Stage 1F — HTC support session mutation gate (cookie hint; DB mode is source of truth for data).
+  {
+    const { supportMutationBlocked } = await import(
+      "@/lib/htc-support/mutation-guard"
+    );
+    const mode = request.cookies.get("htc_support_mode")?.value?.trim() || null;
+    const gate = supportMutationBlocked({
+      method: request.method,
+      pathname,
+      mode,
+    });
+    if (gate.blocked) {
+      return NextResponse.json(
+        { error: gate.reason || "Forbidden in support session", code: "support_readonly" },
+        { status: 403 },
+      );
+    }
+  }
+
   // Without credentials, treat every visitor as unauthenticated.
   if (!isSupabaseConfigured) {
     if (isPublicPath(pathname)) {

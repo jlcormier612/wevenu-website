@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { BillingAttentionBanner } from "@/components/billing/billing-attention-banner";
+import { SupportSessionBanner } from "@/components/htc-support/support-session-banner";
 import { WorkspaceShell } from "@/components/shell/workspace-shell";
 import { createClient } from "@/integrations/supabase/server";
 import { createAdminClient } from "@/integrations/supabase/admin";
@@ -126,9 +127,14 @@ async function workspaceLayoutInner(children: React.ReactNode) {
   );
   const enrollment = enrollmentResult.data;
 
+  const inHtcSupportSession = boot.memberships.some(
+    (m) => m.venueName === "Support session",
+  );
+
   if (
     enrollment?.onboarding_type === "white_glove" &&
-    enrollment.status !== "activated"
+    enrollment.status !== "activated" &&
+    !inHtcSupportSession
   ) {
     // Gate the venue owner only — HQ operators with temporary staff access
     // must reach Setup Hub on the real venue.
@@ -152,7 +158,12 @@ async function workspaceLayoutInner(children: React.ReactNode) {
     }
   }
 
-  if (enrollment && membership && !pathname.startsWith("/onboarding/ownership")) {
+  if (
+    enrollment &&
+    membership &&
+    !inHtcSupportSession &&
+    !pathname.startsWith("/onboarding/ownership")
+  ) {
     const { count: ownerCount } = await layoutFbTime("layout_owner_count", () =>
       admin
         .from("venue_staff")
@@ -200,6 +211,7 @@ async function workspaceLayoutInner(children: React.ReactNode) {
   layoutFbExtra("layout_gate", "workspace_shell");
   return (
     <>
+      <SupportSessionBanner />
       <BillingAttentionBanner />
       <WorkspaceShell
         email={user.email ?? ""}

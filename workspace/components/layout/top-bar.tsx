@@ -92,7 +92,7 @@ export function TopBar({
             onClick={() => setOpen((v) => !v)}
             data-testid="notifications-menu-button"
           >
-            <span className="hidden sm:inline">Alerts</span>
+            <span className="hidden sm:inline">Notifications</span>
             {unreadCount > 0 ? (
               <span className="inline-flex min-w-[1.25rem] items-center justify-center rounded-sm bg-[var(--htc-primary)] px-1 text-[0.65rem] font-medium text-[var(--true-white)]">
                 {unreadCount > 9 ? "9+" : unreadCount}
