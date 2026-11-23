@@ -338,6 +338,8 @@ export function createMemorySalesOfferStore(): SalesOfferStore {
           whiteGloveAmountCents: existing.whiteGloveAmountCents,
           expiresAt: existing.expiresAt,
           replacesStandardPromos: existing.replacesStandardPromos,
+          standardDiscountEligibility: existing.standardDiscountEligibility,
+          standardDiscountEvidence: existing.standardDiscountEvidence,
         }),
       };
       offers.set(next.id, next);
@@ -381,6 +383,8 @@ export function createMemorySalesOfferStore(): SalesOfferStore {
           whiteGloveAmountCents: existing.whiteGloveAmountCents,
           expiresAt: existing.expiresAt,
           replacesStandardPromos: existing.replacesStandardPromos,
+          standardDiscountEligibility: existing.standardDiscountEligibility,
+          standardDiscountEvidence: existing.standardDiscountEvidence,
         },
         createdByUserId: input.createdByUserId,
         createdByEmail: input.createdByEmail,
