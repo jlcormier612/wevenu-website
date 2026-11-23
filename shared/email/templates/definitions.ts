@@ -473,6 +473,39 @@ export const subscriptionLinkTemplate: EmailTemplateDefinition = {
   },
 };
 
+export const customOfferInviteTemplate: EmailTemplateDefinition = {
+  id: "custom_offer_invite",
+  name: "Custom Offer Invite",
+  description:
+    "Founder sends a private Custom Offer review link (no Checkout Session created yet).",
+  status: "live",
+  render(vars) {
+    const name = firstName(vars);
+    const venue = venueName(vars);
+    const plan = planName(vars);
+    const offerUrl =
+      String(vars.offerUrl || "").trim() || marketingUrl("/pricing");
+    const monthly =
+      String(vars.monthlyLabel || "").trim() || "your negotiated monthly rate";
+    const subject = `Your private Hello to Cheers offer for ${venue}`;
+    const paragraphs = [
+      `Hi ${name},`,
+      `We've prepared a private offer for ${venue} (${plan}) at ${monthly}.`,
+      `Review the full terms here — nothing is charged until you accept and complete secure checkout:`,
+      offerUrl,
+      `If anything looks unclear, reply to this email and we'll walk through it together.`,
+    ];
+    const text = paragraphs.join("\n\n");
+    return {
+      subject,
+      text,
+      html: wrapHelloHtml("Your private offer", paragraphsToHtml(paragraphs)),
+      preview: previewFromText(text),
+      timelineTitle: "Custom Offer Email Sent",
+    };
+  },
+};
+
 export const paymentReceiptTemplate: EmailTemplateDefinition = {
   id: "payment_receipt",
   name: "Payment Receipt Companion",

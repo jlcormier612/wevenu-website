@@ -10,6 +10,8 @@ export type SalesOfferStatus =
   | "sent"
   | "viewed"
   | "accepted"
+  | "checkout_pending"
+  | "paid"
   | "expired"
   | "revoked"
   | "superseded"
@@ -129,15 +131,57 @@ export type SalesOfferRecord = {
   supersededByOfferId: string | null;
   checkoutSessionId: string | null;
   checkoutOfferId: string | null;
+  /** Unguessable public link token — set at create; revealed on send. */
+  publicToken: string;
+  recipientName: string | null;
+  recipientEmail: string | null;
+  /** Customer-facing founder message (never internal notes). */
+  customerMessage: string | null;
+  /** Frozen commercial terms at acceptance — Checkout source of truth. */
+  acceptedSnapshot: Record<string, unknown> | null;
+  acceptedRevision: number | null;
   acceptedAt: string | null;
   sentAt: string | null;
   viewedAt: string | null;
   revokedAt: string | null;
   discardedAt: string | null;
+  paidAt: string | null;
   termsHash: string;
   metadata: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;
+};
+
+/** Immutable payload stored in accepted_snapshot and used for Checkout. */
+export type SalesOfferAcceptedSnapshot = {
+  offerId: string;
+  relationshipId: string;
+  revision: number;
+  termsHash: string;
+  planKey: SaasPlanKey;
+  listAmountCents: number;
+  pricingKind: SalesOfferPricingKind;
+  percentOff: number | null;
+  amountOffCents: number | null;
+  fixedRateCents: number | null;
+  durationMode: SalesOfferDurationMode;
+  durationBillingCycles: number | null;
+  afterIntroPricing: SalesOfferAfterIntroPricing;
+  percentUpgradePolicy: SalesOfferPercentUpgradePolicy;
+  amountUpgradePolicy: SalesOfferAmountUpgradePolicy;
+  fixedUpgradePolicy: SalesOfferFixedUpgradePolicy;
+  fixedReplacementPrices: SalesOfferFixedReplacementPrices;
+  fixedUpgradeFallback: SalesOfferFixedUpgradeFallback | null;
+  whiteGloveMode: SalesOfferWhiteGloveMode;
+  whiteGloveAmountCents: number;
+  replacesStandardPromos: boolean;
+  standardDiscountEligibility: SalesOfferStandardDiscountEligibility;
+  standardDiscountEvidence: SalesOfferStandardDiscountEvidence;
+  monthlyRecurringCents: number;
+  recipientName: string;
+  recipientEmail: string;
+  venueName: string;
+  acceptedAt: string;
 };
 
 export type SalesOfferRevisionRecord = {

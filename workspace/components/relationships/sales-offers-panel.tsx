@@ -84,6 +84,15 @@ type OfferRow = {
   createdAt: string;
   updatedAt: string;
   preview: Preview | null;
+  publicToken?: string;
+  recipientName?: string | null;
+  recipientEmail?: string | null;
+  customerMessage?: string | null;
+  sentAt?: string | null;
+  viewedAt?: string | null;
+  acceptedAt?: string | null;
+  paidAt?: string | null;
+  checkoutSessionId?: string | null;
 };
 
 type RevisionRow = {
@@ -503,6 +512,12 @@ export function SalesOffersPanel({
   });
   const [livePreview, setLivePreview] = useState<Preview | null>(null);
   const [revisions, setRevisions] = useState<RevisionRow[]>([]);
+  const [recipientName, setRecipientName] = useState(ownerName);
+  const [recipientEmail, setRecipientEmail] = useState(ownerEmail);
+  const [customerMessage, setCustomerMessage] = useState("");
+  const [sendReviewOpen, setSendReviewOpen] = useState(false);
+  const [lastOfferUrl, setLastOfferUrl] = useState<string | null>(null);
+  const [currentStatus, setCurrentStatus] = useState<string>("draft");
 
   const patchEditor = useCallback((patch: Partial<EditorState>) => {
     setEditor((s) => ({ ...s, ...patch }));
@@ -563,6 +578,11 @@ export function SalesOffersPanel({
         setEditor(editorFromOffer(data.offer));
         setLivePreview(data.offer.preview);
         setRevisions(data.revisions || []);
+        setRecipientName(data.offer.recipientName || ownerName);
+        setRecipientEmail(data.offer.recipientEmail || ownerEmail);
+        setCustomerMessage(data.offer.customerMessage || "");
+        setCurrentStatus(data.offer.status);
+        setLastOfferUrl(null);
         setDirty(false);
         setMode("edit");
       } finally {
@@ -572,7 +592,7 @@ export function SalesOffersPanel({
     return () => {
       cancelled = true;
     };
-  }, [dedicatedPage, canManage, initialOfferId, relationshipId]);
+  }, [dedicatedPage, canManage, initialOfferId, relationshipId, ownerName, ownerEmail]);
 
   async function refreshPreview(next = editor) {
     const res = await fetch("/api/relationships/sales-offers", {
@@ -719,9 +739,138 @@ export function SalesOffersPanel({
       setEditor(editorFromOffer(data.offer));
       setLivePreview(data.offer.preview);
       setRevisions(data.revisions || []);
+      setRecipientName(data.offer.recipientName || ownerName);
+      setRecipientEmail(data.offer.recipientEmail || ownerEmail);
+      setCustomerMessage(data.offer.customerMessage || "");
+      setCurrentStatus(data.offer.status);
+      setSendReviewOpen(false);
       setDirty(false);
       setMode("edit");
       setMessage(null);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function confirmAndSendOffer() {
+    if (!editingId) {
+      setError("Save the draft before sending.");
+      return;
+    }
+    if (dirty) {
+      setError("Save unsaved changes before sending.");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const res = await fetch("/api/relationships/sales-offers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: currentStatus === "draft" ? "send" : "resend",
+          relationshipId,
+          offerId: editingId,
+          expectedRevision,
+          confirm: true,
+          recipientName,
+          recipientEmail,
+          customerMessage: customerMessage || null,
+        }),
+      });
+      const data = (await res.json()) as {
+        ok?: boolean;
+        offer?: OfferRow;
+        offerUrl?: string;
+        email?: { delivery?: string; ok?: boolean };
+        error?: string;
+        code?: string;
+      };
+      if (!res.ok || !data.ok || !data.offer) {
+        setError(data.error || "Send failed");
+        return;
+      }
+      setExpectedRevision(data.offer.revision);
+      setCurrentStatus(data.offer.status);
+      setLastOfferUrl(data.offerUrl || null);
+      setSendReviewOpen(false);
+      setMessage(
+        data.email?.ok
+          ? `Offer sent to ${recipientEmail}. No Checkout Session was created.`
+          : `Offer marked sent. Email delivery: ${data.email?.delivery || "unknown"}.`,
+      );
+      await load();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function withdrawOffer() {
+    if (!editingId) return;
+    if (!window.confirm("Withdraw this offer? The customer link will stop working.")) {
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/relationships/sales-offers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "withdraw",
+          relationshipId,
+          offerId: editingId,
+          expectedRevision,
+        }),
+      });
+      const data = (await res.json()) as {
+        ok?: boolean;
+        offer?: OfferRow;
+        error?: string;
+      };
+      if (!res.ok || !data.ok || !data.offer) {
+        setError(data.error || "Withdraw failed");
+        return;
+      }
+      setExpectedRevision(data.offer.revision);
+      setCurrentStatus(data.offer.status);
+      setMessage("Offer withdrawn.");
+      await load();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function reviseOffer() {
+    if (!editingId) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/relationships/sales-offers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "supersede",
+          relationshipId,
+          offerId: editingId,
+          expectedRevision,
+        }),
+      });
+      const data = (await res.json()) as {
+        ok?: boolean;
+        offer?: OfferRow;
+        error?: string;
+      };
+      if (!res.ok || !data.ok || !data.offer) {
+        setError(data.error || "Revise failed");
+        return;
+      }
+      await load();
+      await openOffer(data.offer);
+      setMessage(
+        "Previous offer superseded. Edit this new draft, then Confirm & Send Offer.",
+      );
     } finally {
       setBusy(false);
     }
@@ -777,6 +926,7 @@ export function SalesOffersPanel({
       setExpectedRevision(data.offer.revision);
       setEditor(editorFromOffer(data.offer));
       setLivePreview(data.offer.preview);
+      setCurrentStatus(data.offer.status);
       setDirty(false);
       setMessage("Draft saved. No checkout link was created.");
       await load();
@@ -1700,11 +1850,185 @@ export function SalesOffersPanel({
                   Back to Offers
                 </button>
               </div>
-              <p className="text-xs text-[var(--htc-muted)]">
-                Sending to the customer is coming in a later stage. Standard
-                Send Subscription Link remains available above for ordinary
-                checkout.
-              </p>
+
+              <div
+                className="mt-6 space-y-4 rounded-lg border border-[var(--htc-border)] bg-white p-4"
+                data-testid="offer-send-panel"
+              >
+                <h4 className="font-medium text-[var(--htc-forest)]">
+                  Send private offer
+                </h4>
+                <p className="text-xs text-[var(--htc-muted)]">
+                  Status: {currentStatus}
+                  {lastOfferUrl ? " · Link ready after send" : ""}
+                </p>
+                <label className="block text-sm">
+                  <span className="mb-1 block font-medium">Recipient name</span>
+                  <input
+                    className="ws-input w-full"
+                    value={recipientName}
+                    onChange={(e) => setRecipientName(e.target.value)}
+                    data-testid="offer-recipient-name"
+                  />
+                </label>
+                <label className="block text-sm">
+                  <span className="mb-1 block font-medium">Recipient email</span>
+                  <input
+                    className="ws-input w-full"
+                    type="email"
+                    value={recipientEmail}
+                    onChange={(e) => setRecipientEmail(e.target.value)}
+                    data-testid="offer-recipient-email"
+                  />
+                </label>
+                <label className="block text-sm">
+                  <span className="mb-1 block font-medium">
+                    Customer-facing message (optional)
+                  </span>
+                  <textarea
+                    className="ws-input min-h-[64px] w-full"
+                    value={customerMessage}
+                    onChange={(e) => setCustomerMessage(e.target.value)}
+                    data-testid="offer-customer-message"
+                  />
+                </label>
+
+                {sendReviewOpen ? (
+                  <div
+                    className="space-y-3 rounded-md border border-[color-mix(in_srgb,var(--htc-primary)_30%,var(--htc-border))] bg-[color-mix(in_srgb,var(--htc-soft-sage)_25%,white)] p-4"
+                    data-testid="offer-send-review"
+                  >
+                    <p className="text-sm font-medium">Review before send</p>
+                    <ul className="space-y-1 text-sm text-[var(--htc-text)]">
+                      <li>Recipient: {recipientName} &lt;{recipientEmail}&gt;</li>
+                      <li>Venue: {venueName}</li>
+                      <li>
+                        Tier: {livePreview?.planDisplayName || liveCalc.planName}
+                      </li>
+                      <li>
+                        Standard monthly:{" "}
+                        {formatUsdFromCents(
+                          livePreview?.listAmountCents ?? liveCalc.list,
+                        )}
+                      </li>
+                      <li>
+                        Custom monthly:{" "}
+                        {formatUsdFromCents(
+                          livePreview?.monthlyRecurringCents ?? liveCalc.monthly,
+                        )}
+                      </li>
+                      {(livePreview?.monthlySavingsCents ?? liveCalc.savings) >
+                      0 ? (
+                        <li>
+                          Savings:{" "}
+                          {formatUsdFromCents(
+                            livePreview?.monthlySavingsCents ?? liveCalc.savings,
+                          )}
+                          /mo
+                        </li>
+                      ) : null}
+                      <li>
+                        White Glove:{" "}
+                        {livePreview
+                          ? formatUsdFromCents(livePreview.whiteGloveAmountCents)
+                          : "—"}
+                      </li>
+                      <li>
+                        Duration: {livePreview?.durationLabel || "—"}
+                      </li>
+                      <li>
+                        Future billing: {livePreview?.afterIntroLabel || "—"}
+                      </li>
+                      <li>
+                        Expires:{" "}
+                        {livePreview?.expiresAt
+                          ? formatWhen(livePreview.expiresAt)
+                          : "No deadline"}
+                      </li>
+                      {customerMessage ? (
+                        <li>Message: {customerMessage}</li>
+                      ) : null}
+                    </ul>
+                    <p className="text-xs text-[var(--htc-muted)]">
+                      Confirming sends the private offer email and link only. No
+                      Stripe Checkout Session is created until the customer
+                      accepts.
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        className="ws-btn ws-btn-primary"
+                        disabled={busy || !editingId || dirty}
+                        onClick={() => void confirmAndSendOffer()}
+                        data-testid="confirm-send-offer"
+                      >
+                        {busy ? "Sending…" : "Confirm & Send Offer"}
+                      </button>
+                      <button
+                        type="button"
+                        className="ws-btn"
+                        disabled={busy}
+                        onClick={() => setSendReviewOpen(false)}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {currentStatus === "draft" ||
+                    currentStatus === "sent" ||
+                    currentStatus === "viewed" ? (
+                      <button
+                        type="button"
+                        className="ws-btn ws-btn-primary"
+                        disabled={busy || !editingId || dirty}
+                        onClick={() => setSendReviewOpen(true)}
+                        data-testid="review-send-offer"
+                      >
+                        Review &amp; Send
+                      </button>
+                    ) : null}
+                    {lastOfferUrl ? (
+                      <button
+                        type="button"
+                        className="ws-btn"
+                        onClick={() => {
+                          void navigator.clipboard.writeText(lastOfferUrl);
+                          setMessage("Private offer link copied.");
+                        }}
+                        data-testid="copy-offer-link"
+                      >
+                        Copy private link
+                      </button>
+                    ) : null}
+                    {["sent", "viewed", "accepted", "checkout_pending"].includes(
+                      currentStatus,
+                    ) ? (
+                      <>
+                        <button
+                          type="button"
+                          className="ws-btn"
+                          disabled={busy}
+                          onClick={() => void reviseOffer()}
+                          data-testid="revise-offer"
+                        >
+                          Revise / supersede
+                        </button>
+                        <button
+                          type="button"
+                          className="ws-btn"
+                          disabled={busy}
+                          onClick={() => void withdrawOffer()}
+                          data-testid="withdraw-offer"
+                        >
+                          Withdraw
+                        </button>
+                      </>
+                    ) : null}
+                  </div>
+                )}
+              </div>
             </Section>
           </div>
 

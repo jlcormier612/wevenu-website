@@ -19,6 +19,7 @@ import {
   SalesOfferValidationError,
   type SalesOfferStore,
 } from "./sales-offer-store";
+import { newSalesOfferPublicToken } from "./sales-offer-stage2";
 import type {
   SalesOfferCreateInput,
   SalesOfferFixedReplacementPrices,
@@ -76,11 +77,18 @@ type OfferRow = {
   superseded_by_offer_id: string | null;
   checkout_session_id: string | null;
   checkout_offer_id: string | null;
+  public_token: string;
+  recipient_name: string | null;
+  recipient_email: string | null;
+  customer_message: string | null;
+  accepted_snapshot: Record<string, unknown> | null;
+  accepted_revision: number | null;
   accepted_at: string | null;
   sent_at: string | null;
   viewed_at: string | null;
   revoked_at: string | null;
   discarded_at: string | null;
+  paid_at: string | null;
   terms_hash: string;
   metadata: Record<string, unknown> | null;
   created_at: string;
@@ -139,11 +147,18 @@ function mapRow(row: OfferRow): SalesOfferRecord {
     supersededByOfferId: row.superseded_by_offer_id,
     checkoutSessionId: row.checkout_session_id,
     checkoutOfferId: row.checkout_offer_id,
+    publicToken: row.public_token,
+    recipientName: row.recipient_name,
+    recipientEmail: row.recipient_email,
+    customerMessage: row.customer_message,
+    acceptedSnapshot: row.accepted_snapshot,
+    acceptedRevision: row.accepted_revision,
     acceptedAt: row.accepted_at,
     sentAt: row.sent_at,
     viewedAt: row.viewed_at,
     revokedAt: row.revoked_at,
     discardedAt: row.discarded_at,
+    paidAt: row.paid_at,
     termsHash: row.terms_hash,
     metadata: row.metadata ?? {},
     createdAt: row.created_at,
@@ -203,11 +218,18 @@ function toInsert(record: SalesOfferRecord): Record<string, unknown> {
     superseded_by_offer_id: record.supersededByOfferId,
     checkout_session_id: record.checkoutSessionId,
     checkout_offer_id: record.checkoutOfferId,
+    public_token: record.publicToken,
+    recipient_name: record.recipientName,
+    recipient_email: record.recipientEmail,
+    customer_message: record.customerMessage,
+    accepted_snapshot: record.acceptedSnapshot,
+    accepted_revision: record.acceptedRevision,
     accepted_at: record.acceptedAt,
     sent_at: record.sentAt,
     viewed_at: record.viewedAt,
     revoked_at: record.revokedAt,
     discarded_at: record.discardedAt,
+    paid_at: record.paidAt,
     terms_hash: record.termsHash,
     metadata: record.metadata,
     created_at: record.createdAt,
@@ -257,6 +279,16 @@ export function createPostgresSalesOfferStore(
         .eq("id", offerId)
         .maybeSingle();
       if (error) throw new Error(`get sales offer failed: ${error.message}`);
+      return data ? mapRow(data as OfferRow) : null;
+    },
+
+    async getByPublicToken(token) {
+      const { data, error } = await client
+        .from("saas_sales_offers")
+        .select("*")
+        .eq("public_token", token.trim())
+        .maybeSingle();
+      if (error) throw new Error(`get sales offer by token failed: ${error.message}`);
       return data ? mapRow(data as OfferRow) : null;
     },
 
@@ -312,11 +344,18 @@ export function createPostgresSalesOfferStore(
         supersededByOfferId: null,
         checkoutSessionId: null,
         checkoutOfferId: null,
+        publicToken: newSalesOfferPublicToken(),
+        recipientName: null,
+        recipientEmail: null,
+        customerMessage: null,
+        acceptedSnapshot: null,
+        acceptedRevision: null,
         acceptedAt: null,
         sentAt: null,
         viewedAt: null,
         revokedAt: null,
         discardedAt: null,
+        paidAt: null,
         termsHash: validated.termsHash,
         metadata: {},
         createdAt: now,
@@ -520,6 +559,273 @@ export function createPostgresSalesOfferStore(
         createdByUserId: input.createdByUserId,
         createdByEmail: input.createdByEmail,
       });
+    },
+
+    async markSent(input) {
+      const existing = await this.getById(input.offerId);
+      if (!existing) throw new SalesOfferNotFoundError();
+      if (existing.relationshipId !== input.relationshipId) {
+        throw new SalesOfferForbiddenError();
+      }
+      if (
+        existing.status !== "draft" &&
+        existing.status !== "sent" &&
+        existing.status !== "viewed"
+      ) {
+        throw new SalesOfferValidationError([
+          {
+            field: "status",
+            message: "Only drafts or unaccepted sent offers can be marked sent.",
+          },
+        ]);
+      }
+      if (existing.revision !== input.expectedRevision) {
+        throw new SalesOfferConflictError();
+      }
+      const now = new Date().toISOString();
+      const { data, error } = await client
+        .from("saas_sales_offers")
+        .update({
+          status: "sent",
+          revision: existing.revision + 1,
+          recipient_name: input.recipientName.trim(),
+          recipient_email: input.recipientEmail.trim().toLowerCase(),
+          customer_message: input.customerMessage?.trim() || null,
+          sent_at: existing.sentAt ?? now,
+          updated_at: now,
+          updated_by_user_id: uuidOrNull(input.updatedByUserId),
+          updated_by_email: input.updatedByEmail ?? null,
+        })
+        .eq("id", existing.id)
+        .eq("revision", input.expectedRevision)
+        .select("*")
+        .maybeSingle();
+      if (error) throw new Error(`markSent failed: ${error.message}`);
+      if (!data) throw new SalesOfferConflictError();
+      const saved = mapRow(data as OfferRow);
+      await insertRevision(
+        client,
+        saved,
+        uuidOrNull(input.updatedByUserId),
+        input.updatedByEmail ?? null,
+        "Sent offer",
+      );
+      return saved;
+    },
+
+    async markViewed(input) {
+      const existing = await this.getById(input.offerId);
+      if (!existing) throw new SalesOfferNotFoundError();
+      if (existing.status !== "sent" && existing.status !== "viewed") {
+        return existing;
+      }
+      const now = new Date().toISOString();
+      const { data, error } = await client
+        .from("saas_sales_offers")
+        .update({
+          status: "viewed",
+          viewed_at: existing.viewedAt ?? now,
+          updated_at: now,
+        })
+        .eq("id", existing.id)
+        .select("*")
+        .maybeSingle();
+      if (error) throw new Error(`markViewed failed: ${error.message}`);
+      return data ? mapRow(data as OfferRow) : existing;
+    },
+
+    async markAccepted(input) {
+      const existing = await this.getById(input.offerId);
+      if (!existing) throw new SalesOfferNotFoundError();
+      if (
+        existing.status === "accepted" ||
+        existing.status === "checkout_pending" ||
+        existing.status === "paid"
+      ) {
+        return existing;
+      }
+      const now = new Date().toISOString();
+      const { data, error } = await client
+        .from("saas_sales_offers")
+        .update({
+          status: "accepted",
+          accepted_snapshot: input.acceptedSnapshot,
+          accepted_revision: input.acceptedRevision,
+          accepted_at: existing.acceptedAt ?? now,
+          updated_at: now,
+        })
+        .eq("id", existing.id)
+        .select("*")
+        .maybeSingle();
+      if (error) throw new Error(`markAccepted failed: ${error.message}`);
+      if (!data) throw new SalesOfferConflictError();
+      const saved = mapRow(data as OfferRow);
+      await insertRevision(client, saved, null, null, "Customer accepted");
+      return saved;
+    },
+
+    async markCheckoutPending(input) {
+      const existing = await this.getById(input.offerId);
+      if (!existing) throw new SalesOfferNotFoundError();
+      const { data, error } = await client
+        .from("saas_sales_offers")
+        .update({
+          status: "checkout_pending",
+          checkout_session_id: input.checkoutSessionId,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", existing.id)
+        .select("*")
+        .maybeSingle();
+      if (error) throw new Error(`markCheckoutPending failed: ${error.message}`);
+      return data ? mapRow(data as OfferRow) : existing;
+    },
+
+    async markPaid(input) {
+      const existing = await this.getById(input.offerId);
+      if (!existing) throw new SalesOfferNotFoundError();
+      if (existing.status === "paid") return existing;
+      const now = new Date().toISOString();
+      const { data, error } = await client
+        .from("saas_sales_offers")
+        .update({
+          status: "paid",
+          checkout_session_id: input.checkoutSessionId ?? existing.checkoutSessionId,
+          paid_at: now,
+          updated_at: now,
+        })
+        .eq("id", existing.id)
+        .select("*")
+        .maybeSingle();
+      if (error) throw new Error(`markPaid failed: ${error.message}`);
+      if (!data) throw new SalesOfferConflictError();
+      const saved = mapRow(data as OfferRow);
+      await insertRevision(client, saved, null, null, "Paid / activated");
+      return saved;
+    },
+
+    async revoke(input) {
+      const existing = await this.getById(input.offerId);
+      if (!existing) throw new SalesOfferNotFoundError();
+      if (existing.relationshipId !== input.relationshipId) {
+        throw new SalesOfferForbiddenError();
+      }
+      if (existing.revision !== input.expectedRevision) {
+        throw new SalesOfferConflictError();
+      }
+      if (existing.status === "paid" || existing.status === "discarded") {
+        throw new SalesOfferValidationError([
+          { field: "status", message: "This offer cannot be withdrawn." },
+        ]);
+      }
+      const now = new Date().toISOString();
+      const { data, error } = await client
+        .from("saas_sales_offers")
+        .update({
+          status: "revoked",
+          revision: existing.revision + 1,
+          revoked_at: now,
+          updated_at: now,
+          updated_by_user_id: uuidOrNull(input.updatedByUserId),
+          updated_by_email: input.updatedByEmail ?? null,
+        })
+        .eq("id", existing.id)
+        .eq("revision", input.expectedRevision)
+        .select("*")
+        .maybeSingle();
+      if (error) throw new Error(`revoke failed: ${error.message}`);
+      if (!data) throw new SalesOfferConflictError();
+      const saved = mapRow(data as OfferRow);
+      await insertRevision(
+        client,
+        saved,
+        uuidOrNull(input.updatedByUserId),
+        input.updatedByEmail ?? null,
+        "Withdrawn",
+      );
+      return saved;
+    },
+
+    async supersedeWithDraft(input) {
+      const existing = await this.getById(input.offerId);
+      if (!existing) throw new SalesOfferNotFoundError();
+      if (existing.relationshipId !== input.relationshipId) {
+        throw new SalesOfferForbiddenError();
+      }
+      if (existing.revision !== input.expectedRevision) {
+        throw new SalesOfferConflictError();
+      }
+      if (!["sent", "viewed", "accepted", "checkout_pending"].includes(existing.status)) {
+        throw new SalesOfferValidationError([
+          { field: "status", message: "Only active customer offers can be superseded." },
+        ]);
+      }
+      const draft = await this.createDraft({
+        relationshipId: input.relationshipId,
+        venueId: existing.venueId,
+        internalName: `${existing.internalName} (revision)`,
+        internalNotes: existing.internalNotes,
+        reason: existing.reason,
+        terms: {
+          planKey: existing.planKey,
+          pricingKind: existing.pricingKind,
+          percentOff: existing.percentOff,
+          amountOffCents: existing.amountOffCents,
+          fixedRateCents: existing.fixedRateCents,
+          durationMode: existing.durationMode,
+          durationBillingCycles: existing.durationBillingCycles,
+          afterIntroPricing: existing.afterIntroPricing,
+          percentUpgradePolicy: existing.percentUpgradePolicy,
+          amountUpgradePolicy: existing.amountUpgradePolicy,
+          fixedUpgradePolicy: existing.fixedUpgradePolicy,
+          fixedReplacementPrices: existing.fixedReplacementPrices,
+          fixedUpgradeFallback: existing.fixedUpgradeFallback,
+          whiteGloveMode: existing.whiteGloveMode,
+          whiteGloveAmountCents: existing.whiteGloveAmountCents,
+          expiresAt: existing.expiresAt,
+          replacesStandardPromos: existing.replacesStandardPromos,
+          standardDiscountEligibility: existing.standardDiscountEligibility,
+          standardDiscountEvidence: existing.standardDiscountEvidence,
+        },
+        createdByUserId: input.createdByUserId,
+        createdByEmail: input.createdByEmail,
+      });
+      const now = new Date().toISOString();
+      const { data, error } = await client
+        .from("saas_sales_offers")
+        .update({
+          status: "superseded",
+          revision: existing.revision + 1,
+          superseded_by_offer_id: draft.id,
+          updated_at: now,
+          updated_by_user_id: uuidOrNull(input.createdByUserId),
+          updated_by_email: input.createdByEmail ?? null,
+        })
+        .eq("id", existing.id)
+        .eq("revision", input.expectedRevision)
+        .select("*")
+        .maybeSingle();
+      if (error) throw new Error(`supersede failed: ${error.message}`);
+      if (!data) throw new SalesOfferConflictError();
+      const previous = mapRow(data as OfferRow);
+      const { data: linked, error: linkErr } = await client
+        .from("saas_sales_offers")
+        .update({ supersedes_offer_id: previous.id })
+        .eq("id", draft.id)
+        .select("*")
+        .maybeSingle();
+      if (linkErr) throw new Error(`supersede link failed: ${linkErr.message}`);
+      await insertRevision(
+        client,
+        previous,
+        uuidOrNull(input.createdByUserId),
+        input.createdByEmail ?? null,
+        "Superseded by revision",
+      );
+      return {
+        previous,
+        draft: linked ? mapRow(linked as OfferRow) : { ...draft, supersedesOfferId: previous.id },
+      };
     },
   };
 }

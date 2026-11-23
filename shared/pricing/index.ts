@@ -455,6 +455,27 @@ export {
 } from "./sales-offer-compute";
 
 export {
+  newSalesOfferPublicToken,
+  normalizeOfferEmail,
+  isOfferExpired,
+  canCustomerOpenOffer,
+  canAcceptOffer,
+  buildAcceptedSnapshot,
+  publicOfferViewModel,
+  checkoutIdempotencyKey,
+  parseAcceptedSnapshot,
+} from "./sales-offer-stage2";
+
+export {
+  salesOfferCouponSpec,
+  salesOfferOnboardingType,
+  salesOfferWhiteGloveChargeCents,
+  ensureSalesOfferCoupon,
+  ensureSalesOfferWhiteGlovePrice,
+  type SalesOfferCouponSpec,
+} from "./sales-offer-checkout";
+
+export {
   createMemorySalesOfferStore,
   SalesOfferConflictError,
   SalesOfferValidationError,
