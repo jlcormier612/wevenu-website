@@ -55,7 +55,8 @@ begin
   if uid is null then
     return null;
   end if;
-  perform public.htc_purge_expired_support_context();
+  -- Do not DELETE here — STABLE helpers run in read-only transactions
+  -- (via current_user_venue_id / RLS). Filter expires_at instead.
   select c.mode into v_mode
   from public.htc_support_context c
   where c.user_id = uid
@@ -82,7 +83,7 @@ begin
   if not public.is_hq_admin() then
     return null;
   end if;
-  perform public.htc_purge_expired_support_context();
+  -- Do not DELETE here — STABLE helpers run in read-only transactions.
   select c.venue_id into v_venue
   from public.htc_support_context c
   where c.user_id = uid
@@ -198,7 +199,7 @@ begin
   if uid is null then
     return jsonb_build_object('ok', false, 'active', false);
   end if;
-  perform public.htc_purge_expired_support_context();
+  -- Do not DELETE here — STABLE helper; filter expires_at instead.
   select * into r from public.htc_support_context where user_id = uid and expires_at > now();
   if not found then
     return jsonb_build_object('ok', true, 'active', false);
