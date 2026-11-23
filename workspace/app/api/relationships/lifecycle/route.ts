@@ -2,15 +2,20 @@ import { NextResponse } from "next/server";
 
 import { sendRelationshipEmail, sendReactivationEmail, activationUrlFromToken } from "@shared/email";
 import {
+  buildSubscriptionLinkPreview,
   createManualSubscription,
+  isStandardDiscountEligibility,
   launchWhiteGloveWorkspace,
   loadLiveStore,
   reactivateRelationshipAccount,
   recordSubscriptionLinkSent,
   refreshRelationshipHealth,
+  resolveRelationshipStandardDiscount,
+  subscriptionTermsFingerprint,
   suspendRelationshipAccount,
   tickPaymentDunning,
   tickRenewalStages,
+  updateStandardDiscountEligibility,
   whiteGloveTimelineLabel,
   markDunningReminderSent,
   recordPaymentFailed,
@@ -25,7 +30,9 @@ import { ensureProgram4Data } from "@/lib/program4/store";
 export const runtime = "nodejs";
 
 type Action =
+  | "preview_subscription_link"
   | "send_subscription_link"
+  | "set_standard_discount_eligibility"
   | "manual_subscription"
   | "resend_welcome"
   | "launch_workspace"
@@ -43,6 +50,10 @@ type Action =
   | "founder_retention_hold"
   | "founder_security_lock"
   | "get_entitlement";
+
+/** In-memory confirm guards to reduce duplicate Checkout Sessions / emails. */
+const recentSubscriptionConfirms = new Map<string, number>();
+const CONFIRM_DEDUP_MS = 15_000;
 
 function marketingBaseUrl(): string {
   return (
@@ -74,6 +85,13 @@ export async function POST(request: Request) {
     plan?: string;
     onboardingType?: "self_guided" | "white_glove";
     emailLink?: boolean;
+    /** Stage 1E — required true for Checkout Session + email side effects */
+    confirm?: boolean;
+    confirmToken?: string;
+    previewMode?: "send" | "copy";
+    termsFingerprint?: string;
+    standardDiscountEligibility?: string;
+    additionalVenueQualified?: boolean;
     ownerOverride?: boolean;
     reason?: string;
     notes?: string;
@@ -120,25 +138,146 @@ export async function POST(request: Request) {
   }
 
   switch (action) {
+    case "preview_subscription_link": {
+      if (!(await actorCan("edit_relationships"))) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+      const mode = body.previewMode === "copy" ? "copy" : "send";
+      const preview = buildSubscriptionLinkPreview({
+        relationship,
+        mode,
+        planId: body.plan || relationship.planId,
+        onboardingType:
+          body.onboardingType ||
+          (relationship.onboardingType === "white_glove"
+            ? "white_glove"
+            : "self_guided"),
+        additionalVenueQualified: Boolean(body.additionalVenueQualified),
+      });
+      return NextResponse.json({
+        ok: true,
+        preview,
+        termsFingerprint: subscriptionTermsFingerprint(preview.terms),
+        // Explicit: preview never creates Stripe sessions or sends email.
+        stripeSessionCreated: false,
+        emailed: false,
+      });
+    }
+
+    case "set_standard_discount_eligibility": {
+      if (!(await actorCan("edit_relationships"))) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+      const eligibilityRaw = body.standardDiscountEligibility;
+      if (!isStandardDiscountEligibility(eligibilityRaw)) {
+        return NextResponse.json(
+          { error: "Invalid standardDiscountEligibility" },
+          { status: 400 },
+        );
+      }
+      if (
+        eligibilityRaw === "additional_venue" &&
+        !body.additionalVenueQualified
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "Additional venue discount requires a qualifying organization/venue relationship. Record the organization link first, or choose another eligibility.",
+            code: "additional_venue_unqualified",
+          },
+          { status: 400 },
+        );
+      }
+      const updated = await updateStandardDiscountEligibility(relationshipId, {
+        eligibility: eligibilityRaw,
+        evidence: "founder_recorded",
+        actorId: actor.id,
+      });
+      if (!updated) {
+        return NextResponse.json({ error: "Update failed" }, { status: 400 });
+      }
+      const resolved = resolveRelationshipStandardDiscount(updated);
+      return NextResponse.json({
+        ok: true,
+        relationship: {
+          id: updated.id,
+          standardDiscountEligibility: resolved.eligibility,
+          standardDiscountEvidence: resolved.evidence,
+          welcomeBackRequested: updated.welcomeBackRequested,
+          welcomeBackVerified: updated.welcomeBackVerified,
+          foundingMember: updated.foundingMember,
+        },
+        message: "Standard discount eligibility updated. Founding slots are not consumed by this save.",
+      });
+    }
+
     case "send_subscription_link": {
       if (!(await actorCan("edit_relationships"))) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
-      // Owner / Admin / Sales — edit_relationships covers Sales.
+      // Stage 1E safety: Checkout Session + email require explicit confirm.
+      if (body.confirm !== true) {
+        return NextResponse.json(
+          {
+            error:
+              "Confirmation required. Open the subscription review and click Confirm & Send or Confirm & Generate Link.",
+            code: "confirm_required",
+          },
+          { status: 400 },
+        );
+      }
+
       const planTier = planToStripeTier(body.plan || relationship.planId);
       const onboardingType =
         body.onboardingType ||
         (relationship.onboardingType === "white_glove" ? "white_glove" : "self_guided");
+      const emailLink = body.emailLink !== false;
+      const resolved = resolveRelationshipStandardDiscount(relationship);
+      const preview = buildSubscriptionLinkPreview({
+        relationship,
+        mode: emailLink ? "send" : "copy",
+        planId: body.plan || relationship.planId,
+        onboardingType,
+        additionalVenueQualified: Boolean(body.additionalVenueQualified),
+      });
+      const expectedFp = subscriptionTermsFingerprint(preview.terms);
+      if (
+        body.termsFingerprint &&
+        body.termsFingerprint !== expectedFp
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "Commercial terms changed since preview. Re-open the review and confirm again.",
+            code: "terms_mismatch",
+            preview,
+            termsFingerprint: expectedFp,
+          },
+          { status: 409 },
+        );
+      }
+
+      const dedupKey = `${relationship.id}:${emailLink ? "send" : "copy"}:${expectedFp}`;
+      const now = Date.now();
+      const last = recentSubscriptionConfirms.get(dedupKey) ?? 0;
+      if (now - last < CONFIRM_DEDUP_MS) {
+        return NextResponse.json(
+          {
+            error:
+              "This confirmation was already submitted. Wait a moment before generating another link.",
+            code: "duplicate_confirm",
+          },
+          { status: 409 },
+        );
+      }
+      recentSubscriptionConfirms.set(dedupKey, now);
 
       let checkoutUrl: string;
       let sessionId: string | null = null;
       try {
-        // Marketing Checkout only reuses an existing Stripe Customer when this
-        // server-to-server call presents PRODUCT_SYNC_API_KEY. The operator is
-        // already authorized via edit_relationships; the relationship row (and
-        // its stripeCustomerId) is loaded server-side — never from the browser.
         const syncKey = process.env.PRODUCT_SYNC_API_KEY?.trim() || "";
         if (!syncKey) {
+          recentSubscriptionConfirms.delete(dedupKey);
           return NextResponse.json(
             {
               error:
@@ -160,7 +299,8 @@ export async function POST(request: Request) {
             customer_email: relationship.owner.email,
             stripe_customer_id: relationship.stripeCustomerId || undefined,
             onboarding_type: onboardingType,
-            welcome_back: relationship.welcomeBackRequested,
+            // Actual checkout flag from resolved eligibility (not silent ignore).
+            welcome_back: preview.terms.checkoutFlags.welcome_back,
           }),
         });
         const data = (await res.json()) as {
@@ -169,6 +309,7 @@ export async function POST(request: Request) {
           error?: string;
         };
         if (!res.ok || !data.url) {
+          recentSubscriptionConfirms.delete(dedupKey);
           return NextResponse.json(
             { error: data.error || "Failed to create checkout session" },
             { status: 502 },
@@ -177,27 +318,46 @@ export async function POST(request: Request) {
         checkoutUrl = data.url;
         sessionId = data.session_id ?? null;
       } catch (error) {
+        recentSubscriptionConfirms.delete(dedupKey);
         const message = error instanceof Error ? error.message : "Checkout failed";
         return NextResponse.json({ error: message }, { status: 502 });
       }
 
-      const emailLink = body.emailLink !== false;
       let emailed = false;
-      if (emailLink && relationship.owner.email) {
-        await sendRelationshipEmail({
-          relationshipId: relationship.id,
-          to: relationship.owner.email,
-          templateId: "subscription_link",
-          vars: {
-            firstName: relationship.owner.firstName,
-            venueName: relationship.venue.name,
-            planName: relationship.planName || planTier,
-            checkoutUrl,
-          },
-          actorId: actor.id,
-          meta: { trigger: "lifecycle.send_subscription_link" },
-        });
-        emailed = true;
+      let emailDelivery: "sent" | "simulated" | "failed" | "skipped" = "skipped";
+      let emailError: string | null = null;
+      if (emailLink) {
+        if (!relationship.owner.email) {
+          emailError = "No recipient email on this relationship.";
+          emailDelivery = "failed";
+        } else {
+          const sendResult = await sendRelationshipEmail({
+            relationshipId: relationship.id,
+            to: relationship.owner.email,
+            templateId: "subscription_link",
+            vars: {
+              firstName: relationship.owner.firstName,
+              venueName: relationship.venue.name,
+              planName: relationship.planName || preview.terms.planDisplayName,
+              checkoutUrl,
+            },
+            actorId: actor.id,
+            idempotencyKey: `sublink:${relationship.id}:${sessionId || checkoutUrl.slice(-24)}`,
+            meta: {
+              trigger: "lifecycle.send_subscription_link",
+              eligibility: resolved.eligibility,
+              terms_fingerprint: expectedFp,
+            },
+          });
+          if (sendResult.ok) {
+            emailed = true;
+            emailDelivery =
+              sendResult.delivery === "sent" ? "sent" : "simulated";
+          } else {
+            emailDelivery = "failed";
+            emailError = sendResult.message || "Email delivery failed";
+          }
+        }
       }
 
       await recordSubscriptionLinkSent({
@@ -208,14 +368,35 @@ export async function POST(request: Request) {
         emailed,
       });
 
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+
+      if (emailLink && emailDelivery === "failed") {
+        return NextResponse.json({
+          ok: true,
+          url: checkoutUrl,
+          sessionId,
+          emailed: false,
+          emailDelivery,
+          emailError,
+          expiresAt,
+          terms: preview.terms,
+          message:
+            "Checkout link was created, but the email was not delivered. You can copy the link below and retry email later — a new Confirm will create a new session.",
+          recovery: "copy_link",
+        });
+      }
+
       return NextResponse.json({
         ok: true,
         url: checkoutUrl,
         sessionId,
         emailed,
+        emailDelivery,
+        expiresAt,
+        terms: preview.terms,
         message: emailed
-          ? "Subscription link emailed and ready to copy."
-          : "Subscription link ready to copy.",
+          ? "Subscription link emailed. Checkout session created."
+          : "Subscription link generated — not emailed.",
       });
     }
 

@@ -38,6 +38,11 @@ import type {
   Walkthrough,
 } from "./types";
 import { ensureWhiteGloveChecklistInStore } from "./white-glove-checklist";
+import {
+  buildEligibilityFlagSync,
+  type StandardDiscountEligibility,
+  type StandardDiscountEvidence,
+} from "./standard-discount-eligibility";
 
 function stampFromFind(
   relationship: Relationship,
@@ -57,7 +62,12 @@ function stampFromFind(
 function recountOpenFeedback(relationship: Relationship): number {
   const items = relationship.openFeedbackItems ?? [];
   if (items.length === 0) return relationship.supportOpenCount || 0;
-  return items.filter((i) => i.status === "open").length;
+  // Stage 1E: only Get Help / Report a Bug inflate supportOpenCount / Needs Support.
+  return items.filter(
+    (i) =>
+      i.status === "open" &&
+      (i.type === "support" || i.type === "bug"),
+  ).length;
 }
 
 /** subscribedAt + 1 UTC calendar year (keeps renewalDate in sync on subscribe). */
@@ -1134,6 +1144,68 @@ export async function updateRelationshipFields(
 }
 
 /**
+ * Stage 1E — set relationship standard discount eligibility.
+ * Prospective corrections allowed (unlike ingest ratchet). Does not consume Founding slots.
+ */
+export async function updateStandardDiscountEligibility(
+  relationshipId: string,
+  input: {
+    eligibility: StandardDiscountEligibility;
+    evidence?: StandardDiscountEvidence | null;
+    actorId?: string | null;
+  },
+): Promise<Relationship | null> {
+  const { result } = await withLiveStore((store) => {
+    const relationship = store.relationships.find((r) => r.id === relationshipId);
+    if (!relationship) return null;
+
+    const previous = {
+      eligibility: relationship.standardDiscountEligibility,
+      welcomeBackRequested: relationship.welcomeBackRequested,
+      foundingMember: relationship.foundingMember,
+    };
+
+    const next = buildEligibilityFlagSync({
+      eligibility: input.eligibility,
+      evidence: input.evidence,
+      previousVerified: relationship.welcomeBackVerified,
+    });
+
+    relationship.standardDiscountEligibility =
+      next.standardDiscountEligibility;
+    relationship.standardDiscountEvidence = next.standardDiscountEvidence;
+    // Explicit overwrite — founder corrections are prospective.
+    relationship.welcomeBackRequested = next.welcomeBackRequested;
+    relationship.welcomeBackVerified = next.welcomeBackVerified;
+    relationship.foundingMember = next.foundingMember;
+
+    const now = new Date().toISOString();
+    relationship.updatedAt = now;
+    relationship.lastContactAt = now;
+
+    store.timelineEvents.push({
+      id: `evt_${randomUUID()}`,
+      relationshipId: relationship.id,
+      type: "note_added",
+      title: "Standard discount eligibility updated",
+      body: `${next.standardDiscountEligibility} (${next.standardDiscountEvidence})`,
+      actorId: input.actorId ?? "system",
+      occurredAt: now,
+      meta: {
+        standard_discount_eligibility: next.standardDiscountEligibility,
+        standard_discount_evidence: next.standardDiscountEvidence,
+        previous_eligibility: previous.eligibility ?? null,
+        previous_welcome_back: previous.welcomeBackRequested,
+        previous_founding: previous.foundingMember,
+      },
+    });
+
+    return relationship;
+  });
+  return result;
+}
+
+/**
  * Clear unacked auto-arrival highlight for one relationship (detail page open).
  */
 export async function clearRelationshipAutoArrival(
@@ -1899,7 +1971,11 @@ export async function mutateRelationship(opts: {
       mintedFeedbackItemId = item.id;
       mintedFeedbackType = item.type;
       syncSupportOpenCountFromItems(relationship);
-      if (item.status === "open") {
+      // Ideas / ratings stay on the relationship for review without Needs Support pin.
+      if (
+        item.status === "open" &&
+        (item.type === "support" || item.type === "bug")
+      ) {
         promoteToNeedsSupport(relationship);
       }
     } else if (opts.bumpSupportOpenCount) {

@@ -336,6 +336,19 @@ export type ProductFeedbackType =
   | "nps"
   | "general";
 
+/**
+ * Actionable Get Help / Report a Bug — escalates Needs Support + urgent alerts.
+ * Ideas / ratings remain reviewable without urgent queue pressure (Stage 1E).
+ */
+export function isActionableSupportFeedbackType(
+  type: ProductFeedbackType | string | null | undefined,
+): boolean {
+  const t = String(type || "")
+    .trim()
+    .toLowerCase();
+  return t === "support" || t === "bug";
+}
+
 /** Partner (vendor / client) Support inbox surface — defined early for NotificationMeta. */
 export type SupportInboxSurface = "vendor" | "client";
 
@@ -425,6 +438,22 @@ export type Relationship = {
   foundingMember: boolean;
   welcomeBackRequested: boolean;
   welcomeBackVerified: WelcomeBackVerifiedStatus;
+  /**
+   * Stage 1E — authoritative Sales UX for ordinary standard discounts.
+   * Prefer this over inferring solely from welcomeBack / foundingMember flags.
+   * Accepted custom offers keep their own snapshot (Stage 2).
+   */
+  standardDiscountEligibility?:
+    | "not_established"
+    | "former_weven"
+    | "founding"
+    | "additional_venue"
+    | "none";
+  standardDiscountEvidence?:
+    | "not_established"
+    | "founder_recorded"
+    | "application_confirmed"
+    | "explicitly_none";
   onboardingType: OnboardingType;
   currentStageLabel: string;
   lastContactAt: string;
@@ -563,6 +592,8 @@ export type RelationshipFieldPatch = Partial<
     | "foundingMember"
     | "welcomeBackRequested"
     | "welcomeBackVerified"
+    | "standardDiscountEligibility"
+    | "standardDiscountEvidence"
     | "onboardingType"
     | "currentStageLabel"
     | "nextMilestone"

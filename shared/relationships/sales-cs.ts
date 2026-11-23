@@ -7,10 +7,11 @@
  * Closed Won alone does not enter CS; only successful subscribe does.
  */
 
-import type {
-  Relationship,
-  RelationshipHealth,
-  RelationshipStatus,
+import {
+  isActionableSupportFeedbackType,
+  type Relationship,
+  type RelationshipHealth,
+  type RelationshipStatus,
 } from "./types";
 import { isCustomerLifecycleStatus, normalizeLifecycleStatus } from "./status";
 
@@ -543,7 +544,7 @@ export function deriveCustomerSuccessStageBase(
 
 /**
  * True when this relationship should count toward the CS open-support badge
- * and appear under Needs Support (includes NPS / product feedback items).
+ * and appear under Needs Support (Get Help / Report a Bug only — Stage 1E).
  */
 export function relationshipHasOpenSupport(
   relationship: Pick<
@@ -555,9 +556,10 @@ export function relationshipHasOpenSupport(
 }
 
 /**
- * Open Feedback & support item count for one relationship.
- * Prefers typed openFeedbackItems; falls back to supportOpenCount / legacy
- * status overlay so badge totals match what CS sees on the board.
+ * Open actionable support item count for one relationship.
+ * Prefers typed openFeedbackItems of support/bug; falls back to
+ * supportOpenCount / legacy status overlay. Ideas and ratings stay on the
+ * relationship for product review without inflating Needs Support.
  */
 export function countOpenSupportItems(
   relationship: Pick<
@@ -565,10 +567,13 @@ export function countOpenSupportItems(
     "status" | "supportOpenCount" | "openFeedbackItems"
   >,
 ): number {
-  const openFromItems = (relationship.openFeedbackItems ?? []).filter(
-    (i) => i.status === "open",
-  ).length;
-  if (openFromItems > 0) return openFromItems;
+  const items = relationship.openFeedbackItems ?? [];
+  if (items.length > 0) {
+    return items.filter(
+      (i) =>
+        i.status === "open" && isActionableSupportFeedbackType(i.type),
+    ).length;
+  }
   if ((relationship.supportOpenCount || 0) > 0) {
     return relationship.supportOpenCount || 0;
   }

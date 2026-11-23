@@ -1239,9 +1239,10 @@ export async function ingestProductFeedback(input: {
     },
     updateOnly,
     productVenueId: productVenueId || undefined,
-    // Overlay Support for all collected types so Today / CS queues stay unified.
+    // Stage 1E: only Get Help / Report a Bug overlay Needs Support.
+    // Ideas / ratings remain on the relationship for product review.
     patch: {
-      status: "support",
+      ...(isHelpOrBug ? { status: "support" as const } : {}),
       // Fill owner email from product when CRM row was venue-linked without one.
       ownerEmail: email && !existing?.owner.email?.trim() ? email : undefined,
     },
@@ -1298,18 +1299,21 @@ export async function ingestProductFeedback(input: {
         email ||
         "Product user",
     },
-    notification: {
-      type: isHelpOrBug ? "support_request_submitted" : "feedback_received",
-      title: labels.notificationTitle,
-      body: `${who} submitted ${labels.title.toLowerCase()} from product.`,
-      href: null,
-      meta: {
-        panel: "support",
-        feedback_type: feedbackType,
-        surface: "venue",
-        venue_name: input.venueName?.trim() || undefined,
-      },
-    },
+    // Urgent alerts only for actionable help/bug. Ideas/ratings stay quieter.
+    notification: isHelpOrBug
+      ? {
+          type: "support_request_submitted",
+          title: labels.notificationTitle,
+          body: `${who} submitted ${labels.title.toLowerCase()} from product.`,
+          href: null,
+          meta: {
+            panel: "support",
+            feedback_type: feedbackType,
+            surface: "venue",
+            venue_name: input.venueName?.trim() || undefined,
+          },
+        }
+      : undefined,
   }))!;
 }
 
@@ -1410,17 +1414,19 @@ export async function ingestProductPartnerFeedback(input: {
 
     store.supportInboxItems.unshift(item);
 
-    if (relatedRelationshipId) {
+    // Stage 1E: Partner Support Inbox is the system of record for all types.
+    // Urgent CRM alerts only for Get Help / Report a Bug when a venue link exists.
+    // Ideas / ratings remain discoverable in Partner Support without urgent noise.
+    // Client submissions never write venue Relationship.openFeedbackItems (privacy).
+    const isHelpOrBug = feedbackType === "support" || feedbackType === "bug";
+    if (relatedRelationshipId && isHelpOrBug) {
       const who =
         input.actorName?.trim() ||
         input.email?.trim() ||
         (surface === "client" ? "Client" : "Vendor");
       store.notifications.unshift({
         id: `ntf_${randomUUID().replace(/-/g, "").slice(0, 12)}`,
-        type:
-          feedbackType === "support" || feedbackType === "bug"
-            ? "support_request_submitted"
-            : "feedback_received",
+        type: "support_request_submitted",
         relationshipId: relatedRelationshipId,
         title: `${surface === "client" ? "Client" : "Vendor"}: ${labels.notificationTitle}`,
         body: `${who} submitted ${labels.title.toLowerCase()} from product.`,

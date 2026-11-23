@@ -15,6 +15,8 @@ type SidebarProps = {
   openSupportCount?: number;
   /** Deep-link when badge is shown (single open → relationship; else CS triage list). */
   openSupportHref?: string;
+  /** Open actionable Partner Support Inbox items (vendor/client Get Help / Bug). */
+  openPartnerSupportCount?: number;
   permissions: Permission[];
   homeHref: string;
 };
@@ -23,6 +25,7 @@ export function Sidebar({
   unreadCount,
   openSupportCount = 0,
   openSupportHref = "/customer-success?stage=needs_support&view=list",
+  openPartnerSupportCount = 0,
   permissions,
   homeHref,
 }: SidebarProps) {
@@ -55,12 +58,19 @@ export function Sidebar({
         {items.map((item) => {
           const active =
             pathname === item.href || pathname.startsWith(`${item.href}/`);
-          const showSupportBadge =
+          const showCsSupportBadge =
             item.href === "/customer-success" && openSupportCount > 0;
+          const showPartnerSupportBadge =
+            item.href === "/support" && openPartnerSupportCount > 0;
+          const badgeCount = showCsSupportBadge
+            ? openSupportCount
+            : showPartnerSupportBadge
+              ? openPartnerSupportCount
+              : 0;
           return (
             <Link
               key={item.href}
-              href={showSupportBadge ? openSupportHref : item.href}
+              href={showCsSupportBadge ? openSupportHref : item.href}
               className={cn(
                 "flex items-center justify-between gap-2 rounded-[8px] px-3 py-2.5 text-sm tracking-wide transition-colors",
                 active
@@ -69,7 +79,7 @@ export function Sidebar({
               )}
             >
               <span>{item.label}</span>
-              {showSupportBadge ? (
+              {badgeCount > 0 ? (
                 <span
                   className={cn(
                     "shrink-0 rounded-sm px-1.5 py-0.5 text-[0.65rem] font-medium tabular-nums",
@@ -77,9 +87,13 @@ export function Sidebar({
                       ? "bg-sidebar-primary/15 text-sidebar-primary"
                       : "bg-[color-mix(in_srgb,var(--htc-dusty)_28%,transparent)] text-[var(--htc-dusty)]",
                   )}
-                  title={`${openSupportCount} open support item${openSupportCount === 1 ? "" : "s"}`}
+                  title={
+                    showPartnerSupportBadge
+                      ? `${badgeCount} open partner support item${badgeCount === 1 ? "" : "s"}`
+                      : `${badgeCount} open support item${badgeCount === 1 ? "" : "s"}`
+                  }
                 >
-                  {openSupportCount}
+                  {badgeCount}
                 </span>
               ) : null}
             </Link>

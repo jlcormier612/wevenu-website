@@ -5,7 +5,11 @@ import { Sidebar } from "@/components/layout/sidebar";
 import { TopBar } from "@/components/layout/top-bar";
 import { WorkspaceChrome } from "@/components/layout/workspace-chrome";
 import { ImpersonateBanner } from "@/components/team/impersonate-controls";
-import { getNotifications, getRelationships } from "@/lib/data/store";
+import {
+  getNotifications,
+  getRelationships,
+  getSupportInboxItems,
+} from "@/lib/data/store";
 import { permissionForPath, permissionsForRole } from "@/lib/program4/permissions";
 import {
   getActingMember,
@@ -17,6 +21,7 @@ import {
   countOpenSupportItemsAcross,
   relationshipHasOpenSupport,
 } from "@/lib/sales-cs";
+import { isActionableSupportFeedbackType } from "@shared/relationships";
 
 export async function AppShell({ children }: { children: React.ReactNode }) {
   // warmLiveStore runs once in app/(app)/layout.tsx before this shell.
@@ -34,9 +39,24 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
   }
   const impersonating = await isImpersonating();
   const permissions = permissionsForRole(actor.role);
-  const unreadCount = getNotifications({ unreadOnly: true }).length;
-  const openSupportRels = getRelationships().filter(relationshipHasOpenSupport);
-  // Badge = open Feedback & support *items* (not relationships).
+  const unreadNotifications = getNotifications({ unreadOnly: true });
+  const unreadCount = unreadNotifications.length;
+  const relationships = getRelationships();
+  const openSupportRels = relationships.filter(relationshipHasOpenSupport);
+  const topBarNotifications = unreadNotifications.slice(0, 8).map((n) => {
+    const rel = relationships.find((r) => r.id === n.relationshipId);
+    return {
+      id: n.id,
+      title: n.title,
+      body: n.body,
+      createdAt: n.createdAt,
+      relationshipId: n.relationshipId,
+      type: n.type,
+      meta: n.meta,
+      venueName: rel?.venue.name ?? null,
+    };
+  });
+  // Badge = open actionable venue Get Help / Bug items (not ideas/ratings).
   const openSupportCount = countOpenSupportItemsAcross(openSupportRels);
   const openSupportHref =
     openSupportRels.length === 1
@@ -44,6 +64,11 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       : openSupportRels.length > 1
         ? "/customer-success?stage=needs_support&view=list"
         : "/customer-success?stage=needs_support";
+  // Partner Support Inbox — central discovery without opening every relationship.
+  const openPartnerSupportCount = getSupportInboxItems({
+    surface: "all",
+    status: "open",
+  }).filter((i) => isActionableSupportFeedbackType(i.type)).length;
   const homeHref = permissions.includes("view_business_dashboard")
     ? "/business"
     : "/today";
@@ -70,11 +95,18 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           unreadCount={unreadCount}
           openSupportCount={openSupportCount}
           openSupportHref={openSupportHref}
+          openPartnerSupportCount={openPartnerSupportCount}
           permissions={permissions}
           homeHref={homeHref}
         />
       }
-      topBar={<TopBar actor={actor} sessionUser={sessionUser} />}
+      topBar={
+        <TopBar
+          actor={actor}
+          sessionUser={sessionUser}
+          notifications={topBarNotifications}
+        />
+      }
       banner={
         impersonating ? (
           <ImpersonateBanner realUser={sessionUser} actingAs={actor} />
