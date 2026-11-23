@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { redirect, notFound } from "next/navigation";
+import { redirect } from "next/navigation";
 
 import { LuvMark } from "@/components/luv/luv-mark";
 import { LuvRelationshipAdvisor } from "@/components/luv/luv-relationship-advisor";
@@ -116,7 +116,36 @@ export default async function RelationshipDetailPage({
   }
 
   const relationship = getRelationship(id);
-  if (!relationship) notFound();
+  if (!relationship) {
+    const fromSales = from === "sales";
+    return (
+      <div className="mx-auto max-w-2xl space-y-4 py-10">
+        <Panel title="Relationship not available">
+          <h2 className="font-heading text-xl text-[var(--htc-forest)]">
+            This Sales relationship is no longer available
+          </h2>
+          <p className="mt-2 text-sm leading-relaxed text-[var(--htc-muted)]">
+            The record may have been removed after a prior review, or this link
+            may be out of date. Custom offers cannot be opened against a missing
+            relationship.
+          </p>
+          <div className="mt-5 flex flex-wrap gap-3">
+            <Link
+              href={fromSales ? "/sales" : "/business"}
+              className="ws-btn ws-btn-primary"
+            >
+              {fromSales ? "Back to Sales" : "Back to Business"}
+            </Link>
+            {!fromSales ? (
+              <Link href="/sales" className="ws-btn">
+                Open Sales
+              </Link>
+            ) : null}
+          </div>
+        </Panel>
+      </div>
+    );
+  }
 
   const actor = await getActingMember();
   if (!actor) {
