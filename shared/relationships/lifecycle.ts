@@ -1097,7 +1097,7 @@ export async function recordCustomerHandoff(input: {
     s.timelineEvents.push({
       id: shortId("evt"),
       relationshipId: rel.id,
-      type: "note",
+      type: "note_added",
       title: "Customer handoff recorded",
       body:
         input.note?.trim() ||
