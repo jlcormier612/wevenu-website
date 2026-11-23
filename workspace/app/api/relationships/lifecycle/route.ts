@@ -97,6 +97,8 @@ export async function POST(request: Request) {
     ownerOverride?: boolean;
     reason?: string;
     notes?: string;
+    /** Stage 1F — optional handoff note for record_customer_handoff */
+    note?: string;
     mrrCents?: number;
     foundingMember?: boolean;
     implementationNotes?: string;
