@@ -23,6 +23,8 @@ import {
   getTeamProfileSync,
 } from "@/lib/program4/store";
 import { COMMISSION_EVENT_LABELS } from "@/lib/program4/seed";
+import { splitDisplayName } from "@/lib/program4/team-profile-fields";
+import { isSupabaseStaffAuthEnabled } from "@/lib/supabase/workspace-auth-config";
 import { updateTeamMemberAction } from "../actions";
 
 export const metadata = { title: "Team member" };
@@ -49,6 +51,17 @@ export default async function TeamMemberPage({
       sessionUser.id !== member.id &&
       member.active,
   );
+  let authLinkedEmail = false;
+  let displayEmail = member.email;
+  if (isSupabaseStaffAuthEnabled()) {
+    const { getStaffAclRepository } = await import("@/lib/program4/staff-acl");
+    const staff = await getStaffAclRepository().getByTeamMemberId(member.id);
+    if (staff?.active) {
+      authLinkedEmail = true;
+      displayEmail = staff.email;
+    }
+  }
+  const { firstName, lastName } = splitDisplayName(member.name);
   const plans = getCommissionPlansSync();
   const ledger = getCommissionLedgerSync({ teamMemberId: member.id }).slice(0, 8);
   const venues = getRelationships().filter((r) => r.assignedTeamMemberId === member.id);
@@ -81,7 +94,7 @@ export default async function TeamMemberPage({
         </span>
         <div>
           <p className="font-medium">{ROLE_LABELS[member.role]}</p>
-          <p className="text-sm ws-muted">{member.email}</p>
+          <p className="text-sm ws-muted">{displayEmail}</p>
         </div>
         <StatusPill tone={member.availability === "available" ? "good" : "muted"}>
           {AVAILABILITY_LABELS[member.availability]}
@@ -198,69 +211,140 @@ export default async function TeamMemberPage({
 
       {canManage ? (
         <Panel title="Edit member" className="mt-6">
-          <form action={updateTeamMemberAction} className="grid gap-4 sm:grid-cols-2">
+          <form action={updateTeamMemberAction} className="grid gap-6">
             <input type="hidden" name="id" value={member.id} />
-            <label className="block text-sm">
-              <span className="ws-eyebrow">Title</span>
-              <input
-                name="title"
-                defaultValue={member.title}
-                className="mt-2 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2.5 text-sm outline-none focus:border-[var(--heritage-sage)] text-foreground"
-              />
-            </label>
-            <label className="block text-sm">
-              <span className="ws-eyebrow">Role</span>
-              <select
-                name="role"
-                defaultValue={member.role}
-                className="mt-2 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2.5 text-sm outline-none focus:border-[var(--heritage-sage)] text-foreground"
-              >
-                {TEAM_ROLES.map((r) => (
-                  <option key={r} value={r}>
-                    {ROLE_LABELS[r]}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="block text-sm">
-              <span className="ws-eyebrow">Availability</span>
-              <select
-                name="availability"
-                defaultValue={member.availability}
-                className="mt-2 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2.5 text-sm outline-none focus:border-[var(--heritage-sage)] text-foreground"
-              >
-                {Object.entries(AVAILABILITY_LABELS).map(([k, label]) => (
-                  <option key={k} value={k}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="block text-sm">
-              <span className="ws-eyebrow">Commission plan</span>
-              <select
-                name="commissionPlanId"
-                defaultValue={member.commissionPlanId ?? ""}
-                className="mt-2 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2.5 text-sm outline-none focus:border-[var(--heritage-sage)] text-foreground"
-              >
-                <option value="">None</option>
-                {plans.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="block text-sm sm:col-span-2">
-              <span className="ws-eyebrow">Territory (stub)</span>
-              <input
-                name="territory"
-                defaultValue={member.territory ?? ""}
-                placeholder="e.g. Southeast"
-                className="mt-2 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2.5 text-sm outline-none focus:border-[var(--heritage-sage)] text-foreground"
-              />
-            </label>
-            <div className="sm:col-span-2">
+
+            <div>
+              <p className="ws-eyebrow">Personal information</p>
+              <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                <label className="block text-sm">
+                  <span className="ws-eyebrow">First name</span>
+                  <input
+                    name="firstName"
+                    defaultValue={firstName}
+                    required
+                    className="mt-2 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2.5 text-sm outline-none focus:border-[var(--heritage-sage)] text-foreground"
+                  />
+                </label>
+                <label className="block text-sm">
+                  <span className="ws-eyebrow">Last name</span>
+                  <input
+                    name="lastName"
+                    defaultValue={lastName}
+                    className="mt-2 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2.5 text-sm outline-none focus:border-[var(--heritage-sage)] text-foreground"
+                  />
+                </label>
+                {authLinkedEmail ? (
+                  <div className="block text-sm sm:col-span-2">
+                    <span className="ws-eyebrow">Email (login)</span>
+                    <p className="mt-2 rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--warm-gray)]/40 px-3 py-2.5 text-sm text-foreground">
+                      {displayEmail}
+                    </p>
+                    <p className="mt-1.5 text-xs ws-muted">
+                      This email is the staff login identity. It cannot be changed
+                      from the CRM profile editor.
+                    </p>
+                  </div>
+                ) : (
+                  <label className="block text-sm sm:col-span-2">
+                    <span className="ws-eyebrow">Email</span>
+                    <input
+                      name="email"
+                      type="email"
+                      defaultValue={member.email}
+                      required
+                      className="mt-2 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2.5 text-sm outline-none focus:border-[var(--heritage-sage)] text-foreground"
+                    />
+                    <p className="mt-1.5 text-xs ws-muted">
+                      CRM contact email for this roster profile (not linked to a
+                      login yet).
+                    </p>
+                  </label>
+                )}
+              </div>
+            </div>
+
+            <div>
+              <p className="ws-eyebrow">Professional information</p>
+              <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                <label className="block text-sm">
+                  <span className="ws-eyebrow">Job title</span>
+                  <input
+                    name="title"
+                    defaultValue={member.title}
+                    className="mt-2 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2.5 text-sm outline-none focus:border-[var(--heritage-sage)] text-foreground"
+                  />
+                </label>
+                <label className="block text-sm">
+                  <span className="ws-eyebrow">Department</span>
+                  <select
+                    name="department"
+                    defaultValue={member.department}
+                    className="mt-2 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2.5 text-sm outline-none focus:border-[var(--heritage-sage)] text-foreground"
+                  >
+                    {Object.entries(DEPARTMENT_LABELS).map(([k, label]) => (
+                      <option key={k} value={k}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="block text-sm">
+                  <span className="ws-eyebrow">Role</span>
+                  <select
+                    name="role"
+                    defaultValue={member.role}
+                    className="mt-2 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2.5 text-sm outline-none focus:border-[var(--heritage-sage)] text-foreground"
+                  >
+                    {TEAM_ROLES.map((r) => (
+                      <option key={r} value={r}>
+                        {ROLE_LABELS[r]}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="block text-sm">
+                  <span className="ws-eyebrow">Availability</span>
+                  <select
+                    name="availability"
+                    defaultValue={member.availability}
+                    className="mt-2 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2.5 text-sm outline-none focus:border-[var(--heritage-sage)] text-foreground"
+                  >
+                    {Object.entries(AVAILABILITY_LABELS).map(([k, label]) => (
+                      <option key={k} value={k}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="block text-sm">
+                  <span className="ws-eyebrow">Commission plan</span>
+                  <select
+                    name="commissionPlanId"
+                    defaultValue={member.commissionPlanId ?? ""}
+                    className="mt-2 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2.5 text-sm outline-none focus:border-[var(--heritage-sage)] text-foreground"
+                  >
+                    <option value="">None</option>
+                    {plans.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="block text-sm">
+                  <span className="ws-eyebrow">Territory (stub)</span>
+                  <input
+                    name="territory"
+                    defaultValue={member.territory ?? ""}
+                    placeholder="e.g. Southeast"
+                    className="mt-2 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2.5 text-sm outline-none focus:border-[var(--heritage-sage)] text-foreground"
+                  />
+                </label>
+              </div>
+            </div>
+
+            <div>
               <button
                 type="submit"
                 className="rounded-sm bg-[var(--forest-sage)] px-4 py-2.5 text-sm font-medium text-[var(--true-white)] hover:bg-[var(--heritage-sage)]"

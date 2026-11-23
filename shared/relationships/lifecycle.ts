@@ -415,12 +415,7 @@ export async function createManualSubscription(input: {
       foundingMember: Boolean(input.foundingMember ?? existing.foundingMember),
       manual: true,
     },
-    notification: {
-      type: "subscription_purchased",
-      title: "Manual subscription",
-      body: `${existing.venue.name} marked subscribed (${planName}).`,
-      createdAt: now,
-    },
+    // Manual subscription stays on the relationship timeline — not a persistent Alert.
   });
 
   if (result?.relationship) {

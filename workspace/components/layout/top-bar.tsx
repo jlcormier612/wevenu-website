@@ -10,7 +10,8 @@ import type { Notification } from "@/lib/types";
 import type { TeamMemberProfile } from "@/lib/program4/types";
 import { ROLE_LABELS } from "@/lib/program4/labels";
 import { formatRelativeDay } from "@/lib/utils";
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState, useTransition } from "react";
 
 type TopBarNotification = Pick<
   Notification,
@@ -29,9 +30,50 @@ export function TopBar({
   sessionUser: TeamMemberProfile;
   notifications?: TopBarNotification[];
 }) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
-  const unread = notifications.slice(0, 8);
-  const unreadCount = notifications.length;
+  const [items, setItems] = useState(notifications);
+  const [, startTransition] = useTransition();
+
+  useEffect(() => {
+    setItems(notifications);
+  }, [notifications]);
+
+  const unreadCount = items.length;
+
+  async function dismissIds(ids: string[]) {
+    const idSet = new Set(ids);
+    setItems((prev) => prev.filter((n) => !idSet.has(n.id)));
+    try {
+      await fetch("/api/notifications/dismiss", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids }),
+      });
+    } catch {
+      /* keep optimistic UI; refresh reconciles */
+    }
+    startTransition(() => router.refresh());
+  }
+
+  async function dismissOne(id: string) {
+    await dismissIds([id]);
+  }
+
+  async function dismissAll() {
+    const ids = items.map((n) => n.id);
+    if (ids.length === 0) return;
+    await dismissIds(ids);
+  }
+
+  useEffect(() => {
+    if (!open) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open]);
 
   return (
     <header className="sticky top-0 z-20 border-b border-[var(--htc-border)] bg-[var(--htc-warm-white)]">
@@ -69,23 +111,36 @@ export function TopBar({
                 onClick={() => setOpen(false)}
               />
               <div
-                className="absolute right-0 z-30 mt-2 w-[min(22rem,calc(100vw-2rem))] rounded-sm border border-[var(--htc-border)] bg-[var(--true-white)] shadow-sm"
+                className="absolute right-0 z-30 mt-2 w-[min(24rem,calc(100vw-2rem))] max-sm:fixed max-sm:inset-x-2 max-sm:top-[4.25rem] max-sm:w-auto rounded-sm border border-[var(--htc-border)] bg-[var(--true-white)] shadow-sm"
+                style={{ maxHeight: "min(28rem, calc(100svh - 5.5rem))" }}
                 data-testid="notifications-menu"
               >
-                <div className="border-b border-[var(--htc-border)] px-3 py-2">
-                  <p className="text-xs font-medium uppercase tracking-wide text-[var(--htc-dusty)]">
-                    Notifications
-                  </p>
-                  <p className="mt-0.5 text-xs ws-muted">
-                    Awareness items only. Routine activity lives on Today and
-                    each relationship timeline.
-                  </p>
+                <div className="flex items-start justify-between gap-3 border-b border-[var(--htc-border)] px-3 py-2">
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium uppercase tracking-wide text-[var(--htc-dusty)]">
+                      Notifications
+                    </p>
+                    <p className="mt-0.5 text-xs ws-muted">
+                      Awareness items only. Routine activity lives on Today and
+                      each relationship timeline.
+                    </p>
+                  </div>
+                  {unreadCount > 0 ? (
+                    <button
+                      type="button"
+                      className="shrink-0 text-xs font-medium text-[var(--htc-primary)] underline-offset-4 hover:underline"
+                      onClick={() => void dismissAll()}
+                      data-testid="notifications-dismiss-all"
+                    >
+                      Dismiss all
+                    </button>
+                  ) : null}
                 </div>
-                {unread.length === 0 ? (
+                {unreadCount === 0 ? (
                   <p className="px-3 py-4 text-sm ws-muted">No new alerts</p>
                 ) : (
-                  <ul className="max-h-80 overflow-y-auto py-1">
-                    {unread.map((n) => {
+                  <ul className="max-h-80 overflow-y-auto overscroll-contain py-1">
+                    {items.map((n) => {
                       const destination = notificationDestinationLabel(
                         n as Notification,
                         n.venueName,
@@ -93,13 +148,18 @@ export function TopBar({
                       return (
                         <li
                           key={n.id}
-                          className="border-b border-[var(--htc-border)] last:border-0"
+                          className="flex items-stretch gap-1 border-b border-[var(--htc-border)] last:border-0"
                         >
                           <NotificationNavLink
                             notificationId={n.id}
                             href={notificationHref(n as Notification)}
-                            className="block px-3 py-2.5 hover:bg-[var(--htc-linen)]/60"
-                            onNavigate={() => setOpen(false)}
+                            className="min-w-0 flex-1 px-3 py-2.5 hover:bg-[var(--htc-linen)]/60"
+                            onNavigate={() => {
+                              setOpen(false);
+                              setItems((prev) =>
+                                prev.filter((row) => row.id !== n.id),
+                              );
+                            }}
                           >
                             <p className="truncate text-sm font-medium text-foreground">
                               {n.title}
@@ -110,6 +170,19 @@ export function TopBar({
                               {formatRelativeDay(n.createdAt)}
                             </p>
                           </NotificationNavLink>
+                          <button
+                            type="button"
+                            className="shrink-0 px-2.5 text-xs ws-muted hover:bg-[var(--htc-linen)]/60 hover:text-foreground"
+                            aria-label={`Dismiss ${n.title}`}
+                            data-testid="notification-dismiss"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              void dismissOne(n.id);
+                            }}
+                          >
+                            Dismiss
+                          </button>
                         </li>
                       );
                     })}
