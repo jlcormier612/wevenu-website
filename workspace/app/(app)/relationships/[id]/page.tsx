@@ -6,7 +6,9 @@ import { LuvRelationshipAdvisor } from "@/components/luv/luv-relationship-adviso
 import { LegalComplianceCard } from "@/components/relationships/legal-compliance-card";
 import { LifecycleActions } from "@/components/relationships/lifecycle-actions";
 import { ProductSyncPanel } from "@/components/relationships/product-sync-panel";
-import { SalesOffersPanel } from "@/components/relationships/sales-offers-panel";
+import { SalesOffersSummary } from "@/components/relationships/sales-offers-summary";
+import { StandardDiscountEligibilityPanel } from "@/components/relationships/standard-discount-eligibility-panel";
+import { resolveRelationshipStandardDiscount } from "@shared/relationships";
 import {
   RelationshipDetails,
   RelationshipSnapshot,
@@ -219,6 +221,7 @@ export default async function RelationshipDetailPage({
   /** Same hard switch as snapshot: subscribed wins; Sales / !subscribed hides customer-only controls. */
   const showCustomerActions =
     resolveSnapshotMode(relationship, preferredView) === "cs";
+  const standardDiscount = resolveRelationshipStandardDiscount(relationship);
 
   return (
     <div className="space-y-6">
@@ -286,6 +289,7 @@ export default async function RelationshipDetailPage({
         canSuspend={canProvisionProduct}
         canManageBilling={canEditRelationships || canViewFinance}
         canOwnerTools={canOwnerTools}
+        canCreateCustomOffer={canProvisionProduct && !relationship.subscribedAt}
         ownerEmail={relationship.owner.email}
         ownerFirstName={relationship.owner.firstName}
         venueName={relationship.venue.name}
@@ -297,17 +301,19 @@ export default async function RelationshipDetailPage({
         }
       />
       {!relationship.subscribedAt ? (
-        <SalesOffersPanel
-          relationshipId={id}
-          venueName={relationship.venue.name}
-          ownerName={`${relationship.owner.firstName} ${relationship.owner.lastName}`.trim()}
-          ownerEmail={relationship.owner.email}
-          planId={relationship.planId}
-          canManage={canProvisionProduct}
-          foundingMember={Boolean(relationship.foundingMember)}
-          welcomeBackRequested={Boolean(relationship.welcomeBackRequested)}
-          welcomeBackVerified={relationship.welcomeBackVerified}
-        />
+        <>
+          <StandardDiscountEligibilityPanel
+            relationshipId={id}
+            eligibility={standardDiscount.eligibility}
+            evidence={standardDiscount.evidence}
+            canEdit={canEditRelationships}
+            additionalVenueQualified={false}
+          />
+          <SalesOffersSummary
+            relationshipId={id}
+            canManage={canProvisionProduct}
+          />
+        </>
       ) : null}
       <StatusMoveControl relationship={relationship} />
       <CustomerSuccessPanels relationship={relationship} />

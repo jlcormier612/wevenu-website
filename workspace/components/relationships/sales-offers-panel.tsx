@@ -433,6 +433,18 @@ function ChoiceCard({
   );
 }
 
+type PanelProps = Props & {
+  /** Stage 1E dedicated builder page — skip inline list shell */
+  dedicatedPage?: boolean;
+  /** Open existing offer on mount */
+  initialOfferId?: string | null;
+  /** Start a new draft editor on mount */
+  startNew?: boolean;
+  returnHref?: string;
+  /** Relationship-level eligibility (Stage 1E) — preferred over CRM flag hints */
+  relationshipStandardDiscountEligibility?: SalesOfferStandardDiscountEligibility;
+};
+
 export function SalesOffersPanel({
   relationshipId,
   venueName,
@@ -443,30 +455,52 @@ export function SalesOffersPanel({
   foundingMember = false,
   welcomeBackRequested = false,
   welcomeBackVerified = "none",
-}: Props) {
+  dedicatedPage = false,
+  initialOfferId = null,
+  startNew = false,
+  returnHref,
+  relationshipStandardDiscountEligibility,
+}: PanelProps) {
   const [offers, setOffers] = useState<OfferRow[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [relationshipMissing, setRelationshipMissing] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [dirty, setDirty] = useState(false);
-  const [mode, setMode] = useState<"list" | "edit">("list");
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [mode, setMode] = useState<"list" | "edit">(
+    dedicatedPage && (startNew || initialOfferId) ? "edit" : "list",
+  );
+  const [editingId, setEditingId] = useState<string | null>(
+    dedicatedPage && initialOfferId ? initialOfferId : null,
+  );
   const [expectedRevision, setExpectedRevision] = useState(1);
   const wevenHint =
-    welcomeBackRequested &&
-    welcomeBackVerified !== "rejected" &&
-    welcomeBackVerified !== "expired";
+    relationshipStandardDiscountEligibility === "former_weven" ||
+    (welcomeBackRequested &&
+      welcomeBackVerified !== "rejected" &&
+      welcomeBackVerified !== "expired");
+  const foundingHint =
+    relationshipStandardDiscountEligibility === "founding" || foundingMember;
 
-  const [editor, setEditor] = useState<EditorState>(() =>
-    defaultEditor(planId, venueName, {
-      foundingMember,
-      wevenHint:
-        welcomeBackRequested &&
-        welcomeBackVerified !== "rejected" &&
-        welcomeBackVerified !== "expired",
-    }),
-  );
+  const [editor, setEditor] = useState<EditorState>(() => {
+    if (relationshipStandardDiscountEligibility) {
+      const base = defaultEditor(planId, venueName, {});
+      return {
+        ...base,
+        standardDiscountEligibility: relationshipStandardDiscountEligibility,
+        standardDiscountEvidence:
+          relationshipStandardDiscountEligibility === "not_established"
+            ? "not_established"
+            : relationshipStandardDiscountEligibility === "none"
+              ? "explicitly_none"
+              : "founder_recorded",
+      };
+    }
+    return defaultEditor(planId, venueName, {
+      foundingMember: foundingHint,
+      wevenHint,
+    });
+  });
   const [livePreview, setLivePreview] = useState<Preview | null>(null);
   const [revisions, setRevisions] = useState<RevisionRow[]>([]);
 
@@ -503,6 +537,42 @@ export function SalesOffersPanel({
   useEffect(() => {
     if (canManage) void load();
   }, [canManage, load]);
+
+  useEffect(() => {
+    if (!dedicatedPage || !canManage || !initialOfferId) return;
+    let cancelled = false;
+    void (async () => {
+      setBusy(true);
+      try {
+        const res = await fetch(
+          `/api/relationships/sales-offers?relationshipId=${encodeURIComponent(relationshipId)}&offerId=${encodeURIComponent(initialOfferId)}&revisions=1`,
+        );
+        const data = (await res.json()) as {
+          ok?: boolean;
+          offer?: OfferRow;
+          revisions?: RevisionRow[];
+          error?: string;
+        };
+        if (cancelled) return;
+        if (!res.ok || !data.ok || !data.offer) {
+          setError(data.error || "Could not open offer.");
+          return;
+        }
+        setEditingId(data.offer.id);
+        setExpectedRevision(data.offer.revision);
+        setEditor(editorFromOffer(data.offer));
+        setLivePreview(data.offer.preview);
+        setRevisions(data.revisions || []);
+        setDirty(false);
+        setMode("edit");
+      } finally {
+        if (!cancelled) setBusy(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [dedicatedPage, canManage, initialOfferId, relationshipId]);
 
   async function refreshPreview(next = editor) {
     const res = await fetch("/api/relationships/sales-offers", {
@@ -574,9 +644,26 @@ export function SalesOffersPanel({
     if (relationshipMissing) return;
     setEditingId(null);
     setExpectedRevision(1);
-    setEditor(
-      defaultEditor(planId, venueName, { foundingMember, wevenHint }),
-    );
+    if (relationshipStandardDiscountEligibility) {
+      const base = defaultEditor(planId, venueName, {});
+      setEditor({
+        ...base,
+        standardDiscountEligibility: relationshipStandardDiscountEligibility,
+        standardDiscountEvidence:
+          relationshipStandardDiscountEligibility === "not_established"
+            ? "not_established"
+            : relationshipStandardDiscountEligibility === "none"
+              ? "explicitly_none"
+              : "founder_recorded",
+      });
+    } else {
+      setEditor(
+        defaultEditor(planId, venueName, {
+          foundingMember: foundingHint,
+          wevenHint,
+        }),
+      );
+    }
     setRevisions([]);
     setMessage(null);
     setDirty(false);
@@ -792,6 +879,10 @@ export function SalesOffersPanel({
     ) {
       return;
     }
+    if (dedicatedPage && returnHref) {
+      window.location.href = returnHref;
+      return;
+    }
     setMode("list");
     setEditingId(null);
     setDirty(false);
@@ -835,9 +926,18 @@ export function SalesOffersPanel({
 
   return (
     <Panel
-      title="Custom offers"
+      title={dedicatedPage ? "Custom offer builder" : "Custom offers"}
       action={
-        mode === "list" ? (
+        dedicatedPage || mode === "edit" ? (
+          <button
+            type="button"
+            className="ws-btn"
+            onClick={backToList}
+            data-testid="back-to-relationship"
+          >
+            {returnHref ? "Back to Relationship" : "Back to Offers"}
+          </button>
+        ) : (
           <button
             type="button"
             className="ws-btn ws-btn-primary"
@@ -845,10 +945,6 @@ export function SalesOffersPanel({
             data-testid="create-custom-offer"
           >
             Create Custom Offer
-          </button>
-        ) : (
-          <button type="button" className="ws-btn" onClick={backToList}>
-            Back to Offers
           </button>
         )
       }
@@ -871,7 +967,7 @@ export function SalesOffersPanel({
         </p>
       ) : null}
 
-      {mode === "list" ? (
+      {mode === "list" && !dedicatedPage ? (
         <div className="space-y-3" data-testid="sales-offers-list">
           {offers.length === 0 ? (
             <p className="text-sm text-[var(--htc-muted)]">
