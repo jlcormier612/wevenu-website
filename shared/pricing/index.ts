@@ -445,6 +445,8 @@ export {
   validateSalesOfferTerms,
   computeSalesOfferPreview,
   projectEligibleDiscount,
+  defaultEligibilityFromCrmHints,
+  normalizeStandardDiscountEvidence,
   monthlyRecurringFromNormalized,
   hashNormalizedTerms,
   crmPlanIdToSaasPlanKey,

@@ -65,6 +65,8 @@ type OfferRow = {
   white_glove_amount_cents: number;
   expires_at: string | null;
   replaces_standard_promos: boolean;
+  standard_discount_eligibility: SalesOfferRecord["standardDiscountEligibility"];
+  standard_discount_evidence: SalesOfferRecord["standardDiscountEvidence"];
   revision: number;
   created_by_user_id: string | null;
   created_by_email: string | null;
@@ -124,6 +126,10 @@ function mapRow(row: OfferRow): SalesOfferRecord {
     whiteGloveAmountCents: row.white_glove_amount_cents,
     expiresAt: row.expires_at,
     replacesStandardPromos: row.replaces_standard_promos,
+    standardDiscountEligibility:
+      row.standard_discount_eligibility ?? "not_established",
+    standardDiscountEvidence:
+      row.standard_discount_evidence ?? "not_established",
     revision: row.revision,
     createdByUserId: row.created_by_user_id,
     createdByEmail: row.created_by_email,
@@ -186,6 +192,8 @@ function toInsert(record: SalesOfferRecord): Record<string, unknown> {
     white_glove_amount_cents: record.whiteGloveAmountCents,
     expires_at: record.expiresAt,
     replaces_standard_promos: record.replacesStandardPromos,
+    standard_discount_eligibility: record.standardDiscountEligibility,
+    standard_discount_evidence: record.standardDiscountEvidence,
     revision: record.revision,
     created_by_user_id: record.createdByUserId,
     created_by_email: record.createdByEmail,
@@ -365,6 +373,8 @@ export function createPostgresSalesOfferStore(
         whiteGloveAmountCents: existing.whiteGloveAmountCents,
         expiresAt: existing.expiresAt,
         replacesStandardPromos: existing.replacesStandardPromos,
+        standardDiscountEligibility: existing.standardDiscountEligibility,
+        standardDiscountEvidence: existing.standardDiscountEvidence,
       };
       const validated = validateSalesOfferTerms(termsInput);
       if (!validated.ok) throw new SalesOfferValidationError(validated.issues);
@@ -402,6 +412,8 @@ export function createPostgresSalesOfferStore(
           white_glove_amount_cents: n.whiteGloveAmountCents,
           expires_at: n.expiresAt,
           replaces_standard_promos: n.replacesStandardPromos,
+          standard_discount_eligibility: n.standardDiscountEligibility,
+          standard_discount_evidence: n.standardDiscountEvidence,
           revision: nextRevision,
           terms_hash: validated.termsHash,
           updated_by_user_id: uuidOrNull(input.updatedByUserId),

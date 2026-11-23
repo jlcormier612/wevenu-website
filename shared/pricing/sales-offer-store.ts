@@ -104,6 +104,8 @@ function applyNormalized(
     whiteGloveAmountCents: normalized.whiteGloveAmountCents,
     expiresAt: normalized.expiresAt,
     replacesStandardPromos: normalized.replacesStandardPromos,
+    standardDiscountEligibility: normalized.standardDiscountEligibility,
+    standardDiscountEvidence: normalized.standardDiscountEvidence,
     termsHash,
   };
 }
@@ -185,6 +187,9 @@ export function createMemorySalesOfferStore(): SalesOfferStore {
         whiteGloveAmountCents: validated.normalized.whiteGloveAmountCents,
         expiresAt: validated.normalized.expiresAt,
         replacesStandardPromos: validated.normalized.replacesStandardPromos,
+        standardDiscountEligibility:
+          validated.normalized.standardDiscountEligibility,
+        standardDiscountEvidence: validated.normalized.standardDiscountEvidence,
         revision: 1,
         createdByUserId: input.createdByUserId ?? null,
         createdByEmail: input.createdByEmail ?? null,
@@ -252,6 +257,8 @@ export function createMemorySalesOfferStore(): SalesOfferStore {
         whiteGloveAmountCents: existing.whiteGloveAmountCents,
         expiresAt: existing.expiresAt,
         replacesStandardPromos: existing.replacesStandardPromos,
+        standardDiscountEligibility: existing.standardDiscountEligibility,
+        standardDiscountEvidence: existing.standardDiscountEvidence,
       };
       const validated = validateSalesOfferTerms(termsInput);
       if (!validated.ok) throw new SalesOfferValidationError(validated.issues);
