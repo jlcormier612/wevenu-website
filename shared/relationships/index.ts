@@ -6,6 +6,7 @@
  */
 
 export type * from "./types";
+export { isActionableSupportFeedbackType } from "./types";
 export {
   normalizeEmail,
   normalizeVenueName,

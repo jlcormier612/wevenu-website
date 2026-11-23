@@ -5,7 +5,11 @@ import { Sidebar } from "@/components/layout/sidebar";
 import { TopBar } from "@/components/layout/top-bar";
 import { WorkspaceChrome } from "@/components/layout/workspace-chrome";
 import { ImpersonateBanner } from "@/components/team/impersonate-controls";
-import { getNotifications, getRelationships } from "@/lib/data/store";
+import {
+  getNotifications,
+  getRelationships,
+  getSupportInboxItems,
+} from "@/lib/data/store";
 import { permissionForPath, permissionsForRole } from "@/lib/program4/permissions";
 import {
   getActingMember,
@@ -17,6 +21,7 @@ import {
   countOpenSupportItemsAcross,
   relationshipHasOpenSupport,
 } from "@/lib/sales-cs";
+import { isActionableSupportFeedbackType } from "@shared/relationships";
 
 export async function AppShell({ children }: { children: React.ReactNode }) {
   // warmLiveStore runs once in app/(app)/layout.tsx before this shell.
@@ -51,7 +56,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       venueName: rel?.venue.name ?? null,
     };
   });
-  // Badge = open Feedback & support *items* (not relationships).
+  // Badge = open actionable venue Get Help / Bug items (not ideas/ratings).
   const openSupportCount = countOpenSupportItemsAcross(openSupportRels);
   const openSupportHref =
     openSupportRels.length === 1
@@ -59,6 +64,11 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       : openSupportRels.length > 1
         ? "/customer-success?stage=needs_support&view=list"
         : "/customer-success?stage=needs_support";
+  // Partner Support Inbox — central discovery without opening every relationship.
+  const openPartnerSupportCount = getSupportInboxItems({
+    surface: "all",
+    status: "open",
+  }).filter((i) => isActionableSupportFeedbackType(i.type)).length;
   const homeHref = permissions.includes("view_business_dashboard")
     ? "/business"
     : "/today";
@@ -85,6 +95,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           unreadCount={unreadCount}
           openSupportCount={openSupportCount}
           openSupportHref={openSupportHref}
+          openPartnerSupportCount={openPartnerSupportCount}
           permissions={permissions}
           homeHref={homeHref}
         />

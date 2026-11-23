@@ -62,7 +62,12 @@ function stampFromFind(
 function recountOpenFeedback(relationship: Relationship): number {
   const items = relationship.openFeedbackItems ?? [];
   if (items.length === 0) return relationship.supportOpenCount || 0;
-  return items.filter((i) => i.status === "open").length;
+  // Stage 1E: only Get Help / Report a Bug inflate supportOpenCount / Needs Support.
+  return items.filter(
+    (i) =>
+      i.status === "open" &&
+      (i.type === "support" || i.type === "bug"),
+  ).length;
 }
 
 /** subscribedAt + 1 UTC calendar year (keeps renewalDate in sync on subscribe). */
@@ -1966,7 +1971,11 @@ export async function mutateRelationship(opts: {
       mintedFeedbackItemId = item.id;
       mintedFeedbackType = item.type;
       syncSupportOpenCountFromItems(relationship);
-      if (item.status === "open") {
+      // Ideas / ratings stay on the relationship for review without Needs Support pin.
+      if (
+        item.status === "open" &&
+        (item.type === "support" || item.type === "bug")
+      ) {
         promoteToNeedsSupport(relationship);
       }
     } else if (opts.bumpSupportOpenCount) {
