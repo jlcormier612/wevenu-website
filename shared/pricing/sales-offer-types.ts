@@ -44,6 +44,27 @@ export type SalesOfferWhiteGloveMode =
   | "custom"
   | "waived";
 
+/**
+ * Standard discount category for post-promo / fallback pricing.
+ * `not_established` is not the same as `none` (explicitly no discount).
+ */
+export type SalesOfferStandardDiscountEligibility =
+  | "not_established"
+  | "former_weven"
+  | "founding"
+  | "additional_venue"
+  | "none";
+
+/**
+ * How the eligibility value was established — durable for Stage 2.
+ * Founder-recorded ≠ application-confirmed ≠ unknown ≠ explicitly none.
+ */
+export type SalesOfferStandardDiscountEvidence =
+  | "not_established"
+  | "founder_recorded"
+  | "application_confirmed"
+  | "explicitly_none";
+
 /** Destination-tier replacement fixed monthly amounts (cents). */
 export type SalesOfferFixedReplacementPrices = Partial<
   Record<"growing" | "professional", number>
@@ -67,6 +88,8 @@ export type SalesOfferTermsInput = {
   whiteGloveAmountCents?: number | null;
   expiresAt?: string | null;
   replacesStandardPromos?: boolean;
+  standardDiscountEligibility?: SalesOfferStandardDiscountEligibility;
+  standardDiscountEvidence?: SalesOfferStandardDiscountEvidence;
 };
 
 export type SalesOfferRecord = {
@@ -95,6 +118,8 @@ export type SalesOfferRecord = {
   whiteGloveAmountCents: number;
   expiresAt: string | null;
   replacesStandardPromos: boolean;
+  standardDiscountEligibility: SalesOfferStandardDiscountEligibility;
+  standardDiscountEvidence: SalesOfferStandardDiscountEvidence;
   revision: number;
   createdByUserId: string | null;
   createdByEmail: string | null;
@@ -151,7 +176,7 @@ export type SalesOfferUpdateInput = {
   changeSummary?: string | null;
 };
 
-/** Verified or strongly indicated eligibility for post-intro projections. */
+/** CRM application hints used only to default the Stage 1C selector. */
 export type SalesOfferEligibilityHints = {
   foundingEligible?: boolean;
   /** Former Weven — welcome-back requested / verified, or known Weven grant. */
@@ -161,8 +186,13 @@ export type SalesOfferEligibilityHints = {
 
 export type SalesOfferEligibleProjection = {
   known: boolean;
+  /** True when amount is conditional (Founding slot / org qualification). */
+  conditional: boolean;
   amountCents: number | null;
   label: string;
+  /** Concise customer-facing after-intro sentence. */
+  customerCopy: string;
+  /** Founder-facing estimate note (not for customer preview). */
   explanation: string;
 };
 
@@ -219,4 +249,6 @@ export type NormalizedSalesOfferTerms = {
   whiteGloveAmountCents: number;
   expiresAt: string | null;
   replacesStandardPromos: boolean;
+  standardDiscountEligibility: SalesOfferStandardDiscountEligibility;
+  standardDiscountEvidence: SalesOfferStandardDiscountEvidence;
 };

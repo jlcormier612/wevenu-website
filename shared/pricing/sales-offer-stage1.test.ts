@@ -54,7 +54,7 @@ describe("sales-offer Stage 1 validation", () => {
     const preview = computeSalesOfferPreview(v.normalized);
     assert.equal(preview.listAmountCents, 24900);
     assert.equal(preview.monthlyRecurringCents, 21165);
-    assert.match(preview.tierUpgradeLabel, /follows/i);
+    assert.match(preview.tierUpgradeLabel, /% discount applies to the new plan/i);
   });
 
   it("applies fixed-dollar discount", () => {
@@ -117,9 +117,10 @@ describe("sales-offer Stage 1 validation", () => {
     assert.equal(v.ok, true);
     if (!v.ok) return;
     const preview = computeSalesOfferPreview(v.normalized);
-    assert.match(preview.durationLabel, /3 billing/);
-    assert.match(preview.afterIntroLabel, /eligible standard discount/i);
+    assert.match(preview.durationLabel, /first 3 months/i);
+    assert.match(preview.afterIntroLabel, /unless a qualifying discount is established/i);
     assert.equal(preview.afterIntroMonthlyCents, null);
+    assert.match(preview.tierUpgradeLabel, /during the 3-month promotional period/i);
   });
 
   it("supports WG weven / custom / waived", () => {
@@ -152,21 +153,69 @@ describe("sales-offer Stage 1 validation", () => {
     assert.ok(preview.lines.every((l) => !/internal/i.test(l) || /does not/.test(l)));
   });
 
-  it("projects eligible discounts only when eligibility is indicated", () => {
-    const { projectEligibleDiscount } = require("./sales-offer-compute") as typeof import("./sales-offer-compute");
-    const unknown = projectEligibleDiscount("growing", {});
+  it("projects eligible discounts from durable eligibility selection", () => {
+    const {
+      projectEligibleDiscount,
+      normalizeStandardDiscountEvidence,
+    } = require("./sales-offer-compute") as typeof import("./sales-offer-compute");
+
+    const unknown = projectEligibleDiscount("growing", "not_established");
     assert.equal(unknown.known, false);
     assert.equal(unknown.amountCents, null);
+    assert.match(unknown.customerCopy, /unless a qualifying discount is established/i);
 
-    const weven = projectEligibleDiscount("growing", { wevenEligible: true });
+    const weven = projectEligibleDiscount("growing", "former_weven");
     assert.equal(weven.known, true);
+    assert.equal(weven.conditional, false);
     assert.equal(weven.amountCents, 19920);
+    assert.match(weven.customerCopy, /former Weven discount of 20%/i);
 
-    const founding = projectEligibleDiscount("growing", {
-      foundingEligible: true,
-    });
+    const founding = projectEligibleDiscount("growing", "founding");
     assert.equal(founding.known, true);
+    assert.equal(founding.conditional, true);
     assert.equal(founding.amountCents, 22410);
+    assert.match(founding.customerCopy, /may apply if you qualify/i);
+
+    const none = projectEligibleDiscount("growing", "none");
+    assert.equal(none.known, true);
+    assert.equal(none.amountCents, 24900);
+
+    assert.equal(
+      normalizeStandardDiscountEvidence("not_established"),
+      "not_established",
+    );
+    assert.equal(normalizeStandardDiscountEvidence("none"), "explicitly_none");
+    assert.equal(
+      normalizeStandardDiscountEvidence("former_weven", "application_confirmed"),
+      "application_confirmed",
+    );
+  });
+
+  it("persists standard discount eligibility on terms and preview copy", () => {
+    const v = validateSalesOfferTerms(
+      baseTerms({
+        planKey: "growing",
+        pricingKind: "amount_off",
+        amountOffCents: 5000,
+        durationMode: "billing_cycles",
+        durationBillingCycles: 6,
+        afterIntroPricing: "eligible_discount",
+        standardDiscountEligibility: "former_weven",
+        standardDiscountEvidence: "founder_recorded",
+      }),
+    );
+    assert.equal(v.ok, true);
+    if (!v.ok) return;
+    assert.equal(v.normalized.standardDiscountEligibility, "former_weven");
+    assert.equal(v.normalized.standardDiscountEvidence, "founder_recorded");
+    const preview = computeSalesOfferPreview(v.normalized);
+    assert.equal(preview.afterIntroMonthlyCents, 19920);
+    assert.match(preview.afterIntroLabel, /former Weven discount of 20%/i);
+    assert.doesNotMatch(preview.afterIntroLabel, /verified|on file|database/i);
+    assert.match(
+      preview.tierUpgradeLabel,
+      /during the 6-month promotional period.*\$50 monthly discount/i,
+    );
   });
 });
 
@@ -274,6 +323,48 @@ describe("sales-offer Stage 1 store", () => {
           terms: baseTerms({ pricingKind: "percent_off", percentOff: -5 }),
         }),
       SalesOfferValidationError,
+    );
+  });
+
+  it("persists and revises standard discount eligibility", async () => {
+    const created = await store.createDraft({
+      relationshipId: "rel-elig",
+      internalName: "Eligibility draft",
+      terms: baseTerms({
+        pricingKind: "percent_off",
+        percentOff: 20,
+        durationMode: "billing_cycles",
+        durationBillingCycles: 6,
+        afterIntroPricing: "eligible_discount",
+        standardDiscountEligibility: "not_established",
+      }),
+    });
+    assert.equal(created.standardDiscountEligibility, "not_established");
+    assert.equal(created.standardDiscountEvidence, "not_established");
+
+    const updated = await store.updateDraft({
+      offerId: created.id,
+      relationshipId: "rel-elig",
+      expectedRevision: 1,
+      terms: baseTerms({
+        pricingKind: "percent_off",
+        percentOff: 20,
+        durationMode: "billing_cycles",
+        durationBillingCycles: 6,
+        afterIntroPricing: "eligible_discount",
+        standardDiscountEligibility: "former_weven",
+        standardDiscountEvidence: "founder_recorded",
+      }),
+      changeSummary: "Recorded former Weven eligibility",
+    });
+    assert.equal(updated.standardDiscountEligibility, "former_weven");
+    assert.equal(updated.standardDiscountEvidence, "founder_recorded");
+    const revisions = await store.listRevisions(created.id);
+    assert.equal(revisions[0]?.changeSummary, "Recorded former Weven eligibility");
+    assert.equal(
+      (revisions[0]?.snapshot as { standardDiscountEligibility?: string })
+        .standardDiscountEligibility,
+      "former_weven",
     );
   });
 });

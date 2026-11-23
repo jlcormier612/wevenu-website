@@ -4,19 +4,28 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
-  FOUNDING_PERCENT_OFF,
-  WEVEN_PERCENT_OFF,
   formatUsdFromCents,
   listAmountCents,
 } from "@shared/pricing/catalog";
+import {
+  defaultEligibilityFromCrmHints,
+  normalizeStandardDiscountEvidence,
+  projectEligibleDiscount,
+} from "@shared/pricing/sales-offer-compute";
+import type {
+  SalesOfferStandardDiscountEligibility,
+  SalesOfferStandardDiscountEvidence,
+} from "@shared/pricing/sales-offer-types";
 import type { SaasPlanKey } from "@shared/pricing/types";
 import { Panel, StatusPill } from "@/components/shared/ui";
 import { cn } from "@/lib/utils";
 
 type EligibleProjection = {
   known: boolean;
+  conditional?: boolean;
   amountCents: number | null;
   label: string;
+  customerCopy?: string;
   explanation: string;
 };
 
@@ -67,6 +76,8 @@ type OfferRow = {
   whiteGloveAmountCents: number;
   expiresAt: string | null;
   replacesStandardPromos: boolean;
+  standardDiscountEligibility: SalesOfferStandardDiscountEligibility;
+  standardDiscountEvidence: SalesOfferStandardDiscountEvidence;
   revision: number;
   createdByEmail: string | null;
   updatedByEmail: string | null;
@@ -118,7 +129,23 @@ type EditorState = {
   whiteGloveCustomDollars: string;
   expiresAt: string;
   showTierUpgrade: boolean;
+  standardDiscountEligibility: SalesOfferStandardDiscountEligibility;
+  standardDiscountEvidence: SalesOfferStandardDiscountEvidence;
 };
+
+const ELIGIBILITY_OPTIONS: Array<{
+  value: SalesOfferStandardDiscountEligibility;
+  label: string;
+}> = [
+  { value: "not_established", label: "Not established yet" },
+  { value: "former_weven", label: "Former Weven customer — 20%" },
+  {
+    value: "founding",
+    label: "Founding Member — 10% (subject to availability)",
+  },
+  { value: "additional_venue", label: "Additional venue — 10%" },
+  { value: "none", label: "No standard discount applies" },
+];
 
 const PLANS: Array<{
   key: SaasPlanKey;
@@ -172,7 +199,18 @@ function durationFromOffer(
   return { durationPreset: "custom", durationBillingCycles: String(cycles) };
 }
 
-function defaultEditor(planId: string, venueName: string): EditorState {
+function defaultEditor(
+  planId: string,
+  venueName: string,
+  crmHints: {
+    foundingMember?: boolean;
+    wevenHint?: boolean;
+  } = {},
+): EditorState {
+  const eligibility = defaultEligibilityFromCrmHints({
+    foundingEligible: Boolean(crmHints.foundingMember),
+    wevenEligible: Boolean(crmHints.wevenHint),
+  });
   return {
     internalName: `${venueName} custom offer`,
     internalNotes: "",
@@ -195,6 +233,8 @@ function defaultEditor(planId: string, venueName: string): EditorState {
     whiteGloveCustomDollars: "299",
     expiresAt: "",
     showTierUpgrade: false,
+    standardDiscountEligibility: eligibility.standardDiscountEligibility,
+    standardDiscountEvidence: eligibility.standardDiscountEvidence,
   };
 }
 
@@ -232,6 +272,10 @@ function editorFromOffer(offer: OfferRow): EditorState {
     ),
     expiresAt: offer.expiresAt ? offer.expiresAt.slice(0, 10) : "",
     showTierUpgrade: offer.pricingKind !== "standard",
+    standardDiscountEligibility:
+      offer.standardDiscountEligibility ?? "not_established",
+    standardDiscountEvidence:
+      offer.standardDiscountEvidence ?? "not_established",
   };
 }
 
@@ -295,6 +339,11 @@ function buildTerms(editor: EditorState) {
       ? new Date(`${editor.expiresAt}T23:59:59.000Z`).toISOString()
       : null,
     replacesStandardPromos: true,
+    standardDiscountEligibility: editor.standardDiscountEligibility,
+    standardDiscountEvidence: normalizeStandardDiscountEvidence(
+      editor.standardDiscountEligibility,
+      editor.standardDiscountEvidence,
+    ),
   };
 }
 
@@ -404,8 +453,19 @@ export function SalesOffersPanel({
   const [mode, setMode] = useState<"list" | "edit">("list");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [expectedRevision, setExpectedRevision] = useState(1);
+  const wevenHint =
+    welcomeBackRequested &&
+    welcomeBackVerified !== "rejected" &&
+    welcomeBackVerified !== "expired";
+
   const [editor, setEditor] = useState<EditorState>(() =>
-    defaultEditor(planId, venueName),
+    defaultEditor(planId, venueName, {
+      foundingMember,
+      wevenHint:
+        welcomeBackRequested &&
+        welcomeBackVerified !== "rejected" &&
+        welcomeBackVerified !== "expired",
+    }),
   );
   const [livePreview, setLivePreview] = useState<Preview | null>(null);
   const [revisions, setRevisions] = useState<RevisionRow[]>([]);
@@ -510,20 +570,37 @@ export function SalesOffersPanel({
     };
   }, [editor]);
 
-  const wevenHint =
-    welcomeBackRequested &&
-    welcomeBackVerified !== "rejected" &&
-    welcomeBackVerified !== "expired";
-
   function openCreate() {
     if (relationshipMissing) return;
     setEditingId(null);
     setExpectedRevision(1);
-    setEditor(defaultEditor(planId, venueName));
+    setEditor(
+      defaultEditor(planId, venueName, { foundingMember, wevenHint }),
+    );
     setRevisions([]);
     setMessage(null);
     setDirty(false);
     setMode("edit");
+  }
+
+  function setEligibility(next: SalesOfferStandardDiscountEligibility) {
+    const prior = editor.standardDiscountEligibility;
+    const priorEvidence = editor.standardDiscountEvidence;
+    let evidence: SalesOfferStandardDiscountEvidence;
+    if (next === "not_established") evidence = "not_established";
+    else if (next === "none") evidence = "explicitly_none";
+    else if (
+      next === prior &&
+      priorEvidence === "application_confirmed"
+    ) {
+      evidence = "application_confirmed";
+    } else {
+      evidence = "founder_recorded";
+    }
+    patchEditor({
+      standardDiscountEligibility: next,
+      standardDiscountEvidence: evidence,
+    });
   }
 
   async function openOffer(offer: OfferRow) {
@@ -744,6 +821,17 @@ export function SalesOffersPanel({
   const isSpecial = editor.pricingKind !== "standard";
   const showAfterIntro =
     isSpecial && editor.durationPreset !== "ongoing";
+  const showEligibilitySelector =
+    (showAfterIntro && editor.afterIntroPricing === "eligible_discount") ||
+    (isSpecial &&
+      editor.pricingKind === "fixed_rate" &&
+      editor.fixedUpgradePolicy === "replace" &&
+      editor.fixedUpgradeFallback === "eligible_discount" &&
+      editor.showTierUpgrade);
+  const eligibilityProjection = projectEligibleDiscount(
+    editor.planKey,
+    editor.standardDiscountEligibility,
+  );
 
   return (
     <Panel
@@ -1074,7 +1162,7 @@ export function SalesOffersPanel({
                         <ChoiceCard
                           selected={editor.afterIntroPricing === "standard_list"}
                           title="Regular subscription price"
-                          detail={`The standard price for their subscription tier at that time. Estimate at today’s prices: ${formatUsdFromCents(listAmountCents(editor.planKey))}/month.`}
+                          detail={`Estimate at today’s prices: ${formatUsdFromCents(listAmountCents(editor.planKey))}/month.`}
                           onClick={() =>
                             patchEditor({ afterIntroPricing: "standard_list" })
                           }
@@ -1084,13 +1172,7 @@ export function SalesOffersPanel({
                             editor.afterIntroPricing === "eligible_discount"
                           }
                           title="Their eligible discounted price"
-                          detail={
-                            wevenHint
-                              ? `Apply their existing former Weven (${WEVEN_PERCENT_OFF}% off) if still eligible. Estimate at today’s prices: ${formatUsdFromCents(Math.round(listAmountCents(editor.planKey) * (1 - WEVEN_PERCENT_OFF / 100)))}/month.`
-                              : foundingMember
-                                ? `Apply their Founding (${FOUNDING_PERCENT_OFF}% off) if still eligible. Estimate at today’s prices: ${formatUsdFromCents(Math.round(listAmountCents(editor.planKey) * (1 - FOUNDING_PERCENT_OFF / 100)))}/month.`
-                                : "Apply their existing Founding, former Weven, or other qualifying discount, if still eligible. No verified eligibility is on file for this prospect — after the special period they would typically return to the then-current regular tier price unless eligibility is confirmed later."
-                          }
+                          detail="Apply their qualifying standard discount after the promo ends."
                           onClick={() =>
                             patchEditor({
                               afterIntroPricing: "eligible_discount",
@@ -1098,10 +1180,43 @@ export function SalesOffersPanel({
                           }
                         />
                       </div>
+                    </div>
+                  ) : null}
+
+                  {showEligibilitySelector ? (
+                    <div
+                      className="max-w-md"
+                      data-testid="standard-discount-eligibility"
+                    >
+                      <label className="block text-sm">
+                        <span className="mb-1 block font-medium">
+                          Existing Customer Discounts
+                        </span>
+                        <span className="mb-1.5 block text-xs text-[var(--htc-muted)]">
+                          Does this prospect qualify for one of our standard
+                          discounts?
+                        </span>
+                        <select
+                          className="ws-input w-full"
+                          value={editor.standardDiscountEligibility}
+                          onChange={(e) =>
+                            setEligibility(
+                              e.target
+                                .value as SalesOfferStandardDiscountEligibility,
+                            )
+                          }
+                        >
+                          {ELIGIBILITY_OPTIONS.map((opt) => (
+                            <option key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
                       <p className="mt-2 text-xs text-[var(--htc-muted)]">
-                        Estimates use today’s list prices. Future charges follow
-                        the then-current tier list and eligibility — not a
-                        guaranteed frozen amount.
+                        {eligibilityProjection.amountCents != null
+                          ? `${eligibilityProjection.conditional ? "Conditional estimate" : "Estimate"} at today’s prices: ${formatUsdFromCents(eligibilityProjection.amountCents)}/month.`
+                          : eligibilityProjection.explanation}
                       </p>
                     </div>
                   ) : null}
@@ -1369,22 +1484,9 @@ export function SalesOffersPanel({
                     </p>
                     <p>{livePreview.durationLabel}.</p>
                     {isSpecial && editor.durationPreset !== "ongoing" ? (
-                      <p>
-                        {editor.afterIntroPricing === "standard_list"
-                          ? `After the special period, the subscription continues at the regular ${livePreview.planDisplayName} rate in effect at that time (estimate today: ${formatUsdFromCents(livePreview.afterIntroStandardEstimateCents)}/month).`
-                          : livePreview.afterIntroEligibleProjection.known &&
-                              livePreview.afterIntroEligibleProjection
-                                .amountCents != null
-                            ? `After the special period: ${livePreview.afterIntroEligibleProjection.label} — estimate ${formatUsdFromCents(livePreview.afterIntroEligibleProjection.amountCents)}/month at today’s prices.`
-                            : livePreview.afterIntroEligibleProjection
-                                .explanation}
-                      </p>
+                      <p>{livePreview.afterIntroLabel}</p>
                     ) : null}
-                    {isSpecial ? (
-                      <p className="text-[var(--htc-muted)]">
-                        {livePreview.tierUpgradeLabel}
-                      </p>
-                    ) : null}
+                    {isSpecial ? <p>{livePreview.tierUpgradeLabel}</p> : null}
                     <p>
                       White Glove onboarding:{" "}
                       {editor.whiteGloveMode === "none"

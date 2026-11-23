@@ -58,7 +58,6 @@ function eligibilityFromRelationship(relationship: {
 
 function serializeOffer(
   offer: Awaited<ReturnType<ReturnType<typeof getSalesOfferStore>["getById"]>>,
-  eligibility: SalesOfferEligibilityHints = {},
 ) {
   if (!offer) return null;
   const validated = validateSalesOfferTerms({
@@ -79,9 +78,12 @@ function serializeOffer(
     whiteGloveAmountCents: offer.whiteGloveAmountCents,
     expiresAt: offer.expiresAt,
     replacesStandardPromos: offer.replacesStandardPromos,
+    standardDiscountEligibility: offer.standardDiscountEligibility,
+    standardDiscountEvidence: offer.standardDiscountEvidence,
   });
+  // Preview uses durable offer eligibility terms — not live CRM guesswork.
   const preview = validated.ok
-    ? computeSalesOfferPreview(validated.normalized, eligibility)
+    ? computeSalesOfferPreview(validated.normalized)
     : null;
   return {
     ...offer,
@@ -136,7 +138,7 @@ export async function GET(request: Request) {
       : undefined;
     return NextResponse.json({
       ok: true,
-      offer: serializeOffer(offer, eligibility),
+      offer: serializeOffer(offer),
       revisions,
       relationship: {
         id: relationship.id,
@@ -158,7 +160,7 @@ export async function GET(request: Request) {
   const offers = await store.listByRelationship(relationshipId);
   return NextResponse.json({
     ok: true,
-    offers: offers.map((o) => serializeOffer(o, eligibility)),
+    offers: offers.map((o) => serializeOffer(o)),
     relationship: {
       id: relationship.id,
       venueName: relationship.venue.name,
@@ -238,7 +240,7 @@ export async function POST(request: Request) {
       });
       return NextResponse.json({
         ok: true,
-        offer: serializeOffer(offer, eligibility),
+        offer: serializeOffer(offer),
         stripeSideEffects: false,
       });
     }
@@ -278,7 +280,7 @@ export async function POST(request: Request) {
       });
       return NextResponse.json({
         ok: true,
-        offer: serializeOffer(offer, eligibility),
+        offer: serializeOffer(offer),
         stripeSideEffects: false,
       });
     }
@@ -302,7 +304,7 @@ export async function POST(request: Request) {
       });
       return NextResponse.json({
         ok: true,
-        offer: serializeOffer(offer, eligibility),
+        offer: serializeOffer(offer),
         stripeSideEffects: false,
       });
     }
@@ -321,7 +323,7 @@ export async function POST(request: Request) {
       });
       return NextResponse.json({
         ok: true,
-        offer: serializeOffer(offer, eligibility),
+        offer: serializeOffer(offer),
         stripeSideEffects: false,
       });
     }
@@ -340,8 +342,9 @@ export async function POST(request: Request) {
       }
       return NextResponse.json({
         ok: true,
-        preview: computeSalesOfferPreview(validated.normalized, eligibility),
+        preview: computeSalesOfferPreview(validated.normalized),
         termsHash: validated.termsHash,
+        // CRM application hints for UI defaults only — not offer commercial terms.
         eligibility,
         stripeSideEffects: false,
       });

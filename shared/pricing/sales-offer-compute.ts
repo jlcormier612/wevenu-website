@@ -25,10 +25,69 @@ import type {
   SalesOfferEligibilityHints,
   SalesOfferEligibleProjection,
   SalesOfferFixedReplacementPrices,
+  SalesOfferStandardDiscountEligibility,
+  SalesOfferStandardDiscountEvidence,
   SalesOfferTermsInput,
   SalesOfferValidationIssue,
   SalesOfferValidationResult,
 } from "./sales-offer-types";
+
+const ELIGIBILITY_VALUES: SalesOfferStandardDiscountEligibility[] = [
+  "not_established",
+  "former_weven",
+  "founding",
+  "additional_venue",
+  "none",
+];
+
+const EVIDENCE_VALUES: SalesOfferStandardDiscountEvidence[] = [
+  "not_established",
+  "founder_recorded",
+  "application_confirmed",
+  "explicitly_none",
+];
+
+export function normalizeStandardDiscountEvidence(
+  eligibility: SalesOfferStandardDiscountEligibility,
+  evidence?: SalesOfferStandardDiscountEvidence | null,
+): SalesOfferStandardDiscountEvidence {
+  if (eligibility === "not_established") return "not_established";
+  if (eligibility === "none") return "explicitly_none";
+  if (evidence === "application_confirmed") return "application_confirmed";
+  if (evidence === "founder_recorded") return "founder_recorded";
+  return "founder_recorded";
+}
+
+/** Default selector from durable CRM application evidence only — never email/name heuristics. */
+export function defaultEligibilityFromCrmHints(
+  hints: SalesOfferEligibilityHints = {},
+): {
+  standardDiscountEligibility: SalesOfferStandardDiscountEligibility;
+  standardDiscountEvidence: SalesOfferStandardDiscountEvidence;
+} {
+  if (hints.wevenEligible) {
+    return {
+      standardDiscountEligibility: "former_weven",
+      standardDiscountEvidence: "application_confirmed",
+    };
+  }
+  if (hints.foundingEligible) {
+    return {
+      standardDiscountEligibility: "founding",
+      standardDiscountEvidence: "application_confirmed",
+    };
+  }
+  if (hints.groupEligible) {
+    return {
+      standardDiscountEligibility: "additional_venue",
+      standardDiscountEvidence: "application_confirmed",
+    };
+  }
+  return {
+    standardDiscountEligibility: "not_established",
+    standardDiscountEvidence: "not_established",
+  };
+}
 
 const HIGHER_TIERS: Record<SaasPlanKey, Array<"growing" | "professional">> = {
   starter: ["growing", "professional"],
@@ -295,6 +354,29 @@ export function validateSalesOfferTerms(
 
   const replacesStandardPromos = input.replacesStandardPromos !== false;
 
+  const standardDiscountEligibility = (input.standardDiscountEligibility ??
+    "not_established") as SalesOfferStandardDiscountEligibility;
+  if (!ELIGIBILITY_VALUES.includes(standardDiscountEligibility)) {
+    issues.push(
+      issue(
+        "standardDiscountEligibility",
+        "Choose a valid standard discount eligibility option.",
+      ),
+    );
+  }
+  const standardDiscountEvidence = normalizeStandardDiscountEvidence(
+    standardDiscountEligibility,
+    input.standardDiscountEvidence ?? null,
+  );
+  if (!EVIDENCE_VALUES.includes(standardDiscountEvidence)) {
+    issues.push(
+      issue(
+        "standardDiscountEvidence",
+        "Choose a valid eligibility evidence value.",
+      ),
+    );
+  }
+
   if (issues.length > 0) {
     return { ok: false, issues };
   }
@@ -327,6 +409,8 @@ export function validateSalesOfferTerms(
     whiteGloveAmountCents,
     expiresAt,
     replacesStandardPromos,
+    standardDiscountEligibility,
+    standardDiscountEvidence,
   };
 
   return {
@@ -377,52 +461,81 @@ function whiteGloveLabel(
   }
 }
 
+function durationPhrase(terms: NormalizedSalesOfferTerms): string {
+  if (terms.durationMode === "ongoing") return "the promotional period";
+  const n = terms.durationBillingCycles ?? 0;
+  if (n === 1) return "the one-month promotional period";
+  return `the ${n}-month promotional period`;
+}
+
 function durationLabel(terms: NormalizedSalesOfferTerms): string {
   if (terms.durationMode === "ongoing") {
     return "Ongoing special pricing (until changed by founder or cancelled)";
   }
   const n = terms.durationBillingCycles ?? 0;
-  return `${n} billing cycle${n === 1 ? "" : "s"} of special pricing`;
+  return `Special pricing for your first ${n} month${n === 1 ? "" : "s"}`;
 }
 
 function afterIntroLabel(terms: NormalizedSalesOfferTerms): string {
   if (terms.durationMode === "ongoing") {
-    return "Special pricing continues until the founder changes it or the subscription ends.";
+    return "Special pricing continues until changed or the subscription ends.";
   }
-  if (terms.afterIntroPricing === "eligible_discount") {
-    return (
-      `After the introductory period, resume an eligible standard discount ` +
-      `(Founding ${FOUNDING_PERCENT_OFF}%, former Weven ${WEVEN_PERCENT_OFF}%, or additional-venue) ` +
-      `if still earned — otherwise the then-current tier list price. Custom offer does not stack with those discounts.`
-    );
+  if (terms.afterIntroPricing === "standard_list") {
+    return "After your introductory period, your subscription will continue at the regular rate for your plan.";
   }
-  return "After the introductory period, resume the then-current tier’s standard list price.";
+  return projectEligibleDiscount(
+    terms.planKey,
+    terms.standardDiscountEligibility,
+  ).customerCopy;
 }
 
 function tierUpgradeLabel(terms: NormalizedSalesOfferTerms): string {
   if (terms.pricingKind === "standard") {
     return "Standard tier pricing applies; automatic upgrades follow ordinary volume rules.";
   }
+  const window = durationPhrase(terms);
+  const ongoing = terms.durationMode === "ongoing";
+
   if (terms.pricingKind === "percent_off") {
     if (terms.percentUpgradePolicy === "end") {
-      return `The ${terms.percentOff}% discount ends if the venue upgrades tiers; then the then-current list (or selected after-intro rule) applies.`;
+      return ongoing
+        ? `If your venue moves to a higher plan, the ${terms.percentOff}% discount ends and the then-current rate for the new plan applies.`
+        : `If your venue moves to a higher plan during ${window}, the ${terms.percentOff}% discount ends at that upgrade; otherwise it lasts until ${window} ends.`;
     }
-    return `The ${terms.percentOff}% discount follows the venue into the new tier’s standard list price.`;
+    return ongoing
+      ? `If your venue moves to a higher plan, your ${terms.percentOff}% discount applies to the new plan’s list price while special pricing continues.`
+      : `If your venue moves to a higher plan during ${window}, your ${terms.percentOff}% discount applies to the new plan until ${window} ends.`;
   }
+
   if (terms.pricingKind === "amount_off") {
+    const amt = formatUsdFromCents(terms.amountOffCents ?? 0);
     if (terms.amountUpgradePolicy === "end") {
-      return `The ${formatUsdFromCents(terms.amountOffCents ?? 0)} monthly discount ends on tier upgrade.`;
+      return ongoing
+        ? `If your venue moves to a higher plan, the ${amt} monthly discount ends and the then-current rate for the new plan applies.`
+        : `If your venue moves to a higher plan during ${window}, the ${amt} monthly discount ends at that upgrade.`;
     }
-    return `The ${formatUsdFromCents(terms.amountOffCents ?? 0)} monthly discount continues against the new tier’s list price.`;
+    return ongoing
+      ? `If your venue moves to a higher plan, your ${amt} monthly discount applies to the new plan’s list price while special pricing continues.`
+      : `If your venue moves to a higher plan during ${window}, your ${amt} monthly discount will apply to the new plan until ${window} ends.`;
   }
+
   // fixed_rate
+  const fixed = formatUsdFromCents(terms.fixedRateCents ?? 0);
   if (terms.fixedUpgradePolicy === "keep") {
-    return `Keep the negotiated ${formatUsdFromCents(terms.fixedRateCents ?? 0)}/mo across tier upgrades.`;
+    return ongoing
+      ? `If your venue moves to a higher plan, the negotiated ${fixed}/month continues while special pricing remains in effect.`
+      : `If your venue moves to a higher plan during ${window}, the negotiated ${fixed}/month continues until ${window} ends.`;
   }
   if (terms.fixedUpgradePolicy === "end") {
-    return "End the fixed custom price on tier upgrade and resume the selected fallback / after-intro rule.";
+    return ongoing
+      ? `If your venue moves to a higher plan, the negotiated ${fixed}/month ends and the selected fallback pricing applies.`
+      : `If your venue moves to a higher plan during ${window}, the negotiated ${fixed}/month ends at that upgrade.`;
   }
-  const parts: string[] = ["On upgrade, use agreed replacement prices where set:"];
+  const parts: string[] = [
+    ongoing
+      ? "If your venue moves to a higher plan, agreed replacement prices apply where set:"
+      : `If your venue moves to a higher plan during ${window}, agreed replacement prices apply where set:`,
+  ];
   for (const tier of HIGHER_TIERS[terms.planKey]) {
     const amt = terms.fixedReplacementPrices[tier];
     const name = getCatalogEntry(tier).name;
@@ -441,46 +554,84 @@ function tierUpgradeLabel(terms: NormalizedSalesOfferTerms): string {
 }
 
 /**
- * Project the best non-stacking standard discount estimate for a plan,
- * based only on verified/indicated eligibility — never invent Weven/Founding.
+ * Project post-promo standard discount from the offer’s durable eligibility
+ * selection. Does not invent eligibility; conditional outcomes stay labeled.
  */
 export function projectEligibleDiscount(
   planKey: SaasPlanKey,
-  hints: SalesOfferEligibilityHints = {},
+  eligibility: SalesOfferStandardDiscountEligibility | SalesOfferEligibilityHints = "not_established",
 ): SalesOfferEligibleProjection {
+  // Legacy hints object → map to enum (Weven → Founding → group precedence).
+  let category: SalesOfferStandardDiscountEligibility;
+  if (typeof eligibility === "string") {
+    category = eligibility;
+  } else {
+    if (eligibility.wevenEligible) category = "former_weven";
+    else if (eligibility.foundingEligible) category = "founding";
+    else if (eligibility.groupEligible) category = "additional_venue";
+    else category = "not_established";
+  }
+
   const list = listAmountCents(planKey);
-  // Non-stacking precedence matches checkout: Weven → Founding → group.
-  if (hints.wevenEligible) {
+  const planName = getCatalogEntry(planKey).name;
+  const estimateNote =
+    "Estimated using today’s prices. The actual amount will depend on the subscription tier, prevailing rates, and eligibility when the introductory period ends.";
+
+  if (category === "former_weven") {
+    const amountCents = wevenAmountCents(planKey);
     return {
       known: true,
-      amountCents: wevenAmountCents(planKey),
-      label: `Eligible former Weven (${WEVEN_PERCENT_OFF}% off)`,
-      explanation: `Estimate at today’s ${getCatalogEntry(planKey).name} list — ${formatUsdFromCents(wevenAmountCents(planKey))}/mo. Actual future amount follows then-current list and eligibility.`,
+      conditional: false,
+      amountCents,
+      label: `Former Weven (${WEVEN_PERCENT_OFF}% off)`,
+      customerCopy: `After your introductory period, your eligible former Weven discount of ${WEVEN_PERCENT_OFF}% will apply to the subscription rate in effect at that time.`,
+      explanation: `${formatUsdFromCents(amountCents)}/month at today’s ${planName} list. ${estimateNote}`,
     };
   }
-  if (hints.foundingEligible) {
+  if (category === "founding") {
+    const amountCents = foundingAmountCents(planKey);
     return {
       known: true,
-      amountCents: foundingAmountCents(planKey),
-      label: `Eligible Founding (${FOUNDING_PERCENT_OFF}% off)`,
-      explanation: `Estimate at today’s ${getCatalogEntry(planKey).name} list — ${formatUsdFromCents(foundingAmountCents(planKey))}/mo. Actual future amount follows then-current list and eligibility.`,
+      conditional: true,
+      amountCents,
+      label: `Founding Member (${FOUNDING_PERCENT_OFF}% off)`,
+      customerCopy: `After your introductory period, a ${FOUNDING_PERCENT_OFF}% Founding Member discount may apply if you qualify. Otherwise, the regular subscription price will apply.`,
+      explanation: `Conditional estimate ${formatUsdFromCents(amountCents)}/month at today’s ${planName} list (Founding first-100). Selecting this on a draft does not reserve a slot. ${estimateNote}`,
     };
   }
-  if (hints.groupEligible) {
-    const groupCents = amountAfterPercentOff(list, GROUP_PERCENT_OFF);
+  if (category === "additional_venue") {
+    const amountCents = amountAfterPercentOff(list, GROUP_PERCENT_OFF);
     return {
       known: true,
-      amountCents: groupCents,
-      label: `Eligible additional-venue (${GROUP_PERCENT_OFF}% off)`,
-      explanation: `Estimate at today’s list — ${formatUsdFromCents(groupCents)}/mo.`,
+      conditional: true,
+      amountCents,
+      label: `Additional venue (${GROUP_PERCENT_OFF}% off)`,
+      customerCopy: `After your introductory period, a ${GROUP_PERCENT_OFF}% additional-venue discount may apply if your organization qualifies. Otherwise, the regular subscription price will apply.`,
+      explanation: `Conditional estimate ${formatUsdFromCents(amountCents)}/month at today’s ${planName} list — final application follows organization/venue rules. ${estimateNote}`,
     };
   }
+  if (category === "none") {
+    return {
+      known: true,
+      conditional: false,
+      amountCents: list,
+      label: "No standard discount",
+      customerCopy:
+        "After your introductory period, your subscription will continue at the regular rate for your plan.",
+      explanation: `${formatUsdFromCents(list)}/month at today’s ${planName} list. ${estimateNote}`,
+    };
+  }
+  // not_established — distinct from none / ineligible
   return {
     known: false,
+    conditional: false,
     amountCents: null,
-    label: "Eligible discounted price",
+    label: "Not established yet",
+    customerCopy:
+      "After your introductory period, your subscription will continue at the applicable regular rate unless a qualifying discount is established.",
     explanation:
-      "No verified Founding, former Weven, or additional-venue eligibility is on file for this prospect. If they later qualify, that discount can apply after the special period — otherwise the then-current regular tier price applies.",
+      "No confirmed discounted amount yet. Not established is not the same as ineligible. " +
+      estimateNote,
   };
 }
 
@@ -490,23 +641,31 @@ export function projectEligibleDiscount(
  */
 export function computeSalesOfferPreview(
   terms: NormalizedSalesOfferTerms,
-  eligibility: SalesOfferEligibilityHints = {},
+  _legacyHints: SalesOfferEligibilityHints = {},
 ): SalesOfferComputedPreview {
   const catalog = getCatalogEntry(terms.planKey);
   const monthly = monthlyRecurringFromNormalized(terms);
   const savings = Math.max(0, terms.listAmountCents - monthly);
   const wg = terms.whiteGloveAmountCents;
   const initial = monthly + wg;
-  const eligibleProjection = projectEligibleDiscount(terms.planKey, eligibility);
+  const eligibleProjection = projectEligibleDiscount(
+    terms.planKey,
+    terms.standardDiscountEligibility,
+  );
 
   const afterIntroMonthly =
     terms.durationMode === "billing_cycles"
       ? terms.afterIntroPricing === "standard_list"
         ? terms.listAmountCents
-        : eligibleProjection.known
-          ? eligibleProjection.amountCents
-          : null
+        : eligibleProjection.amountCents
       : null;
+
+  const afterIntroCopy =
+    terms.durationMode === "billing_cycles"
+      ? terms.afterIntroPricing === "standard_list"
+        ? "After your introductory period, your subscription will continue at the regular rate for your plan."
+        : eligibleProjection.customerCopy
+      : afterIntroLabel(terms);
 
   const lines: string[] = [
     `${catalog.name} · standard ${formatUsdFromCents(terms.listAmountCents)}/mo`,
@@ -519,23 +678,23 @@ export function computeSalesOfferPreview(
   ];
 
   if (terms.durationMode === "billing_cycles") {
-    if (terms.afterIntroPricing === "standard_list") {
+    lines.push(afterIntroCopy);
+    if (
+      terms.afterIntroPricing === "eligible_discount" &&
+      eligibleProjection.amountCents != null
+    ) {
       lines.push(
-        `After intro (estimate at today’s prices): ${formatUsdFromCents(terms.listAmountCents)}/mo regular ${catalog.name}. Actual amount follows then-current tier list.`,
+        eligibleProjection.conditional
+          ? `Post-promo estimate (conditional): ${formatUsdFromCents(eligibleProjection.amountCents)}/mo.`
+          : `Post-promo estimate at today’s prices: ${formatUsdFromCents(eligibleProjection.amountCents)}/mo.`,
       );
-    } else if (eligibleProjection.known && eligibleProjection.amountCents != null) {
-      lines.push(
-        `After intro (estimate): ${formatUsdFromCents(eligibleProjection.amountCents)}/mo — ${eligibleProjection.label}.`,
-      );
-    } else {
-      lines.push(afterIntroLabel(terms));
     }
   }
 
   lines.push(tierUpgradeLabel(terms));
 
   const promoNote = terms.replacesStandardPromos
-    ? "This custom offer replaces Founding, former Weven, and additional-venue discounts at checkout. Underlying former Weven eligibility is not erased."
+    ? "Custom promotional pricing replaces standard discounts while it is active. An eligible standard discount may resume afterward per these terms. Discounts do not stack."
     : "Founder chose not to replace standard promos (unusual).";
 
   lines.push(promoNote);
@@ -553,7 +712,7 @@ export function computeSalesOfferPreview(
     initialPaymentCents: initial,
     futureMonthlyCents: monthly,
     afterIntroMonthlyCents: afterIntroMonthly,
-    afterIntroLabel: afterIntroLabel(terms),
+    afterIntroLabel: afterIntroCopy,
     durationLabel: durationLabel(terms),
     tierUpgradeLabel: tierUpgradeLabel(terms),
     expiresAt: terms.expiresAt,
@@ -607,6 +766,8 @@ export function snapshotFromRecord(record: {
   whiteGloveAmountCents: number;
   expiresAt: string | null;
   replacesStandardPromos: boolean;
+  standardDiscountEligibility?: string;
+  standardDiscountEvidence?: string;
   termsHash: string;
   revision: number;
 }): Record<string, unknown> {
