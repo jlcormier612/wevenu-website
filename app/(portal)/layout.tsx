@@ -1,5 +1,7 @@
 import type { CSSProperties, ReactNode } from "react";
 
+import { SupportSessionBanner } from "@/components/htc-support/support-session-banner";
+
 /**
  * Portal layout — no coordinator sidebar, no auth requirement.
  *
@@ -68,6 +70,7 @@ export default function PortalLayout({ children }: { children: ReactNode }) {
         background: "var(--htc-ivory)",
       }}
     >
+      <SupportSessionBanner />
       {children}
     </div>
   );

@@ -7,6 +7,8 @@ import { workspaceAppBaseUrl } from "@shared/support-access";
  * Discreet internal banner while an HTC HQ support session is active.
  */
 export async function SupportSessionBanner() {
+  // Venue jar holds the HQ staff session used for support context (including
+  // when viewing /p/* or /vendor/* under support).
   const supabase = await createClient("venue");
   const { data } = await supabase.rpc("htc_get_support_context");
   const ctx = data as {

@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 
+import { SupportSessionBanner } from "@/components/htc-support/support-session-banner";
 import { VendorAppShell } from "@/components/vendor-app/vendor-app-shell";
 import { createVendorClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
@@ -63,16 +64,19 @@ export default async function VendorWorkspaceLayout({
   });
 
   return (
-    <VendorAppShell
-      businessName={profile?.businessName ?? "Your Business"}
-      category={profile?.category ?? null}
-      logoUrl={profile?.logoUrl ?? null}
-      role={vendorUser.role}
-      pendingTaskCount={pendingTaskCount}
-      unreadMessageCount={conversationInbox.totalUnread}
-      luvAttentionCount={getVendorLuvAttentionCount(briefing)}
-    >
-      {children}
-    </VendorAppShell>
+    <>
+      <SupportSessionBanner />
+      <VendorAppShell
+        businessName={profile?.businessName ?? "Your Business"}
+        category={profile?.category ?? null}
+        logoUrl={profile?.logoUrl ?? null}
+        role={vendorUser.role}
+        pendingTaskCount={pendingTaskCount}
+        unreadMessageCount={conversationInbox.totalUnread}
+        luvAttentionCount={getVendorLuvAttentionCount(briefing)}
+      >
+        {children}
+      </VendorAppShell>
+    </>
   );
 }

@@ -18,6 +18,7 @@ export async function GET(request: Request) {
   const res = NextResponse.redirect(returnTo);
   res.cookies.set("htc_support_banner", "", { path: "/", maxAge: 0 });
   res.cookies.set("htc_support_mode", "", { path: "/", maxAge: 0 });
+  res.cookies.set("htc_support_portal", "", { path: "/", maxAge: 0 });
   return res;
 }
 

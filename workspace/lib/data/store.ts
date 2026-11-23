@@ -461,7 +461,12 @@ export function getSupportInboxItems(opts?: {
   const relById = new Map(getRelationships().map((r) => [r.id, r]));
   return [...items]
     .filter((i) => (surface === "all" ? true : i.surface === surface))
-    .filter((i) => (status === "all" ? true : i.status === status))
+    .filter((i) => {
+      if (status === "all") return true;
+      if (status === "resolved") return i.status === "resolved";
+      // Default "Open" includes acknowledged — still needs attention.
+      return i.status === "open" || i.status === "acknowledged";
+    })
     .filter((i) => {
       if (!operationalOnly) return true;
       if (isSandboxDemoVenueId(i.relatedVenueId)) return false;

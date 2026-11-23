@@ -24,6 +24,22 @@ export async function getVendorUser(): Promise<VendorUserContext | null> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
 
+  // HTC support into the real vendor portal (HQ identity + support context).
+  const { data: supportCtx } = await supabase.rpc("htc_get_support_context");
+  const ctx = supportCtx as {
+    ok?: boolean;
+    active?: boolean;
+    portal?: string;
+    vendor_id?: string | null;
+  } | null;
+  if (ctx?.ok && ctx.active && ctx.portal === "vendor" && ctx.vendor_id) {
+    return {
+      vendorId: String(ctx.vendor_id),
+      userId: user.id,
+      role: "owner" as VendorRole,
+    };
+  }
+
   // A user may own multiple vendor profiles. maybeSingle() errors on 2+ rows
   // (PGRST116) and falsely looks "unlinked" — pick a stable first active row.
   const { data } = await supabase
