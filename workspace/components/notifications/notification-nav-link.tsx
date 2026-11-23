@@ -13,11 +13,13 @@ export function NotificationNavLink({
   href,
   className,
   children,
+  onNavigate,
 }: {
   notificationId: string;
   href: string;
   className?: string;
   children: ReactNode;
+  onNavigate?: () => void;
 }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -39,6 +41,7 @@ export function NotificationNavLink({
       href={href}
       className={className}
       onClick={() => {
+        onNavigate?.();
         void markRead().then(() => {
           startTransition(() => router.refresh());
         });

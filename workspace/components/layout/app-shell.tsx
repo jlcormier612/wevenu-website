@@ -34,8 +34,23 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
   }
   const impersonating = await isImpersonating();
   const permissions = permissionsForRole(actor.role);
-  const unreadCount = getNotifications({ unreadOnly: true }).length;
-  const openSupportRels = getRelationships().filter(relationshipHasOpenSupport);
+  const unreadNotifications = getNotifications({ unreadOnly: true });
+  const unreadCount = unreadNotifications.length;
+  const relationships = getRelationships();
+  const openSupportRels = relationships.filter(relationshipHasOpenSupport);
+  const topBarNotifications = unreadNotifications.slice(0, 8).map((n) => {
+    const rel = relationships.find((r) => r.id === n.relationshipId);
+    return {
+      id: n.id,
+      title: n.title,
+      body: n.body,
+      createdAt: n.createdAt,
+      relationshipId: n.relationshipId,
+      type: n.type,
+      meta: n.meta,
+      venueName: rel?.venue.name ?? null,
+    };
+  });
   // Badge = open Feedback & support *items* (not relationships).
   const openSupportCount = countOpenSupportItemsAcross(openSupportRels);
   const openSupportHref =
@@ -74,7 +89,13 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           homeHref={homeHref}
         />
       }
-      topBar={<TopBar actor={actor} sessionUser={sessionUser} />}
+      topBar={
+        <TopBar
+          actor={actor}
+          sessionUser={sessionUser}
+          notifications={topBarNotifications}
+        />
+      }
       banner={
         impersonating ? (
           <ImpersonateBanner realUser={sessionUser} actingAs={actor} />
