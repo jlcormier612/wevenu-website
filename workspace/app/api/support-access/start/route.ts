@@ -79,6 +79,24 @@ export async function POST(request: Request) {
     venueId = rel?.productSync?.venueId?.trim() || null;
   }
 
+  if (portal === "vendor" && vendorId && !venueId) {
+    const { resolveVenueForVendor } = await import(
+      "@/lib/support-access/resolve-partner-venue"
+    );
+    const resolved = await resolveVenueForVendor({ vendorId, venueId });
+    if (resolved.ok) {
+      venueId = resolved.venueId;
+    } else if (resolved.error === "ambiguous") {
+      return NextResponse.json(
+        {
+          error:
+            "Vendor is linked to multiple venues — open from a venue-linked ticket or pick a venue first.",
+        },
+        { status: 409 },
+      );
+    }
+  }
+
   if (portal === "venue" && !venueId) {
     return NextResponse.json({ error: "venueId required" }, { status: 400 });
   }
