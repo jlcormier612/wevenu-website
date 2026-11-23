@@ -45,6 +45,10 @@ export default async function SupportPage({
     }).find((i) => i.id === focusItemId);
     if (focused) items = [focused, ...items];
   }
+  const { enrichInboxPortalTargets } = await import(
+    "@/lib/support-access/enrich-inbox-portal-targets"
+  );
+  items = await enrichInboxPortalTargets(items);
   const openCount = getSupportInboxItems({ surface: "all", status: "open" }).length;
 
   return (
