@@ -100,8 +100,15 @@ describe("parseResendWebhookSecrets / verifyResendWebhookSecrets", () => {
     assert.deepEqual(parseResendWebhookSecrets(null), []);
   });
 
-  it("is open when no secrets are configured", () => {
-    assert.equal(verifyResendWebhookSecrets(body, { id: null, timestamp: null, signature: null }, ""), true);
+  it("fail-closed: rejects when no secrets are configured", () => {
+    assert.equal(verifyResendWebhookSecrets(body, { id: null, timestamp: null, signature: null }, ""), false);
+    assert.equal(verifyResendWebhookSecrets(body, { id, timestamp, signature: sign(id, timestamp, body) }, null), false);
+    assert.equal(verifyResendWebhookSecrets(body, { id, timestamp, signature: sign(id, timestamp, body) }, "   "), false);
+  });
+
+  it("accepts a correctly signed request when a secret is configured", () => {
+    const headers: SvixHeaders = { id, timestamp, signature: sign(id, timestamp, body) };
+    assert.equal(verifyResendWebhookSecrets(body, headers, SECRET), true);
   });
 
   it("accepts a signature that matches any configured secret", () => {
@@ -111,6 +118,11 @@ describe("parseResendWebhookSecrets / verifyResendWebhookSecrets", () => {
 
   it("rejects when none of the configured secrets match", () => {
     const headers: SvixHeaders = { id, timestamp, signature: sign(id, timestamp, body, other) };
+    assert.equal(verifyResendWebhookSecrets(body, headers, SECRET), false);
+  });
+
+  it("rejects unauthorized requests even when Svix headers are present but unsigned/wrong", () => {
+    const headers: SvixHeaders = { id, timestamp, signature: "v1,not-authorized" };
     assert.equal(verifyResendWebhookSecrets(body, headers, SECRET), false);
   });
 });

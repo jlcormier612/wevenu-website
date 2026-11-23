@@ -329,138 +329,149 @@ begin
       end if;
   end;
 
-  -- Pick a free auth user (not already venues.owner_user_id).
-  select u.id into v_user_id
-  from auth.users u
-  where not exists (
-    select 1 from public.venues v where v.owner_user_id = u.id
-  )
-  order by u.created_at asc
-  limit 1;
+  -- Membership proofs need pre-existing free auth.users rows.
+  -- NEVER create disposable auth.users here — this migration runs on
+  -- Production and Sandbox. Isolated dry-runs must seed fixture users
+  -- outside the migration (test harness only) before applying this file.
+  -- Function-body / null-reject proofs above always run.
+  if (
+    select count(*)::integer
+    from auth.users u
+    where not exists (
+      select 1 from public.venues v where v.owner_user_id = u.id
+    )
+  ) < 2 then
+    raise notice 'purchaser_ownership_055: skipping membership self-proof (need >=2 free auth.users; fixtures must not be created by this migration)';
+  else
+    -- Pick a free auth user (not already venues.owner_user_id).
+    select u.id into v_user_id
+    from auth.users u
+    where not exists (
+      select 1 from public.venues v where v.owner_user_id = u.id
+    )
+    order by u.created_at asc
+    limit 1;
 
-  if v_user_id is null then
-    raise exception 'purchaser_ownership_fail_closed_proof_failed: no free auth.users row for membership proof';
-  end if;
+    -- Enrollment with stored purchaser_is_owner=true + null RPC arg → still rejected.
+    insert into public.venue_enrollments (
+      venue_name, owner_email, owner_first_name, owner_last_name,
+      status, onboarding_type, activation_token, activation_token_created_at,
+      purchaser_is_owner
+    ) values (
+      'Proof 055 Null Reject',
+      'proof-055-null-' || replace(gen_random_uuid()::text, '-', '') || '@example.com',
+      'Proof', 'Null',
+      'pending', 'self_setup', v_token_null, now(),
+      true
+    ) returning id into v_enroll_null;
 
-  -- Enrollment with stored purchaser_is_owner=true + null RPC arg → still rejected.
-  insert into public.venue_enrollments (
-    venue_name, owner_email, owner_first_name, owner_last_name,
-    status, onboarding_type, activation_token, activation_token_created_at,
-    purchaser_is_owner
-  ) values (
-    'Proof 055 Null Reject',
-    'proof-055-null-' || replace(gen_random_uuid()::text, '-', '') || '@example.com',
-    'Proof', 'Null',
-    'pending', 'self_setup', v_token_null, now(),
-    true
-  ) returning id into v_enroll_null;
+    begin
+      perform * from public.activate_venue_enrollment(
+        v_token_null, v_user_id, null, null, null
+      );
+      raise exception 'purchaser_ownership_fail_closed_proof_failed: null arg with enrollment.true still activated';
+    exception
+      when sqlstate 'P0001' then
+        if position('purchaser_ownership_choice_required' in sqlerrm) = 0 then
+          raise;
+        end if;
+    end;
 
-  begin
-    perform * from public.activate_venue_enrollment(
-      v_token_null, v_user_id, null, null, null
+    -- Explicit true → Owner staff, empty billing overrides.
+    insert into public.venue_enrollments (
+      venue_name, owner_email, owner_first_name, owner_last_name,
+      status, onboarding_type, activation_token, activation_token_created_at,
+      purchaser_is_owner
+    ) values (
+      'Proof 055 Owner',
+      'proof-055-true-' || replace(gen_random_uuid()::text, '-', '') || '@example.com',
+      'Proof', 'Owner',
+      'pending', 'self_setup', v_token_true, now(),
+      null
+    ) returning id into v_enroll_true;
+
+    select venue_id into v_venue_true
+    from public.activate_venue_enrollment(v_token_true, v_user_id, true, null, null);
+
+    select is_owner, capability_overrides
+      into v_staff_owner, v_staff_overrides
+    from public.venue_staff
+    where venue_id = v_venue_true and user_id = v_user_id and is_active = true;
+
+    if v_staff_owner is distinct from true then
+      raise exception 'purchaser_ownership_fail_closed_proof_failed: explicit true did not create Owner staff';
+    end if;
+    if coalesce(v_staff_overrides, '{}'::jsonb) <> '{}'::jsonb then
+      raise exception 'purchaser_ownership_fail_closed_proof_failed: Owner staff has unexpected billing overrides';
+    end if;
+
+    -- Explicit false → non-owner Administrator + billing override + pending Owner invite.
+    -- Need a second free user (first is now venues.owner_user_id from true case).
+    select u.id into v_user_id
+    from auth.users u
+    where not exists (
+      select 1 from public.venues v where v.owner_user_id = u.id
+    )
+    order by u.created_at asc
+    limit 1;
+
+    if v_user_id is null then
+      raise exception 'purchaser_ownership_fail_closed_proof_failed: no second free auth.users row for on-behalf proof';
+    end if;
+
+    insert into public.venue_enrollments (
+      venue_name, owner_email, owner_first_name, owner_last_name,
+      status, onboarding_type, activation_token, activation_token_created_at,
+      purchaser_is_owner
+    ) values (
+      'Proof 055 On Behalf',
+      'proof-055-false-' || replace(gen_random_uuid()::text, '-', '') || '@example.com',
+      'Proof', 'Admin',
+      'pending', 'self_setup', v_token_false, now(),
+      null
+    ) returning id into v_enroll_false;
+
+    select venue_id into v_venue_false
+    from public.activate_venue_enrollment(
+      v_token_false,
+      v_user_id,
+      false,
+      'Invited Owner',
+      'invited-owner-055-' || replace(gen_random_uuid()::text, '-', '') || '@example.com'
     );
-    raise exception 'purchaser_ownership_fail_closed_proof_failed: null arg with enrollment.true still activated';
-  exception
-    when sqlstate 'P0001' then
-      if position('purchaser_ownership_choice_required' in sqlerrm) = 0 then
-        raise;
-      end if;
-  end;
 
-  -- Explicit true → Owner staff, empty billing overrides.
-  insert into public.venue_enrollments (
-    venue_name, owner_email, owner_first_name, owner_last_name,
-    status, onboarding_type, activation_token, activation_token_created_at,
-    purchaser_is_owner
-  ) values (
-    'Proof 055 Owner',
-    'proof-055-true-' || replace(gen_random_uuid()::text, '-', '') || '@example.com',
-    'Proof', 'Owner',
-    'pending', 'self_setup', v_token_true, now(),
-    null
-  ) returning id into v_enroll_true;
+    select is_owner, capability_overrides
+      into v_staff_owner, v_staff_overrides
+    from public.venue_staff
+    where venue_id = v_venue_false and user_id = v_user_id and is_active = true;
 
-  select venue_id into v_venue_true
-  from public.activate_venue_enrollment(v_token_true, v_user_id, true, null, null);
+    if v_staff_owner is distinct from false then
+      raise exception 'purchaser_ownership_fail_closed_proof_failed: explicit false created Owner staff';
+    end if;
+    if coalesce(v_staff_overrides ->> 'account.billing', '') <> 'true' then
+      raise exception 'purchaser_ownership_fail_closed_proof_failed: on-behalf missing account.billing override';
+    end if;
 
-  select is_owner, capability_overrides
-    into v_staff_owner, v_staff_overrides
-  from public.venue_staff
-  where venue_id = v_venue_true and user_id = v_user_id and is_active = true;
+    select owner_invite_pending into v_invite_pending
+    from public.venue_staff
+    where venue_id = v_venue_false
+      and user_id is null
+      and owner_invite_pending = true
+    limit 1;
 
-  if v_staff_owner is distinct from true then
-    raise exception 'purchaser_ownership_fail_closed_proof_failed: explicit true did not create Owner staff';
+    if v_invite_pending is distinct from true then
+      raise exception 'purchaser_ownership_fail_closed_proof_failed: on-behalf missing pending Owner invite row';
+    end if;
+
+    -- Cleanup proof membership + enrollment rows. Leave venues (builtin
+    -- schedule item types refuse venue deletion; owner_user_id is NOT NULL).
+    perform set_config('htc.allow_last_owner_change', '1', true);
+    delete from public.venue_staff where venue_id in (v_venue_true, v_venue_false);
+    update public.venues
+      set name = left(name || ' [055-proof-cleaned]', 120)
+      where id in (v_venue_true, v_venue_false);
+    delete from public.venue_enrollments where id in (v_enroll_null, v_enroll_true, v_enroll_false);
   end if;
-  if coalesce(v_staff_overrides, '{}'::jsonb) <> '{}'::jsonb then
-    raise exception 'purchaser_ownership_fail_closed_proof_failed: Owner staff has unexpected billing overrides';
-  end if;
-
-  -- Explicit false → non-owner Administrator + billing override + pending Owner invite.
-  -- Need a second free user (first is now venues.owner_user_id from true case).
-  select u.id into v_user_id
-  from auth.users u
-  where not exists (
-    select 1 from public.venues v where v.owner_user_id = u.id
-  )
-  order by u.created_at asc
-  limit 1;
-
-  if v_user_id is null then
-    raise exception 'purchaser_ownership_fail_closed_proof_failed: no second free auth.users row for on-behalf proof';
-  end if;
-
-  insert into public.venue_enrollments (
-    venue_name, owner_email, owner_first_name, owner_last_name,
-    status, onboarding_type, activation_token, activation_token_created_at,
-    purchaser_is_owner
-  ) values (
-    'Proof 055 On Behalf',
-    'proof-055-false-' || replace(gen_random_uuid()::text, '-', '') || '@example.com',
-    'Proof', 'Admin',
-    'pending', 'self_setup', v_token_false, now(),
-    null
-  ) returning id into v_enroll_false;
-
-  select venue_id into v_venue_false
-  from public.activate_venue_enrollment(
-    v_token_false,
-    v_user_id,
-    false,
-    'Invited Owner',
-    'invited-owner-055-' || replace(gen_random_uuid()::text, '-', '') || '@example.com'
-  );
-
-  select is_owner, capability_overrides
-    into v_staff_owner, v_staff_overrides
-  from public.venue_staff
-  where venue_id = v_venue_false and user_id = v_user_id and is_active = true;
-
-  if v_staff_owner is distinct from false then
-    raise exception 'purchaser_ownership_fail_closed_proof_failed: explicit false created Owner staff';
-  end if;
-  if coalesce(v_staff_overrides ->> 'account.billing', '') <> 'true' then
-    raise exception 'purchaser_ownership_fail_closed_proof_failed: on-behalf missing account.billing override';
-  end if;
-
-  select owner_invite_pending into v_invite_pending
-  from public.venue_staff
-  where venue_id = v_venue_false
-    and user_id is null
-    and owner_invite_pending = true
-  limit 1;
-
-  if v_invite_pending is distinct from true then
-    raise exception 'purchaser_ownership_fail_closed_proof_failed: on-behalf missing pending Owner invite row';
-  end if;
-
-  -- Cleanup proof membership + enrollment rows. Leave venues (builtin
-  -- schedule item types refuse venue deletion; owner_user_id is NOT NULL).
-  perform set_config('htc.allow_last_owner_change', '1', true);
-  delete from public.venue_staff where venue_id in (v_venue_true, v_venue_false);
-  update public.venues
-    set name = left(name || ' [055-proof-cleaned]', 120)
-    where id in (v_venue_true, v_venue_false);
-  delete from public.venue_enrollments where id in (v_enroll_null, v_enroll_true, v_enroll_false);
 end;
 $$;
 

@@ -1,0 +1,55 @@
+# Deploys infra/htc-ecr-repos.json for Production ECR repositories.
+# MANUAL AUTHORIZATION ONLY — workflow_dispatch + confirm=DEPLOY_PRODUCTION_FOUNDATION.
+# No automatic triggers. Do not run until founder authorizes Production AWS provisioning.
+
+name: Deploy foundation stack (Production)
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Type DEPLOY_PRODUCTION_FOUNDATION to authorize Production ECR stack deploy"
+        required: true
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy-ecr-foundation:
+    name: Deploy Production ECR foundation stack
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Require explicit confirmation
+        run: |
+          if [ "${{ inputs.confirm }}" != "DEPLOY_PRODUCTION_FOUNDATION" ]; then
+            echo "::error::confirm must be exactly 'DEPLOY_PRODUCTION_FOUNDATION'. Nothing was deployed."
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Deploy htc-ecr-repos.json (production)
+        run: |
+          aws cloudformation deploy \
+            --template-file infra/htc-ecr-repos.json \
+            --stack-name "${{ vars.ECR_STACK_NAME }}" \
+            --parameter-overrides EnvironmentName=production \
+            --role-arn "${{ vars.CFN_EXECUTION_ROLE_ARN }}" \
+            --no-fail-on-empty-changeset
+
+      - name: Show repository URIs
+        run: |
+          aws cloudformation describe-stacks \
+            --stack-name "${{ vars.ECR_STACK_NAME }}" \
+            --query "Stacks[0].Outputs" \
+            --output table

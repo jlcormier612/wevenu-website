@@ -80,9 +80,12 @@ export function parseResendWebhookSecrets(raw: string | undefined | null): strin
 }
 
 /**
- * When RESEND_WEBHOOK_SECRET is unset/empty, returns true (open) — same
- * posture as the venue inbound routes historically used so local/dev and
- * pre-webhook deploys keep working. When set, any listed secret may match.
+ * Fail-closed: when RESEND_WEBHOOK_SECRET is unset/empty, returns false so
+ * unsigned inbound webhooks are rejected. When one or more secrets are
+ * configured, any listed secret may match (comma-separated rotation).
+ *
+ * Local/dev callers that intentionally need an open path must pass an
+ * explicit test secret into verification — never rely on an empty env.
  */
 export function verifyResendWebhookSecrets(
   rawBody: string,
@@ -90,7 +93,7 @@ export function verifyResendWebhookSecrets(
   rawSecretEnv: string | undefined | null = process.env.RESEND_WEBHOOK_SECRET,
 ): boolean {
   const secrets = parseResendWebhookSecrets(rawSecretEnv);
-  if (secrets.length === 0) return true;
+  if (secrets.length === 0) return false;
   return secrets.some((secret) => verifySvixSignature(rawBody, headers, secret));
 }
 

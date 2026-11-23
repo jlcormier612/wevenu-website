@@ -115,7 +115,9 @@ jobs:
           # The 4 known timestamp-collision groups already documented in
           # docs/supabase-sandbox-setup-runbook.md §3 and mirrored in
           # apply-sandbox-migrations.sh - same list, not re-derived.
-          KNOWN_COLLISIONS="20261175000000 20261176000000 20261177000000 20261222000000"
+          # All 7 identical 14-digit timestamp collision groups (15 files).
+          # Alphabetical filename sort remains the apply order — see docs/supabase-sandbox-setup-runbook.md §3.
+          KNOWN_COLLISIONS="20261175000000 20261176000000 20261177000000 20261222000000 20261298000000 20261366000000 20261392000000"
 
           IFS=',' read -ra RAW_FILES <<< "${{ inputs.migration_files }}"
           FAILED=0

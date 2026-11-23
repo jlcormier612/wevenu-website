@@ -39,10 +39,25 @@ export function workspaceAuthCookieName(): string {
 }
 
 /**
+ * Hosted Production must never silently fall back to JSONL auth.
+ * Sandbox/local keep prior selection rules unless Production is selected.
+ */
+export function isProductionWorkspaceEnvironment(): boolean {
+  const env = (process.env.HTC_ENVIRONMENT || process.env.HTC_ENV || "")
+    .trim()
+    .toLowerCase();
+  return env === "production";
+}
+
+/**
  * Auth provider selection.
  * - `memory`: unit/integration tests (no live Supabase)
  * - `supabase`: Production-intended path (R1B+)
  * - `legacy_jsonl`: explicit emergency only — insecure for multi-task ECS
+ *
+ * Production (`HTC_ENVIRONMENT=production`): missing Supabase URL/anon key
+ * resolves to `supabase` (fail-closed / unauthenticated) rather than JSONL,
+ * unless `WORKSPACE_AUTH_PROVIDER=legacy_jsonl` is set explicitly.
  */
 export function getWorkspaceAuthProvider(): WorkspaceAuthProvider {
   const raw = (process.env.WORKSPACE_AUTH_PROVIDER || "").trim().toLowerCase();
@@ -51,6 +66,7 @@ export function getWorkspaceAuthProvider(): WorkspaceAuthProvider {
   if (raw === "supabase") return "supabase";
   if (process.env.NODE_ENV === "test") return "memory";
   if (workspaceSupabaseUrl() && workspaceSupabaseAnonKey()) return "supabase";
+  if (isProductionWorkspaceEnvironment()) return "supabase";
   return "legacy_jsonl";
 }
 

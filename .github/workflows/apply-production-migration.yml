@@ -1,0 +1,186 @@
+# Applies explicitly-named migration files to the Production Supabase database.
+#
+# MANUAL AUTHORIZATION ONLY:
+# - workflow_dispatch only (never on push / deploy)
+# - confirm must equal APPLY_PRODUCTION
+# - GitHub Environment "production" (required reviewers + PRODUCTION_DB_URL secret)
+# - Same alphabetical / collision preflight model as Sandbox apply workflow
+#
+# Prepared in Stage 4B-1. Do not run until Production Supabase exists and founder
+# authorizes Migration apply separately from application deploy.
+
+name: Apply Production Migration
+
+on:
+  workflow_dispatch:
+    inputs:
+      migration_files:
+        description: "Migration filename(s) under supabase/migrations/, comma-separated"
+        required: true
+        type: string
+      confirm:
+        description: "Type APPLY_PRODUCTION to confirm these migration(s) are reviewed and approved for Production"
+        required: true
+        type: string
+      allow_out_of_order_backfill:
+        description: "Optional. Type BACKFILL only for intentional missed-gap repair. Leave empty for normal ordered applies."
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-database
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    name: Apply approved Production migration(s)
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      PRODUCTION_DB_URL: ${{ secrets.PRODUCTION_DB_URL }}
+    steps:
+      - name: Require explicit confirmation
+        run: |
+          if [ "${{ inputs.confirm }}" != "APPLY_PRODUCTION" ]; then
+            echo "::error::confirm must be exactly 'APPLY_PRODUCTION' - refusing to proceed. Nothing was touched."
+            exit 1
+          fi
+          echo "Confirmed."
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Ensure psql is available
+        timeout-minutes: 3
+        run: |
+          if command -v psql >/dev/null 2>&1; then
+            echo "psql already present: $(psql --version)"
+          else
+            export DEBIAN_FRONTEND=noninteractive
+            export NEEDRESTART_MODE=a
+            sudo apt-get update -qq
+            sudo apt-get install -qq -y --no-install-recommends postgresql-client
+          fi
+
+      - name: Preflight - validate the entire batch before applying anything
+        run: |
+          set -uo pipefail
+
+          if [ -z "$PRODUCTION_DB_URL" ]; then
+            echo "::error::PRODUCTION_DB_URL secret is not set on the production Environment. Nothing was touched."
+            exit 1
+          fi
+
+          KNOWN_COLLISIONS="20261175000000 20261176000000 20261177000000 20261222000000 20261298000000 20261366000000 20261392000000"
+
+          IFS=',' read -ra RAW_FILES <<< "${{ inputs.migration_files }}"
+          FAILED=0
+          declare -a CHECKED_FILES=()
+
+          MAX_TRACKED=$(psql "$PRODUCTION_DB_URL" -t -A -c "select coalesce(max(version), '') from supabase_migrations.schema_migrations;")
+          if [ $? -ne 0 ]; then
+            echo "::error::Could not query supabase_migrations.schema_migrations - check the connection. Nothing was touched."
+            exit 1
+          fi
+          echo "Currently tracked max version: ${MAX_TRACKED:-none}"
+
+          for raw in "${RAW_FILES[@]}"; do
+            f=$(echo "$raw" | xargs)
+            [ -z "$f" ] && continue
+            PATH_F="supabase/migrations/$f"
+
+            if [ ! -f "$PATH_F" ]; then
+              echo "::error::$f not found under supabase/migrations/."
+              FAILED=1
+              continue
+            fi
+
+            version=$(basename "$f" | sed -E 's/^([0-9]+)_.*/\1/')
+
+            already=$(psql "$PRODUCTION_DB_URL" -t -A -c "select version from supabase_migrations.schema_migrations where version = '$version';")
+            if [ $? -ne 0 ]; then
+              echo "::error::Preflight query failed for $f."
+              FAILED=1
+              continue
+            fi
+            if [ -n "$already" ]; then
+              echo "::error::$f (version $version) is already recorded as applied. Refusing to re-run any part of this batch."
+              FAILED=1
+              continue
+            fi
+
+            if [ -n "$MAX_TRACKED" ] && [ "$version" \< "$MAX_TRACKED" ]; then
+              if echo "$KNOWN_COLLISIONS" | grep -qw "$version"; then
+                echo "INFO: $f (version $version) sorts before the tracked max ($MAX_TRACKED) - documented collision-group timestamp."
+              elif [ "${{ inputs.allow_out_of_order_backfill }}" = "BACKFILL" ]; then
+                echo "WARN: $f (version $version) sorts before tracked max ($MAX_TRACKED) - applying as explicit BACKFILL."
+              else
+                echo "::error::$f (version $version) sorts before tracked max ($MAX_TRACKED) and is not a documented collision timestamp."
+                FAILED=1
+                continue
+              fi
+            fi
+
+            echo "Preflight OK: $f (version $version)"
+            CHECKED_FILES+=("$f")
+          done
+
+          if [ "$FAILED" -ne 0 ]; then
+            echo "::error::Preflight failed - nothing in this batch was applied."
+            exit 1
+          fi
+
+          if [ "${#CHECKED_FILES[@]}" -eq 0 ]; then
+            echo "::error::No valid migration files were parsed. Nothing was touched."
+            exit 1
+          fi
+
+          printf '%s\n' "${CHECKED_FILES[@]}" | sort > /tmp/migration-batch.txt
+          echo "Preflight passed for the full batch:"
+          cat /tmp/migration-batch.txt
+
+      - name: Apply the batch (only reached if preflight passed)
+        run: |
+          set -uo pipefail
+          APPLIED=()
+
+          while IFS= read -r f; do
+            [ -z "$f" ] && continue
+            PATH_F="supabase/migrations/$f"
+            version=$(basename "$f" | sed -E 's/^([0-9]+)_.*/\1/')
+            name=$(basename "$f" | sed -E 's/^[0-9]+_(.*)\.sql$/\1/')
+
+            echo "Applying $f..."
+            psql "$PRODUCTION_DB_URL" -v ON_ERROR_STOP=1 -f "$PATH_F"
+            if [ $? -ne 0 ]; then
+              echo "::error::$f failed to apply. STOPPING."
+              exit 1
+            fi
+
+            insert_result=$(psql "$PRODUCTION_DB_URL" -v ON_ERROR_STOP=1 -t -A -c \
+              "insert into supabase_migrations.schema_migrations (version, name) values ('$version', '$name') on conflict (version) do nothing returning version;")
+            if [ $? -ne 0 ]; then
+              echo "::error::$f SQL applied but schema_migrations bookkeeping failed."
+              exit 1
+            fi
+
+            echo "Applied and recorded: $f"
+            APPLIED+=("$f")
+          done < /tmp/migration-batch.txt
+
+          printf '%s\n' "${APPLIED[@]}" > /tmp/migration-applied.txt
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## Production migration run" >> "$GITHUB_STEP_SUMMARY"
+          if [ -f /tmp/migration-applied.txt ] && [ -s /tmp/migration-applied.txt ]; then
+            echo "Applied and recorded:" >> "$GITHUB_STEP_SUMMARY"
+            sed 's/^/- /' /tmp/migration-applied.txt >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No files were applied." >> "$GITHUB_STEP_SUMMARY"
+          fi
