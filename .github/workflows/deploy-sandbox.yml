@@ -323,6 +323,7 @@ jobs:
             --change-set-type UPDATE \
             --parameters \
               "ParameterKey=EnvironmentName,ParameterValue=sandbox" \
+              "ParameterKey=FacebookSecretArn,ParameterValue=arn:aws:secretsmanager:us-east-1:405254329873:secret:htc/sandbox/facebook-PNy3PV" \
               "ParameterKey=VenueAppImage,ParameterValue=$REGISTRY/htc-sandbox-venue-app:$SHA" \
               "ParameterKey=MarketingImage,ParameterValue=$REGISTRY/htc-sandbox-marketing:$SHA" \
               "ParameterKey=WorkspaceImage,ParameterValue=$REGISTRY/htc-sandbox-workspace:$SHA" \
@@ -428,6 +429,7 @@ jobs:
             --stack-name "$STACK" \
             --parameter-overrides \
               EnvironmentName=sandbox \
+              FacebookSecretArn=arn:aws:secretsmanager:us-east-1:405254329873:secret:htc/sandbox/facebook-PNy3PV \
               VenueAppImage="$REGISTRY/htc-sandbox-venue-app:$SHA" \
               MarketingImage="$REGISTRY/htc-sandbox-marketing:$SHA" \
               WorkspaceImage="$REGISTRY/htc-sandbox-workspace:$SHA" \

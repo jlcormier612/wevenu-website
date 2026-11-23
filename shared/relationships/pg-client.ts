@@ -11,11 +11,35 @@ export function crmSupabaseConfigured(): boolean {
   return Boolean(url?.trim() && key?.trim());
 }
 
-/** Prefer Postgres when service-role credentials are present. */
+/** Hosted Production must not silently fall back to JSONL CRM persistence. */
+export function isProductionCrmEnvironment(): boolean {
+  const env = (process.env.HTC_ENVIRONMENT || process.env.HTC_ENV || "")
+    .trim()
+    .toLowerCase();
+  return env === "production";
+}
+
+/**
+ * Prefer Postgres when service-role credentials are present.
+ * Production refuses JSONL/`file` fallback when Supabase is missing.
+ */
 export function usePostgresCrmStore(): boolean {
-  if (process.env.HTC_CRM_STORE === "file") return false;
+  if (process.env.HTC_CRM_STORE === "file") {
+    if (isProductionCrmEnvironment()) {
+      throw new Error(
+        "HTC_CRM_STORE=file is not allowed when HTC_ENVIRONMENT=production (refusing JSONL CRM persistence).",
+      );
+    }
+    return false;
+  }
   if (process.env.HTC_CRM_STORE === "postgres") return true;
-  return crmSupabaseConfigured();
+  if (crmSupabaseConfigured()) return true;
+  if (isProductionCrmEnvironment()) {
+    throw new Error(
+      "Production CRM requires SUPABASE_URL (or NEXT_PUBLIC_SUPABASE_URL) and SUPABASE_SERVICE_ROLE_KEY (refusing JSONL fallback).",
+    );
+  }
+  return false;
 }
 
 export function createCrmAdminClient(): SupabaseClient {

@@ -1,0 +1,138 @@
+# Production application/compute deploy — MANUAL AUTHORIZATION ONLY.
+#
+# - workflow_dispatch only (no push / no schedule / no auto trigger)
+# - confirm input must equal DEPLOY_PRODUCTION
+# - uses GitHub Environment "production" (required reviewers / secrets)
+# - EnvironmentName=production; never sandbox image repos or Sandbox Facebook ARN
+# - Does NOT apply database migrations (use apply-production-migration.yml)
+#
+# Do not enable until Production AWS stack, secrets, and hostnames are provisioned
+# and founder has authorized a Production deploy. This workflow is prepared in
+# Stage 4B-1; running it is a later authorization gate.
+
+name: Deploy Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Type DEPLOY_PRODUCTION to authorize a Production application deploy"
+        required: true
+        type: string
+      image_sha:
+        description: "Full git SHA already built/pushed to Production ECR repos (or leave empty to use this workflow run's github.sha after a build step is added)"
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  authorize:
+    name: Require explicit Production confirmation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Gate
+        run: |
+          if [ "${{ inputs.confirm }}" != "DEPLOY_PRODUCTION" ]; then
+            echo "::error::confirm must be exactly 'DEPLOY_PRODUCTION'. Nothing was deployed."
+            exit 1
+          fi
+          echo "Production deploy confirmation accepted."
+
+  deploy:
+    name: Deploy Production ECS stack
+    needs: authorize
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Resolve image SHA
+        id: sha
+        run: |
+          SHA="${{ inputs.image_sha }}"
+          if [ -z "$SHA" ]; then
+            SHA="${{ github.sha }}"
+          fi
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "Using image SHA: $SHA"
+
+      - name: Guard — refuse Sandbox Facebook ARN in Production
+        run: |
+          FB='${{ vars.FACEBOOK_SECRET_ARN }}'
+          if [ -z "$FB" ]; then
+            echo "::error::production Environment var FACEBOOK_SECRET_ARN is required."
+            exit 1
+          fi
+          if echo "$FB" | grep -q 'htc/sandbox/facebook'; then
+            echo "::error::FACEBOOK_SECRET_ARN points at Sandbox. Refusing Production deploy."
+            exit 1
+          fi
+
+      - name: Deploy htc-ecs-stack.json (production)
+        env:
+          REGISTRY: ${{ vars.ECR_REGISTRY }}
+          SHA: ${{ steps.sha.outputs.sha }}
+          STACK: ${{ vars.CFN_STACK_NAME }}
+        run: |
+          if [ -z "${REGISTRY:-}" ] || [ -z "${STACK:-}" ]; then
+            echo "::error::production Environment must define ECR_REGISTRY and CFN_STACK_NAME. Nothing deployed."
+            exit 1
+          fi
+          aws cloudformation deploy \
+            --template-file infra/htc-ecs-stack.json \
+            --stack-name "$STACK" \
+            --parameter-overrides \
+              EnvironmentName=production \
+              FacebookSecretArn="${{ vars.FACEBOOK_SECRET_ARN }}" \
+              VenueAppImage="$REGISTRY/htc-production-venue-app:$SHA" \
+              MarketingImage="$REGISTRY/htc-production-marketing:$SHA" \
+              WorkspaceImage="$REGISTRY/htc-production-workspace:$SHA" \
+              SchedulerImage="$REGISTRY/htc-production-scheduler:$SHA" \
+              VenueAppHostname="${{ vars.VENUE_APP_HOSTNAME }}" \
+              MarketingHostname="${{ vars.MARKETING_HOSTNAME }}" \
+              WorkspaceHostname="${{ vars.WORKSPACE_HOSTNAME }}" \
+              CertificateArn="${{ vars.CERTIFICATE_ARN }}" \
+              FromEmailAddress="${{ vars.FROM_EMAIL_ADDRESS }}" \
+              EmailReplyTo="${{ vars.EMAIL_REPLY_TO }}" \
+              InquiryNotifyEmail="${{ vars.INQUIRY_NOTIFY_EMAIL }}" \
+              SupabaseUrl="${{ vars.NEXT_PUBLIC_SUPABASE_URL }}" \
+              SupabaseAnonKey="${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" \
+              ResendInboundAddress="${{ vars.RESEND_INBOUND_ADDRESS }}" \
+              CronSecret="${{ secrets.CRON_SECRET }}" \
+              NotificationsSecret="${{ vars.NEXT_PUBLIC_NOTIFICATIONS_SECRET }}" \
+              CommunicationMode="${{ vars.COMMUNICATION_MODE }}" \
+              PricingLaunchV1="${{ vars.PRICING_LAUNCH_V1 }}" \
+              PricingWevenV1="${{ vars.PRICING_WEVEN_V1 }}" \
+              PricingGroupV1="${{ vars.PRICING_GROUP_V1 }}" \
+              PricingFounderV1="${{ vars.PRICING_FOUNDER_V1 }}" \
+              ReferralProgramV1="${{ vars.REFERRAL_PROGRAM_V1 }}" \
+              ReferralRewardIssue="${{ vars.REFERRAL_REWARD_ISSUE }}" \
+              PricingTierUpgradeStore=postgres \
+              TierUpgradeApplyStripe="${{ vars.TIER_UPGRADE_APPLY_STRIPE }}" \
+              TierUpgradeSendNotice="${{ vars.TIER_UPGRADE_SEND_NOTICE }}" \
+            --capabilities CAPABILITY_NAMED_IAM \
+            --role-arn "${{ vars.CFN_EXECUTION_ROLE_ARN }}" \
+            --no-fail-on-empty-changeset
+
+      - name: Summary
+        run: |
+          echo "## Production deploy" >> "$GITHUB_STEP_SUMMARY"
+          echo "- confirm: DEPLOY_PRODUCTION" >> "$GITHUB_STEP_SUMMARY"
+          echo "- EnvironmentName: production" >> "$GITHUB_STEP_SUMMARY"
+          echo "- image SHA: ${{ steps.sha.outputs.sha }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Migrations: not applied by this workflow" >> "$GITHUB_STEP_SUMMARY"
