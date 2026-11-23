@@ -62,6 +62,13 @@ export async function setActiveVenue(venueId: string): Promise<
 > {
   if (!isSupabaseConfigured) return { ok: false, error: "not_configured" };
   const supabase = await createClient();
+  // Clear HTC support override first — otherwise current_user_venue_id() keeps
+  // returning the support venue and membership bootstrap stays invalid.
+  try {
+    await supabase.rpc("htc_end_support_context");
+  } catch {
+    // ignore — RPC may be absent before migration
+  }
   const { data, error } = await supabase.rpc("set_active_venue", { p_venue_id: venueId });
   if (error) return { ok: false, error: error.message };
   const payload = data as { ok?: boolean; error?: string; venueId?: string; venueName?: string } | null;
@@ -101,20 +108,32 @@ export const bootstrapActiveVenueContext = cache(async (): Promise<ActiveVenueBo
   });
   if (supportCtx?.ok && supportCtx.active && supportCtx.venue_id) {
     const venueId = String(supportCtx.venue_id);
-    await syncActiveVenueCookieFromDb(venueId);
-    layoutFbExtra("bootstrap_case", "F_support_context");
-    return {
-      status: "ready",
-      venueId,
-      memberships: [
-        {
-          venueId,
-          venueName: "Support session",
-          role: supportCtx.mode === "assist" ? "owner" : "viewer",
-          isOwner: supportCtx.mode === "assist",
-        },
-      ],
-    };
+    // If the support target venue row is missing, drop the stuck session and
+    // continue ordinary membership bootstrap (do not trap HQ staff on
+    // select-venue with an unresolvable support override).
+    const { data: supportVenue } = await supabase
+      .from("venues")
+      .select("id")
+      .eq("id", venueId)
+      .maybeSingle();
+    if (!supportVenue) {
+      await supabase.rpc("htc_end_support_context");
+    } else {
+      await syncActiveVenueCookieFromDb(venueId);
+      layoutFbExtra("bootstrap_case", "F_support_context");
+      return {
+        status: "ready",
+        venueId,
+        memberships: [
+          {
+            venueId,
+            venueName: "Support session",
+            role: supportCtx.mode === "assist" ? "owner" : "viewer",
+            isOwner: supportCtx.mode === "assist",
+          },
+        ],
+      };
+    }
   }
 
   // One-time onboarding handoff (purchase activation) — establish the
