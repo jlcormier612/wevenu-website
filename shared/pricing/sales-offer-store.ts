@@ -524,6 +524,8 @@ export function createMemorySalesOfferStore(): SalesOfferStore {
       const next: SalesOfferRecord = {
         ...existing,
         status: "accepted",
+        // Bump revision so revision history stays unique per (offer_id, revision).
+        revision: existing.revision + 1,
         acceptedSnapshot: input.acceptedSnapshot,
         acceptedRevision: input.acceptedRevision,
         acceptedAt: existing.acceptedAt ?? now,
@@ -555,6 +557,7 @@ export function createMemorySalesOfferStore(): SalesOfferStore {
       const next: SalesOfferRecord = {
         ...existing,
         status: "paid",
+        revision: existing.revision + 1,
         checkoutSessionId: input.checkoutSessionId ?? existing.checkoutSessionId,
         paidAt: now,
         updatedAt: now,

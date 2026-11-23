@@ -645,16 +645,19 @@ export function createPostgresSalesOfferStore(
         return existing;
       }
       const now = new Date().toISOString();
+      const nextRevision = existing.revision + 1;
       const { data, error } = await client
         .from("saas_sales_offers")
         .update({
           status: "accepted",
+          revision: nextRevision,
           accepted_snapshot: input.acceptedSnapshot,
           accepted_revision: input.acceptedRevision,
           accepted_at: existing.acceptedAt ?? now,
           updated_at: now,
         })
         .eq("id", existing.id)
+        .eq("revision", existing.revision)
         .select("*")
         .maybeSingle();
       if (error) throw new Error(`markAccepted failed: ${error.message}`);
@@ -686,15 +689,18 @@ export function createPostgresSalesOfferStore(
       if (!existing) throw new SalesOfferNotFoundError();
       if (existing.status === "paid") return existing;
       const now = new Date().toISOString();
+      const nextRevision = existing.revision + 1;
       const { data, error } = await client
         .from("saas_sales_offers")
         .update({
           status: "paid",
+          revision: nextRevision,
           checkout_session_id: input.checkoutSessionId ?? existing.checkoutSessionId,
           paid_at: now,
           updated_at: now,
         })
         .eq("id", existing.id)
+        .eq("revision", existing.revision)
         .select("*")
         .maybeSingle();
       if (error) throw new Error(`markPaid failed: ${error.message}`);
