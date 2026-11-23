@@ -151,6 +151,7 @@ export { usePostgresCrmStore, crmSupabaseConfigured } from "./pg-client";
 export {
   findOrCreateRelationship,
   updateRelationshipFields,
+  updateStandardDiscountEligibility,
   clearRelationshipAutoArrival,
   acknowledgeStageAutoArrivals,
   setRelationshipStatus,
@@ -231,3 +232,22 @@ export {
   type RelationshipStripeRef,
   type SubscriptionRelationshipResolution,
 } from "./resolve-subscription-relationship";
+export {
+  STANDARD_DISCOUNT_ELIGIBILITY_VALUES,
+  STANDARD_DISCOUNT_LABELS,
+  isStandardDiscountEligibility,
+  resolveRelationshipStandardDiscount,
+  buildEligibilityFlagSync,
+  buildStandardCheckoutCommercialTerms,
+  crmPlanToSaasKey,
+  type StandardDiscountEligibility,
+  type StandardDiscountEvidence,
+  type StandardCheckoutCommercialTerms,
+  type EligibilityFlagSync,
+} from "./standard-discount-eligibility";
+export {
+  buildSubscriptionLinkPreview,
+  subscriptionTermsFingerprint,
+  type SubscriptionLinkPreview,
+  type SubscriptionLinkPreviewMode,
+} from "./subscription-link-preview";

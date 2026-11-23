@@ -425,6 +425,22 @@ export type Relationship = {
   foundingMember: boolean;
   welcomeBackRequested: boolean;
   welcomeBackVerified: WelcomeBackVerifiedStatus;
+  /**
+   * Stage 1E — authoritative Sales UX for ordinary standard discounts.
+   * Prefer this over inferring solely from welcomeBack / foundingMember flags.
+   * Accepted custom offers keep their own snapshot (Stage 2).
+   */
+  standardDiscountEligibility?:
+    | "not_established"
+    | "former_weven"
+    | "founding"
+    | "additional_venue"
+    | "none";
+  standardDiscountEvidence?:
+    | "not_established"
+    | "founder_recorded"
+    | "application_confirmed"
+    | "explicitly_none";
   onboardingType: OnboardingType;
   currentStageLabel: string;
   lastContactAt: string;
@@ -563,6 +579,8 @@ export type RelationshipFieldPatch = Partial<
     | "foundingMember"
     | "welcomeBackRequested"
     | "welcomeBackVerified"
+    | "standardDiscountEligibility"
+    | "standardDiscountEvidence"
     | "onboardingType"
     | "currentStageLabel"
     | "nextMilestone"

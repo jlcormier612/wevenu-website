@@ -693,9 +693,12 @@ export function computeSalesOfferPreview(
 
   lines.push(tierUpgradeLabel(terms));
 
-  const promoNote = terms.replacesStandardPromos
-    ? "Custom promotional pricing replaces standard discounts while it is active. An eligible standard discount may resume afterward per these terms. Discounts do not stack."
-    : "Founder chose not to replace standard promos (unusual).";
+  const hasCustomPromo = terms.pricingKind !== "standard";
+  const promoNote = !hasCustomPromo
+    ? "This offer uses regular tier pricing for the selected plan. Applicable standard discounts are recorded separately and do not stack with each other."
+    : terms.replacesStandardPromos
+      ? "Custom promotional pricing replaces standard discounts while it is active. An eligible standard discount may resume afterward per these terms. Discounts do not stack."
+      : "Founder chose not to replace standard promos (unusual).";
 
   lines.push(promoNote);
 
