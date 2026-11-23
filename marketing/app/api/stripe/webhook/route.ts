@@ -506,6 +506,33 @@ async function handleCheckoutCompleted(
       pricingMode: meta.pricing_mode || null,
       checkoutOfferId: checkoutOffer?.id ?? null,
     });
+
+    // Stage 2 — Custom Offer activation (idempotent markPaid).
+    const salesOfferId = meta.sales_offer_id?.trim() || null;
+    if (salesOfferId && meta.pricing_mode === "custom_sales_offer") {
+      try {
+        const { getSalesOfferStore } = await import(
+          "@shared/pricing/sales-offer-store-access"
+        );
+        const salesStore = getSalesOfferStore();
+        const paid = await salesStore.markPaid({
+          offerId: salesOfferId,
+          checkoutSessionId: session.id,
+        });
+        console.info("[stripe] custom sales offer marked paid", {
+          salesOfferId,
+          status: paid.status,
+          sessionId: session.id,
+          relationshipId: meta.relationship_id || null,
+        });
+      } catch (salesOfferErr) {
+        console.error(
+          "[stripe] custom sales offer markPaid failed (webhook should retry)",
+          salesOfferErr,
+        );
+        throw salesOfferErr;
+      }
+    }
   } catch (error) {
     console.error("[stripe] failed to create venue enrollment", error);
     throw error;

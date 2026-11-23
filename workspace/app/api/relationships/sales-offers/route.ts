@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 
+import { sendRelationshipEmail } from "@shared/email";
 import {
   computeSalesOfferPreview,
+  formatUsdFromCents,
+  normalizeOfferEmail,
   SalesOfferConflictError,
   SalesOfferForbiddenError,
   SalesOfferNotFoundError,
@@ -20,6 +23,21 @@ import {
 import { ensureProgram4Data } from "@/lib/program4/store";
 
 export const runtime = "nodejs";
+
+function marketingBaseUrl(): string {
+  return (
+    process.env.MARKETING_URL ||
+    process.env.NEXT_PUBLIC_MARKETING_URL ||
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    "http://localhost:3001"
+  ).replace(/\/$/, "");
+}
+
+function planDisplayName(planKey: string): string {
+  if (planKey === "growing") return "Celebrate";
+  if (planKey === "professional") return "Flourish";
+  return "Gather";
+}
 
 async function requireFounderPricingAuth(): Promise<Response | null> {
   const session = await getSessionMember();
@@ -152,7 +170,7 @@ export async function GET(request: Request) {
         welcomeBackVerified: relationship.welcomeBackVerified ?? "none",
       },
       eligibility,
-      stage: 1,
+        stage: 2,
       stripeSideEffects: false,
     });
   }
@@ -173,7 +191,7 @@ export async function GET(request: Request) {
       welcomeBackVerified: relationship.welcomeBackVerified ?? "none",
     },
     eligibility,
-    stage: 1,
+    stage: 2,
     stripeSideEffects: false,
   });
 }
@@ -346,6 +364,156 @@ export async function POST(request: Request) {
         termsHash: validated.termsHash,
         // CRM application hints for UI defaults only — not offer commercial terms.
         eligibility,
+        stripeSideEffects: false,
+      });
+    }
+
+    if (action === "send" || action === "resend") {
+      const offerId =
+        typeof body.offerId === "string" ? body.offerId.trim() : "";
+      const expectedRevision = Number(body.expectedRevision);
+      if (!offerId || !Number.isInteger(expectedRevision)) {
+        return NextResponse.json(
+          { error: "offerId and expectedRevision required" },
+          { status: 400 },
+        );
+      }
+      const confirmed = body.confirm === true;
+      if (!confirmed) {
+        return NextResponse.json(
+          {
+            error:
+              "Confirmation required. Review the offer and click Confirm & Send Offer.",
+            code: "confirmation_required",
+          },
+          { status: 400 },
+        );
+      }
+
+      const recipientNameRaw =
+        typeof body.recipientName === "string"
+          ? body.recipientName.trim()
+          : "";
+      const recipientEmail = normalizeOfferEmail(
+        typeof body.recipientEmail === "string"
+          ? body.recipientEmail
+          : relationship.owner.email,
+      );
+      if (!recipientNameRaw) {
+        return NextResponse.json(
+          { error: "Recipient name is required.", code: "recipient_name" },
+          { status: 400 },
+        );
+      }
+      if (!recipientEmail) {
+        return NextResponse.json(
+          {
+            error:
+              "A valid recipient email is required before sending. Correct the email and try again.",
+            code: "recipient_email",
+          },
+          { status: 400 },
+        );
+      }
+
+      const customerMessage =
+        body.customerMessage === null || typeof body.customerMessage === "string"
+          ? (body.customerMessage as string | null)
+          : undefined;
+
+      const offer = await store.markSent({
+        offerId,
+        relationshipId,
+        expectedRevision,
+        recipientName: recipientNameRaw,
+        recipientEmail,
+        customerMessage,
+        updatedByUserId: actorId,
+        updatedByEmail: actorEmail,
+      });
+
+      const offerUrl = `${marketingBaseUrl()}/custom-offer/${offer.publicToken}`;
+      const preview = serializeOffer(offer)?.preview;
+      const monthlyLabel = preview
+        ? `${formatUsdFromCents(preview.monthlyRecurringCents)}/month`
+        : "your negotiated monthly rate";
+
+      const emailResult = await sendRelationshipEmail({
+        relationshipId,
+        to: recipientEmail,
+        templateId: "custom_offer_invite",
+        vars: {
+          firstName: recipientNameRaw.split(/\s+/)[0] || recipientNameRaw,
+          venueName: relationship.venue.name,
+          planName: planDisplayName(offer.planKey),
+          offerUrl,
+          monthlyLabel,
+        },
+        actorId: actorId ?? undefined,
+        authorName: actorEmail,
+        idempotencyKey: `custom-offer-send:${offer.id}:${offer.revision}`,
+      });
+
+      return NextResponse.json({
+        ok: true,
+        offer: serializeOffer(offer),
+        offerUrl,
+        email: {
+          delivery: emailResult.delivery,
+          subject: emailResult.subject,
+          ok: emailResult.ok,
+        },
+        // Explicit: send creates the private link + email only — no Checkout Session.
+        stripeSideEffects: false,
+        checkoutSessionCreated: false,
+      });
+    }
+
+    if (action === "withdraw") {
+      const offerId =
+        typeof body.offerId === "string" ? body.offerId.trim() : "";
+      const expectedRevision = Number(body.expectedRevision);
+      if (!offerId || !Number.isInteger(expectedRevision)) {
+        return NextResponse.json(
+          { error: "offerId and expectedRevision required" },
+          { status: 400 },
+        );
+      }
+      const offer = await store.revoke({
+        offerId,
+        relationshipId,
+        expectedRevision,
+        updatedByUserId: actorId,
+        updatedByEmail: actorEmail,
+      });
+      return NextResponse.json({
+        ok: true,
+        offer: serializeOffer(offer),
+        stripeSideEffects: false,
+      });
+    }
+
+    if (action === "supersede") {
+      const offerId =
+        typeof body.offerId === "string" ? body.offerId.trim() : "";
+      const expectedRevision = Number(body.expectedRevision);
+      if (!offerId || !Number.isInteger(expectedRevision)) {
+        return NextResponse.json(
+          { error: "offerId and expectedRevision required" },
+          { status: 400 },
+        );
+      }
+      const { previous, draft } = await store.supersedeWithDraft({
+        offerId,
+        relationshipId,
+        expectedRevision,
+        createdByUserId: actorId,
+        createdByEmail: actorEmail,
+      });
+      return NextResponse.json({
+        ok: true,
+        previous: serializeOffer(previous),
+        offer: serializeOffer(draft),
         stripeSideEffects: false,
       });
     }
