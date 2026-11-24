@@ -1,0 +1,294 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Hello to Cheers - Production GitHub Actions OIDC deploy role + CloudFormation execution role. Reuses the account OIDC provider. Mirrors htc-github-oidc.json but scoped to environment:production and htc-production-* resources. Deploy manually once with admin AWS credentials.",
+
+  "Parameters": {
+    "GitHubOrg": {
+      "Type": "String",
+      "Default": "jlcormier612",
+      "MinLength": 1
+    },
+    "GitHubRepo": {
+      "Type": "String",
+      "Default": "wevenu-website",
+      "MinLength": 1
+    },
+    "ExistingOidcProviderArn": {
+      "Type": "String",
+      "Default": "arn:aws:iam::405254329873:oidc-provider/token.actions.githubusercontent.com",
+      "MinLength": 1,
+      "Description": "Existing token.actions.githubusercontent.com OIDC provider ARN (required — do not create a second provider)."
+    }
+  },
+
+  "Resources": {
+    "CloudFormationExecutionRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "RoleName": "htc-production-cfn-execution",
+        "Description": "Assumed by cloudformation.amazonaws.com for htc-production stacks. No PutSecretValue for human-owned secret values.",
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": { "Service": "cloudformation.amazonaws.com" },
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": "HtcProductionProvisioning",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Sid": "NetworkingNoResourceLevelSupport",
+                  "Effect": "Allow",
+                  "Action": [
+                    "ec2:DescribeVpcs", "ec2:DescribeSubnets", "ec2:DescribeInternetGateways",
+                    "ec2:DescribeRouteTables", "ec2:DescribeSecurityGroups", "ec2:DescribeAvailabilityZones",
+                    "ec2:DescribeAccountAttributes", "ec2:CreateTags", "ec2:DescribeTags",
+                    "ec2:AuthorizeSecurityGroupIngress", "ec2:AuthorizeSecurityGroupEgress",
+                    "ec2:RevokeSecurityGroupIngress", "ec2:RevokeSecurityGroupEgress",
+                    "ec2:CreateSecurityGroup", "ec2:DeleteSecurityGroup", "ec2:ModifySubnetAttribute"
+                  ],
+                  "Resource": "*"
+                },
+                {
+                  "Sid": "EcsScoped",
+                  "Effect": "Allow",
+                  "Action": [
+                    "ecs:CreateCluster", "ecs:DeleteCluster", "ecs:DescribeClusters", "ecs:UpdateClusterSettings",
+                    "ecs:CreateService", "ecs:UpdateService", "ecs:DeleteService", "ecs:DescribeServices",
+                    "ecs:TagResource", "ecs:RegisterTaskDefinition", "ecs:DeregisterTaskDefinition",
+                    "ecs:DescribeTaskDefinition"
+                  ],
+                  "Resource": "*"
+                },
+                {
+                  "Sid": "ElbNoResourceLevelSupportOnCreate",
+                  "Effect": "Allow",
+                  "Action": [
+                    "elasticloadbalancing:CreateLoadBalancer", "elasticloadbalancing:DeleteLoadBalancer",
+                    "elasticloadbalancing:DescribeLoadBalancers", "elasticloadbalancing:ModifyLoadBalancerAttributes",
+                    "elasticloadbalancing:CreateTargetGroup", "elasticloadbalancing:DeleteTargetGroup",
+                    "elasticloadbalancing:DescribeTargetGroups", "elasticloadbalancing:ModifyTargetGroup",
+                    "elasticloadbalancing:ModifyTargetGroupAttributes",
+                    "elasticloadbalancing:CreateListener", "elasticloadbalancing:DeleteListener",
+                    "elasticloadbalancing:DescribeListeners", "elasticloadbalancing:ModifyListener",
+                    "elasticloadbalancing:CreateRule", "elasticloadbalancing:DeleteRule",
+                    "elasticloadbalancing:DescribeRules", "elasticloadbalancing:ModifyRule",
+                    "elasticloadbalancing:AddListenerCertificates", "elasticloadbalancing:RemoveListenerCertificates",
+                    "elasticloadbalancing:DescribeListenerCertificates",
+                    "elasticloadbalancing:AddTags", "elasticloadbalancing:DescribeTags"
+                  ],
+                  "Resource": "*"
+                },
+                {
+                  "Sid": "LogsScoped",
+                  "Effect": "Allow",
+                  "Action": [
+                    "logs:CreateLogGroup", "logs:DeleteLogGroup", "logs:DescribeLogGroups",
+                    "logs:PutRetentionPolicy", "logs:TagResource"
+                  ],
+                  "Resource": [
+                    { "Fn::Sub": "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/ecs/htc-production/*" }
+                  ]
+                },
+                {
+                  "Sid": "IamRoleManagementScoped",
+                  "Effect": "Allow",
+                  "Action": [
+                    "iam:CreateRole", "iam:DeleteRole", "iam:GetRole", "iam:GetRolePolicy",
+                    "iam:ListRolePolicies", "iam:PutRolePolicy", "iam:DeleteRolePolicy",
+                    "iam:AttachRolePolicy", "iam:DetachRolePolicy", "iam:TagRole"
+                  ],
+                  "Resource": [
+                    { "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/htc-production-*" }
+                  ]
+                },
+                {
+                  "Sid": "PassEcsTaskRoles",
+                  "Effect": "Allow",
+                  "Action": "iam:PassRole",
+                  "Resource": [
+                    { "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/htc-production-ecs-task-execution" },
+                    { "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/htc-production-ecs-task" }
+                  ],
+                  "Condition": {
+                    "StringEquals": { "iam:PassedToService": "ecs-tasks.amazonaws.com" }
+                  }
+                },
+                {
+                  "Sid": "SecretsMetadataOnly",
+                  "Effect": "Allow",
+                  "Action": [
+                    "secretsmanager:CreateSecret", "secretsmanager:DeleteSecret",
+                    "secretsmanager:DescribeSecret", "secretsmanager:TagResource",
+                    "secretsmanager:UpdateSecret"
+                  ],
+                  "Resource": [
+                    { "Fn::Sub": "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:htc/production/*" }
+                  ]
+                },
+                {
+                  "Sid": "EcrScoped",
+                  "Effect": "Allow",
+                  "Action": [
+                    "ecr:CreateRepository", "ecr:DeleteRepository", "ecr:DescribeRepositories", "ecr:TagResource"
+                  ],
+                  "Resource": [
+                    { "Fn::Sub": "arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/htc-production-*" }
+                  ]
+                },
+                {
+                  "Sid": "IamGetRoleForExisting",
+                  "Effect": "Allow",
+                  "Action": ["iam:GetRole", "iam:PassRole"],
+                  "Resource": [
+                    { "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/htc-production-*" }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+
+    "GithubActionsProductionDeployRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "RoleName": "htc-production-github-actions-deploy",
+        "Description": "Assumed by GitHub Actions via OIDC; trust-scoped to environment:production only.",
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Federated": { "Ref": "ExistingOidcProviderArn" }
+              },
+              "Action": "sts:AssumeRoleWithWebIdentity",
+              "Condition": {
+                "StringEquals": {
+                  "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
+                },
+                "StringLike": {
+                  "token.actions.githubusercontent.com:sub": {
+                    "Fn::Sub": "repo:${GitHubOrg}/${GitHubRepo}:environment:production"
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": "HtcProductionDeploy",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Sid": "EcrAuth",
+                  "Effect": "Allow",
+                  "Action": "ecr:GetAuthorizationToken",
+                  "Resource": "*"
+                },
+                {
+                  "Sid": "EcrPushScoped",
+                  "Effect": "Allow",
+                  "Action": [
+                    "ecr:BatchCheckLayerAvailability", "ecr:InitiateLayerUpload", "ecr:UploadLayerPart",
+                    "ecr:CompleteLayerUpload", "ecr:PutImage", "ecr:BatchGetImage", "ecr:GetDownloadUrlForLayer",
+                    "ecr:DescribeImages"
+                  ],
+                  "Resource": [
+                    { "Fn::Sub": "arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/htc-production-venue-app" },
+                    { "Fn::Sub": "arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/htc-production-marketing" },
+                    { "Fn::Sub": "arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/htc-production-workspace" },
+                    { "Fn::Sub": "arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/htc-production-scheduler" },
+                    { "Fn::Sub": "arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/htc-ci-bases" }
+                  ]
+                },
+                {
+                  "Sid": "CloudFormationScoped",
+                  "Effect": "Allow",
+                  "Action": [
+                    "cloudformation:CreateStack", "cloudformation:UpdateStack", "cloudformation:DescribeStackEvents",
+                    "cloudformation:CreateChangeSet", "cloudformation:ExecuteChangeSet", "cloudformation:DescribeChangeSet",
+                    "cloudformation:DeleteChangeSet", "cloudformation:GetTemplate", "cloudformation:ListChangeSets",
+                    "cloudformation:DescribeStacks", "cloudformation:GetTemplateSummary"
+                  ],
+                  "Resource": [
+                    { "Fn::Sub": "arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/htc-production/*" },
+                    { "Fn::Sub": "arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/htc-production-ecr/*" }
+                  ]
+                },
+                {
+                  "Sid": "CloudFormationDescribeAny",
+                  "Effect": "Allow",
+                  "Action": ["cloudformation:DescribeStacks", "cloudformation:GetTemplateSummary"],
+                  "Resource": "*"
+                },
+                {
+                  "Sid": "PassOnlyTheCfnExecutionRole",
+                  "Effect": "Allow",
+                  "Action": "iam:PassRole",
+                  "Resource": { "Fn::GetAtt": ["CloudFormationExecutionRole", "Arn"] },
+                  "Condition": {
+                    "StringEquals": { "iam:PassedToService": "cloudformation.amazonaws.com" }
+                  }
+                },
+                {
+                  "Sid": "EcsMarketingOnlyDeployAndVerify",
+                  "Effect": "Allow",
+                  "Action": [
+                    "ecs:DescribeServices", "ecs:DescribeTasks", "ecs:ListTasks",
+                    "ecs:UpdateService", "ecs:RegisterTaskDefinition", "ecs:DescribeTaskDefinition",
+                    "ecs:DeregisterTaskDefinition", "ecs:TagResource"
+                  ],
+                  "Resource": "*"
+                },
+                {
+                  "Sid": "ElbReadOnlyForVerification",
+                  "Effect": "Allow",
+                  "Action": [
+                    "elasticloadbalancing:DescribeLoadBalancers",
+                    "elasticloadbalancing:DescribeTargetGroups",
+                    "elasticloadbalancing:DescribeTargetHealth",
+                    "elasticloadbalancing:DescribeListeners",
+                    "elasticloadbalancing:DescribeRules",
+                    "elasticloadbalancing:DescribeListenerCertificates"
+                  ],
+                  "Resource": "*"
+                },
+                {
+                  "Sid": "SecretsDescribeProduction",
+                  "Effect": "Allow",
+                  "Action": ["secretsmanager:DescribeSecret"],
+                  "Resource": [
+                    { "Fn::Sub": "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:htc/production/*" }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  },
+
+  "Outputs": {
+    "GithubActionsProductionDeployRoleArn": {
+      "Value": { "Fn::GetAtt": ["GithubActionsProductionDeployRole", "Arn"] },
+      "Description": "Set as AWS_DEPLOY_ROLE_ARN on the GitHub production Environment."
+    },
+    "CloudFormationExecutionRoleArn": {
+      "Value": { "Fn::GetAtt": ["CloudFormationExecutionRole", "Arn"] },
+      "Description": "Set as CFN_EXECUTION_ROLE_ARN on the GitHub production Environment."
+    }
+  }
+}
