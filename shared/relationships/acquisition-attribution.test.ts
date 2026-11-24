@@ -7,17 +7,34 @@ import {
 } from "./acquisition-attribution";
 import type { Relationship } from "./types";
 
+/** Minimal valid Relationship for attribution unit tests (no cast). */
 function stubRelationship(): Relationship {
+  const now = "2026-01-01T00:00:00.000Z";
   return {
     id: "rel_test",
     status: "inquiry",
-    health: "healthy",
-    owner: { firstName: "A", lastName: "B", email: "a@example.com" },
-    venue: { name: "Test Venue" },
-    createdAt: "2026-01-01T00:00:00.000Z",
-    updatedAt: "2026-01-01T00:00:00.000Z",
+    health: "good",
+    owner: {
+      id: "c_test",
+      firstName: "A",
+      lastName: "B",
+      email: "a@example.com",
+    },
+    venue: { name: "Test Venue", city: "Austin", state: "TX" },
+    assignedTeamMemberId: "tm_test",
+    planId: "none",
+    planName: "",
+    foundingMember: false,
+    welcomeBackRequested: false,
+    welcomeBackVerified: "none",
+    onboardingType: "none",
+    currentStageLabel: "Inquiry",
+    lastContactAt: now,
+    createdAt: now,
+    updatedAt: now,
+    supportOpenCount: 0,
     meta: {},
-  } as unknown as Relationship;
+  };
 }
 
 describe("CRM acquisition attribution persistence", () => {

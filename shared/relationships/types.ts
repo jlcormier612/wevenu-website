@@ -11,6 +11,8 @@
  * Field updates merge: fill empties, ratchet booleans/status upward — never wipe stronger data.
  */
 
+import type { AcquisitionAttributionPayload } from "../analytics/acquisition-attribution";
+
 /**
  * Pipeline lifecycle (Customer Lifecycle Engine Phase 1).
  * Aliases: `live` / `active_customer` → `active`; onboarding+WG maps to
@@ -585,10 +587,7 @@ export type FindOrCreateInput = {
    * First-touch is immutable once stored; latest-touch updates.
    * Distinct from referralSource and from founding/Weven/group offer flags.
    */
-  acquisitionAttribution?: {
-    first_touch?: Record<string, string> | null;
-    latest_touch?: Record<string, string> | null;
-  } | null;
+  acquisitionAttribution?: AcquisitionAttributionPayload | null;
 };
 
 export type RelationshipFieldPatch = Partial<
