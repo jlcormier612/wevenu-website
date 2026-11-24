@@ -1,6 +1,11 @@
 "use client";
 
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+
+import {
+  trackCalendlyEmbedReady,
+  trackWalkthroughScheduled,
+} from "@shared/analytics";
 
 import {
   buildCalendlySchedulingUrl,
@@ -61,6 +66,26 @@ export function CalendlyEmbed({
   const [loadedSrc, setLoadedSrc] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
   const loaded = loadedSrc === src;
+  const hasHandoff = Boolean(prefill?.handoffToken?.trim());
+
+  useEffect(() => {
+    if (!resolved) return;
+    function onMessage(event: MessageEvent) {
+      const data = event.data;
+      if (!data || typeof data !== "object") return;
+      const payload = data as { event?: string };
+      if (payload.event === "calendly.event_type_viewed") {
+        trackCalendlyEmbedReady();
+        return;
+      }
+      // Actual booking completed — not merely opening the widget.
+      if (payload.event === "calendly.event_scheduled") {
+        trackWalkthroughScheduled({ has_handoff: hasHandoff });
+      }
+    }
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, [resolved, hasHandoff]);
 
   if (!resolved || failed) {
     return (

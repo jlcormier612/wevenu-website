@@ -213,6 +213,12 @@ export {
   ingestProductPartnerFeedback,
 } from "./ingest";
 export {
+  applyAcquisitionAttributionToRelationship,
+  readAcquisitionAttribution,
+  ACQ_FIRST_TOUCH_META,
+  ACQ_LATEST_TOUCH_META,
+} from "./acquisition-attribution";
+export {
   CALENDLY_HANDOFF_META_KEY,
   CALENDLY_HANDOFF_UTM_MEDIUM,
   CALENDLY_HANDOFF_UTM_SOURCE,

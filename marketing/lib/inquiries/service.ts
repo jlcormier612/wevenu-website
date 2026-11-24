@@ -47,6 +47,9 @@ export async function submitInquiry(
     label: inquiryLabel(input.kind),
     createdAt: new Date().toISOString(),
     fields,
+    ...(input.acquisitionAttribution
+      ? { acquisitionAttribution: input.acquisitionAttribution }
+      : {}),
   };
 
   const prior = await findPriorInquiryBySourceId(submission);

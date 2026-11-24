@@ -3,7 +3,10 @@
 import { useState } from "react";
 import Link from "next/link";
 
+import { trackBeginCheckout } from "@shared/analytics";
+
 import { OnboardingSelection } from "@/components/marketing/onboarding-selection";
+import { buildSubmissionAttribution } from "@/lib/marketing/acquisition-client";
 import type { OnboardingType } from "@/lib/marketing/enrollment";
 import { getPlanDisplayName } from "@/lib/marketing/onboarding-packages";
 import type { SubscriptionPlanId } from "@/lib/marketing/pricing-page";
@@ -55,6 +58,7 @@ export function PricingCheckoutButton({
     setLoading(true);
     setError(null);
     try {
+      const acquisitionAttribution = buildSubmissionAttribution();
       const res = await fetch("/api/stripe/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -69,12 +73,20 @@ export function PricingCheckoutButton({
           ...(organizationReservationId
             ? { organization_reservation_id: organizationReservationId }
             : {}),
+          ...(acquisitionAttribution ? { acquisition_attribution: acquisitionAttribution } : {}),
         }),
       });
-      const data = (await res.json()) as { url?: string; error?: string };
+      const data = (await res.json()) as {
+        url?: string;
+        error?: string;
+        session_id?: string;
+      };
       if (!res.ok || !data.url) {
         throw new Error(data.error ?? "Unable to start checkout.");
       }
+      trackBeginCheckout({
+        plan_id: planId,
+      });
       window.location.href = data.url;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to start checkout.");

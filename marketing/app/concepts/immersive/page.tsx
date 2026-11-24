@@ -4,6 +4,7 @@ import { ConceptSwitcher } from "@/components/marketing/concept-switcher";
 import { ConceptImmersive } from "@/components/marketing/concepts/concept-immersive";
 
 export const metadata: Metadata = {
+  robots: { index: false, follow: false },
   title: "Concept B · Immersive Keynote",
 };
 

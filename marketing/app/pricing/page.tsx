@@ -3,12 +3,14 @@ import type { Metadata } from "next";
 import { PricingExperience } from "@/components/marketing/pricing-experience";
 import { getEnrollmentConfigAsync } from "@/lib/marketing/enrollment";
 import type { SubscriptionPlanId } from "@/lib/marketing/pricing-page";
+import { marketingPageMetadata } from "@/lib/marketing/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = marketingPageMetadata({
   title: "Pricing",
   description:
     "Simple monthly pricing for Hello to Cheers—every feature included. The only difference is how many celebrations you host each year.",
-};
+  path: "/pricing",
+});
 
 type PricingSearchParams = Promise<{
   canceled?: string;

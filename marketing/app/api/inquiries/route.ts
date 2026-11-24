@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+import { normalizeAcquisitionPayload } from "@shared/analytics";
+
 import { isInquiryKind, submitInquiry } from "@/lib/inquiries/service";
 import {
   isHoneypotTriggered,
@@ -19,6 +21,7 @@ export async function POST(request: Request) {
       kind?: string;
       fields?: Record<string, string>;
       idempotencyKey?: string;
+      acquisitionAttribution?: unknown;
     };
 
     if (!body.kind || !isInquiryKind(body.kind)) {
@@ -84,10 +87,15 @@ export async function POST(request: Request) {
       }
     }
 
+    const acquisitionAttribution = normalizeAcquisitionPayload(
+      body.acquisitionAttribution,
+    );
+
     const submission = await submitInquiry({
       kind: body.kind,
       fields,
       idempotencyKey: body.idempotencyKey,
+      ...(acquisitionAttribution ? { acquisitionAttribution } : {}),
     });
 
     return NextResponse.json({

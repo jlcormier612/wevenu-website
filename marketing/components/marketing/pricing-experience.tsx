@@ -4,6 +4,7 @@ import {
   HospitalityHeart,
   TrustRule,
 } from "@/components/marketing/brand-accents";
+import { PricingAnalyticsBeacon } from "@/components/marketing/pricing-analytics-beacon";
 import { PricingCheckoutButton } from "@/components/marketing/pricing-checkout-button";
 import { SignatureClosingCta } from "@/components/marketing/signature-closing-cta";
 import {
@@ -65,6 +66,7 @@ export function PricingExperience({
 
   return (
     <div className="bg-[var(--true-white)]">
+      <PricingAnalyticsBeacon />
       {/* ── Introduction + plans: one continuous soft beige band ── */}
       <div className="bg-[var(--header-linen)]">
       <section

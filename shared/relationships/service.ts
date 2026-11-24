@@ -43,6 +43,7 @@ import {
   type StandardDiscountEligibility,
   type StandardDiscountEvidence,
 } from "./standard-discount-eligibility";
+import { applyAcquisitionAttributionToRelationship } from "./acquisition-attribution";
 
 function stampFromFind(
   relationship: Relationship,
@@ -57,6 +58,12 @@ function stampFromFind(
     venueName: input.venueName ?? relationship.venue.name,
     email: input.email ?? relationship.owner.email,
   });
+  if (input.acquisitionAttribution) {
+    applyAcquisitionAttributionToRelationship(
+      relationship,
+      input.acquisitionAttribution,
+    );
+  }
 }
 
 function recountOpenFeedback(relationship: Relationship): number {

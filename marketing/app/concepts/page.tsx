@@ -6,6 +6,7 @@ import { CONCEPTS } from "@/lib/marketing/vision";
 
 export const metadata: Metadata = {
   title: "Homepage Concepts",
+  robots: { index: false, follow: false },
 };
 
 export default function ConceptsIndexPage() {

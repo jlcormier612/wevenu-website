@@ -2,6 +2,9 @@
 
 import { useState, type FormEvent } from "react";
 
+import { trackNewsletterSignup } from "@shared/analytics";
+
+import { buildSubmissionAttribution } from "@/lib/marketing/acquisition-client";
 import { HOVER_FILL } from "@/lib/marketing/rhythm";
 import { cn } from "@/lib/utils";
 
@@ -20,15 +23,21 @@ export function NewsletterSignup({ className }: { className?: string }) {
     const email = String(form.get("email") ?? "");
 
     try {
+      const acquisitionAttribution = buildSubmissionAttribution();
       const res = await fetch("/api/inquiries", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ kind: "newsletter", fields: { email } }),
+        body: JSON.stringify({
+          kind: "newsletter",
+          fields: { email },
+          ...(acquisitionAttribution ? { acquisitionAttribution } : {}),
+        }),
       });
       const data = (await res.json()) as { ok?: boolean; error?: string };
       if (!res.ok || !data.ok) {
         throw new Error(data.error ?? "Unable to subscribe.");
       }
+      trackNewsletterSignup();
       setStatus("done");
     } catch (err) {
       setStatus("error");

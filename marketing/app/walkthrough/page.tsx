@@ -4,12 +4,14 @@ import { redirect } from "next/navigation";
 import { WalkthroughExperience } from "@/components/marketing/walkthrough-experience";
 import { resolveCalendlyEmbedUrl } from "@/lib/marketing/calendly-url";
 import { MORE_INFO_CTA } from "@/lib/marketing/nav";
+import { marketingPageMetadata } from "@/lib/marketing/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = marketingPageMetadata({
   title: "Schedule a Walkthrough",
   description:
     "A personal conversation about your venue — see how Hello to Cheers could come together for the way you work.",
-};
+  path: "/walkthrough",
+});
 
 type WalkthroughSearchParams = Promise<{ intent?: string }>;
 

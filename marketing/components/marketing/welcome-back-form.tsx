@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
 
+import { buildSubmissionAttribution } from "@/lib/marketing/acquisition-client";
 import { HOVER_FILL, HOVER_LINK } from "@/lib/marketing/rhythm";
 import { cn } from "@/lib/utils";
 
@@ -36,10 +37,15 @@ export function WelcomeBackForm({ className }: WelcomeBackFormProps) {
     };
 
     try {
+      const acquisitionAttribution = buildSubmissionAttribution();
       const res = await fetch("/api/inquiries", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ kind: "welcome_back_request", fields }),
+        body: JSON.stringify({
+          kind: "welcome_back_request",
+          fields,
+          ...(acquisitionAttribution ? { acquisitionAttribution } : {}),
+        }),
       });
       const data = (await res.json()) as { ok?: boolean; error?: string };
       if (!res.ok || !data.ok) {

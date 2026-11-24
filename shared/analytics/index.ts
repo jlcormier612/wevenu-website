@@ -34,6 +34,13 @@ export {
   type FirstTouchAttribution,
 } from "./first-touch";
 export {
+  normalizeAcquisitionTouch,
+  normalizeAcquisitionPayload,
+  captureLatestTouchFromLocation,
+  type AcquisitionTouch,
+  type AcquisitionAttributionPayload,
+} from "./acquisition-attribution";
+export {
   ensureGa4,
   shutdownGa4,
   isGa4Initialized,
@@ -43,4 +50,16 @@ export {
   type Ga4RuntimeConfig,
   type GenerateLeadParams,
 } from "./ga4";
+export {
+  MarketingGa4Events,
+  trackPricingEngagement,
+  trackCtaClick,
+  trackCalendlyEmbedReady,
+  trackWalkthroughScheduled,
+  trackNewsletterSignup,
+  trackReferVenueSubmit,
+  trackBeginCheckout,
+  trackPurchase,
+  type PurchaseAnalyticsType,
+} from "./events";
 export { assertAnalyticsParamsHaveNoPii, PII_PARAM_KEYS } from "./privacy";

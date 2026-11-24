@@ -67,6 +67,7 @@ export async function syncInquiryToRelationship(
           venueName: f.venue || f.venueName,
           message: f.message,
           sourceId: submission.id,
+          acquisitionAttribution: submission.acquisitionAttribution,
         });
         return { relationshipId: result.relationship.id };
       }
@@ -81,6 +82,7 @@ export async function syncInquiryToRelationship(
           scheduledAt: f.scheduledAt || f.preferredDate || null,
           sourceId: submission.id,
           referralSource: "Schedule a Walkthrough",
+          acquisitionAttribution: submission.acquisitionAttribution,
         });
         return {
           relationshipId: result.relationship.id,
@@ -98,6 +100,7 @@ export async function syncInquiryToRelationship(
           notes: f.notes || f.message,
           yearsWithWeven: f.yearsWithWeven,
           sourceId: submission.id,
+          acquisitionAttribution: submission.acquisitionAttribution,
         });
         return { relationshipId: result.relationship.id };
       }
@@ -107,6 +110,7 @@ export async function syncInquiryToRelationship(
           name: f.name,
           venueName: f.venue || f.venueName,
           sourceId: submission.id,
+          acquisitionAttribution: submission.acquisitionAttribution,
         });
         return { relationshipId: result.relationship.id };
       }
@@ -119,6 +123,7 @@ export async function syncInquiryToRelationship(
           venueName: f.venue || f.venueName,
           message: f.message,
           sourceId: submission.id,
+          acquisitionAttribution: submission.acquisitionAttribution,
         });
         return { relationshipId: result.relationship.id };
       }
@@ -233,6 +238,9 @@ export async function syncCheckoutStartedToRelationship(input: {
   welcomeBack?: boolean;
   onboardingType?: OnboardingType;
   checkoutSessionId?: string | null;
+  acquisitionAttribution?: Parameters<
+    typeof ingestCheckoutStarted
+  >[0]["acquisitionAttribution"];
 }): Promise<void> {
   try {
     await ingestCheckoutStarted(input);
@@ -249,10 +257,24 @@ export async function syncCalendlyCreatedToRelationship(input: {
   message?: string;
   sourceId?: string;
   handoffToken?: string;
+  tracking?: {
+    utm_campaign?: string | null;
+    utm_source?: string | null;
+    utm_medium?: string | null;
+    utm_content?: string | null;
+    utm_term?: string | null;
+  };
 }): Promise<void> {
   try {
     const hasHandoff = Boolean(input.handoffToken?.trim());
     const hasVenue = Boolean(input.venueName?.trim());
+    const { acquisitionAttributionFromCalendlyTracking } = await import(
+      "@/lib/calendly/acquisition-from-tracking"
+    );
+    const acquisitionAttribution = acquisitionAttributionFromCalendlyTracking(
+      input.tracking,
+      { scheduledAt: input.scheduledAt },
+    );
     await ingestWalkthroughRequest({
       name: input.name,
       email: input.email,
@@ -266,6 +288,7 @@ export async function syncCalendlyCreatedToRelationship(input: {
       // handoff nor venue identity is available.
       identityReviewRequired: !hasHandoff && !hasVenue,
       referralSource: hasHandoff ? "Schedule a Walkthrough" : "Calendly",
+      ...(acquisitionAttribution ? { acquisitionAttribution } : {}),
     });
   } catch (error) {
     console.error("[relationships] failed to sync Calendly invitee.created", error);

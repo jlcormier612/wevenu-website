@@ -3,7 +3,8 @@ import type { MetadataRoute } from "next";
 /**
  * Public marketing sitemap only.
  * Excludes API routes, tokenized offer links, preview labs, concepts,
- * checkout success, and app/workspace/portal hosts (separate origins).
+ * checkout success, redirect-only URLs (/about, /our-first-friends),
+ * and app/workspace/portal hosts (separate origins).
  */
 const SITE = (
   process.env.NEXT_PUBLIC_SITE_URL?.trim() ||
@@ -22,9 +23,7 @@ const PUBLIC_PATHS = [
   "/walkthrough",
   "/contact",
   "/welcome-back",
-  "/our-first-friends",
   "/support",
-  "/about",
   "/sms-opt-in",
   "/privacy",
   "/terms",

@@ -580,6 +580,15 @@ export type FindOrCreateInput = {
   stripeCustomerId?: string | null;
   stripeCheckoutSessionId?: string | null;
   stripeSubscriptionId?: string | null;
+  /**
+   * Marketing acquisition attribution (UTM / referrer / landing).
+   * First-touch is immutable once stored; latest-touch updates.
+   * Distinct from referralSource and from founding/Weven/group offer flags.
+   */
+  acquisitionAttribution?: {
+    first_touch?: Record<string, string> | null;
+    latest_touch?: Record<string, string> | null;
+  } | null;
 };
 
 export type RelationshipFieldPatch = Partial<

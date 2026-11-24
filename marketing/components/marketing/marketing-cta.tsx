@@ -1,5 +1,9 @@
+"use client";
+
 import Link from "next/link";
 import type { ReactNode } from "react";
+
+import { trackCtaClick } from "@shared/analytics";
 
 import { cn } from "@/lib/utils";
 import { MORE_INFO_CTA, PRIMARY_CTA } from "@/lib/marketing/nav";
@@ -15,6 +19,9 @@ type MarketingCtaProps = {
    */
   variant?: "primary" | "secondary" | "ghost";
   className?: string;
+  /** Stable non-PII id for analytics (defaults from href). */
+  ctaId?: string;
+  ctaLocation?: string;
 };
 
 export function MarketingCta({
@@ -22,10 +29,18 @@ export function MarketingCta({
   label = PRIMARY_CTA.label,
   variant = "primary",
   className,
+  ctaId,
+  ctaLocation,
 }: MarketingCtaProps) {
   return (
     <Link
       href={href}
+      onClick={() => {
+        trackCtaClick({
+          cta_id: ctaId || href.slice(0, 64),
+          cta_location: ctaLocation,
+        });
+      }}
       className={cn(
         "inline-flex items-center justify-center rounded-full text-sm tracking-wide transition duration-200 ease-out",
         "outline-none focus-visible:ring-2 focus-visible:ring-[var(--botanical)] focus-visible:ring-offset-2",

@@ -2,10 +2,14 @@ import type { Metadata } from "next";
 
 import { LeadForm } from "@/components/marketing/lead-form";
 import { Section } from "@/components/marketing/section";
+import { marketingPageMetadata } from "@/lib/marketing/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = marketingPageMetadata({
   title: "Support",
-};
+  description:
+    "Get help with Hello to Cheers venue software support — already a customer or exploring before you join, send a note and we’ll follow up on the same relationship timeline.",
+  path: "/support",
+});
 
 export default function SupportPage() {
   return (

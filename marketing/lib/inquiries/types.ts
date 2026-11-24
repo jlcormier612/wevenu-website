@@ -4,6 +4,8 @@
  * Storage is intentionally simple so launch stays manual; swap the store later without changing UX.
  */
 
+import type { AcquisitionAttributionPayload } from "@shared/analytics";
+
 export type InquiryKind =
   | "contact"
   | "walkthrough"
@@ -25,6 +27,8 @@ export type InquirySubmission = {
    * Not an internal relationship id.
    */
   handoffToken?: string;
+  /** Non-PII first/latest-touch acquisition attribution. */
+  acquisitionAttribution?: AcquisitionAttributionPayload | null;
 };
 
 export type SubmitInquiryInput = {
@@ -35,6 +39,7 @@ export type SubmitInquiryInput = {
    * Retries with the same key must not create duplicate CRM/notify side effects.
    */
   idempotencyKey?: string | null;
+  acquisitionAttribution?: AcquisitionAttributionPayload | null;
 };
 
 export function inquiryLabel(kind: InquiryKind): string {

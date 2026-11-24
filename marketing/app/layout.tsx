@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { MarketingGa4Provider } from "@/components/marketing/ga4-provider";
 import { SiteFooter } from "@/components/marketing/site-footer";
 import { SiteHeader } from "@/components/marketing/site-header";
+import { MarketingStructuredData } from "@/components/marketing/structured-data";
 
 import "./globals.css";
 
@@ -50,6 +51,9 @@ export const metadata: Metadata = {
     template: "%s · Hello to Cheers",
   },
   description: defaultDescription,
+  alternates: {
+    canonical: "/",
+  },
   openGraph: {
     type: "website",
     locale: "en_US",
@@ -78,6 +82,7 @@ export default function RootLayout({
       className={`${inter.variable} ${cormorant.variable} ${greatVibes.variable} h-full`}
     >
       <body className="min-h-full">
+        <MarketingStructuredData />
         <div className="marketing-surface min-h-full">
           <SiteHeader />
           <main>{children}</main>
