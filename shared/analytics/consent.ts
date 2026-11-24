@@ -25,6 +25,20 @@ export function readMarketingAnalyticsConsent(): boolean {
   }
 }
 
+/**
+ * True when the visitor has already saved a marketing cookie choice
+ * (accept or decline). Used to show the first-visit consent banner only
+ * until a decision is stored.
+ */
+export function hasMarketingCookieChoice(): boolean {
+  if (!canUseStorage()) return false;
+  try {
+    return window.localStorage.getItem(MARKETING_COOKIE_PREFS_KEY) != null;
+  } catch {
+    return false;
+  }
+}
+
 /** Updates analytics flag while preserving other marketing cookie prefs. */
 export function writeMarketingAnalyticsConsent(analytics: boolean): void {
   if (!canUseStorage()) return;

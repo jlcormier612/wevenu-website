@@ -82,6 +82,7 @@ export const FOOTER_LEGAL = [
   { href: "/end-user-terms", label: "End User Terms" },
   { href: "/vendor-terms", label: "Vendor Terms" },
   { href: "/cookie-policy", label: "Cookie Policy" },
+  { href: "/cookies", label: "Cookie Preferences" },
   { href: "/acceptable-use", label: "Acceptable Use Policy" },
 ] as const;
 
