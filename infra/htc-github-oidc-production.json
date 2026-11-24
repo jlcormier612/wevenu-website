@@ -243,7 +243,7 @@
                   }
                 },
                 {
-                  "Sid": "EcsMarketingOnlyDeployAndVerify",
+                  "Sid": "EcsServiceOnlyDeployAndVerify",
                   "Effect": "Allow",
                   "Action": [
                     "ecs:DescribeServices", "ecs:DescribeTasks", "ecs:ListTasks",
@@ -251,6 +251,18 @@
                     "ecs:DeregisterTaskDefinition", "ecs:TagResource"
                   ],
                   "Resource": "*"
+                },
+                {
+                  "Sid": "PassEcsTaskRolesForServiceOnlyRolls",
+                  "Effect": "Allow",
+                  "Action": "iam:PassRole",
+                  "Resource": [
+                    { "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/htc-production-ecs-task-execution" },
+                    { "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/htc-production-ecs-task" }
+                  ],
+                  "Condition": {
+                    "StringEquals": { "iam:PassedToService": "ecs-tasks.amazonaws.com" }
+                  }
                 },
                 {
                   "Sid": "ElbReadOnlyForVerification",
