@@ -63,7 +63,6 @@ export const PRIVACY_POLICY: LegalDocument = {
         "Process Hello to Cheers subscription billing and related notices, and provide software features that help venues organize invoices, payment schedules, and Stripe payment-workflow information.",
         "Provide optional assistive features (including Luv) that generate suggestions or answers for users to review.",
         "Provide customer support and respond to requests.",
-        "Authorized Hello to Cheers team members may access account information as needed to provide onboarding, customer support, troubleshooting, and platform maintenance.",
         "Communicate product updates, security notices, and service messages.",
         "Detect, prevent, and investigate fraud, abuse, and security incidents.",
         "Comply with law and enforce our terms.",
