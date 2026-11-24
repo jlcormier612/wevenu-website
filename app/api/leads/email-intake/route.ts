@@ -55,6 +55,7 @@ import {
   verifyResendWebhookSecrets,
   type ResendInboundWebhookEvent,
 } from "@/lib/resend/inbound-webhook";
+import { inboundEventTargetsEnvironment } from "@shared/email/inbound-env-guard";
 
 function extractLeadEmailKey(toAddresses: string[]): string | null {
   for (const addr of toAddresses) {
@@ -86,6 +87,18 @@ export async function POST(request: NextRequest) {
   if (event.type !== "email.received" || !event.data) {
     // Not an inbound-email event — acknowledge and ignore rather than error.
     return NextResponse.json({ ok: true });
+  }
+
+  // Fail-closed unless this deployment's inbound domain matches the event.
+  // Separate webhook signing secrets alone do not isolate shared domains.
+  const envGuard = inboundEventTargetsEnvironment({
+    to: event.data.to,
+    receivedFor: event.data.received_for,
+    cc: event.data.cc,
+  });
+  if (!envGuard.ok) {
+    console.warn("Email intake env routing reject:", envGuard.reason);
+    return NextResponse.json({ ok: true, skipped: envGuard.reason });
   }
 
   const { email_id, from, to, subject } = event.data;

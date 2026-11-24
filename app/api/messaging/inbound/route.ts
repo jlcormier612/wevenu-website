@@ -48,6 +48,7 @@ import {
   verifyResendWebhookSecrets,
   type ResendInboundWebhookEvent,
 } from "@/lib/resend/inbound-webhook";
+import { inboundEventTargetsEnvironment } from "@shared/email/inbound-env-guard";
 
 function createInboundEmailStore(supabase: ReturnType<typeof createAdminClient>): InboundEmailStore {
   return {
@@ -179,6 +180,18 @@ export async function POST(request: NextRequest) {
 
   if (event.type !== "email.received" || !event.data) {
     return NextResponse.json({ ok: true });
+  }
+
+  // Keys/secrets authenticate the receiver; domain match isolates env streams
+  // when Sandbox and Production would otherwise both receive the same event.
+  const envGuard = inboundEventTargetsEnvironment({
+    to: event.data.to,
+    receivedFor: event.data.received_for,
+    cc: event.data.cc,
+  });
+  if (!envGuard.ok) {
+    console.warn("Inbound email env routing reject:", envGuard.reason);
+    return NextResponse.json({ ok: true, skipped: envGuard.reason });
   }
 
   const { email_id, from, to } = event.data;
