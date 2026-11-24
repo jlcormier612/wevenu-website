@@ -1,0 +1,403 @@
+# Marketing-only Production deploy.
+# Builds/pushes htc-production-marketing for an explicit ref, then updates ONLY
+# MarketingImage via CloudFormation (UsePreviousValue for venue/workspace/
+# scheduler images and all other stack parameters).
+#
+# Pattern mirrors deploy-sandbox-marketing-only.yml with Production gates:
+# - workflow_dispatch only
+# - confirm must equal DEPLOY_PRODUCTION_MARKETING_ONLY
+# - GitHub Environment "production" (required reviewers / secrets)
+# - Change-set guard refuses venue/workspace/scheduler/HTTPS resource changes
+#
+# Does not touch Sandbox. Does not build venue-app / workspace / scheduler.
+# Does not apply database migrations. Does not change public DNS.
+
+name: Deploy Production Marketing Only
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Type DEPLOY_PRODUCTION_MARKETING_ONLY to authorize"
+        required: true
+        type: string
+      ref:
+        description: "Git SHA or ref to deploy (marketing image tag)"
+        required: true
+        type: string
+
+concurrency:
+  group: deploy-production-marketing-only
+  cancel-in-progress: false
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+
+jobs:
+  authorize:
+    name: Require explicit Production marketing confirmation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Gate
+        run: |
+          if [ "${{ inputs.confirm }}" != "DEPLOY_PRODUCTION_MARKETING_ONLY" ]; then
+            echo "::error::confirm must be exactly 'DEPLOY_PRODUCTION_MARKETING_ONLY'. Nothing was deployed."
+            exit 1
+          fi
+          echo "Production marketing-only deploy confirmation accepted."
+
+  build-and-deploy:
+    name: Build & deploy Production marketing
+    needs: authorize
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout requested ref
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Log in to ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Resolve deploy SHA
+        id: sha
+        run: |
+          SHA=$(git rev-parse HEAD)
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "Deploying Production marketing at $SHA"
+
+      - name: Guard — refuse Sandbox Facebook ARN in Production
+        run: |
+          FB='${{ vars.FACEBOOK_SECRET_ARN }}'
+          if [ -z "$FB" ]; then
+            echo "::error::production Environment var FACEBOOK_SECRET_ARN is required."
+            exit 1
+          fi
+          if echo "$FB" | grep -q 'htc/sandbox/facebook'; then
+            echo "::error::FACEBOOK_SECRET_ARN points at Sandbox. Refusing Production marketing deploy."
+            exit 1
+          fi
+
+      - name: Detect existing marketing image
+        id: image
+        env:
+          IMAGE_URI: ${{ steps.ecr-login.outputs.registry }}/htc-production-marketing:${{ steps.sha.outputs.sha }}
+          SHA: ${{ steps.sha.outputs.sha }}
+        run: |
+          set -euo pipefail
+          set +e
+          OUT=$(aws ecr batch-get-image \
+            --repository-name htc-production-marketing \
+            --image-ids "imageTag=${SHA}" \
+            --query 'images[0].imageId.imageDigest' \
+            --output text 2>/tmp/mkt-image-detect.err)
+          RC=$?
+          set -e
+          if [ "$RC" -ne 0 ]; then
+            echo "::error::ECR batch-get-image failed while detecting existing tag $SHA"
+            cat /tmp/mkt-image-detect.err >&2 || true
+            exit "$RC"
+          fi
+          if [ -n "$OUT" ] && [ "$OUT" != "None" ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "digest=$OUT" >> "$GITHUB_OUTPUT"
+            echo "Reusing existing $IMAGE_URI ($OUT)"
+            exit 0
+          fi
+          echo "exists=false" >> "$GITHUB_OUTPUT"
+          echo "No existing image for tag $SHA — will build and push"
+
+      - name: Prefetch base images (private ECR, then Public ECR)
+        if: steps.image.outputs.exists != 'true'
+        run: |
+          set -euo pipefail
+          REGISTRY="${{ steps.ecr-login.outputs.registry }}"
+          retry_pull() {
+            local image="$1"
+            local local_tag="$2"
+            local attempt=1
+            local delay=5
+            while [ "$attempt" -le 5 ]; do
+              echo "Pull attempt $attempt/5: $image"
+              if docker pull "$image"; then
+                docker tag "$image" "$local_tag"
+                return 0
+              fi
+              sleep "$delay"
+              attempt=$((attempt + 1))
+              delay=$((delay * 2))
+            done
+            return 1
+          }
+          pull_base() {
+            local private_tag="$1"
+            local public_image="$2"
+            local local_tag="$public_image"
+            if docker pull "${REGISTRY}/htc-ci-bases:${private_tag}"; then
+              docker tag "${REGISTRY}/htc-ci-bases:${private_tag}" "$local_tag"
+              return 0
+            fi
+            if retry_pull "$public_image" "$local_tag"; then
+              docker tag "$local_tag" "${REGISTRY}/htc-ci-bases:${private_tag}"
+              docker push "${REGISTRY}/htc-ci-bases:${private_tag}" || true
+              return 0
+            fi
+            echo "::error::Failed to pull ${local_tag}"
+            return 1
+          }
+          pull_base node-22-alpine public.ecr.aws/docker/library/node:22-alpine
+          pull_base alpine-3.20 public.ecr.aws/docker/library/alpine:3.20
+
+      - name: Build marketing image
+        if: steps.image.outputs.exists != 'true'
+        env:
+          IMAGE_URI: ${{ steps.ecr-login.outputs.registry }}/htc-production-marketing:${{ steps.sha.outputs.sha }}
+          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+        run: |
+          set -euo pipefail
+          CALENDLY_LEN_PROBE="${{ vars.NEXT_PUBLIC_CALENDLY_URL }}"
+          echo "Marketing bake: NEXT_PUBLIC_CALENDLY_URL length=${#CALENDLY_LEN_PROBE}"
+          if [ -z "$CALENDLY_LEN_PROBE" ]; then
+            echo "::warning::NEXT_PUBLIC_CALENDLY_URL is empty — /walkthrough will show scheduling fallback"
+          fi
+          REWRITTEN="$(mktemp)"
+          ./scripts/ci/rewrite-sandbox-dockerfile-bases.sh \
+            marketing/Dockerfile \
+            "$REWRITTEN" \
+            "$ECR_REGISTRY"
+          if grep -E '^FROM[[:space:]]+public\.ecr\.aws/docker/library/' "$REWRITTEN"; then
+            echo "::error::rewritten Dockerfile still references public.ecr.aws/docker/library"
+            exit 1
+          fi
+          attempt=1
+          delay=10
+          while [ "$attempt" -le 3 ]; do
+            echo "Build attempt $attempt/3 for Production marketing"
+            if docker build --pull=false -f "$REWRITTEN" \
+              --build-arg "NEXT_PUBLIC_MARKETING_URL=https://hellotocheers.com" \
+              --build-arg "NEXT_PUBLIC_SITE_URL=https://hellotocheers.com" \
+              --build-arg "NEXT_PUBLIC_PRODUCT_APP_URL=https://app.hellotocheers.com" \
+              --build-arg "NEXT_PUBLIC_CALENDLY_URL=${{ vars.NEXT_PUBLIC_CALENDLY_URL }}" \
+              --build-arg "NEXT_PUBLIC_GA4_MEASUREMENT_ID=${{ vars.NEXT_PUBLIC_GA4_MEASUREMENT_ID }}" \
+              -t "$IMAGE_URI" .; then
+              rm -f "$REWRITTEN"
+              exit 0
+            fi
+            sleep "$delay"
+            attempt=$((attempt + 1))
+            delay=$((delay * 2))
+          done
+          rm -f "$REWRITTEN"
+          echo "::error::docker build failed for Production marketing after 3 attempts"
+          exit 1
+
+      - name: Push marketing image
+        if: steps.image.outputs.exists != 'true'
+        env:
+          IMAGE_URI: ${{ steps.ecr-login.outputs.registry }}/htc-production-marketing:${{ steps.sha.outputs.sha }}
+        run: docker push "$IMAGE_URI"
+
+      - name: Snapshot non-marketing task definitions (pre-deploy)
+        run: |
+          set -euo pipefail
+          aws ecs describe-services --cluster htc-production \
+            --services htc-production-venue-app htc-production-workspace htc-production-scheduler \
+            --query 'services[].{name:serviceName,td:taskDefinition}' --output json \
+            > /tmp/pre-non-marketing-tds.json
+          cat /tmp/pre-non-marketing-tds.json
+
+      - name: Update MarketingImage only via CloudFormation
+        env:
+          IMAGE_URI: ${{ steps.ecr-login.outputs.registry }}/htc-production-marketing:${{ steps.sha.outputs.sha }}
+          SHA: ${{ steps.sha.outputs.sha }}
+          STACK: ${{ vars.CFN_STACK_NAME }}
+          ROLE: ${{ vars.CFN_EXECUTION_ROLE_ARN }}
+        run: |
+          set -euo pipefail
+          CS="mkt-only-${SHA:0:12}-$(date +%s)"
+          echo "Change set: $CS"
+          echo "MarketingImage=$IMAGE_URI"
+          PARAMS=(
+            "ParameterKey=MarketingImage,ParameterValue=$IMAGE_URI"
+            "ParameterKey=EnvironmentName,UsePreviousValue=true"
+            "ParameterKey=VenueAppImage,UsePreviousValue=true"
+            "ParameterKey=WorkspaceImage,UsePreviousValue=true"
+            "ParameterKey=SchedulerImage,UsePreviousValue=true"
+            "ParameterKey=VenueAppHostname,UsePreviousValue=true"
+            "ParameterKey=MarketingHostname,UsePreviousValue=true"
+            "ParameterKey=WorkspaceHostname,UsePreviousValue=true"
+            "ParameterKey=CertificateArn,UsePreviousValue=true"
+            "ParameterKey=FacebookSecretArn,UsePreviousValue=true"
+            "ParameterKey=FromEmailAddress,UsePreviousValue=true"
+            "ParameterKey=EmailReplyTo,UsePreviousValue=true"
+            "ParameterKey=InquiryNotifyEmail,UsePreviousValue=true"
+            "ParameterKey=SupabaseUrl,UsePreviousValue=true"
+            "ParameterKey=SupabaseAnonKey,UsePreviousValue=true"
+            "ParameterKey=ResendInboundAddress,UsePreviousValue=true"
+            "ParameterKey=CronSecret,UsePreviousValue=true"
+            "ParameterKey=NotificationsSecret,UsePreviousValue=true"
+            "ParameterKey=CommunicationMode,UsePreviousValue=true"
+            "ParameterKey=StripePriceStarter,UsePreviousValue=true"
+            "ParameterKey=StripePriceStarterFounder,UsePreviousValue=true"
+            "ParameterKey=StripePriceGrowing,UsePreviousValue=true"
+            "ParameterKey=StripePriceGrowingFounder,UsePreviousValue=true"
+            "ParameterKey=StripePriceProfessional,UsePreviousValue=true"
+            "ParameterKey=StripePriceProfessionalFounder,UsePreviousValue=true"
+            "ParameterKey=StripePriceWhiteGlove,UsePreviousValue=true"
+            "ParameterKey=StripeFoundingCouponId,UsePreviousValue=true"
+            "ParameterKey=StripePriceGather199,UsePreviousValue=true"
+            "ParameterKey=StripeFoundingPercentCouponId,UsePreviousValue=true"
+            "ParameterKey=PricingLaunchV1,UsePreviousValue=true"
+            "ParameterKey=StripeWevenPercentCouponId,UsePreviousValue=true"
+            "ParameterKey=StripePriceWhiteGloveWeven,UsePreviousValue=true"
+            "ParameterKey=PricingWevenV1,UsePreviousValue=true"
+            "ParameterKey=StripeGroupPercentCouponId,UsePreviousValue=true"
+            "ParameterKey=PricingGroupV1,UsePreviousValue=true"
+            "ParameterKey=StripeSaasProductId,UsePreviousValue=true"
+            "ParameterKey=PricingFounderV1,UsePreviousValue=true"
+            "ParameterKey=ReferralProgramV1,UsePreviousValue=true"
+            "ParameterKey=ReferralRewardIssue,UsePreviousValue=true"
+            "ParameterKey=ReferralQualificationDays,UsePreviousValue=true"
+            "ParameterKey=PricingTierUpgradeStore,UsePreviousValue=true"
+            "ParameterKey=TierUpgradeApplyStripe,UsePreviousValue=true"
+            "ParameterKey=TierUpgradeSendNotice,UsePreviousValue=true"
+          )
+          aws cloudformation get-template --stack-name "$STACK" --template-stage Processed \
+            --output json > /tmp/htc-ecs-stack-raw.json
+          python3 - <<'PY'
+          import json
+          raw = json.load(open("/tmp/htc-ecs-stack-raw.json"))
+          body = raw["TemplateBody"]
+          if isinstance(body, dict):
+              json.dump(body, open("/tmp/htc-ecs-stack-live.json", "w"))
+          else:
+              open("/tmp/htc-ecs-stack-live.json", "w").write(body)
+          PY
+          aws cloudformation create-change-set \
+            --stack-name "$STACK" \
+            --change-set-name "$CS" \
+            --template-body file:///tmp/htc-ecs-stack-live.json \
+            --capabilities CAPABILITY_NAMED_IAM \
+            --role-arn "$ROLE" \
+            --change-set-type UPDATE \
+            --parameters "${PARAMS[@]}"
+
+          for _ in $(seq 1 40); do
+            st=$(aws cloudformation describe-change-set --stack-name "$STACK" --change-set-name "$CS" --query Status --output text)
+            case "$st" in CREATE_COMPLETE|FAILED) break ;; esac
+            sleep 2
+          done
+
+          aws cloudformation describe-change-set --stack-name "$STACK" --change-set-name "$CS" --output json \
+            > /tmp/mkt-only-changeset.json
+          python3 <<'PY'
+          import json, sys
+          d = json.load(open("/tmp/mkt-only-changeset.json"))
+          status, reason = d.get("Status"), d.get("StatusReason") or ""
+          if status == "FAILED" and "didn't contain changes" in reason:
+              print("No stack changes (MarketingImage already current).")
+              open("/tmp/mkt-only-empty", "w").write("1")
+              sys.exit(0)
+          if status != "CREATE_COMPLETE":
+              print(f"::error::Change set status {status}: {reason}")
+              sys.exit(1)
+          changes = d.get("Changes") or []
+          for c in changes:
+              rc = c["ResourceChange"]
+              print(f"  {rc.get('Action')} {rc.get('LogicalResourceId')} {rc.get('ResourceType')}")
+          bad = [
+              c["ResourceChange"]["LogicalResourceId"]
+              for c in changes
+              if "Marketing" not in c["ResourceChange"]["LogicalResourceId"]
+              and c["ResourceChange"].get("Action") in ("Modify", "Remove", "Add")
+          ]
+          blocked = [
+              lid for lid in bad
+              if any(x in lid for x in ("VenueApp", "Workspace", "Scheduler", "Facebook", "Https", "HttpListener", "Alb"))
+          ]
+          if blocked:
+              print("::error::Change set would touch non-marketing resources: " + ", ".join(blocked))
+              sys.exit(1)
+          PY
+          if [ -f /tmp/mkt-only-empty ]; then
+            echo "CHANGE_SET_EMPTY=1" >> "$GITHUB_ENV"
+          else
+            echo "CHANGE_SET_NAME=$CS" >> "$GITHUB_ENV"
+            aws cloudformation execute-change-set --stack-name "$STACK" --change-set-name "$CS"
+            aws cloudformation wait stack-update-complete --stack-name "$STACK"
+          fi
+
+      - name: Wait for marketing service stable
+        env:
+          STACK: ${{ vars.CFN_STACK_NAME }}
+          SHA: ${{ steps.sha.outputs.sha }}
+        run: |
+          set -euo pipefail
+          aws ecs wait services-stable \
+            --cluster htc-production \
+            --services htc-production-marketing
+          CFN_IMG=$(aws cloudformation describe-stacks --stack-name "$STACK" \
+            --query "Stacks[0].Parameters[?ParameterKey=='MarketingImage'].ParameterValue" \
+            --output text)
+          echo "CFN_MARKETING_IMAGE=$CFN_IMG"
+          echo "$CFN_IMG" | grep -q "$SHA" \
+            || { echo "::error::Stack MarketingImage does not contain expected SHA $SHA"; exit 1; }
+
+      - name: Verify dark Host routes and non-marketing TDs unchanged
+        run: |
+          set -euo pipefail
+          ALB=$(aws elbv2 describe-load-balancers --names htc-production-alb --query 'LoadBalancers[0].DNSName' --output text)
+          ALB_IP=$(getent ahostsv4 "$ALB" | awk '{print $1; exit}')
+          fail=0
+          # -k: Production ALB cert may still be app/workspace-only until C1 ACM
+          # apex+www cert is validated and CertificateArn is rotated (founder gate).
+          for path in / /pricing /contact /walkthrough /trust /features /product /our-story /robots.txt /sitemap.xml; do
+            code=$(curl -skS -o /tmp/mkt-body -w '%{http_code}' --max-time 30 \
+              --resolve "hellotocheers.com:443:${ALB_IP}" \
+              "https://hellotocheers.com${path}" || echo 000)
+            echo "$path -> $code"
+            if [ "$code" != "200" ]; then
+              echo "::error::$path returned $code"
+              fail=1
+            fi
+          done
+
+          python3 <<'PY'
+          import json, subprocess, sys
+          pre = {r["name"]: r["td"] for r in json.load(open("/tmp/pre-non-marketing-tds.json"))}
+          out = subprocess.check_output([
+            "aws","ecs","describe-services","--cluster","htc-production",
+            "--services","htc-production-venue-app","htc-production-workspace","htc-production-scheduler",
+            "--query","services[].{name:serviceName,td:taskDefinition}","--output","json"
+          ], text=True)
+          post = {r["name"]: r["td"] for r in json.loads(out)}
+          changed = False
+          for name, td in pre.items():
+              now = post.get(name)
+              print(f"untouched_check {name} pre={td} post={now}")
+              if now != td:
+                  print(f"::error::{name} task definition changed during marketing-only deploy")
+                  changed = True
+          sys.exit(1 if changed else 0)
+          PY
+          exit "$fail"
+
+      - name: Summary
+        run: |
+          echo "## Production marketing-only deploy" >> "$GITHUB_STEP_SUMMARY"
+          echo "- confirm: DEPLOY_PRODUCTION_MARKETING_ONLY" >> "$GITHUB_STEP_SUMMARY"
+          echo "- image SHA: ${{ steps.sha.outputs.sha }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- venue/workspace/scheduler: unchanged (verified)" >> "$GITHUB_STEP_SUMMARY"
+          echo "- public DNS: not modified by this workflow" >> "$GITHUB_STEP_SUMMARY"

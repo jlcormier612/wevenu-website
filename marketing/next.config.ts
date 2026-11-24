@@ -2,6 +2,13 @@ import path from "path";
 import type { NextConfig } from "next";
 
 const redirects = [
+  // Canonical www → apex (C1 AWS hosting). Also enforced in marketing/proxy.ts.
+  {
+    source: "/:path*",
+    has: [{ type: "host" as const, value: "www.hellotocheers.com" }],
+    destination: "https://hellotocheers.com/:path*",
+    permanent: true,
+  },
   // Legacy Wevenu marketing path — no customer-facing Wevenu branding on destination.
   { source: "/why-wevenu", destination: "/our-story", permanent: true },
   // Retired public marketing Resources/Library directory (not the in-app Library).
