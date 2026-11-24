@@ -3,11 +3,14 @@ import Link from "next/link";
 
 import { SMS_PUBLIC_CONSENT_DISCLOSURES } from "../../lib/sms-public-consent-copy";
 
-export const metadata: Metadata = {
-  title: "SMS Opt-In · Hello to Cheers",
+import { marketingPageMetadata } from "@/lib/marketing/seo";
+
+export const metadata: Metadata = marketingPageMetadata({
+  title: "SMS Opt-In",
   description:
     "How Hello to Cheers venues collect optional SMS consent on inquiry and tour forms — for Twilio A2P reviewers and the public.",
-};
+  path: "/sms-opt-in",
+});
 
 /**
  * Public, no-login evidence page for Twilio A2P MessageFlow verification.

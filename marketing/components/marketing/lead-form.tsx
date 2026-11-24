@@ -5,6 +5,7 @@ import { useRef, useState, type FormEvent } from "react";
 import { isGa4Initialized, trackGenerateLead } from "@shared/analytics";
 
 import { INQUIRY_HONEYPOT_FIELD } from "@/lib/inquiries/spam";
+import { buildSubmissionAttribution } from "@/lib/marketing/acquisition-client";
 import { HOVER_FILL } from "@/lib/marketing/rhythm";
 import { cn } from "@/lib/utils";
 
@@ -116,6 +117,7 @@ export function LeadForm({
     }
 
     try {
+      const acquisitionAttribution = buildSubmissionAttribution();
       const res = await fetch("/api/inquiries", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -123,6 +125,7 @@ export function LeadForm({
           kind: intent,
           fields,
           idempotencyKey: idempotencyKeyRef.current,
+          ...(acquisitionAttribution ? { acquisitionAttribution } : {}),
         }),
       });
       const data = (await res.json()) as {
@@ -139,7 +142,12 @@ export function LeadForm({
         trackGenerateLead({
           funnel_surface: "htc_marketing",
           form_mode: intent,
-          has_utm: typeof window !== "undefined" && /utm_/i.test(window.location.search),
+          has_utm: Boolean(
+            acquisitionAttribution?.first_touch?.utm_source ||
+              acquisitionAttribution?.latest_touch?.utm_source ||
+              (typeof window !== "undefined" &&
+                /utm_/i.test(window.location.search)),
+          ),
         });
       }
       idempotencyKeyRef.current = null;

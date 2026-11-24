@@ -11,9 +11,13 @@ describe("marketing SEO routes", () => {
     assert.ok(urls.some((u) => u.endsWith("hellotocheers.com") || u.includes("hellotocheers.com/")));
     assert.ok(urls.some((u) => u.endsWith("/pricing")));
     assert.ok(urls.some((u) => u.endsWith("/contact")));
+    assert.ok(urls.some((u) => u.endsWith("/support")));
     assert.ok(!urls.some((u) => u.includes("/api/")));
     assert.ok(!urls.some((u) => u.includes("/custom-offer/")));
     assert.ok(!urls.some((u) => u.includes("showroom-preview")));
+    // Redirect-only URLs must not appear as canonical sitemap entries.
+    assert.ok(!urls.some((u) => /\/about\/?$/.test(u)));
+    assert.ok(!urls.some((u) => u.includes("/our-first-friends")));
   });
 
   it("robots allows public site and points at sitemap", () => {

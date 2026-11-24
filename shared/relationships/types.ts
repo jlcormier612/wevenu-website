@@ -11,6 +11,8 @@
  * Field updates merge: fill empties, ratchet booleans/status upward — never wipe stronger data.
  */
 
+import type { AcquisitionAttributionPayload } from "../analytics/acquisition-attribution";
+
 /**
  * Pipeline lifecycle (Customer Lifecycle Engine Phase 1).
  * Aliases: `live` / `active_customer` → `active`; onboarding+WG maps to
@@ -580,6 +582,12 @@ export type FindOrCreateInput = {
   stripeCustomerId?: string | null;
   stripeCheckoutSessionId?: string | null;
   stripeSubscriptionId?: string | null;
+  /**
+   * Marketing acquisition attribution (UTM / referrer / landing).
+   * First-touch is immutable once stored; latest-touch updates.
+   * Distinct from referralSource and from founding/Weven/group offer flags.
+   */
+  acquisitionAttribution?: AcquisitionAttributionPayload | null;
 };
 
 export type RelationshipFieldPatch = Partial<

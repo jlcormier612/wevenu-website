@@ -10,6 +10,7 @@ import {
 } from "./service";
 import { loadLiveStore, withLiveStore } from "./store";
 import type {
+  FindOrCreateInput,
   OnboardingType,
   PlanId,
   ProductFeedbackType,
@@ -92,6 +93,7 @@ export async function ingestContactForm(input: {
   venueName?: string;
   message?: string;
   sourceId?: string;
+  acquisitionAttribution?: FindOrCreateInput["acquisitionAttribution"];
 }): Promise<FindOrCreateResult> {
   const prior = await findRelationshipByTimelineSourceId(input.sourceId, [
     "contact_form",
@@ -110,6 +112,7 @@ export async function ingestContactForm(input: {
       firstName: person.firstName,
       lastName: person.lastName,
       referralSource: "Website Contact Us",
+      acquisitionAttribution: input.acquisitionAttribution,
     },
     patch: {
       status: "inquiry",
@@ -154,6 +157,7 @@ export async function ingestWalkthroughRequest(input: {
   sourceId?: string;
   referralSource?: string;
   assignedTeamMemberId?: string;
+  acquisitionAttribution?: FindOrCreateInput["acquisitionAttribution"];
   /**
    * Opaque HTC→Calendly handoff. When present on a scheduled booking, binds to
    * the originating intake relationship (email alone is never enough).
@@ -227,6 +231,7 @@ export async function ingestWalkthroughRequest(input: {
         input.referralSource ??
         (hasDate ? "Calendly" : "Schedule a Walkthrough"),
       assignedTeamMemberId: input.assignedTeamMemberId,
+      acquisitionAttribution: input.acquisitionAttribution,
     },
     patch: {
       status: hasDate ? "walkthrough_scheduled" : "walkthrough_requested",
@@ -508,6 +513,7 @@ export async function ingestCheckoutStarted(input: {
   welcomeBack?: boolean;
   onboardingType?: OnboardingType | "self_guided" | "white_glove";
   checkoutSessionId?: string | null;
+  acquisitionAttribution?: FindOrCreateInput["acquisitionAttribution"];
 }): Promise<FindOrCreateResult | null> {
   const email = input.email?.trim();
   const venueName = input.venueName?.trim();
@@ -527,6 +533,7 @@ export async function ingestCheckoutStarted(input: {
       venueName: draftVenue,
       referralSource: "Pricing checkout",
       stripeCheckoutSessionId: checkoutSessionId,
+      acquisitionAttribution: input.acquisitionAttribution,
     },
     patch: {
       status: "inquiry",
@@ -931,6 +938,7 @@ export async function ingestWelcomeBackRequest(input: {
   notes?: string;
   yearsWithWeven?: string;
   sourceId?: string;
+  acquisitionAttribution?: FindOrCreateInput["acquisitionAttribution"];
 }): Promise<FindOrCreateResult> {
   const yearsNote = input.yearsWithWeven?.trim()
     ? `Years with Weven: ${input.yearsWithWeven.trim()}`
@@ -944,6 +952,7 @@ export async function ingestWelcomeBackRequest(input: {
       lastName: input.lastName,
       phone: input.phone,
       referralSource: "Welcome Back form",
+      acquisitionAttribution: input.acquisitionAttribution,
     },
     patch: {
       status: "inquiry",
@@ -985,6 +994,7 @@ export async function ingestNewsletterSignup(input: {
   name?: string;
   venueName?: string;
   sourceId?: string;
+  acquisitionAttribution?: FindOrCreateInput["acquisitionAttribution"];
 }): Promise<FindOrCreateResult> {
   const person = personFromFields({ name: input.name });
   return (await mutateRelationship({
@@ -994,6 +1004,7 @@ export async function ingestNewsletterSignup(input: {
       firstName: person.firstName,
       lastName: person.lastName,
       referralSource: "Newsletter",
+      acquisitionAttribution: input.acquisitionAttribution,
     },
     patch: {
       status: "inquiry",
@@ -1029,6 +1040,7 @@ export async function ingestSupportRequest(input: {
   venueName?: string;
   message?: string;
   sourceId?: string;
+  acquisitionAttribution?: FindOrCreateInput["acquisitionAttribution"];
 }): Promise<FindOrCreateResult> {
   const person = personFromFields({
     name: input.name,
@@ -1043,6 +1055,7 @@ export async function ingestSupportRequest(input: {
       firstName: person.firstName,
       lastName: person.lastName,
       referralSource: "Support form",
+      acquisitionAttribution: input.acquisitionAttribution,
     },
     patch: {
       status: "support",

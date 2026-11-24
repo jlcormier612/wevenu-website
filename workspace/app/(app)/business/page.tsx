@@ -12,6 +12,11 @@ import {
   computeBusinessDashboardMetrics,
   type MetricConfidence,
 } from "@/lib/program9/business-metrics";
+import {
+  ACQUISITION_PERIODS,
+  computeAcquisitionReport,
+  parseAcquisitionPeriod,
+} from "@/lib/program9/acquisition-metrics";
 import { cn, formatCurrency } from "@/lib/utils";
 
 export const metadata = { title: "Business" };
@@ -84,7 +89,11 @@ function MetricTile({
   return <div className="ws-panel p-5">{inner}</div>;
 }
 
-export default async function BusinessPage() {
+export default async function BusinessPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ acq_period?: string }>;
+}) {
   await ensureProgram4Data();
   if (!(await actorCan("view_business_dashboard"))) {
     redirect("/today");
@@ -94,7 +103,15 @@ export default async function BusinessPage() {
   if (!actor) {
     redirect("/login?reason=no_access");
   }
-  const metrics = computeBusinessDashboardMetrics(getData());
+  const params = searchParams ? await searchParams : {};
+  const acqPeriod = parseAcquisitionPeriod(params.acq_period);
+  const workspaceData = getData();
+  const metrics = computeBusinessDashboardMetrics(workspaceData);
+  const acquisition = computeAcquisitionReport(
+    workspaceData,
+    acqPeriod,
+    new Date(),
+  );
   const { briefing, drafts } = loadLuvBriefing(actor);
   const maxNewSubs = Math.max(...metrics.subscriptionGrowth.map((m) => m.newSubs), 1);
   const hasGrowth = metrics.subscriptionGrowth.some((row) => row.newSubs > 0);
@@ -341,6 +358,101 @@ export default async function BusinessPage() {
           </div>
         </Panel>
       </div>
+
+      <Panel title="Acquisition by source" className="mt-8">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm ws-muted max-w-2xl">{acquisition.note}</p>
+          <div className="flex flex-wrap gap-2">
+            {ACQUISITION_PERIODS.map((p) => (
+              <Link
+                key={p.key}
+                href={`/business?acq_period=${p.key}`}
+                className={cn(
+                  "rounded-sm px-3 py-1.5 text-xs tracking-wide transition",
+                  acquisition.period === p.key
+                    ? "bg-[var(--htc-soft-sage)] text-[var(--htc-forest)]"
+                    : "bg-[var(--htc-linen)] text-[var(--htc-dusty)] hover:text-[var(--htc-forest)]",
+                )}
+              >
+                {p.label}
+              </Link>
+            ))}
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr className="border-b border-[var(--htc-border)] ws-muted">
+                <th className="pb-2 pr-4 font-medium">Source</th>
+                <th className="pb-2 pr-4 font-medium">Campaign</th>
+                <th className="pb-2 pr-4 font-medium">Leads</th>
+                <th className="pb-2 pr-4 font-medium">Walkthroughs</th>
+                <th className="pb-2 pr-4 font-medium">New paying</th>
+                <th className="pb-2 pr-4 font-medium">Lead → customer</th>
+                <th className="pb-2 font-medium">New MRR</th>
+              </tr>
+            </thead>
+            <tbody>
+              {acquisition.empty ? (
+                <tr>
+                  <td colSpan={7} className="py-8 text-sm ws-muted">
+                    0 leads · 0 walkthroughs · 0 new paying venues · $0 new MRR
+                    for {acquisition.periodLabel.toLowerCase()}. Attribution
+                    appears as marketing journeys land in CRM.
+                  </td>
+                </tr>
+              ) : (
+                <>
+                  {acquisition.rows.map((row) => (
+                    <tr
+                      key={row.key}
+                      className="border-b border-[var(--htc-border)] last:border-0"
+                    >
+                      <td className="py-3 pr-4 font-medium">{row.source}</td>
+                      <td className="py-3 pr-4">{row.campaign}</td>
+                      <td className="py-3 pr-4">{row.leads}</td>
+                      <td className="py-3 pr-4">{row.walkthroughBookings}</td>
+                      <td className="py-3 pr-4">{row.newPayingVenues}</td>
+                      <td className="py-3 pr-4">
+                        {row.leadToCustomerRate === null
+                          ? "—"
+                          : `${row.leadToCustomerRate}%`}
+                      </td>
+                      <td className="py-3">
+                        {row.newPayingVenues > 0
+                          ? formatCurrency(row.newMrrCents)
+                          : "—"}
+                      </td>
+                    </tr>
+                  ))}
+                  <tr className="border-t border-[var(--htc-border)]">
+                    <td className="py-3 pr-4 font-medium" colSpan={2}>
+                      Total
+                    </td>
+                    <td className="py-3 pr-4 font-medium">
+                      {acquisition.totals.leads}
+                    </td>
+                    <td className="py-3 pr-4 font-medium">
+                      {acquisition.totals.walkthroughBookings}
+                    </td>
+                    <td className="py-3 pr-4 font-medium">
+                      {acquisition.totals.newPayingVenues}
+                    </td>
+                    <td className="py-3 pr-4 font-medium">
+                      {acquisition.totals.leadToCustomerRate === null
+                        ? "—"
+                        : `${acquisition.totals.leadToCustomerRate}%`}
+                    </td>
+                    <td className="py-3 font-medium">
+                      {formatCurrency(acquisition.totals.newMrrCents)}
+                    </td>
+                  </tr>
+                </>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Panel>
     </div>
   );
 }

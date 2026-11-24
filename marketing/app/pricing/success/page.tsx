@@ -7,6 +7,7 @@ import {
 } from "@shared/email";
 import { getEnrollmentBySession } from "@shared/product-account";
 import { MarketingCta } from "@/components/marketing/marketing-cta";
+import { PurchaseAnalytics } from "@/components/pricing/purchase-analytics";
 import { SuccessPendingRefresh } from "@/components/pricing/success-pending-refresh";
 import {
   classifySuccessEnrollment,
@@ -15,10 +16,14 @@ import {
 import { reconcilePaidCheckoutSession } from "@/lib/stripe/reconcile-paid-checkout";
 import { TYPE_HERO_SHELL, TYPE_LABEL } from "@/lib/marketing/rhythm";
 
-export const metadata: Metadata = {
+import { marketingPageMetadata } from "@/lib/marketing/seo";
+
+export const metadata: Metadata = marketingPageMetadata({
   title: "Welcome to Hello to Cheers",
   description: "Your Hello to Cheers subscription is ready.",
-};
+  path: "/pricing/success",
+  robots: { index: false, follow: false },
+});
 
 export const dynamic = "force-dynamic";
 
@@ -128,8 +133,33 @@ export default async function PricingSuccessPage({
       "If you just completed checkout, open the link from your confirmation email to continue. If you need help, reply to that email and we'll take care of you.";
   }
 
+  /**
+   * Purchase analytics only after authoritative paid enrollment exists.
+   * Enrollment is created by webhook/reconcile only when Stripe payment
+   * provisions (paid / no_payment_required + healthy subscription) — not by
+   * merely landing on /pricing/success with a session_id.
+   * Renewals never reach this Checkout success surface.
+   */
+  const paymentVerifiedEnrollment =
+    outcome.status === "found" &&
+    (view === "self_setup_ready" ||
+      view === "white_glove_ready" ||
+      view === "already_activated");
+
   return (
     <div className={`bg-[var(--true-white)] ${TYPE_HERO_SHELL}`}>
+      {paymentVerifiedEnrollment && sessionId ? (
+        <PurchaseAnalytics
+          transactionId={sessionId}
+          paymentVerified
+          whiteGlove={enrollment?.onboardingType === "white_glove"}
+          purchaseType={
+            enrollment?.onboardingType === "white_glove"
+              ? "subscription_with_white_glove"
+              : "subscription"
+          }
+        />
+      ) : null}
       <div className="mx-auto max-w-xl text-center">
         <p className={TYPE_LABEL}>You&apos;re in</p>
         {isSelfSetupWelcome && primaryCta ? (

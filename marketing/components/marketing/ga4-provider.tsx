@@ -3,6 +3,7 @@
 /**
  * HTC marketing-site GA4 bootstrap — gated on hellotocheers-cookie-prefs.analytics.
  * Never uses venue Measurement IDs. Missing NEXT_PUBLIC_GA4_MEASUREMENT_ID = no-op.
+ * Commercial analytics only on public apex/www — excludes Sandbox, dark ALB, localhost QA.
  */
 
 import { useEffect, useRef } from "react";
@@ -17,9 +18,18 @@ import {
   trackPageView,
 } from "@shared/analytics";
 
+import { ensureMarketingFirstTouch } from "@/lib/marketing/acquisition-client";
+
 function marketingMeasurementId(): string | null {
   const raw = process.env.NEXT_PUBLIC_GA4_MEASUREMENT_ID?.trim();
   return raw || null;
+}
+
+/** Public commercial hosts only — not Sandbox, not dark infra hostnames. */
+function isCommercialAnalyticsHost(): boolean {
+  if (typeof window === "undefined") return false;
+  const host = window.location.hostname.toLowerCase();
+  return host === "hellotocheers.com" || host === "www.hellotocheers.com";
 }
 
 export function MarketingGa4Provider() {
@@ -28,9 +38,15 @@ export function MarketingGa4Provider() {
   const lastPath = useRef<string | null>(null);
 
   function sync() {
+    ensureMarketingFirstTouch();
+
     const consented = readMarketingAnalyticsConsent();
     const id = marketingMeasurementId();
-    if (!consented || !isValidGa4MeasurementId(id)) {
+    if (
+      !consented ||
+      !isValidGa4MeasurementId(id) ||
+      !isCommercialAnalyticsHost()
+    ) {
       shutdownGa4();
       lastPath.current = null;
       return;
@@ -53,7 +69,10 @@ export function MarketingGa4Provider() {
   useEffect(() => {
     sync();
     function onChange(e: Event) {
-      const detail = (e as CustomEvent).detail as { surface?: string; analytics?: boolean };
+      const detail = (e as CustomEvent).detail as {
+        surface?: string;
+        analytics?: boolean;
+      };
       if (detail?.surface && detail.surface !== "htc_marketing") return;
       if (detail?.analytics === false) {
         shutdownGa4();
@@ -63,7 +82,8 @@ export function MarketingGa4Provider() {
       sync();
     }
     window.addEventListener("htc-analytics-consent-changed", onChange);
-    return () => window.removeEventListener("htc-analytics-consent-changed", onChange);
+    return () =>
+      window.removeEventListener("htc-analytics-consent-changed", onChange);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- sync on route + consent
   }, [pathname, searchParams]);
 

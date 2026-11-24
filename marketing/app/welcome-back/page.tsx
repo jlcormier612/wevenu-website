@@ -4,12 +4,14 @@ import Link from "next/link";
 
 import { WelcomeBackForm } from "@/components/marketing/welcome-back-form";
 import { HOVER_LINK, TYPE_HERO_SHELL } from "@/lib/marketing/rhythm";
+import { marketingPageMetadata } from "@/lib/marketing/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = marketingPageMetadata({
   title: "Welcome Back",
   description:
     "Former Weven venues can subscribe anytime and note Welcome Back at checkout. Optional introductions welcome.",
-};
+  path: "/welcome-back",
+});
 
 /**
  * Optional Welcome Back introduction — not part of the purchase flow.

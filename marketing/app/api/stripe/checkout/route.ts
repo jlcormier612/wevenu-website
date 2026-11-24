@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+import { normalizeAcquisitionPayload } from "@shared/analytics";
+
 import {
   getEnrollmentConfigAsync,
   parseOnboardingType,
@@ -87,8 +89,13 @@ export async function POST(request: Request) {
        * from this durable id — never trust a client `groupEligible` flag.
        */
       organization_reservation_id?: string;
+      /** Non-PII marketing acquisition attribution (UTM / referrer / landing). */
+      acquisition_attribution?: unknown;
     };
     const plan = body.plan;
+    const acquisitionAttribution = normalizeAcquisitionPayload(
+      body.acquisition_attribution,
+    );
 
     if (!plan || !isSubscriptionPlanId(plan)) {
       return NextResponse.json({ error: "Invalid plan." }, { status: 400 });
@@ -450,6 +457,27 @@ export async function POST(request: Request) {
     if (relationshipId) {
       metadata.relationship_id = relationshipId;
     }
+    // Acquisition UTMs (first-touch preferred) — distinct from offer flags.
+    const acqTouch =
+      acquisitionAttribution?.first_touch ||
+      acquisitionAttribution?.latest_touch ||
+      null;
+    if (acqTouch) {
+      if (acqTouch.utm_source)
+        metadata.acq_utm_source = acqTouch.utm_source.slice(0, 128);
+      if (acqTouch.utm_medium)
+        metadata.acq_utm_medium = acqTouch.utm_medium.slice(0, 128);
+      if (acqTouch.utm_campaign)
+        metadata.acq_utm_campaign = acqTouch.utm_campaign.slice(0, 128);
+      if (acqTouch.utm_content)
+        metadata.acq_utm_content = acqTouch.utm_content.slice(0, 128);
+      if (acqTouch.utm_term)
+        metadata.acq_utm_term = acqTouch.utm_term.slice(0, 128);
+      if (acqTouch.landing_page)
+        metadata.acq_landing_page = acqTouch.landing_page.slice(0, 256);
+      if (acqTouch.referrer)
+        metadata.acq_referrer = acqTouch.referrer.slice(0, 256);
+    }
     if (legalAccepted) {
       metadata.legal_accepted = "true";
       metadata.legal_accepted_at = legalAcceptedAt;
@@ -633,6 +661,9 @@ export async function POST(request: Request) {
       welcomeBack,
       onboardingType,
       checkoutSessionId: session.id,
+      ...(acquisitionAttribution
+        ? { acquisitionAttribution }
+        : {}),
     });
 
     return NextResponse.json({
