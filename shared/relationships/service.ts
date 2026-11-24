@@ -44,6 +44,7 @@ import {
   type StandardDiscountEvidence,
 } from "./standard-discount-eligibility";
 import { applyAcquisitionAttributionToRelationship } from "./acquisition-attribution";
+import { normalizeAcquisitionPayload } from "../analytics/acquisition-attribution";
 
 function stampFromFind(
   relationship: Relationship,
@@ -61,7 +62,7 @@ function stampFromFind(
   if (input.acquisitionAttribution) {
     applyAcquisitionAttributionToRelationship(
       relationship,
-      input.acquisitionAttribution,
+      normalizeAcquisitionPayload(input.acquisitionAttribution),
     );
   }
 }

@@ -17,7 +17,7 @@ function stubRelationship(): Relationship {
     createdAt: "2026-01-01T00:00:00.000Z",
     updatedAt: "2026-01-01T00:00:00.000Z",
     meta: {},
-  } as Relationship;
+  } as unknown as Relationship;
 }
 
 describe("CRM acquisition attribution persistence", () => {
