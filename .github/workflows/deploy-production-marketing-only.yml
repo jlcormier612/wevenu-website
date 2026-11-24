@@ -226,142 +226,70 @@ jobs:
             > /tmp/pre-non-marketing-tds.json
           cat /tmp/pre-non-marketing-tds.json
 
-      - name: Update MarketingImage only via CloudFormation
+      # CFN Processed-template reapply with MarketingImage-only params was proven
+      # unsafe on Production (change set proposed Remove of HttpsListener +
+      # VenueApp/Workspace HTTPS rules). Marketing-only deploys therefore roll
+      # the ECS marketing task definition/image directly and never touch ALB/HTTPS.
+      - name: Roll marketing ECS task definition image only
         env:
           IMAGE_URI: ${{ steps.ecr-login.outputs.registry }}/htc-production-marketing:${{ steps.sha.outputs.sha }}
           SHA: ${{ steps.sha.outputs.sha }}
-          STACK: ${{ vars.CFN_STACK_NAME }}
-          ROLE: ${{ vars.CFN_EXECUTION_ROLE_ARN }}
         run: |
           set -euo pipefail
-          CS="mkt-only-${SHA:0:12}-$(date +%s)"
-          echo "Change set: $CS"
-          echo "MarketingImage=$IMAGE_URI"
-          PARAMS=(
-            "ParameterKey=MarketingImage,ParameterValue=$IMAGE_URI"
-            "ParameterKey=EnvironmentName,UsePreviousValue=true"
-            "ParameterKey=VenueAppImage,UsePreviousValue=true"
-            "ParameterKey=WorkspaceImage,UsePreviousValue=true"
-            "ParameterKey=SchedulerImage,UsePreviousValue=true"
-            "ParameterKey=VenueAppHostname,UsePreviousValue=true"
-            "ParameterKey=MarketingHostname,UsePreviousValue=true"
-            "ParameterKey=WorkspaceHostname,UsePreviousValue=true"
-            "ParameterKey=CertificateArn,UsePreviousValue=true"
-            "ParameterKey=FacebookSecretArn,UsePreviousValue=true"
-            "ParameterKey=FromEmailAddress,UsePreviousValue=true"
-            "ParameterKey=EmailReplyTo,UsePreviousValue=true"
-            "ParameterKey=InquiryNotifyEmail,UsePreviousValue=true"
-            "ParameterKey=SupabaseUrl,UsePreviousValue=true"
-            "ParameterKey=SupabaseAnonKey,UsePreviousValue=true"
-            "ParameterKey=ResendInboundAddress,UsePreviousValue=true"
-            "ParameterKey=CronSecret,UsePreviousValue=true"
-            "ParameterKey=NotificationsSecret,UsePreviousValue=true"
-            "ParameterKey=CommunicationMode,UsePreviousValue=true"
-            "ParameterKey=StripePriceStarter,UsePreviousValue=true"
-            "ParameterKey=StripePriceStarterFounder,UsePreviousValue=true"
-            "ParameterKey=StripePriceGrowing,UsePreviousValue=true"
-            "ParameterKey=StripePriceGrowingFounder,UsePreviousValue=true"
-            "ParameterKey=StripePriceProfessional,UsePreviousValue=true"
-            "ParameterKey=StripePriceProfessionalFounder,UsePreviousValue=true"
-            "ParameterKey=StripePriceWhiteGlove,UsePreviousValue=true"
-            "ParameterKey=StripeFoundingCouponId,UsePreviousValue=true"
-            "ParameterKey=StripePriceGather199,UsePreviousValue=true"
-            "ParameterKey=StripeFoundingPercentCouponId,UsePreviousValue=true"
-            "ParameterKey=PricingLaunchV1,UsePreviousValue=true"
-            "ParameterKey=StripeWevenPercentCouponId,UsePreviousValue=true"
-            "ParameterKey=StripePriceWhiteGloveWeven,UsePreviousValue=true"
-            "ParameterKey=PricingWevenV1,UsePreviousValue=true"
-            "ParameterKey=StripeGroupPercentCouponId,UsePreviousValue=true"
-            "ParameterKey=PricingGroupV1,UsePreviousValue=true"
-            "ParameterKey=StripeSaasProductId,UsePreviousValue=true"
-            "ParameterKey=PricingFounderV1,UsePreviousValue=true"
-            "ParameterKey=ReferralProgramV1,UsePreviousValue=true"
-            "ParameterKey=ReferralRewardIssue,UsePreviousValue=true"
-            "ParameterKey=ReferralQualificationDays,UsePreviousValue=true"
-            "ParameterKey=PricingTierUpgradeStore,UsePreviousValue=true"
-            "ParameterKey=TierUpgradeApplyStripe,UsePreviousValue=true"
-            "ParameterKey=TierUpgradeSendNotice,UsePreviousValue=true"
-          )
-          aws cloudformation get-template --stack-name "$STACK" --template-stage Processed \
-            --output json > /tmp/htc-ecs-stack-raw.json
-          python3 - <<'PY'
-          import json
-          raw = json.load(open("/tmp/htc-ecs-stack-raw.json"))
-          body = raw["TemplateBody"]
-          if isinstance(body, dict):
-              json.dump(body, open("/tmp/htc-ecs-stack-live.json", "w"))
-          else:
-              open("/tmp/htc-ecs-stack-live.json", "w").write(body)
-          PY
-          aws cloudformation create-change-set \
-            --stack-name "$STACK" \
-            --change-set-name "$CS" \
-            --template-body file:///tmp/htc-ecs-stack-live.json \
-            --capabilities CAPABILITY_NAMED_IAM \
-            --role-arn "$ROLE" \
-            --change-set-type UPDATE \
-            --parameters "${PARAMS[@]}"
-
-          for _ in $(seq 1 40); do
-            st=$(aws cloudformation describe-change-set --stack-name "$STACK" --change-set-name "$CS" --query Status --output text)
-            case "$st" in CREATE_COMPLETE|FAILED) break ;; esac
-            sleep 2
-          done
-
-          aws cloudformation describe-change-set --stack-name "$STACK" --change-set-name "$CS" --output json \
-            > /tmp/mkt-only-changeset.json
+          CURR=$(aws ecs describe-services --cluster htc-production \
+            --services htc-production-marketing \
+            --query 'services[0].taskDefinition' --output text)
+          echo "current_td=$CURR"
+          echo "target_image=$IMAGE_URI"
+          aws ecs describe-task-definition --task-definition "$CURR" \
+            --query 'taskDefinition' --output json > /tmp/mkt-td.json
           python3 <<'PY'
-          import json, sys
-          d = json.load(open("/tmp/mkt-only-changeset.json"))
-          status, reason = d.get("Status"), d.get("StatusReason") or ""
-          if status == "FAILED" and "didn't contain changes" in reason:
-              print("No stack changes (MarketingImage already current).")
-              open("/tmp/mkt-only-empty", "w").write("1")
-              sys.exit(0)
-          if status != "CREATE_COMPLETE":
-              print(f"::error::Change set status {status}: {reason}")
-              sys.exit(1)
-          changes = d.get("Changes") or []
-          for c in changes:
-              rc = c["ResourceChange"]
-              print(f"  {rc.get('Action')} {rc.get('LogicalResourceId')} {rc.get('ResourceType')}")
-          bad = [
-              c["ResourceChange"]["LogicalResourceId"]
-              for c in changes
-              if "Marketing" not in c["ResourceChange"]["LogicalResourceId"]
-              and c["ResourceChange"].get("Action") in ("Modify", "Remove", "Add")
-          ]
-          blocked = [
-              lid for lid in bad
-              if any(x in lid for x in ("VenueApp", "Workspace", "Scheduler", "Facebook", "Https", "HttpListener", "Alb"))
-          ]
-          if blocked:
-              print("::error::Change set would touch non-marketing resources: " + ", ".join(blocked))
-              sys.exit(1)
+          import json, os
+          image = os.environ["IMAGE_URI"]
+          td = json.load(open("/tmp/mkt-td.json"))
+          for k in (
+              "taskDefinitionArn", "revision", "status", "requiresAttributes",
+              "compatibilities", "registeredAt", "registeredBy", "deregisteredAt",
+          ):
+              td.pop(k, None)
+          if not td.get("containerDefinitions"):
+              raise SystemExit("marketing task definition has no containers")
+          for c in td["containerDefinitions"]:
+              c["image"] = image
+              print(f"set image on {c.get('name')} -> {image}")
+          json.dump(td, open("/tmp/mkt-td-new.json", "w"))
           PY
-          if [ -f /tmp/mkt-only-empty ]; then
-            echo "CHANGE_SET_EMPTY=1" >> "$GITHUB_ENV"
-          else
-            echo "CHANGE_SET_NAME=$CS" >> "$GITHUB_ENV"
-            aws cloudformation execute-change-set --stack-name "$STACK" --change-set-name "$CS"
-            aws cloudformation wait stack-update-complete --stack-name "$STACK"
-          fi
+          NEW_ARN=$(aws ecs register-task-definition \
+            --cli-input-json file:///tmp/mkt-td-new.json \
+            --query 'taskDefinition.taskDefinitionArn' --output text)
+          echo "new_td=$NEW_ARN"
+          aws ecs update-service \
+            --cluster htc-production \
+            --service htc-production-marketing \
+            --task-definition "$NEW_ARN" \
+            --force-new-deployment \
+            --query 'service.{td:taskDefinition,desired:desiredCount}' --output json
+          echo "NEW_TD_ARN=$NEW_ARN" >> "$GITHUB_ENV"
 
       - name: Wait for marketing service stable
         env:
-          STACK: ${{ vars.CFN_STACK_NAME }}
           SHA: ${{ steps.sha.outputs.sha }}
         run: |
           set -euo pipefail
           aws ecs wait services-stable \
             --cluster htc-production \
             --services htc-production-marketing
-          CFN_IMG=$(aws cloudformation describe-stacks --stack-name "$STACK" \
-            --query "Stacks[0].Parameters[?ParameterKey=='MarketingImage'].ParameterValue" \
-            --output text)
-          echo "CFN_MARKETING_IMAGE=$CFN_IMG"
-          echo "$CFN_IMG" | grep -q "$SHA" \
-            || { echo "::error::Stack MarketingImage does not contain expected SHA $SHA"; exit 1; }
+          RUN_IMG=$(aws ecs describe-services --cluster htc-production \
+            --services htc-production-marketing \
+            --query 'services[0].taskDefinition' --output text)
+          echo "RUNNING_TD=$RUN_IMG"
+          CONTAINER_IMG=$(aws ecs describe-task-definition --task-definition "$RUN_IMG" \
+            --query 'taskDefinition.containerDefinitions[0].image' --output text)
+          echo "RUNNING_IMAGE=$CONTAINER_IMG"
+          echo "$CONTAINER_IMG" | grep -q "$SHA" \
+            || { echo "::error::Running marketing image does not contain expected SHA $SHA"; exit 1; }
+          # Note: CFN MarketingImage parameter may lag until a full Production
+          # stack sync; runtime SoR for dark marketing is the ECS task image.
 
       - name: Verify dark Host routes and non-marketing TDs unchanged
         run: |
