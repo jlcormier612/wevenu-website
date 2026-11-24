@@ -167,10 +167,18 @@ jobs:
           ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
         run: |
           set -euo pipefail
-          CALENDLY_LEN_PROBE="${{ vars.NEXT_PUBLIC_CALENDLY_URL }}"
-          echo "Marketing bake: NEXT_PUBLIC_CALENDLY_URL length=${#CALENDLY_LEN_PROBE}"
-          if [ -z "$CALENDLY_LEN_PROBE" ]; then
-            echo "::warning::NEXT_PUBLIC_CALENDLY_URL is empty — /walkthrough will show scheduling fallback"
+          # Fail-closed: Production walkthrough must bake the approved Calendly
+          # embed URL. An empty bake silently ships the Contact fallback and
+          # breaks parity with the live Vercel experience.
+          CALENDLY_URL="${{ vars.NEXT_PUBLIC_CALENDLY_URL }}"
+          echo "Marketing bake: NEXT_PUBLIC_CALENDLY_URL length=${#CALENDLY_URL}"
+          if [ -z "$CALENDLY_URL" ]; then
+            echo "::error::NEXT_PUBLIC_CALENDLY_URL is empty in the production Environment. Refusing to build — would ship walkthrough without Calendly."
+            exit 1
+          fi
+          if ! echo "$CALENDLY_URL" | grep -Eq '^https://([A-Za-z0-9-]+\.)?calendly\.com/'; then
+            echo "::error::NEXT_PUBLIC_CALENDLY_URL must be an https://calendly.com/… URL."
+            exit 1
           fi
           REWRITTEN="$(mktemp)"
           ./scripts/ci/rewrite-sandbox-dockerfile-bases.sh \
@@ -189,7 +197,7 @@ jobs:
               --build-arg "NEXT_PUBLIC_MARKETING_URL=https://hellotocheers.com" \
               --build-arg "NEXT_PUBLIC_SITE_URL=https://hellotocheers.com" \
               --build-arg "NEXT_PUBLIC_PRODUCT_APP_URL=https://app.hellotocheers.com" \
-              --build-arg "NEXT_PUBLIC_CALENDLY_URL=${{ vars.NEXT_PUBLIC_CALENDLY_URL }}" \
+              --build-arg "NEXT_PUBLIC_CALENDLY_URL=${CALENDLY_URL}" \
               --build-arg "NEXT_PUBLIC_GA4_MEASUREMENT_ID=${{ vars.NEXT_PUBLIC_GA4_MEASUREMENT_ID }}" \
               -t "$IMAGE_URI" .; then
               rm -f "$REWRITTEN"
@@ -373,6 +381,12 @@ jobs:
               fail=1
             fi
           done
+          # Prove Calendly was baked into the running image (RSC props / embed URL).
+          wt=$(curl -skS --max-time 30 \
+            --resolve "hellotocheers.com:443:${ALB_IP}" \
+            "https://hellotocheers.com/walkthrough" || true)
+          echo "$wt" | grep -Eq 'calendly\.com/jennifer-hellotocheers/new-meeting' \
+            || { echo "::error::/walkthrough missing approved Calendly embed URL after deploy"; fail=1; }
 
           python3 <<'PY'
           import json, subprocess, sys

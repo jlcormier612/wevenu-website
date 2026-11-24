@@ -37,6 +37,7 @@ import {
   type InboundMatchMethod,
   type SalesStage,
 } from "@shared/relationships";
+import { inboundEventTargetsEnvironment } from "@shared/email/inbound-env-guard";
 
 import { authorizeInboundWebhook } from "@/lib/email/inbound-webhook-auth";
 import { getRelationship } from "@/lib/data/store";
@@ -148,6 +149,18 @@ export async function POST(request: NextRequest) {
     payload = JSON.parse(rawBody) as InboundBody;
   } catch {
     return NextResponse.json({ error: "Invalid JSON." }, { status: 400 });
+  }
+
+  // Separate webhook URLs/secrets are not enough when both environments
+  // subscribe to the same receiving domain — require this env's inbound
+  // address and a matching to/cc domain before any CRM writes.
+  const envGuard = inboundEventTargetsEnvironment({
+    to: payload.to,
+    cc: payload.cc,
+  });
+  if (!envGuard.ok) {
+    console.warn("[workspace inbound] env routing reject:", envGuard.reason);
+    return NextResponse.json({ ok: true, skipped: envGuard.reason });
   }
 
   const dryRun =

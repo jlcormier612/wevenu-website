@@ -15,6 +15,7 @@
  * All live POSTs go through resend-http.ts (distributed pacing).
  */
 
+import { expectedInboundDomain } from "./inbound-env-guard";
 import type { EmailSendCategory, EmailSendPriority } from "./pacing/priority";
 import { DEFAULT_SEND_CATEGORY, priorityForCategory } from "./pacing/priority";
 import { postResendEmail } from "./resend-http";
@@ -56,12 +57,13 @@ export function getEmailReplyTo(): string | undefined {
 
 /** Domain used for Resend inbound routing / subaddress Reply-To. */
 export function getInboundEmailDomain(): string | undefined {
+  // Fail-closed on CFN/GH sentinel `NONE` (and similar). Real Sandbox
+  // addresses still resolve to their inbound domain.
   const addr =
     process.env.RESEND_INBOUND_ADDRESS?.trim() ||
     process.env.RELATIONSHIP_INBOUND_ADDRESS?.trim() ||
     "";
-  if (!addr) return undefined;
-  return addr.includes("@") ? addr.replace(/^.*@/, "") : addr;
+  return expectedInboundDomain(addr) ?? undefined;
 }
 
 /**
