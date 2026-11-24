@@ -200,6 +200,23 @@ describe("Phase 2C consent ON", () => {
     assert.ok(harness.gtagCalls.some((c) => c[0] === "event" && c[1] === "page_view"));
   });
 
+  it("gtag stub pushes Arguments (not a rest Array) so GA4 /g/collect can fire", () => {
+    // Regression: dataLayer.push(args) with a real Array never becomes collect hits.
+    shutdownGa4();
+    delete (globalThis as unknown as { gtag?: unknown }).gtag;
+    (globalThis as unknown as { dataLayer: unknown[] }).dataLayer = [];
+    const ok = ensureGa4({
+      measurementId: "G-TESTONLY1",
+      consented: true,
+      surface: "htc_marketing",
+    });
+    assert.equal(ok, true);
+    const dl = (globalThis as unknown as { dataLayer: unknown[] }).dataLayer;
+    assert.ok(dl.length >= 1);
+    assert.equal(Object.prototype.toString.call(dl[0]), "[object Arguments]");
+    assert.notEqual(Array.isArray(dl[0]), true);
+  });
+
   it("generate_lead fires with non-PII params and funnel_surface", () => {
     ensureGa4({ measurementId: "G-TESTONLY1", consented: true, surface: "venue_public_form", anonId: "anon-1" });
     harness.gtagCalls.length = 0;
