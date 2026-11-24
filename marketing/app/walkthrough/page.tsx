@@ -27,8 +27,8 @@ export default async function WalkthroughPage({
     redirect(MORE_INFO_CTA.href);
   }
 
-  // Calendly opens only after the shared HTC intake form saves to CRM.
-  // Contact keeps the same fields for Request Information.
+  // Public Vercel baseline: inline Calendly (venue name via Calendly questions).
+  // Contact remains the Request Information form surface.
   const calendlyUrl = resolveCalendlyEmbedUrl(
     process.env.NEXT_PUBLIC_CALENDLY_URL,
   );

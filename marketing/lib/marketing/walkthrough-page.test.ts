@@ -4,7 +4,7 @@ import { describe, it } from "node:test";
 import { WALKTHROUGH_PAGE } from "@/lib/marketing/walkthrough-page";
 
 describe("WALKTHROUGH_PAGE approved copy", () => {
-  it("locks intro, unified intake, booking, and contact alternative", () => {
+  it("locks Calendly-first intro, booking, and contact alternative (no intake gate)", () => {
     assert.equal(WALKTHROUGH_PAGE.intro.eyebrow, "A CLOSER LOOK");
     assert.equal(WALKTHROUGH_PAGE.intro.headline, "Let's talk about your venue.");
     assert.equal(
@@ -24,14 +24,6 @@ describe("WALKTHROUGH_PAGE approved copy", () => {
       "Venue professional discussing event plans during a personalized video walkthrough.",
     );
     assert.equal(
-      WALKTHROUGH_PAGE.intake.headline,
-      "Tell us a little about your venue.",
-    );
-    assert.equal(
-      WALKTHROUGH_PAGE.intake.submitLabel,
-      "Continue to scheduling",
-    );
-    assert.equal(
       WALKTHROUGH_PAGE.booking.headline,
       "Find a time that works for you.",
     );
@@ -49,5 +41,10 @@ describe("WALKTHROUGH_PAGE approved copy", () => {
     );
     assert.equal(WALKTHROUGH_PAGE.contactAlternative.cta.href, "/contact");
     assert.equal(WALKTHROUGH_PAGE.contactAlternative.cta.label, "Get in Touch");
+    assert.equal(
+      "intake" in WALKTHROUGH_PAGE,
+      false,
+      "intake gate must not exist on approved public walkthrough",
+    );
   });
 });
