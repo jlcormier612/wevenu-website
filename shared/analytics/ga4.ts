@@ -83,10 +83,14 @@ export function ensureGa4(config: Ga4RuntimeConfig): boolean {
   }
 
   window.dataLayer = window.dataLayer || [];
+  // Google's loader requires the Arguments object (not a rest-parameter Array).
+  // Pushing `args` as a real Array queues dataLayer entries that never become
+  // /g/collect hits — Realtime stays empty despite gtag/js loading.
   window.gtag =
     window.gtag ||
-    function gtag(...args: unknown[]) {
-      window.dataLayer!.push(args);
+    function gtag() {
+      // eslint-disable-next-line prefer-rest-params -- must mirror Google's stub
+      window.dataLayer!.push(arguments);
     };
 
   window.gtag("js", new Date());
