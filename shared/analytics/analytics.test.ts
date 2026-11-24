@@ -16,6 +16,7 @@ import {
   isValidGa4MeasurementId,
   mergeAttributionForSubmit,
   readFirstTouchAttribution,
+  hasMarketingCookieChoice,
   readMarketingAnalyticsConsent,
   readOpaqueAnonId,
   readVenueFormAnalyticsConsent,
@@ -343,6 +344,17 @@ describe("Phase 2C privacy + attribution boundary", () => {
     assert.equal(readMarketingAnalyticsConsent(), true);
     writeMarketingAnalyticsConsent(false);
     assert.equal(readMarketingAnalyticsConsent(), false);
+  });
+
+  it("first-visit consent banner hides only after a stored choice (accept or decline)", () => {
+    assert.equal(hasMarketingCookieChoice(), false);
+    assert.equal(readMarketingAnalyticsConsent(), false);
+    writeMarketingAnalyticsConsent(false);
+    assert.equal(hasMarketingCookieChoice(), true);
+    assert.equal(readMarketingAnalyticsConsent(), false);
+    writeMarketingAnalyticsConsent(true);
+    assert.equal(hasMarketingCookieChoice(), true);
+    assert.equal(readMarketingAnalyticsConsent(), true);
   });
 
   it("venue consent storage is separate from marketing prefs", () => {

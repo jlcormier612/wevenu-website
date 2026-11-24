@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Cormorant_Garamond, Great_Vibes, Inter } from "next/font/google";
 import { Suspense } from "react";
 
+import { CookieConsentBanner } from "@/components/marketing/cookie-consent-banner";
 import { MarketingGa4Provider } from "@/components/marketing/ga4-provider";
 import { SiteFooter } from "@/components/marketing/site-footer";
 import { SiteHeader } from "@/components/marketing/site-header";
@@ -88,6 +89,7 @@ export default function RootLayout({
           <main>{children}</main>
           <SiteFooter />
         </div>
+        <CookieConsentBanner />
         <Suspense fallback={null}>
           <MarketingGa4Provider />
         </Suspense>

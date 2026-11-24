@@ -18,6 +18,7 @@ export {
 export {
   readMarketingAnalyticsConsent,
   writeMarketingAnalyticsConsent,
+  hasMarketingCookieChoice,
   readVenueFormAnalyticsConsent,
   writeVenueFormAnalyticsConsent,
 } from "./consent";
