@@ -30,6 +30,11 @@ const nextConfig: NextConfig = {
   // own directory), not just so Turbopack can resolve them at build time.
   outputFileTracingRoot: path.join(__dirname, ".."),
   images: {
+    // Cap below Next defaults (which include 2048/3840). On Production ECS
+    // (0.25 vCPU / 512 MB) /_next/image hangs on w=3840 cold encodes; desktop
+    // DPR2 full-bleed srcsets then leave empty frames. 1920 covers 1280×2.
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
     remotePatterns: [
       {
         protocol: "https",
