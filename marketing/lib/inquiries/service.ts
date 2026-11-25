@@ -1,9 +1,5 @@
 import { randomUUID } from "crypto";
 
-import {
-  sendFeedbackConfirmationEmail,
-  sendInquiryConfirmationEmail,
-} from "@shared/email";
 import { findRelationshipByTimelineSourceId } from "@shared/relationships";
 import { notifyInquiry } from "@/lib/inquiries/notify";
 import { normalizeInquiryIdempotencyKey } from "@/lib/inquiries/spam";
@@ -25,11 +21,11 @@ import { syncInquiryToRelationship } from "@/lib/relationships/bridge";
  * 1. Idempotency short-circuit via timeline meta.sourceId
  * 2. CRM sync (fail closed — visitor can safely retry)
  * 3. Best-effort local JSONL audit (ephemeral on ECS)
- * 4. Ops notify + visitor confirmation (Resend idempotency keyed by inquiry id)
+ * 4. Ops notify only (internal; not a visitor business acknowledgment)
  *
- * Contact Us and unscheduled walkthrough / more-info requests get an automated
- * customer confirmation (not Calendly-scheduled). Marketing /support gets
- * feedback confirmation (same template as product Get Help).
+ * Visitor-facing business acknowledgments are owned by CRM Program 3
+ * (templates / automatic responses / sequences / workflows). Marketing must not
+ * send an independent hardcoded confirmation when CRM rules are absent or disabled.
  */
 export async function submitInquiry(
   input: SubmitInquiryInput,
@@ -71,69 +67,6 @@ export async function submitInquiry(
   }
 
   await notifyInquiry(submission);
-
-  if (synced.relationshipId) {
-    const email =
-      submission.fields.email?.trim() ||
-      submission.fields.businessEmail?.trim() ||
-      "";
-    if (email && shouldSendInquiryConfirmation(submission)) {
-      try {
-        const result = await sendInquiryConfirmationEmail({
-          relationshipId: synced.relationshipId,
-          to: email,
-          firstName: submission.fields.firstName || null,
-          venueName:
-            submission.fields.venue || submission.fields.venueName || null,
-          meta: {
-            inquiry_id: submission.id,
-            inquiry_kind: submission.kind,
-          },
-        });
-        console.info("[inquiries] confirmation email", {
-          inquiryId: submission.id,
-          relationshipId: synced.relationshipId,
-          templateId: result.templateId,
-          delivery: result.delivery,
-          ok: result.ok,
-        });
-      } catch (error) {
-        console.error(
-          "[inquiries] confirmation email failed",
-          submission.id,
-          error,
-        );
-      }
-    } else if (email && submission.kind === "support") {
-      try {
-        const result = await sendFeedbackConfirmationEmail({
-          relationshipId: synced.relationshipId,
-          to: email,
-          firstName: submission.fields.firstName || null,
-          venueName:
-            submission.fields.venue || submission.fields.venueName || null,
-          feedbackType: "support",
-          meta: {
-            inquiry_id: submission.id,
-            inquiry_kind: submission.kind,
-            source: "marketing_support",
-          },
-        });
-        console.info("[inquiries] support confirmation email", {
-          inquiryId: submission.id,
-          relationshipId: synced.relationshipId,
-          delivery: result.delivery,
-          ok: result.ok,
-        });
-      } catch (error) {
-        console.error(
-          "[inquiries] support confirmation email failed",
-          submission.id,
-          error,
-        );
-      }
-    }
-  }
 
   return {
     ...submission,
@@ -179,24 +112,6 @@ async function findPriorInquiryBySourceId(
     default:
       return false;
   }
-}
-
-/**
- * Customer confirmation for more-info / contact-style inquiries only.
- * Skips Calendly-style walkthroughs that include a real scheduled datetime,
- * plus support / newsletter / Welcome Back (support uses feedback_confirmation).
- */
-function shouldSendInquiryConfirmation(submission: InquirySubmission): boolean {
-  if (submission.kind === "contact") return true;
-  if (submission.kind !== "walkthrough") return false;
-
-  const rawWhen =
-    submission.fields.scheduledAt?.trim() ||
-    submission.fields.preferredDate?.trim() ||
-    "";
-  if (!rawWhen) return true;
-  const parsed = new Date(rawWhen);
-  return Number.isNaN(parsed.getTime());
 }
 
 export function isInquiryKind(value: string): value is InquiryKind {

@@ -384,8 +384,8 @@ export const SEED_SEQUENCES: Sequence[] = [
 export const SEED_BRANDING: BrandingConfig = {
   id: "branding_default",
   fromName: "Hello to Cheers",
-  fromEmail: "hello@hellotocheers.com",
-  replyToEmail: "success@hellotocheers.com",
+  fromEmail: "jennifer@hellotocheers.com",
+  replyToEmail: "jennifer@hellotocheers.com",
   signatureHtml: "With care,\nThe Hello to Cheers team",
   updatedAt: NOW,
 };

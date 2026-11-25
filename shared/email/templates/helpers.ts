@@ -1,3 +1,4 @@
+import { htcEmailLogoHeaderHtml } from "../../brand/logo";
 import type { EmailTemplateVars } from "../types";
 import { greetingFirstName } from "../../relationships/normalize";
 
@@ -173,7 +174,14 @@ export function ctaButtonHtml(label: string, href: string): string {
 <p style="margin:0 0 16px;font-size:13px;line-height:1.5;color:#6b7a6b">Or open this link: <a href="${safeHref}" style="color:#2f3d2f">${safeHref}</a></p>`;
 }
 
+/**
+ * Official HTC corporate email shell — logo from shared/brand, established
+ * linen/forest palette, Georgia typography. Used by CRM library sends and
+ * essential product lifecycle templates. Editable business copy belongs in CRM
+ * templates; this shell only provides visual presentation.
+ */
 export function wrapHelloHtml(title: string, bodyHtml: string): string {
+  const logo = htcEmailLogoHeaderHtml({ href: marketingUrl("/") });
   return `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
@@ -181,7 +189,7 @@ export function wrapHelloHtml(title: string, bodyHtml: string): string {
   <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto">
     <tr>
       <td style="background:#fffdf9;border-radius:4px;padding:40px 36px;border:1px solid #e5ddd0">
-        <p style="margin:0 0 8px;font-size:12px;letter-spacing:0.14em;text-transform:uppercase;color:#6b7a6b">Hello to Cheers</p>
+        ${logo}
         <h1 style="margin:0 0 24px;font-size:24px;line-height:1.3;color:#2f3d2f;font-weight:normal">${escapeHtml(title)}</h1>
         ${bodyHtml}
         <p style="margin:28px 0 0;font-size:14px;line-height:1.5;color:#6b7a6b">With care,<br/>Jennifer &amp; the Hello to Cheers team</p>
