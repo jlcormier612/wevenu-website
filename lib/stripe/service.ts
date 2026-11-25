@@ -72,7 +72,8 @@ export async function disconnectStripeAccount(): Promise<StripeActionResult> {
   const venue = await getCurrentVenue();
   if (!venue) return { ok: false, message: "Session expired." };
 
-  const clientId = process.env.NEXT_PUBLIC_STRIPE_CLIENT_ID;
+  const { resolveStripeClientId } = await import("@/lib/stripe/oauth");
+  const clientId = resolveStripeClientId();
   const secretKey = process.env.STRIPE_SECRET_KEY;
   if (venue.stripeAccountId && clientId && secretKey) {
     try {
