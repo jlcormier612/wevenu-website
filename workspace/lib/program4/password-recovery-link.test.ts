@@ -4,14 +4,14 @@ import { describe, it } from "node:test";
 import { workspacePasswordRecoveryUrl } from "./password-recovery-link";
 
 describe("workspacePasswordRecoveryUrl", () => {
-  it("builds Production complete URL with token_hash and type=recovery", () => {
+  it("builds Production reset URL with token_hash and type=recovery", () => {
     const url = workspacePasswordRecoveryUrl({
       workspaceOrigin: "https://workspace.hellotocheers.com",
       hashedToken: "abc.def",
     });
     assert.equal(
       url,
-      "https://workspace.hellotocheers.com/login/reset/complete?token_hash=abc.def&type=recovery",
+      "https://workspace.hellotocheers.com/login/reset?token_hash=abc.def&type=recovery",
     );
   });
 

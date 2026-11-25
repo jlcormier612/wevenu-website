@@ -69,12 +69,12 @@ async function main() {
     process.exit(1);
   }
 
-  const resetUrl = new URL("/login/reset/complete", ORIGIN);
+  const resetUrl = new URL("/login/reset", ORIGIN);
   resetUrl.searchParams.set("token_hash", link.hashed_token);
   resetUrl.searchParams.set("type", "recovery");
   const url = resetUrl.toString();
 
-  if (/localhost/i.test(url) || !url.startsWith(ORIGIN)) {
+  if (/localhost/i.test(url) || !url.startsWith(`${ORIGIN}/login/reset`)) {
     console.error("refusing_non_production_url");
     process.exit(1);
   }
@@ -122,7 +122,7 @@ async function main() {
   const evidence = {
     to: EMAIL,
     host: ORIGIN,
-    path: "/login/reset/complete",
+    path: "/login/reset",
     action_link_had_localhost: /localhost/i.test(String(link.action_link || "")),
     resend_id: sendBody.id || null,
     sent_at: new Date().toISOString(),
