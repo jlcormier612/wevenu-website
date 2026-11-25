@@ -93,12 +93,14 @@ export function ProductOpening() {
                   />
                 </figure>
                 <figure className="po-shot po-shot-planning">
+                  {/* Exact approved PNG — bypass /_next/image; Prod ECS hangs on w=828 for this asset. */}
                   <Image
                     src={A.clientPlanningCards}
                     alt="Client Home planning cards — Wedding Website, Guest List, Budget, Seating, Plans, and Our Story"
                     width={913}
                     height={298}
-                    sizes="(max-width: 720px) 100vw, 380px"
+                    sizes="(max-width: 720px) 100vw, min(820px, 92vw)"
+                    unoptimized
                   />
                 </figure>
               </div>
