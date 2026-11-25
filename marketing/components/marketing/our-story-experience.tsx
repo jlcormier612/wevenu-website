@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { StaticPhoto } from "@/components/marketing/static-photo";
 
 import { SignatureClosingCta } from "@/components/marketing/signature-closing-cta";
 import { OUR_STORY, OUR_STORY_ASSETS } from "@/lib/marketing/our-story";
@@ -189,12 +190,12 @@ export function OurStoryExperience() {
         <div className="os-turning-botanical">
           <div className="os-wrap-wide">
             <figure className="os-frame os-turning-visual">
-              <Image
-                src={assets.turningPoint}
+              <StaticPhoto
+                id="tour-grounds"
                 alt="Sunlit garden courtyard viewed through an architectural doorway — a hopeful, forward-looking hospitality landscape"
                 fill
                 sizes="100vw"
-                className="object-cover object-center"
+                imgClassName="object-cover object-center"
               />
             </figure>
             <header className="os-chapter-head">
@@ -230,12 +231,12 @@ export function OurStoryExperience() {
               </div>
             </div>
             <figure className="os-frame os-behind-scenes-visual">
-              <Image
-                src={assets.behindTheScenes}
+              <StaticPhoto
+                id="our-story-behind-the-scenes"
                 alt="A venue professional in a sage apron carefully placing a name card on a linen napkin at a candlelit reception table — illustrative editorial photograph"
                 fill
                 sizes="(max-width: 900px) 100vw, 40vw"
-                className="object-cover object-[center_20%]"
+                imgClassName="object-cover object-[center_20%]"
               />
             </figure>
           </div>

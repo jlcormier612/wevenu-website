@@ -1,10 +1,17 @@
-import Image from "next/image";
 import Link from "next/link";
 
 import { SignatureClosingCta } from "@/components/marketing/signature-closing-cta";
+import { StaticPhoto } from "@/components/marketing/static-photo";
 import { HOME_ASSETS, HOME_COPY } from "@/lib/marketing/homepage-v3";
+import type { StaticPhotoId } from "@/lib/marketing/static-photo-assets.generated";
 
 import "@/app/homepage-v3.css";
+
+const JOURNEY_PHOTOS: StaticPhotoId[] = [
+  "journey-first-hello",
+  "journey-collaboration",
+  "journey-final-cheers",
+];
 
 /**
  * Homepage from the approved manuscript.
@@ -40,12 +47,12 @@ export function HomepageHybrid() {
           </div>
 
           <figure className="hero-photo">
-            <Image
-              src={a.heroHospitalityAiry}
+            <StaticPhoto
+              id="hero-hospitality-airy"
               alt="Venue professional arranging florals and candles on a long reception table"
               fill
               priority
-              sizes="(max-width: 768px) 100vw, min(1280px, 100vw)"
+              sizes="(max-width: 768px) 100vw, 1280px"
             />
           </figure>
         </div>
@@ -71,15 +78,15 @@ export function HomepageHybrid() {
                 { asset: a.journeyCollaboration, ...c.journey.moments[1], position: "journey-pos-b" },
                 { asset: a.journeyFinalCheers, ...c.journey.moments[2], position: "journey-pos-c" },
               ] as const
-            ).map((moment) => (
+            ).map((moment, momentIndex) => (
               <li key={moment.title} className="journey-moment">
                 <figure className="journey-photo">
-                  <Image
-                    src={moment.asset}
+                  <StaticPhoto
+                    id={JOURNEY_PHOTOS[momentIndex]!}
                     alt={moment.alt}
                     fill
                     sizes="(max-width: 640px) 100vw, (max-width: 900px) 33vw, 411px"
-                    className={moment.position}
+                    imgClassName={moment.position}
                   />
                 </figure>
                 <h3 className="journey-caption-title">{moment.title}</h3>
@@ -107,12 +114,12 @@ export function HomepageHybrid() {
       <section className="personalize" id="your-venue" aria-labelledby="personalize-heading">
         <div className="personalize-inner">
           <figure className="personalize-photo">
-            <Image
-              src={a.venueYourWayEditorial}
+            <StaticPhoto
+              id="venue-your-way-editorial"
               alt="The Willow Grove Venue presentation booklet styled with florals, linens, and venue photographs"
               fill
               sizes="(max-width: 640px) 100vw, (max-width: 900px) 100vw, 614px"
-              className="personalize-photo-img"
+              imgClassName="personalize-photo-img"
             />
           </figure>
           <div className="personalize-copy">
@@ -141,12 +148,12 @@ export function HomepageHybrid() {
           </header>
 
           <figure className="operations-photo">
-            <Image
-              src={a.operationsVenueReady}
+            <StaticPhoto
+              id="operations-venue-ready"
               alt="Bright, fully prepared reception venue with ivory linens, wood chairs, and soft florals"
               fill
-              sizes="(max-width: 640px) 100vw, min(1280px, 100vw)"
-              className="operations-photo-img"
+              sizes="(max-width: 640px) 100vw, 1280px"
+              imgClassName="operations-photo-img"
             />
           </figure>
 
@@ -187,12 +194,20 @@ export function HomepageHybrid() {
             {c.ecosystem.panels.map((panel) => (
               <li key={panel.role} className="ecosystem-profile">
                 <figure className="ecosystem-photo">
-                  <Image
-                    src={a[panel.img]}
+                  <StaticPhoto
+                    id={
+                      (
+                        {
+                          ecosystemVenue: "ecosystem-venue",
+                          ecosystemClient: "ecosystem-client",
+                          ecosystemVendor: "ecosystem-vendor",
+                        } as const
+                      )[panel.img]
+                    }
                     alt={panel.imgAlt}
                     fill
                     sizes="(max-width: 640px) 100vw, (max-width: 900px) 42vw, 408px"
-                    className={panel.position}
+                    imgClassName={panel.position}
                   />
                 </figure>
                 <div className="ecosystem-copy">
@@ -232,12 +247,12 @@ export function HomepageHybrid() {
           </div>
 
           <figure className="getting-started-photo">
-            <Image
-              src={a.gettingStartedEditorial}
+            <StaticPhoto
+              id="getting-started-editorial"
               alt="Sunlit workspace with laptop, florals, notebook, and a sage-tied binder on a light wood desk"
               fill
               sizes="(max-width: 640px) 100vw, (max-width: 900px) 100vw, 600px"
-              className="getting-started-photo-img"
+              imgClassName="getting-started-photo-img"
             />
           </figure>
         </div>
@@ -266,12 +281,12 @@ export function HomepageHybrid() {
           <figure className="first-friends-photo">
             <figcaption className="first-friends-caption">Our First Friends</figcaption>
             <div className="first-friends-photo-frame">
-              <Image
-                src={a.ourFirstFriendsEditorial}
+              <StaticPhoto
+                id="our-first-friends-editorial"
                 alt="Sunlit flat lay of venue photographs, handwritten thank-you notes, a sage notebook, and soft florals"
                 fill
                 sizes="(max-width: 640px) 100vw, (max-width: 900px) 100vw, 690px"
-                className="first-friends-photo-img"
+                imgClassName="first-friends-photo-img"
               />
             </div>
           </figure>

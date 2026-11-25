@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { StaticPhoto } from "@/components/marketing/static-photo";
 import Link from "next/link";
 
 import { MarketingCta } from "@/components/marketing/marketing-cta";
@@ -48,8 +49,8 @@ export function GettingStartedExperience() {
             </div>
 
             <figure className="gs-hero-photo">
-              <Image
-                src={A.hero}
+              <StaticPhoto
+                id="getting-started-hero"
                 alt={page.hero.imageAlt}
                 width={1024}
                 height={682}
