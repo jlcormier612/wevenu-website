@@ -1,14 +1,12 @@
 #!/usr/bin/env node
 /**
  * One-shot: send Production CRM recovery email to jennifer@hellotocheers.com
- * using hashed_token → /login/reset/complete (never logs the URL).
+ * using hashed_token → /login/reset with the shared branded HTC shell.
  *
- * Usage (from repo root, with AWS + secrets available):
- *   node scripts/ws2-send-founder-recovery.mjs
+ * Never logs the recovery URL.
  */
 import { execFileSync } from "node:child_process";
-import { writeFileSync, chmodSync, readFileSync, unlinkSync } from "node:fs";
-
+import { writeFileSync, chmodSync } from "node:fs";
 const EMAIL = "jennifer@hellotocheers.com";
 const SUPABASE_URL = "https://eovxuojwmqqufactxtqq.supabase.co";
 const ORIGIN = "https://workspace.hellotocheers.com";
@@ -51,6 +49,40 @@ function smGet(secretId) {
 }
 
 async function main() {
+  process.env.HTC_ENVIRONMENT = "production";
+  // Load TS shared template via tsx when available
+  let buildHtml;
+  let buildText;
+  let subject;
+  try {
+    const mod = await import("../shared/auth/password-recovery-email.ts");
+    buildHtml = mod.buildPasswordRecoveryEmailHtml;
+    buildText = mod.buildPasswordRecoveryEmailText;
+    subject = mod.PASSWORD_RECOVERY_EMAIL_SUBJECT;
+  } catch {
+    // Fallback absolute logo shell if ts import unavailable
+    const logo =
+      "https://hellotocheers.com/brand/hello-to-cheers-logo-primary-transparent.png";
+    subject = "Reset your Hello to Cheers password";
+    buildHtml = (resetUrl) => {
+      const safe = resetUrl
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/"/g, "&quot;");
+      return `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#f4f1ec;font-family:Georgia,serif">
+        <table role="presentation" width="100%" style="background:#f4f1ec;padding:32px 16px"><tr><td align="center">
+        <table role="presentation" width="100%" style="max-width:560px;background:#fff;border:1px solid #ddd6cc">
+        <tr><td style="padding:36px 32px;border-top:4px solid #5d6f5d">
+        <div style="margin:0 0 22px"><img src="${logo}" alt="Hello to Cheers" width="180" style="display:block;width:180px;max-width:100%;height:auto;border:0" /></div>
+        <h1 style="color:#1f2a1f;font-size:26px">Reset your Hello to Cheers password</h1>
+        <p style="font-family:-apple-system,sans-serif;font-size:15px;color:#374151;line-height:1.6">Use the button below to choose a new password.</p>
+        <p><a href="${safe}" style="display:inline-block;background:#5d6f5d;color:#fff;padding:14px 26px;border-radius:6px;text-decoration:none;font-weight:600">Reset password</a></p>
+        </td></tr></table></td></tr></table></body></html>`;
+    };
+    buildText = (resetUrl) =>
+      `Reset your Hello to Cheers password\n\n${resetUrl}\n\nIf you did not request this, you can ignore this email.`;
+  }
+
   const sr = smGet("htc/production/supabase-service-role-key");
   const resend = smGet("htc/production/resend-api-key");
 
@@ -79,19 +111,11 @@ async function main() {
     process.exit(1);
   }
 
-  const safe = url
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/"/g, "&quot;");
-
-  const html = `<!DOCTYPE html><html><body style="font-family:Georgia,serif;background:#f4f1ec;padding:32px">
-  <div style="max-width:560px;margin:0 auto;background:#fff;border:1px solid #ddd6cc;padding:32px">
-    <h1 style="color:#1f2a1f;font-size:24px">Reset your password</h1>
-    <p style="color:#374151;font-family:-apple-system,sans-serif;font-size:15px;line-height:1.6">
-      Use the button below to choose a new password for the Relationship Workspace.
-    </p>
-    <p><a href="${safe}" style="display:inline-block;background:#5d6f5d;color:#fff;padding:14px 26px;border-radius:6px;text-decoration:none;font-family:-apple-system,sans-serif;font-weight:600">Reset password</a></p>
-  </div></body></html>`;
+  const html = buildHtml(url);
+  if (!/hello-to-cheers-logo-primary-transparent\.png/.test(html)) {
+    console.error("branded_logo_missing");
+    process.exit(1);
+  }
 
   const sendRes = await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -103,8 +127,8 @@ async function main() {
     body: JSON.stringify({
       from: "Hello to Cheers <jennifer@hellotocheers.com>",
       to: [EMAIL],
-      subject: "Reset your Hello to Cheers password",
-      text: `Reset your Hello to Cheers password:\n\n${url}\n\nIf you did not request this, you can ignore this email.`,
+      subject,
+      text: buildText(url),
       html,
       tags: [
         { name: "category", value: "password_recovery" },
@@ -118,17 +142,16 @@ async function main() {
     process.exit(1);
   }
 
-  // Evidence without exposing the recovery URL
   const evidence = {
     to: EMAIL,
     host: ORIGIN,
     path: "/login/reset",
+    branded_logo: true,
     action_link_had_localhost: /localhost/i.test(String(link.action_link || "")),
     resend_id: sendBody.id || null,
     sent_at: new Date().toISOString(),
   };
-  const out =
-    `${process.env.HOME}/Desktop/HTC-4C-3/stage-4c-crm-ownership/password-recovery-fix/founder-email-sent.json`;
+  const out = `${process.env.HOME}/Desktop/HTC-4C-3/stage-4c-crm-ownership/password-recovery-fix/founder-email-sent.json`;
   writeFileSync(out, JSON.stringify(evidence, null, 2));
   chmodSync(out, 0o600);
   console.log("sent_ok", evidence.resend_id ? "id_present" : "id_missing");

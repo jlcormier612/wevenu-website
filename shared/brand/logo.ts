@@ -25,9 +25,20 @@ function escapeAttr(s: string): string {
 
 /** Public origin used to resolve the logo in delivered email HTML. */
 export function htcBrandAssetOrigin(): string {
-  return (
+  const fromEnv = (
     process.env.NEXT_PUBLIC_MARKETING_URL?.trim() ||
     process.env.MARKETING_URL?.trim() ||
+    ""
+  ).replace(/\/$/, "");
+  if (fromEnv) return fromEnv;
+  // Auth / product emails must not depend on app/workspace origins (logo assets
+  // live on the marketing host). Prefer the Production marketing CDN.
+  const env = (process.env.HTC_ENVIRONMENT || process.env.HTC_ENV || "")
+    .trim()
+    .toLowerCase();
+  if (env === "production") return "https://hellotocheers.com";
+  if (env === "sandbox") return "https://sandbox.hellotocheers.com";
+  return (
     process.env.NEXT_PUBLIC_APP_URL?.trim() ||
     process.env.NEXT_PUBLIC_PRODUCT_APP_URL?.trim() ||
     "https://hellotocheers.com"

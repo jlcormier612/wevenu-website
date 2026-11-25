@@ -184,7 +184,11 @@ export async function requestPasswordResetAction(
   const staff = await getStaffAclRepository().getByEmail(email);
   if (staff?.active) {
     const { createWorkspaceAdminClient } = await import("@/lib/supabase/server");
-    const { htcEmailLogoHeaderHtml } = await import("@shared/brand/logo");
+    const {
+      PASSWORD_RECOVERY_EMAIL_SUBJECT,
+      buildPasswordRecoveryEmailHtml,
+      buildPasswordRecoveryEmailText,
+    } = await import("@shared/auth/password-recovery-email");
     const { workspacePasswordRecoveryUrl } = await import(
       "@/lib/program4/password-recovery-link"
     );
@@ -204,24 +208,11 @@ export async function requestPasswordResetAction(
         workspaceOrigin: workspaceBaseUrl(),
         hashedToken,
       });
-      const safe = resetUrl
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/"/g, "&quot;");
       await sendRawEmail({
         to: email,
-        subject: "Reset your Hello to Cheers password",
-        text: `Reset your Hello to Cheers password:\n\n${resetUrl}\n\nIf you did not request this, you can ignore this email.`,
-        html: `<!DOCTYPE html><html><body style="font-family:Georgia,serif;background:#f4f1ec;padding:32px">
-          <div style="max-width:560px;margin:0 auto;background:#fff;border:1px solid #ddd6cc;padding:32px">
-            ${htcEmailLogoHeaderHtml({ href: "https://hellotocheers.com", widthPx: 180 })}
-            <h1 style="color:#1f2a1f;font-size:24px">Reset your password</h1>
-            <p style="color:#374151;font-family:-apple-system,sans-serif;font-size:15px;line-height:1.6">
-              Use the button below to choose a new password for the Relationship Workspace.
-            </p>
-            <p><a href="${safe}" style="display:inline-block;background:#5d6f5d;color:#fff;padding:14px 26px;border-radius:6px;text-decoration:none;font-family:-apple-system,sans-serif;font-weight:600">Reset password</a></p>
-            <p style="color:#6b7280;font-size:12px;word-break:break-all">${safe}</p>
-          </div></body></html>`,
+        subject: PASSWORD_RECOVERY_EMAIL_SUBJECT,
+        text: buildPasswordRecoveryEmailText(resetUrl),
+        html: buildPasswordRecoveryEmailHtml(resetUrl),
         category: "password_recovery",
         tags: [
           { name: "category", value: "password_recovery" },

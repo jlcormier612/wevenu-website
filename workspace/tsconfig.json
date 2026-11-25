@@ -26,6 +26,7 @@
       "@shared/product-account/*": ["../shared/product-account/*"],
       "@shared/brand": ["../shared/brand/logo.ts"],
       "@shared/brand/*": ["../shared/brand/*"],
+      "@shared/auth/*": ["../shared/auth/*"],
       "@shared/pricing": ["../shared/pricing/index.ts"],
       "@shared/pricing/*": ["../shared/pricing/*"],
       "@shared/support-access": ["../shared/support-access/token.ts"],

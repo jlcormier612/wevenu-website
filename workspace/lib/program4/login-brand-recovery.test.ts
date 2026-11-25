@@ -39,6 +39,8 @@ describe("CRM login brand + recovery", () => {
     assert.match(actions, /hashed_token/);
     assert.match(actions, /workspacePasswordRecoveryUrl/);
     assert.match(actions, /category:\s*"password_recovery"/);
+    assert.match(actions, /buildPasswordRecoveryEmailHtml/);
+    assert.match(actions, /@shared\/auth\/password-recovery-email/);
     assert.match(actions, /updatePasswordAfterWorkspaceRecoveryAction/);
     assert.doesNotMatch(actions, /properties\?\.action_link|data\.properties\.action_link/);
   });
