@@ -313,8 +313,12 @@ jobs:
           wt=$(curl -skS --max-time 30 \
             --resolve "hellotocheers.com:443:${ALB_IP}" \
             "https://hellotocheers.com/walkthrough" || true)
-          echo "$wt" | grep -Eq 'calendly\.com/jennifer-hellotocheers/new-meeting' \
+          echo "$wt" | grep -Eq 'calendly\.com/jennifer-hellotocheers/walkthrough' \
             || { echo "::error::/walkthrough missing approved Calendly embed URL after deploy"; fail=1; }
+          if echo "$wt" | grep -Eq 'calendly\.com/jennifer-hellotocheers/new-meeting'; then
+            echo "::error::/walkthrough still embeds retired /new-meeting Calendly URL"
+            fail=1
+          fi
 
           python3 <<'PY'
           import json, subprocess, sys

@@ -280,7 +280,8 @@ export const SEED_SEQUENCES: Sequence[] = [
     approval: "approved",
     targeting: "prospects",
     timezone: DEFAULT_SEQUENCE_TIMEZONE,
-    active: true,
+    // Inactive until founder explicitly enables — no unapproved sends.
+    active: false,
     steps: [
       {
         id: "ss_1",
@@ -308,7 +309,7 @@ export const SEED_SEQUENCES: Sequence[] = [
     approval: "approved",
     targeting: "customers",
     timezone: DEFAULT_SEQUENCE_TIMEZONE,
-    active: true,
+    active: false,
     steps: [
       {
         id: "ss_ob_1",
@@ -329,7 +330,7 @@ export const SEED_SEQUENCES: Sequence[] = [
     approval: "approved",
     targeting: "customers",
     timezone: DEFAULT_SEQUENCE_TIMEZONE,
-    active: true,
+    active: false,
     steps: [
       {
         id: "ss_cc_1",
@@ -359,7 +360,7 @@ export const SEED_SEQUENCES: Sequence[] = [
     approval: "approved",
     targeting: "customers",
     timezone: DEFAULT_SEQUENCE_TIMEZONE,
-    active: true,
+    active: false,
     steps: [
       {
         id: "ss_wb_1",
@@ -395,7 +396,8 @@ export const SEED_WORKFLOWS: Workflow[] = [
     id: "wf_inquiry_welcome",
     name: "New inquiry welcome",
     description: "When a venue enters Inquiry — welcome email, task, and gentle follow-up.",
-    active: true,
+    // Inactive until founder enables — ingest must not send unapproved copy.
+    active: false,
     trigger: { type: "status_enter", status: "inquiry" },
     steps: [
       {
@@ -442,7 +444,7 @@ export const SEED_WORKFLOWS: Workflow[] = [
     id: "wf_walkthrough_scheduled",
     name: "Walkthrough scheduled",
     description: "Confirm the walkthrough and assign the walkthrough owner.",
-    active: true,
+    active: false,
     trigger: { type: "status_enter", status: "walkthrough_scheduled" },
     steps: [
       {
@@ -475,7 +477,7 @@ export const SEED_WORKFLOWS: Workflow[] = [
     id: "wf_onboarding_start",
     name: "Onboarding kickoff",
     description: "Manual or on enter Onboarding — kickoff email + wait until Live.",
-    active: true,
+    active: false,
     trigger: { type: "status_enter", status: "onboarding" },
     steps: [
       {
@@ -520,7 +522,7 @@ export const SEED_WORKFLOWS: Workflow[] = [
     id: "wf_manual_nurture",
     name: "Manual nurture sequence",
     description: "Run the inquiry nurture sequence on demand.",
-    active: true,
+    active: false,
     trigger: { type: "manual" },
     steps: [
       {

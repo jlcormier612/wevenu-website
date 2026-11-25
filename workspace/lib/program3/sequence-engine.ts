@@ -84,7 +84,8 @@ export function normalizeSequence(seq: Sequence): Sequence {
     ...seq,
     targeting: seq.targeting ?? "any",
     timezone: seq.timezone || DEFAULT_SEQUENCE_TIMEZONE,
-    active: seq.active !== false,
+    // Explicit enable only — seed defaults and unset must not auto-send.
+    active: seq.active === true,
     steps: (seq.steps ?? []).map(normalizeSequenceStep),
   };
 }
