@@ -338,6 +338,7 @@ jobs:
               "ParameterKey=SupabaseUrl,ParameterValue=${{ vars.NEXT_PUBLIC_SUPABASE_URL }}" \
               "ParameterKey=SupabaseAnonKey,ParameterValue=${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" \
               "ParameterKey=ResendInboundAddress,ParameterValue=${{ vars.RESEND_INBOUND_ADDRESS }}" \
+              "ParameterKey=TextingSelfServiceEnabled,ParameterValue=${{ vars.TEXTING_SELF_SERVICE_ENABLED }}" \
               "ParameterKey=CronSecret,ParameterValue=${{ secrets.CRON_SECRET }}" \
               "ParameterKey=NotificationsSecret,ParameterValue=${{ vars.NEXT_PUBLIC_NOTIFICATIONS_SECRET }}" \
               "ParameterKey=CommunicationMode,ParameterValue=real" \
@@ -444,6 +445,7 @@ jobs:
               SupabaseUrl="${{ vars.NEXT_PUBLIC_SUPABASE_URL }}" \
               SupabaseAnonKey="${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" \
               ResendInboundAddress="${{ vars.RESEND_INBOUND_ADDRESS }}" \
+              TextingSelfServiceEnabled="${{ vars.TEXTING_SELF_SERVICE_ENABLED }}" \
               CronSecret="${{ secrets.CRON_SECRET }}" \
               NotificationsSecret="${{ vars.NEXT_PUBLIC_NOTIFICATIONS_SECRET }}" \
               CommunicationMode=real \

@@ -304,6 +304,7 @@ jobs:
             "ParameterKey=SupabaseUrl,UsePreviousValue=true"
             "ParameterKey=SupabaseAnonKey,UsePreviousValue=true"
             "ParameterKey=ResendInboundAddress,UsePreviousValue=true"
+            "ParameterKey=TextingSelfServiceEnabled,UsePreviousValue=true"
             "ParameterKey=CronSecret,UsePreviousValue=true"
             "ParameterKey=NotificationsSecret,UsePreviousValue=true"
             "ParameterKey=CommunicationMode,UsePreviousValue=true"
