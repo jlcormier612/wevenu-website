@@ -30,6 +30,10 @@ const nextConfig: NextConfig = {
   // own directory), not just so Turbopack can resolve them at build time.
   outputFileTracingRoot: path.join(__dirname, ".."),
   images: {
+    // Fail closed: never use the in-process /_next/image optimizer on this
+    // Fargate task (known hangs at large widths). Curated locals are served as
+    // public files; large photography uses build-time WebP via StaticPhoto.
+    unoptimized: true,
     remotePatterns: [
       {
         protocol: "https",

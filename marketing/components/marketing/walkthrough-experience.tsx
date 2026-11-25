@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import { StaticPhoto } from "@/components/marketing/static-photo";
 
 import { TrustRule } from "@/components/marketing/brand-accents";
 import { CalendlyEmbed } from "@/components/marketing/calendly-embed";
@@ -74,11 +74,11 @@ export function WalkthroughExperience({
           <figure
             className={`relative mx-auto aspect-[16/10] w-full max-w-2xl lg:max-w-none ${EDITORIAL_FRAME}`}
           >
-            <Image
-              src={page.intro.imageSrc}
+            <StaticPhoto
+              id="walkthrough-personal-conversation"
               alt={page.intro.imageAlt}
               fill
-              className={`${EDITORIAL_IMAGE} object-[center_42%]`}
+              imgClassName={`${EDITORIAL_IMAGE} object-[center_42%]`}
               sizes="(max-width: 1024px) 100vw, 48vw"
               priority
             />

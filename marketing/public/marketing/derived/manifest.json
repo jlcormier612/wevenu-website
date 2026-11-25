@@ -1,0 +1,292 @@
+{
+  "generatedAt": "2026-11-25T04:28:09.643Z",
+  "webpQuality": 82,
+  "widths": [
+    640,
+    960,
+    1280,
+    1920
+  ],
+  "images": {
+    "hero-hospitality-airy": {
+      "id": "hero-hospitality-airy",
+      "source": "/marketing/hero-hospitality-airy.png",
+      "width": 1750,
+      "height": 899,
+      "variants": {
+        "640": {
+          "path": "/marketing/derived/hero-hospitality-airy-640.webp",
+          "bytes": 48302
+        },
+        "960": {
+          "path": "/marketing/derived/hero-hospitality-airy-960.webp",
+          "bytes": 80540
+        },
+        "1280": {
+          "path": "/marketing/derived/hero-hospitality-airy-1280.webp",
+          "bytes": 114154
+        }
+      }
+    },
+    "journey-first-hello": {
+      "id": "journey-first-hello",
+      "source": "/marketing/journey-first-hello.png",
+      "width": 1122,
+      "height": 1402,
+      "variants": {
+        "640": {
+          "path": "/marketing/derived/journey-first-hello-640.webp",
+          "bytes": 55122
+        },
+        "960": {
+          "path": "/marketing/derived/journey-first-hello-960.webp",
+          "bytes": 92008
+        }
+      }
+    },
+    "journey-collaboration": {
+      "id": "journey-collaboration",
+      "source": "/marketing/journey-collaboration.png",
+      "width": 1122,
+      "height": 1402,
+      "variants": {
+        "640": {
+          "path": "/marketing/derived/journey-collaboration-640.webp",
+          "bytes": 80402
+        },
+        "960": {
+          "path": "/marketing/derived/journey-collaboration-960.webp",
+          "bytes": 138400
+        }
+      }
+    },
+    "journey-final-cheers": {
+      "id": "journey-final-cheers",
+      "source": "/marketing/journey-final-cheers.png",
+      "width": 1122,
+      "height": 1402,
+      "variants": {
+        "640": {
+          "path": "/marketing/derived/journey-final-cheers-640.webp",
+          "bytes": 66000
+        },
+        "960": {
+          "path": "/marketing/derived/journey-final-cheers-960.webp",
+          "bytes": 104000
+        }
+      }
+    },
+    "venue-your-way-editorial": {
+      "id": "venue-your-way-editorial",
+      "source": "/marketing/venue-your-way-editorial.jpg",
+      "width": 926,
+      "height": 1024,
+      "variants": {
+        "640": {
+          "path": "/marketing/derived/venue-your-way-editorial-640.webp",
+          "bytes": 72000
+        }
+      }
+    },
+    "operations-venue-ready": {
+      "id": "operations-venue-ready",
+      "source": "/marketing/operations-venue-ready.png",
+      "width": 1774,
+      "height": 887,
+      "variants": {
+        "640": {
+          "path": "/marketing/derived/operations-venue-ready-640.webp",
+          "bytes": 50648
+        },
+        "960": {
+          "path": "/marketing/derived/operations-venue-ready-960.webp",
+          "bytes": 90084
+        },
+        "1280": {
+          "path": "/marketing/derived/operations-venue-ready-1280.webp",
+          "bytes": 128944
+        }
+      }
+    },
+    "getting-started-editorial": {
+      "id": "getting-started-editorial",
+      "source": "/marketing/getting-started-editorial.png",
+      "width": 1448,
+      "height": 1086,
+      "variants": {
+        "640": {
+          "path": "/marketing/derived/getting-started-editorial-640.webp",
+          "bytes": 40444
+        },
+        "960": {
+          "path": "/marketing/derived/getting-started-editorial-960.webp",
+          "bytes": 66964
+        },
+        "1280": {
+          "path": "/marketing/derived/getting-started-editorial-1280.webp",
+          "bytes": 94496
+        }
+      }
+    },
+    "getting-started-hero": {
+      "id": "getting-started-hero",
+      "source": "/marketing/getting-started/getting-started-hero.jpg",
+      "width": 1024,
+      "height": 682,
+      "variants": {
+        "640": {
+          "path": "/marketing/derived/getting-started-hero-640.webp",
+          "bytes": 44586
+        },
+        "960": {
+          "path": "/marketing/derived/getting-started-hero-960.webp",
+          "bytes": 70668
+        }
+      }
+    },
+    "ecosystem-venue": {
+      "id": "ecosystem-venue",
+      "source": "/marketing/ecosystem-venue.png",
+      "width": 1122,
+      "height": 1402,
+      "variants": {
+        "640": {
+          "path": "/marketing/derived/ecosystem-venue-640.webp",
+          "bytes": 45902
+        },
+        "960": {
+          "path": "/marketing/derived/ecosystem-venue-960.webp",
+          "bytes": 73286
+        }
+      }
+    },
+    "ecosystem-client": {
+      "id": "ecosystem-client",
+      "source": "/marketing/ecosystem-client.png",
+      "width": 1122,
+      "height": 1402,
+      "variants": {
+        "640": {
+          "path": "/marketing/derived/ecosystem-client-640.webp",
+          "bytes": 72244
+        },
+        "960": {
+          "path": "/marketing/derived/ecosystem-client-960.webp",
+          "bytes": 121314
+        }
+      }
+    },
+    "ecosystem-vendor": {
+      "id": "ecosystem-vendor",
+      "source": "/marketing/ecosystem-vendor.png",
+      "width": 1122,
+      "height": 1402,
+      "variants": {
+        "640": {
+          "path": "/marketing/derived/ecosystem-vendor-640.webp",
+          "bytes": 70428
+        },
+        "960": {
+          "path": "/marketing/derived/ecosystem-vendor-960.webp",
+          "bytes": 114792
+        }
+      }
+    },
+    "our-first-friends-editorial": {
+      "id": "our-first-friends-editorial",
+      "source": "/marketing/our-first-friends-editorial.png",
+      "width": 1536,
+      "height": 1024,
+      "variants": {
+        "640": {
+          "path": "/marketing/derived/our-first-friends-editorial-640.webp",
+          "bytes": 55114
+        },
+        "960": {
+          "path": "/marketing/derived/our-first-friends-editorial-960.webp",
+          "bytes": 106992
+        },
+        "1280": {
+          "path": "/marketing/derived/our-first-friends-editorial-1280.webp",
+          "bytes": 173752
+        }
+      }
+    },
+    "tour-grounds": {
+      "id": "tour-grounds",
+      "source": "/marketing/tour-grounds.jpg",
+      "width": 1024,
+      "height": 588,
+      "variants": {
+        "640": {
+          "path": "/marketing/derived/tour-grounds-640.webp",
+          "bytes": 49016
+        },
+        "960": {
+          "path": "/marketing/derived/tour-grounds-960.webp",
+          "bytes": 87480
+        }
+      }
+    },
+    "our-story-behind-the-scenes": {
+      "id": "our-story-behind-the-scenes",
+      "source": "/marketing/our-story-behind-the-scenes.jpg",
+      "width": 819,
+      "height": 1024,
+      "variants": {
+        "640": {
+          "path": "/marketing/derived/our-story-behind-the-scenes-640.webp",
+          "bytes": 60092
+        }
+      }
+    },
+    "walkthrough-personal-conversation": {
+      "id": "walkthrough-personal-conversation",
+      "source": "/marketing/walkthrough-personal-conversation.jpg",
+      "width": 1024,
+      "height": 682,
+      "variants": {
+        "640": {
+          "path": "/marketing/derived/walkthrough-personal-conversation-640.webp",
+          "bytes": 45568
+        },
+        "960": {
+          "path": "/marketing/derived/walkthrough-personal-conversation-960.webp",
+          "bytes": 78238
+        }
+      }
+    },
+    "features-journey-primary": {
+      "id": "features-journey-primary",
+      "source": "/marketing/features-spotlights/spotlight-journey-consultation.jpg",
+      "width": 1024,
+      "height": 682,
+      "variants": {
+        "640": {
+          "path": "/marketing/derived/features-journey-primary-640.webp",
+          "bytes": 52318
+        },
+        "960": {
+          "path": "/marketing/derived/features-journey-primary-960.webp",
+          "bytes": 88190
+        }
+      }
+    },
+    "features-hero-golden-hour": {
+      "id": "features-hero-golden-hour",
+      "source": "/marketing/features-hero-golden-hour-garden.jpg",
+      "width": 1024,
+      "height": 576,
+      "variants": {
+        "640": {
+          "path": "/marketing/derived/features-hero-golden-hour-640.webp",
+          "bytes": 44070
+        },
+        "960": {
+          "path": "/marketing/derived/features-hero-golden-hour-960.webp",
+          "bytes": 73886
+        }
+      }
+    }
+  }
+}
