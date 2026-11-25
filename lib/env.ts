@@ -42,7 +42,13 @@ export const isSupabaseConfigured = Boolean(
  * they hand control back to the user after an external redirect.
  */
 export function publicAppOrigin(): string {
-  return (process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000").replace(/\/$/, "");
+  const fromEnv = (process.env.NEXT_PUBLIC_APP_URL ?? "").trim().replace(/\/$/, "");
+  if (fromEnv) return fromEnv;
+  const env = (process.env.HTC_ENVIRONMENT || process.env.HTC_ENV || "")
+    .trim()
+    .toLowerCase();
+  if (env === "production") return "https://app.hellotocheers.com";
+  return "http://localhost:3000";
 }
 
 /**

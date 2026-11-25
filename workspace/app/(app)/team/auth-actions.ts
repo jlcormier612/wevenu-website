@@ -185,23 +185,33 @@ export async function requestPasswordResetAction(
   if (staff?.active) {
     const { createWorkspaceAdminClient } = await import("@/lib/supabase/server");
     const { htcEmailLogoHeaderHtml } = await import("@shared/brand/logo");
+    const { workspacePasswordRecoveryUrl } = await import(
+      "@/lib/program4/password-recovery-link"
+    );
     const admin = createWorkspaceAdminClient();
-    const redirectTo = `${workspaceBaseUrl()}/login/reset`;
     const { data, error } = await admin.auth.admin.generateLink({
       type: "recovery",
       email,
-      options: { redirectTo },
     });
-    const actionLink = data?.properties?.action_link;
-    if (!error && actionLink) {
-      const safe = actionLink
+    // Prefer hashed_token → Production /login/reset. Supabase's default
+    // recovery link embeds redirect_to=Site URL (still localhost here).
+    const hashedToken =
+      data?.properties?.hashed_token ||
+      (data as { hashed_token?: string } | null)?.hashed_token ||
+      "";
+    if (!error && hashedToken) {
+      const resetUrl = workspacePasswordRecoveryUrl({
+        workspaceOrigin: workspaceBaseUrl(),
+        hashedToken,
+      });
+      const safe = resetUrl
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
         .replace(/"/g, "&quot;");
       await sendRawEmail({
         to: email,
         subject: "Reset your Hello to Cheers password",
-        text: `Reset your Hello to Cheers password:\n\n${actionLink}\n\nIf you did not request this, you can ignore this email.`,
+        text: `Reset your Hello to Cheers password:\n\n${resetUrl}\n\nIf you did not request this, you can ignore this email.`,
         html: `<!DOCTYPE html><html><body style="font-family:Georgia,serif;background:#f4f1ec;padding:32px">
           <div style="max-width:560px;margin:0 auto;background:#fff;border:1px solid #ddd6cc;padding:32px">
             ${htcEmailLogoHeaderHtml({ href: "https://hellotocheers.com", widthPx: 180 })}

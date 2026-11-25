@@ -11,10 +11,12 @@ import {
   buildPasswordRecoveryEmailHtml,
   buildPasswordRecoveryEmailText,
 } from "@/lib/auth/password-recovery-email";
+import { venuePasswordRecoveryUrl } from "@/lib/auth/password-recovery-link";
 import {
-  passwordRecoveryRedirectTo,
+  PASSWORD_RESET_PATH,
   type PasswordRecoveryAudience,
 } from "@/lib/auth/password-recovery";
+import { publicAppOrigin } from "@/lib/env";
 import { isEmailConfigured, sendEmail } from "@/lib/email/send";
 
 export type SendPasswordRecoveryResult =
@@ -22,9 +24,9 @@ export type SendPasswordRecoveryResult =
   | { ok: false; reason: "not_configured" | "no_user" | "link_failed" | "send_failed"; detail?: string };
 
 /**
- * Generate a Supabase recovery action_link and deliver it with HTC branding.
- * Unknown emails return `{ ok: false, reason: "no_user" }` so callers can
- * still show enumeration-safe success copy.
+ * Generate a Supabase recovery token and deliver a Production recovery URL
+ * with HTC branding. Unknown emails return `{ ok: false, reason: "no_user" }`
+ * so callers can still show enumeration-safe success copy.
  */
 export async function sendBrandedPasswordRecoveryEmail(opts: {
   email: string;
@@ -36,12 +38,10 @@ export async function sendBrandedPasswordRecoveryEmail(opts: {
 
   const email = opts.email.trim().toLowerCase();
   const admin = createAdminClient();
-  const redirectTo = passwordRecoveryRedirectTo(opts.audience);
 
   const { data, error } = await admin.auth.admin.generateLink({
     type: "recovery",
     email,
-    options: { redirectTo },
   });
 
   if (error) {
@@ -56,10 +56,23 @@ export async function sendBrandedPasswordRecoveryEmail(opts: {
     return { ok: false, reason: "link_failed", detail: "generateLink failed" };
   }
 
-  const actionLink = data.properties?.action_link;
-  if (!actionLink) {
-    return { ok: false, reason: "link_failed", detail: "missing action_link" };
+  const hashedToken = data.properties?.hashed_token || "";
+  if (!hashedToken) {
+    return { ok: false, reason: "link_failed", detail: "missing hashed_token" };
   }
+
+  // Prefer Production app origin + token_hash. Supabase action_link still embeds
+  // Site URL (localhost on this Production project) when redirect allow-list
+  // rejects our redirectTo — that yields ERR_CONNECTION_REFUSED for founders.
+  const nextPath =
+    opts.audience === "venue"
+      ? PASSWORD_RESET_PATH
+      : `${PASSWORD_RESET_PATH}?audience=${encodeURIComponent(opts.audience)}`;
+  const actionLink = venuePasswordRecoveryUrl({
+    appOrigin: publicAppOrigin(),
+    hashedToken,
+    nextPath,
+  });
 
   // Auth links must not be rewritten by click tracking.
   const result = await sendEmail({

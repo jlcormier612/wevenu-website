@@ -199,11 +199,19 @@ export function newInviteToken(): string {
 }
 
 export function workspaceBaseUrl(): string {
-  return (
+  const fromEnv = (
     process.env.WORKSPACE_URL?.trim() ||
     process.env.NEXT_PUBLIC_WORKSPACE_URL?.trim() ||
-    "http://localhost:3002"
-  );
+    ""
+  ).replace(/\/$/, "");
+  if (fromEnv) return fromEnv;
+  // Production ECS must never fall back to localhost — recovery emails would
+  // deep-link to an unreachable host (ERR_CONNECTION_REFUSED).
+  const env = (process.env.HTC_ENVIRONMENT || process.env.HTC_ENV || "")
+    .trim()
+    .toLowerCase();
+  if (env === "production") return "https://workspace.hellotocheers.com";
+  return "http://localhost:3002";
 }
 
 export function inviteAcceptUrl(token: string): string {
