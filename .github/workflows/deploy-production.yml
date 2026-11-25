@@ -116,6 +116,7 @@ jobs:
               CronSecret="${{ secrets.CRON_SECRET }}" \
               NotificationsSecret="${{ vars.NEXT_PUBLIC_NOTIFICATIONS_SECRET }}" \
               CommunicationMode="${{ vars.COMMUNICATION_MODE }}" \
+              TextingSelfServiceEnabled="${{ vars.TEXTING_SELF_SERVICE_ENABLED }}" \
               PricingLaunchV1="${{ vars.PRICING_LAUNCH_V1 }}" \
               PricingWevenV1="${{ vars.PRICING_WEVEN_V1 }}" \
               PricingGroupV1="${{ vars.PRICING_GROUP_V1 }}" \
