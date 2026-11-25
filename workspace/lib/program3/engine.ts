@@ -578,6 +578,62 @@ export async function enrollOnStatusEnter(
   }
 }
 
+/** Auto-enroll workflows triggered by leaving a pipeline status. */
+export async function enrollOnStatusLeave(
+  relationshipId: string,
+  status: PipelineStatus,
+  getRelationship: (id: string) => Relationship | undefined,
+): Promise<void> {
+  const workflows = getWorkflowsSync().filter(
+    (w) =>
+      w.active &&
+      w.trigger.type === "status_leave" &&
+      w.trigger.status === status,
+  );
+  for (const wf of workflows) {
+    await enrollWorkflow({
+      workflowId: wf.id,
+      relationshipId,
+      trigger: "status_leave",
+      getRelationship,
+    });
+  }
+}
+
+/**
+ * Walkthrough canceled — exit active walkthrough-related workflow runs and
+ * prospect sequence enrollments so delayed steps do not keep sending.
+ */
+export async function handleWalkthroughCanceledAutomation(
+  relationshipId: string,
+  reason = "walkthrough_canceled",
+): Promise<{ exitedRuns: number; exitedSequences: number }> {
+  const runs = getWorkflowRunsSync({ relationshipId }).filter(
+    (r) => r.status === "active" || r.status === "paused",
+  );
+  let exitedRuns = 0;
+  for (const run of runs) {
+    const wf = getWorkflowsSync().find((w) => w.id === run.workflowId);
+    const walkthroughRelated =
+      wf?.trigger.type === "status_enter" &&
+      (wf.trigger.status === "walkthrough_scheduled" ||
+        wf.trigger.status === "walkthrough_requested");
+    if (walkthroughRelated || run.workflowId === "wf_walkthrough_scheduled") {
+      const result = await exitWorkflowRun(run.id, reason);
+      if (!("error" in result)) exitedRuns += 1;
+    }
+  }
+
+  const { exitActiveEnrollmentsForRelationship } = await import(
+    "./sequence-engine"
+  );
+  const exited = await exitActiveEnrollmentsForRelationship(
+    relationshipId,
+    reason,
+  );
+  return { exitedRuns, exitedSequences: exited.length };
+}
+
 export async function moveRelationshipStatus(
   relationshipId: string,
   nextStatus: RelationshipStatus,

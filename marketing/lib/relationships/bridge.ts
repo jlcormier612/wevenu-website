@@ -17,6 +17,7 @@ import {
 import type { OnboardingType } from "@/lib/marketing/enrollment";
 import type { InquirySubmission } from "@/lib/inquiries/types";
 import type { VenueEnrollmentRecord } from "@/lib/crm/types";
+import { notifyProgram3IngestEvent } from "@/lib/relationships/notify-program3";
 import { estimateMrrCentsFromPlan } from "@/lib/stripe/mrr";
 
 /** Combine venue context + more-info question for Relationship notes/timeline. */
@@ -51,12 +52,31 @@ function personNameFields(f: Record<string, string>): {
   return { name: combined, firstName, lastName };
 }
 
+function statusForInquiryKind(
+  kind: InquirySubmission["kind"],
+  fields: Record<string, string>,
+): string {
+  if (kind === "support") return "support";
+  if (kind === "walkthrough") {
+    const raw =
+      fields.scheduledAt?.trim() || fields.preferredDate?.trim() || "";
+    if (raw) {
+      const parsed = new Date(raw);
+      if (!Number.isNaN(parsed.getTime())) return "walkthrough_scheduled";
+    }
+    return "walkthrough_requested";
+  }
+  return "inquiry";
+}
+
 export async function syncInquiryToRelationship(
   submission: InquirySubmission,
 ): Promise<{ relationshipId: string; handoffToken?: string } | null> {
   try {
     const f = submission.fields;
     const person = personNameFields(f);
+    let synced: { relationshipId: string; handoffToken?: string } | null =
+      null;
     switch (submission.kind) {
       case "contact": {
         const result = await ingestContactForm({
@@ -69,7 +89,8 @@ export async function syncInquiryToRelationship(
           sourceId: submission.id,
           acquisitionAttribution: submission.acquisitionAttribution,
         });
-        return { relationshipId: result.relationship.id };
+        synced = { relationshipId: result.relationship.id };
+        break;
       }
       case "walkthrough": {
         const result = await ingestWalkthroughRequest({
@@ -84,10 +105,11 @@ export async function syncInquiryToRelationship(
           referralSource: "Schedule a Walkthrough",
           acquisitionAttribution: submission.acquisitionAttribution,
         });
-        return {
+        synced = {
           relationshipId: result.relationship.id,
           handoffToken: result.handoffToken,
         };
+        break;
       }
       case "welcome_back_request": {
         const result = await ingestWelcomeBackRequest({
@@ -102,7 +124,8 @@ export async function syncInquiryToRelationship(
           sourceId: submission.id,
           acquisitionAttribution: submission.acquisitionAttribution,
         });
-        return { relationshipId: result.relationship.id };
+        synced = { relationshipId: result.relationship.id };
+        break;
       }
       case "newsletter": {
         const result = await ingestNewsletterSignup({
@@ -112,7 +135,8 @@ export async function syncInquiryToRelationship(
           sourceId: submission.id,
           acquisitionAttribution: submission.acquisitionAttribution,
         });
-        return { relationshipId: result.relationship.id };
+        synced = { relationshipId: result.relationship.id };
+        break;
       }
       case "support": {
         const result = await ingestSupportRequest({
@@ -125,14 +149,24 @@ export async function syncInquiryToRelationship(
           sourceId: submission.id,
           acquisitionAttribution: submission.acquisitionAttribution,
         });
-        return { relationshipId: result.relationship.id };
+        synced = { relationshipId: result.relationship.id };
+        break;
       }
     }
+
+    if (synced?.relationshipId) {
+      await notifyProgram3IngestEvent({
+        event: "status_enter",
+        relationshipId: synced.relationshipId,
+        status: statusForInquiryKind(submission.kind, submission.fields),
+        sourceId: submission.id,
+      });
+    }
+    return synced;
   } catch (error) {
     console.error("[relationships] failed to sync inquiry", submission.id, error);
     return null;
   }
-  return null;
 }
 
 export async function syncEnrollmentToRelationship(
@@ -275,7 +309,7 @@ export async function syncCalendlyCreatedToRelationship(input: {
       input.tracking,
       { scheduledAt: input.scheduledAt },
     );
-    await ingestWalkthroughRequest({
+    const result = await ingestWalkthroughRequest({
       name: input.name,
       email: input.email,
       venueName: input.venueName,
@@ -289,6 +323,15 @@ export async function syncCalendlyCreatedToRelationship(input: {
       identityReviewRequired: !hasHandoff && !hasVenue,
       referralSource: hasHandoff ? "Schedule a Walkthrough" : "Calendly",
       ...(acquisitionAttribution ? { acquisitionAttribution } : {}),
+    });
+    const hasDate = Boolean(
+      input.scheduledAt && !Number.isNaN(new Date(input.scheduledAt).getTime()),
+    );
+    await notifyProgram3IngestEvent({
+      event: "status_enter",
+      relationshipId: result.relationship.id,
+      status: hasDate ? "walkthrough_scheduled" : "walkthrough_requested",
+      sourceId: input.sourceId ?? null,
     });
   } catch (error) {
     console.error("[relationships] failed to sync Calendly invitee.created", error);
@@ -306,7 +349,7 @@ export async function syncCalendlyCanceledToRelationship(input: {
   handoffToken?: string;
 }): Promise<void> {
   try {
-    await ingestWalkthroughCanceled({
+    const result = await ingestWalkthroughCanceled({
       email: input.email,
       name: input.name,
       venueName: input.venueName,
@@ -315,6 +358,14 @@ export async function syncCalendlyCanceledToRelationship(input: {
       sourceId: input.sourceId,
       handoffToken: input.handoffToken,
     });
+    if (result?.relationship?.id) {
+      await notifyProgram3IngestEvent({
+        event: "walkthrough_canceled",
+        relationshipId: result.relationship.id,
+        previousStatus: "walkthrough_scheduled",
+        sourceId: input.sourceId ?? null,
+      });
+    }
   } catch (error) {
     console.error("[relationships] failed to sync Calendly invitee.canceled", error);
     throw error;

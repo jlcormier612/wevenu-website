@@ -33,7 +33,7 @@ describe("resolveCalendlyEmbedUrl", () => {
 describe("buildCalendlySchedulingUrl", () => {
   it("prefills name/email/venue(a1) and attaches opaque handoff as utm_content", () => {
     const url = buildCalendlySchedulingUrl(
-      "https://calendly.com/jennifer-hellotocheers/new-meeting",
+      "https://calendly.com/jennifer-hellotocheers/walkthrough",
       {
         name: "Ada Venue",
         email: "ada@example.com",
