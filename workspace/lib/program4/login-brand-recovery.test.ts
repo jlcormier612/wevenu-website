@@ -32,13 +32,24 @@ describe("CRM login brand + recovery", () => {
     assert.match(reset, /ResetPasswordForm/);
   });
 
-  it("password reset uses generateLink + password_recovery category", () => {
+  it("password reset uses generateLink hashed_token + password_recovery category", () => {
     const actions = read("app/(app)/team/auth-actions.ts");
     assert.match(actions, /generateLink/);
     assert.match(actions, /type:\s*"recovery"/);
+    assert.match(actions, /hashed_token/);
+    assert.match(actions, /workspacePasswordRecoveryUrl/);
     assert.match(actions, /category:\s*"password_recovery"/);
+    assert.match(actions, /buildPasswordRecoveryEmailHtml/);
+    assert.match(actions, /@shared\/auth\/password-recovery-email/);
     assert.match(actions, /updatePasswordAfterWorkspaceRecoveryAction/);
-    assert.match(actions, /workspaceBaseUrl\(\)[^;]*\/login\/reset/);
-    assert.match(actions, /const redirectTo = /);
+    assert.doesNotMatch(actions, /properties\?\.action_link|data\.properties\.action_link/);
+  });
+
+  it("Dockerfile bakes NEXT_PUBLIC_SUPABASE_* for browser recovery verifyOtp", () => {
+    const docker = read("../Dockerfile");
+    assert.match(docker, /ARG NEXT_PUBLIC_SUPABASE_URL/);
+    assert.match(docker, /ARG NEXT_PUBLIC_SUPABASE_ANON_KEY/);
+    assert.match(docker, /NEXT_PUBLIC_SUPABASE_URL=\$NEXT_PUBLIC_SUPABASE_URL/);
+    assert.match(docker, /NEXT_PUBLIC_SUPABASE_ANON_KEY=\$NEXT_PUBLIC_SUPABASE_ANON_KEY/);
   });
 });

@@ -179,12 +179,18 @@ jobs:
           delay=10
           while [ "$attempt" -le 3 ]; do
             echo "Build attempt $attempt/3 for Production workspace"
+            if [ -z "${{ vars.NEXT_PUBLIC_SUPABASE_URL }}" ] || [ -z "${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" ]; then
+              echo "::error::Production NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY required to bake Workspace Auth into the client bundle (password recovery)."
+              exit 1
+            fi
             if docker build --pull=false -f "$REWRITTEN" \
               --build-arg "NEXT_PUBLIC_APP_URL=https://app.hellotocheers.com" \
               --build-arg "NEXT_PUBLIC_MARKETING_URL=https://hellotocheers.com" \
               --build-arg "NEXT_PUBLIC_PRODUCT_APP_URL=https://app.hellotocheers.com" \
               --build-arg "NEXT_PUBLIC_SITE_URL=https://hellotocheers.com" \
               --build-arg "NEXT_PUBLIC_WORKSPACE_URL=https://workspace.hellotocheers.com" \
+              --build-arg "NEXT_PUBLIC_SUPABASE_URL=${{ vars.NEXT_PUBLIC_SUPABASE_URL }}" \
+              --build-arg "NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" \
               -t "$IMAGE_URI" .; then
               rm -f "$REWRITTEN"
               exit 0
@@ -243,6 +249,19 @@ jobs:
           for c in td["containerDefinitions"]:
               c["image"] = image
               print(f"set image on {c.get('name')} -> {image}")
+              env = c.setdefault("environment", [])
+              by_name = {e.get("name"): e for e in env if isinstance(e, dict)}
+              # Recovery emails / invite links must never fall back to localhost.
+              by_name["WORKSPACE_URL"] = {
+                  "name": "WORKSPACE_URL",
+                  "value": "https://workspace.hellotocheers.com",
+              }
+              by_name["NEXT_PUBLIC_WORKSPACE_URL"] = {
+                  "name": "NEXT_PUBLIC_WORKSPACE_URL",
+                  "value": "https://workspace.hellotocheers.com",
+              }
+              c["environment"] = list(by_name.values())
+              print("ensured WORKSPACE_URL on", c.get("name"))
           json.dump(td, open("/tmp/ws-td-new.json", "w"))
           PY
           NEW_ARN=$(aws ecs register-task-definition \

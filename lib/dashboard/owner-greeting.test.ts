@@ -54,6 +54,13 @@ describe("dashboard greeting — authenticated user first name", () => {
       }),
       null,
     );
+    assert.equal(
+      resolveDashboardGreetingFirstName({
+        fullName: "Connect Accept",
+        venueName: "CONNECT-ACCEPT-DISPOSABLE",
+      }),
+      null,
+    );
   });
 
   it("wires getDashboardData to authenticated staff, not preferred-owner rows", () => {

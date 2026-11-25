@@ -20,6 +20,14 @@ export function resolveDashboardGreetingFirstName(opts: {
     const firstLower = first.toLowerCase();
     const fullLower = fullName.toLowerCase();
     if (fullLower === venueName || firstLower === venueName) return null;
+
+    // Disposable / provisional staff profiles sometimes copy a venue token
+    // into full_name (e.g. "Connect Accept" on CONNECT-ACCEPT-DISPOSABLE).
+    // Never greet with a token that appears in the venue name.
+    const venueTokens = venueName
+      .split(/[^a-z0-9]+/)
+      .filter((t) => t.length >= 3);
+    if (venueTokens.includes(firstLower)) return null;
   }
 
   return first;

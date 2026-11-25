@@ -27,6 +27,11 @@ export function ResetPasswordForm() {
     async function establishSession() {
       try {
         const url = new URL(window.location.href);
+        if (url.searchParams.get("error") === "invalid") {
+          if (!cancelled) setLinkError(true);
+          return;
+        }
+
         const supabase = createWorkspaceBrowserClient();
         const hashParams = new URLSearchParams(url.hash.replace(/^#/, ""));
         const code = url.searchParams.get("code");
@@ -34,6 +39,9 @@ export function ResetPasswordForm() {
         const type = (url.searchParams.get("type") ||
           hashParams.get("type")) as EmailOtpType | null;
 
+        // Preferred path: /login/reset/complete already verified server-side
+        // and set the Workspace Auth cookie. Fallbacks keep older links working
+        // once NEXT_PUBLIC_SUPABASE_* is baked into the image.
         if (code) {
           const { error } = await supabase.auth.exchangeCodeForSession(code);
           if (!cancelled && !error) {
