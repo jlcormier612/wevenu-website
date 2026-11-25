@@ -50,6 +50,19 @@ describe("email send trust", () => {
     if (!result.ok) assert.match(result.message, /turned off/i);
   });
 
+  it("still allows essential password_recovery when sending is disabled", async () => {
+    process.env.COMMUNICATION_MODE = "disabled";
+    delete process.env.RESEND_API_KEY;
+    const result = await sendEmail({
+      to: "couple@example.com",
+      subject: "Reset",
+      text: "Reset",
+      category: "password_recovery",
+    });
+    assert.equal(result.ok, true);
+    if (result.ok) assert.equal(result.method, "mailto");
+  });
+
   it("does not send to a real recipient when sandbox email is missing", async () => {
     process.env.COMMUNICATION_MODE = "sandbox";
     delete process.env.COMMUNICATION_SANDBOX_EMAIL;
