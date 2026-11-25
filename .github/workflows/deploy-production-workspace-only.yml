@@ -249,6 +249,19 @@ jobs:
           for c in td["containerDefinitions"]:
               c["image"] = image
               print(f"set image on {c.get('name')} -> {image}")
+              env = c.setdefault("environment", [])
+              by_name = {e.get("name"): e for e in env if isinstance(e, dict)}
+              # Recovery emails / invite links must never fall back to localhost.
+              by_name["WORKSPACE_URL"] = {
+                  "name": "WORKSPACE_URL",
+                  "value": "https://workspace.hellotocheers.com",
+              }
+              by_name["NEXT_PUBLIC_WORKSPACE_URL"] = {
+                  "name": "NEXT_PUBLIC_WORKSPACE_URL",
+                  "value": "https://workspace.hellotocheers.com",
+              }
+              c["environment"] = list(by_name.values())
+              print("ensured WORKSPACE_URL on", c.get("name"))
           json.dump(td, open("/tmp/ws-td-new.json", "w"))
           PY
           NEW_ARN=$(aws ecs register-task-definition \
