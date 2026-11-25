@@ -179,12 +179,18 @@ jobs:
           delay=10
           while [ "$attempt" -le 3 ]; do
             echo "Build attempt $attempt/3 for Production workspace"
+            if [ -z "${{ vars.NEXT_PUBLIC_SUPABASE_URL }}" ] || [ -z "${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" ]; then
+              echo "::error::Production NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY required to bake Workspace Auth into the client bundle (password recovery)."
+              exit 1
+            fi
             if docker build --pull=false -f "$REWRITTEN" \
               --build-arg "NEXT_PUBLIC_APP_URL=https://app.hellotocheers.com" \
               --build-arg "NEXT_PUBLIC_MARKETING_URL=https://hellotocheers.com" \
               --build-arg "NEXT_PUBLIC_PRODUCT_APP_URL=https://app.hellotocheers.com" \
               --build-arg "NEXT_PUBLIC_SITE_URL=https://hellotocheers.com" \
               --build-arg "NEXT_PUBLIC_WORKSPACE_URL=https://workspace.hellotocheers.com" \
+              --build-arg "NEXT_PUBLIC_SUPABASE_URL=${{ vars.NEXT_PUBLIC_SUPABASE_URL }}" \
+              --build-arg "NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" \
               -t "$IMAGE_URI" .; then
               rm -f "$REWRITTEN"
               exit 0
