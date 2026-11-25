@@ -18,7 +18,11 @@
  * Readiness, Phase 2.
  */
 
-import { getCommunicationMode, sandboxEmailRecipient } from "@/lib/communication/mode";
+import {
+  getCommunicationMode,
+  isEssentialAuthEmailCategory,
+  sandboxEmailRecipient,
+} from "@/lib/communication/mode";
 import {
   classifyResendHttpFailure,
   formatResendLimitLogLine,
@@ -99,8 +103,13 @@ export async function sendEmail(payload: EmailPayload): Promise<SendResult> {
     return { ok: false, message: practiceSideEffectBlockedMessage("email") };
   }
 
+  // Default uncategorized → bulk so omitted classification cannot steal
+  // critical reserved capacity (RESEND-SCALE hardening).
+  const category = payload.category ?? DEFAULT_SEND_CATEGORY;
+  const essentialAuth = isEssentialAuthEmailCategory(category);
+
   const mode = getCommunicationMode();
-  if (mode === "disabled") {
+  if (mode === "disabled" && !essentialAuth) {
     return { ok: false, message: "Sending is turned off in this environment." };
   }
 
@@ -109,7 +118,8 @@ export async function sendEmail(payload: EmailPayload): Promise<SendResult> {
 
   let recipient = payload.to;
   let sandboxRedirectedFrom: string | undefined;
-  if (mode === "sandbox") {
+  // Auth/access mail must reach the real inbox even in sandbox mode.
+  if (mode === "sandbox" && !essentialAuth) {
     const sandboxTo = sandboxEmailRecipient();
     if (!sandboxTo) {
       return {
@@ -123,9 +133,6 @@ export async function sendEmail(payload: EmailPayload): Promise<SendResult> {
 
   // --- Resend API path ---
   if (apiKey) {
-    // Default uncategorized → bulk so omitted classification cannot steal
-    // critical reserved capacity (RESEND-SCALE hardening).
-    const category = payload.category ?? DEFAULT_SEND_CATEGORY;
     const priority = payload.priority ?? priorityForCategory(category);
     const body: Record<string, unknown> = {
       from: fromEmail,

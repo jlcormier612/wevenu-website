@@ -1,0 +1,332 @@
+# Venue-app-only Production deploy.
+# Builds/pushes htc-production-venue-app for an explicit ref, then rolls ONLY
+# the Production venue-app ECS service image (workspace/marketing/scheduler untouched).
+#
+# Pattern mirrors deploy-production-venue-only.yml with Production gates:
+# - workflow_dispatch only
+# - confirm must equal DEPLOY_PRODUCTION_VENUE_ONLY
+# - GitHub Environment "production" (required reviewers / secrets)
+# - ECS direct task-definition roll (no CFN HTTPS drift)
+#
+# Does not touch Sandbox. Does not build workspace / marketing / scheduler.
+# Does not apply database migrations. Does not change public DNS.
+
+name: Deploy Production Venue Only
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Type DEPLOY_PRODUCTION_VENUE_ONLY to authorize"
+        required: true
+        type: string
+      ref:
+        description: "Git SHA or ref to deploy (venue-app image tag)"
+        required: true
+        type: string
+
+concurrency:
+  group: deploy-production-venue-only
+  cancel-in-progress: false
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+
+jobs:
+  authorize:
+    name: Require explicit Production venue confirmation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Gate
+        run: |
+          if [ "${{ inputs.confirm }}" != "DEPLOY_PRODUCTION_VENUE_ONLY" ]; then
+            echo "::error::confirm must be exactly 'DEPLOY_PRODUCTION_VENUE_ONLY'. Nothing was deployed."
+            exit 1
+          fi
+          echo "Production venue-only deploy confirmation accepted."
+
+  build-and-deploy:
+    name: Build & deploy Production venue-app
+    needs: authorize
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout requested ref
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Log in to ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Resolve deploy SHA
+        id: sha
+        run: |
+          SHA=$(git rev-parse HEAD)
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "Deploying Production venue-app at $SHA"
+
+      - name: Guard — refuse Sandbox Facebook ARN in Production
+        run: |
+          FB='${{ vars.FACEBOOK_SECRET_ARN }}'
+          if [ -z "$FB" ]; then
+            echo "::error::production Environment var FACEBOOK_SECRET_ARN is required."
+            exit 1
+          fi
+          if echo "$FB" | grep -q 'htc/sandbox/facebook'; then
+            echo "::error::FACEBOOK_SECRET_ARN points at Sandbox. Refusing Production venue deploy."
+            exit 1
+          fi
+
+      - name: Detect existing workspace image
+        id: image
+        env:
+          IMAGE_URI: ${{ steps.ecr-login.outputs.registry }}/htc-production-venue-app:${{ steps.sha.outputs.sha }}
+          SHA: ${{ steps.sha.outputs.sha }}
+        run: |
+          set -euo pipefail
+          set +e
+          OUT=$(aws ecr batch-get-image \
+            --repository-name htc-production-venue-app \
+            --image-ids "imageTag=${SHA}" \
+            --query 'images[0].imageId.imageDigest' \
+            --output text 2>/tmp/ws-image-detect.err)
+          RC=$?
+          set -e
+          if [ "$RC" -ne 0 ]; then
+            echo "::error::ECR batch-get-image failed while detecting existing tag $SHA"
+            cat /tmp/ws-image-detect.err >&2 || true
+            exit "$RC"
+          fi
+          if [ -n "$OUT" ] && [ "$OUT" != "None" ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "digest=$OUT" >> "$GITHUB_OUTPUT"
+            echo "Reusing existing $IMAGE_URI ($OUT)"
+            exit 0
+          fi
+          echo "exists=false" >> "$GITHUB_OUTPUT"
+          echo "No existing image for tag $SHA — will build and push"
+
+      - name: Prefetch base images (private ECR, then Public ECR)
+        if: steps.image.outputs.exists != 'true'
+        run: |
+          set -euo pipefail
+          REGISTRY="${{ steps.ecr-login.outputs.registry }}"
+          retry_pull() {
+            local image="$1"
+            local local_tag="$2"
+            local attempt=1
+            local delay=5
+            while [ "$attempt" -le 5 ]; do
+              echo "Pull attempt $attempt/5: $image"
+              if docker pull "$image"; then
+                docker tag "$image" "$local_tag"
+                return 0
+              fi
+              sleep "$delay"
+              attempt=$((attempt + 1))
+              delay=$((delay * 2))
+            done
+            return 1
+          }
+          pull_base() {
+            local private_tag="$1"
+            local public_image="$2"
+            local local_tag="$public_image"
+            if docker pull "${REGISTRY}/htc-ci-bases:${private_tag}"; then
+              docker tag "${REGISTRY}/htc-ci-bases:${private_tag}" "$local_tag"
+              return 0
+            fi
+            if retry_pull "$public_image" "$local_tag"; then
+              docker tag "$local_tag" "${REGISTRY}/htc-ci-bases:${private_tag}"
+              docker push "${REGISTRY}/htc-ci-bases:${private_tag}" || true
+              return 0
+            fi
+            echo "::error::Failed to pull ${local_tag}"
+            return 1
+          }
+          pull_base node-22-alpine public.ecr.aws/docker/library/node:22-alpine
+          pull_base alpine-3.20 public.ecr.aws/docker/library/alpine:3.20
+
+      - name: Build venue-app image
+        if: steps.image.outputs.exists != 'true'
+        env:
+          IMAGE_URI: ${{ steps.ecr-login.outputs.registry }}/htc-production-venue-app:${{ steps.sha.outputs.sha }}
+          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+        run: |
+          set -euo pipefail
+          REWRITTEN="$(mktemp)"
+          ./scripts/ci/rewrite-sandbox-dockerfile-bases.sh \
+            Dockerfile \
+            "$REWRITTEN" \
+            "$ECR_REGISTRY"
+          if grep -E '^FROM[[:space:]]+public\.ecr\.aws/docker/library/' "$REWRITTEN"; then
+            echo "::error::rewritten Dockerfile still references public.ecr.aws/docker/library"
+            exit 1
+          fi
+          [ -z "${{ vars.NEXT_PUBLIC_SUPABASE_URL }}" ] && { echo "::error::NEXT_PUBLIC_SUPABASE_URL missing"; exit 1; }
+          [ -z "${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" ] && { echo "::error::NEXT_PUBLIC_SUPABASE_ANON_KEY missing"; exit 1; }
+          attempt=1
+          delay=10
+          while [ "$attempt" -le 3 ]; do
+            echo "Build attempt $attempt/3 for Production venue-app"
+            if docker build --pull=false -f "$REWRITTEN" \
+              --build-arg "NEXT_PUBLIC_APP_URL=https://app.hellotocheers.com" \
+              --build-arg "NEXT_PUBLIC_MARKETING_URL=https://hellotocheers.com" \
+              --build-arg "NEXT_PUBLIC_PRODUCT_APP_URL=https://app.hellotocheers.com" \
+              --build-arg "NEXT_PUBLIC_SITE_URL=https://hellotocheers.com" \
+              --build-arg "NEXT_PUBLIC_SUPABASE_URL=${{ vars.NEXT_PUBLIC_SUPABASE_URL }}" \
+              --build-arg "NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" \
+              --build-arg "NEXT_DEPLOYMENT_ID=${{ steps.sha.outputs.sha }}" \
+              -t "$IMAGE_URI" .; then
+              rm -f "$REWRITTEN"
+              exit 0
+            fi
+            sleep "$delay"
+            attempt=$((attempt + 1))
+            delay=$((delay * 2))
+          done
+          rm -f "$REWRITTEN"
+          echo "::error::docker build failed for Production venue-app after 3 attempts"
+          exit 1
+
+      - name: Push venue-app image
+        if: steps.image.outputs.exists != 'true'
+        env:
+          IMAGE_URI: ${{ steps.ecr-login.outputs.registry }}/htc-production-venue-app:${{ steps.sha.outputs.sha }}
+        run: docker push "$IMAGE_URI"
+
+      - name: Snapshot non-venue task definitions (pre-deploy)
+        run: |
+          set -euo pipefail
+          aws ecs describe-services --cluster htc-production \
+            --services htc-production-workspace htc-production-marketing htc-production-scheduler \
+            --query 'services[].{name:serviceName,td:taskDefinition}' --output json \
+            > /tmp/pre-non-venue-tds.json
+          cat /tmp/pre-non-venue-tds.json
+
+      # CFN Processed-template reapply with service-only image params was proven
+      # unsafe on Production (change set proposed Remove of HttpsListener +
+      # VenueApp/Workspace HTTPS rules). Marketing-only deploys therefore roll
+      # the ECS workspace task definition/image directly and never touch ALB/HTTPS.
+      - name: Roll venue-app ECS task definition image only
+        env:
+          IMAGE_URI: ${{ steps.ecr-login.outputs.registry }}/htc-production-venue-app:${{ steps.sha.outputs.sha }}
+          SHA: ${{ steps.sha.outputs.sha }}
+        run: |
+          set -euo pipefail
+          CURR=$(aws ecs describe-services --cluster htc-production \
+            --services htc-production-venue-app \
+            --query 'services[0].taskDefinition' --output text)
+          echo "current_td=$CURR"
+          echo "target_image=$IMAGE_URI"
+          aws ecs describe-task-definition --task-definition "$CURR" \
+            --query 'taskDefinition' --output json > /tmp/venue-td.json
+          python3 <<'PY'
+          import json, os
+          image = os.environ["IMAGE_URI"]
+          td = json.load(open("/tmp/venue-td.json"))
+          for k in (
+              "taskDefinitionArn", "revision", "status", "requiresAttributes",
+              "compatibilities", "registeredAt", "registeredBy", "deregisteredAt",
+          ):
+              td.pop(k, None)
+          if not td.get("containerDefinitions"):
+              raise SystemExit("venue task definition has no containers")
+          for c in td["containerDefinitions"]:
+              c["image"] = image
+              print(f"set image on {c.get('name')} -> {image}")
+          json.dump(td, open("/tmp/venue-td-new.json", "w"))
+          PY
+          NEW_ARN=$(aws ecs register-task-definition \
+            --cli-input-json file:///tmp/venue-td-new.json \
+            --query 'taskDefinition.taskDefinitionArn' --output text)
+          echo "new_td=$NEW_ARN"
+          aws ecs update-service \
+            --cluster htc-production \
+            --service htc-production-venue-app \
+            --task-definition "$NEW_ARN" \
+            --force-new-deployment \
+            --query 'service.{td:taskDefinition,desired:desiredCount}' --output json
+          echo "NEW_TD_ARN=$NEW_ARN" >> "$GITHUB_ENV"
+
+      - name: Wait for venue-app service stable
+        env:
+          SHA: ${{ steps.sha.outputs.sha }}
+        run: |
+          set -euo pipefail
+          aws ecs wait services-stable \
+            --cluster htc-production \
+            --services htc-production-venue-app
+          RUN_IMG=$(aws ecs describe-services --cluster htc-production \
+            --services htc-production-venue-app \
+            --query 'services[0].taskDefinition' --output text)
+          echo "RUNNING_TD=$RUN_IMG"
+          CONTAINER_IMG=$(aws ecs describe-task-definition --task-definition "$RUN_IMG" \
+            --query 'taskDefinition.containerDefinitions[0].image' --output text)
+          echo "RUNNING_IMAGE=$CONTAINER_IMG"
+          echo "$CONTAINER_IMG" | grep -q "$SHA" \
+            || { echo "::error::Running venue-app image does not contain expected SHA $SHA"; exit 1; }
+          # Note: CFN WorkspaceImage parameter may lag until a full Production
+          # stack sync; runtime SoR for dark workspace is the ECS task image.
+
+      - name: Verify venue Host routes and non-venue TDs unchanged
+        run: |
+          set -euo pipefail
+          ALB=$(aws elbv2 describe-load-balancers --names htc-production-alb --query 'LoadBalancers[0].DNSName' --output text)
+          ALB_IP=$(getent ahostsv4 "$ALB" | awk '{print $1; exit}')
+          fail=0
+          for path in / /login; do
+            code=$(curl -skS -o /tmp/venue-body -w '%{http_code}' --max-time 30 \
+              --resolve "app.hellotocheers.com:443:${ALB_IP}" \
+              "https://app.hellotocheers.com${path}" || echo 000)
+            echo "$path -> $code"
+            # Workspace may redirect unauthenticated users to login (302/307/308) or 200.
+            if ! echo "$code" | grep -Eq '^(200|302|307|308)$'; then
+              echo "::error::$path returned $code"
+              fail=1
+            fi
+          done
+          # Soft-check Business acquisition empty-state copy is reachable when HTML returned.
+          if [ -s /tmp/venue-body ]; then
+            echo "venue body bytes=$(wc -c </tmp/venue-body)"
+          fi
+
+          python3 <<'PY'
+          import json, subprocess, sys
+          pre = {r["name"]: r["td"] for r in json.load(open("/tmp/pre-non-venue-tds.json"))}
+          out = subprocess.check_output([
+            "aws","ecs","describe-services","--cluster","htc-production",
+            "--services","htc-production-workspace","htc-production-marketing","htc-production-scheduler",
+            "--query","services[].{name:serviceName,td:taskDefinition}","--output","json"
+          ], text=True)
+          post = {r["name"]: r["td"] for r in json.loads(out)}
+          changed = False
+          for name, td in pre.items():
+              now = post.get(name)
+              print(f"untouched_check {name} pre={td} post={now}")
+              if now != td:
+                  print(f"::error::{name} task definition changed during venue-only deploy")
+                  changed = True
+          sys.exit(1 if changed else 0)
+          PY
+          exit "$fail"
+
+      - name: Summary
+        run: |
+          echo "## Production venue-only deploy" >> "$GITHUB_STEP_SUMMARY"
+          echo "- confirm: DEPLOY_PRODUCTION_VENUE_ONLY" >> "$GITHUB_STEP_SUMMARY"
+          echo "- image SHA: ${{ steps.sha.outputs.sha }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- workspace/marketing/scheduler: unchanged (verified)" >> "$GITHUB_STEP_SUMMARY"
+          echo "- public DNS: not modified by this workflow" >> "$GITHUB_STEP_SUMMARY"

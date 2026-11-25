@@ -183,12 +183,79 @@ export async function requestPasswordResetAction(
   // Always return ok to avoid account enumeration; only send if ACL member exists.
   const staff = await getStaffAclRepository().getByEmail(email);
   if (staff?.active) {
-    const { createWorkspaceAuthClient } = await import("@/lib/supabase/server");
-    const supabase = await createWorkspaceAuthClient();
-    await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${workspaceBaseUrl()}/login/reset`,
+    const { createWorkspaceAdminClient } = await import("@/lib/supabase/server");
+    const { htcEmailLogoHeaderHtml } = await import("@shared/brand/logo");
+    const admin = createWorkspaceAdminClient();
+    const redirectTo = `${workspaceBaseUrl()}/login/reset`;
+    const { data, error } = await admin.auth.admin.generateLink({
+      type: "recovery",
+      email,
+      options: { redirectTo },
     });
+    const actionLink = data?.properties?.action_link;
+    if (!error && actionLink) {
+      const safe = actionLink
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/"/g, "&quot;");
+      await sendRawEmail({
+        to: email,
+        subject: "Reset your Hello to Cheers password",
+        text: `Reset your Hello to Cheers password:\n\n${actionLink}\n\nIf you did not request this, you can ignore this email.`,
+        html: `<!DOCTYPE html><html><body style="font-family:Georgia,serif;background:#f4f1ec;padding:32px">
+          <div style="max-width:560px;margin:0 auto;background:#fff;border:1px solid #ddd6cc;padding:32px">
+            ${htcEmailLogoHeaderHtml({ href: "https://hellotocheers.com", widthPx: 180 })}
+            <h1 style="color:#1f2a1f;font-size:24px">Reset your password</h1>
+            <p style="color:#374151;font-family:-apple-system,sans-serif;font-size:15px;line-height:1.6">
+              Use the button below to choose a new password for the Relationship Workspace.
+            </p>
+            <p><a href="${safe}" style="display:inline-block;background:#5d6f5d;color:#fff;padding:14px 26px;border-radius:6px;text-decoration:none;font-family:-apple-system,sans-serif;font-weight:600">Reset password</a></p>
+            <p style="color:#6b7280;font-size:12px;word-break:break-all">${safe}</p>
+          </div></body></html>`,
+        category: "password_recovery",
+        tags: [
+          { name: "category", value: "password_recovery" },
+          { name: "audience", value: "workspace" },
+        ],
+      });
+    }
   }
+  return { ok: true };
+}
+
+export async function updatePasswordAfterWorkspaceRecoveryAction(
+  _prev: { error?: string; ok?: boolean } | null,
+  formData: FormData,
+): Promise<{ error?: string; ok?: boolean }> {
+  if (!isSupabaseStaffAuthEnabled()) {
+    return { error: "Password reset requires Supabase staff auth." };
+  }
+  const password = String(formData.get("password") || "");
+  const confirm = String(formData.get("confirm") || "");
+  if (!password || !confirm) {
+    return { error: "Enter and confirm your new password." };
+  }
+  if (password.length < 8) {
+    return { error: "Password must be at least 8 characters." };
+  }
+  if (password !== confirm) {
+    return { error: "Passwords do not match." };
+  }
+
+  const { createWorkspaceAuthClient } = await import("@/lib/supabase/server");
+  const supabase = await createWorkspaceAuthClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { error: "This reset link is invalid or has expired. Request a new one." };
+  }
+
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) {
+    return { error: error.message };
+  }
+  await supabase.auth.signOut();
   return { ok: true };
 }
 

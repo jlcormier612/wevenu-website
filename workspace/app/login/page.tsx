@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { ActivationBrandMark } from "@/components/activate/activation-brand-mark";
 import { LoginForm } from "@/components/team/login-form";
 import { WorkspaceAccessDenied } from "@/components/team/workspace-access-denied";
 import { resolveStaffAfterAuth } from "@/lib/program4/staff-auth-service";
@@ -47,8 +48,8 @@ export default async function LoginPage({
   return (
     <div className="ws-login-shell flex min-h-screen items-center justify-center px-6 py-10">
       <div className="ws-panel w-full max-w-md p-8 shadow-[0_10px_28px_rgba(41,45,41,0.08)] md:p-10">
-        <p className="ws-eyebrow">Hello to Cheers</p>
-        <h1 className="mt-3 font-heading text-[2.125rem] tracking-tight text-[var(--htc-forest)] md:text-4xl">
+        <ActivationBrandMark />
+        <h1 className="mt-6 font-heading text-[2.125rem] tracking-tight text-[var(--htc-forest)] md:text-4xl">
           Relationship Workspace
         </h1>
         {denied ? (
@@ -79,6 +80,14 @@ export default async function LoginPage({
               next={next}
               accepted={params.accepted === "1"}
             />
+            <p className="mt-4 text-center text-sm ws-muted">
+              <Link
+                href="/login/forgot"
+                className="text-[var(--htc-primary)] underline-offset-4 hover:underline"
+              >
+                Forgot password?
+              </Link>
+            </p>
           </>
         )}
 
