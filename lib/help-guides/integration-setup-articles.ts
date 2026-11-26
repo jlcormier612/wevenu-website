@@ -1077,13 +1077,15 @@ Hello to Cheers provides the embed code you need. Simply copy it into the approp
 
 Your inquiry form also has its own unique web address.
 
-You can use this address anywhere you'd like to invite prospective clients to inquire, including:
-- Website buttons such as Inquire Now or Request Information.
+You can share this link anywhere you'd like to invite prospective clients to inquire, including:
+
+- Website buttons such as **Inquire Now** or **Request Information**.
 - Instagram and Facebook profiles.
 - Email signatures.
 - Digital brochures and marketing materials.
 - Venue listings that allow external inquiry links.
-When someone clicks the link, your venue's inquiry form opens for them to complete.
+
+When someone clicks your link, they'll be taken directly to your venue's inquiry form.
 
 Both options send inquiries directly into Hello to Cheers.
 
@@ -1588,3 +1590,8 @@ Your venue's texting setup and registration progress are managed directly within
 `,
   },
 ];
+
+/** Slugs that use the enhanced instructional Help presentation (seven customer guides). */
+export function isIntegrationSetupArticleSlug(slug: string): boolean {
+  return INTEGRATION_SETUP_ARTICLES.some((a) => a.slug === slug);
+}

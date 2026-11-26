@@ -97,16 +97,16 @@ function IncomeAccountPicker({ connection }: { connection: QuickBooksConnection 
   }
 
   return (
-    <div className="space-y-3 rounded-lg border border-border p-4">
-      <div className="space-y-0.5">
-        <p className="text-sm font-medium text-foreground">Income account</p>
-        <p className="text-xs text-muted-foreground">
+    <div className="space-y-3 rounded-lg border border-border bg-[color:var(--htc-canvas,#f7f4ef)] p-4" data-testid="qbo-income-account">
+      <div className="space-y-2">
+        <p className="text-[15px] font-semibold text-[color:var(--htc-charcoal,#2c2c2c)]">Income account</p>
+        <p className="text-sm leading-relaxed text-[color:var(--htc-charcoal,#2c2c2c)]">
           Choose the QuickBooks income account where you&apos;d like to record revenue from your Hello to Cheers event invoices.
         </p>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-sm leading-relaxed text-[color:var(--htc-charcoal,#2c2c2c)]">
           Hello to Cheers creates a service item called “Hello to Cheers Services” in QuickBooks using your selected income account.
         </p>
-        <p className="text-xs text-muted-foreground">
+        <p className="rounded-md bg-[#F5F2EC] px-3 py-2 text-sm leading-relaxed text-[color:var(--htc-charcoal,#2c2c2c)]">
           Not sure which account to choose? Your accountant or bookkeeper can help you select the right one for your business.
         </p>
       </div>
@@ -267,7 +267,7 @@ export function QuickBooksConnectSection({
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2 text-base">
+          <CardTitle className="flex items-center gap-2 text-[17px] font-semibold">
             <RefreshCw className="h-4 w-4 text-muted-foreground" />
             QuickBooks Online
           </CardTitle>

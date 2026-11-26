@@ -146,7 +146,7 @@ export function StripeConnectSection({
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2 text-base">
+          <CardTitle className="flex items-center gap-2 text-[17px] font-semibold">
             <CreditCard className="h-4 w-4 text-muted-foreground" />
             Online Payment Collection
           </CardTitle>

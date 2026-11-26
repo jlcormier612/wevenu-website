@@ -131,6 +131,9 @@ describe("Integration setup guides (product-locked)", () => {
     assert.match(a.body, /### Step 1 — Make your inquiry form your own/);
     assert.match(a.body, /### Option A — Display your form directly on your website/);
     assert.match(a.body, /### Option B — Share a direct link to your form/);
+    assert.match(a.body, /You can share this link anywhere you'd like to invite prospective clients to inquire, including:/);
+    assert.match(a.body, /When someone clicks your link, they'll be taken directly to your venue's inquiry form\./);
+    assert.match(a.body, /\*\*Inquire Now\*\*/);
     assert.match(a.body, /### Squarespace/);
     assert.match(a.body, /https:\/\/support\.squarespace\.com\/hc\/en-us\/articles\/206543167/);
     assert.match(a.body, /### Wix/);

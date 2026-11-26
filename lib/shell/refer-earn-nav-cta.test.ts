@@ -89,14 +89,15 @@ describe("Refer & Earn nav CTA", () => {
     assert.match(referralsApi, /Refer a Venue is not available yet\./);
   });
 
-  it("referral page still explains one-time credit (not permanent discount)", () => {
+  it("referral page still explains subscription credit reward (not permanent discount)", () => {
     const page = readFileSync(resolve("components/referrals/refer-a-venue-page.tsx"), "utf8");
-    assert.match(page, /one-time credit/i);
-    assert.match(page, /free month/i);
+    assert.match(page, /subscription credit equal to one month/i);
+    assert.match(page, /FREE month/);
     assert.match(page, /paying/i);
+    assert.doesNotMatch(page, /permanent discount/i);
   });
 
-  it("Refer a Venue page shortens intro and moves eligibility into Program details", () => {
+  it("Refer a Venue page uses celebratory hero, three-step columns, and locked rewards copy", () => {
     const page = readFileSync(resolve("components/referrals/refer-a-venue-page.tsx"), "utf8");
     const settingsReferrals = readFileSync(
       resolve("app/(app)/settings/referrals/page.tsx"),
@@ -106,38 +107,28 @@ describe("Refer & Earn nav CTA", () => {
       settingsReferrals,
       /Introduce another venue to Hello to Cheers and enjoy a little thank-you from us\./,
     );
-    assert.match(page, /Share the Luv\. Get a free month\./);
-    assert.match(
-      page,
-      /font-heading text-\[clamp\(2rem,4\.5vw,3\.5rem\)\] font-normal[^>]*text-\[rgb\(79,95,79\)\]/,
-    );
-    assert.doesNotMatch(
-      page.slice(page.indexOf("Share the Luv. Get a free month.") - 180, page.indexOf("Share the Luv. Get a free month.")),
-      /text-foreground|font-semibold|font-bold|text-3xl/,
-    );
+    assert.match(page, /data-testid="refer-hero"/);
     assert.match(page, /One referral\. One FREE month\./);
-    assert.match(page, /And yes, you can earn more than one!/);
+    assert.match(page, /Good things are even better when shared\./);
+    assert.match(page, /Keep sharing\. Keep earning\./);
+    assert.match(page, /data-testid="refer-steps"/);
+    assert.match(page, /It&apos;s as easy as 1, 2, 3\./);
+    assert.match(page, /Introduce us/);
+    assert.match(page, /They join the celebration/);
+    assert.match(page, /Enjoy your reward/);
+    assert.match(page, /sm:grid-cols-3/);
+    assert.match(page, /Learn more about referral rewards/);
     assert.match(page, /data-testid="refer-program-details"/);
-    assert.match(page, /Program details/);
-    const rewardPanelIdx = page.indexOf("One referral. One FREE month.");
-    const formIdx = page.indexOf('CardTitle className="text-base">Refer a Venue');
+    assert.match(page, /Introduce us to a venue/);
+    assert.match(page, /Cheers to your referral!/);
+    const heroIdx = page.indexOf('data-testid="refer-hero"');
+    const stepsIdx = page.indexOf('data-testid="refer-steps"');
+    const formIdx = page.indexOf('id="refer-form"');
     const detailsIdx = page.indexOf('data-testid="refer-program-details"');
-    assert.ok(rewardPanelIdx > 0 && formIdx > rewardPanelIdx && detailsIdx > formIdx);
-    assert.doesNotMatch(
-      page.slice(rewardPanelIdx, formIdx),
-      /Qualifying referrals are new, independently paying venues/,
-    );
+    assert.ok(heroIdx > 0 && stepsIdx > heroIdx && formIdx > stepsIdx && detailsIdx > 0);
     assert.match(
       page.slice(detailsIdx),
-      /Qualifying referrals are new, independently paying venues/,
-    );
-    assert.match(
-      page.slice(detailsIdx),
-      /Self-referrals,\s+duplicates, and refunded or disputed purchases do not qualify/,
-    );
-    assert.doesNotMatch(
-      page,
-      /Complete program details follow the Refer a Venue policy applied at reward time/,
+      /Self-referrals and duplicate rewards are not eligible/,
     );
   });
 });
