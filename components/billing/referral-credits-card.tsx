@@ -28,6 +28,7 @@ function formatUsd(cents: number): string {
 
 export function ReferralCreditsCard() {
   const [rows, setRows] = useState<ReferralRow[]>([]);
+  const [enabled, setEnabled] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -39,7 +40,10 @@ export function ReferralCreditsCard() {
           referrals?: ReferralRow[];
           enabled?: boolean;
         };
-        if (!cancelled && json.enabled !== false) {
+        if (cancelled) return;
+        const programOn = json.enabled !== false;
+        setEnabled(programOn);
+        if (programOn) {
           setRows(
             (json.referrals ?? []).filter(
               (r) =>
@@ -60,7 +64,8 @@ export function ReferralCreditsCard() {
     };
   }, []);
 
-  if (!loaded) return null;
+  // Do not advertise Refer a Venue on Billing when the program is off.
+  if (!loaded || !enabled) return null;
 
   return (
     <Card>
