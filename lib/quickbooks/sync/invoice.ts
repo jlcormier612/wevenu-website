@@ -6,13 +6,17 @@
  * for an existing Invoice with that DocNumber before ever POSTing a new
  * one.
  *
- * Every line item pushes under the one "Hello to Cheers Services" placeholder Item
- * (lib/quickbooks/items.ts) — no chart-of-accounts mapping, explicitly out
- * of scope for launch.
+ * Line mapping follows the US QBO tax model (TAX/NON + DiscountLineDetail).
+ * Taxable invoices that QuickBooks rejects fail clearly — there is no fallback
+ * that posts tax as revenue or drops tax from the total.
  */
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { quickBooksFetch } from "@/lib/quickbooks/client";
 import { ensureDefaultItem } from "@/lib/quickbooks/items";
+import {
+  buildQuickBooksInvoiceLinePayload,
+  type HtcInvoiceLineItem,
+} from "@/lib/quickbooks/sync/invoice-line-payload";
 import type { QuickBooksSyncResult } from "@/lib/quickbooks/sync/types";
 
 type InvoiceRow = {
@@ -21,15 +25,14 @@ type InvoiceRow = {
   due_date: string | null;
 };
 
-type LineItemRow = {
-  description: string;
-  quantity: number;
-  unit_price: number;
-  amount: number;
-};
+type LineItemRow = HtcInvoiceLineItem;
 
 function escapeQboString(value: string): string {
   return value.replace(/'/g, "''");
+}
+
+function totalsMatch(expected: number, actual: number): boolean {
+  return Math.abs(expected - actual) <= 0.01;
 }
 
 export async function syncInvoice(venueId: string, entityId: string): Promise<QuickBooksSyncResult> {
@@ -56,7 +59,7 @@ export async function syncInvoice(venueId: string, entityId: string): Promise<Qu
   }
 
   const { data: lineItems } = await admin.from("invoice_line_items")
-    .select("description, quantity, unit_price, amount")
+    .select("type, description, quantity, unit_price, amount")
     .eq("invoice_id", entityId).order("sort_order");
   const lines = (lineItems ?? []) as LineItemRow[];
   if (lines.length === 0) {
@@ -71,10 +74,17 @@ export async function syncInvoice(venueId: string, entityId: string): Promise<Qu
   const queryResult = await quickBooksFetch(venueId, `/query?query=${encodeURIComponent(query)}`);
   if (!queryResult.ok) return { ok: false, error: queryResult.error, retryable: queryResult.retryable };
 
-  const queryData = await queryResult.response.json() as { QueryResponse?: { Invoice?: { Id: string }[] } };
-  const existingId = queryData.QueryResponse?.Invoice?.[0]?.Id;
-  if (existingId) {
-    return { ok: true, quickbooksId: existingId };
+  const queryData = await queryResult.response.json() as {
+    QueryResponse?: { Invoice?: { Id: string; TotalAmt?: number }[] };
+  };
+  const existing = queryData.QueryResponse?.Invoice?.[0];
+  if (existing?.Id) {
+    return { ok: true, quickbooksId: existing.Id };
+  }
+
+  const mapped = buildQuickBooksInvoiceLinePayload(lines, itemResult.itemId);
+  if (mapped.Line.length === 0) {
+    return { ok: false, error: "Invoice has no QuickBooks-syncable line items.", retryable: false };
   }
 
   const createResult = await quickBooksFetch(venueId, "/invoice", {
@@ -84,23 +94,47 @@ export async function syncInvoice(venueId: string, entityId: string): Promise<Qu
       CustomerRef: { value: customerId },
       DocNumber: invoiceRow.invoice_number,
       DueDate: invoiceRow.due_date ?? undefined,
-      Line: lines.map((line) => ({
-        Amount: line.amount,
-        DetailType: "SalesItemLineDetail",
-        Description: line.description,
-        SalesItemLineDetail: {
-          ItemRef: { value: itemResult.itemId },
-          Qty: line.quantity,
-          UnitPrice: line.unit_price,
-        },
-      })),
+      GlobalTaxCalculation: mapped.GlobalTaxCalculation,
+      Line: mapped.Line,
     }),
   });
-  if (!createResult.ok) return { ok: false, error: createResult.error, retryable: createResult.retryable, uncertain: createResult.uncertain };
 
-  const createData = await createResult.response.json() as { Invoice?: { Id: string } };
-  const newId = createData.Invoice?.Id;
+  if (!createResult.ok) {
+    const taxHint = mapped.taxable
+      ? " Taxable Hello to Cheers invoices require QuickBooks US sales tax (TAX/NON) to accept the invoice; tax was not posted as revenue and was not dropped."
+      : "";
+    return {
+      ok: false,
+      error: `${createResult.error}${taxHint}`,
+      retryable: createResult.retryable,
+      uncertain: createResult.uncertain,
+    };
+  }
+
+  const createData = await createResult.response.json() as {
+    Invoice?: { Id: string; TotalAmt?: number; TxnTaxDetail?: { TotalTax?: number } };
+  };
+  const created = createData.Invoice;
+  const newId = created?.Id;
   if (!newId) return { ok: false, error: "QuickBooks did not return an Invoice id.", retryable: true };
+
+  const qboTotal = Number(created?.TotalAmt);
+  if (Number.isFinite(qboTotal) && !totalsMatch(mapped.expectedTotal, qboTotal)) {
+    const qboTax = created?.TxnTaxDetail?.TotalTax;
+    return {
+      ok: false,
+      error:
+        `QuickBooks invoice total ${qboTotal.toFixed(2)} does not match Hello to Cheers total ` +
+        `${mapped.expectedTotal.toFixed(2)}` +
+        (mapped.taxable
+          ? ` (HTC tax ${mapped.htcTaxAmount.toFixed(2)}` +
+            (qboTax != null ? `, QBO tax ${Number(qboTax).toFixed(2)}` : "") +
+            `). Align the QuickBooks sales tax rate with the venue tax, then retry. ` +
+            `The remote invoice ${newId} was created and will be adopted by DocNumber on retry — it was not rewritten with misclassified tax.`
+          : "."),
+      retryable: false,
+    };
+  }
 
   return { ok: true, quickbooksId: newId };
 }
