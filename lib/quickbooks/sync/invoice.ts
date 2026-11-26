@@ -6,9 +6,9 @@
  * for an existing Invoice with that DocNumber before ever POSTing a new
  * one.
  *
- * Every line item pushes under the one "Hello to Cheers Services" placeholder Item
- * (lib/quickbooks/items.ts) — no chart-of-accounts mapping, explicitly out
- * of scope for launch.
+ * Line mapping follows the US QBO tax model (TAX/NON + DiscountLineDetail).
+ * Taxable invoices that QuickBooks rejects fail clearly — there is no fallback
+ * that posts tax as revenue or drops tax from the total.
  */
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { quickBooksFetch } from "@/lib/quickbooks/client";
@@ -16,7 +16,6 @@ import { ensureDefaultItem } from "@/lib/quickbooks/items";
 import {
   buildQuickBooksInvoiceLinePayload,
   type HtcInvoiceLineItem,
-  type QuickBooksInvoiceLine,
 } from "@/lib/quickbooks/sync/invoice-line-payload";
 import type { QuickBooksSyncResult } from "@/lib/quickbooks/sync/types";
 
@@ -30,6 +29,10 @@ type LineItemRow = HtcInvoiceLineItem;
 
 function escapeQboString(value: string): string {
   return value.replace(/'/g, "''");
+}
+
+function totalsMatch(expected: number, actual: number): boolean {
+  return Math.abs(expected - actual) <= 0.01;
 }
 
 export async function syncInvoice(venueId: string, entityId: string): Promise<QuickBooksSyncResult> {
@@ -71,10 +74,12 @@ export async function syncInvoice(venueId: string, entityId: string): Promise<Qu
   const queryResult = await quickBooksFetch(venueId, `/query?query=${encodeURIComponent(query)}`);
   if (!queryResult.ok) return { ok: false, error: queryResult.error, retryable: queryResult.retryable };
 
-  const queryData = await queryResult.response.json() as { QueryResponse?: { Invoice?: { Id: string }[] } };
-  const existingId = queryData.QueryResponse?.Invoice?.[0]?.Id;
-  if (existingId) {
-    return { ok: true, quickbooksId: existingId };
+  const queryData = await queryResult.response.json() as {
+    QueryResponse?: { Invoice?: { Id: string; TotalAmt?: number }[] };
+  };
+  const existing = queryData.QueryResponse?.Invoice?.[0];
+  if (existing?.Id) {
+    return { ok: true, quickbooksId: existing.Id };
   }
 
   const mapped = buildQuickBooksInvoiceLinePayload(lines, itemResult.itemId);
@@ -82,59 +87,54 @@ export async function syncInvoice(venueId: string, entityId: string): Promise<Qu
     return { ok: false, error: "Invoice has no QuickBooks-syncable line items.", retryable: false };
   }
 
-  const baseBody: Record<string, unknown> = {
-    CustomerRef: { value: customerId },
-    DocNumber: invoiceRow.invoice_number,
-    DueDate: invoiceRow.due_date ?? undefined,
-    // HTC computes tax/discount; do not ask QBO to recalculate sales tax.
-    GlobalTaxCalculation: "NotApplicable",
-    Line: mapped.Line,
-  };
-  if (mapped.TxnTaxDetail) {
-    baseBody.TxnTaxDetail = mapped.TxnTaxDetail;
-  }
-
-  let createResult = await quickBooksFetch(venueId, "/invoice", {
+  const createResult = await quickBooksFetch(venueId, "/invoice", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(baseBody),
+    body: JSON.stringify({
+      CustomerRef: { value: customerId },
+      DocNumber: invoiceRow.invoice_number,
+      DueDate: invoiceRow.due_date ?? undefined,
+      GlobalTaxCalculation: mapped.GlobalTaxCalculation,
+      Line: mapped.Line,
+    }),
   });
 
-  // Subscription / tax-feature loss: if TxnTaxDetail is rejected, fall back to
-  // non-tax-coded sales lines for the tax amount so invoice totals still match
-  // payments — without enabling QBO automated sales tax on revenue lines.
-  if (!createResult.ok && mapped.totalTax > 0) {
-    const taxFallbackLines: QuickBooksInvoiceLine[] = [
-      ...mapped.Line,
-      ...lines
-        .filter((line) => (line.type ?? "").trim().toLowerCase() === "tax")
-        .map((line) => ({
-          Amount: Number(line.amount) || 0,
-          DetailType: "SalesItemLineDetail" as const,
-          Description: line.description?.trim() || "Sales tax",
-          SalesItemLineDetail: {
-            ItemRef: { value: itemResult.itemId },
-            Qty: Number(line.quantity) || 1,
-            UnitPrice: Number(line.unit_price) || Number(line.amount) || 0,
-          },
-        })),
-    ];
-    const { TxnTaxDetail: _ignored, ...withoutTaxDetail } = baseBody;
-    createResult = await quickBooksFetch(venueId, "/invoice", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...withoutTaxDetail,
-        Line: taxFallbackLines,
-      }),
-    });
+  if (!createResult.ok) {
+    const taxHint = mapped.taxable
+      ? " Taxable Hello to Cheers invoices require QuickBooks US sales tax (TAX/NON) to accept the invoice; tax was not posted as revenue and was not dropped."
+      : "";
+    return {
+      ok: false,
+      error: `${createResult.error}${taxHint}`,
+      retryable: createResult.retryable,
+      uncertain: createResult.uncertain,
+    };
   }
 
-  if (!createResult.ok) return { ok: false, error: createResult.error, retryable: createResult.retryable, uncertain: createResult.uncertain };
-
-  const createData = await createResult.response.json() as { Invoice?: { Id: string } };
-  const newId = createData.Invoice?.Id;
+  const createData = await createResult.response.json() as {
+    Invoice?: { Id: string; TotalAmt?: number; TxnTaxDetail?: { TotalTax?: number } };
+  };
+  const created = createData.Invoice;
+  const newId = created?.Id;
   if (!newId) return { ok: false, error: "QuickBooks did not return an Invoice id.", retryable: true };
+
+  const qboTotal = Number(created?.TotalAmt);
+  if (Number.isFinite(qboTotal) && !totalsMatch(mapped.expectedTotal, qboTotal)) {
+    const qboTax = created?.TxnTaxDetail?.TotalTax;
+    return {
+      ok: false,
+      error:
+        `QuickBooks invoice total ${qboTotal.toFixed(2)} does not match Hello to Cheers total ` +
+        `${mapped.expectedTotal.toFixed(2)}` +
+        (mapped.taxable
+          ? ` (HTC tax ${mapped.htcTaxAmount.toFixed(2)}` +
+            (qboTax != null ? `, QBO tax ${Number(qboTax).toFixed(2)}` : "") +
+            `). Align the QuickBooks sales tax rate with the venue tax, then retry. ` +
+            `The remote invoice ${newId} was created and will be adopted by DocNumber on retry — it was not rewritten with misclassified tax.`
+          : "."),
+      retryable: false,
+    };
+  }
 
   return { ok: true, quickbooksId: newId };
 }

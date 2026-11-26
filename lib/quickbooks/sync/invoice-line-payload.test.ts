@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import { buildQuickBooksInvoiceLinePayload } from "@/lib/quickbooks/sync/invoice-line-payload";
 
 describe("buildQuickBooksInvoiceLinePayload", () => {
-  it("maps package lines to SalesItemLineDetail under the placeholder item", () => {
+  it("maps non-taxable package lines with TaxCodeRef NON and NotApplicable", () => {
     const payload = buildQuickBooksInvoiceLinePayload(
       [
         {
@@ -16,10 +17,14 @@ describe("buildQuickBooksInvoiceLinePayload", () => {
       ],
       "item-1",
     );
+    assert.equal(payload.taxable, false);
+    assert.equal(payload.GlobalTaxCalculation, "NotApplicable");
     assert.equal(payload.Line.length, 1);
     assert.equal(payload.Line[0]?.DetailType, "SalesItemLineDetail");
-    assert.equal(payload.totalTax, 0);
-    assert.equal(payload.TxnTaxDetail, undefined);
+    if (payload.Line[0]?.DetailType === "SalesItemLineDetail") {
+      assert.equal(payload.Line[0].SalesItemLineDetail.TaxCodeRef.value, "NON");
+    }
+    assert.equal(payload.expectedTotal, 1000);
   });
 
   it("maps discount lines to DiscountLineDetail and never as SalesItem revenue", () => {
@@ -42,17 +47,13 @@ describe("buildQuickBooksInvoiceLinePayload", () => {
       ],
       "item-1",
     );
-    assert.equal(payload.totalDiscount, 100);
+    assert.equal(payload.htcDiscountAmount, 100);
     assert.equal(payload.Line.length, 2);
     assert.equal(payload.Line[1]?.DetailType, "DiscountLineDetail");
-    assert.equal(payload.Line[1]?.Amount, 100);
-    assert.equal(
-      payload.Line.filter((l) => l.DetailType === "SalesItemLineDetail").length,
-      1,
-    );
+    assert.equal(payload.expectedTotal, 900);
   });
 
-  it("moves tax into TxnTaxDetail instead of SalesItem income lines", () => {
+  it("marks taxable invoices with TaxCodeRef TAX and does not post tax as SalesItem", () => {
     const payload = buildQuickBooksInvoiceLinePayload(
       [
         {
@@ -72,17 +73,21 @@ describe("buildQuickBooksInvoiceLinePayload", () => {
       ],
       "item-1",
     );
-    assert.equal(payload.totalTax, 80);
-    assert.deepEqual(payload.TxnTaxDetail, { TotalTax: 80 });
+    assert.equal(payload.taxable, true);
+    assert.equal(payload.GlobalTaxCalculation, "TaxExcluded");
+    assert.equal(payload.htcTaxAmount, 80);
     assert.equal(payload.Line.length, 1);
-    assert.equal(payload.Line[0]?.DetailType, "SalesItemLineDetail");
+    if (payload.Line[0]?.DetailType === "SalesItemLineDetail") {
+      assert.equal(payload.Line[0].SalesItemLineDetail.TaxCodeRef.value, "TAX");
+    }
+    assert.equal(payload.expectedTotal, 1080);
     assert.equal(
       payload.Line.some((l) => (l.Description || "").toLowerCase() === "tax"),
       false,
     );
   });
 
-  it("handles package + discount + tax without double-counting tax as a sales line", () => {
+  it("handles package + discount + tax expected total without tax sales lines", () => {
     const payload = buildQuickBooksInvoiceLinePayload(
       [
         {
@@ -109,10 +114,18 @@ describe("buildQuickBooksInvoiceLinePayload", () => {
       ],
       "item-1",
     );
-    assert.equal(payload.totalDiscount, 100);
-    assert.equal(payload.totalTax, 72);
-    assert.deepEqual(payload.TxnTaxDetail, { TotalTax: 72 });
+    assert.equal(payload.htcDiscountAmount, 100);
+    assert.equal(payload.htcTaxAmount, 72);
+    assert.equal(payload.expectedTotal, 972);
     assert.equal(payload.Line.length, 2);
-    assert.ok(payload.Line.every((l) => l.DetailType !== "SalesItemLineDetail" || l.Amount === 1000));
+  });
+});
+
+describe("syncInvoice tax failure policy", () => {
+  it("does not contain a tax-as-SalesItem fallback path", () => {
+    const src = readFileSync("lib/quickbooks/sync/invoice.ts", "utf8");
+    assert.doesNotMatch(src, /taxFallbackLines|fallback to non-tax-coded sales lines/i);
+    assert.match(src, /does not match Hello to Cheers total/);
+    assert.match(src, /tax was not posted as revenue and was not dropped/);
   });
 });

@@ -2,9 +2,9 @@
  * The "Hello to Cheers Services" placeholder QBO Item — how invoice line items push
  * without chart-of-accounts mapping (explicitly out of scope for launch).
  * Revenue-like invoice lines (package/addon/fee/item/deposit/…) push under
- * this one generic Item. Discount lines use DiscountLineDetail; tax lines use
- * TxnTaxDetail (see lib/quickbooks/sync/invoice-line-payload.ts) — they are
- * not posted as SalesItem income under this Item in the preferred path.
+ * this one generic Item with US TaxCodeRef TAX or NON. Discount lines use
+ * DiscountLineDetail. HTC tax lines are never posted as SalesItem income
+ * (see lib/quickbooks/sync/invoice-line-payload.ts).
  *
  * This file used to claim QBO assigned the Item's income account itself, so
  * no account selection was needed. That was wrong, and it broke every
