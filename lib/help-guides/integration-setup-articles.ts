@@ -1589,6 +1589,148 @@ For general information about business text messaging registration and carrier r
 Your venue's texting setup and registration progress are managed directly within Hello to Cheers.
 `,
   },
+  {
+    slug: "refer-a-venue-one-referral-one-free-month",
+    title: "Refer a Venue — One Referral. One FREE Month.",
+    category: "Contracts & Payments",
+    relatedFeatures: [
+      { href: "/settings/referrals", label: "Open Refer a Venue" },
+    ],
+    body: `Good things are even better when shared.
+
+We know how valuable recommendations from fellow venue owners can be. If Hello to Cheers is making a difference in your business, we'd love for you to share it with others.
+
+Our Refer a Venue program is our way of saying thank you.
+
+For every qualifying venue you introduce to Hello to Cheers, you'll receive a subscription credit equal to one month of your venue's subscription.
+
+And the best part? You can keep referring venues and earning rewards!
+
+### How it works
+
+### Step 1 — Tell us about a venue
+
+Open **Refer a Venue** in Hello to Cheers and select the option to submit a referral.
+
+We'll ask for a few details about the venue you're introducing:
+
+- Venue name.
+- Website.
+- City and state.
+- Contact name.
+- Role or title, if known.
+- Business contact email address.
+
+Please provide accurate contact information for someone who can make or participate in business decisions for the venue, such as an owner, general manager or venue director.
+
+If you've already spoken with them about Hello to Cheers, even better!
+
+Submit your referral, and we'll take it from there.
+
+### Step 2 — We'll introduce them to Hello to Cheers
+
+We'll reach out to the venue, introduce them to Hello to Cheers and give them an opportunity to explore how the platform could work for their business.
+
+There's no obligation for the venue to subscribe, and you don't need to manage the sales process yourself.
+
+### Step 3 — Enjoy your reward
+
+When your referred venue becomes a new paying Hello to Cheers customer and completes 30 days as a qualifying paying subscriber, your referral becomes eligible for a reward.
+
+Once approved, you'll receive a subscription credit equal to one month of your venue's applicable subscription price.
+
+Your credit will be applied toward your next eligible subscription invoice.
+
+It's our way of thanking you for helping us grow our community of venues.
+
+### Keep sharing. Keep earning.
+
+Know more than one venue that would love Hello to Cheers?
+
+Wonderful! You can submit a separate referral for each venue.
+
+There's no limit to the number of qualifying referrals you can make. Each successful, qualifying referral earns its own reward.
+
+### Track your referrals
+
+Visit your Refer a Venue page at any time to review your submitted referrals and their progress.
+
+You can see which referrals are in progress, which have qualified for rewards and which rewards have been issued.
+
+You can also review your available referral credits through your Subscription & Billing settings.
+
+### Frequently asked questions
+
+**Who can I refer?**
+
+You can refer independent wedding venues, event spaces, hospitality properties and other venues that could benefit from Hello to Cheers.
+
+The referred venue must be a new, independently paying Hello to Cheers customer and meet the program's eligibility requirements.
+
+**Do I need to convince the venue to subscribe?**
+
+Not at all. Simply introduce us to a venue you think would benefit from Hello to Cheers.
+
+We'll handle the introduction, product information and subscription process.
+
+**Can I refer more than one venue?**
+
+Absolutely! Each qualifying referral earns its own subscription credit.
+
+**When will I receive my reward?**
+
+Your referral becomes eligible once the referred venue has completed 30 days as a qualifying paying customer and the applicable payment requirements have been satisfied.
+
+Once approved, your credit will be available for your next eligible subscription invoice.
+
+**How much is my reward worth?**
+
+Your reward is equal to one month of your venue's applicable subscription price.
+
+For example, if your monthly subscription is $199, a qualifying referral earns you a $199 subscription credit.
+
+**Can I earn referral rewards if I already receive a subscription discount?**
+
+Yes. Eligible customers can participate in the referral program even if they receive a Founding Member, Welcome Back or other applicable subscription discount.
+
+Your reward is based on your applicable subscription price.
+
+**What if the venue I refer doesn't subscribe?**
+
+There's no obligation for either of you.
+
+A referral reward is earned when the referred venue becomes a qualifying paying customer. You're always welcome to introduce us to other venues.
+
+**Can I refer another venue that I own?**
+
+The referral program is designed to reward introductions to new, independently paying venues.
+
+If you're adding another property to your own business, explore the additional venue and group pricing options available through your Subscription & Billing settings.
+
+**What if another customer has already referred the same venue?**
+
+Each new qualifying venue can generate one referral reward. Duplicate referrals are reviewed to determine eligibility.
+
+**Can I receive my reward as cash instead?**
+
+Referral rewards are issued as subscription credits toward your Hello to Cheers subscription.
+
+### A few things to know
+
+To keep our referral program fair for everyone:
+
+- Referrals must represent genuine introductions to new, independently paying venues.
+- Each qualifying venue can generate one referral reward.
+- Self-referrals and duplicate rewards are not eligible.
+- Referred venues must complete the required qualifying period with eligible, settled subscription payments.
+- Refunded or disputed payments may affect referral eligibility.
+- Rewards are issued as subscription credits rather than cash payments.
+
+Thank you for being part of Hello to Cheers and for helping us introduce more venues to a better way of managing their businesses.
+
+Here's to more connections, more celebrations and more reasons to cheers!
+`,
+  },
 ];
 
 /** Slugs that use the enhanced instructional Help presentation (seven customer guides). */

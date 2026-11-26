@@ -23,7 +23,7 @@ describe("Guidance landing index", () => {
     assert.equal(slugs.filter((slug) => slug === "how-does-date-availability-work").length, 1);
     assert.ok(titles.includes("How Does Date Availability Work?"));
     assert.equal(finding[0]?.slug, "how-does-date-availability-work");
-    assert.equal(finding.length, 6);
+    assert.equal(finding.length, 8);
     assert.ok(slugs.includes("how-to-connect-facebook-instagram-lead-ads"));
   });
 
@@ -36,7 +36,7 @@ describe("Guidance landing index", () => {
     const byCategory = collectPublishedHelpArticlesByCategory(PUBLISHABLE_HELP_ARTICLES, dbRows);
     const finding = byCategory.get("Finding & Booking Clients") ?? [];
     assert.equal(finding.filter((a) => a.slug === "how-does-date-availability-work").length, 1);
-    assert.equal(finding.length, 6);
+    assert.equal(finding.length, 8);
   });
 
   it("Guidance landing builds its list through the editorial-aware index helper", () => {

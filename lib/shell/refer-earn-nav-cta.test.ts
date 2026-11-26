@@ -91,9 +91,10 @@ describe("Refer & Earn nav CTA", () => {
 
   it("referral page still explains subscription credit reward (not permanent discount)", () => {
     const page = readFileSync(resolve("components/referrals/refer-a-venue-page.tsx"), "utf8");
+    const help = readFileSync(resolve("lib/help-guides/integration-setup-articles.ts"), "utf8");
     assert.match(page, /subscription credit equal to one month/i);
     assert.match(page, /FREE month/);
-    assert.match(page, /paying/i);
+    assert.match(help, /qualifying paying subscriber/);
     assert.doesNotMatch(page, /permanent discount/i);
   });
 
@@ -118,17 +119,13 @@ describe("Refer & Earn nav CTA", () => {
     assert.match(page, /Enjoy your reward/);
     assert.match(page, /sm:grid-cols-3/);
     assert.match(page, /Learn more about referral rewards/);
-    assert.match(page, /data-testid="refer-program-details"/);
+    assert.match(page, /\/help\/refer-a-venue-one-referral-one-free-month/);
     assert.match(page, /Introduce us to a venue/);
     assert.match(page, /Cheers to your referral!/);
     const heroIdx = page.indexOf('data-testid="refer-hero"');
     const stepsIdx = page.indexOf('data-testid="refer-steps"');
     const formIdx = page.indexOf('id="refer-form"');
-    const detailsIdx = page.indexOf('data-testid="refer-program-details"');
-    assert.ok(heroIdx > 0 && stepsIdx > heroIdx && formIdx > stepsIdx && detailsIdx > 0);
-    assert.match(
-      page.slice(detailsIdx),
-      /Self-referrals and duplicate rewards are not eligible/,
-    );
+    assert.ok(heroIdx > 0 && stepsIdx > heroIdx && formIdx > stepsIdx);
   });
 });
+
