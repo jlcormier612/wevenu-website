@@ -84,4 +84,27 @@ describe("buildSubscriptionStatusPresentation", () => {
     assert.equal(canceling.headline, "Cancellation scheduled.");
     assert.equal(canceling.periodEndLabelKey, "Access ends");
   });
+
+  it("shows grace messaging without inventing a healthy paid headline", () => {
+    const view = buildSubscriptionStatusPresentation({
+      ...base,
+      saasSubscriptionStatus: "past_due",
+      saasStripeCustomerId: "cus_x",
+      entitlementStatus: "grace",
+      accessEndsAt: "2027-03-01T00:00:00.000Z",
+    });
+    assert.equal(view.headline, "Payment needs attention.");
+    assert.doesNotMatch(view.headline, /subscription is active/i);
+  });
+
+  it("shows paused access when the venue is suspended", () => {
+    const view = buildSubscriptionStatusPresentation({
+      ...base,
+      saasSubscriptionStatus: "canceled",
+      saasStripeCustomerId: "cus_x",
+      accessDisabled: true,
+      entitlementStatus: "suspended",
+    });
+    assert.equal(view.headline, "Access is currently paused.");
+  });
 });
