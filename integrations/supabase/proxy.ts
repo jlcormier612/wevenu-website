@@ -82,6 +82,7 @@ export const PUBLIC_PATHS = [
   "/api/communication/scheduled",    // Scheduled Sends cron (vercel.json) - CRON_SECRET-guarded, not session-guarded
   "/api/automation/process",         // Automation engine cron (vercel.json) - CRON_SECRET-guarded, not session-guarded
   "/api/quickbooks/sync/process",    // QuickBooks sync queue cron (vercel.json) - CRON_SECRET-guarded, not session-guarded
+  "/api/quickbooks/callback",        // Intuit OAuth redirect — must return 302 from the route (not middleware HTML login). Session still verified inside the handler.
   "/api/facebook/webhook",           // Meta Lead Ads webhook - GET verification handshake + POST delivery, verifies its own signature
   "/api/facebook/sync/process",      // Facebook Lead Ads queue cron (vercel.json) - CRON_SECRET-guarded, not session-guarded
   "/api/facebook/reconcile/process", // Facebook Lead Ads reconciliation poll cron (vercel.json) - CRON_SECRET-guarded, not session-guarded

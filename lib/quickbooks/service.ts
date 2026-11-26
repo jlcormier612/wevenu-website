@@ -170,11 +170,10 @@ export async function connectQuickBooksAccount(input: {
 }
 
 /**
- * Calls Intuit's own revoke endpoint before clearing local state — a
- * genuine improvement over Stripe Connect's disconnect in this codebase,
- * which never calls Stripe's revoke endpoint. On revoke failure, local
- * state is still cleared (never leave a venue stuck "connected" locally
- * to a revoke call that failed for an unrelated reason).
+ * Revokes the Intuit refresh token when possible, then clears local OAuth
+ * credentials. Local disconnect always proceeds so the venue is never stuck
+ * "connected" after a revoke transport/API failure — but revoke failure is
+ * reported honestly via `message` (never implied as a successful Intuit revoke).
  */
 export async function disconnectQuickBooksAccount(): Promise<QuickBooksActionResult> {
   if (!isSupabaseConfigured) return { ok: false, message: "Backend not configured." };
@@ -184,19 +183,25 @@ export async function disconnectQuickBooksAccount(): Promise<QuickBooksActionRes
   if (!venue) return { ok: false, message: "Session expired." };
 
   const supabase = await createClient();
-  let connection: Awaited<ReturnType<typeof repo.getConnectionWithTokens>>;
+  let connection: Awaited<ReturnType<typeof repo.getConnectionWithTokens>> = null;
+  let revokeAttempted = false;
+  let revokeOk = false;
+  let credentialUnreadable = false;
+
   try {
     connection = await repo.getConnectionWithTokens(supabase, venue.id);
   } catch (err) {
     if (err instanceof QuickBooksTokenDecryptError) {
-      return { ok: false, message: err.message };
+      credentialUnreadable = true;
+    } else {
+      throw err;
     }
-    throw err;
   }
 
-  if (connection) {
+  if (connection?.refreshToken) {
+    revokeAttempted = true;
     try {
-      await fetch(QUICKBOOKS_REVOKE_URL, {
+      const revokeResponse = await fetch(QUICKBOOKS_REVOKE_URL, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -205,13 +210,28 @@ export async function disconnectQuickBooksAccount(): Promise<QuickBooksActionRes
         },
         body: JSON.stringify({ token: connection.refreshToken }),
       });
+      revokeOk = revokeResponse.ok;
     } catch {
-      // Revoke is best-effort — local disconnect proceeds regardless, see
-      // docstring above.
+      revokeOk = false;
     }
   }
 
   await repo.disconnectConnection(supabase, venue.id);
+
+  if (credentialUnreadable) {
+    return {
+      ok: true,
+      message:
+        "QuickBooks disconnected locally. Stored credentials could not be read, so Intuit revocation was skipped. Reconnect if this company still appears authorized in Intuit.",
+    };
+  }
+  if (revokeAttempted && !revokeOk) {
+    return {
+      ok: true,
+      message:
+        "QuickBooks disconnected locally and credentials were cleared. Intuit token revocation did not confirm success — check Intuit app connections if needed.",
+    };
+  }
   return { ok: true };
 }
 

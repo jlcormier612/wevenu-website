@@ -60,4 +60,10 @@ describe("White Glove public token paths", () => {
     assert.equal(isPublicPath("/system"), false);
     assert.equal(isPublicPath("/system/other"), false);
   });
+
+  it("lets the QuickBooks OAuth callback reach its 302 handler without a session redirect", () => {
+    assert.equal(isPublicPath("/api/quickbooks/callback"), true);
+    assert.equal(isPublicPath("/api/quickbooks/sync/process"), true);
+    assert.equal(isPublicPath("/api/quickbooks"), false);
+  });
 });

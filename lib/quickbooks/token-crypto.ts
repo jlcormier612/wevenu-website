@@ -1,16 +1,19 @@
 /**
- * QuickBooks OAuth tokens at rest.
+ * QuickBooks OAuth tokens and realm ID at rest.
  *
  * Same AES-256-GCM utility as texting registration numbers
  * (`lib/texting-registration/sensitive-field.ts`), stored in the existing
- * `access_token` / `refresh_token` text columns. No migration: a row written
- * before this change is still plaintext and stays readable. The next
- * successful connect or refresh seals it. A failed decrypt never clears
- * those columns and is not treated as an expired refresh token.
+ * `access_token` / `refresh_token` / `realm_id` text columns. No schema
+ * migration: a row written before sealing is still plaintext and stays
+ * readable. The next successful connect seals tokens + realm; the next
+ * token-bearing read also seals a legacy plaintext realm in place. A failed
+ * decrypt never clears those columns and is not treated as an expired
+ * refresh token.
  *
  * Rollback: an older build would send `v1:` ciphertext to Intuit and the
- * call would fail. Recovery is reconnect, which overwrites both columns.
- * Do not blank the columns to "fix" a decrypt error.
+ * call would fail. Recovery is reconnect, which overwrites the columns.
+ * Do not blank the columns to "fix" a decrypt error (disconnect is the
+ * deliberate clear path).
  */
 import {
   decryptSensitiveField,

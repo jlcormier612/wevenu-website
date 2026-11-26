@@ -130,21 +130,24 @@ describe("QuickBooks connection authorization and storage wiring", () => {
     );
   });
 
-  it("seals tokens on write and opens them only on the token-bearing read", () => {
+  it("seals tokens and realm_id on write and opens them on read", () => {
     assert.match(repository, /sealQuickBooksToken\(input\.accessToken\)/);
     assert.match(repository, /sealQuickBooksToken\(input\.refreshToken\)/);
+    assert.match(repository, /sealQuickBooksToken\(input\.realmId\)/);
     const withTokens = repository.slice(repository.indexOf("function mapConnectionWithTokens"));
     assert.match(withTokens, /openQuickBooksToken\(r\.access_token\)/);
     assert.match(withTokens, /openQuickBooksToken\(r\.refresh_token\)/);
+    assert.match(withTokens, /openQuickBooksToken\(r\.realm_id\)/);
     const publicMap = repository.slice(
       repository.indexOf("function mapConnection"),
       repository.indexOf("function mapConnectionWithTokens"),
     );
-    assert.equal(publicMap.includes("openQuickBooksToken"), false);
+    assert.match(publicMap, /openQuickBooksToken\(r\.realm_id\)/);
     assert.equal(publicMap.includes("accessToken"), false);
+    assert.match(repository, /maybeSealLegacyRealmId/);
   });
 
-  it("a decrypt failure does not mark the refresh token dead or clear stored credentials", () => {
+  it("a decrypt failure on refresh does not mark the token dead; disconnect still clears credentials", () => {
     const tokenFn = client.slice(client.indexOf("export async function getValidAccessToken"));
     assert.match(tokenFn, /QuickBooksTokenDecryptError/);
     assert.match(tokenFn, /credentialUnreadable: true/);
@@ -152,18 +155,20 @@ describe("QuickBooks connection authorization and storage wiring", () => {
     const fetchFn = client.slice(client.indexOf("export async function quickBooksFetch"));
     assert.match(fetchFn, /credentialUnreadable \? false/);
     const disconnect = body(service, "disconnectQuickBooksAccount");
-    const decryptGuard = disconnect.indexOf("QuickBooksTokenDecryptError");
-    const localClear = disconnect.indexOf("disconnectConnection");
-    assert.ok(decryptGuard > -1 && localClear > decryptGuard);
-    assert.equal(disconnect.includes("access_token: \"\""), false);
-    assert.equal(disconnect.includes("refresh_token: \"\""), false);
+    assert.match(disconnect, /QuickBooksTokenDecryptError/);
+    assert.match(disconnect, /disconnectConnection/);
+    assert.match(disconnect, /revokeOk/);
+    assert.match(repository, /access_token: ""/);
+    assert.match(repository, /refresh_token: ""/);
   });
 
-  it("the OAuth callback does not report success when connect is denied", () => {
+  it("the OAuth callback does not report success when connect is denied and uses 302", () => {
     assert.match(callback, /if \(!connected\.ok\)/);
     assert.match(callback, /quickbooks_error/);
     const success = callback.indexOf('quickbooks_success');
     const denied = callback.indexOf("if (!connected.ok)");
     assert.ok(denied > -1 && success > denied);
+    assert.match(callback, /NextResponse\.redirect\(destinationUrl, 302\)/);
+    assert.equal((callback.match(/NextResponse\.redirect\([^)]*302\)/g) ?? []).length >= 6, true);
   });
 });

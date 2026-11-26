@@ -49,26 +49,29 @@ export async function GET(request: NextRequest) {
     ? new URL("/setup-hub/financials", origin)
     : new URL("/settings/integrations", origin);
 
+  // Intuit security requirements: endpoints that receive OAuth codes/tokens
+  // via URL params must respond with 302 Found (not an HTML body). Next.js
+  // defaults to 307 — pass 302 explicitly on every exit from this route.
   if (error) {
     destinationUrl.searchParams.set("quickbooks_error", errorDescription ?? error);
-    return NextResponse.redirect(destinationUrl);
+    return NextResponse.redirect(destinationUrl, 302);
   }
 
   if (!code) {
     destinationUrl.searchParams.set("quickbooks_error", "Missing authorization code.");
-    return NextResponse.redirect(destinationUrl);
+    return NextResponse.redirect(destinationUrl, 302);
   }
 
   if (!realmId) {
     destinationUrl.searchParams.set("quickbooks_error", "No company (realm) ID returned.");
-    return NextResponse.redirect(destinationUrl);
+    return NextResponse.redirect(destinationUrl, 302);
   }
 
   const clientId = process.env.QUICKBOOKS_CLIENT_ID;
   const clientSecret = process.env.QUICKBOOKS_CLIENT_SECRET;
   if (!clientId || !clientSecret || !isSupabaseConfigured) {
     destinationUrl.searchParams.set("quickbooks_error", "QuickBooks is not configured.");
-    return NextResponse.redirect(destinationUrl);
+    return NextResponse.redirect(destinationUrl, 302);
   }
 
   // CSRF: state must match the caller's actual venue. Stripe's callback
@@ -79,7 +82,7 @@ export async function GET(request: NextRequest) {
   const venue = await getCurrentVenue();
   if (!venue || venue.id !== stateVenueId) {
     destinationUrl.searchParams.set("quickbooks_error", "Session/venue mismatch. Please try connecting again.");
-    return NextResponse.redirect(destinationUrl);
+    return NextResponse.redirect(destinationUrl, 302);
   }
 
   try {
@@ -108,7 +111,7 @@ export async function GET(request: NextRequest) {
 
     if (!tokenResponse.ok || !tokenData.access_token || !tokenData.refresh_token) {
       destinationUrl.searchParams.set("quickbooks_error", tokenData.error_description ?? tokenData.error ?? "Token exchange failed.");
-      return NextResponse.redirect(destinationUrl);
+      return NextResponse.redirect(destinationUrl, 302);
     }
 
     const connected = await connectQuickBooksAction({
@@ -123,14 +126,14 @@ export async function GET(request: NextRequest) {
         "quickbooks_error",
         connected.message ?? "Could not save the QuickBooks connection.",
       );
-      return NextResponse.redirect(destinationUrl);
+      return NextResponse.redirect(destinationUrl, 302);
     }
 
     destinationUrl.searchParams.set("quickbooks_success", "1");
-    return NextResponse.redirect(destinationUrl);
+    return NextResponse.redirect(destinationUrl, 302);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error.";
     destinationUrl.searchParams.set("quickbooks_error", message);
-    return NextResponse.redirect(destinationUrl);
+    return NextResponse.redirect(destinationUrl, 302);
   }
 }
