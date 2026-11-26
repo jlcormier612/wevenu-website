@@ -53,7 +53,11 @@ describe("Complete Stripe Setup product surface", () => {
     assert.match(source, /refreshStripeChargesEnabledAction/);
     assert.match(source, /Disconnect Stripe/);
     assert.match(source, /Connected, setup incomplete/);
-    assert.match(source, /can&apos;t accept charges yet/);
+    assert.match(source, /You&apos;re almost there!/);
+    assert.match(
+      source,
+      /Online payments will become available once Stripe confirms your account is eligible\./,
+    );
     assert.match(source, /stripe_setup/);
   });
 

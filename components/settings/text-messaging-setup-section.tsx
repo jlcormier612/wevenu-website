@@ -31,6 +31,16 @@ import {
   TEXTING_WHY_WE_COLLECT,
   buildTextingPhaseStory,
   textingDisplayHeadline,
+  textingStatusHero,
+  TEXTING_MESSAGING_PURPOSE_EXAMPLE,
+  TEXTING_MESSAGING_PURPOSE_EXAMPLE_HINT,
+  TEXTING_MESSAGING_PURPOSE_HEADING,
+  TEXTING_MESSAGING_PURPOSE_INTRO,
+  TEXTING_MESSAGING_PURPOSE_LABEL,
+  TEXTING_MESSAGING_PURPOSE_PLACEHOLDER,
+  TEXTING_OPT_IN_HTC_HINT,
+  TEXTING_OPT_IN_LABEL,
+  TEXTING_OPT_IN_PLACEHOLDER,
 } from "@/lib/texting-registration/human-facing";
 import { isBusinessIdentityComplete } from "@/lib/texting-registration/validation";
 import { maskRegistrationNumberLast4 } from "@/lib/texting-registration/registration-number";
@@ -65,19 +75,19 @@ function TextingOrientation() {
       data-testid="texting-setup-orientation"
     >
       <div className="space-y-1">
-        <p className="text-xs font-medium text-heading">What texting does</p>
+        <p className="text-xs font-medium text-heading">Stay connected, wherever the day takes you.</p>
         <p className="text-xs text-muted-foreground">{TEXTING_WHAT_IT_ENABLES}</p>
       </div>
       <div className="space-y-1">
-        <p className="text-xs font-medium text-heading">What we need from you</p>
-        <p className="text-xs text-muted-foreground">{TEXTING_WHY_WE_COLLECT}</p>
-      </div>
-      <div className="space-y-1">
-        <p className="text-xs font-medium text-heading">What Hello to Cheers handles</p>
+        <p className="text-xs font-medium text-heading">Your dedicated business number</p>
         <p className="text-xs text-muted-foreground">{TEXTING_WHAT_HTC_HANDLES}</p>
       </div>
       <div className="space-y-1">
-        <p className="text-xs font-medium text-heading">How you’ll know it’s ready</p>
+        <p className="text-xs font-medium text-heading">One-time business registration</p>
+        <p className="text-xs text-muted-foreground">{TEXTING_WHY_WE_COLLECT}</p>
+      </div>
+      <div className="space-y-1">
+        <p className="text-xs font-medium text-heading">How you&apos;ll know it&apos;s ready</p>
         <p className="text-xs text-muted-foreground">{TEXTING_HOW_YOU_KNOW_READY}</p>
       </div>
       <SetupGuideLink href={TEXTING_SETUP_GUIDE_HREF} label={TEXTING_SETUP_GUIDE_LABEL} />
@@ -89,10 +99,11 @@ function StatusPanelView({ panel }: { panel: TextingStatusPanel }) {
   const [detailsOpen, setDetailsOpen] = React.useState(false);
   const story = buildTextingPhaseStory(panel);
   const headline = textingDisplayHeadline(panel);
+  const hero = textingStatusHero(panel);
   const rows: { title: string; label: string; tone: TextingPanelTone }[] = [
     { title: "Business information", label: panel.businessInformation.label, tone: panel.businessInformation.tone },
-    { title: "Texting setup", label: panel.messagingRegistration.label, tone: panel.messagingRegistration.tone },
-    { title: "Texting number", label: panel.textingNumber.label, tone: panel.textingNumber.tone },
+    { title: "Messaging registration", label: panel.messagingRegistration.label, tone: panel.messagingRegistration.tone },
+    { title: "Dedicated texting number", label: panel.textingNumber.label, tone: panel.textingNumber.tone },
     { title: "Texting", label: panel.texting.label, tone: panel.texting.tone },
   ];
 
@@ -115,7 +126,7 @@ function StatusPanelView({ panel }: { panel: TextingStatusPanel }) {
         data-texting-phase={panel.phase}
       >
         <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <p className="text-sm font-medium text-heading">Status</p>
+          <p className="text-sm font-medium text-heading">{hero}</p>
           <p className={`text-sm font-medium ${TONE_CLASS[panel.texting.tone]}`}>{headline}</p>
         </div>
         <div className="space-y-2 text-sm text-muted-foreground">
@@ -349,11 +360,10 @@ export function TextMessagingSetupSection({
       <CardHeader>
         <CardTitle className="text-base flex items-center gap-2">
           <MessageSquareText className="h-4 w-4 text-muted-foreground" />
-          Text messaging
+          Text Messaging
         </CardTitle>
         <CardDescription>
-          Connect texting to your venue so you can message clients and leads from Inbox.
-          Hello to Cheers handles the technical setup behind the scenes.
+          Stay connected, wherever the day takes you.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -578,21 +588,49 @@ export function TextMessagingSetupSection({
             </div>
 
             <div className="space-y-3">
-              <h4 className="text-sm font-medium text-heading">What you’ll text about</h4>
-              <Field id="messagingPurpose" label="Purpose" error={errors.messagingPurpose}
-                hint="Plain language — e.g. booking questions, tour reminders, and event logistics.">
-                <Textarea id="messagingPurpose" rows={2} value={form.messagingPurpose} onChange={(e) => setField("messagingPurpose", e.target.value)} />
+              <div className="space-y-1">
+                <h4 className="text-sm font-medium text-heading">{TEXTING_MESSAGING_PURPOSE_HEADING}</h4>
+                <p className="text-xs text-muted-foreground">{TEXTING_MESSAGING_PURPOSE_INTRO}</p>
+              </div>
+              <Field
+                id="messagingPurpose"
+                label={TEXTING_MESSAGING_PURPOSE_LABEL}
+                error={errors.messagingPurpose}
+                hint={TEXTING_MESSAGING_PURPOSE_EXAMPLE_HINT}
+              >
+                <Textarea
+                  id="messagingPurpose"
+                  rows={3}
+                  value={form.messagingPurpose}
+                  onChange={(e) => setField("messagingPurpose", e.target.value)}
+                  placeholder={TEXTING_MESSAGING_PURPOSE_PLACEHOLDER}
+                />
               </Field>
+              <div className="rounded-md border border-border bg-muted/30 px-3 py-2 space-y-1">
+                <p className="text-xs font-medium text-heading">Here&apos;s an example</p>
+                <p className="text-xs text-muted-foreground">{TEXTING_MESSAGING_PURPOSE_EXAMPLE}</p>
+              </div>
               <Field id="sampleMessage1" label="Sample text message" error={errors.sampleMessage1}>
                 <Textarea id="sampleMessage1" rows={2} value={form.sampleMessage1} onChange={(e) => setField("sampleMessage1", e.target.value)}
-                  placeholder="Hi Sarah — this is Maple Hall confirming your tour on Saturday at 2pm." />
+                  placeholder="Hi Emma! This is Sarah from The Willow Grove. Thank you for your interest in our venue! We'd love to learn more about your wedding plans. Reply STOP to opt out." />
               </Field>
               <Field id="sampleMessage2" label="Second sample message">
-                <Textarea id="sampleMessage2" rows={2} value={form.sampleMessage2} onChange={(e) => setField("sampleMessage2", e.target.value)} />
+                <Textarea id="sampleMessage2" rows={2} value={form.sampleMessage2} onChange={(e) => setField("sampleMessage2", e.target.value)}
+                  placeholder="Hi Emma! This is The Willow Grove. We're looking forward to your venue tour tomorrow at 2 PM. Please let us know if you need to reschedule. Reply STOP to opt out." />
               </Field>
-              <Field id="optInDescription" label="How people opt in" error={errors.optInDescription}
-                hint="e.g. They check a separate text-permission box on our inquiry form. A phone number or Text preference alone is not permission.">
-                <Textarea id="optInDescription" rows={2} value={form.optInDescription} onChange={(e) => setField("optInDescription", e.target.value)} />
+              <Field
+                id="optInDescription"
+                label={TEXTING_OPT_IN_LABEL}
+                error={errors.optInDescription}
+                hint={TEXTING_OPT_IN_HTC_HINT}
+              >
+                <Textarea
+                  id="optInDescription"
+                  rows={2}
+                  value={form.optInDescription}
+                  onChange={(e) => setField("optInDescription", e.target.value)}
+                  placeholder={TEXTING_OPT_IN_PLACEHOLDER}
+                />
               </Field>
               <div className="grid gap-3 sm:grid-cols-2">
                 <Field id="privacyPolicyUrl" label="Privacy policy URL" error={errors.privacyPolicyUrl}>

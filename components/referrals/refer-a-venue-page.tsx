@@ -1,6 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
+import { CheckCircle2, Gift } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -12,7 +14,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+
 function formatUsdFromCents(cents: number): string {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -28,6 +30,7 @@ type CustomerReferral = {
   submittedAt: string;
   status: string;
   statusLabel: string;
+  statusDescription?: string;
   rewardAmountCents: number | null;
   rewardCurrency: string | null;
   appliedInvoiceId: string | null;
@@ -41,7 +44,6 @@ type FormState = {
   contactEmail: string;
   contactName: string;
   contactRole: string;
-  notes: string;
 };
 
 const EMPTY: FormState = {
@@ -52,12 +54,12 @@ const EMPTY: FormState = {
   contactEmail: "",
   contactName: "",
   contactRole: "",
-  notes: "",
 };
 
 export function ReferAVenuePage() {
   const [enabled, setEnabled] = useState(true);
   const [referrals, setReferrals] = useState<CustomerReferral[]>([]);
+  const [availableCreditCents, setAvailableCreditCents] = useState(0);
   const [form, setForm] = useState<FormState>(EMPTY);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
@@ -67,6 +69,7 @@ export function ReferAVenuePage() {
     body: string;
   } | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [showForm, setShowForm] = useState(true);
 
   async function refresh() {
     const res = await fetch("/api/referrals");
@@ -74,6 +77,7 @@ export function ReferAVenuePage() {
       ok?: boolean;
       enabled?: boolean;
       referrals?: CustomerReferral[];
+      availableCreditCents?: number;
       error?: string;
       message?: string;
     };
@@ -83,8 +87,8 @@ export function ReferAVenuePage() {
     }
     setEnabled(json.enabled !== false);
     setReferrals(json.referrals ?? []);
+    setAvailableCreditCents(json.availableCreditCents ?? 0);
     if (json.enabled === false) {
-      // Customer-safe only — never surface readiness env diagnostics.
       setLoadError(json.message || "Refer a Venue is not available yet.");
     } else {
       setLoadError(null);
@@ -121,11 +125,12 @@ export function ReferAVenuePage() {
       }
       setConfirmation(
         json.confirmation ?? {
-          title: "Thanks for sharing the Luv!",
-          body: "We've received your referral, and we'll take it from here. We appreciate you helping more venues discover Hello to Cheers!",
+          title: "Cheers to your referral!",
+          body: "Thank you for introducing us to another venue. We're excited to connect with them! You can follow your referral's progress from your Refer a Venue page.",
         },
       );
       setForm(EMPTY);
+      setShowForm(false);
       await refresh();
     } catch {
       setMessage("Could not submit referral. Please try again.");
@@ -137,7 +142,7 @@ export function ReferAVenuePage() {
   function field(
     key: keyof FormState,
     label: string,
-    opts?: { required?: boolean; textarea?: boolean; placeholder?: string },
+    opts?: { required?: boolean; placeholder?: string },
   ) {
     const err = errors[key];
     return (
@@ -146,132 +151,222 @@ export function ReferAVenuePage() {
           {label}
           {opts?.required ? " *" : ""}
         </Label>
-        {opts?.textarea ? (
-          <Textarea
-            id={key}
-            value={form[key]}
-            placeholder={opts.placeholder}
-            onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
-          />
-        ) : (
-          <Input
-            id={key}
-            value={form[key]}
-            placeholder={opts?.placeholder}
-            onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
-          />
-        )}
+        <Input
+          id={key}
+          value={form[key]}
+          placeholder={opts?.placeholder}
+          onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
+        />
         {err ? <p className="text-sm text-destructive">{err}</p> : null}
       </div>
     );
   }
 
+  const rewardsEarned = referrals.filter((r) =>
+    r.status === "credit_earned" || r.status === "credit_applied" || (r.rewardAmountCents != null && r.rewardAmountCents > 0),
+  ).length;
+
   return (
     <div className="space-y-6">
-      <div className="space-y-3">
-        <p className="text-sm font-medium tracking-[0.14em] text-[color:var(--heritage-sage)] uppercase">
-          A little thank-you for spreading the word
-        </p>
-        <h1 className="font-heading text-[clamp(2rem,4.5vw,3.5rem)] font-normal leading-[1.15] tracking-tight text-[rgb(79,95,79)]">
-          Share the Luv. Get a free month.
-        </h1>
-      </div>
-
-      <Card className="border-[color:var(--soft-sage)] bg-[color:color-mix(in_oklch,var(--soft-sage)_28%,white)]">
-        <CardHeader className="space-y-2">
+      <Card className="border-[color:var(--soft-sage)] bg-[color:color-mix(in_oklch,var(--linen)_70%,white)]">
+        <CardHeader className="space-y-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[color:color-mix(in_oklch,var(--heritage-sage)_18%,white)] text-[color:var(--heritage-sage)]">
+            <Gift className="h-5 w-5" aria-hidden />
+          </div>
           <CardTitle className="font-serif text-2xl text-heading">
             One referral. One FREE month.
           </CardTitle>
           <CardDescription className="text-base text-foreground/80">
-            When a venue you refer becomes a paying Hello to Cheers customer, we&apos;ll thank
-            you with a free month of your own subscription.
+            Good things are even better when shared.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3 text-sm text-foreground/80">
-          <p className="font-medium text-heading">And yes, you can earn more than one!</p>
+        <CardContent className="space-y-4 text-sm text-foreground/80">
           <p>
-            Every new qualifying venue you refer brings another free month your way.
+            Know another venue that would love Hello to Cheers? Introduce us! When your referral becomes a qualifying customer, we&apos;ll reward you with a subscription credit equal to one month of your venue&apos;s subscription.
           </p>
+          <div className="space-y-2">
+            <p className="font-medium text-heading">It&apos;s as easy as 1, 2, 3.</p>
+            <ol className="list-decimal space-y-2 pl-5">
+              <li>
+                <span className="font-medium text-foreground">Introduce us</span>
+                {" — "}
+                Tell us about a venue you think would love Hello to Cheers.
+              </li>
+              <li>
+                <span className="font-medium text-foreground">They join the celebration</span>
+                {" — "}
+                Your referred venue becomes a Hello to Cheers customer and completes its qualifying period.
+              </li>
+              <li>
+                <span className="font-medium text-foreground">Enjoy your reward</span>
+                {" — "}
+                Receive a subscription credit equal to one month of your venue&apos;s subscription.
+              </li>
+            </ol>
+          </div>
+          <p>
+            There&apos;s no limit to the number of qualifying venues you can refer. Program eligibility requirements apply.
+          </p>
+          <p className="font-medium text-heading">Keep sharing. Keep earning.</p>
+          {!confirmation && enabled ? (
+            <Button
+              type="button"
+              size="lg"
+              className="bg-[color:var(--heritage-sage)] text-white hover:bg-[color:color-mix(in_oklch,var(--heritage-sage)_88%,black)]"
+              onClick={() => {
+                setShowForm(true);
+                document.getElementById("refer-form")?.scrollIntoView({ behavior: "smooth" });
+              }}
+            >
+              Refer a Venue
+            </Button>
+          ) : null}
         </CardContent>
       </Card>
 
       {confirmation ? (
         <Card>
-          <CardHeader>
-            <CardTitle className="text-base">{confirmation.title}</CardTitle>
-            <CardDescription>{confirmation.body}</CardDescription>
+          <CardHeader className="items-center text-center space-y-3">
+            <CheckCircle2 className="h-10 w-10 text-[color:var(--heritage-sage)]" aria-hidden />
+            <CardTitle className="text-xl">{confirmation.title}</CardTitle>
+            <CardDescription className="text-base">{confirmation.body}</CardDescription>
           </CardHeader>
+          <CardContent className="flex flex-wrap justify-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setConfirmation(null);
+                document.getElementById("your-referrals")?.scrollIntoView({ behavior: "smooth" });
+              }}
+            >
+              View my referrals
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                setConfirmation(null);
+                setShowForm(true);
+              }}
+            >
+              Refer another venue
+            </Button>
+          </CardContent>
         </Card>
       ) : null}
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Refer a Venue</CardTitle>
-          <CardDescription className="space-y-2 text-base text-muted-foreground">
-            <span className="block font-medium text-foreground">
-              Know a venue that would love Hello to Cheers?
-            </span>
-            <span className="block">
-              Share a few details about them, and we&apos;ll take it from there! We&apos;ll
-              personally review your referral and reach out with a thoughtful introduction.
-            </span>
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {!enabled ? (
-            <p className="text-sm text-muted-foreground">
-              {loadError || "Referrals are temporarily unavailable."}
-            </p>
-          ) : (
-            <form className="space-y-4" onSubmit={onSubmit}>
-              <div className="grid gap-4 sm:grid-cols-2">
-                {field("venueName", "Venue name", { required: true })}
-                {field("website", "Venue website", {
-                  required: true,
-                  placeholder: "https://",
-                })}
-                {field("city", "City", { required: true })}
-                {field("state", "State", { required: true })}
-                {field("contactName", "Contact name", { required: true })}
-                {field("contactEmail", "Business contact email", {
-                  required: true,
-                })}
-                {field("contactRole", "Contact role / title")}
-              </div>
-              {field("notes", "Notes", { textarea: true })}
-              {message ? (
-                <p className="text-sm text-destructive">{message}</p>
-              ) : null}
-              <Button type="submit" disabled={busy} size="lg">
-                {busy ? "Sending…" : "Share the Luv"}
-              </Button>
-            </form>
-          )}
-        </CardContent>
-      </Card>
+      {showForm && !confirmation ? (
+        <Card id="refer-form" className="scroll-mt-20">
+          <CardHeader>
+            <CardTitle className="text-base">Introduce us to a venue</CardTitle>
+            <CardDescription>
+              Know a venue that would love Hello to Cheers? Tell us a little about them, and we&apos;ll take it from here.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {!enabled ? (
+              <p className="text-sm text-muted-foreground">
+                {loadError || "Referrals are temporarily unavailable."}
+              </p>
+            ) : (
+              <form className="space-y-4" onSubmit={onSubmit}>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {field("venueName", "Venue name", {
+                    required: true,
+                    placeholder: "The name of the venue",
+                  })}
+                  {field("website", "Venue website", {
+                    required: true,
+                    placeholder: "https://",
+                  })}
+                  {field("city", "City", { required: true, placeholder: "City" })}
+                  {field("state", "State", { required: true, placeholder: "State" })}
+                </div>
+
+                <div className="space-y-1 pt-2">
+                  <p className="text-sm font-medium text-heading">Who should we connect with?</p>
+                  <p className="text-xs text-muted-foreground">
+                    Ideally, someone involved in managing the venue or making business decisions.
+                  </p>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {field("contactName", "Contact name", {
+                    required: true,
+                    placeholder: "First and last name",
+                  })}
+                  {field("contactRole", "Role / Title (optional)", {
+                    placeholder: "Owner, General Manager, Venue Director...",
+                  })}
+                  {field("contactEmail", "Business contact email", {
+                    required: true,
+                    placeholder: "Their business email address",
+                  })}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Please provide a direct business contact email so we can reach the right person.
+                </p>
+                {message ? (
+                  <p className="text-sm text-destructive">{message}</p>
+                ) : null}
+                <Button type="submit" disabled={busy} size="lg">
+                  {busy ? "Sending…" : "Submit referral"}
+                </Button>
+              </form>
+            )}
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Card data-testid="refer-program-details">
         <CardHeader>
-          <CardTitle className="text-base">Program details</CardTitle>
+          <CardTitle className="text-base">Learn more about referral rewards</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-2 text-sm text-muted-foreground">
+        <CardContent className="space-y-3 text-sm text-muted-foreground">
           <p>
-            Qualifying referrals are new, independently paying venues. Your thank-you is a
-            one-time credit equal to one month of your applicable subscription after the
-            referred venue has remained paying for 30 days with settled payment. Self-referrals,
-            duplicates, and refunded or disputed purchases do not qualify.
+            For every qualifying venue you introduce to Hello to Cheers, you&apos;ll receive a subscription credit equal to one month of your venue&apos;s subscription.
           </p>
+          <p>
+            When your referred venue becomes a new paying Hello to Cheers customer and completes 30 days as a qualifying paying subscriber, your referral becomes eligible for a reward. Once approved, your credit will be applied toward your next eligible subscription invoice.
+          </p>
+          <div className="space-y-1">
+            <p className="font-medium text-foreground">A few things to know</p>
+            <ul className="list-disc space-y-1 pl-5">
+              <li>Referrals must represent genuine introductions to new, independently paying venues.</li>
+              <li>Each qualifying venue can generate one referral reward.</li>
+              <li>Self-referrals and duplicate rewards are not eligible.</li>
+              <li>Referred venues must complete the required qualifying period with eligible, settled subscription payments.</li>
+              <li>Refunded or disputed payments may affect referral eligibility.</li>
+              <li>Rewards are issued as subscription credits rather than cash payments.</li>
+            </ul>
+          </div>
         </CardContent>
       </Card>
 
-      <Card>
+      <Card id="your-referrals" className="scroll-mt-20">
         <CardHeader>
           <CardTitle className="text-base">Your referrals</CardTitle>
           <CardDescription>
-            Track submissions and thank-you credits for this venue.
+            Visit your Refer a Venue page at any time to review your submitted referrals and their progress.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="space-y-4">
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="rounded-lg border border-border p-3">
+              <p className="text-xs text-muted-foreground">Venues referred</p>
+              <p className="text-lg font-medium text-foreground">{referrals.length}</p>
+            </div>
+            <div className="rounded-lg border border-border p-3">
+              <p className="text-xs text-muted-foreground">Rewards earned</p>
+              <p className="text-lg font-medium text-foreground">{rewardsEarned}</p>
+            </div>
+            <div className="rounded-lg border border-border p-3">
+              <p className="text-xs text-muted-foreground">Available credit</p>
+              <p className="text-lg font-medium text-foreground">
+                {formatUsdFromCents(availableCreditCents)}
+              </p>
+            </div>
+          </div>
+
           {referrals.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               No referrals yet — when you share one, it will show up here.
@@ -287,30 +382,26 @@ export function ReferAVenuePage() {
                   <p className="text-sm text-muted-foreground">
                     {row.referredCity}, {row.referredState}
                   </p>
-                  <p className="text-xs text-muted-foreground">
-                    Submitted{" "}
-                    {new Date(row.submittedAt).toLocaleDateString("en-US", {
-                      year: "numeric",
-                      month: "short",
-                      day: "numeric",
-                    })}
-                  </p>
                 </div>
                 <div className="text-sm sm:text-right">
-                  <p>{row.statusLabel}</p>
-                  {row.rewardAmountCents != null ? (
-                    <p className="text-muted-foreground">
-                      {formatUsdFromCents(row.rewardAmountCents)} thank-you
-                      credit
-                      {row.appliedInvoiceId
-                        ? ` · applied on ${row.appliedInvoiceId}`
-                        : ""}
-                    </p>
-                  ) : null}
+                  <p className="font-medium text-foreground">{row.statusLabel}</p>
+                  <p className="text-muted-foreground">
+                    {row.statusDescription
+                      ?? (row.rewardAmountCents != null
+                        ? `${formatUsdFromCents(row.rewardAmountCents)} subscription credit${row.appliedInvoiceId ? " applied to your subscription." : " available."}`
+                        : null)}
+                  </p>
                 </div>
               </div>
             ))
           )}
+
+          <Link
+            href="/settings/billing"
+            className="inline-flex text-sm font-medium text-primary underline-offset-4 hover:underline"
+          >
+            View subscription credits
+          </Link>
         </CardContent>
       </Card>
     </div>

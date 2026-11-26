@@ -101,9 +101,13 @@ function IncomeAccountPicker({ connection }: { connection: QuickBooksConnection 
       <div className="space-y-0.5">
         <p className="text-sm font-medium text-foreground">Income account</p>
         <p className="text-xs text-muted-foreground">
-          Event revenue from Hello to Cheers invoices posts to this QuickBooks account.
-          We create one “Hello to Cheers Services” service item under it — QuickBooks
-          requires an account, and only you can say which one is right for your books.
+          Choose the QuickBooks income account where you&apos;d like to record revenue from your Hello to Cheers event invoices.
+        </p>
+        <p className="text-xs text-muted-foreground">
+          Hello to Cheers creates a service item called “Hello to Cheers Services” in QuickBooks using your selected income account.
+        </p>
+        <p className="text-xs text-muted-foreground">
+          Not sure which account to choose? Your accountant or bookkeeper can help you select the right one for your business.
         </p>
       </div>
 
@@ -118,7 +122,7 @@ function IncomeAccountPicker({ connection }: { connection: QuickBooksConnection 
         <div className="flex items-start gap-2 rounded-lg border border-warning/25 bg-warning/5 px-3 py-2">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
           <p className="text-xs text-foreground">
-            No account chosen yet. Invoices and refunds will wait to sync until you pick one.
+            Once you&apos;ve selected an income account, your invoices and refunds can begin syncing with QuickBooks.
           </p>
         </div>
       )}
@@ -157,6 +161,26 @@ function IncomeAccountPicker({ connection }: { connection: QuickBooksConnection 
   );
 }
 
+function formatSyncWhen(iso: string): string {
+  const when = new Date(iso);
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+  const startOfWhen = new Date(when);
+  startOfWhen.setHours(0, 0, 0, 0);
+  const dayDiff = Math.round((startOfToday.getTime() - startOfWhen.getTime()) / 86_400_000);
+  if (dayDiff === 0) return "Today";
+  if (dayDiff === 1) return "Yesterday";
+  return when.toLocaleDateString();
+}
+
+function syncActivityLabel(entry: QuickBooksSyncLogEntry): string {
+  const entity = ENTITY_LABEL[entry.entityType] ?? entry.entityType;
+  const when = formatSyncWhen(entry.createdAt);
+  if (entry.outcome === "succeeded") return `${entity} synced successfully — ${when}`;
+  if (entry.outcome === "failed") return `${entity} sync retrying — ${when}`;
+  return `${entity} sync failed — ${when}`;
+}
+
 function RecentSyncActivity({ entries }: { entries: QuickBooksSyncLogEntry[] }) {
   const [retryingId, setRetryingId] = React.useState<string | null>(null);
   if (entries.length === 0) return null;
@@ -180,8 +204,10 @@ function RecentSyncActivity({ entries }: { entries: QuickBooksSyncLogEntry[] }) 
             <li key={entry.id} className="flex items-center justify-between gap-3 text-xs">
               <div className="flex min-w-0 items-center gap-2">
                 <Badge variant={badge.variant}>{badge.label}</Badge>
-                <span className="truncate text-foreground">{ENTITY_LABEL[entry.entityType] ?? entry.entityType}</span>
-                {entry.message && <span className="truncate text-muted-foreground">{entry.message}</span>}
+                <span className="truncate text-foreground">{syncActivityLabel(entry)}</span>
+                {entry.message && entry.outcome !== "succeeded" ? (
+                  <span className="truncate text-muted-foreground">{entry.message}</span>
+                ) : null}
               </div>
               <div className="flex shrink-0 items-center gap-2">
                 {entry.outcome === "dead_lettered" && (
@@ -194,7 +220,6 @@ function RecentSyncActivity({ entries }: { entries: QuickBooksSyncLogEntry[] }) 
                     {retryingId === entry.id ? "Retrying…" : "Retry now"}
                   </button>
                 )}
-                <span className="text-muted-foreground">{new Date(entry.createdAt).toLocaleString()}</span>
               </div>
             </li>
           );
@@ -256,40 +281,54 @@ export function QuickBooksConnectSection({
           {!isConnected && !isError && <Badge variant="muted">Not connected</Badge>}
         </div>
         <CardDescription>
-          Connect your QuickBooks account to help keep your customers, invoices, payments, and
-          refunds in sync.
+          {!isConnected && !isError
+            ? "Spend less time entering information twice. Connect QuickBooks Online to automatically sync your venue's customers, invoices, payments and refunds with your accounting records."
+            : isError
+              ? "QuickBooks needs you to renew your connection before syncing can continue. Sign in to your existing Intuit account and authorize the connection again."
+              : "Your venue's supported customers, invoices, payments and refunds sync automatically with your connected QuickBooks company."}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="htc-surface-guidance px-3 py-2.5">
-          <p className="text-xs text-muted-foreground">
-            You&apos;ll sign in to your own QuickBooks account and choose the company you want to
-            connect.
-          </p>
-        </div>
         {isConnected ? (
           <div className="space-y-3">
             <div className="flex items-start gap-3 rounded-lg border border-success/25 bg-success/5 p-4">
               <CheckCircle2 className="h-5 w-5 shrink-0 text-success mt-0.5" />
               <div className="space-y-0.5">
-                <p className="text-sm font-medium text-foreground">
-                  {connection?.companyName ? `Connected to ${connection.companyName}.` : "QuickBooks is connected."}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Customers, invoices, payments, and refunds sync automatically as they happen.
-                </p>
+                {connection?.companyName ? (
+                  <>
+                    <p className="text-sm font-medium text-foreground">{connection.companyName}</p>
+                    <p className="text-xs text-muted-foreground">Connected QuickBooks company</p>
+                  </>
+                ) : (
+                  <p className="text-sm font-medium text-foreground">Your QuickBooks account is connected.</p>
+                )}
               </div>
             </div>
-            {connection?.lastHealthCheckOk === false && connection.lastError && (
+            {connection?.lastHealthCheckOk === false && (
               <div className="flex items-start gap-3 rounded-lg border border-warning/25 bg-warning/5 p-4">
                 <AlertTriangle className="h-5 w-5 shrink-0 text-warning mt-0.5" />
                 <div className="space-y-0.5">
-                  <p className="text-sm font-medium text-foreground">The last sync attempt failed.</p>
-                  <p className="text-xs text-muted-foreground">{connection.lastError}</p>
-                  <p className="text-xs text-muted-foreground">It will retry automatically.</p>
+                  <p className="text-sm font-medium text-foreground">Connected, last sync failed</p>
+                  <p className="text-xs text-muted-foreground">
+                    Your account is still connected, but a recent accounting record could not be synced successfully.
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Hello to Cheers automatically retries eligible syncs. Review your recent sync activity and any available details to identify items that need attention.
+                  </p>
+                  {connection.lastError ? (
+                    <p className="text-xs text-muted-foreground">{connection.lastError}</p>
+                  ) : null}
                 </div>
               </div>
             )}
+            <IncomeAccountPicker connection={connection} />
+            <RecentSyncActivity entries={syncLog} />
+            <div>
+              <SetupGuideLink
+                href="/help/how-to-connect-quickbooks-online"
+                label="Learn more about your QuickBooks integration"
+              />
+            </div>
             <Button
               type="button"
               variant="outline"
@@ -304,15 +343,13 @@ export function QuickBooksConnectSection({
                 "Disconnect QuickBooks"
               )}
             </Button>
-            <IncomeAccountPicker connection={connection} />
-            <RecentSyncActivity entries={syncLog} />
           </div>
         ) : isError ? (
           <div className="space-y-3">
             <div className="flex items-start gap-3 rounded-lg border border-destructive/25 bg-destructive/5 p-4">
               <AlertTriangle className="h-5 w-5 shrink-0 text-destructive mt-0.5" />
               <div className="space-y-0.5">
-                <p className="text-sm font-medium text-foreground">Your QuickBooks connection needs to be reconnected.</p>
+                <p className="text-sm font-medium text-foreground">Let&apos;s get your accounting connected again.</p>
                 {connection?.lastError && <p className="text-xs text-muted-foreground">{connection.lastError}</p>}
               </div>
             </div>
@@ -325,9 +362,21 @@ export function QuickBooksConnectSection({
                 Reconnect QuickBooks
               </a>
             )}
+            <p className="text-xs text-muted-foreground">
+              Be sure to select the same QuickBooks company you were previously using.
+            </p>
+            <div>
+              <SetupGuideLink
+                href="/help/how-to-connect-quickbooks-online"
+                label="Need a hand? Follow our step-by-step QuickBooks setup guide."
+              />
+            </div>
           </div>
         ) : (
           <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Manage your events and client financials in Hello to Cheers while keeping your books up to date in QuickBooks.
+            </p>
             {!isConfigured ? (
               <div className="rounded-lg border border-border bg-muted/30 p-4">
                 <p className="text-sm text-muted-foreground">
@@ -347,21 +396,13 @@ export function QuickBooksConnectSection({
                 <div>
                   <SetupGuideLink
                     href="/help/how-to-connect-quickbooks-online"
-                    label="Need help? Follow the step-by-step QuickBooks setup guide"
+                    label="Need a hand? Follow our step-by-step QuickBooks setup guide."
                   />
                 </div>
               </>
             )}
           </div>
         )}
-        {(isConnected || isError) ? (
-          <div>
-            <SetupGuideLink
-              href="/help/how-to-connect-quickbooks-online"
-              label="Need help? Follow the step-by-step QuickBooks setup guide"
-            />
-          </div>
-        ) : null}
       </CardContent>
     </Card>
   );

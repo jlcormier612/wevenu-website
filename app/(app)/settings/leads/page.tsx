@@ -20,12 +20,41 @@ import { capabilitiesFromVenue } from "@/lib/playbooks/capabilities";
 import { getCurrentUserRole, getCurrentVenue } from "@/lib/venue/service";
 import { getEmailIntakeHealth } from "@/lib/lead-intake/email-intake-health";
 import { getEmailIntakeStatus } from "@/lib/lead-intake/email-status";
+import type { GmailVerificationCustomerView } from "@/lib/lead-intake/gmail-forwarding-verification";
+import { getActiveGmailVerificationForVenue } from "@/lib/lead-intake/gmail-forwarding-verification-store";
 import { getInquiryFormSettings, getPublicInquiryFormConfig } from "@/lib/inquiry-form/service";
 import { getTourSettings } from "@/lib/tours/service";
+import { createAdminClient } from "@/integrations/supabase/admin";
 
 export const metadata: Metadata = { title: "Leads & Booking — Settings" };
 
-export default async function LeadsBookingSettingsPage() {
+function syntheticGmailFixture(modeRaw?: string | null): GmailVerificationCustomerView | null {
+  // Local visual acceptance only. Requires BOTH flags — never set ALLOW_* in Sandbox/Production.
+  // Optional ?gmail_fixture=pending|pending-code|opened|expired|code-only
+  if (process.env.ALLOW_GMAIL_VERIFICATION_UI_FIXTURE !== "1") return null;
+  if (process.env.GMAIL_VERIFICATION_UI_FIXTURE !== "1") return null;
+  const mode = (modeRaw ?? process.env.GMAIL_VERIFICATION_UI_FIXTURE_STATE ?? "pending").trim();
+  const base = {
+    id: `fixture-${mode}`,
+    confirmationCode: mode === "code-only" ? "123456789" : mode === "pending-code" || mode === "opened" ? "987654321" : null,
+    hasLink: mode !== "code-only",
+    expiresAt: mode === "expired" ? new Date(Date.now() - 60_000).toISOString() : null,
+    expiryKnown: mode === "expired",
+    receivedAt: new Date().toISOString(),
+  };
+  if (mode === "expired") return { ...base, display: "expired", hasLink: true, confirmationCode: null };
+  if (mode === "opened") return { ...base, display: "opened", hasLink: true };
+  if (mode === "code-only") return { ...base, display: "pending", hasLink: false };
+  return { ...base, display: "pending", hasLink: true, confirmationCode: mode === "pending-code" ? base.confirmationCode : null };
+}
+
+export default async function LeadsBookingSettingsPage({
+  searchParams,
+}: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const sp = searchParams ? await searchParams : {};
+  const fixtureMode = typeof sp.gmail_fixture === "string" ? sp.gmail_fixture : null;
   const [venue, emailIntakeStatus, intakeHealth, tourSettings, inquiryFormSettings, role] = await Promise.all([
     getCurrentVenue(), getEmailIntakeStatus(), getEmailIntakeHealth(), getTourSettings(), getInquiryFormSettings(), getCurrentUserRole(),
   ]);
@@ -34,6 +63,15 @@ export default async function LeadsBookingSettingsPage() {
     : null;
   const canEditInquiryForm = role === "owner" || role === "manager";
   const planningCapabilities = capabilitiesFromVenue(venue);
+
+  let gmailVerification: GmailVerificationCustomerView | null = syntheticGmailFixture(fixtureMode);
+  if (!gmailVerification && venue && (role === "owner" || role === "manager")) {
+    try {
+      gmailVerification = await getActiveGmailVerificationForVenue(createAdminClient(), venue.id);
+    } catch {
+      gmailVerification = null;
+    }
+  }
 
   return (
     <div className="htc-hospitality-page space-y-4 sm:space-y-6">
@@ -88,9 +126,9 @@ export default async function LeadsBookingSettingsPage() {
       {venue && (
         <Card id="inquiry" className="scroll-mt-20">
           <CardHeader>
-            <CardTitle className="text-base">Inquiry Form</CardTitle>
+            <CardTitle className="text-base">Website Inquiry Form</CardTitle>
             <CardDescription>
-              Share your inquiry form or embed it on your website. Every submission becomes a lead in Hello to Cheers automatically.
+              Turn website visitors into prospective clients.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -100,10 +138,14 @@ export default async function LeadsBookingSettingsPage() {
               leadEmailAddress={
                 process.env.RESEND_INBOUND_ADDRESS
                   ? `leads+${venue.leadEmailKey}@${process.env.RESEND_INBOUND_ADDRESS.replace(/^.*@/, "")}`
-                  : null
+                  : process.env.ALLOW_GMAIL_VERIFICATION_UI_FIXTURE === "1" &&
+                      process.env.GMAIL_VERIFICATION_UI_FIXTURE === "1"
+                    ? `leads+${venue.leadEmailKey}@inbound.local.test`
+                    : null
               }
               emailIntakeStatus={emailIntakeStatus}
               intakeHealth={intakeHealth}
+              gmailVerification={gmailVerification}
               inquiryFormSettings={inquiryFormSettings}
               canEditInquiryForm={canEditInquiryForm}
               previewBaseConfig={previewBaseConfig}

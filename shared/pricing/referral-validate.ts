@@ -172,17 +172,34 @@ export function customerStatusLabel(status: CustomerReferralStatus): string {
     case "referral_received":
       return "Referral received";
     case "reviewing":
-      return "We're reviewing it";
+      return "Referral received";
     case "venue_joined":
-      return "Venue joined HTC";
+      return "Qualifying period";
     case "credit_pending":
-      return "Thank-you credit pending";
+      return "Qualifying period";
     case "credit_earned":
-      return "Credit earned";
+      return "Reward available";
     case "credit_applied":
-      return "Credit applied";
+      return "Reward applied";
     case "closed":
       return "Closed";
+  }
+}
+
+export function customerStatusDescription(status: CustomerReferralStatus): string {
+  switch (status) {
+    case "referral_received":
+    case "reviewing":
+      return "We've received your introduction.";
+    case "venue_joined":
+    case "credit_pending":
+      return "Your referred venue has joined Hello to Cheers.";
+    case "credit_earned":
+      return "Subscription credit available.";
+    case "credit_applied":
+      return "Credit applied to your subscription.";
+    case "closed":
+      return "This referral is no longer active.";
   }
 }
 
@@ -216,6 +233,7 @@ export function toCustomerReferralView(
     submittedAt: referral.createdAt,
     status: customerStatus,
     statusLabel: customerStatusLabel(customerStatus),
+    statusDescription: customerStatusDescription(customerStatus),
     rewardAmountCents: showAmount ? reward?.rewardAmountCents ?? null : null,
     rewardCurrency: showAmount ? reward?.currency ?? "usd" : null,
     appliedInvoiceId:

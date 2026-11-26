@@ -114,14 +114,13 @@ describe("texting human-facing explanation per display state", () => {
     });
   }
 
-  it("information_saved: saved, HTC working, no number, not ready, no owner action", () => {
+  it("information_saved: saved, setup underway, no number, no owner action", () => {
     const panel = panelFor("information_saved", { smsReady: false, e164: null });
     const story = buildTextingPhaseStory(panel);
-    assert.match(story.whatHappened, /received and saved/i);
-    assert.match(story.whatHappened, /working through/i);
-    assert.match(story.whatHappensNext, /No texting number has been assigned yet/i);
-    assert.match(story.whatHappensNext, /not ready/i);
-    assert.match(story.ownerNeedsToDo, /No action is required/i);
+    assert.match(story.whatHappened, /saved and your texting setup is underway/i);
+    assert.match(story.whatHappened, /No texting number has been assigned yet/i);
+    assert.match(story.whatHappensNext, /continue using Hello to Cheers/i);
+    assert.match(story.ownerNeedsToDo, /No action is needed/i);
     assert.equal(panel.smsReady, false);
     assert.equal(panel.textingNumber.e164, null);
     assert.equal(textingDisplayHeadline(panel), "Setting up");
@@ -135,15 +134,8 @@ describe("texting human-facing explanation per display state", () => {
       const panel = panelFor(phase, { smsReady: false, e164: null });
       const copy = collectTextingHumanFacingCopy(panel);
       assert.doesNotMatch(copy, /Your (assigned )?texting number is/i);
-      assert.match(
-        buildTextingPhaseStory(panel).whatHappensNext
-          + (phase === "information_saved" || phase === "under_review" || phase === "setting_up_number"
-            ? " No texting number"
-            : ""),
-        /./,
-      );
       if (phase === "information_saved") {
-        assert.match(buildTextingPhaseStory(panel).whatHappensNext, /No texting number has been assigned yet/);
+        assert.match(buildTextingPhaseStory(panel).whatHappened, /No texting number has been assigned yet/);
       }
     }
   });
@@ -203,7 +195,7 @@ describe("texting Ask Luv grounded context", () => {
     assert.match(answer, /Setting up/);
     assert.match(answer, /No texting number is assigned yet/);
     assert.match(answer, /not ready to send yet/i);
-    assert.match(answer, /No action is required/i);
+    assert.match(answer, /No action is needed/i);
     assertNoProviderLeak(answer);
   });
 
@@ -234,7 +226,9 @@ describe("texting setup help link + no Ask Luv branding", () => {
     assert.equal(TEXTING_SETUP_GUIDE_HREF, `/help/${TEXTING_SETUP_GUIDE_SLUG}`);
     const article = INTEGRATION_SETUP_ARTICLES.find((a) => a.slug === TEXTING_SETUP_GUIDE_SLUG);
     assert.ok(article);
-    assertNoProviderLeak(article!.body);
+    // Approved Help FAQ/resources may name Twilio / A2P once; Settings UI still must not.
+    assert.match(article!.body, /Do I need to create a separate Twilio account\?/);
+    assert.doesNotMatch(article!.body, /Trust Hub|Account SID|Auth Token/i);
   });
 
   it("Text messaging setup section includes guide link and status story, not Ask Luv", () => {

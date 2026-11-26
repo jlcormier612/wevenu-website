@@ -166,8 +166,8 @@ function PageFormPicker({
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Step 1 of 2</p>
           <p className="text-sm font-medium text-heading">Select a Facebook Page</p>
           <p className="text-xs text-muted-foreground">
-            Choose the Page whose Lead Ads should feed Hello to Cheers. Instagram Lead Ads run through this same
-            Page — you don&apos;t connect Instagram separately.
+            Select your venue&apos;s Facebook Page from the available Pages. Confirm your selection to complete the Page connection.
+            There&apos;s no separate Instagram connection to set up in Hello to Cheers.
           </p>
         </div>
         {!pages ? (
@@ -224,7 +224,7 @@ function PageFormPicker({
         <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Step 2 of 2</p>
         <p className="text-sm font-medium text-heading">Choose Lead Ads forms</p>
         <p className="text-xs text-muted-foreground">
-          Only the forms you select here will send leads into Hello to Cheers.
+          Select the forms you&apos;d like to send inquiries into Hello to Cheers.
         </p>
       </div>
 
@@ -234,12 +234,10 @@ function PageFormPicker({
         <div className="flex items-start gap-3 rounded-lg border border-warning/25 bg-warning/5 p-4">
           <AlertTriangle className="h-5 w-5 shrink-0 text-warning mt-0.5" />
           <div className="space-y-0.5">
-            <p className="text-sm font-medium text-foreground">
-              No Lead Ads forms were found for this Page yet.
-            </p>
+            <p className="text-sm font-medium text-foreground">Don&apos;t have any lead forms yet?</p>
             <p className="text-xs text-muted-foreground">
-              Create a Lead Ad form in Meta, then return here to connect it. Setup is not complete until at least
-              one form is connected.
+              You can create Instant Forms through Meta Ads Manager when preparing a lead-generation campaign.
+              Once you&apos;ve created and published your form, return to Hello to Cheers and update your form selections.
             </p>
             {formsError && <p className="text-xs text-muted-foreground">{formsError}</p>}
           </div>
@@ -270,7 +268,9 @@ function PageFormPicker({
       )}
 
       {hasForms && selectedForms.size === 0 && (
-        <p className="text-xs text-warning">Select at least one form to finish — no leads arrive until you do.</p>
+        <p className="text-xs text-warning">
+          Your setup is complete when your Page is connected and at least one lead form is enabled.
+        </p>
       )}
 
       <div className="flex flex-wrap items-center gap-2">
@@ -521,8 +521,11 @@ export function FacebookConnectSection({
             </div>
           ) : (
             <>
-              <p className="text-xs text-muted-foreground">
-                You&apos;ll sign in to your own account and choose which Page and forms to connect.
+              <p className="text-sm text-muted-foreground">
+                Connect your Facebook business Page and select your lead forms to receive new inquiries from your Facebook and Instagram Lead Ads directly in Hello to Cheers.
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Keep all your leads organized in one place, ready for follow-up.
               </p>
               <a
                 href={connectUrl}
@@ -533,7 +536,7 @@ export function FacebookConnectSection({
               <div>
                 <SetupGuideLink
                   href="/help/how-to-connect-facebook-instagram-lead-ads"
-                  label="Need help? Follow the step-by-step Facebook & Instagram Lead Ads guide"
+                  label="Follow our step-by-step Facebook & Instagram Lead Ads setup guide."
                 />
               </div>
             </>
@@ -563,26 +566,34 @@ export function FacebookConnectSection({
     if (needsForms) {
       return (
         <div className="space-y-3">
+          {connection?.pageName ? (
+            <div className="space-y-0.5">
+              <p className="text-sm font-medium text-foreground">{connection.pageName}</p>
+              <p className="text-xs text-muted-foreground">Facebook Page connected</p>
+            </div>
+          ) : null}
           <div className="flex items-start gap-3 rounded-lg border border-warning/25 bg-warning/5 p-4">
             <AlertTriangle className="h-5 w-5 shrink-0 text-warning mt-0.5" />
             <div className="space-y-0.5">
-              <p className="text-sm font-medium text-foreground">
-                Your Facebook Page is connected, but no Lead Ads forms are connected yet.
-              </p>
+              <p className="text-sm font-medium text-foreground">One more step!</p>
               <p className="text-xs text-muted-foreground">
-                Leads will not arrive until you choose at least one form.
-                {connection?.pageName ? ` Page: ${connection.pageName}.` : ""}
+                Choose the lead forms you&apos;d like to connect so new inquiries can start arriving in Hello to Cheers.
               </p>
             </div>
           </div>
           {leadForms.length > 0 && (
             <div className="space-y-1.5">
               <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Connected forms — all currently turned off
+                Connected forms
               </p>
               {leadForms.map((f) => (
                 <div key={f.id} className="flex items-center justify-between rounded-lg border border-border px-3 py-2 text-sm">
-                  {f.formName ?? f.formId}
+                  <span>
+                    {f.formName ?? f.formId}
+                    <span className="ml-2 text-xs text-muted-foreground">
+                      {f.isEnabled ? "Enabled" : "Disabled"}
+                    </span>
+                  </span>
                   <Switch
                     checked={f.isEnabled}
                     disabled={togglingFormId === f.formId}
@@ -609,9 +620,16 @@ export function FacebookConnectSection({
         <div className="flex items-start gap-3 rounded-lg border border-success/25 bg-success/5 p-4">
           <CheckCircle2 className="h-5 w-5 shrink-0 text-success mt-0.5" />
           <div className="space-y-0.5">
-            <p className="text-sm font-medium text-foreground">Connected to {connection?.pageName}.</p>
+            {connection?.pageName ? (
+              <>
+                <p className="text-sm font-medium text-foreground">{connection.pageName}</p>
+                <p className="text-xs text-muted-foreground">Connected Facebook Page</p>
+              </>
+            ) : (
+              <p className="text-sm font-medium text-foreground">Facebook Page connected</p>
+            )}
             <p className="text-xs text-muted-foreground">
-              Your connected Lead Ads forms will sync new leads automatically.
+              New inquiries from your connected forms will be delivered directly to Hello to Cheers.
             </p>
           </div>
         </div>
@@ -620,7 +638,12 @@ export function FacebookConnectSection({
             <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Connected forms</p>
             {leadForms.map((f) => (
               <div key={f.id} className="flex items-center justify-between rounded-lg border border-border px-3 py-2 text-sm">
-                {f.formName ?? f.formId}
+                <span>
+                  {f.formName ?? f.formId}
+                  <span className="ml-2 text-xs text-muted-foreground">
+                    {f.isEnabled ? "Enabled" : "Disabled"}
+                  </span>
+                </span>
                 <Switch
                   checked={f.isEnabled}
                   disabled={togglingFormId === f.formId}
@@ -647,31 +670,31 @@ export function FacebookConnectSection({
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-base">
             <RefreshCw className="h-4 w-4 text-muted-foreground" />
-            Facebook / Instagram Lead Ads
+            Facebook & Instagram Lead Ads
           </CardTitle>
           {isDelivering && <Badge variant="success">Connected</Badge>}
-          {needsForms && <Badge variant="warning">Action needed</Badge>}
-          {needsPageSelection && <Badge variant="warning">Action needed</Badge>}
+          {needsForms && <Badge variant="warning">Setup incomplete</Badge>}
+          {needsPageSelection && <Badge variant="warning">Setup incomplete</Badge>}
           {isError && <Badge variant="destructive">Reconnect required</Badge>}
           {isDisconnected && <Badge variant="muted">Not connected</Badge>}
         </div>
         <CardDescription>
-          Connect your Facebook Page and Lead Ads forms to bring new inquiries into Hello to Cheers automatically.
+          {isDisconnected
+            ? "Turn advertising inquiries into new opportunities automatically."
+            : needsForms || needsPageSelection
+              ? "Choose the lead forms you'd like to connect so new inquiries can start arriving in Hello to Cheers."
+              : isDelivering
+                ? "New inquiries from your connected forms will be delivered directly to Hello to Cheers."
+                : "Connect your Facebook business Page and select your lead forms to receive new inquiries from your Facebook and Instagram Lead Ads directly in Hello to Cheers."}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="htc-surface-guidance px-3 py-2.5">
-          <p className="text-xs text-muted-foreground">
-            <span className="font-semibold text-foreground">Before you start: </span>
-            Make sure you have access to the correct Facebook Page and know which Lead Ads forms should send leads into Hello to Cheers.
-          </p>
-        </div>
         {renderBody()}
         {!isDisconnected ? (
           <div>
             <SetupGuideLink
               href="/help/how-to-connect-facebook-instagram-lead-ads"
-              label="Need help? Follow the step-by-step Facebook & Instagram Lead Ads guide"
+              label="View setup guide"
             />
           </div>
         ) : null}

@@ -210,8 +210,8 @@ export async function submitVenueReferral(
     referral,
     customerView: toCustomerReferralView(referral, null),
     confirmation: {
-      title: "Thanks for sharing the Luv!",
-      body: "We've received your referral, and we'll take it from here. We appreciate you helping more venues discover Hello to Cheers!",
+      title: "Cheers to your referral!",
+      body: "Thank you for introducing us to another venue. We're excited to connect with them! You can follow your referral's progress from your Refer a Venue page.",
     },
   };
 }

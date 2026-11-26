@@ -29,8 +29,16 @@ import { buildStripeConnectUrl } from "@/lib/stripe/oauth";
 export { buildStripeConnectUrl };
 
 const PAYMENT_METHOD_OPTIONS: { value: StripePaymentMethodType; label: string; hint: string }[] = [
-  { value: "card", label: "Credit/Debit Card", hint: "Confirms instantly." },
-  { value: "us_bank_account", label: "ACH Bank Transfer", hint: "Lower processing fees; takes 4–5 business days to settle." },
+  {
+    value: "card",
+    label: "Credit/Debit Card",
+    hint: "Allow clients to make payments using a supported credit or debit card. This is a convenient option for clients who prefer paying by card.",
+  },
+  {
+    value: "us_bank_account",
+    label: "ACH Bank Transfer",
+    hint: "Allow eligible clients to make payments directly from a U.S. bank account. ACH payments generally take longer to clear than card payments. Processing fees and settlement times are determined by Stripe.",
+  },
 ];
 
 export function StripeConnectSection({
@@ -147,27 +155,26 @@ export function StripeConnectSection({
           {!isConnected && <Badge variant="muted">Not connected</Badge>}
         </div>
         <CardDescription>
-          Connect your Stripe account to accept deposits and invoice payments from clients. Stripe
-          processes payments directly for your venue.
+          {!isConnected
+            ? "Allow your clients to conveniently pay online through their client portal."
+            : chargesEnabled
+              ? "Your Stripe account is connected and Stripe has confirmed that your account can accept charges."
+              : "Your Stripe account is connected. Stripe just needs a little more information before you can begin accepting online payments."}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="htc-surface-guidance px-3 py-2.5">
-          <p className="text-xs text-muted-foreground">
-            You&apos;ll securely connect or create your own Stripe account and complete any required
-            business verification with Stripe.
-          </p>
-        </div>
         {isConnected ? (
           <div className="space-y-4">
             {chargesEnabled ? (
               <div className="flex items-start gap-3 rounded-lg border border-success/25 bg-success/5 p-4">
                 <CheckCircle2 className="h-5 w-5 shrink-0 text-success mt-0.5" />
                 <div className="space-y-0.5">
-                  <p className="text-sm font-medium text-foreground">Your Stripe account is connected and ready to accept payments.</p>
-                  {venue.stripeAccountId && (
+                  <p className="text-sm font-medium text-foreground">
+                    You&apos;re ready to configure your accepted online payment methods.
+                  </p>
+                  {venue.stripeAccountId ? (
                     <p className="text-xs text-muted-foreground font-mono">Account: {venue.stripeAccountId}</p>
-                  )}
+                  ) : null}
                 </div>
               </div>
             ) : (
@@ -175,10 +182,9 @@ export function StripeConnectSection({
                 <div className="flex items-start gap-3 rounded-lg border border-warning/25 bg-warning/5 p-4">
                   <AlertTriangle className="h-5 w-5 shrink-0 text-warning mt-0.5" />
                   <div className="space-y-1.5">
-                    <p className="text-sm font-medium text-foreground">A Stripe account is linked, but it can&apos;t accept charges yet.</p>
+                    <p className="text-sm font-medium text-foreground">You&apos;re almost there!</p>
                     <p className="text-xs text-muted-foreground">
-                      Finish identity verification, business details, and bank information for this same Stripe account.
-                      Hello to Cheers will turn on online payments only after Stripe confirms eligibility — nothing is charged until then.
+                      You can finish setting up your existing account whenever you&apos;re ready.
                     </p>
                   </div>
                 </div>
@@ -209,28 +215,44 @@ export function StripeConnectSection({
                     )}
                   </Button>
                 </div>
+                <p className="text-xs text-muted-foreground">
+                  Online payments will become available once Stripe confirms your account is eligible.
+                </p>
               </div>
             )}
 
-            <div className="space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Accepted payment methods</p>
+            {chargesEnabled ? (
               <div className="space-y-2">
-                {PAYMENT_METHOD_OPTIONS.map((opt) => (
-                  <label key={opt.value} className="flex items-start gap-2.5 rounded-lg border border-border px-3 py-2.5 text-sm">
-                    <Checkbox
-                      checked={methods.includes(opt.value)}
-                      onCheckedChange={(v) => toggleMethod(opt.value, v === true)}
-                      disabled={savingMethods}
-                      className="mt-0.5"
-                    />
-                    <span>
-                      <span className="font-medium text-foreground">{opt.label}</span>
-                      <span className="block text-xs text-muted-foreground">{opt.hint}</span>
-                    </span>
-                  </label>
-                ))}
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Accepted payment methods
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Once your Stripe account is ready, choose which available online payment methods
+                  you&apos;d like to offer your clients. You can enable both methods if you&apos;d like to
+                  give your clients more flexibility. You can return to Financials &amp; Integrations to
+                  update your accepted payment methods at any time.
+                </p>
+                <div className="space-y-2">
+                  {PAYMENT_METHOD_OPTIONS.map((opt) => (
+                    <label
+                      key={opt.value}
+                      className="flex items-start gap-2.5 rounded-lg border border-border px-3 py-2.5 text-sm"
+                    >
+                      <Checkbox
+                        checked={methods.includes(opt.value)}
+                        onCheckedChange={(v) => toggleMethod(opt.value, v === true)}
+                        disabled={savingMethods}
+                        className="mt-0.5"
+                      />
+                      <span>
+                        <span className="font-medium text-foreground">{opt.label}</span>
+                        <span className="block text-xs text-muted-foreground">{opt.hint}</span>
+                      </span>
+                    </label>
+                  ))}
+                </div>
               </div>
-            </div>
+            ) : null}
 
             <Button
               type="button"
@@ -249,6 +271,16 @@ export function StripeConnectSection({
           </div>
         ) : (
           <div className="space-y-3">
+            <div className="htc-surface-guidance space-y-2 px-3 py-2.5">
+              <p className="text-xs text-muted-foreground">
+                Connect your venue&apos;s Stripe account to accept online payments and receive funds
+                directly through Stripe.
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Already have a Stripe account? Connect your existing account. If you&apos;re new to
+                Stripe, you can create one during setup.
+              </p>
+            </div>
             {!isConfigured ? (
               <div className="rounded-lg border border-border bg-muted/30 p-4">
                 <p className="text-sm text-muted-foreground">
@@ -268,7 +300,7 @@ export function StripeConnectSection({
                 <div>
                   <SetupGuideLink
                     href="/help/how-to-connect-stripe-for-online-payments"
-                    label="Need help? Follow the step-by-step Stripe setup guide"
+                    label="Need a hand? Follow our step-by-step Stripe setup guide."
                   />
                 </div>
               </>
@@ -279,7 +311,7 @@ export function StripeConnectSection({
           <div>
             <SetupGuideLink
               href="/help/how-to-connect-stripe-for-online-payments"
-              label="Need help? Follow the step-by-step Stripe setup guide"
+              label="Need a hand? Follow our step-by-step Stripe setup guide."
             />
           </div>
         ) : null}
