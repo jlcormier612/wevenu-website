@@ -13,6 +13,11 @@
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { quickBooksFetch } from "@/lib/quickbooks/client";
 import { ensureDefaultItem } from "@/lib/quickbooks/items";
+import {
+  buildQuickBooksInvoiceLinePayload,
+  type HtcInvoiceLineItem,
+  type QuickBooksInvoiceLine,
+} from "@/lib/quickbooks/sync/invoice-line-payload";
 import type { QuickBooksSyncResult } from "@/lib/quickbooks/sync/types";
 
 type InvoiceRow = {
@@ -21,12 +26,7 @@ type InvoiceRow = {
   due_date: string | null;
 };
 
-type LineItemRow = {
-  description: string;
-  quantity: number;
-  unit_price: number;
-  amount: number;
-};
+type LineItemRow = HtcInvoiceLineItem;
 
 function escapeQboString(value: string): string {
   return value.replace(/'/g, "''");
@@ -56,7 +56,7 @@ export async function syncInvoice(venueId: string, entityId: string): Promise<Qu
   }
 
   const { data: lineItems } = await admin.from("invoice_line_items")
-    .select("description, quantity, unit_price, amount")
+    .select("type, description, quantity, unit_price, amount")
     .eq("invoice_id", entityId).order("sort_order");
   const lines = (lineItems ?? []) as LineItemRow[];
   if (lines.length === 0) {
@@ -77,25 +77,59 @@ export async function syncInvoice(venueId: string, entityId: string): Promise<Qu
     return { ok: true, quickbooksId: existingId };
   }
 
-  const createResult = await quickBooksFetch(venueId, "/invoice", {
+  const mapped = buildQuickBooksInvoiceLinePayload(lines, itemResult.itemId);
+  if (mapped.Line.length === 0) {
+    return { ok: false, error: "Invoice has no QuickBooks-syncable line items.", retryable: false };
+  }
+
+  const baseBody: Record<string, unknown> = {
+    CustomerRef: { value: customerId },
+    DocNumber: invoiceRow.invoice_number,
+    DueDate: invoiceRow.due_date ?? undefined,
+    // HTC computes tax/discount; do not ask QBO to recalculate sales tax.
+    GlobalTaxCalculation: "NotApplicable",
+    Line: mapped.Line,
+  };
+  if (mapped.TxnTaxDetail) {
+    baseBody.TxnTaxDetail = mapped.TxnTaxDetail;
+  }
+
+  let createResult = await quickBooksFetch(venueId, "/invoice", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      CustomerRef: { value: customerId },
-      DocNumber: invoiceRow.invoice_number,
-      DueDate: invoiceRow.due_date ?? undefined,
-      Line: lines.map((line) => ({
-        Amount: line.amount,
-        DetailType: "SalesItemLineDetail",
-        Description: line.description,
-        SalesItemLineDetail: {
-          ItemRef: { value: itemResult.itemId },
-          Qty: line.quantity,
-          UnitPrice: line.unit_price,
-        },
-      })),
-    }),
+    body: JSON.stringify(baseBody),
   });
+
+  // Subscription / tax-feature loss: if TxnTaxDetail is rejected, fall back to
+  // non-tax-coded sales lines for the tax amount so invoice totals still match
+  // payments — without enabling QBO automated sales tax on revenue lines.
+  if (!createResult.ok && mapped.totalTax > 0) {
+    const taxFallbackLines: QuickBooksInvoiceLine[] = [
+      ...mapped.Line,
+      ...lines
+        .filter((line) => (line.type ?? "").trim().toLowerCase() === "tax")
+        .map((line) => ({
+          Amount: Number(line.amount) || 0,
+          DetailType: "SalesItemLineDetail" as const,
+          Description: line.description?.trim() || "Sales tax",
+          SalesItemLineDetail: {
+            ItemRef: { value: itemResult.itemId },
+            Qty: Number(line.quantity) || 1,
+            UnitPrice: Number(line.unit_price) || Number(line.amount) || 0,
+          },
+        })),
+    ];
+    const { TxnTaxDetail: _ignored, ...withoutTaxDetail } = baseBody;
+    createResult = await quickBooksFetch(venueId, "/invoice", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...withoutTaxDetail,
+        Line: taxFallbackLines,
+      }),
+    });
+  }
+
   if (!createResult.ok) return { ok: false, error: createResult.error, retryable: createResult.retryable, uncertain: createResult.uncertain };
 
   const createData = await createResult.response.json() as { Invoice?: { Id: string } };
