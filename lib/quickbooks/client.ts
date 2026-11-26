@@ -10,6 +10,10 @@
  * that this doesn't already cover.
  */
 import { createAdminClient } from "@/integrations/supabase/admin";
+import {
+  formatQuickBooksApiError,
+  logQuickBooksApiFailure,
+} from "@/lib/quickbooks/api-error";
 import { QUICKBOOKS_TOKEN_URL, quickBooksApiBaseUrl } from "@/lib/quickbooks/config";
 import {
   classifyTransportFailure,
@@ -161,10 +165,30 @@ export async function quickBooksFetch(venueId: string, path: string, init?: Requ
 
   if (!response.ok) {
     const body = await response.text().catch(() => "");
+    const method = (init?.method ?? "GET").toUpperCase();
+    const intuitTid =
+      response.headers.get("intuit_tid") ??
+      response.headers.get("Intuit-Tid") ??
+      null;
+    const error = formatQuickBooksApiError({
+      method,
+      path,
+      status: response.status,
+      intuitTid,
+      body,
+    });
+    logQuickBooksApiFailure({
+      venueId,
+      method,
+      path,
+      status: response.status,
+      intuitTid,
+      message: error,
+    });
     // 4xx other than 401/429 are generally permanent (validation errors) —
     // 429/5xx are transient and worth retrying.
     const retryable = response.status === 429 || response.status >= 500;
-    return { ok: false, error: `QuickBooks API error ${response.status}: ${body.slice(0, 500)}`, retryable };
+    return { ok: false, error, retryable };
   }
 
   return { ok: true, response };
