@@ -9,6 +9,7 @@ import { SidebarNav } from "@/components/shell/sidebar-nav";
 import { WorkspaceMainScrollBridge } from "@/components/shell/workspace-main-scroll-bridge";
 import { WorkspaceShellHeader } from "@/components/shell/workspace-shell-header";
 import type { VenueMembershipSummary } from "@/lib/venue/active-context";
+import { isReferralProgramReady } from "@shared/pricing";
 import { cn } from "@/lib/utils";
 
 /**
@@ -79,6 +80,7 @@ export function WorkspaceShell({
             staffRole={staffRole}
             activeVenueId={activeVenueId}
             memberships={memberships}
+            showReferEarn={isReferralProgramReady()}
           />
 
           <main

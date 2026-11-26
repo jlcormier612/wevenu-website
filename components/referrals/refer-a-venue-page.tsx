@@ -75,7 +75,7 @@ export function ReferAVenuePage() {
       enabled?: boolean;
       referrals?: CustomerReferral[];
       error?: string;
-      readiness?: { diagnosticMessage?: string };
+      message?: string;
     };
     if (!res.ok) {
       setLoadError(json.error || "Unable to load referrals.");
@@ -84,10 +84,8 @@ export function ReferAVenuePage() {
     setEnabled(json.enabled !== false);
     setReferrals(json.referrals ?? []);
     if (json.enabled === false) {
-      setLoadError(
-        json.readiness?.diagnosticMessage ||
-          "Refer a Venue is not available yet.",
-      );
+      // Customer-safe only — never surface readiness env diagnostics.
+      setLoadError(json.message || "Refer a Venue is not available yet.");
     } else {
       setLoadError(null);
     }

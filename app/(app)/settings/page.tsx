@@ -17,6 +17,7 @@ import { getCurrentVenue } from "@/lib/venue/service";
 import { getQuickBooksConnection } from "@/lib/quickbooks/service";
 import { getTourAvailability } from "@/lib/tours/service";
 import { listLegalAcceptancesForCurrentUser } from "@/lib/legal/service";
+import { isReferralProgramReady } from "@shared/pricing";
 
 export const metadata: Metadata = { title: "Settings" };
 
@@ -82,13 +83,17 @@ async function SettingsBodyIsland() {
       icon: CreditCard,
       description: "Hello to Cheers plan, payment method, and cancellation.",
     },
-    {
-      href: "/settings/referrals",
-      title: "Refer a Venue",
-      icon: HeartHandshake,
-      description:
-        "Share the Luv and earn a free month when a venue you refer becomes a paying customer.",
-    },
+    ...(isReferralProgramReady()
+      ? [
+          {
+            href: "/settings/referrals",
+            title: "Refer a Venue",
+            icon: HeartHandshake,
+            description:
+              "Share the Luv and earn a free month when a venue you refer becomes a paying customer.",
+          } satisfies SettingsCategory,
+        ]
+      : []),
     {
       href: "/settings/team",
       title: "Team & Data",
