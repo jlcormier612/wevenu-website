@@ -277,7 +277,9 @@ export async function updateSession(
       cookieOptions: {
         path: "/",
         sameSite: "lax",
-        secure: isLocalHttp ? false : undefined,
+        // Intuit: session cookies Secure + HttpOnly (local HTTP keeps secure off).
+        secure: isLocalHttp ? false : true,
+        httpOnly: true,
         ...(cookieName ? { name: cookieName } : null),
       },
       cookies: {
@@ -298,7 +300,9 @@ export async function updateSession(
           cookiesToSet.forEach(({ name, value, options }) => {
             supabaseResponse.cookies.set(name, value, {
               ...options,
-              ...(isLocalHttp ? { secure: false } : null),
+              httpOnly: true,
+              sameSite: options?.sameSite ?? "lax",
+              ...(isLocalHttp ? { secure: false } : { secure: true }),
             });
           });
         },

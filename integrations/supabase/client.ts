@@ -23,7 +23,16 @@ export function createClient(scope: AuthSessionScope = "venue") {
 
   const client = createBrowserClient(url, anonKey, {
     isSingleton: false,
-    ...(cookieName ? { cookieOptions: { name: cookieName } } : null),
+    cookieOptions: {
+      // Prefer Secure + HttpOnly. Browser document.cookie cannot persist HttpOnly;
+      // middleware/server clients rewrite the session cookie with HttpOnly on the
+      // next request (Intuit session-cookie requirement).
+      path: "/",
+      sameSite: "lax",
+      secure: true,
+      httpOnly: true,
+      ...(cookieName ? { name: cookieName } : null),
+    },
   });
   browserClients.set(scope, client);
   return client;

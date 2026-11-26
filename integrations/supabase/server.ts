@@ -24,7 +24,15 @@ export async function createClient(scope: AuthSessionScope = "venue") {
   const cookieName = cookieNameForScope(scope, supabaseProjectRef(url));
 
   return createServerClient(url, anonKey, {
-    ...(cookieName ? { cookieOptions: { name: cookieName } } : null),
+    cookieOptions: {
+      // Intuit security requirements: session cookies must be Secure + HttpOnly.
+      // @supabase/ssr defaults httpOnly:false; override for all venue/vendor/client jars.
+      path: "/",
+      sameSite: "lax",
+      secure: true,
+      httpOnly: true,
+      ...(cookieName ? { name: cookieName } : null),
+    },
     cookies: {
       getAll() {
         return cookieStore.getAll();
