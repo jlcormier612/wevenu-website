@@ -8,7 +8,11 @@
  * Never let the token-bearing shape leave lib/quickbooks/.
  */
 import { createClient } from "@/integrations/supabase/server";
-import { openQuickBooksToken, sealQuickBooksToken } from "@/lib/quickbooks/token-crypto";
+import {
+  isSealedQuickBooksToken,
+  openQuickBooksToken,
+  sealQuickBooksToken,
+} from "@/lib/quickbooks/token-crypto";
 import type { QuickBooksConnection, QuickBooksConnectionStatus } from "@/lib/quickbooks/types";
 import { classifyClaim } from "@/lib/quickbooks/queue-recovery";
 
@@ -43,7 +47,7 @@ export type ConnectionWithTokens = {
 
 function mapConnection(r: ConnectionRow): QuickBooksConnection {
   return {
-    id: r.id, venueId: r.venue_id, realmId: r.realm_id, environment: r.environment,
+    id: r.id, venueId: r.venue_id, realmId: openQuickBooksToken(r.realm_id), environment: r.environment,
     status: r.status,
     lastHealthCheckAt: r.last_health_check_at, lastHealthCheckOk: r.last_health_check_ok,
     lastError: r.last_error, lastErrorAt: r.last_error_at,
@@ -56,7 +60,7 @@ function mapConnection(r: ConnectionRow): QuickBooksConnection {
 
 function mapConnectionWithTokens(r: ConnectionRow): ConnectionWithTokens {
   return {
-    venueId: r.venue_id, realmId: r.realm_id,
+    venueId: r.venue_id, realmId: openQuickBooksToken(r.realm_id),
     accessToken: openQuickBooksToken(r.access_token),
     accessTokenExpiresAt: r.access_token_expires_at,
     refreshToken: openQuickBooksToken(r.refresh_token),
@@ -68,14 +72,31 @@ function mapConnectionWithTokens(r: ConnectionRow): ConnectionWithTokens {
 
 export async function getConnection(client: DbClient, venueId: string): Promise<QuickBooksConnection | null> {
   const { data } = await client.from("quickbooks_connections").select("*").eq("venue_id", venueId).maybeSingle<ConnectionRow>();
-  return data ? mapConnection(data) : null;
+  if (!data) return null;
+  await maybeSealLegacyRealmId(client, venueId, data);
+  return mapConnection(data);
+}
+
+/** Seal a legacy plaintext realm_id in place. venue_id remains the only lookup key. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function maybeSealLegacyRealmId(client: any, venueId: string, row: ConnectionRow): Promise<void> {
+  if (!row.realm_id || isSealedQuickBooksToken(row.realm_id)) return;
+  const sealedRealm = sealQuickBooksToken(row.realm_id);
+  const { error } = await client
+    .from("quickbooks_connections")
+    .update({ realm_id: sealedRealm })
+    .eq("venue_id", venueId);
+  if (!error) row.realm_id = sealedRealm;
 }
 
 /** Internal-only — includes token material. Never expose this shape to a UI action. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function getConnectionWithTokens(client: any, venueId: string): Promise<ConnectionWithTokens | null> {
   const { data } = await client.from("quickbooks_connections").select("*").eq("venue_id", venueId).maybeSingle();
-  return data ? mapConnectionWithTokens(data as ConnectionRow) : null;
+  if (!data) return null;
+  const row = data as ConnectionRow;
+  await maybeSealLegacyRealmId(client, venueId, row);
+  return mapConnectionWithTokens(row);
 }
 
 export async function upsertConnection(
@@ -89,7 +110,7 @@ export async function upsertConnection(
   const { error } = await client.from("quickbooks_connections").upsert(
     {
       venue_id: venueId,
-      realm_id: input.realmId,
+      realm_id: sealQuickBooksToken(input.realmId),
       access_token: sealQuickBooksToken(input.accessToken),
       access_token_expires_at: input.accessTokenExpiresAt,
       refresh_token: sealQuickBooksToken(input.refreshToken),
@@ -117,10 +138,22 @@ export async function updateTokens(client: any, venueId: string, input: { access
   if (error) throw error;
 }
 
+/**
+ * Marks the connection disconnected and clears OAuth credentials.
+ * Preserves company_name, realm_id (still sealed at rest), income-account
+ * selection, sync queue/log history, and HTC accounting record IDs.
+ */
 export async function disconnectConnection(client: DbClient, venueId: string): Promise<void> {
+  const clearedAt = new Date(0).toISOString();
   const { error } = await client.from("quickbooks_connections").update({
     status: "disconnected",
     disconnected_at: new Date().toISOString(),
+    access_token: "",
+    refresh_token: "",
+    access_token_expires_at: clearedAt,
+    refresh_token_expires_at: clearedAt,
+    last_error: null,
+    last_error_at: null,
   }).eq("venue_id", venueId);
   if (error) throw error;
 }

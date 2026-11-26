@@ -41,5 +41,5 @@ export type QuickBooksSyncLogEntry = {
 };
 
 export type QuickBooksActionResult =
-  | { ok: true }
+  | { ok: true; message?: string }
   | { ok: false; message: string };

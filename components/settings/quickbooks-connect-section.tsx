@@ -258,8 +258,12 @@ export function QuickBooksConnectSection({
     if (!confirm("Disconnect QuickBooks? Future invoices, payments, and refunds will stop syncing until you reconnect.")) return;
     startDisconnect(async () => {
       const result = await disconnectQuickBooksAction();
-      if (result.ok) toast.success("QuickBooks disconnected.");
-      else toast.error(result.message ?? "Could not disconnect QuickBooks.");
+      if (result.ok) {
+        if (result.message) toast.success(result.message);
+        else toast.success("QuickBooks disconnected.");
+      } else {
+        toast.error(result.message ?? "Could not disconnect QuickBooks.");
+      }
     });
   }
 
