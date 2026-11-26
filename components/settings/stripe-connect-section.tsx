@@ -2,11 +2,16 @@
 
 import * as React from "react";
 
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { AlertTriangle, CheckCircle2, CreditCard, ExternalLink, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
-import { disconnectStripeAction, updateAcceptedPaymentMethodsAction } from "@/app/(app)/settings/actions";
+import {
+  createCompleteStripeSetupLinkAction,
+  disconnectStripeAction,
+  refreshStripeChargesEnabledAction,
+  updateAcceptedPaymentMethodsAction,
+} from "@/app/(app)/settings/actions";
 import { SetupGuideLink } from "@/components/help/setup-guide-link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -38,22 +43,50 @@ export function StripeConnectSection({
   /** Server-built OAuth URL — uses runtime STRIPE_CLIENT_ID when public build arg is missing. */
   connectUrl?: string | null;
 }) {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const stripeSuccess = searchParams.get("stripe_success");
   const stripeError = searchParams.get("stripe_error");
+  const stripeSetup = searchParams.get("stripe_setup");
   const [disconnecting, startDisconnect] = React.useTransition();
   const [savingMethods, startSaveMethods] = React.useTransition();
+  const [completingSetup, startCompleteSetup] = React.useTransition();
+  const [refreshingStatus, startRefreshStatus] = React.useTransition();
   const [methods, setMethods] = React.useState<StripePaymentMethodType[]>(venue.stripeAcceptedPaymentMethods);
+  const setupReturnHandled = React.useRef(false);
+
+  const connectUrl = connectUrlProp ?? buildStripeConnectUrl(venue.id, returnTo);
+  const isConfigured = !!connectUrl;
+  const isConnected = venue.stripeOnboardingStatus === "connected";
+  const chargesEnabled = isConnected && venue.stripeChargesEnabled;
 
   React.useEffect(() => {
     if (stripeSuccess) toast.success("Stripe connected successfully.");
     if (stripeError) toast.error(`Stripe error: ${stripeError}`);
   }, [stripeSuccess, stripeError]);
 
-  const connectUrl = connectUrlProp ?? buildStripeConnectUrl(venue.id, returnTo);
-  const isConfigured = !!connectUrl;
-  const isConnected = venue.stripeOnboardingStatus === "connected";
-  const chargesEnabled = isConnected && venue.stripeChargesEnabled;
+  React.useEffect(() => {
+    if (!isConnected || chargesEnabled) return;
+    if (stripeSetup !== "returned" && stripeSetup !== "refresh") return;
+    if (setupReturnHandled.current) return;
+    setupReturnHandled.current = true;
+
+    startRefreshStatus(async () => {
+      const result = await refreshStripeChargesEnabledAction();
+      if (!result.ok) {
+        toast.error(result.message ?? "Could not refresh Stripe status.");
+        return;
+      }
+      if (result.chargesEnabled) {
+        toast.success("Stripe setup is complete. Online payments are ready.");
+      } else if (stripeSetup === "refresh") {
+        toast.message("Your Stripe setup link expired. Click Complete Stripe Setup to continue.");
+      } else {
+        toast.message("Stripe is still finishing setup. Online payments stay off until Stripe confirms eligibility.");
+      }
+      router.refresh();
+    });
+  }, [chargesEnabled, isConnected, router, stripeSetup]);
 
   function handleDisconnect() {
     if (!confirm("Disconnect your Stripe account? Couples will no longer be able to pay online until you reconnect.")) return;
@@ -61,6 +94,33 @@ export function StripeConnectSection({
       const result = await disconnectStripeAction();
       if (result.ok) toast.success("Stripe account disconnected.");
       else toast.error(result.message ?? "Could not disconnect Stripe.");
+    });
+  }
+
+  function handleCompleteSetup() {
+    startCompleteSetup(async () => {
+      const result = await createCompleteStripeSetupLinkAction(returnTo);
+      if (!result.ok || !result.url) {
+        toast.error(result.message ?? "Could not open Stripe setup.");
+        return;
+      }
+      window.location.assign(result.url);
+    });
+  }
+
+  function handleRefreshStatus() {
+    startRefreshStatus(async () => {
+      const result = await refreshStripeChargesEnabledAction();
+      if (!result.ok) {
+        toast.error(result.message ?? "Could not refresh Stripe status.");
+        return;
+      }
+      if (result.chargesEnabled) {
+        toast.success("Stripe setup is complete. Online payments are ready.");
+      } else {
+        toast.message("Stripe still shows setup incomplete. Online payments remain disabled.");
+      }
+      router.refresh();
     });
   }
 
@@ -111,13 +171,43 @@ export function StripeConnectSection({
                 </div>
               </div>
             ) : (
-              <div className="flex items-start gap-3 rounded-lg border border-warning/25 bg-warning/5 p-4">
-                <AlertTriangle className="h-5 w-5 shrink-0 text-warning mt-0.5" />
-                <div className="space-y-0.5">
-                  <p className="text-sm font-medium text-foreground">A Stripe account is linked, but it can&apos;t accept charges yet.</p>
-                  <p className="text-xs text-muted-foreground">
-                    Finish your account setup in Stripe (identity verification, bank details) — Hello to Cheers will pick it up automatically.
-                  </p>
+              <div className="space-y-3">
+                <div className="flex items-start gap-3 rounded-lg border border-warning/25 bg-warning/5 p-4">
+                  <AlertTriangle className="h-5 w-5 shrink-0 text-warning mt-0.5" />
+                  <div className="space-y-1.5">
+                    <p className="text-sm font-medium text-foreground">A Stripe account is linked, but it can&apos;t accept charges yet.</p>
+                    <p className="text-xs text-muted-foreground">
+                      Finish identity verification, business details, and bank information for this same Stripe account.
+                      Hello to Cheers will turn on online payments only after Stripe confirms eligibility — nothing is charged until then.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={handleCompleteSetup}
+                    disabled={completingSetup || refreshingStatus}
+                  >
+                    {completingSetup ? (
+                      <><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />Opening Stripe…</>
+                    ) : (
+                      <><ExternalLink className="mr-1 h-3.5 w-3.5" />Complete Stripe Setup</>
+                    )}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleRefreshStatus}
+                    disabled={refreshingStatus || completingSetup}
+                  >
+                    {refreshingStatus ? (
+                      <><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />Checking…</>
+                    ) : (
+                      "Refresh status"
+                    )}
+                  </Button>
                 </div>
               </div>
             )}

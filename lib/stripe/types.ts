@@ -1,5 +1,5 @@
 export type StripeActionResult =
-  | { ok: true }
+  | { ok: true; message?: string; url?: string; chargesEnabled?: boolean }
   | { ok: false; message: string };
 
 export type CreateCheckoutSessionResult =
