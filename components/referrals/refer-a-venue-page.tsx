@@ -264,12 +264,12 @@ export function ReferAVenuePage() {
           There&apos;s no limit to the number of qualifying venues you can refer. Program eligibility
           requirements apply.
         </p>
-        <a
-          href="#learn-more-referral-rewards"
+        <Link
+          href="/help/refer-a-venue-one-referral-one-free-month"
           className="inline-flex text-[14px] font-medium text-[color:var(--htc-botanical)] underline-offset-4 hover:underline"
         >
           Learn more about referral rewards
-        </a>
+        </Link>
       </div>
 
       {/* Confirmation */}
@@ -371,38 +371,6 @@ export function ReferAVenuePage() {
           </CardContent>
         </Card>
       ) : null}
-
-      {/* Learn more details (target of eligibility link) */}
-      <Card id="learn-more-referral-rewards" data-testid="refer-program-details" className="scroll-mt-20">
-        <CardHeader>
-          <CardTitle className="text-base">Learn more about referral rewards</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3 text-sm text-muted-foreground">
-          <p>
-            For every qualifying venue you introduce to Hello to Cheers, you&apos;ll receive a
-            subscription credit equal to one month of your venue&apos;s subscription.
-          </p>
-          <p>
-            When your referred venue becomes a new paying Hello to Cheers customer and completes 30
-            days as a qualifying paying subscriber, your referral becomes eligible for a reward. Once
-            approved, your credit will be applied toward your next eligible subscription invoice.
-          </p>
-          <div className="space-y-1">
-            <p className="font-medium text-foreground">A few things to know</p>
-            <ul className="list-disc space-y-1 pl-5">
-              <li>Referrals must represent genuine introductions to new, independently paying venues.</li>
-              <li>Each qualifying venue can generate one referral reward.</li>
-              <li>Self-referrals and duplicate rewards are not eligible.</li>
-              <li>
-                Referred venues must complete the required qualifying period with eligible, settled
-                subscription payments.
-              </li>
-              <li>Refunded or disputed payments may affect referral eligibility.</li>
-              <li>Rewards are issued as subscription credits rather than cash payments.</li>
-            </ul>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* 5. Tracking */}
       <Card id="your-referrals" className="scroll-mt-20">

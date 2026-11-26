@@ -312,7 +312,8 @@ export function IntegrationSetupHelpProse({ body }: { body: string }) {
       let k = 0;
       while (k < content.length) {
         const b = content[k];
-        if (b.kind === "paragraph" && b.text.trim().endsWith("?")) {
+        // Approved FAQ questions are often bold markdown: **Question?**
+        if (b.kind === "paragraph" && /\?\*{0,2}\s*$/.test(b.text.trim())) {
           const answer = content[k + 1];
           faqNodes.push(
             <div key={`faq-${k}`} className="space-y-2 border-b border-[color:var(--htc-border-warm,#e6e0d6)] py-4 last:border-0">

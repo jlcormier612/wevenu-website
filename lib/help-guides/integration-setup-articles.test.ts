@@ -207,4 +207,30 @@ describe("Integration setup guides (product-locked)", () => {
     assert.doesNotMatch(a.body, /Trust Hub|Account SID|Auth Token/i);
     assert.doesNotMatch(a.body, /\bETA\b|within \d+ (days|hours)|usually takes/i);
   });
+
+  it("locks Refer a Venue Help article title and program rules", () => {
+    const a = article("refer-a-venue-one-referral-one-free-month");
+    assert.equal(a.title, "Refer a Venue — One Referral. One FREE Month.");
+    assert.match(a.body, /We know how valuable recommendations from fellow venue owners can be/);
+    assert.match(a.body, /### Step 1 — Tell us about a venue/);
+    assert.match(a.body, /### Step 2 — We'll introduce them to Hello to Cheers/);
+    assert.match(a.body, /### Step 3 — Enjoy your reward/);
+    assert.match(a.body, /completes 30 days as a qualifying paying subscriber/);
+    assert.match(a.body, /Self-referrals and duplicate rewards are not eligible/);
+    assert.match(a.body, /\*\*Who can I refer\?\*\*/);
+    assert.deepEqual(a.relatedFeatures, [
+      { href: "/settings/referrals", label: "Open Refer a Venue" },
+    ]);
+  });
+
+  it("Website Inquiry Form Option B uses approved share-link list order", () => {
+    const a = article("how-to-add-your-inquiry-form-to-your-website");
+    assert.match(
+      a.body,
+      /### Option B — Share a direct link to your form\n\nYour inquiry form also has its own unique web address\.\n\nYou can share this link anywhere/,
+    );
+    const share = a.body.indexOf("You can share this link anywhere");
+    const click = a.body.indexOf("When someone clicks your link, they'll be taken directly");
+    assert.ok(share > 0 && click > share);
+  });
 });

@@ -30,13 +30,13 @@ describe("Help & Guides final IA", () => {
     assert.match(HELP_GUIDES_TAGLINE, /start with Getting Started if you're new here/);
   });
 
-  it("publishes all 36 staff editorial articles with none blocked", () => {
-    assert.equal(PUBLISHABLE_HELP_ARTICLES.length, 36);
+  it("publishes all 39 staff editorial articles with none blocked", () => {
+    assert.equal(PUBLISHABLE_HELP_ARTICLES.length, 39);
     assert.equal(BLOCKED_HELP_ARTICLES.length, 0);
     assert.ok(PUBLISHABLE_HELP_ARTICLES.every((a) => !a.blocked));
     assert.ok(PUBLISHABLE_HELP_ARTICLES.every((a) => (a.audience ?? "staff") !== "couple"));
     // Couple-portal how-tos live in the same canonical array but stay out of staff publish.
-    assert.ok(FINAL_HELP_ARTICLES.length > 36);
+    assert.ok(FINAL_HELP_ARTICLES.length > 39);
     assert.ok(FINAL_HELP_ARTICLES.some((a) => a.audience === "couple"));
   });
 
@@ -48,9 +48,12 @@ describe("Help & Guides final IA", () => {
     assert.ok(titles.includes("How to Connect Stripe for Online Payments"));
     assert.ok(titles.includes("How to Connect QuickBooks Online"));
     assert.ok(titles.includes("How to Connect Facebook & Instagram Lead Ads"));
-    assert.ok(titles.includes("How Texting Setup Works"));
-    assert.equal(new Set(titles).size, 36);
-    assert.equal(new Set(PUBLISHABLE_HELP_ARTICLES.map((a) => a.slug)).size, 36);
+    assert.ok(titles.includes("How to Automatically Forward Inquiries to Hello to Cheers"));
+    assert.ok(titles.includes("How to Add Your Inquiry Form to Your Website"));
+    assert.ok(titles.includes("How to Set Up Text Messaging"));
+    assert.ok(titles.includes("Refer a Venue — One Referral. One FREE Month."));
+    assert.equal(new Set(titles).size, 39);
+    assert.equal(new Set(PUBLISHABLE_HELP_ARTICLES.map((a) => a.slug)).size, 39);
   });
 
   it("does not publish stale Reporting or Booking language in publishable bodies", () => {
@@ -95,9 +98,9 @@ describe("Help & Guides final IA", () => {
     const expected: Record<string, number> = {
       "Getting Started": 2,
       "Your Venue": 2,
-      "Finding & Booking Clients": 6,
+      "Finding & Booking Clients": 8,
       "Working With Clients": 3,
-      "Contracts & Payments": 7,
+      "Contracts & Payments": 8,
       "Building the Event": 3,
       "Planning the Event": 7,
       Vendors: 1,
@@ -139,7 +142,10 @@ describe("Help & Guides final IA", () => {
       "how-to-connect-stripe-for-online-payments",
       "how-to-connect-quickbooks-online",
       "how-to-connect-facebook-instagram-lead-ads",
+      "how-to-automatically-forward-inquiries-to-hello-to-cheers",
+      "how-to-add-your-inquiry-form-to-your-website",
       "how-texting-setup-works",
+      "refer-a-venue-one-referral-one-free-month",
     ]);
     const historical = PUBLISHABLE_HELP_ARTICLES.filter((a) => !laterEditorialSlugs.has(a.slug));
     for (const a of historical) {
