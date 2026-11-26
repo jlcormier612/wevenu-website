@@ -8,20 +8,36 @@ import { assertNoProviderLeak } from "@/lib/texting-registration/status-panel";
 /** Published Help article slug (SetupGuideLink / INTEGRATION_SETUP_ARTICLES). */
 export const TEXTING_SETUP_GUIDE_SLUG = "how-texting-setup-works" as const;
 export const TEXTING_SETUP_GUIDE_HREF = `/help/${TEXTING_SETUP_GUIDE_SLUG}` as const;
-export const TEXTING_SETUP_GUIDE_LABEL = "Need help? Open the Texting Setup Guide" as const;
+export const TEXTING_SETUP_GUIDE_LABEL =
+  "Follow our step-by-step text messaging setup guide." as const;
 
 /** Plain-English orientation shown on the Texting Setup card (not phase-specific). */
 export const TEXTING_WHAT_IT_ENABLES =
-  "Texting lets your venue message clients and leads from Inbox — tour reminders, booking questions, and event logistics — from a dedicated texting number for your venue.";
+  "Communicate with prospective clients and booked clients through text messaging, while keeping your conversations organized alongside their event details.";
 
 export const TEXTING_WHY_WE_COLLECT =
-  "Hello to Cheers needs your real business and messaging details so we can set up texting for your venue under your business identity. You choose each answer; we do not invent legal or registration information for you.";
+  "Complete a one-time business registration to get started. Mobile carriers require businesses to register their identity and explain how they intend to use text messaging. You can complete your registration directly within Hello to Cheers.";
 
 export const TEXTING_WHAT_HTC_HANDLES =
-  "After you save your information, Hello to Cheers handles the technical setup behind the scenes — including assigning your texting number when it is ready. You do not enter provider credentials or manage carrier registration yourself.";
+  "Your venue receives a dedicated business texting number, so your team can communicate without sharing their personal phone numbers. There's no separate texting service account to create.";
 
 export const TEXTING_HOW_YOU_KNOW_READY =
-  "When texting is ready, this page will show Ready and your assigned texting number. You can also confirm readiness in Communication Health before you send a real text.";
+  "When your texting status shows Ready, you'll see your dedicated business texting number in your settings. You can also review your communication activity through Communication Health.";
+
+export const TEXTING_MESSAGING_PURPOSE_HEADING = "Tell us how you'll use text messaging" as const;
+export const TEXTING_MESSAGING_PURPOSE_INTRO =
+  "Help us understand how your venue communicates with prospective clients and clients." as const;
+export const TEXTING_MESSAGING_PURPOSE_LABEL = "What will your venue use text messaging for?" as const;
+export const TEXTING_MESSAGING_PURPOSE_PLACEHOLDER =
+  "Describe the types of conversations your venue expects to have by text..." as const;
+export const TEXTING_MESSAGING_PURPOSE_EXAMPLE =
+  "Our venue uses text messaging to respond to event inquiries, coordinate venue tours, send appointment reminders and communicate with clients about their upcoming events." as const;
+export const TEXTING_MESSAGING_PURPOSE_EXAMPLE_HINT =
+  "Use this as a starting point and personalize it to reflect your business." as const;
+export const TEXTING_OPT_IN_LABEL = "How do people agree to receive texts from your venue?" as const;
+export const TEXTING_OPT_IN_PLACEHOLDER = "Describe how your venue collects texting consent..." as const;
+export const TEXTING_OPT_IN_HTC_HINT =
+  "If prospective clients agree to receive texts through your Hello to Cheers inquiry form, describe that consent process here." as const;
 
 export type TextingPhaseStory = {
   phase: TextingPhase;
@@ -58,16 +74,32 @@ export function textingDisplayHeadline(panel: TextingStatusPanel): string {
     case "information_saved":
       return "Setting up";
     case "under_review":
-      return "Setup in progress";
+      return "Under review";
     case "setting_up_number":
-      return "Setting up your texting number";
+      return "Setting up your number";
     case "needs_attention":
     case "failed":
       return "Needs attention";
     case "paused":
       return "Paused";
     default:
-      return "Not ready";
+      return "Not set up";
+  }
+}
+
+/** Customer-facing hero line for the current status card. */
+export function textingStatusHero(panel: TextingStatusPanel): string {
+  if (panel.smsReady) return "You're ready to text!";
+  switch (panel.phase) {
+    case "under_review":
+    case "information_saved":
+    case "setting_up_number":
+      return "You're on your way to texting!";
+    case "needs_attention":
+    case "failed":
+      return "A little more information is needed.";
+    default:
+      return "Stay connected, wherever the day takes you.";
   }
 }
 
@@ -97,30 +129,30 @@ export function buildTextingPhaseStory(panel: TextingStatusPanel): TextingPhaseS
     case "information_saved":
       return {
         phase: panel.phase,
-        whatHappened:
-          "Your information has been received and saved. Hello to Cheers is working through texting setup for your venue.",
+        whatHappened: `Your business information has been saved and your texting setup is underway. ${numberClause}`,
         whatHappensNext: hasNumber
-          ? `${numberClause} Texting is not ready to send yet until this page shows Ready.`
-          : `${numberClause} Texting is not ready yet. We will update this page when setup finishes.`,
-        ownerNeedsToDo: "No action is required from you right now.",
+          ? "Texting becomes usable when this page shows Ready."
+          : "You can continue using Hello to Cheers while your setup is being completed.",
+        ownerNeedsToDo: "No action is needed from you right now.",
       };
     case "under_review":
       return {
         phase: panel.phase,
-        whatHappened: "Your information is saved, and Hello to Cheers is actively working through texting setup.",
+        whatHappened: "Your business texting registration has been submitted for review.",
         whatHappensNext: hasNumber
           ? `${numberClause} Texting becomes usable when this page shows Ready.`
-          : "We will assign your texting number when it is ready. No specific timeline is shown here.",
-        ownerNeedsToDo: "No action is required from you right now.",
+          : "You can continue using Hello to Cheers while your setup is being completed.",
+        ownerNeedsToDo: "No action is needed from you right now.",
       };
     case "setting_up_number":
       return {
         phase: panel.phase,
-        whatHappened: "Hello to Cheers is finishing the last steps of texting setup for your venue.",
+        whatHappened:
+          "Your registration has progressed to the stage where your dedicated texting number is being configured.",
         whatHappensNext: hasNumber
-          ? `${numberClause} Texting is usable when status shows Ready.`
-          : "Your texting number will appear here once it is assigned.",
-        ownerNeedsToDo: "No action is required from you right now.",
+          ? `${numberClause} Texting becomes usable when this page shows Ready.`
+          : "You can continue using Hello to Cheers while your setup is being completed.",
+        ownerNeedsToDo: "No action is needed from you right now.",
       };
     case "needs_attention":
       return {

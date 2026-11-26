@@ -47,6 +47,8 @@ import {
   classifyMarketplaceAttribution,
   emailIntakeLeadSourceKey,
 } from "@/lib/lead-intake/marketplace-attribution";
+import { classifyGmailForwardingVerification } from "@/lib/lead-intake/gmail-forwarding-verification";
+import { persistGmailForwardingVerification } from "@/lib/lead-intake/gmail-forwarding-verification-store";
 import { ingestLead } from "@/lib/lead-intake/pipeline";
 import { logIntakeAttempt, markIntakeAttempt } from "@/lib/lead-intake/attempt-log";
 import {
@@ -155,6 +157,47 @@ export async function POST(request: NextRequest) {
       },
     });
     return NextResponse.json({ ok: true });
+  }
+
+  // Gmail forwarding-address verification — never extract as an inquiry / create a lead.
+  const gmailVerification = classifyGmailForwardingVerification({
+    from,
+    subject,
+    body,
+    html: content?.html ?? "",
+    headers,
+  });
+  if (gmailVerification) {
+    const logged = await logIntakeAttempt(admin, {
+      venueId: venue.id,
+      source: leadSource,
+      trustTier: "email_parsed",
+      rawPayload: {
+        ...rawPayload,
+        gmail_forwarding_verification: true,
+        // Never persist confirmation URL/code on the attempt payload.
+      },
+      normalizedPayload: {
+        firstName: "", lastName: "", email: null, phone: null, partnerFirstName: null, partnerLastName: null,
+        partnerEmail: null, eventType: null, eventDate: null, endDate: null, guestCount: null,
+        estimatedBudget: null, inquiryMessage: null, inquiryDate: null, confidenceScore: null, sourceData: {
+          gmail_forwarding_verification: true,
+        },
+      },
+      externalRef: email_id,
+    });
+    const attemptId = logged.status === "inserted" ? logged.id : null;
+    await persistGmailForwardingVerification(admin, {
+      venueId: venue.id,
+      classified: gmailVerification,
+      emailId: email_id,
+      intakeAttemptId: attemptId,
+    });
+    await markIntakeAttempt(admin, attemptId, {
+      status: "accepted",
+      errorMessage: "gmail_forwarding_verification",
+    });
+    return NextResponse.json({ ok: true, gmail_forwarding_verification: true });
   }
 
   const extraction = await extractInquiryFromEmail(subject ?? "", body);

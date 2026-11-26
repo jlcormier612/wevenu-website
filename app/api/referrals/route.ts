@@ -40,10 +40,15 @@ export async function GET() {
 
   const ctx = await createReferralServiceContext({ includeStripe: false });
   const referrals = await listCustomerReferrals(ctx, venue.id);
+  const availableCreditCents = referrals.reduce((sum, row) => {
+    if (row.status !== "credit_earned" || row.rewardAmountCents == null) return sum;
+    return sum + row.rewardAmountCents;
+  }, 0);
   return NextResponse.json({
     ok: true,
     enabled: true,
     referrals,
+    availableCreditCents,
     // Qualification window only — no env diagnostic payload.
     qualificationDays: readiness.qualificationDays,
     rewardIssueEnabled: readiness.rewardIssueEnabled,

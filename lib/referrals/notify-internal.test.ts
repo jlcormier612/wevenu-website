@@ -196,9 +196,9 @@ describe("internal referral founder notice", () => {
     );
   });
 
-  it("preserves Share the Luv confirmation copy in submitVenueReferral", () => {
+  it("preserves approved referral confirmation copy in submitVenueReferral", () => {
     const service = readFileSync("shared/pricing/referral-service.ts", "utf8");
-    assert.match(service, /Thanks for sharing the Luv!/);
+    assert.match(service, /Cheers to your referral!/);
     assert.match(
       service,
       /Do NOT auto-email the prospect\. Confirmation is in-app only here\./,

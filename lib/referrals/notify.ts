@@ -18,18 +18,25 @@ export async function notifyReferralRewardEarned(input: {
   if (!input.toEmail?.trim()) return;
   await sendEmail({
     to: input.toEmail.trim(),
-    subject: "Your Hello to Cheers thank-you credit is ready",
+    subject: "You've earned a FREE month of Hello to Cheers!",
     category: "referral",
     priority: "critical",
     text: [
-      `Hi ${input.venueName},`,
+      "Great news!",
       "",
-      `Thanks again for referring ${input.referredVenueName}.`,
-      `Your one-time thank-you credit of ${formatUsdFromCents(input.amountCents)} is ready and will appear on your next eligible Hello to Cheers subscription invoice.`,
+      "Your referral has qualified for a reward, and you've earned a subscription credit equal to one month of your Hello to Cheers subscription.",
       "",
-      "You can review status anytime under Settings → Refer a Venue.",
+      "Your credit is now available and will be applied toward your next eligible subscription invoice.",
       "",
-      "— Hello to Cheers",
+      "Thank you for introducing another venue to Hello to Cheers. We're so grateful to have you as part of our community.",
+      "",
+      "And remember — there's no limit to the number of qualifying referrals you can make.",
+      "",
+      "Keep sharing. Keep earning.",
+      "",
+      "Cheers!",
+      "",
+      "The Hello to Cheers Team",
     ].join("\n"),
   });
 }
@@ -43,17 +50,19 @@ export async function notifyReferralRewardApplied(input: {
   if (!input.toEmail?.trim()) return;
   await sendEmail({
     to: input.toEmail.trim(),
-    subject: "Your Hello to Cheers thank-you credit was applied",
+    subject: "Your Hello to Cheers referral credit was applied",
     category: "referral",
     priority: "critical",
     text: [
       `Hi ${input.venueName},`,
       "",
-      `Your ${formatUsdFromCents(input.amountCents)} Refer a Venue thank-you credit was applied to invoice ${input.invoiceId}.`,
+      `Your ${formatUsdFromCents(input.amountCents)} Refer a Venue subscription credit was applied to invoice ${input.invoiceId}.`,
       "",
       "You can review details under Settings → Subscription & Billing.",
       "",
-      "— Hello to Cheers",
+      "Keep sharing. Keep earning.",
+      "",
+      "— The Hello to Cheers Team",
     ].join("\n"),
   });
 }

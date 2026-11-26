@@ -48,8 +48,7 @@ export function ReferralCreditsCard() {
             (json.referrals ?? []).filter(
               (r) =>
                 r.rewardAmountCents != null ||
-                r.statusLabel.toLowerCase().includes("credit") ||
-                r.statusLabel.toLowerCase().includes("joined"),
+                /reward|qualifying|credit|joined/i.test(r.statusLabel),
             ),
           );
         }
@@ -70,11 +69,11 @@ export function ReferralCreditsCard() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Referral thank-you credits</CardTitle>
+        <CardTitle className="text-base">Referral credits</CardTitle>
         <CardDescription>
-          One-time credits earned when a referred venue joins and qualifies.{" "}
+          Subscription credits earned when a referred venue joins and qualifies.{" "}
           <Link href="/settings/referrals" className="font-medium text-primary hover:underline">
-            Refer a venue
+            Refer a Venue
           </Link>
           .
         </CardDescription>
@@ -82,8 +81,8 @@ export function ReferralCreditsCard() {
       <CardContent className="space-y-2 text-sm">
         {rows.length === 0 ? (
           <p className="text-muted-foreground">
-            No thank-you credits yet. When a referral qualifies, the credit appears
-            here and on your next eligible SaaS invoice.
+            No referral credits yet. When a referral qualifies, the credit appears
+            here and on your next eligible subscription invoice.
           </p>
         ) : (
           rows.map((row) => (
