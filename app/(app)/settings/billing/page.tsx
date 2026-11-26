@@ -20,6 +20,7 @@ import { hasCapability } from "@/lib/authorization";
 import { getActiveVenueMembership } from "@/lib/authorization/membership";
 import { loadVenueEntitlementRow } from "@/lib/entitlement";
 import { getCurrentVenue } from "@/lib/venue/service";
+import { isReferralProgramReady } from "@shared/pricing";
 
 export const metadata: Metadata = { title: "Subscription & Billing — Settings" };
 
@@ -66,7 +67,7 @@ export default async function SubscriptionBillingSettingsPage() {
 
           <SpecialPricingCard />
 
-          <ReferralCreditsCard />
+          {isReferralProgramReady() ? <ReferralCreditsCard /> : null}
 
           <TierUpgradeStatusCard />
 
