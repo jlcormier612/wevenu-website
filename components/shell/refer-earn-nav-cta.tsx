@@ -13,8 +13,18 @@ export const REFER_EARN_POWDER_BLUE = "#A9C9DA";
 /**
  * Soft powder-blue invitation pill for the venue top nav. Links only — does not
  * change referral eligibility, form, or fulfillment.
+ * Caller must gate with referral program readiness (hide when program is off).
  */
-export function ReferEarnNavCta({ className }: { className?: string }) {
+export function ReferEarnNavCta({
+  className,
+  enabled = true,
+}: {
+  className?: string;
+  /** When false, render nothing (program not active). */
+  enabled?: boolean;
+}) {
+  if (!enabled) return null;
+
   return (
     <Link
       href={REFER_EARN_NAV_HREF}

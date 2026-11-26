@@ -9,14 +9,16 @@ import {
   customerFacingOfferLabel,
   formatUsdFromCents,
   getCatalogEntry,
-  isSaasPlanKey,
   listAmountCents,
   selectWinningCommercialPrice,
   type EligibleGrant,
-  type SaasPlanKey,
 } from "@shared/pricing";
 import { getFounderArrangementStore } from "@shared/pricing/founder-store-access";
 import { getPricingOfferStore } from "@shared/pricing";
+import {
+  buildUnlinkedSpecialPricingPayload,
+  resolveCustomerBilledPlanKey,
+} from "@/lib/billing/special-pricing-presentation";
 import { hasCapability } from "@/lib/authorization";
 import { getActiveVenueMembership } from "@/lib/authorization/membership";
 import { createAdminClient } from "@/integrations/supabase/admin";
@@ -44,9 +46,17 @@ export async function GET() {
     .eq("id", venue.id)
     .maybeSingle();
 
-  const planKey: SaasPlanKey = isSaasPlanKey(String(venueRow?.saas_plan_key ?? ""))
-    ? (venueRow!.saas_plan_key as SaasPlanKey)
-    : "starter";
+  const planKey = resolveCustomerBilledPlanKey(
+    (venueRow?.saas_plan_key as string | null | undefined) ?? null,
+  );
+  if (!planKey) {
+    // Do not invent starter/$199 Gather for provisioned or disposable venues.
+    return NextResponse.json(
+      buildUnlinkedSpecialPricingPayload(
+        (venueRow?.current_period_end as string | null | undefined) ?? null,
+      ),
+    );
+  }
 
   const offerStore = getPricingOfferStore();
   const grantsRaw = await offerStore.listEarnedGrantsForVenue(venue.id);
@@ -114,6 +124,7 @@ export async function GET() {
 
   return NextResponse.json({
     ok: true,
+    hasBilledPlan: true,
     currentTier: {
       key: planKey,
       name: getCatalogEntry(planKey).name,

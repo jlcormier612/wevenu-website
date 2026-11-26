@@ -5,6 +5,7 @@ import { ArrowLeft } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { HELP_GUIDES_HOME_HREF, HELP_GUIDES_TITLE } from "@/lib/help-guides/areas";
+import { parseHelpInlineSegments } from "@/lib/help-guides/help-prose-inline";
 import { LEGACY_SETUP_GUIDE_REDIRECTS } from "@/lib/setup-hub/help-crosswalk";
 import { getPublishedArticleBySlug } from "@/lib/success-library/service";
 
@@ -97,33 +98,29 @@ function HelpProse({ body }: { body: string }) {
 }
 
 function renderInline(text: string): ReactNode {
-  const parts: ReactNode[] = [];
-  // Links first, then bold inside remaining segments
-  const tokenRe = /\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)|\*\*([^*]+)\*\*/g;
-  let last = 0;
-  let m: RegExpExecArray | null;
-  let key = 0;
-  while ((m = tokenRe.exec(text)) !== null) {
-    if (m.index > last) parts.push(text.slice(last, m.index));
-    if (m[1] && m[2]) {
-      parts.push(
-        <a
-          key={key++}
-          href={m[2]}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="font-medium text-primary underline underline-offset-2"
-        >
-          {m[1]}
-        </a>,
+  const segments = parseHelpInlineSegments(text);
+  return segments.map((seg, key) => {
+    if (seg.type === "text") return <span key={key}>{seg.value}</span>;
+    if (seg.type === "bold") {
+      return (
+        <strong key={key} className="font-semibold text-foreground">
+          {seg.value}
+        </strong>
       );
-    } else if (m[3]) {
-      parts.push(<strong key={key++} className="font-semibold text-foreground">{m[3]}</strong>);
     }
-    last = m.index + m[0].length;
-  }
-  if (last < text.length) parts.push(text.slice(last));
-  return parts.length ? parts : text;
+    return (
+      <a
+        key={key}
+        href={seg.href}
+        {...(seg.external
+          ? { target: "_blank", rel: "noopener noreferrer" }
+          : {})}
+        className="font-medium text-primary underline underline-offset-2"
+      >
+        {seg.label}
+      </a>
+    );
+  });
 }
 
 function Section({ title, body }: { title: string; body: string }) {

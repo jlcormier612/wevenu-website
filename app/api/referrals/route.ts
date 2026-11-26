@@ -29,11 +29,12 @@ export async function GET() {
 
   const readiness = getReferralProgramReadiness();
   if (!isReferralProgramReady(readiness)) {
+    // Customer API: never include env/diagnostic strings (e.g. REFERRAL_PROGRAM_V1).
     return NextResponse.json({
       ok: true,
       enabled: false,
-      readiness,
       referrals: [],
+      message: "Refer a Venue is not available yet.",
     });
   }
 
@@ -42,8 +43,10 @@ export async function GET() {
   return NextResponse.json({
     ok: true,
     enabled: true,
-    readiness,
     referrals,
+    // Qualification window only — no env diagnostic payload.
+    qualificationDays: readiness.qualificationDays,
+    rewardIssueEnabled: readiness.rewardIssueEnabled,
   });
 }
 

@@ -1,5 +1,6 @@
 /**
  * Persistent Refer & Earn header CTA — links to existing Settings referrals only.
+ * When REFERRAL_PROGRAM_V1 is off, promotional entry points must stay hidden.
  */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -13,8 +14,16 @@ import {
 
 const cta = readFileSync(resolve("components/shell/refer-earn-nav-cta.tsx"), "utf8");
 const header = readFileSync(resolve("components/shell/workspace-shell-header.tsx"), "utf8");
+const shell = readFileSync(resolve("components/shell/workspace-shell.tsx"), "utf8");
 const settingsPage = readFileSync(resolve("app/(app)/settings/page.tsx"), "utf8");
 const referralsPage = readFileSync(resolve("app/(app)/settings/referrals/page.tsx"), "utf8");
+const settingsTabs = readFileSync(resolve("components/settings/settings-tabs.tsx"), "utf8");
+const settingsTabsClient = readFileSync(
+  resolve("components/settings/settings-tabs-client.tsx"),
+  "utf8",
+);
+const referralsApi = readFileSync(resolve("app/api/referrals/route.ts"), "utf8");
+const referPage = readFileSync(resolve("components/referrals/refer-a-venue-page.tsx"), "utf8");
 
 describe("Refer & Earn nav CTA", () => {
   it("uses the approved label and free-month accessible name", () => {
@@ -29,9 +38,17 @@ describe("Refer & Earn nav CTA", () => {
     assert.doesNotMatch(cta, /fetch\(|\/api\/referrals/);
   });
 
-  it("is mounted in the venue top header among global actions", () => {
+  it("is mountable in the venue top header among global actions", () => {
     assert.match(header, /ReferEarnNavCta/);
     assert.match(header, /ml-auto flex shrink-0 items-center/);
+  });
+
+  it("gates the header CTA on server referral readiness (default hidden)", () => {
+    assert.match(cta, /if \(!enabled\) return null/);
+    assert.match(header, /showReferEarn/);
+    assert.match(header, /enabled=\{showReferEarn\}/);
+    assert.match(shell, /isReferralProgramReady\(\)/);
+    assert.match(shell, /showReferEarn=\{isReferralProgramReady\(\)\}/);
   });
 
   it("keeps a compact mobile treatment without removing shrink constraints", () => {
@@ -47,18 +64,29 @@ describe("Refer & Earn nav CTA", () => {
     assert.match(cta, /focus-visible:ring-\[color:color-mix\(in_oklch,#A9C9DA/);
   });
 
-  it("does not remove the Settings referral card or page", () => {
-    assert.match(settingsPage, /href: "\/settings\/referrals"/);
-    assert.match(settingsPage, /Refer a Venue/);
-    assert.match(referralsPage, /ReferAVenuePage/);
+  it("hides Settings referral card and tab when program is not ready", () => {
+    assert.match(settingsPage, /isReferralProgramReady\(\)/);
+    assert.match(settingsTabs, /isReferralProgramReady\(\)/);
+    assert.match(settingsTabsClient, /showReferrals/);
+    assert.match(settingsTabsClient, /Refer a Venue/);
+    assert.match(referralsPage, /redirect\("\/settings"\)/);
+    assert.match(referralsPage, /isReferralProgramReady\(\)/);
   });
 
-  it("Settings overview card uses free-month Share the Luv copy", () => {
+  it("Settings overview card uses free-month Share the Luv copy when shown", () => {
     assert.match(
       settingsPage,
       /Share the Luv and earn a free month when a venue you refer becomes a paying customer\./,
     );
     assert.doesNotMatch(settingsPage, /thank-you credit/);
+  });
+
+  it("never surfaces REFERRAL_PROGRAM_V1 diagnostics to customers", () => {
+    assert.doesNotMatch(referralsApi, /diagnosticMessage/);
+    assert.doesNotMatch(referralsApi, /REFERRAL_PROGRAM_V1 is off/);
+    assert.doesNotMatch(referPage, /REFERRAL_PROGRAM_V1/);
+    assert.doesNotMatch(referPage, /readiness\?\.diagnostic/);
+    assert.match(referralsApi, /Refer a Venue is not available yet\./);
   });
 
   it("referral page still explains one-time credit (not permanent discount)", () => {

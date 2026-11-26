@@ -12,11 +12,13 @@ import {
 
 type Payload = {
   ok: boolean;
-  currentTier?: { name: string };
-  standardRecurringPrice?: string;
-  appliedDiscount?: { label: string; source: string };
-  actualRecurringPrice?: string;
+  hasBilledPlan?: boolean;
+  currentTier?: { name: string } | null;
+  standardRecurringPrice?: string | null;
+  appliedDiscount?: { label: string; source: string } | null;
+  actualRecurringPrice?: string | null;
   nextRenewal?: string | null;
+  message?: string | null;
   scheduledChanges?: Array<{
     label: string;
     effectiveAt: string;
@@ -85,6 +87,37 @@ export function SpecialPricingCard() {
           <CardTitle className="text-base">Your pricing</CardTitle>
           <CardDescription>Loading…</CardDescription>
         </CardHeader>
+      </Card>
+    );
+  }
+
+  if (data.hasBilledPlan === false) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Your pricing</CardTitle>
+          <CardDescription>No subscription plan linked</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3 text-sm">
+          <p className="text-muted-foreground leading-relaxed">
+            {data.message ??
+              "No Hello to Cheers subscription plan is linked to this venue yet."}
+          </p>
+          <dl className="grid gap-2 sm:grid-cols-2">
+            <div>
+              <dt className="text-muted-foreground">Current tier</dt>
+              <dd className="font-medium">—</dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground">Standard recurring price</dt>
+              <dd className="font-medium">—</dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground">Next renewal</dt>
+              <dd className="font-medium">{formatUtc(data.nextRenewal)}</dd>
+            </div>
+          </dl>
+        </CardContent>
       </Card>
     );
   }

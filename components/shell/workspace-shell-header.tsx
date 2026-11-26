@@ -34,6 +34,7 @@ export function WorkspaceShellHeader({
   staffRole = null,
   activeVenueId,
   memberships = [],
+  showReferEarn = false,
 }: {
   email: string;
   venueName?: string;
@@ -41,6 +42,8 @@ export function WorkspaceShellHeader({
   staffRole?: string | null;
   activeVenueId?: string;
   memberships?: VenueMembershipSummary[];
+  /** Referral program readiness — hide promo CTA when false. */
+  showReferEarn?: boolean;
 }) {
   const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
   const [searchOpen, setSearchOpen] = React.useState(false);
@@ -111,7 +114,7 @@ export function WorkspaceShellHeader({
           >
             <Search className="h-[1.1rem] w-[1.1rem]" />
           </button>
-          <ReferEarnNavCta />
+          <ReferEarnNavCta enabled={showReferEarn} />
           <NotificationBell />
           {/* Theme is secondary on narrow phones — keep search, alerts, and account. */}
           <div className="hidden sm:block">
