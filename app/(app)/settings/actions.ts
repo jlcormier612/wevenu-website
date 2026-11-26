@@ -70,6 +70,11 @@ import {
   updatePublicReviewUrl,
 } from "@/lib/venue/service";
 import {
+  createCompleteStripeSetupLink,
+  refreshStripeChargesEnabled,
+  type StripeSetupReturnTo,
+} from "@/lib/stripe/complete-setup";
+import {
   connectStripeAccount,
   disconnectStripeAccount,
   updateAcceptedPaymentMethods,
@@ -116,6 +121,26 @@ export async function disconnectStripeAction(): Promise<StripeActionResult> {
   const result = await disconnectStripeAccount();
   revalidatePath("/settings/integrations");
   revalidatePath("/", "layout");
+  return result;
+}
+
+/** Single-use Stripe Account Link for the existing Standard connected account. */
+export async function createCompleteStripeSetupLinkAction(
+  returnTo: StripeSetupReturnTo = "settings",
+): Promise<StripeActionResult & { url?: string }> {
+  return createCompleteStripeSetupLink(returnTo);
+}
+
+/** Re-read charges_enabled from Stripe; never invents true locally. */
+export async function refreshStripeChargesEnabledAction(): Promise<
+  StripeActionResult & { chargesEnabled?: boolean }
+> {
+  const result = await refreshStripeChargesEnabled();
+  if (result.ok) {
+    revalidatePath("/settings/integrations");
+    revalidatePath("/setup-hub/financials");
+    revalidatePath("/", "layout");
+  }
   return result;
 }
 
