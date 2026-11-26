@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { CheckCircle2, Gift } from "lucide-react";
+import { Gift, PartyPopper, Users } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -162,74 +162,129 @@ export function ReferAVenuePage() {
     );
   }
 
-  const rewardsEarned = referrals.filter((r) =>
-    r.status === "credit_earned" || r.status === "credit_applied" || (r.rewardAmountCents != null && r.rewardAmountCents > 0),
+  const rewardsEarned = referrals.filter(
+    (r) =>
+      r.status === "credit_earned" ||
+      r.status === "credit_applied" ||
+      (r.rewardAmountCents != null && r.rewardAmountCents > 0),
   ).length;
 
+  function scrollToForm() {
+    setShowForm(true);
+    setConfirmation(null);
+    requestAnimationFrame(() => {
+      document.getElementById("refer-form")?.scrollIntoView({ behavior: "smooth" });
+    });
+  }
+
   return (
-    <div className="space-y-6">
-      <Card className="border-[color:var(--soft-sage)] bg-[color:color-mix(in_oklch,var(--linen)_70%,white)]">
-        <CardHeader className="space-y-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[color:color-mix(in_oklch,var(--heritage-sage)_18%,white)] text-[color:var(--heritage-sage)]">
-            <Gift className="h-5 w-5" aria-hidden />
+    <div className="space-y-8">
+      {/* 1. Referral hero */}
+      <section
+        className="rounded-[14px] bg-[#E8EEE3] px-6 py-8 text-center sm:px-10 sm:py-10"
+        data-testid="refer-hero"
+      >
+        <div className="mx-auto flex max-w-[600px] flex-col items-center">
+          <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-[color:color-mix(in_oklch,var(--htc-botanical)_16%,white)] text-[color:var(--htc-botanical)]">
+            <Gift className="h-7 w-7" aria-hidden />
           </div>
-          <CardTitle className="font-serif text-2xl text-heading">
+          <h2 className="font-serif text-[28px] font-normal leading-tight text-[color:var(--htc-charcoal,#2c2c2c)] sm:text-[36px]">
             One referral. One FREE month.
-          </CardTitle>
-          <CardDescription className="text-base text-foreground/80">
+          </h2>
+          <p className="mt-3 text-[18px] font-medium text-[color:var(--htc-charcoal,#2c2c2c)]">
             Good things are even better when shared.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4 text-sm text-foreground/80">
-          <p>
-            Know another venue that would love Hello to Cheers? Introduce us! When your referral becomes a qualifying customer, we&apos;ll reward you with a subscription credit equal to one month of your venue&apos;s subscription.
           </p>
-          <div className="space-y-2">
-            <p className="font-medium text-heading">It&apos;s as easy as 1, 2, 3.</p>
-            <ol className="list-decimal space-y-2 pl-5">
-              <li>
-                <span className="font-medium text-foreground">Introduce us</span>
-                {" — "}
-                Tell us about a venue you think would love Hello to Cheers.
-              </li>
-              <li>
-                <span className="font-medium text-foreground">They join the celebration</span>
-                {" — "}
-                Your referred venue becomes a Hello to Cheers customer and completes its qualifying period.
-              </li>
-              <li>
-                <span className="font-medium text-foreground">Enjoy your reward</span>
-                {" — "}
-                Receive a subscription credit equal to one month of your venue&apos;s subscription.
-              </li>
-            </ol>
-          </div>
-          <p>
-            There&apos;s no limit to the number of qualifying venues you can refer. Program eligibility requirements apply.
+          <p className="mt-4 text-[15px] leading-[1.6] text-[color:var(--htc-charcoal,#2c2c2c)] sm:text-[16px]">
+            Know another venue that would love Hello to Cheers? Introduce us! When your referral
+            becomes a qualifying customer, we&apos;ll reward you with a subscription credit equal to
+            one month of your venue&apos;s subscription.
           </p>
-          <p className="font-medium text-heading">Keep sharing. Keep earning.</p>
           {!confirmation && enabled ? (
             <Button
               type="button"
               size="lg"
-              className="bg-[color:var(--heritage-sage)] text-white hover:bg-[color:color-mix(in_oklch,var(--heritage-sage)_88%,black)]"
-              onClick={() => {
-                setShowForm(true);
-                document.getElementById("refer-form")?.scrollIntoView({ behavior: "smooth" });
-              }}
+              className="mt-6 min-h-11 bg-[color:var(--htc-botanical)] px-8 text-white hover:bg-[color:color-mix(in_oklch,var(--htc-botanical)_88%,black)]"
+              onClick={scrollToForm}
             >
               Refer a Venue
             </Button>
           ) : null}
-        </CardContent>
-      </Card>
+          <p className="mt-4 text-[14px] font-medium text-[color:var(--htc-charcoal,#2c2c2c)] sm:text-[15px]">
+            Keep sharing. Keep earning.
+          </p>
+        </div>
+      </section>
 
+      {/* 2. Three-step explanation */}
+      <section className="space-y-6" data-testid="refer-steps">
+        <h3 className="text-center font-serif text-[24px] font-normal text-[color:var(--htc-charcoal,#2c2c2c)] sm:text-[26px]">
+          It&apos;s as easy as 1, 2, 3.
+        </h3>
+        <div className="grid gap-8 sm:grid-cols-3 sm:gap-6">
+          <div className="flex flex-col items-center text-center">
+            <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[#EEF1E9] text-[color:var(--htc-botanical)]">
+              <Users className="h-5 w-5" aria-hidden />
+            </div>
+            <p className="text-[17px] font-semibold text-[color:var(--htc-charcoal,#2c2c2c)]">
+              Introduce us
+            </p>
+            <p className="mt-2 text-[14px] leading-relaxed text-[color:var(--htc-charcoal,#2c2c2c)] sm:text-[15px]">
+              Tell us about a venue you think would love Hello to Cheers.
+            </p>
+          </div>
+          <div className="flex flex-col items-center text-center">
+            <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[#EEF1E9] text-[color:var(--htc-botanical)]">
+              <PartyPopper className="h-5 w-5" aria-hidden />
+            </div>
+            <p className="text-[17px] font-semibold text-[color:var(--htc-charcoal,#2c2c2c)]">
+              They join the celebration
+            </p>
+            <p className="mt-2 text-[14px] leading-relaxed text-[color:var(--htc-charcoal,#2c2c2c)] sm:text-[15px]">
+              Your referred venue becomes a Hello to Cheers customer and completes its qualifying
+              period.
+            </p>
+          </div>
+          <div className="flex flex-col items-center text-center">
+            <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[#EEF1E9] text-[color:var(--htc-botanical)]">
+              <Gift className="h-5 w-5" aria-hidden />
+            </div>
+            <p className="text-[17px] font-semibold text-[color:var(--htc-charcoal,#2c2c2c)]">
+              Enjoy your reward
+            </p>
+            <p className="mt-2 text-[14px] leading-relaxed text-[color:var(--htc-charcoal,#2c2c2c)] sm:text-[15px]">
+              Receive a subscription credit equal to one month of your venue&apos;s subscription.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* 3. Eligibility + Help link */}
+      <div className="space-y-3 border-t border-[color:var(--htc-border-warm,#e6e0d6)] pt-6 text-center">
+        <p className="text-[14px] leading-relaxed text-[color:var(--htc-charcoal,#2c2c2c)] sm:text-[15px]">
+          There&apos;s no limit to the number of qualifying venues you can refer. Program eligibility
+          requirements apply.
+        </p>
+        <a
+          href="#learn-more-referral-rewards"
+          className="inline-flex text-[14px] font-medium text-[color:var(--htc-botanical)] underline-offset-4 hover:underline"
+        >
+          Learn more about referral rewards
+        </a>
+      </div>
+
+      {/* Confirmation */}
       {confirmation ? (
-        <Card>
-          <CardHeader className="items-center text-center space-y-3">
-            <CheckCircle2 className="h-10 w-10 text-[color:var(--heritage-sage)]" aria-hidden />
-            <CardTitle className="text-xl">{confirmation.title}</CardTitle>
-            <CardDescription className="text-base">{confirmation.body}</CardDescription>
+        <Card className="border-[color:color-mix(in_oklch,var(--htc-botanical)_22%,transparent)] bg-[#F4F8F3]">
+          <CardHeader className="items-center space-y-3 text-center">
+            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#EEF1E9] text-[color:var(--htc-botanical)]">
+              <PartyPopper className="h-7 w-7" aria-hidden />
+            </div>
+            <CardTitle className="font-serif text-2xl font-normal text-[color:var(--htc-charcoal,#2c2c2c)]">
+              {confirmation.title}
+            </CardTitle>
+            <CardDescription className="max-w-lg text-base text-[color:var(--htc-charcoal,#2c2c2c)]">
+              {confirmation.body}
+            </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-wrap justify-center gap-2">
             <Button
@@ -242,25 +297,23 @@ export function ReferAVenuePage() {
             >
               View my referrals
             </Button>
-            <Button
-              type="button"
-              onClick={() => {
-                setConfirmation(null);
-                setShowForm(true);
-              }}
-            >
+            <Button type="button" onClick={scrollToForm}>
               Refer another venue
             </Button>
           </CardContent>
         </Card>
       ) : null}
 
+      {/* 4. Referral submission form */}
       {showForm && !confirmation ? (
-        <Card id="refer-form" className="scroll-mt-20">
+        <Card id="refer-form" className="scroll-mt-20 rounded-[12px] border border-border bg-white">
           <CardHeader>
-            <CardTitle className="text-base">Introduce us to a venue</CardTitle>
+            <CardTitle className="text-base text-[color:var(--htc-charcoal,#2c2c2c)]">
+              Introduce us to a venue
+            </CardTitle>
             <CardDescription>
-              Know a venue that would love Hello to Cheers? Tell us a little about them, and we&apos;ll take it from here.
+              Know a venue that would love Hello to Cheers? Tell us a little about them, and
+              we&apos;ll take it from here.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -279,6 +332,8 @@ export function ReferAVenuePage() {
                     required: true,
                     placeholder: "https://",
                   })}
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
                   {field("city", "City", { required: true, placeholder: "City" })}
                   {field("state", "State", { required: true, placeholder: "State" })}
                 </div>
@@ -297,17 +352,17 @@ export function ReferAVenuePage() {
                   {field("contactRole", "Role / Title (optional)", {
                     placeholder: "Owner, General Manager, Venue Director...",
                   })}
+                </div>
+                <div className="space-y-1.5">
                   {field("contactEmail", "Business contact email", {
                     required: true,
                     placeholder: "Their business email address",
                   })}
+                  <p className="text-xs text-muted-foreground">
+                    Please provide a direct business contact email so we can reach the right person.
+                  </p>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Please provide a direct business contact email so we can reach the right person.
-                </p>
-                {message ? (
-                  <p className="text-sm text-destructive">{message}</p>
-                ) : null}
+                {message ? <p className="text-sm text-destructive">{message}</p> : null}
                 <Button type="submit" disabled={busy} size="lg">
                   {busy ? "Sending…" : "Submit referral"}
                 </Button>
@@ -317,16 +372,20 @@ export function ReferAVenuePage() {
         </Card>
       ) : null}
 
-      <Card data-testid="refer-program-details">
+      {/* Learn more details (target of eligibility link) */}
+      <Card id="learn-more-referral-rewards" data-testid="refer-program-details" className="scroll-mt-20">
         <CardHeader>
           <CardTitle className="text-base">Learn more about referral rewards</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3 text-sm text-muted-foreground">
           <p>
-            For every qualifying venue you introduce to Hello to Cheers, you&apos;ll receive a subscription credit equal to one month of your venue&apos;s subscription.
+            For every qualifying venue you introduce to Hello to Cheers, you&apos;ll receive a
+            subscription credit equal to one month of your venue&apos;s subscription.
           </p>
           <p>
-            When your referred venue becomes a new paying Hello to Cheers customer and completes 30 days as a qualifying paying subscriber, your referral becomes eligible for a reward. Once approved, your credit will be applied toward your next eligible subscription invoice.
+            When your referred venue becomes a new paying Hello to Cheers customer and completes 30
+            days as a qualifying paying subscriber, your referral becomes eligible for a reward. Once
+            approved, your credit will be applied toward your next eligible subscription invoice.
           </p>
           <div className="space-y-1">
             <p className="font-medium text-foreground">A few things to know</p>
@@ -334,7 +393,10 @@ export function ReferAVenuePage() {
               <li>Referrals must represent genuine introductions to new, independently paying venues.</li>
               <li>Each qualifying venue can generate one referral reward.</li>
               <li>Self-referrals and duplicate rewards are not eligible.</li>
-              <li>Referred venues must complete the required qualifying period with eligible, settled subscription payments.</li>
+              <li>
+                Referred venues must complete the required qualifying period with eligible, settled
+                subscription payments.
+              </li>
               <li>Refunded or disputed payments may affect referral eligibility.</li>
               <li>Rewards are issued as subscription credits rather than cash payments.</li>
             </ul>
@@ -342,24 +404,26 @@ export function ReferAVenuePage() {
         </CardContent>
       </Card>
 
+      {/* 5. Tracking */}
       <Card id="your-referrals" className="scroll-mt-20">
         <CardHeader>
           <CardTitle className="text-base">Your referrals</CardTitle>
           <CardDescription>
-            Visit your Refer a Venue page at any time to review your submitted referrals and their progress.
+            Visit your Refer a Venue page at any time to review your submitted referrals and their
+            progress.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-3 sm:grid-cols-3">
-            <div className="rounded-lg border border-border p-3">
+            <div className="rounded-lg border border-border bg-[color:var(--htc-canvas,#f7f4ef)] p-3">
               <p className="text-xs text-muted-foreground">Venues referred</p>
               <p className="text-lg font-medium text-foreground">{referrals.length}</p>
             </div>
-            <div className="rounded-lg border border-border p-3">
+            <div className="rounded-lg border border-border bg-[color:var(--htc-canvas,#f7f4ef)] p-3">
               <p className="text-xs text-muted-foreground">Rewards earned</p>
               <p className="text-lg font-medium text-foreground">{rewardsEarned}</p>
             </div>
-            <div className="rounded-lg border border-border p-3">
+            <div className="rounded-lg border border-border bg-[#EEF1E9] p-3">
               <p className="text-xs text-muted-foreground">Available credit</p>
               <p className="text-lg font-medium text-foreground">
                 {formatUsdFromCents(availableCreditCents)}
@@ -386,8 +450,8 @@ export function ReferAVenuePage() {
                 <div className="text-sm sm:text-right">
                   <p className="font-medium text-foreground">{row.statusLabel}</p>
                   <p className="text-muted-foreground">
-                    {row.statusDescription
-                      ?? (row.rewardAmountCents != null
+                    {row.statusDescription ??
+                      (row.rewardAmountCents != null
                         ? `${formatUsdFromCents(row.rewardAmountCents)} subscription credit${row.appliedInvoiceId ? " applied to your subscription." : " available."}`
                         : null)}
                   </p>

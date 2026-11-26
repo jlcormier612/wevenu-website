@@ -4,8 +4,10 @@ import { notFound, redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import type { ReactNode } from "react";
 
+import { IntegrationSetupHelpProse } from "@/components/help/integration-setup-help-prose";
 import { HELP_GUIDES_HOME_HREF, HELP_GUIDES_TITLE } from "@/lib/help-guides/areas";
 import { parseHelpInlineSegments } from "@/lib/help-guides/help-prose-inline";
+import { isIntegrationSetupArticleSlug } from "@/lib/help-guides/integration-setup-articles";
 import { LEGACY_SETUP_GUIDE_REDIRECTS } from "@/lib/setup-hub/help-crosswalk";
 import { getPublishedArticleBySlug } from "@/lib/success-library/service";
 
@@ -22,7 +24,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return { title: article ? `${article.title} — ${HELP_GUIDES_TITLE}` : HELP_GUIDES_TITLE };
 }
 
-/** Render editorial Help copy: paragraphs, **bold**, ### headings, bullets, numbered lists, > callouts, [links](url). */
+/** Default Help prose for non–integration-setup articles (unchanged structure). */
 function HelpProse({ body }: { body: string }) {
   const blocks = body.trim().split(/\n\n+/);
   return (
@@ -135,7 +137,6 @@ function Section({ title, body }: { title: string; body: string }) {
 export default async function HelpGuideArticlePage({ params }: Props) {
   const { slug } = await params;
 
-  // Retired Setup Guides → published Help & Guides articles (Help IA is closed).
   const legacyTarget = LEGACY_SETUP_GUIDE_REDIRECTS[slug];
   if (legacyTarget) {
     redirect(`/help/${legacyTarget}`);
@@ -149,8 +150,16 @@ export default async function HelpGuideArticlePage({ params }: Props) {
     !article.bestPractices.trim() &&
     !article.commonMistakes.trim();
 
+  const isIntegrationSetup = isIntegrationSetupArticleSlug(slug);
+
   return (
-    <div className="space-y-6 max-w-2xl">
+    <div
+      className={
+        isIntegrationSetup
+          ? "mx-auto w-full max-w-[840px] space-y-6"
+          : "space-y-6 max-w-2xl"
+      }
+    >
       <Link
         href={HELP_GUIDES_HOME_HREF}
         className="text-xs text-muted-foreground hover:text-foreground transition-colors inline-flex items-center gap-1"
@@ -160,13 +169,33 @@ export default async function HelpGuideArticlePage({ params }: Props) {
       </Link>
 
       <div>
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{article.goalCategory}</p>
-        <h1 className="text-xl font-bold text-foreground mt-1">{article.title}</h1>
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          {article.goalCategory}
+        </p>
+        <h1
+          className={
+            isIntegrationSetup
+              ? "mt-2 font-serif text-[28px] font-normal leading-tight text-[color:var(--htc-charcoal,#2c2c2c)] sm:text-[32px]"
+              : "text-xl font-bold text-foreground mt-1"
+          }
+        >
+          {article.title}
+        </h1>
       </div>
 
-      <div className="rounded-sm border border-border bg-card p-5 space-y-5">
+      <div
+        className={
+          isIntegrationSetup
+            ? "rounded-[12px] border border-[color:var(--htc-border-warm,#e6e0d6)] bg-white px-4 py-5 sm:px-8 sm:py-8 space-y-5"
+            : "rounded-sm border border-border bg-card p-5 space-y-5"
+        }
+      >
         {isProse ? (
-          <HelpProse body={article.whyItMatters} />
+          isIntegrationSetup ? (
+            <IntegrationSetupHelpProse body={article.whyItMatters} />
+          ) : (
+            <HelpProse body={article.whyItMatters} />
+          )
         ) : (
           <>
             <Section title="Why this matters" body={article.whyItMatters} />
