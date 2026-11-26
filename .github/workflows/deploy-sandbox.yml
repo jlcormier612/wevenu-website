@@ -589,13 +589,27 @@ jobs:
             --query "Stacks[0].Outputs[?OutputKey=='AlbDnsName'].OutputValue" \
             --output text)
 
-          check() {
+          # HTTP listener now 301-redirects to HTTPS (Intuit compliance).
+          # Probe content over HTTPS on the public hostnames; separately
+          # confirm the ALB HTTP hop still returns 301 via Host header.
+          check_https() {
             local host="$1" path="$2" expected_pattern="$3" label="$4"
             local code
-            code=$(curl -s -o /dev/null -w "%{http_code}" -H "Host: $host" "http://$ALB_DNS$path")
-            echo "$label ($host$path) -> $code"
+            code=$(curl -s -o /dev/null -w "%{http_code}" "https://$host$path")
+            echo "$label (https://$host$path) -> $code"
             if ! [[ "$code" =~ $expected_pattern ]]; then
               echo "::error::$label returned $code, expected pattern $expected_pattern"
+              exit 1
+            fi
+          }
+
+          check_http_redirect() {
+            local host="$1" path="$2" label="$3"
+            local code
+            code=$(curl -s -o /dev/null -w "%{http_code}" -H "Host: $host" "http://$ALB_DNS$path")
+            echo "$label (http://$host$path via ALB) -> $code"
+            if ! [[ "$code" =~ ^301$ ]]; then
+              echo "::error::$label returned $code, expected 301 HTTPS redirect"
               exit 1
             fi
           }
@@ -610,9 +624,10 @@ jobs:
           # MarketingHostname/WorkspaceHostname parameter overrides - these
           # must always agree with what was actually deployed, so they are
           # not independently vars.*-sourced here.
-          check "app.sandbox.hellotocheers.com" "/login" "^200$" "venue app"
-          check "sandbox.hellotocheers.com" "/" "^200$" "marketing"
-          check "workspace.sandbox.hellotocheers.com" "/" "^(2|3)[0-9]{2}$" "workspace"
+          check_http_redirect "app.sandbox.hellotocheers.com" "/login" "venue app HTTP→HTTPS"
+          check_https "app.sandbox.hellotocheers.com" "/login" "^200$" "venue app"
+          check_https "sandbox.hellotocheers.com" "/" "^200$" "marketing"
+          check_https "workspace.sandbox.hellotocheers.com" "/" "^(2|3)[0-9]{2}$" "workspace"
 
           # /login returning 200 only proves the page shell rendered - it
           # does not require a successful Supabase query, so a container
@@ -622,7 +637,7 @@ jobs:
           # runtime credentials and only returns 200 if it succeeds - this
           # is the check that actually proves the deployed app can talk to
           # its database, not just that the process is up.
-          check "app.sandbox.hellotocheers.com" "/api/health" "^200$" "venue app real Supabase connectivity"
+          check_https "app.sandbox.hellotocheers.com" "/api/health" "^200$" "venue app real Supabase connectivity"
 
       - name: Validate Secrets Manager values are populated
         # describe-secret confirms existence without ever reading the value.
