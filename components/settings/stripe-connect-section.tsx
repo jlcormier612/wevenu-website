@@ -281,30 +281,21 @@ export function StripeConnectSection({
                 Stripe, you can create one during setup.
               </p>
             </div>
-            {!isConfigured ? (
-              <div className="rounded-lg border border-border bg-muted/30 p-4">
-                <p className="text-sm text-muted-foreground">
-                  Stripe Connect isn&apos;t ready to start in this environment yet. A working Connect
-                  button will appear here when Hello to Cheers can open Stripe onboarding.
-                </p>
-              </div>
-            ) : (
-              <>
-                <a
-                  href={connectUrl}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-                >
-                  <ExternalLink className="h-3.5 w-3.5" />
-                  Connect Stripe
-                </a>
-                <div>
-                  <SetupGuideLink
-                    href="/help/how-to-connect-stripe-for-online-payments"
-                    label="Need a hand? Follow our step-by-step Stripe setup guide."
-                  />
-                </div>
-              </>
-            )}
+            {isConfigured ? (
+              <a
+                href={connectUrl}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+              >
+                <ExternalLink className="h-3.5 w-3.5" />
+                Connect Stripe
+              </a>
+            ) : null}
+            <div>
+              <SetupGuideLink
+                href="/help/how-to-connect-stripe-for-online-payments"
+                label="Need a hand? Follow our step-by-step Stripe setup guide."
+              />
+            </div>
           </div>
         )}
         {isConnected ? (
