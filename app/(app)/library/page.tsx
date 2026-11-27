@@ -140,6 +140,8 @@ async function LibraryBodyIsland() {
   // Offerings Catalog count matches available resources on first paint.
   if (venue) {
     await ensureVenueStarters(venue.id);
+    // Offerings ensure must not crash Templates if a category race returns 23505;
+    // ensureOfferingStartersForCurrentVenue returns ok:false instead of throwing.
     await ensureOfferingStartersForCurrentVenue();
   }
 
