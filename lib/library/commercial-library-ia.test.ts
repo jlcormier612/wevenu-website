@@ -22,6 +22,33 @@ describe("Commercial Library information architecture", () => {
     assert.match(page, /title="Offerings Catalog"/);
   });
 
+  it("uses Template and Catalog labels matching Other templates & assets treatments", () => {
+    const salesIdx = page.indexOf('title="Packages & Pricing"');
+    const stockIdx = page.indexOf('title="Available Inventory"');
+    const eotIdx = page.indexOf('title="Event Order Templates"');
+    const offIdx = page.indexOf('title="Offerings Catalog"');
+    assert.ok(salesIdx > 0 && stockIdx > salesIdx && eotIdx > stockIdx && offIdx > eotIdx);
+    const salesBlock = page.slice(salesIdx - 80, salesIdx + 40);
+    const stockBlock = page.slice(stockIdx - 80, stockIdx + 40);
+    const eotBlock = page.slice(eotIdx - 80, eotIdx + 40);
+    const offBlock = page.slice(offIdx - 80, offIdx + 40);
+    assert.match(salesBlock, /kind="template"/);
+    assert.match(stockBlock, /kind="catalog"/);
+    assert.match(eotBlock, /kind="template"/);
+    assert.match(offBlock, /kind="catalog"/);
+    assert.doesNotMatch(salesBlock, /kind="primary"/);
+    assert.doesNotMatch(stockBlock, /kind="primary"/);
+    // Same Badge treatments used for Other templates & assets.
+    assert.match(page, /kind === "template" && <Badge variant="accent"/);
+    assert.match(page, /kind === "catalog" && <Badge variant="outline"/);
+  });
+
+  it("awaits ensure before counting and does not fire-and-forget overview starters", () => {
+    assert.match(page, /await ensureVenueStarters\(venue\.id\)/);
+    assert.match(page, /await ensureOfferingStartersForCurrentVenue\(\)/);
+    assert.doesNotMatch(page, /\bafter\s*\(/);
+  });
+
   it("keeps starting lists secondary under Stock and does not merge Offerings with Inventory", () => {
     assert.match(page, /Saved starting lists/);
     assert.match(page, /Group title="Stock"/);

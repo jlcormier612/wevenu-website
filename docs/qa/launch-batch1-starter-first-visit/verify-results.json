@@ -1,0 +1,167 @@
+{
+  "generatedAt": "2026-11-27T15:44:43.293Z",
+  "venueId": "c0ea746f-b92e-4c32-b833-8694a4f99acb",
+  "venueName": "Batch1 FirstVisit 1795794261097",
+  "ownerEmail": "batch1-firstvisit-1795794261097@hellotocheers-test.invalid",
+  "provisionMs": 15197,
+  "ensure1Ms": 42,
+  "postProvision": {
+    "status": "complete",
+    "seededSteps": [
+      "inventory",
+      "message_templates",
+      "automations",
+      "contracts",
+      "playbooks",
+      "questionnaires",
+      "event_orders",
+      "timelines",
+      "floor_plans",
+      "packages",
+      "faq",
+      "brochures",
+      "saved_reports",
+      "schedule_item_types",
+      "standard_pipeline",
+      "setup_profiles",
+      "public_forms"
+    ],
+    "failedSteps": [],
+    "needsAttention": false,
+    "playbooks": 6,
+    "messages": 11,
+    "contracts": 1,
+    "timelines": 3,
+    "questionnaires": 3,
+    "packages": 3,
+    "eventOrders": 2,
+    "floorPlans": 5,
+    "publicForms": 4,
+    "brochures": 1,
+    "automations": 4,
+    "inventoryItems": 49
+  },
+  "overviewCounts": {
+    "playbooks": 6,
+    "messages": 11,
+    "contracts": 1,
+    "timelines": 3,
+    "questionnaires": 3,
+    "packages": 3,
+    "eventOrders": 2,
+    "floorPlans": 5,
+    "publicForms": 4,
+    "brochures": 1,
+    "inventoryItems": 49
+  },
+  "planningActive": 6,
+  "checks": [
+    {
+      "id": "auth.user",
+      "ok": true,
+      "detail": "7ba6f697-c4ff-454d-a562-598816e80f78"
+    },
+    {
+      "id": "provision.ok",
+      "ok": true,
+      "detail": "venueId=c0ea746f-b92e-4c32-b833-8694a4f99acb ms=15197"
+    },
+    {
+      "id": "provision.starters_ok",
+      "ok": true,
+      "detail": "status=complete seeded=17 failed=[]"
+    },
+    {
+      "id": "db.post_provision_complete",
+      "ok": true,
+      "detail": "{\"status\":\"complete\",\"seededSteps\":[\"inventory\",\"message_templates\",\"automations\",\"contracts\",\"playbooks\",\"questionnaires\",\"event_orders\",\"timelines\",\"floor_plans\",\"packages\",\"faq\",\"brochures\",\"saved_reports\",\"schedule_item_types\",\"standard_pipeline\",\"setup_profiles\",\"public_forms\"],\"failedSteps\":[],\"needsAttention\":false,\"playbooks\":6,\"messages\":11,\"contracts\":1,\"timelines\":3,\"questionnaires\":3,\"packages\":3,\"eventOrders\":2,\"floorPlans\":5,\"publicForms\":4,\"brochures\":1,\"automations\":4,\"inventoryItems\":49}"
+    },
+    {
+      "id": "db.playbooks_gt0",
+      "ok": true,
+      "detail": "6"
+    },
+    {
+      "id": "db.messages_gt0",
+      "ok": true,
+      "detail": "11"
+    },
+    {
+      "id": "db.contracts_gt0",
+      "ok": true,
+      "detail": "1"
+    },
+    {
+      "id": "db.timelines_gt0",
+      "ok": true,
+      "detail": "3"
+    },
+    {
+      "id": "db.questionnaires_gt0",
+      "ok": true,
+      "detail": "3"
+    },
+    {
+      "id": "db.packages_gt0",
+      "ok": true,
+      "detail": "3"
+    },
+    {
+      "id": "db.event_orders_gt0",
+      "ok": true,
+      "detail": "2"
+    },
+    {
+      "id": "db.automations_paused_or_present",
+      "ok": true,
+      "detail": "4"
+    },
+    {
+      "id": "setup_profile.wedding_default",
+      "ok": true,
+      "detail": "{\"wedding\":1,\"all\":[{\"id\":\"3f7d0f1a-97b9-4c69-9d38-d32d7e688675\",\"name\":\"Standard Wedding Setup\"}]}"
+    },
+    {
+      "id": "setup_profile.no_corporate_assign",
+      "ok": true,
+      "detail": "[{\"profile_id\":\"3f7d0f1a-97b9-4c69-9d38-d32d7e688675\",\"event_type\":\"wedding\"}]"
+    },
+    {
+      "id": "automations.initially_paused",
+      "ok": true,
+      "detail": "[{\"status\":\"paused\",\"source_master_key\":\"SEQ-01\"},{\"status\":\"paused\",\"source_master_key\":\"SEQ-02\"},{\"status\":\"paused\",\"source_master_key\":\"SEQ-03\"},{\"status\":\"paused\",\"source_master_key\":\"SEQ-04\"}]"
+    },
+    {
+      "id": "overview.ensure_idempotent_fast",
+      "ok": true,
+      "detail": "ms=42 status=complete seeded=17"
+    },
+    {
+      "id": "overview.matches_post_provision",
+      "ok": true,
+      "detail": "{\"overviewCounts\":{\"playbooks\":6,\"messages\":11,\"contracts\":1,\"timelines\":3,\"questionnaires\":3,\"packages\":3,\"eventOrders\":2,\"floorPlans\":5,\"publicForms\":4,\"brochures\":1,\"inventoryItems\":49},\"postProvision\":{\"status\":\"complete\",\"seededSteps\":[\"inventory\",\"message_templates\",\"automations\",\"contracts\",\"playbooks\",\"questionnaires\",\"event_orders\",\"timelines\",\"floor_plans\",\"packages\",\"faq\",\"brochures\",\"saved_reports\",\"schedule_item_types\",\"standard_pipeline\",\"setup_profiles\",\"public_forms\"],\"failedSteps\":[],\"needsAttention\":false,\"playbooks\":6,\"messages\":11,\"contracts\":1,\"timelines\":3,\"questionnaires\":3,\"packages\":3,\"eventOrders\":2,\"floorPlans\":5,\"publicForms\":4,\"brochures\":1,\"automations\":4,\"inventoryItems\":49},\"planningActive\":6}"
+    },
+    {
+      "id": "reensure.no_duplicates",
+      "ok": true,
+      "detail": "{\"beforeDup\":{\"playbooks\":6,\"messages\":11,\"contracts\":1,\"timelines\":3,\"questionnaires\":3,\"packages\":3,\"eventOrders\":2,\"floorPlans\":5,\"publicForms\":4,\"brochures\":1,\"inventoryItems\":49},\"afterDup\":{\"playbooks\":6,\"messages\":11,\"contracts\":1,\"packages\":3,\"timelines\":3},\"ensure2\":{\"ok\":true,\"seeded\":[\"inventory\",\"message_templates\",\"automations\",\"contracts\",\"playbooks\",\"questionnaires\",\"event_orders\",\"timelines\",\"floor_plans\",\"packages\",\"faq\",\"brochures\",\"saved_reports\",\"schedule_item_types\",\"standard_pipeline\",\"setup_profiles\",\"public_forms\"],\"failed\":[],\"status\":\"complete\"}}"
+    },
+    {
+      "id": "customize.preserved",
+      "ok": true,
+      "detail": "Customized Essential Wedding 1795794261097"
+    },
+    {
+      "id": "delete.not_recreated",
+      "ok": true,
+      "detail": "master=CTR-01 resurrected=0 status=complete"
+    },
+    {
+      "id": "partial.recovery_safe",
+      "ok": true,
+      "detail": "status=complete seeded=17 failed=[]"
+    }
+  ],
+  "pass": true,
+  "failCount": 0
+}

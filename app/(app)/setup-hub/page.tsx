@@ -9,7 +9,10 @@ import { getSpaces } from "@/lib/availability/service";
 import { phaseAImportFlags } from "@/lib/import/activity";
 import { getImportBatches } from "@/lib/import/batches";
 import { loadMilestone02Context } from "@/lib/setup-hub/phase-b1-load";
-import { getStarterProvisioningSnapshot } from "@/lib/provisioning/starters";
+import {
+  ensureVenueStarters,
+  getStarterProvisioningSnapshot,
+} from "@/lib/provisioning/starters";
 
 export const metadata: Metadata = { title: "Setup" };
 export const dynamic = "force-dynamic";
@@ -19,6 +22,10 @@ async function SetupBodyIsland() {
   if (!ctx) {
     return <p className="text-sm text-muted-foreground">Select a venue to continue setup.</p>;
   }
+
+  // Same bounded safeguard as Templates: complete venues early-return;
+  // incomplete / missing provision rows finish idempotent seed before indicators.
+  await ensureVenueStarters(ctx.venue.id);
 
   const [spaces, importBatches, starterProvisioning] = await Promise.all([
     getSpaces(),
