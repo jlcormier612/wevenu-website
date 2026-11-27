@@ -4,18 +4,23 @@
  * Idempotent against QuickBooks itself: DocNumber is set to Hello to Cheers'
  * invoices.invoice_number at creation, and a query-before-create checks
  * for an existing Invoice with that DocNumber before ever POSTing a new
- * one.
+ * one. Existing matches are still total-checked so a prior mismatched create
+ * is never silently adopted as synced.
  *
  * Line mapping follows the US QBO tax model (TAX/NON + DiscountLineDetail).
- * Taxable invoices that QuickBooks rejects fail clearly — there is no fallback
- * that posts tax as revenue or drops tax from the total.
+ * Taxable invoices also set TxnTaxDetail.TxnTaxCodeRef from the company
+ * Preferences.TaxPrefs.TaxGroupCodeRef so QBO calculates sales tax. Taxable
+ * invoices that QuickBooks rejects or totals that do not match fail clearly —
+ * there is no fallback that posts tax as revenue or drops tax from the total.
  */
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { quickBooksFetch } from "@/lib/quickbooks/client";
 import { ensureDefaultItem } from "@/lib/quickbooks/items";
+import { resolveCompanySalesTaxCodeRef } from "@/lib/quickbooks/sales-tax";
 import {
   buildQuickBooksInvoiceLinePayload,
   type HtcInvoiceLineItem,
+  type QuickBooksInvoiceLinePayload,
 } from "@/lib/quickbooks/sync/invoice-line-payload";
 import type { QuickBooksSyncResult } from "@/lib/quickbooks/sync/types";
 
@@ -27,12 +32,43 @@ type InvoiceRow = {
 
 type LineItemRow = HtcInvoiceLineItem;
 
+type QboInvoiceTotals = {
+  Id: string;
+  TotalAmt?: number;
+  TxnTaxDetail?: { TotalTax?: number };
+};
+
 function escapeQboString(value: string): string {
   return value.replace(/'/g, "''");
 }
 
 function totalsMatch(expected: number, actual: number): boolean {
   return Math.abs(expected - actual) <= 0.01;
+}
+
+function totalMismatchError(
+  mapped: QuickBooksInvoiceLinePayload,
+  qbo: QboInvoiceTotals,
+  opts?: { adopted?: boolean },
+): QuickBooksSyncResult {
+  const qboTotal = Number(qbo.TotalAmt);
+  const qboTax = qbo.TxnTaxDetail?.TotalTax;
+  const adoptNote = opts?.adopted
+    ? ` Existing QuickBooks invoice ${qbo.Id} was not adopted as synced because totals do not match.`
+    : ` The remote invoice ${qbo.Id} was created; fix the tax alignment, then retry — it was not rewritten with misclassified tax.`;
+  return {
+    ok: false,
+    error:
+      `QuickBooks invoice total ${qboTotal.toFixed(2)} does not match Hello to Cheers total ` +
+      `${mapped.expectedTotal.toFixed(2)}` +
+      (mapped.taxable
+        ? ` (HTC tax ${mapped.htcTaxAmount.toFixed(2)}` +
+          (qboTax != null ? `, QBO tax ${Number(qboTax).toFixed(2)}` : "") +
+          `). Align the QuickBooks sales tax rate and taxable base with the venue tax, then retry.` +
+          adoptNote
+        : "."),
+    retryable: false,
+  };
 }
 
 export async function syncInvoice(venueId: string, entityId: string): Promise<QuickBooksSyncResult> {
@@ -63,11 +99,33 @@ export async function syncInvoice(venueId: string, entityId: string): Promise<Qu
     .eq("invoice_id", entityId).order("sort_order");
   const lines = (lineItems ?? []) as LineItemRow[];
   if (lines.length === 0) {
-    return { ok: false, error: "Invoice has no line items to sync.", retryable: true };
+    // Deterministic data defect — retrying until max_attempts only burns the
+    // queue and flips Settings health. Dead-letter instead.
+    return { ok: false, error: "Invoice has no line items to sync.", retryable: false };
   }
 
   const itemResult = await ensureDefaultItem(venueId);
   if (!itemResult.ok) return { ok: false, error: itemResult.error, retryable: itemResult.retryable, uncertain: itemResult.uncertain };
+
+  const mapped = buildQuickBooksInvoiceLinePayload(lines, itemResult.itemId);
+  if (mapped.Line.length === 0) {
+    return { ok: false, error: "Invoice has no QuickBooks-syncable line items.", retryable: false };
+  }
+
+  let txnTaxDetail: { TxnTaxCodeRef: { value: string } } | undefined;
+  if (mapped.taxable) {
+    const taxCode = await resolveCompanySalesTaxCodeRef(venueId);
+    if (!taxCode.ok) {
+      return {
+        ok: false,
+        error:
+          `${taxCode.error} Taxable Hello to Cheers invoices require QuickBooks US sales tax ` +
+          `(TAX/NON + company TaxGroupCodeRef); tax was not posted as revenue and was not dropped.`,
+        retryable: taxCode.retryable,
+      };
+    }
+    txnTaxDetail = { TxnTaxCodeRef: { value: taxCode.taxCodeId } };
+  }
 
   // Idempotency: does an Invoice with this exact DocNumber already exist?
   const query = `select * from Invoice where DocNumber = '${escapeQboString(invoiceRow.invoice_number)}'`;
@@ -75,16 +133,16 @@ export async function syncInvoice(venueId: string, entityId: string): Promise<Qu
   if (!queryResult.ok) return { ok: false, error: queryResult.error, retryable: queryResult.retryable };
 
   const queryData = await queryResult.response.json() as {
-    QueryResponse?: { Invoice?: { Id: string; TotalAmt?: number }[] };
+    QueryResponse?: { Invoice?: QboInvoiceTotals[] };
   };
   const existing = queryData.QueryResponse?.Invoice?.[0];
-  if (existing?.Id) {
-    return { ok: true, quickbooksId: existing.Id };
-  }
-
-  const mapped = buildQuickBooksInvoiceLinePayload(lines, itemResult.itemId);
-  if (mapped.Line.length === 0) {
-    return { ok: false, error: "Invoice has no QuickBooks-syncable line items.", retryable: false };
+  const existingId = existing?.Id;
+  if (existingId && existing) {
+    const qboTotal = Number(existing.TotalAmt);
+    if (Number.isFinite(qboTotal) && !totalsMatch(mapped.expectedTotal, qboTotal)) {
+      return totalMismatchError(mapped, existing, { adopted: true });
+    }
+    return { ok: true, quickbooksId: existingId };
   }
 
   const createResult = await quickBooksFetch(venueId, "/invoice", {
@@ -95,13 +153,14 @@ export async function syncInvoice(venueId: string, entityId: string): Promise<Qu
       DocNumber: invoiceRow.invoice_number,
       DueDate: invoiceRow.due_date ?? undefined,
       GlobalTaxCalculation: mapped.GlobalTaxCalculation,
+      ...(txnTaxDetail ? { TxnTaxDetail: txnTaxDetail } : {}),
       Line: mapped.Line,
     }),
   });
 
   if (!createResult.ok) {
     const taxHint = mapped.taxable
-      ? " Taxable Hello to Cheers invoices require QuickBooks US sales tax (TAX/NON) to accept the invoice; tax was not posted as revenue and was not dropped."
+      ? " Taxable Hello to Cheers invoices require QuickBooks US sales tax (TAX/NON + company TaxGroupCodeRef) to accept the invoice; tax was not posted as revenue and was not dropped."
       : "";
     return {
       ok: false,
@@ -112,7 +171,7 @@ export async function syncInvoice(venueId: string, entityId: string): Promise<Qu
   }
 
   const createData = await createResult.response.json() as {
-    Invoice?: { Id: string; TotalAmt?: number; TxnTaxDetail?: { TotalTax?: number } };
+    Invoice?: QboInvoiceTotals;
   };
   const created = createData.Invoice;
   const newId = created?.Id;
@@ -120,20 +179,7 @@ export async function syncInvoice(venueId: string, entityId: string): Promise<Qu
 
   const qboTotal = Number(created?.TotalAmt);
   if (Number.isFinite(qboTotal) && !totalsMatch(mapped.expectedTotal, qboTotal)) {
-    const qboTax = created?.TxnTaxDetail?.TotalTax;
-    return {
-      ok: false,
-      error:
-        `QuickBooks invoice total ${qboTotal.toFixed(2)} does not match Hello to Cheers total ` +
-        `${mapped.expectedTotal.toFixed(2)}` +
-        (mapped.taxable
-          ? ` (HTC tax ${mapped.htcTaxAmount.toFixed(2)}` +
-            (qboTax != null ? `, QBO tax ${Number(qboTax).toFixed(2)}` : "") +
-            `). Align the QuickBooks sales tax rate with the venue tax, then retry. ` +
-            `The remote invoice ${newId} was created and will be adopted by DocNumber on retry — it was not rewritten with misclassified tax.`
-          : "."),
-      retryable: false,
-    };
+    return totalMismatchError(mapped, created!);
   }
 
   return { ok: true, quickbooksId: newId };

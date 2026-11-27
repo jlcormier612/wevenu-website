@@ -5,8 +5,9 @@
  * - Taxable sales lines use SalesItemLineDetail.TaxCodeRef = "TAX".
  * - Non-taxable sales lines use TaxCodeRef = "NON".
  * - Do not post HTC `tax` rows as SalesItem income (misclassifies revenue).
- * - Do not invent TxnTaxDetail.TotalTax without tax codes — QBO calculates
- *   tax from TAX/NON (and company tax setup) when TaxExcluded is used.
+ * - Do not invent TxnTaxDetail.TotalTax without tax codes — sync sets
+ *   TxnTaxDetail.TxnTaxCodeRef from company TaxPrefs.TaxGroupCodeRef and QBO
+ *   calculates tax from TAX/NON + that group when TaxExcluded is used.
  * - HTC `discount` rows use DiscountLineDetail (not SalesItem revenue).
  * - GlobalTaxCalculation: TaxExcluded when taxable; NotApplicable when not.
  *

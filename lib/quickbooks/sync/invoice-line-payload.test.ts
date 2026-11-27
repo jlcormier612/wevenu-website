@@ -88,6 +88,8 @@ describe("buildQuickBooksInvoiceLinePayload", () => {
   });
 
   it("handles package + discount + tax expected total without tax sales lines", () => {
+    // Amounts mirror QBO US behavior: tax on pre-discount taxable sales
+    // (8% of 1000 = 80) then discount → expected total 980.
     const payload = buildQuickBooksInvoiceLinePayload(
       [
         {
@@ -108,15 +110,15 @@ describe("buildQuickBooksInvoiceLinePayload", () => {
           type: "tax",
           description: "Tax",
           quantity: 1,
-          unit_price: 72,
-          amount: 72,
+          unit_price: 80,
+          amount: 80,
         },
       ],
       "item-1",
     );
     assert.equal(payload.htcDiscountAmount, 100);
-    assert.equal(payload.htcTaxAmount, 72);
-    assert.equal(payload.expectedTotal, 972);
+    assert.equal(payload.htcTaxAmount, 80);
+    assert.equal(payload.expectedTotal, 980);
     assert.equal(payload.Line.length, 2);
   });
 });
@@ -127,5 +129,17 @@ describe("syncInvoice tax failure policy", () => {
     assert.doesNotMatch(src, /taxFallbackLines|fallback to non-tax-coded sales lines/i);
     assert.match(src, /does not match Hello to Cheers total/);
     assert.match(src, /tax was not posted as revenue and was not dropped/);
+    assert.match(src, /TxnTaxDetail/);
+    assert.match(src, /resolveCompanySalesTaxCodeRef/);
+  });
+});
+
+describe("invoice sync deterministic failures", () => {
+  it("marks empty line-item invoices as non-retryable", () => {
+    const src = readFileSync("lib/quickbooks/sync/invoice.ts", "utf8");
+    const idx = src.indexOf("Invoice has no line items to sync.");
+    assert.ok(idx > 0);
+    const window = src.slice(idx, idx + 120);
+    assert.match(window, /retryable:\s*false/);
   });
 });
