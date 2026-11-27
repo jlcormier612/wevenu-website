@@ -381,30 +381,21 @@ export function QuickBooksConnectSection({
             <p className="text-sm text-muted-foreground">
               Manage your events and client financials in Hello to Cheers while keeping your books up to date in QuickBooks.
             </p>
-            {!isConfigured ? (
-              <div className="rounded-lg border border-border bg-muted/30 p-4">
-                <p className="text-sm text-muted-foreground">
-                  QuickBooks isn&apos;t ready to start in this environment yet. A working Connect
-                  button will appear here when Hello to Cheers can open QuickBooks onboarding.
-                </p>
-              </div>
-            ) : (
-              <>
-                <a
-                  href={connectUrl}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-                >
-                  <ExternalLink className="h-3.5 w-3.5" />
-                  Connect QuickBooks
-                </a>
-                <div>
-                  <SetupGuideLink
-                    href="/help/how-to-connect-quickbooks-online"
-                    label="Need a hand? Follow our step-by-step QuickBooks setup guide."
-                  />
-                </div>
-              </>
-            )}
+            {isConfigured ? (
+              <a
+                href={connectUrl}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+              >
+                <ExternalLink className="h-3.5 w-3.5" />
+                Connect QuickBooks
+              </a>
+            ) : null}
+            <div>
+              <SetupGuideLink
+                href="/help/how-to-connect-quickbooks-online"
+                label="Need a hand? Follow our step-by-step QuickBooks setup guide."
+              />
+            </div>
           </div>
         )}
       </CardContent>

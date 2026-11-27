@@ -144,6 +144,8 @@ describe("Phase B1 Milestone 02 guided copy and routes", () => {
       assert.doesNotMatch(src, /Contact support to get this connected/);
       assert.doesNotMatch(src, /Not available for your account yet/);
       assert.doesNotMatch(src, /Preparing Facebook Connect/);
+      assert.doesNotMatch(src, /isn't ready to start in this environment/);
+      assert.doesNotMatch(src, /working Connect button will appear/);
     }
     const stripe = read("components/settings/stripe-connect-section.tsx");
     assert.match(stripe, /Online Payment Collection/);

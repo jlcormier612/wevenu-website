@@ -511,14 +511,6 @@ export function FacebookConnectSection({
         <div className="space-y-3">
           {connectUrlLoading ? (
             <p className="text-sm text-muted-foreground">Checking your Facebook connection…</p>
-          ) : !isConfigured ? (
-            <div className="htc-surface-guidance p-4">
-              <p className="text-sm text-muted-foreground">
-                Facebook / Instagram Lead Ads isn&apos;t ready to start in this environment yet. A
-                working Connect button will appear here when Hello to Cheers can open Facebook
-                onboarding.
-              </p>
-            </div>
           ) : (
             <>
               <p className="text-sm text-muted-foreground">
@@ -527,12 +519,14 @@ export function FacebookConnectSection({
               <p className="text-sm text-muted-foreground">
                 Keep all your leads organized in one place, ready for follow-up.
               </p>
-              <a
-                href={connectUrl}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-              >
-                <ExternalLink className="h-3.5 w-3.5" /> Connect Facebook
-              </a>
+              {isConfigured ? (
+                <a
+                  href={connectUrl}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+                >
+                  <ExternalLink className="h-3.5 w-3.5" /> Connect Facebook
+                </a>
+              ) : null}
               <div>
                 <SetupGuideLink
                   href="/help/how-to-connect-facebook-instagram-lead-ads"
