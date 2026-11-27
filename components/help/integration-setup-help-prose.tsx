@@ -4,6 +4,7 @@ import * as React from "react";
 import { ChevronDown, ExternalLink } from "lucide-react";
 import type { ReactNode } from "react";
 
+import { splitGuideTocHeadings } from "@/lib/help-guides/guide-toc";
 import { parseHelpInlineSegments } from "@/lib/help-guides/help-prose-inline";
 import { cn } from "@/lib/utils";
 
@@ -120,29 +121,25 @@ function isExampleHeading(text: string): boolean {
 }
 
 function ArticleContents({ headings }: { headings: { id: string; text: string }[] }) {
-  const [open, setOpen] = React.useState(true);
+  const [showAll, setShowAll] = React.useState(false);
   if (headings.length < 4) return null;
+
+  const { primary, secondary } = splitGuideTocHeadings(headings);
+  const visible = showAll || secondary.length === 0 ? headings : primary;
+  const canToggle = secondary.length > 0;
+
   return (
     <nav
       aria-label="In this guide"
+      data-testid="guide-toc"
+      data-guide-toc-expanded={showAll ? "true" : "false"}
       className="rounded-[10px] border border-[color:var(--htc-border-warm,#e6e0d6)] bg-[color:var(--htc-canvas,#f7f4ef)] px-4 py-3"
     >
-      <button
-        type="button"
-        className="flex w-full items-center justify-between gap-2 text-left sm:cursor-default"
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-      >
-        <span className="text-[15px] font-semibold text-[color:var(--htc-charcoal,#2c2c2c)]">
-          In this guide
-        </span>
-        <ChevronDown
-          className={cn("h-4 w-4 shrink-0 text-muted-foreground transition-transform sm:hidden", open && "rotate-180")}
-          aria-hidden
-        />
-      </button>
-      <ul className={cn("mt-2 space-y-1.5", !open && "hidden sm:block")}>
-        {headings.map((h) => (
+      <p className="text-[15px] font-semibold text-[color:var(--htc-charcoal,#2c2c2c)]">
+        In this guide
+      </p>
+      <ul className="mt-2 space-y-1.5">
+        {visible.map((h) => (
           <li key={h.id}>
             <a
               href={`#${h.id}`}
@@ -153,6 +150,21 @@ function ArticleContents({ headings }: { headings: { id: string; text: string }[
           </li>
         ))}
       </ul>
+      {canToggle ? (
+        <button
+          type="button"
+          className="mt-3 inline-flex items-center gap-1.5 text-[13px] font-medium text-[color:var(--htc-charcoal,#2c2c2c)] underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--htc-botanical)] focus-visible:ring-offset-2 rounded-sm"
+          onClick={() => setShowAll((v) => !v)}
+          aria-expanded={showAll}
+          data-testid="guide-toc-toggle"
+        >
+          {showAll ? "Show fewer sections" : "Show all sections"}
+          <ChevronDown
+            className={cn("h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform", showAll && "rotate-180")}
+            aria-hidden
+          />
+        </button>
+      ) : null}
     </nav>
   );
 }
