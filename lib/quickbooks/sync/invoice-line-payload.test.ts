@@ -87,9 +87,9 @@ describe("buildQuickBooksInvoiceLinePayload", () => {
     );
   });
 
-  it("handles package + discount + tax expected total without tax sales lines", () => {
-    // Amounts mirror QBO US behavior: tax on pre-discount taxable sales
-    // (8% of 1000 = 80) then discount → expected total 980.
+  it("maps taxable discounts as negative TAX sales lines so QBO taxes after discount", () => {
+    // HTC exclusive tax is on (charges − discounts): 1000 − 100 → 8% = 72 → total 972.
+    // QBO DiscountLineDetail would tax before discount (980) — forbidden silent rewrite.
     const payload = buildQuickBooksInvoiceLinePayload(
       [
         {
@@ -110,16 +110,49 @@ describe("buildQuickBooksInvoiceLinePayload", () => {
           type: "tax",
           description: "Tax",
           quantity: 1,
-          unit_price: 80,
-          amount: 80,
+          unit_price: 72,
+          amount: 72,
         },
       ],
       "item-1",
     );
     assert.equal(payload.htcDiscountAmount, 100);
-    assert.equal(payload.htcTaxAmount, 80);
-    assert.equal(payload.expectedTotal, 980);
+    assert.equal(payload.htcTaxAmount, 72);
+    assert.equal(payload.expectedTotal, 972);
     assert.equal(payload.Line.length, 2);
+    assert.equal(payload.Line[0]?.DetailType, "SalesItemLineDetail");
+    assert.equal(payload.Line[1]?.DetailType, "SalesItemLineDetail");
+    if (payload.Line[1]?.DetailType === "SalesItemLineDetail") {
+      assert.equal(payload.Line[1].Amount, -100);
+      assert.equal(payload.Line[1].SalesItemLineDetail.TaxCodeRef.value, "TAX");
+    }
+    assert.equal(
+      payload.Line.some((l) => l.DetailType === "DiscountLineDetail"),
+      false,
+    );
+  });
+
+  it("keeps non-taxable discounts as DiscountLineDetail", () => {
+    const payload = buildQuickBooksInvoiceLinePayload(
+      [
+        {
+          type: "package",
+          description: "Venue package",
+          quantity: 1,
+          unit_price: 1000,
+          amount: 1000,
+        },
+        {
+          type: "discount",
+          description: "Discount",
+          quantity: 1,
+          unit_price: 100,
+          amount: 100,
+        },
+      ],
+      "item-1",
+    );
+    assert.equal(payload.Line[1]?.DetailType, "DiscountLineDetail");
   });
 });
 

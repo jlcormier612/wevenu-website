@@ -200,19 +200,19 @@ async function main() {
     total: 900,
   });
 
-  // QBO US DiscountLineDetail applies tax on the pre-discount taxable sales
-  // base (here 8% of 1000 = 80), then subtracts the discount → total 980.
+  // HTC exclusive tax is on (charges − discounts): 1000 − 100 → tax 72 → total 972.
+  // Taxable discounts sync as negative TAX sales lines so QBO matches (not DiscountLineDetail).
   const both = await createInvoice({
     tag: "BOTH",
     lines: [
       { type: "package", description: "Venue package", quantity: 1, unit_price: 1000, amount: 1000 },
       { type: "discount", description: "Discount", quantity: 1, unit_price: 100, amount: 100 },
-      { type: "tax", description: "Tax", quantity: 1, unit_price: 80, amount: 80 },
+      { type: "tax", description: "Tax", quantity: 1, unit_price: 72, amount: 72 },
     ],
     subtotal: 1000,
     discount_amount: 100,
-    tax_amount: 80,
-    total: 980,
+    tax_amount: 72,
+    total: 972,
   });
 
   // --- Payments on nontax invoice (500) ---
