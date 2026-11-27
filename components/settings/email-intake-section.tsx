@@ -120,7 +120,7 @@ export function EmailIntakeSection({
           </p>
         </div>
         {isConnected ? (
-          <Badge variant="success">Connected</Badge>
+          <Badge variant="success">Ready to use</Badge>
         ) : (
           <Badge variant="muted">Not connected</Badge>
         )}
@@ -143,7 +143,6 @@ export function EmailIntakeSection({
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Your venue&apos;s unique inquiry email address
             </p>
-            <p className="text-xs text-muted-foreground">Your unique inquiry email address</p>
             <div className="flex items-center gap-2">
               <code className="flex-1 rounded-md bg-muted border border-border px-3 py-2 text-xs font-mono text-foreground truncate">
                 {leadEmailAddress}

@@ -82,14 +82,17 @@ describe("Lead Capture venue summary", () => {
     assert.match(forms, /EmailIntakeSection/);
   });
 
-  it("email intake setup status is Connected or Not connected, not waiting-for-inquiry", () => {
+  it("email intake setup status is Ready to use or Not connected, not waiting-for-inquiry", () => {
     const email = readFileSync(
       resolve("components/settings/email-intake-section.tsx"),
       "utf8",
     );
-    assert.match(email, /Connected/);
+    // connectedAt only means the venue opened/revealed their HTC intake address —
+    // not that external forwarding is configured — so the badge is "Ready to use".
+    assert.match(email, /Ready to use/);
     assert.match(email, /Not connected/);
     assert.doesNotMatch(email, /Waiting for first inquiry/);
     assert.doesNotMatch(email, /hasReceivedAnything/);
+    assert.doesNotMatch(email, />Connected</);
   });
 });
