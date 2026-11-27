@@ -32,9 +32,19 @@ describe("provisioning starters module", () => {
       "schedule_item_types",
       "standard_pipeline",
       "setup_profiles",
+      "public_forms",
+      "offerings",
     ]) {
       assert.match(src, new RegExp(`key: "${key}"`));
     }
+  });
+
+  it("complete venues gap-fill offerings into durable seeded_steps or mark incomplete", () => {
+    const src = readFileSync(join(__dirname, "starters.ts"), "utf8");
+    assert.match(src, /!nextSteps\.includes\("offerings"\)/);
+    assert.match(src, /seedOfferingStarters/);
+    assert.match(src, /key: "offerings"/);
+    assert.match(src, /gapFailed\.push\(\{ key: "offerings"/);
   });
 
   it("complete venues skip reseeding unless recreateDeleted", () => {

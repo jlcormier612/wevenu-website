@@ -1,0 +1,989 @@
+{
+  "protocolRef": "LOCKED-PROTOCOL.md",
+  "protocolLockNote": "# Locked performance acceptance protocol — Batch 1 / launch preservation\n\n**Lock",
+  "expectedSha": "154301bb761f359833d91f3e88b4c51f81ae9a20",
+  "runASha": "154301bb761f359833d91f3e88b4c51f81ae9a20",
+  "runBSha": "154301bb761f359833d91f3e88b4c51f81ae9a20",
+  "verdict": "UNRESOLVED",
+  "blankFail": [],
+  "unresolvedFirstPaintStability": [
+    "Venue Guide"
+  ],
+  "comparison": {
+    "Dashboard": {
+      "histUseful80Ref": 345,
+      "runA_firstPaintMedian": 1036,
+      "runB_firstPaintMedian": 1207,
+      "firstPaintStability": {
+        "ok": true,
+        "delta": 171,
+        "pct": 14.2,
+        "unstable": false
+      },
+      "runA_useful80Median": 1036,
+      "runB_useful80Median": 1207,
+      "runA_meaningfulMedian": 1036,
+      "runB_meaningfulMedian": 1207,
+      "runA_blankMedian": 0,
+      "runB_blankMedian": 0,
+      "runA_firstPaintAll": [
+        1032,
+        1036,
+        979,
+        1136,
+        1140
+      ],
+      "runB_firstPaintAll": [
+        1510,
+        1093,
+        1207,
+        1460,
+        1057
+      ],
+      "runA_useful80All": [
+        1032,
+        1036,
+        979,
+        1136,
+        1140
+      ],
+      "runB_useful80All": [
+        1510,
+        1093,
+        1207,
+        1460,
+        1057
+      ],
+      "runA_outliers": [],
+      "runB_outliers": [],
+      "dashboardBaselineNote": "Nov 21 useful80 not like-for-like after founder-approved header removal; header not restored"
+    },
+    "Leads": {
+      "histUseful80Ref": 349,
+      "runA_firstPaintMedian": 364,
+      "runB_firstPaintMedian": 420,
+      "firstPaintStability": {
+        "ok": true,
+        "delta": 56,
+        "pct": 13.3,
+        "unstable": false
+      },
+      "runA_useful80Median": 364,
+      "runB_useful80Median": 420,
+      "runA_meaningfulMedian": 364,
+      "runB_meaningfulMedian": 420,
+      "runA_blankMedian": 0,
+      "runB_blankMedian": 0,
+      "runA_firstPaintAll": [
+        570,
+        681,
+        350,
+        351,
+        364
+      ],
+      "runB_firstPaintAll": [
+        420,
+        422,
+        2498,
+        417,
+        384
+      ],
+      "runA_useful80All": [
+        570,
+        681,
+        350,
+        351,
+        364
+      ],
+      "runB_useful80All": [
+        420,
+        422,
+        2498,
+        417,
+        384
+      ],
+      "runA_outliers": [],
+      "runB_outliers": [
+        "2498ms"
+      ],
+      "dashboardBaselineNote": null
+    },
+    "Clients": {
+      "histUseful80Ref": 347,
+      "runA_firstPaintMedian": 452,
+      "runB_firstPaintMedian": 475,
+      "firstPaintStability": {
+        "ok": true,
+        "delta": 23,
+        "pct": 4.8,
+        "unstable": false
+      },
+      "runA_useful80Median": 452,
+      "runB_useful80Median": 475,
+      "runA_meaningfulMedian": 452,
+      "runB_meaningfulMedian": 475,
+      "runA_blankMedian": 0,
+      "runB_blankMedian": 0,
+      "runA_firstPaintAll": [
+        452,
+        405,
+        462,
+        450,
+        458
+      ],
+      "runB_firstPaintAll": [
+        617,
+        349,
+        1791,
+        475,
+        363
+      ],
+      "runA_useful80All": [
+        452,
+        405,
+        462,
+        450,
+        458
+      ],
+      "runB_useful80All": [
+        617,
+        349,
+        1791,
+        475,
+        363
+      ],
+      "runA_outliers": [],
+      "runB_outliers": [
+        "1791ms"
+      ],
+      "dashboardBaselineNote": null
+    },
+    "Vendors": {
+      "histUseful80Ref": 308,
+      "runA_firstPaintMedian": 358,
+      "runB_firstPaintMedian": 361,
+      "firstPaintStability": {
+        "ok": true,
+        "delta": 3,
+        "pct": 0.8,
+        "unstable": false
+      },
+      "runA_useful80Median": 358,
+      "runB_useful80Median": 361,
+      "runA_meaningfulMedian": 358,
+      "runB_meaningfulMedian": 361,
+      "runA_blankMedian": 0,
+      "runB_blankMedian": 0,
+      "runA_firstPaintAll": [
+        358,
+        327,
+        409,
+        313,
+        362
+      ],
+      "runB_firstPaintAll": [
+        361,
+        358,
+        1415,
+        403,
+        304
+      ],
+      "runA_useful80All": [
+        358,
+        327,
+        409,
+        313,
+        362
+      ],
+      "runB_useful80All": [
+        361,
+        358,
+        1415,
+        403,
+        304
+      ],
+      "runA_outliers": [],
+      "runB_outliers": [
+        "1415ms"
+      ],
+      "dashboardBaselineNote": null
+    },
+    "Calendar": {
+      "histUseful80Ref": 626,
+      "runA_firstPaintMedian": 756,
+      "runB_firstPaintMedian": 889,
+      "firstPaintStability": {
+        "ok": true,
+        "delta": 133,
+        "pct": 15,
+        "unstable": false
+      },
+      "runA_useful80Median": 756,
+      "runB_useful80Median": 889,
+      "runA_meaningfulMedian": 756,
+      "runB_meaningfulMedian": 889,
+      "runA_blankMedian": 0,
+      "runB_blankMedian": 0,
+      "runA_firstPaintAll": [
+        1082,
+        1504,
+        756,
+        680,
+        728
+      ],
+      "runB_firstPaintAll": [
+        889,
+        2598,
+        2632,
+        667,
+        722
+      ],
+      "runA_useful80All": [
+        1082,
+        1504,
+        756,
+        680,
+        728
+      ],
+      "runB_useful80All": [
+        889,
+        2598,
+        2632,
+        667,
+        722
+      ],
+      "runA_outliers": [],
+      "runB_outliers": [],
+      "dashboardBaselineNote": null
+    },
+    "Tours": {
+      "histUseful80Ref": 577,
+      "runA_firstPaintMedian": 343,
+      "runB_firstPaintMedian": 355,
+      "firstPaintStability": {
+        "ok": true,
+        "delta": 12,
+        "pct": 3.4,
+        "unstable": false
+      },
+      "runA_useful80Median": 631,
+      "runB_useful80Median": 653,
+      "runA_meaningfulMedian": 631,
+      "runB_meaningfulMedian": 653,
+      "runA_blankMedian": 0,
+      "runB_blankMedian": 0,
+      "runA_firstPaintAll": [
+        343,
+        311,
+        392,
+        345,
+        299
+      ],
+      "runB_firstPaintAll": [
+        349,
+        355,
+        525,
+        310,
+        474
+      ],
+      "runA_useful80All": [
+        609,
+        631,
+        1241,
+        676,
+        628
+      ],
+      "runB_useful80All": [
+        643,
+        653,
+        1178,
+        642,
+        798
+      ],
+      "runA_outliers": [],
+      "runB_outliers": [],
+      "dashboardBaselineNote": null
+    },
+    "Inbox": {
+      "histUseful80Ref": 654,
+      "runA_firstPaintMedian": 710,
+      "runB_firstPaintMedian": 737,
+      "firstPaintStability": {
+        "ok": true,
+        "delta": 27,
+        "pct": 3.7,
+        "unstable": false
+      },
+      "runA_useful80Median": 710,
+      "runB_useful80Median": 737,
+      "runA_meaningfulMedian": 710,
+      "runB_meaningfulMedian": 737,
+      "runA_blankMedian": 0,
+      "runB_blankMedian": 0,
+      "runA_firstPaintAll": [
+        1066,
+        672,
+        708,
+        710,
+        923
+      ],
+      "runB_firstPaintAll": [
+        1169,
+        719,
+        1030,
+        712,
+        737
+      ],
+      "runA_useful80All": [
+        1066,
+        672,
+        708,
+        710,
+        923
+      ],
+      "runB_useful80All": [
+        1169,
+        719,
+        1030,
+        712,
+        737
+      ],
+      "runA_outliers": [],
+      "runB_outliers": [],
+      "dashboardBaselineNote": null
+    },
+    "Automations": {
+      "histUseful80Ref": 386,
+      "runA_firstPaintMedian": 337,
+      "runB_firstPaintMedian": 401,
+      "firstPaintStability": {
+        "ok": true,
+        "delta": 64,
+        "pct": 16,
+        "unstable": false
+      },
+      "runA_useful80Median": 337,
+      "runB_useful80Median": 401,
+      "runA_meaningfulMedian": 337,
+      "runB_meaningfulMedian": 401,
+      "runA_blankMedian": 0,
+      "runB_blankMedian": 0,
+      "runA_firstPaintAll": [
+        333,
+        1787,
+        337,
+        334,
+        497
+      ],
+      "runB_firstPaintAll": [
+        564,
+        337,
+        603,
+        297,
+        401
+      ],
+      "runA_useful80All": [
+        333,
+        1787,
+        337,
+        334,
+        497
+      ],
+      "runB_useful80All": [
+        564,
+        337,
+        603,
+        297,
+        401
+      ],
+      "runA_outliers": [
+        "1787ms"
+      ],
+      "runB_outliers": [],
+      "dashboardBaselineNote": null
+    },
+    "Templates": {
+      "histUseful80Ref": 522,
+      "runA_firstPaintMedian": 356,
+      "runB_firstPaintMedian": 399,
+      "firstPaintStability": {
+        "ok": true,
+        "delta": 43,
+        "pct": 10.8,
+        "unstable": false
+      },
+      "runA_useful80Median": 356,
+      "runB_useful80Median": 399,
+      "runA_meaningfulMedian": 1143,
+      "runB_meaningfulMedian": 1150,
+      "runA_blankMedian": 0,
+      "runB_blankMedian": 0,
+      "runA_firstPaintAll": [
+        398,
+        356,
+        394,
+        343,
+        294
+      ],
+      "runB_firstPaintAll": [
+        399,
+        349,
+        456,
+        409,
+        358
+      ],
+      "runA_useful80All": [
+        398,
+        356,
+        394,
+        343,
+        294
+      ],
+      "runB_useful80All": [
+        399,
+        349,
+        456,
+        409,
+        358
+      ],
+      "runA_outliers": [],
+      "runB_outliers": [],
+      "dashboardBaselineNote": null
+    },
+    "Documents": {
+      "histUseful80Ref": 607,
+      "runA_firstPaintMedian": 397,
+      "runB_firstPaintMedian": 504,
+      "firstPaintStability": {
+        "ok": true,
+        "delta": 107,
+        "pct": 21.2,
+        "unstable": false
+      },
+      "runA_useful80Median": 397,
+      "runB_useful80Median": 504,
+      "runA_meaningfulMedian": 754,
+      "runB_meaningfulMedian": 816,
+      "runA_blankMedian": 0,
+      "runB_blankMedian": 0,
+      "runA_firstPaintAll": [
+        1126,
+        452,
+        389,
+        348,
+        397
+      ],
+      "runB_firstPaintAll": [
+        504,
+        1241,
+        564,
+        360,
+        299
+      ],
+      "runA_useful80All": [
+        1126,
+        452,
+        389,
+        348,
+        397
+      ],
+      "runB_useful80All": [
+        504,
+        1241,
+        564,
+        360,
+        299
+      ],
+      "runA_outliers": [],
+      "runB_outliers": [],
+      "dashboardBaselineNote": null
+    },
+    "Contracts": {
+      "histUseful80Ref": 766,
+      "runA_firstPaintMedian": 310,
+      "runB_firstPaintMedian": 301,
+      "firstPaintStability": {
+        "ok": true,
+        "delta": 9,
+        "pct": 2.9,
+        "unstable": false
+      },
+      "runA_useful80Median": 621,
+      "runB_useful80Median": 677,
+      "runA_meaningfulMedian": 621,
+      "runB_meaningfulMedian": 677,
+      "runA_blankMedian": 0,
+      "runB_blankMedian": 0,
+      "runA_firstPaintAll": [
+        344,
+        310,
+        829,
+        295,
+        296
+      ],
+      "runB_firstPaintAll": [
+        443,
+        295,
+        295,
+        329,
+        301
+      ],
+      "runA_useful80All": [
+        657,
+        621,
+        1301,
+        605,
+        608
+      ],
+      "runB_useful80All": [
+        813,
+        613,
+        677,
+        699,
+        616
+      ],
+      "runA_outliers": [],
+      "runB_outliers": [],
+      "dashboardBaselineNote": null
+    },
+    "Payments": {
+      "histUseful80Ref": 415,
+      "runA_firstPaintMedian": 490,
+      "runB_firstPaintMedian": 460,
+      "firstPaintStability": {
+        "ok": true,
+        "delta": 30,
+        "pct": 6.1,
+        "unstable": false
+      },
+      "runA_useful80Median": 490,
+      "runB_useful80Median": 460,
+      "runA_meaningfulMedian": 1540,
+      "runB_meaningfulMedian": 1544,
+      "runA_blankMedian": 0,
+      "runB_blankMedian": 0,
+      "runA_firstPaintAll": [
+        490,
+        518,
+        552,
+        428,
+        266
+      ],
+      "runB_firstPaintAll": [
+        460,
+        631,
+        575,
+        425,
+        313
+      ],
+      "runA_useful80All": [
+        490,
+        518,
+        552,
+        428,
+        266
+      ],
+      "runB_useful80All": [
+        460,
+        631,
+        575,
+        425,
+        313
+      ],
+      "runA_outliers": [],
+      "runB_outliers": [],
+      "dashboardBaselineNote": null
+    },
+    "Task Center": {
+      "histUseful80Ref": 663,
+      "runA_firstPaintMedian": 354,
+      "runB_firstPaintMedian": 358,
+      "firstPaintStability": {
+        "ok": true,
+        "delta": 4,
+        "pct": 1.1,
+        "unstable": false
+      },
+      "runA_useful80Median": 785,
+      "runB_useful80Median": 829,
+      "runA_meaningfulMedian": 785,
+      "runB_meaningfulMedian": 829,
+      "runA_blankMedian": 0,
+      "runB_blankMedian": 0,
+      "runA_firstPaintAll": [
+        505,
+        461,
+        354,
+        346,
+        313
+      ],
+      "runB_firstPaintAll": [
+        1142,
+        358,
+        349,
+        346,
+        885
+      ],
+      "runA_useful80All": [
+        924,
+        776,
+        798,
+        660,
+        785
+      ],
+      "runB_useful80All": [
+        1572,
+        784,
+        829,
+        611,
+        1955
+      ],
+      "runA_outliers": [],
+      "runB_outliers": [
+        "1142ms"
+      ],
+      "dashboardBaselineNote": null
+    },
+    "Requests": {
+      "histUseful80Ref": null,
+      "runA_firstPaintMedian": 428,
+      "runB_firstPaintMedian": 337,
+      "firstPaintStability": {
+        "ok": true,
+        "delta": 91,
+        "pct": 21.3,
+        "unstable": false
+      },
+      "runA_useful80Median": 428,
+      "runB_useful80Median": 337,
+      "runA_meaningfulMedian": 688,
+      "runB_meaningfulMedian": 643,
+      "runA_blankMedian": 0,
+      "runB_blankMedian": 0,
+      "runA_firstPaintAll": [
+        378,
+        340,
+        428,
+        489,
+        588
+      ],
+      "runB_firstPaintAll": [
+        326,
+        337,
+        915,
+        317,
+        434
+      ],
+      "runA_useful80All": [
+        378,
+        340,
+        428,
+        489,
+        588
+      ],
+      "runB_useful80All": [
+        326,
+        337,
+        915,
+        317,
+        434
+      ],
+      "runA_outliers": [],
+      "runB_outliers": [],
+      "dashboardBaselineNote": null
+    },
+    "Setup": {
+      "histUseful80Ref": 302,
+      "runA_firstPaintMedian": 297,
+      "runB_firstPaintMedian": 356,
+      "firstPaintStability": {
+        "ok": true,
+        "delta": 59,
+        "pct": 16.6,
+        "unstable": false
+      },
+      "runA_useful80Median": 297,
+      "runB_useful80Median": 356,
+      "runA_meaningfulMedian": 660,
+      "runB_meaningfulMedian": 774,
+      "runA_blankMedian": 0,
+      "runB_blankMedian": 0,
+      "runA_firstPaintAll": [
+        297,
+        290,
+        305,
+        295,
+        299
+      ],
+      "runB_firstPaintAll": [
+        365,
+        356,
+        349,
+        294,
+        404
+      ],
+      "runA_useful80All": [
+        297,
+        290,
+        305,
+        295,
+        299
+      ],
+      "runB_useful80All": [
+        365,
+        356,
+        349,
+        294,
+        404
+      ],
+      "runA_outliers": [],
+      "runB_outliers": [],
+      "dashboardBaselineNote": null
+    },
+    "Settings": {
+      "histUseful80Ref": 620,
+      "runA_firstPaintMedian": 337,
+      "runB_firstPaintMedian": 292,
+      "firstPaintStability": {
+        "ok": true,
+        "delta": 45,
+        "pct": 13.4,
+        "unstable": false
+      },
+      "runA_useful80Median": 623,
+      "runB_useful80Median": 606,
+      "runA_meaningfulMedian": 623,
+      "runB_meaningfulMedian": 606,
+      "runA_blankMedian": 0,
+      "runB_blankMedian": 0,
+      "runA_firstPaintAll": [
+        346,
+        311,
+        384,
+        337,
+        291
+      ],
+      "runB_firstPaintAll": [
+        307,
+        289,
+        290,
+        292,
+        351
+      ],
+      "runA_useful80All": [
+        612,
+        623,
+        644,
+        649,
+        607
+      ],
+      "runB_useful80All": [
+        597,
+        606,
+        606,
+        612,
+        669
+      ],
+      "runA_outliers": [],
+      "runB_outliers": [],
+      "dashboardBaselineNote": null
+    },
+    "Guidance": {
+      "histUseful80Ref": null,
+      "runA_firstPaintMedian": 342,
+      "runB_firstPaintMedian": 342,
+      "firstPaintStability": {
+        "ok": true,
+        "delta": 0,
+        "pct": 0,
+        "unstable": false
+      },
+      "runA_useful80Median": 342,
+      "runB_useful80Median": 342,
+      "runA_meaningfulMedian": 620,
+      "runB_meaningfulMedian": 611,
+      "runA_blankMedian": 0,
+      "runB_blankMedian": 0,
+      "runA_firstPaintAll": [
+        391,
+        435,
+        342,
+        272,
+        295
+      ],
+      "runB_firstPaintAll": [
+        443,
+        290,
+        514,
+        286,
+        342
+      ],
+      "runA_useful80All": [
+        391,
+        435,
+        342,
+        272,
+        295
+      ],
+      "runB_useful80All": [
+        443,
+        290,
+        514,
+        286,
+        342
+      ],
+      "runA_outliers": [],
+      "runB_outliers": [],
+      "dashboardBaselineNote": null
+    },
+    "Venue Guide": {
+      "histUseful80Ref": null,
+      "runA_firstPaintMedian": 296,
+      "runB_firstPaintMedian": 452,
+      "firstPaintStability": {
+        "ok": false,
+        "delta": 156,
+        "pct": 34.5,
+        "unstable": true
+      },
+      "runA_useful80Median": 296,
+      "runB_useful80Median": 452,
+      "runA_meaningfulMedian": 604,
+      "runB_meaningfulMedian": 731,
+      "runA_blankMedian": 0,
+      "runB_blankMedian": 0,
+      "runA_firstPaintAll": [
+        450,
+        344,
+        292,
+        296,
+        295
+      ],
+      "runB_firstPaintAll": [
+        475,
+        296,
+        411,
+        458,
+        452
+      ],
+      "runA_useful80All": [
+        450,
+        344,
+        292,
+        296,
+        295
+      ],
+      "runB_useful80All": [
+        475,
+        296,
+        411,
+        458,
+        452
+      ],
+      "runA_outliers": [],
+      "runB_outliers": [],
+      "dashboardBaselineNote": null
+    },
+    "Reports": {
+      "histUseful80Ref": 295,
+      "runA_firstPaintMedian": 292,
+      "runB_firstPaintMedian": 332,
+      "firstPaintStability": {
+        "ok": true,
+        "delta": 40,
+        "pct": 12,
+        "unstable": false
+      },
+      "runA_useful80Median": 292,
+      "runB_useful80Median": 332,
+      "runA_meaningfulMedian": 292,
+      "runB_meaningfulMedian": 332,
+      "runA_blankMedian": 0,
+      "runB_blankMedian": 0,
+      "runA_firstPaintAll": [
+        287,
+        417,
+        283,
+        292,
+        361
+      ],
+      "runB_firstPaintAll": [
+        299,
+        373,
+        303,
+        332,
+        365
+      ],
+      "runA_useful80All": [
+        287,
+        417,
+        283,
+        292,
+        361
+      ],
+      "runB_useful80All": [
+        299,
+        373,
+        303,
+        332,
+        365
+      ],
+      "runA_outliers": [],
+      "runB_outliers": [],
+      "dashboardBaselineNote": null
+    },
+    "Help & Feedback": {
+      "histUseful80Ref": null,
+      "runA_firstPaintMedian": 369,
+      "runB_firstPaintMedian": 414,
+      "firstPaintStability": {
+        "ok": true,
+        "delta": 45,
+        "pct": 10.9,
+        "unstable": false
+      },
+      "runA_useful80Median": 369,
+      "runB_useful80Median": 414,
+      "runA_meaningfulMedian": 369,
+      "runB_meaningfulMedian": 414,
+      "runA_blankMedian": 0,
+      "runB_blankMedian": 0,
+      "runA_firstPaintAll": [
+        406,
+        367,
+        413,
+        349,
+        369
+      ],
+      "runB_firstPaintAll": [
+        360,
+        414,
+        507,
+        308,
+        624
+      ],
+      "runA_useful80All": [
+        406,
+        367,
+        413,
+        349,
+        369
+      ],
+      "runB_useful80All": [
+        360,
+        414,
+        507,
+        308,
+        624
+      ],
+      "runA_outliers": [],
+      "runB_outliers": [],
+      "dashboardBaselineNote": null
+    }
+  },
+  "criteria": {
+    "primary": "firstPaintMs reproducible across Run A/B; blank median 0",
+    "useful80": "reference only vs Nov 21; not pass/fail alone",
+    "appChanges": "none recommended unless reproducible firstPaint customer defect"
+  }
+}

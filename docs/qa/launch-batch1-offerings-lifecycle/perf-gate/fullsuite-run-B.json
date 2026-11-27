@@ -1,0 +1,2908 @@
+{
+  "runId": "B",
+  "generatedAt": "2026-11-27T21:41:36.948Z",
+  "expectedSha": "154301bb761f359833d91f3e88b4c51f81ae9a20",
+  "observedDpl": "154301bb761f359833d91f3e88b4c51f81ae9a20",
+  "shaMatch": true,
+  "setActiveVenue": {
+    "ok": true,
+    "venueId": "a415ac52-cd74-42a6-8df7-7a8f6e71d080",
+    "venueName": "Jen's Fancy Venue"
+  },
+  "warmByTitle": {
+    "Dashboard": {
+      "samples": 5,
+      "errors": 0,
+      "firstPaintMedianMs": 1207,
+      "firstPaintAllMs": [
+        1510,
+        1093,
+        1207,
+        1460,
+        1057
+      ],
+      "meaningfulMedianMs": 1207,
+      "meaningfulAllMs": [
+        1510,
+        1093,
+        1207,
+        1460,
+        1057
+      ],
+      "interactionMedianMs": 1207,
+      "interactionAllMs": [
+        1510,
+        1093,
+        1207,
+        1460,
+        1057
+      ],
+      "useful80MedianMs": 1207,
+      "useful80AllMs": [
+        1510,
+        1093,
+        1207,
+        1460,
+        1057
+      ],
+      "blankMedianMs": 0,
+      "blankAllMs": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "firstPaintOutliers": [],
+      "histUseful80Ref": 345
+    },
+    "Leads": {
+      "samples": 5,
+      "errors": 0,
+      "firstPaintMedianMs": 420,
+      "firstPaintAllMs": [
+        420,
+        422,
+        2498,
+        417,
+        384
+      ],
+      "meaningfulMedianMs": 420,
+      "meaningfulAllMs": [
+        420,
+        422,
+        2498,
+        417,
+        384
+      ],
+      "interactionMedianMs": 420,
+      "interactionAllMs": [
+        420,
+        422,
+        2498,
+        417,
+        384
+      ],
+      "useful80MedianMs": 420,
+      "useful80AllMs": [
+        420,
+        422,
+        2498,
+        417,
+        384
+      ],
+      "blankMedianMs": 0,
+      "blankAllMs": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "firstPaintOutliers": [
+        "2498ms"
+      ],
+      "histUseful80Ref": 349
+    },
+    "Clients": {
+      "samples": 5,
+      "errors": 0,
+      "firstPaintMedianMs": 475,
+      "firstPaintAllMs": [
+        617,
+        349,
+        1791,
+        475,
+        363
+      ],
+      "meaningfulMedianMs": 475,
+      "meaningfulAllMs": [
+        617,
+        349,
+        1791,
+        475,
+        363
+      ],
+      "interactionMedianMs": 475,
+      "interactionAllMs": [
+        617,
+        349,
+        1791,
+        475,
+        363
+      ],
+      "useful80MedianMs": 475,
+      "useful80AllMs": [
+        617,
+        349,
+        1791,
+        475,
+        363
+      ],
+      "blankMedianMs": 0,
+      "blankAllMs": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "firstPaintOutliers": [
+        "1791ms"
+      ],
+      "histUseful80Ref": 347
+    },
+    "Vendors": {
+      "samples": 5,
+      "errors": 0,
+      "firstPaintMedianMs": 361,
+      "firstPaintAllMs": [
+        361,
+        358,
+        1415,
+        403,
+        304
+      ],
+      "meaningfulMedianMs": 361,
+      "meaningfulAllMs": [
+        361,
+        358,
+        1415,
+        403,
+        304
+      ],
+      "interactionMedianMs": 361,
+      "interactionAllMs": [
+        361,
+        358,
+        1415,
+        403,
+        304
+      ],
+      "useful80MedianMs": 361,
+      "useful80AllMs": [
+        361,
+        358,
+        1415,
+        403,
+        304
+      ],
+      "blankMedianMs": 0,
+      "blankAllMs": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "firstPaintOutliers": [
+        "1415ms"
+      ],
+      "histUseful80Ref": 308
+    },
+    "Calendar": {
+      "samples": 5,
+      "errors": 0,
+      "firstPaintMedianMs": 889,
+      "firstPaintAllMs": [
+        889,
+        2598,
+        2632,
+        667,
+        722
+      ],
+      "meaningfulMedianMs": 889,
+      "meaningfulAllMs": [
+        889,
+        2598,
+        2632,
+        667,
+        722
+      ],
+      "interactionMedianMs": 889,
+      "interactionAllMs": [
+        889,
+        2598,
+        2632,
+        667,
+        722
+      ],
+      "useful80MedianMs": 889,
+      "useful80AllMs": [
+        889,
+        2598,
+        2632,
+        667,
+        722
+      ],
+      "blankMedianMs": 0,
+      "blankAllMs": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "firstPaintOutliers": [],
+      "histUseful80Ref": 626
+    },
+    "Tours": {
+      "samples": 5,
+      "errors": 0,
+      "firstPaintMedianMs": 355,
+      "firstPaintAllMs": [
+        349,
+        355,
+        525,
+        310,
+        474
+      ],
+      "meaningfulMedianMs": 653,
+      "meaningfulAllMs": [
+        643,
+        653,
+        1178,
+        642,
+        798
+      ],
+      "interactionMedianMs": 653,
+      "interactionAllMs": [
+        643,
+        653,
+        1178,
+        642,
+        798
+      ],
+      "useful80MedianMs": 653,
+      "useful80AllMs": [
+        643,
+        653,
+        1178,
+        642,
+        798
+      ],
+      "blankMedianMs": 0,
+      "blankAllMs": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "firstPaintOutliers": [],
+      "histUseful80Ref": 577
+    },
+    "Inbox": {
+      "samples": 5,
+      "errors": 0,
+      "firstPaintMedianMs": 737,
+      "firstPaintAllMs": [
+        1169,
+        719,
+        1030,
+        712,
+        737
+      ],
+      "meaningfulMedianMs": 737,
+      "meaningfulAllMs": [
+        1169,
+        719,
+        1030,
+        712,
+        737
+      ],
+      "interactionMedianMs": 737,
+      "interactionAllMs": [
+        1169,
+        719,
+        1030,
+        712,
+        737
+      ],
+      "useful80MedianMs": 737,
+      "useful80AllMs": [
+        1169,
+        719,
+        1030,
+        712,
+        737
+      ],
+      "blankMedianMs": 0,
+      "blankAllMs": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "firstPaintOutliers": [],
+      "histUseful80Ref": 654
+    },
+    "Automations": {
+      "samples": 5,
+      "errors": 0,
+      "firstPaintMedianMs": 401,
+      "firstPaintAllMs": [
+        564,
+        337,
+        603,
+        297,
+        401
+      ],
+      "meaningfulMedianMs": 401,
+      "meaningfulAllMs": [
+        564,
+        337,
+        603,
+        297,
+        401
+      ],
+      "interactionMedianMs": 401,
+      "interactionAllMs": [
+        564,
+        337,
+        603,
+        297,
+        401
+      ],
+      "useful80MedianMs": 401,
+      "useful80AllMs": [
+        564,
+        337,
+        603,
+        297,
+        401
+      ],
+      "blankMedianMs": 0,
+      "blankAllMs": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "firstPaintOutliers": [],
+      "histUseful80Ref": 386
+    },
+    "Templates": {
+      "samples": 5,
+      "errors": 0,
+      "firstPaintMedianMs": 399,
+      "firstPaintAllMs": [
+        399,
+        349,
+        456,
+        409,
+        358
+      ],
+      "meaningfulMedianMs": 1150,
+      "meaningfulAllMs": [
+        1264,
+        1150,
+        3448,
+        1103,
+        944
+      ],
+      "interactionMedianMs": 1150,
+      "interactionAllMs": [
+        1264,
+        1150,
+        3448,
+        1103,
+        944
+      ],
+      "useful80MedianMs": 399,
+      "useful80AllMs": [
+        399,
+        349,
+        456,
+        409,
+        358
+      ],
+      "blankMedianMs": 0,
+      "blankAllMs": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "firstPaintOutliers": [],
+      "histUseful80Ref": 522
+    },
+    "Documents": {
+      "samples": 5,
+      "errors": 0,
+      "firstPaintMedianMs": 504,
+      "firstPaintAllMs": [
+        504,
+        1241,
+        564,
+        360,
+        299
+      ],
+      "meaningfulMedianMs": 816,
+      "meaningfulAllMs": [
+        816,
+        1561,
+        883,
+        626,
+        618
+      ],
+      "interactionMedianMs": 816,
+      "interactionAllMs": [
+        816,
+        1561,
+        883,
+        626,
+        618
+      ],
+      "useful80MedianMs": 504,
+      "useful80AllMs": [
+        504,
+        1241,
+        564,
+        360,
+        299
+      ],
+      "blankMedianMs": 0,
+      "blankAllMs": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "firstPaintOutliers": [],
+      "histUseful80Ref": 607
+    },
+    "Contracts": {
+      "samples": 5,
+      "errors": 0,
+      "firstPaintMedianMs": 301,
+      "firstPaintAllMs": [
+        443,
+        295,
+        295,
+        329,
+        301
+      ],
+      "meaningfulMedianMs": 677,
+      "meaningfulAllMs": [
+        813,
+        613,
+        677,
+        699,
+        616
+      ],
+      "interactionMedianMs": 677,
+      "interactionAllMs": [
+        813,
+        613,
+        677,
+        699,
+        616
+      ],
+      "useful80MedianMs": 677,
+      "useful80AllMs": [
+        813,
+        613,
+        677,
+        699,
+        616
+      ],
+      "blankMedianMs": 0,
+      "blankAllMs": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "firstPaintOutliers": [],
+      "histUseful80Ref": 766
+    },
+    "Payments": {
+      "samples": 5,
+      "errors": 0,
+      "firstPaintMedianMs": 460,
+      "firstPaintAllMs": [
+        460,
+        631,
+        575,
+        425,
+        313
+      ],
+      "meaningfulMedianMs": 1544,
+      "meaningfulAllMs": [
+        1556,
+        1596,
+        1544,
+        1231,
+        1278
+      ],
+      "interactionMedianMs": 1544,
+      "interactionAllMs": [
+        1556,
+        1596,
+        1544,
+        1231,
+        1278
+      ],
+      "useful80MedianMs": 460,
+      "useful80AllMs": [
+        460,
+        631,
+        575,
+        425,
+        313
+      ],
+      "blankMedianMs": 0,
+      "blankAllMs": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "firstPaintOutliers": [],
+      "histUseful80Ref": 415
+    },
+    "Task Center": {
+      "samples": 5,
+      "errors": 0,
+      "firstPaintMedianMs": 358,
+      "firstPaintAllMs": [
+        1142,
+        358,
+        349,
+        346,
+        885
+      ],
+      "meaningfulMedianMs": 829,
+      "meaningfulAllMs": [
+        1572,
+        784,
+        829,
+        611,
+        1955
+      ],
+      "interactionMedianMs": 829,
+      "interactionAllMs": [
+        1572,
+        784,
+        829,
+        611,
+        1955
+      ],
+      "useful80MedianMs": 829,
+      "useful80AllMs": [
+        1572,
+        784,
+        829,
+        611,
+        1955
+      ],
+      "blankMedianMs": 0,
+      "blankAllMs": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "firstPaintOutliers": [
+        "1142ms"
+      ],
+      "histUseful80Ref": 663
+    },
+    "Requests": {
+      "samples": 5,
+      "errors": 0,
+      "firstPaintMedianMs": 337,
+      "firstPaintAllMs": [
+        326,
+        337,
+        915,
+        317,
+        434
+      ],
+      "meaningfulMedianMs": 643,
+      "meaningfulAllMs": [
+        643,
+        603,
+        1232,
+        590,
+        1028
+      ],
+      "interactionMedianMs": 643,
+      "interactionAllMs": [
+        643,
+        603,
+        1232,
+        590,
+        1028
+      ],
+      "useful80MedianMs": 337,
+      "useful80AllMs": [
+        326,
+        337,
+        915,
+        317,
+        434
+      ],
+      "blankMedianMs": 0,
+      "blankAllMs": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "firstPaintOutliers": [],
+      "histUseful80Ref": null
+    },
+    "Setup": {
+      "samples": 5,
+      "errors": 0,
+      "firstPaintMedianMs": 356,
+      "firstPaintAllMs": [
+        365,
+        356,
+        349,
+        294,
+        404
+      ],
+      "meaningfulMedianMs": 774,
+      "meaningfulAllMs": [
+        955,
+        621,
+        774,
+        573,
+        1319
+      ],
+      "interactionMedianMs": 774,
+      "interactionAllMs": [
+        955,
+        621,
+        774,
+        573,
+        1319
+      ],
+      "useful80MedianMs": 356,
+      "useful80AllMs": [
+        365,
+        356,
+        349,
+        294,
+        404
+      ],
+      "blankMedianMs": 0,
+      "blankAllMs": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "firstPaintOutliers": [],
+      "histUseful80Ref": 302
+    },
+    "Settings": {
+      "samples": 5,
+      "errors": 0,
+      "firstPaintMedianMs": 292,
+      "firstPaintAllMs": [
+        307,
+        289,
+        290,
+        292,
+        351
+      ],
+      "meaningfulMedianMs": 606,
+      "meaningfulAllMs": [
+        597,
+        606,
+        606,
+        612,
+        669
+      ],
+      "interactionMedianMs": 606,
+      "interactionAllMs": [
+        597,
+        606,
+        606,
+        612,
+        669
+      ],
+      "useful80MedianMs": 606,
+      "useful80AllMs": [
+        597,
+        606,
+        606,
+        612,
+        669
+      ],
+      "blankMedianMs": 0,
+      "blankAllMs": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "firstPaintOutliers": [],
+      "histUseful80Ref": 620
+    },
+    "Guidance": {
+      "samples": 5,
+      "errors": 0,
+      "firstPaintMedianMs": 342,
+      "firstPaintAllMs": [
+        443,
+        290,
+        514,
+        286,
+        342
+      ],
+      "meaningfulMedianMs": 611,
+      "meaningfulAllMs": [
+        761,
+        611,
+        514,
+        553,
+        658
+      ],
+      "interactionMedianMs": 611,
+      "interactionAllMs": [
+        761,
+        611,
+        514,
+        553,
+        658
+      ],
+      "useful80MedianMs": 342,
+      "useful80AllMs": [
+        443,
+        290,
+        514,
+        286,
+        342
+      ],
+      "blankMedianMs": 0,
+      "blankAllMs": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "firstPaintOutliers": [],
+      "histUseful80Ref": null
+    },
+    "Venue Guide": {
+      "samples": 5,
+      "errors": 0,
+      "firstPaintMedianMs": 452,
+      "firstPaintAllMs": [
+        475,
+        296,
+        411,
+        458,
+        452
+      ],
+      "meaningfulMedianMs": 731,
+      "meaningfulAllMs": [
+        790,
+        614,
+        677,
+        731,
+        769
+      ],
+      "interactionMedianMs": 731,
+      "interactionAllMs": [
+        790,
+        614,
+        677,
+        731,
+        769
+      ],
+      "useful80MedianMs": 452,
+      "useful80AllMs": [
+        475,
+        296,
+        411,
+        458,
+        452
+      ],
+      "blankMedianMs": 0,
+      "blankAllMs": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "firstPaintOutliers": [],
+      "histUseful80Ref": null
+    },
+    "Reports": {
+      "samples": 5,
+      "errors": 0,
+      "firstPaintMedianMs": 332,
+      "firstPaintAllMs": [
+        299,
+        373,
+        303,
+        332,
+        365
+      ],
+      "meaningfulMedianMs": 332,
+      "meaningfulAllMs": [
+        299,
+        373,
+        303,
+        332,
+        365
+      ],
+      "interactionMedianMs": 332,
+      "interactionAllMs": [
+        299,
+        373,
+        303,
+        332,
+        365
+      ],
+      "useful80MedianMs": 332,
+      "useful80AllMs": [
+        299,
+        373,
+        303,
+        332,
+        365
+      ],
+      "blankMedianMs": 0,
+      "blankAllMs": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "firstPaintOutliers": [],
+      "histUseful80Ref": 295
+    },
+    "Help & Feedback": {
+      "samples": 5,
+      "errors": 0,
+      "firstPaintMedianMs": 414,
+      "firstPaintAllMs": [
+        360,
+        414,
+        507,
+        308,
+        624
+      ],
+      "meaningfulMedianMs": 414,
+      "meaningfulAllMs": [
+        360,
+        414,
+        507,
+        308,
+        624
+      ],
+      "interactionMedianMs": 414,
+      "interactionAllMs": [
+        360,
+        414,
+        507,
+        308,
+        624
+      ],
+      "useful80MedianMs": 414,
+      "useful80AllMs": [
+        360,
+        414,
+        507,
+        308,
+        624
+      ],
+      "blankMedianMs": 0,
+      "blankAllMs": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "firstPaintOutliers": [],
+      "histUseful80Ref": null
+    }
+  },
+  "coldByTitle": {
+    "Dashboard": {
+      "samples": 1,
+      "errors": 0,
+      "firstPaintMedianMs": 947,
+      "firstPaintAllMs": [
+        947
+      ],
+      "meaningfulMedianMs": 947,
+      "meaningfulAllMs": [
+        947
+      ],
+      "interactionMedianMs": 947,
+      "interactionAllMs": [
+        947
+      ],
+      "useful80MedianMs": 947,
+      "useful80AllMs": [
+        947
+      ],
+      "blankMedianMs": 0,
+      "blankAllMs": [
+        0
+      ],
+      "firstPaintOutliers": [],
+      "histUseful80Ref": 345
+    },
+    "Leads": {
+      "samples": 1,
+      "errors": 0,
+      "firstPaintMedianMs": 535,
+      "firstPaintAllMs": [
+        535
+      ],
+      "meaningfulMedianMs": 535,
+      "meaningfulAllMs": [
+        535
+      ],
+      "interactionMedianMs": 535,
+      "interactionAllMs": [
+        535
+      ],
+      "useful80MedianMs": 535,
+      "useful80AllMs": [
+        535
+      ],
+      "blankMedianMs": 0,
+      "blankAllMs": [
+        0
+      ],
+      "firstPaintOutliers": [],
+      "histUseful80Ref": 349
+    },
+    "Clients": {
+      "samples": 1,
+      "errors": 0,
+      "firstPaintMedianMs": 410,
+      "firstPaintAllMs": [
+        410
+      ],
+      "meaningfulMedianMs": 410,
+      "meaningfulAllMs": [
+        410
+      ],
+      "interactionMedianMs": 410,
+      "interactionAllMs": [
+        410
+      ],
+      "useful80MedianMs": 410,
+      "useful80AllMs": [
+        410
+      ],
+      "blankMedianMs": 0,
+      "blankAllMs": [
+        0
+      ],
+      "firstPaintOutliers": [],
+      "histUseful80Ref": 347
+    },
+    "Vendors": {
+      "samples": 1,
+      "errors": 0,
+      "firstPaintMedianMs": 674,
+      "firstPaintAllMs": [
+        674
+      ],
+      "meaningfulMedianMs": 674,
+      "meaningfulAllMs": [
+        674
+      ],
+      "interactionMedianMs": 674,
+      "interactionAllMs": [
+        674
+      ],
+      "useful80MedianMs": 674,
+      "useful80AllMs": [
+        674
+      ],
+      "blankMedianMs": 0,
+      "blankAllMs": [
+        0
+      ],
+      "firstPaintOutliers": [],
+      "histUseful80Ref": 308
+    },
+    "Calendar": {
+      "samples": 1,
+      "errors": 0,
+      "firstPaintMedianMs": 789,
+      "firstPaintAllMs": [
+        789
+      ],
+      "meaningfulMedianMs": 789,
+      "meaningfulAllMs": [
+        789
+      ],
+      "interactionMedianMs": 789,
+      "interactionAllMs": [
+        789
+      ],
+      "useful80MedianMs": 789,
+      "useful80AllMs": [
+        789
+      ],
+      "blankMedianMs": 0,
+      "blankAllMs": [
+        0
+      ],
+      "firstPaintOutliers": [],
+      "histUseful80Ref": 626
+    },
+    "Tours": {
+      "samples": 1,
+      "errors": 0,
+      "firstPaintMedianMs": 672,
+      "firstPaintAllMs": [
+        672
+      ],
+      "meaningfulMedianMs": 672,
+      "meaningfulAllMs": [
+        672
+      ],
+      "interactionMedianMs": 672,
+      "interactionAllMs": [
+        672
+      ],
+      "useful80MedianMs": 672,
+      "useful80AllMs": [
+        672
+      ],
+      "blankMedianMs": 0,
+      "blankAllMs": [
+        0
+      ],
+      "firstPaintOutliers": [],
+      "histUseful80Ref": 577
+    },
+    "Inbox": {
+      "samples": 1,
+      "errors": 0,
+      "firstPaintMedianMs": 997,
+      "firstPaintAllMs": [
+        997
+      ],
+      "meaningfulMedianMs": 997,
+      "meaningfulAllMs": [
+        997
+      ],
+      "interactionMedianMs": 997,
+      "interactionAllMs": [
+        997
+      ],
+      "useful80MedianMs": 997,
+      "useful80AllMs": [
+        997
+      ],
+      "blankMedianMs": 0,
+      "blankAllMs": [
+        0
+      ],
+      "firstPaintOutliers": [],
+      "histUseful80Ref": 654
+    },
+    "Automations": {
+      "samples": 1,
+      "errors": 0,
+      "firstPaintMedianMs": 453,
+      "firstPaintAllMs": [
+        453
+      ],
+      "meaningfulMedianMs": 453,
+      "meaningfulAllMs": [
+        453
+      ],
+      "interactionMedianMs": 453,
+      "interactionAllMs": [
+        453
+      ],
+      "useful80MedianMs": 453,
+      "useful80AllMs": [
+        453
+      ],
+      "blankMedianMs": 0,
+      "blankAllMs": [
+        0
+      ],
+      "firstPaintOutliers": [],
+      "histUseful80Ref": 386
+    },
+    "Templates": {
+      "samples": 1,
+      "errors": 0,
+      "firstPaintMedianMs": 365,
+      "firstPaintAllMs": [
+        365
+      ],
+      "meaningfulMedianMs": 966,
+      "meaningfulAllMs": [
+        966
+      ],
+      "interactionMedianMs": 966,
+      "interactionAllMs": [
+        966
+      ],
+      "useful80MedianMs": 365,
+      "useful80AllMs": [
+        365
+      ],
+      "blankMedianMs": 0,
+      "blankAllMs": [
+        0
+      ],
+      "firstPaintOutliers": [],
+      "histUseful80Ref": 522
+    },
+    "Documents": {
+      "samples": 1,
+      "errors": 0,
+      "firstPaintMedianMs": 1109,
+      "firstPaintAllMs": [
+        1109
+      ],
+      "meaningfulMedianMs": 1386,
+      "meaningfulAllMs": [
+        1386
+      ],
+      "interactionMedianMs": 1386,
+      "interactionAllMs": [
+        1386
+      ],
+      "useful80MedianMs": 1109,
+      "useful80AllMs": [
+        1109
+      ],
+      "blankMedianMs": 0,
+      "blankAllMs": [
+        0
+      ],
+      "firstPaintOutliers": [],
+      "histUseful80Ref": 607
+    },
+    "Contracts": {
+      "samples": 1,
+      "errors": 0,
+      "firstPaintMedianMs": 614,
+      "firstPaintAllMs": [
+        614
+      ],
+      "meaningfulMedianMs": 882,
+      "meaningfulAllMs": [
+        882
+      ],
+      "interactionMedianMs": 882,
+      "interactionAllMs": [
+        882
+      ],
+      "useful80MedianMs": 882,
+      "useful80AllMs": [
+        882
+      ],
+      "blankMedianMs": 0,
+      "blankAllMs": [
+        0
+      ],
+      "firstPaintOutliers": [],
+      "histUseful80Ref": 766
+    },
+    "Payments": {
+      "samples": 1,
+      "errors": 0,
+      "firstPaintMedianMs": 892,
+      "firstPaintAllMs": [
+        892
+      ],
+      "meaningfulMedianMs": 3956,
+      "meaningfulAllMs": [
+        3956
+      ],
+      "interactionMedianMs": 3956,
+      "interactionAllMs": [
+        3956
+      ],
+      "useful80MedianMs": 892,
+      "useful80AllMs": [
+        892
+      ],
+      "blankMedianMs": 0,
+      "blankAllMs": [
+        0
+      ],
+      "firstPaintOutliers": [],
+      "histUseful80Ref": 415
+    },
+    "Task Center": {
+      "samples": 1,
+      "errors": 0,
+      "firstPaintMedianMs": 532,
+      "firstPaintAllMs": [
+        532
+      ],
+      "meaningfulMedianMs": 2526,
+      "meaningfulAllMs": [
+        2526
+      ],
+      "interactionMedianMs": 2526,
+      "interactionAllMs": [
+        2526
+      ],
+      "useful80MedianMs": 2526,
+      "useful80AllMs": [
+        2526
+      ],
+      "blankMedianMs": 0,
+      "blankAllMs": [
+        0
+      ],
+      "firstPaintOutliers": [],
+      "histUseful80Ref": 663
+    },
+    "Requests": {
+      "samples": 1,
+      "errors": 0,
+      "firstPaintMedianMs": 1227,
+      "firstPaintAllMs": [
+        1227
+      ],
+      "meaningfulMedianMs": 1721,
+      "meaningfulAllMs": [
+        1721
+      ],
+      "interactionMedianMs": 1721,
+      "interactionAllMs": [
+        1721
+      ],
+      "useful80MedianMs": 1227,
+      "useful80AllMs": [
+        1227
+      ],
+      "blankMedianMs": 0,
+      "blankAllMs": [
+        0
+      ],
+      "firstPaintOutliers": [],
+      "histUseful80Ref": null
+    },
+    "Setup": {
+      "samples": 1,
+      "errors": 0,
+      "firstPaintMedianMs": 316,
+      "firstPaintAllMs": [
+        316
+      ],
+      "meaningfulMedianMs": 801,
+      "meaningfulAllMs": [
+        801
+      ],
+      "interactionMedianMs": 801,
+      "interactionAllMs": [
+        801
+      ],
+      "useful80MedianMs": 316,
+      "useful80AllMs": [
+        316
+      ],
+      "blankMedianMs": 0,
+      "blankAllMs": [
+        0
+      ],
+      "firstPaintOutliers": [],
+      "histUseful80Ref": 302
+    },
+    "Settings": {
+      "samples": 1,
+      "errors": 0,
+      "firstPaintMedianMs": 310,
+      "firstPaintAllMs": [
+        310
+      ],
+      "meaningfulMedianMs": 629,
+      "meaningfulAllMs": [
+        629
+      ],
+      "interactionMedianMs": 629,
+      "interactionAllMs": [
+        629
+      ],
+      "useful80MedianMs": 629,
+      "useful80AllMs": [
+        629
+      ],
+      "blankMedianMs": 0,
+      "blankAllMs": [
+        0
+      ],
+      "firstPaintOutliers": [],
+      "histUseful80Ref": 620
+    },
+    "Guidance": {
+      "samples": 1,
+      "errors": 0,
+      "firstPaintMedianMs": 628,
+      "firstPaintAllMs": [
+        628
+      ],
+      "meaningfulMedianMs": 900,
+      "meaningfulAllMs": [
+        900
+      ],
+      "interactionMedianMs": 900,
+      "interactionAllMs": [
+        900
+      ],
+      "useful80MedianMs": 628,
+      "useful80AllMs": [
+        628
+      ],
+      "blankMedianMs": 0,
+      "blankAllMs": [
+        0
+      ],
+      "firstPaintOutliers": [],
+      "histUseful80Ref": null
+    },
+    "Venue Guide": {
+      "samples": 1,
+      "errors": 0,
+      "firstPaintMedianMs": 620,
+      "firstPaintAllMs": [
+        620
+      ],
+      "meaningfulMedianMs": 940,
+      "meaningfulAllMs": [
+        940
+      ],
+      "interactionMedianMs": 940,
+      "interactionAllMs": [
+        940
+      ],
+      "useful80MedianMs": 620,
+      "useful80AllMs": [
+        620
+      ],
+      "blankMedianMs": 0,
+      "blankAllMs": [
+        0
+      ],
+      "firstPaintOutliers": [],
+      "histUseful80Ref": null
+    },
+    "Reports": {
+      "samples": 1,
+      "errors": 0,
+      "firstPaintMedianMs": 316,
+      "firstPaintAllMs": [
+        316
+      ],
+      "meaningfulMedianMs": 316,
+      "meaningfulAllMs": [
+        316
+      ],
+      "interactionMedianMs": 316,
+      "interactionAllMs": [
+        316
+      ],
+      "useful80MedianMs": 316,
+      "useful80AllMs": [
+        316
+      ],
+      "blankMedianMs": 0,
+      "blankAllMs": [
+        0
+      ],
+      "firstPaintOutliers": [],
+      "histUseful80Ref": 295
+    },
+    "Help & Feedback": {
+      "samples": 1,
+      "errors": 0,
+      "firstPaintMedianMs": 520,
+      "firstPaintAllMs": [
+        520
+      ],
+      "meaningfulMedianMs": 520,
+      "meaningfulAllMs": [
+        520
+      ],
+      "interactionMedianMs": 520,
+      "interactionAllMs": [
+        520
+      ],
+      "useful80MedianMs": 520,
+      "useful80AllMs": [
+        520
+      ],
+      "blankMedianMs": 0,
+      "blankAllMs": [
+        0
+      ],
+      "firstPaintOutliers": [],
+      "histUseful80Ref": null
+    }
+  },
+  "warmHops": [
+    {
+      "cycle": 1,
+      "title": "Dashboard",
+      "from": "/feedback",
+      "firstPaintMs": 1510,
+      "meaningfulReadyMs": 1510,
+      "interactionReadyMs": 1510,
+      "useful80Ms": 1510,
+      "blankUncoveredMs": 0,
+      "finalPath": "/dashboard",
+      "snippet": "DashboardLoading your briefing…Business SnapshotA quick view of the business coming in, booked, collected, and still owed.Lead Flow273 open leads$540,200 estima"
+    },
+    {
+      "cycle": 1,
+      "title": "Leads",
+      "from": "/dashboard",
+      "firstPaintMs": 420,
+      "meaningfulReadyMs": 420,
+      "interactionReadyMs": 420,
+      "useful80Ms": 420,
+      "blankUncoveredMs": 0,
+      "finalPath": "/leads",
+      "snippet": "LeadsActive sales opportunities. All is that population. Booked and Lost stay visible as outcomes and are not included in All.Customize PipelineBoard ViewImport"
+    },
+    {
+      "cycle": 1,
+      "title": "Clients",
+      "from": "/leads",
+      "firstPaintMs": 617,
+      "meaningfulReadyMs": 617,
+      "interactionReadyMs": 617,
+      "useful80Ms": 617,
+      "blankUncoveredMs": 0,
+      "finalPath": "/clients",
+      "snippet": "ClientsAll Bookings is the active book. Contacts are clients without a booking yet. Coming up is event dates from today through the next 30 days. Needs Attentio"
+    },
+    {
+      "cycle": 1,
+      "title": "Vendors",
+      "from": "/clients",
+      "firstPaintMs": 361,
+      "meaningfulReadyMs": 361,
+      "interactionReadyMs": 361,
+      "useful80Ms": 361,
+      "blankUncoveredMs": 0,
+      "finalPath": "/vendors",
+      "snippet": "VendorsVendors you make available to couples. Recommend or prefer them, mark required or in-house, and invite them to claim their profile.Import Vendors+ Add Ve"
+    },
+    {
+      "cycle": 1,
+      "title": "Calendar",
+      "from": "/vendors",
+      "firstPaintMs": 889,
+      "meaningfulReadyMs": 889,
+      "interactionReadyMs": 889,
+      "useful80Ms": 889,
+      "blankUncoveredMs": 0,
+      "finalPath": "/calendar",
+      "snippet": "CalendarYour venue’s schedule — events, appointments, holds, and blocked time. Add Schedule Item Print / ExportMonthWeekDayMonth listNovember2026TourAppointment"
+    },
+    {
+      "cycle": 1,
+      "title": "Tours",
+      "from": "/calendar",
+      "firstPaintMs": 349,
+      "meaningfulReadyMs": 643,
+      "interactionReadyMs": 643,
+      "useful80Ms": 643,
+      "blankUncoveredMs": 0,
+      "finalPath": "/tours",
+      "snippet": "ToursUpcoming, past, and cancelled venue tour appointments."
+    },
+    {
+      "cycle": 1,
+      "title": "Inbox",
+      "from": "/tours",
+      "firstPaintMs": 1169,
+      "meaningfulReadyMs": 1169,
+      "interactionReadyMs": 1169,
+      "useful80Ms": 1169,
+      "blankUncoveredMs": 0,
+      "finalPath": "/messaging",
+      "snippet": "InboxEmail, text, and portal conversations in one place.No unread messages · None need responseCommunication Health →LeadsClientsVendors FiltersLoading…Select a"
+    },
+    {
+      "cycle": 1,
+      "title": "Automations",
+      "from": "/messaging",
+      "firstPaintMs": 564,
+      "meaningfulReadyMs": 564,
+      "interactionReadyMs": 564,
+      "useful80Ms": 564,
+      "blankUncoveredMs": 0,
+      "finalPath": "/communication/series",
+      "snippet": "AutomationsWhen something happens, Hello to Cheers can send the right follow-up for you — for sales leads and for booked clients.+ New AutomationHow automations"
+    },
+    {
+      "cycle": 1,
+      "title": "Templates",
+      "from": "/communication/series",
+      "firstPaintMs": 399,
+      "meaningfulReadyMs": 1264,
+      "interactionReadyMs": 1264,
+      "useful80Ms": 399,
+      "blankUncoveredMs": 0,
+      "finalPath": "/library",
+      "snippet": "TemplatesWhat you sell, what you have, and what you deliver — reusable resources for bookings and events."
+    },
+    {
+      "cycle": 1,
+      "title": "Documents",
+      "from": "/library",
+      "firstPaintMs": 504,
+      "meaningfulReadyMs": 816,
+      "interactionReadyMs": 816,
+      "useful80Ms": 504,
+      "blankUncoveredMs": 0,
+      "finalPath": "/library/documents",
+      "snippet": "DocumentsFiles you reuse across bookings — available to your whole venue, not tied to one lead or event."
+    },
+    {
+      "cycle": 1,
+      "title": "Contracts",
+      "from": "/library/documents",
+      "firstPaintMs": 443,
+      "meaningfulReadyMs": 813,
+      "interactionReadyMs": 813,
+      "useful80Ms": 813,
+      "blankUncoveredMs": 0,
+      "finalPath": "/contracts",
+      "snippet": "ContractsWhich contracts need something from me?Templates+ New Contract"
+    },
+    {
+      "cycle": 1,
+      "title": "Payments",
+      "from": "/contracts",
+      "firstPaintMs": 460,
+      "meaningfulReadyMs": 1556,
+      "interactionReadyMs": 1556,
+      "useful80Ms": 460,
+      "blankUncoveredMs": 0,
+      "finalPath": "/payments",
+      "snippet": "PaymentsTrack deposits, installments, and outstanding balances. Filter by status — All includes every payment plan.+ New Schedule"
+    },
+    {
+      "cycle": 1,
+      "title": "Task Center",
+      "from": "/payments",
+      "firstPaintMs": 1142,
+      "meaningfulReadyMs": 1572,
+      "interactionReadyMs": 1572,
+      "useful80Ms": 1572,
+      "blankUncoveredMs": 0,
+      "finalPath": "/tasks",
+      "snippet": "Task CenterTasks your venue needs to complete across leads and events."
+    },
+    {
+      "cycle": 1,
+      "title": "Requests",
+      "from": "/tasks",
+      "firstPaintMs": 326,
+      "meaningfulReadyMs": 643,
+      "interactionReadyMs": 643,
+      "useful80Ms": 326,
+      "blankUncoveredMs": 0,
+      "finalPath": "/requests",
+      "snippet": "RequestsEverything you've asked a couple or vendor to do, across every booking — assign it, track it, and see where it stands."
+    },
+    {
+      "cycle": 1,
+      "title": "Setup",
+      "from": "/requests",
+      "firstPaintMs": 365,
+      "meaningfulReadyMs": 955,
+      "interactionReadyMs": 955,
+      "useful80Ms": 365,
+      "blankUncoveredMs": 0,
+      "finalPath": "/setup-hub",
+      "snippet": "SetupGet your venue ready — brand, booking process, and the tools you use every day."
+    },
+    {
+      "cycle": 1,
+      "title": "Settings",
+      "from": "/setup-hub",
+      "firstPaintMs": 307,
+      "meaningfulReadyMs": 597,
+      "interactionReadyMs": 597,
+      "useful80Ms": 597,
+      "blankUncoveredMs": 0,
+      "finalPath": "/settings",
+      "snippet": "SettingsMake Hello to Cheers work the way your venue works."
+    },
+    {
+      "cycle": 1,
+      "title": "Guidance",
+      "from": "/settings",
+      "firstPaintMs": 443,
+      "meaningfulReadyMs": 761,
+      "interactionReadyMs": 761,
+      "useful80Ms": 443,
+      "blankUncoveredMs": 0,
+      "finalPath": "/help",
+      "snippet": "GuidanceQuick answers for using Hello to Cheers. Find a guide for what you're working on, or start with Getting Started if you're new here."
+    },
+    {
+      "cycle": 1,
+      "title": "Venue Guide",
+      "from": "/help",
+      "firstPaintMs": 475,
+      "meaningfulReadyMs": 790,
+      "interactionReadyMs": 790,
+      "useful80Ms": 475,
+      "blankUncoveredMs": 0,
+      "finalPath": "/guide",
+      "snippet": "Venue GuideEverything your clients need to know — parking, policies, FAQs, and more. Clients browse this in their portal and Luv answers questions from it."
+    },
+    {
+      "cycle": 1,
+      "title": "Reports",
+      "from": "/guide",
+      "firstPaintMs": 299,
+      "meaningfulReadyMs": 299,
+      "interactionReadyMs": 299,
+      "useful80Ms": 299,
+      "blankUncoveredMs": 0,
+      "finalPath": "/reporting",
+      "snippet": "ReportsHow your business is doing — bookings, revenue, sales, and events.OverviewSalesBookingsRevenueEventsSavedOverviewHow the business moved during the select"
+    },
+    {
+      "cycle": 1,
+      "title": "Help & Feedback",
+      "from": "/reporting",
+      "firstPaintMs": 360,
+      "meaningfulReadyMs": 360,
+      "interactionReadyMs": 360,
+      "useful80Ms": 360,
+      "blankUncoveredMs": 0,
+      "finalPath": "/feedback",
+      "snippet": "Get Help or Provide FeedbackTalk to the team who created Hello to Cheers — ask for help, report a problem, or tell us what to build next.Get HelpStuck on someth"
+    },
+    {
+      "cycle": 2,
+      "title": "Dashboard",
+      "from": "/feedback",
+      "firstPaintMs": 1093,
+      "meaningfulReadyMs": 1093,
+      "interactionReadyMs": 1093,
+      "useful80Ms": 1093,
+      "blankUncoveredMs": 0,
+      "finalPath": "/dashboard",
+      "snippet": "DashboardLoading your briefing…Business SnapshotA quick view of the business coming in, booked, collected, and still owed.Lead Flow273 open leads$540,200 estima"
+    },
+    {
+      "cycle": 2,
+      "title": "Leads",
+      "from": "/dashboard",
+      "firstPaintMs": 422,
+      "meaningfulReadyMs": 422,
+      "interactionReadyMs": 422,
+      "useful80Ms": 422,
+      "blankUncoveredMs": 0,
+      "finalPath": "/leads",
+      "snippet": "LeadsActive sales opportunities. All is that population. Booked and Lost stay visible as outcomes and are not included in All.Customize PipelineBoard ViewImport"
+    },
+    {
+      "cycle": 2,
+      "title": "Clients",
+      "from": "/leads",
+      "firstPaintMs": 349,
+      "meaningfulReadyMs": 349,
+      "interactionReadyMs": 349,
+      "useful80Ms": 349,
+      "blankUncoveredMs": 0,
+      "finalPath": "/clients",
+      "snippet": "ClientsAll Bookings is the active book. Contacts are clients without a booking yet. Coming up is event dates from today through the next 30 days. Needs Attentio"
+    },
+    {
+      "cycle": 2,
+      "title": "Vendors",
+      "from": "/clients",
+      "firstPaintMs": 358,
+      "meaningfulReadyMs": 358,
+      "interactionReadyMs": 358,
+      "useful80Ms": 358,
+      "blankUncoveredMs": 0,
+      "finalPath": "/vendors",
+      "snippet": "VendorsVendors you make available to couples. Recommend or prefer them, mark required or in-house, and invite them to claim their profile.Import Vendors+ Add Ve"
+    },
+    {
+      "cycle": 2,
+      "title": "Calendar",
+      "from": "/vendors",
+      "firstPaintMs": 2598,
+      "meaningfulReadyMs": 2598,
+      "interactionReadyMs": 2598,
+      "useful80Ms": 2598,
+      "blankUncoveredMs": 0,
+      "finalPath": "/calendar",
+      "snippet": "CalendarYour venue’s schedule — events, appointments, holds, and blocked time. Add Schedule Item Print / ExportMonthWeekDayMonth listNovember2026TourAppointment"
+    },
+    {
+      "cycle": 2,
+      "title": "Tours",
+      "from": "/calendar",
+      "firstPaintMs": 355,
+      "meaningfulReadyMs": 653,
+      "interactionReadyMs": 653,
+      "useful80Ms": 653,
+      "blankUncoveredMs": 0,
+      "finalPath": "/tours",
+      "snippet": "ToursUpcoming, past, and cancelled venue tour appointments."
+    },
+    {
+      "cycle": 2,
+      "title": "Inbox",
+      "from": "/tours",
+      "firstPaintMs": 719,
+      "meaningfulReadyMs": 719,
+      "interactionReadyMs": 719,
+      "useful80Ms": 719,
+      "blankUncoveredMs": 0,
+      "finalPath": "/messaging",
+      "snippet": "InboxEmail, text, and portal conversations in one place.No unread messages · None need responseCommunication Health →LeadsClientsVendors FiltersLoading…Select a"
+    },
+    {
+      "cycle": 2,
+      "title": "Automations",
+      "from": "/messaging",
+      "firstPaintMs": 337,
+      "meaningfulReadyMs": 337,
+      "interactionReadyMs": 337,
+      "useful80Ms": 337,
+      "blankUncoveredMs": 0,
+      "finalPath": "/communication/series",
+      "snippet": "AutomationsWhen something happens, Hello to Cheers can send the right follow-up for you — for sales leads and for booked clients.+ New AutomationHow automations"
+    },
+    {
+      "cycle": 2,
+      "title": "Templates",
+      "from": "/communication/series",
+      "firstPaintMs": 349,
+      "meaningfulReadyMs": 1150,
+      "interactionReadyMs": 1150,
+      "useful80Ms": 349,
+      "blankUncoveredMs": 0,
+      "finalPath": "/library",
+      "snippet": "TemplatesWhat you sell, what you have, and what you deliver — reusable resources for bookings and events."
+    },
+    {
+      "cycle": 2,
+      "title": "Documents",
+      "from": "/library",
+      "firstPaintMs": 1241,
+      "meaningfulReadyMs": 1561,
+      "interactionReadyMs": 1561,
+      "useful80Ms": 1241,
+      "blankUncoveredMs": 0,
+      "finalPath": "/library/documents",
+      "snippet": "DocumentsFiles you reuse across bookings — available to your whole venue, not tied to one lead or event."
+    },
+    {
+      "cycle": 2,
+      "title": "Contracts",
+      "from": "/library/documents",
+      "firstPaintMs": 295,
+      "meaningfulReadyMs": 613,
+      "interactionReadyMs": 613,
+      "useful80Ms": 613,
+      "blankUncoveredMs": 0,
+      "finalPath": "/contracts",
+      "snippet": "ContractsWhich contracts need something from me?Templates+ New Contract"
+    },
+    {
+      "cycle": 2,
+      "title": "Payments",
+      "from": "/contracts",
+      "firstPaintMs": 631,
+      "meaningfulReadyMs": 1596,
+      "interactionReadyMs": 1596,
+      "useful80Ms": 631,
+      "blankUncoveredMs": 0,
+      "finalPath": "/payments",
+      "snippet": "PaymentsTrack deposits, installments, and outstanding balances. Filter by status — All includes every payment plan.+ New Schedule"
+    },
+    {
+      "cycle": 2,
+      "title": "Task Center",
+      "from": "/payments",
+      "firstPaintMs": 358,
+      "meaningfulReadyMs": 784,
+      "interactionReadyMs": 784,
+      "useful80Ms": 784,
+      "blankUncoveredMs": 0,
+      "finalPath": "/tasks",
+      "snippet": "Task CenterTasks your venue needs to complete across leads and events."
+    },
+    {
+      "cycle": 2,
+      "title": "Requests",
+      "from": "/tasks",
+      "firstPaintMs": 337,
+      "meaningfulReadyMs": 603,
+      "interactionReadyMs": 603,
+      "useful80Ms": 337,
+      "blankUncoveredMs": 0,
+      "finalPath": "/requests",
+      "snippet": "RequestsEverything you've asked a couple or vendor to do, across every booking — assign it, track it, and see where it stands."
+    },
+    {
+      "cycle": 2,
+      "title": "Setup",
+      "from": "/requests",
+      "firstPaintMs": 356,
+      "meaningfulReadyMs": 621,
+      "interactionReadyMs": 621,
+      "useful80Ms": 356,
+      "blankUncoveredMs": 0,
+      "finalPath": "/setup-hub",
+      "snippet": "SetupGet your venue ready — brand, booking process, and the tools you use every day."
+    },
+    {
+      "cycle": 2,
+      "title": "Settings",
+      "from": "/setup-hub",
+      "firstPaintMs": 289,
+      "meaningfulReadyMs": 606,
+      "interactionReadyMs": 606,
+      "useful80Ms": 606,
+      "blankUncoveredMs": 0,
+      "finalPath": "/settings",
+      "snippet": "SettingsMake Hello to Cheers work the way your venue works."
+    },
+    {
+      "cycle": 2,
+      "title": "Guidance",
+      "from": "/settings",
+      "firstPaintMs": 290,
+      "meaningfulReadyMs": 611,
+      "interactionReadyMs": 611,
+      "useful80Ms": 290,
+      "blankUncoveredMs": 0,
+      "finalPath": "/help",
+      "snippet": "GuidanceQuick answers for using Hello to Cheers. Find a guide for what you're working on, or start with Getting Started if you're new here."
+    },
+    {
+      "cycle": 2,
+      "title": "Venue Guide",
+      "from": "/help",
+      "firstPaintMs": 296,
+      "meaningfulReadyMs": 614,
+      "interactionReadyMs": 614,
+      "useful80Ms": 296,
+      "blankUncoveredMs": 0,
+      "finalPath": "/guide",
+      "snippet": "Venue GuideEverything your clients need to know — parking, policies, FAQs, and more. Clients browse this in their portal and Luv answers questions from it."
+    },
+    {
+      "cycle": 2,
+      "title": "Reports",
+      "from": "/guide",
+      "firstPaintMs": 373,
+      "meaningfulReadyMs": 373,
+      "interactionReadyMs": 373,
+      "useful80Ms": 373,
+      "blankUncoveredMs": 0,
+      "finalPath": "/reporting",
+      "snippet": "ReportsHow your business is doing — bookings, revenue, sales, and events.OverviewSalesBookingsRevenueEventsSavedOverviewHow the business moved during the select"
+    },
+    {
+      "cycle": 2,
+      "title": "Help & Feedback",
+      "from": "/reporting",
+      "firstPaintMs": 414,
+      "meaningfulReadyMs": 414,
+      "interactionReadyMs": 414,
+      "useful80Ms": 414,
+      "blankUncoveredMs": 0,
+      "finalPath": "/feedback",
+      "snippet": "Get Help or Provide FeedbackTalk to the team who created Hello to Cheers — ask for help, report a problem, or tell us what to build next.Get HelpStuck on someth"
+    },
+    {
+      "cycle": 3,
+      "title": "Dashboard",
+      "from": "/feedback",
+      "firstPaintMs": 1207,
+      "meaningfulReadyMs": 1207,
+      "interactionReadyMs": 1207,
+      "useful80Ms": 1207,
+      "blankUncoveredMs": 0,
+      "finalPath": "/dashboard",
+      "snippet": "DashboardLoading your briefing…Business SnapshotA quick view of the business coming in, booked, collected, and still owed.Lead Flow273 open leads$540,200 estima"
+    },
+    {
+      "cycle": 3,
+      "title": "Leads",
+      "from": "/dashboard",
+      "firstPaintMs": 2498,
+      "meaningfulReadyMs": 2498,
+      "interactionReadyMs": 2498,
+      "useful80Ms": 2498,
+      "blankUncoveredMs": 0,
+      "finalPath": "/leads",
+      "snippet": "LeadsActive sales opportunities. All is that population. Booked and Lost stay visible as outcomes and are not included in All.Customize PipelineBoard ViewImport"
+    },
+    {
+      "cycle": 3,
+      "title": "Clients",
+      "from": "/leads",
+      "firstPaintMs": 1791,
+      "meaningfulReadyMs": 1791,
+      "interactionReadyMs": 1791,
+      "useful80Ms": 1791,
+      "blankUncoveredMs": 0,
+      "finalPath": "/clients",
+      "snippet": "ClientsAll Bookings is the active book. Contacts are clients without a booking yet. Coming up is event dates from today through the next 30 days. Needs Attentio"
+    },
+    {
+      "cycle": 3,
+      "title": "Vendors",
+      "from": "/clients",
+      "firstPaintMs": 1415,
+      "meaningfulReadyMs": 1415,
+      "interactionReadyMs": 1415,
+      "useful80Ms": 1415,
+      "blankUncoveredMs": 0,
+      "finalPath": "/vendors",
+      "snippet": "VendorsVendors you make available to couples. Recommend or prefer them, mark required or in-house, and invite them to claim their profile.Import Vendors+ Add Ve"
+    },
+    {
+      "cycle": 3,
+      "title": "Calendar",
+      "from": "/vendors",
+      "firstPaintMs": 2632,
+      "meaningfulReadyMs": 2632,
+      "interactionReadyMs": 2632,
+      "useful80Ms": 2632,
+      "blankUncoveredMs": 0,
+      "finalPath": "/calendar",
+      "snippet": "CalendarYour venue’s schedule — events, appointments, holds, and blocked time. Add Schedule Item Print / ExportMonthWeekDayMonth listNovember2026TourAppointment"
+    },
+    {
+      "cycle": 3,
+      "title": "Tours",
+      "from": "/calendar",
+      "firstPaintMs": 525,
+      "meaningfulReadyMs": 1178,
+      "interactionReadyMs": 1178,
+      "useful80Ms": 1178,
+      "blankUncoveredMs": 0,
+      "finalPath": "/tours",
+      "snippet": "ToursUpcoming, past, and cancelled venue tour appointments."
+    },
+    {
+      "cycle": 3,
+      "title": "Inbox",
+      "from": "/tours",
+      "firstPaintMs": 1030,
+      "meaningfulReadyMs": 1030,
+      "interactionReadyMs": 1030,
+      "useful80Ms": 1030,
+      "blankUncoveredMs": 0,
+      "finalPath": "/messaging",
+      "snippet": "InboxEmail, text, and portal conversations in one place.No unread messages · None need responseCommunication Health →LeadsClientsVendors FiltersLoading…Select a"
+    },
+    {
+      "cycle": 3,
+      "title": "Automations",
+      "from": "/messaging",
+      "firstPaintMs": 603,
+      "meaningfulReadyMs": 603,
+      "interactionReadyMs": 603,
+      "useful80Ms": 603,
+      "blankUncoveredMs": 0,
+      "finalPath": "/communication/series",
+      "snippet": "AutomationsWhen something happens, Hello to Cheers can send the right follow-up for you — for sales leads and for booked clients.+ New AutomationHow automations"
+    },
+    {
+      "cycle": 3,
+      "title": "Templates",
+      "from": "/communication/series",
+      "firstPaintMs": 456,
+      "meaningfulReadyMs": 3448,
+      "interactionReadyMs": 3448,
+      "useful80Ms": 456,
+      "blankUncoveredMs": 0,
+      "finalPath": "/library",
+      "snippet": "TemplatesWhat you sell, what you have, and what you deliver — reusable resources for bookings and events."
+    },
+    {
+      "cycle": 3,
+      "title": "Documents",
+      "from": "/library",
+      "firstPaintMs": 564,
+      "meaningfulReadyMs": 883,
+      "interactionReadyMs": 883,
+      "useful80Ms": 564,
+      "blankUncoveredMs": 0,
+      "finalPath": "/library/documents",
+      "snippet": "DocumentsFiles you reuse across bookings — available to your whole venue, not tied to one lead or event."
+    },
+    {
+      "cycle": 3,
+      "title": "Contracts",
+      "from": "/library/documents",
+      "firstPaintMs": 295,
+      "meaningfulReadyMs": 677,
+      "interactionReadyMs": 677,
+      "useful80Ms": 677,
+      "blankUncoveredMs": 0,
+      "finalPath": "/contracts",
+      "snippet": "ContractsWhich contracts need something from me?Templates+ New Contract"
+    },
+    {
+      "cycle": 3,
+      "title": "Payments",
+      "from": "/contracts",
+      "firstPaintMs": 575,
+      "meaningfulReadyMs": 1544,
+      "interactionReadyMs": 1544,
+      "useful80Ms": 575,
+      "blankUncoveredMs": 0,
+      "finalPath": "/payments",
+      "snippet": "PaymentsTrack deposits, installments, and outstanding balances. Filter by status — All includes every payment plan.+ New Schedule"
+    },
+    {
+      "cycle": 3,
+      "title": "Task Center",
+      "from": "/payments",
+      "firstPaintMs": 349,
+      "meaningfulReadyMs": 829,
+      "interactionReadyMs": 829,
+      "useful80Ms": 829,
+      "blankUncoveredMs": 0,
+      "finalPath": "/tasks",
+      "snippet": "Task CenterTasks your venue needs to complete across leads and events."
+    },
+    {
+      "cycle": 3,
+      "title": "Requests",
+      "from": "/tasks",
+      "firstPaintMs": 915,
+      "meaningfulReadyMs": 1232,
+      "interactionReadyMs": 1232,
+      "useful80Ms": 915,
+      "blankUncoveredMs": 0,
+      "finalPath": "/requests",
+      "snippet": "RequestsEverything you've asked a couple or vendor to do, across every booking — assign it, track it, and see where it stands."
+    },
+    {
+      "cycle": 3,
+      "title": "Setup",
+      "from": "/requests",
+      "firstPaintMs": 349,
+      "meaningfulReadyMs": 774,
+      "interactionReadyMs": 774,
+      "useful80Ms": 349,
+      "blankUncoveredMs": 0,
+      "finalPath": "/setup-hub",
+      "snippet": "SetupGet your venue ready — brand, booking process, and the tools you use every day."
+    },
+    {
+      "cycle": 3,
+      "title": "Settings",
+      "from": "/setup-hub",
+      "firstPaintMs": 290,
+      "meaningfulReadyMs": 606,
+      "interactionReadyMs": 606,
+      "useful80Ms": 606,
+      "blankUncoveredMs": 0,
+      "finalPath": "/settings",
+      "snippet": "SettingsMake Hello to Cheers work the way your venue works."
+    },
+    {
+      "cycle": 3,
+      "title": "Guidance",
+      "from": "/settings",
+      "firstPaintMs": 514,
+      "meaningfulReadyMs": 514,
+      "interactionReadyMs": 514,
+      "useful80Ms": 514,
+      "blankUncoveredMs": 0,
+      "finalPath": "/help",
+      "snippet": "GuidanceQuick answers for using Hello to Cheers. Find a guide for what you're working on, or start with Getting Started if you're new here.Getting StartedGet co"
+    },
+    {
+      "cycle": 3,
+      "title": "Venue Guide",
+      "from": "/help",
+      "firstPaintMs": 411,
+      "meaningfulReadyMs": 677,
+      "interactionReadyMs": 677,
+      "useful80Ms": 411,
+      "blankUncoveredMs": 0,
+      "finalPath": "/guide",
+      "snippet": "Venue GuideEverything your clients need to know — parking, policies, FAQs, and more. Clients browse this in their portal and Luv answers questions from it."
+    },
+    {
+      "cycle": 3,
+      "title": "Reports",
+      "from": "/guide",
+      "firstPaintMs": 303,
+      "meaningfulReadyMs": 303,
+      "interactionReadyMs": 303,
+      "useful80Ms": 303,
+      "blankUncoveredMs": 0,
+      "finalPath": "/reporting",
+      "snippet": "ReportsHow your business is doing — bookings, revenue, sales, and events.OverviewSalesBookingsRevenueEventsSavedOverviewHow the business moved during the select"
+    },
+    {
+      "cycle": 3,
+      "title": "Help & Feedback",
+      "from": "/reporting",
+      "firstPaintMs": 507,
+      "meaningfulReadyMs": 507,
+      "interactionReadyMs": 507,
+      "useful80Ms": 507,
+      "blankUncoveredMs": 0,
+      "finalPath": "/feedback",
+      "snippet": "Get Help or Provide FeedbackTalk to the team who created Hello to Cheers — ask for help, report a problem, or tell us what to build next.Get HelpStuck on someth"
+    },
+    {
+      "cycle": 4,
+      "title": "Dashboard",
+      "from": "/feedback",
+      "firstPaintMs": 1460,
+      "meaningfulReadyMs": 1460,
+      "interactionReadyMs": 1460,
+      "useful80Ms": 1460,
+      "blankUncoveredMs": 0,
+      "finalPath": "/dashboard",
+      "snippet": "DashboardLoading your briefing…Business SnapshotA quick view of the business coming in, booked, collected, and still owed.Lead Flow273 open leads$540,200 estima"
+    },
+    {
+      "cycle": 4,
+      "title": "Leads",
+      "from": "/dashboard",
+      "firstPaintMs": 417,
+      "meaningfulReadyMs": 417,
+      "interactionReadyMs": 417,
+      "useful80Ms": 417,
+      "blankUncoveredMs": 0,
+      "finalPath": "/leads",
+      "snippet": "LeadsActive sales opportunities. All is that population. Booked and Lost stay visible as outcomes and are not included in All.Customize PipelineBoard ViewImport"
+    },
+    {
+      "cycle": 4,
+      "title": "Clients",
+      "from": "/leads",
+      "firstPaintMs": 475,
+      "meaningfulReadyMs": 475,
+      "interactionReadyMs": 475,
+      "useful80Ms": 475,
+      "blankUncoveredMs": 0,
+      "finalPath": "/clients",
+      "snippet": "ClientsAll Bookings is the active book. Contacts are clients without a booking yet. Coming up is event dates from today through the next 30 days. Needs Attentio"
+    },
+    {
+      "cycle": 4,
+      "title": "Vendors",
+      "from": "/clients",
+      "firstPaintMs": 403,
+      "meaningfulReadyMs": 403,
+      "interactionReadyMs": 403,
+      "useful80Ms": 403,
+      "blankUncoveredMs": 0,
+      "finalPath": "/vendors",
+      "snippet": "VendorsVendors you make available to couples. Recommend or prefer them, mark required or in-house, and invite them to claim their profile.Import Vendors+ Add Ve"
+    },
+    {
+      "cycle": 4,
+      "title": "Calendar",
+      "from": "/vendors",
+      "firstPaintMs": 667,
+      "meaningfulReadyMs": 667,
+      "interactionReadyMs": 667,
+      "useful80Ms": 667,
+      "blankUncoveredMs": 0,
+      "finalPath": "/calendar",
+      "snippet": "CalendarYour venue’s schedule — events, appointments, holds, and blocked time. Add Schedule Item Print / ExportMonthWeekDayMonth listNovember2026TourAppointment"
+    },
+    {
+      "cycle": 4,
+      "title": "Tours",
+      "from": "/calendar",
+      "firstPaintMs": 310,
+      "meaningfulReadyMs": 642,
+      "interactionReadyMs": 642,
+      "useful80Ms": 642,
+      "blankUncoveredMs": 0,
+      "finalPath": "/tours",
+      "snippet": "ToursUpcoming, past, and cancelled venue tour appointments."
+    },
+    {
+      "cycle": 4,
+      "title": "Inbox",
+      "from": "/tours",
+      "firstPaintMs": 712,
+      "meaningfulReadyMs": 712,
+      "interactionReadyMs": 712,
+      "useful80Ms": 712,
+      "blankUncoveredMs": 0,
+      "finalPath": "/messaging",
+      "snippet": "InboxEmail, text, and portal conversations in one place.No unread messages · None need responseCommunication Health →LeadsClientsVendors FiltersLoading…Select a"
+    },
+    {
+      "cycle": 4,
+      "title": "Automations",
+      "from": "/messaging",
+      "firstPaintMs": 297,
+      "meaningfulReadyMs": 297,
+      "interactionReadyMs": 297,
+      "useful80Ms": 297,
+      "blankUncoveredMs": 0,
+      "finalPath": "/communication/series",
+      "snippet": "AutomationsWhen something happens, Hello to Cheers can send the right follow-up for you — for sales leads and for booked clients.+ New AutomationHow automations"
+    },
+    {
+      "cycle": 4,
+      "title": "Templates",
+      "from": "/communication/series",
+      "firstPaintMs": 409,
+      "meaningfulReadyMs": 1103,
+      "interactionReadyMs": 1103,
+      "useful80Ms": 409,
+      "blankUncoveredMs": 0,
+      "finalPath": "/library",
+      "snippet": "TemplatesWhat you sell, what you have, and what you deliver — reusable resources for bookings and events."
+    },
+    {
+      "cycle": 4,
+      "title": "Documents",
+      "from": "/library",
+      "firstPaintMs": 360,
+      "meaningfulReadyMs": 626,
+      "interactionReadyMs": 626,
+      "useful80Ms": 360,
+      "blankUncoveredMs": 0,
+      "finalPath": "/library/documents",
+      "snippet": "DocumentsFiles you reuse across bookings — available to your whole venue, not tied to one lead or event."
+    },
+    {
+      "cycle": 4,
+      "title": "Contracts",
+      "from": "/library/documents",
+      "firstPaintMs": 329,
+      "meaningfulReadyMs": 699,
+      "interactionReadyMs": 699,
+      "useful80Ms": 699,
+      "blankUncoveredMs": 0,
+      "finalPath": "/contracts",
+      "snippet": "ContractsWhich contracts need something from me?Templates+ New Contract"
+    },
+    {
+      "cycle": 4,
+      "title": "Payments",
+      "from": "/contracts",
+      "firstPaintMs": 425,
+      "meaningfulReadyMs": 1231,
+      "interactionReadyMs": 1231,
+      "useful80Ms": 425,
+      "blankUncoveredMs": 0,
+      "finalPath": "/payments",
+      "snippet": "PaymentsTrack deposits, installments, and outstanding balances. Filter by status — All includes every payment plan.+ New Schedule"
+    },
+    {
+      "cycle": 4,
+      "title": "Task Center",
+      "from": "/payments",
+      "firstPaintMs": 346,
+      "meaningfulReadyMs": 611,
+      "interactionReadyMs": 611,
+      "useful80Ms": 611,
+      "blankUncoveredMs": 0,
+      "finalPath": "/tasks",
+      "snippet": "Task CenterTasks your venue needs to complete across leads and events."
+    },
+    {
+      "cycle": 4,
+      "title": "Requests",
+      "from": "/tasks",
+      "firstPaintMs": 317,
+      "meaningfulReadyMs": 590,
+      "interactionReadyMs": 590,
+      "useful80Ms": 317,
+      "blankUncoveredMs": 0,
+      "finalPath": "/requests",
+      "snippet": "RequestsEverything you've asked a couple or vendor to do, across every booking — assign it, track it, and see where it stands."
+    },
+    {
+      "cycle": 4,
+      "title": "Setup",
+      "from": "/requests",
+      "firstPaintMs": 294,
+      "meaningfulReadyMs": 573,
+      "interactionReadyMs": 573,
+      "useful80Ms": 294,
+      "blankUncoveredMs": 0,
+      "finalPath": "/setup-hub",
+      "snippet": "SetupGet your venue ready — brand, booking process, and the tools you use every day."
+    },
+    {
+      "cycle": 4,
+      "title": "Settings",
+      "from": "/setup-hub",
+      "firstPaintMs": 292,
+      "meaningfulReadyMs": 612,
+      "interactionReadyMs": 612,
+      "useful80Ms": 612,
+      "blankUncoveredMs": 0,
+      "finalPath": "/settings",
+      "snippet": "SettingsMake Hello to Cheers work the way your venue works."
+    },
+    {
+      "cycle": 4,
+      "title": "Guidance",
+      "from": "/settings",
+      "firstPaintMs": 286,
+      "meaningfulReadyMs": 553,
+      "interactionReadyMs": 553,
+      "useful80Ms": 286,
+      "blankUncoveredMs": 0,
+      "finalPath": "/help",
+      "snippet": "GuidanceQuick answers for using Hello to Cheers. Find a guide for what you're working on, or start with Getting Started if you're new here."
+    },
+    {
+      "cycle": 4,
+      "title": "Venue Guide",
+      "from": "/help",
+      "firstPaintMs": 458,
+      "meaningfulReadyMs": 731,
+      "interactionReadyMs": 731,
+      "useful80Ms": 458,
+      "blankUncoveredMs": 0,
+      "finalPath": "/guide",
+      "snippet": "Venue GuideEverything your clients need to know — parking, policies, FAQs, and more. Clients browse this in their portal and Luv answers questions from it."
+    },
+    {
+      "cycle": 4,
+      "title": "Reports",
+      "from": "/guide",
+      "firstPaintMs": 332,
+      "meaningfulReadyMs": 332,
+      "interactionReadyMs": 332,
+      "useful80Ms": 332,
+      "blankUncoveredMs": 0,
+      "finalPath": "/reporting",
+      "snippet": "ReportsHow your business is doing — bookings, revenue, sales, and events.OverviewSalesBookingsRevenueEventsSavedOverviewHow the business moved during the select"
+    },
+    {
+      "cycle": 4,
+      "title": "Help & Feedback",
+      "from": "/reporting",
+      "firstPaintMs": 308,
+      "meaningfulReadyMs": 308,
+      "interactionReadyMs": 308,
+      "useful80Ms": 308,
+      "blankUncoveredMs": 0,
+      "finalPath": "/feedback",
+      "snippet": "Get Help or Provide FeedbackTalk to the team who created Hello to Cheers — ask for help, report a problem, or tell us what to build next.Get HelpStuck on someth"
+    },
+    {
+      "cycle": 5,
+      "title": "Dashboard",
+      "from": "/feedback",
+      "firstPaintMs": 1057,
+      "meaningfulReadyMs": 1057,
+      "interactionReadyMs": 1057,
+      "useful80Ms": 1057,
+      "blankUncoveredMs": 0,
+      "finalPath": "/dashboard",
+      "snippet": "Good afternoon.Friday, November 27, 2026 · Here's what's happening at Jen's Fancy Venue today.+ New LeadBusiness SnapshotA quick view of the business coming in,"
+    },
+    {
+      "cycle": 5,
+      "title": "Leads",
+      "from": "/dashboard",
+      "firstPaintMs": 384,
+      "meaningfulReadyMs": 384,
+      "interactionReadyMs": 384,
+      "useful80Ms": 384,
+      "blankUncoveredMs": 0,
+      "finalPath": "/leads",
+      "snippet": "LeadsActive sales opportunities. All is that population. Booked and Lost stay visible as outcomes and are not included in All.Customize PipelineBoard ViewImport"
+    },
+    {
+      "cycle": 5,
+      "title": "Clients",
+      "from": "/leads",
+      "firstPaintMs": 363,
+      "meaningfulReadyMs": 363,
+      "interactionReadyMs": 363,
+      "useful80Ms": 363,
+      "blankUncoveredMs": 0,
+      "finalPath": "/clients",
+      "snippet": "ClientsAll Bookings is the active book. Contacts are clients without a booking yet. Coming up is event dates from today through the next 30 days. Needs Attentio"
+    },
+    {
+      "cycle": 5,
+      "title": "Vendors",
+      "from": "/clients",
+      "firstPaintMs": 304,
+      "meaningfulReadyMs": 304,
+      "interactionReadyMs": 304,
+      "useful80Ms": 304,
+      "blankUncoveredMs": 0,
+      "finalPath": "/vendors",
+      "snippet": "VendorsVendors you make available to couples. Recommend or prefer them, mark required or in-house, and invite them to claim their profile.Import Vendors+ Add Ve"
+    },
+    {
+      "cycle": 5,
+      "title": "Calendar",
+      "from": "/vendors",
+      "firstPaintMs": 722,
+      "meaningfulReadyMs": 722,
+      "interactionReadyMs": 722,
+      "useful80Ms": 722,
+      "blankUncoveredMs": 0,
+      "finalPath": "/calendar",
+      "snippet": "CalendarYour venue’s schedule — events, appointments, holds, and blocked time. Add Schedule Item Print / ExportMonthWeekDayMonth listNovember2026TourAppointment"
+    },
+    {
+      "cycle": 5,
+      "title": "Tours",
+      "from": "/calendar",
+      "firstPaintMs": 474,
+      "meaningfulReadyMs": 798,
+      "interactionReadyMs": 798,
+      "useful80Ms": 798,
+      "blankUncoveredMs": 0,
+      "finalPath": "/tours",
+      "snippet": "ToursUpcoming, past, and cancelled venue tour appointments."
+    },
+    {
+      "cycle": 5,
+      "title": "Inbox",
+      "from": "/tours",
+      "firstPaintMs": 737,
+      "meaningfulReadyMs": 737,
+      "interactionReadyMs": 737,
+      "useful80Ms": 737,
+      "blankUncoveredMs": 0,
+      "finalPath": "/messaging",
+      "snippet": "InboxEmail, text, and portal conversations in one place.No unread messages · None need responseCommunication Health →LeadsClientsVendors FiltersLoading…Select a"
+    },
+    {
+      "cycle": 5,
+      "title": "Automations",
+      "from": "/messaging",
+      "firstPaintMs": 401,
+      "meaningfulReadyMs": 401,
+      "interactionReadyMs": 401,
+      "useful80Ms": 401,
+      "blankUncoveredMs": 0,
+      "finalPath": "/communication/series",
+      "snippet": "AutomationsWhen something happens, Hello to Cheers can send the right follow-up for you — for sales leads and for booked clients.+ New AutomationHow automations"
+    },
+    {
+      "cycle": 5,
+      "title": "Templates",
+      "from": "/communication/series",
+      "firstPaintMs": 358,
+      "meaningfulReadyMs": 944,
+      "interactionReadyMs": 944,
+      "useful80Ms": 358,
+      "blankUncoveredMs": 0,
+      "finalPath": "/library",
+      "snippet": "TemplatesWhat you sell, what you have, and what you deliver — reusable resources for bookings and events."
+    },
+    {
+      "cycle": 5,
+      "title": "Documents",
+      "from": "/library",
+      "firstPaintMs": 299,
+      "meaningfulReadyMs": 618,
+      "interactionReadyMs": 618,
+      "useful80Ms": 299,
+      "blankUncoveredMs": 0,
+      "finalPath": "/library/documents",
+      "snippet": "DocumentsFiles you reuse across bookings — available to your whole venue, not tied to one lead or event."
+    },
+    {
+      "cycle": 5,
+      "title": "Contracts",
+      "from": "/library/documents",
+      "firstPaintMs": 301,
+      "meaningfulReadyMs": 616,
+      "interactionReadyMs": 616,
+      "useful80Ms": 616,
+      "blankUncoveredMs": 0,
+      "finalPath": "/contracts",
+      "snippet": "ContractsWhich contracts need something from me?Templates+ New Contract"
+    },
+    {
+      "cycle": 5,
+      "title": "Payments",
+      "from": "/contracts",
+      "firstPaintMs": 313,
+      "meaningfulReadyMs": 1278,
+      "interactionReadyMs": 1278,
+      "useful80Ms": 313,
+      "blankUncoveredMs": 0,
+      "finalPath": "/payments",
+      "snippet": "PaymentsTrack deposits, installments, and outstanding balances. Filter by status — All includes every payment plan.+ New Schedule"
+    },
+    {
+      "cycle": 5,
+      "title": "Task Center",
+      "from": "/payments",
+      "firstPaintMs": 885,
+      "meaningfulReadyMs": 1955,
+      "interactionReadyMs": 1955,
+      "useful80Ms": 1955,
+      "blankUncoveredMs": 0,
+      "finalPath": "/tasks",
+      "snippet": "Task CenterTasks your venue needs to complete across leads and events."
+    },
+    {
+      "cycle": 5,
+      "title": "Requests",
+      "from": "/tasks",
+      "firstPaintMs": 434,
+      "meaningfulReadyMs": 1028,
+      "interactionReadyMs": 1028,
+      "useful80Ms": 434,
+      "blankUncoveredMs": 0,
+      "finalPath": "/requests",
+      "snippet": "RequestsEverything you've asked a couple or vendor to do, across every booking — assign it, track it, and see where it stands."
+    },
+    {
+      "cycle": 5,
+      "title": "Setup",
+      "from": "/requests",
+      "firstPaintMs": 404,
+      "meaningfulReadyMs": 1319,
+      "interactionReadyMs": 1319,
+      "useful80Ms": 404,
+      "blankUncoveredMs": 0,
+      "finalPath": "/setup-hub",
+      "snippet": "SetupGet your venue ready — brand, booking process, and the tools you use every day."
+    },
+    {
+      "cycle": 5,
+      "title": "Settings",
+      "from": "/setup-hub",
+      "firstPaintMs": 351,
+      "meaningfulReadyMs": 669,
+      "interactionReadyMs": 669,
+      "useful80Ms": 669,
+      "blankUncoveredMs": 0,
+      "finalPath": "/settings",
+      "snippet": "SettingsMake Hello to Cheers work the way your venue works."
+    },
+    {
+      "cycle": 5,
+      "title": "Guidance",
+      "from": "/settings",
+      "firstPaintMs": 342,
+      "meaningfulReadyMs": 658,
+      "interactionReadyMs": 658,
+      "useful80Ms": 342,
+      "blankUncoveredMs": 0,
+      "finalPath": "/help",
+      "snippet": "GuidanceQuick answers for using Hello to Cheers. Find a guide for what you're working on, or start with Getting Started if you're new here."
+    },
+    {
+      "cycle": 5,
+      "title": "Venue Guide",
+      "from": "/help",
+      "firstPaintMs": 452,
+      "meaningfulReadyMs": 769,
+      "interactionReadyMs": 769,
+      "useful80Ms": 452,
+      "blankUncoveredMs": 0,
+      "finalPath": "/guide",
+      "snippet": "Venue GuideEverything your clients need to know — parking, policies, FAQs, and more. Clients browse this in their portal and Luv answers questions from it."
+    },
+    {
+      "cycle": 5,
+      "title": "Reports",
+      "from": "/guide",
+      "firstPaintMs": 365,
+      "meaningfulReadyMs": 365,
+      "interactionReadyMs": 365,
+      "useful80Ms": 365,
+      "blankUncoveredMs": 0,
+      "finalPath": "/reporting",
+      "snippet": "ReportsHow your business is doing — bookings, revenue, sales, and events.OverviewSalesBookingsRevenueEventsSavedOverviewHow the business moved during the select"
+    },
+    {
+      "cycle": 5,
+      "title": "Help & Feedback",
+      "from": "/reporting",
+      "firstPaintMs": 624,
+      "meaningfulReadyMs": 624,
+      "interactionReadyMs": 624,
+      "useful80Ms": 624,
+      "blankUncoveredMs": 0,
+      "finalPath": "/feedback",
+      "snippet": "Get Help or Provide FeedbackTalk to the team who created Hello to Cheers — ask for help, report a problem, or tell us what to build next.Get HelpStuck on someth"
+    }
+  ],
+  "coldHops": [
+    {
+      "cycle": 0,
+      "title": "Dashboard",
+      "from": "/leads",
+      "firstPaintMs": 947,
+      "meaningfulReadyMs": 947,
+      "interactionReadyMs": 947,
+      "useful80Ms": 947,
+      "blankUncoveredMs": 0,
+      "finalPath": "/dashboard",
+      "snippet": "DashboardLoading your briefing…Business SnapshotA quick view of the business coming in, booked, collected, and still owed.Lead Flow273 open leads$540,200 estima"
+    },
+    {
+      "cycle": 0,
+      "title": "Leads",
+      "from": "/dashboard",
+      "firstPaintMs": 535,
+      "meaningfulReadyMs": 535,
+      "interactionReadyMs": 535,
+      "useful80Ms": 535,
+      "blankUncoveredMs": 0,
+      "finalPath": "/leads",
+      "snippet": "LeadsActive sales opportunities. All is that population. Booked and Lost stay visible as outcomes and are not included in All.Customize PipelineBoard ViewImport"
+    },
+    {
+      "cycle": 0,
+      "title": "Clients",
+      "from": "/leads",
+      "firstPaintMs": 410,
+      "meaningfulReadyMs": 410,
+      "interactionReadyMs": 410,
+      "useful80Ms": 410,
+      "blankUncoveredMs": 0,
+      "finalPath": "/clients",
+      "snippet": "ClientsAll Bookings is the active book. Contacts are clients without a booking yet. Coming up is event dates from today through the next 30 days. Needs Attentio"
+    },
+    {
+      "cycle": 0,
+      "title": "Vendors",
+      "from": "/clients",
+      "firstPaintMs": 674,
+      "meaningfulReadyMs": 674,
+      "interactionReadyMs": 674,
+      "useful80Ms": 674,
+      "blankUncoveredMs": 0,
+      "finalPath": "/vendors",
+      "snippet": "VendorsVendors you make available to couples. Recommend or prefer them, mark required or in-house, and invite them to claim their profile.Import Vendors+ Add Ve"
+    },
+    {
+      "cycle": 0,
+      "title": "Calendar",
+      "from": "/vendors",
+      "firstPaintMs": 789,
+      "meaningfulReadyMs": 789,
+      "interactionReadyMs": 789,
+      "useful80Ms": 789,
+      "blankUncoveredMs": 0,
+      "finalPath": "/calendar",
+      "snippet": "CalendarYour venue’s schedule — events, appointments, holds, and blocked time. Add Schedule Item Print / ExportMonthWeekDayMonth listNovember2026TourAppointment"
+    },
+    {
+      "cycle": 0,
+      "title": "Tours",
+      "from": "/calendar",
+      "firstPaintMs": 672,
+      "meaningfulReadyMs": 672,
+      "interactionReadyMs": 672,
+      "useful80Ms": 672,
+      "blankUncoveredMs": 0,
+      "finalPath": "/tours",
+      "snippet": "ToursUpcoming, past, and cancelled venue tour appointments. Booking SettingsUpcoming (21)Tours still ahead — scheduled or confirmed.29DecPolish PR68MWGW2QA2Sche"
+    },
+    {
+      "cycle": 0,
+      "title": "Inbox",
+      "from": "/tours",
+      "firstPaintMs": 997,
+      "meaningfulReadyMs": 997,
+      "interactionReadyMs": 997,
+      "useful80Ms": 997,
+      "blankUncoveredMs": 0,
+      "finalPath": "/messaging",
+      "snippet": "InboxEmail, text, and portal conversations in one place.No unread messages · None need responseCommunication Health →LeadsClientsVendors FiltersLoading…Select a"
+    },
+    {
+      "cycle": 0,
+      "title": "Automations",
+      "from": "/messaging",
+      "firstPaintMs": 453,
+      "meaningfulReadyMs": 453,
+      "interactionReadyMs": 453,
+      "useful80Ms": 453,
+      "blankUncoveredMs": 0,
+      "finalPath": "/communication/series",
+      "snippet": "AutomationsWhen something happens, Hello to Cheers can send the right follow-up for you — for sales leads and for booked clients.+ New AutomationHow automations"
+    },
+    {
+      "cycle": 0,
+      "title": "Templates",
+      "from": "/communication/series",
+      "firstPaintMs": 365,
+      "meaningfulReadyMs": 966,
+      "interactionReadyMs": 966,
+      "useful80Ms": 365,
+      "blankUncoveredMs": 0,
+      "finalPath": "/library",
+      "snippet": "TemplatesWhat you sell, what you have, and what you deliver — reusable resources for bookings and events."
+    },
+    {
+      "cycle": 0,
+      "title": "Documents",
+      "from": "/library",
+      "firstPaintMs": 1109,
+      "meaningfulReadyMs": 1386,
+      "interactionReadyMs": 1386,
+      "useful80Ms": 1109,
+      "blankUncoveredMs": 0,
+      "finalPath": "/library/documents",
+      "snippet": "DocumentsFiles you reuse across bookings — available to your whole venue, not tied to one lead or event."
+    },
+    {
+      "cycle": 0,
+      "title": "Contracts",
+      "from": "/library/documents",
+      "firstPaintMs": 614,
+      "meaningfulReadyMs": 882,
+      "interactionReadyMs": 882,
+      "useful80Ms": 882,
+      "blankUncoveredMs": 0,
+      "finalPath": "/contracts",
+      "snippet": "ContractsWhich contracts need something from me?Templates+ New Contract"
+    },
+    {
+      "cycle": 0,
+      "title": "Payments",
+      "from": "/contracts",
+      "firstPaintMs": 892,
+      "meaningfulReadyMs": 3956,
+      "interactionReadyMs": 3956,
+      "useful80Ms": 892,
+      "blankUncoveredMs": 0,
+      "finalPath": "/payments",
+      "snippet": "PaymentsTrack deposits, installments, and outstanding balances. Filter by status — All includes every payment plan.+ New Schedule"
+    },
+    {
+      "cycle": 0,
+      "title": "Task Center",
+      "from": "/payments",
+      "firstPaintMs": 532,
+      "meaningfulReadyMs": 2526,
+      "interactionReadyMs": 2526,
+      "useful80Ms": 2526,
+      "blankUncoveredMs": 0,
+      "finalPath": "/tasks",
+      "snippet": "Task CenterTasks your venue needs to complete across leads and events."
+    },
+    {
+      "cycle": 0,
+      "title": "Requests",
+      "from": "/tasks",
+      "firstPaintMs": 1227,
+      "meaningfulReadyMs": 1721,
+      "interactionReadyMs": 1721,
+      "useful80Ms": 1227,
+      "blankUncoveredMs": 0,
+      "finalPath": "/requests",
+      "snippet": "RequestsEverything you've asked a couple or vendor to do, across every booking — assign it, track it, and see where it stands."
+    },
+    {
+      "cycle": 0,
+      "title": "Setup",
+      "from": "/requests",
+      "firstPaintMs": 316,
+      "meaningfulReadyMs": 801,
+      "interactionReadyMs": 801,
+      "useful80Ms": 316,
+      "blankUncoveredMs": 0,
+      "finalPath": "/setup-hub",
+      "snippet": "SetupGet your venue ready — brand, booking process, and the tools you use every day."
+    },
+    {
+      "cycle": 0,
+      "title": "Settings",
+      "from": "/setup-hub",
+      "firstPaintMs": 310,
+      "meaningfulReadyMs": 629,
+      "interactionReadyMs": 629,
+      "useful80Ms": 629,
+      "blankUncoveredMs": 0,
+      "finalPath": "/settings",
+      "snippet": "SettingsMake Hello to Cheers work the way your venue works."
+    },
+    {
+      "cycle": 0,
+      "title": "Guidance",
+      "from": "/settings",
+      "firstPaintMs": 628,
+      "meaningfulReadyMs": 900,
+      "interactionReadyMs": 900,
+      "useful80Ms": 628,
+      "blankUncoveredMs": 0,
+      "finalPath": "/help",
+      "snippet": "GuidanceQuick answers for using Hello to Cheers. Find a guide for what you're working on, or start with Getting Started if you're new here."
+    },
+    {
+      "cycle": 0,
+      "title": "Venue Guide",
+      "from": "/help",
+      "firstPaintMs": 620,
+      "meaningfulReadyMs": 940,
+      "interactionReadyMs": 940,
+      "useful80Ms": 620,
+      "blankUncoveredMs": 0,
+      "finalPath": "/guide",
+      "snippet": "Venue GuideEverything your clients need to know — parking, policies, FAQs, and more. Clients browse this in their portal and Luv answers questions from it."
+    },
+    {
+      "cycle": 0,
+      "title": "Reports",
+      "from": "/guide",
+      "firstPaintMs": 316,
+      "meaningfulReadyMs": 316,
+      "interactionReadyMs": 316,
+      "useful80Ms": 316,
+      "blankUncoveredMs": 0,
+      "finalPath": "/reporting",
+      "snippet": "ReportsHow your business is doing — bookings, revenue, sales, and events.OverviewSalesBookingsRevenueEventsSavedOverviewHow the business moved during the select"
+    },
+    {
+      "cycle": 0,
+      "title": "Help & Feedback",
+      "from": "/reporting",
+      "firstPaintMs": 520,
+      "meaningfulReadyMs": 520,
+      "interactionReadyMs": 520,
+      "useful80Ms": 520,
+      "blankUncoveredMs": 0,
+      "finalPath": "/feedback",
+      "snippet": "Get Help or Provide FeedbackTalk to the team who created Hello to Cheers — ask for help, report a problem, or tell us what to build next.Get HelpStuck on someth"
+    }
+  ]
+}
