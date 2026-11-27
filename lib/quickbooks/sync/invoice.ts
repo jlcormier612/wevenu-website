@@ -63,7 +63,9 @@ export async function syncInvoice(venueId: string, entityId: string): Promise<Qu
     .eq("invoice_id", entityId).order("sort_order");
   const lines = (lineItems ?? []) as LineItemRow[];
   if (lines.length === 0) {
-    return { ok: false, error: "Invoice has no line items to sync.", retryable: true };
+    // Deterministic data defect — retrying until max_attempts only burns the
+    // queue and flips Settings health. Dead-letter instead.
+    return { ok: false, error: "Invoice has no line items to sync.", retryable: false };
   }
 
   const itemResult = await ensureDefaultItem(venueId);

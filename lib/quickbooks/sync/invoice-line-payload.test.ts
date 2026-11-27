@@ -129,3 +129,13 @@ describe("syncInvoice tax failure policy", () => {
     assert.match(src, /tax was not posted as revenue and was not dropped/);
   });
 });
+
+describe("invoice sync deterministic failures", () => {
+  it("marks empty line-item invoices as non-retryable", () => {
+    const src = readFileSync("lib/quickbooks/sync/invoice.ts", "utf8");
+    const idx = src.indexOf("Invoice has no line items to sync.");
+    assert.ok(idx > 0);
+    const window = src.slice(idx, idx + 120);
+    assert.match(window, /retryable:\s*false/);
+  });
+});
