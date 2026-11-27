@@ -426,7 +426,13 @@ export async function seedWorkspaceStarters(
 
 /**
  * Ensure starters for any durable, owner-accessible venue.
- * Idempotent. Safe from progress-save, activation, and repair paths.
+ * Idempotent. Safe from progress-save, activation, repair, and first-visit
+ * Templates/Setup Hub safeguard paths.
+ *
+ * When a durable `venue_starter_provisioning` row is missing, always run the
+ * full idempotent seed and persist lifecycle — do not trust presence heuristics
+ * alone (partial lazy section ensures can look "complete" while other starters
+ * are still missing).
  *
  * When prior status is `complete`, missing masters are treated as intentional
  * deletions and are NOT recreated unless `recreateDeleted` is true.
@@ -436,7 +442,15 @@ export async function ensureVenueStarters(
   opts?: { client?: DbClient; recreateDeleted?: boolean },
 ): Promise<StarterSeedResult> {
   const db = opts?.client ?? createAdminClient();
-  const snap = await getStarterProvisioningSnapshot(venueId, db);
+  const row = await readProvisionRow(db, venueId);
+
+  // No durable marker → run full seed. Presence heuristics alone are insufficient
+  // after partial per-section ensures and must not skip remaining starters.
+  if (!row) {
+    return seedWorkspaceStarters(venueId, db);
+  }
+
+  const snap = snapshotFromRow(row);
 
   if (snap.status === "complete" && !opts?.recreateDeleted) {
     // Healthy venue — do not resurrect intentional Library deletions.

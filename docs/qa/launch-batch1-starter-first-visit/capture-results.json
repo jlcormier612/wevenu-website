@@ -1,0 +1,19 @@
+{
+  "generatedAt": "2026-11-27T15:53:03.577Z",
+  "venueId": "41c95828-b856-4dc7-9ccf-717fb677dbdb",
+  "venueName": "Batch1 Capture 1795794604349",
+  "email": "batch1-capture-1795794604349@hellotocheers-test.invalid",
+  "desktop": {
+    "loadMs": 4456,
+    "templateBadges": 8,
+    "catalogBadges": 6,
+    "textSnippet": "SALES\nPackages & Pricing\nTemplate\n3\n\nPriced offers for proposals and contracts.\n\nSTOCK\nAvailable Inventory\nCatalog\n49\n\nPhysical items your venue owns or can provide.\n\nSaved starting lists (2)\n\nDELIVERY\nEvent Order Templates\nTemplate\n2\n\nCreate and manage reusable client selection experiences.\n\nOfferings Catalog\nCatalog\n11\n\nManage the services, packages, upgrades, and choices available for clients to select.\n\nOTHER TEMPLATES & ASSETS\nContract Templates\nTemplate\n1\n\nReusable agreements with fill-in details.\n\nPlanning Templates\nTemplate\n6\n\nClient and venue planning checklists.\n\nTimeline Templates\nTemplate\n3\n\nReusable day-of schedules.\n\nFloor Plan Templates\nTemplate\n5\n\nReusable room layouts.\n\nQuestionnaires & Feedback\nTemplate\n3\n\nClient questionnaires and post-event feedback.\n\nMessage Templates\nTemplate\n11\n\nEmails and texts you send often.\n\nPublic Forms\nCatalog\n4\n\nLead-capture forms for expos and open houses.\n\nQR Campaigns\nCatalog\n0\n\nPrintable QR codes with scan tracking.\n\nBrochures\nCatalog\n1\n\nBrandable venue overviews.\n\nSaved Reports\n4\n\nReports you’ve saved to reopen quickly."
+  },
+  "mobile": {
+    "loadMs": 4055,
+    "templateBadges": 8,
+    "catalogBadges": 6,
+    "textSnippet": "SALES\nPackages & Pricing\nTemplate\n3\n\nPriced offers for proposals and contracts.\n\nSTOCK\nAvailable Inventory\nCatalog\n49\n\nPhysical items your venue owns or can provide.\n\nSaved starting lists (2)\n\nDELIVERY\nEvent Order Templates\nTemplate\n2\n\nCreate and manage reusable client selection experiences.\n\nOfferings Catalog\nCatalog\n11\n\nManage the services, packages, upgrades, and choices available for clients to select.\n\nOTHER TEMPLATES & ASSETS\nContract Templates\nTemplate\n1\n\nReusable agreements with fill-in details.\n\nPlanning Templates\nTemplate\n6\n\nClient and venue planning checklists.\n\nTimeline Templates\nTemplate\n3\n\nReusable day-of schedules.\n\nFloor Plan Templates\nTemplate\n5\n\nReusable room layouts.\n\nQuestionnaires & Feedback\nTemplate\n3\n\nClient questionnaires and post-event feedback.\n\nMessage Templates\nTemplate\n11\n\nEmails and texts you send often.\n\nPublic Forms\nCatalog\n4\n\nLead-capture forms for expos and open houses.\n\nQR Campaigns\nCatalog\n0\n\nPrintable QR codes with scan tracking.\n\nBrochures\nCatalog\n1\n\nBrandable venue overviews.\n\nSaved Reports\n4\n\nReports you’ve saved to reopen quickly."
+  },
+  "note": "Venue provisioned with starters complete before first /library; no resource section opened before capture."
+}

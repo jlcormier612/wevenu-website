@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { after } from "next/server";
 import { Suspense } from "react";
 
 import {
@@ -26,12 +25,13 @@ import { listPublicForms } from "@/lib/public-forms/service";
 import { getTemplates as getEventOrderTemplates } from "@/lib/event-order-templates/service";
 import { getBrochures } from "@/lib/brochures/service";
 import { getSavedReports } from "@/lib/saved-reports/service";
-import { ensureBrochureStartersForCurrentVenue } from "@/lib/brochures/provision";
-import { ensureSavedReportStartersForCurrentVenue } from "@/lib/saved-reports/provision";
 import { ensureOfferingStartersForCurrentVenue } from "@/lib/offerings/provision";
 import { listOfferings } from "@/lib/offerings/service";
 import { StarterProvisioningBanner } from "@/components/library/starter-provisioning-banner";
-import { getStarterProvisioningSnapshot } from "@/lib/provisioning/starters";
+import {
+  ensureVenueStarters,
+  getStarterProvisioningSnapshot,
+} from "@/lib/provisioning/starters";
 import { getCurrentVenue } from "@/lib/venue/service";
 
 export const metadata: Metadata = { title: "Templates" };
@@ -132,6 +132,17 @@ function Group({
 
 async function LibraryBodyIsland() {
   const venue = await getCurrentVenue();
+
+  // Bounded first-visit safeguard: ensureVenueStarters early-returns when the
+  // durable provision row is already complete (one read). Incomplete / missing
+  // markers run the idempotent seed once and surface failures via the banner.
+  // Offerings are not yet in the shared STEPS set — await their ensure so the
+  // Offerings Catalog count matches available resources on first paint.
+  if (venue) {
+    await ensureVenueStarters(venue.id);
+    await ensureOfferingStartersForCurrentVenue();
+  }
+
   const [
     contractTemplates, playbookTemplatesAll, timelineTemplatesAll, floorPlanTemplatesAll,
     packagesAll, inventoryItemsAll, qrCampaigns, publicForms, messageTemplates, inventoryTemplates,
@@ -173,7 +184,7 @@ async function LibraryBodyIsland() {
 
       <Group title="Sales">
         <ToolboxCard
-          kind="primary"
+          kind="template"
           title="Packages & Pricing"
           description="Priced offers for proposals and contracts."
           href="/packages"
@@ -184,7 +195,7 @@ async function LibraryBodyIsland() {
 
       <Group title="Stock">
         <ToolboxCard
-          kind="primary"
+          kind="catalog"
           title="Available Inventory"
           description="Physical items your venue owns or can provide."
           href="/library/inventory"
@@ -197,7 +208,7 @@ async function LibraryBodyIsland() {
 
       <Group title="Delivery" equal>
         <ToolboxCard
-          kind="primary"
+          kind="template"
           title="Event Order Templates"
           description="Create and manage reusable client selection experiences."
           href="/library/event-order-templates"
@@ -205,7 +216,7 @@ async function LibraryBodyIsland() {
           icon={Layers}
         />
         <ToolboxCard
-          kind="primary"
+          kind="catalog"
           title="Offerings Catalog"
           description="Manage the services, packages, upgrades, and choices available for clients to select."
           href="/library/offerings"
@@ -231,21 +242,6 @@ async function LibraryBodyIsland() {
 }
 
 export default function LibraryPage() {
-  after(() => {
-    void Promise.all([
-      ensureBrochureStartersForCurrentVenue(),
-      ensureSavedReportStartersForCurrentVenue(),
-      ensureOfferingStartersForCurrentVenue(),
-    ]).catch((err: unknown) => {
-      console.error(
-        JSON.stringify({
-          event: "library_starter_ensure_failed",
-          message: err instanceof Error ? err.message : "unknown",
-        }),
-      );
-    });
-  });
-
   return (
     <div
       className="htc-hospitality-page space-y-6 sm:space-y-8"

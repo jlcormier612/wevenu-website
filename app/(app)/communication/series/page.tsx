@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { after } from "next/server";
 import { Suspense } from "react";
 
 import { AutomationsHelp } from "@/components/communication/automations-help";
@@ -15,6 +14,9 @@ import { getSequences } from "@/lib/message-sequences/service";
 export const metadata: Metadata = { title: "Automations" };
 
 async function AutomationsBodyIsland() {
+  // Await ensure so first visit matches provisioned (paused) starters — do not
+  // rely on fire-and-forget after() which left an empty list until refresh.
+  await ensureStarterAutomationsForCurrentVenue();
   const series = await getSequences();
 
   if (series.length === 0) {
@@ -34,18 +36,6 @@ async function AutomationsBodyIsland() {
 }
 
 export default function SeriesPage() {
-  // Keep starter ensure off the critical path (same pattern as Leads pipeline ensure).
-  after(() => {
-    void ensureStarterAutomationsForCurrentVenue().catch((err: unknown) => {
-      console.error(
-        JSON.stringify({
-          event: "automations_starter_ensure_failed",
-          message: err instanceof Error ? err.message : "unknown",
-        }),
-      );
-    });
-  });
-
   return (
     <div
       className="htc-hospitality-page space-y-5 sm:space-y-6"

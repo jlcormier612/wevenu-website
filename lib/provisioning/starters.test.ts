@@ -43,6 +43,27 @@ describe("provisioning starters module", () => {
     assert.match(src, /do not resurrect intentional deletions|Healthy venue/i);
   });
 
+  it("ensureVenueStarters always seeds when durable provision row is missing", () => {
+    const src = readFileSync(join(__dirname, "starters.ts"), "utf8");
+    const ensureIdx = src.indexOf("export async function ensureVenueStarters");
+    const ensureSlice = src.slice(ensureIdx, ensureIdx + 2200);
+    assert.match(ensureSlice, /const row = await readProvisionRow/);
+    assert.match(ensureSlice, /if \(!row\)/);
+    assert.match(ensureSlice, /return seedWorkspaceStarters\(venueId, db\)/);
+    assert.match(
+      ensureSlice,
+      /Presence heuristics alone are insufficient|do not trust presence heuristics/i,
+    );
+  });
+
+  it("Templates overview and Setup Hub await ensureVenueStarters before counts", () => {
+    const library = readFileSync(join(__dirname, "../../app/(app)/library/page.tsx"), "utf8");
+    assert.match(library, /await ensureVenueStarters\(venue\.id\)/);
+    assert.doesNotMatch(library, /\bafter\s*\(/);
+    const setup = readFileSync(join(__dirname, "../../app/(app)/setup-hub/page.tsx"), "utf8");
+    assert.match(setup, /await ensureVenueStarters\(ctx\.venue\.id\)/);
+  });
+
   it("persists incomplete/failed instead of reporting complete on partial failure", () => {
     const src = readFileSync(join(__dirname, "starters.ts"), "utf8");
     assert.match(
