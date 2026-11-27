@@ -134,14 +134,13 @@ async function LibraryBodyIsland() {
   const venue = await getCurrentVenue();
 
   // Bounded first-visit safeguard: ensureVenueStarters early-returns when the
-  // durable provision row is already complete (one read). Incomplete / missing
-  // markers run the idempotent seed once and surface failures via the banner.
-  // Offerings are not yet in the shared STEPS set — await their ensure so the
-  // Offerings Catalog count matches available resources on first paint.
+  // durable provision row is already complete (one read), including offerings
+  // once recorded in seeded_steps. Incomplete / missing markers run idempotent
+  // seed and surface failures via the banner. Staff-session offerings ensure
+  // remains awaited for Catalog count alignment; it must not crash Templates
+  // (ok:false on race) and must not alone mark provisioning complete.
   if (venue) {
     await ensureVenueStarters(venue.id);
-    // Offerings ensure must not crash Templates if a category race returns 23505;
-    // ensureOfferingStartersForCurrentVenue returns ok:false instead of throwing.
     await ensureOfferingStartersForCurrentVenue();
   }
 

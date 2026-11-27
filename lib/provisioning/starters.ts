@@ -179,6 +179,22 @@ const STEPS: SeedStep[] = [
       }
     },
   },
+  {
+    // Offerings catalog starters (categories + example items). Idempotent by name.
+    // Must participate in durable provisioning lifecycle — soft-fail outside STEPS
+    // must not leave venue_starter_provisioning marked complete.
+    key: "offerings",
+    run: async (venueId, client) => {
+      const { seedOfferingStarters } = await import("@/lib/offerings/provision");
+      const result = await seedOfferingStarters(
+        venueId,
+        client as Awaited<ReturnType<typeof createClient>>,
+      );
+      if (!result.ok) {
+        throw new Error(result.message);
+      }
+    },
+  },
 ];
 
 export const STARTER_SEED_STEP_KEYS = STEPS.map((s) => s.key);
@@ -454,10 +470,53 @@ export async function ensureVenueStarters(
 
   if (snap.status === "complete" && !opts?.recreateDeleted) {
     // Healthy venue — do not resurrect intentional Library deletions.
-    // Public Forms were historically omitted from provisioning. One-time
-    // gap-fill only when `public_forms` is not yet recorded in seeded_steps.
-    // After that, deleted starters stay deleted unless recreateDeleted=true.
-    if (snap.seededSteps.includes("public_forms")) {
+    // Historical omissions (public_forms, offerings) get one-time gap-fill when
+    // not yet recorded in seeded_steps. After recorded, deleted starters stay
+    // deleted unless recreateDeleted=true. Gap-fill failure must not keep a
+    // false "complete" marker for the missing step.
+    let nextSteps = [...snap.seededSteps];
+    const gapFailed: Array<{ key: string; message: string }> = [];
+
+    if (!nextSteps.includes("public_forms")) {
+      const { seedPublicFormStarters } = await import("@/lib/public-forms/starters");
+      const pf = await seedPublicFormStarters(venueId, db);
+      if (pf.failed.length) {
+        gapFailed.push(...pf.failed);
+      } else {
+        nextSteps = [...nextSteps, "public_forms"];
+      }
+    }
+
+    if (!nextSteps.includes("offerings") && gapFailed.length === 0) {
+      const { seedOfferingStarters } = await import("@/lib/offerings/provision");
+      const off = await seedOfferingStarters(
+        venueId,
+        db as Awaited<ReturnType<typeof createClient>>,
+      );
+      if (!off.ok) {
+        gapFailed.push({ key: "offerings", message: off.message });
+      } else {
+        nextSteps = [...nextSteps, "offerings"];
+      }
+    }
+
+    if (gapFailed.length) {
+      await upsertProvisionRow(db, venueId, {
+        status: "incomplete",
+        seeded_steps: nextSteps,
+        failed_steps: gapFailed,
+        last_error: gapFailed[0]?.message ?? null,
+        completed_at: null,
+      });
+      return {
+        ok: false,
+        seeded: nextSteps,
+        failed: gapFailed,
+        status: "incomplete",
+      };
+    }
+
+    if (nextSteps.length === snap.seededSteps.length) {
       return {
         ok: true,
         seeded: snap.seededSteps,
@@ -466,18 +525,6 @@ export async function ensureVenueStarters(
       };
     }
 
-    const { seedPublicFormStarters } = await import("@/lib/public-forms/starters");
-    const pf = await seedPublicFormStarters(venueId, db);
-    if (pf.failed.length) {
-      return {
-        ok: false,
-        seeded: snap.seededSteps,
-        failed: pf.failed,
-        status: "incomplete",
-      };
-    }
-
-    const nextSteps = [...snap.seededSteps, "public_forms"];
     await upsertProvisionRow(db, venueId, {
       status: "complete",
       seeded_steps: nextSteps,
