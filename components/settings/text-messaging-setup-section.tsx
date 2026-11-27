@@ -74,10 +74,7 @@ function TextingOrientation() {
       className="htc-surface-guidance space-y-3 px-4 py-3.5"
       data-testid="texting-setup-orientation"
     >
-      <div className="space-y-1">
-        <p className="text-xs font-medium text-heading">Stay connected, wherever the day takes you.</p>
-        <p className="text-xs text-muted-foreground">{TEXTING_WHAT_IT_ENABLES}</p>
-      </div>
+      <p className="text-xs text-muted-foreground">{TEXTING_WHAT_IT_ENABLES}</p>
       <div className="space-y-1">
         <p className="text-xs font-medium text-heading">Your dedicated business number</p>
         <p className="text-xs text-muted-foreground">{TEXTING_WHAT_HTC_HANDLES}</p>
@@ -378,14 +375,13 @@ export function TextMessagingSetupSection({
 
         {showWizard && step === "intro" && (
           <div className="space-y-4">
-            <p className="text-sm text-foreground">
-              We’ll set up a dedicated texting number for your venue. To do that, we need a few
-              business and messaging details from you.
+            <p className="text-sm text-muted-foreground">
+              When you&apos;re ready, complete these steps to register your venue for text messaging:
             </p>
             <ul className="text-sm text-muted-foreground list-disc pl-5 space-y-1">
               <li>Confirm your business name and address</li>
               <li>Provide registration details needed for texting (you choose each answer)</li>
-              <li>Tell us what you’ll text couples about</li>
+              <li>Tell us what you&apos;ll text clients about</li>
             </ul>
             {phase === "not_started" ? (
               <Button type="button" onClick={() => void beginSetup()} disabled={pending}>

@@ -246,4 +246,16 @@ describe("texting setup help link + no Ask Luv branding", () => {
     assert.doesNotMatch(source, /texting-ask-luv/);
     assert.doesNotMatch(source, /\bTwilio\b|\bA2P\b|\b10DLC\b/);
   });
+
+  it("keeps Stay connected tagline once under the heading and says clients not couples", () => {
+    const source = readFileSync(
+      resolve("components/settings/text-messaging-setup-section.tsx"),
+      "utf8",
+    );
+    const taglineMatches = source.match(/Stay connected, wherever the day takes you\./g) ?? [];
+    // CardDescription under heading only — not repeated inside the guidance panel.
+    assert.equal(taglineMatches.length, 1);
+    assert.match(source, /Tell us what you(?:'|\&apos;)ll text clients about/);
+    assert.doesNotMatch(source, /text couples about/);
+  });
 });

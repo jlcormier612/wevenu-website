@@ -12,7 +12,12 @@ import { getCurrentVenue } from "@/lib/venue/service";
 
 export type EmailIntakeStatus = {
   leadEmailKey: string;
-  /** Pure UX gate — a key always works once it exists; this only controls the "Not Connected -> Connect" screen. */
+  /**
+   * Pure UX gate — a key always works once it exists; this only controls the
+   * "Not connected → Connect" screen that reveals the venue's unique HTC
+   * inquiry address. It does **not** mean external forwarding is configured.
+   * Customer-facing badge when set: "Ready to use".
+   */
   connectedAt: string | null;
   lastEmailReceivedAt: string | null;
   lastLeadImportedAt: string | null;
