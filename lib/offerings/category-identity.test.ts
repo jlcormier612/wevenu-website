@@ -75,4 +75,15 @@ describe("offering category identity", () => {
     assert.match(overview, /Add section/);
     assert.match(overview, /eo-guided-remove-section-/);
   });
+
+  it("recovers offering category unique violations without failing Templates", () => {
+    const identity = readFileSync(
+      join(process.cwd(), "lib/offerings/category-identity.ts"),
+      "utf8",
+    );
+    const provision = readFileSync(join(process.cwd(), "lib/offerings/provision.ts"), "utf8");
+    assert.match(identity, /code === "23505"/);
+    assert.match(provision, /offering_starter_ensure_failed/);
+    assert.match(provision, /return \{ ok: false, message \}/);
+  });
 });

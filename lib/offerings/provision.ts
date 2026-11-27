@@ -17,48 +17,74 @@ export async function ensureOfferingStartersForCurrentVenue(): Promise<{
 } | { ok: false; message: string }> {
   const venue = await getCurrentVenue();
   if (!venue) return { ok: false, message: "No venue found." };
-  const supabase = await createClient();
 
-  // Pull EO template section names so custom package categories appear in Offerings.
-  const { data: sectionRows } = await supabase
-    .from("event_order_template_sections")
-    .select("name")
-    .eq("venue_id", venue.id);
-  const sectionNames = [...new Set(
-    ((sectionRows as { name: string }[] | null) ?? []).map((s) => s.name).filter(Boolean),
-  )];
+  try {
+    const supabase = await createClient();
 
-  const commercial = await ensureVenueCommercialCategories(supabase, venue.id, sectionNames);
+    // Pull EO template section names so custom package categories appear in Offerings.
+    const { data: sectionRows } = await supabase
+      .from("event_order_template_sections")
+      .select("name")
+      .eq("venue_id", venue.id);
+    const sectionNames = [...new Set(
+      ((sectionRows as { name: string }[] | null) ?? []).map((s) => s.name).filter(Boolean),
+    )];
 
-  const existingCategories = await repo.getCategories(supabase, venue.id);
-  const existingOfferings = await repo.getOfferings(supabase, venue.id, { includeArchived: true });
-  const offeringNames = new Set(existingOfferings.map((o) => o.name.toLowerCase()));
+    const commercial = await ensureVenueCommercialCategories(supabase, venue.id, sectionNames);
 
-  let createdCategories = commercial.created;
-  let createdOfferings = 0;
+    const existingCategories = await repo.getCategories(supabase, venue.id);
+    const existingOfferings = await repo.getOfferings(supabase, venue.id, { includeArchived: true });
+    const offeringNames = new Set(existingOfferings.map((o) => o.name.toLowerCase()));
 
-  for (const cat of OFFERING_STARTER_CATEGORIES) {
-    const ensured = await findOrCreateOfferingCategory(supabase, venue.id, cat.name);
-    if (ensured.created) createdCategories += 1;
-    const categoryId = ensured.id;
-    // Refresh local map if findOrCreate created after our snapshot
-    void findMatchingOfferingCategory(existingCategories, cat.name);
+    let createdCategories = commercial.created;
+    let createdOfferings = 0;
 
-    for (const item of cat.items) {
-      if (offeringNames.has(item.name.toLowerCase())) continue;
-      await repo.insertOffering(supabase, venue.id, {
-        name: item.name,
-        categoryId,
-        parentOfferingIds: [],
-        description: item.description ?? "",
-        unit: item.unit ?? "",
-        defaultUnitPrice: "",
-        inventoryItemId: null,
-      });
-      offeringNames.add(item.name.toLowerCase());
-      createdOfferings++;
+    for (const cat of OFFERING_STARTER_CATEGORIES) {
+      const ensured = await findOrCreateOfferingCategory(supabase, venue.id, cat.name);
+      if (ensured.created) createdCategories += 1;
+      const categoryId = ensured.id;
+      // Refresh local map if findOrCreate created after our snapshot
+      void findMatchingOfferingCategory(existingCategories, cat.name);
+
+      for (const item of cat.items) {
+        if (offeringNames.has(item.name.toLowerCase())) continue;
+        try {
+          await repo.insertOffering(supabase, venue.id, {
+            name: item.name,
+            categoryId,
+            parentOfferingIds: [],
+            description: item.description ?? "",
+            unit: item.unit ?? "",
+            defaultUnitPrice: "",
+            inventoryItemId: null,
+          });
+          offeringNames.add(item.name.toLowerCase());
+          createdOfferings++;
+        } catch (err) {
+          const code =
+            err && typeof err === "object" && "code" in err
+              ? String((err as { code?: unknown }).code ?? "")
+              : "";
+          // Concurrent ensure / unique name — treat as already present.
+          if (code === "23505") {
+            offeringNames.add(item.name.toLowerCase());
+            continue;
+          }
+          throw err;
+        }
+      }
     }
-  }
 
-  return { ok: true, createdCategories, createdOfferings };
+    return { ok: true, createdCategories, createdOfferings };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(
+      JSON.stringify({
+        event: "offering_starter_ensure_failed",
+        venueId: venue.id,
+        message,
+      }),
+    );
+    return { ok: false, message };
+  }
 }

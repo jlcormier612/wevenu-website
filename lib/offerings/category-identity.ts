@@ -64,10 +64,33 @@ export async function findOrCreateOfferingCategory(
     const id = await repo.insertCategory(client, venueId, createName);
     return { id, name: createName, created: true };
   } catch (err) {
+    const code =
+      err && typeof err === "object" && "code" in err
+        ? String((err as { code?: unknown }).code ?? "")
+        : "";
     const again = await repo.getCategories(client, venueId);
-    const retry = findMatchingOfferingCategory(again, createName)
-      ?? findMatchingOfferingCategory(again, trimmed);
+    const retry =
+      findMatchingOfferingCategory(again, createName) ??
+      findMatchingOfferingCategory(again, trimmed) ??
+      again.find(
+        (c) =>
+          c.name === createName ||
+          c.name === trimmed ||
+          normalizeCategoryLabel(c.name) === normalizeCategoryLabel(createName),
+      ) ??
+      null;
     if (retry) return { id: retry.id, name: retry.name, created: false };
+    // Concurrent EO-section + starter ensure can hit 23505 before the row is
+    // visible to matching; one fresh read recovers without failing Templates.
+    if (code === "23505") {
+      const fresh = await repo.getCategories(client, venueId);
+      const exact =
+        findMatchingOfferingCategory(fresh, createName) ??
+        findMatchingOfferingCategory(fresh, trimmed) ??
+        fresh.find((c) => c.name === createName || c.name === trimmed) ??
+        null;
+      if (exact) return { id: exact.id, name: exact.name, created: false };
+    }
     throw err;
   }
 }
