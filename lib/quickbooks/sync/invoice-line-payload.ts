@@ -8,7 +8,12 @@
  * - Do not invent TxnTaxDetail.TotalTax without tax codes — sync sets
  *   TxnTaxDetail.TxnTaxCodeRef from company TaxPrefs.TaxGroupCodeRef and QBO
  *   calculates tax from TAX/NON + that group when TaxExcluded is used.
- * - HTC `discount` rows use DiscountLineDetail (not SalesItem revenue).
+ * - Non-taxable HTC `discount` rows use DiscountLineDetail.
+ * - Taxable HTC discounts are posted as negative SalesItemLineDetail with
+ *   TaxCodeRef TAX. QBO's DiscountLineDetail is applied after tax on the
+ *   sales base; HTC computes exclusive tax on (charges − discounts). The
+ *   negative taxable sales line preserves that treatment so QBO tax/total
+ *   match HTC without rewriting venue invoice amounts.
  * - GlobalTaxCalculation: TaxExcluded when taxable; NotApplicable when not.
  *
  * If QuickBooks rejects the payload (discounts disabled, tax setup missing,
@@ -67,11 +72,14 @@ const SALES_ITEM_TYPES = new Set([
   "",
 ]);
 
+type PendingDiscount = { amount: number; description?: string };
+
 export function buildQuickBooksInvoiceLinePayload(
   lines: HtcInvoiceLineItem[],
   itemId: string,
 ): QuickBooksInvoiceLinePayload {
-  const Line: QuickBooksInvoiceLine[] = [];
+  const salesLines: QuickBooksInvoiceLine[] = [];
+  const discounts: PendingDiscount[] = [];
   let htcTaxAmount = 0;
   let htcDiscountAmount = 0;
   let salesSum = 0;
@@ -90,12 +98,7 @@ export function buildQuickBooksInvoiceLinePayload(
       const discountAmount = Math.abs(amount);
       if (discountAmount <= 0) continue;
       htcDiscountAmount += discountAmount;
-      Line.push({
-        Amount: discountAmount,
-        DetailType: "DiscountLineDetail",
-        Description: description,
-        DiscountLineDetail: { PercentBased: false },
-      });
+      discounts.push({ amount: discountAmount, description });
       continue;
     }
 
@@ -104,7 +107,7 @@ export function buildQuickBooksInvoiceLinePayload(
     }
 
     salesSum += amount;
-    Line.push({
+    salesLines.push({
       Amount: amount,
       DetailType: "SalesItemLineDetail",
       Description: description,
@@ -120,9 +123,34 @@ export function buildQuickBooksInvoiceLinePayload(
 
   const taxable = htcTaxAmount > 0;
   const taxCode = taxable ? "TAX" : "NON";
-  for (const row of Line) {
+  for (const row of salesLines) {
     if (row.DetailType === "SalesItemLineDetail") {
       row.SalesItemLineDetail.TaxCodeRef = { value: taxCode };
+    }
+  }
+
+  const Line: QuickBooksInvoiceLine[] = [...salesLines];
+  for (const discount of discounts) {
+    if (taxable) {
+      // Negative taxable sales line → QBO taxes (sales − discount), matching HTC.
+      Line.push({
+        Amount: -discount.amount,
+        DetailType: "SalesItemLineDetail",
+        Description: discount.description ?? "Discount",
+        SalesItemLineDetail: {
+          ItemRef: { value: itemId },
+          Qty: 1,
+          UnitPrice: -discount.amount,
+          TaxCodeRef: { value: "TAX" },
+        },
+      });
+    } else {
+      Line.push({
+        Amount: discount.amount,
+        DetailType: "DiscountLineDetail",
+        Description: discount.description,
+        DiscountLineDetail: { PercentBased: false },
+      });
     }
   }
 
