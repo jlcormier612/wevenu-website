@@ -85,6 +85,12 @@ describe("wedding website privacy controls — app surfaces", () => {
     assert.match(unlock, /get_wedding_website/);
   });
 
+  it("proxy allowlists public wedding-website unlock API", () => {
+    const proxy = read("integrations/supabase/proxy.ts");
+    assert.match(proxy, /\/api\/wedding-website/);
+    assert.match(proxy, /\/w"/);
+  });
+
   it("password gate posts to unlock API instead of only relying on query plaintext", () => {
     const ui = read("components/wedding-website/wedding-website.tsx");
     assert.match(ui, /\/api\/wedding-website\/unlock/);
