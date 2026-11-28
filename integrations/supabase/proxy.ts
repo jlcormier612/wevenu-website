@@ -67,7 +67,7 @@ export const PUBLIC_PATHS = [
   "/rsvp",           // public RSVP submission - /rsvp/{rsvp_token}
   "/api/portal",        // portal API endpoints - complete tasks, invites, etc.
   "/api/rsvp",          // guest-token-authenticated RSVP API endpoints (concierge, etc.)
-  "/api/wedding-website", // public wedding-website unlock (password gate) — no session
+  "/api/wedding-website/unlock", // guest password unlock only — no session; not the whole /api/wedding-website tree
   "/api/vendor",        // vendor portal API endpoints
   // Release Readiness Reconciliation remediation: these were previously the
   // bare prefixes "/api/notifications"/"/api/tours", which also matched

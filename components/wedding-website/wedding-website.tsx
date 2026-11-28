@@ -1794,10 +1794,12 @@ function PasswordGate({
   const router = useRouter();
   const [pw, setPw] = React.useState("");
   const [checking, setChecking] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setChecking(true);
+    setError(null);
     try {
       const res = await fetch("/api/wedding-website/unlock", {
         method: "POST",
@@ -1805,12 +1807,18 @@ function PasswordGate({
         body: JSON.stringify({ slug, password: pw }),
       });
       if (res.ok) {
+        // Never put the password in the URL. Cookie unlock is httpOnly from the API.
         router.push(`/w/${slug}`);
         router.refresh();
         return;
       }
-      // Fallback: one-shot query unlock still re-checks the live hash.
-      router.push(`/w/${slug}?p=${encodeURIComponent(pw)}`);
+      if (res.status === 429) {
+        setError("Too many password attempts. Please try again later.");
+        return;
+      }
+      setError("That password doesn’t match. Please try again.");
+    } catch {
+      setError("Could not verify the password. Please try again.");
     } finally {
       setChecking(false);
     }
@@ -1828,8 +1836,9 @@ function PasswordGate({
         </div>
         <form onSubmit={handleSubmit} className="space-y-3">
           <input type="password" value={pw} onChange={e => setPw(e.target.value)}
-            placeholder="Password" autoFocus
+            placeholder="Password" autoFocus autoComplete="current-password"
             className="w-full rounded-xl border border-[#DED6CA] bg-white px-4 py-3 text-sm focus:outline-none focus:ring-2" />
+          {error ? <p className="text-sm text-red-700/80">{error}</p> : null}
           <button type="submit" disabled={!pw.trim() || checking}
             className="w-full rounded-xl py-3 text-sm font-semibold text-white disabled:opacity-50 transition-opacity"
             style={{ background: accentColor }}>
