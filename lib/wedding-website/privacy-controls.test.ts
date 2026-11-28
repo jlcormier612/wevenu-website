@@ -75,6 +75,10 @@ describe("wedding website privacy controls — app surfaces", () => {
     assert.match(page, /p_service_unlock: true/);
     assert.match(page, /WEDDING_WEBSITE_UNLOCK_COOKIE/);
     assert.doesNotMatch(page, /marketing/);
+    // Passwords must never be accepted via URL query params.
+    assert.doesNotMatch(page, /\bp\?:/);
+    assert.doesNotMatch(page, /password \?\? null/);
+    assert.doesNotMatch(page, /\?p=/);
   });
 
   it("unlock route sets httpOnly cookie after server-side password check", () => {
@@ -85,10 +89,22 @@ describe("wedding website privacy controls — app surfaces", () => {
     assert.match(unlock, /get_wedding_website/);
   });
 
-  it("password gate posts to unlock API instead of only relying on query plaintext", () => {
+  it("proxy allowlists only the guest unlock endpoint", () => {
+    const proxy = read("integrations/supabase/proxy.ts");
+    assert.match(proxy, /\/api\/wedding-website\/unlock/);
+    assert.doesNotMatch(
+      proxy,
+      /\/api\/wedding-website", \/\/ public wedding-website unlock \(password gate\)/,
+    );
+    assert.match(proxy, /\/w"/);
+  });
+
+  it("password gate posts to unlock API and never puts passwords in URLs", () => {
     const ui = read("components/wedding-website/wedding-website.tsx");
     assert.match(ui, /\/api\/wedding-website\/unlock/);
-    assert.match(ui, /Password protect|Private wedding website/);
+    assert.match(ui, /Private wedding website/);
+    assert.doesNotMatch(ui, /\?p=/);
+    assert.doesNotMatch(ui, /encodeURIComponent\(pw\)/);
   });
 
   it("portal website API and Studio expose independent search + password controls", () => {
