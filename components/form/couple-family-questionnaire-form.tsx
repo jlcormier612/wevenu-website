@@ -28,6 +28,10 @@ import {
   type ResolvedQuestionnaireField,
 } from "@/lib/questionnaire-family/resolve";
 import {
+  awaitPendingAutosave,
+  shouldApplyAutosaveStale,
+} from "@/lib/questionnaire-family/autosave-submit-coordination";
+import {
   buildSubmittedAnswerRows,
 } from "@/lib/questionnaire-family/submitted-answers";
 import { inkOn } from "@/lib/theme/public-form-surface";
@@ -172,6 +176,12 @@ export function CoupleFamilyQuestionnaireForm({
   const [saveState, setSaveState] = React.useState<SaveState>("idle");
   const expectedUpdatedAtRef = React.useRef(data.updated_at);
   const isDirty = React.useRef(false);
+  /** In-flight autosave promise — Submit awaits this so the concurrency token is current. */
+  const pendingAutosaveRef = React.useRef<Promise<void> | null>(null);
+  const uiStateRef = React.useRef<State>(alreadySubmitted ? "already_submitted" : "idle");
+  React.useEffect(() => {
+    uiStateRef.current = state;
+  }, [state]);
 
   function setFamilyField(id: string, value: string) {
     setFamily((prev) => ({ ...prev, [id]: value }));
@@ -258,27 +268,38 @@ export function CoupleFamilyQuestionnaireForm({
   React.useEffect(() => {
     if (previewMode || alreadySubmitted || state !== "idle") return;
     isDirty.current = true;
-    const timer = setTimeout(async () => {
+    const timer = setTimeout(() => {
       if (!isDirty.current) return;
       isDirty.current = false;
       setSaveState("saving");
-      try {
-        const res = await fetch("/api/public/questionnaire/draft", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            accessKey,
-            familyPayload: buildPayload(),
-            expectedUpdatedAt: expectedUpdatedAtRef.current,
-          }),
-        });
-        const result = await res.json() as { ok?: boolean; error?: string; updatedAt?: string };
-        if (result.ok) {
-          if (result.updatedAt) expectedUpdatedAtRef.current = result.updatedAt;
-          setSaveState("saved");
-        } else if (result.error === "stale") setState("stale");
-        else setSaveState("error");
-      } catch { setSaveState("error"); }
+      const run = (async () => {
+        try {
+          const res = await fetch("/api/public/questionnaire/draft", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              accessKey,
+              familyPayload: buildPayload(),
+              expectedUpdatedAt: expectedUpdatedAtRef.current,
+            }),
+          });
+          const result = await res.json() as { ok?: boolean; error?: string; updatedAt?: string };
+          if (result.ok) {
+            if (result.updatedAt) expectedUpdatedAtRef.current = result.updatedAt;
+            if (uiStateRef.current === "idle") setSaveState("saved");
+          } else if (result.error === "stale") {
+            if (shouldApplyAutosaveStale(uiStateRef.current)) setState("stale");
+            else setSaveState("error");
+          } else if (uiStateRef.current === "idle") {
+            setSaveState("error");
+          }
+        } catch {
+          if (uiStateRef.current === "idle") setSaveState("error");
+        }
+      })();
+      pendingAutosaveRef.current = run.finally(() => {
+        if (pendingAutosaveRef.current === run) pendingAutosaveRef.current = null;
+      });
     }, 1500);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -292,6 +313,11 @@ export function CoupleFamilyQuestionnaireForm({
       return;
     }
     if (previewMode) { setState("success"); return; }
+    // Flush: do not race Submit against an in-flight autosave token bump.
+    isDirty.current = false;
+    await awaitPendingAutosave(pendingAutosaveRef.current);
+    if (uiStateRef.current === "stale") return;
+
     setState("submitting");
     setError("");
     try {
