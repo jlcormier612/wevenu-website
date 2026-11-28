@@ -11,7 +11,7 @@ export type EventTypeOption = { value: string; label: string };
 /** Full venue vocabulary (internal CRM + Social Event). */
 export const EVENT_TYPES: EventTypeOption[] = [
   { value: "wedding", label: "Wedding" },
-  { value: "elopement", label: "Elopement" },
+  { value: "elopement", label: "Micro Wedding" },
   { value: "engagement_party", label: "Engagement Party" },
   { value: "rehearsal_dinner", label: "Rehearsal Dinner Only" },
   { value: "reception", label: "Reception Only" },
@@ -50,6 +50,9 @@ export const EVENT_TYPE_LEGACY_ALIASES: Record<string, string> = {
 /** Prior display labels that still resolve to a canonical value. */
 const EVENT_TYPE_LABEL_ALIASES: Record<string, string> = {
   "rehearsal dinner": "rehearsal_dinner",
+  /** Former customer-facing label for `elopement` — keep resolving submissions. */
+  elopement: "elopement",
+  "micro wedding": "elopement",
 };
 
 export function isCanonicalEventType(value: string | null | undefined): boolean {

@@ -19,7 +19,7 @@ import { saveVenueDocumentAction, venueDocumentUploadPathAction } from "@/app/(a
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { createClient } from "@/integrations/supabase/client";
+import { removeStoragePaths, uploadFileToStorage } from "@/lib/storage/upload";
 import { ATTACHMENT_SOURCE_LABELS } from "@/lib/documents/attachment-source";
 import type { Document } from "@/lib/documents/types";
 import type { MessageTemplateAttachment } from "@/lib/message-templates/types";
@@ -53,22 +53,25 @@ export function TemplateAttachmentsField({
     if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) { toast.error(`File too large. Maximum ${MAX_FILE_SIZE_MB} MB.`); return; }
     setUploading(true);
     try {
-      const supabase = createClient();
       // The documents bucket only accepts objects whose first path segment is
       // the caller's venue id, so the path is resolved from the session rather
       // than built here (see lib/documents/storage-path.ts).
       const pathResult = await venueDocumentUploadPathAction(file.name);
       if (!pathResult.ok) { toast.error(pathResult.message); return; }
       const storagePath = pathResult.storagePath;
-      const { error: uploadError } = await supabase.storage.from("documents").upload(storagePath, file, { upsert: false, contentType: file.type });
-      if (uploadError) throw new Error(uploadError.message);
-      const { data: urlData } = supabase.storage.from("documents").getPublicUrl(storagePath);
+      const uploaded = await uploadFileToStorage({
+        bucket: "documents",
+        path: storagePath,
+        file,
+        contentType: file.type,
+        upsert: false,
+      });
 
       const saved = await saveVenueDocumentAction({
         name: file.name.replace(/\.[^.]+$/, ""), category: "other", notes: "", tags: "", expiresAt: "",
-        fileName: file.name, fileSize: file.size, mimeType: file.type, storagePath, storageUrl: urlData.publicUrl,
+        fileName: file.name, fileSize: file.size, mimeType: file.type, storagePath, storageUrl: uploaded.publicUrl,
       });
-      if (!saved.ok) { toast.error(saved.message ?? "Could not save file."); await supabase.storage.from("documents").remove([storagePath]); return; }
+      if (!saved.ok) { toast.error(saved.message ?? "Could not save file."); await removeStoragePaths("documents", [storagePath]); return; }
 
       const linked = await addTemplateAttachmentAction(templateId, { documentId: saved.documentId }, attachments.length);
       if (linked.ok) { toast.success("File attached."); onChanged(); }

@@ -61,7 +61,7 @@ describe("buildVenueEventTypeOptions", () => {
     const legacy = options.find((o) => o.value === "elopement");
     assert.ok(legacy);
     assert.equal(legacy!.isLegacyCurrent, true);
-    assert.equal(legacy!.label, `Elopement${LEGACY_EVENT_TYPE_OPTION_SUFFIX}`);
+    assert.equal(legacy!.label, `Micro Wedding${LEGACY_EVENT_TYPE_OPTION_SUFFIX}`);
     assert.equal(legacy!.description, LEGACY_EVENT_TYPE_OPTION_DESCRIPTION);
     assert.deepEqual(
       options.filter((o) => !o.isLegacyCurrent).map((o) => o.value),

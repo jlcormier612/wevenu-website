@@ -46,7 +46,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { createClient } from "@/integrations/supabase/client";
+import { removeStoragePaths, uploadFileToStorage } from "@/lib/storage/upload";
 import { ATTACHMENT_SOURCE_LABELS } from "@/lib/documents/attachment-source";
 import { DueDateComposer } from "@/components/playbooks/due-date-composer";
 import {
@@ -128,7 +128,6 @@ function AttachmentsField({
     if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) { toast.error(`File too large. Maximum ${MAX_FILE_SIZE_MB} MB.`); return; }
     setUploading(true);
     try {
-      const supabase = createClient();
       // Venue-level path — this file belongs to the venue itself, not one
       // lead/client/event/vendor, so it outlives any single application of
       // this template (venue-level documents, Planning Templates UX Rebuild).
@@ -138,15 +137,19 @@ function AttachmentsField({
       const pathResult = await venueDocumentUploadPathAction(file.name);
       if (!pathResult.ok) { toast.error(pathResult.message); return; }
       const storagePath = pathResult.storagePath;
-      const { error: uploadError } = await supabase.storage.from("documents").upload(storagePath, file, { upsert: false, contentType: file.type });
-      if (uploadError) throw new Error(uploadError.message);
-      const { data: urlData } = supabase.storage.from("documents").getPublicUrl(storagePath);
+      const uploaded = await uploadFileToStorage({
+        bucket: "documents",
+        path: storagePath,
+        file,
+        contentType: file.type,
+        upsert: false,
+      });
 
       const saved = await saveVenueDocumentAction({
         name: file.name.replace(/\.[^.]+$/, ""), category: "other", notes: "", tags: "", expiresAt: "",
-        fileName: file.name, fileSize: file.size, mimeType: file.type, storagePath, storageUrl: urlData.publicUrl,
+        fileName: file.name, fileSize: file.size, mimeType: file.type, storagePath, storageUrl: uploaded.publicUrl,
       });
-      if (!saved.ok) { toast.error(saved.message ?? "Could not save file."); await supabase.storage.from("documents").remove([storagePath]); return; }
+      if (!saved.ok) { toast.error(saved.message ?? "Could not save file."); await removeStoragePaths("documents", [storagePath]); return; }
 
       const linked = await addPlaybookTaskAttachmentAction(templateId, taskId, { documentId: saved.documentId }, attachments.length);
       if (linked.ok) { toast.success("File attached."); onChanged(); }

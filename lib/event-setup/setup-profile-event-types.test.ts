@@ -38,7 +38,7 @@ describe("setup profile Used for options (full canonical catalog)", () => {
     const options = buildSetupProfileUsedForOptions(["wedding", "birthday"]);
     assert.deepEqual(options.map((o) => o.value), CANONICAL_VALUES);
     assert.equal(options.find((o) => o.value === "quinceanera")?.label, "Quinceañera");
-    assert.equal(options.find((o) => o.value === "elopement")?.label, "Elopement");
+    assert.equal(options.find((o) => o.value === "elopement")?.label, "Micro Wedding");
   });
 
   it("labels wedding as Wedding while keeping value wedding", () => {
@@ -228,7 +228,7 @@ describe("setup profile resolution — exact type, then venue default", () => {
 
   it("Wedding label maps from wedding assignment only", () => {
     assert.equal(setupProfileUsedForLabel(["wedding"]), "Wedding");
-    assert.equal(setupProfileUsedForLabel(["elopement"]), "Elopement");
+    assert.equal(setupProfileUsedForLabel(["elopement"]), "Micro Wedding");
   });
 
   it("uses canonical catalog labels, not plural special cases", () => {

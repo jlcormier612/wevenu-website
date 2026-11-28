@@ -287,12 +287,6 @@ export function InquiryFormConfigSection({
 
   return (
     <div className="space-y-6">
-      {canEdit && dirty && (
-        <div className="sticky top-0 z-10 -mx-1 rounded-lg border border-border bg-background/95 px-3 py-2 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/80">
-          {saveBar}
-        </div>
-      )}
-
       {!canEdit && (
         <p className="text-xs text-muted-foreground">
           Only an Owner or Manager can change inquiry form settings. You can view the current configuration here.

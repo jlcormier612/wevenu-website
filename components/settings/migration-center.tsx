@@ -29,7 +29,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { createClient } from "@/integrations/supabase/client";
+import { removeStoragePaths, uploadFileToStorage } from "@/lib/storage/upload";
 import {
   addMigrationRowsAction,
   attachMigrationSourceFileAction,
@@ -749,17 +749,25 @@ export function MigrationCenter({
       const pathResult = await migrationArtifactUploadPathAction(sessionId, file.name);
       if (!pathResult.ok) return pathResult;
       const fullPath = pathResult.storagePath;
-      const supabase = createClient();
-      const { error: uploadError } = await supabase.storage.from("documents").upload(fullPath, file, { upsert: false, contentType: file.type });
-      if (uploadError) return { ok: false, message: uploadError.message };
-      const { data: urlData } = supabase.storage.from("documents").getPublicUrl(fullPath);
+      let uploaded;
+      try {
+        uploaded = await uploadFileToStorage({
+          bucket: "documents",
+          path: fullPath,
+          file,
+          contentType: file.type,
+          upsert: false,
+        });
+      } catch (err) {
+        return { ok: false, message: err instanceof Error ? err.message : "Upload failed." };
+      }
       const attached = await attachMigrationSourceFileAction(sessionId, {
-        fileName: file.name, fileSize: file.size, mimeType: file.type, storagePath: fullPath, storageUrl: urlData.publicUrl,
+        fileName: file.name, fileSize: file.size, mimeType: file.type, storagePath: fullPath, storageUrl: uploaded.publicUrl,
       });
       if (!attached.ok) {
         // Same rollback the other document uploaders do — never leave a stored
         // object with no row pointing at it.
-        await supabase.storage.from("documents").remove([fullPath]);
+        await removeStoragePaths("documents", [fullPath]);
         return { ok: false, message: attached.message };
       }
       return { ok: true };

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { createClient } from "@/integrations/supabase/server";
 import { replaceDocumentFile } from "@/lib/documents/service";
+import { customerFacingUploadError } from "@/lib/storage/customer-upload-errors";
 import { getCurrentVenue } from "@/lib/venue/service";
 
 const MAX_BYTES = 25 * 1024 * 1024;
@@ -28,7 +29,11 @@ export async function POST(
     .from("documents")
     .upload(storagePath, file, { upsert: false, contentType: file.type || "application/octet-stream" });
   if (uploadError) {
-    return NextResponse.json({ ok: false, message: uploadError.message }, { status: 400 });
+    console.error("[documents/replace] upload", uploadError.message);
+    return NextResponse.json(
+      { ok: false, message: customerFacingUploadError(uploadError.message) },
+      { status: 400 },
+    );
   }
 
   const { data: urlData } = supabase.storage.from("documents").getPublicUrl(storagePath);

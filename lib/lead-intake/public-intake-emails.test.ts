@@ -29,7 +29,9 @@ describe("formatPublicIntakeEventTypeLine (D3)", () => {
     assert.equal(formatPublicIntakeEventTypeLine("corporate"), "Event type: Corporate Event");
     assert.equal(formatPublicIntakeEventTypeLine("social_event"), "Event type: Social Event");
     assert.equal(formatPublicIntakeEventTypeLine("birthday"), "Event type: Birthday Party");
-    assert.equal(formatPublicIntakeEventTypeLine("Elopement"), "Event type: Elopement");
+    assert.equal(formatPublicIntakeEventTypeLine("Elopement"), "Event type: Micro Wedding");
+    assert.equal(formatPublicIntakeEventTypeLine("elopement"), "Event type: Micro Wedding");
+    assert.equal(formatPublicIntakeEventTypeLine("Micro Wedding"), "Event type: Micro Wedding");
   });
 
   it("omits empty / null event types", () => {

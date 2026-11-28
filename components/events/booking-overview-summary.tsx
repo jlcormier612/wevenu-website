@@ -61,6 +61,7 @@ function readinessLine(readiness: EventReadiness | null): ReactNode {
 
 export function BookingOverviewSummary({
   clientName, eventType, eventDate, spaceName, spaceAssignmentsDisplay, guestCount, guestCountSubmission, clientStatus,
+  bookedMembershipKind = null,
   readinessByKind,
   invoices,
   paymentScheduleLines = null,
@@ -78,6 +79,8 @@ export function BookingOverviewSummary({
   spaceAssignmentsDisplay?: string | null;
   guestCount: number | null;
   guestCountSubmission?: { count: number; submittedAt: string } | null;
+  /** Authoritative membership from classifyBookedMembership — required for Booked badge. */
+  bookedMembershipKind?: "current" | "past" | null;
   clientStatus: ClientStatus;
   readinessByKind: { client: EventReadiness | null; venue: EventReadiness | null };
   invoices: Invoice[];
@@ -153,7 +156,7 @@ export function BookingOverviewSummary({
               </span>
             )}
           </span>
-          <ClientStatusBadge status={clientStatus} />
+          <ClientStatusBadge status={clientStatus} membershipKind={bookedMembershipKind} />
         </CardContent>
       </Card>
       {(contact) && (

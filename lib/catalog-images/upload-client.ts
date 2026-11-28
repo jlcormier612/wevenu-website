@@ -1,15 +1,15 @@
 /**
  * Browser upload helpers for Inventory / Offering photos in the public
  * `inventory` bucket. Path first segment must be the active venue id
- * (enforced by storage policies after migration).
+ * (enforced by storage policies after migration). Writes go through the
+ * authenticated server Storage route.
  */
-import { createClient } from "@/integrations/supabase/client";
 import {
   CATALOG_IMAGE_BUCKET,
   extensionForCatalogMime,
 } from "@/lib/catalog-images/types";
 import { validateCatalogImageFile } from "@/lib/catalog-images/validate";
-import { bustCache, removeFromStorage } from "@/lib/storage/upload";
+import { bustCache, removeFromStorage, uploadFileToStorage } from "@/lib/storage/upload";
 
 export async function uploadCatalogImage(opts: {
   basePath: string;
@@ -20,19 +20,18 @@ export async function uploadCatalogImage(opts: {
 
   const ext = extensionForCatalogMime(validated.mime);
   const fullPath = `${opts.basePath}.${ext}`;
-  const supabase = createClient();
 
   // Clear prior extensions so replace does not leave orphan objects.
   await removeFromStorage(CATALOG_IMAGE_BUCKET, opts.basePath);
 
-  const { error } = await supabase.storage.from(CATALOG_IMAGE_BUCKET).upload(fullPath, opts.file, {
-    upsert: true,
+  const uploaded = await uploadFileToStorage({
+    bucket: CATALOG_IMAGE_BUCKET,
+    path: fullPath,
+    file: opts.file,
     contentType: validated.mime,
+    upsert: true,
   });
-  if (error) throw new Error(error.message);
-
-  const { data } = supabase.storage.from(CATALOG_IMAGE_BUCKET).getPublicUrl(fullPath);
-  return bustCache(data.publicUrl);
+  return bustCache(uploaded.publicUrl);
 }
 
 export async function removeCatalogImage(basePath: string): Promise<void> {

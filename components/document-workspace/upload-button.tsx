@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { createClient } from "@/integrations/supabase/client";
+import { removeStoragePaths, uploadFileToStorage } from "@/lib/storage/upload";
 import { DOCUMENT_CATEGORIES } from "@/lib/documents/constants";
 import type { DocumentCategory, DocumentEntityType } from "@/lib/documents/types";
 import type { WorkspaceCategory, WorkspaceDocument } from "@/lib/document-workspace/types";
@@ -74,24 +74,24 @@ export function WorkspaceUploadButton({
     if (!file) return;
     setUploading(true);
     try {
-      const supabase = createClient();
       const docId = crypto.randomUUID();
       const ext = file.name.split(".").pop()?.toLowerCase() ?? "bin";
       const storagePath = `${venueId}/${entityType}/${entityId}/${docId}.${ext}`;
 
-      const { error: uploadError } = await supabase.storage
-        .from("documents")
-        .upload(storagePath, file, { upsert: false, contentType: file.type });
-      if (uploadError) throw new Error(uploadError.message);
-
-      const { data: urlData } = supabase.storage.from("documents").getPublicUrl(storagePath);
+      const uploaded = await uploadFileToStorage({
+        bucket: "documents",
+        path: storagePath,
+        file,
+        contentType: file.type,
+        upsert: false,
+      });
 
       const result = await saveDocumentAction({
         entityType, entityId,
         name: name.trim() || file.name,
         category, notes: "", tags: "", expiresAt: "",
         fileName: file.name, fileSize: file.size, mimeType: file.type,
-        storagePath, storageUrl: urlData.publicUrl,
+        storagePath, storageUrl: uploaded.publicUrl,
       });
 
       if (result.ok) {
@@ -129,7 +129,7 @@ export function WorkspaceUploadButton({
         reset();
       } else {
         toast.error(result.message ?? "Could not save document.");
-        await supabase.storage.from("documents").remove([storagePath]);
+        await removeStoragePaths("documents", [storagePath]);
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Upload failed.");
