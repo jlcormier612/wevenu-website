@@ -16,6 +16,7 @@ export async function POST(request: Request) {
     isPublished?: boolean;
     password?: string;
     clearPassword?: boolean;
+    searchVisible?: boolean;
     theme?: string;
     themePalette?: string;
     accentColor?: string;
@@ -44,7 +45,7 @@ export async function POST(request: Request) {
     clearCustomColors?: boolean;
   };
 
-  const { token, slug, isPublished, password, clearPassword, theme, themePalette, accentColor,
+  const { token, slug, isPublished, password, clearPassword, searchVisible, theme, themePalette, accentColor,
           fontPairing, sectionOrder, contentKey, contentValue, sectionsEnabled, scheduleSync,
           collectionId, colorStoryId, typographyStyleId, photoStyleId,
           colorPrimary, colorSecondary, colorAccent, colorNeutral, colorBackground, colorText,
@@ -59,6 +60,7 @@ export async function POST(request: Request) {
     p_is_published:        isPublished      ?? null,
     p_password:            password         ?? null,
     p_clear_password:      clearPassword    ?? false,
+    p_search_visible:      searchVisible    ?? null,
     p_theme:               theme            ?? null,
     p_theme_palette:       themePalette     ?? null,
     p_accent_color:        accentColor      ?? null,

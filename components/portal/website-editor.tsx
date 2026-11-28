@@ -1723,6 +1723,9 @@ export function WebsiteEditor({
   ]);
   const [saving, setSaving] = React.useState<string | null>(null);
   const [publishing, setPublishing] = React.useState(false);
+  const [passwordDraftOpen, setPasswordDraftOpen] = React.useState(false);
+  const [passwordDraft, setPasswordDraft] = React.useState("");
+  const [savingPassword, setSavingPassword] = React.useState(false);
   const [previewMode, setPreviewMode] = React.useState<"desktop" | "mobile">("mobile");
   const [showPreview, setShowPreview] = React.useState(false);
   const [showQR, setShowQR] = React.useState(false);
@@ -2028,6 +2031,103 @@ export function WebsiteEditor({
               : site.isPublished ? "Unpublish website" : "🚀 Publish website"}
           </button>
         )}
+
+        {/* Privacy — search visibility + optional password (independent controls) */}
+        <div className="pt-2 border-t border-border space-y-3">
+          <p className="text-xs font-semibold text-heading">Privacy &amp; sharing</p>
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              className="mt-1 h-4 w-4 rounded border-border"
+              checked={site.searchVisible !== false}
+              onChange={async (e) => {
+                const next = e.target.checked;
+                setSite((s) => ({ ...s, searchVisible: next }));
+                await fetch("/api/portal/website", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ token, searchVisible: next }),
+                });
+              }}
+            />
+            <span className="text-xs text-heading leading-relaxed">
+              <span className="font-medium">Appear in search engines</span>
+              <span className="block text-muted-foreground mt-0.5">
+                Guests can always open your shared link. Turn this off to ask search engines not to list your site.
+              </span>
+            </span>
+          </label>
+          <div className="space-y-2">
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                className="mt-1 h-4 w-4 rounded border-border"
+                checked={Boolean(site.hasPassword) || passwordDraftOpen}
+                onChange={async (e) => {
+                  if (!e.target.checked) {
+                    setPasswordDraftOpen(false);
+                    setPasswordDraft("");
+                    setSite((s) => ({ ...s, hasPassword: false }));
+                    await fetch("/api/portal/website", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ token, clearPassword: true }),
+                    });
+                    toast.success("Password protection removed.");
+                    return;
+                  }
+                  setPasswordDraftOpen(true);
+                }}
+              />
+              <span className="text-xs text-heading leading-relaxed">
+                <span className="font-medium">Password protect website</span>
+                <span className="block text-muted-foreground mt-0.5">
+                  Guests must enter the password before seeing your wedding details. Works with or without search visibility.
+                </span>
+              </span>
+            </label>
+            {(Boolean(site.hasPassword) || passwordDraftOpen) && (
+              <div className="flex gap-2 pl-7">
+                <input
+                  type="password"
+                  value={passwordDraft}
+                  onChange={(e) => setPasswordDraft(e.target.value)}
+                  placeholder={site.hasPassword ? "Set a new password" : "Choose a password"}
+                  className="flex-1 rounded-xl border border-border bg-background px-3 py-2 text-xs"
+                  autoComplete="new-password"
+                />
+                <button
+                  type="button"
+                  disabled={savingPassword || passwordDraft.length < 4}
+                  onClick={async () => {
+                    setSavingPassword(true);
+                    try {
+                      const res = await fetch("/api/portal/website", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ token, password: passwordDraft }),
+                      });
+                      const data = await res.json();
+                      if (!res.ok || data?.ok === false) {
+                        toast.error(data?.error ?? "Could not save password.");
+                        return;
+                      }
+                      setSite((s) => ({ ...s, hasPassword: true }));
+                      setPasswordDraft("");
+                      setPasswordDraftOpen(false);
+                      toast.success(site.hasPassword ? "Password updated." : "Password protection enabled.");
+                    } finally {
+                      setSavingPassword(false);
+                    }
+                  }}
+                  className="shrink-0 rounded-xl bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-60"
+                >
+                  {savingPassword ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Save"}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
       </div>}
 
       {/* ── Change-notification nudges (Hosted Experience Platform Phase 5) ── */}

@@ -303,6 +303,8 @@ export type CoupleWebsite = {
   hasPendingChanges?: boolean;
   previewToken?: string;
   hasPassword?: boolean;
+  /** Appear in search engines when published. Default true. */
+  searchVisible?: boolean;
   theme?: WebsiteTheme;
   themePalette?: string;
   accentColor?: string;
@@ -358,6 +360,10 @@ export type WebsiteSuggestions = {
 export type PublicWebsite = {
   error?: string;
   requires_password?: boolean;
+  /** Couple-controlled search indexing. Default true when published. */
+  searchVisible?: boolean;
+  /** Bumped on password set/clear — guest unlock cookies bind to this. */
+  passwordVersion?: number;
   siteId?: string;
   slug?: string;
   status?: ExperienceStatus;
