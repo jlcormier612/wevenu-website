@@ -3,6 +3,10 @@
  * Labels: We can finish this / Your decision needed / Can be completed later / In progress.
  */
 import { createAdminClient } from "@/integrations/supabase/admin";
+import {
+  summarizeCatalogAppointmentsForOperator,
+} from "@/lib/calendar/onboarding-appointment-catalog-plan";
+import { listVenueScheduleItemTypes } from "@/lib/calendar/schedule-item-catalog-repository";
 import { getIntakeForVenue } from "@/lib/onboarding/intake-service";
 import {
   tastingAppointmentSignalLabel,
@@ -22,6 +26,7 @@ export async function getWhiteGloveOperatorView(venueId: string) {
     spacesRes,
     migrationRes,
     validation,
+    catalog,
   ] = await Promise.all([
     getIntakeForVenue(venueId),
     admin
@@ -47,6 +52,7 @@ export async function getWhiteGloveOperatorView(venueId: string) {
       .limit(1)
       .maybeSingle(),
     validateWhiteGloveHandoff(venueId),
+    listVenueScheduleItemTypes(admin, venueId).catch(() => []),
   ]);
 
   const hub = hubRes.data;
@@ -66,12 +72,13 @@ export async function getWhiteGloveOperatorView(venueId: string) {
       status: whiteGloveCalendarCanBeFinished({
         offersTours: intake?.offersTours,
         offersTastingsOrAppointments: intake?.offersTastingsOrAppointments,
+        catalog,
       })
         ? "we_can_finish"
         : "decision_needed",
       detail:
         spacesCount > 0
-          ? `${spacesCount} space(s) configured`
+          ? `${spacesCount} space(s) configured · ${summarizeCatalogAppointmentsForOperator(catalog)}`
           : "Spaces/capacity still needed when applicable",
     },
     {
@@ -121,20 +128,21 @@ export async function getWhiteGloveOperatorView(venueId: string) {
   const intakeSummary = intake
     ? [
         `Contact: ${intake.primaryContactName ?? "—"} · ${intake.contactEmail ?? "—"} · ${intake.contactPhone ?? "—"}`,
-        `Spaces: ${intake.spaceMode} · Tours: ${intake.offersTours ? "Yes" : "No"} · Appointments other than tours: ${tastingAppointmentSignalLabel(intake.offersTastingsOrAppointments)}`,
+        `Spaces: ${intake.spaceMode} · Tours: ${intake.offersTours ? "Yes" : "No"} · Appointments other than tours (intake): ${tastingAppointmentSignalLabel(intake.offersTastingsOrAppointments)}`,
         intake.offersTastingsOrAppointments === true
-          ? `Appointment types: ${(intake.appointmentTypeKeys ?? []).join(", ") || "—"}`
+          ? `Intake appointment choices: ${(intake.appointmentTypeKeys ?? []).join(", ") || "—"}`
           : null,
         intake.appointmentTypesOther
-          ? `Other appointment types: ${intake.appointmentTypesOther}`
+          ? `Intake other appointment name: ${intake.appointmentTypesOther}`
           : null,
+        summarizeCatalogAppointmentsForOperator(catalog),
         `Inquiry sources: ${(intake.inquirySources ?? []).join(", ") || "—"}`,
         intake.inquirySourcesOther ? `Other: ${intake.inquirySourcesOther}` : null,
         `Bring business: ${intake.bringBusinessChoice}`,
       ]
         .filter(Boolean)
         .join("\n")
-    : null;
+    : summarizeCatalogAppointmentsForOperator(catalog);
 
   return {
     whiteGloveStatus: enrollmentRes.data?.white_glove_status ?? null,

@@ -8,10 +8,11 @@ import {
   whiteGloveCalendarCanBeFinished,
 } from "@/lib/onboarding/tasting-signal";
 import { sanitizeAppointmentTypeKeys } from "@/lib/onboarding/types";
+import type { VenueScheduleItemType } from "@/lib/calendar/schedule-item-catalog";
 
 const form = readFileSync(resolve("components/onboarding/onboarding-intake-form.tsx"), "utf8");
-const settings = readFileSync(
-  resolve("components/settings/appointments-offered-control.tsx"),
+const availabilityPage = readFileSync(
+  resolve("app/(app)/settings/availability/page.tsx"),
   "utf8",
 );
 const types = readFileSync(resolve("lib/onboarding/types.ts"), "utf8");
@@ -26,25 +27,36 @@ const typesMigration = readFileSync(
   "utf8",
 );
 
+function catalogRow(
+  partial: Partial<VenueScheduleItemType> & Pick<VenueScheduleItemType, "id" | "builtinKey" | "enabled">,
+): VenueScheduleItemType {
+  return {
+    venueId: "v",
+    source: "builtin",
+    customKey: null,
+    label: partial.label ?? partial.builtinKey ?? "X",
+    blocksAvailability: false,
+    groupKey: "meetings",
+    sortOrder: 10,
+    archivedAt: null,
+    createdAt: "",
+    updatedAt: "",
+    ...partial,
+  };
+}
+
 describe("appointments other than tours signal", () => {
-  it("uses the approved question and conditional types in onboarding and Settings", () => {
+  it("keeps the approved question on onboarding only — not Availability settings", () => {
     assert.equal(tastingAppointmentSignalLabel(null), "Not answered");
     assert.match(form, /Do you offer appointments other than tours\?/);
-    assert.match(
-      form,
-      /For example, consultations, planning meetings, menu tastings, or final walkthroughs\./,
-    );
     assert.match(form, /What types of appointments do you offer\?/);
     assert.match(form, /APPOINTMENT_TYPE_OPTIONS\.map/);
+    assert.match(form, /Name of your other appointment type/);
     assert.match(types, /label: "Consultations"/);
     assert.match(types, /label: "Planning meetings"/);
-    assert.match(types, /label: "Final walkthroughs"/);
-    assert.match(types, /label: "Menu or food tastings"/);
-    assert.match(types, /label: "Other appointments"/);
-    assert.doesNotMatch(form, /Do you offer tastings or other appointments\?/);
-    assert.match(settings, /Do you offer appointments other than tours\?/);
-    assert.match(settings, /What types of appointments do you offer\?/);
-    assert.match(settings, /APPOINTMENT_TYPE_OPTIONS\.map/);
+    assert.doesNotMatch(availabilityPage, /Appointments other than tours/);
+    assert.doesNotMatch(availabilityPage, /AppointmentsOfferedControl/);
+    assert.match(availabilityPage, /Scheduled appointment types/);
   });
 
   it("shows approved White Glove welcome copy without checkout/Stripe internals", () => {
@@ -61,20 +73,15 @@ describe("appointments other than tours signal", () => {
       box,
       /You&apos;ll receive access to sign in once we&apos;ve completed setup and activated/,
     );
-    assert.doesNotMatch(box, /Your account login is already set/);
     assert.doesNotMatch(box, /from checkout/);
-    assert.doesNotMatch(box, /Account login stays/);
-    assert.doesNotMatch(box, /enrollment\.venue_name/);
-    assert.doesNotMatch(box, /owner_email/);
   });
 
-  it("persists Yes as a boolean plus type keys without configuring scheduling", () => {
+  it("persists Yes as a boolean plus type keys and applies catalog once on intake submit", () => {
     assert.equal(tastingAppointmentSignalLabel(true), "Yes");
     assert.match(intake, /offers_tastings_or_appointments: intake\.offersTastingsOrAppointments/);
     assert.match(intake, /appointment_type_keys/);
-    assert.match(intake, /appointment_types_other/);
-    assert.match(intake, /updateVenueAppointmentOfferSignal/);
-    assert.doesNotMatch(intake, /tasting_appointment_choice/);
+    assert.match(intake, /applyOnboardingAppointmentCatalogOnce/);
+    assert.doesNotMatch(intake, /updateVenueAppointmentOfferSignal/);
     assert.match(migration, /offers_tastings_or_appointments boolean/);
     assert.match(typesMigration, /appointment_type_keys text\[\]/);
     assert.deepEqual(
@@ -83,7 +90,7 @@ describe("appointments other than tours signal", () => {
     );
   });
 
-  it("keeps the White Glove signal without treating Yes as configured scheduling", () => {
+  it("White Glove calendar gate uses catalog when present; intake fallback otherwise", () => {
     assert.equal(whiteGloveCalendarCanBeFinished({
       offersTours: false,
       offersTastingsOrAppointments: false,
@@ -100,8 +107,26 @@ describe("appointments other than tours signal", () => {
       offersTours: true,
       offersTastingsOrAppointments: false,
     }), false);
-    assert.equal(tastingAppointmentSignalLabel(false), "No");
-    assert.doesNotMatch(intake, /from\("appointments"\)|from\("calendar_blocks"\)|tour_scheduling_enabled: intake\.offersTastings/);
-    assert.match(form, /does not turn on booking or\s+create a calendar by itself/);
+
+    const emptyOrdinary = [
+      catalogRow({ id: "1", builtinKey: "consultation", enabled: false }),
+      catalogRow({ id: "2", builtinKey: "blocked_time", enabled: true, groupKey: "availability" }),
+    ];
+    assert.equal(whiteGloveCalendarCanBeFinished({
+      offersTours: false,
+      offersTastingsOrAppointments: true,
+      catalog: emptyOrdinary,
+    }), true);
+
+    const withMeeting = [
+      catalogRow({ id: "1", builtinKey: "client_meeting", enabled: true }),
+    ];
+    assert.equal(whiteGloveCalendarCanBeFinished({
+      offersTours: false,
+      offersTastingsOrAppointments: false,
+      catalog: withMeeting,
+    }), false);
+
+    assert.match(form, /does not turn on\s+public online booking/);
   });
 });

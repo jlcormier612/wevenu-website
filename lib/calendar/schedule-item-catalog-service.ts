@@ -215,11 +215,14 @@ export async function createCustomScheduleItemType(input: {
 
   const groupKey = customKindToGroupKey(input.kind);
   const customKey = uniqueCustomKey(generateCustomKey(named.label), catalog);
+  // Ordinary custom appointments default non-blocking; reserved/blocked kind defaults blocking.
+  const defaultBlocks = input.kind === "reserved_blocked";
   const created = mergeAppointmentBlocksPatch(
-    { enabled: true, blocksAvailability: true },
+    { enabled: true, blocksAvailability: defaultBlocks },
     {
       enabled: input.enabled !== false,
-      blocksAvailability: input.blocksAvailability !== false,
+      blocksAvailability:
+        input.blocksAvailability !== undefined ? input.blocksAvailability : defaultBlocks,
     },
   );
   const supabase = await createClient();

@@ -290,69 +290,20 @@ export async function submitOnboardingIntake(input: {
       .eq("status", "not_started");
   }
 
-  return { ok: true, intakeId: saved.id };
-}
-
-/**
- * Settings mirror of the onboarding appointment Yes/No + types.
- * Writes the same venue_onboarding_intake columns; does not configure scheduling.
- */
-export async function updateVenueAppointmentOfferSignal(input: {
-  venueId: string;
-  offersAppointmentsOtherThanTours: boolean | null;
-  appointmentTypeKeys?: AppointmentTypeKey[];
-  appointmentTypesOther?: string | null;
-}): Promise<{ ok: true } | { ok: false; error: string }> {
-  if (!isSupabaseConfigured) return { ok: false, error: "not_configured" };
-  const admin = createAdminClient();
-  const offers = input.offersAppointmentsOtherThanTours;
-  const keys =
-    offers === true ? sanitizeAppointmentTypeKeys(input.appointmentTypeKeys) : [];
-  const other =
-    offers === true && keys.includes("other")
-      ? input.appointmentTypesOther?.trim() || null
-      : null;
-
-  const { data: existing } = await admin
-    .from("venue_onboarding_intake")
-    .select("id, path")
-    .eq("venue_id", input.venueId)
-    .maybeSingle<{ id: string; path: string | null }>();
-
-  if (existing?.id) {
-    const { error } = await admin
-      .from("venue_onboarding_intake")
-      .update({
-        offers_tastings_or_appointments: offers,
-        appointment_type_keys: keys,
-        appointment_types_other: other,
-      })
-      .eq("venue_id", input.venueId);
-    if (error) return { ok: false, error: error.message };
-    return { ok: true };
+  // One-time carry-through into operational schedule catalog (idempotent stamp).
+  // Does not re-apply on later intake edits once stamped.
+  const { applyOnboardingAppointmentCatalogOnce } = await import(
+    "@/lib/calendar/apply-onboarding-appointment-catalog"
+  );
+  const catalogApply = await applyOnboardingAppointmentCatalogOnce({
+    venueId: input.venueId,
+    offersAppointmentsOtherThanTours: intake.offersTastingsOrAppointments,
+    appointmentTypeKeys: row.appointment_type_keys,
+    appointmentTypesOther: row.appointment_types_other,
+  });
+  if (!catalogApply.ok) {
+    return { ok: false, error: catalogApply.error };
   }
 
-  const { data: hub } = await admin
-    .from("venue_setup_hub_state")
-    .select("onboarding_type")
-    .eq("venue_id", input.venueId)
-    .maybeSingle<{ onboarding_type: string | null }>();
-  const path =
-    hub?.onboarding_type === "white_glove" || hub?.onboarding_type === "self_setup"
-      ? hub.onboarding_type
-      : "self_setup";
-
-  const { error } = await admin.from("venue_onboarding_intake").insert({
-    venue_id: input.venueId,
-    path,
-    venue_name: null,
-    spaces: [],
-    offers_tours: null,
-    offers_tastings_or_appointments: offers,
-    appointment_type_keys: keys,
-    appointment_types_other: other,
-    inquiry_sources: [],
-  });
-  if (error) return { ok: false, error: error.message };
-  return { ok: true };
+  return { ok: true, intakeId: saved.id };
 }

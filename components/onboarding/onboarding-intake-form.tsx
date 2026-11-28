@@ -380,19 +380,26 @@ export function OnboardingIntakeForm({
               ))}
               {appointmentTypeKeys.includes("other") ? (
                 <div className="space-y-2">
-                  <Label htmlFor="appointment-types-other">Describe your other appointments</Label>
+                  <Label htmlFor="appointment-types-other">
+                    Name of your other appointment type
+                  </Label>
                   <Textarea
                     id="appointment-types-other"
                     value={appointmentTypesOther}
                     onChange={(e) => setAppointmentTypesOther(e.target.value)}
                     rows={2}
+                    placeholder="e.g. Inventory selection"
                     data-testid="appointment-types-other"
                   />
+                  <p className="text-xs text-muted-foreground">
+                    Use a short name. It becomes a Calendar appointment type your staff can schedule.
+                  </p>
                 </div>
               ) : null}
               <p className="text-xs text-muted-foreground">
-                This helps us understand how your venue works. It does not turn on booking or
-                create a calendar by itself.
+                These choices set up your Calendar appointment types once. You can refine them later
+                under Settings → Availability → Scheduled appointment types. This does not turn on
+                public online booking.
               </p>
             </div>
           ) : null}
