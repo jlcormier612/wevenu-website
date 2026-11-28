@@ -1,0 +1,40 @@
+---
+description: Standing HTC launch execution quality — Production DB migrations via MCP only; GH for app deploys; never attempt known-broken Apply Production Migration
+alwaysApply: true
+---
+
+# Launch execution quality (standing)
+
+## Mandatory pre-mutation check
+
+Before **any** Production or Sandbox environment mutation (DB or deploy), identify the **authoritative mechanism** for that mutation class. Do not invent a path. Do not “try the workflow first.”
+
+**Hard stop:** If the planned action is GitHub **Apply Production Migration**, STOP. That workflow is known non-operational (`PRODUCTION_DB_URL` unset). Use Supabase MCP instead. Sandbox Apply Sandbox Migration success is **not** authorization or proof for the Production GH migration workflow.
+
+| Mutation | Authoritative mechanism | Do not |
+|---|---|---|
+| **Production database migration** | Supabase MCP `apply_migration` on project `eovxuojwmqqufactxtqq`, then reconcile tip ledger identity as previously accepted (insert tip version / repair pattern). Verify schema afterward. | GitHub **Apply Production Migration** while `PRODUCTION_DB_URL` remains unset; `db push`; mass repair; new workflows/credentials/privileged objects |
+| **Production application deploy** | Established GitHub service-specific workflow (`Deploy Production Venue Only`, Workspace Only, Marketing Only, or full Deploy Production when authorized) | Using MCP for app deploy; deploying unaffected services |
+| **Sandbox database migration** | Established **Apply Sandbox Migration** workflow (or documented Sandbox MCP when that is the authorized path for the batch) | Confusing Sandbox and Production applicators |
+| **Sandbox application deploy** | Established **Deploy Sandbox** (or service-only) from `main` when authorized | Deploying unmerged tips |
+
+## Production database migrations — standing founder directive
+
+1. Use **Supabase MCP** for individually authorized Production migrations.
+2. Verify exact target project, approved SQL artifact, migration identity, compatibility, security, and recovery readiness **before** applying.
+3. Reconcile canonical migration ledger identity through the previously accepted mechanism where necessary.
+4. Verify actual schema and data state afterward.
+5. **Do not attempt** GitHub **Apply Production Migration** while its known prerequisite `PRODUCTION_DB_URL` is absent.
+6. **Do not** use GitHub workflow failure as a prerequisite to using MCP.
+7. **Do not** `db push` against the divergent historical ledger; do not mass-repair; do not create new migration infrastructure without explicit founder authorization.
+8. If MCP is unavailable → **STOP** before mutation and report. Do not substitute another mechanism.
+
+Evidence: dark-release `EXECUTION-GAP-RESOLUTION.md` / `DARK-RELEASE-REPORT.md` — MCP proven; GH Production migration workflow blocked (no `PRODUCTION_DB_URL`).
+
+## Production application deployments
+
+Continue GitHub deploy workflows with explicit confirmation strings, exact SHA, unaffected-service preservation, and documented rollback targets.
+
+## Do not confuse
+
+Database migration mechanism ≠ application deployment mechanism.
