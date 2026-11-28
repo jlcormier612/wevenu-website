@@ -46,6 +46,13 @@ describe("canonical event types", () => {
     assert.deepEqual(accepted, ["wedding", "elopement", "celebration_of_life", "corporate"]);
   });
 
+  it("displays elopement as Micro Wedding while preserving the stored identifier", () => {
+    assert.equal(normalizeEventType("elopement"), "elopement");
+    assert.equal(normalizeEventType("Micro Wedding"), "elopement");
+    assert.equal(eventTypeLabel("elopement"), "Micro Wedding");
+    assert.equal(EVENT_TYPES.find((t) => t.value === "elopement")?.label, "Micro Wedding");
+  });
+
   it("every default accepted type is canonical", () => {
     for (const value of DEFAULT_ACCEPTED_EVENT_TYPES) {
       assert.equal(normalizeEventType(value), value);

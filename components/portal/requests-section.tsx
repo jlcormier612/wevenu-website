@@ -16,11 +16,11 @@ import * as React from "react";
 import { Loader2, Paperclip } from "lucide-react";
 import { toast } from "sonner";
 
-import { createClient } from "@/integrations/supabase/client";
 import type {
   PortalRequestDetail, PortalRequestSummary, RequestSourceFeature, RequestType,
 } from "@/lib/requests/types";
 import type { PortalSection } from "@/lib/portal/types";
+import { CUSTOMER_UPLOAD_FAILED_MESSAGE } from "@/lib/storage/customer-upload-errors";
 
 const ROSE = "#D8A7AA";
 const ROSE_DEEP = "#C17F84";
@@ -123,15 +123,28 @@ function RequestDetailView({
     if (!file) return;
     setUploading(true);
     try {
-      const supabase = createClient();
-      const ext = file.name.split(".").pop() ?? "file";
-      const path = `${requestId}/${Date.now()}.${ext}`;
-      const { error } = await supabase.storage.from("request-uploads").upload(path, file, { contentType: file.type });
-      if (error) throw error;
-      const { data: { publicUrl } } = supabase.storage.from("request-uploads").getPublicUrl(path);
-      await submit(null, publicUrl);
+      const form = new FormData();
+      form.set("token", token);
+      form.set("requestId", requestId);
+      form.set("file", file);
+      const res = await fetch("/api/portal/request-upload", {
+        method: "POST",
+        body: form,
+        credentials: "same-origin",
+      });
+      const data = (await res.json().catch(() => null)) as
+        | { ok: true; url: string }
+        | { ok: false; error?: string }
+        | null;
+      if (!res.ok || !data || !("ok" in data) || !data.ok) {
+        toast.error(
+          (data && "error" in data && data.error) || CUSTOMER_UPLOAD_FAILED_MESSAGE,
+        );
+        return;
+      }
+      await submit(null, data.url);
     } catch {
-      toast.error("Upload failed.");
+      toast.error(CUSTOMER_UPLOAD_FAILED_MESSAGE);
     } finally {
       setUploading(false);
     }

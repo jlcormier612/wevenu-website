@@ -28,7 +28,7 @@ import { Input } from "@/components/ui/input";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { createClient } from "@/integrations/supabase/client";
+import { removeStoragePaths, uploadFileToStorage } from "@/lib/storage/upload";
 import { venueFileHref } from "@/lib/documents/access";
 import type { Document } from "@/lib/documents/types";
 
@@ -81,7 +81,6 @@ export function LibraryDocumentsManager({
     }
 
     setUploading(true);
-    const supabase = createClient();
     const ext = file.name.split(".").pop()?.toLowerCase() ?? "bin";
     // {venue_id}/… is required, not cosmetic: the documents bucket policies
     // compare the first path segment to current_user_venue_id(), so a literal
@@ -90,11 +89,13 @@ export function LibraryDocumentsManager({
     // file belongs to the venue rather than to one lead or event.
     const storagePath = `${venueId}/library/${crypto.randomUUID()}.${ext}`;
     try {
-      const { error: uploadError } = await supabase.storage
-        .from("documents")
-        .upload(storagePath, file, { upsert: false, contentType: file.type });
-      if (uploadError) throw new Error(uploadError.message);
-      const { data: urlData } = supabase.storage.from("documents").getPublicUrl(storagePath);
+      const uploaded = await uploadFileToStorage({
+        bucket: "documents",
+        path: storagePath,
+        file,
+        contentType: file.type,
+        upsert: false,
+      });
 
       const saved = await saveLibraryDocumentAction({
         name: file.name.replace(/\.[^.]+$/, ""),
@@ -106,11 +107,11 @@ export function LibraryDocumentsManager({
         fileSize: file.size,
         mimeType: file.type,
         storagePath,
-        storageUrl: urlData.publicUrl,
+        storageUrl: uploaded.publicUrl,
       });
       if (!saved.ok) {
         // Don't leave an orphan object behind when the row didn't land.
-        await supabase.storage.from("documents").remove([storagePath]);
+        await removeStoragePaths("documents", [storagePath]);
         toast.error(saved.message ?? "Could not save that document.");
         return;
       }

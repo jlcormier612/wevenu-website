@@ -23,7 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { createClient } from "@/integrations/supabase/client";
+import { removeStoragePaths, uploadFileToStorage } from "@/lib/storage/upload";
 import { prepareFloorPlanSourceUpload } from "@/lib/floor-plans/client-background-upload";
 import {
   proposeFloorPlanScopeFromFileName,
@@ -72,20 +72,26 @@ async function retainBatchZip(
     const pathResult = await migrationArtifactUploadPathAction(sessionId, file.name);
     if (!pathResult.ok) return pathResult;
     const path = pathResult.storagePath;
-    const supabase = createClient();
     const contentType = file.type || "application/zip";
-    const { error: uploadError } = await supabase.storage
-      .from("documents")
-      .upload(path, file, { upsert: false, contentType });
-    if (uploadError) return { ok: false, message: uploadError.message };
-    const { data: urlData } = supabase.storage.from("documents").getPublicUrl(path);
+    let uploaded;
+    try {
+      uploaded = await uploadFileToStorage({
+        bucket: "documents",
+        path,
+        file,
+        contentType,
+        upsert: false,
+      });
+    } catch (err) {
+      return { ok: false, message: err instanceof Error ? err.message : "Upload failed." };
+    }
     const attached = await attachMigrationSourceFileAction(sessionId, {
       fileName: file.name, fileSize: file.size, mimeType: contentType,
-      storagePath: path, storageUrl: urlData.publicUrl,
+      storagePath: path, storageUrl: uploaded.publicUrl,
     });
     if (!attached.ok) {
       // Never leave a stored object with no row pointing at it.
-      await supabase.storage.from("documents").remove([path]);
+      await removeStoragePaths("documents", [path]);
       return { ok: false, message: attached.message };
     }
     return { ok: true };

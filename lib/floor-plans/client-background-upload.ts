@@ -5,13 +5,15 @@
  * 2. For images, the Document URL is also the editor background.
  * 3. For PDFs, rasterizes page 1 and uploads a PNG derivative to the
  *    floor-plans bucket only — never as a second Document.
+ *
+ * Storage writes go through the authenticated server route (HttpOnly session).
  */
 
-import { createClient } from "@/integrations/supabase/client";
 import {
   isFloorPlanSourceMime,
   isPdfMime,
 } from "@/lib/floor-plans/background-document";
+import { removeStoragePaths, uploadFileToStorage } from "@/lib/storage/upload";
 
 const MAX_BYTES = 25 * 1024 * 1024;
 
@@ -41,18 +43,19 @@ export async function prepareFloorPlanSourceUpload(opts: {
     throw new Error("Use a PDF or image (PNG, JPG, WebP, GIF, SVG).");
   }
 
-  const supabase = createClient();
   const docId = crypto.randomUUID();
   const ext = file.name.split(".").pop()?.toLowerCase() || (isPdfMime(mimeType) ? "pdf" : "bin");
   const storagePath = `${venueId}/floor_plan/${planId}/${docId}.${ext}`;
 
-  const { error: uploadError } = await supabase.storage
-    .from("documents")
-    .upload(storagePath, file, { upsert: false, contentType: mimeType });
-  if (uploadError) throw new Error(uploadError.message);
-
-  const { data: urlData } = supabase.storage.from("documents").getPublicUrl(storagePath);
-  const storageUrl = urlData.publicUrl;
+  const uploaded = await uploadFileToStorage({
+    bucket: "documents",
+    path: storagePath,
+    file,
+    contentType: mimeType,
+    upsert: false,
+    maxBytes: MAX_BYTES,
+  });
+  const storageUrl = uploaded.publicUrl;
   const displayName = file.name.replace(/\.[^.]+$/, "") || "Floor plan";
 
   let renderableImageUrl = storageUrl;
@@ -60,16 +63,20 @@ export async function prepareFloorPlanSourceUpload(opts: {
     try {
       const pngBlob = await rasterizePdfPage1(file);
       const previewPath = `${venueId}/${planId}/background-preview.png`;
-      const { error: previewError } = await supabase.storage
-        .from("floor-plans")
-        .upload(previewPath, pngBlob, { upsert: true, contentType: "image/png" });
-      if (previewError) throw new Error(previewError.message);
-      const { data: previewUrl } = supabase.storage.from("floor-plans").getPublicUrl(previewPath);
-      renderableImageUrl = previewUrl.publicUrl;
+      const preview = await uploadFileToStorage({
+        bucket: "floor-plans",
+        path: previewPath,
+        file: pngBlob,
+        contentType: "image/png",
+        fileName: "background-preview.png",
+        upsert: true,
+        maxBytes: MAX_BYTES,
+      });
+      renderableImageUrl = preview.publicUrl;
     } catch (err) {
       // Keep the Document; roll back only the original upload if we cannot
       // produce an editor background (PDF without a usable page-1 image).
-      await supabase.storage.from("documents").remove([storagePath]);
+      await removeStoragePaths("documents", [storagePath]);
       const message = err instanceof Error ? err.message : "Could not read this PDF.";
       throw new Error(`${message} Try a PNG or JPG of the floor plan instead.`);
     }

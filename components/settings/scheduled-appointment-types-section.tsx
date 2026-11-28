@@ -96,7 +96,8 @@ export function ScheduledAppointmentTypesSection({
   const [newLabel, setNewLabel] = React.useState("");
   const [newKind, setNewKind] = React.useState<CustomScheduleItemKind>("appointment");
   const [newEnabled, setNewEnabled] = React.useState(true);
-  const [newReserves, setNewReserves] = React.useState(true);
+  /** Ordinary appointments default non-blocking; reserved/blocked kind defaults blocking. */
+  const [newReserves, setNewReserves] = React.useState(false);
   const [renamingId, setRenamingId] = React.useState<string | null>(null);
   const [renameValue, setRenameValue] = React.useState("");
 
@@ -213,7 +214,7 @@ export function ScheduledAppointmentTypesSection({
       setNewLabel("");
       setNewKind("appointment");
       setNewEnabled(true);
-      setNewReserves(true);
+      setNewReserves(false);
       refreshCatalog();
     } catch {
       toast.error("Could not save.");
@@ -568,7 +569,10 @@ export function ScheduledAppointmentTypesSection({
                       key={opt.value}
                       type="button"
                       disabled={savingKey === "create"}
-                      onClick={() => setNewKind(opt.value)}
+                      onClick={() => {
+                        setNewKind(opt.value);
+                        setNewReserves(opt.value === "reserved_blocked");
+                      }}
                       className={cn(
                         "rounded-md border px-3 py-1.5 text-xs font-medium transition-colors",
                         newKind === opt.value
@@ -630,7 +634,7 @@ export function ScheduledAppointmentTypesSection({
                     setNewLabel("");
                     setNewKind("appointment");
                     setNewEnabled(true);
-                    setNewReserves(true);
+                    setNewReserves(false);
                   }}
                 >
                   Cancel

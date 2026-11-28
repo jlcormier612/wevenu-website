@@ -53,7 +53,9 @@ export function VendorProfileForm({ profile }: { profile: VendorProfile }) {
   async function handleLogoUpload(file: File) {
     setUploading(true);
     try {
-      const url = await uploadToStorage("vendors", `${profile.id}/logo`, file);
+      const url = await uploadToStorage("vendors", `${profile.id}/logo`, file, {
+        scope: "vendor",
+      });
       set("logoUrl", url);
       // Saves immediately — logo upload previously only staged the URL in
       // this form's local state, so it silently never persisted unless

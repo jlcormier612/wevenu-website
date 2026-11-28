@@ -44,7 +44,7 @@ describe("Calendar Slice 2A.2.1 — Settings placement & copy", () => {
     assert.match(pageSrc, /Scheduled appointment types/);
     assert.match(
       pageSrc,
-      /Choose the kinds of appointments and reserved time your team can add on the Calendar\. You can turn types on or off and add your own\./,
+      /Choose the kinds of appointments and reserved time your team can add on the Calendar\.\s*You can turn types on or off and add your own\./,
     );
     assert.match(pageSrc, /ScheduledAppointmentTypesSection/);
     assert.match(pageSrc, /getScheduleItemTypesForSettings|getBuiltinScheduleItemTypesForSettings/);
@@ -59,11 +59,14 @@ describe("Calendar Slice 2A.2.1 — Settings placement & copy", () => {
     assert.match(pageSrc, /Scheduling Capacity/);
     assert.match(pageSrc, /id="spaces"/);
     assert.match(pageSrc, /Event Spaces/);
-    // Tour Availability card remains above scheduled appointment types.
+    // Tour Availability card remains above scheduled appointment types in the page JSX.
     const tourAt = pageSrc.indexOf('id="tour-availability"');
     const typesAt = pageSrc.indexOf('id="scheduled-appointment-types"');
-    const capacityAt = pageSrc.indexOf('id="capacity"');
-    assert.ok(tourAt > 0 && typesAt > tourAt && capacityAt > typesAt);
+    assert.ok(tourAt > 0 && typesAt > tourAt);
+    assert.match(pageSrc, /id="capacity"/);
+    // No duplicate editable "Appointments other than tours" questionnaire.
+    assert.doesNotMatch(pageSrc, /Appointments other than tours/);
+    assert.doesNotMatch(pageSrc, /AppointmentsOfferedControl/);
   });
 
   it("uses locked occupancy label and helper copy", () => {

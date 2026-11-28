@@ -70,6 +70,8 @@ describe("custom type enabled + blocksAvailability controls", () => {
     assert.match(sectionSrc, /aria-label=\{BLOCKS_EVENT_BOOKINGS_LABEL\}/);
     assert.match(sectionSrc, /enabled: newEnabled/);
     assert.match(sectionSrc, /blocksAvailability: newEnabled \? newReserves : false/);
+    // Ordinary custom appointments default non-blocking
+    assert.match(sectionSrc, /const \[newReserves, setNewReserves\] = React\.useState\(false\)/);
   });
 
   it("service/repo/actions persist enabled and blocksAvailability with disabled⇒blocks-off invariant", () => {
