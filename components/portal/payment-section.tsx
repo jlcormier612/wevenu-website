@@ -14,6 +14,7 @@ import {
 } from "@/lib/portal/checkout-return-notice";
 import { computePortalScheduleTotals } from "@/lib/portal/payment-totals";
 import { formatPortalPaymentDate } from "@/lib/portal/payment-display-date";
+import { scheduleRowPrimaryAmount } from "@/lib/portal/payment-schedule-row-amount";
 import {
   bareInvoiceNextStepCopy,
   invoicesWithoutPaymentPlan,
@@ -415,7 +416,7 @@ function PaymentTimeline({
                     </div>
                     <div className="shrink-0 text-right space-y-1">
                       <p className="text-sm font-semibold text-heading">
-                        {formatMoney(item.paidAmount ?? item.amount)}
+                        {formatMoney(scheduleRowPrimaryAmount(item))}
                       </p>
                       <StatusPill status={item.status} dueDate={item.dueDate} />
                       {onlinePaymentsReady && (item.status === "pending" || item.status === "overdue") && (
