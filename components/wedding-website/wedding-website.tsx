@@ -1798,8 +1798,22 @@ function PasswordGate({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setChecking(true);
-    router.push(`/w/${slug}?p=${encodeURIComponent(pw)}`);
-    setChecking(false);
+    try {
+      const res = await fetch("/api/wedding-website/unlock", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ slug, password: pw }),
+      });
+      if (res.ok) {
+        router.push(`/w/${slug}`);
+        router.refresh();
+        return;
+      }
+      // Fallback: one-shot query unlock still re-checks the live hash.
+      router.push(`/w/${slug}?p=${encodeURIComponent(pw)}`);
+    } finally {
+      setChecking(false);
+    }
   }
 
   return (
