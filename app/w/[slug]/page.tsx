@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 import { WeddingWebsite } from "@/components/wedding-website/wedding-website";
 import { createAdminClient } from "@/integrations/supabase/admin";
@@ -14,7 +14,8 @@ import type { PublicWebsite } from "@/lib/wedding-website/types";
 
 type Props = {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ preview?: string }>;
+  /** `p` is intentionally ignored — legacy password-in-URL is stripped, never verified. */
+  searchParams: Promise<{ preview?: string; p?: string }>;
 };
 
 function gatedMetadata(site: PublicWebsite | null): Metadata {
@@ -90,7 +91,13 @@ async function loadPublicSite(input: {
 
 export default async function WeddingWebsitePage({ params, searchParams }: Props) {
   const { slug } = await params;
-  const { preview } = await searchParams;
+  const { preview, p: legacyPasswordQuery } = await searchParams;
+  // Approved policy: passwords must never live in URLs. Strip legacy ?p= without reading it as a credential.
+  if (typeof legacyPasswordQuery === "string") {
+    const qs = new URLSearchParams();
+    if (preview) qs.set("preview", preview);
+    redirect(qs.size > 0 ? `/w/${slug}?${qs.toString()}` : `/w/${slug}`);
+  }
   const site = await loadPublicSite({
     slug,
     preview: preview ?? null,

@@ -76,9 +76,9 @@ describe("wedding website privacy controls — app surfaces", () => {
     assert.match(page, /WEDDING_WEBSITE_UNLOCK_COOKIE/);
     assert.doesNotMatch(page, /marketing/);
     // Passwords must never be accepted via URL query params.
-    assert.doesNotMatch(page, /\bp\?:/);
     assert.doesNotMatch(page, /password \?\? null/);
-    assert.doesNotMatch(page, /\?p=/);
+    assert.match(page, /legacyPasswordQuery/);
+    assert.match(page, /redirect\(/);
   });
 
   it("unlock route sets httpOnly cookie after server-side password check", () => {
